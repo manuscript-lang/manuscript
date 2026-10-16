@@ -11,8 +11,6 @@ import {
     Config,
     Request,
     Message,
-    Role,
-    Content,
     Control,
     StopReason,
     Event
@@ -28,7 +26,7 @@ import {duration, Duration} from "@std/time.ms"
 
 fn run() -> Result[Unit, Error]:
     let args = arguments()
-    if args.length() != 2: return error(TextError.Text("expected URL and mode"))
+    if args.length != 2: return error(TextError.Text("expected URL and mode"))
 
     let url = args[0].unwrap()
     let mode = args[1].unwrap()
@@ -64,10 +62,7 @@ fn run() -> Result[Unit, Error]:
             ObjectValue(values): values.clone()
             _: return payload
 
-        values.add(
-            "marker",
-            JsonValue.StringValue("native")
-        )
+        values.add("marker", JsonValue.StringValue("native"))
         return JsonValue.ObjectValue(values)
     let provider_event = fn(event: JsonValue) -> Unit:
         observed.append(event)
@@ -104,7 +99,7 @@ fn run() -> Result[Unit, Error]:
             while true:
                 var ready = false
 
-                with guard = seen.lock(): ready = guard.get()
+                with guard = seen.lock(): ready = guard.value
 
                 if ready: break
 
@@ -113,10 +108,10 @@ fn run() -> Result[Unit, Error]:
             abort(agent)
             wait_for_idle(agent)
             let outcome = try task.join()
-            if outcome.is_ok() or active_signal(agent).is_some(): return error(
+            if outcome.is_ok or active_signal(agent).is_some: return error(
                 TextError.Text("abort did not settle")
             )
-            if agent.context.messages.last().unwrap().stop_reason != StopReason.Aborted: return error(
+            if agent.context.messages.last.unwrap().stop_reason != StopReason.Aborted: return error(
                 TextError.Text("abort reason missing")
             )
     else:
@@ -124,7 +119,7 @@ fn run() -> Result[Unit, Error]:
 
         if mode == "normal":
             let _messages = try outcome
-            let message = agent.context.messages.last().unwrap()
+            let message = agent.context.messages.last.unwrap()
             if (
                 content_text(message.content) != "héllo"
                 or message.usage.unwrap().total_tokens != 3
@@ -133,11 +128,11 @@ fn run() -> Result[Unit, Error]:
                 message.content_signatures.get(0) != some("sig")
                 or message.provider_thinking_level != "native-level"
             ): return error(TextError.Text("proxy metadata lost"))
-            if observed.length() != 5: return error(
+            if observed.length != 5: return error(
                 TextError.Text("provider events missing")
             )
         else:
-            if outcome.is_ok(): return error(
+            if outcome.is_ok: return error(
                 TextError.Text("bad proxy response accepted")
             )
             if agent.is_streaming: return error(

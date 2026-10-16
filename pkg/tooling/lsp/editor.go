@@ -216,7 +216,7 @@ func contextAt(d document, p position) (cursorContext, error) {
 	}
 	lineStart := strings.LastIndex(d.Text[:c.start], "\n") + 1
 	line := strings.TrimSpace(d.Text[lineStart:c.start])
-	c.typeContext = strings.HasSuffix(line, "->") || strings.Contains(line, "let ") && strings.Contains(line, ":") && !strings.Contains(line, "=") || (strings.HasPrefix(line, "fn ") || strings.HasPrefix(line, "export fn ")) && strings.Contains(line, ":")
+	c.typeContext = strings.HasSuffix(line, "->") || (strings.Contains(line, "let ") || strings.Contains(line, "var ")) && strings.Contains(line, ":") && !strings.Contains(line, "=") || (strings.HasPrefix(line, "fn ") || strings.HasPrefix(line, "export fn ")) && strings.Contains(line, ":")
 	// A default is an expression inside a function header. Track only separators
 	// at that parameter list's depth so nested calls and types keep their context.
 	for index := len(stack) - 1; index >= 0; index-- {
@@ -276,20 +276,6 @@ func copyDocuments(docs map[string]document) map[string]document {
 	return copy
 }
 func closeDelimiters(source string, line int) string {
-	stack := []string{}
-	for _, t := range editorTokens(source) {
-		switch t.kind {
-		case "(", "[", "{":
-			stack = append(stack, t.kind)
-		case ")", "]", "}":
-			if len(stack) > 0 {
-				stack = stack[:len(stack)-1]
-			}
-		}
-	}
-	if len(stack) == 0 {
-		return source
-	}
 	at := 0
 	for n := 0; n < line; n++ {
 		next := strings.IndexByte(source[at:], '\n')
@@ -303,9 +289,24 @@ func closeDelimiters(source string, line int) string {
 		end = len(source) - at
 	}
 	end += at
+	stack := []editorToken{}
+	for _, t := range editorTokens(source) {
+		switch t.kind {
+		case "(", "[", "{":
+			stack = append(stack, t)
+		case ")", "]", "}":
+			if len(stack) > 0 {
+				stack = stack[:len(stack)-1]
+			}
+		}
+	}
 	var tail strings.Builder
 	for i := len(stack) - 1; i >= 0; i-- {
-		tail.WriteString(map[string]string{"(": ")", "[": "]", "{": "}"}[stack[i]])
+		if stack[i].start <= end {
+			// A later broken declaration must not close its opener on the
+			// cursor's earlier, valid line and erase that declaration's scope.
+			tail.WriteString(map[string]string{"(": ")", "[": "]", "{": "}"}[stack[i].kind])
+		}
 	}
 	return source[:end] + tail.String() + source[end:]
 }
@@ -329,6 +330,23 @@ func queryEditor(d document, docs map[string]document, c cursorContext) editorAn
 	}
 	modified := d
 	modified.Text = d.Text[:c.start] + replacement + d.Text[c.end:]
+	if c.typeContext {
+		lineStart := strings.LastIndex(modified.Text[:c.start], "\n") + 1
+		lineEnd := strings.IndexByte(modified.Text[c.start:], '\n')
+		if lineEnd < 0 {
+			lineEnd = len(modified.Text)
+		} else {
+			lineEnd += c.start
+		}
+		line := modified.Text[lineStart:lineEnd]
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "let ") || strings.HasPrefix(trimmed, "var ") {
+			// Query the lexical environment before this local annotation. A type
+			// marker alone cannot capture bindings that shadow a prelude type.
+			indent := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+			modified.Text = modified.Text[:lineStart] + indent + "let " + marker + "_value = " + marker + modified.Text[lineEnd:]
+		}
+	}
 	modified.Text = closeDelimiters(modified.Text, Position(d.Text, c.offset).Line)
 	copy := copyDocuments(docs)
 	copy[d.URI] = modified

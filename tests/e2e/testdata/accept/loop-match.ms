@@ -1,7 +1,5 @@
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
-
 type State:
     case Ready
     case Waiting

@@ -14,20 +14,24 @@ import (
 // source using the same inspection that ms inspect reports.
 func debugNames(result compiler.Result) debugger.Names {
 	root, _ := filepath.Abs(result.SourceRoot)
-	return namesFromInspection(root, tooling.Inspect(result.Program))
+	names := namesFromInspection(root, tooling.Inspect(result.Program))
+	for _, local := range compiler.DebugLocals(result.Program) {
+		if names.Locals[local.Function] == nil {
+			names.Locals[local.Function] = map[string]debugger.Local{}
+		}
+		names.Locals[local.Function][local.Go] = debugger.Local{Name: local.Name, Type: local.Type}
+	}
+	return names
 }
 
 func namesFromInspection(root string, inspection tooling.Inspection) debugger.Names {
-	names := debugger.Names{Root: root, Locals: map[string]debugger.Local{}, Sources: map[string]bool{}, Lines: map[string]map[int]bool{}}
+	names := debugger.Names{Root: root, Locals: map[string]map[string]debugger.Local{}, Sources: map[string]bool{}, Lines: map[string]map[int]bool{}}
 	for _, source := range inspection.Sources {
 		names.Sources[filepath.ToSlash(source.File)] = true
 	}
-	for _, local := range inspection.Locals {
-		names.Locals[local.GoID] = debugger.Local{Name: local.Name, Type: local.Type}
-	}
 	for _, entity := range inspection.Entities {
 		file := filepath.ToSlash(entity.Span.File)
-		function := entity.Kind == syntax.KindFn || entity.Kind == syntax.KindTest || entity.Kind == "method"
+		function := entity.Kind == syntax.KindFn || entity.Kind == syntax.KindTest || entity.Kind == "method" || entity.Kind == "accessor" && entity.GoID != ""
 		names.Entities = append(names.Entities, debugger.Entity{
 			Name: entity.Name, File: file, Line: entity.Span.Line, Function: function,
 			Body: firstStatementAfter(inspection.Statements, entity.Span),
@@ -72,4 +76,27 @@ func markLine(names *debugger.Names, span tooling.Span) {
 		names.Lines[file] = map[int]bool{}
 	}
 	names.Lines[file][span.Line] = true
+}
+
+// debugInspection is the inspection document debugger front ends read: the
+// source inspection plus the Go local each source binding became, by the frame
+// name of its function.
+type debugInspection struct {
+	tooling.Inspection
+	GoLocals []goLocal `json:"go_locals"`
+}
+
+type goLocal struct {
+	Function string `json:"function"`
+	Go       string `json:"go"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+}
+
+func inspectionWithGoLocals(result compiler.Result) debugInspection {
+	out := debugInspection{Inspection: tooling.Inspect(result.Program), GoLocals: []goLocal{}}
+	for _, local := range compiler.DebugLocals(result.Program) {
+		out.GoLocals = append(out.GoLocals, goLocal(local))
+	}
+	return out
 }

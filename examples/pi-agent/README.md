@@ -171,8 +171,10 @@ Callbacks must treat snapshots, schemas and nested payloads as read-only or clon
 them. Tools protect their own shared data. Do not wait for idle inside a run
 listener, or join work while holding a guard that work needs.
 
-Manuscript has no blocking channel/condition API in this checkout. Idle waiting
-and the proxy cancellation watcher use a suspending 1 ms poll. The proxy's own
+Idle waiting and the proxy cancellation watcher use synchronized guard
+`wait()`/`notify_all()` without polling. Use `request_abort(control)` to change a
+token and wake its waiters; `abort(agent)` does this for the active run.
+`wait_for_abort(control)` waits cancellably for that token. The proxy's owned
 HTTP client is closed on cancellation; arbitrary model/tool callbacks remain
 responsible for stopping their work. Programming-fault semantics, explicit host
 defaults, separate prompt functions, typed patches and copied outer history are
@@ -185,7 +187,7 @@ connect to a compatible server.
 
 ## Validation and language learning
 
-[The native suite](src/test.ms) covers 53 core behavior cases, including scheduling,
+[The native suite](src/test.ms) covers 54 core behavior cases, including scheduling,
 transcript replay, schemas, hook context, lifecycle failures, retained callback
 revocation, listener settlement and proxy event reconstruction. The generated
 suite is also exercised with Go's race detector.

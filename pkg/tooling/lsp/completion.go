@@ -173,6 +173,9 @@ func (k *completer) memberItems() {
 			for _, member := range checker.Members(result.Program, info.Type, left.Pos.File) {
 				kind := 5
 				insert := member.Name
+				if member.Kind == "accessor" {
+					kind = 10 // CompletionItemKind.Property
+				}
 				if member.Kind == "method" {
 					kind = 2
 					insert = callableText(member.Name, member.Type, nil, k.snippets)
@@ -222,6 +225,44 @@ func (k *completer) scopeItems() {
 	if len(symbols) == 0 && result.Program != nil {
 		if m := module(result, analysis.document); m != nil {
 			symbols = result.Program.ModuleSymbols(m.File)
+		}
+	}
+	if c.typeContext && analysis.expression == nil {
+		// Signature markers are type syntax rather than captured expressions.
+		// Use the checked variables of the enclosing callable before offering
+		// module symbols, so a type parameter retains its own identity and arity.
+		for _, symbol := range symbols {
+			decl := symbol.Decl
+			if decl == nil || decl.Pos.File != moduleFile(result, analysis.document) || decl.Pos.Offset > c.start {
+				continue
+			}
+			headerEnd := len(analysis.document.Text)
+			if len(decl.Body) > 0 {
+				headerEnd = decl.Body[0].Pos.Offset
+			} else {
+				depth := 0
+				for _, token := range editorTokens(analysis.document.Text[decl.Pos.Offset:]) {
+					switch token.kind {
+					case "(", "[", "{":
+						depth++
+					case ")", "]", "}":
+						depth--
+					case ":":
+						if depth == 0 {
+							headerEnd = decl.Pos.Offset + token.start
+						}
+					}
+					if headerEnd != len(analysis.document.Text) {
+						break
+					}
+				}
+			}
+			if c.end > headerEnd {
+				continue
+			}
+			for _, variable := range symbol.Variables {
+				k.add(variable.Name, 25, variable, 1, variable.Name, nil)
+			}
 		}
 	}
 	for name, s := range symbols {
@@ -299,7 +340,19 @@ func (k *completer) keywordItems() {
 		}
 	}
 	if c.typeContext {
+		symbols := k.analysis.scope.Symbols
+		if len(symbols) == 0 && k.result.Program != nil {
+			if m := module(k.result, k.analysis.document); m != nil {
+				symbols = k.result.Program.ModuleSymbols(m.File)
+			}
+		}
 		for _, name := range checker.PreludeTypeNames() {
+			if _, bound := k.analysis.scope.Bindings[name]; bound {
+				continue
+			}
+			if symbol := symbols[name]; symbol != nil && symbol.Kind != syntax.KindType {
+				continue
+			}
 			k.add(name, 7, nil, 3, name, nil)
 		}
 	}
@@ -310,7 +363,7 @@ func (k *completer) standardImports() {
 	inventory := checker.StandardExportInventory()
 	for _, path := range standardPaths() {
 		for _, s := range inventory[path] {
-			if k.seen[s.Name] || !nameMatches(s.Name, k.c.prefix) || k.c.typeContext && s.Kind != syntax.KindType {
+			if checker.IsPreludeSymbol(s) || k.seen[s.Name] || !nameMatches(s.Name, k.c.prefix) || k.c.typeContext && s.Kind != syntax.KindType {
 				continue
 			}
 			k.addImport(s, path)
@@ -464,18 +517,34 @@ func containsMarker(e *syntax.Expression, marker string) bool {
 	return e != nil && (e.Text == marker || containsMarker(e.Left, marker) || containsMarker(e.Right, marker))
 }
 func importCompletion(d document, docs map[string]document, c cursorContext, snippets bool) ([]completionItem, bool) {
-	start := strings.LastIndex(d.Text[:c.offset], "\n") + 1
-	line := d.Text[start:c.offset]
-	trimmed := strings.TrimSpace(line)
-	if !strings.HasPrefix(trimmed, "import ") {
-		groupStart := strings.LastIndex(d.Text[:c.start], "import {")
-		if groupStart < 0 || strings.Contains(d.Text[groupStart:c.start], "}") {
-			return nil, false
+	// Token context handles compact imports and multiline groups without
+	// mistaking comments or strings for an import declaration.
+	start, braces := -1, 0
+	grouped := false
+	for _, token := range editorTokens(d.Text[:c.offset]) {
+		if token.kind == "name" && token.text == "import" && token.end <= c.start {
+			start, braces, grouped = token.start, 0, false
+			continue
 		}
-		start = groupStart
-		line = d.Text[start:c.offset]
+		if start < 0 {
+			continue
+		}
+		switch token.kind {
+		case "{":
+			braces++
+			grouped = true
+		case "}":
+			braces--
+		case "\n":
+			if braces <= 0 {
+				start = -1
+			}
+		}
 	}
-	grouped := strings.HasPrefix(strings.TrimSpace(line), "import {")
+	if start < 0 {
+		return nil, false
+	}
+	line := d.Text[start:c.offset]
 	imported := map[string]bool{}
 	if grouped {
 		end := strings.Index(d.Text[start:], "}")
@@ -492,7 +561,13 @@ func importCompletion(d document, docs map[string]document, c cursorContext, sni
 	add := func(name, path string, kind int, r span, text string) {
 		items = append(items, completionItem{Label: name, Kind: kind, Detail: path, SortText: name, FilterText: name, InsertTextFormat: 1, TextEdit: map[string]any{"range": r, "newText": text}})
 	}
-	quote := strings.IndexByte(line, '"')
+	quote := -1
+	for _, token := range editorTokens(line) {
+		if token.kind == "string" {
+			quote = token.start
+			break
+		}
+	}
 	if quote >= 0 {
 		pathStart := start + quote + 1
 		prefix := d.Text[pathStart:c.offset]
@@ -501,7 +576,7 @@ func importCompletion(d document, docs map[string]document, c cursorContext, sni
 			end++
 		}
 		r := span{Position(d.Text, pathStart), Position(d.Text, end)}
-		for path := range checker.StandardExportInventory() {
+		for _, path := range standardPaths() {
 			if strings.HasPrefix(path, prefix) {
 				add(path, path, 17, r, path)
 			}
@@ -558,62 +633,71 @@ func importCompletion(d document, docs map[string]document, c cursorContext, sni
 		return items, true
 	}
 	// Symbol completion in `import Name from "..."` uses only exported declarations.
-	rest := d.Text[c.end:]
-	from := strings.Index(rest, "from ")
-	if from >= 0 {
-		tail := strings.TrimSpace(rest[from+5:])
-		if index := strings.IndexByte(tail, '\n'); index >= 0 {
-			tail = tail[:index]
+	path, knownPath := "", false
+	rest := editorTokens(d.Text[c.end:])
+	for at, token := range rest {
+		if token.kind == "\n" && braces <= 0 || token.kind == "name" && token.text == "import" {
+			break // Do not borrow a module path from a later declaration.
 		}
-		path, err := strconv.Unquote(tail)
-		if err == nil {
-			exports := checker.StandardExportInventory()[path]
-			if len(exports) == 0 && (strings.HasPrefix(path, ".") || strings.HasPrefix(path, "@") && !strings.HasPrefix(path, "@std/")) {
-				file := filepath.Clean(filepath.Join(filepath.Dir(filename(d.URI)), filepath.FromSlash(path)))
-				if strings.HasPrefix(path, "@") {
-					project, _ := editorProject(d)
-					alias, remainder, _ := strings.Cut(path, "/")
-					if base := project.Aliases[alias]; base != "" {
-						file = filepath.Join(base, filepath.FromSlash(remainder))
-					} else {
-						file = ""
-					}
+		switch token.kind {
+		case "{":
+			braces++
+		case "}":
+			braces--
+		}
+		if braces == 0 && token.kind == "name" && token.text == "from" && at+1 < len(rest) && rest[at+1].kind == "string" {
+			parsed, err := strconv.Unquote(rest[at+1].text)
+			path, knownPath = parsed, err == nil
+			break
+		}
+	}
+	if knownPath {
+		exports := checker.StandardExportInventory()[path]
+		if len(exports) == 0 && (strings.HasPrefix(path, ".") || strings.HasPrefix(path, "@") && !strings.HasPrefix(path, "@std/")) {
+			file := filepath.Clean(filepath.Join(filepath.Dir(filename(d.URI)), filepath.FromSlash(path)))
+			if strings.HasPrefix(path, "@") {
+				project, _ := editorProject(d)
+				alias, remainder, _ := strings.Cut(path, "/")
+				if base := project.Aliases[alias]; base != "" {
+					file = filepath.Join(base, filepath.FromSlash(remainder))
+				} else {
+					file = ""
 				}
-				source, e := os.ReadFile(file)
-				if opened, ok := docs[fileURI(file)]; ok {
-					source = []byte(opened.Text)
-					e = nil
-				}
-				if e == nil {
-					target := document{URI: fileURI(file), Text: string(source)}
-					checked := workspaceAnalysis(target, docs)
-					if m := module(checked, target); m != nil {
-						for _, s := range checked.Program.ModuleSymbols(m.File) {
-							if s.Export && s.Decl != nil && s.Decl.Pos.File == m.File {
-								exports = append(exports, s)
-							}
+			}
+			source, e := os.ReadFile(file)
+			if opened, ok := docs[fileURI(file)]; ok {
+				source = []byte(opened.Text)
+				e = nil
+			}
+			if e == nil {
+				target := document{URI: fileURI(file), Text: string(source)}
+				checked := workspaceAnalysis(target, docs)
+				if m := module(checked, target); m != nil {
+					for _, s := range checked.Program.ModuleSymbols(m.File) {
+						if s.Export && s.Decl != nil && s.Decl.Pos.File == m.File {
+							exports = append(exports, s)
 						}
 					}
 				}
 			}
-			for _, s := range exports {
-				if !imported[s.Name] && nameMatches(s.Name, c.prefix) {
-					kind := 3
-					if s.Kind == syntax.KindType {
-						kind = 7
-					} else if s.IsConstant() {
-						kind = 21
-					}
-					add(s.Name, path, kind, span{Position(d.Text, c.start), Position(d.Text, c.end)}, s.Name)
-				}
-			}
-			sortCompletion(items)
-			return items, true
 		}
+		for _, s := range exports {
+			if !checker.IsPreludeSymbol(s) && !imported[s.Name] && nameMatches(s.Name, c.prefix) {
+				kind := 3
+				if s.Kind == syntax.KindType {
+					kind = 7
+				} else if s.IsConstant() {
+					kind = 21
+				}
+				add(s.Name, path, kind, span{Position(d.Text, c.start), Position(d.Text, c.end)}, s.Name)
+			}
+		}
+		sortCompletion(items)
+		return items, true
 	}
 	for path, exports := range checker.StandardExportInventory() {
 		for _, s := range exports {
-			if !imported[s.Name] && nameMatches(s.Name, c.prefix) {
+			if !checker.IsPreludeSymbol(s) && !imported[s.Name] && nameMatches(s.Name, c.prefix) {
 				text := s.Name + " from " + strconv.Quote(path)
 				if grouped {
 					text = s.Name
@@ -629,8 +713,13 @@ func importCompletion(d document, docs map[string]document, c cursorContext, sni
 
 func standardPaths() []string {
 	paths := []string{}
-	for path := range checker.StandardExportInventory() {
-		paths = append(paths, path)
+	for path, exports := range checker.StandardExportInventory() {
+		for _, symbol := range exports {
+			if !checker.IsPreludeSymbol(symbol) {
+				paths = append(paths, path)
+				break
+			}
+		}
 	}
 	sort.Strings(paths)
 	return paths

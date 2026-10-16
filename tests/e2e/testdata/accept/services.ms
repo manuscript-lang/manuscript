@@ -1,12 +1,9 @@
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
 import Synchronized from "@std/sync.ms"
 import File from "@std/io.ms"
 import IoError from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import ListBuilder from "@std/collections.ms"
 import MapBuilder from "@std/collections.ms"
 import SetBuilder from "@std/collections.ms"
@@ -17,13 +14,13 @@ test "atomic state and sealed builders":
     let state = Synchronized(3)
 
     with locked = state.lock():
-        if not (locked.get() == 3):
+        if not (locked.value == 3):
             return panic(message: "check failed")
 
         locked.set(value: 4)
 
     with locked = state.lock():
-        if not (locked.get() == 4):
+        if not (locked.value == 4):
             return panic(message: "check failed")
 
     let list = ListBuilder[Int]()
@@ -44,7 +41,7 @@ test "atomic state and sealed builders":
     let set = SetBuilder[Int]()
     set.add(value: 3)
     set.add(value: 3)
-    if not (set.freeze().length() == 1):
+    if not (set.freeze().length == 1):
         return panic(message: "check failed")
 
     let bytes = BytesBuilder()

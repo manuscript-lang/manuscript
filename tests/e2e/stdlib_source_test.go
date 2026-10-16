@@ -17,12 +17,13 @@ import (
 	"time"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/stdlib"
 )
 
 func TestExportedStandardLibraryIsValidVisibleSource(t *testing.T) {
 	directory := t.TempDir()
-	if output, err := commandOutput(t, cliBinary, "stdlib", directory); err != nil {
-		t.Fatalf("export: %v\n%s", err, output)
+	if err := stdlib.Materialize(directory); err != nil {
+		t.Fatalf("export: %v", err)
 	}
 	files, err := filepath.Glob(filepath.Join(directory, "*.ms"))
 	if err != nil || len(files) != len(checker.StandardModules()) {

@@ -14,8 +14,6 @@ import {
 } from "@std/crypto.ms"
 import hex_encode from "@std/encoding.ms"
 import Bytes from "@std/bytes.ms"
-import List from "@std/collections.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -25,10 +23,9 @@ test "crypto known SHA256 HMAC and PBKDF2 vectors":
             sha256("abc".to_bytes())
         ) != "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
     ): return panic("SHA256 vector")
-    if (
-        sha384("abc".to_bytes()).length() != 48
-        or sha512("abc".to_bytes()).length() != 64
-    ): return panic("digest sizes")
+    if (sha384("abc".to_bytes()).length != 48 or sha512("abc".to_bytes()).length != 64): return panic(
+        "digest sizes"
+    )
 
     let mac = value(
         hmac(
@@ -79,9 +76,7 @@ test "authenticated encryption detects wrong associated data":
         ) != "secret".to_bytes()
     ): return panic("AES GCM roundtrip")
 
-    let failed: Result[Bytes, CryptoError] = error(
-        CryptoError.AuthenticationFailed
-    )
+    let failed: Result[Bytes, CryptoError] = error(CryptoError.AuthenticationFailed)
     if (
         open(
             key: key,
@@ -104,27 +99,16 @@ test "authenticated encryption detects wrong associated data":
 test "Ed25519 signatures verify only the signed data":
     let seed = "01234567890123456789012345678901".to_bytes()
     let key = value(public_key(seed))
-    let signature = value(
-        sign(
-            seed: seed,
-            data: "message".to_bytes()
-        )
+    let signature = value(sign(seed: seed, data: "message".to_bytes()))
+    if not verify(key: key, data: "message".to_bytes(), signature: signature): return panic(
+        "signature verification"
     )
-    if not verify(
-        key: key,
-        data: "message".to_bytes(),
-        signature: signature
-    ): return panic("signature verification")
-    if verify(
-        key: key,
-        data: "changed".to_bytes(),
-        signature: signature
-    ): return panic("signature forgery")
-    if not constant_time_equal(
-        left: seed,
-        right: seed.clone()
-    ): return panic("constant time equality")
-    if constant_time_equal(
-        left: seed,
-        right: "short".to_bytes()
-    ): return panic("different lengths")
+    if verify(key: key, data: "changed".to_bytes(), signature: signature): return panic(
+        "signature forgery"
+    )
+    if not constant_time_equal(left: seed, right: seed.clone()): return panic(
+        "constant time equality"
+    )
+    if constant_time_equal(left: seed, right: "short".to_bytes()): return panic(
+        "different lengths"
+    )

@@ -120,6 +120,9 @@ func (c *checker) typeNames() []string {
 
 // importHint names the standard module that exports name, if any.
 func importHint(name string) string {
+	if symbol := standardSymbols[name]; isPreludeSymbol(symbol) {
+		return "; use the prelude " + name + " declaration directly; rename any shadowing binding or declaration"
+	}
 	var modules []string
 	for _, module := range StandardModuleNames() {
 		if _, ok := StandardExports(module)[name]; ok {
@@ -142,6 +145,12 @@ func (c *checker) unknownName(name string) string {
 	}
 	if name == "pass" {
 		return message + "; 'pass' is not a keyword, so write 'unit' for an empty block or match arm"
+	}
+	switch name {
+	case "nil", "null", "None", "undefined":
+		return message + "; Manuscript has no null: absence is an Optional, written none, and a present value is some(value)"
+	case "print", "println", "printf", "puts", "echo":
+		return message + "; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\".to_bytes())"
 	}
 	if hint := didYouMean(name, c.valueNames()); hint != "" {
 		return message + hint
@@ -353,6 +362,12 @@ func (c *checker) assignmentMismatch(actual, expected *Type) string {
 	if hint := optionalUseHint(actual, expected); hint != "" {
 		return message + "; " + hint
 	}
+	if hint := numberConversionHint(actual, expected); hint != "" {
+		return message + "; " + hint
+	}
+	if hint := uncalledFunctionHint(actual, expected); hint != "" {
+		return message + "; " + hint
+	}
 	if expected.Kind != "contract" || actual == nil || actual.ID == "<invalid>" {
 		return message
 	}
@@ -390,5 +405,44 @@ func optionalUseHint(actual, expected *Type) string {
 	if actual == nil || expected == nil || !std(actual, "Optional") || len(actual.Args) != 1 || std(expected, "Optional") {
 		return ""
 	}
-	return actual.String() + " may be absent; unwrap it first with unwrap_or(default), is_some() before unwrap(), or match"
+	return actual.String() + " may be absent; unwrap it first with unwrap_or(default), is_some before unwrap(), or match"
+}
+
+// numberConversionHint names the explicit conversion between Int and Float;
+// neither converts implicitly.
+func numberConversionHint(actual, expected *Type) string {
+	if actual == nil || expected == nil {
+		return ""
+	}
+	switch {
+	case actual.ID == "Int" && expected.ID == "Float":
+		return "Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value"
+	case actual.ID == "Float" && expected.ID == "Int":
+		return "Float does not convert to Int implicitly; truncate_to_int() returns Optional[Int], so unwrap it, e.g. value.truncate_to_int().unwrap_or(0)"
+	}
+	return ""
+}
+
+// uncalledFunctionHint covers a no-argument operation named without
+// parentheses, such as reader.read where reader.read() is meant.
+func uncalledFunctionHint(actual, expected *Type) string {
+	if actual == nil || expected == nil || actual.Kind != "function" || expected.Kind == "function" || len(actual.Params) != 0 || actual.Result == nil || !Same(actual.Result, expected) {
+		return ""
+	}
+	return "this is a function; call it with parentheses to get its " + expected.String() + " result"
+}
+
+func operationNames(operations []Operation) []string {
+	names := make([]string, 0, len(operations))
+	for _, operation := range operations {
+		names = append(names, operation.Name)
+	}
+	return names
+}
+
+func operationDeclaration(operation Operation) string {
+	if operation.Accessor {
+		return "get " + operation.Name + " -> " + operation.Type.Result.String()
+	}
+	return "fn " + operation.Name + signatureText(operation.Type)
 }

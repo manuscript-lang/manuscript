@@ -61,9 +61,9 @@ func TestInterfaceViewFaultFrames(t *testing.T) {
 			if err == nil || !strings.Contains(string(output), "division by zero") {
 				t.Fatalf("expected source fault: %v\n%s", err, output)
 			}
-			frames := []string{"view-fault.ms:9:43 in <anonymous>", "view-fault.ms:7:21 in Reader.read", "view-fault.ms:10:17 in main"}
+			frames := []string{"view-fault.ms:9 in <anonymous>", "view-fault.ms:7 in Reader.read", "view-fault.ms:10 in main"}
 			if name == "preparation" {
-				frames = []string{"view-fault.ms:9:21 in prepare", "view-fault.ms:12:28 in main"}
+				frames = []string{"view-fault.ms:9 in prepare", "view-fault.ms:12 in main"}
 			}
 			var actual []string
 			for _, line := range strings.Split(string(output), "\n") {

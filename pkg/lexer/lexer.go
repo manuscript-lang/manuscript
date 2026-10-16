@@ -28,7 +28,7 @@ const (
 var reserved = map[string]bool{}
 
 func init() {
-	for _, s := range strings.Fields("and break case continue else export false fn for if impl import in interface let match not or return self test true try type unit var while with") {
+	for _, s := range strings.Fields("and break case continue else export false fixture fn for if impl import in interface let match not or return self test true try type unit var while with") {
 		reserved[s] = true
 	}
 }
@@ -60,7 +60,7 @@ type scanner struct {
 }
 
 func (s *scanner) pos() syntax.Position {
-	return syntax.Position{File: s.file, Line: s.line, Column: s.column, Offset: s.originalOffsets[s.offset]}
+	return syntax.Position{File: s.file, Line: s.line, Column: s.column, Offset: s.originalOffset(s.offset)}
 }
 func (s *scanner) fail(message string) {
 	panic(syntax.Diagnostic{Position: s.pos(), Phase: "parse", Message: message})
@@ -446,7 +446,19 @@ func (s *scanner) scanInterpolation() {
 	s.failAt(open, "unterminated interpolation; add the closing } before the closing quote ("+braceHint+")")
 }
 
+// originalOffset maps a normalized offset back to the source; without CRLF
+// pairs the two coincide and no table is kept.
+func (s *scanner) originalOffset(at int) int {
+	if s.originalOffsets == nil {
+		return at
+	}
+	return s.originalOffsets[at]
+}
+
 func normalizeSource(source string) (string, []int) {
+	if !strings.Contains(source, "\r\n") {
+		return source, nil
+	}
 	var normalized strings.Builder
 	offsets := make([]int, 0, len(source)+1)
 	for at := 0; at < len(source); at++ {

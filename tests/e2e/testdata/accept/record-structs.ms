@@ -1,7 +1,3 @@
-import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
-import Set from "@std/collections.ms"
-import Equal from "@std/equality.ms"
 import panic from "@std/faults.ms"
 
 type Point:
@@ -33,11 +29,7 @@ test "struct records read write compare format and clone":
     b.x = 5
     if a == b:
         return panic(message: "mutated record still equal")
-    if not (
-        a.x == 1
-        and b.x == 5
-        and shifted(a, by: 3).y == 5
-    ):
+    if not (a.x == 1 and b.x == 5 and shifted(a, by: 3).y == 5):
         return panic(message: "field read or write failed")
 
     let copy = a.clone()
@@ -64,7 +56,7 @@ test "struct records with mixed field types":
         and shape.name == "disc!"
         and shape.solid
         and shape.corner.x == 4
-        and shape.tags.length() == 2
+        and shape.tags.length == 2
     ):
         return panic(message: "mixed field access failed")
 
@@ -73,7 +65,7 @@ test "struct records as keys and defaults":
     set.add(Point(x: 1, y: 1))
     set.add(Point(x: 1, y: 1))
     set.add(Point(x: 2, y: 1))
-    if set.length() != 2:
+    if set.length != 2:
         return panic(message: "record keys must hash structurally")
 
     let sized = Sized(width: 3)

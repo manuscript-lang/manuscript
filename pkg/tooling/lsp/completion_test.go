@@ -128,7 +128,7 @@ func TestTypedCompletionWhileEditing(t *testing.T) {
 		{"parameter", "fn answer(input: Int) -> Int:\n    return inp|\n", []string{"input"}, nil},
 		{"locals before cursor", "fn answer() -> Int:\n    let before = 1\n    be|\n    let behind = 2\n    return before\n", []string{"before"}, []string{"behind"}},
 		{"siblings hidden", "fn answer() -> Int:\n    if true:\n        let secret = 1\n    sec|\n    return 0\n", nil, []string{"secret"}},
-		{"list methods", "import List from \"@std/collections.ms\"\nfn count(items: List[Int]) -> Int:\n    return items.|\n", []string{"length", "at", "append", "concat"}, []string{"byte_length", "send"}},
+		{"list methods", "fn count(items: List[Int]) -> Int:\n    return items.|\n", []string{"length", "at", "append", "concat"}, []string{"byte_length", "send"}},
 		{"prelude set methods", "fn count(items: Set[Int]) -> Int:\n    return items.|\n", []string{"length", "contains", "add", "remove"}, []string{"at", "append", "send"}},
 		{"member prefix", "fn size(text: String) -> Int:\n    return text.byte_|\n", []string{"byte_length"}, []string{"parse_int"}},
 		{"record fields", "type Point:\n    x: Int\n    y: String\nfn read(point: Point) -> Int:\n    return point.|\n", []string{"x", "y"}, []string{"length"}},
@@ -160,7 +160,7 @@ func TestTypedCompletionWhileEditing(t *testing.T) {
 	}
 }
 func TestCompletionSnippetsEditsAndSpecialization(t *testing.T) {
-	items := completeSource(t, "import List from \"@std/collections.ms\"\nfn count(items: List[String]) -> Unit:\n    items.ap|\n")
+	items := completeSource(t, "fn count(items: List[String]) -> Unit:\n    items.ap|\n")
 	item := itemNamed(items, "append")
 	if item == nil {
 		t.Fatal(items)
@@ -172,7 +172,7 @@ func TestCompletionSnippetsEditsAndSpecialization(t *testing.T) {
 	if edit["newText"] != "append(${1:value})$0" {
 		t.Fatal(edit)
 	}
-	if got := edit["range"].(span); got.Start != (position{2, 10}) || got.End != (position{2, 12}) {
+	if got := edit["range"].(span); got.Start != (position{1, 10}) || got.End != (position{1, 12}) {
 		t.Fatal(got)
 	}
 	imports := completeSource(t, "fn work() -> Unit:\n    Que|\n")
@@ -195,7 +195,7 @@ func TestCompletionSurvivesIndependentSyntaxErrors(t *testing.T) {
 func TestCompletionWithMultilineParameters(t *testing.T) {
 	for _, source := range []string{
 		"fn answer(\n    input: Int,\n) -> Int:\n    return inp|\nfn broken(\n",
-		"import List from \"@std/collections.ms\"\nimport WriteStream from \"@std/io.ms\"\nfn render(\n    arguments: List[String],\n    output: WriteStream\n) -> Int:\n    let joined = arguments.jo|\n    match output.write(data: \"hello\".to_bytes()):\n",
+		"import WriteStream from \"@std/io.ms\"\nfn render(\n    arguments: List[String],\n    output: WriteStream\n) -> Int:\n    let joined = arguments.jo|\n    match output.write(data: \"hello\".to_bytes()):\n",
 	} {
 		items := completeSource(t, source)
 		want := "input"
@@ -245,10 +245,10 @@ func TestUniversalToStringCompletion(t *testing.T) {
 	}
 }
 func BenchmarkMemberCompletion(b *testing.B) {
-	source := "import List from \"@std/collections.ms\"\nfn answer(items: List[String]) -> Int:\n    return items.\n"
+	source := "fn answer(items: List[String]) -> Int:\n    return items.\n"
 	d := document{"file:///tmp/benchmark-completion.ms", source, 1}
 	docs := map[string]document{d.URI: d}
-	p := position{2, 17}
+	p := position{1, 17}
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		if _, err := completionAt(d, docs, p, true); err != nil {
@@ -279,7 +279,7 @@ func TestTimeReceiverCompletion(t *testing.T) {
 		typ     string
 		methods []string
 	}{
-		{"Duration", []string{"add", "multiply", "to_nanoseconds", "to_seconds"}},
+		{"Duration", []string{"add", "multiply", "nanoseconds", "seconds"}},
 		{"Instant", []string{"shift", "difference", "compare"}},
 		{"Timestamp", []string{"to_string", "unix_seconds", "nanoseconds", "shift", "difference", "compare"}},
 	} {
@@ -293,18 +293,20 @@ func TestTimeReceiverCompletion(t *testing.T) {
 }
 
 func TestGroupedImportCompletion(t *testing.T) {
-	for _, source := range []string{"import { List, Ma| } from \"@std/collections.ms\"\n", "import {\n    List,\n    Ma|,\n} from \"@std/collections.ms\"\n"} {
+	for _, source := range []string{"import { ListBuilder, Ma| } from \"@std/collections.ms\"\n", "import {\n    ListBuilder,\n    Ma|,\n} from \"@std/collections.ms\"\n"} {
 		items := completeSource(t, source)
-		if itemNamed(items, "Map") == nil {
+		item := itemNamed(items, "MapBuilder")
+		if item == nil || item.TextEdit.(map[string]any)["newText"] != "MapBuilder" || len(item.AdditionalTextEdits) != 0 {
 			t.Fatal(items)
 		}
-		item := itemNamed(items, "Map")
-		if item.TextEdit.(map[string]any)["newText"] != "Map" || len(item.AdditionalTextEdits) != 0 {
-			t.Fatal(item)
+		for _, name := range []string{"List", "Map", "Set", "ListEntry", "MapEntry", "CollectionError"} {
+			if itemNamed(items, name) != nil {
+				t.Fatal("offered redundant prelude import", name)
+			}
 		}
 	}
-	items := completeSource(t, "import { List, | } from \"@std/collections.ms\"\n")
-	if itemNamed(items, "List") != nil || itemNamed(items, "Map") == nil {
+	items := completeSource(t, "import { ListBuilder, | } from \"@std/collections.ms\"\n")
+	if itemNamed(items, "ListBuilder") != nil || itemNamed(items, "MapBuilder") == nil {
 		t.Fatal(items)
 	}
 }
@@ -350,5 +352,27 @@ func TestStatementKeywordsAreReserved(t *testing.T) {
 		if !slices.Contains(reserved, word) {
 			t.Errorf("%q is not a reserved word", word)
 		}
+	}
+}
+
+func TestFileFixtureCompletion(t *testing.T) {
+	source := `import TestHooks from "@std/testing.ms"
+type State:
+    count: Int
+fn make_fixture() -> State:
+    return State(0)
+impl TestHooks for State:
+test "one":
+    fixture.|
+`
+	items := completeSource(t, source)
+	found := false
+	for _, item := range items {
+		if item.Label == "count" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("fixture field completion missing: %+v", items)
 	}
 }

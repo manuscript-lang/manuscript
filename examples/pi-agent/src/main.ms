@@ -36,7 +36,7 @@ fn model(
     control: Synchronized[Control],
     update: fn(message: Message) -> Unit
 ) -> Result[Message, Error]:
-    if request.context.messages.last().unwrap().role == Role.ToolResult:
+    if request.context.messages.last.unwrap().role == Role.ToolResult:
         return ok(Message(Role.Assistant, [Content.Text("Done.")]))
 
     update(Message(Role.Assistant, [Content.Text("Calling echo…")]))
@@ -61,13 +61,7 @@ fn show(message: Message) -> Unit:
             _: continue
 
 export fn main() -> Int:
-    let tool = Tool(
-        "echo",
-        "Demonstration tool",
-        JsonValue.Null,
-        validate,
-        echo
-    )
+    let tool = Tool("echo", "Demonstration tool", JsonValue.Null, validate, echo)
     let agent = create_agent(
         Config(stream: model, emit: display),
         Context(tools: [tool])

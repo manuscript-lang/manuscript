@@ -1,0 +1,73 @@
+{
+  "prior_published_head": "ce84ee861af0de8ed51530a62b999e96d507bc95",
+  "main": "3c47a852d012246d61ba030440c79abf01a5e2b7",
+  "checked_code": "091b80ddecff32590cec43dfdae730f0ce27e245",
+  "platform": "linux/amd64",
+  "toolchain": "Go1.25.1",
+  "authored_code_correction": "Two .length() -> .length calls in new TestStringKeyedMapCallsKeepSemantics; assertions retained.",
+  "environment": {
+    "TMPDIR": "/workspace/manuscript-accessor-design/.artifacts/go-tmp",
+    "GOCACHE": "/tmp/manuscript-accessor-go-cache",
+    "GOPATH": "/tmp/manuscript-accessor-go",
+    "GOFLAGS": "-buildvcs=false -p=2",
+    "XDG_CACHE_HOME": "/tmp/manuscript-accessor-cache",
+    "PATH_prefix": [
+      ".artifacts/tools/node-v24.13.0-linux-x64/bin",
+      "toolchain/go/bin"
+    ]
+  },
+  "checks": [
+    {
+      "command": "go test ./pkg/lower ./pkg/compiler ./internal/nativeabi ./pkg/stdlib -count=1",
+      "exit_code": 0,
+      "log": "packages.log"
+    },
+    {
+      "command": "go test -race ./pkg/runtime -count=1 -timeout=10m",
+      "exit_code": 0,
+      "log": "runtime-race.log"
+    },
+    {
+      "command": "go test ./tests/e2e ./pkg/build -run 'TestAccessor|TestAccessors|TestSourceAccessor|TestSourceImplementationOfStandardAccessorContract|TestPrimitiveListLiteralsOwnFreshStorage|TestGenericRecordInstantiationsKeepSemantics|TestIntKeyedMapCallsKeepSemantics|TestStringKeyedMapCallsKeepSemantics|Test.*Map' -count=1 -parallel=2 -timeout=15m",
+      "exit_code": 0,
+      "log": "native.log"
+    },
+    {
+      "command": "make -o payload verify",
+      "exit_code": 0,
+      "log": "verify.log"
+    }
+  ],
+  "expected_red": {
+    "command": "go test ./tests/e2e -run '^TestStringKeyedMapCallsKeepSemantics$' -count=1 -timeout=5m",
+    "fixture": "Incoming String-map test from3c47 before its2callmigration; otherwise same merged production",
+    "exit_code": 1,
+    "log": "getter-before.log",
+    "cause": "Two old length() calls correctly rejected"
+  },
+  "prior_green_ci": {
+    "head": "ce84ee861af0de8ed51530a62b999e96d507bc95",
+    "merge": "804e0bce916383e76bdda15555d50ce1d4d10957",
+    "main": "cd381fc4570dcd5d2763ce6c3eb0ef5619238cda",
+    "runs": [
+      38679737706,
+      38679737654
+    ]
+  },
+  "named_tests": {
+    "base": "3c47a852d012246d61ba030440c79abf01a5e2b7",
+    "head": "091b80ddecff32590cec43dfdae730f0ce27e245",
+    "mechanism": "Go AST FuncDecl comparisons",
+    "added": 60,
+    "updated": 87,
+    "total": 147
+  },
+  "benchmarks": "Not rerun; historical samples and scope unchanged.",
+  "publication": "Normal push to existing draft PR516 after independent approval; no merge.",
+  "independent_review": {
+    "reviewed_code": "091b80ddecff32590cec43dfdae730f0ce27e245",
+    "verdict": "APPROVE",
+    "report": "review-091b80dd.md",
+    "sha256": "f21c4638a1f931b09e6926fefe8fcbedaf581325ee23db6ad6ecc4e83a8d0f80"
+  }
+}

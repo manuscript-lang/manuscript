@@ -40,17 +40,17 @@ export fn current_system_message(messages: List[Message]) -> Optional[Message]:
     for message in messages:
         if message.role != Role.System: continue
 
-        if head.is_none(): head = some(message)
+        if head.is_none: head = some(message)
 
         let text = content_text(message.content)
 
         if text != "": texts.append(text)
 
         for section in message.sections.entries():
-            if section.value.is_none(): sections.remove(section.key)
+            if section.value.is_none: sections.remove(section.key)
             else: sections.add(section.key, section.value)
 
-    if head.is_none(): return none
+    if head.is_none: return none
 
     let combined = Message(
         Role.System,
@@ -63,17 +63,15 @@ export fn current_system_message(messages: List[Message]) -> Optional[Message]:
 
 export fn system_prompt(messages: List[Message]) -> String:
     let baseline = current_system_message(messages)
-    if baseline.is_none(): return ""
+    if baseline.is_none: return ""
 
     let system = baseline.unwrap()
     let texts = [content_text(system.content)]
 
     for section in system.sections.values():
-        if section.is_some(): texts.append(section.unwrap())
+        if section.is_some: texts.append(section.unwrap())
 
-    return texts.filter(
-        fn(text: String) -> Bool: text != ""
-    ).join("\n\n")
+    return texts.filter(fn(text: String) -> Bool: text != "").join("\n\n")
 
 export fn content_text(content: List[Content], separator: String = "\n") -> String:
     let texts: List[String] = []
@@ -89,7 +87,7 @@ export fn collapse_system_messages(messages: List[Message]) -> List[Message]:
     let result: List[Message] = []
     let system = current_system_message(messages)
 
-    if system.is_some(): result.append(system.unwrap())
+    if system.is_some: result.append(system.unwrap())
 
     return result.concat(
         messages.filter(
@@ -128,14 +126,14 @@ export fn declare_tool_changes(
             fn(tool: ToolDeclaration) -> Bool: (tool.name == previous.name)
         )
 
-        if next.is_none() or next.unwrap() != previous: removed.append(previous.name)
+        if next.is_none or next.unwrap() != previous: removed.append(previous.name)
 
     for next in current:
         let previous = old.find(
             fn(tool: ToolDeclaration) -> Bool: (tool.name == next.name)
         )
 
-        if previous.is_none() or previous.unwrap() != next: added.append(next)
+        if previous.is_none or previous.unwrap() != next: added.append(next)
 
     if system_index >= 0:
         let system = staged[system_index].unwrap()
@@ -143,10 +141,10 @@ export fn declare_tool_changes(
         system.tools_removed = removed
         return ok(staged)
 
-    if added.is_empty() and removed.is_empty(): return ok(staged)
+    if added.is_empty and removed.is_empty: return ok(staged)
 
     let update = Message(Role.System, tools_added: added, tools_removed: removed)
-    var index = staged.length()
+    var index = staged.length
 
     for entry in staged.entries():
         if entry.value.role != Role.System:

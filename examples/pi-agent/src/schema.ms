@@ -41,7 +41,7 @@ fn type_matches(value: JsonValue, kind: String) -> Bool:
         NumberValue(value):
             let parsed = parse_float(value)
             return (
-                parsed.is_ok()
+                parsed.is_ok
                 and (
                     kind == "number"
                     or (
@@ -65,7 +65,7 @@ fn coerce(value: JsonValue, kind: String) -> JsonValue:
 
         let parsed = parse_float(text(value).trim())
 
-        if parsed.is_ok() and parsed.unwrap().is_finite():
+        if parsed.is_ok and parsed.unwrap().is_finite:
             let candidate = JsonValue.NumberValue(parsed.unwrap().toString())
             if type_matches(candidate, kind): return candidate
 
@@ -116,13 +116,10 @@ fn equal_array(left: List[JsonValue], right: JsonValue) -> Bool:
         ArrayValue(values): values
         _: return false
 
-    if left.length() != values.length(): return false
+    if left.length != values.length: return false
 
     for entry in left.entries():
-        if not equal_json(
-            entry.value,
-            values[entry.index].unwrap()
-        ): return false
+        if not equal_json(entry.value, values[entry.index].unwrap()): return false
 
     return true
 
@@ -131,14 +128,11 @@ fn equal_object(left: Map[String, JsonValue], right: JsonValue) -> Bool:
         ObjectValue(values): values
         _: return false
 
-    if left.length() != values.length(): return false
+    if left.length != values.length: return false
 
     for entry in left.entries():
         if not values.contains(entry.key): return false
-        if not equal_json(
-            entry.value,
-            values.get(entry.key).unwrap()
-        ): return false
+        if not equal_json(entry.value, values.get(entry.key).unwrap()): return false
 
     return true
 
@@ -189,13 +183,10 @@ fn reference(root: JsonValue, pointer: String) -> Result[JsonValue, Error]:
 
     var current = root
 
-    for part in pointer.slice(
-        2,
-        pointer.scalar_length()
-    ).unwrap().split("/"):
+    for part in pointer.slice(2, pointer.scalar_length).unwrap().split("/"):
         let key = (try part.replace_all("~1", "/")).replace_all("~0", "~").unwrap()
         let next = field(current, key)
-        if next.is_none(): return fail("schema", "unresolved reference {pointer}")
+        if next.is_none: return fail("schema", "unresolved reference {pointer}")
 
         current = next.unwrap()
 
@@ -214,43 +205,25 @@ fn union(
     var selected = value
 
     for schema in schemas:
-        let result = visit(
-            schema,
-            value,
-            root,
-            path,
-            depth + 1,
-            false
-        )
+        let result = visit(schema, value, root, path, depth + 1, false)
 
-        if result.is_ok():
+        if result.is_ok:
             matches = matches + 1
             selected = result.unwrap()
 
     if matches == 0 and convert:
         for schema in schemas:
-            let result = visit(
-                schema,
-                value,
-                root,
-                path,
-                depth + 1,
-                true
-            )
+            let result = visit(schema, value, root, path, depth + 1, true)
 
-            if result.is_ok():
+            if result.is_ok:
                 selected = result.unwrap()
                 break
 
         for schema in schemas:
-            if visit(
-                schema,
-                selected,
-                root,
-                path,
-                depth + 1,
-                false
-            ).is_ok(): matches = (matches + 1)
+            if visit(schema, selected, root, path, depth + 1, false).is_ok: matches = (
+                matches
+                + 1
+            )
 
     if matches == 0 or (exactly_one and matches != 1): return fail(
         path,
@@ -339,10 +312,7 @@ fn visit(
 
     if rules.contains("$ref"):
         value = try visit(
-            try reference(
-                root.schema,
-                text(rules.get("$ref").unwrap())
-            ),
+            try reference(root.schema, text(rules.get("$ref").unwrap())),
             value,
             root,
             path,
@@ -351,14 +321,7 @@ fn visit(
         )
 
     for sub in array(rules.get_or("allOf", JsonValue.Null)):
-        value = try visit(
-            sub,
-            value,
-            root,
-            path,
-            depth + 1,
-            convert
-        )
+        value = try visit(sub, value, root, path, depth + 1, convert)
 
     if rules.contains("anyOf"): value = try union(
         array(rules.get("anyOf").unwrap()),
@@ -389,20 +352,13 @@ fn visit(
             path,
             (depth + 1),
             false
-        ).is_ok()
+        ).is_ok
     ): return fail(path, "matches forbidden schema")
 
     if rules.contains("if"):
         var branch = "else"
 
-        if visit(
-            rules.get("if").unwrap(),
-            value,
-            root,
-            path,
-            depth + 1,
-            false
-        ).is_ok(): branch = "then"
+        if visit(rules.get("if").unwrap(), value, root, path, depth + 1, false).is_ok: branch = "then"
 
         if rules.contains(branch): value = try visit(
             rules.get(branch).unwrap(),
@@ -417,25 +373,14 @@ fn visit(
         let declared = rules.get("type").unwrap()
         var types = array(declared)
 
-        if types.is_empty(): types = [declared]
+        if types.is_empty: types = [declared]
 
-        if not types.some(
-            fn(kind: JsonValue) -> Bool: type_matches(
-                value,
-                text(kind)
-            )
-        ):
+        if not types.some(fn(kind: JsonValue) -> Bool: type_matches(value, text(kind))):
             if convert:
                 for kind in types:
-                    let candidate = coerce(
-                        value,
-                        text(kind)
-                    )
+                    let candidate = coerce(value, text(kind))
 
-                    if type_matches(
-                        candidate,
-                        text(kind)
-                    ):
+                    if type_matches(candidate, text(kind)):
                         value = candidate
                         break
 
@@ -446,10 +391,7 @@ fn visit(
                 )
             ): return fail(path, "expected {declared}")
 
-    if rules.contains("const") and not equal_json(
-        value,
-        rules.get("const").unwrap()
-    ): return fail(
+    if rules.contains("const") and not equal_json(value, rules.get("const").unwrap()): return fail(
         path,
         "value differs from const"
     )
@@ -458,10 +400,7 @@ fn visit(
         and not array(rules.get("enum").unwrap()).some(
             fn(candidate: JsonValue) -> Bool: equal_json(candidate, value)
         )
-    ): return fail(
-        path,
-        "value is outside enum"
-    )
+    ): return fail(path, "value is outside enum")
 
     match value:
         ObjectValue(values): return object_value(
@@ -480,12 +419,7 @@ fn visit(
             depth,
             convert
         )
-        StringValue(value): return string_value(
-            rules,
-            value,
-            path,
-            root
-        )
+        StringValue(value): return string_value(rules, value, path, root)
         NumberValue(_): return numeric_value(rules, value, path)
         _: return ok(value)
 
@@ -512,17 +446,13 @@ fn string_value(
     path: String,
     root: SchemaContext
 ) -> Result[JsonValue, Error]:
-    if not within(
-        rules,
-        "minLength",
-        "maxLength",
-        value.scalar_length()
-    ): return fail(path, "string length is outside schema bounds")
+    if not within(rules, "minLength", "maxLength", value.scalar_length): return fail(
+        path,
+        "string length is outside schema bounds"
+    )
 
     if rules.contains("pattern"):
-        let pattern = try compile(
-            text(rules.get("pattern").unwrap())
-        )
+        let pattern = try compile(text(rules.get("pattern").unwrap()))
         if not pattern.matches(value): return fail(
             path,
             "string does not match pattern"
@@ -532,7 +462,7 @@ fn string_value(
         let name = text(rules.get("format").unwrap())
         let custom = root.formats.get(name)
 
-        if custom.is_some():
+        if custom.is_some:
             if not custom.unwrap()(value): return fail(path, "invalid {name} format")
         else:
             let valid = try builtin_format(name, value)
@@ -592,25 +522,15 @@ fn object_value(
         if (
             convert
             and value == JsonValue.Null
-            and property.is_some()
+            and property.is_some
             and not required.contains(JsonValue.StringValue(entry.key))
-            and field(
-                property.unwrap(),
-                "$ref"
-            ).is_none()
+            and field(property.unwrap(), "$ref").is_none
         ):
-            if visit(
-                property.unwrap(),
-                value,
-                root,
-                path,
-                depth + 1,
-                false
-            ).is_error(): continue
+            if visit(property.unwrap(), value, root, path, depth + 1, false).is_error: continue
 
         var matched = false
 
-        if property.is_some():
+        if property.is_some:
             value = try visit(
                 property.unwrap(),
                 value,
@@ -667,12 +587,10 @@ fn object_value(
             "required property is missing"
         )
 
-    if not within(
-        rules,
-        "minProperties",
-        "maxProperties",
-        result.length()
-    ): return fail(path, "object size is outside schema bounds")
+    if not within(rules, "minProperties", "maxProperties", result.length): return fail(
+        path,
+        "object size is outside schema bounds"
+    )
 
     let dependencies = rules.get_or("dependentRequired", JsonValue.Null)
 
@@ -693,18 +611,13 @@ fn array_value(
     depth: Int,
     convert: Bool
 ) -> Result[JsonValue, Error]:
-    if not within(
-        rules,
-        "minItems",
-        "maxItems",
-        values.length()
-    ): return fail(path, "array length is outside schema bounds")
+    if not within(rules, "minItems", "maxItems", values.length): return fail(
+        path,
+        "array length is outside schema bounds"
+    )
 
     let result: List[JsonValue] = []
-    let items = rules.get_or(
-        "items",
-        JsonValue.BoolValue(true)
-    )
+    let items = rules.get_or("items", JsonValue.BoolValue(true))
     let prefix = rules.contains("prefixItems")
 
     let legacy = match items:
@@ -715,10 +628,7 @@ fn array_value(
 
     if not prefix: tuple = array(items)
 
-    var tail = rules.get_or(
-        "additionalItems",
-        JsonValue.BoolValue(true)
-    )
+    var tail = rules.get_or("additionalItems", JsonValue.BoolValue(true))
 
     if prefix: tail = items
 
@@ -752,10 +662,7 @@ fn array_value(
                         value
                     )
                 )
-            ): return fail(
-                path,
-                "duplicate array value"
-            )
+            ): return fail(path, "duplicate array value")
 
             index = index + 1
 
@@ -768,7 +675,7 @@ fn array_value(
                 path,
                 (depth + 1),
                 false
-            ).is_ok()
+            ).is_ok
         )
         var minimum = 1.0
 
@@ -787,19 +694,19 @@ fn array_value(
     return ok(JsonValue.ArrayValue(result))
 
 fn builtin_format(name: String, value: String) -> Result[Bool, Error]:
-    if name == "date-time": return ok(parse_timestamp(value).is_ok())
+    if name == "date-time": return ok(parse_timestamp(value).is_ok)
     if name == "date": return ok(
         (
-            value.scalar_length() == 10
-            and parse_timestamp("{value}T00:00:00Z").is_ok()
+            value.scalar_length == 10
+            and parse_timestamp("{value}T00:00:00Z").is_ok
         )
     )
-    if name == "time": return ok(parse_timestamp("1970-01-01T{value}").is_ok())
-    if name == "regex": return ok(compile(value).is_ok())
+    if name == "time": return ok(parse_timestamp("1970-01-01T{value}").is_ok)
+    if name == "regex": return ok(compile(value).is_ok)
 
     if name == "uri" or name == "uri-reference":
         let url = parse(value)
-        if url.is_error(): return ok(false)
+        if url.is_error: return ok(false)
 
         return ok(name == "uri-reference" or url.unwrap().scheme != "")
 
@@ -810,15 +717,13 @@ fn builtin_format(name: String, value: String) -> Result[Bool, Error]:
     else if name == "hostname": pattern = "^([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?\\.)*[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?\\.?$"
     else if name == "ipv4":
         let parts = value.split(".")
-        if parts.length() != 4: return ok(false)
+        if parts.length != 4: return ok(false)
 
         for part in parts:
             let number = part.parse_int()
-            if (
-                number.is_none()
-                or number.unwrap() < 0
-                or number.unwrap() > 255
-            ): return ok(false)
+            if (number.is_none or number.unwrap() < 0 or number.unwrap() > 255): return ok(
+                false
+            )
             if part != number.unwrap().toString(): return ok(false)
 
         return ok(true)

@@ -1,17 +1,13 @@
-import Optional from "@std/optional.ms"
 import Queue from "@std/queues.ms"
-import List from "@std/collections.ms"
-import Result from "@std/result.ms"
-import Error from "@std/errors.ms"
 import panic from "@std/faults.ms"
 
 fn number(value: Optional[Int] = none) -> Int: value.unwrap_or(-1)
 
 fn present[T](value: Optional[T]) -> Optional[T]: value
 
-fn nested(value: Optional[Optional[Int]]) -> Bool: value.unwrap().is_none()
+fn nested(value: Optional[Optional[Int]]) -> Bool: value.unwrap().is_none
 
-fn list_size(value: Optional[List[Int]]) -> Int: value.unwrap().length()
+fn list_size(value: Optional[List[Int]]) -> Int: value.unwrap().length
 
 fn flag(value: Optional[Bool]) -> Bool: value.unwrap()
 
@@ -92,20 +88,18 @@ test "plain values and explicit optionals share the call contract":
     if list_size([]) != 0: return panic("empty payload context")
     if list_size([1, 2]) != 2: return panic("list payload")
     if context(value: none, fallback: 9) != 9: return panic("generic none context")
-    if context(value: [], fallback: [1]).length() != 0: return panic(
+    if context(value: [], fallback: [1]).length != 0: return panic(
         "generic list context"
     )
     if success(ok(10)) != 10: return panic("result payload context")
     if flag(false): return panic("false must be present")
     if flag(true and false): return panic("folded false must be wrapped")
     if invoke(increment) != 5: return panic("function payload")
-    if invoke(
-        fn(value): value + 2
-    ) != 6: return panic("closure payload")
+    if invoke(fn(value): value + 2) != 6: return panic("closure payload")
 
 test "constructor fields and methods use optional arguments":
     let defaulted = DefaultBox()
-    if not (defaulted.value.is_none()): return panic("optional record default")
+    if not (defaulted.value.is_none): return panic("optional record default")
 
     let supplied = DefaultBox(3)
     if supplied.value.unwrap() != 3: return panic(
@@ -141,10 +135,7 @@ test "constructor fields and methods use optional arguments":
 
 test "wrapping evaluates arguments once in written order":
     let counter = Counter(0)
-    if ordered(
-        second: next(counter),
-        first: next(counter)
-    ) != 21:
+    if ordered(second: next(counter), first: next(counter)) != 21:
         return panic("argument order changed")
     if counter.calls != 2: return panic("argument evaluated more than once")
 
@@ -162,13 +153,7 @@ test "queue capacity accepts a plain value or omission":
     let capacity: Optional[Int] = some(4)
     let explicit = Queue[Int](capacity)
 
-    for value in [
-        1,
-        2,
-        3,
-        4,
-        5
-    ]:
+    for value in [1, 2, 3, 4, 5]:
         if not (unbounded.enqueue(value)): return panic(
             "omitted capacity became bounded"
         )

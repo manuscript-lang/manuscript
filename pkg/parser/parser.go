@@ -44,13 +44,6 @@ func (p *Parser) enter() func() {
 }
 
 func Parse(file, source string) (module *syntax.Module, err error) {
-	return parse(file, source)
-}
-
-// ParseLibrary is retained for callers; library and application syntax are identical.
-// Deprecated: use Parse.
-func ParseLibrary(file, source string) (*syntax.Module, error) { return Parse(file, source) }
-func parse(file, source string) (module *syntax.Module, err error) {
 	tokens, err := lexer.Lex(file, source)
 	if err != nil {
 		return nil, err
@@ -168,6 +161,9 @@ func (p *Parser) end() {
 	if p.blockLambda && p.peek().Kind == "," {
 		p.fail(p.peek(), "a comma cannot end a statement in an indented function body; to separate enclosing arguments, put the comma on its own line dedented to the fn header, or group the function in parentheses")
 	}
+	if p.peek().Kind == "&" {
+		p.fail(p.peek(), "'&&' is not an operator; write 'and' for logical and")
+	}
 	p.fail(p.peek(), "expected end of statement, found "+describe(p.peek())+"; put one statement per line, and join operands with an operator or a comma inside brackets")
 }
 func (p *Parser) typeParams() []syntax.TypeParameter {
@@ -183,6 +179,9 @@ func (p *Parser) typeParams() []syntax.TypeParameter {
 			for p.take("&") {
 				param.Bounds = append(param.Bounds, p.namedType())
 			}
+		}
+		if p.take("=") {
+			param.Default = p.typ()
 		}
 		result = append(result, param)
 		if !p.take(",") {
@@ -265,6 +264,48 @@ func (p *Parser) typ() *syntax.Type {
 	}
 	return p.namedType()
 }
+
+// accessorHead recognizes contextual `get` only at an operation head. A field
+// named get still uses the ordinary `get: Type` grammar.
+func (p *Parser) accessorHead() bool {
+	return p.peek().Kind == lexer.Name && p.peek().Text == "get" && p.tokens[p.at+1].Kind != ":"
+}
+
+// operation shares the ordinary callable syntax tree for methods and accessors.
+// Only native receiver methods may declare their own type parameters; checking
+// authorizes their empty bodies rather than adding a special parser mode.
+func (p *Parser) operation(generic, signature bool) *syntax.Declaration {
+	accessor := p.accessorHead()
+	if accessor {
+		p.at++
+	} else {
+		p.need("fn")
+	}
+	name := p.need(lexer.Name)
+	m := &syntax.Declaration{Pos: name.Pos, Kind: syntax.KindFn, Name: name.Text, Accessor: accessor}
+	if accessor {
+		switch p.peek().Kind {
+		case "[":
+			p.fail(p.peek(), "accessors cannot declare type parameters; use the receiver's type parameters in 'get "+name.Text+" -> Type'")
+		case "(":
+			p.fail(p.peek(), "accessors have no parameter list; write 'get "+name.Text+" -> Type' without parentheses")
+		}
+	} else {
+		if generic {
+			m.TypeParams = p.typeParams()
+		}
+		m.Params = p.parameters(true, false)
+	}
+	p.need("->")
+	m.Result = p.typ()
+	if signature {
+		p.end()
+	} else {
+		m.Body = p.statementSuite(false, true)
+	}
+	return m
+}
+
 func (p *Parser) declaration() *syntax.Declaration {
 	token := p.peek()
 	d := &syntax.Declaration{Pos: token.Pos, Kind: token.Kind}
@@ -308,25 +349,18 @@ func (p *Parser) declaration() *syntax.Declaration {
 		d.Receiver = p.namedType()
 		p.need(":")
 		p.need(lexer.Newline)
-		p.need(lexer.Indent)
+		p.newlines()
+		if !p.take(lexer.Indent) {
+			return d
+		}
 		for p.peek().Kind != lexer.Dedent {
 			p.newlines()
 			if p.peek().Kind == lexer.Dedent {
 				break
 			}
-			p.need("fn")
-			name := p.need(lexer.Name)
-			m := &syntax.Declaration{Pos: name.Pos, Kind: syntax.KindFn, Name: name.Text}
-			m.Params = p.parameters(true, false)
-			p.need("->")
-			m.Result = p.typ()
-			m.Body = p.statementSuite(false, true)
-			d.Methods = append(d.Methods, m)
+			d.Methods = append(d.Methods, p.operation(false, false))
 		}
 		p.need(lexer.Dedent)
-		if len(d.Methods) == 0 {
-			p.fail(token, "implementation requires operations; add at least one 'fn name(...) -> Type:' under the impl")
-		}
 	case p.take("type") || p.take("interface"):
 		d.Name = p.need(lexer.Name).Text
 		d.TypeParams = p.typeParams()
@@ -346,7 +380,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 			if p.peek().Kind == "case" {
 				next = "alternative"
 			}
-			if p.peek().Kind == syntax.KindFn {
+			if p.peek().Kind == syntax.KindFn || p.accessorHead() {
 				next = "interface"
 			}
 			if token.Kind == syntax.KindInterface && next != "interface" {
@@ -369,21 +403,8 @@ func (p *Parser) declaration() *syntax.Declaration {
 				}
 				d.Cases = append(d.Cases, c)
 				p.end()
-			} else if p.take("fn") {
-				name := p.need(lexer.Name)
-				m := &syntax.Declaration{Pos: name.Pos, Name: name.Text, Kind: syntax.KindFn}
-				if token.Kind == "type" {
-					m.TypeParams = p.typeParams()
-				}
-				m.Params = p.parameters(true, false)
-				p.need("->")
-				m.Result = p.typ()
-				if token.Kind == "interface" {
-					p.end()
-				} else {
-					m.Body = p.statementSuite(false, true)
-				}
-				d.Methods = append(d.Methods, m)
+			} else if p.peek().Kind == syntax.KindFn || p.accessorHead() {
+				d.Methods = append(d.Methods, p.operation(token.Kind == "type", token.Kind == "interface"))
 			} else {
 				name := p.need(lexer.Name)
 				p.need(":")
@@ -486,6 +507,9 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 		s.Body = p.suite()
 	case p.take("for"):
 		s.Name = p.need(lexer.Name).Text
+		if p.peek().Kind == "," {
+			p.fail(p.peek(), "for binds one name; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value")
+		}
 		p.need("in")
 		s.Value = p.expression(0)
 		s.Body = p.suite()
@@ -500,8 +524,8 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 			p.failCompoundAssignment(t, e)
 		}
 		if p.take("=") {
-			if (e.Kind != syntax.KindName && e.Kind != syntax.KindMember) || e.Text == "self" {
-				p.fail(t, "assignment requires a local binding name or record field; the left side of '=' must be a name or a.field")
+			if (e.Kind != syntax.KindName && e.Kind != syntax.KindMember) || (e.Text == "self" || e.Text == "fixture") {
+				p.fail(t, "assignment requires a local binding name or record field; the left side of '=' must be a name or a.field; to change a collection element, call its method such as set(index:, value:) on a List or add(key:, value:) on a Map")
 			}
 			s.Kind = syntax.KindAssign
 			if e.Kind == syntax.KindMember {
@@ -515,6 +539,12 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 			if !p.inlineReturn && e.Kind != syntax.KindCall && e.Kind != syntax.KindMatch && !tryCall && len(allowValue) == 0 {
 				if e.Kind == syntax.KindName && e.Text == "pass" {
 					p.fail(t, "'pass' is not a keyword; write 'unit' for an empty block or match arm")
+				}
+				if e.Kind == syntax.KindName && (e.Text == "const" || e.Text == "val" || e.Text == "final") {
+					p.fail(t, "'"+e.Text+"' is not a keyword; write 'let name = ...' for a binding that is not reassigned, or 'var name = ...' when it changes")
+				}
+				if e.Kind == syntax.KindName && (e.Text == "throw" || e.Text == "raise" || e.Text == "catch") {
+					p.fail(t, "'"+e.Text+"' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'match'")
 				}
 				if e.Kind == syntax.KindName && e.Text == "elif" {
 					p.fail(t, "'elif' is not a keyword; write 'else if <condition>:' for a further branch")
@@ -605,9 +635,15 @@ func (p *Parser) expression(min int) *syntax.Expression {
 		if p.compoundAssignment() {
 			break
 		}
+		if op.Kind == "&" {
+			p.fail(op, "'&&' is not an operator; write 'and' for logical and")
+		}
 		level := precedence[op.Kind]
 		if level == 0 || level < min {
 			break
+		}
+		if (op.Kind == "+" || op.Kind == "-") && e.Kind == syntax.KindName && p.at+2 < len(p.tokens) && p.tokens[p.at+1].Kind == op.Kind && p.tokens[p.at+2].Kind == lexer.Newline {
+			p.fail(op, "Manuscript has no '"+op.Text+op.Text+"' operator; write '"+e.Text+" = "+e.Text+" "+op.Text+" 1'")
 		}
 		if level == 4 && compared {
 			p.fail(op, "comparison operators cannot chain; combine two comparisons with 'and', e.g. a < b and b < c")
@@ -638,7 +674,7 @@ func (p *Parser) primary() *syntax.Expression {
 	p.at++
 	e := &syntax.Expression{Kind: syntax.KindName, Text: t.Text, Pos: t.Pos}
 	switch t.Kind {
-	case lexer.Name, "self":
+	case lexer.Name, "self", "fixture":
 	case lexer.Number:
 		e.Kind = syntax.KindNumber
 	case "true", "false":
@@ -649,6 +685,9 @@ func (p *Parser) primary() *syntax.Expression {
 		e = p.text(t)
 	case "(":
 		e = p.expression(0)
+		if p.peek().Kind == "," {
+			p.fail(p.peek(), "Manuscript has no tuples; declare a record with 'type Pair:' and named fields, or use a List when the items share one type")
+		}
 		p.need(")")
 	case "[":
 		e.Kind = syntax.KindList
@@ -688,6 +727,9 @@ func (p *Parser) primary() *syntax.Expression {
 		if p.take("->") {
 			e.Result = p.typ()
 		}
+		if p.peek().Kind == "=" && p.tokens[p.at+1].Kind == ">" {
+			p.fail(p.peek(), "there is no '=>' arrow function; write the result type and a colon, e.g. fn(x: Int) -> Int: x + 1")
+		}
 		e.Body = p.statementSuite(true)
 	default:
 		if t.Kind == "if" {
@@ -699,6 +741,9 @@ func (p *Parser) primary() *syntax.Expression {
 	for {
 		if p.take(".") {
 			p.link(&links)
+			if p.peek().Kind == "." {
+				p.fail(p.peek(), "Manuscript has no '..' range; to count, use a while loop, or import range from \"@std/collections.ms\" and loop over range(start: 0, end: 10, step: 1), which returns a Result")
+			}
 			name := p.need(lexer.Name)
 			e = &syntax.Expression{Kind: syntax.KindMember, Pos: name.Pos, Text: name.Text, Left: e}
 		} else if p.take("[") {
@@ -714,7 +759,13 @@ func (p *Parser) primary() *syntax.Expression {
 						arg.Name = p.need(lexer.Name).Text
 						p.need(":")
 					}
+					if p.peek().Kind == lexer.Name && p.tokens[p.at+1].Kind == "=" {
+						p.fail(p.tokens[p.at+1], "argument labels use a colon; write "+p.peek().Text+": value")
+					}
 					arg.Value = p.expression(0)
+					if arg.Value.Kind == syntax.KindName && p.peek().Kind == "->" {
+						p.fail(p.peek(), "lambdas are written fn(name: Type) -> Result: expression, e.g. fn("+arg.Value.Text+": Int) -> Int: "+arg.Value.Text+" + 1")
+					}
 					call.Args = append(call.Args, arg)
 					if !p.take(",") {
 						break
@@ -861,6 +912,9 @@ func (p *Parser) matchArms(header lexer.Token) []syntax.Arm {
 			break
 		}
 		a := syntax.Arm{Pos: p.peek().Pos}
+		if k := p.peek().Kind; k == lexer.Number || k == "true" || k == "false" {
+			p.fail(p.peek(), "literal match patterns are unsupported; match arms select alternative cases or concrete types, so compare values with 'if x == 1:' and 'else if'")
+		}
 		if p.peek().Kind == lexer.String {
 			p.fail(p.peek(), "string-literal match patterns are unsupported; match arms select alternative cases or concrete types, so compare strings with 'if command == \"report\":' and 'else' instead")
 		}
@@ -921,6 +975,9 @@ func (p *Parser) bracket(left *syntax.Expression) *syntax.Expression {
 		return e
 	}
 	index := p.expression(0)
+	if p.peek().Kind == ":" {
+		p.fail(p.peek(), "there is no slice syntax; call slice(start: 0, end: 2) on a List or String")
+	}
 	p.need("]")
 	return &syntax.Expression{Kind: syntax.KindIndex, Pos: left.Pos, Left: left, Right: index}
 }

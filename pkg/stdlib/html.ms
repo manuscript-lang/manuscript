@@ -1,7 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import List from "@std/collections.ms"
-
 # Errors returned for malformed HTML or parser resource limits.
 export type HtmlError:
     # A supplied input-byte, tree-depth or node-count budget is negative.

@@ -1,0 +1,9 @@
+
+> manuscript@0.1.0 bundle
+> esbuild extension.js debug-adapter.js --bundle --platform=node --external:vscode --outdir=dist --minify
+
+
+  dist/extension.js      439.9kb
+  dist/debug-adapter.js   13.1kb
+
+⚡ Done in 146ms

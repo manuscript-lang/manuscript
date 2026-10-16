@@ -58,7 +58,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		i.Arguments = constructorArguments(e.Args, fields)
 		typ = c.instantiate(typ, fields, i.Arguments, expected, e.Pos)
 		fields = ConstructorSignature(typ).Params
-		if std(typ, "Queue") && len(e.Args) == 0 {
+		if (std(typ, "Queue") || std(typ, "BlockingQueue")) && len(e.Args) == 0 {
 			fields = nil
 		}
 		i.NoReturn = c.argumentsFor(typ.Name, e.Pos, i.Arguments, fields, ConstructorSignature(typ).Defaults)
@@ -84,7 +84,12 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		}
 	}
 	if callee.Kind == syntax.KindName && c.scope.binding(callee.Text) == nil && c.names[callee.Text] == nil {
-		alternative, cs = c.findCase(callee.Text, callee.Pos)
+		var ambiguous bool
+		alternative, cs, ambiguous = c.findCase(callee.Text, callee.Pos)
+		if ambiguous {
+			i.Type = primitive("<invalid>")
+			return i
+		}
 	}
 	if alternative != nil {
 		if len(cs.Fields) == 0 {
@@ -131,6 +136,9 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 					supplied = append(supplied, sub[v.ID])
 				}
 			}
+			if len(supplied) >= requiredTypeArguments(s.Variables) {
+				supplied = completeTypeArguments(s.Variables, supplied)
+			}
 			signature = c.specialize(signature, s.Variables, supplied, e.Pos, calleeName(callee))
 			if context.conflict {
 				signature.Result = primitive("<invalid>")
@@ -155,11 +163,21 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			callable = c.expression(callee, nil)
 		}
 		signature = callable.Type
-		i.Method = callable.Method
-		i.Native = callable.Native
+		if callable.Method == nil || !callable.Method.Accessor {
+			i.Method = callable.Method
+			i.Native = callable.Native
+		}
+	}
+	if signature != nil && signature.ID == "<invalid>" {
+		i.Type = signature
+		return i
 	}
 	if signature == nil || signature.Kind != "function" {
-		c.notCallable(e, signature)
+		if callable != nil && callable.Method != nil && callable.Method.Accessor {
+			c.calledAccessor(e, callable.Method)
+		} else {
+			c.notCallable(e, signature)
+		}
 		return i
 	}
 	i.Arguments = functionArguments(e.Args, signature.Params)
@@ -175,28 +193,19 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 }
 
 // Resolve labels without changing source syntax or written evaluation order.
-// Explicit labels and existing matching-name shorthand select their parameter.
-// Other values fill the first parameter not supplied by an earlier argument.
+// Only an explicit `name: value` selects a named parameter. Every other value,
+// including a bare identifier, fills the first parameter not supplied by an
+// earlier argument.
 func functionArguments(args []syntax.Argument, params []Param) []syntax.Argument {
 	resolved := append([]syntax.Argument(nil), args...)
 	seen := make(map[string]bool, len(params))
 	for index := range resolved {
 		arg := &resolved[index]
 		if arg.Name == "" {
-			if value := arg.Value; len(params) > 1 && value.Kind == syntax.KindName && value.Pos == arg.Pos {
-				for _, param := range params {
-					if param.Name == value.Text {
-						arg.Name = value.Text
-						break
-					}
-				}
-			}
-			if arg.Name == "" {
-				for _, param := range params {
-					if !seen[param.Name] {
-						arg.Name = param.Name
-						break
-					}
+			for _, param := range params {
+				if !seen[param.Name] {
+					arg.Name = param.Name
+					break
 				}
 			}
 		}
@@ -272,7 +281,6 @@ func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...
 		if seen[arg.Name] {
 			c.error(arg.Pos, "type", "duplicate argument "+arg.Name+"; pass each argument once")
 		}
-		seen[arg.Name] = true
 		var expected *Type
 		for _, param := range params {
 			if param.Name == arg.Name {
@@ -285,6 +293,7 @@ func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...
 		}
 		v := c.argumentExpression(arg.Value, expected)
 		noReturn = noReturn || v.NoReturn
+		seen[arg.Name] = true
 	}
 	for _, param := range params {
 		if !seen[param.Name] && (len(defaults) == 0 || !defaults[0][param.Name]) {
@@ -300,11 +309,15 @@ func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...
 	}
 	return noReturn
 }
+
 func (c *checker) modulePosition() syntax.Position {
 	return syntax.Position{File: c.module.File, Line: 1, Column: 1}
 }
 func (c *checker) specialize(t *Type, vars, args []*Type, pos syntax.Position, name string) *Type {
 	sub := map[string]*Type{}
+	if len(args) < len(vars) && len(args) >= requiredTypeArguments(vars) {
+		args = withDefaultArguments(vars, args)
+	}
 	if len(vars) != len(args) {
 		c.error(pos, "type", fmt.Sprintf("generic arity mismatch; expected %d type arguments, found %d", len(vars), len(args)))
 	}
@@ -312,6 +325,9 @@ func (c *checker) specialize(t *Type, vars, args []*Type, pos syntax.Position, n
 		var a *Type
 		if index < len(args) {
 			a = args[index]
+		}
+		if a == nil && v.Default != nil {
+			a = Sub(v.Default, sub)
 		}
 		if a == nil {
 			if !c.labelMismatch {
@@ -357,6 +373,10 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 	actualArgs := []*Type{}
 	for _, v := range vars {
 		a := sub[v.ID]
+		if a == nil && v.Default != nil {
+			a = Sub(v.Default, sub)
+			sub[v.ID] = a
+		}
 		if a == nil {
 			c.error(pos, "type", "cannot infer constructor type argument "+v.Name+"; write the type arguments, e.g. Box[Int](...), or annotate the binding")
 			a = primitive("<invalid>")

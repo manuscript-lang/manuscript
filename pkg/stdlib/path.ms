@@ -1,7 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import List from "@std/collections.ms"
-
 # Errors returned when a path cannot be parsed or resolved.
 export type PathError:
     # Invalid NUL input, a nonabsolute resolve/relative anchor or malformed glob syntax.
@@ -67,9 +65,9 @@ export interface PathOperations:
     # Builds a path with directory preferred over root, and base preferred over name plus extension.
     fn format(parts: PathParts) -> String
     # Returns slash for POSIX or backslash for Windows path components.
-    fn separator() -> String
+    get separator -> String
     # Returns colon for POSIX or semicolon for Windows path-list entries.
-    fn delimiter() -> String
+    get delimiter -> String
     # Returns a Windows namespaced absolute path when applicable; POSIX paths are unchanged.
     fn to_namespaced_path(path: String) -> String
     # Tests one lexical path against the supported glob syntax; malformed patterns return InvalidInput.

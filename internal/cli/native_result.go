@@ -16,7 +16,6 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
-	"github.com/manuscript-lang/manuscript/pkg/tooling"
 )
 
 type nativeResult struct {
@@ -189,6 +188,8 @@ func runNativeCommand(command, filename, output string, options compiler.Options
 		executable += ".exe"
 	}
 	if _, err := build.BuildCheckedWithType(result, executable, kind); err != nil {
+		// This invocation created the directory; a failed build must not block a retry.
+		_ = os.RemoveAll(output)
 		return fail("build", err)
 	}
 	verified["executable"], verified["build_metadata"] = true, true
@@ -255,7 +256,7 @@ func writeProfileReference(directory, executable string, result compiler.Result,
 	if err := os.WriteFile(filepath.Join(directory, "manifest.json"), manifest, 0600); err != nil {
 		return err
 	}
-	inspection, err := json.MarshalIndent(tooling.Inspect(result.Program), "", "  ")
+	inspection, err := json.MarshalIndent(inspectionWithGoLocals(result), "", "  ")
 	if err == nil {
 		err = os.WriteFile(filepath.Join(directory, "inspection.json"), inspection, 0600)
 	}

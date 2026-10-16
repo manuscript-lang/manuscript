@@ -1,7 +1,6 @@
 import panic from "@std/faults.ms"
 
 import Decimal from "@std/decimal.ms"
-import Optional from "@std/optional.ms"
 
 fn quotient(value: Int, divisor: Int) -> Int:
     return value / divisor

@@ -1,0 +1,82 @@
+{
+  "tested_code_commit": "800547bb60c0b7926f77572b1236a2c198043b12",
+  "production_identical_to": "1ff193c04a90965b969678f3a253c33220ca3edf",
+  "go_flags": "-buildvcs=false -p=2",
+  "gates": {
+    "runtime-race": [
+      {
+        "package": "github.com/manuscript-lang/manuscript/pkg/runtime",
+        "result": "pass",
+        "elapsed_seconds": 20.481,
+        "test_subtest_pass_events": 2363,
+        "skips": [
+          "TestPrimitiveListMemory",
+          "FuzzCSVRoundTrip/seed#3"
+        ],
+        "failures": []
+      }
+    ],
+    "lsp-race": [
+      {
+        "package": "github.com/manuscript-lang/manuscript/pkg/tooling/lsp",
+        "result": "pass",
+        "elapsed_seconds": 109.6,
+        "test_subtest_pass_events": 191,
+        "skips": [],
+        "failures": []
+      }
+    ],
+    "native-full": [
+      {
+        "package": "github.com/manuscript-lang/manuscript/pkg/build",
+        "result": "pass",
+        "elapsed_seconds": 284.081,
+        "test_subtest_pass_events": 596,
+        "skips": [],
+        "failures": []
+      },
+      {
+        "package": "github.com/manuscript-lang/manuscript/tests/e2e",
+        "result": "pass",
+        "elapsed_seconds": 445.328,
+        "test_subtest_pass_events": 373,
+        "skips": [],
+        "failures": []
+      }
+    ],
+    "debugger-native": [
+      {
+        "package": "github.com/manuscript-lang/manuscript/internal/debugger",
+        "result": "pass",
+        "elapsed_seconds": 5.895,
+        "test_subtest_pass_events": 22,
+        "skips": [],
+        "failures": []
+      }
+    ]
+  },
+  "fuzz_targets": [
+    "FuzzParse",
+    "FuzzParsePartial",
+    "FuzzFormat",
+    "FuzzJSONRoundTrip",
+    "FuzzCSVRoundTrip",
+    "FuzzCodecRoundTrip",
+    "FuzzURLFormatStable",
+    "FuzzCompile"
+  ],
+  "fuzz_seconds_per_target": 10,
+  "native_dap": {
+    "tests": 24,
+    "pass": 24,
+    "fail": 0,
+    "skip": 0,
+    "node": "v24.13.0"
+  },
+  "linux_standalone": "pass outside checkout, empty caches, no host Go/dlv/downloads",
+  "coverage": "historical only: 78.0% at12a26d19; not rerun at final integration",
+  "runtime_skip_explanations": {
+    "TestPrimitiveListMemory": "Opt-in fresh-process worker; MS_PRIMITIVE_COUNT is absent.",
+    "FuzzCSVRoundTrip/seed#3": "Seed contains CRLF, excluded by the documented fuzz input filter."
+  }
+}

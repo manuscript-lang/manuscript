@@ -1,6 +1,4 @@
-import {Map, Set} from "@std/collections.ms"
 import panic from "@std/faults.ms"
-import {Equal, Hashable} from "@std/equality.ms"
 
 type Expr:
     case Num(value: Int)
@@ -47,23 +45,14 @@ impl Hashable for Link:
     fn hash() -> Int: return self.value
 
 test "recursive alternatives construct match compare and clone":
-    let expr = Expr.Add(
-        left: Expr.Num(7),
-        right: Expr.Neg(Expr.Num(2))
-    )
+    let expr = Expr.Add(left: Expr.Num(7), right: Expr.Neg(Expr.Num(2)))
 
     if evaluate(expr) != 5 or expr != expr.clone():
         panic("recursive expression failed")
 
-    let tree = Tree[Int].Branch(
-        left: Tree[Int].Leaf(1),
-        right: Tree[Int].Leaf(2)
-    )
+    let tree = Tree[Int].Branch(left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2))
 
-    if tree != Tree[Int].Branch(
-        left: Tree[Int].Leaf(1),
-        right: Tree[Int].Leaf(2)
-    ):
+    if tree != Tree[Int].Branch(left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2)):
         panic("generic tree equality failed")
 
     let forest = Forest.More(MutualTree(value: 3, rest: Forest.Empty))
@@ -82,16 +71,12 @@ test "recursive records retain aliases and clone only outer storage":
     alias.value = 3
     copy.next.unwrap().value = 4
 
-    if (
-        root.value != 3
-        or copy.value != 1
-        or child.value != 4
-    ):
+    if (root.value != 3 or copy.value != 1 or child.value != 4):
         panic("recursive alias or shallow clone failed")
 
     copy.next = none
 
-    if root.next.is_none():
+    if root.next.is_none:
         panic("clone shared its outer fields")
 
 test "recursive structural equality terminates and checks unequal fields":
@@ -106,11 +91,7 @@ test "recursive structural equality terminates and checks unequal fields":
     let copy = left.clone()
     copy.next.unwrap().value = 2
 
-    if (
-        left.value != 2
-        or copy.value != 1
-        or left == right
-    ):
+    if (left.value != 2 or copy.value != 1 or left == right):
         panic("cyclic clone or unequal cycle failed")
 
     let a = Node(value: 1, next: none)
@@ -138,11 +119,7 @@ test "recursive domain hashing uses explicit implementations":
     values.add(key: right, value: 10)
     members.add(right)
 
-    if (
-        values.length() != 1
-        or members.length() != 1
-        or values.get(left).unwrap() != 10
-    ):
+    if (values.length != 1 or members.length != 1 or values.get(left).unwrap() != 10):
         panic("equivalent recursive keys were not deduplicated")
 
 test "recursive defaults construct independent complete objects":
@@ -150,7 +127,7 @@ test "recursive defaults construct independent complete objects":
     let second = DefaultNode(value: 2)
     first.next = some(first)
 
-    if second.next.is_some() or first.next.unwrap().value != 1:
+    if second.next.is_some or first.next.unwrap().value != 1:
         panic("recursive default initialization failed")
 
 type Entry:
@@ -174,28 +151,19 @@ type Pair[T, U]:
     second: U
 
 test "finite nested generic composition constructs and extracts values":
-    let person = Person(
-        Entry(
-            name: "Ada",
-            nickname: some("A")
-        )
-    )
+    let person = Person(Entry(name: "Ada", nickname: some("A")))
 
     if person.primary.unwrap().nickname.unwrap() != "A":
         panic("composed optional entry failed")
 
-    let optional = NestedOptional.Value(
-        some(some(4))
-    )
+    let optional = NestedOptional.Value(some(some(4)))
 
     match optional:
         Value(value):
             if value.unwrap().unwrap() != 4:
                 panic("nested optional payload failed")
 
-    let result = NestedResult(
-        ok(ok(5))
-    )
+    let result = NestedResult(ok(ok(5)))
 
     let inner = match result.value:
         ok(inner): inner

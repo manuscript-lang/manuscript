@@ -11,13 +11,11 @@ import (
 )
 
 type occurrence struct {
-	key, name                  string
-	pos                        syntax.Position
-	end                        int
-	declaration, write         bool
-	info                       *checker.Info
-	renamePrefix, renameSuffix string
-	implicitLabel              bool
+	key, name          string
+	pos                syntax.Position
+	end                int
+	declaration, write bool
+	info               *checker.Info
 }
 
 func symbolKey(s *checker.Symbol) string {
@@ -39,15 +37,29 @@ func methodKey(m *checker.Method) string {
 	if m == nil {
 		return ""
 	}
+	kind := "method"
+	if m.Accessor {
+		kind = "accessor"
+	}
 	if m.Decl != nil && m.Contract != nil && m.Contract.Def != nil && m.Contract.Def.Symbol != nil && m.Contract.Def.Symbol.Decl != nil {
 		decl := m.Contract.Def.Symbol.Decl
-		return fmt.Sprintf("operation:%s:%d:%s", decl.Pos.File, decl.Pos.Offset, m.Decl.Name)
+		return fmt.Sprintf("%s-operation:%s:%d:%s", kind, decl.Pos.File, decl.Pos.Offset, m.Decl.Name)
 	}
 	if m.Decl != nil {
-		return fmt.Sprintf("method:%s:%d", m.Decl.Pos.File, m.Decl.Pos.Offset)
+		return fmt.Sprintf("%s:%s:%d", kind, m.Decl.Pos.File, m.Decl.Pos.Offset)
 	}
 	return ""
 }
+
+// Accessors retain their callable implementation signature in checked metadata,
+// but editor expressions and declarations expose the value read by the member.
+func memberValueType(m *checker.Method) *checker.Type {
+	if m.Accessor && m.Type != nil {
+		return m.Type.Result
+	}
+	return m.Type
+}
+
 func sourceIndex(result compiler.Result) []occurrence {
 	index := []occurrence{}
 	if result.Program == nil {
@@ -94,10 +106,12 @@ func sourceIndex(result compiler.Result) []occurrence {
 		index = append(index, occurrence{key: key, name: name, pos: pos, end: pos.Offset + len(name), declaration: decl, write: write, info: info})
 	}
 	header := func(pos syntax.Position, name string) syntax.Position {
-		for _, token := range tokens[pos.File] {
-			if token.Pos.Offset < pos.Offset {
-				continue
-			}
+		// Declaration positions and lexed tokens share the original offsets.
+		// Start at this header instead of rescanning the whole module for every
+		// field, method, and accessor in the checked index.
+		lexed := tokens[pos.File]
+		start := sort.Search(len(lexed), func(i int) bool { return lexed[i].Pos.Offset >= pos.Offset })
+		for _, token := range lexed[start:] {
 			if token.Kind == lexer.Newline {
 				if token.Pos.Offset == pos.Offset {
 					continue
@@ -132,16 +146,18 @@ func sourceIndex(result compiler.Result) []occurrence {
 				add("case:"+symbolKey(symbol)+":"+cs.Name, cs.Name, cs.Pos, true, false, &checker.Info{Type: symbol.Type, Constructor: symbol.Type, Case: cs.Name})
 			}
 			if symbol.Type.Kind == "contract" || strings.HasPrefix(m.File, "@std/") {
+				operations := map[string]checker.Operation{}
+				for _, op := range symbol.Type.Def.Operations {
+					operations[op.Name] = op
+				}
 				for _, method := range decl.Methods {
-					for _, op := range symbol.Type.Def.Operations {
-						if method.Name == op.Name {
-							checked := &checker.Method{Decl: method, Receiver: symbol.Type, Type: op.Type}
-							if symbol.Type.Kind == "contract" {
-								checked.Contract = symbol.Type
-								checked.Native = "contract"
-							}
-							add(methodKey(checked), method.Name, header(method.Pos, method.Name), true, false, &checker.Info{Type: op.Type, Method: checked})
+					if op, ok := operations[method.Name]; ok {
+						checked := &checker.Method{Decl: method, Receiver: symbol.Type, Type: op.Type, Accessor: op.Accessor}
+						if symbol.Type.Kind == "contract" {
+							checked.Contract = symbol.Type
+							checked.Native = "contract"
 						}
+						add(methodKey(checked), method.Name, header(method.Pos, method.Name), true, false, &checker.Info{Type: memberValueType(checked), Method: checked})
 					}
 				}
 			}
@@ -198,7 +214,7 @@ func sourceIndex(result compiler.Result) []occurrence {
 	}
 	for _, method := range program.Methods {
 		if method.Decl != nil {
-			add(methodKey(method), method.Decl.Name, header(method.Decl.Pos, method.Decl.Name), true, false, &checker.Info{Type: method.Type, Method: method})
+			add(methodKey(method), method.Decl.Name, header(method.Decl.Pos, method.Decl.Name), true, false, &checker.Info{Type: memberValueType(method), Method: method})
 		}
 	}
 	for typ, resolved := range program.AllTypeReferences() {
@@ -301,78 +317,6 @@ func sourceIndex(result compiler.Result) []occurrence {
 		}
 	}
 
-	// An unlabeled identifier names a caller binding and supplies a callee parameter.
-	// Renaming either side makes the label explicit to preserve argument binding.
-	for call, info := range program.Expressions() {
-		if call.Kind != syntax.KindCall || len(info.Arguments) != len(call.Args) {
-			continue
-		}
-		called := program.Info(call.Left)
-		var decl *syntax.Declaration
-		arity := 0
-		if info.Constructor != nil {
-			if info.Case == "" {
-				arity = len(checker.Fields(info.Constructor))
-			} else {
-				for _, cs := range checker.Cases(info.Constructor) {
-					if cs.Name == info.Case {
-						arity = len(cs.Fields)
-					}
-				}
-			}
-		} else if called != nil && called.Type != nil {
-			arity = len(called.Type.Params)
-			if called.Symbol != nil {
-				decl = called.Symbol.Decl
-			}
-			if called.Method != nil {
-				decl = called.Method.Decl
-			}
-		}
-		if arity <= 1 {
-			continue
-		}
-		for at, arg := range call.Args {
-			label := info.Arguments[at].Name
-			if arg.Name != "" || label == "" || arg.Value.Kind != syntax.KindName || arg.Pos != arg.Value.Pos {
-				continue
-			}
-			value := program.Info(arg.Value)
-			if value == nil {
-				continue
-			}
-			valueKey := ""
-			if value.Binding != nil {
-				valueKey = localKey(value.Binding)
-			}
-			if value.Symbol != nil {
-				valueKey = symbolKey(value.Symbol)
-			}
-			labelKey := ""
-			if info.Constructor != nil && info.Constructor.Kind == syntax.KindRecord && info.Constructor.Def != nil {
-				labelKey = "field:" + symbolKey(info.Constructor.Def.Symbol) + ":" + label
-			}
-			if decl != nil {
-				for n, param := range decl.Params {
-					if param.Name == label && n < len(program.ParameterBindings(decl)) {
-						labelKey = localKey(program.ParameterBindings(decl)[n])
-					}
-				}
-			}
-			if valueKey == labelKey {
-				continue
-			}
-			for n := range index {
-				if index[n].key == valueKey && index[n].pos == arg.Value.Pos {
-					index[n].renamePrefix = label + ": "
-				}
-			}
-			if labelKey != "" {
-				index = append(index, occurrence{key: labelKey, name: label, pos: arg.Value.Pos, end: arg.Value.Pos.Offset + len(arg.Value.Text), renameSuffix: ": " + arg.Value.Text, implicitLabel: true})
-			}
-		}
-	}
-
 	sort.Slice(index, func(i, j int) bool {
 		a, b := index[i], index[j]
 		if a.pos.File != b.pos.File {
@@ -380,9 +324,6 @@ func sourceIndex(result compiler.Result) []occurrence {
 		}
 		if a.pos.Offset != b.pos.Offset {
 			return a.pos.Offset < b.pos.Offset
-		}
-		if a.implicitLabel != b.implicitLabel {
-			return !a.implicitLabel
 		}
 		return a.key < b.key
 	})

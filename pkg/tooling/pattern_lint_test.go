@@ -17,7 +17,7 @@ func TestPatternBindingAdvisory(t *testing.T) {
 		messages     []string
 	}{
 		{"nullary payload case", patternCaptureSource, []string{"NotFound is a case of Failure", "fresh binding for every Failure payload", "error(payload):", "match payload:", "NotFound:", "lowercase binding name if intentional", "separate helper"}},
-		{"read does not turn binding into case", strings.Replace(patternCaptureSource, "return 1", "return NotFound.toString().byte_length()", 1), []string{"NotFound is a case of Failure"}},
+		{"read does not turn binding into case", strings.Replace(patternCaptureSource, "return 1", "return NotFound.toString().byte_length", 1), []string{"NotFound is a case of Failure"}},
 		{"payload case with fields", strings.Replace(patternCaptureSource, "error(NotFound)", "error(Denied)", 1), []string{"Denied is a case of Failure", "Denied(_):"}},
 		{"multiple payload fields", "type Failure:\n    case NotFound\n    case Denied\ntype Envelope:\n    case Pair(left: Failure, right: Failure)\nfn use(value: Envelope) -> Int:\n    match value:\n        Pair(payload, NotFound): return 1\n", []string{"Pair(payload, payload2):", "match payload2:", "NotFound:"}},
 		{"record constructor", "type Item:\n    value: Int\nfn use(value: Optional[Item]) -> Int:\n    match value:\n        some(Item): return Item.value\n        none: return 0\n", []string{"Item is a type name", "fresh binding for every Item payload", "lowercase binding name if intentional"}},

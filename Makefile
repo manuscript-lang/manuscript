@@ -6,7 +6,7 @@ BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 export PATH := $(dir $(GO)):$(PATH)
 export STATICCHECK_CACHE ?= $(CURDIR)/.artifacts/staticcheck
 
-.PHONY: ms-bench-check toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check docs-coverage book book-check vendor-refresh
+.PHONY: stdgen ms-bench-check toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check docs-coverage book book-check vendor-refresh
 
 toolchain:
 	sh scripts/bootstrap-go.sh
@@ -56,6 +56,9 @@ licenses:
 
 licenses-check:
 	"$(GO)" run ./scripts/maintenance licenses -check
+
+stdgen: | toolchain
+	"$(GO)" run ./scripts/stdgen pkg/runtime
 
 payload: | toolchain
 	CGO_ENABLED=0 "$(GO)" run ./scripts/mktoolchain "$(CURDIR)/toolchain/go" .build-payload.tar.gz $$("$(GO)" env GOHOSTOS) $$("$(GO)" env GOHOSTARCH)
@@ -116,8 +119,7 @@ docs-coverage:
 book: docs
 	"$(HUGO)" --source website --minify --panicOnWarning --cleanDestinationDir
 
-book-check: docs-check
-	"$(GO)" run ./scripts/docgen -downloads
+book-check: docs-check docs
 	node --test tests/docs/highlighting.test.cjs
 	"$(HUGO)" --source website --minify --panicOnWarning --cleanDestinationDir --destination "$(BOOK_CHECK_DIR)" --baseURL "https://example.org/manuscript/"
 	MANUSCRIPT_BOOK_DIR="$(BOOK_CHECK_DIR)" node --test tests/docs/publication.test.cjs

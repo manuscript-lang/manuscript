@@ -1,7 +1,6 @@
 import panic from "@std/faults.ms"
 
 import check_cancelled from "@std/tasks.ms"
-import Result from "@std/result.ms"
 import TaskGroup from "@std/tasks.ms"
 import ExecutionError from "@std/tasks.ms"
 import Scheduler from "@std/tasks.ms"
@@ -34,10 +33,7 @@ fn run() -> Result[Unit, ExecutionError]:
     return ok(unit)
 
 fn scheduler_probe() -> Unit:
-    with service = Scheduler(
-        limit: 1,
-        drain: 2.seconds
-    ):
+    with service = Scheduler(limit: 1, drain: 2.seconds):
         let task = fn() -> Result[Unit, Error]:
             return ok(unit)
         let launch = service.start

@@ -252,6 +252,9 @@ func (l *standardLoader) scopeModule(module *syntax.Module) {
 			c.error(item.NamePos, "resolution", "standard module does not export "+item.Name)
 			continue
 		}
+		if isPreludeSymbol(found) {
+			c.redundantPreludeImport(module, item)
+		}
 		c.addSymbol(item.Name, found, item.NamePos)
 	}
 	for _, d := range module.Declarations {
@@ -312,6 +315,7 @@ func (l *standardLoader) resolveDeclarations() {
 					s.Variables[i].Bounds = append(s.Variables[i].Bounds, c.resolve(bound, true))
 				}
 			}
+			c.typeDefaults(d.TypeParams, s.Variables)
 			if s.Kind == syntax.KindFn {
 				s.Type = c.signature(d.Params, d.Result)
 				continue
@@ -347,8 +351,9 @@ func (l *standardLoader) resolveDeclarations() {
 						variables[i].Bounds = append(variables[i].Bounds, c.resolve(bound, true))
 					}
 				}
+				c.typeDefaults(method.TypeParams, variables)
 				standardOperationVariables[s.ID+"/"+method.Name] = variables
-				def.Operations = append(def.Operations, Param{method.Name, c.signature(method.Params, method.Result)})
+				def.Operations = append(def.Operations, Operation{Name: method.Name, Type: c.signature(method.Params, method.Result), Accessor: method.Accessor, Decl: method})
 			}
 		}
 	}
@@ -424,6 +429,9 @@ func (l *standardLoader) bindReceivers() error {
 			for _, method := range declaration.Methods {
 				key := module.File + "/" + declaration.Name + "/" + method.Name
 				if native := nativeabi.ReceiverBindings[receiver][method.Name]; native != "" {
+					if method.Accessor != nativeabi.IsAccessor(receiver, method.Name) {
+						return fmt.Errorf("native member kind does not match source: %s.%s", receiver, method.Name)
+					}
 					standardReceiverBindings[symbol.ID+"/"+method.Name] = native
 					bound[receiver+"."+method.Name] = true
 				}

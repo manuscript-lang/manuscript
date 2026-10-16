@@ -1,6 +1,5 @@
 import Key from "./key.ms"
 import remove_generic from "./generic.ms"
-import {Equal, Hashable} from "@std/equality.ms"
 
 impl Equal for Key:
     fn equals(other: Equal) -> Bool:
@@ -9,23 +8,14 @@ impl Equal for Key:
             _: return false
 
 impl Hashable for Key:
-    fn hash() -> Int: self.label.scalar_length()
+    fn hash() -> Int: self.label.scalar_length
 
 export fn label_map() -> Map[Key, Int]:
     return (
         Map[Key, Int]()
-        .add(
-            Key(1, "one"),
-            10
-        )
-        .add(
-            Key(2, "two"),
-            20
-        )
-        .add(
-            Key(3, "three"),
-            30
-        )
+        .add(Key(1, "one"), 10)
+        .add(Key(2, "two"), 20)
+        .add(Key(3, "three"), 30)
     )
 
 export fn label_direct(values: Map[Key, Int], key: Key) -> Map[Key, Int]:

@@ -9,14 +9,14 @@ type Point:
 
 fn roll(i: Int) -> Result[Int, String]: ok(i)
 
-fn count(values: List[String]) -> Int: values.length()
+fn count(values: List[String]) -> Int: values.length
 
 fn update[K: Hashable, V](values: Map[K, V], key: K, value: V) -> Map[K, V]:
     return values.add(key, value)
 
 test "issue 187 programs need no collection imports":
     let shapes = [Shape.Circle(1.0)]
-    if shapes.length() != 1 or count(["/var", "log"]) != 2: return panic("literals")
+    if shapes.length != 1 or count(["/var", "log"]) != 2: return panic("literals")
 
     var rolls: List[Int] = []
     var i = 0
@@ -28,17 +28,14 @@ test "issue 187 programs need no collection imports":
 
         i = i + 1
 
-    if rolls.length() != 5: return panic("annotation or match")
+    if rolls.length != 5: return panic("annotation or match")
 
     let points = Map[Point, Int]()
-    points.add(
-        Point(1, 2),
-        7
-    )
+    points.add(Point(1, 2), 7)
     if points.get(Point(1, 2)).unwrap() != 7: return panic("constructor")
 
     let nested: List[Map[String, List[Int]]] = [{}, {"a": []}]
-    if nested[1].unwrap().get("a").unwrap().length() != 0: return panic("empty context")
+    if nested[1].unwrap().get("a").unwrap().length != 0: return panic("empty context")
 
 test "map add returns receiver and retains aliases clone and insertion order":
     let values = {"a": 1, "b": 2}
@@ -72,11 +69,7 @@ test "map add retains optional wrapping and generic bound calls":
     if values.get(1).unwrap().unwrap() != 3: return panic("optional conversion")
     if values.get(4).unwrap().unwrap() != 5: return panic("bound conversion")
 
-    let generic = update[Optional[Int], Optional[Int]](
-        values,
-        some(6),
-        some(7)
-    )
+    let generic = update[Optional[Int], Optional[Int]](values, some(6), some(7))
     generic.add(8, 9)
     if values.get(6).unwrap().unwrap() != 7 or values.get(8).unwrap().unwrap() != 9: return panic(
         "generic receiver"
@@ -95,7 +88,7 @@ test "map add captures receivers and arguments in written order":
         ,
         2
     )
-    if original.get(1).unwrap() != 2 or not other.is_empty(): return panic(
+    if original.get(1).unwrap() != 2 or not other.is_empty: return panic(
         "receiver capture"
     )
 

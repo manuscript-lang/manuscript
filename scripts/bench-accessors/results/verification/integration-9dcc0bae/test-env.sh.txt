@@ -1,0 +1,4 @@
+#!/bin/sh
+PATH=/tmp/manuscript-accessor-native-go:/workspace/manuscript-accessor-design/toolchain/go/bin:$PATH
+export PATH
+exec "$@"

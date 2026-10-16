@@ -1,7 +1,5 @@
 import panic from "@std/faults.ms"
 import {Synchronized, SynchronizedGuard} from "@std/sync.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 
 fn increment(value: Int = 3) -> Int:
     return value + 1
@@ -13,7 +11,7 @@ fn identity[T](value: T, fallback: T = value) -> T:
     return fallback
 
 fn mark(state: SynchronizedGuard[Int], value: Int) -> Int:
-    state.set(value: state.get() * 10 + value)
+    state.set(value: state.value * 10 + value)
     return value
 
 fn ordered(
@@ -22,25 +20,19 @@ fn ordered(
     second: Int = mark(state: state, value: 4),
     third: Int = 0
 ) -> Int:
-    state.set(value: state.get() * 10 + 5)
+    state.set(value: state.value * 10 + 5)
     return first + second + third
 
-fn unit_value(
-    value: Unit = panic("unexpected default")
-) -> Unit:
+fn unit_value(value: Unit = panic("unexpected default")) -> Unit:
     return value
 
-fn optional(
-    value: Optional[Int] = some(3)
-) -> Optional[Int]:
+fn optional(value: Optional[Int] = some(3)) -> Optional[Int]:
     return value
 
 fn fail() -> Result[Int, String]:
     return error("default failure")
 
-fn propagate(
-    value: Int = try fail()
-) -> Result[Int, String]:
+fn propagate(value: Int = try fail()) -> Result[Int, String]:
     return ok(value)
 
 interface Add:
@@ -64,11 +56,7 @@ impl Read[T] for Box[T]:
         return value
 
 test "omitted and explicit defaults":
-    if (
-        increment() != 4
-        or increment(7) != 8
-        or increment(value: 0) != 1
-    ):
+    if (increment() != 4 or increment(7) != 8 or increment(value: 0) != 1):
         return panic("single parameter defaults")
     if combine(second: 5) != 14 or combine(third: 0, second: 5, first: 0) != 5:
         return panic("required arguments and dependent defaults")
@@ -93,17 +81,17 @@ test "default evaluation order and repeated calls":
             third: mark(state: state, value: 1),
             second: mark(state: state, value: 2)
         )
-        if total != 6 or state.get() != 1235:
+        if total != 6 or state.value != 1235:
             return panic("supplied arguments precede defaults and body")
 
         state.set(value: 0)
         let ignored = ordered(state: state)
-        if state.get() != 345:
+        if state.value != 345:
             return panic("defaults evaluate in declaration order")
 
         state.set(value: 0)
         let again = ordered(state: state)
-        if state.get() != 345:
+        if state.value != 345:
             return panic("defaults run on every call")
 
 test "function values and captures":
@@ -131,11 +119,7 @@ test "function values and captures":
 test "implementation and bound method defaults":
     let offset = Offset(4)
     let bound = offset.add
-    if (
-        offset.add() != 8
-        or bound() != 8
-        or bound(0) != 4
-    ):
+    if (offset.add() != 8 or bound() != 8 or bound(0) != 4):
         return panic("receiver defaults")
 
     let view = Add(offset)

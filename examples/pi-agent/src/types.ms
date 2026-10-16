@@ -93,7 +93,7 @@ export type QueueMode:
     case All
     case OneAtATime
 
-# Callbacks poll this token at safe points, including during blocking work.
+# Callbacks check this token at safe points. Use request_abort to notify waiters.
 export type Control:
     aborted: Bool = false
     steering: List[Message] = []
@@ -114,9 +114,7 @@ export type Tool:
         update: fn(result: ToolResult) -> Unit
     ) -> Result[ToolResult, Error]
     execution_mode: Optional[ExecutionMode] = none
-    prepare_arguments: Optional[
-        fn(arguments: JsonValue) -> Result[JsonValue, Error]
-    ] = none
+    prepare_arguments: Optional[fn(value: JsonValue) -> Result[JsonValue, Error]] = none
     output_schema: Optional[JsonValue] = none
     replay: String = "never"
     constrained_sampling: Optional[Bool] = none
@@ -175,9 +173,7 @@ export type StreamRuntime:
         fn(
             request: Request,
             control: Synchronized[Control],
-            update: fn(
-                message: Message
-            ) -> Unit
+            update: fn(message: Message) -> Unit
         ) -> Result[Message, Error]
     ] = none
 

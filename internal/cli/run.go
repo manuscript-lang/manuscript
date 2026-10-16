@@ -10,7 +10,6 @@ import (
 
 	"github.com/manuscript-lang/manuscript/internal/debugger"
 	"github.com/manuscript-lang/manuscript/pkg/build"
-	"github.com/manuscript-lang/manuscript/pkg/stdlib"
 	"github.com/manuscript-lang/manuscript/pkg/tooling/lsp"
 )
 
@@ -45,8 +44,6 @@ func standaloneCommand(name string) (func(args []string, usage string) int, bool
 		return runProfileTool, true
 	case "help":
 		return func(args []string, _ string) int { return runHelp(args[1:]) }, true
-	case "doc":
-		return func(args []string, _ string) int { return runDoc(args[1:]) }, true
 	case "init":
 		return func(args []string, _ string) int { return runInit(args[1:]) }, true
 	case "fmt":
@@ -55,8 +52,10 @@ func standaloneCommand(name string) (func(args []string, usage string) int, bool
 		return runDAP, true
 	case "lsp":
 		return runLSP, true
-	case "stdlib":
-		return runStdlib, true
+	case "search_symbol":
+		return runSearchSymbol, true
+	case "guide":
+		return runGuide, true
 	}
 	return nil, false
 }
@@ -106,20 +105,6 @@ func runLSP(args []string, _ string) int {
 		return 2
 	}
 	if err := lsp.Serve(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
-	return 0
-}
-
-func runStdlib(args []string, usage string) int {
-	if len(args) != 2 {
-		fmt.Fprintln(os.Stderr, "ms stdlib: pass exactly one directory to write the standard declarations into, e.g. ms stdlib ./declarations")
-		fmt.Fprintln(os.Stderr)
-		fmt.Fprint(os.Stderr, usage)
-		return 2
-	}
-	if err := stdlib.Materialize(args[1]); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}

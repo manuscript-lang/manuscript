@@ -1,5 +1,4 @@
 import Bytes from "@std/bytes.ms"
-import List from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 test "Bytes split is binary safe":
@@ -26,7 +25,7 @@ test "Bytes split handles exact and nonoverlapping separators":
 
 test "Bytes empty separator splits bytes without decoding":
     let empty = Bytes([])
-    if not (empty.split(empty).is_empty()): return panic("empty binary explosion")
+    if not (empty.split(empty).is_empty): return panic("empty binary explosion")
     if Bytes([0, 255, 128]).split(empty) != [Bytes([0]), Bytes([255]), Bytes([128])]: return panic(
         "binary explosion"
     )
@@ -35,7 +34,7 @@ test "Bytes empty separator splits bytes without decoding":
     if scalars != [Bytes([195]), Bytes([169])]: return panic(
         "byte split used scalar indexes"
     )
-    if scalars.at(0).unwrap().to_text().is_some(): return panic(
+    if scalars.at(0).unwrap().to_text().is_some: return panic(
         "byte split repaired invalid UTF-8"
     )
     if "é".to_bytes().split(Bytes([169])) != [Bytes([195]), empty]: return panic(
@@ -49,22 +48,20 @@ test "Bytes split optional limits truncate parts":
     if data.split(separator) != expected or data.split(separator, none) != expected: return panic(
         "omitted/none split cap"
     )
-    if data.split(
-        separator: separator,
-        max_parts: some(2)
-    ) != [Bytes([1]), Bytes([2])]: return panic("some split cap")
+    if data.split(separator: separator, max_parts: some(2)) != [Bytes([1]), Bytes([2])]: return panic(
+        "some split cap"
+    )
     if data.split(separator, max_parts: 1) != [Bytes([1])]: return panic(
         "split retained unsplit remainder"
     )
     if (
-        not (data.split(separator, 0).is_empty())
-        or not (Bytes([]).split(separator, 0).is_empty())
+        not (data.split(separator, 0).is_empty)
+        or not (Bytes([]).split(separator, 0).is_empty)
     ): return panic("zero split cap")
     if data.split(separator, 9999999) != expected: return panic("large split cap")
-    if data.split(
-        Bytes([]),
-        2
-    ) != [Bytes([1]), Bytes([0])]: return panic("empty separator cap")
+    if data.split(Bytes([]), 2) != [Bytes([1]), Bytes([0])]: return panic(
+        "empty separator cap"
+    )
 
 fn split_then[T](
     data: Bytes,
@@ -74,15 +71,9 @@ fn split_then[T](
     return transform(data.split(separator))
 
 fn call_split(
-    operation: fn(
-        separator: Bytes,
-        max_parts: Optional[Int]
-    ) -> List[Bytes]
+    operation: fn(separator: Bytes, max_parts: Optional[Int]) -> List[Bytes]
 ) -> List[Bytes]:
-    return operation(
-        Bytes([0]),
-        some(2)
-    )
+    return operation(Bytes([0]), some(2))
 
 test "Bytes split bound methods and generic forwarding retain contracts":
     var data = Bytes([1, 0, 2])
@@ -92,10 +83,9 @@ test "Bytes split bound methods and generic forwarding retain contracts":
     if split(Bytes([0])) != [Bytes([1]), Bytes([2])]: return panic(
         "bound byte receiver"
     )
-    if split(
-        max_parts: 1,
-        separator: Bytes([0])
-    ) != [Bytes([1])]: return panic("bound byte labels/defaults")
+    if split(max_parts: 1, separator: Bytes([0])) != [Bytes([1])]: return panic(
+        "bound byte labels/defaults"
+    )
     if call_split(typed) != [Bytes([1]), Bytes([2])]: return panic(
         "typed split callback"
     )
@@ -103,7 +93,7 @@ test "Bytes split bound methods and generic forwarding retain contracts":
         split_then[Bool](
             Bytes([1, 0, 2]),
             Bytes([0]),
-            fn(value): value.length() == 2
+            fn(value): value.length == 2
         ) != true
     ): return panic("generic split result")
 
@@ -115,32 +105,19 @@ test "Bytes split returns independent List storage and immutable views":
     let edited = payload.with_value(0, 99)
     let extracted = payload.values()
     extracted.set(0, 88)
-    first.set(
-        0,
-        Bytes([77])
-    ).append(Bytes([66]))
-    if (
-        edited != Bytes([99])
-        or payload != Bytes([1])
-        or data != Bytes([1, 0, 2])
-    ): return panic("split payload mutation")
+    first.set(0, Bytes([77])).append(Bytes([66]))
+    if (edited != Bytes([99]) or payload != Bytes([1]) or data != Bytes([1, 0, 2])): return panic(
+        "split payload mutation"
+    )
     if second != [Bytes([1]), Bytes([2])]: return panic("split outer storage alias")
 
     let empty = Bytes([])
-    let zero_parts = data.split(
-        Bytes([0]),
-        0
-    )
+    let zero_parts = data.split(Bytes([0]), 0)
     zero_parts.append(empty)
-    if not (
-        data
-        .split(
-            Bytes([0]),
-            0
-        )
-        .is_empty()
-    ): return panic("zero split storage alias")
+    if not (data.split(Bytes([0]), 0).is_empty): return panic(
+        "zero split storage alias"
+    )
 
     let no_parts = empty.split(empty)
     no_parts.append(Bytes([1]))
-    if not (empty.split(empty).is_empty()): return panic("empty split storage alias")
+    if not (empty.split(empty).is_empty): return panic("empty split storage alias")

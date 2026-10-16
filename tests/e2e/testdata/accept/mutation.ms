@@ -1,7 +1,3 @@
-import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
-import Set from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 import Synchronized from "@std/sync.ms"
 import TaskGroup from "@std/tasks.ms"
 import panic from "@std/faults.ms"
@@ -50,11 +46,7 @@ test "record fields mutate through aliases methods views and captures":
     let copied = box.clone()
     replace(box: box, value: "new")
     copied.child.val = 9
-    if not (
-        box.value == "new"
-        and copied.value == "old"
-        and box.child.val == 9
-    ):
+    if not (box.value == "new" and copied.value == "old" and box.child.val == 9):
         return panic(message: "clones must be shallow")
 
     let log: List[Int] = []
@@ -77,15 +69,7 @@ test "collection updates retain identity and clone separates storage":
         return panic(message: "list updates must mutate")
 
     values.splice(start: 1, delete_count: 1, replacement: values)
-    if not (
-        alias == [
-            8,
-            8,
-            2,
-            0,
-            0
-        ]
-    ):
+    if not (alias == [8, 8, 2, 0, 0]):
         return panic(message: "self replacement failed")
 
     let map = Map[String, Int]().add(key: "a", value: 1)
@@ -120,7 +104,7 @@ test "Synchronized protects record mutation without replacement":
 
         while remaining > 0:
             with guard = counter.lock():
-                guard.get().increment()
+                guard.value.increment()
 
             remaining = remaining - 1
 
@@ -133,7 +117,7 @@ test "Synchronized protects record mutation without replacement":
         match group.join():
             ok(_):
                 with guard = counter.lock():
-                    if not (guard.get().val == 400):
+                    if not (guard.value.val == 400):
                         return panic(message: "synchronized mutation lost updates")
 
             error(_):
@@ -162,19 +146,15 @@ test "list growth and saved clone methods preserve current contents":
     let copy = clone()
     alias.append(2048)
     values.set(index: 0, value: -1)
-    if not (alias.length() == 2049 and alias.last() == some(2048)):
+    if not (alias.length == 2049 and alias.last == some(2048)):
         return panic(message: "growth lost the aliased collection header")
-    if not (
-        copy.length() == 2048
-        and copy.first() == some(0)
-        and copy.last() == some(2047)
-    ):
+    if not (copy.length == 2048 and copy.first == some(0) and copy.last == some(2047)):
         return panic(message: "saved clone method failed to separate current storage")
 
     let empty: List[Int] = []
     let empty_copy = empty.clone()
     empty_copy.append(1)
-    if not (empty.length() == 0 and empty_copy.length() == 1):
+    if not (empty.length == 0 and empty_copy.length == 1):
         return panic(message: "empty clone retained mutable storage")
 
 test "collection clones retain nested object references":
@@ -184,20 +164,17 @@ test "collection clones retain nested object references":
     copied_values.append(Val(2))
     let entries = Map[String, Val]().add(key: "child", value: child)
     let copied_entries = entries.clone()
-    copied_entries.add(
-        key: "other",
-        value: Val(3)
-    )
+    copied_entries.add(key: "other", value: Val(3))
 
     for entry in copied_entries.entries():
         if entry.key == "child":
             entry.value.val = 7
 
     if not (
-        values.length() == 1
-        and copied_values.length() == 2
-        and entries.length() == 1
-        and copied_entries.length() == 2
+        values.length == 1
+        and copied_values.length == 2
+        and entries.length == 1
+        and copied_entries.length == 2
     ):
         return panic(message: "cloned collection storage was still shared")
 
@@ -228,7 +205,7 @@ test "map and set clear affect aliases while copies retain contents":
         return panic(message: "map replacement or merge lost identity")
 
     entries.clear()
-    if not (alias.length() == 0 and copy.length() == 1):
+    if not (alias.length == 0 and copy.length == 1):
         return panic(message: "map clear changed a clone or lost an alias")
 
     let values = Set[Int]().add(1)
@@ -239,7 +216,7 @@ test "map and set clear affect aliases while copies retain contents":
         return panic(message: "set duplicate or missing removal changed membership")
 
     values.clear()
-    if not (set_alias.length() == 0 and set_copy.length() == 1):
+    if not (set_alias.length == 0 and set_copy.length == 1):
         return panic(message: "set clear changed a clone or lost an alias")
 
 type Choice:
@@ -288,7 +265,7 @@ test "mutable recursive graphs compare and clone without recursion failures":
         return panic(message: "cloning a cyclic graph did not separate record fields")
 
     copy.children.append(Node(value: 3, children: []))
-    if not (left.children.length() == 2):
+    if not (left.children.length == 2):
         return panic(message: "cyclic graph clone was not shallow")
 
     right.value = 4

@@ -11,7 +11,7 @@ func TestRecursiveTypesRejectUnsafeConstructionAndHashing(t *testing.T) {
 	for _, tt := range []struct{ source, want string }{
 		{"type Node:\n    next: Optional[Node]\nexport fn main() -> Int:\n    let node = Node(node)\n    return 0\n", "unknown binding node"},
 		{"type Node:\n    next: Optional[Node]\nexport fn main() -> Int:\n    let node = Node(none)\n    node.next = some(node)\n    return node.hash()\n", "unknown or ambiguous member hash"},
-		{"import List from \"@std/collections.ms\"\ntype Grow[T]:\n    next: fn() -> Grow[List[T]]\nexport fn main() -> Int: return 0\n", "recursive generic applications"},
+		{"type Grow[T]:\n    next: fn() -> Grow[List[T]]\nexport fn main() -> Int: return 0\n", "recursive generic applications"},
 	} {
 		dir := t.TempDir()
 		file := filepath.Join(dir, "recursive.ms")

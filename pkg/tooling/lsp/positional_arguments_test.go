@@ -23,7 +23,7 @@ func TestPositionalSignatureHelp(t *testing.T) {
 	}
 }
 
-func TestPositionalIdentifierRenamePreservesBinding(t *testing.T) {
+func TestPositionalIdentifierRenameDoesNotAddLabels(t *testing.T) {
 	source := "fn subtract(amount: Int, deduction: Int) -> Int: amount - deduction\nfn run() -> Int:\n    let number = 10\n    return subtract(number, 3)\n"
 	d := document{fileURI(filepath.Join(t.TempDir(), "positional.ms")), source, 1}
 	docs := map[string]document{d.URI: d}
@@ -32,8 +32,8 @@ func TestPositionalIdentifierRenamePreservesBinding(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	for _, tc := range []struct{ at, name, expanded string }{
-		{"let number", "total", "amount: total"},
-		{"amount: Int", "total", "total: number"},
+		{"let number", "total", "total"},
+		{"amount: Int", "total", "total"},
 	} {
 		offset := strings.Index(source, tc.at)
 		if strings.HasPrefix(tc.at, "let ") {
@@ -44,17 +44,17 @@ func TestPositionalIdentifierRenamePreservesBinding(t *testing.T) {
 			t.Fatal(err)
 		}
 		data, err := json.Marshal(edit)
-		if err != nil || !strings.Contains(string(data), tc.expanded) {
+		if err != nil || !strings.Contains(string(data), `"newText":"`+tc.expanded+`"`) || strings.Contains(string(data), ": total") || strings.Contains(string(data), "total: ") {
 			t.Fatal(string(data), err)
 		}
 	}
 }
 
-func TestConstructorIdentifierRenamePreservesBinding(t *testing.T) {
+func TestConstructorIdentifierRenameDoesNotAddLabels(t *testing.T) {
 	for _, tc := range []struct{ declarations, call, at, expanded string }{
-		{"type Pair:\n    first: Int\n    second: Int\n", "Pair(number, 3).first", "let number", "first: total"},
-		{"type Pair:\n    first: Int\n    second: Int\n", "Pair(number, 3).first", "first: Int", "total: number"},
-		{"type Pair:\n    case Values(first: Int, second: Int)\n", "Pair.Values(number, 3)", "let number", "first: total"},
+		{"type Pair:\n    first: Int\n    second: Int\n", "Pair(number, 3).first", "let number", "total"},
+		{"type Pair:\n    first: Int\n    second: Int\n", "Pair(number, 3).first", "first: Int", "total"},
+		{"type Pair:\n    case Values(first: Int, second: Int)\n", "Pair.Values(number, 3)", "let number", "total"},
 	} {
 		source := tc.declarations + "fn run() -> Unit:\n    let number = 10\n    let pair = " + tc.call + "\n"
 		d := document{fileURI(filepath.Join(t.TempDir(), "constructor.ms")), source, 1}
@@ -72,7 +72,7 @@ func TestConstructorIdentifierRenamePreservesBinding(t *testing.T) {
 			t.Fatal(err)
 		}
 		data, err := json.Marshal(edit)
-		if err != nil || !strings.Contains(string(data), tc.expanded) {
+		if err != nil || !strings.Contains(string(data), `"newText":"`+tc.expanded+`"`) || strings.Contains(string(data), ": total") || strings.Contains(string(data), "total: ") {
 			t.Fatal(string(data), err)
 		}
 	}

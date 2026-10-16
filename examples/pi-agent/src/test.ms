@@ -30,6 +30,8 @@ import {
     set_default_stream_fn,
     run_tool_call_outcome,
     wait_for_idle,
+    request_abort,
+    wait_for_abort,
     active_signal
 } from "./agent.ms"
 import {
@@ -95,7 +97,7 @@ fn two_calls(
     control: Synchronized[Control],
     update: fn(message: Message) -> Unit
 ) -> Result[Message, Error]:
-    if request.context.messages.last().unwrap().role == Role.ToolResult:
+    if request.context.messages.last.unwrap().role == Role.ToolResult:
         return complete(request, control, update)
 
     update(Message(Role.Assistant, [Content.Text("working")]))
@@ -112,13 +114,7 @@ fn two_calls(
 
 fn user(text: String) -> Message: Message(Role.User, [Content.Text(text)])
 
-fn tool() -> Tool: Tool(
-    "echo",
-    "echo",
-    JsonValue.Null,
-    valid,
-    echo
-)
+fn tool() -> Tool: Tool("echo", "echo", JsonValue.Null, valid, echo)
 
 fn check_batch(mode: ExecutionMode) -> Unit:
     let events: List[Event] = []
@@ -130,13 +126,13 @@ fn check_batch(mode: ExecutionMode) -> Unit:
     )
     let result = prompt(agent, [user("go")])
 
-    if result.is_error():
+    if result.is_error:
         panic("batch failed")
 
     let messages = result.unwrap()
 
     if (
-        messages.length() != 5
+        messages.length != 5
         or messages[2].unwrap().tool_call_id != "a"
         or messages[3].unwrap().tool_call_id != "b"
     ):
@@ -144,18 +140,18 @@ fn check_batch(mode: ExecutionMode) -> Unit:
 
     if (
         agent.is_streaming
-        or not agent.pending_tool_calls.is_empty()
-        or agent.streaming_message.is_some()
+        or not agent.pending_tool_calls.is_empty
+        or agent.streaming_message.is_some
     ):
         panic("agent did not settle")
 
-    match events.first().unwrap():
+    match events.first.unwrap():
         AgentStart: unit
         _: panic("missing start")
 
-    match events.last().unwrap():
+    match events.last.unwrap():
         AgentEnd(returned):
-            if returned.length() != messages.length(): panic("end result changed")
+            if returned.length != messages.length: panic("end result changed")
         _: panic("missing end")
 
 test "sequential tool loop":
@@ -171,45 +167,17 @@ test "unknown invalid and failed tools become error results":
     )
     let update = fn(result: ToolResult) -> Unit: unit
 
-    if not run_tool_call(
-        agent,
-        ToolCall("a", "missing", JsonValue.Null),
-        update
-    ).is_error:
+    if not run_tool_call(agent, ToolCall("a", "missing", JsonValue.Null), update).is_error:
         panic("unknown tool executed")
 
-    agent.context.tools = [
-        Tool(
-            "echo",
-            "echo",
-            JsonValue.Null,
-            invalid,
-            echo
-        )
-    ]
+    agent.context.tools = [Tool("echo", "echo", JsonValue.Null, invalid, echo)]
 
-    if not run_tool_call(
-        agent,
-        ToolCall("a", "echo", JsonValue.Null),
-        update
-    ).is_error:
+    if not run_tool_call(agent, ToolCall("a", "echo", JsonValue.Null), update).is_error:
         panic("invalid arguments executed")
 
-    agent.context.tools = [
-        Tool(
-            "echo",
-            "echo",
-            JsonValue.Null,
-            valid,
-            failed
-        )
-    ]
+    agent.context.tools = [Tool("echo", "echo", JsonValue.Null, valid, failed)]
 
-    if not run_tool_call(
-        agent,
-        ToolCall("a", "echo", JsonValue.Null),
-        update
-    ).is_error:
+    if not run_tool_call(agent, ToolCall("a", "echo", JsonValue.Null), update).is_error:
         panic("tool error lost")
 
 test "queues drain steering before follow ups":
@@ -219,56 +187,47 @@ test "queues drain steering before follow ups":
         control: Synchronized[Control],
         update: fn(message: Message) -> Unit
     ) -> Result[Message, Error]:
-        let message = request.context.messages.last().unwrap()
+        let message = request.context.messages.last.unwrap()
 
-        match message.content.first().unwrap():
+        match message.content.first.unwrap():
             Text(text): seen.append(text)
             _: panic("expected text")
 
         return ok(Message(Role.Assistant))
     let agent = create_agent(Config(stream: model, emit: ignore))
-    steer(
-        agent,
-        user("steer one")
-    )
-    steer(
-        agent,
-        user("steer two")
-    )
-    follow_up(
-        agent,
-        user("follow")
-    )
+    steer(agent, user("steer one"))
+    steer(agent, user("steer two"))
+    follow_up(agent, user("follow"))
 
-    if prompt(agent, [user("initial")]).is_error(): panic("queue run failed")
+    if prompt(agent, [user("initial")]).is_error: panic("queue run failed")
 
     if seen != ["steer one", "steer two", "follow"]: panic("queue order changed")
 
 test "continuation and reset validate idle state":
     let agent = create_agent(Config(stream: complete, emit: ignore))
 
-    if continue_agent(agent).is_ok(): panic("empty continuation accepted")
+    if continue_agent(agent).is_ok: panic("empty continuation accepted")
 
     agent.context.messages.append(user("retry"))
     let result = continue_agent(agent)
 
-    if result.is_error() or result.unwrap().length() != 1: panic(
+    if result.is_error or result.unwrap().length != 1: panic(
         "continuation replayed existing history"
     )
 
-    if continue_agent(agent).is_ok(): panic("assistant continuation accepted")
+    if continue_agent(agent).is_ok: panic("assistant continuation accepted")
 
     abort(agent)
 
     if is_aborted(agent.control): panic("idle abort should be a no-op")
 
-    if reset(agent).is_error() or not agent.context.messages.is_empty(): panic(
+    if reset(agent).is_error or not agent.context.messages.is_empty: panic(
         "reset failed"
     )
 
     agent.is_streaming = true
 
-    if prompt(agent, [user("busy")]).is_ok() or reset(agent).is_ok(): panic(
+    if prompt(agent, [user("busy")]).is_ok or reset(agent).is_ok: panic(
         "busy operation accepted"
     )
 
@@ -284,17 +243,17 @@ test "provider errors settle with complete lifecycle":
         events.append(event)
     let agent = create_agent(Config(stream: model, emit: sink))
 
-    if prompt(agent, [user("go")]).is_ok(): panic("provider error lost")
+    if prompt(agent, [user("go")]).is_ok: panic("provider error lost")
 
     if agent.is_streaming or agent.error_message != "provider failed": panic(
         "failed state not settled"
     )
 
-    if agent.context.messages.last().unwrap().stop_reason != StopReason.Failed: panic(
+    if agent.context.messages.last.unwrap().stop_reason != StopReason.Failed: panic(
         "failed assistant missing"
     )
 
-    match events.last().unwrap():
+    match events.last.unwrap():
         AgentEnd(_): return
         _: panic("failed run did not end")
 
@@ -304,8 +263,7 @@ test "cooperative abort stops tool dispatch":
         control: Synchronized[Control],
         update: fn(message: Message) -> Unit
     ) -> Result[Message, Error]:
-        with guard = control.lock():
-            guard.get().aborted = true
+        request_abort(control)
 
         return ok(
             Message(
@@ -319,16 +277,14 @@ test "cooperative abort stops tool dispatch":
         Context(tools: [tool()])
     )
 
-    if prompt(agent, [user("go")]).is_ok(): panic("abort ignored")
+    if prompt(agent, [user("go")]).is_ok: panic("abort ignored")
 
     if (
         not is_aborted(agent.control)
         or agent.context.messages.filter(
             fn(message: Message) -> Bool: (message.role != Role.System)
-        ).length() != 2
-    ): panic(
-        "aborted response dispatched tools"
-    )
+        ).length != 2
+    ): panic("aborted response dispatched tools")
 
 test "length limited tool arguments never execute":
     let executed = Synchronized(0)
@@ -338,7 +294,7 @@ test "length limited tool arguments never execute":
         update: fn(result: ToolResult) -> Unit
     ) -> Result[ToolResult, Error]:
         with guard = executed.lock():
-            guard.set(guard.get() + 1)
+            guard.set(guard.value + 1)
 
         return ok(ToolResult())
     let model = fn(
@@ -346,7 +302,7 @@ test "length limited tool arguments never execute":
         control: Synchronized[Control],
         update: fn(message: Message) -> Unit
     ) -> Result[Message, Error]:
-        if request.context.messages.last().unwrap().role == Role.ToolResult:
+        if request.context.messages.last.unwrap().role == Role.ToolResult:
             return ok(Message(Role.Assistant))
 
         return ok(
@@ -358,71 +314,46 @@ test "length limited tool arguments never execute":
         )
     let agent = create_agent(
         Config(stream: model, emit: ignore),
-        Context(
-            tools: [
-                Tool(
-                    "echo",
-                    "echo",
-                    JsonValue.Null,
-                    valid,
-                    execute
-                )
-            ]
-        )
+        Context(tools: [Tool("echo", "echo", JsonValue.Null, valid, execute)])
     )
 
-    if prompt(agent, [user("go")]).is_error(): panic("length recovery failed")
+    if prompt(agent, [user("go")]).is_error: panic("length recovery failed")
 
     with guard = executed.lock():
-        if guard.get() != 0: panic("truncated arguments executed")
+        if guard.value != 0: panic("truncated arguments executed")
 
     if (
         not agent
         .context
         .messages
-        .filter(
-            fn(message: Message) -> Bool: (message.role == Role.ToolResult)
-        )
-        .first()
+        .filter(fn(message: Message) -> Bool: (message.role == Role.ToolResult))
+        .first
         .unwrap()
         .is_error
-    ): panic(
-        "truncated call error missing"
-    )
+    ): panic("truncated call error missing")
 
 test "finish turn end leaves queued work untouched":
     let finish = fn(turn: Turn) -> Decision: Decision.End
     let agent = create_agent(
-        Config(
-            stream: complete,
-            emit: ignore,
-            finish_turn: some(finish)
-        )
+        Config(stream: complete, emit: ignore, finish_turn: some(finish))
     )
-    follow_up(
-        agent,
-        user("later")
-    )
+    follow_up(agent, user("later"))
 
-    if prompt(agent, [user("now")]).is_error(): panic("finish failed")
+    if prompt(agent, [user("now")]).is_error: panic("finish failed")
 
     with guard = agent.control.lock():
-        if guard.get().follow_up.length() != 1: panic("end drained queued work")
+        if guard.value.follow_up.length != 1: panic("end drained queued work")
 
 test "blocking every tool terminates batch":
     let before = fn(call: ToolCall, context: Context) -> Result[Preflight, Error]:
         return ok(Preflight(blocked: true, terminate: true))
     let agent = create_agent(
-        Config(
-            stream: two_calls,
-            emit: ignore,
-            before_tool_call: some(before)
-        ),
+        Config(stream: two_calls, emit: ignore, before_tool_call: some(before)),
         Context(tools: [tool()])
     )
     let result = prompt(agent, [user("go")])
 
-    if result.is_error() or result.unwrap().length() != 4: panic(
+    if result.is_error or result.unwrap().length != 4: panic(
         "blocked batch requested another turn"
     )
 
@@ -436,13 +367,13 @@ test "parallel tools overlap and end in completion order":
         update: fn(result: ToolResult) -> Unit
     ) -> Result[ToolResult, Error]:
         with guard = started.lock():
-            guard.set(guard.get() + 1)
+            guard.set(guard.value + 1)
 
         while true:
             var ready = false
 
             with guard = started.lock():
-                ready = guard.get() == 2
+                ready = guard.value == 2
 
             if ready: break
 
@@ -453,7 +384,7 @@ test "parallel tools overlap and end in completion order":
                 var ready = false
 
                 with guard = second_ended.lock():
-                    ready = guard.get()
+                    ready = guard.value
 
                 if ready: break
 
@@ -471,30 +402,18 @@ test "parallel tools overlap and end in completion order":
             _: return
     let agent = create_agent(
         Config(stream: two_calls, emit: sink),
-        Context(
-            tools: [
-                Tool(
-                    "echo",
-                    "echo",
-                    JsonValue.Null,
-                    valid,
-                    execute
-                )
-            ]
-        )
+        Context(tools: [Tool("echo", "echo", JsonValue.Null, valid, execute)])
     )
 
-    if prompt(agent, [user("go")]).is_error(): panic("parallel overlap failed")
+    if prompt(agent, [user("go")]).is_error: panic("parallel overlap failed")
 
     if ended != ["b", "a"]: panic("tool end events did not follow completion order")
 
     if (
         agent.context.messages.filter(
             fn(message: Message) -> Bool: (message.role == Role.ToolResult)
-        ).first().unwrap().tool_call_id != "a"
-    ): panic(
-        "completion order leaked into transcript"
-    )
+        ).first.unwrap().tool_call_id != "a"
+    ): panic("completion order leaked into transcript")
 
 test "preflight is ordered and after hook replaces result":
     let order: List[String] = []
@@ -517,7 +436,7 @@ test "preflight is ordered and after hook replaces result":
         Context(tools: [tool()])
     )
 
-    if prompt(agent, [user("go")]).is_error(): panic("hook run failed")
+    if prompt(agent, [user("go")]).is_error: panic("hook run failed")
 
     if order != ["a", "b"]: panic("preflight order changed")
 
@@ -525,15 +444,11 @@ test "preflight is ordered and after hook replaces result":
         not agent
         .context
         .messages
-        .filter(
-            fn(message: Message) -> Bool: (message.role == Role.ToolResult)
-        )
-        .first()
+        .filter(fn(message: Message) -> Bool: (message.role == Role.ToolResult))
+        .first
         .unwrap()
         .is_error
-    ): panic(
-        "after hook override lost"
-    )
+    ): panic("after hook override lost")
 
 test "request transforms do not prune durable history":
     let requests: List[String] = []
@@ -544,7 +459,7 @@ test "request transforms do not prune durable history":
         update: fn(message: Message) -> Unit
     ) -> Result[Message, Error]:
         requests.append(request.model)
-        counts.append(request.context.messages.length())
+        counts.append(request.context.messages.length)
         return ok(Message(Role.Assistant))
     let transform = fn(messages: List[Message]) -> Result[List[Message], Error]: ok(
         messages.take(1)
@@ -552,7 +467,7 @@ test "request transforms do not prune durable history":
     let prepare = fn(request: Request) -> Request:
         return Request(request.context, "changed", "high")
     let finish = fn(turn: Turn) -> Decision:
-        if turn.context.messages.length() == 3: return Decision.Continue
+        if turn.context.messages.length == 3: return Decision.Continue
 
         return Decision.End
     let agent = create_agent(
@@ -566,13 +481,13 @@ test "request transforms do not prune durable history":
         Context(messages: [Message(Role.System)])
     )
 
-    if prompt(agent, [user("go")]).is_error(): panic("request preparation failed")
+    if prompt(agent, [user("go")]).is_error: panic("request preparation failed")
 
     if requests != ["changed", "changed"] or counts != [1, 1]: panic(
         "request transform or continuation lost"
     )
 
-    if agent.context.messages.length() != 4: panic("transform changed durable history")
+    if agent.context.messages.length != 4: panic("transform changed durable history")
 
 test "subscriptions settle before idle and can unsubscribe":
     let agent = create_agent(Config(stream: complete, emit: ignore))
@@ -583,11 +498,11 @@ test "subscriptions settle before idle and can unsubscribe":
             _: return
     let unsubscribe = subscribe(agent, listener)
 
-    if prompt(agent, [user("one")]).is_error(): panic("subscribed run failed")
+    if prompt(agent, [user("one")]).is_error: panic("subscribed run failed")
 
     unsubscribe()
 
-    if prompt(agent, [user("two")]).is_error(): panic("unsubscribed run failed")
+    if prompt(agent, [user("two")]).is_error: panic("unsubscribed run failed")
 
     if endings != [true]: panic("listener settlement or unsubscribe failed")
 
@@ -600,25 +515,13 @@ test "all queue mode injects every message in a single turn":
             follow_up_mode: QueueMode.All
         )
     )
-    steer(
-        agent,
-        user("one")
-    )
-    steer(
-        agent,
-        user("two")
-    )
-    follow_up(
-        agent,
-        user("three")
-    )
-    follow_up(
-        agent,
-        user("four")
-    )
+    steer(agent, user("one"))
+    steer(agent, user("two"))
+    follow_up(agent, user("three"))
+    follow_up(agent, user("four"))
     let result = prompt(agent, [user("start")])
 
-    if result.is_error() or result.unwrap().length() != 7: panic(
+    if result.is_error or result.unwrap().length != 7: panic(
         "all mode did not drain batches"
     )
 
@@ -627,15 +530,13 @@ test "low level entrypoints copy transcript and return only new messages":
     let config = Config(stream: complete, emit: ignore)
     let result = run_agent_loop([user("new")], context, config)
 
-    if result.is_error() or result.unwrap().length() != 2: panic(
-        "low level prompt failed"
-    )
+    if result.is_error or result.unwrap().length != 2: panic("low level prompt failed")
 
-    if context.messages.length() != 1: panic("low level loop mutated caller transcript")
+    if context.messages.length != 1: panic("low level loop mutated caller transcript")
 
     let continued = run_agent_loop_continue(context, config)
 
-    if continued.is_error() or continued.unwrap().length() != 1: panic(
+    if continued.is_error or continued.unwrap().length != 1: panic(
         "low level continuation failed"
     )
 
@@ -650,11 +551,11 @@ test "next turn preparation runs only for scheduled continuation":
         models.append(request.model)
         return ok(Message(Role.Assistant))
     let finish = fn(turn: Turn) -> Decision:
-        if turn.new_messages.length() == 2: return Decision.Continue
+        if turn.new_messages.length == 2: return Decision.Continue
 
         return Decision.End
     let next = fn(turn: Turn) -> Request:
-        prepared.append(turn.new_messages.length())
+        prepared.append(turn.new_messages.length)
         return Request(turn.context, "next", "high")
     let agent = create_agent(
         Config(
@@ -666,7 +567,7 @@ test "next turn preparation runs only for scheduled continuation":
         )
     )
 
-    if prompt(agent, [user("go")]).is_error(): panic("next turn failed")
+    if prompt(agent, [user("go")]).is_error: panic("next turn failed")
 
     if models != ["first", "next"] or prepared != [2]: panic(
         "next preparation scheduling changed"
@@ -683,20 +584,16 @@ test "transform errors produce a failed assistant and turn end":
     let transform = fn(messages: List[Message]) -> Result[List[Message], Error]:
         return error(AgentError.InvalidState("transform failed"))
     let agent = create_agent(
-        Config(
-            stream: complete,
-            emit: sink,
-            transform_context: some(transform)
-        )
+        Config(stream: complete, emit: sink, transform_context: some(transform))
     )
 
-    if prompt(agent, [user("go")]).is_ok(): panic("transform failure lost")
+    if prompt(agent, [user("go")]).is_ok: panic("transform failure lost")
 
-    if agent.context.messages.last().unwrap().stop_reason != StopReason.Failed: panic(
+    if agent.context.messages.last.unwrap().stop_reason != StopReason.Failed: panic(
         "failed assistant missing"
     )
 
-    match events[events.length() - 2].unwrap():
+    match events[events.length - 2].unwrap():
         TurnEnd(_, _): return
         _: panic("transform failure skipped turn end")
 
@@ -725,37 +622,18 @@ test "settled providers and tools ignore late partial updates":
             _: return
     let agent = create_agent(
         Config(stream: model, emit: sink),
-        Context(
-            tools: [
-                Tool(
-                    "echo",
-                    "echo",
-                    JsonValue.Null,
-                    valid,
-                    execute
-                )
-            ]
-        )
+        Context(tools: [Tool("echo", "echo", JsonValue.Null, valid, execute)])
     )
 
-    if prompt(agent, [user("go")]).is_error(): panic("provider failed")
+    if prompt(agent, [user("go")]).is_error: panic("provider failed")
 
-    saved_model.first().unwrap()(Message(Role.Assistant, [Content.Text("late")]))
+    saved_model.first.unwrap()(Message(Role.Assistant, [Content.Text("late")]))
     let update = fn(result: ToolResult) -> Unit:
-        partials.append(
-            Event.ToolUpdate(
-                ToolCall("a", "echo", JsonValue.Null),
-                result
-            )
-        )
-    let _result = run_tool_call(
-        agent,
-        ToolCall("a", "echo", JsonValue.Null),
-        update
-    )
-    saved_tool.first().unwrap()(ToolResult([Content.Text("late")]))
+        partials.append(Event.ToolUpdate(ToolCall("a", "echo", JsonValue.Null), result))
+    let _result = run_tool_call(agent, ToolCall("a", "echo", JsonValue.Null), update)
+    saved_tool.first.unwrap()(ToolResult([Content.Text("late")]))
 
-    if not partials.is_empty() or agent.streaming_message.is_some(): panic(
+    if not partials.is_empty or agent.streaming_message.is_some: panic(
         "late update was accepted"
     )
 
@@ -784,29 +662,17 @@ test "argument normalization preserves raw call and transcript":
             ToolStart(call): calls.append(call)
             _: return
     let agent = create_agent(
-        Config(
-            stream: two_calls,
-            emit: sink,
-            before_tool_call: some(before)
-        ),
+        Config(stream: two_calls, emit: sink, before_tool_call: some(before)),
         Context(
-            tools: [
-                Tool(
-                    "echo",
-                    "echo",
-                    JsonValue.Null,
-                    validate,
-                    execute
-                )
-            ]
+            tools: [Tool("echo", "echo", JsonValue.Null, validate, execute)]
         )
     )
 
-    if prompt(agent, [user("go")]).is_error(): panic("normalized run failed")
+    if prompt(agent, [user("go")]).is_error: panic("normalized run failed")
 
-    if not calls.every(
-        fn(call: ToolCall) -> Bool: call.arguments == JsonValue.Null
-    ): panic("normalization changed raw events")
+    if not calls.every(fn(call: ToolCall) -> Bool: call.arguments == JsonValue.Null): panic(
+        "normalization changed raw events"
+    )
 
     let raw = ToolCall("c", "echo", JsonValue.Null)
     let update = fn(result: ToolResult) -> Unit: unit
@@ -823,39 +689,28 @@ test "assistant continuation consumes exactly one steering batch":
         Config(
             stream: complete,
             emit: ignore,
-            finish_turn: some(
-                fn(turn: Turn) -> Decision: Decision.End
-            )
+            finish_turn: some(fn(turn: Turn) -> Decision: Decision.End)
         )
     )
 
-    if prompt(agent, [user("first")]).is_error(): panic("initial prompt failed")
+    if prompt(agent, [user("first")]).is_error: panic("initial prompt failed")
 
-    steer(
-        agent,
-        user("one")
-    )
-    steer(
-        agent,
-        user("two")
-    )
+    steer(agent, user("one"))
+    steer(agent, user("two"))
     let resumed = continue_agent(agent)
 
-    if resumed.is_error() or resumed.unwrap().length() != 2: panic(
+    if resumed.is_error or resumed.unwrap().length != 2: panic(
         "queued continuation failed or drained twice"
     )
 
-    if peek_queued_messages(agent).length() != 1: panic(
+    if peek_queued_messages(agent).length != 1: panic(
         "one-at-a-time steering drained twice"
     )
 
     clear_steering_queue(agent)
-    follow_up(
-        agent,
-        user("follow")
-    )
+    follow_up(agent, user("follow"))
 
-    if continue_agent(agent).is_error(): panic("follow-up continuation failed")
+    if continue_agent(agent).is_error: panic("follow-up continuation failed")
 
     if has_queued_messages(agent): panic("follow-up was not consumed")
 
@@ -863,22 +718,13 @@ test "queue inspection copies selected batch and clear methods are independent":
     let agent = create_agent(
         Config(stream: complete, emit: ignore, steering_mode: QueueMode.All)
     )
-    steer(
-        agent,
-        user("one")
-    )
-    steer(
-        agent,
-        user("two")
-    )
-    follow_up(
-        agent,
-        user("later")
-    )
+    steer(agent, user("one"))
+    steer(agent, user("two"))
+    follow_up(agent, user("later"))
     let preview = peek_queued_messages(agent)
     preview.pop()
 
-    if peek_queued_messages(agent).length() != 2: panic(
+    if peek_queued_messages(agent).length != 2: panic(
         "peek returned live queue storage"
     )
 
@@ -909,14 +755,10 @@ test "failed and aborted responses call finish but cannot continue":
             finished.append(turn.message.stop_reason)
             return Decision.Continue
         let agent = create_agent(
-            Config(
-                stream: model,
-                emit: ignore,
-                finish_turn: some(finish)
-            )
+            Config(stream: model, emit: ignore, finish_turn: some(finish))
         )
 
-        if prompt(agent, [user("go")]).is_ok(): panic("failure ignored")
+        if prompt(agent, [user("go")]).is_ok: panic("failure ignored")
 
         if finished != [reason]: panic("finish hook skipped or failure continued")
 
@@ -927,8 +769,8 @@ test "terminated tool batches still process follow ups":
         control: Synchronized[Control],
         update: fn(message: Message) -> Unit
     ) -> Result[Message, Error]:
-        requests.append(request.context.messages.length())
-        if requests.length() == 1:
+        requests.append(request.context.messages.length)
+        if requests.length == 1:
             return ok(
                 Message(
                     Role.Assistant,
@@ -942,21 +784,14 @@ test "terminated tool batches still process follow ups":
         Preflight(blocked: true, terminate: true)
     )
     let agent = create_agent(
-        Config(
-            stream: model,
-            emit: ignore,
-            before_tool_call: some(before)
-        ),
+        Config(stream: model, emit: ignore, before_tool_call: some(before)),
         Context(tools: [tool()])
     )
-    follow_up(
-        agent,
-        user("follow")
-    )
+    follow_up(agent, user("follow"))
 
-    if prompt(agent, [user("go")]).is_error(): panic("terminated run failed")
+    if prompt(agent, [user("go")]).is_error: panic("terminated run failed")
 
-    if requests.length() != 2 or has_queued_messages(agent): panic(
+    if requests.length != 2 or has_queued_messages(agent): panic(
         "termination discarded queued input"
     )
 
@@ -967,25 +802,18 @@ test "finish continuation uses follow up without an extra empty request":
         control: Synchronized[Control],
         update: fn(message: Message) -> Unit
     ) -> Result[Message, Error]:
-        requests.append(request.context.messages.length())
+        requests.append(request.context.messages.length)
         return ok(Message(Role.Assistant))
     let finish = fn(turn: Turn) -> Decision:
-        if turn.new_messages.length() == 2: return Decision.Continue
+        if turn.new_messages.length == 2: return Decision.Continue
 
         return Decision.End
     let agent = create_agent(
-        Config(
-            stream: model,
-            emit: ignore,
-            finish_turn: some(finish)
-        )
+        Config(stream: model, emit: ignore, finish_turn: some(finish))
     )
-    follow_up(
-        agent,
-        user("follow")
-    )
+    follow_up(agent, user("follow"))
 
-    if prompt(agent, [user("go")]).is_error(): panic("explicit continuation failed")
+    if prompt(agent, [user("go")]).is_error: panic("explicit continuation failed")
 
     if requests != [1, 3]: panic("continuation did not coalesce with follow-up request")
 
@@ -996,7 +824,7 @@ test "next turn preparation appends messages with normal lifecycle events":
             MessageEnd(message): ended.append(message.role)
             _: return
     let finish = fn(turn: Turn) -> Decision:
-        if turn.new_messages.length() == 2: return Decision.Continue
+        if turn.new_messages.length == 2: return Decision.Continue
 
         return Decision.End
     let next = fn(turn: Turn) -> Request:
@@ -1011,7 +839,7 @@ test "next turn preparation appends messages with normal lifecycle events":
     )
     let result = prompt(agent, [user("start")])
 
-    if result.is_error() or result.unwrap().length() != 4: panic(
+    if result.is_error or result.unwrap().length != 4: panic(
         "prepared message not returned"
     )
 
@@ -1025,43 +853,43 @@ test "tool declarations replay additions removals and changed schemas":
         Context(tools: [tool()])
     )
 
-    if current_tools(agent.context.messages).length() != 1: panic(
+    if current_tools(agent.context.messages).length != 1: panic(
         "initial tools not declared"
     )
 
-    if prompt(agent, [user("one")]).is_error(): panic("initial declaration failed")
+    if prompt(agent, [user("one")]).is_error: panic("initial declaration failed")
 
     let changed = tool()
     changed.description = "changed"
     set_tools(agent, [changed])
     let second = prompt(agent, [user("two")])
 
-    if second.is_error(): panic("changed declaration failed")
+    if second.is_error: panic("changed declaration failed")
 
-    let delta = second.unwrap().first().unwrap()
+    let delta = second.unwrap().first.unwrap()
 
     if (
         delta.role != Role.System
         or delta.tools_removed != ["echo"]
-        or delta.tools_added.length() != 1
+        or delta.tools_added.length != 1
     ): panic("redefinition did not remove and add")
 
     set_tools(agent, [])
 
-    if prompt(agent, [user("three")]).is_error(): panic("removal failed")
+    if prompt(agent, [user("three")]).is_error: panic("removal failed")
 
-    if not current_tools(agent.context.messages).is_empty(): panic(
+    if not current_tools(agent.context.messages).is_empty: panic(
         "tool removal did not replay"
     )
 
-    if reset(agent).is_error(): panic("reset failed")
+    if reset(agent).is_error: panic("reset failed")
 
     if (
-        agent.context.messages.length() != 1
-        or not current_tools(agent.context.messages).is_empty()
+        agent.context.messages.length != 1
+        or not current_tools(agent.context.messages).is_empty
     ): panic("reset lost baseline or restored removed tool")
 
-    if continue_agent(agent).is_ok(): panic("system-only continuation accepted")
+    if continue_agent(agent).is_ok: panic("system-only continuation accepted")
 
 test "pending system tool intent is replaced by executable loadout":
     let requested = Message(
@@ -1075,15 +903,15 @@ test "pending system tool intent is replaced by executable loadout":
     )
     let result = prompt(agent, [requested, user("go")])
 
-    if result.is_error(): panic("system prompt failed")
+    if result.is_error: panic("system prompt failed")
 
     let tools = current_tools(agent.context.messages)
 
-    if tools.length() != 1 or tools.first().unwrap().name != "echo": panic(
+    if tools.length != 1 or tools.first.unwrap().name != "echo": panic(
         "pending intent overrode runtime tools"
     )
 
-    if requested.tools_added.first().unwrap().name != "unavailable": panic(
+    if requested.tools_added.first.unwrap().name != "unavailable": panic(
         "caller system message was mutated"
     )
 
@@ -1103,18 +931,18 @@ test "reset retains replayed prompt sections and clears conversation":
         sections: {"a": some("new"), "b": none}
     )
 
-    if prompt(agent, [update, user("go")]).is_error(): panic("system update failed")
+    if prompt(agent, [update, user("go")]).is_error: panic("system update failed")
 
     if get_system_prompt(agent) != "base\n\nlater\n\nnew": panic("system replay failed")
 
-    if reset(agent).is_error(): panic("reset failed")
+    if reset(agent).is_error: panic("reset failed")
 
     if (
-        agent.context.messages.length() != 1
+        agent.context.messages.length != 1
         or get_system_prompt(agent) != "base\n\nlater\n\nnew"
     ): panic("reset discarded system baseline")
 
-    if collapse_system_messages([baseline, user("go"), update]).length() != 2: panic(
+    if collapse_system_messages([baseline, user("go"), update]).length != 2: panic(
         "system collapse failed"
     )
 
@@ -1123,47 +951,38 @@ test "text image prompts and setters retain independent outer lists":
     let images = [Content.Image("data", "image/png")]
     let result = prompt_text(agent, "hello", images)
 
-    if result.is_error() or result.unwrap().first().unwrap().content.length() != 2: panic(
+    if result.is_error or result.unwrap().first.unwrap().content.length != 2: panic(
         "text image prompt failed"
     )
 
     images.pop()
 
-    if agent.context.messages.first().unwrap().content.length() != 2: panic(
+    if agent.context.messages.first.unwrap().content.length != 2: panic(
         "prompt retained caller image list"
     )
 
     let messages = [user("replacement")]
 
-    if replace_messages(agent, messages).is_error(): panic("replace failed")
+    if replace_messages(agent, messages).is_error: panic("replace failed")
 
     messages.pop()
 
-    if agent.context.messages.length() != 1: panic("replace retained caller outer list")
+    if agent.context.messages.length != 1: panic("replace retained caller outer list")
 
-    if append_message(
-        agent,
-        user("append")
-    ).is_error(): panic("append failed")
+    if append_message(agent, user("append")).is_error: panic("append failed")
 
-    if prompt_message(
-        agent,
-        user("single")
-    ).is_error(): panic("single prompt failed")
+    if prompt_message(agent, user("single")).is_error: panic("single prompt failed")
 
 test "explicit host runtime supplies default stream and can be cleared":
     let runtime = StreamRuntime()
-    set_default_stream_fn(
-        runtime,
-        some(complete)
-    )
+    set_default_stream_fn(runtime, some(complete))
     let agent = create_agent(Config(emit: ignore, runtime: runtime))
 
-    if prompt(agent, [user("go")]).is_error(): panic("default stream was not used")
+    if prompt(agent, [user("go")]).is_error: panic("default stream was not used")
 
     set_default_stream_fn(runtime, none)
 
-    if prompt(agent, [user("again")]).is_ok(): panic("missing default stream accepted")
+    if prompt(agent, [user("again")]).is_ok: panic("missing default stream accepted")
 
     if agent.is_streaming: panic("missing stream did not settle")
 
@@ -1193,21 +1012,8 @@ test "partial tool patches preserve omitted fields and drop stale structure":
             )
         )
     let agent = create_agent(
-        Config(
-            stream: complete,
-            emit: ignore,
-            after_tool_patch: some(patch)
-        ),
-        Context(
-            tools: [
-                Tool(
-                    "echo",
-                    "",
-                    JsonValue.Null,
-                    execute: execute
-                )
-            ]
-        )
+        Config(stream: complete, emit: ignore, after_tool_patch: some(patch)),
+        Context(tools: [Tool("echo", "", JsonValue.Null, execute: execute)])
     )
     let outcome = run_tool_call_outcome(
         agent,
@@ -1216,12 +1022,12 @@ test "partial tool patches preserve omitted fields and drop stale structure":
     )
 
     if (
-        outcome.result.structured_content.is_some()
+        outcome.result.structured_content.is_some
         or outcome.result.details != JsonValue.StringValue("details")
-        or outcome.result.usage.is_none()
+        or outcome.result.usage.is_none
     ): panic("partial patch merge failed")
 
-    if outcome.result.duration_ms.is_none(): panic("execution timing missing")
+    if outcome.result.duration_ms.is_none: panic("execution timing missing")
 
 test "dynamic API keys resolve for every request and metadata is preserved":
     let keys: List[String] = []
@@ -1264,12 +1070,11 @@ test "dynamic API keys resolve for every request and metadata is preserved":
         )
     )
 
-    if (
-        prompt(agent, [user("one")]).is_error()
-        or prompt(agent, [user("two")]).is_error()
-    ): panic("key run failed")
+    if (prompt(agent, [user("one")]).is_error or prompt(agent, [user("two")]).is_error): panic(
+        "key run failed"
+    )
 
-    let message = agent.context.messages.last().unwrap()
+    let message = agent.context.messages.last.unwrap()
 
     if (
         keys != ["test", "test"]
@@ -1319,16 +1124,7 @@ test "automatic schema validation coerces arguments and removes optional nulls":
         return ok(ToolResult())
     let agent = create_agent(
         Config(stream: complete, emit: ignore),
-        Context(
-            tools: [
-                Tool(
-                    "echo",
-                    "",
-                    schema,
-                    execute: execute
-                )
-            ]
-        )
+        Context(tools: [Tool("echo", "", schema, execute: execute)])
     )
     let raw = JsonValue.ObjectValue(
         {"count": JsonValue.StringValue("2"), "optional": JsonValue.Null}
@@ -1341,17 +1137,13 @@ test "automatic schema validation coerces arguments and removes optional nulls":
 
     if (
         result.is_error
-        or field(
-            seen.first().unwrap(),
-            "count"
-        ) != some(JsonValue.NumberValue("2"))
-        or field(
-            (seen.first().unwrap()),
-            "optional"
-        ).is_some()
+        or field(seen.first.unwrap(), "count") != some(
+            JsonValue.NumberValue("2")
+        )
+        or field((seen.first.unwrap()), "optional").is_some
     ): panic("schema normalization failed")
 
-    if field(raw, "optional").is_none(): panic(
+    if field(raw, "optional").is_none: panic(
         "schema normalization mutated raw arguments"
     )
 
@@ -1365,7 +1157,7 @@ test "automatic schema validation coerces arguments and removes optional nulls":
         fn(result: ToolResult) -> Unit: unit
     )
 
-    if not invalid.is_error or seen.length() != 1: panic(
+    if not invalid.is_error or seen.length != 1: panic(
         "invalid schema arguments executed"
     )
 
@@ -1389,22 +1181,20 @@ test "schema unions local references array and pattern constraints":
         }
     )
 
-    if validate_arguments(
-        schema,
-        JsonValue.ArrayValue([JsonValue.StringValue("ab")])
-    ).is_error(): panic("valid referenced array rejected")
+    if validate_arguments(schema, JsonValue.ArrayValue([JsonValue.StringValue("ab")])).is_error: panic(
+        "valid referenced array rejected"
+    )
 
-    if validate_arguments(
-        schema,
-        JsonValue.ArrayValue([JsonValue.StringValue("bb")])
-    ).is_ok(): panic("pattern ignored")
+    if validate_arguments(schema, JsonValue.ArrayValue([JsonValue.StringValue("bb")])).is_ok: panic(
+        "pattern ignored"
+    )
 
     if validate_arguments(
         schema,
         JsonValue.ArrayValue(
             [JsonValue.StringValue("ab"), JsonValue.StringValue("ab")]
         )
-    ).is_ok(): panic("uniqueness ignored")
+    ).is_ok: panic("uniqueness ignored")
 
     let union = JsonValue.ObjectValue(
         {
@@ -1439,20 +1229,18 @@ test "schema unions local references array and pattern constraints":
     if validate_arguments(
         JsonValue.ObjectValue({"unknownAssertion": JsonValue.BoolValue(true)}),
         JsonValue.Null
-    ).is_ok(): panic("unsupported schema silently accepted")
+    ).is_ok: panic("unsupported schema silently accepted")
 
 test "output schema checks are available explicitly without changing Pi dispatch":
     let schema = JsonValue.ObjectValue({"type": JsonValue.StringValue("integer")})
 
-    if validate_output(
-        schema,
-        JsonValue.StringValue("2")
-    ).is_ok(): panic("output checker coerced invalid structure")
+    if validate_output(schema, JsonValue.StringValue("2")).is_ok: panic(
+        "output checker coerced invalid structure"
+    )
 
-    if validate_output(
-        schema,
-        JsonValue.NumberValue("2")
-    ).is_error(): panic("output checker rejected valid structure")
+    if validate_output(schema, JsonValue.NumberValue("2")).is_error: panic(
+        "output checker rejected valid structure"
+    )
 
 test "idle waiting includes end listener settlement":
     let reached = Synchronized(false)
@@ -1467,7 +1255,7 @@ test "idle waiting includes end listener settlement":
                 while true:
                     var ready = false
 
-                    with guard = release.lock(): ready = guard.get()
+                    with guard = release.lock(): ready = guard.value
 
                     if ready: return
 
@@ -1486,27 +1274,25 @@ test "idle waiting includes end listener settlement":
         while true:
             var ready = false
 
-            with guard = reached.lock(): ready = guard.get()
+            with guard = reached.lock(): ready = guard.value
 
             if ready: break
 
             yield_now()
 
-        if active_signal(agent).is_none(): panic(
+        if active_signal(agent).is_none: panic(
             "signal disappeared before listener settled"
         )
 
-        let waiter = tasks.start(
-            fn() -> Unit: wait_for_idle(agent)
-        )
+        let waiter = tasks.start(fn() -> Unit: wait_for_idle(agent))
 
         with guard = release.lock(): guard.set(true)
 
-        if run.join().unwrap().is_error(): panic("run failed")
+        if run.join().unwrap().is_error: panic("run failed")
 
         let _waited = waiter.join().unwrap()
 
-        if active_signal(agent).is_some(): panic("idle wait ended before settlement")
+        if active_signal(agent).is_some: panic("idle wait ended before settlement")
 
 test "programming faults release run state through scoped cleanup":
     let model = fn(
@@ -1524,9 +1310,9 @@ test "programming faults release run state through scoped cleanup":
             )
         )
 
-        if run.join().is_ok(): panic("programming fault was swallowed")
+        if run.join().is_ok: panic("programming fault was swallowed")
 
-    if agent.is_streaming or active_signal(agent).is_some(): panic(
+    if agent.is_streaming or active_signal(agent).is_some: panic(
         "fault left agent busy"
     )
 
@@ -1542,15 +1328,13 @@ fn proxy_event(kind: String, position: Int = 0, delta: String = "") -> JsonValue
 test "proxy reconstructs thinking text tools signatures and terminal usage":
     let state = ProxyState()
 
-    if process_proxy_event(
-        state,
-        proxy_event("thinking_start")
-    ).is_error(): panic("thinking start failed")
+    if process_proxy_event(state, proxy_event("thinking_start")).is_error: panic(
+        "thinking start failed"
+    )
 
-    if process_proxy_event(
-        state,
-        proxy_event("thinking_delta", delta: "reason")
-    ).is_error(): panic("thinking delta failed")
+    if process_proxy_event(state, proxy_event("thinking_delta", delta: "reason")).is_error: panic(
+        "thinking delta failed"
+    )
 
     let thinking_end = JsonValue.ObjectValue(
         {
@@ -1560,7 +1344,7 @@ test "proxy reconstructs thinking text tools signatures and terminal usage":
         }
     )
 
-    if process_proxy_event(state, thinking_end).is_error(): panic("thinking end failed")
+    if process_proxy_event(state, thinking_end).is_error: panic("thinking end failed")
 
     let start = JsonValue.ObjectValue(
         {
@@ -1571,12 +1355,11 @@ test "proxy reconstructs thinking text tools signatures and terminal usage":
         }
     )
 
-    if process_proxy_event(state, start).is_error(): panic("tool start failed")
+    if process_proxy_event(state, start).is_error: panic("tool start failed")
 
-    if process_proxy_event(
-        state,
-        proxy_event("toolcall_delta", 1, "\{\"count\":1")
-    ).is_error(): panic("partial JSON failed")
+    if process_proxy_event(state, proxy_event("toolcall_delta", 1, "\{\"count\":1")).is_error: panic(
+        "partial JSON failed"
+    )
 
     let partial = state.message.content[1].unwrap()
 
@@ -1603,7 +1386,7 @@ test "proxy reconstructs thinking text tools signatures and terminal usage":
         }
     )
 
-    if process_proxy_event(state, final).is_error(): panic("tool end failed")
+    if process_proxy_event(state, final).is_error: panic("tool end failed")
 
     let done = JsonValue.ObjectValue(
         {
@@ -1615,7 +1398,7 @@ test "proxy reconstructs thinking text tools signatures and terminal usage":
         }
     )
 
-    if process_proxy_event(state, done).is_error(): panic("terminal event failed")
+    if process_proxy_event(state, done).is_error: panic("terminal event failed")
 
     if (
         not state.terminal
@@ -1625,31 +1408,27 @@ test "proxy reconstructs thinking text tools signatures and terminal usage":
 
     if (
         state.message.content_signatures.get(0) != some("signature")
-        or not state.fragments.is_empty()
+        or not state.fragments.is_empty
     ): panic("content metadata not finalized")
 
 test "proxy rejects invalid ordering mismatched deltas and unknown reasons":
     let state = ProxyState()
 
-    if process_proxy_event(
-        state,
-        proxy_event("text_delta", delta: "bad")
-    ).is_ok(): panic("delta before start accepted")
+    if process_proxy_event(state, proxy_event("text_delta", delta: "bad")).is_ok: panic(
+        "delta before start accepted"
+    )
 
-    if process_proxy_event(
-        state,
-        proxy_event("text_start", 2)
-    ).is_ok(): panic("skipped index accepted")
+    if process_proxy_event(state, proxy_event("text_start", 2)).is_ok: panic(
+        "skipped index accepted"
+    )
 
-    if process_proxy_event(
-        state,
-        proxy_event("text_start")
-    ).is_error(): panic("valid start rejected")
+    if process_proxy_event(state, proxy_event("text_start")).is_error: panic(
+        "valid start rejected"
+    )
 
-    if process_proxy_event(
-        state,
-        proxy_event("thinking_delta", delta: "bad")
-    ).is_ok(): panic("mismatched delta accepted")
+    if process_proxy_event(state, proxy_event("thinking_delta", delta: "bad")).is_ok: panic(
+        "mismatched delta accepted"
+    )
 
     let error_event = JsonValue.ObjectValue(
         {
@@ -1660,14 +1439,13 @@ test "proxy rejects invalid ordering mismatched deltas and unknown reasons":
     )
 
     if (
-        process_proxy_event(state, error_event).is_error()
+        process_proxy_event(state, error_event).is_error
         or state.message.stop_reason != StopReason.Aborted
     ): panic("abort event failed")
 
-    if process_proxy_event(
-        state,
-        proxy_event("start")
-    ).is_ok(): panic("event after termination accepted")
+    if process_proxy_event(state, proxy_event("start")).is_ok: panic(
+        "event after termination accepted"
+    )
 
 test "proxy payload contains transcript declarations and whitelisted options":
     let declared = ToolDeclaration(
@@ -1699,7 +1477,7 @@ test "proxy payload contains transcript declarations and whitelisted options":
     let payload = proxy_payload(request)
     let options = field(payload, "options").unwrap()
 
-    if field(options, "apiKey").is_some() or field(options, "onPayload").is_some(): panic(
+    if field(options, "apiKey").is_some or field(options, "onPayload").is_some: panic(
         "proxy serialized local-only options"
     )
 
@@ -1710,8 +1488,8 @@ test "proxy payload contains transcript declarations and whitelisted options":
     let wire = message_json(message)
 
     if (
-        field(wire, "toolsAdded").is_none()
-        or field(wire, "toolsRemoved").is_none()
+        field(wire, "toolsAdded").is_none
+        or field(wire, "toolsRemoved").is_none
         or field(wire, "content") != some(JsonValue.StringValue("base"))
     ): panic("proxy transcript protocol missing")
 
@@ -1739,15 +1517,13 @@ test "schema conjunction negation numeric enums and tuple tails":
         }
     )
 
-    if validate_arguments(
-        schema,
-        JsonValue.NumberValue("1")
-    ).is_error(): panic("numeric JSON identity or conjunction failed")
+    if validate_arguments(schema, JsonValue.NumberValue("1")).is_error: panic(
+        "numeric JSON identity or conjunction failed"
+    )
 
-    if validate_arguments(
-        schema,
-        JsonValue.NumberValue("3")
-    ).is_ok(): panic("negation ignored")
+    if validate_arguments(schema, JsonValue.NumberValue("3")).is_ok: panic(
+        "negation ignored"
+    )
 
     let tuple = JsonValue.ObjectValue(
         {
@@ -1757,17 +1533,16 @@ test "schema conjunction negation numeric enums and tuple tails":
         }
     )
 
-    if validate_arguments(
-        tuple,
-        JsonValue.ArrayValue([JsonValue.NumberValue("1")])
-    ).is_error(): panic("tuple first item failed")
+    if validate_arguments(tuple, JsonValue.ArrayValue([JsonValue.NumberValue("1")])).is_error: panic(
+        "tuple first item failed"
+    )
 
     if validate_arguments(
         tuple,
         JsonValue.ArrayValue(
             [JsonValue.NumberValue("1"), JsonValue.NumberValue("2")]
         )
-    ).is_ok(): panic("tuple tail schema ignored")
+    ).is_ok: panic("tuple tail schema ignored")
 
 test "schema conditionals property patterns and dependencies":
     let schema = JsonValue.ObjectValue(
@@ -1798,7 +1573,7 @@ test "schema conditionals property patterns and dependencies":
     if validate_arguments(
         schema,
         JsonValue.ObjectValue({"x": JsonValue.NumberValue("1")})
-    ).is_ok(): panic("dependency ignored")
+    ).is_ok: panic("dependency ignored")
 
     if validate_arguments(
         schema,
@@ -1808,7 +1583,7 @@ test "schema conditionals property patterns and dependencies":
                 "xy": JsonValue.NumberValue("2")
             }
         )
-    ).is_error(): panic("pattern property coercion failed")
+    ).is_error: panic("pattern property coercion failed")
 
     let conditional = JsonValue.ObjectValue(
         {
@@ -1824,15 +1599,13 @@ test "schema conditionals property patterns and dependencies":
         }
     )
 
-    if validate_arguments(
-        conditional,
-        JsonValue.NumberValue("1")
-    ).is_ok(): panic("conditional numeric branch ignored")
+    if validate_arguments(conditional, JsonValue.NumberValue("1")).is_ok: panic(
+        "conditional numeric branch ignored"
+    )
 
-    if validate_arguments(
-        conditional,
-        JsonValue.StringValue("other")
-    ).is_error(): panic("conditional else failed")
+    if validate_arguments(conditional, JsonValue.StringValue("other")).is_error: panic(
+        "conditional else failed"
+    )
 
 test "sequential abort stops admission of remaining calls":
     let executed: List[String] = []
@@ -1843,7 +1616,7 @@ test "sequential abort stops admission of remaining calls":
     ) -> Result[ToolResult, Error]:
         executed.append(call.id)
 
-        with guard = control.lock(): guard.get().aborted = true
+        request_abort(control)
 
         return ok(ToolResult())
     let agent = create_agent(
@@ -1852,25 +1625,16 @@ test "sequential abort stops admission of remaining calls":
             emit: ignore,
             tool_execution: ExecutionMode.Sequential
         ),
-        Context(
-            tools: [
-                Tool(
-                    "echo",
-                    "",
-                    JsonValue.Null,
-                    execute: execute
-                )
-            ]
-        )
+        Context(tools: [Tool("echo", "", JsonValue.Null, execute: execute)])
     )
 
-    if prompt(agent, [user("go")]).is_ok(): panic("abort did not fail run")
+    if prompt(agent, [user("go")]).is_ok: panic("abort did not fail run")
 
     if (
         executed != ["a"]
         or agent.context.messages.filter(
             fn(message: Message) -> Bool: (message.role == Role.ToolResult)
-        ).length() != 1
+        ).length != 1
     ): panic("sequential abort admitted remaining calls")
 
 test "provider raw events arrive before message updates and stop after settlement":
@@ -1892,13 +1656,13 @@ test "provider raw events arrive before message updates and stop after settlemen
             _: return
     let agent = create_agent(Config(stream: model, emit: sink))
 
-    if prompt(agent, [user("go")]).is_error(): panic("provider event run failed")
+    if prompt(agent, [user("go")]).is_error: panic("provider event run failed")
 
-    callbacks.first().unwrap()(proxy_event("start"))
+    callbacks.first.unwrap()(proxy_event("start"))
 
-    if events.length() != 2: panic("late provider event accepted")
+    if events.length != 2: panic("late provider event accepted")
 
-    match events.first().unwrap():
+    match events.first.unwrap():
         ProviderUpdate(_): return
         _: panic("provider event was reordered")
 
@@ -1909,29 +1673,24 @@ test "steering queued by initial turn listeners reaches the first request":
         control: Synchronized[Control],
         update: fn(message: Message) -> Unit
     ) -> Result[Message, Error]:
-        seen.append(request.context.messages.length())
+        seen.append(request.context.messages.length)
         return ok(Message(Role.Assistant))
     let agent = create_agent(
         Config(
             stream: model,
             emit: ignore,
-            finish_turn: some(
-                fn(turn: Turn) -> Decision: Decision.End
-            )
+            finish_turn: some(fn(turn: Turn) -> Decision: Decision.End)
         )
     )
     let _unsubscribe = subscribe(
         agent,
         fn(event: Event) -> Unit:
             match event:
-                TurnStart: steer(
-                    agent,
-                    user("from listener")
-                )
+                TurnStart: steer(agent, user("from listener"))
                 _: return
     )
 
-    if prompt(agent, [user("go")]).is_error(): panic("initial steering run failed")
+    if prompt(agent, [user("go")]).is_error: panic("initial steering run failed")
 
     if seen != [2] or has_queued_messages(agent): panic(
         "initial listener steering was delayed"
@@ -1940,12 +1699,12 @@ test "steering queued by initial turn listeners reaches the first request":
 test "all hooks in a sequential batch see the same assistant context":
     let contexts: List[Int] = []
     let before = fn(call: ToolCall, context: Context) -> Result[Preflight, Error]:
-        contexts.append(context.messages.length())
+        contexts.append(context.messages.length)
 
         if (
-            call.assistant_message.is_none()
+            call.assistant_message.is_none
             or call.original_arguments != some(JsonValue.Null)
-            or call.control.is_none()
+            or call.control.is_none
         ): panic("hook call context is incomplete")
 
         return ok(Preflight())
@@ -1959,9 +1718,9 @@ test "all hooks in a sequential batch see the same assistant context":
         Context(tools: [tool()])
     )
 
-    if prompt(agent, [user("go")]).is_error(): panic("sequential context run failed")
+    if prompt(agent, [user("go")]).is_error: panic("sequential context run failed")
 
-    if contexts.length() != 2 or contexts[0].unwrap() != contexts[1].unwrap(): panic(
+    if contexts.length != 2 or contexts[0].unwrap() != contexts[1].unwrap(): panic(
         "hook context included partial tool batch"
     )
 
@@ -1973,15 +1732,13 @@ test "schema format validation composes builtins with native predicates":
         }
     )
 
-    if validate_arguments(
-        date,
-        JsonValue.StringValue("2026-02-30")
-    ).is_ok(): panic("invalid calendar date accepted")
+    if validate_arguments(date, JsonValue.StringValue("2026-02-30")).is_ok: panic(
+        "invalid calendar date accepted"
+    )
 
-    if validate_arguments(
-        date,
-        JsonValue.StringValue("2026-10-14")
-    ).is_error(): panic("valid date rejected")
+    if validate_arguments(date, JsonValue.StringValue("2026-10-14")).is_error: panic(
+        "valid date rejected"
+    )
 
     let uuid = JsonValue.ObjectValue(
         {
@@ -1993,7 +1750,7 @@ test "schema format validation composes builtins with native predicates":
     if validate_arguments(
         uuid,
         JsonValue.StringValue("123e4567-e89b-12d3-a456-426614174000")
-    ).is_error(): panic("valid UUID rejected")
+    ).is_error: panic("valid UUID rejected")
 
     let custom = JsonValue.ObjectValue(
         {
@@ -2005,17 +1762,13 @@ test "schema format validation composes builtins with native predicates":
         "agent-id": fn(value: String) -> Bool: value.starts_with("agent-")
     }
 
-    if validate_arguments(
-        custom,
-        JsonValue.StringValue("agent-1"),
-        formats: formats
-    ).is_error(): panic("custom format predicate ignored")
+    if validate_arguments(custom, JsonValue.StringValue("agent-1"), formats: formats).is_error: panic(
+        "custom format predicate ignored"
+    )
 
-    if validate_arguments(
-        custom,
-        JsonValue.StringValue("other"),
-        formats: formats
-    ).is_ok(): panic("custom format failure ignored")
+    if validate_arguments(custom, JsonValue.StringValue("other"), formats: formats).is_ok: panic(
+        "custom format failure ignored"
+    )
 
 test "programming faults revoke saved provider and tool update callbacks":
     let provider_callbacks: List[fn(message: Message) -> Unit] = []
@@ -2042,16 +1795,7 @@ test "programming faults revoke saved provider and tool update callbacks":
             _: return
     let agent = create_agent(
         Config(stream: provider, emit: sink),
-        Context(
-            tools: [
-                Tool(
-                    "echo",
-                    "",
-                    JsonValue.Null,
-                    execute: execute
-                )
-            ]
-        )
+        Context(tools: [Tool("echo", "", JsonValue.Null, execute: execute)])
     )
 
     with tasks = TaskGroup():
@@ -2062,9 +1806,9 @@ test "programming faults revoke saved provider and tool update callbacks":
             )
         )
 
-        if run.join().is_ok(): panic("provider fault swallowed")
+        if run.join().is_ok: panic("provider fault swallowed")
 
-    provider_callbacks.first().unwrap()(Message(Role.Assistant))
+    provider_callbacks.first.unwrap()(Message(Role.Assistant))
 
     with tasks = TaskGroup():
         let call = tasks.start(
@@ -2080,23 +1824,19 @@ test "programming faults revoke saved provider and tool update callbacks":
             )
         )
 
-        if call.join().is_ok(): panic("tool fault swallowed")
+        if call.join().is_ok: panic("tool fault swallowed")
 
-    tool_callbacks.first().unwrap()(ToolResult())
+    tool_callbacks.first.unwrap()(ToolResult())
 
-    if not updates.is_empty() or agent.streaming_message.is_some(): panic(
+    if not updates.is_empty or agent.streaming_message.is_some: panic(
         "fault left a live update callback"
     )
 
 test "low level loops accept empty prompts and system-only continuation":
     let config = Config(stream: complete, emit: ignore)
-    let empty = run_agent_loop(
-        [],
-        Context(),
-        config
-    )
+    let empty = run_agent_loop([], Context(), config)
 
-    if empty.is_error() or empty.unwrap().length() != 1: panic(
+    if empty.is_error or empty.unwrap().length != 1: panic(
         "empty low-level prompt rejected"
     )
 
@@ -2105,16 +1845,13 @@ test "low level loops accept empty prompts and system-only continuation":
         config
     )
 
-    if system.is_error() or system.unwrap().length() != 1: panic(
+    if system.is_error or system.unwrap().length != 1: panic(
         "low-level system continuation rejected"
     )
 
-    let agent = create_agent(
-        config,
-        Context(messages: [Message(Role.System)])
-    )
+    let agent = create_agent(config, Context(messages: [Message(Role.System)]))
 
-    if continue_agent(agent).is_ok(): panic(
+    if continue_agent(agent).is_ok: panic(
         "high-level system-only continuation accepted"
     )
 
@@ -2139,11 +1876,7 @@ test "additional native validation cannot bypass the declared schema":
     )
     let result = run_tool_call(
         agent,
-        ToolCall(
-            "a",
-            "echo",
-            JsonValue.NumberValue("2")
-        ),
+        ToolCall("a", "echo", JsonValue.NumberValue("2")),
         fn(result: ToolResult) -> Unit: unit
     )
 
@@ -2151,16 +1884,13 @@ test "additional native validation cannot bypass the declared schema":
 
 test "high level baseline seeding and low level tool deltas remain distinct":
     let context = Context(messages: [user("history")], tools: [tool()])
-    let agent = create_agent(
-        Config(stream: complete, emit: ignore),
-        context
-    )
+    let agent = create_agent(Config(stream: complete, emit: ignore), context)
 
-    if agent.context.messages.first().unwrap().role != Role.System: panic(
+    if agent.context.messages.first.unwrap().role != Role.System: panic(
         "high-level tool baseline was not prepended"
     )
 
-    if context.messages.length() != 1: panic("baseline seeding mutated caller history")
+    if context.messages.length != 1: panic("baseline seeding mutated caller history")
 
     let result = run_agent_loop(
         [user("new")],
@@ -2168,9 +1898,9 @@ test "high level baseline seeding and low level tool deltas remain distinct":
         Config(stream: complete, emit: ignore)
     )
 
-    if result.is_error(): panic("low-level loop failed")
+    if result.is_error: panic("low-level loop failed")
 
-    if result.unwrap().first().unwrap().role != Role.System: panic(
+    if result.unwrap().first.unwrap().role != Role.System: panic(
         "low-level loop omitted tool delta from new messages"
     )
 
@@ -2194,24 +1924,41 @@ test "cancellation tokens retain their run identity across later runs":
     ) -> Result[Message, Error]:
         tokens.append(control)
 
-        if tokens.length() == 1:
-            with guard = control.lock(): guard.get().aborted = true
+        if tokens.length == 1:
+            request_abort(control)
 
         return ok(Message(Role.Assistant))
     let agent = create_agent(Config(stream: model, emit: ignore))
 
-    if prompt(agent, [user("first")]).is_ok(): panic("first token did not abort")
+    if prompt(agent, [user("first")]).is_ok: panic("first token did not abort")
 
-    let old = tokens.first().unwrap()
+    let old = tokens.first.unwrap()
 
-    if prompt(agent, [user("second")]).is_error(): panic(
+    if prompt(agent, [user("second")]).is_error: panic(
         "old cancellation affected new run"
     )
 
-    if not is_aborted(old) or is_aborted(tokens.last().unwrap()): panic(
+    if not is_aborted(old) or is_aborted(tokens.last.unwrap()): panic(
         "run token identity was reset or shared"
     )
 
-    if active_signal(agent).is_some(): panic(
+    if active_signal(agent).is_some: panic(
         "completed run still exposes an active signal"
     )
+
+test "cancellation wait observes early abort and wakes concurrent waiters":
+    let early = Synchronized(Control())
+    request_abort(early)
+    wait_for_abort(early)
+
+    let token = Synchronized(Control())
+
+    with tasks = TaskGroup():
+        let first = tasks.start(fn() -> Unit: wait_for_abort(token))
+        let second = tasks.start(fn() -> Unit: wait_for_abort(token))
+        request_abort(token)
+
+        if first.join().is_error or second.join().is_error:
+            panic("cancellation wait failed")
+
+    if not is_aborted(token): panic("notification lost cancellation state")

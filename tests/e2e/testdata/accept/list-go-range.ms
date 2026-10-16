@@ -22,7 +22,7 @@ test "range observes backing writes and keeps initial length":
     if not (
         seen == [1, 9, 9]
         and index == 3
-        and alias.length() == 6
+        and alias.length == 6
         and clone == [1, 2, 3]
     ):
         return panic("range copied backing or reread length")
@@ -56,11 +56,7 @@ test "callbacks use current backing and stored methods retain aliases":
             seen.append(value)
             values.fill(value: 8, start: 0, end: 3)
     )
-    if not (
-        seen == [1, 8, 8]
-        and clone == [1, 2, 3]
-        and values == [8, 8, 8]
-    ):
+    if not (seen == [1, 8, 8] and clone == [1, 2, 3] and values == [8, 8, 8]):
         return panic("callback copied membership or clone shared outer storage")
 
     let mapped = [1, 2, 3]
@@ -126,16 +122,12 @@ test "nested reverse copy shrink and self splice follow initial headers":
     for value in shrinking:
         seen_shrinking.append(value + 1)
 
-        if not shrinking.is_empty():
+        if not shrinking.is_empty:
             shrinking.remove(0)
 
         count = count + 1
 
-    if not (
-        count == 3
-        and shrinking.is_empty()
-        and seen_shrinking == [2, 4, 4]
-    ):
+    if not (count == 3 and shrinking.is_empty and seen_shrinking == [2, 4, 4]):
         return panic("shrink changed captured traversal length")
 
     let self_list = [1, 2, 3]
@@ -169,17 +161,13 @@ test "clone slice and nested references retain their own contracts":
         fn(value):
             seen.append(value.value)
             value.value = value.value + 1
-            values.fill(
-                value: Child(9),
-                start: 0,
-                end: 2
-            )
+            values.fill(value: Child(9), start: 0, end: 2)
     )
     if not (
         seen == [1, 9]
         and child.value == 2
-        and clone.first().unwrap().value == 2
-        and slice.first().unwrap().value == 2
+        and clone.first.unwrap().value == 2
+        and slice.first.unwrap().value == 2
     ):
         return panic("reference sharing or explicit outer copy changed")
 
@@ -195,7 +183,7 @@ test "clone slice and nested references retain their own contracts":
     for ignored in children:
         count = count + 1
 
-    if not (count == 2 and node.children.length() == 2):
+    if not (count == 2 and node.children.length == 2):
         return panic("recursive callback extended its own range")
 
 test "function values can replace later backing elements":
@@ -213,5 +201,5 @@ test "function values can replace later backing elements":
             seen.append(value())
             functions.fill(value: replacement, start: 0, end: 2)
     )
-    if not (seen == [1, 7, 2, 9] and clone.first().unwrap()() == 7):
+    if not (seen == [1, 7, 2, 9] and clone.first.unwrap()() == 7):
         return panic("function callback copied backing or lost clone")

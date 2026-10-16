@@ -3,8 +3,6 @@ import panic from "@std/faults.ms"
 
 import WriteStream from "@std/io.ms"
 import Closeable from "@std/cleanup.ms"
-import Result from "@std/result.ms"
-import List from "@std/collections.ms"
 
 type Resource:
     label: String
@@ -48,57 +46,32 @@ fn iterable(output: WriteStream) -> List[Int]:
 
 export fn main() -> Int:
     let total = select(output: stdout())(
-        second: report(
-            output: stdout(),
-            label: "second",
-            value: 2
-        ),
-        first: report(
-            output: stdout(),
-            label: "first",
-            value: 1
-        ),
+        second: report(output: stdout(), label: "second", value: 2),
+        first: report(output: stdout(), label: "first", value: 1)
     )
     if not (total == 3):
         return panic(message: "check failed")
 
     let pair = Pair(
-        second: report(
-            output: stdout(),
-            label: "pair second",
-            value: 2
-        ),
-        first: report(
-            output: stdout(),
-            label: "pair first",
-            value: 1
-        ),
+        second: report(output: stdout(), label: "pair second", value: 2),
+        first: report(output: stdout(), label: "pair first", value: 1)
     )
     if not (pair.first + pair.second == 3):
         return panic(message: "check failed")
 
-    with resource = Resource(
-        label: "normal",
-        output: stdout()
-    ):
+    with resource = Resource(label: "normal", output: stdout()):
         let completed = unit
 
     stdout().write(data: "after normal\n".to_bytes())
     var count = 0
 
     while count < 2:
-        with resource = Resource(
-            label: "iteration",
-            output: stdout()
-        ):
+        with resource = Resource(label: "iteration", output: stdout()):
             count = count + 1
             continue
 
     for value in iterable(output: stdout()):
-        with resource = Resource(
-            label: "break",
-            output: stdout()
-        ):
+        with resource = Resource(label: "break", output: stdout()):
             break
 
     match propagate(output: stdout()):

@@ -8,8 +8,7 @@ import (
 )
 
 func TestFieldWritesAndClonesKeepEditorNavigation(t *testing.T) {
-	source := `import List from "@std/collections.ms"
-type Val:
+	source := `type Val:
     val: Int
 fn work(value: Val) -> Unit:
     let callback = fn() -> Unit:

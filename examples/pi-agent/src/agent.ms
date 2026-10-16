@@ -8,7 +8,7 @@ import {
     copy_json
 } from "./transcript.ms"
 import {validate_arguments, validate_output} from "./schema.ms"
-import {wall_clock, clock, sleep, duration} from "@std/time.ms"
+import {wall_clock, clock} from "@std/time.ms"
 import {
     Content,
     Role,
@@ -50,10 +50,7 @@ export type Agent:
     error_message: String = ""
     subscriptions: List[Subscription] = []
 
-export fn create_agent(
-    config: Config,
-    context: Context = Context()
-) -> Agent:
+export fn create_agent(config: Config, context: Context = Context()) -> Agent:
     return new_agent(config, context, true)
 
 fn new_agent(config: Config, context: Context, seed_system: Bool) -> Agent:
@@ -61,11 +58,8 @@ fn new_agent(config: Config, context: Context, seed_system: Bool) -> Agent:
 
     if (
         seed_system
-        and not context.tools.is_empty()
-        and (
-            messages.is_empty()
-            or messages.first().unwrap().role != Role.System
-        )
+        and not context.tools.is_empty
+        and (messages.is_empty or messages.first.unwrap().role != Role.System)
     ):
         let baseline = Message(Role.System)
 
@@ -76,13 +70,7 @@ fn new_agent(config: Config, context: Context, seed_system: Bool) -> Agent:
 
         messages.prepend(baseline)
 
-    return Agent(
-        config,
-        Context(
-            messages,
-            context.tools.clone()
-        )
-    )
+    return Agent(config, Context(messages, context.tools.clone()))
 
 # A host shares this default runtime explicitly across agents and loops.
 export fn set_default_stream_fn(
@@ -91,9 +79,7 @@ export fn set_default_stream_fn(
         fn(
             request: Request,
             control: Synchronized[Control],
-            update: fn(
-                message: Message
-            ) -> Unit
+            update: fn(message: Message) -> Unit
         ) -> Result[Message, Error]
     ]
 ) -> Unit:
@@ -101,7 +87,7 @@ export fn set_default_stream_fn(
 
 export fn active_signal(agent: Agent) -> Optional[Synchronized[Control]]:
     with guard = agent.control.lock():
-        if guard.get().running: return guard.get().signal
+        if guard.value.running: return guard.value.signal
 
         return none
 
@@ -133,28 +119,25 @@ export fn get_system_prompt(agent: Agent) -> String:
     return system_prompt(agent.context.messages)
 
 export fn clear_steering_queue(agent: Agent) -> Unit:
-    with guard = agent.control.lock(): guard.get().steering = []
+    with guard = agent.control.lock(): guard.value.steering = []
 
 export fn clear_follow_up_queue(agent: Agent) -> Unit:
-    with guard = agent.control.lock(): guard.get().follow_up = []
+    with guard = agent.control.lock(): guard.value.follow_up = []
 
 export fn clear_all_queues(agent: Agent) -> Unit:
     with guard = agent.control.lock():
-        guard.get().steering = []
-        guard.get().follow_up = []
+        guard.value.steering = []
+        guard.value.follow_up = []
 
 export fn has_queued_messages(agent: Agent) -> Bool:
     with guard = agent.control.lock():
-        return (
-            not guard.get().steering.is_empty()
-            or not guard.get().follow_up.is_empty()
-        )
+        return (not guard.value.steering.is_empty or not guard.value.follow_up.is_empty)
 
 export fn peek_queued_messages(agent: Agent) -> List[Message]:
     with guard = agent.control.lock():
-        let state = guard.get()
+        let state = guard.value
 
-        if not state.steering.is_empty():
+        if not state.steering.is_empty:
             if agent.config.steering_mode == QueueMode.All: return (
                 state
                 .steering
@@ -168,20 +151,14 @@ export fn peek_queued_messages(agent: Agent) -> List[Message]:
         return state.follow_up.take(1)
 
 # Wait for the run observed on entry, even if an unrelated later run starts.
-# Existing Manuscript has no condition/channel API; use a suspending bounded poll.
 export fn wait_for_idle(agent: Agent) -> Unit:
-    var generation = 0
-
     with guard = agent.control.lock():
-        if not guard.get().running: return
+        if not guard.value.running: return
 
-        generation = guard.get().generation
+        let generation = guard.value.generation
 
-    while true:
-        with guard = agent.control.lock():
-            if guard.get().completed_generation >= generation: return
-
-        sleep(duration(1000000))
+        while guard.value.completed_generation < generation:
+            guard.wait()
 
 export fn prompt_text(
     agent: Agent,
@@ -213,7 +190,7 @@ export fn prompt_message(agent: Agent, message: Message) -> Result[List[Message]
 
 fn now_ms() -> Int:
     let now = wall_clock().now()
-    return now.unix_seconds() * 1000 + now.nanoseconds() / 1000000
+    return now.unix_seconds * 1000 + now.nanoseconds / 1000000
 
 # Subscriptions are changed by the owner task or a serialized event callback.
 export fn subscribe(agent: Agent, listener: fn(event: Event) -> Unit) -> fn() -> Unit:
@@ -235,50 +212,52 @@ export fn run_agent_loop(
     context: Context,
     config: Config
 ) -> Result[List[Message], Error]:
-    return run(
-        new_agent(config, context, false),
-        prompts
-    )
+    return run(new_agent(config, context, false), prompts)
 
 export fn run_agent_loop_continue(
     context: Context,
     config: Config
 ) -> Result[List[Message], Error]:
-    if context.messages.is_empty(): return error(
+    if context.messages.is_empty: return error(
         AgentError.InvalidState("Cannot continue: no messages in context")
     )
-    if context.messages.last().unwrap().role == Role.Assistant: return error(
+    if context.messages.last.unwrap().role == Role.Assistant: return error(
         AgentError.InvalidState("Cannot continue from an assistant message")
     )
 
-    return run(
-        new_agent(config, context, false),
-        []
-    )
+    return run(new_agent(config, context, false), [])
 
 export fn abort(agent: Agent) -> Unit:
     let signal = active_signal(agent)
-    if signal.is_none(): return
+    if signal.is_none: return
 
-    with guard = signal.unwrap().lock(): guard.get().aborted = true
+    request_abort(signal.unwrap())
 
 export fn steer(agent: Agent, message: Message) -> Unit:
     with guard = agent.control.lock():
-        guard.get().steering.append(message)
+        guard.value.steering.append(message)
 
 export fn follow_up(agent: Agent, message: Message) -> Unit:
     with guard = agent.control.lock():
-        guard.get().follow_up.append(message)
+        guard.value.follow_up.append(message)
+
+fn cancellation_control(control: Synchronized[Control]) -> Synchronized[Control]:
+    with guard = control.lock():
+        return guard.value.signal.unwrap_or(control)
 
 export fn is_aborted(control: Synchronized[Control]) -> Bool:
-    var signal = control
+    with guard = cancellation_control(control).lock(): return guard.value.aborted
 
-    with guard = control.lock():
-        if guard.get().signal.is_none(): return guard.get().aborted
+# Notify blocked cancellation consumers as well as cooperative callers.
+export fn request_abort(control: Synchronized[Control]) -> Unit:
+    with guard = cancellation_control(control).lock():
+        guard.value.aborted = true
+        guard.notify_all()
 
-        signal = guard.get().signal.unwrap()
-
-    with guard = signal.lock(): return guard.get().aborted
+export fn wait_for_abort(control: Synchronized[Control]) -> Unit:
+    with guard = cancellation_control(control).lock():
+        while not guard.value.aborted:
+            guard.wait()
 
 export fn reset(agent: Agent) -> Result[Unit, AgentError]:
     if agent.is_streaming:
@@ -287,14 +266,14 @@ export fn reset(agent: Agent) -> Result[Unit, AgentError]:
     let baseline = current_system_message(agent.context.messages)
     agent.context.messages = []
 
-    if baseline.is_some(): agent.context.messages.append(baseline.unwrap())
+    if baseline.is_some: agent.context.messages.append(baseline.unwrap())
 
     agent.error_message = ""
     agent.streaming_message = none
     agent.pending_tool_calls = []
 
     with guard = agent.control.lock():
-        let previous = guard.get()
+        let previous = guard.value
         guard.set(
             Control(
                 generation: previous.generation,
@@ -314,23 +293,23 @@ export fn continue_agent(agent: Agent) -> Result[List[Message], Error]:
     if agent.is_streaming:
         return error(AgentError.InvalidState("Agent is already running"))
     if (
-        agent.context.messages.is_empty()
+        agent.context.messages.is_empty
         or agent.context.messages.every(
             fn(message: Message) -> Bool: (message.role == Role.System)
         )
     ):
         return error(AgentError.InvalidState("Cannot continue: no messages in context"))
 
-    if agent.context.messages.last().unwrap().role == Role.Assistant:
+    if agent.context.messages.last.unwrap().role == Role.Assistant:
         let steering = drain(agent.control, true, agent.config.steering_mode)
-        if not steering.is_empty(): return run(
+        if not steering.is_empty: return run(
             agent,
             steering,
             skip_initial_steering: true
         )
 
         let follow = drain(agent.control, false, agent.config.follow_up_mode)
-        if not follow.is_empty(): return run(agent, follow)
+        if not follow.is_empty: return run(agent, follow)
 
         return error(
             AgentError.InvalidState(
@@ -346,16 +325,16 @@ fn drain(
     mode: QueueMode
 ) -> List[Message]:
     with guard = control.lock():
-        let state = guard.get()
+        let state = guard.value
         var queue = state.follow_up
 
         if steering:
             queue = state.steering
 
-        if queue.is_empty():
+        if queue.is_empty:
             return []
 
-        var count = queue.length()
+        var count = queue.length
 
         if mode == QueueMode.OneAtATime:
             count = 1
@@ -367,14 +346,8 @@ fn drain(
 fn emit_message(agent: Agent, message: Message, fresh: List[Message]) -> Unit:
     agent.context.messages.append(message)
     fresh.append(message)
-    dispatch(
-        agent,
-        Event.MessageStart(message)
-    )
-    dispatch(
-        agent,
-        Event.MessageEnd(message)
-    )
+    dispatch(agent, Event.MessageStart(message))
+    dispatch(agent, Event.MessageEnd(message))
 
 fn fail_result(message: String) -> ToolResult:
     return ToolResult(content: [Content.Text(message)], is_error: true)
@@ -388,21 +361,19 @@ fn prepare_tool(agent: Agent, call: ToolCall) -> Result[PreparedCall, Error]:
         agent
         .context
         .tools
-        .find(
-            fn(tool: Tool) -> Bool: (tool.name == call.name)
-        )
+        .find(fn(tool: Tool) -> Bool: (tool.name == call.name))
     )
-    if selected.is_none():
+    if selected.is_none:
         return error(AgentError.InvalidState("Tool {call.name} not found"))
 
     let tool = selected.unwrap()
     var raw = try copy_json(call.arguments)
 
-    if tool.prepare_arguments.is_some(): raw = try tool.prepare_arguments.unwrap()(raw)
+    if tool.prepare_arguments.is_some: raw = try tool.prepare_arguments.unwrap()(raw)
 
     var arguments = try validate_arguments(tool.parameters, raw, formats: tool.formats)
 
-    if tool.validate.is_some():
+    if tool.validate.is_some:
         arguments = try tool.validate.unwrap()(arguments)
 
         if tool.parameters != JsonValue.Null:
@@ -414,11 +385,9 @@ fn prepare_tool(agent: Agent, call: ToolCall) -> Result[PreparedCall, Error]:
 
     var control = call.control
 
-    if control.is_none(): control = active_signal(agent)
+    if control.is_none: control = active_signal(agent)
 
-    if control.is_none(): control = some(
-        Synchronized(Control())
-    )
+    if control.is_none: control = some(Synchronized(Control()))
 
     return ok(
         PreparedCall(
@@ -458,43 +427,31 @@ export fn run_tool_call(
         blocked.terminate = permission.terminate
         return blocked
 
-    return finalize(
-        agent,
-        tool.call,
-        execute_tool(
-            agent,
-            tool.tool,
-            tool.call,
-            update
-        )
-    )
+    return finalize(agent, tool.call, execute_tool(agent, tool.tool, tool.call, update))
 
 export fn run_tool_call_outcome(
     agent: Agent,
     call: ToolCall,
     update: fn(result: ToolResult) -> Unit
 ) -> ToolCallOutcome:
-    return ToolCallOutcome(
-        call,
-        run_tool_call(agent, call, update)
-    )
+    return ToolCallOutcome(call, run_tool_call(agent, call, update))
 
 fn apply_patch(result: ToolResult, patch: ToolResultPatch) -> ToolResult:
     let changed = result.clone()
 
-    if patch.content.is_some():
+    if patch.content.is_some:
         changed.content = patch.content.unwrap()
         changed.structured_content = none
 
-    if patch.structured_content.is_some(): changed.structured_content = patch.structured_content
+    if patch.structured_content.is_some: changed.structured_content = patch.structured_content
 
-    if patch.details.is_some(): changed.details = patch.details.unwrap()
+    if patch.details.is_some: changed.details = patch.details.unwrap()
 
-    if patch.is_error.is_some(): changed.is_error = patch.is_error.unwrap()
+    if patch.is_error.is_some: changed.is_error = patch.is_error.unwrap()
 
-    if patch.terminate.is_some(): changed.terminate = patch.terminate.unwrap()
+    if patch.terminate.is_some: changed.terminate = patch.terminate.unwrap()
 
-    if patch.usage.is_some(): changed.usage = patch.usage
+    if patch.usage.is_some: changed.usage = patch.usage
 
     return changed
 
@@ -506,7 +463,7 @@ fn preflight(agent: Agent, call: ToolCall) -> Result[Preflight, Error]:
 fn finalize(agent: Agent, call: ToolCall, result: ToolResult) -> ToolResult:
     var finalized = result
 
-    if agent.config.after_tool_call.is_some():
+    if agent.config.after_tool_call.is_some:
         finalized = match agent.config.after_tool_call.unwrap()(
             call,
             finalized,
@@ -515,7 +472,7 @@ fn finalize(agent: Agent, call: ToolCall, result: ToolResult) -> ToolResult:
             ok(value): value
             error(cause): fail_result(cause.message())
 
-    if agent.config.after_tool_patch.is_some():
+    if agent.config.after_tool_patch.is_some:
         let patch = match agent.config.after_tool_patch.unwrap()(
             call,
             finalized,
@@ -554,20 +511,16 @@ fn execute_tool(
         let accepting = updates.accepting
         let guarded_update = fn(result: ToolResult) -> Unit:
             with guard = accepting.lock():
-                if guard.get():
+                if guard.value:
                     update(result)
 
         let started = clock().now()
 
-        var result = match tool.execute(
-            call,
-            call.control.unwrap(),
-            guarded_update
-        ):
+        var result = match tool.execute(call, call.control.unwrap(), guarded_update):
             ok(value): value
             error(cause): fail_result(cause.message())
 
-        result.duration_ms = some(clock().now().difference(started).to_milliseconds())
+        result.duration_ms = some(clock().now().difference(started).milliseconds)
 
         updates.close()
 
@@ -610,10 +563,7 @@ fn execute_batch(
     fresh: List[Message]
 ) -> Result[List[ToolResult], Error]:
     let batch = agent.clone()
-    batch.context = Context(
-        agent.context.messages.clone(),
-        agent.context.tools.clone()
-    )
+    batch.context = Context(agent.context.messages.clone(), agent.context.tools.clone())
     let calls = calls_from(message)
     let results: List[ToolResult] = []
     var sequential = agent.config.tool_execution == ExecutionMode.Sequential
@@ -623,13 +573,11 @@ fn execute_batch(
             agent
             .context
             .tools
-            .find(
-                fn(tool: Tool) -> Bool: (tool.name == call.name)
-            )
+            .find(fn(tool: Tool) -> Bool: (tool.name == call.name))
         )
 
         if (
-            tool.is_some()
+            tool.is_some
             and tool.unwrap().execution_mode == some(
                 ExecutionMode.Sequential
             )
@@ -641,10 +589,7 @@ fn execute_batch(
     if sequential or message.stop_reason == StopReason.Length:
         for call in calls:
             agent.pending_tool_calls.append(call.id)
-            dispatch(
-                agent,
-                Event.ToolStart(call)
-            )
+            dispatch(agent, Event.ToolStart(call))
             var result = fail_result(
                 "Tool arguments may be truncated; re-issue the call"
             )
@@ -664,20 +609,11 @@ fn execute_batch(
             agent.pending_tool_calls = (
                 agent
                 .pending_tool_calls
-                .filter(
-                    fn(id: String) -> Bool: (id != call.id)
-                )
+                .filter(fn(id: String) -> Bool: (id != call.id))
             )
-            dispatch(
-                agent,
-                Event.ToolEnd(call, result)
-            )
+            dispatch(agent, Event.ToolEnd(call, result))
             results.append(result)
-            emit_message(
-                agent,
-                tool_message(call, result),
-                fresh
-            )
+            emit_message(agent, tool_message(call, result), fresh)
             if is_aborted(agent.control): break
 
         agent.pending_tool_calls = []
@@ -688,10 +624,7 @@ fn execute_batch(
 
     for call in calls:
         agent.pending_tool_calls.append(call.id)
-        dispatch(
-            agent,
-            Event.ToolStart(call)
-        )
+        dispatch(agent, Event.ToolStart(call))
         var tool: Optional[PreparedCall] = none
         var result = fail_result("Tool not found")
 
@@ -699,7 +632,7 @@ fn execute_batch(
             ok(value): tool = some(value)
             error(cause): result = fail_result(cause.message())
 
-        if tool.is_some():
+        if tool.is_some:
             var permission = Preflight()
 
             match preflight(batch, tool.unwrap().call):
@@ -732,7 +665,7 @@ fn execute_batch(
                     fn() -> ToolResult:
                         var result = initial
 
-                        if tool.is_some():
+                        if tool.is_some:
                             result = execute_tool(
                                 batch,
                                 tool.unwrap().tool,
@@ -742,7 +675,7 @@ fn execute_batch(
                                 ) -> Unit:
                                     with guard = gate.lock():
                                         dispatch(
-                                            guard.get(),
+                                            guard.value,
                                             Event.ToolUpdate(
                                                 call,
                                                 result
@@ -751,16 +684,12 @@ fn execute_batch(
                             )
 
                         with guard = gate.lock():
-                            if tool.is_some():
-                                result = finalize(
-                                    batch,
-                                    tool.unwrap().call,
-                                    result
-                                )
+                            if tool.is_some:
+                                result = finalize(batch, tool.unwrap().call, result)
 
-                            guard.get().pending_tool_calls = (
+                            guard.value.pending_tool_calls = (
                                 guard
-                                .get()
+                                .value
                                 .pending_tool_calls
                                 .filter(
                                     fn(
@@ -768,13 +697,7 @@ fn execute_batch(
                                     ) -> Bool: (id != call.id)
                                 )
                             )
-                            dispatch(
-                                guard.get(),
-                                Event.ToolEnd(
-                                    call,
-                                    result
-                                )
-                            )
+                            dispatch(guard.value, Event.ToolEnd(call, result))
 
                         return result
                 )
@@ -783,20 +706,14 @@ fn execute_batch(
         let _joined = try tasks.join()
 
         for entry in handles.entries():
-            results.set(
-                entry.index,
-                try entry.value.join()
-            )
+            results.set(entry.index, try entry.value.join())
 
     agent.pending_tool_calls = []
 
     for entry in calls.entries():
         emit_message(
             agent,
-            tool_message(
-                entry.value,
-                results[entry.index].unwrap()
-            ),
+            tool_message(entry.value, results[entry.index].unwrap()),
             fresh
         )
 
@@ -805,58 +722,49 @@ fn execute_batch(
 fn transform(config: Config, messages: List[Message]) -> Result[List[Message], Error]:
     var result = messages.clone()
 
-    if config.transform_context.is_some():
+    if config.transform_context.is_some:
         result = try config.transform_context.unwrap()(result)
 
-    if config.convert_to_llm.is_some():
+    if config.convert_to_llm.is_some:
         result = try config.convert_to_llm.unwrap()(result)
 
     return ok(result)
 
 fn response(agent: Agent, request: Request) -> Message:
     let partial = Message(Role.Assistant)
-    let index = agent.context.messages.length()
+    let index = agent.context.messages.length
     agent.context.messages.append(partial)
     agent.streaming_message = some(partial)
-    dispatch(
-        agent,
-        Event.MessageStart(partial)
-    )
+    dispatch(agent, Event.MessageStart(partial))
 
     with updates = UpdateLifetime(Synchronized(true)):
         let accepting = updates.accepting
         let update = fn(message: Message) -> Unit:
             with guard = accepting.lock():
-                if guard.get():
+                if guard.value:
                     agent.streaming_message = some(message)
                     agent.context.messages.set(index, message)
-                    dispatch(
-                        agent,
-                        Event.MessageUpdate(message)
-                    )
+                    dispatch(agent, Event.MessageUpdate(message))
 
         let provider_event = request.provider_event
         request.provider_event = some(
             fn(event: JsonValue) -> Unit:
                 with guard = accepting.lock():
-                    if not guard.get(): return
+                    if not guard.value: return
 
-                    if provider_event.is_some(): provider_event.unwrap()(event)
+                    if provider_event.is_some: provider_event.unwrap()(event)
 
-                    dispatch(
-                        agent,
-                        Event.ProviderUpdate(event)
-                    )
+                    dispatch(agent, Event.ProviderUpdate(event))
         )
         var stream = agent.config.stream
 
-        if stream.is_none(): stream = agent.config.runtime.stream
+        if stream.is_none: stream = agent.config.runtime.stream
 
         var outcome: Result[Message, Error] = error(
             AgentError.InvalidState("No default stream function configured")
         )
 
-        if stream.is_some(): outcome = stream.unwrap()(
+        if stream.is_some: outcome = stream.unwrap()(
             request,
             active_signal(agent).unwrap(),
             update
@@ -893,10 +801,7 @@ fn response(agent: Agent, request: Request) -> Message:
 
         agent.context.messages.set(index, result)
         agent.streaming_message = none
-        dispatch(
-            agent,
-            Event.MessageEnd(result)
-        )
+        dispatch(agent, Event.MessageEnd(result))
         return result
 
 type RunSettlement:
@@ -909,8 +814,9 @@ impl Closeable for RunSettlement:
         self.agent.is_streaming = false
 
         with guard = self.agent.control.lock():
-            guard.get().running = false
-            guard.get().completed_generation = guard.get().generation
+            guard.value.running = false
+            guard.value.completed_generation = guard.value.generation
+            guard.notify_all()
 
 fn run(
     agent: Agent,
@@ -918,7 +824,7 @@ fn run(
     skip_initial_steering: Bool = false
 ) -> Result[List[Message], Error]:
     with guard = agent.control.lock():
-        let state = guard.get()
+        let state = guard.value
         if state.running: return error(
             AgentError.InvalidState("Agent is already running")
         )
@@ -926,9 +832,7 @@ fn run(
         state.running = true
         state.generation = state.generation + 1
         state.aborted = false
-        state.signal = some(
-            Synchronized(Control())
-        )
+        state.signal = some(Synchronized(Control()))
 
     with _settlement = RunSettlement(agent):
         agent.is_streaming = true
@@ -936,12 +840,7 @@ fn run(
 
         let fresh: List[Message] = []
         dispatch(agent, Event.AgentStart)
-        let outcome = run_turns(
-            agent,
-            prompts,
-            fresh,
-            skip_initial_steering
-        )
+        let outcome = run_turns(agent, prompts, fresh, skip_initial_steering)
         agent.streaming_message = none
         agent.pending_tool_calls = []
 
@@ -950,10 +849,7 @@ fn run(
             error(cause): agent.error_message = cause.message()
 
         # Listeners settle before the agent becomes idle.
-        dispatch(
-            agent,
-            Event.AgentEnd(fresh.clone())
-        )
+        dispatch(agent, Event.AgentEnd(fresh.clone()))
         let _completed = try outcome
         return ok(fresh)
 
@@ -974,25 +870,15 @@ fn fail_turn(
     )
     emit_message(agent, failed, fresh)
 
-    if agent.config.finish_turn.is_some():
+    if agent.config.finish_turn.is_some:
         let _decision = (
             agent
             .config
             .finish_turn
-            .unwrap()(
-                Turn(
-                    failed,
-                    [],
-                    agent.context,
-                    fresh.clone()
-                )
-            )
+            .unwrap()(Turn(failed, [], agent.context, fresh.clone()))
         )
 
-    dispatch(
-        agent,
-        Event.TurnEnd(failed, [])
-    )
+    dispatch(agent, Event.TurnEnd(failed, []))
     return error(AgentError.InvalidState(message))
 
 fn run_turns(
@@ -1013,7 +899,7 @@ fn run_turns(
     while true:
         var prepared: List[Message] = []
 
-        if previous.is_some() and agent.config.prepare_next_turn.is_some():
+        if previous.is_some and agent.config.prepare_next_turn.is_some:
             request = agent.config.prepare_next_turn.unwrap()(previous.unwrap())
             agent.context = request.context
             agent.config.model = request.model
@@ -1021,7 +907,7 @@ fn run_turns(
             prepared = request.messages.clone()
             request.messages = []
 
-        if previous.is_some() and pending.is_empty():
+        if previous.is_some and pending.is_empty:
             pending = drain(agent.control, true, agent.config.steering_mode)
 
         pending = match declare_tool_changes(
@@ -1032,12 +918,7 @@ fn run_turns(
             ok(value): value
             error(cause):
                 dispatch(agent, Event.TurnStart)
-                return fail_turn(
-                    agent,
-                    cause.message(),
-                    StopReason.Failed,
-                    fresh
-                )
+                return fail_turn(agent, cause.message(), StopReason.Failed, fresh)
 
         dispatch(agent, Event.TurnStart)
 
@@ -1046,7 +927,7 @@ fn run_turns(
 
         pending = []
 
-        if previous.is_none() and not skip_initial_steering:
+        if previous.is_none and not skip_initial_steering:
             let initial = drain(agent.control, true, agent.config.steering_mode)
 
             let announced = match declare_tool_changes(
@@ -1065,16 +946,11 @@ fn run_turns(
             for message in announced: emit_message(agent, message, fresh)
 
         if is_aborted(agent.control):
-            return fail_turn(
-                agent,
-                "Operation aborted",
-                StopReason.Aborted,
-                fresh
-            )
+            return fail_turn(agent, "Operation aborted", StopReason.Aborted, fresh)
 
         request.context = agent.context
 
-        if agent.config.prepare_request.is_some():
+        if agent.config.prepare_request.is_some:
             request = agent.config.prepare_request.unwrap()(request)
             agent.context = request.context
             agent.config.model = request.model
@@ -1099,10 +975,7 @@ fn run_turns(
             )
 
         let llm_request = Request(
-            Context(
-                llm_messages,
-                agent.context.tools.clone()
-            ),
+            Context(llm_messages, agent.context.tools.clone()),
             request.model,
             request.thinking_level,
             options: options,
@@ -1119,7 +992,7 @@ fn run_turns(
             message.stop_reason == StopReason.Failed
             or message.stop_reason == StopReason.Aborted
         ):
-            if agent.config.finish_turn.is_some():
+            if agent.config.finish_turn.is_some:
                 let _decision = (
                     agent
                     .config
@@ -1134,33 +1007,22 @@ fn run_turns(
                     )
                 )
 
-            dispatch(
-                agent,
-                Event.TurnEnd(message, tool_messages)
-            )
+            dispatch(agent, Event.TurnEnd(message, tool_messages))
             return error(AgentError.InvalidState(message.error_message))
 
-        let start = fresh.length()
+        let start = fresh.length
         let results = try execute_batch(agent, message, fresh)
 
         for item in fresh.drop(start):
             tool_messages.append(item)
 
-        let turn = Turn(
-            message,
-            tool_messages,
-            agent.context,
-            fresh.clone()
-        )
+        let turn = Turn(message, tool_messages, agent.context, fresh.clone())
         var decision = Decision.Default
 
-        if agent.config.finish_turn.is_some():
+        if agent.config.finish_turn.is_some:
             decision = agent.config.finish_turn.unwrap()(turn)
 
-        dispatch(
-            agent,
-            Event.TurnEnd(message, tool_messages)
-        )
+        dispatch(agent, Event.TurnEnd(message, tool_messages))
         previous = some(turn)
         if decision == Decision.End: return ok(unit)
         if is_aborted(agent.control):
@@ -1169,17 +1031,17 @@ fn run_turns(
         pending = drain(agent.control, true, agent.config.steering_mode)
         if (
             (
-                not results.is_empty()
+                not results.is_empty
                 and not results.every(
                     fn(result: ToolResult) -> Bool: result.terminate
                 )
             )
-            or not pending.is_empty()
+            or not pending.is_empty
         ):
             continue
 
         pending = drain(agent.control, false, agent.config.follow_up_mode)
-        if not pending.is_empty(): continue
+        if not pending.is_empty: continue
         if decision == Decision.Continue: continue
 
         return ok(unit)
@@ -1191,14 +1053,11 @@ fn request_options(agent: Agent) -> Result[JsonValue, Error]:
 
     var key = agent.config.api_key
 
-    if agent.config.get_api_key.is_some():
+    if agent.config.get_api_key.is_some:
         let resolved = try agent.config.get_api_key.unwrap()(agent.config.provider)
 
         if resolved != "": key = resolved
 
-    if key != "": options.add(
-        "apiKey",
-        JsonValue.StringValue(key)
-    )
+    if key != "": options.add("apiKey", JsonValue.StringValue(key))
 
     return ok(JsonValue.ObjectValue(options))

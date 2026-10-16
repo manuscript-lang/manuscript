@@ -1,9 +1,7 @@
 import Synchronized from "@std/sync.ms"
 import SynchronizedGuard from "@std/sync.ms"
 import Closeable from "@std/cleanup.ms"
-import List from "@std/collections.ms"
 import ListBuilder from "@std/collections.ms"
-import Result from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
 import TaskGroup from "@std/tasks.ms"
 import panic from "@std/faults.ms"
@@ -18,12 +16,12 @@ fn execute(operation: fn() -> Int) -> Result[Int, ExecutionError]:
         return task.join()
 
 fn increment(locked: SynchronizedGuard[Int]) -> Unit:
-    locked.set(value: locked.get() + 1)
+    locked.set(value: locked.value + 1)
 
 fn release_on_return(counter: Synchronized[Int]) -> Int:
     with locked = counter.lock():
         increment(locked: locked)
-        return locked.get()
+        return locked.value
 
 fn release_on_error(counter: Synchronized[Int]) -> Result[Unit, String]:
     with locked = counter.lock():
@@ -46,18 +44,7 @@ impl Read for Reader:
 test "shared counter protects complete updates":
     let counter = Synchronized(0)
     let operation = fn():
-        for unused in [
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10
-        ]:
+        for unused in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
             with locked = counter.lock():
                 increment(locked: locked)
 
@@ -76,7 +63,7 @@ test "shared counter protects complete updates":
         match group.join():
             ok(_):
                 with locked = counter.lock():
-                    if not (locked.get() == 100):
+                    if not (locked.value == 100):
                         return panic(message: "check failed")
 
             error(_):
@@ -89,7 +76,7 @@ test "shared counter protects complete updates":
     let outcome = release_on_error(counter: counter)
 
     with locked = counter.lock():
-        if not (locked.get() == 102):
+        if not (locked.value == 102):
             return panic(message: "check failed")
 
 test "function fields collections and interface views share freely":
@@ -162,7 +149,7 @@ test "builders can be captured and stored callbacks can map":
 
         match group.join():
             ok(_):
-                if not (builder.freeze().length() == 4):
+                if not (builder.freeze().length == 4):
                     return panic(message: "check failed")
 
             error(_):
@@ -186,13 +173,14 @@ test "fault releases guard and preserves committed writes":
 
             error(_):
                 with locked = counter.lock():
-                    if not (locked.get() == 8):
+                    if not (locked.value == 8):
                         return panic(message: "check failed")
 
 test "guard aliases close once and stale methods fault":
     let counter = Synchronized(0)
     let first = counter.lock()
-    let saved_get = first.get
+    let saved_receiver = first
+    let saved_get: fn() -> Int = fn() -> Int: saved_receiver.value
     let alias = Closeable(first)
     alias.close()
 
@@ -209,7 +197,7 @@ test "guard aliases close once and stale methods fault":
                         return panic(message: "check failed")
 
                 error(_):
-                    if not (second.get() == 2):
+                    if not (second.value == 2):
                         return panic(message: "check failed")
 
 test "same-task reentry faults and releases its guard":
@@ -231,7 +219,7 @@ test "same-task reentry faults and releases its guard":
                     locked.set(value: 3)
 
     with locked = counter.lock():
-        if locked.get() != 3:
+        if locked.value != 3:
             return panic(message: "fault leaked guard")
 
 test "parent holds lock while a running child waits for it":
@@ -243,7 +231,7 @@ test "parent holds lock while a running child waits for it":
                 sleep(duration: 20.milliseconds)
 
                 with locked = cell.lock():
-                    return locked.get()
+                    return locked.value
         )
 
         with locked = cell.lock():
@@ -266,7 +254,7 @@ test "ordinary cross-task lock cycle stops at the group timeout":
             let child = tasks.start(
                 fn() -> Int:
                     with acquired = cell.lock():
-                        return acquired.get()
+                        return acquired.value
             )
 
             let cause = match child.join():
@@ -283,7 +271,7 @@ test "ordinary cross-task lock cycle stops at the group timeout":
                     return panic(message: "unexpected failure {cause}")
 
     with locked = cell.lock():
-        if locked.get() != 3:
+        if locked.value != 3:
             return panic(message: "timeout lost committed data")
 
 test "loop exits release the guard":
@@ -291,14 +279,14 @@ test "loop exits release the guard":
 
     for item in [1, 2, 3]:
         with locked = counter.lock():
-            locked.set(value: locked.get() + 1)
+            locked.set(value: locked.value + 1)
             if item == 1:
                 continue
 
             break
 
     with locked = counter.lock():
-        if not (locked.get() == 2):
+        if not (locked.value == 2):
             return panic(message: "check failed")
 
 test "native collection methods preserve ordinary function values":

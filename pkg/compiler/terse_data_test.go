@@ -8,8 +8,7 @@ import (
 )
 
 func TestTerseDataRejections(t *testing.T) {
-	prefix := `import {Map, List} from "@std/collections.ms"
-fn f(first: Int, second: Int) -> Int: return first + second
+	prefix := `fn f(first: Int, second: Int) -> Int: return first + second
 `
 	for _, tc := range []struct{ body, message string }{
 		{`let value = {}`, "cannot infer map"},

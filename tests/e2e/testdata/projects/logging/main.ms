@@ -1,11 +1,7 @@
 import {Logger, create, stdout_transport, file_transport} from "@std/log.ms"
 import JsonValue from "@std/json.ms"
-import {List, Map} from "@std/collections.ms"
 import arguments from "@std/cli.ms"
 import stderr from "@std/io.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
-import Error from "@std/errors.ms"
 import {TaskGroup, Task} from "@std/tasks.ms"
 import emit from "./records.ms"
 
@@ -13,22 +9,10 @@ fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
     with group = TaskGroup():
         let tasks: List[Task[Result[Unit, Error]]] = []
 
-        for worker in [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7
-        ]:
+        for worker in [0, 1, 2, 3, 4, 5, 6, 7]:
             let task = group.start(
                 fn() -> Result[Unit, Error]:
-                    let bindings = Map[
-                        String,
-                        JsonValue
-                    ]().add(
+                    let bindings = Map[String, JsonValue]().add(
                         key: "worker",
                         value: JsonValue.NumberValue(
                             worker.toString()
@@ -36,20 +20,8 @@ fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
                     )
                     let child = logger.child(bindings)
 
-                    for sequence in [
-                        0,
-                        1,
-                        2,
-                        3,
-                        4,
-                        5,
-                        6,
-                        7
-                    ]:
-                        let fields = Map[
-                            String,
-                            JsonValue
-                        ]().add(
+                    for sequence in [0, 1, 2, 3, 4, 5, 6, 7]:
+                        let fields = Map[String, JsonValue]().add(
                             key: "sequence",
                             value: JsonValue.NumberValue(
                                 sequence.toString()
@@ -78,11 +50,7 @@ fn exercise(mode: String, path: String) -> Result[Unit, Error]:
         value: JsonValue.StringValue("api")
     )
 
-    if (
-        mode == "file"
-        or mode == "concurrent"
-        or mode == "missing"
-    ):
+    if (mode == "file" or mode == "concurrent" or mode == "missing"):
         with transport = try file_transport(path):
             let logger = try create(
                 transport: transport,
@@ -101,26 +69,17 @@ fn exercise(mode: String, path: String) -> Result[Unit, Error]:
 
     with transport = stdout_transport():
         if mode == "limit":
-            let logger = try create(
-                transport: transport,
-                max_bytes: 1
-            )
+            let logger = try create(transport: transport, max_bytes: 1)
             let logged = try logger.info(message: "too large")
         else:
-            let logger = try create(
-                transport: transport,
-                bindings: bindings
-            )
+            let logger = try create(transport: transport, bindings: bindings)
 
             if mode == "invalid":
                 let fields = Map[String, JsonValue]().add(
                     key: "bad",
                     value: JsonValue.NumberValue("NaN")
                 )
-                let logged = try logger.info(
-                    message: "invalid",
-                    fields: fields
-                )
+                let logged = try logger.info(message: "invalid", fields: fields)
             else if mode == "closed":
                 transport.close()
                 let logged = try logger.info(message: "closed")
@@ -129,10 +88,7 @@ fn exercise(mode: String, path: String) -> Result[Unit, Error]:
                 let flushed = try logger.flush()
 
     with transport = stdout_transport():
-        let logger = try create(
-            transport: transport,
-            timestamp: false
-        )
+        let logger = try create(transport: transport, timestamp: false)
         let logged = try logger.info(message: "still open")
 
     return ok(unit)

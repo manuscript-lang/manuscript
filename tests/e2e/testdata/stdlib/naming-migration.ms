@@ -1,4 +1,4 @@
-import {MapBuilder, SetBuilder, ListBuilder, Set} from "@std/collections.ms"
+import {MapBuilder, SetBuilder, ListBuilder} from "@std/collections.ms"
 import {Bytes, BytesBuilder} from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
 import panic from "@std/faults.ms"
@@ -37,10 +37,7 @@ fn eager(counter: Counter) -> Int:
 test "default insertion keeps eager and lazy calls and receiver identity":
     let values = Map[String, Int]().add("a", 1)
     let counter = Counter(0)
-    let alias = values.add_default(
-        "a",
-        eager(counter)
-    )
+    let alias = values.add_default("a", eager(counter))
     if counter.calls != 1 or values.get("a") != some(1): return panic("eager default")
 
     alias.add("b", 2)
@@ -48,7 +45,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
 
     let create = fn(key: String) -> Int:
         counter.calls = counter.calls + 1
-        return key.length()
+        return key.length
     let lazy: fn(key: String, create: fn(key: String) -> Int) -> Map[String, Int] = values.add_default_from
     lazy("a", create)
     if counter.calls != 1: return panic("existing key called creator")

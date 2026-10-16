@@ -12,7 +12,7 @@ import {
 } from "./types.ms"
 import {field, text} from "./schema.ms"
 import content_text from "./transcript.ms"
-import is_aborted from "./agent.ms"
+import {is_aborted, wait_for_abort} from "./agent.ms"
 import {JsonValue, parse, stringify} from "@std/json.ms"
 import {
     HttpClient,
@@ -25,7 +25,7 @@ import network from "@std/net.ms"
 import {ReadStream, read_line, read_all} from "@std/io.ms"
 import Synchronized from "@std/sync.ms"
 import TaskGroup from "@std/tasks.ms"
-import {sleep, duration, Duration} from "@std/time.ms"
+import Duration from "@std/time.ms"
 
 export type ProxyOptions:
     url: String
@@ -49,58 +49,38 @@ impl ReadStream for BodyReader:
 
 fn numeric(value: Int) -> JsonValue: JsonValue.NumberValue(value.toString())
 
-fn string(value: String) -> JsonValue: JsonValue.StringValue(value)
+fn json_string(value: String) -> JsonValue: JsonValue.StringValue(value)
 
 fn block_json(block: Content, signature: Optional[String]) -> JsonValue:
     let values = Map[String, JsonValue]()
 
     match block:
         Text(value):
-            values.add(
-                "type",
-                string("text")
-            ).add(
-                "text",
-                string(value)
-            )
+            values.add("type", json_string("text")).add("text", json_string(value))
 
-            if signature.is_some(): values.add(
+            if signature.is_some: values.add(
                 "textSignature",
-                string(signature.unwrap())
+                json_string(signature.unwrap())
             )
         Thinking(value):
-            values.add(
-                "type",
-                string("thinking")
-            ).add(
-                "thinking",
-                string(value)
+            (
+                values
+                .add("type", json_string("thinking"))
+                .add("thinking", json_string(value))
             )
 
-            if signature.is_some(): values.add(
+            if signature.is_some: values.add(
                 "thinkingSignature",
-                string(signature.unwrap())
+                json_string(signature.unwrap())
             )
-        Image(data, mime): values.add(
-            "type",
-            string("image")
-        ).add(
+        Image(data, mime): values.add("type", json_string("image")).add(
             "data",
-            string(data)
-        ).add(
-            "mimeType",
-            string(mime)
-        )
-        ToolCall(id, name, arguments): values.add(
-            "type",
-            string("toolCall")
-        ).add(
+            json_string(data)
+        ).add("mimeType", json_string(mime))
+        ToolCall(id, name, arguments): values.add("type", json_string("toolCall")).add(
             "id",
-            string(id)
-        ).add(
-            "name",
-            string(name)
-        ).add("arguments", arguments)
+            json_string(id)
+        ).add("name", json_string(name)).add("arguments", arguments)
 
     return JsonValue.ObjectValue(values)
 
@@ -133,50 +113,32 @@ fn usage_json(usage: Usage) -> JsonValue:
 
 export fn message_json(message: Message) -> JsonValue:
     let result = Map[String, JsonValue]()
-    result.add(
-        "role",
-        string(role_name(message.role))
-    )
-    result.add(
-        "timestamp",
-        numeric(message.timestamp_ms)
-    )
+    result.add("role", json_string(role_name(message.role)))
+    result.add("timestamp", numeric(message.timestamp_ms))
     let content: List[JsonValue] = []
 
     for entry in message.content.entries(): content.append(
-        block_json(
-            entry.value,
-            (message.content_signatures.get(entry.index))
-        )
+        block_json(entry.value, (message.content_signatures.get(entry.index)))
     )
 
-    result.add(
-        "content",
-        JsonValue.ArrayValue(content)
-    )
+    result.add("content", JsonValue.ArrayValue(content))
 
     if message.role == Role.System:
-        result.add(
-            "content",
-            string(content_text(message.content))
-        )
+        result.add("content", json_string(content_text(message.content)))
 
-        if not message.sections.is_empty():
+        if not message.sections.is_empty:
             let sections = Map[String, JsonValue]()
 
             for entry in message.sections.entries():
                 var value = JsonValue.Null
 
-                if entry.value.is_some(): value = string(entry.value.unwrap())
+                if entry.value.is_some: value = json_string(entry.value.unwrap())
 
                 sections.add(entry.key, value)
 
-            result.add(
-                "sections",
-                JsonValue.ObjectValue(sections)
-            )
+            result.add("sections", JsonValue.ObjectValue(sections))
 
-        if not message.tools_added.is_empty():
+        if not message.tools_added.is_empty:
             let tools: List[JsonValue] = []
 
             for tool in message.tools_added:
@@ -184,14 +146,14 @@ export fn message_json(message: Message) -> JsonValue:
                 (
                     declaration.add(
                         "name",
-                        string(tool.name)
-                    ).add(
-                        "description",
-                        string(tool.description)
-                    ).add("parameters", tool.parameters)
+                        json_string(tool.name)
+                    ).add("description", json_string(tool.description)).add(
+                        "parameters",
+                        tool.parameters
+                    )
                 )
 
-                if tool.constrained_sampling.is_some(): declaration.add(
+                if tool.constrained_sampling.is_some: declaration.add(
                     "constrainedSampling",
                     JsonValue.BoolValue(
                         (tool.constrained_sampling.unwrap())
@@ -200,12 +162,9 @@ export fn message_json(message: Message) -> JsonValue:
 
                 tools.append(JsonValue.ObjectValue(declaration))
 
-            result.add(
-                "toolsAdded",
-                JsonValue.ArrayValue(tools)
-            )
+            result.add("toolsAdded", JsonValue.ArrayValue(tools))
 
-        if not message.tools_removed.is_empty():
+        if not message.tools_removed.is_empty:
             result.add(
                 "toolsRemoved",
                 JsonValue.ArrayValue(
@@ -214,7 +173,11 @@ export fn message_json(message: Message) -> JsonValue:
                         .tools_removed
                         .map(
                             fn(name: String) -> JsonValue: JsonValue.ObjectValue(
-                                {"name": string(name)}
+                                {
+                                    "name": json_string(
+                                        name
+                                    )
+                                }
                             )
                         )
                     )
@@ -226,63 +189,39 @@ export fn message_json(message: Message) -> JsonValue:
             result
             .add(
                 "stopReason",
-                string(reason_name(message.stop_reason))
+                json_string(reason_name(message.stop_reason))
             )
-            .add(
-                "model",
-                string(message.model)
-            )
-            .add(
-                "provider",
-                string(message.provider)
-            )
-            .add(
-                "api",
-                string(message.api)
-            )
-            .add(
-                "thinkingLevel",
-                string(message.thinking_level)
-            )
+            .add("model", json_string(message.model))
+            .add("provider", json_string(message.provider))
+            .add("api", json_string(message.api))
+            .add("thinkingLevel", json_string(message.thinking_level))
         )
 
         if message.error_message != "": result.add(
             "errorMessage",
-            string(message.error_message)
+            json_string(message.error_message)
         )
 
         if message.provider_thinking_level != "": result.add(
             "providerThinkingLevel",
-            string(message.provider_thinking_level)
+            json_string(message.provider_thinking_level)
         )
 
     if message.role == Role.ToolResult:
         (
             result
-            .add(
-                "toolCallId",
-                string(message.tool_call_id)
-            )
-            .add(
-                "toolName",
-                string(message.tool_name)
-            )
-            .add(
-                "isError",
-                JsonValue.BoolValue(message.is_error)
-            )
+            .add("toolCallId", json_string(message.tool_call_id))
+            .add("toolName", json_string(message.tool_name))
+            .add("isError", JsonValue.BoolValue(message.is_error))
             .add("details", message.details)
         )
 
-        if message.duration_ms.is_some(): result.add(
+        if message.duration_ms.is_some: result.add(
             "durationMs",
             numeric((message.duration_ms.unwrap()))
         )
 
-    if message.usage.is_some(): result.add(
-        "usage",
-        usage_json(message.usage.unwrap())
-    )
+    if message.usage.is_some: result.add("usage", usage_json(message.usage.unwrap()))
 
     return JsonValue.ObjectValue(result)
 
@@ -303,14 +242,11 @@ export fn proxy_payload(request: Request) -> JsonValue:
     ]:
         let value = field(request.options, name)
 
-        if value.is_some(): options.add(
-            name,
-            value.unwrap()
-        )
+        if value.is_some: options.add(name, value.unwrap())
 
     if request.thinking_level != "off": options.add(
         "reasoning",
-        string(request.thinking_level)
+        json_string(request.thinking_level)
     )
 
     let context = JsonValue.ObjectValue(
@@ -344,25 +280,25 @@ export type ProxyState:
 
 fn index(event: JsonValue) -> Result[Int, Error]:
     let value = text(field(event, "contentIndex").unwrap_or(JsonValue.Null)).parse_int()
-    if value.is_none() or value.unwrap() < 0: return error(
+    if value.is_none or value.unwrap() < 0: return error(
         AgentError.InvalidState("Proxy event has an invalid content index")
     )
 
     return ok(value.unwrap())
 
 fn set_block(state: ProxyState, index: Int, block: Content) -> Result[Unit, Error]:
-    if index > state.message.content.length(): return error(
+    if index > state.message.content.length: return error(
         AgentError.InvalidState("Proxy event skipped a content index")
     )
 
-    if index == state.message.content.length(): state.message.content.append(block)
+    if index == state.message.content.length: state.message.content.append(block)
     else: state.message.content.set(index, block)
 
     return ok(unit)
 
 fn get_block(state: ProxyState, index: Int) -> Result[Content, Error]:
     let block = state.message.content[index]
-    if block.is_none(): return error(
+    if block.is_none: return error(
         AgentError.InvalidState("Proxy event refers to missing content")
     )
 
@@ -399,7 +335,7 @@ fn usage(value: JsonValue) -> Usage:
     )
 
 fn partial_json(fragment: String) -> JsonValue:
-    if parse(fragment).is_ok(): return parse(fragment).unwrap()
+    if parse(fragment).is_ok: return parse(fragment).unwrap()
 
     let closers: List[String] = []
     var quoted = false
@@ -418,7 +354,7 @@ fn partial_json(fragment: String) -> JsonValue:
 
     var candidate = fragment.trim_end()
 
-    if escaped: candidate = candidate.slice(0, candidate.scalar_length() - 1).unwrap()
+    if escaped: candidate = candidate.slice(0, candidate.scalar_length - 1).unwrap()
 
     if quoted: candidate = candidate + "\""
 
@@ -426,14 +362,12 @@ fn partial_json(fragment: String) -> JsonValue:
 
     if candidate.ends_with(","): candidate = (
         candidate
-        .slice(0, (candidate.scalar_length() - 1))
+        .slice(0, (candidate.scalar_length - 1))
         .unwrap()
     )
 
     candidate = candidate + closers.reversed().join("")
-    return parse(candidate).unwrap_or(
-        JsonValue.ObjectValue(Map[String, JsonValue]())
-    )
+    return parse(candidate).unwrap_or(JsonValue.ObjectValue(Map[String, JsonValue]()))
 
 export fn process_proxy_event(
     state: ProxyState,
@@ -454,11 +388,9 @@ export fn process_proxy_event(
             and reason != "length"
             and reason != "toolUse"
         ): return error(AgentError.InvalidState("Invalid proxy completion reason"))
-        if (
-            kind == "error"
-            and reason != "error"
-            and reason != "aborted"
-        ): return error(AgentError.InvalidState("Invalid proxy error reason"))
+        if (kind == "error" and reason != "error" and reason != "aborted"): return error(
+            AgentError.InvalidState("Invalid proxy error reason")
+        )
 
         var stop = StopReason.Stop
 
@@ -484,16 +416,8 @@ export fn process_proxy_event(
         return ok(unit)
 
     let position = try index(event)
-    if kind == "text_start": return set_block(
-        state,
-        position,
-        Content.Text("")
-    )
-    if kind == "thinking_start": return set_block(
-        state,
-        position,
-        Content.Thinking("")
-    )
+    if kind == "text_start": return set_block(state, position, Content.Text(""))
+    if kind == "thinking_start": return set_block(state, position, Content.Thinking(""))
 
     if kind == "toolcall_start":
         state.fragments.add(position, "")
@@ -515,25 +439,16 @@ export fn process_proxy_event(
 
     if kind == "text_delta" or kind == "thinking_delta":
         let delta = text(field(event, "delta").unwrap_or(JsonValue.Null))
-        return append_delta(
-            state,
-            position,
-            block,
-            kind,
-            delta
-        )
+        return append_delta(state, position, block, kind, delta)
 
     if kind == "text_end" or kind == "thinking_end":
         let signature = field(event, "contentSignature")
 
-        if signature.is_some(): (
+        if signature.is_some: (
             state
             .message
             .content_signatures
-            .add(
-                position,
-                text(signature.unwrap())
-            )
+            .add(position, text(signature.unwrap()))
         )
 
         return check_end(block, kind)
@@ -546,11 +461,7 @@ export fn process_proxy_event(
         state.fragments.add(position, raw)
 
         let updated = match block:
-            ToolCall(id, name, _): Content.ToolCall(
-                id,
-                name,
-                partial_json(raw)
-            )
+            ToolCall(id, name, _): Content.ToolCall(id, name, partial_json(raw))
             _: return error(
                 AgentError.InvalidState(
                     "Proxy tool delta refers to another content type"
@@ -587,21 +498,13 @@ fn append_delta(
                 AgentError.InvalidState("Proxy delta type mismatch")
             )
 
-            return set_block(
-                state,
-                position,
-                Content.Text(value + delta)
-            )
+            return set_block(state, position, Content.Text(value + delta))
         Thinking(value):
             if kind != "thinking_delta": return error(
                 AgentError.InvalidState("Proxy delta type mismatch")
             )
 
-            return set_block(
-                state,
-                position,
-                Content.Thinking(value + delta)
-            )
+            return set_block(state, position, Content.Thinking(value + delta))
         _: return error(AgentError.InvalidState("Proxy delta type mismatch"))
 
 fn check_end(block: Content, kind: String) -> Result[Unit, Error]:
@@ -644,19 +547,16 @@ export fn read_proxy_stream(
         )
 
         let line = try read_line(input, max_event_bytes)
-        if line.is_none(): break
+        if line.is_none: break
         if not line.unwrap().starts_with("data: "): continue
 
-        let raw = line.unwrap().slice(
-            6,
-            line.unwrap().scalar_length()
-        ).unwrap().trim()
+        let raw = line.unwrap().slice(6, line.unwrap().scalar_length).unwrap().trim()
         if raw == "": continue
 
         let event = try parse(raw)
         let _processed = try process_proxy_event(state, event)
 
-        if request.provider_event.is_some(): request.provider_event.unwrap()(event)
+        if request.provider_event.is_some: request.provider_event.unwrap()(event)
 
         if state.terminal: return ok(state.message)
         if text(field(event, "type").unwrap_or(JsonValue.Null)) == "start": continue
@@ -675,15 +575,12 @@ fn proxy_http_error(
 ) -> Result[Message, Error]:
     let body = read_all(reader, max_bytes)
 
-    if body.is_ok() and body.unwrap().to_text().is_some():
+    if body.is_ok and body.unwrap().to_text().is_some:
         let value = parse(body.unwrap().to_text().unwrap())
 
-        if value.is_ok():
-            let message = field(
-                value.unwrap(),
-                "error"
-            )
-            if message.is_some() and text(message.unwrap()) != "": return error(
+        if value.is_ok:
+            let message = field(value.unwrap(), "error")
+            if message.is_some and text(message.unwrap()) != "": return error(
                 AgentError.InvalidState(
                     "Proxy error: {text(message.unwrap())}"
                 )
@@ -703,12 +600,8 @@ export fn stream_proxy(
         with tasks = TaskGroup():
             let _watch = tasks.start(
                 fn() -> Unit:
-                    while true:
-                        if is_aborted(control):
-                            client.close()
-                            return
-
-                        sleep(duration(1000000))
+                    wait_for_abort(control)
+                    client.close()
             )
             let outgoing = headers()
             let _content_type = try outgoing.append(
@@ -721,7 +614,7 @@ export fn stream_proxy(
             )
             var payload = proxy_payload(request)
 
-            if request.on_payload.is_some(): payload = (
+            if request.on_payload.is_some: payload = (
                 request
                 .on_payload
                 .unwrap()(payload)
@@ -737,9 +630,9 @@ export fn stream_proxy(
                 max_response_bytes: options.max_response_bytes,
                 timeout: options.timeout
             ):
-                let status = body.metadata().status
+                let status = body.metadata.status
 
-                if request.on_response.is_some(): (
+                if request.on_response.is_some: (
                     request
                     .on_response
                     .unwrap()(

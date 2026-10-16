@@ -1,29 +1,26 @@
-import List from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
-test "String basic counterparts are callable":
-    if "é🙂".length() != 2: return panic("scalar length")
-    if not ("".is_empty()) or "a".is_empty(): return panic("empty text")
+test "String accessors and methods preserve their units":
+    if "é🙂".length != 2: return panic("scalar length")
+    if not ("".is_empty) or "a".is_empty: return panic("empty text")
     if "é🙂".chars() != ["é", "🙂"]: return panic("scalar chars")
     if "é🙂".reverse() != "🙂é": return panic("scalar reverse")
-    if (
-        "a".compare("b") != -1
-        or "b".compare("a") != 1
-        or "é".compare("é") != 0
-    ): return panic("text comparison")
+    if ("a".compare("b") != -1 or "b".compare("a") != 1 or "é".compare("é") != 0): return panic(
+        "text comparison"
+    )
     if "a\r\nb\n".lines() != ["a", "b"]: return panic("text lines")
 
 test "length and chars use scalars and preserve text boundaries":
     let text = "é🙂e\u{301}"
-    if text.length() != 4 or text.length() != text.scalar_length(): return panic(
+    if text.length != 4 or text.length != text.scalar_length: return panic(
         "String length unit"
     )
     if text.chars() != ["é", "🙂", "e", "\u{301}"]: return panic(
         "combining scalar chars"
     )
-    if "👩\u{200d}🚀".length() != 3: return panic("graphemes are not scalars")
+    if "👩\u{200d}🚀".length != 3: return panic("graphemes are not scalars")
     if "a\u{0}b".chars() != ["a", "\u{0}", "b"]: return panic("NUL scalar lost")
-    if not ("".chars().is_empty()) or "".length() != 0: return panic(
+    if not ("".chars().is_empty) or "".length != 0: return panic(
         "empty scalar collection"
     )
 
@@ -73,10 +70,7 @@ test "lines preserve interior empties and recognize LF and CRLF only":
         LineCase("a\n", ["a"]),
         LineCase("a\r\n", ["a"]),
         LineCase("a\n\n", ["a", ""]),
-        LineCase(
-            "a\r\nb\nc",
-            ["a", "b", "c"]
-        ),
+        LineCase("a\r\nb\nc", ["a", "b", "c"]),
         LineCase("a\r", ["a\r"]),
         LineCase("\r", ["\r"]),
         LineCase("\r\r\n", ["\r"]),
@@ -91,23 +85,22 @@ test "lines preserve interior empties and recognize LF and CRLF only":
             "line boundary: {line_case.text.toString()}"
         )
 
-test "String basic bound methods capture immutable receiver values":
+test "String methods and accessor closures capture immutable receiver values":
     var text = "é\n🙂\n"
     let chars = text.chars
     let lines = text.lines
     let reverse = text.reverse
-    let length = text.length
-    let empty = text.is_empty
+    let captured_text = text
+    let length: fn() -> Int = fn() -> Int: captured_text.length
+    let empty: fn() -> Bool = fn() -> Bool: captured_text.is_empty
     let compare = text.compare
     text = "changed"
     if chars() != ["é", "\n", "🙂", "\n"] or lines() != ["é", "🙂"]: return panic(
         "bound text collection receiver"
     )
-    if (
-        reverse() != "\n🙂\né"
-        or length() != 4
-        or empty()
-    ): return panic("bound scalar receiver")
+    if (reverse() != "\n🙂\né" or length() != 4 or empty()): return panic(
+        "bound scalar receiver"
+    )
     if compare(other: "é\n🙂\n") != 0: return panic("bound compare receiver/label")
 
     let first = lines()
@@ -117,4 +110,4 @@ test "String basic bound methods capture immutable receiver values":
 
     let empty_lines = "".lines()
     empty_lines.append("new")
-    if not ("".lines().is_empty()): return panic("empty lines storage alias")
+    if not ("".lines().is_empty): return panic("empty lines storage alias")

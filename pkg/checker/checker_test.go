@@ -80,8 +80,7 @@ func TestNestedCollectionsPreserveFiniteRecursiveApplications(t *testing.T) {
 		source   string
 		accepted bool
 	}{
-		{`import {List, Map} from "@std/collections.ms"
-type Value:
+		{`type Value:
     children: Map[String, Value]
 type Wrapper:
     entries: Map[String, Node]
@@ -89,8 +88,7 @@ type Node:
     case Leaf(value: Value)
     case Children(values: List[Wrapper])
 `, true},
-		{`import List from "@std/collections.ms"
-type Growing[T]:
+		{`type Growing[T]:
     children: List[Growing[List[T]]]
 `, false},
 	} {
@@ -105,7 +103,7 @@ type Growing[T]:
 	}
 }
 
-func TestMatchingLabelPreservesSourceAST(t *testing.T) {
+func TestBareIdentifiersArePositionalAndPreserveSourceAST(t *testing.T) {
 	source := "fn first[T](left: T, right: T) -> T: return left\nfn call(left: Int, right: Int) -> Int: return first(right, left)\n"
 	module, err := parser.Parse("shorthand.ms", source)
 	if err != nil {
@@ -117,9 +115,9 @@ func TestMatchingLabelPreservesSourceAST(t *testing.T) {
 		if len(program.Diagnostics) != 0 {
 			t.Fatal(program.Diagnostics)
 		}
-		for at, label := range []string{"right", "left"} {
+		for at, label := range []string{"left", "right"} {
 			if call.Args[at].Name != "" || program.Info(call).Arguments[at].Name != label {
-				t.Fatal("incorrect shorthand mapping")
+				t.Fatal("bare identifiers must bind positionally")
 			}
 		}
 	}

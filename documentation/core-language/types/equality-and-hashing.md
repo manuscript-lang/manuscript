@@ -9,7 +9,7 @@ weight = 8
 
 `Hashable` supplies an internal lookup code for **map keys and set elements**, which also require `Equal`. A map uses the hash to find an entry quickly, then checks equality to distinguish keys that happen to have the same hash. A set uses the same process to recognize an existing element.
 
-`Equal` and `Hashable` are operation interfaces defined in `@std/equality.ms`. Their names remain available in the prelude for generic bounds; explicit imports also work. Equality and hashing are independent of sharing and resource lifetime.
+`Equal` and `Hashable` are operation interfaces defined in `@std/equality.ms`. Their names remain available in the prelude for generic bounds and ordinary interface use; explicit imports of these canonical types are redundant and rejected. Equality and hashing are independent of sharing and resource lifetime.
 
 ```manuscript
 interface Equal:
@@ -42,8 +42,6 @@ Structural equality terminates on cyclic data. Collections and recursive data sh
 An explicit implementation can select identity instead of every field:
 
 ```manuscript
-import {Equal, Hashable} from "@std/equality.ms"
-
 type CustomerKey:
     id: Int
     label: String

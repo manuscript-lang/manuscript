@@ -11,7 +11,7 @@ import (
 func testNames() Names {
 	return Names{
 		Root:    "/work",
-		Locals:  map[string]Local{"local3_message": {Name: "message", Type: "String"}},
+		Locals:  map[string]map[string]Local{"main": {"message": {Name: "message", Type: "String"}}},
 		Sources: map[string]bool{"src/main.ms": true},
 		Entities: []Entity{
 			{Name: "Point", File: "src/main.ms", Line: 1},

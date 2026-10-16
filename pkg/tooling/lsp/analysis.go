@@ -115,7 +115,11 @@ func navigation(result compiler.Result, d document, p position, method string) a
 		if i.Symbol != nil && i.Symbol.IsConstant() && shown == i.Symbol.Type {
 			shown = i.Symbol.ValueType()
 		}
-		value := "```manuscript\n" + e.Text + ": " + shown.String() + "\n```"
+		label := e.Text + ": " + shown.String()
+		if i.Method != nil && i.Method.Accessor {
+			label = "get " + e.Text + " -> " + shown.String()
+		}
+		value := "```manuscript\n" + label + "\n```"
 		docs := hoverDocumentation(result, i)
 		if docs != "" {
 			value += "\n\n" + docs
@@ -128,6 +132,12 @@ func navigation(result compiler.Result, d document, p position, method string) a
 				// Operation keys group a contract and all implementations for
 				// rename. Definition lookup follows the checked concrete method.
 				if i.Method != nil && i.Method.ID != "" && (entry.info == nil || entry.info.Method == nil || entry.info.Method.ID != i.Method.ID) {
+					continue
+				}
+				// Contract reads have no concrete implementation ID. Follow
+				// their checked declaration, rather than the first implementation
+				// sharing the rename group (including standard-library methods).
+				if i.Method != nil && i.Method.ID == "" && i.Method.Decl != nil && (entry.info == nil || entry.info.Method == nil || entry.info.Method.Decl == nil || entry.info.Method.Decl.Pos != i.Method.Decl.Pos) {
 					continue
 				}
 				return []any{occurrenceLocation(result, entry)}
@@ -213,6 +223,14 @@ func declaration(result compiler.Result, i *checker.Info) syntax.Position {
 		return i.Method.Decl.Pos
 	}
 	if i.Binding != nil {
+		for decl, binding := range result.Program.FixtureBindings() {
+			if binding == i.Binding {
+				if fixture := result.Program.TestFixtures[decl.Pos.File]; fixture != nil {
+					return fixture.Factory.Decl.Pos
+				}
+				return decl.Pos
+			}
+		}
 		// Ordinary locals already resolve through the source index above.
 		// The implicit self binding is anchored at its method declaration.
 		for decl, binding := range result.Program.SelfBindings() {

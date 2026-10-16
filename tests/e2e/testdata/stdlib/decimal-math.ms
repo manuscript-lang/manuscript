@@ -16,7 +16,6 @@ import {
     cos,
     pi
 } from "@std/math.ms"
-import Optional from "@std/optional.ms"
 import panic from "@std/faults.ms"
 
 test "decimal arithmetic is exact and conversion truncates":
@@ -35,9 +34,5 @@ test "math rounding signs and exact identities":
     if min(left: 2.0, right: 3.0) != 2.0 or max(left: 2.0, right: 3.0) != 3.0: return panic(
         "extrema"
     )
-    if (
-        sin(0.0) != 0.0
-        or cos(0.0) != 1.0
-        or pi() < 3.14
-    ): return panic("trigonometry")
-    if not sqrt(-1.0).is_nan(): return panic("NaN predicate")
+    if (sin(0.0) != 0.0 or cos(0.0) != 1.0 or pi() < 3.14): return panic("trigonometry")
+    if not sqrt(-1.0).is_nan: return panic("NaN predicate")

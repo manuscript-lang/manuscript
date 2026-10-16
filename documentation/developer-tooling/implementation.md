@@ -13,6 +13,9 @@ ms lint ms.toml --json
 ms fmt source.ms --check
 ms fmt ms.toml --check
 ms lsp
+ms search_symbol read file lines
+ms search_symbol parse_config
+ms search_symbol json
 ms debug source.ms -- arg1
 ms debug source.ms --break source.ms:7 --json
 ms debug ms.toml --script commands.txt
@@ -33,7 +36,7 @@ to their existing consumers.
 extra arguments with usage status 2; `ms version --help` shows command help.
 
 Commands that take one source input also accept a project directory containing
-`ms.toml`, including `doc`; native commands select one application entrypoint.
+`ms.toml`; native commands select one application entrypoint.
 `fmt` selects multiple files or recursively discovers directories as described
 in [formatting](source/formatting.md).
 
@@ -50,29 +53,30 @@ ms test test.ms --watch
 
 Project lint checks hygiene in every reachable local module and runs semantic rules on the checked program. [Library projects](builds/project-configuration.md#library-projects-and-copied-dependencies) include all source modules and discovered tests. `--json` reports stable rule codes and module-relative positions.
 
-## Source inspection and API documentation
+## Source inspection
 
 ```sh
 ms check ms.toml --json
 ms inspect ms.toml -o inspection.json
 ms diagram ms.toml -o calls.mmd
-ms doc src/library.ms -o api.md
-ms doc ms.toml --json -o api.json
-ms doc --stdlib -o stdlib.md
-ms doc --stdlib --json -o stdlib.json
-ms stdlib exported-standard-sources
 ```
 
-These commands use source checking and embedded declarations without a Go installation or native toolchain extraction. `inspect` retains symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders their static call graph as Mermaid; it is not an execution trace.
+These commands use source checking without a Go installation or native toolchain extraction. `inspect` retains symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders their static call graph as Mermaid; it is not an execution trace.
 
-`doc` checks the input first and documents only its exported declarations, including fields, alternative cases, contract operations, and generic bounds. A contiguous `#` comment block directly above a declaration or member, at the same indentation and with no intervening blank line, is its description. Markdown renders these descriptions beside the corresponding signatures; JSON carries declaration `doc` strings and an additive `members` array with `name`, `kind`, `signature`, `doc`, and an optional implementation `contract`. Existing `fields`, `cases`, and `operations` arrays remain strings under schema version 1. Empty member descriptions stay visible as empty `doc` strings; the tool does not invent text from a signature. Inline case payloads do not inherit the case's description. Project docs include reachable local modules; library projects include all source modules and discovered tests. Private declarations and re-imported standard names are excluded. Without `-o`, output goes to stdout. The `--stdlib` reference and `stdlib` source export describe the compiler version bundled in that binary; neither downloads a library.
+## Commands for agents
 
-`ms stdlib <directory>` writes source declarations and bindings for tooling;
-`ms doc --stdlib` renders API documentation. These outputs serve different tasks.
+Agents with a shell need no protocol server: three small commands answer what the compiler commands do not, and each prints only what is needed to act.
+
+| Command | Behavior |
+| --- | --- |
+| `ms search_symbol [<name or words>... \| <path>]` | Fuzzy, case-insensitive lookup over project declarations and standard-library symbols (partial names, missing underscores, small typos, plain words; exact names first; `--limit n` default 5, at most 10; `--json`). A project match prints its definition `file:line:column`, type, one-line description, and up to five uses, from the language server's analysis; a standard match prints its signature and a path. A lone module or declaration path (`json`, `prelude.List`, `prelude.List.sorted`) prints that page, each capped near 3.5 KB; no argument lists modules |
+| `ms guide` | The language cheat sheet (under 2.5 KB) with a checked example program |
+
+Pair them with `ms check`, `ms fmt --check`, `ms lint`, and `ms test`, which already print compact diagnostics and failures (`--json` for complete documents). The index is built from the checker's definitions, so it does not depend on any exported declaration files. The cheat sheet stays under 2,500 bytes because agents read it every session, and a test checks its complete program.
 
 ## Selecting independent analysis inputs
 
-`check`, `lint`, and `doc` accept multiple `.ms` files, directories, and `ms.toml`
+`check` and `lint` accept multiple `.ms` files, directories, and `ms.toml`
 projects. For example, `ms check src utilities.ms --json` checks each selected
 input independently. It does not combine their declarations or execute their
 `main` functions or test blocks. Native commands still take one entrypoint.
@@ -173,16 +177,21 @@ Test results contain these fields:
 | Field | Meaning |
 | --- | --- |
 | `source_root` | Root for module-relative compile diagnostic paths and test names |
-| `tests` | Planned tests in execution order; each has `name`, `status`, and optional `failure` text with its first source `position` |
-| `summary` | `available`, `selected`, `passed`, and `failed` counts |
-| `completed` | Whether the native runner reported all selected outcomes |
+| `tests` | Planned tests in execution order; each has an execution `index`, `name`, `status`, `duration_ns`, and optional `failure` text with its first source `position` |
+| `summary` | `available` declaration count; `selected`, `passed`, `failed`, `skipped`, and `not_run` execution counts; total `duration_ns` |
+| `completed` | Whether the native runner finished its plan (also true for listing or fail-fast) |
 | `exit_code` | Observable CLI exit status |
 | `stdout` | Complete captured native stdout, including runner and test-written output |
 | `stdout_base64` | Present instead of stdout text when bytes are not valid UTF-8; `stdout` is then empty |
 | `diagnostics` | Existing compile diagnostics, or execution/build/report errors; an empty array on ordinary runs |
-| `reason` | Optional `no_tests`, `no_match`, `compile_error`, `build_error`, `execution_error`, or `argument_error` |
+| `fixture_errors` | Optional file-level lifecycle failures with `file`, `phase`, `failure`, and optional source `position` |
+| `reason` | Optional `fixture_error`, `fixture_abandoned`, `cancelled`, `listed`, `fail_fast`, `no_tests`, `no_match`, `compile_error`, `build_error`, `execution_error`, or `argument_error` |
 
-Completed tests have status `passed` or `failed`. If the process stops early,
+Completed tests have status `passed`, `failed`, or `skipped`. Listing sets
+`listed: true` and leaves every selected test `not_run`; fail-fast leaves its
+remaining executions `not_run`. The optional `repeat` count and `shuffle_seed`
+describe execution order. Repeated names have distinct indices and durations.
+Per-test durations include cleanup; total duration includes runner overhead. If the process stops early,
 the active test is `incomplete`, later planned tests are `not_run`, and completed
 outcomes remain available. Failure text retains source frames and timeout details.
 The native test executable writes outcomes through a separate result channel;
@@ -203,7 +212,7 @@ test execution/build/report failures. No test output is truncated.
 
 The server supports incremental document synchronization with validated UTF-16 ranges, compiler diagnostics and advisory lint codes, hierarchical document symbols, workspace symbol search, semantic tokens, folding, inferred-local type hints, typed hover, definition/type-definition navigation, highlights, project references, signature help, formatting, import organization, and versioned code actions and rename edits.
 
-Completion is derived from the checker's actual lexical scope and member-resolution rules. It resolves shadowing and offers visible parameters/locals, generic-bound operations, substituted record fields and collection/service methods, variant cases, named call arguments, generic/call snippets, standard and project auto-imports, and import names/paths. Used arguments, inaccessible opaque fields, and locals in sibling scopes are excluded. Snippets are offered only when the client supports them. Accepting an auto-import creates an explicit ordinary import.
+Completion is derived from the checker's actual lexical scope and member-resolution rules. It resolves shadowing and offers visible parameters/locals, generic-bound operations, substituted record fields, read-only accessor values and collection/service methods, variant cases, named call arguments, generic/call snippets, standard and project auto-imports, and import names/paths. Used arguments, inaccessible opaque fields, and locals in sibling scopes are excluded. Snippets are offered only when the client supports them. Accepting an auto-import creates an explicit ordinary import.
 
 Incomplete member accesses and calls are analyzed using a private cursor snapshot. Declaration recovery retains unaffected source with original positions. Recovery is exclusive to editor analysis: strict checking, formatting, and native builds never accept repaired source. A parse error elsewhere does not erase completion or outlining for valid declarations. Analysis skips Go lowering and caches normal document results until source or watched files change. Member completion's local benchmark is included in `completion_test.go`.
 
@@ -213,7 +222,7 @@ Content-Length transport limits frames to 16 MiB and headers to 8 KiB. Invalid J
 
 ## Linting and formatting
 
-`lint` returns 1 for findings and 0 for clean source. Stable advisory codes are MSL001 (trailing whitespace), MSL002 (missing final newline), MSL101 (unread local), MSL102 (unused import), MSL103 (unreachable statement), MSL104 (discarded Result), MSL105 (unsynchronized captured mutation), MSL106 (a match payload binding mistaken for a case or type pattern) and MSL107 (nested match). Semantic rules use checked bindings and control-flow facts. Required implicit imports, such as canonical `List` for list literals, count as uses. Unused-import and whitespace fixes are available in the editor; initializers with possible effects are never silently removed. Run `ms check` for correctness errors.
+`lint` returns 1 for findings and 0 for clean source. Stable advisory codes are MSL001 (trailing whitespace), MSL002 (missing final newline), MSL101 (unread local or match payload binding; a read inside an assignment to the same variable, as in `total = total + 2`, does not count; use `_` to ignore a payload), MSL102 (unused import), MSL103 (unreachable statement), MSL104 (discarded Result), MSL105 (unsynchronized captured mutation), MSL106 (a match payload binding mistaken for a case or type pattern) and MSL107 (nested match). Semantic rules use checked bindings and control-flow facts. Required implicit imports, such as canonical `List` for list literals, count as uses. Unused-import and whitespace fixes are available in the editor; initializers with possible effects are never silently removed. Run `ms check` for correctness errors.
 
 MSL104 warns when an expression statement discards a standard `Result`. Handle it with `match`, propagate it with `try`, or explicitly bind it as `let _ignored = operation()` when ignoring both success and failure is intentional. See [Result handling](../core-language/errors/results.md).
 
@@ -225,6 +234,7 @@ helper to match a case of the payload's type, or renaming an intentional binding
 See [payload patterns](../core-language/control-flow/pattern-matching.md#payload-patterns).
 
 MSL107 warns at a match nested structurally inside another match. Use an early-exit payload binding, compatible `try`, or a small helper to keep flow flat. It includes inline callbacks beneath an outer match and preserves checking/runtime behavior. See [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
+
 String replacement names remain outside its preference map. In particular,
 `String.replace_first` still accepts a cap greater than one; renaming every
 `String.replace` call would conceal that behavior. Both names remain supported
@@ -253,20 +263,19 @@ infer stages from the names of calls or bindings.
 
 Expression layout uses a soft limit of 88 columns:
 
-- Keep simple calls and small literals compact. Expand calls with four or more
-  arguments, multiple arguments containing nested calls or compound computations,
-  or a closure argument. Single-argument calls containing another nested
-  computation can also expand.
-- Expand signatures with four or more parameters or complex defaults. Include the
-  return type when deciding whether a signature fits, excluding callback bodies
-  and enclosing arguments.
+- Keep calls and signatures on one line when they fit, whatever their argument
+  or parameter count, nested calls, compound computations, or defaults. An
+  anonymous function whose body is a multi-statement suite always expands its
+  call. Include the return type when deciding whether a signature fits,
+  excluding callback bodies and enclosing arguments.
 - Keep lists compact when they fit, including nested lists. Expand grouped
-  imports with five or more names. Later call arguments do not count toward
+  imports with five or more names and maps with ten or more entries. Later call arguments do not count toward
   the width of a preceding list or call in a chain.
 - Once a group expands, put every argument, parameter, or element on its own line.
   Use four spaces beyond the containing line and align the closing delimiter with
-  that line. Existing multiline groups remain expanded with this same layout.
-- Break conditions with three or more clauses at their lowest-precedence logical
+  that line. An authored multiline group collapses when it fits and holds no
+  comment or suite; an authored trailing comma is dropped when it does.
+- Break conditions that exceed the limit at their lowest-precedence logical
   operator. Keep comparison operands together. Long arithmetic and member chains
   also gain continuation lines, preserving precedence and evaluation order.
 - Add grouping parentheses around complete statement values, argument values,

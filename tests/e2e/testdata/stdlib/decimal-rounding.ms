@@ -57,7 +57,7 @@ test "decimal scale extremes and invalid requests return typed errors":
     if value(1e-6176d.round(places: 6176)) != 1e-6176d: return panic("minimum scale")
     if value(5e-6176d.round(places: 6175)) != 0d: return panic("subnormal tie")
     if value(1e6144d.round(places: -6144)) != 1e6144d: return panic("maximum scale")
-    if value(0d.to_fixed(digits: 6176)).scalar_length() != 6178: return panic(
+    if value(0d.to_fixed(digits: 6176)).scalar_length != 6178: return panic(
         "maximum digits"
     )
 

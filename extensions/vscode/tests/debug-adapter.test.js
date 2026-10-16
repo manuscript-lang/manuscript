@@ -4,7 +4,7 @@ const { PassThrough } = require('node:stream');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
-const { Framing, frame, ManuscriptAdapter, sourceType, mapName, rewriteExpression, runtimeType } = require(process.env.MANUSCRIPT_DAP_ADAPTER || '../debug-adapter');
+const { Framing, frame, ManuscriptAdapter, sourceType, mapName, rewriteExpression, goField, sourceField, typeArguments } = require(process.env.MANUSCRIPT_DAP_ADAPTER || '../debug-adapter');
 require('./interface-view-debug.test');
 
 test('DAP framing preserves fragmented UTF-8 and multiple messages', () => {
@@ -16,20 +16,71 @@ test('DAP framing preserves fragmented UTF-8 and multiple messages', () => {
 });
 test('Manuscript values use source names and lazy structured handles', async () => {
   const adapter = new ManuscriptAdapter(new PassThrough());
-  assert.equal(sourceType('interface {}(int64)'), 'Int');
+  assert.equal(sourceType('int64'), 'Int');
+  assert.equal(sourceType('*github.com/manuscript-lang/manuscript/pkg/runtime.Map[string,int64]'), 'Map[String,Int]');
+  assert.equal(sourceType('*runtime.List[main.Box]'), 'List[Box]');
+  assert.equal(sourceType('runtime.Option[float64]'), 'Optional[Float]');
   assert.equal(mapName('["name"]'), 'name');
-  const box = adapter.render({ name: 'local5_box', type: 'interface {}(main.Record)', value: 'interface {}(main.Record) {Type: "Box", Fields: map[]}', variablesReference: 5 }, 'box', 'Box');
-  assert.equal(box.name, 'box'); assert.equal(box.value, 'Box');
-  const children = new Map([[5, [{ name: 'data', variablesReference: 6 }]], [6, [{ name: 'Type', value: '"Box"' }, { name: 'Fields', variablesReference: 7 }]], [7, [{ name: '["count"]', type: 'interface {}(int64)', value: 'interface {}(int64) 42', variablesReference: 0 }]]]);
+  const box = adapter.render({ name: 'box', type: '*main.Box', value: '*main.Box {Label: "x", Count: 42}', variablesReference: 5 }, 'box', 'Box');
+  assert.equal(box.name, 'box'); assert.equal(box.value, 'Box'); assert.equal(box.type, 'Box');
+  const children = new Map([[5, [{ name: '', variablesReference: 6 }]], [6, [{ name: 'Label', type: 'string', value: '"x"' }, { name: 'FirstName', type: 'int64', value: '42' }]]]);
   adapter.children = async ref => children.get(ref);
   const fields = await adapter.valueChildren(adapter.handles.get(box.variablesReference), {});
-  assert.equal(fields[0].name, 'count'); assert.equal(fields[0].value, '42'); assert.equal(fields[0].type, 'Int');
+  assert.deepEqual(fields.map(field => [field.name, field.value, field.type]), [['label', '"x"', 'String'], ['first_name', '42', 'Int']]);
+});
+
+test('record fields map between Go and source names', () => {
+  assert.equal(goField('first_name'), 'FirstName');
+  assert.equal(goField('x'), 'X');
+  assert.equal(sourceField('FirstName'), 'first_name');
+  assert.equal(sourceField('Count'), 'count');
+  assert.deepEqual(typeArguments('Map[String, List[Int]]'), ['String', 'List[Int]']);
+  assert.deepEqual(typeArguments('Result[fn(Int, Int) -> Int, Failure]'), ['fn(Int, Int) -> Int', 'Failure']);
+  assert.deepEqual(typeArguments('Box'), []);
+});
+
+test('options, results, lists and maps render as source values', async () => {
+  const adapter = new ManuscriptAdapter(new PassThrough());
+  const tree = new Map([
+    [1, [{ name: 'Val', type: 'int64', value: '5' }, { name: 'Some', type: 'bool', value: 'true' }]],
+    [2, [{ name: 'Items', type: '[]int64', value: '[]int64 len: 2', variablesReference: 3 }]],
+    [3, [{ name: '[0]', type: 'int64', value: '7' }, { name: '[1]', type: 'int64', value: '8' }]],
+    [4, [{ name: 'Val', type: 'int64', value: '0' }, { name: 'Err', type: 'string', value: '"bad"' }, { name: 'Failed', type: 'bool', value: 'true' }]],
+    [5, [{ name: 'entries', type: '[]*runtime.MapEntry[string,int64]', variablesReference: 6 }]],
+    [6, [{ name: '[0]', variablesReference: 7 }, { name: '[1]', value: 'nil', variablesReference: 0 }]],
+    [7, [{ name: '', variablesReference: 8 }]],
+    [8, [{ name: 'Key', type: 'string', value: '"k"' }, { name: 'Value', type: 'int64', value: '1' }]],
+  ]);
+  adapter.children = async ref => tree.get(ref) || [];
+  const option = adapter.render({ name: 'o', type: 'runtime.Option[int64]', value: '{Val: 5, Some: true}', variablesReference: 1 }, 'o', 'Optional[Int]');
+  assert.equal(option.value, 'some');
+  assert.deepEqual((await adapter.valueChildren(adapter.handles.get(option.variablesReference), {})).map(v => [v.name, v.value, v.type]), [['value', '5', 'Int']]);
+  const none = adapter.render({ name: 'o', type: 'runtime.Option[int64]', value: '{Val: 0, Some: false}', variablesReference: 1 }, 'o', 'Optional[Int]');
+  assert.equal(none.value, 'none'); assert.equal(none.variablesReference, 0);
+  const list = adapter.render({ name: 'l', type: '*runtime.List[int64]', value: '*runtime.List[int64] {Items: []int64 len: 2, cap: 2, [7,8]}', variablesReference: 2 }, 'l', 'List[Int]');
+  assert.equal(list.value, 'List[Int] (2 items)');
+  assert.deepEqual((await adapter.valueChildren(adapter.handles.get(list.variablesReference), {})).map(v => [v.name, v.value, v.type]), [['[0]', '7', 'Int'], ['[1]', '8', 'Int']]);
+  const result = adapter.render({ name: 'r', type: 'runtime.Result[int64,string]', value: '{Val: 0, Err: "bad", Failed: true}', variablesReference: 4 }, 'r', 'Result[Int, String]');
+  assert.equal(result.value, 'failed');
+  assert.deepEqual((await adapter.valueChildren(adapter.handles.get(result.variablesReference), {})).map(v => [v.name, v.value, v.type]), [['error', '"bad"', 'String']]);
+  const map = adapter.render({ name: 'm', type: '*runtime.Map[string,int64]', value: '{}', variablesReference: 5 }, 'm', 'Map[String, Int]');
+  assert.deepEqual((await adapter.valueChildren(adapter.handles.get(map.variablesReference), {})).map(v => [v.name, v.value, v.type]), [['k', '1', 'Int']]);
+});
+
+test('alternative cases show their case name', () => {
+  const adapter = new ManuscriptAdapter(new PassThrough());
+  const circle = adapter.render({ name: 's', type: 'main.Shape_Circle', value: 'main.Shape_Circle {Radius: 3}', variablesReference: 4 }, 's', 'Shape');
+  assert.equal(circle.value, 'Circle');
+  const viaInterface = adapter.render({ name: 's', type: 'main.Shape', value: 'main.Shape(main.Shape_Dot) {}', variablesReference: 4 }, 's', 'Shape');
+  assert.equal(viaInterface.value, 'Dot');
+  const unreadable = adapter.render({ name: 's', type: 'main.Shape', value: '(unreadable could not resolve interface type)', variablesReference: 4 }, 's', 'Shape');
+  assert.equal(unreadable.value, 'Shape'); assert.equal(unreadable.variablesReference, 0);
 });
 
 test('native DAP source stepping and Manuscript record/list/variant rendering', { skip: !process.env.MANUSCRIPT_DAP_TEST, timeout: 60000 }, async () => {
   const directory = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'manuscript dap test ')));
   const program = path.join(directory, 'main.ms');
-  const source = 'import List from "@std/collections.ms"\nimport Optional from "@std/optional.ms"\nimport Queue from "@std/queues.ms"\ntype Box:\n    label: String\n    count: Int\nexport fn main() -> Int:\n    let box = Box(label: "value", count: 42)\n    let items = [1, 2, 3]\n    let floats = [1.25, 2.5]\n    let bools = [true, false]\n    let strings = ["a", "b"]\n    let optional = Optional[Int].some(value: 5)\n    let queue = Queue[Int](capacity: 4)\n    queue.enqueue(value: box.count)\n    return box.count - 42 + queue.length() - 1 + floats.length() - 2 + bools.length() - 2 + strings.length() - 2\n';
+  const source = '\n\nimport Queue from "@std/queues.ms"\ntype Box:\n    label: String\n    count: Int\nexport fn main() -> Int:\n    let box = Box(label: "value", count: 42)\n    let items = [1, 2, 3]\n    let floats = [1.25, 2.5]\n    let bools = [true, false]\n    let strings = ["a", "b"]\n    let optional = Optional[Int].some(value: 5)\n    let queue = Queue[Int](capacity: 4)\n    queue.enqueue(value: box.count)\n    return box.count - 42 + queue.length - 1 + floats.length - 2 + bools.length - 2 + strings.length - 2\n';
   await fs.writeFile(program, source);
   const returnLine = source.split('\n').findIndex(line => line.trim().startsWith('return box.')) + 1;
   const output = new PassThrough(); const messages = []; const waiters = [];
@@ -89,62 +140,47 @@ test('native DAP source stepping and Manuscript record/list/variant rendering', 
   } finally { await adapter.cleanup(); await fs.rm(directory, { recursive: true, force: true }); }
 });
 
-test('watch rewriting respects quoted text and native member names',()=>{
- const metadata=new Map([['local5_box',{name:'box'}],['local6_count',{name:'count'}]]);
- const vars=[{name:'local5_box',type:'interface {}(main.Record)'},{name:'local6_count',type:'interface {}(int64)'}];
- assert.equal(rewriteExpression('box.count',vars,metadata),'local5_box.(data).Fields["count"]');
- assert.equal(rewriteExpression('count + len("count")',vars,metadata),'local6_count + len("count")');
+const named = names => variable => names[variable.name];
+
+test('watch rewriting respects quoted text and native member names', () => {
+  const vars = [{ name: 'box', type: '*main.Box' }, { name: 'count', type: 'int64' }];
+  assert.equal(rewriteExpression('box.count', vars, named({ box: 'box' })), 'box.Count');
+  assert.equal(rewriteExpression('box.first_name', vars, named({ box: 'box' })), 'box.FirstName');
+  assert.equal(rewriteExpression('count + len("count")', vars, named({ count: 'count' })), 'count + len("count")');
+  assert.equal(rewriteExpression('total + 1', [{ name: 'sum', type: 'int64' }], named({ sum: 'total' })), 'sum + 1');
 });
 
-test('watch rewriting leaves numeric literals alone',()=>{
- const metadata=new Map([['local1_e5',{name:'e5'}],['local2_x1',{name:'x1'}]]);
- const vars=[{name:'local1_e5',type:'interface {}(int64)'},{name:'local2_x1',type:'interface {}(int64)'}];
- assert.equal(rewriteExpression('1e5 + e5',vars,metadata),'1e5 + local1_e5');
- assert.equal(rewriteExpression('0x1f + x1 + 1.5e5',vars,metadata),'0x1f + local2_x1 + 1.5e5');
+test('watch rewriting indexes typed lists and leaves numeric literals alone', () => {
+  const vars = [{ name: 'items', type: '*runtime.List[int64]' }, { name: 'e5', type: 'int64' }, { name: 'x1', type: 'int64' }];
+  assert.equal(rewriteExpression('items[2]', vars, named({ items: 'items' })), 'items.Items[2]');
+  assert.equal(rewriteExpression('1e5 + e5', vars, named({ e5: 'e5' })), '1e5 + e5');
+  assert.equal(rewriteExpression('0x1f + x1 + 1.5e5', vars, named({ x1: 'x1' })), '0x1f + x1 + 1.5e5');
+  const separate = [{ name: 'items', type: '*github.com/manuscript-lang/manuscript/pkg/runtime.List[string]' }];
+  assert.equal(rewriteExpression('items[0]', separate, named({ items: 'items' })), 'items.Items[0]');
 });
-
-test('nested runtime type keys render generic source types',()=>{
- assert.equal(runtimeType('@std/Result[@std/List[Int]][module/abcd#Failure]'),'Result[List[Int], Failure]');
- assert.equal(runtimeType('@std/Network'),'Network');
- const adapter=new ManuscriptAdapter(new PassThrough());
- assert.equal(adapter.render({name:'item',type:'interface {}(main.Record)',value:'interface {}(main.Record) {Type: "module/abcd#Box[Int]"}',variablesReference:1}).type,'Box[Int]');
-});
-
 
 test('dead native stack slots cannot masquerade as source containers', () => {
   const adapter = new ManuscriptAdapter(new PassThrough());
-  const value = adapter.render({ name: 'local5_items', type: 'interface {}(string)', value: 'interface {}(string) "recycled"', variablesReference: 17 }, 'items', 'List[Int]');
+  const value = adapter.render({ name: 'items', type: 'string', value: '"recycled"', variablesReference: 17 }, 'items', 'List[Int]');
   assert.equal(value.type, 'List[Int]');
   assert.equal(value.value, '<unavailable after last use>');
   assert.equal(value.variablesReference, 0);
-  const specialized = adapter.render({ name: 'items', type: 'interface {}(main.List)', value: 'interface {}(main.List) {Type: "@std/List[String]", Items: []}', variablesReference: 5 }, 'items', 'List[T]');
-  assert.equal(specialized.type, 'List[String]');
 });
 
-test('watch rewriting and rendering support a separately compiled runtime',()=>{
- const metadata=new Map([['local5_box',{name:'box'}],['local6_items',{name:'items'}]]);
- const vars=[{name:'local5_box',type:'interface {}(github.com/manuscript-lang/manuscript/pkg/runtime.Record)'},{name:'local6_items',type:'interface {}(*github.com/manuscript-lang/manuscript/pkg/runtime.List)'}];
- assert.equal(rewriteExpression('box.count',vars,metadata),'local5_box.(data).Fields["count"]');
- assert.equal(rewriteExpression('items[0]',vars,metadata),'local6_items.(data).Items[0]');
- const adapter = new ManuscriptAdapter(new PassThrough());
- assert.equal(adapter.render({...vars[0],value:'{Type: "Box"}',variablesReference:1}).type,'Box');
- assert.equal(adapter.render({...vars[1],value:'{Type: "@std/List[Int]"}',variablesReference:2}).type,'List[Int]');
-});
-
-test('typed task handles and groups expose work state without native bookkeeping', async () => {
+test('task handles and groups expose work state without native bookkeeping', async () => {
   const adapter = new ManuscriptAdapter(new PassThrough());
-  const task = adapter.render({ name: 'task', type: 'interface {}(*main.Task)', value: 'interface {}(*main.Task) {committed: true}', variablesReference: 3 }, 'task', 'Task[Int]');
+  const task = adapter.render({ name: 'task', type: '*runtime.Task[int64]', value: '{committed: true}', variablesReference: 3 }, 'task', 'Task[Int]');
   assert.equal(task.type, 'Task[Int]');
   adapter.children = async () => [
-    { name: 'id', type: 'main.OperationId', value: '{number: 7}', variablesReference: 0 },
-    { name: 'value', type: 'interface {}(int64)', value: '7', variablesReference: 0 },
+    { name: 'id', type: '*runtime.OperationId', value: '{number: 7}', variablesReference: 0 },
+    { name: 'value', type: 'int64', value: '7', variablesReference: 0 },
     { name: 'committed', type: 'bool', value: 'true', variablesReference: 0 },
     { name: 'done', type: 'chan struct {}', value: 'channel', variablesReference: 0 },
   ];
   const fields = await adapter.valueChildren(adapter.handles.get(task.variablesReference), {});
   assert.deepEqual(fields.map(field => field.name), ['Operation', 'Result', 'Completed']);
-  assert.equal(fields[1].value, '7');
-  const group = adapter.render({ name: 'group', type: 'interface {}(*main.TaskGroup)', value: 'group', variablesReference: 5 }, 'group', 'TaskGroup');
+  assert.equal(fields[1].value, '7'); assert.equal(fields[1].type, 'Int');
+  const group = adapter.render({ name: 'group', type: '*runtime.TaskGroup', value: 'group', variablesReference: 5 }, 'group', 'TaskGroup');
   adapter.children = async () => [
     { name: 'active', type: 'int', value: '2', variablesReference: 0 },
     { name: 'sealed', type: 'bool', value: 'false', variablesReference: 0 },
@@ -154,18 +190,26 @@ test('typed task handles and groups expose work state without native bookkeeping
   assert.deepEqual(state.map(field => field.name), ['Active tasks', 'Joined']);
 });
 
-test('primitive and legacy List backing renders elements and rewrites watches', async () => {
-  for (const [kind,field,type,value] of [[0,'Items','interface {}(int64)','interface {}(int64) 42'],[1,'ints','int64','42'],[2,'floats','float64','1.25'],[3,'bools','bool','false'],[4,'strings','string','"text"']]) {
-    const adapter=new ManuscriptAdapter(new PassThrough());
-    const fields=[{name:'Type',value:'"@std/List[Int]"'},{name:'Items',variablesReference:kind===0?7:0},{name:'kind',value:kind+' = 0x'+kind.toString(16)},{name:'initializing',value:'false'},...['ints','floats','bools','strings'].map(name=>({name,variablesReference:name===field?7:0}))];
-    adapter.children=async ref=>ref===5?[{name:'data',variablesReference:6}]:ref===6?fields:ref===7?[{name:'[0]',type,value,variablesReference:0}]:[];
-    const rendered=adapter.render({name:'local1_items',type:'interface {}(*msruntime.List)',value:'{Type: "@std/List[Int]", Items: []interface {} len: 0, ints: []int64 len: 1}',variablesReference:5},'items','List[Int]');
-    assert.equal(rendered.value,'List[Int]');
-    const elements=await adapter.valueChildren(adapter.handles.get(rendered.variablesReference),{});
-    assert.equal(elements.length,1);assert.equal(elements[0].name,'[0]');assert.ok(!elements.some(v=>v.name==='kind'));
-    const vars=[{name:'local1_items',type:'interface {}(*msruntime.List)',listField:field}];
-    assert.equal(rewriteExpression('items[0]',vars,new Map([['local1_items',{name:'items'}]])),`local1_items.(data).${field}[0]`);
-    fields.find(v=>v.name===field).variablesReference=0;
-    assert.deepEqual(await adapter.valueChildren(adapter.handles.get(rendered.variablesReference),{}),[]);
+test('requests after the target ends get clear answers instead of pipe errors', async () => {
+  const output = new PassThrough(); const messages = [];
+  const parser = new Framing(message => messages.push(message));
+  output.on('data', bytes => parser.push(bytes));
+  const adapter = new ManuscriptAdapter(output);
+  adapter.receive({ type: 'event', event: 'terminated', body: {} });
+  assert.equal(adapter.ended, true);
+  const ask = async (seq, command) => { await adapter.request({ seq, type: 'request', command, arguments: {} }); return messages.find(m => m.request_seq === seq); };
+  for (const [seq, command] of [[1, 'next'], [2, 'continue'], [3, 'stepIn'], [4, 'pause']]) {
+    const reply = await ask(seq, command);
+    assert.equal(reply.success, false);
+    assert.match(reply.message, /the debuggee has exited/);
+  }
+  const threads = await ask(5, 'threads');
+  assert.equal(threads.success, false);
+  assert.match(threads.message, /session has ended/);
+  assert.doesNotMatch(JSON.stringify(messages), /TypeError|undefined/);
+  for (const [seq, command] of [[6, 'terminate'], [7, 'disconnect']]) {
+    const reply = await ask(seq, command);
+    assert.equal(reply.success, true);
+    assert.equal(reply.command, command);
   }
 });

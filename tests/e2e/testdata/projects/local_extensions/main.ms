@@ -3,7 +3,6 @@ import {second_view, second_method, second_generic, second_resource} from "./sec
 import {Item, Resource} from "./domain.ms"
 import {Read, read_view} from "./contracts.ms"
 import ListBuilder from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 import panic from "@std/faults.ms"
 
 test "views and functions retain local implementations across modules":
@@ -15,10 +14,7 @@ test "views and functions retain local implementations across modules":
     let second = second_view(item)
     if first.get() != 12 or second.get() != 22:
         return panic("returned views")
-    if (
-        read_view(Read[Int](first)) != 12
-        or read_view(Read[Int](second)) != 22
-    ):
+    if (read_view(Read[Int](first)) != 12 or read_view(Read[Int](second)) != 22):
         return panic("view conversion changed implementation")
 
     let first_call = first_method(item)

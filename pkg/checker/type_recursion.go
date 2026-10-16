@@ -64,9 +64,11 @@ func (c *checker) finiteTypeApplications() {
 		}
 	}
 	reported := map[syntax.Position]bool{}
+	// A specialization's reachable subgraph is explored once across all roots,
+	// so checking N declarations is linear in the graph rather than N walks.
+	visited := map[string]bool{}
 	for _, root := range roots {
 		active := map[string][]*Type{}
-		visited := map[string]bool{}
 		var visit func(string, []*Type)
 		visit = func(id string, args []*Type) {
 			// Shared dependencies need checking once for each specialization.

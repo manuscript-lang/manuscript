@@ -13,22 +13,20 @@ behavior, not proposed language features as though they already exist.
 | Structural interfaces and partial hook overrides | Nominal records, typed callbacks, and ToolResultPatch | Explicit Optional fields express omission without `unknown` or object spreads. Content replacement deliberately drops stale structured output; that behavior belongs in the finalization pipeline. |
 | Closure sharing in an event-loop application | Shared references with explicit `Synchronized` guards | The control queue and tool-event gate show exactly where sharing is protected. Read-only callback contracts still rely on discipline because exported record fields and nested payloads are mutable. |
 | Array indexing returns an element (possibly undefined) | List indexing returns `Optional[T]` | Absence cannot disappear. Inside a proven in-range `entries()` loop, repeated `.unwrap()` is noisy; stronger tooling explanations or an indexed iteration API could help. |
-| Positional arguments are unambiguous | A bare identifier matching a parameter name retains argument-name shorthand | Optional labels are pleasant, but `Config(model, sink)` bound the local `model` function to the String `model` field. `Config(stream: model, emit: sink)` fixes it. A targeted diagnostic explaining the binding would reduce correction cycles. |
-| Async iterators deliver stream events | A provider callback delivers typed partial snapshots | Less runtime machinery is needed, and consumers settle before the next step. A standard typed stream/channel abstraction could supply buffering and backpressure for adapters that need decoupled consumption. |
-| AbortSignal shared through callbacks | A synchronized cooperative control token and an owned HTTP client | The proxy can interrupt a blocked request/read by closing its owned client. A source-usable cancellation handle would remove the watcher and compose with HTTP/process waits; the token alone cannot interrupt them. |
+| Positional arguments are unambiguous | Unlabeled arguments bind by position; explicit labels select by name | Issue #452 is now fixed on main. A bare identifier can no longer redirect an argument by spelling. Explicit `stream:`/`emit:` labels remain useful when skipping defaulted fields. |
+| Async iterators deliver stream events | A provider callback delivers typed partial snapshots | Less runtime machinery is needed, and consumers settle before the next step. The standard BlockingQueue now supplies waiting, buffering and backpressure for adapters that need decoupled consumption. |
+| AbortSignal shared through callbacks | A synchronized cooperative control token and an owned HTTP client | The proxy can interrupt a blocked request/read by closing its owned client. Guard wait/notify now removes watcher polling. The watcher still closes the owned client to interrupt HTTP; a reusable cancellation handle could compose directly with native waits. |
 | Fluent APIs and direct object methods | Exported functions operating on Agent records | Dependencies and operations remain clear. Source record methods require an explicit interface implementation, so functions avoid a ceremonial interface created only for method syntax. |
 
 The compiler caught callback-label mismatches and missing Optional extraction
 before native execution. The same source could then be checked, formatted,
 compiled, and tested with one CLI. That is a strong fit for agent-authored ports.
-The formatter's expansion of long grouped imports and higher-order calls also
-made the source noticeably longer; compact layout around typed callbacks is an
-opportunity to improve scanability while preserving the current syntax.
+The current formatter keeps imports and callbacks compact within 88 columns,
+addressing the expansion observed during the initial port.
 
-The most useful next improvements are libraries and tooling: reusable JSON
-validation, blocking handoff/wakeup APIs, cancellable native operations, and
-diagnostics for mixed positional/name-shorthand calls. This port required no
-compiler, syntax, standard-library, or runtime changes.
+The most useful remaining improvements are libraries: reusable JSON Schema
+validation and cancellation handles that compose directly with native operations.
+This port required no compiler, syntax, standard-library, or runtime changes.
 
 ## What completing the core taught us
 
@@ -44,18 +42,19 @@ faults into ordinary Results.
 callbacks did not require the cross-thread event gate needed by parallel native
 tools. That gate protects completion events and after hooks; Control protects
 cross-task enqueue, abort and run settlement. Race-free execution alone does not
-justify guarding all application state. A blocking queue with one state-owning
-consumer remains a useful alternative architecture. The current standard Queue
-is local and nonblocking, so this port does not pretend it supplies that behavior.
-`wait_for_idle` and the proxy cancellation watcher use suspending 1 ms polling;
-a native wakeup/cancellation API would remove that extra task/polling work.
+justify guarding all application state. A BlockingQueue with one state-owning
+consumer remains an alternative architecture; the separate Queue stays local and
+nonblocking. This port now uses guard `wait()`/`notify_all()` for idle settlement
+and cancellation, removing both 1 ms polling loops without adding an owner task.
+The cancellation watcher remains necessary to close the HTTP client.
 
 **Snapshots need deliberate storage boundaries.** `.clone()` is shallow. The
 validator deep-copies JSON before preparation/normalization; transcript declarations
 copy schemas; partial proxy snapshots copy their content-list and signature-map
 storage. Callbacks still receive nested references and must treat them as read-only.
-Readonly views or a reusable deep-JSON-copy API could reduce this discipline and
-the stringify/parse bridge, without requiring general ownership syntax.
+The new read-only accessors expose live values, not immutable object graphs, so
+they do not remove this snapshot requirement. Typed JSON is now available, while
+the existing JsonValue stringify/parse bridge still supplies a deliberate deep copy.
 
 **Opaque payloads affect the entire alternative's equality.** Adding a cancellation
 handle to ToolCall meant Event no longer derived Equal, including comparisons to
@@ -80,8 +79,8 @@ not automatically adding every construct another language provides.
 
 The indexing and call-binding observations are tracked in
 [#451](https://github.com/manuscript-lang/manuscript/issues/451) and
-[#452](https://github.com/manuscript-lang/manuscript/issues/452). These issues
-request design review; this port does not change either language rule.
+[#452](https://github.com/manuscript-lang/manuscript/issues/452). Issue #452 is
+resolved by positional binding on main; #451 remains an indexing design observation. This port does not change either language rule.
 
 Finally, native feature coverage and TypeScript identity are different claims.
 The completed scheduling tests distinguish initial listener steering, failed-turn

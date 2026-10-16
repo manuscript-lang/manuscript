@@ -243,7 +243,7 @@ func checkDAP(cli, directory string, environment []string, binary, source string
 	}
 	found := false
 	for _, v := range reply.(*dap.VariablesResponse).Body.Variables {
-		if strings.HasSuffix(v.Name, "_result") && strings.Contains(v.Value, "42") {
+		if v.Name == "result" && strings.Contains(v.Value, "42") {
 			found = true
 		}
 	}

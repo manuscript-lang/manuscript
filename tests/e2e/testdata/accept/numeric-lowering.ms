@@ -32,12 +32,9 @@ test "floating operations retain binary64 edge behavior":
     if "{1.0 / negative_zero}" != "-Infinity": return panic("signed zero")
 
     let nan = 0.0 / 0.0
-    if (
-        nan <= 0.0
-        or nan >= 0.0
-        or nan < 0.0
-        or nan > 0.0
-    ): return panic("NaN comparisons")
+    if (nan <= 0.0 or nan >= 0.0 or nan < 0.0 or nan > 0.0): return panic(
+        "NaN comparisons"
+    )
     if 5e-324 <= 0.0 or 5e-324 / 2.0 != 0.0: return panic("subnormal rounding")
     if "{1.7976931348623157e308 * 2.0}" != "Infinity": return panic("floating overflow")
 
