@@ -5,9 +5,9 @@ fn number(value: Optional[Int] = none) -> Int: value.unwrap_or(-1)
 
 fn present[T](value: Optional[T]) -> Optional[T]: value
 
-fn nested(value: Optional[Optional[Int]]) -> Bool: value.unwrap().is_none
+fn nested(value: Optional[Optional[Int]]) -> Bool: value.unwrap().is_none()
 
-fn list_size(value: Optional[List[Int]]) -> Int: value.unwrap().length
+fn list_size(value: Optional[List[Int]]) -> Int: value.unwrap().length()
 
 fn flag(value: Optional[Bool]) -> Bool: value.unwrap()
 
@@ -88,7 +88,7 @@ test "plain values and explicit optionals share the call contract":
     if list_size([]) != 0: return panic("empty payload context")
     if list_size([1, 2]) != 2: return panic("list payload")
     if context(value: none, fallback: 9) != 9: return panic("generic none context")
-    if context(value: [], fallback: [1]).length != 0: return panic(
+    if context(value: [], fallback: [1]).length() != 0: return panic(
         "generic list context"
     )
     if success(ok(10)) != 10: return panic("result payload context")
@@ -99,7 +99,7 @@ test "plain values and explicit optionals share the call contract":
 
 test "constructor fields and methods use optional arguments":
     let defaulted = DefaultBox()
-    if not (defaulted.value.is_none): return panic("optional record default")
+    if not (defaulted.value.is_none()): return panic("optional record default")
 
     let supplied = DefaultBox(3)
     if supplied.value.unwrap() != 3: return panic(

@@ -11,7 +11,7 @@ type Visitor struct {
 	LeaveExpression func(*Expression)
 }
 
-// Walk visits a declaration and its methods and accessors.
+// Walk visits a declaration and its methods.
 func (v Visitor) Walk(d *Declaration) {
 	if d == nil {
 		return

@@ -46,12 +46,12 @@ test "one header type preserves repeated values through buffered requests":
         let response = value(
             network().request(
                 method: HttpMethod.Get,
-                url: "http://{server.address}/",
+                url: "http://{server.address()}/",
                 headers: repeated_headers(),
                 body: "".to_bytes()
             )
         )
-        let metadata = response.metadata
+        let metadata = response.metadata()
         if metadata.status != 200: return panic("metadata status")
         if value(metadata.headers.text("x-dup")) != some(["first", "second"]): return panic(
             "response repeats lost"
@@ -64,13 +64,13 @@ test "one header type preserves repeated values through buffered requests":
 
         let appended = value(metadata.headers.append("x-dup", "third".to_bytes()))
         if (
-            value(response.metadata.headers.text("X-Dup")) != some(
+            value(response.metadata().headers.text("X-Dup")) != some(
                 ["first", "second", "third"]
             )
         ): return panic("metadata copied header object")
 
 fn echo_headers(exchange: HttpExchange) -> Result[Unit, HttpError]:
-    let received = exchange.headers
+    let received = exchange.headers()
     if value(received.text("X-DUP")) != some(["first", "second"]): return error(
         HttpError.InvalidData
     )
@@ -91,20 +91,22 @@ test "streaming proxy uses the same byte-valued header type":
         let response = value(
             network().request(
                 method: HttpMethod.Get,
-                url: "http://{server.address}/",
+                url: "http://{server.address()}/",
                 headers: repeated_headers(),
                 body: "".to_bytes()
             )
         )
-        if (value(response.metadata.headers.text("x-DUP")) != some(["first", "second"])): return panic(
-            "stream proxy lost fields"
-        )
+        if (
+            value(response.metadata().headers.text("x-DUP")) != some(
+                ["first", "second"]
+            )
+        ): return panic("stream proxy lost fields")
 
 test "lookup shares mutable membership and clone separates it":
     let fields = repeated_headers()
     let values = fields.values("X-DUP").unwrap()
     let appended = value(fields.append("x-dup", "third".to_bytes()))
-    if values.length != 3: return panic("lookup copied membership")
+    if values.length() != 3: return panic("lookup copied membership")
 
     let changed = values.set(0, "changed".to_bytes())
     if fields.values("x-dup").unwrap().at(0) != some("changed".to_bytes()): return panic(
@@ -117,14 +119,14 @@ test "lookup shares mutable membership and clone separates it":
     if fields.values("x-dup").unwrap().at(0) != some("changed".to_bytes()): return panic(
         "clone shared membership"
     )
-    if not fields.values("missing").is_none: return panic("absent header")
+    if not fields.values("missing").is_none(): return panic("absent header")
 
     let k = value(fields.append("K", "ASCII".to_bytes()))
-    if not fields.values("K").is_none: return panic("Unicode folding")
+    if not fields.values("K").is_none(): return panic("Unicode folding")
 
     let removed = fields.remove("X-DUP")
     let new_field = value(fields.append("X-Dup", "new".to_bytes()))
-    if values.length != 3 or fields.values("x-dup").unwrap().length != 1: return panic(
+    if values.length() != 3 or fields.values("x-dup").unwrap().length() != 1: return panic(
         "removed list alias reattached"
     )
 
@@ -148,7 +150,7 @@ test "empty options and an omitted request body use checked defaults":
     if client_options.decompress or client_options.cookies: return panic(
         "client Bool defaults changed"
     )
-    if not HttpServerOptions().tls.is_none: return panic("server TLS default changed")
+    if not HttpServerOptions().tls.is_none(): return panic("server TLS default changed")
 
     with server = value(
         network().serve_stream(
@@ -161,8 +163,10 @@ test "empty options and an omitted request body use checked defaults":
             with response = value(
                 client.request(
                     method: HttpMethod.Get,
-                    url: "http://{server.address}/",
+                    url: "http://{server.address()}/",
                     headers: repeated_headers()
                 )
             ):
-                if response.metadata.status != 200: return panic("plain request failed")
+                if response.metadata().status != 200: return panic(
+                    "plain request failed"
+                )

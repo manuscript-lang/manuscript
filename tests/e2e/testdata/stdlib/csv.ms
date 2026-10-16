@@ -48,7 +48,7 @@ test "CSV quoted empty fields respect exact row cell and byte budgets":
         let options = CsvOptions(delimiter: ",", line_ending: ending)
         let rows = [[""], ["a"], [""]]
         let text = "\"\"{ending}a{ending}\"\"{ending}"
-        let bytes = text.byte_length
+        let bytes = text.byte_length()
         if value(stringify(rows: rows, options: options, max_bytes: bytes)) != text:
             return panic("exact quoted output budget")
 

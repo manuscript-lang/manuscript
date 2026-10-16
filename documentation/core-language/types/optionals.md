@@ -46,12 +46,12 @@ Omission still requires a default or a declared library omission permission. An 
 
 ## Checking and extracting values
 
-Optional has presence accessors and extraction methods:
+Optional has receiver methods for presence checks and extraction:
 
-| Member | Behavior |
+| Method | Behavior |
 | --- | --- |
-| `is_some: Bool` | Whether the optional contains a value, including `false`, zero, or an empty string |
-| `is_none: Bool` | Whether the optional is absent |
+| `is_some() -> Bool` | Whether the optional contains a value, including `false`, zero, or an empty string |
+| `is_none() -> Bool` | Whether the optional is absent |
 | `unwrap() -> T` | Return the contained value; [fault](../errors/faults.md) with `called Optional.unwrap() on none` when absent |
 | `unwrap_or(fallback: T) -> T` | Return the contained value or the supplied fallback |
 | `unwrap_or_else(create: fn() -> T) -> T` | Return the contained value or call `create` once when absent |
@@ -77,7 +77,7 @@ Use `unwrap` when presence is established or absence is a programming error:
 
 ```manuscript
 fn greet(name: Optional[String]) -> String:
-    if name.is_some:
+    if name.is_some():
         return "Hello, " + name.unwrap()
     return "Hello!"
 ```

@@ -13,17 +13,17 @@ func TestListTakeDropFaultLocations(t *testing.T) {
 			{"direct", `export fn main() -> Int:
     let values = [1, 2]
     let part = values.METHOD(-7)
-    return part.length
+    return part.length()
 `, "list-copy-fault.ms:3 in main"},
 			{"bound", `export fn main() -> Int:
     let copy = [1, 2].METHOD
     let part = copy(count: -7)
-    return part.length
+    return part.length()
 `, "list-copy-fault.ms:3 in main"},
 			{"empty", `export fn main() -> Int:
     let empty: List[Int] = []
     let part = empty.METHOD(-7)
-    return part.length
+    return part.length()
 `, "list-copy-fault.ms:3 in main"},
 		} {
 			t.Run(method+"/"+test.name, func(t *testing.T) {

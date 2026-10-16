@@ -1,5 +1,0 @@
-{
-  "Replace": {
-    "/workspace/manuscript-accessor-baseline/pkg/runtime/accessor_contention_bench_test.go": "/workspace/manuscript-accessor-design/.artifacts/verification/final512/contention-final/baseline/accessor_contention_bench_test.go"
-  }
-}

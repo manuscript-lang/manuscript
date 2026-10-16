@@ -48,11 +48,7 @@ func TestFullPublicCollectionAPIWithoutImports(t *testing.T) {
 				}
 				fmt.Fprintf(&source, "[%s]", strings.Join(types, ", "))
 			}
-			if method.Accessor {
-				source.WriteByte('\n')
-			} else {
-				fmt.Fprintf(&source, "(%s)\n", strings.Join(args, ", "))
-			}
+			fmt.Fprintf(&source, "(%s)\n", strings.Join(args, ", "))
 		}
 	}
 	result := CompileSource("full-collection-api.ms", source.String(), Options{})
@@ -95,7 +91,7 @@ fn read() -> Int:
     let list = [3].entries()[0].unwrap()
     let map = {"a": 4}.entries()[0].unwrap()
     return list.index + list.value + map.value
-fn invalid() -> Bool: [1].slice(0, 9).is_error
+fn invalid() -> Bool: [1].slice(0, 9).is_error()
 fn local() -> ListEntry[Int]: ListEntry(1)
 `,
 		"qualified cases and directed patterns": `type Other:
@@ -170,7 +166,7 @@ func TestPreludeImportPolicyUsesResolvedIdentity(t *testing.T) {
 			}
 		}
 	}
-	result := CompileSource("imports.ms", "import {List, Map, Set} from \"@std/collections.ms\"\nfn get() -> Int: List[Int]().length+Map[Int,Int]().length+Set[Int]().length\n", Options{AnalyzeOnly: true})
+	result := CompileSource("imports.ms", "import {List, Map, Set} from \"@std/collections.ms\"\nfn get() -> Int: List[Int]().length()+Map[Int,Int]().length()+Set[Int]().length()\n", Options{AnalyzeOnly: true})
 	if len(result.Diagnostics) != 3 || result.Source != "" {
 		t.Fatal(result.Diagnostics, result.Source)
 	}

@@ -33,7 +33,7 @@ test "POSIX paths normalize resolve parse and match without host access":
 
 test "Windows paths use explicit dialect on every platform":
     let paths = win32()
-    if paths.separator != "\\" or paths.delimiter != ";": return panic(
+    if paths.separator() != "\\" or paths.delimiter() != ";": return panic(
         "Windows separators"
     )
     if not paths.is_absolute("C:\\work\\file.txt"): return panic("drive absolute")

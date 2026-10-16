@@ -11,7 +11,7 @@ fn identity[T](value: T, fallback: T = value) -> T:
     return fallback
 
 fn mark(state: SynchronizedGuard[Int], value: Int) -> Int:
-    state.set(value: state.value * 10 + value)
+    state.set(value: state.get() * 10 + value)
     return value
 
 fn ordered(
@@ -20,7 +20,7 @@ fn ordered(
     second: Int = mark(state: state, value: 4),
     third: Int = 0
 ) -> Int:
-    state.set(value: state.value * 10 + 5)
+    state.set(value: state.get() * 10 + 5)
     return first + second + third
 
 fn unit_value(value: Unit = panic("unexpected default")) -> Unit:
@@ -81,17 +81,17 @@ test "default evaluation order and repeated calls":
             third: mark(state: state, value: 1),
             second: mark(state: state, value: 2)
         )
-        if total != 6 or state.value != 1235:
+        if total != 6 or state.get() != 1235:
             return panic("supplied arguments precede defaults and body")
 
         state.set(value: 0)
         let ignored = ordered(state: state)
-        if state.value != 345:
+        if state.get() != 345:
             return panic("defaults evaluate in declaration order")
 
         state.set(value: 0)
         let again = ordered(state: state)
-        if state.value != 345:
+        if state.get() != 345:
             return panic("defaults run on every call")
 
 test "function values and captures":

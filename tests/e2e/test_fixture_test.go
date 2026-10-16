@@ -155,10 +155,10 @@ impl TestHooks for ApiFixture:
     fn after_all() -> Unit:
         self.server.close()
 test "first request":
-    let response = expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address}/", headers: headers(), body: "".to_bytes()))
-    expect_equal(response.metadata.status, 200)
+    let response = expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: "".to_bytes()))
+    expect_equal(response.metadata().status, 200)
 test "second request uses same server":
-    let response = expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address}/", headers: headers(), body: "".to_bytes()))
+    let response = expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: "".to_bytes()))
     expect_equal(response.body, "shared".to_bytes())
 `
 	file := filepath.Join(t.TempDir(), "test.ms")

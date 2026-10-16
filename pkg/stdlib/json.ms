@@ -209,8 +209,8 @@ impl Error for JsonError:
 #     let first = reader.feed("\{\"id\":1\}\n\{\"id".to_bytes()).unwrap()
 #     let second = reader.feed("\":2\}\n".to_bytes()).unwrap()
 #
-#     if first.length != 1 or second.length != 1: return panic("expected one value per feed")
-#     if reader.finish().unwrap().length != 0: return panic("unexpected trailing value")
+#     if first.length() != 1 or second.length() != 1: return panic("expected one value per feed")
+#     if reader.finish().unwrap().length() != 0: return panic("unexpected trailing value")
 # ```
 #
 # ### Writing JSON from Manuscript values
@@ -307,8 +307,8 @@ impl Error for JsonError:
 # test "parse builds typed values":
 #     let text = "\{\"model\":\"example\",\"messages\":[\{\"role\":\"user\",\"content\":\"hi\"\}]\}"
 #     let request = read_request(text).unwrap()
-#     if request.model != "example" or request.stream or not request.user.is_none: return panic("unexpected request")
-#     if parse[Request](text: "\{\"model\":1\}").is_ok: return panic("wrong member type was accepted")
+#     if request.model != "example" or request.stream or not request.user.is_none(): return panic("unexpected request")
+#     if parse[Request](text: "\{\"model\":1\}").is_ok(): return panic("wrong member type was accepted")
 # ```
 #
 # | JSON | Decoded as |

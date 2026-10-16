@@ -4,10 +4,10 @@ import panic from "@std/faults.ms"
 
 fn wait_until_ready(ready: Synchronized[Bool]) -> Bool:
     with locked = ready.lock():
-        while not locked.value:
+        while not locked.get():
             locked.wait()
 
-        return locked.value
+        return locked.get()
 
 fn mark_ready(ready: Synchronized[Bool]) -> Unit:
     with locked = ready.lock():

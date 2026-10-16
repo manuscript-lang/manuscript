@@ -118,7 +118,7 @@ test "Map key transformation retains first equal keys and last values":
             created.append(key)
             return key
     )
-    if created.length != 4 or mapped.length != 2: return panic(
+    if created.length() != 4 or mapped.length() != 2: return panic(
         "Map.map_keys callback or collision count"
     )
     if mapped.keys().map(fn(k): k.label) != ["2", "1"]: return panic(
@@ -139,7 +139,7 @@ test "Map key transformation retains first equal keys and last values":
     if three.count != 9: return panic("map_keys copied retained value")
 
     mapped.clear().add(Key(7, "fresh"), Counter(10))
-    if source.length != 4: return panic("map_keys aliased source storage")
+    if source.length() != 4: return panic("map_keys aliased source storage")
 
 test "Map key transformation snapshots callbacks and keeps generic nesting":
     let later = Counter(3)
@@ -162,7 +162,7 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
 
     let values: Map[String, Int] = {"a": 0}
     let map = values.map[Optional[Int]]
-    if not (map(fn(k, v): none).get("a").unwrap().is_none): return panic(
+    if not (map(fn(k, v): none).get("a").unwrap().is_none()): return panic(
         "Map.map flattened Optional"
     )
 
@@ -175,11 +175,11 @@ test "empty transformations skip callbacks and allocate independent storage":
     let source = Map[String, Int]()
     let mapped = source.map[Counter](fn(k, v): panic("empty value transform callback"))
     mapped.add("new", Counter(1))
-    if not (source.is_empty): return panic("empty value transform aliased source")
+    if not (source.is_empty()): return panic("empty value transform aliased source")
 
     let keyed = source.map_keys[Key](fn(k, v): panic("empty key transform callback"))
     keyed.add(Key(1, "new"), 1)
-    if not (source.is_empty): return panic("empty key transform aliased source")
+    if not (source.is_empty()): return panic("empty key transform aliased source")
 
 test "Map reverse fold and last match retain ordered shallow snapshots":
     let first = Counter(2)
@@ -199,7 +199,7 @@ test "Map reverse fold and last match retain ordered shallow snapshots":
     )
 
     folded.append("alias")
-    if initial.length != 4: return panic("Map.fold_right copied accumulator")
+    if initial.length() != 4: return panic("Map.fold_right copied accumulator")
 
     let original = Counter(1)
     (source.clear().add("b", Counter(2)).add("a", original).add("c", Counter(3)))
@@ -243,7 +243,7 @@ test "Set reverse fold and last match preserve references and callbacks":
     )
 
     folded.append("alias")
-    if initial.length != 4: return panic("Set.fold_right copied accumulator")
+    if initial.length() != 4: return panic("Set.fold_right copied accumulator")
 
     source.clear().add(b).add(a).add(c)
     let seen: List[Int] = []
@@ -274,9 +274,9 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
     if not (
         empty_map
         .find_last(fn(k, v): panic("empty Map.find_last callback"))
-        .is_none
+        .is_none()
     ): return panic("empty Map.find_last")
-    if not (empty_set.find_last(fn(v): panic("empty Set.find_last callback")).is_none): return panic(
+    if not (empty_set.find_last(fn(v): panic("empty Set.find_last callback")).is_none()): return panic(
         "empty Set.find_last"
     )
 
@@ -290,7 +290,7 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
                     seen_map.append(k)
                     return false
             )
-            .is_none
+            .is_none()
         )
         or seen_map != ["c", "a", "b"]
     ): return panic("complete reverse Map search")
@@ -305,7 +305,7 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
                     seen_set.append(v)
                     return false
             )
-            .is_none
+            .is_none()
         )
         or seen_set != [3, 1, 2]
     ): return panic("complete reverse Set search")

@@ -41,9 +41,9 @@ func TestRedundantPreludeImportEditorFix(t *testing.T) {
 	for _, newline := range []string{"\n", "\r\n"} {
 		for _, source := range []string{
 			"import MissingValue from \"@std/errors.ms\" # keep\nfn first(values: List[Int]) -> Result[Int, MissingValue]: values.at(0).ok_or()\n",
-			"import List from \"@std/collections.ms\" # keep\nfn count() -> Int: List[Int]().length\n",
-			"import {ListBuilder, List} from \"@std/collections.ms\"\nfn count() -> Int: ListBuilder[Int]().freeze().length+List[Int]().length\n",
-			"import {\n    List, # keep\n    ListBuilder,\n} from \"@std/collections.ms\"\nfn count() -> Int: ListBuilder[Int]().freeze().length+List[Int]().length\n",
+			"import List from \"@std/collections.ms\" # keep\nfn count() -> Int: List[Int]().length()\n",
+			"import {ListBuilder, List} from \"@std/collections.ms\"\nfn count() -> Int: ListBuilder[Int]().freeze().length()+List[Int]().length()\n",
+			"import {\n    List, # keep\n    ListBuilder,\n} from \"@std/collections.ms\"\nfn count() -> Int: ListBuilder[Int]().freeze().length()+List[Int]().length()\n",
 		} {
 			source = strings.ReplaceAll(source, "\n", newline)
 			d := document{"file:///tmp/imports.ms", source, 7}

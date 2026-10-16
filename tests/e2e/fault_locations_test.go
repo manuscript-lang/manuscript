@@ -18,14 +18,14 @@ func TestFaultSourceLocations(t *testing.T) {
     return 1 / 0
 export fn main() -> Int:
     let values = Map[Int, Int]()
-    return values.add(crash(), 1).length
+    return values.add(crash(), 1).length()
 `, false, []string{"fault.ms:2 in crash", "fault.ms:5 in main"}},
 		{"bound Map add value fault", `fn crash() -> Int:
     return 1 / 0
 export fn main() -> Int:
     let values = Map[Int, Int]()
     let add = values.add
-    return add(value: crash(), key: 1).length
+    return add(value: crash(), key: 1).length()
 `, false, []string{"fault.ms:2 in crash", "fault.ms:6 in main"}},
 		{"List at unwrap out of range", `fn pick(values: List[Int], index: Int) -> Int:
     return values.at(index).unwrap()
@@ -40,7 +40,7 @@ export fn main() -> Int:
 		{"bound Result unwrap_error", `export fn main() -> Int:
     let value: Result[Int, String] = ok(0)
     let extract = value.unwrap_error
-    return extract().scalar_length
+    return extract().scalar_length()
 `, false, []string{"fault.ms:4 in main"}},
 		{"Result callback fault", `fn crash(value: Int) -> Int:
     return 1 / value
@@ -58,13 +58,13 @@ export fn main() -> Int:
     return 1 / value == 0
 export fn main() -> Int:
     let value: Map[String, Int] = {"a": 0}
-    return value.filter(crash).length
+    return value.filter(crash).length()
 `, false, []string{"fault.ms:2 in crash", "fault.ms:5 in main"}},
 		{"Set map callback fault", `fn crash(value: Int) -> Int:
     return 1 / value
 export fn main() -> Int:
     let value = Set[Int]().add(0)
-    return value.map(crash).length
+    return value.map(crash).length()
 `, false, []string{"fault.ms:2 in crash", "fault.ms:5 in main"}},
 		{"Optional callback fault", `fn crash(value: Int) -> Optional[Int]:
     return some(1 / value)

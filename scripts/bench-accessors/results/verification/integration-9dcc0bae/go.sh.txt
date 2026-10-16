@@ -1,6 +1,0 @@
-#!/bin/sh
-if [ "$1" = build ]; then
-    shift
-    exec /workspace/manuscript-accessor-design/toolchain/go/bin/go build -buildvcs=false "$@"
-fi
-exec /workspace/manuscript-accessor-design/toolchain/go/bin/go "$@"

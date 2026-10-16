@@ -7,7 +7,7 @@ import (
 
 func TestIfLetBindingReferencesAndRename(t *testing.T) {
 	source := `fn read(values: List[Int]) -> Int:
-    if let first = values.first:
+    if let first = values.first():
         return first + 1
     return 0
 `

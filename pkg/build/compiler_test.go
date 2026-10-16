@@ -268,16 +268,7 @@ func TestGenericRecursionAndNamespaceRules(t *testing.T) {
 	}
 }
 func FuzzCompile(f *testing.F) {
-	f.Add(`interface Count:
-    get value -> Int
-type Box:
-    number: Int
-impl Count for Box:
-    get value -> Int: self.number
-fn read(box: Box) -> Int: box.value
-`)
-	f.Add("fn read(items: List[Int]) -> Int: items.length()\n")
-	for _, s := range []string{"fn f() -> Int:\n    return 1\n", "type Box[T]:\n    value: T\nfn f() -> Box[Int]:\n    return Box(value: 1)\n", "import panic from \"@std/faults.ms\"\n\ntest \"list\":\n    let values = [1, 2]\n    if not (values.length == 2):\n        return panic(message: \"check failed\")\n"} {
+	for _, s := range []string{"fn f() -> Int:\n    return 1\n", "type Box[T]:\n    value: T\nfn f() -> Box[Int]:\n    return Box(value: 1)\n", "import panic from \"@std/faults.ms\"\n\ntest \"list\":\n    let values = [1, 2]\n    if not (values.length() == 2):\n        return panic(message: \"check failed\")\n"} {
 		f.Add(s)
 	}
 	// Seed from the accept and reject conformance programs so mutation starts

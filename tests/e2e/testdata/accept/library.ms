@@ -82,7 +82,7 @@ fn verify_encoding() -> Result[Unit, EncodingError]:
 
 fn verify_url() -> Result[Unit, UrlError]:
     let query = try parse_query(text: "a=1&a=2&space=hello+world", max_entries: 3)
-    if not (query.length == 3):
+    if not (query.length() == 3):
         return panic(message: "check failed")
     if not (format_query(entries: query) == "a=1&a=2&space=hello+world"):
         return panic(message: "check failed")
@@ -196,7 +196,7 @@ test "expanded packages run through compiler":
 
     if not (("a,,b").split(separator: ",", max_parts: 2) == ["a", ""]):
         return panic(message: "check failed")
-    if not (("é🙂").scalar_length == 2):
+    if not (("é🙂").scalar_length() == 2):
         return panic(message: "check failed")
     if not (("é").scalar_values() == [233]):
         return panic(message: "check failed")

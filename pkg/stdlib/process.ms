@@ -467,7 +467,7 @@ export fn control() -> ProcessControl:
 # fn serve() -> Result[Unit, Error]:
 #     with signals = try control().watch_signals(signals: [2, 15]):
 #         with listener = try network().listen(address: "127.0.0.1:0"):
-#             stdout().write(data: "{listener.address}\n".to_bytes())
+#             stdout().write(data: "{listener.address()}\n".to_bytes())
 #             with client = try listener.accept():
 #                 with workers = TaskGroup():
 #                     with server = Server(listener: listener, client: client, workers: workers):

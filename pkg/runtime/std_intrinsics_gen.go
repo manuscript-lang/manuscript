@@ -25,15 +25,6 @@ func check_Float_IsFinite() {
 func check_Float_TruncateToInt() {
 	var _ func(*Execution, float64) Option[int] = Float_TruncateToInt
 }
-func check_Int_Milliseconds() {
-	var _ func(*Execution, int) Duration = Int_Milliseconds
-}
-func check_Int_Seconds() {
-	var _ func(*Execution, int) Duration = Int_Seconds
-}
-func check_Int_Minutes() {
-	var _ func(*Execution, int) Duration = Int_Minutes
-}
 func check_Int_ToString() {
 	var _ func(*Execution, int, int) string = Int_ToString
 }

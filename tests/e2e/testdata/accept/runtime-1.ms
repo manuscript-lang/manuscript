@@ -6,7 +6,7 @@ fn amount() -> Result[Decimal, String]:
     return ok(12.50d)
 
 test "explicit standard imports":
-    if not ([1, 2].length == 2):
+    if not ([1, 2].length() == 2):
         return panic(message: "check failed")
 
     match amount():

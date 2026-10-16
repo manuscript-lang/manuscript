@@ -7,12 +7,11 @@ import (
 )
 
 // NativeOperation is a receiver operation of a standard type that the runtime
-// implements: a method or accessor with no source body.
+// implements: a method with no source body.
 type NativeOperation struct {
 	Receiver  *Type
 	Name      string
-	Type      *Type // the signature with the receiver's variables in terms of Receiver.Def.Variables
-	Accessor  bool
+	Type      *Type   // the signature with the receiver's variables in terms of Receiver.Def.Variables
 	Variables []*Type // the operation's own type variables
 	// Requirements are the receiver variables the operation constrains beyond
 	// the type's own bounds, such as List.contains needing T: Equal.
@@ -73,7 +72,7 @@ func StandardInventory() *Inventory {
 		primitive := primitive(name)
 		for _, op := range intrinsic.Def.Operations {
 			inv.Operations = append(inv.Operations, NativeOperation{
-				Receiver: primitive, Name: op.Name, Type: op.Type, Accessor: op.Accessor,
+				Receiver: primitive, Name: op.Name, Type: op.Type,
 				Variables: standardOperationVariables[intrinsic.ID+"/"+op.Name], Decl: op.Decl,
 			})
 		}
@@ -88,7 +87,7 @@ func (inv *Inventory) addOperations(s *Symbol) {
 		if !native {
 			continue
 		}
-		n := NativeOperation{Receiver: s.Type, Name: op.Name, Type: op.Type, Accessor: op.Accessor, Variables: standardOperationVariables[s.ID+"/"+op.Name], Decl: op.Decl}
+		n := NativeOperation{Receiver: s.Type, Name: op.Name, Type: op.Type, Variables: standardOperationVariables[s.ID+"/"+op.Name], Decl: op.Decl}
 		for _, r := range standardReceiverRequirements[s.ID+"/"+op.Name] {
 			n.Requirements = append(n.Requirements, Requirement(r))
 		}
@@ -150,7 +149,7 @@ func NativeOperationFor(receiver *Type, name string) (NativeOperation, bool) {
 	}
 	for _, op := range r.Def.Operations {
 		if op.Name == name {
-			n := NativeOperation{Receiver: receiver, Name: name, Type: op.Type, Accessor: op.Accessor, Variables: standardOperationVariables[r.ID+"/"+name], Decl: op.Decl}
+			n := NativeOperation{Receiver: receiver, Name: name, Type: op.Type, Variables: standardOperationVariables[r.ID+"/"+name], Decl: op.Decl}
 			for _, req := range standardReceiverRequirements[r.ID+"/"+name] {
 				n.Requirements = append(n.Requirements, Requirement(req))
 			}

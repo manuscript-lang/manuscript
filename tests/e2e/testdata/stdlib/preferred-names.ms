@@ -271,7 +271,7 @@ test "list reversal names distinguish receiver mutation and shallow copies":
 
     let empty: List[Int] = []
     empty.reverse_in_place().reversed().append(1)
-    if not empty.is_empty: return panic("empty reversed storage")
+    if not empty.is_empty(): return panic("empty reversed storage")
 
     let one = [1]
     one.reversed().set(0, 2)
@@ -310,5 +310,5 @@ test "byte reversal names copy across direct bound and view calls":
     extracted.set(0, 7)
     if data != Bytes([0, 1, 255]) or reversed() != Bytes([255, 1, 0]):
         return panic("immutable byte reversal")
-    if Bytes([]).reversed().length != 0 or Bytes([1]).reversed() != Bytes([1]):
+    if Bytes([]).reversed().length() != 0 or Bytes([1]).reversed() != Bytes([1]):
         return panic("empty singleton bytes")

@@ -39,7 +39,7 @@ test "root":
     if value() != 3: return panic("bad value")
     match filesystem().read_file(path: "golden/input.txt", max_bytes: 1024):
         ok(data):
-            if data.length != 7: return panic("wrong fixture size")
+            if data.length() != 7: return panic("wrong fixture size")
         error(_):
             return panic("fixture not found from project directory")
 `)

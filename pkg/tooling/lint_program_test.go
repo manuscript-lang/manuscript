@@ -114,7 +114,7 @@ func TestMatchArmPayloadBindingsAreLinted(t *testing.T) {
 }
 
 func TestListLiteralNeedsNoImport(t *testing.T) {
-	source := "fn answer() -> Int:\n    let items = [1, 2, 3]\n    return items.length\n"
+	source := "fn answer() -> Int:\n    let items = [1, 2, 3]\n    return items.length()\n"
 	checked := compiler.CompileSource("source.ms", source, compiler.Options{AnalyzeOnly: true})
 	if !checked.Success() {
 		t.Fatal(checked.Diagnostics)

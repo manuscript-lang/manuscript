@@ -1,6 +1,0 @@
-sh scripts/bootstrap-go.sh
-sh scripts/package.sh
-Embedded build payload: 2761 files, 104.2 MiB uncompressed
-Created dist/manuscript-linux-amd64.tar.gz
-"/workspace/manuscript-accessor-design/toolchain/go/bin/go" run ./scripts/distcheck ./dist/manuscript-$("/workspace/manuscript-accessor-design/toolchain/go/bin/go" env GOHOSTOS)-$("/workspace/manuscript-accessor-design/toolchain/go/bin/go" env GOHOSTARCH)
-Packaged compilation, source tooling, LSP, terminal/DAP debugging, and profiles passed using only ms, without system Go, dlv, or downloads (macOS uses system debugserver).

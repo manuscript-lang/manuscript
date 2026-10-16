@@ -75,10 +75,7 @@ func (n *effectNode) scanExpression(expression *syntax.Expression, nodes map[str
 		n.add("read")
 	}
 	if expression.Kind == syntax.KindMember {
-		info := infoOf(expression)
-		if info != nil && info.Method != nil && info.Method.Accessor {
-			n.scanOperation(info.Method, expression.Text)
-		} else if receiver := infoOf(expression.Left); receiver != nil && receiver.Type != nil && receiver.Type.Kind == syntax.KindRecord && info != nil && info.Method == nil {
+		if receiver := infoOf(expression.Left); receiver != nil && receiver.Type.Kind == syntax.KindRecord && infoOf(expression).Method == nil {
 			n.add("read")
 		}
 	}
@@ -125,21 +122,15 @@ func (n *effectNode) scanCall(expression *syntax.Expression, nodes map[string]*e
 		return
 	}
 	if info.Method != nil {
-		name := ""
-		if member := expression.Left; member.Kind == syntax.KindMember {
-			name = member.Text
-		} else if member.Kind == syntax.KindApply && member.Left.Kind == syntax.KindMember {
-			name = member.Left.Text
-		}
-		n.scanOperation(info.Method, name)
+		n.scanMethodCall(expression, info.Method)
 		return
 	}
 	n.add("unknown")
 }
 
-// scanOperation accounts for both calls and accessor reads, which execute the
-// selected implementation without requiring a KindCall node.
-func (n *effectNode) scanOperation(method *Method, name string) {
+// scanMethodCall adds the effects of a method call: an edge for source
+// methods, or the known effects of the native receiver.
+func (n *effectNode) scanMethodCall(expression *syntax.Expression, method *Method) {
 	if method.ID != "" {
 		n.edges[method.ID] = true
 		return
@@ -148,11 +139,7 @@ func (n *effectNode) scanOperation(method *Method, name string) {
 	if method.Contract != nil && method.Contract.ID != "" {
 		receiver = method.Contract
 	}
-	if method.Accessor {
-		// Accessor is read-only, not pure. Keep broader native categories below
-		// and unresolved contract evidence conservatively unknown.
-		n.add("read")
-	}
+	name := expression.Left.Text
 	switch receiver.ID {
 	case "@std/Clock":
 		n.add("read")
@@ -166,7 +153,7 @@ func (n *effectNode) scanOperation(method *Method, name string) {
 	case "@std/Network", "@std/HttpServer", "@std/Commands", "@std/Subprocess":
 		n.add("external-call", "read", "write")
 	case "@std/SynchronizedGuard":
-		if name == "get" || method.Accessor && name == "value" {
+		if name == "get" {
 			n.add("read")
 		} else {
 			n.add("write")

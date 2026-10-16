@@ -31,7 +31,7 @@ def main():
         source = ('fn values() -> List[Int]:\n    return ['
                   + ", ".join(str(i) for i in range(n)) + ']\n'
                   'export fn main() -> Int:\n'
-                  f'    return values().length - {n}\n')
+                  f'    return values().length() - {n}\n')
         (directory / "source.ms").write_text(source)
     binaries = {"baseline": args.baseline, "prototype": args.prototype}
     with (root / "cli-builds.jsonl").open("w") as log:

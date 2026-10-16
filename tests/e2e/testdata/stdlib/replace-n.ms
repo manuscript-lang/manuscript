@@ -12,7 +12,7 @@ test "required replacement count retains zero finite oversized and literal seman
         "replacement text was expanded"
     )
     if "abc".replace_n("b", "", 1) != "ac": return panic("deletion")
-    if "a".replace_n("a", "世界", 1).byte_length != 6:
+    if "a".replace_n("a", "世界", 1).byte_length() != 6:
         return panic("count became a byte budget")
 
 test "empty patterns use Unicode scalar boundaries without normalization":

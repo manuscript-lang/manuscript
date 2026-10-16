@@ -1,9 +1,0 @@
-goos: linux
-goarch: amd64
-pkg: github.com/manuscript-lang/manuscript/pkg/runtime
-cpu: INTEL(R) XEON(R) PLATINUM 8573C
-BenchmarkAccessorReleaseLatency/GuardValue/Public-2         	     200	      1267 ns/op	       1 B/op	       0 allocs/op
-BenchmarkAccessorReleaseLatency/GuardValue/SafetyControl-2  	     200	      1395 ns/op	       0 B/op	       0 allocs/op
-BenchmarkAccessorReleaseLatency/LoggerLevel/Public-2        	     200	      1711 ns/op	      65 B/op	       1 allocs/op
-BenchmarkAccessorReleaseLatency/LoggerLevel/SafetyControl-2 	     200	      1344 ns/op	      64 B/op	       1 allocs/op
-PASS

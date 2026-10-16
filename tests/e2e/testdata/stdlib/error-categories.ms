@@ -76,7 +76,7 @@ test "shared categories keep exact standard domain values":
     if category(SseError.LimitExceeded) != some(ErrorCategory.LimitExceeded): return panic(
         "source SSE budget category"
     )
-    if category(SseError.Truncated).is_some: return panic(
+    if category(SseError.Truncated).is_some(): return panic(
         "SSE truncation has no shared category"
     )
 
@@ -118,10 +118,10 @@ test "classification does not parse messages invoke user code or guess domain-sp
         calls: 0,
         message: "filesystem: file or directory not found"
     )
-    if category(custom).is_some or custom.calls != 0: return panic(
+    if category(custom).is_some() or custom.calls != 0: return panic(
         "classifier invoked message"
     )
-    if category(PathError.InvalidInput).is_some: return panic(
+    if category(PathError.InvalidInput).is_some(): return panic(
         "local standard name was classified"
     )
 
@@ -137,4 +137,4 @@ test "classification does not parse messages invoke user code or guess domain-sp
     ]
 
     for cause in causes:
-        if category(cause).is_some: return panic("domain-specific cause guessed")
+        if category(cause).is_some(): return panic("domain-specific cause guessed")

@@ -281,7 +281,7 @@ Verified: private map/filter result construction must preserve `NewList`'s boxed
 fallback when a primitive-labelled List holds nonmatching dynamic payloads.
 Convert the partial result to boxed storage before storing such a payload;
 the ordinary typed path remains direct. Evidence: the four primitive map/filter
-cases in fallback and live accessor regression.
+cases in the fallback regression.
 Verify accepted payload order, fresh outer storage, Optional payloads and live
 endpoint/length reads after mutation.
 

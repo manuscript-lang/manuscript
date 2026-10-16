@@ -65,7 +65,7 @@ func sourceSpan(module *syntax.Module, pos syntax.Position) Span {
 	return Span{module.File, start, end, pos.Line, pos.Column}
 }
 func Inspect(program *checker.Program) Inspection {
-	result := Inspection{Format: 2, Sources: []Source{}, Entities: []Entity{}, Calls: []CallSite{}, Statements: []Span{}}
+	result := Inspection{Format: 1, Sources: []Source{}, Entities: []Entity{}, Calls: []CallSite{}, Statements: []Span{}}
 	result.Locals = []Local{}
 	modules := map[string]*syntax.Module{}
 	for _, module := range program.Modules {
@@ -125,11 +125,7 @@ func Inspect(program *checker.Program) Inspection {
 			continue
 		}
 		methods[method.Decl] = method
-		kind := "method"
-		if method.Accessor {
-			kind = "accessor"
-		}
-		methodIDs[method.ID] = fmt.Sprintf("%s#%s#%d", method.Decl.Pos.File, kind, method.Decl.Pos.Offset)
+		methodIDs[method.ID] = fmt.Sprintf("%s#method#%d", method.Decl.Pos.File, method.Decl.Pos.Offset)
 	}
 	for _, module := range program.Modules {
 		for _, declaration := range module.Declarations {
@@ -169,7 +165,7 @@ func Inspect(program *checker.Program) Inspection {
 								site.Target = info.Symbol.Module + "#" + info.Symbol.Name
 							}
 						}
-						if info.Method != nil && !info.Method.Accessor {
+						if info.Method != nil {
 							site.Kind = "operation"
 							site.Target = methodIDs[info.Method.ID]
 							if site.Target == "" {
@@ -187,23 +183,6 @@ func Inspect(program *checker.Program) Inspection {
 					}
 					result.Calls = append(result.Calls, site)
 				}
-				// A resolved accessor member executes even though it is not a
-				// source call. Fields and bound method references do not.
-				if e.Kind == syntax.KindMember {
-					if info := program.Info(e); info != nil && info.Method != nil && info.Method.Accessor {
-						target := methodIDs[info.Method.ID]
-						if target == "" {
-							if decl := info.Method.Decl; decl != nil {
-								target = fmt.Sprintf("%s#accessor#%d", decl.Pos.File, decl.Pos.Offset)
-							} else if info.Method.Contract != nil {
-								target = info.Method.Contract.String() + "." + e.Text
-							} else {
-								target = info.Method.Receiver.String() + "." + e.Text
-							}
-						}
-						result.Calls = append(result.Calls, CallSite{ID: fmt.Sprintf("%s#accessor#%d", module.File, e.Pos.Offset), Owner: entity.ID, Target: target, Kind: "accessor", Span: sourceSpan(module, e.Pos)})
-					}
-				}
 			}, Statement: func(s *syntax.Statement) {
 				result.Statements = append(result.Statements, sourceSpan(module, s.Pos))
 				if s.Kind == syntax.KindWith {
@@ -219,26 +198,10 @@ func Inspect(program *checker.Program) Inspection {
 			}}
 			visitor.Callable(declaration.Params, declaration.Body)
 			implementation := entity
-			accessorTypes := map[string]string{}
-			if symbol := program.Symbol(module.File, declaration.Name); symbol != nil && symbol.Type != nil && symbol.Type.Def != nil {
-				for _, operation := range symbol.Type.Def.Operations {
-					if operation.Accessor {
-						accessorTypes[operation.Name] = operation.Type.Result.String()
-					}
-				}
-			}
 			for _, method := range declaration.Methods {
-				if method.Accessor && len(method.Body) == 0 {
-					accessor := Entity{ID: fmt.Sprintf("%s#accessor#%d", module.File, method.Pos.Offset), Kind: "accessor", Name: implementation.Name + "." + method.Name, Type: accessorTypes[method.Name], Span: sourceSpan(module, method.Pos), Exported: declaration.Export}
-					result.Entities = append(result.Entities, accessor)
-				}
 				if len(method.Body) > 0 {
 					checked := methods[method]
-					kind, typ := "method", checked.Type
-					if checked.Accessor {
-						kind, typ = "accessor", checked.Type.Result
-					}
-					entity = Entity{ID: methodIDs[checked.ID], GoID: checked.ID, Kind: kind, Name: implementation.Name + "." + method.Name, Type: typ.String(), Span: sourceSpan(module, method.Pos), Effects: program.Effects[checked.ID]}
+					entity = Entity{ID: methodIDs[checked.ID], GoID: checked.ID, Kind: "method", Name: implementation.Name + "." + method.Name, Type: checked.Type.String(), Span: sourceSpan(module, method.Pos), Effects: program.Effects[checked.ID]}
 					result.Entities = append(result.Entities, entity)
 					visitor.Callable(method.Params, method.Body)
 				}

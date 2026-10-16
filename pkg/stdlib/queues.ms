@@ -10,11 +10,11 @@ export type Queue[T]:
     # Removes and returns the oldest value, or `none` when empty.
     fn dequeue() -> Optional[T]:
     # Returns the oldest value without removing it, or none when the queue is empty.
-    get peek -> Optional[T]:
+    fn peek() -> Optional[T]:
     # Returns the number of values currently waiting in the queue.
-    get length -> Int:
+    fn length() -> Int:
     # Reports whether dequeue and peek would return none.
-    get is_empty -> Bool:
+    fn is_empty() -> Bool:
 
 # A FIFO queue that waits instead of failing: put blocks while a bounded queue is full,
 # and take blocks while the queue is empty. It synchronizes itself, so tasks share it directly.
@@ -50,11 +50,11 @@ export type PriorityQueue[T]:
     # Removes and returns the next value by priority, or `none` when empty.
     fn dequeue() -> Optional[T]:
     # Returns the next value by priority without removing it, or none when empty.
-    get peek -> Optional[T]:
+    fn peek() -> Optional[T]:
     # Returns the number of enqueued values, independent of their priorities.
-    get length -> Int:
+    fn length() -> Int:
     # Reports whether the queue has no values to peek or dequeue.
-    get is_empty -> Bool:
+    fn is_empty() -> Bool:
 
 # documentation documentation/concurrency/queues.md
 # +++
@@ -89,9 +89,9 @@ export type PriorityQueue[T]:
 # ```manuscript
 # fn enqueue(value: T) -> Bool
 # fn dequeue() -> Optional[T]
-# get peek -> Optional[T]
-# get length -> Int
-# get is_empty -> Bool
+# fn peek() -> Optional[T]
+# fn length() -> Int
+# fn is_empty() -> Bool
 # ```
 #
 # `enqueue` appends at the back and returns `true`, or leaves a bounded queue unchanged and returns `false` when full. An unbounded queue grows as needed and always accepts an enqueue. `dequeue` removes the oldest value; `peek` reads it without removal. Both return `none` when empty. Dequeuing frees capacity, and an empty queue may be reused. There is no waiting, close operation, cleanup registration, or end-of-stream state. A queue cannot be a `with` initializer.
@@ -109,14 +109,14 @@ export type PriorityQueue[T]:
 #
 # fn enqueue(shared: Synchronized[Queue[Int]], value: Int) -> Bool:
 #     with locked = shared.lock():
-#         return locked.value.enqueue(value)
+#         return locked.get().enqueue(value)
 #
 # fn dequeue(shared: Synchronized[Queue[Int]]) -> Optional[Int]:
 #     with locked = shared.lock():
-#         return locked.value.dequeue()
+#         return locked.get().dequeue()
 # ```
 #
-# The queue itself has no mutex. The compiler allows references to be passed freely and does not enforce this locking discipline. A queue or bound method obtained through `locked.value` remains an alias after the guard closes; it must not be used concurrently outside that lock. Wrapping the same queue in two separate synchronized containers does not coordinate them. Store the queue directly in one wrapper and share that wrapper.
+# The queue itself has no mutex. The compiler allows references to be passed freely and does not enforce this locking discipline. A queue or bound method obtained through `locked.get()` remains an alias after the guard closes; it must not be used concurrently outside that lock. Wrapping the same queue in two separate synchronized containers does not coordinate them. Store the queue directly in one wrapper and share that wrapper.
 #
 # Wrapping a queue serializes access; it does not by itself add waiting for values or free capacity. For a queue that blocks, use [`BlockingQueue`](#blocking-queue), or call the guard's [`wait()`](synchronization.md#waiting-for-a-change), which releases the lock while sleeping; never poll or spin while holding the lock. Lock acquisition follows the ordinary [Synchronized cancellation and cleanup rules](synchronization.md#synchronized).
 #

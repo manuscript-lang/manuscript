@@ -10,8 +10,8 @@ type check_SynchronizedGuard[T any] = *SynchronizedGuard[T]
 func check_Synchronized_Lock[T any]() {
 	var _ func(*Execution, *Synchronized[T]) *SynchronizedGuard[T] = Synchronized_Lock[T]
 }
-func check_SynchronizedGuard_Value[T any]() {
-	var _ func(*Execution, *SynchronizedGuard[T]) T = SynchronizedGuard_Value[T]
+func check_SynchronizedGuard_Get[T any]() {
+	var _ func(*Execution, *SynchronizedGuard[T]) T = SynchronizedGuard_Get[T]
 }
 func check_SynchronizedGuard_Set[T any]() {
 	var _ func(*Execution, *SynchronizedGuard[T], T) Unit = SynchronizedGuard_Set[T]

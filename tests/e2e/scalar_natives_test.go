@@ -27,7 +27,7 @@ test "typed math":
     check(ok: min(left: 1.0, right: 2.0) == 1.0 and max(left: 1.0, right: 2.0) == 2.0, name: "min max")
     check(ok: remainder(left: 7.0, right: 4.0) == 3.0, name: "remainder")
     check(ok: atan2(y: 0.0, x: 1.0) == 0.0, name: "atan2")
-    check(ok: sqrt(value: 0.0 - 1.0).is_nan and sqrt(value: 1.0).is_finite, name: "classification")
+    check(ok: sqrt(value: 0.0 - 1.0).is_nan() and sqrt(value: 1.0).is_finite(), name: "classification")
     var total = 0.0
     var i = 0
     while i < 4:
@@ -70,10 +70,10 @@ fn check(ok: Bool, name: String) -> Unit:
 
 test "string and float members":
     let text = "héllo"
-    check(ok: text.length == 5 and not text.is_empty and "".is_empty, name: "length")
+    check(ok: text.length() == 5 and not text.is_empty() and "".is_empty(), name: "length")
     check(ok: "a".compare(other: "b") == 0 - 1 and "b".compare(other: "b") == 0, name: "compare")
     check(ok: text.concat(other: "!") == "héllo!", name: "concat")
-    check(ok: (0.0 / 0.0).is_nan and not (1.0).is_nan and (1.0).is_finite, name: "float")
+    check(ok: (0.0 / 0.0).is_nan() and not (1.0).is_nan() and (1.0).is_finite(), name: "float")
 `, compiler.Options{Tests: true})
 	output, err := execute(t, result)
 	if err != nil || !strings.Contains(string(output), "PASS") {
@@ -89,11 +89,11 @@ fn check(ok: Bool, name: String) -> Unit:
         return panic(message: name)
 
 test "omitted and supplied caps":
-    check(ok: "a,b,c".split(separator: ",").length == 3, name: "split")
-    check(ok: "a,b,c".split(separator: ",", max_parts: some(2)).length == 2, name: "split cap")
-    check(ok: "a,b,c".split(separator: ",", max_parts: none).length == 3, name: "split none")
-    check(ok: "".split(separator: ",").length == 1, name: "split empty")
-    check(ok: "abc".split(separator: "").length == 3, name: "split scalars")
+    check(ok: "a,b,c".split(separator: ",").length() == 3, name: "split")
+    check(ok: "a,b,c".split(separator: ",", max_parts: some(2)).length() == 2, name: "split cap")
+    check(ok: "a,b,c".split(separator: ",", max_parts: none).length() == 3, name: "split none")
+    check(ok: "".split(separator: ",").length() == 1, name: "split empty")
+    check(ok: "abc".split(separator: "").length() == 3, name: "split scalars")
     check(ok: "a-b-c".replace(old: "-", new: "+") == "a+b-c", name: "replace first")
     check(ok: "a-b-c".replace(old: "-", new: "+", max_replacements: some(2)) == "a+b+c", name: "replace cap")
     check(ok: "a-b-c".replace_first(old: "-", new: "+") == "a+b-c", name: "replace_first")
@@ -166,7 +166,7 @@ test "parse_int":
     check(ok: parsed(text: "-7") == 0 - 7 and parsed(text: "+8") == 8, name: "signs")
     check(ok: parsed(text: "") == 0 - 1 and parsed(text: "-") == 0 - 1 and parsed(text: "1x") == 0 - 1, name: "invalid")
     check(ok: parsed(text: "99999999999999999999") == 0 - 1, name: "overflow")
-    check(ok: "héllo".to_bytes().length == 6, name: "to_bytes")
+    check(ok: "héllo".to_bytes().length() == 6, name: "to_bytes")
 `, compiler.Options{Tests: true})
 	output, err := execute(t, result)
 	if err != nil || !strings.Contains(string(output), "PASS") {

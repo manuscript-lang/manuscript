@@ -418,12 +418,12 @@ test "JSON parse decodes records by field name with defaults and optional fields
     let profile: Profile = value(parse[Profile](text: text))
     if profile.name != "Ada": return panic("record field")
     if profile.age != 18: return panic("field default")
-    if not profile.nickname.is_none: return panic("missing optional is none")
-    if profile.scores.length != 2 or profile.scores.at(1).unwrap() != 2.5: return panic(
+    if not profile.nickname.is_none(): return panic("missing optional is none")
+    if profile.scores.length() != 2 or profile.scores.at(1).unwrap() != 2.5: return panic(
         "float list"
     )
     if profile.labels.get("a").unwrap() != 1: return panic("map member")
-    if profile.ids.length != 2: return panic("set drops repeats")
+    if profile.ids.length() != 2: return panic("set drops repeats")
 
     let full = "\{\"name\":\"B\",\"age\":30,\"nickname\":\"bee\",\"scores\":[],\"labels\":\{\},\"ids\":[]\}"
     let other: Profile = value(parse[Profile](text: full))
@@ -496,7 +496,7 @@ test "JSON parse decodes alternatives and generic records":
     )
 
     let wrapper: Wrapper[Int] = value(parse[Wrapper[Int]](text: "\{\"first\":1\}"))
-    if wrapper.first != 1 or not wrapper.second.is_none or wrapper.extra != 7: return panic(
+    if wrapper.first != 1 or not wrapper.second.is_none() or wrapper.extra != 7: return panic(
         "generic record"
     )
 
@@ -534,7 +534,7 @@ test "JSON parse decodes recursive types exact numbers and passthrough values":
     if boxed.first != raw: return panic("JsonValue keeps its subtree")
 
     let list: List[Optional[Int]] = value(parse[List[Optional[Int]]](text: "[1,null]"))
-    if list.at(1).unwrap().is_some: return panic("null element is none")
+    if list.at(1).unwrap().is_some(): return panic("null element is none")
 
 test "JSON parse inverts stringify and works in generic code":
     let profile = Profile(
@@ -620,7 +620,7 @@ test "JSON parse reads what stringify writes for standard values and scalar map 
 
 test "JSON parse needs a default for fields without a JSON form":
     let outcome = parse[Handler](text: "\{\"name\":\"n\"\}")
-    if outcome.is_ok: return panic("function field is required")
+    if outcome.is_ok(): return panic("function field is required")
 
 test "JSON parse reads standard alternatives and rejects keys that collide":
     let good: Result[Int, JsonError] = value(
@@ -682,7 +682,7 @@ test "JSON stringify fails on nesting deeper than parse accepts":
         i = i + 1
 
     let r = stringify(head)
-    if r.is_ok: return panic("nesting beyond the parse ceiling must fail")
+    if r.is_ok(): return panic("nesting beyond the parse ceiling must fail")
 
 test "JSON parse runs field defaults that read earlier fields":
     let d = value(parse[Defaults](text: "\{\"a\":5\}"))
@@ -705,11 +705,11 @@ test "JSON round trips generic records alternatives and Duration keys":
     if value(stringify(back)) != t: return panic(t)
 
 test "JSON parse returns InvalidData for targets that cannot be read":
-    if parse[Unit](text: "null").is_ok: return panic("unit")
+    if parse[Unit](text: "null").is_ok(): return panic("unit")
 
     let f = parse[fn() -> Int](text: "1")
-    if f.is_ok: return panic("fn")
-    if parse[Int](text: "-0").is_error: return panic("-0")
-    if parse[Float](text: "1e999").is_ok: return panic("inf")
-    if parse[String](text: "1").is_ok: return panic("str")
-    if parse[List[Int]](text: "[1,\"a\"]").is_ok: return panic("elem")
+    if f.is_ok(): return panic("fn")
+    if parse[Int](text: "-0").is_error(): return panic("-0")
+    if parse[Float](text: "1e999").is_ok(): return panic("inf")
+    if parse[String](text: "1").is_ok(): return panic("str")
+    if parse[List[Int]](text: "[1,\"a\"]").is_ok(): return panic("elem")

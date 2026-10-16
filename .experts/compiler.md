@@ -36,10 +36,8 @@ generation alone do not identify the target. Cache the lexical module as well;
 argument scopes retain the ordinary specialization path rather than reusing a
 previous no-argument entry. Cached targets must never capture receiver values.
 
-Apply when: changing method/accessor dispatch, interface views or call-site caches.
-Evidence: method dispatch,
-scope/cache regressions, and
-[mixed method/accessor views](../tests/e2e/testdata/projects/accessors/main.ms).
+Apply when: changing method dispatch, interface views or call-site caches.
+Evidence: method dispatch and scope/cache regressions.
 Verify: alternate same-type views from two local implementation modules at one
 nongeneric interface call site, including concurrent calls, under the race detector.
 
@@ -212,11 +210,10 @@ Verify: run `TestFaultSourceLocations`, including multiline operands, argument f
 
 Verified: making default-bearing functions direct also makes their default
 expressions part of the direct-call graph. Omitting defaults let a cycle through
-an accessor exceed MaxCallDepth after integrating #507, even though body-only
+a method exceed MaxCallDepth after integrating #507, even though body-only
 recursion tests passed. Walk the declaration's parameters and body with the common
-Callable visitor. Default-cycle lowering
-and [bounded native depth/cancellation](../pkg/build/accessors_native_test.go)
-regressions distinguish this from merely accepting the source.
+Callable visitor. Default-cycle lowering regressions distinguish this from merely
+accepting the source.
 
 Verified: Go orders calls in an expression, but that does not establish when an
 earlier plain local read occurs relative to a later call. A right-hand match can

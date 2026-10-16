@@ -15,7 +15,9 @@ test "byte updates retain relative bounds and immutable storage":
         "last byte"
     )
     if bytes != Bytes(values: [0, 255]): return panic("byte mutation")
-    if not bytes.at(-3).is_none or not bytes.at(2).is_none: return panic("absent byte")
+    if not bytes.at(-3).is_none() or not bytes.at(2).is_none(): return panic(
+        "absent byte"
+    )
     if bytes.slice(start: 2, end: 2).unwrap() != Bytes(values: []): return panic(
         "empty byte slice"
     )
@@ -42,7 +44,7 @@ test "list boundaries retain mutation truncation and empty ranges":
     list.fill(value: 1, start: 0, end: 0)
     list.copy_within(target: 0, start: 0, end: 0)
     list.splice(start: 0, delete_count: 0, replacement: [])
-    if list.length != 0 or not list.at(0).is_none: return panic("empty list")
+    if list.length() != 0 or not list.at(0).is_none(): return panic("empty list")
 
 test "radix formatting retains inclusive boundaries and parse errors":
     if (35).to_string(radix: 2) != "100011" or (35).to_string(radix: 36) != "z": return panic(
@@ -56,7 +58,7 @@ test "radix formatting retains inclusive boundaries and parse errors":
 
     let invalid: Result[Int, NumberError] = error(NumberError.InvalidInput)
     if parse_int(text: "1", radix: 1) != invalid: return panic("parse failure category")
-    if not "invalid".parse_int().is_none: return panic("optional parsing")
+    if not "invalid".parse_int().is_none(): return panic("optional parsing")
 
     let precision: Result[String, NumberError] = error(NumberError.InvalidInput)
     if (1.0).to_precision(precision: 0) != precision: return panic(
@@ -66,7 +68,7 @@ test "radix formatting retains inclusive boundaries and parse errors":
 test "queue capacities retain omission none minimum maximum and full results":
     let queue = Queue[Int](capacity: 1)
     if not queue.enqueue(1) or queue.enqueue(2): return panic("bounded queue")
-    if queue.dequeue() != some(1) or not queue.dequeue().is_none: return panic(
+    if queue.dequeue() != some(1) or not queue.dequeue().is_none(): return panic(
         "queue absence"
     )
 

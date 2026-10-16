@@ -3,7 +3,6 @@ package cli
 import (
 	"testing"
 
-	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
 )
 
@@ -37,42 +36,5 @@ func TestDebugNamesMapGeneratedLocalsFunctionsAndStatementLines(t *testing.T) {
 	}
 	if names.Lines["src/main.ms"][6] {
 		t.Error("a blank generated-glue line is not a statement line")
-	}
-}
-
-func TestDebugNamesIncludeSourceAccessorBodies(t *testing.T) {
-	const source = `interface Counter:
-    get next -> Int
-type State:
-    count: Int
-impl Counter for State:
-    get next -> Int:
-        self.count = self.count + 1
-        return self.count
-fn read(state: State) -> Int:
-    return state.next
-`
-	result := compiler.CompileSource("accessors.ms", source, compiler.Options{AnalyzeOnly: true})
-	if !result.Success() {
-		t.Fatal(result.Diagnostics)
-	}
-	names := debugNames(result)
-	found := map[string]bool{}
-	for _, entity := range names.Entities {
-		switch entity.Name {
-		case "Counter.next":
-			if entity.Function {
-				t.Fatalf("an interface accessor has no executable body: %+v", entity)
-			}
-			found[entity.Name] = true
-		case "Counter for State.next":
-			if !entity.Function || entity.Body != 7 {
-				t.Fatalf("a source accessor breakpoint must stop before its body: %+v", entity)
-			}
-			found[entity.Name] = true
-		}
-	}
-	if len(found) != 2 {
-		t.Fatalf("missing accessor declarations: %+v", names.Entities)
 	}
 }

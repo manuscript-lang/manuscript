@@ -5,7 +5,7 @@ type Box[T, U = T]:
     second: U
 
 fn pick[T = Int](values: List[T]) -> Int:
-    return values.length
+    return values.length()
 
 fn make[T = String]() -> Optional[T]:
     return none
@@ -28,11 +28,11 @@ test "constructors fall back to defaults":
 
 test "calls infer first and only then use the default":
     let inferred = make()
-    if not (inferred.is_none):
+    if not (inferred.is_none()):
         return panic(message: "check failed")
 
     let explicit: Optional[Int] = make()
-    if not (explicit.is_none):
+    if not (explicit.is_none()):
         return panic(message: "check failed")
     if not (pick([1, 2, 3]) == 3):
         return panic(message: "check failed")

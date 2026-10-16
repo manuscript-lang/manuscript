@@ -380,7 +380,7 @@ import Synchronized from "@std/sync.ms"
 
 fn counted_view(count: Synchronized[Int]) -> Label[String]:
     with locked = count.lock():
-        locked.set(value: locked.value + 1)
+        locked.set(value: locked.get() + 1)
 
     return Label[String](Labelled("label diagnostic"))
 
@@ -396,7 +396,7 @@ test "contract matches evaluate once and preserve ordinary contract semantics":
             return panic(message: "unrelated contract pattern did not run")
 
     with locked = count.lock():
-        if locked.value != 1:
+        if locked.get() != 1:
             return panic(message: "contract scrutinee was evaluated more than once")
 
     let view = Label[String](Labelled("separate handler"))

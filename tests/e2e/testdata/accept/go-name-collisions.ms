@@ -47,7 +47,7 @@ test "operation names that differ only in underscores stay distinct":
 test "functions named like Go predeclared identifiers still lower":
     let text = "{string(1)}{int(1)}{float64(1)}{nil(1)}"
     let floats = [1.5, 2.5]
-    if text != "2345" or floats.length != 2: return panic("predeclared names")
+    if text != "2345" or floats.length() != 2: return panic("predeclared names")
 
 type Box[T]:
     value: T

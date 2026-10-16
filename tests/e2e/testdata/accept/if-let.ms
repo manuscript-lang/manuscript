@@ -20,7 +20,7 @@ fn check(value: Bool, message: String) -> Unit:
         panic(message: message)
 
 test "if let unwraps a present optional":
-    if let value = [4, 5].first:
+    if let value = [4, 5].first():
         check(value: value == 4, message: "wrong value")
     else:
         panic(message: "expected some")
@@ -32,5 +32,5 @@ test "if let takes else when absent and keeps falsy payloads":
     check(value: total(items) == 3, message: "total")
     let empty: List[Int] = []
 
-    if let value = empty.first:
+    if let value = empty.first():
         panic(message: "unexpected {value}")

@@ -1,4 +1,0 @@
-ok  	github.com/manuscript-lang/manuscript/pkg/lower	0.692s
-ok  	github.com/manuscript-lang/manuscript/pkg/compiler	1.605s
-ok  	github.com/manuscript-lang/manuscript/internal/nativeabi	0.006s
-ok  	github.com/manuscript-lang/manuscript/pkg/stdlib	2.823s

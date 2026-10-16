@@ -21,7 +21,7 @@ impl import in interface let match not or return self test true try type
 unit var while with
 ```
 
-`from` is a keyword only after the names of an import; elsewhere it is an ordinary name, as in `let from = 2`. `get` is contextual at an accessor declaration head; it remains an ordinary name in `fn get()`, `get: Int` fields, parameters, bindings, and member expressions.
+`from` is a keyword only after the names of an import; elsewhere it is an ordinary name, as in `let from = 2`.
 
 `fixture` names the file fixture inside test blocks when a local `make_fixture`
 factory returns a concrete `TestHooks` implementer. It cannot be declared as a
@@ -129,20 +129,15 @@ CaseDeclaration = "case", Name, [ "(", Parameters, ")" ], NEWLINE ;
 InterfaceDeclaration = "interface", Name, [ TypeParameters ], ":", NEWLINE,
                        INDENT, ContractBody, DEDENT ;
 ContractBody  = OperationSignature, { OperationSignature } ;
-OperationSignature = MethodSignature | AccessorSignature ;
-MethodSignature = "fn", Name, "(", [ FunctionParameters ], ")", "->", Type, NEWLINE ;
-AccessorSignature = "get", Name, "->", Type, NEWLINE ;
-ReceiverDeclaration = ReceiverMethod | AccessorDeclaration ;
-ReceiverMethod = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
-                 "->", Type, FunctionSuite ;
+OperationSignature = "fn", Name, "(", [ FunctionParameters ], ")", "->", Type, NEWLINE ;
+ReceiverDeclaration = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
+                      "->", Type, FunctionSuite ;
 
 FunctionDeclaration = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
                       "->", Type, FunctionSuite ;
 Implementation = "impl", NamedType, "for", NamedType, ":", NEWLINE,
-                 [ INDENT, OperationDeclaration, { OperationDeclaration }, DEDENT ] ;
-OperationDeclaration = MethodDeclaration | AccessorDeclaration ;
+                 [ INDENT, MethodDeclaration, { MethodDeclaration }, DEDENT ] ;
 MethodDeclaration = "fn", Name, "(", [ FunctionParameters ], ")", "->", Type, FunctionSuite ;
-AccessorDeclaration = "get", Name, "->", Type, FunctionSuite ;
 FunctionSuite = ":", (Expression | SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
 TestDeclaration = "test", PlainStringLiteral, Suite ;
 (* Only canonical TestHooks implementations may omit operations; missing hooks are no-ops. *)
@@ -165,9 +160,7 @@ FunctionType  = "fn", "(", [ Parameters ], ")", "->", Type ;
 
 A `type` declares record fields or alternative cases; these data forms cannot be mixed. It may also contain receiver function declarations with ordinary function headers and suites, as used by the standard library. An `interface` contains only operation signatures. A nullary alternative uses `case Ready`, without `()`. Parameter names and declaration names must be unique within their applicable scope. Named function parameters and results have explicit types. Anonymous parameter types may come from a known function context, and anonymous result types may come from context or the checked body; see [callback inference](../functions/function-values-and-closures.md#contextual-callback-inference). Function declarations and expressions with bodies accept [default arguments](../functions/declarations-and-calls.md#default-arguments). Record fields accept [default expressions](../types/records.md#construction). Interface signatures may declare `= none` defaults on Optional parameters. Function types and alternative payloads have no defaults. Variadic parameters, parameter patterns, and anonymous-function type parameters are not accepted. An omitted argument is checked against its declared contract.
 
-An accessor declares a computed read-only member with `get name -> Type`. It has an explicit result type and no parentheses, parameters, defaults, own type parameters, initializer, or setter. Receiver type parameters remain available in its result and body. Interface accessor signatures omit the colon and body; implementations use ordinary callable suites, for example `get count -> Int: return self.items.length`. A method and accessor are distinct contracts. Application receiver implementations belong in explicit `impl` blocks; module-level and local accessor declarations and accessor function types are rejected.
-
-Named function, method, and accessor suites may be empty: `fn commands() -> Commands:` or `get length -> Int:` followed by a newline is valid syntax. The standard library uses these empty declarations for implementations supplied by its pinned runtime bindings; checking authorizes those bindings, and application accessors require valid source implementations. Empty type schemas likewise use `type Duration:` with a newline. No parser mode or `native` keyword changes the syntax. Application functions still need valid return behavior. Interface, implementation, test, and control-flow suites remain nonempty.
+Named function and method suites may be empty: `fn commands() -> Commands:` followed by a newline is valid syntax. The standard library uses these empty functions for implementations supplied by its pinned runtime bindings. Empty type schemas likewise use `type Duration:` with a newline. No parser mode or `native` keyword changes the syntax. Application functions still need valid return behavior, and source receiver implementations use explicit `impl` blocks. Interface, implementation, test, and control-flow suites remain nonempty.
 
 Imports and declarations may be interleaved; import visibility and declaration resolution do not depend on written order. Import paths and test names are plain text literals: escapes are permitted, interpolation is rejected. `export` applies to types, interfaces, and named module functions, not tests or implementation blocks. Implementation blocks declare no type parameters. In `impl Contract[T] for Data[T]:`, `T` comes from the receiver type declaration; applicable bounds come from the type and interface declarations.
 
@@ -213,7 +206,7 @@ RecordEntry   = Name, [ ":", BindingPattern ] ;
 
 `CallStatement` accepts a call or match expression and discards its result. It also accepts `try call()` when the Result success type is `Unit` (see [propagation](../errors/propagation.md)); arithmetic expressions or bare names are not standalone statements. A match arm may end with any expression to produce its value. Assignment replaces an existing `var` binding or updates a record field. Collection positions are updated through methods. Only a simple name binding may carry a type annotation. Destructuring patterns infer their types from the checked initializer; annotate an intermediate name first when the initializer needs context. Positional patterns can be empty, selecting an empty fixed result or list. Empty record patterns are rejected because they bind nothing. `_` is allowed in match payloads and as a match wildcard, not as an ordinary binding or destructuring elision.
 
-Inline suites work for functions, methods, accessors, tests, branches, loops, and cleanup scopes. They contain one simple statement, with no semicolon separators or nested compound statements. A function, method, or accessor may instead contain one expression, which is implicitly returned. This expression shorthand applies only to callable bodies, not to tests or control-flow suites. For example:
+Inline suites work for functions, methods, tests, branches, loops, and cleanup scopes. They contain one simple statement, with no semicolon separators or nested compound statements. A function or method may instead contain one expression, which is implicitly returned. This expression shorthand applies only to callable bodies, not to tests or control-flow suites. For example:
 
 ```manuscript
 fn double(value: Int) -> Int: value * 2

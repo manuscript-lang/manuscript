@@ -16,13 +16,6 @@
       }
     },
     {
-      "match": "^\\s*(get)\\s+([a-z_][A-Za-z0-9_]*)(?=\\s*->)",
-      "captures": {
-        "1": { "name": "keyword.control.manuscript" },
-        "2": { "name": "variable.other.property.manuscript" }
-      }
-    },
-    {
       "name": "keyword.control.manuscript",
       "match": "\\b(fn|type|interface|impl|import|export|let|var|if|else|for|in|while|match|case|return|with|try|break|continue|test|fixture|and|or|not|self)\\b"
     },

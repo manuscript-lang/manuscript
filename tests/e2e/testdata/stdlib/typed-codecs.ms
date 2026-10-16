@@ -93,14 +93,14 @@ test "typed compression preserves bytes limits errors and optional arguments":
             if value(format.decompress(encoded, none)) != data: return panic(
                 "typed decompression"
             )
-            if value(format.decompress(encoded, data.length)) != data: return panic(
+            if value(format.decompress(encoded, data.length())) != data: return panic(
                 "typed exact budget"
             )
 
             let limited: Result[Bytes, CompressionError] = error(
                 CompressionError.LimitExceeded
             )
-            if format.decompress(encoded, data.length - 1) != limited: return panic(
+            if format.decompress(encoded, data.length() - 1) != limited: return panic(
                 "typed byte limit"
             )
 

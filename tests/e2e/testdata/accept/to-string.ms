@@ -38,7 +38,7 @@ fn answer() -> Int:
 
 fn next(state: Synchronized[Int]) -> Person:
     with locked = state.lock():
-        let value = locked.value
+        let value = locked.get()
         locked.set(value: value + 1)
         return Person(name: "Ada", age: value)
 
@@ -119,4 +119,4 @@ test "interpolation and bound conversion evaluate each receiver once":
     check(value: convert(), expected: "Person(age: 3, name: Ada)")
 
     with locked = state.lock():
-        check(value: locked.value.toString(), expected: "4")
+        check(value: locked.get().toString(), expected: "4")

@@ -39,7 +39,7 @@ impl Increment for Offset:
 
 fn next(state: Synchronized[Int]) -> Int:
     with locked = state.lock():
-        let value = locked.value
+        let value = locked.get()
         locked.set(value + 1)
         return value
 
@@ -154,26 +154,26 @@ test "omitted labels preserve evaluation order":
         return panic(message: "check failed")
 
     with locked = state.lock():
-        if not (locked.value == 2):
+        if not (locked.get() == 2):
             return panic(message: "check failed")
 
     if not (subtract(deduction: next(state), amount: next(state)) == 1):
         return panic(message: "check failed")
 
     with locked = state.lock():
-        if not (locked.value == 4):
+        if not (locked.get() == 4):
             return panic(message: "check failed")
 
     if not (prepare_function(state)(next(state)) == 6):
         return panic(message: "check failed")
 
     with locked = state.lock():
-        if not (locked.value == 6):
+        if not (locked.get() == 6):
             return panic(message: "check failed")
 
     if not (sum([next(state), next(state)]) == 13):
         return panic(message: "check failed")
 
     with locked = state.lock():
-        if not (locked.value == 8):
+        if not (locked.get() == 8):
             return panic(message: "check failed")

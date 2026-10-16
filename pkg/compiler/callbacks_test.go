@@ -80,7 +80,7 @@ func TestCallbackInferenceRejections(t *testing.T) {
 
 		`let callback: fn(value: Int) -> Int = fn(): 1`,
 		`let callback: fn(value: Int) -> Int = fn(value): "wrong"`,
-		`let callback: fn(value: Int) -> Int = fn(value: String): value.length`,
+		`let callback: fn(value: Int) -> Int = fn(value: String): value.length()`,
 		`let callback = fn(value: Bool):
         if value: return 1
         return "wrong"`,

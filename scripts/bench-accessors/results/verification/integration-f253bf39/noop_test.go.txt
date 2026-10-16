@@ -1,8 +1,0 @@
-package deadlineprobe
-
-import "testing"
-
-func FuzzNoop(f *testing.F) {
-	f.Add("seed")
-	f.Fuzz(func(t *testing.T, input string) {})
-}
