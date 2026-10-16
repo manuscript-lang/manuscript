@@ -193,7 +193,7 @@ fn end_line(decoder: SseDecoder, events: List[SseEvent]) -> Result[Unit, SseErro
         dispatch(decoder: decoder, events: events)
         return ok(unit)
 
-    let text = bytes.to_text()
+    let text = bytes.to_string()
     if text.is_none(): return error(SseError.InvalidData)
 
     let line = text.unwrap()

@@ -440,7 +440,7 @@ export type SetBuilder[T: Hashable]:
 # | `slice` | Select a half-open byte range, returning `OutOfRange` for invalid bounds, under the [slice rules](../core-language/basics/text-and-bytes.md#half-open-slices). |
 # | `with_value`, `reversed`, `concat`, `clone` | Return Bytes without changing the receiver. `with_value` accepts relative negative indexes; an invalid index or a value outside 0–255 faults. |
 # | `values` | Return a fresh mutable `List[Int]` of bytes; `values(data:)` remains available as a free function. |
-# | `to_text` | Decode valid UTF-8 or return `none`. |
+# | `to_string` | Decode valid UTF-8 or return `none`. |
 #
 # Bytes stay immutable even when a native slice shares storage. Construction and extraction copy values, as described in [encoding and parsing](../core-language/basics/text-and-bytes.md#encoding-and-parsing).
 #

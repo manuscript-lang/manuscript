@@ -211,8 +211,8 @@ func TestBytesOperations(t *testing.T) {
 	if clone := Bytes_Clone(tctx, data); &clone.Data[0] == &data.Data[0] {
 		t.Fatal("clone shares storage")
 	}
-	if Bytes_ToText(tctx, NewBytes([]byte("é"))) != Some("é") || Bytes_ToText(tctx, NewBytes([]byte{0xff})).Some {
-		t.Fatal("to_text")
+	if Bytes_ToString(tctx, NewBytes([]byte("é"))) != Some("é") || Bytes_ToString(tctx, NewBytes([]byte{0xff})).Some {
+		t.Fatal("to_string")
 	}
 }
 

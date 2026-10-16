@@ -247,8 +247,8 @@ var memberSynonyms = map[string][]string{
 	"len": {"length", "byte_length", "scalar_length"}, "size": {"length", "byte_length", "scalar_length"}, "count": {"length", "byte_length", "scalar_length"},
 	"length": {"byte_length", "scalar_length"},
 	"push":   {"append", "add"}, "add": {"append"}, "insert": {"append", "add"},
-	"delete":    {"remove"},
-	"to_string": {"to_text"}, "decode": {"to_text"}, "toString": {"to_text"},
+	"delete": {"remove"},
+	"decode": {"to_string"}, "toString": {"to_string"}, "to_text": {"to_string"},
 }
 
 func synonymHint(name string, available []string) string {

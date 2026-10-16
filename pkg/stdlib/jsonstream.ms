@@ -98,7 +98,7 @@ fn complete(state: Decoder) -> Result[JsonValue, JsonError]:
     let bytes = state.pending.freeze()
     reset(state)
 
-    if let text = bytes.to_text():
+    if let text = bytes.to_string():
         return parse(text, some(state.limits))
 
     return error(JsonError.InvalidData)
