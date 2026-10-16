@@ -428,6 +428,37 @@ func copyTree(ctx *Execution, source, dest string, replace bool, entries, bytes 
 	return out.Close()
 }
 
+// Filesystem glob queries retain the original pattern slices: callbacks may
+// replace their elements during traversal. Reuse parsing while the text agrees,
+// falling back to ordinary matching for a changed element.
+type filesystemGlob struct {
+	source   string
+	compiled globPattern
+}
+
+func parseFilesystemGlobs(patterns []string) ([]filesystemGlob, bool) {
+	compiled := make([]filesystemGlob, 0, len(patterns))
+	for _, pattern := range patterns {
+		glob, ok := parseGlob(filepath.ToSlash(pattern))
+		if !ok {
+			return nil, false
+		}
+		compiled = append(compiled, filesystemGlob{source: pattern, compiled: glob})
+	}
+	return compiled, true
+}
+
+func (g filesystemGlob) match(relative, absolute, pattern string) bool {
+	target := relative
+	if filepath.IsAbs(pattern) {
+		target = absolute
+	}
+	if pattern != g.source {
+		return globMatch(target, filepath.ToSlash(pattern))
+	}
+	return g.compiled.match(target)
+}
+
 func (f *osFileSystem) GlobEntries(ctx *Execution, path string, options *GlobOptions, exclude Option[func(ctx *Execution, a0 *PathEntry) bool]) Result[*List[*PathEntry], FileSystemError] {
 	fail := func(e FileSystemError) Result[*List[*PathEntry], FileSystemError] {
 		return fsFail[*List[*PathEntry]](e)
@@ -439,10 +470,10 @@ func (f *osFileSystem) GlobEntries(ctx *Execution, path string, options *GlobOpt
 		return fail(FileSystemError_InvalidInput{})
 	}
 	patterns, excluded := options.Patterns.Items, options.Exclude.Items
-	for _, pattern := range append(append([]string{}, patterns...), excluded...) {
-		if !globValid(filepath.ToSlash(pattern)) {
-			return fail(FileSystemError_InvalidInput{})
-		}
+	compiledPatterns, validPatterns := parseFilesystemGlobs(patterns)
+	compiledExcluded, validExcluded := parseFilesystemGlobs(excluded)
+	if !validPatterns || !validExcluded {
+		return fail(FileSystemError_InvalidInput{})
 	}
 	follow := options.FollowLinks
 	items := map[string]*PathEntry{}
@@ -468,24 +499,16 @@ func (f *osFileSystem) GlobEntries(ctx *Execution, path string, options *GlobOpt
 		value := &PathEntry{Path: filepath.ToSlash(rel), Entry: directoryEntryOf(info.Name(), info.IsDir(), info.Mode()&os.ModeSymlink != 0)}
 		candidate := filepath.ToSlash(rel)
 		absolute := filepath.ToSlash(path)
-		for _, pattern := range excluded {
-			target := candidate
-			if filepath.IsAbs(pattern) {
-				target = absolute
-			}
-			if globMatch(target, filepath.ToSlash(pattern)) {
+		for i, pattern := range excluded {
+			if compiledExcluded[i].match(candidate, absolute, pattern) {
 				return nil
 			}
 		}
 		if exclude.Some && exclude.Val(ctx, value) {
 			return nil
 		}
-		for _, pattern := range patterns {
-			target := candidate
-			if filepath.IsAbs(pattern) {
-				target = absolute
-			}
-			if globMatch(target, filepath.ToSlash(pattern)) {
+		for i, pattern := range patterns {
+			if compiledPatterns[i].match(candidate, absolute, pattern) {
 				if _, exists := items[value.Path]; !exists {
 					if len(items) >= maxResults {
 						return errLimit

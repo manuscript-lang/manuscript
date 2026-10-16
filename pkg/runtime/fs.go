@@ -623,7 +623,8 @@ func (f *osFileSystem) OpenDirectory(ctx *Execution, path string) Result[Directo
 func (f *osFileSystem) Glob(ctx *Execution, path, pattern string, maxEntries Option[int]) Result[*List[string], FileSystemError] {
 	max, okLimit := optionLimit(maxEntries, unlimited)
 	p, ok := f.path(path)
-	if !ok || !okLimit || !globValid(pattern) {
+	compiled, valid := parseGlob(pattern)
+	if !ok || !okLimit || !valid {
 		return fsInvalid[*List[string]]()
 	}
 	var items []string
@@ -639,7 +640,7 @@ func (f *osFileSystem) Glob(ctx *Execution, path, pattern string, maxEntries Opt
 		if !utf8.ValidString(rel) {
 			return errEncoding
 		}
-		if rel != "." && globMatch(filepath.ToSlash(rel), pattern) {
+		if rel != "." && compiled.match(filepath.ToSlash(rel)) {
 			if len(items) >= max {
 				return errLimit
 			}
