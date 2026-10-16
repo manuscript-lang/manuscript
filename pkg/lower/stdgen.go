@@ -255,6 +255,7 @@ func (g *gen) standardFunctionCheck(s *checker.Symbol) ast.Decl {
 	caps := checker.BoundCapabilities(s.Variables)
 	params := []*ast.Field{field("ctx", pointerTo(ident("Execution")))}
 	params = append(params, g.capabilityFields(caps)...)
+	params = append(params, g.jsonCodecFields(name, s.Variables)...)
 	for _, p := range s.Type.Params {
 		params = append(params, field(p.Name, g.goType(p.Type)))
 	}

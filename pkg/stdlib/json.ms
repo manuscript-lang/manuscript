@@ -49,15 +49,112 @@ export type JsonValue:
     )
 
 # Parses one JSON value and applies the supplied input, depth, and value limits.
-export fn parse(
+#
+# With the default `T = JsonValue` the result is the parsed tree. Any other `T` is read from the
+# document by the inverse of the `stringify` encoding, so `parse[Request](text)` and `let request: Request = parse(text)`
+# build a `Request` directly (`try` passes no expected type, so write `try parse[Request](text)`). A value whose shape does not match `T` returns
+# `InvalidData`; nothing is rejected at compile time, as with `stringify`. Input, depth and value limits
+# apply to the document before decoding.
+#
+# - A record is an object. Members may appear in any order. An absent member takes the field's default,
+#   else `none` for an `Optional` field; an absent required field or an unknown member returns
+#   `InvalidData`, so a field with no JSON form (a function, say) needs a default to be readable.
+# - An alternative case without payload is its name as a string; one with payload is externally tagged,
+#   `{"Circle":{"radius":2}}`, with the same member rules for the labeled fields. Standard alternatives such
+#   as `Result` and the error types follow the same rule, so `{"ok":{"value":5}}` reads as `ok(5)`.
+# - `Optional[T]` reads `null` as `none`. `List` and `Set` read arrays (a `Set` drops repeated elements).
+# - `Map[K, V]` reads an object, converting each member name to `K` from its string form (two names that read as the same key, such as `"1"` and `"01"` for `Int`, return `InvalidData`): `String`
+#   as is, `Int`, `BigInt`, `Decimal`, `Float` and `Bool` from their text, `Timestamp` from RFC 3339,
+#   `Duration` from nanoseconds, and a payloadless case from its name. Other key types return
+#   `InvalidData`.
+# - `Int` accepts integer digits that fit in 64 bits, `Float` any finite number, `BigInt` and `Decimal`
+#   the exact number text. A `null` Float, which `stringify` writes for `NaN` and infinities, returns
+#   `InvalidData`.
+# - `Timestamp` reads an RFC 3339 string, `Duration` integer nanoseconds, `Bytes` a standard base64
+#   string, and `Url`, `IpAddress` and `Cidr` their string forms.
+# - `JsonValue` keeps its subtree as parsed.
+#
+# The object-or-map choice comes from `T`, not from the text: `parse[Request]` reads an object as a
+# record and `parse[Map[String, Int]]` reads the same object as a map.
+export fn parse[T = JsonValue](
     text: String,
     limits: Optional[JsonLimits] = none
-) -> Result[JsonValue, JsonError]:
+) -> Result[T, JsonError]:
 
-# Serializes a JSON value. `max_bytes` bounds output when supplied.
-export fn stringify(
-    value: JsonValue,
-    max_bytes: Optional[Int] = none
+# Customizes how `stringify` encodes a type, like JavaScript's `toJSON`. It takes precedence over the
+# structural encoding for every record and alternative, so it is the way to choose a tagged or
+# discriminator encoding, or any other shape. A value whose type implements it is encoded as the
+# `JsonValue` its `to_json` returns, wherever it appears: at the root, in a field, in a list, or as a map
+# value. The returned `JsonValue` is written as stored and is not customized again. Implement it in the
+# module that defines the type. A planned counterpart, `JsonDecode` with a static
+# `from_json(value: JsonValue) -> Result[Self, JsonError]`, will let a type choose its own typed parse;
+# it does not exist yet.
+#
+# The default encoding of an alternative is externally tagged, `{"Created":{"id":1}}`, so a structural
+# encoding round-trips. This implementation writes an internal `type` discriminator instead, a common
+# protocol shape:
+#
+# ```manuscript
+# type Event:
+#     case Created(id: Int)
+#     case Deleted(id: Int)
+#
+# impl JsonEncode for Event:
+#     fn to_json() -> JsonValue:
+#         match self:
+#             Created(id): return tagged("created", id)
+#             Deleted(id): return tagged("deleted", id)
+#
+# fn tagged(kind: String, id: Int) -> JsonValue:
+#     let fields = Map[String, JsonValue]().add("type", JsonValue.StringValue(kind))
+#     return JsonValue.ObjectValue(fields.add("id", JsonValue.NumberValue("{id}")))
+# ```
+export interface JsonEncode:
+    # Returns the JSON form of this value.
+    fn to_json() -> JsonValue
+
+# Encodes any value as JSON text, the way JavaScript's `JSON.stringify` does. Every type is accepted;
+# a value with no JSON form is omitted or written as `null` rather than rejected at compile time.
+#
+# - Record fields appear in declaration order. A field holding `none` is omitted; so is a field
+#   holding a value with no JSON form (a function, a resource, an interface value, `Unit`, or an `Instant`).
+# - `none` elsewhere (a list element, a map value, the root) is `null`, as is a no-form list element.
+#   `Optional[Optional[T]]` is allowed: `some(none)` is `null` and `none` is omitted.
+# - A map value with no JSON form is omitted. A root value with no JSON form returns `InvalidData`.
+# - An alternative case without payload is its name as a string, `"Dot"`. A case with payload is
+#   externally tagged: `{"Circle":{"radius":2}}`, an object keyed by the case name whose value holds
+#   the labeled fields under the record rules. Payload labels never collide with a discriminator.
+# - Map entries and Set elements keep insertion order. A map key becomes its string form: `String`
+#   as is, `Int`, `BigInt`, `Decimal`, `Float` and `Bool` as their text, a `Timestamp` as RFC 3339,
+#   and a case without payload as its name. Any other key type returns `InvalidData`.
+# - Int, BigInt and Decimal are exact decimal digits. Float uses the shortest decimal that parses
+#   back to the same value; NaN and infinities are `null`.
+# - `Timestamp` is an RFC 3339 string in UTC, `Duration` its integer nanoseconds, `Bytes` a standard
+#   base64 string, `Url` its string form, `IpAddress` and `Cidr` their text. `Result`, other standard records and
+#   alternatives follow the ordinary rules, so `ok(5)` is `{"ok":{"value":5}}`.
+# - A `JsonValue` is written as stored, so parsed documents mix with typed data.
+# - A type that implements `JsonEncode` is written as the `JsonValue` its `to_json` returns, instead of any rule above.
+# - Strings are UTF-8 JSON strings; `<`, `>` and `&` are written as Unicode escapes.
+# - Values are read when `stringify` runs, so later mutation does not change the text. A value reachable
+#   from itself returns `InvalidData`; shared but acyclic values are written each time they appear.
+#
+# `indent` pretty-prints with that many spaces per level, at most 10; none or 0 is compact. Empty
+# containers stay `{}` and `[]`, and a space follows each colon. `max_bytes` bounds the output,
+# indentation included; exceeding it returns `LimitExceeded`. A negative bound or indent returns
+# `InvalidInput`.
+#
+# ```manuscript
+# type Request:
+#     model: String
+#     stream: Bool
+#     user: Optional[String]
+#
+# stringify(value: Request(model: "example", stream: true, user: none))
+# ```
+export fn stringify[T](
+    value: T,
+    max_bytes: Optional[Int] = none,
+    indent: Optional[Int] = none
 ) -> Result[String, JsonError]:
 
 impl Error for JsonError:
@@ -80,7 +177,7 @@ impl Error for JsonError:
 #
 # JSON numbers keep their exact valid token text, including integers larger than 2^53. They are not automatically converted to `Float`. `stringify` also validates `NumberValue` text because an application can construct that case directly.
 #
-# Parsing accepts one document. It rejects trailing values, duplicate decoded object keys, and unpaired surrogate escapes. Object order follows Map insertion order. There is no reflection-based record serialization or execution hook.
+# Parsing accepts one document. It rejects trailing values, duplicate decoded object keys, and unpaired surrogate escapes. Object order follows Map insertion order.
 #
 # `JsonLimits` uses nonnegative limits:
 #
@@ -114,7 +211,118 @@ impl Error for JsonError:
 #     if reader.finish().unwrap().length != 0: return panic("unexpected trailing value")
 # ```
 #
-# Stringify produces compact JSON and escapes `<`, `>`, and `&` as `\u003c`, `\u003e`, and `\u0026`. It is not a canonical format for signing.
+# ### Writing JSON from Manuscript values
+#
+# `stringify` accepts a value of any type and writes it directly, so a request body needs no `JsonValue` wrapping. It follows JavaScript's `JSON.stringify` where Manuscript has a sound analogue: nothing is rejected at compile time, a value with no JSON form is left out or written as `null`, and a type customizes its encoding with `JsonEncode`, the analogue of `toJSON`.
+#
+# <!-- manuscript-example: {"mode":"test"} -->
+# ```manuscript
+# import {stringify, JsonEncode, JsonValue} from "@std/json.ms"
+# import panic from "@std/faults.ms"
+#
+# type Message:
+#     role: String
+#     content: String
+#
+# type Request:
+#     model: String
+#     stream: Bool
+#     user: Optional[String]
+#     messages: List[Message]
+#
+# type Money:
+#     cents: Int
+#
+# impl JsonEncode for Money:
+#     fn to_json() -> JsonValue:
+#         return JsonValue.StringValue("usd:{self.cents}")
+#
+# test "stringify encodes typed values":
+#     let request = Request(
+#         model: "example",
+#         stream: true,
+#         user: none,
+#         messages: [Message(role: "user", content: "hi")]
+#     )
+#     let expected = "\{\"model\":\"example\",\"stream\":true,\"messages\":[\{\"role\":\"user\",\"content\":\"hi\"\}]\}"
+#     if stringify(value: request).unwrap() != expected: return panic("unexpected request body")
+#     if stringify(value: Money(cents: 250)).unwrap() != "\"usd:250\"": return panic("to_json hook")
+#     if stringify(value: [1], indent: 2).unwrap() != "[\n  1\n]": return panic("indent")
+# ```
+#
+# How each value is written, and the JavaScript behavior it follows:
+#
+# | Value | JSON |
+# | --- | --- |
+# | Record | Object with fields in declaration order. |
+# | Field holding `none`, a function, a resource, `Unit`, or an `Instant` | The member is omitted, as JavaScript omits `undefined` and functions. |
+# | `none` anywhere else (root, list element, map value) | `null`. `some(x)` encodes as `x`; `Optional[Optional[T]]` is allowed, and `some(none)` is `null`. |
+# | List element or Set element with no JSON form | `null`. |
+# | Map value with no JSON form | The entry is omitted. |
+# | Root value with no JSON form | `Result.error(InvalidData)`, where JavaScript returns `undefined`. |
+# | Alternative case without payload | The case name as a string: `"Dot"`. |
+# | Alternative case with payload | Externally tagged: `{"Circle":{"radius":2}}`, the case name keying an object of its labeled fields under the record rules. Cases with identical labels stay distinct, and the form can be decoded back. Use `JsonEncode` for a different shape. |
+# | `List`, `Set` | Array in list order or set insertion order. |
+# | `Map` | Object in insertion order. A key becomes its string form, as in JavaScript: `String` as is; `Int`, `BigInt`, `Decimal`, `Float` and `Bool` as text; `Timestamp` as RFC 3339; `Duration` as nanoseconds; a case without payload as its name. Any other key type returns `InvalidData`. |
+# | `Int`, `BigInt`, `Decimal` | Exact decimal digits. |
+# | `Float` | Shortest decimal that parses back to the same `Float`, without a trailing `.0`; an exponent only below `1e-6` or from `1e21`. `NaN` and infinities are `null`. |
+# | `Timestamp` | RFC 3339 string in UTC, the analogue of `Date.toJSON`. An `Instant` is a monotonic clock reading with no calendar meaning, so it has no JSON form. |
+# | `Duration` | Integer nanoseconds. |
+# | `Bytes` | Standard base64 string with padding. |
+# | `Url`, `IpAddress`, `Cidr` | Their string form. |
+# # | `Result` and other standard records and alternatives | Ordinary record and alternative rules: `ok(5)` is `{"ok":{"value":5}}` and `error(cause)` is `{"error":{"cause":...}}`. |
+# | A value held through an interface (including `Error`) | No JSON form. |
+# | `JsonValue` | Written as stored, validating `NumberValue` text. |
+# | A type implementing `JsonEncode` | The `JsonValue` its `to_json` returns, written as stored. It overrides every other row, including the alternative rows, so it is how to write a tagged encoding. |
+#
+# `stringify` reads the value when it runs and returns a new `String`, so later mutation does not change the text. A value that reaches itself returns `InvalidData`, where JavaScript throws; one value referenced twice without a cycle is written twice. `max_bytes` bounds the output, indentation included, and returns `LimitExceeded` when exceeded.
+#
+# `indent` is the analogue of the `space` argument: it pretty-prints with that many spaces per level, up to 10 as in JavaScript. `none` and `0` are compact; a negative value returns `InvalidInput`. Empty arrays and objects stay `[]` and `{}`. There is no replacer function; build the shape you want as a record or a `JsonEncode` implementation. A `JsonDecode` interface to customize typed parsing is planned and not available yet.
+#
+# ### Reading JSON into Manuscript values
+#
+# `parse` returns a `JsonValue` unless `T` is named, either explicitly or through the expected result, in which case it builds that type by the inverse of the `stringify` encoding. The object-or-map choice comes from `T`, not from the text.
+#
+# <!-- manuscript-example: {"mode":"test"} -->
+# ```manuscript
+# import {parse, JsonError} from "@std/json.ms"
+# import panic from "@std/faults.ms"
+#
+# type Message:
+#     role: String
+#     content: String
+#
+# type Request:
+#     model: String
+#     stream: Bool = false
+#     user: Optional[String]
+#     messages: List[Message]
+#
+# fn read_request(text: String) -> Result[Request, JsonError]:
+#     let request = try parse[Request](text)
+#     return ok(request)
+#
+# test "parse builds typed values":
+#     let text = "\{\"model\":\"example\",\"messages\":[\{\"role\":\"user\",\"content\":\"hi\"\}]\}"
+#     let request = read_request(text).unwrap()
+#     if request.model != "example" or request.stream or not request.user.is_none: return panic("unexpected request")
+#     if parse[Request](text: "\{\"model\":1\}").is_ok: return panic("wrong member type was accepted")
+# ```
+#
+# | JSON | Decoded as |
+# | --- | --- |
+# | Object | A record, members in any order. An absent member takes the field's default, else `none` for an `Optional` field. An absent required field or an unknown member returns `InvalidData`, so a field with no JSON form needs a default to be readable. |
+# | `"Case"` or `{"Case":{"label":value}}` | An alternative case without or with payload, under the same member rules. Another case name, a payload on a case without one, or a missing payload returns `InvalidData`. |
+# | `null` | `none` for `Optional`; anything else returns `InvalidData`. |
+# | Array | `List`, or `Set` (repeated elements are dropped). |
+# | Object | `Map[K, V]` in document order. Member names are converted to `K`; two names that read as one key, such as `"1"` and `"01"`, return `InvalidData`. |
+# | Number | `Int` for integer digits within 64 bits (no fraction or exponent); `Float` for any finite number; `BigInt` and `Decimal` read the exact number text; `Duration` reads integer nanoseconds. |
+# | String | `String`, `Timestamp` (RFC 3339), `Bytes` (base64), `Url`, `IpAddress` and `Cidr`. |
+# | Any value | `JsonValue` keeps the subtree as parsed. |
+#
+# A value with the wrong JSON type or shape returns `InvalidData`; this release does not report where. `JsonLimits` apply to the document before decoding. `try` gives its operand no expected type, so write `try parse[Request](text)`.
+#
+# Stringify produces compact JSON unless `indent` is given, and escapes `<`, `>`, and `&` as `\u003c`, `\u003e`, and `\u0026`. It is not a canonical format for signing.
 #
 # ## YAML behavior
 #

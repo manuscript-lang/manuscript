@@ -4,11 +4,11 @@
 
 package msruntime
 
-func check_Json_Parse() {
-	var _ func(*Execution, string, Option[*JsonLimits]) Result[JsonValue, JsonError] = Json_Parse
+func check_Json_Parse[T any]() {
+	var _ func(*Execution, func(*JsonReader, JsonValue) (T, bool), string, Option[*JsonLimits]) Result[T, JsonError] = Json_Parse[T]
 }
-func check_Json_Stringify() {
-	var _ func(*Execution, JsonValue, Option[int64]) Result[string, JsonError] = Json_Stringify
+func check_Json_Stringify[T any]() {
+	var _ func(*Execution, func(*JsonScope, T) (JsonValue, bool), T, Option[int64], Option[int64]) Result[string, JsonError] = Json_Stringify[T]
 }
 func check_Errors_Message_JsonError() {
 	var _ func(*Execution, JsonError) string = Errors_Message_JsonError

@@ -11,7 +11,7 @@ import (
 func TestSearchFindsStandardAPIs(t *testing.T) {
 	t.Chdir(t.TempDir())
 	status, output, errors := invoke(t, "search_symbol", "jsn", "parse", "--limit", "2")
-	if status != 0 || errors != "" || !strings.Contains(output, "json.parse") || !strings.Contains(output, "fn parse(") {
+	if status != 0 || errors != "" || !strings.Contains(output, "json.parse") || !strings.Contains(output, "fn parse[") {
 		t.Fatalf("search: %d, %q, %q", status, output, errors)
 	}
 	status, output, _ = invoke(t, "search_symbol", "read", "file", "--json")
