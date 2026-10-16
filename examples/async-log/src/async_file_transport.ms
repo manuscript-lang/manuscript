@@ -24,19 +24,14 @@ type Item:
     case Record(data: Bytes)
     case Flush(reply: BlockingQueue[Result[Unit, LogError]])
 
-# Admission and failure state shared by producers, flushers, and the writer.
-type Shared:
-    closed: Bool
-    failed: Bool
-    pending: Optional[LogError]
-
 # State owned by the writer task alone.
 type Writer:
     fs: FileSystem
     path: String
-    max_bytes: Optional[Int]
-    max_age: Optional[Duration]
-    max_files: Optional[Int]
+    # Zero means no limit.
+    max_bytes: Int
+    max_age_ns: Int
+    max_files: Int
     handle: Optional[FileHandle]
     size: Int
     opened: Instant
@@ -44,7 +39,10 @@ type Writer:
 type AsyncFileTransport:
     queue: BlockingQueue[Item]
     capacity: Int
-    shared: Synchronized[Shared]
+    # The writer's first unreported failure; the writer is its only producer.
+    failures: BlockingQueue[LogError]
+    # Serializes the rare take of a reported failure.
+    failure_lock: Synchronized[Unit]
     group: TaskGroup
     writer: Task[Unit]
 
@@ -94,9 +92,7 @@ fn open_active(w: Writer) -> Result[Unit, LogError]:
     return ok(unit)
 
 fn close_file(w: Writer) -> Unit:
-    match w.handle:
-        some(handle): handle.close()
-        none: return unit
+    if let handle = w.handle: handle.close()
 
     w.handle = none
 
@@ -108,7 +104,10 @@ fn rotate(w: Writer) -> Result[Unit, LogError]:
     while exists(w.fs, numbered(w.path, last + 1)):
         last = last + 1
 
-    let keep = w.max_files.map(fn(files: Int) -> Int: files - 1).unwrap_or(last + 1)
+    var keep = last + 1
+
+    if w.max_files > 0: keep = w.max_files - 1
+
     var drop = last
 
     while drop >= keep and drop > 0:
@@ -138,34 +137,22 @@ fn rotate(w: Writer) -> Result[Unit, LogError]:
 
 fn rotation_due(w: Writer, length: Int) -> Bool:
     if w.size == 0: return false
+    if w.max_bytes > 0 and w.size + length > w.max_bytes: return true
+    if w.max_age_ns > 0: return (
+        clock().now().difference(w.opened).to_nanoseconds() >= w.max_age_ns
+    )
 
-    let over_size = (
-        w
-        .max_bytes
-        .map(fn(limit: Int) -> Bool: w.size + length > limit)
-        .unwrap_or(false)
-    )
-    let over_age = (
-        w
-        .max_age
-        .map(
-            fn(limit: Duration) -> Bool: (
-                clock().now().difference(w.opened).compare(limit) >= 0
-            )
-        )
-        .unwrap_or(false)
-    )
-    return over_size or over_age
+    return false
 
 fn active_file(w: Writer) -> Result[FileHandle, LogError]:
-    match w.handle:
-        some(handle): return ok(handle)
-        none: return error(LogError.Closed)
+    if let handle = w.handle: return ok(handle)
+
+    return error(LogError.Closed)
 
 fn has_file(w: Writer) -> Bool:
-    match w.handle:
-        some(_): return true
-        none: return false
+    if let _handle = w.handle: return true
+
+    return false
 
 fn append(w: Writer, data: Bytes) -> Result[Unit, LogError]:
     if not has_file(w): try open_active(w)
@@ -181,86 +168,78 @@ fn sync_file(w: Writer) -> Result[Unit, LogError]:
     let handle = try active_file(w)
     return lift(handle.sync())
 
-fn record_failure(shared: Synchronized[Shared], cause: LogError) -> Unit:
-    with locked = shared.lock():
-        let state = locked.get()
-        if state.failed: return unit
+# Keeps the first failure until a producer reports it.
+fn record_failure(failures: BlockingQueue[LogError], cause: LogError) -> Unit:
+    if failures.length() == 0: failures.put(cause)
 
-        state.failed = true
-        state.pending = some(cause)
+# Returns the failure the writer reported since the last call, if any. The unlocked length check keeps
+# the common case lock-free; the lock keeps two producers from both waiting in take for one failure.
+fn take_failure(
+    failures: BlockingQueue[LogError],
+    failure_lock: Synchronized[Unit]
+) -> Optional[LogError]:
+    if failures.length() == 0: return none
 
-# Returns the first failure since the last report and clears it.
-fn take_failure(shared: Synchronized[Shared]) -> Optional[LogError]:
-    with locked = shared.lock():
-        let state = locked.get()
-        let found = state.pending
-        state.pending = none
-        state.failed = false
-        return found
+    with locked = failure_lock.lock():
+        if failures.length() == 0: return none
 
-fn store(w: Writer, shared: Synchronized[Shared], data: Bytes) -> Unit:
+        return failures.take()
+
+fn store(w: Writer, failures: BlockingQueue[LogError], data: Bytes) -> Unit:
     match append(w, data):
         ok(_): return unit
-        error(cause): return record_failure(shared, cause)
+        error(cause): return record_failure(failures, cause)
 
-fn serve(w: Writer, shared: Synchronized[Shared], item: Item) -> Unit:
+fn serve(w: Writer, failures: BlockingQueue[LogError], item: Item) -> Unit:
     match item:
-        Record(data): return store(w, shared, data)
+        Record(data): return store(w, failures, data)
         Flush(reply):
             reply.put(sync_file(w))
             return unit
 
-fn run(w: Writer, queue: BlockingQueue[Item], shared: Synchronized[Shared]) -> Unit:
+fn run(w: Writer, queue: BlockingQueue[Item], failures: BlockingQueue[LogError]) -> Unit:
     while true:
-        match queue.take():
-            some(item): serve(w, shared, item)
-            none: return close_file(w)
+        if let item = queue.take():
+            serve(w, failures, item)
+        else:
+            return close_file(w)
 
-    return unit
-
-# Queues a record without waiting. The lock makes the length check and the put one step among producers,
-# and only the writer removes items, so the put never blocks.
+# Queues a record without waiting. The queue holds 4096 items of headroom beyond `capacity`, so a put never waits
+# even when concurrent producers pass the length check together; only the writer removes items.
 fn admit(t: AsyncFileTransport, data: Bytes) -> Result[Unit, LogError]:
-    with locked = t.shared.lock():
-        if locked.get().closed: return error(LogError.Closed)
-        if t.queue.length() >= t.capacity: return error(LogError.LimitExceeded)
+    if t.queue.length() >= t.capacity: return error(LogError.LimitExceeded)
+    if not t.queue.put(Item.Record(data: data)): return error(LogError.Closed)
 
-        t.queue.put(Item.Record(data: data))
-        return ok(unit)
-
-fn is_closed(t: AsyncFileTransport) -> Bool:
-    with locked = t.shared.lock():
-        return locked.get().closed
+    return ok(unit)
 
 fn wait_for_writer(t: AsyncFileTransport) -> Result[Unit, LogError]:
-    if is_closed(t): return error(LogError.Closed)
-
     let reply = BlockingQueue[Result[Unit, LogError]](1)
     if not t.queue.put(Item.Flush(reply: reply)): return error(LogError.Closed)
 
-    match reply.take():
-        some(result): return result
-        none: return error(LogError.Closed)
+    if let result = reply.take(): return result
+
+    return error(LogError.Closed)
 
 impl Transport for AsyncFileTransport:
     fn write(data: Bytes) -> Result[Unit, LogError]:
-        match take_failure(self.shared):
-            some(cause): return error(cause)
-            none: return admit(self, data)
+        if let cause = take_failure(self.failures, self.failure_lock): return error(
+            cause
+        )
+
+        return admit(self, data)
 
     fn flush() -> Result[Unit, LogError]:
         try wait_for_writer(self)
 
-        match take_failure(self.shared):
-            some(cause): return error(cause)
-            none: return ok(unit)
+        if let cause = take_failure(self.failures, self.failure_lock): return error(
+            cause
+        )
+
+        return ok(unit)
 
     fn close() -> Unit:
-        with locked = self.shared.lock():
-            locked.get().closed = true
-
         self.queue.close()
-        let joined = self.writer.join()
+        let _ignored = self.writer.join()
         self.group.close()
 
 fn not_positive(limit: Optional[Int]) -> Bool:
@@ -289,27 +268,30 @@ export fn async_file_transport(
     let w = Writer(
         fs: filesystem(),
         path: path,
-        max_bytes: max_bytes,
-        max_age: max_age,
-        max_files: max_files,
+        max_bytes: max_bytes.unwrap_or(0),
+        max_age_ns: (
+            max_age
+            .map(fn(limit: Duration) -> Int: limit.to_nanoseconds())
+            .unwrap_or(0)
+        ),
+        max_files: max_files.unwrap_or(0),
         handle: none,
         size: 0,
         opened: clock().now()
     )
     try open_active(w)
     let capacity = queue_size.unwrap_or(8192)
-    let queue = BlockingQueue[Item](capacity)
-    let shared = Synchronized[Shared](
-        Shared(closed: false, failed: false, pending: none)
-    )
+    let queue = BlockingQueue[Item](capacity + 4096)
+    let failures = BlockingQueue[LogError]()
     let group = TaskGroup()
-    let writer = group.start(fn() -> Unit: run(w, queue, shared))
+    let writer = group.start(fn() -> Unit: run(w, queue, failures))
     return ok(
         Transport(
             value: AsyncFileTransport(
                 queue: queue,
                 capacity: capacity,
-                shared: shared,
+                failures: failures,
+                failure_lock: Synchronized[Unit](unit),
                 group: group,
                 writer: writer
             )
