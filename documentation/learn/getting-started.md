@@ -1,36 +1,46 @@
 +++
-title = "Get started"
+title = "Run your first program"
 weight = 1
 aliases = ["/getting-started/"]
 +++
 
-# Get started
+# Run your first program
 
-Download and extract the [Manuscript release archive](https://github.com/manuscript-lang/manuscript/releases) for your operating system and architecture. It includes the `ms` executable, build tools, and examples. You can put `ms` on `PATH` to use it from any directory.
+Run an example, change what it does, and turn it into a standalone executable.
+The release includes `ms`, its build tools, and example projects; you do not need
+to install another compiler or runtime.
 
-Run these commands from the extracted directory. In Windows PowerShell, replace `./ms` with `.\ms.exe`.
+## 1. Download and run
+
+[Download Manuscript](https://github.com/manuscript-lang/manuscript/releases)
+for your operating system and architecture, then extract the archive. Open a
+terminal in the extracted directory and run:
 
 ```sh
-./ms check examples/hello/ms.toml
 ./ms run examples/hello/ms.toml -- first second
 ```
 
-The program prints:
+In Windows PowerShell, use `.\ms.exe` in place of `./ms`.
+The first run prepares the bundled build tools, then prints:
 
 ```text
 Arguments: 2
 ```
 
-`check` validates source without running it. `lock` records the project's compiler, runtime, build-tool, and target versions; rerun it after changing those inputs. `run` builds and runs the program, passing it the arguments after `--`.
+The values after `--` are your program's arguments. `run` builds a temporary
+executable and starts it. You have just run your first Manuscript program.
 
-From a source checkout, run `make build` first. See [development setup](../contributing/development.md) for prerequisites.
+Building from a source checkout? Run `make build` in the repository root first,
+then `./ms lock examples/hello/ms.toml` to update the example’s build pins for
+your local compiler. Keep that local lock-file update out of your commit.
+[Development setup](../contributing/development.md) lists the prerequisites.
 
-## Read the program
+## 2. Read the code {#read-the-program}
 
-The hello project's `src/main.ms` is a complete application:
+Open `examples/hello/src/main.ms`:
 
 <!-- manuscript-example: {"mode":"run","args":["first","second"],"stdout":"Arguments: 2\n"} -->
-```manuscript
+```manuscript {filename="src/main.ms"}
 import arguments from "@std/cli.ms"
 import stdout from "@std/io.ms"
 
@@ -43,28 +53,52 @@ export fn main() -> Int:
             return 1
 ```
 
-- `import` selects the argument and standard-output functions this file uses.
-- `export fn main() -> Int` defines the application's entry function. Its returned integer becomes the exit code.
-- `let` names a value and infers its type. The string inserts the argument count inside `{...}` and ends with a newline, `\n`.
-- `stdout().write(data: ...)` writes bytes, so `to_bytes()` converts the text first.
-- `write` returns a `Result`. The `match` handles both outcomes: success returns `0`, and failure returns `1`. `_` ignores the outcome's payload.
+`import` selects the APIs this file uses. The program starts in `main`, and
+its returned integer becomes the exit status: `0` for success, `1` for failure.
 
-Four spaces start each nested block. Function calls accept positional arguments; labels are optional and can make a call clearer.
+`let` names a value and infers its type. Inside the string, `{...}` inserts
+the argument count and `\n` adds a newline. `stdout().write` takes bytes, so
+`to_bytes()` encodes the text. Writing can fail; `match` handles both outcomes.
+The `_` ignores a payload we do not need.
 
-## Understand the project
+Four spaces start a nested block. There is no punctuation to end a statement.
 
-Each `.ms` file is a module. The `examples/hello/ms.toml` manifest selects the source directory and entry module:
+## 3. Make it yours
 
-```toml
-[project]
-name = "hello"
-source = "./src"
-entry = "./src/main.ms"
+Replace the `let message` line with:
+
+```manuscript
+    let message = "Hello! You passed {arguments().length()} arguments.\n"
 ```
 
-Paths are relative to the manifest. See [project configuration](../developer-tooling/builds/project-configuration.md) when setting up your own application.
+Save the file and run the same command again:
 
-## Create your own project
+```sh
+./ms run examples/hello/ms.toml -- first second
+```
+
+```text
+Hello! You passed 2 arguments.
+```
+
+Try changing the text or passing a different number of arguments. `ms` rebuilds
+from your saved source each time you run it.
+
+## 4. Build something you can share {#build-and-test}
+
+```sh
+./ms build examples/hello/ms.toml -o hello
+./hello first second
+```
+
+On Windows, build with `-o hello.exe` and run `.\hello.exe first second`.
+The executable runs on its target operating system and architecture without
+`ms` installed. See [build levels](../developer-tooling/builds/build-levels.md)
+when you need a debug build.
+
+## 5. Start your own project {#create-your-own-project}
+
+Add the extracted `ms` executable to your `PATH`, then run:
 
 ```sh
 ms init hello
@@ -73,33 +107,25 @@ ms run ms.toml -- first second
 ms test ms.toml
 ```
 
-`ms init [directory]` writes `ms.toml`, `src/main.ms` (the program above), `test.ms`, and a `.gitignore`. It stops without writing anything if one of those files already exists. A project is just that manifest plus an entry module exporting `main() -> Int`, so you can also create the files by hand.
+`init` creates a project manifest, `src/main.ms`, a test file, and a `.gitignore`.
+The manifest tells `ms` where your source and entry file live. The first build
+also creates `ms.lock`; commit it to keep your project's compiler and toolchain
+pins explicit. [Project configuration](../developer-tooling/builds/project-configuration.md)
+explains these files when you need to change them.
 
-The first `ms run` or `ms build` writes `ms.lock` next to `ms.toml`. It records the compiler, runtime, and toolchain pins the build used: commit it. A `ms` built from a source checkout has different pins than a release, so running `ms lock` or `ms run` on a project such as `examples/hello` with it rewrites the checked-in `ms.lock`; discard that change rather than committing it.
-
-## Build and test
-
-```sh
-./ms build examples/hello/ms.toml -o hello
-./hello first second
-./ms test examples/hello/test.ms
-./ms fmt examples/hello/src/main.ms --check
-```
-
-`build` leaves a native executable that runs independently of Manuscript. `test` runs test blocks in the given module, with the project directory (the one holding `ms.toml`, or the test file's directory for a single file) as the working directory, so fixtures such as `golden/input.txt` resolve the same wherever you invoke `ms`; `ms test ms.toml` also runs every `test.ms` and `*_test.ms` file in the project. Each test prints `RUN` before it starts; a test that exceeds `--timeout` (default 60s, `0` disables) fails by name, and `--filter text` runs only tests whose `module::name` contains the text. `fmt --check` reports formatting changes without writing them. Use `./ms --help` to list commands or `./ms help run` for a command's options.
-
-## Find language and library help
+While you work, use these commands from your new project's directory:
 
 ```sh
-./ms guide
-./ms search_symbol read file
-./ms search_symbol json
-./ms search_symbol json.parse
+ms check ms.toml
+ms fmt ms.toml
+ms test ms.toml
 ```
 
-`guide` prints a short language reference. `search_symbol` searches project and
-standard-library symbols by name or words; a module or declaration path shows
-its documentation and signature. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents)
-for project references and structured output.
+`check` catches source errors without running the program, `fmt` formats your
+code, and `test` runs its test blocks. Use `ms --help` to see all commands.
 
-Continue with [the language tour](tour.md). The [developer tools](../developer-tooling/implementation.md) cover editor setup, symbol search, inspection, and debugging.
+## Keep going
+
+Continue with the [language tour](tour.md) to learn the ideas behind the code.
+Then [test your code](testing.md) and try a [task recipe](common-tasks.md).
+For editor setup, see [developer tools](../developer-tooling/implementation.md).

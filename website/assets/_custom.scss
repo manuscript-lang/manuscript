@@ -116,7 +116,7 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
 .api-kind { display: inline-block; vertical-align: middle; margin-left: .65rem; padding: .1rem .4rem; border: 1px solid var(--gray-200); border-radius: 4px; background: var(--gray-100); color: var(--docs-muted); font-size: .65rem; font-weight: 500; line-height: 1.6; letter-spacing: 0; }
 .markdown h1 + p { font-size: 1.06rem; line-height: 1.75; color: var(--docs-muted); }
 .markdown a { text-underline-offset: 3px; }
-.markdown a[href]:not(.start-link) { color: var(--docs-prose-link); }
+.markdown a[href] { color: var(--docs-prose-link); }
 .markdown p { margin: 1rem 0; }
 .markdown li { margin: .35rem 0; }
 .markdown code { padding: .15em .35em; border: 0; color: var(--docs-heading); font-size: .84em; border-radius: 4px; }
@@ -156,19 +156,59 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
 .docs-footer-meta { display: flex; justify-content: space-between; gap: 1rem; align-items: center; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--gray-200); color: var(--docs-muted); font-size: .7rem; }
 .docs-footer-meta a { color: var(--docs-muted); }
 
-.docs-home-layout .book-page { padding: 3rem 3.5rem 1.5rem; }
-.docs-home-layout .book-article, .docs-home-layout .book-footer { max-width: 56rem; }
-.docs-hero { padding-bottom: .5rem; }
-.hero-eyebrow { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.1rem; color: var(--docs-muted); font-size: .8rem; }
-.version-badge { padding: .15rem .45rem; border: 1px solid var(--gray-200); border-radius: 5px; font-size: .68rem; }
-.markdown .docs-hero h1 { margin: 0 0 1rem; font-size: clamp(2rem, 4vw, 2.75rem); font-weight: 600; letter-spacing: -.045em; }
-.markdown .hero-description { max-width: 44rem; font-size: 1rem; line-height: 1.75; color: var(--docs-muted); }
-.hero-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin: 1.75rem 0 1.5rem; }
-.markdown .start-link { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: 1.1rem; border: 1px solid var(--gray-200); border-radius: 6px; color: var(--docs-heading); font-size: .83rem; font-weight: 500; transition: background .15s, border-color .15s; }
-.markdown .start-link:hover { background: var(--gray-100); border-color: var(--gray-500); text-decoration: none; }
-.start-link-icon { display: inline-flex; flex: none; width: 17px; height: 17px; color: var(--docs-muted); }
-.start-link > span:nth-child(2) { margin-right: auto; }
-.docs-home-layout .book-article > h2:first-of-type { margin-top: 1.5rem; }
+// The homepage invites people in; reading pages keep the documentation rails.
+.docs-home-layout { max-width: 90rem; margin-inline: auto; }
+.docs-home-layout .book-page { width: 100%; padding: 0 3rem 2rem; }
+.docs-home-layout .book-article, .docs-home-layout .book-footer { max-width: 76rem; }
+.home-hero { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 3rem; padding: 5.5rem 0 4rem; }
+.markdown .home-eyebrow { color: var(--docs-prose-link); font-size: .72rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; margin: 0 0 1.5rem; }
+.markdown .home-hero h1 { font-size: clamp(2.5rem, 4.4vw, 4.25rem); font-weight: 650; line-height: 1.08; letter-spacing: -.065em; margin: 0 0 1.5rem; }
+.home-hero h1 span { color: var(--docs-muted); }
+.markdown .home-description { max-width: 33rem; font-size: 1.08rem; line-height: 1.7; color: var(--body-font-color); }
+.home-actions { display: flex; flex-wrap: wrap; gap: .7rem; margin-top: 1.8rem; }
+.markdown .home-button[href] { display: inline-flex; align-items: center; justify-content: center; gap: 1.5rem; border: 1px solid var(--gray-200); border-radius: 7px; padding: .8rem 1.2rem; color: var(--docs-heading); font-size: .88rem; font-weight: 600; text-decoration: none; }
+.markdown .home-button-primary[href] { background: var(--docs-heading); color: var(--body-background); border-color: var(--docs-heading); }
+.markdown .home-button:hover { box-shadow: 0 3px 12px rgba(0, 0, 0, .12); transform: translateY(-1px); }
+.markdown .home-platforms { color: var(--docs-muted); font-size: .71rem; margin-top: 1rem; }
+.markdown .home-status { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; color: var(--docs-muted); font-size: .72rem; margin-top: 1.5rem; }
+.version-badge { display: inline-block; padding: .1rem .4rem; border: 1px solid var(--gray-200); border-radius: 5px; font-size: .68rem; }
+.home-example { min-width: 0; border: 1px solid var(--gray-200); border-radius: 12px; background: var(--docs-code-bg); box-shadow: 0 18px 60px rgba(0, 0, 0, .07); overflow: hidden; }
+.home-example .docs-code { margin: 0; border: 0; border-radius: 0; }
+.home-example .docs-code pre { font-size: .73rem; padding: 1.25rem; }
+.home-output { display: grid; gap: .5rem; padding: 1rem 1.25rem; border-top: 1px solid var(--gray-200); font-size: .76rem; }
+.home-output > span { color: var(--docs-muted); font-size: .65rem; text-transform: uppercase; letter-spacing: .1em; }
+.markdown .home-output code { padding: 0; font-size: inherit; }
+.home-output samp { font-size: .76rem; color: var(--docs-code-string); }
+.home-reasons { padding: 3rem 0 4rem; border-top: 1px solid var(--gray-200); border-bottom: 1px solid var(--gray-200); }
+.home-section-heading { max-width: 42rem; }
+.markdown .home-section-heading h2 { font-size: clamp(1.8rem, 3vw, 2.5rem); line-height: 1.2; margin: 0 0 2.5rem; letter-spacing: -.045em; }
+.home-feature-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3rem; }
+.home-feature-number { color: var(--docs-muted); font: .65rem Consolas, monospace; letter-spacing: .06em; }
+.markdown .home-feature-grid h3 { font-size: 1.18rem; margin: 1rem 0 .7rem; }
+.markdown .home-feature-grid p { font-size: .88rem; line-height: 1.8; color: var(--docs-muted); }
+.home-feature-grid a { font-size: .8rem; font-weight: 500; }
+.docs-home-layout .book-article > h2 { margin-top: 4rem; font-size: 2rem; }
+.docs-home-layout .book-article > ul { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; padding: 0; list-style: none; }
+.docs-home-layout .book-article > ul > li { margin: 0; padding: 1.5rem; border: 1px solid var(--gray-200); border-radius: 10px; font-size: .86rem; color: var(--docs-muted); }
+.docs-home-layout .book-article > ul strong { display: block; font-size: 1rem; color: var(--docs-heading); margin-bottom: .75rem; }
+.docs-home-layout .book-article > ul a { display: block; margin-top: .75rem; }
+.docs-home-layout .book-article > h2:last-of-type { text-align: center; margin-top: 5rem; }
+.docs-home-layout .book-article > h2:last-of-type ~ p { text-align: center; max-width: 42rem; margin: 1.5rem auto; color: var(--docs-muted); }
+.docs-home-layout .book-article > h2:last-of-type + p a { display: inline-block; padding: .8rem 1.4rem; border-radius: 7px; background: var(--docs-heading); color: var(--body-background); font-weight: 600; text-decoration: none; }
+@media screen and (max-width: 62rem) {
+  .home-hero { gap: 2.5rem; padding-top: 3rem; grid-template-columns: 1fr; }
+  .home-pitch { max-width: 40rem; }
+  .home-example { width: 100%; max-width: 40rem; }
+  .home-feature-grid { gap: 1.5rem; }
+  .docs-home-layout .book-article > ul { grid-template-columns: 1fr; }
+}
+@media screen and (max-width: 40rem) {
+  .home-feature-grid { grid-template-columns: 1fr; gap: 2rem; }
+  .home-hero { padding: 2.5rem 0; }
+  .home-reasons { padding: 2.5rem 0; }
+  .home-example .docs-code pre { font-size: .67rem; padding: 1rem; }
+  .home-actions { flex-direction: column; align-items: stretch; }
+}
 .search-shortcut { position: absolute; right: .55rem; top: .6rem; border: 1px solid var(--gray-200); border-radius: 3px; padding: .05rem .35rem; color: var(--docs-muted); font: .7rem "Geist", sans-serif; pointer-events: none; }
 .book-search input { padding-right: 2rem; }
 .book-search input:required ~ .search-shortcut { display: none; }
@@ -188,7 +228,6 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
   #menu-control:checked ~ main .book-page { opacity: 1; }
   #menu-control:checked ~ main .book-menu-overlay { background: rgba(0, 0, 0, .3); z-index: 6; top: var(--docs-header-height); }
   .book-page, .docs-home-layout .book-page { padding: 1.5rem 2rem; }
-  .docs-hero { padding-top: 1rem; }
   .docs-breadcrumb { margin-bottom: 1.5rem; }
 }
 @media screen and (max-width: 40rem) {
@@ -202,8 +241,6 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
   .brand-mark { width: 29px; height: 29px; font-size: 19px; }
   .theme-toggle { width: 29px; height: 29px; }
   .book-page, .docs-home-layout .book-page { padding: 1.1rem 1.25rem; }
-  .hero-actions { grid-template-columns: 1fr; gap: .6rem; }
-  .markdown .start-link { padding: .85rem 1rem; }
   .docs-footer-meta { font-size: .63rem; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { transition: none !important; } }

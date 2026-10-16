@@ -13,7 +13,7 @@
       {{ partial "docs/brand" . }}
       {{ partial "docs/versions" . }}
       <nav class="topbar-links" aria-label="Primary">
-        <a class="current" href="{{ .Site.Home.RelPermalink }}">Docs</a>
+        <a{{ if not .IsHome }} class="current"{{ end }} href="{{ with .Site.GetPage "learn" }}{{ .RelPermalink }}{{ end }}">Docs</a>
         <a href="{{ with .Site.GetPage "standard-library/reference" }}{{ .RelPermalink }}{{ end }}">API reference</a>
         <a class="github-link" href="https://github.com/manuscript-lang/manuscript">GitHub {{ partial "docs/external-icon" . }}</a>
       </nav>
@@ -21,12 +21,12 @@
     </div>
   </header>
   <main class="container flex{{ if .IsHome }} docs-home-layout{{ end }}" id="main-content" tabindex="-1">
-    {{ template "menu-container" . }} <!-- Left menu -->
+    {{ if not .IsHome }}{{ template "menu-container" . }}{{ end }}
 
     <div class="book-page">
-      <header class="book-header hidden">
+      {{ if not .IsHome }}<header class="book-header hidden">
         {{ template "header" . }} <!-- Mobile layout header -->
-      </header>
+      </header>{{ end }}
 
       {{ partial "docs/inject/content-before" . }}
       {{ template "main" . }} <!-- Page Content -->

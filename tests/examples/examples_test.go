@@ -41,7 +41,7 @@ type httpExample struct {
 	Body   string `json:"body"`
 }
 
-var blocks = regexp.MustCompile("(?s)(?:<!-- manuscript-example: (.*?) -->\\s*)?```manuscript\\n(.*?)```")
+var blocks = regexp.MustCompile("(?s)(?:<!-- manuscript-example: (.*?) -->\\s*)?```manuscript(?:[^\\n]*)\\n(.*?)```")
 var complete = regexp.MustCompile(`(?m)^(export fn main\(|test ")`)
 
 func TestTutorialExamples(t *testing.T) {
@@ -59,6 +59,7 @@ func TestTutorialExamples(t *testing.T) {
 			sources[path] = data
 		}
 	}
+	files = append(files, "../../documentation/_index.md")
 	files = append(files, "../../documentation/core-language/types/records.md")
 	files = append(files, "../../documentation/core-language/basics/numbers-and-booleans.md")
 	files = append(files, "../../documentation/core-language/control-flow/loops.md")
