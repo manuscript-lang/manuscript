@@ -56,6 +56,7 @@ func newGen(program *checker.Program) *gen {
 		}
 	}
 	sh.dup = duplicateNames(program)
+	sh.declared = declaredNames(program)
 	sh.recursive = recursiveDeclarations(program)
 	return &gen{shared: sh, stack: []*node{{}}}
 }
@@ -89,6 +90,48 @@ func duplicateNames(program *checker.Program) map[string]bool {
 	return dup
 }
 
+// declaredNames finds every Go name a source declaration takes, which a
+// derived name (an instantiation or a case struct) must not equal.
+func declaredNames(program *checker.Program) map[string]bool {
+	declared := map[string]bool{}
+	if program == nil {
+		return declared
+	}
+	for _, module := range program.Modules {
+		for _, d := range module.Declarations {
+			switch d.Kind {
+			case syntax.KindFn, syntax.KindType, syntax.KindRecord, "alternative", syntax.KindInterface:
+				declared[sanitize(d.Name)] = true
+			case syntax.KindTest:
+				declared["test_"+sanitize(d.Name)] = true
+			}
+		}
+	}
+	for _, m := range program.Methods {
+		if m.Decl != nil && m.Receiver != nil {
+			declared[sanitize(m.Receiver.Name)+"_"+sanitize(m.Decl.Name)] = true
+		}
+	}
+	return declared
+}
+
+// derived claims a name built from other names, such as Box_Int for Box[Int]
+// or Shape_Circle for a case. A source declaration may already spell that name,
+// so the identity is appended then; no name depends on scheduling.
+func (g *gen) derived(name, key string) string {
+	if g.declared[name] {
+		name += "_" + shortHash(key)
+	}
+	return g.claim(name, key)
+}
+
+func (g *gen) derivedOrClaim(name, key string, isDerived bool) string {
+	if isDerived {
+		return g.derived(name, key)
+	}
+	return g.claim(name, key)
+}
+
 // shared is the registry every unit of work interns into: the program's
 // instances, types, and helpers, each created once under mu. A unit never
 // reads another unit's results while it runs.
@@ -100,6 +143,7 @@ type shared struct {
 	localImpl  bool                         // some module declares an extension implementation
 	localEq    bool                         // some module declares an extension Equal implementation
 	dup        map[string]bool              // source names more than one declaration uses
+	declared   map[string]bool              // Go names the source declarations themselves take
 	recursive  map[*syntax.Declaration]bool // functions on a call cycle
 	methodByID map[string]*checker.Method
 
@@ -466,7 +510,7 @@ func (g *gen) lowerWave(wave []*funcDecl) {
 // source, with a hash of the identity wherever source names repeat, so no two
 // keys meet in one name and no name depends on scheduling.
 func (g *gen) claim(name, key string) string {
-	if reserved[name] || goKeywords[name] {
+	if reserved[name] || goKeywords[name] || predeclared[name] {
 		name += "_"
 	}
 	g.mu.Lock()
