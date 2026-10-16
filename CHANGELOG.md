@@ -20,6 +20,7 @@
 - Builds: list literals with 256 or more items compile in time proportional to their size (100,000 Int constants: about 24 s to 2 s); deeply nested List and Map literals check in near-linear time and report an uninferable element type once.
 - Lint: MSL107 warns on nested `match`.
 - Lint: MSL109 warns when a bare identifier argument is redirected by matching-name shorthand to a parameter other than the next positional slot (#452); binding is unchanged.
+- Diagnostics: a type or duplicate-argument error caused by a redirected bare identifier names the parameter it selected and the positional rewrite (#452).
 - Collections: `List.set`/`remove`/`splice`/`reverse_in_place`, `Set.add`/`remove`, `Map.remove`/`add_default`, `Bytes.reversed` and `Regex.replace_all` replace the removed copy-sounding spellings `List.with_value`/`without`/`with_values`/`reverse`, `Map.with_entry`/`without`/`with_default`/`with_default_from`, `Set.with_value`/`without`, `MapBuilder.with_entry`, `SetBuilder.with_value`, `Bytes.reverse` and `Regex.replace`; the MSL108 advisory is gone. Faults name the surviving method.
 - Concurrency: `BlockingQueue[T]` in `@std/queues.ms` waits in `put` and `take` and ends with `close`; `SynchronizedGuard.wait()` and `notify_all()` let tasks block until shared state changes.
 - Collections: `List.count`, `List.distinct`, in-place `List.insert` and `List.pop`.

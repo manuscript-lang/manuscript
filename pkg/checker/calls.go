@@ -287,10 +287,10 @@ func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...
 			noReturn = noReturn || v.NoReturn
 			continue
 		}
+		checkpoint := len(c.Diagnostics)
 		if seen[arg.Name] {
 			c.error(arg.Pos, "type", "duplicate argument "+arg.Name+"; pass each argument once")
 		}
-		seen[arg.Name] = true
 		var expected *Type
 		for _, param := range params {
 			if param.Name == arg.Name {
@@ -303,6 +303,12 @@ func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...
 		}
 		v := c.argumentExpression(arg.Value, expected)
 		noReturn = noReturn || v.NoReturn
+		if hint := shorthandRedirect(arg, params, seen); hint != "" {
+			for at := checkpoint; at < len(c.Diagnostics); at++ {
+				c.Diagnostics[at].Message += hint
+			}
+		}
+		seen[arg.Name] = true
 	}
 	for _, param := range params {
 		if !seen[param.Name] && (len(defaults) == 0 || !defaults[0][param.Name]) {
@@ -317,6 +323,26 @@ func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...
 		}
 	}
 	return noReturn
+}
+
+// shorthandRedirect explains a bare identifier that selected its own parameter
+// instead of the next positional slot, for diagnostics that result from it.
+func shorthandRedirect(arg syntax.Argument, params []Param, seen map[string]bool) string {
+	value := arg.Value
+	if len(params) <= 1 || value.Kind != syntax.KindName || value.Text != arg.Name || value.Pos != arg.Pos {
+		return ""
+	}
+	for _, param := range params {
+		if seen[param.Name] {
+			continue
+		}
+		if param.Name == arg.Name {
+			return ""
+		}
+		return "; bare " + arg.Name + " selected parameter " + arg.Name + ", not the next positional parameter " + param.Name +
+			"; write " + param.Name + ": " + arg.Name + " or (" + arg.Name + ") for positional intent"
+	}
+	return "; bare " + arg.Name + " selected parameter " + arg.Name + " by name; write (" + arg.Name + ") for positional intent"
 }
 func (c *checker) modulePosition() syntax.Position {
 	return syntax.Position{File: c.module.File, Line: 1, Column: 1}

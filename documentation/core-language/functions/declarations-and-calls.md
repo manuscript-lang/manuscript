@@ -28,7 +28,7 @@ Parameters belong to the function body's lexical scope. A local declaration cann
 
 Argument labels are optional. An unlabeled expression supplies the first parameter not filled by an earlier argument, in declaration order. An explicit `name: value` supplies that named parameter in any order.
 
-For compatibility, a bare identifier matching a parameter name remains shorthand for `name: name` when the callable has multiple parameters. This selects the named parameter even when it is already filled, in which case the call is rejected as a duplicate. Parenthesizing an identifier makes it positional: `(name)` is an ordinary expression. `ms lint` reports advisory **MSL109** when shorthand selects a parameter other than the next unfilled positional one; write `left: right` or `(right)` for positional intent, or `right: right` to keep the binding explicit. Binding itself is unchanged.
+For compatibility, a bare identifier matching a parameter name remains shorthand for `name: name` when the callable has multiple parameters. This selects the named parameter even when it is already filled, in which case the call is rejected as a duplicate. Parenthesizing an identifier makes it positional: `(name)` is an ordinary expression. `ms lint` reports advisory **MSL109** when shorthand selects a parameter other than the next unfilled positional one; write `left: right` or `(right)` for positional intent, or `right: right` to keep the binding explicit. When such a redirect leads to a type or duplicate-argument error, the diagnostic names the selected parameter and the positional rewrite. Binding itself is unchanged.
 
 ```manuscript
 fn reduce(amount: Int, deduction: Int) -> Int:

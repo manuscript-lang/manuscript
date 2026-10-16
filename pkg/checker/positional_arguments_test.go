@@ -83,3 +83,29 @@ func TestPositionalArgumentDiagnostics(t *testing.T) {
 		})
 	}
 }
+
+func TestRedirectedShorthandDiagnosticNamesSelectedParameter(t *testing.T) {
+	for _, tc := range []struct {
+		name, call string
+		want       bool
+	}{
+		{"redirected", "f(count, n)", true},
+		{"parenthesized", "f((count), n)", false},
+		{"explicit", "f(name: count, count: n)", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source := "fn f(name: String, count: Int) -> Int: count\nfn run(count: String, n: Int) -> Int: " + tc.call + "\n"
+			m, err := parser.Parse("redirect.ms", source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			hinted := false
+			for _, d := range checker.Check([]*syntax.Module{m}, nil).Diagnostics {
+				hinted = hinted || strings.Contains(d.Message, "bare count selected parameter count, not the next positional parameter name")
+			}
+			if hinted != tc.want {
+				t.Fatalf("hint = %v, want %v", hinted, tc.want)
+			}
+		})
+	}
+}
