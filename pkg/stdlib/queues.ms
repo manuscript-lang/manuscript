@@ -20,12 +20,10 @@ export type Queue[T]:
 # and take blocks while the queue is empty. It synchronizes itself, so tasks share it directly.
 # Waiting stops at cancellation, so a TaskGroup close unblocks every waiting task.
 #
-#     let jobs = BlockingQueue[Int](8)              # omit capacity for an unbounded queue
-#     with group = TaskGroup():
-#         group.start(fn(): work(jobs: jobs))       # work loops on jobs.take() until it returns none
-#         jobs.put(1)                               # waits while full; false once closed
-#         jobs.put(2)
-#         jobs.close()                              # work drains the queued values, then sees none
+# Usage: create it with `BlockingQueue[Int](8)` (omit capacity for an unbounded queue), start workers in a
+# TaskGroup that loop on `jobs.take()` until it returns none, then call `jobs.put(value)` to hand them work
+# (it waits while full and returns false once closed) and `jobs.close()` when done; workers drain the queued
+# values and then see none.
 export type BlockingQueue[T]:
     # Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
     capacity: Optional[Int] = none
