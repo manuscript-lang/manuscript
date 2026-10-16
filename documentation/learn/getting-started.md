@@ -75,8 +75,6 @@ ms test ms.toml
 
 `ms init [directory]` writes `ms.toml`, `src/main.ms` (the program above), `test.ms`, and a `.gitignore`. It stops without writing anything if one of those files already exists. A project is just that manifest plus an entry module exporting `main() -> Int`, so you can also create the files by hand.
 
-The first `ms run` or `ms build` writes `ms.lock` next to `ms.toml`. It records the compiler, runtime, and toolchain pins the build used: commit it. A `ms` built from a source checkout has different pins than a release, so running `ms lock` or `ms run` on a project such as `examples/hello` with it rewrites the checked-in `ms.lock`; discard that change rather than committing it.
-
 ## Build and test
 
 ```sh

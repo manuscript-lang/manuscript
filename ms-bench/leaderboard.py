@@ -40,7 +40,7 @@ def categorize(step) -> str:
         return "writes"
     if "docs" in text:
         return "docs"
-    if any(k in text for k in ("check.sh", "ms build", "ms check", "ms lock", "ms run", "cargo ", "go build", "node ")):
+    if any(k in text for k in ("check.sh", "ms build", "ms check", "ms run", "cargo ", "go build", "node ")):
         return "build"
     return "reads"
 

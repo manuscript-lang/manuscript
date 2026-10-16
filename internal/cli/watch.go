@@ -173,7 +173,7 @@ func watchedFiles(filename string, result compiler.Result) []string {
 		files = append(files, absolute)
 	}
 	if result.ProjectRoot != "" {
-		files = append(files, filepath.Join(result.ProjectRoot, "ms.toml"), filepath.Join(result.ProjectRoot, "ms.lock"))
+		files = append(files, filepath.Join(result.ProjectRoot, "ms.toml"))
 	}
 	if result.Program == nil {
 		return files

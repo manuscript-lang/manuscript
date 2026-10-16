@@ -57,16 +57,14 @@ steps. `--debug` remains an alias for `--build-type Debug` on `build`, `run`, an
 and build-type flags on source-only commands are rejected before compilation.
 Flags after `--` are passed to the program.
 
-Project commands create `ms.lock` when it is missing and otherwise require the
-matching pins. Run `ms lock ms.toml` to explicitly update its compiler and toolchain pins.
 Select build levels on the command line. See [build pinning and cache identity](reproducibility.md).
 
 ## Compiler API
 
 The compiler API offers `BuildWithType` and `BuildCheckedWithType` for explicit
 selection. `Build` defaults to Release; the existing `BuildChecked` boolean
-selects Debug when true and Release otherwise. Build levels share `ms.lock`
-toolchain pins but have distinct build identities.
+selects Debug when true and Release otherwise. Build levels share
+toolchain identity but have distinct build identities.
 
 `CompileSource` and `CompileFile` return the ordinary generated Go in
 `Result.Source`. Use `CompileSourceForBuild` or `CompileFileForBuild` with a

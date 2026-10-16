@@ -10,7 +10,7 @@ FILTER=${2:-}
 W=$(mktemp -d)
 trap 'rm -rf "$W"' EXIT
 cp -R "$ROOT/bench/stdlib/." "$W/"
-(cd "$W" && rm -f ms.lock && "$MS" lock ms.toml >/dev/null && "$MS" build ms.toml -o stdlib-bench >/dev/null)
+(cd "$W" && "$MS" build ms.toml -o stdlib-bench >/dev/null)
 i=0
 while [ "$i" -lt "$N" ]; do
 	"$W/stdlib-bench" | grep -v '^#'

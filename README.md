@@ -71,7 +71,6 @@ From the extracted directory, run:
 
 ```sh
 ./ms check examples/hello/ms.toml
-./ms lock examples/hello/ms.toml
 ./ms run examples/hello/ms.toml -- first second
 ```
 

@@ -263,12 +263,12 @@ func writeProfileReference(directory, executable string, result compiler.Result,
 	return err
 }
 
-// protectedOutput names the source, manifest, or lock file an -o path would
+// protectedOutput names the source or manifest file an -o path would
 // replace, or returns "" when the output is safe to write.
 func protectedOutput(output, input, projectRoot string) string {
 	candidates := []string{input}
 	if projectRoot != "" {
-		candidates = append(candidates, filepath.Join(projectRoot, "ms.toml"), filepath.Join(projectRoot, "ms.lock"))
+		candidates = append(candidates, filepath.Join(projectRoot, "ms.toml"))
 	}
 	if info, err := os.Stat(output); err == nil {
 		for _, candidate := range candidates {
@@ -279,7 +279,7 @@ func protectedOutput(output, input, projectRoot string) string {
 	}
 	base := filepath.Base(output)
 	switch {
-	case strings.HasSuffix(base, ".ms"), base == "ms.toml", base == "ms.lock":
+	case strings.HasSuffix(base, ".ms"), base == "ms.toml":
 		return base
 	}
 	return ""

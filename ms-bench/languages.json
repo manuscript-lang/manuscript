@@ -26,7 +26,7 @@
   "ms": {
     "name": "Manuscript",
     "solution": "src/main.ms",
-    "build": "ms lock ms.toml && ms build ms.toml -o prog",
+    "build": "ms build ms.toml -o prog",
     "run": "./prog",
     "version": "ms --version",
     "notes": "Docs for the language are in docs/ (tutorials) and docs/stdlib/ (standard declarations). `ms help` lists commands.",
