@@ -440,7 +440,7 @@ func (f *osFileSystem) GlobEntries(ctx *Execution, path string, options *GlobOpt
 	}
 	patterns, excluded := options.Patterns.Items, options.Exclude.Items
 	for _, pattern := range append(append([]string{}, patterns...), excluded...) {
-		if !fsValidGlob(filepath.ToSlash(pattern)) {
+		if !globValid(filepath.ToSlash(pattern)) {
 			return fail(FileSystemError_InvalidInput{})
 		}
 	}
@@ -473,7 +473,7 @@ func (f *osFileSystem) GlobEntries(ctx *Execution, path string, options *GlobOpt
 			if filepath.IsAbs(pattern) {
 				target = absolute
 			}
-			if fsGlobMatch(target, filepath.ToSlash(pattern)) {
+			if globMatch(target, filepath.ToSlash(pattern)) {
 				return nil
 			}
 		}
@@ -485,7 +485,7 @@ func (f *osFileSystem) GlobEntries(ctx *Execution, path string, options *GlobOpt
 			if filepath.IsAbs(pattern) {
 				target = absolute
 			}
-			if fsGlobMatch(target, filepath.ToSlash(pattern)) {
+			if globMatch(target, filepath.ToSlash(pattern)) {
 				if _, exists := items[value.Path]; !exists {
 					if len(items) >= maxResults {
 						return errLimit
