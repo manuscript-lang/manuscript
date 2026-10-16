@@ -1,0 +1,4 @@
+[project]
+name = "stdlib-bench"
+source = "./src"
+entry = "./src/main.ms"
