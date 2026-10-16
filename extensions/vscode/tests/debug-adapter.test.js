@@ -16,14 +16,14 @@ test('DAP framing preserves fragmented UTF-8 and multiple messages', () => {
 });
 test('Manuscript values use source names and lazy structured handles', async () => {
   const adapter = new ManuscriptAdapter(new PassThrough());
-  assert.equal(sourceType('int64'), 'Int');
-  assert.equal(sourceType('*github.com/manuscript-lang/manuscript/pkg/runtime.Map[string,int64]'), 'Map[String,Int]');
+  assert.equal(sourceType('int'), 'Int');
+  assert.equal(sourceType('*github.com/manuscript-lang/manuscript/pkg/runtime.Map[string,int]'), 'Map[String,Int]');
   assert.equal(sourceType('*runtime.List[main.Box]'), 'List[Box]');
   assert.equal(sourceType('runtime.Option[float64]'), 'Optional[Float]');
   assert.equal(mapName('["name"]'), 'name');
   const box = adapter.render({ name: 'box', type: '*main.Box', value: '*main.Box {Label: "x", Count: 42}', variablesReference: 5 }, 'box', 'Box');
   assert.equal(box.name, 'box'); assert.equal(box.value, 'Box'); assert.equal(box.type, 'Box');
-  const children = new Map([[5, [{ name: '', variablesReference: 6 }]], [6, [{ name: 'Label', type: 'string', value: '"x"' }, { name: 'FirstName', type: 'int64', value: '42' }]]]);
+  const children = new Map([[5, [{ name: '', variablesReference: 6 }]], [6, [{ name: 'Label', type: 'string', value: '"x"' }, { name: 'FirstName', type: 'int', value: '42' }]]]);
   adapter.children = async ref => children.get(ref);
   const fields = await adapter.valueChildren(adapter.handles.get(box.variablesReference), {});
   assert.deepEqual(fields.map(field => [field.name, field.value, field.type]), [['label', '"x"', 'String'], ['first_name', '42', 'Int']]);
@@ -42,28 +42,28 @@ test('record fields map between Go and source names', () => {
 test('options, results, lists and maps render as source values', async () => {
   const adapter = new ManuscriptAdapter(new PassThrough());
   const tree = new Map([
-    [1, [{ name: 'Val', type: 'int64', value: '5' }, { name: 'Some', type: 'bool', value: 'true' }]],
-    [2, [{ name: 'Items', type: '[]int64', value: '[]int64 len: 2', variablesReference: 3 }]],
-    [3, [{ name: '[0]', type: 'int64', value: '7' }, { name: '[1]', type: 'int64', value: '8' }]],
-    [4, [{ name: 'Val', type: 'int64', value: '0' }, { name: 'Err', type: 'string', value: '"bad"' }, { name: 'Failed', type: 'bool', value: 'true' }]],
-    [5, [{ name: 'entries', type: '[]*runtime.MapEntry[string,int64]', variablesReference: 6 }]],
+    [1, [{ name: 'Val', type: 'int', value: '5' }, { name: 'Some', type: 'bool', value: 'true' }]],
+    [2, [{ name: 'Items', type: '[]int', value: '[]int len: 2', variablesReference: 3 }]],
+    [3, [{ name: '[0]', type: 'int', value: '7' }, { name: '[1]', type: 'int', value: '8' }]],
+    [4, [{ name: 'Val', type: 'int', value: '0' }, { name: 'Err', type: 'string', value: '"bad"' }, { name: 'Failed', type: 'bool', value: 'true' }]],
+    [5, [{ name: 'entries', type: '[]*runtime.MapEntry[string,int]', variablesReference: 6 }]],
     [6, [{ name: '[0]', variablesReference: 7 }, { name: '[1]', value: 'nil', variablesReference: 0 }]],
     [7, [{ name: '', variablesReference: 8 }]],
-    [8, [{ name: 'Key', type: 'string', value: '"k"' }, { name: 'Value', type: 'int64', value: '1' }]],
+    [8, [{ name: 'Key', type: 'string', value: '"k"' }, { name: 'Value', type: 'int', value: '1' }]],
   ]);
   adapter.children = async ref => tree.get(ref) || [];
-  const option = adapter.render({ name: 'o', type: 'runtime.Option[int64]', value: '{Val: 5, Some: true}', variablesReference: 1 }, 'o', 'Optional[Int]');
+  const option = adapter.render({ name: 'o', type: 'runtime.Option[int]', value: '{Val: 5, Some: true}', variablesReference: 1 }, 'o', 'Optional[Int]');
   assert.equal(option.value, 'some');
   assert.deepEqual((await adapter.valueChildren(adapter.handles.get(option.variablesReference), {})).map(v => [v.name, v.value, v.type]), [['value', '5', 'Int']]);
-  const none = adapter.render({ name: 'o', type: 'runtime.Option[int64]', value: '{Val: 0, Some: false}', variablesReference: 1 }, 'o', 'Optional[Int]');
+  const none = adapter.render({ name: 'o', type: 'runtime.Option[int]', value: '{Val: 0, Some: false}', variablesReference: 1 }, 'o', 'Optional[Int]');
   assert.equal(none.value, 'none'); assert.equal(none.variablesReference, 0);
-  const list = adapter.render({ name: 'l', type: '*runtime.List[int64]', value: '*runtime.List[int64] {Items: []int64 len: 2, cap: 2, [7,8]}', variablesReference: 2 }, 'l', 'List[Int]');
+  const list = adapter.render({ name: 'l', type: '*runtime.List[int]', value: '*runtime.List[int] {Items: []int len: 2, cap: 2, [7,8]}', variablesReference: 2 }, 'l', 'List[Int]');
   assert.equal(list.value, 'List[Int] (2 items)');
   assert.deepEqual((await adapter.valueChildren(adapter.handles.get(list.variablesReference), {})).map(v => [v.name, v.value, v.type]), [['[0]', '7', 'Int'], ['[1]', '8', 'Int']]);
-  const result = adapter.render({ name: 'r', type: 'runtime.Result[int64,string]', value: '{Val: 0, Err: "bad", Failed: true}', variablesReference: 4 }, 'r', 'Result[Int, String]');
+  const result = adapter.render({ name: 'r', type: 'runtime.Result[int,string]', value: '{Val: 0, Err: "bad", Failed: true}', variablesReference: 4 }, 'r', 'Result[Int, String]');
   assert.equal(result.value, 'failed');
   assert.deepEqual((await adapter.valueChildren(adapter.handles.get(result.variablesReference), {})).map(v => [v.name, v.value, v.type]), [['error', '"bad"', 'String']]);
-  const map = adapter.render({ name: 'm', type: '*runtime.Map[string,int64]', value: '{}', variablesReference: 5 }, 'm', 'Map[String, Int]');
+  const map = adapter.render({ name: 'm', type: '*runtime.Map[string,int]', value: '{}', variablesReference: 5 }, 'm', 'Map[String, Int]');
   assert.deepEqual((await adapter.valueChildren(adapter.handles.get(map.variablesReference), {})).map(v => [v.name, v.value, v.type]), [['k', '1', 'Int']]);
 });
 
@@ -143,15 +143,15 @@ test('native DAP source stepping and Manuscript record/list/variant rendering', 
 const named = names => variable => names[variable.name];
 
 test('watch rewriting respects quoted text and native member names', () => {
-  const vars = [{ name: 'box', type: '*main.Box' }, { name: 'count', type: 'int64' }];
+  const vars = [{ name: 'box', type: '*main.Box' }, { name: 'count', type: 'int' }];
   assert.equal(rewriteExpression('box.count', vars, named({ box: 'box' })), 'box.Count');
   assert.equal(rewriteExpression('box.first_name', vars, named({ box: 'box' })), 'box.FirstName');
   assert.equal(rewriteExpression('count + len("count")', vars, named({ count: 'count' })), 'count + len("count")');
-  assert.equal(rewriteExpression('total + 1', [{ name: 'sum', type: 'int64' }], named({ sum: 'total' })), 'sum + 1');
+  assert.equal(rewriteExpression('total + 1', [{ name: 'sum', type: 'int' }], named({ sum: 'total' })), 'sum + 1');
 });
 
 test('watch rewriting indexes typed lists and leaves numeric literals alone', () => {
-  const vars = [{ name: 'items', type: '*runtime.List[int64]' }, { name: 'e5', type: 'int64' }, { name: 'x1', type: 'int64' }];
+  const vars = [{ name: 'items', type: '*runtime.List[int]' }, { name: 'e5', type: 'int' }, { name: 'x1', type: 'int' }];
   assert.equal(rewriteExpression('items[2]', vars, named({ items: 'items' })), 'items.Items[2]');
   assert.equal(rewriteExpression('1e5 + e5', vars, named({ e5: 'e5' })), '1e5 + e5');
   assert.equal(rewriteExpression('0x1f + x1 + 1.5e5', vars, named({ x1: 'x1' })), '0x1f + x1 + 1.5e5');
@@ -169,11 +169,11 @@ test('dead native stack slots cannot masquerade as source containers', () => {
 
 test('task handles and groups expose work state without native bookkeeping', async () => {
   const adapter = new ManuscriptAdapter(new PassThrough());
-  const task = adapter.render({ name: 'task', type: '*runtime.Task[int64]', value: '{committed: true}', variablesReference: 3 }, 'task', 'Task[Int]');
+  const task = adapter.render({ name: 'task', type: '*runtime.Task[int]', value: '{committed: true}', variablesReference: 3 }, 'task', 'Task[Int]');
   assert.equal(task.type, 'Task[Int]');
   adapter.children = async () => [
     { name: 'id', type: '*runtime.OperationId', value: '{number: 7}', variablesReference: 0 },
-    { name: 'value', type: 'int64', value: '7', variablesReference: 0 },
+    { name: 'value', type: 'int', value: '7', variablesReference: 0 },
     { name: 'committed', type: 'bool', value: 'true', variablesReference: 0 },
     { name: 'done', type: 'chan struct {}', value: 'channel', variablesReference: 0 },
   ];
