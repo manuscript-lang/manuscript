@@ -93,3 +93,52 @@ func TestTestJSONCompileFailureAndUnsupportedModes(t *testing.T) {
 		}
 	}
 }
+
+func TestReadTestEventsListingFailFastSkipAndRepeat(t *testing.T) {
+	for _, reason := range []string{"listed", "fail_fast", ""} {
+		t.Run(reason, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "events")
+			file, err := os.Create(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			encoder := json.NewEncoder(file)
+			encoder.Encode(nativeabi.TestEvent{Event: "plan", Format: 1, Available: 1, Repeat: 2, Names: []string{"same", "same"}})
+			if reason != "listed" {
+				encoder.Encode(nativeabi.TestEvent{Event: "run", Index: 0})
+				event := "skipped"
+				if reason == "fail_fast" {
+					event = "failed"
+				}
+				encoder.Encode(nativeabi.TestEvent{Event: event, Index: 0, Failure: "unavailable", DurationNS: 12})
+			}
+			if reason == "" {
+				encoder.Encode(nativeabi.TestEvent{Event: "run", Index: 1})
+				encoder.Encode(nativeabi.TestEvent{Event: "passed", Index: 1, DurationNS: 34})
+			}
+			encoder.Encode(nativeabi.TestEvent{Event: "done", Reason: reason, DurationNS: 99})
+			file.Close()
+			doc := newTestResult(compiler.Result{})
+			if err := readTestEvents(path, &doc); err != nil {
+				t.Fatal(err)
+			}
+			if !doc.Completed || doc.Tests[1].Index != 1 || doc.Summary.DurationNS != 99 {
+				t.Fatalf("document %+v", doc)
+			}
+			switch reason {
+			case "listed":
+				if !doc.Listed || doc.Summary.NotRun != 2 {
+					t.Fatalf("listing %+v", doc)
+				}
+			case "fail_fast":
+				if doc.Summary.Failed != 1 || doc.Summary.NotRun != 1 {
+					t.Fatalf("fail fast %+v", doc)
+				}
+			default:
+				if doc.Summary.Skipped != 1 || doc.Summary.Passed != 1 || doc.Tests[1].DurationNS != 34 {
+					t.Fatalf("completed %+v", doc)
+				}
+			}
+		})
+	}
+}

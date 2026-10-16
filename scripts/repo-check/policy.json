@@ -27,13 +27,9 @@
       "internal/hostos"
     ],
     "pkg/compiler": [
-      ".",
       "pkg/syntax",
-      "pkg/lexer",
-      "pkg/parser",
       "pkg/checker",
       "pkg/project",
-      "pkg/stdlib",
       "pkg/frontend",
       "pkg/lower"
     ],
@@ -44,7 +40,8 @@
       "pkg/frontend"
     ],
     "pkg/tooling/docgen": [
-      "pkg/checker"
+      "pkg/checker",
+      "pkg/stdlib"
     ],
     "pkg/tooling/lsp": [
       "pkg/syntax",
@@ -55,6 +52,10 @@
       "pkg/tooling",
       "pkg/frontend"
     ],
+    "pkg/tooling/guide": [
+      "pkg/checker",
+      "pkg/compiler"
+    ],
     "internal/cli": [
       "internal/nativeabi",
       "pkg/compiler",
@@ -62,6 +63,7 @@
       "pkg/syntax",
       "pkg/tooling",
       "pkg/tooling/lsp",
+      "pkg/tooling/guide",
       "pkg/tooling/docgen",
       "pkg/checker",
       "pkg/stdlib",
@@ -80,9 +82,7 @@
     "internal/debugger": [],
     "pkg/lower": [
       "pkg/syntax",
-      "pkg/lexer",
-      "pkg/checker",
-      "pkg/frontend"
+      "pkg/checker"
     ],
     "pkg/build": [
       ".",

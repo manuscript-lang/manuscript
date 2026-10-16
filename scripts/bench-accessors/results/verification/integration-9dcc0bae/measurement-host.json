@@ -1,0 +1,17 @@
+{
+  "time_utc": "2026-10-15T02:06:29.800778+00:00",
+  "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "load_average": [
+    1.53125,
+    6.3388671875,
+    4.259765625
+  ],
+  "verification_processes_completed": true
+}

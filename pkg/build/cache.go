@@ -20,9 +20,9 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"io"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
-	"reflect"
 	goruntime "runtime"
 	"sort"
 	"strings"
@@ -183,7 +183,7 @@ func CheckPin(root string) error {
 }
 
 func comparePin(root string, expected, actual BuildPin) error {
-	if reflect.DeepEqual(expected, actual) {
+	if expected.Format == actual.Format && expected.Compiler == actual.Compiler && expected.ImplementationSHA256 == actual.ImplementationSHA256 && maps.Equal(expected.Toolchain, actual.Toolchain) {
 		return nil
 	}
 	return fmt.Errorf("ms.lock does not match %s; run ms lock %s to explicitly update", strings.Join(pinDifferences(expected, actual), ", "), shellQuote(filepath.Join(root, "ms.toml")))
@@ -340,7 +340,7 @@ func BuildCheckedWithType(result compiler.Result, output string, kind compiler.B
 		source = debugSource(result)
 		metadata.SourceRoot = result.SourceRoot
 	}
-	tags := runtimeTags(result.Program)
+	var tags []string
 	identity, _ := json.Marshal(struct {
 		Metadata        BuildMetadata
 		GeneratedSHA256 string

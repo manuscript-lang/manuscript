@@ -1,84 +1,87 @@
 package msruntime
 
 import (
-	"context"
 	"fmt"
 	"sync"
 )
 
+// workCloser is a service (scheduler, task group) a work lifetime joins when
+// its operation finishes, even when no `with` binding closed it.
+type workCloser interface{ closeWork(ctx *Execution) }
+
+// workLifetime lists the services one operation opened, so FinishExecution can
+// join them in reverse order of opening.
 type workLifetime struct {
 	mu       sync.Mutex
 	parent   *workLifetime
-	services []Value
+	services []workCloser
 }
 
-func newExecution(parent *Execution, ctx context.Context) *Execution {
-	execution := inherit(parent, ctx)
-	execution.Lifetime = &workLifetime{parent: parent.Lifetime}
-	return execution
-}
-func registerService(execution *Execution, service *Scheduler) {
-	registerResource(execution, service)
-}
-func registerResource(execution *Execution, service Value) {
-	if execution.Lifetime == nil {
+func registerResource(ctx *Execution, service workCloser) {
+	if ctx.lifetime == nil {
 		return
 	}
-	execution.Lifetime.mu.Lock()
-	execution.Lifetime.services = append(execution.Lifetime.services, service)
-	execution.Lifetime.mu.Unlock()
+	ctx.lifetime.mu.Lock()
+	ctx.lifetime.services = append(ctx.lifetime.services, service)
+	ctx.lifetime.mu.Unlock()
 }
-func unregisterService(execution *Execution, service *Scheduler) {
-	unregisterResource(execution, service)
-}
-func unregisterResource(execution *Execution, service Value) {
-	if execution.Lifetime == nil {
+
+func unregisterResource(ctx *Execution, service workCloser) {
+	if ctx.lifetime == nil {
 		return
 	}
-	execution.Lifetime.mu.Lock()
-	defer execution.Lifetime.mu.Unlock()
-	for i, s := range execution.Lifetime.services {
+	l := ctx.lifetime
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for i, s := range l.services {
 		if s == service {
-			copy(execution.Lifetime.services[i:], execution.Lifetime.services[i+1:])
-			last := len(execution.Lifetime.services) - 1
-			execution.Lifetime.services[last] = nil
-			execution.Lifetime.services = execution.Lifetime.services[:last]
+			copy(l.services[i:], l.services[i+1:])
+			last := len(l.services) - 1
+			l.services[last] = nil
+			l.services = l.services[:last]
 			return
 		}
 	}
 }
 
-// FinishExecution joins services under the fixed work lifetime, even without a with binding.
-func FinishExecution(execution *Execution) {
+// FinishExecution joins services under the fixed work lifetime, even without a
+// with binding. It is deferred: it re-raises a pending fault with any
+// cleanup faults recorded as secondary.
+func FinishExecution(ctx *Execution) {
 	pending := recover()
-	if execution.Lifetime != nil {
+	if l := ctx.lifetime; l != nil {
 		for {
-			execution.Lifetime.mu.Lock()
-			services := execution.Lifetime.services
+			l.mu.Lock()
+			services := l.services
 			if len(services) == 0 {
-				execution.Lifetime.mu.Unlock()
+				l.mu.Unlock()
 				break
 			}
 			service := services[len(services)-1]
 			services[len(services)-1] = nil
-			execution.Lifetime.services = services[:len(services)-1]
-			execution.Lifetime.mu.Unlock()
+			l.services = services[:len(services)-1]
+			l.mu.Unlock()
 			var failure any
 			func() {
 				defer func() { failure = recover() }()
-				Invoke(Shield(execution), Bind(service, "", "close"), nil)
+				service.closeWork(Shield(ctx))
 			}()
 			if failure != nil {
-				if primary, ok := pending.(Fault); ok {
-					primary.Secondary = append(primary.Secondary, fmt.Sprint(failure))
-					pending = primary
-				} else {
-					pending = Fault{Message: fmt.Sprint(failure)}
-				}
+				pending = addSecondary(pending, failure)
 			}
 		}
 	}
 	if pending != nil {
 		panic(pending)
 	}
+}
+
+// addSecondary records failure as a secondary cleanup fault of pending, or
+// makes it the primary fault when nothing is pending.
+func addSecondary(pending, failure any) any {
+	if primary, ok := pending.(Fault); ok {
+		primary.Secondary = append(primary.Secondary, fmt.Sprint(failure))
+		return primary
+	}
+	return Fault{Message: fmt.Sprint(failure)}
 }

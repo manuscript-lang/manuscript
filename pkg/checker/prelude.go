@@ -1,9 +1,24 @@
 package checker
 
-import "github.com/manuscript-lang/manuscript/pkg/syntax"
+import (
+	"slices"
+
+	"github.com/manuscript-lang/manuscript/pkg/syntax"
+)
 
 // Source-backed prelude types retain their standard declaration identities.
-var standardPreludeNames = []string{"Equal", "Hashable", "Optional", "Result", "Error", "List", "Map", "Set"}
+var standardPreludeNames = []string{"Equal", "Hashable", "Optional", "Result", "Error", "List", "Map", "Set", "CollectionError", "ListEntry", "MapEntry", "MissingValue"}
+
+// IsPreludeSymbol reports whether a symbol is a canonical source-backed prelude
+// declaration. Application declarations with the same name retain their identity.
+func IsPreludeSymbol(symbol *Symbol) bool {
+	ensureStandard()
+	return isPreludeSymbol(symbol)
+}
+
+func isPreludeSymbol(symbol *Symbol) bool {
+	return symbol != nil && slices.Contains(standardPreludeNames, symbol.Name) && standardSymbols[symbol.Name] == symbol
+}
 
 // primitiveNames are the built-in types every module sees without an import.
 var primitiveNames = []string{"Bool", "Int", "Float", "String", "Unit", "Never"}

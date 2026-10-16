@@ -1,8 +1,6 @@
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
 import Decimal from "@std/decimal.ms"
-import Optional from "@std/optional.ms"
 
 type Callback:
     handler: fn(value: Int) -> Int

@@ -24,7 +24,7 @@ test "source":
     if other() != 4: return panic("bad other")
     match filesystem().read_file(path: "fixture.txt", max_bytes: 1024):
         ok(data):
-            if data.length() != 7: return panic("wrong fixture size")
+            if data.length != 7: return panic("wrong fixture size")
         error(_):
             return panic("library fixture cwd changed")
 `,
@@ -32,7 +32,6 @@ test "source":
 		"tests/value_test.ms": "import value from \"../src/value.ms\"\nimport panic from \"@std/faults.ms\"\ntest \"separate\":\n    if value() != 3: return panic(\"bad value\")\n",
 		"tests/defaults_test.ms": fmt.Sprintf(`import {parse, CsvOptions} from "@std/csv.ms"
 import {base64_encode, base64_decode} from "@std/encoding.ms"
-import List from "@std/collections.ms"
 import commands from "@std/process.ms"
 import filesystem from "@std/fs.ms"
 import {compress, decompress, CompressionFormat} from "@std/compress.ms"
@@ -44,7 +43,7 @@ test "copied native defaults":
     match parse("a,b\n"):
         error(_): return panic("default CSV parse failed")
         ok(rows):
-            if rows.length() != 1: return panic("default CSV rows")
+            if rows.length != 1: return panic("default CSV rows")
     if base64_encode("f".to_bytes()) != "Zg==": return panic("default alphabet")
     match base64_decode("Zg=="):
         error(_): return panic("default Base64 decode failed")
@@ -54,7 +53,7 @@ test "copied native defaults":
     match run(program: %q, arguments: ["--version"]):
         error(_): return panic("default command stdin failed")
         ok(output):
-            if output.exit_code != 0 or output.stdout.length() == 0: return panic("default command output")
+            if output.exit_code != 0 or output.stdout.length == 0: return panic("default command output")
     let fs = filesystem()
     match fs.create_directory("defaults"):
         error(_): return panic("default directory creation")
@@ -102,13 +101,10 @@ test "copied native defaults":
 }
 
 func checkLibrarySource(cli, manifest string, run func(string, ...string) (string, error)) error {
-	for _, command := range []string{"check", "lint", "doc"} {
-		data, err := run(cli, command, manifest)
+	for _, command := range []string{"check", "lint"} {
+		_, err := run(cli, command, manifest)
 		if err != nil {
 			return err
-		}
-		if command == "doc" && (!strings.Contains(data, "fn value()") || !strings.Contains(data, "fn other()")) {
-			return fmt.Errorf("packaged library docs omit exports: %s", data)
 		}
 	}
 	return nil

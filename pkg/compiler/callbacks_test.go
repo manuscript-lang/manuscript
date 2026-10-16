@@ -6,10 +6,7 @@ import (
 	"testing"
 )
 
-const callbackDeclarations = `import {List} from "@std/collections.ms"
-import Result from "@std/result.ms"
-import Optional from "@std/optional.ms"
-fn apply[T, U](value: T, transform: fn(value: T) -> U) -> U: transform(value)
+const callbackDeclarations = `fn apply[T, U](value: T, transform: fn(value: T) -> U) -> U: transform(value)
 fn chain[T, U](first: fn() -> T, second: fn(value: T) -> U) -> U: second(first())
 fn result[T](transform: fn() -> Result[T, String]) -> Result[T, String]: transform()
 fn checked() -> Result[Int, String]: ok(3)
@@ -83,7 +80,7 @@ func TestCallbackInferenceRejections(t *testing.T) {
 
 		`let callback: fn(value: Int) -> Int = fn(): 1`,
 		`let callback: fn(value: Int) -> Int = fn(value): "wrong"`,
-		`let callback: fn(value: Int) -> Int = fn(value: String): value.length()`,
+		`let callback: fn(value: Int) -> Int = fn(value: String): value.length`,
 		`let callback = fn(value: Bool):
         if value: return 1
         return "wrong"`,

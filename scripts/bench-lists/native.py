@@ -28,16 +28,16 @@ for name, n in (("append", 1000000), ("append", 4000000), ("sort", 200000)):
     last = (n - 1) * 7919 % 100003
     body = f"""export fn main() -> Int:
     let values = build({n})
-    if values.length() != {n}: return 1
-    if values.first().unwrap() != 0: return 2
-    if values.last().unwrap() != {last}: return 3
+    if values.length != {n}: return 1
+    if values.first.unwrap() != 0: return 2
+    if values.last.unwrap() != {last}: return 3
 """
     if name == "sort":
         body += f"""    let result = sorted(values)
-    if result.length() != {n}: return 4
-    if result.first().unwrap() != 0: return 5
-    if result.last().unwrap() != 100002: return 6
-    if values.last().unwrap() != {last}: return 7
+    if result.length != {n}: return 4
+    if result.first.unwrap() != 0: return 5
+    if result.last.unwrap() != 100002: return 6
+    if values.last.unwrap() != {last}: return 7
 """
     body += "    return 0\n"
     label = f"{name}-{n}"

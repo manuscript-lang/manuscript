@@ -9,9 +9,7 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
-const resultArgumentSource = `import List from "@std/collections.ms"
-import Equal from "@std/equality.ms"
-import panic from "@std/faults.ms"
+const resultArgumentSource = `import panic from "@std/faults.ms"
 type E1:
     code: Int
 impl Error for E1:

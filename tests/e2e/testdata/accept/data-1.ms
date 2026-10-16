@@ -1,9 +1,5 @@
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-
 fn positives(values: List[Int]) -> List[Int]:
     var result: List[Int] = []
 
@@ -22,12 +18,7 @@ test "dynamic mutable data and explicit copies":
         return panic(message: "check failed")
 
     let original = Map[String, Int]().add(key: "a", value: 1)
-    let updated = (
-        original
-        .clone()
-        .add(key: "b", value: 2)
-        .add(key: "a", value: 3)
-    )
+    let updated = (original.clone().add(key: "b", value: 2).add(key: "a", value: 3))
     if not (original.get(key: "a") == some(1)):
         return panic(message: "check failed")
     if not (updated.get(key: "a") == some(3)):

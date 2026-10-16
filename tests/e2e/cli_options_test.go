@@ -14,7 +14,6 @@ func TestCLIInlineValueOptions(t *testing.T) {
 	code := `import arguments from "@std/cli.ms"
 import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
-import Optional from "@std/optional.ms"
 
 fn write_line(text: String) -> Unit:
     match stdout().write(data: "{text}\n".to_bytes()):
@@ -26,7 +25,7 @@ fn write_line(text: String) -> Unit:
 export fn main() -> Int:
     let args = arguments()
     var index = 0
-    while index < args.length():
+    while index < args.length:
         write_line(args[index].unwrap())
         index = index + 1
     return 0

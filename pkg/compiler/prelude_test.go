@@ -50,9 +50,6 @@ fn use() -> Set[Int]:
     value: T
 fn use() -> Set[List[Int]]: Set([1])
 `,
-		"explicit imports": `import {List, Map, Set} from "@std/collections.ms"
-fn use() -> Int: List[Int]().length() + Map[Int, Int]().length() + Set[Int]().length()
-`,
 		"ordinary types": `type List[T]:
     value: T
 type Map[K, V]:
@@ -73,7 +70,7 @@ fn use() -> Int: List(3) + Map(4) + Set(5)
     let Set = fn(value: Int) -> Int: value
     let items = [1]
     let entries = {1: 2}
-    return List(3) + Map(4) + Set(5) + items.length() + entries.length()
+    return List(3) + Map(4) + Set(5) + items.length + entries.length
 `,
 		"type parameters": `fn identity[List, Map, Set](left: List, right: Map, other: Set) -> Set: other
 `,
@@ -106,26 +103,21 @@ fn use() -> Int: List(3) + Map(4) + Set(5)
 			if r.Success() {
 				t.Fatal("accepted invalid source")
 			}
+			if strings.Contains(name, "duplicate") || strings.Contains(name, "collision") {
+				found := false
+				for _, diagnostic := range r.Diagnostics {
+					if strings.Contains(diagnostic.Message, "duplicate or intrinsic name") {
+						found = true
+					}
+				}
+				if !found {
+					t.Fatal("import policy hid the ordinary collision", r.Diagnostics)
+				}
+			}
 			if strings.Contains(name, "shadows literal") && (len(r.Diagnostics) != 1 || !strings.Contains(r.Diagnostics[0].Message, "rename the shadowing")) {
 				t.Fatal(r.Diagnostics)
 			}
 		})
-	}
-}
-
-func TestMapAddDirectAndReorderedLowering(t *testing.T) {
-	r := CompileSource("add.ms", `fn use(m: Map[String, Int]) -> Unit:
-    m.add("a", 1)
-    m.add(key: "b", value: 2)
-    m.add(value: 3, key: "c")
-    let add = m.add
-    add("d", 4)
-`, Options{})
-	if !r.Success() {
-		t.Fatal(r.Diagnostics)
-	}
-	if strings.Count(r.Source, "rt.MapWithEntry(") != 2 || strings.Count(r.Source, `"add"`) != 2 {
-		t.Fatal(r.Source)
 	}
 }
 

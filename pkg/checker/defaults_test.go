@@ -27,7 +27,7 @@ func TestDefaultArgumentBoundaries(t *testing.T) {
 		{"contract requires arguments", "interface Add:\n    fn add(value: Int) -> Int\ntype Offset:\n    value: Int\nimpl Add for Offset:\n    fn add(value: Int = self.value) -> Int:\n        return value\nfn call(value: Add) -> Int:\n    return value.add()\n", "missing argument value"},
 		{"defaults count toward callback arity", "import TaskGroup from \"@std/tasks.ms\"\nfn f(value: Int = 1) -> Int:\n    return value\nfn call() -> Unit:\n    let group = TaskGroup()\n    let result = group.start(f)\n", "expected fn()"},
 		{"capture assignment in default", "fn f() -> Unit:\n    var outer = 1\n    let callback = fn(value: Int = (fn() -> Int:\n        outer = 2\n        return outer\n    )()) -> Int:\n        return value\n", "cannot assign a captured binding"},
-		{"recursive specialization in default", "import List from \"@std/collections.ms\"\nfn grow[T](value: T, optional: Int = grow(value: [value])) -> Int:\n    return optional\n", "recursive generic applications must preserve their parameters"},
+		{"recursive specialization in default", "fn grow[T](value: T, optional: Int = grow(value: [value])) -> Int:\n    return optional\n", "recursive generic applications must preserve their parameters"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			m, err := parser.Parse("defaults.ms", tt.source)

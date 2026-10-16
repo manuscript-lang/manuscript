@@ -1,4 +1,3 @@
-import List from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 type Failure:
@@ -80,9 +79,7 @@ test "infer success and preserve concrete error identity":
         ok(_): return panic("expected generic error")
         error(view): view
 
-    if view.message() != "tagged 31": return panic(
-        "lost generic Error evidence"
-    )
+    if view.message() != "tagged 31": return panic("lost generic Error evidence")
 
     match view:
         Tagged[Int](original):

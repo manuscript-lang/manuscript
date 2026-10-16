@@ -1,0 +1,63 @@
+{
+  "prior_published_head": "092442a6f4e7b8946f2a3f69a6c466e710a6b593",
+  "main": "bb450ff03259cd2cb606581fe7d53805911a6285",
+  "checked_code": "10414283904dbb15f2a2a7f2bb50733fead1d192",
+  "platform": "linux/amd64",
+  "toolchain": "Go1.25.1",
+  "authored_code_correction": "tests/e2e/generic_structs_test.go:45 items.v.length() -> items.v.length",
+  "environment": {
+    "GOCACHE": "/tmp/manuscript-accessor-go-cache",
+    "GOPATH": "/tmp/manuscript-accessor-go",
+    "GOFLAGS": "-buildvcs=false -p=2",
+    "XDG_CACHE_HOME": "/tmp/manuscript-accessor-cache",
+    "PATH_prefix": [
+      ".artifacts/tools/node-v24.13.0-linux-x64/bin",
+      "toolchain/go/bin"
+    ]
+  },
+  "checks": [
+    {
+      "command": "go test ./pkg/lower ./pkg/compiler -count=1",
+      "exit_code": 0,
+      "log": "packages.log"
+    },
+    {
+      "command": "go test ./tests/e2e ./pkg/build -run 'TestAccessor|TestAccessors|TestSourceAccessor|TestSourceImplementationOfStandardAccessorContract|TestGenericRecordInstantiationsKeepSemantics|TestIntKeyedMapCallsKeepSemantics|Test.*Struct|Test.*Generic' -count=1 -parallel=2 -timeout=15m",
+      "exit_code": 0,
+      "log": "native.log"
+    },
+    {
+      "command": "make -o payload verify",
+      "exit_code": 0,
+      "log": "verify.log"
+    }
+  ],
+  "prior_ci_failure": {
+    "run": 38678294519,
+    "job": 116236810694,
+    "checked_merge": "21e5bd015562f1f0306b3648a50b1de04a809beb",
+    "parents": [
+      "bb450ff03259cd2cb606581fe7d53805911a6285",
+      "092442a6f4e7b8946f2a3f69a6c466e710a6b593"
+    ],
+    "test": "TestGenericRecordInstantiationsKeepSemantics",
+    "excerpt": "prior-ci-failure.log"
+  },
+  "named_tests": {
+    "base": "bb450ff03259cd2cb606581fe7d53805911a6285",
+    "head": "10414283904dbb15f2a2a7f2bb50733fead1d192",
+    "mechanism": "Go AST FuncDecl comparisons",
+    "added": 60,
+    "updated": 85,
+    "total": 145
+  },
+  "runtime_race": "Not freshly repeated: no runtime implementation delta. Prior full runtime race belongs to35eb567e.",
+  "benchmarks": "Not rerun; historical samples and scope unchanged.",
+  "publication": "Normal push to existing draft PR516 after independent approval; no merge.",
+  "independent_review": {
+    "reviewed_code": "10414283904dbb15f2a2a7f2bb50733fead1d192",
+    "verdict": "APPROVE",
+    "report": "review-10414283.md",
+    "sha256": "1ed3e886f3c6a108f292a9db70da1cda1cf3f4b9e16c799a379b554440ff168d"
+  }
+}

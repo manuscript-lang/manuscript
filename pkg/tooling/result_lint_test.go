@@ -14,7 +14,7 @@ func TestDiscardedResultLint(t *testing.T) {
 		want         int
 	}{
 		{"call", operation + "fn caller() -> Unit:\n    operation()\n", 1},
-		{"explicit standard import", "import Result from \"@std/result.ms\"\n" + operation + "fn caller() -> Unit:\n    operation()\n", 1},
+		{"explicit standard import", "" + operation + "fn caller() -> Unit:\n    operation()\n", 1},
 		{"unit result", "fn operation() -> Result[Unit, String]: ok(unit)\nfn caller() -> Unit:\n    operation()\n", 1},
 		{"nested closure", operation + "fn caller() -> Unit:\n    let callback = fn() -> Unit:\n        if true:\n            operation()\n    callback()\n", 1},
 		{"match value", operation + "fn caller() -> Unit:\n    match operation():\n        ok(value): operation()\n        error(cause): operation()\n", 1},

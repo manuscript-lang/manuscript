@@ -15,14 +15,14 @@ import (
 func TestStructuredTestEventsRetainFailuresTimeoutsAndDuplicateNames(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "events.jsonl")
 	t.Setenv(nativeabi.TestEventsEnv, path)
-	pass := func(*Execution, []Value) Value { return Unit{} }
+	pass := func(*Execution) Unit { return Unit{} }
 	tests := []Test{
-		{"same.ms::duplicate", NewFunction(nil, "Unit", pass)},
-		{"same.ms::duplicate", NewFunction(nil, "Unit", func(*Execution, []Value) Value { return Panic("named failure") })},
-		{"same.ms::timeout", NewFunction(nil, "Unit", func(ctx *Execution, _ []Value) Value { <-ctx.Context.Done(); CheckCancelled(ctx); return Unit{} })},
-		{"same.ms::after", NewFunction(nil, "Unit", pass)},
+		{Name: "same.ms::duplicate", Run: pass},
+		{Name: "same.ms::duplicate", Run: func(*Execution) Unit { return Panic(nil, "named failure") }},
+		{Name: "same.ms::timeout", Run: func(ctx *Execution) Unit { <-ctx.Context.Done(); return CheckCancelled(ctx) }},
+		{Name: "same.ms::after", Run: pass},
 	}
-	if failed := RunTestsArgs(tests, []string{"--timeout=20ms"}); failed != 2 {
+	if failed := RunTests(tests, []string{"--timeout=20ms"}); failed != 2 {
 		t.Fatalf("failed=%d", failed)
 	}
 	file, err := os.Open(path)
@@ -57,7 +57,7 @@ func TestStructuredTestEventsEmptyAndUnmatchedFilter(t *testing.T) {
 		status int
 		reason string
 	}{{nil, 0, "no_tests"}, {[]string{"--filter=missing"}, 1, "no_match"}} {
-		if status := RunTestsArgs(nil, tc.args); status != tc.status {
+		if status := RunTests(nil, tc.args); status != tc.status {
 			t.Fatalf("status %d", status)
 		}
 		data, err := os.ReadFile(path)

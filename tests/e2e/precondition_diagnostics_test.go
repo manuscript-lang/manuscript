@@ -43,7 +43,6 @@ func TestPreconditionDiagnostics(t *testing.T) {
 		{"", "|PriorityQueue[Int](compare: compare, capacity: 0)", "PriorityQueue: capacity must be between 1 and 9223372036854775807, found 0"},
 	}
 	source := `import {Bytes, BytesBuilder} from "@std/bytes.ms"
-import List from "@std/collections.ms"
 import {Queue, PriorityQueue} from "@std/queues.ms"
 import from_int from "@std/bigint.ms"
 fn compare(left: Int, right: Int) -> Int: left - right
@@ -54,8 +53,7 @@ fn compare(left: Int, right: Int) -> Int: left - right
 		source += fmt.Sprintf("test %q:\n    let bytes = Bytes(values: [0, 255])\n    let list = [0, 1]\n%s", name, tc.setup)
 		line := strings.Count(source, "\n") + 1
 		call := "    let impossible = " + tc.call
-		column := strings.IndexByte(call, '|') + 1
-		frames = append(frames, fmt.Sprintf("preconditions.ms:%d:%d in test %s", line, column, name))
+		frames = append(frames, fmt.Sprintf("preconditions.ms:%d in test %s", line, name))
 		source += strings.ReplaceAll(call, "|", "") + "\n"
 	}
 	source += "test \"continues after preconditions\":\n    let valid = 1\n"

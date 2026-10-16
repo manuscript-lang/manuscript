@@ -17,6 +17,18 @@ impl Error for TextError:
     # Returns the wrapped text verbatim.
     fn message() -> String:
 
+# The error `Optional.ok_or()` returns when no cause is given. Its message names the source file and line of the call.
+export type MissingValue:
+    # Records where the absent value was converted to an error.
+    case Missing(
+        # The calling source position, as `file:line`.
+        location: String
+    )
+
+impl Error for MissingValue:
+    # Returns "missing value at" followed by the recorded source position.
+    fn message() -> String:
+
 # Portable categories for shared standard error cases. Domain errors retain their types and payloads.
 export type ErrorCategory:
     # Caller input is invalid.

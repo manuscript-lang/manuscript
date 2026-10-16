@@ -12,14 +12,13 @@ These fixtures check standard imports and API identities, concurrent sharing, da
 ```manuscript
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
 import Decimal from "@std/decimal.ms"
 
 fn amount() -> Result[Decimal, String]:
     return ok(12.50d)
 
 test "explicit standard imports":
-    if not ([1, 2].length() == 2):
+    if not ([1, 2].length == 2):
         return panic(message: "check failed")
     match amount():
         ok(value):

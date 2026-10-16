@@ -6,8 +6,7 @@ import (
 )
 
 func TestDefaultClosureAssignmentReferencesAndListHints(t *testing.T) {
-	source := `import List from "@std/collections.ms"
-fn answer(value: Int = (fn() -> Int:
+	source := `fn answer(value: Int = (fn() -> Int:
     var current = 0
     current = current + 1
     return current
@@ -17,7 +16,7 @@ fn answer(value: Int = (fn() -> Int:
             let nested = 1
             return nested
     ]
-    return value + callbacks.length()
+    return value + callbacks.length
 `
 	d := document{"file:///tmp/nested-defaults.ms", source, 1}
 	result := analyze(d, map[string]document{d.URI: d})

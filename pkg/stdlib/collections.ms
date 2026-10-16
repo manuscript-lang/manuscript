@@ -6,7 +6,7 @@ export type CollectionError:
     case InvalidInput
     # The result would hold more items than `max_items`, or more than the runtime's ceiling of 268435456 (2^28) items when `max_items` is omitted.
     case LimitExceeded
-    # A slice bound lies outside 0 <= start <= end <= length() after negative bounds are resolved from the end.
+    # A slice bound lies outside 0 <= start <= end <= length after negative bounds are resolved from the end.
     case OutOfRange
 
 # An ordered mutable collection with indexing, iteration, and transformations.
@@ -24,15 +24,15 @@ export type List[T]:
     # Returns the last equal element's zero-based index, or none; elements require Equal.
     fn last_index_of(value: T) -> Optional[Int]:
     # Returns the first element, or none when the list is empty.
-    fn first() -> Optional[T]:
+    get first -> Optional[T]:
     # Returns the last element, or none when the list is empty.
-    fn last() -> Optional[T]:
+    get last -> Optional[T]:
     # Reports whether the list has no elements.
-    fn is_empty() -> Bool:
+    get is_empty -> Bool:
     # Inserts `value` at index 0 in place, shifting existing elements one position later, and returns this same list.
     fn prepend(value: T) -> List[T]:
     # Inserts value before index in place and returns this list; negative indexes count from the end.
-    # Requires -length() <= index <= length(); index length() appends, and invalid indexes fault.
+    # Requires -length <= index <= length; index length appends, and invalid indexes fault.
     fn insert(index: Int, value: T) -> List[T]:
     # Removes and returns the last element in place, or none for an empty list.
     fn pop() -> Optional[T]:
@@ -44,7 +44,7 @@ export type List[T]:
     # Shifts the suffix without clearing prior values retained in spare backing capacity.
     fn remove(index: Int) -> List[T]:
     # Returns a new shallow List containing [start, end); outer storage is independent.
-    # Negative bounds are relative to the end; bounds outside 0 <= start <= end <= length() return CollectionError.OutOfRange.
+    # Negative bounds are relative to the end; bounds outside 0 <= start <= end <= length return CollectionError.OutOfRange.
     fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
     # Copies the first min(count, length) elements into fresh shallow List storage.
     # Leaves the receiver unchanged; negative count is a programming fault.
@@ -95,14 +95,14 @@ export type List[T]:
     # Shrinking retains prior values in spare backing capacity, following captured Go slice traversal.
     fn splice(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
     # Sets elements in [start, end) to `value` in place and returns this list.
-    # Bounds must satisfy 0 <= start <= end <= length(); negative or larger bounds fault rather than counting from the end, and an empty range changes nothing.
+    # Bounds must satisfy 0 <= start <= end <= length; negative or larger bounds fault rather than counting from the end, and an empty range changes nothing.
     fn fill(value: T, start: Int, end: Int) -> List[T]:
     # Copies the elements in [start, end) to begin at index `target`, in place, and returns this list.
-    # The list never grows: copying stops at the end of the list. Source bounds must satisfy 0 <= start <= end <= length() and a target must be within 0 through length(); otherwise the call faults.
+    # The list never grows: copying stops at the end of the list. Source bounds must satisfy 0 <= start <= end <= length and a target must be within 0 through length; otherwise the call faults.
     fn copy_within(target: Int, start: Int, end: Int) -> List[T]:
     # Returns a new set of the distinct elements, using Hashable equality; the first of equal elements is kept in insertion order.
     fn to_set() -> Set[T]:
-    # Returns a new list of the zero-based indexes 0 through length() - 1.
+    # Returns a new list of the zero-based indexes 0 through length - 1.
     fn keys() -> List[Int]:
     # Returns a new list of `ListEntry` records pairing each zero-based index with its element, in order.
     fn entries() -> List[ListEntry[T]]:
@@ -114,14 +114,14 @@ export type List[T]:
     # Returns a new list holding this list's elements followed by `other`; neither operand is changed.
     fn concat(other: List[T]) -> List[T]:
     # Returns the number of elements.
-    fn length() -> Int:
+    get length -> Int:
 
 # A mutable key-value collection. Keys use explicit `Hashable` value semantics.
 export type Map[T: Hashable, U]:
     # Returns a shallow copy with independent map storage.
     fn clone() -> Map[T, U]:
     # Reports whether this map has no entries.
-    fn is_empty() -> Bool:
+    get is_empty -> Bool:
     # Copies matching entries in insertion order, retaining payload references.
     # Callbacks traverse a snapshot even when they mutate the receiver.
     fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
@@ -170,7 +170,7 @@ export type Map[T: Hashable, U]:
     # Returns the value stored for an equal key, or none when the key is absent.
     fn get(key: T) -> Optional[U]:
     # Returns the number of entries.
-    fn length() -> Int:
+    get length -> Int:
     # Inserts or replaces a value and returns this map; replacement keeps the original key and insertion position.
     fn add(key: T, value: U) -> Map[T, U]:
     # Removes an equal key and returns this same Map; remaining entries retain insertion order.
@@ -189,7 +189,7 @@ export type Set[T: Hashable]:
     # Copies outer storage, retaining element references and insertion order.
     fn clone() -> Set[T]:
     # Reports whether this set has no elements.
-    fn is_empty() -> Bool:
+    get is_empty -> Bool:
     # Copies matching elements in insertion order, retaining payload references.
     # Callbacks traverse a snapshot even when they mutate the receiver.
     fn filter(predicate: fn(value: T) -> Bool) -> Set[T]:
@@ -232,7 +232,7 @@ export type Set[T: Hashable]:
     # Reports whether an equal value is present, using the element's Hashable implementation.
     fn contains(value: T) -> Bool:
     # Returns the number of distinct values currently stored.
-    fn length() -> Int:
+    get length -> Int:
     # Adds a value in place and returns this set; an equal value retains its original payload and position.
     fn add(value: T) -> Set[T]:
     # Removes an equal value in place and returns this set; an absent value leaves it unchanged.
@@ -293,3 +293,160 @@ export type SetBuilder[T: Hashable]:
     # Adds a value to the shared builder; returns Unit like all builder mutations.
     # Equal values retain the first payload and position; a sealed builder faults.
     fn add(value: T) -> Unit:
+
+# documentation documentation/standard-library/builders.md
+# +++
+# title = "Building values"
+# weight = 6
+# +++
+#
+# # Building values
+#
+# Ordinary collections already support mutation. Use a builder when construction needs synchronized access and an atomic sealed result. A builder returns its result when sealed. Builder aliases are ordinary references; freezing may seal the builder so later mutation reports a runtime error.
+#
+# Builders synchronize mutation and freeze across all aliases. Freezing seals the object atomically; an append racing with freeze either contributes to the snapshot or faults after sealing. Concurrent appends have nondeterministic order. There is no ownership-transfer or consuming function type.
+#
+# ## API
+#
+# Collection builders are exported by `@std/collections.ms`; BytesBuilder by `@std/bytes.ms`; StringBuilder by `@std/string.ms`. They have zero-argument constructors and are opaque references with no equality or hashing. Type arguments can come from an explicit application or a complete expected constructor type.
+#
+# | Type | Mutation | Freeze result |
+# | --- | --- | --- |
+# | `ListBuilder[T]` | `append(value: T) -> Unit` | `List[T]` |
+# | `MapBuilder[K: Hashable, V]` | `add(key: K, value: V) -> Unit` | `Map[K, V]` |
+# | `SetBuilder[T: Hashable]` | `add(value: T) -> Unit` | `Set[T]` |
+# | `BytesBuilder` | `append(value: Int) -> Unit`, `concat(values: Bytes) -> Unit` | `Bytes` |
+# | `StringBuilder` | `append(value: String) -> Unit` | `String` |
+#
+# All builder mutations return `Unit`; they update the builder through its existing reference. Ordinary collection mutators return their collection for chaining; builders return their constructed value only from `freeze`. See the [migration table](../core-language/types/collections.md#naming-and-migration).
+#
+# `freeze()` seals the shared local object and returns its result. Repeated freeze returns the same value. List, Map, and Set results are ordinary mutable collections; sealing prevents further builder operations, not mutation through the result. Use `.clone()` to retain a separate copy. Every builder mutation through any alias after sealing is a programming fault. Byte append requires 0 through 255. Map replacement preserves insertion position; set insertion ignores an already present value. Builders have no implicit cleanup or ownership transfer.
+#
+# See [references inside other values](../core-language/types/references.md) and [collections](../core-language/types/collections.md).
+#
+# <!-- manuscript-example: {"mode":"test"} -->
+# ```manuscript
+# import MapBuilder from "@std/collections.ms"
+# import panic from "@std/faults.ms"
+#
+# test "build entries with a stored Unit operation":
+#     let builder = MapBuilder[String, Int]()
+#     let add: fn(key: String, value: Int) -> Unit = builder.add
+#     add("a", 1)
+#     add("a", 2)
+#     let result = builder.freeze()
+#     if result.get("a") != some(2): return panic("builder replacement")
+# ```
+# end-documentation
+
+# documentation documentation/standard-library/data.md
+# +++
+# title = "Text and collections"
+# weight = 5
+# +++
+#
+# # Text and collections
+#
+# Use receiver operations for existing data: `text.split(separator: ",")`, `bytes.slice(start: 0, end: 4)` (a `Result`), `values.map(transform: transform)`, and `left.union(right)`. Standalone functions create or decode values, such as `from_scalars`, `filled`, `range`, `map_from_entries`, and `compile` for a regular expression.
+#
+# | Group | Source module | Reference |
+# | --- | --- | --- |
+# | String operations and StringBuilder | `@std/string.ms` | [Text](reference/string.md) |
+# | Bytes operations and BytesBuilder | `@std/bytes.ms` | [Bytes](reference/bytes.md) |
+# | List, Map, Set and their builders | `@std/collections.ms` | [Collections](reference/collections.md) |
+# | Local FIFO and priority queues | `@std/queues.ms` | [Queue contracts](../concurrency/queues.md) |
+# | Equality and hashing interfaces | `@std/equality.ms` | [Equality rules](../core-language/types/equality-and-hashing.md) |
+# | Base64 and hexadecimal encoding | `@std/encoding.ms` | [Encodings](reference/encoding.md) |
+# | Binary numbers | `@std/binary.ms` | [Binary](reference/binary.md) |
+# | Regular expressions | `@std/regex.ms` | [Regex](reference/regex.md) |
+#
+# List, Map and Set mutation is visible through aliases. `.clone()` makes a separate shallow copy. `sorted` returns a new list and accepts a comparator; there are no separate integer and string sorting helpers. Flatten a nested list with `flat_map` and an identity callback. Use `.at` for optional indexed access, including relative negative indexes on List and Bytes.
+#
+# ## Transform and search lists
+#
+# `take(count:)` returns a shallow copy of the first `count` elements; `drop(count:)` returns a shallow copy after them. Counts above `length` are clamped: taking copies the whole list, dropping returns an empty list. Zero takes an empty list or drops nothing; a negative count produces a programming fault naming the operation, parameter and original count. Both return fresh mutable List storage even for empty or whole-list copies, preserve element order and payload references, and leave the receiver unchanged. They are explicit copy operations and do not change loop or callback traversal behavior.
+#
+# `count(predicate:)` returns how many elements match, and `distinct()` returns a new shallow list keeping the first of each group of equal elements in their original order; like `contains`, it requires `Equal` elements and compares each element with those already kept. `insert(index:, value:)` and `pop()` mutate the receiver: `insert` accepts `-length` through `length` and returns the same list, while `pop` removes the last element and returns it, or `none` for an empty list.
+#
+# `map` transforms each element, `filter` keeps matching elements, and `flat_map` combines the lists returned by its callback. These operations return new lists. Callbacks run sequentially and may wait for operations.
+#
+# Inside a function or test:
+#
+# ```manuscript
+# let labels = [1, 2].map(transform: fn(value: Int) -> String:
+#     return "item {value}"
+# )
+# let line = labels.join(separator: ", ")
+# # line is "item 1, item 2".
+# ```
+#
+# `List`, `Map`, and `Set` are available without imports. `find` and `find_index` stop at the first match and return an `Optional`; `find_last` and `find_last_index` search from the end. `index_of` and `last_index_of` search by equality. `for_each` runs a sequential callback and returns Unit. `some` and `every` return a `Bool`; an empty list produces false and true respectively. `fold` and `fold_right` require an initial accumulator, which may have a different type from the elements. Sorting is stable and requires an explicit comparator. See [search and enumeration](../core-language/types/collections.md#search-and-enumeration) for callback labels, entry shapes, and Set relation operations.
+#
+# ## Map and set order
+#
+# Maps and sets enumerate in insertion order, while equality ignores order. Replacing an existing map key retains its position; removing and adding it puts it at the end. `map_from_entries` uses the last value for duplicate keys and keeps the first insertion position. `merge` mutates the receiving map, replacing matching values and appending new keys.
+#
+# `add_default_from` calls its creation function only when the key is absent. Set algebra returns new sets: left-side traversal order is retained, followed by right-only values where applicable. Keys and set elements must satisfy [Hashable](../core-language/types/equality-and-hashing.md).
+#
+# ## Text and regular expressions
+#
+# String indexing and search count Unicode scalars. The [text rules](../core-language/basics/text-and-bytes.md#indexing-and-character-boundaries) specify units and the relative negative and strict slice bounds. String operations return new text and leave the receiver unchanged.
+#
+# | String operations | Behavior |
+# | --- | --- |
+# | `contains`, `starts_with`, `ends_with` | Test exact text contents without normalization. |
+# | `trim`, `trim_start`, `trim_end` | Remove Unicode whitespace from both ends, the start, or the end. Whitespace is U+0009–U+000D, U+0020, U+0085, U+00A0, U+1680, U+2000–U+200A, U+2028, U+2029, U+202F, U+205F, and U+3000. |
+# | `upper`, `lower` | Apply locale-independent full Unicode case mapping; the scalar length can change. |
+# | `scalar_length`, `scalar_values` | Count Unicode scalars or return their integer code points. |
+# | `length`, `is_empty`, `chars`, `reverse` | Count/test text, collect one String per scalar, or reverse scalar order; returned lists have fresh storage. |
+# | `compare` | Return -1/0/1 in case-sensitive lexical scalar order without locale or normalization. |
+# | `lines` | Split LF/CRLF terminators, retaining interior empty lines and standalone CR; omit an extra trailing item. See the exact [text rules](../core-language/basics/text-and-bytes.md#indexing-and-character-boundaries). |
+# | `pad_start`, `pad_end` | Repeat and truncate `padding` on scalar boundaries until `target_length` scalars are reached. A shorter target or empty padding leaves the text unchanged. Negative targets return `InvalidInput`. |
+# | `replace_first` | Replace the first occurrence by default (omitted or `none` cap); a supplied `max_replacements` can replace more than one occurrence, and zero leaves text unchanged. Negative caps fault. `replace` remains a compatible spelling with identical defaults, caps, and faults. |
+# | `replace_n` | Replace at most the required `max_replacements: Int` nonoverlapping literal occurrences. Zero leaves text unchanged; negative counts retain replace's programming fault. This count is not a UTF-8 byte budget. |
+# | `replace_all` | Replace every nonoverlapping occurrence. Return `StringError.LimitExceeded` if the UTF-8 output exceeds a supplied `max_bytes`, or `InvalidInput` for a negative budget. |
+# | `split` | Split on exact separators and truncate to a supplied `max_parts`; zero returns no parts and negative limits fault. Empty text split on a nonempty separator returns `[""]`; an empty separator splits into scalars, giving no parts for empty text. |
+#
+# For a finite cap, use `text.replace_n(old: "a", new: "b", max_replacements: 2)`. Current `replace_first` is a transitional compatibility spelling: its retained count parameter can replace more than one match. Its signature remains supported; a future strict first-only shape requires a separate reviewed migration. `replace_n` has no additional output-byte/allocation budget, and replacement text can grow the result; `replace_all` provides a separate byte-budgeted operation.
+#
+# An empty `old` in `replace_first` (or `replace`), `replace_n` and `replace_all` matches before the first scalar and after each scalar, including the end. Replacement does not scan newly inserted text. `repeat`, `normalize`, `pad_start`, and `pad_end` also accept optional UTF-8 output budgets: omitted or `none` budgets impose no cap, zero permits only empty output, negatives return `StringError.InvalidInput`, and exceeding a supplied budget returns `StringError.LimitExceeded`. Even unchanged padding results must fit the supplied budget. Normalization accepts exactly the case-sensitive strings `NFC`, `NFD`, `NFKC`, or `NFKD`; other forms return `StringError.InvalidInput`.
+#
+# Use `NormalizationForm.Nfc`, `Nfd`, `Nfkc`, or `Nfkd` from `@std/string.ms` to select a form with a checked alternative. Its `normalize(text, max_bytes = none)` operation shares the existing String implementation, UTF-8 byte budgets, errors, and cancellation. Canonical forms compose/decompose canonically equivalent text; compatibility forms also normalize compatibility characters such as ligatures.
+#
+# <!-- manuscript-example: {"mode":"test"} -->
+# ```manuscript
+# import NormalizationForm from "@std/string.ms"
+# import panic from "@std/faults.ms"
+#
+# test "typed Unicode normalization":
+#     let text = NormalizationForm.Nfkc.normalize("ﬁ", max_bytes: 2).unwrap()
+#     if text != "fi": return panic("compatibility normalization")
+# ```
+#
+# Negative `max_parts` and `max_replacements` fault with a message naming the operation and parameter, because these operations return plain values. Full case mapping includes `"ß".upper()` as `"SS"`, `"ﬁ".upper()` as `"FI"`, final sigma `ς` at the end of `"ΑΣ".lower()`, and `"İ".lower()` as `i` followed by U+0307.
+#
+# Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed patterns return typed errors. See [common contracts](contracts.md) for optional budgets and the [API reference](reference/_index.md) for exact signatures.
+#
+# `Regex.replace_all(text:, replacement:, max_bytes:)` replaces every nonoverlapping match with literal text; `$1` does not expand a capture. Omitted or `none` byte budgets impose no cap, zero permits only empty output, negative budgets return `RegexError.InvalidInput`, and output exceeding a supplied budget returns `RegexError.LimitExceeded`. The UTF-8 budget includes unmatched input, even when no match occurs.
+#
+# ## Byte operations
+#
+# | Bytes operations | Behavior |
+# | --- | --- |
+# | `length`, `is_empty`, `at` | Count bytes, test emptiness, or read an unsigned byte; negative lookup indexes are relative to the end. |
+# | `contains`, `starts_with`, `ends_with` | Test byte subsequences, prefixes, or suffixes. |
+# | `index_of`, `last_index_of` | Return the first or last matching byte offset, or `none`; empty searches match at zero or `length` respectively. |
+# | `split` | Split exact binary separators into a fresh List of immutable Bytes views. `max_parts` truncates returned parts; omitted/`none` is unlimited, zero returns no parts, negatives fault. |
+# | `slice` | Select a half-open byte range, returning `OutOfRange` for invalid bounds, under the [slice rules](../core-language/basics/text-and-bytes.md#half-open-slices). |
+# | `with_value`, `reversed`, `concat`, `clone` | Return Bytes without changing the receiver. `with_value` accepts relative negative indexes; an invalid index or a value outside 0–255 faults. |
+# | `values` | Return a fresh mutable `List[Int]` of bytes; `values(data:)` remains available as a free function. |
+# | `to_text` | Decode valid UTF-8 or return `none`. |
+#
+# Bytes stay immutable even when a native slice shares storage. Construction and extraction copy values, as described in [encoding and parsing](../core-language/basics/text-and-bytes.md#encoding-and-parsing).
+#
+# `Bytes.split` preserves leading, interior and trailing empty parts. An empty separator yields one Bytes per byte, and gives no parts for empty data; a nonempty separator gives one empty part for empty data. It never decodes UTF-8, so separators can split a multibyte character or invalid text. A cap discards later parts instead of retaining an unsplit remainder: `Bytes([1, 0, 2, 0, 3]).split(Bytes([0]), max_parts: 2)` returns `[Bytes([1]), Bytes([2])]`. Returned Lists have independent mutable storage, while their immutable Bytes may share the input storage. Changing a result with `with_value` creates new Bytes and leaves the input and other parts unchanged.
+#
+# ## Base64 encoding
+#
+# `base64_encode(data: bytes)` and `base64_decode(text: "/w==")` use the standard alphabet by default. Pass `url_safe: true` for the URL-safe alphabet (`_w==` for the same byte). Decoding still validates the selected alphabet and an explicit `max_bytes` output budget; zero is a supplied budget.
+# end-documentation

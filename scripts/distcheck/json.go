@@ -105,7 +105,7 @@ test "after":
 			if status != 0 || len(document.Tests) != 1 || document.Summary.Selected != 1 || document.Summary.Passed != 1 || document.Tests[0].Status != "passed" {
 				return fmt.Errorf("filtered JSON outcomes: %s", output)
 			}
-		} else if status != 1 || len(document.Tests) != 3 || document.Summary.Passed != 2 || document.Summary.Failed != 1 || document.Tests[1].Status != "failed" || !strings.Contains(document.Tests[1].Failure, "distribution failure") || !strings.Contains(document.Tests[1].Failure, "json-tests.ms:9:") || document.Tests[2].Status != "passed" {
+		} else if status != 1 || len(document.Tests) != 3 || document.Summary.Passed != 2 || document.Summary.Failed != 1 || document.Tests[1].Status != "failed" || !strings.Contains(document.Tests[1].Failure, "distribution failure") || !strings.Contains(document.Tests[1].Failure, "json-tests.ms:9") || document.Tests[2].Status != "passed" {
 			return fmt.Errorf("failure JSON outcomes: %s", output)
 		}
 	}

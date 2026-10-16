@@ -80,8 +80,7 @@ func TestNestedCollectionsPreserveFiniteRecursiveApplications(t *testing.T) {
 		source   string
 		accepted bool
 	}{
-		{`import {List, Map} from "@std/collections.ms"
-type Value:
+		{`type Value:
     children: Map[String, Value]
 type Wrapper:
     entries: Map[String, Node]
@@ -89,8 +88,7 @@ type Node:
     case Leaf(value: Value)
     case Children(values: List[Wrapper])
 `, true},
-		{`import List from "@std/collections.ms"
-type Growing[T]:
+		{`type Growing[T]:
     children: List[Growing[List[T]]]
 `, false},
 	} {

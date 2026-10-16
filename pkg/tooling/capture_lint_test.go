@@ -7,8 +7,7 @@ import (
 )
 
 func TestConcurrentCaptureLintReproduction(t *testing.T) {
-	source := `import Map from "@std/collections.ms"
-import TaskGroup from "@std/tasks.ms"
+	source := `import TaskGroup from "@std/tasks.ms"
 fn run() -> Unit:
     let counters = {"hits": 0}
     with tasks = TaskGroup():
@@ -29,8 +28,7 @@ fn run() -> Unit:
 }
 
 func TestConcurrentCaptureLint(t *testing.T) {
-	imports := `import { Map, List } from "@std/collections.ms"
-import { TaskGroup, Scheduler } from "@std/tasks.ms"
+	imports := `import { TaskGroup, Scheduler } from "@std/tasks.ms"
 import Synchronized from "@std/sync.ms"
 import duration from "@std/time.ms"
 import network from "@std/net.ms"
@@ -109,14 +107,14 @@ type Counter:
     with tasks = TaskGroup():
         let _task = tasks.start(fn():
             with locked = values.lock():
-                locked.get().add(key: "hits", value: 1)
+                locked.value.add(key: "hits", value: 1)
         )
 `, 0},
 		{"guard local update", `    let values = Synchronized({"hits": 0})
     with tasks = TaskGroup():
         let _task = tasks.start(fn():
             with locked = values.lock():
-                let protected = locked.get()
+                let protected = locked.value
                 protected.add(key: "hits", value: 1)
         )
 `, 0},
@@ -198,8 +196,7 @@ type Counter:
 }
 
 func TestConcurrentCaptureLintDoesNotGuessMethodNames(t *testing.T) {
-	source := `import List from "@std/collections.ms"
-interface Starter:
+	source := `interface Starter:
     fn start(operation: fn() -> Unit) -> Unit
 type Sequential:
 impl Starter for Sequential:
@@ -221,8 +218,7 @@ fn run() -> Unit:
 }
 
 func TestConcurrentCaptureLintHTTPHandlers(t *testing.T) {
-	prefix := `import List from "@std/collections.ms"
-import network from "@std/net.ms"
+	prefix := `import network from "@std/net.ms"
 import { HttpResponse, HttpServerOptions } from "@std/http.ms"
 import panic from "@std/faults.ms"
 fn run() -> Unit:
@@ -257,11 +253,10 @@ func TestConcurrentCaptureLintDocumentationFragments(t *testing.T) {
 	}{
 		{`let counts = {"hits": 0}`, `counts.add(key: "hits", value: counts.get("hits").unwrap_or(0) + 1)`, 1},
 		{`let counts = Synchronized({"hits": 0})`, `with locked = counts.lock():
-                let values = locked.get()
+                let values = locked.value
                 values.add(key: "hits", value: values.get("hits").unwrap_or(0) + 1)`, 0},
 	} {
-		source := `import Map from "@std/collections.ms"
-import TaskGroup from "@std/tasks.ms"
+		source := `import TaskGroup from "@std/tasks.ms"
 import Synchronized from "@std/sync.ms"
 fn run() -> Unit:
     ` + tc.declaration + `

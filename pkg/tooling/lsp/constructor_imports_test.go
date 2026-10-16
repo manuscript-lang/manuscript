@@ -6,10 +6,10 @@ import (
 )
 
 func TestConstructorImportsRemainAvailableInEditor(t *testing.T) {
-	source := `import Set from "@std/collections.ms"
+	source := `import SetBuilder from "@std/collections.ms"
 import CsvOptions from "@std/csv.ms"
 fn example() -> Unit:
-    Set[String]()
+    SetBuilder[String]()
     CsvOptions(delimiter: ",", line_ending: "\n")
 `
 	d := document{"file:///tmp/constructor-imports.ms", source, 1}
@@ -21,7 +21,7 @@ fn example() -> Unit:
 	if len(actions) != 0 {
 		t.Fatal("used constructor imports offered for removal", actions)
 	}
-	for _, name := range []string{"Set", "CsvOptions"} {
+	for _, name := range []string{"SetBuilder", "CsvOptions"} {
 		pos := Position(source, strings.LastIndex(source, name))
 		if navigation(checked, d, pos, "textDocument/definition") == nil {
 			t.Fatal("constructor definition missing", name)

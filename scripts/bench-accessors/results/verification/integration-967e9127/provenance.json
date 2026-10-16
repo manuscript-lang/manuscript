@@ -1,0 +1,59 @@
+{
+  "prior_published_head": "919638e782cbd0662529d12d5b8cd401ceeac4c4",
+  "main": "967e912751f97b6ff0ba029270f509e23639c56a",
+  "checked_code": "35eb567e712ddf800df8095292a5d0af5ef683fe",
+  "platform": "linux/amd64",
+  "toolchain": "Go1.25.1",
+  "resolution": [
+    "Retain both StringLengthRead and MapGetPartsInt helper expectations",
+    "Change exactly two new int_map_calls_test.go m.length() calls to m.length"
+  ],
+  "environment": {
+    "GOCACHE": "/tmp/manuscript-accessor-go-cache",
+    "GOPATH": "/tmp/manuscript-accessor-go",
+    "GOFLAGS": "-buildvcs=false -p=2",
+    "XDG_CACHE_HOME": "/tmp/manuscript-accessor-cache",
+    "PATH_prefix": [
+      ".artifacts/tools/node-v24.13.0-linux-x64/bin",
+      "toolchain/go/bin"
+    ]
+  },
+  "checks": [
+    {
+      "command": "go test ./pkg/lower ./pkg/compiler ./internal/nativeabi ./pkg/stdlib -count=1",
+      "exit_code": 0,
+      "log": "packages.log"
+    },
+    {
+      "command": "go test -race ./pkg/runtime -count=1 -timeout=10m",
+      "exit_code": 0,
+      "log": "runtime-race.log"
+    },
+    {
+      "command": "go test ./tests/e2e ./pkg/build -run 'TestAccessor|TestAccessors|TestSourceAccessor|TestSourceImplementationOfStandardAccessorContract|TestIntKeyedMapCallsKeepSemantics|TestCollection|TestMap' -count=1 -parallel=2 -timeout=15m",
+      "exit_code": 0,
+      "log": "native.log"
+    },
+    {
+      "command": "make -o payload verify",
+      "exit_code": 0,
+      "log": "verify.log"
+    }
+  ],
+  "named_tests": {
+    "base": "967e912751f97b6ff0ba029270f509e23639c56a",
+    "head": "35eb567e712ddf800df8095292a5d0af5ef683fe",
+    "mechanism": "Go AST FuncDecl comparison",
+    "added": 60,
+    "updated": 84,
+    "total": 144
+  },
+  "performance": "No benchmark rerun or new claim; historical evidence unchanged.",
+  "publication": "Normal push to existing draft PR516 after independent approval; do not merge.",
+  "independent_review": {
+    "reviewed_code": "35eb567e712ddf800df8095292a5d0af5ef683fe",
+    "verdict": "APPROVE",
+    "report": "review-35eb567e.md",
+    "sha256": "85af935a7df6b77fa8bdeec1e4be6624a07d169da01ac35c1dc2cf13f9e73d05"
+  }
+}

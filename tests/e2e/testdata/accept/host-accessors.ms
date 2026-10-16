@@ -8,14 +8,14 @@ import panic from "@std/faults.ms"
 import TaskGroup from "@std/tasks.ms"
 
 fn check_services() -> Unit:
-    if arguments().length() != 0:
+    if arguments().length != 0:
         return panic("test arguments are not empty")
 
     let before = clock().now()
     let after = clock().now()
     if after - before < 0.milliseconds:
         return panic("clock roots changed")
-    if wall_clock().now().unix_seconds() <= 0:
+    if wall_clock().now().unix_seconds <= 0:
         return panic("wall clock unavailable")
     if system().info().cpu_count <= 0:
         return panic("system service unavailable")
@@ -31,7 +31,7 @@ fn check_services() -> Unit:
 
     match entropy().bytes(count: 0):
         ok(data):
-            if data.length() != 0:
+            if data.length != 0:
                 return panic("unexpected entropy size")
 
         error(_):

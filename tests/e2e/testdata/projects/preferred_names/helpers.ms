@@ -1,5 +1,3 @@
-import Set from "@std/collections.ms"
-
 export fn add_generic[T: Hashable](items: Set[T], value: T) -> Set[T]:
     return items.add(value)
 

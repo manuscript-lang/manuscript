@@ -7,7 +7,7 @@ import (
 
 func TestInferredCallbackParameterNavigation(t *testing.T) {
 	for _, ending := range []string{"\n", "\r\n"} {
-		source := strings.ReplaceAll("import List from \"@std/collections.ms\"\nfn answer() -> Unit:\n    let values = [1, 2].map(fn(value): value + 1)\n", "\n", ending)
+		source := strings.ReplaceAll("fn answer() -> Unit:\n    let values = [1, 2].map(fn(value): value + 1)\n", "\n", ending)
 		d := document{"file:///tmp/callback.ms", source, 1}
 		result := analyze(d, map[string]document{d.URI: d})
 		if !result.Success() {
@@ -30,7 +30,7 @@ func TestInferredCallbackParameterNavigation(t *testing.T) {
 
 func TestNestedCallbackProbeNavigation(t *testing.T) {
 	for _, ending := range []string{"\n", "\r\n"} {
-		source := strings.ReplaceAll("import List from \"@std/collections.ms\"\nfn answer() -> Unit:\n    let offset = 7\n    let values = [1].map(fn(outer): [2].map(fn(inner): outer + inner + offset))\n", "\n", ending)
+		source := strings.ReplaceAll("fn answer() -> Unit:\n    let offset = 7\n    let values = [1].map(fn(outer): [2].map(fn(inner): outer + inner + offset))\n", "\n", ending)
 		d := document{"file:///tmp/nested-callback.ms", source, 1}
 		result := analyze(d, map[string]document{d.URI: d})
 		if !result.Success() {
@@ -55,7 +55,7 @@ func TestNestedCallbackProbeNavigation(t *testing.T) {
 
 func TestRejectedNestedCallbackProbeNavigation(t *testing.T) {
 	expression := "[1].map(fn(outer): " + strings.Repeat("[2].map(fn(inner): ", 39) + "outer + missing" + strings.Repeat(")", 40)
-	source := "import List from \"@std/collections.ms\"\nfn answer() -> Unit:\n    let values = " + expression + "\n"
+	source := "fn answer() -> Unit:\n    let values = " + expression + "\n"
 	d := document{"file:///tmp/rejected-callback.ms", source, 1}
 	result := analyze(d, map[string]document{d.URI: d})
 	if len(result.Diagnostics) != 1 || !strings.Contains(result.Diagnostics[0].Message, "missing") {

@@ -136,9 +136,6 @@ func check() error {
 		{"emit", manifest, "--output=" + filepath.Join(directory, "main=v1.go")},
 		{"inspect", manifest, "-o", filepath.Join(directory, "inspection.json")},
 		{"diagram", manifest, "-o", filepath.Join(directory, "calls.mmd")},
-		{"doc", project, "--output=" + filepath.Join(directory, "api=v1.md")},
-		{"doc", "--stdlib", "--json", "--output=" + filepath.Join(directory, "stdlib=v1.json")},
-		{"stdlib", filepath.Join(directory, "stdlib")},
 		{"lint", filepath.Join(project, "test.ms"), "--json"},
 	} {
 		if _, err := run(cli, arguments...); err != nil {

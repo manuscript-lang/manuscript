@@ -1,4 +1,3 @@
-import List from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 fn identity[T](value: T) -> T: value
@@ -31,12 +30,8 @@ fn record(events: Events, value: Int) -> Int:
 test "reused inference preserves evaluation and argument conversions":
     let events = Events([])
     let selected = first(
-        right: identity(
-            identity(record(events: events, value: 2))
-        ),
-        left: identity(
-            identity(record(events: events, value: 1))
-        )
+        right: identity(identity(record(events: events, value: 2))),
+        left: identity(identity(record(events: events, value: 1)))
     )
     if selected != 1: return panic("wrong inferred argument")
     if events.values != [2, 1]: return panic("argument order or repeated evaluation")
@@ -48,22 +43,12 @@ test "reused inference preserves evaluation and argument conversions":
     if wrapped != 3: return panic("lost optional wrapping")
     if events.values != [2, 1, 3]: return panic("optional argument evaluated twice")
 
-    let message = describe(
-        value: 1,
-        cause: identity(Failure("cached"))
-    )
+    let message = describe(value: 1, cause: identity(Failure("cached")))
     if message != "cached": return panic("lost Error conversion")
 
-    let generic_message = describe(
-        value: 1,
-        cause: identity(GenericFailure(4))
-    )
+    let generic_message = describe(value: 1, cause: identity(GenericFailure(4)))
     if generic_message != "4": return panic("lost generic Error dispatch")
 
     let offset = 7
-    let callback = identity(
-        identity(
-            fn(value: Int): offset + value
-        )
-    )
+    let callback = identity(identity(fn(value: Int): offset + value))
     if callback(3) != 10: return panic("lost callback capture")

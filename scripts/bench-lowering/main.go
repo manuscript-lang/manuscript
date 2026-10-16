@@ -96,9 +96,7 @@ func run() error {
 	}
 	fmt.Println("Generated source and benchmark harness:", directory)
 	arguments := []string{"test", "-mod=vendor", "-run", "^TestBenchmarkParity$", "-bench", "^BenchmarkLowering$", "-benchmem", "-benchtime=" + *benchtime, "-count=" + strconv.Itoa(*count)}
-	if !*nativeDefaults {
-		arguments = append(arguments, "-tags=ms_lean")
-	} else {
+	if *nativeDefaults {
 		arguments = append(arguments, "-cpu=1")
 	}
 	command := exec.Command(devtool.Go(), append(arguments, directory)...)

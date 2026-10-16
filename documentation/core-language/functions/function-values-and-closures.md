@@ -62,12 +62,11 @@ Reassignment changes the local binding, not the captured value. Assigning to a c
 Capturing a record or collection keeps a reference to the same object. Changes to that object remain visible:
 
 ```manuscript
-import List from "@std/collections.ms"
 
 fn tag_count() -> Int:
     let tags = ["docs"]
     let count = fn():
-        return tags.length()
+        return tags.length
     tags.append("release")
     return count()
 # tag_count() returns 2.
@@ -104,7 +103,6 @@ See [task groups](../../concurrency/task-groups.md), [scheduling work](../../con
 ## Contextual callback inference
 
 ```manuscript
-import List from "@std/collections.ms"
 
 fn names() -> List[String]:
     return [1, 2].map(fn(value): value.toString())

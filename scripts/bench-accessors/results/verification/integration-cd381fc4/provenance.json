@@ -1,0 +1,71 @@
+{
+  "prior_published_head": "2e29c5ccf6e98681d9d520164f120aad5b78fcba",
+  "main": "cd381fc4570dcd5d2763ce6c3eb0ef5619238cda",
+  "checked_code": "5e19ababf5cb59a65fc000a78f5b46cc38c55283",
+  "platform": "linux/amd64",
+  "toolchain": "Go1.25.1",
+  "authored_code_correction": "Six .length() -> .length calls in tests/e2e/list_literals_test.go; all assertions retained.",
+  "environment": {
+    "GOCACHE": "/tmp/manuscript-accessor-go-cache",
+    "GOPATH": "/tmp/manuscript-accessor-go",
+    "GOFLAGS": "-buildvcs=false -p=2",
+    "XDG_CACHE_HOME": "/tmp/manuscript-accessor-cache",
+    "PATH_prefix": [
+      ".artifacts/tools/node-v24.13.0-linux-x64/bin",
+      "toolchain/go/bin"
+    ]
+  },
+  "checks": [
+    {
+      "command": "go test ./pkg/lower ./pkg/compiler -count=1",
+      "exit_code": 0,
+      "log": "packages.log"
+    },
+    {
+      "command": "go test -race ./pkg/runtime -run 'TestAccessor|TestList|TestPrimitiveList|TestFreshSizedList|TestStrictPrimitiveList' -count=1 -timeout=10m",
+      "exit_code": 0,
+      "log": "runtime-race.log"
+    },
+    {
+      "command": "go test ./tests/e2e ./pkg/build -run 'TestAccessor|TestAccessors|TestSourceAccessor|TestSourceImplementationOfStandardAccessorContract|TestPrimitiveListLiteralsOwnFreshStorage|TestGenericRecordInstantiationsKeepSemantics|TestIntKeyedMapCallsKeepSemantics|Test.*List|Test.*Struct|Test.*Generic' -count=1 -parallel=2 -timeout=15m",
+      "exit_code": 0,
+      "log": "native.log"
+    },
+    {
+      "command": "make -o payload verify",
+      "exit_code": 0,
+      "log": "verify.log"
+    }
+  ],
+  "previous_ci_merge": {
+    "sha": "b8a12cd6bc0c3b91fe30d9e93dc68a9a8a182bcb",
+    "parents": [
+      "cd381fc4570dcd5d2763ce6c3eb0ef5619238cda",
+      "2e29c5ccf6e98681d9d520164f120aad5b78fcba"
+    ]
+  },
+  "named_tests": {
+    "base": "cd381fc4570dcd5d2763ce6c3eb0ef5619238cda",
+    "head": "5e19ababf5cb59a65fc000a78f5b46cc38c55283",
+    "mechanism": "Go AST FuncDecl comparisons",
+    "added": 60,
+    "updated": 86,
+    "total": 146
+  },
+  "benchmarks": "Not rerun; historical samples and scope unchanged.",
+  "publication": "Normal push to draft PR516 after independent approval; no merge.",
+  "prior_ci_failure": {
+    "run": 38679276363,
+    "job": 116239863659,
+    "checked_merge": "b8a12cd6bc0c3b91fe30d9e93dc68a9a8a182bcb",
+    "test": "TestPrimitiveListLiteralsOwnFreshStorage",
+    "cause": "Six old .length() calls correctly rejected as accessor calls",
+    "excerpt": "prior-ci-failure.log"
+  },
+  "independent_review": {
+    "reviewed_code": "5e19ababf5cb59a65fc000a78f5b46cc38c55283",
+    "verdict": "APPROVE",
+    "report": "review-5e19abab.md",
+    "sha256": "c65922e318b10e9e6e3d4469025621bfdbe1f0b714549df9bc4181f3112b42af"
+  }
+}

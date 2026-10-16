@@ -1,4 +1,3 @@
-import List from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 fn fail[T](message: String) -> Result[T, String]: error(message)
@@ -52,17 +51,13 @@ test "expected generic results preserve behavior and call order":
             if cause.message() != "domain": return panic("lost error dispatch")
 
     let empty: Optional[Int] = forward()
-    if not empty.is_none(): return panic("expected none")
+    if not empty.is_none: return panic("expected none")
 
-    let values: List[Optional[Int]] = [1, 2].map(
-        fn(item): absent()
-    )
-    if values.length() != 2: return panic("native contextual result")
-    if not values.at(0).unwrap().is_none(): return panic("native callback result")
+    let values: List[Optional[Int]] = [1, 2].map(fn(item): absent())
+    if values.length != 2: return panic("native contextual result")
+    if not values.at(0).unwrap().is_none: return panic("native callback result")
 
-    let callback: fn(value: Int) -> String = transform(
-        fn(item): item.toString()
-    )
+    let callback: fn(value: Int) -> String = transform(fn(item): item.toString())
     if callback(7) != "7": return panic("contextual callback parameter")
 
     let defaulted: fn(value: Int) -> Int = from_callback(
@@ -77,7 +72,7 @@ test "expected generic results preserve behavior and call order":
         second: record(events: events, value: 2),
         first: record(events: events, value: 1)
     )
-    if not combined.is_none(): return panic("nested contextual result")
+    if not combined.is_none: return panic("nested contextual result")
     if events.values != [2, 1, 3]: return panic(
         "nested calls evaluated more than once or out of order"
     )

@@ -10,6 +10,7 @@ Manuscript is a statically typed language implemented in Go. Source `.ms` files 
 - Apply [language-design-taste](skills/language-design-taste/SKILL.md) for language, standard-library, runtime, compiler, or tooling design choices.
 - The user's latest explicit direction and current canonical design take precedence over remembered preferences. Historical proposals and assistant completion reports do not establish current behavior. Identify material differences between a newer decision and this checkout.
 - Use [manuscript-change](skills/manuscript-change/SKILL.md#record-durable-lessons) when a correction or verified lesson would change future work. Update existing entries rather than accumulating duplicate or superseded advice.
+- Find code and standard-library APIs with `ms search_symbol <name or words>` (project and standard library, fuzzy, bounded output) before reading files or guessing signatures; `ms search_symbol <module>` or `<module>.<Name>` shows a page. `ms guide` prints the language cheat sheet.
 
 ## Domain skills
 
@@ -17,7 +18,7 @@ Manuscript is a statically typed language implemented in Go. Source `.ms` files 
 | --- | --- |
 | Syntax, types, calls, imports, interfaces, language semantics | [language-design](skills/language-design/SKILL.md) |
 | Syntax nodes, lexer/parser, checking, lowering, module resolution, build pins/cache, native toolchain | [compiler](skills/compiler/SKILL.md) |
-| Execution, resources, cancellation, cleanup, concurrency, native dispatch, standard declarations, bindings, API parity | [runtime](skills/runtime/SKILL.md) |
+| Execution, resources, cancellation, cleanup, concurrency, native dispatch, standard declarations, bindings, API design | [runtime](skills/runtime/SKILL.md) |
 | Formatter, lint, inspection, LSP, VS Code, CLI, debugger | [tooling](skills/tooling/SKILL.md) |
 | Tutorials, exact rules, generated API reference, Hugo book/publication | [documentation](skills/documentation/SKILL.md) |
 | Package organization, dependency policy, pins, CI, releases, repository cleanup | [repository-maintenance](skills/repository-maintenance/SKILL.md) |
@@ -37,6 +38,6 @@ Syntax changes usually need language-design, compiler, tooling, and documentatio
 - Nested `match` is an anti-pattern. Keep implementation, examples, and diagnostic remedies flat: bind a payload with an early exit, use compatible `try`, or call a small helper. `make repo-check` guards source, Markdown fences, and Go source strings; intentional syntax/semantic regressions need a scoped test allowance with a reason. The grammar remains unchanged. See [flat match flow](documentation/core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
 - Shared skills live in `skills/`; `.agents/skills/` and `.claude/skills/` link to the same folders for Codex and Claude discovery. Read selected `SKILL.md` files and relevant evidence links. Keep discovery links synchronized when adding, renaming, or removing skills.
 - `AGENTS.md` is the sole source of repository guidance. `CLAUDE.md` contains only `@AGENTS.md` so Claude Code, which loads `CLAUDE.md` and not `AGENTS.md`, reads the same file; add no other content to it.
-- Skills describe workflows, `.experts/` preserves reasons and failure modes, and `documentation/` owns exact rules. Standard signatures belong in `pkg/stdlib/*.ms`; regenerate derived references with `make docs`.
+- Skills describe workflows, `.experts/` preserves reasons and failure modes, and `documentation/` owns exact rules. All standard-library documentation belongs in `pkg/stdlib/*.ms`, including guide comment blocks; generate disposable book Markdown with `make docs`.
 - Keep skills concise and specific to Manuscript. Do not reinstall generic collections during routine setup. [Skill maintenance and history](skills/README.md) records why this catalog exists.
 - Run checks appropriate to the changed behavior from the current Makefile. `make verify` is the routine gate; `make verify-full` adds native, race, fuzz, book, and distribution checks. Guidance-only edits need reference/discovery validation and license freshness when notices change.

@@ -3,10 +3,10 @@ import {stdin, stdout, read_line} from "@std/io.ms"
 # Returns an error message for an invalid grid, or "" when the grid is valid.
 fn validate(rows: List[List[Int]]) -> String:
     var r = 0
-    while r < rows.length():
+    while r < rows.length:
         let row = rows.at(r).unwrap()
         var c = 0
-        while c < row.length():
+        while c < row.length:
             let ch = row.at(c).unwrap()
             # '#' 35, '.' 46, 'S' 83, 'E' 69
             if ch != 35 and ch != 46 and ch != 83 and ch != 69:
@@ -14,7 +14,7 @@ fn validate(rows: List[List[Int]]) -> String:
             c = c + 1
         r = r + 1
     for row in rows:
-        if row.length() != rows.at(0).unwrap().length():
+        if row.length != rows.at(0).unwrap().length:
             return "error: ragged grid"
     var starts = 0
     var ends = 0
@@ -36,17 +36,17 @@ fn validate(rows: List[List[Int]]) -> String:
 
 fn solve(rows: List[List[Int]]) -> String:
     let problem = validate(rows)
-    if not problem.is_empty():
+    if not problem.is_empty:
         return problem
-    let height = rows.length()
-    let width = rows.at(0).unwrap().length()
+    let height = rows.length
+    let width = rows.at(0).unwrap().length
     let flat = List[Int]()
     let dist = List[Int]()
     var start = 0
     for row in rows:
         for ch in row:
             if ch == 83:
-                start = flat.length()
+                start = flat.length
             flat.append(ch)
             dist.append(-1)
     dist.set(start, 0)
@@ -55,7 +55,7 @@ fn solve(rows: List[List[Int]]) -> String:
     var head = 0
     let dr = [1, -1, 0, 0]
     let dc = [0, 0, 1, -1]
-    while head < queue.length():
+    while head < queue.length:
         let cur = queue.at(head).unwrap()
         head = head + 1
         if flat.at(cur).unwrap() == 69:
@@ -79,11 +79,11 @@ fn run() -> Result[Unit, Error]:
     let rows = List[List[Int]]()
     while true:
         let next = try read_line(input: stdin(), max_bytes: 1048576)
-        if next.is_none():
+        if next.is_none:
             break
         rows.append(next.unwrap().scalar_values())
-    while rows.length() > 0 and rows.at(rows.length() - 1).unwrap().is_empty():
-        rows.remove(rows.length() - 1)
+    while rows.length > 0 and rows.at(rows.length - 1).unwrap().is_empty:
+        rows.remove(rows.length - 1)
     try stdout().write("{solve(rows)}\n".to_bytes())
     return stdout().flush()
 

@@ -7,7 +7,7 @@ import (
 )
 
 func TestExpressionConvenienceRejections(t *testing.T) {
-	imports := "import List from \"@std/collections.ms\"\nimport Optional from \"@std/optional.ms\"\n"
+	imports := ""
 	for _, tt := range []struct{ name, source, want string }{
 		{"selected function requires arguments", "fn optional(value: Int = 1) -> Int: return value\nfn required(value: Int) -> Int: return value\nfn call(x: Optional[Int]) -> Int:\n    let chosen = match x:\n        some(n): optional\n        none: required\n    return chosen()\n", "missing argument value"},
 		{"condition exits enclosing loop", "fn f(x: Optional[Int]) -> Int:\n    while true:\n        while (match x:\n            some(n): true\n            none: break\n        ):\n            break\n", "reachable fallthrough"},

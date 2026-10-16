@@ -15,3 +15,13 @@ test('strings scope escapes and nest interpolation with nested strings', () => {
   assert.equal(interpolation.end, '\\}');
   assert.ok(interpolation.patterns.some(p => p.include === '$self'));
 });
+
+test('get is contextual only at an accessor declaration head', () => {
+  const pattern = grammar.patterns.find(p => p.captures?.['2']?.name === 'variable.other.property.manuscript');
+  assert.ok(pattern);
+  const head = new RegExp(pattern.match);
+  assert.ok(head.test('    get length -> Int'));
+  assert.ok(head.test('    get callback -> fn() -> Int:'));
+  for (const source of ['    fn get() -> Int:', '    value.get()', '    let get = 1']) assert.ok(!head.test(source), source);
+  assert.ok(!grammar.patterns.find(p => p.name === 'keyword.control.manuscript').match.includes('|get|'));
+});

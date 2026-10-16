@@ -32,29 +32,42 @@ function exec(command, args) {
   return new Promise((resolve, reject) => execFile(command, args, { maxBuffer: 32 * 1024 * 1024 },
     (error, stdout, stderr) => error ? reject(new Error(stderr || error.message)) : resolve(stdout)));
 }
+const PRIMITIVES = { int64: 'Int', float64: 'Float', bool: 'Bool', string: 'String' };
+// Standard values lower to generic Go types in the runtime package, whatever
+// its import path or vendored package name.
+const RUNTIME_TYPE = /^\*?(?:[\w.\/-]*\/)?(?:ms)?runtime\.(\w+)(?:\[.*)?$/;
+// Source container types and the runtime type each one lowers to.
+const CONTAINERS = { List: 'List', Set: 'Set', Map: 'Map', Bytes: 'Bytes', Queue: 'Queue', PriorityQueue: 'PriorityQueue', Optional: 'Option', Result: 'Result' };
 function runtimeKind(variable) {
   const text = variable.type || '';
-  // Source records lower to generated Go structs whose fields carry an f_ prefix.
-  if (/\bmain\.record_\w+/.test(text)) return 'Struct';
-  const match = /(?:main|msruntime|runtime)\.(Record|Alternative|List|Set|Map|Bytes|View|Unit|Function|TaskGroup|Task|Scheduler|Queue|PriorityQueue|Synchronized|SynchronizedGuard|OperationId)(?:\)|$)/.exec(text);
-  return match ? match[1] : '';
+  const std = RUNTIME_TYPE.exec(text);
+  if (std) return std[1];
+  // Records, alternative cases and contracts lower to generated Go types.
+  if (/^\*?main\.\w+(?:\[.*\])?$/.test(text)) return 'Record';
+  if (text.startsWith('[]')) return 'Slice';
+  return '';
 }
 function sourceType(native) {
-  const primitives = { int64: 'Int', float64: 'Float', bool: 'Bool', string: 'String' };
-  native = (native || '').replace(/^.+: (interface \{\}.*)$/, '$1');
-  const match = /^interface \{\}\(([^)]+)\)$/.exec(native);
-  return primitives[match ? match[1] : native] || native;
+  native = (native || '').replace(/^\*/, '');
+  if (PRIMITIVES[native]) return PRIMITIVES[native];
+  return native.replace(/(?:[\w.-]+\/)*(?:ms)?runtime\./g, '').replace(/\bmain\./g, '').replace(/\*/g, '')
+    .replace(/\b(int64|float64|bool|string)\b/g, name => PRIMITIVES[name]).replace(/\bOption\b/g, 'Optional');
 }
-function runtimeType(key) {
-  let at=0;
-  function parse() {
-    const start=at;while(at<key.length && !['[',']','&'].includes(key[at])) at++;
-    let name=key.slice(start,at).replace(/^@std\//,'').replace(/^module\/[^#]+#/,'');
-    const args=[];while(key[at]==='[') {at++;args.push(parse());if(key[at]===']') at++;}
-    if(args.length) name+=`[${args.join(', ')}]`;
-    return name;
+// Go field names are the CamelCase of the source field names.
+function sourceField(goName) { return goName.replace(/([a-z0-9])([A-Z])/g, '$1_$2').replace(/^./, c => c.toLowerCase()).toLowerCase(); }
+function goField(name) { return name.replace(/(^|_)([a-z])/g, (_, __, c) => c.toUpperCase()).replace(/_/g, ''); }
+function typeArguments(type) {
+  const open = (type || '').indexOf('[');
+  if (open < 0 || !type.endsWith(']')) return [];
+  const args = []; let depth = 0, start = open + 1;
+  for (let at = open + 1; at < type.length - 1; at++) {
+    const ch = type[at];
+    if ('[('.includes(ch)) depth++;
+    else if ('])'.includes(ch)) depth--;
+    else if (ch === ',' && depth === 0) { args.push(type.slice(start, at).trim()); start = at + 1; }
   }
-  return parse();
+  args.push(type.slice(start, type.length - 1).trim());
+  return args;
 }
 function mapName(name) {
   if (name.startsWith('[') && name.endsWith(']')) {
@@ -65,17 +78,17 @@ function mapName(name) {
 }
 // Resolve source identifiers and simple record/list access without rewriting
 // quoted text or member names. Complex expressions keep Delve's native semantics.
-function rewriteExpression(expression, variables, metadata) {
-  const visible=new Map();for(const variable of variables) {const local=metadata.get(variable.name);if(local) visible.set(local.name,variable);}
-  const simple=/^([A-Za-z_][A-Za-z0-9_]*)(?:\.([A-Za-z_][A-Za-z0-9_]*)|\[(\d+)\])?$/.exec(expression.trim());
-  if(simple && visible.has(simple[1])) {
-    const variable=visible.get(simple[1]);const kind=runtimeKind(variable);
-    // Delve's .(data) exposes the concrete interface value without depending
-    // on runtime package names, and retains pointers for collection access.
-    if(simple[2] && kind==='Record') return `${variable.name}.(data).Fields[${JSON.stringify(simple[2])}]`;
-    if(simple[2] && kind==='Struct') return `${variable.name}.(data).f_${simple[2]}`;
-    if(simple[3] && ['List','Set','Bytes'].includes(kind)) return `${variable.name}.(data).${kind==='List'?(variable.listField||'Items'):'Items'}[${simple[3]}]`;
-    if(!simple[2] && !simple[3]) return variable.name;
+// resolve maps a native variable to the source name it holds in the frame.
+function rewriteExpression(expression, variables, resolve) {
+  const visible = new Map();
+  for (const variable of variables) { const name = resolve(variable); if (name) visible.set(name, variable); }
+  const simple = /^([A-Za-z_][A-Za-z0-9_]*)(?:\.([A-Za-z_][A-Za-z0-9_]*)|\[(\d+)\])?$/.exec(expression.trim());
+  if (simple && visible.has(simple[1])) {
+    const variable = visible.get(simple[1]); const kind = runtimeKind(variable);
+    if (simple[2] && kind === 'Record') return `${variable.name}.${goField(simple[2])}`;
+    if (simple[3] && kind === 'List') return `${variable.name}.Items[${simple[3]}]`;
+    if (simple[3] && kind === 'Bytes') return `${variable.name}.Data[${simple[3]}]`;
+    if (!simple[2] && !simple[3]) return variable.name;
   }
   let result='',at=0;
   while(at<expression.length) {
@@ -87,17 +100,11 @@ function rewriteExpression(expression, variables, metadata) {
   }
   return result;
 }
-function listStorageField(children) {
-  const kind=children.find(v=>v.name==='kind');
-  const fields=['Items','ints','floats','bools','strings'];
-  const tag=kind?Number.parseInt(kind.value,10):0;
-  return fields[tag] || 'Items';
-}
 class ManuscriptAdapter {
   constructor(output, options = {}) {
     this.output = output; this.options = options; this.sequence = 1; this.backendSequence = 1;
     this.pending = new Map(); this.handles = new Map(); this.nextHandle = 1800000000;
-    this.locals = new Map(); this.frames = new Set(); this.sourceScopes = new Set();
+    this.locals = new Map(); this.frames = new Map(); this.sourceScopes = new Map();
     this.entities = []; this.sourceRoot = ''; this.temp = undefined; this.ready = undefined;
   }
   emit(message) { message.seq = this.sequence++; this.output.write(frame(message)); }
@@ -136,39 +143,59 @@ class ManuscriptAdapter {
       if (pending) { this.pending.delete(message.request_seq); message.success ? pending.resolve(message.body || {}) : pending.reject(new Error(message.message || 'Debugger request failed')); }
       return;
     }
+    if (message.event === 'terminated') this.ended = true;
     if (message.event === 'continued' || message.event === 'stopped') {
       this.handles.clear(); this.frames.clear(); this.sourceScopes.clear();
     }
     this.emit(message);
     if (message.event === 'terminated' && this.pending.size===0) this.cleanup();
   }
+  // The Go local a native variable name stands for in the frame's function.
+  localFor(goName, frameName) {
+    const candidates = this.locals.get(goName);
+    if (!candidates) return undefined;
+    return candidates.find(c => c.function === frameName || frameName?.endsWith(`.${c.function}`) || frameName?.endsWith(` ${c.function}`)) || candidates[0];
+  }
   handle(value) { const id = this.nextHandle++; this.handles.set(id, value); return id; }
   render(variable, name, declaredType) {
-    const nativeType=sourceType(variable.type);const primitive=['Int','Float','Bool','String'].includes(nativeType);
-    const embedded=/Type: \"([^\"]+)\"/.exec(variable.value || '');
-    const result = { ...variable, name: name || mapName(variable.name), type: primitive ? nativeType : (embedded ? runtimeType(embedded[1]) : declaredType || nativeType) };
-    result.value = (result.value || '').replace(/^interface \{\}\([^)]+\) /, '');
-    if (['Int','Float','Bool','String'].includes(result.type)) result.variablesReference=0;
+    const raw = variable.type || '';
+    const primitive = PRIMITIVES[raw];
     const kind = runtimeKind(variable);
+    const result = { ...variable, name: name ?? mapName(variable.name), type: declaredType || primitive || sourceType(raw) };
+    result.value = result.value || '';
+    delete result.namedVariables; delete result.indexedVariables;
+    const expected = CONTAINERS[(declaredType || '').split('[')[0]];
     // Native stack slots can cease to contain a dead source local after GC.
-    // Do not present a recycled primitive or corrupt runtime type as a container.
-    const expectedContainer = /^(List|Set|Map|Bytes|Optional|Result)(?:\[|$)/.exec(declaredType || '');
-    if (expectedContainer && (primitive || (embedded && runtimeType(embedded[1]).split('[')[0] !== expectedContainer[1]))) {
-      result.type = declaredType; result.value = '<unavailable after last use>'; result.variablesReference = 0;
-      return result;
-    }
-    if (kind === 'Unit') { result.value = 'unit'; result.type = 'Unit'; result.variablesReference = 0; }
-    else if (kind === 'OperationId') {const number=/number: (\d+)/.exec(result.value);result.value=number?`Operation ${number[1]}`:'OperationId';result.variablesReference=0;}
-    else if (kind) {
-      // A typed List header contains several nil slices. The first native len
-      // belongs to the boxed fallback, not necessarily the active backing.
-      const length = kind==='List' ? undefined : /len: (\d+)/.exec(result.value);
-      if (kind === 'Alternative') {
-        const tag = /Tag: "([^"]+)"/.exec(result.value); result.value = tag ? tag[1] : result.type;
-      } else result.value = `${result.type || kind}${length ? ` (${length[1]} items)` : ''}`;
-      if (variable.variablesReference) result.variablesReference = this.handle({ kind, ref: variable.variablesReference, sourceType: result.type });
-      delete result.namedVariables; delete result.indexedVariables;
-    }
+    // Do not present a recycled value of another type as the declared container.
+    if (expected && kind !== expected) { result.value = '<unavailable after last use>'; result.variablesReference = 0; return result; }
+    if (primitive) { result.variablesReference = 0; return result; }
+    if (kind === 'Unit' || declaredType === 'Unit') { result.value = 'unit'; result.type = 'Unit'; result.variablesReference = 0; return result; }
+    if (kind === 'OperationId') { const number = /number: (\d+)/.exec(result.value); result.value = number ? `Operation ${number[1]}` : 'OperationId'; result.variablesReference = 0; return result; }
+    if (!kind) return result;
+    const count = pattern => { const match = pattern.exec(result.value); return match ? ` (${match[1]} items)` : ''; };
+    let handled = true;
+    if (kind === 'Option') {
+      const some = /Some: (true|false)/.exec(result.value);
+      result.value = some && some[1] === 'true' ? 'some' : 'none';
+      handled = result.value === 'some';
+    } else if (kind === 'Result') {
+      const failed = /Failed: (true|false)/.exec(result.value);
+      result.value = failed && failed[1] === 'true' ? 'failed' : 'ok';
+    } else if (kind === 'List') result.value = `${result.type}${count(/len: (\d+)/)}`;
+    else if (kind === 'Map') result.value = `${result.type}${count(/live: (\d+)/)}`;
+    else if (kind === 'Queue') result.value = `${result.type}${count(/items: [^{]*?len: (\d+)/)}`;
+    else if (kind === 'Slice') result.value = `${result.type}${count(/len: (\d+)/)}`;
+    else if (kind === 'Record') {
+      // A case of an alternative lowers to Name_Case; the dynamic type of a
+      // contract or alternative variable is named in its value.
+      const dynamic = /^main\.\w+\(\*?main\.(\w+)\)/.exec(result.value);
+      const goName = dynamic ? dynamic[1] : raw.replace(/^\*?main\./, '').replace(/\[.*$/, '');
+      const base = (declaredType || '').split('[')[0];
+      result.value = base && goName.startsWith(`${base}_`) ? goName.slice(base.length + 1) : (declaredType || sourceType(raw));
+      if (/unreadable/.test(variable.value || '')) { result.value = declaredType || sourceType(raw); handled = false; }
+    } else result.value = result.type;
+    if (variable.variablesReference && handled) result.variablesReference = this.handle({ kind, ref: variable.variablesReference, sourceType: result.type });
+    else result.variablesReference = 0;
     return result;
   }
   async children(ref, args = {}) { return (await this.native('variables', { ...args, variablesReference: ref })).variables || []; }
@@ -179,28 +206,53 @@ class ManuscriptAdapter {
     }
     return children;
   }
+  // Entries of a map's backing slice; removed entries are nil and skipped.
+  async entries(ref, args) {
+    const fields = await this.valueFields(ref);
+    const slice = fields.find(v => v.name === 'entries');
+    if (!slice?.variablesReference) return [];
+    const result = [];
+    for (const entry of await this.children(slice.variablesReference, args)) {
+      if (!entry.variablesReference) continue;
+      const parts = await this.valueFields(entry.variablesReference);
+      result.push({ key: parts.find(v => v.name === 'Key'), value: parts.find(v => v.name === 'Value') });
+    }
+    return result;
+  }
   async valueChildren(handle, args) {
-    const children=await this.valueFields(handle.ref);
+    const types = typeArguments(handle.sourceType);
     if (handle.kind === 'Execution') {
+      const children = await this.valueFields(handle.ref);
       const names = { Context: 'Cancellation context', Lifetime: 'Work lifetime', Owners: 'Scheduler services', TaskGroups: 'Task groups', HostServices: 'HTTP services' };
       return children.filter(v => names[v.name]).map(v => ({ ...v, name: names[v.name] }));
     }
+    const children = await this.valueFields(handle.ref);
     const serviceFields={TaskGroup:{active:'Active tasks',sealed:'Joined',closing:'Closing',closed:'Closed',failure:'Execution failure'},Task:{id:'Operation',value:'Result',committed:'Completed',group:'Task group'},PriorityQueue:{capacity:'Capacity',items:'Queued priorities',compare:'Comparator'},Queue:{capacity:'Capacity',items:'Queued values'},Synchronized:{value:'Value',holder:'Active guard'},SynchronizedGuard:{cell:'Synchronized value'},Scheduler:{limit:'Admission limit',active:'Active operations',history:'Recent outcomes',closing:'Closing',closed:'Closed'}}[handle.kind];
-    if(serviceFields) return children.filter(v=>serviceFields[v.name]).map(v=>this.render(v,serviceFields[v.name]));
-    if (handle.kind === 'Struct') return children.filter(v => v.name.startsWith('f_')).map(v => this.render(v, v.name.slice(2)));
-    const fieldName = { Record: 'Fields', Alternative: 'Fields', List: listStorageField(children), Set: 'Items', Bytes: 'Items', Map: 'Entries', View: 'Receiver' }[handle.kind];
-    if (!fieldName) return children.map(v => this.render(v));
-    const field = children.find(v => v.name === fieldName);
-    if (handle.kind === 'List' && field && !field.variablesReference) return [];
-    if (!field || !field.variablesReference) return children.map(v => this.render(v));
-    if (handle.kind === 'View') {
-      const receiver = this.render(field, 'Receiver', handle.sourceType);
-      const nested = this.handles.get(receiver.variablesReference);
-      return nested ? this.valueChildren(nested, args) : this.children(field.variablesReference, args);
+    if (serviceFields) return children.filter(v=>serviceFields[v.name]).map(v=>this.render(v,serviceFields[v.name],handle.kind==='Task'&&v.name==='value'?types[0]:undefined));
+    switch (handle.kind) {
+      case 'Record': return children.filter(v => /^[A-Z]/.test(v.name)).map(v => this.render(v, sourceField(v.name)));
+      case 'Option': return children.filter(v => v.name === 'Val').map(v => this.render(v, 'value', types[0]));
+      case 'Result': {
+        const failed = children.find(v => v.name === 'Failed')?.value === 'true';
+        return children.filter(v => v.name === (failed ? 'Err' : 'Val')).map(v => this.render(v, failed ? 'error' : 'value', types[failed ? 1 : 0]));
+      }
+      case 'Slice': return (await this.children(handle.ref, args)).map(v => this.render(v, v.name, types[0]));
+      case 'List': case 'Bytes': {
+        const items = children.find(v => v.name === (handle.kind === 'List' ? 'Items' : 'Data'));
+        if (!items?.variablesReference) return [];
+        return (await this.children(items.variablesReference, args)).map(v => this.render(v, v.name, types[0]));
+      }
+      case 'Map': {
+        const shown = await this.entries(handle.ref, args);
+        return shown.filter(e => e.key && e.value).map(e => this.render(e.value, mapName(e.key.value), types[1]));
+      }
+      case 'Set': {
+        const inner = children.find(v => v.name === 'm');
+        const shown = inner?.variablesReference ? await this.entries(inner.variablesReference, args) : [];
+        return shown.filter(e => e.key).map((e, index) => this.render(e.key, `[${index}]`, types[0]));
+      }
+      default: return children.map(v => this.render(v));
     }
-    const values = await this.children(field.variablesReference, { filter: args.filter, start: args.start, count: args.count });
-    // Delve includes map length metadata as a child; source views show values.
-    return values.filter(v => v.name !== 'len()').map(v => this.render(v));
   }
   async loadMetadata(program, inspection) {
     const metadata = JSON.parse(await fs.readFile(`${program}.ms-build.json`, 'utf8'));
@@ -213,8 +265,12 @@ class ManuscriptAdapter {
       const file = path.resolve(this.sourceRoot, source.file);
       if (metadata.sources[source.file] !== source.sha256 || digest(await fs.readFile(file)) !== source.sha256) throw new Error(`Source changed since build: ${source.file}`);
     }
-    this.locals = new Map(inspection.locals.map(local => [local.go_id, local]));
-    this.entities = inspection.entities.filter(e => e.kind === 'fn' || e.kind === 'method');
+    this.locals = new Map();
+    for (const local of inspection.go_locals || []) {
+      if (!this.locals.has(local.go)) this.locals.set(local.go, []);
+      this.locals.get(local.go).push(local);
+    }
+    this.entities = inspection.entities.filter(e => e.kind === 'fn' || e.kind === 'method' || e.kind === 'accessor' && e.go_id);
   }
   async launch(args) {
     args = { ...args };
@@ -241,7 +297,20 @@ class ManuscriptAdapter {
     args.mode = 'exec'; args.outputMode = 'remote'; delete args.compilerPath; delete args.inspection;
     return this.native('launch', args);
   }
+  // After terminated the debugger process is gone. Requests that cannot succeed
+  // get a clear answer instead of a failure writing to a closed pipe.
+  async endedRequest(request) {
+    if (request.command === 'disconnect' || request.command === 'terminate') {
+      await this.cleanup();
+      return this.respond(request, {});
+    }
+    const resumes = ['continue', 'next', 'stepIn', 'stepOut', 'stepBack', 'reverseContinue', 'pause'];
+    this.respond(request, {}, false, resumes.includes(request.command)
+      ? `the debuggee has exited: ${request.command} has nothing to resume`
+      : `the debug session has ended: ${request.command} is no longer available`);
+  }
   async request(request) {
+    if (this.ended) return this.endedRequest(request);
     try {
       await this.start(request.arguments?.compilerPath || this.options.compiler || 'ms');
       const args = request.arguments || {}; let body;
@@ -255,9 +324,12 @@ class ManuscriptAdapter {
         } else if (handle) body = { variables: await this.valueChildren(handle, args) };
         else {
           const variables = await this.children(args.variablesReference, args);
-          if (this.sourceScopes.has(args.variablesReference)) body = { variables: variables.filter(v => this.locals.has(v.name)).map(v => {
-            const local = this.locals.get(v.name); return this.render(v, local.name, local.type);
-          }) };
+          if (this.sourceScopes.has(args.variablesReference)) {
+            const frameName = this.sourceScopes.get(args.variablesReference);
+            body = { variables: variables.filter(v => this.localFor(v.name, frameName)).map(v => {
+              const local = this.localFor(v.name, frameName); return this.render(v, local.name, local.type);
+            }) };
+          }
           else body = { variables: variables.map(v => this.render(v)) };
         }
       } else {
@@ -268,16 +340,11 @@ class ManuscriptAdapter {
           const localScope = scopes.scopes?.find(s => s.name === 'Locals');
           if (localScope) {
             const locals = await this.children(localScope.variablesReference);
-            const indexed=/^([A-Za-z_][A-Za-z0-9_]*)\[\d+\]$/.exec(args.expression.trim());
-            if(indexed) for(const variable of locals) {
-              if(this.locals.get(variable.name)?.name===indexed[1] && runtimeKind(variable)==='List' && variable.variablesReference) {
-                variable.listField=listStorageField(await this.valueFields(variable.variablesReference));
-              }
-            }
-            args.expression = rewriteExpression(args.expression, locals, this.locals);
-
+            args.expression = rewriteExpression(args.expression, locals, variable => this.localFor(variable.name, this.frames.get(args.frameId))?.name);
           }
         }
+        // Rendering classifies values by their native type, so Delve must report it.
+        if (request.command === 'initialize') args.supportsVariableType = true;
         body = await this.native(request.command, args);
         if (request.command === 'initialize') {
           // Source value handles are inspection views; native mutation cannot
@@ -288,17 +355,17 @@ class ManuscriptAdapter {
           for (const frame of body.stackFrames || []) {
             const file = frame.source?.path;
             if (file?.endsWith('.ms')) {
-              this.frames.add(frame.id);
               const entities = this.entities.filter(e => path.resolve(this.sourceRoot, e.span.file) === file && e.span.line <= frame.line);
               entities.sort((a, b) => b.span.line - a.span.line);
               if (entities.length) frame.name = entities[0].name;
+              this.frames.set(frame.id, frame.name);
             } else frame.presentationHint = 'subtle';
             if (/Cleanup|Unwind|Shield/.test(frame.name)) { frame.name = `[cleanup] ${frame.name}`; frame.presentationHint = 'subtle'; }
           }
         }
         if (request.command === 'scopes' && this.frames.has(args.frameId)) {
           for (const scope of body.scopes || []) if (scope.name === 'Locals') {
-            this.sourceScopes.add(scope.variablesReference); scope.name = 'Manuscript locals';
+            this.sourceScopes.set(scope.variablesReference, this.frames.get(args.frameId)); scope.name = 'Manuscript locals';
             body.scopes.push({ name: 'Execution and services', variablesReference: this.handle({ kind: 'runtime', ref: scope.variablesReference }), expensive: false });
           }
         }
@@ -331,4 +398,4 @@ if (require.main === module) {
   process.stdin.on('end', () => adapter.cleanup());
   process.on('SIGTERM', () => adapter.cleanup().then(() => process.exit(0)));
 }
-module.exports = { Framing, frame, ManuscriptAdapter, runtimeKind, sourceType, mapName, rewriteExpression, runtimeType };
+module.exports = { Framing, frame, ManuscriptAdapter, runtimeKind, sourceType, mapName, rewriteExpression, goField, sourceField, typeArguments };

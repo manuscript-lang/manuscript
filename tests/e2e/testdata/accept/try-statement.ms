@@ -1,7 +1,5 @@
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
-
 fn parse(n: Int) -> Result[Int, String]:
     if n < 0:
         return error("neg")
@@ -80,17 +78,9 @@ test "try nested in expressions and chains still propagates":
         return panic(message: "chained error")
 
 test "try in loops and lambdas":
-    if not (
-        code(
-            r: in_loop(values: [1, 2, 3])
-        ) == 6
-    ):
+    if not (code(r: in_loop(values: [1, 2, 3])) == 6):
         return panic(message: "loop ok")
-    if not (
-        code(
-            r: in_loop(values: [1, -2, 3])
-        ) == -1
-    ):
+    if not (code(r: in_loop(values: [1, -2, 3])) == -1):
         return panic(message: "loop error")
     if not (code(r: in_lambda(n: 2)) == 21):
         return panic(message: "lambda ok")

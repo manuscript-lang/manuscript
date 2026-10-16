@@ -173,8 +173,8 @@ func check() error {
 		path, function string
 		kinds          []string
 	}{
-		{"pkg/lower/lower_statements.go", "statement", syntax.StatementKinds()},
-		{"pkg/lower/lower_expressions.go", "expressionValue", syntax.ExpressionKinds()},
+		{"pkg/lower/stmt.go", "statementKind", syntax.StatementKinds()},
+		{"pkg/lower/expr.go", "exprValue", syntax.ExpressionKinds()},
 		{"pkg/checker/checker.go", "checkStatement", syntax.StatementKinds()},
 		{"pkg/checker/expressions.go", "infer", syntax.ExpressionKinds()},
 	} {

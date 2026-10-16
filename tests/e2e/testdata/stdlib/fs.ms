@@ -1,8 +1,6 @@
 import {filesystem, FileSystemError, FileHandle} from "@std/fs.ms"
 import {files, read_all, IoError} from "@std/io.ms"
-import {List, Map} from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -19,8 +17,8 @@ test "ordinary filesystem misuse retains typed cases":
     let fs = filesystem()
 
     with temporary = value(fs.temporary("manuscript-errors-")):
-        let directory = "{temporary.path()}/directory"
-        let file = "{temporary.path()}/file"
+        let directory = "{temporary.path}/directory"
+        let file = "{temporary.path}/file"
         let created = value(fs.create_directory(path: directory, recursive: false))
         let child = value(
             fs.write_file(
@@ -82,7 +80,7 @@ test "filesystem scoped temporary directories and bounded file reads":
     var directory = ""
 
     with temporary = value(fs.temporary("manuscript-stdlib-")):
-        directory = temporary.path()
+        directory = temporary.path
         let path = "{directory}/data.txt"
         let written = value(
             fs.write_file(
@@ -91,26 +89,18 @@ test "filesystem scoped temporary directories and bounded file reads":
                 replace: false
             )
         )
-        if (
-            value(
-                fs.read_file(
-                    path: path,
-                    max_bytes: 5
-                )
-            ) != "hello".to_bytes()
-        ): return panic("read file")
+        if (value(fs.read_file(path: path, max_bytes: 5)) != "hello".to_bytes()): return panic(
+            "read file"
+        )
 
         let limited: Result[Bytes, FileSystemError] = error(
             FileSystemError.LimitExceeded
         )
-        if fs.read_file(
-            path: path,
-            max_bytes: 4
-        ) != limited: return panic("file byte limit")
-
-        let exists: Result[Unit, FileSystemError] = error(
-            FileSystemError.AlreadyExists
+        if fs.read_file(path: path, max_bytes: 4) != limited: return panic(
+            "file byte limit"
         )
+
+        let exists: Result[Unit, FileSystemError] = error(FileSystemError.AlreadyExists)
         if (
             fs.write_file(
                 path: path,
@@ -121,12 +111,12 @@ test "filesystem scoped temporary directories and bounded file reads":
         if value(fs.stat(path: path, follow_links: true)).size != 5: return panic(
             "file stat"
         )
-        if value(fs.list(path: directory)).length() != 1: return panic("directory list")
+        if value(fs.list(path: directory)).length != 1: return panic("directory list")
 
         with input = value(files().open(path)):
-            if value(
-                input.read(5)
-            ).unwrap() != "hello".to_bytes(): return panic("read-only Files host")
+            if value(input.read(5)).unwrap() != "hello".to_bytes(): return panic(
+                "read-only Files host"
+            )
 
     match fs.stat(path: directory, follow_links: true):
         ok(_): return panic("temporary directory not removed")
@@ -140,7 +130,7 @@ test "file handles positional I/O stream adapters and closed errors":
     let fs = filesystem()
 
     with temporary = value(fs.temporary("manuscript-handles-")):
-        let path = "{temporary.path()}/data.txt"
+        let path = "{temporary.path}/data.txt"
         let written = value(
             fs.write_file(
                 path: path,
@@ -151,37 +141,24 @@ test "file handles positional I/O stream adapters and closed errors":
         let handle = value(fs.open(path: path, flags: "r+", mode: 384))
 
         with scoped = handle:
-            if (
-                value(
-                    handle.read_at(
-                        offset: 2,
-                        max_bytes: 2
-                    )
-                ) != "cd".to_bytes()
-            ): return panic("positional read")
-
-            value(
-                handle.write_at(
-                    offset: 1,
-                    data: "XY".to_bytes()
-                )
+            if (value(handle.read_at(offset: 2, max_bytes: 2)) != "cd".to_bytes()): return panic(
+                "positional read"
             )
+
+            value(handle.write_at(offset: 1, data: "XY".to_bytes()))
 
             let resized = value(handle.truncate(4))
             if value(handle.stat()).size != 4: return panic("handle stat")
 
             let sought = value(handle.seek(offset: 0, origin: 0))
-            if value(
-                read_all(input: handle.reader())
-            ) != "aXYd".to_bytes(): return panic("reader adapter")
+            if value(read_all(input: handle.reader())) != "aXYd".to_bytes(): return panic(
+                "reader adapter"
+            )
 
-        let closed: Result[Bytes, FileSystemError] = error(
-            FileSystemError.Closed
+        let closed: Result[Bytes, FileSystemError] = error(FileSystemError.Closed)
+        if handle.read_at(offset: 0, max_bytes: 1) != closed: return panic(
+            "closed handle"
         )
-        if handle.read_at(
-            offset: 0,
-            max_bytes: 1
-        ) != closed: return panic("closed handle")
 
         handle.close()
 
@@ -196,11 +173,9 @@ test "empty paths are rejected instead of resolving to the working directory":
     if fs.create_directory(path: "", recursive: true) != invalid: return panic(
         "create empty directory"
     )
-    if fs.write_file(
-        path: "",
-        data: "x".to_bytes(),
-        replace: true
-    ) != invalid: return panic("write empty path")
+    if fs.write_file(path: "", data: "x".to_bytes(), replace: true) != invalid: return panic(
+        "write empty path"
+    )
 
     match fs.stat(path: "", follow_links: true):
         ok(_): return panic("stat empty path")
