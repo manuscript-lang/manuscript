@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 import NumberError from "@std/numbers.ms"
 
 # How a Decimal rounds to a multiple of the requested power of ten.

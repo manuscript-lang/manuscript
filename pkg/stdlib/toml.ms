@@ -170,7 +170,6 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
         advance(reader)
         advance(reader)
         multiline = true
-
         if peek(reader) == "\n": advance(reader)
 
     # Append through a builder: per-character concatenation is quadratic on long strings.
@@ -214,7 +213,6 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
             )
         ):
             while peek(reader) == " " or peek(reader) == "\t": advance(reader)
-
             if advance(reader) != "\n": return error(
                 invalid(
                     reader: reader,
@@ -225,7 +223,6 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
             while (peek(reader) == " " or peek(reader) == "\t" or peek(reader) == "\n"): advance(
                 reader
             )
-
             continue
 
         let escaped = advance(reader)
@@ -238,9 +235,7 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
         else if escaped == "\"" or escaped == "\\": result.append(escaped)
         else if escaped == "u" or escaped == "U":
             var count = 4
-
             if escaped == "U": count = 8
-
             var hex = ""
 
             while count > 0:
@@ -263,7 +258,6 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
                         reason: "invalid Unicode escape"
                     )
                 )
-
                 ok(scalar): scalar
 
             match from_scalars([scalar]):
@@ -274,7 +268,6 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
                     )
                 )
                 ok(text): result.append(text)
-
         else:
             return error(invalid(reader: reader, reason: "invalid string escape"))
 
@@ -295,7 +288,6 @@ fn key_path(reader: Reader) -> Result[List[String], TomlError]:
                 )
             ):
                 key = key.concat(advance(reader))
-
             if key == "": return error(invalid(reader: reader, reason: "expected key"))
 
         keys.append(key)
@@ -340,7 +332,6 @@ fn child(
             )
 
             return ok(value)
-
         TableArray(tables):
             if dotted: return error(
                 invalid(
@@ -350,7 +341,6 @@ fn child(
             )
 
             return ok(tables.last().unwrap())
-
         _: return error(invalid(reader: reader, reason: "key is already a value"))
 
 fn append_table(
@@ -409,12 +399,9 @@ fn seal(value: Node) -> Unit:
     match value:
         TableNode(table):
             table.sealed = true
-
             for entry in table.entries: seal(entry.value)
-
         ArrayNode(values):
             for item in values: seal(item)
-
         _: return unit
 
 fn digits(text: String, alphabet: String) -> Bool:
@@ -467,13 +454,11 @@ fn date_valid(text: String) -> Bool:
 
     let m = month.parse_int().unwrap()
     var maximum = 31
-
     if (m == 4 or m == 6 or m == 9 or m == 11): maximum = 30
 
     if m == 2:
         maximum = 28
         let y = year.parse_int().unwrap()
-
         if y % 4 == 0 and (y % 100 != 0 or y % 400 == 0): maximum = 29
 
     return date_number(text: day, minimum: 1, maximum: maximum)
@@ -525,9 +510,7 @@ fn datetime_valid(text: String) -> Bool:
         rest = rest.slice(start: 0, end: rest.scalar_length() - 1).unwrap_or("")
     else if rest.contains("+") or rest.contains("-"):
         var index = rest.index_of("+").unwrap_or(-1)
-
         if index < 0: index = rest.index_of("-").unwrap_or(-1)
-
         let zone = rest.slice(start: index + 1, end: rest.scalar_length()).unwrap_or("")
         if zone.scalar_length() != 5 or zone.at(2).unwrap_or("") != ":": return false
         if not date_number(
@@ -624,13 +607,11 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
 
             if parts.length() == 2:
                 var exponent = parts.at(1).unwrap()
-
                 if exponent.starts_with("+") or exponent.starts_with("-"): exponent = (
                     exponent
                     .slice(start: 1, end: exponent.scalar_length())
                     .unwrap_or("")
                 )
-
                 if not decimal_digits(exponent): return error(
                     invalid(
                         reader: reader,
@@ -648,9 +629,7 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
 
         if clean == "inf":
             var infinity = -log(0.0)
-
             if text.starts_with("-"): infinity = -infinity
-
             return ok(Node.Leaf(TomlValue.FloatValue(infinity)))
 
         if clean == "nan": return ok(Node.Leaf(TomlValue.FloatValue(sqrt((-1.0)))))
@@ -752,7 +731,6 @@ fn read_value(reader: Reader, depth: Int) -> Result[Node, TomlError]:
     var text = ""
     let start_line = reader.line
     let start_column = reader.column
-
     while (
         peek(reader) != ""
         and peek(reader) != "\n"
@@ -772,7 +750,6 @@ fn read_value(reader: Reader, depth: Int) -> Result[Node, TomlError]:
         and ahead(reader: reader, offset: 3) == ":"
     ):
         text = text.concat(advance(reader))
-
         while (
             peek(reader) != ""
             and peek(reader) != "\n"
@@ -804,10 +781,8 @@ fn materialize(reader: Reader, node: Node, depth: Int) -> Result[TomlValue, Toml
 
     match node:
         Leaf(value): return ok(value)
-
         TableNode(table):
             let entries = Map[String, TomlValue]()
-
             for entry in table.entries:
                 entries.add(
                     key: entry.key,
@@ -817,12 +792,9 @@ fn materialize(reader: Reader, node: Node, depth: Int) -> Result[TomlValue, Toml
                         depth: (depth + 1)
                     )
                 )
-
             return ok(TomlValue.TableValue(entries))
-
         ArrayNode(values):
             let result: List[TomlValue] = []
-
             for value in values: result.append(
                 try materialize(
                     reader: reader,
@@ -830,12 +802,9 @@ fn materialize(reader: Reader, node: Node, depth: Int) -> Result[TomlValue, Toml
                     depth: (depth + 1)
                 )
             )
-
             return ok(TomlValue.ArrayValue(result))
-
         TableArray(tables):
             let result: List[TomlValue] = []
-
             for table in tables: result.append(
                 try materialize(
                     reader: reader,
@@ -843,7 +812,6 @@ fn materialize(reader: Reader, node: Node, depth: Int) -> Result[TomlValue, Toml
                     depth: (depth + 1)
                 )
             )
-
             return ok(TomlValue.ArrayValue(result))
 
 # Parses a TOML document into a table value and reports source line and column on invalid input.
@@ -852,14 +820,11 @@ export fn parse(
     limits: Optional[TomlLimits] = none
 ) -> Result[TomlValue, TomlError]:
     var options = TomlLimits()
-
     if let value = limits:
         options = value
-
     for limit in [options.max_bytes, options.max_depth, options.max_values]:
         if let value = limit:
             if value < 0: return error(TomlError.InvalidInput)
-
     if not within(value: text.byte_length(), limit: options.max_bytes): return error(
         TomlError.LimitExceeded
     )
@@ -882,7 +847,6 @@ export fn parse(
                 reason: "bare carriage return"
             )
         )
-
         if (code < 32 and code != 9 and code != 10) or code == 127: return error(
             TomlError.InvalidData(
                 line: scan_line,
@@ -952,14 +916,12 @@ export fn parse(
             if array:
                 let allocated_table = try allocate(reader)
                 let next = table(explicit: true, dotted: false)
-
                 let appended = try append_table(
                     reader: reader,
                     parent: parent,
                     key: key,
                     next: next
                 )
-
                 current = next
             else:
                 current = try child(
@@ -978,9 +940,7 @@ export fn parse(
                 current.explicit = true
 
             current_depth = keys.length() + 1
-
             if array: current_depth = current_depth + 1
-
             let checked_budget = try budget(reader: reader, depth: current_depth)
         else:
             let keys = try key_path(reader)
@@ -1000,10 +960,8 @@ export fn parse(
             )
 
         space(reader: reader, multiline: false)
-
         if peek(reader) == "#":
             while peek(reader) != "" and peek(reader) != "\n": advance(reader)
-
         if peek(reader) != "" and advance(reader) != "\n": return error(
             invalid(reader: reader, reason: "unexpected trailing text")
         )
@@ -1017,9 +975,7 @@ type Writer:
 
 fn hex4(code: Int) -> String:
     var digits = code.to_string(16)
-
     while digits.length() < 4: digits = "0".concat(digits)
-
     return digits
 
 fn quote_text(text: String) -> String:
@@ -1046,12 +1002,10 @@ fn quote_text(text: String) -> String:
 
 fn format_key(key: String) -> String:
     var bare = key != ""
-
     for c in key.chars():
         if not "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-".contains(
             c
         ): bare = false
-
     if bare: return key
 
     return quote_text(key)
@@ -1065,7 +1019,6 @@ fn format_float(value: Float) -> String:
         return "inf"
 
     let text = value.to_string()
-
     if (text.contains(".") or text.contains("e") or text.contains("E")): return text
 
     return text.concat(".0")
@@ -1077,23 +1030,17 @@ fn inline_value(value: TomlValue) -> String:
         FloatValue(number): return format_float(number)
         BoolValue(flag): return flag.toString()
         DateTimeValue(text): return text
-
         ArrayValue(values):
             let parts: List[String] = []
-
             for item in values: parts.append(inline_value(item))
-
             return "[".concat(parts.join(", ")).concat("]")
-
         TableValue(values):
             let parts: List[String] = []
-
             for entry in values.entries(): parts.append(
                 format_key(entry.key).concat(" = ").concat(
                     inline_value(entry.value)
                 )
             )
-
             if parts.is_empty(): return "\{\}"
 
             return "\{ ".concat(parts.join(", ")).concat(" \}")
@@ -1110,14 +1057,11 @@ fn table_items(values: List[TomlValue]) -> List[Map[String, TomlValue]]:
 
 fn dotted(path: List[String]) -> String:
     let parts: List[String] = []
-
     for key in path: parts.append(format_key(key))
-
     return parts.join(".")
 
 fn emit_header(writer: Writer, header: String) -> Unit:
     if writer.started: writer.out.append("\n")
-
     writer.out.append(header)
     writer.out.append("\n")
     writer.started = true
@@ -1125,7 +1069,6 @@ fn emit_header(writer: Writer, header: String) -> Unit:
 fn section_kind(value: TomlValue) -> Int:
     match value:
         TableValue(_): return 1
-
         ArrayValue(elements):
             if (
                 not elements.is_empty()
@@ -1133,7 +1076,6 @@ fn section_kind(value: TomlValue) -> Int:
             ): return 2
 
             return 0
-
         _: return 0
 
 fn emit_one(
@@ -1177,7 +1119,6 @@ fn emit_table(
                 brackets: "[",
                 table: table
             )
-
             ArrayValue(elements):
                 if section_kind(entry.value) == 2:
                     for table in table_items(elements): emit_one(
@@ -1186,7 +1127,6 @@ fn emit_table(
                         brackets: "[[",
                         table: table
                     )
-
             _: let ignored = unit
 
 # Serializes a table value as a TOML document. Tables and arrays of tables use headers; other values are written inline.
@@ -1204,7 +1144,6 @@ export fn stringify(
     let writer = Writer(out: StringBuilder(), started: false)
     emit_table(writer: writer, path: [], values: root)
     let text = writer.out.freeze()
-
     if not within(value: text.byte_length(), limit: max_bytes): return error(
         TomlError.LimitExceeded
     )

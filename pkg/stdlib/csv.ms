@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 # Errors returned for malformed CSV input or configured size limits.
 export type CsvError:
     # The delimiter, line ending or a supplied row/cell/output budget is invalid.

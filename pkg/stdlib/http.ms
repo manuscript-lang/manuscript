@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 import Bytes from "@std/bytes.ms"
 import Connection from "@std/net.ms"
 import DatagramSocket from "@std/net.ms"
@@ -247,7 +245,6 @@ export interface ResponseBody:
 impl Error for HttpError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `HTTP: <reason>`.
     fn message() -> String:
-
 # documentation documentation/standard-library/http.md
 # +++
 # title = "HTTP"

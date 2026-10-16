@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 # Errors returned for malformed JSON or configured input and nesting limits.
 export type JsonError:
     # An explicit input, depth, value-count or output budget is negative.
@@ -161,7 +159,6 @@ export fn stringify[T](
 impl Error for JsonError:
     # Returns a JSON-prefixed diagnostic without echoing input text or number tokens.
     fn message() -> String:
-
 # documentation documentation/standard-library/formats.md
 # +++
 # title = "Data formats"

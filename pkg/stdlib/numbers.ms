@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 # Errors returned for invalid numeric requests, malformed text, or out-of-range values.
 export type NumberError:
     # A radix or digit-count argument is outside its documented range.

@@ -27,7 +27,6 @@ export interface JsonDecoder:
 # `InvalidInput`.
 export fn decoder(limits: Optional[JsonLimits] = none) -> Result[JsonDecoder, JsonError]:
     let bounds = limits.unwrap_or(JsonLimits())
-
     if (
         bounds.max_bytes.unwrap_or(0) < 0
         or bounds.max_depth.unwrap_or(0) < 0
@@ -97,7 +96,6 @@ fn fail(state: Decoder, cause: JsonError) -> Result[List[JsonValue], JsonError]:
 fn complete(state: Decoder) -> Result[JsonValue, JsonError]:
     let bytes = state.pending.freeze()
     reset(state)
-
     if let text = bytes.to_string():
         return parse(text, some(state.limits))
 
@@ -123,7 +121,6 @@ fn scan(state: Decoder, byte: Int) -> Result[Bool, JsonError]:
     if limit >= 0 and state.size > limit: return error(JsonError.LimitExceeded)
 
     state.pending.append(byte)
-
     if state.mode == 3: return ok(false)
 
     if state.in_string:
@@ -142,7 +139,6 @@ fn scan(state: Decoder, byte: Int) -> Result[Bool, JsonError]:
 
     if byte == 123 or byte == 91:
         state.depth = state.depth + 1
-
         if state.depth > state.limits.max_depth.unwrap_or(state.depth): return error(
             JsonError.LimitExceeded
         )
@@ -158,7 +154,6 @@ fn scan(state: Decoder, byte: Int) -> Result[Bool, JsonError]:
 # Consumes one byte and returns the value it completes, if any.
 fn step(state: Decoder, byte: Int) -> Result[Optional[JsonValue], JsonError]:
     let done = try scan(state, byte)
-
     if not done: return ok(none)
 
     let value = try complete(state)
@@ -167,7 +162,6 @@ fn step(state: Decoder, byte: Int) -> Result[Optional[JsonValue], JsonError]:
 impl JsonDecoder for Decoder:
     fn feed(chunk: Bytes) -> Result[List[JsonValue], JsonError]:
         check_cancelled()
-
         if self.finished: return error(JsonError.InvalidInput)
         if self.failure.is_some(): return error(self.failure.unwrap())
 
@@ -187,7 +181,6 @@ impl JsonDecoder for Decoder:
 
         self.finished = true
         let values: List[JsonValue] = []
-
         if self.mode == 0: return ok(values)
         if self.mode != 3: return fail(self, JsonError.InvalidData)
 

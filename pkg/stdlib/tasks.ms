@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 import Duration from "@std/time.ms"
 
 # Runs immediate, delayed, and repeating operations with explicit cancellation.
@@ -135,7 +133,6 @@ impl Error for ExecutionError:
 impl Error for StartError:
     # Returns the fixed diagnostic `scheduler: <reason>`, such as `scheduler: capacity exhausted`.
     fn message() -> String:
-
 # documentation documentation/concurrency/_index.md
 # +++
 # title = "Concurrent work"
@@ -164,7 +161,6 @@ impl Error for StartError:
 #
 # Compiler contributors can read the [runtime contracts](../contributing/concurrent-runtime.md) for transition and acquisition details.
 # end-documentation
-
 # documentation documentation/concurrency/cancellation.md
 # +++
 # title = "Cancellation and timeouts"
@@ -257,7 +253,6 @@ impl Error for StartError:
 #
 # Deadline configuration is a host operation. Task handles do not expose deadline mutation; there are no deadline annotations on functions or absolute deadline arguments. See [scheduling work](scheduling.md) for drain budgets and [adapter contexts](../contributing/concurrent-runtime.md#adapter-execution-contexts).
 # end-documentation
-
 # documentation documentation/concurrency/joining.md
 # +++
 # title = "Waiting for tasks"
@@ -320,7 +315,6 @@ impl Error for StartError:
 #
 # See [task groups](task-groups.md), [cancellation](cancellation.md), and [scope cleanup](../core-language/cleanup/exit-order.md).
 # end-documentation
-
 # documentation documentation/concurrency/scheduling.md
 # +++
 # title = "Scheduling work"
@@ -362,7 +356,6 @@ impl Error for StartError:
 #
 # Scheduling is process-local. Work that must survive a process restart needs durable application storage. Shutdown cannot forcibly terminate uncooperative native code; host escalation is described in [runtime requirements](../contributing/concurrent-runtime.md).
 # end-documentation
-
 # documentation documentation/concurrency/task-groups.md
 # +++
 # title = "Starting tasks"

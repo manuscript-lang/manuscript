@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 import Bytes from "@std/bytes.ms"
 import Timestamp from "@std/time.ms"
 

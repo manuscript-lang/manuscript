@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 # A local mutable FIFO queue; protect all shared access with Synchronized.
 # Omitted or none capacity grows as needed and adds no fixed queue limit.
 export type Queue[T]:
@@ -55,7 +53,6 @@ export type PriorityQueue[T]:
     fn length() -> Int:
     # Reports whether the queue has no values to peek or dequeue.
     fn is_empty() -> Bool:
-
 # documentation documentation/concurrency/queues.md
 # +++
 # title = "Queues"

@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 import IoError from "@std/io.ms"
 import WriteStream from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
@@ -129,7 +127,6 @@ export fn file_transport(path: String) -> Result[Transport, LogError]:
 impl Error for LogError:
     # Returns the preserved I/O/filesystem cause message, or a logging-prefixed diagnostic.
     fn message() -> String:
-
 # documentation documentation/standard-library/logging.md
 # +++
 # title = "Logging"

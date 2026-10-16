@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 import Bytes from "@std/bytes.ms"
 
 # Errors returned when encoded text is invalid or exceeds a supplied byte limit.

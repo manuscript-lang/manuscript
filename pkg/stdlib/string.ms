@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 # Errors returned by Unicode scalar conversions and bounded string operations.
 export type StringError:
     # Scalar values, normalization form or a supplied repeat/padding/output budget is invalid.
@@ -24,7 +22,6 @@ export type NormalizationForm:
     case Nfkc
     # Compatibility decomposition with combining marks placed in canonical order.
     case Nfkd
-
     # Normalizes text with the existing String.normalize budgets and StringError cases.
     # Omission or none adds no output budget; a supplied budget counts UTF-8 bytes.
     fn normalize(

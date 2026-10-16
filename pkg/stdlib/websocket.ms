@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 import TlsOptions from "@std/tls.ms"
@@ -62,7 +60,6 @@ export type WebSocketOptions:
 impl Error for WebSocketError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `WebSocket: <reason>`.
     fn message() -> String:
-
 # documentation documentation/standard-library/websocket.md
 # +++
 # title = "WebSockets"

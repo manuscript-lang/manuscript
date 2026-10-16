@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 import Bytes from "@std/bytes.ms"
 
 # Errors returned when compressed data is unsupported, invalid, or exceeds a limit.

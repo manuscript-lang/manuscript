@@ -42,6 +42,9 @@ func TestPinnedSources(t *testing.T) {
 				t.Errorf("format %s: %v", entry.Name(), err)
 				continue
 			}
+			if formatted != string(source) {
+				t.Errorf("%s is not canonically formatted; run ms fmt pkg/stdlib/%s", entry.Name(), entry.Name())
+			}
 			if again, err := tooling.Format(entry.Name(), formatted); err != nil || again != formatted {
 				t.Errorf("format %s is not idempotent: %v", entry.Name(), err)
 			}

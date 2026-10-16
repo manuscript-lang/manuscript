@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 import Bytes from "@std/bytes.ms"
 
 # A file-like byte stream that returns `none` at end of input.
@@ -88,7 +86,6 @@ export fn stderr() -> WriteStream:
 
 # Returns file operations for the current host.
 export fn files() -> Files:
-
 # documentation documentation/standard-library/streams.md
 # +++
 # title = "Byte streams"

@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 # Holds either a successful value (`ok`) or an expected failure (`error`).
 export type Result[T, E]:
     # A successful result, retaining its payload without a deep copy.

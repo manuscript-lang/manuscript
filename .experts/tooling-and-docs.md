@@ -35,6 +35,13 @@ Wrap only when a group exceeds 88 columns or holds a comment or
 multi-statement suite; clause counts, argument counts, lambdas, and authored line
 breaks no longer force expansion. Reintroducing such rules spreads code again.
 
+Verified: formatter policy changes also require refreshing the pinned standard
+sources, because exported editor files must pass `ms fmt --check`.
+[TestPinnedSources](../pkg/stdlib/sources_test.go) checks canonical source text
+in the fast unit gate; the exported-source integration test verifies the CLI and
+editor surfaces. Keep generic file headers out of declaration documentation when
+blank lines are discarded.
+
 ### Inspect active List backing in the debugger
 
 Verified: typed List storage adds inactive nil slice fields to the native header.

@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 # Errors returned when a collection factory exceeds its supplied item limit.
 export type CollectionError:
     # A count, item budget, or step is invalid: `count` or `max_items` is negative, or `range` has a zero `step`.
@@ -293,7 +291,6 @@ export type SetBuilder[T: Hashable]:
     # Adds a value to the shared builder; returns Unit like all builder mutations.
     # Equal values retain the first payload and position; a sealed builder faults.
     fn add(value: T) -> Unit:
-
 # documentation documentation/standard-library/builders.md
 # +++
 # title = "Building values"
@@ -338,7 +335,6 @@ export type SetBuilder[T: Hashable]:
 #     if result.get("a") != some(2): return panic("builder replacement")
 # ```
 # end-documentation
-
 # documentation documentation/standard-library/data.md
 # +++
 # title = "Text and collections"
