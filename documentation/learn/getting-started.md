@@ -119,7 +119,8 @@ ms test ms.toml
 ```
 
 `check` catches source errors without running the program, `fmt` formats your
-code, and `test` runs its test blocks. Use `ms --help` to see all commands.
+code, and `test` runs its test blocks. `ms verify` runs check, fmt, lint, and
+test together. Use `ms --help` to see all commands.
 
 ## Keep going
 

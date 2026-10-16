@@ -12,6 +12,7 @@ ms lint source.ms --json
 ms lint ms.toml --json
 ms fmt source.ms --check
 ms fmt ms.toml --check
+ms verify ms.toml --json
 ms lsp
 ms search_symbol read file lines
 ms search_symbol parse_config
@@ -156,6 +157,15 @@ document to stdout, with `format: 1`. Human output remains the default. Usage
 errors return 2 on stderr without a JSON document, as with `check --json`.
 `fmt --json` requires `--check`; `test --json --watch` is rejected because a
 single result cannot describe an ongoing sequence of runs.
+
+`ms verify [target] [--json] [--no-test]` runs `check`, `fmt --check`, `lint`, and
+`test` on one target (default `ms.toml`) and exits 1 when any step fails. With
+`--json` it writes one document, `format: 1`, with `target`, `ok`, and a `steps`
+array in that order. Each step has `name`, `status` (`passed`, `failed`, or
+`skipped`), `exit_code`, `duration_ns`, and `result`, which is that command's own
+`--json` document unchanged. A step that cannot produce one carries `error` text
+instead, and a skipped step carries `reason`. `lint` and `test` are skipped when
+`check` fails; `fmt` always runs; `--no-test` skips the native test build.
 
 `ms inspect`, `diagram`, `emit`, and `lock` accept `--json` for failures only: when the
 source does not check, they write the same `format: 1` `diagnostics` document as

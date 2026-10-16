@@ -18,6 +18,7 @@ Commands:
   run            Build and run an application
   test           Execute test blocks, including imported modules
   fmt            Format source files or a project
+  verify         Run check, fmt --check, lint, and test; one result
   inspect        Emit checked source metadata as JSON
   diagram        Emit a static call graph as Mermaid
   profile        Run with CPU and heap capture; optionally trace
@@ -93,6 +94,11 @@ func commandHelp(command string) (string, bool) {
 		description = "Format selected source files in place, preserving their file permissions.\nDirectories are recursive; projects include all source modules and test files.\nDiscovery skips hidden, vendor, and node_modules directories."
 		options = "  --check  Leave files unchanged; report every unformatted file and exit 1\n  --json   Emit versioned file statuses and diagnostics; requires --check\n"
 		examples = "ms fmt main.ms\n  ms fmt ms.toml --check\n  ms fmt src test.ms\n  ms fmt src/*.ms --check"
+	case "verify":
+		usage = "[file.ms|directory|ms.toml] [--json] [--no-test]"
+		description = "Run check, fmt --check, lint, and test on one target and report every step together.\nThe target defaults to ms.toml. Lint and test are skipped when check fails; fmt always runs.\nWith --json the document holds one entry per step with its status, exit code, and that command's own --json result.\nExit status is 1 when any step fails."
+		options = "  --json     Emit one versioned result with every step\n  --no-test  Skip the test step (it builds a native executable)\n"
+		examples = "ms verify\n  ms verify ms.toml --json\n  ms verify src/main.ms --no-test"
 	case "inspect":
 		usage = "<file.ms|ms.toml> [-o output] [--json]"
 		description = "Emit checked symbols, source hashes, call sites, and statement spans as JSON."
