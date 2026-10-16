@@ -11,6 +11,35 @@ import (
 	"unicode/utf8"
 )
 
+// readBounded reads reader to its end, failing when more than max bytes
+// arrive. The code names the failure: LimitExceeded, InvalidData, or Failed.
+func readBounded(ctx *Execution, reader io.Reader, max int) ([]byte, string) {
+	var out []byte
+	buffer := make([]byte, 32768)
+	for {
+		CheckCancelled(ctx)
+		remaining := max - len(out)
+		chunk := buffer
+		if remaining < len(buffer) {
+			chunk = buffer[:int(remaining)+1]
+		}
+		n, err := reader.Read(chunk)
+		if int(n) > remaining {
+			return nil, "LimitExceeded"
+		}
+		out = append(out, chunk[:n]...)
+		if err == io.EOF {
+			return out, ""
+		}
+		if err != nil {
+			return nil, "InvalidData"
+		}
+		if n == 0 {
+			return nil, "Failed"
+		}
+	}
+}
+
 // readAhead holds bytes a line reader took beyond the current line. The owner's
 // mutex guards it.
 type readAhead struct{ buf []byte }

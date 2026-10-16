@@ -84,7 +84,7 @@ func (n *osNetwork) Request(ctx *Execution, method HttpMethod, address string, h
 		return httpFail[*ClientResponse](httpErrorOf(n.failure(ctx, call, err)))
 	}
 	defer response.Body.Close()
-	payload, code := netReadBounded(ctx, response.Body, max)
+	payload, code := readBounded(ctx, response.Body, max)
 	if code != "" {
 		if call.Err() != nil {
 			if n.isClosed() {

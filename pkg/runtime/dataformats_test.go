@@ -714,10 +714,10 @@ func TestPathMatchesGlob(t *testing.T) {
 func TestGlobStarRunsAreNotQuadratic(t *testing.T) {
 	value := strings.Repeat("a", 4000)
 	start := time.Now()
-	if pathGlobMatch(value, strings.Repeat("*a", 400)+"b") {
+	if globMatch(value, strings.Repeat("*a", 400)+"b") {
 		t.Fatal("pattern ending in b matched a value of only a")
 	}
-	if !pathGlobMatch(value, strings.Repeat("*a", 400)) {
+	if !globMatch(value, strings.Repeat("*a", 400)) {
 		t.Fatal("stars and literals failed to match")
 	}
 	if elapsed := time.Since(start); elapsed > 20*time.Second {
@@ -735,7 +735,7 @@ func TestGlobStarMatching(t *testing.T) {
 		{"a", "a?*", false}, {"abc", "*d", false}, {"abcabc", "*abc*abc", true},
 		{"abab", "*ab*ba", false}, {"é", "?*", true},
 	} {
-		if got := pathGlobMatch(tt.value, tt.pattern); got != tt.want {
+		if got := globMatch(tt.value, tt.pattern); got != tt.want {
 			t.Errorf("match(%q, %q) = %v, want %v", tt.value, tt.pattern, got, tt.want)
 		}
 	}

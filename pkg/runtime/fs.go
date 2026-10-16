@@ -126,35 +126,6 @@ func readFailure(code string) FileSystemError {
 	return FileSystemError_Failed{}
 }
 
-// readBounded reads reader to its end, failing when more than max bytes
-// arrive. The code names the failure: LimitExceeded, InvalidData, or Failed.
-func readBounded(ctx *Execution, reader io.Reader, max int) ([]byte, string) {
-	var out []byte
-	buffer := make([]byte, 32768)
-	for {
-		CheckCancelled(ctx)
-		remaining := max - len(out)
-		chunk := buffer
-		if remaining < len(buffer) {
-			chunk = buffer[:int(remaining)+1]
-		}
-		n, err := reader.Read(chunk)
-		if int(n) > remaining {
-			return nil, "LimitExceeded"
-		}
-		out = append(out, chunk[:n]...)
-		if err == io.EOF {
-			return out, ""
-		}
-		if err != nil {
-			return nil, "InvalidData"
-		}
-		if n == 0 {
-			return nil, "Failed"
-		}
-	}
-}
-
 func permissionBits(mode os.FileMode) int {
 	bits := int(mode.Perm())
 	if mode&os.ModeSetuid != 0 {
@@ -652,7 +623,7 @@ func (f *osFileSystem) OpenDirectory(ctx *Execution, path string) Result[Directo
 func (f *osFileSystem) Glob(ctx *Execution, path, pattern string, maxEntries Option[int]) Result[*List[string], FileSystemError] {
 	max, okLimit := optionLimit(maxEntries, unlimited)
 	p, ok := f.path(path)
-	if !ok || !okLimit || !fsValidGlob(pattern) {
+	if !ok || !okLimit || !globValid(pattern) {
 		return fsInvalid[*List[string]]()
 	}
 	var items []string
@@ -668,7 +639,7 @@ func (f *osFileSystem) Glob(ctx *Execution, path, pattern string, maxEntries Opt
 		if !utf8.ValidString(rel) {
 			return errEncoding
 		}
-		if rel != "." && fsGlobMatch(filepath.ToSlash(rel), pattern) {
+		if rel != "." && globMatch(filepath.ToSlash(rel), pattern) {
 			if len(items) >= max {
 				return errLimit
 			}

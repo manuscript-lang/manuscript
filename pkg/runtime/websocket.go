@@ -228,7 +228,7 @@ func (w *osWebSocket) Receive(ctx *Execution) Result[Option[*WebSocketMessage], 
 	var data []byte
 	if err == nil {
 		var code string
-		data, code = netReadBounded(ctx, reader, w.max)
+		data, code = readBounded(ctx, reader, w.max)
 		if code != "" {
 			if code == "LimitExceeded" {
 				err = websocket.ErrReadLimit

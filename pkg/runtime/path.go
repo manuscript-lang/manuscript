@@ -353,10 +353,10 @@ func (p pathRules) ToNamespacedPath(_ *Execution, s string) string {
 
 func (p pathRules) MatchesGlob(_ *Execution, value, glob string) Result[bool, PathError] {
 	pattern := p.slash(glob)
-	if !pathGlobValid(pattern) {
+	if !globValid(pattern) {
 		return Fail[bool, PathError](PathError_InvalidInput{})
 	}
-	return Ok[bool, PathError](pathGlobMatch(p.slash(value), pattern))
+	return Ok[bool, PathError](globMatch(p.slash(value), pattern))
 }
 
 // Path_Posix returns path operations with POSIX rules.
