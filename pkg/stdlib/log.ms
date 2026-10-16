@@ -4,7 +4,6 @@ import IoError from "@std/io.ms"
 import WriteStream from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 import FileSystemError from "@std/fs.ms"
-import Duration from "@std/time.ms"
 
 # Errors returned while validating or writing a structured log record.
 export type LogError:
@@ -12,7 +11,7 @@ export type LogError:
     case InvalidInput
     # Structured fields cannot be encoded as valid JSON, including cyclic values.
     case InvalidData
-    # The JSON record plus its terminating newline exceeds the supplied byte budget, or an asynchronous transport's queue is full.
+    # The JSON record plus its terminating newline exceeds the supplied byte budget.
     case LimitExceeded
     # The native transport has closed, so an admitted write or flush cannot complete.
     case Closed
@@ -127,31 +126,6 @@ export fn stdout_transport() -> Transport:
 # Appends log records to a file at `path`.
 export fn file_transport(path: String) -> Result[Transport, LogError]:
 
-# Appends log records to a file without blocking the logger.
-#
-# `write` copies the record into a bounded `BlockingQueue` and returns at once; a background task
-# takes records from the queue, appends them to `path`, and rotates the file. A full queue returns
-# `LimitExceeded` instead of waiting, so the record is dropped and the logger never stalls.
-# A failure while writing or rotating is returned by the next `write` or `flush` call.
-#
-# Rotation happens before a record that would exceed `max_bytes`, or once the active file is
-# `max_age` old, measured from when the transport opened it or the existing file's last
-# modification. Rotated files are `path.1` (newest) through `path.N`. `max_files` counts the active
-# file plus rotated files; older files are deleted. Omitted limits do not apply. Each supplied limit
-# must be positive, or the call returns `InvalidInput`. `queue_size` defaults to 8192 records.
-#
-# `flush` waits until every earlier record is written and synchronized to disk. `close` waits for
-# accepted records to be written, then releases the file.
-#
-# Usage: `with transport = try async_file_transport("app.ndjson", max_bytes: 10485760, max_files: 5):`
-export fn async_file_transport(
-    path: String,
-    max_bytes: Optional[Int] = none,
-    max_age: Optional[Duration] = none,
-    max_files: Optional[Int] = none,
-    queue_size: Optional[Int] = none
-) -> Result[Transport, LogError]:
-
 impl Error for LogError:
     # Returns the preserved I/O/filesystem cause message, or a logging-prefixed diagnostic.
     fn message() -> String:
@@ -219,32 +193,6 @@ impl Error for LogError:
 # Transports serialize complete writes and apply backpressure synchronously. They do not queue records in the background. `logger.flush()` delegates to the transport; file flush synchronizes the file to disk, while stdout uses the host stream's flush. Check flush results when persistence matters. Closing is cleanup, not an implicit successful flush. A write failure may follow a partial external write; no rollback is promised. Stream failures preserve their `IoError` as `LogError.Io(cause)`.
 #
 # For file logging, replace the stdout acquisition in the example with `with transport = try file_transport("events.ndjson"):` and import `file_transport`.
-#
-# `async_file_transport(path, max_bytes, max_age, max_files, queue_size)` appends like `file_transport` but never waits for the disk: `write` queues the record on a bounded `BlockingQueue` and a background task writes it. When the queue (default 8192 records) is full, the write returns `LimitExceeded` and drops the record. A write or rotation failure is returned by the next `write` or `flush`. `logger.flush()` waits for earlier records and syncs the file, and `close` writes the accepted records before releasing the file.
-#
-# The file rotates before a record that would pass `max_bytes`, or when it is `max_age` old, counted from when the transport opened it or the existing file's last modification. Rotated files are named `path.1` (newest) through `path.N`; `max_files` bounds the active file plus rotated files, and older ones are deleted. Omitted limits do not apply and supplied limits must be positive.
-#
-# <!-- manuscript-example: {"mode":"test"} -->
-# ```manuscript
-# import {create, async_file_transport} from "@std/log.ms"
-# import {filesystem} from "@std/fs.ms"
-# import panic from "@std/faults.ms"
-#
-# fn write_events(path: String) -> Result[Unit, Error]:
-#     with transport = try async_file_transport(path, max_bytes: 1048576, max_files: 5):
-#         let logger = try create(transport: transport, timestamp: false)
-#         let written = try logger.info(message: "started")
-#         let flushed = try logger.flush()
-#         return ok(unit)
-#
-# test "events reach the file":
-#     let fs = filesystem()
-#     with directory = try fs.temporary("log-example-"):
-#         let path = "{directory.path()}/events.ndjson"
-#         try write_events(path)
-#         let data = try fs.read_file(path: path)
-#         if data.to_string() != some("\{\"level\":30,\"msg\":\"started\"\}\n"): return panic("record")
-# ```
 #
 # A custom transport implements the ordinary `Transport` interface: `write(data: Bytes) -> Result[Unit, LogError]`, `flush() -> Result[Unit, LogError]`, and `close() -> Unit`. Construct its explicit `Transport(value: implementation)` view and pass it to `create`. Custom implementations own their synchronization and lifecycle behavior.
 #
