@@ -259,3 +259,10 @@ global memo or index over a per-query rescan, keep cycle checks ahead of memo
 hits, and measure the emitted Go with `go build -gcflags=-cpuprofile`, since
 `emit` can stay linear while the Go build does not.
 
+
+### Index narrowing is a flow proof with a retained runtime check
+Verified: `list[index]` is `Optional[T]` unless `pkg/checker/bounds.go` proves a nonnegative index below `list.length()` on the same local bindings. Lists are shared references, so a proof dies at assignments to either binding, at any statement containing a call other than `length()`, and at closure and loop back-edges. `values[i]` parses as `KindApply` until checked, so analyses keyed on `KindIndex` miss most lookups. Lowering still emits `Optional_Unwrap(List_At(...))`; narrowing is typing only, and bounds-check elimination needs its own proof.
+
+Apply when: adding facts, loops, or new guard forms to indexing, or narrowing other lookups (`.at`, Map `get`).
+Evidence: #552; `pkg/checker/bounds.go`, `pkg/checker/bounds_test.go`, `tests/e2e/proven_index_test.go`.
+Verify: every guard form needs a paired rejection (upper-only, lower-only, other list, copied length, reassignment, mutation between, closure, flattened index).
