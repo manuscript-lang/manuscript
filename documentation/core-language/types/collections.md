@@ -121,7 +121,7 @@ each `Bool` in 1 byte, and each `String` reference in 16 bytes on a 64-bit host.
 String text storage is additional and may be shared. A List also has a small
 constant header. Append reserves spare capacity and growth can temporarily keep
 old arrays alive, so retained heap and peak process RSS exceed the element budget.
-Int and Float remain signed 64-bit and binary64; storage does not narrow values.
+Int remains the platform-sized signed integer and Float remains binary64; storage does not narrow values.
 
 Passing a List through a generic function, record, Optional, Result, closure, or
 stored operation preserves its mutable identity and backing kind. Generic access

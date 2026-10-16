@@ -21,7 +21,7 @@ func csvOptions(o *CsvOptions) (rune, bool, bool) {
 
 // Csv_Parse reads CSV records with the given options and optional row and
 // cell budgets. Rows may have different widths and blank lines are skipped.
-func Csv_Parse(ctx *Execution, text string, options *CsvOptions, maxRows, maxCells Option[int64]) Result[*List[*List[string]], CsvError] {
+func Csv_Parse(ctx *Execution, text string, options *CsvOptions, maxRows, maxCells Option[int]) Result[*List[*List[string]], CsvError] {
 	delimiter, _, ok := csvOptions(options)
 	rows, cells := dfBudget(maxRows), dfBudget(maxCells)
 	if !ok || rows < 0 || cells < 0 {
@@ -31,7 +31,7 @@ func Csv_Parse(ctx *Execution, text string, options *CsvOptions, maxRows, maxCel
 	reader.Comma = delimiter
 	reader.FieldsPerRecord = -1
 	values := []*List[string]{}
-	count := int64(0)
+	count := 0
 	for {
 		CheckCancelled(ctx)
 		record, err := reader.Read()
@@ -41,10 +41,10 @@ func Csv_Parse(ctx *Execution, text string, options *CsvOptions, maxRows, maxCel
 		if err != nil {
 			return Fail[*List[*List[string]], CsvError](CsvError_InvalidData{})
 		}
-		if int64(len(values)) >= rows || int64(len(record)) > cells-count {
+		if len(values) >= rows || len(record) > cells-count {
 			return Fail[*List[*List[string]], CsvError](CsvError_LimitExceeded{})
 		}
-		count += int64(len(record))
+		count += len(record)
 		values = append(values, NewList(record...))
 	}
 	return Ok[*List[*List[string]], CsvError](NewList(values...))
@@ -52,7 +52,7 @@ func Csv_Parse(ctx *Execution, text string, options *CsvOptions, maxRows, maxCel
 
 // Csv_Stringify encodes rows, ending every row with the selected terminator.
 // A row holding one empty cell is quoted so that it survives a round trip.
-func Csv_Stringify(ctx *Execution, rows *List[*List[string]], options *CsvOptions, maxBytes Option[int64]) Result[string, CsvError] {
+func Csv_Stringify(ctx *Execution, rows *List[*List[string]], options *CsvOptions, maxBytes Option[int]) Result[string, CsvError] {
 	delimiter, crlf, ok := csvOptions(options)
 	n := dfBudget(maxBytes)
 	if !ok || n < 0 {

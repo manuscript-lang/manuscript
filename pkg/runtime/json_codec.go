@@ -47,8 +47,8 @@ func (s *JsonScope) Leave(p any) { delete(s.active, p) }
 // JSON form.
 type JsonEnc[T any] = func(*JsonScope, T) (JsonValue, bool)
 
-func JsonEncInt(_ *JsonScope, v int64) (JsonValue, bool) {
-	return JsonValue_NumberValue{Text: strconv.FormatInt(v, 10)}, true
+func JsonEncInt(_ *JsonScope, v int) (JsonValue, bool) {
+	return JsonValue_NumberValue{Text: strconv.Itoa(v)}, true
 }
 
 // JsonEncFloat writes the shortest round-trip form; NaN and infinities are null.
@@ -104,8 +104,8 @@ func JsonKey[K any](k K) (string, bool) {
 	switch x := any(k).(type) {
 	case string:
 		return x, true
-	case int64:
-		return strconv.FormatInt(x, 10), true
+	case int:
+		return strconv.Itoa(x), true
 	case bool:
 		return strconv.FormatBool(x), true
 	case float64:
@@ -235,13 +235,13 @@ func (r *JsonReader) Ctx() *Execution { return r.ctx }
 // fit the type.
 type JsonDec[T any] = func(*JsonReader, JsonValue) (T, bool)
 
-func JsonDecInt(_ *JsonReader, j JsonValue) (int64, bool) {
+func JsonDecInt(_ *JsonReader, j JsonValue) (int, bool) {
 	n, ok := j.(JsonValue_NumberValue)
 	if !ok {
 		return 0, false
 	}
-	v, err := strconv.ParseInt(n.Text, 10, 64)
-	return v, err == nil
+	v, err := strconv.ParseInt(n.Text, 10, strconv.IntSize)
+	return int(v), err == nil
 }
 
 func JsonDecFloat(_ *JsonReader, j JsonValue) (float64, bool) {
@@ -287,9 +287,12 @@ func JsonDecNative[T any](_ *JsonReader, j JsonValue) (T, bool) {
 	case *Decimal:
 		out, ok = jsonDecimal(j)
 	case Duration:
-		var n int64
-		n, ok = JsonDecInt(nil, j)
-		out = Duration(n)
+		if num, isNumber := j.(JsonValue_NumberValue); isNumber {
+			var n int64
+			var err error
+			n, err = strconv.ParseInt(num.Text, 10, 64)
+			out, ok = Duration(n), err == nil
+		}
 	case Timestamp:
 		if s, isString := j.(JsonValue_StringValue); isString {
 			if r := Time_ParseTimestamp(nil, s.Value); !r.Failed {
@@ -367,9 +370,9 @@ func JsonParseKey[K any](r *JsonReader, text string) (K, bool) {
 	switch any(zero).(type) {
 	case string:
 		return any(text).(K), true
-	case int64:
-		v, err := strconv.ParseInt(text, 10, 64)
-		return any(v).(K), err == nil
+	case int:
+		v, err := strconv.ParseInt(text, 10, strconv.IntSize)
+		return any(int(v)).(K), err == nil
 	case bool:
 		v, err := strconv.ParseBool(text)
 		return any(v).(K), err == nil && (text == "true" || text == "false")

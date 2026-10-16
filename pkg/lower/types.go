@@ -43,7 +43,7 @@ func scalarGo(t *checker.Type) string {
 	}
 	switch t.ID {
 	case "Int":
-		return "int64"
+		return "int"
 	case "Float":
 		return "float64"
 	case "Bool":

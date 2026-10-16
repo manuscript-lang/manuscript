@@ -141,16 +141,16 @@ func TestRunMainExitStatuses(t *testing.T) {
 	saved := diagnosticOutput
 	diagnosticOutput = func(m string) { diagnostics = append(diagnostics, m) }
 	defer func() { diagnosticOutput = saved }()
-	if got := RunMain(func(*Execution) int64 { return 3 }, nil); got != 3 {
+	if got := RunMain(func(*Execution) int { return 3 }, nil); got != 3 {
 		t.Fatalf("exit = %d", got)
 	}
-	if got := RunMain(func(*Execution) int64 { return 126 }, nil); got != 70 {
+	if got := RunMain(func(*Execution) int { return 126 }, nil); got != 70 {
 		t.Fatalf("out-of-range exit = %d", got)
 	}
-	if got := RunMain(func(*Execution) int64 { return -1 }, nil); got != 70 {
+	if got := RunMain(func(*Execution) int { return -1 }, nil); got != 70 {
 		t.Fatalf("negative exit = %d", got)
 	}
-	if got := RunMain(func(*Execution) int64 { Raise("fault"); return 0 }, nil); got != 70 {
+	if got := RunMain(func(*Execution) int { Raise("fault"); return 0 }, nil); got != 70 {
 		t.Fatalf("fault exit = %d", got)
 	}
 }
@@ -162,7 +162,7 @@ func TestRunMainArgumentsHooksAndJoin(t *testing.T) {
 	hostShutdown = func(*Execution) { shutdown = true }
 	defer func() { hostArguments, hostShutdown = nil, nil }()
 	var stopped bool
-	exit := RunMain(func(ctx *Execution) int64 {
+	exit := RunMain(func(ctx *Execution) int {
 		if len(ctx.State.Tasks.Arguments) != 2 {
 			t.Error("arguments not stored in TaskState")
 		}

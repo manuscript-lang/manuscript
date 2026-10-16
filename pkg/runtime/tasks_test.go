@@ -32,7 +32,7 @@ func cancelledExecution() (*Execution, context.CancelFunc) {
 func TestTaskGroupResults(t *testing.T) {
 	ctx := RootExecution()
 	g := NewTaskGroup(None[Duration]())
-	a := TaskGroup_Start(ctx, g, func(*Execution) int64 { return 42 })
+	a := TaskGroup_Start(ctx, g, func(*Execution) int { return 42 })
 	b := TaskGroup_Start(ctx, g, func(*Execution) string { return "hello" })
 	if r := TaskGroup_Join(ctx, g); r.Failed {
 		t.Fatalf("join failed: %v", r.Err)
@@ -44,7 +44,7 @@ func TestTaskGroupResults(t *testing.T) {
 		t.Fatalf("b = %+v", r)
 	}
 	TaskGroup_Close(ctx, g)
-	mustFault(t, "joined or closed", func() { TaskGroup_Start(ctx, g, func(*Execution) int64 { return 1 }) })
+	mustFault(t, "joined or closed", func() { TaskGroup_Start(ctx, g, func(*Execution) int { return 1 }) })
 }
 
 func TestTaskGroupCrashTakesPrecedenceAndSiblingsCancel(t *testing.T) {
@@ -163,7 +163,7 @@ func okOp(*Execution) Result[Unit, Error] { return Ok[Unit, Error](Unit{}) }
 
 func TestSchedulerStartStatusLimit(t *testing.T) {
 	ctx := RootExecution()
-	s := NewScheduler(Some(int64(1)), None[int64](), None[Duration](), None[func(*Execution, SchedulerFailure) Unit]())
+	s := NewScheduler(Some(int(1)), None[int](), None[Duration](), None[func(*Execution, SchedulerFailure) Unit]())
 	defer Scheduler_Close(ctx, s)
 	release := make(chan struct{})
 	first := Scheduler_Start(ctx, s, func(*Execution) Result[Unit, Error] { <-release; return okOp(nil) })
@@ -200,7 +200,7 @@ func TestSchedulerReportsFailuresAndCrashes(t *testing.T) {
 	ctx := RootExecution()
 	reports := make(chan SchedulerFailure, 4)
 	reporter := func(_ *Execution, f SchedulerFailure) Unit { reports <- f; return Unit{} }
-	s := NewScheduler(None[int64](), None[int64](), None[Duration](), Some(reporter))
+	s := NewScheduler(None[int](), None[int](), None[Duration](), Some(reporter))
 	failed := Scheduler_Start(ctx, s, func(*Execution) Result[Unit, Error] {
 		return Fail[Unit, Error](testError("bad"))
 	})
@@ -234,7 +234,7 @@ func TestSchedulerReportsFailuresAndCrashes(t *testing.T) {
 
 func TestSchedulerAfterEveryRestartCancel(t *testing.T) {
 	ctx := RootExecution()
-	s := NewScheduler(None[int64](), None[int64](), None[Duration](), None[func(*Execution, SchedulerFailure) Unit]())
+	s := NewScheduler(None[int](), None[int](), None[Duration](), None[func(*Execution, SchedulerFailure) Unit]())
 	defer Scheduler_Close(ctx, s)
 	if r := Scheduler_After(ctx, s, -1, okOp); !r.Failed {
 		t.Fatal("negative delay accepted")
@@ -271,7 +271,7 @@ func TestSchedulerAfterEveryRestartCancel(t *testing.T) {
 
 func TestSchedulerHistoryLimit(t *testing.T) {
 	ctx := RootExecution()
-	s := NewScheduler(None[int64](), Some(int64(0)), None[Duration](), None[func(*Execution, SchedulerFailure) Unit]())
+	s := NewScheduler(None[int](), Some(int(0)), None[Duration](), None[func(*Execution, SchedulerFailure) Unit]())
 	id := Scheduler_Start(ctx, s, okOp)
 	Scheduler_Close(ctx, s)
 	if _, ok := Scheduler_Status(ctx, s, id.Val).(WorkStatus_Unknown); !ok {
@@ -281,7 +281,7 @@ func TestSchedulerHistoryLimit(t *testing.T) {
 
 func TestSchedulerCloseFromOwnOperationFaults(t *testing.T) {
 	ctx := RootExecution()
-	s := NewScheduler(None[int64](), None[int64](), None[Duration](), None[func(*Execution, SchedulerFailure) Unit]())
+	s := NewScheduler(None[int](), None[int](), None[Duration](), None[func(*Execution, SchedulerFailure) Unit]())
 	recovered := make(chan any, 1)
 	Scheduler_Start(ctx, s, func(c *Execution) Result[Unit, Error] {
 		defer func() { recovered <- recover() }()
@@ -296,7 +296,7 @@ func TestSchedulerCloseFromOwnOperationFaults(t *testing.T) {
 
 func TestSchedulerDrainLetsWorkFinish(t *testing.T) {
 	ctx := RootExecution()
-	s := NewScheduler(None[int64](), None[int64](), Some(Duration(time.Second)), None[func(*Execution, SchedulerFailure) Unit]())
+	s := NewScheduler(None[int](), None[int](), Some(Duration(time.Second)), None[func(*Execution, SchedulerFailure) Unit]())
 	var finished atomic.Bool
 	id := Scheduler_Start(ctx, s, func(c *Execution) Result[Unit, Error] {
 		sleepFor(c, 30*time.Millisecond)
@@ -314,9 +314,9 @@ func TestSchedulerDrainLetsWorkFinish(t *testing.T) {
 
 func TestSchedulerConstructorFaults(t *testing.T) {
 	none := None[func(*Execution, SchedulerFailure) Unit]()
-	mustFault(t, "Scheduler: limit must be between 1", func() { NewScheduler(Some(int64(0)), None[int64](), None[Duration](), none) })
-	mustFault(t, "Scheduler: history_limit must be between 0", func() { NewScheduler(None[int64](), Some(int64(-1)), None[Duration](), none) })
-	mustFault(t, "Scheduler: drain (nanoseconds)", func() { NewScheduler(None[int64](), None[int64](), Some(Duration(-1)), none) })
+	mustFault(t, "Scheduler: limit must be between 1", func() { NewScheduler(Some(int(0)), None[int](), None[Duration](), none) })
+	mustFault(t, "Scheduler: history_limit must be between 0", func() { NewScheduler(None[int](), Some(int(-1)), None[Duration](), none) })
+	mustFault(t, "Scheduler: drain (nanoseconds)", func() { NewScheduler(None[int](), None[int](), Some(Duration(-1)), none) })
 }
 
 func TestTaskErrorMessages(t *testing.T) {
@@ -337,7 +337,7 @@ func TestTaskErrorMessages(t *testing.T) {
 
 func TestSynchronizedLockSetWait(t *testing.T) {
 	ctx := RootExecution()
-	cell := NewSynchronized(int64(0))
+	cell := NewSynchronized(int(0))
 	g := Synchronized_Lock(ctx, cell)
 	SynchronizedGuard_Set(ctx, g, 5)
 	if SynchronizedGuard_Value(ctx, g) != 5 {
@@ -352,7 +352,7 @@ func TestSynchronizedLockSetWait(t *testing.T) {
 
 func TestSynchronizedConcurrentCounter(t *testing.T) {
 	ctx := RootExecution()
-	cell := NewSynchronized(int64(0))
+	cell := NewSynchronized(int(0))
 	group := NewTaskGroup(None[Duration]())
 	for i := 0; i < 8; i++ {
 		TaskGroup_Start(ctx, group, func(c *Execution) Unit {
@@ -441,7 +441,7 @@ func TestSynchronizedLockObservesCancellation(t *testing.T) {
 
 func TestQueue(t *testing.T) {
 	ctx := RootExecution()
-	q := NewQueue[int64](Some(int64(2)))
+	q := NewQueue[int](Some(int(2)))
 	if !Queue_Enqueue(ctx, q, 1) || !Queue_Enqueue(ctx, q, 2) || Queue_Enqueue(ctx, q, 3) {
 		t.Fatal("capacity")
 	}
@@ -455,9 +455,9 @@ func TestQueue(t *testing.T) {
 	if Queue_Dequeue(ctx, q).Some || !Queue_IsEmpty(ctx, q) {
 		t.Fatal("empty")
 	}
-	mustFault(t, "Queue: capacity must be between 1", func() { NewQueue[int64](Some(int64(0))) })
-	unbounded := NewQueue[int64](None[int64]())
-	for i := int64(0); i < 1000; i++ {
+	mustFault(t, "Queue: capacity must be between 1", func() { NewQueue[int](Some(int(0))) })
+	unbounded := NewQueue[int](None[int]())
+	for i := int(0); i < 1000; i++ {
 		Queue_Enqueue(ctx, unbounded, i)
 	}
 	if Queue_Length(ctx, unbounded) != 1000 {
@@ -467,10 +467,10 @@ func TestQueue(t *testing.T) {
 
 func TestBlockingQueueProducerConsumer(t *testing.T) {
 	ctx := RootExecution()
-	q := NewBlockingQueue[int64](Some(int64(2)))
+	q := NewBlockingQueue[int](Some(int(2)))
 	group := NewTaskGroup(None[Duration]())
-	worker := TaskGroup_Start(ctx, group, func(c *Execution) int64 {
-		var total int64
+	worker := TaskGroup_Start(ctx, group, func(c *Execution) int {
+		var total int
 		for {
 			v := BlockingQueue_Take(c, q)
 			if !v.Some {
@@ -479,7 +479,7 @@ func TestBlockingQueueProducerConsumer(t *testing.T) {
 			total += v.Val
 		}
 	})
-	for i := int64(1); i <= 5; i++ {
+	for i := int(1); i <= 5; i++ {
 		if !BlockingQueue_Put(ctx, q, i) {
 			t.Fatal("put failed")
 		}
@@ -497,7 +497,7 @@ func TestBlockingQueueProducerConsumer(t *testing.T) {
 
 func TestBlockingQueueCancellationUnblocks(t *testing.T) {
 	ctx := RootExecution()
-	q := NewBlockingQueue[int64](None[int64]())
+	q := NewBlockingQueue[int](None[int]())
 	group := NewTaskGroup(None[Duration]())
 	TaskGroup_Start(ctx, group, func(c *Execution) Unit { BlockingQueue_Take(c, q); return Unit{} })
 	time.Sleep(10 * time.Millisecond)
@@ -509,10 +509,10 @@ func TestBlockingQueueCancellationUnblocks(t *testing.T) {
 
 func TestPriorityQueueOrderAndStability(t *testing.T) {
 	ctx := RootExecution()
-	type item struct{ priority, id int64 }
-	q := NewPriorityQueue(func(_ *Execution, a, b item) int64 { return a.priority - b.priority }, None[int64]())
-	for i, p := range []int64{3, 1, 2, 1, 3, 1} {
-		PriorityQueue_Enqueue(ctx, q, item{p, int64(i)})
+	type item struct{ priority, id int }
+	q := NewPriorityQueue(func(_ *Execution, a, b item) int { return a.priority - b.priority }, None[int]())
+	for i, p := range []int{3, 1, 2, 1, 3, 1} {
+		PriorityQueue_Enqueue(ctx, q, item{p, int(i)})
 	}
 	var got []string
 	for !PriorityQueue_IsEmpty(ctx, q) {
@@ -531,12 +531,12 @@ func TestPriorityQueueOrderAndStability(t *testing.T) {
 func TestPriorityQueueComparatorFaultLeavesHeapIntact(t *testing.T) {
 	ctx := RootExecution()
 	fail := false
-	q := NewPriorityQueue(func(_ *Execution, a, b int64) int64 {
+	q := NewPriorityQueue(func(_ *Execution, a, b int) int {
 		if fail {
 			Raise("cmp")
 		}
 		return a - b
-	}, Some(int64(3)))
+	}, Some(int(3)))
 	PriorityQueue_Enqueue(ctx, q, 2)
 	PriorityQueue_Enqueue(ctx, q, 1)
 	fail = true

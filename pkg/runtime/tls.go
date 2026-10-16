@@ -16,7 +16,7 @@ func netTimestampOf(t time.Time) Timestamp {
 }
 
 // Tls_ParseCertificates validates PEM certificates and exposes their metadata.
-func Tls_ParseCertificates(_ *Execution, text string, maxCertificates Option[int64]) Result[*List[*CertificateInfo], TlsError] {
+func Tls_ParseCertificates(_ *Execution, text string, maxCertificates Option[int]) Result[*List[*CertificateInfo], TlsError] {
 	max, ok := optLimit(maxCertificates, netUnlimited)
 	if !ok {
 		return Fail[*List[*CertificateInfo], TlsError](TlsError_InvalidInput{})
@@ -31,7 +31,7 @@ func Tls_ParseCertificates(_ *Execution, text string, maxCertificates Option[int
 		if block == nil || block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
 			return Fail[*List[*CertificateInfo], TlsError](TlsError_InvalidData{})
 		}
-		if int64(len(out)) >= max {
+		if len(out) >= max {
 			return Fail[*List[*CertificateInfo], TlsError](TlsError_LimitExceeded{})
 		}
 		cert, err := x509.ParseCertificate(block.Bytes)

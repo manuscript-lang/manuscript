@@ -15,7 +15,7 @@ func Map_Clone[K comparable, V any](_ *Execution, m *Map[K, V]) *Map[K, V] {
 func Map_IsEmpty[K comparable, V any](_ *Execution, m *Map[K, V]) bool { return m.Len() == 0 }
 
 // Map_Length is the entry count.
-func Map_Length[K comparable, V any](_ *Execution, m *Map[K, V]) int64 { return int64(m.Len()) }
+func Map_Length[K comparable, V any](_ *Execution, m *Map[K, V]) int { return int(m.Len()) }
 
 // Map_Filter returns a new map of the entries the predicate accepts.
 func Map_Filter[K comparable, V any](ctx *Execution, m *Map[K, V], keep func(*Execution, K, V) bool) *Map[K, V] {

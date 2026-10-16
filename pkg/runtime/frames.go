@@ -49,7 +49,7 @@ func enterSlow(ctx *Execution) {
 func Exit(ctx *Execution) { ctx.calls.depth-- }
 
 // Depth reports the current call depth, for code that recovers a panic.
-func Depth(ctx *Execution) int64 {
+func Depth(ctx *Execution) int {
 	if ctx == nil || ctx.calls == nil {
 		return 0
 	}
@@ -57,7 +57,7 @@ func Depth(ctx *Execution) int64 {
 }
 
 // RestoreDepth resets the call depth to a value read earlier with Depth.
-func RestoreDepth(ctx *Execution, depth int64) {
+func RestoreDepth(ctx *Execution, depth int) {
 	if ctx != nil && ctx.calls != nil {
 		ctx.calls.depth = depth
 	}

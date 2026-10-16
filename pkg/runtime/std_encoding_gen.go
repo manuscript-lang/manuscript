@@ -5,13 +5,13 @@
 package msruntime
 
 func check_Encoding_Base64Decode() {
-	var _ func(*Execution, string, bool, Option[int64]) Result[*Bytes, EncodingError] = Encoding_Base64Decode
+	var _ func(*Execution, string, bool, Option[int]) Result[*Bytes, EncodingError] = Encoding_Base64Decode
 }
 func check_Encoding_Base64Encode() {
 	var _ func(*Execution, *Bytes, bool) string = Encoding_Base64Encode
 }
 func check_Encoding_HexDecode() {
-	var _ func(*Execution, string, Option[int64]) Result[*Bytes, EncodingError] = Encoding_HexDecode
+	var _ func(*Execution, string, Option[int]) Result[*Bytes, EncodingError] = Encoding_HexDecode
 }
 func check_Encoding_HexEncode() {
 	var _ func(*Execution, *Bytes) string = Encoding_HexEncode

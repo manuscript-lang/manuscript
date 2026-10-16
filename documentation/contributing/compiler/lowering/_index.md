@@ -9,7 +9,7 @@ Lowering translates checked Manuscript into Go. The generated code must preserve
 
 ## Typed Go
 
-Every Manuscript type lowers to exactly one Go type, so a Go compiler sees the program a person would write by hand: `Int` is `int64`, a record is a pointer to a struct, a `List[T]` is `*rt.List[T]`, a function is `func(*rt.Execution, A...) R`. There is no universal value type, no boxing, and no `any` in a generated signature. [Go representation](../../go-lowering-representation.md) states the reference-or-value rule; this page covers how the lowerer keeps the guarantees Go does not.
+Every Manuscript type lowers to exactly one Go type, so a Go compiler sees the program a person would write by hand: `Int` is Go `int`, a record is a pointer to a struct, a `List[T]` is `*rt.List[T]`, a function is `func(*rt.Execution, A...) R`. There is no universal value type, no boxing, and no `any` in a generated signature. [Go representation](../../go-lowering-representation.md) states the reference-or-value rule; this page covers how the lowerer keeps the guarantees Go does not.
 
 `pkg/lower` consumes checked identities and returns Go `ast` nodes: expressions, ordered statement lists, declarations, and a whole `ast.File`. It never parses generated snippets. One printer boundary (`print_go.go`) formats the tree once and then materializes source directives. The runtime, `pkg/runtime`, is imported as `rt`; `Standalone` merges it into one file for `ms emit`.
 

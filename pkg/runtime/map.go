@@ -18,7 +18,7 @@ type Map[K comparable, V any] struct {
 	keys    *Keys[K]
 	index   map[K]int
 	project map[any]int
-	buckets map[int64][]int
+	buckets map[int][]int
 	entries []*MapEntry[K, V] // nil marks a removed entry until compaction
 	live    int
 }
@@ -41,7 +41,7 @@ func (m *Map[K, V]) reset() {
 	case m.keys.Project != nil:
 		m.project = map[any]int{}
 	default:
-		m.buckets = map[int64][]int{}
+		m.buckets = map[int][]int{}
 	}
 }
 

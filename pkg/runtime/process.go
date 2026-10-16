@@ -64,12 +64,12 @@ type osProcessControl struct{}
 
 var _ ProcessControl = osProcessControl{}
 
-func (osProcessControl) MonotonicTime(ctx *Execution) int64 {
+func (osProcessControl) MonotonicTime(ctx *Execution) int {
 	CheckCancelled(ctx)
-	return int64(time.Since(processStarted))
+	return FitInt(int64(time.Since(processStarted)))
 }
 
-func (osProcessControl) WatchSignals(ctx *Execution, signals *List[int64], capacity Option[int64]) Result[SignalStream, ProcessError] {
+func (osProcessControl) WatchSignals(ctx *Execution, signals *List[int], capacity Option[int]) Result[SignalStream, ProcessError] {
 	CheckCancelled(ctx)
 	n, ok := optionLimit(capacity, 128)
 	if !ok || n <= 0 || n > 1048576 {
@@ -77,7 +77,7 @@ func (osProcessControl) WatchSignals(ctx *Execution, signals *List[int64], capac
 	}
 	var list []os.Signal
 	for _, v := range signals.Items {
-		if v <= 0 || v > 64 || v == int64(syscall.SIGKILL) || v == hostos.Constants()["SIGSTOP"] {
+		if v <= 0 || v > 64 || v == int(syscall.SIGKILL) || int64(v) == hostos.Constants()["SIGSTOP"] {
 			return procInvalid[SignalStream]()
 		}
 		list = append(list, syscall.Signal(v))
@@ -93,7 +93,7 @@ func (osProcessControl) WatchSignals(ctx *Execution, signals *List[int64], capac
 // memoryLimit resolves the process's own cgroup path; it does not substitute
 // the cgroup mount root when the process is in a nested group. cgroup v1 and
 // v2 are both supported.
-func memoryLimit() (limit, current int64, err error) {
+func memoryLimit() (limit, current int, err error) {
 	if goruntime.GOOS != "linux" {
 		return 0, 0, nil
 	}
@@ -149,29 +149,29 @@ func memoryLimit() (limit, current int64, err error) {
 		if err != nil || current < 0 {
 			return 0, 0, errors.New("invalid cgroup memory usage")
 		}
-		return limit, current, nil
+		return clampInt(limit), clampInt(current), nil
 	}
 	return 0, 0, nil
 }
 
-func (osProcessControl) ConstrainedMemory(ctx *Execution) Result[int64, ProcessError] {
+func (osProcessControl) ConstrainedMemory(ctx *Execution) Result[int, ProcessError] {
 	CheckCancelled(ctx)
 	limit, _, err := memoryLimit()
 	return procDone(limit, err)
 }
 
-func (osProcessControl) AvailableMemory(ctx *Execution) Result[int64, ProcessError] {
+func (osProcessControl) AvailableMemory(ctx *Execution) Result[int, ProcessError] {
 	CheckCancelled(ctx)
 	limit, current, err := memoryLimit()
 	if err != nil {
-		return procDone(int64(0), err)
+		return procDone(int(0), err)
 	}
 	memory, err := memstats.VirtualMemoryWithContext(ctx.Context)
 	CheckCancelled(ctx)
 	if err != nil {
-		return procDone(int64(0), err)
+		return procDone(int(0), err)
 	}
-	available := int64(memory.Available)
+	available := int(memory.Available)
 	if limit > 0 {
 		available = min(available, max(limit-current, 0))
 	}
@@ -192,7 +192,7 @@ func (osProcessControl) SetTitle(ctx *Execution, title string) Result[Unit, Proc
 	return procDone(Unit{}, hostos.SetProcessTitle(title))
 }
 
-func (osProcessControl) InitializeGroups(ctx *Execution, username string, gid int64) Result[Unit, ProcessError] {
+func (osProcessControl) InitializeGroups(ctx *Execution, username string, gid int) Result[Unit, ProcessError] {
 	CheckCancelled(ctx)
 	if gid < 0 || gid > 2147483647 || strings.ContainsRune(username, 0) {
 		return procInvalid[Unit]()
@@ -250,7 +250,7 @@ func (osProcessControl) Info(ctx *Execution) Result[*ProcessInfo, ProcessError] 
 	if !utf8.ValidString(executable + strings.Join(os.Args, "")) {
 		return procFail[*ProcessInfo](ProcessError_Unsupported{})
 	}
-	return procOK(&ProcessInfo{Pid: int64(os.Getpid()), ParentPid: int64(os.Getppid()), Executable: executable, Arguments: NewList(os.Args...), Os: goruntime.GOOS, Architecture: goruntime.GOARCH, Uid: int64(os.Getuid()), Gid: int64(os.Getgid()), EffectiveUid: int64(os.Geteuid()), EffectiveGid: int64(os.Getegid())})
+	return procOK(&ProcessInfo{Pid: int(os.Getpid()), ParentPid: int(os.Getppid()), Executable: executable, Arguments: NewList(os.Args...), Os: goruntime.GOOS, Architecture: goruntime.GOARCH, Uid: int(os.Getuid()), Gid: int(os.Getgid()), EffectiveUid: int(os.Geteuid()), EffectiveGid: int(os.Getegid())})
 }
 
 func (osProcessControl) MemoryUsage(ctx *Execution) Result[*MemoryUsage, ProcessError] {
@@ -266,7 +266,7 @@ func (osProcessControl) MemoryUsage(ctx *Execution) Result[*MemoryUsage, Process
 	if err != nil {
 		return procDone[*MemoryUsage](nil, err)
 	}
-	return procOK(&MemoryUsage{HeapUsed: int64(mem.HeapAlloc), HeapTotal: int64(mem.HeapInuse), HeapSystem: int64(mem.HeapSys), External: int64(mem.Sys - mem.HeapSys), Resident: int64(memory.RSS)})
+	return procOK(&MemoryUsage{HeapUsed: int(mem.HeapAlloc), HeapTotal: int(mem.HeapInuse), HeapSystem: int(mem.HeapSys), External: int(mem.Sys - mem.HeapSys), Resident: int(memory.RSS)})
 }
 
 func (osProcessControl) CpuUsage(ctx *Execution) Result[*CpuUsage, ProcessError] {
@@ -275,7 +275,7 @@ func (osProcessControl) CpuUsage(ctx *Execution) Result[*CpuUsage, ProcessError]
 	if err != nil {
 		return procDone[*CpuUsage](nil, err)
 	}
-	return procOK(&CpuUsage{UserMicroseconds: usage.User, SystemMicroseconds: usage.System})
+	return procOK(&CpuUsage{UserMicroseconds: FitInt(usage.User), SystemMicroseconds: FitInt(usage.System)})
 }
 
 func (osProcessControl) Uptime(ctx *Execution) Result[Duration, ProcessError] {
@@ -318,7 +318,7 @@ func (osProcessControl) SetEnvironment(ctx *Execution, name string, value Option
 	return procDone(Unit{}, err)
 }
 
-func (osProcessControl) LoadEnvironment(ctx *Execution, path string, maxBytes Option[int64]) Result[Unit, ProcessError] {
+func (osProcessControl) LoadEnvironment(ctx *Execution, path string, maxBytes Option[int]) Result[Unit, ProcessError] {
 	CheckCancelled(ctx)
 	limit, ok := optionLimit(maxBytes, unlimited)
 	if !ok || strings.ContainsRune(path, 0) {
@@ -375,7 +375,7 @@ func (osProcessControl) ChangeDirectory(ctx *Execution, path string) Result[Unit
 	return procDone(Unit{}, os.Chdir(path))
 }
 
-func (osProcessControl) SendSignal(ctx *Execution, pid, sig int64) Result[Unit, ProcessError] {
+func (osProcessControl) SendSignal(ctx *Execution, pid, sig int) Result[Unit, ProcessError] {
 	CheckCancelled(ctx)
 	if pid < -2147483648 || pid > 2147483647 || sig < 0 || sig > 64 {
 		return procInvalid[Unit]()
@@ -383,18 +383,18 @@ func (osProcessControl) SendSignal(ctx *Execution, pid, sig int64) Result[Unit, 
 	return procDone(Unit{}, hostos.SendSignal(int(pid), int(sig)))
 }
 
-func (osProcessControl) Groups(ctx *Execution) Result[*List[int64], ProcessError] {
+func (osProcessControl) Groups(ctx *Execution) Result[*List[int], ProcessError] {
 	CheckCancelled(ctx)
 	if goruntime.GOOS == "windows" {
-		return procFail[*List[int64]](ProcessError_Unsupported{})
+		return procFail[*List[int]](ProcessError_Unsupported{})
 	}
 	groups, err := os.Getgroups()
 	if err != nil {
-		return procDone[*List[int64]](nil, err)
+		return procDone[*List[int]](nil, err)
 	}
-	items := make([]int64, len(groups))
+	items := make([]int, len(groups))
 	for i, g := range groups {
-		items[i] = int64(g)
+		items[i] = int(g)
 	}
 	return procOK(NewList(items...))
 }
@@ -405,24 +405,24 @@ func (osProcessControl) ResourceUsage(ctx *Execution) Result[*ResourceUsage, Pro
 	if err != nil {
 		return procDone[*ResourceUsage](nil, err)
 	}
-	return procOK(&ResourceUsage{UserMicroseconds: u.User, SystemMicroseconds: u.System, MaxResidentBytes: u.MaxRSS, MinorFaults: u.MinorFaults, MajorFaults: u.MajorFaults, FilesystemReads: u.Reads, FilesystemWrites: u.Writes, VoluntarySwitches: u.VoluntarySwitches, InvoluntarySwitches: u.InvoluntarySwitches})
+	return procOK(&ResourceUsage{UserMicroseconds: FitInt(u.User), SystemMicroseconds: FitInt(u.System), MaxResidentBytes: clampInt(u.MaxRSS), MinorFaults: clampInt(u.MinorFaults), MajorFaults: clampInt(u.MajorFaults), FilesystemReads: clampInt(u.Reads), FilesystemWrites: clampInt(u.Writes), VoluntarySwitches: clampInt(u.VoluntarySwitches), InvoluntarySwitches: clampInt(u.InvoluntarySwitches)})
 }
 
-func (osProcessControl) Umask(ctx *Execution, mask int64) Result[int64, ProcessError] {
+func (osProcessControl) Umask(ctx *Execution, mask int) Result[int, ProcessError] {
 	CheckCancelled(ctx)
 	if mask < 0 || mask > 0777 {
-		return procInvalid[int64]()
+		return procInvalid[int]()
 	}
 	workingDirectoryMu.Lock()
 	v := hostos.Umask(int(mask))
 	workingDirectoryMu.Unlock()
 	if v < 0 {
-		return procFail[int64](ProcessError_Unsupported{})
+		return procFail[int](ProcessError_Unsupported{})
 	}
-	return procOK(int64(v))
+	return procOK(int(v))
 }
 
-func (osProcessControl) SetIdentity(ctx *Execution, kind string, id int64) Result[Unit, ProcessError] {
+func (osProcessControl) SetIdentity(ctx *Execution, kind string, id int) Result[Unit, ProcessError] {
 	CheckCancelled(ctx)
 	if id < 0 || id > 2147483647 || (kind != "uid" && kind != "gid" && kind != "euid" && kind != "egid") {
 		return procInvalid[Unit]()
@@ -430,7 +430,7 @@ func (osProcessControl) SetIdentity(ctx *Execution, kind string, id int64) Resul
 	return procDone(Unit{}, hostos.SetIdentity(kind, int(id)))
 }
 
-func (osProcessControl) SetGroups(ctx *Execution, groups *List[int64]) Result[Unit, ProcessError] {
+func (osProcessControl) SetGroups(ctx *Execution, groups *List[int]) Result[Unit, ProcessError] {
 	CheckCancelled(ctx)
 	var list []int
 	for _, id := range groups.Items {
@@ -528,26 +528,26 @@ func (s *osSignalStream) Close(*Execution) Unit {
 	return Unit{}
 }
 
-func (s *osSignalStream) Next(ctx *Execution) Result[int64, ProcessError] {
+func (s *osSignalStream) Next(ctx *Execution) Result[int, ProcessError] {
 	select {
 	case s.gate <- struct{}{}:
 	case <-s.done:
-		return procFail[int64](ProcessError_Closed{})
+		return procFail[int](ProcessError_Closed{})
 	case <-ctx.Context.Done():
 		CheckCancelled(ctx)
 	}
 	defer func() { <-s.gate }()
 	select {
 	case <-s.done:
-		return procFail[int64](ProcessError_Closed{})
+		return procFail[int](ProcessError_Closed{})
 	case <-ctx.Context.Done():
 		CheckCancelled(ctx)
 	case value := <-s.events:
 		CheckCancelled(ctx)
-		return procOK(int64(value.(syscall.Signal)))
+		return procOK(int(value.(syscall.Signal)))
 	}
 	Raise("unreachable signal wait")
-	return procFail[int64](ProcessError_Closed{})
+	return procFail[int](ProcessError_Closed{})
 }
 
 // Commands.
@@ -561,7 +561,7 @@ func cmdFail[T any](e CommandError) Result[T, CommandError] { return Fail[T, Com
 // boundedOutput collects a command's output up to a byte budget.
 type boundedOutput struct {
 	mu             sync.Mutex
-	remaining      int64
+	remaining      int
 	stdout, stderr bytes.Buffer
 	overflow       bool
 	cancel         context.CancelFunc
@@ -577,7 +577,7 @@ func (w commandOutputWriter) Write(data []byte) (int, error) {
 	output.mu.Lock()
 	defer output.mu.Unlock()
 	accepted := len(data)
-	if int64(accepted) > output.remaining {
+	if int(accepted) > output.remaining {
 		accepted = int(output.remaining)
 		output.overflow = true
 		output.cancel()
@@ -587,7 +587,7 @@ func (w commandOutputWriter) Write(data []byte) (int, error) {
 	} else {
 		output.stdout.Write(data[:accepted])
 	}
-	output.remaining -= int64(accepted)
+	output.remaining -= int(accepted)
 	if accepted != len(data) {
 		return accepted, errors.New("command output limit exceeded")
 	}
@@ -624,7 +624,7 @@ func validArguments(arguments *List[string]) ([]string, bool) {
 	return out, true
 }
 
-func (osCommands) Run(ctx *Execution, program string, arguments *List[string], input *Bytes, maxOutput Option[int64], timeoutOption Option[Duration]) Result[*CommandOutput, CommandError] {
+func (osCommands) Run(ctx *Execution, program string, arguments *List[string], input *Bytes, maxOutput Option[int], timeoutOption Option[Duration]) Result[*CommandOutput, CommandError] {
 	limit, ok := optionLimit(maxOutput, unlimited)
 	timeout, ok2 := optionTimeout(timeoutOption)
 	if !ok || !ok2 || program == "" || strings.ContainsRune(program, 0) {
@@ -661,10 +661,10 @@ func (osCommands) Run(ctx *Execution, program string, arguments *List[string], i
 	if lifetime.Err() != nil {
 		return cmdFail[*CommandOutput](CommandError_Timeout{})
 	}
-	code := int64(0)
+	code := 0
 	if err != nil {
 		if exit, ok := err.(*exec.ExitError); ok {
-			code = int64(exit.ExitCode())
+			code = int(exit.ExitCode())
 		} else {
 			if errors.Is(err, exec.ErrNotFound) || errors.Is(err, os.ErrNotExist) {
 				return cmdFail[*CommandOutput](CommandError_Unavailable{})
@@ -686,7 +686,7 @@ type osSubprocess struct {
 	grouped, closed       bool
 	stdin, stdout, stderr *hostStream
 	exited                chan struct{}
-	status                int64
+	status                int
 	stopCancel            func() bool
 }
 
@@ -741,7 +741,7 @@ func (osCommands) Spawn(ctx *Execution, program string, arguments *List[string])
 	p := &osSubprocess{command: command, grouped: grouped, exited: make(chan struct{}), stdin: newHostStream(inWrite, true), stdout: newHostStream(outRead, true), stderr: newHostStream(errRead, true)}
 	go func() {
 		command.Wait()
-		p.status = int64(command.ProcessState.ExitCode())
+		p.status = int(command.ProcessState.ExitCode())
 		close(p.exited)
 	}()
 	// Cancelling the acquiring execution tears down the whole tree.
@@ -803,19 +803,19 @@ func (p *osSubprocess) Close(ctx *Execution) Unit {
 	return Unit{}
 }
 
-func (p *osSubprocess) Wait(ctx *Execution, timeoutOption Option[Duration]) Result[int64, CommandError] {
+func (p *osSubprocess) Wait(ctx *Execution, timeoutOption Option[Duration]) Result[int, CommandError] {
 	timeout, ok := optionTimeout(timeoutOption)
 	if !ok {
-		return cmdFail[int64](CommandError_InvalidInput{})
+		return cmdFail[int](CommandError_InvalidInput{})
 	}
 	lifetime, stop := contextTimeout(ctx.Context, time.Duration(timeout))
 	defer stop()
 	select {
 	case <-p.exited:
 		CheckCancelled(ctx)
-		return Ok[int64, CommandError](p.status)
+		return Ok[int, CommandError](p.status)
 	case <-lifetime.Done():
 		CheckCancelled(ctx)
-		return cmdFail[int64](CommandError_Timeout{})
+		return cmdFail[int](CommandError_Timeout{})
 	}
 }

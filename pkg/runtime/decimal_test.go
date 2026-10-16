@@ -76,7 +76,7 @@ func TestDecimalScaleAndPrecision(t *testing.T) {
 	ctx := RootExecution()
 	for _, tt := range []struct {
 		input, mode, want string
-		places            int64
+		places            int
 	}{
 		{"4.947525d", "HalfEven", "4.95d", 2},
 		{"1.245d", "HalfEven", "1.24d", 2},
@@ -121,7 +121,7 @@ func TestDecimalFixedPlaces(t *testing.T) {
 	ctx := RootExecution()
 	for _, tt := range []struct {
 		input, want string
-		digits      int64
+		digits      int
 	}{
 		{"25.50d", "25.50", 2}, {"1d", "1.0000", 4}, {"0d", "0.00", 2},
 		{"-0.005d", "0.00", 2}, {"-0.006d", "-0.01", 2}, {"9.995d", "10.00", 2},
@@ -143,12 +143,12 @@ func TestDecimalFixedPlaces(t *testing.T) {
 func TestDecimalInvalidRequests(t *testing.T) {
 	ctx := RootExecution()
 	zero := DecimalLiteral("0d")
-	for _, places := range []int64{math.MinInt64, -6145, 6177, math.MaxInt64} {
+	for _, places := range []int{math.MinInt64, -6145, 6177, math.MaxInt64} {
 		if r := Decimal_Round(ctx, zero, places, decimalModeOf("HalfEven")); !r.Failed {
 			t.Errorf("round(%d) succeeded", places)
 		}
 	}
-	for _, digits := range []int64{math.MinInt64, -1, 6177, math.MaxInt64} {
+	for _, digits := range []int{math.MinInt64, -1, 6177, math.MaxInt64} {
 		if r := Decimal_ToFixed(ctx, zero, digits, decimalModeOf("HalfEven")); !r.Failed {
 			t.Errorf("to_fixed(%d) succeeded", digits)
 		}
@@ -190,9 +190,9 @@ func TestDecimalConversions(t *testing.T) {
 	if got := Decimal_ToFloat(ctx, DecimalLiteral("1e6000d")); !math.IsInf(got, 1) {
 		t.Fatalf("overflowing to_float: %v", got)
 	}
-	for text, want := range map[string]Option[int64]{
-		"-2.9d": Some(int64(-2)), "2.9d": Some(int64(2)), "9223372036854775807d": Some(int64(math.MaxInt64)),
-		"9223372036854775808d": None[int64](),
+	for text, want := range map[string]Option[int]{
+		"-2.9d": Some(int(-2)), "2.9d": Some(int(2)), "9223372036854775807d": Some(int(math.MaxInt64)),
+		"9223372036854775808d": None[int](),
 	} {
 		if got := Decimal_TruncateToInt(ctx, DecimalLiteral(text)); got != want {
 			t.Errorf("truncate %s: %v want %v", text, got, want)

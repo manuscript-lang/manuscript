@@ -46,8 +46,8 @@ func Math_Round(_ *Execution, value float64) float64 {
 }
 
 // Math_AbsInt faults on the one value whose magnitude does not fit.
-func Math_AbsInt(_ *Execution, n int64) int64 {
-	if n == math.MinInt64 {
+func Math_AbsInt(_ *Execution, n int) int {
+	if n == math.MinInt {
 		intOverflow()
 	}
 	if n < 0 {

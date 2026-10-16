@@ -35,7 +35,7 @@ func TestUrlParseFormatResolve(t *testing.T) {
 	for _, bad := range []string{"", "no-scheme", "http://user:pw@host/", "http://host:99999/", "mailto:a@b"} {
 		failedWith(t, Url_Parse(ctx, bad), "UrlError_InvalidData")
 	}
-	failedWith(t, Url_Format(ctx, &Url{Scheme: "http", Host: "h", Port: Some(int64(70000))}), "UrlError_InvalidInput")
+	failedWith(t, Url_Format(ctx, &Url{Scheme: "http", Host: "h", Port: Some(int(70000))}), "UrlError_InvalidInput")
 	failedWith(t, Url_Format(ctx, &Url{Scheme: "http", Host: "h", Query: "a b"}), "UrlError_InvalidInput")
 	failedWith(t, Url_Resolve(ctx, &Url{Scheme: "http", Host: "h bad"}, "/x"), "UrlError_InvalidInput")
 }
@@ -50,7 +50,7 @@ func TestUrlComponentsAndQuery(t *testing.T) {
 	}
 	failedWith(t, Url_DecodeComponent(ctx, "%zz"), "UrlError_InvalidData")
 	failedWith(t, Url_DecodeComponent(ctx, "%ff"), "UrlError_InvalidData")
-	q := must(t, Url_ParseQuery(ctx, "a=1&a=2&b&c=x+y%21&&", None[int64]()))
+	q := must(t, Url_ParseQuery(ctx, "a=1&a=2&b&c=x+y%21&&", None[int]()))
 	var got []string
 	for _, e := range q.Items {
 		got = append(got, e.Key+"="+e.Value)
@@ -58,9 +58,9 @@ func TestUrlComponentsAndQuery(t *testing.T) {
 	if strings.Join(got, ",") != "a=1,a=2,b=,c=x y!" {
 		t.Fatal(got)
 	}
-	failedWith(t, Url_ParseQuery(ctx, "a=1", Some(int64(0))), "UrlError_LimitExceeded")
-	failedWith(t, Url_ParseQuery(ctx, "a=1", Some(int64(-1))), "UrlError_InvalidInput")
-	failedWith(t, Url_ParseQuery(ctx, "a=%zz", None[int64]()), "UrlError_InvalidData")
+	failedWith(t, Url_ParseQuery(ctx, "a=1", Some(int(0))), "UrlError_LimitExceeded")
+	failedWith(t, Url_ParseQuery(ctx, "a=1", Some(int(-1))), "UrlError_InvalidInput")
+	failedWith(t, Url_ParseQuery(ctx, "a=%zz", None[int]()), "UrlError_InvalidData")
 	if got := Url_FormatQuery(ctx, q); got != "a=1&a=2&b=&c=x+y%21" {
 		t.Fatal(got)
 	}
@@ -76,7 +76,7 @@ func TestTlsCertificateHelpers(t *testing.T) {
 	ca := newPKI(t)
 	cert, _ := ca.issue(2, "service.test", x509.ExtKeyUsageServerAuth)
 	roots := ca.rootsPEM()
-	infos := must(t, Tls_ParseCertificates(ctx, cert+roots, Some(int64(2))))
+	infos := must(t, Tls_ParseCertificates(ctx, cert+roots, Some(int(2))))
 	if len(infos.Items) != 2 || infos.Items[0].DnsNames.Items[0] != "service.test" || len(infos.Items[0].Der.Data) == 0 {
 		t.Fatalf("%+v", infos.Items[0])
 	}
@@ -84,11 +84,11 @@ func TestTlsCertificateHelpers(t *testing.T) {
 	if !notAfter.After(time.Now()) {
 		t.Fatal("not_after", notAfter)
 	}
-	failedWith(t, Tls_ParseCertificates(ctx, cert+roots, Some(int64(1))), "TlsError_LimitExceeded")
-	failedWith(t, Tls_ParseCertificates(ctx, cert, Some(int64(-1))), "TlsError_InvalidInput")
-	failedWith(t, Tls_ParseCertificates(ctx, "invalid PEM", None[int64]()), "TlsError_InvalidData")
-	failedWith(t, Tls_ParseCertificates(ctx, "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----\n", None[int64]()), "TlsError_InvalidData")
-	if got := must(t, Tls_ParseCertificates(ctx, "  \n", None[int64]())); len(got.Items) != 0 {
+	failedWith(t, Tls_ParseCertificates(ctx, cert+roots, Some(int(1))), "TlsError_LimitExceeded")
+	failedWith(t, Tls_ParseCertificates(ctx, cert, Some(int(-1))), "TlsError_InvalidInput")
+	failedWith(t, Tls_ParseCertificates(ctx, "invalid PEM", None[int]()), "TlsError_InvalidData")
+	failedWith(t, Tls_ParseCertificates(ctx, "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----\n", None[int]()), "TlsError_InvalidData")
+	if got := must(t, Tls_ParseCertificates(ctx, "  \n", None[int]())); len(got.Items) != 0 {
 		t.Fatal("blank input")
 	}
 	now := netTimestampOf(time.Now())
@@ -115,14 +115,14 @@ func TestTlsVerifiedConnectionAndHTTP2(t *testing.T) {
 	options := clientOptions()
 	options.Tls = &TlsOptions{RootsPem: roots}
 	client := must(t, n.HttpClient(ctx, options))
-	body := must(t, client.Request(ctx, get(), server.URL, headersOf(), NewBytes(nil), Some(int64(100)), Some(Duration(time.Second))))
-	if got := someBytes(t, body.Read(ctx, Some(int64(100)))); got != "HTTP/2.0" {
+	body := must(t, client.Request(ctx, get(), server.URL, headersOf(), NewBytes(nil), Some(int(100)), Some(Duration(time.Second))))
+	if got := someBytes(t, body.Read(ctx, Some(int(100)))); got != "HTTP/2.0" {
 		t.Fatal(got)
 	}
 	body.Close(ctx)
 	// Without the roots the certificate is not trusted: there is no insecure mode.
 	untrusted := must(t, n.HttpClient(ctx, clientOptions()))
-	failedWith(t, untrusted.Request(ctx, get(), server.URL, headersOf(), NewBytes(nil), Some(int64(100)), Some(Duration(time.Second))), "HttpError_Failed")
+	failedWith(t, untrusted.Request(ctx, get(), server.URL, headersOf(), NewBytes(nil), Some(int(100)), Some(Duration(time.Second))), "HttpError_Failed")
 	conn := must(t, n.ConnectTlsConfig(ctx, server.Listener.Addr().String(), &TlsOptions{ServerName: "example.com", RootsPem: roots}, Some(Duration(time.Second))))
 	info := must(t, conn.TlsInfo(ctx))
 	if !info.Verified || info.Version < 0x0303 || len(info.PeerCertificates.Items) == 0 {
@@ -152,12 +152,12 @@ func TestTlsMutualListener(t *testing.T) {
 	client := must(t, n.ConnectTlsConfig(ctx, address, &TlsOptions{ServerName: "service.test", RootsPem: roots, CertificatePem: clientCert, PrivateKeyPem: clientKey}, Some(Duration(time.Second))))
 	server := must(t, <-accepted)
 	must(t, client.Write(ctx, NewBytes([]byte("verified")), None[Duration]()))
-	if got := someBytes(t, server.Read(ctx, Some(int64(20)), Some(Duration(time.Second)))); got != "verified" {
+	if got := someBytes(t, server.Read(ctx, Some(int(20)), Some(Duration(time.Second)))); got != "verified" {
 		t.Fatal(got)
 	}
 	// TLS connections half-close like TCP.
 	must(t, client.ShutdownWrite(ctx))
-	if o := must(t, server.Read(ctx, Some(int64(1)), Some(Duration(time.Second)))); o.Some {
+	if o := must(t, server.Read(ctx, Some(int(1)), Some(Duration(time.Second)))); o.Some {
 		t.Fatal("expected EOF")
 	}
 	// A client without a certificate fails the handshake and the listener survives.
@@ -166,7 +166,7 @@ func TestTlsMutualListener(t *testing.T) {
 	if !anonymous.Failed {
 		// TLS 1.3 reports the missing client certificate on first use.
 		anonymous.Val.Write(ctx, NewBytes([]byte("x")), None[Duration]())
-		anonymous.Val.Read(ctx, Some(int64(1)), Some(Duration(time.Second)))
+		anonymous.Val.Read(ctx, Some(int(1)), Some(Duration(time.Second)))
 	}
 	failedWith(t, <-accepted, "NetworkError_Failed")
 }

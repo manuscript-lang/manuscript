@@ -5,13 +5,13 @@
 package msruntime
 
 func check_Archive_Pack() {
-	var _ func(*Execution, *List[*ArchiveEntry], string, Option[int64]) Result[*Bytes, ArchiveError] = Archive_Pack
+	var _ func(*Execution, *List[*ArchiveEntry], string, Option[int]) Result[*Bytes, ArchiveError] = Archive_Pack
 }
 func check_Archive_Unpack() {
 	var _ func(*Execution, *Bytes, string, Option[*ArchiveLimits]) Result[*List[*ArchiveEntry], ArchiveError] = Archive_Unpack
 }
 func check_ArchiveFormat_Pack() {
-	var _ func(*Execution, ArchiveFormat, *List[*ArchiveEntry], Option[int64]) Result[*Bytes, ArchiveError] = ArchiveFormat_Pack
+	var _ func(*Execution, ArchiveFormat, *List[*ArchiveEntry], Option[int]) Result[*Bytes, ArchiveError] = ArchiveFormat_Pack
 }
 func check_ArchiveFormat_Unpack() {
 	var _ func(*Execution, ArchiveFormat, *Bytes, Option[*ArchiveLimits]) Result[*List[*ArchiveEntry], ArchiveError] = ArchiveFormat_Unpack

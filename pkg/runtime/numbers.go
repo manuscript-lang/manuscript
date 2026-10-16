@@ -1,6 +1,7 @@
 package msruntime
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 	"regexp"
@@ -35,18 +36,18 @@ func Numbers_ParseFloat(_ *Execution, text string) Result[float64, NumberError] 
 	return Ok[float64, NumberError](n)
 }
 
-func Numbers_ParseInt(_ *Execution, text string, radix int64) Result[int64, NumberError] {
+func Numbers_ParseInt(_ *Execution, text string, radix int) Result[int, NumberError] {
 	if radix < 2 || radix > 36 {
-		return numberFail[int64](NumberError_InvalidInput{})
+		return numberFail[int](NumberError_InvalidInput{})
 	}
 	if !integerSyntax(text, int(radix)) {
-		return numberFail[int64](NumberError_InvalidData{})
+		return numberFail[int](NumberError_InvalidData{})
 	}
-	n, err := strconv.ParseInt(text, int(radix), 64)
+	n, err := strconv.ParseInt(text, radix, strconv.IntSize)
 	if err != nil {
-		return numberFail[int64](NumberError_OutOfRange{})
+		return numberFail[int](NumberError_OutOfRange{})
 	}
-	return Ok[int64, NumberError](n)
+	return Ok[int, NumberError](int(n))
 }
 
 // integerSyntax reports whether text is an optionally signed, nonempty run of
@@ -81,29 +82,30 @@ func Float_ToString(_ *Execution, v float64) string { return FormatFloat(v) }
 func Float_IsNan(_ *Execution, v float64) bool      { return math.IsNaN(v) }
 func Float_IsFinite(_ *Execution, v float64) bool   { return !math.IsNaN(v) && !math.IsInf(v, 0) }
 
-func Float_TruncateToInt(_ *Execution, v float64) Option[int64] {
-	if math.IsNaN(v) || math.IsInf(v, 0) || v >= 9223372036854775808.0 || v < -9223372036854775808.0 {
-		return None[int64]()
+func Float_TruncateToInt(_ *Execution, v float64) Option[int] {
+	const limit = float64(1 << (strconv.IntSize - 1))
+	if math.IsNaN(v) || math.IsInf(v, 0) || v >= limit || v < -limit {
+		return None[int]()
 	}
-	return Some(int64(v))
+	return Some(int(v))
 }
 
-func formatPrecision(v float64, format byte, digits, minimum int64) Result[string, NumberError] {
+func formatPrecision(v float64, format byte, digits, minimum int) Result[string, NumberError] {
 	if digits < minimum || digits > 100 {
 		return numberFail[string](NumberError_InvalidInput{})
 	}
-	return Ok[string, NumberError](formatFloatPrecision(v, format, int(digits)))
+	return Ok[string, NumberError](formatFloatPrecision(v, format, digits))
 }
 
-func Float_ToPrecision(_ *Execution, v float64, precision int64) Result[string, NumberError] {
+func Float_ToPrecision(_ *Execution, v float64, precision int) Result[string, NumberError] {
 	return formatPrecision(v, 'g', precision, 1)
 }
 
-func Float_ToExponential(_ *Execution, v float64, digits int64) Result[string, NumberError] {
+func Float_ToExponential(_ *Execution, v float64, digits int) Result[string, NumberError] {
 	return formatPrecision(v, 'e', digits, 0)
 }
 
-func Float_ToFixed(_ *Execution, v float64, digits int64) Result[string, NumberError] {
+func Float_ToFixed(_ *Execution, v float64, digits int) Result[string, NumberError] {
 	return formatPrecision(v, 'f', digits, 0)
 }
 
@@ -135,28 +137,29 @@ func formatFloatPrecision(value float64, format byte, precision int) string {
 	return mantissa + "e" + sign + strconv.Itoa(e)
 }
 
-func durationOf(operation string, n, scale int64) Duration {
-	if n < math.MinInt64/scale || n > math.MaxInt64/scale {
-		txRangeFault(operation, "value", n, math.MinInt64/scale, math.MaxInt64/scale)
+func durationOf(operation string, n int, scale int64) Duration {
+	v := int64(n)
+	if v < math.MinInt64/scale || v > math.MaxInt64/scale {
+		Raise(fmt.Sprintf("%s: value must be between %d and %d, found %d", operation, math.MinInt64/scale, math.MaxInt64/scale, v))
 	}
-	return Duration(n * scale)
+	return Duration(v * scale)
 }
 
-func Int_Milliseconds(_ *Execution, n int64) Duration {
+func Int_Milliseconds(_ *Execution, n int) Duration {
 	return durationOf("Int.milliseconds", n, 1_000_000)
 }
-func Int_Seconds(_ *Execution, n int64) Duration { return durationOf("Int.seconds", n, 1_000_000_000) }
-func Int_Minutes(_ *Execution, n int64) Duration { return durationOf("Int.minutes", n, 60_000_000_000) }
+func Int_Seconds(_ *Execution, n int) Duration { return durationOf("Int.seconds", n, 1_000_000_000) }
+func Int_Minutes(_ *Execution, n int) Duration { return durationOf("Int.minutes", n, 60_000_000_000) }
 
-func Int_ToString(_ *Execution, v, radix int64) string {
+func Int_ToString(_ *Execution, v, radix int) string {
 	if radix < 2 || radix > 36 {
 		txRangeFault("Int.to_string", "radix", radix, 2, 36)
 	}
-	return strconv.FormatInt(v, int(radix))
+	return strconv.FormatInt(int64(v), radix)
 }
 
-func Int_ToFloat(_ *Execution, v int64) float64 { return float64(v) }
+func Int_ToFloat(_ *Execution, v int) float64 { return float64(v) }
 
-func Int_ToDecimal(_ *Execution, v int64) *Decimal {
-	return &Decimal{Value: new(big.Rat).SetInt64(v)}
+func Int_ToDecimal(_ *Execution, v int) *Decimal {
+	return &Decimal{Value: new(big.Rat).SetInt64(int64(v))}
 }

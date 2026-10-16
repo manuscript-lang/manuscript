@@ -7,26 +7,26 @@ const nativeMaxItems = 1 << 28
 
 // relativeIndex resolves a negative index against the end without negating
 // MinInt64.
-func relativeIndex(length int, index int64) int64 {
+func relativeIndex(length int, index int) int {
 	if index < 0 {
-		return int64(length) + index
+		return int(length) + index
 	}
 	return index
 }
 
-func indexFault(operation string, length int, index int64) {
+func indexFault(operation string, length int, index int) {
 	if length == 0 {
 		Raise(operation + ": index has no valid value for an empty collection, found " + FormatInt(index))
 	}
-	Raise(operation + ": index must be between " + FormatInt(int64(-length)) + " and " + FormatInt(int64(length-1)) + " (negative indexes count from the end), found " + FormatInt(index))
+	Raise(operation + ": index must be between " + FormatInt(int(-length)) + " and " + FormatInt(int(length-1)) + " (negative indexes count from the end), found " + FormatInt(index))
 }
 
-func rangeFault(operation, parameter string, value, minimum, maximum int64) {
+func rangeFault(operation, parameter string, value, minimum, maximum int) {
 	Raise(operation + ": " + parameter + " must be between " + FormatInt(minimum) + " and " + FormatInt(maximum) + ", found " + FormatInt(value))
 }
 
-func checkSlice(operation string, length int, start, end int64) {
-	if start < 0 || end < start || end > int64(length) {
+func checkSlice(operation string, length int, start, end int) {
+	if start < 0 || end < start || end > int(length) {
 		Raise(operation + ": start/end must satisfy 0 <= start <= end <= " + strconv.Itoa(length) + "; found start " + FormatInt(start) + " and end " + FormatInt(end))
 	}
 }
@@ -43,7 +43,7 @@ func List_Clone[T any](_ *Execution, l *List[T]) *List[T] {
 }
 
 // List_Length is the element count.
-func List_Length[T any](_ *Execution, l *List[T]) int64 { return int64(len(l.Items)) }
+func List_Length[T any](_ *Execution, l *List[T]) int { return len(l.Items) }
 
 // List_IsEmpty reports whether the list has no elements.
 func List_IsEmpty[T any](_ *Execution, l *List[T]) bool { return len(l.Items) == 0 }
@@ -70,29 +70,29 @@ func List_Contains[T any](ctx *Execution, eq Eq[T], l *List[T], value T) bool {
 }
 
 // List_IndexOf returns the first index equal to value.
-func List_IndexOf[T any](ctx *Execution, eq Eq[T], l *List[T], value T) Option[int64] {
+func List_IndexOf[T any](ctx *Execution, eq Eq[T], l *List[T], value T) Option[int] {
 	items, tick := l.Items, uint32(0)
 	CheckCancelled(ctx)
 	for i, item := range items {
 		Poll(ctx, &tick)
 		if eq(ctx, item, value) {
-			return Some(int64(i))
+			return Some(int(i))
 		}
 	}
-	return Option[int64]{}
+	return Option[int]{}
 }
 
 // List_LastIndexOf returns the last index equal to value.
-func List_LastIndexOf[T any](ctx *Execution, eq Eq[T], l *List[T], value T) Option[int64] {
+func List_LastIndexOf[T any](ctx *Execution, eq Eq[T], l *List[T], value T) Option[int] {
 	items, tick := l.Items, uint32(0)
 	CheckCancelled(ctx)
 	for i := len(items) - 1; i >= 0; i-- {
 		Poll(ctx, &tick)
 		if eq(ctx, items[i], value) {
-			return Some(int64(i))
+			return Some(int(i))
 		}
 	}
-	return Option[int64]{}
+	return Option[int]{}
 }
 
 // List_Prepend inserts value at the front in place. Like the old runtime it
@@ -107,10 +107,10 @@ func List_Prepend[T any](_ *Execution, l *List[T], value T) *List[T] {
 
 // List_Insert inserts value before index (negative counts from the end;
 // index == length appends).
-func List_Insert[T any](_ *Execution, l *List[T], index int64, value T) *List[T] {
+func List_Insert[T any](_ *Execution, l *List[T], index int, value T) *List[T] {
 	n := len(l.Items)
 	i := relativeIndex(n, index)
-	if i < 0 || i > int64(n) {
+	if i < 0 || i > int(n) {
 		Raise("List.insert: index must be between " + strconv.Itoa(-n) + " and " + strconv.Itoa(n) + " (negative indexes count from the end), found " + FormatInt(index))
 	}
 	l.Items = append(l.Items, value)
@@ -132,9 +132,9 @@ func List_Pop[T any](_ *Execution, l *List[T]) Option[T] {
 }
 
 // List_Set replaces the element at a possibly negative index.
-func List_Set[T any](_ *Execution, l *List[T], index int64, value T) *List[T] {
+func List_Set[T any](_ *Execution, l *List[T], index int, value T) *List[T] {
 	i := relativeIndex(len(l.Items), index)
-	if i < 0 || i >= int64(len(l.Items)) {
+	if i < 0 || i >= len(l.Items) {
 		indexFault("List.set", len(l.Items), index)
 	}
 	l.Items[i] = value
@@ -142,10 +142,10 @@ func List_Set[T any](_ *Execution, l *List[T], index int64, value T) *List[T] {
 }
 
 // List_Remove deletes the element at a possibly negative index.
-func List_Remove[T any](_ *Execution, l *List[T], index int64) *List[T] {
+func List_Remove[T any](_ *Execution, l *List[T], index int) *List[T] {
 	n := len(l.Items)
 	i := relativeIndex(n, index)
-	if i < 0 || i >= int64(n) {
+	if i < 0 || i >= int(n) {
 		indexFault("List.remove", n, index)
 	}
 	copy(l.Items[i:], l.Items[i+1:])
@@ -154,17 +154,17 @@ func List_Remove[T any](_ *Execution, l *List[T], index int64) *List[T] {
 }
 
 // List_Slice copies [start, end); negative bounds count from the end.
-func List_Slice[T any](_ *Execution, l *List[T], start, end int64) Result[*List[T], CollectionError] {
+func List_Slice[T any](_ *Execution, l *List[T], start, end int) Result[*List[T], CollectionError] {
 	n := len(l.Items)
 	s, e := relativeIndex(n, start), relativeIndex(n, end)
-	if s < 0 || e < s || e > int64(n) {
+	if s < 0 || e < s || e > int(n) {
 		return Fail[*List[T], CollectionError](CollectionError_OutOfRange{})
 	}
 	return Ok[*List[T], CollectionError](&List[T]{Items: cloneItems(l.Items[s:e])})
 }
 
 // List_Take copies the first min(count, length) elements.
-func List_Take[T any](ctx *Execution, l *List[T], count int64) *List[T] {
+func List_Take[T any](ctx *Execution, l *List[T], count int) *List[T] {
 	CheckCancelled(ctx)
 	items := l.Items
 	count = takeCount("take", count, len(items))
@@ -172,18 +172,18 @@ func List_Take[T any](ctx *Execution, l *List[T], count int64) *List[T] {
 }
 
 // List_Drop copies everything after the first min(count, length) elements.
-func List_Drop[T any](ctx *Execution, l *List[T], count int64) *List[T] {
+func List_Drop[T any](ctx *Execution, l *List[T], count int) *List[T] {
 	CheckCancelled(ctx)
 	items := l.Items
 	count = takeCount("drop", count, len(items))
 	return &List[T]{Items: cloneItems(items[count:])}
 }
 
-func takeCount(name string, count int64, length int) int64 {
+func takeCount(name string, count int, length int) int {
 	if count < 0 {
 		Raise("List." + name + ": count must be nonnegative, found " + FormatInt(count))
 	}
-	return min(count, int64(length))
+	return min(count, int(length))
 }
 
 // List_ReverseInPlace reverses in place and returns the same list.
@@ -262,19 +262,19 @@ func List_FindLast[T any](ctx *Execution, l *List[T], pred func(*Execution, T) b
 }
 
 // List_FindIndex returns the first index the predicate accepts.
-func List_FindIndex[T any](ctx *Execution, l *List[T], pred func(*Execution, T) bool) Option[int64] {
+func List_FindIndex[T any](ctx *Execution, l *List[T], pred func(*Execution, T) bool) Option[int] {
 	if i, _, ok := findIn(ctx, l.Items, pred, false); ok {
-		return Some(int64(i))
+		return Some(int(i))
 	}
-	return Option[int64]{}
+	return Option[int]{}
 }
 
 // List_FindLastIndex returns the last index the predicate accepts.
-func List_FindLastIndex[T any](ctx *Execution, l *List[T], pred func(*Execution, T) bool) Option[int64] {
+func List_FindLastIndex[T any](ctx *Execution, l *List[T], pred func(*Execution, T) bool) Option[int] {
 	if i, _, ok := findIn(ctx, l.Items, pred, true); ok {
-		return Some(int64(i))
+		return Some(int(i))
 	}
-	return Option[int64]{}
+	return Option[int]{}
 }
 
 // List_Some reports whether the predicate accepts any element.
@@ -290,8 +290,8 @@ func List_Every[T any](ctx *Execution, l *List[T], pred func(*Execution, T) bool
 }
 
 // List_Count counts the elements the predicate accepts.
-func List_Count[T any](ctx *Execution, l *List[T], pred func(*Execution, T) bool) int64 {
-	items, tick, count := l.Items, uint32(0), int64(0)
+func List_Count[T any](ctx *Execution, l *List[T], pred func(*Execution, T) bool) int {
+	items, tick, count := l.Items, uint32(0), int(0)
 	CheckCancelled(ctx)
 	for _, item := range items {
 		Poll(ctx, &tick)
@@ -308,12 +308,12 @@ func List_Distinct[T any](ctx *Execution, eq Eq[T], l *List[T]) *List[T] {
 	out := &List[T]{}
 	// Int and String equality is exact, so hash them instead of comparing
 	// every kept element.
-	seenInts, seenStrings := map[int64]struct{}{}, map[string]struct{}{}
+	seenInts, seenStrings := map[int]struct{}{}, map[string]struct{}{}
 	CheckCancelled(ctx)
 	for _, item := range items {
 		Poll(ctx, &tick)
 		switch v := any(item).(type) {
-		case int64:
+		case int:
 			if _, dup := seenInts[v]; !dup {
 				seenInts[v] = struct{}{}
 				out.Items = append(out.Items, item)
@@ -419,8 +419,8 @@ func List_FoldRight[T, A any](ctx *Execution, l *List[T], initial A, step func(*
 
 // List_Splice replaces count elements at start with the replacement's
 // elements, in place.
-func List_Splice[T any](_ *Execution, l *List[T], start, count int64, replacement *List[T]) *List[T] {
-	n := int64(len(l.Items))
+func List_Splice[T any](_ *Execution, l *List[T], start, count int, replacement *List[T]) *List[T] {
+	n := len(l.Items)
 	if start < 0 || start > n {
 		rangeFault("List.splice", "start", start, 0, n)
 	}
@@ -448,7 +448,7 @@ func List_Splice[T any](_ *Execution, l *List[T], start, count int64, replacemen
 }
 
 // List_Fill sets [start, end) to value.
-func List_Fill[T any](ctx *Execution, l *List[T], value T, start, end int64) *List[T] {
+func List_Fill[T any](ctx *Execution, l *List[T], value T, start, end int) *List[T] {
 	checkSlice("List.fill", len(l.Items), start, end)
 	items, tick := l.Items, uint32(0)
 	for i := start; i < end; i++ {
@@ -459,13 +459,13 @@ func List_Fill[T any](ctx *Execution, l *List[T], value T, start, end int64) *Li
 }
 
 // List_CopyWithin copies [start, end) to target within the list.
-func List_CopyWithin[T any](_ *Execution, l *List[T], target, start, end int64) *List[T] {
+func List_CopyWithin[T any](_ *Execution, l *List[T], target, start, end int) *List[T] {
 	n := len(l.Items)
 	checkSlice("List.copy_within", n, start, end)
-	if target < 0 || target > int64(n) {
-		rangeFault("List.copy_within", "target", target, 0, int64(n))
+	if target < 0 || target > int(n) {
+		rangeFault("List.copy_within", "target", target, 0, int(n))
 	}
-	if start == end || target == int64(n) {
+	if start == end || target == int(n) {
 		return l
 	}
 	copy(l.Items[target:], l.Items[start:end])
@@ -486,19 +486,19 @@ func List_ToSet[T comparable](ctx *Execution, keys *Keys[T], l *List[T]) *Set[T]
 }
 
 // List_Keys returns 0 through length - 1.
-func List_Keys[T any](_ *Execution, l *List[T]) *List[int64] {
-	out := make([]int64, len(l.Items))
+func List_Keys[T any](_ *Execution, l *List[T]) *List[int] {
+	out := make([]int, len(l.Items))
 	for i := range out {
-		out[i] = int64(i)
+		out[i] = int(i)
 	}
-	return &List[int64]{Items: out}
+	return &List[int]{Items: out}
 }
 
 // List_Entries pairs each index with its element.
 func List_Entries[T any](_ *Execution, l *List[T]) *List[*ListEntry[T]] {
 	out := make([]*ListEntry[T], len(l.Items))
 	for i, v := range l.Items {
-		out[i] = &ListEntry[T]{Index: int64(i), Value: v}
+		out[i] = &ListEntry[T]{Index: int(i), Value: v}
 	}
 	return &List[*ListEntry[T]]{Items: out}
 }
@@ -544,7 +544,7 @@ func List_Concat[T any](_ *Execution, l, other *List[T]) *List[T] {
 // List_Sorted returns a stably sorted shallow copy ordered by the comparator's
 // negative/zero/positive results. A fault or cancellation in the comparator
 // unwinds with the receiver untouched.
-func List_Sorted[T any](ctx *Execution, l *List[T], compare func(*Execution, T, T) int64) *List[T] {
+func List_Sorted[T any](ctx *Execution, l *List[T], compare func(*Execution, T, T) int) *List[T] {
 	out := cloneItems(l.Items)
 	CheckCancelled(ctx)
 	sortStable(out, func(a, b T) bool {

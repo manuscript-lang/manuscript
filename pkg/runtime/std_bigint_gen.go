@@ -7,10 +7,10 @@ package msruntime
 type check_BigInt = *BigInt
 
 func check_Bigint_FromInt() {
-	var _ func(*Execution, int64) *BigInt = Bigint_FromInt
+	var _ func(*Execution, int) *BigInt = Bigint_FromInt
 }
 func check_Bigint_Parse() {
-	var _ func(*Execution, string, int64, Option[int64]) Result[*BigInt, BigIntError] = Bigint_Parse
+	var _ func(*Execution, string, int, Option[int]) Result[*BigInt, BigIntError] = Bigint_Parse
 }
 func check_BigInt_Add() {
 	var _ func(*Execution, *BigInt, *BigInt) *BigInt = BigInt_Add
@@ -28,7 +28,7 @@ func check_BigInt_Remainder() {
 	var _ func(*Execution, *BigInt, *BigInt) Result[*BigInt, BigIntError] = BigInt_Remainder
 }
 func check_BigInt_Compare() {
-	var _ func(*Execution, *BigInt, *BigInt) int64 = BigInt_Compare
+	var _ func(*Execution, *BigInt, *BigInt) int = BigInt_Compare
 }
 func check_BigInt_BitAnd() {
 	var _ func(*Execution, *BigInt, *BigInt) *BigInt = BigInt_BitAnd
@@ -40,10 +40,10 @@ func check_BigInt_BitXor() {
 	var _ func(*Execution, *BigInt, *BigInt) *BigInt = BigInt_BitXor
 }
 func check_BigInt_ToInt() {
-	var _ func(*Execution, *BigInt) Option[int64] = BigInt_ToInt
+	var _ func(*Execution, *BigInt) Option[int] = BigInt_ToInt
 }
 func check_BigInt_ToString() {
-	var _ func(*Execution, *BigInt, int64) string = BigInt_ToString
+	var _ func(*Execution, *BigInt, int) string = BigInt_ToString
 }
 func check_Errors_Message_BigIntError() {
 	var _ func(*Execution, BigIntError) string = Errors_Message_BigIntError

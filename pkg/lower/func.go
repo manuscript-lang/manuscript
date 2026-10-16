@@ -238,7 +238,7 @@ func (g *gen) unit() ast.Expr { return composite(rtName("Unit")) }
 func (g *gen) zero(t *checker.Type) ast.Expr {
 	t = g.sub(t)
 	switch scalarGo(t) {
-	case "int64", "float64":
+	case "int", "float64":
 		return call(ident(scalarGo(t)), intLiteral(0))
 	case "bool":
 		return ident("false")

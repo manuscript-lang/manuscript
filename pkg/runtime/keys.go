@@ -13,7 +13,7 @@ import "strconv"
 // binds them to the constructing execution.
 type Keys[K any] struct {
 	Project func(K) any
-	Hash    func(K) int64
+	Hash    func(K) int
 	Equal   func(K, K) bool
 }
 
@@ -21,7 +21,7 @@ type Keys[K any] struct {
 func StructuralKeys[K any](project func(K) any) *Keys[K] { return &Keys[K]{Project: project} }
 
 // CustomKeys matches keys by an explicit hash and equality.
-func CustomKeys[K any](hash func(K) int64, equal func(K, K) bool) *Keys[K] {
+func CustomKeys[K any](hash func(K) int, equal func(K, K) bool) *Keys[K] {
 	return &Keys[K]{Hash: hash, Equal: equal}
 }
 

@@ -68,7 +68,7 @@ export type JsonValue:
 #   as is, `Int`, `BigInt`, `Decimal`, `Float` and `Bool` from their text, `Timestamp` from RFC 3339,
 #   `Duration` from nanoseconds, and a payloadless case from its name. Other key types return
 #   `InvalidData`.
-# - `Int` accepts integer digits that fit in 64 bits, `Float` any finite number, `BigInt` and `Decimal`
+# - `Int` accepts integer digits that fit in the platform's Int, `Float` any finite number, `BigInt` and `Decimal`
 #   the exact number text. A `null` Float, which `stringify` writes for `NaN` and infinities, returns
 #   `InvalidData`.
 # - `Timestamp` reads an RFC 3339 string, `Duration` integer nanoseconds, `Bytes` a standard base64
@@ -318,7 +318,7 @@ impl Error for JsonError:
 # | `null` | `none` for `Optional`; anything else returns `InvalidData`. |
 # | Array | `List`, or `Set` (repeated elements are dropped). |
 # | Object | `Map[K, V]` in document order. Member names are converted to `K`; two names that read as one key, such as `"1"` and `"01"`, return `InvalidData`. |
-# | Number | `Int` for integer digits within 64 bits (no fraction or exponent); `Float` for any finite number; `BigInt` and `Decimal` read the exact number text; `Duration` reads integer nanoseconds. |
+# | Number | `Int` for integer digits within the platform's Int (no fraction or exponent); `Float` for any finite number; `BigInt` and `Decimal` read the exact number text; `Duration` reads integer nanoseconds. |
 # | String | `String`, `Timestamp` (RFC 3339), `Bytes` (base64), `Url`, `IpAddress` and `Cidr`. |
 # | Any value | `JsonValue` keeps the subtree as parsed. |
 #

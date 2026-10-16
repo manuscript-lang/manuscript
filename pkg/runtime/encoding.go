@@ -24,12 +24,12 @@ func Errors_Message_EncodingError(_ *Execution, e EncodingError) string {
 
 func Encoding_HexEncode(_ *Execution, data *Bytes) string { return hex.EncodeToString(data.Data) }
 
-func Encoding_HexDecode(_ *Execution, text string, maxBytes Option[int64]) Result[*Bytes, EncodingError] {
+func Encoding_HexDecode(_ *Execution, text string, maxBytes Option[int]) Result[*Bytes, EncodingError] {
 	n := txLimit(maxBytes)
 	if n < 0 {
 		return encodingFail[*Bytes](EncodingError_InvalidInput{})
 	}
-	if int64(len(text)/2) > n {
+	if int(len(text)/2) > n {
 		return encodingFail[*Bytes](EncodingError_LimitExceeded{})
 	}
 	b, err := hex.DecodeString(text)
@@ -47,7 +47,7 @@ func Encoding_Base64Encode(_ *Execution, data *Bytes, urlSafe bool) string {
 	return enc.EncodeToString(data.Data)
 }
 
-func Encoding_Base64Decode(_ *Execution, text string, urlSafe bool, maxBytes Option[int64]) Result[*Bytes, EncodingError] {
+func Encoding_Base64Decode(_ *Execution, text string, urlSafe bool, maxBytes Option[int]) Result[*Bytes, EncodingError] {
 	n := txLimit(maxBytes)
 	if n < 0 {
 		return encodingFail[*Bytes](EncodingError_InvalidInput{})
@@ -59,7 +59,7 @@ func Encoding_Base64Decode(_ *Execution, text string, urlSafe bool, maxBytes Opt
 	if padding > 2 || len(text)%4 != 0 {
 		return encodingFail[*Bytes](EncodingError_InvalidData{})
 	}
-	if int64(len(text)/4)*3-int64(padding) > n {
+	if int(len(text)/4)*3-int(padding) > n {
 		return encodingFail[*Bytes](EncodingError_LimitExceeded{})
 	}
 	enc := base64.StdEncoding
@@ -70,7 +70,7 @@ func Encoding_Base64Decode(_ *Execution, text string, urlSafe bool, maxBytes Opt
 	if err != nil {
 		return encodingFail[*Bytes](EncodingError_InvalidData{})
 	}
-	if int64(len(b)) > n {
+	if len(b) > n {
 		return encodingFail[*Bytes](EncodingError_LimitExceeded{})
 	}
 	return Ok[*Bytes, EncodingError](NewBytes(b))

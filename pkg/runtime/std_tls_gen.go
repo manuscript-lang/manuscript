@@ -5,7 +5,7 @@
 package msruntime
 
 func check_Tls_ParseCertificates() {
-	var _ func(*Execution, string, Option[int64]) Result[*List[*CertificateInfo], TlsError] = Tls_ParseCertificates
+	var _ func(*Execution, string, Option[int]) Result[*List[*CertificateInfo], TlsError] = Tls_ParseCertificates
 }
 func check_Tls_VerifyCertificates() {
 	var _ func(*Execution, string, string, string, Timestamp) Result[Unit, TlsError] = Tls_VerifyCertificates

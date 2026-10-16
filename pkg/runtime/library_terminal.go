@@ -39,7 +39,7 @@ type osTerminal struct{}
 
 var _ Terminal = osTerminal{}
 
-func terminalColors(output bool) int64 {
+func terminalColors(output bool) int {
 	if !output || os.Getenv("NO_COLOR") != "" {
 		return 0
 	}
@@ -61,7 +61,7 @@ func terminalSize(files ...*os.File) Result[*TerminalSize, TerminalError] {
 	for _, file := range files {
 		var columns, rows int
 		if columns, rows, err = hostos.TerminalSize(file); err == nil {
-			return Ok[*TerminalSize, TerminalError](&TerminalSize{Columns: int64(columns), Rows: int64(rows)})
+			return Ok[*TerminalSize, TerminalError](&TerminalSize{Columns: int(columns), Rows: int(rows)})
 		}
 	}
 	if err != nil && !errors.Is(err, errors.ErrUnsupported) {
@@ -240,7 +240,7 @@ func (t *osRawTerminal) command(ctx *Execution, sequence string) Result[Unit, Te
 	return Ok[Unit, TerminalError](Unit{})
 }
 
-func (t *osRawTerminal) MoveCursor(ctx *Execution, row, column int64) Result[Unit, TerminalError] {
+func (t *osRawTerminal) MoveCursor(ctx *Execution, row, column int) Result[Unit, TerminalError] {
 	CheckCancelled(ctx)
 	if t.isClosed() {
 		return rawFail[Unit](TerminalError_Closed{})
@@ -248,7 +248,7 @@ func (t *osRawTerminal) MoveCursor(ctx *Execution, row, column int64) Result[Uni
 	if row < 0 || column < 0 || row > 65534 || column > 65534 {
 		return rawFail[Unit](TerminalError_InvalidInput{})
 	}
-	return t.command(ctx, "\x1b["+strconv.FormatInt(row+1, 10)+";"+strconv.FormatInt(column+1, 10)+"H")
+	return t.command(ctx, "\x1b["+strconv.Itoa(row+1)+";"+strconv.Itoa(column+1)+"H")
 }
 
 func (t *osRawTerminal) ShowCursor(ctx *Execution, visible bool) Result[Unit, TerminalError] {

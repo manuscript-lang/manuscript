@@ -29,15 +29,15 @@ func Errors_Message_BigIntError(_ *Execution, e BigIntError) string {
 	return "big integer: operation failed"
 }
 
-func Bigint_FromInt(_ *Execution, v int64) *BigInt { return &BigInt{big.NewInt(v)} }
+func Bigint_FromInt(_ *Execution, v int) *BigInt { return &BigInt{big.NewInt(int64(v))} }
 
-func Bigint_Parse(_ *Execution, text string, radix int64, maxDigits Option[int64]) Result[*BigInt, BigIntError] {
+func Bigint_Parse(_ *Execution, text string, radix int, maxDigits Option[int]) Result[*BigInt, BigIntError] {
 	n := txLimit(maxDigits)
 	if radix < 2 || radix > 36 || n < 0 {
 		return bigFail[*BigInt](BigIntError_InvalidInput{})
 	}
 	digits := len(strings.TrimPrefix(strings.TrimPrefix(text, "+"), "-"))
-	if int64(digits) > n {
+	if int(digits) > n {
 		return bigFail[*BigInt](BigIntError_LimitExceeded{})
 	}
 	if !integerSyntax(text, int(radix)) {
@@ -73,16 +73,21 @@ func BigInt_Remainder(_ *Execution, a, b *BigInt) Result[*BigInt, BigIntError] {
 	return Ok[*BigInt, BigIntError](&BigInt{new(big.Int).Rem(a.n, b.n)})
 }
 
-func BigInt_Compare(_ *Execution, a, b *BigInt) int64 { return int64(a.n.Cmp(b.n)) }
+func BigInt_Compare(_ *Execution, a, b *BigInt) int { return int(a.n.Cmp(b.n)) }
 
-func BigInt_ToInt(_ *Execution, v *BigInt) Option[int64] {
-	if !v.n.IsInt64() {
-		return None[int64]()
+// bigToInt is n as an Int, or None where it does not fit the platform's Int.
+func bigToInt(n *big.Int) Option[int] {
+	if !n.IsInt64() || int64(int(n.Int64())) != n.Int64() {
+		return None[int]()
 	}
-	return Some(v.n.Int64())
+	return Some(int(n.Int64()))
 }
 
-func BigInt_ToString(_ *Execution, v *BigInt, radix int64) string {
+func BigInt_ToInt(_ *Execution, v *BigInt) Option[int] {
+	return bigToInt(v.n)
+}
+
+func BigInt_ToString(_ *Execution, v *BigInt, radix int) string {
 	if radix < 2 || radix > 36 {
 		txRangeFault("BigInt.to_string", "radix", radix, 2, 36)
 	}

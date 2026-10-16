@@ -141,7 +141,7 @@ func (s *hostStream) isClosed() bool {
 	return s.closed
 }
 
-func (s *hostStream) Read(ctx *Execution, maxBytes Option[int64]) Result[Option[*Bytes], IoError] {
+func (s *hostStream) Read(ctx *Execution, maxBytes Option[int]) Result[Option[*Bytes], IoError] {
 	release, ok := s.admit(ctx, false)
 	if !ok {
 		return ioFailure[Option[*Bytes]](IoError_Closed{})
@@ -149,7 +149,7 @@ func (s *hostStream) Read(ctx *Execution, maxBytes Option[int64]) Result[Option[
 	defer release()
 	CheckCancelled(ctx)
 	defer interruptDeadline(ctx, s.file.SetReadDeadline)()
-	n := int64(65536)
+	n := 65536
 	if maxBytes.Some {
 		if maxBytes.Val < 0 {
 			return ioFailure[Option[*Bytes]](IoError_InvalidInput{})
@@ -252,50 +252,50 @@ var _ File = (*hostStream)(nil)
 
 // Io_Copy copies bytes until end of input or the byte limit; it returns the
 // number copied.
-func Io_Copy(ctx *Execution, input ReadStream, output WriteStream, maxBytes Option[int64]) Result[int64, IoError] {
+func Io_Copy(ctx *Execution, input ReadStream, output WriteStream, maxBytes Option[int]) Result[int, IoError] {
 	max, ok := optionLimit(maxBytes, unlimited)
 	if !ok {
-		return ioFailure[int64](IoError_InvalidInput{})
+		return ioFailure[int](IoError_InvalidInput{})
 	}
-	total := int64(0)
+	total := 0
 	for {
 		CheckCancelled(ctx)
-		n := int64(32768)
+		n := 32768
 		if max-total < n {
 			n = max - total + 1
 		}
 		value := input.Read(ctx, Some(n))
 		if value.Failed {
-			return Fail[int64](value.Err)
+			return Fail[int](value.Err)
 		}
 		if !value.Val.Some {
-			return Ok[int64, IoError](total)
+			return Ok[int, IoError](total)
 		}
 		data := value.Val.Val
-		if len(data.Data) == 0 || int64(len(data.Data)) > n {
-			return ioFailure[int64](IoError_Failed{Message: "invalid stream chunk"})
+		if len(data.Data) == 0 || len(data.Data) > n {
+			return ioFailure[int](IoError_Failed{Message: "invalid stream chunk"})
 		}
-		if int64(len(data.Data)) > max-total {
-			return ioFailure[int64](IoError_LimitExceeded{})
+		if len(data.Data) > max-total {
+			return ioFailure[int](IoError_LimitExceeded{})
 		}
 		if written := output.Write(ctx, data); written.Failed {
-			return Fail[int64](written.Err)
+			return Fail[int](written.Err)
 		}
-		total += int64(len(data.Data))
+		total += len(data.Data)
 	}
 }
 
 // Io_ReadAll reads a stream completely into memory.
-func Io_ReadAll(ctx *Execution, input ReadStream, maxBytes Option[int64]) Result[*Bytes, IoError] {
+func Io_ReadAll(ctx *Execution, input ReadStream, maxBytes Option[int]) Result[*Bytes, IoError] {
 	max, ok := optionLimit(maxBytes, unlimited)
 	if !ok {
 		return ioFailure[*Bytes](IoError_InvalidInput{})
 	}
 	var out []byte
 	for {
-		n := int64(32768)
-		if max-int64(len(out)) < n {
-			n = max - int64(len(out)) + 1
+		n := 32768
+		if max-len(out) < n {
+			n = max - len(out) + 1
 		}
 		value := input.Read(ctx, Some(n))
 		if value.Failed {
@@ -305,10 +305,10 @@ func Io_ReadAll(ctx *Execution, input ReadStream, maxBytes Option[int64]) Result
 			return Ok[*Bytes, IoError](NewBytes(out))
 		}
 		data := value.Val.Val.Data
-		if len(data) == 0 || int64(len(data)) > n {
+		if len(data) == 0 || len(data) > n {
 			return ioFailure[*Bytes](IoError_Failed{Message: "invalid stream chunk"})
 		}
-		if int64(len(data)) > max-int64(len(out)) {
+		if len(data) > max-len(out) {
 			return ioFailure[*Bytes](IoError_LimitExceeded{})
 		}
 		out = append(out, data...)
@@ -316,7 +316,7 @@ func Io_ReadAll(ctx *Execution, input ReadStream, maxBytes Option[int64]) Result
 }
 
 // Io_ReadLine reads one line, omitting its line ending; none at end of stream.
-func Io_ReadLine(ctx *Execution, input ReadStream, maxBytes Option[int64]) Result[Option[string], IoError] {
+func Io_ReadLine(ctx *Execution, input ReadStream, maxBytes Option[int]) Result[Option[string], IoError] {
 	max, ok := optionLimit(maxBytes, unlimited)
 	if !ok || max <= 0 {
 		return ioFailure[Option[string]](IoError_InvalidInput{})
@@ -341,7 +341,7 @@ func Io_ReadLine(ctx *Execution, input ReadStream, maxBytes Option[int64]) Resul
 	for {
 		chunk := take()
 		if len(chunk) == 0 {
-			v := input.Read(ctx, Some(int64(65536)))
+			v := input.Read(ctx, Some(65536))
 			if v.Failed {
 				return Fail[Option[string]](v.Err)
 			}
@@ -354,7 +354,7 @@ func Io_ReadLine(ctx *Execution, input ReadStream, maxBytes Option[int64]) Resul
 			chunk = v.Val.Val.Data
 		}
 		if i := bytes.IndexByte(chunk, '\n'); i >= 0 {
-			if int64(len(b)+i) >= max {
+			if int(len(b)+i) >= max {
 				return ioFailure[Option[string]](IoError_LimitExceeded{})
 			}
 			b = append(b, chunk[:i]...)
@@ -367,7 +367,7 @@ func Io_ReadLine(ctx *Execution, input ReadStream, maxBytes Option[int64]) Resul
 			break
 		}
 		b = append(b, chunk...)
-		if int64(len(b)) > max {
+		if len(b) > max {
 			return ioFailure[Option[string]](IoError_LimitExceeded{})
 		}
 	}
@@ -377,10 +377,10 @@ func Io_ReadLine(ctx *Execution, input ReadStream, maxBytes Option[int64]) Resul
 	return Ok[Option[string], IoError](Some(string(b)))
 }
 
-func readLineByByte(ctx *Execution, input ReadStream, max int64) Result[Option[string], IoError] {
+func readLineByByte(ctx *Execution, input ReadStream, max int) Result[Option[string], IoError] {
 	var b []byte
 	for {
-		v := input.Read(ctx, Some(int64(1)))
+		v := input.Read(ctx, Some(1))
 		if v.Failed {
 			return Fail[Option[string]](v.Err)
 		}
@@ -394,7 +394,7 @@ func readLineByByte(ctx *Execution, input ReadStream, max int64) Result[Option[s
 		if len(data) != 1 {
 			return ioFailure[Option[string]](IoError_Failed{Message: "invalid stream chunk"})
 		}
-		if int64(len(b)) >= max {
+		if len(b) >= max {
 			return ioFailure[Option[string]](IoError_LimitExceeded{})
 		}
 		b = append(b, data[0])

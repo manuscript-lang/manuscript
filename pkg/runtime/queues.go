@@ -2,11 +2,11 @@ package msruntime
 
 import "sync"
 
-func queueCapacity(name string, capacity Option[int64]) int {
+func queueCapacity(name string, capacity Option[int]) int {
 	if !capacity.Some {
 		return 0
 	}
-	if capacity.Val <= 0 || capacity.Val > int64(^uint(0)>>1) {
+	if capacity.Val <= 0 || capacity.Val > int(^uint(0)>>1) {
 		minRangeFault(name, "capacity", 1, capacity.Val)
 	}
 	return int(capacity.Val)
@@ -21,7 +21,7 @@ type Queue[T any] struct {
 }
 
 // NewQueue constructs a Queue with an optional positive capacity.
-func NewQueue[T any](capacity Option[int64]) *Queue[T] {
+func NewQueue[T any](capacity Option[int]) *Queue[T] {
 	return &Queue[T]{capacity: queueCapacity("Queue", capacity)}
 }
 
@@ -57,7 +57,7 @@ func Queue_Peek[T any](_ *Execution, q *Queue[T]) Option[T] {
 }
 
 // Queue_Length is the number of waiting values.
-func Queue_Length[T any](_ *Execution, q *Queue[T]) int64 { return int64(len(q.items)) }
+func Queue_Length[T any](_ *Execution, q *Queue[T]) int { return len(q.items) }
 
 // Queue_IsEmpty reports whether dequeue and peek would return none.
 func Queue_IsEmpty[T any](_ *Execution, q *Queue[T]) bool { return len(q.items) == 0 }
@@ -74,7 +74,7 @@ type BlockingQueue[T any] struct {
 }
 
 // NewBlockingQueue constructs a BlockingQueue with an optional positive capacity.
-func NewBlockingQueue[T any](capacity Option[int64]) *BlockingQueue[T] {
+func NewBlockingQueue[T any](capacity Option[int]) *BlockingQueue[T] {
 	return &BlockingQueue[T]{capacity: queueCapacity("BlockingQueue", capacity), changed: make(chan struct{})}
 }
 
@@ -152,10 +152,10 @@ func BlockingQueue_Close[T any](_ *Execution, q *BlockingQueue[T]) Unit {
 }
 
 // BlockingQueue_Length is the number of waiting values.
-func BlockingQueue_Length[T any](_ *Execution, q *BlockingQueue[T]) int64 {
+func BlockingQueue_Length[T any](_ *Execution, q *BlockingQueue[T]) int {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	return int64(len(q.items))
+	return len(q.items)
 }
 
 // BlockingQueue_IsClosed reports whether close has been called.
@@ -173,7 +173,7 @@ type priorityEntry[T any] struct {
 // PriorityQueue is a local stable binary heap. Shared access uses
 // Synchronized. Comparators must be consistent and must not mutate this queue.
 type PriorityQueue[T any] struct {
-	compare  func(*Execution, T, T) int64
+	compare  func(*Execution, T, T) int
 	capacity int
 	next     uint64
 	items    []priorityEntry[T]
@@ -181,7 +181,7 @@ type PriorityQueue[T any] struct {
 
 // NewPriorityQueue constructs a PriorityQueue from its comparator and optional
 // positive capacity.
-func NewPriorityQueue[T any](compare func(*Execution, T, T) int64, capacity Option[int64]) *PriorityQueue[T] {
+func NewPriorityQueue[T any](compare func(*Execution, T, T) int, capacity Option[int]) *PriorityQueue[T] {
 	return &PriorityQueue[T]{compare: compare, capacity: queueCapacity("PriorityQueue", capacity)}
 }
 
@@ -266,8 +266,8 @@ func PriorityQueue_Peek[T any](_ *Execution, q *PriorityQueue[T]) Option[T] {
 }
 
 // PriorityQueue_Length is the number of enqueued values.
-func PriorityQueue_Length[T any](_ *Execution, q *PriorityQueue[T]) int64 {
-	return int64(len(q.items))
+func PriorityQueue_Length[T any](_ *Execution, q *PriorityQueue[T]) int {
+	return len(q.items)
 }
 
 // PriorityQueue_IsEmpty reports whether the queue holds no values.

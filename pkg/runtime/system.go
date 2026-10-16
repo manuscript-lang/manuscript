@@ -24,7 +24,7 @@ func System_OsType(*Execution) string {
 }
 
 // System_Constants is the table of host signal and priority constants.
-func System_Constants(*Execution) *Map[string, int64] { return constantsMap(hostos.Constants()) }
+func System_Constants(*Execution) *Map[string, int] { return constantsMap(hostos.Constants()) }
 
 // System_DevNull is the null device path.
 func System_DevNull(*Execution) string { return os.DevNull }
@@ -94,7 +94,7 @@ func (s *osSystem) Environment(_ *Execution, name string) Option[string] {
 }
 
 func (s *osSystem) Info(*Execution) *SystemInfo {
-	return &SystemInfo{Os: goruntime.GOOS, Architecture: goruntime.GOARCH, CpuCount: int64(goruntime.NumCPU())}
+	return &SystemInfo{Os: goruntime.GOOS, Architecture: goruntime.GOARCH, CpuCount: int(goruntime.NumCPU())}
 }
 
 func (s *osSystem) WorkingDirectory(*Execution) string {
@@ -148,7 +148,7 @@ func (s *osSystem) UserInfo(ctx *Execution) Result[*UserInfo, SystemError] {
 	if !utf8.ValidString(u.Username + u.Home + shell) {
 		return sysFail[*UserInfo](SystemError_Unsupported{})
 	}
-	return Ok[*UserInfo, SystemError](&UserInfo{Username: u.Username, Uid: u.UID, Gid: u.GID, Home: u.Home, Shell: shell})
+	return Ok[*UserInfo, SystemError](&UserInfo{Username: u.Username, Uid: FitInt(u.UID), Gid: FitInt(u.GID), Home: u.Home, Shell: shell})
 }
 
 func (s *osSystem) NetworkInterfaces(ctx *Execution) Result[*List[*NetworkInterface], SystemError] {
@@ -176,7 +176,7 @@ func (s *osSystem) NetworkInterfaces(ctx *Execution) Result[*List[*NetworkInterf
 			if ip.To4() != nil {
 				family = IpFamily_IPv4{}
 			}
-			items = append(items, &NetworkInterface{Name: iface.Name, Address: ip.String(), Netmask: net.IP(network.Mask).String(), Family: family, Mac: iface.HardwareAddr.String(), Internal: iface.Flags&net.FlagLoopback != 0, ScopeId: int64(iface.Index)})
+			items = append(items, &NetworkInterface{Name: iface.Name, Address: ip.String(), Netmask: net.IP(network.Mask).String(), Family: family, Mac: iface.HardwareAddr.String(), Internal: iface.Flags&net.FlagLoopback != 0, ScopeId: int(iface.Index)})
 		}
 	}
 	return Ok[*List[*NetworkInterface], SystemError](NewList(items...))
@@ -206,7 +206,7 @@ func (s *osSystem) Cpus(ctx *Execution) Result[*List[*CpuInfo], SystemError] {
 		if !utf8.ValidString(info.ModelName) {
 			return sysFail[*List[*CpuInfo]](SystemError_Unsupported{})
 		}
-		items = append(items, &CpuInfo{Model: info.ModelName, SpeedMhz: int64(info.Mhz), User: int64(usage.User * 1000), Nice: int64(usage.Nice * 1000), System: int64(usage.System * 1000), Idle: int64(usage.Idle * 1000), Irq: int64((usage.Irq + usage.Softirq) * 1000)})
+		items = append(items, &CpuInfo{Model: info.ModelName, SpeedMhz: int(info.Mhz), User: int(usage.User * 1000), Nice: int(usage.Nice * 1000), System: int(usage.System * 1000), Idle: int(usage.Idle * 1000), Irq: int((usage.Irq + usage.Softirq) * 1000)})
 	}
 	return Ok[*List[*CpuInfo], SystemError](NewList(items...))
 }
@@ -235,7 +235,7 @@ func (s *osSystem) Metrics(ctx *Execution) Result[*SystemMetrics, SystemError] {
 	if err != nil {
 		return sysDone[*SystemMetrics](nil, err)
 	}
-	return Ok[*SystemMetrics, SystemError](&SystemMetrics{TotalMemory: int64(memory.Total), FreeMemory: int64(memory.Free), AvailableMemory: int64(memory.Available), Uptime: Duration(uptime) * Duration(1e9), LoadAverage: NewList(loads...), AvailableParallelism: int64(parallelism)})
+	return Ok[*SystemMetrics, SystemError](&SystemMetrics{TotalMemory: int(memory.Total), FreeMemory: int(memory.Free), AvailableMemory: int(memory.Available), Uptime: Duration(uptime) * Duration(1e9), LoadAverage: NewList(loads...), AvailableParallelism: int(parallelism)})
 }
 
 func (s *osSystem) OsRelease(ctx *Execution) Result[string, SystemError] {
@@ -260,16 +260,16 @@ func (s *osSystem) Machine(ctx *Execution) Result[string, SystemError] {
 	return Ok[string, SystemError](v)
 }
 
-func (s *osSystem) GetPriority(ctx *Execution, pid int64) Result[int64, SystemError] {
+func (s *osSystem) GetPriority(ctx *Execution, pid int) Result[int, SystemError] {
 	CheckCancelled(ctx)
 	if pid < 0 || pid > 2147483647 {
-		return sysFail[int64](SystemError_InvalidInput{})
+		return sysFail[int](SystemError_InvalidInput{})
 	}
 	v, err := hostos.GetPriority(int(pid))
-	return sysDone(int64(v), err)
+	return sysDone(int(v), err)
 }
 
-func (s *osSystem) SetPriority(ctx *Execution, pid, priority int64) Result[Unit, SystemError] {
+func (s *osSystem) SetPriority(ctx *Execution, pid, priority int) Result[Unit, SystemError] {
 	CheckCancelled(ctx)
 	if pid < 0 || pid > 2147483647 || priority < -20 || priority > 19 {
 		return sysFail[Unit](SystemError_InvalidInput{})
