@@ -51,11 +51,19 @@ func (w *dfLimitedWriter) Write(p []byte) (int, error) {
 	return w.Buffer.Write(p)
 }
 
+func max0(n int) int { return max(n, 0) }
+
 // dfReadBounded reads reader to the end, failing with "LimitExceeded" when it
 // yields more than max bytes and "InvalidData" on a read error.
-func dfReadBounded(ctx *Execution, reader io.Reader, max int) ([]byte, string) {
+func dfReadBounded(ctx *Execution, reader io.Reader, max, hint int) ([]byte, string) {
 	var out bytes.Buffer
+	// hint is the declared size: a capacity guess only, capped so a lying header cannot force a large allocation.
+	hint = max0(min(hint, max, 1<<20))
+	out.Grow(hint)
 	buffer := make([]byte, 32768)
+	if hint > 0 {
+		buffer = buffer[:min(len(buffer), hint+1)]
+	}
 	for {
 		CheckCancelled(ctx)
 		remaining := max - int(out.Len())
