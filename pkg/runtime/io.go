@@ -15,7 +15,10 @@ import (
 // arrive. The code names the failure: LimitExceeded, InvalidData, or Failed.
 func readBounded(ctx *Execution, reader io.Reader, max int) ([]byte, string) {
 	var out []byte
-	buffer := make([]byte, 32768)
+	const chunkSize = 32 * 1024
+	// One spare byte detects an exceeded limit. Clamp before adding so an
+	// unbounded MaxInt limit cannot overflow.
+	buffer := make([]byte, min(max, chunkSize-1)+1)
 	for {
 		CheckCancelled(ctx)
 		remaining := max - len(out)
