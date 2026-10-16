@@ -195,63 +195,101 @@ func globEnds(atoms []globAtom, value []rune, start int) map[int]bool {
 	}
 	return positions
 }
-func globValid(pattern string) bool {
-	if len(pattern) > 4096 || strings.ContainsRune(pattern, 0) {
-		return false
-	}
-	patterns, ok := globExpandBraces(pattern)
-	if !ok {
-		return false
-	}
-	for _, pattern := range patterns {
-		for _, part := range strings.Split(pattern, "/") {
-			if part == "**" {
-				continue
-			}
-			if _, ok := globSequence(part); !ok {
-				return false
-			}
-		}
-	}
-	return true
+
+// A parsed glob is immutable and can be reused for every entry in one query.
+// Each brace alternative contains slash-separated segments; ** spans segments.
+type globPattern [][]globSegment
+
+type globSegment struct {
+	pattern string
+	atoms   []globAtom
 }
-func globMatch(value, pattern string) bool {
+
+func parseGlob(pattern string) (globPattern, bool) {
+	if len(pattern) > 4096 || strings.ContainsRune(pattern, 0) {
+		return nil, false
+	}
 	patterns, ok := globExpandBraces(pattern)
 	if !ok {
-		return false
+		return nil, false
 	}
-	for _, pattern := range patterns {
-		if globMatchSegments(value, pattern) {
+	compiled := make(globPattern, 0, len(patterns))
+	for _, alternative := range patterns {
+		segments, ok := parseGlobSegments(alternative)
+		if !ok {
+			return nil, false
+		}
+		compiled = append(compiled, segments)
+	}
+	return compiled, true
+}
+
+func parseGlobSegments(pattern string) ([]globSegment, bool) {
+	parts := strings.Split(pattern, "/")
+	segments := make([]globSegment, 0, len(parts))
+	for _, part := range parts {
+		segment := globSegment{pattern: part}
+		if part != "**" {
+			atoms, ok := globSequence(part)
+			if !ok {
+				return nil, false
+			}
+			segment.atoms = atoms
+		}
+		segments = append(segments, segment)
+	}
+	return segments, true
+}
+
+func (pattern globPattern) match(value string) bool {
+	parts := strings.Split(value, "/")
+	for _, alternative := range pattern {
+		if globMatchSegments(parts, alternative) {
 			return true
 		}
 	}
 	return false
 }
-func globMatchSegments(value, pattern string) bool {
-	vs, ps := strings.Split(value, "/"), strings.Split(pattern, "/")
-	previous := make([]bool, len(vs)+1)
+
+// globMatch preserves matching without entry validation for patterns changed
+// by a glob_entries callback. In particular, a matching earlier alternative
+// still succeeds even if a later alternative is malformed.
+func globMatch(value, pattern string) bool {
+	patterns, ok := globExpandBraces(pattern)
+	if !ok {
+		return false
+	}
+	parts := strings.Split(value, "/")
+	for _, alternative := range patterns {
+		segments, ok := parseGlobSegments(alternative)
+		if ok && globMatchSegments(parts, segments) {
+			return true
+		}
+	}
+	return false
+}
+
+func globMatchSegments(value []string, pattern []globSegment) bool {
+	previous := make([]bool, len(value)+1)
 	previous[0] = true
-	for _, part := range ps {
-		next := make([]bool, len(vs)+1)
-		if part == "**" {
+	for _, segment := range pattern {
+		next := make([]bool, len(value)+1)
+		if segment.pattern == "**" {
 			next[0] = previous[0]
-			for j := 1; j <= len(vs); j++ {
-				next[j] = previous[j] || next[j-1] && !strings.HasPrefix(vs[j-1], ".")
+			for j := 1; j <= len(value); j++ {
+				next[j] = previous[j] || next[j-1] && !strings.HasPrefix(value[j-1], ".")
 			}
 		} else {
-			atoms, ok := globSequence(part)
-			if !ok {
-				return false
-			}
-			for j := 1; j <= len(vs); j++ {
-				if previous[j-1] && (!strings.HasPrefix(vs[j-1], ".") || strings.HasPrefix(part, ".")) {
-					next[j] = globEnds(atoms, []rune(vs[j-1]), 0)[len([]rune(vs[j-1]))]
+			for j := 1; j <= len(value); j++ {
+				if previous[j-1] && (!strings.HasPrefix(value[j-1], ".") || strings.HasPrefix(segment.pattern, ".")) {
+					runes := []rune(value[j-1])
+					next[j] = globEnds(segment.atoms, runes, 0)[len(runes)]
 				}
 			}
 		}
 		previous = next
 	}
-	return previous[len(vs)]
+	return previous[len(value)]
 }
 
 // Brace expansion runs before segmentation, allowing alternatives to cross

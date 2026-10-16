@@ -1,4 +1,4 @@
-import {filesystem, FileSystemError, FileHandle} from "@std/fs.ms"
+import {filesystem, FileSystemError, FileHandle, GlobOptions, PathEntry} from "@std/fs.ms"
 import {files, read_all, IoError} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
@@ -12,6 +12,52 @@ fn expect_fs_error[T](
         ok(_): return panic("filesystem misuse succeeded")
         error(cause):
             if cause != expected: return panic("wrong filesystem error")
+
+test "glob queries reuse patterns without changing hidden paths limits or callbacks":
+    let fs = filesystem()
+
+    with temporary = value(fs.temporary("manuscript-glob-")):
+        let root = temporary.path()
+        value(fs.create_directory(path: "{root}/sub", recursive: false))
+        for name in ["a.txt", "b.md", ".hidden.txt", "sub/c.txt"]:
+            value(
+                fs.write_file(
+                    path: "{root}/{name}",
+                    data: "".to_bytes(),
+                    replace: false
+                )
+            )
+        let matches = value(fs.glob(path: root, pattern: "**/*.\{txt,md\}"))
+        if matches != ["a.txt", "b.md", "sub/c.txt"]: return panic("glob matches")
+
+        expect_fs_error(
+            fs.glob(path: root, pattern: "**/*.\{txt,md\}", max_entries: 2),
+            FileSystemError.LimitExceeded
+        )
+        expect_fs_error(
+            fs.glob(path: root, pattern: "\{a.txt,[\}"),
+            FileSystemError.InvalidInput
+        )
+        let options = GlobOptions(
+            patterns: ["*.txt"],
+            exclude: ["sub/**"],
+            follow_links: false
+        )
+        let entries = value(
+            fs.glob_entries(
+                path: root,
+                options: options,
+                exclude: some(
+                    fn(entry: PathEntry) -> Bool:
+                        if entry.path == ".": options.patterns.set(0, "*.md")
+                        return false
+                )
+            )
+        )
+        if entries.length() != 1: return panic("glob_entries count")
+        if entries.at(0).unwrap().path != "b.md": return panic(
+            "callback changed pattern"
+        )
 
 test "ordinary filesystem misuse retains typed cases":
     let fs = filesystem()

@@ -1,5 +1,21 @@
 # Runtime lessons
 
+### Prepared queries must preserve callback-visible list mutations
+
+Verified: `glob_entries` retains the include/exclude slice descriptors before
+traversal, but callbacks can still replace elements in those backing slices.
+Reusing parsed patterns must compare the current element with its original text
+and retain ordinary matching for changed elements. Copying or freezing the lists
+would change existing behavior; validation still occurs before traversal.
+
+Apply when: preparing filesystem patterns or caching queries over mutable inputs
+that callbacks can reach.
+Evidence: [query preparation](../pkg/runtime/fs_copy.go),
+[callback mutation regressions](../pkg/runtime/glob_test.go), and
+[called source fixture](../tests/e2e/testdata/stdlib/fs.ms).
+Verify: changing an include or exclude element during the root callback changes
+subsequent matching; invalid initial patterns still return `InvalidInput`.
+
 ### HTTP field folding must not erase map entries
 
 Verified: source Map keys use exact equality, while HTTP field names fold ASCII case. Passing case-equivalent outgoing entries through `Header.Set` silently replaces earlier values, including separate `Set-Cookie` fields. Append in source insertion order after validating all fields. `Header.Values(key)` also canonicalizes lookup: when converting an existing host map, index its exact key to avoid substituting another spelling's values.
