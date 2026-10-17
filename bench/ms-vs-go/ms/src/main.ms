@@ -18,6 +18,13 @@ type Shape:
     case Square(s: Int)
     case Tri(b: Int)
 
+fn got_line() -> Bool:
+    match read_line(input: stdin()):
+        ok(line):
+            return line.is_some()
+        error(_):
+            return false
+
 fn say(text: String) -> Unit:
     match stdout().write(data: text.to_bytes()):
         ok(_):
@@ -70,15 +77,10 @@ export fn main() -> Int:
     var lines = 0
     var more = true
     while more:
-        match read_line(input: stdin()):
-            ok(line):
-                match line:
-                    some(_):
-                        lines = lines + 1
-                    none:
-                        more = false
-            error(_):
-                more = false
+        if got_line():
+            lines = lines + 1
+        else:
+            more = false
     report(name: "read_line", ops: lines, started: t)
 
     # map_put_get: 8k Int keys
