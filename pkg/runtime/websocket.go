@@ -145,7 +145,7 @@ func (e *httpExchange) Upgrade(ctx *Execution, allowedOrigins, subprotocols *Lis
 		e.mu.Lock()
 		e.rejected = true
 		e.mu.Unlock()
-		return wsFail[WebSocket](WebSocketError_Failed{Message: err.Error()})
+		return wsFail[WebSocket](WebSocketError_Failed{Message: describeTransportError(err)})
 	}
 	resource := newWebSocket(conn, e.owner.owner, max)
 	e.mu.Lock()
@@ -252,7 +252,7 @@ func (w *osWebSocket) Receive(ctx *Execution) Result[Option[*WebSocketMessage], 
 		if errors.Is(err, websocket.ErrReadLimit) {
 			return wsFail[Option[*WebSocketMessage]](errWSLimit)
 		}
-		return wsFail[Option[*WebSocketMessage]](WebSocketError_Failed{Message: err.Error()})
+		return wsFail[Option[*WebSocketMessage]](WebSocketError_Failed{Message: describeTransportError(err)})
 	}
 	text := kind == websocket.TextMessage
 	if text && !utf8.Valid(data) {
@@ -278,7 +278,7 @@ func (w *osWebSocket) Ping(ctx *Execution, data *Bytes) Result[Unit, WebSocketEr
 	err := w.conn.WriteControl(websocket.PingMessage, data.Data, time.Now().Add(time.Second))
 	CheckCancelled(ctx)
 	if err != nil {
-		return wsFail[Unit](WebSocketError_Failed{Message: err.Error()})
+		return wsFail[Unit](WebSocketError_Failed{Message: describeTransportError(err)})
 	}
 	return Ok[Unit, WebSocketError](Unit{})
 }
@@ -303,7 +303,7 @@ func (w *osWebSocket) Send(ctx *Execution, data *Bytes, text bool) Result[Unit, 
 	err := w.conn.WriteMessage(kind, data.Data)
 	CheckCancelled(ctx)
 	if err != nil {
-		return wsFail[Unit](WebSocketError_Failed{Message: err.Error()})
+		return wsFail[Unit](WebSocketError_Failed{Message: describeTransportError(err)})
 	}
 	return Ok[Unit, WebSocketError](Unit{})
 }
