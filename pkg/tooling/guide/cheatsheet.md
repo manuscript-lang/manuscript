@@ -24,7 +24,7 @@ test "addition":
 
 - Workflow: `ms search_symbol <name or words>` finds a project or std symbol (`ms search_symbol <module>` lists a module); `ms verify` (check, fmt, lint, test) after each edit; `ms review`/`ms diagram` map changes.
 - `main() -> Int` returns the exit status. `test "name":` blocks run under `ms test`: finishing passes, returning `error(...)` (or `try` on a failing check) fails.
-- Imports: `import {a, b} from "@std/x.ms"` or `"./local.ms"`; `export` shares. Prelude names (`List`, `Map`, `Set`, `Optional`, `Result`, `Error`) need no import.
+- Imports: `import {a, b} from "@std/x.ms"` or `"./local.ms"`; `export` shares. Prelude names (`List`, `Map`, `Set`, `Optional`, `Result`, `Error`) need no import; declaring one is rejected.
 - `let` binds once, `var` reassigns; `n += 1` (also `-= *= /= %=`); `for i in range(0, n):` counts (`@std/collections.ms`). Types `Int Float Bool String Unit`; `"{expr}"` interpolates. No implicit conversion or truthiness.
 - `[1, 2]` List; `Map[K, V]()`, `Set[T]()` mutate in place; assignment shares, `.clone()` is shallow.
 - `type T:` with fields, built `T(a: 1)` (labels optional: `T(1)`); alternatives use `case A` and `case B(x: Int)`; types are nominal.
