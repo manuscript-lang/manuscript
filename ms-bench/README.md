@@ -9,7 +9,7 @@ Status: 20 challenges: 10 small programs (c03-c44, with reference solutions in a
 
 1. A fresh workspace is created outside the repo: language template, `TASK.md` (the spec), a few visible
    examples in `examples/`, and `check.sh`. For Manuscript the tutorials and standard declarations are copied
-   to `docs/` (`context` in `languages.json`).
+   to `docs/` when a language lists `context` in `languages.json`; Manuscript lists none and points the agent at `ms guide` and `ms search_symbol`.
 2. The harness runs the agent non-interactively in that workspace. The agent is told to use `./check.sh`,
    which builds and runs the examples and logs each attempt to `.bench/log.jsonl`. That log gives
    harness-independent build counts and a first-build-success flag.

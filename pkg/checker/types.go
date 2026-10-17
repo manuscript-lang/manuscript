@@ -351,7 +351,16 @@ func variableSet(types []*Type) map[string]bool {
 	return result
 }
 func formatMismatch(actual, expected *Type) string {
-	return fmt.Sprintf("expected %s, found %s", expected, actual)
+	message := fmt.Sprintf("expected %s, found %s", expected, actual)
+	if len(actual.Args) > 0 && Same(actual.Args[0], expected) {
+		switch {
+		case std(actual, "Result"):
+			message += "; unwrap it with 'try' inside a function that returns a compatible Result, or with 'match' or '.unwrap()'"
+		case std(actual, "Optional"):
+			message += "; unwrap it with 'if let', '.unwrap_or(default)', or '.unwrap()'"
+		}
+	}
+	return message
 }
 
 // requiredTypeArguments counts the leading type variables without a default.

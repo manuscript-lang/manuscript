@@ -56,7 +56,7 @@ test "YAML parse never faults on mutated documents and accepted input is stable"
 
     while seed <= 300:
         let rng = Rng(seed)
-        let rendered = value(stringify(generated(rng, 0)))
+        let rendered = generated(rng, 0) | stringify | value
         var round = 0
 
         while round < 4:

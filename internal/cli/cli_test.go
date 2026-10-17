@@ -444,3 +444,29 @@ func TestServerCommandsRejectArguments(t *testing.T) {
 		}
 	}
 }
+
+func TestFormatDropLabelsOnlyForCheckedSource(t *testing.T) {
+	source := "fn add(left: Int, right: Int) -> Int: left + right\n\nfn total(left: Int, right: Int) -> Int:\n    return add(left: left, right: right)\n"
+	want := strings.Replace(source, "add(left: left, right: right)", "add(left, right)", 1)
+	file := sourceFile(t, source)
+	if status, _, _ := invoke(t, "fmt", file, "--check"); status != 0 {
+		t.Fatal("plain format changed labels")
+	}
+	if status, _, _ := invoke(t, "fmt", file, "--drop-labels", "--check"); status != 1 {
+		t.Fatal("--drop-labels --check missed a redundant label")
+	}
+	if status, _, errors := invoke(t, "fmt", file, "--drop-labels"); status != 0 {
+		t.Fatal(errors)
+	}
+	if got, _ := os.ReadFile(file); string(got) != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+	broken := sourceFile(t, "fn total(left: Int) -> Int:\n    return add(left: left)\n")
+	before, _ := os.ReadFile(broken)
+	if status, _, errors := invoke(t, "fmt", broken, "--drop-labels"); status != 0 {
+		t.Fatal(errors)
+	}
+	if got, _ := os.ReadFile(broken); string(got) != string(before) {
+		t.Fatal("labels dropped from source that does not check")
+	}
+}

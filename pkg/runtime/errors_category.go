@@ -108,6 +108,7 @@ func (RandomError_LimitExceeded) Category() ErrorCategory { return ErrorCategory
 func (RegexError_InvalidInput) Category() ErrorCategory   { return ErrorCategory_InvalidInput{} }
 func (RegexError_InvalidData) Category() ErrorCategory    { return ErrorCategory_InvalidData{} }
 func (RegexError_LimitExceeded) Category() ErrorCategory  { return ErrorCategory_LimitExceeded{} }
+func (SemverError_InvalidData) Category() ErrorCategory   { return ErrorCategory_InvalidData{} }
 func (StringError_InvalidInput) Category() ErrorCategory  { return ErrorCategory_InvalidInput{} }
 func (StringError_LimitExceeded) Category() ErrorCategory { return ErrorCategory_LimitExceeded{} }
 func (SystemError_InvalidInput) Category() ErrorCategory  { return ErrorCategory_InvalidInput{} }

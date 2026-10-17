@@ -39,6 +39,15 @@ Omitting `try` discards the entire Result, including any error, and produces the
 `MSL104` lint advisory. To deliberately ignore both outcomes, use an explicit
 [`_ignored` binding](results.md#discarding-a-result).
 
+## Try in a pipe flow
+
+A sequence of steps can read as one flow with [pipe steps](../basics/expressions.md#pipe-flows). `| try step` applies this page's rules to that step's result. Given `fn label(value: Decimal) -> String`, the following equals `let value = try discount(...)` followed by `label(value)`:
+
+```manuscript
+fn discounted_label(price: Decimal, percent: Decimal) -> Result[String, DiscountError]:
+    return ok(try discount(price: price, percent: percent) | label)
+```
+
 ## Error compatibility
 
 `try` accepts the same error type as the enclosing function, or a specific error implementing the common `Error` interface when the enclosing function returns `Result[U, Error]`.

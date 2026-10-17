@@ -28,6 +28,7 @@
     "@std/process.ms/ProcessError/Error/message": "errors/message",
     "@std/random.ms/RandomError/Error/message": "errors/message",
     "@std/regex.ms/RegexError/Error/message": "errors/message",
+    "@std/semver.ms/SemverError/Error/message": "errors/message",
     "@std/string.ms/StringError/Error/message": "errors/message",
     "@std/system.ms/SystemError/Error/message": "errors/message",
     "@std/tasks.ms/ExecutionError/Error/message": "errors/message",

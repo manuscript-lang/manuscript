@@ -166,10 +166,17 @@ func alignSuiteHeaders(lines []string, tokens []lexer.Token) ([]string, bool) {
 
 func tokenSpace(tokens []lexer.Token, at int) bool {
 	current, previous := tokens[at].Kind, tokens[at-1].Kind
+	if current == "." && (previous == "|" || previous == "try") {
+		return true
+	}
 	if strings.Contains(" ) ] } , . : ", " "+current+" ") {
 		return false
 	}
 	if previous == "(" || previous == "[" || previous == "{" || previous == "." {
+		return false
+	}
+	if current == "=" && strings.Contains(" + - * / % ", " "+previous+" ") && tokens[at-1].End.Offset == tokens[at].Pos.Offset {
+		// The two tokens of a compound assignment such as +=.
 		return false
 	}
 	if current == "(" && (previous == lexer.Name || previous == ")" || previous == "]" || previous == "fn") {

@@ -153,6 +153,9 @@ type Arm struct {
 type Statement struct {
 	Pos        Position
 	Kind, Name string
+	// Compound is the operator of a compound assignment such as "+" for `x += 1`;
+	// Value is then the equivalent binary expression over the target.
+	Compound   string
 	Mutable    bool
 	Pattern    *Pattern
 	Type       *Type

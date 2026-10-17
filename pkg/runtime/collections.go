@@ -39,7 +39,23 @@ func Collections_Filled[T any](ctx *Execution, value T, count int, maxItems Opti
 }
 
 // Collections_Range creates the integers from start up to but excluding end.
-func Collections_Range(ctx *Execution, start, end, step int, maxItems Option[int]) Result[*List[int], CollectionError] {
+func Collections_Range(ctx *Execution, start, end int) *List[int] {
+	if end <= start {
+		return &List[int]{Items: []int{}}
+	}
+	if uint64(end)-uint64(start) > nativeMaxItems {
+		Raise("range: more than 268435456 items; iterate with 'for index in range(start, end)' directly or bound the list with range_by(max_items:)")
+	}
+	out, tick := make([]int, int(uint64(end)-uint64(start))), uint32(0)
+	for i := range out {
+		Poll(ctx, &tick)
+		out[i] = start + i
+	}
+	return &List[int]{Items: out}
+}
+
+// Collections_RangeBy creates the integers from start up to but excluding end by step.
+func Collections_RangeBy(ctx *Execution, start, end, step int, maxItems Option[int]) Result[*List[int], CollectionError] {
 	limit := math.MaxInt
 	if maxItems.Some {
 		limit = maxItems.Val

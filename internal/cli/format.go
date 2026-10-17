@@ -7,12 +7,13 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/project"
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
 )
 
 func runFormat(args []string) int {
-	check, structured, positional := false, false, false
+	check, structured, positional, drop := false, false, false, false
 	var targets []string
 	for _, arg := range args {
 		switch {
@@ -22,6 +23,8 @@ func runFormat(args []string) int {
 			check = true
 		case !positional && arg == "--json":
 			structured = true
+		case !positional && arg == "--drop-labels":
+			drop = true
 		case !positional && strings.HasPrefix(arg, "-"):
 			fmt.Fprintf(os.Stderr, "unknown option %s for ms fmt; run 'ms help fmt' for its options\n", arg)
 			return 2
@@ -80,7 +83,7 @@ func runFormat(args []string) int {
 	}
 	sort.Slice(paths, func(i, j int) bool { return files[paths[i]] < files[paths[j]] })
 	for _, path := range paths {
-		state, err := formatFile(path, files[path], check)
+		state, err := formatFile(path, files[path], check, drop)
 		result.Files = append(result.Files, formatFileResult{files[path], state})
 		if err != nil {
 			report(path, err)
@@ -136,12 +139,18 @@ func formatPaths(target string) ([]string, error) {
 	return paths, nil
 }
 
-func formatFile(path, display string, check bool) (string, error) {
+func formatFile(path, display string, check, dropLabels bool) (string, error) {
 	source, err := os.ReadFile(path)
 	if err != nil {
 		return "error", err
 	}
-	formatted, err := tooling.Format(display, string(source))
+	text := string(source)
+	if dropLabels {
+		// Checked source only; a file with errors keeps its labels and still formats.
+		result := compiler.CompileFile(path, compiler.Options{AnalyzeOnly: true})
+		text, _ = tooling.DropRedundantLabels(result.Program, text)
+	}
+	formatted, err := tooling.Format(display, text)
 	if err != nil {
 		return "error", formatSourceError{display, err}
 	}

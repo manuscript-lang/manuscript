@@ -358,6 +358,22 @@ func Io_ReadLine(ctx *Execution, input ReadStream, maxBytes Option[int]) Result[
 		return readLineByByte(ctx, input, max)
 	}
 	mu, ahead := source.lineBuffer()
+	// A whole line already buffered is sliced out under one lock, with no
+	// intermediate copy.
+	mu.Lock()
+	if i := bytes.IndexByte(ahead.buf, '\n'); i >= 0 && i < max {
+		line := ahead.buf[:i]
+		ahead.buf = ahead.buf[i+1:]
+		mu.Unlock()
+		if n := len(line); n > 0 && line[n-1] == '\r' {
+			line = line[:n-1]
+		}
+		if !utf8.Valid(line) {
+			return ioFailure[Option[string]](IoError_InvalidData{})
+		}
+		return Ok[Option[string], IoError](Some(string(line)))
+	}
+	mu.Unlock()
 	take := func() []byte {
 		mu.Lock()
 		defer mu.Unlock()

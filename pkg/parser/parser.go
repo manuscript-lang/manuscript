@@ -506,18 +506,9 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 	default:
 		e := p.expression(0)
 		if p.compoundAssignment() {
-			p.failCompoundAssignment(t, e)
-		}
-		if p.take("=") {
-			if (e.Kind != syntax.KindName && e.Kind != syntax.KindMember) || (e.Text == "self" || e.Text == "fixture") {
-				p.fail(t, "assignment requires a local binding name or record field; the left side of '=' must be a name or a.field; to change a collection element, call its method such as set(index:, value:) on a List or add(key:, value:) on a Map")
-			}
-			s.Kind = syntax.KindAssign
-			if e.Kind == syntax.KindMember {
-				s.Target = e
-			} else {
-				s.Name = e.Text
-			}
+			p.compound(s, t, e)
+		} else if p.take("=") {
+			p.assignTarget(s, t, e)
 			s.Value = p.expression(0)
 		} else {
 			tryCall := e.Kind == syntax.KindUnary && e.Text == "try" && e.Right.Kind == syntax.KindCall
@@ -623,6 +614,19 @@ func (p *Parser) expression(min int) *syntax.Expression {
 		if op.Kind == "&" {
 			p.fail(op, "'&&' is not an operator; write 'and' for logical and")
 		}
+		if op.Kind == "|" {
+			if min > 0 {
+				break
+			}
+			e = p.pipe(e)
+			if p.peek().Kind == "." {
+				e = p.postfix(e)
+			}
+			if precedence[p.peek().Kind] != 0 {
+				p.fail(p.peek(), "a pipe has the lowest precedence; parenthesize it to use its result in an operator, e.g. (x | f) == y")
+			}
+			continue
+		}
 		level := precedence[op.Kind]
 		if level == 0 || level < min {
 			break
@@ -642,6 +646,55 @@ func (p *Parser) expression(min int) *syntax.Expression {
 	}
 	return e
 }
+
+// pipe parses one `| step` after lhs and desugars it to the ordinary expression
+// the step names, so checking and lowering see plain calls in written order:
+//
+//	lhs | f            f(lhs)
+//	lhs | f(a: 1)      f(lhs, a: 1)
+//	lhs | .m(a)        lhs.m(a)
+//	lhs | try step     try (the desugared step)
+//	lhs | try          try lhs
+//
+// A step head is a name path with no calls in it, so lhs is evaluated before
+// anything the step contributes. A '.member' on the line after a step applies
+// to the step's result.
+func (p *Parser) pipe(lhs *syntax.Expression) *syntax.Expression {
+	p.at++
+	if p.peek().Kind == "|" {
+		p.fail(p.peek(), "'||' is not an operator; write 'or' for logical or, and '|' only to start a pipe step")
+	}
+	try := p.peek()
+	tried := p.take("try")
+	var step *syntax.Expression
+	switch {
+	case p.peek().Kind == ".":
+		step = p.postfix(lhs)
+	case tried && p.peek().Kind != lexer.Name:
+		return &syntax.Expression{Kind: syntax.KindUnary, Text: "try", Pos: try.Pos, Right: lhs}
+	default:
+		name := p.peek()
+		if name.Kind != lexer.Name {
+			p.fail(name, "a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found "+describe(name))
+		}
+		p.at++
+		callee := &syntax.Expression{Kind: syntax.KindName, Text: name.Text, Pos: name.Pos}
+		for p.take(".") {
+			member := p.need(lexer.Name)
+			callee = &syntax.Expression{Kind: syntax.KindMember, Pos: member.Pos, Text: member.Text, Left: callee}
+		}
+		step = &syntax.Expression{Kind: syntax.KindCall, Pos: name.Pos, Left: callee, Args: []syntax.Argument{{Pos: lhs.Pos, Value: lhs}}}
+		if p.take("(") {
+			call := p.callArguments(callee)
+			step.Args = append(step.Args, call.Args...)
+		}
+	}
+	if tried {
+		step = &syntax.Expression{Kind: syntax.KindUnary, Text: "try", Pos: try.Pos, Right: step}
+	}
+	return step
+}
+
 func (p *Parser) casePath() *syntax.Expression {
 	t := p.need(lexer.Name)
 	e := &syntax.Expression{Kind: syntax.KindName, Text: t.Text, Pos: t.Pos}
@@ -722,6 +775,11 @@ func (p *Parser) primary() *syntax.Expression {
 		}
 		p.fail(t, "expected an expression, found "+describe(t)+"; write a value, name, call, or literal here")
 	}
+	return p.postfix(e)
+}
+
+// postfix applies member access, indexing, and calls to e.
+func (p *Parser) postfix(e *syntax.Expression) *syntax.Expression {
 	links := 0
 	for {
 		if p.take(".") {
@@ -736,38 +794,45 @@ func (p *Parser) primary() *syntax.Expression {
 			e = p.bracket(e)
 		} else if p.take("(") {
 			p.link(&links)
-			call := &syntax.Expression{Kind: syntax.KindCall, Pos: e.Pos, Left: e}
-			if !p.take(")") {
-				for {
-					arg := syntax.Argument{Pos: p.peek().Pos}
-					if p.peek().Kind == lexer.Name && p.tokens[p.at+1].Kind == ":" {
-						arg.Name = p.need(lexer.Name).Text
-						p.need(":")
-					}
-					if p.peek().Kind == lexer.Name && p.tokens[p.at+1].Kind == "=" {
-						p.fail(p.tokens[p.at+1], "argument labels use a colon; write "+p.peek().Text+": value")
-					}
-					arg.Value = p.expression(0)
-					if arg.Value.Kind == syntax.KindName && p.peek().Kind == "->" {
-						p.fail(p.peek(), "lambdas are written fn(name: Type) -> Result: expression, e.g. fn("+arg.Value.Text+": Int) -> Int: "+arg.Value.Text+" + 1")
-					}
-					call.Args = append(call.Args, arg)
-					if !p.take(",") {
-						break
-					}
-					if p.peek().Kind == ")" {
-						break
-					}
-				}
-				p.need(")")
-			}
-			e = call
+			e = p.callArguments(e)
 		} else {
 			break
 		}
 	}
 	return e
 }
+
+// callArguments parses the arguments after an opening parenthesis and returns
+// the call of callee.
+func (p *Parser) callArguments(callee *syntax.Expression) *syntax.Expression {
+	call := &syntax.Expression{Kind: syntax.KindCall, Pos: callee.Pos, Left: callee}
+	if !p.take(")") {
+		for {
+			arg := syntax.Argument{Pos: p.peek().Pos}
+			if p.peek().Kind == lexer.Name && p.tokens[p.at+1].Kind == ":" {
+				arg.Name = p.need(lexer.Name).Text
+				p.need(":")
+			}
+			if p.peek().Kind == lexer.Name && p.tokens[p.at+1].Kind == "=" {
+				p.fail(p.tokens[p.at+1], "argument labels use a colon; write "+p.peek().Text+": value")
+			}
+			arg.Value = p.expression(0)
+			if arg.Value.Kind == syntax.KindName && p.peek().Kind == "->" {
+				p.fail(p.peek(), "lambdas are written fn(name: Type) -> Result: expression, e.g. fn("+arg.Value.Text+": Int) -> Int: "+arg.Value.Text+" + 1")
+			}
+			call.Args = append(call.Args, arg)
+			if !p.take(",") {
+				break
+			}
+			if p.peek().Kind == ")" {
+				break
+			}
+		}
+		p.need(")")
+	}
+	return call
+}
+
 func (p *Parser) text(token lexer.Token) *syntax.Expression {
 	raw := token.Text[1 : len(token.Text)-1]
 	e := &syntax.Expression{Kind: syntax.KindText, Pos: token.Pos}
@@ -1015,7 +1080,11 @@ func (p *Parser) valueArm(a *syntax.Arm) {
 	}
 	for _, statement := range a.Body {
 		if statement.Kind == syntax.KindCall && statement.Value.Kind != syntax.KindCall && statement.Value.Kind != syntax.KindMatch {
-			p.fail(lexer.Token{Pos: statement.Pos}, "an arm value must be its final expression")
+			message := "an arm value must be its final expression"
+			if statement.Value.Kind == syntax.KindUnary && statement.Value.Text == "try" {
+				message += "; a standalone 'try' cannot sit inside a match arm, so bind it ('let value = try ...') or move the arm body into a helper function"
+			}
+			p.fail(lexer.Token{Pos: statement.Pos}, message)
 		}
 	}
 	if indented {

@@ -171,6 +171,23 @@ let affordable = (
 `,
 		},
 		{
+			name: "compound assignment keeps its operator",
+			source: `fn work() -> Int:
+    var total = 1
+    total+=2
+    total   *=   3
+    box.count -=  total
+    return total
+`,
+			want: `fn work() -> Int:
+    var total = 1
+    total += 2
+    total *= 3
+    box.count -= total
+    return total
+`,
+		},
+		{
 			name: "boolean precedence and comparison operands",
 			source: `fn work() -> Bool:
     return active or allowed and remaining > 0 or fallback

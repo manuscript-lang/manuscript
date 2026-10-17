@@ -11,8 +11,7 @@ func Optional_IsSome[T any](_ *Execution, o Option[T]) bool { return o.Some }
 func Optional_IsNone[T any](_ *Execution, o Option[T]) bool { return !o.Some }
 
 // Optional_Unwrap returns the payload; none is a fault.
-func Optional_Unwrap[T any](ctx *Execution, o Option[T]) T {
-	CheckCancelled(ctx)
+func Optional_Unwrap[T any](_ *Execution, o Option[T]) T {
 	if !o.Some {
 		Raise(unwrapNoneMessage)
 	}

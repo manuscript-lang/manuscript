@@ -1,4 +1,4 @@
-import {ListBuilder, MapBuilder, SetBuilder, range, filled, map_from_entries} from "@std/collections.ms"
+import {ListBuilder, MapBuilder, SetBuilder, range, range_by, filled, map_from_entries} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -84,7 +84,7 @@ test "set algebra removes duplicates and preserves values":
     if not left.is_disjoint_from(([3]).to_set()): return panic("disjoint")
 
 test "collection constructors validate bounds and exact limits":
-    if (value(range(start: 3, end: -1, step: -1, max_items: 4)) != [3, 2, 1, 0]): return panic(
+    if (value(range_by(start: 3, end: -1, step: -1, max_items: 4)) != [3, 2, 1, 0]): return panic(
         "descending range"
     )
     if value(filled(value: "x", count: 2)) != ["x", "x"]: return panic("filled")
@@ -92,14 +92,64 @@ test "collection constructors validate bounds and exact limits":
     let invalid: Result[List[Int], CollectionError] = error(
         CollectionError.InvalidInput
     )
-    if range(start: 0, end: 1, step: 0) != invalid: return panic("zero step")
+    if range_by(start: 0, end: 1, step: 0) != invalid: return panic("zero step")
 
     let limited: Result[List[Int], CollectionError] = error(
         CollectionError.LimitExceeded
     )
-    if range(start: 0, end: 3, step: 1, max_items: 2) != limited: return panic(
+    if range_by(start: 0, end: 3, step: 1, max_items: 2) != limited: return panic(
         "range budget"
     )
+
+test "range counts up by one":
+    if range(0, 4) != [0, 1, 2, 3]: return panic("range")
+
+    let none_between: List[Int] = []
+    if range(start: 2, end: 2) != none_between or range(5, 1) != none_between: return panic(
+        "empty range"
+    )
+    if range(-2, 1) != [-2, -1, 0]: return panic("negative range")
+
+test "for over range counts without a list":
+    var total = 0
+    for index in range(0, 5):
+        total += index
+    if total != 10: return panic("range loop")
+
+    var visits = 0
+    for outer in range(0, 3):
+        for inner in range(outer, 3):
+            visits += 1
+    if visits != 6: return panic("nested range loops")
+
+    var bound = 3
+    var seen = 0
+
+    for index in range(0, bound):
+        bound = 10
+        seen += 1
+
+    if seen != 3: return panic("bounds are evaluated once")
+
+    var huge = 0
+    for index in range(9223372036854775800, 9223372036854775807):
+        huge += 1
+    if huge != 7: return panic("range near the Int maximum")
+
+    var skipped = 0
+
+    for index in range(0, 10):
+        if index % 2 == 0: continue
+        if index > 7: break
+
+        skipped += index
+
+    if skipped != 16: return panic("continue and break in range loop")
+
+    let callbacks: List[fn() -> Int] = []
+    for index in range(0, 3):
+        callbacks.append(fn(): index)
+    if callbacks.map(fn(call): call()) != [0, 1, 2]: return panic("range loop captures")
 
 test "huge sizes return LimitExceeded instead of exhausting memory":
     let limited: Result[List[Int], CollectionError] = error(
@@ -115,7 +165,7 @@ test "huge sizes return LimitExceeded instead of exhausting memory":
             max_items: 9223372036854775807
         ) != limited
     ): return panic("filled huge explicit limit")
-    if range(start: 0, end: 9223372036854775807, step: 1) != limited: return panic(
+    if range_by(start: 0, end: 9223372036854775807, step: 1) != limited: return panic(
         "range huge"
     )
 

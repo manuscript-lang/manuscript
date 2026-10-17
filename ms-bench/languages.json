@@ -29,10 +29,6 @@
     "build": "ms build ms.toml -o prog",
     "run": "./prog",
     "version": "ms --version",
-    "notes": "Docs for the language are in docs/ (tutorials) and docs/stdlib/ (standard declarations). `ms help` lists commands.",
-    "context": [
-      "@repo/documentation/learn",
-      "@stdlib"
-    ]
+    "notes": "Run `ms guide` for the language cheat sheet and `ms search_symbol <name or words>` to look up standard-library APIs before reading files. `ms help` lists commands."
   }
 }

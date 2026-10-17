@@ -256,7 +256,7 @@ func TestCollectionsFilledAndRange(t *testing.T) {
 		{math.MaxInt64 - 1, math.MaxInt64, 5, None[int](), []int{math.MaxInt64 - 1}, nil},
 	}
 	for _, c := range cases {
-		r := Collections_Range(ctx, c.start, c.end, c.step, c.max)
+		r := Collections_RangeBy(ctx, c.start, c.end, c.step, c.max)
 		if c.err != nil {
 			if !r.Failed || r.Err != c.err {
 				t.Errorf("%+v = %v", c, r)
@@ -267,6 +267,25 @@ func TestCollectionsFilledAndRange(t *testing.T) {
 			t.Errorf("%+v = %v", c, r)
 		}
 	}
+}
+
+func TestCollectionsRangeCountsByOne(t *testing.T) {
+	ctx := RootExecution()
+	for _, c := range []struct {
+		start, end int
+		want       []int
+	}{{0, 4, []int{0, 1, 2, 3}}, {-2, 1, []int{-2, -1, 0}}, {3, 3, []int{}}, {5, 1, []int{}}, {math.MaxInt64 - 2, math.MaxInt64, []int{math.MaxInt64 - 2, math.MaxInt64 - 1}}} {
+		if got := Collections_Range(ctx, c.start, c.end); !reflect.DeepEqual(got.Items, c.want) {
+			t.Errorf("range(%d, %d) = %v, want %v", c.start, c.end, got.Items, c.want)
+		}
+	}
+	defer func() {
+		fault, ok := recover().(Fault)
+		if !ok || !strings.Contains(fault.Message, "range_by(max_items:)") {
+			t.Fatalf("expected a range fault, got %v", fault)
+		}
+	}()
+	Collections_Range(ctx, 0, nativeMaxItems+1)
 }
 
 func TestMapOperations(t *testing.T) {
