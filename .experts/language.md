@@ -72,6 +72,13 @@ Verify: two keys with equal IDs and different labels compare equal and occupy on
 Decision: all values may be passed freely; shared mutable state uses Synchronized, and closures have ordinary captures. This remains independent of equality, hashing, cleanup, and work lifetime.
 Evidence: [sharing rules](../pkg/stdlib/sync.ms).
 
+### Compound assignment, counting ranges, and redundant labels
+Decision: the user asked to add `+= -= *= /= %=`, a step-1 `range(start, end)`, and removal of redundant argument labels (October 2026 proposal `structural-syntax`), reversing the earlier MS1000 rejection of compound assignment. A compound statement parses to the equivalent assignment `target = target op (value)` with `Statement.Compound` recording the written operator for formatting; the receiver of a field target must be names only so it is read once. `range(start, end)` returns `List[Int]` and `for x in range(a, b)` lowers to a counter loop with bounds evaluated once; the stepped, fallible form is `range_by`. The formatter cannot know parameter order, so label removal is the checked `ms fmt --drop-labels`, never part of plain `ms fmt`. Provable-bounds `[]` narrowing was already merged in #555.
+
+Apply when: changing assignment syntax, `for` lowering, `@std/collections.ms` factories, or the formatter.
+Evidence: [parser](../pkg/parser/diagnostics.go), [counter loop](../pkg/lower/stmt.go), [label pass](../pkg/tooling/redundant_labels.go), [native fixture](../tests/e2e/testdata/accept/compound-assignment.ms), [range fixture](../tests/e2e/testdata/stdlib/collections.ms).
+Verify: `total -= a - b` subtracts the whole right side, a call or index receiver is rejected, a `range` bound mutated in the body does not change the count, and `--drop-labels` is idempotent and skips labels that select another parameter.
+
 ### Syntax improvements need examples across their boundaries
 
 Decision: support grouped symbol imports and brace Map literals. The user's newer explicit request to “remove mandatory labels for invoking functions” supersedes the prior restriction to single-parameter unlabeled calls. Invocation labels are optional across functions, methods, function values and constructors. Superseded by issue #452 (user direction): an unlabeled argument, including a bare identifier, is always positional and never selects a parameter by its spelling; only `name: value` selects by name. Matching-name shorthand and its MSL109 advisory were removed. Keep callback function-type label identity separate from invocation syntax, including the contextual-lambda label adoption rule.

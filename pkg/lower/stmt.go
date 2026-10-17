@@ -273,10 +273,49 @@ func (g *gen) loopStatements(s *syntax.Statement) []ast.Stmt {
 		return []ast.Stmt{declare, &ast.ForStmt{Body: block(inner...)}}
 	}
 	binding := g.program.LoopBinding(s)
+	if setup, from, to, ok := g.countingRange(s.Value); ok {
+		body := g.body(s.Body, nil)
+		body = append(g.keepUnused(binding), body...)
+		counter := g.temp()
+		body = append([]ast.Stmt{poll, define(g.bindingName(binding), ident(counter))}, body...)
+		count := &ast.ForStmt{
+			Init: define(counter, from),
+			Cond: binary(ident(counter), token.LSS, to),
+			Post: &ast.IncDecStmt{X: ident(counter), Tok: token.INC},
+			Body: block(body...),
+		}
+		return append(append(setup, declare), count)
+	}
 	iterable := g.expr(s.Value)
 	body := g.body(s.Body, nil)
 	body = append([]ast.Stmt{poll}, body...)
 	return append([]ast.Stmt{declare}, g.rangeLoop(s, binding, iterable, body)...)
+}
+
+// countingRange recognizes `range(start, end)` from @std/collections.ms as the
+// iterable of a for loop. The loop then counts without building the list, so
+// a large bound allocates nothing. Both bounds are evaluated once, in written
+// order, before the first iteration.
+func (g *gen) countingRange(e *syntax.Expression) (setup []ast.Stmt, from, to ast.Expr, ok bool) {
+	if e.Kind != syntax.KindCall {
+		return nil, nil, nil, false
+	}
+	info := g.info(e)
+	if info == nil || info.Symbol == nil || info.Symbol.Native != "collections/range" || len(info.Arguments) != 2 {
+		return nil, nil, nil, false
+	}
+	args := g.arguments(info.Arguments, g.calleeOf(info.Symbol, g.info(e.Left).Type))
+	bounds := make([]ast.Expr, len(args))
+	for i, arg := range args {
+		if literal, isLiteral := arg.(*ast.BasicLit); isLiteral {
+			bounds[i] = literal
+			continue
+		}
+		name := g.temp()
+		setup = append(setup, define(name, arg))
+		bounds[i] = ident(name)
+	}
+	return setup, bounds[0], bounds[1], true
 }
 
 // rangeLoop iterates a collection. A list traversal captures its backing

@@ -172,6 +172,10 @@ func tokenSpace(tokens []lexer.Token, at int) bool {
 	if previous == "(" || previous == "[" || previous == "{" || previous == "." {
 		return false
 	}
+	if current == "=" && strings.Contains(" + - * / % ", " "+previous+" ") && tokens[at-1].End.Offset == tokens[at].Pos.Offset {
+		// The two tokens of a compound assignment such as +=.
+		return false
+	}
 	if current == "(" && (previous == lexer.Name || previous == ")" || previous == "]" || previous == "fn") {
 		return false
 	}

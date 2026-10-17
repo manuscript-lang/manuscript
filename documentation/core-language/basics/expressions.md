@@ -116,4 +116,4 @@ fn invalid(value: Int, ratio: Float) -> Bool:
     return 0 < value < 10               # Syntax error: comparison chain.
 ```
 
-Each rejected expression is independent; a parser need not type-check a function after a syntax error. Assignment `=`, compound assignment, bitwise operators, exponentiation, ranges, ternaries, tuples, and expression-valued blocks are not expression forms in this design.
+Each rejected expression is independent; a parser need not type-check a function after a syntax error. Assignment `=` and compound assignment (they are [statements](grammar.md#statements-and-patterns)), bitwise operators, exponentiation, ranges, ternaries, tuples, and expression-valued blocks are not expression forms in this design.

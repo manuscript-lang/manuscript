@@ -200,7 +200,7 @@ func TestAnalysisLiteralTargetsAndNativeArity(t *testing.T) {
 func TestAnalysisCollectionRangesAndSymlinkConfinement(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
-	source := "fn update() -> Int:\r\n    var total = 0\r\n    total += 1\r\n    return total\r\n"
+	source := "# header\r\n\r\nimport {ListBuilder, List} from \"@std/collections.ms\"\r\n\r\nfn update(items: ListBuilder[Int]) -> Int:\r\n    return 0\r\n"
 	analysisFiles(t, root, map[string]string{"ranges.ms": source, "sources/main.ms": "export fn main() -> Int:\n    return 0\n"})
 	outside := t.TempDir()
 	analysisFiles(t, outside, map[string]string{"bad.ms": "export fn value() -> Int:\n    return missing\n", "good.ms": "export fn value() -> Int:\n    return 0\n"})
@@ -220,7 +220,7 @@ func TestAnalysisCollectionRangesAndSymlinkConfinement(t *testing.T) {
 			}
 			continue
 		}
-		if issue.Fix == nil || issue.End == nil || issue.Fix.Position.File != "ranges.ms" || issue.Fix.End.File != "ranges.ms" || issue.End.File != "ranges.ms" || source[issue.Fix.Position.Offset:issue.Fix.End.Offset] != "+=" || issue.Fix.Position.Offset != strings.Index(source, "+=") || issue.Fix.Position.Line != 3 {
+		if issue.Fix == nil || issue.End == nil || issue.Fix.Position.File != "ranges.ms" || issue.Fix.End.File != "ranges.ms" || issue.End.File != "ranges.ms" || source[issue.Fix.Position.Offset:issue.Fix.End.Offset] != ", List" || issue.Fix.Position.Offset != strings.Index(source, ", List") || issue.Fix.Position.Line != 3 {
 			t.Fatalf("collection rebasing lost byte ranges: %+v", issue)
 		}
 	}

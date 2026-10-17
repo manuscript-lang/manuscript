@@ -57,6 +57,8 @@ fn example() -> Unit:
     remaining = 2.0  # Rejected: Float cannot replace Int.
 ```
 
+`+=`, `-=`, `*=`, `/=`, and `%=` update a `var` or a record field from its current value: `remaining -= 1` means `remaining = remaining - 1`, and `customer.visits += 1` updates the field. The right side is one operand (`total -= a - b` subtracts the difference), and the usual operator typing applies, so `+=` also appends text. See the [statement grammar](grammar.md#statements-and-patterns).
+
 Only a simple name binding accepts a type annotation. Destructuring patterns infer each local from the checked initializer; elisions, rest/default patterns, destructuring assignment, and pattern annotations are rejected. See [type compatibility](../types/compatibility.md) for contextual constructor inference.
 
 ## Reassignment and references

@@ -93,18 +93,17 @@ To repeat a task five times without building a collection, count with `while`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
+import range from "@std/collections.ms"
 import expect_equal from "@std/testing.ms"
 
 test "count five iterations":
-    var index = 0
     var total = 0
-    while index < 5:
-        total = total + index
-        index = index + 1
+    for index in range(0, 5):
+        total += index
     try expect_equal(total, 10)
 ```
 
-The index visits 0 through 4. Update the counter on every path that continues the loop. To build a list of integers, handle `range(start: 0, end: 5, step: 1)`'s `Result` before iterating; see [counting loops](../core-language/control-flow/loops.md#counting-loops).
+The index visits 0 through 4, and `total += index` is shorthand for `total = total + index`. A `while` loop with its own counter handles other steps; see [counting loops](../core-language/control-flow/loops.md#counting-loops).
 
 ## Functions
 

@@ -15,7 +15,10 @@ func check_Collections_Filled[T any]() {
 	var _ func(*Execution, T, int, Option[int]) Result[*List[T], CollectionError] = Collections_Filled[T]
 }
 func check_Collections_Range() {
-	var _ func(*Execution, int, int, int, Option[int]) Result[*List[int], CollectionError] = Collections_Range
+	var _ func(*Execution, int, int) *List[int] = Collections_Range
+}
+func check_Collections_RangeBy() {
+	var _ func(*Execution, int, int, int, Option[int]) Result[*List[int], CollectionError] = Collections_RangeBy
 }
 func check_Collections_MapFromEntries[K comparable, V any]() {
 	var _ func(*Execution, *Keys[K], *List[*MapEntry[K, V]]) *Map[K, V] = Collections_MapFromEntries[K, V]
