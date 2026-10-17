@@ -1,6 +1,6 @@
-# Standard-library benchmark results
+# Standard-library performance results
 
-Output of `make stdlib-bench` (5 repeats, median ns/op) at `88a6360` on 2026-10-17.
+Part of the [performance benchmark](../README.md) (Manuscript only; not the agent benchmark). Output of `make stdlib-bench` (5 repeats, median ns/op) at `88a6360` on 2026-10-17.
 Machine: 4 vCPU linux/amd64 cloud container. Compare only against numbers from the same machine; this is a profiling guide, not a gate.
 
 ```

@@ -1,6 +1,8 @@
-# ms-bench
+# agent-bench
 
-Measures how effectively coding agents solve the same programming challenges in TypeScript, Go, Rust and
+Not the performance benchmark: for compiler/runtime speed against hand-written Go, see [`bench/perf/`](../bench/perf/README.md). Results here never mix with those.
+
+Agent benchmark: measures how effectively coding agents solve the same programming challenges in TypeScript, Go, Rust and
 Manuscript. Per run it records pass/fail against hidden tests, tokens, turns, wall time and cost.
 
 Status: 20 challenges: 10 small programs (c03-c44, with reference solutions in all four languages) and 10 large applications of roughly 3-5k lines (c51-c60), which have no reference solutions and are validated only through the Go oracle in each challenge's `oracle/` directory (see its `gen.py`, which derives the expected outputs deterministically). One trial per challenge and language. Runs through Harbor (preferred) or the built-in runner.
@@ -24,12 +26,12 @@ cover all runs.
 ## Commands
 
 ```sh
-python3 ms-bench/run.py list
-python3 ms-bench/run.py oracle                     # reference solutions vs hidden cases; validates the suite
-python3 ms-bench/run.py run --harness claude_code --model <model> \
+python3 agent-bench/run.py list
+python3 agent-bench/run.py oracle                     # reference solutions vs hidden cases; validates the suite
+python3 agent-bench/run.py run --harness claude_code --model <model> \
     --challenges c03,c05 --languages ms,go --repeat 3 --jobs 4 --tag baseline
-python3 ms-bench/report.py                         # Markdown tables from results/runs.jsonl
-python3 -m unittest discover -s ms-bench/tests
+python3 agent-bench/report.py                         # Markdown tables from results/runs.jsonl
+python3 -m unittest discover -s agent-bench/tests
 ```
 
 `ms`, `go`, `cargo` and `node` (22+) must be on `PATH`. Build `ms` with `make build` and add the repo root to `PATH`.
@@ -40,14 +42,14 @@ python3 -m unittest discover -s ms-bench/tests
 `export_harbor.py` turns every challenge x language into a Harbor task; the hidden cases go only into `tests/`.
 
 ```sh
-python3 ms-bench/export_harbor.py --out /tmp/ms-bench-tasks --ms-binary ./ms
-harbor run -p /tmp/ms-bench-tasks -a claude-code -m claude-haiku-5-5 -o jobs     # Docker or any Harbor sandbox
+python3 agent-bench/export_harbor.py --out /tmp/agent-bench-tasks --ms-binary ./ms
+harbor run -p /tmp/agent-bench-tasks -a claude-code -m claude-haiku-5-5 -o jobs     # Docker or any Harbor sandbox
 ```
 
 Without Docker, use the local-process environment (not a sandbox; the toolchains must be on `PATH`):
 
 ```sh
-PYTHONPATH=ms-bench/harbor harbor run -p /tmp/ms-bench-tasks/c03-csv-group-sum-ms -a claude-code \
+PYTHONPATH=agent-bench/harbor harbor run -p /tmp/agent-bench-tasks/c03-csv-group-sum-ms -a claude-code \
     -m claude-haiku-5-5 --env local_env:LocalProcessEnvironment -o jobs
 ```
 
@@ -76,7 +78,7 @@ cases and first-build success. Harbor records tokens and cost per trial. Use `-a
 
 ## Results
 
-[`results/leaderboard.md`](results/leaderboard.md) is rendered from `results/trials.jsonl` with `python3 ms-bench/leaderboard.py collect JOBS_DIR... && python3 ms-bench/leaderboard.py render`. The checked-in baseline is Claude Code with Haiku, one trial per challenge and language, against Manuscript compiler `dff66df` (docs and compiler from the same commit). A resumed or repeated job keeps only the latest trial per challenge, language, agent and model. The specs of c52, c55, c58, c59 and c60 were tightened after the checked-in run (several cases failed in most languages because the spec left oracle behaviour unstated), so those challenges' results predate the current specs and have not been re-run. The first 50-challenge baseline predates the 20-challenge set and is not in the current file.
+[`results/leaderboard.md`](results/leaderboard.md) is rendered from `results/trials.jsonl` with `python3 agent-bench/leaderboard.py collect JOBS_DIR... && python3 agent-bench/leaderboard.py render`. The checked-in baseline is Claude Code with Haiku, one trial per challenge and language, against Manuscript compiler `dff66df` (docs and compiler from the same commit). A resumed or repeated job keeps only the latest trial per challenge, language, agent and model. The specs of c52, c55, c58, c59 and c60 were tightened after the checked-in run (several cases failed in most languages because the spec left oracle behaviour unstated), so those challenges' results predate the current specs and have not been re-run. The first 50-challenge baseline predates the 20-challenge set and is not in the current file.
 
 ## Known limits
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Export ms-bench challenges as Harbor tasks (one per challenge x language).
+"""Export agent-bench challenges as Harbor tasks (one per challenge x language).
 
-    python3 ms-bench/export_harbor.py --out /tmp/ms-bench-tasks [--challenges c01,c02] [--languages ms,go]
+    python3 agent-bench/export_harbor.py --out /tmp/agent-bench-tasks [--challenges c01,c02] [--languages ms,go]
         [--ms-binary ./ms]
 
 Each task directory: instruction.md, task.toml, environment/{Dockerfile,workspace/,ms}, tests/{test.sh,grade.py,cases.json},
@@ -48,11 +48,11 @@ def task_toml(name: str, ch, agent_timeout: int) -> str:
 artifacts = []
 
 [task]
-name = "ms-bench/{name}"
+name = "agent-bench/{name}"
 version = "1.0.0"
 description = "{ch.title} ({ch.category}, tier {ch.tier})"
 authors = []
-keywords = ["ms-bench", "{ch.category}"]
+keywords = ["agent-bench", "{ch.category}"]
 
 [metadata]
 category = "{ch.category}"

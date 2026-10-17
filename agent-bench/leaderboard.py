@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Collect Harbor trials into results/trials.jsonl and render results/leaderboard.md.
 
-    python3 ms-bench/leaderboard.py collect JOBS_DIR [JOBS_DIR ...]   # append/replace trials by trial id
-    python3 ms-bench/leaderboard.py render                          # write results/leaderboard.md
+    python3 agent-bench/leaderboard.py collect JOBS_DIR [JOBS_DIR ...]   # append/replace trials by trial id
+    python3 agent-bench/leaderboard.py render                          # write results/leaderboard.md
 
 Pass rate counts every trial. Cost, tokens, turns and time average over PASSING trials only, so a cheap wrong
 answer never improves a ranking. Tokens are input (cache reads included) plus output. Turns are agent steps in
@@ -178,7 +178,7 @@ def source_table(rows):
 def render():
     trials = [json.loads(l) for l in TRIALS.read_text().splitlines() if l.strip()]
     clean = [t for t in trials if not t["errored"]]
-    out = ["# ms-bench leaderboard", "",
+    out = ["# agent-bench leaderboard", "",
            f"{len(trials)} trials ({len(trials) - len(clean)} errored and excluded). Pass rate counts all scored trials; tokens, turns, wall time and cost average over passing trials only. Ranked by pass rate, then cost.", ""]
     by = lambda keyf, rows=clean: _group(rows, keyf)  # noqa: E731
     out.append(table("Languages (all models)", by(lambda t: LANG_NAMES.get(t["language"], t["language"])), "language"))
