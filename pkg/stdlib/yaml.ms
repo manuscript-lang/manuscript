@@ -1437,7 +1437,7 @@ fn quote_text(text: String) -> String:
         else if c == "\r": result.append("\\r")
         else if code == 8: result.append("\\b")
         else if code == 12: result.append("\\f")
-        else if code < 32 or code == 127:
+        else if code < 32 or (code >= 127 and code <= 159):
             result.append("\\u")
             result.append(hex4(code))
         else: result.append(c)
