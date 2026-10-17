@@ -12,12 +12,22 @@ Verified: `go test -fuzz` can report success with no matching fuzz function afte
 
 ### Repository cleanup must remove duplicated work and layers
 
-Decision: the user's codebase cleanup request includes simplifying the implementation as a whole; reorganizing files alone does not satisfy it. Consolidate duplicated behavior and remove avoidable work before adding abstraction layers.
+Decision: codebase cleanup should make the implementation easy to follow, with
+clear layer boundaries and one implementation of each shared behavior.
+Reorganizing files alone does not satisfy it: remove duplicated behavior and
+avoidable work before adding abstractions. Use the
+[simplify workflow](../skills/simplify/SKILL.md) to apply this preference while
+preserving behavior unless a change is requested.
 
 Verified: source-only CLI commands stop at checked programs, while explicit application entry validation remains available without Go lowering. Semantic lint uses resolved identities instead of re-lexing names. Shared executable-syntax traversal includes defaults, closures, and interpolation; editor requests reuse their source index and resolve receivers without building an inspection document.
 
 Apply when: organizing packages, extracting helpers, or adding another frontend/tooling pass.
 Evidence: [shared traversal](../pkg/syntax/walk.go), [semantic lint](../pkg/tooling/lint_program.go), [CLI modes](../internal/cli/cli.go), [analysis entry regression](../pkg/build/metadata_test.go), and [default/list editor regressions](../pkg/tooling/lsp/defaults_test.go).
+The user message in “Organize repository layers” (chat
+`01a13b64-d01d-73d8-b318-7438b9ab402d`) establishes the later preference;
+[earlier cleanup](https://github.com/manuscript-lang/manuscript/commit/238803e4991b794f6fcfe6bb59b2a07ee18750a9)
+and [layer consolidation](https://github.com/manuscript-lang/manuscript/commit/86c904d6081a640e4559551edc5ced6440897c97)
+record historical implementations, not proof of this checkout's behavior.
 Verify: identify the duplicate traversal, query, serialization, or forwarding path that disappears. Preserve source-level checking, default evaluation, module identity, and native conformance; a smaller file tree alone is not evidence of simplification.
 
 Verified: optimization uses a separate lowering view of checked source. Rewriting or removing AST nodes would break the pointer identities used by editor queries, lint, effects, and source maps. Parsing and resolution diagnostics travel with the AST graph, including during recovery; folding a short-circuited expression never permits an invalid operand to bypass checking. Evidence: [shared pipeline](../pkg/compiler/compiler.go), [source model regressions](../pkg/compiler/pipeline_test.go), and [native side-effect regression](../tests/e2e/testdata/accept/boolean-optimization.ms).
