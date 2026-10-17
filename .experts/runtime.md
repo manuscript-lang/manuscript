@@ -408,3 +408,10 @@ Verified: `Optional_Unwrap`, `Result_Unwrap`, `Result_UnwrapError` and `StringBu
 Apply when: adding a helper that runs in constant time, or deciding where a runtime function should be a cancellation point. Keep the check in helpers that loop, wait, or call user callbacks.
 Evidence: `pkg/runtime/optional.go`, `pkg/runtime/result.go`, `pkg/runtime/string.go`, `pkg/lower/stmt.go` (`loopStatements`).
 Verify: compare `bench/run.sh` before and after; the loop-cancellation tests in `tests/e2e` must still pass.
+
+### ReadLine slices a buffered line under one lock
+Verified: `Io_ReadLine` used two mutex round trips, a closure pair and an intermediate `append` copy per line. When the read-ahead buffer already holds a full line shorter than the limit, it is now sliced out under one lock and copied once into the result string (136 to 95 ns/line on 200k lines; hand-written Go 73). Lines that cross a refill, exceed the limit, or come from streams without read-ahead take the original path, so limit and invalid-UTF-8 behavior are unchanged.
+
+Apply when: changing `Io_ReadLine`, `readAhead`, or stream buffering.
+Evidence: `pkg/runtime/io.go`, `tests/e2e/testdata/stdlib/io.ms`.
+Verify: `go test ./pkg/runtime ./tests/e2e` and `bench/run.sh` (`read_line`).
