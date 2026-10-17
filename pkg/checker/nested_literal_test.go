@@ -122,3 +122,10 @@ func TestNestedConstructorCheckingScalesWithDepth(t *testing.T) {
 		})
 	}
 }
+
+func TestNestedUninferableConstructorReportsOnce(t *testing.T) {
+	program := checkNested(t, "fn f() -> Unit:\n    let x = some(some(none))\n")
+	if len(program.Diagnostics) != 1 || !strings.Contains(program.Diagnostics[0].Message, "cannot infer constructor type argument") {
+		t.Fatalf("want one inference error, got %+v", program.Diagnostics)
+	}
+}

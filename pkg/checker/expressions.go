@@ -21,7 +21,7 @@ func (c *checker) checkExpression(e *syntax.Expression, i *Info, expected *Type)
 	if i.Type.ID == "Never" {
 		i.NoReturn = true
 	}
-	if expected != nil && i.Type.ID != "<invalid>" && !compatible(i.Type, expected) {
+	if expected != nil && i.Type.ID != "<invalid>" && expected.ID != "<invalid>" && !compatible(i.Type, expected) {
 		if c.errorAssignable(i.Type, expected) {
 			i.ErrorSource = i.Type
 			cause := i.Type
