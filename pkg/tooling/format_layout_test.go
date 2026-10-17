@@ -49,6 +49,25 @@ func TestFormatExpressionLayouts(t *testing.T) {
 		name, source, want string
 	}{
 		{
+			name: "long if let value wraps without the binding",
+			source: `fn work() -> Int:
+    if let value = [2, 5, 3, (-6), (-9), 1, 2, 3, 4].clone().sorted(fn(l: Int, r: Int) -> Int: l - r).first():
+        return value
+    return 0
+`,
+			want: `fn work() -> Int:
+    if let value = (
+        [2, 5, 3, (-6), (-9), 1, 2, 3, 4]
+        .clone()
+        .sorted(fn(l: Int, r: Int) -> Int: (l - r))
+        .first()
+    ):
+        return value
+
+    return 0
+`,
+		},
+		{
 			name: "list comments retain item boundaries",
 			source: `fn work() -> Unit:
     let values = [1, # Keep the first value explained.

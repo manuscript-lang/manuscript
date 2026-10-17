@@ -649,6 +649,13 @@ func groupStatementExpressions(filename, source string) (string, error) {
 			switch s.Kind {
 			case syntax.KindIf, syntax.KindWhile:
 				start++
+				if s.Pattern != nil {
+					// `if let name = value:` wraps only the value.
+					for tokens[start].Kind != "=" {
+						start++
+					}
+					start++
+				}
 			case syntax.KindReturn:
 				if tokens[start].Kind == syntax.KindReturn {
 					start++
