@@ -33,3 +33,12 @@ test "boolean optimization preserves source evaluation order":
     let callback = fn(): not (true and false)
     if not defaulted() or not callback():
         return panic("folding defaults or closures changed the result")
+
+test "bindings read only by a folded-away operand still compile":
+    var only_dropped = 10
+    let dropped_or = true or only_dropped > 0
+    for item in [1, 2]:
+        if false and item > 0:
+            return panic("folded false and ran")
+    if not dropped_or:
+        return panic("folded or changed the result")
