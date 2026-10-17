@@ -23,6 +23,8 @@ Synchronized rejects same-operation reentry using execution/work-lifetime identi
 
 An operation must not join itself or an execution ancestor. Closing its own scheduler, including from nested task-group descendants or reporter callbacks joined by that service, faults before initiating shutdown. Check the fixed execution-parent chain, not just the current operation ID. Hosts close services from outside their admitted work. Cross-service cyclic shutdown is invalid library usage and must be avoided by host shutdown ordering.
 
+Maps and sets are not synchronized. A map or set access that overlaps an insert, delete or clear from another task faults with a message naming `Synchronized`, instead of ending the process with Go's `concurrent map writes` crash. The check is a best-effort diagnostic: a racing access can still slip through its window, and lists get no check.
+
 The conformance suite uses controlled barriers and race stress for admission versus closure, cancellation versus completion, and concurrent shutdown. See [semantic tests](compiler/conformance/semantic-tests.md).
 
 ## Completion and resource acquisition

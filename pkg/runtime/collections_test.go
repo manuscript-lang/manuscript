@@ -676,3 +676,29 @@ func TestCollectionLoopsHonorCancellation(t *testing.T) {
 	}()
 	List_Count(ctx, ints(1, 2, 3), func(*Execution, int) bool { return true })
 }
+
+func TestSharedMapFaultsInsteadOfCrashing(t *testing.T) {
+	m := NewMap[int, int]()
+	m.writing = 1 // another task is inserting
+	for name, use := range map[string]func(){
+		"put":    func() { m.Put(1, 1) },
+		"get":    func() { m.Lookup(1) },
+		"delete": func() { m.Delete(1) },
+		"clear":  func() { m.Clear() },
+	} {
+		func() {
+			defer func() {
+				fault, ok := recover().(Fault)
+				if !ok || !strings.Contains(fault.Message, "Synchronized") {
+					t.Errorf("%s: recovered %v", name, fault)
+				}
+			}()
+			use()
+		}()
+	}
+	m.writing = 0
+	m.Put(1, 1)
+	if v, ok := m.Lookup(1); !ok || v != 1 || m.writing != 0 {
+		t.Fatal("map unusable after sequential writes")
+	}
+}
