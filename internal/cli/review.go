@@ -12,8 +12,8 @@ import (
 )
 
 type reviewArguments struct {
-	filename, diff, format, output string
-	all                            bool
+	filename, diff, format, output, explain string
+	all                                     bool
 }
 
 // parseReviewArguments reads ms review's options; a false result carries the
@@ -34,11 +34,11 @@ func parseReviewArguments(args []string) (reviewArguments, int, bool) {
 	}
 	a.filename = filename
 	for i := 2; i < len(args); i++ {
-		flag, value, inline := splitValueOption(args[i], "--diff", "--format", "-o", "--output")
+		flag, value, inline := splitValueOption(args[i], "--diff", "--format", "--explain", "-o", "--output")
 		switch flag {
 		case "--all":
 			a.all = true
-		case "--diff", "--format", "-o", "--output":
+		case "--diff", "--format", "--explain", "-o", "--output":
 			value, ok := requiredValue(args, &i, value, inline)
 			if !ok {
 				return a, usageError("%s requires a value; run 'ms help review' for examples", flag), false
@@ -48,6 +48,8 @@ func parseReviewArguments(args []string) (reviewArguments, int, bool) {
 				a.diff = value
 			case "--format":
 				a.format = value
+			case "--explain":
+				a.explain = value
 			default:
 				a.output = value
 			}
@@ -59,6 +61,9 @@ func parseReviewArguments(args []string) (reviewArguments, int, bool) {
 	case "ascii", "markdown", "json":
 	default:
 		return a, usageError("unknown --format %q for ms review; use ascii, markdown, or json", a.format), false
+	}
+	if a.explain != "" && a.diff == "" {
+		return a, usageError("--explain needs --diff; it explains one finding of a diff report, e.g. ms review ms.toml --diff change.patch --explain 1"), false
 	}
 	return a, 0, true
 }
@@ -80,33 +85,53 @@ func runReview(args []string, _ string) int {
 	if a.diff == "" {
 		return writeOutput(a.output, []byte(tooling.ProjectReport(headFacts, reviewOptions).Render(a.format)))
 	}
-	text, err := readDiff(a.diff)
+	input, baseFacts, status := diffInputs(a.filename, a.diff, head, options.Entry)
+	if status != 0 {
+		return status
+	}
+	if a.explain != "" {
+		text, err := tooling.Explain(tooling.CompareFacts(baseFacts, headFacts, input), headFacts, a.explain)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ms review: %v\n", err)
+			return 2
+		}
+		return writeOutput(a.output, []byte(text))
+	}
+	return writeOutput(a.output, []byte(tooling.DiffReport(baseFacts, headFacts, input, reviewOptions).Render(a.format)))
+}
+
+// diffInputs reads the unified diff, rebuilds the base program from it, and
+// returns the change summary with the base facts; a nonzero status means the
+// problem is already reported.
+func diffInputs(filename, diff string, head compiler.Result, entry bool) (tooling.DiffInput, tooling.Facts, int) {
+	var none tooling.Facts
+	text, err := readDiff(diff)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		return 2
+		return tooling.DiffInput{}, none, 2
 	}
 	files, err := tooling.ParseDiff(text)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ms review: %v; pass a unified diff such as git diff --no-renames main...\n", err)
-		return 2
+		return tooling.DiffInput{}, none, 2
 	}
 	root := head.ProjectRoot
 	if root == "" {
-		absolute, _ := filepath.Abs(a.filename)
+		absolute, _ := filepath.Abs(filename)
 		root = filepath.Dir(absolute)
 	}
 	input, overlay, err := reviewInput(files, root)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ms review: diff does not match the tree: %v; run it from the checkout the diff was made against\n", err)
-		return 2
+		return input, none, 2
 	}
-	base := compiler.CompileFileForBuild(a.filename, compiler.Options{AnalyzeOnly: true, Entry: options.Entry, Overlay: overlay}, compiler.Release)
+	base := compiler.CompileFileForBuild(filename, compiler.Options{AnalyzeOnly: true, Entry: entry, Overlay: overlay}, compiler.Release)
 	var baseFacts tooling.Facts
 	if base.Success() {
 		input.BaseChecked = true
 		baseFacts = tooling.CollectFacts(base.Program)
 	}
-	return writeOutput(a.output, []byte(tooling.DiffReport(baseFacts, headFacts, input, reviewOptions).Render(a.format)))
+	return input, baseFacts, 0
 }
 
 func readDiff(path string) (string, error) {

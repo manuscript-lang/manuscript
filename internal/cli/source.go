@@ -185,10 +185,19 @@ func writeView(inv *invocation, result compiler.Result) int {
 	if view == "" {
 		view = "calls"
 	}
-	tree, err := tooling.BuildView(tooling.CollectFacts(result.Program), view, inv.entity, inv.depth)
+	facts := tooling.CollectFacts(result.Program)
+	tree, err := tooling.BuildView(facts, view, inv.entity, inv.depth)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ms diagram: %v\n", err)
 		return 2
+	}
+	if inv.diff != "" {
+		entry := filepath.Base(inv.filename) == "ms.toml"
+		input, base, status := diffInputs(inv.filename, inv.diff, result, entry)
+		if status != 0 {
+			return status
+		}
+		tooling.MarkChanges(tree, tooling.CompareFacts(base, facts, input), input.Touched)
 	}
 	if inv.format == "mermaid" {
 		return writeOutput(inv.output, []byte(tree.Mermaid()))

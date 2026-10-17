@@ -13,6 +13,9 @@ type Node struct {
 	// Kind and Ref describe flow steps: Kind is call, native, try, with, branch,
 	// match, arm, or exit; Ref is the callee's entity key for project calls.
 	Kind, Ref string
+	// File and Line locate a flow step in the source, for marking a diff.
+	File string
+	Line int
 }
 
 // Views names the diagram views, in help order.
@@ -73,7 +76,7 @@ func (b *viewBuilder) label(f *Fact) string {
 }
 
 func (b *viewBuilder) expand(f *Fact, level int, path map[string]bool) *Node {
-	node := &Node{Label: b.label(f)}
+	node := &Node{Label: b.label(f), Ref: f.Key}
 	b.count++
 	if level >= b.depth {
 		return node
