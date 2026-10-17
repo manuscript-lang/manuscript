@@ -7,8 +7,10 @@ import json
 import shutil
 import sys
 import tempfile
+import threading
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -18,6 +20,7 @@ from core.workspace import grade, make_workspace, read_log  # noqa: E402
 from harnesses import HARNESSES  # noqa: E402
 
 RESULTS = ROOT / "results"
+WRITE_LOCK = threading.Lock()
 
 
 def run_one(ch, lang_id, lang, harness, model, timeout_s, keep, out_file, tag):
@@ -47,7 +50,7 @@ def run_one(ch, lang_id, lang, harness, model, timeout_s, keep, out_file, tag):
         "language": lang_id, "harness": harness.name, "model": model,
         **agent, **log, "suspect_peek": peeked, "grade": g, "pass": g["pass"],
     }
-    with out_file.open("a") as f:
+    with WRITE_LOCK, out_file.open("a") as f:
         f.write(json.dumps(rec) + "\n")
     if keep:
         print(f"  workspace kept: {ws}")
@@ -66,6 +69,7 @@ def main():
     r.add_argument("--challenges", default="", help="comma list of ids or prefixes (default all)")
     r.add_argument("--languages", default="", help="comma list (default all)")
     r.add_argument("--repeat", type=int, default=1)
+    r.add_argument("--jobs", type=int, default=1, help="runs in parallel")
     r.add_argument("--timeout", type=int, default=900, help="agent wall-clock limit, seconds")
     r.add_argument("--keep", action="store_true", help="keep workspaces")
     r.add_argument("--tag", default="", help="free-form label stored with each run")
@@ -91,18 +95,25 @@ def main():
         harness, model, repeat, timeout, keep, tag = HARNESSES["oracle"], None, 1, 0, False, "oracle"
     else:
         out, harness, model, repeat, timeout, keep, tag = Path(a.out), HARNESSES[a.harness], a.model, a.repeat, a.timeout, a.keep, a.tag
-    bad = 0
+    jobs = 1 if a.cmd == "oracle" else max(1, a.jobs)
+    todo = []
     for ch in chs:
         for lid, lang in langs.items():
             if a.cmd == "oracle" and not (ch.solution(lang.get("template", lid)) / (Path(lang["solution"]).name + ".ref")).is_file():
                 print(f"SKIP {ch.id} {lid} (no reference solution; cases come from the challenge's Go oracle)")
                 continue
-            for _ in range(repeat):
-                rec = run_one(ch, lid, lang, harness, model, timeout, keep, out, tag)
-                g = rec["grade"]
-                print(f"{'PASS' if rec['pass'] else 'FAIL'} {ch.id} {lid} {g['passed']}/{g['total']} "
-                      f"turns={rec['usage']['turns']} cost=${rec['usage']['cost_usd']:.3f} {rec['wall_s']}s")
-                bad += not rec["pass"]
+            todo += [(ch, lid, lang)] * repeat
+
+    def work(item):
+        ch, lid, lang = item
+        rec = run_one(ch, lid, lang, harness, model, timeout, keep, out, tag)
+        g = rec["grade"]
+        print(f"{'PASS' if rec['pass'] else 'FAIL'} {ch.id} {lid} {g['passed']}/{g['total']} "
+              f"turns={rec['usage']['turns']} cost=${rec['usage']['cost_usd']:.3f} {rec['wall_s']}s", flush=True)
+        return not rec["pass"]
+
+    with ThreadPoolExecutor(max_workers=jobs) as pool:
+        bad = sum(pool.map(work, todo))
     if a.cmd == "oracle":
         out.unlink(missing_ok=True)  # oracle output is a check, not data
     return 1 if (bad and a.cmd == "oracle") else 0
