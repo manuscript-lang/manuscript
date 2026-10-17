@@ -408,6 +408,15 @@ func optionalUseHint(actual, expected *Type) string {
 	return actual.String() + " may be absent; unwrap it first with 'if let', unwrap_or(default), is_some() before unwrap(), or match"
 }
 
+// resultUseHint names the fix when a Result is used where its success type is
+// required.
+func resultUseHint(actual, expected *Type) string {
+	if actual == nil || expected == nil || !std(actual, "Result") || len(actual.Args) == 0 || !Same(actual.Args[0], expected) {
+		return ""
+	}
+	return "unwrap it with 'try' inside a function that returns a compatible Result, or with 'match' or '.unwrap()'"
+}
+
 // numberConversionHint names the explicit conversion between Int and Float;
 // neither converts implicitly.
 func numberConversionHint(actual, expected *Type) string {

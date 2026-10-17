@@ -32,6 +32,7 @@ func TestDiagnosticsStateCauseAndFix(t *testing.T) {
 		{"capitalized Optional arms", "fn f(o: Optional[Int]) -> Int:\n    match o:\n        Some(v):\n            return v\n        None:\n            return 0\n", []string{"unknown case Some of Optional", "did you mean 'some'?"}, 2},
 		{"optional compared with plain value", "fn f(n: Optional[Int]) -> Int:\n    if n == 0:\n        return 1\n    return 0\n", []string{"found Optional[Int] == Int", "may be absent", "unwrap_or(default)"}, 1},
 		{"plain value added to optional", "fn f(n: Optional[Int]) -> Int:\n    return 1 + n\n", []string{"found Int + Optional[Int]", "may be absent"}, 1},
+		{"result added to plain value", "fn p() -> Result[Int, Error]:\n    return ok(1)\nfn f() -> Int:\n    return p() + 1\n", []string{"found Result[Int, Error] + Int", "unwrap it with 'try'"}, 1},
 		{"optional where plain value expected", "fn f(n: Optional[Int]) -> Int:\n    return n\n", []string{"expected Int, found Optional[Int]", "may be absent", "unwrap_or(default)"}, 1},
 		{"int where float expected", "fn f() -> Float:\n    let x: Float = 3\n    return x\n", []string{"expected Float, found Int", "write a Float literal such as 3.0", "to_float()"}, 1},
 		{"float where int expected", "fn f() -> Int:\n    return 3.5\n", []string{"expected Int, found Float", "truncate_to_int()", "unwrap_or(0)"}, 1},

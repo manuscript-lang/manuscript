@@ -352,11 +352,8 @@ func variableSet(types []*Type) map[string]bool {
 }
 func formatMismatch(actual, expected *Type) string {
 	message := fmt.Sprintf("expected %s, found %s", expected, actual)
-	if len(actual.Args) > 0 && Same(actual.Args[0], expected) {
-		switch {
-		case std(actual, "Result"):
-			message += "; unwrap it with 'try' inside a function that returns a compatible Result, or with 'match' or '.unwrap()'"
-		}
+	if hint := resultUseHint(actual, expected); hint != "" {
+		message += "; " + hint
 	}
 	return message
 }
