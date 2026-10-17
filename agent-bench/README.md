@@ -78,7 +78,11 @@ cases and first-build success. Harbor records tokens and cost per trial. Use `-a
 
 ## Results
 
-[`results/leaderboard.md`](results/leaderboard.md) is rendered from `results/trials.jsonl` with `python3 agent-bench/leaderboard.py collect JOBS_DIR... && python3 agent-bench/leaderboard.py render`. The checked-in baseline is Claude Code with Haiku, one trial per challenge and language, against Manuscript compiler `dff66df` (docs and compiler from the same commit). A resumed or repeated job keeps only the latest trial per challenge, language, agent and model. The specs of c52, c55, c58, c59 and c60 were tightened after the checked-in run (several cases failed in most languages because the spec left oracle behaviour unstated), so those challenges' results predate the current specs and have not been re-run. The first 50-challenge baseline predates the 20-challenge set and is not in the current file.
+Results are kept in date-named files: `results/trials-YYYY-MM-DD.jsonl` (one line per trial) and `results/leaderboard-YYYY-MM-DD.md`. Earlier dates stay as history; never overwrite one. Render with `python3 agent-bench/leaderboard.py collect JOBS_DIR... && python3 agent-bench/leaderboard.py render`. A resumed or repeated job keeps only the latest trial per challenge, language, agent and model.
+
+`agent tokens` is what the agent consumed (input including cache reads, plus output). `solution size (tokens)` is the number of lexical tokens (identifiers, literals and punctuation; comments excluded) in the final source the agent left in the workspace, computed by `core/codetokens.py` in the verifier. It is language-neutral, not any model's tokenizer count, and `n/a` for runs that predate it.
+
+The 2026-10-14 baseline predates the specs tightened afterwards for c52, c55, c58, c59 and c60 (several cases failed in most languages because the spec left oracle behaviour unstated), so those challenges' results there have not been re-run.
 
 ## Known limits
 

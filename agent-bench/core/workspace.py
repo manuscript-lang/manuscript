@@ -8,6 +8,7 @@ import subprocess
 import time
 from pathlib import Path
 
+from .codetokens import count_workspace
 from .model import REPO, ROOT, Challenge
 
 
@@ -90,7 +91,8 @@ def grade(ch: Challenge, lang: dict, ws: Path) -> dict:
     """Build the workspace's solution and run hidden cases. Returns pass/fail details."""
     rc, _, err, _ = _sh(lang["build"], ws, 600)
     if rc != 0:
-        return {"built": False, "passed": 0, "total": len(ch.cases("hidden")), "pass": False, "error": err[-500:]}
+        return {"built": False, "passed": 0, "total": len(ch.cases("hidden")), "pass": False, "error": err[-500:],
+                "code_tokens": count_workspace(ws, Path(lang["solution"]).suffix)}
     cases = ch.cases("hidden")
     passed, failed = 0, []
     for c in cases:
@@ -99,4 +101,5 @@ def grade(ch: Challenge, lang: dict, ws: Path) -> dict:
             passed += 1
         else:
             failed.append(c.get("name", "?"))
-    return {"built": True, "passed": passed, "total": len(cases), "pass": passed == len(cases), "failed": failed[:10]}
+    return {"built": True, "passed": passed, "total": len(cases), "pass": passed == len(cases), "failed": failed[:10],
+            "code_tokens": count_workspace(ws, Path(lang["solution"]).suffix)}
