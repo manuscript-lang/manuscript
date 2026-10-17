@@ -146,8 +146,11 @@ func formatFile(path, display string, check, dropLabels bool) (string, error) {
 	}
 	text := string(source)
 	if dropLabels {
-		// Checked source only; a file with errors keeps its labels and still formats.
 		result := compiler.CompileFile(path, compiler.Options{AnalyzeOnly: true})
+		if !result.Success() {
+			first := result.Diagnostics[0]
+			return "error", fmt.Errorf("%s:%d:%d: %s: %s\n--drop-labels needs source that checks (%d error(s)); fix them, then re-run ms fmt --drop-labels %s", display, first.Position.Line, first.Position.Column, first.Phase, first.Message, len(result.Diagnostics), display)
+		}
 		text, _ = tooling.DropRedundantLabels(result.Program, text)
 	}
 	formatted, err := tooling.Format(display, text)

@@ -463,8 +463,8 @@ func TestFormatDropLabelsOnlyForCheckedSource(t *testing.T) {
 	}
 	broken := sourceFile(t, "fn total(left: Int) -> Int:\n    return add(left: left)\n")
 	before, _ := os.ReadFile(broken)
-	if status, _, errors := invoke(t, "fmt", broken, "--drop-labels"); status != 0 {
-		t.Fatal(errors)
+	if status, _, errors := invoke(t, "fmt", broken, "--drop-labels"); status != 1 || !strings.Contains(errors, "--drop-labels needs source that checks") {
+		t.Fatalf("source that does not check: %d %q", status, errors)
 	}
 	if got, _ := os.ReadFile(broken); string(got) != string(before) {
 		t.Fatal("labels dropped from source that does not check")

@@ -115,3 +115,16 @@ func TestPipeNextLineDotAppliesToStepResult(t *testing.T) {
 		t.Fatalf("a same-line .member after try stays inside the try: %+v", same)
 	}
 }
+
+func TestPipeDiagnosticsExplainRejectedShapes(t *testing.T) {
+	for _, test := range []struct{ expression, want string }{
+		{"x | f[Int]", "cannot take type arguments"},
+		{"x |\n", "start the next line with '|'"},
+	} {
+		source := "fn f() -> Int:\n    let v = " + test.expression + "\n    return 0\n"
+		_, err := Parse("pipe.ms", source)
+		if err == nil || !strings.Contains(err.Error(), test.want) {
+			t.Errorf("%q: %v, want %q", test.expression, err, test.want)
+		}
+	}
+}

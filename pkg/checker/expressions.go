@@ -473,6 +473,14 @@ func (c *checker) inferBinary(e *syntax.Expression, expected *Type, i *Info) *In
 	if common.ID == "Never" {
 		common = b.Type
 	}
+	if invalidType(a.Type) || invalidType(b.Type) {
+		// An operand already reported its own error; do not restate it.
+		i.Type = primitive("<invalid>")
+		if e.Text == "==" || e.Text == "!=" || isOrdering(e.Text) {
+			i.Type = primitive("Bool")
+		}
+		return i
+	}
 	if common.ID == "Never" || !compatible(a.Type, common) || !compatible(b.Type, common) {
 		hint := optionalUseHint(a.Type, b.Type)
 		if hint == "" {

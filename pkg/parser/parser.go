@@ -675,7 +675,11 @@ func (p *Parser) pipe(lhs *syntax.Expression) *syntax.Expression {
 	default:
 		name := p.peek()
 		if name.Kind != lexer.Name {
-			p.fail(name, "a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found "+describe(name))
+			hint := ""
+			if name.Kind == lexer.Newline {
+				hint = "; to continue a flow on the next line, end this line before '|' and start the next line with '|'"
+			}
+			p.fail(name, "a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found "+describe(name)+hint)
 		}
 		p.at++
 		callee := &syntax.Expression{Kind: syntax.KindName, Text: name.Text, Pos: name.Pos}
@@ -685,6 +689,9 @@ func (p *Parser) pipe(lhs *syntax.Expression) *syntax.Expression {
 			p.at++
 			member := p.need(lexer.Name)
 			callee = &syntax.Expression{Kind: syntax.KindMember, Pos: member.Pos, Text: member.Text, Left: callee}
+		}
+		if p.peek().Kind == "[" {
+			p.fail(p.peek(), "a pipe step cannot take type arguments; bind the instance to a name first, e.g. let step = "+name.Text+"[Int], then write x | step")
 		}
 		step = &syntax.Expression{Kind: syntax.KindCall, Pos: name.Pos, Left: callee, Args: []syntax.Argument{{Pos: lhs.Pos, Value: lhs}}}
 		if p.take("(") {
