@@ -70,9 +70,11 @@ These commands use source checking without a Go installation or native toolchain
 ms diagram ms.toml --view effects --entity save
 ms diagram ms.toml --view errors
 ms diagram ms.toml --view modules
+ms diagram ms.toml --view flow --entity main --depth 2
+ms diagram ms.toml --view scope --entity save
 ```
 
-`--view` answers one question as a tree: `calls` (who is called, with native boundaries as leaves), `effects` (only callees that carry an effect, ending at the native operation where it enters), `errors` (functions with a `Result` error type or `try` sites), and `modules` (imports per module). `--entity` roots the tree at one declaration by name or `file::name` (a project-relative path for `modules`) and fails when the name is missing or ambiguous; without it the roots are the entities no relevant entity calls. `--depth n` bounds expansion (default 3), repeated callees on a path print `(cycle)`, and a view stops at 200 nodes with a count of the rest. Both formats render the same tree.
+`--view` answers one question as a tree: `calls` (who is called, with native boundaries as leaves), `effects` (only callees that carry an effect, ending at the native operation where it enters), `errors` (functions with a `Result` error type or `try` sites), `modules` (imports per module), `flow` (one function's ordered steps), and `scope` (its cleanup scopes and the exits that run them). `--entity` roots the tree at one declaration by name or `file::name` (a project-relative path for `modules`) and fails when the name is missing or ambiguous; without it the roots are the entities no relevant entity calls. `flow` lists the significant steps in source order: project calls (expanded `--depth` levels, default 1, with `(cycle)` marks), native calls, `try` sites, branches, loops, `match` arms, `with` scopes, and exits. Branch, loop, and arm labels are the source lines themselves, bindings and arithmetic are elided, and calls inside one expression list the outermost call first. `scope` is the flow pruned to `with` scopes and the `return`, `break`, `continue`, and `try` exits inside them. Both need `--entity`. `--depth n` bounds expansion (default 3, except flow and scope), repeated callees on a path print `(cycle)`, and a view stops at 200 nodes with a count of the rest. Both formats render the same tree.
 
 ## Review report
 

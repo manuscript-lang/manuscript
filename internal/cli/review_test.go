@@ -79,7 +79,7 @@ func TestDiagramViews(t *testing.T) {
 	if status != 0 || errors != "" || !strings.Contains(output, "main  [fn]") || !strings.Contains(output, "add  [fn]") {
 		t.Fatalf("calls: %d %q %q", status, output, errors)
 	}
-	if status, _, errors := invoke(t, "diagram", file, "--view", "flow"); status != 2 || !strings.Contains(errors, "unknown --view") {
+	if status, _, errors := invoke(t, "diagram", file, "--view", "sankey"); status != 2 || !strings.Contains(errors, "unknown --view") {
 		t.Fatalf("view: %d %q", status, errors)
 	}
 	if status, _, errors := invoke(t, "diagram", file, "--entity", "nope"); status != 2 || !strings.Contains(errors, "no entity named nope") {
@@ -90,5 +90,16 @@ func TestDiagramViews(t *testing.T) {
 	}
 	if status, _, errors := invoke(t, "inspect", file, "--view", "calls"); status != 2 || !strings.Contains(errors, "valid only for ms diagram") {
 		t.Fatalf("inspect view: %d %q", status, errors)
+	}
+}
+
+func TestDiagramFlowAndScopeNeedAnEntity(t *testing.T) {
+	file := sourceFile(t, reviewHead)
+	status, output, errors := invoke(t, "diagram", file, "--view", "flow", "--entity", "main")
+	if status != 0 || errors != "" || !strings.Contains(output, "call add") || !strings.Contains(output, "return add(1, 2)") {
+		t.Fatalf("flow: %d %q %q", status, output, errors)
+	}
+	if status, _, errors := invoke(t, "diagram", file, "--view", "scope"); status != 2 || !strings.Contains(errors, "scope needs --entity") {
+		t.Fatalf("scope: %d %q", status, errors)
 	}
 }

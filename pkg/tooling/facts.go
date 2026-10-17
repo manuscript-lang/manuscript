@@ -33,6 +33,8 @@ type Fact struct {
 type Facts struct {
 	Entities map[string]*Fact    `json:"entities"`
 	Imports  map[string][]string `json:"imports"` // file -> imported module paths
+	// flows holds each callable's ordered significant steps, for the flow and scope views.
+	flows map[string][]*Node
 }
 
 func factKey(file, kind, name string) string { return file + "#" + kind + "#" + name }
@@ -40,7 +42,7 @@ func factKey(file, kind, name string) string { return file + "#" + kind + "#" + 
 // CollectFacts derives the review fact model from a checked program.
 func CollectFacts(program *checker.Program) Facts {
 	inspection := Inspect(program)
-	facts := Facts{Entities: map[string]*Fact{}, Imports: map[string][]string{}}
+	facts := Facts{Entities: map[string]*Fact{}, Imports: map[string][]string{}, flows: map[string][]*Node{}}
 	idToKey := map[string]string{}
 	for _, e := range inspection.Entities {
 		fact := &Fact{Key: factKey(e.Span.File, e.Kind, e.Name), File: e.Span.File, Kind: e.Kind, Name: e.Name,
@@ -64,11 +66,16 @@ func CollectFacts(program *checker.Program) Facts {
 			owner.External = appendUnique(owner.External, call.Target)
 		}
 	}
+	sites := map[string]CallSite{}
+	for _, call := range inspection.Calls {
+		sites[call.ID] = call
+	}
 	for _, module := range program.Modules {
 		for _, imp := range module.Imports {
 			facts.Imports[module.File] = appendUnique(facts.Imports[module.File], imp.Path)
 		}
-		collectBodies(facts, module)
+		flow := &flowBuilder{module: module, lines: strings.Split(module.Source, "\n"), sites: sites, keys: idToKey}
+		collectBodies(facts, module, flow)
 	}
 	for _, fact := range facts.Entities {
 		sort.Strings(fact.Calls)
@@ -91,7 +98,7 @@ func appendUnique(list []string, value string) []string {
 }
 
 // collectBodies counts try and with sites and records each entity's line range.
-func collectBodies(facts Facts, module *syntax.Module) {
+func collectBodies(facts Facts, module *syntax.Module, flow *flowBuilder) {
 	total := strings.Count(module.Source, "\n") + 1
 	declarations := module.Declarations
 	for index, declaration := range declarations {
@@ -110,6 +117,7 @@ func collectBodies(facts Facts, module *syntax.Module) {
 		if fact := facts.Entities[factKey(module.File, kind, name)]; fact != nil {
 			fact.First, fact.Last = declaration.Pos.Line, last
 			fact.Tries, fact.Withs = countSites(declaration)
+			facts.flows[fact.Key] = flow.body(declaration.Body)
 		}
 		for i, method := range declaration.Methods {
 			end := last
@@ -119,6 +127,7 @@ func collectBodies(facts Facts, module *syntax.Module) {
 			if fact := facts.Entities[factKey(module.File, "method", name+"."+method.Name)]; fact != nil {
 				fact.First, fact.Last = method.Pos.Line, end
 				fact.Tries, fact.Withs = countSites(method)
+				facts.flows[fact.Key] = flow.body(method.Body)
 			}
 		}
 	}
