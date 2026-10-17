@@ -1,6 +1,6 @@
 # agent-bench
 
-Not the performance benchmark: for compiler/runtime speed against hand-written Go, see [`bench/perf/`](../bench/perf/README.md). Results here never mix with those.
+Not the performance benchmark: for compiler/runtime speed against hand-written Go, see [`perf-bench/`](../perf-bench/README.md). Results here never mix with those.
 
 Agent benchmark: measures how effectively coding agents solve the same programming challenges in TypeScript, Go, Rust and
 Manuscript. Per run it records pass/fail against hidden tests, tokens, turns, wall time and cost.
