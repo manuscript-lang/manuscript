@@ -7,12 +7,10 @@ import (
 	"github.com/manuscript-lang/manuscript/internal/nativeabi"
 	mathrand "math/rand"
 	"os"
-	"os/signal"
 	"regexp"
 	goruntime "runtime"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -100,8 +98,10 @@ func RunTests(tests []Test, args []string) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 2
 	}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	watch := watchStops(cancel)
+	defer watch.stop()
 	return runTestsContext(tests, options, args, reporter, ctx)
 }
 
