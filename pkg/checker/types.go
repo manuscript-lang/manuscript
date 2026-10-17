@@ -356,8 +356,6 @@ func formatMismatch(actual, expected *Type) string {
 		switch {
 		case std(actual, "Result"):
 			message += "; unwrap it with 'try' inside a function that returns a compatible Result, or with 'match' or '.unwrap()'"
-		case std(actual, "Optional"):
-			message += "; unwrap it with 'if let', '.unwrap_or(default)', or '.unwrap()'"
 		}
 	}
 	return message

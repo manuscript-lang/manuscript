@@ -263,3 +263,10 @@ func TestMapLiteralBoundaries(t *testing.T) {
 		}
 	}
 }
+
+func TestTryStatementInsideMatchArm(t *testing.T) {
+	source := "fn f(x: Optional[Int]) -> Result[Unit, Error]:\n    match x:\n        some(n):\n            try g(n)\n            return ok(unit)\n        none: return ok(unit)\n"
+	if _, err := parser.Parse("arm.ms", source); err != nil {
+		t.Fatal(err)
+	}
+}
