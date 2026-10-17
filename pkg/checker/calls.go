@@ -377,7 +377,6 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 		}
 		if a == nil {
 			c.error(pos, "type", "cannot infer constructor type argument "+v.Name+"; write the type arguments, e.g. Box[Int](...), or annotate the binding")
-			c.unknownType = true // later "<invalid>" diagnostics only restate this one
 			a = primitive("<invalid>")
 		}
 		actualArgs = append(actualArgs, a)
