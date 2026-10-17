@@ -47,3 +47,12 @@ test "module dirname and basename_without follow the host dialect":
     if basename_without(path: "dir/file.txt", suffix: ".md") != "file.txt": return panic(
         "basename_without keeps non-matching suffix"
     )
+
+test "glob matching rejects NUL in the path as it does in the pattern":
+    let invalid: Result[Bool, PathError] = error(PathError.InvalidInput)
+    if posix().matches_glob(path: "a\u{0}b", pattern: "*") != invalid: return panic(
+        "NUL path"
+    )
+    if posix().matches_glob(path: "ab", pattern: "*\u{0}") != invalid: return panic(
+        "NUL pattern"
+    )
