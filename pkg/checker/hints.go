@@ -415,7 +415,10 @@ func (c *checker) interfaceTypeMember(typ *Type) string {
 // labelMismatchHint explains function types that differ in parameter names
 // (labels), which are part of a function's identity.
 func labelMismatchHint(actual, expected *Type) string {
-	if actual == nil || expected == nil || actual.Kind != "function" || expected.Kind != "function" || len(actual.Params) != len(expected.Params) {
+	if actual == nil || expected == nil || actual.Kind != "function" || expected.Kind != "function" {
+		return ""
+	}
+	if len(actual.Params) != len(expected.Params) {
 		return ""
 	}
 	for i, p := range actual.Params {
@@ -466,4 +469,21 @@ func uncalledFunctionHint(actual, expected *Type) string {
 		return ""
 	}
 	return "this is a function; call it with parentheses to get its " + expected.String() + " result"
+}
+
+func plural(n int, word string) string {
+	if n == 1 {
+		return word
+	}
+	return word + "s"
+}
+
+// arityMismatchHint explains a function passed where one with a different
+// number of parameters is required.
+func arityMismatchHint(actual, expected *Type) string {
+	if actual == nil || expected == nil || actual.Kind != "function" || expected.Kind != "function" || len(actual.Params) == len(expected.Params) {
+		return ""
+	}
+	have, want := len(actual.Params), len(expected.Params)
+	return "the function takes " + strconv.Itoa(have) + " " + plural(have, "parameter") + " but this position expects " + strconv.Itoa(want) + "; pass a function with " + strconv.Itoa(want) + " " + plural(want, "parameter") + ", or wrap it in a lambda that supplies the rest"
 }

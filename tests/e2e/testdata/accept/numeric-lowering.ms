@@ -30,7 +30,9 @@ test "typed operands retain evaluation order and generic boundaries":
 test "unary plus keeps the operand":
     let count = 4
     let ratio = 2.5
-    if +count != 4 or + +count != 4 or +ratio != 2.5 or 3 - +count != -1: return panic("unary plus")
+    if + count != 4 or + + count != 4 or + ratio != 2.5 or 3 - + count != -1: return panic(
+        "unary plus"
+    )
 
 test "floating operations retain binary64 edge behavior":
     let negative_zero = -0.0
