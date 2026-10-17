@@ -70,17 +70,20 @@ func runSourceCommand(args []string, usage string) int {
 	}
 	switch inv.command {
 	case "inspect", "diagram":
-		return inspectProgram(inv.command, inv.output, result)
+		return inspectProgram(inv.command, inv.output, inv.format, result)
 	case "emit":
 		return emitSource(inv.output, result)
 	}
 	return runNativeProgram(inv, p.kind, result)
 }
 
-func inspectProgram(command, output string, result compiler.Result) int {
+func inspectProgram(command, output, format string, result compiler.Result) int {
 	inspection := tooling.Inspect(result.Program)
 	if command == "diagram" {
-		return writeOutput(output, []byte(tooling.Diagram(inspection)))
+		if format == "mermaid" {
+			return writeOutput(output, []byte(tooling.Diagram(inspection)))
+		}
+		return writeOutput(output, []byte(tooling.DiagramASCII(inspection)))
 	}
 	data, err := json.MarshalIndent(inspectionWithGoLocals(result), "", "  ")
 	if err != nil {
