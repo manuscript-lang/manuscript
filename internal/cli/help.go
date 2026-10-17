@@ -20,7 +20,8 @@ Commands:
   fmt            Format source files or a project
   verify         Run check, fmt --check, lint, and test; one result
   inspect        Emit checked source metadata as JSON
-  diagram        Emit a static call graph as Mermaid
+  diagram        Emit a static call graph as ascii or Mermaid
+  review         Report where to look: project map, or the semantic effect of a diff
   profile        Run with CPU and heap capture; optionally trace
   pprof          Inspect captured CPU or heap profiles
   trace          Inspect captured execution traces
@@ -105,10 +106,15 @@ func commandHelp(command string) (string, bool) {
 		options = outputHelp + jsonErrorsHelp
 		examples = "ms inspect main.ms\n  ms inspect ms.toml -o inspection.json"
 	case "diagram":
-		usage = "<file.ms|ms.toml> [-o output] [--json]"
-		description = "Emit the checked static call graph as Mermaid."
-		options = outputHelp + jsonErrorsHelp
-		examples = "ms diagram main.ms\n  ms diagram ms.toml -o calls.mmd"
+		usage = "<file.ms|ms.toml> [--format ascii|mermaid] [-o output] [--json]"
+		description = "Emit the checked static call graph. The default ascii outline is plain text with a fixed order;\nmermaid is a flowchart for rendering."
+		options = "  --format <name>      ascii (default) or mermaid\n" + outputHelp + jsonErrorsHelp
+		examples = "ms diagram main.ms\n  ms diagram ms.toml --format mermaid -o calls.mmd"
+	case "review":
+		usage = "<file.ms|ms.toml> [--diff <file|->] [--format ascii|markdown|json] [--all] [-o output]"
+		description = "Print a fixed-template report of where to look. Without --diff it maps the project:\npublic surface, entry points with effects, error types, resources, imports.\nWith a unified diff it compares the checked program before and after the change and\nranks entities by contract, effect, error-flow, and resource changes and their reach.\nms never runs git: pipe the diff in. The tree must be the diff's after state; the\nbefore state is rebuilt from the diff and verified. Output is deterministic, with no\ntimestamps, absolute paths, or generated prose, and ends with a digest."
+		options = "  --diff <path|->      Unified diff to review (- reads standard input)\n  --format <name>      ascii (default), markdown, or json\n  --all                Show every row instead of the first five per section\n" + outputHelp
+		examples = "ms review ms.toml\n  git diff --no-renames main... | ms review ms.toml --diff -\n  ms review ms.toml --diff change.patch --format markdown"
 	case "profile":
 		usage = "<file.ms|ms.toml> [--json] [--out-dir directory] [--trace] [--build-type level] [-- program arguments]"
 		description = "Build and run an application with CPU and heap capture.\nThe bundle contains the executable, cpu.pprof, heap.pprof, inspection.json,\nand manifest.json. Add --trace to also write trace.out. The directory must be new.\nSource labels/regions identify entry and work boundaries; CPU stacks retain nested calls.\nProfiling adds overhead; tracing can add substantial time and disk usage.\nMeasure normal execution separately. Arguments after -- go to the application; its exit status is returned."

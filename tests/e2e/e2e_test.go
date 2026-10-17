@@ -378,7 +378,7 @@ func TestCLISourceTools(t *testing.T) {
 		t.Fatal("invalid inspection", err)
 	}
 	output, err = commandOutput(t, binary, "diagram", filename)
-	if err != nil || !strings.Contains(string(output), "flowchart TD") {
+	if err != nil || !strings.HasPrefix(string(output), "CALL GRAPH") {
 		t.Fatal(err, string(output))
 	}
 	invalid := "fn wrong() -> Int:\n    return missing\n"

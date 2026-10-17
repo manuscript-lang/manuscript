@@ -27,6 +27,7 @@ type invocation struct {
 	buildTypeSet                       bool
 	testTimeout, testFilter            string
 	testOptions                        []string
+	format                             string   // ms diagram --format
 	debugScript                        string   // ms debug --script: command file, or - for stdin
 	debugBreaks                        []string // ms debug --break: one-shot breakpoints
 	arguments                          []string // forwarded to the program after --
@@ -155,6 +156,12 @@ func (inv *invocation) parseOptions(args []string, first int, positional bool) (
 				return usageError("invalid --timeout %q; use a duration such as 30s or 2m, or 0 to disable", value), false
 			}
 			inv.testTimeout = value
+		case "--format":
+			value, ok := requiredValue(args, &i, value, inline)
+			if !ok {
+				return usageError("--format requires a name, e.g. --format mermaid"), false
+			}
+			inv.format = value
 		case "--script":
 			value, ok := requiredValue(args, &i, value, inline)
 			if !ok {
@@ -244,6 +251,12 @@ func (inv *invocation) validate() (plan, int, bool) {
 	default:
 		unknownCommand(command)
 		return p, 2, false
+	}
+	if inv.format != "" && command != "diagram" {
+		return p, usageError("--format is valid only for ms diagram and ms review, not ms %s; run 'ms help %s' for its options", command, command), false
+	}
+	if command == "diagram" && inv.format != "" && inv.format != "ascii" && inv.format != "mermaid" {
+		return p, usageError("unknown --format %q for ms diagram; use ascii or mermaid", inv.format), false
 	}
 	if inv.output != "" && !inv.isOneOf("build", "emit", "inspect", "diagram", "profile") {
 		return p, usageError("-o and --output are valid only for ms build, emit, inspect, diagram, or profile, not ms %s; run 'ms help %s' for its options", command, command), false

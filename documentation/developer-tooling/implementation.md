@@ -60,10 +60,29 @@ Project lint checks hygiene in every reachable local module and runs semantic ru
 ```sh
 ms check ms.toml --json
 ms inspect ms.toml -o inspection.json
-ms diagram ms.toml -o calls.mmd
+ms diagram ms.toml
+ms diagram ms.toml --format mermaid -o calls.mmd
 ```
 
-These commands use source checking without a Go installation or native toolchain extraction. `inspect` retains symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders their static call graph as Mermaid; it is not an execution trace.
+These commands use source checking without a Go installation or native toolchain extraction. `inspect` retains symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders their static call graph; it is not an execution trace. `--format ascii` (the default) prints a plain-text outline in a fixed order: entities by identity, each followed by its distinct callees with a repeat count. `--format mermaid` prints a flowchart for rendering.
+
+## Review report
+
+```sh
+ms review ms.toml
+git diff --no-renames main... | ms review ms.toml --diff -
+ms review ms.toml --diff change.patch --format markdown
+```
+
+`ms review` prints a report of where a reader should look. Every line is a fixed template filled with facts from the checked program; no text is generated. Sections always appear in the same order, an empty section prints `none`, and the report ends with a digest of its body, so equal inputs print equal bytes. Output has no timestamps, absolute paths, or terminal-width dependence.
+
+- Without `--diff` the report maps the project: public surface, entry points with their effects, error types in signatures, `with` scopes, and imports.
+- With `--diff` it compares the checked program before and after the change. `ms` does not run git: pass a unified diff from a file or standard input (`git diff --no-renames` or `diff -u`). The working tree must be the diff's after state. The before state is rebuilt by reversing the diff over the touched `.ms` files in memory; every context and added line is verified, and a diff that does not match the tree is rejected with status 2. Renames are not supported.
+- Entities are matched by file, kind, and name, so formatting and moves within a file are not changes. A change is ranked by tier: `CONTRACT` (exported signature or visibility, added or removed exported entity), `EFFECT+` (a new conservative effect, with the call path to where it enters), `ERROR` (a different `Result` error type or number of `try` sites), and `RESOURCE` (a different number of `with` scopes). Reach is the number of entities that transitively call the changed one. The score is the sum of the listed terms; `INTERNAL` lists entities whose body changed without affecting any tier.
+- When the before state does not check, the report says so and lists only entities touched by the diff.
+- `--format ascii|markdown|json` selects the rendering of one report. Tables show five rows per section unless `--all` is given. Failed checking of the current tree prints the usual diagnostics and exits 1.
+
+The effect tier inherits the checker's conservatism: `unknown` appears for indirect calls and most native operations, so only a newly introduced effect ranks.
 
 ## Commands for agents
 

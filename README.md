@@ -16,7 +16,7 @@ Read the [Manuscript vision](VISION.md) for long-term design direction, while re
 
 Manuscript's tools share the compiler's understanding of the program:
 
-- **Agents get structured evidence.** `--json` output from `check`, `lint`, `test`, `build`, and `inspect` gives diagnostics, symbols, call sites, source hashes, and effects. `ms search_symbol` finds project and standard-library APIs by name or words, and `ms guide` prints a language cheat sheet. Static call diagrams and Markdown/JSON API exports make the program and its dependencies inspectable.
+- **Agents get structured evidence.** `--json` output from `check`, `lint`, `test`, `build`, and `inspect` gives diagnostics, symbols, call sites, source hashes, and effects. `ms search_symbol` finds project and standard-library APIs by name or words, and `ms guide` prints a language cheat sheet. `ms review` reports where to look in a project or a diff; static call diagrams and Markdown/JSON API exports make the program and its dependencies inspectable.
 - **Editors understand the contracts.** Typed completion works in unfinished calls; named arguments and auto-imports follow checked scope. Project-wide rename checks the proposed edits before returning them. Standard-library definitions are navigable Manuscript source.
 - **Debugging and profiling stay connected to source.** `ms debug` and the VS Code adapter step through `.ms` lines and render Manuscript values. CPU and heap profiles and execution traces carry source attribution.
 
