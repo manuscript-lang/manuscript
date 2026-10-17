@@ -260,6 +260,7 @@ func (g *gen) loopStatements(s *syntax.Statement) []ast.Stmt {
 		g.fn.loops = loops
 		pre := g.fn.pre
 		g.fn.pre = saved
+		g.markCounterStep(s)
 		body := g.body(s.Body, nil)
 		if len(pre) == 0 {
 			return []ast.Stmt{declare, &ast.ForStmt{Cond: cond, Body: block(append([]ast.Stmt{poll}, body...)...)}}
@@ -334,4 +335,47 @@ func (g *gen) closeOperation(s *syntax.Statement, resource *checker.Type, value 
 	}
 	m = g.resolveMethod(m, resource, "close")
 	return g.invokeMethod(m, resource, value, "close", nil, nil)
+}
+
+// markCounterStep marks the increment of `while i < n` (or decrement of
+// `while i > n`) whose operand the guard bounds, so `i + 1` cannot exceed n.
+// Locals change only by assignment in their own function, and the step must be
+// a top-level statement reached before any other assignment to i.
+func (g *gen) markCounterStep(s *syntax.Statement) {
+	cond := s.Value
+	if cond == nil || cond.Kind != syntax.KindBinary || cond.Left.Kind != syntax.KindName || (cond.Text != "<" && cond.Text != ">") {
+		return
+	}
+	counter := g.info(cond.Left)
+	if counter == nil || counter.Binding == nil || counter.Binding.Type.ID != "Int" || g.info(cond.Right).Type.ID != "Int" {
+		return
+	}
+	step := "+"
+	if cond.Text == ">" {
+		step = "-"
+	}
+	assigns := func(stmt *syntax.Statement) (found bool) {
+		syntax.Visitor{Statement: func(inner *syntax.Statement) {
+			if inner.Kind == syntax.KindAssign && inner.Target == nil && inner.Name == cond.Left.Text {
+				found = true
+			}
+		}}.Callable(nil, []*syntax.Statement{stmt})
+		return found
+	}
+	for _, stmt := range s.Body {
+		if !assigns(stmt) {
+			continue
+		}
+		v := stmt.Value
+		if stmt.Kind == syntax.KindAssign && stmt.Target == nil && v != nil && v.Kind == syntax.KindBinary && v.Text == step &&
+			v.Left.Kind == syntax.KindName && v.Right.Kind == syntax.KindNumber && v.Right.Text == "1" {
+			if info := g.info(v.Left); info != nil && info.Binding == counter.Binding {
+				if g.fn.stepped == nil {
+					g.fn.stepped = map[*syntax.Expression]bool{}
+				}
+				g.fn.stepped[v] = true
+			}
+		}
+		return
+	}
 }

@@ -273,3 +273,10 @@ Verified: `Int` `/` and `%` by a literal of at least 2 cannot be zero, -1, or ov
 Apply when: changing Int arithmetic lowering or loop back-edge polling.
 Evidence: `pkg/lower/expr.go` (`positiveIntLiteral`), `pkg/lower/stmt.go` (`loopStatements`), `tests/e2e/int_literal_divisor_test.go`, `tests/e2e/numeric_lowering_test.go`.
 Verify: compare `ms emit` output and `bench/run.sh` before and after; the fault tests must still pass.
+
+### Guarded counter steps skip the overflow check
+Verified: in `while i < n`, `i = i + 1` cannot overflow if it is the first statement in the body that assigns `i` (and `while i > n` with `i - 1` likewise), because locals change only by assignment in their own function and closures snapshot captures. `markCounterStep` in `pkg/lower/stmt.go` marks only that exact step; any earlier or nested assignment to `i` leaves the checked `IntAdd`. The measured gain is small (about 10% on a 10M-iteration counter loop), so widen it only with a benchmark.
+
+Apply when: extending overflow-check elimination to other expressions (`i + k`, `<=` guards, `for` ranges).
+Evidence: `pkg/lower/stmt.go`, `tests/e2e/counter_step_test.go`.
+Verify: the reset and conditional-reset cases in the test must still fault with `Int overflow;`.
