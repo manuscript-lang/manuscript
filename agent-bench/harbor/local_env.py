@@ -11,7 +11,7 @@ may create mount namespaces) on Linux. Because the task's Dockerfile is not buil
 Convention: files under `environment/workspace/` are copied into /app on start, standing in for the
 Dockerfile's `COPY workspace /app`.
 
-    PYTHONPATH=ms-bench/harbor harbor run -p <task-dir> -a claude-code -m <model> \\
+    PYTHONPATH=agent-bench/harbor harbor run -p <task-dir> -a claude-code -m <model> \\
         --env local_env:LocalProcessEnvironment
 """
 from __future__ import annotations
@@ -55,7 +55,7 @@ class LocalProcessEnvironment(BaseEnvironment):
         return Path(best[1]) / path[len(best[0]):].lstrip("/")
 
     async def start(self, force_build: bool) -> None:
-        self._root = Path(tempfile.mkdtemp(prefix="ms-bench-local-"))
+        self._root = Path(tempfile.mkdtemp(prefix="agent-bench-local-"))
         self._binds: dict[str, str] = {}
         for m in self._mounts:
             if m.get("type") == "bind":

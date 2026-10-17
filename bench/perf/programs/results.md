@@ -1,6 +1,8 @@
-# Manuscript vs hand-written Go
+# Manuscript vs hand-written Go (performance)
 
-Main at 88a6360, 2026-10-17. Best of 7, ns/op. Run `MS=./ms sh bench/ms-vs-go/run.sh 7`.
+Part of the [performance benchmark](../README.md) (not the agent benchmark).
+
+Main at 88a6360, 2026-10-17. Best of 7, ns/op. Run `MS=./ms sh bench/perf/programs/run.sh 7`.
 Absolute numbers vary by machine and run; compare ratios on one machine.
 
 | operation | ops | Manuscript | Go | ratio |

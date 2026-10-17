@@ -1,4 +1,4 @@
-# ms-bench leaderboard
+# agent-bench leaderboard
 
 76 trials (0 errored and excluded). Pass rate counts all scored trials; tokens, turns, wall time and cost average over passing trials only. Ranked by pass rate, then cost.
 
