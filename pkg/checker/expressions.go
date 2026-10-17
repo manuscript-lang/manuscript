@@ -26,7 +26,7 @@ func (c *checker) checkExpression(e *syntax.Expression, i *Info, expected *Type)
 		// A proven lookup keeps its Optional form where one is expected.
 		i.Type, i.Proven = standard("Optional", i.Type), false
 	}
-	if expected != nil && i.Type.ID != "<invalid>" && !compatible(i.Type, expected) {
+	if expected != nil && i.Type.ID != "<invalid>" && expected.ID != "<invalid>" && !compatible(i.Type, expected) {
 		if c.errorAssignable(i.Type, expected) {
 			i.ErrorSource = i.Type
 			cause := i.Type

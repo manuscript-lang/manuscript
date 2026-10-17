@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -79,6 +80,27 @@ func TestStringBasics(t *testing.T) {
 	}
 	if String_Trim(tctx, "  a\n") != "a" || String_TrimStart(tctx, "  a ") != "a " || String_TrimEnd(tctx, " a  ") != " a" {
 		t.Fatal("trim")
+	}
+}
+
+func TestStringSplitLimitsMatchTruncatedFullSplit(t *testing.T) {
+	for _, text := range []string{"", "a", "a,,b,", "aé🙂z", "aaaaa", "\xffa\xfe", strings.Repeat("field,", 1024)} {
+		for _, separator := range []string{"", ",", "aa", "é", "missing"} {
+			full := strings.Split(text, separator)
+			for _, limit := range []int{0, 1, 2, 3, len(text), len(text) + 1, math.MaxInt} {
+				got := String_Split(tctx, text, separator, Some(limit)).Items
+				want := full[:min(limit, len(full))]
+				if !slices.Equal(got, want) {
+					t.Fatalf("split(%q, %q, %d) = %q, want %q", text, separator, limit, got, want)
+				}
+			}
+		}
+	}
+	first := String_Split(tctx, "a,b,c", ",", Some(2))
+	second := String_Split(tctx, "a,b,c", ",", Some(2))
+	first.Items[0] = "changed"
+	if second.Items[0] != "a" {
+		t.Fatal("split results share mutable outer storage")
 	}
 }
 

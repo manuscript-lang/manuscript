@@ -52,6 +52,7 @@ type checker struct {
 	testFunction            int
 	rejectedNames           map[string]bool
 	unknownType             bool
+	unresolvedConstructors  map[syntax.Position]bool
 	labelMismatch           bool
 	callName                string
 	callPos                 syntax.Position

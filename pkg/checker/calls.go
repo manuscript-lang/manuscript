@@ -345,6 +345,18 @@ func (c *checker) specialize(t *Type, vars, args []*Type, pos syntax.Position, n
 	}
 	return Sub(t, sub)
 }
+
+// argumentFailedInference reports an argument that is itself a constructor
+// whose type arguments could not be inferred; that was reported where it is
+// written, so the enclosing constructor adds nothing.
+func (c *checker) argumentFailedInference(args []syntax.Argument) bool {
+	for _, arg := range args {
+		if arg.Value != nil && c.unresolvedConstructors[arg.Value.Pos] {
+			return true
+		}
+	}
+	return false
+}
 func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, expected *Type, pos syntax.Position) *Type {
 	if t.Def == nil {
 		return t
@@ -376,7 +388,13 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 			sub[v.ID] = a
 		}
 		if a == nil {
-			c.error(pos, "type", "cannot infer constructor type argument "+v.Name+"; write the type arguments, e.g. Box[Int](...), or annotate the binding")
+			if !c.argumentFailedInference(args) {
+				c.error(pos, "type", "cannot infer constructor type argument "+v.Name+"; write the type arguments, e.g. Box[Int](...), or annotate the binding")
+			}
+			if c.unresolvedConstructors == nil {
+				c.unresolvedConstructors = map[syntax.Position]bool{}
+			}
+			c.unresolvedConstructors[pos] = true
 			a = primitive("<invalid>")
 		}
 		actualArgs = append(actualArgs, a)
