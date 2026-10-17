@@ -33,8 +33,7 @@ export fn first_generic_map[T: Hashable](values: Set[T]) -> Set[Key]:
 
 export fn first_lookup() -> String:
     let values = Map[Key, String]().add(Key(5, "original"), "found")
-    let filtered = values.filter(fn(k, v): true)
-    return lookup(filtered, Key(5, "different"), "absent")
+    return values.filter(fn(k, v): true) | lookup(Key(5, "different"), "absent")
 
 export fn first_failure(cause: Cause) -> Result[String, Error]:
     let value: Result[Int, Error] = error(cause)

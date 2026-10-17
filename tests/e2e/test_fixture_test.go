@@ -18,9 +18,7 @@ const fileFixtureSource = `import {TestHooks, expect_equal, fail, skip} from "@s
 import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
 fn println(message: String) -> Unit:
-    match stdout().write("{message}\n".to_bytes()):
-        ok(_): return
-        error(_): return panic("cannot write fixture transcript")
+    if stdout().write("{message}\n".to_bytes()).is_error(): return panic("cannot write fixture transcript")
 
 type State:
     value: Int
@@ -109,9 +107,7 @@ func TestCLITestFileFixtureListAndDefaultHooks(t *testing.T) {
 import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
 fn println(message: String) -> Unit:
-    match stdout().write("{message}\n".to_bytes()):
-        ok(_): return
-        error(_): return panic("cannot write fixture transcript")
+    if stdout().write("{message}\n".to_bytes()).is_error(): return panic("cannot write fixture transcript")
 
 type State:
     value: Int

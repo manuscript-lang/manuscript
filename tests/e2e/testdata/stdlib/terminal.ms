@@ -8,9 +8,10 @@ test "redirected streams report no terminal and refuse raw mode":
         return panic("colors without a terminal")
     if capabilities.resize_events: return panic("resize events without raw mode")
 
-    match terminal().raw_mode(alternate_screen: false):
-        ok(raw):
-            raw.close()
-            return panic("raw mode on redirected input")
-        error(cause):
-            if cause != TerminalError.NotTerminal: return panic("wrong error")
+    let raw = terminal().raw_mode(alternate_screen: false)
+
+    if let active = raw:
+        active.close()
+        return panic("raw mode on redirected input")
+
+    if raw.unwrap_error() != TerminalError.NotTerminal: return panic("wrong error")

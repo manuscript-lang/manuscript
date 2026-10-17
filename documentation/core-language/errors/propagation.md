@@ -54,11 +54,11 @@ fn discounted_label(price: Decimal, percent: Decimal) -> Result[String, Discount
 
 Keep a chain of fallible calls flat with `try` when their error boundaries are compatible. Translate unrelated domain errors explicitly when needed.
 
-If the called operation returns `Result[T, E]`, the enclosing function can return `Result[U, E]`. If `E` implements `Error`, it can instead return `Result[U, Error]`. The success type may change from `T` to `U`. The original error, its concrete type, and its fields pass through unchanged; no cause wrapper or manual Result match is needed.
+If the called operation returns `Result[T, E]`, the enclosing function can return `Result[U, E]`. If `E` implements `Error`, it can instead return `Result[U, Error]`. The success type may change from `T` to `U`. The original error, its concrete type, and its fields pass through unchanged; no cause wrapper or manual unwrapping is needed.
 
 This common boundary also accepts direct assignments, arguments, and returns of a specific error, and forwarding `Result[T, E]` as `Result[T, Error]` with the same success type. An explicit `impl Error` establishes the relationship; matching method names alone do not. See [common error boundaries](results.md#a-common-error-boundary).
 
-Unrelated domain error types still require explicit translation with [pattern matching](../control-flow/pattern-matching.md). An Error value cannot narrow to a specific domain error without a type match. Other interfaces, collection types, and function types keep their ordinary exact compatibility rules.
+Unrelated domain error types still require explicit translation: test `is_error()`, convert `unwrap_error()`, and return the new `error(...)`. An Error value cannot narrow to a specific domain error without a [contract type pattern](../control-flow/pattern-matching.md#contract-type-patterns). Other interfaces, collection types, and function types keep their ordinary exact compatibility rules.
 
 The expression after `try` is evaluated once. Try binds more tightly than arithmetic, so `try operation() + 1` means `(try operation()) + 1`.
 

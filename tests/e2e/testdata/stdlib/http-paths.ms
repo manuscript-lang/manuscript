@@ -40,9 +40,7 @@ fn stream_route(exchange: HttpExchange) -> Result[Unit, HttpError]:
             )
         )
     )
-    let written = value(
-        exchange.write("{exchange.path()}|{exchange.query()}".to_bytes())
-    )
+    let written = exchange.write("{exchange.path()}|{exchange.query()}".to_bytes()) | value
     return ok(unit)
 
 fn check_route(url: String, expected: String) -> Unit:
@@ -100,12 +98,10 @@ test "streaming routes validate original input and decode once":
         check_paths("http://{server.address()}")
 
 fn expect_http_error[T](outcome: Result[T, HttpError]) -> Unit:
-    match outcome:
-        ok(_): return panic("invalid URL succeeded")
-        error(cause):
-            if cause != HttpError.InvalidInput: return panic(
-                "malformed URL leaked transport error"
-            )
+    if outcome.is_ok(): return panic("invalid URL succeeded")
+    if outcome.unwrap_error() != HttpError.InvalidInput: return panic(
+        "malformed URL leaked transport error"
+    )
 
 test "buffered and reusable clients reject malformed ports as InvalidInput":
     let headers = text_headers(Map[String, String]())
@@ -131,11 +127,9 @@ test "buffered and reusable clients reject malformed ports as InvalidInput":
             HttpClientOptions(decompress: false, cookies: false, tls: tls)
         )
     ):
-        expect_http_error(
-            client.request(
-                method: HttpMethod.Get,
-                url: "http://127.0.0.1:65536/",
-                headers: headers,
-                body: body
-            )
-        )
+        client.request(
+            method: HttpMethod.Get,
+            url: "http://127.0.0.1:65536/",
+            headers: headers,
+            body: body
+        ) | expect_http_error

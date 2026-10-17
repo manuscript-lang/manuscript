@@ -361,9 +361,7 @@ impl Error for JsonError:
 #
 # test "parse bounded TOML configuration":
 #     let limits = TomlLimits(max_bytes: 1024, max_depth: 8, max_values: 64)
-#     let value = match parse(text: "[server]\nport = 8080\n", limits: limits):
-#         error(cause): return panic(cause.message())
-#         ok(value): value
+#     let value = parse(text: "[server]\nport = 8080\n", limits: limits).unwrap()
 #
 #     match value:
 #         TableValue(entries):
@@ -421,10 +419,8 @@ impl Error for JsonError:
 #     return ok(text_content(document))
 #
 # test "read HTML text":
-#     match read_text():
-#         ok(text):
-#             if text != "Hello world & friends": return panic("unexpected text")
-#         error(cause): return panic(cause.message())
+#     let text = read_text().unwrap()
+#     if text != "Hello world & friends": return panic("unexpected text")
 # ```
 #
 # Parsing follows HTML5 document rules: omitted `html`, `head`, `body`, and table structure are inserted, ordinary HTML names become lowercase, and incomplete or misnested markup is recovered. A snippet is parsed as a document, rather than in a supplied fragment context. Text and attribute entities are decoded; raw script/style text follows HTML5 rules. Attribute order is preserved, including duplicate attributes retained by the parser. HTML namespaces are empty; foreign elements use `svg` or `math`, and namespaced attributes use prefixes such as `xlink`. A doctype's absent public/system identifiers are empty strings. Scripts are retained as text and never executed.

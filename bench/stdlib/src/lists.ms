@@ -33,10 +33,8 @@ export fn bench_list() -> Unit:
         100000,
         fn() -> Int:
             var n = 0
-
             for x in data:
                 n = n + x
-
             return n
     )
     bench(
@@ -76,7 +74,6 @@ export fn bench_list() -> Unit:
 
             while i < 100:
                 if data.contains(-1): n = n + 1
-
                 i = i + 1
 
             return n

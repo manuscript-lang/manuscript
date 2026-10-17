@@ -16,14 +16,15 @@ Save this complete program as `hello.ms` and run `ms run hello.ms`:
 import stdout from "@std/io.ms"
 
 export fn main() -> Int:
-    match stdout().write("Hello, Manuscript!\n".to_bytes()):
-        ok(_): return 0
-        error(_): return 1
+    if stdout().write("Hello, Manuscript!\n".to_bytes()).is_error():
+        return 1
+
+    return 0
 ```
 
 `main` returns the exit status: 0 for success, 1 for a failed write.
-`match` handles the write's two outcomes; the [expected errors](#expected-errors)
-section explains them in more detail. The import selects the output API.
+`is_error()` reports whether the write failed; the [expected errors](#expected-errors)
+section explains results in more detail. The import selects the output API.
 
 The complete examples below use `test` blocks. Save one as `example.ms` and run
 `ms test example.ms`. `try expect_equal(actual, expected)` checks a value and
@@ -185,7 +186,7 @@ fn order_total(count: Int) -> Result[Int, QuantityError]:
     return ok(valid_count * 12)
 ```
 
-A `Result` holds `ok(value: value)` or `error(cause)`. `try` unwraps success and returns an error to the caller. Use the same error type, or the common `Error` boundary for errors implementing that interface. Use `match` when you want to handle both outcomes yourself; see [error compatibility](../core-language/errors/propagation.md#error-compatibility).
+A `Result` holds `ok(value: value)` or `error(cause)`. `try` unwraps success and returns an error to the caller. Use the same error type, or the common `Error` boundary for errors implementing that interface. Use `if let value = result:` to handle only success, `unwrap_or(default)` for a fallback, or `is_error()` with `unwrap_error()` to inspect a failure; see [error compatibility](../core-language/errors/propagation.md#error-compatibility).
 
 ## Modules
 

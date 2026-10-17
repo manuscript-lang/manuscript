@@ -35,11 +35,7 @@ test "repeated calls through one site":
     let out = stdout()
     var n = 0
     while n < 2:
-        match out.write(data: "x".to_bytes()):
-            ok(_):
-                unit
-            error(_):
-                check(ok: false, name: "write")
+        check(ok: out.write(data: "x".to_bytes()).is_ok(), name: "write")
         n = n + 1
     check(ok: describe(e: Error(value: Boom(code: 1))) == "boom 1", name: "user error")
     check(ok: describe(e: Error(value: Boom(code: 2))) == "boom 2", name: "user error again")

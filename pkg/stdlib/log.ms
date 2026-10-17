@@ -162,9 +162,9 @@ impl Error for LogError:
 #         return ok(unit)
 #
 # export fn main() -> Int:
-#     match announce():
-#         ok(_): return 0
-#         error(_): return 1
+#     if announce().is_error(): return 1
+#
+#     return 0
 # ```
 #
 # `logger.info(message: "started")` and the other level methods emit a message without fields. `record` attaches fields of any type: it encodes them with `stringify` from `@std/json.ms`, so records, lists, maps, optionals, and types that implement `JsonEncode` follow the [JSON reference](reference/json.md) rules. A record or map contributes its members at the top level; any other value, such as a number or list, is written under the key `data`. A value `stringify` rejects, such as a cyclic one, returns `LogError.InvalidData` before the transport receives data.

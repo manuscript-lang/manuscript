@@ -18,7 +18,7 @@ export fn bench_toml() -> Unit:
         "toml.parse",
         2000,
         fn() -> Int:
-            match parse(text: toml):
-                ok(_): return 1
-                error(_): return 0
+            if parse(text: toml).is_ok(): return 1
+
+            return 0
     )

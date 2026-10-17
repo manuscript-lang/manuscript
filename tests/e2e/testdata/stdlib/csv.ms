@@ -8,7 +8,7 @@ test "CSV retains single empty fields and distinguishes empty rows":
             let options = CsvOptions(delimiter: delimiter, line_ending: ending)
             let rows = [["a"], [""], ["b"], [""], [""]]
             let expected = "a{ending}\"\"{ending}b{ending}\"\"{ending}\"\"{ending}"
-            let text = value(stringify(rows: rows, options: options))
+            let text = stringify(rows: rows, options: options) | value
             if text != expected: return panic("single empty field encoding")
             if value(parse(text: text, options: options)) != rows: return panic(
                 "single empty field roundtrip"
@@ -91,11 +91,10 @@ test "CSV preserves whitespace and normalizes quoted CRLF":
     let options = CsvOptions(delimiter: ",", line_ending: "\n")
     let rows = [[" "], ["\t"], ["line\n\nbreak"], ["\""], ["", "", ""]]
     if (
-        value(
-            parse(
-                text: value(stringify(rows: rows, options: options)),
+        (
+            stringify(rows: rows, options: options) | value | parse(
                 options: options
-            )
+            ) | value
         ) != rows
     ):
         return panic("whitespace and quoted multiline roundtrip")
@@ -112,7 +111,7 @@ test "CSV preserves whitespace and normalizes quoted CRLF":
 test "CSV quotes delimiters multiline cells and line endings":
     let options = CsvOptions(delimiter: ",", line_ending: "\n")
     let rows = [["a,b", "say \"hi\"", "line\nbreak"], ["", "é", "last"]]
-    let text = value(stringify(rows: rows, options: options))
+    let text = stringify(rows: rows, options: options) | value
     if (value(parse(text: text, options: options, max_rows: 2, max_cells: 6)) != rows): return panic(
         "quoted CSV roundtrip"
     )

@@ -86,7 +86,7 @@ An `impl` in a source type's defining module becomes available wherever that typ
 import TaskGroup from "@std/tasks.ms"
 ```
 
-`@std` is always available without an `[aliases]` entry and cannot be overridden. Importing one export does not bring its signature's other type names into scope. For example, importing TaskGroup permits constructing a group and matching inferred join results, but writing `ExecutionError` in an annotation requires its own import; `Result` is already in the prelude. Importing a contract supplies its interface. Separately imported host accessors return service values when called.
+`@std` is always available without an `[aliases]` entry and cannot be overridden. Importing one export does not bring its signature's other type names into scope. For example, importing TaskGroup permits constructing a group and using inferred join results, but writing `ExecutionError` in an annotation requires its own import; `Result` is already in the prelude. Importing a contract supplies its interface. Separately imported host accessors return service values when called.
 
 ## Optional aliases
 

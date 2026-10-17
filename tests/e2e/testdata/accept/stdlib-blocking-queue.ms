@@ -16,11 +16,10 @@ fn work(jobs: BlockingQueue[Int]) -> Int:
     return total
 
 fn total_of(task: Task[Int]) -> Int:
-    match task.join():
-        ok(total):
-            return total
-        error(_):
-            return panic(message: "worker failed")
+    if let total = task.join():
+        return total
+    else:
+        return panic(message: "worker failed")
 
 test "bounded put and take block until the other side acts":
     let jobs = BlockingQueue[Int](2)

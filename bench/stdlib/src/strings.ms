@@ -64,7 +64,6 @@ export fn bench_string() -> Unit:
 
             while i < 2000:
                 if text.contains("word976 word0"): n = n + 1
-
                 i = i + 1
 
             return n
@@ -104,7 +103,6 @@ export fn bench_string() -> Unit:
 
             while i < 100000:
                 n = n + text.at(i % 5000).unwrap_or("").length()
-
                 i = i + 1
 
             return n

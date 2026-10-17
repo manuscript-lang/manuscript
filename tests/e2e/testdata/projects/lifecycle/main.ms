@@ -71,13 +71,8 @@ export fn main() -> Int:
     for value in iterable(output: stdout()):
         with resource = Resource(label: "break", output: stdout()):
             break
-
-    match propagate(output: stdout()):
-        ok(_):
-            return panic(message: "Unexpected case")
-        error(_):
-            let completed = unit
-
+    if propagate(output: stdout()).is_ok():
+        return panic(message: "Unexpected case")
     if not (early(output: stdout()) == 5):
         return panic(message: "check failed")
 

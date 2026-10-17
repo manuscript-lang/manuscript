@@ -28,15 +28,11 @@ test "inline callbacks survive contextual rechecking":
             fn():
                 return 4
         )
+        if group.join().is_error():
+            return panic(message: "Unexpected case")
 
-        match group.join():
-            ok(_): unit
-            error(_):
-                return panic(message: "Unexpected case")
-
-        match first_task.join():
-            ok(value):
-                if value != 4:
-                    return panic(message: "check failed")
-            error(_):
-                return panic("task result unavailable")
+        if let value = first_task.join():
+            if value != 4:
+                return panic(message: "check failed")
+        else:
+            return panic("task result unavailable")

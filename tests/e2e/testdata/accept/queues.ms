@@ -94,11 +94,7 @@ test "shared queue uses explicit lock scopes":
         group.start(task2)
         group.start(task3)
         group.start(task4)
-
-        match group.join():
-            ok(_):
-                with locked = shared.lock():
-                    if not locked.get().is_empty():
-                        return panic("shared queue did not drain")
-            error(_):
-                return panic("shared work failed")
+        try group.join()
+        with locked = shared.lock():
+            if not locked.get().is_empty():
+                return panic("shared queue did not drain")

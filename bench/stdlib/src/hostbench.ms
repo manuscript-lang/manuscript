@@ -37,31 +37,28 @@ fn bench_archive() -> Unit:
         "archive.zip_pack",
         2000,
         fn() -> Int:
-            match pack(entries: list, format: "zip"):
-                ok(b): return b.length()
-                error(_): return 0
+            if let b = pack(entries: list, format: "zip"): return b.length()
+
+            return 0
     )
     bench(
         "archive.tar_pack",
         2000,
         fn() -> Int:
-            match pack(entries: list, format: "tar"):
-                ok(b): return b.length()
-                error(_): return 0
-    )
+            if let b = pack(entries: list, format: "tar"): return b.length()
 
-    match pack(entries: list, format: "zip"):
-        ok(packed): bench_unpack(packed)
-        error(_): unit
+            return 0
+    )
+    if let packed = pack(entries: list, format: "zip"): bench_unpack(packed)
 
 fn bench_unpack(packed: Bytes) -> Unit:
     bench(
         "archive.zip_unpack",
         2000,
         fn() -> Int:
-            match unpack(data: packed, format: "zip"):
-                ok(e): return e.length()
-                error(_): return 0
+            if let e = unpack(data: packed, format: "zip"): return e.length()
+
+            return 0
     )
 
 fn bench_sse() -> Unit:
@@ -70,15 +67,15 @@ fn bench_sse() -> Unit:
         "sse.feed",
         2000,
         fn() -> Int:
-            match decoder():
-                ok(d): return feed_all(d, stream)
-                error(_): return 0
+            if let d = decoder(): return feed_all(d, stream)
+
+            return 0
     )
 
 fn feed_all(d: SseDecoder, stream: Bytes) -> Int:
-    match feed(decoder: d, chunk: stream):
-        ok(events): return events.length()
-        error(_): return 0
+    if let events = feed(decoder: d, chunk: stream): return events.length()
+
+    return 0
 
 export fn bench_host() -> Unit:
     bench_archive()
@@ -89,14 +86,12 @@ export fn bench_host() -> Unit:
         fn() -> Int:
             var n = 0
 
-            match parse_timestamp(text: "2026-03-01T12:30:45.123Z"):
-                ok(t):
-                    var i = 0
+            if let t = parse_timestamp(text: "2026-03-01T12:30:45.123Z"):
+                var i = 0
 
-                    while i < 20000:
-                        n = n + t.to_string().length()
-                        i = i + 1
-                error(_): unit
+                while i < 20000:
+                    n = n + t.to_string().length()
+                    i = i + 1
 
             return n
     )
@@ -109,10 +104,7 @@ export fn bench_host() -> Unit:
             var i = 0
 
             while i < 20000:
-                match uuid_v4(entropy: source):
-                    ok(u): n = n + u.length()
-                    error(_): unit
-
+                if let u = uuid_v4(entropy: source): n = n + u.length()
                 i = i + 1
 
             return n

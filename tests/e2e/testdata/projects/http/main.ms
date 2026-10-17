@@ -13,8 +13,7 @@ fn handle(request: HttpRequest) -> HttpResponse:
 
 export fn main() -> Int:
     let serve = network().serve
-
-    match serve(
+    let served = serve(
         address: "127.0.0.1:0",
         handler: handle,
         max_requests: 2,
@@ -22,11 +21,12 @@ export fn main() -> Int:
         max_response_bytes: 1024,
         timeout: 2.seconds,
         grace: 0.seconds
-    ):
-        error(_):
-            return 1
-        ok(acquired):
-            with server = acquired:
-                stdout().write(data: "{server.address()}\n".to_bytes())
-                let outcome = server.wait()
-                return 0
+    )
+
+    if let acquired = served:
+        with server = acquired:
+            stdout().write(data: "{server.address()}\n".to_bytes())
+            let outcome = server.wait()
+            return 0
+
+    return 1

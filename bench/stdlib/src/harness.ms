@@ -2,15 +2,12 @@ import {stdout} from "@std/io.ms"
 import {clock} from "@std/time.ms"
 
 # Shared helpers for the standard-library micro-benchmarks.
-
 export type Point:
     x: Int
     y: Int
 
 export fn say(text: String) -> Unit:
-    match stdout().write(data: text.to_bytes()):
-        ok(_): unit
-        error(_): unit
+    stdout().write(data: text.to_bytes())
 
 # Runs `body` once and prints `name<TAB>ops<TAB>ns_per_op`; `body` returns a checksum that keeps its work observable.
 export fn bench(name: String, ops: Int, body: fn() -> Int) -> Unit:

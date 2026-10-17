@@ -25,8 +25,8 @@ test "scheduler failures retain typed and text causes":
             _: unit
 
     with scheduler = Scheduler(reporter: reporter):
-        value(scheduler.start(typed_failure))
-        value(scheduler.start(text_failure))
+        scheduler.start(typed_failure) | value
+        scheduler.start(text_failure) | value
         sleep(100.milliseconds)
 
     with guard = seen.lock():

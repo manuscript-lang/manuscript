@@ -274,12 +274,12 @@ interface FloatOperations:
 #     return error(ReadError(path: "settings.json", attempt: 2, retryable: true))
 #
 # test "read typed error fields":
-#     match failed_read():
-#         ok(_):
-#             return panic(message: "failed read succeeded")
-#         error(cause):
-#             if cause.path != "settings.json" or cause.attempt != 2 or not cause.retryable:
-#                 return panic(message: "missing error details")
+#     let failed = failed_read()
+#     if failed.is_ok(): return panic(message: "failed read succeeded")
+#
+#     let cause = failed.unwrap_error()
+#     if cause.path != "settings.json" or cause.attempt != 2 or not cause.retryable:
+#         return panic(message: "missing error details")
 # ```
 #
 # Records and their fields retain ordinary mutable value semantics. Add a cause field when an error needs to preserve another failure; its type can be that specific domain error.

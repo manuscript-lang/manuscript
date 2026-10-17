@@ -409,11 +409,7 @@ type Input:
     names: List[Optional[String]]
 
 fn outcome_value(outcome: Result[Int, String]) -> Int:
-    match outcome:
-        ok(value):
-            return value
-        error(_):
-            return -1
+    return outcome.unwrap_or(-1)
 
 test "data constructor context":
     let input = Input([none, some("Ada")])

@@ -71,7 +71,7 @@ test "typed compression preserves bytes limits errors and optional arguments":
             Deflate: "deflate"
 
         for level in [0, 9]:
-            let encoded = value(format.compress(data, level))
+            let encoded = format.compress(data, level) | value
             if encoded != value(compress(data, name, level, none)): return panic(
                 "typed encoded bytes"
             )
@@ -101,7 +101,7 @@ test "typed compression preserves bytes limits errors and optional arguments":
         if format.compress(data, 6, 0) != zero: return panic("typed zero output budget")
 
     let stored = CompressionFormat.Gzip.compress
-    let encoded = value(bounded_compression(stored, data))
+    let encoded = bounded_compression(stored, data) | value
     let decoder = CompressionFormat.Gzip.decompress
     if value(decoder(encoded)) != data: return panic("stored decoder default")
     if value(decompress(encoded, "gzip")) != data: return panic("legacy decompression")
@@ -119,7 +119,7 @@ test "typed archives retain entry limits validation and existing string calls":
             Zip: "zip"
             Tar: "tar"
 
-        let encoded = value(format.pack(entries))
+        let encoded = format.pack(entries) | value
         if encoded != value(pack(entries, name)): return panic("typed archive bytes")
         if value(format.unpack(encoded)) != entries: return panic(
             "typed archive roundtrip"
@@ -144,6 +144,6 @@ test "typed archives retain entry limits validation and existing string calls":
 
     let stored = ArchiveFormat.Zip.pack
     let unpacker = ArchiveFormat.Zip.unpack
-    if value(unpacker(value(stored(entries, none)), ArchiveLimits())) != entries: return panic(
+    if (stored(entries, none) | value | unpacker(ArchiveLimits()) | value) != entries: return panic(
         "stored archive operations"
     )

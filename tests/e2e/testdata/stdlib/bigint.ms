@@ -3,7 +3,7 @@ import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
 test "big integers exceed machine range without losing precision":
-    let big = value(parse(text: "9223372036854775808", radix: 10))
+    let big = parse(text: "9223372036854775808", radix: 10) | value
     if not big.to_int().is_none(): return panic("overflow conversion")
     if big.subtract(from_int(1)).to_int() != some(9223372036854775807): return panic(
         "exact subtraction"

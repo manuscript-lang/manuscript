@@ -13,8 +13,8 @@ to understand. Follow the linked references when you need the exact rules.
 Use `Optional[T]` when a value may be missing and `Result[T, E]` when a failure
 needs an explanation. Propagate errors with `try`. Use `if let` when you only
 need a present value or successful result; a Result's error is discarded in
-this form. Use `match` when you need to inspect the cause, and `unwrap_or` when
-absence has a sensible default.
+this form. Use `is_error()` with `unwrap_error()` when you need to inspect the
+cause, and `unwrap_or` when absence has a sensible default.
 
 Keep one exit-status boundary in `main`. Helpers can return a domain error or
 use `Error` as a common boundary. Keep matches flat: return early, propagate
@@ -40,16 +40,14 @@ type Config:
     port: Int = 8080
 
 fn port_of(text: String) -> Result[Int, Error]:
-    let config = try parse[Config](text)
-    return ok(config.port)
+    return ok(try parse[Config](text) | .port)
 
 test "configuration defaults":
     try expect_equal(try port_of("\{\}"), 8080)
     try expect_equal(try port_of("\{\"port\": 9000\}"), 9000)
 
 test "configuration rejects a wrong type":
-    let cause = try expect_error(parse[Config]("\{\"port\": true\}"))
-    try expect_equal(cause, JsonError.InvalidData)
+    try expect_error(parse[Config]("\{\"port\": true\}")) | try expect_equal(JsonError.InvalidData)
 ```
 
 The [testing guide](testing.md) covers selecting cases, checking faults, and

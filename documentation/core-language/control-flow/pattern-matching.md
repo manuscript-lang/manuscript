@@ -7,7 +7,7 @@ weight = 3
 
 Use `match` to handle the cases of an alternative type. Each branch can give names to the data carried by its case. For example, a payment may be paid, declined, or pending, and each outcome needs different handling.
 
-A match accepts tagged alternative types, including `Optional` and `Result`, and operation contract views. Matching numeric or Boolean literals, guards, ranges, nested case patterns, and combined patterns is rejected. `match` is an expression. It can initialize a binding, supply an argument, or appear on its own with its result discarded. The scrutinee evaluates once, and only the selected arm runs.
+A match accepts tagged alternative types, including `Optional`, and operation contract views. Unwrap a `Result` with [try, `if let`, or its methods](../errors/results.md) instead. Matching numeric or Boolean literals, guards, ranges, nested case patterns, and combined patterns is rejected. `match` is an expression. It can initialize a binding, supply an argument, or appear on its own with its result discarded. The scrutinee evaluates once, and only the selected arm runs.
 
 The following function handles the `Payment` type declared in [alternatives](../types/alternatives.md):
 
@@ -30,21 +30,25 @@ Nested `match` is an anti-pattern: another match inside a scrutinee or arm makes
 
 Matching an `Optional` with only `some` and `none` arms is also an anti-pattern: `ms lint` reports advisory **MSL108**. Use [`if let`](conditionals.md#unwrapping-an-optional-or-result) with an optional `else`, or an Optional method such as `unwrap_or` or `map`. Checking and execution still accept the match.
 
+Matching a `Result` with only `ok` and `error` arms is flagged the same way as advisory **MSL109**. Use `try`, `if let value = result:` with `else:`, or a Result method such as `unwrap_or`, `is_error`, or `unwrap_error`.
+
 ## Arm values
 
 An arm may contain statements followed by a final expression. That expression supplies the arm's value. An arm ending in an ordinary statement produces `Unit` when it reaches the end. All arms that produce values must have a compatible type; an annotation or expected argument/return type supplies context. Without context, independently typed value-producing arms establish the result type, including for earlier contextual values such as `none` or `[]`. An inferred function result requires all arguments; it does not inherit omission permissions from one selected callable. Arms that exit through `return`, `break`, `continue`, or a `Never` expression do not contribute a result value.
 
 ```manuscript
-fn amount(text: String) -> Result[Int, String]:
-    let cents = match text.parse_int():
-        some(value):
-            value
-        none:
-            return error(cause: "Invalid amount")
-    return ok(value: cents)
+fn summary(payment: Payment) -> String:
+    let text = match payment:
+        Paid(receipt):
+            receipt
+        Declined(reason):
+            reason
+        Pending(_):
+            return "Waiting"
+    return "Payment: {text}"
 ```
 
-This fragment uses the standard `Optional` and `Result` imports. `return` exits the enclosing function, including from a match used inside another expression; lexical cleanup still runs. `break` and `continue` target the enclosing loop. A nested anonymous function retains its own return boundary.
+This fragment uses the `Payment` type declared in [alternatives](../types/alternatives.md). `return` exits the enclosing function, including from a match used inside another expression; lexical cleanup still runs. `break` and `continue` target the enclosing loop. A nested anonymous function retains its own return boundary.
 
 Short arms may place the value after the colon, such as `none: 0`. For an arm used only for effects, finish with `unit` when its last call returns another type. When a match stands on its own as a statement its result is discarded, so its arms need not agree on a type; when the result is used (a binding, argument, or `return`), every arm must produce that type. An empty arm is written `unit`; `pass` is not a keyword.
 
@@ -69,12 +73,12 @@ fn horizontal(position: Position) -> Int:
 
 An unqualified case in a pattern resolves within the scrutinee's alternative type. A qualified case must belong to that exact type. `Other.Point(...)` cannot match `Position`, even when its payload types have the same shape. Constructor-expression name lookup instead follows [alternative construction](../types/alternatives.md).
 
-Payload identifiers always create fresh bindings. For example, `error(NotFound)`
-matches every error payload, even when `NotFound` is a case of that payload's
-type. It does not test for that case. Bind `error(cause)` and pass `cause` to a
-helper that matches its cases, including `NotFound:` and the remaining cases.
-A case that carries data needs its own payload names or `_` placeholders in the
-helper's match. Keep matches flat; nested matches are an anti-pattern.
+Payload identifiers always create fresh bindings. For example, `Declined(Pending)`
+matches every `Declined` payload and binds it to the name `Pending`, even though
+`Pending` is also a case name. It does not test for that case. Bind a lowercase
+name and pass it to a helper that matches the payload's own cases. A case that
+carries data needs its own payload names or `_` placeholders in the helper's
+match. Keep matches flat; nested matches are an anti-pattern.
 
 `ms lint` reports MSL106 at a capitalized payload identifier that coincides with
 a known case or type name. The editor publishes the same advisory as a warning;
@@ -102,9 +106,9 @@ fn paid(payment: Payment) -> Bool:
 
 Adding a case to an alternative invalidates exhaustive matches that lack a wildcard. A match with a wildcard remains exhaustive; its wildcard handles the new case. Return completeness is checked across all reachable arms using the [function return rules](../functions/declarations-and-calls.md#unit-and-never).
 
-## Optional and result values
+## Optional values
 
-[Optional](../types/optionals.md) and [Result](../errors/results.md) are also alternative types. Matching an optional distinguishes a present value from absence. Matching a result distinguishes success from an expected failure and lets the caller decide what to do with each.
+[Optional](../types/optionals.md) is also an alternative type, and matching it distinguishes a present value from absence. Prefer `if let` or an Optional method. For a [Result](../errors/results.md), use `try`, `if let`, or its methods.
 
 ## Contract type patterns
 

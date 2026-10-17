@@ -12,7 +12,7 @@ with file = try files.open(path: "data.txt"):
     let chunk = try file.read(max_bytes: 4096)
 ```
 
-This fragment belongs inside a function returning `Result[U, IoError]`. The function receives `files` as an explicit capability. `Files.open` returns a shared File view. The read result is `Optional[Bytes]`: match it to distinguish bytes from end-of-input.
+This fragment belongs inside a function returning `Result[U, IoError]`. The function receives `files` as an explicit capability. `Files.open` returns a shared File view. The read result is `Optional[Bytes]`: `if let` distinguishes bytes from end-of-input.
 
 ## What happens, step by step
 

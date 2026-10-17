@@ -48,11 +48,11 @@ test "direct append preserves checked argument conversions":
     let results: List[Optional[Result[Int, Error]]] = []
     let failed: Result[Int, Failure] = error(Failure(2))
     results.append(failed)
-
-    match results.at(0).unwrap().unwrap():
-        ok(value): return panic("error became success")
-        error(cause):
-            if cause.message() != "failure": return panic("Result error widening lost")
+    let widened = results.at(0).unwrap().unwrap()
+    if widened.is_ok(): return panic("error became success")
+    if widened.unwrap_error().message() != "failure": return panic(
+        "Result error widening lost"
+    )
 
 test "direct keyed calls preserve optional keys and values":
     let values: List[Optional[Int]] = []

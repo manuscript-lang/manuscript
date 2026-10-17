@@ -56,11 +56,7 @@ test "monotonic instant methods":
         return panic("instant negative shift")
 
 test "timestamp methods and expected range failures":
-    let value = match timestamp(seconds: -1, nanoseconds: 500000000):
-        ok(value): value
-        error(_):
-            return panic("timestamp construction failed")
-
+    let value = timestamp(seconds: -1, nanoseconds: 500000000).unwrap()
     if (
         value.unix_seconds() != -1
         or value.nanoseconds() != 500000000
@@ -68,11 +64,7 @@ test "timestamp methods and expected range failures":
     ):
         return panic("timestamp components")
 
-    let later = match value.shift(1500.milliseconds):
-        ok(later): later
-        error(_):
-            return panic("timestamp shift failed")
-
+    let later = value.shift(1500.milliseconds).unwrap()
     if (
         later.unix_seconds() != 1
         or later.nanoseconds() != 0
@@ -80,53 +72,29 @@ test "timestamp methods and expected range failures":
         or value.compare(later) != -1
     ):
         return panic("timestamp shift and comparison")
+    if later.difference(value).unwrap() != 1500.milliseconds:
+        return panic("timestamp difference")
 
-    match later.difference(value):
-        ok(delta):
-            if delta != 1500.milliseconds:
-                return panic("timestamp difference")
-        error(_):
-            return panic("timestamp difference failed")
+    let parsed = parse_timestamp("2026-10-12T01:00:00+01:00").unwrap()
+    if parsed.to_string() != "2026-10-12T00:00:00Z" or parsed.compare(parsed) != 0:
+        return panic("timestamp UTC normalization")
 
-    match parse_timestamp("2026-10-12T01:00:00+01:00"):
-        ok(value):
-            if value.to_string() != "2026-10-12T00:00:00Z" or value.compare(value) != 0:
-                return panic("timestamp UTC normalization")
-        error(_):
-            return panic("timestamp parse failed")
+    let maximum = timestamp(seconds: 253402300799, nanoseconds: 999999999).unwrap()
+    let shifted = maximum.shift(duration(1))
+    if shifted.is_ok():
+        return panic("timestamp shift must reject year 10000")
+    if shifted.unwrap_error() != TimeError.OutOfRange:
+        return panic("unexpected timestamp range error")
 
-    let maximum = match timestamp(seconds: 253402300799, nanoseconds: 999999999):
-        ok(maximum): maximum
-        error(_):
-            return panic("maximum timestamp failed")
-
-    match maximum.shift(duration(1)):
-        error(cause):
-            if cause != TimeError.OutOfRange:
-                return panic("unexpected timestamp range error")
-        _:
-            return panic("timestamp shift must reject year 10000")
-
-    let minimum = match timestamp(seconds: -62135596800, nanoseconds: 0):
-        ok(minimum): minimum
-        error(_):
-            return panic("minimum timestamp failed")
-
-    match maximum.difference(minimum):
-        error(cause):
-            if cause != TimeError.OutOfRange:
-                return panic("unexpected timestamp difference error")
-        _:
-            return panic("timestamp difference must reject duration overflow")
-
+    let minimum = timestamp(seconds: -62135596800, nanoseconds: 0).unwrap()
+    let difference = maximum.difference(minimum)
+    if difference.is_ok():
+        return panic("timestamp difference must reject duration overflow")
+    if difference.unwrap_error() != TimeError.OutOfRange:
+        return panic("unexpected timestamp difference error")
     if maximum.compare(minimum) != 1:
         return panic("timestamp compare must work across full range")
 
     let now = wall_clock().now()
-
-    match parse_timestamp(now.to_string()):
-        ok(value):
-            if value != now:
-                return panic("wall clock roundtrip")
-        error(_):
-            return panic("wall clock formatting failed")
+    if (now.to_string() | parse_timestamp | .unwrap()) != now:
+        return panic("wall clock roundtrip")

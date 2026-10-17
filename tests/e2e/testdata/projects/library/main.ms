@@ -17,11 +17,9 @@ fn timer_callback() -> Result[Unit, Error]:
     return ok(unit)
 
 fn common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
-    match result:
-        ok(value):
-            return ok(value)
-        error(cause):
-            return error(Error(cause))
+    if let value = result: return ok(value)
+
+    return error(Error(result.unwrap_error()))
 
 fn exercise(path: String) -> Result[Unit, Error]:
     let written = try common_result(
@@ -46,22 +44,20 @@ fn exercise(path: String) -> Result[Unit, Error]:
     if not (not info.directory):
         return panic(message: "check failed")
 
-    let bytes = try common_result(result: entropy().bytes(count: 16))
+    let bytes = entropy().bytes(count: 16) | try common_result
     if not (bytes.length() == 16):
         return panic(message: "check failed")
 
-    let identifier = try common_result(result: uuid_v4(entropy: entropy()))
+    let identifier = uuid_v4(entropy: entropy()) | try common_result
     if not (identifier.byte_length() == 36):
         return panic(message: "check failed")
 
-    let random = try common_result(
-        result: secure_int(entropy: entropy(), min: -2, max_exclusive: 3)
-    )
+    let random = secure_int(entropy: entropy(), min: -2, max_exclusive: 3) | try common_result
     if not (random >= -2 and random < 3):
         return panic(message: "check failed")
 
     let now = wall_clock().now()
-    if not (try common_result(result: parse_timestamp(text: now.to_string())) == now):
+    if not ((now.to_string() | parse_timestamp | try common_result) == now):
         return panic(message: "check failed")
     if not (system().info().cpu_count > 0):
         return panic(message: "check failed")
@@ -69,9 +65,7 @@ fn exercise(path: String) -> Result[Unit, Error]:
     with file = try common_result(
         result: filesystem().open(path: path, flags: "r+", mode: 384)
     ):
-        let updated = try common_result(
-            result: file.write_at(offset: 0, data: "HELLO".to_bytes())
-        )
+        let updated = file.write_at(offset: 0, data: "HELLO".to_bytes()) | try common_result
         if not (
             try common_result(
                 result: file.read_at(offset: 0, max_bytes: 5)
@@ -79,8 +73,8 @@ fn exercise(path: String) -> Result[Unit, Error]:
         ):
             return panic(message: "positional I/O failed")
 
-        let synced = try common_result(result: file.sync())
-        let resized = try common_result(result: file.truncate(size: 3))
+        let synced = file.sync() | try common_result
+        let resized = file.truncate(size: 3) | try common_result
         if not ((try common_result(result: file.stat())).size == 3):
             return panic(message: "handle stat failed")
 
@@ -99,24 +93,19 @@ fn exercise(path: String) -> Result[Unit, Error]:
                 data: "!".to_bytes()
             )
         )
-        let events = try common_result(result: watcher.next())
+        let events = watcher.next() | try common_result
         if not (events.length() > 0):
             return panic(message: "native watch returned no event")
 
     with scheduler = Scheduler():
-        let id = try common_result(
-            result: scheduler.after(
-                duration: 0.milliseconds,
-                operation: timer_callback
-            )
-        )
+        let id = scheduler.after(duration: 0.milliseconds, operation: timer_callback) | try common_result
         sleep(duration: 10.milliseconds)
 
         match scheduler.status(id):
             Succeeded:
-                let restarted = try common_result(result: scheduler.restart(id))
+                let restarted = scheduler.restart(id) | try common_result
             Running:
-                let restarted = try common_result(result: scheduler.restart(id))
+                let restarted = scheduler.restart(id) | try common_result
             _:
                 return panic(message: "scheduled work failed")
 
@@ -132,11 +121,11 @@ fn exercise(path: String) -> Result[Unit, Error]:
     if not (windows.parse("C:/work/file.txt").extension == ".txt"):
         return panic(message: "Windows path parse failed")
 
-    let process_info = try common_result(result: control().info())
+    let process_info = control().info() | try common_result
     if not (process_info.pid > 0):
         return panic(message: "process information failed")
 
-    let memory = try common_result(result: control().memory_usage())
+    let memory = control().memory_usage() | try common_result
     if not (memory.heap_system > 0):
         return panic(message: "memory information failed")
 
@@ -151,8 +140,6 @@ export fn main() -> Int:
         none:
             return 2
 
-    match exercise(path: path):
-        ok(_):
-            return 0
-        error(_):
-            return 1
+    if exercise(path: path).is_error(): return 1
+
+    return 0

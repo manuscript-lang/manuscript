@@ -12,9 +12,9 @@ import value from "./support/results.ms"
 
 test "raw monotonic nanoseconds share the typed process uptime origin":
     let process = control()
-    let before = value(process.uptime())
-    let reading = duration(process.monotonic_time())
-    let after = value(process.uptime())
+    let before = process.uptime() | value
+    let reading = process.monotonic_time() | duration
+    let after = process.uptime() | value
     if reading.compare(before) < 0 or reading.compare(after) > 0: return panic(
         "monotonic units or origin"
     )
@@ -53,7 +53,7 @@ test "closed codec strings reject spelling changes with their domain errors":
 
     for format in ["gzip", "zlib", "deflate"]:
         for level in [0, 9]:
-            let encoded = value(compress(data: data, format: format, level: level))
+            let encoded = compress(data: data, format: format, level: level) | value
             if value(decompress(data: encoded, format: format)) != data: return panic(
                 "compression level boundary"
             )
@@ -81,37 +81,38 @@ test "closed codec strings reject spelling changes with their domain errors":
 test "all ten string open modes are accepted and changed spellings are invalid":
     let fs = filesystem()
 
-    with temporary = value(fs.temporary("manuscript-open-modes-")):
+    with temporary = fs.temporary("manuscript-open-modes-") | value:
         for mode in ["r", "r+", "w", "wx", "w+", "wx+", "a", "ax", "a+", "ax+"]:
             let path = "{temporary.path()}/{mode}"
             if mode == "r" or mode == "r+":
-                let created = value(
-                    fs.write_file(
-                        path: path,
-                        data: "".to_bytes(),
-                        replace: false
-                    )
-                )
-            with handle = value(fs.open(path: path, flags: mode, mode: 384)):
-                let info = value(handle.stat())
+                let created = fs.write_file(
+                    path: path,
+                    data: "".to_bytes(),
+                    replace: false
+                ) | value
+            with handle = fs.open(path: path, flags: mode, mode: 384) | value:
+                let info = handle.stat() | value
 
         for mode in ["R", "rs", "w+x", " r", ""]:
-            match fs.open(path: "{temporary.path()}/invalid", flags: mode, mode: 384):
-                ok(_): return panic("open spelling")
-                error(cause):
-                    if cause != FileSystemError.InvalidInput: return panic(
-                        "open spelling error"
-                    )
+            let opened = fs.open(
+                path: "{temporary.path()}/invalid",
+                flags: mode,
+                mode: 384
+            )
+            if opened.is_ok(): return panic("open spelling")
+            if opened.unwrap_error() != FileSystemError.InvalidInput: return panic(
+                "open spelling error"
+            )
 
 test "full byte counts positions EOF and stream aliases retain their contracts":
     let fs = filesystem()
 
-    with temporary = value(fs.temporary("manuscript-write-contract-")):
+    with temporary = fs.temporary("manuscript-write-contract-") | value:
         let path = "{temporary.path()}/data"
         let data = value("é".repeat(40000)).to_bytes()
 
-        with handle = value(fs.open(path: path, flags: "w+", mode: 384)):
-            value(handle.write(data))
+        with handle = fs.open(path: path, flags: "w+", mode: 384) | value:
+            handle.write(data) | value
             if value(handle.stat()).size != 80000: return panic(
                 "write did not write all bytes"
             )
@@ -133,8 +134,8 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
                 "remaining read"
             )
 
-            let rewind = value(handle.seek(offset: 0, origin: 0))
-            let overwritten = value(handle.append_file("XY".to_bytes()))
+            let rewind = handle.seek(offset: 0, origin: 0) | value
+            let overwritten = handle.append_file("XY".to_bytes()) | value
             if value(handle.read_at(offset: 0, max_bytes: 2)) != "XY".to_bytes(): return panic(
                 "handle append repositioned"
             )
@@ -142,14 +143,14 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
                 "handle append extended"
             )
 
-            value(handle.write_at(offset: 4, data: "ZZ".to_bytes()))
+            handle.write_at(offset: 4, data: "ZZ".to_bytes()) | value
             if value(handle.seek(offset: 0, origin: 1)) != 2: return panic(
                 "write_at moved position"
             )
 
             let writer = handle.writer()
-            let delivered = value(writer.write("AB".to_bytes()))
-            let flushed = value(writer.flush())
+            let delivered = writer.write("AB".to_bytes()) | value
+            let flushed = writer.flush() | value
             if value(handle.read_at(offset: 2, max_bytes: 4)) != "ABZZ".to_bytes(): return panic(
                 "writer position"
             )
@@ -163,23 +164,21 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
                 "adapter did not close handle"
             )
 
-            match reader.read():
-                ok(_): return panic("reader alias survived close")
-                error(cause):
-                    if cause != IoError.Closed: return panic(
-                        "adapter Closed translation"
-                    )
+            let alias_read = reader.read()
+            if alias_read.is_ok(): return panic("reader alias survived close")
+            if alias_read.unwrap_error() != IoError.Closed: return panic(
+                "adapter Closed translation"
+            )
 
         let missing = "{temporary.path()}/missing"
+        let missing_file = fs.open(path: missing, flags: "r", mode: 384)
+        if missing_file.is_ok(): return panic("missing filesystem file opened")
+        if missing_file.unwrap_error() != FileSystemError.NotFound: return panic(
+            "filesystem missing mapping"
+        )
 
-        match fs.open(path: missing, flags: "r", mode: 384):
-            ok(_): return panic("missing filesystem file opened")
-            error(cause):
-                if cause != FileSystemError.NotFound: return panic(
-                    "filesystem missing mapping"
-                )
-
-        match files().open(missing):
-            ok(_): return panic("missing io file opened")
-            error(cause):
-                if cause != IoError.Unavailable: return panic("io missing mapping")
+        let missing_io = files().open(missing)
+        if missing_io.is_ok(): return panic("missing io file opened")
+        if missing_io.unwrap_error() != IoError.Unavailable: return panic(
+            "io missing mapping"
+        )

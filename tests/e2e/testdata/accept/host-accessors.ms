@@ -28,12 +28,11 @@ fn check_services() -> Unit:
             none:
                 return panic("environment entry missing")
 
-    match entropy().bytes(count: 0):
-        ok(data):
-            if data.length() != 0:
-                return panic("unexpected entropy size")
-        error(_):
-            return panic("entropy unavailable")
+    if let data = entropy().bytes(count: 0):
+        if data.length() != 0:
+            return panic("unexpected entropy size")
+    else:
+        return panic("entropy unavailable")
 
 test "host accessors work in callbacks and task executions":
     let check = check_services
@@ -42,33 +41,24 @@ test "host accessors work in callbacks and task executions":
     with group = TaskGroup():
         group.start(check)
         group.start(check)
-
-        match group.join():
-            ok(_):
-                return
-            error(_):
-                return panic("task host access failed")
+        if group.join().is_error():
+            return panic("task host access failed")
 
 test "repeated accessors retain closed root state":
     stdin().close()
     stdout().close()
     stderr().close()
     network().close()
+    let written = stdout().write("".to_bytes())
+    if written.is_ok():
+        return panic("accessor reopened stdout")
 
-    let cause = match stdout().write("".to_bytes()):
-        ok(_):
-            return panic("accessor reopened stdout")
-        error(cause): cause
-
-    match cause:
+    match written.unwrap_error():
         Closed:
             return
         _:
             return panic("unexpected closed-stream error")
 
 test "a later test receives fresh standard output":
-    match stdout().write("".to_bytes()):
-        ok(_):
-            return
-        error(_):
-            return panic("another test closed this test's stdout")
+    if stdout().write("".to_bytes()).is_error():
+        return panic("another test closed this test's stdout")

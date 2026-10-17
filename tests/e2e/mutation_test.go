@@ -57,15 +57,15 @@ type Holder:
     file: File
     label: String
 export fn main() -> Int:
-    let file = match files().open("data.txt"):
-        ok(file): file
-        error(_):
-            return 4
+    let opened = files().open("data.txt")
+    if opened.is_error():
+        return 4
+    let file = opened.unwrap()
 
-    let chunk = match file.read(1):
-        ok(chunk): chunk
-        error(_):
-            return 7
+    let read = file.read(1)
+    if read.is_error():
+        return 7
+    let chunk = read.unwrap()
 
     match chunk:
         some(data):
@@ -80,10 +80,10 @@ export fn main() -> Int:
     if original.label != "original":
         return 1
     copy.file.close()
-    let cause = match original.file.read(1):
-        error(cause): cause
-        ok(_):
-            return 3
+    let reread = original.file.read(1)
+    if reread.is_ok():
+        return 3
+    let cause = reread.unwrap_error()
 
     match cause:
         IoError.Closed:

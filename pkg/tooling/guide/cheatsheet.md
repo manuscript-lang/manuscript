@@ -15,9 +15,10 @@ fn say(text: String) -> Result[Unit, Error]:
     return stdout().flush()
 
 export fn main() -> Int:
-    match say("sum is {add(1, 2)}"):
-        ok(_): return 0
-        error(_): return 1
+    if say("sum is {add(1, 2)}").is_error():
+        return 1
+
+    return 0
 
 test "addition":
     try expect_equal(add(1, 2), 3)

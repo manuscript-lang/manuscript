@@ -14,14 +14,14 @@ import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
 test "URL canonicalization and relative references":
-    let url = value(parse("https://EXAMPLE.com:443/a/b?q=1#fragment"))
+    let url = parse("https://EXAMPLE.com:443/a/b?q=1#fragment") | value
     if url.host != "example.com" or url.port != some(443): return panic("host and port")
     if value(format(url)) != "https://example.com:443/a/b?q=1#fragment": return panic(
         "URL format"
     )
     if (
-        value(
-            format(value(resolve(base: url, reference: "../c")))
+        (
+            resolve(base: url, reference: "../c") | value | format | value
         ) != "https://example.com:443/c"
     ): return panic("relative reference")
     if encode_component("a b/é") != "a%20b%2F%C3%A9": return panic("component escaping")
@@ -30,7 +30,7 @@ test "URL canonicalization and relative references":
     )
 
 test "URL query retains duplicate keys empty values and spaces":
-    let entries = value(parse_query(text: "a=1&a=2&empty=&space=hello+world"))
+    let entries = parse_query(text: "a=1&a=2&empty=&space=hello+world") | value
     if entries.length() != 4 or entries.at(3).unwrap().value != "hello world": return panic(
         "query values"
     )
@@ -47,15 +47,15 @@ test "URL query retains duplicate keys empty values and spaces":
     if decode_component("%zz") != invalid: return panic("malformed escape")
 
 test "URL query skips empty segments":
-    let entries = value(parse_query(text: "&a=1&&b=2&"))
+    let entries = parse_query(text: "&a=1&&b=2&") | value
     if format_query(entries) != "a=1&b=2": return panic("empty segments kept")
     if not value(parse_query(text: "&&")).is_empty(): return panic("only separators")
 
-    let bounded = value(parse_query(text: "a=1&&b=2", max_entries: 2))
+    let bounded = parse_query(text: "a=1&&b=2", max_entries: 2) | value
     if bounded.length() != 2: return panic("empty segments counted")
 
 test "URL format rejects queries that would not round trip":
-    let base = value(parse("http://h/p"))
+    let base = parse("http://h/p") | value
     let invalid: Result[String, UrlError] = error(UrlError.InvalidInput)
 
     for query in ["a#b", "a b", "%zz", "a%2"]:

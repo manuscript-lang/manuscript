@@ -2,9 +2,9 @@ import {filled} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 fn make_cells() -> List[Int]:
-    match filled(value: 0, count: 16384):
-        ok(values): return values
-        error(_): return panic("fill failure")
+    if let values = filled(value: 0, count: 16384): return values
+
+    return panic("fill failure")
 
 export fn main() -> Int:
     var cells = make_cells()
@@ -13,9 +13,7 @@ export fn main() -> Int:
 
     while i < 16384:
         var value = 0
-
         if (i * 17 + i / 128 * 13) % 7 < 3: value = 1
-
         cells.set(index: i, value: value)
         i = i + 1
 
@@ -58,9 +56,7 @@ export fn main() -> Int:
                     )
                 )
                 var value = 0
-
                 if alive: value = 1
-
                 next.set(index: index, value: value)
                 x = x + 1
 

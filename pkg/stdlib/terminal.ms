@@ -167,11 +167,10 @@ export fn terminal() -> Terminal:
 #     return ok(value: unit)
 #
 # export fn main() -> Int:
-#     match run():
-#         ok(_):
-#             return 0
-#         error(cause):
-#             return panic(message: cause.message())
+#     let ended = run()
+#     if ended.is_error(): return panic(message: ended.unwrap_error().message())
+#
+#     return 0
 # ```
 #
 # The drawing calls return `Result`; this sketch ignores their errors to stay short, while `raw_mode` and `next_event` propagate with `try`.

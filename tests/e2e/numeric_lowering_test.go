@@ -170,34 +170,22 @@ fn text(log: List[String]) -> String:
 
 test "nested try":
     let first = List[String]()
-    match sum(log: first, a: 1, b: 2):
-        ok(value): check(ok: value == 3, name: "sum")
-        error(cause): panic(message: cause)
+    check(ok: sum(log: first, a: 1, b: 2).unwrap() == 3, name: "sum")
     check(ok: text(log: first) == "a,b,done", name: "order")
     let second = List[String]()
-    match sum(log: second, a: -1, b: 2):
-        ok(value): panic(message: "no failure")
-        error(cause): check(ok: cause == "a", name: "first cause")
+    check(ok: sum(log: second, a: -1, b: 2).unwrap_error() == "a", name: "first cause")
     check(ok: text(log: second) == "a", name: "stops at the first failure")
     let third = List[String]()
-    match arguments(log: third, a: 1, b: -1):
-        ok(value): panic(message: "no failure")
-        error(cause): check(ok: cause == "y", name: "argument cause")
+    check(ok: arguments(log: third, a: 1, b: -1).unwrap_error() == "y", name: "argument cause")
     check(ok: text(log: third) == "x,y", name: "argument order")
     let fourth = List[String]()
-    match effect_first(log: fourth, a: -1):
-        ok(value): panic(message: "no failure")
-        error(cause): check(ok: cause == "s", name: "effect cause")
+    check(ok: effect_first(log: fourth, a: -1).unwrap_error() == "s", name: "effect cause")
     check(ok: text(log: fourth) == "before,s", name: "effects before try")
     let fifth = List[String]()
-    match loop(log: fifth, n: 5):
-        ok(value): panic(message: "no failure")
-        error(cause): check(ok: cause == "l", name: "loop cause")
+    check(ok: loop(log: fifth, n: 5).unwrap_error() == "l", name: "loop cause")
     check(ok: text(log: fifth) == "l,l,l", name: "loop stops")
     let sixth = List[String]()
-    match joined(log: sixth):
-        ok(value): panic(message: "no failure")
-        error(cause): check(ok: cause == "q", name: "text cause")
+    check(ok: joined(log: sixth).unwrap_error() == "q", name: "text cause")
     check(ok: text(log: sixth) == "p,q", name: "text order")
 `, compiler.Options{Tests: true})
 	output, err := execute(t, result)

@@ -20,15 +20,11 @@ fn amount() -> Result[Decimal, String]:
 test "explicit standard imports":
     if not ([1, 2].length() == 2):
         return panic(message: "check failed")
-    match amount():
-        ok(value):
-            if not (value == 12.50d):
-                return panic(message: "check failed")
-        error(_):
-            return panic(message: "Unexpected case")
+    if not (amount().unwrap_or(0d) == 12.50d):
+        return panic(message: "check failed")
 ```
 
-Accept without an `[aliases]` table. Independently remove List and reject its bracket literal; remove Decimal and reject its annotation/literal; remove Result and reject its annotation and expression constructor lookup; remove panic and reject its call. Importing a function must not expose the type names in its signature. Match cases remain available from an inferred scrutinee even when its type name is not imported, as in the [CLI entry fixture](../../../standard-library/cli.md).
+Accept without an `[aliases]` table. Independently remove List and reject its bracket literal; remove Decimal and reject its annotation/literal; remove Result and reject its annotation and expression constructor lookup; remove panic and reject its call. Importing a function must not expose the type names in its signature. Methods and cases of an inferred value remain available even when its type name is not imported, as in the [CLI entry fixture](../../../standard-library/cli.md).
 
 Accept this independent module without standard imports:
 
@@ -94,13 +90,12 @@ impl File for ClosedFile:
 
 test "contract-valued cleanup":
     with file = File(ClosedFile(unit)):
-        match file.read(max_bytes: 1):
-            ok(_):
-                return panic(message: "Unexpected case")
+        let read = file.read(max_bytes: 1)
+        if read.is_ok():
+            return panic(message: "Unexpected case")
 
-            error(cause):
-                if not (cause == IoError.Closed):
-                    return panic(message: "check failed")
+        if not (read.unwrap_error() == IoError.Closed):
+            return panic(message: "check failed")
 ```
 
 This fake represents an already-closed stream, so its close is idempotent and has no external release obligation. Reject `with` over a concrete type merely having a method named close without `impl Closeable`. Reject a contract with the wrong close signature. Verify native and source fake File values are interchangeable through Files.open's `Result[File, IoError]` result.

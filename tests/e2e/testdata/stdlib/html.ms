@@ -31,11 +31,9 @@ test "HTML escaping preserves Unicode and escapes all markup characters":
     if escape("") != "": return panic("empty HTML")
 
 test "HTML parses nested elements attributes entities and comments":
-    let doc = value(
-        parse(
-            text: "<DIV id='main' title='A &amp; B' hidden>Hello <b>é🙂</b> &lt;world&gt;<!--note--><br></DIV>"
-        )
-    )
+    let doc = parse(
+        text: "<DIV id='main' title='A &amp; B' hidden>Hello <b>é🙂</b> &lt;world&gt;<!--note--><br></DIV>"
+    ) | value
     let div = body_nodes(doc).at(0).unwrap()
 
     match div:
@@ -80,7 +78,7 @@ test "HTML parses nested elements attributes entities and comments":
     if text_content(doc) != "Hello é🙂 <world>": return panic("tree traversal")
 
 test "HTML recovers unclosed tags and inserts document and table structure":
-    let doc = value(parse(text: "<ul><li>one<li>two</ul><table><tr><td>cell"))
+    let doc = parse(text: "<ul><li>one<li>two</ul><table><tr><td>cell") | value
     let nodes = body_nodes(doc)
     let entries = children(nodes.at(0).unwrap())
     if (
@@ -96,17 +94,15 @@ test "HTML recovers unclosed tags and inserts document and table structure":
 
     if text_content(nodes.at(1).unwrap()) != "cell": return panic("unclosed table")
 
-    let empty = value(parse(text: ""))
+    let empty = parse(text: "") | value
     if children(children(empty).at(0).unwrap()).length() != 2: return panic(
         "implicit head and body"
     )
 
 test "HTML preserves doctypes foreign namespaces and raw script text":
-    let doc = value(
-        parse(
-            text: "<!DOCTYPE html PUBLIC 'public' 'system'><!--before--><svg><a xlink:href='#icon'/></svg><script>if (a < b) x = '&amp;';</script>"
-        )
-    )
+    let doc = parse(
+        text: "<!DOCTYPE html PUBLIC 'public' 'system'><!--before--><svg><a xlink:href='#icon'/></svg><script>if (a < b) x = '&amp;';</script>"
+    ) | value
     let nodes = children(doc)
     if (
         nodes.at(0).unwrap() != HtmlNode.Doctype(
@@ -144,7 +140,7 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
     )
 
 test "HTML honors optional byte depth and node limits":
-    let empty = value(parse(text: ""))
+    let empty = parse(text: "") | value
     if (
         value(
             parse(

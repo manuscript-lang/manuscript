@@ -115,7 +115,7 @@ Save the following as `cents.ms` and run `ms test cents.ms`:
 ```manuscript
 import Decimal from "@std/decimal.ms"
 import NumberError from "@std/numbers.ms"
-import panic from "@std/faults.ms"
+import expect_equal from "@std/testing.ms"
 
 fn amount_text() -> Result[String, NumberError]:
     let subtotal = 19.99d * 3d
@@ -126,12 +126,7 @@ fn amount_text() -> Result[String, NumberError]:
     return ok("tax {tax_text} total {total_text} padded {padded}")
 
 test "decimal amounts":
-    match amount_text():
-        ok(text):
-            if text != "tax 4.95 total 64.92 padded 25.50":
-                return panic("unexpected amount text")
-        error(cause):
-            return panic(cause.message())
+    try amount_text() | try expect_equal("tax 4.95 total 64.92 padded 25.50")
 ```
 
 ## Booleans

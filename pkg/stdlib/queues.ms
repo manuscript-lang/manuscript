@@ -158,12 +158,9 @@ export type PriorityQueue[T]:
 #             if not jobs.put(value):
 #                 return panic(message: "put failed")
 #         jobs.close()
-#         match worker.join():
-#             ok(total):
-#                 if not (total == 15):
-#                     return panic(message: "lost or duplicated items")
-#             error(_):
-#                 return panic(message: "worker failed")
+#         let joined = worker.join()
+#         if joined.is_error(): return panic(message: "worker failed")
+#         if joined.unwrap() != 15: return panic(message: "lost or duplicated items")
 # ```
 #
 # The worker drains what is queued after `close`, then `take` returns `none` and it finishes. Never join a worker from code that the worker is waiting on.

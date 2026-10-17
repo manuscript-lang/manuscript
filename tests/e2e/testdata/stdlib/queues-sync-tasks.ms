@@ -50,13 +50,12 @@ test "synchronized guards update and release for later acquisition":
 
 test "scheduler delayed cancellation capacity and closed admission":
     let scheduler = Scheduler(limit: 1)
-    let id = value(scheduler.after(duration: 60.seconds, operation: operation))
+    let id = scheduler.after(duration: 60.seconds, operation: operation) | value
     if scheduler.status(id) != WorkStatus.Running: return panic("scheduled status")
 
-    match scheduler.start(operation):
-        ok(_): return panic("scheduler capacity ignored")
-        error(cause):
-            if cause != StartError.Full: return panic("scheduler capacity error")
+    let full = scheduler.start(operation)
+    if full.is_ok(): return panic("scheduler capacity ignored")
+    if full.unwrap_error() != StartError.Full: return panic("scheduler capacity error")
 
     scheduler.cancel(id)
     scheduler.close()
@@ -65,11 +64,11 @@ test "scheduler delayed cancellation capacity and closed admission":
     )
 
     scheduler.close()
-
-    match scheduler.start(operation):
-        ok(_): return panic("closed scheduler admitted work")
-        error(cause):
-            if cause != StartError.Closed: return panic("closed scheduler error")
+    let closed = scheduler.start(operation)
+    if closed.is_ok(): return panic("closed scheduler admitted work")
+    if closed.unwrap_error() != StartError.Closed: return panic(
+        "closed scheduler error"
+    )
 
 test "task group heterogeneous results and cancellation checkpoints":
     check_cancelled()
@@ -78,7 +77,7 @@ test "task group heterogeneous results and cancellation checkpoints":
     with tasks = TaskGroup():
         let number_task = tasks.start(first)
         let text_task = tasks.start(second)
-        let completed = value(tasks.join())
-        let number = value(number_task.join())
-        let text = value(text_task.join())
+        let completed = tasks.join() | value
+        let number = number_task.join() | value
+        let text = text_task.join() | value
         if number != 1 or text != "two": return panic("task results changed")

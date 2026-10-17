@@ -42,17 +42,15 @@ test "bound receiver is captured before supplied arguments":
     let second = Capture("second".to_bytes(), 0)
     var selected = first
     let index: Optional[Int] = some(0)
-    let output = value(
-        selected.run(
-            program: match index:
-                some(_):
-                    selected = second
-                    "fake"
-                none: "fake"
-            ,
-            arguments: []
-        )
-    )
+    let output = selected.run(
+        program: match index:
+            some(_):
+                selected = second
+                "fake"
+            none: "fake"
+        ,
+        arguments: []
+    ) | value
     if (first.calls != 1 or second.calls != 0 or output.stdout.length() != 0):
         return panic("receiver capture order changed")
 

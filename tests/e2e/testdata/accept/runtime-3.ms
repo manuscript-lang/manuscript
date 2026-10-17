@@ -12,35 +12,25 @@ fn probe() -> Result[Unit, ExecutionError]:
         return true
 
     with group = TaskGroup():
-        let number_task = identity(group.start(first))
+        let number_task = group.start(first) | identity
         let flag_task = group.start(second)
         let number = try number_task.join()
         let flag = try flag_task.join()
         if not (flag):
             return panic(message: "check failed")
-
-        match number:
-            ok(value):
-                if not (value == 3):
-                    return panic(message: "check failed")
-            error(_):
-                return panic(message: "Unexpected case")
+        if not (number.unwrap_or(0) == 3):
+            return panic(message: "check failed")
 
         return ok(unit)
 
 test "typed task helper":
-    match probe():
-        ok(_):
-            let completed = unit
-        error(_):
-            return panic(message: "Unexpected case")
+    try probe()
 
 fn describe(outcome: Result[Int, Int]) -> Result[Int, String]:
-    match outcome:
-        ok(value):
-            return ok(value)
-        error(cause):
-            return error("Error {cause}")
+    if outcome.is_ok():
+        return ok(outcome.unwrap())
+
+    return error("Error {outcome.unwrap_error()}")
 
 test "explicit error conversion":
     let failed: Result[Int, Int] = error(7)

@@ -168,10 +168,11 @@ impl JsonDecoder for Decoder:
         let values: List[JsonValue] = []
 
         for byte in chunk.values():
-            match step(self, byte):
-                error(cause): return fail(self, cause)
-                ok(found):
-                    if found.is_some(): values.append(found.unwrap())
+            let stepped = step(self, byte)
+            if stepped.is_error(): return fail(self, stepped.unwrap_error())
+
+            let found = stepped.unwrap()
+            if found.is_some(): values.append(found.unwrap())
 
         return ok(values)
 
@@ -184,8 +185,8 @@ impl JsonDecoder for Decoder:
         if self.mode == 0: return ok(values)
         if self.mode != 3: return fail(self, JsonError.InvalidData)
 
-        match complete(self):
-            error(cause): return fail(self, cause)
-            ok(item): values.append(item)
+        let completed = complete(self)
+        if completed.is_error(): return fail(self, completed.unwrap_error())
 
+        values.append(completed.unwrap())
         return ok(values)

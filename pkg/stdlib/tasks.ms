@@ -388,11 +388,7 @@ impl Error for StartError:
 #         return ok(unit)
 #
 # test "independent typed results":
-#     match check():
-#         ok(_):
-#             return
-#         error(_):
-#             return panic("task group failed")
+#     if check().is_error(): return panic("task group failed")
 # ```
 #
 # `start` infers `T` from its zero-argument callback. The handles above have types `Task[Int]` and `Task[String]`. Naming `Task` in an annotation requires its own import; inferred handles do not. Handles can be stored in records, passed through generic functions, returned, and collected in ordinary homogeneous lists.

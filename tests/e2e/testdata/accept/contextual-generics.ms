@@ -39,16 +39,12 @@ fn combine[T](events: Events, first: Optional[T], second: Optional[T]) -> Option
 
 test "expected generic results preserve behavior and call order":
     let result: Result[List[Int], String] = first()
+    if result.is_ok(): return panic("expected failure")
+    if result.unwrap_error() != "empty": return panic("wrong failure")
 
-    match result:
-        ok(_): return panic("expected failure")
-        error(message):
-            if message != "empty": return panic("wrong failure")
-
-    match failed():
-        ok(_): return panic("expected domain failure")
-        error(cause):
-            if cause.message() != "domain": return panic("lost error dispatch")
+    let domain = failed()
+    if domain.is_ok(): return panic("expected domain failure")
+    if domain.unwrap_error().message() != "domain": return panic("lost error dispatch")
 
     let empty: Optional[Int] = forward()
     if not empty.is_none(): return panic("expected none")

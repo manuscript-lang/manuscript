@@ -311,13 +311,10 @@ export fn control() -> ProcessControl:
 # import panic from "@std/faults.ms"
 #
 # fn echo_once() -> Unit:
-#     match commands().spawn(program: "cat", arguments: []):
-#         error(cause): return panic(message: "spawn failed")
-#         ok(child):
-#             with running = child:
-#                 running.stdin().write("ping\n".to_bytes())
-#                 running.stdin().close()
-#                 read_line(input: running.stdout())
+#     with running = commands().spawn(program: "cat", arguments: []).unwrap():
+#         running.stdin().write("ping\n".to_bytes())
+#         running.stdin().close()
+#         read_line(input: running.stdout())
 # ```
 #
 # `Subprocess` exposes `stdin()`, `stdout()`, `stderr()` (shared `WriteStream`/`ReadStream` views of OS pipes), `wait(timeout)`, `terminate()`, `kill()`, and `close()`. Pipes give natural backpressure: a full pipe blocks the writer, and unread output blocks the child, so nothing is buffered without bound. Closing `stdin()` delivers EOF to the child.
@@ -388,17 +385,16 @@ export fn control() -> ProcessControl:
 # import sleep from "@std/time.ms"
 #
 # export fn main() -> Int:
-#     match control().watch_signals(signals: [2, 15]):
-#         error(_):
-#             return 1
-#         ok(signals):
-#             with signals = signals:
-#                 stdout().write(data: "waiting\n".to_bytes())
-#                 let observed = signals.next()
-#                 stdout().write(data: "got signal\n".to_bytes())
-#                 sleep(duration: 100.milliseconds)
-#                 stdout().write(data: "after sleep\n".to_bytes())
-#                 return 0
+#     if let watched = control().watch_signals(signals: [2, 15]):
+#         with signals = watched:
+#             stdout().write(data: "waiting\n".to_bytes())
+#             let observed = signals.next()
+#             stdout().write(data: "got signal\n".to_bytes())
+#             sleep(duration: 100.milliseconds)
+#             stdout().write(data: "after sleep\n".to_bytes())
+#             return 0
+#
+#     return 1
 # ```
 #
 # ```sh
@@ -453,11 +449,11 @@ export fn control() -> ProcessControl:
 #         self.workers.close()
 #         check_cancelled()
 #         sleep(duration: 10.milliseconds)
-#         match self.client.write(data: "farewell\n".to_bytes(), timeout: 1.seconds):
-#             ok(_):
-#                 stdout().write(data: "farewell sent\n".to_bytes())
-#             error(cause):
-#                 stdout().write(data: "farewell failed: {cause.message()}\n".to_bytes())
+#         let farewell = self.client.write(data: "farewell\n".to_bytes(), timeout: 1.seconds)
+#         if farewell.is_ok():
+#             stdout().write(data: "farewell sent\n".to_bytes())
+#         else:
+#             stdout().write(data: "farewell failed: {farewell.unwrap_error().message()}\n".to_bytes())
 #         self.client.close()
 #
 # fn serve() -> Result[Unit, Error]:
@@ -478,12 +474,12 @@ export fn control() -> ProcessControl:
 #                         return ok(unit)
 #
 # export fn main() -> Int:
-#     match serve():
-#         ok(_):
-#             return 0
-#         error(cause):
-#             stdout().write(data: "{cause.message()}\n".to_bytes())
-#             return 1
+#     let served = serve()
+#     if served.is_error():
+#         stdout().write(data: "{served.unwrap_error().message()}\n".to_bytes())
+#         return 1
+#
+#     return 0
 # ```
 #
 # Start `./shutdown`, connect a TCP client to the printed loopback address (for example `nc 127.0.0.1 <port>`), and wait for `ready`. From another terminal send `kill -TERM <shutdown-pid>`. The client receives `farewell` and then EOF; the server prints `worker stopped` followed by `farewell sent` and exits 143. SIGINT gives the same cleanup with status 130. The repository integration test executes these exact code fences for both signals, directly and through `ms run`.

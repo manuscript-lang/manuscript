@@ -22,9 +22,10 @@ test "issue 187 programs need no collection imports":
     var i = 0
 
     while i < 5:
-        match roll(i):
-            ok(n): rolls.append(n)
-            error(_): return panic("roll")
+        if let n = roll(i):
+            rolls.append(n)
+        else:
+            return panic("roll")
 
         i = i + 1
 

@@ -22,9 +22,10 @@ fn run() -> Result[Unit, Error]:
     return stdout().flush()
 
 export fn main() -> Int:
-    match run():
-        ok(_): return 0
-        error(_): return 1
+    if run().is_error():
+        return 1
+
+    return 0
 ```
 
 ```sh
@@ -48,9 +49,10 @@ fn run() -> Result[Unit, Error]:
     return stdout().flush()
 
 export fn main() -> Int:
-    match run():
-        ok(_): return 0
-        error(_): return 1
+    if run().is_error():
+        return 1
+
+    return 0
 ```
 
 ```sh
@@ -79,9 +81,10 @@ fn run() -> Result[Unit, Error]:
     return stdout().flush()
 
 export fn main() -> Int:
-    match run():
-        ok(_): return 0
-        error(_): return 1
+    if run().is_error():
+        return 1
+
+    return 0
 ```
 
 ```sh
@@ -107,9 +110,10 @@ fn run() -> Result[Unit, Error]:
     return filesystem().write_file(path.unwrap(), "saved notes\n".to_bytes(), replace: false)
 
 export fn main() -> Int:
-    match run():
-        ok(_): return 0
-        error(_): return 1
+    if run().is_error():
+        return 1
+
+    return 0
 ```
 
 ```sh
@@ -138,9 +142,10 @@ fn run() -> Result[Unit, Error]:
     return stdout().flush()
 
 export fn main() -> Int:
-    match run():
-        ok(_): return 0
-        error(_): return 1
+    if run().is_error():
+        return 1
+
+    return 0
 ```
 
 ```sh
@@ -165,9 +170,10 @@ fn show(number: Int) -> Result[Unit, Error]:
 export fn main() -> Int:
     let number = arguments().at(0).unwrap_or("42").parse_int()
     if let value = number:
-        match show(value):
-            ok(_): return 0
-            error(_): return 1
+        if show(value).is_error():
+            return 1
+
+        return 0
     else:
         return 1
 ```
@@ -194,9 +200,10 @@ fn run() -> Result[Unit, Error]:
     return stdout().flush()
 
 export fn main() -> Int:
-    match run():
-        ok(_): return 0
-        error(_): return 1
+    if run().is_error():
+        return 1
+
+    return 0
 ```
 
 ```sh
@@ -223,14 +230,15 @@ type Config:
 fn run() -> Result[Unit, Error]:
     let text = arguments().at(0).unwrap_or("\{\"name\":\"Sam\"\}")
     let config = try parse[Config](text)
-    let encoded = try stringify(config)
+    let encoded = config | try stringify
     try stdout().write("{encoded}\n".to_bytes())
     return stdout().flush()
 
 export fn main() -> Int:
-    match run():
-        ok(_): return 0
-        error(_): return 1
+    if run().is_error():
+        return 1
+
+    return 0
 ```
 
 ```sh
@@ -273,9 +281,10 @@ fn run() -> Result[Unit, Error]:
     return stdout().flush()
 
 export fn main() -> Int:
-    match run():
-        ok(_): return 0
-        error(_): return 1
+    if run().is_error():
+        return 1
+
+    return 0
 ```
 
 ```sh
@@ -308,9 +317,10 @@ fn run() -> Result[Unit, Error]:
     return ok(unit)
 
 export fn main() -> Int:
-    match run():
-        ok(_): return 0
-        error(_): return 1
+    if run().is_error():
+        return 1
+
+    return 0
 ```
 
 ```sh

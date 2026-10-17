@@ -66,21 +66,17 @@ Increment the counter before any `continue` that would skip its update.
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import range_by from "@std/collections.ms"
-import panic from "@std/faults.ms"
+import expect_equal from "@std/testing.ms"
 
 test "sum even indexes":
-    match range_by(start: 0, end: 6, step: 2):
-        ok(indexes):
-            var total = 0
-            for index in indexes:
-                total += index
-            if total != 6:
-                return panic("Expected 6, got {total}")
-        error(cause):
-            return panic("Could not build range: {cause.message()}")
+    let indexes = try range_by(start: 0, end: 6, step: 2)
+    var total = 0
+    for index in indexes:
+        total += index
+    try expect_equal(total, 6)
 ```
 
-In a function returning a compatible `Result`, `let indexes = try range_by(start: 0, end: 6, step: 2)` is another way to unwrap. `for index in 0..5:` is unsupported. See the [range declarations](../../standard-library/reference/collections.md#range).
+`try` unwraps the range in a function or test whose error type is compatible; `unwrap_or([])` supplies a fallback. `for index in 0..5:` is unsupported. See the [range declarations](../../standard-library/reference/collections.md#range).
 
 ## Iterable types and binding
 

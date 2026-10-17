@@ -12,9 +12,7 @@ fn list_size(value: Optional[List[Int]]) -> Int: value.unwrap().length()
 fn flag(value: Optional[Bool]) -> Bool: value.unwrap()
 
 fn success(value: Optional[Result[Int, String]]) -> Int:
-    match value.unwrap():
-        ok(value): return value
-        error(_): return -1
+    return value.unwrap().unwrap_or(-1)
 
 fn context[T](value: Optional[T], fallback: T) -> T: value.unwrap_or(fallback)
 

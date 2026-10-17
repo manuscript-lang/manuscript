@@ -34,11 +34,9 @@ func testProgram(t *testing.T, label string) string {
 	result := compiler.CompileSource("main.ms", fmt.Sprintf(`import stdout from "@std/io.ms"
 
 export fn main() -> Int:
-    match stdout().write(data: %q.to_bytes()):
-        ok(_):
-            return 0
-        error(_):
-            return 1
+    if stdout().write(data: %q.to_bytes()).is_error():
+        return 1
+    return 0
 `, fmt.Sprint(label, " ", time.Now().UnixNano())), compiler.Options{Entry: true})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)

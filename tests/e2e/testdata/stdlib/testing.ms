@@ -35,17 +35,14 @@ test "testing assertions":
     let failure: Result[Int, String] = error("bad")
     try expect_equal(try expect_ok(success), 9)
     try expect_equal(try expect_error(failure), "bad")
-    let mismatch = expect_equal(1, 2)
-    let mismatch_cause = try expect_error(mismatch)
+    let mismatch_cause = expect_equal(1, 2) | try expect_error
     try expect_contains(mismatch_cause.message(), "expected 2, got 1")
     try expect_contains(try expect_fault(fn(): panic("boom")), "boom")
-    let quiet = expect_fault(fn(): unit)
-    let quiet_cause = try expect_error(quiet)
+    let quiet_cause = expect_fault(fn(): unit) | try expect_error
     try expect_contains(quiet_cause.message(), "returned normally")
 
 test "failure helpers return errors":
-    let failed = fail("custom failure")
-    let failed_cause = try expect_error(failed)
+    let failed_cause = fail("custom failure") | try expect_error
     try expect_contains(failed_cause.message(), "custom failure")
 
 type Key:

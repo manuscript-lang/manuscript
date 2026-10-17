@@ -13,9 +13,9 @@ fn yaml_doc(count: Int) -> String:
     return sb.freeze()
 
 fn yaml_length(value: YamlValue) -> Int:
-    match stringify(value: value):
-        ok(text): return text.length()
-        error(_): return 0
+    if let text = stringify(value: value): return text.length()
+
+    return 0
 
 export fn bench_yaml() -> Unit:
     let yaml = yaml_doc(2000)
@@ -23,15 +23,15 @@ export fn bench_yaml() -> Unit:
         "yaml.parse",
         2000,
         fn() -> Int:
-            match parse(text: yaml):
-                ok(_): return 1
-                error(_): return 0
+            if parse(text: yaml).is_ok(): return 1
+
+            return 0
     )
     bench(
         "yaml.roundtrip",
         2000,
         fn() -> Int:
-            match parse(text: yaml):
-                ok(v): return yaml_length(v)
-                error(_): return 0
+            if let v = parse(text: yaml): return yaml_length(v)
+
+            return 0
     )

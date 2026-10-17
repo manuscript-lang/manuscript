@@ -43,11 +43,7 @@ fn observe_entry(key: String, value: Int) -> Unit:
         return panic(message: "check failed")
 
 fn common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
-    match result:
-        ok(value):
-            return ok(value)
-        error(cause):
-            return error(Error(cause))
+    return ok(try result)
 
 fn checked_expansion() -> Result[Unit, Error]:
     if not (
@@ -100,9 +96,9 @@ fn checked_expansion() -> Result[Unit, Error]:
         ) == "-é-🙂-"
     ):
         return panic(message: "check failed")
-    if not (try common_result(result: "é🙂".slice_scalars(start: 0, end: 1)) == "é"):
+    if not (("é🙂".slice_scalars(start: 0, end: 1) | try common_result) == "é"):
         return panic(message: "check failed")
-    if not (try common_result(result: "é".repeat(count: 3, max_bytes: 6)) == "ééé"):
+    if not (("é".repeat(count: 3, max_bytes: 6) | try common_result) == "ééé"):
         return panic(message: "check failed")
 
     return ok(unit)
@@ -380,11 +376,7 @@ test "string methods use Unicode scalars":
     if not (strip() == "hello"):
         return panic(message: "check failed")
 
-    match checked_expansion():
-        ok(_):
-            let completed = unit
-        error(cause):
-            return panic(message: cause.message())
+    try checked_expansion()
 
 test "bytes have analogous immutable operations":
     let data = Bytes([1, 2, 3, 2])
@@ -508,9 +500,9 @@ test "grouping and lazy map defaults":
         return panic(message: "check failed")
 
 fn verify_text_and_numbers() -> Result[Unit, Error]:
-    if not (try common_result(result: "é".normalize(form: "NFC", max_bytes: 2)) == "é"):
+    if not (("é".normalize(form: "NFC", max_bytes: 2) | try common_result) == "é"):
         return panic(message: "check failed")
-    if not (try common_result(result: "é".normalize(form: "NFD", max_bytes: 3)) == "é"):
+    if not (("é".normalize(form: "NFD", max_bytes: 3) | try common_result) == "é"):
         return panic(message: "check failed")
     if not (
         try common_result(
@@ -524,13 +516,13 @@ fn verify_text_and_numbers() -> Result[Unit, Error]:
         ) == "fi"
     ):
         return panic(message: "check failed")
-    if not (try common_result(result: 1.5.to_fixed(digits: 3)) == "1.500"):
+    if not ((1.5.to_fixed(digits: 3) | try common_result) == "1.500"):
         return panic(message: "check failed")
-    if not (try common_result(result: 1.5.to_exponential(digits: 3)) == "1.500e+0"):
+    if not ((1.5.to_exponential(digits: 3) | try common_result) == "1.500e+0"):
         return panic(message: "check failed")
-    if not (try common_result(result: 1.5.to_precision(precision: 4)) == "1.500"):
+    if not ((1.5.to_precision(precision: 4) | try common_result) == "1.500"):
         return panic(message: "check failed")
-    if not (try common_result(result: 12345.0.to_precision(precision: 3)) == "1.23e+4"):
+    if not ((12345.0.to_precision(precision: 3) | try common_result) == "1.23e+4"):
         return panic(message: "check failed")
     if not (
         try common_result(
@@ -542,12 +534,7 @@ fn verify_text_and_numbers() -> Result[Unit, Error]:
     return ok(unit)
 
 test "normalization, empty separators, and precision formatting":
-    match verify_text_and_numbers():
-        ok(_):
-            let completed = unit
-        error(cause):
-            return panic(message: cause.message())
-
+    try verify_text_and_numbers()
     if not ("é🙂".split(separator: "", max_parts: 8) == ["é", "🙂"]):
         return panic(message: "check failed")
 
@@ -582,9 +569,9 @@ fn verify_bigint_and_regex() -> Result[Unit, Error]:
         return panic(message: "check failed")
     if not (a.multiply(other: b).to_string(radix: 10) == "60"):
         return panic(message: "check failed")
-    if not ((try common_result(result: a.divide(other: b))).to_int() == some(2)):
+    if not ((a.divide(other: b) | try common_result | .to_int()) == some(2)):
         return panic(message: "check failed")
-    if not ((try common_result(result: a.remainder(other: b))).to_int() == some(2)):
+    if not ((a.remainder(other: b) | try common_result | .to_int()) == some(2)):
         return panic(message: "check failed")
     if not (a.compare(other: b) == 1):
         return panic(message: "check failed")
@@ -595,7 +582,7 @@ fn verify_bigint_and_regex() -> Result[Unit, Error]:
     if not (a.bit_xor(other: b).to_int() == some(9)):
         return panic(message: "check failed")
 
-    let pattern = try common_result(result: compile(pattern: "[0-9]+"))
+    let pattern = compile(pattern: "[0-9]+") | try common_result
     if not (pattern.matches(text: "a12b3")):
         return panic(message: "check failed")
     if not (
@@ -618,11 +605,7 @@ fn verify_bigint_and_regex() -> Result[Unit, Error]:
     return ok(unit)
 
 test "BigInt and Regex share function implementations with methods":
-    match verify_bigint_and_regex():
-        ok(_):
-            let completed = unit
-        error(cause):
-            return panic(message: cause.message())
+    try verify_bigint_and_regex()
 
 test "generic native methods accept omitted single-parameter labels":
     let values = [1, 2]

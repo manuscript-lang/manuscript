@@ -45,7 +45,7 @@ fn classify(value: Int) -> String:
 
 ## Unwrapping an Optional or Result
 
-`if let name = expression:` runs its block only when an [Optional](../types/optionals.md) holds a value or a [Result](../errors/results.md) is `ok`, and binds `name` to that value inside the block. The expression evaluates once. An `else` block runs when the Optional is `none` or the Result is an error, and `name` is not visible there or after the conditional. A Result's error is not captured; use `match` or `try` when the error matters. The binding is immutable and `expression` must be an `Optional` or `Result`; a `Bool` condition is rejected.
+`if let name = expression:` runs its block only when an [Optional](../types/optionals.md) holds a value or a [Result](../errors/results.md) is `ok`, and binds `name` to that value inside the block. The expression evaluates once. An `else` block runs when the Optional is `none` or the Result is an error, and `name` is not visible there or after the conditional. A Result's error is not captured; use `try`, or `is_error()` with `unwrap_error()`, when the error matters. The binding is immutable and `expression` must be an `Optional` or `Result`; a `Bool` condition is rejected.
 
 ```manuscript
 fn greeting(name: Optional[String]) -> String:
@@ -62,7 +62,7 @@ fn port(lookup: Result[Int, String]) -> Int:
     return 8080
 ```
 
-A present payload such as `0`, `false`, or an empty string still takes the first branch. The binding takes one name; destructure the payload inside the block. Prefer `if let` to a two-arm `match` on `some` and `none`, which `ms lint` reports as **MSL108**.
+A present payload such as `0`, `false`, or an empty string still takes the first branch. The binding takes one name; destructure the payload inside the block. Prefer `if let` to a two-arm `match` on `some` and `none` for an Optional, which `ms lint` reports as **MSL108**.
 
 ## Validating inputs
 

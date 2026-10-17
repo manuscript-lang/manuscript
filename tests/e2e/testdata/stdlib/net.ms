@@ -37,17 +37,10 @@ test "IP parsing CIDR normalization and containment":
 test "TCP loopback writes reads half close and EOF":
     let net = network()
 
-    with listener = value(net.listen("127.0.0.1:0")):
-        with client = value(
-            net.connect(address: listener.address(), timeout: 2.seconds)
-        ):
-            with server = value(listener.accept(timeout: 2.seconds)):
-                let sent = value(
-                    client.write(
-                        data: "hello".to_bytes(),
-                        timeout: 2.seconds
-                    )
-                )
+    with listener = net.listen("127.0.0.1:0") | value:
+        with client = net.connect(address: listener.address(), timeout: 2.seconds) | value:
+            with server = listener.accept(timeout: 2.seconds) | value:
+                let sent = client.write(data: "hello".to_bytes(), timeout: 2.seconds) | value
                 if (
                     value(
                         server.read(
@@ -60,7 +53,7 @@ test "TCP loopback writes reads half close and EOF":
                     "TCP address"
                 )
 
-                let shutdown = value(client.shutdown_write())
+                let shutdown = client.shutdown_write() | value
                 if not value(server.read(max_bytes: 5, timeout: 2.seconds)).is_none(): return panic(
                     "TCP EOF"
                 )
@@ -68,16 +61,14 @@ test "TCP loopback writes reads half close and EOF":
 test "UDP loopback preserves datagram data and sender":
     let net = network()
 
-    with receiver = value(net.bind_datagram("127.0.0.1:0")):
-        with sender = value(net.bind_datagram("127.0.0.1:0")):
-            let sent = value(
-                sender.send(
-                    data: "packet".to_bytes(),
-                    address: receiver.address(),
-                    timeout: 2.seconds
-                )
-            )
-            let packet = value(receiver.receive(max_bytes: 64, timeout: 2.seconds))
+    with receiver = net.bind_datagram("127.0.0.1:0") | value:
+        with sender = net.bind_datagram("127.0.0.1:0") | value:
+            let sent = sender.send(
+                data: "packet".to_bytes(),
+                address: receiver.address(),
+                timeout: 2.seconds
+            ) | value
+            let packet = receiver.receive(max_bytes: 64, timeout: 2.seconds) | value
             if packet.data != "packet".to_bytes() or packet.sender != sender.address(): return panic(
                 "UDP datagram"
             )
@@ -88,20 +79,20 @@ test "network restriction denies admission and close rejects acquisitions":
     )
 
     with scoped = restricted:
-        match restricted.listen("127.0.0.1:0"):
-            ok(_): return panic("listen permission ignored")
-            error(cause):
-                if cause != NetworkError.PermissionDenied: return panic(
-                    "listen denial identity"
-                )
+        let listened = restricted.listen("127.0.0.1:0")
+        if listened.is_ok(): return panic("listen permission ignored")
+        if listened.unwrap_error() != NetworkError.PermissionDenied: return panic(
+            "listen denial identity"
+        )
 
-    match restricted.connect(address: "127.0.0.1:1", timeout: 1.seconds):
-        ok(_): return panic("closed network admitted connection")
-        error(cause):
-            if cause != NetworkError.Closed: return panic("network close identity")
+    let connected = restricted.connect(address: "127.0.0.1:1", timeout: 1.seconds)
+    if connected.is_ok(): return panic("closed network admitted connection")
+    if connected.unwrap_error() != NetworkError.Closed: return panic(
+        "network close identity"
+    )
 
 test "typed addresses preserve normalization and reject zones":
-    let ip = value(parse_ip("::ffff:192.0.2.1"))
+    let ip = parse_ip("::ffff:192.0.2.1") | value
     if ip.text() != "192.0.2.1" or ip.family() != IpFamily.IPv4: return panic(
         "mapped normalization"
     )
@@ -110,12 +101,13 @@ test "typed addresses preserve normalization and reject zones":
     )
 
     expect_ip_error("fe80::1%eth0")
-    if value(contains_ip(value(parse_cidr("::ffff:192.0.2.0/120")), ip)): return panic(
+    if (parse_cidr("::ffff:192.0.2.0/120") | value | contains_ip(ip) | value): return panic(
         "normalized IPv4 matched mapped IPv6 prefix"
     )
 
 fn expect_ip_error(input: String) -> Unit:
-    match parse_ip(input):
-        ok(_): return panic("invalid IP accepted")
-        error(cause):
-            if cause != NetworkError.InvalidData: return panic("wrong address error")
+    let parsed = parse_ip(input)
+    if parsed.is_ok(): return panic("invalid IP accepted")
+    if parsed.unwrap_error() != NetworkError.InvalidData: return panic(
+        "wrong address error"
+    )

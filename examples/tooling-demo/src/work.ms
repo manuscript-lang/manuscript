@@ -23,9 +23,7 @@ fn compare() -> Result[Int, ExecutionError]:
         return ok(0)
 
 export fn main() -> Int:
-    match compare():
-        ok(code):
-            return code
+    if let code = compare():
+        return code
 
-        error(_):
-            return 1
+    return 1

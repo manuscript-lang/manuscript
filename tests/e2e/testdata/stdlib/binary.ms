@@ -6,14 +6,12 @@ import value from "./support/results.ms"
 test "binary integer boundaries and both byte orders":
     for little in [false, true]:
         for number in [-9223372036854775808, -32768, -1, 0, 32767, 9223372036854775807]:
-            let data = value(
-                write_integer(
-                    value: number,
-                    width: 8,
-                    signed: true,
-                    little_endian: little
-                )
-            )
+            let data = write_integer(
+                value: number,
+                width: 8,
+                signed: true,
+                little_endian: little
+            ) | value
             if (
                 value(
                     read_integer(
@@ -26,14 +24,12 @@ test "binary integer boundaries and both byte orders":
                 ) != number
             ): return panic("signed roundtrip")
 
-        let data = value(
-            write_integer(
-                value: 258,
-                width: 2,
-                signed: false,
-                little_endian: little
-            )
-        )
+        let data = write_integer(
+            value: 258,
+            width: 2,
+            signed: false,
+            little_endian: little
+        ) | value
 
         if little:
             if data != Bytes([2, 1]): return panic("little endian vector")
