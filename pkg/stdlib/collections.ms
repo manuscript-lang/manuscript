@@ -1,6 +1,6 @@
 # Errors returned when a collection factory exceeds its supplied item limit.
 export type CollectionError:
-    # A count, item budget, or step is invalid: `count` or `max_items` is negative, or `range` has a zero `step`.
+    # A count, item budget, or step is invalid: `count` or `max_items` is negative, or `range_by` has a zero `step`.
     case InvalidInput
     # The result would hold more items than `max_items`, or more than the runtime's ceiling of 268435456 (2^28) items when `max_items` is omitted.
     case LimitExceeded
@@ -251,9 +251,6 @@ export fn filled[T](
 ) -> Result[List[T], CollectionError]:
 
 # Creates the integers from `start` up to but excluding `end`, counting by one. The list is empty when `end <= start`. `for index in range(0, count):` runs as a counter loop without allocating the list. As a stored list, more than about 268 million items is a fault; use `range_by` to bound the size with an error value.
-#
-#     for index in range(0, 5):
-#         total += index
 export fn range(start: Int, end: Int) -> List[Int]:
 
 # Creates integers from `start` up to but excluding `end` using a nonzero `step`; a negative step counts down. Returns `InvalidInput` for a zero step and `LimitExceeded` when the list would exceed `max_items`.
