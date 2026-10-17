@@ -102,6 +102,9 @@ func Lex(file, source string) (tokens []Token, err error) {
 		s.fail("a byte-order mark is not allowed; save the file as UTF-8 without BOM")
 	}
 	pending, headerIndent, pendingDepth := false, 0, 0
+	// A line that starts with '.' or '|' continues the previous statement, which
+	// began at statementIndent; it opens no block and ends no statement.
+	continuing, statementIndent := false, 0
 	for s.offset < len(s.source) {
 		leading := 0
 		for s.offset < len(s.source) && s.source[s.offset] == ' ' {
@@ -128,35 +131,45 @@ func Lex(file, source string) (tokens []Token, err error) {
 		if leading%4 != 0 {
 			s.fail(fmt.Sprintf("indentation must be a multiple of four spaces, found %d; use %d or %d", leading, leading/4*4, leading/4*4+4))
 		}
-		startedSuite := false
-		if pending {
-			if leading == headerIndent+4 {
-				s.levels = append(s.levels, layout{leading, pendingDepth})
-				s.emit(Indent, "", s.pos())
-				startedSuite = true
-			} else if leading <= headerIndent {
-				// An empty declaration suite has the same layout boundaries as
-				// a populated one. The parser decides which suites may be empty.
-				s.emit(Indent, "", s.pos())
-				s.emit(Dedent, "", s.pos())
-			} else {
-				s.fail(fmt.Sprintf("a suite must begin exactly four spaces after its header; the header is at %d spaces, so indent this line to %d", headerIndent, headerIndent+4))
+		if continuing {
+			if leading != statementIndent+4 {
+				s.fail(fmt.Sprintf("a line starting with '.' or '|' continues the previous statement and must be indented four spaces past it, to %d spaces, found %d", statementIndent+4, leading))
 			}
-			pending = false
-		}
-		if !startedSuite {
-			// A continuation line inside delimiters opened within a level does not
-			// close that level; only suites opened inside the open delimiters can.
-			for len(s.levels) > 1 && leading < s.levels[len(s.levels)-1].indent && s.levels[len(s.levels)-1].depth >= len(s.delimiters) {
-				s.levels = s.levels[:len(s.levels)-1]
-				s.emit(Dedent, "", s.pos())
+			continuing = false
+		} else {
+			if len(s.delimiters) == s.levels[len(s.levels)-1].depth {
+				statementIndent = leading
 			}
-			top := s.levels[len(s.levels)-1]
-			if len(s.delimiters) == top.depth && leading != top.indent {
-				if leading > top.indent {
-					s.fail(fmt.Sprintf("unexpected indentation, %d spaces where %d are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it%s", leading, top.indent, s.continuationHint()))
+			startedSuite := false
+			if pending {
+				if leading == headerIndent+4 {
+					s.levels = append(s.levels, layout{leading, pendingDepth})
+					s.emit(Indent, "", s.pos())
+					startedSuite = true
+				} else if leading <= headerIndent {
+					// An empty declaration suite has the same layout boundaries as
+					// a populated one. The parser decides which suites may be empty.
+					s.emit(Indent, "", s.pos())
+					s.emit(Dedent, "", s.pos())
+				} else {
+					s.fail(fmt.Sprintf("a suite must begin exactly four spaces after its header; the header is at %d spaces, so indent this line to %d", headerIndent, headerIndent+4))
 				}
-				s.fail(fmt.Sprintf("inconsistent dedent to %d spaces; enclosing blocks are indented at %d or %d spaces, so align with one of them", leading, top.indent, max(top.indent-4, 0)))
+				pending = false
+			}
+			if !startedSuite {
+				// A continuation line inside delimiters opened within a level does not
+				// close that level; only suites opened inside the open delimiters can.
+				for len(s.levels) > 1 && leading < s.levels[len(s.levels)-1].indent && s.levels[len(s.levels)-1].depth >= len(s.delimiters) {
+					s.levels = s.levels[:len(s.levels)-1]
+					s.emit(Dedent, "", s.pos())
+				}
+				top := s.levels[len(s.levels)-1]
+				if len(s.delimiters) == top.depth && leading != top.indent {
+					if leading > top.indent {
+						s.fail(fmt.Sprintf("unexpected indentation, %d spaces where %d are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it%s", leading, top.indent, s.continuationHint()))
+					}
+					s.fail(fmt.Sprintf("inconsistent dedent to %d spaces; enclosing blocks are indented at %d or %d spaces, so align with one of them", leading, top.indent, max(top.indent-4, 0)))
+				}
 			}
 		}
 		top := s.levels[len(s.levels)-1]
@@ -217,7 +230,7 @@ func Lex(file, source string) (tokens []Token, err error) {
 			if matched {
 				continue
 			}
-			if strings.ContainsRune("()[]{}:,.+-*/%<>=&", rune(b)) {
+			if strings.ContainsRune("()[]{}:,.+-*/%<>=&|", rune(b)) {
 				if strings.ContainsRune("([{", rune(b)) {
 					s.delimiters = append(s.delimiters, b)
 					s.opened = append(s.opened, p)
@@ -266,7 +279,11 @@ func Lex(file, source string) (tokens []Token, err error) {
 				s.functionDepths = nil
 			} else if len(s.delimiters) == top.depth {
 				s.functionDepths = nil
-				s.emit(Newline, "", s.pos())
+				if s.continuesNext() {
+					continuing = true
+				} else {
+					s.emit(Newline, "", s.pos())
+				}
 			}
 		}
 		if s.offset < len(s.source) {
@@ -288,6 +305,43 @@ func Lex(file, source string) (tokens []Token, err error) {
 	}
 	s.emit(EOF, "", s.pos())
 	return s.tokens, nil
+}
+
+// continuesNext reports whether the next code line begins with '.' or '|', which
+// continues the statement on the current line. Blank and comment-only lines are
+// skipped. No valid statement starts with either character, so this changes no
+// program that was accepted before.
+func (s *scanner) continuesNext() bool {
+	i := s.offset
+	if i >= len(s.source) {
+		return false
+	}
+	i++
+	for i < len(s.source) {
+		j := i
+		for j < len(s.source) && s.source[j] == ' ' {
+			j++
+		}
+		if j >= len(s.source) {
+			return false
+		}
+		switch s.source[j] {
+		case '\n':
+			i = j + 1
+		case '#':
+			for j < len(s.source) && s.source[j] != '\n' {
+				j++
+			}
+			i = j + 1
+		case '|':
+			return true
+		case '.':
+			return j+1 < len(s.source) && !digit(s.source[j+1]) && s.source[j+1] != '.'
+		default:
+			return false
+		}
+	}
+	return false
 }
 
 // skipComment consumes a comment through the end of its physical line. Tabs are
@@ -483,8 +537,6 @@ func characterHint(b byte) string {
 		return "; text uses double quotes, e.g. \"text\""
 	case '!':
 		return "; write 'not x' for negation and '!=' for inequality"
-	case '|':
-		return "; write 'or' for logical or"
 	case '?':
 		return "; Manuscript has no ? operator, so use Optional values and match, or 'try' for Result"
 	case '`':

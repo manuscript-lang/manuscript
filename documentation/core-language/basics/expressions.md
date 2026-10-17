@@ -21,9 +21,12 @@ Rows are ordered from highest to lowest precedence.
 | `not` | Right to left; its operand includes comparisons |
 | `and` | Left to right, short circuit |
 | `or` | Left to right, short circuit |
+| Pipe `\|` | Left to right; lowest precedence, see [pipe flows](#pipe-flows) |
 
 ```ebnf
-Expression    = OrExpression ;
+Expression    = Pipe ;
+Pipe          = OrExpression, { "|", PipeStep } ;
+PipeStep      = [ "try" ], ( Name, { ".", Name }, [ CallArguments ] | Postfix-from-dot ) | "try" ;
 OrExpression  = AndExpression, { "or", AndExpression } ;
 AndExpression = NotExpression, { "and", NotExpression } ;
 NotExpression = "not", NotExpression | Comparison ;
@@ -46,11 +49,44 @@ MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
                   MatchArm, { MatchArm }, DEDENT ;
 ```
 
+In `PipeStep`, `Postfix-from-dot` is a postfix chain that starts with `.`, such as `.trim()` or `.items[0].name`. [Pipe flows](#pipe-flows) define the steps.
+
 The common `Comparison` production makes `a < b == c`, `a == b == c`, and `a < b < c` syntax errors. Comparisons with explicit grouping, such as `(a < b) == flag`, are ordinary Bool equality. `not a == b` means `not (a == b)`. `try read() + 1` means `(try read()) + 1`; use `try (expression)` to propagate the result of a larger expression.
 
 A generic application in expression position, such as `identity[Int]` or `Box[String]`, supplies types to a resolved generic declaration. When the receiver is a list value, brackets instead perform lookup: `values[index]` has the same `Optional[T]` result and negative-index behavior as `values.at(index)`. The receiver determines whether brackets supply types or an Int index; this does not depend on capitalization. Slicing and indexed assignment remain unsupported; use collection methods for updates. The grammar accepts member paths syntactically; resolution determines whether a member is a record field, alternative case, or operation. Calls accept positional arguments and optional labels; the checker enforces [call rules](../functions/declarations-and-calls.md#argument-names). Single-payload constructors and explicit contract views may omit their label, as in `Box(3)`, `some(3)`, or `Payments(card)`. Constructors with multiple payload fields follow the same optional-label call rules.
 
 Contract views use `Payments(card)` or `Payments(value: card)`. [Contract views](../types/contracts.md#explicit-contract-views) require an explicit implementation and exactly one `value` argument. There is no separate sharing refinement or shared constructor.
+
+## Pipe flows
+
+`lhs | step` passes `lhs` to the step, so a sequence of operations reads left to right with no temporary names. The parser rewrites each step to the ordinary call it names; checking, diagnostics, and lowering see plain calls in written order.
+
+| Step | Means |
+| --- | --- |
+| `x \| f` | `f(x)` |
+| `x \| f(a: 1)` | `f(x, a: 1)`: `x` becomes the first positional argument |
+| `x \| m.f(2)` | `m.f(x, 2)` |
+| `x \| .m(2)` | `x.m(2)`: a method, field, or index chain on the value |
+| `x \| try step` | `try` of the step's result |
+| `x \| try` | `try x`: unwrap the value so far |
+
+```manuscript
+fn load(path: String) -> Result[Config, ConfigError]:
+    let config = try read(path: path)
+        | try parse
+        | normalize
+        | try validate
+    return ok(config)
+```
+
+Rules:
+
+- `|` has the lowest precedence and associates left to right: `a + b | f` is `f(a + b)`. A pipe cannot be an operand of another operator without parentheses; write `(x | f) == y`. A leading `try` binds only the head expression, as in `try read(path: path) | f`.
+- A step is a name or member path over names, optionally followed by one argument list, or a `.` chain. Calls inside the path, literals, and function expressions are not steps; bind the function to a name first. The path has no calls, so the value on the left is always evaluated before the step's other arguments.
+- `x | f(...)` always inserts `x` as the first argument; it cannot apply a function that `f(...)` returns. Argument labels follow the [call rules](../functions/declarations-and-calls.md#argument-names), and the inserted argument is positional.
+- `try` before a step unwraps that step's result with the [propagation rules](../errors/propagation.md): the error type must fit the enclosing function, evaluation stops at the first error, and cleanup runs for the scopes left. A step without `try` that returns a Result passes it on unchanged. A flow may contain several `try` steps.
+- A `.member`, call, or index directly after a step, on the same line or the next, applies to the step's result: `x | f(a: 1).size()` is `f(x, a: 1).size()`.
+- A line that starts with `|` or `.` continues the previous statement. It must be indented exactly four spaces past the line where the statement began; blank and comment-only lines in between are ignored. No other construct starts a line with either character, and inside `()`, `[]`, or `{}` newlines are already ignored.
 
 ## Operand and result types
 

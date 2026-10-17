@@ -166,6 +166,9 @@ func alignSuiteHeaders(lines []string, tokens []lexer.Token) ([]string, bool) {
 
 func tokenSpace(tokens []lexer.Token, at int) bool {
 	current, previous := tokens[at].Kind, tokens[at-1].Kind
+	if current == "." && (previous == "|" || previous == "try") {
+		return true
+	}
 	if strings.Contains(" ) ] } , . : ", " "+current+" ") {
 		return false
 	}

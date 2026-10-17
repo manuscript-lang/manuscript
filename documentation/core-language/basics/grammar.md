@@ -52,7 +52,7 @@ At module level, code starts in column zero. A suite is introduced by `:`. An in
 
 The grammar uses `NEWLINE`, `INDENT`, and `DEDENT` for these logical boundaries. End of file supplies the final `NEWLINE` if needed and closes outstanding suites. Empty bodies have no `pass` shorthand: each suite must contain a statement or declaration appropriate to its context.
 
-Inside `()`, `[]`, and `{}`, ordinary physical newlines do not produce `NEWLINE`, `INDENT`, or `DEDENT`. Continuation lines must use spaces and a multiple of four for their leading indentation, but need not create a block. Delimiters must balance; a closing delimiter may align with the line that opened it. Trailing commas are allowed only in the comma-separated forms shown below.
+Inside `()`, `[]`, and `{}`, ordinary physical newlines do not produce `NEWLINE`, `INDENT`, or `DEDENT`. Continuation lines must use spaces and a multiple of four for their leading indentation, but need not create a block. A line whose first token is `|`, or `.` not followed by a digit or another `.`, continues the previous statement outside delimiters as well, with no `NEWLINE`, `INDENT`, or `DEDENT`. Blank and comment-only lines before it are skipped, and it must be indented exactly four spaces past the line where the statement began. See [pipe flows](expressions.md#pipe-flows). Delimiters must balance; a closing delimiter may align with the line that opened it. Trailing commas are allowed only in the comma-separated forms shown below.
 
 ### Anonymous-function suites inside delimiters
 

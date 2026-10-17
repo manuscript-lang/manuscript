@@ -24,7 +24,7 @@ type ScalarCase:
     expected: String
 
 fn scalar(text: String, expected: String) -> Unit:
-    let root = entries(value(parse(text: text)))
+    let root = parse(text: text) | value | entries
     if root.get("a").unwrap() != YamlValue.StringValue(expected): return panic(
         "scalar folding: {text}"
     )
@@ -83,7 +83,7 @@ test "YAML quoted folding trims physical whitespace and preserves escapes":
     if value(parse(text: "'x\n\n  y'")) != YamlValue.StringValue("x\ny"):
         return panic("root quoted paragraph")
 
-    let flow = items(value(parse(text: "['x\n\n  y', \"z\\\n\n  w\"]")))
+    let flow = parse(text: "['x\n\n  y', \"z\\\n\n  w\"]") | value | items
     if flow != [YamlValue.StringValue("x\ny"), YamlValue.StringValue("z\nw")]:
         return panic("quoted folding inside flow collection")
 
@@ -154,7 +154,7 @@ test "YAML plain paragraphs retain boundaries and nested collections":
         if root.get("b").unwrap() != YamlValue.NumberValue("1"):
             return panic("plain folding consumed sibling")
 
-    let root = entries(value(parse(text: "a:\n  - x\n\n    y\n  - z\nb: 1\n")))
+    let root = parse(text: "a:\n  - x\n\n    y\n  - z\nb: 1\n") | value | entries
     if (
         items(root.get("a").unwrap()) != [
             YamlValue.StringValue("x\ny"),
@@ -230,7 +230,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
 
 test "YAML block mappings sequences exact scalars and core schema":
     let text = "name: é🙂\nlarge: 9007199254740993\nboolean: TRUE\nlegacy: yes\ndate: 2024-02-29\nempty:\nvalues:\n- null\n- false\n- 0xFF\npeople:\n  - name: Ada\n    age: 37\n  - name: Grace\n    skills:\n      - compilers\n"
-    let root = entries(value(parse(text: text)))
+    let root = parse(text: text) | value | entries
     if root.get("name").unwrap() != YamlValue.StringValue("é🙂"): return panic(
         "YAML Unicode"
     )
@@ -327,7 +327,7 @@ test "YAML literal folded and chomped block scalars preserve content":
 
 test "YAML anchors aliases merge keys and override precedence":
     let text = "defaults: &defaults\n  retries: 3\n  enabled: true\ncopy: *defaults\nconfig:\n  <<: *defaults\n  retries: 5\nscalar: &answer 42\nalias: *answer\nflow: &flow [1, 2]\nflow_alias: *flow\n"
-    let root = entries(value(parse(text: text)))
+    let root = parse(text: text) | value | entries
     if root.get("defaults").unwrap() != root.get("copy").unwrap(): return panic(
         "mapping alias"
     )
@@ -537,12 +537,12 @@ test "YAML scalars and anchors on their own line continue at the same indentatio
         "sibling after scalar"
     )
 
-    let list = items(value(parse(text: "- foo\n  bar\n-\n  baz\n  qux\n")))
+    let list = parse(text: "- foo\n  bar\n-\n  baz\n  qux\n") | value | items
     if list != [YamlValue.StringValue("foo bar"), YamlValue.StringValue("baz qux")]: return panic(
         "sequence items"
     )
 
-    let anchored = entries(value(parse(text: "a:\n  &x\n  k: 1\nb: *x\n")))
+    let anchored = parse(text: "a:\n  &x\n  k: 1\nb: *x\n") | value | entries
     if anchored.get("a").unwrap() != anchored.get("b").unwrap(): return panic(
         "anchor on its own line"
     )
@@ -553,18 +553,18 @@ test "YAML scalars and anchors on their own line continue at the same indentatio
     ): return panic("anchored mapping")
 
 test "YAML quoted merge key is an ordinary string key":
-    let block = entries(value(parse(text: "\"<<\": 1\nplain: 3\n")))
+    let block = parse(text: "\"<<\": 1\nplain: 3\n") | value | entries
     if block.get("<<").unwrap() != YamlValue.NumberValue("1"): return panic(
         "block quoted key"
     )
     if block.length() != 2: return panic("block entries")
 
-    let single = entries(value(parse(text: "'<<': 2\n")))
+    let single = parse(text: "'<<': 2\n") | value | entries
     if single.get("<<").unwrap() != YamlValue.NumberValue("2"): return panic(
         "single quoted key"
     )
 
-    let flow = entries(value(parse(text: "\{\"<<\": 1, a: 2\}\n")))
+    let flow = parse(text: "\{\"<<\": 1, a: 2\}\n") | value | entries
     if flow.get("<<").unwrap() != YamlValue.NumberValue("1"): return panic(
         "flow quoted key"
     )
@@ -644,7 +644,7 @@ fn repeated(text: String, count: Int) -> String:
 
 test "YAML long plain scalars and large mappings parse in linear time":
     let long = repeated(text: "x", count: 300000)
-    let scalar = entries(value(parse(text: "a: {long}")))
+    let scalar = parse(text: "a: {long}") | value | entries
     if scalar.get("a").unwrap() != YamlValue.StringValue(long): return panic(
         "long plain scalar"
     )
@@ -663,7 +663,7 @@ test "YAML long plain scalars and large mappings parse in linear time":
         error(_): return
 
 test "YAML flow mapping keys without a colon map to null":
-    let root = entries(value(parse(text: "a: \{x, y: 1, z\}\nb: \{\"q\", r: [1]\}")))
+    let root = parse(text: "a: \{x, y: 1, z\}\nb: \{\"q\", r: [1]\}") | value | entries
     let first = entries(root.get("a").unwrap())
     if first.length() != 3: return panic("flow keys")
     if first.get("x").unwrap() != YamlValue.Null: return panic("first null key")
@@ -687,18 +687,18 @@ test "YAML flow mapping keys without a colon map to null":
 
 test "YAML long quoted block and multi-line scalars decode and stringify in linear time":
     let long = repeated(text: "x", count: 300000)
-    let double = entries(value(parse(text: "a: \"{long}\"")))
+    let double = parse(text: "a: \"{long}\"") | value | entries
     if double.get("a").unwrap() != YamlValue.StringValue(long): return panic(
         "double quoted"
     )
 
-    let single = entries(value(parse(text: "a: '{long}'")))
+    let single = parse(text: "a: '{long}'") | value | entries
     if single.get("a").unwrap() != YamlValue.StringValue(long): return panic(
         "single quoted"
     )
 
     let lines = repeated(text: "word\n  ", count: 20000)
-    let plain = entries(value(parse(text: "a: {lines}end")))
+    let plain = parse(text: "a: {lines}end") | value | entries
     if (
         plain.get("a").unwrap() != YamlValue.StringValue(
             repeated(text: "word ", count: 20000).concat("end")
@@ -706,7 +706,7 @@ test "YAML long quoted block and multi-line scalars decode and stringify in line
     ): return panic("multi-line plain")
 
     let body = repeated(text: "  line\n", count: 20000)
-    let literal = entries(value(parse(text: "a: |\n{body}")))
+    let literal = parse(text: "a: |\n{body}") | value | entries
     if (
         literal.get("a").unwrap() != YamlValue.StringValue(
             repeated(text: "line\n", count: 20000)

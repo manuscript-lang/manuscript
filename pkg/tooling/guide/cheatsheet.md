@@ -33,5 +33,6 @@ test "addition":
 - `match v:` arms `Case(x):`, `_:`; exhaustive. Keep it flat: never nest `match`; early-return, `try`, or a helper.
 - Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `try e` unwraps or returns the error; `if let x = result:` handles success when the error can be discarded. `Error` is the common boundary (`.message()`). Faults (`panic`, `unwrap()` on `none`) abort.
 - Methods only via `interface I:` + `impl I for T:` (no `impl T:`); other functions are `f(x)`.
+- Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`; `| try` unwraps. Lines starting `|` or `.` continue.
 - Closures snapshot bindings; shared collections stay shared. `with f = try ...:` closes `f` at block end.
 - Common rejects: reassigning a `let`; mixed list types; missing arguments; bare `none` without type context; indentation not a multiple of four.

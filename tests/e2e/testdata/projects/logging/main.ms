@@ -51,8 +51,8 @@ fn exercise(mode: String, path: String) -> Result[Unit, Error]:
 
     if (mode == "file" or mode == "concurrent" or mode == "missing"):
         with transport = try file_transport(path):
-            let root = try create(transport: transport, timestamp: false)
-            let logger = try bind(logger: root, bindings: bindings)
+            let logger = try create(transport: transport, timestamp: false)
+                | try bind(bindings: bindings)
 
             if mode == "concurrent":
                 let logged = try concurrent_records(logger)
@@ -65,11 +65,11 @@ fn exercise(mode: String, path: String) -> Result[Unit, Error]:
 
     with transport = stdout_transport():
         if mode == "limit":
-            let logger = try create(transport: transport, max_bytes: 1)
-            let logged = try logger.info(message: "too large")
+            let logged = try create(transport: transport, max_bytes: 1)
+                | try .info(message: "too large")
         else:
-            let root = try create(transport: transport)
-            let logger = try bind(logger: root, bindings: bindings)
+            let logger = try create(transport: transport)
+                | try bind(bindings: bindings)
 
             if mode == "invalid":
                 let logged = try record(
