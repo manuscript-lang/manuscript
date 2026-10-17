@@ -27,7 +27,7 @@ cover all runs.
 python3 ms-bench/run.py list
 python3 ms-bench/run.py oracle                     # reference solutions vs hidden cases; validates the suite
 python3 ms-bench/run.py run --harness claude_code --model <model> \
-    --challenges c03,c05 --languages ms,go --repeat 3 --tag baseline
+    --challenges c03,c05 --languages ms,go --repeat 3 --jobs 4 --tag baseline
 python3 ms-bench/report.py                         # Markdown tables from results/runs.jsonl
 python3 -m unittest discover -s ms-bench/tests
 ```
@@ -88,4 +88,4 @@ cases and first-build success. Harbor records tokens and cost per trial. Use `-a
 - Wall time includes model latency, so compare it within a harness and model, not across them.
 - Manuscript's current runtime performance affects tests with large inputs (see `c04-lru-cache`); timeouts are
   set per challenge in `challenge.json`.
-- Runs are sequential. Parallelism and cross-run seeds for model sampling are not implemented.
+- Cross-run seeds for model sampling are not implemented. `--jobs N` runs trials in parallel; wall time then reflects contention, so compare it only within one `--jobs` setting.
