@@ -821,6 +821,11 @@ func (c *checker) checkIfLet(s *syntax.Statement) (bool, bool) {
 func (c *checker) checkWhile(s *syntax.Statement) (bool, bool) {
 	c.enterLoop(s.Body)
 	i := c.expression(s.Value, primitive("Bool"))
+	if !c.callFree(s.Value) {
+		// The condition runs before every iteration, so what it calls can
+		// shrink a list that a fact from before the loop still describes.
+		c.killMutations()
+	}
 	c.loops++
 	facts := len(c.facts)
 	c.pushFacts(c.guardFacts(s.Value, true))
