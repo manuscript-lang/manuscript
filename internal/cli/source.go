@@ -70,15 +70,19 @@ func runSourceCommand(args []string, usage string) int {
 	}
 	switch inv.command {
 	case "inspect", "diagram":
-		return inspectProgram(inv.command, inv.output, inv.format, result)
+		return inspectProgram(inv, result)
 	case "emit":
 		return emitSource(inv.output, result)
 	}
 	return runNativeProgram(inv, p.kind, result)
 }
 
-func inspectProgram(command, output, format string, result compiler.Result) int {
+func inspectProgram(inv *invocation, result compiler.Result) int {
+	command, output, format := inv.command, inv.output, inv.format
 	inspection := tooling.Inspect(result.Program)
+	if command == "diagram" && (inv.view != "" || inv.entity != "") {
+		return writeView(inv, result)
+	}
 	if command == "diagram" {
 		if format == "mermaid" {
 			return writeOutput(output, []byte(tooling.Diagram(inspection)))
@@ -173,4 +177,21 @@ func runDebugScript(ctx context.Context, inv *invocation, result compiler.Result
 		_ = debugger.ReportError(ctx, os.Stderr, err)
 	}
 	return status
+}
+
+// writeView prints one scoped diagram view of the checked program.
+func writeView(inv *invocation, result compiler.Result) int {
+	view := inv.view
+	if view == "" {
+		view = "calls"
+	}
+	tree, err := tooling.BuildView(tooling.CollectFacts(result.Program), view, inv.entity, inv.depth)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ms diagram: %v\n", err)
+		return 2
+	}
+	if inv.format == "mermaid" {
+		return writeOutput(inv.output, []byte(tree.Mermaid()))
+	}
+	return writeOutput(inv.output, []byte(tree.ASCII()))
 }
