@@ -75,4 +75,4 @@ On escalation the host:
 2. writes any retained primary and secondary fault diagnostics;
 3. terminates the process without running further cleanup.
 
-The CLI host exits 70 and labels the exit as incomplete cleanup. Conformance treats an escalated exit as a failure of the program, not as successful shutdown. See CLI exit and shutdown, HTTP shutdown, and [cleanup faults](../core-language/cleanup/cleanup-faults.md).
+The CLI host exits 70 and labels the exit as incomplete cleanup. Native `RunMain` and the test runner implement the grace period and the second-request rule, and today write one `incomplete cleanup: <reason>` line instead of per-operation diagnostics; the grace period is not configurable yet. Conformance treats an escalated exit as a failure of the program, not as successful shutdown. See CLI exit and shutdown, HTTP shutdown, and [cleanup faults](../core-language/cleanup/cleanup-faults.md).
