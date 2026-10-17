@@ -21,7 +21,7 @@ fn limits(
 
 test "TOML scalars quoted keys comments exact integers and dates":
     let source = "title = \"é🙂 # text\" # comment\n'' = 'literal\\n'\nbool = true\nlarge = 9007199254740993\nhex = 0xDEAD_BEEF\noct = 0o755\nbin = 0b1010\nfloat = -1_2.5e+2\ndate = 2024-02-29\ntime = 07:32:00.123\nstamp = 1979-05-27 07:32:00-07:00\n"
-    let root = entries(value(parse(text: source)))
+    let root = parse(text: source) | value | entries
     if root.get("title").unwrap() != TomlValue.StringValue("é🙂 # text"): return panic(
         "TOML text"
     )
@@ -79,7 +79,7 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
 
 test "TOML implicit parents dotted keys and arrays of tables":
     let text = "[owner.details]\nname = 'Ada'\n[owner]\nactive = true\n[[products]]\nname = 'Hammer'\n[products.meta]\nstock = 3\n[[products]]\nname = 'Nail'\n[[products.variants]]\nsize = 1\n[[products.variants]]\nsize = 2\n"
-    let root = entries(value(parse(text: text)))
+    let root = parse(text: text) | value | entries
     let owner = entries(root.get("owner").unwrap())
     if (
         entries(owner.get("details").unwrap()).get(
@@ -98,7 +98,7 @@ test "TOML implicit parents dotted keys and arrays of tables":
         "nested table arrays"
     )
 
-    let dotted = entries(value(parse(text: "a.b.c = 1\na.b.d = 2\n")))
+    let dotted = parse(text: "a.b.c = 1\na.b.d = 2\n") | value | entries
     if entries(entries(dotted.get("a").unwrap()).get("b").unwrap()).length() != 2: return panic(
         "dotted assignment"
     )

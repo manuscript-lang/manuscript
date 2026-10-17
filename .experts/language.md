@@ -212,3 +212,12 @@ Open: hoisting scalar constants to Go constants for performance.
 Apply when: changing top-level declarations, name resolution of module symbols, or the formatter's blank-line rules.
 Evidence: [constants rules](../documentation/core-language/modules/declarations.md#constants), [checker](../pkg/checker/constants.go), [diagnostics](../tests/e2e/constants_test.go), and [native fixture](../tests/e2e/testdata/accept/constants.ms).
 Verify: `ms run` on a module using an exported constant from another module, a local `let` shadowing a constant, and `A()` on a constant rejected.
+
+### Pipe steps desugar in the parser; a leading `.` or `|` line continues a statement
+
+Decision: Chinmay chose `|` (not `|>`, `?`, UFCS, or `map_error`) to compose free functions and `try` steps without temporaries; `|` earlier rejected as a second spelling for method chaining, but free functions had no flow form. Method chains use `| .m()`, and a bare `| try` unwraps the value so far.
+Verified: `pkg/parser` rewrites each step to the plain call or `try` it names, so checking, lowering and diagnostics are unchanged and argument order is the written order (the step head is a name path with no calls). The lexer treats a line starting with `|`, or `.` not followed by a digit or `.`, as a statement continuation indented exactly four spaces past the statement; no valid program started a line with either, so nothing existing changed meaning. A `.member` after a step applies to the step's result, and an operator after a pipe needs parentheses.
+
+Apply when: changing operator precedence, line layout, `try`, or call argument binding.
+Evidence: [pipe flows](../documentation/core-language/basics/expressions.md#pipe-flows), [parser tests](../pkg/parser/pipe_test.go), [formatter test](../pkg/tooling/format_pipe_test.go), and [native fixture](../tests/e2e/testdata/accept/pipe-flow.ms).
+Verify: `try parse(text) | double | try check | .to_string(radix: 10)` runs; a continuation line at the wrong indentation is rejected.
