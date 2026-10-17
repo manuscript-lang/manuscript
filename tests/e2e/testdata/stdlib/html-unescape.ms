@@ -69,3 +69,10 @@ test "HTML escape and unescape retain immutable text":
     if (alias != "&lt;é&gt;" or original != alias or decoded != "<é>"): return panic(
         "unescape text alias"
     )
+
+test "HTML unescape keeps a hexadecimal reference without digits literal":
+    if unescape("&#x;") != "&#x;" or unescape("&#X;") != "&#X;": return panic(
+        "bare hex reference"
+    )
+    if unescape("a&#x;b") != "a&#x;b": return panic("embedded bare hex reference")
+    if unescape("&amp;&#x;&lt;") != "&&#x;<": return panic("neighbouring references")
