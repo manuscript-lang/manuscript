@@ -35,20 +35,20 @@ Accept this independent module without standard imports:
 ```manuscript
 import panic from "@std/faults.ms"
 
-type List:
+type Items:
     count: Int
 
-type Result:
+type Outcome:
     case Value(value: Int)
 
 fn compute(value: Int) -> Int:
     return value
 
-fn ordinary() -> Result:
-    return Result.Value(compute(value: 3))
+fn ordinary() -> Outcome:
+    return Outcome.Value(compute(value: 3))
 
-test "standard spellings are ordinary names":
-    if not (List(2).count == 2):
+test "non-prelude spellings are ordinary names":
+    if not (Items(2).count == 2):
         return panic(message: "check failed")
     let forward = compute
     if not (forward(value: 4) == 4):
@@ -59,7 +59,7 @@ test "standard spellings are ordinary names":
                 return panic(message: "check failed")
 ```
 
-Adding the canonical List or Result import rejects its collision with the local declaration. `try ordinary()` is rejected: this Result is not the standard alternative. A bracket literal is rejected when a module declaration replaces the canonical prelude List identity. The local compute function is an ordinary function value.
+Declaring `List`, `Result`, or another prelude name is rejected as reusing a prelude name. `try ordinary()` is rejected: Outcome is not the standard alternative. The local compute function is an ordinary function value.
 
 Preserve ordinary generic method specialization and constructor restrictions in all existing sharing fixtures. Independently reject unimported TaskGroup, Task, Scheduler, ExecutionError, OperationId, StartError, and check_cancelled in otherwise well-formed calls or annotations; importing one standard export must not expose the rest. A local check_cancelled function remains an ordinary function and receives no runtime checkpoint behavior.
 

@@ -27,7 +27,7 @@ func TestDiagnosticsStateCauseAndFix(t *testing.T) {
 		{"member from two interfaces is ambiguous", "interface I:\n    fn m() -> Int\ninterface J:\n    fn m() -> Int\ntype A:\n    n: Int\nimpl I for A:\n    fn m() -> Int: return 1\nimpl J for A:\n    fn m() -> Int: return 2\nfn f(a: A) -> Int:\n    return a.m()\n", []string{"ambiguous member m on A", "provided by I, J", "I(value: ...).m()"}, 1},
 		{"generic function value is one error", "fn id[T](x: T) -> T:\n    return x\nfn f() -> Int:\n    let g = id\n    return g(1)\n", []string{"generic function value requires explicit specialization"}, 1},
 		{"uninferable generic call reports no missing argument", "fn g[T](x: T) -> Int:\n    return 0\nfn f() -> Int:\n    return g()\n", []string{"cannot infer type argument T"}, 1},
-		{"declaration shadows prelude type", "type Optional:\n    x: Int\nfn f(o: Optional[Int]) -> Int:\n    return 0\n", []string{"Optional requires 0 type arguments", "shadows the prelude Optional"}, 1},
+		{"declaration reuses prelude type", "type Optional:\n    x: Int\nfn f(o: Optional[Int]) -> Int:\n    return 0\n", []string{"declaration Optional reuses a prelude name", "rename it"}, 1},
 		{"callback arity mismatch is one error", "fn start[T](operation: fn() -> T) -> Int:\n    return 0\nfn work(n: Int) -> Int:\n    return n\nfn f() -> Int:\n    return start(work)\n", []string{"callback mismatch", "takes 1 parameter but this position expects 0"}, 1},
 		{"unknown member", "type P:\n    x: Int\nfn f(p: P) -> Int:\n    return p.y\n", []string{"unknown or ambiguous member y on P", "available: x"}, 1},
 		{"set insert hint", "fn f(values: Set[Int]) -> Unit:\n    values.insert(1)\n", []string{"unknown or ambiguous member insert", "did you mean 'add'?"}, 1},

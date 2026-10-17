@@ -2,6 +2,7 @@ package checker
 
 import (
 	"slices"
+	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
@@ -28,25 +29,28 @@ func PreludeTypeNames() []string {
 	return append(append([]string{}, primitiveNames...), standardPreludeNames...)
 }
 
+// preludeCaseNames are prelude constructors a declaration may not replace.
+var preludeCaseNames = []string{"some", "none", "ok", "error"}
+
 func (c *checker) addStandardPrelude() {
+	if !strings.HasPrefix(c.module.File, "@std/") {
+		for _, decl := range c.module.Declarations {
+			if decl.Kind != syntax.KindImpl && decl.Kind != syntax.KindTest && slices.Contains(preludeCaseNames, decl.Name) {
+				c.error(decl.Pos, "resolution", "declaration "+decl.Name+" reuses a prelude constructor name; rename it, because "+decl.Name+" always refers to the prelude case")
+			}
+		}
+	}
 	for _, name := range standardPreludeNames {
 		symbol := standardSymbols[name]
 		if symbol.Module == c.module.File {
 			continue
 		}
+		// A redundant standard import is reported on its own; a declaration or
+		// application import that reuses the name is rejected by addSymbol.
 		explicit := false
 		for _, item := range c.module.Imports {
-			if item.Name == name {
+			if item.Name == name && strings.HasPrefix(item.Path, "@std/") {
 				explicit = true
-			}
-		}
-		// Prelude data types are ordinary standard declarations;
-		// module declarations may select a local identity instead.
-		if name != "Equal" && name != "Hashable" {
-			for _, decl := range c.module.Declarations {
-				if decl.Kind != syntax.KindImpl && decl.Kind != syntax.KindTest && decl.Name == name {
-					explicit = true
-				}
 			}
 		}
 		if !explicit {

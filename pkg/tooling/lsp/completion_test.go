@@ -336,14 +336,6 @@ func TestCollectionPreludeEditorContracts(t *testing.T) {
 	if label != "entries.add(key: String, value: Int) -> Map[String, Int]" || signature["activeParameter"] != 1 {
 		t.Fatal(signature)
 	}
-	local := completeSource(t, "type Map[K,V]:\n    value: V\nfn use(entries: Map[String, Int]) -> Unit:\n    entries.|\n")
-	if itemNamed(local, "add") != nil || itemNamed(local, "value") == nil {
-		t.Fatal(local)
-	}
-	local = completeSource(t, "type Set[T]:\n    value: T\nfn use(values: Set[Int]) -> Unit:\n    values.|\n")
-	if itemNamed(local, "add") != nil || itemNamed(local, "value") == nil {
-		t.Fatal(local)
-	}
 }
 
 func TestStatementKeywordsAreReserved(t *testing.T) {
