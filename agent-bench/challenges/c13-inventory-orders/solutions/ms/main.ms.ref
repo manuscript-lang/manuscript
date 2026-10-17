@@ -154,7 +154,7 @@ fn run_command(w: Warehouse, line: String) -> List[String]:
             return ["error: bad quantity"]
         let now = w.stock.get_or(key: sku, fallback: 0) + q.unwrap()
         w.stock.add(key: sku, value: now)
-        w.price.with_default(key: sku, value: 0)
+        w.price.add_default(key: sku, value: 0)
         return ["ok {sku} stock={now}"]
     if name == "price":
         let p = number(t.at(2).unwrap())

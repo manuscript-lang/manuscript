@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Verifier used inside Harbor tasks: build /app, run hidden cases, write the reward.
 
-Usage: grade.py <cases.json> <build-cmd> <run-cmd> <timeout-s>
+Usage: grade.py <cases.json> <build-cmd> <run-cmd> <timeout-s> [source-suffix]
 Writes /logs/verifier/reward.txt (1 if every case passes, else 0) and detail.json.
 """
 import json
@@ -9,7 +9,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from codetokens import count_workspace  # noqa: E402
+
 cases_path, build, run, timeout = sys.argv[1], sys.argv[2], sys.argv[3], float(sys.argv[4])
+suffix = sys.argv[5] if len(sys.argv) > 5 else ""
 out_dir = Path("/logs/verifier")
 out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -18,7 +22,7 @@ def norm(s):
     return "\n".join(l.rstrip() for l in s.rstrip().split("\n")) if s.strip() else ""
 
 
-detail = {"built": False, "passed": 0, "total": 0, "failed": []}
+detail = {"built": False, "passed": 0, "total": 0, "failed": [], "code_tokens": count_workspace("/app", suffix) if suffix else None}
 log = Path("/app/.bench/log.jsonl")
 rows = [json.loads(l) for l in log.read_text().splitlines() if l.strip()] if log.exists() else []
 builds = [r for r in rows if r["phase"] == "build"]

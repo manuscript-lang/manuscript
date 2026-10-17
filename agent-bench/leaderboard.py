@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Collect Harbor trials into results/trials.jsonl and render results/leaderboard.md.
+"""Collect Harbor trials into results/trials-YYYY-MM-DD.jsonl and render results/leaderboard-YYYY-MM-DD.md.
 
-    python3 agent-bench/leaderboard.py collect JOBS_DIR [JOBS_DIR ...]   # append/replace trials by trial id
-    python3 agent-bench/leaderboard.py render                          # write results/leaderboard.md
+    python3 agent-bench/leaderboard.py collect JOBS_DIR [JOBS_DIR ...]   # write results/trials-YYYY-MM-DD.jsonl
+    python3 agent-bench/leaderboard.py render [trials-file]             # write results/leaderboard-YYYY-MM-DD.md
 
 Pass rate counts every trial. Cost, tokens, turns and time average over PASSING trials only, so a cheap wrong
 answer never improves a ranking. Tokens are input (cache reads included) plus output. Turns are agent steps in
@@ -18,8 +18,9 @@ from pathlib import Path
 from statistics import mean, pstdev
 
 ROOT = Path(__file__).resolve().parent
-TRIALS = ROOT / "results" / "trials.jsonl"
-BOARD = ROOT / "results" / "leaderboard.md"
+RESULTS = ROOT / "results"
+TODAY = datetime.now().strftime("%Y-%m-%d")
+TRIALS = RESULTS / f"trials-{TODAY}.jsonl"  # one file per collection date; earlier files are kept as history
 LANG_NAMES = {"ts": "TypeScript", "go": "Go", "rust": "Rust", "ms": "Manuscript"}
 MIN_RUNS = 3  # cells with fewer trials are marked provisional
 
@@ -103,7 +104,7 @@ def read_trial(d: Path) -> dict | None:
         "agent": r["config"]["agent"].get("name"), "model": r["config"]["agent"].get("model_name"),
         "pass": reward == 1.0, "errored": bool(r.get("exception_info")) or reward is None,
         "cases_passed": detail.get("passed"), "cases_total": detail.get("total"),
-        "first_build_ok": detail.get("first_build_ok"), "builds": detail.get("builds"),
+        "first_build_ok": detail.get("first_build_ok"), "code_tokens": detail.get("code_tokens"), "builds": detail.get("builds"),
         "tokens_in": ar.get("n_input_tokens") or 0, "tokens_cached": ar.get("n_cache_tokens") or 0,
         "tokens_out": ar.get("n_output_tokens") or 0, "cost_usd": ar.get("cost_usd") or 0.0,
         "turns": turns, "wall_s": round(wall, 1), "input_by_source": src, "started": r.get("started_at") or "",
@@ -126,7 +127,7 @@ def collect(dirs):
     for t in sorted(rows.values(), key=lambda t: t.get("started", "")):
         latest[(t["challenge"], t["language"], t["agent"], t["model"])] = t
     rows = {t["trial"]: t for t in latest.values()}
-    TRIALS.parent.mkdir(exist_ok=True)
+    RESULTS.mkdir(exist_ok=True)
     TRIALS.write_text("".join(json.dumps(t) + "\n" for t in sorted(rows.values(), key=lambda t: t["trial"])))
     print(f"{len(rows)} trials in {TRIALS}")
 
@@ -139,23 +140,24 @@ def agg(rs):
         "fb": mean(1 if r["first_build_ok"] else 0 for r in rs),
         "tokens": m(lambda r: r["tokens_in"] + r["tokens_out"]), "turns": m(lambda r: r["turns"]),
         "wall": m(lambda r: r["wall_s"]), "cost": m(lambda r: r["cost_usd"]),
+        "code": mean(r["code_tokens"] for r in ok if r.get("code_tokens") is not None) if any(r.get("code_tokens") is not None for r in ok) else None,
     }
 
 
 def fmt(v, kind):
     if v is None:
-        return "-"
-    return {"pct": f"{v:.0%}", "tok": f"{v/1000:.0f}k", "n": f"{v:.1f}", "usd": f"${v:.3f}"}[kind]
+        return "n/a" if kind == "n0" else "-"
+    return {"pct": f"{v:.0%}", "tok": f"{v/1000:.0f}k", "n": f"{v:.1f}", "usd": f"${v:.3f}", "n0": f"{v:.0f}"}[kind]
 
 
 def table(title, groups, label):
-    lines = [f"### {title}", "", f"| rank | {label} | trials | pass | first build ok | tokens | turns | wall s | cost |",
-             "|---:|---|---:|---:|---:|---:|---:|---:|---:|"]
+    lines = [f"### {title}", "", f"| rank | {label} | trials | pass | first build ok | agent tokens | solution size (tokens) | turns | wall s | cost |",
+             "|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
     rows = sorted(((k, agg(v)) for k, v in groups.items()), key=lambda kv: (-kv[1]["pass"], kv[1]["cost"] if kv[1]["cost"] is not None else 1e9))
     for i, (k, a) in enumerate(rows, 1):
         prov = " (provisional)" if a["n"] < MIN_RUNS * 5 else ""
         lines.append(f"| {i} | {k}{prov} | {a['n']} | {fmt(a['pass'],'pct')} | {fmt(a['fb'],'pct')} | {fmt(a['tokens'],'tok')} | "
-                     f"{fmt(a['turns'],'n')} | {fmt(a['wall'],'n')} | {fmt(a['cost'],'usd')} |")
+                     f"{fmt(a['code'],'n0')} | {fmt(a['turns'],'n')} | {fmt(a['wall'],'n')} | {fmt(a['cost'],'usd')} |")
     return "\n".join(lines) + "\n"
 
 
@@ -175,11 +177,13 @@ def source_table(rows):
     return "\n".join(lines) + "\n"
 
 
-def render():
-    trials = [json.loads(l) for l in TRIALS.read_text().splitlines() if l.strip()]
+def render(src=None):
+    src = Path(src) if src else max(RESULTS.glob("trials-*.jsonl"))
+    board = src.with_name(src.name.replace("trials-", "leaderboard-").replace(".jsonl", ".md"))
+    trials = [json.loads(l) for l in src.read_text().splitlines() if l.strip()]
     clean = [t for t in trials if not t["errored"]]
     out = ["# agent-bench leaderboard", "",
-           f"{len(trials)} trials ({len(trials) - len(clean)} errored and excluded). Pass rate counts all scored trials; tokens, turns, wall time and cost average over passing trials only. Ranked by pass rate, then cost.", ""]
+           f"{len(trials)} trials ({len(trials) - len(clean)} errored and excluded). Pass rate counts all scored trials; tokens, turns, wall time and cost average over passing trials only. `agent tokens` is what the agent consumed (input including cache reads, plus output). `solution size (tokens)` is the number of lexical tokens (identifiers, literals, punctuation; comments excluded) in the final source it wrote, mean over passing trials; `n/a` means the run predates the measurement. Ranked by pass rate, then cost.", ""]
     by = lambda keyf, rows=clean: _group(rows, keyf)  # noqa: E731
     out.append(table("Languages (all models)", by(lambda t: LANG_NAMES.get(t["language"], t["language"])), "language"))
     out.append(table("Models (all languages)", by(lambda t: f"{t['agent']} / {t['model']}"), "agent / model"))
@@ -191,8 +195,8 @@ def render():
     for tier in sorted({t["tier"] for t in clean}):
         rows = [t for t in clean if t["tier"] == tier]
         out.append(table(f"Tier {tier}", _group(rows, lambda t: LANG_NAMES.get(t["language"], t["language"])), "language"))
-    BOARD.write_text("\n".join(out))
-    print(f"wrote {BOARD}")
+    board.write_text("\n".join(out))
+    print(f"wrote {board}")
 
 
 def _group(rows, keyf):
@@ -205,7 +209,7 @@ def _group(rows, keyf):
 if __name__ == "__main__":
     if len(sys.argv) >= 3 and sys.argv[1] == "collect":
         collect(sys.argv[2:])
-    elif len(sys.argv) == 2 and sys.argv[1] == "render":
-        render()
+    elif len(sys.argv) in (2, 3) and sys.argv[1] == "render":
+        render(*sys.argv[2:])
     else:
         sys.exit(__doc__)

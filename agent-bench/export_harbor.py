@@ -97,10 +97,11 @@ def export_one(ch, lang_id, lang, out: Path, ms_binary: Path | None, agent_timeo
     tests = d / "tests"
     tests.mkdir()
     shutil.copy(ROOT / "harbor" / "grade.py", tests / "grade.py")
+    shutil.copy(ROOT / "core" / "codetokens.py", tests / "codetokens.py")
     (tests / "cases.json").write_text(json.dumps(ch.cases("hidden")))
     (tests / "test.sh").write_text(
         "#!/bin/bash\n"
-        f"python3 /tests/grade.py /tests/cases.json {json.dumps(lang['build'])} {json.dumps(lang['run'])} {ch.timeout_s}\n"
+        f"python3 /tests/grade.py /tests/cases.json {json.dumps(lang['build'])} {json.dumps(lang['run'])} {ch.timeout_s} {Path(lang['solution']).suffix}\n"
     )
     sol = ch.solution(lang.get("template", lang_id)) / (Path(lang["solution"]).name + ".ref")
     (d / "solution").mkdir()
