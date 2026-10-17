@@ -310,22 +310,34 @@ func String_Slice(_ *Execution, text string, start, end int) Result[string, Stri
 	return Ok[string, StringError](text[scalarIndexOffset(text, int(s)):scalarIndexOffset(text, int(e))])
 }
 
-func String_Split(ctx *Execution, text, separator string, maxParts Option[int]) *List[string] {
+func String_Split(_ *Execution, text, separator string, maxParts Option[int]) *List[string] {
+	return NewList(stringSplitParts(text, separator, maxParts)...)
+}
+
+func stringSplitParts(text, separator string, maxParts Option[int]) []string {
 	n := txLimit(maxParts)
 	if n < 0 {
 		txFaultNegative("split", "max_parts", n)
 	}
 	if n == 0 {
-		return NewList[string]()
+		return nil
 	}
 	if n > len(text)+1 {
 		n = len(text) + 1
 	}
-	parts := strings.Split(text, separator)
+	var parts []string
+	if n < len(text) {
+		// Split one extra part so truncation discards the remainder rather than
+		// returning it as the last field. Avoid allocating discarded fields.
+		// n < len(text) also keeps n+1 from overflowing.
+		parts = strings.SplitN(text, separator, n+1)
+	} else {
+		parts = strings.Split(text, separator)
+	}
 	if len(parts) > n {
 		parts = parts[:n]
 	}
-	return NewList(parts...)
+	return parts
 }
 
 func String_At(_ *Execution, text string, index int) Option[string] {
