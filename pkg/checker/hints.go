@@ -203,6 +203,23 @@ func (c *checker) memberNamesSeen(receiver *Type, seen map[*Type]bool) []string 
 	return uniqueSorted(names)
 }
 
+// ambiguousMember explains a member that several implementations provide, so
+// the message names them instead of calling the member unknown.
+func (c *checker) ambiguousMember(receiver *Type, name string, methods []*Method) string {
+	var contracts []string
+	for _, m := range methods {
+		if m.Contract != nil {
+			contracts = append(contracts, m.Contract.String())
+		}
+	}
+	contracts = uniqueSorted(contracts)
+	message := "ambiguous member " + name + " on " + receiver.String()
+	if len(contracts) < 2 {
+		return message + "; more than one implementation provides it"
+	}
+	return message + "; it is provided by " + strings.Join(contracts, ", ") + ", so call it through an interface view, e.g. " + contracts[0] + "(value: ...)." + name + "()"
+}
+
 func (c *checker) unknownMember(receiver *Type, name string) string {
 	c.unknownType = true
 	message := "unknown or ambiguous member " + name + " on " + receiver.String()

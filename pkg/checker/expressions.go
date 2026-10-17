@@ -178,6 +178,7 @@ func (c *checker) inferName(e *syntax.Expression, expected *Type, i *Info) *Info
 			i.Symbol = s
 			if len(s.Variables) > 0 {
 				c.error(e.Pos, "type", "a generic function value requires explicit specialization; write "+e.Text+"[Type] or call it with arguments")
+				i.Type = primitive("<invalid>")
 			}
 		}
 		return i
@@ -268,6 +269,11 @@ func (c *checker) inferMember(e *syntax.Expression, expected *Type, i *Info) *In
 		return i
 	}
 	methods := c.methods(receiver.Type, e.Text)
+	if len(methods) > 1 {
+		c.error(e.Pos, "resolution", c.ambiguousMember(receiver.Type, e.Text, methods))
+		i.Type = primitive("<invalid>")
+		return i
+	}
 	if len(methods) != 1 {
 		c.error(e.Pos, "resolution", c.unknownMember(receiver.Type, e.Text))
 		// Later diagnostics that only restate the missing member are noise.

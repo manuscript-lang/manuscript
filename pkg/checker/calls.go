@@ -290,6 +290,10 @@ func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...
 		seen[arg.Name] = true
 	}
 	for _, param := range params {
+		// An invalid parameter type means an earlier diagnostic already explained this call.
+		if param.Type != nil && param.Type.ID == "<invalid>" {
+			continue
+		}
 		if !seen[param.Name] && (len(defaults) == 0 || !defaults[0][param.Name]) {
 			pos := callPos
 			if pos.File == "" {
@@ -373,13 +377,16 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 		}
 		if a == nil {
 			c.error(pos, "type", "cannot infer constructor type argument "+v.Name+"; write the type arguments, e.g. Box[Int](...), or annotate the binding")
+			c.unknownType = true // later "<invalid>" diagnostics only restate this one
 			a = primitive("<invalid>")
 		}
 		actualArgs = append(actualArgs, a)
 	}
 	r := *t
 	r.Args = actualArgs
-	c.wellFormed(&r, pos, map[string]bool{})
+	// Argument types came from checked expressions, so only this level's bounds
+	// are new; walking the arguments again would make nesting quadratic.
+	c.boundsHold(&r, pos)
 	return &r
 }
 
