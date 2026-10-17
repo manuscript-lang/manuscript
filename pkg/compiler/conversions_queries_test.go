@@ -18,14 +18,14 @@ fn wrong(value: Optional[Int]) -> Result[Int, String]: value.ok_or_else(cause)`,
 		{"Set fold step result stays exact", `fn wrong(value: Set[Int]) -> Int: value.fold(0, fn(acc, n): n.toString())`, "Int"},
 		{"stored Map predicate labels", `fn check(value: Int, key: String) -> Bool: true
 fn wrong(value: Map[String, Int]) -> Bool: value.every(check)`, "key"},
-		{"local Optional has no conversions", `type Optional[T]:
+		{"local Optional declaration is rejected", `type Optional[T]:
     case some(value: T)
     case none
-fn wrong(value: Optional[Int]) -> Result[Int, String]: value.ok_or("missing")`, "no fields or operations"},
-		{"local Result has no conversions", `type Result[T, E]:
+fn wrong(value: Optional[Int]) -> Result[Int, String]: value.ok_or("missing")`, "reuses a prelude name"},
+		{"local Result declaration is rejected", `type Result[T, E]:
     case ok(value: T)
     case error(cause: E)
-fn wrong(value: Result[Int, String]) -> Optional[Int]: value.to_optional()`, "no fields or operations"},
+fn wrong(value: Result[Int, String]) -> Optional[Int]: value.to_optional()`, "reuses a prelude name"},
 		{"native helpers stay private", `import ok_or from "@std/optional.ms"`, "ok_or"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

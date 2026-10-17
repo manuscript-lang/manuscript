@@ -1,19 +1,19 @@
 import panic from "@std/faults.ms"
 
-type List:
+type Items:
     count: Int
 
-type Result:
+type Outcome:
     case Value(value: Int)
 
 fn compute(value: Int) -> Int:
     return value
 
-fn ordinary() -> Result:
-    return Result.Value(compute(value: 3))
+fn ordinary() -> Outcome:
+    return Outcome.Value(compute(value: 3))
 
-test "standard spellings are ordinary names":
-    if not (List(2).count == 2):
+test "non-prelude spellings are ordinary names":
+    if not (Items(2).count == 2):
         return panic(message: "check failed")
 
     let forward = compute

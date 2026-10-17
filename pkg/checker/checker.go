@@ -416,6 +416,14 @@ func (c *checker) error(pos syntax.Position, phase, message string) {
 	c.Diagnostics = append(c.Diagnostics, syntax.Diagnostic{Position: pos, Phase: phase, Message: message})
 }
 func (c *checker) addSymbol(name string, s *Symbol, pos syntax.Position) {
+	if existing := c.names[name]; existing != nil && isPreludeSymbol(existing) && !isPreludeSymbol(s) && existing.Module != c.module.File {
+		c.error(pos, "resolution", "declaration "+name+" reuses a prelude name; rename it, because "+name+" always refers to the standard declaration")
+		if c.rejectedNames == nil {
+			c.rejectedNames = map[string]bool{}
+		}
+		c.rejectedNames[name] = true
+		return
+	}
 	if c.names[name] != nil {
 		c.error(pos, "resolution", "duplicate or intrinsic name "+name+"; this name is already declared, imported, or built in, so rename one of them")
 		if c.rejectedNames == nil {

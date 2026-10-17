@@ -26,7 +26,7 @@ func TestDiscardedResultLint(t *testing.T) {
 		{"propagate unit", "fn operation() -> Result[Unit, String]: ok(unit)\nfn caller() -> Result[Int, String]:\n    try operation()\n    return ok(1)\n", 0},
 		{"inline return", operation + "fn caller() -> Result[Int, String]: operation()\n", 0},
 		{"ordinary value", "fn operation() -> Int: 1\nfn caller() -> Unit:\n    operation()\n", 0},
-		{"local Result identity", "type Result:\n    value: Int\nfn caller() -> Unit:\n    Result(1)\n", 0},
+		{"application record is not a Result", "type Outcome:\n    value: Int\nfn caller() -> Unit:\n    Outcome(1)\n", 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			checked := compiler.CompileSource("result.ms", tc.source, compiler.Options{AnalyzeOnly: true})

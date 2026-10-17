@@ -81,19 +81,6 @@ func collectionTypeSyntax(typ *checker.Type, variables map[string]string) string
 
 func TestCollectionSupportShadowingAndCaseLookup(t *testing.T) {
 	for name, source := range map[string]string{
-		"local support names": `type ListEntry[T]:
-    payload: T
-type MapEntry[K, V]:
-    payload: V
-type CollectionError:
-    case OutOfRange
-fn read() -> Int:
-    let list = [3].entries()[0].unwrap()
-    let map = {"a": 4}.entries()[0].unwrap()
-    return list.index + list.value + map.value
-fn invalid() -> Bool: [1].slice(0, 9).is_error()
-fn local() -> ListEntry[Int]: ListEntry(1)
-`,
 		"qualified cases and directed patterns": `type Other:
     case OutOfRange
 fn other() -> Other: Other.OutOfRange
@@ -152,8 +139,9 @@ func TestPreludeImportPolicyUsesResolvedIdentity(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if result := CompileFile(filepath.Join(root, "ms.toml"), Options{}); !result.Success() {
-		t.Fatal(result.Diagnostics)
+	result := CompileFile(filepath.Join(root, "ms.toml"), Options{AnalyzeOnly: true})
+	if result.Success() || !strings.Contains(result.Diagnostics[0].Message, "reuses a prelude name") {
+		t.Fatal("application imports named like prelude types were accepted", result.Diagnostics)
 	}
 	for _, path := range []string{"@std/unknown.ms", "@std/../collections.ms", "@std/collections.ms/unknown"} {
 		result := CompileSource("imports.ms", "import List from \""+path+"\"\n", Options{AnalyzeOnly: true})
@@ -166,7 +154,7 @@ func TestPreludeImportPolicyUsesResolvedIdentity(t *testing.T) {
 			}
 		}
 	}
-	result := CompileSource("imports.ms", "import {List, Map, Set} from \"@std/collections.ms\"\nfn get() -> Int: List[Int]().length()+Map[Int,Int]().length()+Set[Int]().length()\n", Options{AnalyzeOnly: true})
+	result = CompileSource("imports.ms", "import {List, Map, Set} from \"@std/collections.ms\"\nfn get() -> Int: List[Int]().length()+Map[Int,Int]().length()+Set[Int]().length()\n", Options{AnalyzeOnly: true})
 	if len(result.Diagnostics) != 3 || result.Source != "" {
 		t.Fatal(result.Diagnostics, result.Source)
 	}
@@ -196,13 +184,6 @@ func TestMissingValuePreludeDefaultsAndShadowing(t *testing.T) {
 fn message(values: List[Int]) -> String: first(values).unwrap_error().message()
 fn widen(cause: MissingValue) -> Error: cause
 `,
-		"local name retains canonical inferred defaults": `type MissingValue:
-    value: Int
-fn local() -> MissingValue: MissingValue(1)
-fn message(values: List[Int]) -> String: values.at(0).ok_or().unwrap_error().message()
-fn defaulted[E = MissingValue](cause: Optional[E] = none) -> Optional[E]: cause
-fn own() -> Optional[MissingValue]: defaulted()
-`,
 		"qualified constructors and directed patterns": `type Other:
     case Missing(value: Int)
 fn other() -> Other: Other.Missing(1)
@@ -216,13 +197,6 @@ fn read(value: Other) -> Int:
 			result := CompileSource("missing-prelude.ms", source, Options{})
 			if !result.Success() {
 				t.Fatal(result.Diagnostics)
-			}
-			if name == "local name retains canonical inferred defaults" {
-				local := result.Program.Symbol("missing-prelude.ms", "MissingValue")
-				generic := result.Program.Symbol("missing-prelude.ms", "defaulted")
-				if checker.IsPreludeSymbol(local) || len(generic.Variables) != 1 || generic.Variables[0].Default == nil || generic.Variables[0].Default.Def == nil || generic.Variables[0].Default.Def.Symbol != local {
-					t.Fatal("local type default acquired a canonical identity", local, generic)
-				}
 			}
 		})
 	}

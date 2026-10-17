@@ -46,24 +46,6 @@ fn use() -> Set[Int]:
     let values: Set[Int] = Set()
     return values.add(1)
 `,
-		"local set retains its own bounds": `type Set[T]:
-    value: T
-fn use() -> Set[List[Int]]: Set([1])
-`,
-		"ordinary types": `type List[T]:
-    value: T
-type Map[K, V]:
-    key: K
-    value: V
-type Set[T]:
-    value: T
-fn use() -> Int: List(3).value + Map("a", 4).value + Set(5).value
-`,
-		"function names": `fn List(value: Int) -> Int: value
-fn Map(value: Int) -> Int: value
-fn Set(value: Int) -> Int: value
-fn use() -> Int: List(3) + Map(4) + Set(5)
-`,
 		"local callable bindings": `fn f() -> Int:
     let List = fn(value: Int) -> Int: value
     let Map = fn(value: Int) -> Int: value
@@ -106,7 +88,7 @@ fn use() -> Int: List(3) + Map(4) + Set(5)
 			if strings.Contains(name, "duplicate") || strings.Contains(name, "collision") {
 				found := false
 				for _, diagnostic := range r.Diagnostics {
-					if strings.Contains(diagnostic.Message, "duplicate or intrinsic name") {
+					if strings.Contains(diagnostic.Message, "duplicate or intrinsic name") || strings.Contains(diagnostic.Message, "reuses a prelude name") {
 						found = true
 					}
 				}
@@ -114,36 +96,52 @@ fn use() -> Int: List(3) + Map(4) + Set(5)
 					t.Fatal("import policy hid the ordinary collision", r.Diagnostics)
 				}
 			}
-			if strings.Contains(name, "shadows literal") && (len(r.Diagnostics) != 1 || !strings.Contains(r.Diagnostics[0].Message, "rename the shadowing")) {
+			if strings.Contains(name, "shadows literal") && (len(r.Diagnostics) != 1 || !strings.Contains(r.Diagnostics[0].Message, "reuses a prelude name")) {
 				t.Fatal(r.Diagnostics)
 			}
 		})
 	}
 }
 
-func TestCollectionPreludeImportedNamesRetainIdentity(t *testing.T) {
+// Prelude type names and the prelude constructors always mean the standard
+// declarations, so no declaration or application import may reuse them.
+func TestPreludeNamesCannotBeRedeclared(t *testing.T) {
+	for name, source := range map[string]string{
+		"type":             "type Optional:\n    value: Int\n",
+		"generic type":     "type Map[K, V]:\n    value: V\n",
+		"collection type":  "type Set[T]:\n    value: T\n",
+		"support type":     "type ListEntry:\n    value: Int\n",
+		"interface":        "interface Equal:\n    fn same() -> Bool\n",
+		"function":         "fn List(value: Int) -> Int: value\n",
+		"constructor name": "fn some(value: Int) -> Int: value\n",
+		"ok function":      "fn ok(value: Int) -> Int: value\n",
+		"none function":    "fn none() -> Int: 1\n",
+		"error function":   "fn error(value: Int) -> Int: value\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := CompileSource("prelude.ms", source, Options{AnalyzeOnly: true})
+			if r.Success() {
+				t.Fatal("accepted a declaration that reuses a prelude name")
+			}
+			if !strings.Contains(r.Diagnostics[0].Message, "reuses a prelude") {
+				t.Fatal(r.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestPreludeNamesCannotBeImportedFromApplicationModules(t *testing.T) {
 	root := t.TempDir()
 	for name, source := range map[string]string{
-		"local.ms": `export type List[T]:
-    value: T
-export type Map[K,V]:
-    value: V
-export type Set[T]:
-    value: T
-`,
-		"main.ms": `import {List,Map,Set} from "./local.ms"
-fn f() -> Int: List(1).value + Map[String,Int](2).value + Set(3).value
-`,
+		"local.ms": "export type List[T]:\n    value: T\n",
+		"main.ms":  "import List from \"./local.ms\"\nfn f() -> Int: List(1).value\n",
 	} {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {
 			t.Fatal(err)
 		}
 	}
-	r := CompileFile(filepath.Join(root, "main.ms"), Options{})
-	if !r.Success() {
-		t.Fatal(r.Diagnostics)
-	}
-	if strings.Contains(r.Source, "rt.NewCollection(") {
-		t.Fatal("application types acquired native constructors")
+	r := CompileFile(filepath.Join(root, "main.ms"), Options{AnalyzeOnly: true})
+	if r.Success() {
+		t.Fatal("accepted an application import named like a prelude type")
 	}
 }
