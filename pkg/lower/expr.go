@@ -172,6 +172,23 @@ func (g *gen) number(e *syntax.Expression, info *checker.Info) ast.Expr {
 }
 
 // constantNumber reports whether e is a typed numeric literal Go folds.
+// positiveIntLiteral reports a lowered int literal of at least 2.
+func positiveIntLiteral(e ast.Expr) bool {
+	c, ok := e.(*ast.CallExpr)
+	if !ok || len(c.Args) != 1 {
+		return false
+	}
+	if id, ok := c.Fun.(*ast.Ident); !ok || id.Name != "int" {
+		return false
+	}
+	lit, ok := c.Args[0].(*ast.BasicLit)
+	if !ok || lit.Kind != token.INT {
+		return false
+	}
+	n, err := strconv.ParseInt(lit.Value, 0, 64)
+	return err == nil && n >= 2
+}
+
 func constantNumber(e ast.Expr) bool {
 	c, ok := e.(*ast.CallExpr)
 	if !ok || len(c.Args) != 1 {
@@ -420,6 +437,14 @@ func (g *gen) binaryExpr(e *syntax.Expression, info *checker.Info) ast.Expr {
 	switch {
 	case leftType.ID == "Int" && rightType.ID == "Int":
 		if op, ok := comparisons[e.Text]; ok {
+			return binary(a, op, b)
+		}
+		if (e.Text == "/" || e.Text == "%") && positiveIntLiteral(b) {
+			// A divisor of 2 or more cannot be zero, -1, or overflow.
+			op := token.QUO
+			if e.Text == "%" {
+				op = token.REM
+			}
 			return binary(a, op, b)
 		}
 		return rtCall("Int"+arithmetic[e.Text], a, b)

@@ -240,7 +240,12 @@ func (g *gen) loop(s *syntax.Statement) []ast.Stmt {
 
 func (g *gen) loopStatements(s *syntax.Statement) []ast.Stmt {
 	tick := g.temp()
-	poll := evaluated(rtCall("Poll", ident("ctx"), address(ident(tick))))
+	// Inline, with the counter a plain local, so the loop keeps it in a register.
+	poll := &ast.IfStmt{
+		Init: &ast.IncDecStmt{X: ident(tick), Tok: token.INC},
+		Cond: binary(binary(ident(tick), token.AND, &ast.BasicLit{Kind: token.INT, Value: "63"}), token.EQL, &ast.BasicLit{Kind: token.INT, Value: "0"}),
+		Body: block(evaluated(rtCall("CheckCancelled", ident("ctx")))),
+	}
 	declare := varDecl(tick, ident("uint32"), nil)
 	if s.Kind == syntax.KindWhile {
 		saved := g.fn.pre
