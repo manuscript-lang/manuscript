@@ -479,6 +479,12 @@ func (c *checker) inferBinary(e *syntax.Expression, expected *Type, i *Info) *In
 			hint = optionalUseHint(b.Type, a.Type)
 		}
 		if hint == "" {
+			hint = resultUseHint(a.Type, b.Type)
+		}
+		if hint == "" {
+			hint = resultUseHint(b.Type, a.Type)
+		}
+		if hint == "" {
 			hint = "convert one side so both have one type (e.g. toString() for text, or an Int/Float conversion)"
 		}
 		c.error(e.Pos, "type", fmt.Sprintf("operator operands require the same independently known type, found %s %s %s; %s", a.Type, e.Text, b.Type, hint))

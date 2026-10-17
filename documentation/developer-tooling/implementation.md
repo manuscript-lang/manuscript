@@ -166,9 +166,10 @@ array in that order. Each step has `name`, `status` (`passed`, `failed`, or
 `skipped`), `exit_code`, `duration_ns`, and `result`, which is that command's own
 `--json` document unchanged. A step that cannot produce one carries `error` text
 instead, and a skipped step carries `reason`. `lint` and `test` are skipped when
-`check` fails; `fmt` always runs; `--no-test` skips the native test build.
+`check` fails; `fmt` always runs; `--no-test` skips the native test build. Without
+`--json`, each failed step also prints its first eight findings to stderr.
 
-`ms inspect`, `diagram`, `emit`, and `lock` accept `--json` for failures only: when the
+`ms inspect`, `diagram`, and `emit` accept `--json` for failures only: when the
 source does not check, they write the same `format: 1` `diagnostics` document as
 `check --json` and exit 1. Successful output is unchanged.
 

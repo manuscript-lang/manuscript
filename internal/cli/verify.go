@@ -104,6 +104,7 @@ func runVerify(args []string) int {
 	}
 	for _, step := range result.Steps {
 		if step.Status == "failed" {
+			printVerifyFindings(step)
 			fmt.Fprintf(os.Stderr, "%s failed; run ms %s %s for details (or ms verify %s --json for every step)\n", step.Name, step.Name, target, target)
 		}
 	}
@@ -146,4 +147,49 @@ func runVerifyStep(name string, args []string) verifyStep {
 		step.Error = strings.TrimSpace(string(message))
 	}
 	return step
+}
+
+// verifyFindingLimit bounds the findings printed per failed step so the text
+// summary stays short; --json carries every one.
+const verifyFindingLimit = 8
+
+// printVerifyFindings prints the leading findings of a failed step so the text
+// summary names the problem instead of only pointing at another command.
+func printVerifyFindings(step verifyStep) {
+	var findings []string
+	if step.Error != "" {
+		findings = append(findings, step.Error)
+	}
+	var result struct {
+		Diagnostics []struct {
+			Message  string `json:"message"`
+			Position struct {
+				File   string `json:"file"`
+				Line   int    `json:"line"`
+				Column int    `json:"column"`
+			} `json:"position"`
+		} `json:"diagnostics"`
+		Tests []struct {
+			Name    string `json:"name"`
+			Status  string `json:"status"`
+			Failure string `json:"failure"`
+		} `json:"tests"`
+	}
+	if json.Unmarshal(step.Result, &result) == nil {
+		for _, d := range result.Diagnostics {
+			findings = append(findings, fmt.Sprintf("%s:%d:%d: %s", d.Position.File, d.Position.Line, d.Position.Column, d.Message))
+		}
+		for _, t := range result.Tests {
+			if t.Status == "failed" {
+				findings = append(findings, fmt.Sprintf("%s: %s", t.Name, strings.SplitN(t.Failure, "\n", 2)[0]))
+			}
+		}
+	}
+	for i, finding := range findings {
+		if i == verifyFindingLimit {
+			fmt.Fprintf(os.Stderr, "  ... %d more\n", len(findings)-i)
+			break
+		}
+		fmt.Fprintf(os.Stderr, "  %s\n", finding)
+	}
 }

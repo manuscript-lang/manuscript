@@ -1079,12 +1079,9 @@ func (p *Parser) valueArm(a *syntax.Arm) {
 		a.Body = a.Body[:len(a.Body)-1]
 	}
 	for _, statement := range a.Body {
-		if statement.Kind == syntax.KindCall && statement.Value.Kind != syntax.KindCall && statement.Value.Kind != syntax.KindMatch {
-			message := "an arm value must be its final expression"
-			if statement.Value.Kind == syntax.KindUnary && statement.Value.Text == "try" {
-				message += "; a standalone 'try' cannot sit inside a match arm, so bind it ('let value = try ...') or move the arm body into a helper function"
-			}
-			p.fail(lexer.Token{Pos: statement.Pos}, message)
+		isTry := statement.Value != nil && statement.Value.Kind == syntax.KindUnary && statement.Value.Text == "try"
+		if statement.Kind == syntax.KindCall && statement.Value.Kind != syntax.KindCall && statement.Value.Kind != syntax.KindMatch && !isTry {
+			p.fail(lexer.Token{Pos: statement.Pos}, "an arm value must be its final expression")
 		}
 	}
 	if indented {

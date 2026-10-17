@@ -21,9 +21,9 @@ func TestExpressionConvenienceRejections(t *testing.T) {
 		{"arm types", "fn f(x: Optional[Int]) -> Unit:\n    let y = match x:\n        some(n): n\n        none: \"missing\"\n", "expected Int, found String"},
 		{"return type", "fn f(x: Optional[Int]) -> Int:\n    return match x:\n        some(n): n\n        none: return \"missing\"\n", "expected Int, found String"},
 		{"arm scope", "fn f(x: Optional[Int]) -> Int:\n    let y = match x:\n        some(n): n\n        none: 0\n    return n\n", "unknown binding n"},
-		{"try in arm", "fn p() -> Result[Int, Error]:\n    return ok(1)\nfn f(x: Optional[Int]) -> Result[Unit, Error]:\n    match x:\n        some(n):\n            try p()\n            return ok(unit)\n        none: return ok(unit)\n", "bind it ('let value = try ...')"},
+		{"try in arm", "fn p() -> Result[Int, Error]:\n    return ok(1)\nfn f(x: Optional[Int]) -> Result[Unit, Error]:\n    match x:\n        some(n):\n            try p()\n            return ok(unit)\n        none: return ok(unit)\n", "standalone try requires a Unit success value"},
 		{"result where value expected", "fn p() -> Result[Int, Error]:\n    return ok(1)\nfn f() -> Int:\n    return p()\n", "unwrap it with 'try'"},
-		{"optional where value expected", "fn f(x: Optional[Int]) -> Int:\n    return x\n", "unwrap it with 'if let'"},
+		{"optional where value expected", "fn f(x: Optional[Int]) -> Int:\n    return x\n", "unwrap it first with 'if let'"},
 		{"multiple expressions", "fn f(x: Optional[Int]) -> Int:\n    return match x:\n        some(n):\n            n\n            n + 1\n        none: 0\n", "final expression"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
