@@ -91,3 +91,27 @@ func TestPipeRejections(t *testing.T) {
 		}
 	}
 }
+
+func TestPipeNextLineDotAppliesToStepResult(t *testing.T) {
+	parse := func(body string) *syntax.Expression {
+		t.Helper()
+		module, err := Parse("pipe.ms", "fn f() -> Int:\n    let v = x\n"+body+"    return 0\n")
+		if err != nil {
+			t.Fatalf("%q: %v", body, err)
+		}
+		return module.Declarations[0].Body[0].Value
+	}
+	named := parse("        | Box\n        .size()\n")
+	if named.Kind != syntax.KindCall || named.Left.Kind != syntax.KindMember || named.Left.Text != "size" ||
+		named.Left.Left.Kind != syntax.KindCall || named.Left.Left.Left.Text != "Box" {
+		t.Fatalf("a next-line .member extended the step's name path: %+v", named)
+	}
+	bare := parse("        | try\n        .size()\n")
+	if bare.Kind != syntax.KindCall || bare.Left.Kind != syntax.KindMember || bare.Left.Left.Kind != syntax.KindUnary || bare.Left.Left.Text != "try" {
+		t.Fatalf("a next-line .member after a bare try must apply to the unwrapped value: %+v", bare)
+	}
+	same := parse("        | try .size()\n")
+	if same.Kind != syntax.KindUnary || same.Text != "try" || same.Right.Kind != syntax.KindCall {
+		t.Fatalf("a same-line .member after try stays inside the try: %+v", same)
+	}
+}

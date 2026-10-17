@@ -668,7 +668,7 @@ func (p *Parser) pipe(lhs *syntax.Expression) *syntax.Expression {
 	tried := p.take("try")
 	var step *syntax.Expression
 	switch {
-	case p.peek().Kind == ".":
+	case p.peek().Kind == "." && !(tried && p.peek().Pos.Line != try.Pos.Line):
 		step = p.postfix(lhs)
 	case tried && p.peek().Kind != lexer.Name:
 		return &syntax.Expression{Kind: syntax.KindUnary, Text: "try", Pos: try.Pos, Right: lhs}
@@ -679,7 +679,10 @@ func (p *Parser) pipe(lhs *syntax.Expression) *syntax.Expression {
 		}
 		p.at++
 		callee := &syntax.Expression{Kind: syntax.KindName, Text: name.Text, Pos: name.Pos}
-		for p.take(".") {
+		// A '.' on a later line continues the flow and applies to the step's
+		// result, so it never extends the step's name path.
+		for p.peek().Kind == "." && p.peek().Pos.Line == p.tokens[p.at-1].Pos.Line {
+			p.at++
 			member := p.need(lexer.Name)
 			callee = &syntax.Expression{Kind: syntax.KindMember, Pos: member.Pos, Text: member.Text, Left: callee}
 		}
