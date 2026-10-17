@@ -249,6 +249,9 @@ type funcState struct {
 	mutables map[string]bool
 	// withs names the actions of the open `with` scopes.
 	withs []string
+	// stepped marks `i + 1` and `i - 1` expressions that a loop guard proves
+	// cannot overflow.
+	stepped map[*syntax.Expression]bool
 }
 
 type loopState struct {

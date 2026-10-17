@@ -439,6 +439,13 @@ func (g *gen) binaryExpr(e *syntax.Expression, info *checker.Info) ast.Expr {
 		if op, ok := comparisons[e.Text]; ok {
 			return binary(a, op, b)
 		}
+		if g.fn.stepped[e] {
+			op := token.ADD
+			if e.Text == "-" {
+				op = token.SUB
+			}
+			return binary(a, op, b)
+		}
 		if (e.Text == "/" || e.Text == "%") && positiveIntLiteral(b) {
 			// A divisor of 2 or more cannot be zero, -1, or overflow.
 			op := token.QUO
