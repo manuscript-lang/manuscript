@@ -83,5 +83,8 @@ func addSecondary(pending, failure any) any {
 		primary.Secondary = append(primary.Secondary, fmt.Sprint(failure))
 		return primary
 	}
+	if fault, ok := failure.(Fault); ok {
+		return fault
+	}
 	return Fault{Message: fmt.Sprint(failure)}
 }

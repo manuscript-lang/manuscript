@@ -205,3 +205,23 @@ func TestParseTestArgs(t *testing.T) {
 		t.Fatal("default timeout")
 	}
 }
+
+func TestFaultReportKeepsEachFaultsFramesTogether(t *testing.T) {
+	ctx := RootExecution()
+	_, r := capture(t, func() Unit {
+		var stack CleanupStack
+		defer stack.Unwind()
+		stack.Push(ctx, func(*Execution) { panic(Fault{Message: "second close", Frames: []string{"a.ms:2 in close"}}) })
+		stack.Push(ctx, func(*Execution) { panic(Fault{Message: "first close", Frames: []string{"a.ms:1 in close"}}) })
+		return Unit{}
+	})
+	f, ok := r.(Fault)
+	if !ok || f.Message != "first close" || len(f.Frames) == 0 || len(f.Secondary) != 1 {
+		t.Fatalf("recovered %#v", r)
+	}
+	report := f.Error()
+	primary, secondary, found := strings.Cut(report, "\ncleanup fault: second close")
+	if !found || primary != "first close\n  at a.ms:1 in close" || secondary != "\n  at a.ms:2 in close" {
+		t.Fatalf("report = %q", report)
+	}
+}
