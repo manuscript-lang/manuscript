@@ -1,3 +1,4 @@
+import range from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 type Element:
@@ -46,12 +47,8 @@ fn check_equality(side: String, mutation: String) -> Unit:
             return
 
         if mutation == "grow_write":
-            var index = 0
-
-            while index < 100:
+            for index in range(0, 100):
                 target.append(Element(7, noop))
-                index = index + 1
-
             target.set(1, Element(77, next_action))
             return
 

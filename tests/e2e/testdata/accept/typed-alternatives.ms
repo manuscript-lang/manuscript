@@ -1,3 +1,4 @@
+import range from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 fn checked(n: Int) -> Result[Int, String]:
@@ -73,12 +74,10 @@ fn closure_return(n: Int) -> Result[Int, String]:
 
 fn sum_all(count: Int) -> Result[Int, String]:
     var total = 0
-    var i = 0
 
-    while i < count:
+    for i in range(0, count):
         let v = try checked(i)
         total = total + v
-        i = i + 1
 
     return ok(value: total)
 

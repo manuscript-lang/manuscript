@@ -1,3 +1,4 @@
+import range from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 type Shape:
@@ -19,14 +20,11 @@ test "issue 187 programs need no collection imports":
     if shapes.length() != 1 or count(["/var", "log"]) != 2: return panic("literals")
 
     var rolls: List[Int] = []
-    var i = 0
 
-    while i < 5:
+    for i in range(0, 5):
         match roll(i):
             ok(n): rolls.append(n)
             error(_): return panic("roll")
-
-        i = i + 1
 
     if rolls.length() != 5: return panic("annotation or match")
 

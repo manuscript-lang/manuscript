@@ -1,3 +1,4 @@
+import range from "@std/collections.ms"
 import {bench} from "./harness.ms"
 import {filesystem, FileSystem} from "@std/fs.ms"
 import {create, file_transport, Transport, Logger} from "@std/log.ms"
@@ -9,14 +10,11 @@ fn run(fs: FileSystem, root: String) -> Unit:
         200,
         fn() -> Int:
             var n = 0
-            var i = 0
 
-            while i < 200:
+            for i in range(0, 200):
                 match fs.write_file(path: "{root}/f{i}.bin", data: data, replace: true):
                     ok(_): n = n + 1
                     error(_): unit
-
-                i = i + 1
 
             return n
     )
@@ -25,14 +23,11 @@ fn run(fs: FileSystem, root: String) -> Unit:
         200,
         fn() -> Int:
             var n = 0
-            var i = 0
 
-            while i < 200:
+            for i in range(0, 200):
                 match fs.read_file(path: "{root}/f{i}.bin"):
                     ok(b): n = n + b.length()
                     error(_): unit
-
-                i = i + 1
 
             return n
     )
@@ -41,14 +36,11 @@ fn run(fs: FileSystem, root: String) -> Unit:
         200,
         fn() -> Int:
             var n = 0
-            var i = 0
 
-            while i < 200:
+            for i in range(0, 200):
                 match fs.stat(path: "{root}/f{i}.bin", follow_links: true):
                     ok(_): n = n + 1
                     error(_): unit
-
-                i = i + 1
 
             return n
     )
@@ -77,14 +69,11 @@ fn log_many(logger: Logger) -> Unit:
         20000,
         fn() -> Int:
             var n = 0
-            var i = 0
 
-            while i < 20000:
+            for i in range(0, 20000):
                 match logger.info("request {i} handled"):
                     ok(_): n = n + 1
                     error(_): unit
-
-                i = i + 1
 
             return n
     )

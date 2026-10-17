@@ -1,3 +1,4 @@
+import range from "@std/collections.ms"
 import {parse, stringify, YamlValue, YamlError, YamlLimits} from "@std/yaml.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
@@ -650,12 +651,8 @@ test "YAML long plain scalars and large mappings parse in linear time":
     )
 
     var keys = ""
-    var index = 0
-
-    while index < 30000:
+    for index in range(0, 30000):
         keys = keys.concat("k{index}: 1\n")
-        index = index + 1
-
     if entries(value(parse(text: keys))).length() != 30000: return panic("many keys")
 
     match parse(text: keys.concat("k7: 2\n")):
@@ -748,13 +745,11 @@ test "YAML compact nested sequences resume each level and parse deep chains in l
     let depth = 3000
     var source = "{repeated(text: "- ", count: depth)}x\n"
     var root = value(parse(text: source))
-    var level = 1
 
-    while level < depth:
+    for level in range(1, depth):
         let inner = items(root)
         if inner.length() != 1: return panic("deep chain width")
 
         root = inner.first().unwrap()
-        level = level + 1
 
     if items(root) != [YamlValue.StringValue("x")]: return panic("deep chain leaf")

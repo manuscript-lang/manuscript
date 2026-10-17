@@ -1,3 +1,4 @@
+import range from "@std/collections.ms"
 import {parse, stringify, TomlValue} from "@std/toml.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
@@ -60,9 +61,8 @@ test "TOML parse never faults on mutated documents and accepted input is stable"
     while seed <= 300:
         let rng = Rng(seed)
         let rendered = table(rng, 0) | stringify | value
-        var round = 0
 
-        while round < 4:
+        for round in range(0, 4):
             let mutated = mutate(rng, rendered)
 
             match parse(mutated):
@@ -70,8 +70,6 @@ test "TOML parse never faults on mutated documents and accepted input is stable"
                 ok(first):
                     accepted = accepted + 1
                     check_stable(seed, mutated, first)
-
-            round = round + 1
 
         seed = seed + 1
 

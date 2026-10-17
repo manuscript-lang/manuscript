@@ -1,3 +1,4 @@
+import range from "@std/collections.ms"
 import {bench, words} from "./harness.ms"
 import {compile, Regex} from "@std/regex.ms"
 
@@ -16,12 +17,8 @@ fn run(re: Regex) -> Unit:
         10000,
         fn() -> Int:
             var n = 0
-            var i = 0
-
-            while i < 10000:
+            for i in range(0, 10000):
                 if re.matches(text: "xx word123 yy"): n = n + 1
-
-                i = i + 1
 
             return n
     )

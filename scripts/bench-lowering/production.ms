@@ -1,3 +1,4 @@
+import range from "@std/collections.ms"
 import Closeable from "@std/cleanup.ms"
 
 type Resource:
@@ -16,12 +17,8 @@ fn kept(resource: Resource) -> Int:
 fn ints(left: Int, right: Int, limit: Int, resource: Resource) -> Int:
     with active = resource:
         var count = 0
-        var index = 0
-
-        while index < limit:
+        for index in range(0, limit):
             if left == right: count = count + 1
-
-            index = index + 1
 
         return count
 
@@ -30,12 +27,8 @@ fn ints(left: Int, right: Int, limit: Int, resource: Resource) -> Int:
 fn floats(left: Float, right: Float, limit: Int, resource: Resource) -> Int:
     with active = resource:
         var count = 0
-        var index = 0
-
-        while index < limit:
+        for index in range(0, limit):
             if left == right: count = count + 1
-
-            index = index + 1
 
         return count
 
@@ -44,12 +37,8 @@ fn floats(left: Float, right: Float, limit: Int, resource: Resource) -> Int:
 fn bools(left: Bool, right: Bool, limit: Int, resource: Resource) -> Int:
     with active = resource:
         var count = 0
-        var index = 0
-
-        while index < limit:
+        for index in range(0, limit):
             if left == right: count = count + 1
-
-            index = index + 1
 
         return count
 
@@ -58,12 +47,8 @@ fn bools(left: Bool, right: Bool, limit: Int, resource: Resource) -> Int:
 fn strings(left: String, right: String, limit: Int, resource: Resource) -> Int:
     with active = resource:
         var count = 0
-        var index = 0
-
-        while index < limit:
+        for index in range(0, limit):
             if left == right: count = count + 1
-
-            index = index + 1
 
         return count
 

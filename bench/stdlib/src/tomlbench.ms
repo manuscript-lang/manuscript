@@ -1,15 +1,12 @@
+import range from "@std/collections.ms"
 import {bench} from "./harness.ms"
 import {StringBuilder} from "@std/string.ms"
 import {parse} from "@std/toml.ms"
 
 fn toml_doc(count: Int) -> String:
     let sb = StringBuilder()
-    var i = 0
-
-    while i < count:
+    for i in range(0, count):
         sb.append("[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n")
-        i = i + 1
-
     return sb.freeze()
 
 export fn bench_toml() -> Unit:

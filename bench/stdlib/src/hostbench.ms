@@ -1,3 +1,4 @@
+import range from "@std/collections.ms"
 import {bench} from "./harness.ms"
 import Bytes from "@std/bytes.ms"
 import {pack, unpack, ArchiveEntry} from "@std/archive.ms"
@@ -7,9 +8,7 @@ import {uuid_v4, entropy} from "@std/random.ms"
 
 fn entries(count: Int) -> List[ArchiveEntry]:
     let out: List[ArchiveEntry] = []
-    var i = 0
-
-    while i < count:
+    for i in range(0, count):
         out.append(
             ArchiveEntry(
                 path: "dir/file{i}.txt",
@@ -17,18 +16,12 @@ fn entries(count: Int) -> List[ArchiveEntry]:
                 directory: false
             )
         )
-        i = i + 1
-
     return out
 
 fn sse_stream(count: Int) -> Bytes:
     let parts: List[String] = []
-    var i = 0
-
-    while i < count:
+    for i in range(0, count):
         parts.append("event: tick\nid: {i}\ndata: payload {i}\ndata: second line\n\n")
-        i = i + 1
-
     return parts.join(separator: "").to_bytes()
 
 fn bench_archive() -> Unit:
@@ -91,11 +84,8 @@ export fn bench_host() -> Unit:
 
             match parse_timestamp(text: "2026-03-01T12:30:45.123Z"):
                 ok(t):
-                    var i = 0
-
-                    while i < 20000:
+                    for i in range(0, 20000):
                         n = n + t.to_string().length()
-                        i = i + 1
                 error(_): unit
 
             return n
@@ -106,14 +96,11 @@ export fn bench_host() -> Unit:
         fn() -> Int:
             var n = 0
             let source = entropy()
-            var i = 0
 
-            while i < 20000:
+            for i in range(0, 20000):
                 match uuid_v4(entropy: source):
                     ok(u): n = n + u.length()
                     error(_): unit
-
-                i = i + 1
 
             return n
     )
