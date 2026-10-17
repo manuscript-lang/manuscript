@@ -25,6 +25,9 @@ func TestInitCreatesCheckableProject(t *testing.T) {
 	if status, _, errors := invoke(t, "check", filepath.Join(root, "ms.toml")); status != 0 {
 		t.Fatalf("scaffold does not check: %d %s", status, errors)
 	}
+	if status, output, errors := invoke(t, "fmt", filepath.Join(root, "ms.toml"), "--check"); status != 0 {
+		t.Fatalf("scaffold is not formatted: %d %s %s", status, output, errors)
+	}
 }
 
 func TestInitNeverOverwrites(t *testing.T) {

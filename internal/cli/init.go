@@ -34,7 +34,6 @@ export fn main() -> Int:
     match stdout().write(data: message.to_bytes()):
         ok(_):
             return 0
-
         error(_):
             return 1
 `
