@@ -26,6 +26,9 @@ export fn main() -> Int:
 	if strings.Contains(text, "fatal error") || strings.Contains(text, "goroutine") {
 		t.Fatalf("Go runtime failure leaked; transcript:\n%.2000s", text)
 	}
+	if strings.Contains(text, "generated.go") || !strings.Contains(text, "\n  at depth.ms:") {
+		t.Fatalf("frames must name source positions only; transcript:\n%.2000s", text)
+	}
 	if lines := strings.Count(text, "\n"); lines > 100 {
 		t.Fatalf("trace has %d lines; transcript:\n%.2000s", lines, text)
 	}
