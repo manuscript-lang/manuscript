@@ -25,8 +25,8 @@ Start with [task recipes](common-tasks.md): command-line arguments, files, JSON,
 HTTP requests, and concurrent work. Each recipe is a complete program with a
 command to run it.
 
-Use the [standard library](../standard-library/_index.md) to find APIs by task,
-[concurrent work](../concurrency/_index.md) to coordinate tasks, and
+Use the standard library to find APIs by task,
+concurrent work to coordinate tasks, and
 [developer tools](../developer-tooling/_index.md) to set up your editor or build
 and debug an application.
 

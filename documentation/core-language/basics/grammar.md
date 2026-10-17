@@ -25,7 +25,7 @@ unit var while with
 
 `fixture` names the file fixture inside test blocks when a local `make_fixture`
 factory returns a concrete `TestHooks` implementer. It cannot be declared as a
-parameter or binding. See [file fixtures](../../standard-library/testing.md#file-fixtures).
+parameter or binding. See file fixtures.
 
 `self` names the implicit implementation receiver; it cannot be declared as a parameter or binding. Built-in type names and alternative constructors are names resolved by the type checker, not lexical keywords.
 

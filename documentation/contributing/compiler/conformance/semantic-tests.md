@@ -17,7 +17,7 @@ A source `test` body is checked as a zero-parameter `Unit` function and run by `
 
 ## Tests in source
 
-The [TaskGroup API](../../../concurrency/task-groups.md) requires empty groups, heterogeneous typed handles, source-order submission, cached results, unchanged domain Results, repeated joins, admission after join/close rejection, and cancellation/fault paths that join all started work. Verify close races with admission and join, parent cancellation takes precedence over Result delivery, fault takes precedence over timeout, zero timeout runs no callback, and group tasks cannot join or close their ancestors. Test automatic work-lifetime shutdown for groups and nested services without lexical with.
+The TaskGroup API requires empty groups, heterogeneous typed handles, source-order submission, cached results, unchanged domain Results, repeated joins, admission after join/close rejection, and cancellation/fault paths that join all started work. Verify close races with admission and join, parent cancellation takes precedence over Result delivery, fault takes precedence over timeout, zero timeout runs no callback, and group tasks cannot join or close their ancestors. Test automatic work-lifetime shutdown for groups and nested services without lexical with.
 
 Verify ordinary generic inference through Task[T] annotations, fields, collections, and specialized start methods. Direct try in Unit tests is rejected; execution/domain errors require explicit adaptation. CPU loops without explicit checkpoints must unwind at back-edges after cancellation.
 

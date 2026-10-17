@@ -33,7 +33,7 @@ entry = "./src/main.ms"
 | `ms lint <ms.toml>` | Check and lint reachable modules; libraries include all source modules and discovered tests |
 | `ms test <ms.toml>` | Execute tests from entry and discovered test files; libraries include all source modules too |
 
-A relative manifest argument resolves from the invocation directory. Its containing directory then becomes the project root for configuration paths. The entry follows the [CLI main contract](../../standard-library/cli.md).
+A relative manifest argument resolves from the invocation directory. Its containing directory then becomes the project root for configuration paths. The entry follows the CLI main contract.
 
 `ms check ms.toml` checks every `.ms` file recursively below `project.source`,
 including modules the entry does not import. It also checks `test.ms` and

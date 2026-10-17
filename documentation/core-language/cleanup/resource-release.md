@@ -14,4 +14,4 @@ Files, sockets, stream bodies, transactions, and owned resources need explicit r
 
 Cleanup is not successful completion. Explicit commit, finish, or flush operations expose expected errors with `Result`. Unexpected release failures become cleanup faults. A plain `let`, function call, aggregate, or closure does not add implicit close behavior.
 
-Factories close newly acquired native resources when cancellation or an error prevents delivery. A `with` initializer registers successful acquisition before cancellation can unwind it. See [completion and acquisition](../../contributing/concurrent-runtime.md#completion-and-resource-acquisition), [sharing](../../concurrency/sharing.md), and [Closeable](closeable.md).
+Factories close newly acquired native resources when cancellation or an error prevents delivery. A `with` initializer registers successful acquisition before cancellation can unwind it. See [completion and acquisition](../../contributing/concurrent-runtime.md#completion-and-resource-acquisition), sharing, and [Closeable](closeable.md).

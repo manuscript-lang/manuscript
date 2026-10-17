@@ -13,4 +13,4 @@ Files, sockets, and response bodies need to close when you finish using them. Us
 4. [Cleanup order](exit-order.md)
 5. [Cleanup failures](cleanup-faults.md)
 
-A reference keeps an object accessible; it does not keep a closed resource open. See [mutation and references](../types/references.md). Continue with [files and paths](../../standard-library/filesystem.md) for a concrete library API.
+A reference keeps an object accessible; it does not keep a closed resource open. See [mutation and references](../types/references.md). Continue with files and paths for a concrete library API.

@@ -28,7 +28,7 @@ test "explicit standard imports":
             return panic(message: "Unexpected case")
 ```
 
-Accept without an `[aliases]` table. Independently remove List and reject its bracket literal; remove Decimal and reject its annotation/literal; remove Result and reject its annotation and expression constructor lookup; remove panic and reject its call. Importing a function must not expose the type names in its signature. Match cases remain available from an inferred scrutinee even when its type name is not imported, as in the [CLI entry fixture](../../../standard-library/cli.md).
+Accept without an `[aliases]` table. Independently remove List and reject its bracket literal; remove Decimal and reject its annotation/literal; remove Result and reject its annotation and expression constructor lookup; remove panic and reject its call. Importing a function must not expose the type names in its signature. Match cases remain available from an inferred scrutinee even when its type name is not imported, as in the CLI entry fixture.
 
 Accept this independent module without standard imports:
 
@@ -153,7 +153,7 @@ Runner-level fault probes use parameters for division by zero, minimum Int/-1, u
 
 ## Entry, adapter, and lifetime integration
 
-Build the complete [CLI main module](../../../standard-library/cli.md) with an ms.toml selecting it, pass two arguments, and expect `Arguments: 2` plus LF and exit 0. Missing/internal/generic/wrong-signature main must fail checking. Inject SIGINT and SIGTERM during joined work and verify joins/cleanup before exits 130/143. A cleanup fault exits 70. Host escalation is separately classified as incomplete cleanup.
+Build the complete CLI main module with an ms.toml selecting it, pass two arguments, and expect `Arguments: 2` plus LF and exit 0. Missing/internal/generic/wrong-signature main must fail checking. Inject SIGINT and SIGTERM during joined work and verify joins/cleanup before exits 130/143. A cleanup fault exits 70. Host escalation is separately classified as incomplete cleanup.
 
 Generate a separate schema package for a minimal interface, a native adapter package importing it, and an application importing both; the pinned Go toolchain must build this without an import cycle. Reject interface imports of an application module, invalid/duplicate bindings, absent acquisition disposers, wrong native symbol signatures, and mutable/invalid foreign result values.
 

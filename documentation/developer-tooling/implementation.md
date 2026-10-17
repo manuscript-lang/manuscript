@@ -265,7 +265,7 @@ Content-Length transport limits frames to 16 MiB and headers to 8 KiB. Invalid J
 
 MSL104 warns when an expression statement discards a standard `Result`. Handle it with `match`, propagate it with `try`, or explicitly bind it as `let _ignored = operation()` when ignoring both success and failure is intentional. See [Result handling](../core-language/errors/results.md).
 
-MSL105 identifies direct mutations of captured data in known concurrent callbacks. It is advisory and does not prove race freedom; use one `Synchronized` wrapper for shared mutable access. See [sharing and lint limits](../concurrency/sharing.md#captured-mutable-data).
+MSL105 identifies direct mutations of captured data in known concurrent callbacks. It is advisory and does not prove race freedom; use one `Synchronized` wrapper for shared mutable access. See sharing and lint limits.
 
 MSL106 explains that a capitalized payload name creates a fresh binding even
 when it names a known constructor or alternative case. It suggests a separate
@@ -277,7 +277,7 @@ MSL108 warns at a match on an Optional whose only arms are `some` and `none`; us
 String replacement names remain outside its preference map. In particular,
 `String.replace_first` still accepts a cap greater than one; renaming every
 `String.replace` call would conceal that behavior. Both names remain supported
-with their current signatures; see [replacement limits](../standard-library/data.md).
+with their current signatures; see replacement limits.
 
 `fmt` accepts files, directories, and manifests, with project discovery shared with checking. `--check` reports every unformatted file and fails if any target needs formatting or cannot be processed. `--drop-labels` first removes redundant argument labels (`key: key` where the call binds that parameter by position anyway) using the checked program, and reports the first diagnostic and leaves the file untouched when it does not check; with `--check` it reports the files that would change. See [formatting](source/formatting.md) for selection and exclusion rules. It preserves comments and token spellings, validates both input and output, and writes atomically. Formatting and import-organization actions include document versions. Import sorting retains comment and blank-line group boundaries.
 

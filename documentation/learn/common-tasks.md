@@ -203,7 +203,7 @@ export fn main() -> Int:
 ms run json.ms -- '"hello"'
 ```
 
-Without a type argument or an expected result type, `parse` returns a `JsonValue` tree. Use it for documents whose shape is not known in advance. See [JSON encoding and decoding](../standard-library/formats.md#json-behavior) for value mappings and parsing limits.
+Without a type argument or an expected result type, `parse` returns a `JsonValue` tree. Use it for documents whose shape is not known in advance. See JSON encoding and decoding for value mappings and parsing limits.
 
 ## Read and write typed JSON
 
@@ -242,7 +242,7 @@ wrong member type returns an error. Unknown members are ignored by default;
 pass `ignore_unknown_fields: false` to reject them. Write `parse[Config]`
 explicitly after `try`, which supplies no expected type to its operand.
 `stringify` writes record fields in declaration order. See the
-[serialization guide](../standard-library/formats.md#json-behavior)
+serialization guide
 for Optional fields, alternatives, and custom encoding.
 
 ## Make an HTTP GET request
@@ -286,7 +286,7 @@ python3 -m http.server 8000 --bind 127.0.0.1
 ms run get.ms -- http://127.0.0.1:8000/notes.txt
 ```
 
-The local-server command needs Python 3 and a `notes.txt` file, such as the one created in the file-reading recipe. Transport failures and non-200 statuses produce exit status 1. The response body is buffered with a one-megabyte limit. For streaming and timeouts, see [HTTP](../standard-library/http.md).
+The local-server command needs Python 3 and a `notes.txt` file, such as the one created in the file-reading recipe. Transport failures and non-200 statuses produce exit status 1. The response body is buffered with a one-megabyte limit. For streaming and timeouts, see HTTP.
 
 ## Start and join a task
 
@@ -317,6 +317,6 @@ export fn main() -> Int:
 ms run task.ms
 ```
 
-`with` closes the group and joins its child work on every exit, including a failed join or write. Keep resources needed by a task open until it finishes. See [task groups](../concurrency/task-groups.md).
+`with` closes the group and joins its child work on every exit, including a failed join or write. Keep resources needed by a task open until it finishes. See task groups.
 
 For a tests file and an assertion helper, continue with [testing](testing.md). For counting iterations, see [counting loops](../core-language/control-flow/loops.md#counting-loops).

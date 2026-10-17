@@ -18,4 +18,4 @@ explanation. The chapters build on one another in this order:
 6. [Modules](modules/_index.md): imports, exports, and public boundaries.
 7. [Managing resources](cleanup/_index.md): closing files and connections with `with`.
 
-Then use the [standard library](../standard-library/_index.md) to work with data and external services. [Concurrent work](../concurrency/_index.md) explains starting tasks, scheduling, and sharing mutable data.
+Then use the generated [standard-library API reference](../standard-library/reference/_index.md) to find available declarations.

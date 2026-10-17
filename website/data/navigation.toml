@@ -4,11 +4,11 @@ paths = ["learn"]
 
 [[groups]]
 label = "Build with Manuscript"
-paths = ["learn/common-tasks", "standard-library", "concurrency", "developer-tooling"]
+paths = ["learn/common-tasks", "developer-tooling"]
 
 [[groups]]
 label = "Reference"
-paths = ["core-language", "standard-library/reference", "standard-library/call-rules", "glossary"]
+paths = ["core-language", "standard-library/reference", "glossary"]
 
 [[groups]]
 label = "Contribute"

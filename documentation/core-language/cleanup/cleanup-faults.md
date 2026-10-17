@@ -22,4 +22,4 @@ A concurrency API reports an operation fault as `ExecutionError.Crashed`. A sche
 
 Shielding gives cleanup a chance to release resources; it cannot force uncooperative code to finish. Hosts set cleanup watchdogs separately from request timeouts. If close or join cannot finish, the host may need [process-level escalation](../../contributing/concurrent-runtime.md#host-escalation). A timer expiring does not mean cleanup completed.
 
-If an operation can fail in an expected way, handle that through an explicit fallible completion method before leaving the scope. For example, commit a transaction before relying on close to release it. See [Closeable](closeable.md), [timeouts](../../concurrency/cancellation.md#timeouts), and [resource release](resource-release.md).
+If an operation can fail in an expected way, handle that through an explicit fallible completion method before leaving the scope. For example, commit a transaction before relying on close to release it. See [Closeable](closeable.md), timeouts, and [resource release](resource-release.md).

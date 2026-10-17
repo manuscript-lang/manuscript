@@ -128,4 +128,4 @@ A `while` reevaluates its condition before every iteration, including after `con
 
 ## Cancellation
 
-Each loop back-edge is a cancellation checkpoint, so CPU-bound loops respond promptly to cancellation without explicit calls. See [propagation and checkpoints](../../concurrency/cancellation.md#propagation-and-checkpoints) for all runtime checkpoints.
+Each loop back-edge is a cancellation checkpoint, so CPU-bound loops respond promptly to cancellation without explicit calls. See propagation and checkpoints for all runtime checkpoints.

@@ -19,8 +19,8 @@ func TestGeneratedReferenceCoverage(t *testing.T) {
 		}
 	}
 	for _, path := range []string{"documentation/standard-library/_index.md", "documentation/standard-library/contracts.md", "documentation/concurrency/shutdown.md"} {
-		if len(files[path]) == 0 {
-			t.Errorf("missing source-backed guide: %s", path)
+		if len(files[path]) != 0 {
+			t.Errorf("removed guide still generated: %s", path)
 		}
 	}
 }
