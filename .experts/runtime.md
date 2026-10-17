@@ -1,5 +1,20 @@
 # Runtime lessons
 
+### Measure collection wrappers with ordinary caller inlining
+
+Verified: on the pinned Go 1.25.1 toolchain, `b.Loop` suppresses inlining of
+`String_Split` in its benchmark body, adding an escaping List wrapper that an
+ordinary local caller avoids. Passing the result pointer to `b.Fatal` also
+forces it to escape. Use an observable result check without passing the wrapper
+and a `b.N` loop when measuring this optimization against handwritten Go.
+
+Apply when: measuring small runtime wrappers or collection allocation parity.
+Evidence: [split benchmarks](../pkg/runtime/bench_vs_go_test.go) and
+[inlineable split wrapper](../pkg/runtime/string.go).
+Verify: run `BenchmarkStringSplitLimited` with `-benchmem`; both local-use
+controls allocate one 48-byte backing slice on linux/amd64. Confirm caller inlining with
+`-gcflags=-m=2` when changing the wrapper or benchmark.
+
 ### Prepared queries must preserve callback-visible list mutations
 
 Verified: `glob_entries` retains the include/exclude slice descriptors before
