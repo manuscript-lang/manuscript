@@ -361,7 +361,7 @@ func Io_ReadLine(ctx *Execution, input ReadStream, maxBytes Option[int]) Result[
 	// A whole line already buffered is sliced out under one lock, with no
 	// intermediate copy.
 	mu.Lock()
-	if i := bytes.IndexByte(ahead.buf, '\n'); i >= 0 && i < max {
+	if i := bytes.IndexByte(ahead.buf, '\n'); i >= 0 && lineLength(ahead.buf[:i]) < max {
 		line := ahead.buf[:i]
 		ahead.buf = ahead.buf[i+1:]
 		mu.Unlock()
@@ -402,12 +402,13 @@ func Io_ReadLine(ctx *Execution, input ReadStream, maxBytes Option[int]) Result[
 			chunk = v.Val.Val.Data
 		}
 		if i := bytes.IndexByte(chunk, '\n'); i >= 0 {
-			if int(len(b)+i) >= max {
-				return ioFailure[Option[string]](IoError_LimitExceeded{})
-			}
-			b = append(b, chunk[:i]...)
+			// An over-long line is dropped; the lines after it stay readable.
 			if rest := chunk[i+1:]; len(rest) > 0 {
 				unread(rest)
+			}
+			b = append(b, chunk[:i]...)
+			if lineLength(b) >= max {
+				return ioFailure[Option[string]](IoError_LimitExceeded{})
 			}
 			if len(b) > 0 && b[len(b)-1] == '\r' {
 				b = b[:len(b)-1]
@@ -423,6 +424,15 @@ func Io_ReadLine(ctx *Execution, input ReadStream, maxBytes Option[int]) Result[
 		return ioFailure[Option[string]](IoError_InvalidData{})
 	}
 	return Ok[Option[string], IoError](Some(string(b)))
+}
+
+// lineLength is the length of line without a trailing carriage return, which
+// belongs to the line ending and does not count against a limit.
+func lineLength(line []byte) int {
+	if n := len(line); n > 0 && line[n-1] == '\r' {
+		return n - 1
+	}
+	return len(line)
 }
 
 func readLineByByte(ctx *Execution, input ReadStream, max int) Result[Option[string], IoError] {
@@ -442,17 +452,19 @@ func readLineByByte(ctx *Execution, input ReadStream, max int) Result[Option[str
 		if len(data) != 1 {
 			return ioFailure[Option[string]](IoError_Failed{Message: "invalid stream chunk"})
 		}
+		if data[0] == '\n' {
+			if len(b) > 0 && b[len(b)-1] == '\r' {
+				b = b[:len(b)-1]
+			}
+			if len(b) >= max {
+				return ioFailure[Option[string]](IoError_LimitExceeded{})
+			}
+			break
+		}
 		if len(b) >= max {
 			return ioFailure[Option[string]](IoError_LimitExceeded{})
 		}
 		b = append(b, data[0])
-		if data[0] == '\n' {
-			b = b[:len(b)-1]
-			if len(b) > 0 && b[len(b)-1] == '\r' {
-				b = b[:len(b)-1]
-			}
-			break
-		}
 	}
 	if !utf8.Valid(b) {
 		return ioFailure[Option[string]](IoError_InvalidData{})

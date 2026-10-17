@@ -755,3 +755,23 @@ func TestErrorCategory(t *testing.T) {
 }
 
 func (v viewOf) Receiver() any { return v.self }
+
+func TestReadLineLimitKeepsFollowingLinesAndIgnoresCarriageReturn(t *testing.T) {
+	ctx := testCtx(t)
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	in, out := newHostStream(r, true), newHostStream(w, true)
+	mustOK(t, out.Write(ctx, NewBytes([]byte("abcdefgh\nabcd\r\nzz\n"))))
+	mustOK(t, out.Flush(ctx))
+	if res := Io_ReadLine(ctx, in, Some(5)); !res.Failed {
+		t.Fatalf("over-long line accepted: %v", res)
+	}
+	for _, want := range []string{"abcd", "zz"} {
+		if line := mustOK(t, Io_ReadLine(ctx, in, Some(5))); !line.Some || line.Val != want {
+			t.Fatalf("line %v, want %q", line, want)
+		}
+	}
+	out.Close(ctx)
+}
