@@ -68,3 +68,24 @@ fn read(values: List[Int]) -> Int:
 	result := compiler.CompileSource("loop_condition_mutation.ms", source, compiler.Options{})
 	rejected(t, result, "type", "Optional[Int]")
 }
+
+func TestProvenIndexKeepsOptionalForm(t *testing.T) {
+	source := `import expect_equal from "@std/testing.ms"
+
+fn pick(values: List[Int], index: Int) -> Optional[Int]:
+    if index >= 0 and index < values.length():
+        let found: Optional[Int] = values[index]
+        return found
+
+    return none
+
+test "proven lookup assigns to an Optional":
+    expect_equal(pick([4, 5], 1), some(5))
+    expect_equal(pick([4, 5], 2), none)
+`
+	result := compiler.CompileSource("proven_optional.ms", source, compiler.Options{Tests: true})
+	data, err := execute(t, result)
+	if err != nil || !strings.HasSuffix(strings.TrimSpace(string(data)), "1 tests, 0 failed") {
+		t.Fatalf("proven optional: %v\n%s", err, data)
+	}
+}

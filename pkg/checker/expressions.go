@@ -21,6 +21,11 @@ func (c *checker) checkExpression(e *syntax.Expression, i *Info, expected *Type)
 	if i.Type.ID == "Never" {
 		i.NoReturn = true
 	}
+	if expected != nil && i.Proven && std(expected, "Optional") && len(expected.Args) == 1 &&
+		compatible(i.Type, expected.Args[0]) && !compatible(i.Type, expected) {
+		// A proven lookup keeps its Optional form where one is expected.
+		i.Type, i.Proven = standard("Optional", i.Type), false
+	}
 	if expected != nil && i.Type.ID != "<invalid>" && !compatible(i.Type, expected) {
 		if c.errorAssignable(i.Type, expected) {
 			i.ErrorSource = i.Type
