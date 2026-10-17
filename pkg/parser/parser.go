@@ -668,20 +668,30 @@ func (p *Parser) pipe(lhs *syntax.Expression) *syntax.Expression {
 	tried := p.take("try")
 	var step *syntax.Expression
 	switch {
-	case p.peek().Kind == ".":
+	case p.peek().Kind == "." && !(tried && p.peek().Pos.Line != try.Pos.Line):
 		step = p.postfix(lhs)
 	case tried && p.peek().Kind != lexer.Name:
 		return &syntax.Expression{Kind: syntax.KindUnary, Text: "try", Pos: try.Pos, Right: lhs}
 	default:
 		name := p.peek()
 		if name.Kind != lexer.Name {
-			p.fail(name, "a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found "+describe(name))
+			hint := ""
+			if name.Kind == lexer.Newline {
+				hint = "; to continue a flow on the next line, end this line before '|' and start the next line with '|'"
+			}
+			p.fail(name, "a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found "+describe(name)+hint)
 		}
 		p.at++
 		callee := &syntax.Expression{Kind: syntax.KindName, Text: name.Text, Pos: name.Pos}
-		for p.take(".") {
+		// A '.' on a later line continues the flow and applies to the step's
+		// result, so it never extends the step's name path.
+		for p.peek().Kind == "." && p.peek().Pos.Line == p.tokens[p.at-1].Pos.Line {
+			p.at++
 			member := p.need(lexer.Name)
 			callee = &syntax.Expression{Kind: syntax.KindMember, Pos: member.Pos, Text: member.Text, Left: callee}
+		}
+		if p.peek().Kind == "[" {
+			p.fail(p.peek(), "a pipe step cannot take type arguments; bind the instance to a name first, e.g. let step = "+name.Text+"[Int], then write x | step")
 		}
 		step = &syntax.Expression{Kind: syntax.KindCall, Pos: name.Pos, Left: callee, Args: []syntax.Argument{{Pos: lhs.Pos, Value: lhs}}}
 		if p.take("(") {

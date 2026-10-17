@@ -42,3 +42,10 @@ fn wrong(value: Result[Int, String]) -> Optional[Int]: value.to_optional()`, "no
 		})
 	}
 }
+
+func TestOperatorOnInvalidOperandReportsOnce(t *testing.T) {
+	result := CompileSource("once.ms", "fn f() -> Int:\n    var x: Int = 1\n    x += try 3\n    return x\n", Options{AnalyzeOnly: true})
+	if len(result.Diagnostics) != 1 || !strings.Contains(result.Diagnostics[0].Message, "try requires Result") {
+		t.Fatalf("want only the try error, got %+v", result.Diagnostics)
+	}
+}

@@ -166,3 +166,10 @@ func TestGrammarGuideListsEveryReservedWord(t *testing.T) {
 		t.Fatalf("grammar.md reserved words differ from the lexer:\n docs: %s\nlexer: %s", got, want)
 	}
 }
+
+func TestTrailingPipeOverIndentHint(t *testing.T) {
+	_, err := lexer.Lex("t.ms", "fn f() -> Int:\n    let a = 1 |\n        g\n    return a\n")
+	if err == nil || !strings.Contains(err.Error(), "start the continuation line with '|'") {
+		t.Fatalf("got %v", err)
+	}
+}
