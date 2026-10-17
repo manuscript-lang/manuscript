@@ -41,12 +41,13 @@ fn serve() -> Result[Unit, Error]:
             with client = try listener.accept():
                 with workers = TaskGroup():
                     with server = Server(listener: listener, client: client, workers: workers):
-                        workers.start(fn():
-                            with cleanup = WorkerCleanup(label: "worker"):
-                                stdout().write(data: "ready\n".to_bytes())
-                                sleep(duration: 3600.seconds)
-                                client.write(data: "worker farewell\n".to_bytes())
-                                return unit
+                        workers.start(
+                            fn():
+                                with cleanup = WorkerCleanup(label: "worker"):
+                                    stdout().write(data: "ready\n".to_bytes())
+                                    sleep(duration: 3600.seconds)
+                                    client.write(data: "worker farewell\n".to_bytes())
+                                    return unit
                         )
                         let observed = signals.next()
                         return ok(unit)
