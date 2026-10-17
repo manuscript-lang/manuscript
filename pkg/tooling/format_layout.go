@@ -325,11 +325,9 @@ func (l *expressionLayout) group(g *layoutGroup, indent, column, following int) 
 	suffix := following
 	if g.parameters {
 		tail := l.lines[g.close.Pos.Line-1][g.close.Pos.Column-1+len(g.close.Text):]
-		if at := strings.IndexByte(tail, ':'); at >= 0 {
-			tail = tail[:at]
-		}
-		// A callback body and enclosing arguments do not belong to its signature.
-		suffix = utf8.RuneCountInString(tail)
+		// A callback body and enclosing arguments do not belong to its signature,
+		// and neither do sibling parameters after a function-typed parameter.
+		suffix = utf8.RuneCountInString(signatureTail(tail))
 	}
 	force := g.force || column+utf8.RuneCountInString(flat)+suffix > formatWidth
 	operator, count := layoutOperators(g.nodes)
@@ -391,6 +389,29 @@ func (l *expressionLayout) group(g *layoutGroup, indent, column, following int) 
 	output.WriteString(strings.Repeat(" ", indent))
 	output.WriteString(g.close.Text)
 	return output.String()
+}
+
+// signatureTail is the part of a source line after a parameter list that
+// belongs to the same signature: the return type, up to the suite colon, or
+// up to the comma or closing delimiter that ends an enclosing parameter.
+func signatureTail(tail string) string {
+	depth := 0
+	for i := 0; i < len(tail); i++ {
+		switch tail[i] {
+		case '(', '[', '{':
+			depth++
+		case ')', ']', '}':
+			if depth == 0 {
+				return tail[:i]
+			}
+			depth--
+		case ':', ',':
+			if depth == 0 {
+				return tail[:i]
+			}
+		}
+	}
+	return tail
 }
 
 // Pack atomic list values into rows using their printed width. Expressions,
@@ -649,6 +670,13 @@ func groupStatementExpressions(filename, source string) (string, error) {
 			switch s.Kind {
 			case syntax.KindIf, syntax.KindWhile:
 				start++
+				if s.Pattern != nil {
+					// `if let name = value:` wraps only the value.
+					for tokens[start].Kind != "=" {
+						start++
+					}
+					start++
+				}
 			case syntax.KindReturn:
 				if tokens[start].Kind == syntax.KindReturn {
 					start++
