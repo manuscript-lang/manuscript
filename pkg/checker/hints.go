@@ -118,6 +118,16 @@ func (c *checker) typeNames() []string {
 	return names
 }
 
+// preludeShadowHint explains an arity error caused by a declaration that
+// replaced the prelude type of the same name.
+func (c *checker) preludeShadowHint(name string) string {
+	prelude := standardSymbols[name]
+	if declared := c.names[name]; isPreludeSymbol(prelude) && declared != nil && declared != prelude {
+		return "; this module's own " + name + " shadows the prelude " + name + ", so rename the declaration to use the prelude type"
+	}
+	return ""
+}
+
 // importHint names the standard module that exports name, if any.
 func importHint(name string) string {
 	if symbol := standardSymbols[name]; isPreludeSymbol(symbol) {

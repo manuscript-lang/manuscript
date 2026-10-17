@@ -510,6 +510,8 @@ func (g *gen) invokeMethod(m *checker.Method, receiverType *checker.Type, receiv
 		return g.format(receiverType, receiver)
 	case m.Native == "contract":
 		return call(selector(receiver, exportName(name)), append([]ast.Expr{ident("ctx")}, args...)...)
+	case m.Native == "hash" && m.Contract != nil && m.Contract.ID == "@std/Hashable":
+		return g.derivedHash(receiverType, receiver)
 	case m.Native != "" && m.Contract == nil:
 		return g.nativeMethodCall(m, receiverType, receiver, name, args, calleeInfo)
 	case m.Native != "":

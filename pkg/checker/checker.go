@@ -502,7 +502,7 @@ func (c *checker) resolve(t *syntax.Type, bound bool) *Type {
 		if required < arity {
 			c.error(t.Pos, "type", fmt.Sprintf("%s takes %d to %d type arguments, found %d; write %s", base.Name, required, arity, len(r.Args), typeSketch(base.Name, arity)))
 		} else {
-			c.error(t.Pos, "type", fmt.Sprintf("%s requires %d type arguments, found %d; write %s", base.Name, arity, len(r.Args), typeSketch(base.Name, arity)))
+			c.error(t.Pos, "type", fmt.Sprintf("%s requires %d type arguments, found %d; write %s", base.Name, arity, len(r.Args), typeSketch(base.Name, arity))+c.preludeShadowHint(base.Name))
 		}
 	}
 	t.Fact = &r

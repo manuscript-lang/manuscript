@@ -27,6 +27,11 @@ test "typed operands retain evaluation order and generic boundaries":
     if - 7 / 2 != -3 or - 7 % 3 != -1: return panic("signed arithmetic")
     if 9223372036854775807 * 0 != 0: return panic("zero multiplication")
 
+test "unary plus keeps the operand":
+    let count = 4
+    let ratio = 2.5
+    if +count != 4 or + +count != 4 or +ratio != 2.5 or 3 - +count != -1: return panic("unary plus")
+
 test "floating operations retain binary64 edge behavior":
     let negative_zero = -0.0
     if "{1.0 / negative_zero}" != "-Infinity": return panic("signed zero")
