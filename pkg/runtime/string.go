@@ -24,8 +24,7 @@ type StringBuilder struct {
 // NewStringBuilder returns an empty builder.
 func NewStringBuilder() *StringBuilder { return &StringBuilder{} }
 
-func StringBuilder_Append(ctx *Execution, b *StringBuilder, value string) Unit {
-	CheckCancelled(ctx)
+func StringBuilder_Append(_ *Execution, b *StringBuilder, value string) Unit {
 	if b.sealed {
 		Raise("builder is sealed")
 	}

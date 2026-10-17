@@ -7,8 +7,7 @@ func Result_IsOk[T, E any](_ *Execution, r Result[T, E]) bool { return !r.Failed
 func Result_IsError[T, E any](_ *Execution, r Result[T, E]) bool { return r.Failed }
 
 // Result_Unwrap returns the success payload; an error is a fault.
-func Result_Unwrap[T, E any](ctx *Execution, r Result[T, E]) T {
-	CheckCancelled(ctx)
+func Result_Unwrap[T, E any](_ *Execution, r Result[T, E]) T {
 	if r.Failed {
 		Raise("called Result.unwrap() on error; check is_ok first, or use unwrap_or(fallback: ...) to supply a default")
 	}
@@ -16,8 +15,7 @@ func Result_Unwrap[T, E any](ctx *Execution, r Result[T, E]) T {
 }
 
 // Result_UnwrapError returns the error payload; success is a fault.
-func Result_UnwrapError[T, E any](ctx *Execution, r Result[T, E]) E {
-	CheckCancelled(ctx)
+func Result_UnwrapError[T, E any](_ *Execution, r Result[T, E]) E {
 	if !r.Failed {
 		Raise("called Result.unwrap_error() on ok; check is_error first")
 	}
