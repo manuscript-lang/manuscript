@@ -21,7 +21,7 @@ func shutdownExamples(t *testing.T) map[string]string {
 	t.Helper()
 	examples := map[string]string{}
 	for _, name := range []string{"observer", "server"} {
-		data, err := os.ReadFile(filepath.Join("testdata", "shutdown", name+".ms"))
+		data, err := os.ReadFile(filepath.Join("testdata", "shutdown", name+".source"))
 		if err != nil {
 			t.Fatal(err)
 		}
