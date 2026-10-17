@@ -178,11 +178,12 @@ Suite         = ":", (SimpleStatement | NEWLINE, INDENT, Statement, { Statement 
 Statement     = SimpleStatement, NEWLINE
               | IfStatement | WhileStatement | ForStatement
               | WithStatement ;
-SimpleStatement = Binding | Assignment | ReturnStatement | "break" | "continue"
+SimpleStatement = Binding | Assignment | CompoundAssignment | ReturnStatement | "break" | "continue"
                 | CallStatement ;
 Binding       = ("let" | "var"), (Name, [ ":", Type ] | PositionalPattern | RecordPattern),
                 "=", Expression ;
 Assignment    = (Name | Expression, ".", Name), "=", Expression ;
+CompoundAssignment = Name, { ".", Name }, ( "+=" | "-=" | "*=" | "/=" | "%=" ), Expression ;
 ReturnStatement = "return", [ Expression ] ;
 CallStatement = Expression ;
 IfStatement   = "if", [ "let", Name, "=" ], Expression, Suite,
@@ -205,7 +206,7 @@ RecordPattern = "{", RecordEntry, { ",", RecordEntry }, [ "," ], "}" ;
 RecordEntry   = Name, [ ":", BindingPattern ] ;
 ```
 
-`CallStatement` accepts a call or match expression and discards its result. It also accepts `try call()` when the Result success type is `Unit` (see [propagation](../errors/propagation.md)); arithmetic expressions or bare names are not standalone statements. A match arm may end with any expression to produce its value. Assignment replaces an existing `var` binding or updates a record field. Collection positions are updated through methods. Only a simple name binding may carry a type annotation. Destructuring patterns infer their types from the checked initializer; annotate an intermediate name first when the initializer needs context. Positional patterns can be empty, selecting an empty fixed result or list. Empty record patterns are rejected because they bind nothing. `_` is allowed in match payloads and as a match wildcard, not as an ordinary binding or destructuring elision.
+`CallStatement` accepts a call or match expression and discards its result. It also accepts `try call()` when the Result success type is `Unit` (see [propagation](../errors/propagation.md)); arithmetic expressions or bare names are not standalone statements. A match arm may end with any expression to produce its value. Assignment replaces an existing `var` binding or updates a record field. A compound assignment `target op= value` means `target = target op (value)` with the right side grouped as one operand, so `total -= a - b` subtracts the whole difference. The operator and `=` must be adjacent (`+ =` is two tokens and is rejected). The target is a name or a field reached through names (`box.inner.count += 1`); a receiver containing a call or index is rejected so that it runs once. Operand and result types follow the binary operator, so `+=` also appends text and `-=` on text is a type error. Collection positions are updated through methods. Only a simple name binding may carry a type annotation. Destructuring patterns infer their types from the checked initializer; annotate an intermediate name first when the initializer needs context. Positional patterns can be empty, selecting an empty fixed result or list. Empty record patterns are rejected because they bind nothing. `_` is allowed in match payloads and as a match wildcard, not as an ordinary binding or destructuring elision.
 
 Inline suites work for functions, methods, tests, branches, loops, and cleanup scopes. They contain one simple statement, with no semicolon separators or nested compound statements. A function or method may instead contain one expression, which is implicitly returned. This expression shorthand applies only to callable bodies, not to tests or control-flow suites. For example:
 

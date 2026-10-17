@@ -16,7 +16,6 @@ func TestActionableDiagnosticsCLI(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct{ name, source, token, code, hint string }{
-		{"compound", "export fn main() -> Int:\n    var total = 0\n    total += 1\n    return total\n", "+=", "MS1000", "write 'total = total + 1' instead"},
 		{"string-match", "fn f(command: String) -> Int:\n    match command:\n        \"réport\": return 1\n    return 0\n", "\"réport\"", "MS1000", "compare strings with 'if"},
 		{"import", "import money from \"./money.ms\"\n", "money", "MS2002", "exports: MoneyError, format_cents, parse_cents; namespace imports are unsupported"},
 	} {
@@ -47,7 +46,7 @@ func TestActionableDiagnosticsCLI(t *testing.T) {
 			if d.Code != tc.code || !strings.Contains(d.Message, tc.hint) || d.End == nil || source[d.Position.Offset:d.End.Offset] != tc.token {
 				t.Fatalf("%s", output)
 			}
-			if (d.Fix != nil) != (tc.name == "compound") {
+			if d.Fix != nil {
 				t.Fatalf("unexpected fix: %s", output)
 			}
 			output, err = commandOutput(t, cliBinary, "check", file)
@@ -58,7 +57,7 @@ func TestActionableDiagnosticsCLI(t *testing.T) {
 	}
 }
 
-func TestCompoundAssignmentJSONFixRunsNatively(t *testing.T) {
+func TestCompoundAssignmentRunsNatively(t *testing.T) {
 	for _, tc := range []struct {
 		op   string
 		want string
@@ -69,24 +68,8 @@ func TestCompoundAssignmentJSONFixRunsNatively(t *testing.T) {
 			if err := os.WriteFile(file, []byte(source), 0600); err != nil {
 				t.Fatal(err)
 			}
-			output, err := commandOutput(t, cliBinary, "check", file, "--json")
-			if err == nil {
-				t.Fatal("accepted compound assignment")
-			}
-			var result struct {
-				Diagnostics []syntax.Diagnostic `json:"diagnostics"`
-			}
-			if err := json.Unmarshal(output, &result); err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Fix == nil {
-				t.Fatalf("missing machine fix: %s", output)
-			}
-			fix := result.Diagnostics[0].Fix
-			fixed := source[:fix.Position.Offset] + fix.Replacement + source[fix.End.Offset:]
-			if err := os.WriteFile(file, []byte(fixed), 0600); err != nil {
-				t.Fatal(err)
-			}
-			output, err = commandOutput(t, cliBinary, "run", file)
-			if err != nil {
-				t.Fatalf("fixed source did not execute correctly: %v\n%s\n%s", err, output, fixed)
+			if output, err := commandOutput(t, cliBinary, "run", file); err != nil {
+				t.Fatalf("compound assignment did not execute correctly: %v\n%s", err, output)
 			}
 		})
 	}

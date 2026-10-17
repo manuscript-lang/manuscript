@@ -15,7 +15,7 @@ Loops are statements, not expressions. Manuscript has no labeled loops, loop-res
 fn sum(values: List[Int]) -> Int:
     var total = 0
     for value in values:
-        total = total + value
+        total += value
 
     return total
 ```
@@ -24,7 +24,24 @@ The list contains integers. Each iteration binds an element and updates the accu
 
 ## Counting loops
 
-Use a counter and `while` to repeat work a fixed number of times without allocating a list. This complete test visits indexes 0 through 4:
+Import `range` from `@std/collections.ms` to count. `range(start, end)` includes `start`, excludes `end`, and counts up by one. A `for` over a direct `range` call runs as a counter loop: it allocates no list, so the bound can be large.
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import range from "@std/collections.ms"
+import panic from "@std/faults.ms"
+
+test "sum indexes":
+    var total = 0
+    for index in range(0, 5):
+        total += index
+    if total != 10:
+        return panic("Expected 10, got {total}")
+```
+
+`end <= start` visits nothing. Both bounds are evaluated once, in written order, before the first iteration; assigning to a variable used as a bound inside the body does not change the count. `range(0, count)` as an ordinary value is a `List[Int]`; more than 268,435,456 items is a fault, so size larger lists with `range_by(max_items:)`.
+
+Use `while` with a counter when the step is not one or the loop must stop early on a computed condition:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -34,48 +51,36 @@ test "five iterations":
     var index = 0
     var total = 0
     while index < 5:
-        total = total + index
-        index = index + 1
+        total += index
+        index += 1
     if index != 5 or total != 10:
         return panic("Expected five iterations and total 10")
 ```
 
-Increment the counter before any `continue` that would skip its update. With a nonpositive iteration count, an initial `index = 0` and condition `index < count` execute no body.
+Increment the counter before any `continue` that would skip its update.
 
-When you need a list of numbers, import `range` from `@std/collections.ms`. It includes `start`, excludes `end`, and requires an explicit nonzero `step`. It returns `Result[List[Int], CollectionError]`, so handle the result before using `for`:
+## Stepped ranges
+
+`range_by(start, end, step, max_items)` takes an explicit nonzero step and returns `Result[List[Int], CollectionError]`. A positive step moves upward; a negative step moves downward. `range_by(start: 5, end: 0, step: -2)` produces `[5, 3, 1]`. Equal endpoints or a step directed away from the end produce an empty list. `step: 0` returns `InvalidInput`; `max_items` bounds allocation and returns `LimitExceeded` when exceeded. A `Result` is not iterable, so unwrap it before the loop:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import range from "@std/collections.ms"
+import range_by from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
-test "sum indexes":
-    match range(start: 0, end: 5, step: 1):
+test "sum even indexes":
+    match range_by(start: 0, end: 6, step: 2):
         ok(indexes):
             var total = 0
             for index in indexes:
-                total = total + index
-            if total != 10:
-                return panic("Expected 10, got {total}")
+                total += index
+            if total != 6:
+                return panic("Expected 6, got {total}")
         error(cause):
             return panic("Could not build range: {cause.message()}")
-
-test "zero step is rejected":
-    let cause = match range(start: 0, end: 5, step: 0):
-        ok(_): return panic("Expected an invalid step error")
-        error(cause): cause
-
-    match cause:
-        InvalidInput: unit
-        _: return panic("Expected InvalidInput")
-
 ```
 
-Save either complete example as `test.ms` and run `ms test test.ms`. A failed check calls `panic`; see [testing](../../learn/testing.md).
-
-A positive step moves upward; a negative step moves downward. `range(start: 5, end: 0, step: -2)` produces `[5, 3, 1]`. Equal endpoints or a step directed away from the end produce an empty list. `step: 0` returns `InvalidInput`; `max_items` optionally bounds allocation and returns `LimitExceeded` when exceeded. See the [range declaration](../../standard-library/reference/collections.md#range).
-
-`for index in 0..5:` is unsupported. A direct `for index in range(...)` also fails because a `Result` is not an iterable. In a function returning a compatible `Result`, `let indexes = try range(start: 0, end: 5, step: 1)` is another way to unwrap before the loop.
+In a function returning a compatible `Result`, `let indexes = try range_by(start: 0, end: 6, step: 2)` is another way to unwrap. `for index in 0..5:` is unsupported. See the [range declarations](../../standard-library/reference/collections.md#range).
 
 ## Iterable types and binding
 
@@ -94,7 +99,7 @@ fn total(values: Map[String, Int]) -> Int:
     var sum = 0
     for entry in values:
         let {key, value} = entry
-        sum = sum + value
+        sum += value
     return sum
 ```
 

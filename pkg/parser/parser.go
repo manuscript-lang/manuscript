@@ -506,18 +506,9 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 	default:
 		e := p.expression(0)
 		if p.compoundAssignment() {
-			p.failCompoundAssignment(t, e)
-		}
-		if p.take("=") {
-			if (e.Kind != syntax.KindName && e.Kind != syntax.KindMember) || (e.Text == "self" || e.Text == "fixture") {
-				p.fail(t, "assignment requires a local binding name or record field; the left side of '=' must be a name or a.field; to change a collection element, call its method such as set(index:, value:) on a List or add(key:, value:) on a Map")
-			}
-			s.Kind = syntax.KindAssign
-			if e.Kind == syntax.KindMember {
-				s.Target = e
-			} else {
-				s.Name = e.Text
-			}
+			p.compound(s, t, e)
+		} else if p.take("=") {
+			p.assignTarget(s, t, e)
 			s.Value = p.expression(0)
 		} else {
 			tryCall := e.Kind == syntax.KindUnary && e.Text == "try" && e.Right.Kind == syntax.KindCall

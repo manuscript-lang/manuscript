@@ -12,6 +12,7 @@ ms lint source.ms --json
 ms lint ms.toml --json
 ms fmt source.ms --check
 ms fmt ms.toml --check
+ms fmt source.ms --drop-labels
 ms verify ms.toml --json
 ms lsp
 ms search_symbol read file lines
@@ -250,7 +251,7 @@ String replacement names remain outside its preference map. In particular,
 `String.replace` call would conceal that behavior. Both names remain supported
 with their current signatures; see [replacement limits](../standard-library/data.md).
 
-`fmt` accepts files, directories, and manifests, with project discovery shared with checking. `--check` reports every unformatted file and fails if any target needs formatting or cannot be processed. See [formatting](source/formatting.md) for selection and exclusion rules. It preserves comments and token spellings, validates both input and output, and writes atomically. Formatting and import-organization actions include document versions. Import sorting retains comment and blank-line group boundaries.
+`fmt` accepts files, directories, and manifests, with project discovery shared with checking. `--check` reports every unformatted file and fails if any target needs formatting or cannot be processed. `--drop-labels` first removes redundant argument labels (`key: key` where the call binds that parameter by position anyway) using the checked program, and leaves a file that does not check unchanged apart from formatting; with `--check` it reports the files that would change. See [formatting](source/formatting.md) for selection and exclusion rules. It preserves comments and token spellings, validates both input and output, and writes atomically. Formatting and import-organization actions include document versions. Import sorting retains comment and blank-line group boundaries.
 
 The formatter adds single blank lines at structural boundaries so code reads in
 paragraphs:

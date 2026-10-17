@@ -13,7 +13,7 @@ import {CryptoError} from "@std/crypto.ms"
 import {YamlError} from "@std/yaml.ms"
 import {TomlError} from "@std/toml.ms"
 import {SseError} from "@std/sse.ms"
-import {range} from "@std/collections.ms"
+import {range_by} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 type CustomError:
@@ -80,7 +80,7 @@ test "shared categories keep exact standard domain values":
         "SSE truncation has no shared category"
     )
 
-    let allocation_error = range(start: 0, end: 268435457, step: 1).unwrap_error()
+    let allocation_error = range_by(start: 0, end: 268435457, step: 1).unwrap_error()
     if category(allocation_error) != some(ErrorCategory.LimitExceeded): return panic(
         "native allocation limit category"
     )

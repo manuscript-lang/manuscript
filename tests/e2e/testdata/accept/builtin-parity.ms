@@ -1,7 +1,7 @@
 import from_int from "@std/bigint.ms"
 import compile from "@std/regex.ms"
 import panic from "@std/faults.ms"
-import {filled, range, map_from_entries} from "@std/collections.ms"
+import {filled, range_by, map_from_entries} from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
 import NumberError from "@std/numbers.ms"
 import StringError from "@std/string.ms"
@@ -58,13 +58,13 @@ fn checked_expansion() -> Result[Unit, Error]:
         return panic(message: "check failed")
     if not (
         try common_result(
-            result: range(start: 0, end: 6, step: 2, max_items: 3)
+            result: range_by(start: 0, end: 6, step: 2, max_items: 3)
         ) == [0, 2, 4]
     ):
         return panic(message: "check failed")
     if not (
         try common_result(
-            result: range(start: 3, end: -1, step: -1, max_items: 4)
+            result: range_by(start: 3, end: -1, step: -1, max_items: 4)
         ) == [3, 2, 1, 0]
     ):
         return panic(message: "check failed")
@@ -457,9 +457,9 @@ test "growth limits and invalid inputs return values":
     let list_invalid: Result[List[Int], CollectionError] = error(
         CollectionError.InvalidInput
     )
-    if not (range(start: 0, end: 4, step: 1, max_items: 3) == list_limit):
+    if not (range_by(start: 0, end: 4, step: 1, max_items: 3) == list_limit):
         return panic(message: "check failed")
-    if not (range(start: 0, end: 4, step: 0, max_items: 3) == list_invalid):
+    if not (range_by(start: 0, end: 4, step: 0, max_items: 3) == list_invalid):
         return panic(message: "check failed")
     if not (filled(value: 1, count: 2, max_items: 1) == list_limit):
         return panic(message: "check failed")
