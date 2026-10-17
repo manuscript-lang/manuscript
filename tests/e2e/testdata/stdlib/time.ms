@@ -36,3 +36,8 @@ test "host clocks are usable and zero sleep completes":
     if value(parse_timestamp(now.to_string())) != now: return panic(
         "wall clock roundtrip"
     )
+
+test "parse_timestamp reports offsets that leave years 1 through 9999 as out of range":
+    let out_of_range: Result[Timestamp, TimeError] = error(TimeError.OutOfRange)
+    for text in ["0001-01-01T00:00:00+00:01", "9999-12-31T23:59:59-00:01"]:
+        if parse_timestamp(text) != out_of_range: return panic("range {text}")

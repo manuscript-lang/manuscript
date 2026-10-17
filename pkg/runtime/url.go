@@ -63,7 +63,12 @@ func Url_Format(_ *Execution, value *Url) Result[string, UrlError] {
 	if err != nil {
 		return Fail[string, UrlError](UrlError_InvalidInput{})
 	}
-	return Ok[string, UrlError](u.String())
+	text := u.String()
+	if u.Host == "" && u.Path == "" {
+		// Go omits the empty authority; keep "//" so the text parses back with the same scheme-only authority.
+		text = u.Scheme + "://" + strings.TrimPrefix(text, u.Scheme+":")
+	}
+	return Ok[string, UrlError](text)
 }
 
 // Url_ParseQuery parses a query string, preserving duplicate keys and order.
@@ -115,7 +120,11 @@ func urlValue(u *url.URL) Result[*Url, UrlError] {
 		}
 		port = Some(int(n))
 	}
-	if !utf8.ValidString(u.Path) || !utf8.ValidString(u.Fragment) {
+	if !utf8.ValidString(u.Path) || !utf8.ValidString(u.Fragment) || !validURLQuery(u.RawQuery) {
+		return Fail[*Url, UrlError](UrlError_InvalidData{})
+	}
+	// Only a bracketed IP literal may contain a colon; "host:80:80" is malformed.
+	if strings.Contains(u.Hostname(), ":") && !strings.HasPrefix(u.Host, "[") {
 		return Fail[*Url, UrlError](UrlError_InvalidData{})
 	}
 	return Ok[*Url, UrlError](&Url{Scheme: strings.ToLower(u.Scheme), Host: strings.ToLower(u.Hostname()), Port: port, Path: u.EscapedPath(), Query: u.RawQuery, Fragment: u.Fragment})

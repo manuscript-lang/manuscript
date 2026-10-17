@@ -78,3 +78,13 @@ test "URL format rejects queries that would not round trip":
         fragment: ""
     )
     if value(format(good)) != "http://h/p?a=%41&b": return panic("valid query")
+
+test "URL parse rejects malformed hosts and queries and keeps an empty authority":
+    let invalid: Result[Url, UrlError] = error(UrlError.InvalidData)
+    for text in ["http://host:80:80/", "http://h/p?q=a b", "http://h/p?q=%zz"]:
+        if parse(text) != invalid: return panic("accepted {text}")
+    let empty = value(parse("http://"))
+    if value(format(empty)) != "http://": return panic("empty authority text")
+    if value(parse(value(format(empty)))) != empty: return panic(
+        "empty authority round trip"
+    )
