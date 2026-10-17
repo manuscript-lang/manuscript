@@ -2,6 +2,10 @@
 
 [AGENTS.md](../AGENTS.md#domain-skills) routes future sessions to repository-specific workflows. `skills/` is the shared source; `.agents/skills/` and `.claude/skills/` hold discovery symlinks. The imported general-purpose collection, installer, lockfile, and license were removed with that collection.
 
+[Simplify](simplify/SKILL.md) turns simplification requests into concrete removal
+of duplicated behavior, unnecessary work, special cases, and confusing layers.
+It uses the affected domain skills for contract checks.
+
 [Improve documentation](improve-documentation/SKILL.md) handles broad accuracy,
 marketing, and reader-journey improvements. [Documentation](documentation/SKILL.md)
 owns the shared authoring and publication rules, including narrow edits.

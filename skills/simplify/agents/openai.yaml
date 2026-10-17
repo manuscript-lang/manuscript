@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simplify"
+  short_description: "Remove complexity from Manuscript code, design, and examples"
+  default_prompt: "Use $simplify to reduce complexity in the requested Manuscript area, show the concrete work or rules removed, and verify the affected contract."
