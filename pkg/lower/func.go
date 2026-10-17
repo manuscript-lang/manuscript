@@ -323,14 +323,30 @@ func (g *gen) markUsed(params []syntax.Parameter, body []*syntax.Statement) {
 	if g.used == nil {
 		g.used = map[*checker.Binding]bool{}
 	}
+	// A folded expression lowers to its constant, so reads beneath it (the
+	// dropped right operand of `true or x`) are not emitted and do not use
+	// their bindings.
+	folded := 0
 	syntax.Visitor{Expression: func(e *syntax.Expression) {
-		if info := g.program.Info(e); info != nil {
-			if info.Binding != nil && e.Kind == syntax.KindName {
-				g.used[info.Binding] = true
-			}
-			for _, c := range info.Captures {
-				g.used[c] = true
-			}
+		info := g.program.Info(e)
+		if info == nil {
+			return
+		}
+		if info.Folded {
+			folded++
+		}
+		if folded > 0 {
+			return
+		}
+		if info.Binding != nil && e.Kind == syntax.KindName {
+			g.used[info.Binding] = true
+		}
+		for _, c := range info.Captures {
+			g.used[c] = true
+		}
+	}, LeaveExpression: func(e *syntax.Expression) {
+		if info := g.program.Info(e); info != nil && info.Folded {
+			folded--
 		}
 	}}.Callable(params, body)
 }
