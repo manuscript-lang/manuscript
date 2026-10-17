@@ -58,7 +58,7 @@ export fn pi() -> Float:
 # Returns `base` raised to `exponent`.
 export fn pow(base: Float, exponent: Float) -> Float:
 
-# Returns the floating-point remainder after division.
+# Returns the floating-point remainder of `left / right` with the sign of `left`, like Int `%` (C `fmod`), not the IEEE round-to-nearest remainder: `remainder(5.0, 3.0)` is 2.0. A zero `right` or infinite `left` gives NaN; an infinite `right` returns `left`.
 export fn remainder(left: Float, right: Float) -> Float:
 
 # Rounds to the nearest whole number, with ties toward positive infinity.

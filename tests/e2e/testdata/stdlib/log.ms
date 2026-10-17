@@ -279,3 +279,44 @@ test "source transports receive complete records and close through their contrac
         ): return panic("source transport record")
 
     if not output.closed: return panic("source transport cleanup")
+
+test "log_json and child_json accept only JSON objects":
+    let output = MemoryStream(data: "".to_bytes(), offset: 0, closed: false)
+
+    with transport = stream_transport(WriteStream(output)):
+        let logger = value(create(transport: transport, timestamp: false))
+        let invalid: Result[Unit, LogError] = error(LogError.InvalidData)
+
+        for text in ["[1]", "5", "null", "\"s\"", "nope"]:
+            if (
+                logger.log_json(
+                    level: LogLevel.Info,
+                    message: "m",
+                    fields: text
+                ) != invalid
+            ): return panic("log_json accepted a non-object")
+            if logger.child_json(fields: text).is_ok(): return panic(
+                "child_json accepted a non-object"
+            )
+
+        if output.data.length() != 0: return panic("rejected fields wrote a record")
+
+        let ok_log = value(
+            logger.log_json(
+                level: LogLevel.Info,
+                message: "m",
+                fields: "\{\"a\":1\}"
+            )
+        )
+        let wrapped = value(
+            record(
+                logger: logger,
+                level: LogLevel.Info,
+                message: "m",
+                fields: [1]
+            )
+        )
+        let expected = "\{\"level\":30,\"msg\":\"m\",\"a\":1\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
+        if output.data.to_string() != some(expected): return panic(
+            "object and wrapped records"
+        )

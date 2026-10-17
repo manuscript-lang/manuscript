@@ -1,4 +1,5 @@
 import range from "@std/collections.ms"
+import from_scalars from "@std/string.ms"
 import {parse, stringify, YamlValue, YamlError, YamlLimits} from "@std/yaml.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
@@ -753,3 +754,11 @@ test "YAML compact nested sequences resume each level and parse deep chains in l
         root = inner.first().unwrap()
 
     if items(root) != [YamlValue.StringValue("x")]: return panic("deep chain leaf")
+
+test "YAML stringify escapes C1 control characters so output reparses":
+    for code in [127, 128, 133, 150, 159]:
+        let text = value(from_scalars(values: [97, code, 98]))
+        let encoded = value(stringify(value: YamlValue.StringValue(text)))
+        if value(parse(text: encoded)) != YamlValue.StringValue(text): return panic(
+            "C1 control scalar must round-trip"
+        )
