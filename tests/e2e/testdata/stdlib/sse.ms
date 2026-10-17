@@ -1,3 +1,4 @@
+import range from "@std/collections.ms"
 import {
     decoder,
     feed,
@@ -50,12 +51,8 @@ fn splits(source: Bytes) -> List[List[Bytes]]:
         cut = cut + 1
 
     let single = List[Bytes]()
-    var index = 0
-
-    while index < size:
+    for index in range(0, size):
         single.append(source.slice(index, index + 1).unwrap())
-        index = index + 1
-
     all.append(single)
     return all
 

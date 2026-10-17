@@ -1,3 +1,4 @@
+import range from "@std/collections.ms"
 import {bench} from "./harness.ms"
 import {basename, join, normalize} from "@std/path.ms"
 import {parse, encode_component} from "@std/url.ms"
@@ -9,9 +10,7 @@ export fn bench_path_url_math() -> Unit:
         50000,
         fn() -> Int:
             var n = 0
-            var i = 0
-
-            while i < 50000:
+            for i in range(0, 50000):
                 n = (
                     n
                     + normalize(
@@ -20,8 +19,6 @@ export fn bench_path_url_math() -> Unit:
                         )
                     ).length()
                 )
-                i = i + 1
-
             return n
     )
     bench(
@@ -29,12 +26,8 @@ export fn bench_path_url_math() -> Unit:
         100000,
         fn() -> Int:
             var n = 0
-            var i = 0
-
-            while i < 100000:
+            for i in range(0, 100000):
                 n = n + basename(path: "/a/b/c/file.txt").length()
-                i = i + 1
-
             return n
     )
     bench(
@@ -42,14 +35,11 @@ export fn bench_path_url_math() -> Unit:
         20000,
         fn() -> Int:
             var n = 0
-            var i = 0
 
-            while i < 20000:
+            for i in range(0, 20000):
                 match parse(text: "https://example.com:8080/a/b?x=1&y=2#frag"):
                     ok(_): n = n + 1
                     error(_): unit
-
-                i = i + 1
 
             return n
     )
@@ -58,12 +48,8 @@ export fn bench_path_url_math() -> Unit:
         50000,
         fn() -> Int:
             var n = 0
-            var i = 0
-
-            while i < 50000:
+            for i in range(0, 50000):
                 n = n + encode_component(text: "a b&c=d/é").length()
-                i = i + 1
-
             return n
     )
     bench(
@@ -71,11 +57,7 @@ export fn bench_path_url_math() -> Unit:
         1000000,
         fn() -> Int:
             var acc = 0.0
-            var i = 0
-
-            while i < 1000000:
+            for i in range(0, 1000000):
                 acc = acc + sqrt(value: 2.0) + sin(value: 1.0)
-                i = i + 1
-
             return acc.truncate_to_int().unwrap_or(0)
     )

@@ -1,15 +1,12 @@
+import range from "@std/collections.ms"
 import {bench} from "./harness.ms"
 import {StringBuilder} from "@std/string.ms"
 import {parse, stringify, YamlValue} from "@std/yaml.ms"
 
 fn yaml_doc(count: Int) -> String:
     let sb = StringBuilder()
-    var i = 0
-
-    while i < count:
+    for i in range(0, count):
         sb.append("- id: {i}\n  name: user{i}\n  tags: [a, b]\n  ok: true\n")
-        i = i + 1
-
     return sb.freeze()
 
 fn yaml_length(value: YamlValue) -> Int:

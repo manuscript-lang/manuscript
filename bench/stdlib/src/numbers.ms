@@ -1,3 +1,4 @@
+import range from "@std/collections.ms"
 import {bench} from "./harness.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"
@@ -26,14 +27,10 @@ export fn bench_numbers() -> Unit:
         20000,
         fn() -> Int:
             var n = 0
-            var i = 0
-
-            while i < 20000:
+            for i in range(0, 20000):
                 match (i.to_decimal() + rate).round(places: 2):
                     ok(d): n = n + d.truncate_to_int().unwrap_or(0)
                     error(_): unit
-
-                i = i + 1
 
             return n
     )
@@ -64,14 +61,10 @@ export fn bench_numbers() -> Unit:
         20000,
         fn() -> Int:
             var n = 0
-            var i = 0
-
-            while i < 20000:
+            for i in range(0, 20000):
                 match parse_timestamp(text: "2026-03-01T12:30:45.123Z"):
                     ok(t): n = n + t.unix_seconds() % 7
                     error(_): unit
-
-                i = i + 1
 
             return n
     )
@@ -80,11 +73,8 @@ export fn bench_numbers() -> Unit:
         200000,
         fn() -> Int:
             let q = Queue[Int]()
-            var i = 0
-
-            while i < 100000:
+            for i in range(0, 100000):
                 q.enqueue(i)
-                i = i + 1
 
             var n = 0
 
@@ -103,11 +93,8 @@ export fn bench_numbers() -> Unit:
                     - right
                 )
             )
-            var i = 0
-
-            while i < 50000:
+            for i in range(0, 50000):
                 q.enqueue((i * 7919) % 10007)
-                i = i + 1
 
             var n = 0
 

@@ -1,3 +1,4 @@
+import range from "@std/collections.ms"
 import {bench} from "./harness.ms"
 import {StringBuilder} from "@std/string.ms"
 import {parse, stringify, JsonValue} from "@std/json.ms"
@@ -5,15 +6,12 @@ import {parse, stringify, JsonValue} from "@std/json.ms"
 fn json_doc(count: Int) -> String:
     let sb = StringBuilder()
     sb.append("[")
-    var i = 0
-
-    while i < count:
+    for i in range(0, count):
         if i > 0: sb.append(",")
 
         sb.append(
             "\{\"id\":{i},\"name\":\"user{i}\",\"tags\":[\"a\",\"b\"],\"score\":{i}.5,\"ok\":true\}"
         )
-        i = i + 1
 
     sb.append("]")
     return sb.freeze()
