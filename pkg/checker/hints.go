@@ -414,7 +414,7 @@ func resultUseHint(actual, expected *Type) string {
 	if actual == nil || expected == nil || !std(actual, "Result") || len(actual.Args) == 0 || !Same(actual.Args[0], expected) {
 		return ""
 	}
-	return "unwrap it with 'try' inside a function that returns a compatible Result, or with 'match' or '.unwrap()'"
+	return "unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.unwrap()'"
 }
 
 // numberConversionHint names the explicit conversion between Int and Float;
