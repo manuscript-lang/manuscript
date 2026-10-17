@@ -173,7 +173,7 @@ func (n *osNetwork) BindDatagram(ctx *Execution, address string) Result[Datagram
 	conn, err := (&net.ListenConfig{}).ListenPacket(call, "udp", address)
 	if err != nil {
 		CheckCancelled(ctx)
-		return netFail[DatagramSocket](netFailed(err.Error()))
+		return netFail[DatagramSocket](netFailed(describeTransportError(err)))
 	}
 	resource := &osDatagram{owner: n, conn: conn, read: newGate(), write: newGate(), life: newLifecycle()}
 	if !n.own(resource) {
@@ -257,7 +257,7 @@ func (c *osConnection) Read(ctx *Execution, maxBytes Option[int], timeout Option
 		return ioFail[Option[*Bytes]](errIoClosed)
 	}
 	if err != nil {
-		return ioFail[Option[*Bytes]](ioFailed(err.Error()))
+		return ioFail[Option[*Bytes]](ioFailed(describeTransportError(err)))
 	}
 	return ioFail[Option[*Bytes]](ioFailed("empty read without EOF"))
 }
@@ -293,7 +293,7 @@ func (c *osConnection) Write(ctx *Execution, data *Bytes, timeout Option[Duratio
 			if c.life.isClosed() {
 				return ioFail[Unit](errIoClosed)
 			}
-			return ioFail[Unit](ioFailed(err.Error()))
+			return ioFail[Unit](ioFailed(describeTransportError(err)))
 		}
 		if n == 0 {
 			return ioFail[Unit](ioFailed("short write"))
@@ -325,7 +325,7 @@ func (c *osConnection) ShutdownWrite(ctx *Execution) Result[Unit, NetworkError] 
 		return netFail[Unit](errNetDenied)
 	}
 	if err != nil {
-		return netFail[Unit](netFailed(err.Error()))
+		return netFail[Unit](netFailed(describeTransportError(err)))
 	}
 	return Ok[Unit, NetworkError](Unit{})
 }
@@ -430,7 +430,7 @@ func (l *osListener) Accept(ctx *Execution, timeout Option[Duration]) Result[Con
 		if call.Err() != nil {
 			return netFail[Connection](errNetTimeout)
 		}
-		return netFail[Connection](netFailed(err.Error()))
+		return netFail[Connection](netFailed(describeTransportError(err)))
 	}
 	if l.tlsConfig != nil {
 		secure := tls.Server(conn, l.tlsConfig)
@@ -442,7 +442,7 @@ func (l *osListener) Accept(ctx *Execution, timeout Option[Duration]) Result[Con
 			if s.timedOut() {
 				return netFail[Connection](errNetTimeout)
 			}
-			return netFail[Connection](netFailed(err.Error()))
+			return netFail[Connection](netFailed(describeTransportError(err)))
 		}
 		conn = secure
 	}
@@ -522,7 +522,7 @@ func (d *osDatagram) Receive(ctx *Execution, maxBytes Option[int], timeout Optio
 		if d.life.isClosed() {
 			return netFail[*Datagram](errNetClosed)
 		}
-		return netFail[*Datagram](netFailed(err.Error()))
+		return netFail[*Datagram](netFailed(describeTransportError(err)))
 	}
 	if int(count) > max {
 		return netFail[*Datagram](errNetLimit)
@@ -557,7 +557,7 @@ func (d *osDatagram) Send(ctx *Execution, data *Bytes, address string, timeout O
 		if errors.Is(err, os.ErrPermission) {
 			return netFail[Unit](errNetDenied)
 		}
-		return netFail[Unit](netFailed(err.Error()))
+		return netFail[Unit](netFailed(describeTransportError(err)))
 	}
 	stop := netInterruptDeadline(s.exec, d.conn.SetWriteDeadline)
 	n, err := d.conn.WriteTo(data.Data, target)
@@ -566,7 +566,7 @@ func (d *osDatagram) Send(ctx *Execution, data *Bytes, address string, timeout O
 		return netFail[Unit](errNetTimeout)
 	}
 	if err != nil {
-		return netFail[Unit](netFailed(err.Error()))
+		return netFail[Unit](netFailed(describeTransportError(err)))
 	}
 	if n != len(data.Data) {
 		return netFail[Unit](netFailed("partial datagram"))
