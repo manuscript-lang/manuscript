@@ -101,6 +101,30 @@ test "collection constructors validate bounds and exact limits":
         "range budget"
     )
 
+test "stepped ranges handle full-width spans and minimum negative steps":
+    let minimum = -9223372036854775808
+    let maximum = 9223372036854775807
+    if (
+        value(range_by(minimum, maximum, maximum, max_items: 3)) != [
+            minimum,
+            -1,
+            (maximum - 1)
+        ]
+    ): return panic("full-width ascending range")
+    if value(range_by(maximum, minimum, minimum, max_items: 2)) != [maximum, -1]: return panic(
+        "minimum negative step"
+    )
+    if value(range_by(0, minimum, minimum, max_items: 1)) != [0]: return panic(
+        "exclusive minimum endpoint"
+    )
+
+    let limited: Result[List[Int], CollectionError] = error(
+        CollectionError.LimitExceeded
+    )
+    if range_by(minimum, maximum, maximum, max_items: 2) != limited: return panic(
+        "full-width range limit"
+    )
+
 test "range counts up by one":
     if range(0, 4) != [0, 1, 2, 3]: return panic("range")
 
