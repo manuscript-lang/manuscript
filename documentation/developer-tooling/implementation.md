@@ -66,6 +66,14 @@ ms diagram ms.toml --format mermaid -o calls.mmd
 
 These commands use source checking without a Go installation or native toolchain extraction. `inspect` retains symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders their static call graph; it is not an execution trace. `--format ascii` (the default) prints a plain-text outline in a fixed order: entities by identity, each followed by its distinct callees with a repeat count. `--format mermaid` prints a flowchart for rendering.
 
+```sh
+ms diagram ms.toml --view effects --entity save
+ms diagram ms.toml --view errors
+ms diagram ms.toml --view modules
+```
+
+`--view` answers one question as a tree: `calls` (who is called, with native boundaries as leaves), `effects` (only callees that carry an effect, ending at the native operation where it enters), `errors` (functions with a `Result` error type or `try` sites), and `modules` (imports per module). `--entity` roots the tree at one declaration by name or `file::name` (a project-relative path for `modules`) and fails when the name is missing or ambiguous; without it the roots are the entities no relevant entity calls. `--depth n` bounds expansion (default 3), repeated callees on a path print `(cycle)`, and a view stops at 200 nodes with a count of the rest. Both formats render the same tree.
+
 ## Review report
 
 ```sh

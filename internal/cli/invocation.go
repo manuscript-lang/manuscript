@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/tooling"
 )
 
 // invocation is a source command after flag parsing and before validation.
@@ -27,7 +28,8 @@ type invocation struct {
 	buildTypeSet                       bool
 	testTimeout, testFilter            string
 	testOptions                        []string
-	format                             string   // ms diagram --format
+	format, view, entity               string // ms diagram options
+	depth                              int
 	debugScript                        string   // ms debug --script: command file, or - for stdin
 	debugBreaks                        []string // ms debug --break: one-shot breakpoints
 	arguments                          []string // forwarded to the program after --
@@ -162,6 +164,23 @@ func (inv *invocation) parseOptions(args []string, first int, positional bool) (
 				return usageError("--format requires a name, e.g. --format mermaid"), false
 			}
 			inv.format = value
+		case "--view", "--entity", "--depth":
+			value, ok := requiredValue(args, &i, value, inline)
+			if !ok {
+				return usageError("%s requires a value; run 'ms help diagram' for examples", flag), false
+			}
+			switch flag {
+			case "--view":
+				inv.view = value
+			case "--entity":
+				inv.entity = value
+			default:
+				n, err := strconv.Atoi(value)
+				if err != nil || n <= 0 {
+					return usageError("invalid --depth; use a positive integer"), false
+				}
+				inv.depth = n
+			}
 		case "--script":
 			value, ok := requiredValue(args, &i, value, inline)
 			if !ok {
@@ -254,6 +273,15 @@ func (inv *invocation) validate() (plan, int, bool) {
 	}
 	if inv.format != "" && command != "diagram" {
 		return p, usageError("--format is valid only for ms diagram and ms review, not ms %s; run 'ms help %s' for its options", command, command), false
+	}
+	if (inv.view != "" || inv.entity != "" || inv.depth != 0) && command != "diagram" {
+		return p, usageError("--view, --entity, and --depth are valid only for ms diagram, not ms %s; run 'ms help %s' for its options", command, command), false
+	}
+	if inv.view != "" && !slices.Contains(tooling.Views, inv.view) {
+		return p, usageError("unknown --view %q for ms diagram; use %s", inv.view, strings.Join(tooling.Views, ", ")), false
+	}
+	if inv.depth != 0 && inv.view == "" && inv.entity == "" {
+		return p, usageError("--depth needs --view or --entity; run 'ms help diagram' for examples"), false
 	}
 	if command == "diagram" && inv.format != "" && inv.format != "ascii" && inv.format != "mermaid" {
 		return p, usageError("unknown --format %q for ms diagram; use ascii or mermaid", inv.format), false

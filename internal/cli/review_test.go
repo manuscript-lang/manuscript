@@ -72,3 +72,23 @@ func TestReviewAndDiagramFormats(t *testing.T) {
 		t.Fatalf("inspect format: %d %q", status, errors)
 	}
 }
+
+func TestDiagramViews(t *testing.T) {
+	file := sourceFile(t, reviewHead)
+	status, output, errors := invoke(t, "diagram", file, "--view", "calls", "--entity", "main")
+	if status != 0 || errors != "" || !strings.Contains(output, "main  [fn]") || !strings.Contains(output, "add  [fn]") {
+		t.Fatalf("calls: %d %q %q", status, output, errors)
+	}
+	if status, _, errors := invoke(t, "diagram", file, "--view", "flow"); status != 2 || !strings.Contains(errors, "unknown --view") {
+		t.Fatalf("view: %d %q", status, errors)
+	}
+	if status, _, errors := invoke(t, "diagram", file, "--entity", "nope"); status != 2 || !strings.Contains(errors, "no entity named nope") {
+		t.Fatalf("entity: %d %q", status, errors)
+	}
+	if status, _, errors := invoke(t, "diagram", file, "--depth", "2"); status != 2 || !strings.Contains(errors, "--depth needs") {
+		t.Fatalf("depth: %d %q", status, errors)
+	}
+	if status, _, errors := invoke(t, "inspect", file, "--view", "calls"); status != 2 || !strings.Contains(errors, "valid only for ms diagram") {
+		t.Fatalf("inspect view: %d %q", status, errors)
+	}
+}
