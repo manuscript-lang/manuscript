@@ -77,6 +77,26 @@ test('alternative cases show their case name', () => {
   assert.equal(unreadable.value, 'Shape'); assert.equal(unreadable.variablesReference, 0);
 });
 
+test('map and set expansion reuse backing fields and preserve paging', async () => {
+  const adapter = new ManuscriptAdapter(new PassThrough());
+  const tree = new Map([
+    [1, [{ name: 'entries', variablesReference: 2 }]],
+    [2, [{ name: '[1]', variablesReference: 3 }, { name: '[2]', variablesReference: 0 }]],
+    [3, [{ name: 'Key', type: 'string', value: '"key"' }, { name: 'Value', type: 'int', value: '7' }]],
+    [4, [{ name: 'm', variablesReference: 1 }]],
+  ]);
+  const calls = [];
+  adapter.children = async (ref, args) => { calls.push({ ref, args }); return tree.get(ref) || []; };
+  const page = { start: 1, count: 2 };
+  const map = await adapter.valueChildren({ kind: 'Map', ref: 1, sourceType: 'Map[String, Int]' }, page);
+  assert.deepEqual(map.map(v => [v.name, v.value, v.type]), [['key', '7', 'Int']]);
+  assert.deepEqual(calls, [{ ref: 1, args: undefined }, { ref: 2, args: page }, { ref: 3, args: undefined }]);
+  calls.length = 0;
+  const set = await adapter.valueChildren({ kind: 'Set', ref: 4, sourceType: 'Set[String]' }, page);
+  assert.deepEqual(set.map(v => [v.name, v.value, v.type]), [['[0]', '"key"', 'String']]);
+  assert.deepEqual(calls, [{ ref: 4, args: undefined }, { ref: 1, args: undefined }, { ref: 2, args: page }, { ref: 3, args: undefined }]);
+});
+
 test('native DAP source stepping and Manuscript record/list/variant rendering', { skip: !process.env.MANUSCRIPT_DAP_TEST, timeout: 60000 }, async () => {
   const directory = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'manuscript dap test ')));
   const program = path.join(directory, 'main.ms');
@@ -212,4 +232,22 @@ test('requests after the target ends get clear answers instead of pipe errors', 
     assert.equal(reply.success, true);
     assert.equal(reply.command, command);
   }
+});
+
+test('source scopes render the selected function locals and hide compiler temporaries', async () => {
+  const adapter = new ManuscriptAdapter(new PassThrough());
+  adapter.start = async () => {};
+  adapter.sourceScopes.set(7, 'main.main');
+  adapter.locals.set('slot', [
+    { function: 'other', name: 'other_value', type: 'Int' },
+    { function: 'main', name: 'value', type: 'Int' },
+  ]);
+  adapter.children = async () => [
+    { name: 'slot', type: 'int', value: '7', variablesReference: 0 },
+    { name: 'compiler_temp', type: 'int', value: '8', variablesReference: 0 },
+  ];
+  let response;
+  adapter.respond = (_, body) => { response = body; };
+  await adapter.request({ seq: 1, command: 'variables', arguments: { variablesReference: 7 } });
+  assert.deepEqual(response.variables.map(v => [v.name, v.value, v.type]), [['value', '7', 'Int']]);
 });

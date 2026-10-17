@@ -1,21 +1,12 @@
 const vscode = require('vscode');
 const { LanguageClient } = require('vscode-languageclient/node');
-const fs = require('node:fs/promises');
 const path = require('node:path');
+const { targetFor } = require('./project-target');
 let client;
 const documentSelector = [
   { scheme: 'file', language: 'manuscript' },
   { scheme: 'manuscript-stdlib', language: 'manuscript' },
 ];
-
-async function targetFor(file) {
-  for (let dir = path.dirname(file); ; dir = path.dirname(dir)) {
-    const manifest = path.join(dir, 'ms.toml');
-    try { await fs.access(manifest); return manifest; }
-    catch (error) { if (error.code !== 'ENOENT') throw error; }
-    if (path.dirname(dir) === dir) return file;
-  }
-}
 
 async function activate(context) {
   const output = vscode.window.createOutputChannel('Manuscript');
