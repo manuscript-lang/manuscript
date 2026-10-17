@@ -392,6 +392,8 @@ func (g *gen) unary(e *syntax.Expression, info *checker.Info) ast.Expr {
 		return g.try(e, info)
 	case "not":
 		return not(g.valueAs(e.Right, boolType))
+	case "+":
+		return g.valueAs(e.Right, g.info(e.Right).Type)
 	case "-":
 		operand := g.info(e.Right).Type
 		switch operand.ID {

@@ -11,7 +11,7 @@ func TestTaskGroupTypeBoundaries(t *testing.T) {
 `
 	for _, tt := range []struct{ name, body, want string }{
 		{"task constructor", "fn f() -> Unit:\n    let task = Task[Int]()\n", "no source constructor"},
-		{"callback arity", "fn work(value: Int) -> Int: return value\nfn f(group: TaskGroup) -> Unit:\n    group.start(work)\n", "expected fn()"},
+		{"callback arity", "fn work(value: Int) -> Int: return value\nfn f(group: TaskGroup) -> Unit:\n    group.start(work)\n", "takes 1 parameter but this position expects 0"},
 		{"nonfunction callback", "fn f(group: TaskGroup) -> Unit:\n    group.start(3)\n", "cannot infer"},
 		{"result mismatch", "fn f(group: TaskGroup) -> Unit:\n    let task: Task[String] = group.start(fn() -> Int: return 3)\n", "expected fn()->String, found fn()->Int"},
 		{"group result is Unit", "fn f(group: TaskGroup) -> Result[Int, ExecutionError]:\n    return group.join()\n", "expected Result[Int"},

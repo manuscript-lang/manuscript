@@ -118,6 +118,16 @@ func (c *checker) typeNames() []string {
 	return names
 }
 
+// preludeShadowHint explains an arity error caused by a declaration that
+// replaced the prelude type of the same name.
+func (c *checker) preludeShadowHint(name string) string {
+	prelude := standardSymbols[name]
+	if declared := c.names[name]; isPreludeSymbol(prelude) && declared != nil && declared != prelude {
+		return "; this module's own " + name + " shadows the prelude " + name + ", so rename the declaration to use the prelude type"
+	}
+	return ""
+}
+
 // importHint names the standard module that exports name, if any.
 func importHint(name string) string {
 	if symbol := standardSymbols[name]; isPreludeSymbol(symbol) {
@@ -201,6 +211,23 @@ func (c *checker) memberNamesSeen(receiver *Type, seen map[*Type]bool) []string 
 		}
 	}
 	return uniqueSorted(names)
+}
+
+// ambiguousMember explains a member that several implementations provide, so
+// the message names them instead of calling the member unknown.
+func (c *checker) ambiguousMember(receiver *Type, name string, methods []*Method) string {
+	var contracts []string
+	for _, m := range methods {
+		if m.Contract != nil {
+			contracts = append(contracts, m.Contract.String())
+		}
+	}
+	contracts = uniqueSorted(contracts)
+	message := "ambiguous member " + name + " on " + receiver.String()
+	if len(contracts) < 2 {
+		return message + "; more than one implementation provides it"
+	}
+	return message + "; it is provided by " + strings.Join(contracts, ", ") + ", so call it through an interface view, e.g. " + contracts[0] + "(value: ...)." + name + "()"
 }
 
 func (c *checker) unknownMember(receiver *Type, name string) string {
@@ -388,7 +415,10 @@ func (c *checker) interfaceTypeMember(typ *Type) string {
 // labelMismatchHint explains function types that differ in parameter names
 // (labels), which are part of a function's identity.
 func labelMismatchHint(actual, expected *Type) string {
-	if actual == nil || expected == nil || actual.Kind != "function" || expected.Kind != "function" || len(actual.Params) != len(expected.Params) {
+	if actual == nil || expected == nil || actual.Kind != "function" || expected.Kind != "function" {
+		return ""
+	}
+	if len(actual.Params) != len(expected.Params) {
 		return ""
 	}
 	for i, p := range actual.Params {
@@ -439,4 +469,21 @@ func uncalledFunctionHint(actual, expected *Type) string {
 		return ""
 	}
 	return "this is a function; call it with parentheses to get its " + expected.String() + " result"
+}
+
+func plural(n int, word string) string {
+	if n == 1 {
+		return word
+	}
+	return word + "s"
+}
+
+// arityMismatchHint explains a function passed where one with a different
+// number of parameters is required.
+func arityMismatchHint(actual, expected *Type) string {
+	if actual == nil || expected == nil || actual.Kind != "function" || expected.Kind != "function" || len(actual.Params) == len(expected.Params) {
+		return ""
+	}
+	have, want := len(actual.Params), len(expected.Params)
+	return "the function takes " + strconv.Itoa(have) + " " + plural(have, "parameter") + " but this position expects " + strconv.Itoa(want) + "; pass a function with " + strconv.Itoa(want) + " " + plural(want, "parameter") + ", or wrap it in a lambda that supplies the rest"
 }
