@@ -26,6 +26,12 @@ func (b *flowBuilder) source(pos syntax.Position) string {
 	return strings.TrimSpace(strings.TrimSuffix(text, ":"))
 }
 
+// at records where a step came from so a diff can mark it.
+func (b *flowBuilder) at(n *Node, pos syntax.Position) *Node {
+	n.File, n.Line = b.module.File, pos.Line
+	return n
+}
+
 func (b *flowBuilder) body(statements []*syntax.Statement) []*Node {
 	var out []*Node
 	for _, s := range statements {
@@ -37,18 +43,18 @@ func (b *flowBuilder) body(statements []*syntax.Statement) []*Node {
 func (b *flowBuilder) statement(s *syntax.Statement) []*Node {
 	switch s.Kind {
 	case syntax.KindIf, syntax.KindWhile, syntax.KindFor:
-		node := &Node{Kind: "branch", Label: b.source(s.Pos)}
+		node := b.at(&Node{Kind: "branch", Label: b.source(s.Pos)}, s.Pos)
 		node.Children = append(b.events(s.Value), b.body(s.Body)...)
 		if len(s.Else) > 0 {
 			node.Children = append(node.Children, &Node{Kind: "branch", Label: "else", Children: b.body(s.Else)})
 		}
 		return []*Node{node}
 	case syntax.KindWith:
-		node := &Node{Kind: "with", Label: b.source(s.Pos) + "  [closed on exit]"}
+		node := b.at(&Node{Kind: "with", Label: b.source(s.Pos) + "  [closed on exit]"}, s.Pos)
 		node.Children = append(b.events(s.Value), b.body(s.Body)...)
 		return []*Node{node}
 	case syntax.KindBreak, syntax.KindContinue:
-		return []*Node{{Kind: "exit", Label: s.Kind}}
+		return []*Node{b.at(&Node{Kind: "exit", Label: s.Kind}, s.Pos)}
 	}
 	var out []*Node
 	if s.Value != nil && s.Value.Kind == syntax.KindMatch {
@@ -58,15 +64,15 @@ func (b *flowBuilder) statement(s *syntax.Statement) []*Node {
 		out = append(b.events(s.Target), b.events(s.Value)...)
 	}
 	if s.Kind == syntax.KindReturn {
-		out = append(out, &Node{Kind: "exit", Label: b.source(s.Pos)})
+		out = append(out, b.at(&Node{Kind: "exit", Label: b.source(s.Pos)}, s.Pos))
 	}
 	return out
 }
 
 func (b *flowBuilder) matchNode(s *syntax.Statement) *Node {
-	node := &Node{Kind: "match", Label: b.source(s.Pos)}
+	node := b.at(&Node{Kind: "match", Label: b.source(s.Pos)}, s.Pos)
 	for _, arm := range s.Value.Arms {
-		child := &Node{Kind: "arm", Label: b.source(arm.Pos)}
+		child := b.at(&Node{Kind: "arm", Label: b.source(arm.Pos)}, arm.Pos)
 		for _, step := range append(b.events(arm.Value), b.body(arm.Body)...) {
 			if step.Kind == "exit" && strings.HasSuffix(child.Label, step.Label) {
 				continue
@@ -97,13 +103,14 @@ func (b *flowBuilder) events(e *syntax.Expression) []*Node {
 		if node == nil {
 			return
 		}
+		b.at(node, x.Pos)
 		if pendingTry {
 			node.Label, node.Kind, pendingTry = "try "+node.Label, "try", false
 		}
 		out = append(out, node)
 	}}.Callable(nil, []*syntax.Statement{{Kind: syntax.KindCall, Value: e}})
 	if pendingTry {
-		out = append(out, &Node{Kind: "try", Label: "try"})
+		out = append(out, b.at(&Node{Kind: "try", Label: "try"}, e.Pos))
 	}
 	return out
 }
@@ -143,7 +150,7 @@ func flowView(facts Facts, view, entity string, depth int) (*Node, error) {
 	if view == "scope" {
 		body = pruneScopes(body, false)
 	}
-	header := &Node{Label: fmt.Sprintf("%s  [%s] %s:%d", f.Name, f.Kind, f.File, f.Line), Children: body}
+	header := &Node{Label: fmt.Sprintf("%s  [%s] %s:%d", f.Name, f.Kind, f.File, f.Line), Ref: f.Key, Children: body}
 	if len(body) == 0 {
 		header.Children = []*Node{{Label: "none"}}
 	}
@@ -169,7 +176,7 @@ func (e *flowExpander) expand(nodes []*Node, level int, path map[string]bool) []
 			continue
 		}
 		e.count++
-		copied := &Node{Label: n.Label, Kind: n.Kind, Ref: n.Ref}
+		copied := &Node{Label: n.Label, Kind: n.Kind, Ref: n.Ref, File: n.File, Line: n.Line}
 		copied.Children = e.expand(n.Children, level, path)
 		if n.Ref != "" && level < e.depth {
 			if path[n.Ref] {
@@ -193,7 +200,7 @@ func pruneScopes(nodes []*Node, inScope bool) []*Node {
 		kids := pruneScopes(n.Children, inScope || n.Kind == "with")
 		exit := inScope && (n.Kind == "exit" || n.Kind == "try")
 		if n.Kind == "with" || exit || len(kids) > 0 {
-			out = append(out, &Node{Label: n.Label, Kind: n.Kind, Children: kids})
+			out = append(out, &Node{Label: n.Label, Kind: n.Kind, File: n.File, Line: n.Line, Children: kids})
 		}
 	}
 	return out
