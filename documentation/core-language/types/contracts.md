@@ -182,6 +182,6 @@ All contract values may be passed between operations; concurrent invocation foll
 
 ## Interfaces and services
 
-Pass a service as an interface value when a function needs access to storage, networking, or a clock. Applications can also import functions that obtain the current execution's services. See [external services](../../standard-library/services.md) for access and lifetime rules, and [sharing data](../../concurrency/sharing.md) for concurrent use.
+Pass a service as an interface value when a function needs access to storage, networking, or a clock. Applications can also import functions that obtain the current execution's services. See external services for access and lifetime rules, and sharing data for concurrent use.
 
 Contracts can also appear as [generic bounds](generics.md), where they name the operations required from a type argument.

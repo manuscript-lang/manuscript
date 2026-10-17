@@ -72,7 +72,7 @@ fn tag_count() -> Int:
 # tag_count() returns 2.
 ```
 
-Use `.clone()` before capturing if you need independent outer storage. Nested references remain shared. Coordinate concurrent reads and writes with [Synchronized](../../concurrency/synchronization.md#synchronized). A bound method retains its receiver by the same reference rules.
+Use `.clone()` before capturing if you need independent outer storage. Nested references remain shared. Coordinate concurrent reads and writes with Synchronized. A bound method retains its receiver by the same reference rules.
 
 ## Resource captures
 
@@ -94,11 +94,11 @@ Capturing an already-open file keeps the same handle; it does not delay its `wit
 
 ## Concurrent invocation
 
-Concurrency APIs accept ordinary functions. Function parameters, returned functions, function fields, and generic forwarding work exactly as local function values do. See [function sharing](../../concurrency/sharing.md#function-values). A shared resource can still be closed before invocation.
+Concurrency APIs accept ordinary functions. Function parameters, returned functions, function fields, and generic forwarding work exactly as local function values do. See function sharing. A shared resource can still be closed before invocation.
 
 Capture request-data snapshots and application services for scheduled work, then acquire job resources within that operation. Keep a TaskGroup scope inside the resources its tasks use. The group cancels and joins at scope exit before the enclosing resources close, unless a resource is explicitly closed elsewhere.
 
-See [task groups](../../concurrency/task-groups.md), [scheduling work](../../concurrency/scheduling.md), and [reference sharing](../../concurrency/sharing.md).
+See task groups, scheduling work, and reference sharing.
 
 ## Contextual callback inference
 

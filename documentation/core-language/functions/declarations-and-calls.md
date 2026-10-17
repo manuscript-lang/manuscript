@@ -48,7 +48,7 @@ Because a bare identifier fills the next unfilled parameter, `reduce(amount: amo
 
 The rule applies to ordinary and generic functions, methods, function values, library APIs, record and alternative-case constructors, and explicit contract views. A method's implicit receiver is evaluated before its arguments and does not consume a positional slot. Constructor slots follow field declaration order. A zero-parameter function uses `()`. Labeled calls retain their meaning. Function-type parameter names remain part of [type identity](function-values-and-closures.md); omitting invocation labels does not make differently named callback signatures compatible.
 
-TaskGroup.start accepts one zero-argument function and infers a typed Task[T] handle. Task and group joins use ordinary receiver calls; see [task groups](../../concurrency/task-groups.md).
+TaskGroup.start accepts one zero-argument function and infers a typed Task[T] handle. Task and group joins use ordinary receiver calls; see task groups.
 
 Match payload bindings such as `some(value):` are patterns, rather than calls; see [pattern matching](../control-flow/pattern-matching.md).
 
@@ -106,7 +106,7 @@ Execution and argument evaluation follow source order. When arguments contain ca
 
 Evaluate the callable expression, including a method receiver, once before its arguments. Then evaluate supplied argument expressions from left to right in their written order. Arrange those values into declaration order after their evaluation, then evaluate omitted [defaults](#default-arguments) in the called function before its body. A failed or nonreturning supplied expression prevents all later arguments and the outer invocation from running. Constructor fields follow the same rule.
 
-This also matters for [concurrency APIs](../../concurrency/task-groups.md#preparation): each callback is prepared in the caller before that operation starts; earlier group submissions may already be running.
+This also matters for concurrency APIs: each callback is prepared in the caller before that operation starts; earlier group submissions may already be running.
 
 ## Unit and Never
 
@@ -154,6 +154,6 @@ Unreachable statements remain subject to parsing, name resolution, and type chec
 
 A potentially blocking library call suspends the current lightweight task. It does not implicitly start another task. There are no `async` declarations or `await` annotations.
 
-Manuscript has one function kind. Sequential code remains sequential when a library operation suspends; explicit concurrent execution is specified in [concurrency](../../concurrency/_index.md).
+Manuscript has one function kind. Sequential code remains sequential when a library operation suspends; explicit concurrent execution is specified in concurrency.
 
 For functions used as data and the rules for captured values, continue with [function values and closures](function-values-and-closures.md).

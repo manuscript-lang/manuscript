@@ -13,4 +13,4 @@ Ordinary list elements evaluate left to right; an existing list argument evaluat
 
 A `with` initializer evaluates once, then registers the initialized object's resolved close method before exposing another cancellation checkpoint. Later alias assignment does not change that receiver.
 
-See [source call order](../../../core-language/functions/declarations-and-calls.md), [operation preparation](../../../concurrency/task-groups.md#preparation), and [using with](../../../core-language/cleanup/scopes.md).
+See [source call order](../../../core-language/functions/declarations-and-calls.md), operation preparation, and [using with](../../../core-language/cleanup/scopes.md).

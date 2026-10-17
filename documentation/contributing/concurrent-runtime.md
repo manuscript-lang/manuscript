@@ -7,7 +7,7 @@ weight = 63
 
 This page is for runtime implementers. The runtime provides the mechanisms to start, stop, join, and synchronize work. Library objects decide whether to accept work, how to report failures, and how shutdown proceeds.
 
-Source programs use [standard concurrency APIs](../standard-library/imports.md#names-and-identity). The compiler checks their types, callback signatures, and cleanup contracts. Internal contexts and scheduler mechanisms add no source names or compiler bounds.
+Source programs use standard concurrency APIs. The compiler checks their types, callback signatures, and cleanup contracts. Internal contexts and scheduler mechanisms add no source names or compiler bounds.
 
 ## Atomic transitions
 
@@ -19,7 +19,7 @@ Completion is not published until registered cleanup and nested joins have finis
 
 User callbacks, failure reporters, resource cleanup, and joining run outside transition locks. Shutdown is idempotent; concurrent calls to `close()` observe one shutdown sequence and all wait for it to finish.
 
-Synchronized rejects same-operation reentry using execution/work-lifetime identity, including inherited and shielded views. Different operations wait on release or their current context's cancellation signal; the runtime maintains no cross-task wait graph. Cancellation does not forcibly release an executing holder or abandon joined cleanup. Shielded cleanup can remain blocked in a cross-task lock cycle; ordinary deadlines are not a cleanup watchdog. See [synchronization](../concurrency/synchronization.md) and [native shutdown limits](../concurrency/shutdown.md#limits).
+Synchronized rejects same-operation reentry using execution/work-lifetime identity, including inherited and shielded views. Different operations wait on release or their current context's cancellation signal; the runtime maintains no cross-task wait graph. Cancellation does not forcibly release an executing holder or abandon joined cleanup. Shielded cleanup can remain blocked in a cross-task lock cycle; ordinary deadlines are not a cleanup watchdog. See synchronization and native shutdown limits.
 
 An operation must not join itself or an execution ancestor. Closing its own scheduler, including from nested task-group descendants or reporter callbacks joined by that service, faults before initiating shutdown. Check the fixed execution-parent chain, not just the current operation ID. Hosts close services from outside their admitted work. Cross-service cyclic shutdown is invalid library usage and must be avoided by host shutdown ordering.
 
@@ -54,7 +54,7 @@ Operation IDs support diagnostics and traces.
 
 Cleanup receives a shielded context that ignores the initiating cancellation and expired ordinary-work deadline. It preserves authority; a host cleanup/escalation policy is separate from the request budget. Adapters must support safe resource closure and must not return from a cancelled operation while its foreign work is still outstanding.
 
-See [deadlines](../concurrency/cancellation.md#deadlines), and [runtime/library layering](compiler/lowering/function-and-task-calls.md).
+See deadlines, and [runtime/library layering](compiler/lowering/function-and-task-calls.md).
 
 ## Host escalation
 
@@ -75,4 +75,4 @@ On escalation the host:
 2. writes any retained primary and secondary fault diagnostics;
 3. terminates the process without running further cleanup.
 
-The CLI host exits 70 and labels the exit as incomplete cleanup. Conformance treats an escalated exit as a failure of the program, not as successful shutdown. See [CLI exit and shutdown](../standard-library/cli.md#exit-and-shutdown), [HTTP shutdown](../standard-library/http.md), and [cleanup faults](../core-language/cleanup/cleanup-faults.md).
+The CLI host exits 70 and labels the exit as incomplete cleanup. Conformance treats an escalated exit as a failure of the program, not as successful shutdown. See CLI exit and shutdown, HTTP shutdown, and [cleanup faults](../core-language/cleanup/cleanup-faults.md).

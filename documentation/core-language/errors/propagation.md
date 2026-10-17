@@ -63,4 +63,4 @@ Inside an anonymous function, try returns from that anonymous function, not from
 
 ## Cleanup and cancellation
 
-`try` does not catch programming faults or parent cancellation. A propagated error is a return path and performs [lexical cleanup](../cleanup/_index.md) for the scopes it leaves. A [programming fault](faults.md) or [parent cancellation](../../concurrency/cancellation.md) follows its own unwinding rules.
+`try` does not catch programming faults or parent cancellation. A propagated error is a return path and performs [lexical cleanup](../cleanup/_index.md) for the scopes it leaves. A [programming fault](faults.md) or parent cancellation follows its own unwinding rules.

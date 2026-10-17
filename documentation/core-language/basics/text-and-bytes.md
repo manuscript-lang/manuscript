@@ -106,7 +106,7 @@ Equal valid bounds select an empty range. Slices never clamp or swap bounds, so 
 
 `Bytes(values:)` copies the supplied list; subsequent list mutation does not change the Bytes. `data.values()` returns a fresh list, so editing that result does not change `data`. The existing free function `values(data:)` from `@std/bytes.ms` returns the same kind of copy. `values` is a receiver operation, not a readable data field; the constructor's `values:` argument remains a List.
 
-`parse_int` accepts exactly an optional ASCII `+` or `-` followed by one or more ASCII decimal digits and an in-range mathematical value. It permits leading zeros, rejects whitespace, separators, fractions, exponents, and any unconsumed character, and returns `none` for invalid or out-of-range input. Runtime parsing is distinct from the stricter source literal grammar. See [text and collection operations](../../standard-library/data.md) and [numeric operations](../../standard-library/math.md) for more methods; exact signatures live in the [API reference](../../standard-library/reference/_index.md). Grapheme and locale operations remain unsupported.
+`parse_int` accepts exactly an optional ASCII `+` or `-` followed by one or more ASCII decimal digits and an in-range mathematical value. It permits leading zeros, rejects whitespace, separators, fractions, exponents, and any unconsumed character, and returns `none` for invalid or out-of-range input. Runtime parsing is distinct from the stricter source literal grammar. See text and collection operations and numeric operations for more methods; exact signatures live in the [API reference](../../standard-library/reference/_index.md). Grapheme and locale operations remain unsupported.
 
 ```manuscript
 import panic from "@std/faults.ms"
@@ -169,4 +169,4 @@ Non-finite Float values format as `NaN`, `Infinity`, or `-Infinity`; NaN payload
 
 ## External data
 
-See [standard imports](../../standard-library/imports.md) for the names available without imports.
+See standard imports for the names available without imports.

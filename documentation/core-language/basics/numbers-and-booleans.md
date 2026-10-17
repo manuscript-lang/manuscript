@@ -140,7 +140,7 @@ A Boolean value controls an [if statement](../control-flow/conditionals.md) or [
 
 ## Durations
 
-`milliseconds`, `seconds`, and `minutes` are Int members: `500.milliseconds` and `2.seconds` have type `Duration`. They also work on nonliteral Int expressions; `Instant` represents a monotonic clock instant. They are used by [timeouts and deadlines](../../concurrency/cancellation.md).
+`milliseconds`, `seconds`, and `minutes` are Int members: `500.milliseconds` and `2.seconds` have type `Duration`. They also work on nonliteral Int expressions; `Instant` represents a monotonic clock instant. They are used by timeouts and deadlines.
 
 `Duration` is a signed 64-bit count of nanoseconds. The three unit members work on any Int expression and multiply by 1,000,000, 1,000,000,000, or 60,000,000,000 with overflow checks. Import `duration` from `@std/time.ms` to construct an exact interval from nanoseconds. Integer unit conversions truncate toward zero; floating conversions retain fractional units with binary64 rounding. `Instant` is an opaque monotonic instant in the current run's clock domain; it has no source constructor. Clock adapters and injected test clocks must preserve a single comparable domain within a run. Cross-domain comparison or subtraction faults. Duration arithmetic and Instant shifts/differences check overflow; these compiler-defined operations are enumerated in the [operator table](expressions.md).
 
@@ -148,4 +148,4 @@ Duration and Instant overflow diagnostics name the arithmetic operation, the ope
 
 `2.seconds` is 2,000,000,000 nanoseconds. Unsupported unit names and mixed arithmetic such as `2.seconds + 1` are type errors.
 
-See [time value methods](../../standard-library/system.md#time-value-methods) for Duration, Instant, and Timestamp operations.
+See time value methods for Duration, Instant, and Timestamp operations.

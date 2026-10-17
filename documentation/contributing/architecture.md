@@ -68,7 +68,7 @@ Each layer imports only layers above it in this list; `scripts/repo-check/policy
 | `pkg/tooling/` | Formatter, advisory lint, navigation, inspection, and static diagrams derived from source or checked programs |
 | `pkg/tooling/lsp/` | Transport, workspace/analysis snapshots, typed editor features, completion, references, rename, and versioned edits |
 | `pkg/tooling/guide/` | Agent reference behind `ms search_symbol` and `ms guide`: a fuzzy standard-library index, bounded module, declaration, and member pages, and the language cheat sheet, all generated from the checker's definitions |
-| `pkg/tooling/docgen/` | Portable Markdown/JSON rendering and site reference generation. guides and special call rules are extracted from comments in `pkg/stdlib/*.ms` |
+| `pkg/tooling/docgen/` | Portable Markdown/JSON rendering and site API reference generation from standard-library declarations |
 | `internal/decimal/`, `internal/nativeabi/` | Lightweight shared decimal literal rules, receiver-to-function identities, and the CLI/native test-event protocol; checked `.ms` declarations retain signature authority |
 | `internal/hostos/` | Platform helpers for native filesystem, process, and OS operations, included in the embedded dependency bundle |
 | `internal/cli/` | CLI command orchestration, status codes, signal forwarding, and shipped documentation commands |
@@ -95,7 +95,7 @@ Within `runtime`, `values.go` owns value representation and construction; `forma
 | Location | Ownership |
 | --- | --- |
 | `documentation/` | Authored tutorials, exact language rules, compiler/runtime semantics, tooling limits, contributor workflow |
-| `.artifacts/docs/documentation/standard-library/` and `.artifacts/docs/documentation/concurrency/` | Ignored guides and references generated from `pkg/stdlib/*.ms` by `make docs`, mounted into Hugo content |
+| `.artifacts/docs/documentation/standard-library/reference/` | Ignored API reference pages generated from standard-library declarations by `make docs`, mounted into Hugo content |
 | `website/` | Hugo configuration, custom layouts/assets, static resources, version archives, and the vendored Hugo Book theme with its license and upstream revision |
 | `website/static/stdlib.md` and `stdlib.json` | Generated API downloads, built by `make docs` and `make book-check` and not committed. Hugo mounts the root version and extension grammar directly; neither needs a copied source |
 | `.artifacts/book/` | Ignored generated HTML, search data, and downloads uploaded/deployed as a Pages artifact |

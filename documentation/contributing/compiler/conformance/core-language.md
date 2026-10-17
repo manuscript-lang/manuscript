@@ -284,7 +284,7 @@ Also accept disjoint concrete implementations for different receiver application
 
 ## CL-10b: Contract views and callbacks
 
-Contract: [contract views](../../../core-language/types/contracts.md#explicit-contract-views) and [sharing](../../../concurrency/sharing.md).
+Contract: [contract views](../../../core-language/types/contracts.md#explicit-contract-views) and sharing.
 
 Fixture: `tests/e2e/testdata/accept/cl-10b.ms`.
 

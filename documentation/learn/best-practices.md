@@ -26,7 +26,7 @@ See [error handling](../core-language/errors/_index.md).
 Read known JSON shapes with `parse[T]`. Unknown members are ignored by default;
 pass `ignore_unknown_fields: false` when accepting them would be a mistake.
 Use string interpolation to format values and structured fields when
-[logging](../standard-library/logging.md).
+logging.
 
 Test the outcomes directly, and apply `try` to each assertion so a failed
 check fails the test:
@@ -53,7 +53,7 @@ test "configuration rejects a wrong type":
 ```
 
 The [testing guide](testing.md) covers selecting cases, checking faults, and
-sharing setup. The [serialization guide](../standard-library/formats.md#json-behavior)
+sharing setup. The serialization guide
 defines how fields and defaults are decoded.
 
 ## Keep ownership visible
@@ -68,4 +68,4 @@ independent outer storage, and remember that nested values stay shared.
 When concurrent work reads and mutates the same data, use the same
 synchronization object through every alias. See
 [mutation and references](../core-language/types/references.md) and
-[sharing data](../concurrency/sharing.md).
+sharing data.

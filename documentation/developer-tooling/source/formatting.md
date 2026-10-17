@@ -48,4 +48,4 @@ See the [complete layout rules](../implementation.md#linting-and-formatting) for
 
 Compilation and task creation never invoke AI implicitly. Model output enters through an explicit capability call and validation. A generated explanation cannot change compilation behavior or replace a source edit.
 
-See [source layout](../../core-language/basics/syntax.md) and [capability inputs](../../standard-library/services.md).
+See [source layout](../../core-language/basics/syntax.md) and capability inputs.

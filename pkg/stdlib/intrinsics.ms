@@ -183,12 +183,10 @@ interface FloatOperations:
 #
 # `make docs` and `make docs-check` report description counts and enforce the description gate. `make docs-coverage` writes the complete inventory to `.artifacts/stdlib-doc-coverage.json`, including prelude aliases. Presence and structural quality are separate counts: empty text, placeholders, very terse labels, and name/kind restatements fail quality checks. Review each description against source/native behavior; passing structural checks cannot prove semantic accuracy or measure a separate tutorial's coverage.
 #
-# `pkg/tooling/docgen/description_backlog.json` records exact existing gaps during #176's sweep. This temporary list only shrinks: new gaps fail, invalid prose cannot use it, and described/removed entries make the old key stale. It is not an internal/generated exemption. Public synthetic primitive entries require descriptions too. Private `ValueOperations`/`CloneOperations` are implementation declarations; their universal calls have canonical call rules rather than becoming importable interfaces. No blanket public-description exemption is supported.
+# `pkg/tooling/docgen/description_backlog.json` records exact existing gaps during #176's sweep. This temporary list only shrinks: new gaps fail, invalid prose cannot use it, and described/removed entries make the old key stale. It is not an internal/generated exemption. Public synthetic primitive entries require descriptions too. Private `ValueOperations`/`CloneOperations` are implementation declarations; their universal calls remain non-importable. No blanket public-description exemption is supported.
 #
 # These APIs provide navigation data; an editor integration must supply its own LSP server and transport.
 #
-# For user-facing imports and API behavior, see the [standard-library guide](../../documentation/standard-library/_index.md).
-#
-# Filesystem and path contracts are described in the [filesystem guide](../../documentation/standard-library/filesystem.md); [system](../../documentation/standard-library/system.md), [process](../../documentation/standard-library/process.md), and [scheduling](../../documentation/concurrency/scheduling.md) have their own guides. Platform helpers in `internal/hostos/` are bundled with native dependency sources.
+# Platform helpers in `internal/hostos/` are bundled with native dependency sources.
 #
 # Time values and sequential `sleep` live in `@std/time.ms`. `@std/tasks.ms` owns `Scheduler`, which manages immediate, delayed, and repeating work through one operation-ID lifecycle, plus TaskGroup, Task[T], cancellation checks, and scheduler yielding. Limits and deadlines use optional values; receiver operations are the single public API for existing data.

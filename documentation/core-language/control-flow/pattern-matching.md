@@ -24,7 +24,7 @@ fn describe(payment: Payment) -> String:
 
 ## Keep match flow flat
 
-Nested `match` is an anti-pattern: another match inside a scrutinee or arm makes the control flow harder to follow. Bind the outer payload with an early exit, propagate compatible errors with `try`, use the ordinary Optional methods, or call a small helper for further case handling. The [bounded TOML example](../../standard-library/formats.md#yaml-and-toml-limits) and the contract handler below show flat flow and a helper, respectively.
+Nested `match` is an anti-pattern: another match inside a scrutinee or arm makes the control flow harder to follow. Bind the outer payload with an early exit, propagate compatible errors with `try`, use the ordinary Optional methods, or call a small helper for further case handling. The bounded TOML example and the contract handler below show flat flow and a helper, respectively.
 
 `ms lint` reports advisory **MSL107** at each inner match, including matches inside an inline callback or its default expressions beneath another match. Separate helpers and sequential matches do not trigger it. Checking and execution still accept nested matches; the advisory is a style rule and adds no grammar restriction.
 

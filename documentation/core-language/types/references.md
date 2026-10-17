@@ -29,7 +29,7 @@ Closing a registered resource affects all aliases, including aliases nested in a
 
 Collections may retain any value, including resource references and functions. Sharing is universal and does not provide a resource lifetime guarantee.
 
-[Builders](../../standard-library/builders.md) follow the same reference rules; they are not synchronized. [Destructuring](destructuring.md) extracts fields and positions without changing cleanup.
+Builders follow the same reference rules; they are not synchronized. [Destructuring](destructuring.md) extracts fields and positions without changing cleanup.
 
 ## Memory and open resources
 

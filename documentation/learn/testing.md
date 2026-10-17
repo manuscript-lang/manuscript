@@ -75,7 +75,7 @@ Use `try` on every expectation to return a failed check as the test’s error.
 Tests can also propagate errors from other calls when their error type implements
 `Error`; match and convert other error types explicitly. See
 [Results](../core-language/errors/results.md) and the
-[testing helper reference](../standard-library/testing.md) for other assertions.
+testing helper reference for other assertions.
 
 ## Select, repeat, and profile
 
@@ -107,7 +107,7 @@ Every assertion returns `Result[..., Error]`, so use `try`. `try expect_some(x)`
 `try expect_fault(operation)` checks programming faults. `try fail(message)` fails a test explicitly. `skip(reason)` marks a test skipped
 while running lexical cleanup. Write each independently selected and reported
 case as a `test` block. See the
-[testing helper reference](../standard-library/testing.md) for contracts and examples.
+testing helper reference for contracts and examples.
 
 ## Shared setup and teardown
 
@@ -122,5 +122,5 @@ all take no arguments and return `Unit`.
 Put construction in `make_fixture`, reset shared state in `before_each`, and
 release resources in `after_all`. The instance is created only when the file
 has selected tests, and remains shared across repetitions. See
-[file fixtures](../standard-library/testing.md#file-fixtures) for a complete
+file fixtures for a complete
 example, failure handling, timeout behavior, and cancellation cleanup.

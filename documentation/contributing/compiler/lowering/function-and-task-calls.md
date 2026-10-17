@@ -13,4 +13,4 @@ The hidden context carries the current operation, fixed cancellation parent, eff
 
 The frontend checks the source-defined generic signature of TaskGroup.start and the receiver-substituted signature of Task.join. There is no separate callable/result typing rule or runtime pack representation.
 
-Policy can be implemented over native primitives. No goroutine-ID lookup, custom coroutine lowering, stack implementation, or memory collector is required. See [task groups](../../../concurrency/task-groups.md) and [background layering](../../../concurrency/scheduling.md).
+Policy can be implemented over native primitives. No goroutine-ID lookup, custom coroutine lowering, stack implementation, or memory collector is required. See task groups and background layering.

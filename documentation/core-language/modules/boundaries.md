@@ -24,4 +24,4 @@ export fn total(items: List[Item]) -> Int:
 
 A caller imports `Item` to construct values and `total` to calculate their total. It does not need to know how the function is implemented. A public signature cannot expose a private type; see [public type visibility](../types/records.md#public-data-surfaces).
 
-Functions that need files, network access, or other services can import a host accessor or receive a service as an ordinary parameter. Parameters make dependencies visible and let tests supply another implementation. See [services](../../standard-library/services.md) for the rules and [interfaces](../types/contracts.md) for operation contracts.
+Functions that need files, network access, or other services can import a host accessor or receive a service as an ordinary parameter. Parameters make dependencies visible and let tests supply another implementation. See services for the rules and [interfaces](../types/contracts.md) for operation contracts.

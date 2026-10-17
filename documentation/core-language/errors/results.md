@@ -97,7 +97,7 @@ advisory. This does not handle an error or stop a programming fault.
 
 ## A common error boundary
 
-For most functions, keep the concrete domain error type. Its typed fields are available directly to callers; see [error details](../../standard-library/contracts.md#error-details).
+For most functions, keep the concrete domain error type. Its typed fields are available directly to callers; see error details.
 
 When a boundary should accept several error types, use the prelude `Error` interface without an import. It is an ordinary interface declaring `message() -> String`. Standard errors implement it; custom errors can declare an `impl Error` in their defining module.
 
@@ -116,6 +116,6 @@ An error implementing `Error` can be passed, assigned, or returned directly wher
 
 ## Results and concurrent execution
 
-Returning `error(cause: cause)` is normal function completion. In a TaskGroup, the domain Result remains the operation's return value and does not cancel siblings. Task.join separately reports ExecutionError; see [task groups](../../concurrency/task-groups.md). A [Scheduler](../../concurrency/scheduling.md) service reports completion-only domain errors through its configured failure observer.
+Returning `error(cause: cause)` is normal function completion. In a TaskGroup, the domain Result remains the operation's return value and does not cancel siblings. Task.join separately reports ExecutionError; see task groups. A Scheduler service reports completion-only domain errors through its configured failure observer.
 
 Use [Optional](../types/optionals.md) for absence without an error explanation and [explicit faults](faults.md) for broken programming invariants.

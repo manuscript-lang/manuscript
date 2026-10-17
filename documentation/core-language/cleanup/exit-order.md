@@ -16,4 +16,4 @@ A cleanup fault suppresses a pending normal return or domain error. The unreturn
 
 Returned references do not bypass registered cleanup. A returned file registered in the exiting scope is already closed when the caller receives it. There is no staged ownership transfer or result escrow.
 
-Register dependencies outside the scheduler's `with` scope so that service shutdown finishes before those dependencies close. See [scheduling work](../../concurrency/scheduling.md) and [fault selection](cleanup-faults.md).
+Register dependencies outside the scheduler's `with` scope so that service shutdown finishes before those dependencies close. See scheduling work and [fault selection](cleanup-faults.md).
