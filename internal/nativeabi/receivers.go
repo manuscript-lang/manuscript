@@ -10,7 +10,7 @@ var ReceiverBindings = map[string]map[string]string{
 	"HashAlgorithm":     {"digest": "crypto/hash_algorithm_digest", "hmac": "crypto/hash_algorithm_hmac"},
 	"CompressionFormat": {"compress": "compress/format_compress", "decompress": "compress/format_decompress"},
 	"ArchiveFormat":     {"pack": "archive/format_pack", "unpack": "archive/format_unpack"},
-	"Decimal":           {"round": "decimal/round", "to_fixed": "decimal/to_fixed"},
+	"Decimal":           {"round": "decimal/round", "to_fixed": "decimal/to_fixed", "compare": "decimal/compare"},
 	"HttpHeaders":       {"append": "http/headers_append", "values": "http/headers_values", "text": "http/headers_text", "names": "http/headers_names", "clone": "http/headers_clone", "remove": "http/headers_remove"},
 	"ClientResponse":    {"metadata": "http/client_response_metadata"},
 	"HttpMethod":        {"text": "http/method_text"},
@@ -98,6 +98,8 @@ var ReceiverBindings = map[string]map[string]string{
 		"find_last_index":  "collections/find_last_index",
 		"count":            "collections/count",
 		"distinct":         "collections/distinct",
+		"max":              "collections/list_max",
+		"min":              "collections/list_min",
 		"some":             "collections/some",
 		"every":            "collections/every",
 		"for_each":         "collections/for_each",
@@ -210,6 +212,7 @@ var ReceiverBindings = map[string]map[string]string{
 	},
 	"Int": {
 		"to_string": "numbers/format_int",
+		"compare":   "numbers/compare_int",
 	},
 	"Float": {
 		"to_precision":   "numbers/format_precision",
@@ -218,6 +221,7 @@ var ReceiverBindings = map[string]map[string]string{
 		"to_string":      "numbers/format_float",
 		"is_nan":         "math/is_nan",
 		"is_finite":      "math/is_finite",
+		"compare":        "numbers/compare_float",
 	},
 	"BigInt": {
 		"add":       "bigint/add",

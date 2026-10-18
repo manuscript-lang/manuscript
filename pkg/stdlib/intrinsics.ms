@@ -135,6 +135,8 @@ interface IntOperations:
     fn to_float() -> Float
     # Converts to the exactly equal Decimal; no rounding occurs.
     fn to_decimal() -> Decimal
+    # Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
+    fn compare(other: Int) -> Int
 
 # Formatting and classification operations for floating-point values.
 interface FloatOperations:
@@ -151,6 +153,8 @@ interface FloatOperations:
     fn is_nan() -> Bool
     # Tests whether the value is neither NaN nor an infinity.
     fn is_finite() -> Bool
+    # Returns -1, 0 or 1 in a total order: -0.0 equals 0.0, and NaN is equal to NaN and greater than every other value, including +Inf.
+    fn compare(other: Float) -> Int
     # Truncates toward zero, or returns none for nonfinite values or Int overflow.
     fn truncate_to_int() -> Optional[Int]
 # Contributor notes: source ownership and editor integration.

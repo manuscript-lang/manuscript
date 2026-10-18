@@ -109,8 +109,15 @@ func TestMath(t *testing.T) {
 	if Math_Remainder(tctx, -7, 3) != -1 || Math_Truncate(tctx, -1.9) != -1 || Math_Pi(tctx) != math.Pi || Math_E(tctx) != math.E {
 		t.Fatal("scalars")
 	}
-	if Math_MaxInt(tctx, -2, 3) != 3 || Math_MinInt(tctx, -2, 3) != -2 {
-		t.Fatal("max_int/min_int")
+	if Math_Max(tctx, Int_Compare, -2, 3) != 3 || Math_Min(tctx, Int_Compare, -2, 3) != -2 || Math_Max(tctx, Int_Compare, 4, 4) != 4 {
+		t.Fatal("max/min")
+	}
+	nan := math.NaN()
+	if !math.IsNaN(Math_Max(tctx, Float_Compare, nan, 1)) || !math.IsNaN(Math_Max(tctx, Float_Compare, 1, nan)) || Math_Min(tctx, Float_Compare, nan, 1) != 1 {
+		t.Fatal("NaN orders above every Float")
+	}
+	if Float_Compare(tctx, math.Copysign(0, -1), 0) != 0 || Float_Compare(tctx, math.Inf(1), nan) != -1 || Float_Compare(tctx, nan, nan) != 0 {
+		t.Fatal("Float_Compare")
 	}
 	if Math_AbsInt(tctx, -5) != 5 {
 		t.Fatal("abs_int")

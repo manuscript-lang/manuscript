@@ -114,7 +114,7 @@ func (g *gen) view(from, contract *checker.Type) string {
 			Body: block(returned(selector(ident("v"), "self"))),
 		})
 		// A view prints as its receiver.
-		describe := call(g.formatFunc(from), selector(ident("v"), "self"), ident("depth"))
+		describe := g.nested(from, selector(ident("v"), "self"))
 		d.decl = append(d.decl, &ast.FuncDecl{
 			Recv: &ast.FieldList{List: []*ast.Field{field("v", ident(name))}},
 			Name: ident("Describe"), Type: functionType([]*ast.Field{field("depth", ident("int"))}, ident("string")),
@@ -137,7 +137,12 @@ func (g *gen) viewMethod(view string, from, contract *checker.Type, op checker.O
 	for i := range op.Type.Params {
 		name := "a" + itoa(i)
 		params = append(params, field(name, g.paramType(op.Type, i)))
-		args = append(args, g.forwardArg(ident(name), op.Type, i, m, from))
+		arg := g.forwardArg(ident(name), op.Type, i, m, from)
+		if m.Native != "" && m.Native != "contract" && contract.ID == "@std/Comparable" && op.Type.Params[i].Type.ID == contract.ID {
+			// A native operation takes the concrete receiver type, not the view.
+			arg = call(generic(rtName("Unview"), g.goType(from)), arg)
+		}
+		args = append(args, arg)
 	}
 	body := g.invokeMethod(m, from, selector(ident("v"), "self"), op.Name, args, &checker.Info{Type: m.Type})
 	return &ast.FuncDecl{
@@ -155,8 +160,8 @@ func (g *gen) resolveContractMethod(from, contract *checker.Type, name string) *
 			return m
 		}
 	}
-	// A standard type's own native operation can satisfy a runtime contract.
-	if isStdType(from) {
+	// A standard or intrinsic type's own native operation can satisfy a runtime contract.
+	if isStdType(from) || isStdType(contract) {
 		for _, m := range g.resolve(from, name) {
 			if m.Native != "" {
 				return m

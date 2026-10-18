@@ -94,7 +94,7 @@ func stdModule(file string) string {
 // intrinsic receivers rather than runtime types.
 func skippedStandardType(s *checker.Symbol) bool {
 	switch s.Name {
-	case "Equal", "Hashable", "ValueOperations", "CloneOperations", "StringOperations", "IntOperations", "FloatOperations":
+	case "Equal", "Comparable", "Hashable", "ValueOperations", "CloneOperations", "StringOperations", "IntOperations", "FloatOperations":
 		return true
 	}
 	return false
@@ -200,9 +200,13 @@ func (g *gen) capabilityFields(caps []checker.Capability) []*ast.Field {
 	for _, c := range caps {
 		name := "eq_" + c.Variable.Name
 		var typ ast.Expr = generic(rtName("Eq"), ident(c.Variable.Name))
-		if c.Property == "Hashable" {
+		switch c.Property {
+		case "Hashable":
 			name = "keys_" + c.Variable.Name
 			typ = pointerTo(generic(rtName("Keys"), ident(c.Variable.Name)))
+		case "Comparable":
+			name = "cmp_" + c.Variable.Name
+			typ = generic(rtName("Cmp"), ident(c.Variable.Name))
 		}
 		out = append(out, field(name, typ))
 	}

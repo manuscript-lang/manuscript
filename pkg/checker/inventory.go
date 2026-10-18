@@ -100,7 +100,7 @@ func (inv *Inventory) addOperations(s *Symbol) {
 // and Hashable implementations from inside the runtime.
 type Capability struct {
 	Variable *Type
-	Property string // "Equal" or "Hashable"
+	Property string // "Equal", "Hashable", or "Comparable"
 }
 
 // OperationCapabilities lists, in order, the capabilities a native operation
@@ -109,7 +109,7 @@ type Capability struct {
 func OperationCapabilities(receiver *Type, requirements []Requirement, variables []*Type) []Capability {
 	var out []Capability
 	for _, r := range requirements {
-		if std(r.Constraint, "Equal") || std(r.Constraint, "Hashable") {
+		if std(r.Constraint, "Equal") || std(r.Constraint, "Hashable") || std(r.Constraint, "Comparable") {
 			out = append(out, Capability{Variable: r.Variable, Property: r.Constraint.Name})
 		}
 	}
@@ -117,20 +117,25 @@ func OperationCapabilities(receiver *Type, requirements []Requirement, variables
 	return out
 }
 
-// BoundCapabilities lists the Equal or Hashable bounds of variables.
+// BoundCapabilities lists the Equal, Hashable, or Comparable bounds of variables.
 func BoundCapabilities(variables []*Type) []Capability {
 	var out []Capability
 	for _, v := range variables {
 		property := ""
+		comparable := false
 		for _, b := range v.Bounds {
 			if std(b, "Hashable") {
 				property = "Hashable"
 			} else if std(b, "Equal") && property == "" {
 				property = "Equal"
 			}
+			comparable = comparable || std(b, "Comparable")
 		}
 		if property != "" {
 			out = append(out, Capability{Variable: v, Property: property})
+		}
+		if comparable {
+			out = append(out, Capability{Variable: v, Property: "Comparable"})
 		}
 	}
 	return out
@@ -157,4 +162,10 @@ func NativeOperationFor(receiver *Type, name string) (NativeOperation, bool) {
 		}
 	}
 	return NativeOperation{}, false
+}
+
+// StandardContract is the prelude contract with the given name, such as Comparable.
+func StandardContract(name string) *Type {
+	ensureStandard()
+	return standard(name)
 }
