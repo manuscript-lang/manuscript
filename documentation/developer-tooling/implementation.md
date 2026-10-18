@@ -253,6 +253,7 @@ Expression layout uses a soft limit of 88 columns:
 - Lists, grouped imports, and maps stay compact when they fit. Wrapped lists pack simple elements into rows; nested groups, expressions, and commented items get their own lines.
 - When a group expands, each item goes on its own line, indented four spaces, closing delimiter aligned with the opening line. An authored multiline group collapses if it fits and has no comment or suite.
 - Long conditions break at the lowest-precedence logical operator, keeping comparison operands together. Long arithmetic and member chains gain continuation lines, with grouping parentheses where needed.
+- Inside calls, collections, and parameter lists, use the existing delimiters for continuation; do not add grouping parentheses just to wrap an item.
 - Comments force expansion and stay with their opener, argument, or item.
 - String literals, interpolations, and comment text are never split or rewritten.
 

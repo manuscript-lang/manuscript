@@ -53,12 +53,10 @@ test "CSV preserves whitespace and normalizes quoted CRLF":
     let rows = [[" "], ["\t"], ["line\n\nbreak"], ["\""], ["", "", ""]]
     try expect_equal((try parse(try stringify(rows, options), options)), rows)
     try expect_false(
-        (
-            (try parse("\"line\r\n\r\nbreak\"\r\n\"\"\r\n", options)) != [
-                ["line\n\nbreak"],
-                [""]
-            ]
-        )
+        try parse("\"line\r\n\r\nbreak\"\r\n\"\"\r\n", options) != [
+            ["line\n\nbreak"],
+            [""]
+        ]
     )
 
 test "CSV quotes delimiters multiline cells and line endings":
