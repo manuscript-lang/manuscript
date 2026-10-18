@@ -29,6 +29,9 @@ func checkedLoweringProgram(tb testing.TB, source string) *checker.Program {
 func BenchmarkGo(b *testing.B) {
 	b.Run("Empty", func(b *testing.B) { benchmarkGo(b, "") })
 	b.Run("Single", func(b *testing.B) { benchmarkGo(b, "fn work() Int: return 1\n") })
+	b.Run("ScalarOperands", func(b *testing.B) {
+		benchmarkGo(b, "fn work(a: Int, b: Int) Int: return (a + b) * (a - b)\n")
+	})
 	for _, size := range []int{64, 128, 256} {
 		b.Run(fmt.Sprintf("Statements/%d", size), func(b *testing.B) {
 			var source strings.Builder
@@ -63,7 +66,12 @@ func BenchmarkGo(b *testing.B) {
 			source := "fn work() List[Int]: return [" + strings.Repeat("1, ", size-1) + "1]\n"
 			benchmarkGo(b, source)
 		})
+		b.Run(fmt.Sprintf("ImmutableOperands/%d", size), func(b *testing.B) {
+			source := "fn work(value: Int) List[Int]: return [" + strings.Repeat("value, ", size-1) + "value]\n"
+			benchmarkGo(b, source)
+		})
 	}
+	b.Run("MixedOperands", func(b *testing.B) { benchmarkGo(b, mixedOperandsSource) })
 	for _, fixture := range []struct{ name, file string }{
 		{"NativeDefaults", "../../scripts/bench-lowering/native-defaults.ms"},
 		{"Cleanup", "../../scripts/bench-lowering/production.ms"},
@@ -78,6 +86,28 @@ func BenchmarkGo(b *testing.B) {
 		})
 	}
 }
+
+// The first effectful call spills multiple prior reads; the match then
+// reassigns a bare mutable operand and forces another round of captures.
+const mixedOperandsSource = `type Counter:
+    value: Int
+
+fn advance(counter: Counter) Int:
+    counter.value += 1
+    return counter.value
+
+fn work(counter: Counter) List[Int]:
+    var value = 1
+    return [
+        value, counter.value, counter.value, advance(counter), value,
+        match some(2):
+            some(number):
+                value = number
+                advance(counter)
+            none: 0
+        , value, counter.value, advance(counter)
+    ]
+`
 
 func benchmarkGo(b *testing.B, source string) {
 	b.Helper()
