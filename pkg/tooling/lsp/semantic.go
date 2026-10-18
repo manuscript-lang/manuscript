@@ -40,8 +40,9 @@ func semantic(d document, checked ...compiler.Result) map[string]any {
 	}
 	resolved := map[int]int{}
 	if len(checked) > 0 {
+		file := moduleFile(checked[0], d)
 		for _, entry := range sourceIndex(checked[0]) {
-			if entry.pos.File != moduleFile(checked[0], d) || entry.info == nil {
+			if entry.pos.File != file || entry.info == nil {
 				continue
 			}
 			kind := 1
