@@ -64,6 +64,19 @@ func TestSemanticProjectModuleIdentity(t *testing.T) {
 	if semanticKindAt(semantic(d)["data"].([]int), use) == 5 {
 		t.Fatal("control unexpectedly had semantic function information")
 	}
+	part := filepath.Join(filepath.Dir(filename(d.URI)), "part_0.ms")
+	source, err := os.ReadFile(part)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parameter := document{URI: fileURI(part), Text: string(source), Version: 1}
+	declaration := Position(parameter.Text, strings.Index(parameter.Text, "value"))
+	if semanticKindAt(semantic(parameter, checked)["data"].([]int), declaration) != 8 {
+		t.Fatal("lost parameter classification from the occurrence index")
+	}
+	if semanticKindAt(semantic(parameter)["data"].([]int), declaration) == 8 {
+		t.Fatal("lexical negative control unexpectedly classified a parameter")
+	}
 	alias := filepath.Join(t.TempDir(), "project")
 	if err := os.Symlink(filepath.Dir(filename(d.URI)), alias); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
