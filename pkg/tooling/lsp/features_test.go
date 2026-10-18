@@ -277,7 +277,7 @@ func TestNavigationWithinStandardLibrary(t *testing.T) {
 		{"collections.ms", "Result[List[T]", "result.ms", "Result"},
 		{"collections.ms", "Optional[T]", "optional.ms", "Optional"},
 		{"collections.ms", "List[T]", "collections.ms", "List"},
-		{"cli.ms", "List[String]", "collections.ms", "List"},
+		{"process.ms", "List[String]", "collections.ms", "List"},
 	} {
 		t.Run(item.file+"/"+item.needle, func(t *testing.T) {
 			uri := "manuscript-stdlib:///" + item.file

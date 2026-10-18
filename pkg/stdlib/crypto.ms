@@ -20,10 +20,6 @@ export fn derive_key(
     length: Int
 ) Result[Bytes, CryptoError]:
 
-# Computes an HMAC using exactly `sha256`, `sha384`, or `sha512` (case-sensitive).
-# Other algorithms return CryptoError.Unsupported.
-export fn hmac(key: Bytes, data: Bytes, algorithm: String) Result[Bytes, CryptoError]:
-
 # Authenticates and decrypts a value produced by `seal` using AES-GCM.
 export fn open(
     key: Bytes,
@@ -62,8 +58,7 @@ impl Error for CryptoError:
     # Returns a cryptography-prefixed diagnostic without exposing keys, plaintext or ciphertext.
     fn message() String:
 
-# Selects a supported SHA-2 algorithm without a runtime string spelling check.
-# Existing hash functions and hmac(algorithm: String) remain available.
+# Selects a supported SHA-2 algorithm for digests and HMAC.
 export type HashAlgorithm:
     # SHA-256, producing a 32-byte digest or HMAC.
     case Sha256

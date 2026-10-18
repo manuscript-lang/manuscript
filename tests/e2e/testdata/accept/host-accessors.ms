@@ -1,4 +1,4 @@
-import {arguments, environment} from "@std/cli.ms"
+import {arguments, control} from "@std/process.ms"
 import {IoError, stdin, stdout, stderr} from "@std/io.ms"
 import {clock, wall_clock} from "@std/time.ms"
 import entropy from "@std/random.ms"
@@ -19,13 +19,8 @@ fn check_services() Unit:
         return panic("wall clock unavailable")
     if system().info().cpu_count <= 0:
         return panic("system service unavailable")
-
-    for entry in environment():
-        if let value = system().environment(entry.key):
-            if value != entry.value:
-                return panic("environment snapshot differs")
-        else:
-            return panic("environment entry missing")
+    if control().environment().is_error():
+        return panic("environment unavailable")
 
     if let data = entropy().bytes(0):
         if data.length() != 0:

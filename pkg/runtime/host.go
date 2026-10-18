@@ -14,17 +14,15 @@ import (
 )
 
 // HostRoots are the program's capabilities to the host: standard streams,
-// arguments, environment, and service handles. They are private to one CLI run
+// arguments and service handles. They are private to one CLI run
 // or test; derived executions share them, so importing an accessor never
 // creates a second service instance.
 type HostRoots struct {
 	once sync.Once
 	err  error
 
-	// Arguments is the program's argument list; Environment is the snapshot of
-	// the process environment taken when the roots were initialized.
-	Arguments   *List[string]
-	Environment *Map[string, string]
+	// Arguments is the program's argument list.
+	Arguments *List[string]
 
 	Stdin  ReadStream
 	Stdout WriteStream
@@ -83,17 +81,7 @@ func (h *HostRoots) build() error {
 		}
 		values[i] = a
 	}
-	environment := NewMap[string, string]()
-	for _, entry := range os.Environ() {
-		if !utf8.ValidString(entry) {
-			return fmt.Errorf("process environment is not valid UTF-8")
-		}
-		if name, value, ok := strings.Cut(entry, "="); ok {
-			environment.Put(name, value)
-		}
-	}
 	h.Arguments = NewList(values...)
-	h.Environment = environment
 	h.Filesystem = &osFileSystem{}
 	h.Control = osProcessControl{}
 	h.Entropy = osEntropy{}
@@ -151,12 +139,8 @@ func hostRoots(ctx *Execution) *HostRoots {
 	return ctx.State.Host
 }
 
-// Cli_Arguments is the cli.arguments root accessor.
-func Cli_Arguments(ctx *Execution) *List[string] { return hostRoots(ctx).Arguments }
-
-// Cli_Environment is the cli.environment root accessor: a snapshot taken at
-// startup.
-func Cli_Environment(ctx *Execution) *Map[string, string] { return hostRoots(ctx).Environment }
+// Process_Arguments is the process.arguments root accessor.
+func Process_Arguments(ctx *Execution) *List[string] { return hostRoots(ctx).Arguments }
 
 // Io_Stdin is the io.stdin root accessor.
 func Io_Stdin(ctx *Execution) ReadStream { return hostRoots(ctx).Stdin }

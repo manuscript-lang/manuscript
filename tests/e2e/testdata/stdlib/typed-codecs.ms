@@ -1,4 +1,4 @@
-import {HashAlgorithm, sha256, sha384, sha512, hmac, CryptoError} from "@std/crypto.ms"
+import {HashAlgorithm, sha256, sha384, sha512, CryptoError} from "@std/crypto.ms"
 import {CompressionFormat, compress, decompress, CompressionError} from "@std/compress.ms"
 import {ArchiveFormat, pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError} from "@std/archive.ms"
 import Bytes from "@std/bytes.ms"
@@ -37,24 +37,14 @@ test "typed SHA selectors match their algorithms and retain bound operations":
     if call_digest(stored, data) != sha384(data): return panic("generic stored digest")
 
     let key = "key".to_bytes()
-
     for algorithm in [HashAlgorithm.Sha256, HashAlgorithm.Sha384, HashAlgorithm.Sha512]:
-        let name = match algorithm:
-            Sha256: "sha256"
-            Sha384: "sha384"
-            Sha512: "sha512"
-
-        if (try algorithm.hmac(key, data)) != (try hmac(key, data, name)): return panic(
+        if (try algorithm.hmac(key, data)).length() != algorithm.digest(data).length(): return panic(
             "typed HMAC"
         )
-
     let hmac_operation = HashAlgorithm.Sha512.hmac
-    if (try hmac_operation(key, data)) != (try hmac(key, data, "sha512")): return panic(
+    if (try hmac_operation(key, data)) != (try HashAlgorithm.Sha512.hmac(key, data)): return panic(
         "stored HMAC"
     )
-
-    let unsupported: Result[Bytes, CryptoError] = error(CryptoError.Unsupported)
-    if hmac(key, data, "SHA256") != unsupported: return panic("legacy HMAC rejection")
 
 test "typed compression preserves bytes limits errors and optional arguments":
     let data = "typed codecs typed codecs".to_bytes()

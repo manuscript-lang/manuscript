@@ -1,5 +1,5 @@
 import range from "@std/collections.ms"
-import {decoder, feed, finish, reader, next_event, SseError, SseEvent, SseLimits} from "@std/sse.ms"
+import {decoder, reader, next_event, SseError, SseEvent, SseLimits} from "@std/sse.ms"
 import {Bytes, BytesBuilder} from "@std/bytes.ms"
 import {IoError, ReadStream} from "@std/io.ms"
 import panic from "@std/faults.ms"
@@ -48,10 +48,10 @@ fn decode(parts: List[Bytes]) Result[List[SseEvent], SseError]:
     let events = List[SseEvent]()
 
     for part in parts:
-        let batch = try feed(created, part)
+        let batch = try created.feed(part)
         for event in batch: events.append(event)
 
-    try finish(created)
+    try created.finish()
     return ok(events)
 
 fn summary(events: List[SseEvent]) String:
@@ -80,8 +80,8 @@ test "LF CRLF and CR endings decode identically under every chunk split":
 
 test "CR LF straddling a chunk boundary is one ending":
     let created = try decoder()
-    let first = try feed(created, "data: a\r".to_bytes())
-    let second = try feed(created, "\n\r\n".to_bytes())
+    let first = try created.feed("data: a\r".to_bytes())
+    let second = try created.feed("\n\r\n".to_bytes())
     if first.length() != 0 or second.length() != 1:
         panic("CRLF split across chunks must dispatch exactly once")
 
@@ -108,13 +108,12 @@ test "events without data are not dispatched and reset the event type":
 
 test "retry accepts digits only and survives between events":
     let created = try decoder()
-    let _events = try feed(created, "retry: 1500\n\n".to_bytes())
-    if created.retry.get(0) != 1500: panic("retry was not recorded")
-    let _second_events = try feed(
-        created,
+    let _events = try created.feed("retry: 1500\n\n".to_bytes())
+    if created.retry().get(0) != 1500: panic("retry was not recorded")
+    let _second_events = try created.feed(
         "retry: 12x\nretry: -5\nretry:\nretry: 99999999999999999999\n\n".to_bytes()
     )
-    if created.retry.get(0) != 1500: panic("invalid retry values must be ignored")
+    if created.retry().get(0) != 1500: panic("invalid retry values must be ignored")
 
 test "a byte order mark is dropped only at the start of the stream":
     try expect("\u{feff}data: a\n\n", "message|a|-")
@@ -141,28 +140,27 @@ test "invalid UTF-8 is InvalidData and final":
         var failure = false
 
         for part in parts:
-            let outcome = feed(created, part)
+            let outcome = created.feed(part)
             if outcome.is_error():
                 failure = outcome.err() == SseError.InvalidData
 
         if not failure: panic("invalid UTF-8 must report InvalidData")
-        if not is_case(feed(created, "data: x\n\n".to_bytes()), SseError.InvalidData):
+        if not is_case(created.feed("data: x\n\n".to_bytes()), SseError.InvalidData):
             panic("a failed decoder must keep reporting its failure")
 
 test "line and event budgets report LimitExceeded":
     let tight = try decoder(SseLimits(some(7)))
-    if not is_case(feed(tight, "data: 12\n\n".to_bytes()), SseError.LimitExceeded):
+    if not is_case(tight.feed("data: 12\n\n".to_bytes()), SseError.LimitExceeded):
         panic("line budget")
     let exact = try decoder(SseLimits(some(8)))
-    if (try feed(exact, "data: 12\n\n".to_bytes())).length() != 1:
+    if (try exact.feed("data: 12\n\n".to_bytes())).length() != 1:
         panic("a line at the budget is accepted")
     let event = try decoder(SseLimits(max_event_bytes: some(10)))
-    let _event_batch = try feed(event, "data: 1\n".to_bytes())
-    if not is_case(feed(event, "data: 2\n".to_bytes()), SseError.LimitExceeded):
+    let _event_batch = try event.feed("data: 1\n".to_bytes())
+    if not is_case(event.feed("data: 2\n".to_bytes()), SseError.LimitExceeded):
         panic("event budget")
     let comments = try decoder(SseLimits(max_event_bytes: some(10)))
-    let _comment_events = try feed(
-        comments,
+    let _comment_events = try comments.feed(
         ": a long comment is not counted\ndata: 1\n\n".to_bytes()
     )
     if decoder(SseLimits(some(0))).is_ok(): panic("zero line budget")
@@ -170,19 +168,19 @@ test "line and event budgets report LimitExceeded":
 test "truncated streams fail and clean ends succeed":
     for source in ["data: a\n", "data: a", "data: a\n\ndata", "id: 1\n"]:
         let created = try decoder()
-        let _events = try feed(created, source.to_bytes())
-        let ending = finish(created)
+        let _events = try created.feed(source.to_bytes())
+        let ending = created.finish()
         if ending.is_ok() or ending.err() != SseError.Truncated:
             panic("{source} must be Truncated")
 
     for source in ["", "data: a\n\n", ": keepalive\n", "data: a\r\n\r\n", "\n"]:
         let created = try decoder()
-        let _events = try feed(created, source.to_bytes())
-        try finish(created)
+        let _events = try created.feed(source.to_bytes())
+        try created.finish()
 
     let done = try decoder()
-    try finish(done)
-    if not is_case(feed(done, "x".to_bytes()), SseError.InvalidInput):
+    try done.finish()
+    if not is_case(done.feed("x".to_bytes()), SseError.InvalidInput):
         panic("feed after finish")
 
 test "reader decodes a borrowed stream and leaves it open":
