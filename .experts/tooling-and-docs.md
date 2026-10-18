@@ -62,6 +62,20 @@ Apply when: changing partial parsing, declaration synchronization, or completion
 Evidence: [layout rules](../documentation/core-language/basics/grammar.md#layout-tokens); [recovery regressions](../pkg/parser/partial_test.go); [parameter navigation regression](../pkg/tooling/lsp/analysis_test.go); [completion regressions](../pkg/tooling/lsp/completion_test.go).
 Verify: multiline function parameters retain their original LF/CRLF positions, navigation, and completion when a different declaration is incomplete; an unfinished match does not erase completion in the enclosing function.
 
+### Shared editor analysis must preserve selected roots and overlays
+
+Verified: resolve the nearest manifest before sharing analysis. A standalone
+file symlink can select a different source root and confinement error from its
+destination; a symlinked manifest retains its containing directory. Distinct
+URIs can decode to one filename with different requested text, so those overlays
+cannot share a checked result. Keep default and selected-module recovery separate,
+private completion repair uncached, and strict workspace graphs transient.
+Evidence: [scope and overlay regressions](../pkg/tooling/lsp/snapshot_test.go).
+Verify: compare cached results with uncached analysis in both query orders;
+apply queued incremental ranges in order and publish newest errors before request,
+close and EOF barriers. [Scheduling regressions](../pkg/tooling/lsp/scheduling_test.go)
+also pin cancellation between strict checks and cache release after close.
+
 ### Standard declarations are source that tools must navigate
 
 Decision: the user asked to keep standard type definitions in Manuscript so editor tooling can use them. Verified architecture: `pkg/stdlib/*.ms` supplies public schemas and signatures; `bindings.json` maps identities to native dispatch. Generated documentation and navigation consume this source-backed contract.

@@ -1,0 +1,6 @@
+sh scripts/bootstrap-go.sh
+"/workspace/manuscript-tooling-fixes/toolchain/go/bin/go" run ./scripts/repo-check
+Package boundaries, implementation pins, native bundles, and release triggers agree.
+"/workspace/manuscript-tooling-fixes/toolchain/go/bin/go" run ./scripts/docgen -check
+API descriptions: 370/370 declarations, 1248/1248 members (including prelude aliases)
+Description quality: 370/370 declarations, 1248/1248 members pass structural checks; semantic review remains required
