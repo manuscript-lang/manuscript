@@ -1,0 +1,33 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/lower
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkBoundedMatchScaling/128/plans-4         	       1	   2691457 ns/op	  598424 B/op	    8355 allocs/op
+BenchmarkBoundedMatchScaling/128/plans-4         	       1	   1624982 ns/op	  598424 B/op	    8355 allocs/op
+BenchmarkBoundedMatchScaling/128/plans-4         	       1	   1386749 ns/op	  598424 B/op	    8355 allocs/op
+BenchmarkBoundedMatchScaling/128/initialize-4    	       1	   2333048 ns/op	  808440 B/op	    9795 allocs/op
+BenchmarkBoundedMatchScaling/128/initialize-4    	       1	   2027286 ns/op	  808440 B/op	    9795 allocs/op
+BenchmarkBoundedMatchScaling/128/initialize-4    	       1	   2383162 ns/op	  808440 B/op	    9795 allocs/op
+BenchmarkBoundedMatchScaling/128/emit-4          	       1	  51348895 ns/op	   8.55 MB/s	22531176 B/op	  301590 allocs/op
+BenchmarkBoundedMatchScaling/128/emit-4          	       1	  43009692 ns/op	  10.20 MB/s	22530312 B/op	  301578 allocs/op
+BenchmarkBoundedMatchScaling/128/emit-4          	       1	  51642104 ns/op	   8.50 MB/s	22529904 B/op	  301579 allocs/op
+BenchmarkBoundedMatchScaling/256/plans-4         	       1	   2562377 ns/op	 1197304 B/op	   16681 allocs/op
+BenchmarkBoundedMatchScaling/256/plans-4         	       1	   3249502 ns/op	 1197304 B/op	   16681 allocs/op
+BenchmarkBoundedMatchScaling/256/plans-4         	       1	   3118869 ns/op	 1197304 B/op	   16681 allocs/op
+BenchmarkBoundedMatchScaling/256/initialize-4    	       1	   4845280 ns/op	 1608696 B/op	   19164 allocs/op
+BenchmarkBoundedMatchScaling/256/initialize-4    	       1	   8254569 ns/op	 1608696 B/op	   19164 allocs/op
+BenchmarkBoundedMatchScaling/256/initialize-4    	       1	   5322035 ns/op	 1608696 B/op	   19164 allocs/op
+BenchmarkBoundedMatchScaling/256/emit-4          	       1	  92991836 ns/op	   9.51 MB/s	45440280 B/op	  602722 allocs/op
+BenchmarkBoundedMatchScaling/256/emit-4          	       1	  90891217 ns/op	   9.73 MB/s	45439864 B/op	  602718 allocs/op
+BenchmarkBoundedMatchScaling/256/emit-4          	       1	  91253723 ns/op	   9.70 MB/s	45440248 B/op	  602723 allocs/op
+BenchmarkBoundedMatchScaling/512/plans-4         	       1	   9167108 ns/op	 2394072 B/op	   33327 allocs/op
+BenchmarkBoundedMatchScaling/512/plans-4         	       1	  10688617 ns/op	 2394072 B/op	   33327 allocs/op
+BenchmarkBoundedMatchScaling/512/plans-4         	       1	   9425590 ns/op	 2394072 B/op	   33327 allocs/op
+BenchmarkBoundedMatchScaling/512/initialize-4    	       1	  20065984 ns/op	 3217432 B/op	   37896 allocs/op
+BenchmarkBoundedMatchScaling/512/initialize-4    	       1	  15070131 ns/op	 3217432 B/op	   37896 allocs/op
+BenchmarkBoundedMatchScaling/512/initialize-4    	       1	  17704154 ns/op	 3217432 B/op	   37896 allocs/op
+BenchmarkBoundedMatchScaling/512/emit-4          	       1	 236295518 ns/op	   7.54 MB/s	91333352 B/op	 1204985 allocs/op
+BenchmarkBoundedMatchScaling/512/emit-4          	       1	 210382807 ns/op	   8.47 MB/s	91349496 B/op	 1204988 allocs/op
+BenchmarkBoundedMatchScaling/512/emit-4          	       1	 218267028 ns/op	   8.16 MB/s	91332680 B/op	 1204987 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/lower	5.497s

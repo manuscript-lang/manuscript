@@ -1,0 +1,24 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/lower
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkBoundedMatchScaling/128/plans-4         	       1	   1660788 ns/op	  571800 B/op	    8099 allocs/op
+BenchmarkBoundedMatchScaling/128/plans-4         	       1	   1353693 ns/op	  571800 B/op	    8099 allocs/op
+BenchmarkBoundedMatchScaling/128/plans-4         	       1	   1040560 ns/op	  571800 B/op	    8099 allocs/op
+BenchmarkBoundedMatchScaling/128/emit-4          	       1	  39440493 ns/op	  11.27 MB/s	22593896 B/op	  304266 allocs/op
+BenchmarkBoundedMatchScaling/128/emit-4          	       1	  41493026 ns/op	  10.71 MB/s	22593448 B/op	  304262 allocs/op
+BenchmarkBoundedMatchScaling/128/emit-4          	       1	  40116844 ns/op	  11.08 MB/s	22593464 B/op	  304260 allocs/op
+BenchmarkBoundedMatchScaling/256/plans-4         	       1	   3652856 ns/op	 1144056 B/op	   16169 allocs/op
+BenchmarkBoundedMatchScaling/256/plans-4         	       1	   2774897 ns/op	 1144056 B/op	   16169 allocs/op
+BenchmarkBoundedMatchScaling/256/plans-4         	       1	   5714728 ns/op	 1144056 B/op	   16169 allocs/op
+BenchmarkBoundedMatchScaling/256/emit-4          	       1	  89051862 ns/op	  10.06 MB/s	45558624 B/op	  608093 allocs/op
+BenchmarkBoundedMatchScaling/256/emit-4          	       1	  89008168 ns/op	  10.07 MB/s	45574512 B/op	  608091 allocs/op
+BenchmarkBoundedMatchScaling/256/emit-4          	       1	  99766872 ns/op	   8.98 MB/s	45557296 B/op	  608084 allocs/op
+BenchmarkBoundedMatchScaling/512/plans-4         	       1	   8618707 ns/op	 2287576 B/op	   32303 allocs/op
+BenchmarkBoundedMatchScaling/512/plans-4         	       1	  11095558 ns/op	 2287576 B/op	   32303 allocs/op
+BenchmarkBoundedMatchScaling/512/plans-4         	       1	   9471207 ns/op	 2287576 B/op	   32303 allocs/op
+BenchmarkBoundedMatchScaling/512/emit-4          	       1	 204455459 ns/op	   8.83 MB/s	91584576 B/op	 1215728 allocs/op
+BenchmarkBoundedMatchScaling/512/emit-4          	       1	 178122023 ns/op	  10.13 MB/s	91583648 B/op	 1215723 allocs/op
+BenchmarkBoundedMatchScaling/512/emit-4          	       1	 198672517 ns/op	   9.08 MB/s	91567616 B/op	 1215726 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/lower	5.035s

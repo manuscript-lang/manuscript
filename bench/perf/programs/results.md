@@ -1,5 +1,59 @@
 # Manuscript vs handwritten Go
 
+All 10 complete workloads measure within about 9% of raw handwritten Go or faster
+in the final 30-trial run. Matching improves 3.41 to 1.76 ns/op versus Go's 1.65;
+try measures 0.60 versus 0.60. These are measured workload results, not a promise
+of exact equality on every input, host or run. The separate manual-index control
+measured matching at 1.16x Go; retain it alongside the final 1.07x result.
+
+2026-10-18 UTC; Go 1.25.1, linux/amd64, AMD EPYC 9V74, four-vCPU quota.
+Baseline **02be6a39** (merged PR697). Thirty balanced trials share original raw-Go
+samples, fixed sources, input, operation counts and verified checksums. All binaries
+use CGO_ENABLED=0, -buildvcs=false, -trimpath, -ldflags='-s -w -buildid=' and ordinary
+inlining. No builds or tests overlap sampling.
+
+| operation | before ns/op | after ns/op | Go ns/op | after / Go |
+|---|---:|---:|---:|---:|
+| string_append_50k | 2.29 | 2.28 | 3.23 | 0.71x |
+| read_line | 62.57 | 60.40 | 65.12 | 0.93x |
+| map_put_get_8k | 34.11 | 34.59 | 31.68 | 1.09x |
+| int_eq | 1.00 | 1.00 | 1.00 | 1.00x |
+| generic_call | 0.05 | 0.05 | 0.28 | 0.18x |
+| method_call | 0.04 | 0.04 | 0.30 | 0.14x |
+| try | 0.62 | 0.60 | 0.60 | 0.99x |
+| match | 3.41 | 1.76 | 1.65 | 1.07x |
+| builtin_length | 0.05 | 0.05 | 0.29 | 0.16x |
+| for_list | 0.38 | 0.37 | 0.36 | 1.02x |
+
+A bounded private clone removes redundant Int overflow checks for one fixed,
+exhaustive pure alternative match over a closed literal list. Its caller inherits
+only the proved call's result interval. The original general function and source
+registration remain. Only approved gets whose index is proved nonnegative and
+in range use ordinary Go Items[index], retaining Go's bounds check and exact index
+evaluation. Unknown, negative, defaulted, aliased, captured, mutated, generic,
+local-evidence and Debug paths retain the checked behavior. No representation or
+public ABI changes. Remainder adds a value fact only, not unchecked arithmetic.
+
+The caller-proof-only alternative removes about 3.5% of matching time; the actual
+clone-only compiler still measures 1.39x Go. Their complete raw controls and the
+direct-index control justify the final combination. No padding or placement tuning
+is retained. Earlier loop batching preserves logical operation counts while doing
+less unobserved work between the original cancellation queries.
+
+All 66 library rows and 30 trials are retained. The generated library source and
+normalized executable are byte-identical before/after this increment, so their
+timing variation does not establish an algorithm regression. Compiler selection,
+concurrent determinism, exact native effects/cleanup/fault frames, Release/Debug,
+separate/standalone, signed and endpoint proofs, race checks, make verify and book
+checks pass. Accepted 128/256/512-site scaling checks validate actual selected gets;
+512-site emission is about 0.21–0.24 s and 91 MB with approximately linear allocations.
+
+[Raw trials, hashes, intervals, all library rows, generated Go and controls](../results/2026-10-18-linux-amd64/bounded-match-index/).
+[Canonical proof boundaries](../../../documentation/contributing/compiler/lowering/_index.md).
+
+## Earlier closed-builder and traversal batch
+
+
 Nine of ten complete workloads are within about15% of raw Go or faster after
 closed-builder batching and ordered traversal unrolling. Builder is2.13ns/op
 versusGo3.53; traversal0.38versus0.34. Matching remains2.19x the raw unchecked Go

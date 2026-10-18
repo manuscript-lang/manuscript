@@ -1,0 +1,564 @@
+package main
+
+import (
+	rt "github.com/manuscript-lang/manuscript/pkg/runtime"
+	"os"
+)
+
+//line generated.go:1
+type Shape interface {
+	isShape()
+}
+//line generated.go:1
+type Shape_Circle struct {
+	R int
+}
+
+//line generated.go:1
+func (Shape_Circle) isShape() {
+}
+
+//line generated.go:1
+type Shape_Square struct {
+	S int
+}
+
+//line generated.go:1
+func (Shape_Square) isShape() {
+}
+
+//line generated.go:1
+type Shape_Tri struct {
+	B int
+}
+
+//line generated.go:1
+func (Shape_Tri) isShape() {
+}
+
+//line generated.go:1
+type Acc struct {
+	Total int
+}
+
+//line generated.go:1
+func got_line(ctx *rt.Execution, input rt.ReadStream) bool {
+//line src/main.ms:23
+	return rt.Io_HasLine(ctx, input, rt.Option[int]{})
+}
+//line generated.go:1
+func say(ctx *rt.Execution, text string) rt.Unit {
+//line src/main.ms:29
+	t1 := rt.Io_Stdout(ctx)
+	/*line src/main.ms:29*/_ignored := t1.Write(ctx, text)
+	_ = _ignored
+	return rt.Unit{}
+}
+//line generated.go:1
+func since(ctx *rt.Execution, started rt.Instant) int {
+//line src/main.ms:32
+	t1 := rt.Time_Clock(ctx)
+	/*line src/main.ms:32*/t2 := t1.Now(ctx)
+	/*line src/main.ms:32*/t3 := rt.Instant_Difference(ctx, t2, started)
+	/*line src/main.ms:32*/return rt.Duration_ToNanoseconds(ctx, t3)
+}
+//line generated.go:1
+func report(ctx *rt.Execution, name string, ops int, started rt.Instant) rt.Unit {
+//line src/main.ms:35
+	say(ctx, name+" "+rt.FormatInt(ops)+" "+rt.FormatInt(since(ctx, started))+"\n")
+	return rt.Unit{}
+}
+//line generated.go:1
+func checked(ctx *rt.Execution, n int) rt.Result[int, *rt.TextError] {
+//line src/main.ms:41
+	if n < int(0) {
+//line src/main.ms:42
+		return rt.Result[int, *rt.TextError]{Err: &rt.TextError{Text: "negative"}, Failed: true}
+	}
+//line src/main.ms:44
+	return rt.Result[int, *rt.TextError]{Val: rt.IntAdd(n, int(1))}
+}
+//line generated.go:1
+func chain(ctx *rt.Execution, n int) rt.Result[int, *rt.TextError] {
+//line src/main.ms:47
+	return checked(ctx, n)
+}
+//line generated.go:1
+func area(ctx *rt.Execution, s Shape) int {
+//line src/main.ms:51
+	out := int(0)
+//line src/main.ms:53
+	t1 := s
+	/*line src/main.ms:53*/switch st1 := t1.(type) {
+	case Shape_Circle:
+		r := st1.R
+//line src/main.ms:55
+		out = rt.IntMultiply(r, int(3))
+	case Shape_Square:
+		side := st1.S
+//line src/main.ms:57
+		out = rt.IntMultiply(side, side)
+	case Shape_Tri:
+		b := st1.B
+//line src/main.ms:59
+		out = b
+	}
+//line src/main.ms:61
+	return out
+}
+//line generated.go:1
+func bench_string(ctx *rt.Execution) int {
+//line src/main.ms:64
+	t1 := rt.Time_Clock(ctx)
+	/*line src/main.ms:64*/t := t1.Now(ctx)
+//line src/main.ms:65
+	sb := rt.NewStringBuilder()
+//line src/main.ms:66
+	i := int(0)
+//line src/main.ms:68
+	for i < int(50000) {
+		t5 := 50000 - i
+		if t5 > 63 {
+			t5 = 63
+		}
+//line src/main.ms:69
+		rt.StringBuilder_Append(ctx, sb, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"[:t5*1])
+		i = i + t5
+		/*line src/main.ms:69*/if i < int(50000) {
+//line src/main.ms:68
+			rt.CheckCancelled(ctx)
+//line src/main.ms:69
+			rt.StringBuilder_Append(ctx, sb, "x")
+//line src/main.ms:70
+			i = i + int(1)
+		}
+	}
+//line src/main.ms:72
+	built := rt.StringBuilder_Freeze(ctx, sb)
+//line src/main.ms:73
+	report(ctx, "string_append_50k", int(50000), t)
+//line src/main.ms:74
+	return rt.String_ByteLength(ctx, built)
+}
+//line generated.go:1
+func bench_read_line(ctx *rt.Execution) rt.Unit {
+//line src/main.ms:77
+	t1 := rt.Time_Clock(ctx)
+	/*line src/main.ms:77*/t := t1.Now(ctx)
+//line src/main.ms:78
+	input := rt.Io_Stdin(ctx)
+//line src/main.ms:79
+	lines := int(0)
+//line src/main.ms:80
+	more := true
+//line src/main.ms:82
+	var t3 uint32
+	for more {
+		if t3++; t3&63 == 0 {
+			/*line src/main.ms:82*/rt.CheckCancelled(ctx)
+		}
+//line src/main.ms:83
+		if got_line(ctx, input) {
+//line src/main.ms:84
+			lines = rt.IntAdd(lines, int(1))
+		} else {
+//line src/main.ms:86
+			more = false
+		}
+	}
+//line src/main.ms:88
+	report(ctx, "read_line", lines, t)
+	return rt.Unit{}
+}
+//line generated.go:1
+func bench_map(ctx *rt.Execution) int {
+//line src/main.ms:91
+	t1 := rt.Time_Clock(ctx)
+	/*line src/main.ms:91*/t := t1.Now(ctx)
+//line src/main.ms:92
+	m := rt.NewLocalIntMap()
+//line src/main.ms:93
+	i := int(0)
+//line src/main.ms:95
+	t4 := i
+	/*line src/main.ms:95*/for i < int(8000) {
+		/*line src/main.ms:95*/if (i-t4+1)&63 == 0 {
+			/*line src/main.ms:95*/rt.CheckCancelled(ctx)
+		}
+//line src/main.ms:96
+		rt.LocalIntMap_Add(ctx, m, i, i*int(2))
+//line src/main.ms:97
+		i = i + int(1)
+	}
+//line src/main.ms:99
+	sum := int(0)
+//line src/main.ms:100
+	i = int(0)
+//line src/main.ms:102
+	t7 := i
+	/*line src/main.ms:102*/for i < int(8000) {
+		/*line src/main.ms:102*/if (i-t7+1)&63 == 0 {
+			/*line src/main.ms:102*/rt.CheckCancelled(ctx)
+		}
+//line src/main.ms:103
+		t9 := sum
+		/*line src/main.ms:103*/t8 := rt.LocalIntMap_Get(ctx, m, i)
+		/*line src/main.ms:103*/sum = rt.IntAdd(t9, rt.Optional_Get[int](ctx, t8, rt.Option[int]{}))
+//line src/main.ms:104
+		i = i + int(1)
+	}
+//line src/main.ms:106
+	report(ctx, "map_put_get_8k", int(16000), t)
+//line src/main.ms:107
+	return sum
+}
+//line generated.go:1
+func bench_int_eq(ctx *rt.Execution) int {
+//line src/main.ms:110
+	t1 := rt.Time_Clock(ctx)
+	/*line src/main.ms:110*/t := t1.Now(ctx)
+//line src/main.ms:111
+	hits := int(0)
+//line src/main.ms:112
+	i := int(0)
+//line src/main.ms:114
+	t4 := i
+	/*line src/main.ms:114*/for i < int(10000000) {
+		/*line src/main.ms:114*/if (i-t4+1)&63 == 0 {
+			/*line src/main.ms:114*/rt.CheckCancelled(ctx)
+		}
+//line src/main.ms:115
+		if i%int(3) == int(0) {
+//line src/main.ms:116
+			hits = hits + int(1)
+		}
+//line src/main.ms:117
+		i = i + int(1)
+	}
+//line src/main.ms:119
+	report(ctx, "int_eq", int(10000000), t)
+//line src/main.ms:120
+	return hits
+}
+//line generated.go:1
+func bench_generic(ctx *rt.Execution) int {
+//line src/main.ms:123
+	t1 := rt.Time_Clock(ctx)
+	/*line src/main.ms:123*/t := t1.Now(ctx)
+//line src/main.ms:124
+	i := int(0)
+//line src/main.ms:125
+	g := int(0)
+//line src/main.ms:127
+	for i < int(1000000) {
+		t5 := 1000000 - i
+		if t5 > 63 {
+			t5 = 63
+		}
+		/*line src/main.ms:127*/g = g + (t5*i + t5*(t5-1)/2)
+		i = i + t5
+		/*line src/main.ms:127*/if i < int(1000000) {
+//line src/main.ms:127
+			rt.CheckCancelled(ctx)
+//line src/main.ms:128
+			g = g + ident_Int(ctx, i)
+//line src/main.ms:129
+			i = i + int(1)
+		}
+	}
+//line src/main.ms:131
+	report(ctx, "generic_call", int(1000000), t)
+//line src/main.ms:132
+	return g
+}
+//line generated.go:1
+func bench_method(ctx *rt.Execution) int {
+//line src/main.ms:135
+	t1 := rt.Time_Clock(ctx)
+	/*line src/main.ms:135*/t := t1.Now(ctx)
+//line src/main.ms:136
+	acc := &Acc{Total: int(0)}
+//line src/main.ms:137
+	i := int(0)
+//line src/main.ms:139
+	for i < int(1000000) {
+		t5 := 1000000 - i
+		if t5 > 63 {
+			t5 = 63
+		}
+		acc.Total = acc.Total + t5*1
+		i = i + t5
+		/*line src/main.ms:139*/if i < int(1000000) {
+//line src/main.ms:139
+			rt.CheckCancelled(ctx)
+//line src/main.ms:140
+			acc.Total = acc.Total + int(1)
+			_ = acc.Total
+//line src/main.ms:141
+			i = i + int(1)
+		}
+	}
+//line src/main.ms:143
+	report(ctx, "method_call", int(1000000), t)
+//line src/main.ms:144
+	return acc.Total
+}
+//line generated.go:1
+func bench_try(ctx *rt.Execution) int {
+//line src/main.ms:147
+	t1 := rt.Time_Clock(ctx)
+	/*line src/main.ms:147*/t := t1.Now(ctx)
+//line src/main.ms:148
+	i := int(0)
+//line src/main.ms:149
+	tr := int(0)
+//line src/main.ms:151
+	t4 := i
+	/*line src/main.ms:151*/for i < int(1000000) {
+		/*line src/main.ms:151*/if (i-t4+1)&63 == 0 {
+			/*line src/main.ms:151*/rt.CheckCancelled(ctx)
+		}
+//line src/main.ms:152
+		{
+			/*line src/main.ms:152*/t5 := chain(ctx, i)
+			/*line src/main.ms:152*/if !(t5.Failed) {
+				v := t5.Val
+//line src/main.ms:153
+				tr = tr + v
+			} else {
+//line src/main.ms:155
+				tr = tr - int(1)
+			}
+		}
+//line src/main.ms:157
+		i = i + int(1)
+	}
+//line src/main.ms:159
+	report(ctx, "try", int(1000000), t)
+//line src/main.ms:160
+	return tr
+}
+//line generated.go:1
+func bench_match(ctx *rt.Execution) int {
+//line src/main.ms:163
+	t1 := rt.Time_Clock(ctx)
+	/*line src/main.ms:163*/t := t1.Now(ctx)
+//line src/main.ms:164
+	shapes := &rt.List[Shape]{Items: []Shape{Shape(Shape_Circle{R: int(2)}), Shape(Shape_Square{S: int(3)}), Shape(Shape_Tri{B: int(4)})}}
+//line src/main.ms:165
+	i := int(0)
+//line src/main.ms:166
+	ma := int(0)
+//line src/main.ms:168
+	t4 := i
+	/*line src/main.ms:168*/for i < int(1000000) {
+		/*line src/main.ms:168*/if (i-t4+1)&63 == 0 {
+			/*line src/main.ms:168*/rt.CheckCancelled(ctx)
+		}
+//line src/main.ms:169
+		ma = ma + area_bounded(ctx, shapes.Items[i%int(3)])
+//line src/main.ms:170
+		i = i + int(1)
+	}
+//line src/main.ms:172
+	report(ctx, "match", int(1000000), t)
+//line src/main.ms:173
+	return ma
+}
+//line generated.go:1
+func bench_length(ctx *rt.Execution) int {
+//line src/main.ms:176
+	xs := &rt.List[int]{Items: []int{}}
+//line src/main.ms:177
+	i := int(0)
+//line src/main.ms:179
+	t3 := i
+	/*line src/main.ms:179*/for i < int(100) {
+		/*line src/main.ms:179*/if (i-t3+1)&63 == 0 {
+			/*line src/main.ms:179*/rt.CheckCancelled(ctx)
+		}
+//line src/main.ms:180
+		rt.List_Append[int](ctx, xs, i)
+//line src/main.ms:181
+		i = i + int(1)
+	}
+//line src/main.ms:183
+	t4 := rt.Time_Clock(ctx)
+	/*line src/main.ms:183*/t := t4.Now(ctx)
+//line src/main.ms:184
+	i = int(0)
+//line src/main.ms:185
+	ln := int(0)
+//line src/main.ms:187
+	for i < int(1000000) {
+		t9 := 1000000 - i
+		if t9 > 63 {
+			t9 = 63
+		}
+		ln = ln + t9*100
+		i = i + t9
+		/*line src/main.ms:187*/if i < int(1000000) {
+//line src/main.ms:187
+			rt.CheckCancelled(ctx)
+//line src/main.ms:188
+			t8 := ln
+			_ = xs
+			ln = t8 + 100
+//line src/main.ms:189
+			i = i + int(1)
+		}
+	}
+//line src/main.ms:191
+	report(ctx, "builtin_length", int(1000000), t)
+//line src/main.ms:192
+	return ln
+}
+//line generated.go:1
+func bench_for_list(ctx *rt.Execution) int {
+//line src/main.ms:195
+	big := &rt.List[int]{Items: []int{}}
+//line src/main.ms:196
+	i := int(0)
+//line src/main.ms:198
+	t3 := i
+	/*line src/main.ms:198*/for i < int(1000000) {
+		/*line src/main.ms:198*/if (i-t3+1)&63 == 0 {
+			/*line src/main.ms:198*/rt.CheckCancelled(ctx)
+		}
+//line src/main.ms:199
+		rt.List_Append[int](ctx, big, i)
+//line src/main.ms:200
+		i = i + int(1)
+	}
+//line src/main.ms:202
+	t4 := rt.Time_Clock(ctx)
+	/*line src/main.ms:202*/t := t4.Now(ctx)
+//line src/main.ms:203
+	fs := int(0)
+//line src/main.ms:204
+	t7 := big.Items
+	/*line src/main.ms:204*/for t8 := 0; t8 < len(t7); {
+		/*line src/main.ms:204*/t9 := len(t7)
+		/*line src/main.ms:204*/if len(t7)-t8 > 63 {
+			t9 = t8 + 63
+		}
+		t10 := t7[t8:t9]
+		/*line src/main.ms:204*/for len(t10) >= 3 {
+			{
+				x := t10[0]
+//line src/main.ms:205
+				fs = fs + x
+			}
+			{
+				x := t10[1]
+//line src/main.ms:205
+				fs = fs + x
+			}
+			{
+				x := t10[2]
+//line src/main.ms:205
+				fs = fs + x
+			}
+			t10 = t10[3:]
+		}
+		for _, x := range t10 {
+//line src/main.ms:205
+			fs = fs + x
+		}
+		t8 = t9
+		/*line src/main.ms:204*/if t8 < len(t7) {
+			x := t7[t8]
+//line src/main.ms:204
+			rt.CheckCancelled(ctx)
+//line src/main.ms:205
+			fs = fs + x
+			t8++
+		}
+	}
+//line src/main.ms:206
+	report(ctx, "for_list", int(1000000), t)
+//line src/main.ms:207
+	return fs
+}
+//line generated.go:1
+func main_(ctx *rt.Execution) int {
+//line src/main.ms:210
+	built := bench_string(ctx)
+//line src/main.ms:211
+	bench_read_line(ctx)
+//line src/main.ms:212
+	sum := bench_map(ctx)
+//line src/main.ms:213
+	hits := bench_int_eq(ctx)
+//line src/main.ms:214
+	g := bench_generic(ctx)
+//line src/main.ms:215
+	total := bench_method(ctx)
+//line src/main.ms:216
+	tr := bench_try(ctx)
+//line src/main.ms:217
+	ma := bench_match(ctx)
+//line src/main.ms:218
+	ln := bench_length(ctx)
+//line src/main.ms:219
+	fs := bench_for_list(ctx)
+//line src/main.ms:220
+	say(ctx, "# sink "+rt.FormatInt(built)+" "+rt.FormatInt(sum)+" "+rt.FormatInt(hits)+" "+rt.FormatInt(g)+" "+rt.FormatInt(total)+" "+rt.FormatInt(tr)+" "+rt.FormatInt(ma)+" "+rt.FormatInt(ln)+" "+rt.FormatInt(fs)+"\n")
+//line src/main.ms:221
+	return int(0)
+}
+//line generated.go:1
+func ident_Int(ctx *rt.Execution, x int) int {
+//line src/main.ms:38
+	return x
+}
+//line generated.go:1
+func area_bounded(ctx *rt.Execution, s Shape) int {
+//line src/main.ms:51
+	out := int(0)
+//line src/main.ms:53
+	t1 := s
+	/*line src/main.ms:53*/switch st1 := t1.(type) {
+	case Shape_Circle:
+		r := st1.R
+//line src/main.ms:55
+		out = r * int(3)
+	case Shape_Square:
+		side := st1.S
+//line src/main.ms:57
+		out = side * side
+	case Shape_Tri:
+		b := st1.B
+//line src/main.ms:59
+		out = b
+	}
+//line src/main.ms:61
+	return out
+}
+//line generated.go:1
+func init() {
+	rt.RegisterSource(got_line, "got_line")
+	rt.RegisterSource(say, "say")
+	rt.RegisterSource(since, "since")
+	rt.RegisterSource(report, "report")
+	rt.RegisterSource(checked, "checked")
+	rt.RegisterSource(chain, "chain")
+	rt.RegisterSource(area, "area")
+	rt.RegisterSource(bench_string, "bench_string")
+	rt.RegisterSource(bench_read_line, "bench_read_line")
+	rt.RegisterSource(bench_map, "bench_map")
+	rt.RegisterSource(bench_int_eq, "bench_int_eq")
+	rt.RegisterSource(bench_generic, "bench_generic")
+	rt.RegisterSource(bench_method, "bench_method")
+	rt.RegisterSource(bench_try, "bench_try")
+	rt.RegisterSource(bench_match, "bench_match")
+	rt.RegisterSource(bench_length, "bench_length")
+	rt.RegisterSource(bench_for_list, "bench_for_list")
+	rt.RegisterSource(main_, "main")
+	rt.RegisterSource(ident_Int, "ident")
+	rt.RegisterSource(area_bounded, "area")
+}
+//line generated.go:1
+func main() {
+	os.Exit(rt.RunMain(main_, os.Args[1:]))
+}

@@ -1,0 +1,14 @@
+{
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "repeats": 30,
+  "binaries": {
+    "before": {
+      "path": "/workspace/manuscript/.artifacts/perf-binaries/builder-range-matched-stdlib",
+      "sha256": "b405605dd4ec5316df604e0b82197ec2c2013e2525866c23266892e58b67f8f6"
+    },
+    "after": {
+      "path": "/workspace/manuscript/.artifacts/perf-binaries/match-index-matched-stdlib",
+      "sha256": "b405605dd4ec5316df604e0b82197ec2c2013e2525866c23266892e58b67f8f6"
+    }
+  }
+}

@@ -1,0 +1,5940 @@
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 343047
+string.concat	20000	1652
+# checksum string.concat 20000
+# elapsed string.concat 33057734
+string.split	200	17543
+# checksum string.split 400000
+# elapsed string.split 3508605
+string.replace_all	200	48616
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 9723360
+string.contains	2000	4393
+# checksum string.contains 2000
+# elapsed string.contains 8787276
+string.upper	200	51174
+# checksum string.upper 3144600
+# elapsed string.upper 10234831
+string.trim	100000	10
+# checksum string.trim 600000
+# elapsed string.trim 1079385
+string.index_char_at	100000	7
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 714976
+string.chars	20	115868
+# checksum string.chars 314460
+# elapsed string.chars 2317379
+string.parse_int	100000	21
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 2134835
+string.interpolate	100000	93
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 9325741
+list.append	200000	43
+# checksum list.append 200000
+# elapsed list.append 8736742
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 304590
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110934
+list.map	100000	3
+# checksum list.map 100000
+# elapsed list.map 352541
+list.filter	100000	12
+# checksum list.filter 50004
+# elapsed list.filter 1296466
+list.fold	100000	1
+# checksum list.fold 500304918
+# elapsed list.fold 195489
+list.sorted	100000	125
+# checksum list.sorted 100000
+# elapsed list.sorted 12575610
+list.contains	100	188271
+# checksum list.contains 0
+# elapsed list.contains 18827124
+list.distinct	100000	28
+# checksum list.distinct 10007
+# elapsed list.distinct 2847964
+list.concat_reverse	100000	11
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1150635
+list.records_map	100000	30
+# checksum list.records_map 500404918
+# elapsed list.records_map 3025261
+map.int_put_get	200000	38
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7715844
+map.string_put_get	100000	94
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 9455645
+map.iterate_entries	100000	284
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 28434145
+set.add_contains	200000	99
+# checksum set.add_contains 100000
+# elapsed set.add_contains 19803431
+json.parse	5000	1670
+# checksum json.parse 1
+# elapsed json.parse 8350661
+json.roundtrip	5000	2107
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 10538824
+csv.stringify	5000	330
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1654065
+csv.parse	5000	193
+# checksum csv.parse 5000
+# elapsed csv.parse 965601
+encoding.base64_encode	157689	1
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 179665
+encoding.base64_decode	157689	1
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 231372
+encoding.hex_encode	157689	3
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 491497
+crypto.sha256	157689	1
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 184182
+bytes.builder	100000	8
+# checksum bytes.builder 100000
+# elapsed bytes.builder 831209
+regex.find_all	2000	397
+# checksum regex.find_all 2000
+# elapsed regex.find_all 794694
+regex.matches	10000	103
+# checksum regex.matches 10000
+# elapsed regex.matches 1031273
+regex.replace_all	2000	279
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 559187
+path.join_normalize	50000	524
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 26227474
+path.basename	100000	11
+# checksum path.basename 800000
+# elapsed path.basename 1195757
+url.parse	20000	352
+# checksum url.parse 20000
+# elapsed url.parse 7041897
+url.encode_component	50000	133
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6694333
+math.sqrt_sin	1000000	7
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 7422289
+yaml.parse	2000	7205
+# checksum yaml.parse 1
+# elapsed yaml.parse 14411197
+yaml.roundtrip	2000	10587
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 21175033
+toml.parse	2000	4767
+# checksum toml.parse 1
+# elapsed toml.parse 9535463
+html.parse	2000	1354
+# checksum html.parse 1
+# elapsed html.parse 2709004
+html.escape_unescape	2000	261
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 522242
+bigint.factorial_1000	1000	217
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 217601
+decimal.add_round	20000	1363
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 27268628
+compress.gzip	880000	2
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2313539
+compress.roundtrip	880000	6
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 6138572
+time.parse_timestamp	20000	291
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 5834732
+queue.enqueue_dequeue	200000	8
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 1726952
+priority_queue.enqueue_dequeue	100000	123
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 12378113
+archive.zip_pack	2000	1391
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2783083
+archive.tar_pack	2000	6562
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 13124736
+archive.zip_unpack	2000	8869
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 17739205
+sse.feed	2000	1887
+# checksum sse.feed 2000
+# elapsed sse.feed 3774978
+time.timestamp_to_string	20000	91
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 1834621
+random.uuid_v4	20000	425
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8514903
+fs.write_file_64k	200	20499
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 4099860
+fs.read_file_64k	200	43094
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 8618948
+fs.stat	200	4819
+# checksum fs.stat 200
+# elapsed fs.stat 963954
+fs.list_200	1	78677
+# checksum fs.list_200 200
+# elapsed fs.list_200 78677
+log.info	20000	3651
+# checksum log.info 20000
+# elapsed log.info 73037527
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 310489
+string.concat	20000	1633
+# checksum string.concat 20000
+# elapsed string.concat 32661378
+string.split	200	23526
+# checksum string.split 400000
+# elapsed string.split 4705233
+string.replace_all	200	58833
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 11766638
+string.contains	2000	5144
+# checksum string.contains 2000
+# elapsed string.contains 10288054
+string.upper	200	54255
+# checksum string.upper 3144600
+# elapsed string.upper 10851156
+string.trim	100000	9
+# checksum string.trim 600000
+# elapsed string.trim 978155
+string.index_char_at	100000	8
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 836106
+string.chars	20	181884
+# checksum string.chars 314460
+# elapsed string.chars 3637696
+string.parse_int	100000	24
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 2410312
+string.interpolate	100000	102
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 10277443
+list.append	200000	38
+# checksum list.append 200000
+# elapsed list.append 7797703
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 339862
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110904
+list.map	100000	2
+# checksum list.map 100000
+# elapsed list.map 250890
+list.filter	100000	6
+# checksum list.filter 50004
+# elapsed list.filter 681347
+list.fold	100000	3
+# checksum list.fold 500304918
+# elapsed list.fold 380011
+list.sorted	100000	119
+# checksum list.sorted 100000
+# elapsed list.sorted 11928288
+list.contains	100	221022
+# checksum list.contains 0
+# elapsed list.contains 22102233
+list.distinct	100000	23
+# checksum list.distinct 10007
+# elapsed list.distinct 2348796
+list.concat_reverse	100000	16
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1635531
+list.records_map	100000	28
+# checksum list.records_map 500404918
+# elapsed list.records_map 2826031
+map.int_put_get	200000	35
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7140763
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 7541175
+map.iterate_entries	100000	190
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 19003760
+set.add_contains	200000	74
+# checksum set.add_contains 100000
+# elapsed set.add_contains 14999471
+json.parse	5000	1075
+# checksum json.parse 1
+# elapsed json.parse 5378815
+json.roundtrip	5000	1960
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 9801033
+csv.stringify	5000	319
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1596360
+csv.parse	5000	201
+# checksum csv.parse 5000
+# elapsed csv.parse 1009031
+encoding.base64_encode	157689	3
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 533378
+encoding.base64_decode	157689	1
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 305692
+encoding.hex_encode	157689	4
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 771781
+crypto.sha256	157689	1
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 239714
+bytes.builder	100000	5
+# checksum bytes.builder 100000
+# elapsed bytes.builder 565716
+regex.find_all	2000	406
+# checksum regex.find_all 2000
+# elapsed regex.find_all 813252
+regex.matches	10000	91
+# checksum regex.matches 10000
+# elapsed regex.matches 912999
+regex.replace_all	2000	279
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 558725
+path.join_normalize	50000	606
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 30315160
+path.basename	100000	11
+# checksum path.basename 800000
+# elapsed path.basename 1152934
+url.parse	20000	384
+# checksum url.parse 20000
+# elapsed url.parse 7691027
+url.encode_component	50000	152
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 7600602
+math.sqrt_sin	1000000	7
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 7457150
+yaml.parse	2000	7969
+# checksum yaml.parse 1
+# elapsed yaml.parse 15938590
+yaml.roundtrip	2000	11134
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 22268945
+toml.parse	2000	5703
+# checksum toml.parse 1
+# elapsed toml.parse 11406167
+html.parse	2000	2108
+# checksum html.parse 1
+# elapsed html.parse 4216912
+html.escape_unescape	2000	153
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 306573
+bigint.factorial_1000	1000	641
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 641177
+decimal.add_round	20000	1529
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 30594193
+compress.gzip	880000	2
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2638289
+compress.roundtrip	880000	9
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 8010298
+time.parse_timestamp	20000	299
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 5996483
+queue.enqueue_dequeue	200000	12
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 2413967
+priority_queue.enqueue_dequeue	100000	152
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 15295605
+archive.zip_pack	2000	1587
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 3175102
+archive.tar_pack	2000	24947
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 49895252
+archive.zip_unpack	2000	10231
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 20462130
+sse.feed	2000	1914
+# checksum sse.feed 2000
+# elapsed sse.feed 3828448
+time.timestamp_to_string	20000	95
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 1908060
+random.uuid_v4	20000	414
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8294403
+fs.write_file_64k	200	20853
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 4170734
+fs.read_file_64k	200	56054
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 11210822
+fs.stat	200	4030
+# checksum fs.stat 200
+# elapsed fs.stat 806021
+fs.list_200	1	63383
+# checksum fs.list_200 200
+# elapsed fs.list_200 63383
+log.info	20000	3931
+# checksum log.info 20000
+# elapsed log.info 78635220
+string.append_builder	100000	4
+# checksum string.append_builder 100000
+# elapsed string.append_builder 495191
+string.concat	20000	1803
+# checksum string.concat 20000
+# elapsed string.concat 36069720
+string.split	200	18979
+# checksum string.split 400000
+# elapsed string.split 3795959
+string.replace_all	200	49473
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 9894633
+string.contains	2000	4444
+# checksum string.contains 2000
+# elapsed string.contains 8889356
+string.upper	200	47359
+# checksum string.upper 3144600
+# elapsed string.upper 9471963
+string.trim	100000	12
+# checksum string.trim 600000
+# elapsed string.trim 1245832
+string.index_char_at	100000	7
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 721346
+string.chars	20	88856
+# checksum string.chars 314460
+# elapsed string.chars 1777137
+string.parse_int	100000	18
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 1887449
+string.interpolate	100000	84
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8449326
+list.append	200000	46
+# checksum list.append 200000
+# elapsed list.append 9274506
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 304410
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110944
+list.map	100000	4
+# checksum list.map 100000
+# elapsed list.map 438984
+list.filter	100000	18
+# checksum list.filter 50004
+# elapsed list.filter 1852708
+list.fold	100000	3
+# checksum list.fold 500304918
+# elapsed list.fold 322136
+list.sorted	100000	109
+# checksum list.sorted 100000
+# elapsed list.sorted 10992064
+list.contains	100	174842
+# checksum list.contains 0
+# elapsed list.contains 17484289
+list.distinct	100000	20
+# checksum list.distinct 10007
+# elapsed list.distinct 2018103
+list.concat_reverse	100000	19
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1937073
+list.records_map	100000	21
+# checksum list.records_map 500404918
+# elapsed list.records_map 2148976
+map.int_put_get	200000	39
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7926414
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 6985362
+map.iterate_entries	100000	152
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 15212912
+set.add_contains	200000	90
+# checksum set.add_contains 100000
+# elapsed set.add_contains 18025474
+json.parse	5000	1066
+# checksum json.parse 1
+# elapsed json.parse 5332500
+json.roundtrip	5000	1933
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 9667643
+csv.stringify	5000	270
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1353320
+csv.parse	5000	143
+# checksum csv.parse 5000
+# elapsed csv.parse 719513
+encoding.base64_encode	157689	1
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 176882
+encoding.base64_decode	157689	2
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 399600
+encoding.hex_encode	157689	3
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 484481
+crypto.sha256	157689	1
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 179906
+bytes.builder	100000	4
+# checksum bytes.builder 100000
+# elapsed bytes.builder 407693
+regex.find_all	2000	279
+# checksum regex.find_all 2000
+# elapsed regex.find_all 558506
+regex.matches	10000	92
+# checksum regex.matches 10000
+# elapsed regex.matches 921983
+regex.replace_all	2000	319
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 638183
+path.join_normalize	50000	607
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 30351345
+path.basename	100000	12
+# checksum path.basename 800000
+# elapsed path.basename 1234484
+url.parse	20000	528
+# checksum url.parse 20000
+# elapsed url.parse 10572208
+url.encode_component	50000	128
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6427710
+math.sqrt_sin	1000000	7
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 7470570
+yaml.parse	2000	7588
+# checksum yaml.parse 1
+# elapsed yaml.parse 15176038
+yaml.roundtrip	2000	10418
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 20837098
+toml.parse	2000	5901
+# checksum toml.parse 1
+# elapsed toml.parse 11803494
+html.parse	2000	2049
+# checksum html.parse 1
+# elapsed html.parse 4099599
+html.escape_unescape	2000	135
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 271491
+bigint.factorial_1000	1000	270
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 270620
+decimal.add_round	20000	1485
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 29711718
+compress.gzip	880000	2
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2229465
+compress.roundtrip	880000	6
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 5462343
+time.parse_timestamp	20000	331
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 6636126
+queue.enqueue_dequeue	200000	9
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 1986876
+priority_queue.enqueue_dequeue	100000	146
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 14615881
+archive.zip_pack	2000	1495
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2991311
+archive.tar_pack	2000	6672
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 13345423
+archive.zip_unpack	2000	9483
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 18967015
+sse.feed	2000	1660
+# checksum sse.feed 2000
+# elapsed sse.feed 3320887
+time.timestamp_to_string	20000	91
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 1835913
+random.uuid_v4	20000	452
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 9044751
+fs.write_file_64k	200	20921
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 4184344
+fs.read_file_64k	200	40828
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 8165667
+fs.stat	200	4112
+# checksum fs.stat 200
+# elapsed fs.stat 822545
+fs.list_200	1	67009
+# checksum fs.list_200 200
+# elapsed fs.list_200 67009
+log.info	20000	3630
+# checksum log.info 20000
+# elapsed log.info 72618778
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 318000
+string.concat	20000	2202
+# checksum string.concat 20000
+# elapsed string.concat 44059642
+string.split	200	20899
+# checksum string.split 400000
+# elapsed string.split 4179967
+string.replace_all	200	46453
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 9290761
+string.contains	2000	4344
+# checksum string.contains 2000
+# elapsed string.contains 8688399
+string.upper	200	46411
+# checksum string.upper 3144600
+# elapsed string.upper 9282398
+string.trim	100000	8
+# checksum string.trim 600000
+# elapsed string.trim 852370
+string.index_char_at	100000	6
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 641739
+string.chars	20	154563
+# checksum string.chars 314460
+# elapsed string.chars 3091268
+string.parse_int	100000	19
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 1902351
+string.interpolate	100000	88
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8892371
+list.append	200000	24
+# checksum list.append 200000
+# elapsed list.append 4992468
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 317640
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 122581
+list.map	100000	3
+# checksum list.map 100000
+# elapsed list.map 368745
+list.filter	100000	14
+# checksum list.filter 50004
+# elapsed list.filter 1453137
+list.fold	100000	2
+# checksum list.fold 500304918
+# elapsed list.fold 208558
+list.sorted	100000	152
+# checksum list.sorted 100000
+# elapsed list.sorted 15206032
+list.contains	100	186128
+# checksum list.contains 0
+# elapsed list.contains 18612826
+list.distinct	100000	20
+# checksum list.distinct 10007
+# elapsed list.distinct 2073705
+list.concat_reverse	100000	14
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1439167
+list.records_map	100000	31
+# checksum list.records_map 500404918
+# elapsed list.records_map 3127772
+map.int_put_get	200000	42
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 8535744
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 7433886
+map.iterate_entries	100000	224
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 22466832
+set.add_contains	200000	93
+# checksum set.add_contains 100000
+# elapsed set.add_contains 18772253
+json.parse	5000	1055
+# checksum json.parse 1
+# elapsed json.parse 5277629
+json.roundtrip	5000	1756
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 8780686
+csv.stringify	5000	318
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1592208
+csv.parse	5000	185
+# checksum csv.parse 5000
+# elapsed csv.parse 928352
+encoding.base64_encode	157689	1
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 180086
+encoding.base64_decode	157689	1
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 231141
+encoding.hex_encode	157689	3
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 568980
+crypto.sha256	157689	1
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 173165
+bytes.builder	100000	5
+# checksum bytes.builder 100000
+# elapsed bytes.builder 504476
+regex.find_all	2000	285
+# checksum regex.find_all 2000
+# elapsed regex.find_all 571374
+regex.matches	10000	89
+# checksum regex.matches 10000
+# elapsed regex.matches 899639
+regex.replace_all	2000	300
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 601158
+path.join_normalize	50000	533
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 26665577
+path.basename	100000	12
+# checksum path.basename 800000
+# elapsed path.basename 1278279
+url.parse	20000	334
+# checksum url.parse 20000
+# elapsed url.parse 6691669
+url.encode_component	50000	130
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6502449
+math.sqrt_sin	1000000	8
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 8169314
+yaml.parse	2000	6672
+# checksum yaml.parse 1
+# elapsed yaml.parse 13344451
+yaml.roundtrip	2000	10520
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 21040344
+toml.parse	2000	5186
+# checksum toml.parse 1
+# elapsed toml.parse 10372138
+html.parse	2000	1662
+# checksum html.parse 1
+# elapsed html.parse 3324342
+html.escape_unescape	2000	220
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 441963
+bigint.factorial_1000	1000	200
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 200647
+decimal.add_round	20000	1404
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 28089287
+compress.gzip	880000	2
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2517741
+compress.roundtrip	880000	8
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 7604172
+time.parse_timestamp	20000	301
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 6027127
+queue.enqueue_dequeue	200000	22
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 4507752
+priority_queue.enqueue_dequeue	100000	133
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 13357966
+archive.zip_pack	2000	1275
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2550720
+archive.tar_pack	2000	5078
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 10157396
+archive.zip_unpack	2000	8218
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 16436165
+sse.feed	2000	1646
+# checksum sse.feed 2000
+# elapsed sse.feed 3293157
+time.timestamp_to_string	20000	98
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 1968739
+random.uuid_v4	20000	408
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8168447
+fs.write_file_64k	200	19743
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 3948686
+fs.read_file_64k	200	38527
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 7705553
+fs.stat	200	4476
+# checksum fs.stat 200
+# elapsed fs.stat 895267
+fs.list_200	1	89752
+# checksum fs.list_200 200
+# elapsed fs.list_200 89752
+log.info	20000	3444
+# checksum log.info 20000
+# elapsed log.info 68899001
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 367953
+string.concat	20000	1815
+# checksum string.concat 20000
+# elapsed string.concat 36309214
+string.split	200	19728
+# checksum string.split 400000
+# elapsed string.split 3945676
+string.replace_all	200	50908
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 10181616
+string.contains	2000	4391
+# checksum string.contains 2000
+# elapsed string.contains 8783986
+string.upper	200	47158
+# checksum string.upper 3144600
+# elapsed string.upper 9431738
+string.trim	100000	10
+# checksum string.trim 600000
+# elapsed string.trim 1019347
+string.index_char_at	100000	7
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 781255
+string.chars	20	108230
+# checksum string.chars 314460
+# elapsed string.chars 2164619
+string.parse_int	100000	27
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 2768151
+string.interpolate	100000	87
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8737557
+list.append	200000	62
+# checksum list.append 200000
+# elapsed list.append 12509848
+list.at	200000	3
+# checksum list.at 1000609836
+# elapsed list.at 706528
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110764
+list.map	100000	4
+# checksum list.map 100000
+# elapsed list.map 490064
+list.filter	100000	14
+# checksum list.filter 50004
+# elapsed list.filter 1443458
+list.fold	100000	2
+# checksum list.fold 500304918
+# elapsed list.fold 254727
+list.sorted	100000	114
+# checksum list.sorted 100000
+# elapsed list.sorted 11465093
+list.contains	100	215937
+# checksum list.contains 0
+# elapsed list.contains 21593712
+list.distinct	100000	17
+# checksum list.distinct 10007
+# elapsed list.distinct 1704409
+list.concat_reverse	100000	16
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1652322
+list.records_map	100000	31
+# checksum list.records_map 500404918
+# elapsed list.records_map 3149198
+map.int_put_get	200000	44
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 8848768
+map.string_put_get	100000	64
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 6471599
+map.iterate_entries	100000	177
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 17729727
+set.add_contains	200000	80
+# checksum set.add_contains 100000
+# elapsed set.add_contains 16033684
+json.parse	5000	1411
+# checksum json.parse 1
+# elapsed json.parse 7058942
+json.roundtrip	5000	1932
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 9663290
+csv.stringify	5000	323
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1615067
+csv.parse	5000	142
+# checksum csv.parse 5000
+# elapsed csv.parse 712993
+encoding.base64_encode	157689	1
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 255989
+encoding.base64_decode	157689	2
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 321825
+encoding.hex_encode	157689	6
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 959498
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 89292
+bytes.builder	100000	5
+# checksum bytes.builder 100000
+# elapsed bytes.builder 515662
+regex.find_all	2000	271
+# checksum regex.find_all 2000
+# elapsed regex.find_all 542581
+regex.matches	10000	115
+# checksum regex.matches 10000
+# elapsed regex.matches 1159043
+regex.replace_all	2000	461
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 922033
+path.join_normalize	50000	606
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 30316382
+path.basename	100000	11
+# checksum path.basename 800000
+# elapsed path.basename 1174686
+url.parse	20000	349
+# checksum url.parse 20000
+# elapsed url.parse 6998874
+url.encode_component	50000	133
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6655194
+math.sqrt_sin	1000000	7
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 7544130
+yaml.parse	2000	8222
+# checksum yaml.parse 1
+# elapsed yaml.parse 16444997
+yaml.roundtrip	2000	11157
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 22314893
+toml.parse	2000	5964
+# checksum toml.parse 1
+# elapsed toml.parse 11928098
+html.parse	2000	2102
+# checksum html.parse 1
+# elapsed html.parse 4205404
+html.escape_unescape	2000	258
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 517580
+bigint.factorial_1000	1000	243
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 243170
+decimal.add_round	20000	1482
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 29647334
+compress.gzip	880000	4
+# checksum compress.gzip 2638
+# elapsed compress.gzip 3863399
+compress.roundtrip	880000	5
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 4616462
+time.parse_timestamp	20000	306
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 6134166
+queue.enqueue_dequeue	200000	5
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 1112705
+priority_queue.enqueue_dequeue	100000	146
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 14611117
+archive.zip_pack	2000	1626
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 3253213
+archive.tar_pack	2000	2647
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 5294194
+archive.zip_unpack	2000	9591
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 19182013
+sse.feed	2000	1647
+# checksum sse.feed 2000
+# elapsed sse.feed 3294568
+time.timestamp_to_string	20000	128
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 2568756
+random.uuid_v4	20000	506
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 10127443
+fs.write_file_64k	200	30551
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 6110280
+fs.read_file_64k	200	51693
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 10338748
+fs.stat	200	9390
+# checksum fs.stat 200
+# elapsed fs.stat 1878051
+fs.list_200	1	112135
+# checksum fs.list_200 200
+# elapsed fs.list_200 112135
+log.info	20000	4597
+# checksum log.info 20000
+# elapsed log.info 91941243
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 333733
+string.concat	20000	2264
+# checksum string.concat 20000
+# elapsed string.concat 45293728
+string.split	200	25504
+# checksum string.split 400000
+# elapsed string.split 5100983
+string.replace_all	200	57676
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 11535252
+string.contains	2000	4765
+# checksum string.contains 2000
+# elapsed string.contains 9531035
+string.upper	200	47838
+# checksum string.upper 3144600
+# elapsed string.upper 9567749
+string.trim	100000	8
+# checksum string.trim 600000
+# elapsed string.trim 898748
+string.index_char_at	100000	6
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 630372
+string.chars	20	139782
+# checksum string.chars 314460
+# elapsed string.chars 2795646
+string.parse_int	100000	19
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 1941509
+string.interpolate	100000	82
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8208205
+list.append	200000	41
+# checksum list.append 200000
+# elapsed list.append 8297683
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 382145
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 187837
+list.map	100000	2
+# checksum list.map 100000
+# elapsed list.map 262899
+list.filter	100000	8
+# checksum list.filter 50004
+# elapsed list.filter 843536
+list.fold	100000	1
+# checksum list.fold 500304918
+# elapsed list.fold 196541
+list.sorted	100000	106
+# checksum list.sorted 100000
+# elapsed list.sorted 10623850
+list.contains	100	177627
+# checksum list.contains 0
+# elapsed list.contains 17762760
+list.distinct	100000	21
+# checksum list.distinct 10007
+# elapsed list.distinct 2164925
+list.concat_reverse	100000	15
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1511624
+list.records_map	100000	33
+# checksum list.records_map 500404918
+# elapsed list.records_map 3311264
+map.int_put_get	200000	39
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7892834
+map.string_put_get	100000	89
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 8962175
+map.iterate_entries	100000	227
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 22780711
+set.add_contains	200000	68
+# checksum set.add_contains 100000
+# elapsed set.add_contains 13787916
+json.parse	5000	1333
+# checksum json.parse 1
+# elapsed json.parse 6666423
+json.roundtrip	5000	2111
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 10559034
+csv.stringify	5000	253
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1268745
+csv.parse	5000	281
+# checksum csv.parse 5000
+# elapsed csv.parse 1405988
+encoding.base64_encode	157689	4
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 743159
+encoding.base64_decode	157689	1
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 229199
+encoding.hex_encode	157689	1
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 280504
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 144444
+bytes.builder	100000	8
+# checksum bytes.builder 100000
+# elapsed bytes.builder 851688
+regex.find_all	2000	692
+# checksum regex.find_all 2000
+# elapsed regex.find_all 1385893
+regex.matches	10000	120
+# checksum regex.matches 10000
+# elapsed regex.matches 1204170
+regex.replace_all	2000	364
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 728256
+path.join_normalize	50000	551
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 27565362
+path.basename	100000	12
+# checksum path.basename 800000
+# elapsed path.basename 1291819
+url.parse	20000	358
+# checksum url.parse 20000
+# elapsed url.parse 7173405
+url.encode_component	50000	140
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 7040130
+math.sqrt_sin	1000000	8
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 8568592
+yaml.parse	2000	8563
+# checksum yaml.parse 1
+# elapsed yaml.parse 17126189
+yaml.roundtrip	2000	10714
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 21428572
+toml.parse	2000	5004
+# checksum toml.parse 1
+# elapsed toml.parse 10008642
+html.parse	2000	1287
+# checksum html.parse 1
+# elapsed html.parse 2574825
+html.escape_unescape	2000	218
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 437606
+bigint.factorial_1000	1000	170
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 170292
+decimal.add_round	20000	1453
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 29076360
+compress.gzip	880000	3
+# checksum compress.gzip 2638
+# elapsed compress.gzip 3457770
+compress.roundtrip	880000	7
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 6273822
+time.parse_timestamp	20000	298
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 5962932
+queue.enqueue_dequeue	200000	11
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 2240718
+priority_queue.enqueue_dequeue	100000	150
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 15051968
+archive.zip_pack	2000	1821
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 3643630
+archive.tar_pack	2000	3613
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 7227241
+archive.zip_unpack	2000	10599
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 21198246
+sse.feed	2000	1927
+# checksum sse.feed 2000
+# elapsed sse.feed 3854011
+time.timestamp_to_string	20000	93
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 1860209
+random.uuid_v4	20000	414
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8289240
+fs.write_file_64k	200	19726
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 3945391
+fs.read_file_64k	200	39315
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 7863000
+fs.stat	200	4511
+# checksum fs.stat 200
+# elapsed fs.stat 902203
+fs.list_200	1	62082
+# checksum fs.list_200 200
+# elapsed fs.list_200 62082
+log.info	20000	4014
+# checksum log.info 20000
+# elapsed log.info 80299750
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 372371
+string.concat	20000	2233
+# checksum string.concat 20000
+# elapsed string.concat 44675628
+string.split	200	21758
+# checksum string.split 400000
+# elapsed string.split 4351661
+string.replace_all	200	50483
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 10096731
+string.contains	2000	4347
+# checksum string.contains 2000
+# elapsed string.contains 8695751
+string.upper	200	48073
+# checksum string.upper 3144600
+# elapsed string.upper 9614628
+string.trim	100000	9
+# checksum string.trim 600000
+# elapsed string.trim 947260
+string.index_char_at	100000	7
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 707155
+string.chars	20	129470
+# checksum string.chars 314460
+# elapsed string.chars 2589406
+string.parse_int	100000	18
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 1875982
+string.interpolate	100000	86
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8683683
+list.append	200000	39
+# checksum list.append 200000
+# elapsed list.append 7966729
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 319202
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110984
+list.map	100000	2
+# checksum list.map 100000
+# elapsed list.map 240966
+list.filter	100000	8
+# checksum list.filter 50004
+# elapsed list.filter 801730
+list.fold	100000	1
+# checksum list.fold 500304918
+# elapsed list.fold 195659
+list.sorted	100000	107
+# checksum list.sorted 100000
+# elapsed list.sorted 10732831
+list.contains	100	173485
+# checksum list.contains 0
+# elapsed list.contains 17348508
+list.distinct	100000	18
+# checksum list.distinct 10007
+# elapsed list.distinct 1835598
+list.concat_reverse	100000	22
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 2205368
+list.records_map	100000	25
+# checksum list.records_map 500404918
+# elapsed list.records_map 2573969
+map.int_put_get	200000	38
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7745977
+map.string_put_get	100000	63
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 6376720
+map.iterate_entries	100000	221
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 22154886
+set.add_contains	200000	61
+# checksum set.add_contains 100000
+# elapsed set.add_contains 12346526
+json.parse	5000	1303
+# checksum json.parse 1
+# elapsed json.parse 6516385
+json.roundtrip	5000	2087
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 10436112
+csv.stringify	5000	272
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1360681
+csv.parse	5000	323
+# checksum csv.parse 5000
+# elapsed csv.parse 1615707
+encoding.base64_encode	157689	3
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 566157
+encoding.base64_decode	157689	2
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 458708
+encoding.hex_encode	157689	1
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 243269
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 90074
+bytes.builder	100000	4
+# checksum bytes.builder 100000
+# elapsed bytes.builder 443525
+regex.find_all	2000	265
+# checksum regex.find_all 2000
+# elapsed regex.find_all 531325
+regex.matches	10000	90
+# checksum regex.matches 10000
+# elapsed regex.matches 903655
+regex.replace_all	2000	664
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 1329585
+path.join_normalize	50000	526
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 26306752
+path.basename	100000	12
+# checksum path.basename 800000
+# elapsed path.basename 1231820
+url.parse	20000	380
+# checksum url.parse 20000
+# elapsed url.parse 7611113
+url.encode_component	50000	137
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6889646
+math.sqrt_sin	1000000	7
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 7525181
+yaml.parse	2000	7674
+# checksum yaml.parse 1
+# elapsed yaml.parse 15348332
+yaml.roundtrip	2000	11433
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 22867915
+toml.parse	2000	5537
+# checksum toml.parse 1
+# elapsed toml.parse 11074652
+html.parse	2000	1619
+# checksum html.parse 1
+# elapsed html.parse 3239427
+html.escape_unescape	2000	300
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 600177
+bigint.factorial_1000	1000	175
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 175880
+decimal.add_round	20000	1606
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 32131451
+compress.gzip	880000	2
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2215484
+compress.roundtrip	880000	4
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 3821032
+time.parse_timestamp	20000	307
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 6144881
+queue.enqueue_dequeue	200000	10
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 2043451
+priority_queue.enqueue_dequeue	100000	133
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 13314641
+archive.zip_pack	2000	1508
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 3017459
+archive.tar_pack	2000	3270
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 6540021
+archive.zip_unpack	2000	9579
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 19159004
+sse.feed	2000	1580
+# checksum sse.feed 2000
+# elapsed sse.feed 3161662
+time.timestamp_to_string	20000	103
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 2073334
+random.uuid_v4	20000	392
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 7852294
+fs.write_file_64k	200	20080
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 4016055
+fs.read_file_64k	200	46600
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 9320053
+fs.stat	200	6305
+# checksum fs.stat 200
+# elapsed fs.stat 1261174
+fs.list_200	1	66739
+# checksum fs.list_200 200
+# elapsed fs.list_200 66739
+log.info	20000	3836
+# checksum log.info 20000
+# elapsed log.info 76733480
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 317389
+string.concat	20000	2590
+# checksum string.concat 20000
+# elapsed string.concat 51812630
+string.split	200	23754
+# checksum string.split 400000
+# elapsed string.split 4750981
+string.replace_all	200	60341
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 12068326
+string.contains	2000	4412
+# checksum string.contains 2000
+# elapsed string.contains 8825673
+string.upper	200	48472
+# checksum string.upper 3144600
+# elapsed string.upper 9694477
+string.trim	100000	10
+# checksum string.trim 600000
+# elapsed string.trim 1013158
+string.index_char_at	100000	6
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 661888
+string.chars	20	151096
+# checksum string.chars 314460
+# elapsed string.chars 3021926
+string.parse_int	100000	18
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 1879738
+string.interpolate	100000	84
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8476317
+list.append	200000	63
+# checksum list.append 200000
+# elapsed list.append 12718876
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 318511
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110743
+list.map	100000	5
+# checksum list.map 100000
+# elapsed list.map 558335
+list.filter	100000	7
+# checksum list.filter 50004
+# elapsed list.filter 759262
+list.fold	100000	2
+# checksum list.fold 500304918
+# elapsed list.fold 217582
+list.sorted	100000	106
+# checksum list.sorted 100000
+# elapsed list.sorted 10613255
+list.contains	100	173819
+# checksum list.contains 0
+# elapsed list.contains 17381968
+list.distinct	100000	21
+# checksum list.distinct 10007
+# elapsed list.distinct 2140623
+list.concat_reverse	100000	12
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1208225
+list.records_map	100000	27
+# checksum list.records_map 500404918
+# elapsed list.records_map 2778596
+map.int_put_get	200000	42
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 8496146
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 7439805
+map.iterate_entries	100000	290
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 29039305
+set.add_contains	200000	79
+# checksum set.add_contains 100000
+# elapsed set.add_contains 15851787
+json.parse	5000	1360
+# checksum json.parse 1
+# elapsed json.parse 6804936
+json.roundtrip	5000	2371
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 11857543
+csv.stringify	5000	326
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1630270
+csv.parse	5000	325
+# checksum csv.parse 5000
+# elapsed csv.parse 1628056
+encoding.base64_encode	157689	5
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 855149
+encoding.base64_decode	157689	1
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 299703
+encoding.hex_encode	157689	2
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 370507
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 115711
+bytes.builder	100000	5
+# checksum bytes.builder 100000
+# elapsed bytes.builder 512298
+regex.find_all	2000	425
+# checksum regex.find_all 2000
+# elapsed regex.find_all 851499
+regex.matches	10000	111
+# checksum regex.matches 10000
+# elapsed regex.matches 1113075
+regex.replace_all	2000	706
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 1412432
+path.join_normalize	50000	587
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 29376132
+path.basename	100000	13
+# checksum path.basename 800000
+# elapsed path.basename 1342294
+url.parse	20000	371
+# checksum url.parse 20000
+# elapsed url.parse 7425945
+url.encode_component	50000	139
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6958172
+math.sqrt_sin	1000000	8
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 8085489
+yaml.parse	2000	9436
+# checksum yaml.parse 1
+# elapsed yaml.parse 18872040
+yaml.roundtrip	2000	12579
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 25159932
+toml.parse	2000	6364
+# checksum toml.parse 1
+# elapsed toml.parse 12728135
+html.parse	2000	2514
+# checksum html.parse 1
+# elapsed html.parse 5028101
+html.escape_unescape	2000	376
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 752392
+bigint.factorial_1000	1000	347
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 347524
+decimal.add_round	20000	1645
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 32908553
+compress.gzip	880000	2
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2630447
+compress.roundtrip	880000	9
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 8446367
+time.parse_timestamp	20000	277
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 5547679
+queue.enqueue_dequeue	200000	11
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 2363412
+priority_queue.enqueue_dequeue	100000	140
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 14066468
+archive.zip_pack	2000	1750
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 3501044
+archive.tar_pack	2000	5574
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 11148185
+archive.zip_unpack	2000	11740
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 23481667
+sse.feed	2000	2009
+# checksum sse.feed 2000
+# elapsed sse.feed 4018834
+time.timestamp_to_string	20000	100
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 2005063
+random.uuid_v4	20000	453
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 9065949
+fs.write_file_64k	200	22667
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 4533480
+fs.read_file_64k	200	51991
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 10398307
+fs.stat	200	4597
+# checksum fs.stat 200
+# elapsed fs.stat 919489
+fs.list_200	1	212154
+# checksum fs.list_200 200
+# elapsed fs.list_200 212154
+log.info	20000	3940
+# checksum log.info 20000
+# elapsed log.info 78801194
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 371238
+string.concat	20000	1530
+# checksum string.concat 20000
+# elapsed string.concat 30608995
+string.split	200	18059
+# checksum string.split 400000
+# elapsed string.split 3611818
+string.replace_all	200	45969
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 9193817
+string.contains	2000	4701
+# checksum string.contains 2000
+# elapsed string.contains 9402955
+string.upper	200	50440
+# checksum string.upper 3144600
+# elapsed string.upper 10088009
+string.trim	100000	9
+# checksum string.trim 600000
+# elapsed string.trim 971265
+string.index_char_at	100000	8
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 868894
+string.chars	20	112525
+# checksum string.chars 314460
+# elapsed string.chars 2250505
+string.parse_int	100000	24
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 2421629
+string.interpolate	100000	82
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8249752
+list.append	200000	30
+# checksum list.append 200000
+# elapsed list.append 6171211
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 304220
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110913
+list.map	100000	4
+# checksum list.map 100000
+# elapsed list.map 448784
+list.filter	100000	12
+# checksum list.filter 50004
+# elapsed list.filter 1205901
+list.fold	100000	1
+# checksum list.fold 500304918
+# elapsed list.fold 196240
+list.sorted	100000	116
+# checksum list.sorted 100000
+# elapsed list.sorted 11647193
+list.contains	100	188173
+# checksum list.contains 0
+# elapsed list.contains 18817338
+list.distinct	100000	22
+# checksum list.distinct 10007
+# elapsed list.distinct 2254287
+list.concat_reverse	100000	56
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 5688386
+list.records_map	100000	24
+# checksum list.records_map 500404918
+# elapsed list.records_map 2471803
+map.int_put_get	200000	36
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7207872
+map.string_put_get	100000	71
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 7177938
+map.iterate_entries	100000	153
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 15353429
+set.add_contains	200000	73
+# checksum set.add_contains 100000
+# elapsed set.add_contains 14752035
+json.parse	5000	2092
+# checksum json.parse 1
+# elapsed json.parse 10462908
+json.roundtrip	5000	2764
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 13824801
+csv.stringify	5000	293
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1468070
+csv.parse	5000	288
+# checksum csv.parse 5000
+# elapsed csv.parse 1440363
+encoding.base64_encode	157689	4
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 649570
+encoding.base64_decode	157689	1
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 300424
+encoding.hex_encode	157689	2
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 328876
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 89813
+bytes.builder	100000	5
+# checksum bytes.builder 100000
+# elapsed bytes.builder 519758
+regex.find_all	2000	320
+# checksum regex.find_all 2000
+# elapsed regex.find_all 640918
+regex.matches	10000	100
+# checksum regex.matches 10000
+# elapsed regex.matches 1009522
+regex.replace_all	2000	749
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 1499596
+path.join_normalize	50000	607
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 30380002
+path.basename	100000	12
+# checksum path.basename 800000
+# elapsed path.basename 1285630
+url.parse	20000	442
+# checksum url.parse 20000
+# elapsed url.parse 8842838
+url.encode_component	50000	146
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 7305036
+math.sqrt_sin	1000000	9
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 9227547
+yaml.parse	2000	9824
+# checksum yaml.parse 1
+# elapsed yaml.parse 19649323
+yaml.roundtrip	2000	11379
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 22758142
+toml.parse	2000	5768
+# checksum toml.parse 1
+# elapsed toml.parse 11536498
+html.parse	2000	1766
+# checksum html.parse 1
+# elapsed html.parse 3532339
+html.escape_unescape	2000	134
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 269579
+bigint.factorial_1000	1000	750
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 750759
+decimal.add_round	20000	1526
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 30537538
+compress.gzip	880000	2
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2287650
+compress.roundtrip	880000	7
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 6696771
+time.parse_timestamp	20000	313
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 6278538
+queue.enqueue_dequeue	200000	11
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 2290105
+priority_queue.enqueue_dequeue	100000	148
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 14833083
+archive.zip_pack	2000	1643
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 3286697
+archive.tar_pack	2000	4283
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 8567161
+archive.zip_unpack	2000	8819
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 17638925
+sse.feed	2000	1645
+# checksum sse.feed 2000
+# elapsed sse.feed 3291559
+time.timestamp_to_string	20000	110
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 2210396
+random.uuid_v4	20000	428
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8563530
+fs.write_file_64k	200	22318
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 4463726
+fs.read_file_64k	200	42081
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 8416303
+fs.stat	200	4311
+# checksum fs.stat 200
+# elapsed fs.stat 862234
+fs.list_200	1	66899
+# checksum fs.list_200 200
+# elapsed fs.list_200 66899
+log.info	20000	3975
+# checksum log.info 20000
+# elapsed log.info 79518593
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 326162
+string.concat	20000	2688
+# checksum string.concat 20000
+# elapsed string.concat 53770805
+string.split	200	20379
+# checksum string.split 400000
+# elapsed string.split 4075813
+string.replace_all	200	48637
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 9727495
+string.contains	2000	4470
+# checksum string.contains 2000
+# elapsed string.contains 8940091
+string.upper	200	48075
+# checksum string.upper 3144600
+# elapsed string.upper 9615179
+string.trim	100000	10
+# checksum string.trim 600000
+# elapsed string.trim 1004204
+string.index_char_at	100000	6
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 673845
+string.chars	20	153849
+# checksum string.chars 314460
+# elapsed string.chars 3076997
+string.parse_int	100000	18
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 1872147
+string.interpolate	100000	82
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8263071
+list.append	200000	69
+# checksum list.append 200000
+# elapsed list.append 13942073
+list.at	200000	2
+# checksum list.at 1000609836
+# elapsed list.at 416095
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110774
+list.map	100000	3
+# checksum list.map 100000
+# elapsed list.map 314645
+list.filter	100000	14
+# checksum list.filter 50004
+# elapsed list.filter 1440098
+list.fold	100000	2
+# checksum list.fold 500304918
+# elapsed list.fold 205644
+list.sorted	100000	110
+# checksum list.sorted 100000
+# elapsed list.sorted 11040025
+list.contains	100	181959
+# checksum list.contains 0
+# elapsed list.contains 18195999
+list.distinct	100000	21
+# checksum list.distinct 10007
+# elapsed list.distinct 2118862
+list.concat_reverse	100000	11
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1102599
+list.records_map	100000	26
+# checksum list.records_map 500404918
+# elapsed list.records_map 2632971
+map.int_put_get	200000	37
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7527638
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 6672716
+map.iterate_entries	100000	178
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 17825131
+set.add_contains	200000	62
+# checksum set.add_contains 100000
+# elapsed set.add_contains 12439042
+json.parse	5000	1206
+# checksum json.parse 1
+# elapsed json.parse 6030466
+json.roundtrip	5000	1831
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 9159395
+csv.stringify	5000	323
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1615502
+csv.parse	5000	167
+# checksum csv.parse 5000
+# elapsed csv.parse 837298
+encoding.base64_encode	157689	1
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 195219
+encoding.base64_decode	157689	1
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 232353
+encoding.hex_encode	157689	3
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 560248
+crypto.sha256	157689	1
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 182180
+bytes.builder	100000	6
+# checksum bytes.builder 100000
+# elapsed bytes.builder 678423
+regex.find_all	2000	268
+# checksum regex.find_all 2000
+# elapsed regex.find_all 536743
+regex.matches	10000	91
+# checksum regex.matches 10000
+# elapsed regex.matches 913309
+regex.replace_all	2000	295
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 590282
+path.join_normalize	50000	583
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 29168189
+path.basename	100000	12
+# checksum path.basename 800000
+# elapsed path.basename 1215206
+url.parse	20000	404
+# checksum url.parse 20000
+# elapsed url.parse 8084511
+url.encode_component	50000	145
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 7285000
+math.sqrt_sin	1000000	7
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 7918382
+yaml.parse	2000	7708
+# checksum yaml.parse 1
+# elapsed yaml.parse 15416277
+yaml.roundtrip	2000	10447
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 20894777
+toml.parse	2000	5927
+# checksum toml.parse 1
+# elapsed toml.parse 11854142
+html.parse	2000	2302
+# checksum html.parse 1
+# elapsed html.parse 4605030
+html.escape_unescape	2000	258
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 517464
+bigint.factorial_1000	1000	342
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 342947
+decimal.add_round	20000	1563
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 31260841
+compress.gzip	880000	3
+# checksum compress.gzip 2638
+# elapsed compress.gzip 3010754
+compress.roundtrip	880000	4
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 3549340
+time.parse_timestamp	20000	304
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 6098843
+queue.enqueue_dequeue	200000	10
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 2050225
+priority_queue.enqueue_dequeue	100000	141
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 14136355
+archive.zip_pack	2000	1963
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 3926457
+archive.tar_pack	2000	4547
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 9095726
+archive.zip_unpack	2000	9656
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 19313371
+sse.feed	2000	2317
+# checksum sse.feed 2000
+# elapsed sse.feed 4635234
+time.timestamp_to_string	20000	94
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 1893919
+random.uuid_v4	20000	416
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8323986
+fs.write_file_64k	200	18721
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 3744313
+fs.read_file_64k	200	42034
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 8406938
+fs.stat	200	5153
+# checksum fs.stat 200
+# elapsed fs.stat 1030713
+fs.list_200	1	62723
+# checksum fs.list_200 200
+# elapsed fs.list_200 62723
+log.info	20000	3708
+# checksum log.info 20000
+# elapsed log.info 74164401
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 315797
+string.concat	20000	1876
+# checksum string.concat 20000
+# elapsed string.concat 37535176
+string.split	200	20406
+# checksum string.split 400000
+# elapsed string.split 4081216
+string.replace_all	200	47125
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 9425013
+string.contains	2000	4571
+# checksum string.contains 2000
+# elapsed string.contains 9143913
+string.upper	200	47454
+# checksum string.upper 3144600
+# elapsed string.upper 9490961
+string.trim	100000	10
+# checksum string.trim 600000
+# elapsed string.trim 1030082
+string.index_char_at	100000	6
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 675448
+string.chars	20	125706
+# checksum string.chars 314460
+# elapsed string.chars 2514125
+string.parse_int	100000	20
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 2018052
+string.interpolate	100000	83
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8302484
+list.append	200000	26
+# checksum list.append 200000
+# elapsed list.append 5265682
+list.at	200000	2
+# checksum list.at 1000609836
+# elapsed list.at 447281
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110954
+list.map	100000	2
+# checksum list.map 100000
+# elapsed list.map 260755
+list.filter	100000	7
+# checksum list.filter 50004
+# elapsed list.filter 751285
+list.fold	100000	1
+# checksum list.fold 500304918
+# elapsed list.fold 195439
+list.sorted	100000	107
+# checksum list.sorted 100000
+# elapsed list.sorted 10703127
+list.contains	100	182114
+# checksum list.contains 0
+# elapsed list.contains 18211444
+list.distinct	100000	18
+# checksum list.distinct 10007
+# elapsed list.distinct 1854050
+list.concat_reverse	100000	18
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1829403
+list.records_map	100000	30
+# checksum list.records_map 500404918
+# elapsed list.records_map 3019233
+map.int_put_get	200000	38
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7656271
+map.string_put_get	100000	59
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 5936087
+map.iterate_entries	100000	243
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 24350696
+set.add_contains	200000	85
+# checksum set.add_contains 100000
+# elapsed set.add_contains 17187125
+json.parse	5000	1160
+# checksum json.parse 1
+# elapsed json.parse 5803366
+json.roundtrip	5000	1926
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 9631490
+csv.stringify	5000	321
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1606905
+csv.parse	5000	162
+# checksum csv.parse 5000
+# elapsed csv.parse 811510
+encoding.base64_encode	157689	1
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 179125
+encoding.base64_decode	157689	1
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 249839
+encoding.hex_encode	157689	2
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 440877
+crypto.sha256	157689	2
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 405585
+bytes.builder	100000	6
+# checksum bytes.builder 100000
+# elapsed bytes.builder 657101
+regex.find_all	2000	282
+# checksum regex.find_all 2000
+# elapsed regex.find_all 565005
+regex.matches	10000	90
+# checksum regex.matches 10000
+# elapsed regex.matches 902193
+regex.replace_all	2000	274
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 549702
+path.join_normalize	50000	535
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 26763376
+path.basename	100000	14
+# checksum path.basename 800000
+# elapsed path.basename 1438346
+url.parse	20000	403
+# checksum url.parse 20000
+# elapsed url.parse 8073852
+url.encode_component	50000	136
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6818907
+math.sqrt_sin	1000000	9
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 9418740
+yaml.parse	2000	7704
+# checksum yaml.parse 1
+# elapsed yaml.parse 15408166
+yaml.roundtrip	2000	10715
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 21431808
+toml.parse	2000	5391
+# checksum toml.parse 1
+# elapsed toml.parse 10783406
+html.parse	2000	1540
+# checksum html.parse 1
+# elapsed html.parse 3081323
+html.escape_unescape	2000	286
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 573918
+bigint.factorial_1000	1000	176
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 176131
+decimal.add_round	20000	1477
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 29547347
+compress.gzip	880000	3
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2784766
+compress.roundtrip	880000	8
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 7697715
+time.parse_timestamp	20000	317
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 6345697
+queue.enqueue_dequeue	200000	9
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 1907499
+priority_queue.enqueue_dequeue	100000	122
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 12248076
+archive.zip_pack	2000	1327
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2655264
+archive.tar_pack	2000	5080
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 10160176
+archive.zip_unpack	2000	9229
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 18459711
+sse.feed	2000	1512
+# checksum sse.feed 2000
+# elapsed sse.feed 3025231
+time.timestamp_to_string	20000	101
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 2038343
+random.uuid_v4	20000	457
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 9149406
+fs.write_file_64k	200	20478
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 4095773
+fs.read_file_64k	200	44825
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 8965154
+fs.stat	200	7056
+# checksum fs.stat 200
+# elapsed fs.stat 1411386
+fs.list_200	1	65056
+# checksum fs.list_200 200
+# elapsed fs.list_200 65056
+log.info	20000	3674
+# checksum log.info 20000
+# elapsed log.info 73482850
+string.append_builder	100000	2
+# checksum string.append_builder 100000
+# elapsed string.append_builder 274105
+string.concat	20000	2815
+# checksum string.concat 20000
+# elapsed string.concat 56312414
+string.split	200	26188
+# checksum string.split 400000
+# elapsed string.split 5237601
+string.replace_all	200	52750
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 10550136
+string.contains	2000	6864
+# checksum string.contains 2000
+# elapsed string.contains 13729240
+string.upper	200	45846
+# checksum string.upper 3144600
+# elapsed string.upper 9169245
+string.trim	100000	13
+# checksum string.trim 600000
+# elapsed string.trim 1310407
+string.index_char_at	100000	6
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 645484
+string.chars	20	108056
+# checksum string.chars 314460
+# elapsed string.chars 2161129
+string.parse_int	100000	18
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 1877955
+string.interpolate	100000	86
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8607140
+list.append	200000	38
+# checksum list.append 200000
+# elapsed list.append 7650976
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 304320
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110884
+list.map	100000	4
+# checksum list.map 100000
+# elapsed list.map 488562
+list.filter	100000	9
+# checksum list.filter 50004
+# elapsed list.filter 953830
+list.fold	100000	1
+# checksum list.fold 500304918
+# elapsed list.fold 195489
+list.sorted	100000	104
+# checksum list.sorted 100000
+# elapsed list.sorted 10435002
+list.contains	100	175577
+# checksum list.contains 0
+# elapsed list.contains 17557788
+list.distinct	100000	20
+# checksum list.distinct 10007
+# elapsed list.distinct 2014778
+list.concat_reverse	100000	18
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1841021
+list.records_map	100000	30
+# checksum list.records_map 500404918
+# elapsed list.records_map 3045291
+map.int_put_get	200000	39
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7914647
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 7901111
+map.iterate_entries	100000	234
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 23449370
+set.add_contains	200000	65
+# checksum set.add_contains 100000
+# elapsed set.add_contains 13095898
+json.parse	5000	1350
+# checksum json.parse 1
+# elapsed json.parse 6753786
+json.roundtrip	5000	2038
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 10193049
+csv.stringify	5000	280
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1403003
+csv.parse	5000	141
+# checksum csv.parse 5000
+# elapsed csv.parse 707175
+encoding.base64_encode	157689	1
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 181148
+encoding.base64_decode	157689	4
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 718307
+encoding.hex_encode	157689	2
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 361655
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 92928
+bytes.builder	100000	6
+# checksum bytes.builder 100000
+# elapsed bytes.builder 606637
+regex.find_all	2000	552
+# checksum regex.find_all 2000
+# elapsed regex.find_all 1105284
+regex.matches	10000	97
+# checksum regex.matches 10000
+# elapsed regex.matches 979036
+regex.replace_all	2000	321
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 642700
+path.join_normalize	50000	554
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 27722840
+path.basename	100000	15
+# checksum path.basename 800000
+# elapsed path.basename 1596919
+url.parse	20000	359
+# checksum url.parse 20000
+# elapsed url.parse 7198198
+url.encode_component	50000	147
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 7396821
+math.sqrt_sin	1000000	9
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 9282868
+yaml.parse	2000	7901
+# checksum yaml.parse 1
+# elapsed yaml.parse 15802197
+yaml.roundtrip	2000	12159
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 24318178
+toml.parse	2000	5795
+# checksum toml.parse 1
+# elapsed toml.parse 11591811
+html.parse	2000	2001
+# checksum html.parse 1
+# elapsed html.parse 4003051
+html.escape_unescape	2000	117
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 234016
+bigint.factorial_1000	1000	188
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 188118
+decimal.add_round	20000	1476
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 29539915
+compress.gzip	880000	2
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2440467
+compress.roundtrip	880000	3
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 2708523
+time.parse_timestamp	20000	272
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 5457986
+queue.enqueue_dequeue	200000	22
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 4525748
+priority_queue.enqueue_dequeue	100000	143
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 14364178
+archive.zip_pack	2000	1413
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2827979
+archive.tar_pack	2000	4204
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 8408556
+archive.zip_unpack	2000	8331
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 16663736
+sse.feed	2000	1827
+# checksum sse.feed 2000
+# elapsed sse.feed 3655772
+time.timestamp_to_string	20000	107
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 2149016
+random.uuid_v4	20000	427
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8554211
+fs.write_file_64k	200	20070
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 4014072
+fs.read_file_64k	200	44492
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 8898571
+fs.stat	200	3914
+# checksum fs.stat 200
+# elapsed fs.stat 782937
+fs.list_200	1	95451
+# checksum fs.list_200 200
+# elapsed fs.list_200 95451
+log.info	20000	3581
+# checksum log.info 20000
+# elapsed log.info 71635215
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 315787
+string.concat	20000	1607
+# checksum string.concat 20000
+# elapsed string.concat 32150743
+string.split	200	20708
+# checksum string.split 400000
+# elapsed string.split 4141736
+string.replace_all	200	47475
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 9495177
+string.contains	2000	4982
+# checksum string.contains 2000
+# elapsed string.contains 9965638
+string.upper	200	52766
+# checksum string.upper 3144600
+# elapsed string.upper 10553245
+string.trim	100000	14
+# checksum string.trim 600000
+# elapsed string.trim 1480959
+string.index_char_at	100000	10
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 1006458
+string.chars	20	117290
+# checksum string.chars 314460
+# elapsed string.chars 2345807
+string.parse_int	100000	19
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 1979125
+string.interpolate	100000	84
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8461134
+list.append	200000	45
+# checksum list.append 200000
+# elapsed list.append 9011924
+list.at	200000	3
+# checksum list.at 1000609836
+# elapsed list.at 795967
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 161308
+list.map	100000	2
+# checksum list.map 100000
+# elapsed list.map 249599
+list.filter	100000	7
+# checksum list.filter 50004
+# elapsed list.filter 765921
+list.fold	100000	2
+# checksum list.fold 500304918
+# elapsed list.fold 278752
+list.sorted	100000	126
+# checksum list.sorted 100000
+# elapsed list.sorted 12686047
+list.contains	100	186820
+# checksum list.contains 0
+# elapsed list.contains 18682039
+list.distinct	100000	20
+# checksum list.distinct 10007
+# elapsed list.distinct 2025278
+list.concat_reverse	100000	15
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1527517
+list.records_map	100000	23
+# checksum list.records_map 500404918
+# elapsed list.records_map 2371951
+map.int_put_get	200000	38
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7789472
+map.string_put_get	100000	54
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 5423255
+map.iterate_entries	100000	159
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 15924599
+set.add_contains	200000	90
+# checksum set.add_contains 100000
+# elapsed set.add_contains 18146858
+json.parse	5000	1238
+# checksum json.parse 1
+# elapsed json.parse 6193092
+json.roundtrip	5000	2316
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 11580017
+csv.stringify	5000	349
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1747563
+csv.parse	5000	167
+# checksum csv.parse 5000
+# elapsed csv.parse 835996
+encoding.base64_encode	157689	1
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 183441
+encoding.base64_decode	157689	1
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 232523
+encoding.hex_encode	157689	2
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 402720
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 89642
+bytes.builder	100000	11
+# checksum bytes.builder 100000
+# elapsed bytes.builder 1171557
+regex.find_all	2000	283
+# checksum regex.find_all 2000
+# elapsed regex.find_all 566647
+regex.matches	10000	89
+# checksum regex.matches 10000
+# elapsed regex.matches 896505
+regex.replace_all	2000	314
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 628769
+path.join_normalize	50000	559
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 27984246
+path.basename	100000	12
+# checksum path.basename 800000
+# elapsed path.basename 1261504
+url.parse	20000	363
+# checksum url.parse 20000
+# elapsed url.parse 7265462
+url.encode_component	50000	146
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 7313784
+math.sqrt_sin	1000000	8
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 8378412
+yaml.parse	2000	7537
+# checksum yaml.parse 1
+# elapsed yaml.parse 15074197
+yaml.roundtrip	2000	11158
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 22316150
+toml.parse	2000	5193
+# checksum toml.parse 1
+# elapsed toml.parse 10386930
+html.parse	2000	1667
+# checksum html.parse 1
+# elapsed html.parse 3334639
+html.escape_unescape	2000	274
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 549878
+bigint.factorial_1000	1000	202
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 202679
+decimal.add_round	20000	1553
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 31076731
+compress.gzip	880000	3
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2786933
+compress.roundtrip	880000	5
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 5036934
+time.parse_timestamp	20000	380
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 7616916
+queue.enqueue_dequeue	200000	8
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 1755599
+priority_queue.enqueue_dequeue	100000	156
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 15695791
+archive.zip_pack	2000	1467
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2935287
+archive.tar_pack	2000	6275
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 12551835
+archive.zip_unpack	2000	8830
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 17661260
+sse.feed	2000	1871
+# checksum sse.feed 2000
+# elapsed sse.feed 3742401
+time.timestamp_to_string	20000	93
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 1869443
+random.uuid_v4	20000	419
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8396003
+fs.write_file_64k	200	24917
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 4983455
+fs.read_file_64k	200	46521
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 9304310
+fs.stat	200	7266
+# checksum fs.stat 200
+# elapsed fs.stat 1453272
+fs.list_200	1	86448
+# checksum fs.list_200 200
+# elapsed fs.list_200 86448
+log.info	20000	3823
+# checksum log.info 20000
+# elapsed log.info 76466309
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 313493
+string.concat	20000	1642
+# checksum string.concat 20000
+# elapsed string.concat 32847443
+string.split	200	23324
+# checksum string.split 400000
+# elapsed string.split 4664803
+string.replace_all	200	48136
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 9627347
+string.contains	2000	4276
+# checksum string.contains 2000
+# elapsed string.contains 8553761
+string.upper	200	47851
+# checksum string.upper 3144600
+# elapsed string.upper 9570223
+string.trim	100000	9
+# checksum string.trim 600000
+# elapsed string.trim 936875
+string.index_char_at	100000	6
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 670490
+string.chars	20	142340
+# checksum string.chars 314460
+# elapsed string.chars 2846802
+string.parse_int	100000	18
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 1835592
+string.interpolate	100000	81
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8173620
+list.append	200000	55
+# checksum list.append 200000
+# elapsed list.append 11126167
+list.at	200000	3
+# checksum list.at 1000609836
+# elapsed list.at 626445
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110884
+list.map	100000	5
+# checksum list.map 100000
+# elapsed list.map 514921
+list.filter	100000	11
+# checksum list.filter 50004
+# elapsed list.filter 1132303
+list.fold	100000	1
+# checksum list.fold 500304918
+# elapsed list.fold 195690
+list.sorted	100000	103
+# checksum list.sorted 100000
+# elapsed list.sorted 10376505
+list.contains	100	180798
+# checksum list.contains 0
+# elapsed list.contains 18079889
+list.distinct	100000	22
+# checksum list.distinct 10007
+# elapsed list.distinct 2290469
+list.concat_reverse	100000	15
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1557827
+list.records_map	100000	37
+# checksum list.records_map 500404918
+# elapsed list.records_map 3754323
+map.int_put_get	200000	39
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7891749
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 6750270
+map.iterate_entries	100000	209
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 20923688
+set.add_contains	200000	73
+# checksum set.add_contains 100000
+# elapsed set.add_contains 14649134
+json.parse	5000	1272
+# checksum json.parse 1
+# elapsed json.parse 6361457
+json.roundtrip	5000	1736
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 8680702
+csv.stringify	5000	240
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1203588
+csv.parse	5000	265
+# checksum csv.parse 5000
+# elapsed csv.parse 1328734
+encoding.base64_encode	157689	2
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 420752
+encoding.base64_decode	157689	1
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 297360
+encoding.hex_encode	157689	1
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 234767
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 89563
+bytes.builder	100000	6
+# checksum bytes.builder 100000
+# elapsed bytes.builder 607373
+regex.find_all	2000	398
+# checksum regex.find_all 2000
+# elapsed regex.find_all 797108
+regex.matches	10000	95
+# checksum regex.matches 10000
+# elapsed regex.matches 951927
+regex.replace_all	2000	292
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 585075
+path.join_normalize	50000	518
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 25904002
+path.basename	100000	12
+# checksum path.basename 800000
+# elapsed path.basename 1288585
+url.parse	20000	390
+# checksum url.parse 20000
+# elapsed url.parse 7803047
+url.encode_component	50000	139
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6956086
+math.sqrt_sin	1000000	7
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 7561294
+yaml.parse	2000	7254
+# checksum yaml.parse 1
+# elapsed yaml.parse 14509288
+yaml.roundtrip	2000	11745
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 23491436
+toml.parse	2000	5404
+# checksum toml.parse 1
+# elapsed toml.parse 10809625
+html.parse	2000	2140
+# checksum html.parse 1
+# elapsed html.parse 4281512
+html.escape_unescape	2000	209
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 419760
+bigint.factorial_1000	1000	170
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 170352
+decimal.add_round	20000	1494
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 29884519
+compress.gzip	880000	2
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2149347
+compress.roundtrip	880000	3
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 3190691
+time.parse_timestamp	20000	369
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 7398023
+queue.enqueue_dequeue	200000	10
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 2179366
+priority_queue.enqueue_dequeue	100000	139
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 13931219
+archive.zip_pack	2000	1517
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 3035035
+archive.tar_pack	2000	3611
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 7222689
+archive.zip_unpack	2000	10009
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 20019155
+sse.feed	2000	1944
+# checksum sse.feed 2000
+# elapsed sse.feed 3888792
+time.timestamp_to_string	20000	92
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 1846669
+random.uuid_v4	20000	424
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8488689
+fs.write_file_64k	200	20263
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 4052649
+fs.read_file_64k	200	50942
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 10188412
+fs.stat	200	7628
+# checksum fs.stat 200
+# elapsed fs.stat 1525644
+fs.list_200	1	66949
+# checksum fs.list_200 200
+# elapsed fs.list_200 66949
+log.info	20000	3690
+# checksum log.info 20000
+# elapsed log.info 73819056
+string.append_builder	100000	2
+# checksum string.append_builder 100000
+# elapsed string.append_builder 298051
+string.concat	20000	2038
+# checksum string.concat 20000
+# elapsed string.concat 40760912
+string.split	200	21892
+# checksum string.split 400000
+# elapsed string.split 4378591
+string.replace_all	200	46607
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 9321496
+string.contains	2000	4424
+# checksum string.contains 2000
+# elapsed string.contains 8849970
+string.upper	200	46104
+# checksum string.upper 3144600
+# elapsed string.upper 9220836
+string.trim	100000	10
+# checksum string.trim 600000
+# elapsed string.trim 1026187
+string.index_char_at	100000	7
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 706875
+string.chars	20	94462
+# checksum string.chars 314460
+# elapsed string.chars 1889253
+string.parse_int	100000	20
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 2031322
+string.interpolate	100000	85
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8542314
+list.append	200000	75
+# checksum list.append 200000
+# elapsed list.append 15046167
+list.at	200000	2
+# checksum list.at 1000609836
+# elapsed list.at 497545
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 166116
+list.map	100000	3
+# checksum list.map 100000
+# elapsed list.map 332050
+list.filter	100000	19
+# checksum list.filter 50004
+# elapsed list.filter 1913298
+list.fold	100000	2
+# checksum list.fold 500304918
+# elapsed list.fold 299773
+list.sorted	100000	109
+# checksum list.sorted 100000
+# elapsed list.sorted 10933583
+list.contains	100	175419
+# checksum list.contains 0
+# elapsed list.contains 17541994
+list.distinct	100000	20
+# checksum list.distinct 10007
+# elapsed list.distinct 2084847
+list.concat_reverse	100000	13
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1382513
+list.records_map	100000	35
+# checksum list.records_map 500404918
+# elapsed list.records_map 3568454
+map.int_put_get	200000	40
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 8166127
+map.string_put_get	100000	56
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 5620946
+map.iterate_entries	100000	347
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 34707593
+set.add_contains	200000	90
+# checksum set.add_contains 100000
+# elapsed set.add_contains 18019981
+json.parse	5000	991
+# checksum json.parse 1
+# elapsed json.parse 4956690
+json.roundtrip	5000	2019
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 10095715
+csv.stringify	5000	273
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1369304
+csv.parse	5000	234
+# checksum csv.parse 5000
+# elapsed csv.parse 1170871
+encoding.base64_encode	157689	2
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 458958
+encoding.base64_decode	157689	1
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 256289
+encoding.hex_encode	157689	3
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 492237
+crypto.sha256	157689	1
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 228077
+bytes.builder	100000	4
+# checksum bytes.builder 100000
+# elapsed bytes.builder 499899
+regex.find_all	2000	297
+# checksum regex.find_all 2000
+# elapsed regex.find_all 594399
+regex.matches	10000	89
+# checksum regex.matches 10000
+# elapsed regex.matches 897316
+regex.replace_all	2000	503
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 1006507
+path.join_normalize	50000	507
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 25352336
+path.basename	100000	12
+# checksum path.basename 800000
+# elapsed path.basename 1284579
+url.parse	20000	344
+# checksum url.parse 20000
+# elapsed url.parse 6887008
+url.encode_component	50000	145
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 7281546
+math.sqrt_sin	1000000	7
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 7975286
+yaml.parse	2000	7071
+# checksum yaml.parse 1
+# elapsed yaml.parse 14142952
+yaml.roundtrip	2000	10401
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 20803554
+toml.parse	2000	5230
+# checksum toml.parse 1
+# elapsed toml.parse 10460679
+html.parse	2000	1910
+# checksum html.parse 1
+# elapsed html.parse 3820892
+html.escape_unescape	2000	114
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 229018
+bigint.factorial_1000	1000	499
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 499984
+decimal.add_round	20000	1399
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 27989239
+compress.gzip	880000	2
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2391664
+compress.roundtrip	880000	7
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 6528107
+time.parse_timestamp	20000	297
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 5959904
+queue.enqueue_dequeue	200000	10
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 2002590
+priority_queue.enqueue_dequeue	100000	132
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 13267317
+archive.zip_pack	2000	1257
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2514727
+archive.tar_pack	2000	6753
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 13506585
+archive.zip_unpack	2000	7600
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 15200003
+sse.feed	2000	1458
+# checksum sse.feed 2000
+# elapsed sse.feed 2917782
+time.timestamp_to_string	20000	124
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 2496955
+random.uuid_v4	20000	490
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 9812206
+fs.write_file_64k	200	20076
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 4015233
+fs.read_file_64k	200	42767
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 8553501
+fs.stat	200	6703
+# checksum fs.stat 200
+# elapsed fs.stat 1340692
+fs.list_200	1	67039
+# checksum fs.list_200 200
+# elapsed fs.list_200 67039
+log.info	20000	3839
+# checksum log.info 20000
+# elapsed log.info 76782401
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 306022
+string.concat	20000	1762
+# checksum string.concat 20000
+# elapsed string.concat 35258918
+string.split	200	23783
+# checksum string.split 400000
+# elapsed string.split 4756734
+string.replace_all	200	44462
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 8892562
+string.contains	2000	4623
+# checksum string.contains 2000
+# elapsed string.contains 9246404
+string.upper	200	47931
+# checksum string.upper 3144600
+# elapsed string.upper 9586313
+string.trim	100000	10
+# checksum string.trim 600000
+# elapsed string.trim 1097842
+string.index_char_at	100000	7
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 725822
+string.chars	20	155676
+# checksum string.chars 314460
+# elapsed string.chars 3113526
+string.parse_int	100000	20
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 2043210
+string.interpolate	100000	81
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8118793
+list.append	200000	46
+# checksum list.append 200000
+# elapsed list.append 9306263
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 304970
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110974
+list.map	100000	2
+# checksum list.map 100000
+# elapsed list.map 287915
+list.filter	100000	8
+# checksum list.filter 50004
+# elapsed list.filter 888013
+list.fold	100000	2
+# checksum list.fold 500304918
+# elapsed list.fold 202450
+list.sorted	100000	122
+# checksum list.sorted 100000
+# elapsed list.sorted 12221001
+list.contains	100	214237
+# checksum list.contains 0
+# elapsed list.contains 21423771
+list.distinct	100000	22
+# checksum list.distinct 10007
+# elapsed list.distinct 2229675
+list.concat_reverse	100000	13
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1329986
+list.records_map	100000	29
+# checksum list.records_map 500404918
+# elapsed list.records_map 2931692
+map.int_put_get	200000	37
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7466108
+map.string_put_get	100000	64
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 6489305
+map.iterate_entries	100000	208
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 20859247
+set.add_contains	200000	58
+# checksum set.add_contains 100000
+# elapsed set.add_contains 11706120
+json.parse	5000	1237
+# checksum json.parse 1
+# elapsed json.parse 6188240
+json.roundtrip	5000	2001
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 10007790
+csv.stringify	5000	260
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1304297
+csv.parse	5000	159
+# checksum csv.parse 5000
+# elapsed csv.parse 799691
+encoding.base64_encode	157689	1
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 180526
+encoding.base64_decode	157689	1
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 245683
+encoding.hex_encode	157689	4
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 689124
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 120028
+bytes.builder	100000	6
+# checksum bytes.builder 100000
+# elapsed bytes.builder 619666
+regex.find_all	2000	390
+# checksum regex.find_all 2000
+# elapsed regex.find_all 781254
+regex.matches	10000	101
+# checksum regex.matches 10000
+# elapsed regex.matches 1011996
+regex.replace_all	2000	294
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 589472
+path.join_normalize	50000	542
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 27110595
+path.basename	100000	14
+# checksum path.basename 800000
+# elapsed path.basename 1496973
+url.parse	20000	424
+# checksum url.parse 20000
+# elapsed url.parse 8495275
+url.encode_component	50000	130
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6531597
+math.sqrt_sin	1000000	9
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 9573138
+yaml.parse	2000	7988
+# checksum yaml.parse 1
+# elapsed yaml.parse 15977912
+yaml.roundtrip	2000	10627
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 21255517
+toml.parse	2000	5350
+# checksum toml.parse 1
+# elapsed toml.parse 10700278
+html.parse	2000	1519
+# checksum html.parse 1
+# elapsed html.parse 3039161
+html.escape_unescape	2000	135
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 270049
+bigint.factorial_1000	1000	402
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 402265
+decimal.add_round	20000	1559
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 31194150
+compress.gzip	880000	2
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2217276
+compress.roundtrip	880000	9
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 8678595
+time.parse_timestamp	20000	299
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 5993337
+queue.enqueue_dequeue	200000	7
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 1450103
+priority_queue.enqueue_dequeue	100000	140
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 14030605
+archive.zip_pack	2000	1432
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2865365
+archive.tar_pack	2000	3272
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 6545674
+archive.zip_unpack	2000	7997
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 15994056
+sse.feed	2000	1712
+# checksum sse.feed 2000
+# elapsed sse.feed 3424436
+time.timestamp_to_string	20000	116
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 2320108
+random.uuid_v4	20000	410
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8215366
+fs.write_file_64k	200	19634
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 3926924
+fs.read_file_64k	200	38324
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 7664977
+fs.stat	200	3693
+# checksum fs.stat 200
+# elapsed fs.stat 738682
+fs.list_200	1	63925
+# checksum fs.list_200 200
+# elapsed fs.list_200 63925
+log.info	20000	3622
+# checksum log.info 20000
+# elapsed log.info 72459773
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 324169
+string.concat	20000	1704
+# checksum string.concat 20000
+# elapsed string.concat 34080505
+string.split	200	22523
+# checksum string.split 400000
+# elapsed string.split 4504746
+string.replace_all	200	47888
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 9577739
+string.contains	2000	4322
+# checksum string.contains 2000
+# elapsed string.contains 8644706
+string.upper	200	46214
+# checksum string.upper 3144600
+# elapsed string.upper 9242981
+string.trim	100000	9
+# checksum string.trim 600000
+# elapsed string.trim 913210
+string.index_char_at	100000	6
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 656390
+string.chars	20	77494
+# checksum string.chars 314460
+# elapsed string.chars 1549895
+string.parse_int	100000	18
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 1892297
+string.interpolate	100000	85
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8572404
+list.append	200000	34
+# checksum list.append 200000
+# elapsed list.append 6861060
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 304209
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110814
+list.map	100000	6
+# checksum list.map 100000
+# elapsed list.map 682258
+list.filter	100000	4
+# checksum list.filter 50004
+# elapsed list.filter 468602
+list.fold	100000	3
+# checksum list.fold 500304918
+# elapsed list.fold 327900
+list.sorted	100000	109
+# checksum list.sorted 100000
+# elapsed list.sorted 10969591
+list.contains	100	186523
+# checksum list.contains 0
+# elapsed list.contains 18652320
+list.distinct	100000	19
+# checksum list.distinct 10007
+# elapsed list.distinct 1968299
+list.concat_reverse	100000	12
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1292544
+list.records_map	100000	28
+# checksum list.records_map 500404918
+# elapsed list.records_map 2820404
+map.int_put_get	200000	38
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7786884
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 7604433
+map.iterate_entries	100000	262
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 26216815
+set.add_contains	200000	109
+# checksum set.add_contains 100000
+# elapsed set.add_contains 21847160
+json.parse	5000	1419
+# checksum json.parse 1
+# elapsed json.parse 7099047
+json.roundtrip	5000	2477
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 12385633
+csv.stringify	5000	294
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1471124
+csv.parse	5000	205
+# checksum csv.parse 5000
+# elapsed csv.parse 1028960
+encoding.base64_encode	157689	1
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 234126
+encoding.base64_decode	157689	2
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 324209
+encoding.hex_encode	157689	1
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 290769
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 90093
+bytes.builder	100000	6
+# checksum bytes.builder 100000
+# elapsed bytes.builder 674867
+regex.find_all	2000	300
+# checksum regex.find_all 2000
+# elapsed regex.find_all 601589
+regex.matches	10000	96
+# checksum regex.matches 10000
+# elapsed regex.matches 969352
+regex.replace_all	2000	398
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 797458
+path.join_normalize	50000	584
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 29222781
+path.basename	100000	16
+# checksum path.basename 800000
+# elapsed path.basename 1650710
+url.parse	20000	357
+# checksum url.parse 20000
+# elapsed url.parse 7154282
+url.encode_component	50000	136
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6824224
+math.sqrt_sin	1000000	8
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 8780937
+yaml.parse	2000	7216
+# checksum yaml.parse 1
+# elapsed yaml.parse 14432208
+yaml.roundtrip	2000	11300
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 22600735
+toml.parse	2000	5417
+# checksum toml.parse 1
+# elapsed toml.parse 10834782
+html.parse	2000	1708
+# checksum html.parse 1
+# elapsed html.parse 3417395
+html.escape_unescape	2000	328
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 656786
+bigint.factorial_1000	1000	215
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 215528
+decimal.add_round	20000	1418
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 28370011
+compress.gzip	880000	2
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2415670
+compress.roundtrip	880000	4
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 4011843
+time.parse_timestamp	20000	308
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 6162166
+queue.enqueue_dequeue	200000	8
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 1727813
+priority_queue.enqueue_dequeue	100000	122
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 12250709
+archive.zip_pack	2000	1295
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2590994
+archive.tar_pack	2000	5800
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 11601090
+archive.zip_unpack	2000	8683
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 17367907
+sse.feed	2000	1605
+# checksum sse.feed 2000
+# elapsed sse.feed 3211451
+time.timestamp_to_string	20000	92
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 1842603
+random.uuid_v4	20000	454
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 9099428
+fs.write_file_64k	200	21408
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 4281788
+fs.read_file_64k	200	36296
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 7259277
+fs.stat	200	5229
+# checksum fs.stat 200
+# elapsed fs.stat 1045981
+fs.list_200	1	122852
+# checksum fs.list_200 200
+# elapsed fs.list_200 122852
+log.info	20000	3596
+# checksum log.info 20000
+# elapsed log.info 71933972
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 337148
+string.concat	20000	2256
+# checksum string.concat 20000
+# elapsed string.concat 45135382
+string.split	200	21906
+# checksum string.split 400000
+# elapsed string.split 4381325
+string.replace_all	200	51407
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 10281539
+string.contains	2000	4321
+# checksum string.contains 2000
+# elapsed string.contains 8643213
+string.upper	200	49297
+# checksum string.upper 3144600
+# elapsed string.upper 9859461
+string.trim	100000	9
+# checksum string.trim 600000
+# elapsed string.trim 934721
+string.index_char_at	100000	6
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 654817
+string.chars	20	124158
+# checksum string.chars 314460
+# elapsed string.chars 2483174
+string.parse_int	100000	18
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 1886778
+string.interpolate	100000	82
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8239828
+list.append	200000	41
+# checksum list.append 200000
+# elapsed list.append 8207880
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 369887
+list.for_in	100000	3
+# checksum list.for_in 500304918
+# elapsed list.for_in 307795
+list.map	100000	2
+# checksum list.map 100000
+# elapsed list.map 259293
+list.filter	100000	12
+# checksum list.filter 50004
+# elapsed list.filter 1255341
+list.fold	100000	2
+# checksum list.fold 500304918
+# elapsed list.fold 229358
+list.sorted	100000	119
+# checksum list.sorted 100000
+# elapsed list.sorted 11917193
+list.contains	100	192242
+# checksum list.contains 0
+# elapsed list.contains 19224230
+list.distinct	100000	22
+# checksum list.distinct 10007
+# elapsed list.distinct 2274445
+list.concat_reverse	100000	28
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 2807458
+list.records_map	100000	28
+# checksum list.records_map 500404918
+# elapsed list.records_map 2874773
+map.int_put_get	200000	43
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 8783164
+map.string_put_get	100000	64
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 6427875
+map.iterate_entries	100000	304
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 30433395
+set.add_contains	200000	81
+# checksum set.add_contains 100000
+# elapsed set.add_contains 16292217
+json.parse	5000	1424
+# checksum json.parse 1
+# elapsed json.parse 7122025
+json.roundtrip	5000	2618
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 13091206
+csv.stringify	5000	365
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1828447
+csv.parse	5000	304
+# checksum csv.parse 5000
+# elapsed csv.parse 1521528
+encoding.base64_encode	157689	1
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 310379
+encoding.base64_decode	157689	2
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 393882
+encoding.hex_encode	157689	4
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 677781
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 89832
+bytes.builder	100000	4
+# checksum bytes.builder 100000
+# elapsed bytes.builder 423947
+regex.find_all	2000	280
+# checksum regex.find_all 2000
+# elapsed regex.find_all 561940
+regex.matches	10000	90
+# checksum regex.matches 10000
+# elapsed regex.matches 905137
+regex.replace_all	2000	289
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 579397
+path.join_normalize	50000	609
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 30467715
+path.basename	100000	13
+# checksum path.basename 800000
+# elapsed path.basename 1381232
+url.parse	20000	352
+# checksum url.parse 20000
+# elapsed url.parse 7049033
+url.encode_component	50000	134
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6701053
+math.sqrt_sin	1000000	8
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 8082555
+yaml.parse	2000	7691
+# checksum yaml.parse 1
+# elapsed yaml.parse 15382528
+yaml.roundtrip	2000	13697
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 27395657
+toml.parse	2000	5863
+# checksum toml.parse 1
+# elapsed toml.parse 11726480
+html.parse	2000	2632
+# checksum html.parse 1
+# elapsed html.parse 5264656
+html.escape_unescape	2000	402
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 804928
+bigint.factorial_1000	1000	297
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 297660
+decimal.add_round	20000	1671
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 33435532
+compress.gzip	880000	2
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2077460
+compress.roundtrip	880000	6
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 6093746
+time.parse_timestamp	20000	296
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 5938847
+queue.enqueue_dequeue	200000	12
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 2421989
+priority_queue.enqueue_dequeue	100000	159
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 15923623
+archive.zip_pack	2000	1430
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2860382
+archive.tar_pack	2000	5087
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 10174346
+archive.zip_unpack	2000	12371
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 24743657
+sse.feed	2000	2511
+# checksum sse.feed 2000
+# elapsed sse.feed 5022367
+time.timestamp_to_string	20000	145
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 2905383
+random.uuid_v4	20000	470
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 9412650
+fs.write_file_64k	200	23041
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 4608391
+fs.read_file_64k	200	53181
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 10636318
+fs.stat	200	6108
+# checksum fs.stat 200
+# elapsed fs.stat 1221616
+fs.list_200	1	83153
+# checksum fs.list_200 200
+# elapsed fs.list_200 83153
+log.info	20000	4055
+# checksum log.info 20000
+# elapsed log.info 81108565
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 301756
+string.concat	20000	1558
+# checksum string.concat 20000
+# elapsed string.concat 31164886
+string.split	200	21726
+# checksum string.split 400000
+# elapsed string.split 4345202
+string.replace_all	200	46032
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 9206526
+string.contains	2000	4726
+# checksum string.contains 2000
+# elapsed string.contains 9452188
+string.upper	200	49908
+# checksum string.upper 3144600
+# elapsed string.upper 9981771
+string.trim	100000	11
+# checksum string.trim 600000
+# elapsed string.trim 1120416
+string.index_char_at	100000	6
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 697781
+string.chars	20	156566
+# checksum string.chars 314460
+# elapsed string.chars 3131327
+string.parse_int	100000	21
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 2167313
+string.interpolate	100000	81
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8155502
+list.append	200000	32
+# checksum list.append 200000
+# elapsed list.append 6505455
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 304520
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110763
+list.map	100000	8
+# checksum list.map 100000
+# elapsed list.map 897811
+list.filter	100000	13
+# checksum list.filter 50004
+# elapsed list.filter 1325619
+list.fold	100000	1
+# checksum list.fold 500304918
+# elapsed list.fold 196150
+list.sorted	100000	106
+# checksum list.sorted 100000
+# elapsed list.sorted 10624802
+list.contains	100	180992
+# checksum list.contains 0
+# elapsed list.contains 18099217
+list.distinct	100000	19
+# checksum list.distinct 10007
+# elapsed list.distinct 1966982
+list.concat_reverse	100000	15
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1513011
+list.records_map	100000	29
+# checksum list.records_map 500404918
+# elapsed list.records_map 2931352
+map.int_put_get	200000	39
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7917255
+map.string_put_get	100000	61
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 6167535
+map.iterate_entries	100000	147
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 14744976
+set.add_contains	200000	64
+# checksum set.add_contains 100000
+# elapsed set.add_contains 12853581
+json.parse	5000	1153
+# checksum json.parse 1
+# elapsed json.parse 5765655
+json.roundtrip	5000	2003
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 10019047
+csv.stringify	5000	231
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1157581
+csv.parse	5000	225
+# checksum csv.parse 5000
+# elapsed csv.parse 1128227
+encoding.base64_encode	157689	3
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 517314
+encoding.base64_decode	157689	2
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 429164
+encoding.hex_encode	157689	1
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 277650
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 89382
+bytes.builder	100000	4
+# checksum bytes.builder 100000
+# elapsed bytes.builder 432850
+regex.find_all	2000	272
+# checksum regex.find_all 2000
+# elapsed regex.find_all 545276
+regex.matches	10000	101
+# checksum regex.matches 10000
+# elapsed regex.matches 1012065
+regex.replace_all	2000	430
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 860151
+path.join_normalize	50000	544
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 27229236
+path.basename	100000	13
+# checksum path.basename 800000
+# elapsed path.basename 1303557
+url.parse	20000	360
+# checksum url.parse 20000
+# elapsed url.parse 7210626
+url.encode_component	50000	131
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6560670
+math.sqrt_sin	1000000	7
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 7348810
+yaml.parse	2000	7766
+# checksum yaml.parse 1
+# elapsed yaml.parse 15532474
+yaml.roundtrip	2000	10595
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 21190806
+toml.parse	2000	6054
+# checksum toml.parse 1
+# elapsed toml.parse 12109266
+html.parse	2000	1601
+# checksum html.parse 1
+# elapsed html.parse 3203293
+html.escape_unescape	2000	285
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 570884
+bigint.factorial_1000	1000	168
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 168970
+decimal.add_round	20000	1456
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 29124381
+compress.gzip	880000	2
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2062297
+compress.roundtrip	880000	5
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 4982103
+time.parse_timestamp	20000	323
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 6465696
+queue.enqueue_dequeue	200000	11
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 2303675
+priority_queue.enqueue_dequeue	100000	172
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 17289536
+archive.zip_pack	2000	1482
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2964006
+archive.tar_pack	2000	5290
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 10580876
+archive.zip_unpack	2000	10522
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 21044550
+sse.feed	2000	2070
+# checksum sse.feed 2000
+# elapsed sse.feed 4141221
+time.timestamp_to_string	20000	110
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 2217788
+random.uuid_v4	20000	438
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8767501
+fs.write_file_64k	200	20372
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 4074552
+fs.read_file_64k	200	38924
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 7784870
+fs.stat	200	5156
+# checksum fs.stat 200
+# elapsed fs.stat 1031384
+fs.list_200	1	65086
+# checksum fs.list_200 200
+# elapsed fs.list_200 65086
+log.info	20000	3762
+# checksum log.info 20000
+# elapsed log.info 75256270
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 314685
+string.concat	20000	1439
+# checksum string.concat 20000
+# elapsed string.concat 28797528
+string.split	200	19618
+# checksum string.split 400000
+# elapsed string.split 3923669
+string.replace_all	200	46542
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 9308547
+string.contains	2000	4487
+# checksum string.contains 2000
+# elapsed string.contains 8975294
+string.upper	200	49096
+# checksum string.upper 3144600
+# elapsed string.upper 9819282
+string.trim	100000	11
+# checksum string.trim 600000
+# elapsed string.trim 1175427
+string.index_char_at	100000	7
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 715778
+string.chars	20	160937
+# checksum string.chars 314460
+# elapsed string.chars 3218747
+string.parse_int	100000	20
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 2014056
+string.interpolate	100000	85
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8522079
+list.append	200000	51
+# checksum list.append 200000
+# elapsed list.append 10240744
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 334023
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110643
+list.map	100000	6
+# checksum list.map 100000
+# elapsed list.map 605504
+list.filter	100000	5
+# checksum list.filter 50004
+# elapsed list.filter 593407
+list.fold	100000	6
+# checksum list.fold 500304918
+# elapsed list.fold 631945
+list.sorted	100000	118
+# checksum list.sorted 100000
+# elapsed list.sorted 11896221
+list.contains	100	179598
+# checksum list.contains 0
+# elapsed list.contains 17959862
+list.distinct	100000	17
+# checksum list.distinct 10007
+# elapsed list.distinct 1770577
+list.concat_reverse	100000	11
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1105874
+list.records_map	100000	25
+# checksum list.records_map 500404918
+# elapsed list.records_map 2557380
+map.int_put_get	200000	34
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 6843118
+map.string_put_get	100000	52
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 5254721
+map.iterate_entries	100000	238
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 23867237
+set.add_contains	200000	85
+# checksum set.add_contains 100000
+# elapsed set.add_contains 17054373
+json.parse	5000	1361
+# checksum json.parse 1
+# elapsed json.parse 6808471
+json.roundtrip	5000	2283
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 11416772
+csv.stringify	5000	230
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1150440
+csv.parse	5000	202
+# checksum csv.parse 5000
+# elapsed csv.parse 1012521
+encoding.base64_encode	157689	2
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 444362
+encoding.base64_decode	157689	3
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 530624
+encoding.hex_encode	157689	1
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 233214
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 89712
+bytes.builder	100000	5
+# checksum bytes.builder 100000
+# elapsed bytes.builder 574950
+regex.find_all	2000	270
+# checksum regex.find_all 2000
+# elapsed regex.find_all 541390
+regex.matches	10000	112
+# checksum regex.matches 10000
+# elapsed regex.matches 1122639
+regex.replace_all	2000	495
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 991485
+path.join_normalize	50000	541
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 27078457
+path.basename	100000	11
+# checksum path.basename 800000
+# elapsed path.basename 1185532
+url.parse	20000	336
+# checksum url.parse 20000
+# elapsed url.parse 6732374
+url.encode_component	50000	128
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6425461
+math.sqrt_sin	1000000	8
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 8204605
+yaml.parse	2000	7364
+# checksum yaml.parse 1
+# elapsed yaml.parse 14728977
+yaml.roundtrip	2000	10294
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 20589503
+toml.parse	2000	4677
+# checksum toml.parse 1
+# elapsed toml.parse 9354244
+html.parse	2000	1766
+# checksum html.parse 1
+# elapsed html.parse 3532305
+html.escape_unescape	2000	264
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 529132
+bigint.factorial_1000	1000	262
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 262518
+decimal.add_round	20000	1515
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 30314931
+compress.gzip	880000	3
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2836502
+compress.roundtrip	880000	6
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 5464150
+time.parse_timestamp	20000	297
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 5956823
+queue.enqueue_dequeue	200000	9
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 1803039
+priority_queue.enqueue_dequeue	100000	142
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 14218824
+archive.zip_pack	2000	1381
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2762252
+archive.tar_pack	2000	6050
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 12101114
+archive.zip_unpack	2000	7814
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 15628066
+sse.feed	2000	1613
+# checksum sse.feed 2000
+# elapsed sse.feed 3227460
+time.timestamp_to_string	20000	99
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 1985294
+random.uuid_v4	20000	402
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8049425
+fs.write_file_64k	200	18751
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 3750293
+fs.read_file_64k	200	36969
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 7393882
+fs.stat	200	5268
+# checksum fs.stat 200
+# elapsed fs.stat 1053658
+fs.list_200	1	62532
+# checksum fs.list_200 200
+# elapsed fs.list_200 62532
+log.info	20000	3642
+# checksum log.info 20000
+# elapsed log.info 72854876
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 312852
+string.concat	20000	1705
+# checksum string.concat 20000
+# elapsed string.concat 34116188
+string.split	200	26124
+# checksum string.split 400000
+# elapsed string.split 5224832
+string.replace_all	200	48936
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 9787334
+string.contains	2000	4560
+# checksum string.contains 2000
+# elapsed string.contains 9120638
+string.upper	200	47097
+# checksum string.upper 3144600
+# elapsed string.upper 9419470
+string.trim	100000	10
+# checksum string.trim 600000
+# elapsed string.trim 1062490
+string.index_char_at	100000	6
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 669840
+string.chars	20	157604
+# checksum string.chars 314460
+# elapsed string.chars 3152098
+string.parse_int	100000	20
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 2003291
+string.interpolate	100000	80
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8063366
+list.append	200000	38
+# checksum list.append 200000
+# elapsed list.append 7633881
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 304250
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 129471
+list.map	100000	5
+# checksum list.map 100000
+# elapsed list.map 557524
+list.filter	100000	4
+# checksum list.filter 50004
+# elapsed list.filter 450115
+list.fold	100000	6
+# checksum list.fold 500304918
+# elapsed list.fold 610262
+list.sorted	100000	101
+# checksum list.sorted 100000
+# elapsed list.sorted 10168688
+list.contains	100	174401
+# checksum list.contains 0
+# elapsed list.contains 17440143
+list.distinct	100000	18
+# checksum list.distinct 10007
+# elapsed list.distinct 1867200
+list.concat_reverse	100000	27
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 2731977
+list.records_map	100000	32
+# checksum list.records_map 500404918
+# elapsed list.records_map 3205146
+map.int_put_get	200000	35
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7095526
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 7631659
+map.iterate_entries	100000	260
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 26043578
+set.add_contains	200000	63
+# checksum set.add_contains 100000
+# elapsed set.add_contains 12609404
+json.parse	5000	1466
+# checksum json.parse 1
+# elapsed json.parse 7332316
+json.roundtrip	5000	2077
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 10385938
+csv.stringify	5000	299
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1496251
+csv.parse	5000	219
+# checksum csv.parse 5000
+# elapsed csv.parse 1095018
+encoding.base64_encode	157689	5
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 805030
+encoding.base64_decode	157689	3
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 484967
+encoding.hex_encode	157689	2
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 329277
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 89683
+bytes.builder	100000	4
+# checksum bytes.builder 100000
+# elapsed bytes.builder 461952
+regex.find_all	2000	272
+# checksum regex.find_all 2000
+# elapsed regex.find_all 545877
+regex.matches	10000	99
+# checksum regex.matches 10000
+# elapsed regex.matches 990934
+regex.replace_all	2000	496
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 992407
+path.join_normalize	50000	555
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 27752924
+path.basename	100000	13
+# checksum path.basename 800000
+# elapsed path.basename 1386549
+url.parse	20000	349
+# checksum url.parse 20000
+# elapsed url.parse 6992895
+url.encode_component	50000	131
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6555067
+math.sqrt_sin	1000000	7
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 7515146
+yaml.parse	2000	7123
+# checksum yaml.parse 1
+# elapsed yaml.parse 14247796
+yaml.roundtrip	2000	10363
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 20726160
+toml.parse	2000	5291
+# checksum toml.parse 1
+# elapsed toml.parse 10583512
+html.parse	2000	1474
+# checksum html.parse 1
+# elapsed html.parse 2948998
+html.escape_unescape	2000	284
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 568951
+bigint.factorial_1000	1000	215
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 215479
+decimal.add_round	20000	1363
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 27266315
+compress.gzip	880000	2
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2064401
+compress.roundtrip	880000	7
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 6248224
+time.parse_timestamp	20000	301
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 6022810
+queue.enqueue_dequeue	200000	7
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 1548383
+priority_queue.enqueue_dequeue	100000	129
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 12996888
+archive.zip_pack	2000	1491
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2983759
+archive.tar_pack	2000	3348
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 6696857
+archive.zip_unpack	2000	7784
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 15569213
+sse.feed	2000	1605
+# checksum sse.feed 2000
+# elapsed sse.feed 3211136
+time.timestamp_to_string	20000	95
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 1912626
+random.uuid_v4	20000	433
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8676072
+fs.write_file_64k	200	19692
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 3938420
+fs.read_file_64k	200	38025
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 7605185
+fs.stat	200	3631
+# checksum fs.stat 200
+# elapsed fs.stat 726253
+fs.list_200	1	68511
+# checksum fs.list_200 200
+# elapsed fs.list_200 68511
+log.info	20000	3351
+# checksum log.info 20000
+# elapsed log.info 67032998
+string.append_builder	100000	4
+# checksum string.append_builder 100000
+# elapsed string.append_builder 416406
+string.concat	20000	2399
+# checksum string.concat 20000
+# elapsed string.concat 47987297
+string.split	200	19310
+# checksum string.split 400000
+# elapsed string.split 3862023
+string.replace_all	200	45295
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 9059182
+string.contains	2000	4373
+# checksum string.contains 2000
+# elapsed string.contains 8746626
+string.upper	200	46513
+# checksum string.upper 3144600
+# elapsed string.upper 9302763
+string.trim	100000	9
+# checksum string.trim 600000
+# elapsed string.trim 923815
+string.index_char_at	100000	6
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 658013
+string.chars	20	96240
+# checksum string.chars 314460
+# elapsed string.chars 1924804
+string.parse_int	100000	20
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 2032884
+string.interpolate	100000	80
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8083867
+list.append	200000	29
+# checksum list.append 200000
+# elapsed list.append 5898767
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 304009
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110944
+list.map	100000	2
+# checksum list.map 100000
+# elapsed list.map 259924
+list.filter	100000	7
+# checksum list.filter 50004
+# elapsed list.filter 721877
+list.fold	100000	2
+# checksum list.fold 500304918
+# elapsed list.fold 298951
+list.sorted	100000	129
+# checksum list.sorted 100000
+# elapsed list.sorted 12910925
+list.contains	100	173575
+# checksum list.contains 0
+# elapsed list.contains 17357566
+list.distinct	100000	17
+# checksum list.distinct 10007
+# elapsed list.distinct 1723222
+list.concat_reverse	100000	18
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1801738
+list.records_map	100000	34
+# checksum list.records_map 500404918
+# elapsed list.records_map 3477049
+map.int_put_get	200000	35
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7062647
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 6704649
+map.iterate_entries	100000	254
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 25479295
+set.add_contains	200000	86
+# checksum set.add_contains 100000
+# elapsed set.add_contains 17255576
+json.parse	5000	1026
+# checksum json.parse 1
+# elapsed json.parse 5133045
+json.roundtrip	5000	1853
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 9269178
+csv.stringify	5000	234
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1172443
+csv.parse	5000	150
+# checksum csv.parse 5000
+# elapsed csv.parse 752963
+encoding.base64_encode	157689	1
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 182590
+encoding.base64_decode	157689	1
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 269318
+encoding.hex_encode	157689	6
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 1076460
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 89142
+bytes.builder	100000	4
+# checksum bytes.builder 100000
+# elapsed bytes.builder 443175
+regex.find_all	2000	282
+# checksum regex.find_all 2000
+# elapsed regex.find_all 565966
+regex.matches	10000	90
+# checksum regex.matches 10000
+# elapsed regex.matches 905378
+regex.replace_all	2000	276
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 552196
+path.join_normalize	50000	496
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 24828281
+path.basename	100000	14
+# checksum path.basename 800000
+# elapsed path.basename 1414670
+url.parse	20000	376
+# checksum url.parse 20000
+# elapsed url.parse 7535222
+url.encode_component	50000	124
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6238129
+math.sqrt_sin	1000000	8
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 8161722
+yaml.parse	2000	7841
+# checksum yaml.parse 1
+# elapsed yaml.parse 15682055
+yaml.roundtrip	2000	10903
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 21807513
+toml.parse	2000	5195
+# checksum toml.parse 1
+# elapsed toml.parse 10391176
+html.parse	2000	1894
+# checksum html.parse 1
+# elapsed html.parse 3788799
+html.escape_unescape	2000	114
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 228007
+bigint.factorial_1000	1000	202
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 202469
+decimal.add_round	20000	1431
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 28639199
+compress.gzip	880000	3
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2708563
+compress.roundtrip	880000	3
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 3128784
+time.parse_timestamp	20000	298
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 5978896
+queue.enqueue_dequeue	200000	7
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 1508620
+priority_queue.enqueue_dequeue	100000	119
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 11930682
+archive.zip_pack	2000	1189
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2379937
+archive.tar_pack	2000	7069
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 14138639
+archive.zip_unpack	2000	8242
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 16485817
+sse.feed	2000	1742
+# checksum sse.feed 2000
+# elapsed sse.feed 3484810
+time.timestamp_to_string	20000	93
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 1876984
+random.uuid_v4	20000	451
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 9027991
+fs.write_file_64k	200	19969
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 3993943
+fs.read_file_64k	200	34607
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 6921475
+fs.stat	200	4918
+# checksum fs.stat 200
+# elapsed fs.stat 983633
+fs.list_200	1	59969
+# checksum fs.list_200 200
+# elapsed fs.list_200 59969
+log.info	20000	3449
+# checksum log.info 20000
+# elapsed log.info 68990896
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 357559
+string.concat	20000	1581
+# checksum string.concat 20000
+# elapsed string.concat 31630906
+string.split	200	20165
+# checksum string.split 400000
+# elapsed string.split 4033155
+string.replace_all	200	47014
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 9402936
+string.contains	2000	4302
+# checksum string.contains 2000
+# elapsed string.contains 8605096
+string.upper	200	46061
+# checksum string.upper 3144600
+# elapsed string.upper 9212284
+string.trim	100000	10
+# checksum string.trim 600000
+# elapsed string.trim 1067167
+string.index_char_at	100000	6
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 644683
+string.chars	20	105355
+# checksum string.chars 314460
+# elapsed string.chars 2107104
+string.parse_int	100000	19
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 1913568
+string.interpolate	100000	86
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8689692
+list.append	200000	27
+# checksum list.append 200000
+# elapsed list.append 5402509
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 304129
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110844
+list.map	100000	8
+# checksum list.map 100000
+# elapsed list.map 844188
+list.filter	100000	4
+# checksum list.filter 50004
+# elapsed list.filter 494586
+list.fold	100000	5
+# checksum list.fold 500304918
+# elapsed list.fold 542812
+list.sorted	100000	110
+# checksum list.sorted 100000
+# elapsed list.sorted 11030541
+list.contains	100	174474
+# checksum list.contains 0
+# elapsed list.contains 17447404
+list.distinct	100000	17
+# checksum list.distinct 10007
+# elapsed list.distinct 1754573
+list.concat_reverse	100000	18
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1840100
+list.records_map	100000	28
+# checksum list.records_map 500404918
+# elapsed list.records_map 2848660
+map.int_put_get	200000	38
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7691757
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 8482481
+map.iterate_entries	100000	254
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 25445049
+set.add_contains	200000	76
+# checksum set.add_contains 100000
+# elapsed set.add_contains 15301117
+json.parse	5000	1374
+# checksum json.parse 1
+# elapsed json.parse 6872582
+json.roundtrip	5000	1934
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 9674903
+csv.stringify	5000	239
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1196879
+csv.parse	5000	199
+# checksum csv.parse 5000
+# elapsed csv.parse 996047
+encoding.base64_encode	157689	4
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 713470
+encoding.base64_decode	157689	1
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 236850
+encoding.hex_encode	157689	1
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 234076
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 89432
+bytes.builder	100000	4
+# checksum bytes.builder 100000
+# elapsed bytes.builder 412790
+regex.find_all	2000	328
+# checksum regex.find_all 2000
+# elapsed regex.find_all 656671
+regex.matches	10000	108
+# checksum regex.matches 10000
+# elapsed regex.matches 1086415
+regex.replace_all	2000	446
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 892920
+path.join_normalize	50000	516
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 25830017
+path.basename	100000	13
+# checksum path.basename 800000
+# elapsed path.basename 1372348
+url.parse	20000	344
+# checksum url.parse 20000
+# elapsed url.parse 6896276
+url.encode_component	50000	147
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 7370998
+math.sqrt_sin	1000000	8
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 8311477
+yaml.parse	2000	7338
+# checksum yaml.parse 1
+# elapsed yaml.parse 14676189
+yaml.roundtrip	2000	10507
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 21014415
+toml.parse	2000	5361
+# checksum toml.parse 1
+# elapsed toml.parse 10723192
+html.parse	2000	1925
+# checksum html.parse 1
+# elapsed html.parse 3851512
+html.escape_unescape	2000	147
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 294936
+bigint.factorial_1000	1000	689
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 689128
+decimal.add_round	20000	1510
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 30213379
+compress.gzip	880000	4
+# checksum compress.gzip 2638
+# elapsed compress.gzip 3581363
+compress.roundtrip	880000	4
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 3760493
+time.parse_timestamp	20000	265
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 5310909
+queue.enqueue_dequeue	200000	6
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 1317942
+priority_queue.enqueue_dequeue	100000	133
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 13382828
+archive.zip_pack	2000	1072
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2144685
+archive.tar_pack	2000	4405
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 8810035
+archive.zip_unpack	2000	8059
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 16118320
+sse.feed	2000	1623
+# checksum sse.feed 2000
+# elapsed sse.feed 3246528
+time.timestamp_to_string	20000	93
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 1874120
+random.uuid_v4	20000	422
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8445581
+fs.write_file_64k	200	19493
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 3898741
+fs.read_file_64k	200	39359
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 7871823
+fs.stat	200	4044
+# checksum fs.stat 200
+# elapsed fs.stat 808865
+fs.list_200	1	65166
+# checksum fs.list_200 200
+# elapsed fs.list_200 65166
+log.info	20000	3542
+# checksum log.info 20000
+# elapsed log.info 70840941
+string.append_builder	100000	2
+# checksum string.append_builder 100000
+# elapsed string.append_builder 299933
+string.concat	20000	1671
+# checksum string.concat 20000
+# elapsed string.concat 33420425
+string.split	200	24837
+# checksum string.split 400000
+# elapsed string.split 4967456
+string.replace_all	200	46685
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 9337089
+string.contains	2000	4427
+# checksum string.contains 2000
+# elapsed string.contains 8854205
+string.upper	200	45833
+# checksum string.upper 3144600
+# elapsed string.upper 9166667
+string.trim	100000	9
+# checksum string.trim 600000
+# elapsed string.trim 994269
+string.index_char_at	100000	7
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 700625
+string.chars	20	119845
+# checksum string.chars 314460
+# elapsed string.chars 2396902
+string.parse_int	100000	19
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 1971964
+string.interpolate	100000	82
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8284553
+list.append	200000	68
+# checksum list.append 200000
+# elapsed list.append 13601191
+list.at	200000	2
+# checksum list.at 1000609836
+# elapsed list.at 448493
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110984
+list.map	100000	4
+# checksum list.map 100000
+# elapsed list.map 462824
+list.filter	100000	3
+# checksum list.filter 50004
+# elapsed list.filter 392460
+list.fold	100000	3
+# checksum list.fold 500304918
+# elapsed list.fold 323538
+list.sorted	100000	126
+# checksum list.sorted 100000
+# elapsed list.sorted 12622824
+list.contains	100	211468
+# checksum list.contains 0
+# elapsed list.contains 21146821
+list.distinct	100000	19
+# checksum list.distinct 10007
+# elapsed list.distinct 1977412
+list.concat_reverse	100000	16
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1604211
+list.records_map	100000	24
+# checksum list.records_map 500404918
+# elapsed list.records_map 2413857
+map.int_put_get	200000	39
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7965942
+map.string_put_get	100000	64
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 6475941
+map.iterate_entries	100000	200
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 20077260
+set.add_contains	200000	60
+# checksum set.add_contains 100000
+# elapsed set.add_contains 12059602
+json.parse	5000	1267
+# checksum json.parse 1
+# elapsed json.parse 6338948
+json.roundtrip	5000	2332
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 11661898
+csv.stringify	5000	227
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1136590
+csv.parse	5000	295
+# checksum csv.parse 5000
+# elapsed csv.parse 1476507
+encoding.base64_encode	157689	2
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 418889
+encoding.base64_decode	157689	2
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 456034
+encoding.hex_encode	157689	3
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 496895
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 109832
+bytes.builder	100000	4
+# checksum bytes.builder 100000
+# elapsed bytes.builder 409465
+regex.find_all	2000	486
+# checksum regex.find_all 2000
+# elapsed regex.find_all 972858
+regex.matches	10000	91
+# checksum regex.matches 10000
+# elapsed regex.matches 918968
+regex.replace_all	2000	290
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 580278
+path.join_normalize	50000	513
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 25669816
+path.basename	100000	13
+# checksum path.basename 800000
+# elapsed path.basename 1391636
+url.parse	20000	369
+# checksum url.parse 20000
+# elapsed url.parse 7390602
+url.encode_component	50000	145
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 7261942
+math.sqrt_sin	1000000	7
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 7718686
+yaml.parse	2000	7564
+# checksum yaml.parse 1
+# elapsed yaml.parse 15129820
+yaml.roundtrip	2000	9865
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 19731459
+toml.parse	2000	5168
+# checksum toml.parse 1
+# elapsed toml.parse 10337657
+html.parse	2000	1783
+# checksum html.parse 1
+# elapsed html.parse 3567398
+html.escape_unescape	2000	116
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 232303
+bigint.factorial_1000	1000	466
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 466314
+decimal.add_round	20000	1485
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 29702205
+compress.gzip	880000	3
+# checksum compress.gzip 2638
+# elapsed compress.gzip 3081634
+compress.roundtrip	880000	5
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 5136051
+time.parse_timestamp	20000	303
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 6067738
+queue.enqueue_dequeue	200000	8
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 1637589
+priority_queue.enqueue_dequeue	100000	123
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 12365094
+archive.zip_pack	2000	1365
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2731947
+archive.tar_pack	2000	5767
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 11534566
+archive.zip_unpack	2000	7597
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 15195015
+sse.feed	2000	1465
+# checksum sse.feed 2000
+# elapsed sse.feed 2931462
+time.timestamp_to_string	20000	89
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 1792879
+random.uuid_v4	20000	421
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8422067
+fs.write_file_64k	200	18965
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 3793085
+fs.read_file_64k	200	52572
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 10514499
+fs.stat	200	6428
+# checksum fs.stat 200
+# elapsed fs.stat 1285645
+fs.list_200	1	70153
+# checksum fs.list_200 200
+# elapsed fs.list_200 70153
+log.info	20000	3790
+# checksum log.info 20000
+# elapsed log.info 75802793
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 313363
+string.concat	20000	2152
+# checksum string.concat 20000
+# elapsed string.concat 43044417
+string.split	200	19073
+# checksum string.split 400000
+# elapsed string.split 3814747
+string.replace_all	200	56220
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 11244197
+string.contains	2000	4817
+# checksum string.contains 2000
+# elapsed string.contains 9634758
+string.upper	200	53182
+# checksum string.upper 3144600
+# elapsed string.upper 10636469
+string.trim	100000	12
+# checksum string.trim 600000
+# elapsed string.trim 1218201
+string.index_char_at	100000	6
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 643241
+string.chars	20	104349
+# checksum string.chars 314460
+# elapsed string.chars 2086984
+string.parse_int	100000	21
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 2120764
+string.interpolate	100000	91
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 9107390
+list.append	200000	68
+# checksum list.append 200000
+# elapsed list.append 13725519
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 355475
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110854
+list.map	100000	2
+# checksum list.map 100000
+# elapsed list.map 288437
+list.filter	100000	4
+# checksum list.filter 50004
+# elapsed list.filter 434713
+list.fold	100000	5
+# checksum list.fold 500304918
+# elapsed list.fold 574319
+list.sorted	100000	106
+# checksum list.sorted 100000
+# elapsed list.sorted 10680274
+list.contains	100	204291
+# checksum list.contains 0
+# elapsed list.contains 20429115
+list.distinct	100000	21
+# checksum list.distinct 10007
+# elapsed list.distinct 2171119
+list.concat_reverse	100000	16
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1651141
+list.records_map	100000	28
+# checksum list.records_map 500404918
+# elapsed list.records_map 2835726
+map.int_put_get	200000	42
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 8408367
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 7982952
+map.iterate_entries	100000	271
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 27131131
+set.add_contains	200000	89
+# checksum set.add_contains 100000
+# elapsed set.add_contains 17878962
+json.parse	5000	1498
+# checksum json.parse 1
+# elapsed json.parse 7492602
+json.roundtrip	5000	2457
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 12286217
+csv.stringify	5000	423
+# checksum csv.stringify 157780
+# elapsed csv.stringify 2119062
+csv.parse	5000	164
+# checksum csv.parse 5000
+# elapsed csv.parse 821414
+encoding.base64_encode	157689	1
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 186065
+encoding.base64_decode	157689	3
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 498407
+encoding.hex_encode	157689	4
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 702493
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 89392
+bytes.builder	100000	5
+# checksum bytes.builder 100000
+# elapsed bytes.builder 547809
+regex.find_all	2000	418
+# checksum regex.find_all 2000
+# elapsed regex.find_all 836166
+regex.matches	10000	97
+# checksum regex.matches 10000
+# elapsed regex.matches 976233
+regex.replace_all	2000	383
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 767735
+path.join_normalize	50000	555
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 27768071
+path.basename	100000	12
+# checksum path.basename 800000
+# elapsed path.basename 1207935
+url.parse	20000	381
+# checksum url.parse 20000
+# elapsed url.parse 7625144
+url.encode_component	50000	127
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6351406
+math.sqrt_sin	1000000	7
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 7650466
+yaml.parse	2000	6831
+# checksum yaml.parse 1
+# elapsed yaml.parse 13662115
+yaml.roundtrip	2000	11246
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 22492716
+toml.parse	2000	5177
+# checksum toml.parse 1
+# elapsed toml.parse 10354943
+html.parse	2000	1558
+# checksum html.parse 1
+# elapsed html.parse 3117057
+html.escape_unescape	2000	268
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 537774
+bigint.factorial_1000	1000	211
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 211433
+decimal.add_round	20000	1424
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 28489283
+compress.gzip	880000	2
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2207933
+compress.roundtrip	880000	7
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 6651179
+time.parse_timestamp	20000	292
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 5858157
+queue.enqueue_dequeue	200000	11
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 2297421
+priority_queue.enqueue_dequeue	100000	148
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 14875679
+archive.zip_pack	2000	1429
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2859075
+archive.tar_pack	2000	3925
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 7850723
+archive.zip_unpack	2000	7696
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 15393479
+sse.feed	2000	1675
+# checksum sse.feed 2000
+# elapsed sse.feed 3350822
+time.timestamp_to_string	20000	117
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 2358355
+random.uuid_v4	20000	404
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8097401
+fs.write_file_64k	200	19950
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 3990087
+fs.read_file_64k	200	43345
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 8669172
+fs.stat	200	3972
+# checksum fs.stat 200
+# elapsed fs.stat 794544
+fs.list_200	1	59317
+# checksum fs.list_200 200
+# elapsed fs.list_200 59317
+log.info	20000	3497
+# checksum log.info 20000
+# elapsed log.info 69946814
+string.append_builder	100000	2
+# checksum string.append_builder 100000
+# elapsed string.append_builder 297650
+string.concat	20000	1463
+# checksum string.concat 20000
+# elapsed string.concat 29266827
+string.split	200	21012
+# checksum string.split 400000
+# elapsed string.split 4202576
+string.replace_all	200	52567
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 10513421
+string.contains	2000	4356
+# checksum string.contains 2000
+# elapsed string.contains 8713207
+string.upper	200	46388
+# checksum string.upper 3144600
+# elapsed string.upper 9277640
+string.trim	100000	9
+# checksum string.trim 600000
+# elapsed string.trim 988872
+string.index_char_at	100000	6
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 657482
+string.chars	20	117056
+# checksum string.chars 314460
+# elapsed string.chars 2341135
+string.parse_int	100000	21
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 2174824
+string.interpolate	100000	79
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 7969653
+list.append	200000	33
+# checksum list.append 200000
+# elapsed list.append 6730297
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 322046
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 133838
+list.map	100000	7
+# checksum list.map 100000
+# elapsed list.map 738161
+list.filter	100000	7
+# checksum list.filter 50004
+# elapsed list.filter 723068
+list.fold	100000	3
+# checksum list.fold 500304918
+# elapsed list.fold 314695
+list.sorted	100000	102
+# checksum list.sorted 100000
+# elapsed list.sorted 10249026
+list.contains	100	179211
+# checksum list.contains 0
+# elapsed list.contains 17921195
+list.distinct	100000	18
+# checksum list.distinct 10007
+# elapsed list.distinct 1887119
+list.concat_reverse	100000	22
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 2289513
+list.records_map	100000	28
+# checksum list.records_map 500404918
+# elapsed list.records_map 2810844
+map.int_put_get	200000	37
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7499394
+map.string_put_get	100000	61
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 6106073
+map.iterate_entries	100000	247
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 24751348
+set.add_contains	200000	79
+# checksum set.add_contains 100000
+# elapsed set.add_contains 15960813
+json.parse	5000	1142
+# checksum json.parse 1
+# elapsed json.parse 5711661
+json.roundtrip	5000	2006
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 10033398
+csv.stringify	5000	271
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1355933
+csv.parse	5000	148
+# checksum csv.parse 5000
+# elapsed csv.parse 742808
+encoding.base64_encode	157689	1
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 238623
+encoding.base64_decode	157689	1
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 260205
+encoding.hex_encode	157689	5
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 843076
+crypto.sha256	157689	1
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 181539
+bytes.builder	100000	4
+# checksum bytes.builder 100000
+# elapsed bytes.builder 447952
+regex.find_all	2000	318
+# checksum regex.find_all 2000
+# elapsed regex.find_all 636100
+regex.matches	10000	92
+# checksum regex.matches 10000
+# elapsed regex.matches 924787
+regex.replace_all	2000	870
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 1741784
+path.join_normalize	50000	534
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 26709032
+path.basename	100000	13
+# checksum path.basename 800000
+# elapsed path.basename 1321253
+url.parse	20000	397
+# checksum url.parse 20000
+# elapsed url.parse 7946864
+url.encode_component	50000	136
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6825648
+math.sqrt_sin	1000000	8
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 8469317
+yaml.parse	2000	7463
+# checksum yaml.parse 1
+# elapsed yaml.parse 14926333
+yaml.roundtrip	2000	10290
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 20580905
+toml.parse	2000	6540
+# checksum toml.parse 1
+# elapsed toml.parse 13081898
+html.parse	2000	1860
+# checksum html.parse 1
+# elapsed html.parse 3720929
+html.escape_unescape	2000	130
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 260355
+bigint.factorial_1000	1000	182
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 182690
+decimal.add_round	20000	1461
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 29239346
+compress.gzip	880000	2
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2152962
+compress.roundtrip	880000	8
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 7389531
+time.parse_timestamp	20000	330
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 6619663
+queue.enqueue_dequeue	200000	14
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 2801680
+priority_queue.enqueue_dequeue	100000	175
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 17503888
+archive.zip_pack	2000	2074
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 4149001
+archive.tar_pack	2000	4109
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 8219176
+archive.zip_unpack	2000	9820
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 19640240
+sse.feed	2000	1902
+# checksum sse.feed 2000
+# elapsed sse.feed 3805475
+time.timestamp_to_string	20000	108
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 2165180
+random.uuid_v4	20000	451
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 9037205
+fs.write_file_64k	200	24270
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 4854024
+fs.read_file_64k	200	49368
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 9873797
+fs.stat	200	4886
+# checksum fs.stat 200
+# elapsed fs.stat 977354
+fs.list_200	1	60910
+# checksum fs.list_200 200
+# elapsed fs.list_200 60910
+log.info	20000	4021
+# checksum log.info 20000
+# elapsed log.info 80433338
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 305782
+string.concat	20000	1552
+# checksum string.concat 20000
+# elapsed string.concat 31040348
+string.split	200	17566
+# checksum string.split 400000
+# elapsed string.split 3513233
+string.replace_all	200	47406
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 9481331
+string.contains	2000	4465
+# checksum string.contains 2000
+# elapsed string.contains 8931660
+string.upper	200	47922
+# checksum string.upper 3144600
+# elapsed string.upper 9584574
+string.trim	100000	8
+# checksum string.trim 600000
+# elapsed string.trim 884408
+string.index_char_at	100000	7
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 717751
+string.chars	20	109487
+# checksum string.chars 314460
+# elapsed string.chars 2189747
+string.parse_int	100000	19
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 1984793
+string.interpolate	100000	81
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8128362
+list.append	200000	55
+# checksum list.append 200000
+# elapsed list.append 11004543
+list.at	200000	2
+# checksum list.at 1000609836
+# elapsed list.at 433891
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110864
+list.map	100000	2
+# checksum list.map 100000
+# elapsed list.map 240906
+list.filter	100000	15
+# checksum list.filter 50004
+# elapsed list.filter 1578252
+list.fold	100000	2
+# checksum list.fold 500304918
+# elapsed list.fold 269138
+list.sorted	100000	108
+# checksum list.sorted 100000
+# elapsed list.sorted 10875992
+list.contains	100	172660
+# checksum list.contains 0
+# elapsed list.contains 17266017
+list.distinct	100000	24
+# checksum list.distinct 10007
+# elapsed list.distinct 2485253
+list.concat_reverse	100000	19
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1906657
+list.records_map	100000	25
+# checksum list.records_map 500404918
+# elapsed list.records_map 2529157
+map.int_put_get	200000	38
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7650416
+map.string_put_get	100000	56
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 5672869
+map.iterate_entries	100000	198
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 19867626
+set.add_contains	200000	92
+# checksum set.add_contains 100000
+# elapsed set.add_contains 18409917
+json.parse	5000	1223
+# checksum json.parse 1
+# elapsed json.parse 6115583
+json.roundtrip	5000	1941
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 9705908
+csv.stringify	5000	322
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1612433
+csv.parse	5000	152
+# checksum csv.parse 5000
+# elapsed csv.parse 762437
+encoding.base64_encode	157689	1
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 186225
+encoding.base64_decode	157689	2
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 425478
+encoding.hex_encode	157689	3
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 600432
+crypto.sha256	157689	1
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 179806
+bytes.builder	100000	5
+# checksum bytes.builder 100000
+# elapsed bytes.builder 579646
+regex.find_all	2000	275
+# checksum regex.find_all 2000
+# elapsed regex.find_all 551295
+regex.matches	10000	90
+# checksum regex.matches 10000
+# elapsed regex.matches 909614
+regex.replace_all	2000	283
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 566197
+path.join_normalize	50000	563
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 28168519
+path.basename	100000	12
+# checksum path.basename 800000
+# elapsed path.basename 1293342
+url.parse	20000	349
+# checksum url.parse 20000
+# elapsed url.parse 6990260
+url.encode_component	50000	122
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6108597
+math.sqrt_sin	1000000	7
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 7464481
+yaml.parse	2000	6890
+# checksum yaml.parse 1
+# elapsed yaml.parse 13781225
+yaml.roundtrip	2000	10820
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 21640676
+toml.parse	2000	5178
+# checksum toml.parse 1
+# elapsed toml.parse 10357312
+html.parse	2000	1890
+# checksum html.parse 1
+# elapsed html.parse 3781779
+html.escape_unescape	2000	116
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 232634
+bigint.factorial_1000	1000	378
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 378219
+decimal.add_round	20000	1405
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 28110873
+compress.gzip	880000	2
+# checksum compress.gzip 2638
+# elapsed compress.gzip 2102277
+compress.roundtrip	880000	4
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 4255534
+time.parse_timestamp	20000	297
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 5957574
+queue.enqueue_dequeue	200000	13
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 2793648
+priority_queue.enqueue_dequeue	100000	122
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 12288606
+archive.zip_pack	2000	1314
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2628244
+archive.tar_pack	2000	5826
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 11652810
+archive.zip_unpack	2000	8817
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 17634331
+sse.feed	2000	1646
+# checksum sse.feed 2000
+# elapsed sse.feed 3293583
+time.timestamp_to_string	20000	106
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 2137809
+random.uuid_v4	20000	430
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8603263
+fs.write_file_64k	200	18854
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 3770852
+fs.read_file_64k	200	39522
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 7904442
+fs.stat	200	5886
+# checksum fs.stat 200
+# elapsed fs.stat 1177236
+fs.list_200	1	77825
+# checksum fs.list_200 200
+# elapsed fs.list_200 77825
+log.info	20000	3542
+# checksum log.info 20000
+# elapsed log.info 70846719
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 300253
+string.concat	20000	2117
+# checksum string.concat 20000
+# elapsed string.concat 42345304
+string.split	200	21748
+# checksum string.split 400000
+# elapsed string.split 4349799
+string.replace_all	200	59267
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 11853558
+string.contains	2000	4421
+# checksum string.contains 2000
+# elapsed string.contains 8843670
+string.upper	200	44883
+# checksum string.upper 3144600
+# elapsed string.upper 8976610
+string.trim	100000	8
+# checksum string.trim 600000
+# elapsed string.trim 880792
+string.index_char_at	100000	6
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 642830
+string.chars	20	126770
+# checksum string.chars 314460
+# elapsed string.chars 2535402
+string.parse_int	100000	18
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 1851947
+string.interpolate	100000	81
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8166849
+list.append	200000	73
+# checksum list.append 200000
+# elapsed list.append 14768831
+list.at	200000	2
+# checksum list.at 1000609836
+# elapsed list.at 473069
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110793
+list.map	100000	5
+# checksum list.map 100000
+# elapsed list.map 506559
+list.filter	100000	7
+# checksum list.filter 50004
+# elapsed list.filter 797905
+list.fold	100000	3
+# checksum list.fold 500304918
+# elapsed list.fold 301986
+list.sorted	100000	102
+# checksum list.sorted 100000
+# elapsed list.sorted 10293571
+list.contains	100	179325
+# checksum list.contains 0
+# elapsed list.contains 17932581
+list.distinct	100000	19
+# checksum list.distinct 10007
+# elapsed list.distinct 1990486
+list.concat_reverse	100000	11
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1191511
+list.records_map	100000	23
+# checksum list.records_map 500404918
+# elapsed list.records_map 2333984
+map.int_put_get	200000	35
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7161960
+map.string_put_get	100000	64
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 6499695
+map.iterate_entries	100000	170
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 17052291
+set.add_contains	200000	79
+# checksum set.add_contains 100000
+# elapsed set.add_contains 15831652
+json.parse	5000	1331
+# checksum json.parse 1
+# elapsed json.parse 6658174
+json.roundtrip	5000	1831
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 9157709
+csv.stringify	5000	293
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1465696
+csv.parse	5000	190
+# checksum csv.parse 5000
+# elapsed csv.parse 950545
+encoding.base64_encode	157689	5
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 820052
+encoding.base64_decode	157689	1
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 229379
+encoding.hex_encode	157689	3
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 485026
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 106598
+bytes.builder	100000	10
+# checksum bytes.builder 100000
+# elapsed bytes.builder 1028419
+regex.find_all	2000	268
+# checksum regex.find_all 2000
+# elapsed regex.find_all 537945
+regex.matches	10000	130
+# checksum regex.matches 10000
+# elapsed regex.matches 1307483
+regex.replace_all	2000	279
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 558655
+path.join_normalize	50000	534
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 26712310
+path.basename	100000	12
+# checksum path.basename 800000
+# elapsed path.basename 1254934
+url.parse	20000	337
+# checksum url.parse 20000
+# elapsed url.parse 6744647
+url.encode_component	50000	135
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6772193
+math.sqrt_sin	1000000	8
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 8009997
+yaml.parse	2000	7204
+# checksum yaml.parse 1
+# elapsed yaml.parse 14408314
+yaml.roundtrip	2000	10987
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 21974735
+toml.parse	2000	5426
+# checksum toml.parse 1
+# elapsed toml.parse 10852072
+html.parse	2000	1872
+# checksum html.parse 1
+# elapsed html.parse 3745975
+html.escape_unescape	2000	148
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 297850
+bigint.factorial_1000	1000	177
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 177302
+decimal.add_round	20000	1470
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 29414379
+compress.gzip	880000	3
+# checksum compress.gzip 2638
+# elapsed compress.gzip 3103057
+compress.roundtrip	880000	4
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 3674124
+time.parse_timestamp	20000	311
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 6230246
+queue.enqueue_dequeue	200000	7
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 1444855
+priority_queue.enqueue_dequeue	100000	134
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 13426348
+archive.zip_pack	2000	1484
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2969187
+archive.tar_pack	2000	5293
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 10586366
+archive.zip_unpack	2000	10583
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 21166861
+sse.feed	2000	1608
+# checksum sse.feed 2000
+# elapsed sse.feed 3216403
+time.timestamp_to_string	20000	111
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 2238318
+random.uuid_v4	20000	470
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 9411878
+fs.write_file_64k	200	20994
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 4198845
+fs.read_file_64k	200	49201
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 9840362
+fs.stat	200	4699
+# checksum fs.stat 200
+# elapsed fs.stat 939909
+fs.list_200	1	63313
+# checksum fs.list_200 200
+# elapsed fs.list_200 63313
+log.info	20000	3740
+# checksum log.info 20000
+# elapsed log.info 74807142
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 325301
+string.concat	20000	1667
+# checksum string.concat 20000
+# elapsed string.concat 33345618
+string.split	200	18176
+# checksum string.split 400000
+# elapsed string.split 3635252
+string.replace_all	200	46446
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 9289308
+string.contains	2000	5269
+# checksum string.contains 2000
+# elapsed string.contains 10539095
+string.upper	200	47758
+# checksum string.upper 3144600
+# elapsed string.upper 9551666
+string.trim	100000	10
+# checksum string.trim 600000
+# elapsed string.trim 1074728
+string.index_char_at	100000	6
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 661047
+string.chars	20	79400
+# checksum string.chars 314460
+# elapsed string.chars 1588012
+string.parse_int	100000	24
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 2421509
+string.interpolate	100000	84
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 8449747
+list.append	200000	37
+# checksum list.append 200000
+# elapsed list.append 7460479
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 304900
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110964
+list.map	100000	3
+# checksum list.map 100000
+# elapsed list.map 363377
+list.filter	100000	4
+# checksum list.filter 50004
+# elapsed list.filter 469795
+list.fold	100000	4
+# checksum list.fold 500304918
+# elapsed list.fold 473696
+list.sorted	100000	110
+# checksum list.sorted 100000
+# elapsed list.sorted 11054738
+list.contains	100	194924
+# checksum list.contains 0
+# elapsed list.contains 19492427
+list.distinct	100000	18
+# checksum list.distinct 10007
+# elapsed list.distinct 1805839
+list.concat_reverse	100000	54
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 5453930
+list.records_map	100000	22
+# checksum list.records_map 500404918
+# elapsed list.records_map 2234031
+map.int_put_get	200000	34
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 6891899
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 6646428
+map.iterate_entries	100000	274
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 27489784
+set.add_contains	200000	59
+# checksum set.add_contains 100000
+# elapsed set.add_contains 11917037
+json.parse	5000	1060
+# checksum json.parse 1
+# elapsed json.parse 5300217
+json.roundtrip	5000	1822
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 9112276
+csv.stringify	5000	254
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1271219
+csv.parse	5000	169
+# checksum csv.parse 5000
+# elapsed csv.parse 849816
+encoding.base64_encode	157689	1
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 175970
+encoding.base64_decode	157689	1
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 249770
+encoding.hex_encode	157689	3
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 527120
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 89292
+bytes.builder	100000	4
+# checksum bytes.builder 100000
+# elapsed bytes.builder 424307
+regex.find_all	2000	277
+# checksum regex.find_all 2000
+# elapsed regex.find_all 554550
+regex.matches	10000	99
+# checksum regex.matches 10000
+# elapsed regex.matches 997705
+regex.replace_all	2000	298
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 597463
+path.join_normalize	50000	520
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 26049892
+path.basename	100000	15
+# checksum path.basename 800000
+# elapsed path.basename 1598001
+url.parse	20000	390
+# checksum url.parse 20000
+# elapsed url.parse 7801430
+url.encode_component	50000	150
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 7535577
+math.sqrt_sin	1000000	9
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 9608219
+yaml.parse	2000	7415
+# checksum yaml.parse 1
+# elapsed yaml.parse 14831332
+yaml.roundtrip	2000	13117
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 26235628
+toml.parse	2000	6033
+# checksum toml.parse 1
+# elapsed toml.parse 12067273
+html.parse	2000	2226
+# checksum html.parse 1
+# elapsed html.parse 4453231
+html.escape_unescape	2000	244
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 488812
+bigint.factorial_1000	1000	211
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 211843
+decimal.add_round	20000	1629
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 32591896
+compress.gzip	880000	3
+# checksum compress.gzip 2638
+# elapsed compress.gzip 3236148
+compress.roundtrip	880000	4
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 4294987
+time.parse_timestamp	20000	451
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 9027251
+queue.enqueue_dequeue	200000	15
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 3101012
+priority_queue.enqueue_dequeue	100000	129
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 12972802
+archive.zip_pack	2000	1430
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2860607
+archive.tar_pack	2000	6732
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 13464418
+archive.zip_unpack	2000	7489
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 14979997
+sse.feed	2000	1546
+# checksum sse.feed 2000
+# elapsed sse.feed 3093978
+time.timestamp_to_string	20000	98
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 1976622
+random.uuid_v4	20000	424
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8491765
+fs.write_file_64k	200	20144
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 4028923
+fs.read_file_64k	200	36409
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 7281912
+fs.stat	200	4430
+# checksum fs.stat 200
+# elapsed fs.stat 886179
+fs.list_200	1	65457
+# checksum fs.list_200 200
+# elapsed fs.list_200 65457
+log.info	20000	3767
+# checksum log.info 20000
+# elapsed log.info 75346063
+string.append_builder	100000	3
+# checksum string.append_builder 100000
+# elapsed string.append_builder 384989
+string.concat	20000	2299
+# checksum string.concat 20000
+# elapsed string.concat 45990851
+string.split	200	22355
+# checksum string.split 400000
+# elapsed string.split 4471147
+string.replace_all	200	50244
+# checksum string.replace_all 1944600
+# elapsed string.replace_all 10048821
+string.contains	2000	4365
+# checksum string.contains 2000
+# elapsed string.contains 8730262
+string.upper	200	47553
+# checksum string.upper 3144600
+# elapsed string.upper 9510745
+string.trim	100000	8
+# checksum string.trim 600000
+# elapsed string.trim 863717
+string.index_char_at	100000	6
+# checksum string.index_char_at 100000
+# elapsed string.index_char_at 695437
+string.chars	20	154610
+# checksum string.chars 314460
+# elapsed string.chars 3092200
+string.parse_int	100000	18
+# checksum string.parse_int 1234500000
+# elapsed string.parse_int 1893548
+string.interpolate	100000	105
+# checksum string.interpolate 2031636
+# elapsed string.interpolate 10565584
+list.append	200000	57
+# checksum list.append 200000
+# elapsed list.append 11432877
+list.at	200000	1
+# checksum list.at 1000609836
+# elapsed list.at 362435
+list.for_in	100000	1
+# checksum list.for_in 500304918
+# elapsed list.for_in 110884
+list.map	100000	2
+# checksum list.map 100000
+# elapsed list.map 296559
+list.filter	100000	8
+# checksum list.filter 50004
+# elapsed list.filter 819646
+list.fold	100000	1
+# checksum list.fold 500304918
+# elapsed list.fold 196079
+list.sorted	100000	108
+# checksum list.sorted 100000
+# elapsed list.sorted 10806140
+list.contains	100	246562
+# checksum list.contains 0
+# elapsed list.contains 24656223
+list.distinct	100000	21
+# checksum list.distinct 10007
+# elapsed list.distinct 2154218
+list.concat_reverse	100000	17
+# checksum list.concat_reverse 200000
+# elapsed list.concat_reverse 1758669
+list.records_map	100000	24
+# checksum list.records_map 500404918
+# elapsed list.records_map 2439295
+map.int_put_get	200000	37
+# checksum map.int_put_get 9999900000
+# elapsed map.int_put_get 7487901
+map.string_put_get	100000	95
+# checksum map.string_put_get 50000
+# elapsed map.string_put_get 9501657
+map.iterate_entries	100000	242
+# checksum map.iterate_entries 4999950000
+# elapsed map.iterate_entries 24211325
+set.add_contains	200000	112
+# checksum set.add_contains 100000
+# elapsed set.add_contains 22452180
+json.parse	5000	1557
+# checksum json.parse 1
+# elapsed json.parse 7788601
+json.roundtrip	5000	1834
+# checksum json.roundtrip 356671
+# elapsed json.roundtrip 9174733
+csv.stringify	5000	255
+# checksum csv.stringify 157780
+# elapsed csv.stringify 1278509
+csv.parse	5000	169
+# checksum csv.parse 5000
+# elapsed csv.parse 848303
+encoding.base64_encode	157689	3
+# checksum encoding.base64_encode 210252
+# elapsed encoding.base64_encode 560093
+encoding.base64_decode	157689	1
+# checksum encoding.base64_decode 157689
+# elapsed encoding.base64_decode 231332
+encoding.hex_encode	157689	1
+# checksum encoding.hex_encode 315378
+# elapsed encoding.hex_encode 239194
+crypto.sha256	157689	0
+# checksum crypto.sha256 32
+# elapsed crypto.sha256 92517
+bytes.builder	100000	4
+# checksum bytes.builder 100000
+# elapsed bytes.builder 432169
+regex.find_all	2000	497
+# checksum regex.find_all 2000
+# elapsed regex.find_all 995011
+regex.matches	10000	95
+# checksum regex.matches 10000
+# elapsed regex.matches 950445
+regex.replace_all	2000	287
+# checksum regex.replace_all 3999
+# elapsed regex.replace_all 574820
+path.join_normalize	50000	584
+# checksum path.join_normalize 500000
+# elapsed path.join_normalize 29216222
+path.basename	100000	12
+# checksum path.basename 800000
+# elapsed path.basename 1297668
+url.parse	20000	379
+# checksum url.parse 20000
+# elapsed url.parse 7585150
+url.encode_component	50000	135
+# checksum url.encode_component 1100000
+# elapsed url.encode_component 6789509
+math.sqrt_sin	1000000	8
+# checksum math.sqrt_sin 2255684
+# elapsed math.sqrt_sin 8337551
+yaml.parse	2000	7381
+# checksum yaml.parse 1
+# elapsed yaml.parse 14762952
+yaml.roundtrip	2000	11009
+# checksum yaml.roundtrip 139780
+# elapsed yaml.roundtrip 22018905
+toml.parse	2000	6407
+# checksum toml.parse 1
+# elapsed toml.parse 12815590
+html.parse	2000	1712
+# checksum html.parse 1
+# elapsed html.parse 3425422
+html.escape_unescape	2000	144
+# checksum html.escape_unescape 23719
+# elapsed html.escape_unescape 288456
+bigint.factorial_1000	1000	386
+# checksum bigint.factorial_1000 2568
+# elapsed bigint.factorial_1000 386351
+decimal.add_round	20000	1933
+# checksum decimal.add_round 200010000
+# elapsed decimal.add_round 38665102
+compress.gzip	880000	4
+# checksum compress.gzip 2638
+# elapsed compress.gzip 4020972
+compress.roundtrip	880000	4
+# checksum compress.roundtrip 880000
+# elapsed compress.roundtrip 3852092
+time.parse_timestamp	20000	290
+# checksum time.parse_timestamp 80000
+# elapsed time.parse_timestamp 5810126
+queue.enqueue_dequeue	200000	10
+# checksum queue.enqueue_dequeue 4999950000
+# elapsed queue.enqueue_dequeue 2075297
+priority_queue.enqueue_dequeue	100000	149
+# checksum priority_queue.enqueue_dequeue 250160470
+# elapsed priority_queue.enqueue_dequeue 14923559
+archive.zip_pack	2000	1388
+# checksum archive.zip_pack 322692
+# elapsed archive.zip_pack 2777510
+archive.tar_pack	2000	5898
+# checksum archive.tar_pack 2049024
+# elapsed archive.tar_pack 11797550
+archive.zip_unpack	2000	8366
+# checksum archive.zip_unpack 2000
+# elapsed archive.zip_unpack 16733409
+sse.feed	2000	1650
+# checksum sse.feed 2000
+# elapsed sse.feed 3301609
+time.timestamp_to_string	20000	102
+# checksum time.timestamp_to_string 480000
+# elapsed time.timestamp_to_string 2056159
+random.uuid_v4	20000	437
+# checksum random.uuid_v4 720000
+# elapsed random.uuid_v4 8758889
+fs.write_file_64k	200	21028
+# checksum fs.write_file_64k 200
+# elapsed fs.write_file_64k 4205655
+fs.read_file_64k	200	35566
+# checksum fs.read_file_64k 13107200
+# elapsed fs.read_file_64k 7113322
+fs.stat	200	5213
+# checksum fs.stat 200
+# elapsed fs.stat 1042681
+fs.list_200	1	94880
+# checksum fs.list_200 200
+# elapsed fs.list_200 94880
+log.info	20000	3699
+# checksum log.info 20000
+# elapsed log.info 73986279
