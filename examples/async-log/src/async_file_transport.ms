@@ -36,10 +36,10 @@ type AsyncFileTransport:
 fn io_error(cause: FileSystemError) LogError:
     return LogError.FileSystem(cause)
 
-fn lift(result: Result[Unit, FileSystemError]) Result[Unit, LogError]:
-    match result:
-        ok(_): return ok(unit)
-        error(cause): return error(io_error(cause))
+fn lift[T](result: Result[T, FileSystemError]) Result[T, LogError]:
+    if let value = result: return ok(value)
+
+    return error(io_error(result.unwrap_error()))
 
 fn numbered(path: String, index: Int) String:
     if index == 0: return path
@@ -47,14 +47,10 @@ fn numbered(path: String, index: Int) String:
     return "{path}.{index}"
 
 fn exists(fs: FileSystem, path: String) Bool:
-    match fs.stat(path: path, follow_links: false):
-        ok(_): return true
-        error(_): return false
+    return fs.stat(path: path, follow_links: false).is_ok()
 
 fn age_of(modified: Timestamp) Duration:
-    match wall_clock().now().difference(modified):
-        ok(age): return age
-        error(_): return duration(0)
+    return wall_clock().now().difference(modified).unwrap_or(duration(0))
 
 # Adopts an existing file's size, and its modification time as the start of its age.
 fn adopt(w: Writer, info: FileInfo) Unit:
@@ -63,18 +59,11 @@ fn adopt(w: Writer, info: FileInfo) Unit:
 
 # Opens the active file for append and reads its size and age.
 fn open_active(w: Writer) Result[Unit, LogError]:
-    let handle = match w.fs.open(path: w.path, flags: "a", mode: 384):
-        ok(opened): opened
-        error(cause): return error(io_error(cause))
-
+    let handle = try lift(w.fs.open(path: w.path, flags: "a", mode: 384))
     w.handle = some(handle)
     w.size = 0
     w.opened = clock().now()
-
-    match handle.stat():
-        ok(info): adopt(w, info)
-        error(_): return ok(unit)
-
+    if let info = handle.stat(): adopt(w, info)
     return ok(unit)
 
 fn close_file(w: Writer) Unit:
@@ -86,14 +75,14 @@ fn rotate(w: Writer) Result[Unit, LogError]:
     close_file(w)
     var last = 0
     while exists(w.fs, numbered(w.path, last + 1)):
-        last = last + 1
+        last += 1
     var keep = last + 1
     if w.max_files > 0: keep = w.max_files - 1
     var drop = last
 
     while drop >= keep and drop > 0:
         try lift(w.fs.remove(path: numbered(w.path, drop)))
-        drop = drop - 1
+        drop -= 1
 
     var index = last
     if keep - 1 < index: index = keep - 1
@@ -105,11 +94,11 @@ fn rotate(w: Writer) Result[Unit, LogError]:
                 .fs
                 .rename(
                     source: numbered(w.path, index),
-                    destination: numbered(w.path, (index + 1))
+                    destination: numbered(w.path, index + 1)
                 )
             )
         )
-        index = index - 1
+        index -= 1
 
     if keep == 0: try lift(w.fs.remove(path: w.path))
     return open_active(w)
@@ -129,16 +118,14 @@ fn active_file(w: Writer) Result[FileHandle, LogError]:
     return error(LogError.Closed)
 
 fn has_file(w: Writer) Bool:
-    if let _handle = w.handle: return true
-
-    return false
+    return w.handle.is_some()
 
 fn append(w: Writer, data: Bytes) Result[Unit, LogError]:
     if not has_file(w): try open_active(w)
     if rotation_due(w, data.length()): try rotate(w)
     let handle = try active_file(w)
     try lift(handle.write(data))
-    w.size = w.size + data.length()
+    w.size += data.length()
     return ok(unit)
 
 fn sync_file(w: Writer) Result[Unit, LogError]:
@@ -163,9 +150,8 @@ fn take_failure(
         return failures.take()
 
 fn store(w: Writer, failures: BlockingQueue[LogError], data: Bytes) Unit:
-    match append(w, data):
-        ok(_): return unit
-        error(cause): return record_failure(failures, cause)
+    let outcome = append(w, data)
+    if outcome.is_error(): record_failure(failures, outcome.unwrap_error())
 
 fn serve(w: Writer, failures: BlockingQueue[LogError], item: Item) Unit:
     match item:

@@ -14,11 +14,10 @@ fn succeeding() Result[Int, Failure]:
     return ok(3)
 
 fn describe[T](r: Result[T, Error]) String:
-    match r:
-        ok(_):
-            return "ok"
-        error(cause):
-            return cause.message()
+    if r.is_error():
+        return r.unwrap_error().message()
+
+    return "ok"
 
 test "a generic Result[T, Error] parameter infers T and widens a domain error":
     if describe(r: failing()) != "failure 7":

@@ -10,7 +10,7 @@ type Acc:
 
 impl Counter for Acc:
     fn bump(by: Int) Int:
-        self.total = self.total + by
+        self.total += by
         return self.total
 
 type Shape:
@@ -19,18 +19,13 @@ type Shape:
     case Tri(b: Int)
 
 fn got_line() Bool:
-    match read_line(input: stdin()):
-        ok(line):
-            return line.is_some()
-        error(_):
-            return false
+    if let line = read_line(input: stdin()):
+        return line.is_some()
+
+    return false
 
 fn say(text: String) Unit:
-    match stdout().write(data: text.to_bytes()):
-        ok(_):
-            unit
-        error(_):
-            unit
+    let _ignored = stdout().write(data: text.to_bytes())
 
 fn since(started: Instant) Int:
     return clock().now().difference(other: started).to_nanoseconds()
@@ -72,7 +67,7 @@ export fn main() Int:
 
     while i < 50000:
         sb.append("x")
-        i = i + 1
+        i += 1
 
     let built = sb.freeze()
     report(name: "string_append_50k", ops: 50000, started: t)
@@ -83,7 +78,7 @@ export fn main() Int:
 
     while more:
         if got_line():
-            lines = lines + 1
+            lines += 1
         else:
             more = false
 
@@ -95,14 +90,14 @@ export fn main() Int:
 
     while i < 8000:
         m.add(key: i, value: i * 2)
-        i = i + 1
+        i += 1
 
     var sum = 0
     i = 0
 
     while i < 8000:
-        sum = sum + m.get(key: i).unwrap()
-        i = i + 1
+        sum += m.get(key: i).unwrap()
+        i += 1
 
     report(name: "map_put_get_8k", ops: 16000, started: t)
     # int_eq
@@ -112,8 +107,8 @@ export fn main() Int:
 
     while i < 10000000:
         if i % 3 == 0:
-            hits = hits + 1
-        i = i + 1
+            hits += 1
+        i += 1
 
     report(name: "int_eq", ops: 10000000, started: t)
     # generic call
@@ -122,8 +117,8 @@ export fn main() Int:
     var g = 0
 
     while i < 1000000:
-        g = g + ident[Int](i)
-        i = i + 1
+        g += ident[Int](i)
+        i += 1
 
     report(name: "generic_call", ops: 1000000, started: t)
     # method call
@@ -133,7 +128,7 @@ export fn main() Int:
 
     while i < 1000000:
         acc.bump(by: 1)
-        i = i + 1
+        i += 1
 
     report(name: "method_call", ops: 1000000, started: t)
     # try
@@ -142,13 +137,12 @@ export fn main() Int:
     var tr = 0
 
     while i < 1000000:
-        match chain(i):
-            ok(v):
-                tr = tr + v
-            error(_):
-                tr = tr - 1
+        if let v = chain(i):
+            tr += v
+        else:
+            tr -= 1
 
-        i = i + 1
+        i += 1
 
     report(name: "try", ops: 1000000, started: t)
     # statement match
@@ -158,8 +152,8 @@ export fn main() Int:
     var ma = 0
 
     while i < 1000000:
-        ma = ma + area(shapes.at(i % 3).unwrap())
-        i = i + 1
+        ma += area(shapes.at(i % 3).unwrap())
+        i += 1
 
     report(name: "match", ops: 1000000, started: t)
     # builtin method: length()
@@ -169,14 +163,14 @@ export fn main() Int:
 
     while i < 100:
         xs.append(i)
-        i = i + 1
+        i += 1
 
     i = 0
     var ln = 0
 
     while i < 1000000:
-        ln = ln + xs.length()
-        i = i + 1
+        ln += xs.length()
+        i += 1
 
     report(name: "builtin_length", ops: 1000000, started: t)
     # for loop over a list
@@ -185,12 +179,12 @@ export fn main() Int:
 
     while i < 1000000:
         big.append(i)
-        i = i + 1
+        i += 1
 
     t = clock().now()
     var fs = 0
     for x in big:
-        fs = fs + x
+        fs += x
     report(name: "for_list", ops: 1000000, started: t)
     say(
         "# sink {built.byte_length()} {sum} {hits} {g} {acc.total} {tr} {ma} {ln} {fs}\n"

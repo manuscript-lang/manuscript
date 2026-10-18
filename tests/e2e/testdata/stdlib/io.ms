@@ -2,7 +2,6 @@ import {ReadStream, WriteStream, IoError, read_all, read_line, copy} from "@std/
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
 import MemoryStream from "./support/streams.ms"
-import value from "./support/results.ms"
 
 test "stream compositions invoke source implementations and preserve EOF":
     let reader = MemoryStream(
@@ -11,16 +10,16 @@ test "stream compositions invoke source implementations and preserve EOF":
         closed: false
     )
     let input = ReadStream(reader)
-    if value(read_line(input: input)) != some("one"): return panic("CRLF line")
-    if value(read_line(input: input)) != some("two"): return panic("LF line")
-    if value(read_line(input: input)) != some("last"): return panic("unterminated line")
-    if not value(read_line(input: input)).is_none(): return panic("EOF")
+    if (try read_line(input: input)) != some("one"): return panic("CRLF line")
+    if (try read_line(input: input)) != some("two"): return panic("LF line")
+    if (try read_line(input: input)) != some("last"): return panic("unterminated line")
+    if not (try read_line(input: input)).is_none(): return panic("EOF")
 
     let output = MemoryStream(data: "".to_bytes(), offset: 0, closed: false)
     let source = MemoryStream(data: "é🙂".to_bytes(), offset: 0, closed: false)
     if (
-        value(
-            copy(
+        (
+            try copy(
                 input: ReadStream(source),
                 output: WriteStream(output),
                 max_bytes: 6

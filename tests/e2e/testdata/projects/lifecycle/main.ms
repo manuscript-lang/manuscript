@@ -7,23 +7,26 @@ type Resource:
     label: String
     output: WriteStream
 
+fn emit(output: WriteStream, text: String) Unit:
+    let _ignored = output.write(data: text.to_bytes())
+
 impl Closeable for Resource:
     fn close() Unit:
-        self.output.write(data: "close {self.label}\n".to_bytes())
+        emit(self.output, "close {self.label}\n")
 
 type Pair:
     first: Int
     second: Int
 
 fn report(output: WriteStream, label: String, value: Int) Int:
-    output.write(data: "{label}\n".to_bytes())
+    emit(output, "{label}\n")
     return value
 
 fn combine(first: Int, second: Int) Int:
     return first + second
 
 fn select(output: WriteStream) fn(first: Int, second: Int) Int:
-    output.write(data: "callable\n".to_bytes())
+    emit(output, "callable\n")
     return combine
 
 fn early(output: WriteStream) Int:
@@ -40,7 +43,7 @@ fn propagate(output: WriteStream) Result[Int, String]:
         return ok(number)
 
 fn iterable(output: WriteStream) List[Int]:
-    output.write(data: "iterable\n".to_bytes())
+    emit(output, "iterable\n")
     return [1, 2]
 
 export fn main() Int:
@@ -58,28 +61,28 @@ export fn main() Int:
     if not (pair.first + pair.second == 3):
         return panic(message: "check failed")
 
-    with resource = Resource(label: "normal", output: stdout()):
-        let completed = unit
-    stdout().write(data: "after normal\n".to_bytes())
     var count = 0
+    with resource = Resource(label: "normal", output: stdout()):
+        count += 1
+    if count != 1:
+        return panic(message: "check failed")
+
+    emit(stdout(), "after normal\n")
+    count = 0
 
     while count < 2:
         with resource = Resource(label: "iteration", output: stdout()):
-            count = count + 1
+            count += 1
             continue
 
     for value in iterable(output: stdout()):
         with resource = Resource(label: "break", output: stdout()):
             break
-
-    match propagate(output: stdout()):
-        ok(_):
-            return panic(message: "Unexpected case")
-        error(_):
-            let completed = unit
-
+    if propagate(output: stdout()).is_ok():
+        return panic(message: "Unexpected case")
     if not (early(output: stdout()) == 5):
         return panic(message: "check failed")
+    if stdout().write(data: "finished\n".to_bytes()).is_error():
+        return 1
 
-    stdout().write(data: "finished\n".to_bytes())
     return 0

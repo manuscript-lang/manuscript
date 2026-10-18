@@ -21,9 +21,10 @@ impl Read for Box[Int]:
     fn get() Int: self.value
 
 fn invoke(transform: Optional[fn(value: Int) Int] = none) Int:
-    match transform:
-        some(callback): return callback(4)
-        none: return 0
+    if let callback = transform:
+        return callback(4)
+
+    return 0
 
 test "contextual callbacks and inline returns":
     let offset = 3

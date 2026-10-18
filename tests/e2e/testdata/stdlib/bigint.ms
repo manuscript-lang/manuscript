@@ -1,9 +1,8 @@
 import {parse, from_int, BigInt, BigIntError} from "@std/bigint.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 test "big integers exceed machine range without losing precision":
-    let big = value(parse(text: "9223372036854775808", radix: 10))
+    let big = try parse(text: "9223372036854775808", radix: 10)
     if not big.to_int().is_none(): return panic("overflow conversion")
     if big.subtract(from_int(1)).to_int() != some(9223372036854775807): return panic(
         "exact subtraction"
@@ -11,10 +10,10 @@ test "big integers exceed machine range without losing precision":
     if from_int(7).multiply(from_int(6)).to_string(radix: 10) != "42": return panic(
         "multiply"
     )
-    if value(from_int(-7).divide(from_int(3))).to_int() != some(-2): return panic(
+    if (try from_int(-7).divide(from_int(3))).to_int() != some(-2): return panic(
         "signed divide"
     )
-    if value(from_int(-7).remainder(from_int(3))).to_int() != some(-1): return panic(
+    if (try from_int(-7).remainder(from_int(3))).to_int() != some(-1): return panic(
         "signed remainder"
     )
     if from_int(5).bit_xor(from_int(3)).to_int() != some(6): return panic("bitwise xor")

@@ -15,9 +15,8 @@ impl File for ClosedFile:
 
 test "contract-valued cleanup":
     with file = File(ClosedFile(unit)):
-        match file.read(max_bytes: 1):
-            ok(_):
-                return panic(message: "Unexpected case")
-            error(cause):
-                if not (cause == IoError.Closed):
-                    return panic(message: "check failed")
+        let outcome = file.read(max_bytes: 1)
+        if not outcome.is_error():
+            return panic(message: "Unexpected case")
+        if not (outcome.unwrap_error() == IoError.Closed):
+            return panic(message: "check failed")

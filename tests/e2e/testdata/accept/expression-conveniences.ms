@@ -9,7 +9,7 @@ type Resource:
 
 impl Closeable for Resource:
     fn close() Unit:
-        self.counter.count = self.counter.count + 1
+        self.counter.count += 1
 
 fn identity[T](value: T) T: return value
 
@@ -38,11 +38,11 @@ fn all_return(value: Optional[Int]) Int:
 fn tick(counter: Counter) Int:
     if counter.count != 1: return panic("receiver must evaluate first")
 
-    counter.count = counter.count + 1
+    counter.count += 1
     return 0
 
 fn values(counter: Counter) List[Int]:
-    counter.count = counter.count + 1
+    counter.count += 1
     return [7, 8]
 
 test "indexing and generic applications coexist":
@@ -177,7 +177,7 @@ test "match blocks produce their final value":
     var count = 0
 
     while true:
-        count = count + 1
+        count += 1
 
         match present:
             some(value):
@@ -232,7 +232,7 @@ fn returned_loop(value: Optional[Int]) Int:
 
         match value:
             some(number):
-                index = index + 1
+                index += 1
                 continue
             none: break
 
@@ -258,7 +258,7 @@ test "expression exits preserve caller boundaries and evaluation order":
         let value = match present:
             some(number):
                 while iterations < 3:
-                    iterations = iterations + 1
+                    iterations += 1
                     if iterations == 2: continue
                     if iterations == 3: break
                 number
@@ -295,7 +295,7 @@ test "indexing preserves zero and nested optionals":
         return panic("nested optional indexing")
 
 fn observed_optional(counter: Counter) Optional[Int]:
-    counter.count = counter.count + 1
+    counter.count += 1
     return some(value: 5)
 
 test "match evaluates its input once and only the selected arm":

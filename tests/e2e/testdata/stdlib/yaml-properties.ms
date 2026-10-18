@@ -1,7 +1,6 @@
+import panic from "@std/faults.ms"
 import range from "@std/collections.ms"
 import {parse, stringify, YamlValue} from "@std/yaml.ms"
-import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 import {Rng, next, text, mutate} from "./support/generator.ms"
 
 fn generated(rng: Rng, depth: Int) YamlValue:
@@ -15,59 +14,47 @@ fn generated(rng: Rng, depth: Int) YamlValue:
 
     if kind == 4:
         let items: List[YamlValue] = []
-        var count = next(rng, 4)
-
-        while count > 0:
+        for item in range(0, next(rng, 4)):
             items.append(generated(rng, depth + 1))
-            count = count - 1
-
         return YamlValue.ArrayValue(items)
 
     let entries: Map[String, YamlValue] = {}
-    var count = next(rng, 4)
-
-    while count > 0:
+    for item in range(0, next(rng, 4)):
         entries.add(text(rng), generated(rng, depth + 1))
-        count = count - 1
-
     return YamlValue.ObjectValue(entries)
 
-fn check_round_trip(seed: Int, original: YamlValue) Unit:
-    let rendered = value(stringify(original))
-    if value(parse(rendered)) != original: return panic(
+fn check_round_trip(seed: Int, original: YamlValue) Result[Unit, Error]:
+    let rendered = try stringify(original)
+    if (try parse(rendered)) != original: return panic(
         "seed {seed}: changed\n{rendered}"
     )
 
-fn check_stable(seed: Int, mutated: String, first: YamlValue) Unit:
-    let again = value(stringify(first))
-    if value(parse(again)) != first: return panic(
+    return ok(unit)
+
+fn check_stable(seed: Int, mutated: String, first: YamlValue) Result[Unit, Error]:
+    let again = try stringify(first)
+    if (try parse(again)) != first: return panic(
         "seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"
     )
 
-test "YAML stringify then parse preserves generated documents":
-    var seed = 1
+    return ok(unit)
 
-    while seed <= 300:
-        check_round_trip(seed, generated(Rng(seed), 0))
-        seed = seed + 1
+test "YAML stringify then parse preserves generated documents":
+    for seed in range(1, 301):
+        try check_round_trip(seed, generated(Rng(seed), 0))
 
 test "YAML parse never faults on mutated documents and accepted input is stable":
-    var seed = 1
     var accepted = 0
 
-    while seed <= 300:
+    for seed in range(1, 301):
         let rng = Rng(seed)
-        let rendered = generated(rng, 0) | stringify | value
+        let rendered = generated(rng, 0) | stringify | try
 
         for round in range(0, 4):
             let mutated = mutate(rng, rendered)
 
-            match parse(mutated):
-                error(cause): let rejected = cause.message()
-                ok(first):
-                    accepted = accepted + 1
-                    check_stable(seed, mutated, first)
-
-        seed = seed + 1
+            if let first = parse(mutated):
+                accepted += 1
+                try check_stable(seed, mutated, first)
 
     if accepted == 0: return panic("mutation never produced a valid document")

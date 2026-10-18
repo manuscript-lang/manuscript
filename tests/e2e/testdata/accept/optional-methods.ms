@@ -5,7 +5,7 @@ type Counter:
     calls: Int
 
 fn fallback(counter: Counter) Int:
-    counter.calls = counter.calls + 1
+    counter.calls += 1
     return 42
 
 fn value_or[T](value: Optional[T], fallback: T) T:

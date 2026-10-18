@@ -1,3 +1,4 @@
+import range from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 fn ident[T](x: T) T:
@@ -16,13 +17,9 @@ fn depth() Int:
     return countdown(x: "s", n: 5)
 
 test "static specializations are reused across calls":
-    var i = 0
     var acc = 0
-
-    while i < 100:
-        acc = acc + ident(x: i)
-        i = i + 1
-
+    for i in range(0, 100):
+        acc += ident(x: i)
     if not (acc == 4950):
         return panic(message: "ident")
     if not (ident(x: "a") == "a"):

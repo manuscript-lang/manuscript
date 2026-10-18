@@ -16,8 +16,8 @@ fn exercise() Result[Unit, ExecutionError]:
         let domain = group.start(fn() Result[Int, String]: error("expected"))
         let stored = Stored(forward(number))
         let handles: List[Task[Int]] = [stored.task]
-        let joined = try group.join()
-        let joined_again = try group.join()
+        try group.join()
+        try group.join()
         let value = try stored.task.join()
         let value_again = try number.join()
         let message = try text.join()
@@ -31,13 +31,10 @@ fn exercise() Result[Unit, ExecutionError]:
                 return panic("saved task join changed")
 
         let outcome = try domain.join()
-
-        match outcome:
-            error(cause):
-                if cause != "expected":
-                    return panic("domain error changed")
-            ok(_):
-                return panic("domain error flattened")
+        if not outcome.is_error():
+            return panic("domain error flattened")
+        if outcome.unwrap_error() != "expected":
+            return panic("domain error changed")
 
         let resource = Closeable(group)
         resource.close()
@@ -56,29 +53,22 @@ fn exercise() Result[Unit, ExecutionError]:
     return ok(unit)
 
 test "typed tasks group joins and cached outcomes":
-    match exercise():
-        ok(_):
-            return
-        error(_):
-            return panic("task group failed")
+    try exercise()
 
 test "empty group joins and closes repeatedly":
     with group = TaskGroup(0.seconds):
-        match group.join():
-            ok(_):
-                group.close()
-                group.close()
-            error(_):
-                return panic("empty group timed out")
+        try group.join()
+        group.close()
+        group.close()
 
 test "zero timeout starts no callback":
     with group = TaskGroup(0.seconds):
         let task = group.start(fn(): panic("zero timeout invoked callback"))
+        let outcome = task.join()
+        if not outcome.is_error():
+            return panic("zero timeout succeeded")
 
-        let cause = match task.join():
-            error(cause): cause
-            ok(_):
-                return panic("zero timeout succeeded")
+        let cause = outcome.unwrap_error()
 
         match cause:
             Timeout:

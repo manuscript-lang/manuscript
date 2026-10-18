@@ -135,14 +135,7 @@ test "optional labels on methods and native functions":
     with service = Scheduler(limit: 1, drain: 2.seconds):
         let operation = fn() Result[Unit, Error]:
             return ok(unit)
-
-        match service.start(operation):
-            ok(_):
-                if not (true):
-                    return panic(message: "check failed")
-            error(_):
-                if not (false):
-                    return panic(message: "check failed")
+        let _id = try service.start(operation)
 
 test "omitted labels preserve evaluation order":
     let state = Synchronized(0)

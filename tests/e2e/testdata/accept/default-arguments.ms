@@ -85,12 +85,12 @@ test "default evaluation order and repeated calls":
             return panic("supplied arguments precede defaults and body")
 
         state.set(value: 0)
-        let ignored = ordered(state: state)
+        ordered(state: state)
         if state.get() != 345:
             return panic("defaults evaluate in declaration order")
 
         state.set(value: 0)
-        let again = ordered(state: state)
+        ordered(state: state)
         if state.get() != 345:
             return panic("defaults run on every call")
 

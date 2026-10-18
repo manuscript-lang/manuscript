@@ -9,7 +9,7 @@ type Resource:
 
 impl Closeable for Resource:
     fn close() Unit:
-        self.counter.value = self.counter.value + 1
+        self.counter.value += 1
 
 fn mark(counter: Counter, digit: Int) Int:
     counter.value = counter.value * 10 + digit
@@ -19,7 +19,7 @@ fn generic[T: Equal](left: T, right: T) Bool: left == right
 
 fn returning_match() Bool:
     return true == match some(1):
-        some(value): return false
+        some(_): return false
         none: false
 
 test "primitive equality captures operands once in order":
@@ -63,7 +63,7 @@ fn defaulted(
     value: Int = match some(2):
         some(number):
             with resource = Resource(counter):
-                let used = unit
+                let _used = unit
             number
         none: 0
 ) Int: value
@@ -99,13 +99,13 @@ fn nested_results(counter: Counter) Result[Int, String]:
             return ok(value)
 
         return ok(false)
-    let ignored = child()
+    let _ignored = child()
     let value = try failed()
     return ok(value)
 
 fn statement_match_try(counter: Counter) Result[Int, String]:
     match some(1):
-        some(number):
+        some(_):
             with resource = Resource(counter):
                 let value = try failed()
                 return ok(value)
@@ -117,15 +117,14 @@ fn value_match_loop_try(counter: Counter) Result[Int, String]:
     var index = 0
 
     while index < 2:
-        let selected = match some(index):
+        let _selected = match some(index):
             some(number):
                 with resource = Resource(counter):
-                    let value = try failed()
-                    let used = value
+                    let _value = try failed()
                 number
             none: 0
 
-        index = index + 1
+        index += 1
 
     return ok(index)
 
@@ -175,7 +174,7 @@ test "cleanup remains owned by its source callable":
     var index = 0
 
     while index < 3:
-        index = index + 1
+        index += 1
 
         with resource = Resource(counter):
             if index == 1: continue

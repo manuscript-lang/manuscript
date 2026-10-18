@@ -26,9 +26,7 @@ fn discarded(n: Int) Result[Int, String]:
     return ok(7)
 
 fn code(r: Result[Int, String]) Int:
-    return match r:
-        ok(v): v
-        error(e): -1
+    return r.unwrap_or(-1)
 
 fn nested(n: Int) Result[Int, String]:
     return ok((try parse(n: n)) + (try parse(n: n - 5)))
@@ -41,7 +39,7 @@ fn chained(n: Int) Result[Int, String]:
 fn in_loop(values: List[Int]) Result[Int, String]:
     var sum = 0
     for v in values:
-        sum = sum + (try parse(n: v))
+        sum += try parse(n: v)
     return ok(sum)
 
 fn in_lambda(n: Int) Result[Int, String]:

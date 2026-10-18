@@ -132,9 +132,9 @@ test "methods native APIs function values and contextual labels":
         return panic("context labels and local callback names")
 
     let memo = Map[Int, Int]()
-    let ignored = memo.add(1, 7)
+    memo.add(1, 7)
     let add = memo.add
-    let more = add(value: 8, 2)
+    add(value: 8, 2)
     if memo.get(1).unwrap() != 7 or memo.get(2).unwrap() != 8: return panic(
         "native multi parameter methods"
     )
@@ -183,7 +183,7 @@ test "written order before omitted defaults and body":
 test "callable expression precedes positional arguments":
     let counter = Counter()
     let factory = fn() fn(amount: Int, deduction: Int) Int:
-        let ignored = mark(counter, 1)
+        mark(counter, 1)
         return subtract
     let result = factory()(mark(counter, 2), mark(counter, 3))
     if result != -1 or counter.value != 123: return panic("callable expression order")

@@ -10,12 +10,17 @@ fn run(fs: FileSystem, root: String) Unit:
         200,
         fn() Int:
             var n = 0
-
             for i in range(0, 200):
-                match fs.write_file(path: "{root}/f{i}.bin", data: data, replace: true):
-                    ok(_): n = n + 1
-                    error(_): unit
-
+                if (
+                    fs
+                    .write_file(
+                        path: "{root}/f{i}.bin",
+                        data: data,
+                        replace: true
+                    )
+                    .is_ok()
+                ):
+                    n += 1
             return n
     )
     bench(
@@ -23,12 +28,9 @@ fn run(fs: FileSystem, root: String) Unit:
         200,
         fn() Int:
             var n = 0
-
             for i in range(0, 200):
-                match fs.read_file(path: "{root}/f{i}.bin"):
-                    ok(b): n = n + b.length()
-                    error(_): unit
-
+                if let b = fs.read_file(path: "{root}/f{i}.bin"):
+                    n += b.length()
             return n
     )
     bench(
@@ -36,32 +38,28 @@ fn run(fs: FileSystem, root: String) Unit:
         200,
         fn() Int:
             var n = 0
-
             for i in range(0, 200):
-                match fs.stat(path: "{root}/f{i}.bin", follow_links: true):
-                    ok(_): n = n + 1
-                    error(_): unit
-
+                if fs.stat(path: "{root}/f{i}.bin", follow_links: true).is_ok():
+                    n += 1
             return n
     )
     bench(
         "fs.list_200",
         1,
         fn() Int:
-            match fs.list(path: root):
-                ok(entries): return entries.length()
-                error(_): return 0
+            if let entries = fs.list(path: root):
+                return entries.length()
+
+            return 0
     )
 
 fn log_run(path: String) Unit:
-    match file_transport(path: path):
-        ok(transport): log_with(transport)
-        error(_): unit
+    if let transport = file_transport(path: path):
+        log_with(transport)
 
 fn log_with(transport: Transport) Unit:
-    match create(transport: transport, timestamp: false):
-        ok(logger): log_many(logger)
-        error(_): unit
+    if let logger = create(transport: transport, timestamp: false):
+        log_many(logger)
 
 fn log_many(logger: Logger) Unit:
     bench(
@@ -69,21 +67,16 @@ fn log_many(logger: Logger) Unit:
         20000,
         fn() Int:
             var n = 0
-
             for i in range(0, 20000):
-                match logger.info("request {i} handled"):
-                    ok(_): n = n + 1
-                    error(_): unit
-
+                if logger.info("request {i} handled").is_ok():
+                    n += 1
             return n
     )
 
 export fn bench_fs() Unit:
     let fs = filesystem()
 
-    match fs.temporary("ms-bench-"):
-        ok(dir):
-            run(fs, dir.path())
-            log_run("{dir.path()}/log.txt")
-            dir.close()
-        error(_): unit
+    if let dir = fs.temporary("ms-bench-"):
+        run(fs, dir.path())
+        log_run("{dir.path()}/log.txt")
+        dir.close()

@@ -27,16 +27,14 @@ test "prelude cases and optional methods need no imports":
     if absent.unwrap_or(9) != 9 or absent.unwrap_or_else(fn() Int: return 11) != 11:
         return panic("fallback failed")
 
-    match success():
-        ok(value):
-            if value.unwrap() != 7: return panic("result payload changed")
-        error(cause): return panic(cause.message())
+    let value = try success()
+    if value.unwrap() != 7: return panic("result payload changed")
 
 test "prelude Error preserves concrete failures through try":
-    let cause = match propagated():
-        ok(value): return panic("failure did not propagate")
-        error(cause): cause
+    let outcome = propagated()
+    if not outcome.is_error(): return panic("failure did not propagate")
 
+    let cause = outcome.unwrap_error()
     if cause.message() != "failed": return panic("error receiver lost")
 
     match cause:

@@ -4,7 +4,7 @@ type Counter:
     calls: Int
 
 fn counted(counter: Counter) Counter:
-    counter.calls = counter.calls + 1
+    counter.calls += 1
     return counter
 
 fn require_value[T, E](value: Optional[T], cause: E) Result[T, E]:
@@ -429,5 +429,5 @@ test "ok_or without a cause records the calling file and line":
     if named.unwrap_error() != "port": return panic("explicit cause")
 
     match find_port(none).unwrap_error():
-        MissingValue(found): unit
+        MissingValue(_): unit
         _: return panic("default cause is not MissingValue")

@@ -114,7 +114,7 @@ fn exceeds(value: Int, limit: Optional[Int]) Bool:
 # Chunks may split any line, line ending or UTF-8 scalar. An error is final for the decoder.
 export fn feed(decoder: SseDecoder, chunk: Bytes) Result[List[SseEvent], SseError]:
     let events = List[SseEvent]()
-    if decoder.failure.is_some(): return error(decoder.failure.unwrap())
+    if let failure = decoder.failure: return error(failure)
     if decoder.closed: return error(SseError.InvalidInput)
 
     var index = 0
@@ -126,7 +126,7 @@ export fn feed(decoder: SseDecoder, chunk: Bytes) Result[List[SseEvent], SseErro
             byte: chunk.at(index).unwrap(),
             events: events
         )
-        index = index + 1
+        index += 1
 
         if step.is_error():
             let failure = step.unwrap_error()
@@ -138,7 +138,7 @@ export fn feed(decoder: SseDecoder, chunk: Bytes) Result[List[SseEvent], SseErro
 # Ends the stream. A stream with no partial line and no unfinished event ends cleanly;
 # otherwise the result is Truncated and the unfinished event is never dispatched.
 export fn finish(decoder: SseDecoder) Result[Unit, SseError]:
-    if decoder.failure.is_some(): return error(decoder.failure.unwrap())
+    if let failure = decoder.failure: return error(failure)
     if decoder.closed: return error(SseError.InvalidInput)
 
     decoder.closed = true
@@ -163,7 +163,7 @@ fn consume(
         return end_line(decoder: decoder, events: events)
 
     decoder.line.append(byte)
-    decoder.line_bytes = decoder.line_bytes + 1
+    decoder.line_bytes += 1
     if exceeds(value: decoder.line_bytes, limit: decoder.limits.max_line_bytes): return error(
         SseError.LimitExceeded
     )
@@ -187,13 +187,10 @@ fn end_line(decoder: SseDecoder, events: List[SseEvent]) Result[Unit, SseError]:
         dispatch(decoder: decoder, events: events)
         return ok(unit)
 
-    let text = bytes.to_string()
-    if text.is_none(): return error(SseError.InvalidData)
-
-    let line = text.unwrap()
+    let line = try bytes.to_string().ok_or(SseError.InvalidData)
     if line.starts_with(":"): return ok(unit)
 
-    decoder.event_bytes = decoder.event_bytes + bytes.length()
+    decoder.event_bytes += bytes.length()
     if exceeds(value: decoder.event_bytes, limit: decoder.limits.max_event_bytes): return error(
         SseError.LimitExceeded
     )
@@ -207,9 +204,9 @@ fn apply(decoder: SseDecoder, line: String) Unit:
     var value = ""
     let colon = line.index_of(":")
 
-    if colon.is_some():
-        name = line.slice(0, colon.unwrap()).unwrap()
-        value = line.slice(colon.unwrap() + 1, line.length()).unwrap()
+    if let at = colon:
+        name = line.slice(0, at).unwrap()
+        value = line.slice(at + 1, line.length()).unwrap()
         if value.starts_with(" "): value = value.slice(1, value.length()).unwrap()
 
     if name == "event": decoder.event_type = value
@@ -304,7 +301,7 @@ export fn next_event(reader: SseReader) Result[Optional[SseEvent], SseError]:
     while true:
         if reader.next < reader.ready.length():
             let event = reader.ready.at(reader.next).unwrap()
-            reader.next = reader.next + 1
+            reader.next += 1
             return ok(some(event))
 
         if reader.finished: return ok(none)
@@ -318,10 +315,8 @@ export fn next_event(reader: SseReader) Result[Optional[SseEvent], SseError]:
 
         let chunk = read.unwrap()
 
-        if chunk.is_some():
-            reader.ready = try feed(decoder: reader.decoder, chunk: chunk.unwrap())
+        if let bytes = chunk:
+            reader.ready = try feed(decoder: reader.decoder, chunk: bytes)
         else:
             try finish(decoder: reader.decoder)
             reader.finished = true
-
-    return ok(none)

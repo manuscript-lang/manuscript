@@ -1,6 +1,5 @@
 import {ListBuilder, MapBuilder, SetBuilder, range, range_by, filled, map_from_entries} from "@std/collections.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 fn positive(value: Int) Bool: value > 0
 
@@ -84,10 +83,10 @@ test "set algebra removes duplicates and preserves values":
     if not left.is_disjoint_from(([3]).to_set()): return panic("disjoint")
 
 test "collection constructors validate bounds and exact limits":
-    if (value(range_by(start: 3, end: -1, step: -1, max_items: 4)) != [3, 2, 1, 0]): return panic(
+    if ((try range_by(start: 3, end: -1, step: -1, max_items: 4)) != [3, 2, 1, 0]): return panic(
         "descending range"
     )
-    if value(filled(value: "x", count: 2)) != ["x", "x"]: return panic("filled")
+    if (try filled(value: "x", count: 2)) != ["x", "x"]: return panic("filled")
 
     let invalid: Result[List[Int], CollectionError] = error(
         CollectionError.InvalidInput
@@ -105,16 +104,16 @@ test "stepped ranges handle full-width spans and minimum negative steps":
     let minimum = -9223372036854775808
     let maximum = 9223372036854775807
     if (
-        value(range_by(minimum, maximum, maximum, max_items: 3)) != [
+        (try range_by(minimum, maximum, maximum, max_items: 3)) != [
             minimum,
             -1,
             (maximum - 1)
         ]
     ): return panic("full-width ascending range")
-    if value(range_by(maximum, minimum, minimum, max_items: 2)) != [maximum, -1]: return panic(
+    if (try range_by(maximum, minimum, minimum, max_items: 2)) != [maximum, -1]: return panic(
         "minimum negative step"
     )
-    if value(range_by(0, minimum, minimum, max_items: 1)) != [0]: return panic(
+    if (try range_by(0, minimum, minimum, max_items: 1)) != [0]: return panic(
         "exclusive minimum endpoint"
     )
 

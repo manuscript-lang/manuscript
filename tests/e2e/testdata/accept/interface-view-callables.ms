@@ -14,7 +14,7 @@ type Log:
     events: String
 
 fn mark(log: Log, event: String, value: Int) Int:
-    log.events = log.events + event
+    log.events += event
     return value
 
 fn prepare(log: Log, value: Int) fn() Int:
@@ -104,7 +104,7 @@ test "match receiver side effects and callable body remain ordered":
     let log = Log("")
     let view = Read[Int](
         match some(mark(log, "select;", 1)):
-            some(value):
+            some(_):
                 mark(log, "chosen;", 0)
                 Reader(fn() Int: mark(log, "call;", 9))
             none:

@@ -38,7 +38,7 @@ fn propagate(result: Result[Int, JsonError]) Result[Int, JsonError]:
 test "Optional lazy fallbacks preserve nested absence and payload identity":
     let counter = Counter(0)
     let create = fn():
-        counter.calls = counter.calls + 1
+        counter.calls += 1
         return 42
     let present: Optional[Int] = some(0)
     let missing: Optional[Int] = none

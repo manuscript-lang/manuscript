@@ -19,13 +19,9 @@ test "wait returns after another task notifies":
     with group = TaskGroup():
         let waiter = group.start(fn(): wait_until_ready(ready: ready))
         mark_ready(ready: ready)
-
-        match waiter.join():
-            ok(seen):
-                if not seen:
-                    return panic(message: "waiter woke before the value changed")
-            error(_):
-                return panic(message: "waiter failed")
+        let seen = try waiter.join()
+        if not seen:
+            return panic(message: "waiter woke before the value changed")
 
 test "group close cancels a waiting task":
     let ready = Synchronized(false)

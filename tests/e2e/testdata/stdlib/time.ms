@@ -1,19 +1,18 @@
 import {timestamp, parse_timestamp, Timestamp, TimeError, clock, wall_clock, sleep} from "@std/time.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 test "timestamps preserve nanoseconds and shift across epoch":
-    let epoch = value(timestamp(seconds: 0, nanoseconds: 123))
+    let epoch = try timestamp(seconds: 0, nanoseconds: 123)
     if epoch.unix_seconds() != 0 or epoch.nanoseconds() != 123: return panic(
         "timestamp units"
     )
-    if value(parse_timestamp(epoch.to_string())) != epoch: return panic(
+    if (try parse_timestamp(epoch.to_string())) != epoch: return panic(
         "timestamp roundtrip"
     )
 
-    let later = value(epoch.shift(2.seconds))
-    if value(later.difference(epoch)) != 2.seconds: return panic("time difference")
-    if value(later.shift((-2).seconds)) != epoch: return panic("negative shift")
+    let later = try epoch.shift(2.seconds)
+    if (try later.difference(epoch)) != 2.seconds: return panic("time difference")
+    if (try later.shift((-2).seconds)) != epoch: return panic("negative shift")
 
 test "time rejects invalid timestamps and out of range nanoseconds":
     let invalid: Result[Timestamp, TimeError] = error(TimeError.InvalidData)
@@ -33,7 +32,7 @@ test "host clocks are usable and zero sleep completes":
     if monotonic.now() < before: return panic("clock went backwards")
 
     let now = wall_clock().now()
-    if value(parse_timestamp(now.to_string())) != now: return panic(
+    if (try parse_timestamp(now.to_string())) != now: return panic(
         "wall clock roundtrip"
     )
 

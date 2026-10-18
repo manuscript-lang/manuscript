@@ -2,14 +2,13 @@ import {compress, decompress, CompressionError} from "@std/compress.ms"
 import {pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError} from "@std/archive.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 test "compression formats roundtrip and enforce expanded byte budgets":
     let input = "hello hello hello".to_bytes()
 
     for format in ["gzip", "zlib", "deflate"]:
-        let packed = value(compress(data: input, format: format, level: 6))
-        if (value(decompress(data: packed, format: format, max_bytes: 17)) != input): return panic(
+        let packed = try compress(data: input, format: format, level: 6)
+        if ((try decompress(data: packed, format: format, max_bytes: 17)) != input): return panic(
             "compression roundtrip"
         )
 
@@ -39,8 +38,8 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
     ]
 
     for format in ["zip", "tar"]:
-        let packed = value(pack(entries: entries, format: format))
-        if value(unpack(data: packed, format: format)) != entries: return panic(
+        let packed = try pack(entries: entries, format: format)
+        if (try unpack(data: packed, format: format)) != entries: return panic(
             "archive roundtrip"
         )
 

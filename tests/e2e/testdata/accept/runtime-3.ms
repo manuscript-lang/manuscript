@@ -19,28 +19,22 @@ fn probe() Result[Unit, ExecutionError]:
         if not (flag):
             return panic(message: "check failed")
 
-        match number:
-            ok(value):
-                if not (value == 3):
-                    return panic(message: "check failed")
-            error(_):
-                return panic(message: "Unexpected case")
+        if let value = number:
+            if not (value == 3):
+                return panic(message: "check failed")
+        else:
+            return panic(message: "Unexpected case")
 
         return ok(unit)
 
 test "typed task helper":
-    match probe():
-        ok(_):
-            let completed = unit
-        error(_):
-            return panic(message: "Unexpected case")
+    try probe()
 
 fn describe(outcome: Result[Int, Int]) Result[Int, String]:
-    match outcome:
-        ok(value):
-            return ok(value)
-        error(cause):
-            return error("Error {cause}")
+    if let value = outcome:
+        return ok(value)
+
+    return error("Error {outcome.unwrap_error()}")
 
 test "explicit error conversion":
     let failed: Result[Int, Int] = error(7)

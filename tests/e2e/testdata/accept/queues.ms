@@ -61,12 +61,11 @@ test "queue elements include ordinary functions":
             return 7
     )
 
-    match queue.dequeue():
-        some(callback):
-            if not (callback() == 7):
-                return panic("callback changed")
-        none:
-            return panic("callback missing")
+    if let callback = queue.dequeue():
+        if not (callback() == 7):
+            return panic("callback changed")
+    else:
+        return panic("callback missing")
 
 test "shared queue uses explicit lock scopes":
     let shared = Synchronized(Queue[Int]())
@@ -94,11 +93,7 @@ test "shared queue uses explicit lock scopes":
         group.start(task2)
         group.start(task3)
         group.start(task4)
-
-        match group.join():
-            ok(_):
-                with locked = shared.lock():
-                    if not locked.get().is_empty():
-                        return panic("shared queue did not drain")
-            error(_):
-                return panic("shared work failed")
+        try group.join()
+        with locked = shared.lock():
+            if not locked.get().is_empty():
+                return panic("shared queue did not drain")

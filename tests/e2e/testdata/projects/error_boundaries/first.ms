@@ -14,7 +14,7 @@ export fn first_result(cause: DomainFailure) Result[Unit, Error]:
     return failure(cause)
 
 export fn first_propagated(cause: DomainFailure) Result[Unit, Error]:
-    let completed = try failure(cause)
+    try failure(cause)
     return ok(unit)
 
 fn generic[T: Error](cause: T) Error:

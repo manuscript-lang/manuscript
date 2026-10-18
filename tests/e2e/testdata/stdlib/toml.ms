@@ -1,6 +1,5 @@
 import {parse, stringify, TomlValue, TomlError, TomlLimits} from "@std/toml.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 fn entries(value: TomlValue) Map[String, TomlValue]:
     match value:
@@ -21,7 +20,7 @@ fn limits(
 
 test "TOML scalars quoted keys comments exact integers and dates":
     let source = "title = \"é🙂 # text\" # comment\n'' = 'literal\\n'\nbool = true\nlarge = 9007199254740993\nhex = 0xDEAD_BEEF\noct = 0o755\nbin = 0b1010\nfloat = -1_2.5e+2\ndate = 2024-02-29\ntime = 07:32:00.123\nstamp = 1979-05-27 07:32:00-07:00\n"
-    let root = parse(text: source) | value | entries
+    let root = parse(text: source) | try | entries
     if root.get("title").unwrap() != TomlValue.StringValue("é🙂 # text"): return panic(
         "TOML text"
     )
@@ -51,10 +50,8 @@ test "TOML scalars quoted keys comments exact integers and dates":
 
 test "TOML multiline strings Unicode escapes arrays and inline tables":
     let root = entries(
-        value(
-            parse(
-                text: "basic = \"\"\"\nhello \\\n    world\\u0021\"\"\"\nliteral = '''\nraw\\text\nnext'''\narray = [1, # first\n true, \{name = 'Ada', meta.age = 37\},]\n"
-            )
+        try parse(
+            text: "basic = \"\"\"\nhello \\\n    world\\u0021\"\"\"\nliteral = '''\nraw\\text\nnext'''\narray = [1, # first\n true, \{name = 'Ada', meta.age = 37\},]\n"
         )
     )
     if root.get("basic").unwrap() != TomlValue.StringValue("hello world!"): return panic(
@@ -79,7 +76,7 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
 
 test "TOML implicit parents dotted keys and arrays of tables":
     let text = "[owner.details]\nname = 'Ada'\n[owner]\nactive = true\n[[products]]\nname = 'Hammer'\n[products.meta]\nstock = 3\n[[products]]\nname = 'Nail'\n[[products.variants]]\nsize = 1\n[[products.variants]]\nsize = 2\n"
-    let root = parse(text: text) | value | entries
+    let root = parse(text: text) | try | entries
     let owner = entries(root.get("owner").unwrap())
     if (
         entries(owner.get("details").unwrap()).get(
@@ -98,7 +95,7 @@ test "TOML implicit parents dotted keys and arrays of tables":
         "nested table arrays"
     )
 
-    let dotted = parse(text: "a.b.c = 1\na.b.d = 2\n") | value | entries
+    let dotted = parse(text: "a.b.c = 1\na.b.d = 2\n") | try | entries
     if entries(entries(dotted.get("a").unwrap()).get("b").unwrap()).length() != 2: return panic(
         "dotted assignment"
     )
@@ -111,9 +108,10 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
         "a=24:00:00", "a='unterminated", "a=\"\\uD800\"", "a=\"\\q\"", "a=true false",
         "a=1\rb=2", "[a.b.c]\nz=9\n[a]\nb.c.t=1", "[[a.b]]\n[a]\nb.y=2"
     ]:
-        let cause = match parse(text: text):
-            ok(_): return panic("invalid TOML accepted: {text}")
-            error(cause): cause
+        let parsed = parse(text: text)
+        if not parsed.is_error(): return panic("invalid TOML accepted: {text}")
+
+        let cause = parsed.unwrap_error()
 
         match cause:
             InvalidData(line, column, reason):
@@ -171,10 +169,8 @@ test "TOML optional limits include implicit tables and zero":
 
 test "TOML nonfinite floats CRLF and repeated separators":
     let root = entries(
-        value(
-            parse(
-                text: "positive=inf\r\nnegative=-inf\r\nnan=+nan\r\ninteger=1_000_000\r\n"
-            )
+        try parse(
+            text: "positive=inf\r\nnegative=-inf\r\nnan=+nan\r\ninteger=1_000_000\r\n"
         )
     )
 
@@ -198,9 +194,10 @@ test "TOML nonfinite floats CRLF and repeated separators":
     )
 
 fn failure(text: String) String:
-    match parse(text: text):
-        ok(_): return "accepted"
-        error(cause): return cause.message()
+    let parsed = parse(text: text)
+    if parsed.is_error(): return parsed.unwrap_error().message()
+
+    return "accepted"
 
 test "TOML errors report the offending line and column":
     if failure("x = 1\ny = \"a\u{1}b\"") != "TOML 2:7: invalid control character": return panic(
@@ -233,10 +230,10 @@ test "TOML limits fields default to none":
 
 test "TOML stringify round trips scalars tables and arrays of tables":
     let source = "title = \"é🙂 \\\"q\\\" \\t tab\\u0001\"\nint = -42\nfloat = 3.0\nbig = 1e+21\nflag = true\ndate = 1979-05-27\nmixed = [1, \"two\", [3.5], \{a = 1\}]\nempty = []\n\"odd key\" = 1\n\n[server]\nhost = \"h\"\n\n[server.limits]\nmax = 5\n\n[[products]]\nname = \"a\"\n\n[[products]]\nname = \"b\"\n[products.tags]\nx = 1\n"
-    let parsed = value(parse(text: source))
-    let text = value(stringify(value: parsed))
-    if value(parse(text: text)) != parsed: return panic("TOML stringify round trip")
-    if value(stringify(value: value(parse(text: text)))) != text: return panic(
+    let parsed = try parse(text: source)
+    let text = try stringify(value: parsed)
+    if (try parse(text: text)) != parsed: return panic("TOML stringify round trip")
+    if (try stringify(value: (try parse(text: text)))) != text: return panic(
         "TOML stringify is stable"
     )
 
@@ -245,7 +242,7 @@ test "TOML stringify requires a table root and honors max_bytes":
     let limited: Result[String, TomlError] = error(TomlError.LimitExceeded)
     if stringify(value: TomlValue.IntValue(1)) != wrong: return panic("non-table root")
 
-    let root = value(parse(text: "a = 1"))
+    let root = try parse(text: "a = 1")
     if stringify(value: root, max_bytes: 3) != limited: return panic("output limit")
 
     let exact: Result[String, TomlError] = ok("a = 1\n")
@@ -264,7 +261,7 @@ fn repeated(text: String, count: Int) String:
 test "TOML long strings parse and stringify in linear time":
     let long = repeated(text: "x\\n", count: 150000)
     let expected = repeated(text: "x\n", count: 150000)
-    let root = value(parse(text: "a = \"{long}\"\nb = '''{expected}'''"))
+    let root = try parse(text: "a = \"{long}\"\nb = '''{expected}'''")
     let table = entries(root)
     if table.get("a").unwrap() != TomlValue.StringValue(expected): return panic(
         "basic string"
@@ -273,8 +270,8 @@ test "TOML long strings parse and stringify in linear time":
         "literal multi-line string"
     )
 
-    let text = value(stringify(value: root))
-    if value(parse(text: text)) != root: return panic("long string round trip")
+    let text = try stringify(value: root)
+    if (try parse(text: text)) != root: return panic("long string round trip")
 
 test "TOML stringify rejects invalid date-time text":
     let invalid: Result[String, TomlError] = error(TomlError.InvalidInput)
@@ -298,7 +295,7 @@ test "TOML stringify rejects invalid date-time text":
         TomlValue.DateTimeValue("1979-05-27T07:32:00Z")
     )
     if (
-        value(
-            stringify(value: TomlValue.TableValue(good))
+        (
+            try stringify(value: TomlValue.TableValue(good))
         ) != "x = 1979-05-27T07:32:00Z\n"
     ): return panic("valid date-time text")

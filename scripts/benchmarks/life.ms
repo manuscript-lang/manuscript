@@ -2,9 +2,9 @@ import {filled, range} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 fn make_cells() List[Int]:
-    match filled(value: 0, count: 16384):
-        ok(values): return values
-        error(_): return panic("fill failure")
+    if let values = filled(value: 0, count: 16384): return values
+
+    return panic("fill failure")
 
 export fn main() Int:
     var cells = make_cells()
@@ -19,25 +19,19 @@ export fn main() Int:
         for y in range(0, 128):
             for x in range(0, 128):
                 var neighbors = 0
-                var dy = -1
 
-                while dy <= 1:
-                    var dx = -1
-
-                    while dx <= 1:
+                for dy in range(-1, 2):
+                    for dx in range(-1, 2):
                         if dx != 0 or dy != 0:
                             let index = (
                                 (
-                                    (y + dy + 128)
-                                    % 128
-                                ) * 128
+                                    y
+                                    + dy
+                                    + 128
+                                ) % 128 * 128
                                 + (x + dx + 128) % 128
                             )
-                            neighbors = neighbors + cells.at(index).unwrap()
-
-                        dx = dx + 1
-
-                    dy = dy + 1
+                            neighbors += cells.at(index).unwrap()
 
                 let index = y * 128 + x
                 let alive = (
@@ -57,7 +51,7 @@ export fn main() Int:
 
     var sum = 0
     for i in range(0, 16384):
-        sum = sum + cells.at(i).unwrap()
+        sum += cells.at(i).unwrap()
     if sum != 3914: return panic("life checksum")
 
     return 0

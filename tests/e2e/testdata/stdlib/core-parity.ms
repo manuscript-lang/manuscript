@@ -5,7 +5,7 @@ type Counter:
     calls: Int
 
 fn bump(counter: Counter) Int:
-    counter.calls = counter.calls + 1
+    counter.calls += 1
     return 9
 
 fn map_result[T, E, U](value: Result[T, E], transform: fn(value: T) U) Result[U, E]:
@@ -64,7 +64,7 @@ test "Result preserves unconstrained payloads and success-only composition":
     let failure: Result[Int, Counter] = error(counter)
     let success: Result[Int, Counter] = ok(0)
     let transform = fn(value: Int) String:
-        counter.calls = counter.calls + 1
+        counter.calls += 1
         return value.toString()
     let skipped = map_result(failure, transform)
     if (not (skipped.is_error()) or skipped.is_ok() or counter.calls != 0):
@@ -77,7 +77,7 @@ test "Result preserves unconstrained payloads and success-only composition":
     if mapped.unwrap() != "0" or counter.calls != 3: return panic("map success")
 
     let chain = fn(value: Int) Result[String, Counter]:
-        counter.calls = counter.calls + 1
+        counter.calls += 1
         return error(counter)
     let propagated = chain_result(failure, chain)
     if counter.calls != 3: return panic("and_then invoked on error")
@@ -117,7 +117,7 @@ test "Result fallbacks are eager or lazy and bound methods keep receivers":
         return panic("eager fallback evaluation")
 
     let create = fn(cause: Counter) Int:
-        cause.calls = cause.calls + 1
+        cause.calls += 1
         return 12
     let lazy = success.unwrap_or_else
     if lazy(create: create) != 0 or counter.calls != 1: return panic(
@@ -143,7 +143,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
     let present: Optional[Counter] = some(counter)
     let missing: Optional[Counter] = none
     let transform = fn(value: Counter) Counter:
-        value.calls = value.calls + 1
+        value.calls += 1
         return value
     if not (map_optional(missing, transform).is_none()) or counter.calls != 0:
         return panic("none mapped")
@@ -162,7 +162,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
     if not (absent.is_none()): return panic("and_then wrapped none")
 
     let create = fn() Optional[Counter]:
-        counter.calls = counter.calls + 1
+        counter.calls += 1
         return some(counter)
     let bound = present.or_else
     bound(create).unwrap().calls = 4

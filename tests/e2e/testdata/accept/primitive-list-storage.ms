@@ -45,7 +45,7 @@ test "Float Bool and String preserve mutation traversal and width":
         seen.append(value)
         if index == 0:
             floats.set(1, 0.5)
-        index = index + 1
+        index += 1
 
     if not (seen == [1e-300, 0.5, 0.25] and clone[1].unwrap() == 1e300):
         return panic("Float backing narrowed or traversal copied")
@@ -65,16 +65,12 @@ test "stable sort and strict Result slice preserve separate storage":
     if values[0].unwrap() != 7:
         return panic("sorting shared outer backing")
 
-    match values.slice(-2, 6):
-        ok(copy):
-            copy.set(0, 12)
-            if not (copy == [12, 5] and values[4].unwrap() == 2):
-                return panic("slice shared outer backing or changed negative bounds")
-        error(_):
-            return panic("valid strict slice failed")
+    if let copy = values.slice(-2, 6):
+        copy.set(0, 12)
+        if not (copy == [12, 5] and values[4].unwrap() == 2):
+            return panic("slice shared outer backing or changed negative bounds")
+    else:
+        return panic("valid strict slice failed")
 
-    match values.slice(-7, 6):
-        ok(_):
-            return panic("invalid slice succeeded")
-        error(_):
-            return
+    if not values.slice(-7, 6).is_error():
+        return panic("invalid slice succeeded")

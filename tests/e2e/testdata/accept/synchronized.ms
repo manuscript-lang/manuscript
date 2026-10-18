@@ -49,8 +49,6 @@ test "shared counter protects complete updates":
                 increment(locked: locked)
 
     with group = TaskGroup():
-        let first_task = group.start(operation)
-        let second_task = group.start(operation)
         group.start(operation)
         group.start(operation)
         group.start(operation)
@@ -59,20 +57,17 @@ test "shared counter protects complete updates":
         group.start(operation)
         group.start(operation)
         group.start(operation)
-
-        match group.join():
-            ok(_):
-                with locked = counter.lock():
-                    if not (locked.get() == 100):
-                        return panic(message: "check failed")
-            error(_):
-                if not (false):
-                    return panic(message: "check failed")
+        group.start(operation)
+        group.start(operation)
+        try group.join()
+        with locked = counter.lock():
+            if not (locked.get() == 100):
+                return panic(message: "check failed")
 
     if not (release_on_return(counter: counter) == 101):
         return panic(message: "check failed")
 
-    let outcome = release_on_error(counter: counter)
+    let _outcome = release_on_error(counter: counter)
     with locked = counter.lock():
         if not (locked.get() == 102):
             return panic(message: "check failed")
@@ -85,43 +80,26 @@ test "function fields collections and interface views share freely":
     let callbacks: List[fn() Int] = [identity(value: callback)]
 
     for stored in callbacks:
-        match execute(operation: stored):
-            ok(value):
-                if not (value == 7):
-                    return panic(message: "check failed")
-            error(_):
-                if not (false):
-                    return panic(message: "check failed")
+        let value = try execute(operation: stored)
+        if not (value == 7):
+            return panic(message: "check failed")
 
     let readers: List[Read] = [Read(Reader(callback))]
 
     for reader in readers:
-        match execute(operation: reader.get):
-            ok(value):
-                if not (value == 7):
-                    return panic(message: "check failed")
-            error(_):
-                if not (false):
-                    return panic(message: "check failed")
+        let value = try execute(operation: reader.get)
+        if not (value == 7):
+            return panic(message: "check failed")
 
     let make_function = fn():
         return read_and_add
 
     with group = TaskGroup():
         let first_task = group.start(make_function)
-
-        match group.join():
-            ok(_): unit
-            error(_):
-                if not (false):
-                    return panic(message: "check failed")
-
-        match first_task.join():
-            ok(returned):
-                if not (returned(value: 3) == 4):
-                    return panic(message: "check failed")
-            error(_):
-                return panic("task result unavailable")
+        try group.join()
+        let returned = try first_task.join()
+        if not (returned(value: 3) == 4):
+            return panic(message: "check failed")
 
 test "builders can be captured and stored callbacks can map":
     let builder = ListBuilder[Int]()
@@ -142,16 +120,13 @@ test "fault releases guard and preserves committed writes":
             panic(message: "expected")
 
     with group = TaskGroup():
-        let first_task = group.start(fail)
+        group.start(fail)
+        if not group.join().is_error():
+            return panic(message: "check failed")
 
-        match group.join():
-            ok(_):
-                if not (false):
-                    return panic(message: "check failed")
-            error(_):
-                with locked = counter.lock():
-                    if not (locked.get() == 8):
-                        return panic(message: "check failed")
+        with locked = counter.lock():
+            if not (locked.get() == 8):
+                return panic(message: "check failed")
 
 test "guard aliases close once and stale methods fault":
     let counter = Synchronized(0)
@@ -165,15 +140,11 @@ test "guard aliases close once and stale methods fault":
         second.set(value: 2)
 
         with group = TaskGroup():
-            let first_task = group.start(saved_get)
-
-            match group.join():
-                ok(_):
-                    if not (false):
-                        return panic(message: "check failed")
-                error(_):
-                    if not (second.get() == 2):
-                        return panic(message: "check failed")
+            group.start(saved_get)
+            if not group.join().is_error():
+                return panic(message: "check failed")
+            if not (second.get() == 2):
+                return panic(message: "check failed")
 
 test "same-task reentry faults and releases its guard":
     let counter = Synchronized(0)
@@ -183,14 +154,12 @@ test "same-task reentry faults and releases its guard":
                 return panic(message: "reentry should fault")
 
     with group = TaskGroup():
-        let first_task = group.start(acquire)
+        group.start(acquire)
+        if not group.join().is_error():
+            return panic(message: "reentry did not fault")
 
-        match group.join():
-            ok(_):
-                return panic(message: "reentry did not fault")
-            error(_):
-                with locked = counter.lock():
-                    locked.set(value: 3)
+        with locked = counter.lock():
+            locked.set(value: 3)
 
     with locked = counter.lock():
         if locked.get() != 3:
@@ -211,12 +180,9 @@ test "parent holds lock while a running child waits for it":
             sleep(duration: 100.milliseconds)
             locked.set(value: 7)
 
-        match child.join():
-            ok(value):
-                if value != 7:
-                    return panic(message: "got {value}")
-            error(_):
-                return panic(message: "child failed")
+        let value = try child.join()
+        if value != 7:
+            return panic(message: "got {value}")
 
 test "ordinary cross-task lock cycle stops at the group timeout":
     let cell = Synchronized(0)
@@ -228,11 +194,11 @@ test "ordinary cross-task lock cycle stops at the group timeout":
                     with acquired = cell.lock():
                         return acquired.get()
             )
+            let outcome = child.join()
+            if not outcome.is_error():
+                return panic(message: "cycle acquired before release")
 
-            let cause = match child.join():
-                ok(_):
-                    return panic(message: "cycle acquired before release")
-                error(cause): cause
+            let cause = outcome.unwrap_error()
 
             match cause:
                 Timeout:
@@ -266,35 +232,21 @@ test "native collection methods preserve ordinary function values":
                 return value
     )
     let first = fn():
-        match callbacks.at(index: 0):
-            some(callback):
-                return callback()
-            none:
-                return panic(message: "missing callback")
+        if let callback = callbacks.at(index: 0):
+            return callback()
+
+        return panic(message: "missing callback")
     let second = fn():
-        match callbacks.at(index: 1):
-            some(callback):
-                return callback()
-            none:
-                return panic(message: "missing callback")
+        if let callback = callbacks.at(index: 1):
+            return callback()
+
+        return panic(message: "missing callback")
 
     with group = TaskGroup():
         let first_task = group.start(first)
         let second_task = group.start(second)
-
-        match group.join():
-            ok(_): unit
-            error(_):
-                return panic(message: "task callbacks failed")
-
-        let first_value = match first_task.join():
-            ok(first_value): first_value
-            error(_):
-                return panic("task result unavailable")
-
-        match second_task.join():
-            ok(second_value):
-                if first_value != 1 or second_value != 2:
-                    return panic(message: "check failed")
-            error(_):
-                return panic("task result unavailable")
+        try group.join()
+        let first_value = try first_task.join()
+        let second_value = try second_task.join()
+        if first_value != 1 or second_value != 2:
+            return panic(message: "check failed")

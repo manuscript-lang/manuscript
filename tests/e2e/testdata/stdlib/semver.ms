@@ -1,21 +1,21 @@
+import range from "@std/collections.ms"
 import {parse, format, compare, Version, SemverError} from "@std/semver.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 fn failure(result: Result[Version, SemverError]) SemverError:
-    match result:
-        ok(_): return panic("accepted")
-        error(cause): return cause
+    if not result.is_error(): return panic("accepted")
+
+    return result.unwrap_error()
 
 test "semver parses and formats every component":
-    let version = value(parse(text: "1.2.3-alpha.1+build.5"))
+    let version = try parse(text: "1.2.3-alpha.1+build.5")
     if version.major != 1 or version.minor != 2 or version.patch != 3: return panic(
         "core"
     )
     if version.prerelease != ["alpha", "1"]: return panic("prerelease")
     if version.build != ["build", "5"]: return panic("build")
     if format(version: version) != "1.2.3-alpha.1+build.5": return panic("format")
-    if format(version: value(parse(text: "0.0.0"))) != "0.0.0": return panic("plain")
+    if format(version: (try parse(text: "0.0.0"))) != "0.0.0": return panic("plain")
 
 test "semver rejects malformed text":
     let bad = [
@@ -38,12 +38,9 @@ test "semver orders by precedence":
         "1.0.0-beta.2", "1.0.0-beta.11", "1.0.0-rc.1", "1.0.0", "1.0.1", "1.1.0",
         "2.0.0", "10.0.0"
     ]
-    var i = 0
 
-    while i < ordered.length():
-        var j = 0
-
-        while j < ordered.length():
+    for i in range(0, ordered.length()):
+        for j in range(0, ordered.length()):
             var expected = 0
             if i < j: expected = -1
             if i > j: expected = 1
@@ -51,23 +48,19 @@ test "semver orders by precedence":
             let right = ordered[j].unwrap()
             if (
                 compare(
-                    left: value(parse(text: left)),
-                    right: value(parse(text: right))
+                    left: try parse(text: left),
+                    right: try parse(text: right)
                 ) != expected
             ):
                 return panic("order {left} {right}")
 
-            j = j + 1
-
-        i = i + 1
-
 test "semver ignores build metadata and compares huge numeric identifiers":
-    let a = value(parse(text: "1.0.0+a"))
-    let b = value(parse(text: "1.0.0+b"))
+    let a = try parse(text: "1.0.0+a")
+    let b = try parse(text: "1.0.0+b")
     if compare(left: a, right: b) != 0: return panic("build ignored")
 
-    let small = value(parse(text: "1.0.0-99999999999999999999"))
-    let large = value(parse(text: "1.0.0-100000000000000000000"))
+    let small = try parse(text: "1.0.0-99999999999999999999")
+    let large = try parse(text: "1.0.0-100000000000000000000")
     if compare(left: small, right: large) != -1: return panic("numeric identifiers")
     if SemverError.OutOfRange.message() != "semver: value out of range": return panic(
         "message"

@@ -22,7 +22,7 @@ fn observe[T](values: List[T], mode: String, replacement: T, callback: Bool) Lis
         seen.append(value)
         if visits.count == 0:
             mutate(values: values, mode: mode, replacement: replacement)
-        visits.count = visits.count + 1
+        visits.count += 1
 
     if callback:
         let each = values.for_each
@@ -60,8 +60,8 @@ test "Int consumers see valid shifted and retained tail values":
             let want = expected(mode, 1, 2, 3, 9)
             var total = 0
             var wanted = 0
-            for value in seen: total = total + value
-            for value in want: wanted = wanted + value
+            for value in seen: total += value
+            for value in want: wanted += value
             if not (
                 total == wanted
                 and seen == want
@@ -79,8 +79,8 @@ test "Float consumers see valid shifted and retained tail values":
             let want = expected(mode, 1.5, 2.5, 3.5, 9.5)
             var total = 0.0
             var wanted = 0.0
-            for value in seen: total = total + value
-            for value in want: wanted = wanted + value
+            for value in seen: total += value
+            for value in want: wanted += value
             if not (
                 total == wanted
                 and seen == want
@@ -97,7 +97,7 @@ test "String consumers see valid shifted and retained tail values":
             let seen = observe(values, mode, "replacement", callback)
             let want = expected(mode, "a", "bb", "ccc", "replacement")
             var text = ""
-            for value in seen: text = text + value
+            for value in seen: text += value
             if not (
                 text == want.join("")
                 and seen == want
@@ -128,8 +128,8 @@ test "record consumers retain shallow references after shrink":
             let want = expected(mode, first, second, last, replacement)
             var total = 0
             var wanted = 0
-            for value in seen: total = total + value.value
-            for value in want: wanted = wanted + value.value
+            for value in seen: total += value.value
+            for value in want: wanted += value.value
             if not (
                 total == wanted
                 and seen == want
@@ -171,8 +171,8 @@ test "alternative consumers retain tags and payloads after shrink":
             let want = expected(mode, first, second, last, replacement)
             var total = 0
             var wanted = 0
-            for value in seen: total = total + score(value)
-            for value in want: wanted = wanted + score(value)
+            for value in seen: total += score(value)
+            for value in want: wanted += score(value)
             if not (
                 total == wanted
                 and seen == want
@@ -199,8 +199,8 @@ test "nested list consumers retain inner handles after shrink":
             let want = expected(mode, first, second, last, replacement)
             var total = 0
             var wanted = 0
-            for value in seen: total = total + value.first().unwrap()
-            for value in want: wanted = wanted + value.first().unwrap()
+            for value in seen: total += value.first().unwrap()
+            for value in want: wanted += value.first().unwrap()
             if not (
                 total == wanted
                 and seen == want
@@ -227,7 +227,7 @@ test "map and folds consume valid retained cells":
     let output = mapped.map(
         fn(value):
             if visits.count == 0: mapped.remove(0)
-            visits.count = visits.count + 1
+            visits.count += 1
             return value + 10
     )
     if not (output == [11, 13, 13] and mapped == [2, 3]):
@@ -243,7 +243,7 @@ test "map and folds consume valid retained cells":
                 delete_count: 3,
                 replacement: []
             )
-            visits.count = visits.count + 1
+            visits.count += 1
             return accumulator + value
     )
     if not (total == 6 and folded.is_empty() and visits.count == 3):
@@ -255,7 +255,7 @@ test "map and folds consume valid retained cells":
         0,
         fn(accumulator, value):
             if visits.count == 0: reversed.remove(0)
-            visits.count = visits.count + 1
+            visits.count += 1
             return accumulator * 10 + value
     )
     if not (backwards == 332 and reversed == [2, 3] and visits.count == 3):
@@ -281,8 +281,8 @@ test "interface view consumers dispatch after shrink":
             let want = expected(mode, first, second, last, replacement)
             var total = 0
             var wanted = 0
-            for value in seen: total = total + value.read()
-            for value in want: wanted = wanted + value.read()
+            for value in seen: total += value.read()
+            for value in want: wanted += value.read()
             if not (
                 total == wanted
                 and values.length() == remaining(

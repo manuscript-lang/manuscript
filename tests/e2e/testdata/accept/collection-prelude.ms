@@ -19,12 +19,13 @@ test "issue 187 programs need no collection imports":
     let shapes = [Shape.Circle(1.0)]
     if shapes.length() != 1 or count(["/var", "log"]) != 2: return panic("literals")
 
-    var rolls: List[Int] = []
+    let rolls: List[Int] = []
 
     for i in range(0, 5):
-        match roll(i):
-            ok(n): rolls.append(n)
-            error(_): return panic("roll")
+        if let n = roll(i):
+            rolls.append(n)
+        else:
+            return panic("roll")
 
     if rolls.length() != 5: return panic("annotation or match")
 

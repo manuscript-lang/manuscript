@@ -15,7 +15,6 @@ import {
 import hex_encode from "@std/encoding.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 test "crypto known SHA256 HMAC and PBKDF2 vectors":
     if (
@@ -28,12 +27,10 @@ test "crypto known SHA256 HMAC and PBKDF2 vectors":
         or sha512("abc".to_bytes()).length() != 64
     ): return panic("digest sizes")
 
-    let mac = value(
-        hmac(
-            key: "key".to_bytes(),
-            data: "The quick brown fox jumps over the lazy dog".to_bytes(),
-            algorithm: "sha256"
-        )
+    let mac = try hmac(
+        key: "key".to_bytes(),
+        data: "The quick brown fox jumps over the lazy dog".to_bytes(),
+        algorithm: "sha256"
     )
     if (
         hex_encode(
@@ -41,13 +38,11 @@ test "crypto known SHA256 HMAC and PBKDF2 vectors":
         ) != "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8"
     ): return panic("HMAC vector")
 
-    let derived = value(
-        derive_key(
-            password: "password".to_bytes(),
-            salt: "salt".to_bytes(),
-            iterations: 1,
-            length: 32
-        )
+    let derived = try derive_key(
+        password: "password".to_bytes(),
+        salt: "salt".to_bytes(),
+        iterations: 1,
+        length: 32
     )
     if (
         hex_encode(
@@ -58,17 +53,15 @@ test "crypto known SHA256 HMAC and PBKDF2 vectors":
 test "authenticated encryption detects wrong associated data":
     let key = "01234567890123456789012345678901".to_bytes()
     let nonce = "012345678901".to_bytes()
-    let encrypted = value(
-        seal(
-            key: key,
-            nonce: nonce,
-            plaintext: "secret".to_bytes(),
-            associated_data: "header".to_bytes()
-        )
+    let encrypted = try seal(
+        key: key,
+        nonce: nonce,
+        plaintext: "secret".to_bytes(),
+        associated_data: "header".to_bytes()
     )
     if (
-        value(
-            open(
+        (
+            try open(
                 key: key,
                 nonce: nonce,
                 ciphertext: encrypted,
@@ -99,8 +92,8 @@ test "authenticated encryption detects wrong associated data":
 
 test "Ed25519 signatures verify only the signed data":
     let seed = "01234567890123456789012345678901".to_bytes()
-    let key = value(public_key(seed))
-    let signature = value(sign(seed: seed, data: "message".to_bytes()))
+    let key = try public_key(seed)
+    let signature = try sign(seed: seed, data: "message".to_bytes())
     if not verify(key: key, data: "message".to_bytes(), signature: signature): return panic(
         "signature verification"
     )

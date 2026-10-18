@@ -1,33 +1,29 @@
-import {filesystem, FileSystemError, FileHandle, GlobOptions, PathEntry} from "@std/fs.ms"
-import {files, read_all, IoError} from "@std/io.ms"
+import {filesystem, FileSystemError, GlobOptions, PathEntry} from "@std/fs.ms"
+import {files, read_all} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
+import expect_error from "@std/testing.ms"
 
 fn expect_fs_error[T](
     outcome: Result[T, FileSystemError],
     expected: FileSystemError
 ) Unit:
-    match outcome:
-        ok(_): return panic("filesystem misuse succeeded")
-        error(cause):
-            if cause != expected: return panic("wrong filesystem error")
+    if not outcome.is_error(): return panic("filesystem misuse succeeded")
+    if outcome.unwrap_error() != expected: return panic("wrong filesystem error")
 
 test "glob queries reuse patterns without changing hidden paths limits or callbacks":
     let fs = filesystem()
 
-    with temporary = value(fs.temporary("manuscript-glob-")):
+    with temporary = try fs.temporary("manuscript-glob-"):
         let root = temporary.path()
-        value(fs.create_directory(path: "{root}/sub", recursive: false))
+        try fs.create_directory(path: "{root}/sub", recursive: false)
         for name in ["a.txt", "b.md", ".hidden.txt", "sub/c.txt"]:
-            value(
-                fs.write_file(
-                    path: "{root}/{name}",
-                    data: "".to_bytes(),
-                    replace: false
-                )
+            try fs.write_file(
+                path: "{root}/{name}",
+                data: "".to_bytes(),
+                replace: false
             )
-        let matches = value(fs.glob(path: root, pattern: "**/*.\{txt,md\}"))
+        let matches = try fs.glob(path: root, pattern: "**/*.\{txt,md\}")
         if matches != ["a.txt", "b.md", "sub/c.txt"]: return panic("glob matches")
 
         expect_fs_error(
@@ -43,15 +39,13 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
             exclude: ["sub/**"],
             follow_links: false
         )
-        let entries = value(
-            fs.glob_entries(
-                path: root,
-                options: options,
-                exclude: some(
-                    fn(entry: PathEntry) Bool:
-                        if entry.path == ".": options.patterns.set(0, "*.md")
-                        return false
-                )
+        let entries = try fs.glob_entries(
+            path: root,
+            options: options,
+            exclude: some(
+                fn(entry: PathEntry) Bool:
+                    if entry.path == ".": options.patterns.set(0, "*.md")
+                    return false
             )
         )
         if entries.length() != 1: return panic("glob_entries count")
@@ -62,24 +56,16 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
 test "ordinary filesystem misuse retains typed cases":
     let fs = filesystem()
 
-    with temporary = value(fs.temporary("manuscript-errors-")):
+    with temporary = try fs.temporary("manuscript-errors-"):
         let directory = "{temporary.path()}/directory"
         let file = "{temporary.path()}/file"
-        let created = value(fs.create_directory(path: directory, recursive: false))
-        let child = value(
-            fs.write_file(
-                path: "{directory}/child",
-                data: "x".to_bytes(),
-                replace: false
-            )
+        try fs.create_directory(path: directory, recursive: false)
+        try fs.write_file(
+            path: "{directory}/child",
+            data: "x".to_bytes(),
+            replace: false
         )
-        let written = value(
-            fs.write_file(
-                path: file,
-                data: "abc".to_bytes(),
-                replace: false
-            )
-        )
+        try fs.write_file(path: file, data: "abc".to_bytes(), replace: false)
         expect_fs_error(
             outcome: fs.remove(path: directory, recursive: false),
             expected: FileSystemError.NotEmpty
@@ -97,7 +83,7 @@ test "ordinary filesystem misuse retains typed cases":
             expected: FileSystemError.AlreadyExists
         )
 
-        with reader = value(fs.open(path: file, flags: "r", mode: 384)):
+        with reader = try fs.open(path: file, flags: "r", mode: 384):
             expect_fs_error(
                 outcome: reader.write("x".to_bytes()),
                 expected: FileSystemError.InvalidInput
@@ -111,7 +97,7 @@ test "ordinary filesystem misuse retains typed cases":
                 expected: FileSystemError.InvalidInput
             )
 
-        with writer = value(fs.open(path: file, flags: "a", mode: 384)):
+        with writer = try fs.open(path: file, flags: "a", mode: 384):
             expect_fs_error(
                 outcome: writer.read(1),
                 expected: FileSystemError.InvalidInput
@@ -125,17 +111,11 @@ test "filesystem scoped temporary directories and bounded file reads":
     let fs = filesystem()
     var directory = ""
 
-    with temporary = value(fs.temporary("manuscript-stdlib-")):
+    with temporary = try fs.temporary("manuscript-stdlib-"):
         directory = temporary.path()
         let path = "{directory}/data.txt"
-        let written = value(
-            fs.write_file(
-                path: path,
-                data: "hello".to_bytes(),
-                replace: false
-            )
-        )
-        if (value(fs.read_file(path: path, max_bytes: 5)) != "hello".to_bytes()): return panic(
+        try fs.write_file(path: path, data: "hello".to_bytes(), replace: false)
+        if ((try fs.read_file(path: path, max_bytes: 5)) != "hello".to_bytes()): return panic(
             "read file"
         )
 
@@ -154,48 +134,41 @@ test "filesystem scoped temporary directories and bounded file reads":
                 replace: false
             ) != exists
         ): return panic("exclusive write")
-        if value(fs.stat(path: path, follow_links: true)).size != 5: return panic(
+        if (try fs.stat(path: path, follow_links: true)).size != 5: return panic(
             "file stat"
         )
-        if value(fs.list(path: directory)).length() != 1: return panic("directory list")
+        if (try fs.list(path: directory)).length() != 1: return panic("directory list")
 
-        with input = value(files().open(path)):
-            if value(input.read(5)).unwrap() != "hello".to_bytes(): return panic(
+        with input = try files().open(path):
+            if (try input.read(5)).unwrap() != "hello".to_bytes(): return panic(
                 "read-only Files host"
             )
 
-    match fs.stat(path: directory, follow_links: true):
-        ok(_): return panic("temporary directory not removed")
-        error(cause):
-            if cause != FileSystemError.NotFound: return panic(
-                "temporary cleanup error"
-            )
+    if (
+        (
+            try expect_error(fs.stat(path: directory, follow_links: true))
+        ) != FileSystemError.NotFound
+    ): return panic("temporary cleanup error")
 
 test "file handles positional I/O stream adapters and closed errors":
     let fs = filesystem()
 
-    with temporary = value(fs.temporary("manuscript-handles-")):
+    with temporary = try fs.temporary("manuscript-handles-"):
         let path = "{temporary.path()}/data.txt"
-        let written = value(
-            fs.write_file(
-                path: path,
-                data: "abcdef".to_bytes(),
-                replace: false
-            )
-        )
-        let handle = value(fs.open(path: path, flags: "r+", mode: 384))
+        try fs.write_file(path: path, data: "abcdef".to_bytes(), replace: false)
+        let handle = try fs.open(path: path, flags: "r+", mode: 384)
 
         with scoped = handle:
-            if (value(handle.read_at(offset: 2, max_bytes: 2)) != "cd".to_bytes()): return panic(
+            if ((try handle.read_at(offset: 2, max_bytes: 2)) != "cd".to_bytes()): return panic(
                 "positional read"
             )
 
-            value(handle.write_at(offset: 1, data: "XY".to_bytes()))
-            let resized = value(handle.truncate(4))
-            if value(handle.stat()).size != 4: return panic("handle stat")
+            try handle.write_at(offset: 1, data: "XY".to_bytes())
+            try handle.truncate(4)
+            if (try handle.stat()).size != 4: return panic("handle stat")
 
-            let sought = value(handle.seek(offset: 0, origin: 0))
-            if value(read_all(input: handle.reader())) != "aXYd".to_bytes(): return panic(
+            let _count = try handle.seek(offset: 0, origin: 0)
+            if (try read_all(input: handle.reader())) != "aXYd".to_bytes(): return panic(
                 "reader adapter"
             )
 
@@ -220,10 +193,8 @@ test "empty paths are rejected instead of resolving to the working directory":
     if fs.write_file(path: "", data: "x".to_bytes(), replace: true) != invalid: return panic(
         "write empty path"
     )
-
-    match fs.stat(path: "", follow_links: true):
-        ok(_): return panic("stat empty path")
-        error(cause):
-            if cause != FileSystemError.InvalidInput: return panic(
-                "stat empty path error"
-            )
+    if (
+        (
+            try expect_error(fs.stat(path: "", follow_links: true))
+        ) != FileSystemError.InvalidInput
+    ): return panic("stat empty path error")
