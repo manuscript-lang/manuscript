@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 # Documentation for the Manuscript context bundle comes from here; override to pin a different checkout.
-REPO = Path(os.environ.get("MSBENCH_REPO", ROOT.parent))
+REPO = Path(os.environ.get("MSBENCH_REPO", ROOT.parent.parent))
 
 
 @dataclass

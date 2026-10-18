@@ -7,7 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/manuscript-lang/manuscript/scripts/internal/devtool"
+	"github.com/manuscript-lang/manuscript/internal/devtool"
 	"io"
 	"io/fs"
 	"net/http"

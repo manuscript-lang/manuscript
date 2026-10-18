@@ -103,7 +103,8 @@
       "pkg/frontend",
       "pkg/compiler",
       "pkg/lower"
-    ]
+    ],
+    "internal/devtool": []
   },
   "pinned": [
     "pkg/syntax",

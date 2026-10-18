@@ -8,7 +8,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"github.com/manuscript-lang/manuscript/scripts/internal/devtool"
+	"github.com/manuscript-lang/manuscript/internal/devtool"
 	"io"
 	"os"
 	"os/exec"

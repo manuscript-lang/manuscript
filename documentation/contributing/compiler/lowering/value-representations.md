@@ -28,7 +28,7 @@ The frontend checks `Task[T]` through ordinary generics; source cannot perform u
 ## Representation boundaries
 
 - Locals, captures, arguments, and results have their Go types ([Go representation](../../go-lowering-representation.md)); nothing is boxed.
-- `Int` and `Float` operations are typed Go operations with overflow and zero-divisor checks, rounding floats at each source operation. A raw `int` or Go slice gives neither checked arithmetic nor immutable bytes, so the lowerer calls the checked `rt` operation. `scripts/benchmarks/` measures numeric loops, calls, list reads, and Game of Life.
+- `Int` and `Float` operations are typed Go operations with overflow and zero-divisor checks, rounding floats at each source operation. A raw `int` or Go slice gives neither checked arithmetic nor immutable bytes, so the lowerer calls the checked `rt` operation. `bench/language/` measures numeric loops, calls, list reads, and Game of Life.
 - Members on a statically typed receiver are direct `rt` calls like `List_At` or `Map_Get`, instantiated at its type arguments. Indexing still returns an Optional.
 - Explicit [view constructors](../../../core-language/types/contracts.md#explicit-contract-views) create ordinary contract wrappers: one view identity, no sharing proof. Native services synchronize internally; local queues rely on caller-managed Synchronized guards.
 - Wrappers and bound methods keep their implementation scope. Generic specialization carries it with each type argument, including nested receivers; forwarding a bounded parameter keeps its evidence. Cleanup dispatch follows the same rules.

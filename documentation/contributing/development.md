@@ -39,7 +39,7 @@ It adds coverage, native conformance, race checks, fuzzing, strict book checks, 
 - The end-to-end suite builds one CLI and reuses it. Accepted fixtures run their test blocks, rejected cases verify diagnostics, and transcripts check evaluation order, cleanup, signals, host operations, and module boundaries. Use `make e2e E2EFLAGS=-count=1` for a fresh run; native subprocesses ignore ambient Go configuration.
 - `make stdlib-check` requires a fixture in `tests/e2e/testdata/stdlib/*.ms` for every public standard module (`make verify` includes it). `make stdlib-test E2EFLAGS=-count=1` executes them; run one with `ms test <fixture>`.
 
-`make stdlib-bench` prints per-case ns/op for `perf-bench/stdlib` (`BENCHREPEATS`, `BENCHFILTER`); add cases in `perf-bench/stdlib/src/*.ms` with `bench(name, ops, body)`. It is a profiling guide, not a gate.
+`make stdlib-bench` prints per-case ns/op for `bench/perf/stdlib` (`BENCHREPEATS`, `BENCHFILTER`); add cases in `bench/perf/stdlib/src/*.ms` with `bench(name, ops, body)`. It is a profiling guide, not a gate.
 
 Complete tutorial fences carry a `manuscript-example` JSON comment giving `test` or `run`, arguments, and expected stdout (more fields in [common tasks](../learn/common-tasks.md)). `make examples-check` checks them without lowering; coverage runs them natively. Run `MANUSCRIPT_EXAMPLES_NATIVE=1 toolchain/go/bin/go test ./tests/examples -count=1` to execute them directly.
 

@@ -1,6 +1,6 @@
 # agent-bench
 
-Not the performance benchmark: for compiler/runtime speed against hand-written Go, see [`perf-bench/`](../perf-bench/README.md). Results here never mix with those.
+Not the performance benchmark: for compiler/runtime speed against hand-written Go, see [`bench/perf/`](../bench/perf/README.md). Results here never mix with those.
 
 Agent benchmark: measures how effectively coding agents solve the same programming challenges in TypeScript, Go, Rust and
 Manuscript. Per run it records pass/fail against hidden tests, tokens, turns, wall time and cost.
@@ -26,12 +26,12 @@ cover all runs.
 ## Commands
 
 ```sh
-python3 agent-bench/run.py list
-python3 agent-bench/run.py oracle                     # reference solutions vs hidden cases; validates the suite
-python3 agent-bench/run.py run --harness claude_code --model <model> \
+python3 bench/agent/run.py list
+python3 bench/agent/run.py oracle                     # reference solutions vs hidden cases; validates the suite
+python3 bench/agent/run.py run --harness claude_code --model <model> \
     --challenges c03,c05 --languages ms,go --repeat 3 --jobs 4 --tag baseline
-python3 agent-bench/report.py                         # Markdown tables from results/runs.jsonl
-python3 -m unittest discover -s agent-bench/tests
+python3 bench/agent/report.py                         # Markdown tables from results/runs.jsonl
+python3 -m unittest discover -s bench/agent/tests
 ```
 
 `ms`, `go`, `cargo` and `node` (22+) must be on `PATH`. Build `ms` with `make build` and add the repo root to `PATH`.
@@ -42,14 +42,14 @@ python3 -m unittest discover -s agent-bench/tests
 `export_harbor.py` turns every challenge x language into a Harbor task; the hidden cases go only into `tests/`.
 
 ```sh
-python3 agent-bench/export_harbor.py --out /tmp/agent-bench-tasks --ms-binary ./ms
+python3 bench/agent/export_harbor.py --out /tmp/agent-bench-tasks --ms-binary ./ms
 harbor run -p /tmp/agent-bench-tasks -a claude-code -m claude-haiku-5-5 -o jobs     # Docker or any Harbor sandbox
 ```
 
 Without Docker, use the local-process environment (not a sandbox; the toolchains must be on `PATH`):
 
 ```sh
-PYTHONPATH=agent-bench/harbor harbor run -p /tmp/agent-bench-tasks/c03-csv-group-sum-ms -a claude-code \
+PYTHONPATH=bench/agent/harbor harbor run -p /tmp/agent-bench-tasks/c03-csv-group-sum-ms -a claude-code \
     -m claude-haiku-5-5 --env local_env:LocalProcessEnvironment -o jobs
 ```
 
@@ -78,7 +78,7 @@ cases and first-build success. Harbor records tokens and cost per trial. Use `-a
 
 ## Results
 
-Results are kept in date-named files: `results/trials-YYYY-MM-DD.jsonl` (one line per trial) and `results/leaderboard-YYYY-MM-DD.md`. Earlier dates stay as history; never overwrite one. Render with `python3 agent-bench/leaderboard.py collect JOBS_DIR... && python3 agent-bench/leaderboard.py render`. A resumed or repeated job keeps only the latest trial per challenge, language, agent and model.
+Results are kept in date-named files: `results/trials-YYYY-MM-DD.jsonl` (one line per trial) and `results/leaderboard-YYYY-MM-DD.md`. Earlier dates stay as history; never overwrite one. Render with `python3 bench/agent/leaderboard.py collect JOBS_DIR... && python3 bench/agent/leaderboard.py render`. A resumed or repeated job keeps only the latest trial per challenge, language, agent and model.
 
 `agent tokens` is what the agent consumed (input including cache reads, plus output). `solution size (tokens)` is the number of lexical tokens (identifiers, literals and punctuation; comments excluded) in the final source the agent left in the workspace, computed by `core/codetokens.py` in the verifier. It is language-neutral, not any model's tokenizer count, and `n/a` for runs that predate it.
 

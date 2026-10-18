@@ -44,7 +44,7 @@ Implementations are visible only in their declaring module. A generic instantiat
 From the checkout root with the pinned SDK:
 
 ```sh
-toolchain/go/bin/go run ./scripts/bench-lowering -count=5
+toolchain/go/bin/go run ./bench/lowering -count=5
 ```
 
 Compare against handwritten Go with the same checked arithmetic, fault positions, cancellation, and cleanup. Report allocations and time on a quiet machine, alternating unprofiled samples. Claim no speedup you did not reproduce.

@@ -15,11 +15,11 @@ Run from the checkout root with its bundled SDK:
 
 ```sh
 make payload
-toolchain/go/bin/go run ./scripts/bench-lists -output .artifacts/list-bench -count 3
-python3 scripts/bench-lists/memory.py --binary .artifacts/list-bench/lists.test \
+toolchain/go/bin/go run ./bench/lists -output .artifacts/list-bench -count 3
+python3 bench/lists/memory.py --binary .artifacts/list-bench/lists.test \
   --output .artifacts/list-bench/memory --runs 3
 make build
-python3 scripts/bench-lists/native.py --cli ./ms \
+python3 bench/lists/native.py --cli ./ms \
   --output .artifacts/list-bench/native --runs 3
 ```
 

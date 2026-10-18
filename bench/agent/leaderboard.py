@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Collect Harbor trials into results/trials-YYYY-MM-DD.jsonl and render results/leaderboard-YYYY-MM-DD.md.
 
-    python3 agent-bench/leaderboard.py collect JOBS_DIR [JOBS_DIR ...]   # write results/trials-YYYY-MM-DD.jsonl
-    python3 agent-bench/leaderboard.py render [trials-file]             # write results/leaderboard-YYYY-MM-DD.md
+    python3 bench/agent/leaderboard.py collect JOBS_DIR [JOBS_DIR ...]   # write results/trials-YYYY-MM-DD.jsonl
+    python3 bench/agent/leaderboard.py render [trials-file]             # write results/leaderboard-YYYY-MM-DD.md
 
 Pass rate counts every trial. Cost, tokens, turns and time average over PASSING trials only, so a cheap wrong
 answer never improves a ranking. Tokens are input (cache reads included) plus output. Turns are agent steps in

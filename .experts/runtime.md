@@ -269,14 +269,14 @@ panic. A `[]Value` nil oracle and a native loop ignoring its binding both missed
 typed-consumption safety. Parent approved non-clearing behavior without implicit
 copies or invented zero values. Evidence: typed Go oracles,
 [called consumers](../tests/e2e/testdata/accept/list-shrink-consumers.ms),
-[original reproducer now succeeding](../scripts/bench-lists/repro-cleared-tail.ms),
-and [fix/retention review](../scripts/bench-lists/go-range-review.md#non-clearing-shrink).
+[original reproducer now succeeding](../bench/lists/repro-cleared-tail.ms),
+and [fix/retention review](../bench/lists/go-range-review.md#non-clearing-shrink).
 
 Apply when: changing List traversal, callbacks, writers or typed numeric storage.
 Evidence: range/mutation oracle,
 [called native Go-range cases](../tests/e2e/testdata/accept/list-go-range.ms),
 [loop contract](../documentation/core-language/control-flow/loops.md#iterable-types-and-binding),
-and [measured no-copy follow-on](../scripts/bench-lists/go-range-review.md).
+and [measured no-copy follow-on](../bench/lists/go-range-review.md).
 Verify: capture once, mutate in place, append with/without growth, shrink, reverse
 and self-splice; observed reads match ordinary Go backing-array behavior. Explicit
 clones stay separate and append-only callbacks visit only the initial length.
@@ -311,7 +311,7 @@ and comparator consumers together with storage. Typed comparator constructors
 accept raw bodies and install exactly one guarded admission; passing an already
 guarded body doubles accounting. Evidence: storage migration,
 primitive Go oracles and allocation/guard tests,
-and [measured storage/access paths](../scripts/bench-lists/typed-storage.md).
+and [measured storage/access paths](../bench/lists/typed-storage.md).
 Verify: fresh constructors and effectful sized initialization use two allocations,
 typed at/unwrap uses none, generic forwarding retains identity, and comparator
 profiling/returns/cancellation/depth/fault frames match ordinary source calls.

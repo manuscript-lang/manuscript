@@ -13,15 +13,15 @@ checkouts. Each output directory is disposable; fixture source is generated
 deterministically and never written into either measured checkout.
 
 ```sh
-python3 scripts/bench-tooling/wire_bench.py --repo /path/to/before --out /tmp/tooling-before --sizes small:2:10,medium:40:20 --samples 20 --cold 7
-python3 scripts/bench-tooling/wire_bench.py --repo /path/to/after --out /tmp/tooling-after --sizes small:2:10,medium:40:20 --samples 20 --cold 7 --allow-coalescing
-python3 scripts/bench-tooling/wire_bench.py --repo /path/to/after --out /tmp/tooling-large --sizes scaling:100:50 --samples 5 --cold 3 --allow-coalescing
-python3 scripts/bench-tooling/compare_protocol.py --before /path/to/before/ms --after /path/to/after/ms --out /tmp/tooling-equivalence
-MANUSCRIPT_SNAPSHOT_EXPECT_PROGRAMS=1 python3 scripts/bench-tooling/memory.py --repo /path/to/after --out /tmp/tooling-heap-after.log
-MANUSCRIPT_SNAPSHOT_EXPECT_PROGRAMS=10 python3 scripts/bench-tooling/memory.py --repo /path/to/before --out /tmp/tooling-heap-before.log
-python3 scripts/bench-tooling/assertion_controls.py --binary /path/to/after/ms --out /tmp/tooling-controls
-python3 scripts/bench-tooling/helpers.py --repo /path/to/before --out /tmp/tooling-helpers-before.txt
-python3 scripts/bench-tooling/helpers.py --repo /path/to/after --out /tmp/tooling-helpers-after.txt
+python3 bench/tooling/wire_bench.py --repo /path/to/before --out /tmp/tooling-before --sizes small:2:10,medium:40:20 --samples 20 --cold 7
+python3 bench/tooling/wire_bench.py --repo /path/to/after --out /tmp/tooling-after --sizes small:2:10,medium:40:20 --samples 20 --cold 7 --allow-coalescing
+python3 bench/tooling/wire_bench.py --repo /path/to/after --out /tmp/tooling-large --sizes scaling:100:50 --samples 5 --cold 3 --allow-coalescing
+python3 bench/tooling/compare_protocol.py --before /path/to/before/ms --after /path/to/after/ms --out /tmp/tooling-equivalence
+MANUSCRIPT_SNAPSHOT_EXPECT_PROGRAMS=1 python3 bench/tooling/memory.py --repo /path/to/after --out /tmp/tooling-heap-after.log
+MANUSCRIPT_SNAPSHOT_EXPECT_PROGRAMS=10 python3 bench/tooling/memory.py --repo /path/to/before --out /tmp/tooling-heap-before.log
+python3 bench/tooling/assertion_controls.py --binary /path/to/after/ms --out /tmp/tooling-controls
+python3 bench/tooling/helpers.py --repo /path/to/before --out /tmp/tooling-helpers-before.txt
+python3 bench/tooling/helpers.py --repo /path/to/after --out /tmp/tooling-helpers-after.txt
 ```
 
 Use `--allow-coalescing` only with the new server. It requires the newest edit's

@@ -190,11 +190,11 @@ that confirms the construction regression.
 Reproduce using independent before/candidate executables and the bundled SDK:
 
 ```sh
-python scripts/bench-debug-literals/memory_controls.py \
+python bench/debug-literals/memory_controls.py \
   --baseline /path/to/main/ms --prototype /path/to/candidate/ms \
   --go "$PWD/toolchain/go/bin/go" --cache "$MANUSCRIPT_CACHE_DIR" \
   --output "$PWD/.artifacts/memory-int4" --elements 100000 --literals 4
-python scripts/bench-debug-literals/memory_controls.py \
+python bench/debug-literals/memory_controls.py \
   --baseline /path/to/main/ms --prototype /path/to/candidate/ms \
   --go "$PWD/toolchain/go/bin/go" --cache "$MANUSCRIPT_CACHE_DIR" \
   --output "$PWD/.artifacts/memory-string4" --kind String --elements 4000 --literals 4
@@ -268,13 +268,13 @@ external Go installation is used. From the candidate checkout:
 
 ```sh
 export MANUSCRIPT_CACHE_DIR=/tmp/ms147-native
-python scripts/bench-debug-literals/cli_pairs.py \
+python bench/debug-literals/cli_pairs.py \
   --baseline /path/to/before/ms --prototype /path/to/candidate/ms \
   --output "$PWD/.artifacts/debug-literals"
-python scripts/bench-debug-literals/extract_runtime.py \
+python bench/debug-literals/extract_runtime.py \
   --cache "$MANUSCRIPT_CACHE_DIR" --output "$PWD/.artifacts/debug-literals" \
   --repo "$PWD" --go "$PWD/toolchain/go/bin/go"
-python scripts/bench-debug-literals/runtime_pairs.py \
+python bench/debug-literals/runtime_pairs.py \
   --binary baseline="$PWD/.artifacts/debug-literals/100000/baseline/runtime.test" \
   --binary prototype="$PWD/.artifacts/debug-literals/100000/prototype/runtime.test" \
   --cpu 0 --gc 100,50 --count 24 --benchtime 1s

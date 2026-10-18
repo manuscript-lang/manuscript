@@ -81,7 +81,7 @@ and do not exclude modest slowdowns. There is no established writing-path speedu
 or claim that delayed copying is free. See `results/narrow-normal-pairs.json`.
 
 ```sh
-python3 scripts/bench-lists/normal_pairs.py \
+python3 bench/lists/normal_pairs.py \
   --before /path/to/before.test --after /path/to/after.test \
   --output .artifacts/narrow-pairs --count 12 --cpu 0 --benchtime 200ms
 ```

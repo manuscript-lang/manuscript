@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Export agent-bench challenges as Harbor tasks (one per challenge x language).
 
-    python3 agent-bench/export_harbor.py --out /tmp/agent-bench-tasks [--challenges c01,c02] [--languages ms,go]
+    python3 bench/agent/export_harbor.py --out /tmp/agent-bench-tasks [--challenges c01,c02] [--languages ms,go]
         [--ms-binary ./ms]
 
 Each task directory: instruction.md, task.toml, environment/{Dockerfile,workspace/,ms}, tests/{test.sh,grade.py,cases.json},

@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/manuscript-lang/manuscript/internal/devtool"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
-	"github.com/manuscript-lang/manuscript/scripts/internal/devtool"
 )
 
 //go:embed program.ms harness.go.txt prototype.go.txt

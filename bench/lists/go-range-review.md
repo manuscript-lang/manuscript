@@ -29,7 +29,7 @@ without snapshots, traversal copies or invented zero values. The source now chec
 the Go-equivalent sum 7 (`[1, 3, 3]`) and succeeds. Run it with the candidate's CLI:
 
 ```sh
-./ms run scripts/bench-lists/repro-cleared-tail.ms
+./ms run bench/lists/repro-cleared-tail.ms
 ```
 
 Consumer-level native/standalone tests exercise Int, Float, String, records,
@@ -100,7 +100,7 @@ allocations; read-only capture removes about 80 bytes and two allocations. All
 not establish universal speedups, and callback/boxed-scalar overhead still exists.
 
 ```sh
-python3 scripts/bench-lists/normal_pairs.py \
+python3 bench/lists/normal_pairs.py \
   --before /path/to/before.test --after /path/to/after.test \
   --output .artifacts/range-pairs --count 12 --cpu 0 --benchtime 200ms
 ```
@@ -162,7 +162,7 @@ each checkout's Go module and build it with that checkout's bundled SDK:
 ```sh
 toolchain/go/bin/go build -mod=vendor -tags=ms_lean \
   -o .artifacts/list-retention/worker ./.artifacts/list-retention
-python3 scripts/bench-lists/retention.py \
+python3 bench/lists/retention.py \
   --before /path/to/before-worker --after /path/to/after-worker \
   --output .artifacts/retention --runs 3 --cpu 0
 ```

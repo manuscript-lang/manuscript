@@ -173,11 +173,11 @@ Reproduce with the current Makefile and writable caches:
 
 ```sh
 make payload
-toolchain/go/bin/go run ./scripts/bench-lists -output .artifacts/list-bench -count 3
+toolchain/go/bin/go run ./bench/lists -output .artifacts/list-bench -count 3
 toolchain/go/bin/go test ./pkg/runtime -run 'TestPrimitive|TestFreshSized|TestTypedComparator' \
   -bench '^BenchmarkPrimitiveList$' -benchmem -count 3
 make build
-python3 scripts/bench-lists/native.py --cli ./ms --output .artifacts/list-native --runs 3
+python3 bench/lists/native.py --cli ./ms --output .artifacts/list-native --runs 3
 toolchain/go/bin/go test -c -o /tmp/primitive-lists.test ./pkg/runtime
 MS_PRIMITIVE_COUNT=4000000 MS_PRIMITIVE_KIND=Float /tmp/primitive-lists.test \
   -test.run='^TestPrimitiveListMemory$' -test.v

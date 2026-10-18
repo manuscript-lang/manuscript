@@ -70,19 +70,19 @@ increase allocations. Classify uses and ABI boundaries before choosing a local
 representation; Go's optimizer does not reliably remove those allocations.
 
 Verified: primitive List storage also needs a use/ABI classification. The
-[numeric List experiment](../scripts/bench-lists/README.md) separates boxed
+[numeric List experiment](../bench/lists/README.md) separates boxed
 storage from scalar-local boxing; its typed storage adds payload allocations
 when fed through the unchanged Optional/comparator ABI. The production storage
 review also found ordinary iteration/callback payload boxing and constant iterator
 capture allocations; typed controls cannot replace these acceptance workloads.
-See [the explicit allocation ledger](../scripts/bench-lists/typed-storage.md#review-correction-traversal-allocation-regressions). Preserve one authoritative
+See [the explicit allocation ledger](../bench/lists/typed-storage.md#review-correction-traversal-allocation-regressions). Preserve one authoritative
 mutable handle across typed and generic aliases rather than keeping a boxed mirror.
 
 Apply when: optimizing Go lowering, representations, calls, or collection access.
 Evidence: [lowering direction and what it already does](../documentation/contributing/compiler/lowering/_index.md#typed-go),
 [lowering objectives and staged scope](../documentation/contributing/compiler/lowering/_index.md),
-and [generated/handwritten comparison](../scripts/bench-lowering/harness.go.txt).
-Verify: run `go run ./scripts/bench-lowering` with the pinned SDK, inspect the
+and [generated/handwritten comparison](../bench/lowering/harness.go.txt).
+Verify: run `go run ./bench/lowering` with the pinned SDK, inspect the
 retained generated Go and escape analysis, and compare allocation counts as well
 as runtime. Preserve fault, cancellation, aliasing, callback, and debugger tests
 when promoting a benchmark candidate into production lowering.
@@ -92,7 +92,7 @@ their source functions never run. Per-construction B/op and Go HeapAlloc omit
 that static data. The bounded Debug prototype measured zero/one/repeated calls,
 multiple literals, child RSS and ELF segments; a lower GC target exposed a
 repeatable construction slowdown despite faster native compilation. Treat those
-as separate review costs. Evidence: [literal memory/runtime controls](../scripts/bench-debug-literals/README.md#current-matched-main-evidence-after-api-review).
+as separate review costs. Evidence: [literal memory/runtime controls](../bench/debug-literals/README.md#current-matched-main-evidence-after-api-review).
 
 Verified (#147): the Go compiler's cost for a large `[]rt.Value{int64(n), ...}`
 literal is per item, not only per function: moving it into a helper function
@@ -160,7 +160,7 @@ retains fresh storage without that frame; native DAP tests must compare against
 the unchanged baseline, including existing bookkeeping-line coalescing.
 Evidence: [large-list DAP regression](../extensions/vscode/tests/debug-large-literal.test.js),
 bounded Debug lowering, and
-[independent measurement/provenance](../scripts/bench-debug-literals/README.md).
+[independent measurement/provenance](../bench/debug-literals/README.md).
 Verify: break before and after construction, step, inspect source locals and
 watches, and mutate one of two independent evaluations. Default/Release
 generation and caller-edited `Result.Source` must remain unchanged.
