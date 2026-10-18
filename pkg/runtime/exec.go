@@ -111,13 +111,19 @@ func Shield(ctx *Execution) *Execution {
 // Poll counts a loop iteration and checks for cancellation on every 64th.
 func Poll(ctx *Execution, tick *uint32) {
 	if *tick++; *tick&63 == 0 {
-		CheckCancelled(ctx)
+		pollCancelled(ctx)
 	}
 }
 
 // PollIndex is Poll for range loops, which already count their iterations.
 func PollIndex(ctx *Execution, index int) {
 	if index&63 == 63 {
-		CheckCancelled(ctx)
+		pollCancelled(ctx)
 	}
 }
+
+// Keep periodic polling small enough to inline its counter and bit test into
+// native traversals. Direct cancellation checks retain their ordinary inlining.
+//
+//go:noinline
+func pollCancelled(ctx *Execution) { CheckCancelled(ctx) }

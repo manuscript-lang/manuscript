@@ -1,0 +1,16 @@
+pkg/runtime/exec.go:126:6: cannot inline pollCancelled: marked go:noinline
+pkg/runtime/exec.go:112:6: can inline Poll with cost 71 as: func(*Execution, *uint32) { if *tick++; *tick & uint32(63) == uint32(0) { pollCancelled(ctx) } }
+pkg/runtime/exec.go:119:6: can inline PollIndex with cost 66 as: func(*Execution, int) { if index & 63 == 63 { pollCancelled(ctx) } }
+pkg/runtime/list_ops.go:458:7: inlining call to Poll
+pkg/runtime/list_ops.go:80:7: inlining call to Poll
+pkg/runtime/list_ops.go:93:7: inlining call to Poll
+pkg/runtime/list_ops.go:229:8: inlining call to Poll
+pkg/runtime/list_ops.go:239:7: inlining call to Poll
+pkg/runtime/list_ops.go:300:7: inlining call to Poll
+pkg/runtime/list_ops.go:317:7: inlining call to Poll
+pkg/runtime/list_ops.go:406:7: inlining call to Poll
+pkg/runtime/list_ops.go:417:7: inlining call to Poll
+pkg/runtime/list_ops.go:395:7: inlining call to Poll
+pkg/runtime/list_ops.go:366:7: inlining call to Poll
+pkg/runtime/list_ops.go:485:7: inlining call to Poll
+pkg/runtime/list_ops.go:354:7: inlining call to Poll

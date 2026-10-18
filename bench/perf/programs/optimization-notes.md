@@ -1,5 +1,44 @@
 # Performance work
 
+## Keep periodic native polling inline
+
+The current-main stdlib comparison exposed list.contains at 278,595 -> 366,937
+ns per search. Both versions retain the same search and polling bodies; this
+comparison alone does not establish the cause. Go 1.25.1 reports Poll at cost
+91 and PollIndex at 86, above budget 80, because they include CheckCancelled
+(cost 77). Traversals call Poll on every element and pass a counter by address.
+
+The first overlay kept CheckCancelled globally out of line. Although searches
+improved from 360,866 to 168,913 ns, generated list iteration regressed from
+0.89 to 1.25 ns and HTML escaping from 139 to 275 ns. Reject that annotation.
+
+The narrower proposal leaves CheckCancelled and generated loops unchanged.
+Only Poll and PollIndex call a private out-of-line pollCancelled helper, whose
+body is exactly CheckCancelled(ctx). This should lower costs to 71/66 and allow
+native traversals to inline the counter and bit test, calling the helper only
+at the existing selected iteration. Both predicates, counter wrapping, context
+queries, nil Execution behavior, cancellation identity and shielding remain
+unchanged. This final variant must pass balanced same-revision program/stdlib
+comparisons, actual call-site inlining, phase/wrap/cancellation/cleanup/source
+frame tests and standalone distribution checks before retention.
+
+Alternatives: retain per-element calls; expand polling by hand across native
+loops (duplicates policy); globally outline CheckCancelled (rejected above);
+use global inlining flags (rejected below). Independent skeptical review accepted
+both overlay experiments conditionally and required rejecting meaningful wider
+regressions. No custom Go flags or cancellation-policy changes are proposed.
+
+The narrow candidate passed its semantic tests and the final whole-change
+repeat. In the isolated 30-trial program control all rows were within about3%
+except faster builder appends; the 15-trial stdlib control measured list search
+345,368 -> 177,280 ns (paired95% ratio interval0.496–0.534). Nominal HTML and
+other slowdowns had wide intervals including1; the final 30-trial whole-change
+repeat measured HTML206 ->200.5 ns. Final list search is283,198 ->180,555 ns
+(interval0.624–0.658). Keep the narrower helper. The report separately records
+unresolved whole-change method/fs.stat regressions; the isolated polling control
+does not establish them as effects of this helper. Existing nil-context misuse
+still panics at a selected check; nil Execution remains a no-op.
+
 ## Nonnegative list reads after the current-main rebase
 
 Main's new List.get implementation costs 99 inline points in Go 1.25.1. A
@@ -79,8 +118,9 @@ stdlib trials per revision, interpolation measured 82 -> 96.5 ns, CSV parsing
 control also showed integer equality 1.19 -> 1.37 ns despite faster method/try
 workloads. Keeping `intOverflow` out of line in a further temporary overlay
 recovered some loops but regressed generic accumulation. The reviewer agreed to
-reject the flag. No compiler flag, package split, or cold-helper annotation is
-retained. Only direct Result construction and exact-type failure returns ship.
+reject the flag. No compiler flag, package split, or arithmetic cold-helper annotation is
+retained from that experiment. Its only retained changes are direct Result
+construction and exact-type failure returns.
 The rejected experiment's raw data remains available with the results.
 
 ## String builder proposal

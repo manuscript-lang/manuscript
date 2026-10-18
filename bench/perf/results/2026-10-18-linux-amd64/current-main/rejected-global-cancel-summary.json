@@ -1,0 +1,266 @@
+{
+  "string.append_builder": {
+    "before": 3,
+    "after": 3
+  },
+  "string.concat": {
+    "before": 1843,
+    "after": 1878
+  },
+  "string.split": {
+    "before": 23427,
+    "after": 21263
+  },
+  "string.replace_all": {
+    "before": 53529,
+    "after": 55018
+  },
+  "string.contains": {
+    "before": 4715,
+    "after": 4715
+  },
+  "string.upper": {
+    "before": 51837,
+    "after": 48228
+  },
+  "string.trim": {
+    "before": 11,
+    "after": 9
+  },
+  "string.index_char_at": {
+    "before": 7,
+    "after": 7
+  },
+  "string.chars": {
+    "before": 142614,
+    "after": 128064
+  },
+  "string.parse_int": {
+    "before": 20,
+    "after": 20
+  },
+  "string.interpolate": {
+    "before": 89,
+    "after": 92
+  },
+  "list.append": {
+    "before": 47,
+    "after": 44
+  },
+  "list.at": {
+    "before": 2,
+    "after": 1
+  },
+  "list.for_in": {
+    "before": 0,
+    "after": 1
+  },
+  "list.map": {
+    "before": 7,
+    "after": 5
+  },
+  "list.filter": {
+    "before": 13,
+    "after": 10
+  },
+  "list.fold": {
+    "before": 3,
+    "after": 2
+  },
+  "list.sorted": {
+    "before": 112,
+    "after": 127
+  },
+  "list.contains": {
+    "before": 360866,
+    "after": 168913
+  },
+  "list.distinct": {
+    "before": 21,
+    "after": 21
+  },
+  "list.concat_reverse": {
+    "before": 16,
+    "after": 18
+  },
+  "list.records_map": {
+    "before": 31,
+    "after": 30
+  },
+  "map.int_put_get": {
+    "before": 124,
+    "after": 128
+  },
+  "map.string_put_get": {
+    "before": 62,
+    "after": 61
+  },
+  "map.iterate_entries": {
+    "before": 225,
+    "after": 217
+  },
+  "set.add_contains": {
+    "before": 84,
+    "after": 89
+  },
+  "json.parse": {
+    "before": 1285,
+    "after": 1310
+  },
+  "json.roundtrip": {
+    "before": 2150,
+    "after": 2166
+  },
+  "csv.stringify": {
+    "before": 270,
+    "after": 298
+  },
+  "csv.parse": {
+    "before": 200,
+    "after": 185
+  },
+  "encoding.base64_encode": {
+    "before": 1,
+    "after": 1
+  },
+  "encoding.base64_decode": {
+    "before": 1,
+    "after": 1
+  },
+  "encoding.hex_encode": {
+    "before": 2,
+    "after": 3
+  },
+  "crypto.sha256": {
+    "before": 0,
+    "after": 0
+  },
+  "bytes.builder": {
+    "before": 5,
+    "after": 7
+  },
+  "regex.find_all": {
+    "before": 299,
+    "after": 299
+  },
+  "regex.matches": {
+    "before": 93,
+    "after": 99
+  },
+  "regex.replace_all": {
+    "before": 318,
+    "after": 327
+  },
+  "path.join_normalize": {
+    "before": 596,
+    "after": 568
+  },
+  "path.basename": {
+    "before": 16,
+    "after": 13
+  },
+  "url.parse": {
+    "before": 388,
+    "after": 399
+  },
+  "url.encode_component": {
+    "before": 144,
+    "after": 136
+  },
+  "math.sqrt_sin": {
+    "before": 8,
+    "after": 8
+  },
+  "yaml.parse": {
+    "before": 7681,
+    "after": 7648
+  },
+  "yaml.roundtrip": {
+    "before": 11443,
+    "after": 11280
+  },
+  "toml.parse": {
+    "before": 5914,
+    "after": 5989
+  },
+  "html.parse": {
+    "before": 1871,
+    "after": 1822
+  },
+  "html.escape_unescape": {
+    "before": 139,
+    "after": 275
+  },
+  "bigint.factorial_1000": {
+    "before": 362,
+    "after": 322
+  },
+  "decimal.add_round": {
+    "before": 1529,
+    "after": 1482
+  },
+  "compress.gzip": {
+    "before": 3,
+    "after": 2
+  },
+  "compress.roundtrip": {
+    "before": 5,
+    "after": 5
+  },
+  "time.parse_timestamp": {
+    "before": 325,
+    "after": 317
+  },
+  "queue.enqueue_dequeue": {
+    "before": 11,
+    "after": 12
+  },
+  "priority_queue.enqueue_dequeue": {
+    "before": 155,
+    "after": 155
+  },
+  "archive.zip_pack": {
+    "before": 1515,
+    "after": 1482
+  },
+  "archive.tar_pack": {
+    "before": 5601,
+    "after": 5558
+  },
+  "archive.zip_unpack": {
+    "before": 9557,
+    "after": 9817
+  },
+  "sse.feed": {
+    "before": 1885,
+    "after": 1946
+  },
+  "time.timestamp_to_string": {
+    "before": 118,
+    "after": 109
+  },
+  "random.uuid_v4": {
+    "before": 459,
+    "after": 433
+  },
+  "fs.write_file_64k": {
+    "before": 24876,
+    "after": 24587
+  },
+  "fs.read_file_64k": {
+    "before": 49860,
+    "after": 46856
+  },
+  "fs.stat": {
+    "before": 7156,
+    "after": 6340
+  },
+  "fs.list_200": {
+    "before": 83663,
+    "after": 84034
+  },
+  "log.info": {
+    "before": 3986,
+    "after": 3956
+  }
+}

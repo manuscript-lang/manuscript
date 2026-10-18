@@ -2,7 +2,7 @@
 # usage: run.sh [repeats]; BENCH_OUTPUT retains binaries, input and raw samples.
 set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
-ROOT=$(cd "$HERE/../.." && pwd)
+ROOT=$(cd "$HERE/../../.." && pwd)
 MS=${MS:-$ROOT/ms}; GO=${GO:-$ROOT/toolchain/go/bin/go}; N=${1:-7}
 case "$N" in ''|*[!0-9]*|0) echo 'repeats must be a positive integer' >&2; exit 2;; esac
 MS=$(command -v "$MS"); GO=$(command -v "$GO")

@@ -61,7 +61,7 @@ rejected after the broader stdlib suite exposed regressions. Lower inlining
 costs and wins in tiny call benchmarks alone do not establish an improvement.
 Evidence: [try lowering](../pkg/lower/contracts.go),
 [payload execution checks](../tests/e2e/testdata/accept/try-result-payloads.ms), and
-[measurements and proposals](../perf-bench/programs/optimization-notes.md).
+[measurements and proposals](../bench/perf/programs/optimization-notes.md).
 
 Decision: the language is designed to lower cheaply, so use Go's own
 mechanisms. `try` returns the error as a Go value instead of panicking; source
@@ -304,7 +304,8 @@ value and regressed a prototype, so they keep the ordinary inline tick fallback.
 Evidence: [poll selection and linear eligibility facts](../pkg/lower/stmt.go),
 [eligibility pairs](../pkg/compiler/loop_poll_test.go),
 [native phase oracle](../pkg/build/loop_poll_test.go), and
-[measurements and assembly](../perf-bench/programs/results.md).
+[measurements and assembly](../bench/perf/programs/results.md).
 Verify negative/nonzero starts, both directions, nested entry, reset/continue
 fallbacks, and source faults before widening the proof. Derive phase with raw Go
 subtraction: modular overflow preserves the low six bits of the iteration count.
+Use `(distance + 1) & 63 == 0` for the same phase with a cheaper zero test.

@@ -1,6 +1,6 @@
 # Performance benchmark
 
-How fast Manuscript is, compared with hand-written Go and across the standard library. This measures the compiler and runtime only; no agents are involved. For how well agents write programs in different languages, see [`bench/agent/`](../bench/agent/README.md). The two never share results.
+How fast Manuscript is, compared with hand-written Go and across the standard library. This measures the compiler and runtime only; no agents are involved. For how well agents write programs in different languages, see [`bench/agent/`](../agent/README.md). The two never share results.
 
 | Directory | Measures | Run | Results |
 | --- | --- | --- | --- |
@@ -15,6 +15,6 @@ produce the expected operation counts and checksum. To retain the input, binarie
 environment, and raw samples for inspection:
 
 ```sh
-BENCH_OUTPUT=.artifacts/perf-programs sh perf-bench/programs/run.sh 11
-python3 -m unittest discover -s perf-bench/programs -p 'test_*.py'
+BENCH_OUTPUT=.artifacts/perf-programs sh bench/perf/programs/run.sh 11
+python3 -m unittest discover -s bench/perf/programs -p 'test_*.py'
 ```
