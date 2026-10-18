@@ -139,8 +139,14 @@ func foldingRanges(d document) []any {
 	}
 	return result
 }
-func typeDefinition(result compiler.Result, d document, p position) any {
-	_, info := at(result, d, p, sourceIndex(result))
+func typeDefinition(result compiler.Result, d document, p position, cached ...[]occurrence) any {
+	var index []occurrence
+	if len(cached) > 0 {
+		index = cached[0]
+	} else {
+		index = sourceIndex(result)
+	}
+	_, info := at(result, d, p, index)
 	if info == nil || info.Type == nil || info.Type.Def == nil || info.Type.Def.Symbol == nil {
 		return nil
 	}

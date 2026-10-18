@@ -11,8 +11,9 @@ import (
 )
 
 type incoming struct {
-	body []byte
-	err  error
+	body   []byte
+	err    error
+	change bool
 }
 type transport struct {
 	messages chan incoming
@@ -37,9 +38,10 @@ func newTransport(input io.Reader) *transport {
 				return
 			}
 			var msg struct {
-				ID     json.RawMessage `json:"id"`
-				Method string          `json:"method"`
-				Params struct {
+				JSONRPC string          `json:"jsonrpc"`
+				ID      json.RawMessage `json:"id"`
+				Method  string          `json:"method"`
+				Params  struct {
 					ID json.RawMessage `json:"id"`
 				} `json:"params"`
 			}
@@ -59,7 +61,7 @@ func newTransport(input io.Reader) *transport {
 				}
 			}
 			select {
-			case t.messages <- incoming{body: body}:
+			case t.messages <- incoming{body: body, change: msg.JSONRPC == "2.0" && len(msg.ID) == 0 && msg.Method == "textDocument/didChange"}:
 			case <-t.stop:
 				return
 			}

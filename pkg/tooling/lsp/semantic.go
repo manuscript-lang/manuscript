@@ -11,6 +11,14 @@ import (
 var tokenTypes = []string{"keyword", "variable", "number", "string", "comment", "function", "type", "property", "parameter", "enumMember", "typeParameter"}
 
 func semantic(d document, checked ...compiler.Result) map[string]any {
+	var index []occurrence
+	if len(checked) > 0 {
+		index = sourceIndex(checked[0])
+	}
+	return semanticWithIndex(d, checked, index)
+}
+
+func semanticWithIndex(d document, checked []compiler.Result, index []occurrence) map[string]any {
 	data := []int{}
 	positions := newSourcePositions(d.Text)
 	tokens, e := lexer.Lex(filename(d.URI), d.Text)
@@ -42,7 +50,7 @@ func semantic(d document, checked ...compiler.Result) map[string]any {
 	resolved := map[int]int{}
 	if len(checked) > 0 {
 		file := moduleFile(checked[0], d)
-		for _, entry := range sourceIndex(checked[0]) {
+		for _, entry := range index {
 			if entry.pos.File != file || entry.info == nil {
 				continue
 			}
