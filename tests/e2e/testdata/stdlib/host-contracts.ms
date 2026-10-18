@@ -65,7 +65,7 @@ test "all ten string open modes are accepted and changed spellings are invalid":
         for mode in ["r", "r+", "w", "wx", "w+", "wx+", "a", "ax", "a+", "ax+"]:
             let path = "{temporary.path()}/{mode}"
             if mode == "r" or mode == "r+":
-                try fs.write_file(path, "".to_bytes(), replace: false)
+                try fs.write_file(path, "", replace: false)
             with handle = try fs.open(path, mode, 384):
                 let _fileinfo = try handle.stat()
 
@@ -92,7 +92,7 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
         let data = (try "é".repeat(40000)).to_bytes()
 
         with handle = try fs.open(path, "w+", 384):
-            try handle.write(data)
+            try handle.write_bytes(data)
             try expect_equal((try handle.stat()).size, 80000)
             try expect_false((try handle.read()).is_some())
             try expect_equal((try handle.read_at(80000)).length(), 0)
@@ -102,13 +102,13 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
             try expect_equal((try handle.read()).get().length(), 65536)
             try expect_equal((try handle.read_file()).length(), 14464)
             let _count = try handle.seek(0, 0)
-            try handle.append_file("XY".to_bytes())
+            try handle.append_file("XY")
             try expect_equal((try handle.read_at(0, 2)), "XY".to_bytes())
             try expect_equal((try handle.stat()).size, 80000)
-            try handle.write_at(4, "ZZ".to_bytes())
+            try handle.write_at(4, "ZZ")
             try expect_equal((try handle.seek(0, 1)), 2)
             let writer = handle.writer()
-            try writer.write("AB".to_bytes())
+            try writer.write("AB")
             try writer.flush()
             try expect_equal((try handle.read_at(2, 4)), "ABZZ".to_bytes())
             let reader = handle.reader()

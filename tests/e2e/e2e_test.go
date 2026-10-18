@@ -469,7 +469,7 @@ export fn main() Int:
                 _:
                     return 5
 
-    let cause = match stdout().write("".to_bytes()):
+    let cause = match stdout().write(""):
         ok(_):
             return 3
         error(cause): cause

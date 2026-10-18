@@ -118,7 +118,7 @@ func TestListenerReuseAfterTimeout(t *testing.T) {
 	address := listener.Address(ctx)
 	client := must(t, n.Connect(ctx, address, Some(Duration(time.Second))))
 	accepted := must(t, listener.Accept(ctx, Some(Duration(time.Second))))
-	must(t, client.Write(ctx, NewBytes([]byte("x")), None[Duration]()))
+	must(t, client.WriteBytes(ctx, NewBytes([]byte("x")), None[Duration]()))
 	if got := someBytes(t, accepted.Read(ctx, Some(int(1)), Some(Duration(time.Second)))); got != "x" {
 		t.Fatal(got)
 	}
@@ -141,7 +141,7 @@ func TestNegativeLimitsAreInvalidInput(t *testing.T) {
 	conn := must(t, n.Connect(ctx, listener.Address(ctx), None[Duration]()))
 	failedWith(t, conn.Read(ctx, Some(int(0)), None[Duration]()), "IoError_InvalidInput")
 	failedWith(t, conn.Read(ctx, Some(int(-1)), None[Duration]()), "IoError_InvalidInput")
-	failedWith(t, conn.Write(ctx, NewBytes(nil), neg), "IoError_InvalidInput")
+	failedWith(t, conn.WriteBytes(ctx, NewBytes(nil), neg), "IoError_InvalidInput")
 	socket := must(t, n.BindDatagram(ctx, "127.0.0.1:0"))
 	failedWith(t, socket.Receive(ctx, Some(int(0)), None[Duration]()), "NetworkError_InvalidInput")
 	failedWith(t, socket.Receive(ctx, Some(int(65536)), None[Duration]()), "NetworkError_InvalidInput")
@@ -162,7 +162,7 @@ func TestConnectionCloseIsIdempotentAndReportsClosed(t *testing.T) {
 	wg.Wait()
 	client.Close(ctx)
 	failedWith(t, client.Read(ctx, Some(int(1)), None[Duration]()), "IoError_Closed")
-	failedWith(t, client.Write(ctx, NewBytes([]byte("x")), None[Duration]()), "IoError_Closed")
+	failedWith(t, client.WriteBytes(ctx, NewBytes([]byte("x")), None[Duration]()), "IoError_Closed")
 	failedWith(t, client.ShutdownWrite(ctx), "NetworkError_Closed")
 	// Metadata remains readable after close.
 	if client.LocalAddress(ctx) != local || client.PeerAddress(ctx) != peer {
@@ -227,7 +227,7 @@ func TestUnixSocketsAndHalfClose(t *testing.T) {
 		t.Fatal("expected EOF after half close")
 	}
 	// The closing side can still read.
-	must(t, server.Write(ctx, NewBytes([]byte("reply")), None[Duration]()))
+	must(t, server.WriteBytes(ctx, NewBytes([]byte("reply")), None[Duration]()))
 	if got := someBytes(t, client.Read(ctx, Some(int(10)), Some(Duration(time.Second)))); got != "reply" {
 		t.Fatal(got)
 	}
@@ -303,30 +303,30 @@ func TestDatagramSockets(t *testing.T) {
 	ctx, n := newTestNetwork(t)
 	a := must(t, n.BindDatagram(ctx, "127.0.0.1:0"))
 	b := must(t, n.BindDatagram(ctx, "127.0.0.1:0"))
-	must(t, a.Send(ctx, NewBytes([]byte("hello")), b.Address(ctx), None[Duration]()))
+	must(t, a.SendBytes(ctx, NewBytes([]byte("hello")), b.Address(ctx), None[Duration]()))
 	d := must(t, b.Receive(ctx, None[int](), Some(Duration(time.Second))))
 	if str(d.Data) != "hello" || d.Sender != a.Address(ctx) {
 		t.Fatal(str(d.Data), d.Sender)
 	}
 	// Message boundaries include empty messages.
-	must(t, a.Send(ctx, NewBytes(nil), b.Address(ctx), None[Duration]()))
+	must(t, a.SendBytes(ctx, NewBytes(nil), b.Address(ctx), None[Duration]()))
 	if d := must(t, b.Receive(ctx, None[int](), Some(Duration(time.Second)))); len(d.Data.Data) != 0 {
 		t.Fatal("empty datagram")
 	}
 	// An oversized datagram is discarded with LimitExceeded, never truncated.
-	must(t, a.Send(ctx, NewBytes([]byte("0123456789")), b.Address(ctx), None[Duration]()))
+	must(t, a.SendBytes(ctx, NewBytes([]byte("0123456789")), b.Address(ctx), None[Duration]()))
 	failedWith(t, b.Receive(ctx, Some(int(4)), Some(Duration(time.Second))), "NetworkError_LimitExceeded")
 	failedWith(t, b.Receive(ctx, None[int](), Some(Duration(10*time.Millisecond))), "NetworkError_Timeout")
 	b.Close(ctx)
 	b.Close(ctx)
 	failedWith(t, b.Receive(ctx, None[int](), None[Duration]()), "NetworkError_Closed")
-	failedWith(t, b.Send(ctx, NewBytes(nil), a.Address(ctx), None[Duration]()), "NetworkError_Closed")
+	failedWith(t, b.SendBytes(ctx, NewBytes(nil), a.Address(ctx), None[Duration]()), "NetworkError_Closed")
 	if b.Address(ctx) == "" {
 		t.Fatal("address after close")
 	}
 	restricted := must(t, n.Restrict(ctx, NewList("localhost"), NewList("127.0.0.0/8"), true))
 	r := must(t, restricted.BindDatagram(ctx, "127.0.0.1:0"))
-	failedWith(t, r.Send(ctx, NewBytes(nil), "192.0.2.1:9", None[Duration]()), "NetworkError_PermissionDenied")
+	failedWith(t, r.SendBytes(ctx, NewBytes(nil), "192.0.2.1:9", None[Duration]()), "NetworkError_PermissionDenied")
 	failedWith(t, restricted.BindDatagram(ctx, "192.0.2.1:0"), "NetworkError_PermissionDenied")
 }
 

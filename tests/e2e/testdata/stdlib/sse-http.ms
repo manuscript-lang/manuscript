@@ -15,10 +15,10 @@ fn stream_events(exchange: HttpExchange) Result[Unit, HttpError]:
     let sent = headers()
     try sent.append("Content-Type", "text/event-stream".to_bytes())
     try exchange.send_headers(200, sent)
-    exchange.write("event: greet\r\ndata: h".to_bytes()).get()
-    exchange.write("é".to_bytes().slice(0, 1).get()).get()
-    exchange.write("\u{e9}!\r".to_bytes().slice(1, 4).get()).get()
-    exchange.write("\n\r\n: keepalive\n\ndata: second\n\n".to_bytes()).get()
+    exchange.write("event: greet\r\ndata: h").get()
+    exchange.write_bytes("é".to_bytes().slice(0, 1).get()).get()
+    exchange.write_bytes("\u{e9}!\r".to_bytes().slice(1, 4).get()).get()
+    exchange.write("\n\r\n: keepalive\n\ndata: second\n\n").get()
     return ok(unit)
 
 test "HTTP response bodies decode as SSE without being closed by the reader":

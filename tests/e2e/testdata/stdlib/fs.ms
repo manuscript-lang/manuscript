@@ -25,7 +25,7 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
             (
                 fs.write_file(
                     path: "{root}/{name}",
-                    data: "".to_bytes(),
+                    data: "",
                     replace: false
                 ) | try expect_ok
             )
@@ -80,14 +80,14 @@ test "ordinary filesystem misuse retains typed cases":
         let child = (
             fs.write_file(
                 path: "{directory}/child",
-                data: "x".to_bytes(),
+                data: "x",
                 replace: false
             ) | try expect_ok
         )
         let written = (
             fs.write_file(
                 path: file,
-                data: "abc".to_bytes(),
+                data: "abc",
                 replace: false
             ) | try expect_ok
         )
@@ -116,7 +116,7 @@ test "ordinary filesystem misuse retains typed cases":
 
         with reader = (fs.open(path: file, flags: "r", mode: 384) | try expect_ok):
             (
-                reader.write("x".to_bytes()) | try expect_fs_error(
+                reader.write("x") | try expect_fs_error(
                     expected: FileSystemError.InvalidInput
                 )
             )
@@ -154,7 +154,7 @@ test "filesystem scoped temporary directories and bounded file reads":
         let written = (
             fs.write_file(
                 path: path,
-                data: "hello".to_bytes(),
+                data: "hello",
                 replace: false
             ) | try expect_ok
         )
@@ -166,15 +166,7 @@ test "filesystem scoped temporary directories and bounded file reads":
         )
         fs.read_file(path: path, max_bytes: 4) | try expect_equal(expected: limited)
         let exists: Result[Unit, FileSystemError] = error(FileSystemError.AlreadyExists)
-        (
-            (
-                fs.write_file(
-                    path: path,
-                    data: "changed".to_bytes(),
-                    replace: false
-                ) != exists
-            )
-        ) | try expect_false
+        ((fs.write_file(path: path, data: "changed", replace: false) != exists)) | try expect_false
         (fs.stat(path: path, follow_links: true) | try expect_ok).size | try expect_equal(
             expected: 5
         )
@@ -199,7 +191,7 @@ test "file handles positional I/O stream adapters and closed errors":
         let written = (
             fs.write_file(
                 path: path,
-                data: "abcdef".to_bytes(),
+                data: "abcdef",
                 replace: false
             ) | try expect_ok
         )
@@ -209,7 +201,7 @@ test "file handles positional I/O stream adapters and closed errors":
             handle.read_at(offset: 2, max_bytes: 2) | try expect_ok | try expect_equal(
                 expected: "cd".to_bytes()
             )
-            (handle.write_at(offset: 1, data: "XY".to_bytes()) | try expect_ok)
+            (handle.write_at(offset: 1, data: "XY") | try expect_ok)
             let resized = (handle.truncate(4) | try expect_ok)
             (handle.stat() | try expect_ok).size | try expect_equal(expected: 4)
             let sought = (handle.seek(offset: 0, origin: 0) | try expect_ok)
@@ -228,7 +220,7 @@ test "empty paths are rejected instead of resolving to the working directory":
     )
     fs.remove(path: "", recursive: true) | try expect_equal(expected: invalid)
     fs.create_directory(path: "", recursive: true) | try expect_equal(expected: invalid)
-    fs.write_file(path: "", data: "x".to_bytes(), replace: true) | try expect_equal(
+    fs.write_file(path: "", data: "x", replace: true) | try expect_equal(
         expected: invalid
     )
 

@@ -71,8 +71,8 @@ func TestCLITestJSONPreservesOutputsFailuresAndLocations(t *testing.T) {
 import fail from "@std/testing.ms"
 
 test "first=pass":
-    let _out = stdout().write(data: "PASS fake test\nuser stdout\n".to_bytes())
-    let _err = stderr().write(data: "user stderr\n".to_bytes())
+    let _out = stdout().write(data: "PASS fake test\nuser stdout\n")
+    let _err = stderr().write(data: "user stderr\n")
 
 test "second=fails":
     return fail("expected failure")
@@ -154,7 +154,7 @@ func TestCLITestJSONEmptyCompileErrorAndTimeout(t *testing.T) {
 
 func TestCLITestJSONPreservesBinaryStdout(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "bytes.ms")
-	source := "import stdout from \"@std/io.ms\"\nimport Bytes from \"@std/bytes.ms\"\n\ntest \"bytes\":\n    let data = \"x\".to_bytes().with_value(index: 0, value: 255)\n    let _out = stdout().write(data: data)\n"
+	source := "import stdout from \"@std/io.ms\"\nimport Bytes from \"@std/bytes.ms\"\n\ntest \"bytes\":\n    let data = \"x\".to_bytes().with_value(index: 0, value: 255)\n    let _out = stdout().write_bytes(data: data)\n"
 	if err := os.WriteFile(path, []byte(source), 0600); err != nil {
 		t.Fatal(err)
 	}

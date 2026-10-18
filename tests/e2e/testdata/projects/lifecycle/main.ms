@@ -10,21 +10,21 @@ type Resource:
 
 impl Closeable for Resource:
     fn close() Unit:
-        self.output.write(data: "close {self.label}\n".to_bytes())
+        self.output.write(data: "close {self.label}\n")
 
 type Pair:
     first: Int
     second: Int
 
 fn report(output: WriteStream, label: String, value: Int) Int:
-    output.write(data: "{label}\n".to_bytes())
+    output.write(data: "{label}\n")
     return value
 
 fn combine(first: Int, second: Int) Int:
     return first + second
 
 fn select(output: WriteStream) fn(first: Int, second: Int) Int:
-    output.write(data: "callable\n".to_bytes())
+    output.write(data: "callable\n")
     return combine
 
 fn early(output: WriteStream) Int:
@@ -41,7 +41,7 @@ fn propagate(output: WriteStream) Result[Int, String]:
         return ok(number)
 
 fn iterable(output: WriteStream) List[Int]:
-    output.write(data: "iterable\n".to_bytes())
+    output.write(data: "iterable\n")
     return [1, 2]
 
 fn exercise() Result[Int, Error]:
@@ -57,7 +57,7 @@ fn exercise() Result[Int, Error]:
     (pair.first + pair.second) | try expect_equal(expected: 3)
     with resource = Resource(label: "normal", output: stdout()):
         let completed = unit
-    stdout().write(data: "after normal\n".to_bytes())
+    stdout().write(data: "after normal\n")
     var count = 0
 
     while count < 2:
@@ -76,12 +76,12 @@ fn exercise() Result[Int, Error]:
             let completed = unit
 
     early(output: stdout()) | try expect_equal(expected: 5)
-    stdout().write(data: "finished\n".to_bytes())
+    stdout().write(data: "finished\n")
     return ok(0)
 
 export fn main() Int:
     match exercise():
         ok(status): return status
         error(cause):
-            let written = stderr().write("{cause.message()}\n".to_bytes())
+            let written = stderr().write("{cause.message()}\n")
             return 1

@@ -15,7 +15,7 @@ fn hello(exchange: HttpExchange) Result[Unit, HttpError]:
             headers: (try list_headers(Map[String, List[String]]()))
         )
     )
-    let written = (try http_result(exchange.write("secure".to_bytes())))
+    let written = (try http_result(exchange.write("secure")))
     return ok(unit)
 
 test "TLS certificate parsing verification hostname and expiration":
@@ -118,7 +118,7 @@ test "HTTPS trusts only the explicitly supplied local test root":
                     headers: (
                         try text_headers(Map[String, String]())
                     ),
-                    body: "".to_bytes(),
+                    body: "",
                     timeout: 2.seconds
                 ) | try expect_ok
             ):

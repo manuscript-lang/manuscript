@@ -3,7 +3,7 @@ import control from "@std/process.ms"
 import sleep from "@std/time.ms"
 
 fn say(text: String) Unit:
-    let _ignored = stdout().write(text.to_bytes())
+    let _ignored = stdout().write(text)
 
 export fn main() Int:
     if let watched = control().watch_signals([2, 15]):

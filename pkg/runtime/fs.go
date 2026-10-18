@@ -265,7 +265,11 @@ func (f *osFileSystem) ReadFile(ctx *Execution, path string, maxBytes Option[int
 	return fsOK(NewBytes(b))
 }
 
-func (f *osFileSystem) WriteFile(ctx *Execution, path string, data *Bytes, replace bool) Result[Unit, FileSystemError] {
+func (f *osFileSystem) WriteFile(ctx *Execution, path string, data string, replace bool) Result[Unit, FileSystemError] {
+	return f.WriteFileBytes(ctx, path, NewBytes([]byte(data)), replace)
+}
+
+func (f *osFileSystem) WriteFileBytes(ctx *Execution, path string, data *Bytes, replace bool) Result[Unit, FileSystemError] {
 	p, ok := f.path(path)
 	if !ok {
 		return fsInvalid[Unit]()
@@ -405,7 +409,7 @@ func (f *osFileSystem) CopyFile(ctx *Execution, source, destination string, repl
 	if code != "" {
 		return fsFail[Unit](readFailure(code))
 	}
-	return f.WriteFile(ctx, dest, NewBytes(b), replace)
+	return f.WriteFileBytes(ctx, dest, NewBytes(b), replace)
 }
 
 func (f *osFileSystem) Canonicalize(ctx *Execution, path string) Result[string, FileSystemError] {
@@ -504,7 +508,11 @@ func (f *osFileSystem) Access(ctx *Execution, path string, mode int) Result[Unit
 	return fsUnit(hostos.Access(p, uint32(mode)))
 }
 
-func (f *osFileSystem) AppendFile(ctx *Execution, path string, data *Bytes) Result[Unit, FileSystemError] {
+func (f *osFileSystem) AppendFile(ctx *Execution, path string, data string) Result[Unit, FileSystemError] {
+	return f.AppendFileBytes(ctx, path, NewBytes([]byte(data)))
+}
+
+func (f *osFileSystem) AppendFileBytes(ctx *Execution, path string, data *Bytes) Result[Unit, FileSystemError] {
 	p, ok := f.path(path)
 	if !ok {
 		return fsInvalid[Unit]()

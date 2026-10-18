@@ -27,7 +27,7 @@ fn exercise(path: String) Result[Unit, Error]:
     let written = try common_result(
         result: filesystem().write_file(
             path: path,
-            data: "hello".to_bytes(),
+            data: "hello",
             replace: false
         )
     )
@@ -60,9 +60,7 @@ fn exercise(path: String) Result[Unit, Error]:
     with file = try common_result(
         result: filesystem().open(path: path, flags: "r+", mode: 384)
     ):
-        let updated = try common_result(
-            result: file.write_at(offset: 0, data: "HELLO".to_bytes())
-        )
+        let updated = try common_result(result: file.write_at(offset: 0, data: "HELLO"))
         try expect_false(
             not (
                 try common_result(
@@ -84,10 +82,7 @@ fn exercise(path: String) Result[Unit, Error]:
         )
     ):
         let appended = try common_result(
-            result: filesystem().append_file(
-                path: path,
-                data: "!".to_bytes()
-            )
+            result: filesystem().append_file(path: path, data: "!")
         )
         let events = try common_result(result: watcher.next())
         (events.length() > 0) | try expect_true

@@ -261,7 +261,7 @@ fn run() Result[Unit, Error]:
             continue
 
         for out in run_command(w, line):
-            try stdout().write("{out}\n".to_bytes())
+            try stdout().write("{out}\n")
 
     return stdout().flush()
 

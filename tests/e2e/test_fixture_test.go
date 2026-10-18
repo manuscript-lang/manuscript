@@ -18,7 +18,7 @@ const fileFixtureSource = `import {TestHooks, expect_equal, fail, skip} from "@s
 import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
 fn println(message: String) Unit:
-    let written = stdout().write("{message}\n".to_bytes()).get()
+    let written = stdout().write("{message}\n").get()
 
 type State:
     value: Int
@@ -106,7 +106,7 @@ func TestCLITestFileFixtureListAndDefaultHooks(t *testing.T) {
 	source := `import {TestHooks, expect_equal} from "@std/testing.ms"
 import stdout from "@std/io.ms"
 fn println(message: String) Unit:
-    let written = stdout().write("{message}\n".to_bytes()).get()
+    let written = stdout().write("{message}\n").get()
 
 type State:
     value: Int
@@ -150,10 +150,10 @@ impl TestHooks for ApiFixture:
     fn after_all() Unit:
         self.server.close()
 test "first request":
-    let response = try expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: "".to_bytes()))
+    let response = try expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: ""))
     try expect_equal(response.metadata().status, 200)
 test "second request uses same server":
-    let response = try expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: "".to_bytes()))
+    let response = try expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: ""))
     try expect_equal(response.body, "shared".to_bytes())
 `
 	file := filepath.Join(t.TempDir(), "test.ms")
@@ -260,13 +260,13 @@ type UnusedFixture:
     value: Int
 impl TestHooks for UnusedFixture:
     fn before_all() Unit:
-        let written = stdout().write("UNUSED before_all".to_bytes()).get()
+        let written = stdout().write("UNUSED before_all").get()
     fn before_each() Unit:
-        let written = stdout().write("UNUSED before_each".to_bytes()).get()
+        let written = stdout().write("UNUSED before_each").get()
     fn after_each() Unit:
-        let written = stdout().write("UNUSED after_each".to_bytes()).get()
+        let written = stdout().write("UNUSED after_each").get()
     fn after_all() Unit:
-        let written = stdout().write("UNUSED after_all".to_bytes()).get()
+        let written = stdout().write("UNUSED after_all").get()
 test "plain test":
     try expect_equal(1 + 1, 2)
 `

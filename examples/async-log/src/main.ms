@@ -100,7 +100,7 @@ test "an existing file's size counts toward rotation":
         try value(
             filesystem().write_file(
                 path: path,
-                data: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx".to_bytes()
+                data: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
             )
         )
 
@@ -153,7 +153,7 @@ test "a full queue returns LimitExceeded without waiting":
             while not rejected and attempts < 100000:
                 attempts = attempts + 1
 
-                match transport.write("x\n".to_bytes()):
+                match transport.write("x\n"):
                     ok(_): continue
                     error(cause):
                         cause | try expect_equal(expected: LogError.LimitExceeded)
@@ -168,7 +168,7 @@ test "writes after close are rejected":
         transport.close()
         transport.close()
 
-        match transport.write("x\n".to_bytes()):
+        match transport.write("x\n"):
             ok(_): return fail("write after close")
             error(cause):
                 try expect_equal(cause, LogError.Closed)

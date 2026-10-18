@@ -50,7 +50,9 @@ export interface WriteStream:
     # File-handle writers synchronize the file, and failures retain IoError identity.
     fn flush() Result[Unit, IoError]
     # Accepts the complete input on success; a source implementation may buffer until flush.
-    fn write(data: Bytes) Result[Unit, IoError]
+    fn write(data: String) Result[Unit, IoError]
+    # Accepts the complete bytes on success, with the buffering rules of write.
+    fn write_bytes(data: Bytes) Result[Unit, IoError]
 
 # Copies bytes until end of input or the supplied byte limit; returns bytes copied.
 export fn copy(

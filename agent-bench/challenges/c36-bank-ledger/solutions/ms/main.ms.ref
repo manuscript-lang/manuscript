@@ -178,7 +178,7 @@ fn run() Result[Unit, Error]:
 
         step(l, t)
 
-    try stdout().write(l.out.freeze().to_bytes())
+    try stdout().write(l.out.freeze())
     return stdout().flush()
 
 export fn main() Int:

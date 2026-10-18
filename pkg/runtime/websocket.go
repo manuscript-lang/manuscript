@@ -265,7 +265,11 @@ func (w *osWebSocket) Receive(ctx *Execution) Result[Option[*WebSocketMessage], 
 	return Ok[Option[*WebSocketMessage], WebSocketError](Some(&WebSocketMessage{Data: NewBytes(data), Text: text}))
 }
 
-func (w *osWebSocket) Ping(ctx *Execution, data *Bytes) Result[Unit, WebSocketError] {
+func (w *osWebSocket) Ping(ctx *Execution, data string) Result[Unit, WebSocketError] {
+	return w.PingBytes(ctx, NewBytes([]byte(data)))
+}
+
+func (w *osWebSocket) PingBytes(ctx *Execution, data *Bytes) Result[Unit, WebSocketError] {
 	if !w.admit(ctx, w.write) {
 		return wsFail[Unit](errWSClosed)
 	}
@@ -283,7 +287,11 @@ func (w *osWebSocket) Ping(ctx *Execution, data *Bytes) Result[Unit, WebSocketEr
 	return Ok[Unit, WebSocketError](Unit{})
 }
 
-func (w *osWebSocket) Send(ctx *Execution, data *Bytes, text bool) Result[Unit, WebSocketError] {
+func (w *osWebSocket) Send(ctx *Execution, data string) Result[Unit, WebSocketError] {
+	return w.SendBytes(ctx, NewBytes([]byte(data)), true)
+}
+
+func (w *osWebSocket) SendBytes(ctx *Execution, data *Bytes, text bool) Result[Unit, WebSocketError] {
 	if !w.admit(ctx, w.write) {
 		return wsFail[Unit](errWSClosed)
 	}

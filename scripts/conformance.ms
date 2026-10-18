@@ -153,7 +153,7 @@ export fn main() Int:
     match run(arguments()):
         ok(_): return 0
         error(cause):
-            let written = stdout().write("{cause.message()}\n".to_bytes())
+            let written = stdout().write("{cause.message()}\n")
             return 1
 
 test "reports require complete nonempty executions and count explicit skips":
@@ -193,7 +193,7 @@ test "shards cover every inventory entry exactly once":
             index = index + 1
 
 fn emit(text: String) Result[Unit, Error]:
-    try stdout().write("{text}\n".to_bytes())
+    try stdout().write("{text}\n")
     return ok(unit)
 
 test "invalid suite and shard arguments fail before running children":

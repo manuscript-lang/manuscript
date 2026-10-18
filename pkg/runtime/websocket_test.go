@@ -25,7 +25,7 @@ func upgradeHandler(t *testing.T, max int, protocols ...string) func(*Execution,
 		}
 		socket := upgraded.Val
 		if message := must(t, socket.Receive(child)); message.Some {
-			must(t, socket.Send(child, message.Val.Data, message.Val.Text))
+			must(t, socket.SendBytes(child, message.Val.Data, message.Val.Text))
 		}
 		return Ok[Unit, HttpError](Unit{})
 	}
@@ -39,7 +39,7 @@ func TestWebSocketEchoAndStreamingUpload(t *testing.T) {
 	if socket.Subprotocol(ctx) != "echo" {
 		t.Fatal("subprotocol", socket.Subprotocol(ctx))
 	}
-	must(t, socket.Send(ctx, NewBytes([]byte("hello")), true))
+	must(t, socket.SendBytes(ctx, NewBytes([]byte("hello")), true))
 	message := must(t, socket.Receive(ctx))
 	if !message.Some || str(message.Val.Data) != "hello" || !message.Val.Text {
 		t.Fatalf("%+v", message)
@@ -51,8 +51,8 @@ func TestWebSocketEchoAndStreamingUpload(t *testing.T) {
 	socket.Close(ctx)
 	socket.Close(ctx)
 	failedWith(t, socket.Receive(ctx), "WebSocketError_Closed")
-	failedWith(t, socket.Send(ctx, NewBytes(nil), false), "WebSocketError_Closed")
-	failedWith(t, socket.Ping(ctx, NewBytes(nil)), "WebSocketError_Closed")
+	failedWith(t, socket.SendBytes(ctx, NewBytes(nil), false), "WebSocketError_Closed")
+	failedWith(t, socket.PingBytes(ctx, NewBytes(nil)), "WebSocketError_Closed")
 	if socket.Subprotocol(ctx) != "echo" {
 		t.Fatal("subprotocol after close")
 	}
@@ -74,11 +74,11 @@ func TestWebSocketSendValidationAndPing(t *testing.T) {
 	}, serverOptions()))
 	defer close(release)
 	socket := must(t, n.WebSocket(ctx, "ws://"+server.Address(ctx), headersOf(), NewList[string](), wsOptions(8, false)))
-	failedWith(t, socket.Send(ctx, NewBytes([]byte("123456789")), false), "WebSocketError_LimitExceeded")
-	failedWith(t, socket.Send(ctx, NewBytes([]byte{0xff}), true), "WebSocketError_InvalidData")
-	must(t, socket.Send(ctx, NewBytes([]byte{0xff}), false))
-	failedWith(t, socket.Ping(ctx, NewBytes(make([]byte, 126))), "WebSocketError_InvalidInput")
-	must(t, socket.Ping(ctx, NewBytes([]byte("p"))))
+	failedWith(t, socket.SendBytes(ctx, NewBytes([]byte("123456789")), false), "WebSocketError_LimitExceeded")
+	failedWith(t, socket.SendBytes(ctx, NewBytes([]byte{0xff}), true), "WebSocketError_InvalidData")
+	must(t, socket.SendBytes(ctx, NewBytes([]byte{0xff}), false))
+	failedWith(t, socket.PingBytes(ctx, NewBytes(make([]byte, 126))), "WebSocketError_InvalidInput")
+	must(t, socket.PingBytes(ctx, NewBytes([]byte("p"))))
 }
 
 func TestWebSocketDialValidation(t *testing.T) {
@@ -264,5 +264,5 @@ func TestWebSocketReceiveCancellationAndNetworkClose(t *testing.T) {
 	// The interrupted session is failed, not reusable.
 	failedWith(t, socket.Receive(ctx), "WebSocketError_Closed")
 	n.Close(ctx)
-	failedWith(t, socket.Send(ctx, NewBytes(nil), false), "WebSocketError_Closed")
+	failedWith(t, socket.SendBytes(ctx, NewBytes(nil), false), "WebSocketError_Closed")
 }

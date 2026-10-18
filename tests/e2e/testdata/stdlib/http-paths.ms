@@ -50,11 +50,7 @@ fn stream_route(exchange: HttpExchange) Result[Unit, HttpError]:
         )
     )
     let written = (
-        try http_result(
-            exchange.write(
-                "{exchange.path()}|{exchange.query()}".to_bytes()
-            )
-        )
+        try http_result(exchange.write("{exchange.path()}|{exchange.query()}"))
     )
     return ok(unit)
 
@@ -64,7 +60,7 @@ fn check_route(url: String, expected: String) Result[Unit, Error]:
             method: HttpMethod.Get,
             url: url,
             headers: (try text_headers(Map[String, String]())),
-            body: "".to_bytes(),
+            body: "",
             timeout: 2.seconds
         ) | try expect_ok
     )
@@ -88,7 +84,7 @@ fn check_rejected(url: String) Result[Unit, Error]:
             method: HttpMethod.Get,
             url: url,
             headers: (try text_headers(Map[String, String]())),
-            body: "".to_bytes(),
+            body: "",
             timeout: 2.seconds
         ) | try expect_ok
     )
@@ -136,7 +132,7 @@ fn expect_http_error[T](outcome: Result[T, HttpError]) Result[Unit, Error]:
 
 test "buffered and reusable clients reject malformed ports as InvalidInput":
     let headers = (try text_headers(Map[String, String]()))
-    let body = "".to_bytes()
+    let body = ""
     (
         network().request(
             method: HttpMethod.Get,

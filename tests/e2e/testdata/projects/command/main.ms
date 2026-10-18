@@ -15,12 +15,12 @@ fn exercise() Result[Int, Error]:
             return ok(1)
         ok(output):
             output.exit_code | try expect_equal(expected: 0)
-            stdout().write(data: output.stdout)
+            stdout().write_bytes(data: output.stdout)
             return ok(0)
 
 export fn main() Int:
     match exercise():
         ok(status): return status
         error(cause):
-            let written = stderr().write("{cause.message()}\n".to_bytes())
+            let written = stderr().write("{cause.message()}\n")
             return 1

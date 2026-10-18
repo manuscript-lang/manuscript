@@ -6,7 +6,7 @@ import {TaskGroup, check_cancelled} from "@std/tasks.ms"
 import sleep from "@std/time.ms"
 
 fn say(text: String) Unit:
-    let _ignored = stdout().write(text.to_bytes())
+    let _ignored = stdout().write(text)
 
 type WorkerCleanup:
     label: String
@@ -31,7 +31,7 @@ impl Closeable for Server:
         self.workers.close()
         check_cancelled()
         sleep(10.milliseconds)
-        let farewell = self.client.write("farewell\n".to_bytes(), timeout: 1.seconds)
+        let farewell = self.client.write("farewell\n", timeout: 1.seconds)
 
         if farewell.is_error():
             say("farewell failed: {farewell.err().message()}\n")
@@ -58,7 +58,7 @@ fn serve() Result[Unit, Error]:
                                     say("ready\n")
                                     sleep(3600.seconds)
                                     let _sent = client.write(
-                                        data: "worker farewell\n".to_bytes()
+                                        data: "worker farewell\n"
                                     )
                                     return unit
                         )

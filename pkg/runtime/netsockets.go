@@ -262,7 +262,11 @@ func (c *osConnection) Read(ctx *Execution, maxBytes Option[int], timeout Option
 	return ioFail[Option[*Bytes]](ioFailed("empty read without EOF"))
 }
 
-func (c *osConnection) Write(ctx *Execution, data *Bytes, timeout Option[Duration]) Result[Unit, IoError] {
+func (c *osConnection) Write(ctx *Execution, data string, timeout Option[Duration]) Result[Unit, IoError] {
+	return c.WriteBytes(ctx, NewBytes([]byte(data)), timeout)
+}
+
+func (c *osConnection) WriteBytes(ctx *Execution, data *Bytes, timeout Option[Duration]) Result[Unit, IoError] {
 	limit, ok := optTimeout(timeout)
 	if !ok {
 		return ioFail[Unit](errIoInvalidInput)
@@ -530,7 +534,11 @@ func (d *osDatagram) Receive(ctx *Execution, maxBytes Option[int], timeout Optio
 	return Ok[*Datagram, NetworkError](&Datagram{Data: NewBytes(b[:count]), Sender: from.String()})
 }
 
-func (d *osDatagram) Send(ctx *Execution, data *Bytes, address string, timeout Option[Duration]) Result[Unit, NetworkError] {
+func (d *osDatagram) Send(ctx *Execution, data string, address string, timeout Option[Duration]) Result[Unit, NetworkError] {
+	return d.SendBytes(ctx, NewBytes([]byte(data)), address, timeout)
+}
+
+func (d *osDatagram) SendBytes(ctx *Execution, data *Bytes, address string, timeout Option[Duration]) Result[Unit, NetworkError] {
 	limit, ok := optTimeout(timeout)
 	if !ok {
 		return netFail[Unit](errNetInvalidInput)

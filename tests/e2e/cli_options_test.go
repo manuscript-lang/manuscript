@@ -16,7 +16,7 @@ import stdout from "@std/io.ms"
 import stderr from "@std/io.ms"
 
 fn write_line(text: String) Result[Unit, Error]:
-    try stdout().write(data: "{text}\n".to_bytes())
+    try stdout().write(data: "{text}\n")
     return ok(unit)
 
 fn exercise() Result[Int, Error]:
@@ -31,7 +31,7 @@ export fn main() Int:
     match exercise():
         ok(status): return status
         error(cause):
-            let written = stderr().write("{cause.message()}\n".to_bytes())
+            let written = stderr().write("{cause.message()}\n")
             return 1
 
 test "selected=a=b":

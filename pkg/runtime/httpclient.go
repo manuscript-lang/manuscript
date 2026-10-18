@@ -39,7 +39,11 @@ func httpURL(text string) (*url.URL, bool) {
 
 // Request performs one buffered HTTP request. Redirects are returned, not
 // followed, and no cookies or proxy settings apply.
-func (n *osNetwork) Request(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, body *Bytes, maxResponseBytes Option[int], timeout Option[Duration]) Result[*ClientResponse, HttpError] {
+func (n *osNetwork) Request(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, body string, maxResponseBytes Option[int], timeout Option[Duration]) Result[*ClientResponse, HttpError] {
+	return n.RequestBytes(ctx, method, address, headers, NewBytes([]byte(body)), maxResponseBytes, timeout)
+}
+
+func (n *osNetwork) RequestBytes(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, body *Bytes, maxResponseBytes Option[int], timeout Option[Duration]) Result[*ClientResponse, HttpError] {
 	if n.isClosed() {
 		return httpFail[*ClientResponse](errHTTPClosed)
 	}
@@ -205,7 +209,11 @@ func (c *osHTTPClient) close() {
 	close(c.released)
 }
 
-func (c *osHTTPClient) Request(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, body *Bytes, maxResponseBytes Option[int], timeout Option[Duration]) Result[ResponseBody, HttpError] {
+func (c *osHTTPClient) Request(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, body string, maxResponseBytes Option[int], timeout Option[Duration]) Result[ResponseBody, HttpError] {
+	return c.RequestBytes(ctx, method, address, headers, NewBytes([]byte(body)), maxResponseBytes, timeout)
+}
+
+func (c *osHTTPClient) RequestBytes(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, body *Bytes, maxResponseBytes Option[int], timeout Option[Duration]) Result[ResponseBody, HttpError] {
 	var data []byte
 	if body != nil {
 		data = body.Data

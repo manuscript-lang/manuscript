@@ -46,7 +46,7 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
             match try socket_result(result: socket.receive()):
                 some(message):
                     let sent = try socket_result(
-                        result: socket.send(
+                        result: socket.send_bytes(
                             data: message.data,
                             text: message.text
                         )
@@ -60,7 +60,7 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
     let appended = try fields.append("X-Test", "stream".to_bytes())
     let started = try exchange.send_headers(status: 200, headers: fields)
 
-    match exchange.write(data: "hello from streaming Manuscript".to_bytes()):
+    match exchange.write(data: "hello from streaming Manuscript"):
         ok(_):
             return ok(unit)
         error(_):
@@ -105,7 +105,7 @@ fn exercise() Result[Unit, Error]:
                 method: HttpMethod.Get,
                 url: "http://{server.address()}/",
                 headers: headers(),
-                body: "".to_bytes(),
+                body: "",
                 max_response_bytes: 1024,
                 timeout: 2.seconds
             ):
@@ -144,12 +144,7 @@ fn exercise() Result[Unit, Error]:
             )
         ):
             socket.subprotocol() | try expect_equal(expected: "echo")
-            let sent = try socket_result(
-                result: socket.send(
-                    data: "echo me".to_bytes(),
-                    text: true
-                )
-            )
+            let sent = try socket_result(result: socket.send(data: "echo me"))
 
             match try socket_result(result: socket.receive()):
                 some(message):

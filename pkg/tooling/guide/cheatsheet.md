@@ -11,7 +11,7 @@ fn add(a: Int, b: Int) Int:
     return a + b
 
 fn say(text: String) Result[Unit, Error]:
-    try stdout().write("{text}\n".to_bytes())
+    try stdout().write("{text}\n")
     return stdout().flush()
 
 export fn main() Int:

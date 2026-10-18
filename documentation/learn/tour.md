@@ -16,7 +16,7 @@ Save this complete program as `hello.ms` and run `ms run hello.ms`:
 import stdout from "@std/io.ms"
 
 export fn main() Int:
-    if stdout().write("Hello, Manuscript!\n".to_bytes()).is_error():
+    if stdout().write("Hello, Manuscript!\n").is_error():
         return 1
     return 0
 ```
@@ -287,7 +287,7 @@ import {filesystem, FileSystemError} from "@std/fs.ms"
 fn copy_notes() Result[Unit, FileSystemError]:
     with source = try filesystem().open("notes.txt", flags: "r", mode: 0):
         let contents = try source.read_file(max_bytes: 1048576)
-        try filesystem().write_file(path: "backup.txt", data: contents, replace: true)
+        try filesystem().write_file_bytes(path: "backup.txt", data: contents, replace: true)
     return ok(unit)
 ```
 

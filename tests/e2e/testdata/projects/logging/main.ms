@@ -95,7 +95,7 @@ export fn main() Int:
     let result = exercise(mode, path)
 
     if result.is_error():
-        let _ignored = stderr().write("{result.err().message()}\n".to_bytes())
+        let _ignored = stderr().write("{result.err().message()}\n")
         return 1
 
     return 0

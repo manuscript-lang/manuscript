@@ -120,7 +120,7 @@ fn run() Result[Unit, Error]:
         out.append("{e.key} {e.value.count} avg={e.value.total / e.value.count}")
         shown = shown + 1
 
-    try stdout().write("{out.join("\n")}\n".to_bytes())
+    try stdout().write("{out.join("\n")}\n")
     return stdout().flush()
 
 export fn main() Int:

@@ -59,7 +59,7 @@ test "one header type preserves repeated values through buffered requests":
                 method: HttpMethod.Get,
                 url: "http://{server.address()}/",
                 headers: (try repeated_headers()),
-                body: "".to_bytes()
+                body: ""
             ) | try expect_ok
         )
         let metadata = response.metadata()
@@ -120,7 +120,7 @@ test "streaming proxy uses the same byte-valued header type":
                 method: HttpMethod.Get,
                 url: "http://{server.address()}/",
                 headers: (try repeated_headers()),
-                body: "".to_bytes()
+                body: ""
             ) | try expect_ok
         )
         try expect_false(

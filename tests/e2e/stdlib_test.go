@@ -155,14 +155,14 @@ import {stdout, WriteStream} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 
 fn emit(message: String) Unit:
-    let written = stdout().write(message.to_bytes()).get()
+    let written = stdout().write(message).get()
 
 type Resource:
     output: WriteStream
 
 impl Closeable for Resource:
     fn close() Unit:
-        let written = self.output.write("fault cleanup completed\n".to_bytes()).get()
+        let written = self.output.write("fault cleanup completed\n").get()
 
 test "panic unwinds Closeable":
     with resource = Resource(stdout()):
