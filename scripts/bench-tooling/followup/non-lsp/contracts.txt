@@ -1,0 +1,9 @@
+=== RUN   TestNonLSPProbeContracts
+    non_lsp_perf_probe_test.go:47: independent-root cap observation: roots=300 documentedNodeCap=200
+--- PASS: TestNonLSPProbeContracts (0.01s)
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/tooling	0.015s
+=== RUN   TestNonLSPGuideProbeContract
+--- PASS: TestNonLSPGuideProbeContract (0.07s)
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/tooling/guide	0.077s

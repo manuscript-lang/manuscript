@@ -1,0 +1,34 @@
+{
+  "candidate": "5facbb5ff966904e0b6fe918245d7df7885937ff",
+  "review_base": "aa3efa7296e8b02f1ca1aa26a144debcd69dc7d8",
+  "go": "go1.25.1 linux/amd64",
+  "gomaxprocs": 2,
+  "gocache": "/workspace/tooling-perf-review/go-cache",
+  "cpu": "AMD EPYC 9V74 80-Core Processor",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "timestamp_utc": "2026-10-18T07:14:52Z",
+  "series_samples_per_case": 5,
+  "iterations_per_series_sample": 1,
+  "profile_target_duration": "500ms each",
+  "review_profile_reported_iterations": 7,
+  "format_profile_reported_iterations": 7,
+  "source_sha256": {
+    "pkg/tooling/review.go": "39fd4302843cf73985212a13c0de384de8fcdd98aba727abcdbaa33f66fb6d4e",
+    "pkg/tooling/format_layout.go": "d3b90ba9bd39594d682fb1c1a1235ee9f65dac6b0b84a66a9504edaaeabea93e",
+    "pkg/tooling/guide/std.go": "7860cbe48f798983cf59965467a8dc27e77d5fe005af3bdaa1d07f2f9c38f948",
+    "pkg/tooling/guide/search.go": "5c2b2744ea8242b94a87ce8250cbd759e7ad9814a9e324f4b7136b1f05b00c28",
+    "pkg/tooling/inspect.go": "ba0b46b8426e822cb0d8da605a7ea6236f4676de249ef3ceb123975eec1d2f5b",
+    "pkg/tooling/facts.go": "bf58cf85dae6c6088991d56d7f8f3b05bbe159d1b8c7d3dace9bfa04361f01bc",
+    "pkg/tooling/lint_program.go": "fb39fa6fd8202872a56bfae65e69c5f8521a28356d2bf566e0a916d285523071",
+    "pkg/tooling/views.go": "a82270bfcc91f09615faf18cdc80b1835ebd28c8d1138b5205264fe18a193b98",
+    "pkg/tooling/docgen/documentation.go": "d9f69000daba7e6df52d959dd64fdd2fa3b05c38ba3ecb403bb74563a30a487d"
+  },
+  "non_lsp_sources_match_review_base": true,
+  "external_harness_sha256": {
+    "tooling_probe_test.go": "c0e27de9a224c1cd0726da02408e0b5ad39a205891044e9b109613da2420c14d",
+    "guide_probe_test.go": "745ad93578cdef059c91de3c1ee1da295256696bab85c7593067942e062d3c16",
+    "overlay.json": "9a580b8483dfb0f0c1c57a6d1109f7eeed6d7708d83e41c1814d69685e46e149"
+  },
+  "note": "Added the expected-failing node-cap regression after the initial series; benchmark functions unchanged. Profiling calibration and GC contribute to profile totals; do not divide sampled alloc_space total by displayed benchmark iterations. Initial default GOCACHE failed due readonly home; reran with writable shared cache.",
+  "metadata_collection_head": "c086eed70aeb9eb6d56689d8aca74a9bf0fb4875"
+}
