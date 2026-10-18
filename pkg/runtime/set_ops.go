@@ -4,7 +4,13 @@ package msruntime
 
 // Set_Clone returns a shallow copy.
 func Set_Clone[T comparable](_ *Execution, s *Set[T]) *Set[T] {
-	return NewSetWith(s.Keys(), s.Snapshot()...)
+	out := NewSetWith[T](s.Keys())
+	items := s.Snapshot()
+	out.m.entries = make([]mapSlot[T, Unit], 0, len(items))
+	for _, item := range items {
+		out.Add(item)
+	}
+	return out
 }
 
 // Set_IsEmpty reports whether the set has no elements.
