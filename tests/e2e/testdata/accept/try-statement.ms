@@ -39,7 +39,7 @@ fn chained(n: Int) Result[Int, String]:
 fn in_loop(values: List[Int]) Result[Int, String]:
     var sum = 0
     for v in values:
-        sum = sum + (try parse(n: v))
+        sum += try parse(n: v)
     return ok(sum)
 
 fn in_lambda(n: Int) Result[Int, String]:

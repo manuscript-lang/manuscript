@@ -97,7 +97,7 @@ fn no_op() Unit:
 
 test "ordinary empty declarations and interface omission":
     no_op()
-    let marker = Marker()
+    let _marker = Marker()
     let view = ReadWithDefault(Reader())
     if view.get() != 5 or view.get(fallback: 7) != 7:
         return panic("interface Optional defaults must reach source implementations")

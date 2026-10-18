@@ -14,7 +14,6 @@ type Resource:
 impl OtherClose for Resource:
     fn close(flag: Bool) Int:
         return panic(message: "Unexpected case")
-        return 0
 
 impl Closeable for Resource:
     fn close() Unit:
@@ -28,11 +27,11 @@ impl Disposable for Resource:
 
 fn bound_cleanup[T: Disposable](resource: T) Unit:
     with item = resource:
-        let completed = unit
+        return unit
 
 fn canonical_cleanup[T: Closeable](resource: T) Unit:
     with item = resource:
-        let completed = unit
+        return unit
 
 test "cleanup uses the selected contract":
     let closed = Synchronized(false)

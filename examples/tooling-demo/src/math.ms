@@ -1,4 +1,5 @@
 import panic from "@std/faults.ms"
+import range from "@std/collections.ms"
 
 # Sum three integer values with explicit named arguments.
 export fn total(first: Int, second: Int, third: Int) Int:
@@ -6,13 +7,9 @@ export fn total(first: Int, second: Int, third: Int) Int:
 
 # Work long enough to produce visible CPU samples.
 export fn compute(iterations: Int) Int:
-    var index = 0
     var result = 0
-
-    while index < iterations:
-        result = result + index % 7
-        index = index + 1
-
+    for index in range(0, iterations):
+        result += index % 7
     return result
 
 test "named arguments":

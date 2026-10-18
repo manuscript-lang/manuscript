@@ -31,7 +31,7 @@ impl Defaults for DefaultAdapter:
         return self.values.add_default_from(key, create)
 
 fn eager(counter: Counter) Int:
-    counter.calls = counter.calls + 1
+    counter.calls += 1
     return 99
 
 test "default insertion keeps eager and lazy calls and receiver identity":
@@ -44,7 +44,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
     if values.keys() != ["a", "b"]: return panic("default receiver identity")
 
     let create = fn(key: String) Int:
-        counter.calls = counter.calls + 1
+        counter.calls += 1
         return key.length()
     let lazy: fn(key: String, create: fn(key: String) Int) Map[String, Int] = values.add_default_from
     lazy("a", create)

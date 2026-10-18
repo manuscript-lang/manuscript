@@ -39,8 +39,8 @@ test "contract views and callbacks":
     let identity = ReadValue[Int](forwarded)
     let copied = ReadValue[Int](identity)
     let holder = ReaderHolder(identity)
-    let readers: List[ReadValue[Int]] = [holder.reader]
-    let optional: Optional[ReadValue[Int]] = some(forwarded)
+    let _readers: List[ReadValue[Int]] = [holder.reader]
+    let _optional: Optional[ReadValue[Int]] = some(forwarded)
     let callback = CallbackReader(seven)
     let callback_view = ReadValue[Int](callback)
     if not (first.get() == 7):

@@ -4,7 +4,7 @@ fn apply(value: Int, transform: fn(value: Int) Int) Int:
     return transform(value: value)
 
 test "function suite boundaries":
-    let dormant = fn():
+    let _dormant = fn():
         return panic(message: "body is not run at creation")
     let grouped = apply(
         transform: (

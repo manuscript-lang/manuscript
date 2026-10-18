@@ -150,9 +150,9 @@ test "List splice through a dispatched view follows reviewed Go range shrink sem
     var visited = 0
 
     for value in values:
-        total = total + value
+        total += value
         if visited == 0: view.splice(0, 1, [])
-        visited = visited + 1
+        visited += 1
 
     if (total != 7 or visited != 3 or values != [2, 3]):
         return panic("captured backing, shifted values or valid retained tail changed")

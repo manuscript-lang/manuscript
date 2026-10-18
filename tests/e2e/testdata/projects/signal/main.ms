@@ -1,5 +1,4 @@
 import stdout from "@std/io.ms"
-import panic from "@std/faults.ms"
 import WriteStream from "@std/io.ms"
 import Closeable from "@std/cleanup.ms"
 import TaskGroup from "@std/tasks.ms"
@@ -10,18 +9,18 @@ type Resource:
 
 impl Closeable for Resource:
     fn close() Unit:
-        self.output.write(data: "close {self.label}\n".to_bytes())
+        let _ignored = self.output.write(data: "close {self.label}\n".to_bytes())
 
 export fn main() Int:
     let output = stdout()
     let child = fn():
         with resource = Resource(label: "child", output: output):
-            output.write(data: "ready\n".to_bytes())
+            let _ignored = output.write(data: "ready\n".to_bytes())
             while true:
                 continue
 
     with resource = Resource(label: "parent", output: output):
         with group = TaskGroup():
-            group.start(child)
-            group.join()
+            let _ignored = group.start(child)
+            let _joined = group.join()
             return 0

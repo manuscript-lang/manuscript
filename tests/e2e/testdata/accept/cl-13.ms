@@ -11,4 +11,4 @@ test "text source forms":
     if not ("value: {3}" == "value: 3"):
         return panic(message: "check failed")
 
-    let no_value: Unit = unit
+    let _no_value: Unit = unit

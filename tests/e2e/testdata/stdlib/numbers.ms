@@ -1,19 +1,18 @@
 import {parse_int, parse_float, NumberError} from "@std/numbers.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 test "numbers radix and signed boundaries":
-    if value(parse_int(text: "7fffffffffffffff", radix: 16)) != 9223372036854775807: return panic(
+    if (try parse_int(text: "7fffffffffffffff", radix: 16)) != 9223372036854775807: return panic(
         "maximum int"
     )
     if (
-        value(
-            parse_int(text: "-9223372036854775808", radix: 10)
+        (
+            try parse_int(text: "-9223372036854775808", radix: 10)
         ) != -9223372036854775808
     ): return panic("minimum int")
     if 255.to_string(radix: 16) != "ff": return panic("radix formatting")
-    if value(parse_float("-1.25e2")) != -125.0: return panic("exponent")
-    if value(1.25.to_fixed(digits: 2)) != "1.25": return panic("fixed formatting")
+    if (try parse_float("-1.25e2")) != -125.0: return panic("exponent")
+    if (try 1.25.to_fixed(digits: 2)) != "1.25": return panic("fixed formatting")
     if 1.9.truncate_to_int() != some(1): return panic("float truncation")
 
 test "numbers reject whitespace separators overflow and invalid radix":

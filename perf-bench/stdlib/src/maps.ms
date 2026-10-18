@@ -11,7 +11,7 @@ export fn bench_map_set() Unit:
                 m.add(key: i, value: i * 2)
             var n = 0
             for i in range(0, 100000):
-                n = n + m.get(key: i).unwrap_or(0)
+                n += m.get(key: i).unwrap_or(0)
             return n
     )
     bench(
@@ -24,7 +24,7 @@ export fn bench_map_set() Unit:
                 m.add(key: k, value: 1)
             var n = 0
             for k in keys:
-                n = n + m.get(key: k).unwrap_or(0)
+                n += m.get(key: k).unwrap_or(0)
             return n
     )
     bench(
@@ -36,7 +36,7 @@ export fn bench_map_set() Unit:
                 m.add(key: i, value: i)
             var n = 0
             for e in m.entries():
-                n = n + e.value
+                n += e.value
             return n
     )
     bench(
@@ -48,6 +48,6 @@ export fn bench_map_set() Unit:
                 s.add(i)
             var n = 0
             for i in range(0, 100000):
-                if s.contains(i): n = n + 1
+                if s.contains(i): n += 1
             return n
     )

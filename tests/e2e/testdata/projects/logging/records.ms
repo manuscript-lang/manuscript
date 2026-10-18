@@ -1,5 +1,4 @@
 import {Logger, LogError, LogLevel, record, bind} from "@std/log.ms"
-import JsonValue from "@std/json.ms"
 
 type Request:
     request: String
@@ -24,12 +23,12 @@ export fn emit(logger: Logger) Result[Unit, LogError]:
         msg: "spoofed",
         time: 0
     )
-    let ignored = try child.debug(message: "filtered")
-    let received = try record(
+    try child.debug(message: "filtered")
+    try record(
         logger: child,
         level: LogLevel.Info,
         message: "received \"payload\"\nnext",
         fields: fields
     )
-    let complete = try logger.warn(message: "complete")
+    try logger.warn(message: "complete")
     return ok(unit)

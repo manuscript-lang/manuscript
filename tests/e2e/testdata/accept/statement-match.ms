@@ -18,7 +18,7 @@ fn first_positive(values: List[Optional[Int]]) Int:
 
     while index < values.length():
         let item = values.at(index).unwrap()
-        index = index + 1
+        index += 1
 
         match item:
             none: continue
@@ -35,9 +35,9 @@ fn nested(rows: List[List[Optional[Int]]]) Int:
         for item in row:
             match item:
                 none: break
-                some(value): total = total + value
+                some(value): total += value
 
-        total = total + 1000
+        total += 1000
 
     return total
 
@@ -46,9 +46,9 @@ fn side_effects(shape: Shape) Int:
 
     match shape:
         Circle(r):
-            count = count + r
+            count += r
         _:
-            count = count + 100
+            count += 100
 
     return count
 

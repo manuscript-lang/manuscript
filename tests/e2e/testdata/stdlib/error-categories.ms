@@ -29,7 +29,7 @@ impl Error for PathError:
 
 impl Error for CustomError:
     fn message() String:
-        self.calls = self.calls + 1
+        self.calls += 1
         return self.message
 
 fn is_missing(cause: Error) Bool:

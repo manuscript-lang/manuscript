@@ -8,7 +8,6 @@ test "list binding":
     if not (difference(values: [9, 4]) == 5):
         return panic(message: "check failed")
 
-    let empty: List[Int] = []
     let {value: label} = Label("ready")
     if not (label == "ready"):
         return panic(message: "check failed")

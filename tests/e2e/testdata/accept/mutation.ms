@@ -1,6 +1,7 @@
 import Synchronized from "@std/sync.ms"
 import TaskGroup from "@std/tasks.ms"
 import panic from "@std/faults.ms"
+import range from "@std/collections.ms"
 
 interface Counter:
     fn increment() Unit
@@ -10,7 +11,7 @@ type Val:
 
 impl Counter for Val:
     fn increment() Unit:
-        self.val = self.val + 1
+        self.val += 1
 
 type Box[T]:
     value: T
@@ -37,7 +38,7 @@ test "record fields mutate through aliases methods views and captures":
     let increment = counter.increment
     increment()
     let callback = fn():
-        counter.val = counter.val + 1
+        counter.val += 1
     callback()
     if not (alias.val == 4 and copy.val == 0):
         return panic(message: "counter alias or clone failed")
@@ -105,7 +106,7 @@ test "Synchronized protects record mutation without replacement":
         while remaining > 0:
             with guard = counter.lock():
                 guard.get().increment()
-            remaining = remaining - 1
+            remaining -= 1
 
     with group = TaskGroup():
         group.start(operation)
@@ -131,12 +132,8 @@ test "list growth and saved clone methods preserve current contents":
     let values: List[Int] = []
     let alias = values
     let clone = values.clone
-    var index = 0
-
-    while index < 2048:
+    for index in range(0, 2048):
         values.append(index)
-        index = index + 1
-
     let copy = clone()
     alias.append(2048)
     values.set(index: 0, value: -1)
@@ -178,12 +175,11 @@ test "collection clones retain nested object references":
         if not (value.val == 7):
             return panic(message: "list clone unexpectedly copied nested records")
 
-    match entries.get("child"):
-        some(value):
-            if not (value.val == 7):
-                return panic(message: "map clone unexpectedly copied nested records")
-        none:
-            return panic(message: "cloning removed an original map entry")
+    if let value = entries.get("child"):
+        if not (value.val == 7):
+            return panic(message: "map clone unexpectedly copied nested records")
+    else:
+        return panic(message: "cloning removed an original map entry")
 
 test "map and set clear affect aliases while copies retain contents":
     let entries = Map[String, Int]().add(key: "a", value: 1)

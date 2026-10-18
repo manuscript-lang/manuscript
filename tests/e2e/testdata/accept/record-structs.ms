@@ -47,7 +47,7 @@ test "struct records with mixed field types":
         corner: Point(x: 0, y: 0),
         tags: ["a"]
     )
-    shape.weight = shape.weight * 2.0
+    shape.weight *= 2.0
     shape.name = "{shape.name}!"
     shape.corner.x = 4
     shape.tags.append("b")

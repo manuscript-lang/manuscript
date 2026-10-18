@@ -2,15 +2,17 @@ import stdout from "@std/io.ms"
 import control from "@std/process.ms"
 import sleep from "@std/time.ms"
 
+fn say(text: String) Unit:
+    let _ignored = stdout().write(data: text.to_bytes())
+
 export fn main() Int:
-    match control().watch_signals(signals: [2, 15]):
-        error(_):
-            return 1
-        ok(signals):
-            with signals = signals:
-                stdout().write(data: "waiting\n".to_bytes())
-                let observed = signals.next()
-                stdout().write(data: "got signal\n".to_bytes())
-                sleep(duration: 100.milliseconds)
-                stdout().write(data: "after sleep\n".to_bytes())
-                return 0
+    if let watched = control().watch_signals(signals: [2, 15]):
+        with signals = watched:
+            say("waiting\n")
+            let _observed = signals.next()
+            say("got signal\n")
+            sleep(duration: 100.milliseconds)
+            say("after sleep\n")
+            return 0
+    else:
+        return 1

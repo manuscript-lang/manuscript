@@ -47,7 +47,7 @@ type Counter:
     calls: Int
 
 fn next(counter: Counter) Int:
-    counter.calls = counter.calls + 1
+    counter.calls += 1
     return counter.calls
 
 fn ordered(first: Optional[Int], second: Optional[Int]) Int:

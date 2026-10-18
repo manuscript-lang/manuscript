@@ -1,21 +1,20 @@
 import {base64_encode, base64_decode, hex_encode, hex_decode, EncodingError} from "@std/encoding.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 test "encoding known vectors and exact output limits":
     let data = Bytes([0, 255, 66])
     if hex_encode(data) != "00ff42": return panic("hex vector")
-    if value(hex_decode(text: "00FF42", max_bytes: 3)) != data: return panic(
+    if (try hex_decode(text: "00FF42", max_bytes: 3)) != data: return panic(
         "hex decoding"
     )
     if base64_encode(data: data, url_safe: false) != "AP9C": return panic(
         "base64 vector"
     )
-    if value(base64_decode(text: "_w==", url_safe: true)) != Bytes([255]): return panic(
+    if (try base64_decode(text: "_w==", url_safe: true)) != Bytes([255]): return panic(
         "URL alphabet"
     )
-    if value(hex_decode(text: "", max_bytes: 0)) != Bytes([]): return panic(
+    if (try hex_decode(text: "", max_bytes: 0)) != Bytes([]): return panic(
         "empty zero budget"
     )
 

@@ -98,8 +98,8 @@ test "List parity operations support generic and bound use":
     if values != [9]: return panic("bound receiver rebinding")
 
 test "List distinct handles large Int and String lists":
-    var numbers: List[Int] = []
-    var words: List[String] = []
+    let numbers: List[Int] = []
+    let words: List[String] = []
 
     for index in range(0, 60000):
         numbers.append(index % 30000)
