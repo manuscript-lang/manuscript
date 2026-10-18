@@ -140,7 +140,7 @@ Verify: Optional methods and Result propagation into Error execute without impor
 Decision: applications export `fn main() Int` and import the standard services they use. The user explicitly deferred enforcement; the earlier exploration of `using`, scoped replacement, and manifest permissions is not an accepted implementation requirement. Ordinary service parameters remain available for helpers and source fakes.
 
 Apply when: changing entrypoints, host roots, standard imports, tests, or authority documentation.
-Evidence: [CLI contract](../pkg/stdlib/cli.ms), [entry validation](../pkg/compiler/compiler.go), and [execution-local accessors](../pkg/runtime/host.go).
+Evidence: [CLI contract](../pkg/stdlib/process.ms), [entry validation](../pkg/compiler/compiler.go), and [execution-local accessors](../pkg/runtime/host.go).
 Verify: a parameterless entry runs; parameterized entries fail; imported accessors share roots across derived executions and imported helpers, while separate tests receive separate root wrappers.
 
 ### Keep short bodies available without a second function kind

@@ -1,5 +1,4 @@
-import control from "@std/process.ms"
-import arguments from "@std/cli.ms"
+import {control, arguments} from "@std/process.ms"
 import {entropy, uuid_v4, secure_int} from "@std/random.ms"
 import filesystem from "@std/fs.ms"
 import system from "@std/system.ms"

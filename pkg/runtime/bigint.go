@@ -1,9 +1,6 @@
 package msruntime
 
-import (
-	"math/big"
-	"strings"
-)
+import "math/big"
 
 // BigInt is an immutable arbitrary-precision integer. The wrapped value is
 // never modified after construction.
@@ -36,7 +33,10 @@ func Bigint_Parse(_ *Execution, text string, radix int, maxDigits Option[int]) R
 	if radix < 2 || radix > 36 || n < 0 {
 		return bigFail[*BigInt](BigIntError_InvalidInput{})
 	}
-	digits := len(strings.TrimPrefix(strings.TrimPrefix(text, "+"), "-"))
+	digits := len(text)
+	if text != "" && (text[0] == '+' || text[0] == '-') {
+		digits--
+	}
 	if int(digits) > n {
 		return bigFail[*BigInt](BigIntError_LimitExceeded{})
 	}

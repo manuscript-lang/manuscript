@@ -85,14 +85,6 @@ type osSystem struct{ directory string }
 
 var _ System = (*osSystem)(nil)
 
-func (s *osSystem) Environment(_ *Execution, name string) Option[string] {
-	v, ok := os.LookupEnv(name)
-	if !utf8.ValidString(v) {
-		ok = false
-	}
-	return Option[string]{Val: v, Some: ok}
-}
-
 func (s *osSystem) Info(*Execution) *SystemInfo {
 	return &SystemInfo{Os: goruntime.GOOS, Architecture: goruntime.GOARCH, CpuCount: int(goruntime.NumCPU())}
 }
@@ -120,11 +112,6 @@ func (s *osSystem) HomeDirectory(ctx *Execution) Result[string, SystemError] {
 	CheckCancelled(ctx)
 	v, err := os.UserHomeDir()
 	return sysText(v, err)
-}
-
-func (s *osSystem) TemporaryDirectory(ctx *Execution) Result[string, SystemError] {
-	CheckCancelled(ctx)
-	return sysText(os.TempDir(), nil)
 }
 
 func (s *osSystem) UserInfo(ctx *Execution) Result[*UserInfo, SystemError] {

@@ -25,7 +25,7 @@ Examples:
   cd hello && ms run ms.toml -- first second
 `
 
-const initMain = `import arguments from "@std/cli.ms"
+const initMain = `import arguments from "@std/process.ms"
 import stdout from "@std/io.ms"
 
 export fn main() Int:

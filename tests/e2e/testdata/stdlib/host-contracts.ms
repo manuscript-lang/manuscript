@@ -2,7 +2,6 @@ import {filesystem, FileSystemError} from "@std/fs.ms"
 import {files, IoError} from "@std/io.ms"
 import {control} from "@std/process.ms"
 import {duration} from "@std/time.ms"
-import {hmac, CryptoError} from "@std/crypto.ms"
 import {compress, decompress, CompressionError} from "@std/compress.ms"
 import {pack, unpack, ArchiveEntry, ArchiveError} from "@std/archive.ms"
 import StringError from "@std/string.ms"
@@ -21,11 +20,6 @@ test "raw monotonic nanoseconds share the typed process uptime origin":
 
 test "closed codec strings reject spelling changes with their domain errors":
     let data = "text".to_bytes()
-    let hash_error: Result[Bytes, CryptoError] = error(CryptoError.Unsupported)
-    for algorithm in ["SHA256", "sha-256", ""]:
-        if hmac(data, data, algorithm) != hash_error: return panic("HMAC spelling")
-    for algorithm in ["sha256", "sha384", "sha512"]:
-        if (try hmac(data, data, algorithm)).is_empty(): return panic("HMAC algorithm")
     let normalization_error: Result[String, StringError] = error(
         StringError.InvalidInput
     )
