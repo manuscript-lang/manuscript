@@ -213,6 +213,7 @@ func (g *gen) cleanupPrologue(body []ast.Stmt) []ast.Stmt {
 // finishBody terminates a body Go cannot prove returns: Unit functions return
 // the unit value, and others end in an unreachable fault.
 func (g *gen) finishBody(body []ast.Stmt, result *checker.Type) []ast.Stmt {
+	body = g.cacheListItems(body)
 	if len(body) > 0 {
 		if _, ok := unlabel(body[len(body)-1]).(*ast.ReturnStmt); ok {
 			return body

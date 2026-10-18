@@ -119,3 +119,15 @@ A Bool tail that only asks whether canonical `read_line` succeeded with a presen
 line can omit materializing its unused String. The runtime shares the ordinary
 algorithm and retains validation, limits, locking, consumption, errors and
 cancellation queries. Text-returning reads and other source shapes are unchanged.
+
+## Cached list storage
+
+A loop whose every call is an indexed `List` get or set, a cancellation poll, or
+Int arithmetic or conversion samples the `Items` slice of each list variable it
+reads or writes by index once before the loop, so Go keeps the slice header in
+registers. The loop must not assign the variable, declare the name, take its
+address, or contain any other call, closure, `go` or `defer`; a call is the only
+way generated code replaces `Items`. Out-of-range and negative indexes still run
+the ordinary helper on the list, keeping the same results and fault text. A set
+whose result is used keeps the ordinary helper. Debug retains the ordinary
+calls. Lists shared with another task without `Synchronized` were already racy.
