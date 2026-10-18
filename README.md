@@ -36,14 +36,12 @@ import stdout from "@std/io.ms"
 
 export fn main() -> Int:
     let message = "Arguments: {arguments().length()}\n"
-    match stdout().write(data: message.to_bytes()):
-        ok(_):
-            return 0
-        error(_):
-            return 1
+    if stdout().write(data: message.to_bytes()).is_error():
+        return 1
+    return 0
 ```
 
-Imports name the standard services the program uses. `let` infers the local value's type, and `match` handles both outcomes of the write. The integer returned by `main` becomes the program's exit code.
+Imports name the standard services the program uses. `let` infers the local value's type, and `is_error()` tests whether the write failed. The integer returned by `main` becomes the program's exit code.
 
 ## More of the language
 
