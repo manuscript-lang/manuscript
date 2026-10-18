@@ -6,7 +6,6 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/frontend"
 	"github.com/manuscript-lang/manuscript/pkg/lower"
-	"github.com/manuscript-lang/manuscript/pkg/project"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
@@ -27,6 +26,8 @@ type Options struct {
 	Tests                          bool
 	// Entry requires an exported, nongeneric, parameterless main returning Int.
 	Entry bool
+	// BuildType selects the lowering representation; empty means Release.
+	BuildType BuildType
 }
 type Result struct {
 	SourceRoot                 string
@@ -38,33 +39,17 @@ type Result struct {
 
 func (r Result) Success() bool { return len(r.Diagnostics) == 0 }
 
-// Project and ReadProject retain the compiler API for manifest-only callers.
-type Project = project.Project
-
-func ReadProject(filename string) (Project, error) { return project.ReadProject(filename) }
-
 // CompileSource parses in-memory source. Local imports require CompileFile.
-func CompileSource(filename, source string, options Options) Result {
-	return CompileSourceForBuild(filename, source, options, Release)
-}
-
-// CompileSourceForBuild selects lowering before generating Go. Ordinary
-// CompileSource retains the default representation in every later build mode.
-func CompileSourceForBuild(filename, source string, options Options, kind BuildType) (result Result) {
+func CompileSource(filename, source string, options Options) (result Result) {
 	defer recoverCompilerBug(filename, &result)
 	graph := frontend.LoadSource(filename, source, options.sourceOptions())
-	return compile(graph, options, kind)
+	return compile(graph, options)
 }
 
 // CompileFile checks a module's reachable imports or a project's module graph.
 // Libraries always include all source and test modules; executable projects do
 // so with AnalyzeOnly and ProjectSources, preserving ordinary entry reachability.
-func CompileFile(filename string, options Options) Result {
-	return CompileFileForBuild(filename, options, Release)
-}
-
-// CompileFileForBuild is CompileFile with an explicit lowering build kind.
-func CompileFileForBuild(filename string, options Options, kind BuildType) (result Result) {
+func CompileFile(filename string, options Options) (result Result) {
 	defer recoverCompilerBug(filename, &result)
 	graph := frontend.LoadFile(filename, options.sourceOptions())
 	if graph.ProjectRoot != "" {
@@ -74,7 +59,7 @@ func CompileFileForBuild(filename string, options Options, kind BuildType) (resu
 		}
 		options.Entry = !graph.Library && !options.Tests && (!options.AnalyzeOnly || options.Entry)
 	}
-	return compile(graph, options, kind)
+	return compile(graph, options)
 }
 
 // recoverCompilerBug turns a checker or lowering panic into a diagnostic so one
@@ -95,12 +80,12 @@ func (o Options) sourceOptions() frontend.Options {
 
 // compile is the common path after parsing and import resolution. Each stage
 // consumes the previous stage's result; tools stop at the checked source model.
-func compile(graph frontend.Graph, options Options, kind BuildType) Result {
+func compile(graph frontend.Graph, options Options) Result {
 	result := Result{
 		SourceRoot: graph.SourceRoot, ProjectRoot: graph.ProjectRoot,
 		Configuration: graph.Configuration, Diagnostics: graph.Diagnostics,
 	}
-	kind, err := ParseBuildType(string(kind))
+	kind, err := ParseBuildType(string(options.BuildType))
 	if err != nil {
 		result.Diagnostics = append(result.Diagnostics, syntax.Diagnostic{Position: syntax.Position{File: graph.Entry, Line: 1, Column: 1}, Phase: "lowering", Message: err.Error()})
 		return result

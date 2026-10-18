@@ -50,7 +50,8 @@ func runSourceCommand(args []string, usage string) int {
 	if inv.watch {
 		return watchProgram(inv.command, inv.filename, p.options, p.kind, inv.arguments)
 	}
-	result := compiler.CompileFileForBuild(inv.filename, p.options, p.kind)
+	p.options.BuildType = p.kind
+	result := compiler.CompileFile(inv.filename, p.options)
 	if !result.Success() {
 		if inv.structured && inv.command == "test" {
 			document := newTestResult(result)
