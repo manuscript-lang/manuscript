@@ -1,9 +1,9 @@
 import panic from "@std/faults.ms"
 
-fn apply(value: Int, action: fn(value: Int) -> Int) -> Int:
+fn apply(value: Int, action: fn(value: Int) Int) Int:
     return action(value: value)
 
-fn countdown[T](value: T, count: Int) -> T:
+fn countdown[T](value: T, count: Int) T:
     if count == 0:
         return value
 
@@ -28,7 +28,7 @@ test "snapshot reassignment and shadowing":
     if not (countdown(value: "ready", count: 4) == "ready"):
         return panic(message: "check failed")
 
-    let factory = fn(value: Int) -> fn(value: Int) -> Int:
+    let factory = fn(value: Int) fn(value: Int) Int:
         return fn(value):
             return value + offset
     let nested = factory(value: 99)

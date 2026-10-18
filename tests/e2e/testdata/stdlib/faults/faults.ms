@@ -6,7 +6,7 @@ import Synchronized from "@std/sync.ms"
 import {stdout, WriteStream} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 
-fn emit(message: String) -> Unit:
+fn emit(message: String) Unit:
     match stdout().write(message.to_bytes()):
         ok(_): return
         error(_): return panic("fault transcript write failed")
@@ -15,7 +15,7 @@ type Resource:
     output: WriteStream
 
 impl Closeable for Resource:
-    fn close() -> Unit:
+    fn close() Unit:
         match self.output.write("fault cleanup completed\n".to_bytes()):
             ok(_): return
             error(_): return panic("cleanup transcript write failed")

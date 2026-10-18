@@ -4,12 +4,12 @@ import panic from "@std/faults.ms"
 import {sleep, duration} from "@std/time.ms"
 import {async_file_transport} from "./async_file_transport.ms"
 
-fn value[T, E: Error](result: Result[T, E]) -> T:
+fn value[T, E: Error](result: Result[T, E]) T:
     match result:
         ok(found): return found
         error(cause): return panic(message: cause.message())
 
-export fn main() -> Int:
+export fn main() Int:
     return 0
 
 test "records reach the file after flush and close":
@@ -35,14 +35,14 @@ test "records reach the file after flush and close":
         let after = value(fs.read_file(path: path))
         if after.length() != 77: return panic("close drains: {after.length()}")
 
-fn line(text: String) -> String:
+fn line(text: String) String:
     return "\{\"level\":30,\"msg\":\"{text}\"\}\n"
 
-fn read(path: String) -> String:
+fn read(path: String) String:
     let data = value(filesystem().read_file(path: path))
     return data.to_string().unwrap_or("")
 
-fn missing(path: String) -> Bool:
+fn missing(path: String) Bool:
     match filesystem().stat(path: path, follow_links: false):
         ok(_): return false
         error(_): return true
@@ -53,7 +53,6 @@ test "size rotation keeps at most max_files files":
 
         with transport = value(async_file_transport(path, max_bytes: 48, max_files: 3)):
             let logger = value(create(transport: transport, timestamp: false))
-
             for name in ["m0", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9"]:
                 value(logger.info(message: name))
 

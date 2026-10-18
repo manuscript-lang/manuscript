@@ -33,11 +33,11 @@ export type Outcome:
 
 export interface Countable:
     # Reads the count without mutation.
-    fn count() -> Int
+    fn count() Int
 
 impl Countable for Counter:
     # Returns the stored count.
-    fn count() -> Int:
+    fn count() Int:
         return self.count
 
 # Private declarations stay private.

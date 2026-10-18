@@ -1,6 +1,6 @@
 {
   "revision": "d8a83a2aca237e329ccf2aaa72535b299199958b",
-  "source": "import panic from \"@std/faults.ms\"\n\nexport fn main() -> Int:\n    let values = [1, 2, 3]\n    var total = 0\n    var count = 0\n    for value in values:\n        total = total + value\n        if count == 0:\n            values.without(0)\n        count = count + 1\n    if total != 4:\n        panic(\"unexpected sum\")\n    return 0\n",
+  "source": "import panic from \"@std/faults.ms\"\n\nexport fn main() Int:\n    let values = [1, 2, 3]\n    var total = 0\n    var count = 0\n    for value in values:\n        total = total + value\n        if count == 0:\n            values.without(0)\n        count = count + 1\n    if total != 4:\n        panic(\"unexpected sum\")\n    return 0\n",
   "command": [
     "/workspace/manuscript/dist/manuscript-linux-amd64/ms",
     "run",

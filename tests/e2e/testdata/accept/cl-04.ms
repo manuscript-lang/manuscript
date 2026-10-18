@@ -1,6 +1,6 @@
 import panic from "@std/faults.ms"
 
-fn difference(values: List[Int]) -> Int:
+fn difference(values: List[Int]) Int:
     let [first, second] = values
     return first - second
 

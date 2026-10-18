@@ -7,8 +7,8 @@ import (
 
 func TestTaskGroupSourceSignatureAndNavigation(t *testing.T) {
 	source := `import TaskGroup from "@std/tasks.ms"
-fn number() -> Int: return 7
-fn run() -> Unit:
+fn number() Int: return 7
+fn run() Unit:
     with group = TaskGroup():
         let task = group.start(number)
         task.join()
@@ -29,7 +29,7 @@ fn run() -> Unit:
 	}
 	signature := signatureSource(t, strings.Replace(source, "task.join()", "task.join(|)", 1))
 	label := signature["signatures"].([]any)[0].(map[string]any)["label"].(string)
-	if label != "task.join() -> Result[Int, ExecutionError]" {
+	if label != "task.join() Result[Int, ExecutionError]" {
 		t.Fatal(label)
 	}
 	items := completeSource(t, strings.Replace(source, "task.join()", "task.|", 1))

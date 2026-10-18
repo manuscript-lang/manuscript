@@ -13,8 +13,8 @@ import (
 )
 
 func TestPipelinePreservesCheckedSourceForTools(t *testing.T) {
-	source := `fn value(flag: Bool = not false) -> Bool:
-    let callback = fn() -> Bool: return not (false or false)
+	source := `fn value(flag: Bool = not false) Bool:
+    let callback = fn() Bool: return not (false or false)
     return (not false and callback()) or flag
 `
 	analyzed := compiler.CompileSource("source.ms", source, compiler.Options{AnalyzeOnly: true})
@@ -44,8 +44,8 @@ func TestPipelinePreservesCheckedSourceForTools(t *testing.T) {
 
 func TestPipelineChecksSkippedBooleanOperands(t *testing.T) {
 	for _, source := range []string{
-		"fn value() -> Bool: return false and missing\n",
-		"fn value() -> Bool: return true or 3\n",
+		"fn value() Bool: return false and missing\n",
+		"fn value() Bool: return true or 3\n",
 	} {
 		result := compiler.CompileSource("invalid.ms", source, compiler.Options{})
 		if result.Success() || result.Program == nil || result.Source != "" {
@@ -55,7 +55,7 @@ func TestPipelineChecksSkippedBooleanOperands(t *testing.T) {
 }
 
 func TestSourceAndFileUseTheSamePipeline(t *testing.T) {
-	source := "export fn main() -> Int:\n    if not false: return 3\n    return 0\n"
+	source := "export fn main() Int:\n    if not false: return 3\n    return 0\n"
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "main.ms"), []byte(source), 0600); err != nil {
 		t.Fatal(err)
@@ -68,7 +68,7 @@ func TestSourceAndFileUseTheSamePipeline(t *testing.T) {
 }
 
 func TestRecoveredSourceRetainsResolutionAndParseDiagnostics(t *testing.T) {
-	source := "import value from \"./local.ms\"\nfn helper() -> Int: return 3\nfn broken(\n"
+	source := "import value from \"./local.ms\"\nfn helper() Int: return 3\nfn broken(\n"
 	result := compiler.CompileSource("editor.ms", source, compiler.Options{Recover: true, AnalyzeOnly: true})
 	if result.Program == nil || result.Success() || result.Source != "" {
 		t.Fatal("invalid editor snapshot escaped checking", result)

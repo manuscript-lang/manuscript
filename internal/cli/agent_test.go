@@ -55,8 +55,8 @@ func TestSearchSymbolFindsDefinitionAndUses(t *testing.T) {
 	root := t.TempDir()
 	files := map[string]string{
 		"ms.toml":      "[project]\nname = \"demo\"\nsource = \"./src\"\nentry = \"./src/main.ms\"\n",
-		"src/main.ms":  "# Doubles a number.\nexport fn double(value: Int) -> Int:\n    return value * 2\n\nexport fn main() -> Int:\n    return double(4) - 8\n",
-		"src/other.ms": "import {double} from \"./main.ms\"\nfn quad(v: Int) -> Int:\n    return double(double(v))\n",
+		"src/main.ms":  "# Doubles a number.\nexport fn double(value: Int) Int:\n    return value * 2\n\nexport fn main() Int:\n    return double(4) - 8\n",
+		"src/other.ms": "import {double} from \"./main.ms\"\nfn quad(v: Int) Int:\n    return double(double(v))\n",
 	}
 	for name, text := range files {
 		path := filepath.Join(root, name)

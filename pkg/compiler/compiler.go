@@ -69,7 +69,7 @@ func CompileFileForBuild(filename string, options Options, kind BuildType) (resu
 	graph := frontend.LoadFile(filename, options.sourceOptions())
 	if graph.ProjectRoot != "" {
 		if graph.Library && !options.Tests && !options.AnalyzeOnly {
-			graph.Diagnostics = append(graph.Diagnostics, syntax.Diagnostic{Position: graph.ManifestPosition, Phase: "resolution", Message: "library project has no executable entry; add entry = \"src/main.ms\" under [project] and export fn main() -> Int from that file, or use check, lint, test, doc, or lock for the library"})
+			graph.Diagnostics = append(graph.Diagnostics, syntax.Diagnostic{Position: graph.ManifestPosition, Phase: "resolution", Message: "library project has no executable entry; add entry = \"src/main.ms\" under [project] and export fn main() Int from that file, or use check, lint, test, doc, or lock for the library"})
 			return Result{SourceRoot: graph.SourceRoot, ProjectRoot: graph.ProjectRoot, Configuration: graph.Configuration, Diagnostics: graph.Diagnostics}
 		}
 		options.Entry = !graph.Library && !options.Tests && (!options.AnalyzeOnly || options.Entry)
@@ -140,27 +140,27 @@ func checkEntry(program *checker.Program, entry string) *syntax.Diagnostic {
 		return nil
 	}
 	position := syntax.Position{File: entry, Line: 1, Column: 1}
-	detail := "no main function is declared, so add 'export fn main() -> Int:' with an indented 'return 0' body"
+	detail := "no main function is declared, so add 'export fn main() Int:' with an indented 'return 0' body"
 	if main != nil {
 		if main.Decl != nil {
 			position = main.Decl.Pos
 		}
 		switch {
 		case main.Decl != nil && main.Decl.Constant:
-			detail = "main is a constant, so rename it and declare 'export fn main() -> Int:'"
+			detail = "main is a constant, so rename it and declare 'export fn main() Int:'"
 		case main.Kind != syntax.KindFn:
-			detail = "main is declared as a " + main.Kind + ", so rename it and declare 'export fn main() -> Int:'"
+			detail = "main is declared as a " + main.Kind + ", so rename it and declare 'export fn main() Int:'"
 		case !main.Export:
-			detail = "main is not exported, so write 'export fn main() -> Int:'"
+			detail = "main is not exported, so write 'export fn main() Int:'"
 		case len(main.Variables) > 0:
 			detail = "main cannot be generic, so remove its type parameters"
 		case len(main.Type.Params) > 0:
 			detail = "main takes no parameters, so remove them (read program arguments through the standard cli module)"
 		default:
-			detail = "main returns " + main.Type.Result.String() + ", so declare it '-> Int' and return an exit status, e.g. 'return 0'"
+			detail = "main returns " + main.Type.Result.String() + ", so declare its result type Int and return an exit status, e.g. 'return 0'"
 		}
 	}
-	return &syntax.Diagnostic{Position: position, Phase: "type", Message: "entry must export fn main() -> Int; " + detail}
+	return &syntax.Diagnostic{Position: position, Phase: "type", Message: "entry must export fn main() Int; " + detail}
 }
 
 // Local names the Go variable a source binding became in a function.

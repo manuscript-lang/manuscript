@@ -62,7 +62,7 @@ let {name, email: customer_email} = customer
 - Assignment targets a `var` or a record field such as `customer.name`, including through `let` bindings, parameters, and `self`. Parameters, `let` bindings, destructured names, and collection positions cannot be reassigned; collection methods update contents.
 
 ```manuscript
-fn example() -> Unit:
+fn example() Unit:
     var remaining = 3
     remaining = 2
     remaining = 2.0  # Rejected: Float cannot replace Int.

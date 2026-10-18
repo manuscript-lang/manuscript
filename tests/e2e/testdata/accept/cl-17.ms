@@ -1,11 +1,11 @@
 import panic from "@std/faults.ms"
 
-fn failed_initializer() -> Never:
+fn failed_initializer() Never:
     let impossible: Int = panic(message: "initializer cannot return")
 
-fn returned_failure() -> Int:
+fn returned_failure() Int:
     return panic(message: "result cannot return")
 
-fn endless() -> Int:
+fn endless() Int:
     while true:
         continue

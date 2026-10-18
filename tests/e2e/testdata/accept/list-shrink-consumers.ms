@@ -3,7 +3,7 @@ import panic from "@std/faults.ms"
 type Visits:
     count: Int
 
-fn mutate[T](values: List[T], mode: String, replacement: T) -> Unit:
+fn mutate[T](values: List[T], mode: String, replacement: T) Unit:
     if mode == "remove":
         values.remove(0)
     if mode == "splice":
@@ -15,10 +15,10 @@ fn mutate[T](values: List[T], mode: String, replacement: T) -> Unit:
         values.append(replacement)
         values.append(replacement)
 
-fn observe[T](values: List[T], mode: String, replacement: T, callback: Bool) -> List[T]:
+fn observe[T](values: List[T], mode: String, replacement: T, callback: Bool) List[T]:
     let seen: List[T] = []
     let visits = Visits(0)
-    let visit = fn(value: T) -> Unit:
+    let visit = fn(value: T) Unit:
         seen.append(value)
         if visits.count == 0:
             mutate(values: values, mode: mode, replacement: replacement)
@@ -36,14 +36,14 @@ fn observe[T](values: List[T], mode: String, replacement: T, callback: Bool) -> 
 
     return seen
 
-fn expected[T](mode: String, first: T, second: T, last: T, replacement: T) -> List[T]:
+fn expected[T](mode: String, first: T, second: T, last: T, replacement: T) List[T]:
     if mode == "remove": return [first, last, last]
     if mode == "splice": return [first, replacement, last]
     if mode == "clear_append": return [first, replacement, last]
 
     return [first, second, last]
 
-fn remaining[T](mode: String, first: T, second: T, last: T, replacement: T) -> List[T]:
+fn remaining[T](mode: String, first: T, second: T, last: T, replacement: T) List[T]:
     if mode == "remove": return [second, last]
     if mode == "splice": return [first, replacement]
     if mode == "clear_append": return [replacement, replacement]
@@ -154,7 +154,7 @@ type Choice:
     case number(value: Int)
     case label(value: String)
 
-fn score(value: Choice) -> Int:
+fn score(value: Choice) Int:
     match value:
         number(count): return count
         label(text): return text.length()
@@ -262,10 +262,10 @@ test "map and folds consume valid retained cells":
         return panic("right fold shrink did not follow captured backing")
 
 interface ReadValue:
-    fn read() -> Int
+    fn read() Int
 
 impl ReadValue for Payload:
-    fn read() -> Int: self.value
+    fn read() Int: self.value
 
 test "interface view consumers dispatch after shrink":
     for callback in [false, true]:

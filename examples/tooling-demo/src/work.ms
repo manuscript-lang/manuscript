@@ -1,7 +1,7 @@
 import TaskGroup from "@std/tasks.ms"
 import ExecutionError from "@std/tasks.ms"
 
-fn compute() -> Int:
+fn compute() Int:
     var index = 0
     var result = 0
 
@@ -11,7 +11,7 @@ fn compute() -> Int:
 
     return result
 
-fn compare() -> Result[Int, ExecutionError]:
+fn compare() Result[Int, ExecutionError]:
     with group = TaskGroup():
         let first = group.start(compute)
         let second = group.start(compute)
@@ -22,10 +22,9 @@ fn compare() -> Result[Int, ExecutionError]:
 
         return ok(0)
 
-export fn main() -> Int:
+export fn main() Int:
     match compare():
         ok(code):
             return code
-
         error(_):
             return 1

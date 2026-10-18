@@ -1,6 +1,6 @@
 import panic from "@std/faults.ms"
 
-fn apply(value: Int, transform: fn(value: Int) -> Int) -> Int:
+fn apply(value: Int, transform: fn(value: Int) Int) Int:
     return transform(value: value)
 
 test "function suite boundaries":

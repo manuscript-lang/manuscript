@@ -1,4 +1,4 @@
-export fn main() -> Int:
+export fn main() Int:
     var number = 1
     let total = number + (
         match some(1):

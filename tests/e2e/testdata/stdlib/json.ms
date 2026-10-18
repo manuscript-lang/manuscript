@@ -89,7 +89,7 @@ type Node:
     label: String
     next: Optional[Node]
 
-fn encoded[T](item: T) -> String:
+fn encoded[T](item: T) String:
     return value(stringify(value: item))
 
 test "JSON stringify encodes records in declaration order and omits none fields":
@@ -169,12 +169,12 @@ test "JSON stringify repeats shared acyclic values and reads current field value
     )
     if encoded(pair) == before: return panic("stringify reads current field values")
 
-fn one() -> Int:
+fn one() Int:
     return 1
 
 type Handler:
     name: String
-    callback: fn() -> Int
+    callback: fn() Int
     retries: Optional[Optional[Int]]
     note: Optional[String]
 
@@ -182,7 +182,7 @@ type Money:
     cents: Int
 
 impl JsonEncode for Money:
-    fn to_json() -> JsonValue:
+    fn to_json() JsonValue:
         return JsonValue.StringValue("usd:{self.cents}")
 
 type Invoice:
@@ -298,13 +298,13 @@ test "JSON stringify indents like JSON.stringify and clamps at ten":
     if stringify(value: 1, indent: -1) != negative: return panic("negative indent")
 
 interface Named:
-    fn label() -> String
+    fn label() String
 
 type Person:
     name: String
 
 impl Named for Person:
-    fn label() -> String:
+    fn label() String:
         return self.name
 
 type Holder:
@@ -333,12 +333,12 @@ type Event:
     case Deleted(id: Int)
 
 impl JsonEncode for Event:
-    fn to_json() -> JsonValue:
+    fn to_json() JsonValue:
         match self:
             Created(id): return tagged("created", id)
             Deleted(id): return tagged("deleted", id)
 
-fn tagged(kind: String, id: Int) -> JsonValue:
+fn tagged(kind: String, id: Int) JsonValue:
     let fields = Map[String, JsonValue]().add("type", JsonValue.StringValue(kind))
     let all = fields.add("id", JsonValue.NumberValue("{id}"))
     return JsonValue.ObjectValue(all)
@@ -388,7 +388,7 @@ type Price:
     amount: Decimal
     cents: BigInt
 
-fn decoded[T](text: String) -> Result[T, JsonError]:
+fn decoded[T](text: String) Result[T, JsonError]:
     return parse[T](text: text)
 
 test "JSON parse decodes records by field name with defaults and optional fields":
@@ -535,11 +535,11 @@ test "JSON parse inverts stringify and works in generic code":
         "alternative round trip"
     )
 
-fn load_profile(text: String) -> Result[Profile, JsonError]:
+fn load_profile(text: String) Result[Profile, JsonError]:
     let profile = try parse[Profile](text: text)
     return ok(profile)
 
-fn load_default(text: String) -> Result[JsonValue, JsonError]:
+fn load_default(text: String) Result[JsonValue, JsonError]:
     return parse(text: text)
 
 test "JSON parse takes its type from an explicit argument, the expected result or the JsonValue default":
@@ -680,7 +680,7 @@ test "JSON round trips generic records alternatives and Duration keys":
 test "JSON parse returns InvalidData for targets that cannot be read":
     if parse[Unit](text: "null").is_ok(): return panic("unit")
 
-    let f = parse[fn() -> Int](text: "1")
+    let f = parse[fn() Int](text: "1")
     if f.is_ok(): return panic("fn")
     if parse[Int](text: "-0").is_error(): return panic("-0")
     if parse[Float](text: "1e999").is_ok(): return panic("inf")

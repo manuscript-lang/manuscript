@@ -10,12 +10,12 @@ import (
 func TestInterfaceMethodCallsCacheEachReceiverType(t *testing.T) {
 	result := compiler.CompileSource("interface-calls.ms", `import panic from "@std/faults.ms"
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
 interface Shape:
-    fn area(scale: Int) -> Int
+    fn area(scale: Int) Int
 
 type Sq:
     side: Int
@@ -29,15 +29,15 @@ type Tri:
     h: Int
 
 impl Shape for Sq:
-    fn area(scale: Int) -> Int: self.side * self.side * scale
+    fn area(scale: Int) Int: self.side * self.side * scale
 
 impl Shape for Rect:
-    fn area(scale: Int) -> Int: self.w * self.h * scale
+    fn area(scale: Int) Int: self.w * self.h * scale
 
 impl Shape for Tri:
-    fn area(scale: Int) -> Int: self.b * self.h * scale / 2
+    fn area(scale: Int) Int: self.b * self.h * scale / 2
 
-fn measure(shape: Shape, scale: Int) -> Int: shape.area(scale: scale)
+fn measure(shape: Shape, scale: Int) Int: shape.area(scale: scale)
 
 test "three receiver types alternate at one site":
     let shapes: List[Shape] = [Shape(value: Sq(side: 3)), Shape(value: Rect(w: 2, h: 5)), Shape(value: Tri(b: 4, h: 5))]

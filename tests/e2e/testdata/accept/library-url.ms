@@ -6,7 +6,7 @@ import decode_component from "@std/url.ms"
 import resolve from "@std/url.ms"
 import UrlError from "@std/url.ms"
 
-fn verify_url() -> Result[Unit, UrlError]:
+fn verify_url() Result[Unit, UrlError]:
     let url = try parse(text: "https://EXAMPLE.COM/a%2Fb?q=x#frag")
     if not (try format(value: url) == "https://example.com/a%2Fb?q=x#frag"):
         return panic(message: "check failed")

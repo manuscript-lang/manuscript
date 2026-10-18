@@ -34,7 +34,7 @@ export let MAX_ITEMS = 100
 let NAMES: List[String] = ["Ada", "Grace"]
 let LIMIT = MAX_ITEMS * 2
 
-fn is_full(count: Int) -> Bool:
+fn is_full(count: Int) Bool:
     return count >= LIMIT
 ```
 
@@ -77,7 +77,7 @@ type PrivateToken:
     value: String
 
 # Rejected: callers cannot name the internal result type.
-export fn issue() -> PrivateToken:
+export fn issue() PrivateToken:
     return PrivateToken("token")
 ```
 

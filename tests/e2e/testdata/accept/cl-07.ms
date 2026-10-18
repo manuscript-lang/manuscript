@@ -4,7 +4,7 @@ type Outcome:
     case Ready(value: Int)
     case Failed(reason: String)
 
-fn score(outcome: Outcome) -> Int:
+fn score(outcome: Outcome) Int:
     match outcome:
         Ready(value):
             return value

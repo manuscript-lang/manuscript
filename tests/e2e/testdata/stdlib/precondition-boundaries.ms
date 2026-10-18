@@ -4,7 +4,7 @@ import {Queue, PriorityQueue} from "@std/queues.ms"
 import from_int from "@std/bigint.ms"
 import {parse_int, NumberError} from "@std/numbers.ms"
 
-fn compare(left: Int, right: Int) -> Int: left - right
+fn compare(left: Int, right: Int) Int: left - right
 
 test "byte updates retain relative bounds and immutable storage":
     let bytes = Bytes(values: [0, 255])

@@ -24,7 +24,7 @@ test "empty patterns use Unicode scalar boundaries without normalization":
     if "e\u{301}".replace_n("é", "x", 2) != "e\u{301}": return panic("normalization")
     if "éé".replace_n("é", "😀", 1) != "😀é": return panic("Unicode literal")
 
-fn forward[T](value: T) -> T: value
+fn forward[T](value: T) T: value
 
 test "bound typed and generic calls retain the required count and captured receiver":
     var text = "aaaa"
@@ -33,7 +33,7 @@ test "bound typed and generic calls retain the required count and captured recei
     if replace(old: "a", new: "b", max_replacements: 2) != "bbaa":
         return panic("stored receiver")
 
-    let typed: fn(old: String, new: String, max_replacements: Int) -> String = replace
+    let typed: fn(old: String, new: String, max_replacements: Int) String = replace
     if typed("a", "b", 3) != "bbba": return panic("typed count")
 
     let generic = forward(replace)
@@ -44,20 +44,20 @@ test "bound typed and generic calls retain the required count and captured recei
     if "aaaa".replace("a", "b", none) != "baaa": return panic("compatibility default")
 
 interface CappedReplacement:
-    fn replace_n(old: String, new: String, max_replacements: Int) -> String
+    fn replace_n(old: String, new: String, max_replacements: Int) String
 
 type TextAdapter:
     text: String
-    replace_n: fn(old: String, new: String, max_replacements: Int) -> String
+    replace_n: fn(old: String, new: String, max_replacements: Int) String
 
 impl CappedReplacement for TextAdapter:
-    fn replace_n(old: String, new: String, max_replacements: Int) -> String:
+    fn replace_n(old: String, new: String, max_replacements: Int) String:
         return self.text.replace_n(old, new, max_replacements)
 
 test "explicit and bound views retain method contracts and callable field shadowing":
     let adapter = TextAdapter(
         "aaaa",
-        fn(old: String, new: String, max_replacements: Int) -> String: "field"
+        fn(old: String, new: String, max_replacements: Int) String: "field"
     )
     if adapter.replace_n("a", "b", 2) != "field": return panic("field shadowing")
 

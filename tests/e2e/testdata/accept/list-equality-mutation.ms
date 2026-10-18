@@ -3,10 +3,10 @@ import panic from "@std/faults.ms"
 
 type Element:
     id: Int
-    on_equal: fn() -> Unit
+    on_equal: fn() Unit
 
 impl Equal for Element:
-    fn equals(other: Equal) -> Bool:
+    fn equals(other: Equal) Bool:
         self.on_equal()
 
         match other:
@@ -16,10 +16,10 @@ impl Equal for Element:
 type Visits:
     count: Int
 
-fn noop() -> Unit:
+fn noop() Unit:
     return
 
-fn check_equality(side: String, mutation: String) -> Unit:
+fn check_equality(side: String, mutation: String) Unit:
     let left: List[Element] = []
     let right: List[Element] = []
     let calls = Visits(0)

@@ -79,7 +79,7 @@ export fn parse[T = JsonValue](
     text: String,
     limits: Optional[JsonLimits] = none,
     ignore_unknown_fields: Bool = true
-) -> Result[T, JsonError]:
+) Result[T, JsonError]:
 
 # Customizes how `stringify` encodes a type. It takes precedence over the
 # structural encoding for every record and alternative, so it is the way to choose a tagged or
@@ -99,18 +99,18 @@ export fn parse[T = JsonValue](
 #     case Deleted(id: Int)
 #
 # impl JsonEncode for Event:
-#     fn to_json() -> JsonValue:
+#     fn to_json() JsonValue:
 #         match self:
 #             Created(id): return tagged("created", id)
 #             Deleted(id): return tagged("deleted", id)
 #
-# fn tagged(kind: String, id: Int) -> JsonValue:
+# fn tagged(kind: String, id: Int) JsonValue:
 #     let fields = Map[String, JsonValue]().add("type", JsonValue.StringValue(kind))
 #     return JsonValue.ObjectValue(fields.add("id", JsonValue.NumberValue("{id}")))
 # ```
 export interface JsonEncode:
     # Returns the JSON form of this value.
-    fn to_json() -> JsonValue
+    fn to_json() JsonValue
 
 # Encodes any value as JSON text. Every type is accepted;
 # a value with no JSON form is omitted or written as `null` rather than rejected at compile time.
@@ -154,8 +154,8 @@ export fn stringify[T](
     value: T,
     max_bytes: Optional[Int] = none,
     indent: Optional[Int] = none
-) -> Result[String, JsonError]:
+) Result[String, JsonError]:
 
 impl Error for JsonError:
     # Returns a JSON-prefixed diagnostic without echoing input text or number tokens.
-    fn message() -> String:
+    fn message() String:

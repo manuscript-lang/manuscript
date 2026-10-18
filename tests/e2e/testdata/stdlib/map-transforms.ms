@@ -8,38 +8,38 @@ type Key:
     label: String
 
 impl Equal for Key:
-    fn equals(other: Equal) -> Bool:
+    fn equals(other: Equal) Bool:
         match other:
             Key(value): return self.id == value.id
             _: return false
 
 impl Hashable for Key:
-    fn hash() -> Int: 0
+    fn hash() Int: 0
 
 fn map_values[K: Hashable, V, W](
     values: Map[K, V],
-    transform: fn(key: K, value: V) -> W
-) -> Map[K, W]:
+    transform: fn(key: K, value: V) W
+) Map[K, W]:
     return values.map[W](transform)
 
 fn map_keys[K: Hashable, V, W: Hashable](
     values: Map[K, V],
-    transform: fn(key: K, value: V) -> W
-) -> Map[W, V]:
+    transform: fn(key: K, value: V) W
+) Map[W, V]:
     return values.map_keys[W](transform)
 
 fn reverse_map[K: Hashable, V, A](
     values: Map[K, V],
     initial: A,
-    step: fn(accumulator: A, key: K, value: V) -> A
-) -> A:
+    step: fn(accumulator: A, key: K, value: V) A
+) A:
     return values.fold_right[A](initial, step)
 
 fn reverse_set[T: Hashable, A](
     values: Set[T],
     initial: A,
-    step: fn(accumulator: A, value: T) -> A
-) -> A:
+    step: fn(accumulator: A, value: T) A
+) A:
     return values.fold_right(initial, step)
 
 test "Map transformations and directional queries are callable":

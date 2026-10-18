@@ -9,10 +9,10 @@ type Resource:
     output: WriteStream
 
 impl Closeable for Resource:
-    fn close() -> Unit:
+    fn close() Unit:
         self.output.write(data: "close {self.label}\n".to_bytes())
 
-export fn main() -> Int:
+export fn main() Int:
     let output = stdout()
     let child = fn():
         with resource = Resource(label: "child", output: output):

@@ -8,7 +8,7 @@ type ZeroEntropy:
     requested: Int
 
 impl Entropy for ZeroEntropy:
-    fn bytes(count: Int) -> Result[Bytes, RandomError]:
+    fn bytes(count: Int) Result[Bytes, RandomError]:
         self.requested = count
         return ok(Bytes(value(filled(value: 0, count: count))))
 
@@ -16,7 +16,7 @@ type FailedEntropy:
     message: String
 
 impl Entropy for FailedEntropy:
-    fn bytes(count: Int) -> Result[Bytes, RandomError]:
+    fn bytes(count: Int) Result[Bytes, RandomError]:
         return error(RandomError.Failed(self.message))
 
 test "random algorithms call Manuscript entropy implementations":

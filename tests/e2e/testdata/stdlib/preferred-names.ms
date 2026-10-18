@@ -4,40 +4,40 @@ import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
 interface ListMutation:
-    fn reverse_in_place() -> List[Int]
-    fn reversed() -> List[Int]
-    fn set(index: Int, value: Int) -> List[Int]
-    fn remove(index: Int) -> List[Int]
+    fn reverse_in_place() List[Int]
+    fn reversed() List[Int]
+    fn set(index: Int, value: Int) List[Int]
+    fn remove(index: Int) List[Int]
 
 type ListAdapter:
     items: List[Int]
-    set: fn(index: Int, value: Int) -> List[Int]
+    set: fn(index: Int, value: Int) List[Int]
 
 impl ListMutation for ListAdapter:
-    fn reverse_in_place() -> List[Int]:
+    fn reverse_in_place() List[Int]:
         return self.items.reverse_in_place()
 
-    fn reversed() -> List[Int]:
+    fn reversed() List[Int]:
         return self.items.reversed()
 
-    fn set(index: Int, value: Int) -> List[Int]:
+    fn set(index: Int, value: Int) List[Int]:
         return self.items.set(index, value)
 
-    fn remove(index: Int) -> List[Int]:
+    fn remove(index: Int) List[Int]:
         return self.items.remove(index)
 
 interface SetMutation:
-    fn add(value: Int) -> Set[Int]
-    fn remove(value: Int) -> Set[Int]
+    fn add(value: Int) Set[Int]
+    fn remove(value: Int) Set[Int]
 
 type SetAdapter:
     items: Set[Int]
 
 impl SetMutation for SetAdapter:
-    fn add(value: Int) -> Set[Int]:
+    fn add(value: Int) Set[Int]:
         return self.items.add(value)
 
-    fn remove(value: Int) -> Set[Int]:
+    fn remove(value: Int) Set[Int]:
         return self.items.remove(value)
 
 interface RegexReplacement:
@@ -45,7 +45,7 @@ interface RegexReplacement:
         text: String,
         replacement: String,
         max_bytes: Optional[Int]
-    ) -> Result[String, RegexError]
+    ) Result[String, RegexError]
 
 type RegexAdapter:
     pattern: Regex
@@ -55,13 +55,13 @@ impl RegexReplacement for RegexAdapter:
         text: String,
         replacement: String,
         max_bytes: Optional[Int]
-    ) -> Result[String, RegexError]:
+    ) Result[String, RegexError]:
         return self.pattern.replace_all(text, replacement, max_bytes)
 
-fn add_generic[T: Hashable](items: Set[T], value: T) -> Set[T]:
+fn add_generic[T: Hashable](items: Set[T], value: T) Set[T]:
     return items.add(value)
 
-fn remove_generic[T: Hashable](items: Set[T], value: T) -> Set[T]:
+fn remove_generic[T: Hashable](items: Set[T], value: T) Set[T]:
     return items.remove(value)
 
 test "list names mutate aliases and retain shallow copies":
@@ -113,26 +113,18 @@ test "set names preserve receiver identity order and no-op membership":
     if optional.values() != [some(9)]: return panic("set Optional conversion")
 
 interface FirstReplacement:
-    fn replace_first(
-        old: String,
-        new: String,
-        max_replacements: Optional[Int]
-    ) -> String
+    fn replace_first(old: String, new: String, max_replacements: Optional[Int]) String
 
 type TextAdapter:
     text: String
 
 impl FirstReplacement for TextAdapter:
-    fn replace_first(
-        old: String,
-        new: String,
-        max_replacements: Optional[Int]
-    ) -> String:
+    fn replace_first(old: String, new: String, max_replacements: Optional[Int]) String:
         return self.text.replace_first(old, new, max_replacements)
 
 test "explicit views and bound views preserve native mutation and field shadowing":
     let items = [1, 2, 3]
-    let adapter = ListAdapter(items, fn(index: Int, value: Int) -> List[Int]: [99])
+    let adapter = ListAdapter(items, fn(index: Int, value: Int) List[Int]: [99])
     if adapter.set(0, 8) != [99] or items != [1, 2, 3]:
         return panic("callable field shadowing")
 
@@ -243,13 +235,13 @@ type Cell:
     value: Int
 
 interface ByteCopy:
-    fn reversed() -> Bytes
+    fn reversed() Bytes
 
 type ByteAdapter:
     data: Bytes
 
 impl ByteCopy for ByteAdapter:
-    fn reversed() -> Bytes:
+    fn reversed() Bytes:
         return self.data.reversed()
 
 test "list reversal names distinguish receiver mutation and shallow copies":
@@ -286,7 +278,7 @@ test "list reversal names distinguish receiver mutation and shallow copies":
         return panic("reversed copy depth")
 
     let viewed = [4, 5]
-    let adapter = ListAdapter(viewed, fn(index: Int, value: Int) -> List[Int]: [99])
+    let adapter = ListAdapter(viewed, fn(index: Int, value: Int) List[Int]: [99])
     let view = ListMutation(adapter)
     let view_reverse = view.reverse_in_place
     let view_reversed = view.reversed

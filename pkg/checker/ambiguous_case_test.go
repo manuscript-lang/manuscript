@@ -13,8 +13,8 @@ import (
 // reported as an unknown binding.
 func TestAmbiguousCaseReportsOnce(t *testing.T) {
 	for _, tt := range []struct{ name, source string }{
-		{"nullary value", "type A:\n    case X\ntype B:\n    case X\nfn f() -> Int:\n    let a = X\n    return 1\n"},
-		{"constructor call", "type A:\n    case X(n: Int)\ntype B:\n    case X(n: Int)\nfn f() -> Int:\n    let a = X(n: 1)\n    return 1\n"},
+		{"nullary value", "type A:\n    case X\ntype B:\n    case X\nfn f() Int:\n    let a = X\n    return 1\n"},
+		{"constructor call", "type A:\n    case X(n: Int)\ntype B:\n    case X(n: Int)\nfn f() Int:\n    let a = X(n: 1)\n    return 1\n"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			m, err := parser.Parse("ambiguous.ms", tt.source)

@@ -16,7 +16,7 @@ func TestPositionalSignatureHelp(t *testing.T) {
 		{"subtract(deduction: 3, |", 0},
 		{"subtract(10, deduction: |", 1},
 	} {
-		result := signatureSource(t, "fn subtract(amount: Int, deduction: Int) -> Int: amount - deduction\nfn run() -> Int:\n    return "+tc.call+"\n")
+		result := signatureSource(t, "fn subtract(amount: Int, deduction: Int) Int: amount - deduction\nfn run() Int:\n    return "+tc.call+"\n")
 		if result["activeParameter"] != tc.active {
 			t.Fatal(tc.call, result)
 		}
@@ -24,7 +24,7 @@ func TestPositionalSignatureHelp(t *testing.T) {
 }
 
 func TestPositionalIdentifierRenameDoesNotAddLabels(t *testing.T) {
-	source := "fn subtract(amount: Int, deduction: Int) -> Int: amount - deduction\nfn run() -> Int:\n    let number = 10\n    return subtract(number, 3)\n"
+	source := "fn subtract(amount: Int, deduction: Int) Int: amount - deduction\nfn run() Int:\n    let number = 10\n    return subtract(number, 3)\n"
 	d := document{fileURI(filepath.Join(t.TempDir(), "positional.ms")), source, 1}
 	docs := map[string]document{d.URI: d}
 	result := analyze(d, docs)
@@ -56,7 +56,7 @@ func TestConstructorIdentifierRenameDoesNotAddLabels(t *testing.T) {
 		{"type Pair:\n    first: Int\n    second: Int\n", "Pair(number, 3).first", "first: Int", "total"},
 		{"type Pair:\n    case Values(first: Int, second: Int)\n", "Pair.Values(number, 3)", "let number", "total"},
 	} {
-		source := tc.declarations + "fn run() -> Unit:\n    let number = 10\n    let pair = " + tc.call + "\n"
+		source := tc.declarations + "fn run() Unit:\n    let number = 10\n    let pair = " + tc.call + "\n"
 		d := document{fileURI(filepath.Join(t.TempDir(), "constructor.ms")), source, 1}
 		docs := map[string]document{d.URI: d}
 		result := analyze(d, docs)

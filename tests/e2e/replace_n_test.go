@@ -14,11 +14,11 @@ func TestReplaceNRequiresFiniteCountAndPreservesCallableShape(t *testing.T) {
 		`"a".replace_n("a", "b", some(1))`,
 		`"a".replace_n("a", "b", 1.5)`,
 		`"a".replace_n(old: "a", new: "b", max_bytes: 1)`,
-		`let replace: fn(old: String, new: String) -> String = "a".replace_n`,
+		`let replace: fn(old: String, new: String) String = "a".replace_n`,
 		`let replace = "a".replace_n
     replace("a", "b")`,
 	} {
-		checked := compiler.CompileSource("replace-count.ms", "fn use() -> Unit:\n    "+statement+"\n", compiler.Options{AnalyzeOnly: true})
+		checked := compiler.CompileSource("replace-count.ms", "fn use() Unit:\n    "+statement+"\n", compiler.Options{AnalyzeOnly: true})
 		if checked.Success() {
 			t.Fatalf("accepted missing/optional count or changed callable: %s", statement)
 		}

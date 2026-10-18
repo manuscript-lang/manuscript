@@ -9,13 +9,13 @@ Import `Closeable` from `@std/cleanup.ms` to name or implement it. `with` checks
 
 ```manuscript
 interface Closeable:
-    fn close() -> Unit
+    fn close() Unit
 ```
 
 `with` accepts:
 
 - A concrete value with an explicit `Closeable` implementation; the compiler registers that `close`.
-- A contract value whose own declaration contains exactly `fn close() -> Unit`. This lets `File`, `ReadStream`, `WriteStream`, and test fakes work without inheritance.
+- A contract value whose own declaration contains exactly `fn close() Unit`. This lets `File`, `ReadStream`, `WriteStream`, and test fakes work without inheritance.
 - A generic parameter bounded by `Closeable` or by a contract declaring that exact signature; `close` dispatches directly.
 
 A similarly named method without `impl Closeable`, or an unconstrained type parameter, is insufficient.

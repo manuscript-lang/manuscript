@@ -33,7 +33,7 @@ func testProgram(t *testing.T, label string) string {
 	t.Helper()
 	result := compiler.CompileSource("main.ms", fmt.Sprintf(`import stdout from "@std/io.ms"
 
-export fn main() -> Int:
+export fn main() Int:
     match stdout().write(data: %q.to_bytes()):
         ok(_):
             return 0

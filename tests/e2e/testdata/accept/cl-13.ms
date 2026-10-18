@@ -1,6 +1,6 @@
 import panic from "@std/faults.ms"
 
-fn echo(value: String) -> String:
+fn echo(value: String) String:
     return value
 
 test "text source forms":

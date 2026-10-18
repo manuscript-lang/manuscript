@@ -36,12 +36,12 @@ func TestInvalidBoundsTerminate(t *testing.T) {
 func checkInvalidBounds(t *testing.T) {
 	t.Helper()
 	for _, source := range []string{
-		"type Box[Error: Error]:\n    cause: Error\nimpl Error for Box[Error]:\n    fn message() -> String: self.cause.message()\n",
-		"fn recursive[T: T](value: T) -> Unit: return\n",
-		"fn mutual[T: U, U: T](value: T) -> Unit: return\n",
-		"fn primitive[T: Int](value: T) -> Unit: return\n",
-		"type Data:\n    value: Int\nfn record[T: Data](value: T) -> Unit: return\n",
-		"fn unknown[T: Missing](value: T) -> Unit: return\n",
+		"type Box[Error: Error]:\n    cause: Error\nimpl Error for Box[Error]:\n    fn message() String: self.cause.message()\n",
+		"fn recursive[T: T](value: T) Unit: return\n",
+		"fn mutual[T: U, U: T](value: T) Unit: return\n",
+		"fn primitive[T: Int](value: T) Unit: return\n",
+		"type Data:\n    value: Int\nfn record[T: Data](value: T) Unit: return\n",
+		"fn unknown[T: Missing](value: T) Unit: return\n",
 	} {
 		module, err := parser.Parse("bounds.ms", source)
 		if err != nil {

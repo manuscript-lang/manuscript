@@ -253,13 +253,29 @@ func (p *Parser) typeArgs() []*syntax.Type {
 	p.need("]")
 	return types
 }
+
+// resultType parses the type that follows a parameter list. It rejects the
+// removed '->' and a missing type with the form to write instead.
+func (p *Parser) resultType() *syntax.Type {
+	p.noArrow()
+	if k := p.peek().Kind; k == ":" || k == lexer.Newline {
+		p.fail(p.peek(), "every fn declares its result type after the parameter list, e.g. fn f() Unit:")
+	}
+	return p.typ()
+}
+
+// noArrow rejects the removed '->' before a result type.
+func (p *Parser) noArrow() {
+	if p.peek().Kind == "->" {
+		p.fail(p.peek(), "result types follow the parameter list without an arrow; remove '->', e.g. fn f() Unit:")
+	}
+}
 func (p *Parser) typ() *syntax.Type {
 	defer p.enter()()
 	if p.take("fn") {
 		pos := p.previous().Pos
 		params := p.parameters(false, false)
-		p.need("->")
-		return &syntax.Type{Pos: pos, Name: "fn", Params: params, Result: p.typ()}
+		return &syntax.Type{Pos: pos, Name: "fn", Params: params, Result: p.resultType()}
 	}
 	if p.take("(") {
 		t := p.typ()
@@ -366,8 +382,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 		d.Name = p.need(lexer.Name).Text
 		d.TypeParams = p.typeParams()
 		d.Params = p.parameters(true, false)
-		p.need("->")
-		d.Result = p.typ()
+		d.Result = p.resultType()
 		d.Body = p.statementSuite(false, true)
 	case p.take("let"):
 		p.constant(d)
@@ -410,8 +425,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 				m.TypeParams = p.typeParams()
 			}
 			m.Params = p.parameters(true, false)
-			p.need("->")
-			m.Result = p.typ()
+			m.Result = p.resultType()
 			m.Body = p.statementSuite(false, true)
 			d.Methods = append(d.Methods, m)
 		}
@@ -465,8 +479,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 				name := p.need(lexer.Name)
 				m := &syntax.Declaration{Pos: name.Pos, Name: name.Text, Kind: syntax.KindFn}
 				m.Params = p.parameters(true, false)
-				p.need("->")
-				m.Result = p.typ()
+				m.Result = p.resultType()
 				p.end()
 				d.Methods = append(d.Methods, m)
 			} else {
@@ -482,7 +495,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 		}
 		p.need(lexer.Dedent)
 		if token.Kind == "interface" && len(d.Methods) == 0 {
-			p.fail(token, "declaration body cannot be empty; an interface needs at least one 'fn name(...) -> Type' operation")
+			p.fail(token, "declaration body cannot be empty; an interface needs at least one 'fn name(...) Type' operation")
 		}
 		if form == "" {
 			form = syntax.KindRecord
@@ -882,11 +895,12 @@ func (p *Parser) primary() *syntax.Expression {
 		e.Kind = syntax.KindLambda
 		e.Text = ""
 		e.Params = p.parameters(true, true)
-		if p.take("->") {
+		p.noArrow()
+		if k := p.peek().Kind; k == lexer.Name || k == "fn" || k == "(" {
 			e.Result = p.typ()
 		}
 		if p.peek().Kind == "=" && p.tokens[p.at+1].Kind == ">" {
-			p.fail(p.peek(), "there is no '=>' arrow function; write the result type and a colon, e.g. fn(x: Int) -> Int: x + 1")
+			p.fail(p.peek(), "there is no '=>' arrow function; write the result type and a colon, e.g. fn(x: Int) Int: x + 1")
 		}
 		e.Body = p.statementSuite(true)
 	default:
@@ -938,7 +952,7 @@ func (p *Parser) callArguments(callee *syntax.Expression) *syntax.Expression {
 			}
 			arg.Value = p.expression(0)
 			if arg.Value.Kind == syntax.KindName && p.peek().Kind == "->" {
-				p.fail(p.peek(), "lambdas are written fn(name: Type) -> Result: expression, e.g. fn("+arg.Value.Text+": Int) -> Int: "+arg.Value.Text+" + 1")
+				p.fail(p.peek(), "lambdas are written fn(name: Type) Result: expression, e.g. fn("+arg.Value.Text+": Int) Int: "+arg.Value.Text+" + 1")
 			}
 			call.Args = append(call.Args, arg)
 			if !p.take(",") {
@@ -1277,8 +1291,6 @@ func needHint(kind string, found lexer.Token) string {
 	switch kind {
 	case ":":
 		return "; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented body"
-	case "->":
-		return "; every fn declares its result type after '->', e.g. fn f() -> Unit:"
 	case ")":
 		return "; close the parenthesis, separating items with commas"
 	case "]":

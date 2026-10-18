@@ -1,7 +1,7 @@
 import panic from "@std/faults.ms"
 import Decimal from "@std/decimal.ms"
 
-fn amount() -> Result[Decimal, String]:
+fn amount() Result[Decimal, String]:
     return ok(12.50d)
 
 test "explicit standard imports":

@@ -179,6 +179,7 @@ compact code/output preview. Remove repeated benefit paragraphs and stacked
 cards when applying this direction. Evidence: the request in **Update docs for
 current language**, following [the reader-journey change](https://github.com/manuscript-lang/manuscript/pull/570),
 and [the resulting hero revision](https://github.com/manuscript-lang/manuscript/pull/573).
+Later direction: the landing page must also lay out the benefits clearly. Keep the hero, then one compact "Why Manuscript" grid of short, shipped-feature benefits below the example (no stacked paragraphs); this refines, not reverses, the hero decision. Keep claims tied to shipped features and keep VISION.md's "Where things stand" in sync.
 Verify: inspect desktop and narrow mobile renders in both themes; the first
 action and example remain readable with brief supporting copy. This records
 the requested direction; verify its implementation in the checkout being edited.

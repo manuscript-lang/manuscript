@@ -1,23 +1,28 @@
 import {stdin, stdout, read_line} from "@std/io.ms"
 
-fn pad2(n: Int) -> String:
+fn pad2(n: Int) String:
     if n < 10:
         return "0{n}"
+
     return "{n}"
 
 # Parses s when it is lo to hi ASCII digits.
-fn digits(s: String, lo: Int, hi: Int) -> Optional[Int]:
+fn digits(s: String, lo: Int, hi: Int) Optional[Int]:
     let codes = s.scalar_values()
     if codes.length() < lo or codes.length() > hi:
         return none
+
     var n = 0
+
     for c in codes:
         if c < 48 or c > 57:
             return none
+
         n = n * 10 + (c - 48)
+
     return some(n)
 
-fn days_from_civil(year: Int, m: Int, d: Int) -> Int:
+fn days_from_civil(year: Int, m: Int, d: Int) Int:
     var y = year
     if m <= 2:
         y = y - 1
@@ -31,7 +36,7 @@ fn days_from_civil(year: Int, m: Int, d: Int) -> Int:
     return era * 146097 + doe - 719468
 
 # Returns [year, month, day].
-fn civil_from_days(days: Int) -> List[Int]:
+fn civil_from_days(days: Int) List[Int]:
     let z = days + 719468
     let era = z / 146097
     let doe = z - era * 146097
@@ -47,61 +52,81 @@ fn civil_from_days(days: Int) -> List[Int]:
         y = y + 1
     return [y, m, d]
 
-fn parse_field(text: String, lo: Int, hi: Int) -> Optional[List[Bool]]:
+fn parse_field(text: String, lo: Int, hi: Int) Optional[List[Bool]]:
     let set = List[Bool]()
     var i = 0
+
     while i <= hi:
         set.append(false)
         i = i + 1
+
     for item in text.split(","):
         let parts = item.split("/")
         if parts.length() > 2:
             return none
+
         let body = parts.at(0).unwrap()
         var step = 1
+
         if parts.length() == 2:
             let s = digits(parts.at(1).unwrap(), 1, 2)
             if s.is_none() or s.unwrap() < 1:
                 return none
+
             step = s.unwrap()
+
         var a = 0
         var b = 0
         let single = digits(body, 1, 2)
+
         if body == "*":
             a = lo
             b = hi
         else if single.is_some():
             if parts.length() == 2:
                 return none
+
             a = single.unwrap()
             b = single.unwrap()
         else:
             let r = body.split("-")
             if r.length() != 2:
                 return none
+
             let x = digits(r.at(0).unwrap(), 1, 2)
             let y = digits(r.at(1).unwrap(), 1, 2)
             if x.is_none() or y.is_none() or x.unwrap() > y.unwrap():
                 return none
+
             a = x.unwrap()
             b = y.unwrap()
+
         if a < lo or b > hi:
             return none
+
         var v = a
+
         while v <= b:
             set.set(v, true)
             v = v + step
+
     return some(set)
 
 # Returns [day number, minute of day] for a valid START, or an empty list.
-fn parse_start(s: String) -> List[Int]:
+fn parse_start(s: String) List[Int]:
     let codes = s.scalar_values()
     let empty = List[Int]()
     if codes.length() != 16:
         return empty
     # '-' 45, 'T' 84, ':' 58
-    if codes.at(4).unwrap() != 45 or codes.at(7).unwrap() != 45 or codes.at(10).unwrap() != 84 or codes.at(13).unwrap() != 58:
+    if (
+        codes.at(4).unwrap() != 45
+        or codes.at(7).unwrap() != 45
+        or codes.at(10).unwrap() != 84
+        or codes.at(13).unwrap() != 58
+    ):
         return empty
+
     let y = digits(s.slice(0, 4).unwrap(), 4, 4)
     let mo = digits(s.slice(5, 7).unwrap(), 2, 2)
     let d = digits(s.slice(8, 10).unwrap(), 2, 2)
@@ -109,11 +134,21 @@ fn parse_start(s: String) -> List[Int]:
     let mi = digits(s.slice(14, 16).unwrap(), 2, 2)
     if y.is_none() or mo.is_none() or d.is_none() or h.is_none() or mi.is_none():
         return empty
+
     let year = y.unwrap()
     let month = mo.unwrap()
     let day = d.unwrap()
-    if year < 1970 or year > 2099 or month < 1 or month > 12 or day < 1 or h.unwrap() > 23 or mi.unwrap() > 59:
+    if (
+        year < 1970
+        or year > 2099
+        or month < 1
+        or month > 12
+        or day < 1
+        or h.unwrap() > 23
+        or mi.unwrap() > 59
+    ):
         return empty
+
     let leap = (year % 4 == 0 and year % 100 != 0) or year % 400 == 0
     let lengths = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     var limit = lengths.at(month - 1).unwrap()
@@ -121,48 +156,67 @@ fn parse_start(s: String) -> List[Int]:
         limit = 29
     if day > limit:
         return empty
+
     return [days_from_civil(year, month, day), h.unwrap() * 60 + mi.unwrap()]
 
-fn run() -> Result[Unit, Error]:
+fn run() Result[Unit, Error]:
     let names = ["minute", "hour", "day-of-month", "month", "day-of-week"]
     let lows = [0, 0, 1, 1, 0]
     let highs = [59, 23, 31, 12, 6]
     var n = 0
+
     while true:
         let next = try read_line(input: stdin(), max_bytes: 1048576)
         if next.is_none():
             break
+
         n = n + 1
         let l = next.unwrap()
         if l.replace_all(old: " ", new: "").unwrap().is_empty():
             continue
+
         let pre = "line {n}:"
         let t = l.split(" ")
+
         if t.length() != 7:
             try stdout().write("{pre} error: bad line\n".to_bytes())
             continue
+
         let start = parse_start(t.at(0).unwrap())
+
         if start.is_empty():
             try stdout().write("{pre} error: bad start\n".to_bytes())
             continue
+
         let count_opt = digits(t.at(1).unwrap(), 1, 2)
+
         if count_opt.is_none() or count_opt.unwrap() < 1 or count_opt.unwrap() > 20:
             try stdout().write("{pre} error: bad count\n".to_bytes())
             continue
+
         let count = count_opt.unwrap()
         let sets = List[List[Bool]]()
         var bad = ""
         var i = 0
+
         while i < 5:
-            let s = parse_field(t.at(2 + i).unwrap(), lows.at(i).unwrap(), highs.at(i).unwrap())
+            let s = parse_field(
+                t.at(2 + i).unwrap(),
+                lows.at(i).unwrap(),
+                (highs.at(i).unwrap())
+            )
+
             if s.is_none():
                 bad = names.at(i).unwrap()
                 break
+
             sets.append(s.unwrap())
             i = i + 1
+
         if not bad.is_empty():
             try stdout().write("{pre} error: bad {bad}\n".to_bytes())
             continue
+
         let minutes = sets.at(0).unwrap()
         let hours = sets.at(1).unwrap()
         let doms = sets.at(2).unwrap()
@@ -170,29 +224,52 @@ fn run() -> Result[Unit, Error]:
         let dows = sets.at(4).unwrap()
         let runs = List[String]()
         var k = 0
+
         while k <= 3000 and runs.length() < count:
             let day = start.at(0).unwrap() + k
             let ymd = civil_from_days(day)
-            if months.at(ymd.at(1).unwrap()).unwrap() and doms.at(ymd.at(2).unwrap()).unwrap() and dows.at((day + 4) % 7).unwrap():
+
+            if (
+                months.at(ymd.at(1).unwrap()).unwrap()
+                and doms.at(ymd.at(2).unwrap()).unwrap()
+                and dows.at(((day + 4) % 7)).unwrap()
+            ):
                 var h = 0
+
                 while h < 24 and runs.length() < count:
                     if hours.at(h).unwrap():
                         var mn = 0
+
                         while mn < 60 and runs.length() < count:
-                            if minutes.at(mn).unwrap() and not (k == 0 and h * 60 + mn <= start.at(1).unwrap()):
-                                runs.append("{ymd.at(0).unwrap()}-{pad2(ymd.at(1).unwrap())}-{pad2(ymd.at(2).unwrap())} {pad2(h)}:{pad2(mn)}")
+                            if (
+                                minutes.at(mn).unwrap()
+                                and not (
+                                    k == 0
+                                    and h * 60 + mn <= start.at(
+                                        1
+                                    ).unwrap()
+                                )
+                            ):
+                                runs.append(
+                                    "{ymd.at(0).unwrap()}-{pad2(ymd.at(1).unwrap())}-{pad2(ymd.at(2).unwrap())} {pad2(h)}:{pad2(mn)}"
+                                )
                             mn = mn + 1
+
                     h = h + 1
+
             k = k + 1
+
         if runs.is_empty():
             try stdout().write("{pre} never\n".to_bytes())
             continue
+
         try stdout().write("{pre} {runs.length()} runs\n".to_bytes())
         for r in runs:
             try stdout().write("{r}\n".to_bytes())
+
     return stdout().flush()
 
-export fn main() -> Int:
+export fn main() Int:
     match run():
         ok(_): return 0
         error(_): return 1

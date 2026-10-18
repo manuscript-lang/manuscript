@@ -13,7 +13,7 @@ A non-blocking file transport for `@std/log.ms`, written entirely in Manuscript.
 import {create} from "@std/log.ms"
 import {async_file_transport} from "./async_file_transport.ms"
 
-fn log_started() -> Result[Unit, Error]:
+fn log_started() Result[Unit, Error]:
     with transport = try async_file_transport("app.ndjson", max_bytes: 10485760, max_files: 5):
         let logger = try create(transport: transport)
         let written = try logger.info(message: "started")

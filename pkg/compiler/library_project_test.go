@@ -21,13 +21,13 @@ func libraryProject(t *testing.T) (string, func(string, string)) {
 		}
 	}
 	write("ms.toml", "# library\n[project]\nname = \"library\"\nsource = \"src\"\n[aliases]\n\"@lib\" = \"src\"\n")
-	write("src/value.ms", "export fn value() -> Int: return 3\n")
+	write("src/value.ms", "export fn value() Int: return 3\n")
 	return filepath.Join(root, "ms.toml"), write
 }
 
 func TestLibraryProjectChecksAllSourcesAndTests(t *testing.T) {
 	manifest, write := libraryProject(t)
-	write("src/unimported.ms", "fn broken() -> Int: return \"bad\"\n")
+	write("src/unimported.ms", "fn broken() Int: return \"bad\"\n")
 	write("tests/value_test.ms", "import value from \"@lib/value.ms\"\ntest \"value\":\n    let n = value()\n")
 	for _, options := range []Options{{AnalyzeOnly: true, Entry: true}, {AnalyzeOnly: true}, {Tests: true}} {
 		result := CompileFile(manifest, options)
@@ -35,7 +35,7 @@ func TestLibraryProjectChecksAllSourcesAndTests(t *testing.T) {
 			t.Fatalf("library skipped unimported error: %v", result.Diagnostics)
 		}
 	}
-	write("src/unimported.ms", "export fn other() -> Int: return 4\n")
+	write("src/unimported.ms", "export fn other() Int: return 4\n")
 	for _, options := range []Options{{AnalyzeOnly: true, Entry: true}, {AnalyzeOnly: true}, {Tests: true}} {
 		result := CompileFile(manifest, options)
 		if !result.Success() || result.Program == nil || len(result.Program.ModuleSymbols("src/unimported.ms")) == 0 || len(result.Program.ModuleSymbols("tests/value_test.ms")) == 0 {

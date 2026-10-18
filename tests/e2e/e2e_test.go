@@ -91,9 +91,9 @@ func TestRuntimeFaults(t *testing.T) {
 	for name, source := range map[string]string{
 		"absent optional": "test \"fault\":\n    let missing: Optional[Int] = none\n    let impossible = missing.unwrap()\n",
 		"failed check":    "import panic from \"@std/faults.ms\"\ntest \"fault\":\n    if 2 + 3 != 6:\n        return panic(message: \"arithmetic check failed\")\n",
-		"overflow":        "fn sum(value: Int) -> Int:\n    return value + 1\ntest \"fault\":\n    let impossible = sum(value: 9223372036854775807)\n",
-		"division":        "fn divide(value: Int, divisor: Int) -> Int:\n    return value / divisor\ntest \"fault\":\n    let impossible = divide(value: 3, divisor: 0)\n",
-		"destructuring":   "fn difference(values: List[Int]) -> Int:\n    let [first, second] = values\n    return first - second\ntest \"fault\":\n    let impossible = difference(values: [1])\n",
+		"overflow":        "fn sum(value: Int) Int:\n    return value + 1\ntest \"fault\":\n    let impossible = sum(value: 9223372036854775807)\n",
+		"division":        "fn divide(value: Int, divisor: Int) Int:\n    return value / divisor\ntest \"fault\":\n    let impossible = divide(value: 3, divisor: 0)\n",
+		"destructuring":   "fn difference(values: List[Int]) Int:\n    let [first, second] = values\n    return first - second\ntest \"fault\":\n    let impossible = difference(values: [1])\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			result := compiler.CompileSource(name+".ms", source, compiler.Options{Tests: true})
@@ -360,7 +360,7 @@ func TestCLISourceTools(t *testing.T) {
 	root := t.TempDir()
 	binary := cliBinary
 	filename := filepath.Join(root, "source.ms")
-	source := "fn one( )->Int:\n    return 1 # keep\n"
+	source := "fn one( ) Int:\n    return 1 # keep\n"
 	if err := os.WriteFile(filename, []byte(source), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -385,7 +385,7 @@ func TestCLISourceTools(t *testing.T) {
 	if err != nil || !strings.HasPrefix(string(output), "CALL GRAPH") {
 		t.Fatal(err, string(output))
 	}
-	invalid := "fn wrong() -> Int:\n    return missing\n"
+	invalid := "fn wrong() Int:\n    return missing\n"
 	os.WriteFile(filename, []byte(invalid), 0600)
 	output, err = commandOutput(t, binary, "check", filename, "--json")
 	if err == nil || !strings.Contains(string(output), "MS2001") {
@@ -406,11 +406,11 @@ func TestNominalIdentityEscapesPathDelimiters(t *testing.T) {
 	result := compiler.CompileSource("data[0]:&.ms", `import panic from "@std/faults.ms"
 
 interface Read:
-    fn get() -> Int
+    fn get() Int
 type Box[T]:
     value: T
 impl Read for Box[T]:
-    fn get() -> Int:
+    fn get() Int:
         return 3
 test "encoded nominal identity":
     let box = Box(value: 1)
@@ -460,10 +460,10 @@ func TestHostAccessorsAcrossImportedHelpers(t *testing.T) {
 import clock from "@std/time.ms"
 import Instant from "@std/time.ms"
 
-export fn now() -> Instant:
+export fn now() Instant:
     return clock().now()
 
-export fn close_output() -> Unit:
+export fn close_output() Unit:
     stdout().close()
 `
 	main := `import { now, close_output } from "./helper.ms"
@@ -472,12 +472,12 @@ import clock from "@std/time.ms"
 import Scheduler from "@std/tasks.ms"
 import sleep from "@std/time.ms"
 
-export fn main() -> Int:
+export fn main() Int:
     let before = now()
     if clock().now() - before < 0.milliseconds:
         return 1
     with service = Scheduler(limit: 1):
-        let task = fn() -> Result[Unit, Error]:
+        let task = fn() Result[Unit, Error]:
             close_output()
             return ok(value: unit)
         let id = match service.start(task):
@@ -545,14 +545,14 @@ func TestNetworkingStreamingAndWebSocket(t *testing.T) {
 
 func TestDefaultArgumentsAcrossModules(t *testing.T) {
 	root := t.TempDir()
-	library := `fn private_value() -> Int:
+	library := `fn private_value() Int:
     return 7
-export fn defaulted(value: Int = private_value()) -> Int:
+export fn defaulted(value: Int = private_value()) Int:
     return value
 `
 	main := `import defaulted from "./library.ms"
 import panic from "@std/faults.ms"
-fn private_value() -> Int:
+fn private_value() Int:
     return 99
 test "defaults use their declaration module":
     let copy = defaulted
@@ -581,7 +581,7 @@ test "defaults use their declaration module":
 func TestFieldDefaultsAcrossModules(t *testing.T) {
 	directory := t.TempDir()
 	sources := map[string]string{
-		"data.ms": `fn copy[T](value: T) -> T: return value
+		"data.ms": `fn copy[T](value: T) T: return value
 export type Box[T]:
     value: T
     copied: T = copy(value)

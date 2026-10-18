@@ -4,16 +4,16 @@ type Failure:
     code: Int
 
 impl Error for Failure:
-    fn message() -> String:
+    fn message() String:
         return "failure " + self.code.toString()
 
-fn failing() -> Result[Int, Failure]:
+fn failing() Result[Int, Failure]:
     return error(Failure(code: 7))
 
-fn succeeding() -> Result[Int, Failure]:
+fn succeeding() Result[Int, Failure]:
     return ok(3)
 
-fn describe[T](r: Result[T, Error]) -> String:
+fn describe[T](r: Result[T, Error]) String:
     match r:
         ok(_):
             return "ok"

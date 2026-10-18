@@ -2,7 +2,7 @@ import stdout from "@std/io.ms"
 import control from "@std/process.ms"
 import sleep from "@std/time.ms"
 
-export fn main() -> Int:
+export fn main() Int:
     match control().watch_signals(signals: [2, 15]):
         error(_):
             return 1

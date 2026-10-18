@@ -37,7 +37,7 @@ func systemDebugserver() (string, error) {
 // A missing debugger, Go installation, or download fallback cannot satisfy this.
 func checkDebugger(cli, directory string, environment []string, run func(string, ...string) (string, error)) error {
 	source := filepath.Join(directory, "debug source.ms")
-	if err := os.WriteFile(source, []byte("export fn main() -> Int:\n    let number = 41\n    let result = number + 1\n\n    return result - 42\n"), 0600); err != nil {
+	if err := os.WriteFile(source, []byte("export fn main() Int:\n    let number = 41\n    let result = number + 1\n\n    return result - 42\n"), 0600); err != nil {
 		return err
 	}
 	binary := filepath.Join(directory, "debug-program")
@@ -51,7 +51,7 @@ func checkDebugger(cli, directory string, environment []string, run func(string,
 	// connection while the target remains alive. Reading stdin before the source
 	// breakpoint must see EOF, never block on or consume the DAP protocol pipe.
 	runningSource := filepath.Join(directory, "debug running.ms")
-	if err := os.WriteFile(runningSource, []byte("import stdin from \"@std/io.ms\"\nexport fn main() -> Int:\n    let number = read_number()\n    var result = number + 1\n\n    while result == 42:\n        result = result + 0\n    return result - 42\n\nfn read_number() -> Int:\n    let input = stdin().read(max_bytes: 1)\n    return 41\n"), 0600); err != nil {
+	if err := os.WriteFile(runningSource, []byte("import stdin from \"@std/io.ms\"\nexport fn main() Int:\n    let number = read_number()\n    var result = number + 1\n\n    while result == 42:\n        result = result + 0\n    return result - 42\n\nfn read_number() Int:\n    let input = stdin().read(max_bytes: 1)\n    return 41\n"), 0600); err != nil {
 		return err
 	}
 	runningBinary := binary + "-running"

@@ -15,53 +15,53 @@ type State:
 `
 	cases := []struct{ name, source, want string }{
 		{"all omitted", prefix + `impl TestHooks for State:
-fn make_fixture() -> State:
+fn make_fixture() State:
     return State(value: 1)
 test "reads fixture":
     let value: Int = fixture.value
 `, ""},
 		{"partial", prefix + `impl TestHooks for State:
-    fn before_each() -> Unit:
+    fn before_each() Unit:
         self.value = self.value + 1
-fn make_fixture() -> State:
+fn make_fixture() State:
     return State(value: 1)
 test "closure captures fixture":
-    let read = fn() -> Int: fixture.value
+    let read = fn() Int: fixture.value
     let value: Int = read()
 `, ""},
 		{"wrong signature", prefix + `impl TestHooks for State:
-    fn before_each(value: Int) -> Unit:
+    fn before_each(value: Int) Unit:
         return
-fn make_fixture() -> State:
+fn make_fixture() State:
     return State(value: 1)
 test "test":
     return
 `, "signature does not match contract"},
 		{"factory argument", prefix + `impl TestHooks for State:
-fn make_fixture(value: Int) -> State:
+fn make_fixture(value: Int) State:
     return State(value)
 test "test":
     return
 `, "zero-argument"},
 		{"factory generic", prefix + `impl TestHooks for State:
-fn make_fixture[T]() -> State:
+fn make_fixture[T]() State:
     return State(1)
 test "test":
     return
 `, "nongeneric"},
 		{"factory interface", prefix + `impl TestHooks for State:
-fn make_fixture() -> TestHooks:
+fn make_fixture() TestHooks:
     return State(1)
 test "test":
     return
 `, "concrete type implementing"},
-		{"no implementation", prefix + `fn make_fixture() -> State:
+		{"no implementation", prefix + `fn make_fixture() State:
     return State(1)
 test "test":
     return
 `, "concrete type implementing"},
 		{"outside test", prefix + `impl TestHooks for State:
-fn make_fixture() -> State:
+fn make_fixture() State:
     return State(fixture.value)
 test "test":
     return
@@ -70,13 +70,13 @@ test "test":
     let value = fixture.value
 `, "local make_fixture"},
 		{"shadow interface", `interface TestHooks:
-    fn after_all() -> Unit
+    fn after_all() Unit
 type State:
     value: Int
 impl TestHooks for State:
-    fn after_all() -> Unit:
+    fn after_all() Unit:
         return
-fn make_fixture() -> State:
+fn make_fixture() State:
     return State(1)
 test "test":
     return

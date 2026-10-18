@@ -11,7 +11,7 @@ description = "Agents write. Humans understand."
 import arguments from "@std/cli.ms"
 import stdout from "@std/io.ms"
 
-export fn main() -> Int:
+export fn main() Int:
     let name = arguments().at(0).unwrap_or("world")
     let message = "Hello, {name}!\n".to_bytes()
     if stdout().write(message).is_error():

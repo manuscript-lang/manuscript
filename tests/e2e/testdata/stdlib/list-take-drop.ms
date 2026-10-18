@@ -62,7 +62,7 @@ test "List take and drop retain shallow payload references":
         "nested list payload cloned"
     )
 
-fn copy_window[T](values: List[T], first: Int, skip: Int) -> List[T]:
+fn copy_window[T](values: List[T], first: Int, skip: Int) List[T]:
     return values.take(first).drop(skip)
 
 test "List take and drop support generic and nested values":
@@ -78,7 +78,7 @@ test "List take and drop support generic and nested values":
         "nested result copying"
     )
 
-    let callbacks = [fn(value: Int) -> Int: value + 1]
+    let callbacks = [fn(value: Int) Int: value + 1]
     if callbacks.take(1).drop(0).at(0).unwrap()(value: 1) != 2: return panic(
         "unconstrained function payload"
     )
@@ -86,7 +86,7 @@ test "List take and drop support generic and nested values":
 test "List take and drop bound methods read the retained receiver at call time":
     var values = [1, 2, 3]
     let take = values.take
-    let drop: fn(count: Int) -> List[Int] = values.drop
+    let drop: fn(count: Int) List[Int] = values.drop
     values.append(4)
     values = [9]
     if take(count: 7) != [1, 2, 3, 4] or drop(2) != [3, 4]: return panic(

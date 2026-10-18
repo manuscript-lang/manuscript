@@ -7,20 +7,20 @@ const path = require('node:path');
 const { Framing, ManuscriptAdapter } = require(process.env.MANUSCRIPT_DAP_ADAPTER || '../debug-adapter');
 
 const declarations = `interface Read:
-    fn read() -> Int
+    fn read() Int
 type Reader:
-    operation: fn() -> Int
+    operation: fn() Int
 impl Read for Reader:
-    fn read() -> Int:
+    fn read() Int:
         return self.operation()
-export fn main() -> Int:
+export fn main() Int:
 `;
 
 for (const [name, body, breakpointLine, anonymousFrames] of [
-  ['exact reproduction', '    let view = Read(Reader(fn() -> Int: 1))\n    return view.read()\n', 9, 1],
+  ['exact reproduction', '    let view = Read(Reader(fn() Int: 1))\n    return view.read()\n', 9, 1],
   ['nested capture', `    var value = 7
-    let view = Read(Reader(fn() -> Int:
-        let nested = fn() -> Int:
+    let view = Read(Reader(fn() Int:
+        let nested = fn() Int:
             return value
         return nested()
     ))

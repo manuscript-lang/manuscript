@@ -10,21 +10,21 @@ import (
 func TestTypedAlternativeLetsKeepSemantics(t *testing.T) {
 	result := compiler.CompileSource("alt-lets.ms", `import panic from "@std/faults.ms"
 
-fn halve(n: Int) -> Optional[Int]:
+fn halve(n: Int) Optional[Int]:
     if n % 2 != 0:
         return none
     return some(value: n / 2)
 
-fn parse(n: Int) -> Result[Int, String]:
+fn parse(n: Int) Result[Int, String]:
     if n < 0:
         return error(cause: "negative")
     return ok(value: n)
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
-fn matched(n: Int) -> Int:
+fn matched(n: Int) Int:
     let found = halve(n: n)
     match found:
         some(v):
@@ -32,7 +32,7 @@ fn matched(n: Int) -> Int:
         none:
             return 0 - 1
 
-fn twice(n: Int) -> Int:
+fn twice(n: Int) Int:
     let found = halve(n: n)
     var total = 0
     match found:
@@ -47,7 +47,7 @@ fn twice(n: Int) -> Int:
             total = total + 1000
     return total
 
-fn results(n: Int) -> String:
+fn results(n: Int) String:
     let parsed = parse(n: n)
     match parsed:
         ok(v):
@@ -55,13 +55,13 @@ fn results(n: Int) -> String:
         error(cause):
             return cause
 
-fn formatted(n: Int) -> String:
+fn formatted(n: Int) String:
     let found = halve(n: n)
     return "{found}"
 
-fn captured(n: Int) -> Int:
+fn captured(n: Int) Int:
     let found = halve(n: n)
-    let read = fn() -> Int:
+    let read = fn() Int:
         match found:
             some(v):
                 return v

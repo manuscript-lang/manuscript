@@ -20,12 +20,12 @@ func defaultArgumentDiagnostics(t *testing.T, source string) []syntax.Diagnostic
 
 func TestDefaultTypeArgumentRules(t *testing.T) {
 	cases := []struct{ name, source, want string }{
-		{"valid", "type Pair[A, B = A]:\n    first: A\n    second: B\nfn use() -> Pair[Int]: Pair[Int](1, 2)\n", ""},
-		{"required after default", "fn f[A = Int, B](value: B) -> B: value\n", "needs a default"},
-		{"later parameter", "fn f[A = B, B = Int](value: B) -> B: value\n", "unknown type"},
-		{"unmet bound", "interface Named:\n    fn name() -> String\nfn f[T: Named = Int]() -> Unit: unit\n", "implement"},
-		{"too few", "type Trio[A, B, C = A]:\n    first: A\nfn use(t: Trio[Int]) -> Unit: unit\n", "takes 2 to 3"},
-		{"uninferable required", "fn make[T, U = Int]() -> Optional[T]: none\nfn use() -> Unit:\n    let x = make()\n", "cannot infer type argument T"},
+		{"valid", "type Pair[A, B = A]:\n    first: A\n    second: B\nfn use() Pair[Int]: Pair[Int](1, 2)\n", ""},
+		{"required after default", "fn f[A = Int, B](value: B) B: value\n", "needs a default"},
+		{"later parameter", "fn f[A = B, B = Int](value: B) B: value\n", "unknown type"},
+		{"unmet bound", "interface Named:\n    fn name() String\nfn f[T: Named = Int]() Unit: unit\n", "implement"},
+		{"too few", "type Trio[A, B, C = A]:\n    first: A\nfn use(t: Trio[Int]) Unit: unit\n", "takes 2 to 3"},
+		{"uninferable required", "fn make[T, U = Int]() Optional[T]: none\nfn use() Unit:\n    let x = make()\n", "cannot infer type argument T"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

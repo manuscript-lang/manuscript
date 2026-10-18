@@ -16,7 +16,7 @@ type DiscountError:
     case InvalidPrice
     case InvalidPercent
 
-fn discount(price: Decimal, percent: Decimal) -> Result[Decimal, DiscountError]:
+fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:
     if price < 0d:
         return error(InvalidPrice)
     if percent < 0d or percent > 100d:
@@ -32,7 +32,7 @@ The function validates inputs, returns an explicit error for each failure, and w
 This continues the declarations above:
 
 ```manuscript
-fn discount_message(price: Decimal, percent: Decimal) -> String:
+fn discount_message(price: Decimal, percent: Decimal) String:
     if let value = discount(price, percent):
         return "Discounted price: {value}"
     return "Discount could not be calculated."
@@ -45,12 +45,12 @@ This caller discards the cause. To use it, call `unwrap_error()` after `is_error
 | Method | Behavior |
 | --- | --- |
 | `is_ok()`, `is_error()` | Test the case, including successful zero, false, or Unit values |
-| `unwrap() -> T` | Return the successful payload; [fault](faults.md) on an error |
-| `unwrap_error() -> E` | Return the error payload; fault on success |
-| `unwrap_or(fallback: T) -> T` | Return success or the eagerly evaluated fallback |
-| `unwrap_or_else(create: fn(cause: E) -> T) -> T` | Call `create` once with the original error only on failure |
-| `map[U](transform: fn(value: T) -> U) -> Result[U, E]` | Transform success once; preserve an error unchanged |
-| `and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]` | On success, return the callback's Result; preserve an existing error |
+| `unwrap() T` | Return the successful payload; [fault](faults.md) on an error |
+| `unwrap_error() E` | Return the error payload; fault on success |
+| `unwrap_or(fallback: T) T` | Return success or the eagerly evaluated fallback |
+| `unwrap_or_else(create: fn(cause: E) T) T` | Call `create` once with the original error only on failure |
+| `map[U](transform: fn(value: T) U) Result[U, E]` | Transform success once; preserve an error unchanged |
+| `and_then[U](transform: fn(value: T) Result[U, E]) Result[U, E]` | On success, return the callback's Result; preserve an existing error |
 
 `E` can be any value type; it need not implement Error. `map` wraps the callback's value in `ok`, even if it is a Result or Optional. `and_then` requires the same `E`; translate unrelated errors with ordinary functions.
 
@@ -65,10 +65,10 @@ Callbacks run sequentially in the caller's context; faults and cancellation prop
 
 ## Converting success to an Optional
 
-`to_optional() -> Optional[T]` returns `some` with the original payload, or `none` on error. It does not clone or flatten the payload, and does not turn faults or cancellation into absence.
+`to_optional() Optional[T]` returns `some` with the original payload, or `none` on error. It does not clone or flatten the payload, and does not turn faults or cancellation into absence.
 
 ```manuscript
-fn successful_price(outcome: Result[Decimal, String]) -> Optional[Decimal]:
+fn successful_price(outcome: Result[Decimal, String]) Optional[Decimal]:
     return outcome.to_optional()
 ```
 
@@ -86,13 +86,13 @@ The initializer still runs and `_ignored` suppresses the unread-local advisory. 
 
 ## A common error boundary
 
-Usually keep the concrete domain error type. To accept several error types, use the prelude `Error` interface (`message() -> String`). Standard errors implement it; custom errors declare `impl Error`.
+Usually keep the concrete domain error type. To accept several error types, use the prelude `Error` interface (`message() String`). Standard errors implement it; custom errors declare `impl Error`.
 
 ```manuscript
 import Bytes from "@std/bytes.ms"
 import hex_decode from "@std/encoding.ms"
 
-fn decode(text: String) -> Result[Bytes, Error]:
+fn decode(text: String) Result[Bytes, Error]:
     let bytes = try hex_decode(text)
     return ok(bytes)
 ```

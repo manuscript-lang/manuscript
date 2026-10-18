@@ -251,18 +251,18 @@ type CaptureTransport:
     output: MemoryStream
 
 impl Transport for CaptureTransport:
-    fn write(data: Bytes) -> Result[Unit, LogError]:
+    fn write(data: Bytes) Result[Unit, LogError]:
         if self.output.closed: return error(LogError.Closed)
 
         self.output.data = self.output.data.concat(data)
         return ok(unit)
 
-    fn flush() -> Result[Unit, LogError]:
+    fn flush() Result[Unit, LogError]:
         if self.output.closed: return error(LogError.Closed)
 
         return ok(unit)
 
-    fn close() -> Unit: self.output.closed = true
+    fn close() Unit: self.output.closed = true
 
 test "source transports receive complete records and close through their contract":
     let output = MemoryStream(data: "".to_bytes(), offset: 0, closed: false)

@@ -1,16 +1,16 @@
 import panic from "@std/faults.ms"
 import {Synchronized, SynchronizedGuard} from "@std/sync.ms"
 
-fn increment(value: Int = 3) -> Int:
+fn increment(value: Int = 3) Int:
     return value + 1
 
-fn combine(first: Int = 2, second: Int, third: Int = first + second) -> Int:
+fn combine(first: Int = 2, second: Int, third: Int = first + second) Int:
     return first + second + third
 
-fn identity[T](value: T, fallback: T = value) -> T:
+fn identity[T](value: T, fallback: T = value) T:
     return fallback
 
-fn mark(state: SynchronizedGuard[Int], value: Int) -> Int:
+fn mark(state: SynchronizedGuard[Int], value: Int) Int:
     state.set(value: state.get() * 10 + value)
     return value
 
@@ -19,40 +19,40 @@ fn ordered(
     first: Int = mark(state: state, value: 3),
     second: Int = mark(state: state, value: 4),
     third: Int = 0
-) -> Int:
+) Int:
     state.set(value: state.get() * 10 + 5)
     return first + second + third
 
-fn unit_value(value: Unit = panic("unexpected default")) -> Unit:
+fn unit_value(value: Unit = panic("unexpected default")) Unit:
     return value
 
-fn optional(value: Optional[Int] = some(3)) -> Optional[Int]:
+fn optional(value: Optional[Int] = some(3)) Optional[Int]:
     return value
 
-fn fail() -> Result[Int, String]:
+fn fail() Result[Int, String]:
     return error("default failure")
 
-fn propagate(value: Int = try fail()) -> Result[Int, String]:
+fn propagate(value: Int = try fail()) Result[Int, String]:
     return ok(value)
 
 interface Add:
-    fn add(value: Int) -> Int
+    fn add(value: Int) Int
 
 type Offset:
     value: Int
 
 impl Add for Offset:
-    fn add(value: Int = self.value) -> Int:
+    fn add(value: Int = self.value) Int:
         return self.value + value
 
 interface Read[T]:
-    fn read(value: T) -> T
+    fn read(value: T) T
 
 type Box[T]:
     value: T
 
 impl Read[T] for Box[T]:
-    fn read(value: T = self.value) -> T:
+    fn read(value: T = self.value) T:
         return value
 
 test "omitted and explicit defaults":
@@ -100,7 +100,7 @@ test "function values and captures":
     if copied() != 4:
         return panic("inferred immutable copies retain defaults")
 
-    let typed: fn(value: Int) -> Int = increment
+    let typed: fn(value: Int) Int = increment
     if typed(2) != 3:
         return panic("explicit function type remains compatible")
 

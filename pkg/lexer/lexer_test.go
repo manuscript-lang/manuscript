@@ -11,7 +11,7 @@ import (
 )
 
 func TestLayoutAndLineEndings(t *testing.T) {
-	source := "# module\nfn value() -> Int:\n\n    # comment\n    if true:\n        return 3\n    else:\n        return 4\n"
+	source := "# module\nfn value() Int:\n\n    # comment\n    if true:\n        return 3\n    else:\n        return 4\n"
 	lf, err := lexer.Lex("layout.ms", source)
 	if err != nil {
 		t.Fatal(err)
@@ -48,22 +48,22 @@ func TestLayoutAndLineEndings(t *testing.T) {
 
 func TestLexicalBoundaries(t *testing.T) {
 	for name, source := range map[string]string{
-		"BOM":                 "\ufefffn value() -> Unit:\n    return\n",
+		"BOM":                 "\ufefffn value() Unit:\n    return\n",
 		"UTF8":                string([]byte{0xff}),
-		"unicode name":        "fn café() -> Unit:\n    return\n",
-		"tab":                 "fn value() -> Unit:\n\treturn\n",
-		"lone CR":             "fn value() -> Unit:\r    return\n",
-		"lone CR in comment":  "fn value() -> Unit:\n    return # note\rmore\n",
-		"lone CR at end":      "fn value() -> Unit:\n    return\n# end\r",
-		"jumped indentation":  "fn value() -> Unit:\n        return\n",
-		"leading zero":        "fn value() -> Int:\n    return 03\n",
-		"hex":                 "fn value() -> Int:\n    return 0xff\n",
-		"separator":           "fn value() -> Int:\n    return 1_000\n",
-		"exponent":            "fn value() -> Float:\n    return 1e+\n",
-		"delimiters":          "fn value() -> Unit:\n    other(value: [1)\n",
-		"raw control":         "fn value() -> String:\n    return \"a\tb\"\n",
-		"surrogate":           "fn value() -> String:\n    return \"\\u{d800}\"\n",
-		"empty interpolation": "fn value() -> String:\n    return \"{}\"\n",
+		"unicode name":        "fn café() Unit:\n    return\n",
+		"tab":                 "fn value() Unit:\n\treturn\n",
+		"lone CR":             "fn value() Unit:\r    return\n",
+		"lone CR in comment":  "fn value() Unit:\n    return # note\rmore\n",
+		"lone CR at end":      "fn value() Unit:\n    return\n# end\r",
+		"jumped indentation":  "fn value() Unit:\n        return\n",
+		"leading zero":        "fn value() Int:\n    return 03\n",
+		"hex":                 "fn value() Int:\n    return 0xff\n",
+		"separator":           "fn value() Int:\n    return 1_000\n",
+		"exponent":            "fn value() Float:\n    return 1e+\n",
+		"delimiters":          "fn value() Unit:\n    other(value: [1)\n",
+		"raw control":         "fn value() String:\n    return \"a\tb\"\n",
+		"surrogate":           "fn value() String:\n    return \"\\u{d800}\"\n",
+		"empty interpolation": "fn value() String:\n    return \"{}\"\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := lexer.Lex(name+".ms", source)
@@ -73,14 +73,14 @@ func TestLexicalBoundaries(t *testing.T) {
 			}
 		})
 	}
-	source := "fn value() -> String:\n    return \"héllo \\u{1F600} {1 + 2} \\{literal\\}\"\n"
+	source := "fn value() String:\n    return \"héllo \\u{1F600} {1 + 2} \\{literal\\}\"\n"
 	if _, err := lexer.Lex("unicode.ms", source); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestTokenEndPositionsUseOriginalBytes(t *testing.T) {
-	source := "fn f() -> String:\r\n    return \"é\" # keep\r\n"
+	source := "fn f() String:\r\n    return \"é\" # keep\r\n"
 	tokens, err := lexer.Lex("ends.ms", source)
 	if err != nil {
 		t.Fatal(err)
@@ -127,9 +127,9 @@ func TestUnknownEscapeIsReportedAtTheBackslash(t *testing.T) {
 
 func TestDelimiterContinuationMayDedentBelowSuite(t *testing.T) {
 	for _, source := range []string{
-		"fn f() -> Int:\n    let x = [\n1,\n2,\n]\n    return 0\n",
-		"fn f() -> Int:\n    let x = (1 +\n2)\n    return 0\n",
-		"fn f() -> Int:\n    if true:\n        let x = [\n1\n]\n        return 0\n    return 1\n",
+		"fn f() Int:\n    let x = [\n1,\n2,\n]\n    return 0\n",
+		"fn f() Int:\n    let x = (1 +\n2)\n    return 0\n",
+		"fn f() Int:\n    if true:\n        let x = [\n1\n]\n        return 0\n    return 1\n",
 	} {
 		tokens, err := lexer.Lex("continuation.ms", source)
 		if err != nil {
@@ -168,7 +168,7 @@ func TestGrammarGuideListsEveryReservedWord(t *testing.T) {
 }
 
 func TestTrailingPipeOverIndentHint(t *testing.T) {
-	_, err := lexer.Lex("t.ms", "fn f() -> Int:\n    let a = 1 |\n        g\n    return a\n")
+	_, err := lexer.Lex("t.ms", "fn f() Int:\n    let a = 1 |\n        g\n    return a\n")
 	if err == nil || !strings.Contains(err.Error(), "start the continuation line with '|'") {
 		t.Fatalf("got %v", err)
 	}

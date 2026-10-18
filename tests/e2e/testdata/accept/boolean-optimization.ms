@@ -3,14 +3,14 @@ import panic from "@std/faults.ms"
 type Counter:
     calls: Int
 
-fn touch(counter: Counter) -> Bool:
+fn touch(counter: Counter) Bool:
     counter.calls = counter.calls + 1
     return true
 
-fn fail() -> Bool:
+fn fail() Bool:
     return panic("short-circuited operand was evaluated")
 
-fn defaulted(flag: Bool = not (false or false)) -> Bool:
+fn defaulted(flag: Bool = not (false or false)) Bool:
     return flag
 
 test "boolean optimization preserves source evaluation order":

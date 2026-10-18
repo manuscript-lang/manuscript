@@ -10,28 +10,28 @@ type Key:
     label: String
 
 impl Equal for Key:
-    fn equals(other: Equal) -> Bool:
+    fn equals(other: Equal) Bool:
         match other:
             Key(value): return self.id == value.id
             _: return false
 
 impl Hashable for Key:
-    fn hash() -> Int: self.id
+    fn hash() Int: self.id
 
 type Resource:
     order: List[Int]
     id: Int
 
 impl Closeable for Resource:
-    fn close() -> Unit:
+    fn close() Unit:
         self.order.append(self.id)
 
-fn leave(order: List[Int]) -> Int:
+fn leave(order: List[Int]) Int:
     with outer = Resource(order: order, id: 1):
         with inner = Resource(order: order, id: 2):
             return 42
 
-fn propagate(result: Result[Int, JsonError]) -> Result[Int, JsonError]:
+fn propagate(result: Result[Int, JsonError]) Result[Int, JsonError]:
     let found = try result
     return ok(found + 1)
 

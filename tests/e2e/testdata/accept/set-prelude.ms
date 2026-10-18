@@ -1,6 +1,6 @@
 import panic from "@std/faults.ms"
 
-fn insert[T: Hashable](values: Set[T], value: T) -> Set[T]: values.add(value)
+fn insert[T: Hashable](values: Set[T], value: T) Set[T]: values.add(value)
 
 test "set construction and methods need no import":
     let values: Set[Int] = Set()
@@ -18,12 +18,10 @@ test "set construction and methods need no import":
 
     let other = Set[Int]().add(4).add(2)
     if values.union(other).values() != [3, 2, 4]: return panic("union")
-    if values.filter(fn(value: Int) -> Bool: value > 2).values() != [3]: return panic(
+    if values.filter(fn(value: Int) Bool: value > 2).values() != [3]: return panic(
         "filter"
     )
-    if values.map(fn(value: Int) -> Int: value * 2).values() != [6, 4]: return panic(
-        "map"
-    )
+    if values.map(fn(value: Int) Int: value * 2).values() != [6, 4]: return panic("map")
 
     let nested: List[Set[Int]] = [values]
     if nested[0].unwrap().length() != 2: return panic("nested annotation")

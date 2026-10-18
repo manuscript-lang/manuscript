@@ -2,25 +2,21 @@
 
 The language for the agentic era.
 
-API-first. Minimal syntax. Best-in-class tooling.
+API-first. Minimal syntax. Best-in-class tooling. See the [vision](VISION.md) for direction.
 
-See the [vision](VISION.md) for long-term direction.
+## How Manuscript is different
 
-## Design principles
+Most languages were shaped for human authors and then adapted to agents. Manuscript optimizes the language and the toolchain together for the loop an agent actually runs: write, check, fix, verify, ship.
 
-- **API first.** Small syntax; concurrency, scheduling, and host services come from imported APIs.
-- **Agents write; humans understand.** Contracts and dependencies are visible in source, in familiar, reviewable forms.
-- **Fewer concepts, more composition.** Add a mechanism only when existing ones cannot express the problem.
+| Optimization | What it means in practice |
+| --- | --- |
+| **A language with little to get wrong** | Statically typed, four-space blocks, no implicit conversion or truthiness, no special async syntax, and flat `match`. Failure is a value: `Optional`, `Result`, and `try`. Cleanup is scoped with `with`. Fewer concepts means fewer first-draft errors and less to review. |
+| **Tools that give evidence, not prose** | `--json` from `check`, `lint`, `test`, `build`, and `inspect`; `ms search_symbol` finds exact APIs, `ms guide` prints the cheat sheet, `ms verify` runs check, format, lint, and test in one result, and `ms review` and `ms diagram` show the effect of a change from the checked source, deterministically. |
+| **Native code without a second language to manage** | Source lowers to typed Go (no boxing, no `any` in signatures) and compiles with a bundled toolchain. On the [performance benchmark](perf-bench/programs/results.md) generated code runs about 0.8x to 3.3x the time of hand-written Go on microbenchmarks, and each gap is a tracked optimization target. |
+| **One binary, always fresh** | `ms` is the compiler, formatter, linter, test runner, language server, debugger, and profiler. Nothing else to install. Rebuilds reuse a shared compiled-runtime workspace and replayed compile and link commands; no executable cache, so a stale binary never runs. |
+| **Measured on real agents** | [`agent-bench`](agent-bench/README.md) runs the same challenges in Manuscript, Go, TypeScript, and Rust. Failures there drive diagnostics, docs, and the cheat sheet. The latest Haiku baseline has Manuscript behind the others on pass rate and cost, and closing that gap is the current work. |
 
-## Tooling for agents and humans
-
-Tools share the compiler's understanding of the program:
-
-- **Agents get structured evidence.** `--json` from `check`, `lint`, `test`, `build`, and `inspect` reports diagnostics, symbols, call sites, hashes, and effects. `ms search_symbol` finds APIs, `ms guide` prints a cheat sheet, and `ms review` shows where to look.
-- **Editors understand the contracts.** Typed completion, checked auto-imports, safe project-wide rename, and navigable standard-library source.
-- **Debugging stays on source.** `ms debug`, the VS Code adapter, profiles, and traces map to `.ms` lines.
-
-See the [tooling guide](documentation/developer-tooling/implementation.md) and [VS Code integration](extensions/vscode/README.md).
+See the [tooling guide](documentation/developer-tooling/implementation.md), [how it works](documentation/developer-tooling/how-it-works.md), and [VS Code integration](extensions/vscode/README.md).
 
 Manuscript is statically typed. Write `.ms` files and build native executables with `ms`; the standard library covers files, processes, networking, HTTP, JSON, text, time, and concurrency.
 
@@ -34,7 +30,7 @@ This complete program prints the number of arguments it receives:
 import arguments from "@std/cli.ms"
 import stdout from "@std/io.ms"
 
-export fn main() -> Int:
+export fn main() Int:
     let message = "Arguments: {arguments().length()}\n"
     if stdout().write(message.to_bytes()).is_error():
         return 1
@@ -52,7 +48,7 @@ type Request:
     model: String
     user: Optional[String]
 
-fn describe(request: Request) -> String:
+fn describe(request: Request) String:
     if let name = request.user:
         return "{request.model} for {name}"
     else:

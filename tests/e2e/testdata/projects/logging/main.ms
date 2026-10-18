@@ -14,13 +14,13 @@ type Sequence:
 type Service:
     service: String
 
-fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
+fn concurrent_records(logger: Logger) Result[Unit, Error]:
     with group = TaskGroup():
         let tasks: List[Task[Result[Unit, Error]]] = []
 
         for worker in [0, 1, 2, 3, 4, 5, 6, 7]:
             let task = group.start(
-                fn() -> Result[Unit, Error]:
+                fn() Result[Unit, Error]:
                     let child = try bind(
                         logger: logger,
                         bindings: Worker(worker: worker)
@@ -46,7 +46,7 @@ fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
 
     return ok(unit)
 
-fn exercise(mode: String, path: String) -> Result[Unit, Error]:
+fn exercise(mode: String, path: String) Result[Unit, Error]:
     let bindings = Service(service: "api")
 
     if (mode == "file" or mode == "concurrent" or mode == "missing"):
@@ -91,7 +91,7 @@ fn exercise(mode: String, path: String) -> Result[Unit, Error]:
 
     return ok(unit)
 
-export fn main() -> Int:
+export fn main() Int:
     let args = arguments()
     let mode = args.at(0).unwrap_or("stdout")
     let path = args.at(1).unwrap_or("events.ndjson")

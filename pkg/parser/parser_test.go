@@ -33,20 +33,20 @@ func TestRejectSyntax(t *testing.T) {
 	for name, source := range map[string]string{
 		"module var":            "var value = 3\n",
 		"constant no value":     "let value\n",
-		"comparison chain":      "fn f() -> Bool:\n    return 1 < 2 < 3\n",
-		"two spaces":            "fn f() -> Int:\n  return 1\n",
-		"default function type": "fn f(value: fn(x: Int = 1) -> Int) -> Unit:\n    return\n",
+		"comparison chain":      "fn f() Bool:\n    return 1 < 2 < 3\n",
+		"two spaces":            "fn f() Int:\n  return 1\n",
+		"default function type": "fn f(value: fn(x: Int = 1) Int) Unit:\n    return\n",
 		"default case":          "type F:\n    case Value(value: Int = 1)\n",
-		"invalid assignment":    "fn f() -> Unit:\n    (1 + 2) = 1\n",
-		"nested named function": "fn f() -> Unit:\n    fn g() -> Unit:\n        return\n",
+		"invalid assignment":    "fn f() Unit:\n    (1 + 2) = 1\n",
+		"nested named function": "fn f() Unit:\n    fn g() Unit:\n        return\n",
 		"mixed type":            "type Mixed:\n    value: Int\n    case Ready\n",
 		"bad escape":            "import panic from \"@std/faults.ms\"\n\ntest \"bad\":\n    if not (\"\\q\" == \"\"):\n        return panic(message: \"check failed\")\n",
 		"invalid scalar":        "import panic from \"@std/faults.ms\"\n\ntest \"bad\":\n    if not (\"\\u{D800}\" == \"\"):\n        return panic(message: \"check failed\")\n",
-		"numeric suffix":        "fn f() -> Int:\n    return 1_000\n",
-		"index arity":           "fn f() -> Int:\n    return values[0, 1]\n",
-		"loop pattern":          "fn f() -> Unit:\n    for [key, value] in entries:\n        return\n",
-		"interpolation comment": "fn f() -> String:\n    return \"{1 # comment}\"\n",
-		"outer close in lambda": "fn f() -> Unit:\n    consume(transform: fn() -> Unit:\n        return\n        )\n",
+		"numeric suffix":        "fn f() Int:\n    return 1_000\n",
+		"index arity":           "fn f() Int:\n    return values[0, 1]\n",
+		"loop pattern":          "fn f() Unit:\n    for [key, value] in entries:\n        return\n",
+		"interpolation comment": "fn f() String:\n    return \"{1 # comment}\"\n",
+		"outer close in lambda": "fn f() Unit:\n    consume(transform: fn() Unit:\n        return\n        )\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := parser.Parse(name, source); err == nil {
@@ -57,7 +57,7 @@ func TestRejectSyntax(t *testing.T) {
 }
 
 func FuzzParse(f *testing.F) {
-	for _, s := range []string{"fn f() -> Unit:\n    return\n", "import panic from \"@std/faults.ms\"\n\ntest \"text\":\n    if not (\"{1}\" == \"1\"):\n        return panic(message: \"check failed\")\n", "type Item:\n    value: Int\n"} {
+	for _, s := range []string{"fn f() Unit:\n    return\n", "import panic from \"@std/faults.ms\"\n\ntest \"text\":\n    if not (\"{1}\" == \"1\"):\n        return panic(message: \"check failed\")\n", "type Item:\n    value: Int\n"} {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, source string) {
@@ -69,7 +69,7 @@ func FuzzParse(f *testing.F) {
 }
 
 func TestNamedArgumentValueContinuation(t *testing.T) {
-	source := "fn use(value: Int) -> Unit:\n    return\ntest \"continued argument\":\n    use(value:\n        3\n    )\n"
+	source := "fn use(value: Int) Unit:\n    return\ntest \"continued argument\":\n    use(value:\n        3\n    )\n"
 	if _, err := parser.Parse("continued.ms", source); err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestNamedArgumentValueContinuation(t *testing.T) {
 func TestSingleArgumentExpressions(t *testing.T) {
 	for _, expression := range []string{"3", "value", "value + 1", "-3", "true", "unit", "\"text\"", "[1, 2]", "other(3)", "(value)", "3,"} {
 		t.Run(expression, func(t *testing.T) {
-			source := "fn use(value: Int) -> Unit:\n    consume(" + expression + ")\n"
+			source := "fn use(value: Int) Unit:\n    consume(" + expression + ")\n"
 			module, err := parser.Parse("argument.ms", source)
 			if err != nil {
 				t.Fatal(err)
@@ -92,7 +92,7 @@ func TestSingleArgumentExpressions(t *testing.T) {
 }
 
 func TestInterpolationSpacesAndPhysicalPositions(t *testing.T) {
-	source := "fn add(value: Int) -> Int:\r\n    return value\r\nfn render() -> String:\r\n    return \"héllo { add(value: 2) }\"\r\n"
+	source := "fn add(value: Int) Int:\r\n    return value\r\nfn render() String:\r\n    return \"héllo { add(value: 2) }\"\r\n"
 	module, err := parser.Parse("interpolation.ms", source)
 	if err != nil {
 		t.Fatal(err)
@@ -106,7 +106,7 @@ func TestInterpolationSpacesAndPhysicalPositions(t *testing.T) {
 	if value.Pos.Line != 4 || value.Pos.Column != wantColumn {
 		t.Fatal(value.Pos)
 	}
-	invalid := "fn render() -> String:\n    return \"hello { @ }\"\n"
+	invalid := "fn render() String:\n    return \"hello { @ }\"\n"
 	_, err = parser.Parse("interpolation.ms", invalid)
 	diagnostic, ok := err.(syntax.Diagnostic)
 	if !ok || diagnostic.Position.Line != 2 || diagnostic.Position.Offset != strings.IndexByte(invalid, '@') {
@@ -115,7 +115,7 @@ func TestInterpolationSpacesAndPhysicalPositions(t *testing.T) {
 }
 
 func TestInterfaceDeclarations(t *testing.T) {
-	source := "export interface Read[T: Equal]:\n    fn get() -> T\ntype Box[T]:\n    value: T\nimpl Read[T] for Box[T]:\n    fn get() -> T:\n        return self.value\n"
+	source := "export interface Read[T: Equal]:\n    fn get() T\ntype Box[T]:\n    value: T\nimpl Read[T] for Box[T]:\n    fn get() T:\n        return self.value\n"
 	module, err := parser.Parse("interface.ms", source)
 	if err != nil {
 		t.Fatal(err)
@@ -131,12 +131,12 @@ func TestInterfaceDeclarations(t *testing.T) {
 
 func TestRejectInterfaceSyntax(t *testing.T) {
 	for name, source := range map[string]string{
-		"old contract":      "type Read:\n    fn get() -> Int\n",
+		"old contract":      "type Read:\n    fn get() Int\n",
 		"interface field":   "interface Read:\n    value: Int\n",
 		"interface case":    "interface Read:\n    case Ready\n",
-		"interface body":    "interface Read:\n    fn get() -> Int:\n        return 1\n",
+		"interface body":    "interface Read:\n    fn get() Int:\n        return 1\n",
 		"empty interface":   "interface Read:\n",
-		"generic operation": "interface Read:\n    fn get[T]() -> T\n",
+		"generic operation": "interface Read:\n    fn get[T]() T\n",
 		"reserved keyword":  "type interface:\n    value: Int\n",
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -193,27 +193,27 @@ func TestRejectNamedImports(t *testing.T) {
 
 func TestInlineSuites(t *testing.T) {
 	for _, source := range []string{
-		"fn double(x: Int) -> Int: return x * 2",
-		"fn double(x: Int) -> Int: x * 2",
-		"fn f() -> Unit:\n    use(fn(value): value + 1)\n",
-		"fn f() -> Unit: return\nfn g() -> Unit: return\n",
-		"fn f(x: Int) -> Int:\n    if x > 0: return x\n    else: return 0\n",
-		"fn f(x: Int) -> Int:\n    if x > 0: return x\n    else if x == 0: return 1\n    else:\n        return 2\n",
-		"fn f() -> Unit:\n    if true:\n        return\n    else: return\n",
-		"fn f() -> Unit:\n    let g = fn(x: Int) -> Int: return x\n    use(fn(x: Int) -> Int: return x, other: 1)\n    let gs = [fn() -> Unit: return, fn() -> Int: return 2]\n",
-		"fn f() -> Unit:\n    while true: break\n    for x in values: consume(x)\n    with x = resource(): consume(x)\n",
+		"fn double(x: Int) Int: return x * 2",
+		"fn double(x: Int) Int: x * 2",
+		"fn f() Unit:\n    use(fn(value): value + 1)\n",
+		"fn f() Unit: return\nfn g() Unit: return\n",
+		"fn f(x: Int) Int:\n    if x > 0: return x\n    else: return 0\n",
+		"fn f(x: Int) Int:\n    if x > 0: return x\n    else if x == 0: return 1\n    else:\n        return 2\n",
+		"fn f() Unit:\n    if true:\n        return\n    else: return\n",
+		"fn f() Unit:\n    let g = fn(x: Int) Int: return x\n    use(fn(x: Int) Int: return x, other: 1)\n    let gs = [fn() Unit: return, fn() Int: return 2]\n",
+		"fn f() Unit:\n    while true: break\n    for x in values: consume(x)\n    with x = resource(): consume(x)\n",
 	} {
 		if _, err := parser.Parse("inline.ms", source); err != nil {
 			t.Errorf("%s\n%v", source, err)
 		}
 	}
 	for _, source := range []string{
-		"fn f(x: Int) -> Int:\n    if x > 0: return x else: return 0\n",
-		"fn f() -> Unit:\n    if true: return else: return\n",
-		"fn f() -> Unit:\n    if true: use() else if false: use()\n",
-		"fn f() -> Unit: return return\n",
-		"fn f() -> Unit: if true: return\n",
-		"fn f() -> Unit:\n    if true: return\n        return\n",
+		"fn f(x: Int) Int:\n    if x > 0: return x else: return 0\n",
+		"fn f() Unit:\n    if true: return else: return\n",
+		"fn f() Unit:\n    if true: use() else if false: use()\n",
+		"fn f() Unit: return return\n",
+		"fn f() Unit: if true: return\n",
+		"fn f() Unit:\n    if true: return\n        return\n",
 	} {
 		if _, err := parser.Parse("inline.ms", source); err == nil {
 			t.Errorf("accepted %s", source)
@@ -223,8 +223,8 @@ func TestInlineSuites(t *testing.T) {
 
 func TestContextualCallbackRecovery(t *testing.T) {
 	for _, source := range []string{
-		"fn f() -> Unit:\n    use(fn(value): value + 1)\n",
-		"fn f() -> Unit:\n    use(fn(value, other: Int):\n        return value + other\n    )\n",
+		"fn f() Unit:\n    use(fn(value): value + 1)\n",
+		"fn f() Unit:\n    use(fn(value, other: Int):\n        return value + other\n    )\n",
 	} {
 		if _, err := parser.Parse("callback.ms", source); err != nil {
 			t.Fatal(err)
@@ -235,11 +235,11 @@ func TestContextualCallbackRecovery(t *testing.T) {
 		}
 	}
 	for _, source := range []string{
-		"fn f(value) -> Int: value\n",
-		"fn f(transform: fn(value) -> Int) -> Unit: return\n",
+		"fn f(value) Int: value\n",
+		"fn f(transform: fn(value) Int) Unit: return\n",
 		"type Choice:\n    case Payload(value)\n",
-		"fn f() -> Int:\n    1\n",
-		"fn f() -> Unit:\n    if true: 1\n",
+		"fn f() Int:\n    1\n",
+		"fn f() Unit:\n    if true: 1\n",
 	} {
 		if _, err := parser.Parse("callback.ms", source); err == nil {
 			t.Fatal("accepted", source)
@@ -248,8 +248,8 @@ func TestContextualCallbackRecovery(t *testing.T) {
 }
 
 func TestMapLiteralBoundaries(t *testing.T) {
-	for _, value := range []string{`{}`, `{"a": 1,}`, `{key: {1: 2}}`, `{(fn(value: Int) -> Int: return value): 1}`} {
-		source := "fn f() -> Unit:\n    let value = " + value + "\n"
+	for _, value := range []string{`{}`, `{"a": 1,}`, `{key: {1: 2}}`, `{(fn(value: Int) Int: return value): 1}`} {
+		source := "fn f() Unit:\n    let value = " + value + "\n"
 		if _, err := parser.Parse("map.ms", source); err != nil {
 			t.Fatal(err)
 		}
@@ -258,14 +258,14 @@ func TestMapLiteralBoundaries(t *testing.T) {
 		}
 	}
 	for _, value := range []string{`{1}`, `{1:}`, `{1: 2 3: 4}`} {
-		if _, err := parser.Parse("map.ms", "fn f() -> Unit:\n    let value = "+value+"\n"); err == nil {
+		if _, err := parser.Parse("map.ms", "fn f() Unit:\n    let value = "+value+"\n"); err == nil {
 			t.Fatal("accepted", value)
 		}
 	}
 }
 
 func TestTryStatementInsideMatchArm(t *testing.T) {
-	source := "fn f(x: Optional[Int]) -> Result[Unit, Error]:\n    match x:\n        some(n):\n            try g(n)\n            return ok(unit)\n        none: return ok(unit)\n"
+	source := "fn f(x: Optional[Int]) Result[Unit, Error]:\n    match x:\n        some(n):\n            try g(n)\n            return ok(unit)\n        none: return ok(unit)\n"
 	if _, err := parser.Parse("arm.ms", source); err != nil {
 		t.Fatal(err)
 	}

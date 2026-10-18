@@ -13,7 +13,7 @@ type Payload:
     msg: String
     time: Int
 
-export fn emit(logger: Logger) -> Result[Unit, LogError]:
+export fn emit(logger: Logger) Result[Unit, LogError]:
     let child = try bind(logger: logger, bindings: Request(request: "req-1"))
     let fields = Payload(
         count: 9007199254740993,

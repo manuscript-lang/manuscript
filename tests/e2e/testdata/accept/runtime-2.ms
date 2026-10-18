@@ -6,10 +6,10 @@ type Items:
 type Outcome:
     case Value(value: Int)
 
-fn compute(value: Int) -> Int:
+fn compute(value: Int) Int:
     return value
 
-fn ordinary() -> Outcome:
+fn ordinary() Outcome:
     return Outcome.Value(compute(value: 3))
 
 test "non-prelude spellings are ordinary names":

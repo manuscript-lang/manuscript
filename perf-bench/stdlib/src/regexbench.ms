@@ -2,12 +2,12 @@ import range from "@std/collections.ms"
 import {bench, words} from "./harness.ms"
 import {compile, Regex} from "@std/regex.ms"
 
-fn run(re: Regex) -> Unit:
+fn run(re: Regex) Unit:
     let text = words(2000).join(separator: " ")
     bench(
         "regex.find_all",
         2000,
-        fn() -> Int:
+        fn() Int:
             match re.find_all(text: text):
                 ok(m): return m.length()
                 error(_): return 0
@@ -15,23 +15,22 @@ fn run(re: Regex) -> Unit:
     bench(
         "regex.matches",
         10000,
-        fn() -> Int:
+        fn() Int:
             var n = 0
             for i in range(0, 10000):
                 if re.matches(text: "xx word123 yy"): n = n + 1
-
             return n
     )
     bench(
         "regex.replace_all",
         2000,
-        fn() -> Int:
+        fn() Int:
             match re.replace_all(text: text, replacement: "w"):
                 ok(s): return s.length()
                 error(_): return 0
     )
 
-export fn bench_regex() -> Unit:
+export fn bench_regex() Unit:
     match compile(pattern: "word[0-9]+"):
         ok(re): run(re)
         error(_): unit

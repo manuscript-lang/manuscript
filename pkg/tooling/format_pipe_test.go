@@ -3,8 +3,8 @@ package tooling
 import "testing"
 
 func TestFormatPipeFlow(t *testing.T) {
-	source := "fn double(n: Int) -> Int: n * 2\n\nfn run(n: Int) -> Int:\n    let a = n|double|double\n    let b = n\n        |double   # first\n        # second\n        |double\n    return a+b\n"
-	want := "fn double(n: Int) -> Int: n * 2\n\nfn run(n: Int) -> Int:\n    let a = n | double | double\n    let b = n\n        | double  # first\n        # second\n        | double\n    return a + b\n"
+	source := "fn double(n: Int) Int: n * 2\n\nfn run(n: Int) Int:\n    let a = n|double|double\n    let b = n\n        |double   # first\n        # second\n        |double\n    return a+b\n"
+	want := "fn double(n: Int) Int: n * 2\n\nfn run(n: Int) Int:\n    let a = n | double | double\n    let b = n\n        | double  # first\n        # second\n        | double\n    return a + b\n"
 	got, err := Format("pipe.ms", source)
 	if err != nil {
 		t.Fatal(err)
@@ -19,8 +19,8 @@ func TestFormatPipeFlow(t *testing.T) {
 }
 
 func TestFormatPipeDotStep(t *testing.T) {
-	source := "fn run(n: Int) -> Int:\n    let a = n |.size()|try.m()| .k\n    return a\n"
-	want := "fn run(n: Int) -> Int:\n    let a = n | .size() | try .m() | .k\n    return a\n"
+	source := "fn run(n: Int) Int:\n    let a = n |.size()|try.m()| .k\n    return a\n"
+	want := "fn run(n: Int) Int:\n    let a = n | .size() | try .m() | .k\n    return a\n"
 	got, err := Format("pipe.ms", source)
 	if err != nil {
 		t.Fatal(err)

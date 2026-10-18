@@ -12,7 +12,7 @@ func TestDeepContextualCallbacksCheckedOnce(t *testing.T) {
 	// Rechecking every successful callback probe doubled work at each level.
 	// This depth is cheap when each body is retained under its final signature.
 	expression := strings.Repeat("[1].map(fn(item): ", 40) + "1" + strings.Repeat(")", 40)
-	source := "fn first() -> Unit:\n    let values = " + expression + "\n"
+	source := "fn first() Unit:\n    let values = " + expression + "\n"
 	result := compiler.CompileSource("nested-callbacks.ms", source, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
@@ -40,10 +40,10 @@ func TestCallbackProbeRetainsContextBoundaries(t *testing.T) {
 		"generic constructor": `let callback = Callback(fn(item: Int): item.toString())`,
 		"nested captures": `let offset = 7
     let values = [1, 2].map(fn(outer): [3, 4].map(fn(inner): outer + inner + offset))`,
-		"contextual nested labels": `let callback: fn(value: Int) -> fn(input: Int) -> Int = apply(value: 1, transform: fn(base): fn(item): fn(extra): item + extra + base)`,
+		"contextual nested labels": `let callback: fn(value: Int) fn(input: Int) Int = apply(value: 1, transform: fn(base): fn(item): fn(extra): item + extra + base)`,
 	} {
 		t.Run(name, func(t *testing.T) {
-			result := compiler.CompileSource("callback-context.ms", callbackDeclarations+"fn first() -> Unit:\n    "+body+"\n", compiler.Options{})
+			result := compiler.CompileSource("callback-context.ms", callbackDeclarations+"fn first() Unit:\n    "+body+"\n", compiler.Options{})
 			if !result.Success() {
 				t.Fatal(result.Diagnostics)
 			}
@@ -62,10 +62,10 @@ func TestCallbackProbeRetainsDiagnostics(t *testing.T) {
         value = 2
         return item
     )`,
-		`let callback: fn(value: Int) -> Int = apply(value: 1, transform: fn(base): fn(item: Int = 4): item + base)
+		`let callback: fn(value: Int) Int = apply(value: 1, transform: fn(base): fn(item: Int = 4): item + base)
     callback()`,
 	} {
-		result := compiler.CompileSource("callback-errors.ms", callbackDeclarations+"fn first() -> Unit:\n    "+body+"\n", compiler.Options{AnalyzeOnly: true})
+		result := compiler.CompileSource("callback-errors.ms", callbackDeclarations+"fn first() Unit:\n    "+body+"\n", compiler.Options{AnalyzeOnly: true})
 		if result.Success() {
 			t.Fatalf("accepted invalid callback: %s", body)
 		}
@@ -81,7 +81,7 @@ func TestDeepRejectedCallbackProbesCheckedOnce(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			expression := strings.Repeat("[1].map(fn(item): ", 40) + leaf + strings.Repeat(")", 40)
-			result := compiler.CompileSource("nested-rejected-callbacks.ms", callbackDeclarations+"fn first() -> Unit:\n    let values = "+expression+"\n", compiler.Options{AnalyzeOnly: true})
+			result := compiler.CompileSource("nested-rejected-callbacks.ms", callbackDeclarations+"fn first() Unit:\n    let values = "+expression+"\n", compiler.Options{AnalyzeOnly: true})
 			if result.Success() || len(result.Diagnostics) > 3 {
 				t.Fatalf("lost root error or repeated probe diagnostics: %v", result.Diagnostics)
 			}
@@ -90,9 +90,9 @@ func TestDeepRejectedCallbackProbesCheckedOnce(t *testing.T) {
 }
 
 func TestCallbackProbeRetainsCapturedBindingsAndOptionalMetadata(t *testing.T) {
-	source := `fn wrap[T](callback: Optional[fn(value: Int) -> T]) -> Unit: return
-fn apply[T, U](value: T, transform: fn(value: T) -> U) -> U: transform(value)
-fn first() -> Unit:
+	source := `fn wrap[T](callback: Optional[fn(value: Int) T]) Unit: return
+fn apply[T, U](value: T, transform: fn(value: T) U) U: transform(value)
+fn first() Unit:
     let offset = 7
     let result = apply(value: 1, transform: fn(outer): apply(value: 2, transform: fn(inner): outer + inner + offset))
     wrap(fn(item: Int = 4): item + offset)

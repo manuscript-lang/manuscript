@@ -152,7 +152,7 @@ Verify: bracket raw monotonic readings against elapsed nanoseconds; check multi-
 
 ### Native constructor arguments need not be readable fields
 
-Verified: `Bytes(values: List[Int])` has a dedicated constructor rule; declaring `values` as a field did not make native Bytes expose that field. Removing the bogus field without preserving `ConstructorSignature` also loses editor constructor parameters. Checking and editor queries now share that constructor signature separately from the native `values() -> List[Int]` operation, which uses the existing free function's implementation. Constructor inputs and extracted lists copy byte values, preserving Bytes immutability.
+Verified: `Bytes(values: List[Int])` has a dedicated constructor rule; declaring `values` as a field did not make native Bytes expose that field. Removing the bogus field without preserving `ConstructorSignature` also loses editor constructor parameters. Checking and editor queries now share that constructor signature separately from the native `values() List[Int]` operation, which uses the existing free function's implementation. Constructor inputs and extracted lists copy byte values, preserving Bytes immutability.
 
 Apply when: describing native schemas or replacing bogus native fields with operations. Preserve dedicated constructor arguments separately from receiver declarations and bindings.
 Evidence: [constructor signatures](../pkg/checker/types.go), [constructor checking](../pkg/checker/calls.go), [byte declarations](../pkg/stdlib/bytes.ms), [native receiver identities](../internal/nativeabi/receivers.go), [editor signature regressions](../pkg/tooling/lsp/features_test.go), and [called extraction and constructor regressions](../tests/e2e/testdata/stdlib/string-bytes.ms).

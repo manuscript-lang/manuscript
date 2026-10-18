@@ -81,7 +81,7 @@ func TestCollectionPreludePublicTypeClosure(t *testing.T) {
 	if !slices.Equal(got, want) {
 		t.Fatalf("support closure = %v, want %v", got, want)
 	}
-	m, err := parser.Parse("prelude.ms", "fn use() -> Unit: unit\n")
+	m, err := parser.Parse("prelude.ms", "fn use() Unit: unit\n")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestRedundantPreludeImportDiagnosticsAndFixes(t *testing.T) {
 			ensureStandard()
 			symbol = standardSymbols[name]
 		}
-		source := "import " + name + " from \"" + symbol.Module + "\"\nfn use() -> Unit: unit\n"
+		source := "import " + name + " from \"" + symbol.Module + "\"\nfn use() Unit: unit\n"
 		t.Run(name, func(t *testing.T) { checkPreludeImportFix(t, source, name, "", true) })
 	}
 	for _, tc := range []struct{ name, source, keep string }{
@@ -172,8 +172,8 @@ func TestPreludeImportFixSurvivesUnrelatedLexerErrors(t *testing.T) {
 	for _, source := range []string{
 		"import List from \"@std/collections.ms\"\nfn broken(\n",
 		"import {ListBuilder, List} from \"@std/collections.ms\"\nfn broken(\n",
-		"import List from \"@std/collections.ms\"\nfn bad() -> String: \"unterminated\n",
-		"fn bad() -> Unit:\n   unit\nimport List from \"@std/collections.ms\"\n",
+		"import List from \"@std/collections.ms\"\nfn bad() String: \"unterminated\n",
+		"fn bad() Unit:\n   unit\nimport List from \"@std/collections.ms\"\n",
 	} {
 		for _, newline := range []string{"\n", "\r\n"} {
 			source := strings.ReplaceAll(source, "\n", newline)

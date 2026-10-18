@@ -18,7 +18,7 @@ func (c *checker) checkTestFixture(module *syntax.Module) {
 		return
 	}
 	if factory.Kind != syntax.KindFn || factory.Decl == nil || factory.Decl.Constant || len(factory.Variables) != 0 || len(factory.Type.Params) != 0 {
-		c.error(factory.Decl.Pos, "type", "make_fixture must be a nongeneric zero-argument function; declare fn make_fixture() -> ConcreteFixture")
+		c.error(factory.Decl.Pos, "type", "make_fixture must be a nongeneric zero-argument function; declare fn make_fixture() ConcreteFixture")
 		return
 	}
 	result := factory.Type.Result

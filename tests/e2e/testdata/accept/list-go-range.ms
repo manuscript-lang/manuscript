@@ -1,6 +1,6 @@
 import panic from "@std/faults.ms"
 
-fn replace[T](values: List[T], value: T) -> Unit:
+fn replace[T](values: List[T], value: T) Unit:
     values.set(index: 1, value: value)
 
 test "range observes backing writes and keeps initial length":
@@ -175,10 +175,10 @@ test "clone slice and nested references retain their own contracts":
 
 test "function values can replace later backing elements":
     let seen: List[Int] = []
-    let original = fn() -> Int:
+    let original = fn() Int:
         seen.append(1)
         return 7
-    let replacement = fn() -> Int:
+    let replacement = fn() Int:
         seen.append(2)
         return 9
     let functions = [original, original]

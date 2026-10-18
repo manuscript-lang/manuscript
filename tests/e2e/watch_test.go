@@ -24,7 +24,7 @@ func TestRunWatchRebuildsAfterEdits(t *testing.T) {
 		}
 	}
 	program := func(text string) string {
-		return fmt.Sprintf("import stdout from \"@std/io.ms\"\n\nexport fn main() -> Int:\n    match stdout().write(data: %q.to_bytes()):\n        ok(_):\n            return 0\n        error(_):\n            return 1\n", text+"\n")
+		return fmt.Sprintf("import stdout from \"@std/io.ms\"\n\nexport fn main() Int:\n    match stdout().write(data: %q.to_bytes()):\n        ok(_):\n            return 0\n        error(_):\n            return 1\n", text+"\n")
 	}
 	write(program("first"))
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
@@ -72,7 +72,7 @@ func TestRunWatchRebuildsAfterEdits(t *testing.T) {
 	expect("second")
 	expect("waiting for changes")
 	// A failed edit reports diagnostics and keeps watching.
-	write("export fn main() -> Int:\n    return missing\n")
+	write("export fn main() Int:\n    return missing\n")
 	expect("missing")
 	expect("waiting for changes")
 	write(program("third"))

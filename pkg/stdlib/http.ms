@@ -40,25 +40,25 @@ export type HttpHeaders:
 impl HttpHeaders:
     # Appends raw bytes under a valid HTTP name; invalid names return InvalidInput.
     # Transport operations additionally validate UTF-8, framing and field values.
-    fn append(name: String, value: Bytes) -> Result[Unit, HttpError]:
+    fn append(name: String, value: Bytes) Result[Unit, HttpError]:
 
     # Returns shared mutable membership, or none for an absent name.
-    fn values(name: String) -> Optional[List[Bytes]]:
+    fn values(name: String) Optional[List[Bytes]]:
 
     # Decodes every value; invalid UTF-8 returns InvalidData without partial success.
-    fn text(name: String) -> Result[Optional[List[String]], HttpError]:
+    fn text(name: String) Result[Optional[List[String]], HttpError]:
 
     # Returns first-inserted spellings in insertion order.
-    fn names() -> List[String]:
+    fn names() List[String]:
 
     # Removes a name; existing list aliases are detached from this header object.
-    fn remove(name: String) -> Bool:
+    fn remove(name: String) Bool:
 
     # Copies name/list membership and shares immutable Bytes values.
-    fn clone() -> HttpHeaders:
+    fn clone() HttpHeaders:
 
 # Creates empty mutable headers. No header values are joined or comma-combined.
-export fn headers() -> HttpHeaders:
+export fn headers() HttpHeaders:
 
 # Response status and headers shared by buffered and streaming response access.
 export type HttpResponseMetadata:
@@ -77,7 +77,7 @@ export type ClientResponse:
 impl ClientResponse:
     # Returns current head without copying; record clone is shallow.
     # Clone headers explicitly when separate mutable membership is needed.
-    fn metadata() -> HttpResponseMetadata:
+    fn metadata() HttpResponseMetadata:
 
 # Known HTTP methods, plus extension tokens validated by outgoing operations.
 export type HttpMethod:
@@ -107,14 +107,14 @@ export type HttpMethod:
 
 impl HttpMethod:
     # Returns the method token; outgoing requests reject malformed Custom tokens.
-    fn text() -> String:
+    fn text() String:
 
 # Reusable HTTP client with connection pooling and explicit response limits.
 # Outbound headers retain separate values in their stored order.
 export interface HttpClient:
     # Cancels in-flight requests, closes open response bodies, and drops idle pooled connections.
     # Safe to call repeatedly; later requests return Closed.
-    fn close() -> Unit
+    fn close() Unit
     # Sends immutable Bytes and returns a scoped streaming response body.
     fn request(
         method: HttpMethod,
@@ -123,7 +123,7 @@ export interface HttpClient:
         body: Bytes = "".to_bytes(),
         max_response_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
-    ) -> Result[ResponseBody, HttpError]
+    ) Result[ResponseBody, HttpError]
     # Borrows ReadStream upload data through the scoped response lifetime.
     fn request_stream(
         method: HttpMethod,
@@ -132,7 +132,7 @@ export interface HttpClient:
         body: ReadStream,
         max_response_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
-    ) -> Result[ResponseBody, HttpError]
+    ) Result[ResponseBody, HttpError]
 
 # Connection, redirect, cookie, decompression, and TLS settings for an HTTP client.
 export type HttpClientOptions:
@@ -164,32 +164,32 @@ export type HttpClientOptions:
 export interface HttpExchange:
     # Ends the exchange, interrupting reads or writes in progress.
     # Later operations return Closed.
-    fn close() -> Unit
+    fn close() Unit
     # Returns the request headers as shared mutable fields with every repeated value retained.
-    fn headers() -> HttpHeaders
+    fn headers() HttpHeaders
     # Returns the request method, using the Custom case for extension tokens.
-    fn method() -> HttpMethod
+    fn method() HttpMethod
     # Returns the percent-decoded request path with dot segments resolved.
     # Requests with an encoded slash or NUL are rejected before the handler runs.
-    fn path() -> String
+    fn path() String
     # Returns the raw query string without the leading `?`; it is empty when there is none.
-    fn query() -> String
+    fn query() String
     # Returns the next chunk of the request body, at most `max_bytes` and never more than 65536, or none at the end of the body.
     # Reading past `max_body_bytes` returns IoError.Failed, and a non-positive `max_bytes` returns InvalidInput.
-    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]
     # Sends the status line and headers once, before any body is written.
     # The status must be 200 through 599, header names cannot be `Content-Length`, `Transfer-Encoding`, or `Connection`, and header bytes are bounded by `max_header_bytes`. A second call returns InvalidInput and a closed exchange returns Closed.
-    fn send_headers(status: Int, headers: HttpHeaders) -> Result[Unit, HttpError]
+    fn send_headers(status: Int, headers: HttpHeaders) Result[Unit, HttpError]
     # Switches the connection to a WebSocket after checking the `Origin` header. Requests without an Origin are accepted; otherwise it must exactly match an entry of `allowed_origins`, or, when that list is empty, match the request's own scheme and host.
     # `subprotocols` lists the protocols the server accepts, and `max_message_bytes` must be positive when given. An exchange that already sent headers or upgraded returns InvalidInput, and a request that is not a valid WebSocket upgrade returns Failed.
     fn upgrade(
         allowed_origins: List[String],
         subprotocols: List[String],
         max_message_bytes: Optional[Int] = none
-    ) -> Result[WebSocket, WebSocketError]
+    ) Result[WebSocket, WebSocketError]
     # Writes one chunk of the response body and flushes it.
     # `send_headers` must come first, and writing beyond `max_response_bytes` returns IoError.Failed. Responses to HEAD requests and with status 204 or 304 cannot have a body.
-    fn write(data: Bytes) -> Result[Unit, IoError]
+    fn write(data: Bytes) Result[Unit, IoError]
 
 # Buffered request accepted by the simple HTTP server handler.
 export type HttpRequest:
@@ -216,13 +216,13 @@ export type HttpResponse:
 # A running HTTP server. Close it to stop accepting new requests.
 export interface HttpServer:
     # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
-    fn address() -> String
+    fn address() String
     # Stops accepting connections, waits up to the grace period for in-flight requests, then cancels the rest and waits for them.
     # Safe to call repeatedly. A request handler calling close on its own server faults, and a shutdown error is raised as a fault.
-    fn close() -> Unit
+    fn close() Unit
     # Blocks until the server stops. Returns Ok after a normal `close`, or IoError.Failed with the host's text if serving ended with an error.
     # Cancelling the waiting task stops the wait.
-    fn wait() -> Result[Unit, IoError]
+    fn wait() Result[Unit, IoError]
 
 # Request and response limits, deadlines, graceful shutdown, and TLS server settings.
 export type HttpServerOptions:
@@ -246,13 +246,13 @@ export type HttpServerOptions:
 export interface ResponseBody:
     # Cancels the rest of the response and releases its connection.
     # Safe to call repeatedly; reads afterwards return Closed. A fully read body lets the connection be reused.
-    fn close() -> Unit
+    fn close() Unit
     # Returns the response head (status and headers) without copying; it stays available after close.
-    fn metadata() -> HttpResponseMetadata
+    fn metadata() HttpResponseMetadata
     # Returns the next chunk of the response body, at most `max_bytes` and never more than 65536, or none at the end of the body.
     # Reading past the request's `max_response_bytes` returns IoError.Failed, and a non-positive `max_bytes` returns InvalidInput.
-    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]
 
 impl Error for HttpError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `HTTP: <reason>`.
-    fn message() -> String:
+    fn message() String:

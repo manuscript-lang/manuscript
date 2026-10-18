@@ -23,13 +23,13 @@ func TestNativeProfileExitAndFlush(t *testing.T) {
 				t.Skip("os.Interrupt delivery to a child is unavailable on Windows")
 			}
 			root := t.TempDir()
-			source := "export fn main() -> Int:\n    return 7\n"
+			source := "export fn main() Int:\n    return 7\n"
 			expect := 7
 			if mode == "fault" {
-				source = "import panic from \"@std/faults.ms\"\nexport fn main() -> Int:\n    return panic(message: \"profile failure\")\n"
+				source = "import panic from \"@std/faults.ms\"\nexport fn main() Int:\n    return panic(message: \"profile failure\")\n"
 				expect = 70
 			} else if mode == "cancel" {
-				source = "import { duration, sleep } from \"@std/time.ms\"\nimport stdout from \"@std/io.ms\"\nexport fn main() -> Int:\n    stdout().write(data: \"ready\\n\".to_bytes())\n    sleep(duration(nanoseconds: 60000000000))\n    return 0\n"
+				source = "import { duration, sleep } from \"@std/time.ms\"\nimport stdout from \"@std/io.ms\"\nexport fn main() Int:\n    stdout().write(data: \"ready\\n\".to_bytes())\n    sleep(duration(nanoseconds: 60000000000))\n    return 0\n"
 				expect = 130
 			}
 			cpu, heap, trace := filepath.Join(root, "cpu.pprof"), filepath.Join(root, "heap.pprof"), filepath.Join(root, "trace.out")

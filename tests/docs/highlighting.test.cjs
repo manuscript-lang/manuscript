@@ -5,7 +5,7 @@ const grammar = require('../../extensions/vscode/syntaxes/manuscript.tmLanguage.
 const tokenize = source => tokenizeWithGrammar(source, grammar);
 
 test('Manuscript examples receive keyword, type, function, string, and number tokens', () => {
-  const source = 'import arguments from "@std/cli.ms"\nexport fn main() -> Int:\n    return 0\n';
+  const source = 'import arguments from "@std/cli.ms"\nexport fn main() Int:\n    return 0\n';
   const tokens = tokenize(source);
   const has = (text, kind) => tokens.some(token => token.text === text && token.kind === kind);
   assert.ok(has('import', 'k'));
@@ -17,10 +17,10 @@ test('Manuscript examples receive keyword, type, function, string, and number to
 });
 
 test('comments and strings do not highlight their contents as executable code', () => {
-  const source = 'let message = "# return true"\n# fn ignored() -> Int: return 123\n';
+  const source = 'let message = "# return true"\n# fn ignored() Int: return 123\n';
   const tokens = tokenize(source);
   assert.ok(tokens.some(token => token.kind === 's' && token.text === '"# return true"'));
-  assert.ok(tokens.some(token => token.kind === 'c1' && token.text === '# fn ignored() -> Int: return 123'));
+  assert.ok(tokens.some(token => token.kind === 'c1' && token.text === '# fn ignored() Int: return 123'));
   assert.equal(tokens.filter(token => token.kind === 'k').map(token => token.text).join(''), 'let');
 });
 

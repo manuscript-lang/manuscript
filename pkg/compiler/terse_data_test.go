@@ -8,7 +8,7 @@ import (
 )
 
 func TestTerseDataRejections(t *testing.T) {
-	prefix := `fn f(first: Int, second: Int) -> Int: return first + second
+	prefix := `fn f(first: Int, second: Int) Int: return first + second
 `
 	for _, tc := range []struct{ body, message string }{
 		{`let value = {}`, "cannot infer map"},
@@ -23,7 +23,7 @@ func TestTerseDataRejections(t *testing.T) {
     let value = f(first + 1, first: 2)`, "duplicate argument first"},
 	} {
 		t.Run(tc.body, func(t *testing.T) {
-			r := compiler.CompileSource("terse.ms", prefix+"fn test_case() -> Unit:\n    "+tc.body+"\n", compiler.Options{})
+			r := compiler.CompileSource("terse.ms", prefix+"fn test_case() Unit:\n    "+tc.body+"\n", compiler.Options{})
 			if r.Success() {
 				t.Fatal("accepted invalid source")
 			}
@@ -36,7 +36,7 @@ func TestTerseDataRejections(t *testing.T) {
 			}
 		})
 	}
-	r := compiler.CompileSource("import.ms", "fn f() -> Unit:\n    let value = {1: 2}\n", compiler.Options{})
+	r := compiler.CompileSource("import.ms", "fn f() Unit:\n    let value = {1: 2}\n", compiler.Options{})
 	if !r.Success() {
 		t.Fatal(r.Diagnostics)
 	}

@@ -16,7 +16,7 @@ import {
 } from "@std/math.ms"
 import panic from "@std/faults.ms"
 
-fn near(actual: Float, expected: Float) -> Bool:
+fn near(actual: Float, expected: Float) Bool:
     return abs(actual - expected) < 0.000000001
 
 test "inverse trigonometric functions return radians":

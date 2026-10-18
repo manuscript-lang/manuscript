@@ -1,10 +1,10 @@
 import panic from "@std/faults.ms"
 
-fn subtract(amount: Int, deduction: Int) -> Int: amount - deduction
+fn subtract(amount: Int, deduction: Int) Int: amount - deduction
 
-fn first[T](left: T, right: T) -> T: left
+fn first[T](left: T, right: T) T: left
 
-fn pick[T](items: List[T], keep: fn(value: T) -> Bool) -> Optional[T]:
+fn pick[T](items: List[T], keep: fn(value: T) Bool) Optional[T]:
     for item in items:
         if keep(item): return some(item)
     return none
@@ -12,7 +12,7 @@ fn pick[T](items: List[T], keep: fn(value: T) -> Bool) -> Optional[T]:
 type Counter:
     value: Int = 0
 
-fn mark(counter: Counter, value: Int) -> Int:
+fn mark(counter: Counter, value: Int) Int:
     counter.value = counter.value * 10 + value
     return value
 
@@ -21,7 +21,7 @@ fn ordered(
     first: Int = mark(counter, 3),
     second: Int = mark(counter, 4),
     third: Int = 0
-) -> Int:
+) Int:
     counter.value = counter.value * 10 + 5
     return first + second + third
 
@@ -33,22 +33,19 @@ type Choice[T]:
     case Pair(first: T, second: T)
 
 interface Subtract:
-    fn subtract(amount: Int, deduction: Int) -> Int
+    fn subtract(amount: Int, deduction: Int) Int
 
 type Offset:
     value: Int
 
 impl Subtract for Offset:
-    fn subtract(amount: Int, deduction: Int = self.value) -> Int: amount - deduction
+    fn subtract(amount: Int, deduction: Int = self.value) Int: amount - deduction
 
-fn apply(callback: fn(left: Int, right: Int) -> Int, input: Int) -> Int: callback(
-    input,
-    2
-)
+fn apply(callback: fn(left: Int, right: Int) Int, input: Int) Int: callback(input, 2)
 
-fn optional(value: Optional[Int], fallback: Int = 0) -> Int: value.unwrap_or(fallback)
+fn optional(value: Optional[Int], fallback: Int = 0) Int: value.unwrap_or(fallback)
 
-fn default_before_required(first: Int = 9, second: Int) -> Int: first - second
+fn default_before_required(first: Int = 9, second: Int) Int: first - second
 
 test "positional labeled mixed and identifier calls":
     let amount = 10
@@ -121,12 +118,12 @@ test "methods native APIs function values and contextual labels":
         return panic("receiver and bound methods")
 
     let copied = subtract
-    let typed: fn(amount: Int, deduction: Int) -> Int = copied
+    let typed: fn(amount: Int, deduction: Int) Int = copied
     var mutable = typed
     if (copied(10, 3) != 7 or typed(deduction: 3, 10) != 7 or mutable(10, 3) != 7):
         return panic("function values")
 
-    let contextual: fn(left: Int, right: Int) -> Int = fn(x, y): x - y
+    let contextual: fn(left: Int, right: Int) Int = fn(x, y): x - y
     if (
         contextual(10, 3) != 7
         or contextual(right: 3, 10) != 7
@@ -185,7 +182,7 @@ test "written order before omitted defaults and body":
 
 test "callable expression precedes positional arguments":
     let counter = Counter()
-    let factory = fn() -> fn(amount: Int, deduction: Int) -> Int:
+    let factory = fn() fn(amount: Int, deduction: Int) Int:
         let ignored = mark(counter, 1)
         return subtract
     let result = factory()(mark(counter, 2), mark(counter, 3))
@@ -196,7 +193,7 @@ test "mutable callable value is captured before arguments":
     let result = selected(
         match some(0):
             some(_):
-                selected = fn(amount: Int, deduction: Int) -> Int: amount + deduction
+                selected = fn(amount: Int, deduction: Int) Int: amount + deduction
                 10
             none: 10
         ,

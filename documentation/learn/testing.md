@@ -13,7 +13,7 @@ Save this complete file as `test.ms`:
 ```manuscript
 import {expect_equal} from "@std/testing.ms"
 
-fn add(a: Int, b: Int) -> Int:
+fn add(a: Int, b: Int) Int:
     return a + b
 
 test "addition":
@@ -92,7 +92,7 @@ All assertions return `Result`, so use `try`:
 
 ## Shared setup and teardown
 
-Without `make_fixture`, no hooks run. Define `fn make_fixture() -> T` where `T` implements `TestHooks` from `@std/testing.ms`; tests then read it as `fixture`.
+Without `make_fixture`, no hooks run. Define `fn make_fixture() T` where `T` implements `TestHooks` from `@std/testing.ms`; tests then read it as `fixture`.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -101,11 +101,11 @@ import {TestHooks, expect_equal} from "@std/testing.ms"
 type Counter:
     count: Int
 
-fn make_fixture() -> Counter:
+fn make_fixture() Counter:
     return Counter(0)
 
 impl TestHooks for Counter:
-    fn before_each() -> Unit:
+    fn before_each() Unit:
         self.count = 0
 
 test "increments":

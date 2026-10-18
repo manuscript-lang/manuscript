@@ -47,15 +47,15 @@ Embedded expressions evaluate once, left to right, each formatted before the nex
 
 ## Converting values to String
 
-Every value has a built-in `toString() -> String`, needing no import or bound. A bound method keeps its receiver:
+Every value has a built-in `toString() String`, needing no import or bound. A bound method keeps its receiver:
 
 ```manuscript
-fn text[T](value: T) -> String:
+fn text[T](value: T) String:
     return value.toString()
 
 test "string conversion":
     let count = 3
-    let convert: fn() -> String = count.toString
+    let convert: fn() String = count.toString
     let direct = count.toString()
     let bound = convert()
     let embedded = "{count}"
@@ -95,11 +95,11 @@ Equal bounds give an empty range. Bounds are never clamped or swapped; `text.sli
 
 | Receiver or constructor | Signature/result |
 | --- | --- |
-| `String` | `byte_length() -> Int`; `to_bytes() -> Bytes`; `parse_int() -> Optional[Int]` |
+| `String` | `byte_length() Int`; `to_bytes() Bytes`; `parse_int() Optional[Int]` |
 | `Bytes(values: List[Int])` | Immutable bytes; each value must be 0–255, otherwise a programming fault |
-| `Bytes` | `length() -> Int`; `at(index: Int) -> Optional[Int]`; `concat(values: Bytes) -> Bytes` |
-| `Bytes` | `to_string() -> Optional[String]` |
-| `Bytes` | `values() -> List[Int]`; a fresh mutable list of unsigned byte values |
+| `Bytes` | `length() Int`; `at(index: Int) Optional[Int]`; `concat(values: Bytes) Bytes` |
+| `Bytes` | `to_string() Optional[String]` |
+| `Bytes` | `values() List[Int]`; a fresh mutable list of unsigned byte values |
 
 `to_bytes` encodes UTF-8. `Bytes.to_string` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `at` returns the unsigned byte as Int.
 

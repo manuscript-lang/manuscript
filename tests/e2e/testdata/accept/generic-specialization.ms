@@ -1,18 +1,18 @@
 import panic from "@std/faults.ms"
 
-fn ident[T](x: T) -> T:
+fn ident[T](x: T) T:
     return x
 
-fn countdown[T](x: T, n: Int) -> Int:
+fn countdown[T](x: T, n: Int) Int:
     if n == 0:
         return 0
 
     return 1 + countdown(x: x, n: n - 1)
 
-fn twice[T](x: T) -> T:
+fn twice[T](x: T) T:
     return ident(x: ident(x: x))
 
-fn depth() -> Int:
+fn depth() Int:
     return countdown(x: "s", n: 5)
 
 test "static specializations are reused across calls":
