@@ -1,5 +1,62 @@
 # Performance work
 
+## Result construction and rejected checked-helper inlining experiment
+
+`try` already lowers to one evaluation followed by `if result.Failed { return ... }`.
+When the inner and enclosing Result types agree exactly, return that failed
+result directly. Construct `ok` and `error` as typed Go literals, as other sum
+constructors already do. This preserves the representation, evaluation order,
+error widening and zero-error payloads; no runtime call or allocation is needed.
+On Go 1.25.1 the benchmark's `chain` inlining cost falls from 91 to 80. An
+early scratch generated-Go experiment measured try at 3.51 -> 2.35 ns/operation.
+The final native 30-run comparison against bf8aa92e measures 3.57 -> 2.84 ns,
+with a paired 95% after/before interval of 0.763–0.827.
+
+The remaining tiny-function call barrier is Go's 57-point penalty for an
+out-of-line call on the cold overflow path. `IntAdd` has cost 78, so `checked`
+(95 after direct Result construction) and `Acc.bump` (89) exceed the normal
+80-point budget. Experimentally compiling the runtime with the pinned Go
+compiler's `-l=4` reduces the penalty, while retaining the ordinary budget and
+explicit `//go:noinline` directives. In particular, `intOverflow` itself becomes
+inlineable, reducing `IntAdd` to cost 32; the flag affects non-leaf calls throughout
+the runtime, so broader measurements are necessary. The generated functions then fit: costs
+49, 72 and 43 for `checked`, `chain` and `Acc.bump`. A 30-run balanced comparison
+of module-wide `-l=4` against direct Result construction alone measured method
+2.37 -> 0.70 ns and try 2.35 -> 1.50 ns, with no benchmark checksum changes.
+
+Propose applying `-l=4` only to the native runtime package for optimized build
+types, leaving Debug unoptimized and leaving Go's standard library and generated
+application under their normal settings. First confirm the runtime-only control
+has the same benefit. Do not add unchecked arithmetic or weaken cancellation.
+The pinned toolchain owns this flag, and emitted standalone Go remains valid
+under ordinary Go compilation (including the direct-Result improvement).
+
+Alternatives: keep ordinary inlining (retains measured small-function barriers),
+emit arithmetic checks at every call site (duplicates runtime policy), change
+Result to Go multiple returns (changes the canonical representation), or enable
+`-l=4` for every package (unnecessary scope). Retain the build change only after
+checking balanced benchmarks, stdlib workloads, warm build time/binary size,
+fault frames, numeric boundaries, cleanup, replay/cache identity, native build
+types and distribution checks. Recheck the flag and measurements on Go upgrades.
+
+Independent skeptical review accepted the runtime-only proposal conditionally.
+The runtime-only 30-run control measured method 2.31 -> 0.69 ns and try
+2.31 -> 1.49 ns; other rows were roughly stable and match improved. It required
+exact flag-scope assertions, native semantic/frame/cleanup checks, replay and
+distribution checks, stdlib and build latency measurements, and actual ELF text
+size instead of rounded total file size. Existing replay keys include native
+flags and embedded implementation sources already invalidate build identity.
+
+The production build experiment failed that retention gate. In ten alternating
+stdlib trials per revision, interpolation measured 82 -> 96.5 ns, CSV parsing
+186 -> 237 ns, and queue enqueue/dequeue 10.5 -> 14 ns. The actual native program
+control also showed integer equality 1.19 -> 1.37 ns despite faster method/try
+workloads. Keeping `intOverflow` out of line in a further temporary overlay
+recovered some loops but regressed generic accumulation. The reviewer agreed to
+reject the flag. No compiler flag, package split, or cold-helper annotation is
+retained. Only direct Result construction and exact-type failure returns ship.
+The rejected experiment's raw data remains available with the results.
+
 ## String builder proposal
 
 The 2026-10-18 linux/amd64 baseline measures appends at 5.7 ns in Manuscript

@@ -232,7 +232,11 @@ func (g *gen) try(e *syntax.Expression, info *checker.Info) ast.Expr {
 		}
 		err = g.viewOf(err, from, result.Args[1])
 	}
-	failure := composite(g.goType(result), keyed("Err", err), keyed("Failed", ident("true")))
+	var failure ast.Expr = composite(g.goType(result), keyed("Err", err), keyed("Failed", ident("true")))
+	if checker.TypeKey(g.sub(innerType)) == checker.TypeKey(result) && info.PropagatedError == nil {
+		// The failed result already has the function's exact return type.
+		failure = ident(tmp)
+	}
 	g.fn.pre = append(g.fn.pre, define(tmp, inner), &ast.IfStmt{Cond: selector(ident(tmp), "Failed"), Body: block(returned(failure))})
 	return selector(ident(tmp), "Val")
 }

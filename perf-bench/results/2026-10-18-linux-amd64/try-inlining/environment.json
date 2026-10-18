@@ -1,0 +1,41 @@
+{
+  "go": "go1.25.1 linux/amd64",
+  "cpu": "AMD EPYC 9V74",
+  "cpu_quota": 4,
+  "baseline_commit": "aa3efa7296e8b02f1ca1aa26a144debcd69dc7d8",
+  "followup_baseline_commit": "bf8aa92e",
+  "program_repeats": 30,
+  "retained_stdlib_repeats": 30,
+  "rejected_stdlib_repeats": 10,
+  "sampling": "Programs cycle all 6 permutations of Go/before/after; stdlib alternates before/after first; medians and paired 5,000-resample percentile 95% intervals, seed 918273; no correction for multiple comparisons. All operation counts verified, plus expected checksums for program suite. Integer-quantized stdlib timings are noisy.",
+  "binary_sha256": {
+    "total_before": "b8c8ed279584e9b2ed15d7786ec91cd260be3fc2845504564bd384de315a6f60",
+    "retained_before": "ed5660cba8fe315e2c9d5003b226f8c1382caa2e7af9ce9554319ab73123888d",
+    "retained_after": "e6a2133dbcfdbd59d563db20a1fc9eca95d93a078adcf9c620d8ca8847bc2cd5",
+    "go": "da1114aed6b7e0ca5a93215e032a0f48bddddc461479501a37c04fae778e887d",
+    "rejected_runtime_after": "52085f4c28ed97c1760090ef078b62c3a66691b83406b9a46a36a5088d523775",
+    "retained_stdlib_before": "2ecaf8ebc11953f7c5b7ab368a0a5231e28fc19f2e42abc46d5d379166d72b28",
+    "retained_stdlib_after": "743ea4d5fa4bce668ede73329adc05209db29836633526a03cbbe1f887d09c18",
+    "rejected_runtime_stdlib_before": "743ea4d5fa4bce668ede73329adc05209db29836633526a03cbbe1f887d09c18",
+    "rejected_runtime_stdlib_after": "24233cdfa341f713857496c613ad031b1c0b2988a8f841f1587a914aef75a89c"
+  },
+  "source_sha256": {
+    "perf-bench/programs/ms/src/main.ms": "87d33efa9238cbe7cd4069d57bc728e3044ce80be28781b7ae9b440bba650af9",
+    "perf-bench/programs/go/main.go": "cc036b93bf0d4ada5869b1489c390cd380bcbffdb36e7a71ff9c06551747a32b"
+  },
+  "elf_text_bytes": {
+    "total_before": 1911121,
+    "retained_before": 1907569,
+    "retained_after": 1907569,
+    "go": 634993,
+    "rejected_runtime_after": 1910033,
+    "retained_stdlib_before": 2648273,
+    "retained_stdlib_after": 2647633,
+    "rejected_runtime_stdlib_before": 2647633,
+    "rejected_runtime_stdlib_after": 2664273
+  },
+  "retained_lowering_sha256": {
+    "pkg/lower/contracts.go": "4a58a6fd314ec4f7bec3bb9ba884df2f8d1fdbb232867aacf60c6cd45ca987c8",
+    "pkg/lower/expr.go": "4fd7d34747e47ecdd469e1cd008f1a4f39d19dfbbf3cb74b017d3a6f6ab634a2"
+  }
+}

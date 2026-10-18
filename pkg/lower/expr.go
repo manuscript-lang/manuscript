@@ -277,11 +277,10 @@ func (g *gen) caseValue(t *checker.Type, name string, fields []ast.Expr) ast.Exp
 		}
 		return call(generic(rtName("Some")), fields...)
 	case isStd(t, "Result"):
-		targs := []ast.Expr{g.goType(t.Args[0]), g.goType(t.Args[1])}
 		if name == "ok" {
-			return call(generic(rtName("Ok"), targs...), fields...)
+			return composite(g.goType(t), keyed("Val", fields[0]))
 		}
-		return call(generic(rtName("Fail"), targs...), fields...)
+		return composite(g.goType(t), keyed("Err", fields[0]), keyed("Failed", ident("true")))
 	case isStdType(t):
 		return call(g.goType(t), g.stdCase(t, name, fields))
 	}
