@@ -1,0 +1,64 @@
+{
+  "date_client_timezone": "2026-10-18 America/Los_Angeles",
+  "baseline_commit": "aa3efa7296e8b02f1ca1aa26a144debcd69dc7d8",
+  "baseline_uses_current_benchmark_sources": true,
+  "go": "go1.25.1 linux/amd64",
+  "cpu": "AMD EPYC 9V74",
+  "cpu_quota": "4 vCPU (cpu.max 400000 100000)",
+  "program_trials": 30,
+  "sampling": "Cycle all 6 permutations of Go, before, after five times; shared Go samples",
+  "runtime_samples": 7,
+  "runtime_benchtime": "300ms",
+  "stdlib_repeats": 5,
+  "source_sha256": {
+    "perf-bench/programs/ms/src/main.ms": "87d33efa9238cbe7cd4069d57bc728e3044ce80be28781b7ae9b440bba650af9",
+    "perf-bench/programs/go/main.go": "cc036b93bf0d4ada5869b1489c390cd380bcbffdb36e7a71ff9c06551747a32b"
+  },
+  "binary_sha256": {
+    "before": "b8c8ed279584e9b2ed15d7786ec91cd260be3fc2845504564bd384de315a6f60",
+    "after": "ed5660cba8fe315e2c9d5003b226f8c1382caa2e7af9ce9554319ab73123888d",
+    "go": "da1114aed6b7e0ca5a93215e032a0f48bddddc461479501a37c04fae778e887d"
+  },
+  "paired_bootstrap_after_over_before_95pct": {
+    "string_append_50k": [
+      0.4664096216437252,
+      0.6001852901807895
+    ],
+    "read_line": [
+      0.9724022810731517,
+      1.0618940088106068
+    ],
+    "map_put_get_8k": [
+      0.9882829649705315,
+      1.1696242118322067
+    ],
+    "int_eq": [
+      0.9671995672868348,
+      1.023813801245783
+    ],
+    "generic_call": [
+      0.9514667607005525,
+      1.0260857247881698
+    ],
+    "method_call": [
+      0.9686165023604631,
+      1.0448306740456776
+    ],
+    "try": [
+      0.9794189082612303,
+      1.029280192732578
+    ],
+    "match": [
+      0.7078192942657849,
+      0.7631690718830693
+    ],
+    "builtin_length": [
+      0.7409417771644973,
+      0.8049218828624675
+    ],
+    "for_list": [
+      0.9138262413685131,
+      1.0338199028049713
+    ]
+  }
+}

@@ -15,6 +15,18 @@ Verify: run `BenchmarkStringSplitLimited` with `-benchmem`; both local-use
 controls allocate one 48-byte backing slice on linux/amd64. Confirm caller inlining with
 `-gcflags=-m=2` when changing the wrapper or benchmark.
 
+Verified: keep cold fault capture out of line. Inlining `Raise` made
+`Optional_Get`/`Result_Get` exceed Go 1.25.1's budget (93/94 versus 80);
+outlining it lowers their costs to 75/76 and lets list lookup/get inline without
+extra fallback wrappers. StringBuilder's pointer-only, sealed lifetime also
+permits direct byte storage and immutable zero-copy freeze, removing the
+redundant strings.Builder value-copy guard. Supported Go callers must not copy
+the implementation value after use. Evidence: [fault helper](../pkg/runtime/fault.go),
+[builder invariants](../pkg/runtime/string.go), [alias/GC/cancellation tests](../pkg/runtime/string_builder_test.go),
+and [retained allocation/runtime comparison](../perf-bench/programs/results.md).
+Verify native fault locations as well as allocation counts; registered source
+frames must remain intact when cold helpers stop inlining.
+
 Verified: keeping List construction in small exported String wrappers also removes
 the temporary heap List for local `chars`, `lines`, and `scalar_values` callers.
 The traversal remains in private slice-returning helpers, preserving its order,

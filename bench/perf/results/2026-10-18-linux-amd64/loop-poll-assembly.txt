@@ -1,0 +1,132 @@
+TEXT main.bench_length(SB) generated.go
+  generated.go:1	0x59eea0		4c8d6424f8		LEAQ -0x8(SP), R12
+  generated.go:1	0x59eea5		4d3b6610		CMPQ R12, 0x10(R14)
+  generated.go:1	0x59eea9		0f860a020000		JBE 0x59f0b9
+  generated.go:1	0x59eeaf		55			PUSHQ BP
+  generated.go:1	0x59eeb0		4889e5			MOVQ SP, BP
+  generated.go:1	0x59eeb3		4883c480		ADDQ $-0x80, SP
+  main.ms:178		0x59eeb7		4889842490000000	MOVQ AX, 0x90(SP)
+  main.ms:175		0x59eebf		440f117c2470		MOVUPS X15, 0x70(SP)
+  main.ms:175		0x59eec5		48c744247800000000	MOVQ $0x0, 0x78(SP)
+  main.ms:175		0x59eece		488d154b0e3100		LEAQ 0x310e4b(IP), DX
+  main.ms:175		0x59eed5		4889542468		MOVQ DX, 0x68(SP)
+  main.ms:175		0x59eeda		31c9			XORL CX, CX
+  main.ms:178		0x59eedc		eb0e			JMP 0x59eeec
+  list_ops.go:522	0x59eede		48895c2470		MOVQ BX, 0x70(SP)
+  list_ops.go:522	0x59eee3		498954d8f8		MOVQ DX, -0x8(R8)(BX*8)
+  main.ms:180		0x59eee8		488d4a01		LEAQ 0x1(DX), CX
+  main.ms:178		0x59eeec		4883f964		CMPQ CX, $0x64
+  main.ms:178		0x59eef0		0f8d8f000000		JGE 0x59ef85
+  main.ms:178		0x59eef6		48894c2448		MOVQ CX, 0x48(SP)
+  main.ms:178		0x59eefb		4889ca			MOVQ CX, DX
+  main.ms:178		0x59eefe		83e13f			ANDL $0x3f, CX
+  main.ms:178		0x59ef01		4883f93f		CMPQ CX, $0x3f
+  main.ms:178		0x59ef05		752f			JNE 0x59ef36
+  main.ms:178		0x59ef07		90			NOPL
+  exec.go:97		0x59ef08		4885c0			TESTQ AX, AX
+  exec.go:97		0x59ef0b		7429			JE 0x59ef36
+  exec.go:97		0x59ef0d		488b08			MOVQ 0(AX), CX
+  exec.go:97		0x59ef10		488b4008		MOVQ 0x8(AX), AX
+  exec.go:93		0x59ef14		488b4928		MOVQ 0x28(CX), CX
+  exec.go:93		0x59ef18		ffd1			CALL CX
+  exec.go:93		0x59ef1a		660f1f440000		NOPW 0(AX)(AX*1)
+  exec.go:93		0x59ef20		4885c0			TESTQ AX, AX
+  exec.go:97		0x59ef23		0f857c010000		JNE 0x59f0a5
+  exec.go:97		0x59ef29		488b842490000000	MOVQ 0x90(SP), AX
+  list_ops.go:522	0x59ef31		488b542448		MOVQ 0x48(SP), DX
+  list_ops.go:522	0x59ef36		488b4c2478		MOVQ 0x78(SP), CX
+  list_ops.go:522	0x59ef3b		488b5c2470		MOVQ 0x70(SP), BX
+  list_ops.go:522	0x59ef40		48ffc3			INCQ BX
+  main.ms:179		0x59ef43		90			NOPL
+  list_ops.go:522	0x59ef44		4c8b442468		MOVQ 0x68(SP), R8
+  list_ops.go:522	0x59ef49		4839d9			CMPQ CX, BX
+  list_ops.go:522	0x59ef4c		7390			JAE 0x59eede
+  list_ops.go:522	0x59ef4e		488d356b4f0500		LEAQ 0x54f6b(IP), SI
+  list_ops.go:522	0x59ef55		4c89c0			MOVQ R8, AX
+  list_ops.go:522	0x59ef58		bf01000000		MOVL $0x1, DI
+  list_ops.go:522	0x59ef5d		0f1f00			NOPL 0(AX)
+  list_ops.go:522	0x59ef60		e8fb83edff		CALL runtime.growslice(SB)
+  list_ops.go:522	0x59ef65		48894c2478		MOVQ CX, 0x78(SP)
+  list_ops.go:522	0x59ef6a		4889442468		MOVQ AX, 0x68(SP)
+  list_ops.go:522	0x59ef6f		488b542448		MOVQ 0x48(SP), DX
+  list_ops.go:522	0x59ef74		4989c0			MOVQ AX, R8
+  exec.go:97		0x59ef77		488b842490000000	MOVQ 0x90(SP), AX
+  exec.go:97		0x59ef7f		90			NOPL
+  list_ops.go:522	0x59ef80		e959ffffff		JMP 0x59eede
+  main.ms:182		0x59ef85		90			NOPL
+  host.go:183		0x59ef86		e83541ffff		CALL github.com/manuscript-lang/manuscript/pkg/runtime.hostRoots(SB)
+  host.go:183		0x59ef8b		488b88a0000000		MOVQ 0xa0(AX), CX
+  main.ms:182		0x59ef92		488b4918		MOVQ 0x18(CX), CX
+  host.go:183		0x59ef96		488b80a8000000		MOVQ 0xa8(AX), AX
+  main.ms:182		0x59ef9d		488b9c2490000000	MOVQ 0x90(SP), BX
+  main.ms:182		0x59efa5		ffd1			CALL CX
+  main.ms:182		0x59efa7		4889442460		MOVQ AX, 0x60(SP)
+  main.ms:182		0x59efac		48895c2458		MOVQ BX, 0x58(SP)
+  main.ms:186		0x59efb1		488b8c2490000000	MOVQ 0x90(SP), CX
+  main.ms:186		0x59efb9		31d2			XORL DX, DX
+  main.ms:186		0x59efbb		31f6			XORL SI, SI
+  main.ms:186		0x59efbd		eb07			JMP 0x59efc6
+  main.ms:188		0x59efbf		498d5101		LEAQ 0x1(R9), DX
+  main.ms:187		0x59efc3		4c89d6			MOVQ R10, SI
+  main.ms:187		0x59efc6		4889742450		MOVQ SI, 0x50(SP)
+  main.ms:186		0x59efcb		4881fa40420f00		CMPQ DX, $0xf4240
+  main.ms:186		0x59efd2		0f8d8e000000		JGE 0x59f066
+  main.ms:186		0x59efd8		4889542448		MOVQ DX, 0x48(SP)
+  main.ms:186		0x59efdd		4989d1			MOVQ DX, R9
+  main.ms:186		0x59efe0		83e23f			ANDL $0x3f, DX
+  main.ms:186		0x59efe3		4883fa3f		CMPQ DX, $0x3f
+  main.ms:186		0x59efe7		753c			JNE 0x59f025
+  main.ms:186		0x59efe9		90			NOPL
+  exec.go:97		0x59efea		4885c9			TESTQ CX, CX
+  exec.go:97		0x59efed		7436			JE 0x59f025
+  exec.go:97		0x59efef		488b11			MOVQ 0(CX), DX
+  exec.go:97		0x59eff2		488b4108		MOVQ 0x8(CX), AX
+  exec.go:93		0x59eff6		488b4a28		MOVQ 0x28(DX), CX
+  exec.go:93		0x59effa		ffd1			CALL CX
+  exec.go:93		0x59effc		0f1f4000		NOPL 0(AX)
+  exec.go:93		0x59f000		4885c0			TESTQ AX, AX
+  exec.go:97		0x59f003		0f8587000000		JNE 0x59f090
+  main.ms:190		0x59f009		488b442460		MOVQ 0x60(SP), AX
+  exec.go:97		0x59f00e		488b8c2490000000	MOVQ 0x90(SP), CX
+  main.ms:190		0x59f016		488b5c2458		MOVQ 0x58(SP), BX
+  numeric.go:15		0x59f01b		488b742450		MOVQ 0x50(SP), SI
+  main.ms:188		0x59f020		4c8b4c2448		MOVQ 0x48(SP), R9
+  main.ms:187		0x59f025		488b542470		MOVQ 0x70(SP), DX
+  numeric.go:15		0x59f02a		4c8d1416		LEAQ 0(SI)(DX*1), R10
+  numeric.go:16		0x59f02e		4c31d6			XORQ R10, SI
+  numeric.go:16		0x59f031		4c31d2			XORQ R10, DX
+  numeric.go:16		0x59f034		4885f2			TESTQ SI, DX
+  numeric.go:16		0x59f037		7d86			JGE 0x59efbf
+  numeric.go:15		0x59f039		4c89542440		MOVQ R10, 0x40(SP)
+  numeric.go:15		0x59f03e		6690			NOPW
+  numeric.go:17		0x59f040		e83b80ffff		CALL github.com/manuscript-lang/manuscript/pkg/runtime.intOverflow(SB)
+  main.ms:190		0x59f045		488b442460		MOVQ 0x60(SP), AX
+  exec.go:97		0x59f04a		488b8c2490000000	MOVQ 0x90(SP), CX
+  main.ms:190		0x59f052		488b5c2458		MOVQ 0x58(SP), BX
+  main.ms:188		0x59f057		4c8b4c2448		MOVQ 0x48(SP), R9
+  main.ms:187		0x59f05c		4c8b542440		MOVQ 0x40(SP), R10
+  numeric.go:17		0x59f061		e959ffffff		JMP 0x59efbf
+  main.ms:190		0x59f066		bf40420f00		MOVL $0xf4240, DI
+  main.ms:190		0x59f06b		4889c6			MOVQ AX, SI
+  main.ms:190		0x59f06e		4989d8			MOVQ BX, R8
+  main.ms:190		0x59f071		4889c8			MOVQ CX, AX
+  main.ms:190		0x59f074		488d1d4a2e0c00		LEAQ 0xc2e4a(IP), BX
+  main.ms:190		0x59f07b		b90e000000		MOVL $0xe, CX
+  main.ms:190		0x59f080		e83becffff		CALL main.report(SB)
+  main.ms:191		0x59f085		488b442450		MOVQ 0x50(SP), AX
+  main.ms:191		0x59f08a		4883ec80		SUBQ $-0x80, SP
+  main.ms:191		0x59f08e		5d			POPQ BP
+  main.ms:191		0x59f08f		c3			RET
+  exec.go:98		0x59f090		488d05297c0600		LEAQ 0x67c29(IP), AX
+  exec.go:98		0x59f097		488d1d820c3100		LEAQ 0x310c82(IP), BX
+  exec.go:98		0x59f09e		6690			NOPW
+  exec.go:98		0x59f0a0		e87b5fedff		CALL runtime.gopanic(SB)
+  exec.go:98		0x59f0a5		488d05147c0600		LEAQ 0x67c14(IP), AX
+  exec.go:98		0x59f0ac		488d1d6d0c3100		LEAQ 0x310c6d(IP), BX
+  exec.go:98		0x59f0b3		e8685fedff		CALL runtime.gopanic(SB)
+  exec.go:98		0x59f0b8		90			NOPL
+  generated.go:1	0x59f0b9		4889442408		MOVQ AX, 0x8(SP)
+  generated.go:1	0x59f0be		6690			NOPW
+  generated.go:1	0x59f0c0		e8bbbaedff		CALL runtime.morestack_noctxt.abi0(SB)
+  generated.go:1	0x59f0c5		488b442408		MOVQ 0x8(SP), AX
+  generated.go:1	0x59f0ca		e9d1fdffff		JMP main.bench_length(SB)

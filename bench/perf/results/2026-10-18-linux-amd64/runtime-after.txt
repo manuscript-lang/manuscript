@@ -1,0 +1,34 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkListAtGetVsGo/Manuscript-4         	427198270	         0.9117 ns/op	       0 B/op	       0 allocs/op
+BenchmarkListAtGetVsGo/Manuscript-4         	433868235	         0.8782 ns/op	       0 B/op	       0 allocs/op
+BenchmarkListAtGetVsGo/Manuscript-4         	405782330	         0.8729 ns/op	       0 B/op	       0 allocs/op
+BenchmarkListAtGetVsGo/Manuscript-4         	393004016	         0.8641 ns/op	       0 B/op	       0 allocs/op
+BenchmarkListAtGetVsGo/Manuscript-4         	400853072	         0.9392 ns/op	       0 B/op	       0 allocs/op
+BenchmarkListAtGetVsGo/Manuscript-4         	399166946	         0.8432 ns/op	       0 B/op	       0 allocs/op
+BenchmarkListAtGetVsGo/Manuscript-4         	423811724	         0.8546 ns/op	       0 B/op	       0 allocs/op
+BenchmarkListAtGetVsGo/Go-4                 	869129791	         0.4003 ns/op	       0 B/op	       0 allocs/op
+BenchmarkListAtGetVsGo/Go-4                 	894443737	         0.4124 ns/op	       0 B/op	       0 allocs/op
+BenchmarkListAtGetVsGo/Go-4                 	845381844	         0.4414 ns/op	       0 B/op	       0 allocs/op
+BenchmarkListAtGetVsGo/Go-4                 	856632099	         0.4111 ns/op	       0 B/op	       0 allocs/op
+BenchmarkListAtGetVsGo/Go-4                 	827813282	         0.4322 ns/op	       0 B/op	       0 allocs/op
+BenchmarkListAtGetVsGo/Go-4                 	880019572	         0.4263 ns/op	       0 B/op	       0 allocs/op
+BenchmarkListAtGetVsGo/Go-4                 	862890094	         0.4356 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringBuilderVsGo/Manuscript-4     	    3108	    104976 ns/op	  211707 B/op	      21 allocs/op
+BenchmarkStringBuilderVsGo/Manuscript-4     	    3460	    104311 ns/op	  211706 B/op	      21 allocs/op
+BenchmarkStringBuilderVsGo/Manuscript-4     	    3374	    102708 ns/op	  211705 B/op	      21 allocs/op
+BenchmarkStringBuilderVsGo/Manuscript-4     	    3073	    113575 ns/op	  211705 B/op	      21 allocs/op
+BenchmarkStringBuilderVsGo/Manuscript-4     	    3430	    107581 ns/op	  211706 B/op	      21 allocs/op
+BenchmarkStringBuilderVsGo/Manuscript-4     	    3363	    101931 ns/op	  211706 B/op	      21 allocs/op
+BenchmarkStringBuilderVsGo/Manuscript-4     	    2980	    104531 ns/op	  211706 B/op	      21 allocs/op
+BenchmarkStringBuilderVsGo/Go-4             	    3872	     92325 ns/op	  211705 B/op	      21 allocs/op
+BenchmarkStringBuilderVsGo/Go-4             	    3814	     96192 ns/op	  211705 B/op	      21 allocs/op
+BenchmarkStringBuilderVsGo/Go-4             	    3799	    106417 ns/op	  211705 B/op	      21 allocs/op
+BenchmarkStringBuilderVsGo/Go-4             	    3858	     94381 ns/op	  211706 B/op	      21 allocs/op
+BenchmarkStringBuilderVsGo/Go-4             	    3495	    101966 ns/op	  211705 B/op	      21 allocs/op
+BenchmarkStringBuilderVsGo/Go-4             	    3288	     96031 ns/op	  211705 B/op	      21 allocs/op
+BenchmarkStringBuilderVsGo/Go-4             	    3634	     96931 ns/op	  211706 B/op	      21 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	11.665s

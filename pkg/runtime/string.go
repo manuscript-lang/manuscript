@@ -17,8 +17,10 @@ import (
 
 // StringBuilder accumulates text. Freeze seals it; appending afterwards is a
 // fault. A builder is an ordinary mutable reference: it is not synchronized.
+// Like strings.Builder, this Go implementation value must not be copied after
+// first use. Generated Manuscript values always share a *StringBuilder.
 type StringBuilder struct {
-	text   strings.Builder
+	text   []byte
 	sealed bool
 }
 
@@ -29,14 +31,16 @@ func StringBuilder_Append(_ *Execution, b *StringBuilder, value string) Unit {
 	if b.sealed {
 		Raise("builder is sealed")
 	}
-	b.text.WriteString(value)
+	b.text = append(b.text, value...)
 	return Unit{}
 }
 
 func StringBuilder_Freeze(ctx *Execution, b *StringBuilder) string {
 	CheckCancelled(ctx)
 	b.sealed = true
-	return b.text.String()
+	// Sealing prevents every supported alias from writing these bytes again.
+	// The returned string keeps the allocation alive after the builder is gone.
+	return unsafe.String(unsafe.SliceData(b.text), len(b.text))
 }
 
 func Errors_Message_StringError(_ *Execution, e StringError) string {

@@ -252,6 +252,8 @@ type funcState struct {
 	// stepped marks `i + 1` and `i - 1` expressions that a loop guard proves
 	// cannot overflow.
 	stepped map[*syntax.Expression]bool
+	// literalStarts is conservative, body-local eligibility for counter polling.
+	literalStarts map[*checker.Binding]bool
 }
 
 type loopState struct {

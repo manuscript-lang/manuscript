@@ -280,3 +280,18 @@ Verified: in `while i < n`, `i = i + 1` cannot overflow if it is the first state
 Apply when: extending overflow-check elimination to other expressions (`i + k`, `<=` guards, `for` ranges).
 Evidence: `pkg/lower/stmt.go`, `tests/e2e/counter_step_test.go`.
 Verify: the reset and conditional-reset cases in the test must still fault with `Int overflow;`.
+
+Verified: cancellation can reuse a literal-start unit-step counter while retaining
+the exact 64th/128th poll phase. Unlike the overflow proof, this requires exactly
+one unconditional assignment to the checked binding across the entire body and
+no continue. Eligibility facts are body-local: preserve direct Int literal writes
+and discard all facts at every other statement; do not scan backwards through
+prefixes or carry facts across branches. Dynamic starts retained a live initial
+value and regressed a prototype, so they keep the ordinary inline tick fallback.
+Evidence: [poll selection and linear eligibility facts](../pkg/lower/stmt.go),
+[eligibility pairs](../pkg/compiler/loop_poll_test.go),
+[native phase oracle](../pkg/build/loop_poll_test.go), and
+[measurements and assembly](../perf-bench/programs/results.md).
+Verify negative/nonzero starts, both directions, nested entry, reset/continue
+fallbacks, and source faults before widening the proof. Derive phase with raw Go
+subtraction: modular overflow preserves the low six bits of the iteration count.

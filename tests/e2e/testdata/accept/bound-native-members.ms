@@ -38,15 +38,19 @@ test "custom equality is kept for bound members":
 
 test "builder":
     let sb = StringBuilder()
-    sb.append("a")
-    sb.append("b")
-    (sb.freeze() == "ab") | try expect_true
-    (sb.freeze() == "ab") | try expect_true
+    let alias = sb
+    let append = alias.append
+    let freeze = sb.freeze
+    append("a")
+    append("é")
+    (freeze() == "aé") | try expect_true
+    (alias.freeze() == "aé") | try expect_true
 
 test "sealed builder":
     let sb = StringBuilder()
+    let append = sb.append
     sb.freeze()
-    let message = try expect_fault(fn(): sb.append("late"))
+    let message = try expect_fault(fn(): append(""))
     message | try expect_contains(expected: "builder is sealed")
 
 test "sealed map and set builders fault through every spelling":
