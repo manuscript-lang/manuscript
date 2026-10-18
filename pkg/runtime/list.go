@@ -29,6 +29,32 @@ func List_Get[T any](_ *Execution, l *List[T], index int, def Option[T]) T {
 	return listGetSlow(l, index, def)
 }
 
+// ItemsOf samples a list's Items for a loop that cannot replace them: the
+// compiler hoists it so indexed reads and writes keep the slice in registers.
+func ItemsOf[T any](l *List[T]) []T {
+	if l == nil {
+		return nil
+	}
+	return l.Items
+}
+
+// List_GetCached is List_Get over items sampled from l by ItemsOf.
+func List_GetCached[T any](items []T, l *List[T], index int, def Option[T]) T {
+	if uint(index) < uint(len(items)) {
+		return items[index]
+	}
+	return listGetSlow(l, index, def)
+}
+
+// List_SetCached is a discarded List_Set over items sampled from l by ItemsOf.
+func List_SetCached[T any](items []T, l *List[T], index int, value T) {
+	if uint(index) < uint(len(items)) {
+		items[index] = value
+		return
+	}
+	List_Set(nil, l, index, value)
+}
+
 func listGetSlow[T any](l *List[T], index int, def Option[T]) T {
 	n := len(l.Items)
 	i := index
