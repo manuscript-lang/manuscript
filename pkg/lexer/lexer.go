@@ -56,12 +56,16 @@ type scanner struct {
 	groups               []int
 	opened               []syntax.Position
 	functionDepths       []int
-	originalOffsets      []int
+	lineOffsets          []int // CR bytes removed before each normalized line.
 	interpolations       []syntax.Position
 }
 
 func (s *scanner) pos() syntax.Position {
-	return syntax.Position{File: s.file, Line: s.line, Column: s.column, Offset: s.originalOffset(s.offset)}
+	offset := s.offset
+	if s.lineOffsets != nil {
+		offset += s.lineOffsets[s.line-1]
+	}
+	return syntax.Position{File: s.file, Line: s.line, Column: s.column, Offset: offset}
 }
 func (s *scanner) fail(message string) {
 	panic(syntax.Diagnostic{Position: s.pos(), Phase: "parse", Message: message})
@@ -95,7 +99,7 @@ func Lex(file, source string) (tokens []Token, err error) {
 		}
 	}()
 	normalized, offsets := normalizeSource(source)
-	s := &scanner{file: file, source: normalized, originalOffsets: offsets, line: 1, column: 1, levels: []layout{{0, 0}}}
+	s := &scanner{file: file, source: normalized, lineOffsets: offsets, line: 1, column: 1, levels: []layout{{0, 0}}}
 	if !utf8.ValidString(source) {
 		s.fail("source must be valid UTF-8; re-save the file with UTF-8 encoding")
 	}
@@ -231,7 +235,8 @@ func Lex(file, source string) (tokens []Token, err error) {
 			if matched {
 				continue
 			}
-			if strings.ContainsRune("()[]{}:,.+-*/%<>=&|", rune(b)) {
+			const punctuation = "()[]{}:,.+-*/%<>=&|"
+			if index := strings.IndexByte(punctuation, b); index >= 0 {
 				if strings.ContainsRune("([{", rune(b)) {
 					s.delimiters = append(s.delimiters, b)
 					s.opened = append(s.opened, p)
@@ -261,7 +266,8 @@ func Lex(file, source string) (tokens []Token, err error) {
 					}
 				}
 				s.advance()
-				s.emit(string(b), string(b), p)
+				text := punctuation[index : index+1]
+				s.emit(text, text, p)
 				continue
 			}
 			if b >= utf8.RuneSelf {
@@ -511,32 +517,28 @@ func (s *scanner) scanInterpolation() {
 	s.failAt(open, "unterminated interpolation; add the closing } before the closing quote ("+braceHint+")")
 }
 
-// originalOffset maps a normalized offset back to the source; without CRLF
-// pairs the two coincide and no table is kept.
-func (s *scanner) originalOffset(at int) int {
-	if s.originalOffsets == nil {
-		return at
-	}
-	return s.originalOffsets[at]
-}
-
+// normalizeSource keeps one cumulative offset correction per line when CRLF
+// pairs are present. Within a line, normalized and original byte columns match.
 func normalizeSource(source string) (string, []int) {
 	if !strings.Contains(source, "\r\n") {
 		return source, nil
 	}
-	var normalized strings.Builder
-	offsets := make([]int, 0, len(source)+1)
-	for at := 0; at < len(source); at++ {
-		offsets = append(offsets, at)
-		if source[at] == '\r' && at+1 < len(source) && source[at+1] == '\n' {
-			normalized.WriteByte('\n')
-			at++
-		} else {
-			normalized.WriteByte(source[at])
+	normalized := strings.ReplaceAll(source, "\r\n", "\n")
+	offsets := make([]int, 1, strings.Count(source, "\n")+1)
+	removed := 0
+	for at := 0; at < len(source); {
+		newline := strings.IndexByte(source[at:], '\n')
+		if newline < 0 {
+			break
 		}
+		at += newline
+		if at > 0 && source[at-1] == '\r' {
+			removed++
+		}
+		offsets = append(offsets, removed)
+		at++
 	}
-	offsets = append(offsets, len(source))
-	return normalized.String(), offsets
+	return normalized, offsets
 }
 
 // characterHint explains the common foreign-syntax characters.
