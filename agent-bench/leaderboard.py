@@ -102,7 +102,7 @@ def read_trial(d: Path) -> dict | None:
     return {
         "trial": r["trial_name"], "challenge": cid, "category": meta["category"], "tier": meta["tier"], "language": lang,
         "agent": r["config"]["agent"].get("name"), "model": r["config"]["agent"].get("model_name"),
-        "pass": reward == 1.0, "errored": bool(r.get("exception_info")) or reward is None,
+        "pass": reward == 1.0, "errored": reward is None,  # an agent timeout is still graded, so it counts as a failure
         "cases_passed": detail.get("passed"), "cases_total": detail.get("total"),
         "first_build_ok": detail.get("first_build_ok"), "code_tokens": detail.get("code_tokens"), "builds": detail.get("builds"),
         "tokens_in": ar.get("n_input_tokens") or 0, "tokens_cached": ar.get("n_cache_tokens") or 0,
