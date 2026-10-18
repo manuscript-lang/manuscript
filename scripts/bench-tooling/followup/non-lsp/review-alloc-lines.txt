@@ -1,0 +1,30 @@
+Total: 653.24MB
+ROUTINE ======================== github.com/manuscript-lang/manuscript/pkg/tooling.reachCounts in /workspace/manuscript-tooling-followup/pkg/tooling/review.go
+  645.66MB   645.66MB (flat, cum) 98.84% of Total
+         .          .    254:func reachCounts(facts Facts) map[string]int {
+         .          .    255:	callers := map[string][]string{}
+         .          .    256:	for key, fact := range facts.Entities {
+         .          .    257:		for _, callee := range fact.Calls {
+    3.11MB     3.11MB    258:			callers[callee] = append(callers[callee], key)
+         .          .    259:		}
+         .          .    260:	}
+         .          .    261:	result := map[string]int{}
+         .          .    262:	for key := range facts.Entities {
+         .          .    263:		seen := map[string]bool{key: true}
+         .          .    264:		queue := []string{key}
+         .          .    265:		for len(queue) > 0 {
+         .          .    266:			next := queue[0]
+         .          .    267:			queue = queue[1:]
+         .          .    268:			for _, caller := range callers[next] {
+         .          .    269:				if !seen[caller] {
+  534.53MB   534.53MB    270:					seen[caller] = true
+     107MB      107MB    271:					queue = append(queue, caller)
+         .          .    272:				}
+         .          .    273:			}
+         .          .    274:		}
+    1.02MB     1.02MB    275:		result[key] = len(seen) - 1
+         .          .    276:	}
+         .          .    277:	return result
+         .          .    278:}
+         .          .    279:
+         .          .    280:// touchedKeys maps changed head lines to the most specific entity containing them.

@@ -1,0 +1,70 @@
+{
+  "equal": true,
+  "mismatches": [],
+  "methods": {
+    "hover": {
+      "sha256": "fb60a5440933c4fb4f50a1c9464c266fc5b0111169670c23064a26192e6fc4a5",
+      "json_bytes": 237
+    },
+    "definition": {
+      "sha256": "b18e092d2829becb878d89a45728bdde4022440ed14a172692366c66dc013f30",
+      "json_bytes": 191
+    },
+    "completion": {
+      "sha256": "1119160accdf11e124099c0bdbc41dca637d25ac7f383056d136c7ec8ecb10df",
+      "json_bytes": 66702
+    },
+    "signatureHelp": {
+      "sha256": "c5f10281086c95a75b90675dd5ce17e19519ef28cba709feed479b86d7be8cf0",
+      "json_bytes": 240
+    },
+    "semanticTokens/full": {
+      "sha256": "8ea69967ff2f153851f07543cb80215575a0f98efb52d2dd2c0da5134cbcc0b9",
+      "json_bytes": 2600
+    },
+    "documentSymbol": {
+      "sha256": "ba3a8aab7f80504f77a0df157c06a249fda3b8d7f5f8866ce4db9a4b5eb224a8",
+      "json_bytes": 239
+    },
+    "typeDefinition": {
+      "sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "json_bytes": 4
+    },
+    "documentHighlight": {
+      "sha256": "c99691048e65506af0fd002f1098923a7fd4e3d7d88e79db2fcc69d9905d37ec",
+      "json_bytes": 201
+    },
+    "foldingRange": {
+      "sha256": "037ddccdac8dddc1e8f9312c23114c9d098d0b30457a029dbbc6638ea13d6e3d",
+      "json_bytes": 52
+    },
+    "inlayHint": {
+      "sha256": "d8436425776c6c744790d28ada3656b56d983fb105c7fdee2ae4606cc22aa667",
+      "json_bytes": 119
+    },
+    "formatting": {
+      "sha256": "402baf25469c279eedea7c8154ba477ce95006e998637f89430ff708c7d17e4c",
+      "json_bytes": 1634
+    },
+    "textDocument/references": {
+      "sha256": "b2b313e3bbc0ff038baf95fc26b833e63ae4d77f29ac73a4c0b19e9c4870add0",
+      "json_bytes": 570
+    },
+    "workspace/symbol": {
+      "sha256": "6400b158796de1f0800b2f28327373c6245a00b346cd9a7fec59c4c8b9f8af61",
+      "json_bytes": 234
+    },
+    "textDocument/rename": {
+      "sha256": "16b77f144d24948dec2b618ff9c909b901f335e65beed80aee957136fcfde0c2",
+      "json_bytes": 674
+    },
+    "diagnostics_v2": {
+      "sha256": "5b83e1ac3880dfde56f52384641d66ead226d04082776df7f44d806be2c35e3a",
+      "json_bytes": 1654
+    },
+    "diagnostics_v3": {
+      "sha256": "7ad274341427b0a66db87b5df932c9db9f9c712fb284547e701f16d9aeeeb8f6",
+      "json_bytes": 8905
+    }
+  }
+}

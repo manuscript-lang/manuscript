@@ -1,0 +1,31 @@
+package guide
+
+import "testing"
+
+// Fixed shipped standard library; cache/render control compares identical page bytes.
+var guideProbeAny any
+
+func TestNonLSPGuideProbeContract(t *testing.T) {
+	page, err := Page("json")
+	module := findModule("json")
+	if err != nil || module == nil || page != modulePage(*module) { t.Fatal("render-only control differs from actual json page", err) }
+}
+
+func BenchmarkNonLSPGuideWarm(b *testing.B) {
+	_, _ = Page("json")
+	module := findModule("json")
+	if module == nil { b.Fatal("json missing") }
+	_ = Search("read file", 5)
+	b.Run("Page", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ { var err error; guideProbeAny, err = Page("json"); if err != nil { b.Fatal(err) } }
+	})
+	b.Run("SamePageRenderOnlyControl", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ { guideProbeAny = modulePage(*module) }
+	})
+	b.Run("Search", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ { guideProbeAny = Search("read file", 5) }
+	})
+}

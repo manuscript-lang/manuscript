@@ -1,0 +1,326 @@
+package lsp
+
+import (
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"runtime"
+	"sort"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/manuscript-lang/manuscript/pkg/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/lexer"
+)
+
+const followupNewName = "_measure_renamed_f_0_0"
+
+type followupCounts struct {
+	CompileCalls        int                           `json:"compile_calls"`
+	StrictCalls         int                           `json:"strict_calls"`
+	IndexCalls          int                           `json:"index_calls"`
+	IndexProjectModules int                           `json:"index_project_modules"`
+	LexCalls            int                           `json:"lex_calls"`
+	StandardLexCalls    int                           `json:"standard_lex_calls"`
+	StandardLexBytes    int                           `json:"standard_lex_bytes"`
+	Selections          map[string]*followupSelection `json:"selections"`
+}
+type followupSelection struct {
+	Target           string `json:"target"`
+	Module           string `json:"module"`
+	Recover          bool   `json:"recover"`
+	SourceGeneration string `json:"source_generation"`
+	OverlayHash      string `json:"overlay_hash"`
+	OptionsHash      string `json:"options_hash"`
+	Calls            int    `json:"calls"`
+}
+
+func followupDigest(value any) string {
+	b, err := json.Marshal(value)
+	if err != nil {
+		panic(err)
+	}
+	sum := sha256.Sum256(b)
+	return fmt.Sprintf("%x", sum)
+}
+func (c *followupCounts) start() {
+	c.Selections = map[string]*followupSelection{}
+	compiler.FollowupCompileObserver = func(target string, options compiler.Options) {
+		c.CompileCalls++
+		if !options.Recover && options.Module != "" {
+			c.StrictCalls++
+		}
+		generation := "before"
+		for _, text := range options.Overlay {
+			if strings.Contains(text, followupNewName) {
+				generation = "after"
+				break
+			}
+		}
+		overlayHash := followupDigest(options.Overlay)
+		optionsHash := followupDigest(options)
+		key := target + "\x00" + optionsHash
+		selection := c.Selections[key]
+		if selection == nil {
+			selection = &followupSelection{Target: target, Module: options.Module, Recover: options.Recover, SourceGeneration: generation, OverlayHash: overlayHash, OptionsHash: optionsHash}
+			c.Selections[key] = selection
+		}
+		selection.Calls++
+	}
+	lexer.FollowupLexObserver = func(file, source string) {
+		c.LexCalls++
+		if strings.HasPrefix(file, "@std/") {
+			c.StandardLexCalls++
+			c.StandardLexBytes += len(source)
+		}
+	}
+	followupIndexObserver = func(result compiler.Result) {
+		c.IndexCalls++
+		if result.Program != nil {
+			c.IndexProjectModules += len(result.Program.Modules)
+		}
+	}
+}
+func followupStopCounts() {
+	compiler.FollowupCompileObserver = nil
+	lexer.FollowupLexObserver = nil
+	followupIndexObserver = nil
+}
+
+type followupHeap struct {
+	Heap    uint64 `json:"heap_bytes"`
+	Objects uint64 `json:"heap_objects"`
+	RSS     uint64 `json:"rss_bytes"`
+}
+
+func followupReadHeap() followupHeap {
+	var stats runtime.MemStats
+	runtime.ReadMemStats(&stats)
+	var rss uint64
+	if data, err := os.ReadFile("/proc/self/statm"); err == nil {
+		fields := strings.Fields(string(data))
+		if len(fields) > 1 {
+			pages, _ := strconv.ParseUint(fields[1], 10, 64)
+			rss = pages * uint64(os.Getpagesize())
+		}
+	}
+	return followupHeap{stats.HeapAlloc, stats.HeapObjects, rss}
+}
+func followupGC() followupHeap { runtime.GC(); return followupReadHeap() }
+
+type followupPeak struct {
+	Heap       uint64 `json:"sampled_peak_heap_bytes"`
+	RSS        uint64 `json:"sampled_peak_rss_bytes"`
+	Samples    int    `json:"samples"`
+	IntervalNS int64  `json:"sample_interval_ns"`
+}
+
+func followupSampler() func() followupPeak {
+	stop := make(chan struct{})
+	done := make(chan followupPeak, 1)
+	go func() {
+		peak := followupPeak{IntervalNS: int64(2 * time.Millisecond)}
+		read := func() {
+			sample := followupReadHeap()
+			peak.Samples++
+			if sample.Heap > peak.Heap {
+				peak.Heap = sample.Heap
+			}
+			if sample.RSS > peak.RSS {
+				peak.RSS = sample.RSS
+			}
+		}
+		read()
+		ticker := time.NewTicker(2 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				read()
+			case <-stop:
+				read()
+				done <- peak
+				return
+			}
+		}
+	}()
+	return func() followupPeak { close(stop); return <-done }
+}
+func followupFixture(t *testing.T, n, functions int, library bool) (document, string) {
+	t.Helper()
+	root := t.TempDir()
+	src := filepath.Join(root, "src")
+	if err := os.Mkdir(src, 0700); err != nil {
+		t.Fatal(err)
+	}
+	write := func(name, text string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(root, name), []byte(text), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	manifest := "[project]\nname = \"followup_measurement\"\nsource = \"src\"\n"
+	if !library {
+		manifest += "entry = \"src/main.ms\"\n"
+	}
+	write("ms.toml", manifest)
+	var main strings.Builder
+	for module := 0; module < n-1; module++ {
+		fmt.Fprintf(&main, "import f_%d_0 from \"./part_%d.ms\"\n", module, module)
+		var source strings.Builder
+		fmt.Fprintf(&source, "# Unicode 😀 é module %d\n", module)
+		for fn := 0; fn < functions; fn++ {
+			fmt.Fprintf(&source, "export fn f_%d_%d(value: Int) Int:\n    return value + %d\n", module, fn, fn)
+		}
+		write(fmt.Sprintf("src/part_%d.ms", module), source.String())
+	}
+	main.WriteString("\nexport fn main() Int:\n    let result = f_0_0(1)\n    return result\n")
+	write("src/main.ms", main.String())
+	return document{URI: fileURI(filepath.Join(src, "main.ms")), Text: main.String(), Version: 1}, root
+}
+func followupOperation(t *testing.T, s *server, d document, op string, n, functions int) int {
+	t.Helper()
+	r := &request{}
+	r.params.TextDocument = d
+	r.params.Position = Position(d.Text, strings.LastIndex(d.Text, "f_0_0"))
+	r.params.Context.IncludeDeclaration = true
+	switch op {
+	case "symbols":
+		r.Method = "workspace/symbol"
+		r.params.Query = "f_"
+	case "references":
+		r.Method = "textDocument/references"
+	case "rename":
+		r.Method = "textDocument/rename"
+		r.params.NewName = followupNewName
+	default:
+		t.Fatal("unknown operation", op)
+	}
+	result, rpcErr, err := s.handle(r)
+	if err != nil || rpcErr != nil {
+		t.Fatalf("%s: rpc=%v err=%v", op, rpcErr, err)
+	}
+	if op == "rename" {
+		edit, ok := result.(map[string]any)
+		if !ok {
+			t.Fatalf("rename missing edit: %T", result)
+		}
+		changes := edit["documentChanges"].([]any)
+		if len(changes) != 2 {
+			t.Fatalf("rename changed %d documents, want2", len(changes))
+		}
+		edits := 0
+		for _, raw := range changes {
+			for _, edit := range raw.(map[string]any)["edits"].([]any) {
+				if edit.(map[string]any)["newText"] != followupNewName {
+					t.Fatal("wrong rename payload")
+				}
+				edits++
+			}
+		}
+		if edits < 3 {
+			t.Fatal("missing declaration/import/call edits")
+		}
+		return edits
+	}
+	values, ok := result.([]any)
+	if !ok {
+		t.Fatalf("missing %s payload: %T", op, result)
+	}
+	if op == "symbols" && len(values) != (n-1)*functions {
+		t.Fatalf("symbols=%d want%d", len(values), (n-1)*functions)
+	}
+	if op == "references" && len(values) < 2 {
+		t.Fatal("missing cross-file references")
+	}
+	return len(values)
+}
+func TestFollowupMeasurement(t *testing.T) {
+	n, _ := strconv.Atoi(os.Getenv("FOLLOWUP_MODULES"))
+	if n == 0 {
+		n = 41
+	}
+	functions, _ := strconv.Atoi(os.Getenv("FOLLOWUP_FUNCTIONS"))
+	if functions == 0 {
+		functions = 20
+	}
+	repeats, _ := strconv.Atoi(os.Getenv("FOLLOWUP_REPEATS"))
+	if repeats == 0 {
+		repeats = 3
+	}
+	op := os.Getenv("FOLLOWUP_OPERATION")
+	if op == "" {
+		op = "rename"
+	}
+	mode := os.Getenv("FOLLOWUP_MODE")
+	if mode == "" {
+		mode = "counts"
+	}
+	library := os.Getenv("FOLLOWUP_LIBRARY") == "1"
+	d, root := followupFixture(t, n, functions, library)
+	func() {
+		warm := analyze(d, nil)
+		if !warm.Success() || warm.Program == nil || len(warm.Program.Modules) != n {
+			t.Fatal("invalid fixture", warm.Diagnostics)
+		}
+	}()
+	baseline := followupGC()
+	s := &server{output: io.Discard, docs: map[string]document{d.URI: d}, cache: map[string]compiler.Result{}, roots: []string{root}}
+	func() {
+		checked := s.checkedDocument(d)
+		if !checked.Success() {
+			t.Fatal(checked.Diagnostics)
+		}
+		s.documentIndex(checked)
+		s.programLint(checked)
+	}()
+	opened := followupGC()
+	for iteration := 0; iteration < repeats; iteration++ {
+		before := followupGC()
+		counts := followupCounts{}
+		var stop func() followupPeak
+		if mode == "counts" {
+			counts.start()
+		} else if mode == "memory" {
+			stop = followupSampler()
+		} else {
+			t.Fatal("bad mode", mode)
+		}
+		started := time.Now()
+		payload := followupOperation(t, s, d, op, n, functions)
+		elapsed := time.Since(started)
+		followupStopCounts()
+		peak := followupPeak{}
+		if stop != nil {
+			peak = stop()
+		}
+		after := followupGC()
+		// Emit exact repeated selections without retaining checked graphs/indexes.
+		selections := make([]*followupSelection, 0, len(counts.Selections))
+		for _, selection := range counts.Selections {
+			selections = append(selections, selection)
+		}
+		sort.Slice(selections, func(i, j int) bool {
+			return selections[i].Module+selections[i].OptionsHash < selections[j].Module+selections[j].OptionsHash
+		})
+		counts.Selections = nil
+		record := map[string]any{"operation": op, "mode": mode, "modules": n, "functions_per_leaf": functions, "library": library, "iteration": iteration, "elapsed_ns": elapsed.Nanoseconds(), "payload_count": payload, "before": before, "after_gc": after, "peak": peak, "counts": counts, "selections": selections, "server_cache_uris": len(s.cache), "server_analysis_entries": len(s.analyses)}
+		encoded, _ := json.Marshal(record)
+		t.Logf("followup_measurement=%s", encoded)
+	}
+	s.docs = map[string]document{}
+	s.invalidate()
+	if len(s.cache)+len(s.analyses)+len(s.indices)+len(s.lints) != 0 {
+		t.Fatal("close/invalidation retained server snapshot state")
+	}
+	closed := followupGC()
+	encoded, _ := json.Marshal(map[string]any{"mode": mode, "operation": op, "modules": n, "library": library, "baseline": baseline, "opened": opened, "closed": closed, "server_cache_uris": len(s.cache), "server_analysis_entries": len(s.analyses), "server_indices": len(s.indices), "server_lints": len(s.lints)})
+	t.Logf("followup_lifecycle=%s", encoded)
+	runtime.KeepAlive(s)
+	runtime.KeepAlive(d)
+}
