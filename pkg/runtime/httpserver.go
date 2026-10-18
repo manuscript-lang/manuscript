@@ -223,7 +223,7 @@ func (s *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid or oversized request body", 413)
 		return
 	}
-	request := &HttpRequest{Method: methodOf(r.Method), Path: r.URL.Path, Query: r.URL.RawQuery, Headers: headersFrom(requestHeaders(r)), Body: NewBytes(data)}
+	request := &HttpRequest{Method: methodOf(r.Method), Path: r.URL.Path, Query: r.URL.RawQuery, Headers: headersFrom(requestHeaders(r)), Body: NewBytes(data), Protocol: r.Proto}
 	var response *HttpResponse
 	var failure any
 	func() {
@@ -483,6 +483,11 @@ func (e *httpExchange) Method(ctx *Execution) HttpMethod {
 func (e *httpExchange) Path(ctx *Execution) string {
 	CheckCancelled(ctx)
 	return e.request.URL.Path
+}
+
+func (e *httpExchange) Protocol(ctx *Execution) string {
+	CheckCancelled(ctx)
+	return e.request.Proto
 }
 
 func (e *httpExchange) Query(ctx *Execution) string {

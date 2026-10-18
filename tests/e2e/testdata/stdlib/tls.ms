@@ -90,3 +90,52 @@ test "HTTPS trusts only the explicitly supplied local test root":
                         try response.read()
                     ).get() != "secure".to_bytes()
                 ): return panic("HTTPS response")
+
+fn report_protocol(exchange: HttpExchange) Result[Unit, HttpError]:
+    try exchange.send_headers(200, list_headers(Map[String, List[String]]()))
+    exchange.write(exchange.protocol().to_bytes()).get()
+    return ok(unit)
+
+test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
+    let net = network()
+    let server_options = HttpServerOptions(
+        timeout: 3.seconds,
+        grace: 0.seconds,
+        tls: TlsOptions(
+            "",
+            "",
+            certificate(),
+            private_key(),
+            ["h2", "http/1.1"],
+            require_client_certificate: false
+        )
+    )
+
+    with server = try net.serve_stream("127.0.0.1:0", report_protocol, server_options):
+        with client = try net.http_client(
+            HttpClientOptions(
+                decompress: false,
+                cookies: false,
+                tls: TlsOptions(
+                    "stdlib.test",
+                    certificate(),
+                    "",
+                    "",
+                    ["h2", "http/1.1"],
+                    require_client_certificate: false
+                )
+            )
+        ):
+            with response = try client.request(
+                HttpMethod.Get,
+                "https://{server.address()}/",
+                text_headers(Map[String, String]()),
+                "".to_bytes(),
+                timeout: 2.seconds
+            ):
+                if response.metadata().protocol != "HTTP/2.0": return panic(
+                    "client protocol"
+                )
+                if (try response.read()).get() != "HTTP/2.0".to_bytes(): return panic(
+                    "server protocol"
+                )

@@ -778,8 +778,9 @@ func (HttpError_Failed) isHttpError() {
 }
 
 type HttpResponseMetadata struct {
-	Status  int
-	Headers *HttpHeaders
+	Status   int
+	Headers  *HttpHeaders
+	Protocol string
 }
 type ClientResponse struct {
 	Head *HttpResponseMetadata
@@ -868,6 +869,7 @@ type HttpExchange interface {
 	Headers(ctx *Execution) *HttpHeaders
 	Method(ctx *Execution) HttpMethod
 	Path(ctx *Execution) string
+	Protocol(ctx *Execution) string
 	Query(ctx *Execution) string
 	Read(ctx *Execution, a0 Option[int]) Result[Option[*Bytes], IoError]
 	SendHeaders(ctx *Execution, a0 int, a1 *HttpHeaders) Result[Unit, HttpError]
@@ -875,11 +877,12 @@ type HttpExchange interface {
 	Write(ctx *Execution, a0 *Bytes) Result[Unit, IoError]
 }
 type HttpRequest struct {
-	Method  HttpMethod
-	Path    string
-	Query   string
-	Headers *HttpHeaders
-	Body    *Bytes
+	Method   HttpMethod
+	Path     string
+	Query    string
+	Headers  *HttpHeaders
+	Body     *Bytes
+	Protocol string
 }
 type HttpResponse struct {
 	Status  int
