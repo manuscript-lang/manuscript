@@ -19,8 +19,20 @@ func ParsePartial(file, source string) (*syntax.Module, []syntax.Diagnostic) {
 	module := &syntax.Module{File: file, Source: source}
 	diagnostics := []syntax.Diagnostic{}
 	starts := []int{}
+	type probe struct {
+		end    int
+		module *syntax.Module
+		err    error
+	}
+	var probes map[int]probe
+	attemptedStart, continuationEnd := -1, 0
 	offset := 0
-	for _, line := range strings.SplitAfter(source, "\n") {
+	lines := strings.SplitAfter(source, "\n")
+	for index, line := range lines {
+		if offset < continuationEnd {
+			offset += len(line)
+			continue
+		}
 		trimmed := strings.TrimSpace(line)
 		if len(line) > 0 && line[0] != ' ' && line[0] != '\t' && trimmed != "" && !strings.HasPrefix(trimmed, "#") {
 			declaration := false
@@ -34,6 +46,41 @@ func ParsePartial(file, source string) (*syntax.Module, []syntax.Diagnostic) {
 			if !declaration && len(starts) > 0 {
 				_, err := lexer.Lex(file, source[starts[len(starts)-1]:offset])
 				if issue, ok := err.(syntax.Diagnostic); ok && strings.HasPrefix(issue.Message, "unterminated delimiter") {
+					start := starts[len(starts)-1]
+					if attemptedStart != start {
+						attemptedStart = start
+						// Probe each possible root once, up to the next possible root.
+						// A successful single-root parse proves the intervening lines
+						// are continuations. Failed probes keep the original splitter.
+						if partialRootStart(source[start:]) {
+							end := offset
+							for _, next := range lines[index:] {
+								if partialRootStart(next) {
+									break
+								}
+								end += len(next)
+							}
+							if len(starts) == 1 {
+								start = 0 // The first chunk owns its leading trivia.
+							}
+							// An open prefix cannot parse without a later closer. This
+							// rejects common unfinished headers before another lex/parse;
+							// strings and comments may only cause harmless false positives.
+							if strings.ContainsAny(source[offset:end], ")]}") {
+								parsed, err := Parse(file, source[start:end])
+								single := err == nil && singlePartialRoot(parsed)
+								if err != nil || single {
+									if probes == nil {
+										probes = make(map[int]probe)
+									}
+									probes[start] = probe{end: end, module: parsed, err: err}
+								}
+								if single {
+									continuationEnd = end
+								}
+							}
+						}
+					}
 					offset += len(line)
 					continue
 				}
@@ -58,7 +105,14 @@ func ParsePartial(file, source string) (*syntax.Module, []syntax.Diagnostic) {
 		lineOffset += strings.Count(source[previous:start], "\n")
 		previous = start
 		chunk := source[start:end]
-		parsed, err := Parse(file, chunk)
+		var parsed *syntax.Module
+		var err error
+		if cached, ok := probes[start]; ok && cached.end == end {
+			// Failed probes also avoid repeating the same strict parse.
+			parsed, err = cached.module, cached.err
+		} else {
+			parsed, err = Parse(file, chunk)
+		}
 		var recovered []syntax.Diagnostic
 		if err != nil {
 			parsed, recovered = recoverStatements(file, chunk, err)
@@ -104,6 +158,46 @@ func ParsePartial(file, source string) (*syntax.Module, []syntax.Diagnostic) {
 		module.Declarations = append(module.Declarations, parsed.Declarations...)
 	}
 	return module, diagnostics
+}
+
+// partialRootStart is only a bound for optimistic parsing, never a recovery
+// boundary. Include constants and token boundaries such as import{ and let(;
+// malformed input still synchronizes using the original rules above.
+func partialRootStart(source string) bool {
+	for _, keyword := range []string{"import", "export", "fn", "type", "interface", "impl", "test", "let"} {
+		if !strings.HasPrefix(source, keyword) {
+			continue
+		}
+		if len(source) == len(keyword) {
+			return true
+		}
+		next := source[len(keyword)]
+		return !((next >= 'a' && next <= 'z') || (next >= 'A' && next <= 'Z') || (next >= '0' && next <= '9') || next == '_')
+	}
+	return false
+}
+
+// Grouped imports and constants produce several AST nodes for one written root.
+// Reusing larger chunks would change recovery boundaries and CRLF buffer owners.
+func singlePartialRoot(module *syntax.Module) bool {
+	root := -1
+	for _, imp := range module.Imports {
+		if root != -1 && root != imp.Pos.Offset {
+			return false
+		}
+		root = imp.Pos.Offset
+	}
+	for _, decl := range module.Declarations {
+		pos := decl.Pos
+		if decl.Group.Line > 0 {
+			pos = decl.Group
+		}
+		if root != -1 && root != pos.Offset {
+			return false
+		}
+		root = pos.Offset
+	}
+	return root != -1
 }
 
 // recoverStatements retries a failed declaration chunk with each offending
