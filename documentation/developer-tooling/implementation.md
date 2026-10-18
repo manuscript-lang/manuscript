@@ -94,7 +94,7 @@ ms review ms.toml --diff change.patch --explain 1
 - Without `--diff`: the project map of public surface, entry points with effects, error types in signatures, `with` scopes, and imports.
 - With `--diff`: compares the checked program before and after. Pass a unified diff from a file or stdin (`git diff --no-renames` or `diff -u`); `ms` does not run git. The working tree must be the diff's after state. A diff that does not match is rejected with status 2. Renames are unsupported.
 - `--explain <n|id>` (with `--diff`) prints one finding: id, tier, location, score terms, evidence, direct callers, and the diagram command for its flow. `n` is the number under LOOK HERE FIRST; an id or entity name also works.
-- `--format ascii|markdown|json` picks the rendering. Tables show five rows per section unless `--all`.
+- `--format ascii|markdown` picks the rendering; `--json` emits the JSON report. Tables show five rows per section unless `--all`.
 - If the before state does not check, the report says so and lists only touched entities. If the current tree fails checking, it prints diagnostics and exits 1.
 
 Entities match by file, kind, and name, so formatting and in-file moves are not changes. Tiers:

@@ -53,12 +53,15 @@ func TestReviewRejectsADiffThatDoesNotMatchTheTree(t *testing.T) {
 
 func TestReviewAndDiagramFormats(t *testing.T) {
 	file := sourceFile(t, reviewHead)
-	status, output, _ := invoke(t, "review", file, "--format", "json")
+	status, output, _ := invoke(t, "review", file, "--json")
 	if status != 0 || !strings.Contains(output, `"mode": "project"`) {
 		t.Fatalf("json: %d %q", status, output)
 	}
-	if status, _, errors := invoke(t, "review", file, "--format", "xml"); status != 2 || !strings.Contains(errors, "use ascii, markdown, or json") {
+	if status, _, errors := invoke(t, "review", file, "--format", "xml"); status != 2 || !strings.Contains(errors, "use ascii or markdown") {
 		t.Fatalf("format: %d %q", status, errors)
+	}
+	if status, _, errors := invoke(t, "review", file, "--json", "--format", "markdown"); status != 2 || !strings.Contains(errors, "cannot be combined") {
+		t.Fatalf("json with format: %d %q", status, errors)
 	}
 	_, ascii, _ := invoke(t, "diagram", file)
 	_, mermaid, _ := invoke(t, "diagram", file, "--format", "mermaid")
