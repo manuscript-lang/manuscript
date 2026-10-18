@@ -126,7 +126,10 @@ func (g *gen) operandsAs(items []*syntax.Expression, types []*checker.Type) []as
 	for i, item := range items {
 		mark := len(g.fn.pre)
 		out[i] = g.valueAs(item, types[i])
-		after := effectsOf(out[i])
+		var after effects
+		if len(pending) > 0 {
+			after = effectsOf(out[i])
+		}
 		grew := len(g.fn.pre) > mark
 		var spills []ast.Stmt
 		kept := pending[:0]
@@ -153,7 +156,7 @@ func (g *gen) operandsAs(items []*syntax.Expression, types []*checker.Type) []as
 			pre = append(pre, spills...)
 			g.fn.pre = append(pre, g.fn.pre[mark:]...)
 		}
-		if !trivial(out[i]) {
+		if i+1 < len(items) && !trivial(out[i]) {
 			if id, ok := out[i].(*ast.Ident); !ok || g.fn.mutables[id.Name] {
 				pending = append(pending, i)
 			}
