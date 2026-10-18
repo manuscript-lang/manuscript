@@ -5,7 +5,7 @@ weight = 2
 
 # Development workflow
 
-Run commands from the repository root. The pinned SDK is selected through `.go-version`; Node uses `.node-version`. Initial setup needs Make, curl, tar with xz support, a SHA-256 utility, and Internet access. Install the pinned Node version and Hugo Extended 0.146.7 or newer for editor and book work. A C compiler is required for race checks; Delve is embedded for native debugger integration (macOS requires Xcode command line tools for `debugserver`).
+Run commands from the repository root. `.go-version` pins the SDK and `.node-version` pins Node. Setup needs Make, curl, tar with xz, a SHA-256 utility, and Internet access. Editor and book work need Hugo Extended 0.146.7 or newer. Race checks need a C compiler; macOS debugging needs Xcode command line tools.
 
 ```sh
 make setup
@@ -13,41 +13,46 @@ make doctor
 make verify
 ```
 
-`make setup` installs verified Go and checkout-local pinned linters. `make doctor` reports missing or mismatched prerequisites without downloading anything. `make verify` runs read-only formatting/vet, correctness/simplification/unused-code lint, workflow/shell lint, repository invariants, fast unit tests, checked tutorial examples, source documentation validation, and license freshness. Both `make check` and `make repo-check` reject invalid syntax in any `pkg/stdlib/*.ms` file using the ordinary strict frontend, reporting its filename, line, and column. It does not build native conformance executables. Formatting corrections are explicit through `make fmt`; generated outputs are explicit through `make docs` and `make licenses`.
+- `make setup` installs verified Go and pinned linters; `make doctor` reports missing prerequisites without downloading.
+- `make verify` runs read-only format/vet, lint, workflow/shell lint, repository invariants, fast unit tests, checked tutorial examples, documentation validation, and license freshness. It builds no native conformance executables.
+- `make check` and `make repo-check` reject invalid syntax in any `pkg/stdlib/*.ms` file, reporting file, line, and column.
+- `make fmt`, `make docs`, and `make licenses` write corrections and generated output explicitly.
 
-`make repo-check` also rejects nested matches in repository Manuscript sources, Markdown code fences (`manuscript`, `ms`, or `text`), and Go source strings, including concatenated literals. It includes untracked files that Git does not ignore. Keep examples, implementation, and suggested diagnostic remedies flat; see [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat). A deliberate grammar, checker, lowering, or lint regression may put `# manuscript:allow-nested-match <reason>` immediately before one inner match in a `tests/*.ms` fixture (including subdirectories), or `// manuscript:allow-nested-match <reason>` immediately before a source literal in a Go `_test.go` file. Each allowance applies only to that match or literal; implementation and documentation cannot opt out. Dynamically constructed Go strings still need consumer tests; this guard inspects source syntax rather than executing generators.
+`make repo-check` also rejects nested matches in repository Manuscript sources, Markdown fences (`manuscript`, `ms`, `text`), and Go source strings, including untracked files Git does not ignore. Keep examples and remedies flat; see [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
 
-For the complete native validation:
+- Allowance: a deliberate regression puts `# manuscript:allow-nested-match <reason>` before one inner match in a `tests/*.ms` fixture, or `// manuscript:allow-nested-match <reason>` before a source literal in a Go `_test.go` file.
+- Each allowance covers one match or literal; implementation and documentation cannot opt out.
+- Dynamically built Go strings need consumer tests; the guard reads source only.
+
+Complete native validation:
 
 ```sh
 make verify-full
 ```
 
-This additionally runs coverage/native conformance, race checks, strict/partial parser and compiler fuzzing, strict book/publication checks, and a standalone distribution test. Set `HUGO=/path/to/hugo` when it is not on PATH. `make build` creates the self-contained `ms` executable. All builds embed the native payload; `make setup` and the check targets prepare it. Before invoking Go directly in a fresh checkout, run `make payload`. An unprepared direct build fails at the embed input rather than falling back to a system toolchain.
+It adds coverage, native conformance, race checks, fuzzing, strict book checks, and a standalone distribution test. Set `HUGO=/path/to/hugo` if it is not on PATH. `make build` creates the self-contained `ms`. Run `make payload` before invoking Go directly in a fresh checkout; an unprepared build fails at the embed input rather than using a system toolchain.
 
-Tests that open HTTP/socket listeners need local loopback access. With a read-only home, choose writable `GOCACHE` and `GOPATH`, for example `/tmp/manuscript-go-cache` and `/tmp/manuscript-go`; `STATICCHECK_CACHE` defaults to ignored `.artifacts/staticcheck/`.
 
 ## Conformance and coverage
 
-`make coverage` runs the entire Go suite and native conformance fixtures, with dependency-package instrumentation so runtime calls into `internal/hostos` contribute to coverage. It also executes complete tutorial modules directly from their Markdown source. The profile and HTML report live in `.artifacts/coverage/`; CI uploads one profile set per shard, from the packages that run with coverage (race-checked packages run without it, because instrumentation makes timing-sensitive tests flaky). Separately built native subprocesses are checked by observable expectations; their execution does not increase Go package coverage.
+- `make coverage` runs the Go suite, native conformance fixtures, and complete tutorial modules from Markdown, instrumenting dependency packages. Reports land in `.artifacts/coverage/`. Race-checked packages run without coverage because instrumentation makes timing tests flaky; native subprocesses are judged by observable expectations.
+- The end-to-end suite builds one CLI and reuses it. Accepted fixtures run their test blocks, rejected cases verify diagnostics, and transcripts check evaluation order, cleanup, signals, host operations, and module boundaries. Use `make e2e E2EFLAGS=-count=1` for a fresh run; native subprocesses ignore ambient Go configuration.
+- `make stdlib-check` requires a fixture in `tests/e2e/testdata/stdlib/*.ms` for every public standard module (`make verify` includes it). `make stdlib-test E2EFLAGS=-count=1` executes them; run one with `ms test <fixture>`.
 
-The end-to-end suite builds one CLI with a bounded setup, reuses it, and retains per-case temporary projects and processes. Accepted fixtures execute their test blocks; rejected cases verify diagnostics; transcript cases check evaluation order, cleanup, signals, host operations, and module boundaries. The harness imports the CLI implementation so source changes invalidate Go's test cache. For an explicit fresh native run, use `make e2e E2EFLAGS=-count=1`. Pass test flags through E2EFLAGS. Native subprocesses ignore ambient Go configuration.
+`make stdlib-bench` prints per-case ns/op for `perf-bench/stdlib` (`BENCHREPEATS`, `BENCHFILTER`); add cases in `perf-bench/stdlib/src/*.ms` with `bench(name, ops, body)`. It is a profiling guide, not a gate.
 
-`make stdlib-check` checks the dedicated Manuscript stdlib fixtures and requires a fixture for every public standard module; `make verify` includes it. `make stdlib-test E2EFLAGS=-count=1` builds and executes those test blocks plus expected-fault transcripts. Fixtures live in `tests/e2e/testdata/stdlib/*.ms`; run one with `ms test <fixture>`. Keep expected behavior in the fixtures.
+Complete tutorial fences carry a `manuscript-example` JSON comment giving `test` or `run`, arguments, and expected stdout (more fields in [common tasks](../learn/common-tasks.md)). `make examples-check` checks them without lowering; coverage runs them natively. Run `MANUSCRIPT_EXAMPLES_NATIVE=1 toolchain/go/bin/go test ./tests/examples -count=1` to execute them directly.
 
-`make stdlib-bench` (part of the performance benchmark in `perf-bench/`, separate from the agent benchmark in `agent-bench/`) builds `perf-bench/stdlib` with the checkout's `ms` and prints the median, minimum, and maximum nanoseconds per operation for each standard-library case. Set `BENCHREPEATS` (default 5) and `BENCHFILTER` (a case-name prefix such as `json.`) to narrow a run. Each case lives in `perf-bench/stdlib/src/*.ms` and calls `bench(name, ops, body)`; add a case beside the module it measures. Compare numbers only from the same machine, and treat the suite as a profiling guide, not a pass/fail gate.
 
-Complete tutorial code fences carry a `manuscript-example` JSON comment specifying `test` or `run`, arguments, and expected stdout. `make examples-check` checks them without lowering; coverage executes them. Fragments remain clearly introduced as fragments. Do not maintain another copy of complete examples in test fixtures.
 
-For task recipes, annotations may also supply `stdin`, input `files` (relative path to text), `want_files` (expected file contents), and an expected `exit_code` (0 by default). A local `http` fixture supplies `status` and `body`; use `$HTTP_URL` in `args` for its loopback URL. Additional `cases` run the same compiled program with independent inputs and expectations. Native execution gives each case a temporary working directory and uses no public HTTP service. Run `MANUSCRIPT_EXAMPLES_NATIVE=1 toolchain/go/bin/go test ./tests/examples -count=1` to execute the annotated examples directly. See [common tasks](../learn/common-tasks.md) for success and failure cases.
 
-`make fuzz` exercises strict parsing, editor recovery, and compilation for ten seconds each. Set `FUZZTIME=1m` for longer runs. Preserve reproducible failures and add an observable regression before declaring a failure resolved.
+`make fuzz` fuzzes strict parsing, editor recovery, and compilation for ten seconds each; set `FUZZTIME=1m` for more. Add an observable regression before calling a failure resolved.
 
-`make dist` creates a single-binary archive in `dist/`. `sh scripts/package.sh <os> <arch>` packages Linux, macOS, or Windows for AMD64 or ARM64. `make dist-check` runs a copied binary outside the checkout with empty caches, no Go on PATH, and downloads disabled; compilation, source tools, LSP, debug builds, and profiles must work there. Archives include examples and dependency/SDK notices.
+`make dist` builds a single-binary archive in `dist/`; `sh scripts/package.sh <os> <arch>` targets Linux, macOS, or Windows on AMD64 or ARM64. `make dist-check` runs a copied binary outside the checkout with empty caches, no Go on PATH, and downloads disabled; compilation, source tools, LSP, debug builds, and profiles must work.
 
 ## Preview and publish the book
 
-Author language and contributor guides in `documentation/`; standard-library symbol descriptions live beside declarations in `pkg/stdlib/*.ms`. Site configuration, assets, and the vendored theme live in `website/`. Reference Markdown/JSON comes from checked standard declarations. Keep lexical rules in the shared VS Code grammar at `extensions/vscode/syntaxes/manuscript.tmLanguage.json`.
+Author guides in `documentation/`; standard-library descriptions live above declarations in `pkg/stdlib/*.ms`. Site config, assets, and the vendored theme live in `website/`. Lexical rules live in `extensions/vscode/syntaxes/manuscript.tmLanguage.json`.
 
 ```sh
 make docs
@@ -56,26 +61,28 @@ make book
 hugo --source website server --bind 127.0.0.1 --port 4000 --renderToMemory
 ```
 
-`make docs-check` validates source documentation and description policy without requiring or writing generated Markdown. `make docs` rebuilds the ignored Markdown tree in `.artifacts/docs/`, removing obsolete pages; `make book-check` generates this tree before building. `make book-check` validates strict Markdown links, highlighting, rendered API signatures, downloads, and obsolete routes under a project URL prefix. `make book` writes the production site into ignored `.artifacts/book/`. Generated HTML is not committed. Use `--cleanDestinationDir` so removed modules cannot survive in the published site.
+- `make docs-check` validates source documentation and description policy without writing generated Markdown.
+- `make docs` rebuilds the ignored tree in `.artifacts/docs/`, removing obsolete pages.
+- `make book-check` generates that tree, then validates links, highlighting, API signatures, downloads, and obsolete routes under a project URL prefix.
+- `make book` writes the site to ignored `.artifacts/book/`. Use `--cleanDestinationDir` so removed modules do not survive.
+- `make docs-coverage` writes `.artifacts/stdlib-doc-coverage.json`, inventorying every public declaration and member. The same quality and new-gap gate runs in `make docs` and `make docs-check`: describe behavior, units, defaults, errors, or ownership, not names or signatures.
 
-`make docs-coverage` validates source documentation and writes `.artifacts/stdlib-doc-coverage.json`, an inventory of every generated public declaration and member, including prelude aliases. Counts distinguish description presence from structural quality; an API name or signature is not descriptive prose. The same quality/new-gap gate runs in `make docs` and `make docs-check`: explain observable behavior, units, defaults, errors or ownership rather than adding placeholders or name restatements. Automated quality checks do not prove prose correct or measure a separate tutorial's coverage.
 
-During #176's source-comment sweep, `pkg/tooling/docgen/description_backlog.json` names each existing missing entry explicitly. This list only shrinks: new missing entries and invalid prose fail, and filled/removed entries make the old key stale. The completed sweep leaves it empty. Review contracts against source and native tests alongside the automated checks; no public type/member receives a blanket internal/generated exemption.
 
-The book uses Hugo Extended 0.146.7 in CI and vendored Hugo Book v13, with its license and upstream revision in `website/themes/hugo-book/`. Custom styling lives in `website/assets/_custom.scss`, behavior in `website/assets/docs.js`, and overrides in `website/layouts/`. Keep changes in these files instead of modifying the theme.
-
-The shared `.msversion` supplies the current release labels. For preserved older sites, add version/URL entries in `website/data/docs_versions.toml`. Relative archive URLs respect the site's base URL; archives open their home page so newer routes do not produce broken links. Preserve snapshots separately from the cleaned current build. See [maintenance and compatibility](maintenance.md) for pin and release changes.
+The book uses vendored Hugo Book v13; put styling in `website/assets/_custom.scss`, behavior in `docs.js`, overrides in `website/layouts/`, never the theme. `.msversion` supplies release labels; older sites go in `website/data/docs_versions.toml`. `pkg/tooling/docgen/description_backlog.json` may only shrink. See [maintenance](maintenance.md) for pins and releases.
 
 ## Continuous integration
 
-[CI/CD](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/cicd.yml) runs on PRs, merge groups, and pushes to `main`, avoiding duplicate feature push/PR runs. Superseded PR runs are cancelled; merge-group runs retain per-ref concurrency without cancelling queue builds. All checkouts use the event's `github.sha`, which is the combined commit for a merge group. [Language checks](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/test-language.yml) run in parallel and each unit of work runs once: the Go suite in three shards via `scripts/ci-test.sh` (every test once: in-process packages under the race detector, the rest with coverage); static checks (format, vet, lint, repository rules, licenses), the bundled CLI, fuzzing, and extension/native debugger integration on one checkout and build; and host compatibility on macOS/Windows. Source documentation validation and the book are checked once, by **Build design book**, and standalone distribution checks once per target, by the distribution workflow, whose verifier is cross-built during packaging so native runners need no checkout or Go setup. SDK, module/build, lint tool, and npm caches use their pinned inputs.
+[CI/CD](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/cicd.yml) runs on PRs, merge groups, and pushes to `main`. Superseded PR runs are cancelled; merge-group runs are not. Checkouts use the event's `github.sha`. [Language checks](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/test-language.yml) run in parallel, each unit once:
 
-The [distribution workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/release.yml) packages and verifies all six OS/architecture targets on every PR and merge group, without path filters that could leave required checks pending. Manual runs produce artifacts; matching `v*` tags publish verified archives. For branch protection require **Build design book**, **Language checks / test**, and **Distribution checks** from GitHub Actions. The language and distribution aggregates always report and fail if any dependency fails, is skipped, or is cancelled. Queue checks use `merge_group: checks_requested`; configure the same three required checks for PRs and merge groups before admitting ready work to the queue.
+- The Go suite in three shards via `scripts/ci-test.sh`: in-process packages under race, the rest with coverage.
+- Static checks, the bundled CLI, fuzzing, extension/debugger integration, and macOS/Windows host checks.
 
-The book job uploads the Hugo production output as a Pages artifact after publication checks. After all checks pass on `main`, the deployment job deploys that artifact with the built-in Pages token and OIDC. It needs no permission to push source commits. PRs validate and upload but do not deploy. Keep **Settings → Pages → Source** set to **GitHub Actions**. For custom domains, update the Pages setting and `baseURL` in `website/hugo.toml` together. Confirm a successful deployment separately from a successful merge.
+The [distribution workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/release.yml) packages and verifies all six targets on every PR and merge group, with no path filters. Manual runs produce artifacts; matching `v*` tags publish archives. Require **Build design book**, **Language checks / test**, and **Distribution checks** for PRs and merge groups (queue checks use `merge_group: checks_requested`); the aggregates fail if any dependency fails, is skipped, or is cancelled.
+
 
 ## Generate the standard library reference
 
-`scripts/docgen` reads the checker's registry from pinned `pkg/stdlib/*.ms` source, including intrinsic receiver operations. The API's signatures, generic bounds, fields, cases, and operations have one source authority. Native calling conventions are compared with those declarations in integration tests; frontend initialization does not import the host runtime.
+`scripts/docgen` reads the checker's registry from pinned `pkg/stdlib/*.ms`, so signatures, bounds, fields, cases, and operations have one authority. Integration tests compare native conventions against it.
 
-Generated API references live in `.artifacts/docs/documentation/standard-library/reference/`; Hugo mounts them alongside authored language guides. Standard-library symbol descriptions belong directly above their declarations in `pkg/stdlib/*.ms`. The doc generator reads the declarations and produces Markdown/JSON references and downloads; it does not maintain separate copies of standard-library prose. `website/static/stdlib.md` and `stdlib.json` are generated by `make docs` and `make book-check` and Git ignores them. The JSON schema is versioned and sorted. `website/static/llms.txt` points to the plain-text API. Update source or generators, then run `make docs` and book checks. Never repair freshness by hand-editing generated output.
+Generated references live in `.artifacts/docs/documentation/standard-library/reference/` and are mounted by Hugo. `website/static/stdlib.md` and `stdlib.json` (versioned, sorted schema) are generated and ignored by Git; `website/static/llms.txt` points to the plain-text API. Change source or generators, then run `make docs` and the book checks; never hand-edit generated output.

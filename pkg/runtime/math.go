@@ -17,8 +17,6 @@ func Math_Hypot(_ *Execution, a, b float64) float64     { return math.Hypot(a, b
 func Math_Log(_ *Execution, v float64) float64          { return math.Log(v) }
 func Math_Log10(_ *Execution, v float64) float64        { return math.Log10(v) }
 func Math_Log2(_ *Execution, v float64) float64         { return math.Log2(v) }
-func Math_Max(_ *Execution, a, b float64) float64       { return math.Max(a, b) }
-func Math_Min(_ *Execution, a, b float64) float64       { return math.Min(a, b) }
 func Math_Pi(_ *Execution) float64                      { return math.Pi }
 func Math_Pow(_ *Execution, a, b float64) float64       { return math.Pow(a, b) }
 func Math_Remainder(_ *Execution, a, b float64) float64 { return math.Mod(a, b) }
@@ -54,4 +52,20 @@ func Math_AbsInt(_ *Execution, n int) int {
 		n = -n
 	}
 	return n
+}
+
+// Math_Max returns left unless right orders after it.
+func Math_Max[T any](ctx *Execution, cmp Cmp[T], left, right T) T {
+	if cmp(ctx, left, right) >= 0 {
+		return left
+	}
+	return right
+}
+
+// Math_Min returns left unless right orders before it.
+func Math_Min[T any](ctx *Execution, cmp Cmp[T], left, right T) T {
+	if cmp(ctx, left, right) <= 0 {
+		return left
+	}
+	return right
 }

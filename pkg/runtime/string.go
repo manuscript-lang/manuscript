@@ -295,6 +295,9 @@ func String_FromScalars(ctx *Execution, values *List[int]) Result[string, String
 		if n < 0 || n > utf8.MaxRune || n >= 0xD800 && n <= 0xDFFF {
 			return stringFail[string](StringError_InvalidInput{})
 		}
+		if i == 0 {
+			b.Grow(len(values.Items))
+		}
 		b.WriteRune(rune(n))
 	}
 	return Ok[string, StringError](b.String())

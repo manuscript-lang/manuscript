@@ -36,6 +36,9 @@ func Fail[T, E any](e E) Result[T, E] { return Result[T, E]{Err: e, Failed: true
 // the equality it generated; Go-comparable types use Equals.
 type Eq[T any] = func(*Execution, T, T) bool
 
+// Cmp orders two values: negative, zero or positive.
+type Cmp[T any] = func(*Execution, T, T) int
+
 // Seq is the identity; it marks an operand that must be evaluated before its
 // siblings. Go orders calls, and Seq makes a plain read a call.
 func Seq[T any](v T) T { return v }
@@ -60,6 +63,24 @@ func Panic(_ *Execution, message string) Unit {
 // forwards to the implementation.
 type Equal interface {
 	Equals(*Execution, Equal) bool
+}
+
+// Unview returns the concrete value a contract view wraps, for a native
+// operation whose argument has the receiver's own type.
+func Unview[T any](v any) T {
+	if r, ok := v.(interface{ Receiver() any }); ok {
+		v = r.Receiver()
+	}
+	t, ok := v.(T)
+	if !ok {
+		Raise("operands have different types")
+	}
+	return t
+}
+
+// Comparable orders a value against another in the same domain.
+type Comparable interface {
+	Compare(*Execution, Comparable) int
 }
 
 type Hashable interface {

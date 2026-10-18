@@ -442,7 +442,7 @@ func (c *checker) variableScope(vars []*Type) *scope {
 func (c *checker) typeVariables(params []syntax.TypeParameter) []*Type {
 	var vars []*Type
 	for _, p := range params {
-		if c.names[p.Name] != nil && c.names[p.Name].Module == "" || c.scope.types[p.Name] != nil || p.Name == "Equal" || p.Name == "Hashable" {
+		if c.names[p.Name] != nil && c.names[p.Name].Module == "" || c.scope.types[p.Name] != nil || p.Name == "Equal" || p.Name == "Comparable" || p.Name == "Hashable" {
 			c.error(p.Pos, "resolution", "duplicate or intrinsic type parameter "+p.Name+"; choose a different type parameter name")
 		}
 		v := &Type{Name: p.Name, ID: c.unique("typevar"), Kind: "variable"}

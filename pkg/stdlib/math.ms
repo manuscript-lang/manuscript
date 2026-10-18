@@ -46,11 +46,11 @@ export fn log10(value: Float) -> Float:
 # Returns the base-2 logarithm.
 export fn log2(value: Float) -> Float:
 
-# Returns the greater of two floating-point values.
-export fn max(left: Float, right: Float) -> Float:
+# Returns the greater of two values, or `left` when they compare equal. Float orders NaN above every other value, so a NaN operand makes the result NaN.
+export fn max[T: Comparable](left: T, right: T) -> T:
 
-# Returns the lesser of two floating-point values.
-export fn min(left: Float, right: Float) -> Float:
+# Returns the lesser of two values, or `left` when they compare equal. Float orders NaN above every other value.
+export fn min[T: Comparable](left: T, right: T) -> T:
 
 # Returns π, the ratio of a circle's circumference to its diameter.
 export fn pi() -> Float:

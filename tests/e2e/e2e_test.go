@@ -47,6 +47,10 @@ func TestRejectedFixture(t *testing.T) {
 	result := compiler.CompileFile("testdata/reject/cl-03-2.ms", compiler.Options{})
 	rejected(t, result, "type", "private")
 }
+func TestMaxRequiresComparable(t *testing.T) {
+	result := compiler.CompileFile("testdata/reject/not-comparable.ms", compiler.Options{})
+	rejected(t, result, "type", "Point does not satisfy Comparable")
+}
 func TestStandaloneHasNoRuntimeDependency(t *testing.T) {
 	result := compiler.CompileSource("standalone.ms", "import panic from \"@std/faults.ms\"\n\ntest \"arithmetic\":\n    if not (2 + 3 == 5):\n        return panic(message: \"check failed\")\n", compiler.Options{Tests: true})
 	if !result.Success() {

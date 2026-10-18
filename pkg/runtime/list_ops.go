@@ -1,6 +1,9 @@
 package msruntime
 
-import "strconv"
+import (
+	"strconv"
+	"strings"
+)
 
 // nativeMaxItems is the allocation ceiling of collection factories.
 const nativeMaxItems = 1 << 28
@@ -511,21 +514,7 @@ func List_Join[T any](_ *Execution, l *List[T], separator string) string {
 	if !ok {
 		Raise("runtime invariant: List.join requires List[String]")
 	}
-	n := 0
-	if len(parts) > 0 {
-		n = len(separator) * (len(parts) - 1)
-	}
-	for _, p := range parts {
-		n += len(p)
-	}
-	b := make([]byte, 0, n)
-	for i, p := range parts {
-		if i > 0 {
-			b = append(b, separator...)
-		}
-		b = append(b, p...)
-	}
-	return string(b)
+	return strings.Join(parts, separator)
 }
 
 // List_Append adds value at the end in place.
@@ -552,4 +541,27 @@ func List_Sorted[T any](ctx *Execution, l *List[T], compare func(*Execution, T, 
 		return compare(ctx, a, b) < 0
 	})
 	return &List[T]{Items: out}
+}
+
+// List_Max returns the greatest element, keeping the first of equals.
+func List_Max[T any](ctx *Execution, cmp Cmp[T], l *List[T]) Option[T] {
+	return extreme(ctx, cmp, l, 1)
+}
+
+// List_Min returns the least element, keeping the first of equals.
+func List_Min[T any](ctx *Execution, cmp Cmp[T], l *List[T]) Option[T] {
+	return extreme(ctx, cmp, l, -1)
+}
+
+func extreme[T any](ctx *Execution, cmp Cmp[T], l *List[T], sign int) Option[T] {
+	if len(l.Items) == 0 {
+		return None[T]()
+	}
+	best := l.Items[0]
+	for _, v := range l.Items[1:] {
+		if cmp(ctx, v, best)*sign > 0 {
+			best = v
+		}
+	}
+	return Some(best)
 }

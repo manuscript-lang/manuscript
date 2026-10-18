@@ -5,9 +5,9 @@ weight = 3
 
 # Collections
 
-Use `List[T]` for an ordered sequence, `Map[K, V]` for key/value entries, and `Set[T]` for distinct values. The type arguments state the element, key, and value types. All three collections are mutable references. Assignment retains the same instance; `.clone()` copies its storage.
+Collections are mutable references: assignment shares the instance and `.clone()` copies its storage.
 
-`List`, `Map`, `Set`, and their support types `CollectionError`, `ListEntry[T]`, and `MapEntry[K: Hashable, V]` come from the prelude; explicit standard imports of them are rejected. `Optional`, `Result`, `Error`, `MissingValue`, `Equal`, and `Hashable` are prelude too, so results, callbacks, annotations, and bounds need no imports. Builders and factory functions remain explicit imports. Literals always use these canonical types; see [names and declaration order](../modules/declarations.md#names-and-declaration-order).
+`List`, `Map`, `Set`, `CollectionError`, `ListEntry[T]`, and `MapEntry[K: Hashable, V]` are prelude names (with `Optional`, `Result`, `Error`, `MissingValue`, `Equal`, `Hashable`); importing them is rejected. Builders and factories need imports. See [names and declaration order](../modules/declarations.md#names-and-declaration-order).
 
 | Type | Contents |
 | --- | --- |
@@ -25,9 +25,7 @@ let empty: List[Int] = []
 let also_empty = List[Int]()
 ```
 
-The first literal infers `List[Int]`. An empty literal gets its element type from an annotation or the expected parameter type. Every element must match the list's element type; numeric conversions are explicit. Elements evaluate from left to right, and nested lists remain nested.
-
-A function taking `values: List[Int]` is called as `sum(values: [1, 2, 3])` or with an existing list. See [collections as arguments](../functions/declarations-and-calls.md#collections-as-arguments).
+The first literal infers `List[Int]`; an empty literal needs an annotation or expected type. Every element must match the element type (no implicit numeric conversion) and evaluates left to right. See [collections as arguments](../functions/declarations-and-calls.md#collections-as-arguments).
 
 ## Map literals
 
@@ -38,21 +36,18 @@ let scores = {"Ada": 3, "Lin": 5}
 let empty: Map[String, Int] = {}
 ```
 
-Write each entry as `key: value`, with optional trailing commas. Keys are expressions: `{name: score}` uses the value of `name`, while `{"name": score}` uses a String key. Bare names do not become String keys. Map literals construct Maps, not record instances.
+Entries are `key: value`, trailing commas allowed. Keys are expressions: `{name: score}` uses the value of `name`; `{"name": score}` uses a String. Map literals never construct records.
 
-A nonempty literal infers key and value types independently from its entries. Expected Map types propagate to both keys and values, including nested empty literals. An empty map needs an annotation or expected parameter/return type. Every key and value must match its inferred or expected type; keys must satisfy `Hashable`.
-
-Entries evaluate in written order, key before value, once each. Equal duplicate keys retain their first insertion position and use the last value, just like `add`. Stored values retain references to nested data. Physical newlines inside braces follow ordinary delimiter continuation rules.
+- A nonempty literal infers key and value types independently; an expected Map type propagates to both. An empty map needs an annotation or expected type.
+- Keys must be `Hashable`.
+- Entries evaluate once, in written order, key before value.
+- Duplicate keys keep their first position and last value, like `add`.
 
 ## Element requirements
 
-Collections accept any value type, including functions, contract views, builders, and synchronized services. Map keys and set elements additionally require `Hashable`.
+Collections accept any value type (functions, contract views, builders, services, resources); storing a resource neither keeps it open nor registers cleanup. Map keys and set elements also require `Hashable`. Coordinate shared mutation with `Synchronized`.
 
-Resource and service references may be stored freely. Retaining them does not keep the resource open or register cleanup.
-
-`List[Contract]` stores ordinary contract views. `List[fn(value: Int) -> Int]` stores functions. Both may be passed between tasks without additional bounds. Coordinate shared mutation and reads with `Synchronized`.
-
-Collection applications are invariant. `List[Int]` is not assignable to `List[Float]`; a list inserts neither numeric conversions nor implicit unions of unrelated element types.
+Applications are invariant: `List[Int]` is not a `List[Float]`, and no implicit unions or numeric conversions apply.
 
 ```manuscript
 let nested: List[List[Int]] = [[], [1, 2]]
@@ -62,19 +57,27 @@ let mixed = [1, 2.0]
 let unknown = []
 ```
 
-An expected `List[List[Int]]` propagates to the inner literals. Without context, a nonempty literal infers one element type from independently typed elements and checks every element against it. Context-dependent elements such as `none` cannot invent a payload type; another element or enclosing context must determine it. For example `[none, some(value: 1)]` is `List[Optional[Int]]`, while `[none]` without context is rejected.
-
-Collections can hold [recursive data](records.md#recursive-data). Element bounds still apply, and the containers do not derive hashing.
+An expected type propagates into inner literals. Without one, elements must agree on one type; `none` needs another element or context to fix its payload, so `[none, some(value: 1)]` is `List[Optional[Int]]` and `[none]` is rejected. Collections can hold [recursive data](records.md#recursive-data) but derive no hashing.
 
 ## Iteration
 
-Map and set iteration follows insertion order. A [for loop](../control-flow/loops.md) expresses traversal. Ordering within one traversal does not establish an execution order between concurrent operations.
+Maps and sets iterate in insertion order, with a [for loop](../control-flow/loops.md). Traversal order implies nothing about concurrent operations.
 
 ## Mutation and copies
 
-`append`, `prepend`, `insert`, `set`, `remove`, `splice`, `fill`, `copy_within`, and `reverse_in_place` update a list and return the same instance. `set(index:, value:)` and `remove(index:)` accept negative indexes and fault on invalid ones. `insert(index:, value:)` places a value before `index` (valid range `-length()` through `length()`; `length()` appends). `pop()` removes and returns the last element as `some(value)`, or `none` when empty. `splice(start:, delete_count:, replacement:)` needs `0 <= start <= length()` and `delete_count <= length() - start`, and retains shallow references. Invalid bounds fault without clamping. Append reuses capacity and does not copy the list on each call.
+Mutators update the receiver and return the same instance for chaining.
 
-Map `add`, `remove`, `add_default`, `add_default_from`, `merge`, and `clear` update the receiver. Set `add`, `remove`, and `clear` update the receiver. Map `remove` is a no-op for an absent key and keeps scoped lookup and insertion order. Their return values retain that instance for chaining.
+- List: `append`, `prepend`, `insert`, `set`, `remove`, `splice`, `fill`, `copy_within`, `reverse_in_place`.
+- Map: `add`, `remove`, `add_default`, `add_default_from`, `merge`, `clear`. Removing an absent key is a no-op.
+- Set: `add`, `remove`, `clear`.
+
+List details:
+
+- `set(index:, value:)` and `remove(index:)` accept negative indexes and fault on invalid ones.
+- `insert(index:, value:)` places before `index`, valid from `-length()` to `length()` (which appends).
+- `pop()` returns the last element as `some(value)`, or `none` when empty.
+- `splice(start:, delete_count:, replacement:)` needs `0 <= start <= length()` and `delete_count <= length() - start`.
+- Invalid bounds fault; nothing is clamped.
 
 ```manuscript
 let values = [1, 2]
@@ -84,21 +87,25 @@ values.append(3)
 # alias now contains [1, 2, 3]; copy still contains [1, 2].
 ```
 
-Clones have independent outer storage and retain nested references. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra construct new results. List `reversed()` returns a reversed shallow copy with independent outer storage. Bytes `reversed()` also returns a copy. Text and Bytes retain their existing nonmutating operations.
+Clones copy outer storage and keep nested references. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra return new shallow copies (Bytes `reversed()` too).
 
-List `slice` returns `Result[List[T], CollectionError]` and uses strict element bounds after resolving negative bounds relative to the end: `0 <= start <= end <= length()`. Invalid bounds return `CollectionError.OutOfRange`. Successful slices copy outer storage and retain nested references. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices) for the distinct String, List, and Bytes contracts.
+List `slice` returns `Result[List[T], CollectionError]` with strict bounds `0 <= start <= end <= length()` after resolving negative bounds from the end; otherwise `CollectionError.OutOfRange`. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices).
 
-A List `for` loop or callback traversal evaluates its backing slice and initial length once, without copying or freezing elements. In-place writes can change values read later in that traversal. Append never extends the current traversal. If a mutation reallocates storage, the running traversal keeps its original backing array; shrinking or shifting storage does not reduce its captured length. Use an explicit `.clone()` before traversal when stable, separate outer storage is needed. Nested elements retain their references.
+A List `for` loop or callback captures its backing slice and initial length once, with no copy:
 
-List removal and shrinking replacement shift elements and shorten the receiver's slice without overwriting the vacated tail. A captured traversal can therefore read shifted or repeated prior values. Replacing all elements with an empty list only shortens that slice; later appends can overwrite the same backing storage. Removed references can remain retained in spare capacity until overwritten, reallocated, or released along with the backing array. An explicit `fill` or `copy_within` writes backing elements and can affect later visits.
+- In-place writes can change values read later in the traversal.
+- Append never extends it; reallocation leaves it on the original array.
+- Removal and shrinking shift elements without clearing the tail, so a running traversal may see shifted or repeated values, and removed references can linger in spare capacity.
+- `fill` and `copy_within` write the backing and can affect later visits.
+- `.clone()` first when you need stable storage.
 
-Map and Set loops and callbacks retain their membership snapshot contract: additions, removals and replacements do not change that traversal. Protect shared mutation and concurrent reads with `Synchronized`; every alias must use the same lock.
+Map and Set loops and callbacks traverse a membership snapshot, so additions, removals, and replacements during the traversal are not seen. Guard shared mutation with `Synchronized`, using one lock for every alias.
 
 ### Naming and migration
 
-Use verbs for mutable updates and explicit `.clone()` when a separate mutable result is wanted. `concat`, `filter`, `sorted`, `reversed` and other existing transforms keep their copying contracts; a verb alone does not promise mutation on immutable String or Bytes values. Bytes `with_value` copies byte storage, while Bytes `slice` and `split` may retain immutable views.
+Verbs mutate; use `.clone()` for a separate result. Transforms such as `concat`, `filter`, `sorted`, and `reversed` copy. Bytes `with_value` copies, while Bytes `slice` and `split` may retain immutable views.
 
-The older spellings below were removed because several sounded like copies but mutated their receiver. Replace direct calls and stored method references using this table; argument labels and callable return types stay the same.
+These removed spellings looked like copies but mutated. Labels and return types are unchanged.
 
 | Receiver | Removed spelling | Use | Result |
 | --- | --- | --- | --- |
@@ -110,26 +117,15 @@ The older spellings below were removed because several sounded like copies but m
 | SetBuilder | `with_value` | `add` | Unit |
 | Bytes | `reverse` | `reversed` | Copy of byte storage |
 
-Map `add_default` evaluates its value argument normally and inserts only when absent. `add_default_from` calls `create(key:)` once only when absent. Neither replaces an existing value or its insertion position. For a copy, write `map.clone().add_default(...)` explicitly.
+Map `add_default` evaluates its argument and inserts only when absent; `add_default_from` calls `create(key:)` once, only when absent. Neither replaces an existing value or position. Copy first with `map.clone().add_default(...)`.
 
-All builder mutations return Unit; `freeze` returns the sealed result. This convention applies to List, Map, Set, Bytes and String builders and preserves their existing function types.
+Builder mutations return Unit; `freeze` returns the sealed result.
 
 ## Primitive storage and memory
 
-Primitive List backing stores each reserved `Int` or `Float` element in 8 bytes,
-each `Bool` in 1 byte, and each `String` reference in 16 bytes on a 64-bit host.
-String text storage is additional and may be shared. A List also has a small
-constant header. Append reserves spare capacity and growth can temporarily keep
-old arrays alive, so retained heap and peak process RSS exceed the element budget.
-Int remains the platform-sized signed integer and Float remains binary64; storage does not narrow values.
+On a 64-bit host a List reserves 8 bytes per `Int` or `Float`, 1 per `Bool`, and 16 per `String` reference (text storage is extra and may be shared), plus a small header. Append reserves spare capacity and growth can briefly keep old arrays alive, so heap and peak RSS exceed the element budget. Storage never narrows `Int` or `Float`.
 
-Passing a List through a generic function, record, Optional, Result, closure, or
-stored operation preserves its mutable identity and backing kind. Generic
-applications retain concrete element types in generated Go. Explicit copies
-preserve shallow references and receive independent backing.
-
-See [Go representation](../../contributing/go-lowering-representation.md) for Go callers
-and the measured constructor/access/comparator paths.
+A List keeps its identity and backing kind through generics, records, Optional, Result, and closures; explicit copies get independent backing. See [Go representation](../../contributing/go-lowering-representation.md).
 
 ## Lookup and updates
 
@@ -163,11 +159,11 @@ and the measured constructor/access/comparator paths.
 | `Set[T]` | `find_last` uses the same predicate and payload result, searching from the end |
 | `Set[T]` | `some(predicate: fn(value: T) -> Bool) -> Bool`; `every` uses the same predicate |
 
-All element and key bounds still apply. An empty List, Map, or Set constructor needs explicit type arguments or a complete expected application, and each call creates fresh storage. `values[index]` equals `values.at(index)`: an `Optional[T]` that accepts negative indexes and is `none` out of range, so `values[0].unwrap_or(0)` needs no length check. The checker narrows a lookup to `T` only when it proves the index in range ([Proven indexes](#proven-indexes)). Bytes `.at` behaves the same. A size above the platform's maximum `Int` faults.
+An empty constructor needs explicit type arguments or a complete expected application, and creates fresh storage. `values[index]` equals `values.at(index)`: an `Optional[T]` accepting negative indexes, `none` out of range, so `values[0].unwrap_or(0)` needs no length check. It narrows to `T` only when the index is proven ([Proven indexes](#proven-indexes)). Bytes `.at` is the same. A size above the maximum `Int` faults.
 
 ### Proven indexes
 
-A bracket lookup `values[index]` has type `T`, not `Optional[T]`, when the checker proves the access in range from a call-free guard on the same local bindings:
+`values[index]` has type `T` when a call-free guard on the same local bindings proves it in range:
 
 ```manuscript
 fn weighted(values: List[Int], index: Int) -> Int:
@@ -187,17 +183,19 @@ fn total(values: List[Int]) -> Int:
     return sum
 ```
 
-Both bounds are required. The lower bound comes from `index >= 0` (or an equivalent comparison), or from an `Int` that starts at a written nonnegative literal and is only reassigned nonnegative literals or `itself + literal`. The upper bound comes from `index < values.length()` on the same `List` binding. A literal index `n` needs `values.length() > n` (or `>= n + 1`). Guards combine with `and`, with `or` in a negated early exit, in the right operand of `and`/`or`, in `if`/`else` branches, and in `while` conditions.
+Both bounds are required.
 
-A proof ends at an assignment to the index or list binding, at a statement containing any call other than `length()` (the call may mutate an alias), and at a closure boundary. A lookup in a statement with a call that does not enclose it stays optional. The proof does not cover other lists, copied lengths, a length from another binding, or arithmetic indexes such as `row * cols + col`. Equivalent `.at(index)` calls remain `Optional[T]`.
+- Lower: `index >= 0` (or equivalent), or an `Int` that starts at a nonnegative literal and is reassigned only nonnegative literals or `itself + literal`.
+- Upper: `index < values.length()` on the same `List` binding. A literal `n` needs `values.length() > n`.
+- Guards combine via `and`, `or` in a negated early exit, `if`/`else` branches, and `while` conditions.
 
-Narrowing only changes the type. The generated read still checks the index, so a list resized by a concurrent task after the guard faults like `unwrap()` on `none` and never reads out of range. A `List[Optional[T]]` lookup narrows to `Optional[T]`, without flattening the element. Where an `Optional[T]` is expected, such as an annotated binding, an argument, or a return, a proven lookup keeps its `Optional[T]` form and `Optional[T]` is what it produces, so the same source checks with or without the guard.
+A proof ends at an assignment to the index or list, at any call other than `length()` in the statement (it may mutate an alias), and at a closure boundary. It does not cover other lists, copied lengths, or arithmetic indexes like `row * cols + col`. `.at(index)` stays `Optional[T]`.
 
-`Map.add(key, value)` inserts or replaces a value and returns the same map.
+Narrowing changes only the type; the read still checks the index, so a list resized concurrently faults like `unwrap()` on `none`. A `List[Optional[T]]` lookup narrows to `Optional[T]` unflattened, and where an `Optional[T]` is expected it keeps that form, so code checks with or without the guard.
 
-Maps and sets traverse in insertion order. Replacing an equal map key retains its original key value and first insertion position; adding an existing set element retains its original value and position. Removing an absent key/element is a value-preserving operation. Removing and then adding places the new entry at the end. Equality remains independent of insertion order. Use builders for construction with a sealed result.
+`Map.add(key, value)` inserts or replaces and returns the same map. Replacing an equal map key keeps its original key and position; adding an existing set element changes nothing. Remove then add moves the entry to the end. Equality ignores insertion order. Use builders for construction with a sealed result.
 
-Map `get`, `contains`, and `add` and Set `contains` and `add` look keys up by hash, so they take constant time on average for built-in keys and for records whose fields hash. Map and Set `remove` keep insertion order by shifting later entries in memory, without re-indexing them, so removal costs a fast copy proportional to the collection size rather than a re-hash. List `contains` and `index_of` compare elements one by one. A key that is mutated in place while stored becomes unreachable by its old and new values; remove it before mutating it, or store a `.clone()`. See [key consistency](equality-and-hashing.md#key-consistency).
+Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (constant time on average). Map and Set `remove` keep order by shifting later entries, costing a fast copy proportional to size. List `contains` and `index_of` scan. A key mutated while stored becomes unreachable; remove it first or store a `.clone()` ([key consistency](equality-and-hashing.md#key-consistency)).
 
 ### Search and enumeration
 
@@ -213,9 +211,9 @@ Map `get`, `contains`, and `add` and Set `contains` and `add` look keys up by ha
 | List/Set `for_each(operation:)` | Calls `operation(value:)` sequentially for each value; returns Unit. |
 | Map `for_each(operation:)` | Calls `operation(key:, value:)` sequentially for each entry; returns Unit. |
 
-Enumeration copies outer storage and retains nested references. List callbacks use the captured backing slice described above; Map and Set callbacks use membership snapshots.
+Enumeration copies outer storage and keeps nested references. List callbacks use the captured slice above; Map and Set callbacks use snapshots.
 
-Set `union`, `intersection`, `difference`, and `symmetric_difference` return new sets. Symmetric difference contains values present in exactly one operand. `is_subset_of` tests whether all receiver values occur in the right operand, `is_superset_of` tests the converse, and `is_disjoint_from` tests whether there are no common values. The empty set is a subset of every set and is disjoint from every set. These operations leave both operands unchanged.
+Set `union`, `intersection`, `difference`, and `symmetric_difference` (values in exactly one operand) return new sets and leave both operands unchanged. `is_subset_of`, `is_superset_of`, and `is_disjoint_from` test the obvious relations; the empty set is a subset of, and disjoint from, every set.
 
 ```manuscript
 import panic from "@std/faults.ms"
@@ -225,32 +223,28 @@ fn positives(values: List[Int]) -> List[Int]:
     var result: List[Int] = []
     for value in values:
         if value > 0:
-            result = result.append(value: value)
+            result = result.append(value)
     return result
 
 test "dynamic mutable data and explicit copies":
-    if not (positives(values: [3, -1, 2]) == [3, 2]):
-        return panic(message: "check failed")
+    if not (positives([3, -1, 2]) == [3, 2]):
+        return panic("check failed")
     let absent: Optional[Int] = none
-    if not ([1].at(index: 5) == absent):
-        return panic(message: "check failed")
-    let original = Map[String, Int]().add(key: "a", value: 1)
-    let updated = original.clone().add(key: "b", value: 2).add(key: "a", value: 3)
-    if not (original.get(key: "a") == some(1)):
-        return panic(message: "check failed")
-    if not (updated.get(key: "a") == some(3)):
-        return panic(message: "check failed")
+    if not ([1].at(5) == absent):
+        return panic("check failed")
+    let original = Map[String, Int]().add("a", 1)
+    let updated = original.clone().add("b", 2).add("a", 3)
+    if not (original.get("a") == some(1)):
+        return panic("check failed")
+    if not (updated.get("a") == some(3)):
+        return panic("check failed")
 ```
 
-Map `get_or` evaluates its fallback as an ordinary argument and never inserts an absent key. Map and Set `filter` return fresh outer storage in insertion order while retaining key and payload references. Their predicates visit a snapshot, so additions, removals, replacements, and clearing during a callback do not change which entries it receives. An empty result still has independent storage.
-
-Set `map` also visits a snapshot and returns a fresh set. Its output type must satisfy `Hashable`; equal mapped results retain the first payload and its insertion position. Deduplication uses the output type's scoped Equal/Hashable implementations, including in generic calls and stored methods. Callbacks run sequentially in the caller's execution context; faults and cancellation stop the traversal normally.
+Map `get_or` evaluates its fallback eagerly and never inserts. Map and Set `filter` return fresh storage in insertion order, keeping references; predicates see a snapshot. Set `map` also uses a snapshot and returns a fresh set whose output type must be `Hashable`; equal results keep the first payload and position. Callbacks run sequentially in the caller's context; faults and cancellation stop the traversal.
 
 ## Transforming Map keys and values
 
-`map` transforms each value while retaining the original key. `map_keys` transforms each key while retaining the original value; its output keys require Hashable. Both callbacks receive `key` and `value`, visit an insertion-order membership snapshot, and return fresh outer Map storage with shallow payload references. Callback mutation does not change which source entries or value references are visited.
-
-Equal transformed keys retain the first transformed key reference and insertion position, while later input entries replace its value, matching ordinary Map insertion. Key deduplication uses the output type's scoped Equal/Hashable evidence, including generic forwarding and stored specialized methods. Callback faults and cancellation propagate normally. Value transforms do not flatten Optional or Result values and do not require output values to be Hashable.
+`map` transforms values and keeps keys; `map_keys` transforms keys (outputs must be `Hashable`) and keeps values. Callbacks receive `key` and `value`, visit a snapshot, and return fresh Map storage with shallow references. Equal transformed keys keep the first key and position, and later entries replace the value, as in ordinary insertion. Optional and Result values are not flattened, and output values need not be `Hashable`.
 
 ```manuscript
 fn increment_scores(scores: Map[String, Int]) -> Map[String, Int]:
@@ -259,18 +253,12 @@ fn increment_scores(scores: Map[String, Int]) -> Map[String, Int]:
 
 ## Reducing and querying
 
-Map and Set `fold` visit a snapshot in insertion order. The callback receives the current accumulator, then the entry key/value or set element, and returns the next accumulator with the same type `A`. An empty receiver returns the original initial value without calling the step. Accumulators and payloads retain their references.
+All of these visit a snapshot taken before the first callback, so callback mutation or clearing does not change what is visited.
 
-`fold_right` uses the same callback and accumulator contract in reverse insertion order. It starts with the final inserted entry/element and moves toward the first. Empty receivers return the original initial value without invoking callbacks.
-
-`find` stops at the first true predicate. Set returns the original element; Map returns a fresh MapEntry record with the original key/value references, matching `entries()`. Replacing that record's fields does not update the Map. No match, including an empty receiver, returns none.
-
-`find_last` visits the snapshot in reverse insertion order and stops at the first true predicate from the end. It retains the same Optional and shallow payload/entry contracts as `find`; a nonmatching search visits the complete snapshot in reverse.
-
-`some` stops at the first true predicate; `every` stops at the first false predicate. Empty receivers return false for some and true for every without invoking callbacks. All four methods snapshot membership before callbacks, retaining shallow references even if the callback updates or clears the receiver. They preserve normal cancellation, faults, and scoped generic implementation evidence.
+- `fold` goes in insertion order; the step takes the accumulator, then the key/value or element, and returns the next accumulator of type `A`. An empty receiver returns the initial value. `fold_right` goes in reverse.
+- `find` stops at the first true predicate: a Set returns the element, a Map a fresh `MapEntry` (as in `entries()`; editing it does not update the Map). No match returns `none`. `find_last` searches from the end.
+- `some` stops at the first true predicate and `every` at the first false one. Empty receivers give false and true without calling the predicate.
 
 ## Building data
 
-The [collection reference](../../standard-library/reference/collections.md) lists all methods and constructors. Builders provide construction with sealed builder results.
-
-See [generics and bounds](generics.md) for type arguments and [equality and hashing](equality-and-hashing.md) for key eligibility.
+The [collection reference](../../standard-library/reference/collections.md) lists all methods and constructors. Builders construct with a sealed result. See [generics and bounds](generics.md) and [equality and hashing](equality-and-hashing.md) for key eligibility.

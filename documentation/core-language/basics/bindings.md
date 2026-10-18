@@ -5,7 +5,7 @@ weight = 2
 
 # Variables and scope
 
-A binding gives a name to a value. Choose `let` when the name should keep its value and `var` when you need to assign a replacement.
+`let` bindings cannot be reassigned; `var` bindings can.
 
 ```manuscript
 let count: Int = 3
@@ -13,17 +13,13 @@ var remaining = count
 remaining -= 1
 ```
 
-`let` prohibits reassignment; `var` permits it. In this example, `count` remains 3 and `remaining` becomes 2.
-
 ## Local type inference
 
-Function parameters and return types are explicit; local annotations are optional. The initializer `3` infers `Int`, so `let count = 3` and `let count: Int = 3` select the same type. A constructor can also provide the information needed to infer a local type.
-
-The following continues the `Customer` and `welcome` declarations in [source structure and syntax](syntax.md):
+Parameters and return types are explicit; local annotations are optional. `let count = 3` and `let count: Int = 3` are the same. Constructors also infer types. This continues the `Customer` and `welcome` declarations in [source files](syntax.md):
 
 ```manuscript
 let customer = Customer(name: "Ada", active: true)
-let greeting = welcome(customer: customer)
+let greeting = welcome(customer)
 let count: Int = 3
 var remaining = count
 remaining -= 1
@@ -31,24 +27,22 @@ remaining -= 1
 
 ## Destructuring
 
-Bindings can unpack positional elements or named fields:
+Unpack positions or named fields:
 
 ```manuscript
 let [first_name, second_name] = names
 let {name, email: customer_email} = customer
 ```
 
-Use `[...]` for positions and `{field: local}` to rename a record field. Patterns also support field shorthand and nesting. Parenthesized positional bindings are not supported. See [destructuring bindings](../types/destructuring.md) for static shape checks and list behavior.
+`[...]` binds positions; `{field: local}` renames a record field. Field shorthand and nesting work; parenthesized positional bindings do not. See [destructuring bindings](../types/destructuring.md).
 
 ## Scope and shadowing
 
-A scope is the part of a program where a name is visible. You cannot declare the same local name twice in one scope. A nested block may declare its own name that hides an outer one; this is called shadowing. Assigning to a `var` updates an existing binding, while declaring a name inside a nested block creates a separate binding.
-
-Every local declaration needs an initial value. The new name becomes visible only after that initializer is checked, so a declaration cannot use its own new name to compute the initial value. If an outer scope already has the same name, the initializer can still use that outer binding. Local names become available in source order; module declaration signatures can refer forward to later declarations.
-
-A var keeps the type chosen by its annotation or initializer. Later values must fit that same type. Assigning a Float to an Int var does not change the var's type or create a union.
-
-Assignment targets an existing `var` binding or a record field, such as `customer.name`. Record fields may be assigned through `let` bindings, parameters, and `self`. You cannot reassign parameters, `let` bindings, destructuring patterns, or collection positions with assignment syntax; collection methods update their contents.
+- A local name cannot be declared twice in one scope. A nested block may declare the same name, which shadows the outer one.
+- Every local needs an initial value. The name is visible only after its initializer, so the initializer may use an outer binding of the same name.
+- Locals are visible in source order; module declaration signatures may refer forward.
+- A `var` keeps the type from its annotation or initializer; later values must fit it.
+- Assignment targets a `var` or a record field such as `customer.name`, including through `let` bindings, parameters, and `self`. Parameters, `let` bindings, destructured names, and collection positions cannot be reassigned; collection methods update contents.
 
 ```manuscript
 fn example() -> Unit:
@@ -57,12 +51,12 @@ fn example() -> Unit:
     remaining = 2.0  # Rejected: Float cannot replace Int.
 ```
 
-`+=`, `-=`, `*=`, `/=`, and `%=` update a `var` or a record field from its current value: `remaining -= 1` means `remaining = remaining - 1`, and `customer.visits += 1` updates the field. The right side is one operand (`total -= a - b` subtracts the difference), and the usual operator typing applies, so `+=` also appends text. See the [statement grammar](grammar.md#statements-and-patterns).
+`+=`, `-=`, `*=`, `/=`, and `%=` update a `var` or record field: `remaining -= 1` means `remaining = remaining - 1`. The right side is one operand (`total -= a - b` subtracts the difference), and `+=` also appends text. See the [statement grammar](grammar.md#statements-and-patterns).
 
-Only a simple name binding accepts a type annotation. Destructuring patterns infer each local from the checked initializer; elisions, rest/default patterns, destructuring assignment, and pattern annotations are rejected. See [type compatibility](../types/compatibility.md) for contextual constructor inference.
+Only a simple name accepts a type annotation. Destructuring infers each local; elisions, rest/default patterns, destructuring assignment, and pattern annotations are rejected. See [type compatibility](../types/compatibility.md).
 
 ## Reassignment and references
 
-Binding mutability and object mutation are separate. A `var` holding a [record](../types/records.md) can receive another record. Both `let` and `var` bindings permit updating that record's fields. Assignment of a record or collection retains the same instance; `.clone()` creates a separate shallow copy.
+Binding mutability and object mutation are separate: a `let` record still allows field updates. Assigning a record or collection keeps the same instance; `.clone()` makes a shallow copy.
 
-Assignment replaces the value of the binding; it does not close the previous resource or invalidate aliases. `with` registers a fixed resource for cleanup and uses an immutable binding. See [mutation and references](../types/references.md).
+Assignment does not close the previous resource or invalidate aliases. `with` registers a fixed resource for cleanup using an immutable binding. See [mutation and references](../types/references.md).

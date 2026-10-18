@@ -5,7 +5,7 @@ weight = 1
 
 # Formatting
 
-The source file defines the program. The formatter gives it a consistent layout, and tools can regenerate diagrams and explanations from it.
+The formatter gives source one consistent layout.
 
 ## Format files or a project
 
@@ -18,34 +18,24 @@ ms fmt src test.ms
 ms fmt src/*.ms --check
 ```
 
-Formatting writes each valid file in place, preserving its permissions. `--check` writes nothing, lists every file needing formatting in path order, and returns 1 if any file needs changes or any target fails. Invalid source produces diagnostics and is left unchanged; other selected files are still processed.
-
-A manifest selects its entry, every `.ms` file below its configured source directory, and project `test.ms`/`*_test.ms` files. A directory recursively selects all `.ms` files. Both use the same discovery exclusions as project checking: hidden, `vendor`, and `node_modules` directories are skipped, and directory symlinks are not followed. Discovered file symlinks must stay within the selected root. Explicit file arguments can select excluded files; overlapping selections are formatted only once. An empty directory succeeds without output.
-
-Explicit and discovered files use the same canonical display path: relative to
-the invocation directory when inside it, otherwise absolute. `--check --json`
-emits ordered file statuses and diagnostics, including a valid empty result.
-See the [versioned JSON contract](../implementation.md#machine-readable-checks-and-tests).
+- Files are rewritten in place, keeping permissions. Invalid source gets diagnostics and is left unchanged; other files still format.
+- `--check` writes nothing, lists every file needing changes in path order, and returns 1 if any file needs changes or fails.
+- A manifest selects its entry, every `.ms` file below `source`, and `test.ms`/`*_test.ms`. A directory selects all `.ms` files recursively.
+- Discovery skips hidden, `vendor`, and `node_modules` directories and directory symlinks; file symlinks must stay in the root. Explicit files can select excluded paths. Overlaps format once; an empty directory succeeds.
+- Paths display relative to the invocation directory when inside it, otherwise absolute. See the [JSON contract](../implementation.md#machine-readable-checks-and-tests).
 
 ## Formatter contract
 
-Formatting preserves program meaning and comments. It uses four-space indentation and LF line endings with a final newline. Formatting twice produces the same text; this property is called idempotence.
+Formatting preserves meaning and comments, uses four-space indentation and LF endings with a final newline, and is idempotent. Rules:
 
-The current formatter applies these layout rules:
+- Keep token spellings; wrap only past 88 columns. Groups that fit stay on one line; wrapped lists pack simple elements into rows.
+- Keep single-step blocks beside adjacent work; separate substantial blocks and guards with blank lines. Authored blank lines are discarded.
+- Keep match arms together.
+- One space around operators and after colons and commas; none next to delimiters; two before inline comments.
+- Keep comment text, drop trailing whitespace, round comment-only indentation down to a multiple of four.
 
-- Keep token spellings; wrap expressions only when they exceed a soft limit of 88 columns; groups that fit stay on one line.
-- Keep imports, maps, lists, and callback signatures compact when they fit. Pack simple list elements into width-limited rows when they wrap.
-- Keep single-step blocks beside adjacent work; separate substantial blocks and guard sections with blank lines. Keep match arms together.
-- Put one space around operators and after argument/type colons and commas.
-- Remove spaces next to delimiters and put two spaces before inline comments.
-- Discard authored blank lines and insert paragraph breaks at structural boundaries.
-- Keep comment text but remove trailing whitespace.
-- Round comment-only indentation down to a multiple of four.
-
-See the [complete layout rules](../implementation.md#linting-and-formatting) for continuation groups and paragraph boundaries. Golden-output and syntax-equivalence tests verify these choices. A valid rewrite replaces the file through an atomic rename in the same directory.
+See the [complete layout rules](../implementation.md#linting-and-formatting). Rewrites are atomic renames in the same directory.
 
 ## Generated explanations
 
-Compilation and task creation never invoke AI implicitly. Model output enters through an explicit capability call and validation. A generated explanation cannot change compilation behavior or replace a source edit.
-
-See [source layout](../../core-language/basics/syntax.md) and capability inputs.
+Compilation never invokes AI implicitly. Model output enters only through an explicit capability call and validation, and cannot change compilation or replace a source edit. See [source layout](../../core-language/basics/syntax.md).

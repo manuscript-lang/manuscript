@@ -5,8 +5,7 @@ weight = 5
 
 # Developer tools
 
-Use one `ms` toolchain from your first source check to a standalone executable.
-Choose the next step for your workflow:
+One `ms` toolchain takes you from source check to standalone executable.
 
 | You want to… | Read |
 | --- | --- |
@@ -18,8 +17,5 @@ Choose the next step for your workflow:
 | Inspect code with an agent | [Commands for agents](implementation.md#commands-for-agents) |
 | Build an executable or choose an optimization level | [Build levels](builds/build-levels.md) |
 | Step through a running program | [Debugging](debugging/_index.md) |
-| Record build inputs or understand a cache | [Reproducibility](builds/reproducibility.md) and [build caches](builds/incremental-compilation.md) |
+| Understand a build cache | [Build caches](builds/incremental-compilation.md) |
 
-Source inspection and diagrams use the compiler's checked program. Profiles
-and traces show what happened during execution. See
-[commands and editor setup](implementation.md) for both workflows.

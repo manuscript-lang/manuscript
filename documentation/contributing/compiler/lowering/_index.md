@@ -5,45 +5,49 @@ weight = 2
 
 # Go lowering
 
-Lowering translates checked Manuscript into Go. The generated code must preserve evaluation order, closure captures, concurrency, and block-level cleanup. These pages describe how the compiler carries those guarantees across the translation.
+Lowering translates checked Manuscript into Go while preserving evaluation order, closure captures, concurrency, and block-level cleanup.
 
 ## Typed Go
 
-Every Manuscript type lowers to exactly one Go type, so a Go compiler sees the program a person would write by hand: `Int` is Go `int`, a record is a pointer to a struct, a `List[T]` is `*rt.List[T]`, a function is `func(*rt.Execution, A...) R`. There is no universal value type, no boxing, and no `any` in a generated signature. [Go representation](../../go-lowering-representation.md) states the reference-or-value rule; this page covers how the lowerer keeps the guarantees Go does not.
+Every Manuscript type lowers to exactly one Go type, so the Go compiler sees hand-written-style code: `Int` is `int`, a record is a struct pointer, `List[T]` is `*rt.List[T]`, a function is `func(*rt.Execution, A...) R`. There is no universal value type, boxing, or `any` in generated signatures. [Go representation](../../go-lowering-representation.md) states the reference-or-value rule.
 
-`pkg/lower` consumes checked identities and returns Go `ast` nodes: expressions, ordered statement lists, declarations, and a whole `ast.File`. It never parses generated snippets. One printer boundary (`print_go.go`) formats the tree once and then materializes source directives. The runtime, `pkg/runtime`, is imported as `rt`; `Standalone` merges it into one file for `ms emit`.
-
-Lowering works in independent [units](../../go-lowering-units.md), one per function instance, so it scales with cores and a change stays local.
+- `pkg/lower` consumes checked identities and returns Go `ast` nodes (expressions, statement lists, declarations, a whole `ast.File`). It never parses generated snippets.
+- One printer boundary (`print_go.go`) formats the tree once and materializes source directives.
+- The runtime, `pkg/runtime`, is imported as `rt`; `Standalone` merges it into one file for `ms emit`.
+- Lowering runs in independent [units](../../go-lowering-units.md), one per function instance.
 
 ## Source locations and fault frames
 
-Go statements have no attached-comment slot, so each located statement carries a private label. The printer replaces the label with a column-one `//line` directive and checks that every marker printed exactly once. A statement that prints over several Go lines repeats its directive in `/*line*/` form on lines that can hold a call. Every generated top-level declaration starts with `//line generated.go:1`, so helper functions and runtime glue never inherit a source line.
-
-Source functions carry no per-call bookkeeping. A fault captures its frames once, where it is raised, from the Go stack: `RegisterSource` and `rt.Named` map each generated function to its source name (a test shows as `test <name>`, a lambda as `<anonymous>`), and the directives supply file and line. Each lambda expression owns a package-level `rt.Site`, so naming costs one atomic load after the first evaluation. Only functions in a recursive call cycle call `Enter`/`Exit` to count depth; the limit and cancellation are sampled every 256th entry.
+- Each located Go statement carries a private label. The printer swaps it for a column-one `//line` directive and checks each marker prints exactly once. Multi-line statements repeat it in `/*line*/` form where a call can sit, and every top-level declaration starts with `//line generated.go:1` so glue never inherits a source line.
+- Source functions carry no per-call bookkeeping. A fault captures frames once, where raised, from the Go stack: `RegisterSource` and `rt.Named` map functions to source names (`test <name>`, `<anonymous>`) and directives supply file and line. Each lambda owns a package-level `rt.Site`.
+- Only functions in a recursive cycle call `Enter`/`Exit`; depth limit and cancellation are sampled every 256th entry.
 
 ## Defaults belong to the callee
 
-A parameter that declares a default is an `rt.Arg[T]{Val, Set}` in the Go signature of source functions, lambdas, methods, and function types. The callee's prologue binds the supplied value or evaluates the default in its own scope, so a default may read earlier parameters and `try` returns from the callee. Call sites pass `rt.Given(v)` or `rt.Arg[T]{}`. Native functions, record constructors, and standard (runtime) contracts keep plain parameters; the call site evaluates their defaults. A function value whose defaulted parameters differ from the type it is used as is adapted with a small wrapper (`convertFunction`). Field defaults of a generic record are lowered at the construction site with the record's type arguments substituted.
+- A defaulted parameter is `rt.Arg[T]{Val, Set}` in source functions, lambdas, methods, and function types. The callee prologue binds the value or evaluates the default in its own scope, so defaults can read earlier parameters and `try` returns from the callee. Calls pass `rt.Given(v)` or `rt.Arg[T]{}`.
+- Native functions, record constructors, and runtime contracts keep plain parameters; call sites evaluate their defaults.
+- A function value with differing defaults is adapted by a wrapper (`convertFunction`). Generic record field defaults lower at the construction site with type arguments substituted.
 
 ## Equality and keys
 
-Types whose Go equality is their Manuscript equality (scalars, strings, `Duration`, `Timestamp`, handles, `Unit`) compare with `==` and key a `Map` or `Set` directly. Everything else gets generated helpers: `equal_T`, `format_T`, and `key_T`, a projection to a comparable `[N]any` array. An explicit `impl Equal` or `Hashable` is honored through `rt.CustomKeys(hash, equal)`, whose closures capture the constructing execution.
-
-A `Map` or `Set` is built with an `*rt.Keys[K]` and keeps it for its lifetime, so **a collection matches keys with the equality of the module that created it**; a bound operation obtained from another module does not change that. Structural equality of data that can reach itself is guarded by `rt.EnterEqual`/`LeaveEqual` so cyclic values terminate.
+- Types whose Go equality is Manuscript equality (scalars, strings, `Duration`, `Timestamp`, handles, `Unit`) use `==` and key a `Map` or `Set` directly.
+- Everything else gets generated `equal_T`, `format_T`, and `key_T` (a projection to a comparable `[N]any`). Explicit `Equal` or `Hashable` implementations use `rt.CustomKeys(hash, equal)`, whose closures capture the constructing execution.
+- A `Map` or `Set` keeps the `*rt.Keys[K]` it was built with, so **a collection matches keys with the equality of the module that created it**.
+- Possibly cyclic structural equality is guarded by `rt.EnterEqual`/`LeaveEqual`.
 
 ## Implementation scope
 
-Implementations declared in one module are visible only there. A generic function or method instantiated from another module resolves the contract operations of its type variables against the instantiating module first (`g.scope`, a comma-separated chain of modules), then its own. The instance key and generated name include that scope, and so do views, `equal_`, and `key_` helpers when any module declares a local implementation (`localImpl`). With local implementations, a `match` on a contract value switches on `rt.ReceiverOf` so a value wrapped by one module's view still matches in another.
+Implementations are visible only in their declaring module. A generic instantiated from another module resolves its type variables' contract operations against the instantiating module first (`g.scope`, a comma-separated module chain), then its own. The instance key and generated name include that scope, as do views, `equal_`, and `key_` helpers when any module declares a local implementation (`localImpl`). In that case a `match` on a contract value switches on `rt.ReceiverOf`.
 
 ## Measure representation choices
 
-Run the benchmarks from the checkout root with the pinned SDK:
+From the checkout root with the pinned SDK:
 
 ```sh
 toolchain/go/bin/go run ./scripts/bench-lowering -count=5
 ```
 
-Compare generated Go to a handwritten equivalent with the same checked arithmetic, fault positions, cancellation, and cleanup. Report allocations as well as time, use a quiet machine, and alternate unprofiled samples when comparing builds. Do not claim a speedup for a workload that was not reproduced.
+Compare against handwritten Go with the same checked arithmetic, fault positions, cancellation, and cleanup. Report allocations and time on a quiet machine, alternating unprofiled samples. Claim no speedup you did not reproduce.
 
 - [Function and concurrency API lowering](function-and-task-calls.md)
 - [Source guarantees and Go representations](value-representations.md)

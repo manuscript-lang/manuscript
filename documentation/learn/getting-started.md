@@ -6,32 +6,24 @@ aliases = ["/getting-started/"]
 
 # Run your first program
 
-Run an example, change what it does, and turn it into a standalone executable.
-The release includes `ms`, its build tools, and example projects; you do not need
-to install another compiler or runtime.
+Run an example, change it, and build a standalone executable. The release bundles `ms`, its build tools, and examples; nothing else to install.
 
 ## 1. Download and run
 
 [Download Manuscript](https://github.com/manuscript-lang/manuscript/releases)
-for your operating system and architecture, then extract the archive. Open a
-terminal in the extracted directory and run:
+and extract the archive. In that directory run:
 
 ```sh
 ./ms run examples/hello/ms.toml -- first second
 ```
 
-In Windows PowerShell, use `.\ms.exe` in place of `./ms`.
-The first run prepares the bundled build tools, then prints:
+On Windows PowerShell, use `.\ms.exe`. The first run prepares the build tools, then prints:
 
 ```text
 Arguments: 2
 ```
 
-The values after `--` are your program's arguments. `run` builds a temporary
-executable and starts it. You have just run your first Manuscript program.
-
-Building from a source checkout? Run `make build` in the repository root first.
-[Development setup](../contributing/development.md) lists the prerequisites.
+Values after `--` are the program's arguments. From a source checkout, run `make build` first ([development setup](../contributing/development.md)).
 
 ## 2. Read the code {#read-the-program}
 
@@ -44,20 +36,16 @@ import stdout from "@std/io.ms"
 
 export fn main() -> Int:
     let message = "Arguments: {arguments().length()}\n"
-    if stdout().write(data: message.to_bytes()).is_error():
+    if stdout().write(message.to_bytes()).is_error():
         return 1
     return 0
 ```
 
-`import` selects the APIs this file uses. The program starts in `main`, and
-its returned integer becomes the exit status: `0` for success, `1` for failure.
-
-`let` names a value and infers its type. Inside the string, `{...}` inserts
-the argument count and `\n` adds a newline. `stdout().write` takes bytes, so
-`to_bytes()` encodes the text. Writing can fail, so `write` returns a `Result`;
-`is_error()` tests for the failure.
-
-Four spaces start a nested block. There is no punctuation to end a statement.
+- `import` selects the APIs the file uses.
+- `main` starts the program; its returned integer is the exit status.
+- `let` names a value and infers its type; `{...}` interpolates into strings.
+- `write` takes bytes and returns a `Result`; `is_error()` tests for failure.
+- Four spaces open a block; statements need no terminator.
 
 ## 3. Make it yours
 
@@ -77,8 +65,7 @@ Save the file and run the same command again:
 Hello! You passed 2 arguments.
 ```
 
-Try changing the text or passing a different number of arguments. `ms` rebuilds
-from your saved source each time you run it.
+`ms run` rebuilds from your saved source every time.
 
 ## 4. Build something you can share {#build-and-test}
 
@@ -87,14 +74,11 @@ from your saved source each time you run it.
 ./hello first second
 ```
 
-On Windows, build with `-o hello.exe` and run `.\hello.exe first second`.
-The executable runs on its target operating system and architecture without
-`ms` installed. See [build levels](../developer-tooling/builds/build-levels.md)
-when you need a debug build.
+On Windows, use `-o hello.exe`. The executable runs without `ms` installed. See [build levels](../developer-tooling/builds/build-levels.md) for debug builds.
 
 ## 5. Start your own project {#create-your-own-project}
 
-Add the extracted `ms` executable to your `PATH`, then run:
+Put `ms` on your `PATH`, then run:
 
 ```sh
 ms init hello
@@ -103,12 +87,7 @@ ms run ms.toml -- first second
 ms test ms.toml
 ```
 
-`init` creates a project manifest, `src/main.ms`, a test file, and a `.gitignore`.
-The manifest tells `ms` where your source and entry file live.
-[Project configuration](../developer-tooling/builds/project-configuration.md)
-explains these files when you need to change them.
-
-While you work, use these commands from your new project's directory:
+`init` creates a manifest, `src/main.ms`, a test file, and a `.gitignore`; see [project configuration](../developer-tooling/builds/project-configuration.md). While you work:
 
 ```sh
 ms check ms.toml
@@ -116,12 +95,8 @@ ms fmt ms.toml
 ms test ms.toml
 ```
 
-`check` catches source errors without running the program, `fmt` formats your
-code, and `test` runs its test blocks. `ms verify` runs check, fmt, lint, and
-test together. Use `ms --help` to see all commands.
+`check` finds errors without running, `fmt` formats, `test` runs test blocks. `ms verify` runs check, fmt, lint, and test; `ms --help` lists all commands.
 
 ## Keep going
 
-Continue with the [language tour](tour.md) to learn the ideas behind the code.
-Then [test your code](testing.md) and try a [task recipe](common-tasks.md).
-For editor setup, see [developer tools](../developer-tooling/implementation.md).
+Next: the [language tour](tour.md), then [testing](testing.md) and [task recipes](common-tasks.md). For editors, see [developer tools](../developer-tooling/implementation.md).
