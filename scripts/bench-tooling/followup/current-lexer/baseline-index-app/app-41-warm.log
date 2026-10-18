@@ -1,0 +1,15 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/tooling/lsp
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkLexicalSourceIndex
+    lexical_index_probe_test.go:273: std_source_sha256=aa9a0469bbb766e1ad598564f45e59371bb3945a0c51f9e539001dc3e031c1f4 occurrences=5706 full_payload_sha256=45e0d1408d4adaf5c5f4078bec99a3f0b2effa80066c672510e5723ef6a1311f
+    lexical_index_probe_test.go:273: std_source_sha256=aa9a0469bbb766e1ad598564f45e59371bb3945a0c51f9e539001dc3e031c1f4 occurrences=5706 full_payload_sha256=45e0d1408d4adaf5c5f4078bec99a3f0b2effa80066c672510e5723ef6a1311f
+BenchmarkLexicalSourceIndex-4   	      19	  17297373 ns/op	24877034 B/op	   47402 allocs/op
+    lexical_index_probe_test.go:273: std_source_sha256=aa9a0469bbb766e1ad598564f45e59371bb3945a0c51f9e539001dc3e031c1f4 occurrences=5706 full_payload_sha256=45e0d1408d4adaf5c5f4078bec99a3f0b2effa80066c672510e5723ef6a1311f
+    lexical_index_probe_test.go:273: std_source_sha256=aa9a0469bbb766e1ad598564f45e59371bb3945a0c51f9e539001dc3e031c1f4 occurrences=5706 full_payload_sha256=45e0d1408d4adaf5c5f4078bec99a3f0b2effa80066c672510e5723ef6a1311f
+BenchmarkLexicalSourceIndex-4   	      21	  18256686 ns/op	24877051 B/op	   47403 allocs/op
+    lexical_index_probe_test.go:273: std_source_sha256=aa9a0469bbb766e1ad598564f45e59371bb3945a0c51f9e539001dc3e031c1f4 occurrences=5706 full_payload_sha256=45e0d1408d4adaf5c5f4078bec99a3f0b2effa80066c672510e5723ef6a1311f
+    lexical_index_probe_test.go:273: std_source_sha256=aa9a0469bbb766e1ad598564f45e59371bb3945a0c51f9e539001dc3e031c1f4 occurrences=5706 full_payload_sha256=45e0d1408d4adaf5c5f4078bec99a3f0b2effa80066c672510e5723ef6a1311f
+BenchmarkLexicalSourceIndex-4   	      16	  19776860 ns/op	24876987 B/op	   47402 allocs/op
+PASS

@@ -1,0 +1,23 @@
+package lsp
+
+import "unsafe"
+import "github.com/manuscript-lang/manuscript/pkg/lexer"
+
+// Called only after first sourceIndex and its post-GC sample, never before cold timing.
+func lexicalInventorySnapshot() lexicalInventoryMetrics {
+	inventory := pinnedIndexTokens()
+	metrics := lexicalInventoryMetrics{Files: len(inventory), Cached: true}
+	for _, entry := range inventory {
+		metrics.SourceBytes += len(entry.source)
+		metrics.Tokens += len(entry.tokens)
+		metrics.TokenCapacity += cap(entry.tokens)
+		if entry.tokens != nil || entry.err != nil {
+			metrics.Initialized++
+		}
+		if entry.err != nil {
+			metrics.Errors++
+		}
+	}
+	metrics.TokenSlotBytes = metrics.TokenCapacity * int(unsafe.Sizeof(lexer.Token{}))
+	return metrics
+}

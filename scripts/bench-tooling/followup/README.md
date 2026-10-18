@@ -55,7 +55,7 @@ selection, per-file edit construction, post-before-check cancellation,
 post-analysis indexing and continuing discovery scopes. Raw failure logs remain
 beside the benchmark output. Independent review accepted the production SHA.
 
-## Coverage is still being completed
+## Bounded review disposition
 
 | Original remedy | State after this stage |
 | --- | --- |
@@ -64,10 +64,11 @@ beside the benchmark output. Independent review accepted the production SHA.
 | Repeated indexing | Headers/maps/live indexes and rename reuse fixed; finite pinned lexical reuse validated below |
 | Queued obsolete diagnostics and cancellation boundaries | Bounded batching and phase/file guards landed; compiler/index preemption excluded |
 | Whole-source position/documentation scans | Replaced by line starts/direct widths/bounded comment spans; extreme same-line prefixes remain |
-| Extension lifecycle/cancellation/watching | Lifecycle/tokens/narrow glob fixed; canonical discovery grouping and owner-based invalidation under review |
+| Extension lifecycle/cancellation/watching | Lifecycle/tokens/narrow glob fixed; canonical discovery and selective watcher invalidation withheld after the measured/correctness review below |
 
 Workspace exact-selection counts, sampled peak memory and filesystem consistency
-must justify any additional reuse before implementation. Retaining one strict
+were evaluated before additional reuse. The [closeout](CLOSEOUT.md) records the
+accepted changes and withheld proposals. Retaining one strict
 graph per selected module and replacing strict checks with recovering graphs are
 excluded. A new non-LSP tooling inventory is separate from these LSP measurements.
 
@@ -110,3 +111,13 @@ repeated guide metadata, plus an output-cap reproducer and bounded fix candidate
 No non-LSP implementation change accompanies this report. [Independent evidence
 review](non-lsp/review.md) verified the source/probe hashes, all 21 benchmark cases
 and profile attribution. CLI duplicate inspection is a cross-owner observation.
+
+## Final reconciliation and integration
+
+The [concise closeout](CLOSEOUT.md) ranks remaining work and records the exact
+landed/withheld boundary. The [newer-lexer addendum](current-lexer/RESULTS.md)
+refreshes the cache cost after main changed: about 14.327 MB less allocation per
+warm index at a fixed retained cost of about 4.746 MB. Earlier tables remain
+historical. [Canonical discovery](discovery/README.md) and
+[owner watcher invalidation](owner-watch/README.md) are research artifacts only;
+neither production patch nor watcher batching was merged.

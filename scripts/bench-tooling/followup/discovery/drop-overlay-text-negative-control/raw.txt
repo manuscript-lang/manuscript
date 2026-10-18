@@ -1,0 +1,7 @@
+=== RUN   TestDiscoveryUsesUnsavedAliasTextForDiskCandidates
+    discovery_test.go:71: generated disk snapshot competed with unsaved text {file:///tmp/TestDiscoveryUsesUnsavedAliasTextForDiskCandidates932003645/001/main.ms fn old_name() Int: 1
+         0}
+--- FAIL: TestDiscoveryUsesUnsavedAliasTextForDiskCandidates (0.03s)
+FAIL
+FAIL	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	0.032s
+FAIL

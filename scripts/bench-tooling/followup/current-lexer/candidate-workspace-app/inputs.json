@@ -1,0 +1,12 @@
+{
+  "working_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "head": "3232c8db008fe60804f88bb8a243d15ce8da0a14",
+  "diff": "",
+  "source_sha256": {
+    "pkg/compiler/compiler.go": "ff6a9cb0a905c4fce20c8b263c66c5befd40b929bb41bb8fb82b4109edf31e32",
+    "pkg/lexer/lexer.go": "bd46ad5d2eb1dd820003df196f850366ac24beb77c034fd16bdad0da0ee34256",
+    "pkg/tooling/lsp/index.go": "ef1acea4dabe0e559a429f7582b35012c2fd20ffa99acb97df5db126d774c184"
+  },
+  "probe_sha256": "4a0acf5950739f094140356db0083fc26f956231d110b8c892256cff4d28e6c7",
+  "repo": "/workspace/manuscript-tooling-current-lexer"
+}
