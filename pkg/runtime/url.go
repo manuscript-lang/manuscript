@@ -57,7 +57,7 @@ func Url_Resolve(_ *Execution, base *Url, reference string) Result[*Url, UrlErro
 	return urlValue(b.ResolveReference(u))
 }
 
-// Url_Format formats URL components as an absolute or relative URL.
+// Url_Format formats URL components as an absolute hierarchical URL.
 func Url_Format(_ *Execution, value *Url) Result[string, UrlError] {
 	u, err := goURL(value)
 	if err != nil {
@@ -143,6 +143,10 @@ func goURL(v *Url) (*url.URL, error) {
 		host = net.JoinHostPort(v.Host, strconv.Itoa(n))
 	}
 	raw := v.Path
+	// Without an authority, a relative path would be serialized as a hostname.
+	if host == "" && raw != "" && !strings.HasPrefix(raw, "/") {
+		return nil, io.ErrUnexpectedEOF
+	}
 	decoded, err := url.PathUnescape(raw)
 	if err != nil || !utf8.ValidString(decoded) {
 		return nil, io.ErrUnexpectedEOF
@@ -152,7 +156,7 @@ func goURL(v *Url) (*url.URL, error) {
 	}
 	u := &url.URL{Scheme: v.Scheme, Host: host, Path: decoded, RawPath: raw, RawQuery: v.Query, Fragment: v.Fragment}
 	parsed, err := url.Parse(u.String())
-	if err != nil || parsed.Scheme == "" || parsed.User != nil || strings.ContainsAny(host, "/@\\\r\n") {
+	if err != nil || parsed.Scheme == "" || !strings.EqualFold(parsed.Scheme, v.Scheme) || parsed.Opaque != "" || parsed.User != nil || strings.ContainsAny(host, "/@\\\r\n") {
 		return nil, io.ErrUnexpectedEOF
 	}
 	return u, nil
