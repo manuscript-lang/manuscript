@@ -10,9 +10,9 @@ Most languages were shaped for human authors and then adapted to agents. Manuscr
 
 | Optimization | What it means in practice |
 | --- | --- |
-| **A language with little to get wrong** | Statically typed, four-space blocks, no implicit conversion or truthiness, no special async syntax, and flat `match`. Failure is a value: `Optional`, `Result`, and `try`. Cleanup is scoped with `with`. Fewer concepts means fewer first-draft errors and less to review. |
+| **A language with little to get wrong** | Statically typed, four-space blocks, no implicit conversion or truthiness, no special async syntax, and flat code: `|` pipe flows, `try`, and exhaustive `match`. Failure is a value: `Optional`, `Result`, and `try`. Cleanup is scoped with `with`. Fewer concepts means fewer first-draft errors and less to review. |
 | **Tools that give evidence, not prose** | `--json` from `check`, `lint`, `test`, `build`, and `inspect`; `ms search_symbol` finds exact APIs, `ms guide` prints the cheat sheet, `ms verify` runs check, format, lint, and test in one result, and `ms review` and `ms diagram` show the effect of a change from the checked source, deterministically. |
-| **Native code without a second language to manage** | Source compiles to a native executable with a bundled toolchain. On the [performance benchmark](bench/perf/programs/results.md) generated code runs about 0.8x to 3.3x the time of hand-written Go on microbenchmarks, and each gap is a tracked optimization target. |
+| **Native code without a second language to manage** | Source compiles to a native executable with a bundled toolchain. The [performance benchmark](bench/perf/programs/results.md) compares generated code with hand-written Go; checked method calls are the largest gap and the current optimization target. |
 | **One binary, always fresh** | `ms` is the compiler, formatter, linter, test runner, language server, debugger, and profiler. Nothing else to install. Rebuilds reuse a shared compiled-runtime workspace and replayed compile and link commands; no executable cache, so a stale binary never runs. |
 | **Measured on real agents** | [`agent-bench`](bench/agent/README.md) runs the same challenges in Manuscript, Go, TypeScript, and Rust. Failures there drive diagnostics, docs, and the cheat sheet. The latest Haiku baseline has Manuscript behind the others on pass rate and cost, and closing that gap is the current work. |
 
@@ -20,7 +20,7 @@ See the [tooling guide](documentation/developer-tooling/implementation.md), [how
 
 Manuscript is statically typed. Write `.ms` files and build native executables with `ms`; the standard library covers files, processes, networking, HTTP, JSON, text, time, and concurrency.
 
-[Read the book](https://manuscript-lang.github.io/manuscript/) · [Take the tour](documentation/learn/tour.md) · [Download Manuscript](https://github.com/manuscript-lang/manuscript/releases)
+[Why Manuscript](documentation/learn/why-manuscript.md) · [Read the book](https://manuscript-lang.github.io/manuscript/) · [Take the tour](documentation/learn/tour.md) · [Download Manuscript](https://github.com/manuscript-lang/manuscript/releases)
 
 ## A first look
 
