@@ -117,34 +117,49 @@ func (g *gen) operands(items []*syntax.Expression) []ast.Expr {
 // operandsAs is operands with the type each operand is used as.
 func (g *gen) operandsAs(items []*syntax.Expression, types []*checker.Type) []ast.Expr {
 	out := make([]ast.Expr, len(items))
+	// Only operands that can still need a capture participate in later scans.
+	// Literals and immutable bare identifiers never need one, and a captured
+	// operand becomes an immutable compiler temporary. Keep a small buffer on
+	// the stack for ordinary binary expressions and calls.
+	var pendingBuffer [8]int
+	pending := pendingBuffer[:0]
 	for i, item := range items {
 		mark := len(g.fn.pre)
 		out[i] = g.valueAs(item, types[i])
-		after := effectsOf(out[i])
+		var after effects
+		if len(pending) > 0 {
+			after = effectsOf(out[i])
+		}
 		grew := len(g.fn.pre) > mark
 		var spills []ast.Stmt
-		for j := 0; j < i; j++ {
-			if trivial(out[j]) {
-				continue
-			}
+		kept := pending[:0]
+		for _, j := range pending {
 			before := effectsOf(out[j])
 			if id, ok := out[j].(*ast.Ident); ok {
 				// A temporary or immutable variable cannot change; a mutable
 				// one can be reassigned by the statements operand i needs.
 				if !grew || !g.fn.mutables[id.Name] {
+					kept = append(kept, j)
 					continue
 				}
 			} else if !grew && !(before.calls && after.reads) && !(before.reads && after.calls) {
+				kept = append(kept, j)
 				continue
 			}
 			name := g.temp()
 			spills = append(spills, define(name, out[j]))
 			out[j] = ident(name)
 		}
+		pending = kept
 		if len(spills) > 0 {
 			pre := append([]ast.Stmt{}, g.fn.pre[:mark]...)
 			pre = append(pre, spills...)
 			g.fn.pre = append(pre, g.fn.pre[mark:]...)
+		}
+		if i+1 < len(items) && !trivial(out[i]) {
+			if id, ok := out[i].(*ast.Ident); !ok || g.fn.mutables[id.Name] {
+				pending = append(pending, i)
+			}
 		}
 	}
 	return out

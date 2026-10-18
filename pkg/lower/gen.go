@@ -488,9 +488,12 @@ func (g *gen) numberLabels(n *node) {
 
 // lowerWave lowers independent function instances concurrently.
 func (g *gen) lowerWave(wave []*funcDecl) {
-	workers := runtime.GOMAXPROCS(0)
-	if g.inRuntime || workers < 2 || len(wave) < 2 {
-		workers = 1
+	workers := min(runtime.GOMAXPROCS(0), len(wave))
+	if g.inRuntime || workers < 2 {
+		for _, f := range wave {
+			g.fork().lowerFunction(f)
+		}
+		return
 	}
 	var wg sync.WaitGroup
 	jobs := make(chan *funcDecl)
