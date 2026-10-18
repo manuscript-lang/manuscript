@@ -90,9 +90,9 @@ fn paid(payment: Payment) Bool:
 
 Adding a case breaks matches without a wildcard; a wildcard absorbs it. Return completeness follows the [function return rules](../functions/declarations-and-calls.md#unit-and-never).
 
-## Optional values
+## Optional and result values
 
-[Optional](../types/optionals.md) is also an alternative type, and matching it distinguishes a present value from absence. Prefer `if let` or an Optional method. For a [Result](../errors/results.md), use `try`, `if let`, or its methods.
+[Optional](../types/optionals.md) and [Result](../errors/results.md) are alternatives, but do not match them. Use `if let value = expression:` for a value or success, `unwrap_or` for a default, `try` to propagate an error, and `is_error()` with `unwrap_error()` to read a cause.
 
 ## Contract type patterns
 
