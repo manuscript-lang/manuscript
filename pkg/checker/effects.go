@@ -190,27 +190,51 @@ func (n *effectNode) scanMethodCall(expression *syntax.Expression, method *Metho
 	}
 }
 
-// propagateEffects folds each callee's effects into its callers until stable;
-// a call to anything without a node is unknown.
+// propagateEffects folds each callee's effects into its callers until stable.
+// Only callers of a changed node need revisiting; repeatedly scanning every
+// edge made chains quadratic. Calls without a node contribute unknown.
 func propagateEffects(nodes map[string]*effectNode) {
-	for changed := true; changed; {
-		changed = false
-		for _, n := range nodes {
-			for edge := range n.edges {
-				callee := nodes[edge]
-				if callee == nil {
-					if !n.effects["unknown"] {
-						n.effects["unknown"] = true
-						changed = true
-					}
-					continue
+	var work []*effectNode
+	for _, n := range nodes {
+		for edge := range n.edges {
+			if nodes[edge] == nil {
+				n.effects["unknown"] = true
+			}
+		}
+		if len(n.effects) > 0 {
+			work = append(work, n)
+		}
+	}
+	if len(work) == 0 {
+		return
+	}
+	callers := make(map[*effectNode][]*effectNode, len(nodes))
+	for _, n := range nodes {
+		for edge := range n.edges {
+			if callee := nodes[edge]; callee != nil {
+				callers[callee] = append(callers[callee], n)
+			}
+		}
+	}
+	pending := make(map[*effectNode]bool, len(nodes))
+	for _, n := range work {
+		pending[n] = true
+	}
+	for len(work) > 0 {
+		callee := work[len(work)-1]
+		work = work[:len(work)-1]
+		pending[callee] = false
+		for _, caller := range callers[callee] {
+			changed := false
+			for effect := range callee.effects {
+				if !caller.effects[effect] {
+					caller.effects[effect] = true
+					changed = true
 				}
-				for effect := range callee.effects {
-					if !n.effects[effect] {
-						n.effects[effect] = true
-						changed = true
-					}
-				}
+			}
+			if changed && !pending[caller] {
+				pending[caller] = true
+				work = append(work, caller)
 			}
 		}
 	}
