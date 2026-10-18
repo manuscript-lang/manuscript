@@ -68,14 +68,10 @@ import {filesystem, FileSystemError} from "@std/fs.ms"
 import stdout from "@std/io.ms"
 
 fn run() -> Result[Unit, Error]:
-    let path = arguments().at(0)
-    if path.is_none():
-        return error(FileSystemError.InvalidInput)
-    let bytes = try filesystem().read_file(path.unwrap(), max_bytes: 1048576)
-    let text = bytes.to_string()
-    if text.is_none():
-        return error(FileSystemError.InvalidData)
-    try stdout().write(text.unwrap().to_bytes())
+    let path = try arguments().at(0).ok_or(FileSystemError.InvalidInput)
+    let bytes = try filesystem().read_file(path, max_bytes: 1048576)
+    let text = try bytes.to_string().ok_or(FileSystemError.InvalidData)
+    try stdout().write(text.to_bytes())
     return stdout().flush()
 
 export fn main() -> Int:
@@ -101,10 +97,8 @@ import arguments from "@std/cli.ms"
 import {filesystem, FileSystemError} from "@std/fs.ms"
 
 fn run() -> Result[Unit, Error]:
-    let path = arguments().at(0)
-    if path.is_none():
-        return error(FileSystemError.InvalidInput)
-    return filesystem().write_file(path.unwrap(), "saved notes\n".to_bytes(), replace: false)
+    let path = try arguments().at(0).ok_or(FileSystemError.InvalidInput)
+    return filesystem().write_file(path, "saved notes\n".to_bytes(), replace: false)
 
 export fn main() -> Int:
     if run().is_error():
@@ -255,19 +249,15 @@ import network from "@std/net.ms"
 import stdout from "@std/io.ms"
 
 fn run() -> Result[Unit, Error]:
-    let url = arguments().at(0)
-    if url.is_none():
-        return error(HttpError.InvalidInput)
+    let url = try arguments().at(0).ok_or(HttpError.InvalidInput)
     let response = try network().request(
-        HttpMethod.Get, url.unwrap(), headers(), "".to_bytes(),
+        HttpMethod.Get, url, headers(), "".to_bytes(),
         max_response_bytes: 1048576
     )
     if response.metadata().status != 200:
         return error(HttpError.InvalidData)
-    let text = response.body.to_string()
-    if text.is_none():
-        return error(HttpError.InvalidData)
-    try stdout().write(text.unwrap().to_bytes())
+    let text = try response.body.to_string().ok_or(HttpError.InvalidData)
+    try stdout().write(text.to_bytes())
     return stdout().flush()
 
 export fn main() -> Int:

@@ -73,12 +73,12 @@ fn display_name(name: Optional[String], create: fn() -> String) -> String:
     return name.unwrap_or_else(create)
 ```
 
-Use `unwrap` when presence is established or absence is a programming error:
+Test and unwrap in one step with `if let`. Use `unwrap` only when presence is established or absence is a programming error; a separate `is_some()` check before `unwrap()` is the pattern `if let` replaces:
 
 ```manuscript
 fn greet(name: Optional[String]) -> String:
-    if name.is_some():
-        return "Hello, " + name.unwrap()
+    if let value = name:
+        return "Hello, " + value
     return "Hello!"
 ```
 
