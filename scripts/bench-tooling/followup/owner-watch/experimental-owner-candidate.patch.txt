@@ -1,0 +1,874 @@
+diff --git a/pkg/tooling/lsp/scheduling_test.go b/pkg/tooling/lsp/scheduling_test.go
+index 8db1bc46..ce62d5b8 100644
+--- a/pkg/tooling/lsp/scheduling_test.go
++++ b/pkg/tooling/lsp/scheduling_test.go
+@@ -201,7 +201,11 @@ func TestUnrelatedWatchPreservesGenerationAndRelevantWatchInvalidates(t *testing
+ 			t.Fatal(err)
+ 		}
+ 	}
+-	watch(d.URI + ".unrelated.toml")
++	unrelated := filename(d.URI) + ".unrelated.toml"
++	if err := os.WriteFile(unrelated, []byte("unrelated = true\n"), 0600); err != nil {
++		t.Fatal(err)
++	}
++	watch(fileURI(unrelated))
+ 	if s.checkedDocument(d).Program != before.Program {
+ 		t.Fatal("unrelated TOML discarded live analysis")
+ 	}
+diff --git a/pkg/tooling/lsp/server.go b/pkg/tooling/lsp/server.go
+index eb80fac4..a2f63125 100644
+--- a/pkg/tooling/lsp/server.go
++++ b/pkg/tooling/lsp/server.go
+@@ -52,6 +52,8 @@ type server struct {
+ 	docs             map[string]document
+ 	cache            map[string]compiler.Result
+ 	analyses         map[analysisKey]compiler.Result
++	owners           map[string]analysisOwner
++	analysisOwners   map[analysisKey]analysisOwner
+ 	indices          map[*checker.Program][]occurrence
+ 	lints            map[*checker.Program][]tooling.LintFinding
+ 	overlayChecked   bool
+@@ -193,10 +195,7 @@ func (s *server) checkedDocument(d document) compiler.Result {
+ 	if result, ok := s.cache[d.URI]; ok {
+ 		return result
+ 	}
+-	compile := compiler.CompileFile
+-	if s.canShareOverlays() {
+-		compile = s.compileSnapshot
+-	}
++	compile := s.documentCompiler(d)
+ 	result := analyzeWith(d, s.docs, compiler.Options{AnalyzeOnly: true, Recover: true}, compile)
+ 	if s.cache == nil {
+ 		s.cache = map[string]compiler.Result{}
+@@ -209,6 +208,8 @@ func (s *server) checkedDocument(d document) compiler.Result {
+ func (s *server) invalidate() {
+ 	s.cache = map[string]compiler.Result{}
+ 	s.analyses = nil
++	s.owners = nil
++	s.analysisOwners = nil
+ 	s.indices = nil
+ 	s.lints = nil
+ 	s.overlayChecked = false
+@@ -226,6 +227,20 @@ func (s *server) publish() error {
+ 	for uri := range s.docs {
+ 		uris = append(uris, uri)
+ 	}
++	return s.publishURIs(uris)
++}
++
++func (s *server) publishSelected(selected map[string]bool) error {
++	uris := make([]string, 0, len(selected))
++	for uri := range selected {
++		if _, open := s.docs[uri]; open {
++			uris = append(uris, uri)
++		}
++	}
++	return s.publishURIs(uris)
++}
++
++func (s *server) publishURIs(uris []string) error {
+ 	sort.Strings(uris)
+ 	for _, uri := range uris {
+ 		d := s.docs[uri]
+@@ -276,7 +291,7 @@ func (s *server) serve(body []byte) error {
+ 		s.transport.done(r.ID)
+ 		return err
+ 	}
+-	if len(r.Params) > 0 {
++	if len(r.Params) > 0 && r.Method != "workspace/didChangeWatchedFiles" {
+ 		if e := json.Unmarshal(r.Params, &r.params); e != nil {
+ 			if len(r.ID) == 0 {
+ 				return nil
+@@ -342,26 +357,7 @@ func (s *server) handle(r *request) (result any, rpcError any, err error) {
+ 		}
+ 		return nil, nil, errExit
+ 	case "workspace/didChangeWatchedFiles":
+-		var events struct {
+-			Changes []struct {
+-				URI string `json:"uri"`
+-			} `json:"changes"`
+-		}
+-		if json.Unmarshal(r.Params, &events) == nil && events.Changes != nil {
+-			relevant := false
+-			for _, change := range events.Changes {
+-				path := filename(change.URI)
+-				if filepath.Ext(path) == ".ms" || filepath.Base(path) == "ms.toml" {
+-					relevant = true
+-					break
+-				}
+-			}
+-			if !relevant {
+-				return nil, nil, nil
+-			}
+-		}
+-		s.invalidate()
+-		return nil, nil, s.publish()
++		return nil, nil, s.watchedFiles(r.Params)
+ 	case "textDocument/didClose":
+ 		delete(s.docs, p.TextDocument.URI)
+ 		s.invalidate()
+diff --git a/pkg/tooling/lsp/snapshot.go b/pkg/tooling/lsp/snapshot.go
+index a7d591ef..700d23de 100644
+--- a/pkg/tooling/lsp/snapshot.go
++++ b/pkg/tooling/lsp/snapshot.go
+@@ -38,7 +38,7 @@ func (s *server) canShareOverlays() bool {
+ // compileSnapshot is used only by ordinary recovering open-document analysis.
+ // A selected fallback never replaces the default manifest entry. Strict
+ // workspace and repaired ScopeMarker analyses remain uncached and transient.
+-func (s *server) compileSnapshot(target string, options compiler.Options) compiler.Result {
++func (s *server) compileSnapshot(target string, options compiler.Options, owner analysisOwner) compiler.Result {
+ 	identity := target
+ 	// FindManifest has already selected the nearest spelling, including invalid
+ 	// nested manifests. Only then canonicalize an existing target for reuse.
+@@ -46,14 +46,18 @@ func (s *server) compileSnapshot(target string, options compiler.Options) compil
+ 		// ReadProject resolves the containing directory, not a symlinked
+ 		// manifest file's destination. Standalone files also retain their
+ 		// selected source root; resolving the file itself could erase an escape.
+-		if root, err := filepath.EvalSymlinks(filepath.Dir(target)); err == nil {
+-			identity = filepath.Join(root, "ms.toml")
++		if owner.known {
++			identity = filepath.Join(owner.canonical, "ms.toml")
+ 		}
+ 	}
+ 	key := analysisKey{identity, options.Module}
+ 	if result, ok := s.analyses[key]; ok {
+ 		return result
+ 	}
++	if s.analysisOwners == nil {
++		s.analysisOwners = map[analysisKey]analysisOwner{}
++	}
++	s.analysisOwners[key] = owner
+ 	result := compiler.CompileFile(target, options)
+ 	if s.analyses == nil {
+ 		s.analyses = map[analysisKey]compiler.Result{}
+diff --git a/pkg/tooling/lsp/watch.go b/pkg/tooling/lsp/watch.go
+new file mode 100644
+index 00000000..2b89c994
+--- /dev/null
++++ b/pkg/tooling/lsp/watch.go
+@@ -0,0 +1,272 @@
++package lsp
++
++import (
++	"encoding/json"
++	"net/url"
++	"os"
++	"path/filepath"
++	"strings"
++
++	"github.com/manuscript-lang/manuscript/pkg/checker"
++	"github.com/manuscript-lang/manuscript/pkg/compiler"
++	"github.com/manuscript-lang/manuscript/pkg/project"
++)
++
++// Ownership records selection before compilation, including failed results.
++// They contain paths, never Programs or a second dependency graph. Immutable
++// standard documents deliberately have no local project ownership.
++type analysisOwner struct {
++	target, root, canonical string
++	known, immutable        bool
++}
++
++func localFilePath(uri string) (string, bool) {
++	u, err := url.Parse(uri)
++	if err != nil || u.Scheme != "file" || u.Opaque != "" || u.RawQuery != "" || u.Fragment != "" || u.Host != "" && u.Host != "localhost" {
++		return "", false
++	}
++	path := filename(uri)
++	return path, filepath.IsAbs(path)
++}
++
++func targetOwner(target string) analysisOwner {
++	root := filepath.Dir(target)
++	canonical, err := filepath.EvalSymlinks(root)
++	return analysisOwner{target: target, root: root, canonical: canonical, known: err == nil}
++}
++
++func documentOwner(d document) analysisOwner {
++	if isStandardLibraryURI(d.URI) || standardLibraryDocument(d) != nil {
++		return analysisOwner{known: true, immutable: true}
++	}
++	path, ok := localFilePath(d.URI)
++	if !ok {
++		return analysisOwner{}
++	}
++	target, found := project.FindManifest(path)
++	if !found {
++		target = path
++	}
++	return targetOwner(target)
++}
++
++// Capture the target analyzeWith actually selects, rather than selecting a
++// manifest independently before analysis. The callback also records ownership
++// for failed compilations. Immutable documents bypass compilation entirely.
++func (s *server) documentCompiler(d document) func(string, compiler.Options) compiler.Result {
++	if s.owners == nil {
++		s.owners = map[string]analysisOwner{}
++	}
++	if isStandardLibraryURI(d.URI) || standardLibraryDocument(d) != nil {
++		s.owners[d.URI] = analysisOwner{known: true, immutable: true}
++	}
++	_, local := localFilePath(d.URI)
++	share := s.canShareOverlays()
++	return func(target string, options compiler.Options) compiler.Result {
++		owner := analysisOwner{}
++		if local {
++			owner = targetOwner(target)
++		}
++		s.owners[d.URI] = owner
++		if share {
++			return s.compileSnapshot(target, options, owner)
++		}
++		return compiler.CompileFile(target, options)
++	}
++}
++
++type watchedPath struct {
++	written, canonical  string
++	manifest, directory bool
++}
++
++// A deleted path still has a useful physical footprint if an existing ancestor
++// resolves. A dangling existing symlink or other filesystem uncertainty falls
++// back to full invalidation; this never admits an overlay or an import.
++func eventCanonical(path string) (string, bool) {
++	current := path
++	var suffix []string
++	for {
++		canonical, err := filepath.EvalSymlinks(current)
++		if err == nil {
++			for i := len(suffix) - 1; i >= 0; i-- {
++				canonical = filepath.Join(canonical, suffix[i])
++			}
++			return canonical, true
++		}
++		if !os.IsNotExist(err) {
++			return "", false
++		}
++		if _, err := os.Lstat(current); err == nil || !os.IsNotExist(err) {
++			return "", false
++		}
++		parent := filepath.Dir(current)
++		if parent == current {
++			return "", false
++		}
++		suffix = append(suffix, filepath.Base(current))
++		current = parent
++	}
++}
++
++func watchedPaths(params json.RawMessage) ([]watchedPath, bool) {
++	var envelope struct {
++		Changes []struct {
++			URI string `json:"uri"`
++		} `json:"changes"`
++	}
++	if json.Unmarshal(params, &envelope) != nil || envelope.Changes == nil {
++		return nil, false
++	}
++	var paths []watchedPath
++	for _, event := range envelope.Changes {
++		if isStandardLibraryURI(event.URI) {
++			continue
++		}
++		path, ok := localFilePath(event.URI)
++		if !ok {
++			return nil, false
++		}
++		manifest := filepath.Base(path) == "ms.toml"
++		info, err := os.Stat(path)
++		if err != nil && !os.IsNotExist(err) {
++			return nil, false
++		}
++		// Missing paths no longer reveal their former kind or lexical symlink
++		// targets. A received event beneath an owner may represent deletion of
++		// an imported directory, regardless of its suffix; refresh that owner.
++		directory := err != nil || info.IsDir()
++		if !manifest && !directory && filepath.Ext(path) != ".ms" {
++			continue
++		}
++		canonical, ok := eventCanonical(path)
++		if !ok {
++			return nil, false
++		}
++		paths = append(paths, watchedPath{path, canonical, manifest, directory})
++	}
++	return paths, true
++}
++
++func (o analysisOwner) matches(event watchedPath) bool {
++	if o.immutable {
++		return false
++	}
++	for _, root := range []string{o.root, o.canonical} {
++		for _, path := range []string{event.written, event.canonical} {
++			ancestor := path
++			if event.manifest {
++				ancestor = filepath.Dir(path)
++			}
++			if watchPathWithin(root, path) || (event.directory || event.manifest) && watchPathWithin(ancestor, root) {
++				return true
++			}
++		}
++	}
++	return false
++}
++
++// invalidateWatched returns every affected open URI, even if its analysis was
++// already evicted. Unknown metadata retains the previous safe global fallback.
++func (s *server) invalidateWatched(paths []watchedPath) (map[string]bool, bool) {
++	current := map[string]analysisOwner{}
++	affectedRoots := map[string]bool{}
++	mark := func(owner analysisOwner) {
++		if !owner.immutable {
++			affectedRoots[owner.canonical] = true
++		}
++	}
++	for uri, d := range s.docs {
++		owner := documentOwner(d)
++		if !owner.known {
++			return nil, false
++		}
++		current[uri] = owner
++		old, exists := s.owners[uri]
++		if _, cached := s.cache[uri]; cached && (!exists || !old.known) {
++			return nil, false
++		}
++		if exists && old != owner {
++			mark(old)
++			mark(owner)
++		}
++		for _, event := range paths {
++			if owner.matches(event) || exists && old.matches(event) {
++				mark(owner)
++				if exists {
++					mark(old)
++				}
++			}
++		}
++	}
++	for key := range s.analyses {
++		owner, exists := s.analysisOwners[key]
++		if !exists || !owner.known {
++			return nil, false
++		}
++		for _, event := range paths {
++			if owner.matches(event) {
++				mark(owner)
++			}
++		}
++	}
++	affected := map[string]bool{}
++	for uri, owner := range current {
++		old := s.owners[uri]
++		if !owner.immutable && (affectedRoots[owner.canonical] || old.known && affectedRoots[old.canonical]) {
++			affected[uri] = true
++			delete(s.cache, uri)
++			delete(s.owners, uri)
++		}
++	}
++	for key, owner := range s.analysisOwners {
++		if affectedRoots[owner.canonical] {
++			delete(s.analyses, key)
++			delete(s.analysisOwners, key)
++		}
++	}
++	// A retained entry can still refer to a dropped entry's Program. Only release
++	// derived state after checking all remaining live owners.
++	live := map[*checker.Program]bool{}
++	for _, result := range s.cache {
++		live[result.Program] = true
++	}
++	for _, result := range s.analyses {
++		live[result.Program] = true
++	}
++	for program := range s.indices {
++		if !live[program] {
++			delete(s.indices, program)
++		}
++	}
++	for program := range s.lints {
++		if !live[program] {
++			delete(s.lints, program)
++		}
++	}
++	s.overlayChecked, s.shareOverlays = false, false
++	return affected, true
++}
++
++func (s *server) watchedFiles(params json.RawMessage) error {
++	// A pending didChange publication is an obligation for every open URI.
++	if err := s.flushDiagnostics(); err != nil {
++		return err
++	}
++	paths, understood := watchedPaths(params)
++	if understood && len(paths) == 0 {
++		return nil
++	}
++	if understood {
++		if affected, ok := s.invalidateWatched(paths); ok {
++			return s.publishSelected(affected)
++		}
++	}
++	s.invalidate()
++	return s.publish()
++}
++
++func watchPathWithin(root, path string) bool {
++	rel, err := filepath.Rel(root, path)
++	return err == nil && !filepath.IsAbs(rel) && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
++}
+diff --git a/pkg/tooling/lsp/watch_test.go b/pkg/tooling/lsp/watch_test.go
+new file mode 100644
+index 00000000..317f8f65
+--- /dev/null
++++ b/pkg/tooling/lsp/watch_test.go
+@@ -0,0 +1,447 @@
++package lsp
++
++import (
++	"bytes"
++	"encoding/json"
++	"os"
++	"path/filepath"
++	"strings"
++	"testing"
++
++	"github.com/manuscript-lang/manuscript/pkg/checker"
++	"github.com/manuscript-lang/manuscript/pkg/compiler"
++)
++
++func watchAlias(t *testing.T, root string) string {
++	t.Helper()
++	alias := filepath.Join(t.TempDir(), "alias")
++	if err := os.Symlink(root, alias); err != nil {
++		t.Skipf("symlinks unavailable: %v", err)
++	}
++	return alias
++}
++
++func watchWrite(t testing.TB, path, text string) {
++	t.Helper()
++	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
++		t.Fatal(err)
++	}
++	if err := os.WriteFile(path, []byte(text), 0600); err != nil {
++		t.Fatal(err)
++	}
++}
++
++func watchSend(t testing.TB, s *server, uris ...string) {
++	t.Helper()
++	changes := []any{}
++	for _, uri := range uris {
++		// URI-only events remain supported; eviction does not depend on type.
++		changes = append(changes, map[string]any{"uri": uri})
++	}
++	params, err := json.Marshal(map[string]any{"changes": changes})
++	if err != nil {
++		t.Fatal(err)
++	}
++	if _, rpcErr, err := s.handle(&request{Method: "workspace/didChangeWatchedFiles", Params: params}); err != nil || rpcErr != nil {
++		t.Fatal(rpcErr, err)
++	}
++}
++
++func TestWatchWholeOwnerRetainsIndependentProgramsAndDerivedState(t *testing.T) {
++	a, files := snapshotFiles(t, map[string]string{
++		"ms.toml":   "[project]\nname = \"a\"\nsource = \".\"\nentry = \"main.ms\"\n",
++		"main.ms":   "import value from \"./dep.ms\"\nfn main() Int: value()\n",
++		"dep.ms":    "export fn value() Int:\n    let unused = 1\n    return 2\n",
++		"orphan.ms": "fn orphan() Int: 3\n",
++	})
++	_, independent := snapshotFiles(t, map[string]string{
++		"main.ms": "fn independent() Int:\n    let unused = 1\n    return 2\n",
++	})
++	d, orphan, b := files["main.ms"], files["orphan.ms"], independent["main.ms"]
++	s := snapshotServer(d, orphan, b)
++	before, selected, retained := s.checkedDocument(d), s.checkedDocument(orphan), s.checkedDocument(b)
++	if !before.Success() || !selected.Success() || !retained.Success() || before.Program == selected.Program {
++		t.Fatal("fixture did not exercise default and selected Module analyses", before.Diagnostics, selected.Diagnostics)
++	}
++	aIndex, aLint := s.documentIndex(before), s.programLint(before)
++	bIndex, bLint := s.documentIndex(retained), s.programLint(retained)
++	if len(aIndex) == 0 || len(aLint) == 0 || len(bIndex) == 0 || len(bLint) == 0 {
++		t.Fatal("fixture did not materialize both owners' index/lint state")
++	}
++	var output bytes.Buffer
++	s.output = &output
++	watchWrite(t, filepath.Join(a, "dep.ms"), "export fn value() String: \"changed\"\n")
++	watchSend(t, s, fileURI(filepath.Join(a, "dep.ms")))
++	changed := snapshotEquivalent(t, s, d)
++	if changed.Success() || changed.Program == before.Program || s.checkedDocument(orphan).Program == selected.Program {
++		t.Fatal("whole owner retained stale default or selected Module analysis", changed.Diagnostics)
++	}
++	if got := s.checkedDocument(b); got.Program != retained.Program || &s.documentIndex(got)[0] != &bIndex[0] || &s.programLint(got)[0] != &bLint[0] {
++		t.Fatal("A-only event discarded independent B program/index/lint identity")
++	}
++	if _, exists := s.indices[before.Program]; exists {
++		t.Fatal("affected Program index remained retained")
++	}
++	if _, exists := s.lints[before.Program]; exists {
++		t.Fatal("affected Program lint remained retained")
++	}
++	messages := readMessages(t, &output)
++	if len(messages) != 2 {
++		t.Fatal("watch did not publish exactly the two affected open documents", messages)
++	}
++	for _, message := range messages {
++		if message["params"].(map[string]any)["uri"] == b.URI {
++			t.Fatal("watch republished independent B diagnostics", messages)
++		}
++	}
++}
++
++func TestWatchParentAndNestedOwnersIncludeHiddenExplicitImports(t *testing.T) {
++	root, files := snapshotFiles(t, map[string]string{
++		"ms.toml":               "[project]\nname = \"parent\"\nsource = \".\"\nentry = \"main.ms\"\n",
++		"main.ms":               "import value from \"./nested/.hidden/dep.ms\"\nfn main() Int: value()\n",
++		"nested/ms.toml":        "[project]\nname = \"nested\"\nsource = \".\"\nentry = \"main.ms\"\n[aliases]\n\"@inside\" = \".\"\n",
++		"nested/main.ms":        "import value from \"@inside/.hidden/dep.ms\"\nfn nested() Int: value()\n",
++		"nested/.hidden/dep.ms": "export fn value() Int: 1\n",
++	})
++	s := snapshotServer(files["main.ms"], files["nested/main.ms"])
++	old := map[string]*checker.Program{}
++	for uri, d := range s.docs {
++		checked := s.checkedDocument(d)
++		if !checked.Success() {
++			t.Fatal(checked.Diagnostics)
++		}
++		old[uri] = checked.Program
++	}
++	path := filepath.Join(root, "nested/.hidden/dep.ms")
++	watchWrite(t, path, "export fn value() String: \"changed\"\n")
++	watchSend(t, s, fileURI(path))
++	for uri, d := range s.docs {
++		checked := snapshotEquivalent(t, s, d)
++		if checked.Success() || checked.Program == old[uri] {
++			t.Fatal("changed nested hidden dependency did not invalidate every containing owner", uri, checked.Diagnostics)
++		}
++	}
++}
++
++func TestWatchMissingDependencyAndLibraryDiscovery(t *testing.T) {
++	t.Run("missing dependency", func(t *testing.T) {
++		root, files := snapshotFiles(t, map[string]string{"main.ms": "import value from \"./missing.ms\"\nfn main() Int: value()\n"})
++		d := files["main.ms"]
++		s := snapshotServer(d)
++		if s.checkedDocument(d).Success() {
++			t.Fatal("missing dependency fixture unexpectedly succeeded")
++		}
++		path := filepath.Join(root, "missing.ms")
++		watchWrite(t, path, "export fn value() Int: 1\n")
++		watchSend(t, s, fileURI(path))
++		if got := snapshotEquivalent(t, s, d); !got.Success() {
++			t.Fatal("new previously missing dependency remained stale", got.Diagnostics)
++		}
++		if err := os.Remove(path); err != nil {
++			t.Fatal(err)
++		}
++		watchSend(t, s, fileURI(path))
++		if snapshotEquivalent(t, s, d).Success() {
++			t.Fatal("deleted dependency remained successful")
++		}
++	})
++	for _, name := range []string{"src/new.ms", "tests/new_test.ms"} {
++		t.Run(name, func(t *testing.T) {
++			root, files := snapshotFiles(t, map[string]string{
++				"ms.toml":      "[project]\nname = \"library\"\nsource = \"src\"\n",
++				"src/value.ms": "export fn value() Int: 1\n",
++			})
++			d := files["src/value.ms"]
++			s := snapshotServer(d)
++			if got := s.checkedDocument(d); !got.Success() {
++				t.Fatal(got.Diagnostics)
++			}
++			path := filepath.Join(root, name)
++			watchWrite(t, path, "fn broken() Int: \"wrong\"\n")
++			watchSend(t, s, fileURI(path))
++			if snapshotEquivalent(t, s, d).Success() {
++				t.Fatal("new unimported library source/test module was not discovered")
++			}
++			if err := os.Remove(path); err != nil {
++				t.Fatal(err)
++			}
++			watchSend(t, s, fileURI(path))
++			if got := snapshotEquivalent(t, s, d); !got.Success() {
++				t.Fatal("removed unimported source/test module remained checked", got.Diagnostics)
++			}
++		})
++	}
++}
++
++func TestWatchManifestTopologyAndFailedResults(t *testing.T) {
++	root, files := snapshotFiles(t, map[string]string{
++		"main.ms":        "fn outside() Int: 1\n",
++		"nested/main.ms": "fn nested() Int: 2\n",
++	})
++	outside, d := files["main.ms"], files["nested/main.ms"]
++	s := snapshotServer(outside, d)
++	old := s.checkedDocument(d)
++	_ = s.checkedDocument(outside)
++	manifest := filepath.Join(root, "ms.toml")
++	watchWrite(t, manifest, "[project]\nname = \"parent\"\nsource = \".\"\nentry = \"main.ms\"\n")
++	watchSend(t, s, fileURI(manifest))
++	if got := snapshotEquivalent(t, s, d); !got.Success() || got.Program == old.Program || s.owners[d.URI].target != manifest {
++		t.Fatal("new ancestor manifest did not reselect standalone context", got.Diagnostics, s.owners[d.URI])
++	}
++	nested := filepath.Join(root, "nested/ms.toml")
++	watchWrite(t, nested, "invalid configuration")
++	watchSend(t, s, fileURI(nested))
++	if got := snapshotEquivalent(t, s, d); got.Success() || got.Program != nil || s.owners[d.URI].target != nested {
++		t.Fatal("invalid nested manifest inherited parent or lost failed-result ownership", got.Diagnostics, s.owners[d.URI])
++	}
++	watchWrite(t, nested, "[project]\nname = \"nested\"\nsource = \".\"\nentry = \"main.ms\"\n")
++	watchSend(t, s, fileURI(nested))
++	if got := snapshotEquivalent(t, s, d); !got.Success() {
++		t.Fatal("fixed failed manifest retained a stale failed result", got.Diagnostics)
++	}
++	if err := os.Remove(nested); err != nil {
++		t.Fatal(err)
++	}
++	watchSend(t, s, fileURI(nested))
++	if got := snapshotEquivalent(t, s, d); !got.Success() || s.owners[d.URI].target != manifest {
++		t.Fatal("deleted nested manifest did not reselect parent", got.Diagnostics, s.owners[d.URI])
++	}
++	if err := os.Remove(manifest); err != nil {
++		t.Fatal(err)
++	}
++	watchSend(t, s, fileURI(manifest))
++	if got := snapshotEquivalent(t, s, d); !got.Success() || s.owners[d.URI].target != filename(d.URI) {
++		t.Fatal("deleted ancestor manifest did not restore standalone context", got.Diagnostics, s.owners[d.URI])
++	}
++}
++
++func TestWatchMalformedFallbackAndEmptyEventsThroughProtocol(t *testing.T) {
++	for _, params := range []string{"", "null", "{}", "[]", `"bad"`, `{"changes":[{}]}`, `{"changes":[{"uri":"file:relative.ms"}]}`, `{"changes":[{"uri":"https://host/source.ms"}]}`} {
++		t.Run(params, func(t *testing.T) {
++			d := performanceProject(t, 1, 1)
++			s := snapshotServer(d)
++			before := s.checkedDocument(d)
++			body := `{"jsonrpc":"2.0","method":"workspace/didChangeWatchedFiles"`
++			if params != "" {
++				body += `,"params":` + params
++			}
++			if err := s.serve([]byte(body + "}")); err != nil {
++				t.Fatal(err)
++			}
++			if s.checkedDocument(d).Program == before.Program {
++				t.Fatal("malformed/unsupported watch envelope bypassed conservative invalidation", params)
++			}
++		})
++	}
++	d := performanceProject(t, 1, 1)
++	s := snapshotServer(d)
++	before := s.checkedDocument(d)
++	var output bytes.Buffer
++	s.output = &output
++	watchSend(t, s)
++	watchSend(t, s, fileURI(filepath.Join(t.TempDir(), "external.ms")))
++	if s.checkedDocument(d).Program != before.Program || output.Len() != 0 {
++		t.Fatal("empty/external irrelevant watch discarded or republished a local owner")
++	}
++}
++
++func TestWatchImmutableStandardDocumentsAndPendingChangePublication(t *testing.T) {
++	d := performanceProject(t, 1, 1)
++	standard := checker.StandardModules()[0]
++	virtual := document{URI: "manuscript-stdlib:/" + strings.TrimPrefix(standard.File, "@std/"), Text: standard.Source, Version: 1}
++	disk := document{URI: fileURI(filepath.Join(t.TempDir(), filepath.Base(standard.File))), Text: standard.Source, Version: 1}
++	s := snapshotServer(d, virtual, disk)
++	_ = s.checkedDocument(d)
++	immutable := s.checkedDocument(disk)
++	_ = s.checkedDocument(virtual)
++	var output bytes.Buffer
++	s.output = &output
++	watchSend(t, s, fileURI(filepath.Join(filepath.Dir(filename(d.URI)), "part_0.ms")))
++	if s.checkedDocument(disk).Program != immutable.Program {
++		t.Fatal("standard sentinel forced unrelated global eviction")
++	}
++	if got := readMessages(t, &output); len(got) != 1 {
++		t.Fatal("workspace event republished immutable standard documents", got)
++	}
++	// A watcher must honor an earlier didChange's all-document obligation.
++	s.diagnosticsDirty = true
++	watchSend(t, s, d.URI)
++	got := readMessages(t, &output)
++	if len(got) != 4 || s.diagnosticsDirty {
++		t.Fatal("watch narrowed or dropped the pending all-document publication", got)
++	}
++}
++
++func TestWatchRetargetedAndDeletedAliasUsesOldFootprint(t *testing.T) {
++	a, files := snapshotFiles(t, map[string]string{"main.ms": "fn a() Int: 1\n"})
++	b, _ := snapshotFiles(t, map[string]string{"main.ms": "fn b() Int: 2\n"})
++	alias := watchAlias(t, a)
++	if err := os.Rename(alias, alias+".dir"); err != nil {
++		t.Fatal(err)
++	}
++	alias += ".dir"
++	d := files["main.ms"]
++	d.URI = fileURI(filepath.Join(alias, "main.ms"))
++	s := snapshotServer(d)
++	old := s.checkedDocument(d)
++	if err := os.Remove(alias); err != nil {
++		t.Fatal(err)
++	}
++	if err := os.Symlink(b, alias); err != nil {
++		t.Fatal(err)
++	}
++	watchSend(t, s, fileURI(alias))
++	if got := snapshotEquivalent(t, s, d); !got.Success() || got.Program == old.Program || s.owners[d.URI].canonical != b {
++		t.Fatal("retargeted alias retained old owner", got.Diagnostics, s.owners[d.URI])
++	}
++	if err := os.Remove(alias); err != nil {
++		t.Fatal(err)
++	}
++	watchSend(t, s, fileURI(alias))
++	if got := snapshotEquivalent(t, s, d); got.Program == old.Program || s.owners[d.URI].known {
++		t.Fatal("deleted alias retained certain old metadata", got.Diagnostics, s.owners[d.URI])
++	}
++}
++
++func TestWatchDeletedDottedDependencyDirectory(t *testing.T) {
++	root, files := snapshotFiles(t, map[string]string{
++		"main.ms":               "import value from \"./dependency.dir/dep.ms\"\nfn main() Int: value()\n",
++		"dependency.dir/dep.ms": "export fn value() Int: 1\n",
++	})
++	d := files["main.ms"]
++	b := performanceProject(t, 1, 1)
++	s := snapshotServer(d, b)
++	before, retained := s.checkedDocument(d), s.checkedDocument(b)
++	if !before.Success() {
++		t.Fatal(before.Diagnostics)
++	}
++	path := filepath.Join(root, "dependency.dir")
++	if err := os.RemoveAll(path); err != nil {
++		t.Fatal(err)
++	}
++	watchSend(t, s, fileURI(path))
++	if got := snapshotEquivalent(t, s, d); got.Success() || got.Program == before.Program {
++		t.Fatal("deleted dotted source directory was misclassified as an unrelated file", got.Diagnostics)
++	}
++	if s.checkedDocument(b).Program != retained.Program {
++		t.Fatal("known deleted source footprint forced unrelated global eviction")
++	}
++}
++
++func TestWatchDeletedConfinedSymlinkDirectory(t *testing.T) {
++	root, files := snapshotFiles(t, map[string]string{
++		"main.ms":     "import value from \"./link.dir/dep.ms\"\nfn main() Int: value()\n",
++		"real/dep.ms": "export fn value() Int: 1\n",
++	})
++	link := filepath.Join(root, "link.dir")
++	if err := os.Symlink(filepath.Join(root, "real"), link); err != nil {
++		t.Skipf("symlinks unavailable: %v", err)
++	}
++	d, b := files["main.ms"], performanceProject(t, 1, 1)
++	s := snapshotServer(d, b)
++	before, retained := s.checkedDocument(d), s.checkedDocument(b)
++	if !before.Success() {
++		t.Fatal(before.Diagnostics)
++	}
++	if err := os.Remove(link); err != nil {
++		t.Fatal(err)
++	}
++	var output bytes.Buffer
++	s.output = &output
++	watchSend(t, s, fileURI(link))
++	if got := snapshotEquivalent(t, s, d); got.Success() || got.Program == before.Program {
++		t.Fatal("deleted lexical symlink route retained a stale successful canonical module", got.Diagnostics)
++	}
++	if s.checkedDocument(b).Program != retained.Program {
++		t.Fatal("deleted confined symlink forced unrelated global eviction")
++	}
++	if messages := readMessages(t, &output); len(messages) != 1 || messages[0]["params"].(map[string]any)["uri"] != d.URI {
++		t.Fatal("deleted symlink diagnostics were not confined to A", messages)
++	}
++}
++
++func TestWatchRetainedProgramOwnsDerivedState(t *testing.T) {
++	a, b := performanceProject(t, 1, 1), performanceProject(t, 1, 1)
++	a.Text = strings.Replace(a.Text, "    let result", "    let unused = 1\n    let result", 1)
++	s := snapshotServer(a, b)
++	checked := s.checkedDocument(a)
++	_ = s.checkedDocument(b)
++	index, lint := s.documentIndex(checked), s.programLint(checked)
++	if len(index) == 0 || len(lint) == 0 {
++		t.Fatal("missing retained index fixture")
++	}
++	// Production sharing currently stays within one selected owner. Inject a
++	// retained reference to prove deletion follows live references, rather than
++	// assuming that invariant when dropping another entry with this Program.
++	s.cache[b.URI] = checked
++	watchSend(t, s, a.URI)
++	if s.checkedDocument(b).Program != checked.Program || len(s.indices[checked.Program]) == 0 || &s.indices[checked.Program][0] != &index[0] || len(s.lints[checked.Program]) == 0 || &s.lints[checked.Program][0] != &lint[0] {
++		t.Fatal("derived state was deleted while a retained entry still owned its Program")
++	}
++}
++
++func TestWatchAmbiguousEncodedURIsRetainRequestedText(t *testing.T) {
++	_, files := snapshotFiles(t, map[string]string{"main.ms": "fn answer() Int: 1\n"})
++	one, two := files["main.ms"], files["main.ms"]
++	two.URI = strings.TrimSuffix(one.URI, "main.ms") + "%6dain.ms"
++	two.Text = "fn answer() Int: \"wrong\"\n"
++	s := snapshotServer(one, two)
++	_ = s.checkedDocument(one)
++	_ = s.checkedDocument(two)
++	watchSend(t, s, one.URI)
++	if !snapshotEquivalent(t, s, one).Success() || snapshotEquivalent(t, s, two).Success() {
++		t.Fatal("watch invalidation changed per-request encoded URI precedence")
++	}
++}
++
++func TestWatchMissingLiveMetadataUsesGlobalFallback(t *testing.T) {
++	for _, shared := range []bool{false, true} {
++		a, b := performanceProject(t, 1, 1), performanceProject(t, 1, 1)
++		s := snapshotServer(a, b)
++		_ = s.checkedDocument(a)
++		before := s.checkedDocument(b)
++		if shared {
++			s.analysisOwners = nil
++		} else {
++			delete(s.owners, a.URI)
++		}
++		watchSend(t, s, a.URI)
++		if s.checkedDocument(b).Program == before.Program {
++			t.Fatal("unknown live ownership failed to fall back globally", shared)
++		}
++	}
++}
++
++func TestWatchRecordsActuallySelectedManifestAcrossTopologyChange(t *testing.T) {
++	root, files := snapshotFiles(t, map[string]string{
++		"ms.toml":        "[project]\nname = \"parent\"\nsource = \".\"\nentry = \"main.ms\"\n",
++		"main.ms":        "import nested from \"./nested/d.ms\"\nfn main() Int: nested()\n",
++		"dep.ms":         "export fn value() Int: 1\n",
++		"nested/ms.toml": "[project]\nname = \"nested\"\nsource = \".\"\nentry = \"d.ms\"\n",
++		"nested/d.ms":    "import value from \"../dep.ms\"\nexport fn nested() Int: value()\n",
++	})
++	d := files["nested/d.ms"]
++	s := snapshotServer(d)
++	manifest := filepath.Join(root, "nested/ms.toml")
++	// Construct the ordinary production compile callback while B exists, then
++	// change topology before analyzeWith selects its manifest. This deterministic
++	// interleaving distinguishes actual selection from independent preselection.
++	compile := s.documentCompiler(d)
++	if err := os.Remove(manifest); err != nil {
++		t.Fatal(err)
++	}
++	before := analyzeWith(d, s.docs, compiler.Options{AnalyzeOnly: true, Recover: true}, compile)
++	if !before.Success() || before.ProjectRoot != root || s.owners[d.URI].target != filepath.Join(root, "ms.toml") {
++		t.Fatal("URI ownership did not capture actual parent selection", before.Diagnostics, s.owners[d.URI])
++	}
++	s.cache[d.URI] = before
++	watchWrite(t, manifest, "[project]\nname = \"nested\"\nsource = \".\"\nentry = \"d.ms\"\n")
++	watchWrite(t, filepath.Join(root, "dep.ms"), "export fn value() String: \"changed\"\n")
++	// Only the parent dependency event has arrived so far; current B selection
++	// differs from actual cached A even though the earlier preselection was B.
++	watchSend(t, s, fileURI(filepath.Join(root, "dep.ms")))
++	if got := snapshotEquivalent(t, s, d); got.Success() || got.Program == before.Program || s.owners[d.URI].target != manifest {
++		t.Fatal("parent analysis survived restored nested selection", got.Diagnostics, s.owners[d.URI])
++	}
++}

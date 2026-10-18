@@ -1,0 +1,518 @@
+{
+  "BenchmarkOrdinaryChange/roots=2-2": {
+    "baseline": {
+      "ns/op": {
+        "median": 1296155.0,
+        "min": 1121887.0,
+        "max": 1603109.0
+      },
+      "B-retained/op": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "canonical/op": {
+        "median": 6.0,
+        "min": 6.0,
+        "max": 6.0
+      },
+      "compiles/op": {
+        "median": 2.0,
+        "min": 2.0,
+        "max": 2.0
+      },
+      "manifest/op": {
+        "median": 2.0,
+        "min": 2.0,
+        "max": 2.0
+      },
+      "pubs/op": {
+        "median": 2.0,
+        "min": 2.0,
+        "max": 2.0
+      },
+      "B/op": {
+        "median": 901441.0,
+        "min": 901096.0,
+        "max": 901558.0
+      },
+      "allocs/op": {
+        "median": 6586.0,
+        "min": 6586.0,
+        "max": 6586.0
+      }
+    },
+    "candidate": {
+      "ns/op": {
+        "median": 1344756.0,
+        "min": 1151628.0,
+        "max": 1501442.0
+      },
+      "B-retained/op": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "canonical/op": {
+        "median": 6.0,
+        "min": 6.0,
+        "max": 6.0
+      },
+      "compiles/op": {
+        "median": 2.0,
+        "min": 2.0,
+        "max": 2.0
+      },
+      "manifest/op": {
+        "median": 2.0,
+        "min": 2.0,
+        "max": 2.0
+      },
+      "pubs/op": {
+        "median": 2.0,
+        "min": 2.0,
+        "max": 2.0
+      },
+      "B/op": {
+        "median": 918142.0,
+        "min": 916965.0,
+        "max": 918314.0
+      },
+      "allocs/op": {
+        "median": 6693.0,
+        "min": 6693.0,
+        "max": 6693.0
+      }
+    }
+  },
+  "BenchmarkOrdinaryChange/roots=4-2": {
+    "baseline": {
+      "ns/op": {
+        "median": 2883866.0,
+        "min": 2846019.0,
+        "max": 3039948.0
+      },
+      "B-retained/op": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "canonical/op": {
+        "median": 12.0,
+        "min": 12.0,
+        "max": 12.0
+      },
+      "compiles/op": {
+        "median": 4.0,
+        "min": 4.0,
+        "max": 4.0
+      },
+      "manifest/op": {
+        "median": 4.0,
+        "min": 4.0,
+        "max": 4.0
+      },
+      "pubs/op": {
+        "median": 4.0,
+        "min": 4.0,
+        "max": 4.0
+      },
+      "B/op": {
+        "median": 1870271.0,
+        "min": 1868635.0,
+        "max": 1871858.0
+      },
+      "allocs/op": {
+        "median": 13710.0,
+        "min": 13710.0,
+        "max": 13712.0
+      }
+    },
+    "candidate": {
+      "ns/op": {
+        "median": 2746830.0,
+        "min": 2588775.0,
+        "max": 2946001.0
+      },
+      "B-retained/op": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "canonical/op": {
+        "median": 12.0,
+        "min": 12.0,
+        "max": 12.0
+      },
+      "compiles/op": {
+        "median": 4.0,
+        "min": 4.0,
+        "max": 4.0
+      },
+      "manifest/op": {
+        "median": 4.0,
+        "min": 4.0,
+        "max": 4.0
+      },
+      "pubs/op": {
+        "median": 4.0,
+        "min": 4.0,
+        "max": 4.0
+      },
+      "B/op": {
+        "median": 1903439.0,
+        "min": 1903280.0,
+        "max": 1903562.0
+      },
+      "allocs/op": {
+        "median": 13920.0,
+        "min": 13919.0,
+        "max": 13920.0
+      }
+    }
+  },
+  "BenchmarkOrdinaryChange/roots=8-2": {
+    "baseline": {
+      "ns/op": {
+        "median": 6450336.0,
+        "min": 5637692.0,
+        "max": 6864746.0
+      },
+      "B-retained/op": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "canonical/op": {
+        "median": 24.0,
+        "min": 24.0,
+        "max": 24.0
+      },
+      "compiles/op": {
+        "median": 8.0,
+        "min": 8.0,
+        "max": 8.0
+      },
+      "manifest/op": {
+        "median": 8.0,
+        "min": 8.0,
+        "max": 8.0
+      },
+      "pubs/op": {
+        "median": 8.0,
+        "min": 8.0,
+        "max": 8.0
+      },
+      "B/op": {
+        "median": 4029123.0,
+        "min": 4025939.0,
+        "max": 4029283.0
+      },
+      "allocs/op": {
+        "median": 29610.0,
+        "min": 29609.0,
+        "max": 29610.0
+      }
+    },
+    "candidate": {
+      "ns/op": {
+        "median": 6832580.0,
+        "min": 6538494.0,
+        "max": 8008420.0
+      },
+      "B-retained/op": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "canonical/op": {
+        "median": 24.0,
+        "min": 24.0,
+        "max": 24.0
+      },
+      "compiles/op": {
+        "median": 8.0,
+        "min": 8.0,
+        "max": 8.0
+      },
+      "manifest/op": {
+        "median": 8.0,
+        "min": 8.0,
+        "max": 8.0
+      },
+      "pubs/op": {
+        "median": 8.0,
+        "min": 8.0,
+        "max": 8.0
+      },
+      "B/op": {
+        "median": 4091102.0,
+        "min": 4087596.0,
+        "max": 4091157.0
+      },
+      "allocs/op": {
+        "median": 30023.0,
+        "min": 30022.0,
+        "max": 30024.0
+      }
+    }
+  },
+  "BenchmarkOwnerEvent/roots=2-2": {
+    "baseline": {
+      "ns/op": {
+        "median": 1541808.0,
+        "min": 1485239.0,
+        "max": 1637889.0
+      },
+      "B-retained/op": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "canonical/op": {
+        "median": 6.5,
+        "min": 6.5,
+        "max": 6.5
+      },
+      "compiles/op": {
+        "median": 2.0,
+        "min": 2.0,
+        "max": 2.0
+      },
+      "manifest/op": {
+        "median": 2.0,
+        "min": 2.0,
+        "max": 2.0
+      },
+      "pubs/op": {
+        "median": 2.0,
+        "min": 2.0,
+        "max": 2.0
+      },
+      "B/op": {
+        "median": 850812.0,
+        "min": 850602.0,
+        "max": 850973.0
+      },
+      "allocs/op": {
+        "median": 6205.0,
+        "min": 6204.0,
+        "max": 6205.0
+      }
+    },
+    "candidate": {
+      "ns/op": {
+        "median": 834008.0,
+        "min": 732991.0,
+        "max": 887486.0
+      },
+      "B-retained/op": {
+        "median": 1.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "canonical/op": {
+        "median": 6.5,
+        "min": 6.5,
+        "max": 6.5
+      },
+      "compiles/op": {
+        "median": 1.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "manifest/op": {
+        "median": 3.0,
+        "min": 3.0,
+        "max": 3.0
+      },
+      "pubs/op": {
+        "median": 1.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "B/op": {
+        "median": 426765.0,
+        "min": 426632.0,
+        "max": 426777.0
+      },
+      "allocs/op": {
+        "median": 3125.0,
+        "min": 3124.0,
+        "max": 3125.0
+      }
+    }
+  },
+  "BenchmarkOwnerEvent/roots=4-2": {
+    "baseline": {
+      "ns/op": {
+        "median": 3035240.0,
+        "min": 2658655.0,
+        "max": 3156016.0
+      },
+      "B-retained/op": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "canonical/op": {
+        "median": 12.5,
+        "min": 12.5,
+        "max": 12.5
+      },
+      "compiles/op": {
+        "median": 4.0,
+        "min": 4.0,
+        "max": 4.0
+      },
+      "manifest/op": {
+        "median": 4.0,
+        "min": 4.0,
+        "max": 4.0
+      },
+      "pubs/op": {
+        "median": 4.0,
+        "min": 4.0,
+        "max": 4.0
+      },
+      "B/op": {
+        "median": 1819255.0,
+        "min": 1819033.0,
+        "max": 1819455.0
+      },
+      "allocs/op": {
+        "median": 13329.0,
+        "min": 13328.0,
+        "max": 13329.0
+      }
+    },
+    "candidate": {
+      "ns/op": {
+        "median": 882381.0,
+        "min": 757564.0,
+        "max": 929446.0
+      },
+      "B-retained/op": {
+        "median": 1.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "canonical/op": {
+        "median": 8.5,
+        "min": 8.5,
+        "max": 8.5
+      },
+      "compiles/op": {
+        "median": 1.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "manifest/op": {
+        "median": 5.0,
+        "min": 5.0,
+        "max": 5.0
+      },
+      "pubs/op": {
+        "median": 1.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "B/op": {
+        "median": 462205.0,
+        "min": 462098.0,
+        "max": 462218.0
+      },
+      "allocs/op": {
+        "median": 3415.0,
+        "min": 3415.0,
+        "max": 3415.0
+      }
+    }
+  },
+  "BenchmarkOwnerEvent/roots=8-2": {
+    "baseline": {
+      "ns/op": {
+        "median": 6314739.0,
+        "min": 5496469.0,
+        "max": 6659634.0
+      },
+      "B-retained/op": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "canonical/op": {
+        "median": 24.5,
+        "min": 24.5,
+        "max": 24.5
+      },
+      "compiles/op": {
+        "median": 8.0,
+        "min": 8.0,
+        "max": 8.0
+      },
+      "manifest/op": {
+        "median": 8.0,
+        "min": 8.0,
+        "max": 8.0
+      },
+      "pubs/op": {
+        "median": 8.0,
+        "min": 8.0,
+        "max": 8.0
+      },
+      "B/op": {
+        "median": 3971326.0,
+        "min": 3971164.0,
+        "max": 3971456.0
+      },
+      "allocs/op": {
+        "median": 29226.0,
+        "min": 29226.0,
+        "max": 29227.0
+      }
+    },
+    "candidate": {
+      "ns/op": {
+        "median": 1141824.0,
+        "min": 1028723.0,
+        "max": 1280039.0
+      },
+      "B-retained/op": {
+        "median": 1.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "canonical/op": {
+        "median": 12.5,
+        "min": 12.5,
+        "max": 12.5
+      },
+      "compiles/op": {
+        "median": 1.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "manifest/op": {
+        "median": 9.0,
+        "min": 9.0,
+        "max": 9.0
+      },
+      "pubs/op": {
+        "median": 1.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "B/op": {
+        "median": 534049.0,
+        "min": 533798.0,
+        "max": 534100.0
+      },
+      "allocs/op": {
+        "median": 3998.0,
+        "min": 3998.0,
+        "max": 3999.0
+      }
+    }
+  }
+}

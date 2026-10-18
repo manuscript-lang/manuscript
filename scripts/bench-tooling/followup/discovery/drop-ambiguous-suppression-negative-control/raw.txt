@@ -1,0 +1,7 @@
+=== RUN   TestDiscoveryDoesNotInventDiskVariantForConflictingAliases
+    discovery_test.go:206: ambiguous physical identity acquired an invented disk variant {file:///tmp/TestDiscoveryDoesNotInventDiskVariantForConflictingAliases593814079/001/main.ms fn second_name() Int: 2
+         0}
+--- FAIL: TestDiscoveryDoesNotInventDiskVariantForConflictingAliases (0.03s)
+FAIL
+FAIL	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	0.030s
+FAIL

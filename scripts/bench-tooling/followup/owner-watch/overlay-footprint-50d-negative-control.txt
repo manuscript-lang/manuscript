@@ -1,0 +1,49 @@
+=== RUN   TestWatchCrossOwnerOverlayFootprints
+=== RUN   TestWatchCrossOwnerOverlayFootprints/file-delete
+    external_overlay_footprint_test.go:33: cached result for file:///tmp/TestWatchCrossOwnerOverlayFootprintsfile-delete2510268104/002/main.ms differs from uncached analysis:
+        got: {Program:true ProjectRoot:/tmp/TestWatchCrossOwnerOverlayFootprintsfile-delete2510268104/002 SourceRoot:/tmp/TestWatchCrossOwnerOverlayFootprintsfile-delete2510268104/002 Modules:map[main.ms:import value from "./subdir/dep.ms"
+        fn b() Int: value()
+         subdir/dep.ms:export fn value() String: "unsaved"
+        ] Diagnostics:[{"code":"MS3001","phase":"type","message":"expected Int, found String","position":{"file":"main.ms","line":2,"column":13,"offset":48}}]}
+        want: {Program:true ProjectRoot:/tmp/TestWatchCrossOwnerOverlayFootprintsfile-delete2510268104/002 SourceRoot:/tmp/TestWatchCrossOwnerOverlayFootprintsfile-delete2510268104/002 Modules:map[main.ms:import value from "./subdir/dep.ms"
+        fn b() Int: value()
+         subdir/dep.ms:export fn value() Int: 1
+        ] Diagnostics:[]}
+=== RUN   TestWatchCrossOwnerOverlayFootprints/file-retarget
+    external_overlay_footprint_test.go:33: cached result for file:///tmp/TestWatchCrossOwnerOverlayFootprintsfile-retarget1734230565/002/main.ms differs from uncached analysis:
+        got: {Program:true ProjectRoot:/tmp/TestWatchCrossOwnerOverlayFootprintsfile-retarget1734230565/002 SourceRoot:/tmp/TestWatchCrossOwnerOverlayFootprintsfile-retarget1734230565/002 Modules:map[main.ms:import value from "./subdir/dep.ms"
+        fn b() Int: value()
+         subdir/dep.ms:export fn value() String: "unsaved"
+        ] Diagnostics:[{"code":"MS3001","phase":"type","message":"expected Int, found String","position":{"file":"main.ms","line":2,"column":13,"offset":48}}]}
+        want: {Program:true ProjectRoot:/tmp/TestWatchCrossOwnerOverlayFootprintsfile-retarget1734230565/002 SourceRoot:/tmp/TestWatchCrossOwnerOverlayFootprintsfile-retarget1734230565/002 Modules:map[main.ms:import value from "./subdir/dep.ms"
+        fn b() Int: value()
+         subdir/dep.ms:export fn value() Int: 1
+        ] Diagnostics:[]}
+=== RUN   TestWatchCrossOwnerOverlayFootprints/directory-delete
+    external_overlay_footprint_test.go:33: cached result for file:///tmp/TestWatchCrossOwnerOverlayFootprintsdirectory-delete4089632009/002/main.ms differs from uncached analysis:
+        got: {Program:true ProjectRoot:/tmp/TestWatchCrossOwnerOverlayFootprintsdirectory-delete4089632009/002 SourceRoot:/tmp/TestWatchCrossOwnerOverlayFootprintsdirectory-delete4089632009/002 Modules:map[main.ms:import value from "./subdir/dep.ms"
+        fn b() Int: value()
+         subdir/dep.ms:export fn value() String: "unsaved"
+        ] Diagnostics:[{"code":"MS3001","phase":"type","message":"expected Int, found String","position":{"file":"main.ms","line":2,"column":13,"offset":48}}]}
+        want: {Program:true ProjectRoot:/tmp/TestWatchCrossOwnerOverlayFootprintsdirectory-delete4089632009/002 SourceRoot:/tmp/TestWatchCrossOwnerOverlayFootprintsdirectory-delete4089632009/002 Modules:map[main.ms:import value from "./subdir/dep.ms"
+        fn b() Int: value()
+         subdir/dep.ms:export fn value() Int: 1
+        ] Diagnostics:[]}
+=== RUN   TestWatchCrossOwnerOverlayFootprints/directory-retarget
+    external_overlay_footprint_test.go:33: cached result for file:///tmp/TestWatchCrossOwnerOverlayFootprintsdirectory-retarget1958129601/002/main.ms differs from uncached analysis:
+        got: {Program:true ProjectRoot:/tmp/TestWatchCrossOwnerOverlayFootprintsdirectory-retarget1958129601/002 SourceRoot:/tmp/TestWatchCrossOwnerOverlayFootprintsdirectory-retarget1958129601/002 Modules:map[main.ms:import value from "./subdir/dep.ms"
+        fn b() Int: value()
+         subdir/dep.ms:export fn value() String: "unsaved"
+        ] Diagnostics:[{"code":"MS3001","phase":"type","message":"expected Int, found String","position":{"file":"main.ms","line":2,"column":13,"offset":48}}]}
+        want: {Program:true ProjectRoot:/tmp/TestWatchCrossOwnerOverlayFootprintsdirectory-retarget1958129601/002 SourceRoot:/tmp/TestWatchCrossOwnerOverlayFootprintsdirectory-retarget1958129601/002 Modules:map[main.ms:import value from "./subdir/dep.ms"
+        fn b() Int: value()
+         subdir/dep.ms:export fn value() Int: 1
+        ] Diagnostics:[]}
+--- FAIL: TestWatchCrossOwnerOverlayFootprints (0.08s)
+    --- FAIL: TestWatchCrossOwnerOverlayFootprints/file-delete (0.05s)
+    --- FAIL: TestWatchCrossOwnerOverlayFootprints/file-retarget (0.01s)
+    --- FAIL: TestWatchCrossOwnerOverlayFootprints/directory-delete (0.01s)
+    --- FAIL: TestWatchCrossOwnerOverlayFootprints/directory-retarget (0.01s)
+FAIL
+FAIL	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	0.079s
+FAIL

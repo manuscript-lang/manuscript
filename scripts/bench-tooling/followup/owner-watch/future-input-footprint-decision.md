@@ -1,0 +1,16 @@
+# Future upstream input-footprint decision
+
+**Current decision: keep global watched-file invalidation. Do not ship owner-root selection or add watcher batching around it.** The held LSP-only prototype cannot prove that disjoint lexical owners have disjoint filesystem inputs.
+
+Concrete blockers are preserved as executable observations:
+
+- Closed B imports `../A/link.ms`, declares a manifest alias to that route, or selects it as manifest entry. While A/link.ms is a symlink to B/dep.ms, SourcePath's final canonical confinement accepts it. Replacing A/link.ms with a regular outside file makes fresh B fail confinement, but owner-root matching misses the event and serves cached success. All three routes reproduce with A closed and with an independent A document open.
+- An unrequested open A/link.ms or A/alias.dir/dep.ms can provide unsaved text to B's canonical overlay. Deleting or retargeting the lexical route changes B's admitted overlay without changing A's selected manifest root. Capturing only each requested URI's selected owner misses B.
+
+Compiler.Result exposes canonical checked module filenames, ProjectRoot/SourceRoot and original Configuration text, not the full resolved input route history. frontend Graph.Imports maps checked imports to canonical targets; syntax.Import.Path retains written import text, but alias/source/entry resolution and failed-load attempts belong to the shared resolver. Reimplementing that resolver or heuristically parsing Configuration inside LSP would create a second semantic contract and is outside this bounded task. A per-open footprint map addresses only the second family and is explicitly rejected as an incomplete remedy.
+
+A future separately authorized compiler/frontend API should report the actual input dependencies produced during one analysis: selected manifest/config file reads, original written and resolved source/entry/alias/import routes, canonical file identities, relevant discovery directories, and missing/failed candidate paths needed to recover after creation/deletion. Symlink route changes need either dependency footprints for traversed link/directory entries or an explicit uncertainty marker with conservative global invalidation; endpoint identity alone must not silently claim all intermediate routing dependencies. Standard pinned virtual/exact disk declarations retain their immutable contract.
+
+The API must report from the actual selection/load pass, including failed results and source/test-library discovery, rather than independently reselecting manifests before analysis. Its lifetime follows the checked result and may contain paths/uncertainty, not a second retained Program graph. Old and current footprints need a union across deletion/retargeting, with missing/malformed events taking a safe fallback. Event delivery remains the host's responsibility; the API does not invent missing notifications.
+
+That work requires coordinated ownership of compiler/frontend/project and LSP contracts, independent skeptical design review, and exact fresh-analysis controls for all retained open/closed route cases. Only then should selective whole-owner or dependency invalidation be reconsidered. These are requirements for a future scoped decision, not authorization to add an incremental compiler, persistent graph/cache or configuration parser now.

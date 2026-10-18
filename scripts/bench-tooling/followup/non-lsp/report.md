@@ -58,3 +58,13 @@ Two requested **500ms-target** CPU/allocation captures completed (Go reported7 t
 Validation: `TestNonLSPProbeContracts` passes: identical Facts produce no findings,16 long expressions receive32 parentheses, and full formatted source is idempotent. `TestNonLSPGuideProbeContract` passes with byte-identical json page output. The independent-root baseline observation reports300 nodes for nodeCap200. A separate expected-failing regression (`TestNonLSPNodeCapNegativeControl`) asserts the cap and fails with exactly **300 >200**, confirming the output-bound gap without relying on a latency inference. This extra negative test was added after the initial benchmark series; benchmark functions were unchanged. It is excluded from the reproducible success/benchmark command.
 
 All sources/probes are external overlays, with hashes in metadata. `README.md` contains exact reproducible commands; `contracts.txt`, `nodecap-negative-control.txt`, `review-profile.txt` and `format-profile.txt` retain exit evidence. No production files were edited, and the CPU slot has been released. The measured review/formatter/guide work now supports bounded implementation proposals; docgen duplicate snapshot and CLI duplicate Inspect remain source-proven work counts with consumer cost controls, not measured end-to-end savings.
+
+## Later main reconciliation
+
+The source and timing review above is historical at the stated revision. Main
+`95ec85602c3d08a8de6d96de45df89e80bbd2d2a` includes CLI fix
+[#671](https://github.com/manuscript-lang/manuscript/pull/671), which moves
+`Inspect` into the plain-diagram branch and removes the duplicate work described
+above. That cross-owner finding is resolved. The nine listed non-LSP tooling
+production files remain byte-identical; dependencies such as the lexer changed,
+so the historical timings are not relabeled as latest-main measurements.
