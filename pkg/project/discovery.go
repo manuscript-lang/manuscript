@@ -21,6 +21,11 @@ func DiscoverModules(p Project, includeSource bool) ([]string, error) {
 			}
 			name := entry.Name()
 			if entry.IsDir() {
+				// The source walk has already collected its tests as well as its
+				// ordinary modules. Keep the root walk for tests elsewhere.
+				if includeSource && !all && path == p.Source {
+					return filepath.SkipDir
+				}
 				if path != root && (strings.HasPrefix(name, ".") || name == "vendor" || name == "node_modules") {
 					return filepath.SkipDir
 				}
@@ -54,6 +59,9 @@ func DiscoverModulesWithOverlay(p Project, includeSource bool, overlay map[strin
 	files, err := DiscoverModules(p, includeSource)
 	if err != nil {
 		return nil, err
+	}
+	if len(overlay) == 0 {
+		return files, nil
 	}
 	seen := make(map[string]bool, len(files))
 	for _, file := range files {
