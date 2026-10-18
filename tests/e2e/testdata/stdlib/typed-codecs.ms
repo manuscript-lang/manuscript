@@ -1,5 +1,5 @@
 import {expect_equal} from "@std/testing.ms"
-import {HashAlgorithm, sha256, sha384, sha512, hmac, CryptoError} from "@std/crypto.ms"
+import {HashAlgorithm, sha256, sha384, sha512, CryptoError} from "@std/crypto.ms"
 import {CompressionFormat, compress, decompress, CompressionError} from "@std/compress.ms"
 import {ArchiveFormat, pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError} from "@std/archive.ms"
 import Bytes from "@std/bytes.ms"
@@ -29,19 +29,16 @@ test "typed SHA selectors match their algorithms and retain bound operations":
     try expect_equal(stored(data), sha384(data))
     try expect_equal(call_digest(stored, data), sha384(data))
     let key = "key".to_bytes()
-
     for algorithm in [HashAlgorithm.Sha256, HashAlgorithm.Sha384, HashAlgorithm.Sha512]:
-        let name = match algorithm:
-            Sha256: "sha256"
-            Sha384: "sha384"
-            Sha512: "sha512"
-
-        try expect_equal((try algorithm.hmac(key, data)), (try hmac(key, data, name)))
-
+        try expect_equal(
+            (try algorithm.hmac(key, data)).length(),
+            (algorithm.digest(data).length())
+        )
     let hmac_operation = HashAlgorithm.Sha512.hmac
-    try expect_equal((try hmac_operation(key, data)), (try hmac(key, data, "sha512")))
-    let unsupported: Result[Bytes, CryptoError] = error(CryptoError.Unsupported)
-    try expect_equal(hmac(key, data, "SHA256"), unsupported)
+    try expect_equal(
+        (try hmac_operation(key, data)),
+        (try HashAlgorithm.Sha512.hmac(key, data))
+    )
 
 test "typed compression preserves bytes limits errors and optional arguments":
     let data = "typed codecs typed codecs".to_bytes()

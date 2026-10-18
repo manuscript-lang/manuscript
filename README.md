@@ -27,7 +27,7 @@ Manuscript is statically typed. Write `.ms` files and build native executables w
 This complete program prints the number of arguments it receives:
 
 ```manuscript
-import arguments from "@std/cli.ms"
+import arguments from "@std/process.ms"
 import stdout from "@std/io.ms"
 
 export fn main() Int:

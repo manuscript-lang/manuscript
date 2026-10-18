@@ -1,6 +1,6 @@
 import {expect_equal, expect_false, expect_some, expect_true, fail} from "@std/testing.ms"
 import stdout from "@std/io.ms"
-import arguments from "@std/cli.ms"
+import arguments from "@std/process.ms"
 import filesystem from "@std/fs.ms"
 import commands from "@std/process.ms"
 import parse from "@std/json.ms"

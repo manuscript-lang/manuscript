@@ -31,7 +31,7 @@ Open `examples/hello/src/main.ms`:
 
 <!-- manuscript-example: {"mode":"run","args":["first","second"],"stdout":"Arguments: 2\n"} -->
 ```manuscript {filename="src/main.ms"}
-import arguments from "@std/cli.ms"
+import arguments from "@std/process.ms"
 import stdout from "@std/io.ms"
 
 export fn main() Int:

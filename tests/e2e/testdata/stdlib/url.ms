@@ -58,3 +58,29 @@ test "URL parse rejects malformed hosts and queries and keeps an empty authority
     let empty = try parse("http://")
     try expect_equal((try format(empty)), "http://")
     try expect_equal((empty | try format | try parse), empty)
+
+test "URL format and resolve reject invalid schemes and hostless relative paths":
+    let invalid_text: Result[String, UrlError] = error(UrlError.InvalidInput)
+    let invalid_url: Result[Url, UrlError] = error(UrlError.InvalidInput)
+
+    for scheme in [
+        "", "1http", "http:", "http:other", "http/other", "http?query", "http#fragment"
+    ]:
+        let bad = Url(scheme, "host", none, "/path", "", "")
+        if format(bad) != invalid_text: return fail("invalid scheme accepted: {scheme}")
+
+        try expect_equal(resolve(bad, "/next"), invalid_url)
+
+    let relative = Url("custom", "", none, "relative", "", "")
+    try expect_equal(format(relative), invalid_text)
+    try expect_equal(resolve(relative, "/next"), invalid_url)
+
+    for text in ["custom:/path", "custom+v1.2://host/path", "file:///path", "http://"]:
+        let original = try parse(text)
+        if (original | try format | try parse) != original: return fail(
+            "hierarchical URL round trip: {text}"
+        )
+
+    let uppercase = Url("HTTP", "host", none, "/path", "", "")
+    try expect_equal((uppercase | try format | try parse).scheme, "http")
+    try expect_equal((try resolve(uppercase, "/next")).scheme, "http")

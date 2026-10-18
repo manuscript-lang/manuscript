@@ -13,7 +13,11 @@ import {
     abs,
     pi,
     e,
-    remainder
+    remainder,
+    max,
+    min,
+    max_of,
+    min_of
 } from "@std/math.ms"
 
 fn near(actual: Float, expected: Float) Bool:
@@ -44,3 +48,41 @@ test "float remainder takes the sign of the dividend":
     try expect_equal(remainder(-5.0, 3.0), -2.0)
     try expect_equal(remainder(7.0, 2.0), 1.0)
     try expect_false(not remainder(5.0, 0.0).is_nan())
+
+type Ranked:
+    rank: Int
+    unexpected: List[Int] = []
+
+impl Comparable for Ranked:
+    fn compare(other: Comparable) Int:
+        match other:
+            Ranked(value):
+                if self.rank < value.rank: return -9223372036854775808
+                if self.rank > value.rank: return 9223372036854775807
+
+                return 0
+            _:
+                self.unexpected.append(1)
+                return 0
+
+test "extrema use comparator signs without negating Int minimum":
+    let low = Ranked(1)
+    let high = Ranked(2)
+    try expect_equal(min(high, low).rank, 1)
+    try expect_equal(max(low, high).rank, 2)
+
+    for values in [[high, low], [low, high]]:
+        try expect_equal(min_of(values).get().rank, 1)
+        try expect_equal(max_of(values).get().rank, 2)
+
+    let second_low = Ranked(1)
+    let second_high = Ranked(2)
+    let values = [high, low, second_low, second_high]
+    let minimum = min_of(values).get()
+    let maximum = max_of(values).get()
+    minimum.rank = 0
+    maximum.rank = 3
+    try expect_false(low.rank != 0 or second_low.rank != 1)
+    try expect_false(high.rank != 3 or second_high.rank != 2)
+    for value in [low, high, second_low, second_high]:
+        try expect_false(not value.unexpected.is_empty())

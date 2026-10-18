@@ -454,14 +454,14 @@ func TestCryptoHashes(t *testing.T) {
 	// RFC 4231 test case 2.
 	key, data := NewBytes([]byte("Jefe")), NewBytes([]byte("what do ya want for nothing?"))
 	want := "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"
-	if got := hexOf(mustOk(t, Crypto_Hmac(ctx, key, data, "sha256"))); got != want {
+	if got := hexOf(mustOk(t, cryptoHmac(ctx, key, data, "sha256"))); got != want {
 		t.Fatalf("hmac = %s", got)
 	}
 	if got := hexOf(mustOk(t, HashAlgorithm_Hmac(ctx, HashAlgorithm_Sha256{}, key, data))); got != want {
 		t.Fatalf("typed hmac = %s", got)
 	}
-	mustFail(t, Crypto_Hmac(ctx, key, data, "md5"), CryptoError(CryptoError_Unsupported{}))
-	mustFail(t, Crypto_Hmac(ctx, key, data, "SHA256"), CryptoError(CryptoError_Unsupported{}))
+	mustFail(t, cryptoHmac(ctx, key, data, "md5"), CryptoError(CryptoError_Unsupported{}))
+	mustFail(t, cryptoHmac(ctx, key, data, "SHA256"), CryptoError(CryptoError_Unsupported{}))
 	if !Crypto_ConstantTimeEqual(ctx, abc, NewBytes([]byte("abc"))) || Crypto_ConstantTimeEqual(ctx, abc, NewBytes([]byte("abd"))) || Crypto_ConstantTimeEqual(ctx, abc, NewBytes([]byte("ab"))) {
 		t.Fatal("constant time equal")
 	}

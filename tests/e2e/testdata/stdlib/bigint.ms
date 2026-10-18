@@ -1,4 +1,4 @@
-import {expect_equal, expect_false} from "@std/testing.ms"
+import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import {parse, from_int, BigInt, BigIntError} from "@std/bigint.ms"
 
 test "big integers exceed machine range without losing precision":
@@ -17,3 +17,19 @@ test "big integers validate digits budgets and zero divisors":
     try expect_equal(parse("123", 10, 2), limited)
     let malformed: Result[BigInt, BigIntError] = error(BigIntError.InvalidData)
     try expect_equal(parse("1_0", 10), malformed)
+
+test "big integer budgets exclude at most one leading sign before validation":
+    let limited: Result[BigInt, BigIntError] = error(BigIntError.LimitExceeded)
+    let malformed: Result[BigInt, BigIntError] = error(BigIntError.InvalidData)
+
+    for text in ["+-1", "-+1", "++1", "--1"]:
+        if parse(text, 10, 1) != limited: return fail(
+            "second sign must count toward budget: {text}"
+        )
+        if parse(text, 10, 2) != malformed: return fail(
+            "second sign must fail syntax validation: {text}"
+        )
+
+    for text in ["1", "+1", "-1"]:
+        try expect_false(parse(text, 10, 1).is_error())
+        try expect_equal(parse(text, 10, 0), limited)

@@ -1,6 +1,6 @@
 import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import range from "@std/collections.ms"
-import {decoder, feed, finish, reader, next_event, SseError, SseEvent, SseLimits} from "@std/sse.ms"
+import {decoder, reader, next_event, SseError, SseEvent, SseLimits} from "@std/sse.ms"
 import {Bytes, BytesBuilder} from "@std/bytes.ms"
 import {IoError, ReadStream} from "@std/io.ms"
 
@@ -48,10 +48,10 @@ fn decode(parts: List[Bytes]) Result[List[SseEvent], SseError]:
     let events = List[SseEvent]()
 
     for part in parts:
-        let batch = try feed(created, part)
+        let batch = try created.feed(part)
         for event in batch: events.append(event)
 
-    try finish(created)
+    try created.finish()
     return ok(events)
 
 fn summary(events: List[SseEvent]) String:
@@ -81,8 +81,8 @@ test "LF CRLF and CR endings decode identically under every chunk split":
 
 test "CR LF straddling a chunk boundary is one ending":
     let created = try decoder()
-    let first = try feed(created, "data: a\r".to_bytes())
-    let second = try feed(created, "\n\r\n".to_bytes())
+    let first = try created.feed("data: a\r".to_bytes())
+    let second = try created.feed("\n\r\n".to_bytes())
     try expect_false(first.length() != 0 or second.length() != 1)
 
 test "repeated data lines join with LF and bare data is an empty line":
@@ -108,13 +108,12 @@ test "events without data are not dispatched and reset the event type":
 
 test "retry accepts digits only and survives between events":
     let created = try decoder()
-    let _events = try feed(created, "retry: 1500\n\n".to_bytes())
-    try expect_equal(created.retry.get(0), 1500)
-    let _second_events = try feed(
-        created,
+    let _events = try created.feed("retry: 1500\n\n".to_bytes())
+    try expect_equal(created.retry().get(0), 1500)
+    let _second_events = try created.feed(
         "retry: 12x\nretry: -5\nretry:\nretry: 99999999999999999999\n\n".to_bytes()
     )
-    try expect_equal(created.retry.get(0), 1500)
+    try expect_equal(created.retry().get(0), 1500)
 
 test "a byte order mark is dropped only at the start of the stream":
     try expect("\u{feff}data: a\n\n", "message|a|-")
@@ -141,14 +140,14 @@ test "invalid UTF-8 is InvalidData and final":
         var failure = false
 
         for part in parts:
-            let outcome = feed(created, part)
+            let outcome = created.feed(part)
             if outcome.is_error():
                 failure = outcome.err() == SseError.InvalidData
 
         try expect_false(not failure)
         try expect_false(
             not is_case(
-                feed(created, "data: x\n\n".to_bytes()),
+                created.feed("data: x\n\n".to_bytes()),
                 SseError.InvalidData
             )
         )
@@ -157,20 +156,19 @@ test "line and event budgets report LimitExceeded":
     let tight = try decoder(SseLimits(some(7)))
     try expect_false(
         not is_case(
-            feed(tight, "data: 12\n\n".to_bytes()),
+            tight.feed("data: 12\n\n".to_bytes()),
             SseError.LimitExceeded
         )
     )
     let exact = try decoder(SseLimits(some(8)))
-    try expect_equal((try feed(exact, "data: 12\n\n".to_bytes())).length(), 1)
+    try expect_equal((try exact.feed("data: 12\n\n".to_bytes())).length(), 1)
     let event = try decoder(SseLimits(max_event_bytes: some(10)))
-    let _event_batch = try feed(event, "data: 1\n".to_bytes())
+    let _event_batch = try event.feed("data: 1\n".to_bytes())
     try expect_false(
-        not is_case(feed(event, "data: 2\n".to_bytes()), SseError.LimitExceeded)
+        not is_case(event.feed("data: 2\n".to_bytes()), SseError.LimitExceeded)
     )
     let comments = try decoder(SseLimits(max_event_bytes: some(10)))
-    let _comment_events = try feed(
-        comments,
+    let _comment_events = try comments.feed(
         ": a long comment is not counted\ndata: 1\n\n".to_bytes()
     )
     try expect_false(decoder(SseLimits(some(0))).is_ok())
@@ -178,20 +176,20 @@ test "line and event budgets report LimitExceeded":
 test "truncated streams fail and clean ends succeed":
     for source in ["data: a\n", "data: a", "data: a\n\ndata", "id: 1\n"]:
         let created = try decoder()
-        let _events = try feed(created, source.to_bytes())
-        let ending = finish(created)
+        let _events = try created.feed(source.to_bytes())
+        let ending = created.finish()
         if ending.is_ok() or ending.err() != SseError.Truncated: return fail(
             "{source} must be Truncated"
         )
 
     for source in ["", "data: a\n\n", ": keepalive\n", "data: a\r\n\r\n", "\n"]:
         let created = try decoder()
-        let _events = try feed(created, source.to_bytes())
-        try finish(created)
+        let _events = try created.feed(source.to_bytes())
+        try created.finish()
 
     let done = try decoder()
-    try finish(done)
-    try expect_false(not is_case(feed(done, "x".to_bytes()), SseError.InvalidInput))
+    try done.finish()
+    try expect_false(not is_case(done.feed("x".to_bytes()), SseError.InvalidInput))
 
 test "reader decodes a borrowed stream and leaves it open":
     let source = stream(

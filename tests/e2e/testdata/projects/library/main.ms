@@ -1,6 +1,6 @@
 import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
 import control from "@std/process.ms"
-import arguments from "@std/cli.ms"
+import arguments from "@std/process.ms"
 import entropy from "@std/random.ms"
 import filesystem from "@std/fs.ms"
 import system from "@std/system.ms"

@@ -11,7 +11,7 @@ import (
 func TestCLIInlineValueOptions(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(root, "main=a=b.ms")
-	code := `import arguments from "@std/cli.ms"
+	code := `import arguments from "@std/process.ms"
 import stdout from "@std/io.ms"
 import stderr from "@std/io.ms"
 

@@ -1,5 +1,5 @@
 import {expect_equal, expect_false, expect_not_equal} from "@std/testing.ms"
-import {arguments, environment} from "@std/cli.ms"
+import arguments from "@std/process.ms"
 import {system, endianness, end_of_line, os_type, dev_null} from "@std/system.ms"
 import {control, commands, CommandError, CommandOutput} from "@std/process.ms"
 import {read_line} from "@std/io.ms"
@@ -28,13 +28,10 @@ test "CLI test roots have empty arguments and host metadata agrees":
     try expect_not_equal(os_type().byte_length(), 0)
     try expect_not_equal(dev_null().byte_length(), 0)
 
-test "process environment is live while CLI environment retains its snapshot":
+test "process environment reflects live changes":
     let name = "MANUSCRIPT_STDLIB_CONFORMANCE"
-    let before = system().environment(name)
-    let snapshot = environment().get(name)
+    let before = (try control().environment()).get(name)
     try control().set_environment(name, "stdlib")
-    try expect_equal(system().environment(name), some("stdlib"))
-    try expect_equal(environment().get(name), snapshot)
     try expect_equal((try control().environment()).get(name), some("stdlib"))
     try control().set_environment(name, before)
 

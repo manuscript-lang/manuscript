@@ -94,7 +94,7 @@ func TestRunnerOptionsAreNotHostArguments(t *testing.T) {
 	runs := 0
 	test := Test{Name: "arguments.ms::empty", Run: unitRun(func(ctx *Execution) Unit {
 		runs++
-		if got := len(Cli_Arguments(ctx).Items); got != 0 {
+		if got := len(Process_Arguments(ctx).Items); got != 0 {
 			t.Errorf("test host received %d runner arguments", got)
 		}
 		return Unit{}

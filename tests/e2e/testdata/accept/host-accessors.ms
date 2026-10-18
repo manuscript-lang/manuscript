@@ -1,5 +1,5 @@
 import {expect_equal, expect_false, expect_ok, fail} from "@std/testing.ms"
-import {arguments, environment} from "@std/cli.ms"
+import {arguments, control} from "@std/process.ms"
 import {stdin, stdout, stderr} from "@std/io.ms"
 import {clock, wall_clock} from "@std/time.ms"
 import entropy from "@std/random.ms"
@@ -14,15 +14,9 @@ fn check_services() Result[Unit, Error]:
     (after - before < 0.milliseconds) | try expect_false
     (wall_clock().now().unix_seconds() <= 0) | try expect_false
     (system().info().cpu_count <= 0) | try expect_false
+    let variables = try control().environment()
 
-    for entry in environment():
-        match system().environment(entry.key):
-            some(value):
-                try expect_equal(value, entry.value)
-            none:
-                return fail("environment entry missing")
-
-    match entropy().bytes(count: 0):
+    match entropy().bytes(0):
         ok(data):
             try expect_equal(data.length(), 0)
         error(_):

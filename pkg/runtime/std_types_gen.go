@@ -501,6 +501,7 @@ type FileSystem interface {
 	Remove(ctx *Execution, a0 string, a1 bool) Result[Unit, FileSystemError]
 	Rename(ctx *Execution, a0 string, a1 string) Result[Unit, FileSystemError]
 	Stat(ctx *Execution, a0 string, a1 bool) Result[*FileInfo, FileSystemError]
+	TemporaryRoot(ctx *Execution) Result[string, FileSystemError]
 	TemporaryDirectory(ctx *Execution, a0 string) Result[string, FileSystemError]
 	WriteFile(ctx *Execution, a0 string, a1 *Bytes, a2 bool) Result[Unit, FileSystemError]
 	Access(ctx *Execution, a0 string, a1 int) Result[Unit, FileSystemError]
@@ -1592,12 +1593,10 @@ func (NormalizationForm_Nfkd) isNormalizationForm() {
 }
 
 type System interface {
-	Environment(ctx *Execution, a0 string) Option[string]
 	Info(ctx *Execution) *SystemInfo
 	WorkingDirectory(ctx *Execution) string
 	Hostname(ctx *Execution) Result[string, SystemError]
 	HomeDirectory(ctx *Execution) Result[string, SystemError]
-	TemporaryDirectory(ctx *Execution) Result[string, SystemError]
 	UserInfo(ctx *Execution) Result[*UserInfo, SystemError]
 	NetworkInterfaces(ctx *Execution) Result[*List[*NetworkInterface], SystemError]
 	Cpus(ctx *Execution) Result[*List[*CpuInfo], SystemError]

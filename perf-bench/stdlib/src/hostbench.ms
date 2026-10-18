@@ -2,7 +2,7 @@ import range from "@std/collections.ms"
 import {bench} from "./harness.ms"
 import Bytes from "@std/bytes.ms"
 import {pack, unpack, ArchiveEntry} from "@std/archive.ms"
-import {decoder, feed, SseDecoder} from "@std/sse.ms"
+import {decoder, SseDecoder} from "@std/sse.ms"
 import {parse_timestamp} from "@std/time.ms"
 import {uuid_v4, entropy} from "@std/random.ms"
 
@@ -71,7 +71,7 @@ fn bench_sse() Unit:
     )
 
 fn feed_all(d: SseDecoder, stream: Bytes) Int:
-    if let events = feed(d, stream):
+    if let events = d.feed(stream):
         return events.length()
 
     return 0
