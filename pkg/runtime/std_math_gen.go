@@ -58,6 +58,12 @@ func check_Math_Max[T any]() {
 func check_Math_Min[T any]() {
 	var _ func(*Execution, Cmp[T], T, T) T = Math_Min[T]
 }
+func check_Math_MaxOf[T any]() {
+	var _ func(*Execution, Cmp[T], *List[T]) Option[T] = Math_MaxOf[T]
+}
+func check_Math_MinOf[T any]() {
+	var _ func(*Execution, Cmp[T], *List[T]) Option[T] = Math_MinOf[T]
+}
 func check_Math_Pi() {
 	var _ func(*Execution) float64 = Math_Pi
 }

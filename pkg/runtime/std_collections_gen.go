@@ -134,12 +134,6 @@ func check_List_Fill[T any]() {
 func check_List_CopyWithin[T any]() {
 	var _ func(*Execution, *List[T], int, int, int) *List[T] = List_CopyWithin[T]
 }
-func check_List_Max[T any]() {
-	var _ func(*Execution, Cmp[T], *List[T]) Option[T] = List_Max[T]
-}
-func check_List_Min[T any]() {
-	var _ func(*Execution, Cmp[T], *List[T]) Option[T] = List_Min[T]
-}
 func check_List_ToSet[T comparable]() {
 	var _ func(*Execution, *Keys[T], *List[T]) *Set[T] = List_ToSet[T]
 }

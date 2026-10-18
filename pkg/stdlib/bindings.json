@@ -74,12 +74,6 @@
     "@std/net.ms/Cidr": "native"
   },
   "receiver_requirements": {
-    "@std/collections.ms/List/max": {
-      "T": "Comparable"
-    },
-    "@std/collections.ms/List/min": {
-      "T": "Comparable"
-    },
     "@std/collections.ms/List/contains": {
       "T": "Equal"
     },

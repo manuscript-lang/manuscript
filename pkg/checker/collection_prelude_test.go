@@ -77,7 +77,7 @@ func TestCollectionPreludePublicTypeClosure(t *testing.T) {
 		got = append(got, name)
 	}
 	slices.Sort(got)
-	want := []string{"CollectionError", "Comparable", "Equal", "Error", "Hashable", "List", "ListEntry", "Map", "MapEntry", "MissingValue", "Optional", "Result", "Set"}
+	want := []string{"CollectionError", "Equal", "Error", "Hashable", "List", "ListEntry", "Map", "MapEntry", "MissingValue", "Optional", "Result", "Set"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("support closure = %v, want %v", got, want)
 	}
