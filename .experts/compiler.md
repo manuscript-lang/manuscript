@@ -343,3 +343,13 @@ map-evidence decisions once when no local implementations exist; otherwise a
 linear AST inventory can still cost candidates times methods. Concrete record
 specialization conservatively excludes generic callers that would re-resolve
 methods per candidate. `BenchmarkClosedMapProofScaling` grows both dimensions.
+
+Verified: successful Result bounds describe normal success returns, not call
+totality. Even `return error(constructor(...))` can hide an early successful return
+inside a match/block/default argument. Fixed-shape summaries reject such subtrees
+and defaults. Expand wrappers from direct summaries only, not previously expanded
+wrappers, to bound analysis independently of call-chain depth. During loop delta
+collection, scope success bindings with journal rollback while all modified peers
+stay unknown; never transfer accumulator assignments in that walk. See
+`TestSuccessfulResultBoundsRejectDifferentReturns`, `TestSuccessfulResultBoundsRestoreElseScope`,
+and `TestSuccessfulResultBoundsKeepPeerAndPrefixChecks`.

@@ -1,0 +1,14 @@
+{
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "repeats": 30,
+  "binaries": {
+    "before": {
+      "path": "/workspace/manuscript/.artifacts/perf-binaries/merged-stdlib",
+      "sha256": "1df62fef034b05b9aab01c13d0cd5e7ece00ee77255f0438d8ecafb744ab18c5"
+    },
+    "after": {
+      "path": "/workspace/manuscript/.artifacts/perf-binaries/result-bounds-stdlib",
+      "sha256": "b405605dd4ec5316df604e0b82197ec2c2013e2525866c23266892e58b67f8f6"
+    }
+  }
+}

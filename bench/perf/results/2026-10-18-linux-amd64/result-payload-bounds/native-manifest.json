@@ -1,0 +1,30 @@
+{
+  "before-program": {
+    "source_sha256": "8f26173c8bb81e5577b727e1ca4783873a0377f47602ac7560fea6eb6c856994",
+    "binary_sha256": "5f12fa9869aecc17978ec878ec33f7ca4f22f944873cdc39365bd6f1c3b49c24",
+    "app_path": "/workspace/manuscript/.artifacts/build-storage/native-cache/manuscript/workspaces/51d6451cce4232a6cd2c5a4664cccae2/apps/0ba3a82a7233dbfbefeebad7c3595b8c",
+    "binary": "/workspace/manuscript/.artifacts/perf-binaries/result-matched-before-program",
+    "metadata": "/workspace/manuscript/.artifacts/perf-binaries/result-matched-before-program: go1.25.1\n\tpath\tgithub.com/manuscript-lang/manuscript/apps/0ba3a82a7233dbfbefeebad7c3595b8c\n\tmod\tgithub.com/manuscript-lang/manuscript\t(devel)\t\n\tdep\tgithub.com/fsnotify/fsnotify\tv1.9.0\t\n\tdep\tgithub.com/gorilla/websocket\tv1.5.3\t\n\tdep\tgithub.com/shirou/gopsutil/v4\tv4.25.9\t\n\tdep\tgithub.com/tklauser/go-sysconf\tv0.3.15\t\n\tdep\tgithub.com/tklauser/numcpus\tv0.10.0\t\n\tdep\tgolang.org/x/net\tv0.43.0\t\n\tdep\tgolang.org/x/sys\tv0.35.0\t\n\tdep\tgolang.org/x/text\tv0.28.0\t\n\tbuild\t-buildmode=exe\n\tbuild\t-compiler=gc\n\tbuild\t-trimpath=true\n\tbuild\tCGO_ENABLED=0\n\tbuild\tGOARCH=amd64\n\tbuild\tGOOS=linux\n\tbuild\tGOAMD64=v1\n"
+  },
+  "after-program": {
+    "source_sha256": "964ac1428db2502c14e63b84367d2b6e9da1fa72f96d5b1cda87f1f340f15dcc",
+    "binary_sha256": "661225187d17758a60af1d2b5928cc0755da6cc7206be093e3f9aecc8b5e74fc",
+    "app_path": "/workspace/manuscript/.artifacts/build-storage/native-cache/manuscript/workspaces/51d6451cce4232a6cd2c5a4664cccae2/apps/dd9a706091a003c7776de1673d3821f7",
+    "binary": "/workspace/manuscript/.artifacts/perf-binaries/result-matched-after-program",
+    "metadata": "/workspace/manuscript/.artifacts/perf-binaries/result-matched-after-program: go1.25.1\n\tpath\tgithub.com/manuscript-lang/manuscript/apps/dd9a706091a003c7776de1673d3821f7\n\tmod\tgithub.com/manuscript-lang/manuscript\t(devel)\t\n\tdep\tgithub.com/fsnotify/fsnotify\tv1.9.0\t\n\tdep\tgithub.com/gorilla/websocket\tv1.5.3\t\n\tdep\tgithub.com/shirou/gopsutil/v4\tv4.25.9\t\n\tdep\tgithub.com/tklauser/go-sysconf\tv0.3.15\t\n\tdep\tgithub.com/tklauser/numcpus\tv0.10.0\t\n\tdep\tgolang.org/x/net\tv0.43.0\t\n\tdep\tgolang.org/x/sys\tv0.35.0\t\n\tdep\tgolang.org/x/text\tv0.28.0\t\n\tbuild\t-buildmode=exe\n\tbuild\t-compiler=gc\n\tbuild\t-trimpath=true\n\tbuild\tCGO_ENABLED=0\n\tbuild\tGOARCH=amd64\n\tbuild\tGOOS=linux\n\tbuild\tGOAMD64=v1\n"
+  },
+  "before-stdlib": {
+    "source_sha256": "94b4c02974a24ea9860210fdb454fd1efe34f9d096af7bdee7bfd6f7715ea41a",
+    "binary_sha256": "b405605dd4ec5316df604e0b82197ec2c2013e2525866c23266892e58b67f8f6",
+    "app_path": "/workspace/manuscript/.artifacts/build-storage/native-cache/manuscript/workspaces/51d6451cce4232a6cd2c5a4664cccae2/apps/413fcceec2b78b21bd8624c8a15fbafc",
+    "binary": "/workspace/manuscript/.artifacts/perf-binaries/result-matched-before-stdlib",
+    "metadata": "/workspace/manuscript/.artifacts/perf-binaries/result-matched-before-stdlib: go1.25.1\n\tpath\tgithub.com/manuscript-lang/manuscript/apps/413fcceec2b78b21bd8624c8a15fbafc\n\tmod\tgithub.com/manuscript-lang/manuscript\t(devel)\t\n\tdep\tgithub.com/fsnotify/fsnotify\tv1.9.0\t\n\tdep\tgithub.com/gorilla/websocket\tv1.5.3\t\n\tdep\tgithub.com/shirou/gopsutil/v4\tv4.25.9\t\n\tdep\tgithub.com/tklauser/go-sysconf\tv0.3.15\t\n\tdep\tgithub.com/tklauser/numcpus\tv0.10.0\t\n\tdep\tgolang.org/x/net\tv0.43.0\t\n\tdep\tgolang.org/x/sys\tv0.35.0\t\n\tdep\tgolang.org/x/text\tv0.28.0\t\n\tbuild\t-buildmode=exe\n\tbuild\t-compiler=gc\n\tbuild\t-trimpath=true\n\tbuild\tCGO_ENABLED=0\n\tbuild\tGOARCH=amd64\n\tbuild\tGOOS=linux\n\tbuild\tGOAMD64=v1\n"
+  },
+  "after-stdlib": {
+    "source_sha256": "94b4c02974a24ea9860210fdb454fd1efe34f9d096af7bdee7bfd6f7715ea41a",
+    "binary_sha256": "b405605dd4ec5316df604e0b82197ec2c2013e2525866c23266892e58b67f8f6",
+    "app_path": "/workspace/manuscript/.artifacts/build-storage/native-cache/manuscript/workspaces/51d6451cce4232a6cd2c5a4664cccae2/apps/413fcceec2b78b21bd8624c8a15fbafc",
+    "binary": "/workspace/manuscript/.artifacts/perf-binaries/result-matched-after-stdlib",
+    "metadata": "/workspace/manuscript/.artifacts/perf-binaries/result-matched-after-stdlib: go1.25.1\n\tpath\tgithub.com/manuscript-lang/manuscript/apps/413fcceec2b78b21bd8624c8a15fbafc\n\tmod\tgithub.com/manuscript-lang/manuscript\t(devel)\t\n\tdep\tgithub.com/fsnotify/fsnotify\tv1.9.0\t\n\tdep\tgithub.com/gorilla/websocket\tv1.5.3\t\n\tdep\tgithub.com/shirou/gopsutil/v4\tv4.25.9\t\n\tdep\tgithub.com/tklauser/go-sysconf\tv0.3.15\t\n\tdep\tgithub.com/tklauser/numcpus\tv0.10.0\t\n\tdep\tgolang.org/x/net\tv0.43.0\t\n\tdep\tgolang.org/x/sys\tv0.35.0\t\n\tdep\tgolang.org/x/text\tv0.28.0\t\n\tbuild\t-buildmode=exe\n\tbuild\t-compiler=gc\n\tbuild\t-trimpath=true\n\tbuild\tCGO_ENABLED=0\n\tbuild\tGOARCH=amd64\n\tbuild\tGOOS=linux\n\tbuild\tGOAMD64=v1\n"
+  }
+}

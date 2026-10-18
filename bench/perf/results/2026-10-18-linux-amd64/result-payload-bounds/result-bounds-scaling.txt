@@ -1,0 +1,24 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/lower
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkSuccessfulResultScaling/128/summaries-4         	    2682	    134514 ns/op	   82120 B/op	    1421 allocs/op
+BenchmarkSuccessfulResultScaling/128/summaries-4         	    2686	    137373 ns/op	   82120 B/op	    1421 allocs/op
+BenchmarkSuccessfulResultScaling/128/summaries-4         	    2366	    147839 ns/op	   82120 B/op	    1421 allocs/op
+BenchmarkSuccessfulResultScaling/128/proof-4             	     434	    819078 ns/op	  345936 B/op	    2903 allocs/op
+BenchmarkSuccessfulResultScaling/128/proof-4             	     386	    840531 ns/op	  345936 B/op	    2903 allocs/op
+BenchmarkSuccessfulResultScaling/128/proof-4             	     469	    776519 ns/op	  346093 B/op	    2903 allocs/op
+BenchmarkSuccessfulResultScaling/256/summaries-4         	    1178	    290944 ns/op	  164328 B/op	    2831 allocs/op
+BenchmarkSuccessfulResultScaling/256/summaries-4         	    1292	    292696 ns/op	  164328 B/op	    2831 allocs/op
+BenchmarkSuccessfulResultScaling/256/summaries-4         	    1184	    322435 ns/op	  164328 B/op	    2831 allocs/op
+BenchmarkSuccessfulResultScaling/256/proof-4             	     219	   1555606 ns/op	  683462 B/op	    5742 allocs/op
+BenchmarkSuccessfulResultScaling/256/proof-4             	     220	   1504367 ns/op	  683961 B/op	    5742 allocs/op
+BenchmarkSuccessfulResultScaling/256/proof-4             	     223	   1601076 ns/op	  683610 B/op	    5742 allocs/op
+BenchmarkSuccessfulResultScaling/512/summaries-4         	     560	    662323 ns/op	  328840 B/op	    5649 allocs/op
+BenchmarkSuccessfulResultScaling/512/summaries-4         	     478	    667274 ns/op	  328840 B/op	    5649 allocs/op
+BenchmarkSuccessfulResultScaling/512/summaries-4         	     504	    661986 ns/op	  328840 B/op	    5649 allocs/op
+BenchmarkSuccessfulResultScaling/512/proof-4             	     100	   3313627 ns/op	 1334249 B/op	   11416 allocs/op
+BenchmarkSuccessfulResultScaling/512/proof-4             	     100	   3141847 ns/op	 1333880 B/op	   11416 allocs/op
+BenchmarkSuccessfulResultScaling/512/proof-4             	     100	   3393949 ns/op	 1332824 B/op	   11416 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/lower	7.637s

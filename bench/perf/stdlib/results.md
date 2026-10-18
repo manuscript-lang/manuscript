@@ -1,5 +1,9 @@
 # Standard-library performance results
 
+Latest Result-bound follow-up: the library generated Go and normalized executable
+are byte-identical to PR #694; see the [diagnostic control and hashes](../results/2026-10-18-linux-amd64/result-payload-bounds/).
+The table below remains the earlier merged runtime/lowering comparison.
+
 2026-10-18 UTC; Go1.25.1, linux/amd64, AMD EPYC9V74, four-vCPU quota.
 Baseline d710e9bf (PR#688); thirty alternating executions per revision.
 All66 operation counts/checksums match in every process. These medians use raw

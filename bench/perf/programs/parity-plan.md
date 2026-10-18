@@ -520,3 +520,41 @@ Outcome: retained after independent skeptical review. Compiler/lower tests pass;
 executables rebuild byte-identically to the measured versions. An attempted
 inherited-Int-default fixture was invalid: interface defaults require Optional.none;
 the accepted explicit Int-default fallback remains covered by the method-shape test.
+
+## Restricted successful Result payload bounds
+
+Independently reviewed before implementation by review_builder_proposal. A valid
+30-trial generated-Go carry-only control retains original helper calls, errors and
+checks while replacing the proved caller addition: try 0.60 ns/op vs Go 0.59.
+This supports a smaller increment before match cloning. Whole-suite retention is
+still required because tiny-kernel placement changes affect other rows.
+
+Precompile one fixed affine successful-return summary per nongeneric declaration:
+one immutable Int parameter, no defaults; a pure parameter/literal comparison
+with a single early canonical error, then canonical ok(param +/- IntLiteral).
+The error leaf is a String literal or exact one-String-field constructor with one
+explicit literal and no defaults. Arbitrary error arguments may hide an early
+successful return and are excluded. Allow at most one checked exact Result-tail
+wrapper hop, never recursive graph interpretation or per-call callee rescans.
+
+Keep all original calls, checks, construction and source frames. Infer only
+normal successful payload bounds, without condition refinement or call totality.
+Seed immutable if-let bindings in the success arm and restore before else/joins.
+During finite-loop delta collection, walk the body once with all modified
+scalar/cell/list facts invalidated, counter interval installed, and only scoped
+success facts added. Do not transfer evolving accumulator values; retain separate
+positive/negative branch budgets and every-prefix checks. Debug falls back.
+
+Alternatives are keeping the caller check, cloning general helpers, or arbitrary
+interprocedural interpretation. The restricted existing-proof extension is smaller.
+Require paired fallbacks including hidden success/defaults, branch/peer overflow,
+evaluation order, native frames/cleanup/standalone, deterministic output, scaling,
+and complete program/library controls before retaining.
+
+Outcome: retained restricted Result proof after independent code review, native
+standalone and source-frame regressions, deterministic/concurrent and paired
+fallback tests. Matching-flag 30-trial try improves 1.16→0.63 ns/op against Go0.56;
+eight of ten workloads are within about20% Go. Library generated source and
+normalized executable are byte-identical. Summary/proof allocation counts roughly
+double at128/256/512; the summary profile attributes about30% cumulative CPU to
+collector object scanning. Raw timings/intervals/hashes are in the Result archive.

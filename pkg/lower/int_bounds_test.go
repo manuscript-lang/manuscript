@@ -193,3 +193,46 @@ func BenchmarkClosedMapProofScaling(b *testing.B) {
 		})
 	}
 }
+
+func BenchmarkSuccessfulResultScaling(b *testing.B) {
+	for _, n := range []int{128, 256, 512} {
+		var source strings.Builder
+		source.WriteString("import TextError from \"@std/errors.ms\"\n")
+		for i := 0; i < n; i++ {
+			fmt.Fprintf(&source, "fn affine%d(value: Int) Result[Int, TextError]:\n    if value < 0: return error(TextError(\"negative\"))\n    return ok(value + 1)\n", i)
+		}
+		source.WriteString("fn probe() Int:\n    var sum = 0\n")
+		for i := 0; i < n; i++ {
+			fmt.Fprintf(&source, "    var i%d = 0\n    while i%d < 1000:\n        if let found = affine%d(i%d):\n            sum += found\n        else:\n            sum -= 1\n        i%d += 1\n", i, i, i, i, i)
+		}
+		source.WriteString("    return sum\n")
+		program := checkedLoweringProgram(b, source.String())
+		g := newGen(program)
+		var body []*syntax.Statement
+		for _, module := range program.Modules {
+			for _, d := range module.Declarations {
+				if d.Name == "probe" {
+					body = d.Body
+				}
+			}
+		}
+		if body == nil || len(g.resultBounds) != n {
+			b.Fatalf("missing probe or summaries: %d", len(g.resultBounds))
+		}
+		b.Run(fmt.Sprint(n)+"/summaries", func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				if len(g.resultIntSummaries()) != n {
+					b.Fatal("missing summary")
+				}
+			}
+		})
+		b.Run(fmt.Sprint(n)+"/proof", func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				g.fn = &funcState{}
+				g.proveIntArithmetic(body)
+			}
+		})
+	}
+}

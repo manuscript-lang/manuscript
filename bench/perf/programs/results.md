@@ -1,5 +1,56 @@
 # Manuscript vs handwritten Go
 
+Eight of ten workloads are within roughly 20% of Go after the successful Result
+payload proof. Try is 0.63 ns/op versus Go's 0.56, down from 1.16 ns/op in the
+merged baseline. Method loops and matching remain the largest gaps. These are
+complete workloads with identical counts and checksums, not isolated instructions.
+
+2026-10-18 UTC; Go 1.25.1, linux/amd64, AMD EPYC 9V74, four-vCPU quota.
+Baseline: **0bac0cbd** (merged PR #694). Both revisions compile the same benchmark
+sources. Thirty trials cycle all six Go/before/after orders with shared Go samples.
+Builds and correctness tests finish before sampling; TMPDIR/GOTMPDIR are unset.
+All three executables use CGO_ENABLED=0, -buildvcs=false, -trimpath and
+-ldflags='-s -w -buildid=' with ordinary inlining.
+
+| operation | before ns/op | after ns/op | Go ns/op | after / Go |
+|---|---:|---:|---:|---:|
+| string_append_50k | 3.22 | 3.36 | 2.81 | 1.20x |
+| read_line | 56.16 | 57.97 | 63.12 | 0.92x |
+| map_put_get_8k | 32.53 | 32.99 | 31.64 | 1.04x |
+| int_eq | 1.01 | 1.02 | 0.97 | 1.05x |
+| generic_call | 0.31 | 0.32 | 0.27 | 1.17x |
+| method_call | 0.61 | 0.65 | 0.28 | 2.37x |
+| try | 1.16 | 0.63 | 0.56 | 1.11x |
+| match | 3.61 | 3.41 | 1.51 | 2.26x |
+| builtin_length | 0.62 | 0.32 | 0.28 | 1.16x |
+| for_list | 0.62 | 0.45 | 0.39 | 1.16x |
+
+The new proof summarizes only normal successful values of a fixed checked helper:
+one immutable Int parameter, one pure comparison with a literal-only early error,
+then ok(parameter plus/minus an Int literal). At most one exact Result identity
+wrapper hop is admitted. All original calls, allocations, errors and general
+arithmetic checks remain. Success facts are scoped to their if-let arm. Finite-loop
+delta collection invalidates every modified peer, retains both branches' separate
+positive/negative budgets, and never transfers evolving accumulator values.
+Unknown helpers, defaults, hidden successful returns, aliases, generics and Debug
+fall back. No error impossibility or call totality is inferred.
+
+The library's generated Go and normalized executable are byte-identical before
+and after this increment. Thirty diagnostic CLI-built library runs preserve all
+66 counts/checksums; their code/data sections match and only build-id notes differ.
+The complete diagnostic timing variation is retained rather than attributed to an
+algorithm change. Summary allocations scale 1421/2831/5649 at 128/256/512 helpers;
+proof allocations scale 2903/5742/11416. Timing profiles accompany the raw scaling.
+
+[Raw trials, hashes, intervals, controls and reproduction](../results/2026-10-18-linux-amd64/result-payload-bounds/).
+[Canonical proof boundaries](../../../documentation/contributing/compiler/lowering/_index.md).
+
+## Earlier merged batch
+
+The following results and retained changes describe PR #694 before main advanced.
+They remain historical evidence; the latest table above is the current candidate.
+
+
 Seven of ten complete workloads are within roughly20% of handwritten Go in this
 run. Method calls improve about8x, try about3.4x, and map put/get about1.9x over
 the previous merged compiler. Parity remains incomplete: generic accumulation,

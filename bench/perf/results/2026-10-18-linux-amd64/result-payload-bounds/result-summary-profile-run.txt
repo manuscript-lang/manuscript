@@ -1,0 +1,7 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/lower
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkSuccessfulResultScaling/512/summaries-4         	    3445	    746519 ns/op	  328856 B/op	    5649 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/lower	2.929s
