@@ -38,12 +38,10 @@ test "typed SHA selectors match their algorithms and retain bound operations":
     if call_digest(stored, data) != sha384(data): return panic("generic stored digest")
 
     let key = "key".to_bytes()
-
     for algorithm in [HashAlgorithm.Sha256, HashAlgorithm.Sha384, HashAlgorithm.Sha512]:
         if value(algorithm.hmac(key, data)).length() != algorithm.digest(data).length(): return panic(
             "typed HMAC"
         )
-
     let hmac_operation = HashAlgorithm.Sha512.hmac
     if value(hmac_operation(key, data)) != value(HashAlgorithm.Sha512.hmac(key, data)): return panic(
         "stored HMAC"

@@ -1,4 +1,4 @@
-import arguments from "@std/cli.ms"
+import arguments from "@std/process.ms"
 import stdout from "@std/io.ms"
 
 export fn main() Int:

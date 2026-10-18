@@ -28,10 +28,14 @@ test "crypto known SHA256 HMAC and PBKDF2 vectors":
         or sha512("abc".to_bytes()).length() != 64
     ): return panic("digest sizes")
 
-    let mac = HashAlgorithm.Sha256.hmac(
-        "key".to_bytes(),
-        "The quick brown fox jumps over the lazy dog".to_bytes()
-    ) | value
+    let mac = (
+        HashAlgorithm
+        .Sha256
+        .hmac(
+            "key".to_bytes(),
+            "The quick brown fox jumps over the lazy dog".to_bytes()
+        ) | value
+    )
     if (
         hex_encode(
             mac

@@ -76,7 +76,7 @@ func TestCLIBuildJSONSuccessAndPartialArtifacts(t *testing.T) {
 	}
 }
 
-const nativeProfileSource = `import arguments from "@std/cli.ms"
+const nativeProfileSource = `import arguments from "@std/process.ms"
 import {stdout, stderr} from "@std/io.ms"
 
 export fn main() Int:

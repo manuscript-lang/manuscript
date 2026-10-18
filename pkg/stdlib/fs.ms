@@ -159,6 +159,8 @@ export interface FileSystem:
     fn rename(source: String, destination: String) Result[Unit, FileSystemError]
     # Returns metadata for `path`. `follow_links` true describes the link target and false describes the link itself.
     fn stat(path: String, follow_links: Bool) Result[FileInfo, FileSystemError]
+    # Queries the host temp root without creating or checking a directory.
+    fn temporary_root() Result[String, FileSystemError]
     # Creates a new directory under the host temp root; the caller must remove it.
     # Prefix must be nonempty and contain no slash, backslash, or NUL.
     fn temporary_directory(prefix: String) Result[String, FileSystemError]

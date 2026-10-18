@@ -444,6 +444,11 @@ func validPrefix(prefix string) bool {
 	return prefix != "" && !strings.ContainsAny(prefix, "/\\\x00")
 }
 
+func (f *osFileSystem) TemporaryRoot(ctx *Execution) Result[string, FileSystemError] {
+	CheckCancelled(ctx)
+	return fsDone(os.TempDir(), nil)
+}
+
 func (f *osFileSystem) TemporaryDirectory(ctx *Execution, prefix string) Result[string, FileSystemError] {
 	if !validPrefix(prefix) {
 		return fsInvalid[string]()

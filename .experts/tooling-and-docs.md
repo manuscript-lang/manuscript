@@ -84,7 +84,7 @@ Decision: the string utility module is `@std/string.ms`, matching the intrinsic 
 Decision: the user explicitly removed the “Application hosts” section. CLI entry/accessor/shutdown contracts belong in the CLI package guide, and HTTP request/shutdown contracts belong in the HTTP package guide. Do not recreate a separate host category in the standard-library navigation.
 
 Apply when: organizing the standard-library guide or adding application-entry documentation.
-Evidence: [standard-library navigation](../pkg/stdlib/intrinsics.ms), [CLI guide](../pkg/stdlib/cli.ms), and [HTTP guide](../pkg/stdlib/http.ms).
+Evidence: [standard-library navigation](../pkg/stdlib/intrinsics.ms), [CLI guide](../pkg/stdlib/process.ms), and [HTTP guide](../pkg/stdlib/http.ms).
 Verify: build the book with destination cleanup and confirm there is no standard-library/hosts route or sidebar section; existing entry and request links resolve to package pages.
 
 ### Teach a runnable path before formal reference

@@ -1,6 +1,6 @@
 import {Logger, LogLevel, create, bind, record, stdout_transport, file_transport} from "@std/log.ms"
 import JsonValue from "@std/json.ms"
-import arguments from "@std/cli.ms"
+import arguments from "@std/process.ms"
 import stderr from "@std/io.ms"
 import {TaskGroup, Task} from "@std/tasks.ms"
 import emit from "./records.ms"

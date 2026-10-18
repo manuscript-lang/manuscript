@@ -8,7 +8,7 @@ description = "Agents write. Humans understand."
 {{< docs-home >}}
 <!-- manuscript-example: {"mode":"run","args":["Ada"],"stdout":"Hello, Ada!\n","cases":[{"stdout":"Hello, world!\n"}]} -->
 ```manuscript {filename="hello.ms"}
-import arguments from "@std/cli.ms"
+import arguments from "@std/process.ms"
 import stdout from "@std/io.ms"
 
 export fn main() Int:

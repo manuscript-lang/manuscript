@@ -1,13 +1,5 @@
 import range from "@std/collections.ms"
-import {
-    decoder,
-    reader,
-    next_event,
-    SseDecoder,
-    SseError,
-    SseEvent,
-    SseLimits
-} from "@std/sse.ms"
+import {decoder, reader, next_event, SseDecoder, SseError, SseEvent, SseLimits} from "@std/sse.ms"
 import {Bytes, BytesBuilder} from "@std/bytes.ms"
 import {IoError, ReadStream} from "@std/io.ms"
 import panic from "@std/faults.ms"

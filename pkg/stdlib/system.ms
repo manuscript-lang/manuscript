@@ -4,8 +4,6 @@ import Duration from "@std/time.ms"
 
 # Read-only host details and selected controls for the current operating system.
 export interface System:
-    # Reads the live variable; absent or non-UTF-8 values return none.
-    fn environment(name: String) Optional[String]
     # Returns the operating system name, processor architecture, and logical CPU count for this host.
     fn info() SystemInfo
     # Reads the live native directory; an OS query failure faults because this API has no Result.
@@ -17,8 +15,6 @@ export interface System:
     # Returns the current user's home directory path, from the host's environment or account database.
     # A path that is not valid UTF-8 returns Unsupported.
     fn home_directory() Result[String, SystemError]
-    # Queries the host temp root without creating or checking a directory; non-UTF-8 returns Unsupported.
-    fn temporary_directory() Result[String, SystemError]
     # Returns the current user's name, numeric ids, home directory, and login shell.
     # The shell is empty when the host does not record one, and text that is not valid UTF-8 returns Unsupported.
     fn user_info() Result[UserInfo, SystemError]
