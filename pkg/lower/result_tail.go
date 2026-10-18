@@ -8,6 +8,10 @@ import (
 // An exact Result unwrapped and immediately rewrapped at a tail is itself.
 // Keep the original statements when source bindings are needed by a debugger.
 func (g *gen) tailResultOperand(stmts []*syntax.Statement) *syntax.Expression {
+	return g.tailResultOperandAs(stmts, g.fn.result)
+}
+
+func (g *gen) tailResultOperandAs(stmts []*syntax.Statement, result *checker.Type) *syntax.Expression {
 	if g.options.PreserveBindings || g.options.Locals != nil || len(stmts) < 2 {
 		return nil
 	}
@@ -25,7 +29,7 @@ func (g *gen) tailResultOperand(stmts []*syntax.Statement) *syntax.Expression {
 	constructor, tried, argument := g.info(ret.Value), g.info(bind.Value), g.info(arg)
 	inner := bind.Value.Right
 	operand := g.info(inner)
-	result := g.sub(g.fn.result)
+	result = g.sub(result)
 	if constructor == nil || !isStd(constructor.Constructor, "Result") || constructor.Case != "ok" ||
 		tried == nil || argument == nil || operand == nil || !isStd(result, "Result") {
 		return nil

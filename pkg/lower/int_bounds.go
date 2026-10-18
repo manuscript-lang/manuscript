@@ -250,6 +250,7 @@ func (p *intProof) body(body []*syntax.Statement) {
 		case syntax.KindIf:
 			p.expression(s.Value, true)
 			mark, epoch := len(p.journal), p.epoch
+			p.successBinding(s)
 			p.body(s.Body)
 			p.restore(mark, epoch)
 			p.body(s.Else)
@@ -401,10 +402,14 @@ func (p *intProof) boundedBody(body []*syntax.Statement, count *big.Int, counter
 		valid              bool
 	}
 	deltas := map[*checker.Binding]*contributions{}
+	writeByValue := map[*syntax.Expression]intLoopWrite{}
 	for _, w := range writes {
+		writeByValue[w.value] = w
+	}
+	p.loopDeltas(body, writeByValue, func(w intLoopWrite) {
 		b, v := w.binding, w.value
 		if b == counter {
-			continue
+			return
 		}
 		d := deltas[b]
 		if d == nil {
@@ -419,7 +424,7 @@ func (p *intProof) boundedBody(body []*syntax.Statement, count *big.Int, counter
 		} else if v.Kind != syntax.KindBinary || (v.Text != "+" && v.Text != "-") ||
 			v.Left.Kind != syntax.KindName || p.g.info(v.Left).Binding != b {
 			d.valid = false
-			continue
+			return
 		} else {
 			delta = p.expression(v.Right, false)
 			subtract = v.Text == "-"
@@ -434,7 +439,7 @@ func (p *intProof) boundedBody(body []*syntax.Statement, count *big.Int, counter
 		if hi.Sign() > 0 {
 			d.positive.Add(&d.positive, hi)
 		}
-	}
+	})
 	post := map[*checker.Binding]intBounds{counter: counterPost}
 	for b, d := range deltas {
 		if !d.valid {

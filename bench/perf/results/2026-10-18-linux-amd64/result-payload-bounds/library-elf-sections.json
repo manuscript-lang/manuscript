@@ -1,0 +1,217 @@
+{
+  "before": {
+    "": {
+      "type": 0,
+      "flags": 0,
+      "address": 0,
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    ".text": {
+      "type": 1,
+      "flags": 6,
+      "address": 4198400,
+      "size": 2656241,
+      "sha256": "3664d459de5ae8a3501ea859186232743a1e0f8ae02281636c10949b745be985"
+    },
+    ".rodata": {
+      "type": 1,
+      "flags": 2,
+      "address": 6856704,
+      "size": 1735769,
+      "sha256": "8546d9094c1cc36821398e1c80606f5401b8c58d6ada732eef7eaef9ad4be94f"
+    },
+    ".typelink": {
+      "type": 1,
+      "flags": 2,
+      "address": 8592480,
+      "size": 9660,
+      "sha256": "f612c5794d54d2a6470dee6218d7055d6dad29abfb3394bf9fb0dfddb78e914c"
+    },
+    ".itablink": {
+      "type": 1,
+      "flags": 2,
+      "address": 8602144,
+      "size": 2736,
+      "sha256": "87e05ee1c7d8bb0fd71a10589da55340331ac5207eaabcc398df7207aa9a632e"
+    },
+    ".gosymtab": {
+      "type": 1,
+      "flags": 2,
+      "address": 8604880,
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    ".gopclntab": {
+      "type": 1,
+      "flags": 2,
+      "address": 8604896,
+      "size": 1750368,
+      "sha256": "460d4831e87f4cb9ffad8ec4c2b5e7d1fc0d644ad331b01d8def2e704a315133"
+    },
+    ".go.buildinfo": {
+      "type": 1,
+      "flags": 3,
+      "address": 10358784,
+      "size": 656,
+      "sha256": "508fa075a9fe1e087cbf841dc3e907073a6634d3a41b5a18b669b0ddb82d339d"
+    },
+    ".go.fipsinfo": {
+      "type": 1,
+      "flags": 3,
+      "address": 10359456,
+      "size": 120,
+      "sha256": "02749cb27d6c3a52a0503428f9b598cca5f4adf6c99bf470079f6416fde4ca73"
+    },
+    ".noptrdata": {
+      "type": 1,
+      "flags": 3,
+      "address": 10359584,
+      "size": 381569,
+      "sha256": "e263905e2d9704a9a3652383ebf2347b9b8760940d09926e1356c2c2d0c609e4"
+    },
+    ".data": {
+      "type": 1,
+      "flags": 3,
+      "address": 10741184,
+      "size": 61586,
+      "sha256": "a1c2bd6900eb9d709c435c101065981383bd102273d7b7963d80b0afe3fe6e42"
+    },
+    ".bss": {
+      "type": 8,
+      "flags": 3,
+      "address": 10802784,
+      "size": 196616,
+      "sha256": null
+    },
+    ".noptrbss": {
+      "type": 8,
+      "flags": 3,
+      "address": 10999424,
+      "size": 125984,
+      "sha256": null
+    },
+    ".note.gnu.build-id": {
+      "type": 7,
+      "flags": 2,
+      "address": 4198364,
+      "size": 36,
+      "sha256": "86a65b5396409234dfd929db0c7631ba0bac14edbdb7b8fa77d1df8d5236a87b"
+    },
+    ".note.go.buildid": {
+      "type": 7,
+      "flags": 2,
+      "address": 4198264,
+      "size": 100,
+      "sha256": "8b7bdd0b1dc2db0adb3743ca2f1d5c4e46cf1ea7c056230f20b509a10b7d5d3d"
+    },
+    ".shstrtab": {
+      "type": 3,
+      "flags": 0,
+      "address": 0,
+      "size": 184,
+      "sha256": "5b7b779f76635570fa6baf1d840ce34d6fb15df07951ff4ca7590b5bc8bf69bf"
+    }
+  },
+  "after": {
+    "": {
+      "type": 0,
+      "flags": 0,
+      "address": 0,
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    ".text": {
+      "type": 1,
+      "flags": 6,
+      "address": 4198400,
+      "size": 2656241,
+      "sha256": "3664d459de5ae8a3501ea859186232743a1e0f8ae02281636c10949b745be985"
+    },
+    ".rodata": {
+      "type": 1,
+      "flags": 2,
+      "address": 6856704,
+      "size": 1735769,
+      "sha256": "8546d9094c1cc36821398e1c80606f5401b8c58d6ada732eef7eaef9ad4be94f"
+    },
+    ".typelink": {
+      "type": 1,
+      "flags": 2,
+      "address": 8592480,
+      "size": 9660,
+      "sha256": "f612c5794d54d2a6470dee6218d7055d6dad29abfb3394bf9fb0dfddb78e914c"
+    },
+    ".itablink": {
+      "type": 1,
+      "flags": 2,
+      "address": 8602144,
+      "size": 2736,
+      "sha256": "87e05ee1c7d8bb0fd71a10589da55340331ac5207eaabcc398df7207aa9a632e"
+    },
+    ".gosymtab": {
+      "type": 1,
+      "flags": 2,
+      "address": 8604880,
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    ".gopclntab": {
+      "type": 1,
+      "flags": 2,
+      "address": 8604896,
+      "size": 1750368,
+      "sha256": "460d4831e87f4cb9ffad8ec4c2b5e7d1fc0d644ad331b01d8def2e704a315133"
+    },
+    ".go.buildinfo": {
+      "type": 1,
+      "flags": 3,
+      "address": 10358784,
+      "size": 656,
+      "sha256": "508fa075a9fe1e087cbf841dc3e907073a6634d3a41b5a18b669b0ddb82d339d"
+    },
+    ".go.fipsinfo": {
+      "type": 1,
+      "flags": 3,
+      "address": 10359456,
+      "size": 120,
+      "sha256": "02749cb27d6c3a52a0503428f9b598cca5f4adf6c99bf470079f6416fde4ca73"
+    },
+    ".noptrdata": {
+      "type": 1,
+      "flags": 3,
+      "address": 10359584,
+      "size": 381569,
+      "sha256": "e263905e2d9704a9a3652383ebf2347b9b8760940d09926e1356c2c2d0c609e4"
+    },
+    ".data": {
+      "type": 1,
+      "flags": 3,
+      "address": 10741184,
+      "size": 61586,
+      "sha256": "a1c2bd6900eb9d709c435c101065981383bd102273d7b7963d80b0afe3fe6e42"
+    },
+    ".bss": {
+      "type": 8,
+      "flags": 3,
+      "address": 10802784,
+      "size": 196616,
+      "sha256": null
+    },
+    ".noptrbss": {
+      "type": 8,
+      "flags": 3,
+      "address": 10999424,
+      "size": 125984,
+      "sha256": null
+    },
+    ".shstrtab": {
+      "type": 3,
+      "flags": 0,
+      "address": 0,
+      "size": 148,
+      "sha256": "675d65c709a7bd51955a055078af49596603998312f27bdde6345a4092121663"
+    }
+  },
+  "note": "SHT_NOBITS sections carry no file bytes. All code/data addresses, sizes and bytes agree; build-id note sections differ."
+}

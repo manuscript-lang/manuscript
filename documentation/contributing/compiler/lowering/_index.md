@@ -78,6 +78,16 @@ control. Each original assignment still executes individually. Queries occur
 before exactly the same 64th, 128th, and subsequent iterations; partial tails
 and signed endpoints retain that phase.
 
+A fixed nongeneric helper can also describe its normally returned successful Int
+payload: one immutable Int parameter, a pure parameter/literal comparison with
+one literal-only early error, then `ok(parameter +/- IntLiteral)`. A literal error
+constructor must have one explicit String field and no default. Arbitrary error
+arguments may hide early successful returns and are excluded. At most one exact
+Result identity wrapper hop is summarized, once per declaration. All original
+calls and checks remain; this proves neither totality nor error impossibility.
+Success bounds apply only inside the if-let success arm. Loop delta collection
+keeps every modified peer unknown and restores success facts before else/joins.
+
 An exact adjacent `let value = try result; return ok(value)` can return the
 original Result when payload and error types agree without conversion. Other
 `try` expressions still evaluate once, test failure and return the error. Function

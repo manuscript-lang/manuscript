@@ -67,6 +67,7 @@ func newGen(program *checker.Program) *gen {
 		sh.closedIntMap = g.explicit(intType, "hash", "@std/Hashable") == nil &&
 			g.explicit(intType, "equals", "@std/Equal") == nil
 	}
+	sh.resultBounds = g.resultIntSummaries()
 	return g
 }
 
@@ -148,9 +149,10 @@ type shared struct {
 	options      Options
 	program      *checker.Program
 	err          error
-	inRuntime    bool                         // generating the runtime package itself: type variables stay variables
-	localImpl    bool                         // some module declares an extension implementation
-	localEq      bool                         // some module declares an extension Equal implementation
+	inRuntime    bool // generating the runtime package itself: type variables stay variables
+	localImpl    bool // some module declares an extension implementation
+	localEq      bool // some module declares an extension Equal implementation
+	resultBounds map[*syntax.Declaration]resultIntSummary
 	closedIntMap bool                         // program-wide evidence permits closed Int storage
 	dup          map[string]bool              // source names more than one declaration uses
 	declared     map[string]bool              // Go names the source declarations themselves take

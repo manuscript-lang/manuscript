@@ -53,3 +53,11 @@ Verify balanced process order, identical tool flags/inputs, no simultaneous CPU
 work, raw samples plus source/binary hashes, and focused controls for regressions.
 Identical native instructions can also vary when relocated across loop-alignment
 boundaries; preserve assembly and reject arbitrary padding or lucky-placement tuning.
+
+Verified: resolve native workspace paths before using Go build overlays. A mapping
+through a symlinked ancestor can miss the compiler's canonical path and silently
+leave the original source in use. Assert changed source/binary hashes for controls.
+Native replay and ordinary builds can differ only in ELF build-id notes; compare
+code/data sections and normalize identical link flags before attributing library
+timing variation to generated code. The Result-bound increment produces identical
+normalized library binaries despite timing variation in diagnostic CLI builds.
