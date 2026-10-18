@@ -40,6 +40,15 @@ fn is_full(count: Int) -> Bool:
 
 The type comes from the annotation or initializer. The initializer is a constant expression: literals, constant interpolations, operators, list and map literals, payloadless cases (`none`, `State.Ready`), and other constants. Calls, constructors, functions, and `match` are not allowed. Self-dependent constants are rejected.
 
+Group related constants with `let (`, one `name = value` entry per line, indented four spaces; the closing `)` aligns with `let`. Each entry is an independent constant, and `export let (` exports all of them.
+
+```manuscript
+let (
+    LOW = 1
+    HIGH: Int = LOW + 9
+)
+```
+
 A constant has no storage or initialization order; each use evaluates the initializer in place, so a list constant is always fresh. Locals and parameters shadow it. Constants cannot be assigned, and `main` must be a function.
 
 ## A visible contract

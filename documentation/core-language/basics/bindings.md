@@ -13,6 +13,23 @@ var remaining = count
 remaining -= 1
 ```
 
+## Grouping bindings
+
+`let (` and `var (` declare several bindings of one kind, one per line, indented four spaces, with the closing `)` aligned with the keyword. Each entry is the same as a single binding, including an optional annotation or a destructuring pattern, and later entries see earlier ones.
+
+```manuscript
+let (
+    name = "Ada"
+    active: Bool = true
+)
+var (
+    attempts = 0
+    limit = attempts + 3
+)
+```
+
+A group is only a layout: entries are separate bindings with their own scope rules, and the formatter keeps the group together. Separate entries by lines, not commas, and use `let [a, b] = pair` to destructure. A group cannot sit in an inline body such as `if ready: let (`.
+
 ## Local type inference
 
 Parameters and return types are explicit; local annotations are optional. `let count = 3` and `let count: Int = 3` are the same. Constructors also infer types. This continues the `Customer` and `welcome` declarations in [source files](syntax.md):
