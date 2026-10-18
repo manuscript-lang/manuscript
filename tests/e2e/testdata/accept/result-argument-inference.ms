@@ -4,7 +4,7 @@ type Failure:
     code: Int
 
 impl Error for Failure:
-    fn message() String: self.code.toString()
+    fn message() String: self.code.to_string()
 
 type Tagged[T]:
     value: T

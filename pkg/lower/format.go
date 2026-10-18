@@ -9,7 +9,7 @@ import (
 )
 
 // format renders a value of type t as text, as string interpolation and
-// toString do. Scalars use runtime helpers; other types get a generated
+// to_string do. Scalars use runtime helpers; other types get a generated
 // function per type that mirrors their structure.
 func (g *gen) format(t *checker.Type, v ast.Expr) ast.Expr {
 	t = g.sub(t)

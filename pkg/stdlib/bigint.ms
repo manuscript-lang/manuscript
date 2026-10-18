@@ -45,7 +45,7 @@ impl BigInt:
 
     # Formats the value in a radix from 2 through 36 using lowercase digits and a leading `-` for negatives.
     # A radix outside 2 through 36 is a programming fault.
-    fn to_string(radix: Int) String:
+    fn to_string_radix(radix: Int) String:
 
 # Converts a machine-sized integer without loss.
 export fn from_int(value: Int) BigInt:

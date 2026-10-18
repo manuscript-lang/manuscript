@@ -6,7 +6,7 @@ import BigIntError from "@std/bigint.ms"
 fn verify_bigint() Result[Unit, BigIntError]:
     let large = try parse(text: "18446744073709551616", radix: 10, max_digits: 30)
     if not (
-        ((large).multiply(other: large)).to_string(
+        ((large).multiply(other: large)).to_string_radix(
             radix: 10
         ) == "340282366920938463463374607431768211456"
     ):

@@ -32,7 +32,7 @@ fn describe(text: String) Result[String, String]:
     let label = try parse(text)
         | try check
         | add(by: 1)
-        .to_string(radix: 10)
+        .to_string_radix(radix: 10)
     return ok(label)
 
 fn order(log: List[String]) Int:

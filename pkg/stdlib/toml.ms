@@ -964,7 +964,7 @@ type Writer:
     started: Bool
 
 fn hex4(code: Int) String:
-    var digits = code.to_string(16)
+    var digits = code.to_string_radix(16)
     while digits.length() < 4: digits = "0".concat(digits)
     return digits
 
@@ -1016,9 +1016,9 @@ fn format_float(value: Float) String:
 fn inline_value(value: TomlValue) String:
     match value:
         StringValue(text): return quote_text(text)
-        IntValue(number): return number.toString()
+        IntValue(number): return number.to_string()
         FloatValue(number): return format_float(number)
-        BoolValue(flag): return flag.toString()
+        BoolValue(flag): return flag.to_string()
         DateTimeValue(text): return text
         ArrayValue(values):
             let parts: List[String] = []

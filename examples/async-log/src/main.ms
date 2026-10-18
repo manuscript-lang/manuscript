@@ -25,7 +25,7 @@ test "records reach the file after flush and close":
             logger.flush() | value
             let data = fs.read_file(path: path) | value
             if (
-                data.to_string() != some(
+                data.decode_utf8() != some(
                     "\{\"level\":30,\"msg\":\"one\"\}\n\{\"level\":30,\"msg\":\"two\"\}\n"
                 )
             ): return panic("flushed")
@@ -41,7 +41,7 @@ fn line(text: String) String:
 fn read(path: String) String:
     return filesystem().read_file(path: path)
         | value
-        | .to_string().unwrap_or("")
+        | .decode_utf8().unwrap_or("")
 
 fn missing(path: String) Bool:
     return filesystem().stat(path: path, follow_links: false).is_error()

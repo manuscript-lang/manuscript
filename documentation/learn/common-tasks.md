@@ -68,7 +68,7 @@ import stdout from "@std/io.ms"
 fn run() Result[Unit, Error]:
     let path = try arguments().at(0).ok_or(FileSystemError.InvalidInput)
     let bytes = try filesystem().read_file(path, max_bytes: 1048576)
-    let text = try bytes.to_string().ok_or(FileSystemError.InvalidData)
+    let text = try bytes.decode_utf8().ok_or(FileSystemError.InvalidData)
     try stdout().write(text.to_bytes())
     return stdout().flush()
 
@@ -250,7 +250,7 @@ fn run() Result[Unit, Error]:
     )
     if response.metadata().status != 200:
         return error(HttpError.InvalidData)
-    let text = try response.body.to_string().ok_or(HttpError.InvalidData)
+    let text = try response.body.decode_utf8().ok_or(HttpError.InvalidData)
     try stdout().write(text.to_bytes())
     return stdout().flush()
 

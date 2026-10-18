@@ -58,7 +58,7 @@ This fragment uses `discount` above:
 
 ```manuscript
 let price = discount(price: 20d, percent: 10d).unwrap_or(0d)
-let text = discount(price: 20d, percent: 10d).map(fn(value): value.toString())
+let text = discount(price: 20d, percent: 10d).map(fn(value): value.to_string())
 ```
 
 Callbacks run sequentially in the caller's context; faults and cancellation propagate normally. `unwrap` reports `called Result.unwrap() on error`; use it only when success is established. Routine failures use a fallback, `if let`, or `try`.

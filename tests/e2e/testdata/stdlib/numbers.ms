@@ -11,7 +11,7 @@ test "numbers radix and signed boundaries":
             parse_int(text: "-9223372036854775808", radix: 10)
         ) != -9223372036854775808
     ): return panic("minimum int")
-    if 255.to_string(radix: 16) != "ff": return panic("radix formatting")
+    if 255.to_string_radix(radix: 16) != "ff": return panic("radix formatting")
     if value(parse_float("-1.25e2")) != -125.0: return panic("exponent")
     if value(1.25.to_fixed(digits: 2)) != "1.25": return panic("fixed formatting")
     if 1.9.truncate_to_int() != some(1): return panic("float truncation")

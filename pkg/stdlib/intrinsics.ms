@@ -6,7 +6,7 @@ import Decimal from "@std/decimal.ms"
 
 # Every value has this operation, including unconstrained type parameters.
 interface ValueOperations:
-    fn toString() String
+    fn to_string() String
 
 # Data values have a shallow clone returning the concrete receiver type.
 interface CloneOperations[T]:
@@ -123,7 +123,7 @@ interface StringOperations:
 interface IntOperations:
     # Formats the integer in a radix from 2 through 36 using lowercase digits and a leading `-` for negatives.
     # A radix outside 2 through 36 is a programming fault.
-    fn to_string(radix: Int) String
+    fn to_string_radix(radix: Int) String
     # Converts to the nearest Float; integers beyond 2^53 in magnitude can lose low-order digits.
     fn to_float() Float
     # Converts to the exactly equal Decimal; no rounding occurs.
@@ -159,7 +159,7 @@ interface FloatOperations:
 #
 # - The `.ms` files define the type schemas and public API.
 # - Native functions dispatch to `module/name`; `bindings.json` lists only the exceptions under `function_overrides`, and maps receiver-operation and implementation identities directly to native dispatch. It also records method-specific receiver requirements, such as `Equal` for list searches and `String` for list joining; it does not duplicate operation signatures or type schemas.
-# - `intrinsics.ms` contains private operation declarations for primitive receivers and the universal `toString()` method.
+# - `intrinsics.ms` contains private operation declarations for primitive receivers and the universal `to_string()` method.
 # - Native receiver signatures appear once, on their type or intrinsic interface. TaskGroup and Task[T] use ordinary generic declarations; no private free-function declarations are needed for their implementations.
 #
 # These files use ordinary Manuscript syntax. Runtime functions and receiver operations have empty function bodies, written with the usual colon, such as `export fn commands() Commands:`. Opaque type schemas use empty declarations such as `export type Duration:`. Interface signatures remain signatures, and `bindings.json` maps the declarations to native implementations. The checker verifies implementation rules and native signatures. There is no library-only parser mode or `native` keyword. Ordinary record fields may have default expressions.

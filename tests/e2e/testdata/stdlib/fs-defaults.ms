@@ -34,7 +34,7 @@ fn rejected(result: Result[Unit, FileSystemError]) Unit:
     if result.is_ok(): return panic("exclusive or nonrecursive operation succeeded")
 
 fn text(fs: FileSystem, path: String) String:
-    return value(fs.read_file(path)).to_string().unwrap()
+    return value(fs.read_file(path)).decode_utf8().unwrap()
 
 fn argument(log: List[String], mark: String, path: String) String:
     log.append(mark)

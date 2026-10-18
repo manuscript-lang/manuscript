@@ -8,7 +8,7 @@ test "big integers exceed machine range without losing precision":
     if big.subtract(from_int(1)).to_int() != some(9223372036854775807): return panic(
         "exact subtraction"
     )
-    if from_int(7).multiply(from_int(6)).to_string(radix: 10) != "42": return panic(
+    if from_int(7).multiply(from_int(6)).to_string_radix(radix: 10) != "42": return panic(
         "multiply"
     )
     if value(from_int(-7).divide(from_int(3))).to_int() != some(-2): return panic(

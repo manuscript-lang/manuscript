@@ -13,7 +13,7 @@ fn negative(value: Int) Bool:
     return value < 0
 
 fn stringify(value: Int) String:
-    return value.to_string(radix: 10)
+    return value.to_string_radix(radix: 10)
 
 fn expand(value: Int) List[String]:
     return [stringify(value: value), "x"]
@@ -410,7 +410,7 @@ test "bytes have analogous immutable operations":
         return panic(message: "check failed")
     if not (data == Bytes([1, 2, 3, 2])):
         return panic(message: "check failed")
-    if not (255.to_string(radix: 16) == "ff"):
+    if not (255.to_string_radix(radix: 16) == "ff"):
         return panic(message: "check failed")
     if not (1.5.to_string() == "1.5"):
         return panic(message: "check failed")
@@ -563,11 +563,11 @@ test "normalization, empty separators, and precision formatting":
 fn verify_bigint_and_regex() Result[Unit, Error]:
     let a = from_int(value: 12)
     let b = from_int(value: 5)
-    if not (a.add(other: b).to_string(radix: 10) == "17"):
+    if not (a.add(other: b).to_string_radix(radix: 10) == "17"):
         return panic(message: "check failed")
-    if not (a.subtract(other: b).to_string(radix: 10) == "7"):
+    if not (a.subtract(other: b).to_string_radix(radix: 10) == "7"):
         return panic(message: "check failed")
-    if not (a.multiply(other: b).to_string(radix: 10) == "60"):
+    if not (a.multiply(other: b).to_string_radix(radix: 10) == "60"):
         return panic(message: "check failed")
     if not ((a.divide(other: b) | try common_result | .to_int()) == some(2)):
         return panic(message: "check failed")

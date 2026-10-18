@@ -36,13 +36,13 @@ test "core parity operations are callable":
     )
     if success.map(fn(n): n + 1).unwrap() != 3: return panic("Result map")
 
-    let chained: Result[String, String] = success.and_then(fn(n): ok(n.toString()))
+    let chained: Result[String, String] = success.and_then(fn(n): ok(n.to_string()))
     if chained.unwrap() != "2": return panic("Result and_then")
 
     let present: Optional[Int] = some(2)
     let missing: Optional[Int] = none
     if present.map(fn(n): n + 1).unwrap() != 3: return panic("Optional map")
-    if present.and_then(fn(n): some(n.toString())).unwrap() != "2": return panic(
+    if present.and_then(fn(n): some(n.to_string())).unwrap() != "2": return panic(
         "Optional and_then"
     )
     if missing.or_else(fn(): some(4)).unwrap() != 4: return panic("Optional or_else")
@@ -57,7 +57,7 @@ test "core parity operations are callable":
     if members.is_empty() or members.filter(fn(n): n == 2).length() != 1: return panic(
         "Set filter"
     )
-    if members.map(fn(n): n.toString()).values() != ["2", "3"]: return panic("Set map")
+    if members.map(fn(n): n.to_string()).values() != ["2", "3"]: return panic("Set map")
 
 test "Result preserves unconstrained payloads and success-only composition":
     let counter = Counter(0)
@@ -65,7 +65,7 @@ test "Result preserves unconstrained payloads and success-only composition":
     let success: Result[Int, Counter] = ok(0)
     let transform = fn(value: Int) String:
         counter.calls = counter.calls + 1
-        return value.toString()
+        return value.to_string()
     let skipped = map_result(failure, transform)
     if (not (skipped.is_error()) or skipped.is_ok() or counter.calls != 0):
         return panic("map invoked on error")
@@ -133,8 +133,8 @@ test "Result fallbacks are eager or lazy and bound methods keep receivers":
 
     let bound_map = success.map[String]
     let bound_chain = success.and_then[String]
-    if bound_map(fn(n): n.toString()).unwrap() != "0": return panic("bound Result map")
-    if bound_chain(fn(n): ok(n.toString())).unwrap() != "0": return panic(
+    if bound_map(fn(n): n.to_string()).unwrap() != "0": return panic("bound Result map")
+    if bound_chain(fn(n): ok(n.to_string())).unwrap() != "0": return panic(
         "bound Result chain"
     )
 
@@ -180,7 +180,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
     )
 
     let bound_map = present.map[String]
-    if bound_map(fn(value): value.calls.toString()).unwrap() != "6": return panic(
+    if bound_map(fn(value): value.calls.to_string()).unwrap() != "6": return panic(
         "bound Optional map"
     )
 
@@ -271,7 +271,7 @@ test "Set filter and map copy snapshots and deduplicate in first-result order":
     if bound_filter(fn(n): n == 8).values() != [8]: return panic("bound Set filter")
 
     let input = Set[Int]().add(2).add(3).add(4)
-    let mapped = map_set(input, fn(n): Key(n % 2, n.toString()))
+    let mapped = map_set(input, fn(n): Key(n % 2, n.to_string()))
     if (
         mapped.length() != 2
         or mapped.values().at(0).unwrap().label != "2"
@@ -283,7 +283,7 @@ test "Set filter and map copy snapshots and deduplicate in first-result order":
     let mapped_snapshot = bound(
         transform: fn(n):
             input.remove(n).add(7)
-            return n.toString()
+            return n.to_string()
     )
     if mapped_snapshot.values() != ["2", "3", "4"] or input.values() != [7]: return panic(
         "Set map snapshot"
@@ -297,7 +297,7 @@ test "Set filter and map copy snapshots and deduplicate in first-result order":
     keys.filter(fn(unused): true).values().at(0).unwrap().label = "changed"
     keys.map(fn(value): value).values().at(0).unwrap().label = "again"
     if key.label != "again": return panic("Set copied payloads")
-    if not (Set[Int]().map(fn(n): n.toString()).is_empty()): return panic(
+    if not (Set[Int]().map(fn(n): n.to_string()).is_empty()): return panic(
         "empty mapped set"
     )
     if not (keys.filter(fn(unused): false).is_empty()): return panic(

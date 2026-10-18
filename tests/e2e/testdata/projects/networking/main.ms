@@ -109,7 +109,7 @@ fn exercise() Result[Unit, HttpError]:
                 match part:
                     some(data):
                         if not (
-                            data.to_string() == some(
+                            data.decode_utf8() == some(
                                 "hello from streaming Manuscript"
                             )
                         ):
@@ -141,7 +141,7 @@ fn exercise() Result[Unit, HttpError]:
                 some(message):
                     if not (message.text):
                         return panic(message: "check failed")
-                    if not (message.data.to_string() == some("echo me")):
+                    if not (message.data.decode_utf8() == some("echo me")):
                         return panic(message: "check failed")
                 none:
                     return panic(message: "Unexpected case")

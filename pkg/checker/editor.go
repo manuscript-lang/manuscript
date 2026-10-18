@@ -65,7 +65,7 @@ func Members(program *Program, receiver *Type, module ...string) []Member {
 	if len(module) > 0 {
 		c.module = &syntax.Module{File: module[0]}
 	}
-	candidates := map[string]bool{"toString": true}
+	candidates := map[string]bool{"to_string": true}
 	if nativeMethod(receiver, "clone") != nil {
 		candidates["clone"] = true
 	}
@@ -95,7 +95,7 @@ func Members(program *Program, receiver *Type, module ...string) []Member {
 	fields := map[string]bool{}
 	if receiver.Kind == syntax.KindRecord {
 		for _, field := range Fields(receiver) {
-			if field.Name == "toString" {
+			if field.Name == "to_string" {
 				continue
 			}
 			result = append(result, Member{field.Name, "field", field.Type, nil})

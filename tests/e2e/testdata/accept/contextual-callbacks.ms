@@ -30,7 +30,7 @@ test "contextual callbacks and inline returns":
     let strings = (
         [1, 2, 3]
         .filter(fn(item): item > 1)
-        .map(fn(number): (number + offset).toString())
+        .map(fn(number): (number + offset).to_string())
     )
     if strings.join(",") != "5,6": return panic("callback inference")
 

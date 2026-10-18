@@ -37,7 +37,7 @@ func TestCallbackProbeRetainsContextBoundaries(t *testing.T) {
         return Result[Int, String].ok(value)
     , second: fn(): ok(4))`,
 		"optional callback":   `optional(fn(item): item + 1)`,
-		"generic constructor": `let callback = Callback(fn(item: Int): item.toString())`,
+		"generic constructor": `let callback = Callback(fn(item: Int): item.to_string())`,
 		"nested captures": `let offset = 7
     let values = [1, 2].map(fn(outer): [3, 4].map(fn(inner): outer + inner + offset))`,
 		"contextual nested labels": `let callback: fn(value: Int) fn(input: Int) Int = apply(value: 1, transform: fn(base): fn(item): fn(extra): item + extra + base)`,

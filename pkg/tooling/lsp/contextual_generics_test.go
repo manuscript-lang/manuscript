@@ -11,7 +11,7 @@ func TestExpectedGenericResultEditorInformation(t *testing.T) {
 fn transform[T, U](callback: fn(value: T) U) fn(value: T) U: callback
 fn answer() Unit:
     let empty: Optional[Int] = absent()
-    let callback: fn(value: Int) String = transform(fn(item): item.toString())
+    let callback: fn(value: Int) String = transform(fn(item): item.to_string())
 `
 	d := document{"file:///tmp/contextual-generics.ms", source, 1}
 	result := analyze(d, map[string]document{d.URI: d})
@@ -19,7 +19,7 @@ fn answer() Unit:
 		t.Fatal(result.Diagnostics)
 	}
 	declaration := Position(source, strings.Index(source, "item):"))
-	use := Position(source, strings.Index(source, "item.toString"))
+	use := Position(source, strings.Index(source, "item.to_string"))
 	definition := navigation(result, d, use, "textDocument/definition")
 	if definition == nil || definition.([]any)[0].(map[string]any)["range"].(span).Start != declaration {
 		t.Fatal("lost result-context parameter definition", definition)

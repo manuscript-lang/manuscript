@@ -47,14 +47,16 @@ test "list boundaries retain mutation truncation and empty ranges":
     if list.length() != 0 or not list.at(0).is_none(): return panic("empty list")
 
 test "radix formatting retains inclusive boundaries and parse errors":
-    if (35).to_string(radix: 2) != "100011" or (35).to_string(radix: 36) != "z": return panic(
-        "int radix"
-    )
+    if (
+        (35).to_string_radix(radix: 2) != "100011"
+        or (35).to_string_radix(radix: 36) != "z"
+    ): return panic("int radix")
 
     let big = from_int(35)
-    if big.to_string(radix: 2) != "100011" or big.to_string(radix: 36) != "z": return panic(
-        "big radix"
-    )
+    if (
+        big.to_string_radix(radix: 2) != "100011"
+        or big.to_string_radix(radix: 36) != "z"
+    ): return panic("big radix")
 
     let invalid: Result[Int, NumberError] = error(NumberError.InvalidInput)
     if parse_int(text: "1", radix: 1) != invalid: return panic("parse failure category")
