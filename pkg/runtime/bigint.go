@@ -87,9 +87,9 @@ func BigInt_ToInt(_ *Execution, v *BigInt) Option[int] {
 	return bigToInt(v.n)
 }
 
-func BigInt_ToString(_ *Execution, v *BigInt, radix int) string {
+func BigInt_ToStringRadix(_ *Execution, v *BigInt, radix int) string {
 	if radix < 2 || radix > 36 {
-		txRangeFault("BigInt.to_string", "radix", radix, 2, 36)
+		txRangeFault("BigInt.to_string_radix", "radix", radix, 2, 36)
 	}
 	return v.n.Text(int(radix))
 }

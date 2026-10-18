@@ -171,7 +171,7 @@ func Bytes_Concat(_ *Execution, a, b *Bytes) *Bytes {
 
 func Bytes_Length(_ *Execution, b *Bytes) int { return len(b.Data) }
 
-func Bytes_ToString(_ *Execution, b *Bytes) Option[string] {
+func Bytes_DecodeUtf8(_ *Execution, b *Bytes) Option[string] {
 	if !utf8.Valid(b.Data) {
 		return None[string]()
 	}

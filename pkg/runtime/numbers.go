@@ -152,9 +152,9 @@ func Int_Milliseconds(_ *Execution, n int) Duration {
 func Int_Seconds(_ *Execution, n int) Duration { return durationOf("Int.seconds", n, 1_000_000_000) }
 func Int_Minutes(_ *Execution, n int) Duration { return durationOf("Int.minutes", n, 60_000_000_000) }
 
-func Int_ToString(_ *Execution, v, radix int) string {
+func Int_ToStringRadix(_ *Execution, v, radix int) string {
 	if radix < 2 || radix > 36 {
-		txRangeFault("Int.to_string", "radix", radix, 2, 36)
+		txRangeFault("Int.to_string_radix", "radix", radix, 2, 36)
 	}
 	return strconv.FormatInt(int64(v), radix)
 }

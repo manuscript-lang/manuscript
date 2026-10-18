@@ -55,8 +55,8 @@ func check_Bytes_Concat() {
 func check_Bytes_Length() {
 	var _ func(*Execution, *Bytes) int = Bytes_Length
 }
-func check_Bytes_ToString() {
-	var _ func(*Execution, *Bytes) Option[string] = Bytes_ToString
+func check_Bytes_DecodeUtf8() {
+	var _ func(*Execution, *Bytes) Option[string] = Bytes_DecodeUtf8
 }
 func check_BytesBuilder_Append() {
 	var _ func(*Execution, *BytesBuilder, int) Unit = BytesBuilder_Append

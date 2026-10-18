@@ -48,7 +48,7 @@ test "logger writes typed escaped records and protects metadata":
             fields: fields
         ) | value
         let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\}\}\n"
-        if output.data.to_string() != some(expected): return panic("typed log record")
+        if output.data.decode_utf8() != some(expected): return panic("typed log record")
 
         let flushed = logger.flush() | value
 
@@ -72,7 +72,7 @@ test "non-object values are written under data":
             fields: ["a", "b"]
         ) | value
         let expected = "\{\"level\":30,\"msg\":\"n\",\"data\":7\}\n\{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n"
-        if output.data.to_string() != some(expected): return panic(
+        if output.data.decode_utf8() != some(expected): return panic(
             "scalar and list fields"
         )
 
@@ -105,7 +105,7 @@ test "levels filter methods and function values":
         let debugged = logger.debug(message: "debug") | value
         let informed = logger.info(message: "info") | value
         let expected = "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"error\"\}\n\{\"level\":60,\"msg\":\"fatal\"\}\n\{\"level\":10,\"msg\":\"trace\"\}\n\{\"level\":20,\"msg\":\"debug\"\}\n\{\"level\":30,\"msg\":\"info\"\}\n"
-        if output.data.to_string() != some(expected): return panic("level records")
+        if output.data.decode_utf8() != some(expected): return panic("level records")
 
         logger.set_level(LogLevel.Silent)
         if logger.enabled(LogLevel.Fatal) or logger.enabled(LogLevel.Silent): return panic(
@@ -145,7 +145,9 @@ test "child bindings snapshot values and merge without mutating inputs":
         ) | value
         let parent_log = logger.fatal(message: "parent") | value
         let expected = "\{\"level\":30,\"msg\":\"child\",\"service\":\"worker\",\"request\":7\}\n\{\"level\":60,\"msg\":\"parent\",\"service\":\"api\"\}\n"
-        if output.data.to_string() != some(expected): return panic("binding precedence")
+        if output.data.decode_utf8() != some(expected): return panic(
+            "binding precedence"
+        )
 
 test "limits and unencodable values reject before writing":
     let output = MemoryStream(data: "".to_bytes(), offset: 0, closed: false)
@@ -158,7 +160,7 @@ test "limits and unencodable values reject before writing":
             max_bytes: (line.to_bytes().length())
         ) | value
         let written = logger.info(message: "x") | value
-        if output.data.to_string() != some(line): return panic("exact byte budget")
+        if output.data.decode_utf8() != some(line): return panic("exact byte budget")
 
         let before = output.data.clone()
         let limited: Result[Unit, LogError] = error(LogError.LimitExceeded)
@@ -218,7 +220,7 @@ test "file transport appends and flushes with scoped cleanup":
 
         let data = fs.read_file(path: path) | value
         if (
-            data.to_string() != some(
+            data.decode_utf8() != some(
                 "\{\"level\":30,\"msg\":\"first\"\}\n\{\"level\":40,\"msg\":\"second\"\}\n"
             )
         ): return panic("file append")
@@ -263,7 +265,7 @@ test "source transports receive complete records and close through their contrac
         let written = logger.info(message: "source transport") | value
         let flushed = logger.flush() | value
         if (
-            output.data.to_string() != some(
+            output.data.decode_utf8() != some(
                 "\{\"level\":30,\"msg\":\"source transport\"\}\n"
             )
         ): return panic("source transport record")
@@ -307,6 +309,6 @@ test "log_json and child_json accept only JSON objects":
             )
         )
         let expected = "\{\"level\":30,\"msg\":\"m\",\"a\":1\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
-        if output.data.to_string() != some(expected): return panic(
+        if output.data.decode_utf8() != some(expected): return panic(
             "object and wrapped records"
         )

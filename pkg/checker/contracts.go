@@ -463,7 +463,7 @@ func nativeMethod(t *Type, name string) *Method {
 		}
 		return &Method{Receiver: t, Type: function(nil, t), Native: name, Decl: standardMethodDeclaration(receiver, name)}
 	}
-	if name == "toString" {
+	if name == "to_string" {
 		receiver := standardSymbols["ValueOperations"].Type
 		return &Method{Receiver: t, Type: receiver.Def.Operations[0].Type, Native: name, Decl: standardMethodDeclaration(receiver, name)}
 	}

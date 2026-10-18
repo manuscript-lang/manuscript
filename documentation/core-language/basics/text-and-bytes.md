@@ -43,27 +43,27 @@ let greeting = "Welcome, {name}!"
 let calculated = "Next: {count + 1}"
 ```
 
-Embedded expressions evaluate once, left to right, each formatted before the next. Propagation or a fault stops the rest. Every value is formattable using the same conversion as `toString()`; interpolation adds no implicit conversions elsewhere.
+Embedded expressions evaluate once, left to right, each formatted before the next. Propagation or a fault stops the rest. Every value is formattable using the same conversion as `to_string()`; interpolation adds no implicit conversions elsewhere.
 
 ## Converting values to String
 
-Every value has a built-in `toString() String`, needing no import or bound. A bound method keeps its receiver:
+Every value has a built-in `to_string() String`, needing no import or bound. A bound method keeps its receiver:
 
 ```manuscript
 fn text[T](value: T) String:
-    return value.toString()
+    return value.to_string()
 
 test "string conversion":
     let count = 3
-    let convert: fn() String = count.toString
-    let direct = count.toString()
+    let convert: fn() String = count.to_string
+    let direct = count.to_string()
     let bound = convert()
     let embedded = "{count}"
 ```
 
-Each conversion produces `"3"`. Passing an Int to a String parameter still needs `.toString()`.
+Each conversion produces `"3"`. Passing an Int to a String parameter still needs `.to_string()`.
 
-The built-in method wins over any field or interface operation named `toString` and cannot be overridden. Conversion never calls user-defined formatting or resource operations; a closed resource is still printable.
+The built-in method wins over any field or interface operation named `to_string` and cannot be overridden. Conversion never calls user-defined formatting or resource operations; a closed resource is still printable.
 
 ## Indexing and character boundaries
 
@@ -98,10 +98,10 @@ Equal bounds give an empty range. Bounds are never clamped or swapped; `text.sli
 | `String` | `byte_length() Int`; `to_bytes() Bytes`; `parse_int() Optional[Int]` |
 | `Bytes(values: List[Int])` | Immutable bytes; each value must be 0–255, otherwise a programming fault |
 | `Bytes` | `length() Int`; `at(index: Int) Optional[Int]`; `concat(values: Bytes) Bytes` |
-| `Bytes` | `to_string() Optional[String]` |
+| `Bytes` | `decode_utf8() Optional[String]` |
 | `Bytes` | `values() List[Int]`; a fresh mutable list of unsigned byte values |
 
-`to_bytes` encodes UTF-8. `Bytes.to_string` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `at` returns the unsigned byte as Int.
+`to_bytes` encodes UTF-8. `Bytes.decode_utf8` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `at` returns the unsigned byte as Int.
 
 `Bytes(values:)` copies its list, and `data.values()` (like the free function `values(data:)` in `@std/bytes.ms`) returns a fresh copy; editing either never changes the Bytes. `values` is a method, not a data field.
 
@@ -115,10 +115,10 @@ import Bytes from "@std/bytes.ms"
 test "explicit byte conversion":
     if not ("é".byte_length() == 2):
         return panic("check failed")
-    if not ("é".to_bytes().to_string() == some("é")):
+    if not ("é".to_bytes().decode_utf8() == some("é")):
         return panic("check failed")
     let invalid: Optional[String] = none
-    if not (Bytes([255]).to_string() == invalid):
+    if not (Bytes([255]).decode_utf8() == invalid):
         return panic("check failed")
     if not ("-007".parse_int() == some(-7)):
         return panic("check failed")

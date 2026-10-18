@@ -23,7 +23,7 @@ type Missing:
 type GenericError[V: Equal]:
     value: V
 impl Error for GenericError[V]:
-    fn message() String: self.value.toString()
+    fn message() String: self.value.to_string()
 fn f() Result[Int, E1]: error(E1(1))
 fn other() Result[Int, E2]: error(E2(2))
 fn ignore[T](r: Result[T, Error]) Int: 1
@@ -56,9 +56,9 @@ fn first() Unit: bounded(f())`,
 		"reordered errors":                      `fn first() Unit: pair(second: other(), first: f())`,
 		"positional errors after215":            `fn first() Unit: pair(f(), other())`,
 		"mixed errors after215":                 `fn first() Unit: pair(second: other(), f())`,
-		"positional callback after215":          `fn first() String: apply(f(), fn(item): item.toString())`,
+		"positional callback after215":          `fn first() String: apply(f(), fn(item): item.to_string())`,
 		"expected missing parameter":            `fn first() Optional[String]: convert(f())`,
-		"callback input and result":             `fn first() String: apply(callback: fn(item): item.toString(), r: f())`,
+		"callback input and result":             `fn first() String: apply(callback: fn(item): item.to_string(), r: f())`,
 		"callback expected result":              `fn first() Optional[Int]: apply(r: f(), callback: fn(item): none)`,
 		"optional wrapping and widening":        `fn first() Unit: optional(f())`,
 		"explicit optional wrapping":            `fn first() Unit: optional[Int](f())`,

@@ -15,7 +15,7 @@ fn wrong(value: Optional[Int]) Result[Int, String]: value.ok_or_else(cause)`, "f
 		{"Map predicate result", `fn wrong(value: Map[String, Int]) Bool: value.some(fn(k, v): v)`, "Bool"},
 		{"Set predicate result", `fn wrong(value: Set[Int]) Bool: value.every(fn(n): n)`, "Bool"},
 		{"Map fold initial result stays exact", `fn wrong(value: Map[String, Int]) Int: value.fold(0, fn(acc, k, v): k)`, "Int"},
-		{"Set fold step result stays exact", `fn wrong(value: Set[Int]) Int: value.fold(0, fn(acc, n): n.toString())`, "Int"},
+		{"Set fold step result stays exact", `fn wrong(value: Set[Int]) Int: value.fold(0, fn(acc, n): n.to_string())`, "Int"},
 		{"stored Map predicate labels", `fn check(value: Int, key: String) Bool: true
 fn wrong(value: Map[String, Int]) Bool: value.every(check)`, "key"},
 		{"local Optional declaration is rejected", `type Optional[T]:

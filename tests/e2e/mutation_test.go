@@ -69,7 +69,7 @@ export fn main() Int:
 
     match chunk:
         some(data):
-            if data.to_string() != some(value: "d"):
+            if data.decode_utf8() != some(value: "d"):
                 return 5
         none:
             return 6

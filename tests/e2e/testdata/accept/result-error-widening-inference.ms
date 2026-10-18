@@ -5,7 +5,7 @@ type Failure:
 
 impl Error for Failure:
     fn message() String:
-        return "failure " + self.code.toString()
+        return "failure " + self.code.to_string()
 
 fn failing() Result[Int, Failure]:
     return error(Failure(code: 7))

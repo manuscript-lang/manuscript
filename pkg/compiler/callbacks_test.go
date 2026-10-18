@@ -31,20 +31,20 @@ impl Read for Box[Int]:
 
 func TestContextualCallbacks(t *testing.T) {
 	for _, body := range []string{
-		`let values = [1, 2].map(fn(value): value.toString()).filter(fn(value): value != "")`,
-		`let result: String = apply(transform: fn(value): value.toString(), value: 1)`,
+		`let values = [1, 2].map(fn(value): value.to_string()).filter(fn(value): value != "")`,
+		`let result: String = apply(transform: fn(value): value.to_string(), value: 1)`,
 		`let result = chain(second: fn(value): value + 1, first: fn(): 2)`,
 		`let callback: fn(value: Int) Int = fn(value): value + 1`,
 		`let callback = fn(value: Int): value + 1`,
-		`let values = [1, 2].filter(fn(item: Int) Bool: item > 1).map(fn(number): number.toString()).join(",")`,
-		`let result = apply(transform: fn(item): item.toString(), value: 1)`,
+		`let values = [1, 2].filter(fn(item: Int) Bool: item > 1).map(fn(number): number.to_string()).join(",")`,
+		`let result = apply(transform: fn(item): item.to_string(), value: 1)`,
 		`let callback: fn(value: Int) Int = fn(item): item`,
 		`let callback: fn(left: Int, right: Int) Int = fn(a, b): a - b`,
-		`let callback = Callback(fn(item: Int): item.toString())`,
+		`let callback = Callback(fn(item: Int): item.to_string())`,
 		`optional(fn(item): item + 1)`,
 		`let callbacks: List[fn(value: Int) Int] = [fn(item): item + 1]`,
-		`let callback = Callback[Int, String](fn(value): value.toString())`,
-		`let callback = Callback(fn(value: Int): value.toString())`,
+		`let callback = Callback[Int, String](fn(value): value.to_string())`,
+		`let callback = Callback(fn(value: Int): value.to_string())`,
 		`optional(fn(value): value + 1)`,
 		`let callbacks: List[fn(value: Int) Int] = [fn(value): value + 1]`,
 		`let choice: Choice[fn(value: Int) Int] = Choice.Payload(fn(value): value + 1)`,
@@ -104,7 +104,7 @@ func TestInvalidCallbackInferenceDoesNotCascade(t *testing.T) {
 		`let names = [1].map(fn(item): missing)
     let next = names.map[String]`,
 		`let name = apply(value: 1, transform: fn(item): missing)
-    name.toString()`,
+    name.to_string()`,
 		`let callback = Callback(fn(item: Int): missing)`,
 		`let name = choose(first: fn(): missing, second: fn(): "known")`,
 		`let name = choose(first: fn(): "known", second: fn(): missing)`,

@@ -33,7 +33,7 @@ func TestDiagnosticsStateCauseAndFix(t *testing.T) {
 		{"set insert hint", "fn f(values: Set[Int]) Unit:\n    values.insert(1)\n", []string{"unknown or ambiguous member insert", "did you mean 'add'?"}, 1},
 		{"list delete hint", "fn f(values: List[Int]) Unit:\n    values.delete(0)\n", []string{"unknown or ambiguous member delete", "did you mean 'remove'"}, 1},
 		{"non-exhaustive", "type S:\n    case A\n    case B\n    case C\nfn f(s: S) Int:\n    match s:\n        A:\n            return 1\n    return 0\n", []string{"non-exhaustive match", "missing cases: B, C"}, 1},
-		{"operand mismatch is one error", "fn f() Int:\n    return \"a\" + 1\n", []string{"found String + Int", "toString()"}, 1},
+		{"operand mismatch is one error", "fn f() Int:\n    return \"a\" + 1\n", []string{"found String + Int", "to_string()"}, 1},
 		{"capitalized Optional arms", "fn f(o: Optional[Int]) Int:\n    match o:\n        Some(v):\n            return v\n        None:\n            return 0\n", []string{"unknown case Some of Optional", "did you mean 'some'?"}, 2},
 		{"optional compared with plain value", "fn f(n: Optional[Int]) Int:\n    if n == 0:\n        return 1\n    return 0\n", []string{"found Optional[Int] == Int", "may be absent", "unwrap_or(default)"}, 1},
 		{"plain value added to optional", "fn f(n: Optional[Int]) Int:\n    return 1 + n\n", []string{"found Int + Optional[Int]", "may be absent"}, 1},

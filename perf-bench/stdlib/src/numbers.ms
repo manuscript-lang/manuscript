@@ -20,7 +20,7 @@ export fn bench_numbers() Unit:
                 acc = acc.multiply(from_int(i))
                 i = i + 1
 
-            return acc.to_string(radix: 10).length()
+            return acc.to_string_radix(radix: 10).length()
     )
     bench(
         "decimal.add_round",

@@ -46,7 +46,7 @@ test "atomic state and sealed builders":
     bytes.append(value: 65)
     bytes.concat(values: "B".to_bytes())
     let expected_text: Optional[String] = some("AB")
-    if not (bytes.freeze().to_string() == expected_text):
+    if not (bytes.freeze().decode_utf8() == expected_text):
         return panic(message: "check failed")
 
     let text = StringBuilder()

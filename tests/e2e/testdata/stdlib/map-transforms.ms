@@ -44,7 +44,7 @@ fn reverse_set[T: Hashable, A](
 
 test "Map transformations and directional queries are callable":
     let source: Map[String, Int] = {"b": 2, "a": 1}
-    let mapped = source.map(fn(k, v): v.toString())
+    let mapped = source.map(fn(k, v): v.to_string())
     if mapped.get("b").unwrap() != "2": return panic("Map value transformation")
 
     let keyed = source.map_keys(fn(k, v): v)
@@ -58,7 +58,7 @@ test "Map transformations and directional queries are callable":
 
     let values = Set[Int]().add(2).add(1)
     if values.find_last(fn(v): true).unwrap() != 1: return panic("Set find_last")
-    if values.fold_right("", fn(acc, v): acc + v.toString()) != "12": return panic(
+    if values.fold_right("", fn(acc, v): acc + v.to_string()) != "12": return panic(
         "Set fold_right"
     )
 
@@ -77,7 +77,7 @@ test "Map value transformation copies ordered snapshots and retains aliases":
     let mapped = map_values(
         source,
         fn(k, v):
-            seen.append(k.label + v.count.toString())
+            seen.append(k.label + v.count.to_string())
             (
                 source.remove(second).add(third, Counter(99)).add(
                     Key(4, "new"),
@@ -114,7 +114,7 @@ test "Map key transformation retains first equal keys and last values":
     let mapped = map_keys(
         source,
         fn(k, v):
-            let key = Key(k % 2, k.toString())
+            let key = Key(k % 2, k.to_string())
             created.append(key)
             return key
     )
@@ -151,7 +151,7 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
             seen.append(k)
             source.remove(1).add(3, Counter(99)).add(4, Counter(4))
             later.count = 7
-            return k.toString()
+            return k.to_string()
     )
     if seen != [2, 1, 3] or mapped.keys() != ["2", "1", "3"]: return panic(
         "map_keys mutation snapshot"
@@ -191,7 +191,7 @@ test "Map reverse fold and last match retain ordered shallow snapshots":
         fn(acc, k, v):
             (source.remove("a").add("b", Counter(99)).add("new", Counter(4)))
             first.count = 7
-            acc.append(k + v.count.toString())
+            acc.append(k + v.count.to_string())
             return acc
     )
     if folded != ["c3", "a1", "b7"]: return panic(
