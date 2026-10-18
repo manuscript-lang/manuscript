@@ -1,0 +1,75 @@
+import Closeable from "@std/cleanup.ms"
+import stdout from "@std/io.ms"
+import {network, Listener, Connection} from "@std/net.ms"
+import control from "@std/process.ms"
+import {TaskGroup, check_cancelled} from "@std/tasks.ms"
+import sleep from "@std/time.ms"
+
+fn say(text: String) Unit:
+    let _ignored = stdout().write(text.to_bytes())
+
+type WorkerCleanup:
+    label: String
+
+impl Closeable for WorkerCleanup:
+    fn close() Unit:
+        say("{self.label} stopped\n")
+
+type Server:
+    listener: Listener
+    client: Connection
+    workers: TaskGroup
+    closed: Bool = false
+
+impl Closeable for Server:
+    fn close() Unit:
+        if self.closed:
+            return
+
+        self.closed = true
+        self.listener.close()
+        self.workers.close()
+        check_cancelled()
+        sleep(10.milliseconds)
+        let farewell = self.client.write("farewell\n".to_bytes(), timeout: 1.seconds)
+
+        if farewell.is_error():
+            say("farewell failed: {farewell.err().message()}\n")
+        else:
+            say("farewell sent\n")
+
+        self.client.close()
+
+fn serve() Result[Unit, Error]:
+    with signals = try control().watch_signals([2, 15]):
+        with listener = try network().listen("127.0.0.1:0"):
+            say("{listener.address()}\n")
+
+            with client = try listener.accept():
+                with workers = TaskGroup():
+                    with server = Server(
+                        listener: listener,
+                        client: client,
+                        workers: workers
+                    ):
+                        let _started = workers.start(
+                            fn():
+                                with cleanup = WorkerCleanup(label: "worker"):
+                                    say("ready\n")
+                                    sleep(3600.seconds)
+                                    let _sent = client.write(
+                                        data: "worker farewell\n".to_bytes()
+                                    )
+                                    return unit
+                        )
+                        let _observed = signals.next()
+                        return ok(unit)
+
+export fn main() Int:
+    let served = serve()
+
+    if served.is_error():
+        say("{served.err().message()}\n")
+        return 1
+
+    return 0

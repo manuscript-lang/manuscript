@@ -1,19 +1,19 @@
 import {expect_true, fail} from "@std/testing.ms"
 
-fn describe(name: Optional[String]) -> String:
+fn describe(name: Optional[String]) String:
     if let value = name:
         return "Hello, " + value
     else:
         return "Hello!"
 
-fn total(items: List[Optional[Int]]) -> Int:
+fn total(items: List[Optional[Int]]) Int:
     var sum = 0
     for item in items:
         if let value = item:
             sum = sum + value
     return sum
 
-fn check(value: Bool, message: String) -> Result[Unit, Error]:
+fn check(value: Bool, message: String) Result[Unit, Error]:
     (value) | try expect_true
     return ok(unit)
 
@@ -31,7 +31,7 @@ test "if let takes else when absent and keeps falsy payloads":
     let empty: List[Int] = []
     if let value = empty.first(): return fail(message: "unexpected {value}")
 
-fn parse(text: String) -> Result[Int, String]:
+fn parse(text: String) Result[Int, String]:
     if text == "":
         return error("empty")
 

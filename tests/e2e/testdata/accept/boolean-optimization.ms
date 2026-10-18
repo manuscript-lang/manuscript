@@ -3,15 +3,15 @@ import {expect_false} from "@std/testing.ms"
 type Counter:
     calls: Int
 
-fn touch(counter: Counter) -> Bool:
+fn touch(counter: Counter) Bool:
     counter.calls = counter.calls + 1
     return true
 
-fn unexpected(counter: Counter) -> Bool:
+fn unexpected(counter: Counter) Bool:
     counter.calls = counter.calls + 1
     return false
 
-fn defaulted(flag: Bool = not (false or false)) -> Bool:
+fn defaulted(flag: Bool = not (false or false)) Bool:
     return flag
 
 test "boolean optimization preserves source evaluation order":
@@ -28,3 +28,10 @@ test "boolean optimization preserves source evaluation order":
     (not right_and or not right_or or counter.calls != 4) | try expect_false
     let callback = fn(): not (true and false)
     (not defaulted() or not callback()) | try expect_false
+
+test "bindings read only by a folded-away operand still compile":
+    let only_dropped = 10
+    let dropped_or = true or only_dropped > 0
+    for item in [1, 2]:
+        try expect_false(false and item > 0)
+    try expect_false(not dropped_or)

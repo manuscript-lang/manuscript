@@ -2,25 +2,21 @@
 
 The language for the agentic era.
 
-API-first. Minimal syntax. Best-in-class tooling.
+API-first. Minimal syntax. Best-in-class tooling. See the [vision](VISION.md) for direction.
 
-Read the [Manuscript vision](VISION.md) for long-term design direction, while respecting the current technical contracts documented in the language and tooling guides.
+## How Manuscript is different
 
-## Design principles
+Most languages were shaped for human authors and then adapted to agents. Manuscript optimizes the language and the toolchain together for the loop an agent actually runs: write, check, fix, verify, ship.
 
-- **API first.** Keep syntax small. Express concurrency, scheduling, synchronization, and host services through imported APIs that compose with ordinary functions and values.
-- **Agents write; humans understand.** Make contracts and dependencies visible in source. Favor familiar, consistent forms that make generated changes easy to review.
-- **Fewer concepts, more composition.** Add a mechanism only when existing ones cannot express the problem clearly. Reuse the same rules across APIs so each addition has less to learn and more to build on.
+| Optimization | What it means in practice |
+| --- | --- |
+| **A language with little to get wrong** | Statically typed, four-space blocks, no implicit conversion or truthiness, no special async syntax, and flat `match`. Failure is a value: `Optional`, `Result`, and `try`. Cleanup is scoped with `with`. Fewer concepts means fewer first-draft errors and less to review. |
+| **Tools that give evidence, not prose** | `--json` from `check`, `lint`, `test`, `build`, and `inspect`; `ms search_symbol` finds exact APIs, `ms guide` prints the cheat sheet, `ms verify` runs check, format, lint, and test in one result, and `ms review` and `ms diagram` show the effect of a change from the checked source, deterministically. |
+| **Native code without a second language to manage** | Source lowers to typed Go (no boxing, no `any` in signatures) and compiles with a bundled toolchain. On the [performance benchmark](perf-bench/programs/results.md) generated code runs about 0.8x to 3.3x the time of hand-written Go on microbenchmarks, and each gap is a tracked optimization target. |
+| **One binary, always fresh** | `ms` is the compiler, formatter, linter, test runner, language server, debugger, and profiler. Nothing else to install. Rebuilds reuse a shared compiled-runtime workspace and replayed compile and link commands; no executable cache, so a stale binary never runs. |
+| **Measured on real agents** | [`agent-bench`](agent-bench/README.md) runs the same challenges in Manuscript, Go, TypeScript, and Rust. Failures there drive diagnostics, docs, and the cheat sheet. The latest Haiku baseline has Manuscript behind the others on pass rate and cost, and closing that gap is the current work. |
 
-## Tooling for agents and humans
-
-Manuscript's tools share the compiler's understanding of the program:
-
-- **Agents get structured evidence.** `--json` output from `check`, `lint`, `test`, `build`, and `inspect` gives diagnostics, symbols, call sites, source hashes, and effects. `ms search_symbol` finds project and standard-library APIs by name or words, and `ms guide` prints a language cheat sheet. `ms review` reports where to look in a project or a diff; static call diagrams and Markdown/JSON API exports make the program and its dependencies inspectable.
-- **Editors understand the contracts.** Typed completion works in unfinished calls; named arguments and auto-imports follow checked scope. Project-wide rename checks the proposed edits before returning them. Standard-library definitions are navigable Manuscript source.
-- **Debugging and profiling stay connected to source.** `ms debug` and the VS Code adapter step through `.ms` lines and render Manuscript values. CPU and heap profiles and execution traces carry source attribution.
-
-See the [tooling guide](documentation/developer-tooling/implementation.md) and [VS Code integration](extensions/vscode/README.md) for setup and current limits.
+See the [tooling guide](documentation/developer-tooling/implementation.md), [how it works](documentation/developer-tooling/how-it-works.md), and [VS Code integration](extensions/vscode/README.md).
 
 Manuscript is statically typed. Write `.ms` files and build native executables with `ms`; the standard library covers files, processes, networking, HTTP, JSON, text, time, and concurrency.
 
@@ -34,38 +30,36 @@ This complete program prints the number of arguments it receives:
 import arguments from "@std/cli.ms"
 import stdout from "@std/io.ms"
 
-export fn main() -> Int:
+export fn main() Int:
     let message = "Arguments: {arguments().length()}\n"
-    match stdout().write(data: message.to_bytes()):
-        ok(_):
-            return 0
-        error(_):
-            return 1
+    if stdout().write(message.to_bytes()).is_error():
+        return 1
+    return 0
 ```
 
-Imports name the standard services the program uses. `let` infers the local value's type, and `match` handles both outcomes of the write. The integer returned by `main` becomes the program's exit code.
+`main`'s return value is the exit code; `is_error()` tests the write.
 
 ## More of the language
 
-Optionals unwrap with `if let`, and typed JSON maps text to and from your own types:
+Optionals unwrap with `if let`; typed JSON maps text to your types:
 
 ```manuscript
 type Request:
     model: String
     user: Optional[String]
 
-fn describe(request: Request) -> String:
+fn describe(request: Request) String:
     if let name = request.user:
         return "{request.model} for {name}"
     else:
         return "{request.model} for nobody"
 ```
 
-`json.stringify[T]` and `json.parse[T]` from `@std/json.ms` convert such types to and from JSON; unknown members are ignored by default. The [language tour](documentation/learn/tour.md) covers types, alternatives, generics, `try`, and tests.
+`json.parse[T]` and `json.stringify[T]` (`@std/json.ms`) convert such types; unknown members are ignored by default. The [tour](documentation/learn/tour.md) covers more.
 
 ## Try it
 
-Download and extract the [release archive](https://github.com/manuscript-lang/manuscript/releases) for your operating system and architecture. It includes `ms` and the hello project shown above. Nothing else needs to be installed: `ms` builds and runs programs on its own, and you can copy the binary anywhere on `PATH`.
+Extract the [release archive](https://github.com/manuscript-lang/manuscript/releases). It includes `ms` and the hello project; nothing else to install.
 
 From the extracted directory, run:
 
@@ -74,44 +68,40 @@ From the extracted directory, run:
 ./ms run examples/hello/ms.toml -- first second
 ```
 
-In Windows PowerShell, use `.\ms.exe` instead of `./ms`.
+On Windows PowerShell, use `.\ms.exe`.
 
 ```text
 Arguments: 2
 ```
 
-`check` validates the source. `run` builds a temporary executable and passes it the arguments after `--`.
+`check` validates source; `run` builds a temporary executable and passes it arguments after `--`.
 
-To start your own project, run `./ms init my-app`. To keep a standalone executable or run the included test:
+Start a project with `./ms init my-app`, or keep an executable and run the test:
 
 ```sh
 ./ms build examples/hello/ms.toml -o hello
 ./ms test examples/hello/test.ms
 ```
 
-Use `./ms --help` to list commands, or `./ms help run` for a command's options and examples. Every command supports `--help`. `./ms fmt` formats source and `./ms lint` reports style and correctness findings.
-
-Follow [your first program](documentation/learn/getting-started.md) for a walkthrough of the source and project manifest.
+`./ms --help` lists commands; `fmt` formats and `lint` reports findings. See [your first program](documentation/learn/getting-started.md).
 
 ## Keep exploring
 
 | You want to… | Start here |
 | --- | --- |
 | Learn the language | [Language tour](documentation/learn/tour.md) and [core language](documentation/core-language/_index.md) |
-| Find a standard type or function | `ms search_symbol <name or words>`, [Standard library](https://manuscript-lang.github.io/manuscript/standard-library/) and [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/) |
-| Understand cleanup and concurrent work | [Resource lifetimes](documentation/core-language/cleanup/_index.md) and [concurrency](https://manuscript-lang.github.io/manuscript/concurrency/) |
+| Find a standard type or function | `ms search_symbol <name or words>` and the [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/) |
+| Understand cleanup and concurrent work | [Resource lifetimes](documentation/core-language/cleanup/_index.md) and [runtime concurrency semantics](documentation/contributing/concurrent-runtime.md) |
 | Set up your editor or use source tools | [VS Code extension](extensions/vscode/README.md) and [tooling guide](documentation/developer-tooling/implementation.md) |
-| Understand build pins and caches | [Reproducible builds](documentation/developer-tooling/builds/reproducibility.md) |
+| Understand what `ms` bundles | [How it works](documentation/developer-tooling/how-it-works.md) |
 | Choose optimization and debugging settings | [Build levels](documentation/developer-tooling/builds/build-levels.md) |
 
 ## Project status
 
-Manuscript is at version 0.1, with a working compiler, runtime, standard library, native test runner, formatter, and editor tooling. The language and tools are still evolving. External adapters, incremental frontend compilation, and some tooling APIs remain design work. Each guide describes its own supported behavior and limits.
+Version 0.1: working compiler, runtime, standard library, test runner, formatter, and editor tooling, still evolving. External adapters, incremental frontend compilation, and some tooling APIs remain design work.
 
 ## Contribute
 
-The [architecture guide](documentation/contributing/architecture.md) maps the compiler and runtime. [Development and publishing](documentation/contributing/development.md) covers setup, checks, generated documentation, and releases.
+See the [architecture guide](documentation/contributing/architecture.md), [development and publishing](documentation/contributing/development.md), and [maintenance](documentation/contributing/maintenance.md). Routine checks: `make setup`, `make doctor`, `make verify`; `make verify-full` adds native validation.
 
-Use `make setup`, `make doctor`, and `make verify` for routine development; `make verify-full` runs native validation. Read [maintenance and compatibility](documentation/contributing/maintenance.md) for pin updates and releases.
-
-Compiler and runtime packages live in `pkg/`, command entrypoints in `cmd/`, and private helpers in `internal/`. Language guides live in `documentation/`, and standard declarations live in [pkg/stdlib/](pkg/stdlib/intrinsics.ms). The website is generated into ignored `.artifacts/book/` and deployed through GitHub Pages artifacts.
+Layout: `pkg/` (compiler, runtime), `cmd/` (entrypoints), `internal/` (helpers), `documentation/` (guides), [pkg/stdlib/](pkg/stdlib/intrinsics.ms) (standard declarations). The website builds into ignored `.artifacts/book/`.

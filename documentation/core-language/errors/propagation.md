@@ -5,71 +5,62 @@ weight = 2
 
 # Error propagation with try
 
-Use `try` to continue with a successful Result value or immediately return its error to your caller. This is useful when the current function cannot handle the expected failure itself.
-
-`try expression` unwraps `ok`; on `error`, it returns that error from the enclosing function. The function must return a compatible `Result`.
+`try expression` unwraps `ok`; on `error` it returns that error from the enclosing function, which must return a compatible `Result`.
 
 The following continues the `discount` and `DiscountError` declarations in [expected failures](results.md):
 
 ```manuscript
-fn discounted_label(price: Decimal, percent: Decimal) -> Result[String, DiscountError]:
-    let value = try discount(price: price, percent: percent)
+fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
+    let value = try discount(price, percent)
     return ok("Discounted price: {value}")
 ```
 
 ## Success and failure paths
 
-When `discount` returns `ok`, `value` contains the `Decimal` payload and the function builds its label. When it returns `error`, the enclosing function returns that error instead of executing the remaining statements.
+On `ok`, `value` holds the `Decimal`. On `error`, the function returns that error immediately. Success types may differ (decimal versus text); the error type is forwarded unchanged.
 
-The success types differ: the called function returns a decimal, while the enclosing function returns text. Both use `DiscountError`, so the error can be forwarded unchanged.
-
-A call returning `Result[Unit, E]` can be propagated as a statement, without a throwaway binding:
+`Result[Unit, E]` can be propagated as a statement:
 
 ```manuscript
-fn prepare() -> Result[Unit, String]: ok(unit)
+fn prepare() Result[Unit, String]: ok(unit)
 
-fn ready_label() -> Result[String, String]:
+fn ready_label() Result[String, String]:
     try prepare()
     return ok("ready")
 ```
 
-Standalone `try call()` requires a `Unit` success value. For other success types, bind the value with `let name = try call()` or return it with `return try call()`; it cannot be silently discarded.
+Standalone `try call()` requires a `Unit` success. Otherwise bind it (`let name = try call()`) or `return try call()`.
 
-Omitting `try` discards the entire Result, including any error, and produces the
-`MSL104` lint advisory. To deliberately ignore both outcomes, use an explicit
-[`_ignored` binding](results.md#discarding-a-result).
+Omitting `try` discards the Result and triggers lint `MSL104`. To ignore it deliberately, use an [`_ignored` binding](results.md#discarding-a-result).
 
 ## Try in a pipe flow
 
-A sequence of steps can read as one flow with [pipe steps](../basics/expressions.md#pipe-flows). `| try step` applies this page's rules to that step's result. Given `fn label(value: Decimal) -> String`, the following equals `let value = try discount(...)` followed by `label(value)`:
+`| try step` in a [pipe flow](../basics/expressions.md#pipe-flows) applies these rules to that step. Given `fn label(value: Decimal) String`, this equals `let value = try discount(...)` then `label(value)`:
 
 ```manuscript
-fn discounted_label(price: Decimal, percent: Decimal) -> Result[String, DiscountError]:
-    return ok(try discount(price: price, percent: percent) | label)
+fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
+    return ok(try discount(price, percent) | label)
 ```
 
 ## Error compatibility
 
-`try` accepts the same error type as the enclosing function, or a specific error implementing the common `Error` interface when the enclosing function returns `Result[U, Error]`.
+`try` accepts the enclosing function's error type, or a specific error implementing `Error` when the function returns `Result[U, Error]`.
 
-Keep a chain of fallible calls flat with `try` when their error boundaries are compatible. Translate unrelated domain errors explicitly when needed.
+- `Result[T, E]` can become `Result[U, E]`; or `Result[U, Error]` if `E` implements `Error`.
+- The original error, concrete type, and fields pass through unchanged.
+- An explicit `impl Error` establishes the relationship; matching method names do not. See [common error boundaries](results.md#a-common-error-boundary).
+- Unrelated error types need explicit translation with [pattern matching](../control-flow/pattern-matching.md). An `Error` cannot narrow without a type match.
+- The expression after `try` is evaluated once. `try operation() + 1` means `(try operation()) + 1`.
+- Inside an anonymous function, `try` returns from that function.
 
-If the called operation returns `Result[T, E]`, the enclosing function can return `Result[U, E]`. If `E` implements `Error`, it can instead return `Result[U, Error]`. The success type may change from `T` to `U`. The original error, its concrete type, and its fields pass through unchanged; no cause wrapper or manual Result match is needed.
-
-This common boundary also accepts direct assignments, arguments, and returns of a specific error, and forwarding `Result[T, E]` as `Result[T, Error]` with the same success type. An explicit `impl Error` establishes the relationship; matching method names alone do not. See [common error boundaries](results.md#a-common-error-boundary).
-
-Unrelated domain error types still require explicit translation with [pattern matching](../control-flow/pattern-matching.md). An Error value cannot narrow to a specific domain error without a type match. Other interfaces, collection types, and function types keep their ordinary exact compatibility rules.
-
-The expression after `try` is evaluated once. Try binds more tightly than arithmetic, so `try operation() + 1` means `(try operation()) + 1`.
-
-The compiler rejects try when:
+The compiler rejects `try` when:
 
 - its expression is not a Result;
-- its error type differs from the enclosing function's error type and cannot pass into its Error boundary;
+- its error type differs from the function's and cannot pass into its `Error` boundary;
 - the enclosing function or test returns Unit.
 
-Inside an anonymous function, try returns from that anonymous function, not from its caller or surrounding function. See [expressions](../basics/expressions.md) and [type compatibility](../types/compatibility.md).
+See [type compatibility](../types/compatibility.md).
 
 ## Cleanup and cancellation
 
-`try` does not catch programming faults or parent cancellation. A propagated error is a return path and performs [lexical cleanup](../cleanup/_index.md) for the scopes it leaves. A [programming fault](faults.md) or [parent cancellation](../../concurrency/cancellation.md) follows its own unwinding rules.
+`try` does not catch faults or parent cancellation. A propagated error is a return path and performs [lexical cleanup](../cleanup/_index.md) for scopes it leaves.

@@ -5,23 +5,25 @@ weight = 3
 
 # Implementing Closeable
 
-`Closeable` is the standard cleanup contract. Import it from `@std/cleanup.ms` to name or implement it. A `with` block checks the identity of that standard contract, so an unrelated interface with the same spelling does not replace it. Its declaration is:
+Import `Closeable` from `@std/cleanup.ms` to name or implement it. `with` checks the identity of this standard contract; an unrelated same-named interface does not qualify.
 
 ```manuscript
 interface Closeable:
-    fn close() -> Unit
+    fn close() Unit
 ```
 
-For a concrete value the compiler requires its explicit `Closeable` implementation, resolves that method, and registers a call to it. A contract value is also eligible when its own declaration explicitly contains the exact operation `fn close() -> Unit`; register that declared operation without a contract-to-contract conversion. A similarly named concrete method without `impl Closeable` remains insufficient. This rule lets standard `File`, `ReadStream`, and `WriteStream` contracts expose cleanup and admit source test fakes without inheritance. It has no special knowledge of a particular file or transaction. Libraries can implement the same cleanup contract for their own managed objects.
+`with` accepts:
 
-A generic parameter with a Closeable bound also supplies the implementation proof needed by with; dispatch its bound close operation directly without constructing a view or adding a sharing bound. A generic bound naming a contract that explicitly declares the exact close signature is likewise sufficient. An unconstrained type parameter or a merely similarly named method is insufficient.
+- A concrete value with an explicit `Closeable` implementation; the compiler registers that `close`.
+- A contract value whose own declaration contains exactly `fn close() Unit`. This lets `File`, `ReadStream`, `WriteStream`, and test fakes work without inheritance.
+- A generic parameter bounded by `Closeable` or by a contract declaring that exact signature; `close` dispatches directly.
 
-`close()` is idempotent, may suspend like any other function, and finishes the object's release/shutdown obligation before returning. Repeated or concurrent calls do not release an underlying handle twice. An implementation must coordinate ongoing access with closure and ensure that later accesses report closed state.
+A similarly named method without `impl Closeable`, or an unconstrained type parameter, is insufficient.
 
-Expected failures that application code needs to handle belong to explicit operations such as `commit()`, `flush()`, or `finish()`, returning `Result`. The automatic close hook returns `Unit`; an unexpected release failure is a programming/cleanup fault, not a discarded error value.
+`close()` is idempotent, may suspend, and finishes the object's release before returning. Repeated or concurrent calls release the handle once. Implementations coordinate ongoing access with closure and report closed state afterward.
 
-A close failure does not skip other registered actions. Implementations must leave the object unusable or safely quarantined after a failed release rather than exposing an invalid/reused native handle. Faults and remaining release obligations are reported to the host.
+Expected failures belong to explicit operations such as `commit()`, `flush()`, or `finish()` returning `Result`. The automatic close returns `Unit`; an unexpected release failure is a cleanup fault.
 
-General user `defer` syntax is unsupported. Custom scope cleanup can be packaged in a library object implementing `Closeable`.
+A close failure does not skip other actions. After a failed release, leave the object unusable or quarantined; faults and remaining obligations go to the host.
 
-See [using with](scopes.md), [cleanup faults](cleanup-faults.md), and [operation contracts](../types/contracts.md).
+User `defer` is unsupported; package custom cleanup in a `Closeable` library object. See [using with](scopes.md), [cleanup faults](cleanup-faults.md), and [operation contracts](../types/contracts.md).

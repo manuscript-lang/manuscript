@@ -8,19 +8,19 @@ type Resource:
     output: WriteStream
 
 impl Closeable for Resource:
-    fn close() -> Unit:
-        self.output.write(data: "close {self.label}\n".to_bytes())
+    fn close() Unit:
+        let _ignored = self.output.write("close {self.label}\n".to_bytes())
 
-export fn main() -> Int:
+export fn main() Int:
     let output = stdout()
     let child = fn():
-        with resource = Resource(label: "child", output: output):
-            output.write(data: "ready\n".to_bytes())
+        with resource = Resource("child", output):
+            let _ignored = output.write("ready\n".to_bytes())
             while true:
                 continue
 
-    with resource = Resource(label: "parent", output: output):
+    with resource = Resource("parent", output):
         with group = TaskGroup():
-            group.start(child)
-            group.join()
+            let _ignored = group.start(child)
+            let _joined = group.join()
             return 0

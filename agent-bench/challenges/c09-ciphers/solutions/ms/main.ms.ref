@@ -1,0 +1,123 @@
+import {stdin, stdout, read_line} from "@std/io.ms"
+import from_scalars from "@std/string.ms"
+
+fn is_upper(c: Int) Bool:
+    return c >= 65 and c <= 90
+
+fn is_lower(c: Int) Bool:
+    return c >= 97 and c <= 122
+
+# Shifts letters by keys[position % keys.length()] * sign; position counts letters only.
+fn transform(text: String, keys: List[Int], sign: Int) String:
+    let out = List[Int]()
+    var i = 0
+
+    for c in text.scalar_values():
+        if is_upper(c) or is_lower(c):
+            var base = 97
+            if is_upper(c):
+                base = 65
+            let k = keys.at(i % keys.length()).get()
+            let v = ((c - base + sign * k) % 26 + 26) % 26
+            out.append(v + base)
+            i = i + 1
+        else:
+            out.append(c)
+
+    return from_scalars(out).get()
+
+fn parse_caesar_key(key: String) Optional[Int]:
+    let codes = key.scalar_values()
+    var start = 0
+    var negative = false
+
+    if codes.length() > 0 and codes.at(0).get() == 45:
+        negative = true
+        start = 1
+
+    let digits = codes.length() - start
+    if digits < 1 or digits > 7:
+        return none
+
+    var k = 0
+    var i = start
+
+    while i < codes.length():
+        let c = codes.at(i).get()
+        if c < 48 or c > 57:
+            return none
+
+        k = k * 10 + (c - 48)
+        i = i + 1
+
+    if negative:
+        k = 0 - k
+    return some(k)
+
+fn solve_line(line: String) String:
+    var parts = List[String]()
+    var rest = line
+
+    while parts.length() < 3:
+        let at = rest.index_of(" ")
+        if at.is_none():
+            return "error: bad command"
+
+        parts.append(rest.slice(0, at.get()).get())
+        rest = rest.slice(at.get() + 1, rest.length()).get()
+
+    if rest.is_empty():
+        return "error: bad command"
+
+    let cipher = parts.at(0).get()
+    let mode = parts.at(1).get()
+    let key = parts.at(2).get()
+    if cipher != "caesar" and cipher != "vigenere":
+        return "error: bad cipher"
+    if mode != "enc" and mode != "dec":
+        return "error: bad mode"
+
+    var sign = 1
+    if mode == "dec":
+        sign = -1
+
+    if cipher == "caesar":
+        let k = parse_caesar_key(key)
+        if k.is_none():
+            return "error: bad key"
+
+        return transform(rest, [k.get()], sign)
+
+    if key.is_empty():
+        return "error: bad key"
+
+    let keys = List[Int]()
+
+    for c in key.scalar_values():
+        if is_upper(c):
+            keys.append(c - 65)
+        else if is_lower(c):
+            keys.append(c - 97)
+        else:
+            return "error: bad key"
+
+    return transform(rest, keys, sign)
+
+fn run() Result[Unit, Error]:
+    while true:
+        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        if next.is_none():
+            break
+
+        let line = next.get()
+        if line.replace_all(old: " ", new: "").get().is_empty():
+            continue
+
+        try stdout().write("{solve_line(line)}\n".to_bytes())
+
+    return stdout().flush()
+
+export fn main() Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

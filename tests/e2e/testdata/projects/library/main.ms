@@ -13,17 +13,17 @@ import sleep from "@std/time.ms"
 import posix from "@std/path.ms"
 import win32 from "@std/path.ms"
 
-fn timer_callback() -> Result[Unit, Error]:
+fn timer_callback() Result[Unit, Error]:
     return ok(unit)
 
-fn common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
+fn common_result[T, E: Error](result: Result[T, E]) Result[T, Error]:
     match result:
         ok(value):
             return ok(value)
         error(cause):
             return error(Error(cause))
 
-fn exercise(path: String) -> Result[Unit, Error]:
+fn exercise(path: String) Result[Unit, Error]:
     let written = try common_result(
         result: filesystem().write_file(
             path: path,
@@ -131,7 +131,7 @@ fn exercise(path: String) -> Result[Unit, Error]:
     )
     return ok(unit)
 
-export fn main() -> Int:
+export fn main() Int:
     let path = match arguments().at(index: 0):
         some(path): path
         none:

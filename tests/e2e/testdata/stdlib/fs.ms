@@ -7,7 +7,7 @@ import Bytes from "@std/bytes.ms"
 fn expect_fs_error[T](
     outcome: Result[T, FileSystemError],
     expected: FileSystemError
-) -> Result[Unit, Error]:
+) Result[Unit, Error]:
     match outcome:
         ok(_): return error(TextError.Text("filesystem misuse succeeded"))
         error(cause):
@@ -55,7 +55,7 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
                     path: root,
                     options: options,
                     exclude: some(
-                        fn(entry: PathEntry) -> Bool:
+                        fn(entry: PathEntry) Bool:
                             if entry.path == ".": options.patterns.set(0, "*.md")
                             return false
                     )
@@ -63,7 +63,7 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
             )
         )
         entries.length() | try expect_equal(expected: 1)
-        entries.at(0).unwrap().path | try expect_equal(expected: "b.md")
+        entries.at(0).get().path | try expect_equal(expected: "b.md")
 
 test "ordinary filesystem misuse retains typed cases":
     let fs = filesystem()
@@ -182,7 +182,7 @@ test "filesystem scoped temporary directories and bounded file reads":
             expected: 1
         )
         with input = (files().open(path) | try expect_ok):
-            (input.read(5) | try expect_ok).unwrap() | try expect_equal(
+            (input.read(5) | try expect_ok).get() | try expect_equal(
                 expected: "hello".to_bytes()
             )
 

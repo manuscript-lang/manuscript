@@ -1,6 +1,7 @@
 package msruntime
 
 import (
+	"cmp"
 	"fmt"
 	"math"
 	"math/big"
@@ -151,9 +152,9 @@ func Int_Milliseconds(_ *Execution, n int) Duration {
 func Int_Seconds(_ *Execution, n int) Duration { return durationOf("Int.seconds", n, 1_000_000_000) }
 func Int_Minutes(_ *Execution, n int) Duration { return durationOf("Int.minutes", n, 60_000_000_000) }
 
-func Int_ToString(_ *Execution, v, radix int) string {
+func Int_ToStringRadix(_ *Execution, v, radix int) string {
 	if radix < 2 || radix > 36 {
-		txRangeFault("Int.to_string", "radix", radix, 2, 36)
+		txRangeFault("Int.to_string_radix", "radix", radix, 2, 36)
 	}
 	return strconv.FormatInt(int64(v), radix)
 }
@@ -162,4 +163,22 @@ func Int_ToFloat(_ *Execution, v int) float64 { return float64(v) }
 
 func Int_ToDecimal(_ *Execution, v int) *Decimal {
 	return &Decimal{Value: new(big.Rat).SetInt64(int64(v))}
+}
+
+func Int_Compare(_ *Execution, a, b int) int { return cmp.Compare(a, b) }
+
+// Float_Compare is a total order: -0.0 equals 0.0 and NaN, equal to itself,
+// sorts after every other value.
+func Float_Compare(_ *Execution, a, b float64) int {
+	if math.IsNaN(a) || math.IsNaN(b) {
+		return cmp.Compare(boolToInt(math.IsNaN(a)), boolToInt(math.IsNaN(b)))
+	}
+	return cmp.Compare(a, b)
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }

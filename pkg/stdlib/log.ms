@@ -45,11 +45,11 @@ export type LogLevel:
 export interface Transport:
     # Accepts encoded record bytes; native transports serialize writes and may return the original I/O cause.
     # Errors can follow a partial external write, without rollback.
-    fn write(data: Bytes) -> Result[Unit, LogError]
+    fn write(data: Bytes) Result[Unit, LogError]
     # Delegates flush to the destination; persistence and buffering depend on that destination.
-    fn flush() -> Result[Unit, LogError]
+    fn flush() Result[Unit, LogError]
     # Releases owned resources; native close cancels admitted operations and leaves borrowed streams open.
-    fn close() -> Unit
+    fn close() Unit
 
 # A structured logger with level filtering, bound fields, and pluggable transports.
 #
@@ -57,37 +57,33 @@ export interface Transport:
 # type, use `record` and `bind`, which encode the value with `stringify`.
 export interface Logger:
     # Writes a record at the selected level with no fields.
-    fn log(level: LogLevel, message: String) -> Result[Unit, LogError]
+    fn log(level: LogLevel, message: String) Result[Unit, LogError]
     # Logs at Trace when enabled; a filtered call returns ok without encoding or transport access.
-    fn trace(message: String) -> Result[Unit, LogError]
+    fn trace(message: String) Result[Unit, LogError]
     # Logs at Debug when enabled, including the logger's bound fields.
-    fn debug(message: String) -> Result[Unit, LogError]
+    fn debug(message: String) Result[Unit, LogError]
     # Logs at Info when enabled; reserved level, msg, and time fields remain controlled by the logger.
-    fn info(message: String) -> Result[Unit, LogError]
+    fn info(message: String) Result[Unit, LogError]
     # Logs at Warn when enabled, returning encoding, size-budget, or transport errors unchanged.
-    fn warn(message: String) -> Result[Unit, LogError]
+    fn warn(message: String) Result[Unit, LogError]
     # Logs at Error when enabled; it records an expected diagnostic rather than raising a fault.
-    fn error(message: String) -> Result[Unit, LogError]
+    fn error(message: String) Result[Unit, LogError]
     # Logs at Fatal when enabled; the caller remains responsible for process termination.
-    fn fatal(message: String) -> Result[Unit, LogError]
+    fn fatal(message: String) Result[Unit, LogError]
     # Writes a record whose fields are the members of `fields`, a JSON object in text form.
     # Text that is not a JSON object returns `InvalidData`. Prefer `record`, which builds the text.
-    fn log_json(
-        level: LogLevel,
-        message: String,
-        fields: String
-    ) -> Result[Unit, LogError]
+    fn log_json(level: LogLevel, message: String, fields: String) Result[Unit, LogError]
     # Returns a logger that adds the members of `fields`, a JSON object in text form, to each
     # record. Text that is not a JSON object returns `InvalidData`. Prefer `bind`.
-    fn child_json(fields: String) -> Result[Logger, LogError]
+    fn child_json(fields: String) Result[Logger, LogError]
     # Tests the current filtering threshold; Silent is never enabled as a record level.
-    fn enabled(level: LogLevel) -> Bool
+    fn enabled(level: LogLevel) Bool
     # Returns this logger's current threshold, independent of its parent or children.
-    fn level() -> LogLevel
+    fn level() LogLevel
     # Changes only this logger's threshold; existing child loggers retain their copied threshold.
-    fn set_level(level: LogLevel) -> Unit
+    fn set_level(level: LogLevel) Unit
     # Flushes the logger's transport.
-    fn flush() -> Result[Unit, LogError]
+    fn flush() Result[Unit, LogError]
 
 # Writes a record whose fields come from `fields`, which can be any value `stringify` accepts.
 #
@@ -100,12 +96,12 @@ export fn record[T](
     level: LogLevel,
     message: String,
     fields: T
-) -> Result[Unit, LogError]:
+) Result[Unit, LogError]:
 
 # Returns a logger that adds `bindings` to each record, with the same field rules as `record`.
 # The child copies this logger's threshold, timestamp setting, record limit, and transport;
 # bound fields merge parent, then child, then per-call fields, with later values winning.
-export fn bind[T](logger: Logger, bindings: T) -> Result[Logger, LogError]:
+export fn bind[T](logger: Logger, bindings: T) Result[Logger, LogError]:
 
 # Creates a logger. Defaults to `Info`, timestamps enabled, and no record-size limit.
 export fn create(
@@ -113,89 +109,17 @@ export fn create(
     level: Optional[LogLevel] = none,
     timestamp: Optional[Bool] = none,
     max_bytes: Optional[Int] = none
-) -> Result[Logger, LogError]:
+) Result[Logger, LogError]:
 
 # Writes log records to an existing byte stream.
-export fn stream_transport(output: WriteStream) -> Transport:
+export fn stream_transport(output: WriteStream) Transport:
 
 # Writes log records to the process standard-output stream.
-export fn stdout_transport() -> Transport:
+export fn stdout_transport() Transport:
 
 # Appends log records to a file at `path`.
-export fn file_transport(path: String) -> Result[Transport, LogError]:
+export fn file_transport(path: String) Result[Transport, LogError]:
 
 impl Error for LogError:
     # Returns the preserved I/O/filesystem cause message, or a logging-prefixed diagnostic.
-    fn message() -> String:
-# documentation documentation/standard-library/logging.md
-# +++
-# title = "Logging"
-# weight = 18
-# +++
-#
-# # Logging
-#
-# API reference: [log](reference/log.md).
-#
-# Import `create` and a transport from `@std/log.ms`. A logger combines level filtering, structured fields, and reusable context. Transports send complete records to stdout, an append-only file, or a supplied `WriteStream`. Logging failures are returned as `Result` errors.
-#
-# ## Write a record
-#
-# This complete program writes one JSON line to stdout. `try` propagates logging failures through the standard `Error` boundary.
-#
-# <!-- manuscript-example: {"mode":"run","stdout":"{\"level\":30,\"msg\":\"listening\",\"port\":8080}\n"} -->
-# ```manuscript
-# import {create, record, stdout_transport, LogLevel} from "@std/log.ms"
-#
-# type Listening:
-#     port: Int
-#
-# fn announce() -> Result[Unit, Error]:
-#     with transport = stdout_transport():
-#         let logger = try create(transport: transport, timestamp: false)
-#         let written = try record(
-#             logger: logger,
-#             level: LogLevel.Info,
-#             message: "listening",
-#             fields: Listening(port: 8080)
-#         )
-#         return ok(unit)
-#
-# export fn main() -> Int:
-#     match announce():
-#         ok(_): return 0
-#         error(_): return 1
-# ```
-#
-# `logger.info(message: "started")` and the other level methods emit a message without fields. `record` attaches fields of any type: it encodes them with `stringify` from `@std/json.ms`, so records, lists, maps, optionals, and types that implement `JsonEncode` follow the [JSON reference](reference/json.md) rules. A record or map contributes its members at the top level; any other value, such as a number or list, is written under the key `data`. A value `stringify` rejects, such as a cyclic one, returns `LogError.InvalidData` before the transport receives data.
-#
-# Each record is compact UTF-8 JSON followed by LF. The top-level envelope contains numeric `level`, `msg`, and, by default, `time` as Unix epoch milliseconds. Additional fields appear at the top level in encoding order. The envelope owns `level`, `msg`, and `time`; supplied bindings or fields with those keys are ignored, including `time` when timestamps are disabled. Embedded newlines and quotes are escaped, keeping one record per physical line.
-#
-# ## Levels and context
-#
-# `trace`, `debug`, `info`, `warn`, `error`, and `fatal` return `Result[Unit, LogError]`. Their levels are 10, 20, 30, 40, 50, and 60 respectively. `log(level: level, message: message)` selects a method's level dynamically, and `record(logger: logger, level: level, message: message, fields: fields)` does the same for a record with fields. `LogLevel.Silent` is a filtering threshold; using it as a record level returns `InvalidInput`. `fatal` emits a record and leaves process termination to the caller.
-#
-# The default threshold is `LogLevel.Info`. Pass `level: LogLevel.Debug` to `create`, or use `logger.set_level(LogLevel.Debug)` later. `logger.level()` returns the current threshold and `logger.enabled(LogLevel.Debug)` checks whether that level passes it. `LogLevel.Silent` disables all logging. Filtered calls return `ok(unit)` without serialization or transport access, even if the transport is closed; arguments still evaluate normally.
-#
-# `bind(logger: logger, bindings: bindings)` returns a logger with persistent fields, encoded like `record` fields at the time of the call, and the parent's current threshold, timestamp setting, record limit, and transport. Later changes to the bound value do not affect the logger, and parent level changes do not change existing children. Bindings merge in parent → child → per-call order; later values win.
-#
-# ## Transports and cleanup
-#
-# - `stdout_transport()` borrows the host stdout stream.
-# - `stream_transport(output)` borrows a supplied `WriteStream`, including a source implementation for testing or integration.
-# - `file_transport(path)` opens or creates a file for append with mode `0600` for newly created files, subject to the host umask. It owns that file. Parent directories must already exist. Open failures return `LogError.FileSystem(cause)` with the original `FileSystemError`.
-#
-# Use `with` to close transports. Loggers and their children share the transport but do not own it. Closing a borrowed transport leaves its underlying stream open; closing a file transport releases its file handle. Close is idempotent, ends admission, cancels active operations, and joins admitted calls. Later transport writes and flushes return `LogError.Closed`. Source streams must cooperate with cancellation to make interrupted operations finish.
-#
-# Transports serialize complete writes and apply backpressure synchronously. They do not queue records in the background. `logger.flush()` delegates to the transport; file flush synchronizes the file to disk, while stdout uses the host stream's flush. Check flush results when persistence matters. Closing is cleanup, not an implicit successful flush. A write failure may follow a partial external write; no rollback is promised. Stream failures preserve their `IoError` as `LogError.Io(cause)`.
-#
-# For file logging, replace the stdout acquisition in the example with `with transport = try file_transport("events.ndjson"):` and import `file_transport`.
-#
-# A custom transport implements the ordinary `Transport` interface: `write(data: Bytes) -> Result[Unit, LogError]`, `flush() -> Result[Unit, LogError]`, and `close() -> Unit`. Construct its explicit `Transport(value: implementation)` view and pass it to `create`. Custom implementations own their synchronization and lifecycle behavior.
-#
-# ## Record limits
-#
-# `create` accepts `max_bytes: Optional[Int] = none`. Omission or `none` imposes no record limit. A supplied nonnegative limit counts the entire UTF-8 JSON line, including LF. An exact fit succeeds. Excess returns `LimitExceeded` before writing, and a negative limit returns `InvalidInput` during creation. A zero limit rejects every enabled record. Filtering happens before the record budget is checked.
-#
-# The caller chooses fields and their sensitivity; automatic redaction and object inspection are not part of this API. Bound untrusted inputs when necessary: serialization checks the supplied output budget, but the input collections and escaped string temporaries may already occupy memory.
-# end-documentation
+    fn message() String:

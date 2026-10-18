@@ -4,11 +4,11 @@ type State:
     case Ready
     case Waiting
 
-fn loop(state: State) -> Int:
+fn loop(state: State) Int:
     var count = 0
 
     for value in [1, 2, 3]:
-        count = count + 1
+        count += 1
 
         match state:
             Ready:
@@ -16,10 +16,10 @@ fn loop(state: State) -> Int:
             Waiting:
                 continue
 
-        count = count + 100
+        count += 100
 
     return count
 
 test "match controls nearest source loop":
-    loop(state: State.Ready) | try expect_equal(expected: 1)
-    loop(state: State.Waiting) | try expect_equal(expected: 3)
+    try expect_equal(loop(State.Ready), 1)
+    try expect_equal(loop(State.Waiting), 3)

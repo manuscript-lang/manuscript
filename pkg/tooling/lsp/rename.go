@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"context"
 	"fmt"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/lexer"
@@ -9,6 +10,13 @@ import (
 )
 
 func rename(result compiler.Result, d document, p position, name string, open ...map[string]document) (any, error) {
+	return renameWithCancel(result, d, p, name, nil, open...)
+}
+
+func renameWithCancel(result compiler.Result, d document, p position, name string, canceled func() bool, open ...map[string]document) (any, error) {
+	if isCanceled(canceled) {
+		return nil, context.Canceled
+	}
 	index := sourceIndex(result)
 	selected := occurrenceAt(result, d, p, index)
 	if selected == nil {
@@ -25,7 +33,7 @@ func rename(result compiler.Result, d document, p position, name string, open ..
 	targets := []document{d}
 	if !strings.HasPrefix(selected.key, "binding:") {
 		var err error
-		targets, err = workspaceDocuments(d, docs)
+		targets, err = workspaceDocumentsWithCancel(d, docs, false, canceled)
 		if err != nil {
 			return nil, err
 		}
@@ -38,10 +46,16 @@ func rename(result compiler.Result, d document, p position, name string, open ..
 	content := map[string]document{}
 	hasDeclaration := false
 	for _, target := range targets {
+		if isCanceled(canceled) {
+			return nil, context.Canceled
+		}
 		checked := result
 		entries := index
 		if target.URI != d.URI {
 			checked = workspaceAnalysis(target, docs)
+			if isCanceled(canceled) {
+				return nil, context.Canceled
+			}
 			entries = sourceIndex(checked)
 		}
 		if checked.Program == nil {
@@ -134,7 +148,13 @@ func rename(result compiler.Result, d document, p position, name string, open ..
 	// Signature labels, imports, constructors and type annotations participate in
 	// the same index, so a rename cannot quietly break another module's contract.
 	for _, target := range targets {
+		if isCanceled(canceled) {
+			return nil, context.Canceled
+		}
 		before := workspaceAnalysis(target, docs)
+		if isCanceled(canceled) {
+			return nil, context.Canceled
+		}
 		if !before.Success() {
 			return nil, fmt.Errorf("rename requires a clean workspace: %s", filename(target.URI))
 		}
@@ -142,6 +162,9 @@ func rename(result compiler.Result, d document, p position, name string, open ..
 			target = updated
 		}
 		after := workspaceAnalysis(target, modified)
+		if isCanceled(canceled) {
+			return nil, context.Canceled
+		}
 		if !after.Success() {
 			message := "unknown checking failure"
 			if len(after.Diagnostics) > 0 {

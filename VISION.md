@@ -16,6 +16,20 @@ That promise rests on a small, composable core: familiar ideas such as types, fu
 
 The language and toolchain are being shaped through realistic work with frontier coding agents. We observe where agents get stuck, capture the failures and friction, and use that evidence to improve defaults, diagnostics, and workflows. Compiler messages should do more than report failure: they should be structured for tools and agents to consume, while giving actionable next steps.
 
+## Where things stand
+
+Version 0.1 already delivers the core of this premise. The vision below is still the direction; this is what exists today, verified against the checkout rather than assumed:
+
+- **A small, regular language.** Statically typed, with `let`/`var`, nominal `type`s with alternatives, exhaustive `match`, `Optional`, `Result` with `try`, generics, and `impl` blocks. Result types follow the parameter list with no arrow (`fn add(a: Int, b: Int) Int:`).
+- **Scoped cleanup.** `with` closes resources at block end, and cancellation and shutdown run cleanup deterministically.
+- **Concurrency as a library.** Concurrent work, scheduling, and host services come from `@std` APIs, not new syntax.
+- **One self-contained binary.** `ms` checks, formats, lints, tests, builds, profiles, and debugs, lowering to typed Go and compiling with a bundled toolchain. Nothing else to install.
+- **Structured evidence for agents.** `--json` output from `check`, `lint`, `test`, `build`, and `inspect`; `ms search_symbol`, `ms guide`, `ms verify`, `ms review`, and `ms diagram` give deterministic views of a program and of a change.
+- **Editor and debugger support.** A language server, a VS Code extension, and a source-level debugger.
+- **A measured loop.** `agent-bench` runs the same challenges in Manuscript, Go, TypeScript, and Rust, and `perf-bench` compares generated code with hand-written Go.
+
+Still ahead: a broader library ecosystem, external adapters, incremental frontend compilation, and the deployment story beyond a single binary.
+
 ## The five-to-seven-year vision
 
 Over the next five to seven years, Manuscript aims to become a compelling default for building software with agents: a language and development environment that covers the needs of everyday applications so a team can start with Manuscript and stay productive as its software grows.
@@ -34,21 +48,21 @@ The language should make common software tasks expressible with a small set of p
 
 ### A language people can inspect
 
-As agents write more code, people need practical ways to understand behavior and structure without reading every line. Manuscript’s simplicity is intended to make it possible to derive accurate diagrams and other useful views directly from code. These representations should come from deterministic analysis wherever possible, rather than asking a generative model to summarize the output of another generative process.
+As agents write more code, people need practical ways to understand behavior and structure without reading every line. Manuscript’s simplicity makes it possible to derive accurate views directly from code, and `ms diagram` and `ms review` already do so for call graphs and the semantic effect of a diff. These representations should come from deterministic analysis wherever possible, rather than asking a generative model to summarize the output of another generative process.
 
 Diagrams are not a substitute for source code, tests, or human judgment. They are another way to make important structure visible and reviewable.
 
 ### A trustworthy development loop
 
-When agents produce code, the system that helps people evaluate it should provide evidence independent of the code-generating step. Manuscript aims to make that possible through a small language, structured compiler output, and deterministic tools for inspecting programs.
+When agents produce code, the system that helps people evaluate it should provide evidence independent of the code-generating step. Manuscript aims to make that possible through a small language, structured compiler output, and deterministic tools such as `ms verify`, `ms inspect`, and `ms review`.
 
 This does not mean that a compiler or diagram can prove every program correct. Tests, domain knowledge, and human review remain essential. The aim is to make the code easier to check and the available evidence clearer, so people can make better-informed decisions about software produced with agents.
 
 ### A coherent path from code to deployment
 
-The Manuscript experience should bring the essential development tools together: compiling, building, profiling, and debugging. The toolchain aims to produce a single standalone binary that can be deployed in different environments. Over time, these pieces should feel like parts of one workflow rather than a collection of unrelated tools.
+The Manuscript experience brings the essential development tools together: compiling, building, testing, profiling, and debugging ship in one `ms` binary, and `ms build` produces a standalone native executable. The work ahead is making deployment as seamless as the development loop, so these pieces feel like one workflow rather than a collection of unrelated tools.
 
-Concurrency illustrates the value of keeping the language core small. Manuscript’s direction is to expose concurrency through standard-library APIs, so programs use functions and receive values without adding special asynchronous syntax throughout the language. This keeps the core easier to read and analyze while allowing applications to use concurrent behavior through libraries.
+Concurrency illustrates the value of keeping the language core small. Manuscript exposes concurrency through standard-library APIs, so programs use functions and receive values without special asynchronous syntax throughout the language. This keeps the core easier to read and analyze while allowing applications to use concurrent behavior through libraries.
 
 ### An ecosystem agents can help expand
 

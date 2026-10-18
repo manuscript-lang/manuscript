@@ -27,9 +27,9 @@ func checkNativeResults(cli, directory string, environment []string) error {
 	source := filepath.Join(directory, "native-results=a=b.ms")
 	code := `import arguments from "@std/cli.ms"
 import {stdout, stderr} from "@std/io.ms"
-export fn main() -> Int:
+export fn main() Int:
     let args = arguments()
-    let _out = stdout().write(data: "out={args[0].unwrap()}\n".to_bytes())
+    let _out = stdout().write(data: "out={args[0].get()}\n".to_bytes())
     let _err = stderr().write(data: "stderr\n".to_bytes())
     return 7
 `

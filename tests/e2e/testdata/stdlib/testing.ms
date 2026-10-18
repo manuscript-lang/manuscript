@@ -14,7 +14,7 @@ import {
     fail
 } from "@std/testing.ms"
 
-fn identity[T](value: T) -> T:
+fn identity[T](value: T) T:
     return value
 
 test "testing assertions":
@@ -51,7 +51,7 @@ type Key:
     label: String
 
 impl Equal for Key:
-    fn equals(other: Equal) -> Bool:
+    fn equals(other: Equal) Bool:
         match other:
             Key(value): return self.id == value.id
             _: return false

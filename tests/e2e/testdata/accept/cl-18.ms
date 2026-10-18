@@ -1,11 +1,11 @@
 import {expect_equal} from "@std/testing.ms"
 
-fn apply(value: Int, transform: fn(value: Int) -> Int) -> Int:
+fn apply(value: Int, transform: fn(value: Int) Int) Int:
     return transform(value: value)
 
 test "function suite boundaries":
     let calls: List[Int] = []
-    let dormant = fn() -> Unit:
+    let dormant = fn() Unit:
         calls.append(1)
     let grouped = apply(
         transform: (

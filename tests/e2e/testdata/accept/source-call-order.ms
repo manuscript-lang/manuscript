@@ -1,6 +1,6 @@
 import {expect_equal} from "@std/testing.ms"
 
-fn pair(a: Int, b: Int) -> Int: a * 10 + b
+fn pair(a: Int, b: Int) Int: a * 10 + b
 
 test "arguments":
     var value = 1
@@ -13,19 +13,19 @@ test "arguments":
                 i
             none: 0
     )
-    result | try expect_equal(expected: 12)
+    try expect_equal(result, 12)
 
-fn optional(value: Optional[Int]) -> Int: value.unwrap()
+fn optional(value: Optional[Int]) Int: value.get()
 
-fn defaulted(value: Int = 3) -> Int: value
+fn defaulted(value: Int = 3) Int: value
 
-fn identity[T](value: T) -> T: value
+fn identity[T](value: T) T: value
 
 test "source call dispatch contracts":
-    optional(4) | try expect_equal(expected: 4)
-    defaulted(5) | try expect_equal(expected: 5)
-    defaulted() | try expect_equal(expected: 3)
-    pair(b: 2, a: 1) | try expect_equal(expected: 12)
+    try expect_equal(optional(4), 4)
+    try expect_equal(defaulted(5), 5)
+    try expect_equal(defaulted(), 3)
+    try expect_equal(pair(b: 2, a: 1), 12)
     let callback = pair
-    callback(a: 3, b: 4) | try expect_equal(expected: 34)
-    identity(6) | try expect_equal(expected: 6)
+    try expect_equal(callback(a: 3, b: 4), 34)
+    try expect_equal(identity(6), 6)

@@ -1,11 +1,11 @@
-import {expect_equal} from "@std/testing.ms"
+import expect_equal from "@std/testing.ms"
 
-export fn main() -> Int:
+export fn main() Int:
     var number = 1
     let total = number + (
         match some(1):
             some(value):
-                number = number + 1
+                number += 1
                 value
             none: 0
     )
@@ -14,5 +14,5 @@ export fn main() -> Int:
 
     return 0
 
-test "left operand is evaluated before a match operand mutates it":
+test "operands retain evaluation order":
     main() | try expect_equal(expected: 0)

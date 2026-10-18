@@ -6,17 +6,17 @@ type ApplicationError:
     case Json(cause: JsonError)
     case Encoding(cause: EncodingError)
 
-fn encoding_error(cause: EncodingError) -> ApplicationError:
+fn encoding_error(cause: EncodingError) ApplicationError:
     return Encoding(cause)
 
-fn decode_bad_input() -> Result[Unit, ApplicationError]:
+fn decode_bad_input() Result[Unit, ApplicationError]:
     match hex_decode(text: "zz", max_bytes: 10):
         ok(_):
             return ok(unit)
         error(cause):
             return error(encoding_error(cause))
 
-fn json_error_code(cause: JsonError) -> Int:
+fn json_error_code(cause: JsonError) Int:
     match cause:
         InvalidInput:
             return 1
@@ -47,43 +47,43 @@ type CustomError:
     detail: String
 
 impl Error for CustomError:
-    fn message() -> String:
+    fn message() String:
         return self.detail
 
 type TaggedError[T]:
     detail: T
 
 impl Error for TaggedError[T]:
-    fn message() -> String:
+    fn message() String:
         return "tagged failure"
 
-fn decode_generically() -> Result[Unit, Error]:
+fn decode_generically() Result[Unit, Error]:
     let bytes = try hex_decode(text: "zz", max_bytes: 10)
     return ok(unit)
 
-fn propagate_generic() -> Result[Unit, Error]:
+fn propagate_generic() Result[Unit, Error]:
     let completed = try decode_generically()
     return ok(unit)
 
-fn describe_error(cause: Error) -> String:
+fn describe_error(cause: Error) String:
     match cause:
         JsonError(json): return describe_json_error(json)
         IoError(io): return describe_io_error(io)
         _:
             return cause.message()
 
-fn describe_json_error(cause: JsonError) -> String:
+fn describe_json_error(cause: JsonError) String:
     match cause:
         InvalidInput: return "bad JSON limits"
         InvalidData: return "malformed JSON"
         LimitExceeded: return "JSON bound exceeded"
 
-fn describe_io_error(cause: IoError) -> String:
+fn describe_io_error(cause: IoError) String:
     match cause:
         Failed(message): return "I/O: {message}"
         _: return cause.message()
 
-fn tagged_detail(cause: Error) -> String:
+fn tagged_detail(cause: Error) String:
     match cause:
         TaggedError[Int](item):
             return "integer {item.detail}"
@@ -92,7 +92,7 @@ fn tagged_detail(cause: Error) -> String:
         _:
             return cause.message()
 
-fn generic_type_pattern[T](cause: Error, expected: T) -> Bool:
+fn generic_type_pattern[T](cause: Error, expected: T) Bool:
     match cause:
         TaggedError[T](_):
             return true
@@ -154,10 +154,10 @@ type ReadError:
     retryable: Bool
 
 impl Error for ReadError:
-    fn message() -> String:
+    fn message() String:
         return self.diagnostic
 
-fn failed_read() -> Result[Unit, ReadError]:
+fn failed_read() Result[Unit, ReadError]:
     return error(
         ReadError(
             diagnostic: "read failed",
@@ -167,7 +167,7 @@ fn failed_read() -> Result[Unit, ReadError]:
         )
     )
 
-fn propagate_read() -> Result[Unit, ReadError]:
+fn propagate_read() Result[Unit, ReadError]:
     let completed = try failed_read()
     return ok(unit)
 
@@ -196,24 +196,24 @@ test "domain error fields survive propagation without a wrapper":
         _:
             return fail(message: "generic boundary lost concrete error")
 
-fn read_failure(cause: ReadError) -> Result[Unit, ReadError]:
+fn read_failure(cause: ReadError) Result[Unit, ReadError]:
     return error(cause)
 
-fn general_read(cause: ReadError) -> Result[Unit, Error]:
+fn general_read(cause: ReadError) Result[Unit, Error]:
     let completed = try read_failure(cause)
     return ok(unit)
 
-fn forward_read(cause: ReadError) -> Result[Unit, Error]:
+fn forward_read(cause: ReadError) Result[Unit, Error]:
     return read_failure(cause)
 
-fn generic_failure[E: Error](cause: E) -> Result[Unit, E]:
+fn generic_failure[E: Error](cause: E) Result[Unit, E]:
     return error(cause)
 
-fn generic_propagation[E: Error](cause: E) -> Result[Unit, Error]:
+fn generic_propagation[E: Error](cause: E) Result[Unit, Error]:
     let completed = try generic_failure(cause)
     return ok(unit)
 
-fn describe_direct(cause: Error) -> String:
+fn describe_direct(cause: Error) String:
     return cause.message()
 
 test "specific errors pass directly into Error boundaries":
@@ -261,10 +261,10 @@ test "specific errors pass directly into Error boundaries":
 
     original.path | try expect_equal(expected: "changed.json")
 
-fn read_success() -> Result[Int, ReadError]:
+fn read_success() Result[Int, ReadError]:
     return ok(7)
 
-fn general_read_success() -> Result[Int, Error]:
+fn general_read_success() Result[Int, Error]:
     return read_success()
 
 test "Error Result forwarding preserves successful payloads":
@@ -277,7 +277,7 @@ test "Error Result forwarding preserves successful payloads":
 type ValidationError:
     case InvalidField(field: String, expected: Int, actual: Int)
 
-fn invalid_field() -> Result[Unit, ValidationError]:
+fn invalid_field() Result[Unit, ValidationError]:
     return error(InvalidField(field: "attempt", expected: 1, actual: 0))
 
 test "domain case payloads need no Error implementation":
@@ -320,16 +320,16 @@ test "standard diagnostics preserve messages and wrapped causes":
 
 # The type-pattern rule also works for unrelated operation contracts.
 interface Label[T]:
-    fn label() -> T
+    fn label() T
 
 type Labelled[T]:
     value: T
 
 impl Label[T] for Labelled[T]:
-    fn label() -> T:
+    fn label() T:
         return self.value
 
-fn match_label(view: Label[String]) -> String:
+fn match_label(view: Label[String]) String:
     match view:
         Labelled[String](receiver):
             return receiver.value
@@ -338,7 +338,7 @@ fn match_label(view: Label[String]) -> String:
 
 import Synchronized from "@std/sync.ms"
 
-fn counted_view(count: Synchronized[Int]) -> Label[String]:
+fn counted_view(count: Synchronized[Int]) Label[String]:
     with locked = count.lock():
         locked.set(value: locked.get() + 1)
     return Label[String](Labelled("label diagnostic"))
@@ -359,7 +359,7 @@ test "contract matches evaluate once and preserve ordinary contract semantics":
 
 import filesystem from "@std/fs.ms"
 
-fn check_missing_file() -> Result[Unit, Error]:
+fn check_missing_file() Result[Unit, Error]:
     let fs = filesystem()
     let directory = try fs.temporary_directory("manuscript-errors-")
     let missing = "{directory}/missing-secret-token"

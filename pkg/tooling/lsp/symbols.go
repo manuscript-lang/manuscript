@@ -4,6 +4,7 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/lexer"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
+	"sort"
 	"strings"
 )
 
@@ -13,12 +14,11 @@ func documentSymbols(result compiler.Result, d document) []any {
 	if m == nil {
 		return output
 	}
+	positions := newSourcePositions(d.Text)
 	tokens, _ := lexer.Lex(m.File, m.Source)
 	selection := func(pos syntax.Position, name string) span {
-		for _, token := range tokens {
-			if token.Pos.Offset < pos.Offset {
-				continue
-			}
+		first := sort.Search(len(tokens), func(i int) bool { return tokens[i].Pos.Offset >= pos.Offset })
+		for _, token := range tokens[first:] {
 			if token.Kind == lexer.Newline {
 				if token.Pos.Offset == pos.Offset {
 					continue
@@ -26,10 +26,10 @@ func documentSymbols(result compiler.Result, d document) []any {
 				break
 			}
 			if token.Kind == lexer.Name && token.Text == name {
-				return span{Position(d.Text, token.Pos.Offset), Position(d.Text, token.Pos.Offset+len(name))}
+				return span{positions.position(token.Pos.Offset), positions.position(token.Pos.Offset + len(name))}
 			}
 		}
-		p := Position(d.Text, pos.Offset)
+		p := positions.position(pos.Offset)
 		return span{p, p}
 	}
 	blockEnd := func(next int) int {
@@ -57,7 +57,7 @@ func documentSymbols(result compiler.Result, d document) []any {
 		}
 		if decl.Kind == syntax.KindImpl {
 			kind = 5
-			name = decl.Contract.Name + " for " + decl.Receiver.Name
+			name = decl.ImplName()
 		}
 		if decl.Kind == syntax.KindTest {
 			name = "test " + decl.Name
@@ -65,7 +65,11 @@ func documentSymbols(result compiler.Result, d document) []any {
 		children := []any{}
 		for _, field := range decl.Fields {
 			r := selection(field.Pos, field.Name)
-			children = append(children, map[string]any{"name": field.Name, "kind": 8, "range": span{r.Start, Position(d.Text, field.Pos.Offset+len(strings.TrimRight(strings.Split(d.Text[field.Pos.Offset:], "\n")[0], "\r")))}, "selectionRange": r})
+			line := d.Text[field.Pos.Offset:]
+			if end := strings.IndexByte(line, '\n'); end >= 0 {
+				line = line[:end]
+			}
+			children = append(children, map[string]any{"name": field.Name, "kind": 8, "range": span{r.Start, positions.position(field.Pos.Offset + len(strings.TrimRight(line, "\r")))}, "selectionRange": r})
 		}
 		for _, cs := range decl.Cases {
 			r := selection(cs.Pos, cs.Name)
@@ -80,13 +84,16 @@ func documentSymbols(result compiler.Result, d document) []any {
 			child["kind"] = 6
 			children = append(children, child)
 		}
-		value := map[string]any{"name": name, "detail": detail, "kind": kind, "range": span{Position(d.Text, decl.Pos.Offset), Position(d.Text, end)}, "selectionRange": selection(decl.Pos, decl.Name)}
+		value := map[string]any{"name": name, "detail": detail, "kind": kind, "range": span{positions.position(decl.Pos.Offset), positions.position(end)}, "selectionRange": selection(decl.Pos, decl.Name)}
 		if len(children) > 0 {
 			value["children"] = children
 		}
 		return value
 	}
 	for i, decl := range m.Declarations {
+		if decl.Synthetic && decl.Kind == syntax.KindInterface {
+			continue
+		}
 		end := blockEnd(len(d.Text))
 		if i+1 < len(m.Declarations) {
 			end = blockEnd(m.Declarations[i+1].Pos.Offset)

@@ -9,7 +9,7 @@ import (
 
 // A List or Bytes length() call is Go's len on the backing slice, not a runtime call.
 func TestLengthLowersToGoLen(t *testing.T) {
-	source := "import Bytes from \"@std/bytes.ms\"\nfn count(items: List[Int], data: Bytes) -> Int:\n    return items.length() + data.length()\n"
+	source := "import Bytes from \"@std/bytes.ms\"\nfn count(items: List[Int], data: Bytes) Int:\n    return items.length() + data.length()\n"
 	result := compiler.CompileSource("length.ms", source, compiler.Options{})
 	if !result.Success() {
 		t.Fatalf("diagnostics: %v", result.Diagnostics)

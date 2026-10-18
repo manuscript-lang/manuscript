@@ -6,15 +6,15 @@ import Closeable from "@std/cleanup.ms"
 type Stored:
     task: Task[Int]
 
-fn forward[T](task: Task[T]) -> Task[T]:
+fn forward[T](task: Task[T]) Task[T]:
     return task
 
-fn exercise() -> Result[Unit, Error]:
+fn exercise() Result[Unit, Error]:
     with group = TaskGroup():
         let start = group.start[Int]
         let number: Task[Int] = start(fn(): 41)
         let text = group.start(fn(): "hello")
-        let domain = group.start(fn() -> Result[Int, String]: error("expected"))
+        let domain = group.start(fn() Result[Int, String]: error("expected"))
         let stored = Stored(forward(number))
         let handles: List[Task[Int]] = [stored.task]
         let joined = try group.join()
@@ -25,7 +25,7 @@ fn exercise() -> Result[Unit, Error]:
         (value != 41 or value_again != 41 or message != "hello") | try expect_false
 
         for handle in handles:
-            let saved_join: fn() -> Result[Int, ExecutionError] = handle.join
+            let saved_join: fn() Result[Int, ExecutionError] = handle.join
             let saved_value = try saved_join()
             saved_value | try expect_equal(expected: 41)
 
@@ -72,7 +72,7 @@ test "zero timeout starts no callback":
 
     with group = TaskGroup(0.seconds):
         let task = group.start(
-            fn() -> Unit:
+            fn() Unit:
                 with count = calls.lock():
                     count.set(count.get() + 1)
         )

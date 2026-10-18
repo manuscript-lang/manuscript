@@ -40,7 +40,7 @@ func TestFullPublicCollectionAPIWithoutImports(t *testing.T) {
 				fmt.Fprintf(&source, ", %s: %s", parameter.Name, collectionTypeSyntax(parameter.Type, variables))
 				args = append(args, parameter.Name)
 			}
-			fmt.Fprintf(&source, ") -> %s: receiver.%s", collectionTypeSyntax(typ.Result, variables), method.Name)
+			fmt.Fprintf(&source, ") %s: receiver.%s", collectionTypeSyntax(typ.Result, variables), method.Name)
 			if len(method.TypeParams) > 0 {
 				types := []string{}
 				for range method.TypeParams {
@@ -66,7 +66,7 @@ func collectionTypeSyntax(typ *checker.Type, variables map[string]string) string
 		for _, p := range typ.Params {
 			parameters = append(parameters, p.Name+": "+collectionTypeSyntax(p.Type, variables))
 		}
-		return "fn(" + strings.Join(parameters, ", ") + ") -> " + collectionTypeSyntax(typ.Result, variables)
+		return "fn(" + strings.Join(parameters, ", ") + ") " + collectionTypeSyntax(typ.Result, variables)
 	}
 	result := typ.Name
 	if len(typ.Args) > 0 {
@@ -81,33 +81,20 @@ func collectionTypeSyntax(typ *checker.Type, variables map[string]string) string
 
 func TestCollectionSupportShadowingAndCaseLookup(t *testing.T) {
 	for name, source := range map[string]string{
-		"local support names": `type ListEntry[T]:
-    payload: T
-type MapEntry[K, V]:
-    payload: V
-type CollectionError:
-    case OutOfRange
-fn read() -> Int:
-    let list = [3].entries()[0].unwrap()
-    let map = {"a": 4}.entries()[0].unwrap()
-    return list.index + list.value + map.value
-fn invalid() -> Bool: [1].slice(0, 9).is_error()
-fn local() -> ListEntry[Int]: ListEntry(1)
-`,
 		"qualified cases and directed patterns": `type Other:
     case OutOfRange
-fn other() -> Other: Other.OutOfRange
-fn standard() -> CollectionError: CollectionError.OutOfRange
-fn recognize(value: Other) -> Int:
+fn other() Other: Other.OutOfRange
+fn standard() CollectionError: CollectionError.OutOfRange
+fn recognize(value: Other) Int:
     match value:
         OutOfRange: return 1
 `,
 		"nonprelude imports": `import {ListBuilder, MapBuilder, SetBuilder, range, filled, map_from_entries} from "@std/collections.ms"
 import {ErrorCategory, TextError, category} from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
-fn bytes() -> Bytes: Bytes([1])
-fn build() -> List[Int]: ListBuilder[Int]().freeze()
-fn text_error(message: String) -> TextError: TextError.Text(message)
+fn bytes() Bytes: Bytes([1])
+fn build() List[Int]: ListBuilder[Int]().freeze()
+fn text_error(message: String) TextError: TextError.Text(message)
 `,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -118,10 +105,10 @@ fn text_error(message: String) -> TextError: TextError.Text(message)
 		})
 	}
 	for name, source := range map[string]string{
-		"ambiguous new case":           "type Other:\n    case OutOfRange\nfn get() -> Other: OutOfRange\n",
-		"canonical entry is not local": "type ListEntry[T]:\n    payload: T\nfn get() -> List[ListEntry[Int]]: [1].entries()\n",
-		"canonical error is not local": "type CollectionError:\n    case OutOfRange\nfn get() -> Result[List[Int], CollectionError]: [1].slice(0, 1)\n",
-		"support bound":                "fn entries(values: MapEntry[List[Int], Int]) -> Unit: unit\n",
+		"ambiguous new case":           "type Other:\n    case OutOfRange\nfn get() Other: OutOfRange\n",
+		"canonical entry is not local": "type ListEntry[T]:\n    payload: T\nfn get() List[ListEntry[Int]]: [1].entries()\n",
+		"canonical error is not local": "type CollectionError:\n    case OutOfRange\nfn get() Result[List[Int], CollectionError]: [1].slice(0, 1)\n",
+		"support bound":                "fn entries(values: MapEntry[List[Int], Int]) Unit: unit\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			result := CompileSource("support.ms", source, Options{AnalyzeOnly: true})
@@ -141,7 +128,7 @@ func TestPreludeImportPolicyUsesResolvedIdentity(t *testing.T) {
 		"ms.toml":         "[project]\nname = \"prelude-test\"\nsource = \".\"\nentry = \"main.ms\"\n[aliases]\n\"@types\" = \"types.ms\"\n\"@domain\" = \"domain\"\n",
 		"types.ms":        "export type List[T]:\n    value: T\nexport type Set[T]:\n    value: T\nexport type ListEntry[T]:\n    value: T\n",
 		"domain/types.ms": "export type Map[K, V]:\n    value: V\nexport type MapEntry[K, V]:\n    value: V\nexport type CollectionError:\n    message: String\n",
-		"main.ms":         "import {List, Set, ListEntry} from \"@types\"\nimport {Map, MapEntry, CollectionError} from \"@domain/types.ms\"\nfn get() -> Int: List(1).value + Set(2).value + Map[String, Int](3).value + ListEntry(4).value + MapEntry[String, Int](5).value\nfn cause() -> CollectionError: CollectionError(\"local\")\nexport fn main() -> Int: get() - 15\n",
+		"main.ms":         "import {List, Set, ListEntry} from \"@types\"\nimport {Map, MapEntry, CollectionError} from \"@domain/types.ms\"\nfn get() Int: List(1).value + Set(2).value + Map[String, Int](3).value + ListEntry(4).value + MapEntry[String, Int](5).value\nfn cause() CollectionError: CollectionError(\"local\")\nexport fn main() Int: get() - 15\n",
 	}
 	for name, source := range files {
 		path := filepath.Join(root, name)
@@ -152,8 +139,9 @@ func TestPreludeImportPolicyUsesResolvedIdentity(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if result := CompileFile(filepath.Join(root, "ms.toml"), Options{}); !result.Success() {
-		t.Fatal(result.Diagnostics)
+	result := CompileFile(filepath.Join(root, "ms.toml"), Options{AnalyzeOnly: true})
+	if result.Success() || !strings.Contains(result.Diagnostics[0].Message, "reuses a prelude name") {
+		t.Fatal("application imports named like prelude types were accepted", result.Diagnostics)
 	}
 	for _, path := range []string{"@std/unknown.ms", "@std/../collections.ms", "@std/collections.ms/unknown"} {
 		result := CompileSource("imports.ms", "import List from \""+path+"\"\n", Options{AnalyzeOnly: true})
@@ -166,7 +154,7 @@ func TestPreludeImportPolicyUsesResolvedIdentity(t *testing.T) {
 			}
 		}
 	}
-	result := CompileSource("imports.ms", "import {List, Map, Set} from \"@std/collections.ms\"\nfn get() -> Int: List[Int]().length()+Map[Int,Int]().length()+Set[Int]().length()\n", Options{AnalyzeOnly: true})
+	result = CompileSource("imports.ms", "import {List, Map, Set} from \"@std/collections.ms\"\nfn get() Int: List[Int]().length()+Map[Int,Int]().length()+Set[Int]().length()\n", Options{AnalyzeOnly: true})
 	if len(result.Diagnostics) != 3 || result.Source != "" {
 		t.Fatal(result.Diagnostics, result.Source)
 	}
@@ -192,22 +180,15 @@ func TestPreludeImportPolicyUsesResolvedIdentity(t *testing.T) {
 
 func TestMissingValuePreludeDefaultsAndShadowing(t *testing.T) {
 	for name, source := range map[string]string{
-		"named default result": `fn first(values: List[Int]) -> Result[Int, MissingValue]: values.at(0).ok_or()
-fn message(values: List[Int]) -> String: first(values).unwrap_error().message()
-fn widen(cause: MissingValue) -> Error: cause
-`,
-		"local name retains canonical inferred defaults": `type MissingValue:
-    value: Int
-fn local() -> MissingValue: MissingValue(1)
-fn message(values: List[Int]) -> String: values.at(0).ok_or().unwrap_error().message()
-fn defaulted[E = MissingValue](cause: Optional[E] = none) -> Optional[E]: cause
-fn own() -> Optional[MissingValue]: defaulted()
+		"named default result": `fn first(values: List[Int]) Result[Int, MissingValue]: values.at(0).ok_or()
+fn message(values: List[Int]) String: first(values).err().message()
+fn widen(cause: MissingValue) Error: cause
 `,
 		"qualified constructors and directed patterns": `type Other:
     case Missing(value: Int)
-fn other() -> Other: Other.Missing(1)
-fn standard() -> MissingValue: MissingValue.Missing("location")
-fn read(value: Other) -> Int:
+fn other() Other: Other.Missing(1)
+fn standard() MissingValue: MissingValue.Missing("location")
+fn read(value: Other) Int:
     match value:
         Missing(found): return found
 `,
@@ -217,16 +198,9 @@ fn read(value: Other) -> Int:
 			if !result.Success() {
 				t.Fatal(result.Diagnostics)
 			}
-			if name == "local name retains canonical inferred defaults" {
-				local := result.Program.Symbol("missing-prelude.ms", "MissingValue")
-				generic := result.Program.Symbol("missing-prelude.ms", "defaulted")
-				if checker.IsPreludeSymbol(local) || len(generic.Variables) != 1 || generic.Variables[0].Default == nil || generic.Variables[0].Default.Def == nil || generic.Variables[0].Default.Def.Symbol != local {
-					t.Fatal("local type default acquired a canonical identity", local, generic)
-				}
-			}
 		})
 	}
-	result := CompileSource("missing-prelude.ms", "type Other:\n    case Missing(value: Int)\nfn get() -> Other: Missing(1)\n", Options{AnalyzeOnly: true})
+	result := CompileSource("missing-prelude.ms", "type Other:\n    case Missing(value: Int)\nfn get() Other: Missing(1)\n", Options{AnalyzeOnly: true})
 	if result.Success() || !strings.Contains(result.Diagnostics[0].Message, "ambiguous alternative case") {
 		t.Fatal("new ambient case lost normal ambiguity rules", result.Diagnostics)
 	}

@@ -10,10 +10,16 @@ import (
 type Node struct {
 	Label    string
 	Children []*Node
+	// Kind and Ref describe flow steps: Kind is call, native, try, with, branch,
+	// match, arm, or exit; Ref is the callee's entity key for project calls.
+	Kind, Ref string
+	// File and Line locate a flow step in the source, for marking a diff.
+	File string
+	Line int
 }
 
 // Views names the diagram views, in help order.
-var Views = []string{"calls", "effects", "errors", "modules"}
+var Views = []string{"calls", "effects", "errors", "modules", "flow", "scope"}
 
 // nodeCap bounds one view so a large project stays readable and the output size predictable.
 const nodeCap = 200
@@ -23,9 +29,15 @@ const nodeCap = 200
 func BuildView(facts Facts, view, entity string, depth int) (*Node, error) {
 	if depth <= 0 {
 		depth = 3
+		if view == "flow" || view == "scope" {
+			depth = 1
+		}
 	}
 	if view == "modules" {
 		return modulesView(facts, entity)
+	}
+	if view == "flow" || view == "scope" {
+		return flowView(facts, view, entity, depth)
 	}
 	roots, err := viewRoots(facts, view, entity)
 	if err != nil {
@@ -64,7 +76,7 @@ func (b *viewBuilder) label(f *Fact) string {
 }
 
 func (b *viewBuilder) expand(f *Fact, level int, path map[string]bool) *Node {
-	node := &Node{Label: b.label(f)}
+	node := &Node{Label: b.label(f), Ref: f.Key}
 	b.count++
 	if level >= b.depth {
 		return node

@@ -8,11 +8,11 @@ import (
 )
 
 func TestTypedNumericFaults(t *testing.T) {
-	result := compiler.CompileSource("numeric-faults.ms", `fn add(a: Int, b: Int) -> Int: return a + b
-fn subtract(a: Int, b: Int) -> Int: return a - b
-fn multiply(a: Int, b: Int) -> Int: return a * b
-fn divide(a: Int, b: Int) -> Int: return a / b
-fn remainder(a: Int, b: Int) -> Int: return a % b
+	result := compiler.CompileSource("numeric-faults.ms", `fn add(a: Int, b: Int) Int: return a + b
+fn subtract(a: Int, b: Int) Int: return a - b
+fn multiply(a: Int, b: Int) Int: return a * b
+fn divide(a: Int, b: Int) Int: return a / b
+fn remainder(a: Int, b: Int) Int: return a % b
 test "add high":
     let bad = add(a: 9223372036854775807, b: 1)
 test "add low":
@@ -44,8 +44,8 @@ test "remainder zero":
 func TestTypedNegation(t *testing.T) {
 	result := compiler.CompileSource("negation.ms", `import {expect_true, fail} from "@std/testing.ms"
 
-fn negate(a: Int) -> Int: return -a
-fn flip(a: Float) -> Float: return -a
+fn negate(a: Int) Int: return -a
+fn flip(a: Float) Float: return -a
 test "negation":
     (negate(a: 5) == -5) | try expect_true
     (negate(a: -7) == 7) | try expect_true
@@ -75,15 +75,15 @@ type Folded:
     name: String
 
 impl Equal for Folded:
-    fn equals(other: Equal) -> Bool:
+    fn equals(other: Equal) Bool:
         return true
 
 impl Hashable for Folded:
-    fn hash() -> Int:
+    fn hash() Int:
         return 1
 
 
-fn replace_first[T](xs: List[T], value: T) -> List[T]:
+fn replace_first[T](xs: List[T], value: T) List[T]:
     return xs.set(index: 0, value: value)
 
 test "string members":
@@ -100,7 +100,7 @@ test "custom equality is kept for bound members":
     a.add(value: Folded(name: "x"))
     a.add(value: Folded(name: "y"))
     (a.length() == 1) | try expect_true
-    let mapped = a.map(transform: fn(value: Folded) -> Folded: return Folded(name: "z"))
+    let mapped = a.map(transform: fn(value: Folded) Folded: return Folded(name: "z"))
     (mapped.length() == 1) | try expect_true
 test "builder":
     let sb = StringBuilder()

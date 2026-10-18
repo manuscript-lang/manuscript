@@ -9,13 +9,23 @@
     </div>
     <p class="home-platforms">Linux, macOS &amp; Windows <span aria-hidden="true">·</span> One download</p>
   </div>
-  <ul class="home-proof" aria-label="Why Manuscript">
-    <li><strong>API first</strong><span>Ordinary calls, even for concurrency.</span></li>
-    <li><strong>Minimal syntax</strong><span>Less to generate. Less to review.</span></li>
-    <li><strong>Tools that understand</strong><span>Search, check, test, and inspect.</span></li>
-  </ul>
   <div class="home-example" aria-label="A complete Manuscript program">
     {{ .Page.RenderString (dict "display" "block") .Inner }}
     <div class="home-output"><code><span aria-hidden="true">$ </span>ms run hello.ms -- Ada</code><samp>Hello, Ada!</samp><span class="home-run-status"><span aria-hidden="true">✓</span> Native. Ready to run.</span></div>
   </div>
+</section>
+<section class="home-benefits" aria-labelledby="benefits-title">
+  <h2 id="benefits-title">Why Manuscript</h2>
+  <p class="home-benefits-lead">Agents write most of the code. Manuscript is built so they get it right quickly and you can see what they did.</p>
+  <ul class="home-benefit-grid">
+    <li><strong>Small enough to get right</strong><span>Statically typed, with no implicit conversions or truthiness. Fewer concepts means fewer first-draft mistakes and less to review.</span></li>
+    <li><strong>Errors you can handle in the open</strong><span><code>Optional</code> and <code>Result</code> are values, <code>try</code> propagates them, and <code>match</code> is exhaustive. No hidden exceptions.</span></li>
+    <li><strong>API first, no async syntax</strong><span>Concurrency, scheduling, files, networking, HTTP, and JSON are imported <code>@std</code> APIs, called like any function.</span></li>
+    <li><strong>Feedback built for agents</strong><span><code>--json</code> diagnostics, <code>ms search_symbol</code> for exact APIs, <code>ms guide</code> for the cheat sheet, and one <code>ms verify</code> to check, format, lint, and test.</span></li>
+    <li><strong>Inspect what was built</strong><span><code>ms review</code> shows where a change matters and <code>ms diagram</code> draws call graphs from the checked source, deterministically.</span></li>
+    <li><strong>One binary, native result</strong><span>Lowers to typed Go and builds a standalone executable with a bundled toolchain. Nothing else to install.</span></li>
+    <li><strong>Cleanup that stays correct</strong><span><code>with</code> closes files and connections at block end, even on errors and cancellation.</span></li>
+    <li><strong>Debug and profile on source</strong><span>An editor language server, a VS Code extension, a source-level debugger, and CPU, heap, and trace profiling, all on <code>.ms</code> lines.</span></li>
+  </ul>
+  <p class="home-status">Version 0.1: the compiler, runtime, standard library, and tooling work today and are still evolving.</p>
 </section>

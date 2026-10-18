@@ -34,9 +34,10 @@ func paragraphBreaks(module *syntax.Module, lines []string) map[int]bool {
 	groups := map[int]string{}
 	var topLevel []int
 	for _, declaration := range module.Declarations {
-		topLevel = append(topLevel, declaration.Pos.Line)
+		line := bindingLine(declaration.Pos, declaration.Group)
+		topLevel = append(topLevel, line)
 		if declaration.Constant {
-			groups[declaration.Pos.Line] = "constant"
+			groups[line] = "constant"
 		}
 	}
 	for _, item := range module.Imports {
@@ -55,12 +56,13 @@ func paragraphBreaks(module *syntax.Module, lines []string) map[int]bool {
 		Block: func(body []*syntax.Statement) {
 			for i := 1; i < len(body); i++ {
 				previous, current := body[i-1], body[i]
-				if previous.Pos.Line == current.Pos.Line {
+				line := bindingLine(current.Pos, current.Group)
+				if bindingLine(previous.Pos, previous.Group) == line {
 					continue
 				}
 				if paragraphBlock(previous) || paragraphBlock(current) ||
 					(guardStatement(previous) && !guardStatement(current)) {
-					before(current.Pos.Line)
+					before(line)
 				}
 			}
 		},
@@ -76,6 +78,16 @@ func paragraphBreaks(module *syntax.Module, lines []string) map[int]bool {
 		visitor.Walk(declaration)
 	}
 	return breaks
+}
+
+// bindingLine is the line a binding starts on; a binding written in a
+// `let (...)` or `var (...)` group starts on the group's keyword line, so the
+// group moves as one unit and no blank line lands inside it.
+func bindingLine(pos, group syntax.Position) int {
+	if group.Line > 0 {
+		return group.Line
+	}
+	return pos.Line
 }
 
 func guardStatement(statement *syntax.Statement) bool {

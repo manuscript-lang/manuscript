@@ -13,7 +13,7 @@ import {
 import network from "@std/net.ms"
 import Bytes from "@std/bytes.ms"
 
-fn repeated_headers() -> Result[HttpHeaders, Error]:
+fn repeated_headers() Result[HttpHeaders, Error]:
     let fields = headers()
     let first = (fields.append("x-dup", "first".to_bytes()) | try expect_ok)
     let second = (fields.append("X-Dup", "second".to_bytes()) | try expect_ok)
@@ -26,10 +26,10 @@ fn repeated_headers() -> Result[HttpHeaders, Error]:
     let other = (fields.append("set-cookie", "b=2".to_bytes()) | try expect_ok)
     return ok(fields)
 
-fn header_failure(message: String) -> HttpResponse:
+fn header_failure(message: String) HttpResponse:
     return HttpResponse(status: 500, headers: headers(), body: message.to_bytes())
 
-fn handle_headers(request: HttpRequest) -> HttpResponse:
+fn handle_headers(request: HttpRequest) HttpResponse:
     if request.method != HttpMethod.Get: return header_failure("typed request method")
 
     let received = match request.headers.text("X-DUP"):
@@ -96,7 +96,7 @@ test "one header type preserves repeated values through buffered requests":
             )
         )
 
-fn echo_headers(exchange: HttpExchange) -> Result[Unit, HttpError]:
+fn echo_headers(exchange: HttpExchange) Result[Unit, HttpError]:
     let received = exchange.headers()
     if (try received.text("X-DUP")) != some(["first", "second"]): return error(
         HttpError.InvalidData
@@ -136,20 +136,20 @@ test "streaming proxy uses the same byte-valued header type":
 
 test "lookup shares mutable membership and clone separates it":
     let fields = (try repeated_headers())
-    let values = fields.values("X-DUP").unwrap()
+    let values = fields.values("X-DUP").get()
     let appended = (fields.append("x-dup", "third".to_bytes()) | try expect_ok)
     values.length() | try expect_equal(expected: 3)
     let changed = values.set(0, "changed".to_bytes())
     (
-        fields.values("x-dup").unwrap().at(0) | try expect_equal(
+        fields.values("x-dup").get().at(0) | try expect_equal(
             expected: some("changed".to_bytes())
         )
     )
     let copy = fields.clone()
-    let copied_values = copy.values("x-dup").unwrap()
+    let copied_values = copy.values("x-dup").get()
     let copied_changed = copied_values.set(0, "copy".to_bytes())
     (
-        fields.values("x-dup").unwrap().at(0) | try expect_equal(
+        fields.values("x-dup").get().at(0) | try expect_equal(
             expected: some("changed".to_bytes())
         )
     )
@@ -158,7 +158,7 @@ test "lookup shares mutable membership and clone separates it":
     (fields.values("K").is_none()) | try expect_true
     let removed = fields.remove("X-DUP")
     let new_field = (fields.append("X-Dup", "new".to_bytes()) | try expect_ok)
-    (values.length() != 3 or fields.values("x-dup").unwrap().length() != 1) | try expect_false
+    (values.length() != 3 or fields.values("x-dup").get().length() != 1) | try expect_false
 
 test "explicit text extraction fails with typed UTF8 error":
     let fields = headers()

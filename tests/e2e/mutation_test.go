@@ -21,13 +21,13 @@ type Val:
     val: Int
 `
 	for _, test := range []struct{ name, source, diagnostic string }{
-		{"field type", "fn f(value: Val) -> Unit:\n    value.val = true\n", "expected Int"},
-		{"fixed binding", "fn f() -> Unit:\n    let value = Val(val: 0)\n    value = Val(val: 1)\n", "cannot assign immutable binding"},
-		{"type assignment", "fn f() -> Unit:\n    Val.val = 1\n", "assignment requires a record field"},
-		{"file clone", "fn f(file: File) -> Unit:\n    file.clone()\n", "unknown or ambiguous member clone"},
-		{"socket clone", "fn f(socket: Connection) -> Unit:\n    socket.clone()\n", "unknown or ambiguous member clone"},
-		{"lock clone", "fn f(lock: Synchronized[Int]) -> Unit:\n    lock.clone()\n", "unknown or ambiguous member clone"},
-		{"guard clone", "fn f(guard: SynchronizedGuard[Int]) -> Unit:\n    guard.clone()\n", "unknown or ambiguous member clone"},
+		{"field type", "fn f(value: Val) Unit:\n    value.val = true\n", "expected Int"},
+		{"fixed binding", "fn f() Unit:\n    let value = Val(val: 0)\n    value = Val(val: 1)\n", "cannot assign immutable binding"},
+		{"type assignment", "fn f() Unit:\n    Val.val = 1\n", "assignment requires a record field"},
+		{"file clone", "fn f(file: File) Unit:\n    file.clone()\n", "unknown or ambiguous member clone"},
+		{"socket clone", "fn f(socket: Connection) Unit:\n    socket.clone()\n", "unknown or ambiguous member clone"},
+		{"lock clone", "fn f(lock: Synchronized[Int]) Unit:\n    lock.clone()\n", "unknown or ambiguous member clone"},
+		{"guard clone", "fn f(guard: SynchronizedGuard[Int]) Unit:\n    guard.clone()\n", "unknown or ambiguous member clone"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -56,20 +56,20 @@ import IoError from "@std/io.ms"
 type Holder:
     file: File
     label: String
-export fn main() -> Int:
-    let file = match files().open("data.txt"):
-        ok(file): file
-        error(_):
-            return 4
+export fn main() Int:
+    let opened = files().open("data.txt")
+    if opened.is_error():
+        return 4
+    let file = opened.get()
 
-    let chunk = match file.read(1):
-        ok(chunk): chunk
-        error(_):
-            return 7
+    let read = file.read(1)
+    if read.is_error():
+        return 7
+    let chunk = read.get()
 
     match chunk:
         some(data):
-            if data.to_string() != some(value: "d"):
+            if data.decode_utf8() != some(value: "d"):
                 return 5
         none:
             return 6
@@ -80,10 +80,10 @@ export fn main() -> Int:
     if original.label != "original":
         return 1
     copy.file.close()
-    let cause = match original.file.read(1):
-        error(cause): cause
-        ok(_):
-            return 3
+    let reread = original.file.read(1)
+    if reread.is_ok():
+        return 3
+    let cause = reread.err()
 
     match cause:
         IoError.Closed:

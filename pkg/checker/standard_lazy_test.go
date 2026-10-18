@@ -26,11 +26,11 @@ func TestBundledSourceModulesCheckOnFirstImport(t *testing.T) {
 	standardMu.Lock()
 	standardDone = map[string]*standardResult{}
 	standardMu.Unlock()
-	checkText(t, "fn one() -> Int:\n    return 1\n")
+	checkText(t, "fn one() Int:\n    return 1\n")
 	if len(standardDone) != 0 {
 		t.Fatalf("program without bundled imports checked %d bundled modules", len(standardDone))
 	}
-	checkText(t, "import TomlValue from \"@std/toml.ms\"\nfn one() -> Int:\n    return 1\n")
+	checkText(t, "import TomlValue from \"@std/toml.ms\"\nfn one() Int:\n    return 1\n")
 	if standardDone["@std/toml.ms"] == nil || standardDone["@std/yaml.ms"] != nil {
 		t.Fatalf("expected only toml checked, got %v", len(standardDone))
 	}
@@ -43,7 +43,7 @@ func TestBundledSourceModulesCheckOnceConcurrently(t *testing.T) {
 		group.Add(1)
 		go func() {
 			defer group.Done()
-			checkText(t, "import TomlValue from \"@std/toml.ms\"\nimport YamlValue from \"@std/yaml.ms\"\nfn one() -> Int:\n    return 1\n")
+			checkText(t, "import TomlValue from \"@std/toml.ms\"\nimport YamlValue from \"@std/yaml.ms\"\nfn one() Int:\n    return 1\n")
 		}()
 	}
 	group.Wait()

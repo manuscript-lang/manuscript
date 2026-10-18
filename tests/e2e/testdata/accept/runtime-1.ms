@@ -1,14 +1,9 @@
-import {expect_equal, fail} from "@std/testing.ms"
+import {expect_equal} from "@std/testing.ms"
 import Decimal from "@std/decimal.ms"
 
-fn amount() -> Result[Decimal, String]:
+fn amount() Result[Decimal, String]:
     return ok(12.50d)
 
 test "explicit standard imports":
-    [1, 2].length() | try expect_equal(expected: 2)
-
-    match amount():
-        ok(value):
-            try expect_equal(value, 12.50d)
-        error(_):
-            return fail(message: "Unexpected case")
+    try expect_equal([1, 2].length(), 2)
+    try expect_equal(amount().get(0.0d), 12.50d)

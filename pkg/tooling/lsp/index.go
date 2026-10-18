@@ -52,6 +52,7 @@ func sourceIndex(result compiler.Result) []occurrence {
 		return index
 	}
 	program := result.Program
+	modules := sourceModules(result)
 	bindingKeys := map[*checker.Binding]string{}
 	for decl, bindings := range program.Parameters() {
 		for index, b := range bindings {
@@ -74,7 +75,7 @@ func sourceIndex(result compiler.Result) []occurrence {
 	}
 	tokens := map[string][]lexer.Token{}
 	seen := map[string]bool{}
-	for _, m := range sourceModules(result) {
+	for _, m := range modules {
 		lexed, e := lexer.Lex(m.File, m.Source)
 		if e == nil {
 			tokens[m.File] = lexed
@@ -92,10 +93,9 @@ func sourceIndex(result compiler.Result) []occurrence {
 		index = append(index, occurrence{key: key, name: name, pos: pos, end: pos.Offset + len(name), declaration: decl, write: write, info: info})
 	}
 	header := func(pos syntax.Position, name string) syntax.Position {
-		for _, token := range tokens[pos.File] {
-			if token.Pos.Offset < pos.Offset {
-				continue
-			}
+		lexed := tokens[pos.File]
+		start := sort.Search(len(lexed), func(i int) bool { return lexed[i].Pos.Offset >= pos.Offset })
+		for _, token := range lexed[start:] {
 			if token.Kind == lexer.Newline {
 				if token.Pos.Offset == pos.Offset {
 					continue
@@ -108,15 +108,19 @@ func sourceIndex(result compiler.Result) []occurrence {
 		}
 		return pos
 	}
-	for _, m := range sourceModules(result) {
+	for _, m := range modules {
+		symbols := sourceSymbols(result, m.File)
 		for _, decl := range m.Declarations {
-			if symbol := sourceSymbols(result, m.File)[decl.Name]; symbol != nil && symbol.Decl == decl {
+			if decl.Synthetic && decl.Kind == syntax.KindInterface {
+				continue
+			}
+			if symbol := symbols[decl.Name]; symbol != nil && symbol.Decl == decl {
 				add(symbolKey(symbol), symbol.Name, header(decl.Pos, symbol.Name), true, false, &checker.Info{Type: symbol.Type, Symbol: symbol})
 			}
 		}
 		for _, decl := range m.Declarations {
-			symbol := sourceSymbols(result, m.File)[decl.Name]
-			if symbol == nil || symbol.Decl != decl || symbol.Type == nil || symbol.Type.Def == nil {
+			symbol := symbols[decl.Name]
+			if decl.Synthetic && decl.Kind == syntax.KindInterface || symbol == nil || symbol.Decl != decl || symbol.Type == nil || symbol.Type.Def == nil {
 				continue
 			}
 			for _, field := range decl.Fields {
@@ -145,11 +149,11 @@ func sourceIndex(result compiler.Result) []occurrence {
 			}
 		}
 		for _, imp := range m.Imports {
-			symbols := sourceSymbols(result, m.File)
+			importedSymbols := symbols
 			if strings.HasPrefix(m.File, "@std/") {
-				symbols = checker.StandardExports(imp.Path)
+				importedSymbols = checker.StandardExports(imp.Path)
 			}
-			if symbol := symbols[imp.Name]; symbol != nil {
+			if symbol := importedSymbols[imp.Name]; symbol != nil {
 				add(symbolKey(symbol), imp.Name, imp.NamePos, false, false, &checker.Info{Type: symbol.Type, Symbol: symbol})
 			}
 		}
@@ -293,7 +297,7 @@ func sourceIndex(result compiler.Result) []occurrence {
 			}
 		}
 	}}
-	for _, m := range sourceModules(result) {
+	for _, m := range modules {
 		for _, decl := range m.Declarations {
 			visitor.Walk(decl)
 		}

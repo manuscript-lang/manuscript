@@ -103,7 +103,7 @@ func (n *effectNode) scanCall(expression *syntax.Expression, nodes map[string]*e
 		}
 		return
 	}
-	if info.Native == "toString" || info.Native == "clone" {
+	if info.Native == "to_string" || info.Native == "clone" {
 		n.add("read")
 		return
 	}

@@ -10,7 +10,7 @@ import (
 func TestHTTPRequestHeaderNavigation(t *testing.T) {
 	source := `import HttpRequest from "@std/http.ms"
 import Bytes from "@std/bytes.ms"
-fn content_type(request: HttpRequest) -> Optional[List[Bytes]]:
+fn content_type(request: HttpRequest) Optional[List[Bytes]]:
     return request.headers.values("content-type")
 `
 	file, _, hover := definitionAt(t, source, strings.Index(source, "values("))
@@ -22,7 +22,7 @@ fn content_type(request: HttpRequest) -> Optional[List[Bytes]]:
 func TestLocalHttpHeadersDoesNotAcquireNativeLookup(t *testing.T) {
 	source := `type HttpHeaders:
     value: String
-fn lookup(fields: HttpHeaders) -> Unit:
+fn lookup(fields: HttpHeaders) Unit:
     fields.values("content-type")
 `
 	result := compiler.CompileSource("local-header.ms", source, compiler.Options{AnalyzeOnly: true})

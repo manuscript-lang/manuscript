@@ -62,6 +62,20 @@ Apply when: changing partial parsing, declaration synchronization, or completion
 Evidence: [layout rules](../documentation/core-language/basics/grammar.md#layout-tokens); [recovery regressions](../pkg/parser/partial_test.go); [parameter navigation regression](../pkg/tooling/lsp/analysis_test.go); [completion regressions](../pkg/tooling/lsp/completion_test.go).
 Verify: multiline function parameters retain their original LF/CRLF positions, navigation, and completion when a different declaration is incomplete; an unfinished match does not erase completion in the enclosing function.
 
+### Shared editor analysis must preserve selected roots and overlays
+
+Verified: resolve the nearest manifest before sharing analysis. A standalone
+file symlink can select a different source root and confinement error from its
+destination; a symlinked manifest retains its containing directory. Distinct
+URIs can decode to one filename with different requested text, so those overlays
+cannot share a checked result. Keep default and selected-module recovery separate,
+private completion repair uncached, and strict workspace graphs transient.
+Evidence: [scope and overlay regressions](../pkg/tooling/lsp/snapshot_test.go).
+Verify: compare cached results with uncached analysis in both query orders;
+apply queued incremental ranges in order and publish newest errors before request,
+close and EOF barriers. [Scheduling regressions](../pkg/tooling/lsp/scheduling_test.go)
+also pin cancellation between strict checks and cache release after close.
+
 ### Standard declarations are source that tools must navigate
 
 Decision: the user asked to keep standard type definitions in Manuscript so editor tooling can use them. Verified architecture: `pkg/stdlib/*.ms` supplies public schemas and signatures; `bindings.json` maps identities to native dispatch. Generated documentation and navigation consume this source-backed contract.
@@ -103,8 +117,10 @@ Task recipes must also preserve I/O failure: matching a failed stdout write and 
 
 Decision: documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator. Native builds were subsequently requested to work from a single binary without separately installing Go, with CGO excluded. The later requirement makes the bundled toolchain mandatory: no external override, PATH fallback, or ambient Go configuration may select another tool. OS-specific prerequisites such as Apple debugserver remain permitted. This establishes a delivery boundary for user-facing tooling: test the command from the user's installation context.
 
-Apply when: adding CLI tooling or making claims about installation requirements.
-Evidence: [native build contract](../documentation/developer-tooling/builds/reproducibility.md); [payload construction](../scripts/mktoolchain/main.go); [standalone distribution checks](../scripts/distcheck/main.go).
+Verified: `vscode-languageclient` 10 requires a log output channel, including `onDidChangeLogLevel` and severity methods. A plain output channel fails during editor activation even when a direct compiler LSP handshake succeeds. Create the shared channel with `{ log: true }`; activation and restart tests must exercise the logging API rather than making client startup a no-op. Evidence: [client setup](../extensions/vscode/extension.js), [dependency pin](../extensions/vscode/package-lock.json), and [activation/restart regression](../extensions/vscode/tests/extension.test.js).
+
+Apply when: adding CLI tooling, upgrading the editor client, or making claims about installation requirements.
+Evidence: [native build contract](../documentation/developer-tooling/how-it-works.md); [payload construction](../scripts/mktoolchain/main.go); [standalone distribution checks](../scripts/distcheck/main.go).
 Verify: exercise a copied binary outside the checkout with empty caches, no Go on PATH, and package downloads disabled. Include ordinary/debug builds and profiling so the reduced payload covers emitted runtime references. Confirm actual debugger backend prerequisites separately; do not generalize one platform’s prerequisites to all tooling.
 
 Verified: embedding Delve uses its public `service`/`pkg` APIs, not restricted
@@ -179,6 +195,7 @@ compact code/output preview. Remove repeated benefit paragraphs and stacked
 cards when applying this direction. Evidence: the request in **Update docs for
 current language**, following [the reader-journey change](https://github.com/manuscript-lang/manuscript/pull/570),
 and [the resulting hero revision](https://github.com/manuscript-lang/manuscript/pull/573).
+Later direction: the landing page must also lay out the benefits clearly. Keep the hero, then one compact "Why Manuscript" grid of short, shipped-feature benefits below the example (no stacked paragraphs); this refines, not reverses, the hero decision. Keep claims tied to shipped features and keep VISION.md's "Where things stand" in sync.
 Verify: inspect desktop and narrow mobile renders in both themes; the first
 action and example remain readable with brief supporting copy. This records
 the requested direction; verify its implementation in the checkout being edited.

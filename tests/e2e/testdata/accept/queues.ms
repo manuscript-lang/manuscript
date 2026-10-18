@@ -40,7 +40,7 @@ test "local FIFO aliases and saved methods":
     dequeue() | try expect_equal(expected: second)
 
 test "queue elements include ordinary functions":
-    let queue = Queue[fn() -> Int](1)
+    let queue = Queue[fn() Int](1)
     queue.enqueue(
         fn():
             return 7
@@ -54,7 +54,7 @@ test "queue elements include ordinary functions":
 
 test "shared queue uses explicit lock scopes":
     let shared = Synchronized(Queue[Int]())
-    let operation = fn(item: Int) -> Result[Unit, Error]:
+    let operation = fn(item: Int) Result[Unit, Error]:
         for unused in [1, 2, 3, 4, 5]:
             with locked = shared.lock():
                 let queue = locked.get()

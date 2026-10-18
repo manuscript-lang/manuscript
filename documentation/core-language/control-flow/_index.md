@@ -5,7 +5,7 @@ weight = 4
 
 # Control flow
 
-Use `if` for a Boolean decision, `match` for the cases of an alternative, and loops for repeated work. Leaving a block also runs any cleanup registered in that block.
+Use `if` for a Boolean decision, `match` for alternatives, and loops for repeated work. Leaving a block runs its registered cleanup.
 
 | Concept | What you will learn |
 | --- | --- |

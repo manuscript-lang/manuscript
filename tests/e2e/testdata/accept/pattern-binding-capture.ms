@@ -5,27 +5,27 @@ type Failure[T]:
     case Denied(reason: T)
 
 # An advisory preserves the semantics of this fresh, capitalized binding.
-fn captured[T](result: Result[Int, Failure[T]]) -> Int:
+fn captured[T](result: Result[Int, Failure[T]]) Int:
     match result:
         error(NotFound): return 1
         ok(value): return value
 
-fn failure_code[T](cause: Failure[T]) -> Int:
+fn failure_code[T](cause: Failure[T]) Int:
     match cause:
         NotFound: return 1
         Denied(_): return 2
 
-fn precise[T](result: Result[Int, Failure[T]]) -> Int:
+fn precise[T](result: Result[Int, Failure[T]]) Int:
     match result:
         error(cause): return failure_code(cause)
         ok(value): return value
 
-fn failure_reason(cause: Failure[String]) -> String:
+fn failure_reason(cause: Failure[String]) String:
     match cause:
         NotFound: return "missing"
         Denied(reason): return reason
 
-fn deliberate(result: Result[Int, Failure[String]]) -> String:
+fn deliberate(result: Result[Int, Failure[String]]) String:
     match result:
         error(cause): return failure_reason(cause)
         ok(_): return "ok"
@@ -36,6 +36,14 @@ test "a payload identifier binds every alternative without changing semantics":
     )
     let missing: Result[Int, Failure[String]] = error(Failure[String].NotFound)
     let success: Result[Int, Failure[String]] = ok(7)
-    (captured(denied) != 1 or captured(missing) != 1 or captured(success) != 7) | try expect_false
-    (precise(denied) != 2 or precise(missing) != 1 or precise(success) != 7) | try expect_false
-    deliberate(denied) | try expect_equal(expected: "permission denied")
+    try expect_false(
+        (
+            captured(denied) != 1
+            or captured(missing) != 1
+            or captured(success) != 7
+        )
+    )
+    try expect_false(
+        (precise(denied) != 2 or precise(missing) != 1 or precise(success) != 7)
+    )
+    try expect_equal(deliberate(denied), "permission denied")

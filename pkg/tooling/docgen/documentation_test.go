@@ -15,7 +15,7 @@ func TestDeclarationKindPresentation(t *testing.T) {
 	} {
 		t.Run(tc.kind, func(t *testing.T) {
 			module := checker.APIModule{Path: "example.ms", Declarations: []checker.APIDeclaration{
-				{Name: "example", Kind: tc.kind, Type: "fn(value: String)->Bool", Declaration: "fn example(value: String) -> Bool\n"},
+				{Name: "example", Kind: tc.kind, Type: "fn(value: String)->Bool", Declaration: "fn example(value: String) Bool\n"},
 			}}
 			site := renderModule(module, true)
 			if !strings.Contains(site, "## example {data-api-kind=\""+tc.label+"\"}") {
@@ -26,7 +26,7 @@ func TestDeclarationKindPresentation(t *testing.T) {
 				t.Fatalf("expected portable Markdown classification: %s", portable)
 			}
 			for _, output := range []string{site, portable} {
-				if strings.Contains(output, "Kind:") || !strings.Contains(output, "fn example(value: String) -> Bool") {
+				if strings.Contains(output, "Kind:") || !strings.Contains(output, "fn example(value: String) Bool") {
 					t.Fatalf("classification changed the signature or leaked a raw kind: %s", output)
 				}
 			}

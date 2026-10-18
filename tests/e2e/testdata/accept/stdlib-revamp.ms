@@ -1,100 +1,87 @@
-import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
+import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import {ReadStream, IoError, read_line} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
-import {Queue, PriorityQueue} from "@std/queues.ms"
-import {Scheduler, WorkStatus} from "@std/tasks.ms"
-import {sleep} from "@std/time.ms"
-import {parse, JsonValue} from "@std/json.ms"
+import {PriorityQueue} from "@std/queues.ms"
+import {Scheduler} from "@std/tasks.ms"
 
 type Key:
     id: Int
     label: String
 
 impl Equal for Key:
-    fn equals(other: Equal) -> Bool:
+    fn equals(other: Equal) Bool:
         match other:
             Key(value): return self.id == value.id
             _: return false
 
 impl Hashable for Key:
-    fn hash() -> Int: self.id
+    fn hash() Int: self.id
 
-fn compare(left: Key, right: Key) -> Int:
+fn compare(left: Key, right: Key) Int:
     return left.id - right.id
 
 test "domain equality and hashing select interfaces":
-    let a = Key(id: 1, label: "first")
-    let b = Key(id: 1, label: "second")
-    a | try expect_equal(expected: b)
-    a.hash() | try expect_equal(expected: b.hash())
-    let values = (Map[Key, String]().add(key: a, value: "a").add(key: b, value: "b"))
-    values.length() | try expect_equal(expected: 1)
-    values.get(a) | try expect_equal(expected: some("b"))
-    ([a].contains(b)) | try expect_true
+    let a = Key(1, "first")
+    let b = Key(1, "second")
+    try expect_equal(a, b)
+    try expect_equal(a.hash(), b.hash())
+    let values = (Map[Key, String]().add(a, "a").add(b, "b"))
+    try expect_equal(values.length(), 1)
+    try expect_equal(values.get(a), some("b"))
+    try expect_false(not ([a].contains(b)))
     let view = Equal(Equal(a))
-    (view.equals(Equal(b))) | try expect_true
+    try expect_false(not (view.equals(Equal(b))))
 
 test "stable priority queue and optional capacity":
-    let queue = PriorityQueue(compare: compare)
-    queue.enqueue(Key(id: 2, label: "later"))
-    queue.enqueue(Key(id: 1, label: "first"))
-    queue.enqueue(Key(id: 1, label: "second"))
+    let queue = PriorityQueue(compare)
+    queue.enqueue(Key(2, "later"))
+    queue.enqueue(Key(1, "first"))
+    queue.enqueue(Key(1, "second"))
 
-    match queue.dequeue():
-        some(value):
-            try expect_equal(value.label, "first")
-        none: return fail("missing item")
+    if let value = queue.dequeue():
+        try expect_equal(value.label, "first")
+    else:
+        return fail("missing item")
 
-    match queue.dequeue():
-        some(value):
-            try expect_equal(value.label, "second")
-        none: return fail("missing item")
+    if let value = queue.dequeue():
+        try expect_equal(value.label, "second")
+    else:
+        return fail("missing item")
 
-    let bounded = PriorityQueue(compare: compare, capacity: 1)
-    (bounded.enqueue(Key(id: 1, label: "only"))) | try expect_true
-    bounded.enqueue(Key(id: 0, label: "full")) | try expect_false
+    let bounded = PriorityQueue(compare, 1)
+    try expect_false(not (bounded.enqueue(Key(1, "only"))))
+    try expect_false(bounded.enqueue(Key(0, "full")))
 
 test "limits can be omitted or supplied":
-    match "ab".repeat(count: 3):
-        ok(value):
-            try expect_equal(value, "ababab")
-        error(_): return fail("omitted limit rejected")
+    let repeated = try "ab".repeat(3)
+    try expect_equal(repeated, "ababab")
+    try expect_false("ab".repeat(3, 5).is_ok())
 
-    match "ab".repeat(count: 3, max_bytes: 5):
-        ok(_): return fail("supplied limit ignored")
-        error(_): return
-
-fn operation() -> Result[Unit, Error]: ok(unit)
+fn operation() Result[Unit, Error]: ok(unit)
 
 test "one scheduler admits and schedules work":
     with scheduler = Scheduler():
-        let immediate = scheduler.start(operation)
-        let delayed = scheduler.after(duration: 0.milliseconds, operation: operation)
-        let repeated = scheduler.every(interval: 1.milliseconds, operation: operation)
-
-        match repeated:
-            ok(id): scheduler.cancel(id)
-            error(_): return fail("unbounded admission failed")
+        let _immediate = scheduler.start(operation)
+        let _delayed = scheduler.after(0.milliseconds, operation)
+        let repeated = try scheduler.every(1.milliseconds, operation)
+        scheduler.cancel(repeated)
 
 type EmptyReader:
     requested: Int
 
 impl ReadStream for EmptyReader:
-    fn read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]:
-        match max_bytes:
-            none: self.requested = 0
-            some(value): self.requested = value
-
+    fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
+        self.requested = max_bytes.get(0)
         return ok(none)
 
-    fn close() -> Unit: unit
+    fn close() Unit: unit
 
 test "native compositions preserve Optional arguments for source implementations":
     let reader = EmptyReader(-1)
     let stream = ReadStream(reader)
-    let omitted = stream.read()
-    reader.requested | try expect_equal(expected: 0)
-    let supplied = stream.read(8)
-    reader.requested | try expect_equal(expected: 8)
-    let line = read_line(input: stream)
-    reader.requested | try expect_equal(expected: 1)
+    let _omitted = stream.read()
+    try expect_equal(reader.requested, 0)
+    let _supplied = stream.read(8)
+    try expect_equal(reader.requested, 8)
+    let _line = read_line(stream)
+    try expect_equal(reader.requested, 1)

@@ -1,0 +1,144 @@
+use std::collections::BTreeMap;
+use std::io::{Read, Write};
+
+struct Account {
+    bal: i64,
+    lim: i64,
+    ops: i64,
+    rej: i64,
+    frozen: bool,
+}
+
+const FEE: i64 = 5;
+
+fn is_digits(s: &str) -> bool {
+    !s.is_empty() && s.bytes().all(|c| c.is_ascii_digit())
+}
+
+fn main() {
+    let mut input = String::new();
+    std::io::stdin().read_to_string(&mut input).get();
+    let mut out = String::new();
+    let mut accounts: BTreeMap<String, Account> = BTreeMap::new();
+    let mut fees = 0i64;
+    for line in input.split('\n') {
+        let t: Vec<&str> = line.split(|c| c == ' ' || c == '\t').filter(|x| !x.is_empty()).collect();
+        if t.is_empty() {
+            continue;
+        }
+        let cmd = t[0];
+        let arity = match cmd {
+            "open" | "deposit" | "withdraw" => 3,
+            "transfer" => 4,
+            "freeze" | "unfreeze" => 2,
+            "report" => 1,
+            _ => 0,
+        };
+        if arity == 0 || t.len() != arity {
+            out.push_str("error: bad command\n");
+            continue;
+        }
+        match cmd {
+            "report" => {
+                let mut total = 0;
+                for (id, a) in &accounts {
+                    total += a.bal;
+                    out.push_str(&format!(
+                        "{} balance={} limit={} ops={} rejected={} frozen={}\n",
+                        id, a.bal, a.lim, a.ops, a.rej, if a.frozen { "yes" } else { "no" }
+                    ));
+                }
+                out.push_str(&format!("total balance={} fees={}\n", total, fees));
+                continue;
+            }
+            "open" => {
+                if !is_digits(t[2]) {
+                    out.push_str("error: invalid limit\n");
+                } else if accounts.contains_key(t[1]) {
+                    out.push_str(&format!("error: account exists {}\n", t[1]));
+                } else {
+                    accounts.insert(t[1].to_string(), Account { bal: 0, lim: t[2].parse().get(), ops: 0, rej: 0, frozen: false });
+                    out.push_str("ok\n");
+                }
+                continue;
+            }
+            "freeze" | "unfreeze" => {
+                match accounts.get_mut(t[1]) {
+                    None => out.push_str(&format!("error: unknown account {}\n", t[1])),
+                    Some(a) => {
+                        a.frozen = cmd == "freeze";
+                        out.push_str("ok\n");
+                    }
+                }
+                continue;
+            }
+            _ => {}
+        }
+        let mut ids = vec![t[1]];
+        if cmd == "transfer" {
+            ids.push(t[2]);
+        }
+        let amount_text = t[t.len() - 1];
+        if let Some(m) = ids.iter().find(|i| !accounts.contains_key(**i)) {
+            out.push_str(&format!("error: unknown account {}\n", m));
+            continue;
+        }
+        let mut reject = |accounts: &mut BTreeMap<String, Account>, id: &str, msg: String| {
+            accounts.get_mut(id).get().rej += 1;
+            out.push_str(&msg);
+            out.push('\n');
+        };
+        if cmd == "transfer" && ids[0] == ids[1] {
+            reject(&mut accounts, ids[0], "error: same account".to_string());
+            continue;
+        }
+        let n: i64 = if is_digits(amount_text) { amount_text.parse().get(0) } else { 0 };
+        if n <= 0 {
+            reject(&mut accounts, ids[0], "error: invalid amount".to_string());
+            continue;
+        }
+        if let Some(f) = ids.iter().find(|i| accounts[**i].frozen) {
+            reject(&mut accounts, f, format!("error: account frozen {}", f));
+            continue;
+        }
+        if cmd == "deposit" {
+            let a = accounts.get_mut(ids[0]).get();
+            a.bal += n;
+            a.ops += 1;
+            let msg = format!("ok {}\n", a.bal);
+            out.push_str(&msg);
+            continue;
+        }
+        let (bal, lim) = {
+            let a = &accounts[ids[0]];
+            (a.bal, a.lim)
+        };
+        let mut next = bal - n;
+        let mut fee = 0;
+        if bal >= 0 && next < 0 {
+            next -= FEE;
+            fee = FEE;
+        }
+        if next < -lim {
+            reject(&mut accounts, ids[0], format!("error: overdraft limit exceeded {}", ids[0]));
+            continue;
+        }
+        {
+            let a = accounts.get_mut(ids[0]).get();
+            a.bal = next;
+            a.ops += 1;
+        }
+        fees += fee;
+        let sfx = if fee > 0 { format!(" fee={}", fee) } else { String::new() };
+        if cmd == "withdraw" {
+            out.push_str(&format!("ok {}{}\n", next, sfx));
+        } else {
+            let b = accounts.get_mut(ids[1]).get();
+            b.bal += n;
+            b.ops += 1;
+            let bb = b.bal;
+            out.push_str(&format!("ok {} {}{}\n", next, bb, sfx));
+        }
+    }
+    std::io::stdout().write_all(out.as_bytes()).get();
+}

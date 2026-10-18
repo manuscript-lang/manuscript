@@ -6,23 +6,19 @@ type Problem:
 type OtherProblem:
     case Invalid(reason: String)
 
-fn checked(value: Int) -> Result[Int, Problem]:
+fn checked(value: Int) Result[Int, Problem]:
     if value < 0:
         return error(Problem.Missing("negative"))
 
     return ok(value)
 
-fn doubled(value: Int) -> Result[Int, Problem]:
-    let accepted = try checked(value: value)
+fn doubled(value: Int) Result[Int, Problem]:
+    let accepted = try checked(value)
     return ok(accepted * 2)
 
-fn summarize(outcome: Result[Int, Problem]) -> Int:
-    match outcome:
-        ok(value):
-            return value
-        error(_):
-            return -1
+fn summarize(outcome: Result[Int, Problem]) Int:
+    return outcome.get(-1)
 
 test "unchanged propagated error":
-    summarize(outcome: doubled(value: 3)) | try expect_equal(expected: 6)
-    summarize(outcome: doubled(value: -1)) | try expect_equal(expected: -1)
+    try expect_equal(summarize(doubled(3)), 6)
+    try expect_equal(summarize(doubled(-1)), -1)

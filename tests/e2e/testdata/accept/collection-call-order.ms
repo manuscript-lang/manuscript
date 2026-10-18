@@ -9,5 +9,5 @@ test "receiver before index":
                 values = [9]
                 i
             none: 0
-    ).unwrap()
-    result | try expect_equal(expected: 7)
+    ).get()
+    try expect_equal(result, 7)

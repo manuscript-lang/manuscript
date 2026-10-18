@@ -10,8 +10,8 @@ import (
 func TestFieldWritesAndClonesKeepEditorNavigation(t *testing.T) {
 	source := `type Val:
     val: Int
-fn work(value: Val) -> Unit:
-    let callback = fn() -> Unit:
+fn work(value: Val) Unit:
+    let callback = fn() Unit:
         value.val = value.val + 1
     callback()
     let copy = value.clone()

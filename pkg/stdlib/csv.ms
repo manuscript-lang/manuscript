@@ -21,7 +21,7 @@ export fn parse(
     options: CsvOptions = CsvOptions(),
     max_rows: Optional[Int] = none,
     max_cells: Optional[Int] = none
-) -> Result[List[List[String]], CsvError]:
+) Result[List[List[String]], CsvError]:
 
 # Encodes rows as CSV with comma delimiters and LF endings by default.
 # Quotes cells when required by the delimiter or line ending.
@@ -29,8 +29,8 @@ export fn stringify(
     rows: List[List[String]],
     options: CsvOptions = CsvOptions(),
     max_bytes: Optional[Int] = none
-) -> Result[String, CsvError]:
+) Result[String, CsvError]:
 
 impl Error for CsvError:
     # Returns a CSV-prefixed diagnostic without exposing input cells or parser text.
-    fn message() -> String:
+    fn message() String:

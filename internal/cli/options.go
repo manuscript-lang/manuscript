@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var valueOptions = []string{"-o", "--output", "--out-dir", "--build-type", "--timeout", "--filter", "--test", "--match", "--exclude", "--repeat", "--shuffle", "--cpu-profile", "--heap-profile", "--trace", "--script", "--break", "--format", "--view", "--entity", "--depth"}
+var valueOptions = []string{"-o", "--output", "--out-dir", "--build-type", "--timeout", "--filter", "--test", "--match", "--exclude", "--repeat", "--shuffle", "--cpu-profile", "--heap-profile", "--trace", "--script", "--break", "--format", "--view", "--entity", "--depth", "--diff"}
 
 func splitCommandValueOption(command, arg string) (name, value string, inline bool) {
 	// A profile bundle owns its artifact paths; --trace=<path> belongs to run.

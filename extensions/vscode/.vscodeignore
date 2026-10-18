@@ -4,4 +4,5 @@ package-lock.json
 **/*.test.js
 
 debug-adapter.js
+project-target.js
 !dist/**

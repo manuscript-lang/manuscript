@@ -1,5 +1,15 @@
 # Language lessons
 
+### Standard and user code share one method syntax
+
+Decision: the user required that the standard library, as the reference, use only forms user code can write. Methods live in `impl` blocks, never in `type` bodies: `impl Type:` declares a type's own methods and `impl Interface for Type:` implements an interface; the presence of `for` fixes which name is the type, so no lookup is needed. Rejected spellings: `impl Type as/with/satisfies Interface`, a comma form, and a stdlib-only `native impl`.
+
+Verified: source `impl Type:` is desugared in the checker to a hidden `Type$methods` interface plus an ordinary contract impl, so visibility, selection, and lowering are the existing paths. Bundled modules fold their `impl Type:` methods back into the type declaration, keeping native binding keys unchanged. Method-level type parameters work only in bundled modules; source methods reject them, a known gap.
+
+Apply when: changing impl parsing, method declaration rules, stdlib receiver operations, or docs that show type declarations with methods.
+Evidence: [proposal](../documentation/core-language/types/contracts.md#explicit-implementations), [parser](../pkg/parser/parser.go), [desugaring](../pkg/checker/inherent.go), [native acceptance and rejection tests](../tests/e2e/inherent_methods_test.go).
+Verify: `fn` in a `type` body is a parse error; `impl Type:` works across modules for exported types; `impl Interface:`, `impl Foreign:`, and generic methods give targeted errors; `make stdlib-test` still binds every receiver operation.
+
 ### An unsaved overlay cannot replace a dangling source symlink
 
 Verified: editor overlays may create a file beneath an existing confined directory, but a dangling symlink remains a filesystem entry whose target identity must be respected. Treating every `EvalSymlinks` not-found result as an unsaved file allowed an overlay to hide an unresolved external target. Source path resolution now rejects that fallback for existing entries.
@@ -10,11 +20,11 @@ Verify: new confined overlay files compile without being written to disk; overla
 
 ### String conversion is available on every value
 
-Decision: the user requested conversion with `toString()` on everything. This supersedes the previous restriction of interpolation to scalars. Conversion is available in unconstrained generic code and uses the same representations as interpolation; ordinary type compatibility at assignment, call, and return boundaries remains explicit.
+Decision: the user requested conversion with `to_string()` on everything. This supersedes the previous restriction of interpolation to scalars. Conversion is available in unconstrained generic code and uses the same representations as interpolation; ordinary type compatibility at assignment, call, and return boundaries remains explicit.
 
 Apply when: changing interpolation, member resolution, formatting, or editor member queries.
 Evidence: [canonical conversion rules](../documentation/core-language/basics/text-and-bytes.md#converting-values-to-string); [native source conformance](../tests/e2e/testdata/accept/to-string.ms); opaque and cyclic formatting checks.
-Verify: a record and an unconstrained `T` both support `.toString()` and direct interpolation; a closed resource converts without invoking an operation; passing that record directly to a String parameter is still rejected.
+Verify: a record and an unconstrained `T` both support `.to_string()` and direct interpolation; a closed resource converts without invoking an operation; passing that record directly to a String parameter is still rejected.
 
 ### Invalid bounds must not survive recovery
 
@@ -51,7 +61,7 @@ Verified: when rebasing standard-library work onto current main, migrate new con
 
 ### Error translation does not need a dedicated standard helper
 
-Decision: remove the specialized Result error-mapping helper and keep domain translation in ordinary functions and matching. The newer error simplification permits specific errors to pass directly into the standard Error boundary, including through `try`; unrelated domain errors still require explicit translation. Do not restore a dedicated mapping helper.
+Decision: remove the specialized Result error-mapping helper and keep domain translation in ordinary functions that test `is_error()` and read `err()`, never a `match`. The newer error simplification permits specific errors to pass directly into the standard Error boundary, including through `try`; unrelated domain errors still require explicit translation. Do not restore a dedicated mapping helper.
 
 Decision: the user requested "please remove nested match from everywhere, note it as anti pattern and ensure it never gets repeated", then reaffirmed "nested match is anti pattern, solve it another way". This includes implementation, examples, documentation and diagnostic remedies. Keep grammar and execution semantics available for compatibility and meaningful syntax/semantic regressions. Use compatible `try`, early-exit payload bindings, Optional methods, or small helpers; the user also rejected elaborate loading examples, so avoid contrived domain models and helper layers added only to make an example work.
 
@@ -117,7 +127,7 @@ Verify: the counter's Unit-returning method updates `self.val`; aliases observe 
 
 ### Source-backed data types belong in the prelude
 
-Decision: the user requested Optional, Result, their related helpers, and Error without imports. The later accepted [issue #187 direction](https://github.com/manuscript-lang/manuscript/issues/187#issuecomment-6138072921) adds List and Map to that scope; Set uses the same mechanism. The latest direction removes existing imports and requires every type referenced by the public List/Map/Set API in the prelude. Its recursive nominal closure adds CollectionError, ListEntry, MapEntry, and MissingValue (through Optional.ok_or's default type argument); Optional, Result, Error, Equal, and Hashable already belong. Keep their canonical source-backed identities, including some/none, ok/error, and Optional receiver methods. Reject explicit imports by resolved canonical symbol identity with a binding-removal fix (MS2003). Project aliases to application types keep ordinary identity; renaming, reexports, and aliases that override the reserved @std directory remain unsupported. Ordinary declarations may select a local identity instead; a matching spelling must not acquire native behavior. Other standard APIs remain explicit imports. [Map.add is the accepted insertion spelling](https://github.com/manuscript-lang/manuscript/issues/187#issuecomment-6138104857); the older `with_entry` and alias spellings were removed (#358).
+Decision: the user requested Optional, Result, their related helpers, and Error without imports. The later accepted [issue #187 direction](https://github.com/manuscript-lang/manuscript/issues/187#issuecomment-6138072921) adds List and Map to that scope; Set uses the same mechanism. The latest direction removes existing imports and requires every type referenced by the public List/Map/Set API in the prelude. Its recursive nominal closure adds CollectionError, ListEntry, MapEntry, and MissingValue (through Optional.ok_or's default type argument); Optional, Result, Error, Equal, and Hashable already belong. Keep their canonical source-backed identities, including some/none, ok/error, and Optional receiver methods. Reject explicit imports by resolved canonical symbol identity with a binding-removal fix (MS2003). Project aliases to application types keep ordinary identity; renaming, reexports, and aliases that override the reserved @std directory remain unsupported. Round 2 bug bash (user decision): declarations and application imports that reuse a prelude type name or some/none/ok/error are rejected ("reuses a prelude name") instead of selecting a local identity, because shadowing produced confusing follow-on errors. Other standard APIs remain explicit imports. [Map.add is the accepted insertion spelling](https://github.com/manuscript-lang/manuscript/issues/187#issuecomment-6138104857); the older `with_entry` and alias spellings were removed (#358).
 
 Reason: a spelling-only ban would reject application declarations, and duplicated support definitions would split native identities. An ambiguous unqualified `LimitExceeded` needs `CollectionError.LimitExceeded` or another explicit case owner; match patterns still resolve through their scrutinee. Recursive signature, type-argument default, and native receiver-bound tests guard future additions. MissingValue also makes `Missing` ambient; qualify an expression as `MissingValue.Missing` or another explicit owner when needed.
 
@@ -127,7 +137,7 @@ Verify: Optional methods and Result propagation into Error execute without impor
 
 ### Parameterless main and imported host accessors
 
-Decision: applications export `fn main() -> Int` and import the standard services they use. The user explicitly deferred enforcement; the earlier exploration of `using`, scoped replacement, and manifest permissions is not an accepted implementation requirement. Ordinary service parameters remain available for helpers and source fakes.
+Decision: applications export `fn main() Int` and import the standard services they use. The user explicitly deferred enforcement; the earlier exploration of `using`, scoped replacement, and manifest permissions is not an accepted implementation requirement. Ordinary service parameters remain available for helpers and source fakes.
 
 Apply when: changing entrypoints, host roots, standard imports, tests, or authority documentation.
 Evidence: [CLI contract](../pkg/stdlib/cli.ms), [entry validation](../pkg/compiler/compiler.go), and [execution-local accessors](../pkg/runtime/host.go).
@@ -143,7 +153,7 @@ Verify: parse an inline callback inside a call without consuming the enclosing d
 
 ### Optional values need presence and extraction methods
 
-Decision: the user explicitly rejected relying on `match` for routine Optional handling. Keep one receiver surface: `is_some`, `is_none`, `unwrap`, `unwrap_or`, and `unwrap_or_else`. Preserve Optional as an ordinary alternative; these methods do not introduce flattening or new syntax. The private native helpers are implementation bindings, not exported aliases.
+Decision: the user explicitly rejected relying on `match` for routine Optional handling. Keep one receiver surface: `is_some`, `is_none`, `get`, `get(default)`, and `get_or_else`. Preserve Optional as an ordinary alternative; these methods do not introduce flattening or new syntax. The private native helpers are implementation bindings, not exported aliases.
 
 ### No special `get` accessor declarations
 
@@ -156,7 +166,7 @@ Verify: `get` is an ordinary identifier everywhere; a List `length()` call lower
 Decision: the later request to accept `Queue[Int](capacity: 4)` permits a plain payload at standard Optional argument boundaries. Routine calls and current examples use plain values rather than redundant `some(...)` arguments. Keep this separate from omission permissions and ordinary assignment/return compatibility. Lower the supplied argument to a real `some` value so source implementations and native APIs receive the same representation; preserve written evaluation order and payload identity.
 
 
-Decision: the user asked for `if let name = optional:` (with `else`) and that a match with only two arms is an anti-pattern. `if let` unwraps an Optional (present) or a Result (ok, error not captured; extended by a later request); the binding is immutable and scoped to the then-branch. MSL108 advises on Optional matches whose only arms are some and none; two-case Result and user alternatives are not covered. Stdlib sources use `if let`; accepted conformance fixtures keep their some/none matches because they exercise match-expression semantics.
+Decision: the user asked for `if let name = optional:` (with `else`) and that a match with only two arms is an anti-pattern. `if let` unwraps an Optional (present) or a Result (ok, error not captured; extended by a later request); the binding is immutable and scoped to the then-branch. MSL108 advises on Optional matches whose only arms are some and none, and MSL109 on Result matches whose only arms are ok and error; user alternatives are not covered. Decision (Chinmay, after #587): show no `match` as a way to unwrap a Result anywhere (docs, examples, stdlib, fixtures that are not testing pattern semantics): use `try`, `if let`, `get(default)`, or `is_ok`/`is_error`/`err`. Stdlib sources use `if let`; accepted conformance fixtures keep their some/none matches because they exercise match-expression semantics.
 Evidence: [if let rules](../documentation/core-language/control-flow/conditionals.md#unwrapping-an-optional-or-result), [native fixture](../tests/e2e/testdata/accept/if-let.ms), [lint](../pkg/tooling/optional_match_lint.go).
 Apply when: changing Optional declarations, alternative method lookup, fallback evaluation, or introductory examples.
 Evidence: [Optional contract](../documentation/core-language/types/optionals.md#checking-and-extracting-values), [optional argument rules](../documentation/core-language/types/optionals.md#passing-optional-arguments), [canonical declaration](../pkg/stdlib/optional.ms), [compiled method fixture](../tests/e2e/testdata/accept/optional-methods.ms), and [argument conformance](../tests/e2e/testdata/accept/optional-arguments.ms).
@@ -180,7 +190,7 @@ Decision: when addressing familiar-language friction, the user explicitly chose 
 
 Apply when: changing matching, collection lookup, type application parsing, or examples migrating from other languages.
 Evidence: [match values](../documentation/core-language/control-flow/pattern-matching.md#arm-values), [list lookup](../documentation/core-language/types/collections.md#lookup-and-updates), and [native expression conformance](../tests/e2e/testdata/accept/expression-conveniences.ms).
-Verify: use `items[index].unwrap_or(0)` for absent indexes, keep `identity[Int]` specialization, and exercise enclosing returns, propagation, cleanup, and loop exits from match arms. An effects-only arm ending in a value-returning call needs an explicit `unit` when another arm produces Unit.
+Verify: use `items[index].get(0)` for absent indexes, keep `identity[Int]` specialization, and exercise enclosing returns, propagation, cleanup, and loop exits from match arms. An effects-only arm ending in a value-returning call needs an explicit `unit` when another arm produces Unit.
 
 ### Infer local callback signatures from context
 
@@ -220,4 +230,6 @@ Verified: `pkg/parser` rewrites each step to the plain call or `try` it names, s
 
 Apply when: changing operator precedence, line layout, `try`, or call argument binding.
 Evidence: [pipe flows](../documentation/core-language/basics/expressions.md#pipe-flows), [parser tests](../pkg/parser/pipe_test.go), [formatter test](../pkg/tooling/format_pipe_test.go), and [native fixture](../tests/e2e/testdata/accept/pipe-flow.ms).
-Verify: `try parse(text) | double | try check | .to_string(radix: 10)` runs; a continuation line at the wrong indentation is rejected.
+Verify: `try parse(text) | double | try check | .to_string_radix(radix: 10)` runs; a continuation line at the wrong indentation is rejected.
+
+Decision: the user asked to drop `->` before result types to save tokens (about 1% of source tokens measured with cl100k over the stdlib, accept tests, and examples; colons and `name: Type` were left alone). Named functions, methods, interface operations, and fn types still require the result type (`fn f(x: Int) Int:`, `fn(value: Int) Int`); lambdas may omit it and the parser reads a type after `)` as the result type and `:` as the body. `->` is a lexer token only so the parser can say to remove it. Call labels, map entries, and inline suites keep `:` because no separator would make `f(a [1])`, `a (b)`, and `a -1` unambiguous; the study is in the project thread. `ms fmt` reformats migrated files because shorter lines rewrap.

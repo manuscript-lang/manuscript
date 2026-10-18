@@ -15,11 +15,11 @@ func TestCLIInlineValueOptions(t *testing.T) {
 import stdout from "@std/io.ms"
 import stderr from "@std/io.ms"
 
-fn write_line(text: String) -> Result[Unit, Error]:
+fn write_line(text: String) Result[Unit, Error]:
     try stdout().write(data: "{text}\n".to_bytes())
     return ok(unit)
 
-fn exercise() -> Result[Int, Error]:
+fn exercise() Result[Int, Error]:
     let args = arguments()
     var index = 0
     while index < args.length():
@@ -27,7 +27,7 @@ fn exercise() -> Result[Int, Error]:
         index = index + 1
     return ok(0)
 
-export fn main() -> Int:
+export fn main() Int:
     match exercise():
         ok(status): return status
         error(cause):

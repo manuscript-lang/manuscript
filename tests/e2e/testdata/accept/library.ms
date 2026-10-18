@@ -29,16 +29,16 @@ import unpack from "@std/archive.ms"
 import ArchiveEntry from "@std/archive.ms"
 import ArchiveLimits from "@std/archive.ms"
 
-fn twice(value: Int) -> Int:
+fn twice(value: Int) Int:
     return value * 2
 
-fn positive(value: Int) -> Bool:
+fn positive(value: Int) Bool:
     return value > 0
 
-fn sum(accumulator: Int, value: Int) -> Int:
+fn sum(accumulator: Int, value: Int) Int:
     return accumulator + value
 
-fn compare(left: Int, right: Int) -> Int:
+fn compare(left: Int, right: Int) Int:
     if left < right:
         return -1
     if left > right:
@@ -46,7 +46,7 @@ fn compare(left: Int, right: Int) -> Int:
 
     return 0
 
-fn verify_json() -> Result[Unit, Error]:
+fn verify_json() Result[Unit, Error]:
     let limits = JsonLimits(max_bytes: 1024, max_depth: 8, max_values: 32)
     let value = try parse(
         text: "\{\"large\":9007199254740993,\"ok\":true\}",
@@ -62,7 +62,7 @@ fn verify_json() -> Result[Unit, Error]:
     ) | try expect_false
     return ok(unit)
 
-fn verify_encoding() -> Result[Unit, Error]:
+fn verify_encoding() Result[Unit, Error]:
     let bytes = try hex_decode(text: "00ff42", max_bytes: 3)
     hex_encode(data: bytes) | try expect_equal(expected: "00ff42")
     (
@@ -74,7 +74,7 @@ fn verify_encoding() -> Result[Unit, Error]:
     ) | try expect_false
     return ok(unit)
 
-fn verify_url() -> Result[Unit, Error]:
+fn verify_url() Result[Unit, Error]:
     let query = try parse_query(text: "a=1&a=2&space=hello+world", max_entries: 3)
     query.length() | try expect_equal(expected: 3)
     format_query(entries: query) | try expect_equal(
@@ -82,7 +82,7 @@ fn verify_url() -> Result[Unit, Error]:
     )
     return ok(unit)
 
-fn verify_binary() -> Result[Unit, Error]:
+fn verify_binary() Result[Unit, Error]:
     let binary = try write_integer(
         value: -32768,
         width: 2,
@@ -102,7 +102,7 @@ fn verify_binary() -> Result[Unit, Error]:
     ) | try expect_false
     return ok(unit)
 
-fn verify_compression() -> Result[Unit, Error]:
+fn verify_compression() Result[Unit, Error]:
     let compressed = try compress(
         data: "hello hello hello".to_bytes(),
         format: "gzip",
@@ -120,7 +120,7 @@ fn verify_compression() -> Result[Unit, Error]:
     ) | try expect_false
     return ok(unit)
 
-fn verify_archive() -> Result[Unit, Error]:
+fn verify_archive() Result[Unit, Error]:
     let entries = [
         ArchiveEntry(
             path: "hello.txt",

@@ -4,12 +4,12 @@ import {filesystem, FileSystemError} from "@std/fs.ms"
 import {sleep, duration} from "@std/time.ms"
 import {async_file_transport} from "./async_file_transport.ms"
 
-fn value[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
+fn value[T, E: Error](result: Result[T, E]) Result[T, Error]:
     match result:
         ok(found): return ok(found)
         error(cause): return error(cause)
 
-export fn main() -> Int:
+export fn main() Int:
     return 0
 
 test "records reach the file after flush and close":
@@ -26,7 +26,7 @@ test "records reach the file after flush and close":
             let data = try value(fs.read_file(path: path))
             try expect_false(
                 (
-                    data.to_string() != some(
+                    data.decode_utf8() != some(
                         "\{\"level\":30,\"msg\":\"one\"\}\n\{\"level\":30,\"msg\":\"two\"\}\n"
                     )
                 )
@@ -36,14 +36,14 @@ test "records reach the file after flush and close":
         let after = try value(fs.read_file(path: path))
         if after.length() != 77: return fail("close drains: {after.length()}")
 
-fn line(text: String) -> String:
+fn line(text: String) String:
     return "\{\"level\":30,\"msg\":\"{text}\"\}\n"
 
-fn read(path: String) -> Result[String, Error]:
+fn read(path: String) Result[String, Error]:
     let data = try value(filesystem().read_file(path: path))
-    return ok(data.to_string().unwrap_or(""))
+    return ok(data.decode_utf8().get(""))
 
-fn missing(path: String) -> Bool:
+fn missing(path: String) Bool:
     match filesystem().stat(path: path, follow_links: false):
         ok(_): return false
         error(_): return true

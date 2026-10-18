@@ -14,7 +14,6 @@ import (
 
 	"github.com/manuscript-lang/manuscript/pkg/frontend"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
-	"github.com/manuscript-lang/manuscript/pkg/tooling/docgen"
 )
 
 const nestedMatchAllowance = "manuscript:allow-nested-match "
@@ -52,17 +51,6 @@ func checkNestedMatches() error {
 		}
 		issues = append(issues, found...)
 	}
-	guides, err := docgen.GuideFiles()
-	if err != nil {
-		return err
-	}
-	for path, data := range guides {
-		found, err := nestedMatchIssues(path, string(data))
-		if err != nil {
-			return err
-		}
-		issues = append(issues, found...)
-	}
 	if len(issues) > 0 {
 		return fmt.Errorf("nested match anti-pattern:\n- %s", strings.Join(issues, "\n- "))
 	}
@@ -92,7 +80,7 @@ func nestedMatchIssues(path, source string) ([]string, error) {
 				}
 			}
 			code = strings.Join(lines, "\n")
-			module, _ = frontend.Parse(path, "fn fragment() -> Unit:\n    "+strings.ReplaceAll(code, "\n", "\n    "), true)
+			module, _ = frontend.Parse(path, "fn fragment() Unit:\n    "+strings.ReplaceAll(code, "\n", "\n    "), true)
 		}
 		for _, match := range syntax.NestedMatches(module) {
 			lines := strings.Split(code, "\n")

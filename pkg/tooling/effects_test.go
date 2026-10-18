@@ -17,26 +17,26 @@ type Resource:
     state: Synchronized[Bool]
 
 impl Closeable for Resource:
-    fn close() -> Unit:
+    fn close() Unit:
         with locked = self.state.lock():
             locked.set(value: true)
 
-fn pure() -> Int:
+fn pure() Int:
     return 1
 
-fn direct(resource: Resource) -> Unit:
+fn direct(resource: Resource) Unit:
     with item = resource:
         return
 
-fn transitive(resource: Resource) -> Unit:
+fn transitive(resource: Resource) Unit:
     direct(resource: resource)
 
-fn nested(resource: Resource) -> Unit:
-    let callback = fn() -> Unit:
+fn nested(resource: Resource) Unit:
+    let callback = fn() Unit:
         with item = resource:
             return
 
-fn indirect(callback: fn() -> Unit) -> Unit:
+fn indirect(callback: fn() Unit) Unit:
     callback()
 `
 	result := compiler.CompileSource("effects.ms", source, compiler.Options{})
@@ -73,13 +73,13 @@ fn indirect(callback: fn() -> Unit) -> Unit:
 func TestEffectsIncludeRecordDefaults(t *testing.T) {
 	source := `type State:
     count: Int
-fn increment(state: State) -> Int:
+fn increment(state: State) Int:
     state.count = state.count + 1
     return state.count
 type Options:
     state: State
     count: Int = increment(state)
-fn construct(state: State) -> Options:
+fn construct(state: State) Options:
     return Options(state: state)
 `
 	result := compiler.CompileSource("field-effects.ms", source, compiler.Options{AnalyzeOnly: true})
@@ -98,7 +98,7 @@ fn construct(state: State) -> Options:
 }
 
 func TestUniversalToStringReadsWithoutInvokingResources(t *testing.T) {
-	source := "fn text[T](value: T) -> String:\n    return value.toString()\n"
+	source := "fn text[T](value: T) String:\n    return value.to_string()\n"
 	result := compiler.CompileSource("conversion.ms", source, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)

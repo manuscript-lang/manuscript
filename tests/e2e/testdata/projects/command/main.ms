@@ -3,7 +3,7 @@ import stderr from "@std/io.ms"
 import commands from "@std/process.ms"
 import stdout from "@std/io.ms"
 
-fn exercise() -> Result[Int, Error]:
+fn exercise() Result[Int, Error]:
     match commands().run(
         program: "/bin/printf",
         arguments: ["hello"],
@@ -18,7 +18,7 @@ fn exercise() -> Result[Int, Error]:
             stdout().write(data: output.stdout)
             return ok(0)
 
-export fn main() -> Int:
+export fn main() Int:
     match exercise():
         ok(status): return status
         error(cause):

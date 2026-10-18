@@ -1,5 +1,28 @@
 # Runtime lessons
 
+### Measure collection wrappers with ordinary caller inlining
+
+Verified: on the pinned Go 1.25.1 toolchain, `b.Loop` suppresses inlining of
+`String_Split` in its benchmark body, adding an escaping List wrapper that an
+ordinary local caller avoids. Passing the result pointer to `b.Fatal` also
+forces it to escape. Use an observable result check without passing the wrapper
+and a `b.N` loop when measuring this optimization against handwritten Go.
+
+Apply when: measuring small runtime wrappers or collection allocation parity.
+Evidence: [split benchmarks](../pkg/runtime/bench_vs_go_test.go) and
+[inlineable split wrapper](../pkg/runtime/string.go).
+Verify: run `BenchmarkStringSplitLimited` with `-benchmem`; both local-use
+controls allocate one 48-byte backing slice on linux/amd64. Confirm caller inlining with
+`-gcflags=-m=2` when changing the wrapper or benchmark.
+
+Verified: keeping List construction in small exported String wrappers also removes
+the temporary heap List for local `chars`, `lines`, and `scalar_values` callers.
+The traversal remains in private slice-returning helpers, preserving its order,
+cancellation checks, and fresh mutable result storage. Empty local-use calls
+allocate nothing; nonempty calls save the 24-byte wrapper on linux/amd64.
+Evidence: [String collection benchmarks](../pkg/runtime/string_collections_bench_test.go),
+[String implementation](../pkg/runtime/string.go), and the native String fixtures.
+
 ### Prepared queries must preserve callback-visible list mutations
 
 Verified: `glob_entries` retains the include/exclude slice descriptors before
@@ -47,7 +70,7 @@ cancellation retain cleanup and frame behavior.
 
 Decision: the user approved ordinary cross-task blocking for issue 148 after reviewing the automatic cycle detector's measured task overhead. Same-operation reentry faults using execution/work-lifetime identity, including helper and shielded views. Different executions, including descendants, wait. The reviewed graph draft and measurements remain in [superseded PR 256](https://github.com/manuscript-lang/manuscript/pull/256); that proposal was not merged and must not be silently restored.
 
-Verified: cancellation stops ordinary lock waits, but it neither forcibly releases an executing holder nor abandons joined cleanup. Shielded cleanup ignores initiating cancellation and expired deadlines, so a cross-task cleanup cycle may remain blocked. Native RunMain has no cleanup watchdog or second-signal escalation. Do not claim universal deadlock detection or guaranteed timeout escape. Preserve task/group/service self-join guards and release held guards before joining dependent work.
+Verified: cancellation stops ordinary lock waits, but it neither forcibly releases an executing holder nor abandons joined cleanup. Shielded cleanup ignores initiating cancellation and expired deadlines, so a cross-task cleanup cycle may remain blocked. Native RunMain and the test runner escalate only on stop requests: a second SIGINT/SIGTERM, or the 30 second grace after the first, prints `incomplete cleanup: ...` and exits 70 (`run.go`, `watchStops`); ordinary timeouts never start it. Do not claim universal deadlock detection or guaranteed timeout escape. Preserve task/group/service self-join guards and release held guards before joining dependent work.
 
 Verified: another operation can close a guard alias while its owner is blocked joining. Access/release remains atomic, stale aliases cannot reach a later acquisition, and close stays idempotent. Work lifetime, resource lifetime and sharing remain separate.
 
@@ -97,7 +120,7 @@ Apply when: changing closures, task-group work, schedulers, resource wrappers, o
 Evidence: [sharing](../pkg/stdlib/sync.ms); [joined groups](../pkg/stdlib/tasks.ms); [scope-exit ordering](../documentation/core-language/cleanup/exit-order.md). These establish the design contract, not a claim that every runtime path has been tested.
 Verify: exercise use after close and shutdown with work still running. Confirm started work completes cleanup before joining returns and stale resource aliases cannot reach a reused handle.
 
-Verified: SIGINT/SIGTERM observation does not claim the signal; native host cancellation races independently with `SignalStream.next()`. Registered cleanup is shielded, but shielding a close call does not revive workers derived from the cancelled construction parent. Join workers before draining application-owned pending data directly in close while its dependencies remain open. See the [shutdown cookbook](../pkg/stdlib/process.ms), [disposable-child signal tests](../tests/e2e/shutdown_cookbook_test.go), and already-cancelled worker test. The current native host has no cleanup watchdog; do not infer implemented escalation from the contributor policy.
+Verified: SIGINT/SIGTERM observation does not claim the signal; native host cancellation races independently with `SignalStream.next()`. Registered cleanup is shielded, but shielding a close call does not revive workers derived from the cancelled construction parent. Join workers before draining application-owned pending data directly in close while its dependencies remain open. See the [shutdown cookbook](../pkg/stdlib/process.ms), [disposable-child signal tests](../tests/e2e/shutdown_cookbook_test.go), and already-cancelled worker test. Escalation exists only as the stop-request watchdog in `run.go`; it reports one line, not per-operation diagnostics.
 
 Verified: a queued transport operation can acquire a ready gate even when its lifetime cancellation is also ready. An asynchronous cancellation callback does not guarantee the operation's derived context is cancelled before stream dispatch. Recheck the closed state after acquiring the gate; otherwise queued writes can reach the stream after shutdown starts. See transport admission and `TestLogCloseInterruptsActiveAndQueuedWrites` in logging regressions. Repeat the close/caller-cancellation cases under the race detector when changing this path.
 
@@ -129,7 +152,7 @@ Verify: bracket raw monotonic readings against elapsed nanoseconds; check multi-
 
 ### Native constructor arguments need not be readable fields
 
-Verified: `Bytes(values: List[Int])` has a dedicated constructor rule; declaring `values` as a field did not make native Bytes expose that field. Removing the bogus field without preserving `ConstructorSignature` also loses editor constructor parameters. Checking and editor queries now share that constructor signature separately from the native `values() -> List[Int]` operation, which uses the existing free function's implementation. Constructor inputs and extracted lists copy byte values, preserving Bytes immutability.
+Verified: `Bytes(values: List[Int])` has a dedicated constructor rule; declaring `values` as a field did not make native Bytes expose that field. Removing the bogus field without preserving `ConstructorSignature` also loses editor constructor parameters. Checking and editor queries now share that constructor signature separately from the native `values() List[Int]` operation, which uses the existing free function's implementation. Constructor inputs and extracted lists copy byte values, preserving Bytes immutability.
 
 Apply when: describing native schemas or replacing bogus native fields with operations. Preserve dedicated constructor arguments separately from receiver declarations and bindings.
 Evidence: [constructor signatures](../pkg/checker/types.go), [constructor checking](../pkg/checker/calls.go), [byte declarations](../pkg/stdlib/bytes.ms), [native receiver identities](../internal/nativeabi/receivers.go), [editor signature regressions](../pkg/tooling/lsp/features_test.go), and [called extraction and constructor regressions](../tests/e2e/testdata/stdlib/string-bytes.ms).
@@ -192,7 +215,7 @@ Verified: normalizing every runtime record recognized as an options record corru
 
 Apply when: changing native argument normalization or generic receiver methods.
 Evidence: normalization boundary, runtime Optional regression, and [compiled record fallback](../tests/e2e/testdata/accept/optional-methods.ms).
-Verify: unwrap_or returns a JsonLimits record with negative and absent Optional fields unchanged and mutations retain its identity; concrete limits passed to their native operations remain validated.
+Verify: get(default) returns a JsonLimits record with negative and absent Optional fields unchanged and mutations retain its identity; concrete limits passed to their native operations remain validated.
 
 ### CSV writer defaults can erase a single empty field
 
@@ -396,7 +419,7 @@ cleanup with preserved machine outcomes.
 
 Decision: the owner asked for `json.parse` and `json.stringify` themselves to work with types, with no separate `decode` and no new syntax, and for JavaScript's `JSON.stringify` behavior: every type is accepted and nothing is rejected at compile time. Two interfaces customize shapes: `JsonEncode.to_json` exists; the `JsonDecode` counterpart is undecided (a record implementing it was proposed because contracts have no static operations). Typed lowering (#531) removed the dynamic value model the first designs walked, so the lowerer generates `json_enc_T` and `json_dec_T` helpers per concrete type (the `format` pattern) and `nativeCall` passes them to `Json_Stringify[T]` and `Json_Parse[T]`; `stdgen` checks the extra parameter.
 
-Verified: `try` gives its operand no backward context (conformance rule CL-14), so write `try parse[T](text)`. A record decode builds the struct through `defaultArgument`, so field defaults run in the record's module with earlier fields in scope; an absent `Optional` field without a default is `none`. Map keys are parsed per key type, and two members that read as one key (`"1"`, `"01"`) are `InvalidData`. A cycle is found by tracking pointer-typed containers only for types that can reach themselves (`mayCycle`). Interface values have no JSON form: a view's concrete type is unknown to the encoder, and giving every view an encoder would pull JSON into every program that uses a contract.
+Verified: `try` gives its operand no backward context (core-language fixture cl-14), so write `try parse[T](text)`. A record decode builds the struct through `defaultArgument`, so field defaults run in the record's module with earlier fields in scope; an absent `Optional` field without a default is `none`. Map keys are parsed per key type, and two members that read as one key (`"1"`, `"01"`) are `InvalidData`. A cycle is found by tracking pointer-typed containers only for types that can reach themselves (`mayCycle`). Interface values have no JSON form: a view's concrete type is unknown to the encoder, and giving every view an encoder would pull JSON into every program that uses a contract.
 
 Apply when: adding a standard value type with its own text or number form (extend `JsonEncNative` and `JsonDecNative` together), changing the encoding, or adding typed YAML/TOML encoding.
 Evidence: [declarations and guide](../pkg/stdlib/json.ms), [generator](../pkg/lower/json.go), [runtime helpers](../pkg/runtime/json_codec.go), [accepted forms](../pkg/checker/json_parse_test.go), [native conformance](../tests/e2e/testdata/stdlib/json.ms).

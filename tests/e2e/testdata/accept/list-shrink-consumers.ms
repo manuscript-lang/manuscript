@@ -3,7 +3,7 @@ import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
 type Visits:
     count: Int
 
-fn mutate[T](values: List[T], mode: String, replacement: T) -> Unit:
+fn mutate[T](values: List[T], mode: String, replacement: T) Unit:
     if mode == "remove":
         values.remove(0)
     if mode == "splice":
@@ -20,10 +20,10 @@ fn observe[T](
     mode: String,
     replacement: T,
     callback: Bool
-) -> Result[List[T], Error]:
+) Result[List[T], Error]:
     let seen: List[T] = []
     let visits = Visits(0)
-    let visit = fn(value: T) -> Unit:
+    let visit = fn(value: T) Unit:
         seen.append(value)
         if visits.count == 0:
             mutate(values: values, mode: mode, replacement: replacement)
@@ -39,14 +39,14 @@ fn observe[T](
     visits.count | try expect_equal(expected: 3)
     return ok(seen)
 
-fn expected[T](mode: String, first: T, second: T, last: T, replacement: T) -> List[T]:
+fn expected[T](mode: String, first: T, second: T, last: T, replacement: T) List[T]:
     if mode == "remove": return [first, last, last]
     if mode == "splice": return [first, replacement, last]
     if mode == "clear_append": return [first, replacement, last]
 
     return [first, second, last]
 
-fn remaining[T](mode: String, first: T, second: T, last: T, replacement: T) -> List[T]:
+fn remaining[T](mode: String, first: T, second: T, last: T, replacement: T) List[T]:
     if mode == "remove": return [second, last]
     if mode == "splice": return [first, replacement]
     if mode == "clear_append": return [replacement, replacement]
@@ -156,18 +156,13 @@ test "record consumers retain shallow references after shrink":
                 )
             ) | try expect_false
             last.value = 11
-            (
-                not (
-                    seen.last().unwrap().value == 11
-                    and clone.last().unwrap().value == 11
-                )
-            ) | try expect_false
+            (not (seen.last().get().value == 11 and clone.last().get().value == 11)) | try expect_false
 
 type Choice:
     case number(value: Int)
     case label(value: String)
 
-fn score(value: Choice) -> Int:
+fn score(value: Choice) Int:
     match value:
         number(count): return count
         label(text): return text.length()
@@ -213,8 +208,8 @@ test "nested list consumers retain inner handles after shrink":
             let want = expected(mode, first, second, last, replacement)
             var total = 0
             var wanted = 0
-            for value in seen: total = total + value.first().unwrap()
-            for value in want: wanted = wanted + value.first().unwrap()
+            for value in seen: total = total + value.first().get()
+            for value in want: wanted = wanted + value.first().get()
             (
                 not (
                     total == wanted
@@ -231,8 +226,8 @@ test "nested list consumers retain inner handles after shrink":
             last.append(11)
             try expect_true(
                 (
-                    seen.last().unwrap() == [3, 11]
-                    and clone.last().unwrap() == [3, 11]
+                    seen.last().get() == [3, 11]
+                    and clone.last().get() == [3, 11]
                 )
             )
 
@@ -272,10 +267,10 @@ test "map and folds consume valid retained cells":
     (backwards == 332 and reversed == [2, 3] and visits.count == 3) | try expect_true
 
 interface ReadValue:
-    fn read() -> Int
+    fn read() Int
 
 impl ReadValue for Payload:
-    fn read() -> Int: self.value
+    fn read() Int: self.value
 
 test "interface view consumers dispatch after shrink":
     for callback in [false, true]:
@@ -306,12 +301,7 @@ test "interface view consumers dispatch after shrink":
                 )
             ) | try expect_false
             last_record.value = 11
-            (
-                not (
-                    seen.last().unwrap().read() == 11
-                    and clone.last().unwrap().read() == 11
-                )
-            ) | try expect_false
+            (not (seen.last().get().read() == 11 and clone.last().get().read() == 11)) | try expect_false
 
 test "find returns the value passed to a mutating predicate":
     let forward = [1, 2, 3]
@@ -320,28 +310,28 @@ test "find returns the value passed to a mutating predicate":
             forward.remove(0)
             return value == 1
     )
-    (found.unwrap() == 1 and forward == [2, 3]) | try expect_true
+    (found.get() == 1 and forward == [2, 3]) | try expect_true
     let replaced = [1, 2, 3]
     let original = replaced.find(
         fn(value):
             replaced.set(0, 9)
             return value == 1
     )
-    (original.unwrap() == 1 and replaced == [9, 2, 3]) | try expect_true
+    (original.get() == 1 and replaced == [9, 2, 3]) | try expect_true
     let reverse = [1, 2, 3]
     let last = reverse.find_last(
         fn(value):
             if value == 2: reverse.remove(1)
             return value == 2
     )
-    (last.unwrap() == 2 and reverse == [1, 3]) | try expect_true
+    (last.get() == 2 and reverse == [1, 3]) | try expect_true
     let last_replaced = [1, 2, 3]
     let before = last_replaced.find_last(
         fn(value):
             last_replaced.set(2, 9)
             return value == 3
     )
-    (before.unwrap() == 3 and last_replaced == [1, 2, 9]) | try expect_true
+    (before.get() == 3 and last_replaced == [1, 2, 9]) | try expect_true
     let indexes = [1, 2, 3]
     let index = indexes.find_index(
         fn(value):
@@ -354,7 +344,7 @@ test "find returns the value passed to a mutating predicate":
             if value == 2: reverse_indexes.remove(1)
             return value == 2
     )
-    (index.unwrap() == 0 and last_index.unwrap() == 1) | try expect_true
+    (index.get() == 0 and last_index.get() == 1) | try expect_true
     let record = Payload(1)
     let records = [record, Payload(2)]
     let retained = (
@@ -366,13 +356,13 @@ test "find returns the value passed to a mutating predicate":
                 records.set(0, Payload(9))
                 return matches
         )
-        .unwrap()
+        .get()
     )
     (
         not (
             retained.value == 7
             and record.value == 7
-            and records.first().unwrap().value == 9
+            and records.first().get().value == 9
         )
     ) | try expect_false
 
@@ -405,4 +395,4 @@ test "preferred List mutators and explicit reversed copy preserve aliases":
     let shallow = children.reversed()
     child.value = 7
     children.remove(0)
-    (shallow.last().unwrap().value == 7 and children.length() == 1) | try expect_true
+    (shallow.last().get().value == 7 and children.length() == 1) | try expect_true

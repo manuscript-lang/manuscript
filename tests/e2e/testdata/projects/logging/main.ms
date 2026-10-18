@@ -3,6 +3,7 @@ import JsonValue from "@std/json.ms"
 import arguments from "@std/cli.ms"
 import stderr from "@std/io.ms"
 import {TaskGroup, Task} from "@std/tasks.ms"
+import range from "@std/collections.ms"
 import emit from "./records.ms"
 
 type Worker:
@@ -14,90 +15,87 @@ type Sequence:
 type Service:
     service: String
 
-fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
+fn concurrent_records(logger: Logger) Result[Unit, Error]:
     with group = TaskGroup():
         let tasks: List[Task[Result[Unit, Error]]] = []
 
-        for worker in [0, 1, 2, 3, 4, 5, 6, 7]:
+        for worker in range(0, 8):
             let task = group.start(
-                fn() -> Result[Unit, Error]:
-                    let child = try bind(
-                        logger: logger,
-                        bindings: Worker(worker: worker)
-                    )
-                    for sequence in [0, 1, 2, 3, 4, 5, 6, 7]:
-                        let logged = try record(
+                fn() Result[Unit, Error]:
+                    let child = try bind(logger, Worker(worker))
+                    for sequence in range(0, 8):
+                        try record(
                             logger: child,
                             level: LogLevel.Info,
                             message: "concurrent",
-                            fields: Sequence(
-                                sequence: sequence
-                            )
+                            fields: Sequence(sequence)
                         )
                     return ok(unit)
             )
             tasks.append(task)
 
-        let joined = try group.join()
+        try group.join()
 
         for task in tasks:
             let outcome = try task.join()
-            let completed = try outcome
+            if outcome.is_error():
+                return outcome
 
     return ok(unit)
 
-fn exercise(mode: String, path: String) -> Result[Unit, Error]:
-    let bindings = Service(service: "api")
+fn exercise(mode: String, path: String) Result[Unit, Error]:
+    let bindings = Service("api")
 
     if (mode == "file" or mode == "concurrent" or mode == "missing"):
         with transport = try file_transport(path):
-            let logger = try create(transport: transport, timestamp: false)
-                | try bind(bindings: bindings)
+            let logger = try create(transport, timestamp: false)
+                | try bind(bindings)
 
             if mode == "concurrent":
-                let logged = try concurrent_records(logger)
+                try concurrent_records(logger)
             else:
-                let logged = try emit(logger)
+                try emit(logger)
 
-            let flushed = try logger.flush()
+            try logger.flush()
 
         return ok(unit)
 
     with transport = stdout_transport():
         if mode == "limit":
-            let logged = try create(transport: transport, max_bytes: 1)
-                | try .info(message: "too large")
+            let logger = try create(transport, max_bytes: 1)
+            try logger.info("too large")
         else:
-            let logger = try create(transport: transport)
-                | try bind(bindings: bindings)
+            let logger = try create(transport)
+                | try bind(bindings)
 
             if mode == "invalid":
-                let logged = try record(
-                    logger: logger,
+                try record(
+                    logger,
                     level: LogLevel.Info,
                     message: "invalid",
                     fields: JsonValue.NumberValue("NaN")
                 )
             else if mode == "closed":
                 transport.close()
-                let logged = try logger.info(message: "closed")
+                try logger.info("closed")
             else:
-                let logged = try emit(logger)
-                let flushed = try logger.flush()
+                try emit(logger)
+                try logger.flush()
 
     with transport = stdout_transport():
-        let logger = try create(transport: transport, timestamp: false)
-        let logged = try logger.info(message: "still open")
+        let logger = try create(transport, timestamp: false)
+        try logger.info("still open")
 
     return ok(unit)
 
-export fn main() -> Int:
+export fn main() Int:
     let args = arguments()
-    let mode = args.at(0).unwrap_or("stdout")
-    let path = args.at(1).unwrap_or("events.ndjson")
+    let mode = args.at(0).get("stdout")
+    let path = args.at(1).get("events.ndjson")
+    let result = exercise(mode, path)
 
-    match exercise(mode: mode, path: path):
-        ok(_): return 0
-        error(cause):
-            let diagnostic = stderr().write("{cause.message()}\n".to_bytes())
-            return 1
+    if result.is_error():
+        let _ignored = stderr().write("{result.err().message()}\n".to_bytes())
+        return 1
+
+    return 0

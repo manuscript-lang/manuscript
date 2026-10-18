@@ -6,11 +6,11 @@ import (
 )
 
 func TestNativeMethodConstraints(t *testing.T) {
-	prelude := `fn stringify(value: Int) -> String:
+	prelude := `fn stringify(value: Int) String:
     return "{value}"
-fn wrong_label(item: Int) -> String:
+fn wrong_label(item: Int) String:
     return "{item}"
-fn callback() -> Unit:
+fn callback() Unit:
     return unit
 `
 	for name, body := range map[string]string{
@@ -42,13 +42,13 @@ fn callback() -> Unit:
 
 func TestNativeMethodRetainsGenericReceiverBounds(t *testing.T) {
 	for _, source := range []string{
-		`fn search[T: Equal](values: List[T], value: T) -> Bool:
+		`fn search[T: Equal](values: List[T], value: T) Bool:
     return values.contains(value: value)
 `,
-		`fn unique[T: Hashable](values: List[T]) -> Set[T]:
+		`fn unique[T: Hashable](values: List[T]) Set[T]:
     return values.to_set()
 `,
-		`fn convert[T, U](values: List[T], transform: fn(value: T) -> U) -> List[U]:
+		`fn convert[T, U](values: List[T], transform: fn(value: T) U) List[U]:
     return values.map(transform: transform)
 `,
 	} {
@@ -57,7 +57,7 @@ func TestNativeMethodRetainsGenericReceiverBounds(t *testing.T) {
 			t.Fatal(result.Diagnostics)
 		}
 	}
-	source := `fn search[T](values: List[T], value: T) -> Bool:
+	source := `fn search[T](values: List[T], value: T) Bool:
     return values.contains(value: value)
 `
 	if result := CompileSource("bounds.ms", source, Options{}); result.Success() {

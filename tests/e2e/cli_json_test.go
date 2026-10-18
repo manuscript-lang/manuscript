@@ -123,7 +123,7 @@ func TestCLITestJSONEmptyCompileErrorAndTimeout(t *testing.T) {
 		status int
 		reason string
 	}{
-		{"export fn helper() -> Int: return 0\n", 0, "no_tests"},
+		{"export fn helper() Int: return 0\n", 0, "no_tests"},
 		{"test \"bad\":\n    let x = unknown_name\n", 1, "compile_error"},
 		{"import {sleep, duration} from \"@std/time.ms\"\n\ntest \"timeout\":\n    sleep(duration(nanoseconds: 1000000000))\n\ntest \"after\":\n    return unit\n", 1, ""},
 	} {

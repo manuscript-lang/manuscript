@@ -45,14 +45,14 @@ func TestLibraryErrorDomainsAreDistinct(t *testing.T) {
 import EncodingError from "@std/encoding.ms"
 `
 	for name, source := range map[string]string{
-		"unrelated error": `fn wrong() -> Result[Unit, JsonError]:
+		"unrelated error": `fn wrong() Result[Unit, JsonError]:
     return error(cause: EncodingError.InvalidData)
 `,
-		"impossible case": `fn wrong() -> JsonError:
+		"impossible case": `fn wrong() JsonError:
     return JsonError.PermissionDenied
 `,
 		"implicit propagation": `import hex_decode from "@std/encoding.ms"
-fn wrong() -> Result[Unit, JsonError]:
+fn wrong() Result[Unit, JsonError]:
     let bytes = try hex_decode(text: "ff", max_bytes: 1)
     return ok(value: unit)
 `,
@@ -73,55 +73,55 @@ import EncodingError from "@std/encoding.ms"
 	for name, source := range map[string]string{
 		"missing implicit implementation": `type Impostor:
     detail: String
-fn wrong(value: Impostor) -> Error:
+fn wrong(value: Impostor) Error:
     return value
 `,
-		"unimplemented try error": `fn failure() -> Result[Unit, String]:
+		"unimplemented try error": `fn failure() Result[Unit, String]:
     return error(cause: "diagnostic")
-fn wrong() -> Result[Unit, Error]:
+fn wrong() Result[Unit, Error]:
     let completed = try failure()
     return ok(value: unit)
 `,
-		"result success remains exact": `fn wrong() -> Result[String, Error]:
+		"result success remains exact": `fn wrong() Result[String, Error]:
     return Result[Int, JsonError].ok(value: 1)
 `,
-		"Error cannot narrow to a domain": `fn wrong(value: Error) -> JsonError:
+		"Error cannot narrow to a domain": `fn wrong(value: Error) JsonError:
     return value
 `,
-		"error lists remain invariant": `fn wrong(values: List[JsonError]) -> List[Error]:
+		"error lists remain invariant": `fn wrong(values: List[JsonError]) List[Error]:
     return values
 `,
-		"error function types remain invariant": `fn wrong(operation: fn() -> JsonError) -> fn() -> Error:
+		"error function types remain invariant": `fn wrong(operation: fn() JsonError) fn() Error:
     return operation
 `,
 		"other implemented interfaces require a view": `interface Diagnostic:
-    fn message() -> String
+    fn message() String
 type LocalError:
     detail: String
 impl Diagnostic for LocalError:
-    fn message() -> String:
+    fn message() String:
         return self.detail
-fn wrong(value: LocalError) -> Diagnostic:
+fn wrong(value: LocalError) Diagnostic:
     return value
 `,
 		"missing implementation": `type Impostor:
     detail: String
-fn wrong(value: Impostor) -> Error:
+fn wrong(value: Impostor) Error:
     return Error(value: value)
 `,
-		"open contract needs fallback": `fn wrong(cause: Error) -> String:
+		"open contract needs fallback": `fn wrong(cause: Error) String:
     match cause:
         JsonError(value):
             return value.message()
 `,
-		"case is not a type": `fn wrong(cause: Error) -> String:
+		"case is not a type": `fn wrong(cause: Error) String:
     match cause:
         JsonError.InvalidData(value):
             return "invalid"
         _:
             return cause.message()
 `,
-		"payload arity": `fn wrong(cause: Error) -> String:
+		"payload arity": `fn wrong(cause: Error) String:
     match cause:
         JsonError:
             return "invalid"
@@ -130,14 +130,14 @@ fn wrong(value: Impostor) -> Error:
 `,
 		"unrelated concrete type": `type Other:
     detail: String
-fn wrong(cause: Error) -> String:
+fn wrong(cause: Error) String:
     match cause:
         Other(value):
             return value.detail
         _:
             return cause.message()
 `,
-		"duplicate type": `fn wrong(cause: Error) -> String:
+		"duplicate type": `fn wrong(cause: Error) String:
     match cause:
         JsonError(first):
             return first.message()
@@ -146,7 +146,7 @@ fn wrong(cause: Error) -> String:
         _:
             return cause.message()
 `,
-		"fallback must be last": `fn wrong(cause: Error) -> String:
+		"fallback must be last": `fn wrong(cause: Error) String:
     match cause:
         _:
             return cause.message()
@@ -156,9 +156,9 @@ fn wrong(cause: Error) -> String:
 		"unbound generic type": `type Box[T]:
     item: T
 impl Error for Box[T]:
-    fn message() -> String:
+    fn message() String:
         return "box"
-fn wrong(cause: Error) -> String:
+fn wrong(cause: Error) String:
     match cause:
         Box(value):
             return value.message()
@@ -178,16 +178,16 @@ fn wrong(cause: Error) -> String:
 func TestCommonErrorAcceptsSpecificErrors(t *testing.T) {
 	source := `import JsonError from "@std/json.ms"
 import hex_decode from "@std/encoding.ms"
-fn general(cause: JsonError) -> Error:
+fn general(cause: JsonError) Error:
     return cause
-fn failed() -> Result[Unit, JsonError]:
+fn failed() Result[Unit, JsonError]:
     return error(cause: JsonError.InvalidData)
-fn forwarded() -> Result[Unit, Error]:
+fn forwarded() Result[Unit, Error]:
     return failed()
-fn propagated() -> Result[Unit, Error]:
+fn propagated() Result[Unit, Error]:
     let bytes = try hex_decode(text: "zz")
     return ok(value: unit)
-fn constructed() -> Result[Unit, Error]:
+fn constructed() Result[Unit, Error]:
     return error(cause: JsonError.InvalidData)
 `
 	result := compiler.CompileSource("direct-errors.ms", source, compiler.Options{})
@@ -209,9 +209,9 @@ func TestAllStandardErrorsImplementError(t *testing.T) {
 				continue
 			}
 			t.Run(declaration.Name, func(t *testing.T) {
-				source := fmt.Sprintf(`fn diagnostic(cause: %s) -> String:
+				source := fmt.Sprintf(`fn diagnostic(cause: %s) String:
     return cause.message()
-fn view(cause: %s) -> Error:
+fn view(cause: %s) Error:
     return cause
 `, declaration.Name, declaration.Name)
 				if !checker.IsPreludeSymbol(checker.StandardExports(module.Path)[declaration.Name]) {
@@ -266,7 +266,7 @@ func TestBundledRuntimeImportAliasesAgree(t *testing.T) {
 
 func TestTimeSchedulingAcceptsOrdinaryCallbackValues(t *testing.T) {
 	source := `import Scheduler from "@std/tasks.ms"
-fn start_timer(operation: fn() -> Result[Unit, Error]) -> Unit:
+fn start_timer(operation: fn() Result[Unit, Error]) Unit:
     with scheduler = Scheduler():
         let schedule = scheduler.after
         let id = schedule(duration: 0.milliseconds, operation: operation)

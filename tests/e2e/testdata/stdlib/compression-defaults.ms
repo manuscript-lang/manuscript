@@ -1,14 +1,14 @@
-import {expect_equal, expect_ok} from "@std/testing.ms"
+import {expect_equal} from "@std/testing.ms"
 import {compress, decompress, CompressionFormat, CompressionError} from "@std/compress.ms"
 import Bytes from "@std/bytes.ms"
 
-fn forwarded[T](item: T) -> T: item
+fn forwarded[T](item: T) T: item
 
-fn supplied(log: List[String], data: Bytes) -> Bytes:
+fn supplied(log: List[String], data: Bytes) Bytes:
     log.append("data")
     return data
 
-fn chosen(log: List[String], format: String) -> String:
+fn chosen(log: List[String], format: String) String:
     log.append("format")
     return format
 
@@ -25,31 +25,30 @@ test "compression omission equals explicit level six for every format":
     var index = 0
 
     for format in formats:
-        let name = names.at(index).unwrap()
-        index = index + 1
-        let expected = (compress(data, name, 6) | try expect_ok)
-        alias(data, name) | try expect_ok | try expect_equal(expected: expected)
-        compress(data, name, max_bytes: none) | try expect_ok | try expect_equal(
-            expected: expected
-        )
+        let name = names.at(index).get()
+        index += 1
+        let expected = try compress(data, name, 6)
+        try expect_equal((try alias(data, name)), expected)
+        try expect_equal((try compress(data, name, max_bytes: none)), expected)
         let method = format.compress
         let copied = method
-        copied(data) | try expect_ok | try expect_equal(expected: expected)
-        method(data, level: 6) | try expect_ok | try expect_equal(expected: expected)
-        format.compress(data, max_bytes: expected.length()) | try expect_ok | try expect_equal(
-            expected: expected
+        try expect_equal((try copied(data)), expected)
+        try expect_equal((try method(data, 6)), expected)
+        try expect_equal(
+            (try format.compress(data, max_bytes: expected.length())),
+            expected
         )
-        format.decompress(expected) | try expect_ok | try expect_equal(expected: data)
-        decompress(expected, name) | try expect_ok | try expect_equal(expected: data)
+        try expect_equal((try format.decompress(expected)), data)
+        try expect_equal((try decompress(expected, name)), data)
 
         for level in [0, 9]:
-            let output = (format.compress(data, level) | try expect_ok)
-            decompress(output, name) | try expect_ok | try expect_equal(expected: data)
+            let output = try format.compress(data, level)
+            try expect_equal((try decompress(output, name)), data)
 
         let full = forwarded(method)
         let free = forwarded(compress)
-        free(data, name, 6, none) | try expect_ok | try expect_equal(expected: expected)
-        full(data, 6, none) | try expect_ok | try expect_equal(expected: expected)
+        try expect_equal((try free(data, name, 6, none)), expected)
+        try expect_equal((try full(data, 6, none)), expected)
 
 test "compression defaults retain invalid levels formats and output budgets":
     let data = "abc".to_bytes()
@@ -64,26 +63,21 @@ test "compression defaults retain invalid levels formats and output budgets":
         CompressionFormat.Zlib,
         CompressionFormat.Deflate
     ]:
-        format.compress(data, -1) | try expect_equal(expected: invalid)
-        format.compress(data, 10) | try expect_equal(expected: invalid)
-        format.compress(data, max_bytes: -1) | try expect_equal(expected: invalid)
-        format.compress(data, max_bytes: 0) | try expect_equal(expected: limited)
+        try expect_equal(format.compress(data, -1), invalid)
+        try expect_equal(format.compress(data, 10), invalid)
+        try expect_equal(format.compress(data, max_bytes: -1), invalid)
+        try expect_equal(format.compress(data, max_bytes: 0), limited)
         let method = format.compress
-        method(data, max_bytes: 1) | try expect_equal(expected: limited)
+        try expect_equal(method(data, max_bytes: 1), limited)
 
-    compress(data, "invalid") | try expect_equal(expected: unsupported)
-    compress(data, "gzip", -1) | try expect_equal(expected: invalid)
-    compress(data, "gzip", max_bytes: -1) | try expect_equal(expected: invalid)
-    compress(data, "gzip", max_bytes: 0) | try expect_equal(expected: limited)
+    try expect_equal(compress(data, "invalid"), unsupported)
+    try expect_equal(compress(data, "gzip", -1), invalid)
+    try expect_equal(compress(data, "gzip", max_bytes: -1), invalid)
+    try expect_equal(compress(data, "gzip", max_bytes: 0), limited)
 
 test "compression default preparation retains supplied argument order":
     let log: List[String] = []
     let data = "data".to_bytes()
-    let encoded = (
-        compress(
-            format: chosen(log, "gzip"),
-            data: supplied(log, data)
-        ) | try expect_ok
-    )
-    log | try expect_equal(expected: ["format", "data"])
-    decompress(encoded, "gzip") | try expect_ok | try expect_equal(expected: data)
+    let encoded = try compress(format: chosen(log, "gzip"), supplied(log, data))
+    try expect_equal(log, ["format", "data"])
+    try expect_equal((try decompress(encoded, "gzip")), data)

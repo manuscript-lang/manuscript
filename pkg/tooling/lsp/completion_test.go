@@ -16,16 +16,16 @@ func TestLocalExtensionCompletionAndNavigation(t *testing.T) {
 		"domain.ms": "export type Box:\n    value: Int\n",
 		"extension.ms": `import Box from "./domain.ms"
 interface Read:
-    fn get() -> Int
+    fn get() Int
 impl Read for Box:
-    fn get() -> Int:
+    fn get() Int:
         return self.value
-export fn read(value: Box) -> Int:
+export fn read(value: Box) Int:
     return value.get()
 `,
 		"main.ms": `import Box from "./domain.ms"
 import read from "./extension.ms"
-fn use(value: Box) -> Int:
+fn use(value: Box) Int:
     return value.value
 `,
 	}
@@ -87,7 +87,7 @@ func itemNamed(items []completionItem, name string) *completionItem {
 
 func TestPreludeCompletionNeedsNoImport(t *testing.T) {
 	for _, name := range []string{"Optional", "Result", "Error", "List", "Map", "Set"} {
-		items := completeSource(t, "fn work(value: "+name[:2]+"|) -> Unit:\n    return\n")
+		items := completeSource(t, "fn work(value: "+name[:2]+"|) Unit:\n    return\n")
 		item := itemNamed(items, name)
 		if item == nil || len(item.AdditionalTextEdits) != 0 {
 			t.Fatalf("%s must complete without an import: %+v", name, item)
@@ -97,7 +97,7 @@ func TestPreludeCompletionNeedsNoImport(t *testing.T) {
 
 func TestCollectionPreludeExpressionCompletionNeedsNoImport(t *testing.T) {
 	for _, name := range []string{"List", "Map", "Set"} {
-		items := completeSource(t, "fn work() -> Unit:\n    "+name[:2]+"|\n")
+		items := completeSource(t, "fn work() Unit:\n    "+name[:2]+"|\n")
 		item := itemNamed(items, name)
 		if item == nil || len(item.AdditionalTextEdits) != 0 {
 			t.Fatalf("%s: %+v", name, item)
@@ -106,7 +106,7 @@ func TestCollectionPreludeExpressionCompletionNeedsNoImport(t *testing.T) {
 }
 
 func TestPreludeNavigationUsesStandardSource(t *testing.T) {
-	source := "fn work(value: Optional[Int]) -> Result[Int, Error]:\n    return ok(value: value.unwrap())\n"
+	source := "fn work(value: Optional[Int]) Result[Int, Error]:\n    return ok(value: value.get())\n"
 	d := document{"file:///tmp/prelude.ms", source, 1}
 	result := analyze(d, map[string]document{d.URI: d})
 	if !result.Success() {
@@ -125,23 +125,23 @@ func TestTypedCompletionWhileEditing(t *testing.T) {
 		name, source string
 		want, absent []string
 	}{
-		{"parameter", "fn answer(input: Int) -> Int:\n    return inp|\n", []string{"input"}, nil},
-		{"locals before cursor", "fn answer() -> Int:\n    let before = 1\n    be|\n    let behind = 2\n    return before\n", []string{"before"}, []string{"behind"}},
-		{"siblings hidden", "fn answer() -> Int:\n    if true:\n        let secret = 1\n    sec|\n    return 0\n", nil, []string{"secret"}},
-		{"list methods", "fn count(items: List[Int]) -> Int:\n    return items.|\n", []string{"length", "at", "append", "concat"}, []string{"byte_length", "send"}},
-		{"prelude set methods", "fn count(items: Set[Int]) -> Int:\n    return items.|\n", []string{"length", "contains", "add", "remove"}, []string{"at", "append", "send"}},
-		{"member prefix", "fn size(text: String) -> Int:\n    return text.byte_|\n", []string{"byte_length"}, []string{"parse_int"}},
-		{"record fields", "type Point:\n    x: Int\n    y: String\nfn read(point: Point) -> Int:\n    return point.|\n", []string{"x", "y"}, []string{"length"}},
-		{"native opaque fields", "import Queue from \"@std/queues.ms\"\nfn read(queue: Queue[Int]) -> Unit:\n    queue.|\n", []string{"enqueue", "dequeue", "peek", "length", "is_empty"}, []string{"capacity", "send", "receive", "close"}},
-		{"named arguments incomplete call", "fn sum(left: Int, right: Int) -> Int:\n    return left + right\nfn answer() -> Int:\n    return sum(le|\n", []string{"left"}, []string{"right"}},
-		{"used arguments omitted", "fn sum(left: Int, right: Int) -> Int:\n    return left + right\nfn answer() -> Int:\n    return sum(left: 1, |\n", []string{"right"}, []string{"left"}},
-		{"typed argument expression", "fn sum(left: Int, right: Int) -> Int:\n    return left + right\nfn answer(input: Int) -> Int:\n    return sum(left: inp|\n", []string{"input"}, nil},
-		{"auto import", "fn work() -> Unit:\n    Que|\n", []string{"Queue"}, nil},
-		{"comments", "fn work() -> Unit:\n    # Que|\n    unit\n", nil, []string{"Queue"}},
-		{"strings", "fn work() -> String:\n    return \"Que|\"\n", nil, []string{"Queue"}},
-		{"optional methods", "fn work(value: Optional[Int]) -> Int:\n    return value.|\n", []string{"is_some", "is_none", "unwrap", "unwrap_or", "unwrap_or_else"}, []string{"some", "none", "get"}},
-		{"generic alternative", "fn work() -> Optional[Int]:\n    return Optional[Int].|\n", []string{"some", "none"}, nil},
-		{"prelude result cases", "fn work() -> Result[Int, String]:\n    return Result[Int, String].|\n", []string{"ok", "error"}, nil},
+		{"parameter", "fn answer(input: Int) Int:\n    return inp|\n", []string{"input"}, nil},
+		{"locals before cursor", "fn answer() Int:\n    let before = 1\n    be|\n    let behind = 2\n    return before\n", []string{"before"}, []string{"behind"}},
+		{"siblings hidden", "fn answer() Int:\n    if true:\n        let secret = 1\n    sec|\n    return 0\n", nil, []string{"secret"}},
+		{"list methods", "fn count(items: List[Int]) Int:\n    return items.|\n", []string{"length", "at", "append", "concat"}, []string{"byte_length", "send"}},
+		{"prelude set methods", "fn count(items: Set[Int]) Int:\n    return items.|\n", []string{"length", "contains", "add", "remove"}, []string{"at", "append", "send"}},
+		{"member prefix", "fn size(text: String) Int:\n    return text.byte_|\n", []string{"byte_length"}, []string{"parse_int"}},
+		{"record fields", "type Point:\n    x: Int\n    y: String\nfn read(point: Point) Int:\n    return point.|\n", []string{"x", "y"}, []string{"length"}},
+		{"native opaque fields", "import Queue from \"@std/queues.ms\"\nfn read(queue: Queue[Int]) Unit:\n    queue.|\n", []string{"enqueue", "dequeue", "peek", "length", "is_empty"}, []string{"capacity", "send", "receive", "close"}},
+		{"named arguments incomplete call", "fn sum(left: Int, right: Int) Int:\n    return left + right\nfn answer() Int:\n    return sum(le|\n", []string{"left"}, []string{"right"}},
+		{"used arguments omitted", "fn sum(left: Int, right: Int) Int:\n    return left + right\nfn answer() Int:\n    return sum(left: 1, |\n", []string{"right"}, []string{"left"}},
+		{"typed argument expression", "fn sum(left: Int, right: Int) Int:\n    return left + right\nfn answer(input: Int) Int:\n    return sum(left: inp|\n", []string{"input"}, nil},
+		{"auto import", "fn work() Unit:\n    Que|\n", []string{"Queue"}, nil},
+		{"comments", "fn work() Unit:\n    # Que|\n    unit\n", nil, []string{"Queue"}},
+		{"strings", "fn work() String:\n    return \"Que|\"\n", nil, []string{"Queue"}},
+		{"optional methods", "fn work(value: Optional[Int]) Int:\n    return value.|\n", []string{"is_some", "is_none", "get", "or_else"}, []string{"some", "none", "unwrap"}},
+		{"generic alternative", "fn work() Optional[Int]:\n    return Optional[Int].|\n", []string{"some", "none"}, nil},
+		{"prelude result cases", "fn work() Result[Int, String]:\n    return Result[Int, String].|\n", []string{"ok", "error"}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -160,7 +160,7 @@ func TestTypedCompletionWhileEditing(t *testing.T) {
 	}
 }
 func TestCompletionSnippetsEditsAndSpecialization(t *testing.T) {
-	items := completeSource(t, "fn count(items: List[String]) -> Unit:\n    items.ap|\n")
+	items := completeSource(t, "fn count(items: List[String]) Unit:\n    items.ap|\n")
 	item := itemNamed(items, "append")
 	if item == nil {
 		t.Fatal(items)
@@ -175,18 +175,18 @@ func TestCompletionSnippetsEditsAndSpecialization(t *testing.T) {
 	if got := edit["range"].(span); got.Start != (position{1, 10}) || got.End != (position{1, 12}) {
 		t.Fatal(got)
 	}
-	imports := completeSource(t, "fn work() -> Unit:\n    Que|\n")
+	imports := completeSource(t, "fn work() Unit:\n    Que|\n")
 	queue := itemNamed(imports, "Queue")
 	if queue == nil || len(queue.AdditionalTextEdits) != 1 {
 		t.Fatal(queue)
 	}
 }
 func TestCompletionSurvivesIndependentSyntaxErrors(t *testing.T) {
-	items := completeSource(t, "fn answer(input: Int) -> Int:\n    return inp|\nfn broken(\n")
+	items := completeSource(t, "fn answer(input: Int) Int:\n    return inp|\nfn broken(\n")
 	if itemNamed(items, "input") == nil {
 		t.Fatal(items)
 	}
-	items = completeSource(t, "import Missing from \"./absent.ms\"\nfn answer(input: Int) -> Int:\n    return inp|\n")
+	items = completeSource(t, "import Missing from \"./absent.ms\"\nfn answer(input: Int) Int:\n    return inp|\n")
 	if itemNamed(items, "input") == nil {
 		t.Fatal(items)
 	}
@@ -194,8 +194,8 @@ func TestCompletionSurvivesIndependentSyntaxErrors(t *testing.T) {
 
 func TestCompletionWithMultilineParameters(t *testing.T) {
 	for _, source := range []string{
-		"fn answer(\n    input: Int,\n) -> Int:\n    return inp|\nfn broken(\n",
-		"import WriteStream from \"@std/io.ms\"\nfn render(\n    arguments: List[String],\n    output: WriteStream\n) -> Int:\n    let joined = arguments.jo|\n    match output.write(data: \"hello\".to_bytes()):\n",
+		"fn answer(\n    input: Int,\n) Int:\n    return inp|\nfn broken(\n",
+		"import WriteStream from \"@std/io.ms\"\nfn render(\n    arguments: List[String],\n    output: WriteStream\n) Int:\n    let joined = arguments.jo|\n    match output.write(data: \"hello\".to_bytes()):\n",
 	} {
 		items := completeSource(t, source)
 		want := "input"
@@ -208,7 +208,7 @@ func TestCompletionWithMultilineParameters(t *testing.T) {
 	}
 }
 func TestShadowingCompletionUsesNearestType(t *testing.T) {
-	items := completeSource(t, "fn answer(input: Int) -> Unit:\n    if true:\n        let input = \"text\"\n        inp|\n    return unit\n")
+	items := completeSource(t, "fn answer(input: Int) Unit:\n    if true:\n        let input = \"text\"\n        inp|\n    return unit\n")
 	item := itemNamed(items, "input")
 	if item == nil || item.Detail != "String" {
 		t.Fatal(item, items)
@@ -216,13 +216,13 @@ func TestShadowingCompletionUsesNearestType(t *testing.T) {
 }
 
 func TestImportedHostAccessorCompletion(t *testing.T) {
-	items := completeSource(t, "import stdout from \"@std/io.ms\"\nexport fn main() -> Int:\n    stdout().wr|\n    return 0\n")
+	items := completeSource(t, "import stdout from \"@std/io.ms\"\nexport fn main() Int:\n    stdout().wr|\n    return 0\n")
 	if itemNamed(items, "write") == nil {
 		t.Fatalf("host service result has no write completion: %+v", items)
 	}
 }
 func TestGenericBoundMembers(t *testing.T) {
-	items := completeSource(t, "interface Reader:\n    fn read() -> String\nfn answer[T: Reader](reader: T) -> String:\n    return reader.|\n")
+	items := completeSource(t, "interface Reader:\n    fn read() String\nfn answer[T: Reader](reader: T) String:\n    return reader.|\n")
 	if itemNamed(items, "read") == nil {
 		t.Fatal(items)
 	}
@@ -230,22 +230,22 @@ func TestGenericBoundMembers(t *testing.T) {
 
 func TestUniversalToStringCompletion(t *testing.T) {
 	for _, source := range []string{
-		"fn text(value: Bool) -> String:\n    return value.|\n",
-		"fn text[T](value: T) -> String:\n    return value.|\n",
-		"interface Named:\n    fn name() -> String\nfn text(value: Named) -> String:\n    return value.|\n",
-		"type Item:\n    value: Int\nfn text(value: Item) -> String:\n    return value.|\n",
-		"fn text(value: fn() -> Int) -> String:\n    return value.|\n",
-		"import Queue from \"@std/queues.ms\"\nfn text(value: Queue[Int]) -> String:\n    return value.|\n",
+		"fn text(value: Bool) String:\n    return value.|\n",
+		"fn text[T](value: T) String:\n    return value.|\n",
+		"interface Named:\n    fn name() String\nfn text(value: Named) String:\n    return value.|\n",
+		"type Item:\n    value: Int\nfn text(value: Item) String:\n    return value.|\n",
+		"fn text(value: fn() Int) String:\n    return value.|\n",
+		"import Queue from \"@std/queues.ms\"\nfn text(value: Queue[Int]) String:\n    return value.|\n",
 	} {
 		items := completeSource(t, source)
-		item := itemNamed(items, "toString")
-		if item == nil || item.Detail != "fn()->String" || item.TextEdit.(map[string]any)["newText"] != "toString()$0" {
+		item := itemNamed(items, "to_string")
+		if item == nil || item.Detail != "fn()->String" || item.TextEdit.(map[string]any)["newText"] != "to_string()$0" {
 			t.Fatalf("missing universal method for %s: %+v", source, items)
 		}
 	}
 }
 func BenchmarkMemberCompletion(b *testing.B) {
-	source := "fn answer(items: List[String]) -> Int:\n    return items.\n"
+	source := "fn answer(items: List[String]) Int:\n    return items.\n"
 	d := document{"file:///tmp/benchmark-completion.ms", source, 1}
 	docs := map[string]document{d.URI: d}
 	p := position{1, 17}
@@ -257,14 +257,14 @@ func BenchmarkMemberCompletion(b *testing.B) {
 	}
 }
 func TestFuzzyMemberCompletion(t *testing.T) {
-	items := completeSource(t, "fn size(text: String) -> Int:\n    return text.bl|\n")
+	items := completeSource(t, "fn size(text: String) Int:\n    return text.bl|\n")
 	if itemNamed(items, "byte_length") == nil {
 		t.Fatal(items)
 	}
 }
 
 func TestExpandedStandardMembersAndInterfaceSnippet(t *testing.T) {
-	items := completeSource(t, "import HttpClient from \"@std/http.ms\"\nfn work(client: HttpClient) -> Unit:\n    client.|\n")
+	items := completeSource(t, "import HttpClient from \"@std/http.ms\"\nfn work(client: HttpClient) Unit:\n    client.|\n")
 	if itemNamed(items, "request_stream") == nil {
 		t.Fatal(items)
 	}
@@ -283,7 +283,7 @@ func TestTimeReceiverCompletion(t *testing.T) {
 		{"Instant", []string{"shift", "difference", "compare"}},
 		{"Timestamp", []string{"to_string", "unix_seconds", "nanoseconds", "shift", "difference", "compare"}},
 	} {
-		items := completeSource(t, "import "+test.typ+" from \"@std/time.ms\"\nfn work(value: "+test.typ+") -> Unit:\n    value.|\n")
+		items := completeSource(t, "import "+test.typ+" from \"@std/time.ms\"\nfn work(value: "+test.typ+") Unit:\n    value.|\n")
 		for _, method := range test.methods {
 			if itemNamed(items, method) == nil {
 				t.Errorf("%s missing %s: %v", test.typ, method, items)
@@ -313,7 +313,7 @@ func TestGroupedImportCompletion(t *testing.T) {
 
 func TestCollectionPreludeEditorContracts(t *testing.T) {
 	for _, newline := range []string{"\n", "\r\n"} {
-		source := strings.ReplaceAll("fn use(values: List[Int], entries: Map[String, Int], unique: Set[Int]) -> Unit:\n    entries.add(\"a\", 1)\n", "\n", newline)
+		source := strings.ReplaceAll("fn use(values: List[Int], entries: Map[String, Int], unique: Set[Int]) Unit:\n    entries.add(\"a\", 1)\n", "\n", newline)
 		d := document{"file:///tmp/collections.ms", source, 1}
 		r := analyze(d, map[string]document{d.URI: d})
 		if !r.Success() {
@@ -326,23 +326,15 @@ func TestCollectionPreludeEditorContracts(t *testing.T) {
 			}
 		}
 	}
-	items := completeSource(t, "fn use(entries: Map[String, Int]) -> Unit:\n    entries.ad|\n")
+	items := completeSource(t, "fn use(entries: Map[String, Int]) Unit:\n    entries.ad|\n")
 	item := itemNamed(items, "add")
 	if item == nil || !strings.Contains(item.Detail, "String") || !strings.Contains(item.Detail, "Int") || len(item.AdditionalTextEdits) != 0 {
 		t.Fatal(item)
 	}
-	signature := signatureSource(t, "fn use(entries: Map[String, Int]) -> Unit:\n    entries.add(key: \"a\", value: |\n")
+	signature := signatureSource(t, "fn use(entries: Map[String, Int]) Unit:\n    entries.add(key: \"a\", value: |\n")
 	label := signature["signatures"].([]any)[0].(map[string]any)["label"].(string)
-	if label != "entries.add(key: String, value: Int) -> Map[String, Int]" || signature["activeParameter"] != 1 {
+	if label != "entries.add(key: String, value: Int) Map[String, Int]" || signature["activeParameter"] != 1 {
 		t.Fatal(signature)
-	}
-	local := completeSource(t, "type Map[K,V]:\n    value: V\nfn use(entries: Map[String, Int]) -> Unit:\n    entries.|\n")
-	if itemNamed(local, "add") != nil || itemNamed(local, "value") == nil {
-		t.Fatal(local)
-	}
-	local = completeSource(t, "type Set[T]:\n    value: T\nfn use(values: Set[Int]) -> Unit:\n    values.|\n")
-	if itemNamed(local, "add") != nil || itemNamed(local, "value") == nil {
-		t.Fatal(local)
 	}
 }
 
@@ -359,7 +351,7 @@ func TestFileFixtureCompletion(t *testing.T) {
 	source := `import TestHooks from "@std/testing.ms"
 type State:
     count: Int
-fn make_fixture() -> State:
+fn make_fixture() State:
     return State(0)
 impl TestHooks for State:
 test "one":

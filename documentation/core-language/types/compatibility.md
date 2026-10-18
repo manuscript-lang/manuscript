@@ -5,9 +5,9 @@ weight = 10
 
 # Type compatibility and expected types
 
-The type you provide must match the type required at that position. This applies to variable annotations, assignments, arguments, returns, fields, and collection elements. For example, an `Int` cannot silently become a `Float`, and two records do not become interchangeable just because their fields match.
+A value's type must match the type required at its position: annotations, assignments, arguments, returns, fields, and collection elements. An `Int` is not a `Float`, and records with equal fields are not interchangeable.
 
-An expression of type `Never` cannot produce a value, so it can appear where any expression value is expected. Errors implementing the standard `Error` interface can also pass directly into an Error boundary; see [error compatibility](../errors/propagation.md#error-compatibility). These rules do not make differently declared function types interchangeable.
+`Never` expressions fit anywhere. Errors implementing `Error` pass into an Error boundary ([error compatibility](../errors/propagation.md#error-compatibility)).
 
 ## Exact and nominal identity
 
@@ -19,32 +19,26 @@ An expression of type `Never` cannot produce a value, so it can appear where any
 | Generic application | Exact declaration and every ordered argument; Result can widen its error to Error while retaining the same success type |
 | Function | Exact parameter labels, declaration order, parameter types, and result type; no variance or label/order adaptation |
 
-Caller-written argument order affects evaluation without changing function identity. A generic bound grants properties, not subtyping. Shared/plain arguments remain distinct during inference; `List[Contract]` fails its element bound, while `List[Contract]` may satisfy it.
+A generic bound grants properties, not subtyping. Type positions use [ordinary name resolution](../modules/declarations.md#names-and-declaration-order); a value shadowing a type name is an error. Unqualified cases follow [alternative lookup](alternatives.md#construction-and-identity), and expected types cannot override a lexical binding or choose an ambiguous case.
 
-Type positions use [ordinary name resolution](../modules/declarations.md#names-and-declaration-order). A value shadowing a type name causes an error, not a second lookup in a hidden namespace. Unqualified cases follow [alternative lookup](alternatives.md#construction-and-identity); expected types cannot override a lexical binding or choose an ambiguous case.
-
-`Equal` and `Hashable` are [standard interfaces](equality-and-hashing.md) and can be used as bounds or explicit interface views. Value types have no intersection/refinement syntax; conjunction is available only for generic bounds.
+`Equal` and `Hashable` are [standard interfaces](equality-and-hashing.md) usable as bounds or views. Only generic bounds can be conjoined; value types have no intersection or refinement syntax.
 
 ```manuscript
-fn identity(value: Int) -> Int:
+fn identity(value: Int) Int:
     return value
 
-let exact: fn(value: Int) -> Int = identity
+let exact: fn(value: Int) Int = identity
 # Rejected: amount differs from value.
-let relabeled: fn(amount: Int) -> Int = identity
+let relabeled: fn(amount: Int) Int = identity
 ```
 
-At call boundaries, a supplied `T` may be wrapped once for a standard `Optional[T]` parameter; see [optional arguments](optionals.md#passing-optional-arguments). This also applies to constructor fields and alternative payloads. Bindings, assignments, returns, defaults, and collection elements retain exact Optional compatibility.
+Only call boundaries wrap a plain `T` for an `Optional[T]` parameter ([optional arguments](optionals.md#passing-optional-arguments)), including constructor fields and alternative payloads. Everywhere else Optional must match exactly.
 
-There are no implicit numeric conversions, optional unwrapping, result wrapping, structural record conversions, unions, or nullable references. An integer literal has type `Int` even under an expected `Float`; use the [explicit conversion API](../basics/numbers-and-booleans.md#numeric-conversion). The type checker does not choose an arbitrary common type for incompatible values.
+There are no implicit numeric conversions, optional unwrapping, result wrapping, structural record conversions, unions, or nullable references. An integer literal is `Int` even where `Float` is expected; use the [explicit conversion API](../basics/numbers-and-booleans.md#numeric-conversion).
 
 ## Propagating context
 
-An expected type comes from the place a value is used: a local annotation, assignment target, return declaration, parameter after generic substitution, record field, or alternative payload.
-
-That type can guide the expressions inside parentheses, list elements, constructor fields, and case payloads. It can supply missing type arguments for a uniquely identified constructor such as `none`, `ok`, or `error`.
-
-Context does not resolve an ambiguous unqualified case name or change a type an expression already determines for itself.
+An expected type comes from an annotation, assignment target, return declaration, substituted parameter, record field, or alternative payload. It guides parenthesized expressions, list elements, constructor fields, and case payloads, and supplies missing type arguments for a uniquely identified `none`, `ok`, or `error`. It never resolves an ambiguous case name or overrides a type an expression already determines.
 
 ```manuscript
 type Input:
@@ -58,7 +52,7 @@ let failure: Result[Int, String] = error("unavailable")
 let incomplete = ok(1)
 ```
 
-The compiler rejects expressions whose type cannot be determined. It does not silently assign a dynamic or unknown type.
+Expressions whose type cannot be determined are rejected.
 
 | Expression without an annotation | What can be inferred |
 | --- | --- |
@@ -67,29 +61,25 @@ The compiler rejects expressions whose type cannot be determined. It does not si
 | `some(value: 1)` | The complete type is Optional[Int]. |
 | `[none, some(value: 1)]` | The typed some value supplies enough context for List[Optional[Int]]. |
 
-A list is rejected if its independently typed elements disagree.
+A list whose independently typed elements disagree is rejected.
 
-Operators and try do not pass an expected result type backward into their operands. Their operands must determine their own types first. For example, knowing that the value unwrapped by try should be Int does not tell the compiler which error type an incomplete Result constructor should have.
+Operators and `try` do not pass an expected type back into their operands, which must determine their own types first.
 
 ```manuscript
-fn known() -> Result[Int, String]:
+fn known() Result[Int, String]:
     let number: Int = try Result[Int, String].ok(1)
     return ok(number)
 
-fn unknown() -> Result[Int, String]:
+fn unknown() Result[Int, String]:
     # Rejected: the try operand's error type is undetermined.
     let number: Int = try ok(1)
     return ok(number)
 ```
 
-Similarly, an expected `Bool` cannot make `[] == []` well typed; neither operand determines a list element type. Explicitly qualify or annotate operands when their types would otherwise be incomplete.
+So `[] == []` is ill typed even where `Bool` is expected; qualify or annotate incomplete operands. `Never` operands follow the [operator candidate rules](../basics/expressions.md#never-operands).
 
-Never operands use the [operator candidate rules](../basics/expressions.md#never-operands). Those rules select a required operand type locally; they do not infer it backward from an expected result.
-
-Generic function inference combines supplied argument types with an unambiguous expected result, as specified in [generics](generics.md#inference-from-arguments). Expected results fill missing evidence without overriding independently inferred argument types. A generic function value must be explicitly specialized before an expected function type can check it. Anonymous functions can infer parameter and result types under [callback inference](../functions/function-values-and-closures.md#contextual-callback-inference).
+Generic inference combines argument types with an unambiguous expected result, which fills gaps without overriding argument evidence ([generics](generics.md#inference-from-arguments)). A generic function value must be explicitly specialized to check against a function type. Anonymous functions follow [callback inference](../functions/function-values-and-closures.md#contextual-callback-inference).
 
 ## Validation boundaries
 
-Every declaration's referenced types must resolve and every application must satisfy arity and bounds. Generic bodies are checked under declared bounds. Public signatures satisfy [public type visibility](records.md#public-data-surfaces), and recursive generic declarations satisfy [finite-application rules](generics.md#finite-recursive-applications). These checks happen before native code is generated.
-
-Runtime cancellation and resource closed-state errors do not alter static assignability. Their separate contracts remain governed by the existing runtime and reference chapters.
+Before code generation, referenced types must resolve, applications must meet arity and bounds, generic bodies are checked under declared bounds, public signatures satisfy [public type visibility](records.md#public-data-surfaces), and recursive generics satisfy [finite-application rules](generics.md#finite-recursive-applications). Runtime cancellation and closed-state errors do not affect static assignability.

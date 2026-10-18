@@ -34,9 +34,9 @@ func TestPreconditionDiagnostics(t *testing.T) {
 		{"", "list.|splice(start: 3, delete_count: 0, replacement: [])", "List.splice: start must be between 0 and 2, found 3"},
 		{"", "list.|splice(start: 1, delete_count: -1, replacement: [])", "List.splice: delete_count must be between 0 and 1, found -1"},
 		{"", "list.|splice(start: 1, delete_count: 9223372036854775807, replacement: [])", "List.splice: delete_count must be between 0 and 1, found 9223372036854775807"},
-		{"", "(1).|to_string(radix: 1)", "Int.to_string: radix must be between 2 and 36, found 1"},
-		{"", "(1).|to_string(radix: 37)", "Int.to_string: radix must be between 2 and 36, found 37"},
-		{"    let big = from_int(1)\n", "big.|to_string(radix: -1)", "BigInt.to_string: radix must be between 2 and 36, found -1"},
+		{"", "(1).|to_string_radix(radix: 1)", "Int.to_string_radix: radix must be between 2 and 36, found 1"},
+		{"", "(1).|to_string_radix(radix: 37)", "Int.to_string_radix: radix must be between 2 and 36, found 37"},
+		{"    let big = from_int(1)\n", "big.|to_string_radix(radix: -1)", "BigInt.to_string_radix: radix must be between 2 and 36, found -1"},
 		{"", "|Queue[Int](capacity: 0)", "Queue: capacity must be between 1 and 9223372036854775807, found 0"},
 		{"", "|Queue[Int](capacity: -1)", "Queue: capacity must be between 1 and 9223372036854775807, found -1"},
 		{"", "|PriorityQueue[Int](compare: compare, capacity: -1)", "PriorityQueue: capacity must be between 1 and 9223372036854775807, found -1"},
@@ -45,7 +45,7 @@ func TestPreconditionDiagnostics(t *testing.T) {
 	source := `import {Bytes, BytesBuilder} from "@std/bytes.ms"
 import {Queue, PriorityQueue} from "@std/queues.ms"
 import from_int from "@std/bigint.ms"
-fn compare(left: Int, right: Int) -> Int: left - right
+fn compare(left: Int, right: Int) Int: left - right
 `
 	var frames []string
 	for i, tc := range cases {

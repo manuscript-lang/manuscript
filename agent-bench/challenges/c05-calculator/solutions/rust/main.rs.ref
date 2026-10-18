@@ -1,0 +1,106 @@
+use std::io::BufRead;
+
+struct P<'a> {
+    s: &'a [u8],
+    pos: usize,
+    div_zero: bool,
+}
+
+type R = Result<i64, ()>;
+
+impl<'a> P<'a> {
+    fn peek(&mut self) -> u8 {
+        while self.pos < self.s.len() && (self.s[self.pos] == b' ' || self.s[self.pos] == b'\t') {
+            self.pos += 1;
+        }
+        if self.pos < self.s.len() { self.s[self.pos] } else { 0 }
+    }
+    fn expr(&mut self) -> R {
+        let mut v = self.term()?;
+        loop {
+            let c = self.peek();
+            if c != b'+' && c != b'-' {
+                return Ok(v);
+            }
+            self.pos += 1;
+            let r = self.term()?;
+            v = if c == b'+' { v.wrapping_add(r) } else { v.wrapping_sub(r) };
+        }
+    }
+    fn term(&mut self) -> R {
+        let mut v = self.unary()?;
+        loop {
+            let c = self.peek();
+            if c != b'*' && c != b'/' {
+                return Ok(v);
+            }
+            self.pos += 1;
+            let r = self.unary()?;
+            if c == b'*' {
+                v = v.wrapping_mul(r);
+            } else if r == 0 {
+                self.div_zero = true;
+                v = 0;
+            } else {
+                v = v.wrapping_div(r);
+            }
+        }
+    }
+    fn unary(&mut self) -> R {
+        if self.peek() == b'-' {
+            self.pos += 1;
+            return Ok(self.unary()?.wrapping_neg());
+        }
+        self.atom()
+    }
+    fn atom(&mut self) -> R {
+        let c = self.peek();
+        if c.is_ascii_digit() {
+            let mut v: i64 = 0;
+            while self.pos < self.s.len() && self.s[self.pos].is_ascii_digit() {
+                v = v.wrapping_mul(10).wrapping_add((self.s[self.pos] - b'0') as i64);
+                self.pos += 1;
+            }
+            Ok(v)
+        } else if c == b'(' {
+            self.pos += 1;
+            let v = self.expr()?;
+            if self.peek() != b')' {
+                return Err(());
+            }
+            self.pos += 1;
+            Ok(v)
+        } else {
+            Err(())
+        }
+    }
+}
+
+fn eval(line: &str) -> String {
+    let mut p = P { s: line.as_bytes(), pos: 0, div_zero: false };
+    match p.expr() {
+        Ok(v) if p.peek() == 0 && p.pos >= p.s.len() => {
+            if p.div_zero { "error: division by zero".to_string() } else { v.to_string() }
+        }
+        _ => "error: syntax".to_string(),
+    }
+}
+
+fn main() {
+    // Deep nesting recurses; run on a big stack.
+    std::thread::Builder::new()
+        .stack_size(256 << 20)
+        .spawn(|| {
+            for line in std::io::stdin().lock().lines() {
+                let line = line.get();
+                let line = line.trim_end_matches('\r');
+                if line.trim().is_empty() {
+                    continue;
+                }
+                println!("{}", eval(line));
+            }
+        })
+        .get()
+        .join()
+        .get();
+}

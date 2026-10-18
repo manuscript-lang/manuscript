@@ -34,7 +34,7 @@ func TestTypoSuggestionCoversEveryCommand(t *testing.T) {
 }
 
 func TestJSONFlagMessageNamesEveryAcceptingCommand(t *testing.T) {
-	_, _, errors := invoke(t, "run", sourceFile(t, "export fn main() -> Int:\n    return 0\n"), "--json")
+	_, _, errors := invoke(t, "run", sourceFile(t, "export fn main() Int:\n    return 0\n"), "--json")
 	for _, command := range jsonCommands {
 		if !strings.Contains(errors, command) {
 			t.Errorf("--json message omits %s: %q", command, errors)
@@ -44,7 +44,7 @@ func TestJSONFlagMessageNamesEveryAcceptingCommand(t *testing.T) {
 
 // Each source command reports analysis failures as the shared diagnostics document.
 func TestSourceCommandsReportFailuresAsJSON(t *testing.T) {
-	file := sourceFile(t, "export fn main() -> Int:\n    return \"wrong\"\n")
+	file := sourceFile(t, "export fn main() Int:\n    return \"wrong\"\n")
 	for _, command := range []string{"inspect", "diagram", "emit"} {
 		status, output, errors := invoke(t, command, file, "--json")
 		var document diagnosticsDocument

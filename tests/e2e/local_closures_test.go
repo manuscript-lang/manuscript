@@ -10,8 +10,8 @@ import (
 func TestLocalClosureFaultNamesTheLambda(t *testing.T) {
 	result := compiler.CompileSource("closure-fault.ms", `import panic from "@std/faults.ms"
 
-fn run() -> Int:
-    let boom = fn(value: Int) -> Int: panic(message: "closure failed")
+fn run() Int:
+    let boom = fn(value: Int) Int: panic(message: "closure failed")
     return boom(value: 1)
 
 test "fault":

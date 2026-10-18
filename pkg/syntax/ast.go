@@ -84,7 +84,14 @@ type Declaration struct {
 	// without parameters whose body returns the initializer, and every use
 	// evaluates that initializer. Result is the annotation, or a placeholder
 	// at the initializer's position until the checker infers the type.
-	Constant                   bool
+	Constant bool
+	// Group is the position of the `let` or `var` keyword when the binding was
+	// written in a group such as `let (a = 1, ...)` with one entry per line; the
+	// zero Position (Line 0) means it stands alone. Every entry is its own
+	// declaration, so groups change only layout.
+	Group Position
+	// Synthetic marks a declaration the checker generated for `impl Type:`; editors skip it.
+	Synthetic                  bool
 	TypeParams                 []TypeParameter
 	Fields                     []Parameter
 	Cases                      []Case
@@ -155,8 +162,11 @@ type Statement struct {
 	Kind, Name string
 	// Compound is the operator of a compound assignment such as "+" for `x += 1`;
 	// Value is then the equivalent binary expression over the target.
-	Compound   string
-	Mutable    bool
+	Compound string
+	Mutable  bool
+	// Group is the keyword position of the `let` or `var` group the binding was
+	// written in, or the zero Position when it stands alone; see Declaration.Group.
+	Group      Position
 	Pattern    *Pattern
 	Type       *Type
 	Target     *Expression
@@ -164,4 +174,13 @@ type Statement struct {
 	Body, Else []*Statement
 	// Fact is the checker's annotation of this node; nil until it is checked.
 	Fact any
+}
+
+// ImplName is the display name of an impl declaration: "Contract for Type" for
+// a contract implementation and "Type" for a type's own methods.
+func (d *Declaration) ImplName() string {
+	if d.Contract == nil || d.Synthetic {
+		return d.Receiver.Name
+	}
+	return d.Contract.Name + " for " + d.Receiver.Name
 }

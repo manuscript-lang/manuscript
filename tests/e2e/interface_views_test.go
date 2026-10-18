@@ -12,14 +12,14 @@ import (
 )
 
 const interfaceViewRepro = `interface Read:
-    fn read() -> Int
+    fn read() Int
 type Reader:
-    operation: fn() -> Int
+    operation: fn() Int
 impl Read for Reader:
-    fn read() -> Int:
+    fn read() Int:
         return self.operation()
-export fn main() -> Int:
-    let view = Read(Reader(fn() -> Int: 1))
+export fn main() Int:
+    let view = Read(Reader(fn() Int: 1))
     return view.read()
 `
 
@@ -51,11 +51,11 @@ func TestInterfaceViewExactRepro(t *testing.T) {
 func TestInterfaceViewFaultFrames(t *testing.T) {
 	for name, source := range map[string]string{
 		"callback":    strings.Replace(interfaceViewRepro, "Int: 1)", "Int: 1 / 0)", 1),
-		"preparation": strings.Replace(interfaceViewRepro, "export fn main()", "fn prepare() -> fn() -> Int:\n    let invalid = 1 / 0\n    return fn() -> Int: 1\nexport fn main()", 1),
+		"preparation": strings.Replace(interfaceViewRepro, "export fn main()", "fn prepare() fn() Int:\n    let invalid = 1 / 0\n    return fn() Int: 1\nexport fn main()", 1),
 	} {
 		t.Run(name, func(t *testing.T) {
 			if name == "preparation" {
-				source = strings.Replace(source, "Reader(fn() -> Int: 1)", "Reader(prepare())", 1)
+				source = strings.Replace(source, "Reader(fn() Int: 1)", "Reader(prepare())", 1)
 			}
 			output, err := execute(t, compiler.CompileSource("view-fault.ms", source, compiler.Options{Entry: true}))
 			if err == nil || !strings.Contains(string(output), "division by zero") {
@@ -82,29 +82,29 @@ func TestInterfaceViewLocalImplementations(t *testing.T) {
 	root := t.TempDir()
 	sources := map[string]string{
 		"domain.ms": `export interface Read:
-    fn read() -> Int
+    fn read() Int
 export type Reader:
-    operation: fn() -> Int
-export fn invoke[T: Read](value: T) -> Int: value.read()
+    operation: fn() Int
+export fn invoke[T: Read](value: T) Int: value.read()
 `,
 		"left.ms": `import {Read, Reader} from "./domain.ms"
 impl Read for Reader:
-    fn read() -> Int: self.operation() + 10
-export fn left() -> Read:
+    fn read() Int: self.operation() + 10
+export fn left() Read:
     let value = 1
-    return Read(Reader(fn() -> Int: value))
+    return Read(Reader(fn() Int: value))
 `,
 		"right.ms": `import {Read, Reader} from "./domain.ms"
 impl Read for Reader:
-    fn read() -> Int: self.operation() + 20
-export fn right() -> Read:
+    fn read() Int: self.operation() + 20
+export fn right() Read:
     let value = 2
-    return Read(Reader(fn() -> Int: value))
+    return Read(Reader(fn() Int: value))
 `,
 		"main.ms": `import invoke from "./domain.ms"
 import left from "./left.ms"
 import right from "./right.ms"
-export fn main() -> Int:
+export fn main() Int:
     let first = left()
     let second = right()
     let bound = first.read

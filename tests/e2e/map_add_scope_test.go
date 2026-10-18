@@ -15,9 +15,9 @@ func TestMapAddKeepsLexicalHashScope(t *testing.T) {
 		"domain.ms": `export type Key:
     code: Float
 `,
-		"helper.ms": `export fn insert[K: Hashable,V](m: Map[K,V], key: K, value: V) -> Map[K,V]:
+		"helper.ms": `export fn insert[K: Hashable,V](m: Map[K,V], key: K, value: V) Map[K,V]:
     return m.add(key,value)
-export fn insert_bound[K: Hashable,V](m: Map[K,V], key: K, value: V) -> Map[K,V]:
+export fn insert_bound[K: Hashable,V](m: Map[K,V], key: K, value: V) Map[K,V]:
     let add=m.add
     return add(value: value, key: key)
 `,
@@ -40,13 +40,13 @@ test "map add generic and bound calls retain lexical key evidence":
 import {insert,insert_bound} from "./helper.ms"
 import {expect_equal} from "@std/testing.ms"
 impl Equal for Key:
-    fn equals(other: Equal) -> Bool:
+    fn equals(other: Equal) Bool:
         match other:
             Key(other): return ` + comparison + `
             _: return false
 impl Hashable for Key:
-    fn hash() -> Int: ` + hash + `
-export fn ` + name + `() -> Result[Int, Error]:
+    fn hash() Int: ` + hash + `
+export fn ` + name + `() Result[Int, Error]:
     let m=Map[Key,Int]()
     let original=Key(1.0)
     m.add(original,1)
@@ -54,9 +54,9 @@ export fn ` + name + `() -> Result[Int, Error]:
     insert_bound(m,Key(1.0),3)
     let add=m.add
     add(value: 4, key: Key(2.0))
-    m.get(Key(1.0)).unwrap() | try expect_equal(expected: 3)
+    m.get(Key(1.0)).get() | try expect_equal(expected: 3)
     original.code=9.0
-    m.keys()[0].unwrap().code | try expect_equal(expected: 9.0)
+    m.keys()[0].get().code | try expect_equal(expected: 9.0)
     return ok(m.length())
 `
 	}
@@ -73,7 +73,7 @@ export fn ` + name + `() -> Result[Int, Error]:
 	// Merely loading both implementation modules must not select either contract
 	// for a raw key use in the importing module.
 	raw := sources["main.ms"] + `import Key from "./domain.ms"
-fn invalid() -> Unit:
+fn invalid() Unit:
     let m=Map[Key,Int]()
     m.add(Key(-1.0),1)
 `

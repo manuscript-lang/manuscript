@@ -171,24 +171,47 @@ func (g *gen) number(e *syntax.Expression, info *checker.Info) ast.Expr {
 	return call(ident("int"), signedInteger(e.Text))
 }
 
-// constantNumber reports whether e is a typed numeric literal Go folds.
-// positiveIntLiteral reports a lowered int literal of at least 2.
-func positiveIntLiteral(e ast.Expr) bool {
+// integerLiteral recognizes a lowered, nonnegative Int literal.
+func integerLiteral(e ast.Expr) (int64, bool) {
 	c, ok := e.(*ast.CallExpr)
 	if !ok || len(c.Args) != 1 {
-		return false
+		return 0, false
 	}
 	if id, ok := c.Fun.(*ast.Ident); !ok || id.Name != "int" {
-		return false
+		return 0, false
 	}
 	lit, ok := c.Args[0].(*ast.BasicLit)
 	if !ok || lit.Kind != token.INT {
-		return false
+		return 0, false
 	}
 	n, err := strconv.ParseInt(lit.Value, 0, 64)
-	return err == nil && n >= 2
+	return n, err == nil && n >= 0
 }
 
+// uncheckedIntArithmetic proves an operation cannot overflow or divide by zero.
+// Keep both operands in the emitted operation so their effects still execute.
+func uncheckedIntArithmetic(op string, a, b ast.Expr) bool {
+	right, rightLiteral := integerLiteral(b)
+	switch op {
+	case "/", "%":
+		return rightLiteral && right >= 1
+	case "-":
+		return rightLiteral && right == 0
+	case "+", "*":
+		maximum := int64(0)
+		if op == "*" {
+			maximum = 1
+		}
+		if rightLiteral && right <= maximum {
+			return true
+		}
+		left, leftLiteral := integerLiteral(a)
+		return leftLiteral && left <= maximum
+	}
+	return false
+}
+
+// constantNumber reports whether e is a typed numeric literal Go folds.
 func constantNumber(e ast.Expr) bool {
 	c, ok := e.(*ast.CallExpr)
 	if !ok || len(c.Args) != 1 {
@@ -351,7 +374,7 @@ func (g *gen) indexValue(e *syntax.Expression) ast.Expr {
 	if g.info(e).Proven {
 		// The checker proved the index in range; keep a faulting read for
 		// bounds invalidated by a concurrent task.
-		return call(generic(rtName("Optional_Unwrap"), g.goType(t.Args[0])), ident("ctx"), lookup)
+		return call(generic(rtName("Optional_Get"), g.goType(t.Args[0])), ident("ctx"), lookup, call(generic(rtName("None"), g.goType(t.Args[0]))))
 	}
 	return lookup
 }
@@ -392,6 +415,8 @@ func (g *gen) unary(e *syntax.Expression, info *checker.Info) ast.Expr {
 		return g.try(e, info)
 	case "not":
 		return not(g.valueAs(e.Right, boolType))
+	case "+":
+		return g.valueAs(e.Right, g.info(e.Right).Type)
 	case "-":
 		operand := g.info(e.Right).Type
 		switch operand.ID {
@@ -446,11 +471,10 @@ func (g *gen) binaryExpr(e *syntax.Expression, info *checker.Info) ast.Expr {
 			}
 			return binary(a, op, b)
 		}
-		if (e.Text == "/" || e.Text == "%") && positiveIntLiteral(b) {
-			// A divisor of 2 or more cannot be zero, -1, or overflow.
-			op := token.QUO
-			if e.Text == "%" {
-				op = token.REM
+		if uncheckedIntArithmetic(e.Text, a, b) {
+			op := token.REM
+			if e.Text != "%" {
+				op = arithmeticOps[e.Text]
 			}
 			return binary(a, op, b)
 		}

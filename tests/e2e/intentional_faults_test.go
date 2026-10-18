@@ -12,13 +12,13 @@ func TestIntentionalFaultContracts(t *testing.T) {
 		{"cl-06", `import {expect_equal} from "@std/testing.ms"
 import panic from "@std/faults.ms"
 
-fn positive(value: Int) -> Int:
+fn positive(value: Int) Int:
     if value > 0:
         return value
     else:
         panic(message: "positive value required")
 
-fn discard(value: Int) -> Unit:
+fn discard(value: Int) Unit:
     return
 
 test "return contracts":
@@ -28,13 +28,13 @@ test "return contracts":
 		{"cl-17", `import {expect_contains, expect_fault} from "@std/testing.ms"
 import panic from "@std/faults.ms"
 
-fn failed_initializer() -> Never:
+fn failed_initializer() Never:
     let impossible: Int = panic(message: "initializer cannot return")
 
-fn returned_failure() -> Int:
+fn returned_failure() Int:
     return panic(message: "result cannot return")
 
-fn endless() -> Int:
+fn endless() Int:
     while true:
         continue
 

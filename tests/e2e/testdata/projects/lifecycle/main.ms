@@ -9,42 +9,42 @@ type Resource:
     output: WriteStream
 
 impl Closeable for Resource:
-    fn close() -> Unit:
+    fn close() Unit:
         self.output.write(data: "close {self.label}\n".to_bytes())
 
 type Pair:
     first: Int
     second: Int
 
-fn report(output: WriteStream, label: String, value: Int) -> Int:
+fn report(output: WriteStream, label: String, value: Int) Int:
     output.write(data: "{label}\n".to_bytes())
     return value
 
-fn combine(first: Int, second: Int) -> Int:
+fn combine(first: Int, second: Int) Int:
     return first + second
 
-fn select(output: WriteStream) -> fn(first: Int, second: Int) -> Int:
+fn select(output: WriteStream) fn(first: Int, second: Int) Int:
     output.write(data: "callable\n".to_bytes())
     return combine
 
-fn early(output: WriteStream) -> Int:
+fn early(output: WriteStream) Int:
     with outer = Resource(label: "outer", output: output):
         with inner = Resource(label: "inner", output: output):
             return report(output: output, label: "return value", value: 5)
 
-fn failure() -> Result[Int, String]:
+fn failure() Result[Int, String]:
     return error("expected")
 
-fn propagate(output: WriteStream) -> Result[Int, String]:
+fn propagate(output: WriteStream) Result[Int, String]:
     with resource = Resource(label: "propagation", output: output):
         let number = try failure()
         return ok(number)
 
-fn iterable(output: WriteStream) -> List[Int]:
+fn iterable(output: WriteStream) List[Int]:
     output.write(data: "iterable\n".to_bytes())
     return [1, 2]
 
-fn exercise() -> Result[Int, Error]:
+fn exercise() Result[Int, Error]:
     let total = select(output: stdout())(
         second: report(output: stdout(), label: "second", value: 2),
         first: report(output: stdout(), label: "first", value: 1)
@@ -79,7 +79,7 @@ fn exercise() -> Result[Int, Error]:
     stdout().write(data: "finished\n".to_bytes())
     return ok(0)
 
-export fn main() -> Int:
+export fn main() Int:
     match exercise():
         ok(status): return status
         error(cause):

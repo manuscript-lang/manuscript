@@ -14,7 +14,7 @@ test "list elements read before a later match assigns them":
         ,
         x
     ]
-    items | try expect_equal(expected: [1, 5, 50])
+    try expect_equal(items, [1, 5, 50])
     let texts = [
         y,
         match some("b"):
@@ -23,7 +23,7 @@ test "list elements read before a later match assigns them":
                 value
             none: ""
     ]
-    texts | try expect_equal(expected: ["a", "b"])
+    try expect_equal(texts, ["a", "b"])
 
 test "map keys read before a later match assigns them":
     var key = 1
@@ -36,8 +36,8 @@ test "map keys read before a later match assigns them":
         ,
         key: key
     }
-    entries.length() | try expect_equal(expected: 2)
-    entries.get(key: 1) | try expect_equal(expected: some(5))
+    try expect_equal(entries.length(), 2)
+    try expect_equal(entries.get(key: 1), some(5))
 
 test "generic binary operands read before a later match assigns them":
     var amount = 1.5d
@@ -46,7 +46,7 @@ test "generic binary operands read before a later match assigns them":
             amount = 100d
             value
         none: 0d
-    sum | try expect_equal(expected: 4d)
+    try expect_equal(sum, 4d)
 
 type Cell:
     n: Int
@@ -62,8 +62,8 @@ test "field assignment evaluates its receiver before the value":
             value
         none: 0
 
-    original.n | try expect_equal(expected: 2)
-    cell.n | try expect_equal(expected: 100)
+    try expect_equal(original.n, 2)
+    try expect_equal(cell.n, 100)
     var texts = Cell(n: 1, s: "a")
     let before = texts
 
@@ -73,4 +73,4 @@ test "field assignment evaluates its receiver before the value":
             value
         none: ""
 
-    before.s | try expect_equal(expected: "q")
+    try expect_equal(before.s, "q")

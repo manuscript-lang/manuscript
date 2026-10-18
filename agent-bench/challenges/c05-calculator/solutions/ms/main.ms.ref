@@ -1,0 +1,124 @@
+import {stdin, stdout, read_line} from "@std/io.ms"
+
+type Parser:
+    chars: List[Int]
+    pos: Int
+    div_zero: Bool
+
+# Skips blanks and returns the next character code, or 0 at the end of the line.
+fn peek(p: Parser) Int:
+    while p.pos < p.chars.length():
+        let c = p.chars.at(p.pos).get()
+        if c != 32 and c != 9:
+            return c
+
+        p.pos = p.pos + 1
+
+    return 0
+
+fn atom(p: Parser) Result[Int, String]:
+    let c = peek(p)
+
+    if c >= 48 and c <= 57:
+        var value = 0
+
+        while p.pos < p.chars.length():
+            let d = p.chars.at(p.pos).get()
+            if d < 48 or d > 57:
+                break
+
+            value = value * 10 + (d - 48)
+            p.pos = p.pos + 1
+
+        return ok(value)
+
+    if c == 40:
+        p.pos = p.pos + 1
+        let inner = try expr(p)
+        if peek(p) != 41:
+            return error("syntax")
+
+        p.pos = p.pos + 1
+        return ok(inner)
+
+    return error("syntax")
+
+fn unary(p: Parser) Result[Int, String]:
+    if peek(p) == 45:
+        p.pos = p.pos + 1
+        let v = try unary(p)
+        return ok(0 - v)
+
+    return atom(p)
+
+fn term(p: Parser) Result[Int, String]:
+    var value = try unary(p)
+
+    while true:
+        let op = peek(p)
+        if op != 42 and op != 47:
+            break
+
+        p.pos = p.pos + 1
+        let right = try unary(p)
+
+        if op == 42:
+            value = value * right
+        else if right == 0:
+            p.div_zero = true
+            value = 0
+        else:
+            value = value / right
+
+    return ok(value)
+
+fn expr(p: Parser) Result[Int, String]:
+    var value = try term(p)
+
+    while true:
+        let op = peek(p)
+        if op != 43 and op != 45:
+            break
+
+        p.pos = p.pos + 1
+        let right = try term(p)
+
+        if op == 43:
+            value = value + right
+        else:
+            value = value - right
+
+    return ok(value)
+
+fn evaluate(line: String) String:
+    let p = Parser(chars: line.scalar_values(), pos: 0, div_zero: false)
+
+    match expr(p):
+        ok(value):
+            if peek(p) != 0:
+                return "error: syntax"
+            if p.div_zero:
+                return "error: division by zero"
+
+            return "{value}"
+        error(_):
+            return "error: syntax"
+
+fn run() Result[Unit, Error]:
+    while true:
+        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        if next.is_none():
+            break
+
+        let line = next.get().replace(old: "\r", new: "")
+        if line.trim().is_empty():
+            continue
+
+        try stdout().write("{evaluate(line)}\n".to_bytes())
+
+    return stdout().flush()
+
+export fn main() Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

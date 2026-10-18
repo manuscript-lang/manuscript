@@ -16,7 +16,7 @@ import network from "@std/net.ms"
 import TlsOptions from "@std/tls.ms"
 import Bytes from "@std/bytes.ms"
 
-fn route(request: HttpRequest) -> HttpResponse:
+fn route(request: HttpRequest) HttpResponse:
     let fields = match text_headers(
         (
             Map[String, String]()
@@ -37,7 +37,7 @@ fn route(request: HttpRequest) -> HttpResponse:
         body: "{request.path}|{request.query}".to_bytes()
     )
 
-fn stream_route(exchange: HttpExchange) -> Result[Unit, HttpError]:
+fn stream_route(exchange: HttpExchange) Result[Unit, HttpError]:
     let sent = try exchange.send_headers(
         status: 200,
         headers: (
@@ -58,7 +58,7 @@ fn stream_route(exchange: HttpExchange) -> Result[Unit, HttpError]:
     )
     return ok(unit)
 
-fn check_route(url: String, expected: String) -> Result[Unit, Error]:
+fn check_route(url: String, expected: String) Result[Unit, Error]:
     let response = (
         network().request(
             method: HttpMethod.Get,
@@ -82,7 +82,7 @@ fn check_route(url: String, expected: String) -> Result[Unit, Error]:
 
     return ok(unit)
 
-fn check_rejected(url: String) -> Result[Unit, Error]:
+fn check_rejected(url: String) Result[Unit, Error]:
     let response = (
         network().request(
             method: HttpMethod.Get,
@@ -98,7 +98,7 @@ fn check_rejected(url: String) -> Result[Unit, Error]:
 
     return ok(unit)
 
-fn check_paths(base: String) -> Result[Unit, Error]:
+fn check_paths(base: String) Result[Unit, Error]:
     (try check_route(url: "{base}/a%20b", expected: "/a b|"))
     (try check_route(url: "{base}/%2e%2e/x?y=%2F", expected: "/x|y=%2F"))
     (try check_route(url: "{base}/a/../b/", expected: "/b/|"))
@@ -124,7 +124,7 @@ test "streaming routes validate original input and decode once":
     ):
         (try check_paths("http://{server.address()}"))
 
-fn expect_http_error[T](outcome: Result[T, HttpError]) -> Result[Unit, Error]:
+fn expect_http_error[T](outcome: Result[T, HttpError]) Result[Unit, Error]:
     match outcome:
         ok(_): return error(TextError.Text("invalid URL succeeded"))
         error(cause):

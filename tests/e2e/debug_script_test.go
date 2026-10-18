@@ -46,11 +46,11 @@ func skipWithoutTracing(t *testing.T, status int, stderr string) {
 	}
 }
 
-const debugScriptSource = `fn add(a: Int, b: Int) -> Int:
+const debugScriptSource = `fn add(a: Int, b: Int) Int:
     let sum = a + b
     return sum
 
-export fn main() -> Int:
+export fn main() Int:
     let total = add(a: 1, b: 2)
     return total - 3
 `
@@ -122,7 +122,7 @@ func TestDebugScriptBreaksByFunctionNameAndReportsExit(t *testing.T) {
 func TestDebugOneShotRejectsUnknownAndUnreachedBreakpoints(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(root, "main.ms")
-	if err := os.WriteFile(source, []byte("import stdout from \"@std/io.ms\"\n\nfn never() -> Int:\n    return 1\n\nexport fn main() -> Int:\n    let _written = stdout().write(data: \"TARGET_RAN\\n\".to_bytes())\n    return 0\n"), 0600); err != nil {
+	if err := os.WriteFile(source, []byte("import stdout from \"@std/io.ms\"\n\nfn never() Int:\n    return 1\n\nexport fn main() Int:\n    let _written = stdout().write(data: \"TARGET_RAN\\n\".to_bytes())\n    return 0\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	status, stdout, stderr := cliStreams(t, "debug", source, "--json", "--break", "nothing")

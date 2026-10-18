@@ -14,23 +14,23 @@ export interface JsonDecoder:
     # Adds a chunk and returns every value it completes, in order; the list is empty when
     # the chunk ends inside a value. An error discards values completed earlier in the same
     # chunk, and the decoder stays failed and returns that error again. Returns `InvalidInput` after `finish()`.
-    fn feed(chunk: Bytes) -> Result[List[JsonValue], JsonError]
+    fn feed(chunk: Bytes) Result[List[JsonValue], JsonError]
     # Signals end of input and returns a final unterminated scalar, if any. Input that
     # ends inside a string, array, or object returns `InvalidData`. The decoder rejects
     # later calls with `InvalidInput`.
-    fn finish() -> Result[List[JsonValue], JsonError]
+    fn finish() Result[List[JsonValue], JsonError]
 
 # Creates a decoder. `limits` applies to each value separately: `max_bytes` counts the
 # value's UTF-8 bytes, `max_depth` its nesting, and `max_values` its parsed values, and
 # an exceeded limit returns `LimitExceeded`. Omit limits only for trusted input, because
 # an unterminated value is otherwise buffered without bound. Negative limits return
 # `InvalidInput`.
-export fn decoder(limits: Optional[JsonLimits] = none) -> Result[JsonDecoder, JsonError]:
-    let bounds = limits.unwrap_or(JsonLimits())
+export fn decoder(limits: Optional[JsonLimits] = none) Result[JsonDecoder, JsonError]:
+    let bounds = limits.get(JsonLimits())
     if (
-        bounds.max_bytes.unwrap_or(0) < 0
-        or bounds.max_depth.unwrap_or(0) < 0
-        or bounds.max_values.unwrap_or(0) < 0
+        bounds.max_bytes.get(0) < 0
+        or bounds.max_depth.get(0) < 0
+        or bounds.max_values.get(0) < 0
     ): return error(JsonError.InvalidInput)
 
     return ok(
@@ -62,10 +62,10 @@ type Decoder:
     finished: Bool
     failure: Optional[JsonError]
 
-fn is_space(byte: Int) -> Bool:
+fn is_space(byte: Int) Bool:
     return (byte == 32 or byte == 9 or byte == 10 or byte == 13)
 
-fn starts_value(byte: Int) -> Bool:
+fn starts_value(byte: Int) Bool:
     # Object, array, string, minus sign, digits, and the first letters of the literals.
     return (
         byte == 123
@@ -78,7 +78,7 @@ fn starts_value(byte: Int) -> Bool:
         or byte == 110
     )
 
-fn reset(state: Decoder) -> Unit:
+fn reset(state: Decoder) Unit:
     state.pending = BytesBuilder()
     state.size = 0
     state.depth = 0
@@ -86,23 +86,23 @@ fn reset(state: Decoder) -> Unit:
     state.in_string = false
     state.escaped = false
 
-fn fail(state: Decoder, cause: JsonError) -> Result[List[JsonValue], JsonError]:
+fn fail(state: Decoder, cause: JsonError) Result[List[JsonValue], JsonError]:
     # Dropping the partial value releases its buffered bytes.
     reset(state)
     state.failure = some(cause)
     return error(cause)
 
 # Parses the buffered value and clears the scanner for the next one.
-fn complete(state: Decoder) -> Result[JsonValue, JsonError]:
+fn complete(state: Decoder) Result[JsonValue, JsonError]:
     let bytes = state.pending.freeze()
     reset(state)
-    if let text = bytes.to_string():
+    if let text = bytes.decode_utf8():
         return parse(text, some(state.limits))
 
     return error(JsonError.InvalidData)
 
 # Consumes one byte and reports whether it finished a value.
-fn scan(state: Decoder, byte: Int) -> Result[Bool, JsonError]:
+fn scan(state: Decoder, byte: Int) Result[Bool, JsonError]:
     if state.mode == 0:
         if is_space(byte): return ok(false)
         if not starts_value(byte): return error(JsonError.InvalidData)
@@ -114,10 +114,10 @@ fn scan(state: Decoder, byte: Int) -> Result[Bool, JsonError]:
         else if byte == 34:
             state.mode = 2
 
-    let limit = state.limits.max_bytes.unwrap_or(-1)
+    let limit = state.limits.max_bytes.get(-1)
     if state.mode == 3 and is_space(byte): return ok(true)
 
-    state.size = state.size + 1
+    state.size += 1
     if limit >= 0 and state.size > limit: return error(JsonError.LimitExceeded)
 
     state.pending.append(byte)
@@ -138,21 +138,21 @@ fn scan(state: Decoder, byte: Int) -> Result[Bool, JsonError]:
         return ok(false)
 
     if byte == 123 or byte == 91:
-        state.depth = state.depth + 1
-        if state.depth > state.limits.max_depth.unwrap_or(state.depth): return error(
+        state.depth += 1
+        if state.depth > state.limits.max_depth.get(state.depth): return error(
             JsonError.LimitExceeded
         )
 
         return ok(false)
 
     if byte == 125 or byte == 93:
-        state.depth = state.depth - 1
+        state.depth -= 1
         return ok(state.depth == 0)
 
     return ok(false)
 
 # Consumes one byte and returns the value it completes, if any.
-fn step(state: Decoder, byte: Int) -> Result[Optional[JsonValue], JsonError]:
+fn step(state: Decoder, byte: Int) Result[Optional[JsonValue], JsonError]:
     let done = try scan(state, byte)
     if not done: return ok(none)
 
@@ -160,32 +160,32 @@ fn step(state: Decoder, byte: Int) -> Result[Optional[JsonValue], JsonError]:
     return ok(some(value))
 
 impl JsonDecoder for Decoder:
-    fn feed(chunk: Bytes) -> Result[List[JsonValue], JsonError]:
+    fn feed(chunk: Bytes) Result[List[JsonValue], JsonError]:
         check_cancelled()
         if self.finished: return error(JsonError.InvalidInput)
-        if self.failure.is_some(): return error(self.failure.unwrap())
+        if let failure = self.failure: return error(failure)
 
         let values: List[JsonValue] = []
 
         for byte in chunk.values():
-            match step(self, byte):
-                error(cause): return fail(self, cause)
-                ok(found):
-                    if found.is_some(): values.append(found.unwrap())
+            let stepped = step(self, byte)
+            if stepped.is_error(): return fail(self, stepped.err())
+
+            if let found = stepped.get(): values.append(found)
 
         return ok(values)
 
-    fn finish() -> Result[List[JsonValue], JsonError]:
+    fn finish() Result[List[JsonValue], JsonError]:
         if self.finished: return error(JsonError.InvalidInput)
-        if self.failure.is_some(): return error(self.failure.unwrap())
+        if let failure = self.failure: return error(failure)
 
         self.finished = true
         let values: List[JsonValue] = []
         if self.mode == 0: return ok(values)
         if self.mode != 3: return fail(self, JsonError.InvalidData)
 
-        match complete(self):
-            error(cause): return fail(self, cause)
-            ok(item): values.append(item)
+        let completed = complete(self)
+        if completed.is_error(): return fail(self, completed.err())
 
+        values.append(completed.get())
         return ok(values)

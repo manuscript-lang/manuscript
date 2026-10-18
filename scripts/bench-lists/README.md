@@ -74,7 +74,7 @@ For 65,536 elements, fresh generated-Go baseline medians:
 | Operation | ns/operation | allocated bytes | allocations |
 | --- | ---: | ---: | ---: |
 | Build by append (whole list) | 8,585,351 | 6,585,515 | 130,681 |
-| `at(...).unwrap()` accumulation (65,536 reads) | 12,940,622 | 6,813,724 | 327,424 |
+| `at(...).get()` accumulation (65,536 reads) | 12,940,622 | 6,813,724 | 327,424 |
 | `for` accumulation (whole list) | 2,077,666 | 524,282 | 65,535 |
 | `for_each` accumulation (whole list) | 9,194,572 | 2,622,640 | 131,093 |
 | Stable sort with a source comparator (whole list) | 267,718,501 | 52,647,448 | 2,225,800 |

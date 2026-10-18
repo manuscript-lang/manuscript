@@ -8,51 +8,51 @@ type Key:
     label: String
 
 impl Equal for Key:
-    fn equals(other: Equal) -> Bool:
+    fn equals(other: Equal) Bool:
         match other:
             Key(value): return self.id == value.id
             _: return false
 
 impl Hashable for Key:
-    fn hash() -> Int: 0
+    fn hash() Int: 0
 
 fn map_values[K: Hashable, V, W](
     values: Map[K, V],
-    transform: fn(key: K, value: V) -> W
-) -> Map[K, W]:
+    transform: fn(key: K, value: V) W
+) Map[K, W]:
     return values.map[W](transform)
 
 fn map_keys[K: Hashable, V, W: Hashable](
     values: Map[K, V],
-    transform: fn(key: K, value: V) -> W
-) -> Map[W, V]:
+    transform: fn(key: K, value: V) W
+) Map[W, V]:
     return values.map_keys[W](transform)
 
 fn reverse_map[K: Hashable, V, A](
     values: Map[K, V],
     initial: A,
-    step: fn(accumulator: A, key: K, value: V) -> A
-) -> A:
+    step: fn(accumulator: A, key: K, value: V) A
+) A:
     return values.fold_right[A](initial, step)
 
 fn reverse_set[T: Hashable, A](
     values: Set[T],
     initial: A,
-    step: fn(accumulator: A, value: T) -> A
-) -> A:
+    step: fn(accumulator: A, value: T) A
+) A:
     return values.fold_right(initial, step)
 
 test "Map transformations and directional queries are callable":
     let source: Map[String, Int] = {"b": 2, "a": 1}
-    let mapped = source.map(fn(k, v): v.toString())
-    mapped.get("b").unwrap() | try expect_equal(expected: "2")
+    let mapped = source.map(fn(k, v): v.to_string())
+    mapped.get("b").get() | try expect_equal(expected: "2")
     let keyed = source.map_keys(fn(k, v): v)
-    keyed.get(2).unwrap() | try expect_equal(expected: 2)
-    try expect_equal(source.find_last(fn(k, v): true).unwrap().key, "a")
+    keyed.get(2).get() | try expect_equal(expected: 2)
+    try expect_equal(source.find_last(fn(k, v): true).get().key, "a")
     try expect_equal(source.fold_right("", fn(acc, k, v): acc + k), "ab")
     let values = Set[Int]().add(2).add(1)
-    try expect_equal(values.find_last(fn(v): true).unwrap(), 1)
-    try expect_equal(values.fold_right("", fn(acc, v): acc + v.toString()), "12")
+    try expect_equal(values.find_last(fn(v): true).get(), 1)
+    try expect_equal(values.fold_right("", fn(acc, v): acc + v.to_string()), "12")
 
 test "Map value transformation copies ordered snapshots and retains aliases":
     let first = Key(2, "b")
@@ -69,7 +69,7 @@ test "Map value transformation copies ordered snapshots and retains aliases":
     let mapped = map_values(
         source,
         fn(k, v):
-            seen.append(k.label + v.count.toString())
+            seen.append(k.label + v.count.to_string())
             (
                 source.remove(second).add(third, Counter(99)).add(
                     Key(4, "new"),
@@ -80,9 +80,9 @@ test "Map value transformation copies ordered snapshots and retains aliases":
     )
     seen | try expect_equal(expected: ["b2", "a1", "c3"])
     try expect_equal(mapped.keys().map(fn(k): k.id), [2, 1, 3])
-    mapped.get(first).unwrap().count = 7
-    (counter.count != 7 or source.get(first).unwrap().count != 7) | try expect_false
-    mapped.keys().at(0).unwrap().label = "shared"
+    mapped.get(first).get().count = 7
+    (counter.count != 7 or source.get(first).get().count != 7) | try expect_false
+    mapped.keys().at(0).get().label = "shared"
     first.label | try expect_equal(expected: "shared")
     mapped.remove(first).add(Key(5, "other"), Counter(5))
     (not (source.contains(first)) or source.contains(Key(5, "different"))) | try expect_false
@@ -97,21 +97,21 @@ test "Map key transformation retains first equal keys and last values":
     let mapped = map_keys(
         source,
         fn(k, v):
-            let key = Key(k % 2, k.toString())
+            let key = Key(k % 2, k.to_string())
             created.append(key)
             return key
     )
     (created.length() != 4 or mapped.length() != 2) | try expect_false
     try expect_equal(mapped.keys().map(fn(k): k.label), ["2", "1"])
     try expect_equal(mapped.values().map(fn(v): v.count), [3, 4])
-    mapped.keys().at(0).unwrap().label = "first alias"
+    mapped.keys().at(0).get().label = "first alias"
     try expect_false(
         (
-            created.at(0).unwrap().label != "first alias"
-            or created.at(2).unwrap().label != "4"
+            created.at(0).get().label != "first alias"
+            or created.at(2).get().label != "4"
         )
     )
-    mapped.get(Key(0, "lookup")).unwrap().count = 9
+    mapped.get(Key(0, "lookup")).get().count = 9
     three.count | try expect_equal(expected: 9)
     mapped.clear().add(Key(7, "fresh"), Counter(10))
     source.length() | try expect_equal(expected: 4)
@@ -126,15 +126,15 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
             seen.append(k)
             source.remove(1).add(3, Counter(99)).add(4, Counter(4))
             later.count = 7
-            return k.toString()
+            return k.to_string()
     )
     (seen != [2, 1, 3] or mapped.keys() != ["2", "1", "3"]) | try expect_false
-    mapped.get("3").unwrap().count | try expect_equal(expected: 7)
+    mapped.get("3").get().count | try expect_equal(expected: 7)
     let values: Map[String, Int] = {"a": 0}
     let map = values.map[Optional[Int]]
-    try expect_true((map(fn(k, v): none).get("a").unwrap().is_none()))
+    try expect_true((map(fn(k, v): none).get("a").get().is_none()))
     let nested = values.map(fn(k, v): Result[Int, String].error("nested"))
-    nested.get("a").unwrap().unwrap_error() | try expect_equal(expected: "nested")
+    nested.get("a").get().err() | try expect_equal(expected: "nested")
 
 test "empty transformations skip callbacks and allocate independent storage":
     let empty_calls: List[Int] = []
@@ -169,7 +169,7 @@ test "Map reverse fold and last match retain ordered shallow snapshots":
         fn(acc, k, v):
             (source.remove("a").add("b", Counter(99)).add("new", Counter(4)))
             first.count = 7
-            acc.append(k + v.count.toString())
+            acc.append(k + v.count.to_string())
             return acc
     )
     folded | try expect_equal(expected: ["c3", "a1", "b7"])
@@ -184,7 +184,7 @@ test "Map reverse fold and last match retain ordered shallow snapshots":
             seen.append(k)
             (source.remove("a").add("b", Counter(99)).add("new", Counter(4)))
             return k == "a"
-    ).unwrap()
+    ).get()
     (seen != ["c", "a"] or found.key != "a") | try expect_false
     found.value.count = 8
     original.count | try expect_equal(expected: 8)
@@ -217,7 +217,7 @@ test "Set reverse fold and last match preserve references and callbacks":
             seen.append(v.id)
             source.remove(a).add(Key(4, "new"))
             return v.id == 1
-    ).unwrap()
+    ).get()
     seen | try expect_equal(expected: [3, 1])
     found.label = "found"
     a.label | try expect_equal(expected: "found")

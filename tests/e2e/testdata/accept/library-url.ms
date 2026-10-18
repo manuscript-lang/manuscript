@@ -6,7 +6,7 @@ import decode_component from "@std/url.ms"
 import resolve from "@std/url.ms"
 import UrlError from "@std/url.ms"
 
-fn verify_url() -> Result[Unit, Error]:
+fn verify_url() Result[Unit, Error]:
     let url = try parse(text: "https://EXAMPLE.COM/a%2Fb?q=x#frag")
     (try format(value: url)) | try expect_equal(
         expected: "https://example.com/a%2Fb?q=x#frag"

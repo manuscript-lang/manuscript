@@ -21,23 +21,23 @@ func signatureSource(t *testing.T, source string) map[string]any {
 	return result.(map[string]any)
 }
 func TestSignatureHelpIncompleteNamedCalls(t *testing.T) {
-	source := "# Add two numbers.\nfn sum(left: Int, right: Int) -> Int:\n    return left + right\nfn answer() -> Int:\n    return sum(left: 1, ri|\n"
+	source := "# Add two numbers.\nfn sum(left: Int, right: Int) Int:\n    return left + right\nfn answer() Int:\n    return sum(left: 1, ri|\n"
 	result := signatureSource(t, source)
 	if result["activeParameter"] != 1 {
 		t.Fatal(result)
 	}
 	signature := result["signatures"].([]any)[0].(map[string]any)
-	if signature["label"] != "sum(left: Int, right: Int) -> Int" || signature["documentation"] == nil {
+	if signature["label"] != "sum(left: Int, right: Int) Int" || signature["documentation"] == nil {
 		t.Fatal(signature)
 	}
-	generic := signatureSource(t, "fn work(values: List[String]) -> Unit:\n    values.append(value: |\n")
+	generic := signatureSource(t, "fn work(values: List[String]) Unit:\n    values.append(value: |\n")
 	if !strings.Contains(generic["signatures"].([]any)[0].(map[string]any)["label"].(string), "String") {
 		t.Fatal(generic)
 	}
 }
 func TestIncrementalUTF16Synchronization(t *testing.T) {
 	uri := "file:///tmp/incremental.ms"
-	source := "# 😀 comment\nfn answer(input: Int) -> Int:\n    return input\n"
+	source := "# 😀 comment\nfn answer(input: Int) Int:\n    return input\n"
 	input := frame("textDocument/didOpen", nil, map[string]any{"textDocument": document{uri, source, 1}}) + frame("textDocument/didChange", nil, map[string]any{"textDocument": document{URI: uri, Version: 2}, "contentChanges": []any{map[string]any{"range": span{position{0, 2}, position{0, 4}}, "text": "é"}, map[string]any{"range": span{position{2, 11}, position{2, 16}}, "text": "inp"}}}) + frame("textDocument/completion", 7, map[string]any{"textDocument": document{URI: uri}, "position": position{2, 14}}) + frame("shutdown", 8, nil) + frame("exit", nil, nil)
 	var output bytes.Buffer
 	if err := Serve(strings.NewReader(input), &output); err != nil {
@@ -54,8 +54,8 @@ func TestProjectRenameUpdatesImportsLabelsAndAssignments(t *testing.T) {
 	os.WriteFile(filepath.Join(root, "ms.toml"), []byte(manifest), 0600)
 	helper := filepath.Join(root, "src/helper.ms")
 	main := filepath.Join(root, "src/main.ms")
-	original := "export fn add(value: Int) -> Int:\n    var current = value\n    current = current + 1\n    return current\n"
-	caller := "import add from \"./helper.ms\"\nfn result() -> Int:\n    return add(value: 1)\n"
+	original := "export fn add(value: Int) Int:\n    var current = value\n    current = current + 1\n    return current\n"
+	caller := "import add from \"./helper.ms\"\nfn result() Int:\n    return add(value: 1)\n"
 	os.WriteFile(helper, []byte(original), 0600)
 	os.WriteFile(main, []byte(caller), 0600)
 	d := document{fileURI(helper), original, 3}
@@ -95,8 +95,8 @@ func TestProjectRenameUpdatesImportsLabelsAndAssignments(t *testing.T) {
 }
 func TestWorkspaceAutoImportAndSymbolSearch(t *testing.T) {
 	root := t.TempDir()
-	os.WriteFile(filepath.Join(root, "math.ms"), []byte("export fn multiply(value: Int) -> Int:\n    return value\nfn private() -> Int:\n    return 0\n"), 0600)
-	d := document{fileURI(filepath.Join(root, "main.ms")), "fn answer() -> Int:\n    return mul\n", 1}
+	os.WriteFile(filepath.Join(root, "math.ms"), []byte("export fn multiply(value: Int) Int:\n    return value\nfn private() Int:\n    return 0\n"), 0600)
+	d := document{fileURI(filepath.Join(root, "main.ms")), "fn answer() Int:\n    return mul\n", 1}
 	items, err := completionAt(d, map[string]document{d.URI: d}, position{1, 14}, true)
 	if err != nil {
 		t.Fatal(err)
@@ -115,7 +115,7 @@ func TestWorkspaceAutoImportAndSymbolSearch(t *testing.T) {
 }
 
 func TestSourceContractsFieldsAndTypeRename(t *testing.T) {
-	source := "interface Reader:\n    fn read() -> String\ntype Box:\n    label: String\nimpl Reader for Box:\n    fn read() -> String:\n        return self.label\nfn message(value: Reader) -> String:\n    return value.read()\nfn make() -> Box:\n    return Box(label: \"value\")\n"
+	source := "interface Reader:\n    fn read() String\ntype Box:\n    label: String\nimpl Reader for Box:\n    fn read() String:\n        return self.label\nfn message(value: Reader) String:\n    return value.read()\nfn make() Box:\n    return Box(label: \"value\")\n"
 	root := t.TempDir()
 	file := filepath.Join(root, "main.ms")
 	os.WriteFile(file, []byte(source), 0600)
@@ -142,7 +142,7 @@ func TestSourceContractsFieldsAndTypeRename(t *testing.T) {
 	}
 }
 func TestSymbolRangesAndInferredTypeHints(t *testing.T) {
-	source := "fn answer() -> Int:\n    let number = 42\n    return number\nfn later() -> Int:\n    return 2\n"
+	source := "fn answer() Int:\n    let number = 42\n    return number\nfn later() Int:\n    return 2\n"
 	d := document{"file:///tmp/symbols.ms", source, 1}
 	checked := analyze(d, map[string]document{d.URI: d})
 	symbols := documentSymbols(checked, d)
@@ -157,7 +157,7 @@ func TestSymbolRangesAndInferredTypeHints(t *testing.T) {
 	}
 }
 func TestCodeActionFilteringAndUnusedImportFix(t *testing.T) {
-	source := "import ListBuilder from \"@std/collections.ms\"\nfn answer() -> Int:\n    return 42\n"
+	source := "import ListBuilder from \"@std/collections.ms\"\nfn answer() Int:\n    return 42\n"
 	d := document{"file:///tmp/actions.ms", source, 6}
 	checked := analyze(d, map[string]document{d.URI: d})
 	actions := editorActions(d, checked, span{position{}, Position(source, len(source))}, []string{"quickfix"})
@@ -175,7 +175,7 @@ func TestCodeActionFilteringAndUnusedImportFix(t *testing.T) {
 }
 
 func TestWildcardBindingsRemainSafeAcrossEditorFeatures(t *testing.T) {
-	source := "fn answer(value: Optional[Int]) -> Int:\n    match value:\n        some(_):\n            return 1\n        none:\n            return 0\n"
+	source := "fn answer(value: Optional[Int]) Int:\n    match value:\n        some(_):\n            return 1\n        none:\n            return 0\n"
 	d := document{"file:///tmp/wildcard.ms", source, 1}
 	docs := map[string]document{d.URI: d}
 	checked := workspaceAnalysis(d, docs)
@@ -200,7 +200,7 @@ func TestWildcardBindingsRemainSafeAcrossEditorFeatures(t *testing.T) {
 }
 
 func TestStandardLibraryNavigationUsesCompilerSources(t *testing.T) {
-	source := "fn count(values: List[String]) -> Int:\n    return values.length()\n"
+	source := "fn count(values: List[String]) Int:\n    return values.length()\n"
 	d := document{"file:///tmp/standard-navigation.ms", source, 1}
 	docs := map[string]document{d.URI: d}
 	standardURI := "manuscript-stdlib:///collections.ms"
@@ -240,8 +240,8 @@ func TestStandardLibraryNavigationUsesCompilerSources(t *testing.T) {
 
 func TestBytesValuesHoverIncludesOperationContract(t *testing.T) {
 	source := `import Bytes from "@std/bytes.ms"
-fn extract(data: Bytes) -> List[Int]:
-    let bound: fn() -> List[Int] = data.values
+fn extract(data: Bytes) List[Int]:
+    let bound: fn() List[Int] = data.values
     return data.values()
 `
 	d := document{"file:///tmp/bytes-values-hover.ms", source, 1}
@@ -263,10 +263,10 @@ fn extract(data: Bytes) -> List[Int]:
 
 func TestBytesConstructorRetainsValuesSignature(t *testing.T) {
 	for _, call := range []string{"Bytes(|", "Bytes(values: |"} {
-		source := "import Bytes from \"@std/bytes.ms\"\nfn make() -> Bytes:\n    return " + call + "\n"
+		source := "import Bytes from \"@std/bytes.ms\"\nfn make() Bytes:\n    return " + call + "\n"
 		result := signatureSource(t, source)
 		signature := result["signatures"].([]any)[0].(map[string]any)
-		if signature["label"] != "Bytes(values: List[Int]) -> Bytes" {
+		if signature["label"] != "Bytes(values: List[Int]) Bytes" {
 			t.Fatalf("%s: constructor argument lost with field removal: %v", call, signature)
 		}
 	}
@@ -276,7 +276,7 @@ func TestNavigationWithinStandardLibrary(t *testing.T) {
 	for _, item := range []struct{ file, needle, target, name string }{
 		{"collections.ms", "Result[List[T]", "result.ms", "Result"},
 		{"collections.ms", "Optional[T]", "optional.ms", "Optional"},
-		{"collections.ms", "List[T]) ->", "collections.ms", "List"},
+		{"collections.ms", "List[T]", "collections.ms", "List"},
 		{"cli.ms", "List[String]", "collections.ms", "List"},
 	} {
 		t.Run(item.file+"/"+item.needle, func(t *testing.T) {
@@ -341,8 +341,8 @@ func TestNavigationWithinStandardLibrary(t *testing.T) {
 func TestGroupedImportFixKeepsUsedBindingAndRenameUsesNameOffsets(t *testing.T) {
 	root := t.TempDir()
 	helper := filepath.Join(root, "helper.ms")
-	source := "import { first, second } from \"./helper.ms\"\nfn answer() -> Int:\n    return first()\n"
-	os.WriteFile(helper, []byte("export fn first() -> Int:\n    return 1\nexport fn second() -> Int:\n    return 2\n"), 0600)
+	source := "import { first, second } from \"./helper.ms\"\nfn answer() Int:\n    return first()\n"
+	os.WriteFile(helper, []byte("export fn first() Int:\n    return 1\nexport fn second() Int:\n    return 2\n"), 0600)
 	file := filepath.Join(root, "main.ms")
 	os.WriteFile(file, []byte(source), 0600)
 	d := document{fileURI(file), source, 1}
@@ -380,7 +380,7 @@ func TestGroupedImportFixKeepsUsedBindingAndRenameUsesNameOffsets(t *testing.T) 
 }
 
 func TestBareArgumentRenameAddsNoLabels(t *testing.T) {
-	source := "fn subtract(amount: Int, deduction: Int) -> Int: return amount - deduction\nfn call() -> Int:\n    let amount = 10\n    let deduction = 3\n    return subtract(deduction, amount)\n"
+	source := "fn subtract(amount: Int, deduction: Int) Int: return amount - deduction\nfn call() Int:\n    let amount = 10\n    let deduction = 3\n    return subtract(deduction, amount)\n"
 	d := document{fileURI(filepath.Join(t.TempDir(), "shorthand.ms")), source, 1}
 	docs := map[string]document{d.URI: d}
 	result := analyze(d, docs)
@@ -421,7 +421,7 @@ func TestPreferredNativeNamesHoverAndNavigation(t *testing.T) {
 		{"replace_all", "Regex", "literal replacement text", "regex.ms"},
 	} {
 		t.Run(tc.receiver+"/"+tc.name, func(t *testing.T) {
-			source := "import Bytes from \"@std/bytes.ms\"\nimport Regex from \"@std/regex.ms\"\nfn check(receiver: " + tc.receiver + ") -> Unit:\n    let bound = receiver." + tc.name + "\n"
+			source := "import Bytes from \"@std/bytes.ms\"\nimport Regex from \"@std/regex.ms\"\nfn check(receiver: " + tc.receiver + ") Unit:\n    let bound = receiver." + tc.name + "\n"
 			d := document{"file:///tmp/preferred-names-hover.ms", source, 1}
 			checked := analyze(d, map[string]document{d.URI: d})
 			if !checked.Success() {
@@ -450,7 +450,7 @@ func TestPreferredNativeNamesHoverAndNavigation(t *testing.T) {
 
 func TestIncrementalEditsClampOutOfRangePositions(t *testing.T) {
 	uri := "file:///tmp/clamp.ms"
-	source := "fn answer() -> Int:\n    return 42\n"
+	source := "fn answer() Int:\n    return 42\n"
 	// Positions past the end of a line or of the document clamp, so the
 	// server's copy keeps matching the editor's.
 	edits := []any{

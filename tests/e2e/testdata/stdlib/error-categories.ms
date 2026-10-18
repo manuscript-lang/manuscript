@@ -25,18 +25,18 @@ type PathError:
     case InvalidInput
 
 impl Error for PathError:
-    fn message() -> String:
+    fn message() String:
         return "path: invalid input"
 
 impl Error for CustomError:
-    fn message() -> String:
+    fn message() String:
         self.calls = self.calls + 1
         return self.message
 
-fn is_missing(cause: Error) -> Bool:
+fn is_missing(cause: Error) Bool:
     return category(cause) == some(ErrorCategory.NotFound)
 
-fn yaml_error(cause: Error) -> Result[YamlError, Error]:
+fn yaml_error(cause: Error) Result[YamlError, Error]:
     match cause:
         YamlError(found): return ok(found)
         _: return error(TextError.Text("category changed domain"))
@@ -82,7 +82,7 @@ test "shared categories keep exact standard domain values":
         expected: some(ErrorCategory.LimitExceeded)
     )
     category(SseError.Truncated).is_some() | try expect_false
-    let allocation_error = range_by(start: 0, end: 268435457, step: 1).unwrap_error()
+    let allocation_error = range_by(start: 0, end: 268435457, step: 1).err()
     category(allocation_error) | try expect_equal(
         expected: some(ErrorCategory.LimitExceeded)
     )

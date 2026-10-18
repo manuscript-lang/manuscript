@@ -1,10 +1,10 @@
-import {expect_equal} from "@std/testing.ms"
+import {expect_true} from "@std/testing.ms"
 
 test "literal divisors":
     let n = -7
-    (n / 2) | try expect_equal(expected: -3)
-    (n % 3) | try expect_equal(expected: -1)
-    (9 % 2) | try expect_equal(expected: 1)
+    try expect_true((n / 2 == -3))
+    try expect_true((n % 3 == -1))
+    try expect_true((9 % 2 == 1))
     var i = 0
     var hits = 0
 
@@ -13,4 +13,4 @@ test "literal divisors":
             hits = hits + 1
         i = i + 1
 
-    hits | try expect_equal(expected: 34)
+    try expect_true((hits == 34))

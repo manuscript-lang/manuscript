@@ -10,7 +10,7 @@ import (
 )
 
 func TestKnownStandardTypeImportHint(t *testing.T) {
-	m, err := parser.Parse("import-hint.ms", "fn boxed(value: SetBuilder[Int]) -> Unit: return\n")
+	m, err := parser.Parse("import-hint.ms", "fn boxed(value: SetBuilder[Int]) Unit: return\n")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,8 +26,8 @@ func TestReturnOnlyTypeParameterContext(t *testing.T) {
 		`let result: Result[Int, String] = fail("empty")
     return result`,
 	} {
-		source := `fn fail[T](message: String) -> Result[T, String]: error(message)
-fn first() -> Result[Int, String]:
+		source := `fn fail[T](message: String) Result[T, String]: error(message)
+fn first() Result[Int, String]:
     ` + body + "\n"
 		m, err := parser.Parse("inference-hint.ms", source)
 		if err != nil {
@@ -41,10 +41,10 @@ fn first() -> Result[Int, String]:
 }
 
 func TestUnknownTypeDoesNotCascadeIntoInference(t *testing.T) {
-	source := `fn collect[T, U](items: List[T], step: fn(value: T) -> Result[List[U], MissingError]) -> Result[List[U], MissingError]:
-    return step(items.at(0).unwrap())
-fn first() -> Unit:
-    let result = collect(items: [1, 2], step: fn(value: Int) -> Result[List[Int], MissingError]: ok([value]))
+	source := `fn collect[T, U](items: List[T], step: fn(value: T) Result[List[U], MissingError]) Result[List[U], MissingError]:
+    return step(items.at(0).get())
+fn first() Unit:
+    let result = collect(items: [1, 2], step: fn(value: Int) Result[List[Int], MissingError]: ok([value]))
     let unrelated: Int = "wrong"
 `
 	m, err := parser.Parse("unknown-inference.ms", source)
@@ -69,8 +69,8 @@ fn first() -> Unit:
 }
 
 func TestReturnOnlyTypeParameterExplicitSpecialization(t *testing.T) {
-	m, err := parser.Parse("explicit-inference.ms", `fn fail[T](message: String) -> Result[T, String]: error(message)
-fn first() -> Result[Int, String]: fail[Int]("empty")
+	m, err := parser.Parse("explicit-inference.ms", `fn fail[T](message: String) Result[T, String]: error(message)
+fn first() Result[Int, String]: fail[Int]("empty")
 `)
 	if err != nil {
 		t.Fatal(err)
@@ -82,8 +82,8 @@ fn first() -> Result[Int, String]: fail[Int]("empty")
 }
 
 func TestMissingTypeArgumentHintRetainsKnownArguments(t *testing.T) {
-	m, err := parser.Parse("partial-inference.ms", `fn convert[T, U](value: T) -> Optional[U]: none
-fn first() -> Unit:
+	m, err := parser.Parse("partial-inference.ms", `fn convert[T, U](value: T) Optional[U]: none
+fn first() Unit:
     let value = convert(1)
 `)
 	if err != nil {
@@ -96,9 +96,9 @@ fn first() -> Unit:
 }
 
 func TestUnknownTypeKeepsIndependentInferenceError(t *testing.T) {
-	m, err := parser.Parse("independent-inference.ms", `fn broken(value: Missing) -> Unit: return
-fn empty[T]() -> Optional[T]: none
-fn first() -> Unit:
+	m, err := parser.Parse("independent-inference.ms", `fn broken(value: Missing) Unit: return
+fn empty[T]() Optional[T]: none
+fn first() Unit:
     let value = empty()
 `)
 	if err != nil {

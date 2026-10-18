@@ -11,8 +11,8 @@ import (
 func checkAnalysisCollections(cli, directory string, environment []string) error {
 	root := filepath.Join(directory, "analysis")
 	for name, source := range map[string]string{
-		"left/main.ms":   "export fn main() -> Int:\n    return 0\n",
-		"right/main.ms":  "export fn main() -> Int:\n    return 0\n",
+		"left/main.ms":   "export fn main() Int:\n    return 0\n",
+		"right/main.ms":  "export fn main() Int:\n    return 0\n",
 		"nested/ms.toml": "invalid nested manifest",
 		"nested/bad.ms":  "invalid source",
 		".hidden/bad.ms": "invalid source",
@@ -38,10 +38,10 @@ func checkAnalysisCollections(cli, directory string, environment []string) error
 			return fmt.Errorf("explicit/discovered %s parity: %v, status %d, %s, stderr %s", command, err, status, explicit, stderr)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(root, "left/main.ms"), []byte("export fn main() -> Int:\n    return 0   \n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "left/main.ms"), []byte("export fn main() Int:\n    return 0   \n"), 0600); err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(root, "right/main.ms"), []byte("export fn main() -> Int:\n    return missing\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "right/main.ms"), []byte("export fn main() Int:\n    return missing\n"), 0600); err != nil {
 		return err
 	}
 	status, output, stderr, err := run("lint", "analysis", "--json")

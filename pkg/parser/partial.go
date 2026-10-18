@@ -281,9 +281,15 @@ func rebase(module *syntax.Module, offset, lines int) {
 			expression(e.Arms[i].Value)
 		}
 	}
+	group := func(p *syntax.Position) {
+		if p.Line > 0 {
+			position(p)
+		}
+	}
 	body = func(statements []*syntax.Statement) {
 		for _, s := range statements {
 			position(&s.Pos)
+			group(&s.Group)
 			pattern(s.Pattern)
 			typ(s.Type)
 			expression(s.Target)
@@ -294,6 +300,7 @@ func rebase(module *syntax.Module, offset, lines int) {
 	}
 	declaration = func(d *syntax.Declaration) {
 		position(&d.Pos)
+		group(&d.Group)
 		for i := range d.TypeParams {
 			position(&d.TypeParams[i].Pos)
 			for _, bound := range d.TypeParams[i].Bounds {

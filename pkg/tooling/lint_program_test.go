@@ -8,7 +8,7 @@ import (
 )
 
 func TestSemanticLintUsesReadsAndControlFlow(t *testing.T) {
-	source := "import ListBuilder from \"@std/collections.ms\"\nfn answer() -> Int:\n    let unused = 1\n    var written = 2\n    written = 3\n    return 0\n    return 1\n"
+	source := "import ListBuilder from \"@std/collections.ms\"\nfn answer() Int:\n    let unused = 1\n    var written = 2\n    written = 3\n    return 0\n    return 1\n"
 	checked := compiler.CompileSource("source.ms", source, compiler.Options{AnalyzeOnly: true})
 	if !checked.Success() {
 		t.Fatal(checked.Diagnostics)
@@ -25,8 +25,8 @@ func TestSemanticLintUsesReadsAndControlFlow(t *testing.T) {
 
 func TestUnusedImportsFollowResolvedNames(t *testing.T) {
 	for _, source := range []string{
-		"import parse from \"@std/json.ms\"\nfn answer(parse: Int) -> Int:\n    return parse\n",
-		"import parse from \"@std/json.ms\"\ntype Item:\n    parse: Int\nfn answer() -> Item:\n    return Item(parse: 1)\n",
+		"import parse from \"@std/json.ms\"\nfn answer(parse: Int) Int:\n    return parse\n",
+		"import parse from \"@std/json.ms\"\ntype Item:\n    parse: Int\nfn answer() Item:\n    return Item(parse: 1)\n",
 	} {
 		checked := compiler.CompileSource("source.ms", source, compiler.Options{AnalyzeOnly: true})
 		if !checked.Success() {
@@ -47,9 +47,9 @@ func TestUnusedImportsFollowResolvedNames(t *testing.T) {
 func TestImportUsesStayWithinTheirModule(t *testing.T) {
 	root := t.TempDir()
 	for name, source := range map[string]string{
-		"value.ms":  "export fn value() -> Int:\n    return 1\n",
-		"helper.ms": "import value from \"./value.ms\"\nexport fn helper() -> Int:\n    return 2\n",
-		"main.ms":   "import value from \"./value.ms\"\nimport helper from \"./helper.ms\"\nfn answer() -> Int:\n    return value() + helper()\n",
+		"value.ms":  "export fn value() Int:\n    return 1\n",
+		"helper.ms": "import value from \"./value.ms\"\nexport fn helper() Int:\n    return 2\n",
+		"main.ms":   "import value from \"./value.ms\"\nimport helper from \"./helper.ms\"\nfn answer() Int:\n    return value() + helper()\n",
 	} {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {
 			t.Fatal(err)
@@ -86,14 +86,14 @@ func unreadBindings(t *testing.T, source string) []string {
 }
 
 func TestSelfAssignmentDoesNotCountAsRead(t *testing.T) {
-	flagged := "fn answer() -> Int:\n    var total = 0\n    total = total + 2\n    return 0\n"
+	flagged := "fn answer() Int:\n    var total = 0\n    total = total + 2\n    return 0\n"
 	if got := unreadBindings(t, flagged); len(got) != 1 || got[0] != "Local binding total is never read" {
 		t.Fatal("a binding read only by assignments to itself must be unread", got)
 	}
 	for name, source := range map[string]string{
-		"returned":     "fn answer() -> Int:\n    var total = 0\n    total = total + 2\n    return total\n",
-		"other target": "fn answer() -> Int:\n    var total = 0\n    var other = 0\n    other = total + 1\n    total = total + 2\n    return other\n",
-		"condition":    "fn answer() -> Int:\n    var total = 0\n    total = total + 2\n    if total > 1:\n        return 1\n    return 0\n",
+		"returned":     "fn answer() Int:\n    var total = 0\n    total = total + 2\n    return total\n",
+		"other target": "fn answer() Int:\n    var total = 0\n    var other = 0\n    other = total + 1\n    total = total + 2\n    return other\n",
+		"condition":    "fn answer() Int:\n    var total = 0\n    total = total + 2\n    if total > 1:\n        return 1\n    return 0\n",
 	} {
 		if got := unreadBindings(t, source); len(got) != 0 {
 			t.Fatal(name, "binding is observable", got)
@@ -102,19 +102,19 @@ func TestSelfAssignmentDoesNotCountAsRead(t *testing.T) {
 }
 
 func TestMatchArmPayloadBindingsAreLinted(t *testing.T) {
-	prefix := "fn parse(text: String) -> Result[Int, String]:\n    return ok(1)\n"
-	flagged := prefix + "fn answer() -> Int:\n    match parse(\"1\"):\n        ok(value): return 1\n        error(e): return 2\n"
+	prefix := "fn parse(text: String) Result[Int, String]:\n    return ok(1)\n"
+	flagged := prefix + "fn answer() Int:\n    match parse(\"1\"):\n        ok(value): return 1\n        error(e): return 2\n"
 	if got := unreadBindings(t, flagged); len(got) != 2 {
 		t.Fatal("unread payload bindings must be reported", got)
 	}
-	clean := prefix + "fn answer() -> Int:\n    match parse(\"1\"):\n        ok(value): return value\n        error(_): return 2\n"
+	clean := prefix + "fn answer() Int:\n    match parse(\"1\"):\n        ok(value): return value\n        error(_): return 2\n"
 	if got := unreadBindings(t, clean); len(got) != 0 {
 		t.Fatal("read or ignored payload bindings must not be reported", got)
 	}
 }
 
 func TestListLiteralNeedsNoImport(t *testing.T) {
-	source := "fn answer() -> Int:\n    let items = [1, 2, 3]\n    return items.length()\n"
+	source := "fn answer() Int:\n    let items = [1, 2, 3]\n    return items.length()\n"
 	checked := compiler.CompileSource("source.ms", source, compiler.Options{AnalyzeOnly: true})
 	if !checked.Success() {
 		t.Fatal(checked.Diagnostics)

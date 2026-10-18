@@ -2,7 +2,7 @@ import {expect_equal, expect_false, expect_ok, fail} from "@std/testing.ms"
 import TextError from "@std/errors.ms"
 import {parse, format, compare, Version, SemverError} from "@std/semver.ms"
 
-fn failure(result: Result[Version, SemverError]) -> Result[SemverError, Error]:
+fn failure(result: Result[Version, SemverError]) Result[SemverError, Error]:
     match result:
         ok(_): return error(TextError.Text("accepted"))
         error(cause): return ok(cause)
@@ -47,8 +47,8 @@ test "semver orders by precedence":
             var expected = 0
             if i < j: expected = -1
             if i > j: expected = 1
-            let left = ordered[i].unwrap()
-            let right = ordered[j].unwrap()
+            let left = ordered[i].get()
+            let right = ordered[j].get()
             if (
                 compare(
                     left: (parse(text: left) | try expect_ok),

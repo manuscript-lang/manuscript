@@ -7,7 +7,7 @@ import {HttpExchange, HttpError, HttpServerOptions, HttpClientOptions} from "@st
 import {WebSocketOptions, WebSocketError} from "@std/websocket.ms"
 import TlsOptions from "@std/tls.ms"
 
-fn tls_options() -> TlsOptions:
+fn tls_options() TlsOptions:
     return TlsOptions(
         server_name: "",
         roots_pem: "",
@@ -17,7 +17,7 @@ fn tls_options() -> TlsOptions:
         require_client_certificate: false
     )
 
-fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
+fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
     if exchange.path() == "/ws":
         with socket = (
             try http_result(
@@ -28,7 +28,7 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
                 )
             )
         ):
-            let message = (try http_result(socket.receive())).unwrap()
+            let message = (try http_result(socket.receive())).get()
             let sent = (
                 try http_result(
                     socket.send(
@@ -109,7 +109,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
                 ) | try expect_ok
             ):
                 body.metadata().status | try expect_equal(expected: 201)
-                (body.read(5) | try expect_ok).unwrap() | try expect_equal(
+                (body.read(5) | try expect_ok).get() | try expect_equal(
                     expected: "hello".to_bytes()
                 )
                 ((body.read(5) | try expect_ok).is_none()) | try expect_true
@@ -156,11 +156,11 @@ test "WebSocket negotiates a protocol and echoes a text frame":
         ):
             socket.subprotocol() | try expect_equal(expected: "echo")
             let sent = (socket.send(data: "é🙂".to_bytes(), text: true) | try expect_ok)
-            let message = (socket.receive() | try expect_ok).unwrap()
+            let message = (socket.receive() | try expect_ok).get()
             (not message.text or message.data != "é🙂".to_bytes()) | try expect_false
 
-fn report_host(exchange: HttpExchange) -> Result[Unit, HttpError]:
-    let hosts = (try exchange.headers().text("Host")).unwrap_or([])
+fn report_host(exchange: HttpExchange) Result[Unit, HttpError]:
+    let hosts = (try exchange.headers().text("Host")).get([])
     let started = (try exchange.send_headers(status: 200, headers: headers()))
     let written = (try http_result(exchange.write(hosts.join(",").to_bytes())))
     return ok(unit)

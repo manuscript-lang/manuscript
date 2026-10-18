@@ -71,7 +71,7 @@ func TestDebugScriptInterruptsCommandInput(t *testing.T) {
 
 func TestDebugScriptInterruptsBlockedTargetOutput(t *testing.T) {
 	source := filepath.Join(t.TempDir(), "main.ms")
-	code := "import stderr from \"@std/io.ms\"\n\nexport fn main() -> Int:\n    let stream = stderr()\n    let chunk = \"" + strings.Repeat("e", 2048) + "\".to_bytes()\n    while true:\n        let _written = stream.write(data: chunk)\n    return 0\n"
+	code := "import stderr from \"@std/io.ms\"\n\nexport fn main() Int:\n    let stream = stderr()\n    let chunk = \"" + strings.Repeat("e", 2048) + "\".to_bytes()\n    while true:\n        let _written = stream.write(data: chunk)\n    return 0\n"
 	if err := os.WriteFile(source, []byte(code), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestDebugScriptInterruptsBlockedTargetOutput(t *testing.T) {
 func TestDebugScriptFatalInputWithFullSharedOutput(t *testing.T) {
 	root := t.TempDir()
 	source, commands := filepath.Join(root, "main.ms"), filepath.Join(root, "commands.txt")
-	if err := os.WriteFile(source, []byte("export fn main() -> Int:\n    return 0\n"), 0600); err != nil {
+	if err := os.WriteFile(source, []byte("export fn main() Int:\n    return 0\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(commands, []byte(strings.Repeat("x", 1024*1024+1)), 0600); err != nil {

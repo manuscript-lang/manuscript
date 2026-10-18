@@ -4,13 +4,13 @@ type Point:
     x: Int
     y: Int
 
-fn halve(n: Int) -> Optional[Int]:
+fn halve(n: Int) Optional[Int]:
     if n % 2 != 0:
         return none
 
     return some(value: n / 2)
 
-fn describe(key: Point, m: Map[Point, String]) -> String:
+fn describe(key: Point, m: Map[Point, String]) String:
     match m.get(key: key):
         some(v):
             return "found {v}"
@@ -22,16 +22,16 @@ test "text interpolation":
     let f = 1.5
     let ok = true
     let s = "hi"
-    ("n={n} f={f} ok={ok} s={s}" == "n=42 f=1.5 ok=true s=hi") | try expect_true
-    ("{n}" == "42") | try expect_true
-    ("{s}{s}" == "hihi") | try expect_true
-    ("".length() == 0) | try expect_true
-    ("héllo {n}".length() == 8) | try expect_true
-    ("{halve(n: 8)}" == "{halve(n: 8)}") | try expect_true
+    try expect_true(("n={n} f={f} ok={ok} s={s}" == "n=42 f=1.5 ok=true s=hi"))
+    try expect_true(("{n}" == "42"))
+    try expect_true(("{s}{s}" == "hihi"))
+    try expect_true(("".length() == 0))
+    try expect_true(("héllo {n}".length() == 8))
+    try expect_true(("{halve(n: 8)}" == "{halve(n: 8)}"))
     let items = List[Int]()
     items.append(value: 1)
-    ("{items}" == "[1]") | try expect_true
-    ("{Point(x: 1, y: 2)}".length() > 0) | try expect_true
+    try expect_true(("{items}" == "[1]"))
+    try expect_true(("{Point(x: 1, y: 2)}".length() > 0))
 
 test "map lookup":
     let m = Map[Int, Int]()
@@ -39,7 +39,7 @@ test "map lookup":
 
     match m.get(key: 1):
         some(v):
-            (v == 10) | try expect_true
+            try expect_true((v == 10))
         none:
             return fail("expected value")
 
@@ -51,5 +51,5 @@ test "map lookup":
 
     let points = Map[Point, String]()
     points.add(key: Point(x: 1, y: 2), value: "a")
-    (describe(key: Point(x: 1, y: 2), m: points) == "found a") | try expect_true
-    (describe(key: Point(x: 2, y: 1), m: points) == "missing") | try expect_true
+    try expect_true((describe(key: Point(x: 1, y: 2), m: points) == "found a"))
+    try expect_true((describe(key: Point(x: 2, y: 1), m: points) == "missing"))

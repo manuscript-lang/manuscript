@@ -52,9 +52,9 @@ func definitionAt(t *testing.T, source string, offset int) (file, text, hover st
 func TestStandardLibraryNavigation(t *testing.T) {
 	source := `import ListBuilder from "@std/collections.ms"
 import system from "@std/system.ms"
-fn length(values: List[Int]) -> Int:
+fn length(values: List[Int]) Int:
     return values.length()
-fn os_name() -> String:
+fn os_name() String:
     return system().info().os
 `
 	for _, item := range []struct{ needle, file, definition string }{{"ListBuilder from", "@std/collections.ms", "ListBuilder[T]:"}, {"List[Int]", "@std/collections.ms", "List[T]:"}, {"length()", "@std/collections.ms", "length()"}, {"system()", "@std/system.ms", "system()"}, {"info()", "@std/system.ms", "info()"}, {".os", "@std/system.ms", "os:"}} {
@@ -83,7 +83,7 @@ func TestGroupedImportNavigation(t *testing.T) {
 }
 
 func TestNativeGenericMethodNavigation(t *testing.T) {
-	source := `fn label(value: Int) -> String:
+	source := `fn label(value: Int) String:
     return "{value}"
 test "methods":
     let labels = [1].map(transform: label)
@@ -104,8 +104,8 @@ test "methods":
 
 func TestBytesValuesNavigation(t *testing.T) {
 	source := `import Bytes from "@std/bytes.ms"
-fn extract(data: Bytes) -> List[Int]:
-    let bound: fn() -> List[Int] = data.values
+fn extract(data: Bytes) List[Int]:
+    let bound: fn() List[Int] = data.values
     return data.values()
 `
 	for _, offset := range []int{strings.Index(source, "values\n"), strings.Index(source, "values()")} {
@@ -118,7 +118,7 @@ fn extract(data: Bytes) -> List[Int]:
 
 func TestCommonErrorNavigation(t *testing.T) {
 	source := `import JsonError from "@std/json.ms"
-fn describe(cause: Error) -> String:
+fn describe(cause: Error) String:
     match cause:
         JsonError(json):
             return json.message()
@@ -129,7 +129,7 @@ fn describe(cause: Error) -> String:
 	// rather than the contract in errors.ms, so cause.message() only asserts
 	// that it lands on some standard message() declaration.
 	for _, item := range []struct{ needle, file string }{
-		{"Error) ->", "@std/errors.ms"},
+		{"Error) String", "@std/errors.ms"},
 		{"JsonError(json)", "@std/json.ms"},
 		{"json.message()", "@std/json.ms"},
 		{"cause.message()", ""},
@@ -152,15 +152,15 @@ fn describe(cause: Error) -> String:
 }
 
 func TestUniversalToStringNavigation(t *testing.T) {
-	source := "fn text[T](value: T) -> String:\n    return value.toString()\n"
-	file, _, hover := definitionAt(t, source, strings.Index(source, "toString"))
+	source := "fn text[T](value: T) String:\n    return value.to_string()\n"
+	file, _, hover := definitionAt(t, source, strings.Index(source, "to_string"))
 	if file != "@std/intrinsics.ms" || !strings.Contains(hover, "fn()->String") {
 		t.Fatal("universal method must navigate to its source signature", file, hover)
 	}
 }
 
 func TestSourceStandardLibraryNavigation(t *testing.T) {
-	source := "import {parse, TomlValue} from \"@std/toml.ms\"\nfn read() -> Unit:\n    let result = parse(text: \"a=1\")\n"
+	source := "import {parse, TomlValue} from \"@std/toml.ms\"\nfn read() Unit:\n    let result = parse(text: \"a=1\")\n"
 	for _, offset := range []int{strings.Index(source, "parse"), strings.LastIndex(source, "parse("), strings.Index(source, "TomlValue")} {
 		if file, _, _ := definitionAt(t, source, offset); file != "@std/toml.ms" {
 			t.Fatal("missing source standard navigation", file)
@@ -189,7 +189,7 @@ func TestConstructorNamesNavigateToCanonicalDeclarations(t *testing.T) {
 		{"Optional", "optional", "Optional[Int].some(1)"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source := "fn example() -> Unit:\n    " + tc.expression + "\n"
+			source := "fn example() Unit:\n    " + tc.expression + "\n"
 			if tc.name == "Queue" || tc.name == "CsvOptions" {
 				source = "import " + tc.name + " from \"@std/" + tc.module + ".ms\"\n" + source
 			}
@@ -202,7 +202,7 @@ func TestConstructorNamesNavigateToCanonicalDeclarations(t *testing.T) {
 }
 
 func TestDefaultCallNavigation(t *testing.T) {
-	source := "fn read() -> Int:\n    return 1\nfn named(value: Int = read()) -> Int:\n    return value\n"
+	source := "fn read() Int:\n    return 1\nfn named(value: Int = read()) Int:\n    return value\n"
 	file, text, _ := definitionAt(t, source, strings.Index(source, "read()"+")"))
 	if file != "file:///tmp/navigation.ms" || !strings.HasPrefix(text, "read(") {
 		t.Fatal("default call navigation", file, text)

@@ -5,7 +5,7 @@ weight = 6
 
 # Destructuring bindings
 
-Destructuring gives names to parts of a value in one declaration. Use brackets, `[...]`, for positions and braces, `{...}`, for record fields. Each new name has the type of the part it selects.
+Destructuring names parts of a value in one declaration: `[...]` for positions, `{...}` for record fields. Each name takes the type of the part it selects.
 
 ## Positional bindings
 
@@ -13,11 +13,7 @@ Destructuring gives names to parts of a value in one declaration. Use brackets, 
 let [first_name, second_name] = names
 ```
 
-Positions bind from left to right.
-
-A `List[T]` can be destructured; every bound position has type `T`. Its length must match the pattern. A mismatch is statically known only when the initializer is syntactically a list literal (ignoring grouping); a mismatch then is a compile error. Other list expressions are checked at runtime and mismatch faults, even when a previous binding happened to use a literal. Destructuring does not silently discard extra elements or create values for missing positions.
-
-Use brackets for positional patterns. `let (resA, resB) = value` is not a binding pattern.
+Positions bind left to right. A `List[T]` binds each position as `T`, and its length must match the pattern exactly. A mismatch is a compile error when the initializer is a list literal, and a runtime fault otherwise. Parenthesized patterns such as `let (a, b) = value` are not binding patterns.
 
 ## Record bindings
 
@@ -26,7 +22,7 @@ let {name, email} = customer
 let {name: customer_name, email: customer_email} = customer
 ```
 
-Shorthand binds a field to a local with the same name. `field: local` renames the binding; the field name appears on the left. A pattern can select a subset of fields without creating a new record. Field names must exist on the statically known record type, and each local receives the selected field's type. A `Map` is not a record and does not support named-field patterns.
+Shorthand binds a field to a same-named local; `field: local` renames it. A pattern may select a subset of fields, which must exist on the statically known record type. A `Map` is not a record and takes no field patterns.
 
 ## Nested patterns
 
@@ -35,8 +31,6 @@ let {customer: {name}, shipping: {city: destination}} = order
 let [{name: first_name}, {name: second_name}] = customers
 ```
 
-Patterns can nest whenever the source types support the selected positions or fields. The initializer is evaluated once. The compiler checks the whole pattern for field and shape compatibility, duplicate binding names, and shadowing before accepting the declaration. Extraction proceeds in written pattern order.
+Patterns nest freely. The initializer is evaluated once and extraction follows pattern order. Duplicate binding names are rejected.
 
-Both `let` and `var` accept binding patterns; they make all introduced locals immutable or reassignable respectively. Each local's type is inferred independently from its selected value. These patterns do not change the syntax of tagged alternative cases in `match`.
-
-The accepted syntax here covers positional bindings, record shorthand, renaming, and nesting. Elisions, rest patterns, default initializers, destructuring assignment, and parameter patterns are rejected.
+`let` makes every introduced local immutable and `var` makes them reassignable. Elisions, rest patterns, defaults, destructuring assignment, and parameter patterns are rejected.

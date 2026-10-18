@@ -5,7 +5,7 @@ type Expr:
     case Add(left: Expr, right: Expr)
     case Neg(inner: Expr)
 
-fn evaluate(expr: Expr) -> Int:
+fn evaluate(expr: Expr) Int:
     match expr:
         Num(value): return value
         Add(left, right): return evaluate(left) + evaluate(right)
@@ -36,13 +36,13 @@ type Link:
     next: Optional[Link]
 
 impl Equal for Link:
-    fn equals(other: Equal) -> Bool:
+    fn equals(other: Equal) Bool:
         match other:
             Link(value): return self.value == value.value
             _: return false
 
 impl Hashable for Link:
-    fn hash() -> Int: return self.value
+    fn hash() Int: return self.value
 
 test "recursive alternatives construct match compare and clone":
     let expr = Expr.Add(left: Expr.Num(7), right: Expr.Neg(Expr.Num(2)))
@@ -67,7 +67,7 @@ test "recursive records retain aliases and clone only outer storage":
     let alias = root
     let copy = root.clone()
     alias.value = 3
-    copy.next.unwrap().value = 4
+    copy.next.get().value = 4
     (root.value != 3 or copy.value != 1 or child.value != 4) | try expect_false
     copy.next = none
     root.next.is_none() | try expect_false
@@ -79,7 +79,7 @@ test "recursive structural equality terminates and checks unequal fields":
     right.next = some(right)
     left | try expect_equal(expected: right)
     let copy = left.clone()
-    copy.next.unwrap().value = 2
+    copy.next.get().value = 2
     (left.value != 2 or copy.value != 1 or left == right) | try expect_false
     let a = Node(value: 1, next: none)
     let b = Node(value: 1, next: a)
@@ -94,16 +94,16 @@ test "recursive domain hashing uses explicit implementations":
     (left != right or left.hash() != right.hash()) | try expect_false
     let values = Map[Link, Int]().add(key: left, value: 9)
     let members = Set[Link]().add(left)
-    (values.get(right).unwrap() != 9 or not members.contains(right)) | try expect_false
+    (values.get(right).get() != 9 or not members.contains(right)) | try expect_false
     values.add(key: right, value: 10)
     members.add(right)
-    (values.length() != 1 or members.length() != 1 or values.get(left).unwrap() != 10) | try expect_false
+    (values.length() != 1 or members.length() != 1 or values.get(left).get() != 10) | try expect_false
 
 test "recursive defaults construct independent complete objects":
     let first = DefaultNode(value: 1)
     let second = DefaultNode(value: 2)
     first.next = some(first)
-    (second.next.is_some() or first.next.unwrap().value != 1) | try expect_false
+    (second.next.is_some() or first.next.get().value != 1) | try expect_false
 
 type Entry:
     name: String
@@ -127,12 +127,12 @@ type Pair[T, U]:
 
 test "finite nested generic composition constructs and extracts values":
     let person = Person(Entry(name: "Ada", nickname: some("A")))
-    person.primary.unwrap().nickname.unwrap() | try expect_equal(expected: "A")
+    person.primary.get().nickname.get() | try expect_equal(expected: "A")
     let optional = NestedOptional.Value(some(some(4)))
 
     match optional:
         Value(value):
-            try expect_equal(value.unwrap().unwrap(), 4)
+            try expect_equal(value.get().get(), 4)
 
     let result = NestedResult(ok(ok(5)))
 
@@ -151,4 +151,4 @@ test "finite nested generic composition constructs and extracts values":
         first: some(7),
         second: some(some("nested"))
     )
-    (pair.first.unwrap() != 7 or pair.second.unwrap().unwrap() != "nested") | try expect_false
+    (pair.first.get() != 7 or pair.second.get().get() != "nested") | try expect_false

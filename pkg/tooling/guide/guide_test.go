@@ -30,7 +30,7 @@ func TestCheatsheetStaysShort(t *testing.T) {
 // Each cheat-sheet claim a reader might get wrong is checked against the compiler.
 func TestCheatsheetClaimsMatchTheCompiler(t *testing.T) {
 	check := func(body string) []string {
-		source := "export fn main() -> Int:\n" + body + "    return 0\n"
+		source := "export fn main() Int:\n" + body + "    return 0\n"
 		var issues []string
 		for _, issue := range compiler.CompileSource("claim.ms", source, compiler.Options{Entry: true, AnalyzeOnly: true}).Diagnostics {
 			issues = append(issues, issue.Message)
@@ -42,7 +42,7 @@ func TestCheatsheetClaimsMatchTheCompiler(t *testing.T) {
 		"    let m = Map[String, Int]()\n    let s = Set[Int]()\n",
 		"    var n = 1\n    n = 2\n",
 		"    var n = 1\n    n += 2\n    n %= 2\n",
-		"    let o: Optional[Int] = none\n    let v = o.unwrap_or(3)\n",
+		"    let o: Optional[Int] = none\n    let v = o.get(3)\n",
 		"    let name = \"x\"\n    let text = \"hi {name}\"\n",
 	}
 	for _, body := range accepted {
@@ -61,7 +61,7 @@ func TestCheatsheetClaimsMatchTheCompiler(t *testing.T) {
 			t.Errorf("claim should be rejected:\n%s", body)
 		}
 	}
-	impl := "type T:\n    a: Int\n\nimpl T:\n    fn f(self) -> Int:\n        return 1\n\nexport fn main() -> Int:\n    return 0\n"
+	impl := "type T:\n    a: Int\n\nimpl T:\n    fn f(self) Int:\n        return 1\n\nexport fn main() Int:\n    return 0\n"
 	if len(compiler.CompileSource("claim.ms", impl, compiler.Options{Entry: true, AnalyzeOnly: true}).Diagnostics) == 0 {
 		t.Error("`impl T:` should be rejected")
 	}

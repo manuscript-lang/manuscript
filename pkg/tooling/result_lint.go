@@ -18,7 +18,7 @@ func lintDiscardedResults(program *checker.Program) []LintFinding {
 		if info != nil && info.Type != nil && info.Type.ID == "@std/Result" {
 			findings = append(findings, LintFinding{
 				Code:     "MSL104",
-				Message:  "Result is discarded; handle it with match or try, return it, or bind it to _ignored to discard intentionally",
+				Message:  "Result is discarded; handle it with try or if let, return it, or bind it to _ignored to discard intentionally",
 				Position: statement.Pos,
 			})
 		}

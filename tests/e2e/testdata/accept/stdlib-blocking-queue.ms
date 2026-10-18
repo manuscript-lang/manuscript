@@ -3,7 +3,7 @@ import BlockingQueue from "@std/queues.ms"
 import TaskGroup from "@std/tasks.ms"
 import Task from "@std/tasks.ms"
 
-fn work(jobs: BlockingQueue[Int]) -> Int:
+fn work(jobs: BlockingQueue[Int]) Int:
     var total = 0
 
     while true:
@@ -15,7 +15,7 @@ fn work(jobs: BlockingQueue[Int]) -> Int:
 
     return total
 
-fn total_of(task: Task[Int]) -> Result[Int, Error]:
+fn total_of(task: Task[Int]) Result[Int, Error]:
     return ok(try task.join())
 
 test "bounded put and take block until the other side acts":

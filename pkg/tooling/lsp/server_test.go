@@ -28,7 +28,7 @@ func TestUTF16(t *testing.T) {
 	}
 }
 func TestSession(t *testing.T) {
-	source := "fn answer() -> Int:\n    return 42\n"
+	source := "fn answer() Int:\n    return 42\n"
 	input := frame("initialize", 1, map[string]any{}) + frame("textDocument/didOpen", nil, map[string]any{"textDocument": document{"file:///tmp/new.ms", source, 1}}) + frame("textDocument/formatting", 2, map[string]any{"textDocument": document{URI: "file:///tmp/new.ms"}}) + frame("textDocument/documentSymbol", 3, map[string]any{"textDocument": document{URI: "file:///tmp/new.ms"}}) + frame("shutdown", 4, nil) + frame("exit", nil, nil)
 	var output bytes.Buffer
 	if e := Serve(strings.NewReader(input), &output); e != nil {
@@ -49,7 +49,7 @@ func TestBadLength(t *testing.T) {
 }
 
 func TestSemanticTokensAndGuardedActions(t *testing.T) {
-	d := document{"file:///tmp/new.ms", "fn answer() -> Int:\n    return 42", 9}
+	d := document{"file:///tmp/new.ms", "fn answer() Int:\n    return 42", 9}
 	tokens := semantic(d)["data"].([]int)
 	if len(tokens) == 0 || len(tokens)%5 != 0 {
 		t.Fatal(tokens)
@@ -69,7 +69,7 @@ func TestSemanticTokensAndGuardedActions(t *testing.T) {
 }
 func TestStaleVersionAndClose(t *testing.T) {
 	uri := "file:///tmp/new.ms"
-	input := frame("textDocument/didOpen", nil, map[string]any{"textDocument": document{uri, "fn answer() -> Int:\n    return 42\n", 2}}) + frame("textDocument/didChange", nil, map[string]any{"textDocument": document{URI: uri, Version: 1}, "contentChanges": []any{map[string]any{"text": "bad syntax!"}}}) + frame("textDocument/didClose", nil, map[string]any{"textDocument": document{URI: uri}}) + frame("shutdown", 1, nil) + frame("exit", nil, nil)
+	input := frame("textDocument/didOpen", nil, map[string]any{"textDocument": document{uri, "fn answer() Int:\n    return 42\n", 2}}) + frame("textDocument/didChange", nil, map[string]any{"textDocument": document{URI: uri, Version: 1}, "contentChanges": []any{map[string]any{"text": "bad syntax!"}}}) + frame("textDocument/didClose", nil, map[string]any{"textDocument": document{URI: uri}}) + frame("shutdown", 1, nil) + frame("exit", nil, nil)
 	var output bytes.Buffer
 	if e := Serve(strings.NewReader(input), &output); e != nil {
 		t.Fatal(e)
@@ -92,7 +92,7 @@ func TestStandardLibrarySession(t *testing.T) {
 	})
 	for i, request := range []struct{ method, needle string }{
 		{"textDocument/definition", "Optional[T]"},
-		{"textDocument/definition", "List[T]) ->"},
+		{"textDocument/definition", "List[T]"},
 		{"textDocument/hover", "Optional[T]"},
 		{"textDocument/typeDefinition", "Optional[T]"},
 		{"textDocument/documentSymbol", "Optional[T]"},

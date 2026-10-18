@@ -1,14 +1,12 @@
-import {expect_equal, expect_true} from "@std/testing.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
 test "omitted none defaults":
-    match "ab".repeat(count: 2):
-        ok(v):
-            try expect_equal(v, "abab")
-        error(_):
-            ((false) | try expect_true)
+    if let v = "ab".repeat(count: 2):
+        try expect_equal(v, "abab")
+    else:
+        try expect_false(not (false))
 
-    match "ab".pad_start(target_length: 4, padding: "-"):
-        ok(v):
-            try expect_equal(v, "--ab")
-        error(_):
-            ((false) | try expect_true)
+    if let v = "ab".pad_start(target_length: 4, padding: "-"):
+        try expect_equal(v, "--ab")
+    else:
+        try expect_false(not (false))

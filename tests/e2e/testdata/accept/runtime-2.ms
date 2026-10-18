@@ -1,21 +1,21 @@
 import {expect_equal} from "@std/testing.ms"
 
-type List:
+type Items:
     count: Int
 
-type Result:
+type Outcome:
     case Value(value: Int)
 
-fn compute(value: Int) -> Int:
+fn compute(value: Int) Int:
     return value
 
-fn ordinary() -> Result:
-    return Result.Value(compute(value: 3))
+fn ordinary() Outcome:
+    return Outcome.Value(compute(3))
 
-test "standard spellings are ordinary names":
-    List(2).count | try expect_equal(expected: 2)
+test "non-prelude spellings are ordinary names":
+    try expect_equal(Items(2).count, 2)
     let forward = compute
-    forward(value: 4) | try expect_equal(expected: 4)
+    try expect_equal(forward(4), 4)
 
     match ordinary():
         Value(value):

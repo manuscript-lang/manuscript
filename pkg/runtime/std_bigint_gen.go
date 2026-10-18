@@ -42,8 +42,8 @@ func check_BigInt_BitXor() {
 func check_BigInt_ToInt() {
 	var _ func(*Execution, *BigInt) Option[int] = BigInt_ToInt
 }
-func check_BigInt_ToString() {
-	var _ func(*Execution, *BigInt, int) string = BigInt_ToString
+func check_BigInt_ToStringRadix() {
+	var _ func(*Execution, *BigInt, int) string = BigInt_ToStringRadix
 }
 func check_Errors_Message_BigIntError() {
 	var _ func(*Execution, BigIntError) string = Errors_Message_BigIntError

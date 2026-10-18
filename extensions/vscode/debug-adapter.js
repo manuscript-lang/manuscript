@@ -5,6 +5,7 @@ const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
 const { spawn, execFile } = require('node:child_process');
+const { targetFor } = require('./project-target');
 
 class Framing {
   constructor(receive) { this.buffer = Buffer.alloc(0); this.receive = receive; }
@@ -207,8 +208,7 @@ class ManuscriptAdapter {
     return children;
   }
   // Entries of a map's backing slice; removed entries are nil and skipped.
-  async entries(ref, args) {
-    const fields = await this.valueFields(ref);
+  async entries(fields, args) {
     const slice = fields.find(v => v.name === 'entries');
     if (!slice?.variablesReference) return [];
     const result = [];
@@ -243,12 +243,12 @@ class ManuscriptAdapter {
         return (await this.children(items.variablesReference, args)).map(v => this.render(v, v.name, types[0]));
       }
       case 'Map': {
-        const shown = await this.entries(handle.ref, args);
+        const shown = await this.entries(children, args);
         return shown.filter(e => e.key && e.value).map(e => this.render(e.value, mapName(e.key.value), types[1]));
       }
       case 'Set': {
         const inner = children.find(v => v.name === 'm');
-        const shown = inner?.variablesReference ? await this.entries(inner.variablesReference, args) : [];
+        const shown = inner?.variablesReference ? await this.entries(await this.valueFields(inner.variablesReference), args) : [];
         return shown.filter(e => e.key).map((e, index) => this.render(e.key, `[${index}]`, types[0]));
       }
       default: return children.map(v => this.render(v));
@@ -278,12 +278,8 @@ class ManuscriptAdapter {
     const program = args.program;
     if (!program) throw new Error('launch.program must name a Manuscript module or project');
     if (program.endsWith('.ms') || path.basename(program) === 'ms.toml') {
-      let target = path.resolve(program);
-      if (target.endsWith('.ms')) for (let dir = path.dirname(target); ; dir = path.dirname(dir)) {
-        const candidate = path.join(dir, 'ms.toml');
-        try { await fs.access(candidate); target = candidate; break; } catch (error) { if (error.code !== 'ENOENT') throw error; }
-        if (path.dirname(dir) === dir) break;
-      }
+      const resolved = path.resolve(program);
+      const target = resolved.endsWith('.ms') ? await targetFor(resolved) : resolved;
       this.temp = await fs.mkdtemp(path.join(os.tmpdir(), 'manuscript-dap-'));
       args.program = path.join(this.temp, process.platform === 'win32' ? 'program.exe' : 'program');
       await exec(compiler, ['build', target, '--debug', '-o', args.program]);
@@ -326,9 +322,11 @@ class ManuscriptAdapter {
           const variables = await this.children(args.variablesReference, args);
           if (this.sourceScopes.has(args.variablesReference)) {
             const frameName = this.sourceScopes.get(args.variablesReference);
-            body = { variables: variables.filter(v => this.localFor(v.name, frameName)).map(v => {
-              const local = this.localFor(v.name, frameName); return this.render(v, local.name, local.type);
-            }) };
+            body = { variables: [] };
+            for (const variable of variables) {
+              const local = this.localFor(variable.name, frameName);
+              if (local) body.variables.push(this.render(variable, local.name, local.type));
+            }
           }
           else body = { variables: variables.map(v => this.render(v)) };
         }

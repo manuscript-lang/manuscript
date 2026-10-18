@@ -28,7 +28,7 @@ type invocation struct {
 	buildTypeSet                       bool
 	testTimeout, testFilter            string
 	testOptions                        []string
-	format, view, entity               string // ms diagram options
+	format, view, entity, diff         string // ms diagram options
 	depth                              int
 	debugScript                        string   // ms debug --script: command file, or - for stdin
 	debugBreaks                        []string // ms debug --break: one-shot breakpoints
@@ -164,7 +164,7 @@ func (inv *invocation) parseOptions(args []string, first int, positional bool) (
 				return usageError("--format requires a name, e.g. --format mermaid"), false
 			}
 			inv.format = value
-		case "--view", "--entity", "--depth":
+		case "--view", "--entity", "--depth", "--diff":
 			value, ok := requiredValue(args, &i, value, inline)
 			if !ok {
 				return usageError("%s requires a value; run 'ms help diagram' for examples", flag), false
@@ -174,6 +174,8 @@ func (inv *invocation) parseOptions(args []string, first int, positional bool) (
 				inv.view = value
 			case "--entity":
 				inv.entity = value
+			case "--diff":
+				inv.diff = value
 			default:
 				n, err := strconv.Atoi(value)
 				if err != nil || n <= 0 {
@@ -274,11 +276,14 @@ func (inv *invocation) validate() (plan, int, bool) {
 	if inv.format != "" && command != "diagram" {
 		return p, usageError("--format is valid only for ms diagram and ms review, not ms %s; run 'ms help %s' for its options", command, command), false
 	}
-	if (inv.view != "" || inv.entity != "" || inv.depth != 0) && command != "diagram" {
-		return p, usageError("--view, --entity, and --depth are valid only for ms diagram, not ms %s; run 'ms help %s' for its options", command, command), false
+	if (inv.view != "" || inv.entity != "" || inv.depth != 0 || inv.diff != "") && command != "diagram" {
+		return p, usageError("--view, --entity, --depth, and --diff are valid only for ms diagram, not ms %s; run 'ms help %s' for its options", command, command), false
 	}
 	if inv.view != "" && !slices.Contains(tooling.Views, inv.view) {
 		return p, usageError("unknown --view %q for ms diagram; use %s", inv.view, strings.Join(tooling.Views, ", ")), false
+	}
+	if inv.diff != "" && inv.view == "" && inv.entity == "" {
+		return p, usageError("--diff marks a scoped view; add --view or --entity, e.g. ms diagram ms.toml --view flow --entity save --diff change.patch"), false
 	}
 	if inv.depth != 0 && inv.view == "" && inv.entity == "" {
 		return p, usageError("--depth needs --view or --entity; run 'ms help diagram' for examples"), false

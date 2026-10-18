@@ -3,11 +3,11 @@ import parse from "@std/bigint.ms"
 import BigInt from "@std/bigint.ms"
 import BigIntError from "@std/bigint.ms"
 
-fn verify_bigint() -> Result[Unit, Error]:
+fn verify_bigint() Result[Unit, Error]:
     let large = try parse(text: "18446744073709551616", radix: 10, max_digits: 30)
     (
         not (
-            ((large).multiply(other: large)).to_string(
+            ((large).multiply(other: large)).to_string_radix(
                 radix: 10
             ) == "340282366920938463463374607431768211456"
         )

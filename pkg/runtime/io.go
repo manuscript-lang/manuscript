@@ -2,6 +2,7 @@ package msruntime
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -82,6 +83,18 @@ type hostStream struct {
 	active              sync.WaitGroup
 	releaseFault        error
 	pending             readAhead
+	pumpOnce            sync.Once
+	pump                bool        // reads cannot be interrupted by a deadline
+	inflight            *streamRead // the started read a cancelled call left running
+}
+
+// streamRead is one read of a descriptor that has no read deadlines, started
+// on its own goroutine so a cancelled caller can leave it running.
+type streamRead struct {
+	buf  []byte
+	n    int
+	err  error
+	done chan struct{}
 }
 
 var (
@@ -201,7 +214,7 @@ func (s *hostStream) Read(ctx *Execution, maxBytes Option[int]) Result[Option[*B
 		return Ok[Option[*Bytes], IoError](Some(NewBytes(data)))
 	}
 	data = make([]byte, int(n))
-	read, err := s.file.Read(data)
+	read, err := s.readFile(ctx, data)
 	CheckCancelled(ctx)
 	if err != nil && err != io.EOF {
 		if s.isClosed() {
@@ -213,6 +226,50 @@ func (s *hostStream) Read(ctx *Execution, maxBytes Option[int]) Result[Option[*B
 		return Ok[Option[*Bytes], IoError](None[*Bytes]())
 	}
 	return Ok[Option[*Bytes], IoError](Some(NewBytes(data[:read])))
+}
+
+// readFile reads from the descriptor. Pipes and terminals inherited as blocking
+// descriptors (the usual standard input) ignore read deadlines, so cancellation
+// and Close could never interrupt them. Those reads run on their own goroutine;
+// a cancelled call returns while the read stays pending, and the next Read
+// takes its bytes so none are lost.
+func (s *hostStream) readFile(ctx *Execution, data []byte) (int, error) {
+	s.pumpOnce.Do(func() {
+		if info, err := s.file.Stat(); err == nil && info.Mode().IsRegular() {
+			return
+		}
+		s.pump = errors.Is(s.file.SetReadDeadline(time.Time{}), os.ErrNoDeadline)
+	})
+	if !s.pump {
+		return s.file.Read(data)
+	}
+	s.mu.Lock()
+	read := s.inflight
+	if read == nil {
+		read = &streamRead{buf: make([]byte, len(data)), done: make(chan struct{})}
+		s.inflight = read
+		go func() {
+			read.n, read.err = s.file.Read(read.buf)
+			close(read.done)
+		}()
+	}
+	closing := s.closing
+	s.mu.Unlock()
+	select {
+	case <-read.done:
+	case <-ctx.Context.Done():
+		CheckCancelled(ctx)
+	case <-closing:
+		return 0, os.ErrClosed
+	}
+	s.mu.Lock()
+	s.inflight = nil
+	n := copy(data, read.buf[:read.n])
+	if n < read.n {
+		s.pending.buf = append(s.pending.buf, read.buf[n:read.n]...)
+	}
+	s.mu.Unlock()
+	return n, read.err
 }
 
 func (s *hostStream) Write(ctx *Execution, data *Bytes) Result[Unit, IoError] {

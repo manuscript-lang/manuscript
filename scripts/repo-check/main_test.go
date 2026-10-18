@@ -39,20 +39,21 @@ func TestStandardLibrarySyntax(t *testing.T) {
 
 func TestStandardSyntaxGate(t *testing.T) {
 	valid := fstest.MapFS{
-		"process.ms":    {Data: []byte("export fn commands() -> Commands:\n")},
-		"data.ms":       {Data: []byte("type Data:\n    count: Int = 3\n    fn read() -> Int:\n")},
+		"process.ms":    {Data: []byte("export fn commands() Commands:\n")},
+		"data.ms":       {Data: []byte("type Data:\n    count: Int = 3\nimpl Data:\n    fn read() Int:\n")},
 		"bindings.json": {Data: []byte("not Manuscript source")},
 	}
 	if err := checkStandardSyntax(valid, "pkg/stdlib"); err != nil {
 		t.Fatal("rejected valid declarations", err)
 	}
 	for name, source := range map[string]string{
-		"function": "export fn commands() -> Commands\n",
-		"receiver": "type Data:\n    fn read() -> Int\n",
+		"function": "export fn commands() Commands\n",
+		"receiver": "type Data:\nimpl Data:\n    fn read() Int\n",
+		"inline":   "type Data:\n    fn read() Int:\n",
 		"schema":   "type Data:\n    count Int\n",
 		"default":  "type Data:\n    count: Int =\n",
-		"trailing": "fn valid() -> Unit:\nvar invalid = 3\n",
-		"lexer":    "fn broken() -> String: return \"unterminated\n",
+		"trailing": "fn valid() Unit:\nvar invalid = 3\n",
+		"lexer":    "fn broken() String: return \"unterminated\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			files := fstest.MapFS{"broken.ms": {Data: []byte(source)}}

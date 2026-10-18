@@ -7,7 +7,7 @@ import system from "@std/system.ms"
 import network from "@std/net.ms"
 import TaskGroup from "@std/tasks.ms"
 
-fn check_services() -> Result[Unit, Error]:
+fn check_services() Result[Unit, Error]:
     arguments().length() | try expect_equal(expected: 0)
     let before = clock().now()
     let after = clock().now()

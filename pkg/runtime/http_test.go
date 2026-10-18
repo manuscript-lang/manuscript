@@ -2,14 +2,18 @@ package msruntime
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"os"
 	"reflect"
 	"sort"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -829,4 +833,22 @@ func TestServerShutdownCancelsRequestAfterGrace(t *testing.T) {
 		t.Fatal("server close did not cancel the request")
 	}
 	<-stopped
+}
+
+func TestTransportFailuresDropGoFraming(t *testing.T) {
+	wrap := func(err error) error { return &url.Error{Op: "Get", URL: "http://127.0.0.1:1/", Err: err} }
+	for _, test := range []struct {
+		err  error
+		want string
+	}{
+		{wrap(io.EOF), "connection closed before the exchange completed"},
+		{wrap(io.ErrUnexpectedEOF), "connection closed before the exchange completed"},
+		{wrap(&net.OpError{Op: "dial", Err: os.NewSyscallError("connect", syscall.ECONNREFUSED)}), "connection refused"},
+		{wrap(&net.DNSError{Name: "nohost.invalid", Err: "no such host"}), `cannot resolve host "nohost.invalid"`},
+		{wrap(errors.New("weird")), "weird"},
+	} {
+		if got := describeTransportError(test.err); got != test.want {
+			t.Errorf("describeTransportError(%v) = %q, want %q", test.err, got, test.want)
+		}
+	}
 }

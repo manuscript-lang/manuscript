@@ -22,17 +22,23 @@ func check_Float_IsNan() {
 func check_Float_IsFinite() {
 	var _ func(*Execution, float64) bool = Float_IsFinite
 }
+func check_Float_Compare() {
+	var _ func(*Execution, float64, float64) int = Float_Compare
+}
 func check_Float_TruncateToInt() {
 	var _ func(*Execution, float64) Option[int] = Float_TruncateToInt
 }
-func check_Int_ToString() {
-	var _ func(*Execution, int, int) string = Int_ToString
+func check_Int_ToStringRadix() {
+	var _ func(*Execution, int, int) string = Int_ToStringRadix
 }
 func check_Int_ToFloat() {
 	var _ func(*Execution, int) float64 = Int_ToFloat
 }
 func check_Int_ToDecimal() {
 	var _ func(*Execution, int) *Decimal = Int_ToDecimal
+}
+func check_Int_Compare() {
+	var _ func(*Execution, int, int) int = Int_Compare
 }
 func check_String_Length() {
 	var _ func(*Execution, string) int = String_Length

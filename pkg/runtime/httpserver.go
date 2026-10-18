@@ -540,7 +540,7 @@ func (e *httpExchange) Read(ctx *Execution, maxBytes Option[int]) Result[Option[
 		return Ok[Option[*Bytes], IoError](None[*Bytes]())
 	}
 	if err != nil {
-		return ioFail[Option[*Bytes]](ioFailed(err.Error()))
+		return ioFail[Option[*Bytes]](ioFailed(describeTransportError(err)))
 	}
 	return ioFail[Option[*Bytes]](ioFailed("empty request read"))
 }
@@ -615,7 +615,7 @@ func (e *httpExchange) Write(ctx *Execution, data *Bytes) Result[Unit, IoError] 
 	CheckCancelled(ctx)
 	CheckCancelled(e.ctx)
 	if err != nil {
-		return ioFail[Unit](ioFailed(err.Error()))
+		return ioFail[Unit](ioFailed(describeTransportError(err)))
 	}
 	return Ok[Unit, IoError](Unit{})
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
 	"io"
@@ -13,7 +14,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
-	"unicode/utf16"
+	"time"
 )
 
 type position struct {
@@ -40,19 +41,26 @@ func Position(source string, offset int) position {
 	}
 	prefix := source[:offset]
 	line := strings.Count(prefix, "\n")
-	tail := prefix[strings.LastIndex(prefix, "\n")+1:]
-	return position{line, len(utf16.Encode([]rune(tail)))}
+	tail := prefix[strings.LastIndexByte(prefix, '\n')+1:]
+	return position{line, utf16Length(tail)}
 }
 
 // server holds the state of one language-server session.
 type server struct {
-	transport *transport
-	output    io.Writer
-	docs      map[string]document
-	cache     map[string]compiler.Result
-	roots     []string
-	snippets  bool
-	shutdown  bool
+	transport        *transport
+	output           io.Writer
+	docs             map[string]document
+	cache            map[string]compiler.Result
+	analyses         map[analysisKey]compiler.Result
+	indices          map[*checker.Program][]occurrence
+	lints            map[*checker.Program][]tooling.LintFinding
+	overlayChecked   bool
+	shareOverlays    bool
+	roots            []string
+	snippets         bool
+	shutdown         bool
+	deferDiagnostics bool
+	diagnosticsDirty bool
 }
 
 // errExit ends the session cleanly after the exit notification.
@@ -92,19 +100,78 @@ func notOpen() map[string]any { return rpcFailure(-32602, "document is not open"
 func Serve(input io.Reader, output io.Writer) error {
 	s := &server{transport: newTransport(input), output: output, docs: map[string]document{}, cache: map[string]compiler.Result{}}
 	defer s.transport.close()
-	for incoming := range s.transport.messages {
-		if incoming.err != nil {
-			if incoming.err == io.EOF {
+	return s.serveMessages()
+}
+
+// Only the main loop mutates documents and analyses. Batch consecutive changes
+// already available from the bounded transport, applying every range in order.
+// Empty queues and non-change frames are barriers; no timer delays lone edits.
+func (s *server) serveMessages() error {
+	var next *incoming
+	for {
+		var current incoming
+		if next != nil {
+			current, next = *next, nil
+		} else {
+			var ok bool
+			current, ok = <-s.transport.messages
+			if !ok {
+				return s.flushDiagnostics()
+			}
+		}
+		if current.err != nil {
+			if err := s.flushDiagnostics(); err != nil {
+				return err
+			}
+			if current.err == io.EOF {
 				return nil
 			}
-			return incoming.err
+			return current.err
 		}
-		if err := s.serve(incoming.body); err != nil {
+		if current.change {
+			s.deferDiagnostics = true
+			started := time.Now()
+		changes:
+			for count := 0; ; count++ {
+				if err := s.serve(current.body); err != nil {
+					s.deferDiagnostics = false
+					return err
+				}
+				if count+1 >= 32 || time.Since(started) >= 25*time.Millisecond {
+					break
+				}
+				select {
+				case queued, ok := <-s.transport.messages:
+					if !ok {
+						break changes
+					}
+					if !queued.change {
+						next = &queued
+						break changes
+					}
+					current = queued
+				default:
+					break changes
+				}
+			}
+			s.deferDiagnostics = false
+			if err := s.flushDiagnostics(); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := s.serve(current.body); err != nil {
 			if err == errExit {
 				return nil
 			}
 			return err
 		}
+	}
+}
+
+func (s *server) flushDiagnostics() error {
+	if s.diagnosticsDirty {
+		return s.publish()
 	}
 	return nil
 }
@@ -119,16 +186,34 @@ func (s *server) send(v any) error {
 }
 
 func (s *server) checkedDocument(d document) compiler.Result {
+	if current, open := s.docs[d.URI]; !open || current != d {
+		// Private repaired/cursor snapshots cannot read or poison live caches.
+		return analyze(d, s.docs)
+	}
 	if result, ok := s.cache[d.URI]; ok {
 		return result
 	}
-	result := analyze(d, s.docs)
+	compile := compiler.CompileFile
+	if s.canShareOverlays() {
+		compile = s.compileSnapshot
+	}
+	result := analyzeWith(d, s.docs, compiler.Options{AnalyzeOnly: true, Recover: true}, compile)
+	if s.cache == nil {
+		s.cache = map[string]compiler.Result{}
+	}
 	s.cache[d.URI] = result
 	return result
 }
 
 // invalidate drops cached analyses after a document or file change.
-func (s *server) invalidate() { s.cache = map[string]compiler.Result{} }
+func (s *server) invalidate() {
+	s.cache = map[string]compiler.Result{}
+	s.analyses = nil
+	s.indices = nil
+	s.lints = nil
+	s.overlayChecked = false
+	s.shareOverlays = false
+}
 
 func (s *server) publishDiagnostics(uri string, version int, diagnostics []any) error {
 	return s.send(map[string]any{"jsonrpc": "2.0", "method": "textDocument/publishDiagnostics", "params": map[string]any{"uri": uri, "version": version, "diagnostics": diagnostics}})
@@ -136,6 +221,7 @@ func (s *server) publishDiagnostics(uri string, version int, diagnostics []any) 
 
 // publish sends diagnostics for every open document, in URI order.
 func (s *server) publish() error {
+	s.diagnosticsDirty = false
 	uris := []string{}
 	for uri := range s.docs {
 		uris = append(uris, uri)
@@ -159,7 +245,7 @@ func (s *server) publish() error {
 		}
 		advisories := tooling.Lint(filename(d.URI), d.Text)
 		if m := module(checked, d); m != nil {
-			for _, issue := range tooling.LintProgram(checked.Program) {
+			for _, issue := range s.programLint(checked) {
 				if issue.Position.File == m.File {
 					advisories = append(advisories, issue)
 				}
@@ -206,7 +292,13 @@ func (s *server) serve(body []byte) error {
 		}
 		return nil
 	}
-	result, rpcError, err := s.handle(&r)
+	var result, rpcError any
+	var err error
+	if s.requestCanceled(&r) {
+		rpcError = rpcFailure(-32800, "request canceled")
+	} else {
+		result, rpcError, err = s.handle(&r)
+	}
 	if err != nil {
 		return err
 	}
@@ -250,6 +342,24 @@ func (s *server) handle(r *request) (result any, rpcError any, err error) {
 		}
 		return nil, nil, errExit
 	case "workspace/didChangeWatchedFiles":
+		var events struct {
+			Changes []struct {
+				URI string `json:"uri"`
+			} `json:"changes"`
+		}
+		if json.Unmarshal(r.Params, &events) == nil && events.Changes != nil {
+			relevant := false
+			for _, change := range events.Changes {
+				path := filename(change.URI)
+				if filepath.Ext(path) == ".ms" || filepath.Base(path) == "ms.toml" {
+					relevant = true
+					break
+				}
+			}
+			if !relevant {
+				return nil, nil, nil
+			}
+		}
 		s.invalidate()
 		return nil, nil, s.publish()
 	case "textDocument/didClose":
@@ -262,7 +372,7 @@ func (s *server) handle(r *request) (result any, rpcError any, err error) {
 	case "textDocument/didOpen", "textDocument/didChange":
 		return nil, nil, s.didChange(r)
 	case "workspace/symbol":
-		return workspaceSymbols(s.docs, s.roots, p.Query), nil, nil
+		return workspaceSymbolsWithCancel(s.docs, s.roots, p.Query, func() bool { return s.requestCanceled(r) }), nil, nil
 	}
 	if !strings.HasPrefix(r.Method, "textDocument/") {
 		if len(r.ID) > 0 {
@@ -342,6 +452,10 @@ func (s *server) didChange(r *request) error {
 	}
 	s.docs[d.URI] = d
 	s.invalidate()
+	if s.deferDiagnostics {
+		s.diagnosticsDirty = true
+		return nil
+	}
 	return s.publish()
 }
 
@@ -354,7 +468,8 @@ func (s *server) documentRequest(r *request) (result any, rpcError any) {
 		if !ok {
 			return nil, notOpen()
 		}
-		return semantic(d, s.checkedDocument(d)), nil
+		checked := s.checkedDocument(d)
+		return semanticWithIndex(d, []compiler.Result{checked}, s.documentIndex(checked)), nil
 	case "textDocument/codeAction":
 		if !ok {
 			return nil, notOpen()
@@ -412,9 +527,9 @@ func (s *server) documentRequest(r *request) (result any, rpcError any) {
 			return nil, nil
 		}
 		if r.Method == "textDocument/references" {
-			return workspaceReferences(d, s.docs, p.Position, p.Context.IncludeDeclaration), nil
+			return workspaceReferencesChecked(checked, s.documentIndex(checked), d, s.docs, p.Position, p.Context.IncludeDeclaration, func() bool { return s.requestCanceled(r) }), nil
 		}
-		return navigation(checked, d, p.Position, r.Method), nil
+		return navigation(checked, d, p.Position, r.Method, s.documentIndex(checked)), nil
 	case "textDocument/documentSymbol":
 		if !ok {
 			return []any{}, nil
@@ -440,7 +555,7 @@ func (s *server) rename(r *request, d document) (any, any) {
 	if r.Method == "textDocument/prepareRename" {
 		name = ""
 	}
-	edit, err := rename(checked, d, p.Position, name, s.docs)
+	edit, err := renameWithCancel(checked, d, p.Position, name, func() bool { return s.requestCanceled(r) }, s.docs)
 	if err != nil {
 		return nil, rpcFailure(-32602, err.Error())
 	}
@@ -458,11 +573,11 @@ func (s *server) documentFeature(r *request, d document) any {
 	case "textDocument/inlayHint":
 		return inlayHints(checked, d, p.Range)
 	case "textDocument/typeDefinition":
-		return typeDefinition(checked, d, p.Position)
+		return typeDefinition(checked, d, p.Position, s.documentIndex(checked))
 	}
 	highlights := []any{}
 	if checked.Program != nil {
-		for _, raw := range references(checked, d, p.Position, true) {
+		for _, raw := range referencesWithIndex(checked, s.documentIndex(checked), d, p.Position, true) {
 			loc := raw.(map[string]any)
 			if filename(loc["uri"].(string)) == filename(d.URI) {
 				highlights = append(highlights, map[string]any{"range": loc["range"], "kind": 2})

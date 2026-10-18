@@ -118,6 +118,16 @@ func (c *checker) typeNames() []string {
 	return names
 }
 
+// preludeShadowHint explains an arity error caused by a declaration that
+// replaced the prelude type of the same name.
+func (c *checker) preludeShadowHint(name string) string {
+	prelude := standardSymbols[name]
+	if declared := c.names[name]; isPreludeSymbol(prelude) && declared != nil && declared != prelude {
+		return "; this module's own " + name + " shadows the prelude " + name + ", so rename the declaration to use the prelude type"
+	}
+	return ""
+}
+
 // importHint names the standard module that exports name, if any.
 func importHint(name string) string {
 	if symbol := standardSymbols[name]; isPreludeSymbol(symbol) {
@@ -203,6 +213,23 @@ func (c *checker) memberNamesSeen(receiver *Type, seen map[*Type]bool) []string 
 	return uniqueSorted(names)
 }
 
+// ambiguousMember explains a member that several implementations provide, so
+// the message names them instead of calling the member unknown.
+func (c *checker) ambiguousMember(receiver *Type, name string, methods []*Method) string {
+	var contracts []string
+	for _, m := range methods {
+		if m.Contract != nil {
+			contracts = append(contracts, m.Contract.String())
+		}
+	}
+	contracts = uniqueSorted(contracts)
+	message := "ambiguous member " + name + " on " + receiver.String()
+	if len(contracts) < 2 {
+		return message + "; more than one implementation provides it"
+	}
+	return message + "; it is provided by " + strings.Join(contracts, ", ") + ", so call it through an interface view, e.g. " + contracts[0] + "(value: ...)." + name + "()"
+}
+
 func (c *checker) unknownMember(receiver *Type, name string) string {
 	c.unknownType = true
 	message := "unknown or ambiguous member " + name + " on " + receiver.String()
@@ -215,7 +242,7 @@ func (c *checker) unknownMember(receiver *Type, name string) string {
 		}
 	}
 	if std(receiver, "List") && name == "join" {
-		return message + "; join is only available on List[String]; convert the elements first, e.g. xs.map(transform: fn(value: Int) -> String: \"{value}\").join(separator: \",\")"
+		return message + "; join is only available on List[String]; convert the elements first, e.g. xs.map(transform: fn(value: Int) String: \"{value}\").join(separator: \",\")"
 	}
 	if hint := synonymHint(name, available); hint != "" {
 		return message + hint
@@ -339,7 +366,7 @@ func (c *checker) exportMessage(item *syntax.Import, imports map[*syntax.Import]
 	return message + "; " + item.Path + " exports: " + list(exports, 12) + "; namespace imports are unsupported, so import individual exports with 'import { Name, OtherName } from \"" + item.Path + "\"'"
 }
 
-// signatureText renders "(a: Int, b: String) -> Bool" for a function type.
+// signatureText renders "(a: Int, b: String) Bool" for a function type.
 func signatureText(t *Type) string {
 	if t == nil || t.Kind != "function" {
 		return ""
@@ -348,7 +375,7 @@ func signatureText(t *Type) string {
 	for i, p := range t.Params {
 		parts[i] = p.Name + ": " + p.Type.String()
 	}
-	return "(" + strings.Join(parts, ", ") + ") -> " + t.Result.String()
+	return "(" + strings.Join(parts, ", ") + ") " + t.Result.String()
 }
 
 // assignmentMismatch adds a view hint only when the expected type itself is
@@ -388,12 +415,15 @@ func (c *checker) interfaceTypeMember(typ *Type) string {
 // labelMismatchHint explains function types that differ in parameter names
 // (labels), which are part of a function's identity.
 func labelMismatchHint(actual, expected *Type) string {
-	if actual == nil || expected == nil || actual.Kind != "function" || expected.Kind != "function" || len(actual.Params) != len(expected.Params) {
+	if actual == nil || expected == nil || actual.Kind != "function" || expected.Kind != "function" {
+		return ""
+	}
+	if len(actual.Params) != len(expected.Params) {
 		return ""
 	}
 	for i, p := range actual.Params {
 		if p.Name != expected.Params[i].Name {
-			return "the function's parameter is named " + p.Name + " but this position expects " + expected.Params[i].Name + "; rename the parameter to " + expected.Params[i].Name + ", or wrap the function in a lambda: fn(" + expected.Params[i].Name + ": ...) -> ...: f(" + p.Name + ": " + expected.Params[i].Name + ")"
+			return "the function's parameter is named " + p.Name + " but this position expects " + expected.Params[i].Name + "; rename the parameter to " + expected.Params[i].Name + ", or wrap the function in a lambda: fn(" + expected.Params[i].Name + ": ...) ...: f(" + p.Name + ": " + expected.Params[i].Name + ")"
 		}
 	}
 	return ""
@@ -405,7 +435,7 @@ func optionalUseHint(actual, expected *Type) string {
 	if actual == nil || expected == nil || !std(actual, "Optional") || len(actual.Args) != 1 || std(expected, "Optional") {
 		return ""
 	}
-	return actual.String() + " may be absent; unwrap it first with 'if let', unwrap_or(default), is_some() before unwrap(), or match"
+	return actual.String() + " may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match"
 }
 
 // resultUseHint names the fix when a Result is used where its success type is
@@ -414,7 +444,7 @@ func resultUseHint(actual, expected *Type) string {
 	if actual == nil || expected == nil || !std(actual, "Result") || len(actual.Args) == 0 || !Same(actual.Args[0], expected) {
 		return ""
 	}
-	return "unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.unwrap()'"
+	return "unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'"
 }
 
 // numberConversionHint names the explicit conversion between Int and Float;
@@ -427,7 +457,7 @@ func numberConversionHint(actual, expected *Type) string {
 	case actual.ID == "Int" && expected.ID == "Float":
 		return "Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value"
 	case actual.ID == "Float" && expected.ID == "Int":
-		return "Float does not convert to Int implicitly; truncate_to_int() returns Optional[Int], so unwrap it, e.g. value.truncate_to_int().unwrap_or(0)"
+		return "Float does not convert to Int implicitly; truncate_to_int() returns Optional[Int], so unwrap it, e.g. value.truncate_to_int().get(0)"
 	}
 	return ""
 }
@@ -439,4 +469,21 @@ func uncalledFunctionHint(actual, expected *Type) string {
 		return ""
 	}
 	return "this is a function; call it with parentheses to get its " + expected.String() + " result"
+}
+
+func plural(n int, word string) string {
+	if n == 1 {
+		return word
+	}
+	return word + "s"
+}
+
+// arityMismatchHint explains a function passed where one with a different
+// number of parameters is required.
+func arityMismatchHint(actual, expected *Type) string {
+	if actual == nil || expected == nil || actual.Kind != "function" || expected.Kind != "function" || len(actual.Params) == len(expected.Params) {
+		return ""
+	}
+	have, want := len(actual.Params), len(expected.Params)
+	return "the function takes " + strconv.Itoa(have) + " " + plural(have, "parameter") + " but this position expects " + strconv.Itoa(want) + "; pass a function with " + strconv.Itoa(want) + " " + plural(want, "parameter") + ", or wrap it in a lambda that supplies the rest"
 }

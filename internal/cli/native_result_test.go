@@ -32,7 +32,7 @@ func TestVersionAliasAndArgumentErrors(t *testing.T) {
 }
 
 func TestNativeJSONCompileFailuresPreserveOutputs(t *testing.T) {
-	file := sourceFile(t, "export fn main() -> Int:\n    return unknown_name\n")
+	file := sourceFile(t, "export fn main() Int:\n    return unknown_name\n")
 	for _, command := range []string{"build", "profile"} {
 		output := filepath.Join(t.TempDir(), "output=a=b")
 		if command == "build" {
@@ -57,7 +57,7 @@ func TestNativeJSONCompileFailuresPreserveOutputs(t *testing.T) {
 }
 
 func TestProfileOutDirSpellingsUsageAndHelp(t *testing.T) {
-	file := sourceFile(t, "export fn main() -> Int:\n    return unknown_name\n")
+	file := sourceFile(t, "export fn main() Int:\n    return unknown_name\n")
 	output := filepath.Join(t.TempDir(), "capture=a=b")
 	var previous string
 	for _, values := range [][]string{{"--out-dir", output}, {"--out-dir=" + output}, {"--output", output}, {"-o", output}} {

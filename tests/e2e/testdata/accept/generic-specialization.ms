@@ -1,35 +1,32 @@
 import {expect_equal} from "@std/testing.ms"
+import range from "@std/collections.ms"
 
-fn ident[T](x: T) -> T:
+fn ident[T](x: T) T:
     return x
 
-fn countdown[T](x: T, n: Int) -> Int:
+fn countdown[T](x: T, n: Int) Int:
     if n == 0:
         return 0
 
-    return 1 + countdown(x: x, n: n - 1)
+    return 1 + countdown(x, n - 1)
 
-fn twice[T](x: T) -> T:
-    return ident(x: ident(x: x))
+fn twice[T](x: T) T:
+    return ident(ident(x))
 
-fn depth() -> Int:
-    return countdown(x: "s", n: 5)
+fn depth() Int:
+    return countdown("s", 5)
 
 test "static specializations are reused across calls":
-    var i = 0
     var acc = 0
-
-    while i < 100:
-        acc = acc + ident(x: i)
-        i = i + 1
-
-    acc | try expect_equal(expected: 4950)
-    ident(x: "a") | try expect_equal(expected: "a")
+    for i in range(0, 100):
+        acc += ident(i)
+    try expect_equal(acc, 4950)
+    try expect_equal(ident("a"), "a")
 
 test "recursive generics with static arguments":
-    depth() | try expect_equal(expected: 5)
-    countdown(x: 1, n: 3) | try expect_equal(expected: 3)
+    try expect_equal(depth(), 5)
+    try expect_equal(countdown(1, 3), 3)
 
 test "generic calls with type-variable arguments still resolve":
-    twice(x: 4) | try expect_equal(expected: 4)
-    twice(x: "b") | try expect_equal(expected: "b")
+    try expect_equal(twice(4), 4)
+    try expect_equal(twice("b"), "b")

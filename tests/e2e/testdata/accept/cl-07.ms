@@ -4,7 +4,7 @@ type Outcome:
     case Ready(value: Int)
     case Failed(reason: String)
 
-fn score(outcome: Outcome) -> Int:
+fn score(outcome: Outcome) Int:
     match outcome:
         Ready(value):
             return value
@@ -12,5 +12,5 @@ fn score(outcome: Outcome) -> Int:
             return 0
 
 test "alternative result":
-    score(outcome: Outcome.Ready(8)) | try expect_equal(expected: 8)
-    score(outcome: Outcome.Failed("unavailable")) | try expect_equal(expected: 0)
+    try expect_equal(score(Outcome.Ready(8)), 8)
+    try expect_equal(score(Outcome.Failed("unavailable")), 0)

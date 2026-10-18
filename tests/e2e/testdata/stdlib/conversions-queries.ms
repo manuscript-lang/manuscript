@@ -3,54 +3,54 @@ import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
 type Counter:
     calls: Int
 
-fn counted(counter: Counter) -> Counter:
+fn counted(counter: Counter) Counter:
     counter.calls = counter.calls + 1
     return counter
 
-fn require_value[T, E](value: Optional[T], cause: E) -> Result[T, E]:
+fn require_value[T, E](value: Optional[T], cause: E) Result[T, E]:
     return value.ok_or(cause)
 
-fn require_lazy[T, E](value: Optional[T], create: fn() -> E) -> Result[T, E]:
+fn require_lazy[T, E](value: Optional[T], create: fn() E) Result[T, E]:
     return value.ok_or_else[E](create)
 
-fn success_only[T, E](value: Result[T, E]) -> Optional[T]:
+fn success_only[T, E](value: Result[T, E]) Optional[T]:
     return value.to_optional()
 
 fn reduce_map[K: Hashable, V, A](
     values: Map[K, V],
     initial: A,
-    step: fn(accumulator: A, key: K, value: V) -> A
-) -> A:
+    step: fn(accumulator: A, key: K, value: V) A
+) A:
     return values.fold[A](initial, step)
 
 fn reduce_set[T: Hashable, A](
     values: Set[T],
     initial: A,
-    step: fn(accumulator: A, value: T) -> A
-) -> A:
+    step: fn(accumulator: A, value: T) A
+) A:
     return values.fold(initial, step)
 
 fn locate[K: Hashable, V](
     values: Map[K, V],
-    predicate: fn(key: K, value: V) -> Bool
-) -> Optional[MapEntry[K, V]]:
+    predicate: fn(key: K, value: V) Bool
+) Optional[MapEntry[K, V]]:
     return values.find(predicate)
 
 test "conversions and collection queries are callable":
     let present: Optional[Int] = some(2)
     let missing: Optional[Int] = none
-    present.ok_or("absent").unwrap() | try expect_equal(expected: 2)
-    try expect_equal(missing.ok_or_else(fn(): "absent").unwrap_error(), "absent")
+    present.ok_or("absent").get() | try expect_equal(expected: 2)
+    try expect_equal(missing.ok_or_else(fn(): "absent").err(), "absent")
     let failed: Result[Int, String] = error("failed")
     (failed.to_optional().is_none()) | try expect_true
     let entries: Map[String, Int] = {"b": 2, "a": 1}
     try expect_equal(entries.fold(0, fn(acc, k, v): acc + v), 3)
-    try expect_equal(entries.find(fn(k, v): v == 1).unwrap().key, "a")
+    try expect_equal(entries.find(fn(k, v): v == 1).get().key, "a")
     try expect_true((entries.some(fn(k, v): v == 1)))
     try expect_true((entries.every(fn(k, v): v > 0)))
     let values = Set[Int]().add(2).add(1)
     try expect_equal(values.fold(0, fn(acc, n): acc + n), 3)
-    try expect_equal(values.find(fn(n): n == 1).unwrap(), 1)
+    try expect_equal(values.find(fn(n): n == 1).get(), 1)
     try expect_true((values.some(fn(n): n == 1)))
     try expect_true((values.every(fn(n): n > 0)))
 
@@ -58,39 +58,39 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     let counter = Counter(0)
     let present: Optional[Int] = some(0)
     let missing: Optional[Int] = none
-    (require_value(present, counted(counter)).unwrap() != 0 or counter.calls != 1) | try expect_false
-    let cause = require_value(missing, counter).unwrap_error()
+    (require_value(present, counted(counter)).get() != 0 or counter.calls != 1) | try expect_false
+    let cause = require_value(missing, counter).err()
     cause.calls = 2
     counter.calls | try expect_equal(expected: 2)
-    let create = fn() -> Counter: counted(counter)
-    (require_lazy(present, create).unwrap() != 0 or counter.calls != 2) | try expect_false
+    let create = fn() Counter: counted(counter)
+    (require_lazy(present, create).get() != 0 or counter.calls != 2) | try expect_false
     let error_result = require_lazy(missing, create)
     counter.calls | try expect_equal(expected: 3)
-    error_result.unwrap_error().calls = 4
+    error_result.err().calls = 4
     counter.calls | try expect_equal(expected: 4)
     let bound = missing.ok_or[Counter]
-    bound(cause: counter).unwrap_error().calls = 5
+    bound(cause: counter).err().calls = 5
     counter.calls | try expect_equal(expected: 5)
     let bound_lazy = missing.ok_or_else[Counter]
-    bound_lazy(create).unwrap_error().calls | try expect_equal(expected: 6)
+    bound_lazy(create).err().calls | try expect_equal(expected: 6)
     let failure: Result[Counter, List[Int]] = error([1, 2])
     (success_only(failure).is_none()) | try expect_true
     let success: Result[Counter, Bool] = ok(counter)
     let extract = success.to_optional
-    extract().unwrap().calls = 7
+    extract().get().calls = 7
     counter.calls | try expect_equal(expected: 7)
     let nested: Optional[Optional[Int]] = some(none)
     let converted = nested.ok_or("absent")
-    (not (converted.is_ok()) or not (converted.to_optional().unwrap().is_none())) | try expect_false
+    (not (converted.is_ok()) or not (converted.to_optional().get().is_none())) | try expect_false
     let false_value: Optional[Bool] = some(false)
-    false_value.ok_or(unit).to_optional().unwrap() | try expect_false
+    false_value.ok_or(unit).to_optional().get() | try expect_false
     let unit_value: Optional[Unit] = some(unit)
     (unit_value.ok_or(false).to_optional().is_some()) | try expect_true
     let nested_result: Optional[Result[Int, String]] = some(error("nested"))
     (
-        nested_result.ok_or(
-            false
-        ).to_optional().unwrap().unwrap_error() | try expect_equal(expected: "nested")
+        nested_result.ok_or(false).to_optional().get().err() | try expect_equal(
+            expected: "nested"
+        )
     )
 
 test "Map fold uses ordered snapshots and returns accumulator aliases":
@@ -106,7 +106,7 @@ test "Map fold uses ordered snapshots and returns accumulator aliases":
                 (values.add("a", Counter(99)).remove("c").add("d", Counter(4)))
                 later.calls = 7
 
-            acc.append(k + v.calls.toString())
+            acc.append(k + v.calls.to_string())
             return acc
     )
     (visits != ["b2", "a1", "c7"] or initial != visits) | try expect_false
@@ -130,7 +130,7 @@ test "Map fold uses ordered snapshots and returns accumulator aliases":
         .add("a", 3)
         .fold(success, fn(acc, k, v): acc.map(fn(n): (n + v)))
     )
-    nested.unwrap() | try expect_equal(expected: 5)
+    nested.get() | try expect_equal(expected: 5)
     empty_calls.is_empty() | try expect_true
 
 test "Map find returns fresh entry shells with original payload references":
@@ -144,17 +144,17 @@ test "Map find returns fresh entry shells with original payload references":
             visits.append(k)
             (values.remove("a").add("c", Counter(99)).add("new", Counter(9)))
             return k == "a"
-    ).unwrap()
+    ).get()
     (visits != ["b", "a"] or found.key != "a" or found.value.calls != 1) | try expect_false
     let source = Map[String, Counter]().add("b", counter)
     let find = source.find
-    let original = find(fn(k, v): true).unwrap()
+    let original = find(fn(k, v): true).get()
     original.value.calls = 5
     counter.calls | try expect_equal(expected: 5)
     original.key = "other"
     original.value = Counter(9)
-    (not (source.contains("b")) or source.get("b").unwrap().calls != 5) | try expect_false
-    try expect_equal(source.find(fn(k, v): true).unwrap().key, "b")
+    (not (source.contains("b")) or source.get("b").get().calls != 5) | try expect_false
+    try expect_equal(source.find(fn(k, v): true).get().key, "b")
     try expect_true((source.find(fn(k, v): false).is_none()))
     let empty = Map[String, Counter]()
     try expect_false(
@@ -236,13 +236,13 @@ type Key:
     label: String
 
 impl Equal for Key:
-    fn equals(other: Equal) -> Bool:
+    fn equals(other: Equal) Bool:
         match other:
             Key(value): return self.id == value.id
             _: return false
 
 impl Hashable for Key:
-    fn hash() -> Int: 0
+    fn hash() Int: 0
 
 test "Set fold and find preserve ordered snapshots and reference identity":
     let empty_calls: List[Int] = []
@@ -283,7 +283,7 @@ test "Set fold and find preserve ordered snapshots and reference identity":
             seen.append(v.id)
             values.remove(a).add(Key(4, "new"))
             return v.id == 1
-    ).unwrap()
+    ).get()
     seen | try expect_equal(expected: [2, 1])
     found.label = "found"
     a.label | try expect_equal(expected: "found")
@@ -302,7 +302,7 @@ test "Set fold and find preserve ordered snapshots and reference identity":
         )
     )
     let flags = Set[Bool]().add(false)
-    try expect_false(flags.find(fn(v): true).unwrap())
+    try expect_false(flags.find(fn(v): true).get())
     empty_calls.is_empty() | try expect_true
 
 test "Set predicates short circuit over snapshots and keep empty identities":
@@ -445,20 +445,20 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
         )
     )
 
-fn find_port(port: Optional[Int]) -> Result[Int, Error]:
+fn find_port(port: Optional[Int]) Result[Int, Error]:
     let value = try port.ok_or()
     return ok(value)
 
 test "ok_or without a cause records the calling file and line":
     let absent: Optional[Int] = none
     let direct: Result[Int, MissingValue] = absent.ok_or()
-    (direct.unwrap_error().message().contains("conversions-queries.ms:")) | try expect_true
-    let message = find_port(none).unwrap_error().message()
+    (direct.err().message().contains("conversions-queries.ms:")) | try expect_true
+    let message = find_port(none).err().message()
     (message.starts_with("missing value at ")) | try expect_true
-    find_port(some(8080)).unwrap() | try expect_equal(expected: 8080)
+    find_port(some(8080)).get() | try expect_equal(expected: 8080)
     let named: Result[Int, String] = absent.ok_or("port")
-    named.unwrap_error() | try expect_equal(expected: "port")
+    named.err() | try expect_equal(expected: "port")
 
-    match find_port(none).unwrap_error():
+    match find_port(none).err():
         MissingValue(found): unit
         _: return fail("default cause is not MissingValue")

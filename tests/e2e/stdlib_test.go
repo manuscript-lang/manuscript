@@ -98,12 +98,12 @@ func TestRunnerFaultIsolation(t *testing.T) {
 	output := string(data)
 	faults := map[string]string{
 		"panic unwinds Closeable":                 "intentional stdlib panic",
-		"absent Optional unwrap faults":           "called Optional.unwrap() on none",
+		"absent Optional unwrap faults":           "called Optional.get() on none",
 		"sealed builder mutation faults":          "builder is sealed",
 		"zero queue capacity faults":              "Queue: capacity must be between 1 and 9223372036854775807",
 		"negative queue capacity faults":          "Queue: capacity must be between 1 and 9223372036854775807",
 		"stale synchronized guard faults":         "Synchronized guard is closed",
-		"unwrapping an out of range slice faults": "called Result.unwrap() on error",
+		"unwrapping an out of range slice faults": "called Result.get() on error",
 		"negative split limit faults":             "split: max_parts must be nonnegative, found -1",
 		"negative replace limit faults":           "replace: max_replacements must be nonnegative, found -1",
 	}
@@ -154,15 +154,15 @@ import Synchronized from "@std/sync.ms"
 import {stdout, WriteStream} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 
-fn emit(message: String) -> Unit:
-    let written = stdout().write(message.to_bytes()).unwrap()
+fn emit(message: String) Unit:
+    let written = stdout().write(message.to_bytes()).get()
 
 type Resource:
     output: WriteStream
 
 impl Closeable for Resource:
-    fn close() -> Unit:
-        let written = self.output.write("fault cleanup completed\n".to_bytes()).unwrap()
+    fn close() Unit:
+        let written = self.output.write("fault cleanup completed\n".to_bytes()).get()
 
 test "panic unwinds Closeable":
     with resource = Resource(stdout()):
@@ -170,7 +170,7 @@ test "panic unwinds Closeable":
 
 test "absent Optional unwrap faults":
     let absent: Optional[Int] = none
-    let impossible = absent.unwrap()
+    let impossible = absent.get()
 
 test "sealed builder mutation faults":
     let builder = ListBuilder[Int]()
@@ -190,7 +190,7 @@ test "stale synchronized guard faults":
     let impossible = guard.get()
 
 test "unwrapping an out of range slice faults":
-    let impossible = ([1, 2]).slice(start: 0, end: 3).unwrap()
+    let impossible = ([1, 2]).slice(start: 0, end: 3).get()
 
 test "negative split limit faults":
     let impossible = "a,b,c".split(separator: ",", max_parts: -1)

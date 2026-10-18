@@ -5,36 +5,36 @@ weight = 89
 
 # Type checking and source contracts
 
-The type checker decides whether source operations satisfy Manuscript's rules before the compiler generates Go. The fact that a value can be represented in Go does not make every use of it legal in Manuscript.
+The type checker decides whether source obeys Manuscript's rules before Go is generated. Being representable in Go does not make a use legal.
 
 ## Required checks
 
-Accept source according to the [normative grammar](../../../core-language/basics/grammar.md); then resolve names and check the [compatibility rules](../../../core-language/types/compatibility.md). Each rejected program must identify the violated source rule. Backend assignability and Go compiler acceptance are not substitutes for those checks.
+Accept source per the [normative grammar](../../../core-language/basics/grammar.md), then resolve names and check [compatibility](../../../core-language/types/compatibility.md). Each rejection must name the violated source rule; Go acceptance is no substitute.
 
 | Source rule | Checker responsibility |
 | --- | --- |
-| Explicit function signatures | Check parameter and result types against calls and returns |
-| Names and scopes | Collect module signatures, reject duplicate names, resolve locals in declaration order, and check assignments against fixed mutable binding types |
-| Operators | Use the closed precedence and operand table; enforce Bool conditions and short-circuit evaluation without implicit numeric conversion |
-| Function values | Preserve parameter labels/order and exact types; require explicit specialization of generic function values and contextual anonymous parameter types and inferred anonymous results |
-| Return completeness | Allow Unit fallthrough/bare returns; reject reachable non-Unit fallthrough; track Never and function-local loop/return boundaries |
-| Argument labels | Resolve optional labels and positional arguments left to right to unfilled parameters (an unlabeled argument never selects a parameter by its spelling); apply the same rule to constructors, methods and function values; reject unknown labels, duplicate arguments, excess positional arguments, and missing required arguments |
-| List literals | Use the canonical standard List from the prelude; check homogeneous element types and use annotations or the expected parameter type for empty lists |
-| Typed tasks | Infer Task[T] from the ordinary generic start signature; check each join against Result[T, ExecutionError] |
-| Destructuring bindings | Check positional arity, record fields, renaming, nesting, and duplicate bindings; infer each local's type independently; see [destructuring bindings](../../../core-language/types/destructuring.md) |
-| Nominal records and tagged alternatives | Preserve type identity and check declared fields and cases |
-| Expected types | Propagate known result context through literals, fields, parentheses, and generic calls; reject ambiguous or conflicting inference |
-| Exhaustive match | Check the scrutinee alternative, positional payload arity/bindings, exact qualified cases, missing alternatives, duplicate arms, and final nonredundant wildcard |
-| Generic bounds | Check arity, invariant arguments, argument and expected-result inference, every nested application's bounds, and generic bodies under their declared assumptions |
-| Recursive types and specialization | Permit direct and mutual recursive data; reject expanding generic type/function specialization, including signature references, mutual calls, and specialized function values |
-| Equality and hashing | Derive only the specified properties; reject Float/collection keys and data containing ineligible components |
-| Explicit implementations | Match substituted operation names/labels/order/types exactly, check generic bodies and receiver-determined parameters, reject overlap ignoring bounds, enforce module-local extension visibility, and require explicit contract views |
-| Standard bindings | Resolve the minimal intrinsic prelude and explicit standard imports by canonical identity; check ordinary function signatures and exact contract views. Passing values requires no sharing bound; queue synchronization is the caller's responsibility |
-| Public signatures | Reject internal nominal types leaking through exported fields, signatures, bounds, or operation surfaces |
-| Iteration | Admit List/Set/Map only, bind fixed iteration names for elements/MapEntry references, evaluate iterable once, and reject loop control outside the current function's loops |
-| Result propagation | Recognize the canonical standard Result identity; require the same exact error type at a try expression in the current function; do not infer missing operand type arguments backward |
-| String literals | Validate escape/scalar syntax, support universal value conversion, and preserve left-to-right evaluation |
+| Explicit function signatures | Check parameters and results against calls and returns |
+| Names and scopes | Collect module signatures, reject duplicates, resolve locals in order, fix mutable binding types |
+| Operators | Closed precedence and operand table; Bool conditions, short-circuiting, no implicit numeric conversion |
+| Function values | Keep labels, order, exact types; require explicit generic specialization and contextual anonymous types |
+| Return completeness | Allow Unit fallthrough and bare returns; reject reachable non-Unit fallthrough; track Never and loop/return boundaries |
+| Argument labels | Bind labels and positional arguments left to right to unfilled parameters, never by spelling; same rule for constructors, methods, function values; reject unknown labels, duplicates, excess positional, missing required |
+| List literals | Canonical prelude List; homogeneous elements; annotations or expected type for empty lists |
+| Typed tasks | Infer `Task[T]` from the generic start signature; check joins against `Result[T, ExecutionError]` |
+| Destructuring bindings | Check arity, fields, renaming, nesting, duplicates; infer each local; see [destructuring bindings](../../../core-language/types/destructuring.md) |
+| Nominal records and tagged alternatives | Preserve identity; check declared fields and cases |
+| Expected types | Propagate context through literals, fields, parentheses, generic calls; reject ambiguous or conflicting inference |
+| Exhaustive match | Check scrutinee, payload arity and bindings, qualified cases, missing and duplicate arms, final non-redundant wildcard |
+| Generic bounds | Check arity, invariant arguments, inference, nested application bounds, and generic bodies under declared assumptions |
+| Recursive types and specialization | Permit direct and mutual recursive data; reject expanding specialization of types, functions, and function values |
+| Equality and hashing | Derive only specified properties; reject Float or collection keys and ineligible components |
+| Explicit implementations | Match substituted names, labels, order, types exactly; check generic bodies; reject overlap ignoring bounds; enforce module-local extension visibility; require explicit contract views |
+| Standard bindings | Resolve the intrinsic prelude and `@std` imports by canonical identity; check signatures and contract views. Passing values needs no sharing bound |
+| Public signatures | Reject internal nominal types leaking through exports |
+| Iteration | List, Set, Map only; fixed iteration names; iterable evaluated once; loop control only inside the current function's loops |
+| Result propagation | Recognize the canonical `Result`; `try` needs the same exact error type as the current function; never infer missing operand arguments backward |
+| String literals | Validate escapes and scalars, allow universal conversion, keep left-to-right evaluation |
 
-These requirements derive from the [core language guide](../../../core-language/_index.md), with accepted and rejected modules in [core conformance](../conformance/core-language.md). The rules specify observable inference and compatibility; checker data structures and internal pass organization remain implementation choices. A module-level `test` body is a zero-parameter Unit function for static checking: ordinary local scopes, bare-return/fallthrough rules, and Result propagation restrictions apply. Test discovery and runner execution remain separate tooling contracts.
+Rules derive from the [core language guide](../../../core-language/_index.md); fixtures are `tests/e2e/testdata/accept/cl-*.ms`. They fix observable inference and compatibility, not checker internals. A module-level `test` body is a zero-parameter Unit function for checking; discovery and running are separate tooling contracts.
 
 Type information feeds [typed IR](typed-ir.md) and [generated representations](../lowering/value-representations.md).

@@ -6,9 +6,9 @@ type Boom:
     code: Int
 
 impl Error for Boom:
-    fn message() -> String: "boom {self.code}"
+    fn message() String: "boom {self.code}"
 
-fn describe(e: Error) -> String: e.message()
+fn describe(e: Error) String: e.message()
 
 test "repeated calls through one site":
     let c = clock()
@@ -17,20 +17,15 @@ test "repeated calls through one site":
     while i < 3:
         let a = c.now()
         let b = c.now()
-        (b.difference(other: a).to_milliseconds() >= 0) | try expect_true
+        try expect_true((b.difference(other: a).to_milliseconds() >= 0))
         i = i + 1
 
     let out = stdout()
     var n = 0
 
     while n < 2:
-        match out.write(data: "x".to_bytes()):
-            ok(_):
-                unit
-            error(_):
-                (false) | try expect_true
-
+        try expect_true((out.write(data: "x".to_bytes()).is_ok()))
         n = n + 1
 
-    (describe(e: Error(value: Boom(code: 1))) == "boom 1") | try expect_true
-    (describe(e: Error(value: Boom(code: 2))) == "boom 2") | try expect_true
+    try expect_true((describe(e: Error(value: Boom(code: 1))) == "boom 1"))
+    try expect_true((describe(e: Error(value: Boom(code: 2))) == "boom 2"))

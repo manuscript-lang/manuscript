@@ -4,6 +4,7 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"unicode"
 	"unicode/utf8"
@@ -64,6 +65,10 @@ func String_IsEmpty(_ *Execution, text string) bool { return len(text) == 0 }
 func String_ByteLength(_ *Execution, text string) int { return len(text) }
 
 func String_Chars(ctx *Execution, text string) *List[string] {
+	return NewList(stringCharacters(ctx, text)...)
+}
+
+func stringCharacters(ctx *Execution, text string) []string {
 	items := make([]string, 0, utf8.RuneCountInString(text))
 	for i, scalar := range text {
 		if len(items)%1024 == 0 {
@@ -76,7 +81,7 @@ func String_Chars(ctx *Execution, text string) *List[string] {
 		// A valid scalar is a substring of its text: no allocation.
 		items = append(items, text[i:i+utf8.RuneLen(scalar)])
 	}
-	return NewList(items...)
+	return items
 }
 
 func String_Reverse(ctx *Execution, text string) string {
@@ -96,6 +101,10 @@ func String_Reverse(ctx *Execution, text string) string {
 func String_Compare(_ *Execution, a, b string) int { return int(strings.Compare(a, b)) }
 
 func String_Lines(ctx *Execution, text string) *List[string] {
+	return NewList(stringLines(ctx, text)...)
+}
+
+func stringLines(ctx *Execution, text string) []string {
 	items := []string{}
 	start := 0
 	for i := 0; i < len(text); i++ {
@@ -115,7 +124,7 @@ func String_Lines(ctx *Execution, text string) *List[string] {
 	if start < len(text) {
 		items = append(items, text[start:])
 	}
-	return NewList(items...)
+	return items
 }
 
 func normalizeText(ctx *Execution, form norm.Form, text string, maxBytes Option[int]) Result[string, StringError] {
@@ -263,6 +272,10 @@ func String_ReplaceN(_ *Execution, text, old, replacement string, max int) strin
 }
 
 func String_ScalarValues(ctx *Execution, text string) *List[int] {
+	return NewList(stringScalarValues(ctx, text)...)
+}
+
+func stringScalarValues(ctx *Execution, text string) []int {
 	items := make([]int, 0, len(text))
 	for i, r := range text {
 		if i%4096 == 0 {
@@ -270,7 +283,7 @@ func String_ScalarValues(ctx *Execution, text string) *List[int] {
 		}
 		items = append(items, int(r))
 	}
-	return NewList(items...)
+	return items
 }
 
 func String_FromScalars(ctx *Execution, values *List[int]) Result[string, StringError] {
@@ -281,6 +294,9 @@ func String_FromScalars(ctx *Execution, values *List[int]) Result[string, String
 		}
 		if n < 0 || n > utf8.MaxRune || n >= 0xD800 && n <= 0xDFFF {
 			return stringFail[string](StringError_InvalidInput{})
+		}
+		if i == 0 {
+			b.Grow(len(values.Items))
 		}
 		b.WriteRune(rune(n))
 	}
@@ -310,22 +326,34 @@ func String_Slice(_ *Execution, text string, start, end int) Result[string, Stri
 	return Ok[string, StringError](text[scalarIndexOffset(text, int(s)):scalarIndexOffset(text, int(e))])
 }
 
-func String_Split(ctx *Execution, text, separator string, maxParts Option[int]) *List[string] {
+func String_Split(_ *Execution, text, separator string, maxParts Option[int]) *List[string] {
+	return NewList(stringSplitParts(text, separator, maxParts)...)
+}
+
+func stringSplitParts(text, separator string, maxParts Option[int]) []string {
 	n := txLimit(maxParts)
 	if n < 0 {
 		txFaultNegative("split", "max_parts", n)
 	}
 	if n == 0 {
-		return NewList[string]()
+		return nil
 	}
 	if n > len(text)+1 {
 		n = len(text) + 1
 	}
-	parts := strings.Split(text, separator)
+	var parts []string
+	if n < len(text) {
+		// Split one extra part so truncation discards the remainder rather than
+		// returning it as the last field. Avoid allocating discarded fields.
+		// n < len(text) also keeps n+1 from overflowing.
+		parts = strings.SplitN(text, separator, n+1)
+	} else {
+		parts = strings.Split(text, separator)
+	}
 	if len(parts) > n {
 		parts = parts[:n]
 	}
-	return NewList(parts...)
+	return parts
 }
 
 func String_At(_ *Execution, text string, index int) Option[string] {
@@ -417,7 +445,13 @@ func stringPad(ctx *Execution, atStart bool, text string, target int, padding st
 	if remaining < 0 || cycles > remaining/len(padding) {
 		return stringFail[string](StringError_LimitExceeded{})
 	}
+	if cycles > 0 {
+		// Observe the first loop cancellation point before reserving the output.
+		CheckCancelled(ctx)
+	}
 	var b strings.Builder
+	// The budget check above proves this size fits, including the partial cycle.
+	b.Grow(len(text) + cycles*len(padding) + prefixEnd)
 	if !atStart {
 		b.WriteString(text)
 	}
@@ -570,16 +604,17 @@ func stringScalarCount(text string) int {
 	return count
 }
 
-// stringScalarHint remembers the byte offset of one scalar index in the last
-// long non-ASCII string, so sequential or nearby indexing walks a few scalars
-// instead of rescanning from the start.
+// stringScalarHint remembers the byte offset of one scalar index in a long
+// non-ASCII string, so sequential or nearby indexing walks a few scalars
+// instead of rescanning from the start. Each lookup borrows exclusive access
+// to a hint; pool eviction only loses an optimization.
 type stringScalarHint struct {
 	text   string
 	scalar int
 	offset int
 }
 
-var stringScalarHintCache atomic.Pointer[stringScalarHint]
+var stringScalarHintCache = sync.Pool{New: func() any { return &stringScalarHint{} }}
 
 // scalarIndexOffset returns the byte offset of scalar n of text, which callers
 // have checked lies within 0..scalar count.
@@ -588,7 +623,8 @@ func scalarIndexOffset(text string, n int) int {
 		return stringScalarOffset(text, n)
 	}
 	scalar, offset := 0, 0
-	if h := stringScalarHintCache.Load(); h != nil && stringSameText(h.text, text) && txAbs(h.scalar-n) < n {
+	h := stringScalarHintCache.Get().(*stringScalarHint)
+	if stringSameText(h.text, text) && txAbs(h.scalar-n) < n {
 		scalar, offset = h.scalar, h.offset
 	}
 	for ; scalar < n && offset < len(text); scalar++ {
@@ -599,7 +635,8 @@ func scalarIndexOffset(text string, n int) int {
 		_, width := utf8.DecodeLastRuneInString(text[:offset])
 		offset -= width
 	}
-	stringScalarHintCache.Store(&stringScalarHint{text, scalar, offset})
+	*h = stringScalarHint{text, scalar, offset}
+	stringScalarHintCache.Put(h)
 	return offset
 }
 

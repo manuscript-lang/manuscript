@@ -10,10 +10,10 @@ type Customer:
     id: CustomerId
     name: String
 
-fn customer_name(customer: Customer) -> String:
+fn customer_name(customer: Customer) String:
     let {id: {value}, name: display_name} = customer
     return "{value}: {display_name}"
 
 test "nominal record and nested binding":
-    let customer = Customer(id: CustomerId("c1"), name: "Ada")
-    customer_name(customer: customer) | try expect_equal(expected: "c1: Ada")
+    let customer = Customer(CustomerId("c1"), "Ada")
+    try expect_equal(customer_name(customer), "c1: Ada")

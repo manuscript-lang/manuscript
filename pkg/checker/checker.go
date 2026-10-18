@@ -52,6 +52,7 @@ type checker struct {
 	testFunction            int
 	rejectedNames           map[string]bool
 	unknownType             bool
+	unresolvedConstructors  map[syntax.Position]bool
 	labelMismatch           bool
 	callName                string
 	callPos                 syntax.Position
@@ -70,6 +71,7 @@ func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]strin
 	return check(modules, imports, options)
 }
 func check(modules []*syntax.Module, imports map[*syntax.Import]string, options CheckOptions) *Program {
+	inherent := desugarInherentImpls(modules)
 	modules, dependencyDiagnostics := sourceStandardDependencies(modules)
 	p := newProgram(modules)
 	p.Diagnostics = dependencyDiagnostics
@@ -77,12 +79,8 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 	if options.bundled != nil {
 		c.idScope = "standard_" + strings.TrimSuffix(strings.TrimPrefix(options.bundled.File, "@std/"), ".ms") + "_"
 	}
-	for _, module := range modules {
-		for _, d := range module.Declarations {
-			if d.Kind != syntax.KindInterface && d.Kind != syntax.KindImpl && len(d.Methods) > 0 {
-				c.error(d.Pos, "type", "receiver operation declarations require standard-library bindings; move source methods into an explicit 'impl Interface for Type:' block")
-			}
-		}
+	for _, e := range inherent {
+		c.error(e.pos, "type", e.message)
 	}
 	if len(p.Diagnostics) > 0 {
 		return p
@@ -416,6 +414,14 @@ func (c *checker) error(pos syntax.Position, phase, message string) {
 	c.Diagnostics = append(c.Diagnostics, syntax.Diagnostic{Position: pos, Phase: phase, Message: message})
 }
 func (c *checker) addSymbol(name string, s *Symbol, pos syntax.Position) {
+	if existing := c.names[name]; existing != nil && isPreludeSymbol(existing) && !isPreludeSymbol(s) && existing.Module != c.module.File {
+		c.error(pos, "resolution", "declaration "+name+" reuses a prelude name; rename it, because "+name+" always refers to the standard declaration")
+		if c.rejectedNames == nil {
+			c.rejectedNames = map[string]bool{}
+		}
+		c.rejectedNames[name] = true
+		return
+	}
 	if c.names[name] != nil {
 		c.error(pos, "resolution", "duplicate or intrinsic name "+name+"; this name is already declared, imported, or built in, so rename one of them")
 		if c.rejectedNames == nil {
@@ -436,7 +442,7 @@ func (c *checker) variableScope(vars []*Type) *scope {
 func (c *checker) typeVariables(params []syntax.TypeParameter) []*Type {
 	var vars []*Type
 	for _, p := range params {
-		if c.names[p.Name] != nil && c.names[p.Name].Module == "" || c.scope.types[p.Name] != nil || p.Name == "Equal" || p.Name == "Hashable" {
+		if c.names[p.Name] != nil && c.names[p.Name].Module == "" || c.scope.types[p.Name] != nil || p.Name == "Equal" || p.Name == "Comparable" || p.Name == "Hashable" {
 			c.error(p.Pos, "resolution", "duplicate or intrinsic type parameter "+p.Name+"; choose a different type parameter name")
 		}
 		v := &Type{Name: p.Name, ID: c.unique("typevar"), Kind: "variable"}
@@ -502,7 +508,7 @@ func (c *checker) resolve(t *syntax.Type, bound bool) *Type {
 		if required < arity {
 			c.error(t.Pos, "type", fmt.Sprintf("%s takes %d to %d type arguments, found %d; write %s", base.Name, required, arity, len(r.Args), typeSketch(base.Name, arity)))
 		} else {
-			c.error(t.Pos, "type", fmt.Sprintf("%s requires %d type arguments, found %d; write %s", base.Name, arity, len(r.Args), typeSketch(base.Name, arity)))
+			c.error(t.Pos, "type", fmt.Sprintf("%s requires %d type arguments, found %d; write %s", base.Name, arity, len(r.Args), typeSketch(base.Name, arity))+c.preludeShadowHint(base.Name))
 		}
 	}
 	t.Fact = &r
@@ -675,7 +681,7 @@ func (c *checker) checkBind(s *syntax.Statement) (bool, bool) {
 	var expected *Type
 	if s.Type != nil {
 		expected = c.resolve(s.Type, false)
-		c.wellFormed(expected, s.Type.Pos, map[string]bool{})
+		c.wellFormed(expected, s.Type.Pos, map[*Type]bool{})
 	}
 	before := len(c.Diagnostics)
 	info := c.expression(s.Value, expected)
@@ -821,6 +827,11 @@ func (c *checker) checkIfLet(s *syntax.Statement) (bool, bool) {
 func (c *checker) checkWhile(s *syntax.Statement) (bool, bool) {
 	c.enterLoop(s.Body)
 	i := c.expression(s.Value, primitive("Bool"))
+	if !c.callFree(s.Value) {
+		// The condition runs before every iteration, so what it calls can
+		// shrink a list that a fact from before the loop still describes.
+		c.killMutations()
+	}
 	c.loops++
 	facts := len(c.facts)
 	c.pushFacts(c.guardFacts(s.Value, true))
@@ -1030,7 +1041,7 @@ func (c *checker) matchContract(pos syntax.Position, arms []syntax.Arm, info *In
 				if len(target.Def.Variables) > 0 && arm.Path.Kind != syntax.KindApply {
 					c.error(arm.Pos, "type", "concrete type pattern requires explicit type arguments; write e.g. Box[Int]")
 				}
-				c.wellFormed(target, arm.Pos, map[string]bool{})
+				c.wellFormed(target, arm.Pos, map[*Type]bool{})
 				if !c.implements(target, &contract) {
 					c.error(arm.Pos, "type", target.String()+" does not implement "+contract.String())
 				}
@@ -1073,7 +1084,7 @@ func (c *checker) resolveArguments(args []*syntax.Type) []*Type {
 	var result []*Type
 	for _, a := range args {
 		t := c.resolve(a, false)
-		c.wellFormed(t, a.Pos, map[string]bool{})
+		c.wellFormed(t, a.Pos, map[*Type]bool{})
 		result = append(result, t)
 	}
 	return result

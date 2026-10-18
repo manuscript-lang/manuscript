@@ -8,7 +8,7 @@ import network from "@std/net.ms"
 import timestamp from "@std/time.ms"
 import {certificate, private_key} from "./support/certificates.ms"
 
-fn hello(exchange: HttpExchange) -> Result[Unit, HttpError]:
+fn hello(exchange: HttpExchange) Result[Unit, HttpError]:
     let started = (
         try exchange.send_headers(
             status: 200,
@@ -28,7 +28,7 @@ test "TLS certificate parsing verification hostname and expiration":
     try expect_false(
         (
             certificates.length() != 1
-            or certificates.at(0).unwrap().dns_names != ["stdlib.test"]
+            or certificates.at(0).get().dns_names != ["stdlib.test"]
         )
     )
     let now = (timestamp(seconds: 1893456000, nanoseconds: 0) | try expect_ok)
@@ -127,6 +127,6 @@ test "HTTPS trusts only the explicitly supplied local test root":
                         response.metadata().status != 200
                         or (
                             response.read() | try expect_ok
-                        ).unwrap() != "secure".to_bytes()
+                        ).get() != "secure".to_bytes()
                     )
                 )

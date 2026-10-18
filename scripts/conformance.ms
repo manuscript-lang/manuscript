@@ -32,7 +32,7 @@ type Report:
     summary: Summary
     fixture_errors: List[FixtureError] = []
 
-fn validate(report: Report) -> Result[Unit, Error]:
+fn validate(report: Report) Result[Unit, Error]:
     report.format | try expect_equal(expected: 1)
     report.completed | try expect_true
     report.exit_code | try expect_equal(expected: 0)
@@ -60,7 +60,7 @@ fn validate(report: Report) -> Result[Unit, Error]:
     skipped | try expect_equal(expected: report.summary.skipped)
     return ok(unit)
 
-fn inventory(suite: String) -> Result[List[String], Error]:
+fn inventory(suite: String) Result[List[String], Error]:
     let fs = filesystem()
     let files: List[String] = []
 
@@ -90,10 +90,10 @@ fn inventory(suite: String) -> Result[List[String], Error]:
     files.is_empty() | try expect_false
     return ok(files.sorted(fn(left, right): left.compare(right)))
 
-fn selected(index: Int, shard: Int, count: Int) -> Bool:
+fn selected(index: Int, shard: Int, count: Int) Bool:
     return index % count == shard
 
-fn run(args: List[String]) -> Result[Unit, Error]:
+fn run(args: List[String]) Result[Unit, Error]:
     if args.length() != 4:
         return fail(
             "usage: conformance <ms executable> <all|core|stdlib> <shard> <count>"
@@ -128,15 +128,15 @@ fn run(args: List[String]) -> Result[Unit, Error]:
     failed | try expect_equal(expected: 0)
     return ok(unit)
 
-fn run_file(ms: String, file: String) -> Result[Unit, Error]:
+fn run_file(ms: String, file: String) Result[Unit, Error]:
     let output = try commands().run(
         ms,
         ["test", file, "--json", "--timeout=30s"],
         timeout: 3.minutes,
         max_output_bytes: 16000000
     )
-    let text = output.stdout.to_string() | try expect_some
-    let stderr = output.stderr.to_string() | try expect_some
+    let text = output.stdout.decode_utf8() | try expect_some
+    let stderr = output.stderr.decode_utf8() | try expect_some
 
     match check_output(output.exit_code, text):
         ok(_): return ok(unit)
@@ -144,12 +144,12 @@ fn run_file(ms: String, file: String) -> Result[Unit, Error]:
             try emit("{text}\n{stderr}")
             return error(cause)
 
-fn check_output(status: Int, text: String) -> Result[Unit, Error]:
+fn check_output(status: Int, text: String) Result[Unit, Error]:
     status | try expect_equal(expected: 0)
     let report = try parse[Report](text)
     return validate(report)
 
-export fn main() -> Int:
+export fn main() Int:
     match run(arguments()):
         ok(_): return 0
         error(cause):
@@ -171,7 +171,7 @@ test "reports require complete nonempty executions and count explicit skips":
     report.summary.not_run = 1
     validate(report).is_error() | try expect_true
     report.summary.not_run = 0
-    report.tests.at(0).unwrap().status = "failed"
+    report.tests.at(0).get().status = "failed"
     validate(report).is_error() | try expect_true
     validate(Report(1, true, 0, [], Summary(0, 0, 0, 0, 0, 0))).is_error() | try expect_true
     check_output(1, "\{\}").is_error() | try expect_true
@@ -192,7 +192,7 @@ test "shards cover every inventory entry exactly once":
             hits | try expect_equal(expected: 1)
             index = index + 1
 
-fn emit(text: String) -> Result[Unit, Error]:
+fn emit(text: String) Result[Unit, Error]:
     try stdout().write("{text}\n".to_bytes())
     return ok(unit)
 

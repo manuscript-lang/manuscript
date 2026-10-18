@@ -32,7 +32,7 @@ func (c *checker) implementation(d *syntax.Declaration) {
 		}
 		// An impl whose receiver is not valid nominal data must not become
 		// evidence for later conversions; report the receiver's own faults only.
-		c.wellFormed(receiver, d.Pos, map[string]bool{})
+		c.wellFormed(receiver, d.Pos, map[*Type]bool{})
 		c.scope = old
 		return
 	}
@@ -146,8 +146,8 @@ func (c *checker) implementation(d *syntax.Declaration) {
 			}
 		}
 	}
-	c.wellFormed(receiver, d.Pos, map[string]bool{})
-	c.wellFormed(contract, d.Pos, map[string]bool{})
+	c.wellFormed(receiver, d.Pos, map[*Type]bool{})
+	c.wellFormed(contract, d.Pos, map[*Type]bool{})
 	c.scope = old
 }
 func overlap(a, b, x, y *Type, vars []*Type) bool {
@@ -252,6 +252,16 @@ func (c *checker) implements(receiver, contract *Type) bool {
 		if unify(m.Receiver, receiver, variableSet(m.Variables), sub) && Same(Sub(m.Contract, sub), contract) && c.boundsSatisfied(m.Variables, sub) {
 			return true
 		}
+	}
+	return std(contract, "Comparable") && builtinComparable(receiver)
+}
+
+// builtinComparable reports the standard types whose native compare operation
+// satisfies Comparable without an impl.
+func builtinComparable(t *Type) bool {
+	switch t.ID {
+	case "Int", "Float", "String", "@std/Decimal", "@std/BigInt", "@std/Duration", "@std/Instant", "@std/Timestamp":
+		return true
 	}
 	return false
 }
@@ -453,7 +463,7 @@ func nativeMethod(t *Type, name string) *Method {
 		}
 		return &Method{Receiver: t, Type: function(nil, t), Native: name, Decl: standardMethodDeclaration(receiver, name)}
 	}
-	if name == "toString" {
+	if name == "to_string" {
 		receiver := standardSymbols["ValueOperations"].Type
 		return &Method{Receiver: t, Type: receiver.Def.Operations[0].Type, Native: name, Decl: standardMethodDeclaration(receiver, name)}
 	}
@@ -489,15 +499,15 @@ func (c *checker) closeable(t *Type) bool {
 	}
 	return c.implements(t, standard("Closeable"))
 }
-func (c *checker) wellFormed(t *Type, pos syntax.Position, seen map[string]bool) {
-	if t == nil {
+
+// wellFormed checks every bound reachable from t. seen is keyed by pointer: a
+// structural key costs the whole subtree at each level, which made deeply
+// nested inferred types cubic.
+func (c *checker) wellFormed(t *Type, pos syntax.Position, seen map[*Type]bool) {
+	if t == nil || seen[t] {
 		return
 	}
-	key := typeKey(t)
-	if seen[key] {
-		return
-	}
-	seen[key] = true
+	seen[t] = true
 	c.boundsHold(t, pos)
 	for _, a := range t.Args {
 		c.wellFormed(a, pos, seen)
@@ -535,7 +545,7 @@ func (c *checker) declarationChecks(module *syntax.Module) {
 		old := c.scope
 		c.scope = c.variableScope(s.Variables)
 		check := func(t *Type) {
-			c.wellFormed(t, d.Pos, map[string]bool{})
+			c.wellFormed(t, d.Pos, map[*Type]bool{})
 			if s.Export {
 				c.public(t, d.Pos, map[string]bool{})
 			}
@@ -605,12 +615,12 @@ func (c *checker) unsatisfiedMessage(t, bound *Type, alternative string) string 
 func (c *checker) withNotCloseableMessage(t *Type) string {
 	name := t.String()
 	if std(t, "Result") || std(t, "Optional") {
-		return "with needs a Closeable value, but this expression is " + name + "; unwrap it first with 'try' (inside a function that returns a compatible Result) or a 'match'"
+		return "with needs a Closeable value, but this expression is " + name + "; unwrap it first with 'try' (inside a function that returns a compatible Result) or 'if let'"
 	}
 	if t.Def == nil || t.Def.Symbol == nil || t.Def.Symbol.Native != "" || (t.Kind != syntax.KindRecord && t.Kind != "alternative") {
-		return "with needs a Closeable value, but this expression is " + name + ", which cannot implement Closeable; bind a source type that has 'impl Closeable' or declares close() -> Unit"
+		return "with needs a Closeable value, but this expression is " + name + ", which cannot implement Closeable; bind a source type that has 'impl Closeable' or declares close() Unit"
 	}
-	return "with requires an explicit Closeable implementation or a contract declaring close() -> Unit; " + name + " has none, so add 'impl Closeable for " + name + ":' with fn close() -> Unit"
+	return "with requires an explicit Closeable implementation or a contract declaring close() Unit; " + name + " has none, so add 'impl Closeable for " + name + ":' with fn close() Unit"
 }
 
 func operationNames(ops []Operation) []string {

@@ -11,7 +11,7 @@ func TestGuardedCounterStepsKeepOverflowFaults(t *testing.T) {
 	result := compiler.CompileSource("counter-step.ms", `import {expect_true, fail} from "@std/testing.ms"
 
 
-fn count_up(limit: Int) -> Int:
+fn count_up(limit: Int) Int:
     var i = limit - 3
     var steps = 0
     while i < limit:
@@ -19,7 +19,7 @@ fn count_up(limit: Int) -> Int:
         i = i + 1
     return steps
 
-fn count_down(limit: Int) -> Int:
+fn count_down(limit: Int) Int:
     var i = limit + 3
     var steps = 0
     while i > limit:
@@ -27,14 +27,14 @@ fn count_down(limit: Int) -> Int:
         i = i - 1
     return steps
 
-fn reset_then_step() -> Int:
+fn reset_then_step() Int:
     var i = 0
     while i < 1:
         i = 9223372036854775807
         i = i + 1
     return i
 
-fn nested_reset(flag: Bool) -> Int:
+fn nested_reset(flag: Bool) Int:
     var i = 0
     while i < 1:
         if flag:

@@ -7,7 +7,7 @@ type Counter:
 type Outer:
     inner: Counter
 
-fn tally(values: List[Int]) -> Int:
+fn tally(values: List[Int]) Int:
     var total = 0
     for value in values:
         total += value
@@ -24,22 +24,24 @@ test "compound assignment on bindings":
     ratio *= 2.0
     var text = "a"
     text += "b"
-    (number != 4 or ratio != 3.0 or text != "ab") | try expect_false
+    try expect_false(number != 4 or ratio != 3.0 or text != "ab")
 
 test "right side groups as one operand":
     var number = 10
     number -= 4 - 1
     number *= 1 + 1
-    number | try expect_equal(expected: 14)
+    try expect_equal(number, 14)
 
 test "compound assignment on fields":
-    let counter = Counter(count: 1, label: "x")
+    let counter = Counter(1, "x")
     counter.count += 4
     counter.count *= counter.count
     counter.label += "y"
-    let outer = Outer(inner: counter)
+    let outer = Outer(counter)
     outer.inner.count -= 5
-    (counter.count != 20 or counter.label != "xy" or tally([1, 2, 3]) != 6) | try expect_false
+    try expect_false(
+        (counter.count != 20 or counter.label != "xy" or tally([1, 2, 3]) != 6)
+    )
 
 test "compound assignment in loops":
     var index = 0
@@ -49,4 +51,4 @@ test "compound assignment in loops":
         total += index
         index += 1
 
-    (total != 10 or index != 5) | try expect_false
+    try expect_false(total != 10 or index != 5)

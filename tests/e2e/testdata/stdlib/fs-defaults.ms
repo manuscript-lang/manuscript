@@ -7,33 +7,30 @@ fn generic_write[T: FileSystem](
     fs: T,
     path: String,
     data: Bytes
-) -> Result[Unit, FileSystemError]:
+) Result[Unit, FileSystemError]:
     return fs.write_file(path, data)
 
 fn generic_copy[T: FileSystem](
     fs: T,
     source: String,
     destination: String
-) -> Result[Unit, FileSystemError]:
+) Result[Unit, FileSystemError]:
     return fs.copy_file(source, destination)
 
 fn generic_tree[T: FileSystem](
     fs: T,
     source: String,
     destination: String
-) -> Result[Unit, FileSystemError]:
+) Result[Unit, FileSystemError]:
     return fs.copy_tree(source, destination)
 
-fn generic_directory[T: FileSystem](
-    fs: T,
-    path: String
-) -> Result[Unit, FileSystemError]:
+fn generic_directory[T: FileSystem](fs: T, path: String) Result[Unit, FileSystemError]:
     return fs.create_directory(path)
 
-fn generic_remove[T: FileSystem](fs: T, path: String) -> Result[Unit, FileSystemError]:
+fn generic_remove[T: FileSystem](fs: T, path: String) Result[Unit, FileSystemError]:
     return fs.remove(path)
 
-fn rejected(result: Result[Unit, FileSystemError]) -> Result[Unit, Error]:
+fn rejected(result: Result[Unit, FileSystemError]) Result[Unit, Error]:
     match result:
         error(_): return ok(unit)
         ok(_): return error(
@@ -42,14 +39,14 @@ fn rejected(result: Result[Unit, FileSystemError]) -> Result[Unit, Error]:
 
     return ok(unit)
 
-fn text(fs: FileSystem, path: String) -> Result[String, Error]:
-    return ok((fs.read_file(path) | try expect_ok).to_string().unwrap())
+fn text(fs: FileSystem, path: String) Result[String, Error]:
+    return ok((fs.read_file(path) | try expect_ok).decode_utf8().get())
 
-fn argument(log: List[String], mark: String, path: String) -> String:
+fn argument(log: List[String], mark: String, path: String) String:
     log.append(mark)
     return path
 
-fn data_argument(log: List[String]) -> Bytes:
+fn data_argument(log: List[String]) Bytes:
     log.append("data")
     return "new".to_bytes()
 

@@ -49,12 +49,43 @@ func TestFormatExpressionLayouts(t *testing.T) {
 		name, source, want string
 	}{
 		{
+			name: "function-typed parameter measures only its own signature",
+			source: `fn map_box[T, U_wwwwwwwwwwww](b_wwwwwwwwwwwwwwwwwwwwwwww: Box_wwwwwwwwwwwwwwwwwww[T], f_wwwwwwwwwww: fn(v: T) U_wwwwwwwwwwww) Box_wwwwwwwwwwwwwwwwwww[U_wwwwwwwwwwww]:
+    return b_wwwwwwwwwwwwwwwwwwwwwwww
+`,
+			want: `fn map_box[T, U_wwwwwwwwwwww](
+    b_wwwwwwwwwwwwwwwwwwwwwwww: Box_wwwwwwwwwwwwwwwwwww[T],
+    f_wwwwwwwwwww: fn(v: T) U_wwwwwwwwwwww
+) Box_wwwwwwwwwwwwwwwwwww[U_wwwwwwwwwwww]:
+    return b_wwwwwwwwwwwwwwwwwwwwwwww
+`,
+		},
+		{
+			name: "long if let value wraps without the binding",
+			source: `fn work() Int:
+    if let value = [2, 5, 3, (-6), (-9), 1, 2, 3, 4].clone().sorted(fn(l: Int, r: Int) Int: l - r).first():
+        return value
+    return 0
+`,
+			want: `fn work() Int:
+    if let value = (
+        [2, 5, 3, (-6), (-9), 1, 2, 3, 4]
+        .clone()
+        .sorted(fn(l: Int, r: Int) Int: (l - r))
+        .first()
+    ):
+        return value
+
+    return 0
+`,
+		},
+		{
 			name: "list comments retain item boundaries",
-			source: `fn work() -> Unit:
+			source: `fn work() Unit:
     let values = [1, # Keep the first value explained.
         2, 3, 4]
 `,
-			want: `fn work() -> Unit:
+			want: `fn work() Unit:
     let values = [
         1,  # Keep the first value explained.
         2,
@@ -65,10 +96,10 @@ func TestFormatExpressionLayouts(t *testing.T) {
 		},
 		{
 			name: "simple list rows use available width",
-			source: `fn work() -> Unit:
+			source: `fn work() Unit:
     let values = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
 `,
-			want: `fn work() -> Unit:
+			want: `fn work() Unit:
     let values = [
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
         23, 24, 25, 26, 27, 28, 29, 30
@@ -77,17 +108,17 @@ func TestFormatExpressionLayouts(t *testing.T) {
 		},
 		{
 			name: "many short map entries stay compact",
-			source: `fn work() -> Unit:
+			source: `fn work() Unit:
     let values = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 0: 0}
 `,
-			want: `fn work() -> Unit:
+			want: `fn work() Unit:
     let values = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 0: 0}
 `,
 		},
 		{
 			name: "module constant initializer starting before its operator",
 			source: `let prices = [12, 8, 25]
-let affordable = prices.length > 1 and prices.keep(predicate: fn(value: Int) -> Bool:
+let affordable = prices.length > 1 and prices.keep(predicate: fn(value: Int) Bool:
     return value <= 10
 ).length > 0
 `,
@@ -95,7 +126,7 @@ let affordable = prices.length > 1 and prices.keep(predicate: fn(value: Int) -> 
 let affordable = (
     prices.length > 1
     and prices.keep(
-        predicate: fn(value: Int) -> Bool:
+        predicate: fn(value: Int) Bool:
             return value <= 10
     ).length > 0
 )
@@ -103,7 +134,7 @@ let affordable = (
 		},
 		{
 			name: "match arms after a try joined from a later line",
-			source: `fn work(early: Int) -> Int:
+			source: `fn work(early: Int) Int:
     let result = subtract(try
         match some(0):
             some(_):
@@ -112,7 +143,7 @@ let affordable = (
     )
     return result
 `,
-			want: `fn work(early: Int) -> Int:
+			want: `fn work(early: Int) Int:
     let result = subtract(
         try match some(0):
             some(_):
@@ -124,10 +155,10 @@ let affordable = (
 		},
 		{
 			name: "nested computations below the width limit",
-			source: `fn work() -> Unit:
+			source: `fn work() Unit:
     send(destination: resolve(name: service, region: region), payload: encode(build(records)))
 `,
-			want: `fn work() -> Unit:
+			want: `fn work() Unit:
     send(
         destination: resolve(name: service, region: region),
         payload: encode(build(records))
@@ -136,10 +167,10 @@ let affordable = (
 		},
 		{
 			name: "long call and labeled inputs",
-			source: `fn work() -> Unit:
+			source: `fn work() Unit:
     send(destination: destination_address, payload: encoded_message_payload, timeout: configured_request_timeout)
 `,
-			want: `fn work() -> Unit:
+			want: `fn work() Unit:
     send(
         destination: destination_address,
         payload: encoded_message_payload,
@@ -149,22 +180,22 @@ let affordable = (
 		},
 		{
 			name: "compact larger and nested collections",
-			source: `fn work() -> Unit:
+			source: `fn work() Unit:
     let larger = [1, 2, 3, 4, 5]
     let nested = [[1, 2], [3, 4]]
 `,
-			want: `fn work() -> Unit:
+			want: `fn work() Unit:
     let larger = [1, 2, 3, 4, 5]
     let nested = [[1, 2], [3, 4]]
 `,
 		},
 		{
 			name: "compound conditions keep inline guards",
-			source: `fn work() -> Int:
+			source: `fn work() Int:
     if active and allowed and remaining > 0: return 1
     return 0
 `,
-			want: `fn work() -> Int:
+			want: `fn work() Int:
     if active and allowed and remaining > 0: return 1
 
     return 0
@@ -172,14 +203,14 @@ let affordable = (
 		},
 		{
 			name: "compound assignment keeps its operator",
-			source: `fn work() -> Int:
+			source: `fn work() Int:
     var total = 1
     total+=2
     total   *=   3
     box.count -=  total
     return total
 `,
-			want: `fn work() -> Int:
+			want: `fn work() Int:
     var total = 1
     total += 2
     total *= 3
@@ -189,37 +220,37 @@ let affordable = (
 		},
 		{
 			name: "boolean precedence and comparison operands",
-			source: `fn work() -> Bool:
+			source: `fn work() Bool:
     return active or allowed and remaining > 0 or fallback
 `,
-			want: `fn work() -> Bool:
+			want: `fn work() Bool:
     return active or allowed and remaining > 0 or fallback
 `,
 		},
 		{
 			name: "compound argument values",
-			source: `fn work() -> Unit:
+			source: `fn work() Unit:
     send(condition: active and allowed and remaining > 0, payload: "data")
 `,
-			want: `fn work() -> Unit:
+			want: `fn work() Unit:
     send(condition: active and allowed and remaining > 0, payload: "data")
 `,
 		},
 		{
 			name: "mixed boolean clauses",
-			source: `fn work() -> Bool:
+			source: `fn work() Bool:
     return active or allowed and remaining > 0
 `,
-			want: `fn work() -> Bool:
+			want: `fn work() Bool:
     return active or allowed and remaining > 0
 `,
 		},
 		{
 			name: "long boolean chain wraps at the width",
-			source: `fn work() -> Bool:
+			source: `fn work() Bool:
     return account_is_active and payment_is_allowed and remaining_balance > minimum_balance
 `,
-			want: `fn work() -> Bool:
+			want: `fn work() Bool:
     return (
         account_is_active
         and payment_is_allowed
@@ -229,10 +260,10 @@ let affordable = (
 		},
 		{
 			name: "long arithmetic retains precedence",
-			source: `fn work() -> Int:
+			source: `fn work() Int:
     return initial_account_balance + pending_deposit_total * applicable_exchange_rate - pending_withdrawal_total
 `,
-			want: `fn work() -> Int:
+			want: `fn work() Int:
     return (
         initial_account_balance
         + pending_deposit_total * applicable_exchange_rate
@@ -242,10 +273,10 @@ let affordable = (
 		},
 		{
 			name: "long chain has one operation per line",
-			source: `fn work() -> String:
+			source: `fn work() String:
     return incoming_request_payload.normalize_whitespace().replace(old: legacy_separator, new: current_separator).trim()
 `,
-			want: `fn work() -> String:
+			want: `fn work() String:
     return (
         incoming_request_payload
         .normalize_whitespace()
@@ -257,35 +288,35 @@ let affordable = (
 		{
 			name: "parameter and import groups",
 			source: `import {First, Second, Third, Fourth, Fifth} from "./contracts.ms"
-fn work(first: Int, second: Int, third: Int, fourth: Int) -> Int: return first
+fn work(first: Int, second: Int, third: Int, fourth: Int) Int: return first
 `,
 			want: `import {First, Second, Third, Fourth, Fifth} from "./contracts.ms"
 
-fn work(first: Int, second: Int, third: Int, fourth: Int) -> Int: return first
+fn work(first: Int, second: Int, third: Int, fourth: Int) Int: return first
 `,
 		},
 		{
 			name: "signature includes its return type in the width budget",
-			source: `fn work(first: Int, second: String) -> Result[Optional[Map[String, String]], ApplicationError]:
+			source: `fn work(first: Int, second: String) Result[Optional[Map[String, String]], ApplicationError]:
     return error(cause)
 `,
 			want: `fn work(
     first: Int,
     second: String
-) -> Result[Optional[Map[String, String]], ApplicationError]:
+) Result[Optional[Map[String, String]], ApplicationError]:
     return error(cause)
 `,
 		},
 		{
 			name: "comments stay with arguments",
-			source: `fn work() -> Unit:
+			source: `fn work() Unit:
     send(  # Delivery settings.
             first: 1, # First setting.
         # Second setting.
             second: 2,
         ) # Completed settings.
 `,
-			want: `fn work() -> Unit:
+			want: `fn work() Unit:
     send(  # Delivery settings.
         first: 1,  # First setting.
         # Second setting.
@@ -295,26 +326,26 @@ fn work(first: Int, second: Int, third: Int, fourth: Int) -> Int: return first
 		},
 		{
 			name: "inline closure argument",
-			source: `fn work() -> Int:
-    return apply(value: 3, transform: fn(value: Int) -> Int: return value + 1)
+			source: `fn work() Int:
+    return apply(value: 3, transform: fn(value: Int) Int: return value + 1)
 `,
-			want: `fn work() -> Int:
-    return apply(value: 3, transform: fn(value: Int) -> Int: return value + 1)
+			want: `fn work() Int:
+    return apply(value: 3, transform: fn(value: Int) Int: return value + 1)
 `,
 		},
 		{
 			name: "indented closure argument moves with its body",
-			source: `fn work() -> Int:
-    return apply(value: 3, transform: fn(value: Int) -> Int:
+			source: `fn work() Int:
+    return apply(value: 3, transform: fn(value: Int) Int:
         if value == 0: return 0
         let next = value + 1
         return next
     )
 `,
-			want: `fn work() -> Int:
+			want: `fn work() Int:
     return apply(
         value: 3,
-        transform: fn(value: Int) -> Int:
+        transform: fn(value: Int) Int:
             if value == 0: return 0
 
             let next = value + 1
@@ -324,30 +355,30 @@ fn work(first: Int, second: Int, third: Int, fourth: Int) -> Int: return first
 		},
 		{
 			name: "inline closure ends at its enclosing delimiter",
-			source: `fn work() -> Bool:
-    return [[1, 2], [3]].flat_map(transform: fn(value: List[Int]) -> List[Int]: return value) == [1, 2, 3]
+			source: `fn work() Bool:
+    return [[1, 2], [3]].flat_map(transform: fn(value: List[Int]) List[Int]: return value) == [1, 2, 3]
 `,
-			want: `fn work() -> Bool:
+			want: `fn work() Bool:
     return (
         [[1, 2], [3]].flat_map(
-            transform: fn(value: List[Int]) -> List[Int]: return value
+            transform: fn(value: List[Int]) List[Int]: return value
         ) == [1, 2, 3]
     )
 `,
 		},
 		{
 			name: "compound defaults",
-			source: `fn work(value: Bool = active and allowed and remaining > 0) -> Bool: return value
+			source: `fn work(value: Bool = active and allowed and remaining > 0) Bool: return value
 `,
-			want: `fn work(value: Bool = active and allowed and remaining > 0) -> Bool: return value
+			want: `fn work(value: Bool = active and allowed and remaining > 0) Bool: return value
 `,
 		},
 		{
 			name: "long collection element expression",
-			source: `fn work() -> Unit:
+			source: `fn work() Unit:
     let values = [initial_account_balance + pending_deposit_total * applicable_exchange_rate - pending_withdrawal_total, 0]
 `,
-			want: `fn work() -> Unit:
+			want: `fn work() Unit:
     let values = [
         (
             initial_account_balance
@@ -360,12 +391,12 @@ fn work(first: Int, second: Int, third: Int, fourth: Int) -> Int: return first
 		},
 		{
 			name: "multiline match header retains compact inline arms",
-			source: `fn choose(value: Choice) -> Int:
+			source: `fn choose(value: Choice) Int:
     match value:
         long_variant(first_payload_name, second_payload_name, third_payload_name, fourth_payload_name): return 1
         _: return 0
 `,
-			want: `fn choose(value: Choice) -> Int:
+			want: `fn choose(value: Choice) Int:
     match value:
         long_variant(
             first_payload_name,
@@ -378,10 +409,10 @@ fn work(first: Int, second: Int, third: Int, fourth: Int) -> Int: return first
 		},
 		{
 			name: "comparison suffix contributes to nested call width",
-			source: `fn work() -> Bool:
+			source: `fn work() Bool:
     return Error(value: CommandError.Failed(message: "command diagnostic")).message() != "command diagnostic"
 `,
-			want: `fn work() -> Bool:
+			want: `fn work() Bool:
     return (
         Error(
             value: CommandError.Failed(message: "command diagnostic")
@@ -391,12 +422,12 @@ fn work(first: Int, second: Int, third: Int, fourth: Int) -> Int: return first
 		},
 		{
 			name: "condition colon contributes to width",
-			source: `fn work() -> Int:
+			source: `fn work() Int:
     if tagged_detail(integer) != "integer 7" or tagged_detail(text) != "text diagnostic":
         return 1
     return 0
 `,
-			want: `fn work() -> Int:
+			want: `fn work() Int:
     if (
         tagged_detail(integer) != "integer 7"
         or tagged_detail(text) != "text diagnostic"
@@ -408,13 +439,13 @@ fn work(first: Int, second: Int, third: Int, fourth: Int) -> Int: return first
 		},
 		{
 			name: "simple forms and atomic strings remain intact",
-			source: `fn work() -> String:
+			source: `fn work() String:
     let values = [1, 2, 3]
     let text = "# A deliberately long literal with {format(value: "nested text")} that must retain its exact original spelling."
     if enabled: return text
     return text
 `,
-			want: `fn work() -> String:
+			want: `fn work() String:
     let values = [1, 2, 3]
     let text = "# A deliberately long literal with {format(value: "nested text")} that must retain its exact original spelling."
     if enabled: return text
@@ -498,7 +529,7 @@ func FuzzFormat(f *testing.F) {
 		}
 		f.Add(string(source))
 	}
-	f.Add("fn f() -> Bool:\n    return active or allowed and remaining > 0\n")
+	f.Add("fn f() Bool:\n    return active or allowed and remaining > 0\n")
 	f.Fuzz(func(t *testing.T, source string) {
 		_, parseError := parser.Parse("fuzz.ms", source)
 		formatted, err := tooling.Format("fuzz.ms", source)

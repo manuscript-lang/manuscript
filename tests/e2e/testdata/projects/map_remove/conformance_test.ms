@@ -20,6 +20,6 @@ test "Map removal keeps direct bound generic and defining-module key scopes":
     try expect_false(
         (
             returned_values.length() != 2
-            or returned_values.keys() [0].unwrap().id != 2
+            or returned_values.keys() [0].get().id != 2
         )
     )

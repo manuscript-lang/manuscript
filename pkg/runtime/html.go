@@ -2,6 +2,7 @@ package msruntime
 
 import (
 	"html"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 
@@ -14,9 +15,32 @@ func Html_Escape(_ *Execution, text string) string { return html.EscapeString(te
 // Html_Unescape decodes HTML5 character references in one pass.
 func Html_Unescape(ctx *Execution, text string) string {
 	CheckCancelled(ctx)
-	out := html.UnescapeString(text)
+	out := htmlUnescape(text)
 	CheckCancelled(ctx)
 	return out
+}
+
+// htmlHexNoDigits matches a hexadecimal character reference with no digits,
+// which HTML5 leaves literal but Go's html.UnescapeString turns into U+FFFD.
+var htmlHexNoDigits = regexp.MustCompile(`&#[xX];`)
+
+// htmlUnescape decodes character references, leaving "&#x;" untouched. A
+// reference cannot span the literal's leading '&', so decoding the pieces
+// between occurrences is equivalent.
+func htmlUnescape(text string) string {
+	spans := htmlHexNoDigits.FindAllStringIndex(text, -1)
+	if len(spans) == 0 {
+		return html.UnescapeString(text)
+	}
+	var out strings.Builder
+	last := 0
+	for _, span := range spans {
+		out.WriteString(html.UnescapeString(text[last:span[0]]))
+		out.WriteString(text[span[0]:span[1]])
+		last = span[1]
+	}
+	out.WriteString(html.UnescapeString(text[last:]))
+	return out.String()
 }
 
 // htmlReader checks cancellation while the parser consumes even one long token.

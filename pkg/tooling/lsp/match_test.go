@@ -6,7 +6,7 @@ import (
 )
 
 func TestMatchExpressionAndIndexReferences(t *testing.T) {
-	source := `fn read(values: List[Int], index: Int) -> Int:
+	source := `fn read(values: List[Int], index: Int) Int:
     let result = match values[index]:
         some(number):
             let doubled = number * 2

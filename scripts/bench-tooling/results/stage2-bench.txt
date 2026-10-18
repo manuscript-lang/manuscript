@@ -1,0 +1,76 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/tooling/lsp
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkReviewIndex/0-4           	      20	  15138559 ns/op	19163350 B/op	   59379 allocs/op
+--- BENCH: BenchmarkReviewIndex/0-4
+    review_perf_test.go:37: source_bytes=0 modules=48 occurrence_count=3276
+    review_perf_test.go:37: source_bytes=0 modules=48 occurrence_count=3276
+BenchmarkReviewIndex/0-4           	      32	  14465700 ns/op	19163374 B/op	   59380 allocs/op
+--- BENCH: BenchmarkReviewIndex/0-4
+    review_perf_test.go:37: source_bytes=0 modules=48 occurrence_count=3276
+    review_perf_test.go:37: source_bytes=0 modules=48 occurrence_count=3276
+    review_perf_test.go:37: source_bytes=0 modules=48 occurrence_count=3276
+BenchmarkReviewIndex/1000-4        	      18	  21529216 ns/op	29209818 B/op	   90400 allocs/op
+--- BENCH: BenchmarkReviewIndex/1000-4
+    review_perf_test.go:37: source_bytes=30000 modules=48 occurrence_count=6276
+    review_perf_test.go:37: source_bytes=30000 modules=48 occurrence_count=6276
+    review_perf_test.go:37: source_bytes=30000 modules=48 occurrence_count=6276
+    review_perf_test.go:37: source_bytes=30000 modules=48 occurrence_count=6276
+BenchmarkReviewIndex/1000-4        	      15	  20368442 ns/op	29209692 B/op	   90399 allocs/op
+--- BENCH: BenchmarkReviewIndex/1000-4
+    review_perf_test.go:37: source_bytes=30000 modules=48 occurrence_count=6276
+    review_perf_test.go:37: source_bytes=30000 modules=48 occurrence_count=6276
+BenchmarkReviewIndex/2000-4        	      12	  31325134 ns/op	41253916 B/op	  121448 allocs/op
+--- BENCH: BenchmarkReviewIndex/2000-4
+    review_perf_test.go:37: source_bytes=60000 modules=48 occurrence_count=9276
+    review_perf_test.go:37: source_bytes=60000 modules=48 occurrence_count=9276
+BenchmarkReviewIndex/2000-4        	      12	  31603916 ns/op	41253868 B/op	  121447 allocs/op
+--- BENCH: BenchmarkReviewIndex/2000-4
+    review_perf_test.go:37: source_bytes=60000 modules=48 occurrence_count=9276
+    review_perf_test.go:37: source_bytes=60000 modules=48 occurrence_count=9276
+    review_perf_test.go:37: source_bytes=60000 modules=48 occurrence_count=9276
+BenchmarkReviewIndex/4000-4        	       6	  52707814 ns/op	64488145 B/op	  183531 allocs/op
+--- BENCH: BenchmarkReviewIndex/4000-4
+    review_perf_test.go:37: source_bytes=120000 modules=48 occurrence_count=15276
+    review_perf_test.go:37: source_bytes=120000 modules=48 occurrence_count=15276
+BenchmarkReviewIndex/4000-4        	       6	  53741814 ns/op	64497184 B/op	  183533 allocs/op
+--- BENCH: BenchmarkReviewIndex/4000-4
+    review_perf_test.go:37: source_bytes=120000 modules=48 occurrence_count=15276
+    review_perf_test.go:37: source_bytes=120000 modules=48 occurrence_count=15276
+BenchmarkReviewDeclarationDocs/1000-4         	     349	   1045351 ns/op	  776000 B/op	    3000 allocs/op
+BenchmarkReviewDeclarationDocs/1000-4         	     313	   1091281 ns/op	  776000 B/op	    3000 allocs/op
+BenchmarkReviewDeclarationDocs/2000-4         	     174	   2758644 ns/op	 1552000 B/op	    6000 allocs/op
+BenchmarkReviewDeclarationDocs/2000-4         	     164	   2363446 ns/op	 1552000 B/op	    6000 allocs/op
+BenchmarkReviewDeclarationDocs/4000-4         	      76	   4861600 ns/op	 3104000 B/op	   12000 allocs/op
+BenchmarkReviewDeclarationDocs/4000-4         	     100	   4618813 ns/op	 3104000 B/op	   12000 allocs/op
+BenchmarkReviewSemantic/1000-4                	     100	   5409141 ns/op	   5.55 MB/s	 9432658 B/op	   18051 allocs/op
+BenchmarkReviewSemantic/1000-4                	     100	   4921472 ns/op	   6.10 MB/s	 9432659 B/op	   18051 allocs/op
+BenchmarkReviewSemantic/2000-4                	      64	  10805862 ns/op	   5.55 MB/s	20102998 B/op	   36057 allocs/op
+BenchmarkReviewSemantic/2000-4                	      54	  17838766 ns/op	   3.36 MB/s	20102994 B/op	   36057 allocs/op
+BenchmarkReviewSemantic/4000-4                	      14	  24721702 ns/op	   4.85 MB/s	41312600 B/op	   72063 allocs/op
+BenchmarkReviewSemantic/4000-4                	      15	  22623180 ns/op	   5.30 MB/s	41312604 B/op	   72063 allocs/op
+BenchmarkReviewSemantic/8000-4                	       8	  38515824 ns/op	   6.23 MB/s	83092830 B/op	  144069 allocs/op
+BenchmarkReviewSemantic/8000-4                	       8	  40121150 ns/op	   5.98 MB/s	83092818 B/op	  144069 allocs/op
+BenchmarkReviewPositions/1000-4               	    1144	    287831 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewPositions/1000-4               	    1174	    300625 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewPositions/2000-4               	     285	   1153429 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewPositions/2000-4               	     291	   1218913 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewPositions/4000-4               	      82	   4743583 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewPositions/4000-4               	      72	   4754435 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewPositions/8000-4               	      18	  19649230 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewPositions/8000-4               	      19	  18101629 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewLongLine/a/128-4               	 2117360	       175.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewLongLine/a/128-4               	 2186212	       159.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewLongLine/😀/128-4               	  415821	       902.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewLongLine/😀/128-4               	  432998	       961.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewLongLine/a/1024-4              	  277402	      1300 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewLongLine/a/1024-4              	  285864	      1336 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewLongLine/😀/1024-4              	   50659	      7384 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewLongLine/😀/1024-4              	   49890	      7239 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewLongLine/a/8192-4              	   35997	     10610 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewLongLine/a/8192-4              	   36374	     10666 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewLongLine/😀/8192-4              	    4648	     69362 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReviewLongLine/😀/8192-4              	    6225	     72218 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	24.475s

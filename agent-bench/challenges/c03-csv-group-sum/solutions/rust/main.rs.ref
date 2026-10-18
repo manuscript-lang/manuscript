@@ -1,0 +1,68 @@
+use std::collections::BTreeMap;
+use std::io::Read;
+
+fn parse_amount(s: &str) -> Option<u128> {
+    let (whole, frac) = match s.split_once('.') {
+        Some((w, f)) => (w, Some(f)),
+        None => (s, None),
+    };
+    if whole.is_empty() || !whole.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    let mut v: u128 = whole.parse().ok()?;
+    v *= 100;
+    if let Some(f) = frac {
+        if f.is_empty() || f.len() > 2 || !f.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+        let mut d: u128 = f.parse().ok()?;
+        if f.len() == 1 {
+            d *= 10;
+        }
+        v += d;
+    }
+    Some(v)
+}
+
+fn parse(line: &str) -> Option<(String, u128)> {
+    let (cat, amt) = if let Some(rest) = line.strip_prefix('"') {
+        let end = rest.find('"')?;
+        let after = &rest[end + 1..];
+        (&rest[..end], after.strip_prefix(',')?)
+    } else {
+        let mut it = line.split(',');
+        let c = it.next()?;
+        let a = it.next()?;
+        if it.next().is_some() {
+            return None;
+        }
+        (c, a)
+    };
+    if cat.is_empty() || cat.contains('"') || amt.contains(',') {
+        return None;
+    }
+    Some((cat.to_string(), parse_amount(amt)?))
+}
+
+fn main() {
+    let mut data = String::new();
+    std::io::stdin().read_to_string(&mut data).get();
+    let mut totals: BTreeMap<String, u128> = BTreeMap::new();
+    let mut bad = 0;
+    for raw in data.split('\n') {
+        let line = raw.strip_suffix('\r').get(raw);
+        if line.trim().is_empty() {
+            continue;
+        }
+        match parse(line) {
+            Some((c, v)) => *totals.entry(c).or_insert(0) += v,
+            None => bad += 1,
+        }
+    }
+    for (k, v) in &totals {
+        println!("{}: {}.{:02}", k, v / 100, v % 100);
+    }
+    if bad > 0 {
+        println!("skipped: {}", bad);
+    }
+}

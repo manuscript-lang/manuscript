@@ -1,10 +1,10 @@
-import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
+import {expect_equal, expect_false, fail} from "@std/testing.ms"
 
 test "String basic counterparts are callable":
-    "é🙂".length() | try expect_equal(expected: 2)
-    (not ("".is_empty()) or "a".is_empty()) | try expect_false
-    "é🙂".chars() | try expect_equal(expected: ["é", "🙂"])
-    "é🙂".reverse() | try expect_equal(expected: "🙂é")
+    try expect_equal("é🙂".length(), 2)
+    try expect_false(not ("".is_empty()) or "a".is_empty())
+    try expect_equal("é🙂".chars(), ["é", "🙂"])
+    try expect_equal("é🙂".reverse(), "🙂é")
     try expect_false(
         (
             "a".compare("b") != -1
@@ -12,38 +12,38 @@ test "String basic counterparts are callable":
             or "é".compare("é") != 0
         )
     )
-    "a\r\nb\n".lines() | try expect_equal(expected: ["a", "b"])
+    try expect_equal("a\r\nb\n".lines(), ["a", "b"])
 
 test "length and chars use scalars and preserve text boundaries":
     let text = "é🙂e\u{301}"
-    (text.length() != 4 or text.length() != text.scalar_length()) | try expect_false
-    text.chars() | try expect_equal(expected: ["é", "🙂", "e", "\u{301}"])
-    "👩\u{200d}🚀".length() | try expect_equal(expected: 3)
-    "a\u{0}b".chars() | try expect_equal(expected: ["a", "\u{0}", "b"])
-    (not ("".chars().is_empty()) or "".length() != 0) | try expect_false
+    try expect_false(text.length() != 4 or text.length() != text.scalar_length())
+    try expect_equal(text.chars(), ["é", "🙂", "e", "\u{301}"])
+    try expect_equal("👩\u{200d}🚀".length(), 3)
+    try expect_equal("a\u{0}b".chars(), ["a", "\u{0}", "b"])
+    try expect_false(not ("".chars().is_empty()) or "".length() != 0)
     let characters = text.chars()
     let second = text.chars()
     characters.set(0, "changed").append("new")
-    (second != ["é", "🙂", "e", "\u{301}"] or text != "é🙂e\u{301}") | try expect_false
+    try expect_false(second != ["é", "🙂", "e", "\u{301}"] or text != "é🙂e\u{301}")
 
 test "reverse operates on scalars without normalization":
-    "aé🙂z".reverse() | try expect_equal(expected: "z🙂éa")
-    "e\u{301}".reverse() | try expect_equal(expected: "\u{301}e")
-    "👩\u{200d}🚀".reverse() | try expect_equal(expected: "🚀\u{200d}👩")
-    "a\u{0}b".reverse() | try expect_equal(expected: "b\u{0}a")
-    ("".reverse() != "" or "🙂".reverse() != "🙂") | try expect_false
+    try expect_equal("aé🙂z".reverse(), "z🙂éa")
+    try expect_equal("e\u{301}".reverse(), "\u{301}e")
+    try expect_equal("👩\u{200d}🚀".reverse(), "🚀\u{200d}👩")
+    try expect_equal("a\u{0}b".reverse(), "b\u{0}a")
+    try expect_false("".reverse() != "" or "🙂".reverse() != "🙂")
     let original = "é🙂e\u{301}"
-    original.reverse().reverse() | try expect_equal(expected: original)
+    try expect_equal(original.reverse().reverse(), original)
 
 test "compare is normalized sign and scalar lexical order":
-    ("".compare("a") != -1 or "a".compare("") != 1) | try expect_false
-    ("ab".compare("abc") != -1 or "abc".compare("ab") != 1) | try expect_false
-    "Z".compare("a") | try expect_equal(expected: -1)
-    "é".compare("e\u{301}") | try expect_equal(expected: 1)
-    "\u{e000}".compare("\u{10000}") | try expect_equal(expected: -1)
-    "a\u{0}".compare("a\u{1}") | try expect_equal(expected: -1)
+    try expect_false("".compare("a") != -1 or "a".compare("") != 1)
+    try expect_false("ab".compare("abc") != -1 or "abc".compare("ab") != 1)
+    try expect_equal("Z".compare("a"), -1)
+    try expect_equal("é".compare("e\u{301}"), 1)
+    try expect_equal("\u{e000}".compare("\u{10000}"), -1)
+    try expect_equal("a\u{0}".compare("a\u{1}"), -1)
     let equal = "é🙂"
-    equal.compare(equal) | try expect_equal(expected: 0)
+    try expect_equal(equal.compare(equal), 0)
 
 type LineCase:
     text: String
@@ -70,7 +70,7 @@ test "lines preserve interior empties and recognize LF and CRLF only":
     ]
     for line_case in cases:
         if line_case.text.lines() != line_case.expected: return fail(
-            "line boundary: {line_case.text.toString()}"
+            "line boundary: {line_case.text.to_string()}"
         )
 
 test "String basic bound methods capture immutable receiver values":
@@ -82,13 +82,13 @@ test "String basic bound methods capture immutable receiver values":
     let empty = text.is_empty
     let compare = text.compare
     text = "changed"
-    (chars() != ["é", "\n", "🙂", "\n"] or lines() != ["é", "🙂"]) | try expect_false
-    (reverse() != "\n🙂\né" or length() != 4 or empty()) | try expect_false
-    compare(other: "é\n🙂\n") | try expect_equal(expected: 0)
+    try expect_false(chars() != ["é", "\n", "🙂", "\n"] or lines() != ["é", "🙂"])
+    try expect_false((reverse() != "\n🙂\né" or length() != 4 or empty()))
+    try expect_equal(compare("é\n🙂\n"), 0)
     let first = lines()
     let second = lines()
     first.set(0, "changed").append("new")
-    second | try expect_equal(expected: ["é", "🙂"])
+    try expect_equal(second, ["é", "🙂"])
     let empty_lines = "".lines()
     empty_lines.append("new")
-    ("".lines().is_empty()) | try expect_true
+    try expect_false(not ("".lines().is_empty()))

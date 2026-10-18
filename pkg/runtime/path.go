@@ -353,7 +353,7 @@ func (p pathRules) ToNamespacedPath(_ *Execution, s string) string {
 
 func (p pathRules) MatchesGlob(_ *Execution, value, glob string) Result[bool, PathError] {
 	pattern, ok := parseGlob(p.slash(glob))
-	if !ok {
+	if !ok || strings.ContainsRune(value, 0) {
 		return Fail[bool, PathError](PathError_InvalidInput{})
 	}
 	return Ok[bool, PathError](pattern.match(p.slash(value)))

@@ -120,7 +120,9 @@ func captureFrames() (frames []string, truncated bool) {
 	iterator := goruntime.CallersFrames(pcs[:n])
 	for {
 		frame, more := iterator.Next()
-		if name, ok := sourceNames.Load(frame.Function); ok {
+		// Prologue code the lowerer emits (the call-depth check) carries the
+		// generated.go directive, not a source position.
+		if name, ok := sourceNames.Load(frame.Function); ok && frame.File != "generated.go" {
 			if len(frames) == maxFaultFrames {
 				return frames, true
 			}

@@ -53,6 +53,7 @@ type scanner struct {
 	tokens               []Token
 	levels               []layout
 	delimiters           []byte
+	groups               []int
 	opened               []syntax.Position
 	functionDepths       []int
 	originalOffsets      []int
@@ -234,6 +235,9 @@ func Lex(file, source string) (tokens []Token, err error) {
 				if strings.ContainsRune("([{", rune(b)) {
 					s.delimiters = append(s.delimiters, b)
 					s.opened = append(s.opened, p)
+					if last := len(s.tokens) - 1; b == '(' && last >= 0 && (s.tokens[last].Kind == "let" || s.tokens[last].Kind == "var") {
+						s.groups = append(s.groups, len(s.delimiters))
+					}
 				}
 				if strings.ContainsRune(")]}", rune(b)) {
 					if len(s.delimiters) == 0 {
@@ -246,6 +250,9 @@ func Lex(file, source string) (tokens []Token, err error) {
 					if !((open == '(' && b == ')') || (open == '[' && b == ']') || (open == '{' && b == '}')) {
 						where := s.opened[len(s.opened)-1]
 						s.fail(fmt.Sprintf("mismatched closing delimiter %q; the %q opened at line %d:%d needs %q", b, open, where.Line, where.Column, map[byte]byte{'(': ')', '[': ']', '{': '}'}[open]))
+					}
+					if len(s.groups) > 0 && s.groups[len(s.groups)-1] == len(s.delimiters) {
+						s.groups = s.groups[:len(s.groups)-1]
 					}
 					s.delimiters = s.delimiters[:len(s.delimiters)-1]
 					s.opened = s.opened[:len(s.opened)-1]
@@ -284,6 +291,10 @@ func Lex(file, source string) (tokens []Token, err error) {
 				} else {
 					s.emit(Newline, "", s.pos())
 				}
+			} else if len(s.groups) > 0 && s.groups[len(s.groups)-1] == len(s.delimiters) {
+				// A `let (` or `var (` group holds one binding per line, so its
+				// lines end like statements even though a delimiter is open.
+				s.emit(Newline, "", s.pos())
 			}
 		}
 		if s.offset < len(s.source) {
@@ -538,7 +549,7 @@ func characterHint(b byte) string {
 	case '!':
 		return "; write 'not x' for negation and '!=' for inequality"
 	case '?':
-		return "; Manuscript has no ? operator, so use Optional values and match, or 'try' for Result"
+		return "; Manuscript has no ? operator, so use 'if let' for Optional values, or 'try' for Result"
 	case '`':
 		return "; text uses double quotes with {expression} interpolation"
 	case '$', '@', '\\', '^', '~':

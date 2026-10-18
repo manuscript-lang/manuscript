@@ -11,7 +11,7 @@ type Mode:
     case Idle
     case Busy
 
-export fn main() -> Int:
+export fn main() Int:
     match initial:
         Idle:
             return 0

@@ -1,4 +1,4 @@
-import {expect_equal, expect_false, expect_not_equal, expect_true} from "@std/testing.ms"
+import {expect_equal, expect_false, expect_not_equal} from "@std/testing.ms"
 import Closeable from "@std/cleanup.ms"
 
 type Counter:
@@ -8,44 +8,44 @@ type Resource:
     counter: Counter
 
 impl Closeable for Resource:
-    fn close() -> Unit:
-        self.counter.value = self.counter.value + 1
+    fn close() Unit:
+        self.counter.value += 1
 
-fn mark(counter: Counter, digit: Int) -> Int:
+fn mark(counter: Counter, digit: Int) Int:
     counter.value = counter.value * 10 + digit
     return digit
 
-fn generic[T: Equal](left: T, right: T) -> Bool: left == right
+fn generic[T: Equal](left: T, right: T) Bool: left == right
 
-fn returning_match() -> Bool:
+fn returning_match() Bool:
     return true == match some(1):
-        some(value): return false
+        some(_): return false
         none: false
 
 test "primitive equality captures operands once in order":
     let counter = Counter()
-    mark(counter, digit: 1) | try expect_not_equal(expected: mark(counter, digit: 2))
-    counter.value | try expect_equal(expected: 12)
+    try expect_not_equal(mark(counter, 1), mark(counter, 2))
+    try expect_equal(counter.value, 12)
     var original = 1
     let captured = original == match some(1):
         some(value):
             original = 2
             value
         none: 0
-    (not captured or original != 2) | try expect_false
-    let skipped = false and mark(counter, digit: 3) == 3
-    let skipped_again = true or mark(counter, digit: 4) == 4
-    (skipped or not skipped_again or counter.value != 12) | try expect_false
-    ("é" == "e\u{0301}" or "λ🙂" != "λ🙂") | try expect_false
-    (generic(left: true, right: true)) | try expect_true
-    returning_match() | try expect_false
+    try expect_false(not captured or original != 2)
+    let skipped = false and mark(counter, 3) == 3
+    let skipped_again = true or mark(counter, 4) == 4
+    try expect_false((skipped or not skipped_again or counter.value != 12))
+    try expect_false("é" == "e\u{0301}" or "λ🙂" != "λ🙂")
+    try expect_false(not generic(left: true, right: true))
+    try expect_false(returning_match())
 
-fn conditional(counter: Counter, take: Bool) -> Int:
+fn conditional(counter: Counter, take: Bool) Int:
     if take:
         with resource = Resource(counter): return 7
     return 8
 
-fn matched(counter: Counter) -> Int:
+fn matched(counter: Counter) Int:
     return match some(1):
         some(value):
             with resource = Resource(counter): return value
@@ -57,49 +57,49 @@ fn defaulted(
     value: Int = match some(2):
         some(number):
             with resource = Resource(counter):
-                let used = unit
+                let _used = unit
             number
         none: 0
-) -> Int: value
+) Int: value
 
-fn nested(counter: Counter) -> Unit:
-    let callback = fn() -> Unit:
+fn nested(counter: Counter) Unit:
+    let callback = fn() Unit:
         with resource = Resource(counter): return
     callback()
 
-fn failed() -> Result[Int, String]: error("expected")
+fn failed() Result[Int, String]: error("expected")
 
-fn propagate(counter: Counter) -> Result[Int, String]:
+fn propagate(counter: Counter) Result[Int, String]:
     with resource = Resource(counter):
         let value = try failed()
         return ok(value)
 
     return ok(0)
 
-fn bare_propagate() -> Result[Int, String]:
+fn bare_propagate() Result[Int, String]:
     let value = try failed()
     return ok(value)
 
-fn equality_propagate() -> Result[Bool, String]:
+fn equality_propagate() Result[Bool, String]:
     let matches = (try failed()) == 0
     return ok(matches)
 
-fn bool_failed() -> Result[Bool, String]: error("expected")
+fn bool_failed() Result[Bool, String]: error("expected")
 
-fn nested_results(counter: Counter) -> Result[Int, String]:
-    let child = fn() -> Result[Bool, String]:
+fn nested_results(counter: Counter) Result[Int, String]:
+    let child = fn() Result[Bool, String]:
         with resource = Resource(counter):
             let value = try bool_failed()
             return ok(value)
 
         return ok(false)
-    let ignored = child()
+    let _ignored = child()
     let value = try failed()
     return ok(value)
 
-fn statement_match_try(counter: Counter) -> Result[Int, String]:
+fn statement_match_try(counter: Counter) Result[Int, String]:
     match some(1):
-        some(number):
+        some(_):
             with resource = Resource(counter):
                 let value = try failed()
                 return ok(value)
@@ -107,73 +107,70 @@ fn statement_match_try(counter: Counter) -> Result[Int, String]:
 
     return ok(-1)
 
-fn value_match_loop_try(counter: Counter) -> Result[Int, String]:
+fn value_match_loop_try(counter: Counter) Result[Int, String]:
     var index = 0
 
     while index < 2:
-        let selected = match some(index):
+        let _selected = match some(index):
             some(number):
                 with resource = Resource(counter):
-                    let value = try failed()
-                    let used = value
+                    let _value = try failed()
                 number
             none: 0
 
-        index = index + 1
+        index += 1
 
     return ok(index)
 
 test "combined lowering retains callable state and try boundaries":
     let counter = Counter()
-    (
+    try expect_false(
         (
             nested_results(counter) != Result[Int, String].error("expected")
             or counter.value != 1
         )
-    ) | try expect_false
-    (
+    )
+    try expect_false(
         (
             statement_match_try(counter) != Result[Int, String].error(
                 "expected"
             )
             or counter.value != 2
         )
-    ) | try expect_false
-    (
+    )
+    try expect_false(
         (
             value_match_loop_try(counter) != Result[Int, String].error(
                 "expected"
             )
             or counter.value != 3
         )
-    ) | try expect_false
+    )
 
 test "cleanup remains owned by its source callable":
     let counter = Counter()
-    (conditional(counter, take: false) != 8 or counter.value != 0) | try expect_false
-    (conditional(counter, take: true) != 7 or counter.value != 1) | try expect_false
-    (matched(counter) != 1 or counter.value != 2) | try expect_false
-    (defaulted(counter) != 2 or counter.value != 3) | try expect_false
-    (defaulted(counter, value: 9) != 9 or counter.value != 3) | try expect_false
+    try expect_false(conditional(counter, take: false) != 8 or counter.value != 0)
+    try expect_false(conditional(counter, take: true) != 7 or counter.value != 1)
+    try expect_false(matched(counter) != 1 or counter.value != 2)
+    try expect_false(defaulted(counter) != 2 or counter.value != 3)
+    try expect_false(defaulted(counter, 9) != 9 or counter.value != 3)
     nested(counter)
-    counter.value | try expect_equal(expected: 4)
-    (
+    try expect_equal(counter.value, 4)
+    try expect_false(
         (
             propagate(counter) != Result[Int, String].error("expected")
             or counter.value != 5
         )
-    ) | try expect_false
-    bare_propagate() | try expect_equal(expected: Result[Int, String].error("expected"))
-    equality_propagate() | try expect_equal(
-        expected: Result[Bool, String].error("expected")
     )
+    try expect_equal(bare_propagate(), Result[Int, String].error("expected"))
+    try expect_equal(equality_propagate(), Result[Bool, String].error("expected"))
     var index = 0
 
     while index < 3:
-        index = index + 1
+        index += 1
 
         with resource = Resource(counter):
             if index == 1: continue
             if index == 2: break
 
-    counter.value | try expect_equal(expected: 7)
+    try expect_equal(counter.value, 7)

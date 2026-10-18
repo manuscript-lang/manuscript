@@ -40,7 +40,7 @@ func decodeNativeJSON(t *testing.T, output []byte) nativeJSONDocument {
 func TestCLIBuildJSONSuccessAndPartialArtifacts(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(root, "main=a=b.ms")
-	if err := os.WriteFile(source, []byte("export fn main() -> Int:\n    return 0\n"), 0600); err != nil {
+	if err := os.WriteFile(source, []byte("export fn main() Int:\n    return 0\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	output := filepath.Join(root, "program=a=b")
@@ -79,7 +79,7 @@ func TestCLIBuildJSONSuccessAndPartialArtifacts(t *testing.T) {
 const nativeProfileSource = `import arguments from "@std/cli.ms"
 import {stdout, stderr} from "@std/io.ms"
 
-export fn main() -> Int:
+export fn main() Int:
     let args = arguments()
     if args.length() > 0 and args[0] == "binary":
         let _raw = stdout().write(data: "x".to_bytes().with_value(index: 0, value: 255))
@@ -88,7 +88,7 @@ export fn main() -> Int:
     let _err = stderr().write(data: "stderr\n".to_bytes())
     var index = 0
     while index < args.length():
-        let _arg = stdout().write(data: "arg={args[index].unwrap()}\n".to_bytes())
+        let _arg = stdout().write(data: "arg={args[index].get()}\n".to_bytes())
         index = index + 1
     if args.length() > 0 and args[0] == "fail":
         return 23
@@ -143,7 +143,7 @@ func TestCLIProfileJSONCollectorsForwardingAndStreams(t *testing.T) {
 func TestCLIProfileJSONPreservesExistingDirectory(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(root, "main.ms")
-	if err := os.WriteFile(source, []byte("export fn main() -> Int:\n    return 0\n"), 0600); err != nil {
+	if err := os.WriteFile(source, []byte("export fn main() Int:\n    return 0\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	output := t.TempDir()

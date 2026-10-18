@@ -1,0 +1,27 @@
+{
+  "revision": "a988705cbd5ed9c7424ac891aa42893c2805474a",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "python": "3.12.14",
+  "gomaxprocs": 4,
+  "clock": "perf_counter_ns; elapsed from frame write to reader receipt",
+  "cold_definition": "fresh process; OS page cache uncontrolled/warm",
+  "fixtures": {
+    "medium": {
+      "modules_including_main": 41,
+      "functions_per_module": 20,
+      "source_bytes": 48477
+    }
+  },
+  "memory_after": {
+    "medium/tabs1": {
+      "VmHWM": "72288 kB",
+      "VmRSS": "55012 kB",
+      "Threads": "8"
+    },
+    "medium/tabs10": {
+      "VmHWM": "135784 kB",
+      "VmRSS": "88140 kB",
+      "Threads": "8"
+    }
+  }
+}

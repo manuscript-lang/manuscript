@@ -17,6 +17,9 @@ type Parser struct {
 	inlineReturn    bool
 	blockLambda     bool
 	depth           int
+	// queued holds the bindings after the first of a `let (...)` group until
+	// statements collects them.
+	queued []*syntax.Statement
 }
 
 // maxNesting bounds recursive descent so generated or hostile input produces a
@@ -96,12 +99,13 @@ func Parse(file, source string) (module *syntax.Module, err error) {
 			continue
 		}
 		exported := p.take("export")
-		d := p.declaration()
-		if exported && (d.Kind == syntax.KindImpl || d.Kind == syntax.KindTest) {
-			p.fail(p.previous(), "only types, interfaces, and named functions can be exported; remove 'export' before this impl or test")
+		for _, d := range p.declarations() {
+			if exported && (d.Kind == syntax.KindImpl || d.Kind == syntax.KindTest) {
+				p.fail(p.previous(), "only types, interfaces, and named functions can be exported; remove 'export' before this impl or test")
+			}
+			d.Export = exported
+			module.Declarations = append(module.Declarations, d)
 		}
-		d.Export = exported
-		module.Declarations = append(module.Declarations, d)
 	}
 	return module, nil
 }
@@ -249,13 +253,29 @@ func (p *Parser) typeArgs() []*syntax.Type {
 	p.need("]")
 	return types
 }
+
+// resultType parses the type that follows a parameter list. It rejects the
+// removed '->' and a missing type with the form to write instead.
+func (p *Parser) resultType() *syntax.Type {
+	p.noArrow()
+	if k := p.peek().Kind; k == ":" || k == lexer.Newline {
+		p.fail(p.peek(), "every fn declares its result type after the parameter list, e.g. fn f() Unit:")
+	}
+	return p.typ()
+}
+
+// noArrow rejects the removed '->' before a result type.
+func (p *Parser) noArrow() {
+	if p.peek().Kind == "->" {
+		p.fail(p.peek(), "result types follow the parameter list without an arrow; remove '->', e.g. fn f() Unit:")
+	}
+}
 func (p *Parser) typ() *syntax.Type {
 	defer p.enter()()
 	if p.take("fn") {
 		pos := p.previous().Pos
 		params := p.parameters(false, false)
-		p.need("->")
-		return &syntax.Type{Pos: pos, Name: "fn", Params: params, Result: p.typ()}
+		return &syntax.Type{Pos: pos, Name: "fn", Params: params, Result: p.resultType()}
 	}
 	if p.take("(") {
 		t := p.typ()
@@ -264,6 +284,96 @@ func (p *Parser) typ() *syntax.Type {
 	}
 	return p.namedType()
 }
+
+// declarations parses one top-level item, or every constant of a `let (...)`
+// group. Each group entry is its own declaration.
+func (p *Parser) declarations() []*syntax.Declaration {
+	if p.peek().Kind != "let" || p.tokens[p.at+1].Kind != "(" {
+		return []*syntax.Declaration{p.declaration()}
+	}
+	keyword := p.next()
+	var result []*syntax.Declaration
+	p.bindingGroup(keyword, func() {
+		d := &syntax.Declaration{Pos: p.peek().Pos, Kind: syntax.KindFn, Group: keyword.Pos}
+		p.constant(d)
+		result = append(result, d)
+	})
+	return result
+}
+
+// constant parses `name [: Type] = value` after `let` into a parameterless
+// function that returns the value.
+func (p *Parser) constant(d *syntax.Declaration) {
+	d.Kind = syntax.KindFn
+	d.Constant = true
+	d.Name = p.need(lexer.Name).Text
+	if p.take(":") {
+		d.Result = p.typ()
+	}
+	p.need("=")
+	// A binary expression's position is its operator, so the statement
+	// starts at the first token of the initializer for source tooling.
+	start := p.peek().Pos
+	value := p.expression(0)
+	if d.Result == nil {
+		d.Result = &syntax.Type{Pos: value.Pos}
+	}
+	d.Body = []*syntax.Statement{{Pos: start, Kind: syntax.KindReturn, Value: value}}
+}
+
+func (p *Parser) next() lexer.Token {
+	t := p.peek()
+	p.at++
+	return t
+}
+
+// bindingGroup parses the `( ... )` after a consumed let or var keyword. The
+// lexer ends each line of the group with a newline; entry parses one binding
+// at the start of its line. Entries sit four spaces inside the keyword's line
+// and the closing parenthesis aligns with it.
+func (p *Parser) bindingGroup(keyword lexer.Token, entry func()) {
+	indent := keyword.Pos.Column
+	for i := p.at - 2; i >= 0 && p.tokens[i].Pos.Line == keyword.Pos.Line && p.tokens[i].Kind != lexer.Newline; i-- {
+		indent = p.tokens[i].Pos.Column
+	}
+	if p.inlineStatement {
+		p.fail(p.peek(), "a binding group needs its own lines; put '"+keyword.Kind+" (' on a line of its own with one binding per indented line, or write single '"+keyword.Kind+" name = value' bindings")
+	}
+	p.need("(")
+	if p.peek().Kind != lexer.Newline {
+		p.fail(p.peek(), "a binding group starts its entries on the next line; write '"+keyword.Kind+" (' then one 'name = value' per indented line, or destructure with '"+keyword.Kind+" [a, b] = value' or '"+keyword.Kind+" {x, y} = value'")
+	}
+	p.next()
+	count := 0
+	for {
+		p.newlines()
+		if t := p.peek(); t.Kind == ")" {
+			if t.Pos.Column != indent {
+				p.fail(t, "the closing ')' of a binding group aligns with its '"+keyword.Kind+"' line, at column "+strconv.Itoa(indent))
+			}
+			break
+		} else if t.Kind == lexer.EOF {
+			p.need(")")
+		} else if t.Pos.Column != indent+4 {
+			p.fail(t, "binding group entries are indented four spaces past the '"+keyword.Kind+"' line, to column "+strconv.Itoa(indent+4))
+		}
+		entry()
+		count++
+		if p.peek().Kind == "," {
+			p.fail(p.peek(), "a binding group holds one 'name = value' per line, not a comma list; to destructure write '"+keyword.Kind+" [a, b] = value' or '"+keyword.Kind+" {x, y} = value'")
+		}
+		// A block lambda value ends at its dedent, which also ends the line.
+		if p.previous().Kind != lexer.Dedent {
+			p.need(lexer.Newline)
+		}
+	}
+	if count == 0 {
+		p.fail(p.peek(), "a binding group cannot be empty; add 'name = value' lines or remove the group")
+	}
+	p.need(")")
+	p.end()
+}
+
 func (p *Parser) declaration() *syntax.Declaration {
 	token := p.peek()
 	d := &syntax.Declaration{Pos: token.Pos, Kind: token.Kind}
@@ -272,25 +382,10 @@ func (p *Parser) declaration() *syntax.Declaration {
 		d.Name = p.need(lexer.Name).Text
 		d.TypeParams = p.typeParams()
 		d.Params = p.parameters(true, false)
-		p.need("->")
-		d.Result = p.typ()
+		d.Result = p.resultType()
 		d.Body = p.statementSuite(false, true)
 	case p.take("let"):
-		d.Kind = syntax.KindFn
-		d.Constant = true
-		d.Name = p.need(lexer.Name).Text
-		if p.take(":") {
-			d.Result = p.typ()
-		}
-		p.need("=")
-		// A binary expression's position is its operator, so the statement
-		// starts at the first token of the initializer for source tooling.
-		start := p.peek().Pos
-		value := p.expression(0)
-		if d.Result == nil {
-			d.Result = &syntax.Type{Pos: value.Pos}
-		}
-		d.Body = []*syntax.Statement{{Pos: start, Kind: syntax.KindReturn, Value: value}}
+		p.constant(d)
 		p.end()
 	case p.take("test"):
 		name := p.need(lexer.String)
@@ -302,9 +397,16 @@ func (p *Parser) declaration() *syntax.Declaration {
 		d.Result = &syntax.Type{Name: "Unit", Pos: token.Pos}
 		d.Body = p.suite()
 	case p.take("impl"):
-		d.Contract = p.namedType()
-		p.need("for")
-		d.Receiver = p.namedType()
+		// `impl Contract for Type:` implements a contract; `impl Type:` declares
+		// the type's own methods. The first name is the type exactly when no
+		// `for` follows.
+		first := p.namedType()
+		if p.take("for") {
+			d.Contract = first
+			d.Receiver = p.namedType()
+		} else {
+			d.Receiver = first
+		}
 		p.need(":")
 		p.need(lexer.Newline)
 		p.newlines()
@@ -319,9 +421,11 @@ func (p *Parser) declaration() *syntax.Declaration {
 			p.need("fn")
 			name := p.need(lexer.Name)
 			m := &syntax.Declaration{Pos: name.Pos, Kind: syntax.KindFn, Name: name.Text}
+			if d.Contract == nil {
+				m.TypeParams = p.typeParams()
+			}
 			m.Params = p.parameters(true, false)
-			p.need("->")
-			m.Result = p.typ()
+			m.Result = p.resultType()
 			m.Body = p.statementSuite(false, true)
 			d.Methods = append(d.Methods, m)
 		}
@@ -369,19 +473,14 @@ func (p *Parser) declaration() *syntax.Declaration {
 				d.Cases = append(d.Cases, c)
 				p.end()
 			} else if p.take("fn") {
+				if token.Kind == "type" {
+					p.fail(p.previous(), "a type declares only fields or cases; write its methods in an 'impl "+d.Name+typeParamNames(d.TypeParams)+":' block, or implement an interface with 'impl <Interface> for "+d.Name+typeParamNames(d.TypeParams)+":'")
+				}
 				name := p.need(lexer.Name)
 				m := &syntax.Declaration{Pos: name.Pos, Name: name.Text, Kind: syntax.KindFn}
-				if token.Kind == "type" {
-					m.TypeParams = p.typeParams()
-				}
 				m.Params = p.parameters(true, false)
-				p.need("->")
-				m.Result = p.typ()
-				if token.Kind == "interface" {
-					p.end()
-				} else {
-					m.Body = p.statementSuite(false, true)
-				}
+				m.Result = p.resultType()
+				p.end()
 				d.Methods = append(d.Methods, m)
 			} else {
 				name := p.need(lexer.Name)
@@ -396,7 +495,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 		}
 		p.need(lexer.Dedent)
 		if token.Kind == "interface" && len(d.Methods) == 0 {
-			p.fail(token, "declaration body cannot be empty; an interface needs at least one 'fn name(...) -> Type' operation")
+			p.fail(token, "declaration body cannot be empty; an interface needs at least one 'fn name(...) Type' operation")
 		}
 		if form == "" {
 			form = syntax.KindRecord
@@ -440,13 +539,32 @@ func (p *Parser) statementSuite(expression bool, empty ...bool) []*syntax.Statem
 		if p.peek().Kind == lexer.Dedent || p.peek().Kind == lexer.EOF {
 			break
 		}
-		body = append(body, p.statement())
+		body = append(body, p.statements()...)
 	}
 	p.need(lexer.Dedent)
 	if len(body) == 0 && (len(empty) == 0 || !empty[0]) {
 		p.fail(p.previous(), "suite cannot be empty; add at least one statement (e.g. 'return') in the indented block")
 	}
 	return body
+}
+
+// binding parses `pattern [: Type] = value` after let or var.
+func (p *Parser) binding(s *syntax.Statement) {
+	s.Pattern = p.pattern()
+	if s.Pattern.Kind == syntax.KindName && p.take(":") {
+		s.Type = p.typ()
+	}
+	p.need("=")
+	s.Value = p.expression(0)
+}
+
+// statements parses one statement, plus the rest of its bindings when it is a
+// `let (...)` or `var (...)` group.
+func (p *Parser) statements(allowValue ...bool) []*syntax.Statement {
+	result := []*syntax.Statement{p.statement(allowValue...)}
+	result = append(result, p.queued...)
+	p.queued = nil
+	return result
 }
 func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 	t := p.peek()
@@ -455,12 +573,17 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 	case p.take("let") || p.take("var"):
 		s.Kind = syntax.KindBind
 		s.Mutable = t.Kind == "var"
-		s.Pattern = p.pattern()
-		if s.Pattern.Kind == syntax.KindName && p.take(":") {
-			s.Type = p.typ()
+		if p.peek().Kind == "(" {
+			var entries []*syntax.Statement
+			p.bindingGroup(t, func() {
+				entry := &syntax.Statement{Pos: p.peek().Pos, Kind: syntax.KindBind, Mutable: s.Mutable, Group: t.Pos}
+				p.binding(entry)
+				entries = append(entries, entry)
+			})
+			p.queued = entries[1:]
+			return entries[0]
 		}
-		p.need("=")
-		s.Value = p.expression(0)
+		p.binding(s)
 		p.end()
 	case p.take("return"):
 		if p.peek().Kind != lexer.Newline && !(p.inlineStatement && (p.peek().Kind == "," || p.peek().Kind == ")" || p.peek().Kind == "]" || p.peek().Kind == "}")) {
@@ -520,7 +643,7 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 					p.fail(t, "'"+e.Text+"' is not a keyword; write 'let name = ...' for a binding that is not reassigned, or 'var name = ...' when it changes")
 				}
 				if e.Kind == syntax.KindName && (e.Text == "throw" || e.Text == "raise" || e.Text == "catch") {
-					p.fail(t, "'"+e.Text+"' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'match'")
+					p.fail(t, "'"+e.Text+"' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'")
 				}
 				if e.Kind == syntax.KindName && e.Text == "elif" {
 					p.fail(t, "'elif' is not a keyword; write 'else if <condition>:' for a further branch")
@@ -772,11 +895,12 @@ func (p *Parser) primary() *syntax.Expression {
 		e.Kind = syntax.KindLambda
 		e.Text = ""
 		e.Params = p.parameters(true, true)
-		if p.take("->") {
+		p.noArrow()
+		if k := p.peek().Kind; k == lexer.Name || k == "fn" || k == "(" {
 			e.Result = p.typ()
 		}
 		if p.peek().Kind == "=" && p.tokens[p.at+1].Kind == ">" {
-			p.fail(p.peek(), "there is no '=>' arrow function; write the result type and a colon, e.g. fn(x: Int) -> Int: x + 1")
+			p.fail(p.peek(), "there is no '=>' arrow function; write the result type and a colon, e.g. fn(x: Int) Int: x + 1")
 		}
 		e.Body = p.statementSuite(true)
 	default:
@@ -828,7 +952,7 @@ func (p *Parser) callArguments(callee *syntax.Expression) *syntax.Expression {
 			}
 			arg.Value = p.expression(0)
 			if arg.Value.Kind == syntax.KindName && p.peek().Kind == "->" {
-				p.fail(p.peek(), "lambdas are written fn(name: Type) -> Result: expression, e.g. fn("+arg.Value.Text+": Int) -> Int: "+arg.Value.Text+" + 1")
+				p.fail(p.peek(), "lambdas are written fn(name: Type) Result: expression, e.g. fn("+arg.Value.Text+": Int) Int: "+arg.Value.Text+" + 1")
 			}
 			call.Args = append(call.Args, arg)
 			if !p.take(",") {
@@ -1074,7 +1198,7 @@ func (p *Parser) valueArm(a *syntax.Arm) {
 	}
 	p.inlineStatement = !indented
 	for {
-		a.Body = append(a.Body, p.statement(true))
+		a.Body = append(a.Body, p.statements(true)...)
 		if !indented {
 			break
 		}
@@ -1167,8 +1291,6 @@ func needHint(kind string, found lexer.Token) string {
 	switch kind {
 	case ":":
 		return "; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented body"
-	case "->":
-		return "; every fn declares its result type after '->', e.g. fn f() -> Unit:"
 	case ")":
 		return "; close the parenthesis, separating items with commas"
 	case "]":
@@ -1196,4 +1318,16 @@ func needHint(kind string, found lexer.Token) string {
 		return "; indent the block body by four spaces under its header"
 	}
 	return ""
+}
+
+// typeParamNames spells a type's parameters as the arguments of its impl receiver.
+func typeParamNames(parameters []syntax.TypeParameter) string {
+	if len(parameters) == 0 {
+		return ""
+	}
+	names := make([]string, len(parameters))
+	for i, parameter := range parameters {
+		names[i] = parameter.Name
+	}
+	return "[" + strings.Join(names, ", ") + "]"
 }

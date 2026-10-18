@@ -7,11 +7,11 @@ import (
 )
 
 func TestExpectedGenericResultEditorInformation(t *testing.T) {
-	source := `fn absent[T]() -> Optional[T]: none
-fn transform[T, U](callback: fn(value: T) -> U) -> fn(value: T) -> U: callback
-fn answer() -> Unit:
+	source := `fn absent[T]() Optional[T]: none
+fn transform[T, U](callback: fn(value: T) U) fn(value: T) U: callback
+fn answer() Unit:
     let empty: Optional[Int] = absent()
-    let callback: fn(value: Int) -> String = transform(fn(item): item.toString())
+    let callback: fn(value: Int) String = transform(fn(item): item.to_string())
 `
 	d := document{"file:///tmp/contextual-generics.ms", source, 1}
 	result := analyze(d, map[string]document{d.URI: d})
@@ -19,7 +19,7 @@ fn answer() -> Unit:
 		t.Fatal(result.Diagnostics)
 	}
 	declaration := Position(source, strings.Index(source, "item):"))
-	use := Position(source, strings.Index(source, "item.toString"))
+	use := Position(source, strings.Index(source, "item.to_string"))
 	definition := navigation(result, d, use, "textDocument/definition")
 	if definition == nil || definition.([]any)[0].(map[string]any)["range"].(span).Start != declaration {
 		t.Fatal("lost result-context parameter definition", definition)
@@ -38,9 +38,9 @@ fn answer() -> Unit:
 }
 
 func TestExpectedGenericResultEditorConflict(t *testing.T) {
-	source := `fn identity[T](value: T) -> T: value
-fn first() -> String: identity(1)
-fn second() -> Int: identity(2)
+	source := `fn identity[T](value: T) T: value
+fn first() String: identity(1)
+fn second() Int: identity(2)
 `
 	d := document{"file:///tmp/contextual-generic-conflict.ms", source, 1}
 	result := analyze(d, map[string]document{d.URI: d})

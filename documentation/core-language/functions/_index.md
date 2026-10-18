@@ -5,7 +5,7 @@ weight = 2
 
 # Functions
 
-Functions take named inputs and return a declared type. First learn how to declare and call them. Then learn how to pass a function as a value and what it keeps from its surrounding scope.
+Declare and call functions, then pass them as values.
 
 | Concept | What you will learn |
 | --- | --- |

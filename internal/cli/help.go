@@ -72,7 +72,7 @@ func commandHelp(command string) (string, bool) {
 		examples = "ms lint ms.toml\n  ms lint main.ms --json\n  ms lint src utilities.ms --json"
 	case "build":
 		usage = "<file.ms|ms.toml> [--json] [-o output] [--build-type level] [--debug]"
-		description = "Build an application exporting main() -> Int as a native executable."
+		description = "Build an application exporting main() Int as a native executable."
 		options = "  -o, --output <path>  Executable path (default: ./program; ./program.exe on Windows)\n  --json              Emit one versioned build result and artifact inventory\n  --debug             Alias for --build-type Debug\n"
 		examples = "ms build ms.toml -o hello\n  ms build main.ms --build-type MinSizeRel"
 	case "emit":
@@ -82,7 +82,7 @@ func commandHelp(command string) (string, bool) {
 		examples = "ms emit main.ms\n  ms emit ms.toml -o main.go"
 	case "run":
 		usage = "<file.ms|ms.toml> [options] [-- program arguments]"
-		description = "Build a temporary executable and run its exported main() -> Int.\nArguments after -- are passed unchanged to the application; its exit status is returned."
+		description = "Build a temporary executable and run its exported main() Int.\nArguments after -- are passed unchanged to the application; its exit status is returned."
 		options = "  --debug               Alias for --build-type Debug\n  --watch               Rebuild and restart after each saved source change\n  --cpu-profile <path>  Write a CPU profile\n  --heap-profile <path> Write a heap profile\n  --trace <path>        Write an execution trace\n"
 		examples = "ms run ms.toml -- first second\n  ms run main.ms --watch\n  ms run main.ms --cpu-profile cpu.pprof"
 	case "test":
@@ -106,15 +106,15 @@ func commandHelp(command string) (string, bool) {
 		options = outputHelp + jsonErrorsHelp
 		examples = "ms inspect main.ms\n  ms inspect ms.toml -o inspection.json"
 	case "diagram":
-		usage = "<file.ms|ms.toml> [--view calls|effects|errors|modules] [--entity name] [--depth n] [--format ascii|mermaid] [-o output] [--json]"
-		description = "Emit the checked static call graph. The default ascii outline is plain text with a fixed order;\nmermaid is a flowchart for rendering. --view or --entity switch to one question's tree:\ncalls (who is called), effects (where effects enter), errors (error types and try sites),\nmodules (imports). --entity roots the tree at one declaration (name or file::name; a module\npath for modules) and --depth bounds expansion (default 3, at most 200 nodes)."
-		options = "  --view <name>        calls, effects, errors, or modules (default calls with --entity)\n  --entity <name>      Root the view at one declaration or module\n  --depth <n>          Expansion depth for a view (default 3)\n  --format <name>      ascii (default) or mermaid\n" + outputHelp + jsonErrorsHelp
-		examples = "ms diagram main.ms\n  ms diagram ms.toml --format mermaid -o calls.mmd\n  ms diagram ms.toml --view effects --entity save\n  ms diagram ms.toml --view errors"
+		usage = "<file.ms|ms.toml> [--view calls|effects|errors|modules|flow|scope] [--entity name] [--depth n] [--diff <file|->] [--format ascii|mermaid] [-o output] [--json]"
+		description = "Emit the checked static call graph. The default ascii outline is plain text with a fixed order;\nmermaid is a flowchart for rendering. --view or --entity switch to one question's tree:\ncalls (who is called), effects (where effects enter), errors (error types and try sites),\nmodules (imports), flow (one function's ordered steps), scope (its cleanup scopes and exits).\nflow and scope need --entity. --entity roots the tree at one declaration (name or file::name; a module\npath for modules) and --depth bounds expansion (default 3, at most 200 nodes)."
+		options = "  --view <name>        calls, effects, errors, modules, flow, or scope (default calls with --entity)\n  --entity <name>      Root the view at one declaration or module\n  --depth <n>          Expansion depth for a view (default 3)\n  --diff <path|->      Mark what a unified diff changed in the view (tree is the after state)\n  --format <name>      ascii (default) or mermaid\n" + outputHelp + jsonErrorsHelp
+		examples = "ms diagram main.ms\n  ms diagram ms.toml --format mermaid -o calls.mmd\n  ms diagram ms.toml --view effects --entity save\n  ms diagram ms.toml --view errors\n  ms diagram ms.toml --view flow --entity main --depth 2\n  ms diagram ms.toml --view flow --entity save --diff change.patch"
 	case "review":
-		usage = "<file.ms|ms.toml> [--diff <file|->] [--format ascii|markdown|json] [--all] [-o output]"
+		usage = "<file.ms|ms.toml> [--diff <file|->] [--explain n|id] [--format ascii|markdown|json] [--all] [-o output]"
 		description = "Print a fixed-template report of where to look. Without --diff it maps the project:\npublic surface, entry points with effects, error types, resources, imports.\nWith a unified diff it compares the checked program before and after the change and\nranks entities by contract, effect, error-flow, and resource changes and their reach.\nms never runs git: pipe the diff in. The tree must be the diff's after state; the\nbefore state is rebuilt from the diff and verified. Output is deterministic, with no\ntimestamps, absolute paths, or generated prose, and ends with a digest."
-		options = "  --diff <path|->      Unified diff to review (- reads standard input)\n  --format <name>      ascii (default), markdown, or json\n  --all                Show every row instead of the first five per section\n" + outputHelp
-		examples = "ms review ms.toml\n  git diff --no-renames main... | ms review ms.toml --diff -\n  ms review ms.toml --diff change.patch --format markdown"
+		options = "  --diff <path|->      Unified diff to review (- reads standard input)\n  --format <name>      ascii (default), markdown, or json\n  --explain <n|id>     Show one finding in full: score terms, evidence, callers (needs --diff)\n  --all                Show every row instead of the first five per section\n" + outputHelp
+		examples = "ms review ms.toml\n  git diff --no-renames main... | ms review ms.toml --diff -\n  ms review ms.toml --diff change.patch --format markdown\n  ms review ms.toml --diff change.patch --explain 1"
 	case "profile":
 		usage = "<file.ms|ms.toml> [--json] [--out-dir directory] [--trace] [--build-type level] [-- program arguments]"
 		description = "Build and run an application with CPU and heap capture.\nThe bundle contains the executable, cpu.pprof, heap.pprof, inspection.json,\nand manifest.json. Add --trace to also write trace.out. The directory must be new.\nSource labels/regions identify entry and work boundaries; CPU stacks retain nested calls.\nProfiling adds overhead; tracing can add substantial time and disk usage.\nMeasure normal execution separately. Arguments after -- go to the application; its exit status is returned."

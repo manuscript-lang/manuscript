@@ -35,7 +35,7 @@ test('record fields map between Go and source names', () => {
   assert.equal(sourceField('FirstName'), 'first_name');
   assert.equal(sourceField('Count'), 'count');
   assert.deepEqual(typeArguments('Map[String, List[Int]]'), ['String', 'List[Int]']);
-  assert.deepEqual(typeArguments('Result[fn(Int, Int) -> Int, Failure]'), ['fn(Int, Int) -> Int', 'Failure']);
+  assert.deepEqual(typeArguments('Result[fn(Int, Int) Int, Failure]'), ['fn(Int, Int) Int', 'Failure']);
   assert.deepEqual(typeArguments('Box'), []);
 });
 
@@ -77,10 +77,30 @@ test('alternative cases show their case name', () => {
   assert.equal(unreadable.value, 'Shape'); assert.equal(unreadable.variablesReference, 0);
 });
 
+test('map and set expansion reuse backing fields and preserve paging', async () => {
+  const adapter = new ManuscriptAdapter(new PassThrough());
+  const tree = new Map([
+    [1, [{ name: 'entries', variablesReference: 2 }]],
+    [2, [{ name: '[1]', variablesReference: 3 }, { name: '[2]', variablesReference: 0 }]],
+    [3, [{ name: 'Key', type: 'string', value: '"key"' }, { name: 'Value', type: 'int', value: '7' }]],
+    [4, [{ name: 'm', variablesReference: 1 }]],
+  ]);
+  const calls = [];
+  adapter.children = async (ref, args) => { calls.push({ ref, args }); return tree.get(ref) || []; };
+  const page = { start: 1, count: 2 };
+  const map = await adapter.valueChildren({ kind: 'Map', ref: 1, sourceType: 'Map[String, Int]' }, page);
+  assert.deepEqual(map.map(v => [v.name, v.value, v.type]), [['key', '7', 'Int']]);
+  assert.deepEqual(calls, [{ ref: 1, args: undefined }, { ref: 2, args: page }, { ref: 3, args: undefined }]);
+  calls.length = 0;
+  const set = await adapter.valueChildren({ kind: 'Set', ref: 4, sourceType: 'Set[String]' }, page);
+  assert.deepEqual(set.map(v => [v.name, v.value, v.type]), [['[0]', '"key"', 'String']]);
+  assert.deepEqual(calls, [{ ref: 4, args: undefined }, { ref: 1, args: undefined }, { ref: 2, args: page }, { ref: 3, args: undefined }]);
+});
+
 test('native DAP source stepping and Manuscript record/list/variant rendering', { skip: !process.env.MANUSCRIPT_DAP_TEST, timeout: 60000 }, async () => {
   const directory = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'manuscript dap test ')));
   const program = path.join(directory, 'main.ms');
-  const source = '\n\nimport Queue from "@std/queues.ms"\ntype Box:\n    label: String\n    count: Int\nexport fn main() -> Int:\n    let box = Box(label: "value", count: 42)\n    let items = [1, 2, 3]\n    let floats = [1.25, 2.5]\n    let bools = [true, false]\n    let strings = ["a", "b"]\n    let optional = Optional[Int].some(value: 5)\n    let queue = Queue[Int](capacity: 4)\n    queue.enqueue(value: box.count)\n    return box.count - 42 + queue.length() - 1 + floats.length() - 2 + bools.length() - 2 + strings.length() - 2\n';
+  const source = '\n\nimport Queue from "@std/queues.ms"\ntype Box:\n    label: String\n    count: Int\nexport fn main() Int:\n    let box = Box(label: "value", count: 42)\n    let items = [1, 2, 3]\n    let floats = [1.25, 2.5]\n    let bools = [true, false]\n    let strings = ["a", "b"]\n    let optional = Optional[Int].some(value: 5)\n    let queue = Queue[Int](capacity: 4)\n    queue.enqueue(value: box.count)\n    return box.count - 42 + queue.length() - 1 + floats.length() - 2 + bools.length() - 2 + strings.length() - 2\n';
   await fs.writeFile(program, source);
   const returnLine = source.split('\n').findIndex(line => line.trim().startsWith('return box.')) + 1;
   const output = new PassThrough(); const messages = []; const waiters = [];
@@ -212,4 +232,22 @@ test('requests after the target ends get clear answers instead of pipe errors', 
     assert.equal(reply.success, true);
     assert.equal(reply.command, command);
   }
+});
+
+test('source scopes render the selected function locals and hide compiler temporaries', async () => {
+  const adapter = new ManuscriptAdapter(new PassThrough());
+  adapter.start = async () => {};
+  adapter.sourceScopes.set(7, 'main.main');
+  adapter.locals.set('slot', [
+    { function: 'other', name: 'other_value', type: 'Int' },
+    { function: 'main', name: 'value', type: 'Int' },
+  ]);
+  adapter.children = async () => [
+    { name: 'slot', type: 'int', value: '7', variablesReference: 0 },
+    { name: 'compiler_temp', type: 'int', value: '8', variablesReference: 0 },
+  ];
+  let response;
+  adapter.respond = (_, body) => { response = body; };
+  await adapter.request({ seq: 1, command: 'variables', arguments: { variablesReference: 7 } });
+  assert.deepEqual(response.variables.map(v => [v.name, v.value, v.type]), [['value', '7', 'Int']]);
 });

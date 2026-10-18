@@ -4,6 +4,8 @@ import (
 	"context"
 	"math"
 	"reflect"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -32,6 +34,26 @@ func TestScalarOffsetCacheMatchesFreshScan(t *testing.T) {
 	}
 	if got := String_At(tctx, text, -1); got.Val != "😀" {
 		t.Fatalf("relative index: %v", got)
+	}
+}
+
+func TestScalarOffsetCacheConcurrentTexts(t *testing.T) {
+	for i, unit := range []string{"aé€😀", "🙂xyz", "λ\xffé", "界é"} {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			t.Parallel()
+			text := strings.Repeat(unit, 600)
+			runes := []rune(text)
+			for step := 0; step < 2000; step++ {
+				n := (step * 977) % len(runes)
+				index := n
+				if step%2 == 0 {
+					index -= len(runes)
+				}
+				if got := String_ScalarAt(tctx, text, index); !got.Some || got.Val != int(runes[n]) {
+					t.Fatalf("scalar %d: got %v, want %U", index, got, runes[n])
+				}
+			}
+		})
 	}
 }
 
@@ -79,6 +101,27 @@ func TestStringBasics(t *testing.T) {
 	}
 	if String_Trim(tctx, "  a\n") != "a" || String_TrimStart(tctx, "  a ") != "a " || String_TrimEnd(tctx, " a  ") != " a" {
 		t.Fatal("trim")
+	}
+}
+
+func TestStringSplitLimitsMatchTruncatedFullSplit(t *testing.T) {
+	for _, text := range []string{"", "a", "a,,b,", "aé🙂z", "aaaaa", "\xffa\xfe", strings.Repeat("field,", 1024)} {
+		for _, separator := range []string{"", ",", "aa", "é", "missing"} {
+			full := strings.Split(text, separator)
+			for _, limit := range []int{0, 1, 2, 3, len(text), len(text) + 1, math.MaxInt} {
+				got := String_Split(tctx, text, separator, Some(limit)).Items
+				want := full[:min(limit, len(full))]
+				if !slices.Equal(got, want) {
+					t.Fatalf("split(%q, %q, %d) = %q, want %q", text, separator, limit, got, want)
+				}
+			}
+		}
+	}
+	first := String_Split(tctx, "a,b,c", ",", Some(2))
+	second := String_Split(tctx, "a,b,c", ",", Some(2))
+	first.Items[0] = "changed"
+	if second.Items[0] != "a" {
+		t.Fatal("split results share mutable outer storage")
 	}
 }
 
@@ -146,7 +189,7 @@ func TestStringBudgets(t *testing.T) {
 	if r := String_Repeat(tctx, "a", -1, None[int]()); !r.Failed {
 		t.Fatal("negative count")
 	}
-	if okString(t, String_PadStart(tctx, "7", 3, "ab", None[int]())) != "aba7" && okString(t, String_PadStart(tctx, "7", 3, "ab", None[int]())) != "ab7" {
+	if okString(t, String_PadStart(tctx, "7", 3, "ab", None[int]())) != "ab7" {
 		t.Fatal("pad_start")
 	}
 	if got := okString(t, String_PadEnd(tctx, "é", 4, "xy", None[int]())); got != "éxyx" {
@@ -175,6 +218,56 @@ func TestStringBudgets(t *testing.T) {
 	}
 	if got := okString(t, NormalizationForm_Normalize(tctx, NormalizationForm_Nfkc{}, "ﬁ", None[int]())); got != "fi" {
 		t.Fatal("nfkc")
+	}
+}
+
+func TestStringPaddingExactByteBudgets(t *testing.T) {
+	for _, atStart := range []bool{false, true} {
+		for _, tt := range []struct {
+			text, padding string
+			target        int
+			fill          string
+		}{
+			{"7", "ab", 3, "ab"},
+			{"é", "🙂x", 4, "🙂x🙂"},
+			{"", "é🙂", 3, "é🙂é"},
+			{"x", "é🙂", 8, "é🙂é🙂é🙂é"},
+		} {
+			want := tt.text + tt.fill
+			if atStart {
+				want = tt.fill + tt.text
+			}
+			for _, budget := range []Option[int]{None[int](), Some(len(want))} {
+				got := okString(t, stringPad(tctx, atStart, tt.text, tt.target, tt.padding, budget))
+				if got != want {
+					t.Fatalf("pad(start=%t, %q, %d, %q) = %q, want %q", atStart, tt.text, tt.target, tt.padding, got, want)
+				}
+			}
+			result := stringPad(tctx, atStart, tt.text, tt.target, tt.padding, Some(len(want)-1))
+			if !result.Failed {
+				t.Fatal("padding exceeded byte budget")
+			}
+			if _, ok := result.Err.(StringError_LimitExceeded); !ok {
+				t.Fatalf("wrong padding error: %v", result.Err)
+			}
+		}
+	}
+}
+
+func TestStringPaddingCancellation(t *testing.T) {
+	for _, atStart := range []bool{false, true} {
+		ctx := RootExecution()
+		cancelCtx, cancel := context.WithCancel(ctx.Context)
+		cancel()
+		ctx.Context = cancelCtx
+		func() {
+			defer func() {
+				if _, ok := recover().(cancelled); !ok {
+					t.Fatal("cancelled padding did not unwind")
+				}
+			}()
+			stringPad(ctx, atStart, "a", 65536, "x", None[int]())
+		}()
 	}
 }
 

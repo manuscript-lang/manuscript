@@ -1,29 +1,30 @@
-import {expect_equal, expect_false, expect_not_equal, expect_true, fail} from "@std/testing.ms"
+import {expect_equal, expect_false, expect_not_equal, fail} from "@std/testing.ms"
 import Synchronized from "@std/sync.ms"
 import TaskGroup from "@std/tasks.ms"
+import range from "@std/collections.ms"
 
 interface Counter:
-    fn increment() -> Unit
+    fn increment() Unit
 
 type Val:
     val: Int
 
 impl Counter for Val:
-    fn increment() -> Unit:
-        self.val = self.val + 1
+    fn increment() Unit:
+        self.val += 1
 
 type Box[T]:
     value: T
     child: Val
 
-fn replace[T](box: Box[T], value: T) -> Unit:
+fn replace[T](box: Box[T], value: T) Unit:
     box.value = value
 
-fn receiver(log: List[Int], value: Val) -> Val:
+fn receiver(log: List[Int], value: Val) Val:
     log.append(1)
     return value
 
-fn replacement(log: List[Int]) -> Int:
+fn replacement(log: List[Int]) Int:
     log.append(2)
     return 7
 
@@ -37,17 +38,23 @@ test "record fields mutate through aliases methods views and captures":
     let increment = counter.increment
     increment()
     let callback = fn():
-        counter.val = counter.val + 1
+        counter.val += 1
     callback()
-    (alias.val == 4 and copy.val == 0) | try expect_true
-    let box = Box(value: "old", child: counter)
+    try expect_false(not (alias.val == 4 and copy.val == 0))
+    let box = Box("old", counter)
     let copied = box.clone()
-    replace(box: box, value: "new")
+    replace(box, "new")
     copied.child.val = 9
-    ((box.value == "new" and copied.value == "old" and box.child.val == 9)) | try expect_true
+    try expect_false(
+        not (
+            box.value == "new"
+            and copied.value == "old"
+            and box.child.val == 9
+        )
+    )
     let log: List[Int] = []
-    receiver(log: log, value: counter).val = replacement(log)
-    (log == [1, 2] and counter.val == 7) | try expect_true
+    receiver(log, counter).val = replacement(log)
+    try expect_false(not (log == [1, 2] and counter.val == 7))
 
 test "collection updates retain identity and clone separates storage":
     let values = [1, 2]
@@ -55,22 +62,22 @@ test "collection updates retain identity and clone separates storage":
     let copy = values.clone()
     let append = values.append
     append(3)
-    values.prepend(0).set(index: 1, value: 9)
-    (alias == [0, 9, 2, 3] and copy == [1, 2]) | try expect_true
-    values.remove(1).reverse_in_place().fill(value: 8, start: 0, end: 1)
-    alias | try expect_equal(expected: [8, 2, 0])
-    values.splice(start: 1, delete_count: 1, replacement: values)
-    alias | try expect_equal(expected: [8, 8, 2, 0, 0])
-    let map = Map[String, Int]().add(key: "a", value: 1)
+    values.prepend(0).set(1, 9)
+    try expect_false(not (alias == [0, 9, 2, 3] and copy == [1, 2]))
+    values.remove(1).reverse_in_place().fill(8, 0, 1)
+    try expect_equal(alias, [8, 2, 0])
+    values.splice(1, 1, values)
+    try expect_equal(alias, [8, 8, 2, 0, 0])
+    let map = Map[String, Int]().add("a", 1)
     let map_alias = map
     let map_copy = map.clone()
-    map.add(key: "b", value: 2).remove("a")
-    (map_alias.keys() == ["b"] and map_copy.keys() == ["a"]) | try expect_true
+    map.add("b", 2).remove("a")
+    try expect_false(not (map_alias.keys() == ["b"] and map_copy.keys() == ["a"]))
     let set = Set[Int]().add(1)
     let set_alias = set
     let set_copy = set.clone()
     set.add(2).remove(1)
-    (set_alias.values() == [2] and set_copy.values() == [1]) | try expect_true
+    try expect_false(not (set_alias.values() == [2] and set_copy.values() == [1]))
 
 test "for loop captures length and observes backing writes":
     let values = [1, 2, 3]
@@ -78,119 +85,107 @@ test "for loop captures length and observes backing writes":
 
     for value in values:
         seen.append(value)
-        values.fill(value: 9, start: 0, end: 3)
+        values.fill(9, 0, 3)
 
-    (seen == [1, 9, 9] and values == [9, 9, 9]) | try expect_true
+    try expect_false(not (seen == [1, 9, 9] and values == [9, 9, 9]))
 
 test "Synchronized protects record mutation without replacement":
     let counter = Synchronized(Val(0))
     let operation = fn():
-        var remaining = 100
-
-        while remaining > 0:
+        for round in range(0, 100):
             with guard = counter.lock():
                 guard.get().increment()
-            remaining = remaining - 1
 
     with group = TaskGroup():
         group.start(operation)
         group.start(operation)
         group.start(operation)
         group.start(operation)
-
-        match group.join():
-            ok(_):
-                with guard = counter.lock():
-                    guard.get().val | try expect_equal(expected: 400)
-            error(_):
-                return fail(message: "task mutation failed")
+        try group.join()
+        with guard = counter.lock():
+            try expect_equal(guard.get().val, 400)
 
 test "callbacks capture length while mutating their source":
     let values = [1, 2, 3]
     let result = values.map(
         fn(value):
-            values.fill(value: 9, start: 0, end: 3)
+            values.fill(9, 0, 3)
             return value + 1
     )
-    (result == [2, 10, 10] and values == [9, 9, 9]) | try expect_true
+    try expect_false(not (result == [2, 10, 10] and values == [9, 9, 9]))
 
 test "list growth and saved clone methods preserve current contents":
     let values: List[Int] = []
     let alias = values
     let clone = values.clone
-    var index = 0
-
-    while index < 2048:
+    for index in range(0, 2048):
         values.append(index)
-        index = index + 1
-
     let copy = clone()
     alias.append(2048)
-    values.set(index: 0, value: -1)
-    (alias.length() == 2049 and alias.last() == some(2048)) | try expect_true
-    (
+    values.set(0, -1)
+    try expect_false(not (alias.length() == 2049 and alias.last() == some(2048)))
+    try expect_false(
         not (
             copy.length() == 2048
             and copy.first() == some(0)
             and copy.last() == some(2047)
         )
-    ) | try expect_false
+    )
     let empty: List[Int] = []
     let empty_copy = empty.clone()
     empty_copy.append(1)
-    (empty.length() == 0 and empty_copy.length() == 1) | try expect_true
+    try expect_false(not (empty.length() == 0 and empty_copy.length() == 1))
 
 test "collection clones retain nested object references":
     let child = Val(1)
     let values = [child]
     let copied_values = values.clone()
     copied_values.append(Val(2))
-    let entries = Map[String, Val]().add(key: "child", value: child)
+    let entries = Map[String, Val]().add("child", child)
     let copied_entries = entries.clone()
-    copied_entries.add(key: "other", value: Val(3))
+    copied_entries.add("other", Val(3))
     for entry in copied_entries.entries():
         if entry.key == "child":
             entry.value.val = 7
-    (
+    try expect_false(
         not (
             values.length() == 1
             and copied_values.length() == 2
             and entries.length() == 1
             and copied_entries.length() == 2
         )
-    ) | try expect_false
+    )
     for value in values:
-        value.val | try expect_equal(expected: 7)
+        try expect_equal(value.val, 7)
 
-    match entries.get("child"):
-        some(value):
-            try expect_equal(value.val, 7)
-        none:
-            return fail(message: "cloning removed an original map entry")
+    if let value = entries.get("child"):
+        try expect_equal(value.val, 7)
+    else:
+        return fail("cloning removed an original map entry")
 
 test "map and set clear affect aliases while copies retain contents":
-    let entries = Map[String, Int]().add(key: "a", value: 1)
+    let entries = Map[String, Int]().add("a", 1)
     let alias = entries
     let copy = entries.clone()
     let update = entries.add
-    update(key: "a", value: 2)
-    entries.merge(Map[String, Int]().add(key: "b", value: 3))
-    (
+    update("a", 2)
+    entries.merge(Map[String, Int]().add("b", 3))
+    try expect_false(
         not (
             alias.keys() == ["a", "b"]
             and alias.values() == [2, 3]
             and copy.values() == [1]
         )
-    ) | try expect_false
+    )
     entries.clear()
-    (alias.length() == 0 and copy.length() == 1) | try expect_true
+    try expect_false(not (alias.length() == 0 and copy.length() == 1))
     let values = Set[Int]().add(1)
     let set_alias = values
     let set_copy = values.clone()
     values.add(1).add(2).remove(9)
-    (set_alias.values() == [1, 2] and set_copy.values() == [1]) | try expect_true
+    try expect_false(not (set_alias.values() == [1, 2] and set_copy.values() == [1]))
     values.clear()
-    (set_alias.length() == 0 and set_copy.length() == 1) | try expect_true
+    try expect_false(not (set_alias.length() == 0 and set_copy.length() == 1))
 
 type Choice:
     case Present(value: Val)
@@ -205,31 +200,31 @@ test "alternative clones retain tags and shared payload references":
         Choice.Present(value):
             value.val = 9
         Choice.Missing:
-            return fail(message: "clone changed the alternative tag")
+            return fail("clone changed the alternative tag")
 
     match original:
         Choice.Present(value):
             try expect_equal(value.val, 9)
         Choice.Missing:
-            return fail(message: "clone changed the original alternative")
+            return fail("clone changed the original alternative")
 
     let missing = Choice.Missing.clone()
-    missing | try expect_equal(expected: Choice.Missing)
+    try expect_equal(missing, Choice.Missing)
 
 type Node:
     value: Int
     children: List[Node]
 
 test "mutable recursive graphs compare and clone without recursion failures":
-    let left = Node(value: 1, children: [])
-    let right = Node(value: 1, children: [])
+    let left = Node(1, [])
+    let right = Node(1, [])
     left.children.append(left)
     right.children.append(right)
-    left | try expect_equal(expected: right)
+    try expect_equal(left, right)
     let copy = left.clone()
     copy.value = 2
-    (left.value == 1 and left != copy) | try expect_true
-    copy.children.append(Node(value: 3, children: []))
-    left.children.length() | try expect_equal(expected: 2)
+    try expect_false(not (left.value == 1 and left != copy))
+    copy.children.append(Node(3, []))
+    try expect_equal(left.children.length(), 2)
     right.value = 4
-    left | try expect_not_equal(expected: right)
+    try expect_not_equal(left, right)

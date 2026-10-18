@@ -6,25 +6,25 @@ import Bytes from "@std/bytes.ms"
 import NumberError from "@std/numbers.ms"
 import StringError from "@std/string.ms"
 
-fn positive(value: Int) -> Bool:
+fn positive(value: Int) Bool:
     return value > 0
 
-fn negative(value: Int) -> Bool:
+fn negative(value: Int) Bool:
     return value < 0
 
-fn stringify(value: Int) -> String:
-    return value.to_string(radix: 10)
+fn stringify(value: Int) String:
+    return value.to_string_radix(radix: 10)
 
-fn expand(value: Int) -> List[String]:
+fn expand(value: Int) List[String]:
     return [stringify(value: value), "x"]
 
-fn total(accumulator: Int, value: Int) -> Int:
+fn total(accumulator: Int, value: Int) Int:
     return accumulator + value
 
-fn ordered(accumulator: String, value: Int) -> String:
+fn ordered(accumulator: String, value: Int) String:
     return "{accumulator}{value}"
 
-fn compare(left: Int, right: Int) -> Int:
+fn compare(left: Int, right: Int) Int:
     if left < right:
         return -1
     if left > right:
@@ -32,14 +32,14 @@ fn compare(left: Int, right: Int) -> Int:
 
     return 0
 
-fn common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
+fn common_result[T, E: Error](result: Result[T, E]) Result[T, Error]:
     match result:
         ok(value):
             return ok(value)
         error(cause):
             return error(Error(cause))
 
-fn checked_expansion() -> Result[Unit, Error]:
+fn checked_expansion() Result[Unit, Error]:
     (
         not (
             try common_result(
@@ -146,7 +146,7 @@ test "list methods mutate explicit clones and remain typed":
     original.clone().prepend(value: 0) | try expect_equal(expected: [0, 3, 1, 2, 1])
     original.clone().set(index: -1, value: 9) | try expect_equal(expected: [3, 1, 2, 9])
     original.clone().remove(index: 1) | try expect_equal(expected: [3, 2, 1])
-    original.slice(start: 1, end: 3).unwrap() | try expect_equal(expected: [1, 2])
+    original.slice(start: 1, end: 3).get() | try expect_equal(expected: [1, 2])
     original.clone().reverse_in_place() | try expect_equal(expected: [1, 2, 1, 3])
     original.sorted(compare: compare) | try expect_equal(expected: [1, 1, 2, 3])
     [-1, 0, 2, 3].filter(predicate: positive) | try expect_equal(expected: [2, 3])
@@ -168,7 +168,7 @@ test "list methods mutate explicit clones and remain typed":
     (empty.every(predicate: positive)) | try expect_true
     let observed_original: List[Int] = []
     original.for_each(
-        fn(value) -> Unit:
+        fn(value) Unit:
             observed_original.append(value)
     )
     observed_original | try expect_equal(expected: original)
@@ -293,7 +293,7 @@ test "set algebra and enumeration preserve source values":
     left.entries() | try expect_equal(expected: [[1, 1], [2, 2], [3, 3]])
     let observed_left: List[Int] = []
     left.for_each(
-        fn(value) -> Unit:
+        fn(value) Unit:
             observed_left.append(value)
     )
     observed_left | try expect_equal(expected: left.values())
@@ -313,7 +313,7 @@ test "string methods use Unicode scalars":
     let absent: Optional[Int] = none
     "é🙂é".index_of(value: "z") | try expect_equal(expected: absent)
     "é🙂é".last_index_of(value: "z") | try expect_equal(expected: absent)
-    "é🙂é".slice(start: -2, end: 3).unwrap() | try expect_equal(expected: "🙂é")
+    "é🙂é".slice(start: -2, end: 3).get() | try expect_equal(expected: "🙂é")
     ("é🙂é".slice(start: 2, end: 1).is_error()) | try expect_true
     ("é🙂é".slice(start: -99, end: 1).is_error()) | try expect_true
     "é🙂".scalar_length() | try expect_equal(expected: 2)
@@ -350,7 +350,7 @@ test "bytes have analogous immutable operations":
     data.index_of(value: Bytes([9])) | try expect_equal(expected: missing)
     (data.starts_with(prefix: Bytes([1, 2]))) | try expect_true
     (data.ends_with(suffix: Bytes([3, 2]))) | try expect_true
-    data.slice(start: 1, end: 3).unwrap() | try expect_equal(expected: Bytes([2, 3]))
+    data.slice(start: 1, end: 3).get() | try expect_equal(expected: Bytes([2, 3]))
     data.reversed() | try expect_equal(expected: Bytes([2, 3, 2, 1]))
     data.with_value(index: -1, value: 255) | try expect_equal(
         expected: Bytes([1, 2, 3, 255])
@@ -358,7 +358,7 @@ test "bytes have analogous immutable operations":
     (Bytes([]).is_empty()) | try expect_true
     (not data.is_empty()) | try expect_true
     data | try expect_equal(expected: Bytes([1, 2, 3, 2]))
-    255.to_string(radix: 16) | try expect_equal(expected: "ff")
+    255.to_string_radix(radix: 16) | try expect_equal(expected: "ff")
     1.5.to_string() | try expect_equal(expected: "1.5")
     (1.5.is_finite()) | try expect_true
     (not 1.5.is_nan()) | try expect_true
@@ -405,10 +405,10 @@ test "growth limits and invalid inputs return values":
     )
     filled(value: 1, count: 2, max_items: 1) | try expect_equal(expected: list_limit)
 
-fn parity(value: Int) -> Int:
+fn parity(value: Int) Int:
     return value % 2
 
-fn default_value(key: String) -> Int:
+fn default_value(key: String) Int:
     if key != "c": return -1
 
     return 3
@@ -445,7 +445,7 @@ test "grouping and lazy map defaults":
     original.values() | try expect_equal(expected: [1])
     calls.length() | try expect_equal(expected: 0)
 
-fn verify_text_and_numbers() -> Result[Unit, Error]:
+fn verify_text_and_numbers() Result[Unit, Error]:
     (try common_result(result: "é".normalize(form: "NFC", max_bytes: 2))) | try expect_equal(
         expected: "é"
     )
@@ -510,12 +510,12 @@ test "normalization, empty separators, and precision formatting":
     1.0.to_fixed(digits: 101) | try expect_equal(expected: invalid_number)
     1.0.to_precision(precision: 0) | try expect_equal(expected: invalid_number)
 
-fn verify_bigint_and_regex() -> Result[Unit, Error]:
+fn verify_bigint_and_regex() Result[Unit, Error]:
     let a = from_int(value: 12)
     let b = from_int(value: 5)
-    a.add(other: b).to_string(radix: 10) | try expect_equal(expected: "17")
-    a.subtract(other: b).to_string(radix: 10) | try expect_equal(expected: "7")
-    a.multiply(other: b).to_string(radix: 10) | try expect_equal(expected: "60")
+    a.add(other: b).to_string_radix(radix: 10) | try expect_equal(expected: "17")
+    a.subtract(other: b).to_string_radix(radix: 10) | try expect_equal(expected: "7")
+    a.multiply(other: b).to_string_radix(radix: 10) | try expect_equal(expected: "60")
     (try common_result(result: a.divide(other: b))).to_int() | try expect_equal(
         expected: some(2)
     )
@@ -565,7 +565,7 @@ test "generic native methods accept omitted single-parameter labels":
     convert(stringify) | try expect_equal(expected: ["1", "2"])
     let observed_values: List[Int] = []
     values.for_each(
-        fn(value) -> Unit:
+        fn(value) Unit:
             observed_values.append(value)
     )
     observed_values | try expect_equal(expected: values)

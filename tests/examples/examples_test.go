@@ -17,7 +17,6 @@ import (
 
 	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
-	"github.com/manuscript-lang/manuscript/pkg/tooling/docgen"
 )
 
 type example struct {
@@ -49,16 +48,7 @@ func TestTutorialExamples(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	guides, err := docgen.GuideFiles()
-	if err != nil {
-		t.Fatal(err)
-	}
 	sources := map[string][]byte{}
-	for path, data := range guides {
-		if strings.HasPrefix(path, "documentation/") {
-			sources[path] = data
-		}
-	}
 	files = append(files, "../../documentation/_index.md")
 	files = append(files, "../../documentation/core-language/types/records.md")
 	files = append(files, "../../documentation/core-language/basics/numbers-and-booleans.md")

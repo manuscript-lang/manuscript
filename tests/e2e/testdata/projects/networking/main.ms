@@ -10,7 +10,7 @@ import HttpClientOptions from "@std/http.ms"
 import TlsOptions from "@std/tls.ms"
 import WebSocketOptions from "@std/websocket.ms"
 
-fn websocket_error(cause: WebSocketError) -> HttpError:
+fn websocket_error(cause: WebSocketError) HttpError:
     match cause:
         InvalidInput:
             return HttpError.InvalidInput
@@ -27,14 +27,14 @@ fn websocket_error(cause: WebSocketError) -> HttpError:
         Failed(message):
             return HttpError.Failed(message)
 
-fn socket_result[T](result: Result[T, WebSocketError]) -> Result[T, HttpError]:
+fn socket_result[T](result: Result[T, WebSocketError]) Result[T, HttpError]:
     match result:
         ok(value):
             return ok(value)
         error(cause):
             return error(websocket_error(cause))
 
-fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
+fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
     if exchange.path() == "/ws":
         with socket = try socket_result(
             result: exchange.upgrade(
@@ -66,7 +66,7 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
         error(_):
             return error(HttpError.Failed("write failed"))
 
-fn exercise() -> Result[Unit, Error]:
+fn exercise() Result[Unit, Error]:
     let tls = TlsOptions(
         server_name: "",
         roots_pem: "",
@@ -120,7 +120,7 @@ fn exercise() -> Result[Unit, Error]:
                     some(data):
                         try expect_false(
                             not (
-                                data.to_string() == some(
+                                data.decode_utf8() == some(
                                     "hello from streaming Manuscript"
                                 )
                             )
@@ -154,13 +154,13 @@ fn exercise() -> Result[Unit, Error]:
             match try socket_result(result: socket.receive()):
                 some(message):
                     (message.text) | try expect_true
-                    try expect_equal(message.data.to_string(), some("echo me"))
+                    try expect_equal(message.data.decode_utf8(), some("echo me"))
                 none:
                     return fail(message: "Unexpected case")
 
     return ok(unit)
 
-export fn main() -> Int:
+export fn main() Int:
     match exercise():
         ok(_):
             return 0

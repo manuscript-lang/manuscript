@@ -40,7 +40,7 @@ func TestViewsAnswerOneQuestionEach(t *testing.T) {
 }
 
 func TestViewDepthCycleAndErrors(t *testing.T) {
-	facts := factsOf(t, "fn a(n: Int) -> Int:\n    return b(n)\n\nfn b(n: Int) -> Int:\n    return a(n)\n")
+	facts := factsOf(t, "fn a(n: Int) Int:\n    return b(n)\n\nfn b(n: Int) Int:\n    return a(n)\n")
 	node, err := BuildView(facts, "calls", "a", 5)
 	if err != nil || !strings.Contains(node.ASCII(), "a  (cycle)") {
 		t.Fatalf("%v\n%s", err, node.ASCII())
@@ -54,5 +54,67 @@ func TestViewDepthCycleAndErrors(t *testing.T) {
 	}
 	if mermaid := node.Mermaid(); !strings.HasPrefix(mermaid, "flowchart TD\n    n0[") {
 		t.Fatal(mermaid)
+	}
+}
+
+const flowSource = `import stdout from "@std/io.ms"
+
+fn load(n: Int) Result[Int, Error]:
+    if n > 3:
+        return ok(0)
+    return ok(n)
+
+fn guarded(n: Int) Result[Int, Error]:
+    with out = stdout():
+        let v = try load(n)
+        if v > 1:
+            return ok(2)
+    return ok(0)
+
+export fn main() Int:
+    match guarded(1):
+        ok(_): return 0
+        error(_): return 1
+`
+
+func TestFlowViewOutlinesSignificantSteps(t *testing.T) {
+	facts := factsOf(t, flowSource)
+	node, err := BuildView(facts, "flow", "main", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "FLOW VIEW\n" +
+		"`- main  [fn] r.ms:15\n" +
+		"   |- call guarded\n" +
+		"   |  |- with out = stdout()  [closed on exit]\n" +
+		"   |  |  |- native @std/io.ms#stdout\n" +
+		"   |  |  |- try call load\n" +
+		"   |  |  `- if v > 1\n" +
+		"   |  |     `- return ok(2)\n" +
+		"   |  `- return ok(0)\n" +
+		"   `- match guarded(1)\n" +
+		"      |- ok(_): return 0\n" +
+		"      `- error(_): return 1\n"
+	if got := node.ASCII(); got != want {
+		t.Fatalf("got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestScopeViewKeepsCleanupScopesAndTheirExits(t *testing.T) {
+	node, err := BuildView(factsOf(t, flowSource), "scope", "guarded", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "SCOPE VIEW\n" +
+		"`- guarded  [fn] r.ms:8\n" +
+		"   `- with out = stdout()  [closed on exit]\n" +
+		"      |- try call load\n" +
+		"      `- if v > 1\n" +
+		"         `- return ok(2)\n"
+	if got := node.ASCII(); got != want {
+		t.Fatalf("got:\n%s\nwant:\n%s", got, want)
+	}
+	if _, err := BuildView(factsOf(t, flowSource), "flow", "", 0); err == nil || !strings.Contains(err.Error(), "needs --entity") {
+		t.Fatalf("err = %v", err)
 	}
 }

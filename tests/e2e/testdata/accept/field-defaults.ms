@@ -3,7 +3,7 @@ import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
 type Counter:
     value: Int = 0
 
-fn mark(counter: Counter, value: Int) -> Int:
+fn mark(counter: Counter, value: Int) Int:
     counter.value = counter.value * 10 + value
     return value
 
@@ -16,7 +16,7 @@ type Ordered:
 type Data:
     number: Int = 5
     values: List[Int] = [number]
-    callback: fn() -> Int = (
+    callback: fn() Int = (
         fn():
             return number
     )
@@ -25,7 +25,7 @@ type Box[T]:
     value: T
     copy: T = value
 
-fn unit_default(calls: List[Int]) -> Unit:
+fn unit_default(calls: List[Int]) Unit:
     calls.append(1)
 
 type Explicit:
@@ -35,12 +35,12 @@ type Explicit:
 
 test "record defaults and explicit overrides":
     let data = Data()
-    (data.number != 5 or data.values.at(0).unwrap() != 5 or data.callback() != 5) | try expect_false
+    (data.number != 5 or data.values.at(0).get() != 5 or data.callback() != 5) | try expect_false
     let changed = Data(number: 0)
     (
         (
             changed.number != 0
-            or changed.values.at(0).unwrap() != 0
+            or changed.values.at(0).get() != 0
             or changed.callback() != 0
         )
     ) | try expect_false
@@ -79,18 +79,18 @@ test "mutable defaults have fresh storage":
     (first.values.length() != 2 or second.values.length() != 1) | try expect_false
 
 interface ReadWithDefault:
-    fn get(fallback: Optional[Int] = none) -> Int
+    fn get(fallback: Optional[Int] = none) Int
 
 type Reader:
     number: Int = 5
 
 impl ReadWithDefault for Reader:
-    fn get(fallback: Optional[Int]) -> Int:
-        return fallback.unwrap_or(self.number)
+    fn get(fallback: Optional[Int]) Int:
+        return fallback.get(self.number)
 
 type Marker:
 
-fn no_op() -> Unit:
+fn no_op() Unit:
 
 test "ordinary empty declarations and interface omission":
     no_op()

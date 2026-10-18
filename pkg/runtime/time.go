@@ -80,8 +80,12 @@ func Time_ParseTimestamp(_ *Execution, text string) Result[Timestamp, TimeError]
 		}
 	}
 	t, err := time.Parse(time.RFC3339Nano, text)
-	if err != nil || !inTimestampRange(t) {
+	if err != nil || t.Year() < 1 || t.Year() > 9999 {
 		return timeFail[Timestamp](TimeError_InvalidData{})
+	}
+	// The written year is valid, but the offset moves the instant outside years 1 through 9999.
+	if !inTimestampRange(t) {
+		return timeFail[Timestamp](TimeError_OutOfRange{})
 	}
 	return Ok[Timestamp, TimeError](timestampOf(t))
 }

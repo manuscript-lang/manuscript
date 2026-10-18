@@ -1,32 +1,32 @@
-import {expect_equal, expect_true} from "@std/testing.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
 type Box[T, U = T]:
     first: T
     second: U
 
-fn pick[T = Int](values: List[T]) -> Int:
+fn pick[T = Int](values: List[T]) Int:
     return values.length()
 
-fn make[T = String]() -> Optional[T]:
+fn make[T = String]() Optional[T]:
     return none
 
-fn pair[A, B = A](first: A, second: B) -> Box[A, B]:
+fn pair[A, B = A](first: A, second: B) Box[A, B]:
     return Box[A, B](first, second)
 
 test "omitted trailing type arguments use their defaults":
     let same: Box[Int] = Box[Int](1, 2)
     let mixed: Box[Int, String] = Box[Int, String](1, "x")
-    same.second | try expect_equal(expected: 2)
-    mixed.second | try expect_equal(expected: "x")
+    try expect_equal(same.second, 2)
+    try expect_equal(mixed.second, "x")
 
 test "constructors fall back to defaults":
-    let b = Box[Int](first: 3, second: 4)
-    (b.first + b.second) | try expect_equal(expected: 7)
+    let b = Box[Int](3, 4)
+    try expect_equal(b.first + b.second, 7)
 
 test "calls infer first and only then use the default":
     let inferred = make()
-    (inferred.is_none()) | try expect_true
+    try expect_false(not (inferred.is_none()))
     let explicit: Optional[Int] = make()
-    (explicit.is_none()) | try expect_true
-    pick([1, 2, 3]) | try expect_equal(expected: 3)
-    pair(1, "a").second | try expect_equal(expected: "a")
+    try expect_false(not (explicit.is_none()))
+    try expect_equal(pick([1, 2, 3]), 3)
+    try expect_equal(pair(1, "a").second, "a")

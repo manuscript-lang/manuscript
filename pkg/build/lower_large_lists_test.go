@@ -25,7 +25,7 @@ func repeated(n int, item func(int) string) []string {
 func TestLargeListLiteralFaultFrames(t *testing.T) {
 	items := repeated(300, func(i int) string { return fmt.Sprintf("value(%d)", i) })
 	items[200] = "fail()"
-	source := "fn value(i: Int) -> Int: i\nfn fail() -> Int:\n    return 1 / 0\nexport fn main() -> Int:\n    let data = " + listOf(items) + "\n    return data.length()\n"
+	source := "fn value(i: Int) Int: i\nfn fail() Int:\n    return 1 / 0\nexport fn main() Int:\n    let data = " + listOf(items) + "\n    return data.length()\n"
 	var transcripts []string
 	for _, kind := range []compiler.BuildType{compiler.Release, compiler.Debug} {
 		r := compiler.CompileSourceForBuild("fault.ms", source, compiler.Options{Entry: true}, kind)
