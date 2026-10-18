@@ -26,8 +26,8 @@ func check_Collections_MapFromEntries[K comparable, V any]() {
 func check_List_Clone[T any]() {
 	var _ func(*Execution, *List[T]) *List[T] = List_Clone[T]
 }
-func check_List_At[T any]() {
-	var _ func(*Execution, *List[T], int) Option[T] = List_At[T]
+func check_List_Get[T any]() {
+	var _ func(*Execution, *List[T], int, Option[T]) T = List_Get[T]
 }
 func check_List_Contains[T any]() {
 	var _ func(*Execution, Eq[T], *List[T], T) bool = List_Contains[T]

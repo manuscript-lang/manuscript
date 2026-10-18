@@ -31,15 +31,12 @@ export fn main() Int:
                                 ) % 128 * 128
                                 + (x + dx + 128) % 128
                             )
-                            neighbors += cells.at(index).get()
+                            neighbors += cells.get(index)
 
                 let index = y * 128 + x
                 let alive = (
                     neighbors == 3
-                    or (
-                        neighbors == 2
-                        and cells.at(index).get() == 1
-                    )
+                    or (neighbors == 2 and cells.get(index) == 1)
                 )
                 var value = 0
                 if alive: value = 1
@@ -51,7 +48,7 @@ export fn main() Int:
 
     var sum = 0
     for i in range(0, 16384):
-        sum += cells.at(i).get()
+        sum += cells.get(i)
     if sum != 3914: return panic("life checksum")
 
     return 0

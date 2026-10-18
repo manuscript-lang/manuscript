@@ -25,9 +25,7 @@ test "URL canonicalization and relative references":
 
 test "URL query retains duplicate keys empty values and spaces":
     let entries = try parse_query("a=1&a=2&empty=&space=hello+world")
-    try expect_false(
-        entries.length() != 4 or entries.at(3).get().value != "hello world"
-    )
+    try expect_false(entries.length() != 4 or entries.get(3).value != "hello world")
     try expect_equal(format_query(entries), "a=1&a=2&empty=&space=hello+world")
     let limited: Result[List[QueryEntry], UrlError] = error(UrlError.LimitExceeded)
     try expect_equal(parse_query("a=1&b=2", 1), limited)

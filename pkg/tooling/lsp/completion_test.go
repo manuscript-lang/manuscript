@@ -128,7 +128,7 @@ func TestTypedCompletionWhileEditing(t *testing.T) {
 		{"parameter", "fn answer(input: Int) Int:\n    return inp|\n", []string{"input"}, nil},
 		{"locals before cursor", "fn answer() Int:\n    let before = 1\n    be|\n    let behind = 2\n    return before\n", []string{"before"}, []string{"behind"}},
 		{"siblings hidden", "fn answer() Int:\n    if true:\n        let secret = 1\n    sec|\n    return 0\n", nil, []string{"secret"}},
-		{"list methods", "fn count(items: List[Int]) Int:\n    return items.|\n", []string{"length", "at", "append", "concat"}, []string{"byte_length", "send"}},
+		{"list methods", "fn count(items: List[Int]) Int:\n    return items.|\n", []string{"length", "get", "append", "concat"}, []string{"byte_length", "send"}},
 		{"prelude set methods", "fn count(items: Set[Int]) Int:\n    return items.|\n", []string{"length", "contains", "add", "remove"}, []string{"at", "append", "send"}},
 		{"member prefix", "fn size(text: String) Int:\n    return text.byte_|\n", []string{"byte_length"}, []string{"parse_int"}},
 		{"record fields", "type Point:\n    x: Int\n    y: String\nfn read(point: Point) Int:\n    return point.|\n", []string{"x", "y"}, []string{"length"}},

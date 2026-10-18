@@ -126,10 +126,14 @@ fn checked_expansion() Result[Unit, Error]:
 test "list methods mutate explicit clones and remain typed":
     let original = [3, 1, 2, 1]
     let alias = original
-    original.at(index: -1) | try expect_equal(expected: some(1))
+    original.get(index: -1) | try expect_equal(expected: 1)
     let absent: Optional[Int] = none
-    original.at(index: -9223372036854775808) | try expect_equal(expected: absent)
-    original.at(index: 9223372036854775807) | try expect_equal(expected: absent)
+    original.get(index: -9223372036854775808, default: -1) | try expect_equal(
+        expected: -1
+    )
+    original.get(index: 9223372036854775807, default: -1) | try expect_equal(
+        expected: -1
+    )
     original.first() | try expect_equal(expected: some(3))
     original.last() | try expect_equal(expected: some(1))
     let empty: List[Int] = []
@@ -220,8 +224,8 @@ test "list methods mutate explicit clones and remain typed":
     )
     original.keys() | try expect_equal(expected: [0, 1, 2, 3])
     (
-        original.entries().at(index: 0) | try expect_equal(
-            expected: some(ListEntry(index: 0, value: 3))
+        original.entries().get(index: 0) | try expect_equal(
+            expected: ListEntry(index: 0, value: 3)
         )
     )
     original.to_set().values() | try expect_equal(expected: [3, 1, 2])
@@ -301,11 +305,11 @@ test "set algebra and enumeration preserve source values":
     left.values() | try expect_equal(expected: [1, 2, 3])
 
 test "string methods use Unicode scalars":
-    "é🙂é".at(index: -1) | try expect_equal(expected: some("é"))
-    "é🙂é".scalar_at(index: 1) | try expect_equal(expected: some(128578))
+    "é🙂é".get(index: -1) | try expect_equal(expected: "é")
+    "é🙂é".scalar_at(index: 1) | try expect_equal(expected: 128578)
     let missing: Optional[String] = none
-    "".at(index: 0) | try expect_equal(expected: missing)
-    "é".at(index: -9223372036854775808) | try expect_equal(expected: missing)
+    "".get(index: 0, default: "?") | try expect_equal(expected: "?")
+    "é".get(index: -9223372036854775808, default: "?") | try expect_equal(expected: "?")
     "é🙂é".index_of(value: "🙂") | try expect_equal(expected: some(1))
     "é🙂é".last_index_of(value: "é") | try expect_equal(expected: some(2))
     "é🙂é".last_index_of(value: "") | try expect_equal(expected: some(3))
@@ -341,9 +345,9 @@ test "string methods use Unicode scalars":
 
 test "bytes have analogous immutable operations":
     let data = Bytes([1, 2, 3, 2])
-    data.at(index: -1) | try expect_equal(expected: some(2))
+    data.get(index: -1) | try expect_equal(expected: 2)
     let missing: Optional[Int] = none
-    data.at(index: -9223372036854775808) | try expect_equal(expected: missing)
+    data.get(index: -9223372036854775808, default: -1) | try expect_equal(expected: -1)
     (data.contains(value: Bytes([2, 3]))) | try expect_true
     data.index_of(value: Bytes([2])) | try expect_equal(expected: some(1))
     data.last_index_of(value: Bytes([2])) | try expect_equal(expected: some(3))

@@ -29,7 +29,7 @@ func checkNativeResults(cli, directory string, environment []string) error {
 import {stdout, stderr} from "@std/io.ms"
 export fn main() Int:
     let args = arguments()
-    let _out = stdout().write(data: "out={args[0].get()}\n")
+    let _out = stdout().write(data: "out={args[0]}\n")
     let _err = stderr().write(data: "stderr\n")
     return 7
 `

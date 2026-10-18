@@ -83,7 +83,7 @@ test "Map value transformation copies ordered snapshots and retains aliases":
     try expect_equal(mapped.keys().map(fn(k): k.id), [2, 1, 3])
     mapped.get(first).get().count = 7
     (counter.count != 7 or source.get(first).get().count != 7) | try expect_false
-    mapped.keys().at(0).get().label = "shared"
+    mapped.keys().get(0).label = "shared"
     first.label | try expect_equal(expected: "shared")
     mapped.remove(first).add(Key(5, "other"), Counter(5))
     (not (source.contains(first)) or source.contains(Key(5, "different"))) | try expect_false
@@ -105,12 +105,9 @@ test "Map key transformation retains first equal keys and last values":
     (created.length() != 4 or mapped.length() != 2) | try expect_false
     try expect_equal(mapped.keys().map(fn(k): k.label), ["2", "1"])
     try expect_equal(mapped.values().map(fn(v): v.count), [3, 4])
-    mapped.keys().at(0).get().label = "first alias"
+    mapped.keys().get(0).label = "first alias"
     try expect_false(
-        (
-            created.at(0).get().label != "first alias"
-            or created.at(2).get().label != "4"
-        )
+        (created.get(0).label != "first alias" or created.get(2).label != "4")
     )
     mapped.get(Key(0, "lookup")).get().count = 9
     three.count | try expect_equal(expected: 9)

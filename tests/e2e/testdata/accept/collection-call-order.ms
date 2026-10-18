@@ -3,11 +3,11 @@ import {expect_equal} from "@std/testing.ms"
 test "receiver before index":
     var values = [7]
     let index: Optional[Int] = some(0)
-    let result = values.at(
+    let result = values.get(
         match index:
             some(i):
                 values = [9]
                 i
             none: 0
-    ).get()
+    )
     try expect_equal(result, 7)

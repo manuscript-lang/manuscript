@@ -25,7 +25,7 @@ test "list callbacks":
         i = i + 1
 
     let doubled = items.map(fn(value: Int) Int: value * 2)
-    try expect_true((doubled.at(index: 4) == some(8)))
+    try expect_true((doubled.get(index: 4) == 8))
     let even = items.filter(fn(value: Int) Bool: value % 2 == 0)
     try expect_true((even.length() == 3))
     try expect_true(
@@ -59,4 +59,4 @@ test "list callbacks":
     grown.append(value: 2)
     let seen = grown.map(fn(value: Int) Int: grow(list: grown, value: value))
     try expect_true((seen.length() == 2 and grown.length() == 4))
-    try expect_true((nested(items: items).at(index: 2) == some(7)))
+    try expect_true((nested(items: items).get(index: 2) == 7))

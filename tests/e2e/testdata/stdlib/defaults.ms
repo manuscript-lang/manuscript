@@ -145,10 +145,7 @@ test "Commands defaults cross concrete bound view and generic boundaries":
     let output = (try view.run("fake", [], input)).stdout
     try expect_false(output != input or capture.last != input)
     let forwarded = forward(view.run)
-    try expect_equal(
-        (try forwarded("fake", [], input, none, none)).stdout.at(0).get(),
-        42
-    )
+    try expect_equal((try forwarded("fake", [], input, none, none)).stdout.get(0), 42)
     try expect_equal(capture.calls, 6)
     let invalid: Result[CommandOutput, CommandError] = error(CommandError.InvalidInput)
     let native = commands().run

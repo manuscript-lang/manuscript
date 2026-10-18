@@ -21,11 +21,6 @@ func (c *checker) checkExpression(e *syntax.Expression, i *Info, expected *Type)
 	if i.Type.ID == "Never" {
 		i.NoReturn = true
 	}
-	if expected != nil && i.Proven && std(expected, "Optional") && len(expected.Args) == 1 &&
-		compatible(i.Type, expected.Args[0]) && !compatible(i.Type, expected) {
-		// A proven lookup keeps its Optional form where one is expected.
-		i.Type, i.Proven = standard("Optional", i.Type), false
-	}
 	if expected != nil && i.Type.ID != "<invalid>" && expected.ID != "<invalid>" && !compatible(i.Type, expected) {
 		if c.errorAssignable(i.Type, expected) {
 			i.ErrorSource = i.Type
@@ -460,13 +455,7 @@ func isOrdering(op string) bool { return op == "<" || op == "<=" || op == ">" ||
 
 func (c *checker) inferBinary(e *syntax.Expression, expected *Type, i *Info) *Info {
 	a := c.expression(e.Left, nil)
-	// The right operand runs only when the left is true (and) or false (or).
-	facts := len(c.facts)
-	if e.Text == "and" || e.Text == "or" {
-		c.pushFacts(c.guardFacts(e.Left, e.Text == "and"))
-	}
 	b := c.expression(e.Right, nil)
-	c.facts = c.facts[:facts]
 	logical := e.Text == "and" || e.Text == "or"
 	i.NoReturn = a.NoReturn || (!logical && b.NoReturn)
 	switch {

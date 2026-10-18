@@ -99,11 +99,11 @@ fn run(args: List[String]) Result[Unit, Error]:
             "usage: conformance <ms executable> <all|core|stdlib> <shard> <count>"
         )
 
-    let ms = args.at(0) | try expect_some
-    let suite = args.at(1) | try expect_some
+    let ms = args.get(0)
+    let suite = args.get(1)
     (suite == "all" or suite == "core" or suite == "stdlib") | try expect_true
-    let shard = args.at(2) | try expect_some | .parse_int() | try expect_some
-    let count = args.at(3) | try expect_some | .parse_int() | try expect_some
+    let shard = args.get(2) | .parse_int() | try expect_some
+    let count = args.get(3) | .parse_int() | try expect_some
     (count > 0 and shard >= 0 and shard < count) | try expect_true
     let files = try inventory(suite)
     var index = 0
@@ -171,7 +171,7 @@ test "reports require complete nonempty executions and count explicit skips":
     report.summary.not_run = 1
     validate(report).is_error() | try expect_true
     report.summary.not_run = 0
-    report.tests.at(0).get().status = "failed"
+    report.tests.get(0).status = "failed"
     validate(report).is_error() | try expect_true
     validate(Report(1, true, 0, [], Summary(0, 0, 0, 0, 0, 0))).is_error() | try expect_true
     check_output(1, "\{\}").is_error() | try expect_true

@@ -22,8 +22,8 @@ func check_Bytes_Split() {
 func check_Bytes_Slice() {
 	var _ func(*Execution, *Bytes, int, int) Result[*Bytes, CollectionError] = Bytes_Slice
 }
-func check_Bytes_At() {
-	var _ func(*Execution, *Bytes, int) Option[int] = Bytes_At
+func check_Bytes_Get() {
+	var _ func(*Execution, *Bytes, int, Option[int]) int = Bytes_Get
 }
 func check_Bytes_IndexOf() {
 	var _ func(*Execution, *Bytes, *Bytes) Option[int] = Bytes_IndexOf

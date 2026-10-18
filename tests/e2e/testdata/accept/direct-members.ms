@@ -37,5 +37,5 @@ test "map and set members":
 
 test "string at":
     let text = "héllo"
-    try expect_equal(text.at(1).get(), "é")
-    try expect_false(text.at(10).is_some())
+    try expect_equal(text.get(1), "é")
+    try expect_equal(text.get(10, default: ""), "")

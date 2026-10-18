@@ -59,5 +59,5 @@ test "local closures":
     try expect_true((parse(text: "abc") == Result[Int, TextError].ok(4)))
     try expect_true((labels(prefix: ">") == ">a-b"))
     try expect_true((reordered() == 5))
-    try expect_true((passed().length() == 3 and passed().at(index: 2) == some(6)))
+    try expect_true((passed().length() == 3 and passed().get(index: 2) == 6))
     try expect_true((nested(n: 4) == 10))

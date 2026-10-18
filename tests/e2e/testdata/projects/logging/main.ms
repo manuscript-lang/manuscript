@@ -90,8 +90,8 @@ fn exercise(mode: String, path: String) Result[Unit, Error]:
 
 export fn main() Int:
     let args = arguments()
-    let mode = args.at(0).get("stdout")
-    let path = args.at(1).get("events.ndjson")
+    let mode = args.get(0, default: "stdout")
+    let path = args.get(1, default: "events.ndjson")
     let result = exercise(mode, path)
 
     if result.is_error():

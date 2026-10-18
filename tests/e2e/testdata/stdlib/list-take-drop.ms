@@ -42,12 +42,12 @@ test "List take and drop retain shallow payload references":
     let boxes = [shared, Box(2)]
     let prefix = boxes.take(1)
     let remainder = boxes.drop(0)
-    prefix.at(0).get().value = 7
-    try expect_false(shared.value != 7 or remainder.at(0).get().value != 7)
+    prefix.get(0).value = 7
+    try expect_false(shared.value != 7 or remainder.get(0).value != 7)
     let lists = [nested]
     let copied = lists.take(1).drop(0)
-    copied.at(0).get().append(2)
-    try expect_false(nested != [1, 2] or lists.at(0).get() != nested)
+    copied.get(0).append(2)
+    try expect_false(nested != [1, 2] or lists.get(0) != nested)
 
 fn copy_window[T](values: List[T], first: Int, skip: Int) List[T]:
     return values.take(first).drop(skip)
@@ -58,9 +58,9 @@ test "List take and drop support generic and nested values":
         ok(some(1)),
         error(TextError("cause"))
     ]
-    try expect_equal(copy_window(values, 2, 1).at(0).get().err().message(), "cause")
+    try expect_equal(copy_window(values, 2, 1).get(0).err().message(), "cause")
     let callbacks = [fn(value: Int) Int: value + 1]
-    try expect_equal(callbacks.take(1).drop(0).at(0).get()(1), 2)
+    try expect_equal(callbacks.take(1).drop(0).get(0)(1), 2)
 
 test "List take and drop bound methods read the retained receiver at call time":
     var values = [1, 2, 3]

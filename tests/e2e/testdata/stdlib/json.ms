@@ -310,7 +310,7 @@ test "JSON parse decodes records by field name with defaults and optional fields
     try expect_equal(profile.name, "Ada")
     try expect_equal(profile.age, 18)
     try expect_false(not profile.nickname.is_none())
-    try expect_false(profile.scores.length() != 2 or profile.scores.at(1).get() != 2.5)
+    try expect_false(profile.scores.length() != 2 or profile.scores.get(1) != 2.5)
     try expect_equal(profile.labels.get("a").get(), 1)
     try expect_equal(profile.ids.length(), 2)
     let full = "\{\"name\":\"B\",\"age\":30,\"nickname\":\"bee\",\"scores\":[],\"labels\":\{\},\"ids\":[]\}"
@@ -353,7 +353,7 @@ test "JSON parse decodes alternatives and generic records":
     let scene: Scene = try parse[Scene](
         "\{\"shape\":\"Dot\",\"shapes\":[\{\"Rect\":\{\"width\":1,\"height\":2\}\}]\}"
     )
-    try expect_equal(scene.shapes.at(0).get(), Shape.Rect(1, 2))
+    try expect_equal(scene.shapes.get(0), Shape.Rect(1, 2))
     let wrapper: Wrapper[Int] = try parse[Wrapper[Int]]("\{\"first\":1\}")
     try expect_false(
         (
@@ -377,7 +377,7 @@ test "JSON parse decodes recursive types exact numbers and passthrough values":
     let tree: Tree = try parse[Tree](
         "\{\"label\":\"r\",\"children\":[\{\"label\":\"c\",\"children\":[]\}]\}"
     )
-    try expect_equal(tree.children.at(0).get().label, "c")
+    try expect_equal(tree.children.get(0).label, "c")
     let price: Price = try parse[Price](
         "\{\"amount\":1.5,\"cents\":123456789012345678901234567890\}"
     )
@@ -391,7 +391,7 @@ test "JSON parse decodes recursive types exact numbers and passthrough values":
     )
     try expect_equal(boxed.first, raw)
     let list: List[Optional[Int]] = try parse[List[Optional[Int]]]("[1,null]")
-    try expect_false(list.at(1).get().is_some())
+    try expect_false(list.get(1).is_some())
 
 test "JSON parse inverts stringify and works in generic code":
     let profile = Profile(
@@ -408,7 +408,7 @@ test "JSON parse inverts stringify and works in generic code":
     try expect_equal(again.nickname.get(), "a")
     let shapes: List[Shape] = [Shape.Dot, Shape.Rect(3, 4)]
     let shapesBack: List[Shape] = try decoded[List[Shape]](try stringify(shapes))
-    try expect_equal(shapesBack.at(1).get(), Shape.Rect(3, 4))
+    try expect_equal(shapesBack.get(1), Shape.Rect(3, 4))
 
 fn load_profile(text: String) Result[Profile, JsonError]:
     let profile = try parse[Profile](text)

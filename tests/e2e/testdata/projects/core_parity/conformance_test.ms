@@ -28,7 +28,7 @@ test "mapped output keeps lexical Hashable and Equal evidence":
     let by_id = first_mapped()
     let by_label = second_mapped()
     (by_id.length() != 1 or by_label.length() != 2) | try expect_false
-    by_id.values().at(0).get().label | try expect_equal(expected: "1")
+    by_id.values().get(0).label | try expect_equal(expected: "1")
     let bound = first_bound_map()
     let mapped = bound(fn(n): Key(0, n.to_string()))
     mapped.length() | try expect_equal(expected: 1)
@@ -73,7 +73,7 @@ test "Map transformations preserve input and output equality evidence":
     let one = first_key_transform(input)
     let two = second_key_transform(input)
     (one.length() != 1 or two.length() != 2) | try expect_false
-    (one.keys().at(0).get().label != "1" or one.values() != [20]) | try expect_false
+    (one.keys().get(0).label != "1" or one.values() != [20]) | try expect_false
     let bound_one = first_bound_keys()
     let bound_two = second_bound_keys()
     try expect_equal(bound_one(fn(key, value): Key(0, key.to_string())).length(), 1)

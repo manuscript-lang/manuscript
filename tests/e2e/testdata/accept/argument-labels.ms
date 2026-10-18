@@ -92,10 +92,9 @@ test "optional labels on methods and native functions":
     sum([1, 2, 3]) | try expect_equal(expected: 6)
     ([1, 2, 3]).reverse_in_place() | try expect_equal(expected: [3, 2, 1])
     [1, 2].append(3) | try expect_equal(expected: [1, 2, 3])
-    let lookup = [4, 5].at
-    let expected: Optional[Int] = some(5)
-    lookup(1) | try expect_equal(expected: expected)
-    [4, 5].at(0) | try expect_equal(expected: some(4))
+    let lookup = [4, 5].get
+    lookup(1) | try expect_equal(expected: 5)
+    [4, 5].get(0) | try expect_equal(expected: 4)
 
     with service = Scheduler(limit: 1, drain: 2.seconds):
         let operation = fn() Result[Unit, Error]:

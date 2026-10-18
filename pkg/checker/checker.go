@@ -60,8 +60,6 @@ type checker struct {
 	captures                map[int]map[*Binding]bool
 	constantsVisiting       map[*Symbol]bool
 	cycleReported           map[*Symbol]bool
-	facts                   []*boundFact
-	allowedLookups          map[*syntax.Expression]bool
 }
 
 func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program {
@@ -633,8 +631,6 @@ func (c *checker) block(body []*syntax.Statement, nested bool) (fall, breaks boo
 		c.scope = newScope(old)
 	}
 	fall = true
-	facts := len(c.facts)
-	defer func() { c.facts = c.facts[:facts] }()
 	for _, s := range body {
 		normal, br := c.statement(s)
 		if fall {
@@ -647,15 +643,7 @@ func (c *checker) block(body []*syntax.Statement, nested bool) (fall, breaks boo
 }
 func (c *checker) statement(s *syntax.Statement) (fall, breaks bool) {
 	defer func() { setFlow(s, Flow{fall}) }()
-	outer := c.allowedLookups
-	allowed, mutates := c.analyzeStatement(s)
-	c.allowedLookups = allowed
-	fall, breaks = c.checkStatement(s)
-	c.allowedLookups = outer
-	if mutates {
-		c.killMutations()
-	}
-	return fall, breaks
+	return c.checkStatement(s)
 }
 func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 	switch s.Kind {
@@ -699,11 +687,6 @@ func (c *checker) checkBind(s *syntax.Statement) (bool, bool) {
 		bound = expected
 	}
 	c.pattern(s.Pattern, bound, s.Mutable, s.Value)
-	if b, ok := s.Pattern.Fact.(*Binding); ok && s.Pattern.Kind == syntax.KindName && bound.ID == "Int" {
-		if n, constant := intConstant(s.Value); constant && n >= 0 {
-			b.nonNegative = true
-		}
-	}
 	return !info.NoReturn, info.Breaks
 }
 
@@ -737,10 +720,6 @@ func (c *checker) checkAssign(s *syntax.Statement) (bool, bool) {
 		c.error(s.Pos, "type", "cannot assign a captured binding; closures cannot reassign outer variables, so return the new value or keep state in a record field")
 	}
 	i := c.expression(s.Value, b.Type)
-	if b.nonNegative && !safeIncrement(s.Name, s.Value) {
-		b.nonNegative = false
-	}
-	c.killAssigned(b)
 	return !i.NoReturn, i.Breaks
 }
 
@@ -792,19 +771,10 @@ func (c *checker) checkIf(s *syntax.Statement) (bool, bool) {
 		return c.checkIfLet(s)
 	}
 	i := c.expression(s.Value, primitive("Bool"))
-	facts := len(c.facts)
-	c.pushFacts(c.guardFacts(s.Value, true))
 	a, ab := c.block(s.Body, true)
-	c.facts = c.facts[:facts]
 	b, bb := true, false
-	// When the guard is false, or the then-branch cannot continue, the
-	// negated guard holds in the else-branch and after the statement.
-	c.pushFacts(c.guardFacts(s.Value, false))
 	if len(s.Else) > 0 {
 		b, bb = c.block(s.Else, true)
-	}
-	if a {
-		c.facts = c.facts[:facts]
 	}
 	return !i.NoReturn && (a || b), i.Breaks || ab || bb
 }
@@ -833,18 +803,9 @@ func (c *checker) checkIfLet(s *syntax.Statement) (bool, bool) {
 
 // checkWhile checks a while loop and reports whether control falls through and whether it breaks.
 func (c *checker) checkWhile(s *syntax.Statement) (bool, bool) {
-	c.enterLoop(s.Body)
 	i := c.expression(s.Value, primitive("Bool"))
-	if !c.callFree(s.Value) {
-		// The condition runs before every iteration, so what it calls can
-		// shrink a list that a fact from before the loop still describes.
-		c.killMutations()
-	}
 	c.loops++
-	facts := len(c.facts)
-	c.pushFacts(c.guardFacts(s.Value, true))
 	_, br := c.block(s.Body, true)
-	c.facts = c.facts[:facts]
 	c.loops--
 	literalTrue := s.Value.Kind == syntax.KindBool && s.Value.Text == "true"
 	return !i.NoReturn && (!literalTrue || br), i.Breaks
@@ -868,7 +829,6 @@ func (c *checker) checkFor(s *syntax.Statement) (bool, bool) {
 	old := c.scope
 	c.scope = newScope(old)
 	setLoopBinding(s, c.bind(s.Name, element, false, s.Pos))
-	c.enterLoop(s.Body)
 	c.loops++
 	c.block(s.Body, false)
 	c.loops--
@@ -1209,10 +1169,7 @@ func (c *checker) index(e *syntax.Expression) *Info {
 	if !std(receiver.Type, "List") || len(receiver.Type.Args) != 1 {
 		c.error(e.Pos, "type", "indexing requires List[T]; use the receiver's lookup method for other types")
 	} else {
-		info.Type = standard("Optional", receiver.Type.Args[0])
-		if c.proven(e) {
-			info.Type, info.Proven = receiver.Type.Args[0], true
-		}
+		info.Type = receiver.Type.Args[0]
 	}
 	return info
 }

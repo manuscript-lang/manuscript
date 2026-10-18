@@ -18,7 +18,7 @@ test "set construction and methods need no import":
     try expect_equal(values.filter(fn(value: Int) Bool: value > 2).values(), [3])
     try expect_equal(values.map(fn(value: Int) Int: value * 2).values(), [6, 4])
     let nested: List[Set[Int]] = [values]
-    try expect_equal(nested[0].get().length(), 2)
+    try expect_equal(nested[0].length(), 2)
     values.clear()
     try expect_false(not values.is_empty() or copy.length() != 3)
 

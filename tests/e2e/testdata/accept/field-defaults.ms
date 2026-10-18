@@ -35,15 +35,9 @@ type Explicit:
 
 test "record defaults and explicit overrides":
     let data = Data()
-    (data.number != 5 or data.values.at(0).get() != 5 or data.callback() != 5) | try expect_false
+    (data.number != 5 or data.values.get(0) != 5 or data.callback() != 5) | try expect_false
     let changed = Data(number: 0)
-    (
-        (
-            changed.number != 0
-            or changed.values.at(0).get() != 0
-            or changed.callback() != 0
-        )
-    ) | try expect_false
+    ((changed.number != 0 or changed.values.get(0) != 0 or changed.callback() != 0)) | try expect_false
     let calls: List[Int] = []
     let explicit = Explicit(calls: calls, nothing: unit, option: none)
     calls.is_empty() | try expect_true

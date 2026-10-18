@@ -28,7 +28,7 @@ test "TLS certificate parsing verification hostname and expiration":
     try expect_false(
         (
             certificates.length() != 1
-            or certificates.at(0).get().dns_names != ["stdlib.test"]
+            or certificates.get(0).dns_names != ["stdlib.test"]
         )
     )
     let now = (timestamp(seconds: 1893456000, nanoseconds: 0) | try expect_ok)

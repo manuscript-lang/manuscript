@@ -707,7 +707,7 @@ test "YAML compact mapping after a sequence marker follows the marker's spacing"
     list.length() | try expect_equal(expected: 3)
     let first = (try entries(list.first().get()))
     first.get("b").get() | try expect_equal(expected: YamlValue.NumberValue("2"))
-    (try items(list.at(1).get())).length() | try expect_equal(expected: 2)
+    (try items(list.get(1))).length() | try expect_equal(expected: 2)
     (
         (try entries(list.last().get())).get("d").get() | try expect_equal(
             expected: YamlValue.NumberValue("4")

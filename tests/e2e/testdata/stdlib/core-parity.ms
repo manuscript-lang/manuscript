@@ -226,8 +226,8 @@ test "Set filter and map copy snapshots and deduplicate in first-result order":
     try expect_false(
         (
             mapped.length() != 2
-            or mapped.values().at(0).get().label != "2"
-            or mapped.values().at(1).get().label != "3"
+            or mapped.values().get(0).label != "2"
+            or mapped.values().get(1).label != "3"
         )
     )
     let bound = input.map[String]
@@ -243,8 +243,8 @@ test "Set filter and map copy snapshots and deduplicate in first-result order":
     try expect_equal(input.length(), 1)
     let key = Key(5, "shared")
     let keys = Set[Key]([key])
-    keys.filter(fn(unused): true).values().at(0).get().label = "changed"
-    keys.map(fn(value): value).values().at(0).get().label = "again"
+    keys.filter(fn(unused): true).values().get(0).label = "changed"
+    keys.map(fn(value): value).values().get(0).label = "again"
     try expect_equal(key.label, "again")
     try expect_false(not (Set[Int]().map(fn(n): n.to_string()).is_empty()))
     try expect_false(not (keys.filter(fn(unused): false).is_empty()))

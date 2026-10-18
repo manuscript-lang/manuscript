@@ -21,7 +21,7 @@ type Stat:
 
 fn run() Result[Unit, Error]:
     let data = try read_all(input: stdin())
-    let text = data.to_string().get("")
+    let text = data.decode_utf8().get("")
     var valid = 0
     var malformed = 0
     let classes = [0, 0, 0, 0, 0]
@@ -39,16 +39,16 @@ fn run() Result[Unit, Error]:
         var ok = f.length() == 6
         if ok:
             ok = (
-                not f.at(0).get().is_empty()
-                and is_level(f.at(1).get())
-                and is_method((f.at(2).get()))
+                not f.get(0).is_empty()
+                and is_level(f.get(1))
+                and is_method((f.get(2)))
             )
 
         if ok:
-            let status = f.at(4).get()
-            let latency = f.at(5).get()
+            let status = f.get(4)
+            let latency = f.get(5)
             ok = (
-                f.at(3).get().starts_with("/")
+                f.get(3).starts_with("/")
                 and status.length() == 3
                 and all_digits(status)
                 and all_digits(latency)
@@ -60,20 +60,20 @@ fn run() Result[Unit, Error]:
             continue
 
         valid = valid + 1
-        let level = f.at(1).get()
+        let level = f.get(1)
         levels.add(key: level, value: levels.get_or(key: level, fallback: 0) + 1)
-        let first = f.at(4).get().scalar_at(0).get()
+        let first = f.get(4).scalar_at(0)
         var cls = 4
         if first >= 50 and first <= 53:
             cls = first - 50
-        classes.set(cls, classes.at(cls).get() + 1)
-        let path = f.at(3).get()
-        let lat = f.at(5).get().parse_int().get()
+        classes.set(cls, classes.get(cls) + 1)
+        let path = f.get(3)
+        let lat = f.get(5).parse_int().get()
         latencies.append(lat)
 
         if lat > slowest:
             slowest = lat
-            slowest_text = "{lat} {f.at(2).get()} {path} {f.at(0).get()}"
+            slowest_text = "{lat} {f.get(2)} {path} {f.get(0)}"
 
         let old = stats.get_or(key: path, fallback: Stat(count: 0, total: 0))
         stats.add(key: path, value: Stat(count: old.count + 1, total: old.total + lat))
@@ -89,9 +89,9 @@ fn run() Result[Unit, Error]:
     )
     var p95 = 0
     if sorted_lat.length() > 0:
-        p95 = sorted_lat.at((95 * sorted_lat.length() + 99) / 100 - 1).get()
+        p95 = sorted_lat.get((95 * sorted_lat.length() + 99) / 100 - 1)
     out.append(
-        "status: 2xx={classes.at(0).get()} 3xx={classes.at(1).get()} 4xx={classes.at(2).get()} 5xx={classes.at(3).get()} other={classes.at(4).get()}"
+        "status: 2xx={classes.get(0)} 3xx={classes.get(1)} 4xx={classes.get(2)} 5xx={classes.get(3)} other={classes.get(4)}"
     )
     out.append("p95: {p95}")
     if slowest >= 0:

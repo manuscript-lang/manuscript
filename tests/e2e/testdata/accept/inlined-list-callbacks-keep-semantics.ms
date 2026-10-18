@@ -13,13 +13,13 @@ test "inlined callbacks":
 
     let offset = 10
     let shifted = items.map(fn(v: Int) Int: v + offset)
-    try expect_true((shifted.length() == 5 and shifted.at(index: 4) == some(14)))
+    try expect_true((shifted.length() == 5 and shifted.get(index: 4) == 14))
     let labels = items.map(fn(v: Int) String: "n{v}")
-    try expect_true((labels.at(index: 2) == some("n2")))
+    try expect_true((labels.get(index: 2) == "n2"))
     let floats = items.map(fn(v: Int) Float: 0.5)
     try expect_true((floats.length() == 5))
     let points = items.map(fn(v: Int) Point: Point(x: v))
-    try expect_true((points.at(index: 3) == some(Point(x: 3))))
+    try expect_true((points.get(index: 3) == Point(x: 3)))
     let evens = items.filter(fn(v: Int) Bool: v % 2 == 0)
     try expect_true((evens.length() == 3))
     try expect_true((points.filter(fn(p: Point) Bool: p.x > 2).length() == 2))

@@ -153,7 +153,7 @@ export fn main() Int:
     var ma = 0
 
     while i < 1000000:
-        ma += area(shapes.at(i % 3).get())
+        ma += area(shapes.get(i % 3))
         i += 1
 
     report("match", 1000000, t)

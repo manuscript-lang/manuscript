@@ -8,7 +8,7 @@ type Parser:
 # Skips blanks and returns the next character code, or 0 at the end of the line.
 fn peek(p: Parser) Int:
     while p.pos < p.chars.length():
-        let c = p.chars.at(p.pos).get()
+        let c = p.chars.get(p.pos)
         if c != 32 and c != 9:
             return c
 
@@ -23,7 +23,7 @@ fn atom(p: Parser) Result[Int, String]:
         var value = 0
 
         while p.pos < p.chars.length():
-            let d = p.chars.at(p.pos).get()
+            let d = p.chars.get(p.pos)
             if d < 48 or d > 57:
                 break
 

@@ -103,10 +103,10 @@ fn table(explicit: Bool, dotted: Bool) Table:
     )
 
 fn peek(reader: Reader) String:
-    return reader.chars.at(reader.pos).get("")
+    return reader.chars.get(reader.pos, default: "")
 
 fn ahead(reader: Reader, offset: Int) String:
-    return reader.chars.at(reader.pos + offset).get("")
+    return reader.chars.get(reader.pos + offset, default: "")
 
 fn advance(reader: Reader) String:
     let c = peek(reader)
@@ -194,7 +194,7 @@ fn string_value(reader: Reader, key: Bool) Result[String, TomlError]:
             result.append(c)
             continue
 
-        let code = c.scalar_at(0).get()
+        let code = c.scalar_at(0)
         if (code < 32 and c != "\t" and not (multiline and c == "\n")) or code == 127:
             return error(invalid(reader, "control character in string"))
 
@@ -344,7 +344,7 @@ fn assign(
         current = try child(
             reader: reader,
             parent: current,
-            key: (keys.at(index).get()),
+            key: (keys.get(index)),
             dotted: true
         )
         index += 1
@@ -402,8 +402,8 @@ fn date_number(text: String, minimum: Int, maximum: Int) Bool:
 fn date_valid(text: String) Bool:
     if (
         text.scalar_length() != 10
-        or text.at(4).get("") != "-"
-        or text.at(7).get("") != "-"
+        or text.get(4, default: "") != "-"
+        or text.get(7, default: "") != "-"
     ): return false
 
     let year = text.slice(0, 4).get("")
@@ -425,8 +425,8 @@ fn date_valid(text: String) Bool:
 fn time_valid(text: String) Bool:
     if (
         text.scalar_length() < 8
-        or text.at(2).get("") != ":"
-        or text.at(5).get("") != ":"
+        or text.get(2, default: "") != ":"
+        or text.get(5, default: "") != ":"
     ): return false
     if not date_number(text.slice(0, 2).get(""), 0, 23): return false
     if not date_number(text.slice(3, 5).get(""), 0, 59): return false
@@ -435,7 +435,7 @@ fn time_valid(text: String) Bool:
 
     let fraction = text.slice(9, text.scalar_length()).get("")
     return (
-        text.at(8).get("") == "."
+        text.get(8, default: "") == "."
         and decimal_digits(fraction)
         and not fraction.contains("_")
     )
@@ -445,7 +445,7 @@ fn datetime_valid(text: String) Bool:
     if time_valid(text): return true
     if (text.scalar_length() < 19 or not date_valid((text.slice(0, 10).get("")))): return false
 
-    let separator = text.at(10).get("")
+    let separator = text.get(10, default: "")
     if (separator != "T" and separator != "t" and separator != " "): return false
 
     var rest = text.slice(11, text.scalar_length()).get("")
@@ -456,7 +456,7 @@ fn datetime_valid(text: String) Bool:
         var index = rest.index_of("+").get(-1)
         if index < 0: index = rest.index_of("-").get(-1)
         let zone = rest.slice(index + 1, rest.scalar_length()).get("")
-        if zone.scalar_length() != 5 or zone.at(2).get("") != ":": return false
+        if zone.scalar_length() != 5 or zone.get(2, default: "") != ":": return false
         if not date_number(zone.slice(0, 2).get(""), 0, 23): return false
         if not date_number(zone.slice(3, 5).get(""), 0, 59): return false
 
@@ -515,7 +515,7 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
     if (
         clean != "inf"
         and clean != "nan"
-        and not "0123456789".contains(clean.at(0).get("x"))
+        and not "0123456789".contains(clean.get(0, default: "x"))
     ): return error(invalid(reader, "invalid value"))
 
     if (
@@ -530,7 +530,7 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
             if parts.length() > 2: return error(invalid(reader, "invalid float"))
 
             if parts.length() == 2:
-                var exponent = parts.at(1).get()
+                var exponent = parts.get(1)
                 if exponent.starts_with("+") or exponent.starts_with("-"): exponent = (
                     exponent
                     .slice(1, exponent.scalar_length())
@@ -544,7 +544,7 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
             if fraction.length() > 2 or not decimal_part(fraction.first().get()): return error(
                 invalid(reader, "invalid float")
             )
-            if fraction.length() == 2 and not decimal_digits(fraction.at(1).get()): return error(
+            if fraction.length() == 2 and not decimal_digits(fraction.get(1)): return error(
                 invalid(reader, "invalid fraction")
             )
 
@@ -778,7 +778,7 @@ export fn parse(
                 parent = try child(
                     reader: reader,
                     parent: parent,
-                    key: (keys.at(index).get()),
+                    key: (keys.get(index)),
                     dotted: false
                 )
                 index += 1
@@ -838,7 +838,7 @@ fn quote_text(text: String) String:
     result.append("\"")
 
     for c in text.chars():
-        let code = c.scalar_at(0).get()
+        let code = c.scalar_at(0)
 
         if c == "\"": result.append("\\\"")
         else if c == "\\": result.append("\\\\")

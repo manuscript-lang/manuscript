@@ -77,11 +77,11 @@ test "list names mutate aliases and retain shallow copies":
     try expect_equal(items, [9])
     let optional: List[Optional[Int]] = [some(1)]
     optional.set(0, 7)
-    try expect_equal(optional.at(0).get(), some(7))
+    try expect_equal(optional.get(0), some(7))
     let nested = [[1]]
     let outer_copy = nested.clone()
     nested.set(0, [2])
-    outer_copy.at(0).get().append(3)
+    outer_copy.get(0).append(3)
     try expect_false(nested != [[2]] or outer_copy != [[1, 3]])
 
 test "set names preserve receiver identity order and no-op membership":
@@ -246,10 +246,10 @@ test "list reversal names distinguish receiver mutation and shallow copies":
     try expect_equal(one, [1])
     let nested = [Cell(1), Cell(2)]
     let shallow = nested.reversed()
-    let shared = shallow.at(0).get()
+    let shared = shallow.get(0)
     shared.value = 9
     shallow.set(1, Cell(7))
-    try expect_false(nested.at(0).get().value != 1 or nested.at(1).get().value != 9)
+    try expect_false(nested.get(0).value != 1 or nested.get(1).value != 9)
     let viewed = [4, 5]
     let adapter = ListAdapter(viewed, fn(index: Int, value: Int) List[Int]: [99])
     let view = ListMutation(adapter)
