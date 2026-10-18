@@ -109,6 +109,9 @@ func TestMath(t *testing.T) {
 	if Math_Remainder(tctx, -7, 3) != -1 || Math_Truncate(tctx, -1.9) != -1 || Math_Pi(tctx) != math.Pi || Math_E(tctx) != math.E {
 		t.Fatal("scalars")
 	}
+	if Math_MaxInt(tctx, -2, 3) != 3 || Math_MinInt(tctx, -2, 3) != -2 {
+		t.Fatal("max_int/min_int")
+	}
 	if Math_AbsInt(tctx, -5) != 5 {
 		t.Fatal("abs_int")
 	}
