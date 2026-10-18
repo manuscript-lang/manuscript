@@ -9,13 +9,13 @@ fn build(count: Int) List[Int]:
 fn index(values: List[Int], count: Int) Int:
     var total = 0
     for i in range(0, count):
-        total = total + values.at(i % values.length()).unwrap()
+        total += values.at(i % values.length()).unwrap()
     return total
 
 fn iterate(values: List[Int]) Int:
     var total = 0
     for value in values:
-        total = total + value
+        total += value
     return total
 
 type Total:
@@ -25,7 +25,7 @@ fn callbacks(values: List[Int]) Int:
     let total = Total(0)
     values.for_each(
         fn(value):
-            total.value = total.value + value
+            total.value += value
     )
     return total.value
 
@@ -44,8 +44,8 @@ fn callback_write(values: List[Int]) Int:
     let total = Total(0)
     values.for_each(
         fn(value):
-            total.value = total.value + value
+            total.value += value
             if value == 0:
-                values.set(index: 0, value: 7)
+                values.set(0, 7)
     )
     return total.value

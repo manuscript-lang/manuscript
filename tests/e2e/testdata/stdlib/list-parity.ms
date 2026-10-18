@@ -91,15 +91,15 @@ test "List parity operations support generic and bound use":
     let pop: fn() Optional[Int] = values.pop
     let count = values.count
     values = [9]
-    insert(index: 2, value: 3)
+    insert(2, 3)
     if pop() != some(3) or count(fn(value: Int) Bool: value > 0) != 2: return panic(
         "bound receiver"
     )
     if values != [9]: return panic("bound receiver rebinding")
 
 test "List distinct handles large Int and String lists":
-    var numbers: List[Int] = []
-    var words: List[String] = []
+    let numbers: List[Int] = []
+    let words: List[String] = []
 
     for index in range(0, 60000):
         numbers.append(index % 30000)

@@ -1,20 +1,19 @@
 import {parse, from_int, BigInt, BigIntError} from "@std/bigint.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 test "big integers exceed machine range without losing precision":
-    let big = parse(text: "9223372036854775808", radix: 10) | value
+    let big = try parse("9223372036854775808", 10)
     if not big.to_int().is_none(): return panic("overflow conversion")
     if big.subtract(from_int(1)).to_int() != some(9223372036854775807): return panic(
         "exact subtraction"
     )
-    if from_int(7).multiply(from_int(6)).to_string_radix(radix: 10) != "42": return panic(
+    if from_int(7).multiply(from_int(6)).to_string_radix(10) != "42": return panic(
         "multiply"
     )
-    if value(from_int(-7).divide(from_int(3))).to_int() != some(-2): return panic(
+    if (try from_int(-7).divide(from_int(3))).to_int() != some(-2): return panic(
         "signed divide"
     )
-    if value(from_int(-7).remainder(from_int(3))).to_int() != some(-1): return panic(
+    if (try from_int(-7).remainder(from_int(3))).to_int() != some(-1): return panic(
         "signed remainder"
     )
     if from_int(5).bit_xor(from_int(3)).to_int() != some(6): return panic("bitwise xor")
@@ -24,9 +23,7 @@ test "big integers validate digits budgets and zero divisors":
     if from_int(1).divide(from_int(0)) != invalid: return panic("zero divisor")
 
     let limited: Result[BigInt, BigIntError] = error(BigIntError.LimitExceeded)
-    if parse(text: "123", radix: 10, max_digits: 2) != limited: return panic(
-        "digit limit"
-    )
+    if parse("123", 10, 2) != limited: return panic("digit limit")
 
     let malformed: Result[BigInt, BigIntError] = error(BigIntError.InvalidData)
-    if parse(text: "1_0", radix: 10) != malformed: return panic("malformed digits")
+    if parse("1_0", 10) != malformed: return panic("malformed digits")

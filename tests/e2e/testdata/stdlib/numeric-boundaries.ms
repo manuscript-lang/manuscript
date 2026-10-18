@@ -1,6 +1,6 @@
-import panic from "@std/faults.ms"
-import {Duration, duration} from "@std/time.ms"
 import Decimal from "@std/decimal.ms"
+import panic from "@std/faults.ms"
+import {duration} from "@std/time.ms"
 import {BigInt, BigIntError, from_int} from "@std/bigint.ms"
 
 test "integer division retains signed boundary and remainder rules":

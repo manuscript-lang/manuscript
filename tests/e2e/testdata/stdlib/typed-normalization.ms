@@ -45,19 +45,15 @@ test "typed Unicode forms retain normalization and bound dispatch":
 
 test "typed normalization keeps UTF-8 byte budgets and domain errors":
     let form = NormalizationForm.Nfc
-    if form.normalize("é", max_bytes: 2).unwrap() != "é": return panic(
-        "exact byte budget"
-    )
-    if form.normalize("", max_bytes: 0).unwrap() != "": return panic(
-        "empty zero budget"
-    )
-    if form.normalize("é", max_bytes: 1).unwrap_error() != StringError.LimitExceeded: return panic(
+    if form.normalize("é", 2).unwrap() != "é": return panic("exact byte budget")
+    if form.normalize("", 0).unwrap() != "": return panic("empty zero budget")
+    if form.normalize("é", 1).unwrap_error() != StringError.LimitExceeded: return panic(
         "UTF-8 byte budget"
     )
-    if form.normalize("x", max_bytes: 0).unwrap_error() != StringError.LimitExceeded: return panic(
+    if form.normalize("x", 0).unwrap_error() != StringError.LimitExceeded: return panic(
         "nonempty zero budget"
     )
-    if form.normalize("", max_bytes: -1).unwrap_error() != StringError.InvalidInput: return panic(
+    if form.normalize("", -1).unwrap_error() != StringError.InvalidInput: return panic(
         "negative byte budget"
     )
     if "x".normalize("nfc").unwrap_error() != StringError.InvalidInput: return panic(

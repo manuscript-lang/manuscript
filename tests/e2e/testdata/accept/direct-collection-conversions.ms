@@ -12,7 +12,7 @@ impl Error for Failure:
 test "direct append preserves checked argument conversions":
     let values: List[Optional[Int]] = []
     values.append(7)
-    append_generic(values, value: 8)
+    append_generic(values, 8)
     values.append(none)
     if values.at(0).unwrap().unwrap() != 7 or values.at(1).unwrap().unwrap() != 8:
         return panic("append lost some wrapping")

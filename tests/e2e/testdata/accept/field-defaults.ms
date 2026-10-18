@@ -9,8 +9,8 @@ fn mark(counter: Counter, value: Int) Int:
 
 type Ordered:
     counter: Counter
-    first: Int = mark(counter: counter, value: 3)
-    second: Int = mark(counter: counter, value: 4)
+    first: Int = mark(counter, 3)
+    second: Int = mark(counter, 4)
     third: Int = first + second
 
 type Data:
@@ -34,7 +34,7 @@ test "record defaults and explicit overrides":
     if (data.number != 5 or data.values.at(0).unwrap() != 5 or data.callback() != 5):
         return panic("dependent field and closure defaults")
 
-    let changed = Data(number: 0)
+    let changed = Data(0)
     if (
         changed.number != 0
         or changed.values.at(0).unwrap() != 0
@@ -42,25 +42,21 @@ test "record defaults and explicit overrides":
     ):
         return panic("explicit field overrides dependent defaults")
 
-    let explicit = Explicit(nothing: unit, option: none)
+    let explicit = Explicit(unit, none)
     if not explicit.option.is_none():
         return panic("explicit none must override a default")
 
-    let box = Box(value: "text")
+    let box = Box("text")
     if box.copy != "text":
         return panic("inferred generic record default")
 
-    let specified = Box[Int](value: 7, copy: 0)
+    let specified = Box[Int](7, 0)
     if specified.copy != 0:
         return panic("explicit generic record override")
 
 test "supplied fields precede defaults in field order":
     let counter = Counter()
-    let ordered = Ordered(
-        counter: counter,
-        third: mark(counter: counter, value: 1),
-        second: mark(counter: counter, value: 2)
-    )
+    let ordered = Ordered(counter, third: mark(counter, 1), second: mark(counter, 2))
     if (
         counter.value != 123
         or ordered.first != 3
@@ -70,7 +66,7 @@ test "supplied fields precede defaults in field order":
         return panic("constructor evaluation order")
 
     counter.value = 0
-    let again = Ordered(counter: counter)
+    let again = Ordered(counter)
     if counter.value != 34 or again.third != 7:
         return panic("defaults must evaluate on each construction")
 
@@ -97,7 +93,7 @@ fn no_op() Unit:
 
 test "ordinary empty declarations and interface omission":
     no_op()
-    let marker = Marker()
+    let _marker = Marker()
     let view = ReadWithDefault(Reader())
-    if view.get() != 5 or view.get(fallback: 7) != 7:
+    if view.get() != 5 or view.get(7) != 7:
         return panic("interface Optional defaults must reach source implementations")

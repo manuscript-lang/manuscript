@@ -5,13 +5,12 @@ fn difference(values: List[Int]) Int:
     return first - second
 
 test "list binding":
-    if not (difference(values: [9, 4]) == 5):
-        return panic(message: "check failed")
+    if not (difference([9, 4]) == 5):
+        return panic("check failed")
 
-    let empty: List[Int] = []
     let {value: label} = Label("ready")
     if not (label == "ready"):
-        return panic(message: "check failed")
+        return panic("check failed")
 
 type Label:
     value: String

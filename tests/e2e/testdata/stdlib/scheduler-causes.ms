@@ -4,7 +4,6 @@ import {IoError} from "@std/io.ms"
 import Synchronized from "@std/sync.ms"
 import sleep from "@std/time.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 fn typed_failure() Result[Unit, Error]:
     return error(IoError.Unavailable)
@@ -25,8 +24,8 @@ test "scheduler failures retain typed and text causes":
             _: unit
 
     with scheduler = Scheduler(reporter: reporter):
-        scheduler.start(typed_failure) | value
-        scheduler.start(text_failure) | value
+        let _typed = try scheduler.start(typed_failure)
+        let _text = try scheduler.start(text_failure)
         sleep(100.milliseconds)
 
     with guard = seen.lock():

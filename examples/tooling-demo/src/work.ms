@@ -1,14 +1,10 @@
-import TaskGroup from "@std/tasks.ms"
-import ExecutionError from "@std/tasks.ms"
+import {TaskGroup, ExecutionError} from "@std/tasks.ms"
+import range from "@std/collections.ms"
 
 fn compute() Int:
-    var index = 0
     var result = 0
-
-    while index < 3000000:
-        result = result + index % 7
-        index = index + 1
-
+    for index in range(0, 3000000):
+        result += index % 7
     return result
 
 fn compare() Result[Int, ExecutionError]:

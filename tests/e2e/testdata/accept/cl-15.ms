@@ -15,16 +15,16 @@ test "derived value equality":
     let same: Optional[Int] = some(1)
     let missing: Optional[Int] = none
     if not (present == same):
-        return panic(message: "check failed")
+        return panic("check failed")
     if not (present != missing):
-        return panic(message: "check failed")
+        return panic("check failed")
     if not (1.00d == 1d):
-        return panic(message: "check failed")
+        return panic("check failed")
     if not ([1, 2] == [1, 2]):
-        return panic(message: "check failed")
+        return panic("check failed")
     if not ([1, 2] != [2, 1]):
-        return panic(message: "check failed")
-    if not (preserve_key(value: "key") == "key"):
-        return panic(message: "check failed")
+        return panic("check failed")
+    if not (preserve_key("key") == "key"):
+        return panic("check failed")
 
-    let callback = Callback(increment)
+    let _callback = Callback(increment)

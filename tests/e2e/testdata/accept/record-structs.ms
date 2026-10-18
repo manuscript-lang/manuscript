@@ -18,36 +18,30 @@ type Sized:
 fn area(shape: Sized) Int: shape.width * shape.height
 
 fn shifted(point: Point, by: Int) Point:
-    return Point(x: point.x + by, y: point.y + by)
+    return Point(point.x + by, point.y + by)
 
 test "struct records read write compare format and clone":
-    let a = Point(x: 1, y: 2)
+    let a = Point(1, 2)
     let b = Point(y: 2, x: 1)
     if not (a == b):
-        return panic(message: "equal fields must compare equal")
+        return panic("equal fields must compare equal")
 
     b.x = 5
     if a == b:
-        return panic(message: "mutated record still equal")
-    if not (a.x == 1 and b.x == 5 and shifted(a, by: 3).y == 5):
-        return panic(message: "field read or write failed")
+        return panic("mutated record still equal")
+    if not (a.x == 1 and b.x == 5 and shifted(a, 3).y == 5):
+        return panic("field read or write failed")
 
     let copy = a.clone()
     copy.y = 9
     if not (a.y == 2 and copy.y == 9):
-        return panic(message: "clone shares storage")
+        return panic("clone shares storage")
     if "{a}" != "Point(x: 1, y: 2)":
-        return panic(message: "format changed: {a}")
+        return panic("format changed: {a}")
 
 test "struct records with mixed field types":
-    let shape = Shape(
-        name: "disc",
-        weight: 1.5,
-        solid: true,
-        corner: Point(x: 0, y: 0),
-        tags: ["a"]
-    )
-    shape.weight = shape.weight * 2.0
+    let shape = Shape("disc", 1.5, solid: true, corner: Point(0, 0), tags: ["a"])
+    shape.weight *= 2.0
     shape.name = "{shape.name}!"
     shape.corner.x = 4
     shape.tags.append("b")
@@ -58,16 +52,16 @@ test "struct records with mixed field types":
         and shape.corner.x == 4
         and shape.tags.length() == 2
     ):
-        return panic(message: "mixed field access failed")
+        return panic("mixed field access failed")
 
 test "struct records as keys and defaults":
     let set: Set[Point] = Set[Point]()
-    set.add(Point(x: 1, y: 1))
-    set.add(Point(x: 1, y: 1))
-    set.add(Point(x: 2, y: 1))
+    set.add(Point(1, 1))
+    set.add(Point(1, 1))
+    set.add(Point(2, 1))
     if set.length() != 2:
-        return panic(message: "record keys must hash structurally")
+        return panic("record keys must hash structurally")
 
-    let sized = Sized(width: 3)
-    if area(sized) != 6 or area(Sized(width: 3, height: 5)) != 15:
-        return panic(message: "defaulted record failed")
+    let sized = Sized(3)
+    if area(sized) != 6 or area(Sized(3, 5)) != 15:
+        return panic("defaulted record failed")

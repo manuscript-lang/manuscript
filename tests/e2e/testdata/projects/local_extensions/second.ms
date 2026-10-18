@@ -59,7 +59,7 @@ import Resource from "./domain.ms"
 
 impl Closeable for Resource:
     fn close() Unit:
-        self.events.append(value: 20)
+        self.events.append(20)
 
 fn leave(resource: Resource) Unit:
     with local = resource:
@@ -71,12 +71,12 @@ export fn second_resource(resource: Resource) Closeable:
 test "second local cleanup":
     let events = ListBuilder[Int]()
     leave(Resource(events))
-    if events.freeze().at(index: 0) != some(20):
+    if events.freeze().at(0) != some(20):
         return panic("local cleanup")
 
 import mixed from "./first.ms"
 
 test "generic evidence does not change concrete lexical dispatch":
     let item = Item(2)
-    if mixed(value: item, concrete: item) != 34:
+    if mixed(item, item) != 34:
         return panic("generic evidence changed concrete dispatch")

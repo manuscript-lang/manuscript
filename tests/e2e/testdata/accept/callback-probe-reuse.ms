@@ -31,7 +31,7 @@ test "callback inference retains captures and contextual metadata":
     let values = [1, 2].map(
         fn(outer): [3, 4].map(
             fn(inner):
-                return record(events: events, value: outer + inner + offset)
+                return record(events, value: outer + inner + offset)
         )
     )
     if values != [[11, 12], [12, 13]]: return panic("nested callback values")

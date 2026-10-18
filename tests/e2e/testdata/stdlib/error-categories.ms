@@ -29,7 +29,7 @@ impl Error for PathError:
 
 impl Error for CustomError:
     fn message() String:
-        self.calls = self.calls + 1
+        self.calls += 1
         return self.message
 
 fn is_missing(cause: Error) Bool:
@@ -63,9 +63,9 @@ test "shared categories keep exact standard domain values":
         "closed category"
     )
     if (
-        category(
-            TomlError.InvalidData(line: 1, column: 2, reason: "detail")
-        ) != some(ErrorCategory.InvalidData)
+        category(TomlError.InvalidData(1, 2, "detail")) != some(
+            ErrorCategory.InvalidData
+        )
     ): return panic("source TOML category")
     if category(YamlError.LimitExceeded) != some(ErrorCategory.LimitExceeded): return panic(
         "source YAML budget category"
@@ -80,7 +80,7 @@ test "shared categories keep exact standard domain values":
         "SSE truncation has no shared category"
     )
 
-    let allocation_error = range_by(start: 0, end: 268435457, step: 1).unwrap_error()
+    let allocation_error = range_by(0, 268435457, 1).unwrap_error()
     if category(allocation_error) != some(ErrorCategory.LimitExceeded): return panic(
         "native allocation limit category"
     )
@@ -113,10 +113,7 @@ test "timeout classification keeps timeout spelling out of generic handling":
         if query(cause) != some(ErrorCategory.Timeout): return panic("timeout category")
 
 test "classification does not parse messages invoke user code or guess domain-specific cases":
-    let custom = CustomError(
-        calls: 0,
-        message: "filesystem: file or directory not found"
-    )
+    let custom = CustomError(0, "filesystem: file or directory not found")
     if category(custom).is_some() or custom.calls != 0: return panic(
         "classifier invoked message"
     )
@@ -131,7 +128,7 @@ test "classification does not parse messages invoke user code or guess domain-sp
         CommandError.OutputLimit,
         CryptoError.AuthenticationFailed,
         ExecutionError.Cancelled,
-        YamlError.UnsupportedFeature(line: 7, reason: "detail"),
+        YamlError.UnsupportedFeature(7, "detail"),
         LogError.Io(IoError.Closed)
     ]
     for cause in causes:

@@ -23,7 +23,7 @@ test "HTML unescape recognizes named numeric and multi-scalar references":
         EntityCase("a\u{0}b", "a\u{0}b")
     ]
     for entity in cases:
-        if unescape(text: entity.encoded) != entity.decoded: return panic(
+        if unescape(entity.encoded) != entity.decoded: return panic(
             "HTML reference: {entity.encoded}"
         )
 
@@ -54,9 +54,7 @@ fn apply[T, U](text: T, operation: fn(text: T) U) U:
 test "HTML unescape stored and generic calls preserve labels":
     let convert = unescape
     let typed: fn(text: String) String = unescape
-    if convert("&lt;") != "<" or typed(text: "&gt;") != ">": return panic(
-        "stored unescape"
-    )
+    if convert("&lt;") != "<" or typed("&gt;") != ">": return panic("stored unescape")
     if apply[String, String]("&amp;", unescape) != "&": return panic("generic unescape")
 
 test "HTML escape and unescape retain immutable text":

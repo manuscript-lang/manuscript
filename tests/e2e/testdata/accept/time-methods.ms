@@ -2,7 +2,7 @@ import {duration, clock, wall_clock, timestamp, parse_timestamp, TimeError} from
 import panic from "@std/faults.ms"
 
 test "duration arithmetic and conversion":
-    let interval = duration(nanoseconds: 1500000000)
+    let interval = duration(1500000000)
     if (
         interval.to_nanoseconds() != 1500000000
         or interval.to_microseconds() != 1500000
@@ -56,7 +56,7 @@ test "monotonic instant methods":
         return panic("instant negative shift")
 
 test "timestamp methods and expected range failures":
-    let value = timestamp(seconds: -1, nanoseconds: 500000000).unwrap()
+    let value = try timestamp(-1, 500000000)
     if (
         value.unix_seconds() != -1
         or value.nanoseconds() != 500000000
@@ -64,7 +64,7 @@ test "timestamp methods and expected range failures":
     ):
         return panic("timestamp components")
 
-    let later = value.shift(1500.milliseconds).unwrap()
+    let later = try value.shift(1500.milliseconds)
     if (
         later.unix_seconds() != 1
         or later.nanoseconds() != 0
@@ -72,21 +72,23 @@ test "timestamp methods and expected range failures":
         or value.compare(later) != -1
     ):
         return panic("timestamp shift and comparison")
-    if later.difference(value).unwrap() != 1500.milliseconds:
+
+    let delta = try later.difference(value)
+    if delta != 1500.milliseconds:
         return panic("timestamp difference")
 
-    let parsed = parse_timestamp("2026-10-12T01:00:00+01:00").unwrap()
+    let parsed = try parse_timestamp("2026-10-12T01:00:00+01:00")
     if parsed.to_string() != "2026-10-12T00:00:00Z" or parsed.compare(parsed) != 0:
         return panic("timestamp UTC normalization")
 
-    let maximum = timestamp(seconds: 253402300799, nanoseconds: 999999999).unwrap()
+    let maximum = try timestamp(253402300799, 999999999)
     let shifted = maximum.shift(duration(1))
     if shifted.is_ok():
         return panic("timestamp shift must reject year 10000")
     if shifted.unwrap_error() != TimeError.OutOfRange:
         return panic("unexpected timestamp range error")
 
-    let minimum = timestamp(seconds: -62135596800, nanoseconds: 0).unwrap()
+    let minimum = try timestamp(-62135596800, 0)
     let difference = maximum.difference(minimum)
     if difference.is_ok():
         return panic("timestamp difference must reject duration overflow")
@@ -96,5 +98,6 @@ test "timestamp methods and expected range failures":
         return panic("timestamp compare must work across full range")
 
     let now = wall_clock().now()
-    if (now.to_string() | parse_timestamp | .unwrap()) != now:
+    let roundtrip = try parse_timestamp(now.to_string())
+    if roundtrip != now:
         return panic("wall clock roundtrip")

@@ -10,7 +10,7 @@ fn encoding_error(cause: EncodingError) ApplicationError:
     return Encoding(cause)
 
 fn decode_bad_input() Result[Unit, ApplicationError]:
-    let decoded = hex_decode(text: "zz", max_bytes: 10)
+    let decoded = hex_decode("zz", 10)
     if decoded.is_ok():
         return ok(unit)
 
@@ -26,19 +26,19 @@ fn json_error_code(cause: JsonError) Int:
             return 3
 
 test "JSON errors need only JSON cases":
-    let limits = JsonLimits(max_bytes: 100, max_depth: 8, max_values: 32)
-    let parsed = parse(text: "[", limits: limits)
+    let limits = JsonLimits(100, 8, 32)
+    let parsed = parse("[", limits)
     if parsed.is_ok():
-        return panic(message: "malformed JSON succeeded")
+        return panic("malformed JSON succeeded")
     if json_error_code(parsed.unwrap_error()) != 2:
-        return panic(message: "wrong JSON cause")
+        return panic("wrong JSON cause")
 
 test "explicit error mapping preserves the cause":
     let expected: Result[Unit, ApplicationError] = error(
         Encoding(EncodingError.InvalidData)
     )
     if decode_bad_input() != expected:
-        return panic(message: "error mapping lost its cause")
+        return panic("error mapping lost its cause")
 
 # Error is an ordinary operation contract. Custom errors use ordinary impl blocks.
 import IoError from "@std/io.ms"
@@ -58,11 +58,11 @@ impl Error for TaggedError[T]:
         return "tagged failure"
 
 fn decode_generically() Result[Unit, Error]:
-    let bytes = try hex_decode(text: "zz", max_bytes: 10)
+    let _bytes = try hex_decode("zz", 10)
     return ok(unit)
 
 fn propagate_generic() Result[Unit, Error]:
-    let completed = try decode_generically()
+    try decode_generically()
     return ok(unit)
 
 fn describe_error(cause: Error) String:
@@ -102,32 +102,32 @@ fn generic_type_pattern[T](cause: Error, expected: T) Bool:
 test "generic handling preserves the concrete error and its payload":
     let json = Error(JsonError.InvalidData)
     if describe_error(json) != "malformed JSON":
-        return panic(message: "specific handler did not run")
+        return panic("specific handler did not run")
 
     let io = Error(IoError.Failed("disk diagnostic"))
     if describe_error(io) != "I/O: disk diagnostic":
-        return panic(message: "specific handler lost diagnostic")
+        return panic("specific handler lost diagnostic")
 
     let custom = Error(CustomError("application diagnostic"))
     if describe_error(custom) != "application diagnostic":
-        return panic(message: "generic fallback did not use custom implementation")
+        return panic("generic fallback did not use custom implementation")
 
     let wrapped = Error(json)
     if describe_error(wrapped) != "malformed JSON":
-        return panic(message: "repeated views changed concrete identity")
+        return panic("repeated views changed concrete identity")
 
     let propagated = propagate_generic()
     if propagated.is_ok():
-        return panic(message: "invalid data succeeded")
+        return panic("invalid data succeeded")
 
     let cause = propagated.unwrap_error()
 
     match cause:
         EncodingError(encoding):
             if encoding != EncodingError.InvalidData:
-                return panic(message: "generic propagation lost original cause")
+                return panic("generic propagation lost original cause")
         _:
-            return panic(message: "generic propagation lost concrete type")
+            return panic("generic propagation lost concrete type")
 
 test "type patterns compare exact generic applications":
     let integer = Error(TaggedError(7))
@@ -136,27 +136,25 @@ test "type patterns compare exact generic applications":
         tagged_detail(integer) != "integer 7"
         or tagged_detail(text) != "text diagnostic"
     ):
-        return panic(message: "type pattern ignored generic arguments")
-    if not generic_type_pattern(cause: integer, expected: 1):
-        return panic(message: "generic type pattern did not resolve its argument")
-    if generic_type_pattern(cause: integer, expected: "different type"):
-        return panic(message: "generic type pattern matched wrong application")
+        return panic("type pattern ignored generic arguments")
+    if not generic_type_pattern(integer, 1):
+        return panic("generic type pattern did not resolve its argument")
+    if generic_type_pattern(integer, "different type"):
+        return panic("generic type pattern matched wrong application")
 
 test "Error views can be stored and matched":
     let shared = Error(CustomError("shared diagnostic"))
     let errors: List[Error] = [shared]
+    let first = errors.at(0)
+    if first.is_none():
+        return panic("shared errors collection was empty")
 
-    let cause = match errors.at(index: 0):
-        some(cause): cause
-        none:
-            return panic(message: "shared errors collection was empty")
-
-    match cause:
+    match first.unwrap():
         CustomError(custom):
             if custom.detail != "shared diagnostic":
-                return panic(message: "shared view lost receiver")
+                return panic("shared view lost receiver")
         _:
-            return panic(message: "shared view lost type")
+            return panic("shared view lost type")
 
 type ReadError:
     diagnostic: String
@@ -169,46 +167,39 @@ impl Error for ReadError:
         return self.diagnostic
 
 fn failed_read() Result[Unit, ReadError]:
-    return error(
-        ReadError(
-            diagnostic: "read failed",
-            path: "settings.json",
-            attempt: 2,
-            retryable: true
-        )
-    )
+    return error(ReadError("read failed", "settings.json", 2, retryable: true))
 
 fn propagate_read() Result[Unit, ReadError]:
-    let completed = try failed_read()
+    try failed_read()
     return ok(unit)
 
 test "domain error fields survive propagation without a wrapper":
     let propagated = propagate_read()
     if propagated.is_ok():
-        return panic(message: "failed read succeeded")
+        return panic("failed read succeeded")
 
     let cause = propagated.unwrap_error()
     if (cause.path != "settings.json" or cause.attempt != 2 or not cause.retryable):
-        return panic(message: "lost typed error fields")
+        return panic("lost typed error fields")
 
     let message = cause.message
     if cause.message() != "read failed" or message() != "read failed":
-        return panic(message: "lost diagnostic")
+        return panic("lost diagnostic")
 
     let generic: Error = cause
 
     match generic:
         ReadError(read):
             if (read.path != "settings.json" or read.attempt != 2 or not read.retryable):
-                return panic(message: "generic boundary lost typed fields")
+                return panic("generic boundary lost typed fields")
         _:
-            return panic(message: "generic boundary lost concrete error")
+            return panic("generic boundary lost concrete error")
 
 fn read_failure(cause: ReadError) Result[Unit, ReadError]:
     return error(cause)
 
 fn general_read(cause: ReadError) Result[Unit, Error]:
-    let completed = try read_failure(cause)
+    try read_failure(cause)
     return ok(unit)
 
 fn forward_read(cause: ReadError) Result[Unit, Error]:
@@ -218,22 +209,17 @@ fn generic_failure[E: Error](cause: E) Result[Unit, E]:
     return error(cause)
 
 fn generic_propagation[E: Error](cause: E) Result[Unit, Error]:
-    let completed = try generic_failure(cause)
+    try generic_failure(cause)
     return ok(unit)
 
 fn describe_direct(cause: Error) String:
     return cause.message()
 
 test "specific errors pass directly into Error boundaries":
-    let original = ReadError(
-        diagnostic: "read failed",
-        path: "settings.json",
-        attempt: 2,
-        retryable: true
-    )
+    let original = ReadError("read failed", "settings.json", 2, retryable: true)
     let shared: Error = original
     if describe_direct(original) != "read failed" or shared.message() != "read failed":
-        return panic(message: "direct Error boundary lost diagnostic")
+        return panic("direct Error boundary lost diagnostic")
 
     let results: List[Result[Unit, Error]] = [
         general_read(original),
@@ -245,7 +231,7 @@ test "specific errors pass directly into Error boundaries":
 
     for result in results:
         if result.is_ok():
-            return panic(message: "failed read succeeded")
+            return panic("failed read succeeded")
 
         let cause = result.unwrap_error()
 
@@ -256,21 +242,21 @@ test "specific errors pass directly into Error boundaries":
                     or read.attempt != 3
                     or not read.retryable
                 ):
-                    return panic(message: "Error boundary copied or lost typed fields")
+                    return panic("Error boundary copied or lost typed fields")
 
                 read.path = "changed.json"
                 read.path = "settings.json"
             _:
-                return panic(message: "Error boundary lost original type")
+                return panic("Error boundary lost original type")
 
     match shared:
         ReadError(read):
             read.path = "changed.json"
         _:
-            return panic(message: "shared Error lost concrete type")
+            return panic("shared Error lost concrete type")
 
     if original.path != "changed.json":
-        return panic(message: "Error boundary copied original error")
+        return panic("Error boundary copied original error")
 
 fn read_success() Result[Int, ReadError]:
     return ok(7)
@@ -281,9 +267,9 @@ fn general_read_success() Result[Int, Error]:
 test "Error Result forwarding preserves successful payloads":
     if let value = general_read_success():
         if value != 7:
-            return panic(message: "Error Result changed success")
+            return panic("Error Result changed success")
     else:
-        return panic(message: "Error Result turned success into failure")
+        return panic("Error Result turned success into failure")
 
 type ValidationError:
     case InvalidField(field: String, expected: Int, actual: Int)
@@ -294,22 +280,22 @@ fn invalid_field() Result[Unit, ValidationError]:
 test "domain case payloads need no Error implementation":
     let invalid = invalid_field()
     if invalid.is_ok():
-        return panic(message: "invalid field succeeded")
+        return panic("invalid field succeeded")
 
     let cause = invalid.unwrap_error()
 
     match cause:
         InvalidField(field, expected, actual):
             if (field != "attempt" or expected != 1 or actual != 0):
-                return panic(message: "domain case lost typed fields")
+                return panic("domain case lost typed fields")
 
 test "standard error diagnostics work directly":
     let cause = IoError.Failed("read failed")
     let message = cause.message
     if cause.message() != "read failed" or message() != "read failed":
-        return panic(message: "standard diagnostic lost")
+        return panic("standard diagnostic lost")
     if JsonError.InvalidData.message() != "JSON: invalid data":
-        return panic(message: "nullary standard diagnostic lost")
+        return panic("nullary standard diagnostic lost")
 
 import FileSystemError from "@std/fs.ms"
 import {LogError} from "@std/log.ms"
@@ -319,25 +305,25 @@ import {ExecutionError, StartError} from "@std/tasks.ms"
 test "standard diagnostics preserve messages and wrapped causes":
     let sink = LogError.Io(IoError.Failed("sink diagnostic"))
     if Error(sink).message() != "sink diagnostic":
-        return panic(message: "log error lost underlying diagnostic")
+        return panic("log error lost underlying diagnostic")
 
     let file_sink = LogError.FileSystem(FileSystemError.Failed("file sink diagnostic"))
     if Error(file_sink).message() != "file sink diagnostic":
-        return panic(message: "log file error lost underlying diagnostic")
+        return panic("log file error lost underlying diagnostic")
     if (
         Error(
             CommandError.Failed("command diagnostic")
         ).message() != "command diagnostic"
     ):
-        return panic(message: "command error lost diagnostic")
+        return panic("command error lost diagnostic")
     if (
         Error(
             ExecutionError.Timeout
         ).message() != "task execution: operation timed out"
     ):
-        return panic(message: "execution error has no diagnostic")
+        return panic("execution error has no diagnostic")
     if Error(StartError.Full).message() != "scheduler: capacity exhausted":
-        return panic(message: "start error has no diagnostic")
+        return panic("start error has no diagnostic")
 
 # The type-pattern rule also works for unrelated operation contracts.
 interface Label[T]:
@@ -361,7 +347,7 @@ import Synchronized from "@std/sync.ms"
 
 fn counted_view(count: Synchronized[Int]) Label[String]:
     with locked = count.lock():
-        locked.set(value: locked.get() + 1)
+        locked.set(locked.get() + 1)
     return Label[String](Labelled("label diagnostic"))
 
 test "contract matches evaluate once and preserve ordinary contract semantics":
@@ -370,16 +356,16 @@ test "contract matches evaluate once and preserve ordinary contract semantics":
     match counted_view(count):
         Labelled[String](receiver):
             if receiver.value != "label diagnostic":
-                return panic(message: "unrelated contract pattern lost receiver")
+                return panic("unrelated contract pattern lost receiver")
         _:
-            return panic(message: "unrelated contract pattern did not run")
+            return panic("unrelated contract pattern did not run")
 
     with locked = count.lock():
         if locked.get() != 1:
-            return panic(message: "contract scrutinee was evaluated more than once")
+            return panic("contract scrutinee was evaluated more than once")
     let view = Label[String](Labelled("separate handler"))
     if match_label(view) != "separate handler":
-        return panic(message: "contract match depended on Error identity")
+        return panic("contract match depended on Error identity")
 
 import filesystem from "@std/fs.ms"
 
@@ -387,9 +373,9 @@ fn check_missing_file() Result[Unit, FileSystemError]:
     let fs = filesystem()
     let directory = try fs.temporary_directory("manuscript-errors-")
     let missing = "{directory}/missing-secret-token"
-    let read = fs.read_file(path: missing)
+    let read = fs.read_file(missing)
     if read.is_ok():
-        return panic(message: "missing file read succeeded")
+        return panic("missing file read succeeded")
 
     let cause = read.unwrap_error()
 
@@ -401,17 +387,17 @@ fn check_missing_file() Result[Unit, FileSystemError]:
                 diagnostic() != "filesystem: file or directory not found"
                 or shared.message() != diagnostic()
             ):
-                return panic(message: "missing file diagnostic lost")
+                return panic("missing file diagnostic lost")
         _:
-            return panic(message: "missing file changed error case")
+            return panic("missing file changed error case")
 
-    let stat = fs.stat(path: missing, follow_links: true)
+    let stat = fs.stat(missing, follow_links: true)
     if stat.is_ok():
-        return panic(message: "missing file stat succeeded")
+        return panic("missing file stat succeeded")
     if stat.unwrap_error().message() != "filesystem: file or directory not found":
-        return panic(message: "stat diagnostic lost")
+        return panic("stat diagnostic lost")
 
-    let removed = try fs.remove(path: directory, recursive: false)
+    try fs.remove(directory, recursive: false)
     return ok(unit)
 
 test "missing file diagnostics preserve the filesystem case":

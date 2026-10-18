@@ -4,7 +4,7 @@ type Counter:
     calls: Int
 
 fn counted(counter: Counter) Counter:
-    counter.calls = counter.calls + 1
+    counter.calls += 1
     return counter
 
 fn require_value[T, E](value: Optional[T], cause: E) Result[T, E]:
@@ -81,7 +81,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     if counter.calls != 4: return panic("lazy conversion copied cause")
 
     let bound = missing.ok_or[Counter]
-    bound(cause: counter).unwrap_error().calls = 5
+    bound(counter).unwrap_error().calls = 5
     if counter.calls != 5: return panic("bound eager conversion lost receiver")
 
     let bound_lazy = missing.ok_or_else[Counter]
@@ -141,10 +141,7 @@ test "Map fold uses ordered snapshots and returns accumulator aliases":
 
     let empty = Map[String, Counter]()
     let fold = empty.fold[List[String]]
-    let untouched = fold(
-        step: fn(acc, k, v): panic("empty fold callback"),
-        initial: initial
-    )
+    let untouched = fold(step: fn(acc, k, v): panic("empty fold callback"), initial)
     untouched.append("empty alias")
     if initial.length() != 5: return panic("empty fold changed initial identity")
 
@@ -211,7 +208,7 @@ test "Map predicates short circuit over snapshots including empty receivers":
     let every = values.every
     if (
         every(
-            predicate: fn(k, v):
+            fn(k, v):
                 seen.append(k)
                 values.remove("a").add("c", 99).add("new", 4)
                 return v > 1
@@ -429,5 +426,5 @@ test "ok_or without a cause records the calling file and line":
     if named.unwrap_error() != "port": return panic("explicit cause")
 
     match find_port(none).unwrap_error():
-        MissingValue(found): unit
+        MissingValue(_): unit
         _: return panic("default cause is not MissingValue")
