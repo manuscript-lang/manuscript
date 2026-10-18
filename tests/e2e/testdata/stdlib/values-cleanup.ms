@@ -1,6 +1,6 @@
+import {expect_equal, expect_false, expect_not_equal, fail} from "@std/testing.ms"
 import Closeable from "@std/cleanup.ms"
 import JsonError from "@std/json.ms"
-import panic from "@std/faults.ms"
 
 type Counter:
     calls: Int
@@ -42,45 +42,33 @@ test "Optional lazy fallbacks preserve nested absence and payload identity":
         return some(42)
     let present: Optional[Int] = some(0)
     let missing: Optional[Int] = none
-    if present.or_else(create).get() != 0 or counter.calls != 0: return panic(
-        "eager lazy fallback"
-    )
-    if missing.or_else(create).get() != 42 or counter.calls != 1: return panic(
-        "missing fallback"
-    )
-
+    try expect_false(present.or_else(create).get() != 0 or counter.calls != 0)
+    try expect_false(missing.or_else(create).get() != 42 or counter.calls != 1)
     let nested: Optional[Optional[Int]] = some(missing)
-    if not nested.is_some() or not nested.get().is_none(): return panic(
-        "nested optional flattened"
-    )
+    try expect_false(not nested.is_some() or not nested.get().is_none())
 
 test "Result propagation and Error views preserve concrete causes":
     let failed: Result[Int, JsonError] = error(JsonError.InvalidData)
-    if propagate(failed) != failed: return panic("try changed cause")
-
+    try expect_equal(propagate(failed), failed)
     let success: Result[Int, JsonError] = ok(3)
     let expected: Result[Int, JsonError] = ok(4)
-    if propagate(success) != expected: return panic("try success")
-
+    try expect_equal(propagate(success), expected)
     let view = Error(JsonError.InvalidData)
-    if view.message().byte_length() == 0: return panic("error message")
+    try expect_not_equal(view.message().byte_length(), 0)
 
     match view:
         JsonError(cause):
-            if cause != JsonError.InvalidData: return panic("concrete error lost")
-        _: return panic("error receiver erased")
+            try expect_equal(cause, JsonError.InvalidData)
+        _: return fail("error receiver erased")
 
 test "custom equality and hashing define map key identity":
     let first = Key(1, "first")
     let second = Key(1, "second")
-    if first != second or first.hash() != second.hash(): return panic("domain equality")
-
+    try expect_false(first != second or first.hash() != second.hash())
     let map = (Map[Key, String]().add(first, "a").add(second, "b"))
-    if map.length() != 1 or map.get(first) != some("b"): return panic(
-        "domain map identity"
-    )
+    try expect_false(map.length() != 1 or map.get(first) != some("b"))
 
 test "Closeable cleanup runs in reverse order before return delivery":
     let order: List[Int] = []
-    if leave(order) != 42: return panic("return value")
-    if order != [2, 1]: return panic("cleanup order")
+    try expect_equal(leave(order), 42)
+    try expect_equal(order, [2, 1])

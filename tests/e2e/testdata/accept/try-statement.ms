@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 fn parse(n: Int) Result[Int, String]:
     if n < 0:
@@ -50,35 +50,21 @@ fn in_lambda(n: Int) Result[Int, String]:
     return ok(r + 1)
 
 test "statement try returns the error and binds the value":
-    if not (code(bound(4)) == 5):
-        return panic("bound ok")
-    if not (code(bound(-1)) == -1):
-        return panic("bound error")
-    if not (code(reassigned(3)) == 6):
-        return panic("assign ok")
-    if not (code(reassigned(-2)) == -1):
-        return panic("assign error")
-    if not (code(discarded(1)) == 7):
-        return panic("discard ok")
-    if not (code(discarded(-1)) == -1):
-        return panic("discard error")
+    try expect_equal(code(bound(4)), 5)
+    try expect_equal(code(bound(-1)), -1)
+    try expect_equal(code(reassigned(3)), 6)
+    try expect_equal(code(reassigned(-2)), -1)
+    try expect_equal(code(discarded(1)), 7)
+    try expect_equal(code(discarded(-1)), -1)
 
 test "try nested in expressions and chains still propagates":
-    if not (code(nested(6)) == 7):
-        return panic("nested ok")
-    if not (code(nested(2)) == -1):
-        return panic("nested error")
-    if not (code(chained(12)) == 6):
-        return panic("chained ok")
-    if not (code(chained(3)) == -1):
-        return panic("chained error")
+    try expect_equal(code(nested(6)), 7)
+    try expect_equal(code(nested(2)), -1)
+    try expect_equal(code(chained(12)), 6)
+    try expect_equal(code(chained(3)), -1)
 
 test "try in loops and lambdas":
-    if not (code(in_loop([1, 2, 3])) == 6):
-        return panic("loop ok")
-    if not (code(in_loop([1, -2, 3])) == -1):
-        return panic("loop error")
-    if not (code(in_lambda(2)) == 21):
-        return panic("lambda ok")
-    if not (code(in_lambda(-2)) == -1):
-        return panic("lambda error")
+    try expect_equal(code(in_loop([1, 2, 3])), 6)
+    try expect_equal(code(in_loop([1, -2, 3])), -1)
+    try expect_equal(code(in_lambda(2)), 21)
+    try expect_equal(code(in_lambda(-2)), -1)

@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 type Tree[T]:
     value: T
@@ -7,5 +7,4 @@ type Tree[T]:
 test "recursive immutable collection":
     let leaf = Tree[Int](1, [])
     let root = Tree[Int](2, [leaf])
-    if not (root.value == 2):
-        return panic("check failed")
+    try expect_equal(root.value, 2)

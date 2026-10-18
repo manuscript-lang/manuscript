@@ -1,6 +1,7 @@
+import {expect_equal, expect_false, expect_ok, expect_true} from "@std/testing.ms"
+import TextError from "@std/errors.ms"
 import {filesystem, FileSystem, FileSystemError} from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"
-import panic from "@std/faults.ms"
 
 fn generic_write[T: FileSystem](
     fs: T,
@@ -29,13 +30,17 @@ fn generic_directory[T: FileSystem](fs: T, path: String) Result[Unit, FileSystem
 fn generic_remove[T: FileSystem](fs: T, path: String) Result[Unit, FileSystemError]:
     return fs.remove(path)
 
-fn rejected(result: Result[Unit, FileSystemError]) Unit:
-    if not result.is_error(): return panic(
-        "exclusive or nonrecursive operation succeeded"
-    )
+fn rejected(result: Result[Unit, FileSystemError]) Result[Unit, Error]:
+    match result:
+        error(_): return ok(unit)
+        ok(_): return error(
+            TextError.Text("exclusive or nonrecursive operation succeeded")
+        )
+
+    return ok(unit)
 
 fn text(fs: FileSystem, path: String) Result[String, Error]:
-    return ok((try fs.read_file(path)).decode_utf8().get())
+    return ok((fs.read_file(path) | try expect_ok).decode_utf8().get())
 
 fn argument(log: List[String], mark: String, path: String) String:
     log.append(mark)
@@ -48,183 +53,192 @@ fn data_argument(log: List[String]) Bytes:
 test "filesystem writes default to exclusive creation through aliases and bounds":
     let fs = filesystem()
 
-    with temporary = try fs.temporary("manuscript-default-write-"):
+    with temporary = (fs.temporary("manuscript-default-write-") | try expect_ok):
         let path = "{temporary.path()}/file"
-        try fs.write_file(path, "first".to_bytes())
+        (fs.write_file(path, "first".to_bytes()) | try expect_ok)
         let write = fs.write_file
         let alias = write
-        rejected(alias(path, "second".to_bytes()))
-        rejected(write(path, "second".to_bytes(), replace: false))
-        rejected(generic_write(fs, path, "second".to_bytes()))
-        if (try text(fs, path)) != "first": return panic(
-            "omission replaced existing data"
+        (try rejected(alias(path, "second".to_bytes())))
+        (try rejected(write(path, "second".to_bytes(), replace: false)))
+        (try rejected(generic_write(fs, path, "second".to_bytes())))
+        (try text(fs, path)) | try expect_equal(expected: "first")
+        (alias(path, "second".to_bytes(), replace: true) | try expect_ok)
+        (try text(fs, path)) | try expect_equal(expected: "second")
+        (
+            generic_write(
+                fs,
+                "{temporary.path()}/generic",
+                "generic".to_bytes()
+            ) | try expect_ok
         )
-
-        try alias(path, "second".to_bytes(), replace: true)
-        if (try text(fs, path)) != "second": return panic("explicit replacement lost")
-
-        try generic_write(fs, "{temporary.path()}/generic", "generic".to_bytes())
-        rejected(fs.write_file("", "invalid".to_bytes()))
+        (try rejected(fs.write_file("", "invalid".to_bytes())))
 
 test "filesystem file copies default to no replacement and retain byte limits":
     let fs: FileSystem = filesystem()
 
-    with temporary = try fs.temporary("manuscript-default-copy-"):
+    with temporary = (fs.temporary("manuscript-default-copy-") | try expect_ok):
         let source = "{temporary.path()}/source"
         let destination = "{temporary.path()}/destination"
-        try fs.write_file(source, "source".to_bytes())
+        (fs.write_file(source, "source".to_bytes()) | try expect_ok)
         let copy = fs.copy_file
         let alias = copy
-        try alias(source, destination)
-        try fs.write_file(source, "changed".to_bytes(), true)
-        rejected(copy(source, destination))
-        rejected(fs.copy_file(source, destination, replace: false))
-        rejected(generic_copy(fs, source, destination))
-        if (try text(fs, destination)) != "source": return panic(
-            "copy overwrote destination"
-        )
-
-        try copy(source, destination, replace: true, none)
-        if (try text(fs, destination)) != "changed": return panic(
-            "explicit copy replacement"
-        )
-
-        try generic_copy(fs, source, "{temporary.path()}/generic")
+        (alias(source, destination) | try expect_ok)
+        (fs.write_file(source, "changed".to_bytes(), true) | try expect_ok)
+        (try rejected(copy(source, destination)))
+        (try rejected(fs.copy_file(source, destination, replace: false)))
+        (try rejected(generic_copy(fs, source, destination)))
+        (try text(fs, destination)) | try expect_equal(expected: "source")
+        (copy(source, destination, replace: true, max_bytes: none) | try expect_ok)
+        (try text(fs, destination)) | try expect_equal(expected: "changed")
+        (generic_copy(fs, source, "{temporary.path()}/generic") | try expect_ok)
         let limited: Result[Unit, FileSystemError] = error(
             FileSystemError.LimitExceeded
         )
-        if fs.copy_file(source, "{temporary.path()}/limited", max_bytes: 0) != limited: return panic(
-            "zero byte limit"
+        fs.copy_file(source, "{temporary.path()}/limited", max_bytes: 0) | try expect_equal(
+            expected: limited
         )
-        if fs.copy_file(source, "{temporary.path()}/limited", max_bytes: 6) != limited: return panic(
-            "copy byte limit"
+        fs.copy_file(source, "{temporary.path()}/limited", max_bytes: 6) | try expect_equal(
+            expected: limited
         )
-
         let invalid: Result[Unit, FileSystemError] = error(FileSystemError.InvalidInput)
-        if (
-            fs.copy_file(
-                source,
-                "{temporary.path()}/negative",
-                max_bytes: -1
-            ) != invalid
-        ): return panic("negative byte limit")
-
-        try copy(source, "{temporary.path()}/exact", max_bytes: 7)
+        (
+            (
+                fs.copy_file(
+                    source,
+                    "{temporary.path()}/negative",
+                    max_bytes: -1
+                ) != invalid
+            )
+        ) | try expect_false
+        (copy(source, "{temporary.path()}/exact", max_bytes: 7) | try expect_ok)
 
 test "filesystem tree copies default to no replacement with distinct budgets":
     let fs = filesystem()
 
-    with temporary = try fs.temporary("manuscript-default-tree-"):
+    with temporary = (fs.temporary("manuscript-default-tree-") | try expect_ok):
         let source = "{temporary.path()}/source"
         let destination = "{temporary.path()}/destination"
-        try fs.create_directory(source)
-        try fs.write_file("{source}/data", "abc".to_bytes())
+        (fs.create_directory(source) | try expect_ok)
+        (fs.write_file("{source}/data", "abc".to_bytes()) | try expect_ok)
         let copy = fs.copy_tree
         let alias = copy
-        try alias(source, destination)
-        try fs.write_file("{source}/data", "xyz".to_bytes(), true)
-        rejected(copy(source, destination))
-        rejected(copy(source, destination, false))
-        rejected(generic_tree(fs, source, destination))
-        if (try text(fs, "{destination}/data")) != "abc": return panic(
-            "tree replaced existing data"
+        (alias(source, destination) | try expect_ok)
+        (fs.write_file("{source}/data", "xyz".to_bytes(), true) | try expect_ok)
+        (try rejected(copy(source, destination)))
+        (try rejected(copy(source, destination, false)))
+        (try rejected(generic_tree(fs, source, destination)))
+        (try text(fs, "{destination}/data")) | try expect_equal(expected: "abc")
+        (
+            copy(
+                source,
+                destination,
+                true,
+                max_entries: none,
+                max_bytes: none
+            ) | try expect_ok
         )
-
-        try copy(source, destination, true, none, none)
-        if (try text(fs, "{destination}/data")) != "xyz": return panic(
-            "explicit tree replacement"
-        )
-
-        try generic_tree(fs, source, "{temporary.path()}/generic")
+        (try text(fs, "{destination}/data")) | try expect_equal(expected: "xyz")
+        (generic_tree(fs, source, "{temporary.path()}/generic") | try expect_ok)
         let limited: Result[Unit, FileSystemError] = error(
             FileSystemError.LimitExceeded
         )
-        if copy(source, "{temporary.path()}/entries", max_entries: 1) != limited: return panic(
-            "entry budget"
+        copy(source, "{temporary.path()}/entries", max_entries: 1) | try expect_equal(
+            expected: limited
         )
-        if copy(source, "{temporary.path()}/bytes", max_bytes: 2) != limited: return panic(
-            "byte budget"
+        copy(source, "{temporary.path()}/bytes", max_bytes: 2) | try expect_equal(
+            expected: limited
         )
-
         let invalid: Result[Unit, FileSystemError] = error(FileSystemError.InvalidInput)
-        if (
+        (
+            (
+                copy(
+                    source,
+                    "{temporary.path()}/negative-entry",
+                    max_entries: -1
+                ) != invalid
+            )
+        ) | try expect_false
+        copy(source, "{temporary.path()}/negative-byte", max_bytes: -1) | try expect_equal(
+            expected: invalid
+        )
+        (
             copy(
                 source,
-                "{temporary.path()}/negative-entry",
-                max_entries: -1
-            ) != invalid
-        ): return panic("negative entries")
-        if copy(source, "{temporary.path()}/negative-byte", max_bytes: -1) != invalid: return panic(
-            "negative bytes"
+                "{temporary.path()}/exact",
+                max_entries: 2,
+                max_bytes: 3
+            ) | try expect_ok
         )
-
-        try copy(source, "{temporary.path()}/exact", max_entries: 2, max_bytes: 3)
 
 test "filesystem directory creation defaults to requiring an existing parent":
     let fs = filesystem()
 
-    with temporary = try fs.temporary("manuscript-default-directory-"):
+    with temporary = (fs.temporary("manuscript-default-directory-") | try expect_ok):
         let create = fs.create_directory
         let alias = create
         let child = "{temporary.path()}/missing/child"
-        rejected(alias(child))
-        rejected(create(child, false))
-        rejected(generic_directory(fs, child))
-        if (try fs.list(temporary.path())).length() != 0: return panic(
-            "default created parents"
+        (try rejected(alias(child)))
+        (try rejected(create(child, false)))
+        (try rejected(generic_directory(fs, child)))
+        (fs.list(temporary.path()) | try expect_ok).length() | try expect_equal(
+            expected: 0
         )
-
-        try create(child, recursive: true)
-        if not (try fs.stat(child, follow_links: false)).directory: return panic(
-            "recursive creation"
-        )
-
-        try generic_directory(fs, "{temporary.path()}/generic")
-        rejected(create(""))
+        (create(child, recursive: true) | try expect_ok)
+        ((fs.stat(child, follow_links: false) | try expect_ok).directory) | try expect_true
+        (generic_directory(fs, "{temporary.path()}/generic") | try expect_ok)
+        (try rejected(create("")))
 
 test "filesystem removal defaults to retaining nonempty trees":
     let fs = filesystem()
 
-    with temporary = try fs.temporary("manuscript-default-remove-"):
+    with temporary = (fs.temporary("manuscript-default-remove-") | try expect_ok):
         let directory = "{temporary.path()}/nonempty"
         let path = "{directory}/keep"
-        try fs.create_directory(directory)
-        try fs.write_file(path, "keep".to_bytes())
+        (fs.create_directory(directory) | try expect_ok)
+        (fs.write_file(path, "keep".to_bytes()) | try expect_ok)
         let remove = fs.remove
         let alias = remove
-        rejected(alias(directory))
-        rejected(remove(directory, false))
-        rejected(generic_remove(fs, directory))
-        if (try text(fs, path)) != "keep": return panic("default removed descendants")
-
-        try remove(directory, recursive: true)
+        (try rejected(alias(directory)))
+        (try rejected(remove(directory, false)))
+        (try rejected(generic_remove(fs, directory)))
+        (try text(fs, path)) | try expect_equal(expected: "keep")
+        (remove(directory, recursive: true) | try expect_ok)
         let empty = "{temporary.path()}/empty"
-        try fs.create_directory(empty)
-        try alias(empty)
-        try fs.write_file("{temporary.path()}/file", "file".to_bytes())
-        try generic_remove(fs, "{temporary.path()}/file")
-        rejected(remove(""))
+        (fs.create_directory(empty) | try expect_ok)
+        (alias(empty) | try expect_ok)
+        (fs.write_file("{temporary.path()}/file", "file".to_bytes()) | try expect_ok)
+        (generic_remove(fs, "{temporary.path()}/file") | try expect_ok)
+        (try rejected(remove("")))
 
 test "filesystem default preparation retains written argument order":
     let fs = filesystem()
 
-    with temporary = try fs.temporary("manuscript-default-order-"):
+    with temporary = (fs.temporary("manuscript-default-order-") | try expect_ok):
         let log: List[String] = []
-        try fs.write_file(
-            data: data_argument(log),
-            argument(log, "path", "{temporary.path()}/ordered")
+        (
+            fs.write_file(
+                data: data_argument(log),
+                path: argument(
+                    log,
+                    "path",
+                    "{temporary.path()}/ordered"
+                )
+            ) | try expect_ok
         )
-        if log != ["data", "path"]: return panic("default reordered supplied arguments")
-
+        log | try expect_equal(expected: ["data", "path"])
         let copy = fs.copy_file
-        try copy(
-            destination: argument(
-                log,
-                "destination",
-                "{temporary.path()}/copy"
-            ),
-            argument(log, "source", "{temporary.path()}/ordered")
+        (
+            copy(
+                destination: argument(
+                    log,
+                    "destination",
+                    "{temporary.path()}/copy"
+                ),
+                source: argument(
+                    log,
+                    "source",
+                    "{temporary.path()}/ordered"
+                )
+            ) | try expect_ok
         )
-        if log != ["data", "path", "destination", "source"]: return panic(
-            "bound default reordered arguments"
-        )
+        log | try expect_equal(expected: ["data", "path", "destination", "source"])

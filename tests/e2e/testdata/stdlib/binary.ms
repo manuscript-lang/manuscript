@@ -1,50 +1,59 @@
+import {expect_equal, expect_false} from "@std/testing.ms"
 import {read_integer, write_integer, read_float, write_float, BinaryError} from "@std/binary.ms"
 import Bytes from "@std/bytes.ms"
-import panic from "@std/faults.ms"
 
 test "binary integer boundaries and both byte orders":
     for little in [false, true]:
         for number in [-9223372036854775808, -32768, -1, 0, 32767, 9223372036854775807]:
             let data = try write_integer(number, 8, signed: true, little_endian: little)
-            if (
+            try expect_false(
                 (
-                    try read_integer(
-                        data,
-                        0,
-                        8,
-                        signed: true,
-                        little_endian: little
-                    )
-                ) != number
-            ): return panic("signed roundtrip")
+                    (
+                        try read_integer(
+                            data,
+                            0,
+                            8,
+                            signed: true,
+                            little_endian: little
+                        )
+                    ) != number
+                )
+            )
 
         let data = try write_integer(258, 2, signed: false, little_endian: little)
 
         if little:
-            if data != Bytes([2, 1]): return panic("little endian vector")
+            try expect_equal(data, Bytes([2, 1]))
         else:
-            if data != Bytes([1, 2]): return panic("big endian vector")
+            try expect_equal(data, Bytes([1, 2]))
 
-        if (
+        try expect_false(
             (
-                try read_float(
-                    write_float(-1.25, little_endian: little),
-                    0,
-                    little_endian: little
-                )
-            ) != -1.25
-        ): return panic("float roundtrip")
+                (
+                    try read_float(
+                        write_float(
+                            -1.25,
+                            little_endian: little
+                        ),
+                        0,
+                        little_endian: little
+                    )
+                ) != -1.25
+            )
+        )
 
 test "binary errors preserve domain and range":
     let range_error: Result[Bytes, BinaryError] = error(BinaryError.OutOfRange)
-    if (write_integer(256, 1, signed: false, little_endian: false) != range_error): return panic(
-        "unsigned overflow"
+    try expect_equal(
+        write_integer(256, 1, signed: false, little_endian: false),
+        range_error
     )
-    if (write_integer(-1, 1, signed: false, little_endian: false) != range_error): return panic(
-        "negative unsigned"
+    try expect_equal(
+        write_integer(-1, 1, signed: false, little_endian: false),
+        range_error
     )
-
     let invalid: Result[Int, BinaryError] = error(BinaryError.OutOfRange)
-    if (read_integer(Bytes([0]), -1, 1, signed: true, little_endian: false) != invalid): return panic(
-        "negative offset"
+    try expect_equal(
+        read_integer(Bytes([0]), -1, 1, signed: true, little_endian: false),
+        invalid
     )

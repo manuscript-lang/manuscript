@@ -1,11 +1,9 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 import Decimal from "@std/decimal.ms"
 
 fn amount() Result[Decimal, String]:
     return ok(12.50d)
 
 test "explicit standard imports":
-    if not ([1, 2].length() == 2):
-        return panic("check failed")
-    if not (amount().get(0.0d) == 12.50d):
-        return panic("check failed")
+    try expect_equal([1, 2].length(), 2)
+    try expect_equal(amount().get(0.0d), 12.50d)

@@ -1,64 +1,47 @@
+import {expect_equal} from "@std/testing.ms"
 import {Decimal, RoundingMode} from "@std/decimal.ms"
 import NumberError from "@std/numbers.ms"
-import panic from "@std/faults.ms"
 
 test "decimal cents stay exact and fixed places retain zeros":
     let total = 19.99d * 3d
     let tax = try (total * 0.0825d).round(2)
-    if tax != 4.95d: return panic("tax rounding")
-    if (try tax.to_fixed(2)) != "4.95": return panic("tax formatting")
-    if (try (total + tax).to_fixed(2)) != "64.92": return panic("total formatting")
-    if (try 25.50d.to_fixed(2)) != "25.50": return panic("trailing zero")
-    if (try 9007199254740993.125d.to_fixed(2)) != "9007199254740993.12": return panic(
-        "binary conversion"
-    )
-    if "{25.50d}" != "25.5": return panic("normalized interpolation changed")
-    if 1d / 3d != 0.3333333333333333333333333333333333d: return panic(
-        "arithmetic changed"
-    )
+    try expect_equal(tax, 4.95d)
+    try expect_equal((try tax.to_fixed(2)), "4.95")
+    try expect_equal((try (total + tax).to_fixed(2)), "64.92")
+    try expect_equal((try 25.50d.to_fixed(2)), "25.50")
+    try expect_equal((try 9007199254740993.125d.to_fixed(2)), "9007199254740993.12")
+    try expect_equal("{25.50d}", "25.5")
+    try expect_equal(1d / 3d, 0.3333333333333333333333333333333333d)
 
 test "decimal rounding modes include signed ties and coarse scales":
-    if (try 2.5d.round(0, none)) != 2d: return panic("default even tie")
-    if (try 3.5d.round(0)) != 4d: return panic("default odd tie")
-    if (try (-2.5d).round(0)) != -2d: return panic("negative even tie")
-    if (try (-2.5d).round(0, RoundingMode.HalfAwayFromZero)) != -3d: return panic(
-        "away tie"
-    )
-    if (try (-2.9d).round(0, RoundingMode.TowardZero)) != -2d: return panic(
-        "toward zero"
-    )
-    if (try (-2.1d).round(0, RoundingMode.Floor)) != -3d: return panic("floor")
-    if (try (-2.1d).round(0, RoundingMode.Ceil)) != -2d: return panic("ceil")
-    if (try 1250d.round(-2)) != 1200d: return panic("coarse even tie")
-    if (try (-0.005d).to_fixed(2)) != "0.00": return panic("rounded zero")
-    if (try (-0.005d).to_fixed(2, RoundingMode.Floor)) != "-0.01": return panic(
-        "fixed mode"
-    )
-
+    try expect_equal((try 2.5d.round(0, none)), 2d)
+    try expect_equal((try 3.5d.round(0)), 4d)
+    try expect_equal((try (-2.5d).round(0)), -2d)
+    try expect_equal((try (-2.5d).round(0, RoundingMode.HalfAwayFromZero)), -3d)
+    try expect_equal((try (-2.9d).round(0, RoundingMode.TowardZero)), -2d)
+    try expect_equal((try (-2.1d).round(0, RoundingMode.Floor)), -3d)
+    try expect_equal((try (-2.1d).round(0, RoundingMode.Ceil)), -2d)
+    try expect_equal((try 1250d.round(-2)), 1200d)
+    try expect_equal((try (-0.005d).to_fixed(2)), "0.00")
+    try expect_equal((try (-0.005d).to_fixed(2, RoundingMode.Floor)), "-0.01")
     let fixed = 25.5d.to_fixed
-    if (try fixed(2)) != "25.50": return panic("bound default")
-
+    try expect_equal((try fixed(2)), "25.50")
     let rounded: fn(places: Int, mode: Optional[RoundingMode]) Result[
         Decimal,
         NumberError
     ] = 2.5d.round
-    if (try rounded(0, RoundingMode.HalfEven)) != 2d: return panic("typed bound method")
+    try expect_equal((try rounded(0, RoundingMode.HalfEven)), 2d)
 
 test "decimal scale extremes and invalid requests return typed errors":
-    if (try 1e-6176d.round(6176)) != 1e-6176d: return panic("minimum scale")
-    if (try 5e-6176d.round(6175)) != 0d: return panic("subnormal tie")
-    if (try 1e6144d.round(-6144)) != 1e6144d: return panic("maximum scale")
-    if (try 0d.to_fixed(6176)).scalar_length() != 6178: return panic("maximum digits")
-
+    try expect_equal((try 1e-6176d.round(6176)), 1e-6176d)
+    try expect_equal((try 5e-6176d.round(6175)), 0d)
+    try expect_equal((try 1e6144d.round(-6144)), 1e6144d)
+    try expect_equal((try 0d.to_fixed(6176)).scalar_length(), 6178)
     let invalid_round: Result[Decimal, NumberError] = error(NumberError.InvalidInput)
-    if 0d.round(-6145) != invalid_round: return panic("invalid places")
-    if 0d.round(6177) != invalid_round: return panic("invalid places")
-
+    try expect_equal(0d.round(-6145), invalid_round)
+    try expect_equal(0d.round(6177), invalid_round)
     let invalid_fixed: Result[String, NumberError] = error(NumberError.InvalidInput)
-    if 0d.to_fixed(-1) != invalid_fixed: return panic("invalid digits")
-    if 0d.to_fixed(6177) != invalid_fixed: return panic("invalid digits")
-
+    try expect_equal(0d.to_fixed(-1), invalid_fixed)
+    try expect_equal(0d.to_fixed(6177), invalid_fixed)
     let overflow: Result[Decimal, NumberError] = error(NumberError.OutOfRange)
-    if 9.999999999999999999999999999999999e6144d.round(-6144) != overflow: return panic(
-        "round overflow"
-    )
+    try expect_equal(9.999999999999999999999999999999999e6144d.round(-6144), overflow)

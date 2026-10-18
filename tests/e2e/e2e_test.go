@@ -22,37 +22,12 @@ import (
 	"time"
 )
 
-func TestCoreConformance(t *testing.T) {
-	files, err := filepath.Glob("testdata/accept/*.ms")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(files) < 18 {
-		t.Fatal("missing fixtures")
-	}
-	for _, file := range files {
-		t.Run(filepath.Base(file), func(t *testing.T) {
-			result := compiler.CompileFile(file, compiler.Options{Tests: true})
-			data, err := execute(t, result)
-			if err != nil {
-				t.Fatalf("execution failed: %v\n%s", err, data)
-			}
-			if !strings.Contains(string(data), "0 failed") {
-				t.Fatalf("test runner did not verify checks: %s", data)
-			}
-		})
-	}
-}
 func TestRejectedFixture(t *testing.T) {
 	result := compiler.CompileFile("testdata/reject/cl-03-2.ms", compiler.Options{})
 	rejected(t, result, "type", "private")
 }
-func TestMaxRequiresComparable(t *testing.T) {
-	result := compiler.CompileFile("testdata/reject/not-comparable.ms", compiler.Options{})
-	rejected(t, result, "type", "Point does not satisfy Comparable")
-}
 func TestStandaloneHasNoRuntimeDependency(t *testing.T) {
-	result := compiler.CompileSource("standalone.ms", "import panic from \"@std/faults.ms\"\n\ntest \"arithmetic\":\n    if not (2 + 3 == 5):\n        return panic(message: \"check failed\")\n", compiler.Options{Tests: true})
+	result := compiler.CompileSource("standalone.ms", "import expect_equal from \"@std/testing.ms\"\n\ntest \"arithmetic\":\n    2 + 3 | try expect_equal(expected: 5)\n", compiler.Options{Tests: true})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
@@ -90,7 +65,7 @@ func TestCLIEntryAndNativeBuild(t *testing.T) {
 func TestRuntimeFaults(t *testing.T) {
 	for name, source := range map[string]string{
 		"absent optional": "test \"fault\":\n    let missing: Optional[Int] = none\n    let impossible = missing.get()\n",
-		"failed check":    "import panic from \"@std/faults.ms\"\ntest \"fault\":\n    if 2 + 3 != 6:\n        return panic(message: \"arithmetic check failed\")\n",
+		"failed check":    "import expect_equal from \"@std/testing.ms\"\ntest \"failed assertion\":\n    2 + 3 | try expect_equal(expected: 6)\n",
 		"overflow":        "fn sum(value: Int) Int:\n    return value + 1\ntest \"fault\":\n    let impossible = sum(value: 9223372036854775807)\n",
 		"division":        "fn divide(value: Int, divisor: Int) Int:\n    return value / divisor\ntest \"fault\":\n    let impossible = divide(value: 3, divisor: 0)\n",
 		"destructuring":   "fn difference(values: List[Int]) Int:\n    let [first, second] = values\n    return first - second\ntest \"fault\":\n    let impossible = difference(values: [1])\n",
@@ -403,7 +378,7 @@ func TestCLISourceTools(t *testing.T) {
 }
 
 func TestNominalIdentityEscapesPathDelimiters(t *testing.T) {
-	result := compiler.CompileSource("data[0]:&.ms", `import panic from "@std/faults.ms"
+	result := compiler.CompileSource("data[0]:&.ms", `import {expect_true, fail} from "@std/testing.ms"
 
 interface Read:
     fn get() Int
@@ -416,7 +391,7 @@ test "encoded nominal identity":
     let box = Box(value: 1)
     let view = Read(value: box)
     if not (view.get() == 3):
-        return panic(message: "check failed")
+        return fail("check failed")
 `, compiler.Options{Tests: true})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
@@ -480,10 +455,10 @@ export fn main() Int:
         let task = fn() Result[Unit, Error]:
             close_output()
             return ok(value: unit)
-        let started = service.start(task)
-        if started.is_error():
-            return 2
-        let id = started.get()
+        let id = match service.start(task):
+            ok(id): id
+            error(_):
+                return 2
 
         while true:
             match service.status(id):
@@ -494,10 +469,10 @@ export fn main() Int:
                 _:
                     return 5
 
-    let written = stdout().write("".to_bytes())
-    if written.is_ok():
-        return 3
-    let cause = written.err()
+    let cause = match stdout().write("".to_bytes()):
+        ok(_):
+            return 3
+        error(cause): cause
 
     match cause:
         Closed:
@@ -551,13 +526,13 @@ export fn defaulted(value: Int = private_value()) Int:
     return value
 `
 	main := `import defaulted from "./library.ms"
-import panic from "@std/faults.ms"
+import {expect_true, fail} from "@std/testing.ms"
 fn private_value() Int:
     return 99
 test "defaults use their declaration module":
     let copy = defaulted
     if defaulted() != 7 or copy() != 7 or defaulted(0) != 0:
-        return panic("incorrect default scope")
+        return fail("incorrect default scope")
 `
 	for name, source := range map[string]string{"library.ms": library, "main.ms": main} {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {
@@ -588,11 +563,11 @@ export type Box[T]:
     items: List[T] = [value]
 `,
 		"main.ms": `import Box from "./data.ms"
-import panic from "@std/faults.ms"
+import {expect_true, fail} from "@std/testing.ms"
 test "imported constructor retains default module and generic scope":
     let box = Box(value: "text")
     if box.copied != "text" or box.items.at(0).get() != "text":
-        return panic("imported generic defaults")
+        return fail("imported generic defaults")
 `,
 	}
 	for name, source := range sources {
@@ -605,4 +580,9 @@ test "imported constructor retains default module and generic scope":
 	if err != nil || !strings.Contains(string(output), "0 failed") {
 		t.Fatalf("execution failed: %v\n%s", err, output)
 	}
+}
+
+func TestMaxRequiresComparable(t *testing.T) {
+	result := compiler.CompileFile("testdata/reject/not-comparable.ms", compiler.Options{})
+	rejected(t, result, "type", "Point does not satisfy Comparable")
 }

@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false, fail} from "@std/testing.ms"
 
 fn slice(values: List[Int]) Result[List[Int], CollectionError]: values.slice(0, 1)
 
@@ -24,43 +24,33 @@ test "public collection support types retain their standard runtime identities":
     let values = [3, 4]
     let entries: List[ListEntry[Int]] = list_entries(values)
     let entry: ListEntry[Int] = ListEntry(0, 3)
-    if entries[0].get() != entry: return panic("list entry")
-
+    try expect_equal(entries[0].get(), entry)
     let map = Map[String, Int]().add("a", 3)
     let pairs: List[MapEntry[String, Int]] = map_entries(map)
     let pair: MapEntry[String, Int] = MapEntry("a", 3)
     let found: Optional[MapEntry[String, Int]] = map.find(
         fn(key: String, value: Int) Bool: (value == 3)
     )
-    if pairs[0].get() != pair or found.get() != pair: return panic("map entry")
-
+    try expect_false(pairs[0].get() != pair or found.get() != pair)
     let selected: Result[List[Int], CollectionError] = slice(values)
-    if selected.get() != [3]: return panic("slice success")
-
+    try expect_equal(selected.get(), [3])
     let invalid: Result[List[Int], CollectionError] = values.slice(0, 9)
     let cause: CollectionError = invalid.err()
-    if cause != CollectionError.OutOfRange or explain(cause).is_empty(): return panic(
-        "collection error"
-    )
+    try expect_false(cause != CollectionError.OutOfRange or explain(cause).is_empty())
 
     match cause:
         OutOfRange: unit
-        _: return panic("scrutinee directed pattern")
+        _: return fail("scrutinee directed pattern")
 
     let grouped: Map[Int, List[Int]] = group(values, fn(value: Int) Int: value % 2)
     let distinct: Set[Int] = unique(values)
-    if grouped.get(1).get() != [3] or distinct.values() != [3, 4]: return panic(
-        "Hashable bounds"
-    )
-    if index(values, 4).get() != 1: return panic("Equal receiver bound")
-
+    try expect_false(grouped.get(1).get() != [3] or distinct.values() != [3, 4])
+    try expect_equal(index(values, 4).get(), 1)
     let absent: Result[Int, MissingValue] = first([])
     let missing: MissingValue = absent.err()
     let common: Error = missing
-    if not common.message().contains("collection-prelude-support.ms:"): return panic(
-        "default error location"
-    )
-    if first(values).get() != 3: return panic("present default conversion")
+    try expect_false(not common.message().contains("collection-prelude-support.ms:"))
+    try expect_equal(first(values).get(), 3)
 
 type OtherError:
     case OutOfRange
@@ -75,4 +65,4 @@ test "new ambient error cases retain scrutinee directed patterns":
 
     match cause:
         OutOfRange: unit
-        _: return panic("wrong standard case")
+        _: return fail("wrong standard case")

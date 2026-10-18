@@ -1,5 +1,4 @@
-import panic from "@std/faults.ms"
-import range from "@std/collections.ms"
+import {expect_equal} from "@std/testing.ms"
 
 # Sum three integer values with explicit named arguments.
 export fn total(first: Int, second: Int, third: Int) Int:
@@ -7,11 +6,14 @@ export fn total(first: Int, second: Int, third: Int) Int:
 
 # Work long enough to produce visible CPU samples.
 export fn compute(iterations: Int) Int:
+    var index = 0
     var result = 0
-    for index in range(0, iterations):
-        result += index % 7
+
+    while index < iterations:
+        result = result + index % 7
+        index = index + 1
+
     return result
 
 test "named arguments":
-    if total(10, 20, 30) != 60:
-        return panic("named argument result differs")
+    total(first: 10, second: 20, third: 30) | try expect_equal(expected: 60)

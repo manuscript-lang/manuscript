@@ -1,8 +1,8 @@
+import {expect_equal, expect_false} from "@std/testing.ms"
 import {parse, stringify, CsvOptions, CsvError} from "@std/csv.ms"
 import {base64_encode, base64_decode, EncodingError} from "@std/encoding.ms"
 import {Commands, Subprocess, CommandOutput, CommandError, commands} from "@std/process.ms"
 import Bytes from "@std/bytes.ms"
-import panic from "@std/faults.ms"
 
 fn forward[T](item: T) T: item
 
@@ -47,8 +47,9 @@ test "bound receiver is captured before supplied arguments":
         ,
         []
     )
-    if (first.calls != 1 or second.calls != 0 or output.stdout.length() != 0):
-        return panic("receiver capture order changed")
+    try expect_false(
+        (first.calls != 1 or second.calls != 0 or output.stdout.length() != 0)
+    )
 
 impl Commands for Override:
     fn run(
@@ -66,16 +67,11 @@ impl Commands for Override:
 test "concrete implementation defaults and interface defaults stay distinct":
     let service = Override("custom".to_bytes())
     let concrete = service.run
-    if (try concrete("fake", [])).stdout != service.input:
-        return panic("concrete input override")
-
+    try expect_equal((try concrete("fake", [])).stdout, service.input)
     let viewed = Commands(service).run
-    if (try viewed("fake", [])).stdout.length() != 0:
-        return panic("interface input default")
-
+    try expect_equal((try viewed("fake", [])).stdout.length(), 0)
     let explicit = "explicit".to_bytes()
-    if ((try viewed("fake", [], explicit)).stdout != explicit):
-        return panic("explicit input skips both defaults")
+    try expect_equal((try viewed("fake", [], explicit)).stdout, explicit)
 
 test "CSV defaults are fresh and explicit options retain their meaning":
     let first = CsvOptions()
@@ -83,91 +79,77 @@ test "CSV defaults are fresh and explicit options retain their meaning":
     alias.delimiter = ";"
     alias.line_ending = "\r\n"
     let second = CsvOptions()
-    if (first.delimiter != ";" or second.delimiter != "," or second.line_ending != "\n"):
-        return panic("CSV construction must allocate fresh mutable storage")
-    if CsvOptions("\t").line_ending != "\n": return panic("ending default")
-    if CsvOptions(line_ending: "\r\n").delimiter != ",": return panic(
-        "delimiter default"
+    try expect_false(
+        (
+            first.delimiter != ";"
+            or second.delimiter != ","
+            or second.line_ending != "\n"
+        )
     )
-    if (try stringify([["a", "b"]])) != "a,b\n": return panic("CSV default output")
-    if (try stringify([["a", "b"]], first)) != "a;b\r\n":
-        return panic("explicit CSV options")
-    if (try parse("a,b\n")) != [["a", "b"]]: return panic("CSV default parse")
-
+    try expect_equal(CsvOptions("\t").line_ending, "\n")
+    try expect_equal(CsvOptions(line_ending: "\r\n").delimiter, ",")
+    try expect_equal((try stringify([["a", "b"]])), "a,b\n")
+    try expect_equal((try stringify([["a", "b"]], first)), "a;b\r\n")
+    try expect_equal((try parse("a,b\n")), [["a", "b"]])
     let bound = stringify
-    if (try bound([["a", "b"]])) != "a,b\n": return panic("stored CSV default")
-
+    try expect_equal((try bound([["a", "b"]])), "a,b\n")
     let typed = forward(stringify)
-    if (try typed([["a", "b"]], second, none)) != "a,b\n":
-        return panic("generic forwarding with full arguments")
-
+    try expect_equal((try typed([["a", "b"]], second, none)), "a,b\n")
     let limited: Result[List[List[String]], CsvError] = error(CsvError.LimitExceeded)
-    if (
-        parse("a,b\n", max_cells: 1) != limited
-        or parse("a,b\n", max_rows: 0) != limited
-    ):
-        return panic("distinct CSV budgets")
-
+    try expect_false(
+        (
+            parse("a,b\n", max_cells: 1) != limited
+            or parse("a,b\n", max_rows: 0) != limited
+        )
+    )
     let invalid: Result[String, CsvError] = error(CsvError.InvalidInput)
-    if stringify([["a"]], CsvOptions("")) != invalid:
-        return panic("explicit invalid options still validate")
+    try expect_equal(stringify([["a"]], CsvOptions("")), invalid)
 
 test "Base64 defaults support stored functions and explicit alphabets":
     let bytes = Bytes([255])
-    if base64_encode(bytes) != "/w==" or base64_encode(bytes, false) != "/w==":
-        return panic("standard alphabet")
-    if base64_encode(bytes, true) != "_w==": return panic("URL alphabet")
-
+    try expect_false(
+        (
+            base64_encode(bytes) != "/w=="
+            or base64_encode(bytes, false) != "/w=="
+        )
+    )
+    try expect_equal(base64_encode(bytes, true), "_w==")
     let encode = base64_encode
     let copied = encode
-    if copied(bytes) != "/w==": return panic("copied native callable")
-
+    try expect_equal(copied(bytes), "/w==")
     let typed: fn(data: Bytes, url_safe: Bool) String = encode
-    if typed(bytes, false) != "/w==": return panic("complete typed callable")
-    if (
-        (try base64_decode("/w==")) != bytes
-        or (try base64_decode("_w==", true)) != bytes
-    ):
-        return panic("decode alphabet")
-
-    let decode = base64_decode
-    if (try decode("/w==", max_bytes: 1)) != bytes: return panic(
-        "stored decode default"
+    try expect_equal(typed(bytes, false), "/w==")
+    try expect_false(
+        (
+            (try base64_decode("/w==")) != bytes
+            or (try base64_decode("_w==", true)) != bytes
+        )
     )
-
+    let decode = base64_decode
+    try expect_equal((try decode("/w==", max_bytes: 1)), bytes)
     let invalid: Result[Bytes, EncodingError] = error(EncodingError.InvalidData)
-    if base64_decode("_w==") != invalid: return panic("default rejects URL alphabet")
-
+    try expect_equal(base64_decode("_w=="), invalid)
     let limited: Result[Bytes, EncodingError] = error(EncodingError.LimitExceeded)
-    if base64_decode("/w==", max_bytes: 0) != limited: return panic("zero is present")
+    try expect_equal(base64_decode("/w==", max_bytes: 0), limited)
 
 test "Commands defaults cross concrete bound view and generic boundaries":
     let capture = Capture("x".to_bytes(), 0)
     let bound = capture.run
-    if (try bound("fake", [])).stdout.length() != 0:
-        return panic("bound input default")
-    if (try capture.run("fake", [])).stdout.length() != 0:
-        return panic("concrete input default")
-
+    try expect_equal((try bound("fake", [])).stdout.length(), 0)
+    try expect_equal((try capture.run("fake", [])).stdout.length(), 0)
     let view = Commands(capture)
     let viewed = view.run
-    if (try viewed("fake", [])).stdout.length() != 0:
-        return panic("viewed input default")
-    if (try generic_run(capture)).length() != 0: return panic(
-        "bounded generic input default"
-    )
-
+    try expect_equal((try viewed("fake", [])).stdout.length(), 0)
+    try expect_equal((try generic_run(capture)).length(), 0)
     let input = Bytes([42])
     let output = (try view.run("fake", [], input)).stdout
-    if output != input or capture.last != input:
-        return panic("explicit input payload retains value")
-
+    try expect_false(output != input or capture.last != input)
     let forwarded = forward(view.run)
-    if (try forwarded("fake", [], input, none, none)).stdout.at(0).get() != 42:
-        return panic("generic forwarding preserves full callable ABI")
-    if capture.calls != 6: return panic("each invocation executes once")
-
+    try expect_equal(
+        (try forwarded("fake", [], input, none, none)).stdout.at(0).get(),
+        42
+    )
+    try expect_equal(capture.calls, 6)
     let invalid: Result[CommandOutput, CommandError] = error(CommandError.InvalidInput)
     let native = commands().run
-    if native("", []) != invalid:
-        return panic("native empty stdin default reaches validation")
+    try expect_equal(native("", []), invalid)

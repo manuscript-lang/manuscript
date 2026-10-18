@@ -1,6 +1,6 @@
+import {expect_equal} from "@std/testing.ms"
 import {compress, decompress, CompressionFormat, CompressionError} from "@std/compress.ms"
 import Bytes from "@std/bytes.ms"
-import panic from "@std/faults.ms"
 
 fn forwarded[T](item: T) T: item
 
@@ -28,37 +28,27 @@ test "compression omission equals explicit level six for every format":
         let name = names.at(index).get()
         index += 1
         let expected = try compress(data, name, 6)
-        if (try alias(data, name)) != expected: return panic(
-            "stored function default bytes"
-        )
-        if (try compress(data, name, max_bytes: none)) != expected: return panic(
-            "explicit none budget"
-        )
-
+        try expect_equal((try alias(data, name)), expected)
+        try expect_equal((try compress(data, name, max_bytes: none)), expected)
         let method = format.compress
         let copied = method
-        if (try copied(data)) != expected: return panic("bound format default bytes")
-        if (try method(data, 6)) != expected: return panic("explicit bound level")
-        if (try format.compress(data, max_bytes: expected.length())) != expected: return panic(
-            "exact output budget"
+        try expect_equal((try copied(data)), expected)
+        try expect_equal((try method(data, 6)), expected)
+        try expect_equal(
+            (try format.compress(data, max_bytes: expected.length())),
+            expected
         )
-        if (try format.decompress(expected)) != data: return panic("typed round trip")
-        if (try decompress(expected, name)) != data: return panic("string round trip")
+        try expect_equal((try format.decompress(expected)), data)
+        try expect_equal((try decompress(expected, name)), data)
 
         for level in [0, 9]:
             let output = try format.compress(data, level)
-            if (try decompress(output, name)) != data: return panic(
-                "explicit level endpoints"
-            )
+            try expect_equal((try decompress(output, name)), data)
 
         let full = forwarded(method)
         let free = forwarded(compress)
-        if (try free(data, name, 6, none)) != expected: return panic(
-            "forwarded string call"
-        )
-        if (try full(data, 6, none)) != expected: return panic(
-            "full-signature forwarded call"
-        )
+        try expect_equal((try free(data, name, 6, none)), expected)
+        try expect_equal((try full(data, 6, none)), expected)
 
 test "compression defaults retain invalid levels formats and output budgets":
     let data = "abc".to_bytes()
@@ -73,38 +63,21 @@ test "compression defaults retain invalid levels formats and output budgets":
         CompressionFormat.Zlib,
         CompressionFormat.Deflate
     ]:
-        if format.compress(data, -1) != invalid: return panic(
-            "native default sentinel leaked"
-        )
-        if format.compress(data, 10) != invalid: return panic("invalid explicit level")
-        if format.compress(data, max_bytes: -1) != invalid: return panic(
-            "negative budget"
-        )
-        if format.compress(data, max_bytes: 0) != limited: return panic(
-            "zero output budget"
-        )
-
+        try expect_equal(format.compress(data, -1), invalid)
+        try expect_equal(format.compress(data, 10), invalid)
+        try expect_equal(format.compress(data, max_bytes: -1), invalid)
+        try expect_equal(format.compress(data, max_bytes: 0), limited)
         let method = format.compress
-        if method(data, max_bytes: 1) != limited: return panic("small output budget")
+        try expect_equal(method(data, max_bytes: 1), limited)
 
-    if compress(data, "invalid") != unsupported: return panic(
-        "format validation changed"
-    )
-    if compress(data, "gzip", -1) != invalid: return panic(
-        "string level validation changed"
-    )
-    if compress(data, "gzip", max_bytes: -1) != invalid: return panic(
-        "string budget validation changed"
-    )
-    if compress(data, "gzip", max_bytes: 0) != limited: return panic(
-        "string output budget changed"
-    )
+    try expect_equal(compress(data, "invalid"), unsupported)
+    try expect_equal(compress(data, "gzip", -1), invalid)
+    try expect_equal(compress(data, "gzip", max_bytes: -1), invalid)
+    try expect_equal(compress(data, "gzip", max_bytes: 0), limited)
 
 test "compression default preparation retains supplied argument order":
     let log: List[String] = []
     let data = "data".to_bytes()
     let encoded = try compress(format: chosen(log, "gzip"), supplied(log, data))
-    if log != ["format", "data"]: return panic("default reordered supplied arguments")
-    if (try decompress(encoded, "gzip")) != data: return panic(
-        "ordered compression output"
-    )
+    try expect_equal(log, ["format", "data"])
+    try expect_equal((try decompress(encoded, "gzip")), data)

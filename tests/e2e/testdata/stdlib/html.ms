@@ -1,5 +1,5 @@
+import {expect_equal, expect_false, expect_not_equal, fail} from "@std/testing.ms"
 import {escape, parse, HtmlNode, HtmlAttribute, HtmlLimits, HtmlError} from "@std/html.ms"
-import panic from "@std/faults.ms"
 
 fn children(node: HtmlNode) List[HtmlNode]:
     match node:
@@ -25,9 +25,9 @@ fn body_nodes(node: HtmlNode) List[HtmlNode]:
     return children(children(html).at(1).get())
 
 test "HTML escaping preserves Unicode and escapes all markup characters":
-    if escape("<&>\"'") != "&lt;&amp;&gt;&#34;&#39;": return panic("HTML entities")
-    if escape("é🙂") != "é🙂": return panic("Unicode changed")
-    if escape("") != "": return panic("empty HTML")
+    try expect_equal(escape("<&>\"'"), "&lt;&amp;&gt;&#34;&#39;")
+    try expect_equal(escape("é🙂"), "é🙂")
+    try expect_equal(escape(""), "")
 
 test "HTML parses nested elements attributes entities and comments":
     let doc = try parse(
@@ -37,113 +37,107 @@ test "HTML parses nested elements attributes entities and comments":
 
     match div:
         Element(tag, namespace, attributes, items):
-            if tag != "div" or namespace != "": return panic("HTML name normalization")
-            if (
-                attributes != [
-                    HtmlAttribute("id", "", "main"),
-                    HtmlAttribute("title", "", "A & B"),
-                    HtmlAttribute("hidden", "", "")
-                ]
-            ): return panic("HTML attributes")
-            if (
-                items.at(0).get() != HtmlNode.Text("Hello ")
-                or items.at(2).get() != HtmlNode.Text(" <world>")
-            ): return panic("HTML text ordering or entities")
-            if items.at(3).get() != HtmlNode.Comment("note"): return panic(
-                "HTML comment"
-            )
-            if (
-                items.at(4).get() != HtmlNode.Element(
-                    tag: "br",
-                    namespace: "",
-                    attributes: [],
-                    children: []
+            try expect_false(tag != "div" or namespace != "")
+            try expect_false(
+                (
+                    attributes != [
+                        HtmlAttribute("id", "", "main"),
+                        HtmlAttribute("title", "", "A & B"),
+                        HtmlAttribute("hidden", "", "")
+                    ]
                 )
-            ): return panic("void element")
-        _: return panic("expected element")
+            )
+            try expect_false(
+                (
+                    items.at(0).get() != HtmlNode.Text("Hello ")
+                    or items.at(2).get() != HtmlNode.Text(
+                        " <world>"
+                    )
+                )
+            )
+            try expect_equal(items.at(3).get(), HtmlNode.Comment("note"))
+            try expect_false(
+                (
+                    items.at(4).get() != HtmlNode.Element(
+                        tag: "br",
+                        namespace: "",
+                        attributes: [],
+                        children: []
+                    )
+                )
+            )
+        _: return fail("expected element")
 
-    if text_content(doc) != "Hello é🙂 <world>": return panic("tree traversal")
+    try expect_equal(text_content(doc), "Hello é🙂 <world>")
 
 test "HTML recovers unclosed tags and inserts document and table structure":
     let doc = try parse("<ul><li>one<li>two</ul><table><tr><td>cell")
     let nodes = body_nodes(doc)
     let entries = children(nodes.at(0).get())
-    if (
-        entries.length() != 2
-        or text_content(entries.at(0).get()) != "one"
-        or text_content((entries.at(1).get())) != "two"
-    ): return panic("implicit li closure")
+    try expect_false(
+        (
+            entries.length() != 2
+            or text_content(entries.at(0).get()) != "one"
+            or text_content((entries.at(1).get())) != "two"
+        )
+    )
 
     match children(nodes.at(1).get()).at(0).get():
         Element(tag, _, _, _):
-            if tag != "tbody": return panic("implicit tbody")
-        _: return panic("expected tbody")
+            try expect_equal(tag, "tbody")
+        _: return fail("expected tbody")
 
-    if text_content(nodes.at(1).get()) != "cell": return panic("unclosed table")
-
+    try expect_equal(text_content(nodes.at(1).get()), "cell")
     let empty = try parse("")
-    if children(children(empty).at(0).get()).length() != 2: return panic(
-        "implicit head and body"
-    )
+    try expect_equal(children(children(empty).at(0).get()).length(), 2)
 
 test "HTML preserves doctypes foreign namespaces and raw script text":
     let doc = try parse(
         "<!DOCTYPE html PUBLIC 'public' 'system'><!--before--><svg><a xlink:href='#icon'/></svg><script>if (a < b) x = '&amp;';</script>"
     )
     let nodes = children(doc)
-    if (
-        nodes.at(0).get() != HtmlNode.Doctype(
-            name: "html",
-            public_id: "public",
-            system_id: "system"
+    try expect_false(
+        (
+            nodes.at(0).get() != HtmlNode.Doctype(
+                name: "html",
+                public_id: "public",
+                system_id: "system"
+            )
         )
-    ): return panic("doctype identifiers")
-    if nodes.at(1).get() != HtmlNode.Comment("before"): return panic("document comment")
-
+    )
+    try expect_equal(nodes.at(1).get(), HtmlNode.Comment("before"))
     let body = children(children(nodes.at(2).get()).at(1).get())
 
     let svg_items = match body.at(0).get():
         Element(tag, namespace, _, items):
-            if tag != "svg" or namespace != "svg": return panic("SVG namespace")
+            try expect_false(tag != "svg" or namespace != "svg")
             items
-        _: return panic("expected SVG")
+        _: return fail("expected SVG")
 
     match svg_items.at(0).get():
         Element(_, child_namespace, attributes, _):
-            if (
-                child_namespace != "svg"
-                or attributes.at(0).get() != HtmlAttribute(
-                    "href",
-                    "xlink",
-                    "#icon"
+            try expect_false(
+                (
+                    child_namespace != "svg"
+                    or attributes.at(0).get() != HtmlAttribute(
+                        "href",
+                        "xlink",
+                        "#icon"
+                    )
                 )
-            ): return panic("namespaced attribute")
-        _: return panic("expected SVG anchor")
+            )
+        _: return fail("expected SVG anchor")
 
-    if text_content(body.at(1).get()) != "if (a < b) x = '&amp;';": return panic(
-        "script raw text"
-    )
+    try expect_equal(text_content(body.at(1).get()), "if (a < b) x = '&amp;';")
 
 test "HTML honors optional byte depth and node limits":
     let empty = try parse("")
-    if ((try parse("", HtmlLimits(0, 2, 4))) != empty): return panic(
-        "exact HTML limits"
-    )
-    if ((try parse("é", HtmlLimits())) != (try parse("é"))): return panic(
-        "omitted HTML limits"
-    )
-
+    try expect_equal((try parse("", HtmlLimits(0, 2, 4))), empty)
+    try expect_equal((try parse("é", HtmlLimits())), (try parse("é")))
     let limited: Result[HtmlNode, HtmlError] = error(HtmlError.LimitExceeded)
-    if (parse("é", HtmlLimits(1)) != limited): return panic("UTF-8 byte limit")
-    if (parse("", HtmlLimits(max_depth: 1)) != limited): return panic(
-        "implicit node depth limit"
-    )
-    if (parse("", HtmlLimits(max_nodes: 3)) != limited): return panic(
-        "implicit node count limit"
-    )
-
+    try expect_equal(parse("é", HtmlLimits(1)), limited)
+    try expect_equal(parse("", HtmlLimits(max_depth: 1)), limited)
+    try expect_equal(parse("", HtmlLimits(max_nodes: 3)), limited)
     let invalid: Result[HtmlNode, HtmlError] = error(HtmlError.InvalidInput)
-    if (parse("", HtmlLimits(max_nodes: -1)) != invalid): return panic(
-        "negative HTML limit"
-    )
-    if HtmlError.InvalidData.message() == "": return panic("HTML error diagnostic")
+    try expect_equal(parse("", HtmlLimits(max_nodes: -1)), invalid)
+    try expect_not_equal(HtmlError.InvalidData.message(), "")

@@ -1,47 +1,35 @@
+import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import {parse, from_int, BigInt, BigIntError} from "@std/bigint.ms"
-import panic from "@std/faults.ms"
 
 test "big integers exceed machine range without losing precision":
     let big = try parse("9223372036854775808", 10)
-    if not big.to_int().is_none(): return panic("overflow conversion")
-    if big.subtract(from_int(1)).to_int() != some(9223372036854775807): return panic(
-        "exact subtraction"
-    )
-    if from_int(7).multiply(from_int(6)).to_string_radix(10) != "42": return panic(
-        "multiply"
-    )
-    if (try from_int(-7).divide(from_int(3))).to_int() != some(-2): return panic(
-        "signed divide"
-    )
-    if (try from_int(-7).remainder(from_int(3))).to_int() != some(-1): return panic(
-        "signed remainder"
-    )
-    if from_int(5).bit_xor(from_int(3)).to_int() != some(6): return panic("bitwise xor")
+    try expect_false(not big.to_int().is_none())
+    try expect_equal(big.subtract(from_int(1)).to_int(), some(9223372036854775807))
+    try expect_equal(from_int(7).multiply(from_int(6)).to_string_radix(10), "42")
+    try expect_equal((try from_int(-7).divide(from_int(3))).to_int(), some(-2))
+    try expect_equal((try from_int(-7).remainder(from_int(3))).to_int(), some(-1))
+    try expect_equal(from_int(5).bit_xor(from_int(3)).to_int(), some(6))
 
 test "big integers validate digits budgets and zero divisors":
     let invalid: Result[BigInt, BigIntError] = error(BigIntError.InvalidInput)
-    if from_int(1).divide(from_int(0)) != invalid: return panic("zero divisor")
-
+    try expect_equal(from_int(1).divide(from_int(0)), invalid)
     let limited: Result[BigInt, BigIntError] = error(BigIntError.LimitExceeded)
-    if parse("123", 10, 2) != limited: return panic("digit limit")
-
+    try expect_equal(parse("123", 10, 2), limited)
     let malformed: Result[BigInt, BigIntError] = error(BigIntError.InvalidData)
-    if parse("1_0", 10) != malformed: return panic("malformed digits")
+    try expect_equal(parse("1_0", 10), malformed)
 
 test "big integer budgets exclude at most one leading sign before validation":
     let limited: Result[BigInt, BigIntError] = error(BigIntError.LimitExceeded)
     let malformed: Result[BigInt, BigIntError] = error(BigIntError.InvalidData)
 
     for text in ["+-1", "-+1", "++1", "--1"]:
-        if parse(text, 10, 1) != limited: return panic(
+        if parse(text, 10, 1) != limited: return fail(
             "second sign must count toward budget: {text}"
         )
-        if parse(text, 10, 2) != malformed: return panic(
+        if parse(text, 10, 2) != malformed: return fail(
             "second sign must fail syntax validation: {text}"
         )
 
     for text in ["1", "+1", "-1"]:
-        if parse(text, 10, 1).is_error(): return panic(
-            "valid sign consumes no digit budget"
-        )
-        if parse(text, 10, 0) != limited: return panic("zero digit budget")
+        try expect_false(parse(text, 10, 1).is_error())
+        try expect_equal(parse(text, 10, 0), limited)

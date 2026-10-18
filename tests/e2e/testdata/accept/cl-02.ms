@@ -1,16 +1,11 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
 fn invalid_division(zero: Int) Bool:
     return 1 / zero == 0
 
 test "grouping and short circuit":
-    if not (2 + 3 * 4 == 14):
-        return panic("check failed")
-    if not ((2 + 3) * 4 == 20):
-        return panic("check failed")
-    if not (10 - 3 - 2 == 5):
-        return panic("check failed")
-    if not (true or invalid_division(0)):
-        return panic("check failed")
-    if not (not (false and invalid_division(0))):
-        return panic("check failed")
+    try expect_equal(2 + 3 * 4, 14)
+    try expect_equal((2 + 3) * 4, 20)
+    try expect_equal(10 - 3 - 2, 5)
+    try expect_false(not (true or invalid_division(0)))
+    try expect_false(not (not (false and invalid_division(0))))

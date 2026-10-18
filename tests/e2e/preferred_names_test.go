@@ -7,14 +7,6 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
-func TestPreferredNamesScopedImplementations(t *testing.T) {
-	result := compiler.CompileFile("testdata/projects/preferred_names/main.ms", compiler.Options{Tests: true})
-	data, err := execute(t, result)
-	if err != nil || !strings.HasSuffix(strings.TrimSpace(string(data)), "1 tests, 0 failed") {
-		t.Fatalf("preferred names scopes: %v\n%s", err, data)
-	}
-}
-
 func TestPreferredNamesRetainFaults(t *testing.T) {
 	source := `test "new set":
     [1].set(1, 2)
@@ -65,13 +57,5 @@ test "continues":
 		if !strings.Contains(output, frame) {
 			t.Errorf("missing %s: %s", frame, output)
 		}
-	}
-}
-
-func TestSameTypeNamesAcrossModules(t *testing.T) {
-	result := compiler.CompileFile("testdata/projects/same_type_names/main.ms", compiler.Options{Tests: true})
-	data, err := execute(t, result)
-	if err != nil || !strings.HasSuffix(strings.TrimSpace(string(data)), "1 tests, 0 failed") {
-		t.Fatalf("same type names: %v\n%s", err, data)
 	}
 }

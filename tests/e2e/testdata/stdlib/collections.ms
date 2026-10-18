@@ -1,5 +1,5 @@
+import {expect_equal, expect_false} from "@std/testing.ms"
 import {ListBuilder, MapBuilder, SetBuilder, range, range_by, filled, map_from_entries} from "@std/collections.ms"
-import panic from "@std/faults.ms"
 
 fn positive(value: Int) Bool: value > 0
 
@@ -13,123 +13,98 @@ fn parity(value: Int) Int: value % 2
 
 test "list search callbacks empty identities and folding":
     let list = [-1, 2, 0, 3]
-    if (list.find(positive) != some(2) or list.find_last(positive) != some(3)): return panic(
-        "find"
+    try expect_false(
+        (list.find(positive) != some(2) or list.find_last(positive) != some(3))
     )
-    if (
-        list.find_index(positive) != some(1)
-        or list.find_last_index(positive) != some(3)
-    ): return panic("find indices")
-    if list.filter(positive).map(twice) != [4, 6]: return panic("sequential callbacks")
-    if ([1, 2]).flat_map(duplicate) != [1, 1, 2, 2]: return panic("flat map")
-    if (list.fold(0, sum) != 4 or list.fold_right(0, sum) != 4): return panic("fold")
-
+    try expect_false(
+        (
+            list.find_index(positive) != some(1)
+            or list.find_last_index(positive) != some(3)
+        )
+    )
+    try expect_equal(list.filter(positive).map(twice), [4, 6])
+    try expect_equal(([1, 2]).flat_map(duplicate), [1, 1, 2, 2])
+    try expect_false((list.fold(0, sum) != 4 or list.fold_right(0, sum) != 4))
     let empty: List[Int] = []
-    if empty.some(positive) or not empty.every(positive): return panic(
-        "empty predicate identities"
-    )
-    if not empty.first().is_none() or not empty.last().is_none(): return panic(
-        "empty search"
-    )
-
+    try expect_false(empty.some(positive) or not empty.every(positive))
+    try expect_false(not empty.first().is_none() or not empty.last().is_none())
     let groups = ([1, 2, 3]).group_by(parity)
-    if groups.get(1) != some([1, 3]) or groups.get(0) != some([2]): return panic(
-        "group order"
-    )
+    try expect_false(groups.get(1) != some([1, 3]) or groups.get(0) != some([2]))
 
 test "list mutation and clone keep separate storage":
     let original = [1, 2, 3]
     let copy = original.clone()
     copy.splice(1, 1, [8, 9])
-    if copy != [1, 8, 9, 3] or original != [1, 2, 3]: return panic("splice clone")
-
+    try expect_false(copy != [1, 8, 9, 3] or original != [1, 2, 3])
     copy.fill(0, 1, 3)
-    if copy != [1, 0, 0, 3]: return panic("fill")
-
+    try expect_equal(copy, [1, 0, 0, 3])
     let overlapping = [1, 2, 3, 4]
     overlapping.copy_within(1, 0, 3)
-    if overlapping != [1, 1, 2, 3]: return panic("overlapping copy")
+    try expect_equal(overlapping, [1, 1, 2, 3])
 
 test "maps preserve insertion order and overwrite duplicate keys":
     let entries = [MapEntry("a", 1), MapEntry("b", 2), MapEntry("a", 3)]
     let map = map_from_entries(entries)
-    if map.keys() != ["a", "b"] or map.values() != [3, 2]: return panic("map order")
-
+    try expect_false(map.keys() != ["a", "b"] or map.values() != [3, 2])
     map.add_default("a", 99)
-    if map.get("a") != some(3): return panic("default overwrote value")
-
+    try expect_equal(map.get("a"), some(3))
     let copy = map.clone().remove("a")
-    if copy.keys() != ["b"] or map.keys() != ["a", "b"]: return panic("map clone")
-    if not map.get("missing").is_none(): return panic("missing key")
+    try expect_false(copy.keys() != ["b"] or map.keys() != ["a", "b"])
+    try expect_false(not map.get("missing").is_none())
 
 test "set algebra removes duplicates and preserves values":
     let left = ([1, 2, 2]).to_set()
     let right = ([2, 3]).to_set()
-    if left.values() != [1, 2]: return panic("set deduplication")
-    if left.union(right).values() != [1, 2, 3]: return panic("union")
-    if left.intersection(right).values() != [2]: return panic("intersection")
-    if left.difference(right).values() != [1]: return panic("difference")
-    if left.symmetric_difference(right).values() != [1, 3]: return panic(
-        "symmetric difference"
-    )
-    if not left.is_subset_of(left.union(right)): return panic("subset")
-    if not left.is_disjoint_from(([3]).to_set()): return panic("disjoint")
+    try expect_equal(left.values(), [1, 2])
+    try expect_equal(left.union(right).values(), [1, 2, 3])
+    try expect_equal(left.intersection(right).values(), [2])
+    try expect_equal(left.difference(right).values(), [1])
+    try expect_equal(left.symmetric_difference(right).values(), [1, 3])
+    try expect_false(not left.is_subset_of(left.union(right)))
+    try expect_false(not left.is_disjoint_from(([3]).to_set()))
 
 test "collection constructors validate bounds and exact limits":
-    if ((try range_by(3, -1, -1, 4)) != [3, 2, 1, 0]): return panic("descending range")
-    if (try filled("x", 2)) != ["x", "x"]: return panic("filled")
-
+    try expect_equal((try range_by(3, -1, -1, 4)), [3, 2, 1, 0])
+    try expect_equal((try filled("x", 2)), ["x", "x"])
     let invalid: Result[List[Int], CollectionError] = error(
         CollectionError.InvalidInput
     )
-    if range_by(0, 1, 0) != invalid: return panic("zero step")
-
+    try expect_equal(range_by(0, 1, 0), invalid)
     let limited: Result[List[Int], CollectionError] = error(
         CollectionError.LimitExceeded
     )
-    if range_by(0, 3, 1, 2) != limited: return panic("range budget")
+    try expect_equal(range_by(0, 3, 1, 2), limited)
 
 test "stepped ranges handle full-width spans and minimum negative steps":
     let minimum = -9223372036854775808
     let maximum = 9223372036854775807
-    if ((try range_by(minimum, maximum, maximum, 3)) != [minimum, -1, (maximum - 1)]): return panic(
-        "full-width ascending range"
+    try expect_equal(
+        (try range_by(minimum, maximum, maximum, 3)),
+        [minimum, -1, (maximum - 1)]
     )
-    if (try range_by(maximum, minimum, minimum, 2)) != [maximum, -1]: return panic(
-        "minimum negative step"
-    )
-    if (try range_by(0, minimum, minimum, 1)) != [0]: return panic(
-        "exclusive minimum endpoint"
-    )
-
+    try expect_equal((try range_by(maximum, minimum, minimum, 2)), [maximum, -1])
+    try expect_equal((try range_by(0, minimum, minimum, 1)), [0])
     let limited: Result[List[Int], CollectionError] = error(
         CollectionError.LimitExceeded
     )
-    if range_by(minimum, maximum, maximum, 2) != limited: return panic(
-        "full-width range limit"
-    )
+    try expect_equal(range_by(minimum, maximum, maximum, 2), limited)
 
 test "range counts up by one":
-    if range(0, 4) != [0, 1, 2, 3]: return panic("range")
-
+    try expect_equal(range(0, 4), [0, 1, 2, 3])
     let none_between: List[Int] = []
-    if range(2, 2) != none_between or range(5, 1) != none_between: return panic(
-        "empty range"
-    )
-    if range(-2, 1) != [-2, -1, 0]: return panic("negative range")
+    try expect_false(range(2, 2) != none_between or range(5, 1) != none_between)
+    try expect_equal(range(-2, 1), [-2, -1, 0])
 
 test "for over range counts without a list":
     var total = 0
     for index in range(0, 5):
         total += index
-    if total != 10: return panic("range loop")
-
+    try expect_equal(total, 10)
     var visits = 0
     for outer in range(0, 3):
         for inner in range(outer, 3):
             visits += 1
-    if visits != 6: return panic("nested range loops")
-
+    try expect_equal(visits, 6)
     var bound = 3
     var seen = 0
 
@@ -137,13 +112,11 @@ test "for over range counts without a list":
         bound = 10
         seen += 1
 
-    if seen != 3: return panic("bounds are evaluated once")
-
+    try expect_equal(seen, 3)
     var huge = 0
     for index in range(9223372036854775800, 9223372036854775807):
         huge += 1
-    if huge != 7: return panic("range near the Int maximum")
-
+    try expect_equal(huge, 7)
     var skipped = 0
 
     for index in range(0, 10):
@@ -152,44 +125,37 @@ test "for over range counts without a list":
 
         skipped += index
 
-    if skipped != 16: return panic("continue and break in range loop")
-
+    try expect_equal(skipped, 16)
     let callbacks: List[fn() Int] = []
     for index in range(0, 3):
         callbacks.append(fn(): index)
-    if callbacks.map(fn(call): call()) != [0, 1, 2]: return panic("range loop captures")
+    try expect_equal(callbacks.map(fn(call): call()), [0, 1, 2])
 
 test "huge sizes return LimitExceeded instead of exhausting memory":
     let limited: Result[List[Int], CollectionError] = error(
         CollectionError.LimitExceeded
     )
-    if filled(1, 9223372036854775807) != limited: return panic("filled huge")
-    if (filled(1, 4611686018427387904, 9223372036854775807) != limited): return panic(
-        "filled huge explicit limit"
-    )
-    if range_by(0, 9223372036854775807, 1) != limited: return panic("range huge")
+    try expect_equal(filled(1, 9223372036854775807), limited)
+    try expect_equal(filled(1, 4611686018427387904, 9223372036854775807), limited)
+    try expect_equal(range_by(0, 9223372036854775807, 1), limited)
 
 test "collection builders freeze all accumulated values":
     let list = ListBuilder[Int]()
     list.append(1)
     list.append(2)
-    if list.freeze() != [1, 2] or list.freeze() != [1, 2]: return panic("list builder")
-
+    try expect_false(list.freeze() != [1, 2] or list.freeze() != [1, 2])
     let map = MapBuilder[String, Int]()
     map.add("a", 1)
     map.add("a", 2)
-    if map.freeze().get("a") != some(2): return panic("map builder")
-
+    try expect_equal(map.freeze().get("a"), some(2))
     let set = SetBuilder[Int]()
     set.add(1)
     set.add(1)
-    if set.freeze().values() != [1]: return panic("set builder")
+    try expect_equal(set.freeze().values(), [1])
 
 test "imported map add interoperates with with_entry":
     let values = Map[String, Int]().add("a", 1)
     values.add("b", 2).add(value: 3, "a")
     let add = values.add
     add("c", 4)
-    if values.keys() != ["a", "b", "c"] or values.values() != [3, 2, 4]: return panic(
-        "map add compatibility"
-    )
+    try expect_false(values.keys() != ["a", "b", "c"] or values.values() != [3, 2, 4])

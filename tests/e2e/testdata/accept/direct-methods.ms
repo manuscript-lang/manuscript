@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 type Counter:
     n: Int
@@ -39,31 +39,23 @@ fn guarded(c: Counter, by: Int) Int:
 
 test "method calls on concrete receivers":
     let c = Counter(4)
-    if not (c.bump(3) == 7):
-        return panic("record")
-    if not (Shape.Circle(2).bump(1) == 3):
-        return panic("circle")
-    if not (Shape.Square(3).bump(2) == 6):
-        return panic("square")
+    try expect_equal(c.bump(3), 7)
+    try expect_equal(Shape.Circle(2).bump(1), 3)
+    try expect_equal(Shape.Square(3).bump(2), 6)
 
 test "one call site sees different receiver types":
     let counters: List[Counter] = [Counter(1), Counter(2), Counter(3)]
     var total = 0
     for counter in counters:
         total += guarded(counter, 10)
-    if not (total == 36):
-        return panic("loop")
+    try expect_equal(total, 36)
 
 test "views, defaults, and reordered labels keep dispatch":
     let c = Counter(5)
-    if not (through_view(Bumper(c), 2) == 7):
-        return panic("view")
-    if not (c.scale(2) == 10):
-        return panic("default")
-    if not (c.scale(offset: some(1), factor: 2) == 11):
-        return panic("reordered")
-    if not (c.scale(2, some(3)) == 13):
-        return panic("ordered")
+    try expect_equal(through_view(Bumper(c), 2), 7)
+    try expect_equal(c.scale(2), 10)
+    try expect_equal(c.scale(offset: some(1), factor: 2), 11)
+    try expect_equal(c.scale(2, some(3)), 13)
 
 type Parser:
     base: Int
@@ -103,13 +95,8 @@ fn run_bound(chain: Chain, n: Int) Int:
 
 test "nested try in a direct method becomes an error result":
     let chain = Chain(Parser(10))
-    if not (run_direct(chain, 5) == 16):
-        return panic("ok")
-    if not (run_direct(chain, -5) == -1):
-        return panic("direct error result")
-    if not (run_view(chain, -5) == -1):
-        return panic("view error result")
-    if not (run_bound(chain, -5) == -1):
-        return panic("bound error result")
-    if not (run_bound(chain, 5) == 16):
-        return panic("bound ok")
+    try expect_equal(run_direct(chain, 5), 16)
+    try expect_equal(run_direct(chain, -5), -1)
+    try expect_equal(run_view(chain, -5), -1)
+    try expect_equal(run_bound(chain, -5), -1)
+    try expect_equal(run_bound(chain, 5), 16)

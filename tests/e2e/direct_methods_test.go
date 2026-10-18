@@ -8,7 +8,7 @@ import (
 )
 
 func TestDirectMethodsKeepSemantics(t *testing.T) {
-	result := compiler.CompileSource("methods.ms", `import panic from "@std/faults.ms"
+	result := compiler.CompileSource("methods.ms", `import {expect_true, fail} from "@std/testing.ms"
 
 interface Shape:
     fn area() Int
@@ -50,9 +50,6 @@ impl Shape for Sign:
     fn grow(depth: Int) Int:
         return depth
 
-fn check(ok: Bool, name: String) Unit:
-    if not ok:
-        return panic(message: name)
 
 fn through(shape: Shape) Int:
     return shape.scaled(by: 2)
@@ -71,19 +68,21 @@ fn id(log: List[String]) Int:
 
 test "direct methods":
     let rect = Rect(w: 3, h: 4)
-    check(ok: rect.area() == 12, name: "area")
-    check(ok: rect.scaled(by: 3) == 36, name: "nested method call")
-    check(ok: through(shape: Shape(value: rect)) == 24, name: "view call")
-    check(ok: through(shape: Shape(value: Plus(n: 5))) == 10, name: "alternative through view")
-    check(ok: Minus(n: 4).area() == 0 - 4, name: "alternative receiver")
-    check(ok: rect.grow(depth: 10) == 13, name: "recursion")
-    check(ok: tried(rect: rect, limit: 12).get() == 24, name: "tried")
-    let failed = tried(rect: rect, limit: 11)
-    check(ok: failed.is_error(), name: "expected failure")
-    check(ok: failed.err() == "too big", name: "tried cause")
+    (rect.area() == 12) | try expect_true
+    (rect.scaled(by: 3) == 36) | try expect_true
+    (through(shape: Shape(value: rect)) == 24) | try expect_true
+    (through(shape: Shape(value: Plus(n: 5))) == 10) | try expect_true
+    (Minus(n: 4).area() == 0 - 4) | try expect_true
+    (rect.grow(depth: 10) == 13) | try expect_true
+    match tried(rect: rect, limit: 12):
+        ok(value): (value == 24) | try expect_true
+        error(cause): return fail(cause)
+    match tried(rect: rect, limit: 11):
+        ok(value): return fail("expected failure")
+        error(cause): (cause == "too big") | try expect_true
     let log = List[String]()
-    check(ok: order(rect: rect, log: log) == 12, name: "order result")
-    check(ok: log.join(separator: ",") == "receiver,argument", name: "receiver before arguments")
+    (order(rect: rect, log: log) == 12) | try expect_true
+    (log.join(separator: ",") == "receiver,argument") | try expect_true
 test "method fault frame":
     let rect = Rect(w: 9223372036854775807, h: 2)
     rect.area()

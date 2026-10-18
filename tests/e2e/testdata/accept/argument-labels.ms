@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_true} from "@std/testing.ms"
 import abs_int from "@std/math.ms"
 import Scheduler from "@std/tasks.ms"
 import Synchronized from "@std/sync.ms"
@@ -12,7 +12,7 @@ fn identity[T](value: T) T:
 fn sum(values: List[Int]) Int:
     var total = 0
     for value in values:
-        total += value
+        total = total + value
     return total
 
 fn apply(transform: fn(value: Int) Int) Int:
@@ -40,126 +40,86 @@ fn next(state: Synchronized[Int]) Int:
         locked.set(value + 1)
         return value
 
-fn prepare_receiver(state: Synchronized[Int]) Offset:
-    if not (next(state) == 0):
-        return panic(message: "check failed")
+fn prepare_receiver(state: Synchronized[Int]) Result[Offset, Error]:
+    next(state) | try expect_equal(expected: 0)
+    return ok(Offset(2))
 
-    return Offset(2)
-
-fn prepare_function(state: Synchronized[Int]) fn(value: Int) Int:
-    if not (next(state) == 4):
-        return panic(message: "check failed")
-
-    return increment
+fn prepare_function(state: Synchronized[Int]) Result[fn(value: Int) Int, Error]:
+    next(state) | try expect_equal(expected: 4)
+    return ok(increment)
 
 fn absent(value: Optional[Int]) Bool:
     let missing: Optional[Int] = none
     return value == missing
 
 test "optional labels on single-parameter functions":
-    if not (increment(3) == increment(value: 3)):
-        return panic(message: "check failed")
-
+    increment(3) | try expect_equal(expected: increment(value: 3))
     let multiline = increment(3)
-    if not (multiline == 4):
-        return panic(message: "check failed")
-    if not (identity(7) == 7):
-        return panic(message: "check failed")
-    if not (identity[Int](7) == 7):
-        return panic(message: "check failed")
-    if not (identity(true)):
-        return panic(message: "check failed")
-    if not (identity(unit) == unit):
-        return panic(message: "check failed")
-    if not (absent(none)):
-        return panic(message: "check failed")
-    if not ("{increment(3)}" == "4"):
-        return panic(message: "check failed")
-    if not (select()(5) == 6):
-        return panic(message: "check failed")
-
+    multiline | try expect_equal(expected: 4)
+    identity(7) | try expect_equal(expected: 7)
+    identity[Int](7) | try expect_equal(expected: 7)
+    (identity(true)) | try expect_true
+    identity(unit) | try expect_equal(expected: unit)
+    (absent(none)) | try expect_true
+    "{increment(3)}" | try expect_equal(expected: "4")
+    select()(5) | try expect_equal(expected: 6)
     let specialized = identity[Int]
-    if not (specialized(8) == 8):
-        return panic(message: "check failed")
-
+    specialized(8) | try expect_equal(expected: 8)
     let closure = fn(value: Int):
         return value * 2
-    if not (closure(3) == 6):
-        return panic(message: "check failed")
-    if not (apply(closure) == 8):
-        return panic(message: "check failed")
-
+    closure(3) | try expect_equal(expected: 6)
+    apply(closure) | try expect_equal(expected: 8)
     let result = apply(
         fn(value):
             return value + 2
     )
-    if not (result == 6):
-        return panic(message: "check failed")
-    if not (subtract(deduction: increment(1), amount: increment(8)) == 7):
-        return panic(message: "check failed")
+    result | try expect_equal(expected: 6)
+    subtract(deduction: increment(1), amount: increment(8)) | try expect_equal(
+        expected: 7
+    )
 
 test "optional labels on methods and native functions":
     let offset = Offset(3)
-    if not (offset.apply(4) == 7):
-        return panic(message: "check failed")
-
+    offset.apply(4) | try expect_equal(expected: 7)
     let view = Increment(offset)
-    if not (view.apply(4) == 7):
-        return panic(message: "check failed")
-
+    view.apply(4) | try expect_equal(expected: 7)
     let method = view.apply
-    if not (method(5) == 8):
-        return panic(message: "check failed")
-    if not (abs_int(-3) == 3):
-        return panic(message: "check failed")
-
+    method(5) | try expect_equal(expected: 8)
+    abs_int(-3) | try expect_equal(expected: 3)
     let native = abs_int
-    if not (native(-4) == 4):
-        return panic(message: "check failed")
-    if not (sum([]) == 0):
-        return panic(message: "check failed")
-    if not (sum([1, 2, 3]) == 6):
-        return panic(message: "check failed")
-    if not (([1, 2, 3]).reverse_in_place() == [3, 2, 1]):
-        return panic(message: "check failed")
-    if not ([1, 2].append(3) == [1, 2, 3]):
-        return panic(message: "check failed")
-
+    native(-4) | try expect_equal(expected: 4)
+    sum([]) | try expect_equal(expected: 0)
+    sum([1, 2, 3]) | try expect_equal(expected: 6)
+    ([1, 2, 3]).reverse_in_place() | try expect_equal(expected: [3, 2, 1])
+    [1, 2].append(3) | try expect_equal(expected: [1, 2, 3])
     let lookup = [4, 5].at
     let expected: Optional[Int] = some(5)
-    if not (lookup(1) == expected):
-        return panic(message: "check failed")
-    if not ([4, 5].at(0) == some(4)):
-        return panic(message: "check failed")
+    lookup(1) | try expect_equal(expected: expected)
+    [4, 5].at(0) | try expect_equal(expected: some(4))
 
     with service = Scheduler(limit: 1, drain: 2.seconds):
         let operation = fn() Result[Unit, Error]:
             return ok(unit)
-        let _id = try service.start(operation)
+
+        match service.start(operation):
+            ok(_):
+                ((true) | try expect_true)
+            error(_):
+                ((false) | try expect_true)
 
 test "omitted labels preserve evaluation order":
     let state = Synchronized(0)
-    if not (prepare_receiver(state).apply(next(state)) == 3):
-        return panic(message: "check failed")
-
+    (try prepare_receiver(state)).apply(next(state)) | try expect_equal(expected: 3)
     with locked = state.lock():
-        if not (locked.get() == 2):
-            return panic(message: "check failed")
-    if not (subtract(deduction: next(state), amount: next(state)) == 1):
-        return panic(message: "check failed")
-
+        locked.get() | try expect_equal(expected: 2)
+    subtract(deduction: next(state), amount: next(state)) | try expect_equal(
+        expected: 1
+    )
     with locked = state.lock():
-        if not (locked.get() == 4):
-            return panic(message: "check failed")
-    if not (prepare_function(state)(next(state)) == 6):
-        return panic(message: "check failed")
-
+        locked.get() | try expect_equal(expected: 4)
+    (try prepare_function(state))(next(state)) | try expect_equal(expected: 6)
     with locked = state.lock():
-        if not (locked.get() == 6):
-            return panic(message: "check failed")
-    if not (sum([next(state), next(state)]) == 13):
-        return panic(message: "check failed")
-
+        locked.get() | try expect_equal(expected: 6)
+    sum([next(state), next(state)]) | try expect_equal(expected: 13)
     with locked = state.lock():
-        if not (locked.get() == 8):
-            return panic(message: "check failed")
+        locked.get() | try expect_equal(expected: 8)

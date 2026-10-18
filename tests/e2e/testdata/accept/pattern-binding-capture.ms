@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
 type Failure[T]:
     case NotFound
@@ -36,11 +36,14 @@ test "a payload identifier binds every alternative without changing semantics":
     )
     let missing: Result[Int, Failure[String]] = error(Failure[String].NotFound)
     let success: Result[Int, Failure[String]] = ok(7)
-    if (captured(denied) != 1 or captured(missing) != 1 or captured(success) != 7):
-        return panic(message: "payload binding semantics changed")
-    if (precise(denied) != 2 or precise(missing) != 1 or precise(success) != 7):
-        return panic(
-            message: "separate payload helper did not distinguish alternatives"
+    try expect_false(
+        (
+            captured(denied) != 1
+            or captured(missing) != 1
+            or captured(success) != 7
         )
-    if deliberate(denied) != "permission denied":
-        return panic(message: "bound error payload was lost")
+    )
+    try expect_false(
+        (precise(denied) != 2 or precise(missing) != 1 or precise(success) != 7)
+    )
+    try expect_equal(deliberate(denied), "permission denied")

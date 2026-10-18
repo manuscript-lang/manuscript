@@ -25,14 +25,15 @@ func TestTestsRunInProjectDirectory(t *testing.T) {
 	write("src/main.ms", "export fn main() Int:\n    return 0\n")
 	write("golden/input.txt", "fixture")
 	write("test.ms", `import filesystem from "@std/fs.ms"
-import panic from "@std/faults.ms"
+import {expect_true, fail} from "@std/testing.ms"
 
 test "fixture next to the manifest":
-    if let data = filesystem().read_file(path: "golden/input.txt", max_bytes: 1024):
-        if data.length() != 7:
-            return panic(message: "wrong fixture size")
-    else:
-        return panic(message: "fixture not found")
+    match filesystem().read_file(path: "golden/input.txt", max_bytes: 1024):
+        ok(data):
+            if data.length() != 7:
+                return fail("wrong fixture size")
+        error(_):
+            return fail("fixture not found")
 `)
 	elsewhere := t.TempDir()
 	for _, target := range []string{filepath.Join(root, "ms.toml"), filepath.Join(root, "test.ms")} {

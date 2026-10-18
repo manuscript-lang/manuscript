@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 type Problem:
     case Missing(reason: String)
@@ -20,7 +20,5 @@ fn summarize(outcome: Result[Int, Problem]) Int:
     return outcome.get(-1)
 
 test "unchanged propagated error":
-    if not (summarize(doubled(3)) == 6):
-        return panic("check failed")
-    if not (summarize(doubled(-1)) == -1):
-        return panic("check failed")
+    try expect_equal(summarize(doubled(3)), 6)
+    try expect_equal(summarize(doubled(-1)), -1)
