@@ -4,14 +4,14 @@ type Counter:
     value: Int
 
 fn make_fixture() Counter:
-    return Counter(value: 0)
+    return Counter(0)
 
 impl TestHooks for Counter:
     fn before_each() Unit:
-        self.value = self.value + 1
+        self.value += 1
 
     fn after_each() Unit:
-        self.value = self.value + 10
+        self.value += 10
 
 test "first fixture use":
     try expect_equal(fixture.value, 1)

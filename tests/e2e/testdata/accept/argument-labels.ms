@@ -12,7 +12,7 @@ fn identity[T](value: T) T:
 fn sum(values: List[Int]) Int:
     var total = 0
     for value in values:
-        total = total + value
+        total += value
     return total
 
 fn apply(transform: fn(value: Int) Int) Int:
@@ -135,8 +135,7 @@ test "optional labels on methods and native functions":
     with service = Scheduler(limit: 1, drain: 2.seconds):
         let operation = fn() Result[Unit, Error]:
             return ok(unit)
-        if service.start(operation).is_error():
-            return panic(message: "check failed")
+        let _id = try service.start(operation)
 
 test "omitted labels preserve evaluation order":
     let state = Synchronized(0)

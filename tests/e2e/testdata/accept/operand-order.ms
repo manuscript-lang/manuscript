@@ -3,7 +3,7 @@ export fn main() Int:
     let total = number + (
         match some(1):
             some(value):
-                number = number + 1
+                number += 1
                 value
             none: 0
     )

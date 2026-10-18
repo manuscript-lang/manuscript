@@ -23,11 +23,11 @@ test "inline functions and branches":
     let increment = fn(value: Int): value + 1
     if increment(2) != 3: return panic("inline closure failed")
 
-    let result = apply(value: 4, transform: fn(value): value * 3)
+    let result = apply(4, fn(value): value * 3)
     if result != 12: return panic("inline callback failed")
 
     var count = 0
-    while count < 3: count = count + 1
+    while count < 3: count += 1
     if count != 3: return panic("inline assignment failed")
 
 test "inline test": return

@@ -30,7 +30,7 @@ test "bound typed and generic calls retain the required count and captured recei
     var text = "aaaa"
     let replace = text.replace_n
     text = "zzzz"
-    if replace(old: "a", new: "b", max_replacements: 2) != "bbaa":
+    if replace("a", "b", 2) != "bbaa":
         return panic("stored receiver")
 
     let typed: fn(old: String, new: String, max_replacements: Int) String = replace

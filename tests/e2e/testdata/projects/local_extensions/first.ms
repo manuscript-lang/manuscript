@@ -59,7 +59,7 @@ import Resource from "./domain.ms"
 
 impl Closeable for Resource:
     fn close() Unit:
-        self.events.append(value: 10)
+        self.events.append(10)
 
 fn leave(resource: Resource) Unit:
     with local = resource:
@@ -71,7 +71,7 @@ export fn first_resource(resource: Resource) Closeable:
 test "first local cleanup":
     let events = ListBuilder[Int]()
     leave(Resource(events))
-    if events.freeze().at(index: 0) != some(10):
+    if events.freeze().at(0) != some(10):
         return panic("local cleanup")
 
 export fn mixed[T: Read[Int]](value: T, concrete: Item) Int:

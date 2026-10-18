@@ -4,7 +4,7 @@ type Counter:
     calls: Int
 
 fn touch(counter: Counter) Bool:
-    counter.calls = counter.calls + 1
+    counter.calls += 1
     return true
 
 fn fail() Bool:
@@ -35,7 +35,7 @@ test "boolean optimization preserves source evaluation order":
         return panic("folding defaults or closures changed the result")
 
 test "bindings read only by a folded-away operand still compile":
-    var only_dropped = 10
+    let only_dropped = 10
     let dropped_or = true or only_dropped > 0
     for item in [1, 2]:
         if false and item > 0:

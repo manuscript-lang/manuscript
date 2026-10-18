@@ -6,7 +6,7 @@ export type Mode:
     case On
 
 export fn shifted() Int:
-    return Point(x: 10).x + 1
+    return Point(10).x + 1
 
 export fn flip() Int:
     match Mode.Off:

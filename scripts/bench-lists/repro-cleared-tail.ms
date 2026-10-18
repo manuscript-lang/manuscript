@@ -6,10 +6,10 @@ export fn main() Int:
     var count = 0
 
     for value in values:
-        total = total + value
+        total += value
         if count == 0:
             values.remove(0)
-        count = count + 1
+        count += 1
 
     if total != 7:
         panic("unexpected sum")

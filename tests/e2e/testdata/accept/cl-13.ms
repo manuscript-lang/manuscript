@@ -4,11 +4,11 @@ fn echo(value: String) String:
     return value
 
 test "text source forms":
-    if not (echo(value: "\{literal\}") == "\{literal\}"):
-        return panic(message: "check failed")
+    if not (echo("\{literal\}") == "\{literal\}"):
+        return panic("check failed")
     if not ("\u{1F600}" == "😀"):
-        return panic(message: "check failed")
+        return panic("check failed")
     if not ("value: {3}" == "value: 3"):
-        return panic(message: "check failed")
+        return panic("check failed")
 
-    let no_value: Unit = unit
+    let _no_value: Unit = unit

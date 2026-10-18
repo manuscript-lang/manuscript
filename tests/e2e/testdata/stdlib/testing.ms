@@ -29,15 +29,15 @@ test "testing assertions":
     try expect_contains("Manuscript", "script")
     let present: Optional[Int] = some(7)
     let absent: Optional[Int] = none
-    try expect_equal(try expect_some(present), 7)
+    try expect_some(present) | try expect_equal(7)
     try expect_none(absent)
     let success: Result[Int, String] = ok(9)
     let failure: Result[Int, String] = error("bad")
-    try expect_equal(try expect_ok(success), 9)
-    try expect_equal(try expect_error(failure), "bad")
+    try expect_ok(success) | try expect_equal(9)
+    try expect_error(failure) | try expect_equal("bad")
     let mismatch_cause = expect_equal(1, 2) | try expect_error
     try expect_contains(mismatch_cause.message(), "expected 2, got 1")
-    try expect_contains(try expect_fault(fn(): panic("boom")), "boom")
+    try expect_fault(fn(): panic("boom")) | try expect_contains("boom")
     let quiet_cause = expect_fault(fn(): unit) | try expect_error
     try expect_contains(quiet_cause.message(), "returned normally")
 
@@ -56,5 +56,5 @@ impl Equal for Key:
             _: return false
 
 test "assertions preserve domain equality":
-    try expect_equal(Key(id: 1, label: "first"), Key(id: 1, label: "second"))
-    try expect_not_equal(Key(id: 1, label: "first"), Key(id: 2, label: "first"))
+    try expect_equal(Key(1, "first"), Key(1, "second"))
+    try expect_not_equal(Key(1, "first"), Key(2, "first"))

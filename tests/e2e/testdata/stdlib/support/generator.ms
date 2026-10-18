@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import range from "@std/collections.ms"
 
 # Deterministic generator so failures reproduce from the seed in the message.
 export type Rng:
@@ -16,12 +16,8 @@ let pieces = [
 
 export fn text(rng: Rng) String:
     var out = ""
-    var count = next(rng, 4)
-
-    while count > 0:
-        out = out + pieces[next(rng, pieces.length())].unwrap_or("")
-        count = count - 1
-
+    for piece in range(0, next(rng, 4)):
+        out += pieces[next(rng, pieces.length())].unwrap_or("")
     return out
 
 # Deletes, inserts or replaces one character-sized piece of source text.

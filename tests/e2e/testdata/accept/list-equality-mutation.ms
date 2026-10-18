@@ -24,7 +24,7 @@ fn check_equality(side: String, mutation: String) Unit:
     let right: List[Element] = []
     let calls = Visits(0)
     let visit = fn():
-        calls.count = calls.count + 1
+        calls.count += 1
         if calls.count != 1:
             return
 

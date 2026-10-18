@@ -5,7 +5,7 @@ type Counter:
     calls: Int
 
 fn fallback(counter: Counter) Int:
-    counter.calls = counter.calls + 1
+    counter.calls += 1
     return 42
 
 fn value_or[T](value: Optional[T], fallback: T) T:
@@ -24,8 +24,8 @@ test "Optional presence and extraction preserve false and zero":
 
     let flag: Optional[Bool] = some(false)
     if flag.unwrap(): return panic("false payload lost")
-    if value_or(value: missing, fallback: 7) != 7: return panic("generic fallback")
-    if value_or(value: present, fallback: 7) != 0: return panic("generic payload")
+    if value_or(missing, 7) != 7: return panic("generic fallback")
+    if value_or(present, 7) != 0: return panic("generic payload")
     if missing.is_some():
         return panic(missing.unwrap().to_string())
 
@@ -64,7 +64,7 @@ test "Optional methods retain generic payload and receiver identity":
     if snapshot != outer: return panic("optional value semantics changed")
 
 test "Optional fallbacks preserve standard option records":
-    let limits = JsonLimits(max_bytes: -1)
+    let limits = JsonLimits(-1)
     let missing: Optional[JsonLimits] = none
     let extracted = missing.unwrap_or(limits)
     if extracted.max_bytes.unwrap() != -1: return panic("generic record normalized")

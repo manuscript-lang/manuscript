@@ -9,7 +9,7 @@ type Resource:
 
 impl Closeable for Resource:
     fn close() Unit:
-        self.counter.value = self.counter.value + 1
+        self.counter.value += 1
 
 fn mark(counter: Counter, digit: Int) Int:
     counter.value = counter.value * 10 + digit
@@ -19,12 +19,12 @@ fn generic[T: Equal](left: T, right: T) Bool: left == right
 
 fn returning_match() Bool:
     return true == match some(1):
-        some(value): return false
+        some(_): return false
         none: false
 
 test "primitive equality captures operands once in order":
     let counter = Counter()
-    if mark(counter, digit: 1) == mark(counter, digit: 2):
+    if mark(counter, 1) == mark(counter, 2):
         return panic("distinct integers compared equal")
     if counter.value != 12: return panic("operand order or count changed")
 
@@ -38,8 +38,8 @@ test "primitive equality captures operands once in order":
         "left read moved past right mutation"
     )
 
-    let skipped = false and mark(counter, digit: 3) == 3
-    let skipped_again = true or mark(counter, digit: 4) == 4
+    let skipped = false and mark(counter, 3) == 3
+    let skipped_again = true or mark(counter, 4) == 4
     if (skipped or not skipped_again or counter.value != 12):
         return panic("comparison escaped short circuit")
     if "é" == "e\u{0301}" or "λ🙂" != "λ🙂": return panic("Unicode equality changed")
@@ -63,7 +63,7 @@ fn defaulted(
     value: Int = match some(2):
         some(number):
             with resource = Resource(counter):
-                let used = unit
+                let _used = unit
             number
         none: 0
 ) Int: value
@@ -99,13 +99,13 @@ fn nested_results(counter: Counter) Result[Int, String]:
             return ok(value)
 
         return ok(false)
-    let ignored = child()
+    let _ignored = child()
     let value = try failed()
     return ok(value)
 
 fn statement_match_try(counter: Counter) Result[Int, String]:
     match some(1):
-        some(number):
+        some(_):
             with resource = Resource(counter):
                 let value = try failed()
                 return ok(value)
@@ -117,15 +117,14 @@ fn value_match_loop_try(counter: Counter) Result[Int, String]:
     var index = 0
 
     while index < 2:
-        let selected = match some(index):
+        let _selected = match some(index):
             some(number):
                 with resource = Resource(counter):
-                    let value = try failed()
-                    let used = value
+                    let _value = try failed()
                 number
             none: 0
 
-        index = index + 1
+        index += 1
 
     return ok(index)
 
@@ -157,7 +156,7 @@ test "cleanup remains owned by its source callable":
         return panic("match source return cleanup lost")
     if defaulted(counter) != 2 or counter.value != 3:
         return panic("default match cleanup lost")
-    if defaulted(counter, value: 9) != 9 or counter.value != 3:
+    if defaulted(counter, 9) != 9 or counter.value != 3:
         return panic("explicit argument ran default cleanup")
 
     nested(counter)
@@ -175,7 +174,7 @@ test "cleanup remains owned by its source callable":
     var index = 0
 
     while index < 3:
-        index = index + 1
+        index += 1
 
         with resource = Resource(counter):
             if index == 1: continue

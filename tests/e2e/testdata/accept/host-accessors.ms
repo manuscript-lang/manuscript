@@ -1,5 +1,5 @@
 import {arguments, environment} from "@std/cli.ms"
-import {stdin, stdout, stderr} from "@std/io.ms"
+import {IoError, stdin, stdout, stderr} from "@std/io.ms"
 import {clock, wall_clock} from "@std/time.ms"
 import entropy from "@std/random.ms"
 import system from "@std/system.ms"
@@ -21,14 +21,13 @@ fn check_services() Unit:
         return panic("system service unavailable")
 
     for entry in environment():
-        match system().environment(entry.key):
-            some(value):
-                if value != entry.value:
-                    return panic("environment snapshot differs")
-            none:
-                return panic("environment entry missing")
+        if let value = system().environment(entry.key):
+            if value != entry.value:
+                return panic("environment snapshot differs")
+        else:
+            return panic("environment entry missing")
 
-    if let data = entropy().bytes(count: 0):
+    if let data = entropy().bytes(0):
         if data.length() != 0:
             return panic("unexpected entropy size")
     else:
@@ -52,12 +51,8 @@ test "repeated accessors retain closed root state":
     let written = stdout().write("".to_bytes())
     if written.is_ok():
         return panic("accessor reopened stdout")
-
-    match written.unwrap_error():
-        Closed:
-            return
-        _:
-            return panic("unexpected closed-stream error")
+    if written.unwrap_error() != IoError.Closed:
+        return panic("unexpected closed-stream error")
 
 test "a later test receives fresh standard output":
     if stdout().write("".to_bytes()).is_error():

@@ -117,7 +117,7 @@ fn scan(state: Decoder, byte: Int) Result[Bool, JsonError]:
     let limit = state.limits.max_bytes.unwrap_or(-1)
     if state.mode == 3 and is_space(byte): return ok(true)
 
-    state.size = state.size + 1
+    state.size += 1
     if limit >= 0 and state.size > limit: return error(JsonError.LimitExceeded)
 
     state.pending.append(byte)
@@ -138,7 +138,7 @@ fn scan(state: Decoder, byte: Int) Result[Bool, JsonError]:
         return ok(false)
 
     if byte == 123 or byte == 91:
-        state.depth = state.depth + 1
+        state.depth += 1
         if state.depth > state.limits.max_depth.unwrap_or(state.depth): return error(
             JsonError.LimitExceeded
         )
@@ -146,7 +146,7 @@ fn scan(state: Decoder, byte: Int) Result[Bool, JsonError]:
         return ok(false)
 
     if byte == 125 or byte == 93:
-        state.depth = state.depth - 1
+        state.depth -= 1
         return ok(state.depth == 0)
 
     return ok(false)
@@ -163,7 +163,7 @@ impl JsonDecoder for Decoder:
     fn feed(chunk: Bytes) Result[List[JsonValue], JsonError]:
         check_cancelled()
         if self.finished: return error(JsonError.InvalidInput)
-        if self.failure.is_some(): return error(self.failure.unwrap())
+        if let failure = self.failure: return error(failure)
 
         let values: List[JsonValue] = []
 
@@ -171,14 +171,13 @@ impl JsonDecoder for Decoder:
             let stepped = step(self, byte)
             if stepped.is_error(): return fail(self, stepped.unwrap_error())
 
-            let found = stepped.unwrap()
-            if found.is_some(): values.append(found.unwrap())
+            if let found = stepped.unwrap(): values.append(found)
 
         return ok(values)
 
     fn finish() Result[List[JsonValue], JsonError]:
         if self.finished: return error(JsonError.InvalidInput)
-        if self.failure.is_some(): return error(self.failure.unwrap())
+        if let failure = self.failure: return error(failure)
 
         self.finished = true
         let values: List[JsonValue] = []
