@@ -59,6 +59,74 @@ impl Error for CryptoError:
     # Returns a cryptography-prefixed diagnostic without exposing keys, plaintext or ciphertext.
     fn message() String:
 
+# Selects an elliptic curve for ECDSA and ECDH keys.
+export type Curve:
+    # NIST P-256 (secp256r1).
+    case P256
+    # NIST P-384 (secp384r1).
+    case P384
+    # NIST P-521 (secp521r1).
+    case P521
+    # Curve25519, valid for key agreement (`ecdh_shared_secret`) only.
+    case X25519
+
+# Incrementally hashes or authenticates data supplied in chunks.
+export interface Hasher:
+    # Appends data to the running hash.
+    fn update(data: Bytes) Unit
+
+    # Returns the digest of all data supplied since creation or the last finish, then resets the state.
+    fn finish() Bytes
+
+# Encrypts or decrypts data with AES in CTR mode. The same call encrypts and decrypts.
+# `key` is 16, 24 or 32 bytes and `iv` is the 16-byte initial counter block.
+export fn aes_ctr(key: Bytes, iv: Bytes, data: Bytes) Result[Bytes, CryptoError]:
+
+# Encrypts with AES in CBC mode and PKCS#7 padding. `key` is 16, 24 or 32 bytes; `iv` is 16 bytes.
+export fn aes_cbc_encrypt(key: Bytes, iv: Bytes, plaintext: Bytes) Result[Bytes, CryptoError]:
+
+# Decrypts AES-CBC data and removes PKCS#7 padding.
+# Fails with InvalidInput for a bad key, IV or length, and AuthenticationFailed for invalid padding.
+export fn aes_cbc_decrypt(key: Bytes, iv: Bytes, ciphertext: Bytes) Result[Bytes, CryptoError]:
+
+# Generates a private key and returns it as PKCS#8 DER bytes.
+export fn ecdsa_generate(curve: Curve) Result[Bytes, CryptoError]:
+
+# Returns the PKIX (SubjectPublicKeyInfo) DER public key for a PKCS#8 DER private key.
+# Works for ECDSA, X25519, Ed25519 and RSA private keys.
+export fn public_key_der(private_key: Bytes) Result[Bytes, CryptoError]:
+
+# Signs the digest of data with an ECDSA private key (PKCS#8 DER) and returns an ASN.1 DER signature.
+export fn ecdsa_sign(private_key: Bytes, hash: HashAlgorithm, data: Bytes) Result[Bytes, CryptoError]:
+
+# Verifies an ASN.1 DER ECDSA signature with a PKIX DER public key. Malformed keys or signatures return false.
+export fn ecdsa_verify(public_key: Bytes, hash: HashAlgorithm, data: Bytes, signature: Bytes) Bool:
+
+# Computes the shared secret between a PKCS#8 DER private key and a PKIX DER public key.
+# Both keys must use the same curve (P-256, P-384, P-521 or X25519).
+export fn ecdh_shared_secret(private_key: Bytes, peer_public_key: Bytes) Result[Bytes, CryptoError]:
+
+# Generates an RSA private key of `bits` (2048 through 8192) as PKCS#8 DER bytes.
+export fn rsa_generate(bits: Int) Result[Bytes, CryptoError]:
+
+# Signs the digest of data with RSASSA-PKCS1-v1_5 using a PKCS#8 DER RSA private key.
+export fn rsa_sign(private_key: Bytes, hash: HashAlgorithm, data: Bytes) Result[Bytes, CryptoError]:
+
+# Verifies an RSASSA-PKCS1-v1_5 signature with a PKIX DER RSA public key.
+export fn rsa_verify(public_key: Bytes, hash: HashAlgorithm, data: Bytes, signature: Bytes) Bool:
+
+# Signs the digest of data with RSASSA-PSS (salt length equal to the digest size).
+export fn rsa_sign_pss(private_key: Bytes, hash: HashAlgorithm, data: Bytes) Result[Bytes, CryptoError]:
+
+# Verifies an RSASSA-PSS signature produced with a digest-sized salt.
+export fn rsa_verify_pss(public_key: Bytes, hash: HashAlgorithm, data: Bytes, signature: Bytes) Bool:
+
+# Encrypts a short message with RSA-OAEP using the given hash and a PKIX DER public key.
+export fn rsa_encrypt(public_key: Bytes, hash: HashAlgorithm, message: Bytes) Result[Bytes, CryptoError]:
+
+# Decrypts an RSA-OAEP message with a PKCS#8 DER private key. Fails with AuthenticationFailed when decryption is rejected.
+export fn rsa_decrypt(private_key: Bytes, hash: HashAlgorithm, ciphertext: Bytes) Result[Bytes, CryptoError]:
+
 # Selects a supported hash algorithm for digests, HMAC, PBKDF2 and HKDF.
 # Md5 and Sha1 exist for interoperability with existing formats; prefer SHA-2 or SHA-3 for new designs.
 export type HashAlgorithm:
@@ -106,3 +174,9 @@ impl HashAlgorithm:
         info: Bytes,
         length: Int
     ) Result[Bytes, CryptoError]:
+
+    # Creates an incremental hasher for this algorithm.
+    fn hasher() Hasher:
+
+    # Creates an incremental HMAC with this algorithm and key.
+    fn hmac_hasher(key: Bytes) Hasher:

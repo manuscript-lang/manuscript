@@ -253,3 +253,33 @@ func Errors_Message_CryptoError(_ *Execution, e CryptoError) string {
 	}
 	return dfMessage("cryptography", "operation failed")
 }
+
+// cryptoHasher adapts a hash.Hash to the Hasher interface.
+type cryptoHasher struct{ h hash.Hash }
+
+var _ Hasher = cryptoHasher{}
+
+// Update appends data, checking cancellation between chunks.
+func (c cryptoHasher) Update(ctx *Execution, data *Bytes) Unit {
+	cryptoWrite(ctx, c.h, dfBytes(data))
+	return Unit{}
+}
+
+// Finish returns the digest and resets the hash state.
+func (c cryptoHasher) Finish(ctx *Execution) *Bytes {
+	CheckCancelled(ctx)
+	sum := c.h.Sum(nil)
+	c.h.Reset()
+	return NewBytes(sum)
+}
+
+// HashAlgorithm_Hasher creates an incremental hasher.
+func HashAlgorithm_Hasher(_ *Execution, algorithm HashAlgorithm) Hasher {
+	return cryptoHasher{cryptoHash(cryptoHashName(algorithm))}
+}
+
+// HashAlgorithm_HmacHasher creates an incremental HMAC.
+func HashAlgorithm_HmacHasher(_ *Execution, algorithm HashAlgorithm, key *Bytes) Hasher {
+	name := cryptoHashName(algorithm)
+	return cryptoHasher{hmac.New(func() hash.Hash { return cryptoHash(name) }, dfBytes(key))}
+}

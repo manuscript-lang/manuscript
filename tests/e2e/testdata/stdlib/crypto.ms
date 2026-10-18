@@ -9,6 +9,22 @@ import {
     sign,
     verify,
     constant_time_equal,
+    aes_ctr,
+    aes_cbc_encrypt,
+    aes_cbc_decrypt,
+    ecdsa_generate,
+    ecdsa_sign,
+    ecdsa_verify,
+    ecdh_shared_secret,
+    public_key_der,
+    rsa_generate,
+    rsa_sign,
+    rsa_verify,
+    rsa_sign_pss,
+    rsa_verify_pss,
+    rsa_encrypt,
+    rsa_decrypt,
+    Curve,
     CryptoError,
     HashAlgorithm
 } from "@std/crypto.ms"
@@ -141,3 +157,74 @@ test "Ed25519 signatures verify only the signed data":
         "constant time equality"
     )
     if constant_time_equal(seed, "short".to_bytes()): return panic("different lengths")
+
+test "incremental hashers match one-shot digests":
+    let hasher = HashAlgorithm.Sha256.hasher()
+    hasher.update("a".to_bytes())
+    hasher.update("bc".to_bytes())
+    if hasher.finish() != sha256("abc".to_bytes()): return panic("incremental sha256")
+
+    hasher.update("abc".to_bytes())
+    if hasher.finish() != sha256("abc".to_bytes()): return panic("hasher reset")
+
+    let mac = HashAlgorithm.Sha256.hmac_hasher("key".to_bytes())
+    mac.update("The quick brown fox jumps over the lazy dog".to_bytes())
+    if (
+        hex_encode(
+            mac.finish()
+        ) != "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8"
+    ): return panic("incremental hmac")
+
+test "AES CTR and CBC round trip":
+    let key = "0123456789012345".to_bytes()
+    let iv = "abcdefghijklmnop".to_bytes()
+    let message = "attack at dawn, attack at dawn".to_bytes()
+    let stream = try aes_ctr(key, iv, message)
+    if (try aes_ctr(key, iv, stream)) != message: return panic("CTR roundtrip")
+
+    let boxed = try aes_cbc_encrypt(key, iv, message)
+    if boxed.length() != 32: return panic("CBC padding")
+    if (try aes_cbc_decrypt(key, iv, boxed)) != message: return panic("CBC roundtrip")
+
+    let bad: Result[Bytes, CryptoError] = error(CryptoError.InvalidInput)
+    if aes_cbc_decrypt(key, "short".to_bytes(), boxed) != bad: return panic("CBC iv")
+
+test "ECDSA signs and ECDH agrees":
+    let private = try ecdsa_generate(Curve.P256)
+    let public = try public_key_der(private)
+    let signature = try ecdsa_sign(private, HashAlgorithm.Sha256, "m".to_bytes())
+    if not ecdsa_verify(public, HashAlgorithm.Sha256, "m".to_bytes(), signature): return panic(
+        "ECDSA verify"
+    )
+    if ecdsa_verify(public, HashAlgorithm.Sha256, "x".to_bytes(), signature): return panic(
+        "ECDSA forgery"
+    )
+
+    for curve in [Curve.P256, Curve.P384, Curve.X25519]:
+        let a = try ecdsa_generate(curve)
+        let b = try ecdsa_generate(curve)
+        let left = try ecdh_shared_secret(a, try public_key_der(b))
+        let right = try ecdh_shared_secret(b, try public_key_der(a))
+        if left != right: return panic("ECDH mismatch")
+
+test "RSA signs and encrypts":
+    let private = try rsa_generate(2048)
+    let public = try public_key_der(private)
+    let data = "payload".to_bytes()
+    let signature = try rsa_sign(private, HashAlgorithm.Sha256, data)
+    if not rsa_verify(public, HashAlgorithm.Sha256, data, signature): return panic(
+        "RSA verify"
+    )
+    if rsa_verify(public, HashAlgorithm.Sha256, "other".to_bytes(), signature): return panic(
+        "RSA forgery"
+    )
+
+    let pss = try rsa_sign_pss(private, HashAlgorithm.Sha256, data)
+    if not rsa_verify_pss(public, HashAlgorithm.Sha256, data, pss): return panic(
+        "PSS verify"
+    )
+
+    let sealed = try rsa_encrypt(public, HashAlgorithm.Sha256, data)
+    if (try rsa_decrypt(private, HashAlgorithm.Sha256, sealed)) != data: return panic(
+        "OAEP roundtrip"
+    )

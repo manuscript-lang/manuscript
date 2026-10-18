@@ -205,6 +205,37 @@ type CryptoError_AuthenticationFailed struct {
 func (CryptoError_AuthenticationFailed) isCryptoError() {
 }
 
+type Curve interface {
+	isCurve()
+}
+type Curve_P256 struct {
+}
+
+func (Curve_P256) isCurve() {
+}
+
+type Curve_P384 struct {
+}
+
+func (Curve_P384) isCurve() {
+}
+
+type Curve_P521 struct {
+}
+
+func (Curve_P521) isCurve() {
+}
+
+type Curve_X25519 struct {
+}
+
+func (Curve_X25519) isCurve() {
+}
+
+type Hasher interface {
+	Update(ctx *Execution, a0 *Bytes) Unit
+	Finish(ctx *Execution) *Bytes
+}
 type HashAlgorithm interface {
 	isHashAlgorithm()
 }
