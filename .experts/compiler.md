@@ -364,3 +364,15 @@ may unroll already-safe sequential updates, but bind the queried element before
 querying, snapshot Items once, and guard len-index before index+63. New lowering
 of each copied body gives unique markers. Grouped native append and query need
 distinct explicit source positions; test raised faults at both sites.
+
+### Publish bounded clone facts per checked call, never per general symbol
+
+One fixed <=8-case, one-operation match clone can reuse pure closed literal-list
+input bounds. Union every approved input before proving, and reject the entire
+plan if any operation overflows. Source symbol identity, nominal cases and
+ArmBindingsFor matter; spellings do not establish dataflow. Keep general-function
+annotations private and unchanged, and publish immutable plans before parallel
+lowering. An approved get length plus final local invariant can justify ordinary
+Go indexing; annotate only with nonnegative in-range index bounds. Remainder by
+a positive literal is a value fact only. Native effect()*0 tests must assert that
+particular get selected indexing, not another get elsewhere in the fixture.

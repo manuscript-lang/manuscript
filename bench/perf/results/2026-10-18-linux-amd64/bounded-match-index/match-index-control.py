@@ -1,0 +1,5 @@
+from pathlib import Path
+import os,json,subprocess,hashlib
+root=Path('/workspace/manuscript');app=Path(json.loads(Path('/tmp/manuscript-match-bounds-matched-manifest.json').read_text())['program']['app']).resolve();s=(app/'main.go').read_text();a=s.index('func bench_match(');b=s.index('\nfunc ',a+1);part=s[a:b].replace('rt.List_Get[Shape](ctx, shapes, i%int(3), rt.Option[Shape]{})','shapes.Items[i%int(3)]');assert part!=s[a:b];s=s[:a]+part+s[b:];p=Path('/tmp/manuscript-match-index.go');p.write_text(s);ov=p.with_suffix('.json');ov.write_text(json.dumps({'Replace':{str(app/'main.go'):str(p)}}));binary='/tmp/manuscript-match-index'
+subprocess.run([str(root/'toolchain/go/bin/go'),'build','-buildvcs=false','-trimpath','-ldflags=-s -w -buildid=','-overlay='+str(ov),'-o',binary,'.'],cwd=app,env={**os.environ,'CGO_ENABLED':'0'},check=True)
+Path('/tmp/manuscript-match-index-manifest.json').write_text(json.dumps({'source_sha256':hashlib.sha256(s.encode()).hexdigest(),'binary_sha256':hashlib.sha256(Path(binary).read_bytes()).hexdigest()},indent=2)+'\n')

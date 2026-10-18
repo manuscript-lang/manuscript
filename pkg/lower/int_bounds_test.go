@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
@@ -335,6 +336,96 @@ func BenchmarkBuilderRangeScaling(b *testing.B) {
 					b.SetBytes(int64(len(text)))
 				}
 			})
+		}
+	}
+}
+
+func BenchmarkBoundedMatchScaling(b *testing.B) {
+	for _, n := range []int{128, 256, 512} {
+		var source strings.Builder
+		for i := 0; i < n; i++ {
+			fmt.Fprintf(&source, "type Shape%d:\n", i)
+			for j := 0; j < 8; j++ {
+				fmt.Fprintf(&source, "    case C%d(value: Int)\n", j)
+			}
+			fmt.Fprintf(&source, "fn area%d(s: Shape%d) Int:\n    var out = 0\n    match s:\n", i, i)
+			for j := 0; j < 8; j++ {
+				fmt.Fprintf(&source, "        C%d(value):\n            out = value * 2\n", j)
+			}
+			fmt.Fprintf(&source, "    return out\nfn probe%d() Int:\n    let shapes = [Shape%d.C0(1)]\n    return area%d(shapes.get(0))\n", i, i, i)
+		}
+		program := checkedLoweringProgram(b, source.String())
+		g := newGen(program)
+		if len(g.matchBounds) != n {
+			b.Fatalf("selected%d plans, want%d", len(g.matchBounds), n)
+		}
+		b.Run(fmt.Sprint(n)+"/plans", func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				if len(g.matchIntPlans()) != n {
+					b.Fatal("lost planned calls")
+				}
+			}
+		})
+		b.Run(fmt.Sprint(n)+"/initialize", func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				next := newGen(program)
+				if len(next.matchBounds) != n || len(next.matchGetLengths) != n {
+					b.Fatal("lost published plans/gets")
+				}
+			}
+		})
+		b.Run(fmt.Sprint(n)+"/emit", func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				source, err := Go(program, "", Options{})
+				if err != nil {
+					b.Fatal(err)
+				}
+				if strings.Count(source, "_bounded(ctx") != 2*n || strings.Count(source, "shapes.Items[") != n {
+					b.Fatal("lost bounded function/call")
+				}
+				b.SetBytes(int64(len(source)))
+			}
+		})
+	}
+}
+
+func TestNonnegativeRemainderBoundsOracle(t *testing.T) {
+	for _, divisor := range []int{0, -1, -3, 1, 2, 3, 7} {
+		program := checkedLoweringProgram(t, fmt.Sprintf("fn probe(value: Int) Int: return value %% %d\n", divisor))
+		var d *syntax.Declaration
+		for _, module := range program.Modules {
+			for _, decl := range module.Declarations {
+				if decl.Name == "probe" {
+					d = decl
+				}
+			}
+		}
+		g := newGen(program)
+		g.fn = &funcState{}
+		for lo := int64(-1); lo <= 12; lo++ {
+			for hi := max(lo, int64(0)); hi <= 13; hi++ {
+				p := &intProof{g: g, facts: map[*checker.Binding]intFact{}, epoch: 1, serial: 1, hazards: map[*syntax.Expression]bool{}, inspected: map[*syntax.Expression]bool{}, appendMemo: map[*syntax.Expression]bool{}}
+				p.set(program.ParameterBindings(d)[0], intBounds{lo, hi})
+				got := p.expression(d.Body[0].Value, false)
+				if divisor <= 0 || lo < 0 {
+					if got != unknownIntBounds {
+						t.Fatalf("unexpected signed/zero divisor proof: %v", got)
+					}
+					continue
+				}
+				if got.lo < 0 || got.hi >= int64(divisor) {
+					t.Fatalf("not a nonnegative remainder range: %v", got)
+				}
+				for x := lo; x <= hi; x++ {
+					r := x % int64(divisor)
+					if r < got.lo || r > got.hi {
+						t.Fatalf("[%d,%d]%%%d: %d outside %v", lo, hi, divisor, r, got)
+					}
+				}
+			}
 		}
 	}
 }

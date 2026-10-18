@@ -13,6 +13,7 @@ import (
 // funcDecl is one Go function: a source function or method instantiated at
 // concrete type arguments.
 type funcDecl struct {
+	bounded *matchIntPlan
 	node
 	key    string
 	name   string
@@ -105,6 +106,11 @@ func (g *gen) lowerFunction(f *funcDecl) {
 	g.fn = &funcState{decl: f, result: g.sub(f.typ.Result)}
 	g.fn.localCollections = g.proveLocalCollections(d.Params, d.Body)
 	g.proveIntArithmetic(d.Body)
+	if f.bounded != nil {
+		for e := range f.bounded.safe {
+			g.fn.safeInt[e] = true
+		}
+	}
 	var params []*ast.Field
 	params = append(params, field("ctx", pointerTo(rtName("Execution"))))
 	bindings := g.program.ParameterBindings(d)

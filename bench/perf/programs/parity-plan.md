@@ -722,3 +722,103 @@ rawGo or call its remaining gap closed. Both measured benchmark generated source
 and normalized binaries are byte-identical across the cap reduction; library
 baseline/final are themselves byte-identical, with all66 diagnostic rows retained.
 Final-cap512-site emission is~0.15s/~93MB, versus0.69s/~496MB at rejectedcap1024.
+
+## One bounded private clone for a fixed pure alternative match
+
+Proposal before implementation. The new builder/traversal code removes the wider
+regression that previously rejected match cloning. On actual PR697 compiler output,
+30 balanced manual trials retain the general function and add a private bounded
+clone plus caller proof: match3.4→2.23ns versusGo1.55, builder2.27vs2.93,
+traversal0.37vs0.34; other rows remain near parity. Require the separate
+caller-proof-only control as the smaller alternative before retaining machinery.
+Raw Go and all checks/representations stay unchanged. This closes part of the
+remaining raw gap; do not claim exact parity or an unavoidable remaining penalty.
+
+Limit callee shape to a nongeneric source free function with one immutable
+nongeneric alternative parameter and Int result, no defaults or conversions:
+`var out = IntLiteral; match param; return out`. Require exhaustive explicit
+cases, one checked immutable Int payload each, at most8 cases and one assignment
+to the same checked out binding per arm. RHS may be an Int literal, that payload,
+or one native +/-/* of those operands. No other names, calls, nested control,
+guards, wildcard, writes, cleanup or recursion. Use nominal alternative identity,
+checked ArmBindingsFor and indexed case definitions, never payload spelling.
+
+Eligible caller is a nongeneric source free function. A fresh immutable top-body
+literal List[that alternative] contains only exact canonical case constructors
+with one explicit Int literal, no defaults/conversions/generic types. Exhaustive
+inventory admits only direct native get(index ONLY) and length uses, rejecting
+aliases/captures/escapes/mutations and every supplied default. Get still executes
+with its original bounds/default/fault contract. Only an exact direct eligible
+callee call whose sole argument is such a get can select the private clone.
+Unknown callers, other arguments, function values, aliases, methods/generic
+callers and Debug keep the original function and checked arithmetic.
+
+Use four fixed linear phases: index each callee/schema once; inventory each
+callable's closed lists and call expressions once; union one payload interval
+per callee and evaluate its <=8 single-operation arms once, requiring EVERY
+intermediate fit with existing exact compiler interval arithmetic; publish
+immutable call-ID plans before parallel lowering. Reject the whole plan if union
+proof fails. At most one private clone per callee, ordinary ABI/Decl/source name
+registration preserved, no AST mutation or general-function annotations shared.
+Only planned call expression IDs inherit its returned interval for the caller's
+existing accumulator proof. No repeated ranges, graph interpretation, fixed
+points, per-call case rescans or arbitrary scalar-replacement pass.
+
+Alternatives: retain checked match (2.19xrawGo but~1.08x equivalent checked Go),
+caller-return proof without cloning (control required), cheaper multiply-shape
+checks (measured regression), new sum representation or global unchecked Int
+(rejected scope/contracts). Require general and Debug fallbacks, unknown/overflow/
+default/alias/capture/effectful/missing-get cases, native source-frame/evaluation/
+cleanup/standalone tests, deterministic concurrent output, N/2N/4N accepted plans,
+and actual-compiler whole program/all66 library trials before retention.
+
+## Proved nonnegative indexing for the already-approved alternative lists
+
+Proposal before implementation. Actual bounded-clone output measuresmatch2.20ns
+versusGo1.59, with no wider material regression. A30-trial generated-Go control
+replaces only the benchmark's proved nonnegative in-range get with ordinary Go
+Items indexing: match1.78versusGo1.53 (1.16x), all10 workloads within about20% Go.
+Keep the original raw Go baseline. Do not generalize to unknown/defaulted gets.
+
+Reuse only the exact closed-list/get IDs approved by the bounded-match plan;
+record each literal list's immutable length. In the caller's existing local Int
+proof, annotate a get only when its explicit index interval is nonnegative and
+strictly below that fixed length. Add a value interval for remainder by a positive
+Int literal when the numerator is already proved nonnegative: [0,min(hi,n-1)].
+Do not remove remainder checks for unknown/zero/negative divisors. The index
+expression still evaluates once through ordinary argument plumbing. Emit ordinary
+Go Items[index], keeping Go's bounds check; the proof makes its fault path
+unreachable under supported source semantics. No unchecked runtime helper or new
+layout is introduced. Unknown, negative, out-of-range, effectful-unknown, defaulted,
+aliased/captured/mutated lists, general/generic calls, local evidence and Debug
+retain List.get with negative normalization/default/fault behavior.
+
+Build the approved get-length lookup in one extra O(calls) publication step;
+no per-expression search of plans or cases. Annotation maps remain function-local.
+Require paired native index-effect/negative/missing/default/fault-frame tests,
+loop-prefix/counter overflow fallbacks, signed modulo boundaries, Debug and
+standalone, deterministic concurrent output, scaling and whole-suite controls.
+Alternative: retain the runtime get fast path (measured ~0.4ns gap); broad index
+range/escape analysis (unnecessary); strip checks globally (unsound). Independent
+review is required before implementing this proof-only extension.
+
+Outcome: independent proposal and actual-code review found no correctness or
+scaling blocker. Retain the bounded clone and approved index proof. The smaller
+caller-proof-only control improves match by about 3.5%; actual clone-only output
+still measures 2.20 ns versus Go 1.59. Final actual compiler output over 30 balanced
+trials gives match 3.41→1.76 ns versus raw Go 1.65, try 0.60 versus 0.60, and all
+10 workload medians within about 9% of Go or faster. The earlier manual-index
+control gives match 1.16x Go; preserve this variation and do not claim universal
+exact parity. All 66 library rows remain diagnostic: generated Go and normalized
+executables are byte-identical before/after this increment.
+
+Selection/fallback, concurrent determinism, modulo value oracle, exact native
+effects/fault frames/cleanup, signed arithmetic and endpoint cases pass in
+Release/Debug and separate/standalone execution. Tests explicitly assert selected
+effectful `next(count)*0` and faulting `fail()*0` at their emitted Items access,
+alongside unknown effectful get fallback. Compiler/lower race checks, make verify
+and book checks pass. Accepted 128/256/512-site scaling asserts actual emitted
+selected gets; 512-site emission is about 0.21–0.24 s / 91 MB, with approximately
+linear allocations. No representation, public ABI, runtime helper or unknown
+arithmetic changes are retained. See the
+[complete final archive](../results/2026-10-18-linux-amd64/bounded-match-index/).

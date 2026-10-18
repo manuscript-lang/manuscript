@@ -1,5 +1,9 @@
 # Standard-library performance results
 
+The [bounded-match/index final control](../results/2026-10-18-linux-amd64/bounded-match-index/library-identical-control/)
+retains all 66 rows for 30 trials. Before/after generated Go and normalized native
+executables are byte-identical; the diagnostic timing variation is not a changed algorithm.
+
 The [closed-builder/range follow-up](../results/2026-10-18-linux-amd64/closed-builder-range/library-identical-control/)
 retains all66 rows for30 trials. Its generated Go and normalized native executable
 are byte-identical before/after; diagnostic timing variation is not an algorithm change.

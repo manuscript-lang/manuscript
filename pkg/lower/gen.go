@@ -69,6 +69,12 @@ func newGen(program *checker.Program) *gen {
 	}
 	sh.resultBounds = g.resultIntSummaries()
 	sh.capturedBindings = g.captureInventory()
+	sh.matchBounds = g.matchIntPlans()
+	sh.matchGetLengths = map[*syntax.Expression]int64{}
+	for call, plan := range sh.matchBounds {
+		get := call.Args[0].Value
+		sh.matchGetLengths[get] = plan.gets[get]
+	}
 	return g
 }
 
@@ -155,6 +161,8 @@ type shared struct {
 	localEq          bool // some module declares an extension Equal implementation
 	resultBounds     map[*syntax.Declaration]resultIntSummary
 	capturedBindings map[*checker.Binding]bool
+	matchBounds      map[*syntax.Expression]*matchIntPlan
+	matchGetLengths  map[*syntax.Expression]int64
 	closedIntMap     bool                         // program-wide evidence permits closed Int storage
 	dup              map[string]bool              // source names more than one declaration uses
 	declared         map[string]bool              // Go names the source declarations themselves take
@@ -268,6 +276,7 @@ type funcState struct {
 	stepped map[*syntax.Expression]bool
 	// safeInt contains function-local proofs of nonoverflowing Int +/-/* nodes.
 	safeInt          map[*syntax.Expression]bool
+	safeMatchGets    map[*syntax.Expression]bool
 	listLengths      map[*syntax.Expression]int64
 	counterChunks    map[*syntax.Statement]*counterChunk
 	rangeChunks      map[*syntax.Statement]bool

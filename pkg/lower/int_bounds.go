@@ -76,6 +76,7 @@ func (g *gen) proveIntArithmetic(body []*syntax.Statement) {
 	p := &intProof{g: g, facts: map[*checker.Binding]intFact{}, epoch: 1, serial: 1,
 		hazards: map[*syntax.Expression]bool{}, inspected: map[*syntax.Expression]bool{}, appendMemo: map[*syntax.Expression]bool{}}
 	g.fn.safeInt = map[*syntax.Expression]bool{}
+	g.fn.safeMatchGets = map[*syntax.Expression]bool{}
 	g.fn.listLengths = map[*syntax.Expression]int64{}
 	g.fn.counterChunks = map[*syntax.Statement]*counterChunk{}
 	g.fn.rangeChunks = map[*syntax.Statement]bool{}
@@ -184,6 +185,9 @@ func (p *intProof) expression(e *syntax.Expression, annotate bool) intBounds {
 	if bounds, ok := p.recordOperation(e, args, annotate); ok {
 		return bounds
 	}
+	if length := p.g.matchGetLengths[e]; length > 0 && annotate && len(args) == 1 && args[0].lo >= 0 && args[0].hi < length {
+		p.g.fn.safeMatchGets[e] = true
+	}
 	info := p.g.info(e)
 	if info == nil || p.g.sub(info.Type).ID != "Int" {
 		return unknownIntBounds
@@ -192,6 +196,11 @@ func (p *intProof) expression(e *syntax.Expression, annotate bool) intBounds {
 	case syntax.KindName:
 		return p.get(info.Binding)
 	case syntax.KindBinary:
+		if e.Text == "%" && left.lo >= 0 {
+			if n, ok := p.literal(e.Right); ok && n > 0 {
+				return intBounds{0, min(left.hi, n-1)}
+			}
+		}
 		if e.Text == "+" || e.Text == "-" {
 			if bounds, ok := addIntBounds(left, right, e.Text == "-"); ok {
 				if annotate {
@@ -209,6 +218,9 @@ func (p *intProof) expression(e *syntax.Expression, annotate bool) intBounds {
 			}
 		}
 	case syntax.KindCall:
+		if plan := p.g.boundedMatch(e); plan != nil {
+			return plan.output
+		}
 		// Infer only the return interval; preserve the ordinary call and its
 		// evaluation. Checked parameter identity excludes shadowing/defaults.
 		callee := p.g.info(e.Left)

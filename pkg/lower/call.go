@@ -173,7 +173,12 @@ func (g *gen) symbolCall(e *syntax.Expression, info *checker.Info) ast.Expr {
 	if s.Native != "" {
 		return g.nativeCall(s, info.TypeArgs, args)
 	}
-	f := g.function(s, info.TypeArgs)
+	var f *funcDecl
+	if plan := g.boundedMatch(e); plan != nil {
+		f = g.boundedMatchFunction(plan)
+	} else {
+		f = g.function(s, info.TypeArgs)
+	}
 	return call(ident(f.name), append([]ast.Expr{ident("ctx")}, args...)...)
 }
 
@@ -479,6 +484,9 @@ func (g *gen) methodCall(e *syntax.Expression, info *checker.Info) ast.Expr {
 		snapshot := define(name, receiver)
 		g.fn.pre = append(g.fn.pre[:mark:mark], append([]ast.Stmt{snapshot}, g.fn.pre[mark:]...)...)
 		receiver = ident(name)
+	}
+	if g.fn.safeMatchGets[e] {
+		return index(selector(receiver, "Items"), args[0])
 	}
 	if length, ok := g.fn.listLengths[e]; ok {
 		// The source receiver counts as a use even when its only observation

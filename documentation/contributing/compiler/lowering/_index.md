@@ -67,7 +67,7 @@ invariant, so another accumulator's initial value cannot justify a check removal
 An exhaustive use inventory permits bounds for fresh private Int lists and
 one-field Int records. Aliases, captures, unsupported mutations and calls retain
 the checked path. Record specialization also falls back inside generic callers.
-List access still performs its ordinary index/default checks;
+These Int-list accesses retain their ordinary index/default checks;
 only a proved length becomes constant. Debug retains the source bindings and
 checked operations. Closed Int maps use the exclusive helpers described in
 [Go representation](../../go-lowering-representation.md#closed-local-int-maps).
@@ -99,6 +99,33 @@ three-update unroll and tail. Every element is read and every update executes in
 original order; the next element is bound before the original query. Short lists,
 captures, aliases, unknown overflow, other bodies and Debug retain ordinary range.
 The guarded endpoint avoids overflowing index arithmetic near the maximum length.
+
+A fixed pure alternative match may have one private bounded clone. The callee
+must be a nongeneric free function with one immutable alternative parameter and
+Int result: initialize one Int carry, exhaustively match the parameter, then
+return the carry. At most eight explicit cases each bind one immutable Int
+payload and assign a literal, payload, or one native `+`/`-`/`*` operation to the
+same checked carry. Calls, nested control, other bindings and conversions reject
+selection. A clone requires at least one arithmetic operation.
+
+Only approved direct call expressions receive that clone and its returned bounds.
+Their argument must be a canonical `get(index)` of a fresh closed top-level
+literal list of the same concrete alternative, containing explicit Int-literal
+case constructors. Aliases, captures, mutations, supplied defaults, generic
+callers and local implementation scopes fall back. All approved payload ranges
+are unioned before proving each callee once. Any unsafe intermediate rejects its
+whole clone. Immutable plans publish before parallel lowering. The general
+function keeps every check and its ABI; the clone keeps its source name and
+registration. Checked nodes and general-function annotations are never mutated.
+
+For those same approved get identities, the local proof can emit ordinary Go
+`Items[index]` after proving `0 <= index < literal length`. Go's bounds check
+remains. Receiver and index evaluation stay in their original order. A proved
+nonnegative numerator modulo a positive Int literal provides a value interval;
+it does not remove modulo checks or annotate remainder as unchecked arithmetic.
+Unknown, negative, missing or defaulted indices retain ordinary List.get behavior,
+including negative normalization and source faults. Debug retains the general
+functions and runtime access path.
 
 A fixed nongeneric helper can also describe its normally returned successful Int
 payload: one immutable Int parameter, a pure parameter/literal comparison with
