@@ -177,10 +177,7 @@ test "JSON stringify encodes standard-library values":
     let item = Stamped(at, duration(1500), "hi".to_bytes(), link)
     let expected = "\{\"at\":\"2023-11-14T22:13:20.5Z\",\"took\":1500,\"data\":\"aGk=\",\"link\":\"https://example.com:8080/a?x=1\"\}"
     try expect_equal((try encoded(item)), expected)
-    try expect_equal(
-        (try encoded(TextError("boom"))),
-        "\{\"Text\":\{\"message\":\"boom\"\}\}"
-    )
+    try expect_equal((try encoded(TextError("boom"))), "\{\"text\":\"boom\"\}")
     let ok: Result[Int, Error] = ok(5)
     try expect_equal((try encoded(ok)), "\{\"ok\":\{\"value\":5\}\}")
     try expect_equal((try encoded(JsonError.InvalidData)), "\"InvalidData\"")

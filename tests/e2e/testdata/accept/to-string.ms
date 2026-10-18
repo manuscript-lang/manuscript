@@ -73,7 +73,12 @@ test "records alternatives and collections convert":
     let result: Result[Int, TextError] = error(TextError("failed"))
     (try check(value: absent.to_string(), expected: "Optional.none"))
     (try check(value: present.to_string(), expected: "Optional.some(3)"))
-    (try check(value: result.to_string(), expected: "Result.error(failed)"))
+    (
+        try check(
+            value: result.to_string(),
+            expected: "Result.error(TextError(text: failed))"
+        )
+    )
     (try check(value: [1, 2, 3].to_string(), expected: "[1, 2, 3]"))
     (try check(value: [[1], [2, 3]].to_string(), expected: "[[1], [2, 3]]"))
     let empty: List[Int] = []
