@@ -236,3 +236,51 @@ func BenchmarkSuccessfulResultScaling(b *testing.B) {
 		})
 	}
 }
+
+func BenchmarkCounterAggregateScaling(b *testing.B) {
+	for _, n := range []int{128, 256, 512} {
+		var source strings.Builder
+		source.WriteString("fn probe() Int:\n    var sum = 0\n    let unrelated = 7\n")
+		for i := 0; i < n; i++ {
+			fmt.Fprintf(&source, "    let captured%d = fn() Int: unrelated\n    sum = 0\n    var i%d = 0\n    while i%d < 321:\n        sum += i%d\n        i%d += 1\n", i, i, i, i, i)
+		}
+		source.WriteString("    return sum\n")
+		program := checkedLoweringProgram(b, source.String())
+		g := newGen(program)
+		var declaration *syntax.Declaration
+		for _, module := range program.Modules {
+			for _, d := range module.Declarations {
+				if d.Name == "probe" {
+					declaration = d
+				}
+			}
+		}
+		if declaration == nil {
+			b.Fatal("missing probe")
+		}
+		g.fn = &funcState{}
+		g.proveIntArithmetic(declaration.Body)
+		selected := 0
+		for _, chunk := range g.fn.counterChunks {
+			if chunk.aggregate != nil {
+				selected++
+			}
+		}
+		if selected != n {
+			b.Fatalf("selected %d aggregates, want %d", selected, n)
+		}
+		b.Run(fmt.Sprint(n)+"/captures", func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				g.captureInventory()
+			}
+		})
+		b.Run(fmt.Sprint(n)+"/proof", func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				g.fn = &funcState{}
+				g.proveIntArithmetic(declaration.Body)
+			}
+		})
+	}
+}

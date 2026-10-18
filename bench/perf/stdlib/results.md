@@ -1,5 +1,8 @@
 # Standard-library performance results
 
+The [counter-aggregation follow-up](../results/2026-10-18-linux-amd64/counter-aggregation/library/)
+retains all66 library rows and30 balanced before/after trials.
+
 Latest Result-bound follow-up: the library generated Go and normalized executable
 are byte-identical to PR #694; see the [diagnostic control and hashes](../results/2026-10-18-linux-amd64/result-payload-bounds/).
 The table below remains the earlier merged runtime/lowering comparison.

@@ -72,11 +72,16 @@ only a proved length becomes constant. Debug retains the source bindings and
 checked operations. Closed Int maps use the exclusive helpers described in
 [Go representation](../../go-lowering-representation.md#closed-local-int-maps).
 
-Only a finite ascending loop with two safe scalar updates, a constant independent
-stride, a last counter step, and at least 256 iterations may group its polling
-control. Each original assignment still executes individually. Queries occur
-before exactly the same 64th, 128th, and subsequent iterations; partial tails
-and signed endpoints retain that phase.
+A finite ascending loop with two safe updates, a last counter step, and at least
+256 iterations may group polling control. Queries still precede exactly the same
+64th, 128th, and subsequent bodies, including signed endpoints and partial tails.
+With stronger ownership and capture proofs, at most 63 unobserved updates may be
+combined before the next query. Eligible updates are a constant scalar stride,
+an exact counter (or checked pure identity of it), or a selected private-record
+constant update. Every generated product and sum must fit, independently of the
+original prefix proof. Captured counters, carries or stride inputs reject this
+stronger path. The queried body executes unchanged; other safe loops keep their
+individual assignments. Debug retains ordinary source execution.
 
 A fixed nongeneric helper can also describe its normally returned successful Int
 payload: one immutable Int parameter, a pure parameter/literal comparison with

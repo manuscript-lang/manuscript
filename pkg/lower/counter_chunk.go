@@ -9,30 +9,37 @@ import (
 )
 
 type counterChunk struct {
-	counter *checker.Binding
-	limit   int64
+	counter   *checker.Binding
+	limit     int64
+	aggregate *counterAggregate
 }
 
-// Chunk only two total, independent scalar updates. Their arithmetic has
-// already been proved safe, and neither operation can observe cancellation.
-// Keep the original assignments, including the counter step last.
-func (p *intProof) chunk(s *syntax.Statement, counter *checker.Binding, limit int64) {
+// Group only two total updates whose arithmetic has already been proved safe.
+// Aggregate unobservable prefixes only with the stronger ownership/capture and
+// generated-temporary proof; otherwise keep individual source assignments.
+func (p *intProof) chunk(s *syntax.Statement, counter *checker.Binding, limit int64, bounds intBounds) {
 	if len(s.Body) != 2 {
 		return
 	}
+
 	update, step := s.Body[0], s.Body[1]
+	if step.Kind != syntax.KindAssign || p.target(step) != counter {
+		return
+	}
+	aggregate := p.aggregateUpdate(update, counter, bounds)
+	if aggregate != nil {
+		p.g.fn.counterChunks[s] = &counterChunk{counter: counter, limit: limit, aggregate: aggregate}
+		return
+	}
 	carry := p.target(update)
-	if update.Kind != syntax.KindAssign || step.Kind != syntax.KindAssign || carry == nil ||
-		carry == counter || p.target(step) != counter || !p.g.fn.safeInt[update.Value] {
+	if update.Kind != syntax.KindAssign || carry == nil || carry == counter || !p.g.fn.safeInt[update.Value] {
 		return
 	}
 	v := update.Value
-	if v.Kind != syntax.KindBinary || (v.Text != "+" && v.Text != "-") ||
-		v.Left.Kind != syntax.KindName || p.g.info(v.Left).Binding != carry ||
-		!p.constantStride(v.Right, counter, carry) {
+	if v.Kind != syntax.KindBinary || (v.Text != "+" && v.Text != "-") || v.Left.Kind != syntax.KindName || p.g.info(v.Left).Binding != carry || !p.constantStride(v.Right, counter, carry) {
 		return
 	}
-	p.g.fn.counterChunks[s] = &counterChunk{counter, limit}
+	p.g.fn.counterChunks[s] = &counterChunk{counter: counter, limit: limit}
 }
 
 func (p *intProof) constantStride(e *syntax.Expression, counter, carry *checker.Binding) bool {
@@ -54,6 +61,9 @@ func (p *intProof) constantStride(e *syntax.Expression, counter, carry *checker.
 // Poll before exactly the same 64th, 128th, ... original body. A guarded
 // endpoint avoids overflow near MaxInt; the proof also bounds limit-counter.
 func (g *gen) chunkLoop(s *syntax.Statement, chunk *counterChunk, cond ast.Expr, body []ast.Stmt) []ast.Stmt {
+	if chunk.aggregate != nil {
+		return g.aggregateChunk(chunk, cond, body)
+	}
 	counter := ident(g.bindingName(chunk.counter))
 	limit := intLiteral(int(chunk.limit))
 	end := g.temp()

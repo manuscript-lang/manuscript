@@ -558,3 +558,59 @@ eight of ten workloads are within about20% Go. Library generated source and
 normalized executable are byte-identical. Summary/proof allocation counts roughly
 double at128/256/512; the summary profile attributes about30% cumulative CPU to
 collector object scanning. Raw timings/intervals/hashes are in the Result archive.
+
+## Aggregate unobservable updates between identical queries
+
+Independently reviewed before implementation; approve implementation experiment
+only after 30-trial manual controls. On the Result candidate, generic and length
+loops aggregate to about0.05ns per logical iteration versus Go0.29; including the
+private-cell update gives method0.04 versusGo0.29. Try, traversal, builder, map,
+line reading and equality remain near Go; matching remains slower. The benefit
+includes reduced work between queries, not faster execution of each assignment.
+
+Extend only the existing two-statement finite ascending safe-loop grammar:
+constant scalar stride; exact counter or strict checked pure identity(counter)
+affine stride; or one existing selected private-cell update with pure constant
+argument, followed by the unique counter step. Aggregate at most63 unpolled
+bodies, then execute the original CheckCancelled and original one queried body.
+Preserve carry/cell update before counter advance and exact state at every query
+and normal exit. Fixed-size source replaces the inner loop.
+
+Use one immutable program-wide capture inventory including defaults and nested
+lambdas. Conservatively reject any captured counter/carry/constant-stride input;
+existing private collection inventory rejects record/list aliases and captures.
+Identity requires checked specialized Int signature, immutable parameter, no
+default/conversion/recursion/cleanup or automatic call polling. Debug falls back.
+Prove every generated product/sum with exact compiler arithmetic for group sizes
+1..63. For affine stride use n*counter+n*(n-1)/2 before counter advancement. An
+overflowing temporary rejects aggregation even when final cancellation would fit.
+The existing original-prefix proof justifies final carry/cell result by equality;
+it does not justify overflowing generated intermediates. Counter distance and
+advance retain the finite-loop proof. Unsupported shapes retain ordinary/chunked
+execution. No source timing or intermediate local observation contract is added.
+
+Alternatives: retain original loops/chunks (more instructions), padding/placement
+choices (rejected), aggregate arbitrary effectful bodies (unsound), interpret
+arbitrary callees (unnecessary). Require actual native query-state observers,
+negative/Min/Max starts, partial tails, nil/background/shield, cancellation/cleanup,
+captures/defaults/product-overflow fallbacks, source frames, standalone, scaling,
+and complete program/library measurements before retention.
+
+Outcome: retained aggregation after native signed/cancellation/source-frame and
+standalone checks, exact generated-temporary proofs, race tests, and accepted-path
+N/2N/4N scaling. Thirty matching-flag program trials put generic, method and length
+at0.04–0.05ns per logical iteration, and try at0.58 versusGo0.56. Complete66-row
+library controls and all slow results remain archived; no complete parity claim.
+
+Private match-clone controls retain the general function and source registration.
+Thirty trials improve match3.6→2.56ns; caller accumulator proof gives2.01ns versus
+Go1.54. However traversal shifts0.43→0.65ns (1.8xGo). Independent review rejects
+cloning: wider regression and substantial alternate-list/call-summary machinery.
+This is a current lowering cost, not proof of an unavoidable semantic penalty.
+
+A fixed cold callback reduces builder append's Go inline cost72→37, but30-trial
+controls regress append3.72→4.01ns. Reject it; inline cost alone is not a speedup.
+
+Rewriting each match-arm assignment as an immediate return while retaining the
+same checked arithmetic changes match3.49→3.47ns in30trials. Reject this no-gain
+rewrite rather than add compiler machinery for a timing-neutral source shape.

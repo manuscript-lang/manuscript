@@ -1,5 +1,43 @@
 # Manuscript vs handwritten Go
 
+Safe aggregation closes the generic, method, and length loop gaps. Their times
+are per logical source iteration: the compiler combines unobserved updates
+between identical cancellation queries, reducing work. It does not execute each
+original assignment faster. Try is at Go parity in this run. Matching and the
+builder remain the current gaps under investigation.
+
+2026-10-18 UTC; Go1.25.1, linux/amd64, AMD EPYC9V74, four-vCPU quota.
+Baseline: **ec818c1f** (merged PR #695). Thirty balanced trials, identical sources,
+counts and checksums; matching CGO_ENABLED=0, -buildvcs=false, -trimpath,
+-ldflags='-s -w -buildid=' and ordinary inlining. Sampling overlaps no builds/tests.
+
+| operation | before ns/op | after ns/op | Go ns/op | after / Go |
+|---|---:|---:|---:|---:|
+| string_append_50k | 3.81 | 3.65 | 2.85 | 1.28x |
+| read_line | 59.41 | 61.08 | 63.66 | 0.96x |
+| map_put_get_8k | 34.94 | 35.14 | 32.08 | 1.10x |
+| int_eq | 1.02 | 1.03 | 1.03 | 1.00x |
+| generic_call | 0.32 | 0.05 | 0.27 | 0.19x |
+| method_call | 0.64 | 0.04 | 0.28 | 0.15x |
+| try | 0.62 | 0.58 | 0.56 | 1.03x |
+| match | 3.47 | 3.62 | 1.57 | 2.31x |
+| builtin_length | 0.33 | 0.05 | 0.27 | 0.17x |
+| for_list | 0.45 | 0.43 | 0.38 | 1.13x |
+
+Aggregation admits only the existing finite two-update loop grammar with safe
+original prefixes and separately proved generated temporaries. It combines at
+most63 bodies, preserves exact counter/carry state at every original query, then
+executes the original queried body. Captures, aliases, defaults, effectful strides,
+unknown arithmetic and Debug retain the ordinary path. Native observers cover
+signed updates, extreme counter starts, partial tails, nil/background/shield,
+cancellation, cleanup, query faults/source frames and standalone linkage.
+
+[All program trials, 66 library rows, intervals, hashes and controls](../results/2026-10-18-linux-amd64/counter-aggregation/).
+[Canonical proof boundaries](../../../documentation/contributing/compiler/lowering/_index.md).
+
+## Earlier Result-bound batch
+
+
 Eight of ten workloads are within roughly 20% of Go after the successful Result
 payload proof. Try is 0.63 ns/op versus Go's 0.56, down from 1.16 ns/op in the
 merged baseline. Method loops and matching remain the largest gaps. These are

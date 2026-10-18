@@ -1,0 +1,24 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/lower
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkCounterAggregateScaling/128/captures-4         	    6579	     36477 ns/op	     192 B/op	       2 allocs/op
+BenchmarkCounterAggregateScaling/128/captures-4         	    6924	     38652 ns/op	     192 B/op	       2 allocs/op
+BenchmarkCounterAggregateScaling/128/captures-4         	    6607	     36576 ns/op	     192 B/op	       2 allocs/op
+BenchmarkCounterAggregateScaling/128/proof-4            	     416	    565854 ns/op	  339061 B/op	    2019 allocs/op
+BenchmarkCounterAggregateScaling/128/proof-4            	     423	    609653 ns/op	  339048 B/op	    2019 allocs/op
+BenchmarkCounterAggregateScaling/128/proof-4            	     439	    573380 ns/op	  339048 B/op	    2019 allocs/op
+BenchmarkCounterAggregateScaling/256/captures-4         	    2566	     90681 ns/op	     192 B/op	       2 allocs/op
+BenchmarkCounterAggregateScaling/256/captures-4         	    2359	     91881 ns/op	     192 B/op	       2 allocs/op
+BenchmarkCounterAggregateScaling/256/captures-4         	    2880	     90568 ns/op	     192 B/op	       2 allocs/op
+BenchmarkCounterAggregateScaling/256/proof-4            	     190	   1232709 ns/op	  668681 B/op	    3964 allocs/op
+BenchmarkCounterAggregateScaling/256/proof-4            	     199	   1215438 ns/op	  668680 B/op	    3964 allocs/op
+BenchmarkCounterAggregateScaling/256/proof-4            	     205	   1196306 ns/op	  668681 B/op	    3964 allocs/op
+BenchmarkCounterAggregateScaling/512/captures-4         	    1216	    197273 ns/op	     192 B/op	       2 allocs/op
+BenchmarkCounterAggregateScaling/512/captures-4         	    1182	    189659 ns/op	     192 B/op	       2 allocs/op
+BenchmarkCounterAggregateScaling/512/captures-4         	    1334	    188381 ns/op	     192 B/op	       2 allocs/op
+BenchmarkCounterAggregateScaling/512/proof-4            	      86	   2513617 ns/op	 1414937 B/op	    7849 allocs/op
+BenchmarkCounterAggregateScaling/512/proof-4            	      87	   2734654 ns/op	 1414937 B/op	    7849 allocs/op
+BenchmarkCounterAggregateScaling/512/proof-4            	      79	   2665616 ns/op	 1414937 B/op	    7849 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/lower	5.137s

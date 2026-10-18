@@ -1,0 +1,14 @@
+{
+  "before": {
+    "source_sha256": "b92b60165cc3b2e8e1405990673cf2cd86f61bc4097ea5e0747a70edd7f95dfe",
+    "binary_sha256": "31717d1875df898ef8d69bff91b9c734110be27c42d97bf2158ff1ba03703035"
+  },
+  "clone": {
+    "source_sha256": "87f825dff740625ae0441ccd7b5d6fcb4523940c7de8413c138f724089b25cd2",
+    "binary_sha256": "74e55b2cb46ee8bdf45bed4cf2316338e0d59c9e7fdd86ee8b7689118df7e857"
+  },
+  "clone-carry": {
+    "source_sha256": "b1095945676d6a86e92f92e092716ec1df9673743340ccedb09daaf4a5ee6de2",
+    "binary_sha256": "ed2f2e00fb5496004a1c06e4d01d420189c76f6a7989cbc02f25c859c103d08a"
+  }
+}
