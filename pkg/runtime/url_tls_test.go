@@ -115,14 +115,14 @@ func TestTlsVerifiedConnectionAndHTTP2(t *testing.T) {
 	options := clientOptions()
 	options.Tls = &TlsOptions{RootsPem: roots}
 	client := must(t, n.HttpClient(ctx, options))
-	body := must(t, client.Request(ctx, get(), server.URL, headersOf(), NewBytes(nil), Some(int(100)), Some(Duration(time.Second))))
+	body := must(t, client.RequestBytes(ctx, get(), server.URL, headersOf(), NewBytes(nil), Some(int(100)), Some(Duration(time.Second))))
 	if got := someBytes(t, body.Read(ctx, Some(int(100)))); got != "HTTP/2.0" {
 		t.Fatal(got)
 	}
 	body.Close(ctx)
 	// Without the roots the certificate is not trusted: there is no insecure mode.
 	untrusted := must(t, n.HttpClient(ctx, clientOptions()))
-	failedWith(t, untrusted.Request(ctx, get(), server.URL, headersOf(), NewBytes(nil), Some(int(100)), Some(Duration(time.Second))), "HttpError_Failed")
+	failedWith(t, untrusted.RequestBytes(ctx, get(), server.URL, headersOf(), NewBytes(nil), Some(int(100)), Some(Duration(time.Second))), "HttpError_Failed")
 	conn := must(t, n.ConnectTlsConfig(ctx, server.Listener.Addr().String(), &TlsOptions{ServerName: "example.com", RootsPem: roots}, Some(Duration(time.Second))))
 	info := must(t, conn.TlsInfo(ctx))
 	if !info.Verified || info.Version < 0x0303 || len(info.PeerCertificates.Items) == 0 {

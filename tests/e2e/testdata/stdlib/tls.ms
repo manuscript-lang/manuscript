@@ -81,7 +81,7 @@ test "HTTPS trusts only the explicitly supplied local test root":
                 HttpMethod.Get,
                 "https://{server.address()}/",
                 text_headers(Map[String, String]()),
-                "".to_bytes(),
+                "",
                 timeout: 2.seconds
             ):
                 if (

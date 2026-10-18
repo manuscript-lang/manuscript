@@ -40,7 +40,7 @@ fn check_route(url: String, expected: String) Result[Unit, Error]:
         HttpMethod.Get,
         url,
         text_headers(Map[String, String]()),
-        "".to_bytes(),
+        "",
         timeout: 2.seconds
     )
     if response.metadata().status != 200 or response.body != expected.to_bytes(): return panic(
@@ -57,7 +57,7 @@ fn check_rejected(url: String) Result[Unit, Error]:
         HttpMethod.Get,
         url,
         text_headers(Map[String, String]()),
-        "".to_bytes(),
+        "",
         timeout: 2.seconds
     )
     if response.metadata().status != 400: return panic(
@@ -96,7 +96,7 @@ fn expect_http_error[T](outcome: Result[T, HttpError]) Unit:
 
 test "buffered and reusable clients reject malformed ports as InvalidInput":
     let headers = text_headers(Map[String, String]())
-    let body = "".to_bytes()
+    let body = ""
     expect_http_error(
         network().request(
             HttpMethod.Get,

@@ -14,7 +14,7 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
     if exchange.path() == "/ws":
         with socket = (exchange.upgrade([], ["echo"], 1024).get()):
             let message = socket.receive().get().get()
-            socket.send(message.data, text: message.text).get()
+            socket.send_bytes(message.data, text: message.text).get()
 
         return ok(unit)
 
@@ -35,7 +35,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
             HttpMethod.Get,
             url,
             text_headers(Map[String, String]()),
-            "".to_bytes(),
+            "",
             timeout: 2.seconds
         )
         if response.metadata().status != 201 or response.body != "hello".to_bytes(): return panic(
@@ -56,7 +56,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
                 HttpMethod.Get,
                 url,
                 text_headers(Map[String, String]()),
-                "".to_bytes(),
+                "",
                 5,
                 2.seconds
             ):
@@ -70,7 +70,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
             HttpMethod.Get,
             url,
             text_headers(Map[String, String]()),
-            "".to_bytes(),
+            "",
             4,
             2.seconds
         )
@@ -98,7 +98,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
         ):
             if socket.subprotocol() != "echo": return panic("WebSocket subprotocol")
 
-            try socket.send("é🙂".to_bytes(), text: true)
+            try socket.send("é🙂")
             let message = (try socket.receive()).get()
             if not message.text or message.data != "é🙂".to_bytes(): return panic(
                 "WebSocket echo"
@@ -119,7 +119,7 @@ test "HTTP streaming handlers see the Host request header":
             HttpMethod.Get,
             "http://{server.address()}/",
             text_headers(Map[String, String]()),
-            "".to_bytes(),
+            "",
             timeout: 2.seconds
         )
         if response.body != server.address().to_bytes(): return panic(
@@ -131,7 +131,7 @@ test "HTTP requests reject an empty method":
         HttpMethod.Custom(""),
         "http://127.0.0.1:1/",
         text_headers(Map[String, String]()),
-        "".to_bytes(),
+        "",
         timeout: 1.seconds
     )
     if empty.is_ok(): return panic("empty method accepted")

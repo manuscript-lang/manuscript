@@ -39,7 +39,7 @@ test "one header type preserves repeated values through buffered requests":
             HttpMethod.Get,
             "http://{server.address()}/",
             try repeated_headers(),
-            "".to_bytes()
+            ""
         )
         let metadata = response.metadata()
         if metadata.status != 200: return panic("metadata status")
@@ -80,7 +80,7 @@ test "streaming proxy uses the same byte-valued header type":
             HttpMethod.Get,
             "http://{server.address()}/",
             try repeated_headers(),
-            "".to_bytes()
+            ""
         )
         if (
             (try response.metadata().headers.text("x-DUP")) != some(

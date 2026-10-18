@@ -789,7 +789,8 @@ func (HttpMethod_Custom) isHttpMethod() {
 
 type HttpClient interface {
 	Close(ctx *Execution) Unit
-	Request(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 *Bytes, a4 Option[int], a5 Option[Duration]) Result[ResponseBody, HttpError]
+	Request(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 string, a4 Option[int], a5 Option[Duration]) Result[ResponseBody, HttpError]
+	RequestBytes(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 *Bytes, a4 Option[int], a5 Option[Duration]) Result[ResponseBody, HttpError]
 	RequestStream(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 ReadStream, a4 Option[int], a5 Option[Duration]) Result[ResponseBody, HttpError]
 }
 type HttpClientOptions struct {
@@ -1151,7 +1152,8 @@ type DatagramSocket interface {
 	Address(ctx *Execution) string
 	Close(ctx *Execution) Unit
 	Receive(ctx *Execution, a0 Option[int], a1 Option[Duration]) Result[*Datagram, NetworkError]
-	Send(ctx *Execution, a0 *Bytes, a1 string, a2 Option[Duration]) Result[Unit, NetworkError]
+	Send(ctx *Execution, a0 string, a1 string, a2 Option[Duration]) Result[Unit, NetworkError]
+	SendBytes(ctx *Execution, a0 *Bytes, a1 string, a2 Option[Duration]) Result[Unit, NetworkError]
 }
 type DnsKind interface {
 	isDnsKind()
@@ -1243,7 +1245,8 @@ type Network interface {
 	ListenTls(ctx *Execution, a0 string, a1 *TlsOptions, a2 Option[Duration]) Result[Listener, NetworkError]
 	ListenUnix(ctx *Execution, a0 string) Result[Listener, NetworkError]
 	Lookup(ctx *Execution, a0 string, a1 Option[int], a2 Option[Duration]) Result[*List[string], NetworkError]
-	Request(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 *Bytes, a4 Option[int], a5 Option[Duration]) Result[*ClientResponse, HttpError]
+	Request(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 string, a4 Option[int], a5 Option[Duration]) Result[*ClientResponse, HttpError]
+	RequestBytes(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 *Bytes, a4 Option[int], a5 Option[Duration]) Result[*ClientResponse, HttpError]
 	Resolve(ctx *Execution, a0 string, a1 DnsKind, a2 Option[int], a3 Option[Duration]) Result[*List[*DnsRecord], NetworkError]
 	Restrict(ctx *Execution, a0 *List[string], a1 *List[string], a2 bool) Result[Network, NetworkError]
 	Serve(ctx *Execution, a0 string, a1 func(ctx *Execution, a0 *HttpRequest) *HttpResponse, a2 Option[int], a3 Option[int], a4 Option[int], a5 Option[Duration], a6 Option[Duration]) Result[HttpServer, IoError]
@@ -2104,9 +2107,11 @@ func (WebSocketError_Failed) isWebSocketError() {
 
 type WebSocket interface {
 	Close(ctx *Execution) Unit
-	Ping(ctx *Execution, a0 *Bytes) Result[Unit, WebSocketError]
+	Ping(ctx *Execution, a0 string) Result[Unit, WebSocketError]
+	PingBytes(ctx *Execution, a0 *Bytes) Result[Unit, WebSocketError]
 	Receive(ctx *Execution) Result[Option[*WebSocketMessage], WebSocketError]
-	Send(ctx *Execution, a0 *Bytes, a1 bool) Result[Unit, WebSocketError]
+	Send(ctx *Execution, a0 string) Result[Unit, WebSocketError]
+	SendBytes(ctx *Execution, a0 *Bytes, a1 bool) Result[Unit, WebSocketError]
 	Subprotocol(ctx *Execution) string
 }
 type WebSocketMessage struct {

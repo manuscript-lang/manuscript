@@ -92,6 +92,12 @@ export interface DatagramSocket:
     # Sends `data` as a single datagram to `address` (`host:port`), resolving a host name with the network's resolver.
     # The network's restrictions apply to both the name and the resolved address. A short send returns Failed; a timeout returns Timeout.
     fn send(
+        data: String,
+        address: String,
+        timeout: Optional[Duration] = none
+    ) Result[Unit, NetworkError]
+    # Sends raw bytes as a single datagram with the same rules as send.
+    fn send_bytes(
         data: Bytes,
         address: String,
         timeout: Optional[Duration] = none
@@ -245,6 +251,15 @@ export interface Network:
     # Performs one buffered HTTP request and returns the status, headers, and complete body.
     # Only `http` and `https` URLs without user info are accepted. Redirects are returned, not followed, and no cookies or proxy settings apply. A body over `max_response_bytes` returns LimitExceeded; error statuses are ordinary responses.
     fn request(
+        method: HttpMethod,
+        url: String,
+        headers: HttpHeaders,
+        body: String = "",
+        max_response_bytes: Optional[Int] = none,
+        timeout: Optional[Duration] = none
+    ) Result[ClientResponse, HttpError]
+    # Performs the same buffered request with a raw bytes body.
+    fn request_bytes(
         method: HttpMethod,
         url: String,
         headers: HttpHeaders,

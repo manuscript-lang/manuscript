@@ -303,30 +303,30 @@ func TestDatagramSockets(t *testing.T) {
 	ctx, n := newTestNetwork(t)
 	a := must(t, n.BindDatagram(ctx, "127.0.0.1:0"))
 	b := must(t, n.BindDatagram(ctx, "127.0.0.1:0"))
-	must(t, a.Send(ctx, NewBytes([]byte("hello")), b.Address(ctx), None[Duration]()))
+	must(t, a.SendBytes(ctx, NewBytes([]byte("hello")), b.Address(ctx), None[Duration]()))
 	d := must(t, b.Receive(ctx, None[int](), Some(Duration(time.Second))))
 	if str(d.Data) != "hello" || d.Sender != a.Address(ctx) {
 		t.Fatal(str(d.Data), d.Sender)
 	}
 	// Message boundaries include empty messages.
-	must(t, a.Send(ctx, NewBytes(nil), b.Address(ctx), None[Duration]()))
+	must(t, a.SendBytes(ctx, NewBytes(nil), b.Address(ctx), None[Duration]()))
 	if d := must(t, b.Receive(ctx, None[int](), Some(Duration(time.Second)))); len(d.Data.Data) != 0 {
 		t.Fatal("empty datagram")
 	}
 	// An oversized datagram is discarded with LimitExceeded, never truncated.
-	must(t, a.Send(ctx, NewBytes([]byte("0123456789")), b.Address(ctx), None[Duration]()))
+	must(t, a.SendBytes(ctx, NewBytes([]byte("0123456789")), b.Address(ctx), None[Duration]()))
 	failedWith(t, b.Receive(ctx, Some(int(4)), Some(Duration(time.Second))), "NetworkError_LimitExceeded")
 	failedWith(t, b.Receive(ctx, None[int](), Some(Duration(10*time.Millisecond))), "NetworkError_Timeout")
 	b.Close(ctx)
 	b.Close(ctx)
 	failedWith(t, b.Receive(ctx, None[int](), None[Duration]()), "NetworkError_Closed")
-	failedWith(t, b.Send(ctx, NewBytes(nil), a.Address(ctx), None[Duration]()), "NetworkError_Closed")
+	failedWith(t, b.SendBytes(ctx, NewBytes(nil), a.Address(ctx), None[Duration]()), "NetworkError_Closed")
 	if b.Address(ctx) == "" {
 		t.Fatal("address after close")
 	}
 	restricted := must(t, n.Restrict(ctx, NewList("localhost"), NewList("127.0.0.0/8"), true))
 	r := must(t, restricted.BindDatagram(ctx, "127.0.0.1:0"))
-	failedWith(t, r.Send(ctx, NewBytes(nil), "192.0.2.1:9", None[Duration]()), "NetworkError_PermissionDenied")
+	failedWith(t, r.SendBytes(ctx, NewBytes(nil), "192.0.2.1:9", None[Duration]()), "NetworkError_PermissionDenied")
 	failedWith(t, restricted.BindDatagram(ctx, "192.0.2.1:0"), "NetworkError_PermissionDenied")
 }
 

@@ -13,7 +13,7 @@ import TlsOptions from "@std/tls.ms"
 
 fn relay(socket: WebSocket) Result[Unit, WebSocketError]:
     if let message = try socket.receive():
-        try socket.send(message.data, text: message.text)
+        try socket.send_bytes(message.data, text: message.text)
     return ok(unit)
 
 fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
@@ -69,7 +69,7 @@ fn exercise() Result[Unit, Error]:
                 method: HttpMethod.Get,
                 url: "http://{server.address()}/",
                 headers: headers(),
-                body: "".to_bytes(),
+                body: "",
                 max_response_bytes: 1024,
                 timeout: 2.seconds
             ):
@@ -98,7 +98,7 @@ fn exercise() Result[Unit, Error]:
             if not (socket.subprotocol() == "echo"):
                 return panic("check failed")
 
-            try socket.send("echo me".to_bytes(), text: true)
+            try socket.send("echo me")
 
             if let message = try socket.receive():
                 if not (message.text):

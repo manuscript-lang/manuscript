@@ -115,8 +115,17 @@ export interface HttpClient:
     # Cancels in-flight requests, closes open response bodies, and drops idle pooled connections.
     # Safe to call repeatedly; later requests return Closed.
     fn close() Unit
-    # Sends immutable Bytes and returns a scoped streaming response body.
+    # Sends the UTF-8 text body and returns a scoped streaming response body.
     fn request(
+        method: HttpMethod,
+        url: String,
+        headers: HttpHeaders,
+        body: String = "",
+        max_response_bytes: Optional[Int] = none,
+        timeout: Optional[Duration] = none
+    ) Result[ResponseBody, HttpError]
+    # Sends immutable Bytes and returns a scoped streaming response body.
+    fn request_bytes(
         method: HttpMethod,
         url: String,
         headers: HttpHeaders,

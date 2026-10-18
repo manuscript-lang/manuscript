@@ -45,7 +45,7 @@ test "UDP loopback preserves datagram data and sender":
 
     with receiver = try net.bind_datagram("127.0.0.1:0"):
         with sender = try net.bind_datagram("127.0.0.1:0"):
-            try sender.send("packet".to_bytes(), receiver.address(), 2.seconds)
+            try sender.send("packet", receiver.address(), 2.seconds)
             let packet = try receiver.receive(64, 2.seconds)
             if packet.data != "packet".to_bytes() or packet.sender != sender.address(): return panic(
                 "UDP datagram"
