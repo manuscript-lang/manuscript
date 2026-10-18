@@ -24,12 +24,12 @@ A generic bound grants properties, not subtyping. Type positions use [ordinary n
 `Equal` and `Hashable` are [standard interfaces](equality-and-hashing.md) usable as bounds or views. Only generic bounds can be conjoined; value types have no intersection or refinement syntax.
 
 ```manuscript
-fn identity(value: Int) -> Int:
+fn identity(value: Int) Int:
     return value
 
-let exact: fn(value: Int) -> Int = identity
+let exact: fn(value: Int) Int = identity
 # Rejected: amount differs from value.
-let relabeled: fn(amount: Int) -> Int = identity
+let relabeled: fn(amount: Int) Int = identity
 ```
 
 Only call boundaries wrap a plain `T` for an `Optional[T]` parameter ([optional arguments](optionals.md#passing-optional-arguments)), including constructor fields and alternative payloads. Everywhere else Optional must match exactly.
@@ -66,11 +66,11 @@ A list whose independently typed elements disagree is rejected.
 Operators and `try` do not pass an expected type back into their operands, which must determine their own types first.
 
 ```manuscript
-fn known() -> Result[Int, String]:
+fn known() Result[Int, String]:
     let number: Int = try Result[Int, String].ok(1)
     return ok(number)
 
-fn unknown() -> Result[Int, String]:
+fn unknown() Result[Int, String]:
     # Rejected: the try operand's error type is undetermined.
     let number: Int = try ok(1)
     return ok(number)

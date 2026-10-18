@@ -5,11 +5,11 @@ type Summary:
     count: Int
     label: String
 
-fn count() -> Int: 3
+fn count() Int: 3
 
-fn label() -> String: "ready"
+fn label() String: "ready"
 
-fn load() -> Result[Summary, ExecutionError]:
+fn load() Result[Summary, ExecutionError]:
     with tasks = TaskGroup():
         let count_task = tasks.start(count)
         let label_task = tasks.start(label)

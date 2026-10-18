@@ -29,21 +29,21 @@ impl NormalizationForm:
     fn normalize(
         text: String,
         max_bytes: Optional[Int] = none
-    ) -> Result[String, StringError]:
+    ) Result[String, StringError]:
 
 # Builds text from Unicode scalar values. Invalid scalars return `InvalidInput`.
-export fn from_scalars(values: List[Int]) -> Result[String, StringError]:
+export fn from_scalars(values: List[Int]) Result[String, StringError]:
 
 impl Error for StringError:
     # Returns original Failed text, or a string-prefixed diagnostic for other cases.
-    fn message() -> String:
+    fn message() String:
 
 # Mutable builder for constructing a string without repeated intermediate copies.
 export type StringBuilder:
 
 impl StringBuilder:
     # Appends the supplied text in order; mutation after freeze raises a sealed-builder fault.
-    fn append(value: String) -> Unit:
+    fn append(value: String) Unit:
 
     # Seals the builder and returns immutable text; repeated freeze returns the same text value.
-    fn freeze() -> String:
+    fn freeze() String:

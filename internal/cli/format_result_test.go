@@ -13,8 +13,8 @@ func TestFormatJSONChecksAndPartialFailures(t *testing.T) {
 	t.Chdir(root)
 	t.Setenv("PATH", t.TempDir())
 	for name, source := range map[string]string{
-		"clean.ms":   "fn value() -> Int:\n    return 0\n",
-		"drift=a.ms": "fn value() -> Int:   \n    return 0   \n",
+		"clean.ms":   "fn value() Int:\n    return 0\n",
+		"drift=a.ms": "fn value() Int:   \n    return 0   \n",
 		"invalid.ms": "fn broken(\n",
 	} {
 		if err := os.WriteFile(name, []byte(source), 0640); err != nil {
@@ -66,7 +66,7 @@ func TestFormatPathsMatchAcrossSelectionForms(t *testing.T) {
 	if err := os.Mkdir("src", 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile("src/value.ms", []byte("fn value() -> Int:   \n    return 0   \n"), 0600); err != nil {
+	if err := os.WriteFile("src/value.ms", []byte("fn value() Int:   \n    return 0   \n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile("ms.toml", []byte("[project]\nname = \"format\"\nsource = \"src\"\nentry = \"src/value.ms\"\n"), 0600); err != nil {

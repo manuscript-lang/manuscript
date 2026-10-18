@@ -14,29 +14,29 @@ type Outcome:
     case Waiting
 
 interface Named:
-    fn name() -> String
+    fn name() String
 
 impl Named for Person:
-    fn name() -> String:
+    fn name() String:
         return self.name
 
-fn stringify[T](value: T) -> String:
+fn stringify[T](value: T) String:
     return value.toString()
 
-fn interpolate[T](value: T) -> String:
+fn interpolate[T](value: T) String:
     return "{value}"
 
-fn bound_stringify[T: Named](value: T) -> String:
+fn bound_stringify[T: Named](value: T) String:
     return value.toString()
 
-fn check(value: String, expected: String) -> Unit:
+fn check(value: String, expected: String) Unit:
     if value != expected:
         panic(message: "expected {expected}, received {value}")
 
-fn answer() -> Int:
+fn answer() Int:
     return 42
 
-fn next(state: Synchronized[Int]) -> Person:
+fn next(state: Synchronized[Int]) Person:
     with locked = state.lock():
         let value = locked.get()
         locked.set(value: value + 1)
@@ -93,7 +93,7 @@ test "generics views bound methods functions and resources":
     let view = Named(person)
     check(value: view.toString(), expected: person.toString())
     check(value: "{view}", expected: person.toString())
-    let convert: fn() -> String = view.toString
+    let convert: fn() String = view.toString
     check(value: convert(), expected: person.toString())
     check(value: answer.toString(), expected: "[function]")
     check(value: "{answer}", expected: "[function]")

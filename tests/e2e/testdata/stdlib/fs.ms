@@ -7,7 +7,7 @@ import value from "./support/results.ms"
 fn expect_fs_error[T](
     outcome: Result[T, FileSystemError],
     expected: FileSystemError
-) -> Unit:
+) Unit:
     match outcome:
         ok(_): return panic("filesystem misuse succeeded")
         error(cause):
@@ -48,7 +48,7 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
                 path: root,
                 options: options,
                 exclude: some(
-                    fn(entry: PathEntry) -> Bool:
+                    fn(entry: PathEntry) Bool:
                         if entry.path == ".": options.patterns.set(0, "*.md")
                         return false
                 )

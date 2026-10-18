@@ -13,44 +13,57 @@ type Ledger:
     out: StringBuilder
     fees: Int
 
-fn fields(line: String) -> List[String]:
+fn fields(line: String) List[String]:
     let spaced = line.replace_all(old: "\t", new: " ").unwrap()
-    return spaced.split(" ").filter(fn(part: String) -> Bool:
-        return not part.is_empty()
+    return spaced.split(" ").filter(
+        fn(part: String) Bool:
+            return not part.is_empty()
     )
 
-fn all_digits(s: String) -> Bool:
+fn all_digits(s: String) Bool:
     if s.is_empty():
         return false
+
     for c in s.scalar_values():
         if c < 48 or c > 57:
             return false
     return true
 
-fn emit(l: Ledger, text: String) -> Unit:
+fn emit(l: Ledger, text: String) Unit:
     l.out.append(text)
     l.out.append("\n")
 
-fn reject(l: Ledger, id: String, msg: String) -> Unit:
+fn reject(l: Ledger, id: String, msg: String) Unit:
     let a = l.accounts.get(id).unwrap()
     a.rej = a.rej + 1
     emit(l, msg)
 
-fn report(l: Ledger) -> Unit:
-    let ids = l.accounts.keys().sorted(compare: fn(x: String, y: String) -> Int:
-        return x.compare(y)
+fn report(l: Ledger) Unit:
+    let ids = (
+        l
+        .accounts
+        .keys()
+        .sorted(
+            compare: fn(x: String, y: String) Int:
+                return x.compare(y)
+        )
     )
     var total = 0
+
     for id in ids:
         let a = l.accounts.get(id).unwrap()
         total = total + a.bal
         var fz = "no"
         if a.frozen:
             fz = "yes"
-        emit(l, "{id} balance={a.bal} limit={a.lim} ops={a.ops} rejected={a.rej} frozen={fz}")
+        emit(
+            l,
+            "{id} balance={a.bal} limit={a.lim} ops={a.ops} rejected={a.rej} frozen={fz}"
+        )
+
     emit(l, "total balance={total} fees={l.fees}")
 
-fn arity(cmd: String) -> Int:
+fn arity(cmd: String) Int:
     if cmd == "open" or cmd == "deposit" or cmd == "withdraw":
         return 3
     if cmd == "transfer":
@@ -59,9 +72,10 @@ fn arity(cmd: String) -> Int:
         return 2
     if cmd == "report":
         return 1
+
     return 0
 
-fn money(l: Ledger, cmd: String, t: List[String]) -> Unit:
+fn money(l: Ledger, cmd: String, t: List[String]) Unit:
     let ids = [t.at(1).unwrap()]
     if cmd == "transfer":
         ids.append(t.at(2).unwrap())
@@ -74,22 +88,28 @@ fn money(l: Ledger, cmd: String, t: List[String]) -> Unit:
         return reject(l, first, "error: same account")
     if not all_digits(amount_text) or amount_text.parse_int().unwrap_or(0) <= 0:
         return reject(l, first, "error: invalid amount")
+
     for id in ids:
         if l.accounts.get(id).unwrap().frozen:
             return reject(l, id, "error: account frozen {id}")
     let n = amount_text.parse_int().unwrap()
     let a = l.accounts.get(first).unwrap()
+
     if cmd == "deposit":
         a.bal = a.bal + n
         a.ops = a.ops + 1
         return emit(l, "ok {a.bal}")
+
     var next = a.bal - n
     var fee = 0
+
     if a.bal >= 0 and next < 0:
         next = next - 5
         fee = 5
+
     if next < 0 - a.lim:
         return reject(l, first, "error: overdraft limit exceeded {first}")
+
     a.bal = next
     a.ops = a.ops + 1
     l.fees = l.fees + fee
@@ -98,17 +118,19 @@ fn money(l: Ledger, cmd: String, t: List[String]) -> Unit:
         sfx = " fee={fee}"
     if cmd == "withdraw":
         return emit(l, "ok {next}{sfx}")
+
     let b = l.accounts.get(ids.at(1).unwrap()).unwrap()
     b.bal = b.bal + n
     b.ops = b.ops + 1
     emit(l, "ok {next} {b.bal}{sfx}")
 
-fn step(l: Ledger, t: List[String]) -> Unit:
+fn step(l: Ledger, t: List[String]) Unit:
     let cmd = t.at(0).unwrap()
     if arity(cmd) != t.length():
         return emit(l, "error: bad command")
     if cmd == "report":
         return report(l)
+
     if cmd == "open":
         let id = t.at(1).unwrap()
         let lim = t.at(2).unwrap()
@@ -116,31 +138,50 @@ fn step(l: Ledger, t: List[String]) -> Unit:
             return emit(l, "error: invalid limit")
         if l.accounts.contains(id):
             return emit(l, "error: account exists {id}")
-        l.accounts.add(key: id, value: Account(bal: 0, lim: lim.parse_int().unwrap(), ops: 0, rej: 0, frozen: false))
+
+        (
+            l.accounts.add(
+                key: id,
+                value: Account(
+                    bal: 0,
+                    lim: lim.parse_int().unwrap(),
+                    ops: 0,
+                    rej: 0,
+                    frozen: false
+                )
+            )
+        )
         return emit(l, "ok")
+
     if cmd == "freeze" or cmd == "unfreeze":
         let id = t.at(1).unwrap()
         let found = l.accounts.get(id)
         if found.is_none():
             return emit(l, "error: unknown account {id}")
+
         found.unwrap().frozen = cmd == "freeze"
         return emit(l, "ok")
+
     money(l, cmd, t)
 
-fn run() -> Result[Unit, Error]:
+fn run() Result[Unit, Error]:
     let l = Ledger(accounts: Map[String, Account](), out: StringBuilder(), fees: 0)
+
     while true:
         let next = try read_line(input: stdin(), max_bytes: 1048576)
         if next.is_none():
             break
+
         let t = fields(next.unwrap())
         if t.is_empty():
             continue
+
         step(l, t)
+
     try stdout().write(l.out.freeze().to_bytes())
     return stdout().flush()
 
-export fn main() -> Int:
+export fn main() Int:
     match run():
         ok(_): return 0
         error(_): return 1

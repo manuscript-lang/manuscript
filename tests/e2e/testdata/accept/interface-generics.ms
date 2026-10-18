@@ -1,27 +1,27 @@
 import panic from "@std/faults.ms"
 
 interface Read[V]:
-    fn get() -> V
+    fn get() V
 
 interface Same[V: Equal]:
-    fn same(other: V) -> Bool
+    fn same(other: V) Bool
 
 type Box[T]:
     value: T
 
 impl Read[T] for Box[T]:
-    fn get() -> T:
+    fn get() T:
         return self.value
 
 impl Same[T] for Box[T]:
-    fn same(other: T) -> Bool:
+    fn same(other: T) Bool:
         return self.value == other
 
 type Matching[T: Equal]:
     value: T
 
 impl Same[T] for Matching[T]:
-    fn same(other: T) -> Bool:
+    fn same(other: T) Bool:
         return self.value == other
 
 type Pair[A, B: Read[A]]:
@@ -29,13 +29,13 @@ type Pair[A, B: Read[A]]:
     right: B
 
 impl Read[Int] for Pair[Int, B]:
-    fn get() -> Int:
+    fn get() Int:
         return self.right.get()
 
-fn identity(value: Int) -> Int:
+fn identity(value: Int) Int:
     return value
 
-fn read[T](box: Box[T]) -> T:
+fn read[T](box: Box[T]) T:
     return box.get()
 
 test "parameters and bounds belong to interfaces and types":

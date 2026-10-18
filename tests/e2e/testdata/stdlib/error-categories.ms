@@ -24,18 +24,18 @@ type PathError:
     case InvalidInput
 
 impl Error for PathError:
-    fn message() -> String:
+    fn message() String:
         return "path: invalid input"
 
 impl Error for CustomError:
-    fn message() -> String:
+    fn message() String:
         self.calls = self.calls + 1
         return self.message
 
-fn is_missing(cause: Error) -> Bool:
+fn is_missing(cause: Error) Bool:
     return category(cause) == some(ErrorCategory.NotFound)
 
-fn yaml_error(cause: Error) -> YamlError:
+fn yaml_error(cause: Error) YamlError:
     match cause:
         YamlError(found): return found
         _: return panic("category changed domain")

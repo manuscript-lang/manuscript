@@ -34,7 +34,7 @@ This complete program prints the number of arguments it receives:
 import arguments from "@std/cli.ms"
 import stdout from "@std/io.ms"
 
-export fn main() -> Int:
+export fn main() Int:
     let message = "Arguments: {arguments().length()}\n"
     if stdout().write(message.to_bytes()).is_error():
         return 1
@@ -52,7 +52,7 @@ type Request:
     model: String
     user: Optional[String]
 
-fn describe(request: Request) -> String:
+fn describe(request: Request) String:
     if let name = request.user:
         return "{request.model} for {name}"
     else:

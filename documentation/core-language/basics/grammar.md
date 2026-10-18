@@ -62,11 +62,11 @@ Inside a call, list, or grouping, a function expression may have an inline suite
 A delimiter opened outside the body cannot close at body indentation. Group the function when a following comma belongs to the enclosing arguments:
 
 ```manuscript
-fn example() -> Int:
+fn example() Int:
     return apply(
         value: 3,
         transform: (
-            fn(value: Int) -> Int:
+            fn(value: Int) Int:
                 return value - 1
         ),
     )
@@ -75,10 +75,10 @@ fn example() -> Int:
 The grouping close (eight spaces) ends the function suite before the comma. An ungrouped suite-bodied function can be the final argument:
 
 ```manuscript
-fn example() -> Int:
+fn example() Int:
     return apply(
         value: 3,
-        transform: fn(value: Int) -> Int:
+        transform: fn(value: Int) Int:
             return value - 1
     )
 ```
@@ -86,9 +86,9 @@ fn example() -> Int:
 Use `fn(value): value - 1` when context supplies the parameter type; an inline body returns its value, while indented bodies use explicit returns. To add another argument after an ungrouped indented function, put the comma on its own line at the header's indentation:
 
 ```manuscript
-fn example() -> Int:
+fn example() Int:
     return apply(
-        transform: fn(value: Int) -> Int:
+        transform: fn(value: Int) Int:
             return value - 1
         ,
         value: 3,
@@ -119,13 +119,13 @@ CaseDeclaration = "case", Name, [ "(", Parameters, ")" ], NEWLINE ;
 InterfaceDeclaration = "interface", Name, [ TypeParameters ], ":", NEWLINE,
                        INDENT, ContractBody, DEDENT ;
 ContractBody  = OperationSignature, { OperationSignature } ;
-OperationSignature = "fn", Name, "(", [ FunctionParameters ], ")", "->", Type, NEWLINE ;
+OperationSignature = "fn", Name, "(", [ FunctionParameters ], ")", Type, NEWLINE ;
 FunctionDeclaration = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
-                      "->", Type, FunctionSuite ;
+                      Type, FunctionSuite ;
 Implementation = "impl", NamedType, [ "for", NamedType ], ":", NEWLINE,
                  [ INDENT, MethodDeclaration, { MethodDeclaration }, DEDENT ] ;
 (* With "for", the first NamedType is the interface and the second the type. Without it, the only NamedType is the type and the block declares its own methods. *)
-MethodDeclaration = "fn", Name, "(", [ FunctionParameters ], ")", "->", Type, FunctionSuite ;
+MethodDeclaration = "fn", Name, "(", [ FunctionParameters ], ")", Type, FunctionSuite ;
 FunctionSuite = ":", (Expression | SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
 TestDeclaration = "test", PlainStringLiteral, Suite ;
 (* A test body behaves as if it returns Result[Unit, Error]: completing, bare return, or return unit succeeds; try or return error(...) fails it. *)
@@ -144,13 +144,14 @@ Type          = NamedType | FunctionType | "(", Type, ")" ;
 NamedType     = TypePath, [ TypeArguments ] ;
 TypePath      = Name, { ".", Name } ;
 TypeArguments = "[", Type, { ",", Type }, [ "," ], "]" ;
-FunctionType  = "fn", "(", [ Parameters ], ")", "->", Type ;
+FunctionType  = "fn", "(", [ Parameters ], ")", Type ;
 ```
 
 - A `type` declares record fields or alternative cases, never both; its methods go in an `impl` block, `impl Type:` for its own or `impl Interface for Type:` for an interface. An `interface` holds only operation signatures. A nullary case is `case Ready`, without `()`. Names are unique per scope.
+- A result type follows the parameter list directly (`fn double(value: Int) Int:`); the former `->` is rejected. A lambda writes one only when it needs it (`fn(value) Int: value * 2`), because after `)` a type means a result type and `:` starts the body.
 - Named functions need explicit parameter and result types; anonymous ones may infer them ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)).
 - Defaults: [function parameters](../functions/declarations-and-calls.md#default-arguments), [record fields](../types/records.md#construction), and `= none` on Optional interface parameters. Function types and alternative payloads have none. No variadics or parameter patterns.
-- Named function and method suites may be empty (`fn commands() -> Commands:` then a newline), as can type schemas (`type Duration:`); the standard library uses this for runtime-bound implementations. Interface, implementation, test, and control-flow suites are nonempty.
+- Named function and method suites may be empty (`fn commands() Commands:` then a newline), as can type schemas (`type Duration:`); the standard library uses this for runtime-bound implementations. Interface, implementation, test, and control-flow suites are nonempty.
 - Imports and declarations may interleave; order does not affect resolution. Import paths and test names are plain literals (escapes allowed, no interpolation).
 - `export` applies to types, interfaces, and named functions, not tests or `impl` blocks.
 - `impl` blocks declare no type parameters, and `impl Type:` is accepted only in the module that declares `Type`: in `impl Contract[T] for Data[T]:`, `T` comes from the receiver type and bounds from the declarations. Every parameter in the signatures must occur in the receiver application, and operations and source methods cannot declare their own. Overlap follows [contracts](../types/contracts.md#generic-implementations).
@@ -198,8 +199,8 @@ RecordEntry   = Name, [ ":", BindingPattern ] ;
 - Inline suites (functions, methods, tests, branches, loops, `with`) hold one simple statement, no nested compound statements. Functions and methods alone may hold one expression, which is returned:
 
 ```manuscript
-fn double(value: Int) -> Int: value * 2
-fn positive(value: Int) -> Bool:
+fn double(value: Int) Int: value * 2
+fn positive(value: Int) Bool:
     if value > 0: return true
     else: return false
 ```
@@ -215,9 +216,9 @@ fn positive(value: Int) -> Bool:
 
 ```manuscript
 let count = 3                       # Not a complete module item.
-fn wrong() -> Int:
+fn wrong() Int:
   return 1                          # A suite requires four spaces.
-fn wrong() -> Int:
+fn wrong() Int:
     let (first, second) = pair       # Parentheses are not a binding pattern.
     return if true: 1 else: 2        # if is not an expression.
 ```

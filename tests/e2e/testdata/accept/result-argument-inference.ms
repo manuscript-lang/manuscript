@@ -4,34 +4,34 @@ type Failure:
     code: Int
 
 impl Error for Failure:
-    fn message() -> String: self.code.toString()
+    fn message() String: self.code.toString()
 
 type Tagged[T]:
     value: T
 
 impl Error for Tagged[T]:
-    fn message() -> String: "tagged {self.value}"
+    fn message() String: "tagged {self.value}"
 
-fn erase[T](r: Result[T, Error]) -> Result[T, Error]: r
+fn erase[T](r: Result[T, Error]) Result[T, Error]: r
 
-fn forward[T, E: Error](r: Result[T, E]) -> Result[T, Error]: erase(r)
+fn forward[T, E: Error](r: Result[T, E]) Result[T, Error]: erase(r)
 
-fn optional[T](r: Optional[Result[T, Error]]) -> Result[T, Error]: r.unwrap()
+fn optional[T](r: Optional[Result[T, Error]]) Result[T, Error]: r.unwrap()
 
-fn same[T, E](r: Result[T, E]) -> Result[T, E]: r
+fn same[T, E](r: Result[T, E]) Result[T, E]: r
 
-fn both[T, E](cause: E, r: Result[T, E]) -> Result[T, E]: r
+fn both[T, E](cause: E, r: Result[T, E]) Result[T, E]: r
 
-fn number() -> Result[Int, Failure]: ok(7)
+fn number() Result[Int, Failure]: ok(7)
 
 type Events:
     values: List[Int]
 
-fn record(events: Events, value: Int) -> Result[Int, Failure]:
+fn record(events: Events, value: Int) Result[Int, Failure]:
     events.values = events.values.append(value)
     return ok(value)
 
-fn default_value(events: Events) -> Int:
+fn default_value(events: Events) Int:
     events.values = events.values.append(3)
     return 3
 
@@ -40,7 +40,7 @@ fn ordered[T](
     second: Result[T, Error],
     events: Events,
     last: Int = default_value(events)
-) -> Result[T, Error]:
+) Result[T, Error]:
     events.values = events.values.append(4)
     return first
 

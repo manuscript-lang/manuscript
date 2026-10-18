@@ -8,7 +8,7 @@ import (
 
 func TestConcurrentCaptureLintReproduction(t *testing.T) {
 	source := `import TaskGroup from "@std/tasks.ms"
-fn run() -> Unit:
+fn run() Unit:
     let counters = {"hits": 0}
     with tasks = TaskGroup():
         let _task = tasks.start(fn():
@@ -148,21 +148,21 @@ type Counter:
 `, 1},
 		{"scheduler start", `    let values = [0]
     with jobs = Scheduler():
-        let _started = jobs.start(fn() -> Result[Unit, Error]:
+        let _started = jobs.start(fn() Result[Unit, Error]:
             values.append(1)
             return ok(unit)
         )
 `, 1},
 		{"scheduler after", `    let values = [0]
     with jobs = Scheduler():
-        let _started = jobs.after(duration: duration(1), operation: fn() -> Result[Unit, Error]:
+        let _started = jobs.after(duration: duration(1), operation: fn() Result[Unit, Error]:
             values.append(1)
             return ok(unit)
         )
 `, 1},
 		{"scheduler every", `    let values = [0]
     with jobs = Scheduler():
-        let _started = jobs.every(interval: duration(1), operation: fn() -> Result[Unit, Error]:
+        let _started = jobs.every(interval: duration(1), operation: fn() Result[Unit, Error]:
             values.append(1)
             return ok(unit)
         )
@@ -178,7 +178,7 @@ type Counter:
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			checked := compiler.CompileSource("capture.ms", imports+"fn run() -> Unit:\n"+tc.body, compiler.Options{AnalyzeOnly: true})
+			checked := compiler.CompileSource("capture.ms", imports+"fn run() Unit:\n"+tc.body, compiler.Options{AnalyzeOnly: true})
 			if !checked.Success() {
 				t.Fatal(checked.Diagnostics)
 			}
@@ -197,12 +197,12 @@ type Counter:
 
 func TestConcurrentCaptureLintDoesNotGuessMethodNames(t *testing.T) {
 	source := `interface Starter:
-    fn start(operation: fn() -> Unit) -> Unit
+    fn start(operation: fn() Unit) Unit
 type Sequential:
 impl Starter for Sequential:
-    fn start(operation: fn() -> Unit) -> Unit:
+    fn start(operation: fn() Unit) Unit:
         operation()
-fn run() -> Unit:
+fn run() Unit:
     let values = [0]
     Sequential().start(fn():
         values.append(1)
@@ -221,11 +221,11 @@ func TestConcurrentCaptureLintHTTPHandlers(t *testing.T) {
 	prefix := `import network from "@std/net.ms"
 import { HttpResponse, HttpServerOptions } from "@std/http.ms"
 import panic from "@std/faults.ms"
-fn run() -> Unit:
+fn run() Unit:
     let values = [0]
 `
 	for _, body := range []string{
-		`    let _server = network().serve(address: "127.0.0.1:0", handler: fn(request) -> HttpResponse:
+		`    let _server = network().serve(address: "127.0.0.1:0", handler: fn(request) HttpResponse:
         values.append(1)
         return panic("not executed by lint")
     )
@@ -258,7 +258,7 @@ func TestConcurrentCaptureLintDocumentationFragments(t *testing.T) {
 	} {
 		source := `import TaskGroup from "@std/tasks.ms"
 import Synchronized from "@std/sync.ms"
-fn run() -> Unit:
+fn run() Unit:
     ` + tc.declaration + `
     with tasks = TaskGroup():
         let task = tasks.start(fn():

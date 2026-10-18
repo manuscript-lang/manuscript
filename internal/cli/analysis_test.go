@@ -29,10 +29,10 @@ func TestAnalysisIndependentInputsAndPartialErrors(t *testing.T) {
 	t.Chdir(root)
 	t.Setenv("PATH", t.TempDir())
 	analysisFiles(t, root, map[string]string{
-		"left/main.ms":  "export fn main() -> Int:\n    return missing\n",
-		"right/main.ms": "export fn main() -> Int:\n    return \"wrong\"\n",
-		"good/main.ms":  "export fn main() -> Int:\n    return 0\n",
-		"other/main.ms": "export fn main() -> Int:\n    return 0\n",
+		"left/main.ms":  "export fn main() Int:\n    return missing\n",
+		"right/main.ms": "export fn main() Int:\n    return \"wrong\"\n",
+		"good/main.ms":  "export fn main() Int:\n    return 0\n",
+		"other/main.ms": "export fn main() Int:\n    return 0\n",
 	})
 	status, stdout, stderr := invoke(t, "check", "other/main.ms", "good/main.ms")
 	if status != 0 || stderr != "" || stdout != "Checked "+filepath.Join("good", "main.ms")+"\nChecked "+filepath.Join("other", "main.ms")+"\n" {
@@ -70,10 +70,10 @@ func TestAnalysisLintAggregatesSourceAndHygiene(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
 	analysisFiles(t, root, map[string]string{
-		"a.ms":      "import value from \"./shared.ms\"\nexport fn main() -> Int:\n    return value()\n",
-		"b.ms":      "import value from \"./shared.ms\"\nexport fn main() -> Int:\n    return value()\n",
-		"shared.ms": "export fn value() -> Int:\n    return 0   \n",
-		"bad.ms":    "export fn broken() -> Int:\n    return missing\n",
+		"a.ms":      "import value from \"./shared.ms\"\nexport fn main() Int:\n    return value()\n",
+		"b.ms":      "import value from \"./shared.ms\"\nexport fn main() Int:\n    return value()\n",
+		"shared.ms": "export fn value() Int:\n    return 0   \n",
+		"bad.ms":    "export fn broken() Int:\n    return missing\n",
 	})
 	status, stdout, stderr := invoke(t, "lint", "b.ms", "bad.ms", "a.ms", "--json")
 	var document struct {
@@ -99,7 +99,7 @@ func TestLintOrdersSingleFileFindingsBySourcePosition(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
 	analysisFiles(t, root, map[string]string{
-		"a.ms": "fn f() -> Int:\n    return 0   \n\nfn g() -> Int:\n    let x = 1\n    return 2\n",
+		"a.ms": "fn f() Int:\n    return 0   \n\nfn g() Int:\n    let x = 1\n    return 2\n",
 	})
 	_, _, stderr := invoke(t, "lint", "a.ms")
 	last := 0
@@ -117,8 +117,8 @@ func TestAnalysisStandaloneDirectoryBoundariesAndEmpty(t *testing.T) {
 	t.Chdir(root)
 	t.Setenv("PATH", t.TempDir())
 	analysisFiles(t, root, map[string]string{
-		"sources/a.ms":                "export fn main() -> Int:\n    return 0\n",
-		"sources/sub/b.ms":            "export fn main() -> Int:\n    return 0\n",
+		"sources/a.ms":                "export fn main() Int:\n    return 0\n",
+		"sources/sub/b.ms":            "export fn main() Int:\n    return 0\n",
 		"sources/.hidden/invalid.ms":  "invalid source",
 		"sources/vendor/invalid.ms":   "invalid source",
 		"sources/node_modules/bad.ms": "invalid source",
@@ -150,7 +150,7 @@ func TestAnalysisStandaloneDirectoryBoundariesAndEmpty(t *testing.T) {
 	}
 	// Selecting a directory must not widen each file's existing import root.
 	analysisFiles(t, root, map[string]string{
-		"sources/sub/b.ms": "import main from \"../a.ms\"\nexport fn value() -> Int:\n    return main()\n",
+		"sources/sub/b.ms": "import main from \"../a.ms\"\nexport fn value() Int:\n    return main()\n",
 	})
 	status, stdout, stderr = invoke(t, "check", "sources", "--json")
 	if status != 1 || stderr != "" || !strings.Contains(stdout, "path escapes project root") {
@@ -164,8 +164,8 @@ func TestAnalysisProjectScopes(t *testing.T) {
 	for _, name := range []string{"left", "right"} {
 		analysisFiles(t, root, map[string]string{
 			name + "/ms.toml":        "[project]\nname = \"independent\"\nsource = \"src\"\nentry = \"src/main.ms\"\n[aliases]\n\"@lib\" = \"src/library.ms\"\n",
-			name + "/src/main.ms":    "import value from \"@lib\"\nexport fn main() -> Int:\n    return value()\n",
-			name + "/src/library.ms": "# Local value.\nexport fn value() -> Int:\n    return 0\n",
+			name + "/src/main.ms":    "import value from \"@lib\"\nexport fn main() Int:\n    return value()\n",
+			name + "/src/library.ms": "# Local value.\nexport fn value() Int:\n    return 0\n",
 		})
 	}
 	for _, command := range []string{"check", "lint"} {
@@ -180,8 +180,8 @@ func TestAnalysisLiteralTargetsAndNativeArity(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
 	analysisFiles(t, root, map[string]string{
-		"-flag=a=b.ms": "export fn main() -> Int:\n    return 0\n",
-		"plain.ms":     "export fn main() -> Int:\n    return 0\n",
+		"-flag=a=b.ms": "export fn main() Int:\n    return 0\n",
+		"plain.ms":     "export fn main() Int:\n    return 0\n",
 	})
 	for _, command := range []string{"check", "lint"} {
 		status, _, stderr := invoke(t, command, "--", "-flag=a=b.ms", "plain.ms")
@@ -200,10 +200,10 @@ func TestAnalysisLiteralTargetsAndNativeArity(t *testing.T) {
 func TestAnalysisCollectionRangesAndSymlinkConfinement(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
-	source := "# header\r\n\r\nimport {ListBuilder, List} from \"@std/collections.ms\"\r\n\r\nfn update(items: ListBuilder[Int]) -> Int:\r\n    return 0\r\n"
-	analysisFiles(t, root, map[string]string{"ranges.ms": source, "sources/main.ms": "export fn main() -> Int:\n    return 0\n"})
+	source := "# header\r\n\r\nimport {ListBuilder, List} from \"@std/collections.ms\"\r\n\r\nfn update(items: ListBuilder[Int]) Int:\r\n    return 0\r\n"
+	analysisFiles(t, root, map[string]string{"ranges.ms": source, "sources/main.ms": "export fn main() Int:\n    return 0\n"})
 	outside := t.TempDir()
-	analysisFiles(t, outside, map[string]string{"bad.ms": "export fn value() -> Int:\n    return missing\n", "good.ms": "export fn value() -> Int:\n    return 0\n"})
+	analysisFiles(t, outside, map[string]string{"bad.ms": "export fn value() Int:\n    return missing\n", "good.ms": "export fn value() Int:\n    return 0\n"})
 	status, stdout, stderr := invoke(t, "check", "ranges.ms", filepath.Join(outside, "bad.ms"), "--json")
 	var document struct{ Diagnostics []commandDiagnostic }
 	if status != 1 || stderr != "" || json.Unmarshal([]byte(stdout), &document) != nil || len(document.Diagnostics) != 2 {
@@ -250,7 +250,7 @@ func TestCheckWatchRerunsAfterEdits(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the test interrupts itself with a POSIX signal")
 	}
-	file := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
+	file := sourceFile(t, "export fn main() Int:\n    return 0\n")
 	type outcome struct {
 		status         int
 		output, errors string
@@ -261,7 +261,7 @@ func TestCheckWatchRerunsAfterEdits(t *testing.T) {
 		done <- outcome{status, output, errors}
 	}()
 	time.Sleep(500 * time.Millisecond)
-	if err := os.WriteFile(file, []byte("export fn main() -> Int:\n    return \"wrong\"\n"), 0o644); err != nil {
+	if err := os.WriteFile(file, []byte("export fn main() Int:\n    return \"wrong\"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	time.Sleep(500 * time.Millisecond)

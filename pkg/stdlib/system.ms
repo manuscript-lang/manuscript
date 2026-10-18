@@ -5,45 +5,45 @@ import Duration from "@std/time.ms"
 # Read-only host details and selected controls for the current operating system.
 export interface System:
     # Reads the live variable; absent or non-UTF-8 values return none.
-    fn environment(name: String) -> Optional[String]
+    fn environment(name: String) Optional[String]
     # Returns the operating system name, processor architecture, and logical CPU count for this host.
-    fn info() -> SystemInfo
+    fn info() SystemInfo
     # Reads the live native directory; an OS query failure faults because this API has no Result.
     # A host service constructed with an explicit directory retains that base.
-    fn working_directory() -> String
+    fn working_directory() String
     # Returns the host's name as reported by the operating system.
     # A name that is not valid UTF-8 returns Unsupported.
-    fn hostname() -> Result[String, SystemError]
+    fn hostname() Result[String, SystemError]
     # Returns the current user's home directory path, from the host's environment or account database.
     # A path that is not valid UTF-8 returns Unsupported.
-    fn home_directory() -> Result[String, SystemError]
+    fn home_directory() Result[String, SystemError]
     # Queries the host temp root without creating or checking a directory; non-UTF-8 returns Unsupported.
-    fn temporary_directory() -> Result[String, SystemError]
+    fn temporary_directory() Result[String, SystemError]
     # Returns the current user's name, numeric ids, home directory, and login shell.
     # The shell is empty when the host does not record one, and text that is not valid UTF-8 returns Unsupported.
-    fn user_info() -> Result[UserInfo, SystemError]
+    fn user_info() Result[UserInfo, SystemError]
     # Returns one NetworkInterface for every address on every interface, including loopback.
     # An interface name that is not valid UTF-8 returns Unsupported.
-    fn network_interfaces() -> Result[List[NetworkInterface], SystemError]
+    fn network_interfaces() Result[List[NetworkInterface], SystemError]
     # Returns one CpuInfo per logical CPU with its model, clock speed, and cumulative time counters.
-    fn cpus() -> Result[List[CpuInfo], SystemError]
+    fn cpus() Result[List[CpuInfo], SystemError]
     # Returns memory sizes in bytes, host uptime, load averages, and available parallelism in one snapshot.
     # A host query failure returns the matching SystemError.
-    fn metrics() -> Result[SystemMetrics, SystemError]
+    fn metrics() Result[SystemMetrics, SystemError]
     # Returns the kernel release string, such as `6.1.0-18-amd64`, with surrounding whitespace removed.
     # Returns Unsupported where the host does not expose it.
-    fn os_release() -> Result[String, SystemError]
+    fn os_release() Result[String, SystemError]
     # Returns the kernel build or version string, such as `#1 SMP Debian`, with surrounding whitespace removed.
     # Returns Unsupported where the host does not expose it.
-    fn os_version() -> Result[String, SystemError]
+    fn os_version() Result[String, SystemError]
     # Returns the hardware architecture in `uname -m` style, such as `x86_64`, `aarch64`, or `i686`; other architectures use their Go name.
-    fn machine() -> Result[String, SystemError]
+    fn machine() Result[String, SystemError]
     # Returns the scheduling priority of process `pid` (0 means the calling process) as a nice-style value, from -20 for highest to 19 for lowest. Windows maps its priority classes onto this range.
     # A pid outside 0 through 2147483647 returns InvalidInput, and platforms without priorities return Unsupported.
-    fn get_priority(pid: Int) -> Result[Int, SystemError]
+    fn get_priority(pid: Int) Result[Int, SystemError]
     # Accepts pid 0..2147483647 and priority -20..19 (lower is higher priority).
     # Unix uses nice values; Windows maps ranges to native priority classes.
-    fn set_priority(pid: Int, priority: Int) -> Result[Unit, SystemError]
+    fn set_priority(pid: Int, priority: Int) Result[Unit, SystemError]
 
 # Operating system and processor architecture for the current host.
 export type SystemInfo:
@@ -119,20 +119,20 @@ export type SystemMetrics:
     available_parallelism: Int
 
 # Returns exactly `LE` or `BE` for the host's native byte order.
-export fn endianness() -> String:
+export fn endianness() String:
 
 # Returns the host's line-ending sequence.
-export fn end_of_line() -> String:
+export fn end_of_line() String:
 
 # Returns the conventional null-device path for the host.
-export fn dev_null() -> String:
+export fn dev_null() String:
 
 # Returns Linux, Darwin, or Windows_NT on the supported hosts; other hosts use their Go OS name.
-export fn os_type() -> String:
+export fn os_type() String:
 
 # Returns native signal/error/loader/priority constants by name.
 # Names and values vary by host; missing entries do not imply a portable numeric default.
-export fn constants() -> Map[String, Int]:
+export fn constants() Map[String, Int]:
 
 # Errors returned when a requested host operation is unavailable or denied.
 export type SystemError:
@@ -160,7 +160,7 @@ export type SystemError:
 
 impl Error for SystemError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `system: <reason>`.
-    fn message() -> String:
+    fn message() String:
 
 # Returns system information and controls for the current host.
-export fn system() -> System:
+export fn system() System:

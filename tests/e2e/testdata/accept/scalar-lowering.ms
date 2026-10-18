@@ -8,16 +8,16 @@ type Resource:
     counter: Counter
 
 impl Closeable for Resource:
-    fn close() -> Unit:
+    fn close() Unit:
         self.counter.value = self.counter.value + 1
 
-fn mark(counter: Counter, digit: Int) -> Int:
+fn mark(counter: Counter, digit: Int) Int:
     counter.value = counter.value * 10 + digit
     return digit
 
-fn generic[T: Equal](left: T, right: T) -> Bool: left == right
+fn generic[T: Equal](left: T, right: T) Bool: left == right
 
-fn returning_match() -> Bool:
+fn returning_match() Bool:
     return true == match some(1):
         some(value): return false
         none: false
@@ -46,12 +46,12 @@ test "primitive equality captures operands once in order":
     if not generic(left: true, right: true): return panic("generic equality changed")
     if returning_match(): return panic("operand match return changed")
 
-fn conditional(counter: Counter, take: Bool) -> Int:
+fn conditional(counter: Counter, take: Bool) Int:
     if take:
         with resource = Resource(counter): return 7
     return 8
 
-fn matched(counter: Counter) -> Int:
+fn matched(counter: Counter) Int:
     return match some(1):
         some(value):
             with resource = Resource(counter): return value
@@ -66,34 +66,34 @@ fn defaulted(
                 let used = unit
             number
         none: 0
-) -> Int: value
+) Int: value
 
-fn nested(counter: Counter) -> Unit:
-    let callback = fn() -> Unit:
+fn nested(counter: Counter) Unit:
+    let callback = fn() Unit:
         with resource = Resource(counter): return
     callback()
 
-fn failed() -> Result[Int, String]: error("expected")
+fn failed() Result[Int, String]: error("expected")
 
-fn propagate(counter: Counter) -> Result[Int, String]:
+fn propagate(counter: Counter) Result[Int, String]:
     with resource = Resource(counter):
         let value = try failed()
         return ok(value)
 
     return ok(0)
 
-fn bare_propagate() -> Result[Int, String]:
+fn bare_propagate() Result[Int, String]:
     let value = try failed()
     return ok(value)
 
-fn equality_propagate() -> Result[Bool, String]:
+fn equality_propagate() Result[Bool, String]:
     let matches = (try failed()) == 0
     return ok(matches)
 
-fn bool_failed() -> Result[Bool, String]: error("expected")
+fn bool_failed() Result[Bool, String]: error("expected")
 
-fn nested_results(counter: Counter) -> Result[Int, String]:
-    let child = fn() -> Result[Bool, String]:
+fn nested_results(counter: Counter) Result[Int, String]:
+    let child = fn() Result[Bool, String]:
         with resource = Resource(counter):
             let value = try bool_failed()
             return ok(value)
@@ -103,7 +103,7 @@ fn nested_results(counter: Counter) -> Result[Int, String]:
     let value = try failed()
     return ok(value)
 
-fn statement_match_try(counter: Counter) -> Result[Int, String]:
+fn statement_match_try(counter: Counter) Result[Int, String]:
     match some(1):
         some(number):
             with resource = Resource(counter):
@@ -113,7 +113,7 @@ fn statement_match_try(counter: Counter) -> Result[Int, String]:
 
     return ok(-1)
 
-fn value_match_loop_try(counter: Counter) -> Result[Int, String]:
+fn value_match_loop_try(counter: Counter) Result[Int, String]:
     var index = 0
 
     while index < 2:

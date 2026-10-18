@@ -8,7 +8,7 @@ import (
 func TestConstructorImportsRemainAvailableInEditor(t *testing.T) {
 	source := `import SetBuilder from "@std/collections.ms"
 import CsvOptions from "@std/csv.ms"
-fn example() -> Unit:
+fn example() Unit:
     SetBuilder[String]()
     CsvOptions(delimiter: ",", line_ending: "\n")
 `

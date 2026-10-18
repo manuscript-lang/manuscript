@@ -2,13 +2,13 @@ import ListBuilder from "@std/collections.ms"
 import Read from "./contracts.ms"
 
 export interface Original:
-    fn original() -> Int
+    fn original() Int
 
 export type Item:
     value: Int
 
 impl Original for Item:
-    fn original() -> Int:
+    fn original() Int:
         return self.value
 
 export type Box[T]:
@@ -18,7 +18,7 @@ export type Holder[T: Read[Int]]:
     value: T
 
 impl Read[Int] for Holder[T]:
-    fn get() -> Int:
+    fn get() Int:
         return self.value.get()
 
 export type Choice:

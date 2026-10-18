@@ -3,13 +3,13 @@ import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
-fn forwarded[T](item: T) -> T: item
+fn forwarded[T](item: T) T: item
 
-fn supplied(log: List[String], data: Bytes) -> Bytes:
+fn supplied(log: List[String], data: Bytes) Bytes:
     log.append("data")
     return data
 
-fn chosen(log: List[String], format: String) -> String:
+fn chosen(log: List[String], format: String) String:
     log.append("format")
     return format
 

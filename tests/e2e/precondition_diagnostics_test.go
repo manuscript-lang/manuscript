@@ -45,7 +45,7 @@ func TestPreconditionDiagnostics(t *testing.T) {
 	source := `import {Bytes, BytesBuilder} from "@std/bytes.ms"
 import {Queue, PriorityQueue} from "@std/queues.ms"
 import from_int from "@std/bigint.ms"
-fn compare(left: Int, right: Int) -> Int: left - right
+fn compare(left: Int, right: Int) Int: left - right
 `
 	var frames []string
 	for i, tc := range cases {

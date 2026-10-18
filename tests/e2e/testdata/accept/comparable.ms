@@ -6,16 +6,16 @@ type Version:
     major: Int
 
 impl Comparable for Version:
-    fn compare(other: Comparable) -> Int:
+    fn compare(other: Comparable) Int:
         match other:
             Version(value): return self.major - value.major
             _: return 0
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
-fn larger[T: Comparable](left: T, right: T) -> T:
+fn larger[T: Comparable](left: T, right: T) T:
     return max(left, right)
 
 test "max and min over built-in types":

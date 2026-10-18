@@ -1,6 +1,6 @@
 import panic from "@std/faults.ms"
 
-fn subtract(amount: Int, deduction: Int) -> Int:
+fn subtract(amount: Int, deduction: Int) Int:
     return amount - deduction
 
 test "named multiline call":

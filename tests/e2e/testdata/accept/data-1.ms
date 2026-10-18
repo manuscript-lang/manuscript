@@ -1,6 +1,6 @@
 import panic from "@std/faults.ms"
 
-fn positives(values: List[Int]) -> List[Int]:
+fn positives(values: List[Int]) List[Int]:
     var result: List[Int] = []
     for value in values:
         if value > 0:

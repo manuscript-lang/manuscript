@@ -4,16 +4,16 @@ type Failure:
     message_text: String
 
 impl Error for Failure:
-    fn message() -> String:
+    fn message() String:
         return self.message_text
 
-fn success() -> Result[Optional[Int], Error]:
+fn success() Result[Optional[Int], Error]:
     return ok(value: some(value: 7))
 
-fn failure() -> Result[Int, Failure]:
+fn failure() Result[Int, Failure]:
     return error(cause: Failure(message_text: "failed"))
 
-fn propagated() -> Result[Int, Error]:
+fn propagated() Result[Int, Error]:
     return ok(value: try failure())
 
 test "prelude cases and optional methods need no imports":
@@ -24,7 +24,7 @@ test "prelude cases and optional methods need no imports":
         return panic("presence check failed")
     if inferred.unwrap() != 3 or qualified.unwrap() != 5:
         return panic("payload changed")
-    if absent.unwrap_or(9) != 9 or absent.unwrap_or_else(fn() -> Int: return 11) != 11:
+    if absent.unwrap_or(9) != 9 or absent.unwrap_or_else(fn() Int: return 11) != 11:
         return panic("fallback failed")
 
     match success():

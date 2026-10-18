@@ -10,11 +10,11 @@ import (
 func TestPrimitiveListLiteralsOwnFreshStorage(t *testing.T) {
 	result := compiler.CompileSource("list-literals.ms", `import panic from "@std/faults.ms"
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
-fn fresh() -> List[Int]:
+fn fresh() List[Int]:
     return [1, 2, 3]
 
 test "literals":

@@ -7,9 +7,9 @@ import (
 
 func TestHTMLUnescapeRejectsInvalidContracts(t *testing.T) {
 	for _, test := range []struct{ name, source, want string }{
-		{"input is text", `fn wrong() -> String: unescape(1)`, "String"},
-		{"result is plain text", `fn wrong() -> Result[String, String]: unescape("&lt;")`, "String"},
-		{"stored label", `fn wrong() -> String:
+		{"input is text", `fn wrong() String: unescape(1)`, "String"},
+		{"result is plain text", `fn wrong() Result[String, String]: unescape("&lt;")`, "String"},
+		{"stored label", `fn wrong() String:
     let convert = unescape
     return convert(value: "&amp;")`, "value"},
 	} {

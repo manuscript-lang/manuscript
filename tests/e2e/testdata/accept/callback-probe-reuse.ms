@@ -1,16 +1,16 @@
 import panic from "@std/faults.ms"
 
-fn apply[T, U](value: T, transform: fn(value: T) -> U) -> U: transform(value)
+fn apply[T, U](value: T, transform: fn(value: T) U) U: transform(value)
 
-fn choose[T](first: fn() -> T, second: fn() -> T) -> T: first()
+fn choose[T](first: fn() T, second: fn() T) T: first()
 
-fn optional[T, U](value: T, transform: Optional[fn(value: T) -> U]) -> U:
+fn optional[T, U](value: T, transform: Optional[fn(value: T) U]) U:
     return transform.unwrap()(value)
 
-fn with_result[T](transform: fn() -> Result[T, String]) -> Result[T, String]: transform()
+fn with_result[T](transform: fn() Result[T, String]) Result[T, String]: transform()
 
 type Callback[T, U]:
-    transform: fn(value: T) -> U
+    transform: fn(value: T) U
 
 type Events:
     values: List[Int]
@@ -19,9 +19,9 @@ type Failure[T]:
     detail: T
 
 impl Error for Failure[T]:
-    fn message() -> String: self.detail.toString()
+    fn message() String: self.detail.toString()
 
-fn record(events: Events, value: Int) -> Int:
+fn record(events: Events, value: Int) Int:
     events.values = events.values.append(value)
     return value
 
@@ -37,7 +37,7 @@ test "callback inference retains captures and contextual metadata":
     if values != [[11, 12], [12, 13]]: return panic("nested callback values")
     if events.values != [11, 12, 12, 13]: return panic("callback evaluation order")
 
-    let callable: fn(value: Int) -> fn(input: Int) -> Int = apply(
+    let callable: fn(value: Int) fn(input: Int) Int = apply(
         value: 1,
         transform: fn(base): fn(item): fn(extra): item + extra + base
     )
@@ -70,9 +70,9 @@ test "callback inference retains captures and contextual metadata":
         error(cause):
             if cause.message() != "9": return panic("generic Error dispatch")
 
-fn absent[T]() -> Optional[T]: none
+fn absent[T]() Optional[T]: none
 
-fn from_callback[T](factory: fn() -> T) -> T: factory()
+fn from_callback[T](factory: fn() T) T: factory()
 
 test "later returns repair incomplete and convertible evidence":
     let value = from_callback(
@@ -91,7 +91,7 @@ test "later returns repair incomplete and convertible evidence":
     )
     if cause.message() != "2": return panic("later concrete Error conversion")
 
-fn operation() -> Result[Int, String]: ok(4)
+fn operation() Result[Int, String]: ok(4)
 
 test "try rechecks the inferred enclosing result":
     let value = from_callback(

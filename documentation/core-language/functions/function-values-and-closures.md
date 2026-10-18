@@ -5,14 +5,14 @@ weight = 2
 
 # Function values and closures
 
-Store a function in a binding or pass it as an argument. Anonymous functions use `fn`; the type is `fn(value: T) -> U`. A closure captures snapshots of the bindings it uses.
+Store a function in a binding or pass it as an argument. Anonymous functions use `fn`; the type is `fn(value: T) U`. A closure captures snapshots of the bindings it uses.
 
 ```manuscript
-fn apply(value: Int, transform: fn(value: Int) -> Int) -> Int:
+fn apply(value: Int, transform: fn(value: Int) Int) Int:
     return transform(value: value)
 
 let offset = 1
-let decrement = fn(value: Int) -> Int:
+let decrement = fn(value: Int) Int:
     return value - offset
 
 let result = apply(value: 3, transform: decrement)
@@ -25,19 +25,19 @@ Function types keep parameter names. Calls through values follow the [call rules
 Labels, parameter order, parameter types, and result type are all part of function-type identity, and compatibility is invariant. A mismatch needs an explicit adapter function.
 
 ```manuscript
-fn subtract_one(amount: Int) -> Int:
+fn subtract_one(amount: Int) Int:
     return amount - 1
 
-fn adapt() -> Unit:
+fn adapt() Unit:
     # Rejected: amount and value are different function-type labels.
-    let invalid: fn(value: Int) -> Int = subtract_one
+    let invalid: fn(value: Int) Int = subtract_one
 
-    let renamed = fn(value: Int) -> Int:
+    let renamed = fn(value: Int) Int:
         return subtract_one(amount: value)
     let result = apply(value: 3, transform: renamed)
 ```
 
-An anonymous function may omit parameter types when context supplies them (argument, annotation, field, collection element, or return type). Parameters match by position; local names may differ from the context's labels: `let increment: fn(value: Int) -> Int = fn(item): item + 1` is called as `increment(value: 3)`.
+An anonymous function may omit parameter types when context supplies them (argument, annotation, field, collection element, or return type). Parameters match by position; local names may differ from the context's labels: `let increment: fn(value: Int) Int = fn(item): item + 1` is called as `increment(value: 3)`.
 
 - An omitted result type comes from context or the body: returns must share one exact type, fallthrough adds `Unit`, `Never` adds nothing.
 - Without context, callbacks need parameter annotations.
@@ -50,7 +50,7 @@ An anonymous function may omit parameter types when context supplies them (argum
 A closure remembers the current value of each local binding it uses:
 
 ```manuscript
-fn make_headline() -> fn() -> String:
+fn make_headline() fn() String:
     var subject = "Weekly update"
     let headline = fn():
         return subject
@@ -65,7 +65,7 @@ A captured record or collection is the same object, so changes stay visible:
 
 ```manuscript
 
-fn tag_count() -> Int:
+fn tag_count() Int:
     let tags = ["docs"]
     let count = fn():
         return tags.length()
@@ -84,7 +84,7 @@ Open a resource inside the callback that uses it:
 import {filesystem, FileSystemError} from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"
 
-fn notes_reader(path: String) -> fn() -> Result[Bytes, FileSystemError]:
+fn notes_reader(path: String) fn() Result[Bytes, FileSystemError]:
     return fn():
         with file = try filesystem().open(path: path, flags: "r", mode: 0):
             return file.read_file(max_bytes: 1048576)
@@ -104,7 +104,7 @@ Capture request-data snapshots and services, then acquire job resources inside t
 
 ```manuscript
 
-fn names() -> List[String]:
+fn names() List[String]:
     return [1, 2].map(fn(value): value.toString())
 ```
 

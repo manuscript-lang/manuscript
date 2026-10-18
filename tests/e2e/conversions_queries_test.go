@@ -27,7 +27,7 @@ func TestCollectionQueryCallbackFaultLocations(t *testing.T) {
 				if method == "map" || method == "map_keys" {
 					result, expression = "Int", "1 / value"
 				}
-				source := fmt.Sprintf("fn crash(%s) -> %s:\n    return %s\nexport fn main() -> Int:\n    let values = %s\n    let result = values.%s(%s)\n    return 0\n", parameters, result, expression, constructor, method, arguments)
+				source := fmt.Sprintf("fn crash(%s) %s:\n    return %s\nexport fn main() Int:\n    let values = %s\n    let result = values.%s(%s)\n    return 0\n", parameters, result, expression, constructor, method, arguments)
 				assertQueryFaultFrames(t, source, []string{"query-fault.ms:2 in crash", "query-fault.ms:5 in main"})
 			})
 		}
@@ -35,9 +35,9 @@ func TestCollectionQueryCallbackFaultLocations(t *testing.T) {
 }
 
 func TestLazyConversionFaultLocation(t *testing.T) {
-	source := `fn crash() -> String:
+	source := `fn crash() String:
     return (1 / 0).toString()
-export fn main() -> Int:
+export fn main() Int:
     let value: Optional[Int] = none
     let result = value.ok_or_else(crash)
     return 0

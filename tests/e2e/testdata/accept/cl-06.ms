@@ -1,12 +1,12 @@
 import panic from "@std/faults.ms"
 
-fn positive(value: Int) -> Int:
+fn positive(value: Int) Int:
     if value > 0:
         return value
     else:
         panic(message: "positive value required")
 
-fn discard(value: Int) -> Unit:
+fn discard(value: Int) Unit:
     if not (value > 0):
         return panic(message: "check failed")
 

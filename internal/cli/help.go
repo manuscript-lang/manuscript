@@ -72,7 +72,7 @@ func commandHelp(command string) (string, bool) {
 		examples = "ms lint ms.toml\n  ms lint main.ms --json\n  ms lint src utilities.ms --json"
 	case "build":
 		usage = "<file.ms|ms.toml> [--json] [-o output] [--build-type level] [--debug]"
-		description = "Build an application exporting main() -> Int as a native executable."
+		description = "Build an application exporting main() Int as a native executable."
 		options = "  -o, --output <path>  Executable path (default: ./program; ./program.exe on Windows)\n  --json              Emit one versioned build result and artifact inventory\n  --debug             Alias for --build-type Debug\n"
 		examples = "ms build ms.toml -o hello\n  ms build main.ms --build-type MinSizeRel"
 	case "emit":
@@ -82,7 +82,7 @@ func commandHelp(command string) (string, bool) {
 		examples = "ms emit main.ms\n  ms emit ms.toml -o main.go"
 	case "run":
 		usage = "<file.ms|ms.toml> [options] [-- program arguments]"
-		description = "Build a temporary executable and run its exported main() -> Int.\nArguments after -- are passed unchanged to the application; its exit status is returned."
+		description = "Build a temporary executable and run its exported main() Int.\nArguments after -- are passed unchanged to the application; its exit status is returned."
 		options = "  --debug               Alias for --build-type Debug\n  --watch               Rebuild and restart after each saved source change\n  --cpu-profile <path>  Write a CPU profile\n  --heap-profile <path> Write a heap profile\n  --trace <path>        Write an execution trace\n"
 		examples = "ms run ms.toml -- first second\n  ms run main.ms --watch\n  ms run main.ms --cpu-profile cpu.pprof"
 	case "test":

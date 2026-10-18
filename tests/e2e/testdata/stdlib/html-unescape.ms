@@ -48,12 +48,12 @@ test "HTML numeric references use replacement rules":
     if unescape("&#128;&#x80;") != "€€": return panic("HTML C1 replacement")
     if unescape("&#x10FFFF;") != "\u{10ffff}": return panic("maximum scalar reference")
 
-fn apply[T, U](text: T, operation: fn(text: T) -> U) -> U:
+fn apply[T, U](text: T, operation: fn(text: T) U) U:
     return operation(text)
 
 test "HTML unescape stored and generic calls preserve labels":
     let convert = unescape
-    let typed: fn(text: String) -> String = unescape
+    let typed: fn(text: String) String = unescape
     if convert("&lt;") != "<" or typed(text: "&gt;") != ">": return panic(
         "stored unescape"
     )

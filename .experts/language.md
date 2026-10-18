@@ -137,7 +137,7 @@ Verify: Optional methods and Result propagation into Error execute without impor
 
 ### Parameterless main and imported host accessors
 
-Decision: applications export `fn main() -> Int` and import the standard services they use. The user explicitly deferred enforcement; the earlier exploration of `using`, scoped replacement, and manifest permissions is not an accepted implementation requirement. Ordinary service parameters remain available for helpers and source fakes.
+Decision: applications export `fn main() Int` and import the standard services they use. The user explicitly deferred enforcement; the earlier exploration of `using`, scoped replacement, and manifest permissions is not an accepted implementation requirement. Ordinary service parameters remain available for helpers and source fakes.
 
 Apply when: changing entrypoints, host roots, standard imports, tests, or authority documentation.
 Evidence: [CLI contract](../pkg/stdlib/cli.ms), [entry validation](../pkg/compiler/compiler.go), and [execution-local accessors](../pkg/runtime/host.go).
@@ -231,3 +231,5 @@ Verified: `pkg/parser` rewrites each step to the plain call or `try` it names, s
 Apply when: changing operator precedence, line layout, `try`, or call argument binding.
 Evidence: [pipe flows](../documentation/core-language/basics/expressions.md#pipe-flows), [parser tests](../pkg/parser/pipe_test.go), [formatter test](../pkg/tooling/format_pipe_test.go), and [native fixture](../tests/e2e/testdata/accept/pipe-flow.ms).
 Verify: `try parse(text) | double | try check | .to_string(radix: 10)` runs; a continuation line at the wrong indentation is rejected.
+
+Decision: the user asked to drop `->` before result types to save tokens (about 1% of source tokens measured with cl100k over the stdlib, accept tests, and examples; colons and `name: Type` were left alone). Named functions, methods, interface operations, and fn types still require the result type (`fn f(x: Int) Int:`, `fn(value: Int) Int`); lambdas may omit it and the parser reads a type after `)` as the result type and `:` as the body. `->` is a lexer token only so the parser can say to remove it. Call labels, map entries, and inline suites keep `:` because no separator would make `f(a [1])`, `a (b)`, and `a -1` unambiguous; the study is in the project thread. `ms fmt` reformats migrated files because shorter lines rewrap.

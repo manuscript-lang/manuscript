@@ -16,10 +16,10 @@ func libraryFixture(directory string) (string, error) {
 	}
 	for name, text := range map[string]string{
 		"ms.toml":      "# library\n[project]\nname = \"library\"\nsource = \"src\"\n",
-		"src/value.ms": "export fn value() -> Int: return 3\n",
+		"src/value.ms": "export fn value() Int: return 3\n",
 		"src/unimported.ms": `import panic from "@std/faults.ms"
 import filesystem from "@std/fs.ms"
-export fn other() -> Int: return 4
+export fn other() Int: return 4
 test "source":
     if other() != 4: return panic("bad other")
     match filesystem().read_file(path: "fixture.txt", max_bytes: 1024):

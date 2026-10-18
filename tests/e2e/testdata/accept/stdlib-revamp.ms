@@ -11,15 +11,15 @@ type Key:
     label: String
 
 impl Equal for Key:
-    fn equals(other: Equal) -> Bool:
+    fn equals(other: Equal) Bool:
         match other:
             Key(value): return self.id == value.id
             _: return false
 
 impl Hashable for Key:
-    fn hash() -> Int: self.id
+    fn hash() Int: self.id
 
-fn compare(left: Key, right: Key) -> Int:
+fn compare(left: Key, right: Key) Int:
     return left.id - right.id
 
 test "domain equality and hashing select interfaces":
@@ -66,7 +66,7 @@ test "limits can be omitted or supplied":
         ok(_): return panic("supplied limit ignored")
         error(_): return
 
-fn operation() -> Result[Unit, Error]: ok(unit)
+fn operation() Result[Unit, Error]: ok(unit)
 
 test "one scheduler admits and schedules work":
     with scheduler = Scheduler():
@@ -82,14 +82,14 @@ type EmptyReader:
     requested: Int
 
 impl ReadStream for EmptyReader:
-    fn read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]:
+    fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
         match max_bytes:
             none: self.requested = 0
             some(value): self.requested = value
 
         return ok(none)
 
-    fn close() -> Unit: unit
+    fn close() Unit: unit
 
 test "native compositions preserve Optional arguments for source implementations":
     let reader = EmptyReader(-1)

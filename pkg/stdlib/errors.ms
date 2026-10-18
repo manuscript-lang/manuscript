@@ -2,7 +2,7 @@
 # A contract for expected failures that can provide a human-readable message.
 export interface Error:
     # Returns a human-readable description of this expected error.
-    fn message() -> String
+    fn message() String
 
 # An error that carries only intentional text, for callers that have no domain error to return.
 export type TextError:
@@ -14,7 +14,7 @@ export type TextError:
 
 impl Error for TextError:
     # Returns the wrapped text verbatim.
-    fn message() -> String:
+    fn message() String:
 
 # The error `Optional.ok_or()` returns when no cause is given. Its message names the source file and line of the call.
 export type MissingValue:
@@ -26,7 +26,7 @@ export type MissingValue:
 
 impl Error for MissingValue:
     # Returns "missing value at" followed by the recorded source position.
-    fn message() -> String:
+    fn message() String:
 
 # Portable categories for shared standard error cases. Domain errors retain their types and payloads.
 export type ErrorCategory:
@@ -55,4 +55,4 @@ export type ErrorCategory:
 # Recognized standard cases use their same-name category.
 # Custom errors and domain-specific cases (including Failed, Full, OutputLimit, OutOfRange,
 # AuthenticationFailed and wrapped LogError causes) return none. Messages are never parsed.
-export fn category(cause: Error) -> Optional[ErrorCategory]:
+export fn category(cause: Error) Optional[ErrorCategory]:

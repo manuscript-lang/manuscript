@@ -1,13 +1,10 @@
 import {NormalizationForm, StringError} from "@std/string.ms"
 import panic from "@std/faults.ms"
 
-fn normalize(form: NormalizationForm, text: String) -> Result[String, StringError]:
+fn normalize(form: NormalizationForm, text: String) Result[String, StringError]:
     return form.normalize(text)
 
-fn call[T](
-    operation: fn(text: String, max_bytes: Optional[Int]) -> T,
-    text: String
-) -> T:
+fn call[T](operation: fn(text: String, max_bytes: Optional[Int]) T, text: String) T:
     return operation(text, none)
 
 test "typed Unicode forms retain normalization and bound dispatch":

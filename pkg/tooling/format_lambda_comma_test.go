@@ -10,9 +10,9 @@ import (
 
 func TestFormatBlockLambdaFollowedByArgument(t *testing.T) {
 	for _, delimiter := range []string{"dedented", "grouped"} {
-		source := "fn apply(transform: fn(value: Int) -> Int, value: Int) -> Int: transform(value)\nfn example() -> Int:\n    return apply(\n        transform: fn(value: Int) -> Int:\n            return value - 1\n        ,\n        value: 3,\n    )\n"
+		source := "fn apply(transform: fn(value: Int) Int, value: Int) Int: transform(value)\nfn example() Int:\n    return apply(\n        transform: fn(value: Int) Int:\n            return value - 1\n        ,\n        value: 3,\n    )\n"
 		if delimiter == "grouped" {
-			source = strings.Replace(source, "transform: fn(value: Int) -> Int:\n            return value - 1\n        ,", "transform: (\n            fn(value: Int) -> Int:\n                return value - 1\n        ),", 1)
+			source = strings.Replace(source, "transform: fn(value: Int) Int:\n            return value - 1\n        ,", "transform: (\n            fn(value: Int) Int:\n                return value - 1\n        ),", 1)
 		}
 		for _, newline := range []string{"\n", "\r\n"} {
 			input := strings.ReplaceAll(source, "\n", newline)

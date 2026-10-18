@@ -10,17 +10,17 @@ import (
 func TestListTakeDropFaultLocations(t *testing.T) {
 	for _, method := range []string{"take", "drop"} {
 		for _, test := range []struct{ name, source, frame string }{
-			{"direct", `export fn main() -> Int:
+			{"direct", `export fn main() Int:
     let values = [1, 2]
     let part = values.METHOD(-7)
     return part.length()
 `, "list-copy-fault.ms:3 in main"},
-			{"bound", `export fn main() -> Int:
+			{"bound", `export fn main() Int:
     let copy = [1, 2].METHOD
     let part = copy(count: -7)
     return part.length()
 `, "list-copy-fault.ms:3 in main"},
-			{"empty", `export fn main() -> Int:
+			{"empty", `export fn main() Int:
     let empty: List[Int] = []
     let part = empty.METHOD(-7)
     return part.length()

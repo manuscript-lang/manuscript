@@ -9,7 +9,7 @@ An interface is an operation contract: implementations must supply the declared 
 
 ```manuscript
 interface Payments:
-    fn charge(amount: Money) -> Result[Receipt, PaymentError]
+    fn charge(amount: Money) Result[Receipt, PaymentError]
 ```
 
 ## Explicit implementations
@@ -20,13 +20,13 @@ Methods are written in `impl` blocks, never inside the `type`. `impl DataType:` 
 
 ```manuscript
 interface Increment:
-    fn apply(value: Int) -> Int
+    fn apply(value: Int) Int
 
 type Offset:
     delta: Int
 
 impl Increment for Offset:
-    fn apply(value: Int) -> Int:
+    fn apply(value: Int) Int:
         return value + self.delta
 ```
 
@@ -37,7 +37,7 @@ After substituting generic arguments, an implementation must match the contract 
 ```manuscript
 # Rejected: amount does not match the contract's value label.
 impl Increment for Offset:
-    fn apply(amount: Int) -> Int:
+    fn apply(amount: Int) Int:
         return amount + self.delta
 ```
 
@@ -56,13 +56,13 @@ Another module can add its own implementation:
 import Offset from "./offset.ms"
 
 export interface Double:
-    fn doubled() -> Int
+    fn doubled() Int
 
 impl Double for Offset:
-    fn doubled() -> Int:
+    fn doubled() Int:
         return self.delta * 2
 
-export fn double_view(value: Offset) -> Double:
+export fn double_view(value: Offset) Double:
     return Double(value: value)
 ```
 
@@ -82,13 +82,13 @@ An implementation uses its receiver declaration's generic parameters; only those
 
 ```manuscript
 interface ReadValue[T]:
-    fn get() -> T
+    fn get() T
 
 type Box[T]:
     value: T
 
 impl ReadValue[T] for Box[T]:
-    fn get() -> T:
+    fn get() T:
         return self.value
 ```
 
@@ -98,10 +98,10 @@ Interface parameter bounds can restrict an implementation without restricting th
 
 ```manuscript
 interface SameValue[T: Equal]:
-    fn same(other: T) -> Bool
+    fn same(other: T) Bool
 
 impl SameValue[T] for Box[T]:
-    fn same(other: T) -> Bool:
+    fn same(other: T) Bool:
         return self.value == other
 ```
 
@@ -112,7 +112,7 @@ Two blocks overlap if their receiver and contract applications can match the sam
 ```manuscript
 # Rejected alongside the generic block above: both apply to Box[Int].
 impl ReadValue[Int] for Box[Int]:
-    fn get() -> Int:
+    fn get() Int:
         return self.value
 ```
 
@@ -125,7 +125,7 @@ Create a view with `Contract(value: concrete)`, or `Contract[T](value: concrete)
 A view keeps the same receiver reference: no copy, no lifetime extension, no added lock.
 
 ```manuscript
-fn use_increment(operation: Increment) -> Int:
+fn use_increment(operation: Increment) Int:
     return operation.apply(1)
 
 let offset = Offset(2)
@@ -144,7 +144,7 @@ A receiver or generic parameter may call an operation directly when exactly one 
 A contract type satisfies its own exact generic bound without an `impl`: `Converter[Int]` satisfies `T: Converter[Int]`, not `T: Converter[String]`.
 
 ```manuscript
-fn invoke[T: Increment](operation: T) -> Int:
+fn invoke[T: Increment](operation: T) Int:
     return Increment(operation).apply(1)
 
 let from_concrete = invoke(offset)

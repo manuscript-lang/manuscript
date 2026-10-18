@@ -7,7 +7,7 @@ import network from "@std/net.ms"
 import panic from "@std/faults.ms"
 import TaskGroup from "@std/tasks.ms"
 
-fn check_services() -> Unit:
+fn check_services() Unit:
     if arguments().length() != 0:
         return panic("test arguments are not empty")
 

@@ -3,37 +3,37 @@ import panic from "@std/faults.ms"
 type Counter:
     calls: Int
 
-fn counted(counter: Counter) -> Counter:
+fn counted(counter: Counter) Counter:
     counter.calls = counter.calls + 1
     return counter
 
-fn require_value[T, E](value: Optional[T], cause: E) -> Result[T, E]:
+fn require_value[T, E](value: Optional[T], cause: E) Result[T, E]:
     return value.ok_or(cause)
 
-fn require_lazy[T, E](value: Optional[T], create: fn() -> E) -> Result[T, E]:
+fn require_lazy[T, E](value: Optional[T], create: fn() E) Result[T, E]:
     return value.ok_or_else[E](create)
 
-fn success_only[T, E](value: Result[T, E]) -> Optional[T]:
+fn success_only[T, E](value: Result[T, E]) Optional[T]:
     return value.to_optional()
 
 fn reduce_map[K: Hashable, V, A](
     values: Map[K, V],
     initial: A,
-    step: fn(accumulator: A, key: K, value: V) -> A
-) -> A:
+    step: fn(accumulator: A, key: K, value: V) A
+) A:
     return values.fold[A](initial, step)
 
 fn reduce_set[T: Hashable, A](
     values: Set[T],
     initial: A,
-    step: fn(accumulator: A, value: T) -> A
-) -> A:
+    step: fn(accumulator: A, value: T) A
+) A:
     return values.fold(initial, step)
 
 fn locate[K: Hashable, V](
     values: Map[K, V],
-    predicate: fn(key: K, value: V) -> Bool
-) -> Optional[MapEntry[K, V]]:
+    predicate: fn(key: K, value: V) Bool
+) Optional[MapEntry[K, V]]:
     return values.find(predicate)
 
 test "conversions and collection queries are callable":
@@ -70,7 +70,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     cause.calls = 2
     if counter.calls != 2: return panic("conversion copied error")
 
-    let create = fn() -> Counter: counted(counter)
+    let create = fn() Counter: counted(counter)
     if require_lazy(present, create).unwrap() != 0 or counter.calls != 2:
         return panic("present invoked lazy error construction")
 
@@ -236,13 +236,13 @@ type Key:
     label: String
 
 impl Equal for Key:
-    fn equals(other: Equal) -> Bool:
+    fn equals(other: Equal) Bool:
         match other:
             Key(value): return self.id == value.id
             _: return false
 
 impl Hashable for Key:
-    fn hash() -> Int: 0
+    fn hash() Int: 0
 
 test "Set fold and find preserve ordered snapshots and reference identity":
     let a = Key(1, "a")
@@ -410,7 +410,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
         or set_visits != [2, 1, 3]
     ): return panic("Set find stopped without a match")
 
-fn find_port(port: Optional[Int]) -> Result[Int, Error]:
+fn find_port(port: Optional[Int]) Result[Int, Error]:
     let value = try port.ok_or()
     return ok(value)
 

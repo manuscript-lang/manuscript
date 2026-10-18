@@ -10,18 +10,18 @@ import (
 func TestLocalClosuresKeepSemantics(t *testing.T) {
 	result := compiler.CompileSource("local-closures.ms", `import panic from "@std/faults.ms"
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
-fn bump(factor: Int) -> Int:
+fn bump(factor: Int) Int:
     var offset = 10
-    let scale = fn(value: Int) -> Int: value * factor + offset
+    let scale = fn(value: Int) Int: value * factor + offset
     offset = 99
     return scale(value: 2)
 
-fn lookup(limit: Int) -> Int:
-    let find = fn(key: Int) -> Optional[Int]:
+fn lookup(limit: Int) Int:
+    let find = fn(key: Int) Optional[Int]:
         if key < limit:
             return some(key * 2)
         return none
@@ -36,29 +36,29 @@ fn lookup(limit: Int) -> Int:
         i = i + 1
     return total
 
-fn parse(text: String) -> Result[Int, String]:
-    let guard = fn(number: Int) -> Result[Int, String]:
+fn parse(text: String) Result[Int, String]:
+    let guard = fn(number: Int) Result[Int, String]:
         if number < 0:
             return Result[Int, String].error("negative")
         return Result[Int, String].ok(number)
     let checked = try guard(number: text.length())
     return Result[Int, String].ok(checked + 1)
 
-fn labels(prefix: String) -> String:
-    let join = fn(left: String, right: String) -> String: "{prefix}{left}-{right}"
+fn labels(prefix: String) String:
+    let join = fn(left: String, right: String) String: "{prefix}{left}-{right}"
     return join(left: "a", right: "b")
 
-fn reordered() -> Int:
-    let subtract = fn(left: Int, right: Int) -> Int: left - right
+fn reordered() Int:
+    let subtract = fn(left: Int, right: Int) Int: left - right
     return subtract(right: 2, left: 7)
 
-fn passed() -> List[Int]:
-    let double = fn(value: Int) -> Int: value * 2
+fn passed() List[Int]:
+    let double = fn(value: Int) Int: value * 2
     return [1, 2, 3].map(double)
 
-fn nested(n: Int) -> Int:
-    let inner = fn(x: Int) -> Int: x + 1
-    let outer = fn(y: Int) -> Int: inner(x: y) * 2
+fn nested(n: Int) Int:
+    let inner = fn(x: Int) Int: x + 1
+    let outer = fn(y: Int) Int: inner(x: y) * 2
     return outer(y: n)
 
 test "local closures":
@@ -79,8 +79,8 @@ test "local closures":
 func TestLocalClosureFaultNamesTheLambda(t *testing.T) {
 	result := compiler.CompileSource("closure-fault.ms", `import panic from "@std/faults.ms"
 
-fn run() -> Int:
-    let boom = fn(value: Int) -> Int: panic(message: "closure failed")
+fn run() Int:
+    let boom = fn(value: Int) Int: panic(message: "closure failed")
     return boom(value: 1)
 
 test "fault":

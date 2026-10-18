@@ -12,15 +12,15 @@ import (
 func TestNativeDefaultsAreCheckedInParameterScope(t *testing.T) {
 	ensureStandard()
 	for _, item := range []struct{ source, want string }{
-		{"fn f(first: Int, second: Int = first + 1) -> Int:\n", ""},
-		{"fn f(value: Int = true) -> Int:\n", "expected Int, found Bool"},
-		{"fn f(first: Int = second, second: Int = 1) -> Int:\n", "unknown binding second"},
-		{"fn f(value: Int = value) -> Int:\n", "unknown binding value"},
-		{"fn f(value: Bool = none) -> Bool:\n", "none default requires Optional"},
-		{"fn f[T](value: T, copy: T = value) -> T:\n", "native generic expression defaults are not supported"},
-		{"fn f[T](value: T, flag: Bool = true) -> T:\n", ""},
-		{"fn f[T](value: T, flag: Int = 1 + 1) -> T:\n", "native generic expression defaults are not supported"},
-		{"fn f[T](value: Optional[T] = none) -> Optional[T]:\n", ""},
+		{"fn f(first: Int, second: Int = first + 1) Int:\n", ""},
+		{"fn f(value: Int = true) Int:\n", "expected Int, found Bool"},
+		{"fn f(first: Int = second, second: Int = 1) Int:\n", "unknown binding second"},
+		{"fn f(value: Int = value) Int:\n", "unknown binding value"},
+		{"fn f(value: Bool = none) Bool:\n", "none default requires Optional"},
+		{"fn f[T](value: T, copy: T = value) T:\n", "native generic expression defaults are not supported"},
+		{"fn f[T](value: T, flag: Bool = true) T:\n", ""},
+		{"fn f[T](value: T, flag: Int = 1 + 1) T:\n", "native generic expression defaults are not supported"},
+		{"fn f[T](value: Optional[T] = none) Optional[T]:\n", ""},
 	} {
 		m, err := parser.Parse("@std/default-test.ms", item.source)
 		if err != nil {
@@ -48,10 +48,10 @@ func TestInheritedNativeDefaultsRejectDependenciesAndEffects(t *testing.T) {
 		source   string
 		rejected bool
 	}{
-		{"fn f(first: Int, value: Int = first) -> Int:\n", true},
-		{"fn f(value: Int = (fn() -> Int: 1)()) -> Int:\n", true},
-		{"fn f(first: Int = 1, value: Optional[Int] = none) -> Int:\n", false},
-		{"fn f(value: Bytes = \"\".to_bytes()) -> Bytes:\n", false},
+		{"fn f(first: Int, value: Int = first) Int:\n", true},
+		{"fn f(value: Int = (fn() Int: 1)()) Int:\n", true},
+		{"fn f(first: Int = 1, value: Optional[Int] = none) Int:\n", false},
+		{"fn f(value: Bytes = \"\".to_bytes()) Bytes:\n", false},
 	} {
 		m, err := parser.Parse("@std/interface-default-test.ms", item.source)
 		if err != nil {

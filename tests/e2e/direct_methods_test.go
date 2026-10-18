@@ -11,10 +11,10 @@ func TestDirectMethodsKeepSemantics(t *testing.T) {
 	result := compiler.CompileSource("methods.ms", `import panic from "@std/faults.ms"
 
 interface Shape:
-    fn area() -> Int
-    fn scaled(by: Int) -> Int
-    fn checked(limit: Int) -> Result[Int, String]
-    fn grow(depth: Int) -> Int
+    fn area() Int
+    fn scaled(by: Int) Int
+    fn checked(limit: Int) Result[Int, String]
+    fn grow(depth: Int) Int
 
 type Rect:
     w: Int
@@ -25,47 +25,47 @@ type Sign:
     case Minus(n: Int)
 
 impl Shape for Rect:
-    fn area() -> Int:
+    fn area() Int:
         return self.w * self.h
-    fn scaled(by: Int) -> Int:
+    fn scaled(by: Int) Int:
         return self.area() * by
-    fn checked(limit: Int) -> Result[Int, String]:
+    fn checked(limit: Int) Result[Int, String]:
         if self.area() > limit:
             return error(cause: "too big")
         return ok(value: self.area())
-    fn grow(depth: Int) -> Int:
+    fn grow(depth: Int) Int:
         if depth == 0:
             return self.w
         return self.grow(depth: depth - 1) + 1
 
 impl Shape for Sign:
-    fn area() -> Int:
+    fn area() Int:
         match self:
             Plus(n): return n
             Minus(n): return 0 - n
-    fn scaled(by: Int) -> Int:
+    fn scaled(by: Int) Int:
         return self.area() * by
-    fn checked(limit: Int) -> Result[Int, String]:
+    fn checked(limit: Int) Result[Int, String]:
         return ok(value: self.area())
-    fn grow(depth: Int) -> Int:
+    fn grow(depth: Int) Int:
         return depth
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
-fn through(shape: Shape) -> Int:
+fn through(shape: Shape) Int:
     return shape.scaled(by: 2)
 
-fn tried(rect: Rect, limit: Int) -> Result[Int, String]:
+fn tried(rect: Rect, limit: Int) Result[Int, String]:
     let first = try rect.checked(limit: limit)
     return ok(value: first + (try rect.checked(limit: limit + 100)))
 
-fn order(rect: Rect, log: List[String]) -> Int:
+fn order(rect: Rect, log: List[String]) Int:
     log.append(value: "receiver")
     return rect.scaled(by: id(log: log))
 
-fn id(log: List[String]) -> Int:
+fn id(log: List[String]) Int:
     log.append(value: "argument")
     return 1
 

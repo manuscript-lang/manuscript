@@ -55,7 +55,7 @@ test "local FIFO aliases and saved methods":
         return panic("drained queue cannot be reused")
 
 test "queue elements include ordinary functions":
-    let queue = Queue[fn() -> Int](1)
+    let queue = Queue[fn() Int](1)
     queue.enqueue(
         fn():
             return 7

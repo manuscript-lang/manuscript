@@ -20,19 +20,19 @@ func boundsDiagnostics(t *testing.T, source string) []syntax.Diagnostic {
 
 func TestProvenIndexNarrowsToElementType(t *testing.T) {
 	cases := map[string]string{
-		"guard": `fn read(index: Int) -> Int:
+		"guard": `fn read(index: Int) Int:
     let values = [10, 20, 30]
     if index >= 0 and index < values.length():
         let value: Int = values[index]
         return value
     return 0
 `,
-		"reversed guard": `fn read(values: List[Int], index: Int) -> Int:
+		"reversed guard": `fn read(values: List[Int], index: Int) Int:
     if 0 <= index and values.length() > index:
         return values[index]
     return 0
 `,
-		"canonical loop": `fn sum(values: List[Int]) -> Int:
+		"canonical loop": `fn sum(values: List[Int]) Int:
     var total = 0
     var i = 0
     while i < values.length():
@@ -40,44 +40,44 @@ func TestProvenIndexNarrowsToElementType(t *testing.T) {
         i = i + 1
     return total
 `,
-		"early exit": `fn read(values: List[Int], index: Int) -> Int:
+		"early exit": `fn read(values: List[Int], index: Int) Int:
     if index < 0 or index >= values.length():
         return 0
     return values[index]
 `,
-		"else branch": `fn read(values: List[Int], index: Int) -> Int:
+		"else branch": `fn read(values: List[Int], index: Int) Int:
     if index < 0 or index >= values.length():
         return 0
     else:
         return values[index]
 `,
-		"right operand": `fn is_zero(values: List[Int], index: Int) -> Bool:
+		"right operand": `fn is_zero(values: List[Int], index: Int) Bool:
     return index >= 0 and index < values.length() and values[index] == 0
 `,
-		"or operand": `fn is_zero(values: List[Int], index: Int) -> Bool:
+		"or operand": `fn is_zero(values: List[Int], index: Int) Bool:
     return index < 0 or index >= values.length() or values[index] == 0
 `,
-		"literal index": `fn first(values: List[Int]) -> Int:
+		"literal index": `fn first(values: List[Int]) Int:
     if values.length() > 0:
         return values[0]
     return 0
 `,
-		"literal length": `fn third(values: List[Int]) -> Int:
+		"literal length": `fn third(values: List[Int]) Int:
     if values.length() >= 3:
         let first: Int = values[0]
         let last: Int = values[2]
         return first + last
     return 0
 `,
-		"guarded argument": `fn show(value: Int) -> Int:
+		"guarded argument": `fn show(value: Int) Int:
     return value
 
-fn read(values: List[Int], index: Int) -> Int:
+fn read(values: List[Int], index: Int) Int:
     if index >= 0 and index < values.length():
         return show(values[index])
     return 0
 `,
-		"optional elements stay optional": `fn read(values: List[Optional[Int]], index: Int) -> Optional[Int]:
+		"optional elements stay optional": `fn read(values: List[Optional[Int]], index: Int) Optional[Int]:
     if index >= 0 and index < values.length():
         let value: Optional[Int] = values[index]
         return value
@@ -95,76 +95,76 @@ fn read(values: List[Int], index: Int) -> Int:
 
 func TestUnprovenIndexStaysOptional(t *testing.T) {
 	cases := map[string]string{
-		"no guard": `fn read(values: List[Int], index: Int) -> Int:
+		"no guard": `fn read(values: List[Int], index: Int) Int:
     return values[index]
 `,
-		"upper bound only": `fn read(values: List[Int], index: Int) -> Int:
+		"upper bound only": `fn read(values: List[Int], index: Int) Int:
     if index < values.length():
         return values[index]
     return 0
 `,
-		"lower bound only": `fn read(values: List[Int], index: Int) -> Int:
+		"lower bound only": `fn read(values: List[Int], index: Int) Int:
     if index >= 0:
         return values[index]
     return 0
 `,
-		"non strict upper bound": `fn read(values: List[Int], index: Int) -> Int:
+		"non strict upper bound": `fn read(values: List[Int], index: Int) Int:
     if index >= 0 and index <= values.length():
         return values[index]
     return 0
 `,
-		"guard does not leak": `fn read(values: List[Int], index: Int) -> Int:
+		"guard does not leak": `fn read(values: List[Int], index: Int) Int:
     if index >= 0 and index < values.length():
         return 1
     return values[index]
 `,
-		"index of another list": `fn read(values: List[Int], other: List[Int], index: Int) -> Int:
+		"index of another list": `fn read(values: List[Int], other: List[Int], index: Int) Int:
     if index >= 0 and index < other.length():
         return values[index]
     return 0
 `,
-		"copied length": `fn read(values: List[Int], index: Int) -> Int:
+		"copied length": `fn read(values: List[Int], index: Int) Int:
     let count = values.length()
     if index >= 0 and index < count:
         return values[index]
     return 0
 `,
-		"index reassigned": `fn read(values: List[Int], index: Int) -> Int:
+		"index reassigned": `fn read(values: List[Int], index: Int) Int:
     var at = index
     if at >= 0 and at < values.length():
         at = at + 1
         return values[at]
     return 0
 `,
-		"list reassigned": `fn read(values: List[Int], index: Int) -> Int:
+		"list reassigned": `fn read(values: List[Int], index: Int) Int:
     var current = values
     if index >= 0 and index < current.length():
         current = []
         return current[index]
     return 0
 `,
-		"mutation between": `fn read(values: List[Int], index: Int) -> Int:
+		"mutation between": `fn read(values: List[Int], index: Int) Int:
     if index >= 0 and index < values.length():
         values.pop()
         return values[index]
     return 0
 `,
-		"call in same statement": `fn shrink(values: List[Int]) -> Int:
+		"call in same statement": `fn shrink(values: List[Int]) Int:
     values.pop()
     return 0
 
-fn read(values: List[Int], index: Int) -> Int:
+fn read(values: List[Int], index: Int) Int:
     if index >= 0 and index < values.length():
         return shrink(values) + values[index]
     return 0
 `,
-		"closure": `fn read(values: List[Int], index: Int) -> fn() -> Int:
+		"closure": `fn read(values: List[Int], index: Int) fn() Int:
     if index >= 0 and index < values.length():
-        return fn() -> Int:
+        return fn() Int:
             return values[index]
-    return fn() -> Int: return 0
+    return fn() Int: return 0
 `,
-		"loop body mutates": `fn drain(values: List[Int]) -> Int:
+		"loop body mutates": `fn drain(values: List[Int]) Int:
     var i = 0
     var total = 0
     while i < values.length():
@@ -173,7 +173,7 @@ fn read(values: List[Int], index: Int) -> Int:
         i = i + 1
     return total
 `,
-		"loop index can decrease": `fn sum(values: List[Int]) -> Int:
+		"loop index can decrease": `fn sum(values: List[Int]) Int:
     var total = 0
     var i = 0
     while i < values.length():
@@ -181,7 +181,7 @@ fn read(values: List[Int], index: Int) -> Int:
         i = i - 1
     return total
 `,
-		"loop index starts negative": `fn sum(values: List[Int]) -> Int:
+		"loop index starts negative": `fn sum(values: List[Int]) Int:
     var total = 0
     var i = -1
     while i < values.length():
@@ -189,7 +189,7 @@ fn read(values: List[Int], index: Int) -> Int:
         total = total + values[i]
     return total
 `,
-		"outer fact does not survive loop": `fn read(values: List[Int], index: Int) -> Int:
+		"outer fact does not survive loop": `fn read(values: List[Int], index: Int) Int:
     var at = index
     if at >= 0 and at < values.length():
         while true:
@@ -197,12 +197,12 @@ fn read(values: List[Int], index: Int) -> Int:
             at = at + 1
     return 0
 `,
-		"literal beyond length": `fn read(values: List[Int]) -> Int:
+		"literal beyond length": `fn read(values: List[Int]) Int:
     if values.length() > 1:
         return values[2]
     return 0
 `,
-		"flattened index": `fn read(values: List[Int], row: Int, col: Int) -> Int:
+		"flattened index": `fn read(values: List[Int], row: Int, col: Int) Int:
     if row >= 0 and col >= 0 and row * 3 + col < values.length():
         return values[row * 3 + col]
     return 0
