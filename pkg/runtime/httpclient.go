@@ -107,7 +107,7 @@ func (n *osNetwork) RequestBytes(ctx *Execution, method HttpMethod, address stri
 	if !textHeaders(response.Header) {
 		return httpFail[*ClientResponse](errHTTPInvalidData)
 	}
-	return Ok[*ClientResponse, HttpError](&ClientResponse{Head: &HttpResponseMetadata{Status: int(response.StatusCode), Headers: headersFrom(response.Header)}, Body: NewBytes(payload)})
+	return Ok[*ClientResponse, HttpError](&ClientResponse{Head: &HttpResponseMetadata{Status: int(response.StatusCode), Headers: headersFrom(response.Header), Protocol: response.Proto}, Body: NewBytes(payload)})
 }
 
 // osHTTPClient is a reusable client with connection pooling that dials
@@ -301,7 +301,7 @@ func (c *osHTTPClient) do(ctx *Execution, method HttpMethod, address string, hea
 		response.Body.Close()
 		return httpFail[ResponseBody](errHTTPInvalidData)
 	}
-	resource := &osResponseBody{owner: c.owner, client: c, upload: bridge, response: response, metadata: &HttpResponseMetadata{Status: int(response.StatusCode), Headers: headersFrom(response.Header)}, reader: response.Body, remaining: max, finish: finish, gate: newGate(), released: make(chan struct{})}
+	resource := &osResponseBody{owner: c.owner, client: c, upload: bridge, response: response, metadata: &HttpResponseMetadata{Status: int(response.StatusCode), Headers: headersFrom(response.Header), Protocol: response.Proto}, reader: response.Body, remaining: max, finish: finish, gate: newGate(), released: make(chan struct{})}
 	c.owner.mu.Lock()
 	c.mu.Lock()
 	if c.closed || c.owner.closed {

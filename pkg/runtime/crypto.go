@@ -4,8 +4,13 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ed25519"
+	"crypto/hkdf"
 	"crypto/hmac"
+	"crypto/md5"
+	"crypto/pbkdf2"
+	"crypto/sha1"
 	"crypto/sha256"
+	"crypto/sha3"
 	"crypto/sha512"
 	"crypto/subtle"
 	"hash"
@@ -13,6 +18,18 @@ import (
 
 func cryptoHash(algorithm string) hash.Hash {
 	switch algorithm {
+	case "md5":
+		return md5.New()
+	case "sha1":
+		return sha1.New()
+	case "sha224":
+		return sha256.New224()
+	case "sha3-256":
+		return sha3.New256()
+	case "sha3-384":
+		return sha3.New384()
+	case "sha3-512":
+		return sha3.New512()
 	case "sha256":
 		return sha256.New()
 	case "sha384":
@@ -25,6 +42,18 @@ func cryptoHash(algorithm string) hash.Hash {
 
 func cryptoHashName(a HashAlgorithm) string {
 	switch a.(type) {
+	case HashAlgorithm_Md5:
+		return "md5"
+	case HashAlgorithm_Sha1:
+		return "sha1"
+	case HashAlgorithm_Sha224:
+		return "sha224"
+	case HashAlgorithm_Sha3_256:
+		return "sha3-256"
+	case HashAlgorithm_Sha3_384:
+		return "sha3-384"
+	case HashAlgorithm_Sha3_512:
+		return "sha3-512"
 	case HashAlgorithm_Sha256:
 		return "sha256"
 	case HashAlgorithm_Sha384:
@@ -72,7 +101,7 @@ func HashAlgorithm_Hmac(ctx *Execution, algorithm HashAlgorithm, key, data *Byte
 	return cryptoHmac(ctx, key, data, cryptoHashName(algorithm))
 }
 
-// cryptoHmac computes an HMAC for "sha256", "sha384" or "sha512"; any other
+// cryptoHmac computes an HMAC for any supported hash name; any other
 // algorithm is Unsupported.
 func cryptoHmac(ctx *Execution, key, data *Bytes, algorithm string) Result[*Bytes, CryptoError] {
 	if cryptoHash(algorithm) == nil {
@@ -81,6 +110,34 @@ func cryptoHmac(ctx *Execution, key, data *Bytes, algorithm string) Result[*Byte
 	h := hmac.New(func() hash.Hash { return cryptoHash(algorithm) }, dfBytes(key))
 	cryptoWrite(ctx, h, dfBytes(data))
 	return Ok[*Bytes, CryptoError](NewBytes(h.Sum(nil)))
+}
+
+// HashAlgorithm_DeriveKey derives a key with PBKDF2-HMAC over the selected hash.
+func HashAlgorithm_DeriveKey(ctx *Execution, algorithm HashAlgorithm, password, salt *Bytes, iterations, length int) Result[*Bytes, CryptoError] {
+	if iterations <= 0 || length <= 0 || length > 1048576 {
+		return Fail[*Bytes, CryptoError](CryptoError_InvalidInput{})
+	}
+	name := cryptoHashName(algorithm)
+	out, err := pbkdf2.Key(func() hash.Hash { return cryptoHash(name) }, string(dfBytes(password)), dfBytes(salt), iterations, length)
+	if err != nil {
+		return Fail[*Bytes, CryptoError](CryptoError_InvalidInput{})
+	}
+	CheckCancelled(ctx)
+	return Ok[*Bytes, CryptoError](NewBytes(out))
+}
+
+// HashAlgorithm_Hkdf expands secret with HKDF over the selected hash.
+func HashAlgorithm_Hkdf(ctx *Execution, algorithm HashAlgorithm, secret, salt, info *Bytes, length int) Result[*Bytes, CryptoError] {
+	CheckCancelled(ctx)
+	name := cryptoHashName(algorithm)
+	if length <= 0 || length > 255*cryptoHash(name).Size() {
+		return Fail[*Bytes, CryptoError](CryptoError_InvalidInput{})
+	}
+	out, err := hkdf.Key(func() hash.Hash { return cryptoHash(name) }, dfBytes(secret), dfBytes(salt), string(dfBytes(info)), length)
+	if err != nil {
+		return Fail[*Bytes, CryptoError](CryptoError_InvalidInput{})
+	}
+	return Ok[*Bytes, CryptoError](NewBytes(out))
 }
 
 // Crypto_ConstantTimeEqual compares two byte sequences in constant time.
@@ -120,7 +177,7 @@ func Crypto_DeriveKey(ctx *Execution, password, salt *Bytes, iterations, length 
 }
 
 func cryptoAEAD(key []byte) (cipher.AEAD, bool) {
-	if len(key) != 32 {
+	if n := len(key); n != 16 && n != 24 && n != 32 {
 		return nil, false
 	}
 	block, err := aes.NewCipher(key)
@@ -131,7 +188,7 @@ func cryptoAEAD(key []byte) (cipher.AEAD, bool) {
 	return g, err == nil
 }
 
-// Crypto_Seal encrypts and authenticates plaintext with AES-256-GCM.
+// Crypto_Seal encrypts and authenticates plaintext with AES-GCM.
 func Crypto_Seal(_ *Execution, key, nonce, plaintext, associatedData *Bytes) Result[*Bytes, CryptoError] {
 	g, ok := cryptoAEAD(dfBytes(key))
 	n, data := dfBytes(nonce), dfBytes(plaintext)
@@ -141,7 +198,7 @@ func Crypto_Seal(_ *Execution, key, nonce, plaintext, associatedData *Bytes) Res
 	return Ok[*Bytes, CryptoError](NewBytes(g.Seal(nil, n, data, dfBytes(associatedData))))
 }
 
-// Crypto_Open authenticates and decrypts AES-256-GCM ciphertext.
+// Crypto_Open authenticates and decrypts AES-GCM ciphertext.
 func Crypto_Open(_ *Execution, key, nonce, ciphertext, associatedData *Bytes) Result[*Bytes, CryptoError] {
 	g, ok := cryptoAEAD(dfBytes(key))
 	n := dfBytes(nonce)
@@ -195,4 +252,34 @@ func Errors_Message_CryptoError(_ *Execution, e CryptoError) string {
 		return dfMessage("cryptography", "authentication failed")
 	}
 	return dfMessage("cryptography", "operation failed")
+}
+
+// cryptoHasher adapts a hash.Hash to the Hasher interface.
+type cryptoHasher struct{ h hash.Hash }
+
+var _ Hasher = cryptoHasher{}
+
+// Update appends data, checking cancellation between chunks.
+func (c cryptoHasher) Update(ctx *Execution, data *Bytes) Unit {
+	cryptoWrite(ctx, c.h, dfBytes(data))
+	return Unit{}
+}
+
+// Finish returns the digest and resets the hash state.
+func (c cryptoHasher) Finish(ctx *Execution) *Bytes {
+	CheckCancelled(ctx)
+	sum := c.h.Sum(nil)
+	c.h.Reset()
+	return NewBytes(sum)
+}
+
+// HashAlgorithm_Hasher creates an incremental hasher.
+func HashAlgorithm_Hasher(_ *Execution, algorithm HashAlgorithm) Hasher {
+	return cryptoHasher{cryptoHash(cryptoHashName(algorithm))}
+}
+
+// HashAlgorithm_HmacHasher creates an incremental HMAC.
+func HashAlgorithm_HmacHasher(_ *Execution, algorithm HashAlgorithm, key *Bytes) Hasher {
+	name := cryptoHashName(algorithm)
+	return cryptoHasher{hmac.New(func() hash.Hash { return cryptoHash(name) }, dfBytes(key))}
 }
