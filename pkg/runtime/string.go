@@ -429,7 +429,13 @@ func stringPad(ctx *Execution, atStart bool, text string, target int, padding st
 	if remaining < 0 || cycles > remaining/len(padding) {
 		return stringFail[string](StringError_LimitExceeded{})
 	}
+	if cycles > 0 {
+		// Observe the first loop cancellation point before reserving the output.
+		CheckCancelled(ctx)
+	}
 	var b strings.Builder
+	// The budget check above proves this size fits, including the partial cycle.
+	b.Grow(len(text) + cycles*len(padding) + prefixEnd)
 	if !atStart {
 		b.WriteString(text)
 	}
