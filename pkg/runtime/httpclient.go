@@ -397,7 +397,7 @@ func (b *osResponseBody) Read(ctx *Execution, maxBytes Option[int]) Result[Optio
 		max = b.remaining + 1
 	}
 	data := make([]byte, max)
-	stop := interruptWith(ctx, func() { b.response.Body.Close() })
+	stop := interruptFunc(ctx, func() { b.response.Body.Close() })
 	count, err := b.reader.Read(data)
 	if b.upload != nil {
 		b.upload.rethrow()

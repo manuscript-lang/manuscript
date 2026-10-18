@@ -109,11 +109,11 @@ func csvField(field string, special string, crlf bool) string {
 func Errors_Message_CsvError(_ *Execution, e CsvError) string {
 	switch e.(type) {
 	case CsvError_InvalidInput:
-		return dfMessage("CSV", reasonInvalidInput)
+		return diagnostic("CSV", reasonInvalidInput)
 	case CsvError_InvalidData:
-		return dfMessage("CSV", reasonInvalidData)
+		return diagnostic("CSV", reasonInvalidData)
 	case CsvError_LimitExceeded:
-		return dfMessage("CSV", reasonLimitExceeded)
+		return diagnostic("CSV", reasonLimit)
 	}
-	return dfMessage("CSV", "operation failed")
+	return diagnostic("CSV", "operation failed")
 }

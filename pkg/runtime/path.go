@@ -399,5 +399,5 @@ func Path_MatchesGlob(ctx *Execution, value, pattern string) Result[bool, PathEr
 
 // Errors_Message_PathError returns the fixed path diagnostic.
 func Errors_Message_PathError(_ *Execution, e PathError) string {
-	return dfMessage("path", reasonInvalidInput)
+	return diagnostic("path", reasonInvalidInput)
 }

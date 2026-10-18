@@ -245,13 +245,13 @@ func Crypto_Verify(_ *Execution, key, data, signature *Bytes) bool {
 func Errors_Message_CryptoError(_ *Execution, e CryptoError) string {
 	switch e.(type) {
 	case CryptoError_InvalidInput:
-		return dfMessage("cryptography", reasonInvalidInput)
+		return diagnostic("cryptography", reasonInvalidInput)
 	case CryptoError_Unsupported:
-		return dfMessage("cryptography", reasonUnsupported)
+		return diagnostic("cryptography", reasonUnsupported)
 	case CryptoError_AuthenticationFailed:
-		return dfMessage("cryptography", "authentication failed")
+		return diagnostic("cryptography", "authentication failed")
 	}
-	return dfMessage("cryptography", "operation failed")
+	return diagnostic("cryptography", "operation failed")
 }
 
 // cryptoHasher adapts a hash.Hash to the Hasher interface.

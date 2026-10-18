@@ -10,6 +10,25 @@ import (
 // jsonScope is the first parameter of every generated JSON encoder.
 func jsonScopeType() ast.Expr { return pointerTo(rtName("JsonScope")) }
 
+// jsonLeafFunc is the runtime codec of a type that needs no generated helper,
+// or nil. dir is "Enc" or "Dec".
+func (g *gen) jsonLeafFunc(t *checker.Type, dir string) ast.Expr {
+	switch t.ID {
+	case "Int", "Float", "Bool", "String":
+		return rtName("Json" + dir + t.ID)
+	case "@std/JsonValue":
+		return rtName("Json" + dir + "Value")
+	}
+	switch {
+	case t.Kind == "function", t.Kind == "primitive", t.Kind == "contract":
+		return generic(rtName("Json"+dir+"None"), g.goType(t))
+	case isStd(t, "List"), isStd(t, "Set"), isStd(t, "Map"), isStd(t, "Optional"), isStd(t, "Result"):
+	case isStdType(t) && t.Kind == "native", t.ID == "@std/Url":
+		return generic(rtName("Json"+dir+"Native"), g.goType(t))
+	}
+	return nil
+}
+
 // jsonEncType is func(*rt.JsonScope, T) (rt.JsonValue, bool).
 func (g *gen) jsonEncType(t *checker.Type) *ast.FuncType {
 	ft := functionType([]*ast.Field{field("s", jsonScopeType()), field("v", g.goType(t))}, nil)
@@ -21,24 +40,8 @@ func (g *gen) jsonEncType(t *checker.Type) *ast.FuncType {
 // (rt.JsonValue, bool) that encodes a value of type t as JSON.
 func (g *gen) jsonEncFunc(t *checker.Type) ast.Expr {
 	t = g.sub(t)
-	switch t.ID {
-	case "Int":
-		return rtName("JsonEncInt")
-	case "Float":
-		return rtName("JsonEncFloat")
-	case "Bool":
-		return rtName("JsonEncBool")
-	case "String":
-		return rtName("JsonEncString")
-	case "@std/JsonValue":
-		return rtName("JsonEncValue")
-	}
-	switch {
-	case t.Kind == "function", t.Kind == "primitive", t.Kind == "contract":
-		return generic(rtName("JsonEncNone"), g.goType(t))
-	case isStd(t, "List"), isStd(t, "Set"), isStd(t, "Map"), isStd(t, "Optional"), isStd(t, "Result"):
-	case isStdType(t) && t.Kind == "native", t.ID == "@std/Url":
-		return generic(rtName("JsonEncNative"), g.goType(t))
+	if leaf := g.jsonLeafFunc(t, "Enc"); leaf != nil {
+		return leaf
 	}
 	key := "json_enc:" + checker.TypeKey(t)
 	return g.helperFunc(key, "json_enc_"+g.nameOf(t), func(name string) ast.Decl {
@@ -163,24 +166,8 @@ func (g *gen) jsonDecType(t *checker.Type) *ast.FuncType {
 // rt.JsonValue) (T, bool) that reads a JSON value as type t.
 func (g *gen) jsonDecFunc(t *checker.Type) ast.Expr {
 	t = g.sub(t)
-	switch t.ID {
-	case "Int":
-		return rtName("JsonDecInt")
-	case "Float":
-		return rtName("JsonDecFloat")
-	case "Bool":
-		return rtName("JsonDecBool")
-	case "String":
-		return rtName("JsonDecString")
-	case "@std/JsonValue":
-		return rtName("JsonDecValue")
-	}
-	switch {
-	case t.Kind == "function", t.Kind == "primitive", t.Kind == "contract":
-		return generic(rtName("JsonDecNone"), g.goType(t))
-	case isStd(t, "List"), isStd(t, "Set"), isStd(t, "Map"), isStd(t, "Optional"), isStd(t, "Result"):
-	case isStdType(t) && t.Kind == "native", t.ID == "@std/Url":
-		return generic(rtName("JsonDecNative"), g.goType(t))
+	if leaf := g.jsonLeafFunc(t, "Dec"); leaf != nil {
+		return leaf
 	}
 	key := "json_dec:" + checker.TypeKey(t)
 	return g.helperFunc(key, "json_dec_"+g.nameOf(t), func(name string) ast.Decl {

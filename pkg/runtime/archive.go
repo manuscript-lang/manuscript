@@ -292,13 +292,13 @@ func Errors_Message_ArchiveError(_ *Execution, e ArchiveError) string {
 	case ArchiveError_Failed:
 		return e.Message
 	case ArchiveError_InvalidInput:
-		return dfMessage("archive", reasonInvalidInput)
+		return diagnostic("archive", reasonInvalidInput)
 	case ArchiveError_InvalidData:
-		return dfMessage("archive", reasonInvalidData)
+		return diagnostic("archive", reasonInvalidData)
 	case ArchiveError_LimitExceeded:
-		return dfMessage("archive", reasonLimitExceeded)
+		return diagnostic("archive", reasonLimit)
 	case ArchiveError_Unsupported:
-		return dfMessage("archive", reasonUnsupported)
+		return diagnostic("archive", reasonUnsupported)
 	}
-	return dfMessage("archive", "operation failed")
+	return diagnostic("archive", "operation failed")
 }
