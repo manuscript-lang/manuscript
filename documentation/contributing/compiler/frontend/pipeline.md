@@ -5,21 +5,15 @@ weight = 88
 
 # Compilation pipeline
 
-The compiler turns Manuscript source into Go, then uses Go to build a native executable. Before generating code, it checks Manuscript's own rules; Go accepting the generated program is not enough to prove the source is valid.
+The compiler turns Manuscript source into Go and builds it natively. It checks Manuscript's own rules first; Go accepting the output does not validate the source.
 
-## Following a program through compilation
+1. **Load the project.** Read `ms.toml`, find the entry `.ms` file, follow imports, and map paths and aliases to canonical file identities.
+2. **Parse.** Read declarations, expressions, and indented blocks. Each file is a module and needs no `module` declaration.
+3. **Resolve imports and names.** Find exports and reject import cycles.
+4. **Check.** Validate types, scopes, captures, and source contracts.
+5. **Record facts.** Produce typed IR: evaluation order, captures, cleanup scopes, effects, source locations.
+6. **Generate Go and build** with the pinned toolchain, versioned runtime, and adapters.
 
-1. **Load the project.** Read `ms.toml`, locate the entry `.ms` file, and follow imports. Resolve relative paths and aliases to canonical file identities so different spellings of one path identify the same module.
-2. **Parse the source.** Read declarations, expressions, and indented blocks. Each file is already a module; it needs no `module` declaration.
-3. **Resolve imports and names.** Find exported declarations and reject module dependency cycles.
-4. **Check the program.** Validate types, scopes, captured values, and source contracts.
-5. **Record checked facts.** Produce a typed intermediate representation, or typed IR. It records evaluation order, closure captures, cleanup scopes, effects, and source locations.
-6. **Generate Go and build.** Translate those facts into Go and invoke the pinned Go toolchain with the versioned runtime and adapters.
-
-## Package boundaries in the design
-
-The compiler is written in Go. The backend emits one application Go package.
-
-External adapters remain design work. The [repository architecture](../../architecture.md) describes the current pipeline and package layout.
+The compiler is written in Go and emits one application Go package. External adapters remain design work; the [repository architecture](../../architecture.md) describes the current layout.
 
 Continue with [project configuration](../../../developer-tooling/builds/project-configuration.md), [type checking](type-checker.md), [scope and capture checking](scope-checker.md), and [typed IR](typed-ir.md).

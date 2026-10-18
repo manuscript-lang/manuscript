@@ -5,7 +5,7 @@ weight = 3
 
 # Types
 
-Choose a type based on the data you need to represent. Use a record for named fields, an alternative for a fixed set of cases, and an interface for operations a caller needs. Generic types let you reuse a model with different element types.
+Use a record for named fields, an alternative for a fixed set of cases, an interface for operations a caller needs, and generics to reuse a model across element types.
 
 | Concept | What you will learn |
 | --- | --- |

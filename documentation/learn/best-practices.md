@@ -5,29 +5,21 @@ weight = 4
 
 # Write idiomatic Manuscript
 
-Once you can run a program and test it, these habits keep the next change easy
-to understand. Follow the linked references when you need the exact rules.
+Habits that keep the next change easy to understand.
 
 ## Make outcomes explicit
 
-Use `Optional[T]` when a value may be missing and `Result[T, E]` when a failure
-needs an explanation. Propagate errors with `try`. Use `if let` when you only
-need a present value or successful result; a Result's error is discarded in
-this form. Read the cause with `is_error()` and `unwrap_error()` when it matters, and use
-`unwrap_or` when absence has a sensible default. Do not `match` a `Result` or
-`Optional`.
+- `Optional[T]` for a value that may be missing; `Result[T, E]` when failure needs a cause.
+- Propagate with `try`; use `unwrap_or` when absence has a sensible default.
+- `if let` takes a present value or success and discards a Result's error; read it with `is_error()` and `unwrap_error()`.
+- Do not `match` a `Result` or `Optional`.
+- Keep one exit-status boundary in `main`, and keep matches flat: return early, `try`, or extract a helper.
 
-Keep one exit-status boundary in `main`. Helpers can return a domain error or
-use `Error` as a common boundary. Keep matches flat: return early, propagate
-with `try`, or extract a small helper instead of nesting another match.
 See [error handling](../core-language/errors/_index.md).
 
 ## Let types describe your data
 
-Read known JSON shapes with `parse[T]`. Unknown members are ignored by default;
-pass `ignore_unknown_fields: false` when accepting them would be a mistake.
-Use string interpolation to format values and structured fields when
-logging.
+Read known JSON shapes with `parse[T]`. Unknown members are ignored unless you pass `ignore_unknown_fields: false`. Test outcomes directly, with `try` on each assertion:
 
 Test the outcomes directly, and apply `try` to each assertion so a failed
 check fails the test:
@@ -53,20 +45,10 @@ test "configuration rejects a wrong type":
     try expect_equal(cause, JsonError.InvalidData)
 ```
 
-The [testing guide](testing.md) covers selecting cases, checking faults, and
-sharing setup. The serialization guide
-defines how fields and defaults are decoded.
+See the [testing guide](testing.md) for more.
 
 ## Keep ownership visible
 
-Use `with` to keep a file, connection, or task group open for the block that
-uses it. Cleanup also runs on early returns and errors. A captured reference
-does not keep a resource open; acquire it inside the operation that needs it.
-See [managing resources](../core-language/cleanup/_index.md).
-
-Assignment shares records and collections. Call `.clone()` when you need
-independent outer storage, and remember that nested values stay shared.
-When concurrent work reads and mutates the same data, use the same
-synchronization object through every alias. See
-[mutation and references](../core-language/types/references.md) and
-sharing data.
+- `with` keeps a file, connection, or task group open for its block; cleanup runs on early returns and errors. Acquire resources inside the operation that needs them. See [managing resources](../core-language/cleanup/_index.md).
+- Assignment shares records and collections. `.clone()` copies the outer storage only; nested values stay shared.
+- Concurrent readers and writers must use the same synchronization object through every alias. See [mutation and references](../core-language/types/references.md).

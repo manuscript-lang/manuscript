@@ -5,12 +5,12 @@ weight = 1
 
 # Plain-language glossary
 
-Use this page when the guide uses an unfamiliar term. Follow a link for the exact rules and examples.
+Unfamiliar term? Follow its link for exact rules.
 
 | Term | Meaning in this guide |
 | --- | --- |
 | [Binding](core-language/basics/bindings.md) | A name attached to a value. `let` prevents reassignment; `var` allows a replacement value. |
-| [Scope](core-language/basics/bindings.md#scope-and-shadowing) | The part of a program where a name is visible. Nested blocks create nested scopes. |
+| [Scope](core-language/basics/bindings.md#scope-and-shadowing) | The part of a program where a name is visible. |
 | [Module](core-language/modules/declarations.md) | One `.ms` source file. It imports and exports individual declarations. |
 | [Record](core-language/types/records.md) | A value with named fields, such as a customer with a name and email. |
 | [Nominal type](core-language/types/records.md) | A type identified by its declaration. Two records with identical fields can still be different types. |
@@ -18,21 +18,21 @@ Use this page when the guide uses an unfamiliar term. Follow a link for the exac
 | [Contract / interface](core-language/types/contracts.md) | A declared set of operations an implementation must provide. |
 | [Generic parameter](core-language/types/generics.md) | A placeholder for a type, such as `T` in `List[T]`. |
 | [Bound](core-language/types/generics.md) | A requirement on a type parameter, such as supporting comparison or supplying a particular operation. |
-| [Equal](core-language/types/equality-and-hashing.md) | A standard interface for comparing values with `==`, `!=`, or `equals`. Built-in data compares by contents; explicit implementations can select domain identity. |
+| [Equal](core-language/types/equality-and-hashing.md) | A standard interface for comparing values with `==`, `!=`, or `equals`. |
 | [Hashable](core-language/types/equality-and-hashing.md) | A standard interface for computing lookup hashes. Map keys and set elements must also implement Equal. |
 | Intrinsic / prelude | Types and interfaces available without imports, including Optional, Result, Error, and the standard equality interfaces. |
 | [Result](core-language/errors/results.md) | Either a success value or an expected error value. Callers can handle or forward the error. |
 | [Optional](core-language/types/optionals.md) | Either a present value or `none`. Absence does not carry an error explanation. |
 | [Fault](core-language/errors/faults.md) | A programming failure, such as a violated invariant. It ends the current operation after cleanup. |
-| [Closure / capture](core-language/functions/function-values-and-closures.md) | A function value that keeps the surrounding values it uses. Captured bindings are snapshots. |
+| [Closure / capture](core-language/functions/function-values-and-closures.md) | A function value that keeps the surrounding values it uses. |
 | [Alias](core-language/types/references.md) | Another reference to the same object. Closing a resource affects every alias. |
 | [Resource lifetime](core-language/cleanup/_index.md) | How long a file, connection, or other external resource remains open and usable. |
-| Sharing | Values may be passed between operations. Local mutable queues need explicit synchronization; sharing does not keep resources open. |
+| Sharing | Values may be passed between operations. |
 | Capability / authority | A service object that permits external operations, obtained through a host accessor or passed to a helper. |
 | [Effect](developer-tooling/source/effects.md) | External behavior reachable from an operation, such as reading, writing, or calling a service. |
 | Operation / group | One invocation started by a concurrency API / the invocations started by one task group. |
 | Join | Wait until every started operation has finished, including its cleanup. |
-| Execution context | Runtime state carrying an operation's cancellation signal and deadline. The runtime passes it internally. |
+| Execution context | Runtime state carrying an operation's cancellation signal and deadline. |
 | Cancellation checkpoint | A point where work checks whether it should stop and unwind. |
 | [Unwind](core-language/cleanup/exit-order.md) | Leave active scopes and run their registered cleanup. |
 | [Shielded cleanup](core-language/cleanup/cleanup-faults.md) | Cleanup that can run despite the cancellation or deadline that ended ordinary work. |

@@ -5,9 +5,7 @@ weight = 2
 
 # Loops
 
-Use `for` / `in` to visit the values in a collection. Use `while` to repeat work while a Boolean condition is true. Inside either loop, `break` ends the loop and `continue` moves to the next iteration.
-
-Loops are statements, not expressions. Manuscript has no labeled loops, loop-result values, integer-range syntax, or user-defined iteration protocol.
+`for` / `in` visits collection values; `while` repeats while a `Bool` condition holds. `break` ends the loop; `continue` starts the next iteration. Loops are statements: no labels, result values, range syntax, or custom iteration protocol.
 
 ## Traversing a list
 
@@ -20,11 +18,9 @@ fn sum(values: List[Int]) -> Int:
     return total
 ```
 
-The list contains integers. Each iteration binds an element and updates the accumulator. Addition uses checked `Int` arithmetic, so overflow is a [programming fault](../errors/faults.md).
-
 ## Counting loops
 
-Import `range` from `@std/collections.ms` to count. `range(start, end)` includes `start`, excludes `end`, and counts up by one. A `for` over a direct `range` call runs as a counter loop: it allocates no list, so the bound can be large.
+`range(start, end)` from `@std/collections.ms` includes `start`, excludes `end`, and counts up by one. A `for` over a direct `range` call is a counter loop that allocates no list.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -39,9 +35,9 @@ test "sum indexes":
         return panic("Expected 10, got {total}")
 ```
 
-`end <= start` visits nothing. Both bounds are evaluated once, in written order, before the first iteration; assigning to a variable used as a bound inside the body does not change the count. `range(0, count)` as an ordinary value is a `List[Int]`; more than 268,435,456 items is a fault, so size larger lists with `range_by(max_items:)`.
+`end <= start` visits nothing. Bounds are evaluated once, in order, before the first iteration. As a plain value, `range(0, count)` is a `List[Int]`; over 268,435,456 items faults, so use `range_by(max_items:)` for larger lists.
 
-Use `while` with a counter when the step is not one or the loop must stop early on a computed condition:
+Use `while` with a counter for other steps or computed exits:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -61,7 +57,7 @@ Increment the counter before any `continue` that would skip its update.
 
 ## Stepped ranges
 
-`range_by(start, end, step, max_items)` takes an explicit nonzero step and returns `Result[List[Int], CollectionError]`. A positive step moves upward; a negative step moves downward. `range_by(start: 5, end: 0, step: -2)` produces `[5, 3, 1]`. Equal endpoints or a step directed away from the end produce an empty list. `step: 0` returns `InvalidInput`; `max_items` bounds allocation and returns `LimitExceeded` when exceeded. A `Result` is not iterable, so unwrap it before the loop:
+`range_by(start, end, step, max_items)` returns `Result[List[Int], CollectionError]`. Negative steps count down: `range_by(start: 5, end: 0, step: -2)` is `[5, 3, 1]`. Equal endpoints or a step away from the end give an empty list. `step: 0` is `InvalidInput`; exceeding `max_items` is `LimitExceeded`. Unwrap the Result before looping:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -77,11 +73,11 @@ test "sum even indexes":
         return panic("Expected 6, got {total}")
 ```
 
-A function returning a compatible `Result` unwraps the same way with `try`; elsewhere use `unwrap()` or `unwrap_or`. `for index in 0..5:` is unsupported. See the [range declarations](../../standard-library/reference/collections.md#range).
+Use `try` in a function returning a compatible Result, otherwise `unwrap()` or `unwrap_or`. `for index in 0..5:` is unsupported. See the [range declarations](../../standard-library/reference/collections.md#range).
 
 ## Iterable types and binding
 
-Evaluate a `for`'s iterable expression once before entering the loop. A List traversal captures its backing slice and initial length without copying: later element writes can be observed, append does not extend the traversal, and reallocation leaves it reading the original array. Map and Set snapshot their membership. Referenced elements remain shared. The loop introduces one immutable identifier per iteration; it does not accept a binding pattern or a type annotation. The closed set of supported iterables is:
+The iterable is evaluated once. A List traversal keeps its original slice and length without copying: later element writes are visible, appends are not. Map and Set snapshot their membership. The loop variable is one immutable name per iteration, with no pattern or annotation. Supported iterables:
 
 | Iterable | Iteration binding type | Traversal order |
 | --- | --- | --- |
@@ -89,7 +85,7 @@ Evaluate a `for`'s iterable expression once before entering the loop. A List tra
 | `Set[T]` | `T` | Insertion order |
 | `Map[K, V]` | `MapEntry[K, V]` | Key insertion order |
 
-`MapEntry[K, V]` is a record with fields `key: K` and `value: V`. It uses the map's key/value eligibility requirements. Its type and named constructor `MapEntry[K, V](key: key, value: value)` are imported from `@std/collections.ms`; field access is ordinary record access. Iteration infers the entry type without requiring an import of its name. It is not a positional pair. Destructure an entry inside the body when convenient.
+`MapEntry[K, V]` is a record with `key: K` and `value: V` (constructor from `@std/collections.ms`; iteration needs no import). It is not a positional pair; destructure it in the body.
 
 ```manuscript
 fn total(values: Map[String, Int]) -> Int:
@@ -100,7 +96,7 @@ fn total(values: Map[String, Int]) -> Int:
     return sum
 ```
 
-`for [key, value] in values:` is rejected at parsing. Iterating a number, text, optional, function, or arbitrary object with a `next` method is rejected at type checking. Each iteration creates a new binding and lexical scope. Assigning to the iteration binding is rejected; an outer mutable accumulator can be reassigned.
+`for [key, value] in values:` is a parse error. Numbers, text, optionals, functions, and objects with a `next` method are not iterable. Each iteration has a new scope; assigning to the loop variable is rejected, but an outer `var` can change.
 
 ## Repeating while a condition holds
 
@@ -113,16 +109,14 @@ fn count_down(start: Int) -> Int:
     return remaining
 ```
 
-The condition is tested as a `Bool`. Each iteration updates `remaining`; the loop ends when the comparison is false.
-
-A `while` reevaluates its condition before every iteration, including after `continue`. A `for` continues by selecting its next element and terminates after the last element. An empty iterable executes no body. A false initial `while` condition also executes no body.
+`while` re-tests its condition before every iteration, including after `continue`. An empty iterable or initially false condition runs no body.
 
 ## Exiting an iteration
 
-`break` and `continue` select the nearest enclosing loop within the same function body. They have no labels or arguments and are rejected outside a loop. An anonymous function inside a loop cannot break or continue that enclosing loop. `return` exits the current function, including when it appears in a loop body. Unreachable loop-control statements still need a valid enclosing loop.
+`break` and `continue` target the nearest enclosing loop in the same function body, take no labels or arguments, and are rejected outside a loop; an anonymous function cannot break its enclosing loop. `return` exits the function.
 
-`break`, `continue`, and `return` leave different control-flow paths, but each runs cleanup for the scopes it exits. Each loop iteration has its own scope. Resources registered with `with` in an iteration close when that iteration exits. A plain `let` declaration does not register cleanup. See [lexical cleanup](../cleanup/_index.md) for the cleanup order and fault rules.
+Each of the three runs cleanup for the scopes it exits. Each iteration is its own scope, so `with` resources close when the iteration ends; a plain `let` registers no cleanup. See [lexical cleanup](../cleanup/_index.md).
 
 ## Cancellation
 
-Each loop back-edge is a cancellation checkpoint, so CPU-bound loops respond promptly to cancellation without explicit calls. See propagation and checkpoints for all runtime checkpoints.
+Each loop back-edge is a cancellation checkpoint, so CPU-bound loops respond to cancellation without explicit calls.

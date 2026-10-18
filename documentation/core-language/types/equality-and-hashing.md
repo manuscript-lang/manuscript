@@ -5,11 +5,10 @@ weight = 8
 
 # Equality and hashing
 
-`Equal` means **values of this type can be compared with `==` and `!=`**. For example, two strings are equal when they contain the same text. By default, two records of the same type are equal when all their fields are equal; they do not need to be the same object.
+- `Equal`: values can be compared with `==` and `!=`. Records of the same type are equal when all fields are equal, not only when they are the same object.
+- `Hashable`: a lookup code for map keys and set elements, which also require `Equal`. The hash finds the entry; equality resolves collisions.
 
-`Hashable` supplies an internal lookup code for **map keys and set elements**, which also require `Equal`. A map uses the hash to find an entry quickly, then checks equality to distinguish keys that happen to have the same hash. A set uses the same process to recognize an existing element.
-
-`Equal` and `Hashable` are operation interfaces defined in `@std/equality.ms`. Their names remain available in the prelude for generic bounds and ordinary interface use; explicit imports of these canonical types are redundant and rejected. Equality and hashing are independent of sharing and resource lifetime.
+Both are prelude interfaces from `@std/equality.ms`; importing them is rejected. They are independent of sharing and resource lifetime.
 
 ```manuscript
 interface Equal:
@@ -19,13 +18,14 @@ interface Hashable:
     fn hash() -> Int
 ```
 
-`==` and `!=` select the visible `Equal` implementation. Map keys and set elements must support both equality and hashing. A custom `Hashable` implementation therefore requires an `Equal` implementation. Matching method names alone never establish either interface.
+`==` and `!=` select the visible `Equal` implementation. A custom `Hashable` requires an `Equal`. Matching method names alone never establish either interface.
 
 ## Built-in value semantics
 
-`Bool`, `Int`, `Decimal`, `String`, `Bytes`, `Unit`, `Duration`, and `Instant` have built-in equality and hashing implementations. `Never` vacuously satisfies both requirements. Float has IEEE equality, including unequal NaNs and equal positive/negative zero, and has no hashing implementation.
-
-Strings compare exact Unicode scalar sequences without normalization. Bytes compare byte sequences; Decimal compares numeric value. Instants must belong to the same clock domain. Records and alternatives without explicit implementations compare their nominal type and all fields or payloads. These data types satisfy each interface when all their components do. Optional and Result use these rules too.
+- `Bool`, `Int`, `Decimal`, `String`, `Bytes`, `Unit`, `Duration`, and `Instant` are built-in `Equal` and `Hashable`; `Never` vacuously is.
+- Float has IEEE equality (NaN is unequal, `0.0 == -0.0`) and no hashing.
+- Strings compare exact Unicode scalars, without normalization. Decimal compares numeric value. Instants must share a clock domain.
+- Records, alternatives, Optional, and Result compare nominal type and all components, and satisfy each interface when all components do.
 
 | Collection | Equality | Hashing |
 | --- | --- | --- |
@@ -33,9 +33,12 @@ Strings compare exact Unicode scalar sequences without normalization. Bytes comp
 | `Map[K, V]` | Equal associations, independent of insertion order | Unsupported |
 | `Set[T]` | Equal members, independent of insertion order | Unsupported |
 
-List equality captures both backing slices and their initial lengths before comparing elements. If an element's `Equal` implementation mutates either List, writes to captured backing remain visible, while append, shrink, or reallocation do not change the compared membership. This follows the [captured-header traversal rules](collections.md#mutation-and-copies), without copying elements.
+List equality captures both backing slices and lengths first, following the [captured-header traversal rules](collections.md#mutation-and-copies): element writes during comparison are visible, append, shrink, and reallocation are not.
 
-Structural equality terminates on cyclic data. Collections and recursive data shapes prevent automatic hashing derivation. Recursive values can form mutable cycles; an explicit `Equal`/`Hashable` pair may instead hash a stable domain identity. Functions, resource handles, and service handles have no implicit equality. Interface views expose their declared operations; use `.equals` to compare through an Equal view.
+- Structural equality terminates on cyclic data.
+- Collections and recursive types get no automatic hashing; an explicit pair may hash a stable identity.
+- Functions, resource handles, and service handles have no implicit equality.
+- Compare through an `Equal` view with `.equals`.
 
 ## Domain identity
 
@@ -56,10 +59,10 @@ impl Hashable for CustomerKey:
     fn hash() -> Int: self.id
 ```
 
-These implementations apply to equality operators, collection searches, and key lookup. An equality override disables automatic structural hashing: provide a matching explicit hash before using that type as a key. Implementation visibility follows [ordinary contract rules](contracts.md#coherence-and-visibility), including local extensions and generic specialization.
+These apply to operators, collection searches, and key lookup. Overriding equality disables automatic hashing, so provide a matching `hash` before using the type as a key. Visibility follows [contract rules](contracts.md#coherence-and-visibility).
 
 ## Key consistency
 
-For Hashable values, equality must be reflexive, symmetric, and transitive, and equal values must produce equal hashes. Unequal values may collide; equality resolves collisions. Hashes are implementation-dependent lookup aids, not stable IDs or a serialization format.
+Equality must be reflexive, symmetric, and transitive, and equal values must hash equally. Hashes are lookup aids, not stable IDs or a serialization format.
 
-Keep a stored key's equality and hash behavior unchanged. Remove it before mutating its identity and reinsert afterward. A mutated key is filed under its old hash, so lookups by the old or the new value no longer find it. A custom `hash` is called whenever a key is inserted or looked up. `.clone()` copies outer storage while nested references remain shared. Equality and hash functions should be deterministic and must not depend on authority, resource open state, or wall-clock time.
+Never change a stored key's equality or hash. Remove it, mutate, and reinsert; a mutated key stays filed under its old hash and neither value finds it. Equality and hash must be deterministic and independent of authority, resource state, and wall-clock time.

@@ -5,7 +5,7 @@ weight = 2
 
 # Alternatives
 
-Use an alternative type when a value can be one of several declared cases. For example, a payment can be paid, declined, or pending. Each case may carry its own data, such as a receipt or a reason.
+Use an alternative when a value is exactly one of several declared cases, each with its own data.
 
 ```manuscript
 type Payment:
@@ -14,9 +14,12 @@ type Payment:
     case Pending(reference: String)
 ```
 
-Alternatives are tagged and exhaustively matched. `Paid`, `Declined`, and `Pending` are different cases of `Payment`, even though each carries text.
+Alternatives are tagged and exhaustively matched.
 
-A declaration has at least one case. Case names are unique within the declaration; payload field names are unique within each case. A case may have no payload, written `case Missing`. Payload types are explicit and fields have no defaults. Record fields and cases cannot be mixed in one `type` declaration. Operation signatures belong to `interface` declarations.
+- At least one case; case names are unique, and payload field names are unique within a case.
+- A case may have no payload: `case Missing`.
+- Payload types are explicit; fields have no defaults.
+- Record fields and cases cannot be mixed in one `type`.
 
 ## Construction and identity
 
@@ -25,13 +28,12 @@ let payment = Payment.Paid(receipt: "receipt-42")
 let declined: Payment = Declined(reason: "Card rejected")
 ```
 
-`Type.Case` identifies a case of that nominal type. A single-payload case may omit its label, such as `some(3)`. Multi-payload constructors accept positional and optionally labeled arguments under the ordinary [call rules](../functions/declarations-and-calls.md#argument-names); supply every payload field exactly once; missing, duplicate, and unknown fields are errors. Payloadless cases are values such as `State.Ready`, without `()`. Tags do not implicitly convert to integers.
+- `Type.Case` names a case of that nominal type. It is not a module path: import the type, then qualify its case.
+- A single-payload case may omit its label, such as `some(3)`.
+- Multi-payload constructors follow the ordinary [call rules](../functions/declarations-and-calls.md#argument-names); every payload field appears exactly once.
+- Payloadless cases are values (`State.Ready`), without `()`. Tags do not convert to integers.
 
-This qualification names a visible type and its case, not a module namespace. Modules import individual symbols; `customers.Customer` is not a type path introduced by importing a module. Import the nominal type name itself and qualify its case as `Type.Case`.
-
-Ordinary lexical name lookup happens first. A local binding, ordinary declaration, or imported symbol with the spelling is used before case shorthand is considered. If ordinary lookup finds nothing, an unqualified constructor case name must identify exactly one case among visible nominal alternative declarations (declared or individually imported). If multiple visible types declare it, qualification is required even when an annotation supplies an expected type. An expected alternative application can supply generic arguments after a unique case is resolved. A qualified case inconsistent with the expected type is rejected. Matching payload shapes do not make distinct alternatives compatible.
-
-Qualification still resolves `Type` through ordinary lookup. A local value shadowing that name does not act as a module namespace or expose the hidden type's cases.
+Ordinary name lookup runs first: a local, declaration, or import with that spelling wins over case shorthand. Otherwise an unqualified case name must match exactly one case among visible alternatives. If several declare it, qualify it, even with an annotation. An expected alternative type can supply generic arguments once the case is unique; a qualified case that contradicts the expected type is rejected, and matching payload shapes never make distinct alternatives compatible.
 
 ```manuscript
 type LeftState:
@@ -49,20 +51,18 @@ let ambiguous = Ready
 let wrong: LeftState = RightState.Ready
 ```
 
-Inside a scope with `let Ready = LeftState.Ready`, subsequent `Ready` expressions refer to that binding rather than retrying ambiguous case lookup. An incompatible expected type rejects the binding's type; it does not choose another type's case instead.
+After `let Ready = LeftState.Ready`, `Ready` refers to that binding, not case lookup.
 
-Generic qualification includes type arguments: `Choice[Int].Found(value: 1)`. Exporting an alternative exposes every case and payload field. Payload types follow the [public surface](records.md#public-data-surfaces) and [recursive data](records.md#recursive-data) rules for records.
+Type arguments attach to the alternative, never the case: write `Choice[Int].Found(value: 1)`. `Found[Int](value: 1)` and `Choice.Found[Int](value: 1)` are rejected; unqualified `Found(value: 1)` may infer arguments or use a complete expected `Choice[Int]`. This also holds for standard Optional/Result cases.
 
-Type arguments attach to the nominal alternative, never to the case name. `Found[Int](value: 1)` and `Choice.Found[Int](value: 1)` are rejected. Unqualified `Found(value: 1)` may use argument inference or a complete expected `Choice[Int]` after case lookup resolves uniquely; explicit arguments use the single spelling `Choice[Int].Found(value: 1)`. These rules also apply to qualified standard Optional/Result cases.
+Exporting an alternative exposes every case and payload field. Payload types follow the [public surface](records.md#public-data-surfaces) and [recursive data](records.md#recursive-data) rules for records.
 
 ## Handling a case
 
-A [match](../control-flow/pattern-matching.md) selects the case and binds its payload. Code handling a payment must account for all three possibilities; adding another case requires the exhaustive matches to be reviewed.
+A [match](../control-flow/pattern-matching.md) selects the case and binds its payload; it must cover every case. Patterns resolve against the scrutinee's alternative type.
 
-Match patterns resolve cases against the scrutinee's known alternative type. Payload bindings are patterns rather than named call arguments. Their syntax is specified in [pattern matching](../control-flow/pattern-matching.md).
-
-There is no general implicit union construction or nullable reference type. Declare the set of possibilities as an alternative type, or use [Optional](optionals.md) for absence.
+There are no implicit unions or nullable references. Declare an alternative, or use [Optional](optionals.md) for absence.
 
 ## Resource payloads
 
-Payloads retain ordinary values and references. Matching or extracting a resource reference does not invalidate the original value, register cleanup, or extend its open lifetime. See [references inside other values](references.md).
+Matching a payload does not invalidate the original, register cleanup, or extend a resource's lifetime. See [references inside other values](references.md).

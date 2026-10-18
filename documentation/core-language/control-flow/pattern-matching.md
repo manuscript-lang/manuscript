@@ -5,11 +5,9 @@ weight = 3
 
 # Pattern matching
 
-Use `match` to handle the cases of an alternative type. Each branch can give names to the data carried by its case. For example, a payment may be paid, declined, or pending, and each outcome needs different handling.
+`match` handles each case of an alternative type and names the case's data. Use it for your own alternatives and contract views. Avoid it on `Optional` and `Result` (see [below](#optional-and-result-values)). Literals, guards, ranges, nested case patterns, and combined patterns are rejected.
 
-Use `match` for your own tagged alternative types and operation contract views. `Optional` and `Result` are alternatives too and the checker accepts a match on them, but do not write one: use `if let`, `try`, `unwrap_or`, or `unwrap` instead (see [Optional and result values](#optional-and-result-values)). Matching numeric or Boolean literals, guards, ranges, nested case patterns, and combined patterns is rejected. `match` is an expression. It can initialize a binding, supply an argument, or appear on its own with its result discarded. The scrutinee evaluates once, and only the selected arm runs.
-
-The following function handles the `Payment` type declared in [alternatives](../types/alternatives.md):
+`match` is an expression: it can initialize a binding, be an argument, or stand alone with its result discarded. The scrutinee evaluates once and only the selected arm runs. This handles the `Payment` type from [alternatives](../types/alternatives.md):
 
 ```manuscript
 fn describe(payment: Payment) -> String:
@@ -24,15 +22,14 @@ fn describe(payment: Payment) -> String:
 
 ## Keep match flow flat
 
-Nested `match` is an anti-pattern: another match inside a scrutinee or arm makes the control flow harder to follow. Bind the outer payload with an early exit, propagate compatible errors with `try`, use the ordinary Optional methods, or call a small helper for further case handling. The bounded TOML example and the contract handler below show flat flow and a helper, respectively.
+Nested `match` is an anti-pattern. Bind the outer payload with an early exit, propagate with `try`, use Optional methods, or call a small helper (the contract handler below shows a helper).
 
-`ms lint` reports advisory **MSL107** at each inner match, including matches inside an inline callback or its default expressions beneath another match. Separate helpers and sequential matches do not trigger it. Checking and execution still accept nested matches; the advisory is a style rule and adds no grammar restriction.
-
-Matching an `Optional` with only `some` and `none` arms is also an anti-pattern: `ms lint` reports advisory **MSL108**. Use [`if let`](conditionals.md#unwrapping-an-optional-or-result) with an optional `else`, or an Optional method such as `unwrap_or` or `map`. Checking and execution still accept the match.
+- `ms lint` reports **MSL107** at each inner match, including inside inline callbacks. Helpers and sequential matches are fine. The checker still accepts nesting; this is style only.
+- A two-arm `some`/`none` match on an `Optional` is **MSL108**. Use [`if let`](conditionals.md#unwrapping-an-optional-or-result), `unwrap_or`, or `map`.
 
 ## Arm values
 
-An arm may contain statements followed by a final expression. That expression supplies the arm's value. An arm ending in an ordinary statement produces `Unit` when it reaches the end. All arms that produce values must have a compatible type; an annotation or expected argument/return type supplies context. Without context, independently typed value-producing arms establish the result type, including for earlier contextual values such as `none` or `[]`. An inferred function result requires all arguments; it does not inherit omission permissions from one selected callable. Arms that exit through `return`, `break`, `continue`, or a `Never` expression do not contribute a result value.
+An arm may hold statements then a final expression, which is its value; ending in a statement gives `Unit`. Value-producing arms must share a compatible type, taken from the annotation or expected type, or else from the arms themselves. Arms that exit via `return`, `break`, `continue`, or `Never` contribute no value.
 
 ```manuscript
 type Cents:
@@ -48,13 +45,13 @@ fn total(cents: Cents) -> Result[Int, String]:
     return ok(value: amount)
 ```
 
-`return` exits the enclosing function, including from a match used inside another expression; lexical cleanup still runs. `break` and `continue` target the enclosing loop. A nested anonymous function retains its own return boundary.
+`return` exits the enclosing function even from inside another expression, running cleanup; `break` and `continue` target the enclosing loop; an anonymous function has its own return boundary.
 
-Short arms may place the value after the colon, such as `none: 0`. For an arm used only for effects, finish with `unit` when its last call returns another type. When a match stands on its own as a statement its result is discarded, so its arms need not agree on a type; when the result is used (a binding, argument, or `return`), every arm must produce that type. An empty arm is written `unit`; `pass` is not a keyword.
+Short arms put the value after the colon (`none: 0`). End an effect-only arm with `unit` if its last call returns something else. A standalone match discards its result, so arms need not agree; a used result needs every arm to produce it. An empty arm is `unit`; there is no `pass`.
 
 ## Payload patterns
 
-Case payloads bind positions in the declaration's field order. A pattern must give exactly one identifier or `_` placeholder per payload field. Pattern payloads are positional even though constructors always use named fields. Nullary cases use a bare case name without `()`.
+Payloads bind by position in field order: exactly one identifier or `_` per field, even though constructors use named fields. Nullary cases are a bare name without `()`.
 
 ```manuscript
 type Position:
@@ -69,31 +66,16 @@ fn horizontal(position: Position) -> Int:
             return 0
 ```
 
-`Point(x: local, y: other):` is rejected at parsing. `Point(x):` is rejected for wrong arity. Repeated binding identifiers are rejected, while `_` can occur repeatedly because it creates no name. Each arm's payload bindings and body share a lexical scope nested inside the enclosing scope.
+- `Point(x: local, y: other):` is a parse error; `Point(x):` is an arity error. Repeated names are rejected; `_` may repeat.
+- Payload bindings and the arm body share a nested scope.
+- An unqualified case resolves within the scrutinee's type; a qualified case must belong to that exact type (`Other.Point(...)` never matches `Position`). Constructors resolve per [alternative construction](../types/alternatives.md).
+- Payload names always bind fresh. `error(NotFound)` matches every error and does not test for `NotFound`; bind `error(cause)` and pass `cause` to a helper that matches the cases.
 
-An unqualified case in a pattern resolves within the scrutinee's alternative type. A qualified case must belong to that exact type. `Other.Point(...)` cannot match `Position`, even when its payload types have the same shape. Constructor-expression name lookup instead follows [alternative construction](../types/alternatives.md).
-
-Payload identifiers always create fresh bindings. For example, `error(NotFound)`
-matches every error payload, even when `NotFound` is a case of that payload's
-type. It does not test for that case. Bind `error(cause)` and pass `cause` to a
-helper that matches its cases, including `NotFound:` and the remaining cases.
-A case that carries data needs its own payload names or `_` placeholders in the
-helper's match. Keep matches flat; nested matches are an anti-pattern.
-
-`ms lint` reports MSL106 at a capitalized payload identifier that coincides with
-a known case or type name. The editor publishes the same advisory as a warning;
-`ms check` still accepts the binding. If binding the whole payload is intentional,
-use a name such as `cause` or `_cause`. Capitalized names without a known case or
-type identity are allowed, and an enclosing value binding or generic parameter
-with that name takes precedence when deciding whether to warn.
+`ms lint` reports **MSL106** (a warning in the editor; `ms check` accepts it) when a capitalized payload name coincides with a known case or type name. Use a name like `cause` or `_cause`.
 
 ## Exhaustiveness
 
-Match cases bind data without fallthrough; missing alternatives are compile errors. Wildcard cases must be explicit.
-
-Every case in the example returns its own description. Running the `Paid` branch does not continue into `Declined` or `Pending`. The compiler checks that all alternatives are accounted for.
-
-`_:` is the wildcard arm. It is permitted once, must be last, binds nothing, and covers every case not already handled. Duplicate cases, unknown cases, an arm after the wildcard, and a wildcard after all cases have been explicitly covered are rejected as invalid or unreachable arms. Qualified and unqualified spellings of the same case count as duplicates.
+Arms never fall through, and a missing case is a compile error. `_:` is the wildcard: allowed once, last, binds nothing, and covers the remaining cases. Rejected: duplicate or unknown cases (qualified and unqualified spellings of one case are duplicates), an arm after the wildcard, and a wildcard after every case is covered.
 
 ```manuscript
 fn paid(payment: Payment) -> Bool:
@@ -104,15 +86,15 @@ fn paid(payment: Payment) -> Bool:
             return false
 ```
 
-Adding a case to an alternative invalidates exhaustive matches that lack a wildcard. A match with a wildcard remains exhaustive; its wildcard handles the new case. Return completeness is checked across all reachable arms using the [function return rules](../functions/declarations-and-calls.md#unit-and-never).
+Adding a case breaks matches without a wildcard; a wildcard absorbs it. Return completeness follows the [function return rules](../functions/declarations-and-calls.md#unit-and-never).
 
 ## Optional and result values
 
-[Optional](../types/optionals.md) and [Result](../errors/results.md) are also alternative types, but they have dedicated flat forms. Do not match them. Use `if let value = expression:` (with an optional `else`) for a present value or success, `unwrap_or` for a default, `try` to propagate a `Result` error, and `is_error()` with `unwrap_error()` to read a cause.
+[Optional](../types/optionals.md) and [Result](../errors/results.md) are alternatives, but do not match them. Use `if let value = expression:` for a value or success, `unwrap_or` for a default, `try` to propagate an error, and `is_error()` with `unwrap_error()` to read a cause.
 
 ## Contract type patterns
 
-A contract view keeps its concrete receiver. Match that view with `ConcreteType(receiver)` to handle a particular implementation, followed by `_:` for generic handling. This is a checked recovery of an existing receiver, not a constructor call.
+A contract view keeps its concrete receiver. `ConcreteType(receiver)` recovers it for a particular implementation, and `_:` handles the rest. This is not a constructor call.
 
 ```text
 import JsonError from "@std/json.ms"
@@ -130,12 +112,12 @@ fn describe_json(cause: JsonError) -> String:
         LimitExceeded: return "JSON limit exceeded"
 ```
 
-The type must be an imported or local nominal record or alternative with an applicable explicit implementation of the scrutinee's exact contract. Supply exactly one receiver name or `_`, including for a payloadless alternative. The binding has the concrete type, so its fields, cases, and implemented operations are available inside the arm. Native opaque receivers can be handled by the wildcard, but cannot be named in a concrete type pattern.
-
-Generic patterns name the complete application, such as `MyError[Int](cause)`; `MyError[String]` is a different pattern. An in-scope generic parameter may supply an argument, as in `MyError[T](cause)`. Matching uses exact runtime nominal identities and type arguments, with the first matching arm selected. Duplicate statically identical type patterns are rejected. A pattern cannot name a different contract, a bare type parameter, or an individual alternative case.
-
-A final wildcard is required even when every currently known implementation is listed: contracts are open to other implementations. It binds nothing; use the original contract value for generic handling. The scrutinee evaluates once; matching retains the same receiver reference and does not copy it, add cleanup, or catch faults and cancellation. See [contract views](../types/contracts.md#explicit-contract-views).
+- The type is a local or imported nominal record or alternative with an explicit implementation of the scrutinee's exact contract.
+- Give exactly one receiver name or `_`, even for a payloadless alternative. The binding has the concrete type. Native opaque receivers fall to the wildcard.
+- Generic patterns name the full application: `MyError[Int](cause)` differs from `MyError[String]`; an in-scope parameter may be an argument (`MyError[T](cause)`). The first arm matching the exact runtime type wins; duplicate patterns are rejected. A pattern cannot name another contract, a bare type parameter, or a single alternative case.
+- A final wildcard is required because contracts are open. It binds nothing; use the original value for generic handling.
+- The receiver is not copied, and matching adds no cleanup and catches no faults or cancellation. See [contract views](../types/contracts.md#explicit-contract-views).
 
 ## Matching resource references
 
-Matching binds ordinary payload values and references. No binding is consumed, and matching does not register resource cleanup. [Destructuring bindings](../types/destructuring.md) use brackets or braces; alternative match cases retain their `Case(payload)` syntax. See [references inside other values](../types/references.md).
+Matching binds payload values and references without consuming them or registering cleanup. [Destructuring](../types/destructuring.md) uses brackets or braces; match cases use `Case(payload)`. See [references](../types/references.md).

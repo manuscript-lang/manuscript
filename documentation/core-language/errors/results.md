@@ -5,9 +5,9 @@ weight = 1
 
 # Expected failures with Result
 
-Use `Result[T, E]` when an operation can either succeed with a value of type `T` or fail with an expected error of type `E`. `Result`, `ok`, and `error` are available from the prelude without imports.
+Use `Result[T, E]` when an operation succeeds with `T` or fails with an expected error `E`. `Result`, `ok`, and `error` are in the prelude.
 
-Return `ok(value: ...)` for success and `error(cause: ...)` for failure. Both are ordinary values. A caller passes the error back with `try`, unwraps success with `if let`, `unwrap_or`, or `unwrap`, or tests it with `is_ok()` and `is_error()`. Do not `match` a `Result`; the accepted forms stay flat. Validate runtime input with ordinary conditions before doing the work.
+Return `ok(value: ...)` or `error(cause: ...)`. Callers forward the error with `try`, unwrap with `if let`, `unwrap_or`, or `unwrap`, or test with `is_ok()` and `is_error()`. Do not `match` a `Result`. Validate runtime input with ordinary conditions first.
 
 ## Returning a domain error
 
@@ -25,11 +25,11 @@ fn discount(price: Decimal, percent: Decimal) -> Result[Decimal, DiscountError]:
     return ok(price * (1d - percent / 100d))
 ```
 
-The function checks inputs before calculating. It returns an explicit error for each invalid condition and wraps the calculated decimal in `ok` on success.
+The function validates inputs, returns an explicit error for each failure, and wraps the result in `ok`.
 
 ## Handling the result
 
-The following continues the declarations above:
+This continues the declarations above:
 
 ```manuscript
 fn discount_message(price: Decimal, percent: Decimal) -> String:
@@ -38,7 +38,7 @@ fn discount_message(price: Decimal, percent: Decimal) -> String:
     return "Discount could not be calculated."
 ```
 
-This caller chooses a response for either outcome and discards the cause. When the cause matters, read it with `unwrap_error()` after `is_error()`, or [propagate it with try](propagation.md).
+This caller discards the cause. To use it, call `unwrap_error()` after `is_error()`, or [propagate it with try](propagation.md).
 
 ## Checking, extracting, and composing
 
@@ -52,7 +52,7 @@ This caller chooses a response for either outcome and discards the cause. When t
 | `map[U](transform: fn(value: T) -> U) -> Result[U, E]` | Transform success once; preserve an error unchanged |
 | `and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]` | On success, return the callback's Result; preserve an existing error |
 
-`E` can be any value type; it does not need to implement Error. Extraction and composition retain payload references. `map` wraps the callback's value in `ok`, even when that value is another Result or Optional. `and_then` requires the same error type `E`. Translate unrelated errors with ordinary functions that match on the error value.
+`E` can be any value type; it need not implement Error. `map` wraps the callback's value in `ok`, even if it is a Result or Optional. `and_then` requires the same `E`; translate unrelated errors with ordinary functions.
 
 This fragment uses `discount` above:
 
@@ -61,11 +61,11 @@ let price = discount(price: 20d, percent: 10d).unwrap_or(0d)
 let text = discount(price: 20d, percent: 10d).map(fn(value): value.toString())
 ```
 
-Callbacks run sequentially in the caller's execution context. Their faults and cancellation propagate normally. `unwrap` reports `called Result.unwrap() on error`; use it only when success is established or failure is a programming error. Routine expected failures use a fallback, `if let`, or `try`.
+Callbacks run sequentially in the caller's context; faults and cancellation propagate normally. `unwrap` reports `called Result.unwrap() on error`; use it only when success is established. Routine failures use a fallback, `if let`, or `try`.
 
 ## Converting success to an Optional
 
-`to_optional() -> Optional[T]` returns `some` with the original successful payload, or `none` for an error. It neither clones nor flattens the payload, invokes error operations, or turns faults and cancellation into absence.
+`to_optional() -> Optional[T]` returns `some` with the original payload, or `none` on error. It does not clone or flatten the payload, and does not turn faults or cancellation into absence.
 
 ```manuscript
 fn successful_price(outcome: Result[Decimal, String]) -> Optional[Decimal]:
@@ -76,27 +76,17 @@ To turn absence into an error, use [Optional.ok_or or ok_or_else](../types/optio
 
 ## Discarding a result
 
-A standalone call such as `discount(price: 20d, percent: 10d)` evaluates the
-operation but discards both success and failure. `ms lint` reports advisory
-`MSL104` for a discarded `Result`, including `Result[Unit, E]`. Checking still
-accepts the statement. Handle the result with `match`, propagate it with `try`,
-or return it to the caller.
-
-When ignoring both outcomes is deliberate, use a named binding beginning with
-`_`, such as this fragment using `discount` above:
+A standalone call such as `discount(price: 20d, percent: 10d)` discards both outcomes. `ms lint` reports advisory `MSL104` for a discarded `Result`, including `Result[Unit, E]`. Handle it with `if let`, `try`, or return it. To ignore it deliberately, bind it to a name starting with `_`:
 
 ```manuscript
 let _ignored = discount(price: 20d, percent: 10d)
 ```
 
-The initializer still runs, and the `_ignored` name suppresses the unread-local
-advisory. This does not handle an error or stop a programming fault.
+The initializer still runs and `_ignored` suppresses the unread-local advisory. This does not handle an error or stop a fault.
 
 ## A common error boundary
 
-For most functions, keep the concrete domain error type. Its typed fields are available directly to callers; see error details.
-
-When a boundary should accept several error types, use the prelude `Error` interface without an import. It is an ordinary interface declaring `message() -> String`. Standard errors implement it; custom errors can declare an `impl Error` in their defining module.
+Usually keep the concrete domain error type. To accept several error types, use the prelude `Error` interface (`message() -> String`). Standard errors implement it; custom errors declare `impl Error`.
 
 ```manuscript
 import Bytes from "@std/bytes.ms"
@@ -107,12 +97,12 @@ fn decode(text: String) -> Result[Bytes, Error]:
     return ok(bytes)
 ```
 
-`try` passes the original `EncodingError` into the common Error boundary. A caller may handle it with `cause.message()`, or recover its specific type and fields using a [contract type pattern](../control-flow/pattern-matching.md#contract-type-patterns). A caller that needs only encoding errors can keep `Result[Bytes, EncodingError]` and match its cases directly.
+`try` passes the original `EncodingError` into the `Error` boundary. Callers use `cause.message()` or recover the type with a [contract type pattern](../control-flow/pattern-matching.md#contract-type-patterns). A caller needing only encoding errors can keep `Result[Bytes, EncodingError]`.
 
-An error implementing `Error` can be passed, assigned, or returned directly wherever `Error` is expected. `Result[T, SpecificError]` can also be returned as `Result[T, Error]`; its successful value and original error are preserved. Other error values remain legal in `Result[T, E]`. See [error compatibility](propagation.md#error-compatibility) for propagation rules.
+An `Error` implementer can be passed, assigned, or returned where `Error` is expected, and `Result[T, SpecificError]` can be returned as `Result[T, Error]` with payloads preserved. See [error compatibility](propagation.md#error-compatibility).
 
 ## Results and concurrent execution
 
-Returning `error(cause: cause)` is normal function completion. In a TaskGroup, the domain Result remains the operation's return value and does not cancel siblings. Task.join separately reports ExecutionError; see task groups. A Scheduler service reports completion-only domain errors through its configured failure observer.
+Returning `error(cause: cause)` is normal completion. In a TaskGroup the Result is the operation's value and does not cancel siblings; Task.join separately reports ExecutionError. A Scheduler reports completion-only domain errors to its failure observer.
 
-Use [Optional](../types/optionals.md) for absence without an error explanation and [explicit faults](faults.md) for broken programming invariants.
+Use [Optional](../types/optionals.md) for absence and [faults](faults.md) for broken invariants.

@@ -5,7 +5,7 @@ weight = 2
 
 # Language tour
 
-Start with [a running program](getting-started.md). Read these examples in order; local statements go inside a function or test. Imports and declarations go at the top of the file. Indentation defines blocks, and `#` starts a comment.
+Short examples in order, after [your first program](getting-started.md). Indentation defines blocks; `#` starts a comment. Fragments belong inside a function or test.
 
 ## Print your first line
 
@@ -21,16 +21,9 @@ export fn main() -> Int:
     return 0
 ```
 
-`main` returns the exit status: 0 for success, 1 for a failed write.
-`is_error()` tests whether the write failed; the [expected errors](#expected-errors)
-section explains `Result` in more detail. The import selects the output API.
+`main` returns the exit status. `is_error()` tests the write's `Result` (see [expected errors](#expected-errors)).
 
-The complete examples below use `test` blocks. Save one as `example.ms` and run
-`ms test example.ms`. `try expect_equal(actual, expected)` checks a value and
-fails the test if it differs. This lets you try the language without adding
-output code to every example; [test your code](testing.md) explains the helpers.
-Other blocks are fragments to place inside a function or test, unless they
-declare a type, function, or import.
+Complete examples below use `test` blocks: save as `example.ms` and run `ms test example.ms`. `try expect_equal(actual, expected)` fails the test on a mismatch ([testing](testing.md)).
 
 ## Variables and text
 
@@ -48,7 +41,8 @@ test "unread message count":
     try expect_equal(message, "Sam, you have 3 unread messages.")
 ```
 
-`let` keeps the same binding; `var` allows reassignment. Local types are inferred unless you write an annotation. Use `Int` for whole numbers, `Float` for decimals, `Bool` for true or false, and `String` for text. `{expression}` inserts a value into a string.
+- `let` fixes the binding; `var` allows reassignment. Types are inferred unless annotated.
+- Basic types: `Int`, `Float`, `Bool`, `String`. `{expression}` interpolates into strings.
 
 ## Lists, maps, and sets
 
@@ -70,7 +64,9 @@ else:
     let label = "No visits yet"
 ```
 
-List, Map, and Set are available without imports. Lists preserve order, maps look up values by key, and sets keep distinct values. Updates mutate the collection. Assignment shares the same collection; `.clone()` makes a shallow copy. Lookup returns an `Optional`: `some(value)` or `none`. `if let` binds a present value inside its block; `else` handles absence.
+- List, Map, and Set need no import. Updates mutate in place.
+- Assignment shares a collection; `.clone()` makes a shallow copy.
+- Lookup returns an `Optional` (`some(value)` or `none`); `if let` binds a present value and `else` handles absence.
 
 ## Conditions and loops
 
@@ -87,9 +83,9 @@ if total >= 40:
 let checkout_total = total + shipping
 ```
 
-`if` chooses a branch. `for` visits each item; `while` repeats while a condition is true. Use `break` to stop a loop or `continue` to skip an iteration.
+`if` branches; `for` visits items; `while` repeats on a condition; `break` and `continue` control loops.
 
-To repeat a task five times without building a collection, count with `while`:
+Count with `range`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -103,7 +99,7 @@ test "count five iterations":
     try expect_equal(total, 10)
 ```
 
-The index visits 0 through 4, and `total += index` is shorthand for `total = total + index`. A `while` loop with its own counter handles other steps; see [counting loops](../core-language/control-flow/loops.md#counting-loops).
+`range(0, 5)` visits 0 through 4. For other steps see [counting loops](../core-language/control-flow/loops.md#counting-loops).
 
 ## Functions
 
@@ -119,9 +115,9 @@ let default_welcome = greeting()  # "Hello, world!"
 let subtotal = line_total(12, 3)
 ```
 
-Functions declare parameter and return types. Call with positional arguments or add labels for clarity. A parameter with a default can be omitted; other parameters are required. Use `Unit` when a function has no result to return.
+Parameters and returns are typed. Pass arguments by position or label; defaults can be omitted. `Unit` means no result.
 
-Pass functions to transform collections:
+Functions are values:
 
 ```manuscript
 
@@ -167,7 +163,9 @@ test "publish a help page":
     try expect_equal(label, "Published at /help")
 ```
 
-Records group named fields. Omitted fields use their declared defaults. Fields can change even when the binding uses `let`. Alternatives describe a choice of cases; `match` handles every case. A type's name identifies it, so two record declarations with the same fields remain distinct types.
+- Records group named fields; omitted fields use defaults, and fields stay mutable under `let`.
+- Alternatives list cases; `match` must handle every case.
+- Types are nominal: identical fields do not make two types equal.
 
 ## Expected errors
 
@@ -185,11 +183,12 @@ fn order_total(count: Int) -> Result[Int, QuantityError]:
     return ok(valid_count * 12)
 ```
 
-A `Result` holds `ok(value: value)` or `error(cause)`. `try` unwraps success and returns an error to the caller. Use the same error type, or the common `Error` boundary for errors implementing that interface. Use `if let`, `unwrap_or`, or `is_error()` with `unwrap_error()` to handle an outcome yourself instead of propagating it; see [error compatibility](../core-language/errors/propagation.md#error-compatibility).
+- `Result` is `ok(value)` or `error(cause)`; `try` unwraps success or returns the error.
+- Use one error type or the common `Error` boundary. Otherwise handle outcomes with `if let`, `unwrap_or`, or `is_error()` and `unwrap_error()`; see [error compatibility](../core-language/errors/propagation.md#error-compatibility).
 
 ## Modules
 
-Each `.ms` file is a module. Export declarations other files need.
+Each `.ms` file is a module; `export` what others need.
 
 `pricing.ms`:
 
@@ -209,7 +208,7 @@ export fn checkout_total() -> Int:
     return line_total(quantity: 3)
 ```
 
-A module-level `let` declares a constant; use its name without `()`. Collection constants create fresh storage on each use. Import standard APIs from `@std/…`, and local code with a relative path. [Module rules](../core-language/modules/declarations.md) cover grouped imports and visibility.
+Module-level `let` is a constant used without `()`. Import standard APIs from `@std/…` and local code by relative path ([module rules](../core-language/modules/declarations.md)).
 
 ## Closures and shared data
 
@@ -228,11 +227,11 @@ tags.append("release")
 # tag_count() returns 2.
 ```
 
-A closure remembers each binding's value when created. Reassigning a local variable does not change that value. Capturing a collection or record keeps the same object, so later mutations are visible. See [closure examples](../core-language/functions/function-values-and-closures.md#snapshot-captures).
+Closures snapshot variable values when created, but captured collections and records stay shared. See [closure examples](../core-language/functions/function-values-and-closures.md#snapshot-captures).
 
 ## Behavior on types
 
-Declare an interface for user-defined methods, then implement it with `impl Interface for Type:`. The method's `self` is its receiver:
+Declare an `interface`, then `impl Interface for Type:`; `self` is the receiver:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -259,7 +258,7 @@ test "counter behavior":
     try expect_equal(counter.value, 0)
 ```
 
-Manuscript has no user-defined inherent methods: `impl Counter:` is unsupported. A free function is called as `reset(counter)`, not `counter.reset()`. Interface operations can be called on a concrete receiver when exactly one visible interface implementation supplies that name. See [interfaces and implementations](../core-language/types/contracts.md#explicit-implementations) for signatures, visibility, and selecting an interface view when names are ambiguous.
+There are no inherent methods (`impl Counter:` is unsupported); free functions are called as `reset(counter)`. See [interfaces and implementations](../core-language/types/contracts.md#explicit-implementations).
 
 ## Files and cleanup
 
@@ -273,11 +272,11 @@ fn copy_notes() -> Result[Unit, FileSystemError]:
     return ok(unit)
 ```
 
-`with` closes the file when the block ends, including an early return. A closure that captures the file keeps a reference but does not keep it open. Read it inside the block, or open a new file inside the callback. [Resource captures](../core-language/functions/function-values-and-closures.md#resource-captures) shows a complete example.
+`with` closes the file at block end, even on early return. Closures do not keep it open; see [resource captures](../core-language/functions/function-values-and-closures.md#resource-captures).
 
 ## A few compiler errors to recognize
 
-These fragments are intentionally rejected:
+These are intentionally rejected:
 
 ```manuscript
 let count = 2
@@ -286,7 +285,4 @@ let mixed = [1, "two"]    # List elements need a common type.
 line_total(12)            # Supply the required quantity.
 ```
 
-Keep these cases separate from runnable examples. Next, [test your code](testing.md), then put these ideas to work in the
-[task recipes](common-tasks.md). Use the [language reference](../core-language/_index.md)
-when you need an exact rule, or the [API reference](../standard-library/reference/_index.md)
-when you need a particular function.
+Next: [testing](testing.md), [task recipes](common-tasks.md), the [language reference](../core-language/_index.md), and the [API reference](../standard-library/reference/_index.md).
