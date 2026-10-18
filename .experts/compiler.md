@@ -268,10 +268,10 @@ Evidence: #552; `pkg/checker/bounds.go`, `pkg/checker/bounds_test.go`, `tests/e2
 Verify: every guard form needs a paired rejection (upper-only, lower-only, other list, copied length, reassignment, mutation between, closure, flattened index).
 
 ### Lowered Int hot paths keep faults but not avoidable calls
-Verified: `Int` `/` and `%` by a literal of at least 2 cannot be zero, -1, or overflow, so they lower to Go's operators instead of `IntDivide`/`IntRemainder`; the loop cancellation poll is an inline `tick++; tick&63 == 0` on a plain local, because `Poll(ctx, &tick)` forced the counter into memory and halved a tight loop's speed (21.8 ms to 15.9 ms for 10M iterations). `+`, `-`, `*` stay checked: overflow faults are language behavior and need a range proof to remove.
+Verified: `Int` `/` and `%` by a positive literal cannot be zero, -1, or overflow, so they lower to Go's operators instead of `IntDivide`/`IntRemainder`; the loop cancellation poll is an inline `tick++; tick&63 == 0` on a plain local, because `Poll(ctx, &tick)` forced the counter into memory and halved a tight loop's speed (21.8 ms to 15.9 ms for 10M iterations). Integer identities (`+ 0`, `- 0`, `* 0`, `* 1`, including commuted `+`/`*`) also cannot overflow. Emit both operands in the Go operation to preserve effectful calls even when the result is constant. Other `+`, `-`, `*` stay checked: overflow faults are language behavior and need a range proof to remove.
 
 Apply when: changing Int arithmetic lowering or loop back-edge polling.
-Evidence: `pkg/lower/expr.go` (`positiveIntLiteral`), `pkg/lower/stmt.go` (`loopStatements`), `tests/e2e/int_literal_divisor_test.go`, `tests/e2e/numeric_lowering_test.go`.
+Evidence: `pkg/lower/expr.go` (`uncheckedIntArithmetic`), `pkg/lower/stmt.go` (`loopStatements`), `tests/e2e/int_literal_divisor_test.go`, `tests/e2e/int_identity_test.go`, `tests/e2e/numeric_lowering_test.go`.
 Verify: compare `ms emit` output and `bench/run.sh` before and after; the fault tests must still pass.
 
 ### Guarded counter steps skip the overflow check
