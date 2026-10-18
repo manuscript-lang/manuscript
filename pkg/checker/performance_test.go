@@ -133,6 +133,29 @@ func BenchmarkCheckerSubstitution(b *testing.B) {
 			}
 		})
 	}
+	// Keep nongeneric fields and phantom alternatives as controls: neither
+	// should pay for a map of bindings it does not use.
+	b.Run("nongeneric", func(b *testing.B) {
+		typ := &Type{Def: &Definition{Fields: []Param{{Name: "value", Type: primitive("Int")}}}}
+		b.ReportAllocs()
+		for b.Loop() {
+			Fields(typ)
+		}
+	})
+	b.Run("empty-cases", func(b *testing.B) {
+		variables := make([]*Type, 128)
+		arguments := make([]*Type, 128)
+		for i := range variables {
+			variables[i] = &Type{ID: fmt.Sprint(i), Kind: "variable"}
+			arguments[i] = primitive("Int")
+		}
+		typ := &Type{Args: arguments, Def: &Definition{Variables: variables, Cases: []Case{{Name: "Empty"}}}}
+		b.ReportAllocs()
+		b.ResetTimer()
+		for b.Loop() {
+			Cases(typ)
+		}
+	})
 }
 
 // Generic application walks are a separate control from effect propagation.
