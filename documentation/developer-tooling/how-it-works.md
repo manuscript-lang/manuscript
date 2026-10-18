@@ -26,7 +26,7 @@ Everything below ships inside `ms`:
 | Part | What it does |
 | --- | --- |
 | Compiler and checker | Parse, check, format, lint, inspect, and lower source. These commands need no Go at all. |
-| Go toolchain | A trimmed Go SDK holding only the tools and references the runtime needs,, including cross-build references for the supported targets. It is extracted once into a cache keyed by its content hash. |
+| Go toolchain | A trimmed Go SDK holding only the tools and references the runtime needs, including cross-build references for the supported targets. It is extracted once into a cache keyed by its content hash. |
 | Runtime and dependencies | The Manuscript runtime and its vendored, pinned dependencies, compiled offline. Nothing is downloaded during a build. |
 | Standard library | The `@std` modules, pinned to the version of `ms` you run. |
 | Language server | `ms lsp` powers editor diagnostics, navigation, completion, and rename. |
