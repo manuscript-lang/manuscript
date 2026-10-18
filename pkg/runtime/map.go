@@ -152,12 +152,13 @@ func (m *Map[K, V]) unbind(key K, i int) {
 }
 
 // Lookup returns the value stored under key.
-func (m *Map[K, V]) Lookup(key K) (V, bool) {
-	if i, ok := m.find(key); ok {
-		return m.entries[i].Value, true
+// Named results keep this wrapper within the pinned Go compiler's inlining budget.
+func (m *Map[K, V]) Lookup(key K) (value V, found bool) {
+	i, found := m.find(key)
+	if found {
+		value = m.entries[i].Value
 	}
-	var zero V
-	return zero, false
+	return
 }
 
 // Put stores value under key, appending a new key.
