@@ -25,7 +25,7 @@ func TestSyntaxErrorsStateTheFix(t *testing.T) {
 		{"decrement", "fn f() -> Int:\n    var i = 0\n    i--\n    return i\n", "write 'i = i - 1'"},
 		{"range operator", "fn f() -> Int:\n    for i in 0..10:\n        return i\n    return 0\n", "import range from \"@std/collections.ms\""},
 		{"tuple", "fn f() -> Int:\n    let p = (1, 2)\n    return 0\n", "has no tuples; declare a record"},
-		{"number match pattern", "fn f(a: Int) -> Int:\n    match a:\n    1: return 2\n", "literal match patterns are unsupported"},
+		{"number match pattern", "fn f(a: Int) -> Int:\n    match a:\n        1: return 2\n", "literal match patterns are unsupported"},
 		{"index assignment", "fn f(a: List[Int]) -> Unit:\n    a[0] = 1\n", "call its method such as set(index:, value:)"},
 		{"for with index", "fn f() -> Int:\n    for i, x in [1]:\n        return i\n    return 0\n", "loop over the entries"},
 		{"arrow function", "fn f() -> Int:\n    let n = [1].map(fn(x) => x + 1)\n    return 0\n", "there is no '=>' arrow function"},

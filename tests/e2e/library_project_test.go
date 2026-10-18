@@ -35,10 +35,10 @@ import panic from "@std/faults.ms"
 test "root":
     if value() != 3: return panic("bad value")
     match filesystem().read_file(path: "golden/input.txt", max_bytes: 1024):
-    ok(data):
-        if data.length() != 7: return panic("wrong fixture size")
-    error(_):
-        return panic("fixture not found from project directory")
+        ok(data):
+            if data.length() != 7: return panic("wrong fixture size")
+        error(_):
+            return panic("fixture not found from project directory")
 `)
 	write("tests/value_test.ms", "test \"nested\":\n    return unit\n")
 	// Invoke from an unrelated directory: module and lock paths remain manifest-relative.

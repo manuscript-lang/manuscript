@@ -10,8 +10,8 @@ export type Point:
 
 export fn say(text: String) -> Unit:
     match stdout().write(data: text.to_bytes()):
-    ok(_): unit
-    error(_): unit
+        ok(_): unit
+        error(_): unit
 
 # Runs `body` once and prints `name<TAB>ops<TAB>ns_per_op`; `body` returns a checksum that keeps its work observable.
 export fn bench(name: String, ops: Int, body: fn() -> Int) -> Unit:

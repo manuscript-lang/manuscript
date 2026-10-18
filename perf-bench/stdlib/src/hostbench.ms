@@ -31,21 +31,21 @@ fn bench_archive() -> Unit:
         2000,
         fn() -> Int:
             match pack(entries: list, format: "zip"):
-            ok(b): return b.length()
-            error(_): return 0
+                ok(b): return b.length()
+                error(_): return 0
     )
     bench(
         "archive.tar_pack",
         2000,
         fn() -> Int:
             match pack(entries: list, format: "tar"):
-            ok(b): return b.length()
-            error(_): return 0
+                ok(b): return b.length()
+                error(_): return 0
     )
 
     match pack(entries: list, format: "zip"):
-    ok(packed): bench_unpack(packed)
-    error(_): unit
+        ok(packed): bench_unpack(packed)
+        error(_): unit
 
 fn bench_unpack(packed: Bytes) -> Unit:
     bench(
@@ -53,8 +53,8 @@ fn bench_unpack(packed: Bytes) -> Unit:
         2000,
         fn() -> Int:
             match unpack(data: packed, format: "zip"):
-            ok(e): return e.length()
-            error(_): return 0
+                ok(e): return e.length()
+                error(_): return 0
     )
 
 fn bench_sse() -> Unit:
@@ -64,14 +64,14 @@ fn bench_sse() -> Unit:
         2000,
         fn() -> Int:
             match decoder():
-            ok(d): return feed_all(d, stream)
-            error(_): return 0
+                ok(d): return feed_all(d, stream)
+                error(_): return 0
     )
 
 fn feed_all(d: SseDecoder, stream: Bytes) -> Int:
     match feed(decoder: d, chunk: stream):
-    ok(events): return events.length()
-    error(_): return 0
+        ok(events): return events.length()
+        error(_): return 0
 
 export fn bench_host() -> Unit:
     bench_archive()
@@ -83,10 +83,10 @@ export fn bench_host() -> Unit:
             var n = 0
 
             match parse_timestamp(text: "2026-03-01T12:30:45.123Z"):
-            ok(t):
-                for i in range(0, 20000):
-                    n = n + t.to_string().length()
-            error(_): unit
+                ok(t):
+                    for i in range(0, 20000):
+                        n = n + t.to_string().length()
+                error(_): unit
 
             return n
     )
@@ -99,8 +99,8 @@ export fn bench_host() -> Unit:
 
             for i in range(0, 20000):
                 match uuid_v4(entropy: source):
-                ok(u): n = n + u.length()
-                error(_): unit
+                    ok(u): n = n + u.length()
+                    error(_): unit
 
             return n
     )

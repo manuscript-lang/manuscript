@@ -41,8 +41,8 @@ impl Shape for Rect:
 impl Shape for Sign:
     fn area() -> Int:
         match self:
-        Plus(n): return n
-        Minus(n): return 0 - n
+            Plus(n): return n
+            Minus(n): return 0 - n
     fn scaled(by: Int) -> Int:
         return self.area() * by
     fn checked(limit: Int) -> Result[Int, String]:
@@ -78,11 +78,11 @@ test "direct methods":
     check(ok: Minus(n: 4).area() == 0 - 4, name: "alternative receiver")
     check(ok: rect.grow(depth: 10) == 13, name: "recursion")
     match tried(rect: rect, limit: 12):
-    ok(value): check(ok: value == 24, name: "tried")
-    error(cause): panic(message: cause)
+        ok(value): check(ok: value == 24, name: "tried")
+        error(cause): panic(message: cause)
     match tried(rect: rect, limit: 11):
-    ok(value): panic(message: "expected failure")
-    error(cause): check(ok: cause == "too big", name: "tried cause")
+        ok(value): panic(message: "expected failure")
+        error(cause): check(ok: cause == "too big", name: "tried cause")
     let log = List[String]()
     check(ok: order(rect: rect, log: log) == 12, name: "order result")
     check(ok: log.join(separator: ",") == "receiver,argument", name: "receiver before arguments")

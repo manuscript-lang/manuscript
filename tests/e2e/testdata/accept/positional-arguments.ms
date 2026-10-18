@@ -92,12 +92,12 @@ test "generic calls constructors and callback inference":
     )
 
     match Choice.Pair(second: "right", "left"):
-    Pair(left, right):
-        if left != "left" or right != "right": return panic("case field order")
+        Pair(left, right):
+            if left != "left" or right != "right": return panic("case field order")
 
     match Choice[Int].Pair(3, 4):
-    Pair(left, right):
-        if left != 3 or right != 4: return panic("explicit generic case")
+        Pair(left, right):
+            if left != 3 or right != 4: return panic("explicit generic case")
 
     let sum = [1, 2, 3].fold(0, fn(total, item): total + item)
     let reordered_sum = [1, 2, 3].fold(step: fn(total, item): total + item, 0)
@@ -166,20 +166,20 @@ test "written order before omitted defaults and body":
     let selected = first(
         early,
         match some(0):
-        some(_):
-            early = 9
-            0
-        none: 0
+            some(_):
+                early = 9
+                0
+            none: 0
     )
     if selected != 7: return panic("capture positional value before later argument")
 
     var receiver = Offset(3)
     let result = receiver.subtract(
         match some(0):
-        some(_):
-            receiver = Offset(9)
-            10
-        none: 10
+            some(_):
+                receiver = Offset(9)
+                10
+            none: 10
     )
     if result != 7: return panic("capture receiver before arguments")
 
@@ -195,10 +195,10 @@ test "mutable callable value is captured before arguments":
     var selected = subtract
     let result = selected(
         match some(0):
-        some(_):
-            selected = fn(amount: Int, deduction: Int) -> Int: amount + deduction
-            10
-        none: 10
+            some(_):
+                selected = fn(amount: Int, deduction: Int) -> Int: amount + deduction
+                10
+            none: 10
         ,
         3
     )

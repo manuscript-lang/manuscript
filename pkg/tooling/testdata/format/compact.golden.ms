@@ -9,13 +9,13 @@ type Choice:
 
 fn choose(value: Choice) -> String:
     match value:
-    Zero:
-        return "zero # unchanged"
-    # Keep this comment with the arm.
-    One:
-        return "one"
-    Other(number):
-        return "value {number}"
+        Zero:
+            return "zero # unchanged"
+        # Keep this comment with the arm.
+        One:
+            return "one"
+        Other(number):
+            return "value {number}"
 
 fn count() -> Int:
     return apply(

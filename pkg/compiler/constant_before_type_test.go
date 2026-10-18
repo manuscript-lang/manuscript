@@ -13,10 +13,10 @@ type Mode:
 
 export fn main() -> Int:
     match initial:
-    Idle:
-        return 0
-    Busy:
-        return 1
+        Idle:
+            return 0
+        Busy:
+            return 1
 `
 	result := CompileSource("order.ms", source, Options{})
 	if !result.Success() {

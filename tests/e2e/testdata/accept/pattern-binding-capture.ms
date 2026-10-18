@@ -7,28 +7,28 @@ type Failure[T]:
 # An advisory preserves the semantics of this fresh, capitalized binding.
 fn captured[T](result: Result[Int, Failure[T]]) -> Int:
     match result:
-    error(NotFound): return 1
-    ok(value): return value
+        error(NotFound): return 1
+        ok(value): return value
 
 fn failure_code[T](cause: Failure[T]) -> Int:
     match cause:
-    NotFound: return 1
-    Denied(_): return 2
+        NotFound: return 1
+        Denied(_): return 2
 
 fn precise[T](result: Result[Int, Failure[T]]) -> Int:
     match result:
-    error(cause): return failure_code(cause)
-    ok(value): return value
+        error(cause): return failure_code(cause)
+        ok(value): return value
 
 fn failure_reason(cause: Failure[String]) -> String:
     match cause:
-    NotFound: return "missing"
-    Denied(reason): return reason
+        NotFound: return "missing"
+        Denied(reason): return reason
 
 fn deliberate(result: Result[Int, Failure[String]]) -> String:
     match result:
-    error(cause): return failure_reason(cause)
-    ok(_): return "ok"
+        error(cause): return failure_reason(cause)
+        ok(_): return "ok"
 
 test "a payload identifier binds every alternative without changing semantics":
     let denied: Result[Int, Failure[String]] = error(

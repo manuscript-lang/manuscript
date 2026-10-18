@@ -42,8 +42,8 @@ import panic from "@std/faults.ms"
 impl Equal for Key:
     fn equals(other: Equal) -> Bool:
         match other:
-        Key(other): return ` + comparison + `
-        _: return false
+            Key(other): return ` + comparison + `
+            _: return false
 impl Hashable for Key:
     fn hash() -> Int: ` + hash + `
 export fn ` + name + `() -> Int:

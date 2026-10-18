@@ -16,13 +16,13 @@ test "scheduler failures retain typed and text causes":
     let seen = Synchronized(0)
     let reporter = fn(failure: SchedulerFailure) -> Unit:
         match failure:
-        Failed(_, cause):
-            with guard = seen.lock():
-                if category(cause) == some(ErrorCategory.Unavailable):
-                    guard.set(guard.get() + 1)
-                if cause.message() == "intentional text":
-                    guard.set(guard.get() + 10)
-        _: unit
+            Failed(_, cause):
+                with guard = seen.lock():
+                    if category(cause) == some(ErrorCategory.Unavailable):
+                        guard.set(guard.get() + 1)
+                    if cause.message() == "intentional text":
+                        guard.set(guard.get() + 10)
+            _: unit
 
     with scheduler = Scheduler(reporter: reporter):
         value(scheduler.start(typed_failure))

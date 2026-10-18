@@ -57,17 +57,17 @@ test "infer success and preserve concrete error identity":
 
     for value in [inferred, explicit, wrapped, forwarded, inferred_from_known]:
         let view = match value:
-        ok(_): return panic("expected error")
-        error(view): view
+            ok(_): return panic("expected error")
+            error(view): view
 
         if view.message() != "19": return panic("lost Error dispatch")
 
         match view:
-        Failure(original):
-            if original.code != 19: return panic("copied domain error")
+            Failure(original):
+                if original.code != 19: return panic("copied domain error")
 
-            original.code = 23
-        _: return panic("lost concrete error identity")
+                original.code = 23
+            _: return panic("lost concrete error identity")
 
         if cause.code != 23: return panic("lost receiver alias")
 
@@ -76,38 +76,38 @@ test "infer success and preserve concrete error identity":
     let generic: Result[Int, Tagged[Int]] = error(Tagged(31))
 
     let view = match erase(generic):
-    ok(_): return panic("expected generic error")
-    error(view): view
+        ok(_): return panic("expected generic error")
+        error(view): view
 
     if view.message() != "tagged 31": return panic("lost generic Error evidence")
 
     match view:
-    Tagged[Int](original):
-        if original.value != 31: return panic("lost generic payload")
-    _: return panic("lost generic identity")
+        Tagged[Int](original):
+            if original.value != 31: return panic("lost generic payload")
+        _: return panic("lost generic identity")
 
 test "nested success preserves its domain and inferred errors remain exact":
     let inner: Result[Int, Failure] = error(Failure(41))
     let outer: Result[Result[Int, Failure], Tagged[Int]] = ok(inner)
 
     let value = match erase(outer):
-    ok(value): value
-    error(_): return panic("changed outer case")
+        ok(value): value
+        error(_): return panic("changed outer case")
 
     match value:
-    ok(_): return panic("expected inner error")
-    error(cause):
-        if cause.code != 41: return panic("changed nested success error")
+        ok(_): return panic("expected inner error")
+        error(cause):
+            if cause.code != 41: return panic("changed nested success error")
 
     match same(inner):
-    ok(_): return panic("expected exact error")
-    error(cause):
-        if cause.code != 41: return panic("inferred Error instead of Failure")
+        ok(_): return panic("expected exact error")
+        error(cause):
+            if cause.code != 41: return panic("inferred Error instead of Failure")
 
     match erase(number()):
-    ok(value):
-        if value != 7: return panic("changed success")
-    error(_): return panic("changed success case")
+        ok(value):
+            if value != 7: return panic("changed success")
+        error(_): return panic("changed success case")
 
 test "inference and widening evaluate once in written order before defaults":
     let events = Events([])
@@ -119,6 +119,6 @@ test "inference and widening evaluate once in written order before defaults":
     if events.values != [2, 1, 3, 4]: return panic("changed evaluation order")
 
     match result:
-    ok(value):
-        if value != 1: return panic("changed parameter binding")
-    error(_): return panic("changed result")
+        ok(value):
+            if value != 1: return panic("changed parameter binding")
+        error(_): return panic("changed result")

@@ -147,10 +147,10 @@ type Status:
 
 fn status_label(status: Status) -> String:
     match status:
-    Draft:
-        return "Not published"
-    Published(url):
-        return "Published at {url}"
+        Draft:
+            return "Not published"
+        Published(url):
+            return "Published at {url}"
 
 test "publish a help page":
     let todo = Todo("Update the help page")

@@ -114,12 +114,12 @@ test "Synchronized protects record mutation without replacement":
         group.start(operation)
 
         match group.join():
-        ok(_):
-            with guard = counter.lock():
-                if not (guard.get().val == 400):
-                    return panic(message: "synchronized mutation lost updates")
-        error(_):
-            return panic(message: "task mutation failed")
+            ok(_):
+                with guard = counter.lock():
+                    if not (guard.get().val == 400):
+                        return panic(message: "synchronized mutation lost updates")
+            error(_):
+                return panic(message: "task mutation failed")
 
 test "callbacks capture length while mutating their source":
     let values = [1, 2, 3]
@@ -183,11 +183,11 @@ test "collection clones retain nested object references":
             return panic(message: "list clone unexpectedly copied nested records")
 
     match entries.get("child"):
-    some(value):
-        if not (value.val == 7):
-            return panic(message: "map clone unexpectedly copied nested records")
-    none:
-        return panic(message: "cloning removed an original map entry")
+        some(value):
+            if not (value.val == 7):
+                return panic(message: "map clone unexpectedly copied nested records")
+        none:
+            return panic(message: "cloning removed an original map entry")
 
 test "map and set clear affect aliases while copies retain contents":
     let entries = Map[String, Int]().add(key: "a", value: 1)
@@ -228,17 +228,17 @@ test "alternative clones retain tags and shared payload references":
     let copy = original.clone()
 
     match copy:
-    Choice.Present(value):
-        value.val = 9
-    Choice.Missing:
-        return panic(message: "clone changed the alternative tag")
+        Choice.Present(value):
+            value.val = 9
+        Choice.Missing:
+            return panic(message: "clone changed the alternative tag")
 
     match original:
-    Choice.Present(value):
-        if not (value.val == 9):
-            return panic(message: "clone duplicated a nested payload record")
-    Choice.Missing:
-        return panic(message: "clone changed the original alternative")
+        Choice.Present(value):
+            if not (value.val == 9):
+                return panic(message: "clone duplicated a nested payload record")
+        Choice.Missing:
+            return panic(message: "clone changed the original alternative")
 
     let missing = Choice.Missing.clone()
     if not (missing == Choice.Missing):

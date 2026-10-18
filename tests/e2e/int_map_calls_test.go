@@ -16,10 +16,10 @@ fn check(ok: Bool, name: String) -> Unit:
 
 fn lookup(m: Map[Int, String], key: Int) -> String:
     match m.get(key: key):
-    some(v):
-        return v
-    none:
-        return "missing"
+        some(v):
+            return v
+        none:
+            return "missing"
 
 test "int map":
     let m = Map[Int, String]()
@@ -52,10 +52,10 @@ fn check(ok: Bool, name: String) -> Unit:
 
 fn lookup(m: Map[String, Int], key: String) -> Int:
     match m.get(key: key):
-    some(v):
-        return v
-    none:
-        return -1
+        some(v):
+            return v
+        none:
+            return -1
 
 test "string map":
     let m = Map[String, Int]()

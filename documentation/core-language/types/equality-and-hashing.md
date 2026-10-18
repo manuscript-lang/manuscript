@@ -54,8 +54,8 @@ type CustomerKey:
 impl Equal for CustomerKey:
     fn equals(other: Equal) -> Bool:
         match other:
-        CustomerKey(value): return self.id == value.id
-        _: return false
+            CustomerKey(value): return self.id == value.id
+            _: return false
 
 impl Hashable for CustomerKey:
     fn hash() -> Int: self.id

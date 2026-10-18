@@ -16,24 +16,24 @@ fn identity[T](value: T) -> T: return value
 fn amount(text: String, counter: Counter) -> Result[Int, String]:
     with resource = Resource(counter: counter):
         let cents = match text.parse_int():
-        some(value):
-            value
-        none:
-            return error(cause: "Invalid amount")
+            some(value):
+                value
+            none:
+                return error(cause: "Invalid amount")
 
         return ok(value: cents + 1)
 
 fn early(value: Optional[Int]) -> Int:
     let number = match value:
-    some(number): number
-    none: return 9
+        some(number): number
+        none: return 9
 
     return number + 1
 
 fn all_return(value: Optional[Int]) -> Int:
     let unreachable = match value:
-    some(number): return number
-    none: return 9
+        some(number): return number
+        none: return 9
 
 fn tick(counter: Counter) -> Int:
     if counter.count != 1: return panic("receiver must evaluate first")
@@ -121,32 +121,32 @@ test "match expressions preserve returns and cleanup":
         return panic("early return cleanup")
 
     let nested = match present:
-    some(value):
-        # manuscript:allow-nested-match regression for nested expression values and the absent branch
-        match absent:
-        some(other): value + other
-        none: value
-    none: 0
+        some(value):
+            # manuscript:allow-nested-match regression for nested expression values and the absent branch
+            match absent:
+                some(other): value + other
+                none: value
+        none: 0
 
     if nested != 4: return panic("nested match")
 
     let contextual: List[Int] = match absent:
-    some(value): [value]
-    none: []
+        some(value): [value]
+        none: []
 
     if contextual.length() != 0: return panic("contextual arms")
 
     let result = identity[Int](
         match present:
-        some(value): value
-        none: 0
+            some(value): value
+            none: 0
     )
     if result != 4: return panic("match argument")
 
     let callback = fn(value: Optional[Int]) -> Int:
         let number = match value:
-        some(number): number
-        none: return 42
+            some(number): number
+            none: return 42
 
         return number
     if callback(absent) != 42: return panic("closure return boundary")
@@ -167,10 +167,10 @@ test "match blocks produce their final value":
     let present: Optional[Int] = some(value: 5)
 
     let result = match present:
-    some(value):
-        let doubled = value * 2
-        doubled + 1
-    none: 0
+        some(value):
+            let doubled = value * 2
+            doubled + 1
+        none: 0
 
     if result != 11: return panic("arm block")
 
@@ -180,11 +180,11 @@ test "match blocks produce their final value":
         count = count + 1
 
         match present:
-        some(value):
-            if count < value: continue
+            some(value):
+                if count < value: continue
 
-            break
-        none: break
+                break
+            none: break
 
     if count != 5: return panic("match loop exits")
 
@@ -192,14 +192,14 @@ test "contextual values infer from later arms":
     let present: Optional[Int] = some(value: 5)
 
     let optional = match present:
-    none: none
-    some(value): some(value: value)
+        none: none
+        some(value): some(value: value)
 
     if optional.unwrap() != 5: return panic("optional inference")
 
     let list = match present:
-    none: []
-    some(value): [value]
+        none: []
+        some(value): [value]
 
     if list[0].unwrap() != 5: return panic("list inference")
 
@@ -207,8 +207,8 @@ fn returned_argument(counter: Counter) -> Int:
     let absent: Optional[Int] = none
     return combine(
         first: match absent:
-        some(value): value
-        none: return 17
+            some(value): value
+            none: return 17
         ,
         second: tick(counter)
     )
@@ -217,10 +217,10 @@ fn combine(first: Int, second: Int) -> Int: return first + second
 
 fn propagated(text: String) -> Result[Int, String]:
     let result = match text.parse_int():
-    some(value):
-        try Result[Int, String].ok(value: value)
-    none:
-        try Result[Int, String].error(cause: "missing")
+        some(value):
+            try Result[Int, String].ok(value: value)
+        none:
+            try Result[Int, String].error(cause: "missing")
 
     return ok(value: result)
 
@@ -231,10 +231,10 @@ fn returned_loop(value: Optional[Int]) -> Int:
         if index > 1: return 23
 
         match value:
-        some(number):
-            index = index + 1
-            continue
-        none: break
+            some(number):
+                index = index + 1
+                continue
+            none: break
 
     return 24
 
@@ -256,13 +256,13 @@ test "expression exits preserve caller boundaries and evaluation order":
 
     while true:
         let value = match present:
-        some(number):
-            while iterations < 3:
-                iterations = iterations + 1
-                if iterations == 2: continue
-                if iterations == 3: break
-            number
-        none: break
+            some(number):
+                while iterations < 3:
+                    iterations = iterations + 1
+                    if iterations == 2: continue
+                    if iterations == 3: break
+                number
+            none: break
 
         if value == 1: break
 
@@ -272,8 +272,8 @@ fn condition_exit(value: Optional[Int]) -> Int:
     while true:
         while (
             match value:
-            some(number): true
-            none: break
+                some(number): true
+                none: break
         ):
             return 1
 
@@ -302,32 +302,32 @@ test "match evaluates its input once and only the selected arm":
     let counter = Counter(count: 0)
 
     let result = match observed_optional(counter):
-    some(value):
-        counter.count = counter.count + 10
-        value + 1
-    none: panic("unselected arm ran")
+        some(value):
+            counter.count = counter.count + 10
+            value + 1
+        none: panic("unselected arm ran")
 
     if result != 6 or counter.count != 11:
         return panic("match evaluation count")
 
 fn inline_match(value: Optional[Int]) -> Int: match value:
-some(number): number
-none: 0
+    some(number): number
+    none: 0
 
 test "match composes with inferred callbacks and map literals":
     let values: List[Optional[Int]] = [some(3), none]
     let mapped = values.map(
         fn(value): match value:
-        some(number): number + 1
-        none: 0
+            some(number): number + 1
+            none: 0
     )
     if mapped[0].unwrap() != 4 or mapped[1].unwrap() != 0:
         return panic("match callback inference")
 
     let lookup = {
         "value": match values[0].unwrap():
-        some(number): number
-        none: 0
+            some(number): number
+            none: 0
     }
     if lookup.get("value").unwrap() != 3:
         return panic("match in map literal")

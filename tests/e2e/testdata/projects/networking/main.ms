@@ -12,27 +12,27 @@ import WebSocketOptions from "@std/websocket.ms"
 
 fn websocket_error(cause: WebSocketError) -> HttpError:
     match cause:
-    InvalidInput:
-        return HttpError.InvalidInput
-    InvalidData:
-        return HttpError.InvalidData
-    LimitExceeded:
-        return HttpError.LimitExceeded
-    PermissionDenied:
-        return HttpError.PermissionDenied
-    Closed:
-        return HttpError.Closed
-    Timeout:
-        return HttpError.Timeout
-    Failed(message):
-        return HttpError.Failed(message)
+        InvalidInput:
+            return HttpError.InvalidInput
+        InvalidData:
+            return HttpError.InvalidData
+        LimitExceeded:
+            return HttpError.LimitExceeded
+        PermissionDenied:
+            return HttpError.PermissionDenied
+        Closed:
+            return HttpError.Closed
+        Timeout:
+            return HttpError.Timeout
+        Failed(message):
+            return HttpError.Failed(message)
 
 fn socket_result[T](result: Result[T, WebSocketError]) -> Result[T, HttpError]:
     match result:
-    ok(value):
-        return ok(value)
-    error(cause):
-        return error(websocket_error(cause))
+        ok(value):
+            return ok(value)
+        error(cause):
+            return error(websocket_error(cause))
 
 fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
     if exchange.path() == "/ws":
@@ -44,15 +44,15 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
             )
         ):
             match try socket_result(result: socket.receive()):
-            some(message):
-                let sent = try socket_result(
-                    result: socket.send(
-                        data: message.data,
-                        text: message.text
+                some(message):
+                    let sent = try socket_result(
+                        result: socket.send(
+                            data: message.data,
+                            text: message.text
+                        )
                     )
-                )
-            none:
-                return ok(unit)
+                none:
+                    return ok(unit)
 
         return ok(unit)
 
@@ -61,10 +61,10 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let started = try exchange.send_headers(status: 200, headers: fields)
 
     match exchange.write(data: "hello from streaming Manuscript".to_bytes()):
-    ok(_):
-        return ok(unit)
-    error(_):
-        return error(HttpError.Failed("write failed"))
+        ok(_):
+            return ok(unit)
+        error(_):
+            return error(HttpError.Failed("write failed"))
 
 fn exercise() -> Result[Unit, HttpError]:
     let tls = TlsOptions(
@@ -113,16 +113,20 @@ fn exercise() -> Result[Unit, HttpError]:
                     return panic(message: "check failed")
 
                 let part = match response.read(max_bytes: 1024):
-                ok(part): part
-                error(_):
-                    return panic(message: "Unexpected case")
+                    ok(part): part
+                    error(_):
+                        return panic(message: "Unexpected case")
 
                 match part:
-                some(data):
-                    if not (data.to_string() == some("hello from streaming Manuscript")):
-                        return panic(message: "check failed")
-                none:
-                    return panic(message: "Unexpected case")
+                    some(data):
+                        if not (
+                            data.to_string() == some(
+                                "hello from streaming Manuscript"
+                            )
+                        ):
+                            return panic(message: "check failed")
+                    none:
+                        return panic(message: "Unexpected case")
 
         let websocket_options = WebSocketOptions(
             max_message_bytes: 1024,
@@ -150,19 +154,19 @@ fn exercise() -> Result[Unit, HttpError]:
             )
 
             match try socket_result(result: socket.receive()):
-            some(message):
-                if not (message.text):
-                    return panic(message: "check failed")
-                if not (message.data.to_string() == some("echo me")):
-                    return panic(message: "check failed")
-            none:
-                return panic(message: "Unexpected case")
+                some(message):
+                    if not (message.text):
+                        return panic(message: "check failed")
+                    if not (message.data.to_string() == some("echo me")):
+                        return panic(message: "check failed")
+                none:
+                    return panic(message: "Unexpected case")
 
     return ok(unit)
 
 export fn main() -> Int:
     match exercise():
-    ok(_):
-        return 0
-    error(_):
-        return 1
+        ok(_):
+            return 0
+        error(_):
+            return 1

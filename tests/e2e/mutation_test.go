@@ -58,21 +58,21 @@ type Holder:
     label: String
 export fn main() -> Int:
     let file = match files().open("data.txt"):
-    ok(file): file
-    error(_):
-        return 4
+        ok(file): file
+        error(_):
+            return 4
 
     let chunk = match file.read(1):
-    ok(chunk): chunk
-    error(_):
-        return 7
+        ok(chunk): chunk
+        error(_):
+            return 7
 
     match chunk:
-    some(data):
-        if data.to_string() != some(value: "d"):
-            return 5
-    none:
-        return 6
+        some(data):
+            if data.to_string() != some(value: "d"):
+                return 5
+        none:
+            return 6
 
     let original = Holder(file: file, label: "original")
     let copy = original.clone()
@@ -81,15 +81,15 @@ export fn main() -> Int:
         return 1
     copy.file.close()
     let cause = match original.file.read(1):
-    error(cause): cause
-    ok(_):
-        return 3
+        error(cause): cause
+        ok(_):
+            return 3
 
     match cause:
-    IoError.Closed:
-        return 0
-    _:
-        return 2
+        IoError.Closed:
+            return 0
+        _:
+            return 2
 
 `
 	result := compiler.CompileSource("file-clone.ms", source, compiler.Options{})

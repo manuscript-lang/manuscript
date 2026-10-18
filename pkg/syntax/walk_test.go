@@ -21,8 +21,8 @@ fn collect(fallback: Int = choose(1)) -> String:
     ]
     let text = "{choose(5)}"
     match fallback:
-    _:
-        return "{choose(6)}"
+        _:
+            return "{choose(6)}"
 interface Read:
     fn read(value: Int) -> Int
 type Box:

@@ -6,10 +6,10 @@ type Outcome:
 
 fn score(outcome: Outcome) -> Int:
     match outcome:
-    Ready(value):
-        return value
-    Failed(_):
-        return 0
+        Ready(value):
+            return value
+        Failed(_):
+            return 0
 
 test "alternative result":
     if not (score(outcome: Outcome.Ready(8)) == 8):

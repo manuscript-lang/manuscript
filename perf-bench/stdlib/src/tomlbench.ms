@@ -16,6 +16,6 @@ export fn bench_toml() -> Unit:
         2000,
         fn() -> Int:
             match parse(text: toml):
-            ok(_): return 1
-            error(_): return 0
+                ok(_): return 1
+                error(_): return 0
     )

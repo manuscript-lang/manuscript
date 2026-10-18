@@ -69,11 +69,11 @@ impl Error for SseError:
     # Returns a fixed diagnostic that does not echo stream contents.
     fn message() -> String:
         match self:
-        InvalidInput: return "SSE invalid input"
-        InvalidData: return "SSE line is not valid UTF-8"
-        LimitExceeded: return "SSE limit exceeded"
-        Truncated: return "SSE stream ended inside an event"
-        ReadFailed(cause): return "SSE read failed: {cause.message()}"
+            InvalidInput: return "SSE invalid input"
+            InvalidData: return "SSE line is not valid UTF-8"
+            LimitExceeded: return "SSE limit exceeded"
+            Truncated: return "SSE stream ended inside an event"
+            ReadFailed(cause): return "SSE read failed: {cause.message()}"
 
 # Creates a decoder. Supplied limits must be positive.
 export fn decoder(limits: SseLimits = SseLimits()) -> Result[SseDecoder, SseError]:

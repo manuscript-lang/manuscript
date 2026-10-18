@@ -18,10 +18,10 @@ fn doubled(value: Int) -> Result[Int, Problem]:
 
 fn summarize(outcome: Result[Int, Problem]) -> Int:
     match outcome:
-    ok(value):
-        return value
-    error(_):
-        return -1
+        ok(value):
+            return value
+        error(_):
+            return -1
 
 test "unchanged propagated error":
     if not (summarize(outcome: doubled(value: 3)) == 6):

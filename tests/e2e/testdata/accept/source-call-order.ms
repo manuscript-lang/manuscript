@@ -8,10 +8,10 @@ test "arguments":
     let result = pair(
         a: value,
         b: match option:
-        some(i):
-            value = 9
-            i
-        none: 0
+            some(i):
+                value = 9
+                i
+            none: 0
     )
     if result != 12: return panic("argument order")
 

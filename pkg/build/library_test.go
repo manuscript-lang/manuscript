@@ -111,47 +111,47 @@ fn wrong(value: Impostor) -> Error:
 `,
 		"open contract needs fallback": `fn wrong(cause: Error) -> String:
     match cause:
-    JsonError(value):
-        return value.message()
+        JsonError(value):
+            return value.message()
 `,
 		"case is not a type": `fn wrong(cause: Error) -> String:
     match cause:
-    JsonError.InvalidData(value):
-        return "invalid"
-    _:
-        return cause.message()
+        JsonError.InvalidData(value):
+            return "invalid"
+        _:
+            return cause.message()
 `,
 		"payload arity": `fn wrong(cause: Error) -> String:
     match cause:
-    JsonError:
-        return "invalid"
-    _:
-        return cause.message()
+        JsonError:
+            return "invalid"
+        _:
+            return cause.message()
 `,
 		"unrelated concrete type": `type Other:
     detail: String
 fn wrong(cause: Error) -> String:
     match cause:
-    Other(value):
-        return value.detail
-    _:
-        return cause.message()
+        Other(value):
+            return value.detail
+        _:
+            return cause.message()
 `,
 		"duplicate type": `fn wrong(cause: Error) -> String:
     match cause:
-    JsonError(first):
-        return first.message()
-    JsonError(second):
-        return second.message()
-    _:
-        return cause.message()
+        JsonError(first):
+            return first.message()
+        JsonError(second):
+            return second.message()
+        _:
+            return cause.message()
 `,
 		"fallback must be last": `fn wrong(cause: Error) -> String:
     match cause:
-    _:
-        return cause.message()
-    JsonError(value):
-        return value.message()
+        _:
+            return cause.message()
+        JsonError(value):
+            return value.message()
 `,
 		"unbound generic type": `type Box[T]:
     item: T
@@ -160,10 +160,10 @@ impl Error for Box[T]:
         return "box"
 fn wrong(cause: Error) -> String:
     match cause:
-    Box(value):
-        return value.message()
-    _:
-        return cause.message()
+        Box(value):
+            return value.message()
+        _:
+            return cause.message()
 `,
 	} {
 		t.Run(name, func(t *testing.T) {

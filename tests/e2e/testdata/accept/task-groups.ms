@@ -33,11 +33,11 @@ fn exercise() -> Result[Unit, ExecutionError]:
         let outcome = try domain.join()
 
         match outcome:
-        error(cause):
-            if cause != "expected":
-                return panic("domain error changed")
-        ok(_):
-            return panic("domain error flattened")
+            error(cause):
+                if cause != "expected":
+                    return panic("domain error changed")
+            ok(_):
+                return panic("domain error flattened")
 
         let resource = Closeable(group)
         resource.close()
@@ -57,31 +57,31 @@ fn exercise() -> Result[Unit, ExecutionError]:
 
 test "typed tasks group joins and cached outcomes":
     match exercise():
-    ok(_):
-        return
-    error(_):
-        return panic("task group failed")
+        ok(_):
+            return
+        error(_):
+            return panic("task group failed")
 
 test "empty group joins and closes repeatedly":
     with group = TaskGroup(0.seconds):
         match group.join():
-        ok(_):
-            group.close()
-            group.close()
-        error(_):
-            return panic("empty group timed out")
+            ok(_):
+                group.close()
+                group.close()
+            error(_):
+                return panic("empty group timed out")
 
 test "zero timeout starts no callback":
     with group = TaskGroup(0.seconds):
         let task = group.start(fn(): panic("zero timeout invoked callback"))
 
         let cause = match task.join():
-        error(cause): cause
-        ok(_):
-            return panic("zero timeout succeeded")
+            error(cause): cause
+            ok(_):
+                return panic("zero timeout succeeded")
 
         match cause:
-        Timeout:
-            return
-        _:
-            return panic("wrong timeout outcome")
+            Timeout:
+                return
+            _:
+                return panic("wrong timeout outcome")

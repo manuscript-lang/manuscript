@@ -335,8 +335,8 @@ type Event:
 impl JsonEncode for Event:
     fn to_json() -> JsonValue:
         match self:
-        Created(id): return tagged("created", id)
-        Deleted(id): return tagged("deleted", id)
+            Created(id): return tagged("created", id)
+            Deleted(id): return tagged("deleted", id)
 
 fn tagged(kind: String, id: Int) -> JsonValue:
     let fields = Map[String, JsonValue]().add("type", JsonValue.StringValue(kind))

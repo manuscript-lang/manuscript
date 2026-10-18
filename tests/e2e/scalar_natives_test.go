@@ -132,15 +132,15 @@ fn check(ok: Bool, name: String) -> Unit:
 
 test "omitted none defaults":
     match "ab".repeat(count: 2):
-    ok(v):
-        check(ok: v == "abab", name: "repeat")
-    error(_):
-        check(ok: false, name: "repeat error")
+        ok(v):
+            check(ok: v == "abab", name: "repeat")
+        error(_):
+            check(ok: false, name: "repeat error")
     match "ab".pad_start(target_length: 4, padding: "-"):
-    ok(v):
-        check(ok: v == "--ab", name: "pad_start")
-    error(_):
-        check(ok: false, name: "pad_start error")
+        ok(v):
+            check(ok: v == "--ab", name: "pad_start")
+        error(_):
+            check(ok: false, name: "pad_start error")
 `, compiler.Options{Tests: true})
 	output, err := execute(t, result)
 	if err != nil || !strings.Contains(string(output), "PASS") {
@@ -157,10 +157,10 @@ fn check(ok: Bool, name: String) -> Unit:
 
 fn parsed(text: String) -> Int:
     match text.parse_int():
-    some(v):
-        return v
-    none:
-        return 0 - 1
+        some(v):
+            return v
+        none:
+            return 0 - 1
 
 test "parse_int":
     check(ok: parsed(text: "123") == 123, name: "plain")

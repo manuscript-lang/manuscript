@@ -25,8 +25,8 @@ impl Scaler for Counter:
 impl Bumper for Shape:
     fn bump(by: Int) -> Int:
         match self:
-        Circle(r): return r + by
-        Square(side): return side * by
+            Circle(r): return r + by
+            Square(side): return side * by
 
 fn through_view(b: Bumper, by: Int) -> Int:
     return b.bump(by: by)
@@ -90,8 +90,8 @@ impl Step for Chain:
 
 fn code(r: Result[Int, String]) -> Int:
     match r:
-    ok(value): return value
-    error(_): return -1
+        ok(value): return value
+        error(_): return -1
 
 fn run_direct(chain: Chain, n: Int) -> Int:
     return code(r: chain.step(n: n))

@@ -87,7 +87,7 @@ fn other() -> Other: Other.OutOfRange
 fn standard() -> CollectionError: CollectionError.OutOfRange
 fn recognize(value: Other) -> Int:
     match value:
-    OutOfRange: return 1
+        OutOfRange: return 1
 `,
 		"nonprelude imports": `import {ListBuilder, MapBuilder, SetBuilder, range, filled, map_from_entries} from "@std/collections.ms"
 import {ErrorCategory, TextError, category} from "@std/errors.ms"
@@ -190,7 +190,7 @@ fn other() -> Other: Other.Missing(1)
 fn standard() -> MissingValue: MissingValue.Missing("location")
 fn read(value: Other) -> Int:
     match value:
-    Missing(found): return found
+        Missing(found): return found
 `,
 	} {
 		t.Run(name, func(t *testing.T) {

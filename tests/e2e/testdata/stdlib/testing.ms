@@ -55,8 +55,8 @@ type Key:
 impl Equal for Key:
     fn equals(other: Equal) -> Bool:
         match other:
-        Key(value): return self.id == value.id
-        _: return false
+            Key(value): return self.id == value.id
+            _: return false
 
 test "assertions preserve domain equality":
     try expect_equal(Key(id: 1, label: "first"), Key(id: 1, label: "second"))

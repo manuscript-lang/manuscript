@@ -51,8 +51,8 @@ fn io_error(cause: FileSystemError) -> LogError:
 
 fn lift(result: Result[Unit, FileSystemError]) -> Result[Unit, LogError]:
     match result:
-    ok(_): return ok(unit)
-    error(cause): return error(io_error(cause))
+        ok(_): return ok(unit)
+        error(cause): return error(io_error(cause))
 
 fn numbered(path: String, index: Int) -> String:
     if index == 0: return path
@@ -61,13 +61,13 @@ fn numbered(path: String, index: Int) -> String:
 
 fn exists(fs: FileSystem, path: String) -> Bool:
     match fs.stat(path: path, follow_links: false):
-    ok(_): return true
-    error(_): return false
+        ok(_): return true
+        error(_): return false
 
 fn age_of(modified: Timestamp) -> Duration:
     match wall_clock().now().difference(modified):
-    ok(age): return age
-    error(_): return duration(0)
+        ok(age): return age
+        error(_): return duration(0)
 
 # Adopts an existing file's size, and its modification time as the start of its age.
 fn adopt(w: Writer, info: FileInfo) -> Unit:
@@ -78,16 +78,16 @@ fn adopt(w: Writer, info: FileInfo) -> Unit:
 # Opens the active file for append and reads its size and age.
 fn open_active(w: Writer) -> Result[Unit, LogError]:
     let handle = match w.fs.open(path: w.path, flags: "a", mode: 384):
-    ok(opened): opened
-    error(cause): return error(io_error(cause))
+        ok(opened): opened
+        error(cause): return error(io_error(cause))
 
     w.handle = some(handle)
     w.size = 0
     w.opened = clock().now()
 
     match handle.stat():
-    ok(info): adopt(w, info)
-    error(_): return ok(unit)
+        ok(info): adopt(w, info)
+        error(_): return ok(unit)
 
     return ok(unit)
 
@@ -187,15 +187,15 @@ fn take_failure(
 
 fn store(w: Writer, failures: BlockingQueue[LogError], data: Bytes) -> Unit:
     match append(w, data):
-    ok(_): return unit
-    error(cause): return record_failure(failures, cause)
+        ok(_): return unit
+        error(cause): return record_failure(failures, cause)
 
 fn serve(w: Writer, failures: BlockingQueue[LogError], item: Item) -> Unit:
     match item:
-    Record(data): return store(w, failures, data)
-    Flush(reply):
-        reply.put(sync_file(w))
-        return unit
+        Record(data): return store(w, failures, data)
+        Flush(reply):
+            reply.put(sync_file(w))
+            return unit
 
 fn run(w: Writer, queue: BlockingQueue[Item], failures: BlockingQueue[LogError]) -> Unit:
     while true:

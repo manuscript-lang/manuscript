@@ -30,10 +30,10 @@ test "Map remove captures its receiver before the key and keeps conversions":
     let trigger = some(1)
     selected.remove(
         key: match trigger:
-        some(key):
-            selected = second
-            some(key)
-        none: some(0)
+            some(key):
+                selected = second
+                some(key)
+            none: some(0)
     )
     if not first.is_empty() or second.get(1) != some(20):
         return panic("receiver order or Some conversion")

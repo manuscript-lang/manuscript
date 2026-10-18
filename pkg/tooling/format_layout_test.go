@@ -137,18 +137,18 @@ let affordable = (
 			source: `fn work(early: Int) -> Int:
     let result = subtract(try
         match some(0):
-        some(_):
-            10
-        none: 10
+            some(_):
+                10
+            none: 10
     )
     return result
 `,
 			want: `fn work(early: Int) -> Int:
     let result = subtract(
         try match some(0):
-        some(_):
-            10
-        none: 10
+            some(_):
+                10
+            none: 10
     )
     return result
 `,
@@ -393,18 +393,18 @@ fn work(first: Int, second: Int, third: Int, fourth: Int) -> Int: return first
 			name: "multiline match header retains compact inline arms",
 			source: `fn choose(value: Choice) -> Int:
     match value:
-    long_variant(first_payload_name, second_payload_name, third_payload_name, fourth_payload_name): return 1
-    _: return 0
+        long_variant(first_payload_name, second_payload_name, third_payload_name, fourth_payload_name): return 1
+        _: return 0
 `,
 			want: `fn choose(value: Choice) -> Int:
     match value:
-    long_variant(
-        first_payload_name,
-        second_payload_name,
-        third_payload_name,
-        fourth_payload_name
-    ): return 1
-    _: return 0
+        long_variant(
+            first_payload_name,
+            second_payload_name,
+            third_payload_name,
+            fourth_payload_name
+        ): return 1
+        _: return 0
 `,
 		},
 		{

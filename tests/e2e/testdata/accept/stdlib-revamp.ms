@@ -13,8 +13,8 @@ type Key:
 impl Equal for Key:
     fn equals(other: Equal) -> Bool:
         match other:
-        Key(value): return self.id == value.id
-        _: return false
+            Key(value): return self.id == value.id
+            _: return false
 
 impl Hashable for Key:
     fn hash() -> Int: self.id
@@ -43,14 +43,14 @@ test "stable priority queue and optional capacity":
     queue.enqueue(Key(id: 1, label: "second"))
 
     match queue.dequeue():
-    some(value):
-        if value.label != "first": return panic("priority order")
-    none: return panic("missing item")
+        some(value):
+            if value.label != "first": return panic("priority order")
+        none: return panic("missing item")
 
     match queue.dequeue():
-    some(value):
-        if value.label != "second": return panic("unstable priority order")
-    none: return panic("missing item")
+        some(value):
+            if value.label != "second": return panic("unstable priority order")
+        none: return panic("missing item")
 
     let bounded = PriorityQueue(compare: compare, capacity: 1)
     if not (bounded.enqueue(Key(id: 1, label: "only"))): return panic("enqueue failed")
@@ -58,13 +58,13 @@ test "stable priority queue and optional capacity":
 
 test "limits can be omitted or supplied":
     match "ab".repeat(count: 3):
-    ok(value):
-        if value != "ababab": return panic("omitted limit failed")
-    error(_): return panic("omitted limit rejected")
+        ok(value):
+            if value != "ababab": return panic("omitted limit failed")
+        error(_): return panic("omitted limit rejected")
 
     match "ab".repeat(count: 3, max_bytes: 5):
-    ok(_): return panic("supplied limit ignored")
-    error(_): return
+        ok(_): return panic("supplied limit ignored")
+        error(_): return
 
 fn operation() -> Result[Unit, Error]: ok(unit)
 
@@ -75,8 +75,8 @@ test "one scheduler admits and schedules work":
         let repeated = scheduler.every(interval: 1.milliseconds, operation: operation)
 
         match repeated:
-        ok(id): scheduler.cancel(id)
-        error(_): return panic("unbounded admission failed")
+            ok(id): scheduler.cancel(id)
+            error(_): return panic("unbounded admission failed")
 
 type EmptyReader:
     requested: Int
@@ -84,8 +84,8 @@ type EmptyReader:
 impl ReadStream for EmptyReader:
     fn read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]:
         match max_bytes:
-        none: self.requested = 0
-        some(value): self.requested = value
+            none: self.requested = 0
+            some(value): self.requested = value
 
         return ok(none)
 

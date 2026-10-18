@@ -21,6 +21,6 @@ test "non-prelude spellings are ordinary names":
         return panic(message: "check failed")
 
     match ordinary():
-    Value(value):
-        if not (value == 3):
-            return panic(message: "check failed")
+        Value(value):
+            if not (value == 3):
+                return panic(message: "check failed")

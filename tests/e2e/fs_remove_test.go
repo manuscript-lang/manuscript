@@ -23,14 +23,14 @@ export fn main() -> Int:
     if fs.remove(path: ".", recursive: true) != invalid: return 2
     if fs.remove(path: "child/..", recursive: true) != invalid: return 3
     match fs.canonicalize("."):
-    error(_): return 8
-    ok(base):
-        if fs.remove(path: base, recursive: true) != invalid: return 4
+        error(_): return 8
+        ok(base):
+            if fs.remove(path: base, recursive: true) != invalid: return 4
     if fs.rename(source: "", destination: "moved") != invalid: return 5
     if fs.rename(source: "sentinel", destination: "") != invalid: return 6
     match fs.remove(path: "child", recursive: true):
-    error(_): return 7
-    ok(_): return 0
+        error(_): return 7
+        ok(_): return 0
 `
 	result := compiler.CompileSource("remove.ms", source, compiler.Options{Entry: true})
 	if !result.Success() {
