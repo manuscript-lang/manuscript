@@ -37,6 +37,9 @@ func workspaceDocumentsWithCancel(d document, docs map[string]document, recursiv
 
 	files := map[string]document{}
 	for _, open := range docs {
+		if isCanceled(canceled) {
+			return nil, context.Canceled
+		}
 		relative, e := filepath.Rel(root, filename(open.URI))
 		if e == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 			files[filename(open.URI)] = open
@@ -160,14 +163,26 @@ func workspaceSymbolsWithCancel(docs map[string]document, roots []string, query 
 		return workspaceDocumentsWithCancel(d, docs, recursive, canceled)
 	}
 	for _, open := range docs {
+		if isCanceled(canceled) {
+			return nil
+		}
 		files, err := discover(open, false)
+		if err == context.Canceled {
+			return nil
+		}
 		if err == nil {
 			documents = append(documents, files...)
 		}
 	}
 	for _, root := range roots {
+		if isCanceled(canceled) {
+			return nil
+		}
 		dummy := document{URI: fileURI(filepath.Join(root, "__workspace_index.ms"))}
 		files, err := discover(dummy, true)
+		if err == context.Canceled {
+			return nil
+		}
 		if err == nil {
 			for _, file := range files {
 				if file.URI != dummy.URI {

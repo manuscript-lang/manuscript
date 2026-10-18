@@ -27,3 +27,21 @@ test "big integers validate digits budgets and zero divisors":
 
     let malformed: Result[BigInt, BigIntError] = error(BigIntError.InvalidData)
     if parse("1_0", 10) != malformed: return panic("malformed digits")
+
+test "big integer budgets exclude at most one leading sign before validation":
+    let limited: Result[BigInt, BigIntError] = error(BigIntError.LimitExceeded)
+    let malformed: Result[BigInt, BigIntError] = error(BigIntError.InvalidData)
+
+    for text in ["+-1", "-+1", "++1", "--1"]:
+        if parse(text, 10, 1) != limited: return panic(
+            "second sign must count toward budget: {text}"
+        )
+        if parse(text, 10, 2) != malformed: return panic(
+            "second sign must fail syntax validation: {text}"
+        )
+
+    for text in ["1", "+1", "-1"]:
+        if parse(text, 10, 1).is_error(): return panic(
+            "valid sign consumes no digit budget"
+        )
+        if parse(text, 10, 0) != limited: return panic("zero digit budget")

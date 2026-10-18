@@ -12,7 +12,11 @@ import {
     abs,
     pi,
     e,
-    remainder
+    remainder,
+    max,
+    min,
+    max_of,
+    min_of
 } from "@std/math.ms"
 import panic from "@std/faults.ms"
 
@@ -46,3 +50,36 @@ test "float remainder takes the sign of the dividend":
     if remainder(-5.0, 3.0) != -2.0: return panic("remainder negative")
     if remainder(7.0, 2.0) != 1.0: return panic("remainder half")
     if not remainder(5.0, 0.0).is_nan(): return panic("remainder zero divisor")
+
+type Ranked:
+    rank: Int
+
+impl Comparable for Ranked:
+    fn compare(other: Comparable) Int:
+        match other:
+            Ranked(value):
+                if self.rank < value.rank: return -9223372036854775808
+                if self.rank > value.rank: return 9223372036854775807
+
+                return 0
+            _: return panic("incompatible comparison")
+
+test "extrema use comparator signs without negating Int minimum":
+    let low = Ranked(1)
+    let high = Ranked(2)
+    if min(high, low).rank != 1: return panic("pair minimum")
+    if max(low, high).rank != 2: return panic("pair maximum")
+
+    for values in [[high, low], [low, high]]:
+        if min_of(values).get().rank != 1: return panic("list minimum")
+        if max_of(values).get().rank != 2: return panic("list maximum")
+
+    let second_low = Ranked(1)
+    let second_high = Ranked(2)
+    let values = [high, low, second_low, second_high]
+    let minimum = min_of(values).get()
+    let maximum = max_of(values).get()
+    minimum.rank = 0
+    maximum.rank = 3
+    if low.rank != 0 or second_low.rank != 1: return panic("first equal minimum")
+    if high.rank != 3 or second_high.rank != 2: return panic("first equal maximum")
