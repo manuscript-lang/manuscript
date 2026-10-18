@@ -67,8 +67,9 @@ import stdout from "@std/io.ms"
 
 fn run() Result[Unit, Error]:
     let path = try arguments().at(0).ok_or(FileSystemError.InvalidInput)
-    let bytes = try filesystem().read_file(path, max_bytes: 1048576)
-    let text = try bytes.decode_utf8().ok_or(FileSystemError.InvalidData)
+    let text = try filesystem().read_file(path, max_bytes: 1048576)
+        | .decode_utf8().ok_or(FileSystemError.InvalidData)
+        | try
     try stdout().write(text)
     return stdout().flush()
 
@@ -211,8 +212,8 @@ type Config:
 
 fn run() Result[Unit, Error]:
     let text = arguments().at(0).get("\{\"name\":\"Sam\"\}")
-    let config = try parse[Config](text)
-    let encoded = config | try stringify
+    let encoded = try parse[Config](text)
+        | try stringify
     try stdout().write("{encoded}\n")
     return stdout().flush()
 
