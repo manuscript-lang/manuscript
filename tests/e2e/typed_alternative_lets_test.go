@@ -27,33 +27,33 @@ fn check(ok: Bool, name: String) -> Unit:
 fn matched(n: Int) -> Int:
     let found = halve(n: n)
     match found:
-    some(v):
-        return v
-    none:
-        return 0 - 1
+        some(v):
+            return v
+        none:
+            return 0 - 1
 
 fn twice(n: Int) -> Int:
     let found = halve(n: n)
     var total = 0
     match found:
-    some(v):
-        total = total + v
-    none:
-        total = total + 100
+        some(v):
+            total = total + v
+        none:
+            total = total + 100
     match found:
-    some(v):
-        total = total + v
-    none:
-        total = total + 1000
+        some(v):
+            total = total + v
+        none:
+            total = total + 1000
     return total
 
 fn results(n: Int) -> String:
     let parsed = parse(n: n)
     match parsed:
-    ok(v):
-        return "ok {v}"
-    error(cause):
-        return cause
+        ok(v):
+            return "ok {v}"
+        error(cause):
+            return cause
 
 fn formatted(n: Int) -> String:
     let found = halve(n: n)
@@ -63,10 +63,10 @@ fn captured(n: Int) -> Int:
     let found = halve(n: n)
     let read = fn() -> Int:
         match found:
-        some(v):
-            return v
-        none:
-            return 0 - 1
+            some(v):
+                return v
+            none:
+                return 0 - 1
     return read()
 
 test "typed alternative lets":

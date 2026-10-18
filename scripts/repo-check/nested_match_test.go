@@ -8,7 +8,7 @@ import (
 
 func TestNestedMatchSourceGate(t *testing.T) {
 	// manuscript:allow-nested-match fixture exercises detection across source storage formats
-	const nested = "fn use(value: Optional[Int]) -> Unit:\n    match value:\n    some(_):\n        match value:\n        some(_): unit\n        none: unit\n    none: unit\n"
+	const nested = "fn use(value: Optional[Int]) -> Unit:\n    match value:\n        some(_):\n            match value:\n                some(_): unit\n                none: unit\n        none: unit\n"
 	goSource := "package sample\nvar source = " + strconv.Quote(nested) + "\n"
 	for _, tc := range []struct {
 		name, path, source string
@@ -24,9 +24,9 @@ func TestNestedMatchSourceGate(t *testing.T) {
 		{"literal allowance", "sample_test.go", strings.Replace(goSource, "var source", "// "+nestedMatchAllowance+"advisory regression\nvar source", 1), 0},
 		{"allowance cannot hide next literal", "sample_test.go", strings.Replace(goSource, "var source", "// "+nestedMatchAllowance+"advisory regression\nvar source", 1) + "var other = " + strconv.Quote(nested) + "\n", 1},
 		{"non-test cannot opt out", "sample.go", strings.Replace(goSource, "var source", "// "+nestedMatchAllowance+"bad excuse\nvar source", 1), 1},
-		{"fixture allowance", "tests/accept.ms", strings.Replace(nested, "        match", "            # "+nestedMatchAllowance+"lowering regression\n        match", 1), 0},
-		{"ordinary source cannot opt out", "examples/main.ms", strings.Replace(nested, "        match", "            # "+nestedMatchAllowance+"bad excuse\n        match", 1), 1},
-		{"empty reason", "tests/accept.ms", strings.Replace(nested, "        match", "            # "+nestedMatchAllowance+"\n        match", 1), 1},
+		{"fixture allowance", "tests/accept.ms", strings.Replace(nested, "            match", "            # "+nestedMatchAllowance+"lowering regression\n            match", 1), 0},
+		{"ordinary source cannot opt out", "examples/main.ms", strings.Replace(nested, "            match", "            # "+nestedMatchAllowance+"bad excuse\n            match", 1), 1},
+		{"empty reason", "tests/accept.ms", strings.Replace(nested, "            match", "            # "+nestedMatchAllowance+"\n            match", 1), 1},
 		{"words are not syntax", "examples/main.ms", "# match match\nfn use() -> String: \"match match\"\n", 0},
 		{"incomplete neighbor", "examples/main.ms", "fn broken(\n" + nested, 1},
 	} {

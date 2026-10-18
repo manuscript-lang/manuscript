@@ -12,8 +12,8 @@ type Key:
 impl Equal for Key:
     fn equals(other: Equal) -> Bool:
         match other:
-        Key(value): return self.id == value.id
-        _: return false
+            Key(value): return self.id == value.id
+            _: return false
 
 impl Hashable for Key:
     fn hash() -> Int: self.id
@@ -66,9 +66,9 @@ test "Result propagation and Error views preserve concrete causes":
     if view.message().byte_length() == 0: return panic("error message")
 
     match view:
-    JsonError(cause):
-        if cause != JsonError.InvalidData: return panic("concrete error lost")
-    _: return panic("error receiver erased")
+        JsonError(cause):
+            if cause != JsonError.InvalidData: return panic("concrete error lost")
+        _: return panic("error receiver erased")
 
 test "custom equality and hashing define map key identity":
     let first = Key(id: 1, label: "first")

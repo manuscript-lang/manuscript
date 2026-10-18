@@ -107,11 +107,11 @@ def main():
         starts = list(re.finditer(r"(?m)^\t(\w+) = func\(\) rt.Function \{\n", data))
         symbols = {}
         for i, match in enumerate(starts):
-        end = starts[i + 1].start() if i + 1 < len(starts) else len(data)
-        body = data[match.start():end]
-        for j in range(args.literals):
-            if f', "values{j}")' in body:
-                symbols[j] = match[1]
+            end = starts[i + 1].start() if i + 1 < len(starts) else len(data)
+            body = data[match.start():end]
+            for j in range(args.literals):
+                if f', "values{j}")' in body:
+                    symbols[j] = match[1]
         if len(symbols) != args.literals:
             raise ValueError("could not locate all source constructors")
         harness = HARNESS.replace("FUNCTIONS", ",".join(symbols[j] for j in range(args.literals)))

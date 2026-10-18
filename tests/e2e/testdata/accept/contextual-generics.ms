@@ -41,14 +41,14 @@ test "expected generic results preserve behavior and call order":
     let result: Result[List[Int], String] = first()
 
     match result:
-    ok(_): return panic("expected failure")
-    error(message):
-        if message != "empty": return panic("wrong failure")
+        ok(_): return panic("expected failure")
+        error(message):
+            if message != "empty": return panic("wrong failure")
 
     match failed():
-    ok(_): return panic("expected domain failure")
-    error(cause):
-        if cause.message() != "domain": return panic("lost error dispatch")
+        ok(_): return panic("expected domain failure")
+        error(cause):
+            if cause.message() != "domain": return panic("lost error dispatch")
 
     let empty: Optional[Int] = forward()
     if not empty.is_none(): return panic("expected none")

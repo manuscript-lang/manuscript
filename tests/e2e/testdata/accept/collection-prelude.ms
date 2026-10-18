@@ -23,8 +23,8 @@ test "issue 187 programs need no collection imports":
 
     for i in range(0, 5):
         match roll(i):
-        ok(n): rolls.append(n)
-        error(_): return panic("roll")
+            ok(n): rolls.append(n)
+            error(_): return panic("roll")
 
     if rolls.length() != 5: return panic("annotation or match")
 
@@ -79,10 +79,10 @@ test "map add captures receivers and arguments in written order":
     let other = Map[Int, Int]()
     selected.add(
         match some(1):
-        some(_):
-            selected = other
-            1
-        none: 0
+            some(_):
+                selected = other
+                1
+            none: 0
         ,
         2
     )
@@ -94,10 +94,10 @@ test "map add captures receivers and arguments in written order":
     original.add(
         key,
         match some(1):
-        some(_):
-            key = 4
-            5
-        none: 0
+            some(_):
+                key = 4
+                5
+            none: 0
     )
     if original.get(3).unwrap() != 5 or original.contains(4): return panic(
         "key capture"
@@ -106,17 +106,17 @@ test "map add captures receivers and arguments in written order":
     var order = 0
     original.add(
         value: match some(1):
-        some(_):
-            order = 1
-            7
-        none: 0
+            some(_):
+                order = 1
+                7
+            none: 0
         ,
         key: match some(1):
-        some(_):
-            if order != 1: return panic("reordered evaluation")
+            some(_):
+                if order != 1: return panic("reordered evaluation")
 
-            order = 2
-            6
-        none: 0
+                order = 2
+                6
+            none: 0
     )
     if order != 2 or original.get(6).unwrap() != 7: return panic("reordered labels")

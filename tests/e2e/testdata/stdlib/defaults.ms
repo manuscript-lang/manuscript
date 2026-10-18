@@ -45,10 +45,10 @@ test "bound receiver is captured before supplied arguments":
     let output = value(
         selected.run(
             program: match index:
-            some(_):
-                selected = second
-                "fake"
-            none: "fake"
+                some(_):
+                    selected = second
+                    "fake"
+                none: "fake"
             ,
             arguments: []
         )

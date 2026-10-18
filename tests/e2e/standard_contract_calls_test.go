@@ -36,10 +36,10 @@ test "repeated calls through one site":
     var n = 0
     while n < 2:
         match out.write(data: "x".to_bytes()):
-        ok(_):
-            unit
-        error(_):
-            check(ok: false, name: "write")
+            ok(_):
+                unit
+            error(_):
+                check(ok: false, name: "write")
         n = n + 1
     check(ok: describe(e: Error(value: Boom(code: 1))) == "boom 1", name: "user error")
     check(ok: describe(e: Error(value: Boom(code: 2))) == "boom 2", name: "user error again")

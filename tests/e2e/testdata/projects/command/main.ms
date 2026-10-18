@@ -10,11 +10,11 @@ export fn main() -> Int:
         max_output_bytes: 64,
         timeout: 1.seconds
     ):
-    error(_):
-        return 1
-    ok(output):
-        if not (output.exit_code == 0):
-            return panic(message: "check failed")
+        error(_):
+            return 1
+        ok(output):
+            if not (output.exit_code == 0):
+                return panic(message: "check failed")
 
-        stdout().write(data: output.stdout)
-        return 0
+            stdout().write(data: output.stdout)
+            return 0

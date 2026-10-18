@@ -4,22 +4,22 @@ import value from "./support/results.ms"
 
 fn children(node: HtmlNode) -> List[HtmlNode]:
     match node:
-    Document(items): return items
-    Element(_, _, _, items): return items
-    _: return []
+        Document(items): return items
+        Element(_, _, _, items): return items
+        _: return []
 
 fn text_content(node: HtmlNode) -> String:
     match node:
-    Text(text): return text
-    Document(items):
-        var text = ""
-        for item in items: text = "{text}{text_content(item)}"
-        return text
-    Element(_, _, _, items):
-        var text = ""
-        for item in items: text = "{text}{text_content(item)}"
-        return text
-    _: return ""
+        Text(text): return text
+        Document(items):
+            var text = ""
+            for item in items: text = "{text}{text_content(item)}"
+            return text
+        Element(_, _, _, items):
+            var text = ""
+            for item in items: text = "{text}{text_content(item)}"
+            return text
+        _: return ""
 
 fn body_nodes(node: HtmlNode) -> List[HtmlNode]:
     let html = children(node).at(0).unwrap()
@@ -39,35 +39,43 @@ test "HTML parses nested elements attributes entities and comments":
     let div = body_nodes(doc).at(0).unwrap()
 
     match div:
-    Element(tag, namespace, attributes, items):
-        if tag != "div" or namespace != "": return panic("HTML name normalization")
-        if (
-            attributes != [
-                HtmlAttribute(name: "id", namespace: "", value: "main"),
-                HtmlAttribute(
-                    name: "title",
-                    namespace: "",
-                    value: "A & B"
-                ),
-                HtmlAttribute(name: "hidden", namespace: "", value: "")
-            ]
-        ): return panic("HTML attributes")
-        if (
-            items.at(0).unwrap() != HtmlNode.Text("Hello ")
-            or items.at(2).unwrap() != HtmlNode.Text(" <world>")
-        ): return panic("HTML text ordering or entities")
-        if items.at(3).unwrap() != HtmlNode.Comment("note"): return panic(
-            "HTML comment"
-        )
-        if (
-            items.at(4).unwrap() != HtmlNode.Element(
-                tag: "br",
-                namespace: "",
-                attributes: [],
-                children: []
+        Element(tag, namespace, attributes, items):
+            if tag != "div" or namespace != "": return panic("HTML name normalization")
+            if (
+                attributes != [
+                    HtmlAttribute(
+                        name: "id",
+                        namespace: "",
+                        value: "main"
+                    ),
+                    HtmlAttribute(
+                        name: "title",
+                        namespace: "",
+                        value: "A & B"
+                    ),
+                    HtmlAttribute(
+                        name: "hidden",
+                        namespace: "",
+                        value: ""
+                    )
+                ]
+            ): return panic("HTML attributes")
+            if (
+                items.at(0).unwrap() != HtmlNode.Text("Hello ")
+                or items.at(2).unwrap() != HtmlNode.Text(" <world>")
+            ): return panic("HTML text ordering or entities")
+            if items.at(3).unwrap() != HtmlNode.Comment("note"): return panic(
+                "HTML comment"
             )
-        ): return panic("void element")
-    _: return panic("expected element")
+            if (
+                items.at(4).unwrap() != HtmlNode.Element(
+                    tag: "br",
+                    namespace: "",
+                    attributes: [],
+                    children: []
+                )
+            ): return panic("void element")
+        _: return panic("expected element")
 
     if text_content(doc) != "Hello é🙂 <world>": return panic("tree traversal")
 
@@ -82,9 +90,9 @@ test "HTML recovers unclosed tags and inserts document and table structure":
     ): return panic("implicit li closure")
 
     match children(nodes.at(1).unwrap()).at(0).unwrap():
-    Element(tag, _, _, _):
-        if tag != "tbody": return panic("implicit tbody")
-    _: return panic("expected tbody")
+        Element(tag, _, _, _):
+            if tag != "tbody": return panic("implicit tbody")
+        _: return panic("expected tbody")
 
     if text_content(nodes.at(1).unwrap()) != "cell": return panic("unclosed table")
 
@@ -114,22 +122,22 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
     let body = children(children(nodes.at(2).unwrap()).at(1).unwrap())
 
     let svg_items = match body.at(0).unwrap():
-    Element(tag, namespace, _, items):
-        if tag != "svg" or namespace != "svg": return panic("SVG namespace")
-        items
-    _: return panic("expected SVG")
+        Element(tag, namespace, _, items):
+            if tag != "svg" or namespace != "svg": return panic("SVG namespace")
+            items
+        _: return panic("expected SVG")
 
     match svg_items.at(0).unwrap():
-    Element(_, child_namespace, attributes, _):
-        if (
-            child_namespace != "svg"
-            or attributes.at(0).unwrap() != HtmlAttribute(
-                name: "href",
-                namespace: "xlink",
-                value: "#icon"
-            )
-        ): return panic("namespaced attribute")
-    _: return panic("expected SVG anchor")
+        Element(_, child_namespace, attributes, _):
+            if (
+                child_namespace != "svg"
+                or attributes.at(0).unwrap() != HtmlAttribute(
+                    name: "href",
+                    namespace: "xlink",
+                    value: "#icon"
+                )
+            ): return panic("namespaced attribute")
+        _: return panic("expected SVG anchor")
 
     if text_content(body.at(1).unwrap()) != "if (a < b) x = '&amp;';": return panic(
         "script raw text"

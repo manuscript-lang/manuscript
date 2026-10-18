@@ -20,17 +20,17 @@ type Shape:
 
 fn got_line() -> Bool:
     match read_line(input: stdin()):
-    ok(line):
-        return line.is_some()
-    error(_):
-        return false
+        ok(line):
+            return line.is_some()
+        error(_):
+            return false
 
 fn say(text: String) -> Unit:
     match stdout().write(data: text.to_bytes()):
-    ok(_):
-        unit
-    error(_):
-        unit
+        ok(_):
+            unit
+        error(_):
+            unit
 
 fn since(started: Instant) -> Int:
     return clock().now().difference(other: started).to_nanoseconds()
@@ -53,12 +53,12 @@ fn chain(n: Int) -> Result[Int, String]:
 fn area(s: Shape) -> Int:
     var out = 0
     match s:
-    Circle(r):
-        out = r * 3
-    Square(side):
-        out = side * side
-    Tri(b):
-        out = b
+        Circle(r):
+            out = r * 3
+        Square(side):
+            out = side * side
+        Tri(b):
+            out = b
     return out
 
 export fn main() -> Int:
@@ -131,10 +131,10 @@ export fn main() -> Int:
     var tr = 0
     while i < 1000000:
         match chain(i):
-        ok(v):
-            tr = tr + v
-        error(_):
-            tr = tr - 1
+            ok(v):
+                tr = tr + v
+            error(_):
+                tr = tr - 1
         i = i + 1
     report(name: "try", ops: 1000000, started: t)
 

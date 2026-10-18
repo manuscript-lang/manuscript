@@ -13,8 +13,8 @@ fn run(fs: FileSystem, root: String) -> Unit:
 
             for i in range(0, 200):
                 match fs.write_file(path: "{root}/f{i}.bin", data: data, replace: true):
-                ok(_): n = n + 1
-                error(_): unit
+                    ok(_): n = n + 1
+                    error(_): unit
 
             return n
     )
@@ -26,8 +26,8 @@ fn run(fs: FileSystem, root: String) -> Unit:
 
             for i in range(0, 200):
                 match fs.read_file(path: "{root}/f{i}.bin"):
-                ok(b): n = n + b.length()
-                error(_): unit
+                    ok(b): n = n + b.length()
+                    error(_): unit
 
             return n
     )
@@ -39,8 +39,8 @@ fn run(fs: FileSystem, root: String) -> Unit:
 
             for i in range(0, 200):
                 match fs.stat(path: "{root}/f{i}.bin", follow_links: true):
-                ok(_): n = n + 1
-                error(_): unit
+                    ok(_): n = n + 1
+                    error(_): unit
 
             return n
     )
@@ -49,19 +49,19 @@ fn run(fs: FileSystem, root: String) -> Unit:
         1,
         fn() -> Int:
             match fs.list(path: root):
-            ok(entries): return entries.length()
-            error(_): return 0
+                ok(entries): return entries.length()
+                error(_): return 0
     )
 
 fn log_run(path: String) -> Unit:
     match file_transport(path: path):
-    ok(transport): log_with(transport)
-    error(_): unit
+        ok(transport): log_with(transport)
+        error(_): unit
 
 fn log_with(transport: Transport) -> Unit:
     match create(transport: transport, timestamp: false):
-    ok(logger): log_many(logger)
-    error(_): unit
+        ok(logger): log_many(logger)
+        error(_): unit
 
 fn log_many(logger: Logger) -> Unit:
     bench(
@@ -72,8 +72,8 @@ fn log_many(logger: Logger) -> Unit:
 
             for i in range(0, 20000):
                 match logger.info("request {i} handled"):
-                ok(_): n = n + 1
-                error(_): unit
+                    ok(_): n = n + 1
+                    error(_): unit
 
             return n
     )
@@ -82,8 +82,8 @@ export fn bench_fs() -> Unit:
     let fs = filesystem()
 
     match fs.temporary("ms-bench-"):
-    ok(dir):
-        run(fs, dir.path())
-        log_run("{dir.path()}/log.txt")
-        dir.close()
-    error(_): unit
+        ok(dir):
+            run(fs, dir.path())
+            log_run("{dir.path()}/log.txt")
+            dir.close()
+        error(_): unit

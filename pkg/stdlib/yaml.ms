@@ -68,10 +68,10 @@ impl Error for YamlError:
     # Formats parser positions and reason text; match the typed fields for programmatic handling.
     fn message() -> String:
         match self:
-        InvalidInput: return "invalid YAML input"
-        InvalidData(line, column, reason): return "YAML {line}:{column}: {reason}"
-        UnsupportedFeature(line, reason): return "YAML {line}: {reason}"
-        LimitExceeded: return "YAML limit exceeded"
+            InvalidInput: return "invalid YAML input"
+            InvalidData(line, column, reason): return "YAML {line}:{column}: {reason}"
+            UnsupportedFeature(line, reason): return "YAML {line}: {reason}"
+            LimitExceeded: return "YAML limit exceeded"
 
 type Context:
     lines: List[String]
@@ -217,22 +217,22 @@ fn quoted(flow: Flow) -> Result[String, YamlError]:
                 count = count - 1
 
             let value = match parse_int(text: hex, radix: 16):
-            error(_): return error(
-                flow_invalid(
-                    flow: flow,
-                    reason: "invalid Unicode escape"
+                error(_): return error(
+                    flow_invalid(
+                        flow: flow,
+                        reason: "invalid Unicode escape"
+                    )
                 )
-            )
-            ok(value): value
+                ok(value): value
 
             match from_scalars([value]):
-            error(_): return error(
-                flow_invalid(
-                    flow: flow,
-                    reason: "invalid Unicode scalar"
+                error(_): return error(
+                    flow_invalid(
+                        flow: flow,
+                        reason: "invalid Unicode scalar"
+                    )
                 )
-            )
-            ok(text): result.append(text)
+                ok(text): result.append(text)
         else:
             return error(flow_invalid(flow: flow, reason: "invalid string escape"))
 
@@ -317,30 +317,14 @@ fn merge(
     value: YamlValue
 ) -> Result[Unit, YamlError]:
     let values = match value:
-    ObjectValue(entries):
-        for entry in entries:
-            if not target.contains(entry.key): target.add(
-                key: entry.key,
-                value: entry.value
-            )
-        return ok(unit)
-    ArrayValue(values): values
-    _: return error(
-        YamlError.InvalidData(
-            line: line,
-            column: column,
-            reason: "merge requires mappings"
-        )
-    )
-
-    for item in values:
-        match item:
-        ObjectValue(_): let merged = try merge(
-            line: line,
-            column: column,
-            target: target,
-            value: item
-        )
+        ObjectValue(entries):
+            for entry in entries:
+                if not target.contains(entry.key): target.add(
+                    key: entry.key,
+                    value: entry.value
+                )
+            return ok(unit)
+        ArrayValue(values): values
         _: return error(
             YamlError.InvalidData(
                 line: line,
@@ -348,6 +332,22 @@ fn merge(
                 reason: "merge requires mappings"
             )
         )
+
+    for item in values:
+        match item:
+            ObjectValue(_): let merged = try merge(
+                line: line,
+                column: column,
+                target: target,
+                value: item
+            )
+            _: return error(
+                YamlError.InvalidData(
+                    line: line,
+                    column: column,
+                    reason: "merge requires mappings"
+                )
+            )
 
     return ok(unit)
 
@@ -476,13 +476,13 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
             var name = ""
 
             match parsed_key:
-            StringValue(value): name = value
-            _: return error(
-                YamlError.UnsupportedFeature(
-                    line: flow.line,
-                    reason: "mapping keys must be strings"
+                StringValue(value): name = value
+                _: return error(
+                    YamlError.UnsupportedFeature(
+                        line: flow.line,
+                        reason: "mapping keys must be strings"
+                    )
                 )
-            )
 
             flow_space(flow)
             var value = YamlValue.Null
@@ -1270,19 +1270,19 @@ fn validate(context: Context, value: YamlValue, depth: Int) -> Result[Unit, Yaml
     let counted = try count(context: context, depth: depth)
 
     match value:
-    ArrayValue(values):
-        for item in values: let valid = try validate(
-            context: context,
-            value: item,
-            depth: (depth + 1)
-        )
-    ObjectValue(values):
-        for entry in values: let valid = try validate(
-            context: context,
-            value: entry.value,
-            depth: (depth + 1)
-        )
-    _: let ignored = unit
+        ArrayValue(values):
+            for item in values: let valid = try validate(
+                context: context,
+                value: item,
+                depth: (depth + 1)
+            )
+        ObjectValue(values):
+            for entry in values: let valid = try validate(
+                context: context,
+                value: entry.value,
+                depth: (depth + 1)
+            )
+        _: let ignored = unit
 
     return ok(unit)
 
@@ -1465,32 +1465,32 @@ fn format_key(key: String) -> String:
 # A number keeps its original token, so it must resolve back to a number.
 fn valid_number(text: String) -> Bool:
     match parse(text: text):
-    ok(parsed): return parsed == YamlValue.NumberValue(text)
-    error(_): return false
+        ok(parsed): return parsed == YamlValue.NumberValue(text)
+        error(_): return false
 
 fn scalar_text(value: YamlValue) -> Result[String, YamlError]:
     match value:
-    Null: return ok("null")
-    BoolValue(flag): return ok(flag.toString())
-    StringValue(text): return ok(quote_text(text))
-    NumberValue(text):
-        if not valid_number(text): return error(YamlError.InvalidInput)
+        Null: return ok("null")
+        BoolValue(flag): return ok(flag.toString())
+        StringValue(text): return ok(quote_text(text))
+        NumberValue(text):
+            if not valid_number(text): return error(YamlError.InvalidInput)
 
-        return ok(text)
-    ArrayValue(values):
-        if values.is_empty(): return ok("[]")
+            return ok(text)
+        ArrayValue(values):
+            if values.is_empty(): return ok("[]")
 
-        return ok("")
-    ObjectValue(values):
-        if values.is_empty(): return ok("\{\}")
+            return ok("")
+        ObjectValue(values):
+            if values.is_empty(): return ok("\{\}")
 
-        return ok("")
+            return ok("")
 
 fn is_block(value: YamlValue) -> Bool:
     match value:
-    ArrayValue(values): return not values.is_empty()
-    ObjectValue(values): return not values.is_empty()
-    _: return false
+        ArrayValue(values): return not values.is_empty()
+        ObjectValue(values): return not values.is_empty()
+        _: return false
 
 fn emit_block(
     out: StringBuilder,
@@ -1498,33 +1498,37 @@ fn emit_block(
     indent: String
 ) -> Result[Unit, YamlError]:
     match value:
-    ArrayValue(values):
-        for item in values:
-            if is_block(item):
-                out.append(indent.concat("-\n"))
-                try emit_block(out: out, value: item, indent: indent.concat("  "))
-            else:
-                let text = try scalar_text(item)
-                out.append(indent.concat("- ").concat(text).concat("\n"))
+        ArrayValue(values):
+            for item in values:
+                if is_block(item):
+                    out.append(indent.concat("-\n"))
+                    try emit_block(out: out, value: item, indent: indent.concat("  "))
+                else:
+                    let text = try scalar_text(item)
+                    out.append(indent.concat("- ").concat(text).concat("\n"))
 
-        return ok(unit)
-    ObjectValue(values):
-        for entry in values.entries():
-            let key = format_key(entry.key)
+            return ok(unit)
+        ObjectValue(values):
+            for entry in values.entries():
+                let key = format_key(entry.key)
 
-            if is_block(entry.value):
-                out.append(indent.concat(key).concat(":\n"))
-                try emit_block(
-                    out: out,
-                    value: entry.value,
-                    indent: indent.concat("  ")
-                )
-            else:
-                let text = try scalar_text(entry.value)
-                out.append(indent.concat(key).concat(": ").concat(text).concat("\n"))
+                if is_block(entry.value):
+                    out.append(indent.concat(key).concat(":\n"))
+                    try emit_block(
+                        out: out,
+                        value: entry.value,
+                        indent: indent.concat("  ")
+                    )
+                else:
+                    let text = try scalar_text(entry.value)
+                    out.append(
+                        indent.concat(key).concat(": ").concat(
+                            text
+                        ).concat("\n")
+                    )
 
-        return ok(unit)
-    _: return ok(unit)
+            return ok(unit)
+        _: return ok(unit)
 
 # Serializes a YAML value in block style with double-quoted strings.
 export fn stringify(

@@ -18,8 +18,8 @@ export fn bench_binary() -> Unit:
         blob.length(),
         fn() -> Int:
             match base64_decode(text: b64):
-            ok(b): return b.length()
-            error(_): return 0
+                ok(b): return b.length()
+                error(_): return 0
     )
     bench(
         "encoding.hex_encode",

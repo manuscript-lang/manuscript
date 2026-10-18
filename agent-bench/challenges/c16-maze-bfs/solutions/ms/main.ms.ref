@@ -89,5 +89,5 @@ fn run() -> Result[Unit, Error]:
 
 export fn main() -> Int:
     match run():
-    ok(_): return 0
-    error(_): return 1
+        ok(_): return 0
+        error(_): return 1

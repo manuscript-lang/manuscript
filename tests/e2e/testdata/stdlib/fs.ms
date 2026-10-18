@@ -9,9 +9,9 @@ fn expect_fs_error[T](
     expected: FileSystemError
 ) -> Unit:
     match outcome:
-    ok(_): return panic("filesystem misuse succeeded")
-    error(cause):
-        if cause != expected: return panic("wrong filesystem error")
+        ok(_): return panic("filesystem misuse succeeded")
+        error(cause):
+            if cause != expected: return panic("wrong filesystem error")
 
 test "glob queries reuse patterns without changing hidden paths limits or callbacks":
     let fs = filesystem()
@@ -165,9 +165,11 @@ test "filesystem scoped temporary directories and bounded file reads":
             )
 
     match fs.stat(path: directory, follow_links: true):
-    ok(_): return panic("temporary directory not removed")
-    error(cause):
-        if cause != FileSystemError.NotFound: return panic("temporary cleanup error")
+        ok(_): return panic("temporary directory not removed")
+        error(cause):
+            if cause != FileSystemError.NotFound: return panic(
+                "temporary cleanup error"
+            )
 
 test "file handles positional I/O stream adapters and closed errors":
     let fs = filesystem()
@@ -220,6 +222,8 @@ test "empty paths are rejected instead of resolving to the working directory":
     )
 
     match fs.stat(path: "", follow_links: true):
-    ok(_): return panic("stat empty path")
-    error(cause):
-        if cause != FileSystemError.InvalidInput: return panic("stat empty path error")
+        ok(_): return panic("stat empty path")
+        error(cause):
+            if cause != FileSystemError.InvalidInput: return panic(
+                "stat empty path error"
+            )

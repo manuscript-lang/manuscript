@@ -169,9 +169,9 @@ impl JsonDecoder for Decoder:
 
         for byte in chunk.values():
             match step(self, byte):
-            error(cause): return fail(self, cause)
-            ok(found):
-                if found.is_some(): values.append(found.unwrap())
+                error(cause): return fail(self, cause)
+                ok(found):
+                    if found.is_some(): values.append(found.unwrap())
 
         return ok(values)
 
@@ -185,7 +185,7 @@ impl JsonDecoder for Decoder:
         if self.mode != 3: return fail(self, JsonError.InvalidData)
 
         match complete(self):
-        error(cause): return fail(self, cause)
-        ok(item): values.append(item)
+            error(cause): return fail(self, cause)
+            ok(item): values.append(item)
 
         return ok(values)

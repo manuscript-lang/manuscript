@@ -22,18 +22,18 @@ fn check_services() -> Unit:
 
     for entry in environment():
         match system().environment(entry.key):
-        some(value):
-            if value != entry.value:
-                return panic("environment snapshot differs")
-        none:
-            return panic("environment entry missing")
+            some(value):
+                if value != entry.value:
+                    return panic("environment snapshot differs")
+            none:
+                return panic("environment entry missing")
 
     match entropy().bytes(count: 0):
-    ok(data):
-        if data.length() != 0:
-            return panic("unexpected entropy size")
-    error(_):
-        return panic("entropy unavailable")
+        ok(data):
+            if data.length() != 0:
+                return panic("unexpected entropy size")
+        error(_):
+            return panic("entropy unavailable")
 
 test "host accessors work in callbacks and task executions":
     let check = check_services
@@ -44,10 +44,10 @@ test "host accessors work in callbacks and task executions":
         group.start(check)
 
         match group.join():
-        ok(_):
-            return
-        error(_):
-            return panic("task host access failed")
+            ok(_):
+                return
+            error(_):
+                return panic("task host access failed")
 
 test "repeated accessors retain closed root state":
     stdin().close()
@@ -56,19 +56,19 @@ test "repeated accessors retain closed root state":
     network().close()
 
     let cause = match stdout().write("".to_bytes()):
-    ok(_):
-        return panic("accessor reopened stdout")
-    error(cause): cause
+        ok(_):
+            return panic("accessor reopened stdout")
+        error(cause): cause
 
     match cause:
-    Closed:
-        return
-    _:
-        return panic("unexpected closed-stream error")
+        Closed:
+            return
+        _:
+            return panic("unexpected closed-stream error")
 
 test "a later test receives fresh standard output":
     match stdout().write("".to_bytes()):
-    ok(_):
-        return
-    error(_):
-        return panic("another test closed this test's stdout")
+        ok(_):
+            return
+        error(_):
+            return panic("another test closed this test's stdout")

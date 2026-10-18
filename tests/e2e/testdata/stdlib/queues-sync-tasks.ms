@@ -54,9 +54,9 @@ test "scheduler delayed cancellation capacity and closed admission":
     if scheduler.status(id) != WorkStatus.Running: return panic("scheduled status")
 
     match scheduler.start(operation):
-    ok(_): return panic("scheduler capacity ignored")
-    error(cause):
-        if cause != StartError.Full: return panic("scheduler capacity error")
+        ok(_): return panic("scheduler capacity ignored")
+        error(cause):
+            if cause != StartError.Full: return panic("scheduler capacity error")
 
     scheduler.cancel(id)
     scheduler.close()
@@ -67,9 +67,9 @@ test "scheduler delayed cancellation capacity and closed admission":
     scheduler.close()
 
     match scheduler.start(operation):
-    ok(_): return panic("closed scheduler admitted work")
-    error(cause):
-        if cause != StartError.Closed: return panic("closed scheduler error")
+        ok(_): return panic("closed scheduler admitted work")
+        error(cause):
+            if cause != StartError.Closed: return panic("closed scheduler error")
 
 test "task group heterogeneous results and cancellation checkpoints":
     check_cancelled()

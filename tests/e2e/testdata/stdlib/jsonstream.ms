@@ -79,6 +79,6 @@ test "JSON decoder applies per-value budgets":
     if depth.feed("[[[".to_bytes()) != limited: return panic("depth limit")
 
     match decoder(JsonLimits(max_values: -1)):
-    error(cause):
-        if cause != JsonError.InvalidInput: return panic("negative limit")
-    ok(_): return panic("negative limit accepted")
+        error(cause):
+            if cause != JsonError.InvalidInput: return panic("negative limit")
+        ok(_): return panic("negative limit accepted")

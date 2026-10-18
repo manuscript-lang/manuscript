@@ -42,10 +42,10 @@ let NEXT: Phase = Idle
 
 fn phase_name(phase: Phase) -> String:
     match phase:
-    Idle:
-        return "idle"
-    Active(count):
-        return "active {count}"
+        Idle:
+            return "idle"
+        Active(count):
+            return "active {count}"
 
 test "a qualified payloadless case is a constant":
     if not (phase_name(phase: START) == "idle" and phase_name(phase: NEXT) == "idle"):

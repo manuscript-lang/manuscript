@@ -29,10 +29,10 @@ fn lookup(limit: Int) -> Int:
     var i = 0
     while i < 5:
         match find(key: i):
-        some(found):
-            total = total + found
-        none:
-            total = total + 100
+            some(found):
+                total = total + found
+            none:
+                total = total + 100
         i = i + 1
     return total
 

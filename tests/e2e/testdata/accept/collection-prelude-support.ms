@@ -44,8 +44,8 @@ test "public collection support types retain their standard runtime identities":
     )
 
     match cause:
-    OutOfRange: unit
-    _: return panic("scrutinee directed pattern")
+        OutOfRange: unit
+        _: return panic("scrutinee directed pattern")
 
     let grouped: Map[Int, List[Int]] = group(values, fn(value: Int) -> Int: value % 2)
     let distinct: Set[Int] = unique(values)
@@ -69,10 +69,10 @@ test "new ambient error cases retain scrutinee directed patterns":
     let other = OtherError.OutOfRange
 
     match other:
-    OutOfRange: unit
+        OutOfRange: unit
 
     let cause = [1].slice(0, 2).unwrap_error()
 
     match cause:
-    OutOfRange: unit
-    _: return panic("wrong standard case")
+        OutOfRange: unit
+        _: return panic("wrong standard case")

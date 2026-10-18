@@ -218,10 +218,10 @@ test "new direct keyed calls capture receivers before arguments":
     let original = items
     let result = items.add(
         match some(0):
-        some(_):
-            items = Set[Int]().add(8)
-            2
-        none: 3
+            some(_):
+                items = Set[Int]().add(8)
+                2
+            none: 3
     )
     if (
         result.values() != [1, 2]
@@ -232,10 +232,10 @@ test "new direct keyed calls capture receivers before arguments":
 
     result.remove(
         match some(0):
-        some(_):
-            items = Set[Int]().add(9)
-            1
-        none: 2
+            some(_):
+                items = Set[Int]().add(9)
+                1
+            none: 2
     )
     if result.values() != [2] or items.values() != [9]: return panic("remove capture")
 

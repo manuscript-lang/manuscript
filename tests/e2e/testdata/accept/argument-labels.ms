@@ -137,12 +137,12 @@ test "optional labels on methods and native functions":
             return ok(unit)
 
         match service.start(operation):
-        ok(_):
-            if not (true):
-                return panic(message: "check failed")
-        error(_):
-            if not (false):
-                return panic(message: "check failed")
+            ok(_):
+                if not (true):
+                    return panic(message: "check failed")
+            error(_):
+                if not (false):
+                    return panic(message: "check failed")
 
 test "omitted labels preserve evaluation order":
     let state = Synchronized(0)

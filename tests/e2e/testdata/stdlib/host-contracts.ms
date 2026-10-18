@@ -97,11 +97,11 @@ test "all ten string open modes are accepted and changed spellings are invalid":
 
         for mode in ["R", "rs", "w+x", " r", ""]:
             match fs.open(path: "{temporary.path()}/invalid", flags: mode, mode: 384):
-            ok(_): return panic("open spelling")
-            error(cause):
-                if cause != FileSystemError.InvalidInput: return panic(
-                    "open spelling error"
-                )
+                ok(_): return panic("open spelling")
+                error(cause):
+                    if cause != FileSystemError.InvalidInput: return panic(
+                        "open spelling error"
+                    )
 
 test "full byte counts positions EOF and stream aliases retain their contracts":
     let fs = filesystem()
@@ -164,20 +164,22 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
             )
 
             match reader.read():
-            ok(_): return panic("reader alias survived close")
-            error(cause):
-                if cause != IoError.Closed: return panic("adapter Closed translation")
+                ok(_): return panic("reader alias survived close")
+                error(cause):
+                    if cause != IoError.Closed: return panic(
+                        "adapter Closed translation"
+                    )
 
         let missing = "{temporary.path()}/missing"
 
         match fs.open(path: missing, flags: "r", mode: 384):
-        ok(_): return panic("missing filesystem file opened")
-        error(cause):
-            if cause != FileSystemError.NotFound: return panic(
-                "filesystem missing mapping"
-            )
+            ok(_): return panic("missing filesystem file opened")
+            error(cause):
+                if cause != FileSystemError.NotFound: return panic(
+                    "filesystem missing mapping"
+                )
 
         match files().open(missing):
-        ok(_): return panic("missing io file opened")
-        error(cause):
-            if cause != IoError.Unavailable: return panic("io missing mapping")
+            ok(_): return panic("missing io file opened")
+            error(cause):
+                if cause != IoError.Unavailable: return panic("io missing mapping")

@@ -10,10 +10,10 @@ import (
 func TestFormatMatchExpressions(t *testing.T) {
 	source := `fn read(values: List[Int]) -> Int:
     let result=match values[0]:
-    some(number):
-        let doubled=number*2
-        doubled
-    none: return 0
+        some(number):
+            let doubled=number*2
+            doubled
+        none: return 0
     return result
 `
 	for _, ending := range []string{"\n", "\r\n"} {

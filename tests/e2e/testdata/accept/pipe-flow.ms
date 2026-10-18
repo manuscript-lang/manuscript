@@ -44,8 +44,8 @@ fn trace(log: List[String], name: String) -> Int:
 
 fn code(r: Result[Int, String]) -> Int:
     return match r:
-    ok(v): v
-    error(cause): 0 - cause.length()
+        ok(v): v
+        error(cause): 0 - cause.length()
 
 test "pipe steps call functions with the value first":
     if code(flow("abc")) != 9:

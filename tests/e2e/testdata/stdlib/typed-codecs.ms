@@ -41,9 +41,9 @@ test "typed SHA selectors match their algorithms and retain bound operations":
 
     for algorithm in [HashAlgorithm.Sha256, HashAlgorithm.Sha384, HashAlgorithm.Sha512]:
         let name = match algorithm:
-        Sha256: "sha256"
-        Sha384: "sha384"
-        Sha512: "sha512"
+            Sha256: "sha256"
+            Sha384: "sha384"
+            Sha512: "sha512"
 
         if value(algorithm.hmac(key, data)) != value(hmac(key, data, name)): return panic(
             "typed HMAC"
@@ -66,9 +66,9 @@ test "typed compression preserves bytes limits errors and optional arguments":
         CompressionFormat.Deflate
     ]:
         let name = match format:
-        Gzip: "gzip"
-        Zlib: "zlib"
-        Deflate: "deflate"
+            Gzip: "gzip"
+            Zlib: "zlib"
+            Deflate: "deflate"
 
         for level in [0, 9]:
             let encoded = value(format.compress(data, level))
@@ -116,8 +116,8 @@ test "typed archives retain entry limits validation and existing string calls":
 
     for format in [ArchiveFormat.Zip, ArchiveFormat.Tar]:
         let name = match format:
-        Zip: "zip"
-        Tar: "tar"
+            Zip: "zip"
+            Tar: "tar"
 
         let encoded = value(format.pack(entries))
         if encoded != value(pack(entries, name)): return panic("typed archive bytes")

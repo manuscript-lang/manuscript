@@ -7,9 +7,9 @@ type Expr:
 
 fn evaluate(expr: Expr) -> Int:
     match expr:
-    Num(value): return value
-    Add(left, right): return evaluate(left) + evaluate(right)
-    Neg(inner): return -evaluate(inner)
+        Num(value): return value
+        Add(left, right): return evaluate(left) + evaluate(right)
+        Neg(inner): return -evaluate(inner)
 
 type Tree[T]:
     case Leaf(value: T)
@@ -38,8 +38,8 @@ type Link:
 impl Equal for Link:
     fn equals(other: Equal) -> Bool:
         match other:
-        Link(value): return self.value == value.value
-        _: return false
+            Link(value): return self.value == value.value
+            _: return false
 
 impl Hashable for Link:
     fn hash() -> Int: return self.value
@@ -54,10 +54,10 @@ test "recursive alternatives construct match compare and clone":
     let forest = Forest.More(MutualTree(value: 3, rest: Forest.Empty))
 
     match forest:
-    More(tree):
-        if tree.value != 3 or tree.rest != Forest.Empty:
-            panic("mutual tree payload failed")
-    Empty: panic("lost mutual tree")
+        More(tree):
+            if tree.value != 3 or tree.rest != Forest.Empty:
+                panic("mutual tree payload failed")
+        Empty: panic("lost mutual tree")
 
 test "recursive records retain aliases and clone only outer storage":
     let child = Node(value: 2, next: none)
@@ -143,20 +143,20 @@ test "finite nested generic composition constructs and extracts values":
     let optional = NestedOptional.Value(some(some(4)))
 
     match optional:
-    Value(value):
-        if value.unwrap().unwrap() != 4:
-            panic("nested optional payload failed")
+        Value(value):
+            if value.unwrap().unwrap() != 4:
+                panic("nested optional payload failed")
 
     let result = NestedResult(ok(ok(5)))
 
     let inner = match result.value:
-    ok(inner): inner
-    error(_): panic("unexpected outer result error")
+        ok(inner): inner
+        error(_): panic("unexpected outer result error")
 
     match inner:
-    ok(value):
-        if value != 5: panic("nested result value failed")
-    error(_): panic("unexpected inner result error")
+        ok(value):
+            if value != 5: panic("nested result value failed")
+        error(_): panic("unexpected inner result error")
 
     let box = Box(Box(6))
     if box.value.value != 6:

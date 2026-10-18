@@ -17,10 +17,10 @@ import panic from "@std/faults.ms"
 
 fn write_line(text: String) -> Unit:
     match stdout().write(data: "{text}\n".to_bytes()):
-    ok(_):
-        return
-    error(_):
-        return panic(message: "write failed")
+        ok(_):
+            return
+        error(_):
+            return panic(message: "write failed")
 
 export fn main() -> Int:
     let args = arguments()

@@ -58,10 +58,10 @@ fn last() -> Int: return 2
     let report = summarize(records)
     let payload = encode(report)
     match save(payload):
-    ok(_):
-        return 0
-    error(_):
-        return 1
+        ok(_):
+            return 0
+        error(_):
+            return 1
 `,
 			want: `fn process(input: String) -> Int:
     let records = parse(input)
@@ -72,10 +72,10 @@ fn last() -> Int: return 2
     let payload = encode(report)
 
     match save(payload):
-    ok(_):
-        return 0
-    error(_):
-        return 1
+        ok(_):
+            return 0
+        error(_):
+            return 1
 `,
 		},
 		{
@@ -127,22 +127,22 @@ fn last() -> Int: return 2
 			name: "compact and indented match arms",
 			source: `fn choose(value: Choice) -> Int:
     match value:
-    first: return 1
-    second: return 2
-    third:
-        let result = calculate()
-        return result
-    _: return 0
+        first: return 1
+        second: return 2
+        third:
+            let result = calculate()
+            return result
+        _: return 0
     return 3
 `,
 			want: `fn choose(value: Choice) -> Int:
     match value:
-    first: return 1
-    second: return 2
-    third:
-        let result = calculate()
-        return result
-    _: return 0
+        first: return 1
+        second: return 2
+        third:
+            let result = calculate()
+            return result
+        _: return 0
 
     return 3
 `,
@@ -162,10 +162,10 @@ impl Run for Runner:
         # Handle both outcomes.
         # Keep these comments together.
         match value:
-        one: return 1
-        # Fallback explanation.
-        _:
-            return 2
+            one: return 1
+            # Fallback explanation.
+            _:
+                return 2
 # Application entry.
 fn main() -> Int: return 0
 `,
@@ -185,10 +185,10 @@ impl Run for Runner:
         # Handle both outcomes.
         # Keep these comments together.
         match value:
-        one: return 1
-        # Fallback explanation.
-        _:
-            return 2
+            one: return 1
+            # Fallback explanation.
+            _:
+                return 2
 
 # Application entry.
 fn main() -> Int: return 0

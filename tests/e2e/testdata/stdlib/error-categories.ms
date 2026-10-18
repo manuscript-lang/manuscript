@@ -37,8 +37,8 @@ fn is_missing(cause: Error) -> Bool:
 
 fn yaml_error(cause: Error) -> YamlError:
     match cause:
-    YamlError(found): return found
-    _: return panic("category changed domain")
+        YamlError(found): return found
+        _: return panic("category changed domain")
 
 test "shared categories keep exact standard domain values":
     if not is_missing(FileSystemError.NotFound): return panic("filesystem category")
@@ -95,11 +95,11 @@ test "shared categories keep exact standard domain values":
     )
 
     match yaml_error(original):
-    InvalidData(line, column, reason):
-        if (line != 3 or column != 9 or reason != "retained detail"): return panic(
-            "category lost payload"
-        )
-    _: return panic("category changed variant")
+        InvalidData(line, column, reason):
+            if (line != 3 or column != 9 or reason != "retained detail"): return panic(
+                "category lost payload"
+            )
+        _: return panic("category changed variant")
 
 test "timeout classification keeps timeout spelling out of generic handling":
     let causes: List[Error] = [

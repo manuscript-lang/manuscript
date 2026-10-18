@@ -35,10 +35,10 @@ func testProgram(t *testing.T, label string) string {
 
 export fn main() -> Int:
     match stdout().write(data: %q.to_bytes()):
-    ok(_):
-        return 0
-    error(_):
-        return 1
+        ok(_):
+            return 0
+        error(_):
+            return 1
 `, fmt.Sprint(label, " ", time.Now().UnixNano())), compiler.Options{Entry: true})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)

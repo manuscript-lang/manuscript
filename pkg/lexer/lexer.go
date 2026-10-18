@@ -46,12 +46,7 @@ func Keywords() []string {
 func letter(b byte) bool { return b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z' || b == '_' }
 func digit(b byte) bool  { return b >= '0' && b <= '9' }
 
-type layout struct {
-	indent, depth int
-	// match marks the arms of a match, which sit at the indentation of the
-	// line holding the header instead of one level in.
-	match bool
-}
+type layout struct{ indent, depth int }
 type scanner struct {
 	file, source         string
 	offset, line, column int
@@ -60,7 +55,6 @@ type scanner struct {
 	delimiters           []byte
 	opened               []syntax.Position
 	functionDepths       []int
-	functionMatch        []bool
 	originalOffsets      []int
 	interpolations       []syntax.Position
 }
@@ -100,14 +94,14 @@ func Lex(file, source string) (tokens []Token, err error) {
 		}
 	}()
 	normalized, offsets := normalizeSource(source)
-	s := &scanner{file: file, source: normalized, originalOffsets: offsets, line: 1, column: 1, levels: []layout{{}}}
+	s := &scanner{file: file, source: normalized, originalOffsets: offsets, line: 1, column: 1, levels: []layout{{0, 0}}}
 	if !utf8.ValidString(source) {
 		s.fail("source must be valid UTF-8; re-save the file with UTF-8 encoding")
 	}
 	if strings.HasPrefix(source, "\ufeff") {
 		s.fail("a byte-order mark is not allowed; save the file as UTF-8 without BOM")
 	}
-	pending, pendingMatch, headerIndent, pendingDepth := false, false, 0, 0
+	pending, headerIndent, pendingDepth := false, 0, 0
 	// A line that starts with '.' or '|' continues the previous statement, which
 	// began at statementIndent; it opens no block and ends no statement.
 	continuing, statementIndent := false, 0
@@ -147,23 +141,9 @@ func Lex(file, source string) (tokens []Token, err error) {
 				statementIndent = leading
 			}
 			startedSuite := false
-			if pending && pendingMatch {
-				if leading == headerIndent && s.armLine() {
-					s.levels = append(s.levels, layout{leading, pendingDepth, true})
-					s.emit(Indent, "", s.pos())
-					startedSuite = true
-				} else if leading == headerIndent+4 {
-					s.fail(fmt.Sprintf("match arms sit at the same indentation as the line holding 'match', %d spaces here; dedent the arms and everything under them one level", headerIndent))
-				} else if leading <= headerIndent {
-					s.emit(Indent, "", s.pos())
-					s.emit(Dedent, "", s.pos())
-				} else {
-					s.fail(fmt.Sprintf("match arms sit at the same indentation as the line holding 'match'; the header is at %d spaces, so indent this line to %d", headerIndent, headerIndent))
-				}
-				pending = false
-			} else if pending {
+			if pending {
 				if leading == headerIndent+4 {
-					s.levels = append(s.levels, layout{indent: leading, depth: pendingDepth})
+					s.levels = append(s.levels, layout{leading, pendingDepth})
 					s.emit(Indent, "", s.pos())
 					startedSuite = true
 				} else if leading <= headerIndent {
@@ -180,12 +160,6 @@ func Lex(file, source string) (tokens []Token, err error) {
 				// A continuation line inside delimiters opened within a level does not
 				// close that level; only suites opened inside the open delimiters can.
 				for len(s.levels) > 1 && leading < s.levels[len(s.levels)-1].indent && s.levels[len(s.levels)-1].depth >= len(s.delimiters) {
-					s.levels = s.levels[:len(s.levels)-1]
-					s.emit(Dedent, "", s.pos())
-				}
-				// Arms share the match's indentation, so the first line at that
-				// indentation that is not an arm ends them.
-				for len(s.levels) > 1 && s.levels[len(s.levels)-1].match && len(s.delimiters) == s.levels[len(s.levels)-1].depth && leading == s.levels[len(s.levels)-1].indent && !s.armLine() {
 					s.levels = s.levels[:len(s.levels)-1]
 					s.emit(Dedent, "", s.pos())
 				}
@@ -229,7 +203,6 @@ func Lex(file, source string) (tokens []Token, err error) {
 				}
 				if value == "fn" || value == "match" {
 					s.functionDepths = append(s.functionDepths, len(s.delimiters))
-					s.functionMatch = append(s.functionMatch, value == "match")
 				}
 				s.emit(kind, value, p)
 				continue
@@ -278,7 +251,6 @@ func Lex(file, source string) (tokens []Token, err error) {
 					s.opened = s.opened[:len(s.opened)-1]
 					for len(s.functionDepths) > 0 && s.functionDepths[len(s.functionDepths)-1] > len(s.delimiters) {
 						s.functionDepths = s.functionDepths[:len(s.functionDepths)-1]
-						s.functionMatch = s.functionMatch[:len(s.functionMatch)-1]
 					}
 				}
 				s.advance()
@@ -293,20 +265,20 @@ func Lex(file, source string) (tokens []Token, err error) {
 		}
 		if len(s.tokens) > lineStart {
 			last := s.tokens[len(s.tokens)-1]
-			hasFunction, isMatch := false, false
-			for index, depth := range s.functionDepths {
+			hasFunction := false
+			for _, depth := range s.functionDepths {
 				if depth == len(s.delimiters) {
-					hasFunction, isMatch = true, s.functionMatch[index]
+					hasFunction = true
 				}
 			}
 			if last.Kind == ":" && (len(s.delimiters) == top.depth || hasFunction) {
-				pending, pendingMatch = true, isMatch
+				pending = true
 				headerIndent = leading
 				pendingDepth = len(s.delimiters)
 				s.emit(Newline, "", s.pos())
-				s.functionDepths, s.functionMatch = nil, nil
+				s.functionDepths = nil
 			} else if len(s.delimiters) == top.depth {
-				s.functionDepths, s.functionMatch = nil, nil
+				s.functionDepths = nil
 				if s.continuesNext() {
 					continuing = true
 				} else {
@@ -598,46 +570,4 @@ func (s *scanner) continuationHint() string {
 		return "; to continue an expression on the next line, wrap the whole expression in parentheses"
 	}
 	return ""
-}
-
-// armLine reports whether the rest of the current line is a match arm
-// pattern, a case path with optional payload names or type arguments followed
-// by ':', possibly across lines. No statement starts that way.
-func (s *scanner) armLine() bool {
-	i, src := s.offset, s.source
-	for first := true; ; first = false {
-		start := i
-		if first && i < len(src) && src[i] == '"' {
-			for i++; i < len(src) && src[i] != '"' && src[i] != '\n'; i++ {
-				if src[i] == '\\' {
-					i++
-				}
-			}
-			i = min(i+1, len(src))
-			break
-		}
-		for i < len(src) && (letter(src[i]) || digit(src[i]) || src[i] == '.') {
-			i++
-		}
-		if i == start && first {
-			return false
-		}
-		if i >= len(src) || (src[i] != '(' && src[i] != '[') {
-			break
-		}
-		for depth := 0; i < len(src); i++ {
-			if src[i] == '(' || src[i] == '[' {
-				depth++
-			} else if src[i] == ')' || src[i] == ']' {
-				if depth--; depth == 0 {
-					i++
-					break
-				}
-			}
-		}
-	}
-	for i < len(src) && src[i] == ' ' {
-		i++
-	}
-	return i < len(src) && src[i] == ':'
 }

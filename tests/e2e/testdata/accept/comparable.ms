@@ -8,8 +8,8 @@ type Version:
 impl Comparable for Version:
     fn compare(other: Comparable) -> Int:
         match other:
-        Version(value): return self.major - value.major
-        _: return 0
+            Version(value): return self.major - value.major
+            _: return 0
 
 fn check(ok: Bool, name: String) -> Unit:
     if not ok:

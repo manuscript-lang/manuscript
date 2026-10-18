@@ -6,8 +6,8 @@ import {async_file_transport} from "./async_file_transport.ms"
 
 fn value[T, E: Error](result: Result[T, E]) -> T:
     match result:
-    ok(found): return found
-    error(cause): return panic(message: cause.message())
+        ok(found): return found
+        error(cause): return panic(message: cause.message())
 
 export fn main() -> Int:
     return 0
@@ -44,8 +44,8 @@ fn read(path: String) -> String:
 
 fn missing(path: String) -> Bool:
     match filesystem().stat(path: path, follow_links: false):
-    ok(_): return false
-    error(_): return true
+        ok(_): return false
+        error(_): return true
 
 test "size rotation keeps at most max_files files":
     with directory = value(filesystem().temporary("alog-")):
@@ -112,31 +112,31 @@ test "invalid limits and a missing directory are rejected":
         let path = "{directory.path()}/events.ndjson"
 
         match async_file_transport(path, max_bytes: 0):
-        ok(_): return panic("zero max_bytes")
-        error(cause):
-            if cause != LogError.InvalidInput: return panic("max_bytes cause")
+            ok(_): return panic("zero max_bytes")
+            error(cause):
+                if cause != LogError.InvalidInput: return panic("max_bytes cause")
 
         match async_file_transport(path, max_files: -1):
-        ok(_): return panic("negative max_files")
-        error(cause):
-            if cause != LogError.InvalidInput: return panic("max_files cause")
+            ok(_): return panic("negative max_files")
+            error(cause):
+                if cause != LogError.InvalidInput: return panic("max_files cause")
 
         match async_file_transport(path, queue_size: 0):
-        ok(_): return panic("zero queue")
-        error(cause):
-            if cause != LogError.InvalidInput: return panic("queue cause")
+            ok(_): return panic("zero queue")
+            error(cause):
+                if cause != LogError.InvalidInput: return panic("queue cause")
 
         match async_file_transport(path, max_age: duration(0)):
-        ok(_): return panic("zero age")
-        error(cause):
-            if cause != LogError.InvalidInput: return panic("age cause")
+            ok(_): return panic("zero age")
+            error(cause):
+                if cause != LogError.InvalidInput: return panic("age cause")
 
         match async_file_transport("{directory.path()}/missing/x.ndjson"):
-        ok(_): return panic("missing parent")
-        error(cause):
-            if cause != LogError.FileSystem(FileSystemError.NotFound): return panic(
-                "parent cause"
-            )
+            ok(_): return panic("missing parent")
+            error(cause):
+                if cause != LogError.FileSystem(FileSystemError.NotFound): return panic(
+                    "parent cause"
+                )
 
 test "a full queue returns LimitExceeded without waiting":
     with directory = value(filesystem().temporary("alog-")):
@@ -150,13 +150,13 @@ test "a full queue returns LimitExceeded without waiting":
                 attempts = attempts + 1
 
                 match transport.write("x\n".to_bytes()):
-                ok(_): continue
-                error(cause):
-                    if cause != LogError.LimitExceeded: return panic(
-                        "unexpected error"
-                    )
+                    ok(_): continue
+                    error(cause):
+                        if cause != LogError.LimitExceeded: return panic(
+                            "unexpected error"
+                        )
 
-                    rejected = true
+                        rejected = true
 
             if not rejected: return panic("queue never reported full")
 
@@ -168,6 +168,6 @@ test "writes after close are rejected":
         transport.close()
 
         match transport.write("x\n".to_bytes()):
-        ok(_): return panic("write after close")
-        error(cause):
-            if cause != LogError.Closed: return panic("closed cause")
+            ok(_): return panic("write after close")
+            error(cause):
+                if cause != LogError.Closed: return panic("closed cause")

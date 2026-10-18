@@ -70,9 +70,9 @@ impl Error for TomlError:
     # Formats the source line, scalar column and parser reason for a malformed document.
     fn message() -> String:
         match self:
-        InvalidInput: return "invalid TOML input"
-        InvalidData(line, column, reason): return "TOML {line}:{column}: {reason}"
-        LimitExceeded: return "TOML limit exceeded"
+            InvalidInput: return "invalid TOML input"
+            InvalidData(line, column, reason): return "TOML {line}:{column}: {reason}"
+            LimitExceeded: return "TOML limit exceeded"
 
 type Reader:
     chars: List[String]
@@ -252,22 +252,22 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
                 count = count - 1
 
             let scalar = match parse_int(text: hex, radix: 16):
-            error(_): return error(
-                invalid(
-                    reader: reader,
-                    reason: "invalid Unicode escape"
+                error(_): return error(
+                    invalid(
+                        reader: reader,
+                        reason: "invalid Unicode escape"
+                    )
                 )
-            )
-            ok(scalar): scalar
+                ok(scalar): scalar
 
             match from_scalars([scalar]):
-            error(_): return error(
-                invalid(
-                    reader: reader,
-                    reason: "invalid Unicode scalar"
+                error(_): return error(
+                    invalid(
+                        reader: reader,
+                        reason: "invalid Unicode scalar"
+                    )
                 )
-            )
-            ok(text): result.append(text)
+                ok(text): result.append(text)
         else:
             return error(invalid(reader: reader, reason: "invalid string escape"))
 
@@ -317,28 +317,31 @@ fn child(
     let node = existing.unwrap()
 
     match node:
-    TableNode(value):
-        if value.sealed: return error(
-            invalid(reader: reader, reason: "inline table is closed")
-        )
-        if dotted and value.explicit: return error(
-            invalid(
-                reader: reader,
-                reason: "dotted key extends an explicit table"
+        TableNode(value):
+            if value.sealed: return error(
+                invalid(
+                    reader: reader,
+                    reason: "inline table is closed"
+                )
             )
-        )
-
-        return ok(value)
-    TableArray(tables):
-        if dotted: return error(
-            invalid(
-                reader: reader,
-                reason: "dotted key extends a table array"
+            if dotted and value.explicit: return error(
+                invalid(
+                    reader: reader,
+                    reason: "dotted key extends an explicit table"
+                )
             )
-        )
 
-        return ok(tables.last().unwrap())
-    _: return error(invalid(reader: reader, reason: "key is already a value"))
+            return ok(value)
+        TableArray(tables):
+            if dotted: return error(
+                invalid(
+                    reader: reader,
+                    reason: "dotted key extends a table array"
+                )
+            )
+
+            return ok(tables.last().unwrap())
+        _: return error(invalid(reader: reader, reason: "key is already a value"))
 
 fn append_table(
     reader: Reader,
@@ -356,10 +359,15 @@ fn append_table(
     let node = existing.unwrap()
 
     match node:
-    TableArray(tables):
-        tables.append(next)
-        return ok(unit)
-    _: return error(invalid(reader: reader, reason: "table array conflicts with value"))
+        TableArray(tables):
+            tables.append(next)
+            return ok(unit)
+        _: return error(
+            invalid(
+                reader: reader,
+                reason: "table array conflicts with value"
+            )
+        )
 
 fn assign(
     reader: Reader,
@@ -389,12 +397,12 @@ fn assign(
 
 fn seal(value: Node) -> Unit:
     match value:
-    TableNode(table):
-        table.sealed = true
-        for entry in table.entries: seal(entry.value)
-    ArrayNode(values):
-        for item in values: seal(item)
-    _: return unit
+        TableNode(table):
+            table.sealed = true
+            for entry in table.entries: seal(entry.value)
+        ArrayNode(values):
+            for item in values: seal(item)
+        _: return unit
 
 fn digits(text: String, alphabet: String) -> Bool:
     if text == "": return false
@@ -426,8 +434,8 @@ fn date_number(text: String, minimum: Int, maximum: Int) -> Bool:
     if not digits(text: text, alphabet: "0123456789") or text.contains("_"): return false
 
     match parse_int(text: text, radix: 10):
-    error(_): return false
-    ok(value): return value >= minimum and value <= maximum
+        error(_): return false
+        ok(value): return value >= minimum and value <= maximum
 
 fn date_valid(text: String) -> Bool:
     if (
@@ -571,8 +579,10 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
             ),
             radix: radix
         ):
-        ok(value): return ok(Node.Leaf(TomlValue.IntValue(value)))
-        error(_): return error(invalid(reader: reader, reason: "integer out of range"))
+            ok(value): return ok(Node.Leaf(TomlValue.IntValue(value)))
+            error(_): return error(
+                invalid(reader: reader, reason: "integer out of range")
+            )
 
     # Bare words such as True, yes, or abc are not numbers, even when they
     # contain an e.
@@ -631,8 +641,10 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
         )
 
         match parse_float(number):
-        ok(value): return ok(Node.Leaf(TomlValue.FloatValue(value)))
-        error(_): return error(invalid(reader: reader, reason: "float out of range"))
+            ok(value): return ok(Node.Leaf(TomlValue.FloatValue(value)))
+            error(_): return error(
+                invalid(reader: reader, reason: "float out of range")
+            )
 
     if not decimal_part(clean): return error(
         invalid(reader: reader, reason: "invalid value")
@@ -646,8 +658,8 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
         ),
         radix: 10
     ):
-    ok(value): return ok(Node.Leaf(TomlValue.IntValue(value)))
-    error(_): return error(invalid(reader: reader, reason: "integer out of range"))
+        ok(value): return ok(Node.Leaf(TomlValue.IntValue(value)))
+        error(_): return error(invalid(reader: reader, reason: "integer out of range"))
 
 fn read_value(reader: Reader, depth: Int) -> Result[Node, TomlError]:
     let allocated = try allocate(reader)
@@ -768,35 +780,39 @@ fn materialize(reader: Reader, node: Node, depth: Int) -> Result[TomlValue, Toml
     )
 
     match node:
-    Leaf(value): return ok(value)
-    TableNode(table):
-        let entries = Map[String, TomlValue]()
-        for entry in table.entries:
-            entries.add(
-                key: entry.key,
-                value: try materialize(
+        Leaf(value): return ok(value)
+        TableNode(table):
+            let entries = Map[String, TomlValue]()
+            for entry in table.entries:
+                entries.add(
+                    key: entry.key,
+                    value: try materialize(
+                        reader: reader,
+                        node: entry.value,
+                        depth: (depth + 1)
+                    )
+                )
+            return ok(TomlValue.TableValue(entries))
+        ArrayNode(values):
+            let result: List[TomlValue] = []
+            for value in values: result.append(
+                try materialize(
                     reader: reader,
-                    node: entry.value,
+                    node: value,
                     depth: (depth + 1)
                 )
             )
-        return ok(TomlValue.TableValue(entries))
-    ArrayNode(values):
-        let result: List[TomlValue] = []
-        for value in values: result.append(
-            try materialize(reader: reader, node: value, depth: (depth + 1))
-        )
-        return ok(TomlValue.ArrayValue(result))
-    TableArray(tables):
-        let result: List[TomlValue] = []
-        for table in tables: result.append(
-            try materialize(
-                reader: reader,
-                node: Node.TableNode(table),
-                depth: (depth + 1)
+            return ok(TomlValue.ArrayValue(result))
+        TableArray(tables):
+            let result: List[TomlValue] = []
+            for table in tables: result.append(
+                try materialize(
+                    reader: reader,
+                    node: Node.TableNode(table),
+                    depth: (depth + 1)
+                )
             )
-        )
-        return ok(TomlValue.ArrayValue(result))
+            return ok(TomlValue.ArrayValue(result))
 
 # Parses a TOML document into a table value and reports source line and column on invalid input.
 export fn parse(
@@ -1009,33 +1025,33 @@ fn format_float(value: Float) -> String:
 
 fn inline_value(value: TomlValue) -> String:
     match value:
-    StringValue(text): return quote_text(text)
-    IntValue(number): return number.toString()
-    FloatValue(number): return format_float(number)
-    BoolValue(flag): return flag.toString()
-    DateTimeValue(text): return text
-    ArrayValue(values):
-        let parts: List[String] = []
-        for item in values: parts.append(inline_value(item))
-        return "[".concat(parts.join(", ")).concat("]")
-    TableValue(values):
-        let parts: List[String] = []
-        for entry in values.entries(): parts.append(
-            format_key(entry.key).concat(" = ").concat(
-                inline_value(entry.value)
+        StringValue(text): return quote_text(text)
+        IntValue(number): return number.toString()
+        FloatValue(number): return format_float(number)
+        BoolValue(flag): return flag.toString()
+        DateTimeValue(text): return text
+        ArrayValue(values):
+            let parts: List[String] = []
+            for item in values: parts.append(inline_value(item))
+            return "[".concat(parts.join(", ")).concat("]")
+        TableValue(values):
+            let parts: List[String] = []
+            for entry in values.entries(): parts.append(
+                format_key(entry.key).concat(" = ").concat(
+                    inline_value(entry.value)
+                )
             )
-        )
-        if parts.is_empty(): return "\{\}"
+            if parts.is_empty(): return "\{\}"
 
-        return "\{ ".concat(parts.join(", ")).concat(" \}")
+            return "\{ ".concat(parts.join(", ")).concat(" \}")
 
 fn table_items(values: List[TomlValue]) -> List[Map[String, TomlValue]]:
     let tables: List[Map[String, TomlValue]] = []
 
     for item in values:
         match item:
-        TableValue(table): tables.append(table)
-        _: return []
+            TableValue(table): tables.append(table)
+            _: return []
 
     return tables
 
@@ -1052,15 +1068,15 @@ fn emit_header(writer: Writer, header: String) -> Unit:
 
 fn section_kind(value: TomlValue) -> Int:
     match value:
-    TableValue(_): return 1
-    ArrayValue(elements):
-        if (
-            not elements.is_empty()
-            and table_items(elements).length() == elements.length()
-        ): return 2
+        TableValue(_): return 1
+        ArrayValue(elements):
+            if (
+                not elements.is_empty()
+                and table_items(elements).length() == elements.length()
+            ): return 2
 
-        return 0
-    _: return 0
+            return 0
+        _: return 0
 
 fn emit_one(
     writer: Writer,
@@ -1097,34 +1113,34 @@ fn emit_table(
         child.append(entry.key)
 
         match entry.value:
-        TableValue(table): emit_one(
-            writer: writer,
-            path: child,
-            brackets: "[",
-            table: table
-        )
-        ArrayValue(elements):
-            if section_kind(entry.value) == 2:
-                for table in table_items(elements): emit_one(
-                    writer: writer,
-                    path: child,
-                    brackets: "[[",
-                    table: table
-                )
-        _: let ignored = unit
+            TableValue(table): emit_one(
+                writer: writer,
+                path: child,
+                brackets: "[",
+                table: table
+            )
+            ArrayValue(elements):
+                if section_kind(entry.value) == 2:
+                    for table in table_items(elements): emit_one(
+                        writer: writer,
+                        path: child,
+                        brackets: "[[",
+                        table: table
+                    )
+            _: let ignored = unit
 
 fn datetimes_valid(value: TomlValue) -> Bool:
     match value:
-    DateTimeValue(text): return datetime_valid(text)
-    ArrayValue(values):
-        for item in values:
-            if not datetimes_valid(item): return false
-        return true
-    TableValue(values):
-        for entry in values.entries():
-            if not datetimes_valid(entry.value): return false
-        return true
-    _: return true
+        DateTimeValue(text): return datetime_valid(text)
+        ArrayValue(values):
+            for item in values:
+                if not datetimes_valid(item): return false
+            return true
+        TableValue(values):
+            for entry in values.entries():
+                if not datetimes_valid(entry.value): return false
+            return true
+        _: return true
 
 # Serializes a table value as a TOML document. Tables and arrays of tables use headers; other values are written inline.
 export fn stringify(
@@ -1135,8 +1151,8 @@ export fn stringify(
         if limit < 0: return error(TomlError.InvalidInput)
 
     let root = match value:
-    TableValue(values): values
-    _: return error(TomlError.InvalidInput)
+        TableValue(values): values
+        _: return error(TomlError.InvalidInput)
 
     if not datetimes_valid(value): return error(TomlError.InvalidInput)
 

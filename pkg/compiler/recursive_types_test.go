@@ -31,7 +31,7 @@ export fn main() -> Int:
     let i = I[Int](value: b)
     return 0
 `, "recursive generic applications"},
-		{"nonexhaustive recursive match", "type Expr:\n    case Num(value: Int)\n    case Add(left: Expr, right: Expr)\nfn value(expr: Expr) -> Int:\n    match expr:\n    Num(value): return value\n", "non-exhaustive match"},
+		{"nonexhaustive recursive match", "type Expr:\n    case Num(value: Int)\n    case Add(left: Expr, right: Expr)\nfn value(expr: Expr) -> Int:\n    match expr:\n        Num(value): return value\n", "non-exhaustive match"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			result := CompileSource("recursive.ms", tt.source, Options{})

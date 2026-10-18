@@ -11,10 +11,10 @@ fn loop(state: State) -> Int:
         count = count + 1
 
         match state:
-        Ready:
-            break
-        Waiting:
-            continue
+            Ready:
+                break
+            Waiting:
+                continue
 
         count = count + 100
 

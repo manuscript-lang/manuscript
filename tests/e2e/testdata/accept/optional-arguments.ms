@@ -13,8 +13,8 @@ fn flag(value: Optional[Bool]) -> Bool: value.unwrap()
 
 fn success(value: Optional[Result[Int, String]]) -> Int:
     match value.unwrap():
-    ok(value): return value
-    error(_): return -1
+        ok(value): return value
+        error(_): return -1
 
 fn context[T](value: Optional[T], fallback: T) -> T: value.unwrap_or(fallback)
 
@@ -112,8 +112,8 @@ test "constructor fields and methods use optional arguments":
     let choice = Choice.chosen(5)
 
     match choice:
-    chosen(value):
-        if value.unwrap() != 5: return panic("generic alternative constructor")
+        chosen(value):
+            if value.unwrap() != 5: return panic("generic alternative constructor")
 
     let reader = Reader(2)
     if reader.read(3) != 5: return panic("method argument")

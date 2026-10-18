@@ -10,7 +10,7 @@ import (
 
 func TestMatchPayloadPositionsSurviveRecovery(t *testing.T) {
 	for _, newline := range []string{"\n", "\r\n"} {
-		source := strings.ReplaceAll("# café 🦀\nfn use(value: Envelope) -> Int:\n    match value:\n    Pair(\n        _,\n        NotFound,\n    ): return 1\n", "\n", newline)
+		source := strings.ReplaceAll("# café 🦀\nfn use(value: Envelope) -> Int:\n    match value:\n        Pair(\n            _,\n            NotFound,\n        ): return 1\n", "\n", newline)
 		for _, recover := range []bool{false, true} {
 			input := source
 			var module *syntax.Module
@@ -39,7 +39,7 @@ func TestMatchPayloadPositionsSurviveRecovery(t *testing.T) {
 			if recover {
 				line++
 			}
-			want := syntax.Position{File: "positions.ms", Line: line, Column: 9, Offset: strings.Index(input, "NotFound")}
+			want := syntax.Position{File: "positions.ms", Line: line, Column: 13, Offset: strings.Index(input, "NotFound")}
 			if arm.NamePositions[1] != want {
 				t.Fatalf("got %+v, want %+v", arm.NamePositions[1], want)
 			}
