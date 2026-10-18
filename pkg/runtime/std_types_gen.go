@@ -208,6 +208,24 @@ func (CryptoError_AuthenticationFailed) isCryptoError() {
 type HashAlgorithm interface {
 	isHashAlgorithm()
 }
+type HashAlgorithm_Md5 struct {
+}
+
+func (HashAlgorithm_Md5) isHashAlgorithm() {
+}
+
+type HashAlgorithm_Sha1 struct {
+}
+
+func (HashAlgorithm_Sha1) isHashAlgorithm() {
+}
+
+type HashAlgorithm_Sha224 struct {
+}
+
+func (HashAlgorithm_Sha224) isHashAlgorithm() {
+}
+
 type HashAlgorithm_Sha256 struct {
 }
 
@@ -224,6 +242,24 @@ type HashAlgorithm_Sha512 struct {
 }
 
 func (HashAlgorithm_Sha512) isHashAlgorithm() {
+}
+
+type HashAlgorithm_Sha3_256 struct {
+}
+
+func (HashAlgorithm_Sha3_256) isHashAlgorithm() {
+}
+
+type HashAlgorithm_Sha3_384 struct {
+}
+
+func (HashAlgorithm_Sha3_384) isHashAlgorithm() {
+}
+
+type HashAlgorithm_Sha3_512 struct {
+}
+
+func (HashAlgorithm_Sha3_512) isHashAlgorithm() {
 }
 
 type CsvError interface {

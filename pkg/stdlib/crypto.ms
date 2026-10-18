@@ -20,7 +20,7 @@ export fn derive_key(
     length: Int
 ) Result[Bytes, CryptoError]:
 
-# Authenticates and decrypts a value produced by `seal` using AES-GCM.
+# Authenticates and decrypts a value produced by `seal` using AES-GCM with a 16, 24 or 32-byte key.
 export fn open(
     key: Bytes,
     nonce: Bytes,
@@ -31,7 +31,8 @@ export fn open(
 # Derives the Ed25519 public key corresponding to a 32-byte private seed.
 export fn public_key(seed: Bytes) Result[Bytes, CryptoError]:
 
-# Encrypts and authenticates plaintext with AES-GCM. The caller supplies a unique nonce.
+# Encrypts and authenticates plaintext with AES-GCM using a 16, 24 or 32-byte key and 12-byte nonce.
+# The caller supplies a unique nonce.
 export fn seal(
     key: Bytes,
     nonce: Bytes,
@@ -58,14 +59,27 @@ impl Error for CryptoError:
     # Returns a cryptography-prefixed diagnostic without exposing keys, plaintext or ciphertext.
     fn message() String:
 
-# Selects a supported SHA-2 algorithm for digests and HMAC.
+# Selects a supported hash algorithm for digests, HMAC, PBKDF2 and HKDF.
+# Md5 and Sha1 exist for interoperability with existing formats; prefer SHA-2 or SHA-3 for new designs.
 export type HashAlgorithm:
+    # MD5, producing a 16-byte digest or HMAC. Not collision resistant.
+    case Md5
+    # SHA-1, producing a 20-byte digest or HMAC. Not collision resistant.
+    case Sha1
+    # SHA-224, producing a 28-byte digest or HMAC.
+    case Sha224
     # SHA-256, producing a 32-byte digest or HMAC.
     case Sha256
     # SHA-384, producing a 48-byte digest or HMAC.
     case Sha384
     # SHA-512, producing a 64-byte digest or HMAC.
     case Sha512
+    # SHA3-256, producing a 32-byte digest or HMAC.
+    case Sha3_256
+    # SHA3-384, producing a 48-byte digest or HMAC.
+    case Sha3_384
+    # SHA3-512, producing a 64-byte digest or HMAC.
+    case Sha3_512
 
 impl HashAlgorithm:
     # Computes this algorithm's digest, checking cancellation between chunks.
@@ -73,3 +87,22 @@ impl HashAlgorithm:
 
     # Computes HMAC with this algorithm and retains CryptoError results.
     fn hmac(key: Bytes, data: Bytes) Result[Bytes, CryptoError]:
+
+    # Derives a key with PBKDF2-HMAC using this algorithm, the iteration count and length.
+    # Fails with InvalidInput for non-positive iterations or a length outside 1..1048576.
+    fn derive_key(
+        password: Bytes,
+        salt: Bytes,
+        iterations: Int,
+        length: Int
+    ) Result[Bytes, CryptoError]:
+
+    # Expands secret into length bytes with HKDF (RFC 5869) using this algorithm.
+    # An empty salt uses the algorithm's zero-filled default. Fails with InvalidInput when
+    # length is not positive or exceeds 255 times the digest size.
+    fn hkdf(
+        secret: Bytes,
+        salt: Bytes,
+        info: Bytes,
+        length: Int
+    ) Result[Bytes, CryptoError]:

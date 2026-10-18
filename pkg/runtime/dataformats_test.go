@@ -460,7 +460,7 @@ func TestCryptoHashes(t *testing.T) {
 	if got := hexOf(mustOk(t, HashAlgorithm_Hmac(ctx, HashAlgorithm_Sha256{}, key, data))); got != want {
 		t.Fatalf("typed hmac = %s", got)
 	}
-	mustFail(t, cryptoHmac(ctx, key, data, "md5"), CryptoError(CryptoError_Unsupported{}))
+	mustFail(t, cryptoHmac(ctx, key, data, "md4"), CryptoError(CryptoError_Unsupported{}))
 	mustFail(t, cryptoHmac(ctx, key, data, "SHA256"), CryptoError(CryptoError_Unsupported{}))
 	if !Crypto_ConstantTimeEqual(ctx, abc, NewBytes([]byte("abc"))) || Crypto_ConstantTimeEqual(ctx, abc, NewBytes([]byte("abd"))) || Crypto_ConstantTimeEqual(ctx, abc, NewBytes([]byte("ab"))) {
 		t.Fatal("constant time equal")
