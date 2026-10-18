@@ -55,3 +55,6 @@ func Math_AbsInt(_ *Execution, n int) int {
 	}
 	return n
 }
+
+func Math_MaxInt(_ *Execution, a, b int) int { return max(a, b) }
+func Math_MinInt(_ *Execution, a, b int) int { return min(a, b) }

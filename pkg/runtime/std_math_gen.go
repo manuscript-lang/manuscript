@@ -55,8 +55,14 @@ func check_Math_Log2() {
 func check_Math_Max() {
 	var _ func(*Execution, float64, float64) float64 = Math_Max
 }
+func check_Math_MaxInt() {
+	var _ func(*Execution, int, int) int = Math_MaxInt
+}
 func check_Math_Min() {
 	var _ func(*Execution, float64, float64) float64 = Math_Min
+}
+func check_Math_MinInt() {
+	var _ func(*Execution, int, int) int = Math_MinInt
 }
 func check_Math_Pi() {
 	var _ func(*Execution) float64 = Math_Pi

@@ -49,8 +49,14 @@ export fn log2(value: Float) -> Float:
 # Returns the greater of two floating-point values.
 export fn max(left: Float, right: Float) -> Float:
 
+# Returns the greater of two integers.
+export fn max_int(left: Int, right: Int) -> Int:
+
 # Returns the lesser of two floating-point values.
 export fn min(left: Float, right: Float) -> Float:
+
+# Returns the lesser of two integers.
+export fn min_int(left: Int, right: Int) -> Int:
 
 # Returns π, the ratio of a circle's circumference to its diameter.
 export fn pi() -> Float:
