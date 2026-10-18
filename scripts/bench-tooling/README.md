@@ -8,7 +8,7 @@ editor operation is fast: large completions and workspace queries remain costly.
 ## Reproduce
 
 Use a checkout with its pinned SDK and built `ms` (`make build`), Python 3,
-and `GOMAXPROCS=4`. Run the harness from this directory against isolated old/new
+and `GOMAXPROCS=4`. Run the harness from the repository root against isolated old/new
 checkouts. Each output directory is disposable; fixture source is generated
 deterministically and never written into either measured checkout.
 
