@@ -5,9 +5,9 @@ test "receiver before index":
     let index: Optional[Int] = some(0)
     let result = values.at(
         match index:
-            some(i):
-                values = [9]
-                i
-            none: 0
+        some(i):
+            values = [9]
+            i
+        none: 0
     ).unwrap()
     if result != 7: return panic("receiver evaluated after index")

@@ -481,29 +481,29 @@ export fn main() -> Int:
             close_output()
             return ok(value: unit)
         let id = match service.start(task):
-            ok(id): id
-            error(_):
-                return 2
+        ok(id): id
+        error(_):
+            return 2
 
         while true:
             match service.status(id):
-                Running:
-                    sleep(1.milliseconds)
-                Succeeded:
-                    break
-                _:
-                    return 5
+            Running:
+                sleep(1.milliseconds)
+            Succeeded:
+                break
+            _:
+                return 5
 
     let cause = match stdout().write("".to_bytes()):
-        ok(_):
-            return 3
-        error(cause): cause
+    ok(_):
+        return 3
+    error(cause): cause
 
     match cause:
-        Closed:
-            return 0
-        _:
-            return 4
+    Closed:
+        return 0
+    _:
+        return 4
 
 `
 	for name, source := range map[string]string{"helper.ms": helper, "main.ms": main} {

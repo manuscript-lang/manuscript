@@ -9,7 +9,7 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
-const patternCaptureSource = "type Failure:\n    case NotFound\n    case Denied(reason: String)\nfn classify(result: Result[Int, Failure]) -> Int:\n    match result:\n        error(NotFound): return 1\n        ok(value): return value\n"
+const patternCaptureSource = "type Failure:\n    case NotFound\n    case Denied(reason: String)\nfn classify(result: Result[Int, Failure]) -> Int:\n    match result:\n    error(NotFound): return 1\n    ok(value): return value\n"
 
 func TestPatternBindingAdvisory(t *testing.T) {
 	cases := []struct {
@@ -19,16 +19,16 @@ func TestPatternBindingAdvisory(t *testing.T) {
 		{"nullary payload case", patternCaptureSource, []string{"NotFound is a case of Failure", "fresh binding for every Failure payload", "error(payload):", "match payload:", "NotFound:", "lowercase binding name if intentional", "separate helper"}},
 		{"read does not turn binding into case", strings.Replace(patternCaptureSource, "return 1", "return NotFound.toString().byte_length()", 1), []string{"NotFound is a case of Failure"}},
 		{"payload case with fields", strings.Replace(patternCaptureSource, "error(NotFound)", "error(Denied)", 1), []string{"Denied is a case of Failure", "Denied(_):"}},
-		{"multiple payload fields", "type Failure:\n    case NotFound\n    case Denied\ntype Envelope:\n    case Pair(left: Failure, right: Failure)\nfn use(value: Envelope) -> Int:\n    match value:\n        Pair(payload, NotFound): return 1\n", []string{"Pair(payload, payload2):", "match payload2:", "NotFound:"}},
-		{"record constructor", "type Item:\n    value: Int\nfn use(value: Optional[Item]) -> Int:\n    match value:\n        some(Item): return Item.value\n        none: return 0\n", []string{"Item is a type name", "fresh binding for every Item payload", "lowercase binding name if intentional"}},
+		{"multiple payload fields", "type Failure:\n    case NotFound\n    case Denied\ntype Envelope:\n    case Pair(left: Failure, right: Failure)\nfn use(value: Envelope) -> Int:\n    match value:\n    Pair(payload, NotFound): return 1\n", []string{"Pair(payload, payload2):", "match payload2:", "NotFound:"}},
+		{"record constructor", "type Item:\n    value: Int\nfn use(value: Optional[Item]) -> Int:\n    match value:\n    some(Item): return Item.value\n    none: return 0\n", []string{"Item is a type name", "fresh binding for every Item payload", "lowercase binding name if intentional"}},
 		{"alternative type name", strings.Replace(patternCaptureSource, "error(NotFound)", "error(Failure)", 1), []string{"Failure is a type name"}},
-		{"primitive type name", "fn use(value: Optional[Int]) -> Int:\n    match value:\n        some(Int): return Int\n        none: return 0\n", []string{"Int is a type name"}},
-		{"visible unrelated case", "type Flag:\n    case Ready\nfn use(value: Optional[Int]) -> Int:\n    match value:\n        some(Ready): return Ready\n        none: return 0\n", []string{"Ready is a case of Flag", "fresh binding for every Int payload"}},
-		{"ambiguous visible case", "type First:\n    case Ready\ntype Second:\n    case Ready\nfn use(value: Optional[Int]) -> Int:\n    match value:\n        some(Ready): return Ready\n        none: return 0\n", []string{"Ready is a visible alternative case name"}},
-		{"generic payload application", "type Failure[T]:\n    case NotFound\n    case Denied(reason: T)\nfn use[T](value: Result[Int, Failure[T]]) -> Int:\n    match value:\n        error(NotFound): return 1\n        ok(value): return value\n", []string{"NotFound is a case of Failure[T]", "fresh binding for every Failure[T] payload", "match payload:"}},
-		{"contract receiver", "interface Describe:\n    fn describe() -> String\ntype State:\n    case Ready\n    case Waiting\nimpl Describe for State:\n    fn describe() -> String: \"state\"\nfn use(value: Describe) -> Int:\n    match value:\n        State(Ready): return 1\n        _: return 0\n", []string{"Ready is a case of State", "State(payload):", "Ready:"}},
-		{"generic record constructor", "type Box[T]:\n    value: T\nfn use[T](value: Optional[Box[T]]) -> T:\n    match value:\n        some(Box): return Box.value\n        none: return panic(message: \"empty\")\n", []string{"Box is a type name", "every Box[T] payload"}},
-		{"owning type shadow", "type Flag:\n    case Ready\nfn use(value: Optional[Int]) -> Int:\n    let Flag = 2\n    match value:\n        some(Ready): return Ready\n        none: return 0\n", nil},
+		{"primitive type name", "fn use(value: Optional[Int]) -> Int:\n    match value:\n    some(Int): return Int\n    none: return 0\n", []string{"Int is a type name"}},
+		{"visible unrelated case", "type Flag:\n    case Ready\nfn use(value: Optional[Int]) -> Int:\n    match value:\n    some(Ready): return Ready\n    none: return 0\n", []string{"Ready is a case of Flag", "fresh binding for every Int payload"}},
+		{"ambiguous visible case", "type First:\n    case Ready\ntype Second:\n    case Ready\nfn use(value: Optional[Int]) -> Int:\n    match value:\n    some(Ready): return Ready\n    none: return 0\n", []string{"Ready is a visible alternative case name"}},
+		{"generic payload application", "type Failure[T]:\n    case NotFound\n    case Denied(reason: T)\nfn use[T](value: Result[Int, Failure[T]]) -> Int:\n    match value:\n    error(NotFound): return 1\n    ok(value): return value\n", []string{"NotFound is a case of Failure[T]", "fresh binding for every Failure[T] payload", "match payload:"}},
+		{"contract receiver", "interface Describe:\n    fn describe() -> String\ntype State:\n    case Ready\n    case Waiting\nimpl Describe for State:\n    fn describe() -> String: \"state\"\nfn use(value: Describe) -> Int:\n    match value:\n    State(Ready): return 1\n    _: return 0\n", []string{"Ready is a case of State", "State(payload):", "Ready:"}},
+		{"generic record constructor", "type Box[T]:\n    value: T\nfn use[T](value: Optional[Box[T]]) -> T:\n    match value:\n    some(Box): return Box.value\n    none: return panic(message: \"empty\")\n", []string{"Box is a type name", "every Box[T] payload"}},
+		{"owning type shadow", "type Flag:\n    case Ready\nfn use(value: Optional[Int]) -> Int:\n    let Flag = 2\n    match value:\n    some(Ready): return Ready\n    none: return 0\n", nil},
 		{"qualified outer pattern", strings.Replace(patternCaptureSource, "error(NotFound)", "Result[Int, Failure].error(NotFound)", 1), []string{"error(payload):"}},
 		{"unknown capitalized binder", strings.Replace(patternCaptureSource, "error(NotFound)", "error(Cause)", 1), nil},
 		{"intentional lowercase binder", strings.Replace(patternCaptureSource, "error(NotFound)", "error(cause)", 1), nil},
@@ -40,8 +40,8 @@ func TestPatternBindingAdvisory(t *testing.T) {
 		{"function shadow", "fn NotFound() -> Int: 2\n" + patternCaptureSource, nil},
 		{"type variable shadow", strings.Replace(patternCaptureSource, "fn classify(", "fn classify[NotFound](", 1), nil},
 		{"ordinary binding", "type Failure:\n    case NotFound\nfn use() -> Int:\n    let NotFound = 1\n    return NotFound\n", nil},
-		{"generic unknown binder", "fn use[T](value: Optional[T]) -> T:\n    match value:\n        some(Value): return Value\n        none: return panic(message: \"empty\")\n", nil},
-		{"separate payload helper", "type Failure:\n    case NotFound\n    case Denied(reason: String)\nfn failure_code(cause: Failure) -> Int:\n    match cause:\n        NotFound: return 1\n        Denied(_): return 2\nfn classify(result: Result[Int, Failure]) -> Int:\n    match result:\n        error(cause): return failure_code(cause)\n        ok(value): return value\n", nil},
+		{"generic unknown binder", "fn use[T](value: Optional[T]) -> T:\n    match value:\n    some(Value): return Value\n    none: return panic(message: \"empty\")\n", nil},
+		{"separate payload helper", "type Failure:\n    case NotFound\n    case Denied(reason: String)\nfn failure_code(cause: Failure) -> Int:\n    match cause:\n    NotFound: return 1\n    Denied(_): return 2\nfn classify(result: Result[Int, Failure]) -> Int:\n    match result:\n    error(cause): return failure_code(cause)\n    ok(value): return value\n", nil},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -94,7 +94,7 @@ func TestPatternBindingPositions(t *testing.T) {
 			}
 			found = true
 			offset := strings.Index(source, "error(NotFound)") + len("error(")
-			if finding.Position.File != "range.ms" || finding.Position.Offset != offset || finding.Position.Line != 7 || finding.Position.Column != 15 {
+			if finding.Position.File != "range.ms" || finding.Position.Offset != offset || finding.Position.Line != 7 || finding.Position.Column != 11 {
 				t.Fatalf("wrong binding position: %+v", finding)
 			}
 			if source[offset:offset+len("NotFound")] != "NotFound" {
@@ -119,7 +119,7 @@ func TestImportedPatternNamesAndAliases(t *testing.T) {
 		}
 	}
 	for _, path := range []string{"./domain.ms", "@domain"} {
-		source := "import { Failure, Item, fail } from \"" + path + "\"\nfn use() -> Int:\n    match fail():\n        error(NotFound): return 1\n        ok(value): return value\nfn record(value: Optional[Item]) -> Int:\n    match value:\n        some(Item): return Item.value\n        none: return 0\n"
+		source := "import { Failure, Item, fail } from \"" + path + "\"\nfn use() -> Int:\n    match fail():\n    error(NotFound): return 1\n    ok(value): return value\nfn record(value: Optional[Item]) -> Int:\n    match value:\n    some(Item): return Item.value\n    none: return 0\n"
 		if err := os.WriteFile(filepath.Join(root, "main.ms"), []byte(source), 0600); err != nil {
 			t.Fatal(err)
 		}
@@ -140,7 +140,7 @@ func TestImportedPatternNamesAndAliases(t *testing.T) {
 }
 
 func TestInferredStandardErrorPayload(t *testing.T) {
-	source := "import filesystem from \"@std/fs.ms\"\nfn classify(path: String) -> String:\n    match filesystem().stat(path: path, follow_links: true):\n        error(NotFound): return \"missing\"\n        ok(_): return \"exists\"\n"
+	source := "import filesystem from \"@std/fs.ms\"\nfn classify(path: String) -> String:\n    match filesystem().stat(path: path, follow_links: true):\n    error(NotFound): return \"missing\"\n    ok(_): return \"exists\"\n"
 	checked := compiler.CompileSource("filesystem.ms", source, compiler.Options{AnalyzeOnly: true})
 	if !checked.Success() {
 		t.Fatal(checked.Diagnostics)

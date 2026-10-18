@@ -36,9 +36,9 @@ test "standalone try evaluates once and continues on Unit success":
     let state = State(calls: 0, closed: 0)
 
     match exact(state: state, fail: false):
-        ok(value):
-            if value != "done": return panic("success lost")
-        error(cause): return panic("unexpected failure")
+    ok(value):
+        if value != "done": return panic("success lost")
+    error(cause): return panic("unexpected failure")
 
     if state.calls != 11 or state.closed != 1: return panic("success order changed")
 
@@ -46,9 +46,9 @@ test "standalone try propagates and cleans up before returning":
     let state = State(calls: 0, closed: 0)
 
     match exact(state: state, fail: true):
-        ok(value): return panic("failure swallowed")
-        error(cause):
-            if cause.code != 42: return panic("payload lost")
+    ok(value): return panic("failure swallowed")
+    error(cause):
+        if cause.code != 42: return panic("payload lost")
 
     if state.calls != 1 or state.closed != 1: return panic("failure order changed")
 
@@ -56,13 +56,13 @@ test "standalone try preserves concrete errors at Error boundaries":
     let state = State(calls: 0, closed: 0)
 
     let cause = match widened(state):
-        ok(value): return panic("failure swallowed")
-        error(cause): cause
+    ok(value): return panic("failure swallowed")
+    error(cause): cause
 
     match cause:
-        Failure(value):
-            if value.code != 42: return panic("payload lost")
-        _: return panic("concrete error lost")
+    Failure(value):
+        if value.code != 42: return panic("payload lost")
+    _: return panic("concrete error lost")
 
     if state.calls != 1: return panic("operation repeated")
 
@@ -73,8 +73,8 @@ test "standalone try in closure returns from that closure":
         return ok(unit)
 
     match callback():
-        ok(value): return panic("failure swallowed")
-        error(cause):
-            if cause.code != 42: return panic("payload lost")
+    ok(value): return panic("failure swallowed")
+    error(cause):
+        if cause.code != 42: return panic("payload lost")
 
     if state.calls != 1: return panic("operation repeated")

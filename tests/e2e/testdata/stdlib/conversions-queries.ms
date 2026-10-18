@@ -238,8 +238,8 @@ type Key:
 impl Equal for Key:
     fn equals(other: Equal) -> Bool:
         match other:
-            Key(value): return self.id == value.id
-            _: return false
+        Key(value): return self.id == value.id
+        _: return false
 
 impl Hashable for Key:
     fn hash() -> Int: 0
@@ -429,5 +429,5 @@ test "ok_or without a cause records the calling file and line":
     if named.unwrap_error() != "port": return panic("explicit cause")
 
     match find_port(none).unwrap_error():
-        MissingValue(found): unit
-        _: return panic("default cause is not MissingValue")
+    MissingValue(found): unit
+    _: return panic("default cause is not MissingValue")

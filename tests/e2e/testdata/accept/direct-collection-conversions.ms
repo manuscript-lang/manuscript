@@ -50,9 +50,9 @@ test "direct append preserves checked argument conversions":
     results.append(failed)
 
     match results.at(0).unwrap().unwrap():
-        ok(value): return panic("error became success")
-        error(cause):
-            if cause.message() != "failure": return panic("Result error widening lost")
+    ok(value): return panic("error became success")
+    error(cause):
+        if cause.message() != "failure": return panic("Result error widening lost")
 
 test "direct keyed calls preserve optional keys and values":
     let values: List[Optional[Int]] = []
@@ -84,10 +84,10 @@ test "direct calls capture receiver and arguments in written order":
     receiver.append(
         (
             match some(7):
-                some(value):
-                    receiver = second
-                    value
-                none: 0
+            some(value):
+                receiver = second
+                value
+            none: 0
         ) + 0
     )
     if first.at(0).unwrap().unwrap() != 7 or not second.is_empty():
@@ -99,10 +99,10 @@ test "direct calls capture receiver and arguments in written order":
         key,
         (
             match some(7):
-                some(value):
-                    key = 2
-                    value
-                none: 0
+            some(value):
+                key = 2
+                value
+            none: 0
         ) + 0
     )
     if (entries.get(1).unwrap().unwrap() != 7 or entries.contains(2) or key != 2):

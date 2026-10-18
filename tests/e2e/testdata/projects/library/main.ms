@@ -18,10 +18,10 @@ fn timer_callback() -> Result[Unit, Error]:
 
 fn common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
     match result:
-        ok(value):
-            return ok(value)
-        error(cause):
-            return error(Error(cause))
+    ok(value):
+        return ok(value)
+    error(cause):
+        return error(Error(cause))
 
 fn exercise(path: String) -> Result[Unit, Error]:
     let written = try common_result(
@@ -113,12 +113,12 @@ fn exercise(path: String) -> Result[Unit, Error]:
         sleep(duration: 10.milliseconds)
 
         match scheduler.status(id):
-            Succeeded:
-                let restarted = try common_result(result: scheduler.restart(id))
-            Running:
-                let restarted = try common_result(result: scheduler.restart(id))
-            _:
-                return panic(message: "scheduled work failed")
+        Succeeded:
+            let restarted = try common_result(result: scheduler.restart(id))
+        Running:
+            let restarted = try common_result(result: scheduler.restart(id))
+        _:
+            return panic(message: "scheduled work failed")
 
     let paths = posix()
     if not (
@@ -147,12 +147,12 @@ fn exercise(path: String) -> Result[Unit, Error]:
 
 export fn main() -> Int:
     let path = match arguments().at(index: 0):
-        some(path): path
-        none:
-            return 2
+    some(path): path
+    none:
+        return 2
 
     match exercise(path: path):
-        ok(_):
-            return 0
-        error(_):
-            return 1
+    ok(_):
+        return 0
+    error(_):
+        return 1

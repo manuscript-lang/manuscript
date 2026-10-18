@@ -44,8 +44,8 @@ func TestCompoundAssignmentRejectsReceiversThatWouldRunTwice(t *testing.T) {
 
 func TestUnsupportedPatternAndNamespaceDiagnostics(t *testing.T) {
 	for _, tc := range []struct{ source, token, cause, hint string }{
-		{"fn f(command: String) -> Int:\n    match command:\n        \"réport\": return 1\n    return 0\n", "\"réport\"", "string-literal match patterns are unsupported", "compare strings with 'if"},
-		{"fn f(r: Result[Optional[Int], String]) -> Int:\n    match r:\n        ok(some(n)): return n\n    return 0\n", "(", "patterns cannot be nested", "separate match or helper function"},
+		{"fn f(command: String) -> Int:\n    match command:\n    \"réport\": return 1\n    return 0\n", "\"réport\"", "string-literal match patterns are unsupported", "compare strings with 'if"},
+		{"fn f(r: Result[Optional[Int], String]) -> Int:\n    match r:\n    ok(some(n)): return n\n    return 0\n", "(", "patterns cannot be nested", "separate match or helper function"},
 		{"import * as money from \"./money.ms\"\n", "*", "namespace and wildcard imports are unsupported", "import individual exports"},
 	} {
 		source := strings.ReplaceAll(tc.source, "\n", "\r\n")

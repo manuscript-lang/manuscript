@@ -101,11 +101,11 @@ test "streaming routes validate original input and decode once":
 
 fn expect_http_error[T](outcome: Result[T, HttpError]) -> Unit:
     match outcome:
-        ok(_): return panic("invalid URL succeeded")
-        error(cause):
-            if cause != HttpError.InvalidInput: return panic(
-                "malformed URL leaked transport error"
-            )
+    ok(_): return panic("invalid URL succeeded")
+    error(cause):
+        if cause != HttpError.InvalidInput: return panic(
+            "malformed URL leaked transport error"
+        )
 
 test "buffered and reusable clients reject malformed ports as InvalidInput":
     let headers = text_headers(Map[String, String]())

@@ -8,22 +8,22 @@ export fn bench_csv() -> Unit:
         rows.append(["{i}", "name {i}", "a,b", "quote\"d"])
 
     let csv_text = match stringify(rows: rows):
-        ok(s): s
-        error(_): ""
+    ok(s): s
+    error(_): ""
 
     bench(
         "csv.stringify",
         5000,
         fn() -> Int:
             match stringify(rows: rows):
-                ok(s): return s.length()
-                error(_): return 0
+            ok(s): return s.length()
+            error(_): return 0
     )
     bench(
         "csv.parse",
         5000,
         fn() -> Int:
             match parse(text: csv_text):
-                ok(r): return r.length()
-                error(_): return 0
+            ok(r): return r.length()
+            error(_): return 0
     )

@@ -156,8 +156,8 @@ type Choice:
 
 fn score(value: Choice) -> Int:
     match value:
-        number(count): return count
-        label(text): return text.length()
+    number(count): return count
+    label(text): return text.length()
 
 test "alternative consumers retain tags and payloads after shrink":
     for callback in [false, true]:

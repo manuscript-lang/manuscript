@@ -56,19 +56,19 @@ fn nested(n: Int) -> Optional[Optional[Int]]:
 
 fn matched_value(n: Int) -> Int:
     let r = match checked(n):
-        ok(v):
-            v
-        error(_):
-            -1
+    ok(v):
+        v
+    error(_):
+        -1
 
     return r
 
 fn closure_return(n: Int) -> Result[Int, String]:
     let y = match halve(n):
-        some(h):
-            h
-        none:
-            return error(cause: "odd")
+    some(h):
+        h
+    none:
+        return error(cause: "odd")
 
     return ok(value: y)
 
@@ -83,53 +83,53 @@ fn sum_all(count: Int) -> Result[Int, String]:
 
 test "result matching":
     match chain(3):
-        ok(v):
-            if not (v == 8):
-                return panic(message: "chain ok")
-        error(_):
-            return panic(message: "chain error")
+    ok(v):
+        if not (v == 8):
+            return panic(message: "chain ok")
+    error(_):
+        return panic(message: "chain error")
 
     match chain(-1):
-        ok(_):
-            return panic(message: "chain should fail")
-        error(cause):
-            if not (cause == "negative"):
-                return panic(message: "cause")
+    ok(_):
+        return panic(message: "chain should fail")
+    error(cause):
+        if not (cause == "negative"):
+            return panic(message: "cause")
 
 test "try chains":
     match deeper(1):
-        ok(v):
-            if not (v == 4 + 10):
-                return panic(message: "deeper {v}")
-        error(_):
-            return panic(message: "deeper error")
+    ok(v):
+        if not (v == 4 + 10):
+            return panic(message: "deeper {v}")
+    error(_):
+        return panic(message: "deeper error")
 
     match deeper(-5):
-        ok(_):
-            return panic(message: "deeper should fail")
-        error(e):
-            if not (e == "negative"):
-                return panic(message: "deeper cause")
+    ok(_):
+        return panic(message: "deeper should fail")
+    error(e):
+        if not (e == "negative"):
+            return panic(message: "deeper cause")
 
     match expression_try(4):
-        ok(v):
-            if not (v == 105):
-                return panic(message: "expression try")
-        error(_):
-            return panic(message: "expression try error")
+    ok(v):
+        if not (v == 105):
+            return panic(message: "expression try")
+    error(_):
+        return panic(message: "expression try error")
 
     match expression_try(-4):
-        ok(_):
-            return panic(message: "expression try should fail")
-        error(_):
-            unit
+    ok(_):
+        return panic(message: "expression try should fail")
+    error(_):
+        unit
 
     match sum_all(5):
-        ok(v):
-            if not (v == 15):
-                return panic(message: "sum {v}")
-        error(_):
-            return panic(message: "sum error")
+    ok(v):
+        if not (v == 15):
+            return panic(message: "sum {v}")
+    error(_):
+        return panic(message: "sum error")
 
 test "boxed consumers":
     if not ("{checked(2)}" == "{passthrough(2)}"):
@@ -142,11 +142,11 @@ test "boxed consumers":
     let f = checked
 
     match f(n: 6):
-        ok(v):
-            if not (v == 7):
-                return panic(message: "first class")
-        error(_):
-            return panic(message: "first class error")
+    ok(v):
+        if not (v == 7):
+            return panic(message: "first class")
+    error(_):
+        return panic(message: "first class error")
 
     if not (matched_value(3) == 4):
         return panic(message: "match value")
@@ -155,59 +155,59 @@ test "boxed consumers":
 
 test "optional and payload kinds":
     match halve(8):
-        some(h):
-            if not (h == 4):
-                return panic(message: "halve")
-        none:
-            return panic(message: "halve none")
+    some(h):
+        if not (h == 4):
+            return panic(message: "halve")
+    none:
+        return panic(message: "halve none")
 
     match halve(7):
-        some(_):
-            return panic(message: "halve odd")
-        none:
-            unit
+    some(_):
+        return panic(message: "halve odd")
+    none:
+        unit
 
     match word(3):
-        ok(w):
-            if not (w == "w3"):
-                return panic(message: "word")
-        error(_):
-            return panic(message: "word error")
+    ok(w):
+        if not (w == "w3"):
+            return panic(message: "word")
+    error(_):
+        return panic(message: "word error")
 
     match ratio(1):
-        ok(r):
-            if not (r == 1.5):
-                return panic(message: "ratio")
-        error(_):
-            return panic(message: "ratio error")
+    ok(r):
+        if not (r == 1.5):
+            return panic(message: "ratio")
+    error(_):
+        return panic(message: "ratio error")
 
     match nothing(true):
-        ok(u):
-            if not (u == unit):
-                return panic(message: "unit payload")
-        error(_):
-            return panic(message: "unit error")
+    ok(u):
+        if not (u == unit):
+            return panic(message: "unit payload")
+    error(_):
+        return panic(message: "unit error")
 
     match nested(4):
-        some(inner):
-            if not (inner == some(value: 2)):
-                return panic(message: "nested inner")
-        none:
-            return panic(message: "nested none")
+    some(inner):
+        if not (inner == some(value: 2)):
+            return panic(message: "nested inner")
+    none:
+        return panic(message: "nested none")
 
     match closure_return(5):
-        ok(_):
-            return panic(message: "closure return should fail")
-        error(e):
-            if not (e == "odd"):
-                return panic(message: "closure return cause")
+    ok(_):
+        return panic(message: "closure return should fail")
+    error(e):
+        if not (e == "odd"):
+            return panic(message: "closure return cause")
 
     match closure_return(6):
-        ok(v):
-            if not (v == 3):
-                return panic(message: "closure return ok")
-        error(_):
-            return panic(message: "closure return error")
+    ok(v):
+        if not (v == 3):
+            return panic(message: "closure return ok")
+    error(_):
+        return panic(message: "closure return error")
 
 test "list at unwrap":
     let items = [10, 20, 30]

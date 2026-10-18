@@ -19,8 +19,8 @@ import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
 fn println(message: String) -> Unit:
     match stdout().write("{message}\n".to_bytes()):
-        ok(_): return
-        error(_): return panic("cannot write fixture transcript")
+    ok(_): return
+    error(_): return panic("cannot write fixture transcript")
 
 type State:
     value: Int
@@ -110,8 +110,8 @@ import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
 fn println(message: String) -> Unit:
     match stdout().write("{message}\n".to_bytes()):
-        ok(_): return
-        error(_): return panic("cannot write fixture transcript")
+    ok(_): return
+    error(_): return panic("cannot write fixture transcript")
 
 type State:
     value: Int

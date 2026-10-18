@@ -7,17 +7,17 @@ weight = 3
 
 `match` handles each case of an alternative type and names the case's data. Use it for your own alternatives and contract views. Avoid it on `Optional` and `Result` (see [below](#optional-and-result-values)). Literals, guards, ranges, nested case patterns, and combined patterns are rejected.
 
-`match` is an expression: it can initialize a binding, be an argument, or stand alone with its result discarded. The scrutinee evaluates once and only the selected arm runs. This handles the `Payment` type from [alternatives](../types/alternatives.md):
+`match` is an expression: it can initialize a binding, be an argument, or stand alone with its result discarded. The scrutinee evaluates once and only the selected arm runs. Arms sit at the same indentation as the line holding `match`; only an arm's own block is indented. This handles the `Payment` type from [alternatives](../types/alternatives.md):
 
 ```manuscript
 fn describe(payment: Payment) -> String:
     match payment:
-        Paid(receipt):
-            return "Paid: {receipt}"
-        Declined(reason):
-            return "Declined: {reason}"
-        Pending(reference):
-            return "Pending: {reference}"
+    Paid(receipt):
+        return "Paid: {receipt}"
+    Declined(reason):
+        return "Declined: {reason}"
+    Pending(reference):
+        return "Pending: {reference}"
 ```
 
 ## Keep match flow flat
@@ -38,10 +38,10 @@ type Cents:
 
 fn total(cents: Cents) -> Result[Int, String]:
     let amount = match cents:
-        Valid(value):
-            value
-        Invalid:
-            return error("Invalid amount")
+    Valid(value):
+        value
+    Invalid:
+        return error("Invalid amount")
     return ok(amount)
 ```
 
@@ -60,10 +60,10 @@ type Position:
 
 fn horizontal(position: Position) -> Int:
     match position:
-        Position.Point(horizontal_value, _):
-            return horizontal_value
-        Position.Unknown:
-            return 0
+    Position.Point(horizontal_value, _):
+        return horizontal_value
+    Position.Unknown:
+        return 0
 ```
 
 - `Point(x: local, y: other):` is a parse error; `Point(x):` is an arity error. Repeated names are rejected; `_` may repeat.
@@ -80,10 +80,10 @@ Arms never fall through, and a missing case is a compile error. `_:` is the wild
 ```manuscript
 fn paid(payment: Payment) -> Bool:
     match payment:
-        Paid(_):
-            return true
-        _:
-            return false
+    Paid(_):
+        return true
+    _:
+        return false
 ```
 
 Adding a case breaks matches without a wildcard; a wildcard absorbs it. Return completeness follows the [function return rules](../functions/declarations-and-calls.md#unit-and-never).

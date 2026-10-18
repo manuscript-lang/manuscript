@@ -23,10 +23,10 @@ export fn main() -> Int:
         timeout: 2.seconds,
         grace: 0.seconds
     ):
-        error(_):
-            return 1
-        ok(acquired):
-            with server = acquired:
-                stdout().write(data: "{server.address()}\n".to_bytes())
-                let outcome = server.wait()
-                return 0
+    error(_):
+        return 1
+    ok(acquired):
+        with server = acquired:
+            stdout().write(data: "{server.address()}\n".to_bytes())
+            let outcome = server.wait()
+            return 0

@@ -97,7 +97,7 @@ export fn main() -> Int:
     let path = args.at(1).unwrap_or("events.ndjson")
 
     match exercise(mode: mode, path: path):
-        ok(_): return 0
-        error(cause):
-            let diagnostic = stderr().write("{cause.message()}\n".to_bytes())
-            return 1
+    ok(_): return 0
+    error(cause):
+        let diagnostic = stderr().write("{cause.message()}\n".to_bytes())
+        return 1

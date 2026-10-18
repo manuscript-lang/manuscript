@@ -13,10 +13,10 @@ const nodesSource = `fn choose(value: Int) -> Int:
 fn run(fallback: Int = choose(1), hook: fn(x: Int) -> Int) -> Int:
     let box: Array[Int] = [choose(3)]
     match fallback:
-        Color.Red:
-            return choose(5)
-        _:
-            return choose(6)
+    Color.Red:
+        return choose(5)
+    _:
+        return choose(6)
 type Box:
     value: Int = choose(7)
 interface Read:

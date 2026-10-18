@@ -27,8 +27,8 @@ fn discarded(n: Int) -> Result[Int, String]:
 
 fn code(r: Result[Int, String]) -> Int:
     return match r:
-        ok(v): v
-        error(e): -1
+    ok(v): v
+    error(e): -1
 
 fn nested(n: Int) -> Result[Int, String]:
     return ok((try parse(n: n)) + (try parse(n: n - 5)))

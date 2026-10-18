@@ -73,10 +73,10 @@ export fn main() -> Int:
             break
 
     match propagate(output: stdout()):
-        ok(_):
-            return panic(message: "Unexpected case")
-        error(_):
-            let completed = unit
+    ok(_):
+        return panic(message: "Unexpected case")
+    error(_):
+        let completed = unit
 
     if not (early(output: stdout()) == 5):
         return panic(message: "check failed")

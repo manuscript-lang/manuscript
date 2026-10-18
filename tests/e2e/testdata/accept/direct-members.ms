@@ -7,8 +7,8 @@ type Point:
 impl Equal for Point:
     fn equals(other: Equal) -> Bool:
         match other:
-            Point(value): return self.x == value.x
-            _: return false
+        Point(value): return self.x == value.x
+        _: return false
 
 fn contains_generic[T: Equal](values: List[T], value: T) -> Bool:
     return values.contains(value)

@@ -175,7 +175,7 @@ func TestCodeActionFilteringAndUnusedImportFix(t *testing.T) {
 }
 
 func TestWildcardBindingsRemainSafeAcrossEditorFeatures(t *testing.T) {
-	source := "fn answer(value: Optional[Int]) -> Int:\n    match value:\n        some(_):\n            return 1\n        none:\n            return 0\n"
+	source := "fn answer(value: Optional[Int]) -> Int:\n    match value:\n    some(_):\n        return 1\n    none:\n        return 0\n"
 	d := document{"file:///tmp/wildcard.ms", source, 1}
 	docs := map[string]document{d.URI: d}
 	checked := workspaceAnalysis(d, docs)

@@ -89,16 +89,16 @@ test "network restriction denies admission and close rejects acquisitions":
 
     with scoped = restricted:
         match restricted.listen("127.0.0.1:0"):
-            ok(_): return panic("listen permission ignored")
-            error(cause):
-                if cause != NetworkError.PermissionDenied: return panic(
-                    "listen denial identity"
-                )
+        ok(_): return panic("listen permission ignored")
+        error(cause):
+            if cause != NetworkError.PermissionDenied: return panic(
+                "listen denial identity"
+            )
 
     match restricted.connect(address: "127.0.0.1:1", timeout: 1.seconds):
-        ok(_): return panic("closed network admitted connection")
-        error(cause):
-            if cause != NetworkError.Closed: return panic("network close identity")
+    ok(_): return panic("closed network admitted connection")
+    error(cause):
+        if cause != NetworkError.Closed: return panic("network close identity")
 
 test "typed addresses preserve normalization and reject zones":
     let ip = value(parse_ip("::ffff:192.0.2.1"))
@@ -116,6 +116,6 @@ test "typed addresses preserve normalization and reject zones":
 
 fn expect_ip_error(input: String) -> Unit:
     match parse_ip(input):
-        ok(_): return panic("invalid IP accepted")
-        error(cause):
-            if cause != NetworkError.InvalidData: return panic("wrong address error")
+    ok(_): return panic("invalid IP accepted")
+    error(cause):
+        if cause != NetworkError.InvalidData: return panic("wrong address error")

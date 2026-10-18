@@ -10,8 +10,8 @@ impl Equal for Element:
         self.on_equal()
 
         match other:
-            Element(value): return self.id == value.id
-            _: return false
+        Element(value): return self.id == value.id
+        _: return false
 
 type Visits:
     count: Int

@@ -103,11 +103,11 @@ func TestSelfAssignmentDoesNotCountAsRead(t *testing.T) {
 
 func TestMatchArmPayloadBindingsAreLinted(t *testing.T) {
 	prefix := "fn parse(text: String) -> Result[Int, String]:\n    return ok(1)\n"
-	flagged := prefix + "fn answer() -> Int:\n    match parse(\"1\"):\n        ok(value): return 1\n        error(e): return 2\n"
+	flagged := prefix + "fn answer() -> Int:\n    match parse(\"1\"):\n    ok(value): return 1\n    error(e): return 2\n"
 	if got := unreadBindings(t, flagged); len(got) != 2 {
 		t.Fatal("unread payload bindings must be reported", got)
 	}
-	clean := prefix + "fn answer() -> Int:\n    match parse(\"1\"):\n        ok(value): return value\n        error(_): return 2\n"
+	clean := prefix + "fn answer() -> Int:\n    match parse(\"1\"):\n    ok(value): return value\n    error(_): return 2\n"
 	if got := unreadBindings(t, clean); len(got) != 0 {
 		t.Fatal("read or ignored payload bindings must not be reported", got)
 	}

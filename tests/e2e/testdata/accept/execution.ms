@@ -37,26 +37,26 @@ fn scheduler_probe() -> Unit:
         let launch = service.start
 
         match launch(operation: task):
-            ok(id):
-                let completed = unit
-            error(_):
-                return panic(message: "Unexpected case")
+        ok(id):
+            let completed = unit
+        error(_):
+            return panic(message: "Unexpected case")
 
         service.close()
 
         match launch(operation: task):
-            ok(_):
-                return panic(message: "Unexpected case")
-            error(cause):
-                if not (cause == StartError.Closed):
-                    return panic(message: "check failed")
+        ok(_):
+            return panic(message: "Unexpected case")
+        error(cause):
+            if not (cause == StartError.Closed):
+                return panic(message: "check failed")
 
 test "joined work and snapshot captures":
     match run():
-        ok(_):
-            let completed = unit
-        error(_):
-            return panic(message: "Unexpected case")
+    ok(_):
+        let completed = unit
+    error(_):
+        return panic(message: "Unexpected case")
 
     scheduler_probe()
 
@@ -75,7 +75,7 @@ fn standard_task() -> Result[Unit, ExecutionError]:
 
 test "standard functions can run concurrently":
     match standard_task():
-        ok(_):
-            let completed = unit
-        error(_):
-            return panic(message: "Unexpected case")
+    ok(_):
+        let completed = unit
+    error(_):
+        return panic(message: "Unexpected case")

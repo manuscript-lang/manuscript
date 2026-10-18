@@ -6,13 +6,13 @@ import value from "./support/results.ms"
 
 fn entries(value: YamlValue) -> Map[String, YamlValue]:
     match value:
-        ObjectValue(values): return values
-        _: return panic("expected YAML mapping")
+    ObjectValue(values): return values
+    _: return panic("expected YAML mapping")
 
 fn items(value: YamlValue) -> List[YamlValue]:
     match value:
-        ArrayValue(values): return values
-        _: return panic("expected YAML sequence")
+    ArrayValue(values): return values
+    _: return panic("expected YAML sequence")
 
 fn limits(
     bytes: Optional[Int],
@@ -211,24 +211,24 @@ test "YAML blank line folding retains byte node and malformed input contracts":
         "a: >\n  x\n \t\n  y", "a: >2\n  x\n y"
     ]:
         let cause = match parse(text: text):
-            ok(_): return panic("malformed multiline scalar accepted: {text}")
-            error(cause): cause
+        ok(_): return panic("malformed multiline scalar accepted: {text}")
+        error(cause): cause
 
         match cause:
-            InvalidData(line, column, reason):
-                if (line < 1 or column < 1 or reason == ""): return panic(
-                    "multiline diagnostic"
-                )
-            _: return panic("wrong multiline error")
+        InvalidData(line, column, reason):
+            if (line < 1 or column < 1 or reason == ""): return panic(
+                "multiline diagnostic"
+            )
+        _: return panic("wrong multiline error")
 
     let cause = match parse(text: "a: x\n\n  b: y"):
-        error(cause): cause
-        ok(_): return panic("indented mapping accepted as plain continuation")
+    error(cause): cause
+    ok(_): return panic("indented mapping accepted as plain continuation")
 
     match cause:
-        InvalidData(line, column, _):
-            if line != 3 or column != 1: return panic("continuation error position")
-        _: return panic("wrong continuation error")
+    InvalidData(line, column, _):
+        if line != 3 or column != 1: return panic("continuation error position")
+    _: return panic("wrong continuation error")
 
 test "YAML block mappings sequences exact scalars and core schema":
     let text = "name: é🙂\nlarge: 9007199254740993\nboolean: TRUE\nlegacy: yes\ndate: 2024-02-29\nempty:\nvalues:\n- null\n- false\n- 0xFF\npeople:\n  - name: Ada\n    age: 37\n  - name: Grace\n    skills:\n      - compilers\n"
@@ -382,31 +382,31 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
         "---\na: 1\n---\nb: 2", "a: |0\n  text"
     ]:
         let cause = match parse(text: text):
-            ok(_): return panic("invalid YAML accepted: {text}")
-            error(cause): cause
+        ok(_): return panic("invalid YAML accepted: {text}")
+        error(cause): cause
 
         match cause:
-            InvalidData(line, column, reason):
-                if (line < 1 or column < 1 or reason == ""): return panic(
-                    "YAML diagnostic details"
-                )
+        InvalidData(line, column, reason):
+            if (line < 1 or column < 1 or reason == ""): return panic(
+                "YAML diagnostic details"
+            )
 
-                let boundary = Error(cause)
-                if not boundary.message().starts_with("YAML "): return panic(
-                    "source YAML Error"
-                )
-            _: return panic("wrong YAML error")
+            let boundary = Error(cause)
+            if not boundary.message().starts_with("YAML "): return panic(
+                "source YAML Error"
+            )
+        _: return panic("wrong YAML error")
 
     for text in [
         "!custom value", "? complex\n: value", "%TAG ! tag:example.org\n---\na: 1"
     ]:
         let cause = match parse(text: text):
-            ok(_): return panic("unsupported YAML accepted")
-            error(cause): cause
+        ok(_): return panic("unsupported YAML accepted")
+        error(cause): cause
 
         match cause:
-            UnsupportedFeature(_, _): let expected = unit
-            _: return panic("expected unsupported feature")
+        UnsupportedFeature(_, _): let expected = unit
+        _: return panic("expected unsupported feature")
 
 test "YAML limits cover root nested nodes aliases and exact bytes":
     let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
@@ -477,8 +477,8 @@ test "YAML exact decimal syntax does not depend on binary64 conversion":
 
 fn failure(text: String) -> String:
     match parse(text: text):
-        ok(_): return "accepted"
-        error(cause): return cause.message()
+    ok(_): return "accepted"
+    error(cause): return cause.message()
 
 test "YAML merge and block header errors name their own line":
     if failure("<<: 1") != "YAML 1:1: merge requires mappings": return panic(
@@ -657,8 +657,8 @@ test "YAML long plain scalars and large mappings parse in linear time":
     if entries(value(parse(text: keys))).length() != 30000: return panic("many keys")
 
     match parse(text: keys.concat("k7: 2\n")):
-        ok(_): return panic("duplicate key after many keys")
-        error(_): return
+    ok(_): return panic("duplicate key after many keys")
+    error(_): return
 
 test "YAML flow mapping keys without a colon map to null":
     let root = parse(text: "a: \{x, y: 1, z\}\nb: \{\"q\", r: [1]\}") | value | entries
@@ -674,14 +674,14 @@ test "YAML flow mapping keys without a colon map to null":
     if second.get("q").unwrap() != YamlValue.Null: return panic("quoted null key")
 
     match parse(text: "\{x, x\}"):
-        ok(_): return panic("duplicate null keys")
-        error(_): let ignored = unit
+    ok(_): return panic("duplicate null keys")
+    error(_): let ignored = unit
 
     let limited = limits(bytes: none, depth: none, values: some(2))
 
     match parse(text: "\{a, b, c\}", limits: limited):
-        ok(_): return panic("null keys count against the value limit")
-        error(_): let ignored = unit
+    ok(_): return panic("null keys count against the value limit")
+    error(_): let ignored = unit
 
 test "YAML long quoted block and multi-line scalars decode and stringify in linear time":
     let long = repeated(text: "x", count: 300000)

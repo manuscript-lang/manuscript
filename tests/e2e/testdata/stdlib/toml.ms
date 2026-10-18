@@ -4,13 +4,13 @@ import value from "./support/results.ms"
 
 fn entries(value: TomlValue) -> Map[String, TomlValue]:
     match value:
-        TableValue(values): return values
-        _: return panic("expected TOML table")
+    TableValue(values): return values
+    _: return panic("expected TOML table")
 
 fn items(value: TomlValue) -> List[TomlValue]:
     match value:
-        ArrayValue(values): return values
-        _: return panic("expected TOML array")
+    ArrayValue(values): return values
+    _: return panic("expected TOML array")
 
 fn limits(
     bytes: Optional[Int],
@@ -112,20 +112,20 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
         "a=1\rb=2", "[a.b.c]\nz=9\n[a]\nb.c.t=1", "[[a.b]]\n[a]\nb.y=2"
     ]:
         let cause = match parse(text: text):
-            ok(_): return panic("invalid TOML accepted: {text}")
-            error(cause): cause
+        ok(_): return panic("invalid TOML accepted: {text}")
+        error(cause): cause
 
         match cause:
-            InvalidData(line, column, reason):
-                if (line < 1 or column < 1 or reason == ""): return panic(
-                    "TOML error details"
-                )
+        InvalidData(line, column, reason):
+            if (line < 1 or column < 1 or reason == ""): return panic(
+                "TOML error details"
+            )
 
-                let boundary = Error(cause)
-                if not boundary.message().starts_with("TOML "): return panic(
-                    "source Error implementation"
-                )
-            _: return panic("wrong TOML error")
+            let boundary = Error(cause)
+            if not boundary.message().starts_with("TOML "): return panic(
+                "source Error implementation"
+            )
+        _: return panic("wrong TOML error")
 
 test "TOML optional limits include implicit tables and zero":
     let limited: Result[TomlValue, TomlError] = error(TomlError.LimitExceeded)
@@ -179,19 +179,19 @@ test "TOML nonfinite floats CRLF and repeated separators":
     )
 
     match root.get("positive").unwrap():
-        FloatValue(number):
-            if number.is_finite() or number < 0.0: return panic("positive infinity")
-        _: return panic("expected float")
+    FloatValue(number):
+        if number.is_finite() or number < 0.0: return panic("positive infinity")
+    _: return panic("expected float")
 
     match root.get("negative").unwrap():
-        FloatValue(number):
-            if number.is_finite() or number > 0.0: return panic("negative infinity")
-        _: return panic("expected float")
+    FloatValue(number):
+        if number.is_finite() or number > 0.0: return panic("negative infinity")
+    _: return panic("expected float")
 
     match root.get("nan").unwrap():
-        FloatValue(number):
-            if not number.is_nan(): return panic("NaN")
-        _: return panic("expected float")
+    FloatValue(number):
+        if not number.is_nan(): return panic("NaN")
+    _: return panic("expected float")
 
     if root.get("integer").unwrap() != TomlValue.IntValue(1000000): return panic(
         "repeated underscore separators"
@@ -199,8 +199,8 @@ test "TOML nonfinite floats CRLF and repeated separators":
 
 fn failure(text: String) -> String:
     match parse(text: text):
-        ok(_): return "accepted"
-        error(cause): return cause.message()
+    ok(_): return "accepted"
+    error(cause): return cause.message()
 
 test "TOML errors report the offending line and column":
     if failure("x = 1\ny = \"a\u{1}b\"") != "TOML 2:7: invalid control character": return panic(

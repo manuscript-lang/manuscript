@@ -49,8 +49,8 @@ impl Box[T]:
 impl Shape:
     fn area() -> Int:
         match self:
-            Circle(r): return r * r * 3
-            Square(s): return s * s
+        Circle(r): return r * r * 3
+        Square(s): return s * s
 
 fn check(ok: Bool, name: String) -> Unit:
     if not ok:

@@ -38,8 +38,8 @@ export fn bench_path_url_math() -> Unit:
 
             for i in range(0, 20000):
                 match parse(text: "https://example.com:8080/a/b?x=1&y=2#frag"):
-                    ok(_): n = n + 1
-                    error(_): unit
+                ok(_): n = n + 1
+                error(_): unit
 
             return n
     )

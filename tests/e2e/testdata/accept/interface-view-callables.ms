@@ -64,10 +64,10 @@ test "constructor arguments retain written order and capture snapshots":
                     return mark(log, "call;", nested())
             ),
             first: match some(2):
-                some(number):
-                    value = 70
-                    mark(log, "first;", number)
-                none: 0
+            some(number):
+                value = 70
+                mark(log, "first;", number)
+            none: 0
         )
     )
     value = 90
@@ -104,12 +104,12 @@ test "match receiver side effects and callable body remain ordered":
     let log = Log("")
     let view = Read[Int](
         match some(mark(log, "select;", 1)):
-            some(value):
-                mark(log, "chosen;", 0)
-                Reader(fn() -> Int: mark(log, "call;", 9))
-            none:
-                mark(log, "wrong;", 0)
-                Reader(fn() -> Int: 0)
+        some(value):
+            mark(log, "chosen;", 0)
+            Reader(fn() -> Int: mark(log, "call;", 9))
+        none:
+            mark(log, "wrong;", 0)
+            Reader(fn() -> Int: 0)
     )
     if log.events != "select;chosen;": return panic("match receiver count/order")
     if view.read() != 9: return panic("match view result")

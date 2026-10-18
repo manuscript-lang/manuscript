@@ -8,10 +8,10 @@ import (
 func TestMatchExpressionAndIndexReferences(t *testing.T) {
 	source := `fn read(values: List[Int], index: Int) -> Int:
     let result = match values[index]:
-        some(number):
-            let doubled = number * 2
-            doubled
-        none: 0
+    some(number):
+        let doubled = number * 2
+        doubled
+    none: 0
     return result
 `
 	d := document{"file:///tmp/match.ms", source, 1}

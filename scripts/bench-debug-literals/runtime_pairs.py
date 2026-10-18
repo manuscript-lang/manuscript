@@ -50,7 +50,7 @@ def main():
                     )
                     match = re.search(r"BenchmarkLiteral(?:-\d+)?\s+\d+\s+(\d+) ns/op\s+(\d+) B/op\s+(\d+) allocs/op", result.stdout)
                     if match is None:
-                        raise ValueError(result.stdout + result.stderr)
+                    raise ValueError(result.stdout + result.stderr)
                     row = dict(gc=gc, rep=rep, variant=name, ns=int(match[1]),
                                bytes=int(match[2]), allocs=int(match[3]))
                     rows.append(row)

@@ -120,10 +120,10 @@ func TestCommonErrorNavigation(t *testing.T) {
 	source := `import JsonError from "@std/json.ms"
 fn describe(cause: Error) -> String:
     match cause:
-        JsonError(json):
-            return json.message()
-        _:
-            return cause.message()
+    JsonError(json):
+        return json.message()
+    _:
+        return cause.message()
 `
 	// LSP resolves an interface-method call to a concrete implementation
 	// rather than the contract in errors.ms, so cause.message() only asserts

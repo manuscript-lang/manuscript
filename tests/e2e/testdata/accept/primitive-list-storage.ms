@@ -66,15 +66,15 @@ test "stable sort and strict Result slice preserve separate storage":
         return panic("sorting shared outer backing")
 
     match values.slice(-2, 6):
-        ok(copy):
-            copy.set(0, 12)
-            if not (copy == [12, 5] and values[4].unwrap() == 2):
-                return panic("slice shared outer backing or changed negative bounds")
-        error(_):
-            return panic("valid strict slice failed")
+    ok(copy):
+        copy.set(0, 12)
+        if not (copy == [12, 5] and values[4].unwrap() == 2):
+            return panic("slice shared outer backing or changed negative bounds")
+    error(_):
+        return panic("valid strict slice failed")
 
     match values.slice(-7, 6):
-        ok(_):
-            return panic("invalid slice succeeded")
-        error(_):
-            return
+    ok(_):
+        return panic("invalid slice succeeded")
+    error(_):
+        return
