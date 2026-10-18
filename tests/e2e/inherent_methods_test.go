@@ -8,74 +8,22 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
-func TestInherentImplDeclaresTypeMethods(t *testing.T) {
-	result := compiler.CompileSource("inherent.ms", `import panic from "@std/faults.ms"
-
-interface Show:
-    fn show() String
-
-type Counter:
+// Method behavior lives in testdata/accept/inherent-methods.ms; only the fault
+// frame, which the ms test runner cannot inspect, is checked here.
+func TestInherentImplFaultFrame(t *testing.T) {
+	result := compiler.CompileSource("inherent.ms", `type Counter:
     value: Int
-
-type Box[T]:
-    item: T
-
-type Shape:
-    case Circle(r: Int)
-    case Square(s: Int)
-
-impl Counter:
-    fn double() Int:
-        return self.value * 2
-    fn bump(by: Int = 1) Counter:
-        return Counter(value: self.value + by)
-    fn depth(n: Int) Int:
-        if n == 0:
-            return self.value
-        return self.depth(n: n - 1) + 1
 
 impl Counter:
     fn overflow() Int:
         return self.value * self.value
 
-impl Show for Counter:
-    fn show() String:
-        return "counter"
-
-impl Box[T]:
-    fn get() T:
-        return self.item
-
-impl Shape:
-    fn area() Int:
-        match self:
-            Circle(r): return r * r * 3
-            Square(s): return s * s
-
-fn check(ok: Bool, name: String) Unit:
-    if not ok:
-        return panic(message: name)
-
-test "inherent methods":
-    let counter = Counter(value: 4)
-    check(ok: counter.double() == 8, name: "double")
-    check(ok: counter.bump().value == 5, name: "default argument")
-    check(ok: counter.bump(by: 3).value == 7, name: "explicit argument")
-    check(ok: counter.depth(n: 5) == 9, name: "recursion")
-    check(ok: counter.show() == "counter", name: "contract beside inherent")
-    check(ok: Box(item: 7).get() == 7, name: "generic receiver")
-    check(ok: Shape.Square(s: 3).area() == 9, name: "alternative receiver")
-    check(ok: Circle(r: 2).area() == 12, name: "unqualified case")
 test "inherent fault frame":
     Counter(value: 9223372036854775807).overflow()
 `, compiler.Options{Tests: true})
 	output, err := execute(t, result)
-	text := string(output)
-	if err == nil || !strings.Contains(text, "2 tests, 1 failed") || !strings.Contains(text, "in Counter.overflow") {
-		t.Fatalf("inherent methods changed: %v\n%s", err, text)
-	}
-	if strings.Contains(text, "FAIL inherent.ms::inherent methods") {
-		t.Fatalf("inherent methods failed:\n%s", text)
+	if err == nil || !strings.Contains(string(output), "1 tests, 1 failed") || !strings.Contains(string(output), "in Counter.overflow") {
+		t.Fatalf("inherent fault frame changed: %v\n%s", err, output)
 	}
 }
 

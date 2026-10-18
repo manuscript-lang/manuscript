@@ -29,3 +29,14 @@ test "guarded and looped lookups":
     try expect_equal(total([1, 2, 3]), 6)
     try expect_equal(nested([some(1), none], 1), none)
     try expect_equal(nested([some(1), none], 0), some(1))
+
+fn pick(values: List[Int], index: Int) Optional[Int]:
+    if index >= 0 and index < values.length():
+        let found: Optional[Int] = values[index]
+        return found
+
+    return none
+
+test "proven lookup assigns to an Optional":
+    try expect_equal(pick([4, 5], 1), some(5))
+    try expect_equal(pick([4, 5], 2), none)
