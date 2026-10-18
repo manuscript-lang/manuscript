@@ -57,7 +57,7 @@ test "copied native defaults":
     if fs.create_directory("defaults").is_error(): return panic("default directory creation")
     if fs.write_file("defaults/keep", "first").is_error(): return panic("default exclusive write")
     let write = fs.write_file
-    if write("defaults/keep", "second".to_bytes()).is_ok(): return panic("omitted replacement overwrote file")
+    if write("defaults/keep", "second").is_ok(): return panic("omitted replacement overwrote file")
     if fs.copy_file("defaults/keep", "defaults/copied").is_error(): return panic("default file copy")
     if fs.copy_tree("defaults", "default-tree").is_error(): return panic("default tree copy")
     if fs.remove("defaults").is_ok(): return panic("omitted recursion removed tree")
