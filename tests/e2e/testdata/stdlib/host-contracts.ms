@@ -69,7 +69,7 @@ test "all ten string open modes are accepted and changed spellings are invalid":
         for mode in ["r", "r+", "w", "wx", "w+", "wx+", "a", "ax", "a+", "ax+"]:
             let path = "{temporary.path()}/{mode}"
             if mode == "r" or mode == "r+":
-                try fs.write_file(path, "".to_bytes(), replace: false)
+                try fs.write_file(path, "", replace: false)
             with handle = try fs.open(path, mode, 384):
                 let _fileinfo = try handle.stat()
 
@@ -94,7 +94,7 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
         let data = (try "é".repeat(40000)).to_bytes()
 
         with handle = try fs.open(path, "w+", 384):
-            try handle.write(data)
+            try handle.write_bytes(data)
             if (try handle.stat()).size != 80000: return panic(
                 "write did not write all bytes"
             )
@@ -115,17 +115,17 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
             )
 
             let _count = try handle.seek(0, 0)
-            try handle.append_file("XY".to_bytes())
+            try handle.append_file("XY")
             if (try handle.read_at(0, 2)) != "XY".to_bytes(): return panic(
                 "handle append repositioned"
             )
             if (try handle.stat()).size != 80000: return panic("handle append extended")
 
-            try handle.write_at(4, "ZZ".to_bytes())
+            try handle.write_at(4, "ZZ")
             if (try handle.seek(0, 1)) != 2: return panic("write_at moved position")
 
             let writer = handle.writer()
-            try writer.write("AB".to_bytes())
+            try writer.write("AB")
             try writer.flush()
             if (try handle.read_at(2, 4)) != "ABZZ".to_bytes(): return panic(
                 "writer position"

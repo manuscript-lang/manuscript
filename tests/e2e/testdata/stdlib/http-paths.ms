@@ -32,7 +32,7 @@ fn stream_route(exchange: HttpExchange) Result[Unit, HttpError]:
             Map[String, List[String]]().add("Set-Cookie", ["a=1", "b=2"])
         )
     )
-    exchange.write("{exchange.path()}|{exchange.query()}".to_bytes()).get()
+    exchange.write("{exchange.path()}|{exchange.query()}").get()
     return ok(unit)
 
 fn check_route(url: String, expected: String) Result[Unit, Error]:

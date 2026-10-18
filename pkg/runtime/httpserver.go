@@ -586,7 +586,11 @@ func (e *httpExchange) SendHeaders(ctx *Execution, status int, headers *HttpHead
 	return Ok[Unit, HttpError](Unit{})
 }
 
-func (e *httpExchange) Write(ctx *Execution, data *Bytes) Result[Unit, IoError] {
+func (e *httpExchange) Write(ctx *Execution, data string) Result[Unit, IoError] {
+	return e.WriteBytes(ctx, NewBytes([]byte(data)))
+}
+
+func (e *httpExchange) WriteBytes(ctx *Execution, data *Bytes) Result[Unit, IoError] {
 	if !e.admitIO(ctx, e.writeGate) {
 		return ioFail[Unit](errIoClosed)
 	}

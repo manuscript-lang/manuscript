@@ -151,7 +151,7 @@ func TestTlsMutualListener(t *testing.T) {
 	go func() { accepted <- listener.Accept(ctx, Some(Duration(time.Second))) }()
 	client := must(t, n.ConnectTlsConfig(ctx, address, &TlsOptions{ServerName: "service.test", RootsPem: roots, CertificatePem: clientCert, PrivateKeyPem: clientKey}, Some(Duration(time.Second))))
 	server := must(t, <-accepted)
-	must(t, client.Write(ctx, NewBytes([]byte("verified")), None[Duration]()))
+	must(t, client.WriteBytes(ctx, NewBytes([]byte("verified")), None[Duration]()))
 	if got := someBytes(t, server.Read(ctx, Some(int(20)), Some(Duration(time.Second)))); got != "verified" {
 		t.Fatal(got)
 	}
@@ -165,7 +165,7 @@ func TestTlsMutualListener(t *testing.T) {
 	anonymous := n.ConnectTlsConfig(ctx, address, &TlsOptions{ServerName: "service.test", RootsPem: roots}, Some(Duration(time.Second)))
 	if !anonymous.Failed {
 		// TLS 1.3 reports the missing client certificate on first use.
-		anonymous.Val.Write(ctx, NewBytes([]byte("x")), None[Duration]())
+		anonymous.Val.WriteBytes(ctx, NewBytes([]byte("x")), None[Duration]())
 		anonymous.Val.Read(ctx, Some(int(1)), Some(Duration(time.Second)))
 	}
 	failedWith(t, <-accepted, "NetworkError_Failed")

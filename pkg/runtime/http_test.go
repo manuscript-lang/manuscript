@@ -754,17 +754,17 @@ func TestStreamingServerExchange(t *testing.T) {
 			failedWith(t, e.SendHeaders(child, 99, headersOf()), "HttpError_InvalidInput")
 			return Ok[Unit, HttpError](Unit{})
 		case "/no-headers":
-			failedWith(t, e.Write(child, NewBytes([]byte("x"))), "IoError_InvalidInput")
+			failedWith(t, e.WriteBytes(child, NewBytes([]byte("x"))), "IoError_InvalidInput")
 			return Ok[Unit, HttpError](Unit{})
 		case "/limit":
 			must(t, e.SendHeaders(child, 200, headersOf()))
-			failedWith(t, e.Write(child, NewBytes([]byte(strings.Repeat("x", 20)))), "IoError_Failed")
+			failedWith(t, e.WriteBytes(child, NewBytes([]byte(strings.Repeat("x", 20)))), "IoError_Failed")
 			return Ok[Unit, HttpError](Unit{})
 		case "/closed":
 			e.Close(child)
 			failedWith(t, e.Read(child, None[int]()), "IoError_Closed")
 			failedWith(t, e.SendHeaders(child, 200, headersOf()), "HttpError_Closed")
-			failedWith(t, e.Write(child, NewBytes(nil)), "IoError_Closed")
+			failedWith(t, e.WriteBytes(child, NewBytes(nil)), "IoError_Closed")
 			if e.Path(child) != "/closed" || e.Query(child) != "q=1" {
 				t.Error("metadata after close")
 			}
@@ -779,7 +779,7 @@ func TestStreamingServerExchange(t *testing.T) {
 			if !part.Some {
 				return Ok[Unit, HttpError](Unit{})
 			}
-			must(t, e.Write(child, part.Val))
+			must(t, e.WriteBytes(child, part.Val))
 		}
 	}, &HttpServerOptions{MaxResponseBytes: Some(int(10)), MaxHeaderBytes: Some(int(1024)), Timeout: Some(Duration(3 * time.Second)), Grace: Some(Duration(10 * time.Millisecond))}))
 	address := server.Address(ctx)

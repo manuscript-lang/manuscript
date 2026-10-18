@@ -22,7 +22,7 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
         Map[String, List[String]]().add("X-Test", ["manuscript"])
     )
     try exchange.send_headers(201, headers)
-    exchange.write("hello".to_bytes()).get()
+    exchange.write("hello").get()
     return ok(unit)
 
 test "HTTP buffered and streaming clients call a Manuscript handler":
@@ -107,7 +107,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
 fn report_host(exchange: HttpExchange) Result[Unit, HttpError]:
     let hosts = (try exchange.headers().text("Host")).get([])
     try exchange.send_headers(200, headers())
-    exchange.write(hosts.join(",").to_bytes()).get()
+    exchange.write(hosts.join(",")).get()
     return ok(unit)
 
 test "HTTP streaming handlers see the Host request header":

@@ -71,8 +71,8 @@ func checkJSONResults(cli, directory string, environment []string) error {
 import panic from "@std/faults.ms"
 
 test "pass=a=b":
-    let _out = stdout().write(data: "PASS fake\nstdout=a=b\n".to_bytes())
-    let _err = stderr().write(data: "stderr=a=b\n".to_bytes())
+    let _out = stdout().write(data: "PASS fake\nstdout=a=b\n")
+    let _err = stderr().write(data: "stderr=a=b\n")
 
 test "fails":
     return panic(message: "distribution failure")

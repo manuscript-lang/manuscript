@@ -104,7 +104,7 @@ fn run() Result[Unit, Error]:
 
     while rows.length() > 0 and rows.at(rows.length() - 1).get().is_empty():
         rows.remove(rows.length() - 1)
-    try stdout().write("{solve(rows)}\n".to_bytes())
+    try stdout().write("{solve(rows)}\n")
     return stdout().flush()
 
 export fn main() Int:

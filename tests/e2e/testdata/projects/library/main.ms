@@ -11,7 +11,7 @@ fn timer_callback() Result[Unit, Error]:
     return ok(unit)
 
 fn exercise(path: String) Result[Unit, Error]:
-    try filesystem().write_file(path, "hello".to_bytes(), replace: false)
+    try filesystem().write_file(path, "hello", replace: false)
     if not (try filesystem().read_file(path, 5) == "hello".to_bytes()):
         return panic("check failed")
 
@@ -40,7 +40,7 @@ fn exercise(path: String) Result[Unit, Error]:
         return panic("check failed")
 
     with file = try filesystem().open(path, "r+", 384):
-        try file.write_at(0, "HELLO".to_bytes())
+        try file.write_at(0, "HELLO")
         if not (try file.read_at(0, 5) == "HELLO".to_bytes()):
             return panic("positional I/O failed")
 
@@ -56,7 +56,7 @@ fn exercise(path: String) Result[Unit, Error]:
         max_events: 16,
         overflow: "error"
     ):
-        try filesystem().append_file(path, "!".to_bytes())
+        try filesystem().append_file(path, "!")
         let events = try watcher.next()
         if not (events.length() > 0):
             return panic("native watch returned no event")

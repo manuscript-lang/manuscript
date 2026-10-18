@@ -12,7 +12,7 @@ export fn main() Int:
     ):
         if not (output.exit_code == 0):
             return panic("check failed")
-        if stdout().write(output.stdout).is_error():
+        if stdout().write_bytes(output.stdout).is_error():
             return 1
 
         return 0

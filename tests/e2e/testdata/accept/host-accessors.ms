@@ -43,12 +43,12 @@ test "repeated accessors retain closed root state":
     stdout().close()
     stderr().close()
     network().close()
-    let written = stdout().write("".to_bytes())
+    let written = stdout().write("")
     if written.is_ok():
         return panic("accessor reopened stdout")
     if written.err() != IoError.Closed:
         return panic("unexpected closed-stream error")
 
 test "a later test receives fresh standard output":
-    if stdout().write("".to_bytes()).is_error():
+    if stdout().write("").is_error():
         return panic("another test closed this test's stdout")

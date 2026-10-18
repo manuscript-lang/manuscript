@@ -57,7 +57,7 @@ test "managed subprocess streams incrementally and cleans up on scope exit":
     if os_type() == "windows": return
 
     with child = try commands().spawn("cat", []):
-        try child.stdin().write("ping\n".to_bytes())
+        try child.stdin().write("ping\n")
         let line = try read_line(child.stdout())
         if line.get("") != "ping": return panic("echo")
 

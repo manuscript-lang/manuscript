@@ -55,7 +55,7 @@ test "copied native defaults":
         return panic("default command stdin failed")
     let fs = filesystem()
     if fs.create_directory("defaults").is_error(): return panic("default directory creation")
-    if fs.write_file("defaults/keep", "first".to_bytes()).is_error(): return panic("default exclusive write")
+    if fs.write_file("defaults/keep", "first").is_error(): return panic("default exclusive write")
     let write = fs.write_file
     if write("defaults/keep", "second".to_bytes()).is_ok(): return panic("omitted replacement overwrote file")
     if fs.copy_file("defaults/keep", "defaults/copied").is_error(): return panic("default file copy")

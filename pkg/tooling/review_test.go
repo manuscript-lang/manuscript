@@ -25,7 +25,7 @@ func review(t *testing.T, base, head string, touched ...int) Report {
 const reviewBase = `import stdout from "@std/io.ms"
 
 fn say(text: String) Result[Unit, Error]:
-    try stdout().write("{text}\n".to_bytes())
+    try stdout().write("{text}\n")
     return stdout().flush()
 
 fn add(a: Int, b: Int) Int:

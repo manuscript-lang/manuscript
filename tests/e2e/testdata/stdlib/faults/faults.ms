@@ -6,16 +6,14 @@ import Synchronized from "@std/sync.ms"
 import {stdout, WriteStream} from "@std/io.ms"
 
 fn emit(message: String) Unit:
-    if stdout().write(message.to_bytes()).is_error(): return panic(
-        "fault transcript write failed"
-    )
+    if stdout().write(message).is_error(): return panic("fault transcript write failed")
 
 type Resource:
     output: WriteStream
 
 impl Closeable for Resource:
     fn close() Unit:
-        if self.output.write("fault cleanup completed\n".to_bytes()).is_error(): return panic(
+        if self.output.write("fault cleanup completed\n").is_error(): return panic(
             "cleanup transcript write failed"
         )
 

@@ -8,7 +8,7 @@ type Resource:
     output: WriteStream
 
 fn emit(output: WriteStream, text: String) Unit:
-    let _ignored = output.write(text.to_bytes())
+    let _ignored = output.write(text)
 
 impl Closeable for Resource:
     fn close() Unit:
@@ -82,7 +82,7 @@ export fn main() Int:
         return panic("Unexpected case")
     if not (early(stdout()) == 5):
         return panic("check failed")
-    if stdout().write("finished\n".to_bytes()).is_error():
+    if stdout().write("finished\n").is_error():
         return 1
 
     return 0

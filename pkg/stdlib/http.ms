@@ -189,7 +189,9 @@ export interface HttpExchange:
     ) Result[WebSocket, WebSocketError]
     # Writes one chunk of the response body and flushes it.
     # `send_headers` must come first, and writing beyond `max_response_bytes` returns IoError.Failed. Responses to HEAD requests and with status 204 or 304 cannot have a body.
-    fn write(data: Bytes) Result[Unit, IoError]
+    fn write(data: String) Result[Unit, IoError]
+    # Writes one chunk of raw bytes with the same rules as write.
+    fn write_bytes(data: Bytes) Result[Unit, IoError]
 
 # Buffered request accepted by the simple HTTP server handler.
 export type HttpRequest:

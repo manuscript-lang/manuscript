@@ -26,7 +26,7 @@ export fn main() Int:
 
     let checksum = compute(3000000)
     let output = "{package.title}: {sum}; checksum {checksum}\n"
-    if stdout().write(output.to_bytes()).is_error():
+    if stdout().write(output).is_error():
         return 1
 
     return 0

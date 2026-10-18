@@ -52,7 +52,7 @@ func TestFilesystemExplicitFlagsKeepDirectDispatch(t *testing.T) {
 	r := compiler.CompileSource("explicit-filesystem.ms", `import filesystem from "@std/fs.ms"
 fn explicit() Unit:
     let fs = filesystem()
-    fs.write_file("", "".to_bytes(), false)
+    fs.write_file("", "", false)
     fs.copy_file("", "", true)
     fs.copy_tree("", "", false, max_entries: none, max_bytes: 3)
     fs.create_directory("", true)

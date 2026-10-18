@@ -5,7 +5,7 @@ import panic from "@std/faults.ms"
 fn generic_write[T: FileSystem](
     fs: T,
     path: String,
-    data: Bytes
+    data: String
 ) Result[Unit, FileSystemError]:
     return fs.write_file(path, data)
 
@@ -50,21 +50,21 @@ test "filesystem writes default to exclusive creation through aliases and bounds
 
     with temporary = try fs.temporary("manuscript-default-write-"):
         let path = "{temporary.path()}/file"
-        try fs.write_file(path, "first".to_bytes())
+        try fs.write_file(path, "first")
         let write = fs.write_file
         let alias = write
-        rejected(alias(path, "second".to_bytes()))
-        rejected(write(path, "second".to_bytes(), replace: false))
-        rejected(generic_write(fs, path, "second".to_bytes()))
+        rejected(alias(path, "second"))
+        rejected(write(path, "second", replace: false))
+        rejected(generic_write(fs, path, "second"))
         if (try text(fs, path)) != "first": return panic(
             "omission replaced existing data"
         )
 
-        try alias(path, "second".to_bytes(), replace: true)
+        try alias(path, "second", replace: true)
         if (try text(fs, path)) != "second": return panic("explicit replacement lost")
 
-        try generic_write(fs, "{temporary.path()}/generic", "generic".to_bytes())
-        rejected(fs.write_file("", "invalid".to_bytes()))
+        try generic_write(fs, "{temporary.path()}/generic", "generic")
+        rejected(fs.write_file("", "invalid"))
 
 test "filesystem file copies default to no replacement and retain byte limits":
     let fs: FileSystem = filesystem()
@@ -72,11 +72,11 @@ test "filesystem file copies default to no replacement and retain byte limits":
     with temporary = try fs.temporary("manuscript-default-copy-"):
         let source = "{temporary.path()}/source"
         let destination = "{temporary.path()}/destination"
-        try fs.write_file(source, "source".to_bytes())
+        try fs.write_file(source, "source")
         let copy = fs.copy_file
         let alias = copy
         try alias(source, destination)
-        try fs.write_file(source, "changed".to_bytes(), true)
+        try fs.write_file(source, "changed", true)
         rejected(copy(source, destination))
         rejected(fs.copy_file(source, destination, replace: false))
         rejected(generic_copy(fs, source, destination))
@@ -118,11 +118,11 @@ test "filesystem tree copies default to no replacement with distinct budgets":
         let source = "{temporary.path()}/source"
         let destination = "{temporary.path()}/destination"
         try fs.create_directory(source)
-        try fs.write_file("{source}/data", "abc".to_bytes())
+        try fs.write_file("{source}/data", "abc")
         let copy = fs.copy_tree
         let alias = copy
         try alias(source, destination)
-        try fs.write_file("{source}/data", "xyz".to_bytes(), true)
+        try fs.write_file("{source}/data", "xyz", true)
         rejected(copy(source, destination))
         rejected(copy(source, destination, false))
         rejected(generic_tree(fs, source, destination))
@@ -189,7 +189,7 @@ test "filesystem removal defaults to retaining nonempty trees":
         let directory = "{temporary.path()}/nonempty"
         let path = "{directory}/keep"
         try fs.create_directory(directory)
-        try fs.write_file(path, "keep".to_bytes())
+        try fs.write_file(path, "keep")
         let remove = fs.remove
         let alias = remove
         rejected(alias(directory))
@@ -201,7 +201,7 @@ test "filesystem removal defaults to retaining nonempty trees":
         let empty = "{temporary.path()}/empty"
         try fs.create_directory(empty)
         try alias(empty)
-        try fs.write_file("{temporary.path()}/file", "file".to_bytes())
+        try fs.write_file("{temporary.path()}/file", "file")
         try generic_remove(fs, "{temporary.path()}/file")
         rejected(remove(""))
 
@@ -210,7 +210,7 @@ test "filesystem default preparation retains written argument order":
 
     with temporary = try fs.temporary("manuscript-default-order-"):
         let log: List[String] = []
-        try fs.write_file(
+        try fs.write_file_bytes(
             data: data_argument(log),
             argument(log, "path", "{temporary.path()}/ordered")
         )

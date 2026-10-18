@@ -11,7 +11,7 @@ fn run(fs: FileSystem, root: String) Unit:
         fn() Int:
             var n = 0
             for i in range(0, 200):
-                if (fs.write_file("{root}/f{i}.bin", data, replace: true).is_ok()):
+                if (fs.write_file_bytes("{root}/f{i}.bin", data, replace: true).is_ok()):
                     n += 1
             return n
     )

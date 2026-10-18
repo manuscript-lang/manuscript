@@ -29,7 +29,7 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
     let fields = headers()
     try fields.append("X-Test", "stream".to_bytes())
     try exchange.send_headers(200, fields)
-    if exchange.write("hello from streaming Manuscript".to_bytes()).is_error():
+    if exchange.write("hello from streaming Manuscript").is_error():
         return error(HttpError.Failed("write failed"))
 
     return ok(unit)

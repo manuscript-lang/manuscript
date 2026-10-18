@@ -16,7 +16,7 @@ Save as `hello.ms`. Check both write and flush.
 import stdout from "@std/io.ms"
 
 fn run() Result[Unit, Error]:
-    try stdout().write("Hello, Manuscript!\n".to_bytes())
+    try stdout().write("Hello, Manuscript!\n")
     return stdout().flush()
 
 export fn main() Int:
@@ -42,7 +42,7 @@ import stdout from "@std/io.ms"
 
 fn run() Result[Unit, Error]:
     for name in arguments():
-        try stdout().write("Hello, {name}!\n".to_bytes())
+        try stdout().write("Hello, {name}!\n")
     return stdout().flush()
 
 export fn main() Int:
@@ -69,7 +69,7 @@ fn run() Result[Unit, Error]:
     let path = try arguments().at(0).ok_or(FileSystemError.InvalidInput)
     let bytes = try filesystem().read_file(path, max_bytes: 1048576)
     let text = try bytes.decode_utf8().ok_or(FileSystemError.InvalidData)
-    try stdout().write(text.to_bytes())
+    try stdout().write(text)
     return stdout().flush()
 
 export fn main() Int:
@@ -96,7 +96,7 @@ import {filesystem, FileSystemError} from "@std/fs.ms"
 
 fn run() Result[Unit, Error]:
     let path = try arguments().at(0).ok_or(FileSystemError.InvalidInput)
-    return filesystem().write_file(path, "saved notes\n".to_bytes(), replace: false)
+    return filesystem().write_file(path, "saved notes\n", replace: false)
 
 export fn main() Int:
     if run().is_error():
@@ -124,7 +124,7 @@ fn run() Result[Unit, Error]:
     while true:
         let line = try read_line(input, max_bytes: 4096)
         if let text = line:
-            try stdout().write("{text}\n".to_bytes())
+            try stdout().write("{text}\n")
         else:
             break
     return stdout().flush()
@@ -151,7 +151,7 @@ import arguments from "@std/process.ms"
 import stdout from "@std/io.ms"
 
 fn show(number: Int) Result[Unit, Error]:
-    try stdout().write("{number}\n".to_bytes())
+    try stdout().write("{number}\n")
     return stdout().flush()
 
 export fn main() Int:
@@ -180,7 +180,7 @@ import stdout from "@std/io.ms"
 
 fn run() Result[Unit, Error]:
     let text = try parse[String](arguments().at(0).get("\"hello\""))
-    try stdout().write("{text}\n".to_bytes())
+    try stdout().write("{text}\n")
     return stdout().flush()
 
 export fn main() Int:
@@ -213,7 +213,7 @@ fn run() Result[Unit, Error]:
     let text = arguments().at(0).get("\{\"name\":\"Sam\"\}")
     let config = try parse[Config](text)
     let encoded = config | try stringify
-    try stdout().write("{encoded}\n".to_bytes())
+    try stdout().write("{encoded}\n")
     return stdout().flush()
 
 export fn main() Int:
@@ -251,7 +251,7 @@ fn run() Result[Unit, Error]:
     if response.metadata().status != 200:
         return error(HttpError.InvalidData)
     let text = try response.body.decode_utf8().ok_or(HttpError.InvalidData)
-    try stdout().write(text.to_bytes())
+    try stdout().write(text)
     return stdout().flush()
 
 export fn main() Int:
@@ -285,7 +285,7 @@ fn run() Result[Unit, Error]:
             return 6 * 7
         )
         let answer = try task.join()
-        try stdout().write("{answer}\n".to_bytes())
+        try stdout().write("{answer}\n")
         try stdout().flush()
     return ok(unit)
 

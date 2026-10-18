@@ -494,7 +494,7 @@ export fn main() Int:
                 _:
                     return 5
 
-    let written = stdout().write("".to_bytes())
+    let written = stdout().write("")
     if written.is_ok():
         return 3
     let cause = written.err()

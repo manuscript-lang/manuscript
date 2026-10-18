@@ -27,7 +27,7 @@ test "TCP loopback writes reads half close and EOF":
     with listener = try net.listen("127.0.0.1:0"):
         with client = try net.connect(listener.address(), 2.seconds):
             with server = try listener.accept(2.seconds):
-                try client.write("hello".to_bytes(), 2.seconds)
+                try client.write("hello", 2.seconds)
                 if ((try server.read(5, 2.seconds)).get() != "hello".to_bytes()): return panic(
                     "TCP bytes"
                 )

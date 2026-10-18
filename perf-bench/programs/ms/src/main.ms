@@ -25,7 +25,7 @@ fn got_line() Bool:
     return false
 
 fn say(text: String) Unit:
-    let _ignored = stdout().write(text.to_bytes())
+    let _ignored = stdout().write(text)
 
 fn since(started: Instant) Int:
     return clock().now().difference(started).to_nanoseconds()

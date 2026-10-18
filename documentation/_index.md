@@ -13,7 +13,7 @@ import stdout from "@std/io.ms"
 
 export fn main() Int:
     let name = arguments().at(0).get("world")
-    let message = "Hello, {name}!\n".to_bytes()
+    let message = "Hello, {name}!\n"
     if stdout().write(message).is_error():
         return 1
     return 0

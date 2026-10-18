@@ -262,7 +262,11 @@ func (c *osConnection) Read(ctx *Execution, maxBytes Option[int], timeout Option
 	return ioFail[Option[*Bytes]](ioFailed("empty read without EOF"))
 }
 
-func (c *osConnection) Write(ctx *Execution, data *Bytes, timeout Option[Duration]) Result[Unit, IoError] {
+func (c *osConnection) Write(ctx *Execution, data string, timeout Option[Duration]) Result[Unit, IoError] {
+	return c.WriteBytes(ctx, NewBytes([]byte(data)), timeout)
+}
+
+func (c *osConnection) WriteBytes(ctx *Execution, data *Bytes, timeout Option[Duration]) Result[Unit, IoError] {
 	limit, ok := optTimeout(timeout)
 	if !ok {
 		return ioFail[Unit](errIoInvalidInput)

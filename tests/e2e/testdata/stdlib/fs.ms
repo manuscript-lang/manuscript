@@ -18,7 +18,7 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
         let root = temporary.path()
         try fs.create_directory("{root}/sub", recursive: false)
         for name in ["a.txt", "b.md", ".hidden.txt", "sub/c.txt"]:
-            try fs.write_file("{root}/{name}", "".to_bytes(), replace: false)
+            try fs.write_file("{root}/{name}", "", replace: false)
         let matches = try fs.glob(root, "**/*.\{txt,md\}")
         if matches != ["a.txt", "b.md", "sub/c.txt"]: return panic("glob matches")
 
@@ -47,8 +47,8 @@ test "ordinary filesystem misuse retains typed cases":
         let directory = "{temporary.path()}/directory"
         let file = "{temporary.path()}/file"
         try fs.create_directory(directory, recursive: false)
-        try fs.write_file("{directory}/child", "x".to_bytes(), replace: false)
-        try fs.write_file(file, "abc".to_bytes(), replace: false)
+        try fs.write_file("{directory}/child", "x", replace: false)
+        try fs.write_file(file, "abc", replace: false)
         expect_fs_error(
             fs.remove(directory, recursive: false),
             FileSystemError.NotEmpty
@@ -61,7 +61,7 @@ test "ordinary filesystem misuse retains typed cases":
         )
 
         with reader = try fs.open(file, "r", 384):
-            expect_fs_error(reader.write("x".to_bytes()), FileSystemError.InvalidInput)
+            expect_fs_error(reader.write("x"), FileSystemError.InvalidInput)
             expect_fs_error(reader.seek(-1, 0), FileSystemError.InvalidInput)
             expect_fs_error(reader.seek(0, 3), FileSystemError.InvalidInput)
 
@@ -76,7 +76,7 @@ test "filesystem scoped temporary directories and bounded file reads":
     with temporary = try fs.temporary("manuscript-stdlib-"):
         directory = temporary.path()
         let path = "{directory}/data.txt"
-        try fs.write_file(path, "hello".to_bytes(), replace: false)
+        try fs.write_file(path, "hello", replace: false)
         if ((try fs.read_file(path, 5)) != "hello".to_bytes()): return panic(
             "read file"
         )
@@ -87,7 +87,7 @@ test "filesystem scoped temporary directories and bounded file reads":
         if fs.read_file(path, 4) != limited: return panic("file byte limit")
 
         let exists: Result[Unit, FileSystemError] = error(FileSystemError.AlreadyExists)
-        if (fs.write_file(path, "changed".to_bytes(), replace: false) != exists): return panic(
+        if (fs.write_file(path, "changed", replace: false) != exists): return panic(
             "exclusive write"
         )
         if (try fs.stat(path, follow_links: true)).size != 5: return panic("file stat")
@@ -109,7 +109,7 @@ test "file handles positional I/O stream adapters and closed errors":
 
     with temporary = try fs.temporary("manuscript-handles-"):
         let path = "{temporary.path()}/data.txt"
-        try fs.write_file(path, "abcdef".to_bytes(), replace: false)
+        try fs.write_file(path, "abcdef", replace: false)
         let handle = try fs.open(path, "r+", 384)
 
         with scoped = handle:
@@ -117,7 +117,7 @@ test "file handles positional I/O stream adapters and closed errors":
                 "positional read"
             )
 
-            try handle.write_at(1, "XY".to_bytes())
+            try handle.write_at(1, "XY")
             try handle.truncate(4)
             if (try handle.stat()).size != 4: return panic("handle stat")
 
@@ -142,7 +142,7 @@ test "empty paths are rejected instead of resolving to the working directory":
     if fs.create_directory("", recursive: true) != invalid: return panic(
         "create empty directory"
     )
-    if fs.write_file("", "x".to_bytes(), replace: true) != invalid: return panic(
+    if fs.write_file("", "x", replace: true) != invalid: return panic(
         "write empty path"
     )
     if (

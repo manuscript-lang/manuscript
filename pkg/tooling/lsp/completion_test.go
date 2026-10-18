@@ -195,7 +195,7 @@ func TestCompletionSurvivesIndependentSyntaxErrors(t *testing.T) {
 func TestCompletionWithMultilineParameters(t *testing.T) {
 	for _, source := range []string{
 		"fn answer(\n    input: Int,\n) Int:\n    return inp|\nfn broken(\n",
-		"import WriteStream from \"@std/io.ms\"\nfn render(\n    arguments: List[String],\n    output: WriteStream\n) Int:\n    let joined = arguments.jo|\n    match output.write(data: \"hello\".to_bytes()):\n",
+		"import WriteStream from \"@std/io.ms\"\nfn render(\n    arguments: List[String],\n    output: WriteStream\n) Int:\n    let joined = arguments.jo|\n    match output.write(data: \"hello\"):\n",
 	} {
 		items := completeSource(t, source)
 		want := "input"

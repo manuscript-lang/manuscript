@@ -9,7 +9,7 @@ import {certificate, private_key} from "./support/certificates.ms"
 
 fn hello(exchange: HttpExchange) Result[Unit, HttpError]:
     try exchange.send_headers(200, list_headers(Map[String, List[String]]()))
-    exchange.write("secure".to_bytes()).get()
+    exchange.write("secure").get()
     return ok(unit)
 
 test "TLS certificate parsing verification hostname and expiration":

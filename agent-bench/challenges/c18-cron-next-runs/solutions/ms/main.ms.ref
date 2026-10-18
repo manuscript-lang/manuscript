@@ -179,19 +179,19 @@ fn run() Result[Unit, Error]:
         let t = l.split(" ")
 
         if t.length() != 7:
-            try stdout().write("{pre} error: bad line\n".to_bytes())
+            try stdout().write("{pre} error: bad line\n")
             continue
 
         let start = parse_start(t.at(0).get())
 
         if start.is_empty():
-            try stdout().write("{pre} error: bad start\n".to_bytes())
+            try stdout().write("{pre} error: bad start\n")
             continue
 
         let count_opt = digits(t.at(1).get(), 1, 2)
 
         if count_opt.is_none() or count_opt.get() < 1 or count_opt.get() > 20:
-            try stdout().write("{pre} error: bad count\n".to_bytes())
+            try stdout().write("{pre} error: bad count\n")
             continue
 
         let count = count_opt.get()
@@ -214,7 +214,7 @@ fn run() Result[Unit, Error]:
             i = i + 1
 
         if not bad.is_empty():
-            try stdout().write("{pre} error: bad {bad}\n".to_bytes())
+            try stdout().write("{pre} error: bad {bad}\n")
             continue
 
         let minutes = sets.at(0).get()
@@ -260,12 +260,12 @@ fn run() Result[Unit, Error]:
             k = k + 1
 
         if runs.is_empty():
-            try stdout().write("{pre} never\n".to_bytes())
+            try stdout().write("{pre} never\n")
             continue
 
-        try stdout().write("{pre} {runs.length()} runs\n".to_bytes())
+        try stdout().write("{pre} {runs.length()} runs\n")
         for r in runs:
-            try stdout().write("{r}\n".to_bytes())
+            try stdout().write("{r}\n")
 
     return stdout().flush()
 

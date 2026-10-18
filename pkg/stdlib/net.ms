@@ -62,7 +62,12 @@ export interface Connection:
     # A connection that is not TLS returns InvalidInput.
     fn tls_info() Result[TlsInfo, TlsError]
     # Writes all bytes on success; failure can leave a prefix. Local timeout uses IoError.Failed.
-    fn write(data: Bytes, timeout: Optional[Duration] = none) Result[Unit, IoError]
+    fn write(data: String, timeout: Optional[Duration] = none) Result[Unit, IoError]
+    # Writes raw bytes with the same rules as write.
+    fn write_bytes(
+        data: Bytes,
+        timeout: Optional[Duration] = none
+    ) Result[Unit, IoError]
 
 # One datagram and the address from which it was received.
 export type Datagram:

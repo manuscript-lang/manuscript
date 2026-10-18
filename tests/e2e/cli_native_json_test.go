@@ -82,13 +82,13 @@ import {stdout, stderr} from "@std/io.ms"
 export fn main() Int:
     let args = arguments()
     if args.length() > 0 and args[0] == "binary":
-        let _raw = stdout().write(data: "x".to_bytes().with_value(index: 0, value: 255))
+        let _raw = stdout().write_bytes(data: "x".to_bytes().with_value(index: 0, value: 255))
         return 0
-    let _out = stdout().write(data: "stdout\n".to_bytes())
-    let _err = stderr().write(data: "stderr\n".to_bytes())
+    let _out = stdout().write(data: "stdout\n")
+    let _err = stderr().write(data: "stderr\n")
     var index = 0
     while index < args.length():
-        let _arg = stdout().write(data: "arg={args[index].get()}\n".to_bytes())
+        let _arg = stdout().write(data: "arg={args[index].get()}\n")
         index = index + 1
     if args.length() > 0 and args[0] == "fail":
         return 23

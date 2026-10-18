@@ -88,7 +88,7 @@ test "age rotation starts a new file":
 test "an existing file's size counts toward rotation":
     with directory = try filesystem().temporary("alog-"):
         let path = "{directory.path()}/events.ndjson"
-        try filesystem().write_file(path, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx".to_bytes())
+        try filesystem().write_file(path, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 
         with transport = try async_file_transport(path, 40):
             let logger = try create(transport, timestamp: false)
@@ -127,7 +127,7 @@ test "a full queue returns LimitExceeded without waiting":
 
             while not rejected and attempts < 100000:
                 attempts += 1
-                let outcome = transport.write("x\n".to_bytes())
+                let outcome = transport.write("x\n")
 
                 if outcome.is_error():
                     if outcome.err() != LogError.LimitExceeded:
@@ -143,5 +143,5 @@ test "writes after close are rejected":
         let transport = try async_file_transport(path)
         transport.close()
         transport.close()
-        let cause = try expect_error(transport.write("x\n".to_bytes()))
+        let cause = try expect_error(transport.write("x\n"))
         try expect_equal(cause, LogError.Closed)

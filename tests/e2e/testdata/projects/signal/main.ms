@@ -9,13 +9,13 @@ type Resource:
 
 impl Closeable for Resource:
     fn close() Unit:
-        let _ignored = self.output.write("close {self.label}\n".to_bytes())
+        let _ignored = self.output.write("close {self.label}\n")
 
 export fn main() Int:
     let output = stdout()
     let child = fn():
         with resource = Resource("child", output):
-            let _ignored = output.write("ready\n".to_bytes())
+            let _ignored = output.write("ready\n")
             while true:
                 continue
 
