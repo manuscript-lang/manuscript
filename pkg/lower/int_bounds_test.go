@@ -284,3 +284,57 @@ func BenchmarkCounterAggregateScaling(b *testing.B) {
 		})
 	}
 }
+
+func BenchmarkBuilderRangeScaling(b *testing.B) {
+	for _, size := range []int{1, maxBuilderFragmentBytes} {
+		for _, n := range []int{128, 256, 512} {
+			var source strings.Builder
+			source.WriteString("import StringBuilder from \"@std/string.ms\"\nfn probe() Int:\n    let values = [" + strings.TrimSuffix(strings.Repeat("1,", 256), ",") + "]\n    var sum = 0\n")
+			for i := 0; i < n; i++ {
+				fmt.Fprintf(&source, "    let b%d = StringBuilder()\n    var i%d = 0\n    while i%d < 321:\n        b%d.append(%q)\n        i%d += 1\n    b%d.freeze()\n    for x%d in values:\n        sum += x%d\n", i, i, i, i, strings.Repeat("x", size), i, i, i, i)
+			}
+			source.WriteString("    return sum\n")
+			program := checkedLoweringProgram(b, source.String())
+			var d *syntax.Declaration
+			for _, module := range program.Modules {
+				for _, decl := range module.Declarations {
+					if decl.Name == "probe" {
+						d = decl
+					}
+				}
+			}
+			if d == nil {
+				b.Fatal("missing probe")
+			}
+			g := newGen(program)
+			g.fn = &funcState{}
+			g.fn.localCollections = g.proveLocalCollections(d.Params, d.Body)
+			g.proveIntArithmetic(d.Body)
+			builders := 0
+			for _, chunk := range g.fn.counterChunks {
+				if chunk.aggregate != nil && chunk.aggregate.builder {
+					builders++
+				}
+			}
+			if builders != n || len(g.fn.rangeChunks) != n {
+				b.Fatalf("selected %d builders/%d ranges, want%d", builders, len(g.fn.rangeChunks), n)
+			}
+			b.Run(fmt.Sprintf("%dbytes/%d/inventory", size, n), func(b *testing.B) {
+				b.ReportAllocs()
+				for range b.N {
+					g.proveLocalCollections(d.Params, d.Body)
+				}
+			})
+			b.Run(fmt.Sprintf("%dbytes/%d/emit", size, n), func(b *testing.B) {
+				b.ReportAllocs()
+				for range b.N {
+					text, err := Go(program, "", Options{})
+					if err != nil {
+						b.Fatal(err)
+					}
+					b.SetBytes(int64(len(text)))
+				}
+			})
+		}
+	}
+}

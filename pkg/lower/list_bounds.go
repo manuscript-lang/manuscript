@@ -209,5 +209,8 @@ func (p *intProof) traversal(s *syntax.Statement) bool {
 		elements = before.elements
 	}
 	p.boundedBody(s.Body, big.NewInt(before.length.hi), p.g.program.LoopBinding(s), elements, intBounds{}, writes, appends)
+	if before.length.lo >= 256 {
+		p.g.fn.rangeChunks[s] = true
+	}
 	return true
 }

@@ -1,0 +1,8 @@
+from pathlib import Path
+import json,subprocess,os,hashlib
+root=Path('/workspace/manuscript');m=json.loads(Path('/tmp/manuscript-aggregate-matched-manifest.json').read_text());app=Path(m['program']['app']).resolve();source=(root/'bench/perf/programs/go/main.go').read_text();a=source.index('func area(');b=source.index('\nfunc ',a+1);s=source[:a]+source[a:b].replace('v.r * 3','rt.IntMultiply(v.r,3)').replace('v.s * v.s','rt.IntMultiply(v.s,v.s)')+source[b:];s=s.replace('"bufio"','"bufio"\n rt "github.com/manuscript-lang/manuscript/pkg/runtime"');s=s.replace('ma += area(shapes[i%3])','ma = rt.IntAdd(ma,area(shapes[i%3]))');versions={'checked':s};a=s.index('func benchMatch(');b=s.index('\nfunc ',a+1);part=s[a:b].replace('t := time.Now()','ctx := rt.RootExecution()\n t := time.Now()').replace('ma = rt.IntAdd','if (i+1)&63==0 {rt.CheckCancelled(ctx)}\n ma = rt.IntAdd');assert part!=s[a:b];versions['queried']=s[:a]+part+s[b:];record={}
+for label,s in versions.items():
+ p=Path('/tmp/manuscript-matching-go-'+label+'.go');p.write_text(s);ov=p.with_suffix('.json');ov.write_text(json.dumps({'Replace':{str(app/'main.go'):str(p)}}));binary='/tmp/manuscript-matching-go-'+label
+ subprocess.run([str(root/'toolchain/go/bin/go'),'build','-buildvcs=false','-trimpath','-ldflags=-s -w -buildid=','-overlay='+str(ov),'-o',binary,'.'],cwd=app,env={**os.environ,'CGO_ENABLED':'0'},check=True)
+ record[label]={'source_sha256':hashlib.sha256(s.encode()).hexdigest(),'binary_sha256':hashlib.sha256(Path(binary).read_bytes()).hexdigest()}
+Path('/tmp/manuscript-matching-go-manifest.json').write_text(json.dumps(record,indent=2)+'\n')

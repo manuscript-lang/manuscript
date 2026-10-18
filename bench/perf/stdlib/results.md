@@ -1,5 +1,9 @@
 # Standard-library performance results
 
+The [closed-builder/range follow-up](../results/2026-10-18-linux-amd64/closed-builder-range/library-identical-control/)
+retains all66 rows for30 trials. Its generated Go and normalized native executable
+are byte-identical before/after; diagnostic timing variation is not an algorithm change.
+
 The [counter-aggregation follow-up](../results/2026-10-18-linux-amd64/counter-aggregation/library/)
 retains all66 library rows and30 balanced before/after trials.
 

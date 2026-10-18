@@ -1,5 +1,53 @@
 # Manuscript vs handwritten Go
 
+Nine of ten complete workloads are within about15% of raw Go or faster after
+closed-builder batching and ordered traversal unrolling. Builder is2.13ns/op
+versusGo3.53; traversal0.38versus0.34. Matching remains2.19x the raw unchecked Go
+baseline. A separate arithmetic/cancellation-equivalent handwritten-Go control
+measures3.18ns versusManuscript3.44 (1.08x). That control diagnoses the cost; it
+does not replace the raw baseline or establish that the residual is unavoidable.
+
+2026-10-18 UTC; Go1.25.1, linux/amd64, AMD EPYC9V74, four-vCPU quota.
+Baseline **f58ad141** (merged PR696). Thirty balanced trials, identical sources,
+counts and checksums; matching CGO_ENABLED=0, -buildvcs=false, -trimpath,
+-ldflags='-s -w -buildid=' and ordinary inlining. No builds/tests overlap sampling.
+
+| operation | before ns/op | after ns/op | Go ns/op | after / Go |
+|---|---:|---:|---:|---:|
+| string_append_50k | 3.66 | 2.13 | 3.53 | 0.60x |
+| read_line | 60.83 | 58.75 | 63.73 | 0.92x |
+| map_put_get_8k | 33.07 | 34.58 | 30.95 | 1.12x |
+| int_eq | 1.05 | 1.03 | 0.99 | 1.05x |
+| generic_call | 0.05 | 0.05 | 0.27 | 0.19x |
+| method_call | 0.04 | 0.04 | 0.28 | 0.16x |
+| try | 0.59 | 0.65 | 0.56 | 1.15x |
+| match | 3.53 | 3.46 | 1.58 | 2.19x |
+| builtin_length | 0.05 | 0.05 | 0.28 | 0.17x |
+| for_list | 0.44 | 0.38 | 0.34 | 1.11x |
+
+Builder batching requires a fresh private canonical builder, exhaustive direct
+uses and every freeze after every append-containing top-level statement. Only
+literal fragments up to128 decoded bytes qualify. The native append still checks
+sealing. Traversal retains every original addition/subtraction in order, snapshots
+Items, and binds the next element before its original query. A fixed three-update
+unroll amortizes control. Both preserve exact source-visible query state, partial
+tails, cancellation, cleanup and fault lines; aliases, captures, unknown bounds,
+effectful fragments, other bodies and Debug fall back. Logical source operation
+counts stay unchanged while selected loops perform less invisible work.
+
+The library's generated Go and normalized executable are byte-identical before
+and after this increment. All66 rows and30 trials are retained as a diagnostic
+control; their timing variation is not attributed to an algorithm change. The
+initial1024-byte literal cap produced34MB Go/~496MB allocation for512 sites;
+reduce to128 (8064 repeated bytes/site). Both cap variants emit byte-identical
+benchmark programs and executables; final scaling controls are retained.
+
+[Raw trials, hashes, intervals, all66 library rows, scaling and rejected controls](../results/2026-10-18-linux-amd64/closed-builder-range/).
+[Canonical proof boundaries](../../../documentation/contributing/compiler/lowering/_index.md).
+
+## Earlier counter-aggregation batch
+
+
 Safe aggregation closes the generic, method, and length loop gaps. Their times
 are per logical source iteration: the compiler combines unobserved updates
 between identical cancellation queries, reducing work. It does not execute each

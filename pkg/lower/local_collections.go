@@ -10,12 +10,13 @@ import (
 // never receive the alternate key->value interpretation of its index field.
 // Keep this deliberately narrower than general escape analysis.
 type localCollectionProof struct {
-	constructors map[*syntax.Expression]bool
-	calls        map[*syntax.Expression]string
-	lists        map[*checker.Binding]bool
-	listCalls    map[*syntax.Expression]localListCall
-	records      map[*checker.Binding]string
-	recordCalls  map[*syntax.Expression]*localRecordCall
+	builderAppends map[*syntax.Expression]builderAppend
+	constructors   map[*syntax.Expression]bool
+	calls          map[*syntax.Expression]string
+	lists          map[*checker.Binding]bool
+	listCalls      map[*syntax.Expression]localListCall
+	records        map[*checker.Binding]string
+	recordCalls    map[*syntax.Expression]*localRecordCall
 }
 
 type localListCall struct {
@@ -206,5 +207,6 @@ func (g *gen) proveLocalCollections(params []syntax.Parameter, body []*syntax.St
 			}
 		}
 	}
+	proof.builderAppends = g.closedBuilderAppends(body)
 	return proof
 }

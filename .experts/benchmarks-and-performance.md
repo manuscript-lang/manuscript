@@ -20,7 +20,15 @@ Verify: before/after run on the same host with `make stdlib-bench BENCHREPEATS=5
 
 ### A win needs a Go-oracle comparison, not just a smaller number
 
-Verified: runtime changes were judged against hand-written Go (read_line 136 to 95 ns/line vs Go 73; `match` 7.5 to 6.1 ns/op; `string_append` 9.2 to 7.1). The remaining gaps in the program table (`match`, `builtin_length`) are the known targets; `generic_call` already beats the Go control. Prefer removing per-operation work (cancellation polls in O(1) helpers, mutex round trips, avoidable allocations) over micro-tuning, and check allocations with `-benchmem`.
+Verified: retain the raw handwritten-Go comparison and distinguish logical work
+elimination from faster execution of each source operation. Closed-loop aggregation
+closes generic, method and length gaps; matching still pays checked arithmetic.
+A separate arithmetic/cancellation-equivalent handwritten-Go control measures
+3.18ns versus Manuscript3.44, while the original unchecked Go remains1.57ns.
+This diagnoses current lowering costs; it neither changes the raw baseline nor
+proves that residual overhead is unavoidable. Reject a candidate that moves a
+material gap into another workload, and retain its measurements. Prefer removing
+unobservable work, mutex round trips and allocations over placement tuning.
 
 Apply when: optimizing a helper or lowering path.
 Evidence: [runtime.md entries on O(1) helpers and ReadLine](runtime.md), [program results](../bench/perf/programs/results.md).
