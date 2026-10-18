@@ -10,6 +10,7 @@ import (
 )
 
 type indexTokenSource struct {
+	file   string
 	source string
 	once   sync.Once
 	tokens []lexer.Token
@@ -22,7 +23,7 @@ type indexTokenSource struct {
 var pinnedIndexTokens = sync.OnceValue(func() map[string]*indexTokenSource {
 	sources := map[string]*indexTokenSource{}
 	for _, m := range checker.StandardModules() {
-		sources[m.File] = &indexTokenSource{source: m.Source}
+		sources[m.File] = &indexTokenSource{file: m.File, source: m.Source}
 	}
 	return sources
 })
@@ -30,7 +31,7 @@ var pinnedIndexTokens = sync.OnceValue(func() map[string]*indexTokenSource {
 func indexTokens(m *syntax.Module) ([]lexer.Token, error) {
 	if strings.HasPrefix(m.File, "@std/") {
 		if pinned := pinnedIndexTokens()[m.File]; pinned != nil && pinned.source == m.Source {
-			pinned.once.Do(func() { pinned.tokens, pinned.err = lexer.Lex(m.File, pinned.source) })
+			pinned.once.Do(func() { pinned.tokens, pinned.err = lexer.Lex(pinned.file, pinned.source) })
 			return pinned.tokens, pinned.err
 		}
 	}
