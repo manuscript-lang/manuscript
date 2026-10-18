@@ -39,6 +39,30 @@ func check_BigInt_BitOr() {
 func check_BigInt_BitXor() {
 	var _ func(*Execution, *BigInt, *BigInt) *BigInt = BigInt_BitXor
 }
+func check_BigInt_BitNot() {
+	var _ func(*Execution, *BigInt) *BigInt = BigInt_BitNot
+}
+func check_BigInt_Negate() {
+	var _ func(*Execution, *BigInt) *BigInt = BigInt_Negate
+}
+func check_BigInt_Abs() {
+	var _ func(*Execution, *BigInt) *BigInt = BigInt_Abs
+}
+func check_BigInt_Sign() {
+	var _ func(*Execution, *BigInt) int = BigInt_Sign
+}
+func check_BigInt_Pow() {
+	var _ func(*Execution, *BigInt, int) Result[*BigInt, BigIntError] = BigInt_Pow
+}
+func check_BigInt_ShiftLeft() {
+	var _ func(*Execution, *BigInt, int) Result[*BigInt, BigIntError] = BigInt_ShiftLeft
+}
+func check_BigInt_ShiftRight() {
+	var _ func(*Execution, *BigInt, int) Result[*BigInt, BigIntError] = BigInt_ShiftRight
+}
+func check_BigInt_ToFloat() {
+	var _ func(*Execution, *BigInt) float64 = BigInt_ToFloat
+}
 func check_BigInt_ToInt() {
 	var _ func(*Execution, *BigInt) Option[int] = BigInt_ToInt
 }

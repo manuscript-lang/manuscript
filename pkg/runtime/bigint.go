@@ -93,3 +93,50 @@ func BigInt_ToStringRadix(_ *Execution, v *BigInt, radix int) string {
 	}
 	return v.n.Text(int(radix))
 }
+
+const bigMaxBits = 1 << 24
+
+func BigInt_BitNot(_ *Execution, a *BigInt) *BigInt { return &BigInt{new(big.Int).Not(a.n)} }
+func BigInt_Negate(_ *Execution, a *BigInt) *BigInt { return &BigInt{new(big.Int).Neg(a.n)} }
+func BigInt_Abs(_ *Execution, a *BigInt) *BigInt    { return &BigInt{new(big.Int).Abs(a.n)} }
+func BigInt_Sign(_ *Execution, a *BigInt) int       { return a.n.Sign() }
+
+// BigInt_Pow raises to a nonnegative exponent within the result size ceiling.
+func BigInt_Pow(ctx *Execution, a *BigInt, exponent int) Result[*BigInt, BigIntError] {
+	if exponent < 0 {
+		return bigFail[*BigInt](BigIntError_InvalidInput{})
+	}
+	if exponent > 1 && a.n.BitLen() > 1 && (exponent > bigMaxBits || a.n.BitLen()*exponent > bigMaxBits+exponent) {
+		return bigFail[*BigInt](BigIntError_LimitExceeded{})
+	}
+	CheckCancelled(ctx)
+	return Ok[*BigInt, BigIntError](&BigInt{new(big.Int).Exp(a.n, big.NewInt(int64(exponent)), nil)})
+}
+
+// BigInt_ShiftLeft multiplies by a power of two within the result size ceiling.
+func BigInt_ShiftLeft(_ *Execution, a *BigInt, count int) Result[*BigInt, BigIntError] {
+	if count < 0 {
+		return bigFail[*BigInt](BigIntError_InvalidInput{})
+	}
+	if count > bigMaxBits || a.n.BitLen()+count > bigMaxBits {
+		return bigFail[*BigInt](BigIntError_LimitExceeded{})
+	}
+	return Ok[*BigInt, BigIntError](&BigInt{new(big.Int).Lsh(a.n, uint(count))})
+}
+
+// BigInt_ShiftRight divides by a power of two, rounding toward negative infinity.
+func BigInt_ShiftRight(_ *Execution, a *BigInt, count int) Result[*BigInt, BigIntError] {
+	if count < 0 {
+		return bigFail[*BigInt](BigIntError_InvalidInput{})
+	}
+	if count > bigMaxBits+a.n.BitLen() {
+		count = a.n.BitLen() + 1
+	}
+	return Ok[*BigInt, BigIntError](&BigInt{new(big.Int).Rsh(a.n, uint(count))})
+}
+
+// BigInt_ToFloat converts to the nearest Float, saturating to infinity.
+func BigInt_ToFloat(_ *Execution, a *BigInt) float64 {
+	f, _ := new(big.Float).SetInt(a.n).Float64()
+	return f
+}

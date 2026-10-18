@@ -23,6 +23,12 @@ func check_Collections_RangeBy() {
 func check_Collections_MapFromEntries[K comparable, V any]() {
 	var _ func(*Execution, *Keys[K], *List[*MapEntry[K, V]]) *Map[K, V] = Collections_MapFromEntries[K, V]
 }
+func check_Collections_Flatten[T any]() {
+	var _ func(*Execution, *List[*List[T]]) *List[T] = Collections_Flatten[T]
+}
+func check_Collections_Shift[T any]() {
+	var _ func(*Execution, *List[T]) Option[T] = Collections_Shift[T]
+}
 func check_List_Clone[T any]() {
 	var _ func(*Execution, *List[T]) *List[T] = List_Clone[T]
 }

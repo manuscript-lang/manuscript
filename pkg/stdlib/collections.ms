@@ -400,3 +400,10 @@ impl SetBuilder[T]:
     # Adds a value to the shared builder; returns Unit like all builder mutations.
     # Equal values retain the first payload and position; a sealed builder faults.
     fn add(value: T) Unit:
+
+# Concatenates the inner lists in order into one new list (JavaScript `Array.prototype.flat`).
+export fn flatten[T](lists: List[List[T]]) List[T]:
+
+# Removes and returns the first item, or none when the list is empty (JavaScript `Array.prototype.shift`).
+# The list is mutated in place and shared by aliases.
+export fn shift[T](values: List[T]) Optional[T]:

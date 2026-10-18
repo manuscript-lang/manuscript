@@ -94,3 +94,60 @@ func extreme[T any](ctx *Execution, cmp Cmp[T], values *List[T], maximum bool) O
 	}
 	return Some(best)
 }
+
+func Math_Acosh(_ *Execution, v float64) float64 { return math.Acosh(v) }
+func Math_Asinh(_ *Execution, v float64) float64 { return math.Asinh(v) }
+func Math_Atanh(_ *Execution, v float64) float64 { return math.Atanh(v) }
+func Math_Cbrt(_ *Execution, v float64) float64  { return math.Cbrt(v) }
+func Math_Expm1(_ *Execution, v float64) float64 { return math.Expm1(v) }
+func Math_Log1p(_ *Execution, v float64) float64 { return math.Log1p(v) }
+
+// Math_Sign returns -1, 0 or 1 by sign, keeping signed zero and NaN.
+func Math_Sign(_ *Execution, v float64) float64 {
+	switch {
+	case math.IsNaN(v) || v == 0:
+		return v
+	case v < 0:
+		return -1
+	}
+	return 1
+}
+
+// Math_SignInt returns -1, 0 or 1.
+func Math_SignInt(_ *Execution, n int) int {
+	switch {
+	case n < 0:
+		return -1
+	case n > 0:
+		return 1
+	}
+	return 0
+}
+
+func Math_ToFloat32(_ *Execution, v float64) float64 { return float64(float32(v)) }
+
+const maxSafeInteger = 1<<53 - 1
+
+func Math_IsInteger(_ *Execution, v float64) bool {
+	return !math.IsInf(v, 0) && !math.IsNaN(v) && v == math.Trunc(v)
+}
+
+func Math_IsSafeInteger(ctx *Execution, v float64) bool {
+	return Math_IsInteger(ctx, v) && math.Abs(v) <= maxSafeInteger
+}
+
+func Math_Infinity(_ *Execution) float64   { return math.Inf(1) }
+func Math_Nan(_ *Execution) float64        { return math.NaN() }
+func Math_Epsilon(_ *Execution) float64    { return 0x1p-52 }
+func Math_MaxFloat(_ *Execution) float64   { return math.MaxFloat64 }
+func Math_MinFloat(_ *Execution) float64   { return math.SmallestNonzeroFloat64 }
+func Math_MaxInt(_ *Execution) int         { return math.MaxInt }
+func Math_MinInt(_ *Execution) int         { return math.MinInt }
+func Math_MaxSafeInteger(_ *Execution) int { return maxSafeInteger }
+func Math_MinSafeInteger(_ *Execution) int { return -maxSafeInteger }
+func Math_Ln2(_ *Execution) float64        { return math.Ln2 }
+func Math_Ln10(_ *Execution) float64       { return math.Ln10 }
+func Math_Log2e(_ *Execution) float64      { return math.Log2E }
+func Math_Log10e(_ *Execution) float64     { return math.Log10E }
+func Math_Sqrt2(_ *Execution) float64      { return math.Sqrt2 }
+func Math_SqrtHalf(_ *Execution) float64   { return math.Sqrt2 / 2 }

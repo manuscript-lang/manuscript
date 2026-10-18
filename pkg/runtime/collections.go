@@ -187,3 +187,29 @@ func SetBuilder_Freeze[T comparable](_ *Execution, b *SetBuilder[T]) *Set[T] {
 	b.sealed = true
 	return b.s
 }
+
+// Collections_Flatten concatenates the inner lists into a new list.
+func Collections_Flatten[T any](ctx *Execution, lists *List[*List[T]]) *List[T] {
+	CheckCancelled(ctx)
+	total := 0
+	for _, inner := range lists.Items {
+		total += len(inner.Items)
+	}
+	out, tick := make([]T, 0, total), uint32(0)
+	for _, inner := range lists.Items {
+		Poll(ctx, &tick)
+		out = append(out, inner.Items...)
+	}
+	return NewList(out...)
+}
+
+// Collections_Shift removes and returns the first item, or none when empty.
+func Collections_Shift[T any](ctx *Execution, values *List[T]) Option[T] {
+	CheckCancelled(ctx)
+	if len(values.Items) == 0 {
+		return None[T]()
+	}
+	first := values.Items[0]
+	values.Items = values.Items[1:]
+	return Some(first)
+}

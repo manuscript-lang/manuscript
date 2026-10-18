@@ -16,6 +16,24 @@ func check_Encoding_HexDecode() {
 func check_Encoding_HexEncode() {
 	var _ func(*Execution, *Bytes) string = Encoding_HexEncode
 }
+func check_Encoding_Utf16Encode() {
+	var _ func(*Execution, string, bool) *Bytes = Encoding_Utf16Encode
+}
+func check_Encoding_Utf16Decode() {
+	var _ func(*Execution, *Bytes, bool, Option[int]) Result[string, EncodingError] = Encoding_Utf16Decode
+}
+func check_Encoding_Latin1Encode() {
+	var _ func(*Execution, string) Result[*Bytes, EncodingError] = Encoding_Latin1Encode
+}
+func check_Encoding_Latin1Decode() {
+	var _ func(*Execution, *Bytes) string = Encoding_Latin1Decode
+}
+func check_Encoding_AsciiEncode() {
+	var _ func(*Execution, string) Result[*Bytes, EncodingError] = Encoding_AsciiEncode
+}
+func check_Encoding_AsciiDecode() {
+	var _ func(*Execution, *Bytes) Result[string, EncodingError] = Encoding_AsciiDecode
+}
 func check_Errors_Message_EncodingError() {
 	var _ func(*Execution, EncodingError) string = Errors_Message_EncodingError
 }

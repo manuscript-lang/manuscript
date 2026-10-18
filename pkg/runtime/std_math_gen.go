@@ -94,3 +94,81 @@ func check_Math_Tanh() {
 func check_Math_Truncate() {
 	var _ func(*Execution, float64) float64 = Math_Truncate
 }
+func check_Math_Acosh() {
+	var _ func(*Execution, float64) float64 = Math_Acosh
+}
+func check_Math_Asinh() {
+	var _ func(*Execution, float64) float64 = Math_Asinh
+}
+func check_Math_Atanh() {
+	var _ func(*Execution, float64) float64 = Math_Atanh
+}
+func check_Math_Cbrt() {
+	var _ func(*Execution, float64) float64 = Math_Cbrt
+}
+func check_Math_Expm1() {
+	var _ func(*Execution, float64) float64 = Math_Expm1
+}
+func check_Math_Log1p() {
+	var _ func(*Execution, float64) float64 = Math_Log1p
+}
+func check_Math_Sign() {
+	var _ func(*Execution, float64) float64 = Math_Sign
+}
+func check_Math_SignInt() {
+	var _ func(*Execution, int) int = Math_SignInt
+}
+func check_Math_ToFloat32() {
+	var _ func(*Execution, float64) float64 = Math_ToFloat32
+}
+func check_Math_IsInteger() {
+	var _ func(*Execution, float64) bool = Math_IsInteger
+}
+func check_Math_IsSafeInteger() {
+	var _ func(*Execution, float64) bool = Math_IsSafeInteger
+}
+func check_Math_Infinity() {
+	var _ func(*Execution) float64 = Math_Infinity
+}
+func check_Math_Nan() {
+	var _ func(*Execution) float64 = Math_Nan
+}
+func check_Math_Epsilon() {
+	var _ func(*Execution) float64 = Math_Epsilon
+}
+func check_Math_MaxFloat() {
+	var _ func(*Execution) float64 = Math_MaxFloat
+}
+func check_Math_MinFloat() {
+	var _ func(*Execution) float64 = Math_MinFloat
+}
+func check_Math_MaxInt() {
+	var _ func(*Execution) int = Math_MaxInt
+}
+func check_Math_MinInt() {
+	var _ func(*Execution) int = Math_MinInt
+}
+func check_Math_MaxSafeInteger() {
+	var _ func(*Execution) int = Math_MaxSafeInteger
+}
+func check_Math_MinSafeInteger() {
+	var _ func(*Execution) int = Math_MinSafeInteger
+}
+func check_Math_Ln2() {
+	var _ func(*Execution) float64 = Math_Ln2
+}
+func check_Math_Ln10() {
+	var _ func(*Execution) float64 = Math_Ln10
+}
+func check_Math_Log2e() {
+	var _ func(*Execution) float64 = Math_Log2e
+}
+func check_Math_Log10e() {
+	var _ func(*Execution) float64 = Math_Log10e
+}
+func check_Math_Sqrt2() {
+	var _ func(*Execution) float64 = Math_Sqrt2
+}
+func check_Math_SqrtHalf() {
+	var _ func(*Execution) float64 = Math_SqrtHalf
+}

@@ -1,5 +1,15 @@
 import {expect_equal, expect_false} from "@std/testing.ms"
-import {ListBuilder, MapBuilder, SetBuilder, range, range_by, filled, map_from_entries} from "@std/collections.ms"
+import {
+    ListBuilder,
+    MapBuilder,
+    SetBuilder,
+    range,
+    range_by,
+    filled,
+    map_from_entries,
+    flatten,
+    shift
+} from "@std/collections.ms"
 
 fn positive(value: Int) Bool: value > 0
 
@@ -159,3 +169,12 @@ test "imported map add interoperates with with_entry":
     let add = values.add
     add("c", 4)
     try expect_false(values.keys() != ["a", "b", "c"] or values.values() != [3, 2, 4])
+
+test "flatten concatenates and shift removes the first item":
+    try expect_equal(flatten([[1, 2], [], [3]]), [1, 2, 3])
+    try expect_equal(flatten(List[List[Int]]()), List[Int]())
+    let values = [1, 2, 3]
+    try expect_equal(shift(values), some(1))
+    try expect_equal(values, [2, 3])
+    let empty = List[Int]()
+    try expect_equal(shift(empty), none)
