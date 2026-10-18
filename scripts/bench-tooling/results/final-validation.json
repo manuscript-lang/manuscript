@@ -1,0 +1,50 @@
+[
+  {
+    "name": "final-repo-docs",
+    "exit": 0,
+    "expected": 0,
+    "passed": true
+  },
+  {
+    "name": "final-tooling-tests",
+    "exit": 0,
+    "expected": 0,
+    "passed": true
+  },
+  {
+    "name": "final-lsp-race",
+    "exit": 0,
+    "expected": 0,
+    "passed": true
+  },
+  {
+    "name": "final-lsp-vet",
+    "exit": 0,
+    "expected": 0,
+    "passed": true
+  },
+  {
+    "name": "final-protocol",
+    "exit": 0,
+    "expected": 0,
+    "passed": true
+  },
+  {
+    "name": "final-memory",
+    "exit": 0,
+    "expected": 0,
+    "passed": true
+  },
+  {
+    "name": "rename-negative",
+    "exit": 1,
+    "expected": 1,
+    "passed": true
+  },
+  {
+    "name": "final-assertion-controls",
+    "exit": 0,
+    "expected": 0,
+    "passed": true
+  }
+]

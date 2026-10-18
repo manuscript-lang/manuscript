@@ -1,0 +1,124 @@
+{"group": "scaling/initialize_fresh_process", "ms": 2.894772, "response_bytes": 935}
+{"group": "scaling/first_open_fresh_process", "ms": 101.402762, "notifications": 1, "memory": {"VmHWM": "59080 kB", "VmRSS": "59080 kB", "Threads": "6"}}
+{"group": "scaling/initialize_fresh_process", "ms": 2.853657, "response_bytes": 935}
+{"group": "scaling/first_open_fresh_process", "ms": 98.315522, "notifications": 1, "memory": {"VmHWM": "59224 kB", "VmRSS": "59224 kB", "Threads": "6"}}
+{"group": "scaling/initialize_fresh_process", "ms": 3.08446, "response_bytes": 935}
+{"group": "scaling/first_open_fresh_process", "ms": 92.137263, "notifications": 1, "memory": {"VmHWM": "57072 kB", "VmRSS": "57072 kB", "Threads": "6"}}
+{"group": "scaling/tabs1/warm_transport_error_baseline", "ms": 0.127358, "response_bytes": 81}
+{"group": "scaling/tabs1/warm_transport_error_baseline", "ms": 0.084344, "response_bytes": 81}
+{"group": "scaling/tabs1/warm_transport_error_baseline", "ms": 0.08792, "response_bytes": 81}
+{"group": "scaling/tabs1/warm_transport_error_baseline", "ms": 0.064004, "response_bytes": 81}
+{"group": "scaling/tabs1/warm_transport_error_baseline", "ms": 0.058346, "response_bytes": 81}
+{"group": "scaling/tabs1/warm_hover", "ms": 64.422669, "response_bytes": 251, "result_items": null, "result_sha256": "4f7761924c57c8072566b9764f7f3206ba1082235341a6524341f89795d60600"}
+{"group": "scaling/tabs1/warm_hover", "ms": 0.312229, "response_bytes": 251, "result_items": null, "result_sha256": "4f7761924c57c8072566b9764f7f3206ba1082235341a6524341f89795d60600"}
+{"group": "scaling/tabs1/warm_hover", "ms": 0.151083, "response_bytes": 252, "result_items": null, "result_sha256": "4f7761924c57c8072566b9764f7f3206ba1082235341a6524341f89795d60600"}
+{"group": "scaling/tabs1/warm_hover", "ms": 0.146886, "response_bytes": 252, "result_items": null, "result_sha256": "4f7761924c57c8072566b9764f7f3206ba1082235341a6524341f89795d60600"}
+{"group": "scaling/tabs1/warm_hover", "ms": 0.145875, "response_bytes": 252, "result_items": null, "result_sha256": "4f7761924c57c8072566b9764f7f3206ba1082235341a6524341f89795d60600"}
+{"group": "scaling/tabs1/warm_definition", "ms": 0.221225, "response_bytes": 218, "result_items": 1, "result_sha256": "88abfe1421ff7fe047ea5c9df4deafe5a751aab3ea8aff845943d62d13a646d5"}
+{"group": "scaling/tabs1/warm_definition", "ms": 0.201998, "response_bytes": 218, "result_items": 1, "result_sha256": "88abfe1421ff7fe047ea5c9df4deafe5a751aab3ea8aff845943d62d13a646d5"}
+{"group": "scaling/tabs1/warm_definition", "ms": 0.258009, "response_bytes": 218, "result_items": 1, "result_sha256": "88abfe1421ff7fe047ea5c9df4deafe5a751aab3ea8aff845943d62d13a646d5"}
+{"group": "scaling/tabs1/warm_definition", "ms": 0.230689, "response_bytes": 218, "result_items": 1, "result_sha256": "88abfe1421ff7fe047ea5c9df4deafe5a751aab3ea8aff845943d62d13a646d5"}
+{"group": "scaling/tabs1/warm_definition", "ms": 0.300112, "response_bytes": 218, "result_items": 1, "result_sha256": "88abfe1421ff7fe047ea5c9df4deafe5a751aab3ea8aff845943d62d13a646d5"}
+{"group": "scaling/tabs1/warm_completion", "ms": 152.461673, "response_bytes": 397041, "result_items": 950, "result_sha256": "11902d40b3c5a094cab1f3f3b66cccbf753c37f92a8cc05825ba5edfcf582e56"}
+{"group": "scaling/tabs1/warm_completion", "ms": 134.774737, "response_bytes": 397041, "result_items": 950, "result_sha256": "11902d40b3c5a094cab1f3f3b66cccbf753c37f92a8cc05825ba5edfcf582e56"}
+{"group": "scaling/tabs1/warm_completion", "ms": 136.770036, "response_bytes": 397041, "result_items": 950, "result_sha256": "11902d40b3c5a094cab1f3f3b66cccbf753c37f92a8cc05825ba5edfcf582e56"}
+{"group": "scaling/tabs1/warm_completion", "ms": 140.530269, "response_bytes": 397041, "result_items": 950, "result_sha256": "11902d40b3c5a094cab1f3f3b66cccbf753c37f92a8cc05825ba5edfcf582e56"}
+{"group": "scaling/tabs1/warm_completion", "ms": 129.414103, "response_bytes": 397041, "result_items": 950, "result_sha256": "11902d40b3c5a094cab1f3f3b66cccbf753c37f92a8cc05825ba5edfcf582e56"}
+{"group": "scaling/tabs1/warm_signatureHelp", "ms": 53.302066, "response_bytes": 249, "result_items": null, "result_sha256": "c5f10281086c95a75b90675dd5ce17e19519ef28cba709feed479b86d7be8cf0"}
+{"group": "scaling/tabs1/warm_signatureHelp", "ms": 45.401597, "response_bytes": 249, "result_items": null, "result_sha256": "c5f10281086c95a75b90675dd5ce17e19519ef28cba709feed479b86d7be8cf0"}
+{"group": "scaling/tabs1/warm_signatureHelp", "ms": 50.869702, "response_bytes": 249, "result_items": null, "result_sha256": "c5f10281086c95a75b90675dd5ce17e19519ef28cba709feed479b86d7be8cf0"}
+{"group": "scaling/tabs1/warm_signatureHelp", "ms": 48.237324, "response_bytes": 249, "result_items": null, "result_sha256": "c5f10281086c95a75b90675dd5ce17e19519ef28cba709feed479b86d7be8cf0"}
+{"group": "scaling/tabs1/warm_signatureHelp", "ms": 47.714267, "response_bytes": 249, "result_items": null, "result_sha256": "c5f10281086c95a75b90675dd5ce17e19519ef28cba709feed479b86d7be8cf0"}
+{"group": "scaling/tabs1/warm_semanticTokens/full", "ms": 3.284375, "response_bytes": 4245, "result_items": null, "result_sha256": "677c38ecde328d90146ff283408e3ff991c396d669da7031002c76350fcfa4bc"}
+{"group": "scaling/tabs1/warm_semanticTokens/full", "ms": 4.665553, "response_bytes": 4245, "result_items": null, "result_sha256": "677c38ecde328d90146ff283408e3ff991c396d669da7031002c76350fcfa4bc"}
+{"group": "scaling/tabs1/warm_semanticTokens/full", "ms": 2.068289, "response_bytes": 4245, "result_items": null, "result_sha256": "677c38ecde328d90146ff283408e3ff991c396d669da7031002c76350fcfa4bc"}
+{"group": "scaling/tabs1/warm_semanticTokens/full", "ms": 1.900451, "response_bytes": 4245, "result_items": null, "result_sha256": "677c38ecde328d90146ff283408e3ff991c396d669da7031002c76350fcfa4bc"}
+{"group": "scaling/tabs1/warm_semanticTokens/full", "ms": 1.564498, "response_bytes": 4245, "result_items": null, "result_sha256": "677c38ecde328d90146ff283408e3ff991c396d669da7031002c76350fcfa4bc"}
+{"group": "scaling/tabs1/warm_documentSymbol", "ms": 0.539112, "response_bytes": 256, "result_items": 1, "result_sha256": "eb6751cd733934961ab5bd2a0cbb0f33419282d081ec6f9ea70e0e799498df3f"}
+{"group": "scaling/tabs1/warm_documentSymbol", "ms": 0.32694, "response_bytes": 256, "result_items": 1, "result_sha256": "eb6751cd733934961ab5bd2a0cbb0f33419282d081ec6f9ea70e0e799498df3f"}
+{"group": "scaling/tabs1/warm_documentSymbol", "ms": 0.249276, "response_bytes": 256, "result_items": 1, "result_sha256": "eb6751cd733934961ab5bd2a0cbb0f33419282d081ec6f9ea70e0e799498df3f"}
+{"group": "scaling/tabs1/warm_documentSymbol", "ms": 0.182758, "response_bytes": 256, "result_items": 1, "result_sha256": "eb6751cd733934961ab5bd2a0cbb0f33419282d081ec6f9ea70e0e799498df3f"}
+{"group": "scaling/tabs1/warm_documentSymbol", "ms": 0.359578, "response_bytes": 256, "result_items": 1, "result_sha256": "eb6751cd733934961ab5bd2a0cbb0f33419282d081ec6f9ea70e0e799498df3f"}
+{"group": "scaling/tabs1/edit_to_own_diagnostics", "ms": 70.335004}
+{"group": "scaling/tabs1/edit_to_all_diagnostics", "ms": 70.335004, "notifications": 1}
+{"group": "scaling/tabs1/edit_to_own_diagnostics", "ms": 61.820256}
+{"group": "scaling/tabs1/edit_to_all_diagnostics", "ms": 61.820256, "notifications": 1}
+{"group": "scaling/tabs1/edit_to_own_diagnostics", "ms": 57.349629}
+{"group": "scaling/tabs1/edit_to_all_diagnostics", "ms": 57.349629, "notifications": 1}
+{"group": "scaling/tabs1/edit_to_own_diagnostics", "ms": 55.894052}
+{"group": "scaling/tabs1/edit_to_all_diagnostics", "ms": 55.894052, "notifications": 1}
+{"group": "scaling/tabs1/edit_to_own_diagnostics", "ms": 55.170949}
+{"group": "scaling/tabs1/edit_to_all_diagnostics", "ms": 55.170949, "notifications": 1}
+{"group": "scaling/tabs1/burst10_to_all_diagnostics", "ms": 59.889531, "notifications": 1, "versions": [16]}
+{"group": "scaling/tabs1/burst10_to_all_diagnostics", "ms": 54.514615, "notifications": 1, "versions": [26]}
+{"group": "scaling/tabs1/burst10_to_all_diagnostics", "ms": 65.047657, "notifications": 1, "versions": [36]}
+{"group": "scaling/tabs1/warm_textDocument/references", "ms": 1446.627195, "response_bytes": 581, "result_items": 3}
+{"group": "scaling/tabs1/warm_textDocument/references", "ms": 1331.192641, "response_bytes": 581, "result_items": 3}
+{"group": "scaling/tabs1/warm_textDocument/references", "ms": 1334.433462, "response_bytes": 581, "result_items": 3}
+{"group": "scaling/tabs1/warm_workspace/symbol", "ms": 1363.150648, "response_bytes": 256, "result_items": 1}
+{"group": "scaling/tabs1/warm_workspace/symbol", "ms": 1384.624857, "response_bytes": 256, "result_items": 1}
+{"group": "scaling/tabs1/warm_workspace/symbol", "ms": 1391.360821, "response_bytes": 256, "result_items": 1}
+{"group": "scaling/tabs1/canceled_workspace_symbol", "ms": 0.214611, "response": {"error": {"code": -32800, "message": "request canceled"}, "id": 52, "jsonrpc": "2.0"}}
+{"group": "scaling/tabs1/hover_queued_after_cancel", "ms": 0.289962}
+{"group": "scaling/tabs1/unrelated_watched_toml_barrier", "ms": 0.525862, "notifications": 0}
+{"group": "scaling/tabs1/unrelated_watched_toml_barrier", "ms": 0.25865, "notifications": 0}
+{"group": "scaling/tabs1/unrelated_watched_toml_barrier", "ms": 0.269175, "notifications": 0}
+{"group": "scaling/tabs10/warm_transport_error_baseline", "ms": 0.135839, "response_bytes": 82}
+{"group": "scaling/tabs10/warm_transport_error_baseline", "ms": 0.092705, "response_bytes": 82}
+{"group": "scaling/tabs10/warm_transport_error_baseline", "ms": 0.087498, "response_bytes": 82}
+{"group": "scaling/tabs10/warm_transport_error_baseline", "ms": 0.083753, "response_bytes": 82}
+{"group": "scaling/tabs10/warm_transport_error_baseline", "ms": 0.087909, "response_bytes": 82}
+{"group": "scaling/tabs10/warm_hover", "ms": 61.232212, "response_bytes": 252, "result_items": null, "result_sha256": "4f7761924c57c8072566b9764f7f3206ba1082235341a6524341f89795d60600"}
+{"group": "scaling/tabs10/warm_hover", "ms": 0.269366, "response_bytes": 252, "result_items": null, "result_sha256": "4f7761924c57c8072566b9764f7f3206ba1082235341a6524341f89795d60600"}
+{"group": "scaling/tabs10/warm_hover", "ms": 0.147877, "response_bytes": 252, "result_items": null, "result_sha256": "4f7761924c57c8072566b9764f7f3206ba1082235341a6524341f89795d60600"}
+{"group": "scaling/tabs10/warm_hover", "ms": 0.188907, "response_bytes": 252, "result_items": null, "result_sha256": "4f7761924c57c8072566b9764f7f3206ba1082235341a6524341f89795d60600"}
+{"group": "scaling/tabs10/warm_hover", "ms": 0.123932, "response_bytes": 252, "result_items": null, "result_sha256": "4f7761924c57c8072566b9764f7f3206ba1082235341a6524341f89795d60600"}
+{"group": "scaling/tabs10/warm_definition", "ms": 0.318027, "response_bytes": 218, "result_items": 1, "result_sha256": "88abfe1421ff7fe047ea5c9df4deafe5a751aab3ea8aff845943d62d13a646d5"}
+{"group": "scaling/tabs10/warm_definition", "ms": 0.189388, "response_bytes": 218, "result_items": 1, "result_sha256": "88abfe1421ff7fe047ea5c9df4deafe5a751aab3ea8aff845943d62d13a646d5"}
+{"group": "scaling/tabs10/warm_definition", "ms": 0.270598, "response_bytes": 218, "result_items": 1, "result_sha256": "88abfe1421ff7fe047ea5c9df4deafe5a751aab3ea8aff845943d62d13a646d5"}
+{"group": "scaling/tabs10/warm_definition", "ms": 0.207425, "response_bytes": 218, "result_items": 1, "result_sha256": "88abfe1421ff7fe047ea5c9df4deafe5a751aab3ea8aff845943d62d13a646d5"}
+{"group": "scaling/tabs10/warm_definition", "ms": 0.248194, "response_bytes": 218, "result_items": 1, "result_sha256": "88abfe1421ff7fe047ea5c9df4deafe5a751aab3ea8aff845943d62d13a646d5"}
+{"group": "scaling/tabs10/warm_completion", "ms": 177.665626, "response_bytes": 397041, "result_items": 950, "result_sha256": "11902d40b3c5a094cab1f3f3b66cccbf753c37f92a8cc05825ba5edfcf582e56"}
+{"group": "scaling/tabs10/warm_completion", "ms": 174.925404, "response_bytes": 397041, "result_items": 950, "result_sha256": "11902d40b3c5a094cab1f3f3b66cccbf753c37f92a8cc05825ba5edfcf582e56"}
+{"group": "scaling/tabs10/warm_completion", "ms": 172.685873, "response_bytes": 397041, "result_items": 950, "result_sha256": "11902d40b3c5a094cab1f3f3b66cccbf753c37f92a8cc05825ba5edfcf582e56"}
+{"group": "scaling/tabs10/warm_completion", "ms": 176.532855, "response_bytes": 397041, "result_items": 950, "result_sha256": "11902d40b3c5a094cab1f3f3b66cccbf753c37f92a8cc05825ba5edfcf582e56"}
+{"group": "scaling/tabs10/warm_completion", "ms": 181.826566, "response_bytes": 397041, "result_items": 950, "result_sha256": "11902d40b3c5a094cab1f3f3b66cccbf753c37f92a8cc05825ba5edfcf582e56"}
+{"group": "scaling/tabs10/warm_signatureHelp", "ms": 50.422662, "response_bytes": 249, "result_items": null, "result_sha256": "c5f10281086c95a75b90675dd5ce17e19519ef28cba709feed479b86d7be8cf0"}
+{"group": "scaling/tabs10/warm_signatureHelp", "ms": 53.924148, "response_bytes": 249, "result_items": null, "result_sha256": "c5f10281086c95a75b90675dd5ce17e19519ef28cba709feed479b86d7be8cf0"}
+{"group": "scaling/tabs10/warm_signatureHelp", "ms": 48.110735, "response_bytes": 249, "result_items": null, "result_sha256": "c5f10281086c95a75b90675dd5ce17e19519ef28cba709feed479b86d7be8cf0"}
+{"group": "scaling/tabs10/warm_signatureHelp", "ms": 47.421833, "response_bytes": 249, "result_items": null, "result_sha256": "c5f10281086c95a75b90675dd5ce17e19519ef28cba709feed479b86d7be8cf0"}
+{"group": "scaling/tabs10/warm_signatureHelp", "ms": 45.361345, "response_bytes": 249, "result_items": null, "result_sha256": "c5f10281086c95a75b90675dd5ce17e19519ef28cba709feed479b86d7be8cf0"}
+{"group": "scaling/tabs10/warm_semanticTokens/full", "ms": 3.692731, "response_bytes": 4245, "result_items": null, "result_sha256": "677c38ecde328d90146ff283408e3ff991c396d669da7031002c76350fcfa4bc"}
+{"group": "scaling/tabs10/warm_semanticTokens/full", "ms": 2.848741, "response_bytes": 4245, "result_items": null, "result_sha256": "677c38ecde328d90146ff283408e3ff991c396d669da7031002c76350fcfa4bc"}
+{"group": "scaling/tabs10/warm_semanticTokens/full", "ms": 1.540158, "response_bytes": 4245, "result_items": null, "result_sha256": "677c38ecde328d90146ff283408e3ff991c396d669da7031002c76350fcfa4bc"}
+{"group": "scaling/tabs10/warm_semanticTokens/full", "ms": 1.347895, "response_bytes": 4245, "result_items": null, "result_sha256": "677c38ecde328d90146ff283408e3ff991c396d669da7031002c76350fcfa4bc"}
+{"group": "scaling/tabs10/warm_semanticTokens/full", "ms": 1.37835, "response_bytes": 4245, "result_items": null, "result_sha256": "677c38ecde328d90146ff283408e3ff991c396d669da7031002c76350fcfa4bc"}
+{"group": "scaling/tabs10/warm_documentSymbol", "ms": 0.199668, "response_bytes": 256, "result_items": 1, "result_sha256": "eb6751cd733934961ab5bd2a0cbb0f33419282d081ec6f9ea70e0e799498df3f"}
+{"group": "scaling/tabs10/warm_documentSymbol", "ms": 0.185838, "response_bytes": 256, "result_items": 1, "result_sha256": "eb6751cd733934961ab5bd2a0cbb0f33419282d081ec6f9ea70e0e799498df3f"}
+{"group": "scaling/tabs10/warm_documentSymbol", "ms": 0.151478, "response_bytes": 256, "result_items": 1, "result_sha256": "eb6751cd733934961ab5bd2a0cbb0f33419282d081ec6f9ea70e0e799498df3f"}
+{"group": "scaling/tabs10/warm_documentSymbol", "ms": 0.147251, "response_bytes": 256, "result_items": 1, "result_sha256": "eb6751cd733934961ab5bd2a0cbb0f33419282d081ec6f9ea70e0e799498df3f"}
+{"group": "scaling/tabs10/warm_documentSymbol", "ms": 0.152799, "response_bytes": 256, "result_items": 1, "result_sha256": "eb6751cd733934961ab5bd2a0cbb0f33419282d081ec6f9ea70e0e799498df3f"}
+{"group": "scaling/tabs10/edit_to_own_diagnostics", "ms": 57.648902}
+{"group": "scaling/tabs10/edit_to_all_diagnostics", "ms": 61.030221, "notifications": 10}
+{"group": "scaling/tabs10/edit_to_own_diagnostics", "ms": 62.002941}
+{"group": "scaling/tabs10/edit_to_all_diagnostics", "ms": 65.433091, "notifications": 10}
+{"group": "scaling/tabs10/edit_to_own_diagnostics", "ms": 57.782283}
+{"group": "scaling/tabs10/edit_to_all_diagnostics", "ms": 60.230671, "notifications": 10}
+{"group": "scaling/tabs10/edit_to_own_diagnostics", "ms": 55.70832}
+{"group": "scaling/tabs10/edit_to_all_diagnostics", "ms": 58.684804, "notifications": 10}
+{"group": "scaling/tabs10/edit_to_own_diagnostics", "ms": 57.333624}
+{"group": "scaling/tabs10/edit_to_all_diagnostics", "ms": 60.596774, "notifications": 10}
+{"group": "scaling/tabs10/burst10_to_all_diagnostics", "ms": 58.680834, "notifications": 10, "versions": [16]}
+{"group": "scaling/tabs10/burst10_to_all_diagnostics", "ms": 89.372491, "notifications": 10, "versions": [26]}
+{"group": "scaling/tabs10/burst10_to_all_diagnostics", "ms": 61.283113, "notifications": 10, "versions": [36]}
+{"group": "scaling/tabs10/warm_textDocument/references", "ms": 1417.570397, "response_bytes": 581, "result_items": 3}
+{"group": "scaling/tabs10/warm_textDocument/references", "ms": 1414.224536, "response_bytes": 581, "result_items": 3}
+{"group": "scaling/tabs10/warm_textDocument/references", "ms": 1533.82041, "response_bytes": 581, "result_items": 3}
+{"group": "scaling/tabs10/warm_workspace/symbol", "ms": 1527.8578, "response_bytes": 256, "result_items": 1}
+{"group": "scaling/tabs10/warm_workspace/symbol", "ms": 1495.499966, "response_bytes": 256, "result_items": 1}
+{"group": "scaling/tabs10/warm_workspace/symbol", "ms": 1444.955203, "response_bytes": 256, "result_items": 1}
+{"group": "scaling/tabs10/canceled_workspace_symbol", "ms": 0.189599, "response": {"error": {"code": -32800, "message": "request canceled"}, "id": 61, "jsonrpc": "2.0"}}
+{"group": "scaling/tabs10/hover_queued_after_cancel", "ms": 0.542628}
+{"group": "scaling/tabs10/unrelated_watched_toml_barrier", "ms": 0.269897, "notifications": 0}
+{"group": "scaling/tabs10/unrelated_watched_toml_barrier", "ms": 0.268073, "notifications": 0}
+{"group": "scaling/tabs10/unrelated_watched_toml_barrier", "ms": 0.246742, "notifications": 0}

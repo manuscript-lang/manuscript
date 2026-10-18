@@ -1,0 +1,226 @@
+{
+  "scaling/initialize_fresh_process": {
+    "n": 3,
+    "p50_ms": 2.894772,
+    "p95_ms": null,
+    "min_ms": 2.853657,
+    "max_ms": 3.08446
+  },
+  "scaling/first_open_fresh_process": {
+    "n": 3,
+    "p50_ms": 98.315522,
+    "p95_ms": null,
+    "min_ms": 92.137263,
+    "max_ms": 101.402762
+  },
+  "scaling/tabs1/warm_transport_error_baseline": {
+    "n": 5,
+    "p50_ms": 0.084344,
+    "p95_ms": null,
+    "min_ms": 0.058346,
+    "max_ms": 0.127358
+  },
+  "scaling/tabs1/warm_hover": {
+    "n": 5,
+    "p50_ms": 0.151083,
+    "p95_ms": null,
+    "min_ms": 0.145875,
+    "max_ms": 64.422669
+  },
+  "scaling/tabs1/warm_definition": {
+    "n": 5,
+    "p50_ms": 0.230689,
+    "p95_ms": null,
+    "min_ms": 0.201998,
+    "max_ms": 0.300112
+  },
+  "scaling/tabs1/warm_completion": {
+    "n": 5,
+    "p50_ms": 136.770036,
+    "p95_ms": null,
+    "min_ms": 129.414103,
+    "max_ms": 152.461673
+  },
+  "scaling/tabs1/warm_signatureHelp": {
+    "n": 5,
+    "p50_ms": 48.237324,
+    "p95_ms": null,
+    "min_ms": 45.401597,
+    "max_ms": 53.302066
+  },
+  "scaling/tabs1/warm_semanticTokens/full": {
+    "n": 5,
+    "p50_ms": 2.068289,
+    "p95_ms": null,
+    "min_ms": 1.564498,
+    "max_ms": 4.665553
+  },
+  "scaling/tabs1/warm_documentSymbol": {
+    "n": 5,
+    "p50_ms": 0.32694,
+    "p95_ms": null,
+    "min_ms": 0.182758,
+    "max_ms": 0.539112
+  },
+  "scaling/tabs1/edit_to_own_diagnostics": {
+    "n": 5,
+    "p50_ms": 57.349629,
+    "p95_ms": null,
+    "min_ms": 55.170949,
+    "max_ms": 70.335004
+  },
+  "scaling/tabs1/edit_to_all_diagnostics": {
+    "n": 5,
+    "p50_ms": 57.349629,
+    "p95_ms": null,
+    "min_ms": 55.170949,
+    "max_ms": 70.335004
+  },
+  "scaling/tabs1/burst10_to_all_diagnostics": {
+    "n": 3,
+    "p50_ms": 59.889531,
+    "p95_ms": null,
+    "min_ms": 54.514615,
+    "max_ms": 65.047657
+  },
+  "scaling/tabs1/warm_textDocument/references": {
+    "n": 3,
+    "p50_ms": 1334.433462,
+    "p95_ms": null,
+    "min_ms": 1331.192641,
+    "max_ms": 1446.627195
+  },
+  "scaling/tabs1/warm_workspace/symbol": {
+    "n": 3,
+    "p50_ms": 1384.624857,
+    "p95_ms": null,
+    "min_ms": 1363.150648,
+    "max_ms": 1391.360821
+  },
+  "scaling/tabs1/canceled_workspace_symbol": {
+    "n": 1,
+    "p50_ms": 0.214611,
+    "p95_ms": null,
+    "min_ms": 0.214611,
+    "max_ms": 0.214611
+  },
+  "scaling/tabs1/hover_queued_after_cancel": {
+    "n": 1,
+    "p50_ms": 0.289962,
+    "p95_ms": null,
+    "min_ms": 0.289962,
+    "max_ms": 0.289962
+  },
+  "scaling/tabs1/unrelated_watched_toml_barrier": {
+    "n": 3,
+    "p50_ms": 0.269175,
+    "p95_ms": null,
+    "min_ms": 0.25865,
+    "max_ms": 0.525862
+  },
+  "scaling/tabs10/warm_transport_error_baseline": {
+    "n": 5,
+    "p50_ms": 0.087909,
+    "p95_ms": null,
+    "min_ms": 0.083753,
+    "max_ms": 0.135839
+  },
+  "scaling/tabs10/warm_hover": {
+    "n": 5,
+    "p50_ms": 0.188907,
+    "p95_ms": null,
+    "min_ms": 0.123932,
+    "max_ms": 61.232212
+  },
+  "scaling/tabs10/warm_definition": {
+    "n": 5,
+    "p50_ms": 0.248194,
+    "p95_ms": null,
+    "min_ms": 0.189388,
+    "max_ms": 0.318027
+  },
+  "scaling/tabs10/warm_completion": {
+    "n": 5,
+    "p50_ms": 176.532855,
+    "p95_ms": null,
+    "min_ms": 172.685873,
+    "max_ms": 181.826566
+  },
+  "scaling/tabs10/warm_signatureHelp": {
+    "n": 5,
+    "p50_ms": 48.110735,
+    "p95_ms": null,
+    "min_ms": 45.361345,
+    "max_ms": 53.924148
+  },
+  "scaling/tabs10/warm_semanticTokens/full": {
+    "n": 5,
+    "p50_ms": 1.540158,
+    "p95_ms": null,
+    "min_ms": 1.347895,
+    "max_ms": 3.692731
+  },
+  "scaling/tabs10/warm_documentSymbol": {
+    "n": 5,
+    "p50_ms": 0.152799,
+    "p95_ms": null,
+    "min_ms": 0.147251,
+    "max_ms": 0.199668
+  },
+  "scaling/tabs10/edit_to_own_diagnostics": {
+    "n": 5,
+    "p50_ms": 57.648902,
+    "p95_ms": null,
+    "min_ms": 55.70832,
+    "max_ms": 62.002941
+  },
+  "scaling/tabs10/edit_to_all_diagnostics": {
+    "n": 5,
+    "p50_ms": 60.596774,
+    "p95_ms": null,
+    "min_ms": 58.684804,
+    "max_ms": 65.433091
+  },
+  "scaling/tabs10/burst10_to_all_diagnostics": {
+    "n": 3,
+    "p50_ms": 61.283113,
+    "p95_ms": null,
+    "min_ms": 58.680834,
+    "max_ms": 89.372491
+  },
+  "scaling/tabs10/warm_textDocument/references": {
+    "n": 3,
+    "p50_ms": 1417.570397,
+    "p95_ms": null,
+    "min_ms": 1414.224536,
+    "max_ms": 1533.82041
+  },
+  "scaling/tabs10/warm_workspace/symbol": {
+    "n": 3,
+    "p50_ms": 1495.499966,
+    "p95_ms": null,
+    "min_ms": 1444.955203,
+    "max_ms": 1527.8578
+  },
+  "scaling/tabs10/canceled_workspace_symbol": {
+    "n": 1,
+    "p50_ms": 0.189599,
+    "p95_ms": null,
+    "min_ms": 0.189599,
+    "max_ms": 0.189599
+  },
+  "scaling/tabs10/hover_queued_after_cancel": {
+    "n": 1,
+    "p50_ms": 0.542628,
+    "p95_ms": null,
+    "min_ms": 0.542628,
+    "max_ms": 0.542628
+  },
+  "scaling/tabs10/unrelated_watched_toml_barrier": {
+    "n": 3,
+    "p50_ms": 0.268073,
+    "p95_ms": null,
+    "min_ms": 0.246742,
+    "max_ms": 0.269897
+  }
+}

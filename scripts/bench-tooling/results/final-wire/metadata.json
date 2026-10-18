@@ -1,0 +1,45 @@
+{
+  "revision": "767c70b34754c4be6b42062f38211583f05d7877",
+  "binary_sha256": "80cf78e5af124e1dc6d5ff7b99380a595fc548fd6001aa14b4498aa2e30d9324",
+  "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "python": "3.12.14",
+  "gomaxprocs": 4,
+  "clock": "perf_counter_ns; elapsed from frame write to reader receipt",
+  "cold_definition": "fresh process; OS page cache uncontrolled/warm",
+  "warm_definition": "one session; initialized and documents opened; includes first lazy derived-cache miss; requests in source order",
+  "fixtures": {
+    "small": {
+      "modules_including_main": 3,
+      "functions_per_module": 10,
+      "source_bytes": 1313
+    },
+    "medium": {
+      "modules_including_main": 41,
+      "functions_per_module": 20,
+      "source_bytes": 48477
+    }
+  },
+  "memory_after": {
+    "small/tabs1": {
+      "VmHWM": "57228 kB",
+      "VmRSS": "55384 kB",
+      "Threads": "8"
+    },
+    "small/tabs3": {
+      "VmHWM": "55056 kB",
+      "VmRSS": "51744 kB",
+      "Threads": "7"
+    },
+    "medium/tabs1": {
+      "VmHWM": "71956 kB",
+      "VmRSS": "63544 kB",
+      "Threads": "8"
+    },
+    "medium/tabs10": {
+      "VmHWM": "72080 kB",
+      "VmRSS": "63664 kB",
+      "Threads": "8"
+    }
+  }
+}
