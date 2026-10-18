@@ -464,10 +464,8 @@ func TestNativeDebugLifecycleChild(t *testing.T) {
 		}
 		stacks := make([]byte, 1024*1024)
 		stacks = stacks[:runtime.Stack(stacks, true)]
-		for _, worker := range []string{"terminal.(*Term).Run", "terminal.(*Term).sigintGuard", "liner.(*State).restartPrompt"} {
-			if bytes.Contains(stacks, []byte(worker)) {
-				t.Fatalf("terminal worker survived return: %s\n%s", worker, stacks)
-			}
+		if worker := terminalWorkerStack(stacks); worker != "" {
+			t.Fatalf("terminal worker survived return: %s\n%s", worker, stacks)
 		}
 	}
 	if unreadSessionOutput(mode) {
