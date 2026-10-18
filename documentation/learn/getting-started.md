@@ -44,11 +44,9 @@ import stdout from "@std/io.ms"
 
 export fn main() -> Int:
     let message = "Arguments: {arguments().length()}\n"
-    match stdout().write(data: message.to_bytes()):
-        ok(_):
-            return 0
-        error(_):
-            return 1
+    if stdout().write(data: message.to_bytes()).is_error():
+        return 1
+    return 0
 ```
 
 `import` selects the APIs this file uses. The program starts in `main`, and
@@ -56,8 +54,8 @@ its returned integer becomes the exit status: `0` for success, `1` for failure.
 
 `let` names a value and infers its type. Inside the string, `{...}` inserts
 the argument count and `\n` adds a newline. `stdout().write` takes bytes, so
-`to_bytes()` encodes the text. Writing can fail; `match` handles both outcomes.
-The `_` ignores a payload we do not need.
+`to_bytes()` encodes the text. Writing can fail, so `write` returns a `Result`;
+`is_error()` tests for the failure.
 
 Four spaces start a nested block. There is no punctuation to end a statement.
 

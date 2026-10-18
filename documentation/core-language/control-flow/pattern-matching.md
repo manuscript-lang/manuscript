@@ -7,7 +7,7 @@ weight = 3
 
 Use `match` to handle the cases of an alternative type. Each branch can give names to the data carried by its case. For example, a payment may be paid, declined, or pending, and each outcome needs different handling.
 
-A match accepts tagged alternative types, including `Optional` and `Result`, and operation contract views. Matching numeric or Boolean literals, guards, ranges, nested case patterns, and combined patterns is rejected. `match` is an expression. It can initialize a binding, supply an argument, or appear on its own with its result discarded. The scrutinee evaluates once, and only the selected arm runs.
+Use `match` for your own tagged alternative types and operation contract views. `Optional` and `Result` are alternatives too and the checker accepts a match on them, but do not write one: use `if let`, `try`, `unwrap_or`, or `unwrap` instead (see [Optional and result values](#optional-and-result-values)). Matching numeric or Boolean literals, guards, ranges, nested case patterns, and combined patterns is rejected. `match` is an expression. It can initialize a binding, supply an argument, or appear on its own with its result discarded. The scrutinee evaluates once, and only the selected arm runs.
 
 The following function handles the `Payment` type declared in [alternatives](../types/alternatives.md):
 
@@ -35,16 +35,20 @@ Matching an `Optional` with only `some` and `none` arms is also an anti-pattern:
 An arm may contain statements followed by a final expression. That expression supplies the arm's value. An arm ending in an ordinary statement produces `Unit` when it reaches the end. All arms that produce values must have a compatible type; an annotation or expected argument/return type supplies context. Without context, independently typed value-producing arms establish the result type, including for earlier contextual values such as `none` or `[]`. An inferred function result requires all arguments; it does not inherit omission permissions from one selected callable. Arms that exit through `return`, `break`, `continue`, or a `Never` expression do not contribute a result value.
 
 ```manuscript
-fn amount(text: String) -> Result[Int, String]:
-    let cents = match text.parse_int():
-        some(value):
+type Cents:
+    case Valid(amount: Int)
+    case Invalid
+
+fn total(cents: Cents) -> Result[Int, String]:
+    let amount = match cents:
+        Valid(value):
             value
-        none:
+        Invalid:
             return error(cause: "Invalid amount")
-    return ok(value: cents)
+    return ok(value: amount)
 ```
 
-This fragment uses the standard `Optional` and `Result` imports. `return` exits the enclosing function, including from a match used inside another expression; lexical cleanup still runs. `break` and `continue` target the enclosing loop. A nested anonymous function retains its own return boundary.
+`return` exits the enclosing function, including from a match used inside another expression; lexical cleanup still runs. `break` and `continue` target the enclosing loop. A nested anonymous function retains its own return boundary.
 
 Short arms may place the value after the colon, such as `none: 0`. For an arm used only for effects, finish with `unit` when its last call returns another type. When a match stands on its own as a statement its result is discarded, so its arms need not agree on a type; when the result is used (a binding, argument, or `return`), every arm must produce that type. An empty arm is written `unit`; `pass` is not a keyword.
 
@@ -104,7 +108,7 @@ Adding a case to an alternative invalidates exhaustive matches that lack a wildc
 
 ## Optional and result values
 
-[Optional](../types/optionals.md) and [Result](../errors/results.md) are also alternative types. Matching an optional distinguishes a present value from absence. Matching a result distinguishes success from an expected failure and lets the caller decide what to do with each.
+[Optional](../types/optionals.md) and [Result](../errors/results.md) are also alternative types, but they have dedicated flat forms. Do not match them. Use `if let value = expression:` (with an optional `else`) for a present value or success, `unwrap_or` for a default, `try` to propagate a `Result` error, and `is_error()` with `unwrap_error()` to read a cause.
 
 ## Contract type patterns
 

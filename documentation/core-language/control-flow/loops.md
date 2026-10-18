@@ -69,18 +69,15 @@ import range_by from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 test "sum even indexes":
-    match range_by(start: 0, end: 6, step: 2):
-        ok(indexes):
-            var total = 0
-            for index in indexes:
-                total += index
-            if total != 6:
-                return panic("Expected 6, got {total}")
-        error(cause):
-            return panic("Could not build range: {cause.message()}")
+    let indexes = try range_by(start: 0, end: 6, step: 2)
+    var total = 0
+    for index in indexes:
+        total += index
+    if total != 6:
+        return panic("Expected 6, got {total}")
 ```
 
-In a function returning a compatible `Result`, `let indexes = try range_by(start: 0, end: 6, step: 2)` is another way to unwrap. `for index in 0..5:` is unsupported. See the [range declarations](../../standard-library/reference/collections.md#range).
+A function returning a compatible `Result` unwraps the same way with `try`; elsewhere use `unwrap()` or `unwrap_or`. `for index in 0..5:` is unsupported. See the [range declarations](../../standard-library/reference/collections.md#range).
 
 ## Iterable types and binding
 
@@ -111,7 +108,7 @@ fn total(values: Map[String, Int]) -> Int:
 fn count_down(start: Int) -> Int:
     var remaining = start
     while remaining > 0:
-        remaining = remaining - 1
+        remaining -= 1
 
     return remaining
 ```

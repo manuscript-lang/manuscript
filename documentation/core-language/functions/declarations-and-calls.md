@@ -88,7 +88,7 @@ To accept a variable number of values, declare an ordinary list parameter:
 fn sum(values: List[Int]) -> Int:
     var total = 0
     for value in values:
-        total = total + value
+        total += value
 
     return total
 

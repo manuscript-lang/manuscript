@@ -126,12 +126,9 @@ fn amount_text() -> Result[String, NumberError]:
     return ok("tax {tax_text} total {total_text} padded {padded}")
 
 test "decimal amounts":
-    match amount_text():
-        ok(text):
-            if text != "tax 4.95 total 64.92 padded 25.50":
-                return panic("unexpected amount text")
-        error(cause):
-            return panic(cause.message())
+    let text = try amount_text()
+    if text != "tax 4.95 total 64.92 padded 25.50":
+        return panic("unexpected amount text")
 ```
 
 ## Booleans

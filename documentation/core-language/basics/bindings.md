@@ -10,7 +10,7 @@ A binding gives a name to a value. Choose `let` when the name should keep its va
 ```manuscript
 let count: Int = 3
 var remaining = count
-remaining = remaining - 1
+remaining -= 1
 ```
 
 `let` prohibits reassignment; `var` permits it. In this example, `count` remains 3 and `remaining` becomes 2.
@@ -26,7 +26,7 @@ let customer = Customer(name: "Ada", active: true)
 let greeting = welcome(customer: customer)
 let count: Int = 3
 var remaining = count
-remaining = remaining - 1
+remaining -= 1
 ```
 
 ## Destructuring

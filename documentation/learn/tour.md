@@ -16,14 +16,14 @@ Save this complete program as `hello.ms` and run `ms run hello.ms`:
 import stdout from "@std/io.ms"
 
 export fn main() -> Int:
-    match stdout().write("Hello, Manuscript!\n".to_bytes()):
-        ok(_): return 0
-        error(_): return 1
+    if stdout().write("Hello, Manuscript!\n".to_bytes()).is_error():
+        return 1
+    return 0
 ```
 
 `main` returns the exit status: 0 for success, 1 for a failed write.
-`match` handles the write's two outcomes; the [expected errors](#expected-errors)
-section explains them in more detail. The import selects the output API.
+`is_error()` tests whether the write failed; the [expected errors](#expected-errors)
+section explains `Result` in more detail. The import selects the output API.
 
 The complete examples below use `test` blocks. Save one as `example.ms` and run
 `ms test example.ms`. `try expect_equal(actual, expected)` checks a value and
@@ -41,7 +41,7 @@ import expect_equal from "@std/testing.ms"
 test "unread message count":
     let customer = "Sam"
     var unread = 2
-    unread = unread + 1
+    unread += 1
     let message = "{customer}, you have {unread} unread messages."
     let enabled: Bool = true
     try expect_equal(enabled, true)
@@ -79,7 +79,7 @@ List, Map, and Set are available without imports. Lists preserve order, maps loo
 let prices = [12, 8, 25]
 var total = 0
 for price in prices:
-    total = total + price
+    total += price
 
 var shipping = 5
 if total >= 40:
@@ -185,7 +185,7 @@ fn order_total(count: Int) -> Result[Int, QuantityError]:
     return ok(valid_count * 12)
 ```
 
-A `Result` holds `ok(value: value)` or `error(cause)`. `try` unwraps success and returns an error to the caller. Use the same error type, or the common `Error` boundary for errors implementing that interface. Use `match` when you want to handle both outcomes yourself; see [error compatibility](../core-language/errors/propagation.md#error-compatibility).
+A `Result` holds `ok(value: value)` or `error(cause)`. `try` unwraps success and returns an error to the caller. Use the same error type, or the common `Error` boundary for errors implementing that interface. Use `if let`, `unwrap_or`, or `is_error()` with `unwrap_error()` to handle an outcome yourself instead of propagating it; see [error compatibility](../core-language/errors/propagation.md#error-compatibility).
 
 ## Modules
 
