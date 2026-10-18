@@ -37,6 +37,7 @@ func BenchmarkParseText(b *testing.B) {
 		for name, raw := range map[string]string{
 			"Plain":         strings.Repeat("x", size),
 			"Escaped":       strings.Repeat(`x\n`, size/2),
+			"LateEscape":    strings.Repeat("x", size) + `\n`,
 			"Interpolation": strings.Repeat("x", size) + "{1 + 2}",
 		} {
 			b.Run(fmt.Sprintf("%s/%d", name, size), func(b *testing.B) {
@@ -53,6 +54,21 @@ func BenchmarkParseText(b *testing.B) {
 				}
 			})
 		}
+	}
+}
+
+func BenchmarkParsePlainText(b *testing.B) {
+	for _, size := range []int{64, 4096, 65536} {
+		b.Run(fmt.Sprint(size), func(b *testing.B) {
+			source := "fn value() String:\n    return \"" + strings.Repeat("x", size) + "\"\n"
+			b.SetBytes(int64(len(source)))
+			b.ReportAllocs()
+			for b.Loop() {
+				if _, err := Parse("text.ms", source); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
 	}
 }
 
