@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 test "receiver before index":
     var values = [7]
@@ -10,4 +10,4 @@ test "receiver before index":
                 i
             none: 0
     ).get()
-    if result != 7: return panic("receiver evaluated after index")
+    try expect_equal(result, 7)

@@ -1,0 +1,25 @@
+import {expect_true} from "@std/testing.ms"
+
+fn fallback() Int: 9
+
+test "optional members":
+    let present = some(3)
+    let absent: Optional[Int] = none
+    try expect_true((present.is_some() and not present.is_none()))
+    try expect_true((absent.is_none() and not absent.is_some()))
+    try expect_true((present.get(default: 7) == 3))
+    try expect_true((absent.get(default: 7) == 7))
+    try expect_true(
+        (
+            absent.or_else(
+                create: fn() Optional[Int]: some(fallback())
+            ).get() == 9
+        )
+    )
+    try expect_true((present.map(fn(value: Int) Int: value + 1).get() == 4))
+    let items = List[Int]()
+    try expect_true((items.at(index: 0).is_none()))
+    items.append(value: 5)
+    try expect_true(
+        (items.at(index: 0).is_some() and items.first().get(default: 0) == 5)
+    )

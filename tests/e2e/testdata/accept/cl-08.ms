@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 fn selected_sum(values: List[Int]) Int:
     var total = 0
@@ -14,7 +14,5 @@ fn selected_sum(values: List[Int]) Int:
     return total
 
 test "iteration control":
-    if not (selected_sum([2, 0, 3, -1, 9]) == 5):
-        return panic("check failed")
-    if not (selected_sum([]) == 0):
-        return panic("check failed")
+    try expect_equal(selected_sum([2, 0, 3, -1, 9]), 5)
+    try expect_equal(selected_sum([]), 0)

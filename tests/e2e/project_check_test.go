@@ -15,6 +15,28 @@ func TestCLIProjectCheck(t *testing.T) {
 	if err := os.CopyFS(root, os.DirFS("testdata/projects/project_check")); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.MkdirAll(filepath.Dir(filepath.Join(root, "src/main.ms")), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "src/main.ms"), []byte(`import panic from "@std/faults.ms"
+
+export fn main() Int:
+    return panic("check must not execute main")
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(filepath.Join(root, "tests/report_test.ms")), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "tests/report_test.ms"), []byte(`import panic from "@std/faults.ms"
+
+test "check must not execute tests":
+    return panic("check must not execute tests")
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
 	t.Setenv("PATH", t.TempDir())
 	manifest := filepath.Join(root, "ms.toml")
 	output, err := commandOutput(t, cliBinary, "check", manifest, "--json")

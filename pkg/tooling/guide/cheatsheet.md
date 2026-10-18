@@ -11,7 +11,7 @@ fn add(a: Int, b: Int) Int:
     return a + b
 
 fn say(text: String) Result[Unit, Error]:
-    try stdout().write("{text}\n".to_bytes())
+    try stdout().write("{text}\n")
     return stdout().flush()
 
 export fn main() Int:
@@ -26,11 +26,11 @@ test "addition":
 - `main() Int` returns the exit status. `test "name":` blocks run under `ms test`: finishing passes, returning `error(...)` (or `try` on a failing check) fails.
 - Imports: `import {a, b} from "@std/x.ms"` or `"./local.ms"`; `export` shares. Prelude names (`List`, `Map`, `Set`, `Optional`, `Result`, `Error`) need no import; declaring one is rejected.
 - `let` binds once, `var` reassigns; `n += 1` (also `-= *= /= %=`); `for i in range(0, n):` counts (`@std/collections.ms`). Types `Int Float Bool String Unit`; `"{expr}"` interpolates. No implicit conversion or truthiness.
-- `[1, 2]` List; `Map[K, V]()`, `Set[T]()` mutate in place; assignment shares, `.clone()` is shallow.
+- `[1, 2]` List; `Map[K, V]()`, `Set[T]()` or `Set([1, 2])` mutate in place; assignment shares, `.clone()` is shallow.
 - `type T:` with fields, built `T(a: 1)` (labels optional: `T(1)`); alternatives use `case A` and `case B(x: Int)`; types are nominal.
 - `Optional`: `some(x)` / `none`; unwrap with `if let x = value:` and optional `else:`, or `.get(d)`.
 - `match v:` on your own types: arms `Case(x):`, `_:`; exhaustive. Never match `Result`/`Optional` or nest `match`; use `try`/`if let`.
-- Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `try e` unwraps or returns the error; `if let x = result:` handles success when the error can be discarded. `Error` is the common boundary (`.message()`). Faults (`panic`, failed `get()`) abort.
+- Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `E` must implement `Error`; `try e` unwraps or returns the error; `if let x = result:` handles success when the error can be discarded. `Error` is the common boundary (`.message()`). Faults (`panic`, failed `get()`) abort.
 - Methods: `impl T:` (own) or `impl I for T:`, never in `type`; else `f(x)`.
 - Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`; `| try` unwraps. Lines starting `|` or `.` continue.
 - Closures snapshot bindings. `with f = try ...:` closes `f` at block end.

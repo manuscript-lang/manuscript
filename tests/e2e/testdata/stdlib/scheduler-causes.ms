@@ -1,15 +1,15 @@
+import {expect_equal} from "@std/testing.ms"
 import {Scheduler, SchedulerFailure} from "@std/tasks.ms"
 import {category, ErrorCategory, TextError} from "@std/errors.ms"
 import {IoError} from "@std/io.ms"
 import Synchronized from "@std/sync.ms"
 import sleep from "@std/time.ms"
-import panic from "@std/faults.ms"
 
 fn typed_failure() Result[Unit, Error]:
     return error(IoError.Unavailable)
 
 fn text_failure() Result[Unit, Error]:
-    return error(TextError.Text("intentional text"))
+    return error(TextError("intentional text"))
 
 test "scheduler failures retain typed and text causes":
     let seen = Synchronized(0)
@@ -29,4 +29,4 @@ test "scheduler failures retain typed and text causes":
         sleep(100.milliseconds)
 
     with guard = seen.lock():
-        if guard.get() != 11: return panic("scheduler causes were not retained")
+        try expect_equal(guard.get(), 11)

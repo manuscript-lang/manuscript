@@ -160,7 +160,7 @@ func (c *checker) unknownName(name string) string {
 	case "nil", "null", "None", "undefined":
 		return message + "; Manuscript has no null: absence is an Optional, written none, and a present value is some(value)"
 	case "print", "println", "printf", "puts", "echo":
-		return message + "; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\".to_bytes())"
+		return message + "; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")"
 	}
 	if hint := didYouMean(name, c.valueNames()); hint != "" {
 		return message + hint

@@ -18,7 +18,7 @@ export fn main() Int:
         grace: 0.seconds
     ):
         with server = acquired:
-            if stdout().write("{server.address()}\n".to_bytes()).is_error():
+            if stdout().write("{server.address()}\n").is_error():
                 return 1
 
             let _ignored = server.wait()

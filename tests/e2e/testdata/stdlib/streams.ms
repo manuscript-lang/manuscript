@@ -25,8 +25,9 @@ test "concat tee and writer helpers":
 
     let sink = MemoryStream("".to_bytes(), 0, closed: false)
     let writer = map_writer(WriteStream(sink), upper)
-    try writer.write("quiet".to_bytes())
-    if sink.data != "QUIET".to_bytes(): return panic("map_writer")
+    try writer.write("quiet")
+    try writer.write_bytes("!".to_bytes())
+    if sink.data != "QUIET!".to_bytes(): return panic("map_writer")
 
 test "digest hashes a stream incrementally":
     let data = "stream me, please".to_bytes()

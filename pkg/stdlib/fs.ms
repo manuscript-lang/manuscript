@@ -167,6 +167,12 @@ export interface FileSystem:
     # Creates a file exclusively; replace defaults to false, retaining an existing file.
     fn write_file(
         path: String,
+        data: String,
+        replace: Bool = false
+    ) Result[Unit, FileSystemError]
+    # Creates a file exclusively from raw bytes; replace defaults to false, retaining an existing file.
+    fn write_file_bytes(
+        path: String,
         data: Bytes,
         replace: Bool = false
     ) Result[Unit, FileSystemError]
@@ -174,7 +180,9 @@ export interface FileSystem:
     # Native permissions and Windows access policy still apply.
     fn access(path: String, mode: Int) Result[Unit, FileSystemError]
     # Appends `data` to the end of the file, creating it with mode 0600 when absent. Writes every byte or fails, possibly leaving a partial append.
-    fn append_file(path: String, data: Bytes) Result[Unit, FileSystemError]
+    fn append_file(path: String, data: String) Result[Unit, FileSystemError]
+    # Appends raw bytes to the end of the file, with the same creation and partial-write rules as append_file.
+    fn append_file_bytes(path: String, data: Bytes) Result[Unit, FileSystemError]
     # Changes target permissions with mode 0..4095; follows a final symbolic link.
     fn chmod(path: String, mode: Int) Result[Unit, FileSystemError]
     # Sets the owning user and group of `path` by numeric id; -1 leaves that id unchanged.
@@ -248,17 +256,23 @@ export interface FileHandle:
     fn close() Unit
     # Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
     fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], FileSystemError]
-    # Writes all bytes at the current position; errors can leave a prefix. Does not truncate or reposition this handle.
-    fn write(data: Bytes) Result[Unit, FileSystemError]
-    # Writes at the current position; appends only when the handle was opened in append mode.
-    fn append_file(data: Bytes) Result[Unit, FileSystemError]
+    # Writes the UTF-8 text at the current position; errors can leave a prefix. Does not truncate or reposition this handle.
+    fn write(data: String) Result[Unit, FileSystemError]
+    # Writes all bytes at the current position, with the same rules as write.
+    fn write_bytes(data: Bytes) Result[Unit, FileSystemError]
+    # Writes text at the current position; appends only when the handle was opened in append mode.
+    fn append_file(data: String) Result[Unit, FileSystemError]
+    # Writes bytes at the current position; appends only when the handle was opened in append mode.
+    fn append_file_bytes(data: Bytes) Result[Unit, FileSystemError]
     # Reads at a nonnegative byte offset without moving the position; short/empty Bytes mark EOF.
     fn read_at(
         offset: Int,
         max_bytes: Optional[Int] = none
     ) Result[Bytes, FileSystemError]
+    # Writes the UTF-8 text at a nonnegative offset without moving the position; errors can leave a prefix.
+    fn write_at(offset: Int, data: String) Result[Unit, FileSystemError]
     # Writes all bytes at a nonnegative offset without moving the position; errors can leave a prefix.
-    fn write_at(offset: Int, data: Bytes) Result[Unit, FileSystemError]
+    fn write_at_bytes(offset: Int, data: Bytes) Result[Unit, FileSystemError]
     # Reads remaining bytes from the current position; EOF returns empty Bytes.
     fn read_file(max_bytes: Optional[Int] = none) Result[Bytes, FileSystemError]
     # Reads consecutive buffers of the given `sizes` in bytes, each up to 65536 and all together up to 16 MiB, and returns the bytes obtained for each.

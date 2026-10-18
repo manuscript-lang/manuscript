@@ -41,10 +41,10 @@ fn command_bind() fn(
 fn filesystem_setup() FileSystem: filesystem()
 
 fn filesystem_explicit(fs: FileSystem, data: Bytes) Result[Unit, FileSystemError]:
-    return fs.write_file("", data, false)
+    return fs.write_file_bytes("", data, false)
 
 fn filesystem_omitted(fs: FileSystem, data: Bytes) Result[Unit, FileSystemError]:
-    return fs.write_file("", data)
+    return fs.write_file_bytes("", data)
 
 fn filesystem_bind(
     fs: FileSystem

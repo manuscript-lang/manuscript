@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 fn identity[T](value: T) T: value
 
@@ -33,19 +33,15 @@ test "reused inference preserves evaluation and argument conversions":
         right: identity(identity(record(events, value: 2))),
         left: identity(identity(record(events, value: 1)))
     )
-    if selected != 1: return panic("wrong inferred argument")
-    if events.values != [2, 1]: return panic("argument order or repeated evaluation")
-
+    try expect_equal(selected, 1)
+    try expect_equal(events.values, [2, 1])
     let wrapped = optional(value: identity(record(events, value: 3)), fallback: 0)
-    if wrapped != 3: return panic("lost optional wrapping")
-    if events.values != [2, 1, 3]: return panic("optional argument evaluated twice")
-
+    try expect_equal(wrapped, 3)
+    try expect_equal(events.values, [2, 1, 3])
     let message = describe(value: 1, cause: identity(Failure("cached")))
-    if message != "cached": return panic("lost Error conversion")
-
+    try expect_equal(message, "cached")
     let generic_message = describe(value: 1, cause: identity(GenericFailure(4)))
-    if generic_message != "4": return panic("lost generic Error dispatch")
-
+    try expect_equal(generic_message, "4")
     let offset = 7
     let callback = identity(identity(fn(value: Int): offset + value))
-    if callback(3) != 10: return panic("lost callback capture")
+    try expect_equal(callback(3), 10)

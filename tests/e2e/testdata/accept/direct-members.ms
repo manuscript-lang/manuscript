@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
 type Point:
     x: Int
@@ -17,39 +17,25 @@ test "list members match generic dispatch":
     let values: List[Int] = []
     values.append(1)
     values.append(2)
-    if values.is_empty():
-        return panic("not empty")
-    if not values.contains(2):
-        return panic("contains")
-    if values.contains(3):
-        return panic("missing")
-
+    try expect_false(values.is_empty())
+    try expect_false(not values.contains(2))
+    try expect_false(values.contains(3))
     let points: List[Point] = [Point(1, 2)]
-    if not points.contains(Point(1, 2)):
-        return panic("record contains")
-    if not contains_generic(points, Point(1, 2)):
-        return panic("generic contains")
+    try expect_false(not points.contains(Point(1, 2)))
+    try expect_false(not contains_generic(points, Point(1, 2)))
 
 test "map and set members":
     let m: Map[String, Int] = {}
     let updated = m.add("a", 1).add("a", 2).add("b", 3)
-    if not (updated.get("a").get() == 2):
-        return panic("overwrite")
-    if updated.get("z").is_some():
-        return panic("absent")
-    if not updated.contains("b"):
-        return panic("map contains")
-
+    try expect_equal(updated.get("a").get(), 2)
+    try expect_false(updated.get("z").is_some())
+    try expect_false(not updated.contains("b"))
     let s: Set[Int] = Set()
     let grown = s.add(1).add(1).add(2)
-    if not (grown.length() == 2):
-        return panic("set size")
-    if not grown.contains(2):
-        return panic("set contains")
+    try expect_equal(grown.length(), 2)
+    try expect_false(not grown.contains(2))
 
 test "string at":
     let text = "héllo"
-    if not (text.at(1).get() == "é"):
-        return panic("unicode")
-    if text.at(10).is_some():
-        return panic("range")
+    try expect_equal(text.at(1).get(), "é")
+    try expect_false(text.at(10).is_some())

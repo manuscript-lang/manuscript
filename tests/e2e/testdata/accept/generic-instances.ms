@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
 type Point:
     x: Int
@@ -20,24 +20,19 @@ fn count(value: Int) Int:
     return value + 1
 
 test "parametric generics keep each instantiation's values":
-    if ident(41) != 41: return panic("Int instance changed its value")
-    if ident(1.5) != 1.5: return panic("Float instance changed its value")
-    if ident("go") != "go": return panic("String instance changed its value")
-    if not ident(true): return panic("Bool instance changed its value")
-    if pick(first: true, left: 1, right: 2) != 1: return panic(
-        "first branch selected the wrong Int"
-    )
-    if pick(first: false, left: "a", right: "b") != "b": return panic(
-        "second branch selected the wrong String"
-    )
-    if keep(count(1)) != 2: return panic("argument was not evaluated once")
+    try expect_equal(ident(41), 41)
+    try expect_equal(ident(1.5), 1.5)
+    try expect_equal(ident("go"), "go")
+    try expect_false(not ident(true))
+    try expect_equal(pick(first: true, left: 1, right: 2), 1)
+    try expect_equal(pick(first: false, left: "a", right: "b"), "b")
+    try expect_equal(keep(count(1)), 2)
 
 test "instances share one identity for non-scalar arguments":
     let point = Point(3)
     let same = ident(point)
     same.x = 4
-    if point.x != 4: return panic("record identity was lost through a generic instance")
-
+    try expect_equal(point.x, 4)
     let alias = pick(first: true, left: point, right: Point(9))
     alias.x = 5
-    if point.x != 5: return panic("record identity was lost through a selected branch")
+    try expect_equal(point.x, 5)

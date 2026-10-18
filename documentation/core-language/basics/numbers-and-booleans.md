@@ -18,7 +18,7 @@ Decimal literals need `import Decimal from "@std/decimal.ms"`. Integer literals 
 
 | Type | Representation |
 | --- | --- |
-| `Int` | Platform-sized signed integer (Go `int`: 64 bits on 64-bit targets, 32 bits on 32-bit targets) with checked arithmetic |
+| `Int` | Platform-sized signed integer (64 bits on 64-bit targets, 32 bits on 32-bit targets) with checked arithmetic |
 | `Float` | IEEE 754 binary64 |
 | `Decimal` | Base-10, 34 significant digits, round half to even |
 | `Bool` | `true` or `false` |

@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import TaskGroup from "@std/tasks.ms"
 
 type Transform:
@@ -13,26 +13,21 @@ test "inline callbacks survive contextual rechecking":
         fn(value):
             return value + 1
     )
-    if not (value == 4):
-        return panic("check failed")
-
+    try expect_equal(value, 4)
     let transform = Transform(
         fn(value):
             return value + 2
     )
-    if not (transform.operation(3) == 5):
-        return panic("check failed")
+    try expect_equal(transform.operation(3), 5)
 
     with group = TaskGroup():
         let first_task = group.start(
             fn():
                 return 4
         )
-        if group.join().is_error():
-            return panic("Unexpected case")
+        try expect_false(group.join().is_error())
 
         if let value = first_task.join():
-            if value != 4:
-                return panic("check failed")
+            try expect_equal(value, 4)
         else:
-            return panic("task result unavailable")
+            return fail("task result unavailable")

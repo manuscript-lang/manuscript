@@ -1,0 +1,7 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/tooling
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkNonLSPReviewUnchangedChain/N1024-2         	       7	  88953846 ns/op	55044195 B/op	  541907 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/tooling	1.211s

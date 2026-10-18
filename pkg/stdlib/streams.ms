@@ -129,7 +129,7 @@ impl ReadStream for TeeStream:
         let chunk = try self.input.read(max_bytes)
 
         if let bytes = chunk:
-            try self.sink.write(bytes)
+            try self.sink.write_bytes(bytes)
             return ok(some(bytes))
 
         return ok(none)
@@ -150,11 +150,14 @@ impl WriteStream for MappedWriter:
     fn flush() Result[Unit, IoError]:
         return self.output.flush()
 
-    fn write(data: Bytes) Result[Unit, IoError]:
+    fn write(data: String) Result[Unit, IoError]:
+        return self.write_bytes(data.to_bytes())
+
+    fn write_bytes(data: Bytes) Result[Unit, IoError]:
         let mapped = self.transform(data)
         if mapped.length() == 0: return ok(unit)
 
-        return self.output.write(mapped)
+        return self.output.write_bytes(mapped)
 
 # Applies `transform` to each written chunk before writing to `output`. Empty results write nothing.
 # Flush and close pass through to `output`.

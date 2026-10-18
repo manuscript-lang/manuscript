@@ -1,3 +1,4 @@
+import {expect_equal, expect_error, expect_false} from "@std/testing.ms"
 import {
     Transport,
     LogLevel,
@@ -13,8 +14,6 @@ import {WriteStream, IoError} from "@std/io.ms"
 import JsonValue from "@std/json.ms"
 import {filesystem, FileSystemError} from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"
-import panic from "@std/faults.ms"
-import expect_error from "@std/testing.ms"
 import MemoryStream from "./support/streams.ms"
 
 type Items:
@@ -43,11 +42,10 @@ test "logger writes typed escaped records and protects metadata":
         )
         try record(logger, LogLevel.Info, "say \"hi\"\nnext", fields)
         let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\}\}\n"
-        if output.data.decode_utf8() != some(expected): return panic("typed log record")
-
+        try expect_equal(output.data.decode_utf8(), some(expected))
         try logger.flush()
 
-    if output.closed: return panic("borrowed stream closed")
+    try expect_false(output.closed)
 
 test "non-object values are written under data":
     let output = MemoryStream("".to_bytes(), 0, closed: false)
@@ -57,50 +55,46 @@ test "non-object values are written under data":
         try record(logger, LogLevel.Info, "n", 7)
         try record(logger, LogLevel.Warn, "l", ["a", "b"])
         let expected = "\{\"level\":30,\"msg\":\"n\",\"data\":7\}\n\{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n"
-        if output.data.decode_utf8() != some(expected): return panic(
-            "scalar and list fields"
-        )
+        try expect_equal(output.data.decode_utf8(), some(expected))
 
 test "levels filter methods and function values":
     let output = MemoryStream("".to_bytes(), 0, closed: false)
 
     with transport = stream_transport(WriteStream(output)):
         let logger = try create(transport, LogLevel.Warn, false)
-        if logger.enabled(LogLevel.Info) or not logger.enabled(LogLevel.Warn): return panic(
-            "threshold"
+        try expect_false(
+            (
+                logger.enabled(LogLevel.Info)
+                or not logger.enabled(LogLevel.Warn)
+            )
         )
-
         try logger.trace("filtered")
         try logger.debug("filtered")
         try logger.info("filtered")
-        if output.data.length() != 0: return panic("filtered log wrote")
-
+        try expect_equal(output.data.length(), 0)
         try logger.warn("warn")
         let error_log = logger.error
         try error_log("error")
         try logger.fatal("fatal")
         logger.set_level(LogLevel.Trace)
-        if logger.level() != LogLevel.Trace: return panic("set level")
-
+        try expect_equal(logger.level(), LogLevel.Trace)
         try logger.log(LogLevel.Trace, "trace")
         try logger.debug("debug")
         try logger.info("info")
         let expected = "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"error\"\}\n\{\"level\":60,\"msg\":\"fatal\"\}\n\{\"level\":10,\"msg\":\"trace\"\}\n\{\"level\":20,\"msg\":\"debug\"\}\n\{\"level\":30,\"msg\":\"info\"\}\n"
-        if output.data.decode_utf8() != some(expected): return panic("level records")
-
+        try expect_equal(output.data.decode_utf8(), some(expected))
         logger.set_level(LogLevel.Silent)
-        if logger.enabled(LogLevel.Fatal) or logger.enabled(LogLevel.Silent): return panic(
-            "silent enabled"
+        try expect_false(
+            (
+                logger.enabled(LogLevel.Fatal)
+                or logger.enabled(LogLevel.Silent)
+            )
         )
-
         let before = output.data.clone()
         try logger.fatal("filtered")
-        if output.data != before: return panic("silent logger wrote")
-
+        try expect_equal(output.data, before)
         let invalid: Result[Unit, LogError] = error(LogError.InvalidInput)
-        if logger.log(LogLevel.Silent, "invalid") != invalid: return panic(
-            "silent message level"
-        )
+        try expect_equal(logger.log(LogLevel.Silent, "invalid"), invalid)
 
 type Service:
     service: String
@@ -116,14 +110,11 @@ test "child bindings snapshot values and merge without mutating inputs":
         let logger = try bind(root, Service("api"))
         let child = try bind(logger, Request(7))
         logger.set_level(LogLevel.Fatal)
-        if child.level() != LogLevel.Info: return panic("child level snapshot")
-
+        try expect_equal(child.level(), LogLevel.Info)
         try record(child, LogLevel.Info, "child", Service("worker"))
         try logger.fatal("parent")
         let expected = "\{\"level\":30,\"msg\":\"child\",\"service\":\"worker\",\"request\":7\}\n\{\"level\":60,\"msg\":\"parent\",\"service\":\"api\"\}\n"
-        if output.data.decode_utf8() != some(expected): return panic(
-            "binding precedence"
-        )
+        try expect_equal(output.data.decode_utf8(), some(expected))
 
 test "limits and unencodable values reject before writing":
     let output = MemoryStream("".to_bytes(), 0, closed: false)
@@ -136,27 +127,26 @@ test "limits and unencodable values reject before writing":
             max_bytes: (line.to_bytes().length())
         )
         try logger.info("x")
-        if output.data.decode_utf8() != some(line): return panic("exact byte budget")
-
+        try expect_equal(output.data.decode_utf8(), some(line))
         let before = output.data.clone()
         let limited: Result[Unit, LogError] = error(LogError.LimitExceeded)
-        if logger.info("xx") != limited: return panic("log budget")
-
+        try expect_equal(logger.info("xx"), limited)
         let zero = try create(transport, timestamp: false, max_bytes: 0)
-        if zero.info("") != limited: return panic("zero budget")
-        if (
+        try expect_equal(zero.info(""), limited)
+        try expect_false(
             (
-                try expect_error(create(transport, max_bytes: -1))
-            ) != LogError.InvalidInput
-        ): return panic("negative budget")
-
+                (
+                    try expect_error(
+                        create(transport, max_bytes: -1)
+                    )
+                ) != LogError.InvalidInput
+            )
+        )
         let unlimited = try create(transport, timestamp: false)
         let bad = JsonValue.NumberValue("NaN")
         let invalid_data: Result[Unit, LogError] = error(LogError.InvalidData)
-        if (record(unlimited, LogLevel.Info, "bad", bad) != invalid_data): return panic(
-            "invalid JSON"
-        )
-        if output.data != before: return panic("failed log wrote bytes")
+        try expect_equal(record(unlimited, LogLevel.Info, "bad", bad), invalid_data)
+        try expect_equal(output.data, before)
 
 test "transport closure and stream errors preserve identity":
     let output = MemoryStream("".to_bytes(), 0, closed: false)
@@ -164,14 +154,13 @@ test "transport closure and stream errors preserve identity":
     let logger = try create(transport)
     output.closed = true
     let io_closed: Result[Unit, LogError] = error(LogError.Io(IoError.Closed))
-    if logger.info("closed") != io_closed: return panic("write cause")
-    if logger.flush() != io_closed: return panic("flush cause")
-
+    try expect_equal(logger.info("closed"), io_closed)
+    try expect_equal(logger.flush(), io_closed)
     transport.close()
     transport.close()
     let closed: Result[Unit, LogError] = error(LogError.Closed)
-    if logger.info("closed") != closed: return panic("transport closed")
-    if logger.flush() != closed: return panic("closed flush")
+    try expect_equal(logger.info("closed"), closed)
+    try expect_equal(logger.flush(), closed)
 
 test "file transport appends and flushes with scoped cleanup":
     let fs = filesystem()
@@ -189,20 +178,24 @@ test "file transport appends and flushes with scoped cleanup":
             try logger.warn("second")
 
         let data = try fs.read_file(path)
-        if (
-            data.decode_utf8() != some(
-                "\{\"level\":30,\"msg\":\"first\"\}\n\{\"level\":40,\"msg\":\"second\"\}\n"
-            )
-        ): return panic("file append")
-        if (
+        try expect_false(
             (
-                try expect_error(
-                    file_transport(
-                        "{directory.path()}/missing/events.ndjson"
-                    )
+                data.decode_utf8() != some(
+                    "\{\"level\":30,\"msg\":\"first\"\}\n\{\"level\":40,\"msg\":\"second\"\}\n"
                 )
-            ) != LogError.FileSystem(FileSystemError.NotFound)
-        ): return panic("file error cause")
+            )
+        )
+        try expect_false(
+            (
+                (
+                    try expect_error(
+                        file_transport(
+                            "{directory.path()}/missing/events.ndjson"
+                        )
+                    )
+                ) != LogError.FileSystem(FileSystemError.NotFound)
+            )
+        )
 
 test "stdout transport accepts records and leaves stdout open":
     with transport = stdout_transport():
@@ -214,7 +207,10 @@ type CaptureTransport:
     output: MemoryStream
 
 impl Transport for CaptureTransport:
-    fn write(data: Bytes) Result[Unit, LogError]:
+    fn write(data: String) Result[Unit, LogError]:
+        return self.write_bytes(data.to_bytes())
+
+    fn write_bytes(data: Bytes) Result[Unit, LogError]:
         if self.output.closed: return error(LogError.Closed)
 
         self.output.data = self.output.data.concat(data)
@@ -235,13 +231,15 @@ test "source transports receive complete records and close through their contrac
         let logger = try create(transport, timestamp: false)
         try logger.info("source transport")
         try logger.flush()
-        if (
-            output.data.decode_utf8() != some(
-                "\{\"level\":30,\"msg\":\"source transport\"\}\n"
+        try expect_false(
+            (
+                output.data.decode_utf8() != some(
+                    "\{\"level\":30,\"msg\":\"source transport\"\}\n"
+                )
             )
-        ): return panic("source transport record")
+        )
 
-    if not output.closed: return panic("source transport cleanup")
+    try expect_false(not output.closed)
 
 test "log_json and child_json accept only JSON objects":
     let output = MemoryStream("".to_bytes(), 0, closed: false)
@@ -251,18 +249,11 @@ test "log_json and child_json accept only JSON objects":
         let invalid: Result[Unit, LogError] = error(LogError.InvalidData)
 
         for text in ["[1]", "5", "null", "\"s\"", "nope"]:
-            if (logger.log_json(LogLevel.Info, "m", text) != invalid): return panic(
-                "log_json accepted a non-object"
-            )
-            if logger.child_json(text).is_ok(): return panic(
-                "child_json accepted a non-object"
-            )
+            try expect_equal(logger.log_json(LogLevel.Info, "m", text), invalid)
+            try expect_false(logger.child_json(text).is_ok())
 
-        if output.data.length() != 0: return panic("rejected fields wrote a record")
-
+        try expect_equal(output.data.length(), 0)
         try logger.log_json(LogLevel.Info, "m", "\{\"a\":1\}")
         try record(logger, LogLevel.Info, "m", [1])
         let expected = "\{\"level\":30,\"msg\":\"m\",\"a\":1\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
-        if output.data.decode_utf8() != some(expected): return panic(
-            "object and wrapped records"
-        )
+        try expect_equal(output.data.decode_utf8(), some(expected))

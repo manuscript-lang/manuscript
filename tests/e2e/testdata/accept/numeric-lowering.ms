@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
 type Counter:
     value: Int
@@ -13,35 +13,30 @@ fn identity[T](value: T) T:
 test "typed operands retain evaluation order and generic boundaries":
     let counter = Counter(0)
     let total = (step(counter, 1) + step(counter, 2) * step(counter, 3))
-    if total != 7 or counter.value != 123: return panic("operand order")
-
+    try expect_false(total != 7 or counter.value != 123)
     var value = identity(9)
     value += 1
     let snapshot = fn() Int: return value * 2
     value -= 1
-    if snapshot() != 20 or value != 9: return panic("boxed capture")
-    if - 9223372036854775808 % -1 != 0: return panic("minimum remainder")
-    if - 7 / 2 != -3 or - 7 % 3 != -1: return panic("signed arithmetic")
-    if 9223372036854775807 * 0 != 0: return panic("zero multiplication")
+    try expect_false(snapshot() != 20 or value != 9)
+    try expect_equal(-9223372036854775808 % -1, 0)
+    try expect_false(-7 / 2 != -3 or - 7 % 3 != -1)
+    try expect_equal(9223372036854775807 * 0, 0)
 
 test "unary plus keeps the operand":
     let count = 4
     let ratio = 2.5
-    if + count != 4 or + + count != 4 or + ratio != 2.5 or 3 - + count != -1: return panic(
-        "unary plus"
+    try expect_false(
+        (+ count != 4 or + + count != 4 or + ratio != 2.5 or 3 - + count != -1)
     )
 
 test "floating operations retain binary64 edge behavior":
     let negative_zero = -0.0
-    if "{1.0 / negative_zero}" != "-Infinity": return panic("signed zero")
-
+    try expect_equal("{1.0 / negative_zero}", "-Infinity")
     let nan = 0.0 / 0.0
-    if (nan <= 0.0 or nan >= 0.0 or nan < 0.0 or nan > 0.0): return panic(
-        "NaN comparisons"
-    )
-    if 5e-324 <= 0.0 or 5e-324 / 2.0 != 0.0: return panic("subnormal rounding")
-    if "{1.7976931348623157e308 * 2.0}" != "Infinity": return panic("floating overflow")
-
+    try expect_false((nan <= 0.0 or nan >= 0.0 or nan < 0.0 or nan > 0.0))
+    try expect_false(5e-324 <= 0.0 or 5e-324 / 2.0 != 0.0)
+    try expect_equal("{1.7976931348623157e308 * 2.0}", "Infinity")
     let a = 1.0000000074505806
     let b = 0.9999999925494194
-    if a * b - 1.0 != 0.0: return panic("per-operation rounding")
+    try expect_equal(a * b - 1.0, 0.0)

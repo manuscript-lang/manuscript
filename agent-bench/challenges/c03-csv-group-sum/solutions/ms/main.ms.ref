@@ -120,10 +120,10 @@ fn run() Result[Unit, Error]:
     )
     for e in rows:
         try stdout().write(
-            "{e.key}: {e.value / 100}.{two_digits(e.value % 100)}\n".to_bytes()
+            "{e.key}: {e.value / 100}.{two_digits(e.value % 100)}\n"
         )
     if bad > 0:
-        try stdout().write("skipped: {bad}\n".to_bytes())
+        try stdout().write("skipped: {bad}\n")
     return stdout().flush()
 
 export fn main() Int:

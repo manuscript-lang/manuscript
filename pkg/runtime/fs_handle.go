@@ -226,18 +226,30 @@ func (h *osFileHandle) ReadFile(ctx *Execution, maxBytes Option[int]) Result[*By
 	})
 }
 
-func (h *osFileHandle) Write(ctx *Execution, data *Bytes) Result[Unit, FileSystemError] {
+func (h *osFileHandle) Write(ctx *Execution, data string) Result[Unit, FileSystemError] {
+	return h.WriteBytes(ctx, NewBytes([]byte(data)))
+}
+
+func (h *osFileHandle) WriteBytes(ctx *Execution, data *Bytes) Result[Unit, FileSystemError] {
 	return handleOp(h, ctx, opWrite, func(finish func(Unit, error) Result[Unit, FileSystemError]) Result[Unit, FileSystemError] {
 		_, err := writeChunks(ctx, h.file, data.Data, nil)
 		return finish(Unit{}, err)
 	})
 }
 
-func (h *osFileHandle) AppendFile(ctx *Execution, data *Bytes) Result[Unit, FileSystemError] {
-	return h.Write(ctx, data)
+func (h *osFileHandle) AppendFile(ctx *Execution, data string) Result[Unit, FileSystemError] {
+	return h.AppendFileBytes(ctx, NewBytes([]byte(data)))
 }
 
-func (h *osFileHandle) WriteAt(ctx *Execution, offset int, data *Bytes) Result[Unit, FileSystemError] {
+func (h *osFileHandle) AppendFileBytes(ctx *Execution, data *Bytes) Result[Unit, FileSystemError] {
+	return h.WriteBytes(ctx, data)
+}
+
+func (h *osFileHandle) WriteAt(ctx *Execution, offset int, data string) Result[Unit, FileSystemError] {
+	return h.WriteAtBytes(ctx, offset, NewBytes([]byte(data)))
+}
+
+func (h *osFileHandle) WriteAtBytes(ctx *Execution, offset int, data *Bytes) Result[Unit, FileSystemError] {
 	return handleOp(h, ctx, opWrite, func(finish func(Unit, error) Result[Unit, FileSystemError]) Result[Unit, FileSystemError] {
 		if offset < 0 {
 			return fsInvalid[Unit]()
@@ -454,8 +466,12 @@ func (r handleReader) Read(ctx *Execution, maxBytes Option[int]) Result[Option[*
 
 func (w handleWriter) Close(ctx *Execution) Unit { return w.h.Close(ctx) }
 
-func (w handleWriter) Write(ctx *Execution, data *Bytes) Result[Unit, IoError] {
-	v := w.h.Write(ctx, data)
+func (w handleWriter) Write(ctx *Execution, data string) Result[Unit, IoError] {
+	return w.WriteBytes(ctx, NewBytes([]byte(data)))
+}
+
+func (w handleWriter) WriteBytes(ctx *Execution, data *Bytes) Result[Unit, IoError] {
+	v := w.h.WriteBytes(ctx, data)
 	if v.Failed {
 		return ioFailure[Unit](ioErrorOf(v.Err))
 	}

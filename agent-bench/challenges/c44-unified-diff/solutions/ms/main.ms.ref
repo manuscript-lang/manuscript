@@ -186,7 +186,7 @@ fn run() Result[Unit, Error]:
 
         idx = idx + 1
 
-    try stdout().write(out.freeze().to_bytes())
+    try stdout().write(out.freeze())
     return stdout().flush()
 
 export fn main() Int:

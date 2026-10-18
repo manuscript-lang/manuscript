@@ -14,7 +14,7 @@ fn content_type(request: HttpRequest) Optional[List[Bytes]]:
     return request.headers.values("content-type")
 `
 	file, _, hover := definitionAt(t, source, strings.Index(source, "values("))
-	if file != "@std/http.ms" || !strings.Contains(hover, "fn(name: String)->Optional[List[Bytes]]") {
+	if file != "@std/http.ms" || !strings.Contains(hover, "fn(name: String) Optional[List[Bytes]]") {
 		t.Fatalf("header navigation: %s %q", file, hover)
 	}
 }

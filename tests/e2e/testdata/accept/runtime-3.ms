@@ -1,43 +1,56 @@
-import panic from "@std/faults.ms"
-import {ExecutionError, TaskGroup} from "@std/tasks.ms"
+import {TextError} from "@std/errors.ms"
+import {expect_equal, expect_true, fail} from "@std/testing.ms"
+import ExecutionError from "@std/tasks.ms"
+import TaskGroup from "@std/tasks.ms"
 
 fn identity[T](value: T) T:
     return value
 
-fn probe() Result[Unit, ExecutionError]:
-    let first = fn() Result[Int, String]:
+fn probe() Result[Unit, Error]:
+    let first = fn() Result[Int, TextError]:
         return ok(3)
     let second = fn():
         return true
 
     with group = TaskGroup():
-        let number_task = group.start(first) | identity
+        let number_task = identity(group.start(first))
         let flag_task = group.start(second)
         let number = try number_task.join()
         let flag = try flag_task.join()
-        if not (flag):
-            return panic("check failed")
-        if not (number.get(0) == 3):
-            return panic("check failed")
+        (flag) | try expect_true
+
+        match number:
+            ok(value):
+                try expect_equal(value, 3)
+            error(_):
+                return fail(message: "Unexpected case")
 
         return ok(unit)
 
 test "typed task helper":
-    try probe()
+    match probe():
+        ok(_):
+            let completed = unit
+        error(_):
+            return fail(message: "Unexpected case")
 
-fn describe(outcome: Result[Int, Int]) Result[Int, String]:
-    if let value = outcome:
-        return ok(value)
+type Code:
+    number: Int
 
-    return error("Error {outcome.err()}")
+impl Error for Code:
+    fn message() String: "code {self.number}"
+
+fn describe(outcome: Result[Int, Code]) Result[Int, TextError]:
+    match outcome:
+        ok(value):
+            return ok(value)
+        error(cause):
+            return error(TextError("Error {cause.number}"))
 
 test "explicit error conversion":
-    let failed: Result[Int, Int] = error(7)
-    let expected: Result[Int, String] = error("Error 7")
-    if not (describe(failed) == expected):
-        return panic("check failed")
-
-    let succeeded: Result[Int, Int] = ok(3)
-    let unchanged: Result[Int, String] = ok(3)
-    if not (describe(succeeded) == unchanged):
-        return panic("check failed")
+    let failed: Result[Int, Code] = error(Code(7))
+    let expected: Result[Int, TextError] = error(TextError("Error 7"))
+    describe(outcome: failed) | try expect_equal(expected: expected)
+    let succeeded: Result[Int, Code] = ok(3)
+    let unchanged: Result[Int, TextError] = ok(3)
+    describe(outcome: succeeded) | try expect_equal(expected: unchanged)

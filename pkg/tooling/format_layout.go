@@ -379,7 +379,7 @@ func (l *expressionLayout) group(g *layoutGroup, indent, column, following int) 
 	var output strings.Builder
 	output.WriteString(opening)
 	for _, part := range parts {
-		text := l.sequence(part, indent+4, indent+4, true)
+		text := l.item(part, indent+4)
 		if text != "" {
 			output.WriteByte('\n')
 			output.WriteString(text)
@@ -389,6 +389,29 @@ func (l *expressionLayout) group(g *layoutGroup, indent, column, following int) 
 	output.WriteString(strings.Repeat(" ", indent))
 	output.WriteString(g.close.Text)
 	return output.String()
+}
+
+// An item's enclosing delimiters already allow continuation lines. Break its
+// operators directly rather than inserting another pair of parentheses.
+func (l *expressionLayout) item(nodes []layoutNode, indent int) string {
+	text := l.sequence(nodes, indent, indent, true)
+	long := false
+	for _, line := range strings.Split(text, "\n") {
+		long = long || utf8.RuneCountInString(line) > formatWidth
+	}
+	operator, count := layoutOperators(nodes)
+	if !long || operator == "" || (operator == "." && count < 2) {
+		return text
+	}
+	switch operator {
+	case "==", "!=", "<", ">", "<=", ">=":
+		return text // Keep comparison operands together.
+	}
+	var lines []string
+	for _, part := range splitLayout(nodes, operator) {
+		lines = append(lines, l.sequence(part, indent, indent, true))
+	}
+	return strings.Join(lines, "\n")
 }
 
 // signatureTail is the part of a source line after a parameter list that
@@ -628,24 +651,6 @@ func groupStatementExpressions(filename, source string) (string, error) {
 		}
 		return end
 	}
-	defaults := func(params []syntax.Parameter) {
-		for _, param := range params {
-			if param.Default == nil || suiteExpression(param.Default) {
-				continue
-			}
-			start, ok := starts[param.Pos.Offset]
-			if !ok {
-				continue
-			}
-			for tokens[start].Kind != "=" {
-				if end, ok := pairs[start]; ok {
-					start = end
-				}
-				start++
-			}
-			wrap(start + 1)
-		}
-	}
 	// A constant's synthetic statement starts at its initializer, which may be
 	// text, so it bypasses the keyword and text-statement handling below.
 	constants := map[*syntax.Statement]bool{}
@@ -696,79 +701,8 @@ func groupStatementExpressions(filename, source string) (string, error) {
 			}
 			wrap(start)
 		},
-		Expression: func(e *syntax.Expression) {
-			switch e.Kind {
-			case syntax.KindLambda:
-				defaults(e.Params)
-				return
-			case syntax.KindList:
-				for _, element := range e.Elements {
-					if suiteExpression(element) {
-						return
-					}
-				}
-				start, ok := starts[e.Pos.Offset]
-				if !ok || tokens[start].Kind != "[" {
-					return
-				}
-				start++
-				for range e.Elements {
-					end := wrap(start)
-					if end == start || tokens[end].Kind != "," {
-						break
-					}
-					start = end + 1
-				}
-				return
-			case syntax.KindMap:
-				start, ok := starts[e.Pos.Offset]
-				if !ok || tokens[start].Kind != "{" {
-					return
-				}
-				start++
-				for at := 0; at < len(e.Elements); at += 2 {
-					if suiteExpression(e.Elements[at]) || suiteExpression(e.Elements[at+1]) {
-						return
-					}
-					end := wrap(start)
-					if end == start || tokens[end].Kind != ":" {
-						break
-					}
-					end = wrap(end + 1)
-					if tokens[end].Kind != "," {
-						break
-					}
-					start = end + 1
-				}
-				return
-			case syntax.KindCall:
-			default:
-				return
-			}
-			for _, arg := range e.Args {
-				if suiteExpression(arg.Value) {
-					continue
-				}
-				start, ok := starts[arg.Pos.Offset]
-				if !ok || tokens[start].Kind == lexer.String {
-					continue
-				}
-				if arg.Name != "" {
-					start += 2 // The argument label and colon stay together.
-				}
-				wrap(start)
-			}
-		},
-	}
-	var callable func(*syntax.Declaration)
-	callable = func(d *syntax.Declaration) {
-		defaults(d.Params)
-		for _, method := range d.Methods {
-			callable(method)
-		}
 	}
 	for _, d := range module.Declarations {
-		callable(d)
 		visitor.Walk(d)
 	}
 	var offsets []int

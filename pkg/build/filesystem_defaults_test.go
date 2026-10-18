@@ -19,7 +19,7 @@ import Bytes from "@std/bytes.ms"
 fn forward[T](item: T) T: item
 `
 	for _, method := range []struct{ name, args, typ, flag string }{
-		{"write_file", `"", "".to_bytes()`, "path: String, data: Bytes, replace: Bool", "replace"},
+		{"write_file", `"", ""`, "path: String, data: String, replace: Bool", "replace"},
 		{"copy_file", `"", ""`, "source: String, destination: String, replace: Bool, max_bytes: Optional[Int]", "replace"},
 		{"copy_tree", `"", ""`, "source: String, destination: String, replace: Bool, max_entries: Optional[Int], max_bytes: Optional[Int]", "replace"},
 		{"create_directory", `""`, "path: String, recursive: Bool", "recursive"},
@@ -52,7 +52,7 @@ func TestFilesystemExplicitFlagsKeepDirectDispatch(t *testing.T) {
 	r := compiler.CompileSource("explicit-filesystem.ms", `import filesystem from "@std/fs.ms"
 fn explicit() Unit:
     let fs = filesystem()
-    fs.write_file("", "".to_bytes(), false)
+    fs.write_file("", "", false)
     fs.copy_file("", "", true)
     fs.copy_tree("", "", false, max_entries: none, max_bytes: 3)
     fs.create_directory("", true)
@@ -115,7 +115,7 @@ func TestFilesystemImplementationDefaultsOverrideOnlyConcreteCalls(t *testing.T)
 	}
 	source.WriteString("test \"filesystem concrete overrides and interface defaults\":\n    let item = Override(false)\n    let view = FileSystem(item)\n")
 	for _, method := range []struct{ name, args string }{
-		{"write_file", `"", "".to_bytes()`}, {"copy_file", `"", ""`}, {"copy_tree", `"", ""`}, {"create_directory", `""`}, {"remove", `""`},
+		{"write_file", `"", ""`}, {"copy_file", `"", ""`}, {"copy_tree", `"", ""`}, {"create_directory", `""`}, {"remove", `""`},
 	} {
 		fmt.Fprintf(&source, "    item.%s(%s)\n    if not item.received: return panic(\"concrete override %s\")\n", method.name, method.args, method.name)
 		fmt.Fprintf(&source, "    view.%s(%s)\n    if item.received: return panic(\"interface default %s\")\n", method.name, method.args, method.name)

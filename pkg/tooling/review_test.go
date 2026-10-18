@@ -25,7 +25,7 @@ func review(t *testing.T, base, head string, touched ...int) Report {
 const reviewBase = `import stdout from "@std/io.ms"
 
 fn say(text: String) Result[Unit, Error]:
-    try stdout().write("{text}\n".to_bytes())
+    try stdout().write("{text}\n")
     return stdout().flush()
 
 fn add(a: Int, b: Int) Int:
@@ -50,10 +50,10 @@ func TestReviewRanksEffectGainThroughCallers(t *testing.T) {
 }
 
 func TestReviewNamesErrorFlowAndContractChanges(t *testing.T) {
-	base := "export fn load(n: Int) Result[Int, String]:\n    return ok(n)\n"
+	base := "import {TextError} from \"@std/errors.ms\"\nexport fn load(n: Int) Result[Int, TextError]:\n    return ok(n)\n"
 	head := "export fn load(n: Int) Result[Int, Error]:\n    return ok(n)\n"
 	text := review(t, base, head, 1).Render("ascii")
-	for _, want := range []string{"CONTRACT", "ERROR", "error type: String -> Error"} {
+	for _, want := range []string{"CONTRACT", "ERROR", "error type: TextError -> Error"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("report lacks %q:\n%s", want, text)
 		}

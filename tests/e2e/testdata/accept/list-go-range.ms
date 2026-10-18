@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_false} from "@std/testing.ms"
 
 fn replace[T](values: List[T], value: T) Unit:
     values.set(1, value)
@@ -17,13 +17,14 @@ test "range observes backing writes and keeps initial length":
         values.append(4)
         index += 1
 
-    if not (
-        seen == [1, 9, 9]
-        and index == 3
-        and alias.length() == 6
-        and clone == [1, 2, 3]
-    ):
-        return panic("range copied backing or reread length")
+    try expect_false(
+        not (
+            seen == [1, 9, 9]
+            and index == 3
+            and alias.length() == 6
+            and clone == [1, 2, 3]
+        )
+    )
 
 test "append growth preserves captured array and current alias":
     let values = [1, 2, 3]
@@ -41,8 +42,7 @@ test "append growth preserves captured array and current alias":
 
         index += 1
 
-    if not (seen == [1, 2, 3] and alias == [1, 9, 3, 4]):
-        return panic("growth switched the captured backing array")
+    try expect_false(not (seen == [1, 2, 3] and alias == [1, 9, 3, 4]))
 
 test "callbacks use current backing and stored methods retain aliases":
     let values = [1, 2, 3]
@@ -54,17 +54,16 @@ test "callbacks use current backing and stored methods retain aliases":
             seen.append(value)
             values.fill(8, 0, 3)
     )
-    if not (seen == [1, 8, 8] and clone == [1, 2, 3] and values == [8, 8, 8]):
-        return panic("callback copied membership or clone shared outer storage")
-
+    try expect_false(
+        not (seen == [1, 8, 8] and clone == [1, 2, 3] and values == [8, 8, 8])
+    )
     let mapped = [1, 2, 3]
     let output = mapped.map(
         fn(value):
             mapped.fill(9, 0, 3)
             return value + 1
     )
-    if not (output == [2, 10, 10] and mapped == [9, 9, 9]):
-        return panic("map did not capture backing once")
+    try expect_false(not (output == [2, 10, 10] and mapped == [9, 9, 9]))
 
 test "nested reverse copy shrink and self splice follow initial headers":
     let values = [1, 2, 3]
@@ -82,9 +81,7 @@ test "nested reverse copy shrink and self splice follow initial headers":
 
         index += 1
 
-    if not (outer == [1, 2, 1] and inner == [3, 2, 1]):
-        return panic("nested range did not observe reverse")
-
+    try expect_false(not (outer == [1, 2, 1] and inner == [3, 2, 1]))
     let backward = [1, 2, 3]
     let truncated = [1, 2, 3]
     let seen_backward: List[Int] = []
@@ -105,9 +102,7 @@ test "nested reverse copy shrink and self splice follow initial headers":
             truncated.copy_within(2, 0, 3)
         count += 1
 
-    if not (seen_backward == [1, 3, 3] and seen_truncated == [1, 2, 1]):
-        return panic("copy overlap did not update range backing")
-
+    try expect_false(not (seen_backward == [1, 3, 3] and seen_truncated == [1, 2, 1]))
     let shrinking = [1, 2, 3]
     let seen_shrinking: List[Int] = []
     count = 0
@@ -118,9 +113,13 @@ test "nested reverse copy shrink and self splice follow initial headers":
             shrinking.remove(0)
         count += 1
 
-    if not (count == 3 and shrinking.is_empty() and seen_shrinking == [2, 4, 4]):
-        return panic("shrink changed captured traversal length")
-
+    try expect_false(
+        not (
+            count == 3
+            and shrinking.is_empty()
+            and seen_shrinking == [2, 4, 4]
+        )
+    )
     let self_list = [1, 2, 3]
     let seen_self: List[Int] = []
     count = 0
@@ -131,8 +130,7 @@ test "nested reverse copy shrink and self splice follow initial headers":
             self_list.splice(1, 1, self_list)
         count += 1
 
-    if not (seen_self == [1, 2, 3] and self_list == [1, 1, 2, 3, 3]):
-        return panic("self splice growth switched range backing")
+    try expect_false(not (seen_self == [1, 2, 3] and self_list == [1, 1, 2, 3, 3]))
 
 type Child:
     value: Int
@@ -152,14 +150,14 @@ test "clone slice and nested references retain their own contracts":
             value.value += 1
             values.fill(Child(9), 0, 2)
     )
-    if not (
-        seen == [1, 9]
-        and child.value == 2
-        and clone.first().get().value == 2
-        and slice.first().get().value == 2
-    ):
-        return panic("reference sharing or explicit outer copy changed")
-
+    try expect_false(
+        not (
+            seen == [1, 9]
+            and child.value == 2
+            and clone.first().get().value == 2
+            and slice.first().get().value == 2
+        )
+    )
     let children: List[Node] = []
     let node = Node(children)
     children.append(node)
@@ -170,8 +168,7 @@ test "clone slice and nested references retain their own contracts":
     )
     for ignored in children:
         count += 1
-    if not (count == 2 and node.children.length() == 2):
-        return panic("recursive callback extended its own range")
+    try expect_false(not (count == 2 and node.children.length() == 2))
 
 test "function values can replace later backing elements":
     let seen: List[Int] = []
@@ -188,5 +185,4 @@ test "function values can replace later backing elements":
             seen.append(value())
             functions.fill(replacement, 0, 2)
     )
-    if not (seen == [1, 7, 2, 9] and clone.first().get()() == 7):
-        return panic("function callback copied backing or lost clone")
+    try expect_false(not (seen == [1, 7, 2, 9] and clone.first().get()() == 7))

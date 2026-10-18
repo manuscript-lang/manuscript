@@ -1,0 +1,984 @@
+{
+  "summary": [
+    {
+      "modules": 11,
+      "operation": "references",
+      "mode": "counts",
+      "library": true,
+      "samples": 3,
+      "payload_counts": [
+        3,
+        3,
+        3
+      ],
+      "counters": [
+        {
+          "compile_calls": 11,
+          "strict_calls": 11,
+          "index_calls": 11,
+          "index_project_modules": 121,
+          "lex_calls": 759,
+          "standard_lex_calls": 517,
+          "standard_lex_bytes": 3336036,
+          "selections": null
+        },
+        {
+          "compile_calls": 11,
+          "strict_calls": 11,
+          "index_calls": 11,
+          "index_project_modules": 121,
+          "lex_calls": 759,
+          "standard_lex_calls": 517,
+          "standard_lex_bytes": 3336036,
+          "selections": null
+        },
+        {
+          "compile_calls": 11,
+          "strict_calls": 11,
+          "index_calls": 11,
+          "index_project_modules": 121,
+          "lex_calls": 759,
+          "standard_lex_calls": 517,
+          "standard_lex_bytes": 3336036,
+          "selections": null
+        }
+      ],
+      "strict_phases": {
+        "before": [
+          {
+            "calls": 11,
+            "unique": 11,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 11,
+            "unique": 11,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 11,
+            "unique": 11,
+            "repeated_calls": 0
+          }
+        ],
+        "after": [
+          {
+            "calls": 0,
+            "unique": 0,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 0,
+            "unique": 0,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 0,
+            "unique": 0,
+            "repeated_calls": 0
+          }
+        ]
+      }
+    },
+    {
+      "modules": 11,
+      "operation": "references",
+      "mode": "memory",
+      "library": true,
+      "samples": 3,
+      "payload_counts": [
+        3,
+        3,
+        3
+      ],
+      "median_elapsed_ms": 186.998931,
+      "peak_heap_deltas": [
+        26612800,
+        26168336,
+        26801800
+      ],
+      "peak_rss_deltas": [
+        20135936,
+        11972608,
+        17383424
+      ],
+      "postgc_heap_deltas": [
+        1968,
+        -1744,
+        -2048
+      ],
+      "sample_counts": [
+        89,
+        86,
+        94
+      ]
+    },
+    {
+      "modules": 11,
+      "operation": "rename",
+      "mode": "counts",
+      "library": true,
+      "samples": 3,
+      "payload_counts": [
+        3,
+        3,
+        3
+      ],
+      "counters": [
+        {
+          "compile_calls": 32,
+          "strict_calls": 32,
+          "index_calls": 10,
+          "index_project_modules": 110,
+          "lex_calls": 935,
+          "standard_lex_calls": 470,
+          "standard_lex_bytes": 3032760,
+          "selections": null
+        },
+        {
+          "compile_calls": 32,
+          "strict_calls": 32,
+          "index_calls": 10,
+          "index_project_modules": 110,
+          "lex_calls": 935,
+          "standard_lex_calls": 470,
+          "standard_lex_bytes": 3032760,
+          "selections": null
+        },
+        {
+          "compile_calls": 32,
+          "strict_calls": 32,
+          "index_calls": 10,
+          "index_project_modules": 110,
+          "lex_calls": 935,
+          "standard_lex_calls": 470,
+          "standard_lex_bytes": 3032760,
+          "selections": null
+        }
+      ],
+      "strict_phases": {
+        "before": [
+          {
+            "calls": 21,
+            "unique": 11,
+            "repeated_calls": 10
+          },
+          {
+            "calls": 21,
+            "unique": 11,
+            "repeated_calls": 10
+          },
+          {
+            "calls": 21,
+            "unique": 11,
+            "repeated_calls": 10
+          }
+        ],
+        "after": [
+          {
+            "calls": 11,
+            "unique": 11,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 11,
+            "unique": 11,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 11,
+            "unique": 11,
+            "repeated_calls": 0
+          }
+        ]
+      }
+    },
+    {
+      "modules": 11,
+      "operation": "rename",
+      "mode": "memory",
+      "library": true,
+      "samples": 3,
+      "payload_counts": [
+        3,
+        3,
+        3
+      ],
+      "median_elapsed_ms": 208.665921,
+      "peak_heap_deltas": [
+        26711128,
+        29823512,
+        28014880
+      ],
+      "peak_rss_deltas": [
+        21999616,
+        20041728,
+        21659648
+      ],
+      "postgc_heap_deltas": [
+        10024,
+        14752,
+        7240
+      ],
+      "sample_counts": [
+        99,
+        102,
+        103
+      ]
+    },
+    {
+      "modules": 11,
+      "operation": "symbols",
+      "mode": "counts",
+      "library": true,
+      "samples": 3,
+      "payload_counts": [
+        200,
+        200,
+        200
+      ],
+      "counters": [
+        {
+          "compile_calls": 11,
+          "strict_calls": 11,
+          "index_calls": 11,
+          "index_project_modules": 121,
+          "lex_calls": 759,
+          "standard_lex_calls": 517,
+          "standard_lex_bytes": 3336036,
+          "selections": null
+        },
+        {
+          "compile_calls": 11,
+          "strict_calls": 11,
+          "index_calls": 11,
+          "index_project_modules": 121,
+          "lex_calls": 759,
+          "standard_lex_calls": 517,
+          "standard_lex_bytes": 3336036,
+          "selections": null
+        },
+        {
+          "compile_calls": 11,
+          "strict_calls": 11,
+          "index_calls": 11,
+          "index_project_modules": 121,
+          "lex_calls": 759,
+          "standard_lex_calls": 517,
+          "standard_lex_bytes": 3336036,
+          "selections": null
+        }
+      ],
+      "strict_phases": {
+        "before": [
+          {
+            "calls": 11,
+            "unique": 11,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 11,
+            "unique": 11,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 11,
+            "unique": 11,
+            "repeated_calls": 0
+          }
+        ],
+        "after": [
+          {
+            "calls": 0,
+            "unique": 0,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 0,
+            "unique": 0,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 0,
+            "unique": 0,
+            "repeated_calls": 0
+          }
+        ]
+      }
+    },
+    {
+      "modules": 11,
+      "operation": "symbols",
+      "mode": "memory",
+      "library": true,
+      "samples": 3,
+      "payload_counts": [
+        200,
+        200,
+        200
+      ],
+      "median_elapsed_ms": 199.925249,
+      "peak_heap_deltas": [
+        28677824,
+        27571776,
+        28777520
+      ],
+      "peak_rss_deltas": [
+        23539712,
+        12713984,
+        23830528
+      ],
+      "postgc_heap_deltas": [
+        1704,
+        -1056,
+        -2016
+      ],
+      "sample_counts": [
+        93,
+        95,
+        93
+      ]
+    },
+    {
+      "modules": 21,
+      "operation": "references",
+      "mode": "counts",
+      "library": true,
+      "samples": 3,
+      "payload_counts": [
+        3,
+        3,
+        3
+      ],
+      "counters": [
+        {
+          "compile_calls": 21,
+          "strict_calls": 21,
+          "index_calls": 21,
+          "index_project_modules": 441,
+          "lex_calls": 1869,
+          "standard_lex_calls": 987,
+          "standard_lex_bytes": 6368796,
+          "selections": null
+        },
+        {
+          "compile_calls": 21,
+          "strict_calls": 21,
+          "index_calls": 21,
+          "index_project_modules": 441,
+          "lex_calls": 1869,
+          "standard_lex_calls": 987,
+          "standard_lex_bytes": 6368796,
+          "selections": null
+        },
+        {
+          "compile_calls": 21,
+          "strict_calls": 21,
+          "index_calls": 21,
+          "index_project_modules": 441,
+          "lex_calls": 1869,
+          "standard_lex_calls": 987,
+          "standard_lex_bytes": 6368796,
+          "selections": null
+        }
+      ],
+      "strict_phases": {
+        "before": [
+          {
+            "calls": 21,
+            "unique": 21,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 21,
+            "unique": 21,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 21,
+            "unique": 21,
+            "repeated_calls": 0
+          }
+        ],
+        "after": [
+          {
+            "calls": 0,
+            "unique": 0,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 0,
+            "unique": 0,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 0,
+            "unique": 0,
+            "repeated_calls": 0
+          }
+        ]
+      }
+    },
+    {
+      "modules": 21,
+      "operation": "references",
+      "mode": "memory",
+      "library": true,
+      "samples": 3,
+      "payload_counts": [
+        3,
+        3,
+        3
+      ],
+      "median_elapsed_ms": 490.845291,
+      "peak_heap_deltas": [
+        35311464,
+        32157480,
+        31243496
+      ],
+      "peak_rss_deltas": [
+        27361280,
+        3407872,
+        14827520
+      ],
+      "postgc_heap_deltas": [
+        7384,
+        -1592,
+        -1712
+      ],
+      "sample_counts": [
+        224,
+        221,
+        209
+      ]
+    },
+    {
+      "modules": 21,
+      "operation": "rename",
+      "mode": "counts",
+      "library": true,
+      "samples": 3,
+      "payload_counts": [
+        3,
+        3,
+        3
+      ],
+      "counters": [
+        {
+          "compile_calls": 62,
+          "strict_calls": 62,
+          "index_calls": 20,
+          "index_project_modules": 420,
+          "lex_calls": 2665,
+          "standard_lex_calls": 940,
+          "standard_lex_bytes": 6065520,
+          "selections": null
+        },
+        {
+          "compile_calls": 62,
+          "strict_calls": 62,
+          "index_calls": 20,
+          "index_project_modules": 420,
+          "lex_calls": 2665,
+          "standard_lex_calls": 940,
+          "standard_lex_bytes": 6065520,
+          "selections": null
+        },
+        {
+          "compile_calls": 62,
+          "strict_calls": 62,
+          "index_calls": 20,
+          "index_project_modules": 420,
+          "lex_calls": 2665,
+          "standard_lex_calls": 940,
+          "standard_lex_bytes": 6065520,
+          "selections": null
+        }
+      ],
+      "strict_phases": {
+        "before": [
+          {
+            "calls": 41,
+            "unique": 21,
+            "repeated_calls": 20
+          },
+          {
+            "calls": 41,
+            "unique": 21,
+            "repeated_calls": 20
+          },
+          {
+            "calls": 41,
+            "unique": 21,
+            "repeated_calls": 20
+          }
+        ],
+        "after": [
+          {
+            "calls": 21,
+            "unique": 21,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 21,
+            "unique": 21,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 21,
+            "unique": 21,
+            "repeated_calls": 0
+          }
+        ]
+      }
+    },
+    {
+      "modules": 21,
+      "operation": "rename",
+      "mode": "memory",
+      "library": true,
+      "samples": 3,
+      "payload_counts": [
+        3,
+        3,
+        3
+      ],
+      "median_elapsed_ms": 666.209017,
+      "peak_heap_deltas": [
+        33714600,
+        32082856,
+        34305832
+      ],
+      "peak_rss_deltas": [
+        25161728,
+        15953920,
+        26701824
+      ],
+      "postgc_heap_deltas": [
+        24624,
+        -2240,
+        16280
+      ],
+      "sample_counts": [
+        299,
+        312,
+        291
+      ]
+    },
+    {
+      "modules": 21,
+      "operation": "symbols",
+      "mode": "counts",
+      "library": true,
+      "samples": 3,
+      "payload_counts": [
+        400,
+        400,
+        400
+      ],
+      "counters": [
+        {
+          "compile_calls": 21,
+          "strict_calls": 21,
+          "index_calls": 21,
+          "index_project_modules": 441,
+          "lex_calls": 1869,
+          "standard_lex_calls": 987,
+          "standard_lex_bytes": 6368796,
+          "selections": null
+        },
+        {
+          "compile_calls": 21,
+          "strict_calls": 21,
+          "index_calls": 21,
+          "index_project_modules": 441,
+          "lex_calls": 1869,
+          "standard_lex_calls": 987,
+          "standard_lex_bytes": 6368796,
+          "selections": null
+        },
+        {
+          "compile_calls": 21,
+          "strict_calls": 21,
+          "index_calls": 21,
+          "index_project_modules": 441,
+          "lex_calls": 1869,
+          "standard_lex_calls": 987,
+          "standard_lex_bytes": 6368796,
+          "selections": null
+        }
+      ],
+      "strict_phases": {
+        "before": [
+          {
+            "calls": 21,
+            "unique": 21,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 21,
+            "unique": 21,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 21,
+            "unique": 21,
+            "repeated_calls": 0
+          }
+        ],
+        "after": [
+          {
+            "calls": 0,
+            "unique": 0,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 0,
+            "unique": 0,
+            "repeated_calls": 0
+          },
+          {
+            "calls": 0,
+            "unique": 0,
+            "repeated_calls": 0
+          }
+        ]
+      }
+    },
+    {
+      "modules": 21,
+      "operation": "symbols",
+      "mode": "memory",
+      "library": true,
+      "samples": 3,
+      "payload_counts": [
+        400,
+        400,
+        400
+      ],
+      "median_elapsed_ms": 516.725667,
+      "peak_heap_deltas": [
+        36032648,
+        33855096,
+        34899232
+      ],
+      "peak_rss_deltas": [
+        25956352,
+        26230784,
+        13594624
+      ],
+      "postgc_heap_deltas": [
+        2504,
+        -960,
+        4376
+      ],
+      "sample_counts": [
+        237,
+        237,
+        230
+      ]
+    }
+  ],
+  "lifecycle": [
+    {
+      "baseline": {
+        "heap_bytes": 8616656,
+        "heap_objects": 56969,
+        "rss_bytes": 22671360
+      },
+      "closed": {
+        "heap_bytes": 8637392,
+        "heap_objects": 57189,
+        "rss_bytes": 34197504
+      },
+      "library": true,
+      "mode": "counts",
+      "modules": 11,
+      "opened": {
+        "heap_bytes": 10768224,
+        "heap_objects": 71128,
+        "rss_bytes": 35639296
+      },
+      "operation": "symbols",
+      "server_analysis_entries": 0,
+      "server_cache_uris": 0,
+      "server_indices": 0,
+      "server_lints": 0
+    },
+    {
+      "baseline": {
+        "heap_bytes": 8610776,
+        "heap_objects": 56961,
+        "rss_bytes": 22786048
+      },
+      "closed": {
+        "heap_bytes": 8625504,
+        "heap_objects": 57139,
+        "rss_bytes": 46821376
+      },
+      "library": true,
+      "mode": "memory",
+      "modules": 11,
+      "opened": {
+        "heap_bytes": 10771008,
+        "heap_objects": 71121,
+        "rss_bytes": 33611776
+      },
+      "operation": "symbols",
+      "server_analysis_entries": 0,
+      "server_cache_uris": 0,
+      "server_indices": 0,
+      "server_lints": 0
+    },
+    {
+      "baseline": {
+        "heap_bytes": 8619064,
+        "heap_objects": 56958,
+        "rss_bytes": 22224896
+      },
+      "closed": {
+        "heap_bytes": 8638512,
+        "heap_objects": 57172,
+        "rss_bytes": 45096960
+      },
+      "library": true,
+      "mode": "counts",
+      "modules": 11,
+      "opened": {
+        "heap_bytes": 10770384,
+        "heap_objects": 71113,
+        "rss_bytes": 35078144
+      },
+      "operation": "references",
+      "server_analysis_entries": 0,
+      "server_cache_uris": 0,
+      "server_indices": 0,
+      "server_lints": 0
+    },
+    {
+      "baseline": {
+        "heap_bytes": 8617584,
+        "heap_objects": 56970,
+        "rss_bytes": 22814720
+      },
+      "closed": {
+        "heap_bytes": 8627472,
+        "heap_objects": 57142,
+        "rss_bytes": 33742848
+      },
+      "library": true,
+      "mode": "memory",
+      "modules": 11,
+      "opened": {
+        "heap_bytes": 10768592,
+        "heap_objects": 71123,
+        "rss_bytes": 35274752
+      },
+      "operation": "references",
+      "server_analysis_entries": 0,
+      "server_cache_uris": 0,
+      "server_indices": 0,
+      "server_lints": 0
+    },
+    {
+      "baseline": {
+        "heap_bytes": 8609200,
+        "heap_objects": 56975,
+        "rss_bytes": 23977984
+      },
+      "closed": {
+        "heap_bytes": 8656032,
+        "heap_objects": 57202,
+        "rss_bytes": 38125568
+      },
+      "library": true,
+      "mode": "counts",
+      "modules": 11,
+      "opened": {
+        "heap_bytes": 10769424,
+        "heap_objects": 71135,
+        "rss_bytes": 35966976
+      },
+      "operation": "rename",
+      "server_analysis_entries": 0,
+      "server_cache_uris": 0,
+      "server_indices": 0,
+      "server_lints": 0
+    },
+    {
+      "baseline": {
+        "heap_bytes": 8607112,
+        "heap_objects": 56962,
+        "rss_bytes": 23113728
+      },
+      "closed": {
+        "heap_bytes": 8626656,
+        "heap_objects": 57145,
+        "rss_bytes": 37888000
+      },
+      "library": true,
+      "mode": "memory",
+      "modules": 11,
+      "opened": {
+        "heap_bytes": 10767136,
+        "heap_objects": 71120,
+        "rss_bytes": 34942976
+      },
+      "operation": "rename",
+      "server_analysis_entries": 0,
+      "server_cache_uris": 0,
+      "server_indices": 0,
+      "server_lints": 0
+    },
+    {
+      "baseline": {
+        "heap_bytes": 8610000,
+        "heap_objects": 57002,
+        "rss_bytes": 24350720
+      },
+      "closed": {
+        "heap_bytes": 8648720,
+        "heap_objects": 57234,
+        "rss_bytes": 50057216
+      },
+      "library": true,
+      "mode": "counts",
+      "modules": 21,
+      "opened": {
+        "heap_bytes": 11745456,
+        "heap_objects": 77889,
+        "rss_bytes": 37486592
+      },
+      "operation": "symbols",
+      "server_analysis_entries": 0,
+      "server_cache_uris": 0,
+      "server_indices": 0,
+      "server_lints": 0
+    },
+    {
+      "baseline": {
+        "heap_bytes": 8606744,
+        "heap_objects": 56944,
+        "rss_bytes": 23904256
+      },
+      "closed": {
+        "heap_bytes": 8628016,
+        "heap_objects": 57140,
+        "rss_bytes": 40357888
+      },
+      "library": true,
+      "mode": "memory",
+      "modules": 21,
+      "opened": {
+        "heap_bytes": 11741200,
+        "heap_objects": 77823,
+        "rss_bytes": 37736448
+      },
+      "operation": "symbols",
+      "server_analysis_entries": 0,
+      "server_cache_uris": 0,
+      "server_indices": 0,
+      "server_lints": 0
+    },
+    {
+      "baseline": {
+        "heap_bytes": 8605592,
+        "heap_objects": 56941,
+        "rss_bytes": 24481792
+      },
+      "closed": {
+        "heap_bytes": 8643072,
+        "heap_objects": 57169,
+        "rss_bytes": 43646976
+      },
+      "library": true,
+      "mode": "counts",
+      "modules": 21,
+      "opened": {
+        "heap_bytes": 11740096,
+        "heap_objects": 77823,
+        "rss_bytes": 37306368
+      },
+      "operation": "references",
+      "server_analysis_entries": 0,
+      "server_cache_uris": 0,
+      "server_indices": 0,
+      "server_lints": 0
+    },
+    {
+      "baseline": {
+        "heap_bytes": 8606168,
+        "heap_objects": 56951,
+        "rss_bytes": 24154112
+      },
+      "closed": {
+        "heap_bytes": 8627248,
+        "heap_objects": 57152,
+        "rss_bytes": 45412352
+      },
+      "library": true,
+      "mode": "memory",
+      "modules": 21,
+      "opened": {
+        "heap_bytes": 11740832,
+        "heap_objects": 77832,
+        "rss_bytes": 38129664
+      },
+      "operation": "references",
+      "server_analysis_entries": 0,
+      "server_cache_uris": 0,
+      "server_indices": 0,
+      "server_lints": 0
+    },
+    {
+      "baseline": {
+        "heap_bytes": 8607984,
+        "heap_objects": 56955,
+        "rss_bytes": 23023616
+      },
+      "closed": {
+        "heap_bytes": 8662656,
+        "heap_objects": 57191,
+        "rss_bytes": 39645184
+      },
+      "library": true,
+      "mode": "counts",
+      "modules": 21,
+      "opened": {
+        "heap_bytes": 11742688,
+        "heap_objects": 77838,
+        "rss_bytes": 37969920
+      },
+      "operation": "rename",
+      "server_analysis_entries": 0,
+      "server_cache_uris": 0,
+      "server_indices": 0,
+      "server_lints": 0
+    },
+    {
+      "baseline": {
+        "heap_bytes": 8605200,
+        "heap_objects": 56939,
+        "rss_bytes": 24051712
+      },
+      "closed": {
+        "heap_bytes": 8627600,
+        "heap_objects": 57152,
+        "rss_bytes": 38338560
+      },
+      "library": true,
+      "mode": "memory",
+      "modules": 21,
+      "opened": {
+        "heap_bytes": 11739904,
+        "heap_objects": 77822,
+        "rss_bytes": 37965824
+      },
+      "operation": "rename",
+      "server_analysis_entries": 0,
+      "server_cache_uris": 0,
+      "server_indices": 0,
+      "server_lints": 0
+    }
+  ]
+}

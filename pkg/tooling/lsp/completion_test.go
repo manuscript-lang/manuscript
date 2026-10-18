@@ -141,7 +141,7 @@ func TestTypedCompletionWhileEditing(t *testing.T) {
 		{"strings", "fn work() String:\n    return \"Que|\"\n", nil, []string{"Queue"}},
 		{"optional methods", "fn work(value: Optional[Int]) Int:\n    return value.|\n", []string{"is_some", "is_none", "get", "or_else"}, []string{"some", "none", "unwrap"}},
 		{"generic alternative", "fn work() Optional[Int]:\n    return Optional[Int].|\n", []string{"some", "none"}, nil},
-		{"prelude result cases", "fn work() Result[Int, String]:\n    return Result[Int, String].|\n", []string{"ok", "error"}, nil},
+		{"prelude result cases", "fn work() Result[Int, Error]:\n    return Result[Int, Error].|\n", []string{"ok", "error"}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -195,7 +195,7 @@ func TestCompletionSurvivesIndependentSyntaxErrors(t *testing.T) {
 func TestCompletionWithMultilineParameters(t *testing.T) {
 	for _, source := range []string{
 		"fn answer(\n    input: Int,\n) Int:\n    return inp|\nfn broken(\n",
-		"import WriteStream from \"@std/io.ms\"\nfn render(\n    arguments: List[String],\n    output: WriteStream\n) Int:\n    let joined = arguments.jo|\n    match output.write(data: \"hello\".to_bytes()):\n",
+		"import WriteStream from \"@std/io.ms\"\nfn render(\n    arguments: List[String],\n    output: WriteStream\n) Int:\n    let joined = arguments.jo|\n    match output.write(data: \"hello\"):\n",
 	} {
 		items := completeSource(t, source)
 		want := "input"
@@ -239,7 +239,7 @@ func TestUniversalToStringCompletion(t *testing.T) {
 	} {
 		items := completeSource(t, source)
 		item := itemNamed(items, "to_string")
-		if item == nil || item.Detail != "fn()->String" || item.TextEdit.(map[string]any)["newText"] != "to_string()$0" {
+		if item == nil || item.Detail != "fn() String" || item.TextEdit.(map[string]any)["newText"] != "to_string()$0" {
 			t.Fatalf("missing universal method for %s: %+v", source, items)
 		}
 	}

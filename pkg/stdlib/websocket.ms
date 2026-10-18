@@ -29,13 +29,17 @@ export interface WebSocket:
     fn close() Unit
     # Sends a ping frame carrying `data`, which must be at most 125 bytes, with a one-second write deadline.
     # It does not wait for the pong. Returns Closed on a closed socket.
-    fn ping(data: Bytes) Result[Unit, WebSocketError]
+    fn ping(data: String) Result[Unit, WebSocketError]
+    # Sends a ping frame carrying raw bytes, with the same limits and deadline as ping.
+    fn ping_bytes(data: Bytes) Result[Unit, WebSocketError]
     # Waits for the next complete message and returns it, or none once the peer closes normally.
     # A larger message returns LimitExceeded and a malformed text message InvalidData; after any receive failure the connection is closed. One receive runs at a time, and others wait their turn.
     fn receive() Result[Optional[WebSocketMessage], WebSocketError]
-    # Sends `data` as one message, a text frame when `text` is true and a binary frame otherwise.
+    # Sends `data` as one text message; a payload over `max_message_bytes` returns LimitExceeded. One send runs at a time.
+    fn send(data: String) Result[Unit, WebSocketError]
+    # Sends `data` as one message, a text frame when `text` is true and a binary frame (the default) otherwise.
     # Text must be valid UTF-8 or the call returns InvalidData, and a payload over `max_message_bytes` returns LimitExceeded. One send runs at a time.
-    fn send(data: Bytes, text: Bool) Result[Unit, WebSocketError]
+    fn send_bytes(data: Bytes, text: Bool = false) Result[Unit, WebSocketError]
     # Returns the subprotocol the server selected during the handshake, or an empty string when none was negotiated.
     fn subprotocol() String
 

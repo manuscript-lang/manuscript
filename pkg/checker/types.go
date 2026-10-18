@@ -140,7 +140,7 @@ func (t *Type) String() string {
 			}
 			p = append(p, label)
 		}
-		return "fn(" + strings.Join(p, ", ") + ")->" + t.Result.String()
+		return "fn(" + strings.Join(p, ", ") + ") " + t.Result.String()
 	}
 	s := t.Name
 	if len(t.Args) > 0 {
@@ -245,21 +245,27 @@ func requiredType(t *Type) *Type {
 }
 func substitution(t *Type) map[string]*Type {
 	r := map[string]*Type{}
+	bindTypeArguments(t, r)
+	return r
+}
+
+func bindTypeArguments(t *Type, bindings map[string]*Type) {
 	if t.Def != nil {
 		for i, v := range t.Def.Variables {
 			if i < len(t.Args) {
-				r[v.ID] = t.Args[i]
+				bindings[v.ID] = t.Args[i]
 			}
 		}
 	}
-	return r
 }
 func Fields(t *Type) []Param {
-	var result []Param
-	if t.Def != nil {
-		for _, p := range t.Def.Fields {
-			result = append(result, Param{p.Name, Sub(p.Type, substitution(t))})
-		}
+	if t.Def == nil || len(t.Def.Fields) == 0 {
+		return nil
+	}
+	sub := substitution(t)
+	result := make([]Param, len(t.Def.Fields))
+	for i, p := range t.Def.Fields {
+		result[i] = Param{p.Name, Sub(p.Type, sub)}
 	}
 	return result
 }
@@ -270,6 +276,9 @@ func ConstructorSignature(t *Type) *Type {
 	params := Fields(t)
 	if std(t, "Bytes") {
 		params = []Param{{"values", standard("List", primitive("Int"))}}
+	}
+	if std(t, "Set") && len(t.Args) == 1 {
+		params = []Param{{"values", standard("List", t.Args[0])}}
 	}
 	signature := function(params, t)
 	if t.Def != nil && t.Def.Symbol != nil && t.Def.Symbol.Decl != nil {
@@ -285,14 +294,24 @@ func ConstructorSignature(t *Type) *Type {
 	return signature
 }
 func Cases(t *Type) []Case {
-	var result []Case
-	if t.Def != nil {
-		for _, c := range t.Def.Cases {
-			r := Case{Name: c.Name}
-			for _, p := range c.Fields {
-				r.Fields = append(r.Fields, Param{p.Name, Sub(p.Type, substitution(t))})
-			}
-			result = append(result, r)
+	if t.Def == nil || len(t.Def.Cases) == 0 {
+		return nil
+	}
+	sub := map[string]*Type{}
+	bound := false
+	result := make([]Case, len(t.Def.Cases))
+	for i, c := range t.Def.Cases {
+		result[i].Name = c.Name
+		if len(c.Fields) == 0 {
+			continue
+		}
+		if !bound {
+			bindTypeArguments(t, sub)
+			bound = true
+		}
+		result[i].Fields = make([]Param, len(c.Fields))
+		for j, p := range c.Fields {
+			result[i].Fields[j] = Param{p.Name, Sub(p.Type, sub)}
 		}
 	}
 	return result

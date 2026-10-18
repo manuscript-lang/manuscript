@@ -125,7 +125,7 @@ Builder mutations return Unit; `freeze` returns the sealed result.
 
 On a 64-bit host a List reserves 8 bytes per `Int` or `Float`, 1 per `Bool`, and 16 per `String` reference (text storage is extra and may be shared), plus a small header. Append reserves spare capacity and growth can briefly keep old arrays alive, so heap and peak RSS exceed the element budget. Storage never narrows `Int` or `Float`.
 
-A List keeps its identity and backing kind through generics, records, Optional, Result, and closures; explicit copies get independent backing. See [Go representation](../../contributing/go-lowering-representation.md).
+A List keeps its identity and backing kind through generics, records, Optional, Result, and closures; explicit copies get independent backing.
 
 ## Lookup and updates
 
@@ -149,6 +149,7 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 | `Map[K, V]` | `some(predicate: fn(key: K, value: V) Bool) Bool`; `every` uses the same predicate |
 | `Map[K, V]` | `add(key: K, value: V) Map[K, V]`; `remove(key: K) Map[K, V]` |
 | `Set[T]()` | Empty `Set[T]` |
+| `Set[T](values)` | `Set[T]` of the distinct elements of the `List[T]` in first-seen order; `Set([1, 2])` infers `T` |
 | `Set[T]` | `length() Int`; `contains(value: T) Bool` |
 | `Set[T]` | `is_empty() Bool`; `filter(predicate: fn(value: T) Bool) Set[T]` |
 | `Set[T]` | `map[U: Hashable](transform: fn(value: T) U) Set[U]` |

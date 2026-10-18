@@ -1,0 +1,34 @@
+=== RUN   TestDiscoveryPhysicalWork
+    external_discovery_probe_test.go:30: WORK aliases=1 alias_first=false sample=0 walks=2 visits=10 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=1 alias_first=false sample=1 walks=2 visits=10 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=1 alias_first=false sample=2 walks=2 visits=10 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=1 alias_first=false sample=3 walks=2 visits=10 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=1 alias_first=false sample=4 walks=2 visits=10 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=1 alias_first=true sample=0 walks=2 visits=10 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=1 alias_first=true sample=1 walks=2 visits=10 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=1 alias_first=true sample=2 walks=2 visits=10 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=1 alias_first=true sample=3 walks=2 visits=10 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=1 alias_first=true sample=4 walks=2 visits=10 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=2 alias_first=false sample=0 walks=3 visits=11 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=2 alias_first=false sample=1 walks=3 visits=11 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=2 alias_first=false sample=2 walks=3 visits=11 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=2 alias_first=false sample=3 walks=3 visits=11 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=2 alias_first=false sample=4 walks=3 visits=11 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=2 alias_first=true sample=0 walks=3 visits=11 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=2 alias_first=true sample=1 walks=3 visits=11 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=2 alias_first=true sample=2 walks=3 visits=11 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=2 alias_first=true sample=3 walks=3 visits=11 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=2 alias_first=true sample=4 walks=3 visits=11 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=4 alias_first=false sample=0 walks=5 visits=13 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=4 alias_first=false sample=1 walks=5 visits=13 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=4 alias_first=false sample=2 walks=5 visits=13 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=4 alias_first=false sample=3 walks=5 visits=13 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=4 alias_first=false sample=4 walks=5 visits=13 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=4 alias_first=true sample=0 walks=5 visits=13 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=4 alias_first=true sample=1 walks=5 visits=13 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=4 alias_first=true sample=2 walks=5 visits=13 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=4 alias_first=true sample=3 walks=5 visits=13 reads=8 symbols=8
+    external_discovery_probe_test.go:30: WORK aliases=4 alias_first=true sample=4 walks=5 visits=13 reads=8 symbols=8
+--- PASS: TestDiscoveryPhysicalWork (3.37s)
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	3.377s

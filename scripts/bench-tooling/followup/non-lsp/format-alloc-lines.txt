@@ -1,0 +1,229 @@
+Total: 1.07GB
+ROUTINE ======================== github.com/manuscript-lang/manuscript/pkg/tooling.groupStatementExpressions in /workspace/manuscript-tooling-followup/pkg/tooling/format_layout.go
+  636.49MB     1.07GB (flat, cum) 99.52% of Total
+         .          .    560:func groupStatementExpressions(filename, source string) (string, error) {
+         .   231.46MB    561:	module, err := parseFormatSource(filename, source)
+         .          .    562:	if err != nil {
+         .          .    563:		return "", err
+         .          .    564:	}
+         .   157.68MB    565:	tokens, err := lexer.Lex(filename, source)
+         .          .    566:	if err != nil {
+         .          .    567:		return "", err
+         .          .    568:	}
+         .          .    569:	starts, pairs := map[int]int{}, map[int]int{}
+         .          .    570:	var stack []int
+         .          .    571:	for i, token := range tokens {
+   21.87MB    21.87MB    572:		starts[token.Pos.Offset] = i
+         .          .    573:		switch token.Kind {
+         .          .    574:		case "(", "[", "{":
+         .          .    575:			stack = append(stack, i)
+         .          .    576:		case ")", "]", "}":
+         .          .    577:			open := stack[len(stack)-1]
+         .          .    578:			stack = stack[:len(stack)-1]
+         .          .    579:			pairs[open] = i
+         .          .    580:		}
+         .          .    581:	}
+         .          .    582:	insert := map[int]string{}
+         .          .    583:	wrap := func(start int) int {
+         .          .    584:		end, booleans, dots, operators := start, 0, 0, 0
+         .          .    585:		for end < len(tokens) {
+         .          .    586:			if close, ok := pairs[end]; ok {
+         .          .    587:				end = close + 1
+         .          .    588:				continue
+         .          .    589:			}
+         .          .    590:			kind := tokens[end].Kind
+         .          .    591:			if layoutToken(kind) || kind == ":" || kind == "," ||
+         .          .    592:				kind == ")" || kind == "]" || kind == "}" {
+         .          .    593:				break
+         .          .    594:			}
+         .          .    595:			switch kind {
+         .          .    596:			case "and", "or":
+         .          .    597:				booleans++
+         .          .    598:			case ".":
+         .          .    599:				dots++
+         .          .    600:			case "+", "-", "*", "/", "%", "==", "!=", "<", ">", "<=", ">=":
+         .          .    601:				operators++
+         .          .    602:			}
+         .          .    603:			end++
+         .          .    604:		}
+         .          .    605:		if end == start {
+         .          .    606:			return end
+         .          .    607:		}
+         .          .    608:		from, to := tokens[start].Pos.Offset, tokens[end-1].Pos.Offset+len(tokens[end-1].Text)
+         .          .    609:		var flat strings.Builder
+         .          .    610:		var code []lexer.Token
+         .          .    611:		for _, token := range tokens[start:end] {
+         .          .    612:			if layoutToken(token.Kind) {
+         .          .    613:				continue
+         .          .    614:			}
+         .          .    615:			code = append(code, token)
+         .          .    616:			if len(code) > 1 && tokenSpace(code, len(code)-1) {
+         .          .    617:				flat.WriteByte(' ')
+         .          .    618:			}
+         .          .    619:			flat.WriteString(token.Text)
+         .          .    620:		}
+         .          .    621:		width := tokens[start].Pos.Column - 1 + utf8.RuneCountInString(flat.String())
+         .          .    622:		if end < len(tokens) && tokens[end].Kind == ":" {
+         .          .    623:			width++ // The condition's suite colon occupies a column too.
+         .          .    624:		}
+         .          .    625:		if width > formatWidth && (booleans+operators > 0 || dots >= 2) {
+         .          .    626:			insert[from] += "("
+         .          .    627:			insert[to] = ")" + insert[to]
+         .          .    628:		}
+         .          .    629:		return end
+         .          .    630:	}
+         .          .    631:	defaults := func(params []syntax.Parameter) {
+         .          .    632:		for _, param := range params {
+         .          .    633:			if param.Default == nil || suiteExpression(param.Default) {
+         .          .    634:				continue
+         .          .    635:			}
+         .          .    636:			start, ok := starts[param.Pos.Offset]
+         .          .    637:			if !ok {
+         .          .    638:				continue
+         .          .    639:			}
+         .          .    640:			for tokens[start].Kind != "=" {
+         .          .    641:				if end, ok := pairs[start]; ok {
+         .          .    642:					start = end
+         .          .    643:				}
+         .          .    644:				start++
+         .          .    645:			}
+         .          .    646:			wrap(start + 1)
+         .          .    647:		}
+         .          .    648:	}
+         .          .    649:	// A constant's synthetic statement starts at its initializer, which may be
+         .          .    650:	// text, so it bypasses the keyword and text-statement handling below.
+         .          .    651:	constants := map[*syntax.Statement]bool{}
+         .          .    652:	for _, d := range module.Declarations {
+         .          .    653:		if d.Constant {
+         .          .    654:			constants[d.Body[0]] = true
+         .          .    655:		}
+         .          .    656:	}
+         .          .    657:	visitor := syntax.Visitor{
+         .          .    658:		Statement: func(s *syntax.Statement) {
+         .          .    659:			if s.Value == nil || suiteExpression(s.Value) {
+         .          .    660:				return
+         .          .    661:			}
+         .          .    662:			start, ok := starts[s.Pos.Offset]
+         .          .    663:			if ok && constants[s] {
+         .          .    664:				wrap(start)
+         .          .    665:				return
+         .          .    666:			}
+         .          .    667:			if !ok || tokens[start].Kind == lexer.String {
+         .          .    668:				return
+         .          .    669:			}
+         .          .    670:			switch s.Kind {
+         .          .    671:			case syntax.KindIf, syntax.KindWhile:
+         .          .    672:				start++
+         .          .    673:				if s.Pattern != nil {
+         .          .    674:					// `if let name = value:` wraps only the value.
+         .          .    675:					for tokens[start].Kind != "=" {
+         .          .    676:						start++
+         .          .    677:					}
+         .          .    678:					start++
+         .          .    679:				}
+         .          .    680:			case syntax.KindReturn:
+         .          .    681:				if tokens[start].Kind == syntax.KindReturn {
+         .          .    682:					start++
+         .          .    683:				}
+         .          .    684:			case syntax.KindBind, syntax.KindAssign, syntax.KindWith, syntax.KindFor:
+         .          .    685:				target := "="
+         .          .    686:				if s.Kind == syntax.KindFor {
+         .          .    687:					target = "in"
+         .          .    688:				}
+         .          .    689:				for tokens[start].Kind != target {
+         .          .    690:					if end, ok := pairs[start]; ok {
+         .          .    691:						start = end
+         .          .    692:					}
+         .          .    693:					start++
+         .          .    694:				}
+         .          .    695:				start++
+         .          .    696:			}
+         .          .    697:			wrap(start)
+         .          .    698:		},
+         .          .    699:		Expression: func(e *syntax.Expression) {
+         .          .    700:			switch e.Kind {
+         .          .    701:			case syntax.KindLambda:
+         .          .    702:				defaults(e.Params)
+         .          .    703:				return
+         .          .    704:			case syntax.KindList:
+         .          .    705:				for _, element := range e.Elements {
+         .          .    706:					if suiteExpression(element) {
+         .          .    707:						return
+         .          .    708:					}
+         .          .    709:				}
+         .          .    710:				start, ok := starts[e.Pos.Offset]
+         .          .    711:				if !ok || tokens[start].Kind != "[" {
+         .          .    712:					return
+         .          .    713:				}
+         .          .    714:				start++
+         .          .    715:				for range e.Elements {
+         .          .    716:					end := wrap(start)
+         .          .    717:					if end == start || tokens[end].Kind != "," {
+         .          .    718:						break
+         .          .    719:					}
+         .          .    720:					start = end + 1
+         .          .    721:				}
+         .          .    722:				return
+         .          .    723:			case syntax.KindMap:
+         .          .    724:				start, ok := starts[e.Pos.Offset]
+         .          .    725:				if !ok || tokens[start].Kind != "{" {
+         .          .    726:					return
+         .          .    727:				}
+         .          .    728:				start++
+         .          .    729:				for at := 0; at < len(e.Elements); at += 2 {
+         .          .    730:					if suiteExpression(e.Elements[at]) || suiteExpression(e.Elements[at+1]) {
+         .          .    731:						return
+         .          .    732:					}
+         .          .    733:					end := wrap(start)
+         .          .    734:					if end == start || tokens[end].Kind != ":" {
+         .          .    735:						break
+         .          .    736:					}
+         .          .    737:					end = wrap(end + 1)
+         .          .    738:					if tokens[end].Kind != "," {
+         .          .    739:						break
+         .          .    740:					}
+         .          .    741:					start = end + 1
+         .          .    742:				}
+         .          .    743:				return
+         .          .    744:			case syntax.KindCall:
+         .          .    745:			default:
+         .          .    746:				return
+         .          .    747:			}
+         .          .    748:			for _, arg := range e.Args {
+         .          .    749:				if suiteExpression(arg.Value) {
+         .          .    750:					continue
+         .          .    751:				}
+         .          .    752:				start, ok := starts[arg.Pos.Offset]
+         .          .    753:				if !ok || tokens[start].Kind == lexer.String {
+         .          .    754:					continue
+         .          .    755:				}
+         .          .    756:				if arg.Name != "" {
+         .          .    757:					start += 2 // The argument label and colon stay together.
+         .          .    758:				}
+         .          .    759:				wrap(start)
+         .          .    760:			}
+         .          .    761:		},
+         .          .    762:	}
+         .          .    763:	var callable func(*syntax.Declaration)
+         .          .    764:	callable = func(d *syntax.Declaration) {
+         .          .    765:		defaults(d.Params)
+         .          .    766:		for _, method := range d.Methods {
+         .          .    767:			callable(method)
+         .          .    768:		}
+         .          .    769:	}
+         .          .    770:	for _, d := range module.Declarations {
+         .          .    771:		callable(d)
+         .    69.36MB    772:		visitor.Walk(d)
+         .          .    773:	}
+         .          .    774:	var offsets []int
+         .          .    775:	for offset := range insert {
+         .          .    776:		offsets = append(offsets, offset)
+         .          .    777:	}
+         .          .    778:	sort.Sort(sort.Reverse(sort.IntSlice(offsets)))
+         .          .    779:	for _, offset := range offsets {
+  614.61MB   614.61MB    780:		source = source[:offset] + insert[offset] + source[offset:]
+         .          .    781:	}
+         .          .    782:	return source, nil
+         .          .    783:}
+         .          .    784:
+         .          .    785:func suiteExpression(e *syntax.Expression) bool {

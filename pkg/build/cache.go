@@ -269,11 +269,11 @@ func VerifyBuild(output string, sources map[string]string) error {
 	if err := json.Unmarshal(data, &metadata); err != nil {
 		return err
 	}
-	binary, err := os.ReadFile(output)
+	binary, err := fileDigest(output)
 	if err != nil {
 		return err
 	}
-	if metadata.Format != 1 || digest(binary) != metadata.ExecutableSHA256 {
+	if metadata.Format != 1 || binary != metadata.ExecutableSHA256 {
 		return fmt.Errorf("executable does not match build metadata; the cached build is stale or was modified, so delete it (or the MANUSCRIPT_CACHE_DIR entry) and rebuild")
 	}
 	names := make([]string, 0, len(metadata.Sources))

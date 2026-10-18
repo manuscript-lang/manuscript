@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import Closeable from "@std/cleanup.ms"
 
 type State:
@@ -35,29 +35,28 @@ fn widened(state: State) Result[Int, Error]:
 test "standalone try evaluates once and continues on Unit success":
     let state = State(0, 0)
     let value = try exact(state, fail: false)
-    if value != "done": return panic("success lost")
-    if state.calls != 11 or state.closed != 1: return panic("success order changed")
+    try expect_equal(value, "done")
+    try expect_false(state.calls != 11 or state.closed != 1)
 
 test "standalone try propagates and cleans up before returning":
     let state = State(0, 0)
     let failed = exact(state, fail: true)
-    if failed.is_ok(): return panic("failure swallowed")
-    if failed.err().code != 42: return panic("payload lost")
-    if state.calls != 1 or state.closed != 1: return panic("failure order changed")
+    try expect_false(failed.is_ok())
+    try expect_equal(failed.err().code, 42)
+    try expect_false(state.calls != 1 or state.closed != 1)
 
 test "standalone try preserves concrete errors at Error boundaries":
     let state = State(0, 0)
     let outcome = widened(state)
-    if outcome.is_ok(): return panic("failure swallowed")
-
+    try expect_false(outcome.is_ok())
     let cause = outcome.err()
 
     match cause:
         Failure(value):
-            if value.code != 42: return panic("payload lost")
-        _: return panic("concrete error lost")
+            try expect_equal(value.code, 42)
+        _: return fail("concrete error lost")
 
-    if state.calls != 1: return panic("operation repeated")
+    try expect_equal(state.calls, 1)
 
 test "standalone try in closure returns from that closure":
     let state = State(0, 0)
@@ -65,6 +64,6 @@ test "standalone try in closure returns from that closure":
         if true: try operation(state, fail: true)
         return ok(unit)
     let outcome = callback()
-    if outcome.is_ok(): return panic("failure swallowed")
-    if outcome.err().code != 42: return panic("payload lost")
-    if state.calls != 1: return panic("operation repeated")
+    try expect_false(outcome.is_ok())
+    try expect_equal(outcome.err().code, 42)
+    try expect_equal(state.calls, 1)

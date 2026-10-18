@@ -20,7 +20,7 @@ func TestInspectDescribesConstantsAsConstants(t *testing.T) {
 	if limit := kinds["LIMIT"]; limit.Kind != "constant" || limit.Type != "Int" || limit.ID != "main.ms#constant#LIMIT" {
 		t.Fatalf("constant entity: %+v", limit)
 	}
-	if size := kinds["size"]; size.Kind != "fn" || size.Type != "fn()->Int" {
+	if size := kinds["size"]; size.Kind != "fn" || size.Type != "fn() Int" {
 		t.Fatalf("function entity: %+v", size)
 	}
 	if len(inspection.Calls) != 1 || inspection.Calls[0].Kind != "constant" || inspection.Calls[0].Target != "main.ms#constant#LIMIT" {

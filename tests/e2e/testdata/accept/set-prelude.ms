@@ -1,30 +1,31 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
 fn insert[T: Hashable](values: Set[T], value: T) Set[T]: values.add(value)
 
 test "set construction and methods need no import":
     let values: Set[Int] = Set()
-    if not values.is_empty(): return panic("empty constructor")
-
+    try expect_false(not values.is_empty())
     insert(values, 3).add(1).add(3)
     let add = values.add
     add(2)
-    if values.length() != 3 or not values.contains(2): return panic("add and contains")
-    if values.values() != [3, 1, 2]: return panic("deduplication and insertion order")
-
+    try expect_false(values.length() != 3 or not values.contains(2))
+    try expect_equal(values.values(), [3, 1, 2])
     let copy = values.clone()
     values.remove(1)
-    if values.contains(1) or not copy.contains(1): return panic("remove and clone")
-
-    let other = Set[Int]().add(4).add(2)
-    if values.union(other).values() != [3, 2, 4]: return panic("union")
-    if values.filter(fn(value: Int) Bool: value > 2).values() != [3]: return panic(
-        "filter"
-    )
-    if values.map(fn(value: Int) Int: value * 2).values() != [6, 4]: return panic("map")
-
+    try expect_false(values.contains(1) or not copy.contains(1))
+    let other = Set[Int]([4, 2])
+    try expect_equal(values.union(other).values(), [3, 2, 4])
+    try expect_equal(values.filter(fn(value: Int) Bool: value > 2).values(), [3])
+    try expect_equal(values.map(fn(value: Int) Int: value * 2).values(), [6, 4])
     let nested: List[Set[Int]] = [values]
-    if nested[0].get().length() != 2: return panic("nested annotation")
-
+    try expect_equal(nested[0].get().length(), 2)
     values.clear()
-    if not values.is_empty() or copy.length() != 3: return panic("clear")
+    try expect_false(not values.is_empty() or copy.length() != 3)
+
+test "set constructor accepts a list":
+    let values = Set[Int]([3, 1, 3, 2])
+    try expect_equal(values.values(), [3, 1, 2])
+    let inferred = Set(["a", "b"])
+    try expect_equal(inferred.length(), 2)
+    let empty: Set[Int] = Set([])
+    try expect_false(not empty.is_empty())

@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false, expect_not_equal} from "@std/testing.ms"
 import Decimal from "@std/decimal.ms"
 
 type P:
@@ -13,12 +13,10 @@ fn code[T: Hashable](value: T) Int:
     return value.hash()
 
 test "derived hashes agree for equal values and are stable":
-    if code(P(1, "a")) != code(P(1, "a")): return panic("record")
-    if code(P(1, "a")) == code(P(2, "a")): return panic("record differs")
-    if code(Line(1, some(2))) != code(Line(1, some(2))): return panic("alt")
-    if code(Dot(1)) == code(Line(1, none)): return panic("alt differs")
-    if code("abc") != "abc".hash() or 7.hash() != code(7): return panic("scalar")
-    if code(some(3)) != code(some(3)) or code(12.50d) != code(12.5d): return panic(
-        "opt/decimal"
-    )
-    if code(true) == code(false): return panic("bool")
+    try expect_equal(code(P(1, "a")), code(P(1, "a")))
+    try expect_not_equal(code(P(1, "a")), code(P(2, "a")))
+    try expect_equal(code(Line(1, some(2))), code(Line(1, some(2))))
+    try expect_not_equal(code(Dot(1)), code(Line(1, none)))
+    try expect_false(code("abc") != "abc".hash() or 7.hash() != code(7))
+    try expect_false(code(some(3)) != code(some(3)) or code(12.50d) != code(12.5d))
+    try expect_not_equal(code(true), code(false))

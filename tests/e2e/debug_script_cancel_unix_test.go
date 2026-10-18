@@ -71,7 +71,7 @@ func TestDebugScriptInterruptsCommandInput(t *testing.T) {
 
 func TestDebugScriptInterruptsBlockedTargetOutput(t *testing.T) {
 	source := filepath.Join(t.TempDir(), "main.ms")
-	code := "import stderr from \"@std/io.ms\"\n\nexport fn main() Int:\n    let stream = stderr()\n    let chunk = \"" + strings.Repeat("e", 2048) + "\".to_bytes()\n    while true:\n        let _written = stream.write(data: chunk)\n    return 0\n"
+	code := "import stderr from \"@std/io.ms\"\n\nexport fn main() Int:\n    let stream = stderr()\n    let chunk = \"" + strings.Repeat("e", 2048) + "\".to_bytes()\n    while true:\n        let _written = stream.write_bytes(data: chunk)\n    return 0\n"
 	if err := os.WriteFile(source, []byte(code), 0600); err != nil {
 		t.Fatal(err)
 	}

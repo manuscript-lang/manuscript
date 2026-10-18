@@ -1,0 +1,13 @@
+File: tooling.test
+Build ID: e90aed333b5d1db8098ffe43fc795cfa806d781c
+Type: alloc_space
+Time: 2026-10-18 07:14:07 UTC
+Showing nodes accounting for 646.17MB, 98.92% of 653.24MB total
+Dropped 19 nodes (cum <= 3.27MB)
+      flat  flat%   sum%        cum   cum%
+  645.66MB 98.84% 98.84%   645.66MB 98.84%  github.com/manuscript-lang/manuscript/pkg/tooling.reachCounts
+    0.51MB 0.079% 98.92%   647.68MB 99.15%  github.com/manuscript-lang/manuscript/pkg/tooling.CompareFacts
+         0     0% 98.92%   650.70MB 99.61%  github.com/manuscript-lang/manuscript/pkg/tooling.BenchmarkNonLSPReviewUnchangedChain.func1
+         0     0% 98.92%   595.42MB 91.15%  testing.(*B).launch
+         0     0% 98.92%    55.28MB  8.46%  testing.(*B).run1.func1
+         0     0% 98.92%   650.70MB 99.61%  testing.(*B).runN

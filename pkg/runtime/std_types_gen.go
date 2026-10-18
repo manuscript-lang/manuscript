@@ -375,16 +375,9 @@ func (EncodingError_LimitExceeded) isEncodingError() {
 type Error interface {
 	Message(ctx *Execution) string
 }
-type TextError interface {
-	isTextError()
+type TextError struct {
+	Text string
 }
-type TextError_Text struct {
-	Message string
-}
-
-func (TextError_Text) isTextError() {
-}
-
 type MissingValue interface {
 	isMissingValue()
 }
@@ -570,9 +563,11 @@ type FileSystem interface {
 	Stat(ctx *Execution, a0 string, a1 bool) Result[*FileInfo, FileSystemError]
 	TemporaryRoot(ctx *Execution) Result[string, FileSystemError]
 	TemporaryDirectory(ctx *Execution, a0 string) Result[string, FileSystemError]
-	WriteFile(ctx *Execution, a0 string, a1 *Bytes, a2 bool) Result[Unit, FileSystemError]
+	WriteFile(ctx *Execution, a0 string, a1 string, a2 bool) Result[Unit, FileSystemError]
+	WriteFileBytes(ctx *Execution, a0 string, a1 *Bytes, a2 bool) Result[Unit, FileSystemError]
 	Access(ctx *Execution, a0 string, a1 int) Result[Unit, FileSystemError]
-	AppendFile(ctx *Execution, a0 string, a1 *Bytes) Result[Unit, FileSystemError]
+	AppendFile(ctx *Execution, a0 string, a1 string) Result[Unit, FileSystemError]
+	AppendFileBytes(ctx *Execution, a0 string, a1 *Bytes) Result[Unit, FileSystemError]
 	Chmod(ctx *Execution, a0 string, a1 int) Result[Unit, FileSystemError]
 	Chown(ctx *Execution, a0 string, a1 int, a2 int, a3 bool) Result[Unit, FileSystemError]
 	Truncate(ctx *Execution, a0 string, a1 int) Result[Unit, FileSystemError]
@@ -592,10 +587,13 @@ type FileHandle interface {
 	Writer(ctx *Execution) WriteStream
 	Close(ctx *Execution) Unit
 	Read(ctx *Execution, a0 Option[int]) Result[Option[*Bytes], FileSystemError]
-	Write(ctx *Execution, a0 *Bytes) Result[Unit, FileSystemError]
-	AppendFile(ctx *Execution, a0 *Bytes) Result[Unit, FileSystemError]
+	Write(ctx *Execution, a0 string) Result[Unit, FileSystemError]
+	WriteBytes(ctx *Execution, a0 *Bytes) Result[Unit, FileSystemError]
+	AppendFile(ctx *Execution, a0 string) Result[Unit, FileSystemError]
+	AppendFileBytes(ctx *Execution, a0 *Bytes) Result[Unit, FileSystemError]
 	ReadAt(ctx *Execution, a0 int, a1 Option[int]) Result[*Bytes, FileSystemError]
-	WriteAt(ctx *Execution, a0 int, a1 *Bytes) Result[Unit, FileSystemError]
+	WriteAt(ctx *Execution, a0 int, a1 string) Result[Unit, FileSystemError]
+	WriteAtBytes(ctx *Execution, a0 int, a1 *Bytes) Result[Unit, FileSystemError]
 	ReadFile(ctx *Execution, a0 Option[int]) Result[*Bytes, FileSystemError]
 	ReadVectors(ctx *Execution, a0 *List[int], a1 int) Result[*List[*Bytes], FileSystemError]
 	WriteVectors(ctx *Execution, a0 *List[*Bytes], a1 int) Result[Unit, FileSystemError]
@@ -852,7 +850,8 @@ func (HttpMethod_Custom) isHttpMethod() {
 
 type HttpClient interface {
 	Close(ctx *Execution) Unit
-	Request(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 *Bytes, a4 Option[int], a5 Option[Duration]) Result[ResponseBody, HttpError]
+	Request(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 string, a4 Option[int], a5 Option[Duration]) Result[ResponseBody, HttpError]
+	RequestBytes(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 *Bytes, a4 Option[int], a5 Option[Duration]) Result[ResponseBody, HttpError]
 	RequestStream(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 ReadStream, a4 Option[int], a5 Option[Duration]) Result[ResponseBody, HttpError]
 }
 type HttpClientOptions struct {
@@ -874,7 +873,8 @@ type HttpExchange interface {
 	Read(ctx *Execution, a0 Option[int]) Result[Option[*Bytes], IoError]
 	SendHeaders(ctx *Execution, a0 int, a1 *HttpHeaders) Result[Unit, HttpError]
 	Upgrade(ctx *Execution, a0 *List[string], a1 *List[string], a2 Option[int]) Result[WebSocket, WebSocketError]
-	Write(ctx *Execution, a0 *Bytes) Result[Unit, IoError]
+	Write(ctx *Execution, a0 string) Result[Unit, IoError]
+	WriteBytes(ctx *Execution, a0 *Bytes) Result[Unit, IoError]
 }
 type HttpRequest struct {
 	Method   HttpMethod
@@ -962,7 +962,8 @@ type ReadStream interface {
 type WriteStream interface {
 	Close(ctx *Execution) Unit
 	Flush(ctx *Execution) Result[Unit, IoError]
-	Write(ctx *Execution, a0 *Bytes) Result[Unit, IoError]
+	Write(ctx *Execution, a0 string) Result[Unit, IoError]
+	WriteBytes(ctx *Execution, a0 *Bytes) Result[Unit, IoError]
 }
 type JsonError interface {
 	isJsonError()
@@ -1124,7 +1125,8 @@ func (LogLevel_Silent) isLogLevel() {
 }
 
 type Transport interface {
-	Write(ctx *Execution, a0 *Bytes) Result[Unit, LogError]
+	Write(ctx *Execution, a0 string) Result[Unit, LogError]
+	WriteBytes(ctx *Execution, a0 *Bytes) Result[Unit, LogError]
 	Flush(ctx *Execution) Result[Unit, LogError]
 	Close(ctx *Execution) Unit
 }
@@ -1202,7 +1204,8 @@ type Connection interface {
 	Read(ctx *Execution, a0 Option[int], a1 Option[Duration]) Result[Option[*Bytes], IoError]
 	ShutdownWrite(ctx *Execution) Result[Unit, NetworkError]
 	TlsInfo(ctx *Execution) Result[*TlsInfo, TlsError]
-	Write(ctx *Execution, a0 *Bytes, a1 Option[Duration]) Result[Unit, IoError]
+	Write(ctx *Execution, a0 string, a1 Option[Duration]) Result[Unit, IoError]
+	WriteBytes(ctx *Execution, a0 *Bytes, a1 Option[Duration]) Result[Unit, IoError]
 }
 type Datagram struct {
 	Data   *Bytes
@@ -1212,7 +1215,8 @@ type DatagramSocket interface {
 	Address(ctx *Execution) string
 	Close(ctx *Execution) Unit
 	Receive(ctx *Execution, a0 Option[int], a1 Option[Duration]) Result[*Datagram, NetworkError]
-	Send(ctx *Execution, a0 *Bytes, a1 string, a2 Option[Duration]) Result[Unit, NetworkError]
+	Send(ctx *Execution, a0 string, a1 string, a2 Option[Duration]) Result[Unit, NetworkError]
+	SendBytes(ctx *Execution, a0 *Bytes, a1 string, a2 Option[Duration]) Result[Unit, NetworkError]
 }
 type DnsKind interface {
 	isDnsKind()
@@ -1304,7 +1308,8 @@ type Network interface {
 	ListenTls(ctx *Execution, a0 string, a1 *TlsOptions, a2 Option[Duration]) Result[Listener, NetworkError]
 	ListenUnix(ctx *Execution, a0 string) Result[Listener, NetworkError]
 	Lookup(ctx *Execution, a0 string, a1 Option[int], a2 Option[Duration]) Result[*List[string], NetworkError]
-	Request(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 *Bytes, a4 Option[int], a5 Option[Duration]) Result[*ClientResponse, HttpError]
+	Request(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 string, a4 Option[int], a5 Option[Duration]) Result[*ClientResponse, HttpError]
+	RequestBytes(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 *Bytes, a4 Option[int], a5 Option[Duration]) Result[*ClientResponse, HttpError]
 	Resolve(ctx *Execution, a0 string, a1 DnsKind, a2 Option[int], a3 Option[Duration]) Result[*List[*DnsRecord], NetworkError]
 	Restrict(ctx *Execution, a0 *List[string], a1 *List[string], a2 bool) Result[Network, NetworkError]
 	Serve(ctx *Execution, a0 string, a1 func(ctx *Execution, a0 *HttpRequest) *HttpResponse, a2 Option[int], a3 Option[int], a4 Option[int], a5 Option[Duration], a6 Option[Duration]) Result[HttpServer, IoError]
@@ -2165,9 +2170,11 @@ func (WebSocketError_Failed) isWebSocketError() {
 
 type WebSocket interface {
 	Close(ctx *Execution) Unit
-	Ping(ctx *Execution, a0 *Bytes) Result[Unit, WebSocketError]
+	Ping(ctx *Execution, a0 string) Result[Unit, WebSocketError]
+	PingBytes(ctx *Execution, a0 *Bytes) Result[Unit, WebSocketError]
 	Receive(ctx *Execution) Result[Option[*WebSocketMessage], WebSocketError]
-	Send(ctx *Execution, a0 *Bytes, a1 bool) Result[Unit, WebSocketError]
+	Send(ctx *Execution, a0 string) Result[Unit, WebSocketError]
+	SendBytes(ctx *Execution, a0 *Bytes, a1 bool) Result[Unit, WebSocketError]
 	Subprotocol(ctx *Execution) string
 }
 type WebSocketMessage struct {

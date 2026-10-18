@@ -215,8 +215,8 @@ func TestHttpInvalidPortsAllClients(t *testing.T) {
 	ctx, n := newTestNetwork(t)
 	client := must(t, n.HttpClient(ctx, clientOptions()))
 	for _, address := range []string{"http://127.0.0.1:99999/", "http://127.0.0.1:65536/", "http://127.0.0.1:99999999999999999999999/", "http://127.0.0.1:-1/", "http://[::1", "ftp://127.0.0.1/", "http://user@127.0.0.1/", "http:///x"} {
-		failedWith(t, n.Request(ctx, get(), address, headersOf(), NewBytes(nil), Some(int(100)), Some(Duration(time.Second))), "HttpError_InvalidInput")
-		failedWith(t, client.Request(ctx, get(), address, headersOf(), NewBytes(nil), Some(int(100)), Some(Duration(time.Second))), "HttpError_InvalidInput")
+		failedWith(t, n.RequestBytes(ctx, get(), address, headersOf(), NewBytes(nil), Some(int(100)), Some(Duration(time.Second))), "HttpError_InvalidInput")
+		failedWith(t, client.RequestBytes(ctx, get(), address, headersOf(), NewBytes(nil), Some(int(100)), Some(Duration(time.Second))), "HttpError_InvalidInput")
 		failedWith(t, client.RequestStream(ctx, get(), address, headersOf(), &sliceStream{}, Some(int(100)), Some(Duration(time.Second))), "HttpError_InvalidInput")
 	}
 }
@@ -249,7 +249,7 @@ func TestHttpClientPoolingCookiesStreaming(t *testing.T) {
 	ctx, n := newTestNetwork(t)
 	client := must(t, n.HttpClient(ctx, clientOptions()))
 	for range 2 {
-		body := must(t, client.Request(ctx, get(), server.URL+"/redirect", headersOf(), NewBytes(nil), Some(int(100)), Some(Duration(time.Second))))
+		body := must(t, client.RequestBytes(ctx, get(), server.URL+"/redirect", headersOf(), NewBytes(nil), Some(int(100)), Some(Duration(time.Second))))
 		if got := readAll(t, ctx, body.Read, 3); got != "streamed" {
 			t.Fatal(got)
 		}
@@ -263,13 +263,13 @@ func TestHttpClientPoolingCookiesStreaming(t *testing.T) {
 	options.MaxRedirects = Some(int(0))
 	options.Cookies = false
 	plain := must(t, n.HttpClient(ctx, options))
-	body := must(t, plain.Request(ctx, get(), server.URL+"/redirect", headersOf(), NewBytes(nil), None[int](), None[Duration]()))
+	body := must(t, plain.RequestBytes(ctx, get(), server.URL+"/redirect", headersOf(), NewBytes(nil), None[int](), None[Duration]()))
 	if body.Metadata(ctx).Status != 302 {
 		t.Fatal("redirect followed")
 	}
 	body.Close(ctx)
 	// The response budget is enforced while streaming.
-	echo := must(t, client.Request(ctx, post(), server.URL+"/echo", headersOf(), NewBytes([]byte("0123456789")), Some(int(4)), Some(Duration(time.Second))))
+	echo := must(t, client.RequestBytes(ctx, post(), server.URL+"/echo", headersOf(), NewBytes([]byte("0123456789")), Some(int(4)), Some(Duration(time.Second))))
 	var failure Result[Option[*Bytes], IoError]
 	for range 4 {
 		failure = echo.Read(ctx, Some(int(3)))
@@ -312,7 +312,7 @@ func TestHttpClientCloseIsIdempotentAndJoins(t *testing.T) {
 	defer close(block)
 	ctx, n := newTestNetwork(t)
 	client := must(t, n.HttpClient(ctx, clientOptions()))
-	body := must(t, client.Request(ctx, get(), server.URL, headersOf(), NewBytes(nil), None[int](), None[Duration]()))
+	body := must(t, client.RequestBytes(ctx, get(), server.URL, headersOf(), NewBytes(nil), None[int](), None[Duration]()))
 	done := make(chan Result[Option[*Bytes], IoError], 1)
 	go func() { done <- body.Read(ctx, Some(int(1))) }()
 	time.Sleep(30 * time.Millisecond)
@@ -330,7 +330,7 @@ func TestHttpClientCloseIsIdempotentAndJoins(t *testing.T) {
 	if body.Metadata(ctx).Status != 200 {
 		t.Fatal("metadata unreadable after close")
 	}
-	failedWith(t, client.Request(ctx, get(), server.URL, headersOf(), NewBytes(nil), None[int](), None[Duration]()), "HttpError_Closed")
+	failedWith(t, client.RequestBytes(ctx, get(), server.URL, headersOf(), NewBytes(nil), None[int](), None[Duration]()), "HttpError_Closed")
 }
 
 func TestNetworkRequestBuffered(t *testing.T) {
@@ -348,22 +348,22 @@ func TestNetworkRequestBuffered(t *testing.T) {
 	}))
 	defer server.Close()
 	ctx, n := newTestNetwork(t)
-	r := must(t, n.Request(ctx, post(), server.URL+"/x", headersOf("X-In", "v"), NewBytes([]byte("payload")), Some(int(100)), Some(Duration(time.Second))))
+	r := must(t, n.RequestBytes(ctx, post(), server.URL+"/x", headersOf("X-In", "v"), NewBytes([]byte("payload")), Some(int(100)), Some(Duration(time.Second))))
 	if r.Head.Status != 404 || str(r.Body) != "payload" || !reflect.DeepEqual(headerValues(r.Head.Headers, "x-method"), []string{"POST"}) {
 		t.Fatalf("%+v", r.Head)
 	}
 	// Error statuses are ordinary responses and redirects are returned.
-	if redirect := must(t, n.Request(ctx, get(), server.URL+"/redirect", headersOf(), NewBytes(nil), None[int](), None[Duration]())); redirect.Head.Status != 302 {
+	if redirect := must(t, n.RequestBytes(ctx, get(), server.URL+"/redirect", headersOf(), NewBytes(nil), None[int](), None[Duration]())); redirect.Head.Status != 302 {
 		t.Fatal(redirect.Head.Status)
 	}
-	failedWith(t, n.Request(ctx, post(), server.URL, headersOf(), NewBytes([]byte("0123456789")), Some(int(4)), Some(Duration(time.Second))), "HttpError_LimitExceeded")
-	failedWith(t, n.Request(ctx, get(), server.URL+"/slow", headersOf(), NewBytes(nil), None[int](), Some(Duration(20*time.Millisecond))), "HttpError_Timeout")
-	failedWith(t, n.Request(ctx, get(), server.URL, headersOf(), NewBytes(nil), Some(int(-1)), None[Duration]()), "HttpError_InvalidInput")
-	failedWith(t, n.Request(ctx, get(), server.URL, headersOf(), NewBytes(nil), None[int](), Some(Duration(-5))), "HttpError_InvalidInput")
+	failedWith(t, n.RequestBytes(ctx, post(), server.URL, headersOf(), NewBytes([]byte("0123456789")), Some(int(4)), Some(Duration(time.Second))), "HttpError_LimitExceeded")
+	failedWith(t, n.RequestBytes(ctx, get(), server.URL+"/slow", headersOf(), NewBytes(nil), None[int](), Some(Duration(20*time.Millisecond))), "HttpError_Timeout")
+	failedWith(t, n.RequestBytes(ctx, get(), server.URL, headersOf(), NewBytes(nil), Some(int(-1)), None[Duration]()), "HttpError_InvalidInput")
+	failedWith(t, n.RequestBytes(ctx, get(), server.URL, headersOf(), NewBytes(nil), None[int](), Some(Duration(-5))), "HttpError_InvalidInput")
 	restricted := must(t, n.Restrict(ctx, NewList("example.test"), NewList[string](), false))
-	failedWith(t, restricted.Request(ctx, get(), server.URL, headersOf(), NewBytes(nil), None[int](), Some(Duration(time.Second))), "HttpError_PermissionDenied")
+	failedWith(t, restricted.RequestBytes(ctx, get(), server.URL, headersOf(), NewBytes(nil), None[int](), Some(Duration(time.Second))), "HttpError_PermissionDenied")
 	n.Close(ctx)
-	failedWith(t, n.Request(ctx, get(), server.URL, headersOf(), NewBytes(nil), None[int](), None[Duration]()), "HttpError_Closed")
+	failedWith(t, n.RequestBytes(ctx, get(), server.URL, headersOf(), NewBytes(nil), None[int](), None[Duration]()), "HttpError_Closed")
 }
 
 func TestHttpMethodValidation(t *testing.T) {
@@ -379,14 +379,14 @@ func TestHttpMethodValidation(t *testing.T) {
 	client := must(t, n.HttpClient(ctx, clientOptions()))
 	for _, token := range []string{"", "BAD METHOD", "bad/name", "é", "x\r\ny"} {
 		method := HttpMethod_Custom{Value: token}
-		failedWith(t, n.Request(ctx, method, peer.URL, headersOf(), NewBytes(nil), Some(int(10)), Some(Duration(time.Second))), "HttpError_InvalidInput")
-		failedWith(t, client.Request(ctx, method, peer.URL, headersOf(), NewBytes(nil), Some(int(10)), Some(Duration(time.Second))), "HttpError_InvalidInput")
+		failedWith(t, n.RequestBytes(ctx, method, peer.URL, headersOf(), NewBytes(nil), Some(int(10)), Some(Duration(time.Second))), "HttpError_InvalidInput")
+		failedWith(t, client.RequestBytes(ctx, method, peer.URL, headersOf(), NewBytes(nil), Some(int(10)), Some(Duration(time.Second))), "HttpError_InvalidInput")
 		failedWith(t, client.RequestStream(ctx, method, peer.URL, headersOf(), &sliceStream{}, Some(int(10)), Some(Duration(time.Second))), "HttpError_InvalidInput")
 	}
 	if calls.Load() != 0 {
 		t.Fatal("malformed method reached loopback peer")
 	}
-	response := must(t, client.Request(ctx, HttpMethod_Custom{Value: "CUSTOM"}, peer.URL, headersOf(), NewBytes(nil), Some(int(10)), Some(Duration(time.Second))))
+	response := must(t, client.RequestBytes(ctx, HttpMethod_Custom{Value: "CUSTOM"}, peer.URL, headersOf(), NewBytes(nil), Some(int(10)), Some(Duration(time.Second))))
 	first := response.Metadata(ctx)
 	response.Close(ctx)
 	next := response.Metadata(ctx)
@@ -436,7 +436,7 @@ func TestHttpClientHeaderCollisions(t *testing.T) {
 				headers := headersOf("x-dup", first, "X-Dup", second)
 				want := map[string][]string{"X-Dup": {first, second}, "X-Empty": {""}, "Set-Cookie": {"a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT", "b=2"}}
 				if kind == "buffered" {
-					response := must(t, n.Request(ctx, post(), server.URL, headers, NewBytes([]byte("ok")), Some(int(10)), Some(Duration(2*time.Second))))
+					response := must(t, n.RequestBytes(ctx, post(), server.URL, headers, NewBytes([]byte("ok")), Some(int(10)), Some(Duration(2*time.Second))))
 					if str(response.Body) != "ok" {
 						t.Fatal(str(response.Body))
 					}
@@ -445,7 +445,7 @@ func TestHttpClientHeaderCollisions(t *testing.T) {
 				}
 				var body ResponseBody
 				if kind == "request" {
-					body = must(t, client.Request(ctx, post(), server.URL, headers, NewBytes([]byte("ok")), Some(int(10)), Some(Duration(2*time.Second))))
+					body = must(t, client.RequestBytes(ctx, post(), server.URL, headers, NewBytes([]byte("ok")), Some(int(10)), Some(Duration(2*time.Second))))
 				} else {
 					stream := &sliceStream{data: []byte("ok")}
 					body = must(t, client.RequestStream(ctx, post(), server.URL, headers, stream, Some(int(10)), Some(Duration(2*time.Second))))
@@ -537,9 +537,9 @@ func TestHttpReceivedHeadersKeepRawBytes(t *testing.T) {
 	}
 	peer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.Header().Set("X-Raw", "\xff") }))
 	defer peer.Close()
-	failedWith(t, n.Request(ctx, get(), peer.URL, headersOf(), NewBytes(nil), Some(int(10)), Some(Duration(2*time.Second))), "HttpError_InvalidData")
+	failedWith(t, n.RequestBytes(ctx, get(), peer.URL, headersOf(), NewBytes(nil), Some(int(10)), Some(Duration(2*time.Second))), "HttpError_InvalidData")
 	client := must(t, n.HttpClient(ctx, clientOptions()))
-	failedWith(t, client.Request(ctx, get(), peer.URL, headersOf(), NewBytes(nil), Some(int(10)), Some(Duration(2*time.Second))), "HttpError_InvalidData")
+	failedWith(t, client.RequestBytes(ctx, get(), peer.URL, headersOf(), NewBytes(nil), Some(int(10)), Some(Duration(2*time.Second))), "HttpError_InvalidData")
 }
 
 func TestHttpMalformedIncomingHeaders(t *testing.T) {
@@ -590,9 +590,9 @@ func TestHttpMalformedOutgoingHeaders(t *testing.T) {
 			var requests atomic.Int64
 			peer := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { requests.Add(1) }))
 			defer peer.Close()
-			failedWith(t, n.Request(ctx, get(), peer.URL, out, NewBytes(nil), Some(int(10)), Some(Duration(2*time.Second))), "HttpError_InvalidInput")
+			failedWith(t, n.RequestBytes(ctx, get(), peer.URL, out, NewBytes(nil), Some(int(10)), Some(Duration(2*time.Second))), "HttpError_InvalidInput")
 			client := must(t, n.HttpClient(ctx, clientOptions()))
-			failedWith(t, client.Request(ctx, get(), peer.URL, out, NewBytes(nil), Some(int(10)), Some(Duration(2*time.Second))), "HttpError_InvalidInput")
+			failedWith(t, client.RequestBytes(ctx, get(), peer.URL, out, NewBytes(nil), Some(int(10)), Some(Duration(2*time.Second))), "HttpError_InvalidInput")
 			failedWith(t, client.RequestStream(ctx, get(), peer.URL, out, &sliceStream{}, Some(int(10)), Some(Duration(2*time.Second))), "HttpError_InvalidInput")
 			if requests.Load() != 0 {
 				t.Fatal("invalid client headers reached peer")
@@ -754,17 +754,17 @@ func TestStreamingServerExchange(t *testing.T) {
 			failedWith(t, e.SendHeaders(child, 99, headersOf()), "HttpError_InvalidInput")
 			return Ok[Unit, HttpError](Unit{})
 		case "/no-headers":
-			failedWith(t, e.Write(child, NewBytes([]byte("x"))), "IoError_InvalidInput")
+			failedWith(t, e.WriteBytes(child, NewBytes([]byte("x"))), "IoError_InvalidInput")
 			return Ok[Unit, HttpError](Unit{})
 		case "/limit":
 			must(t, e.SendHeaders(child, 200, headersOf()))
-			failedWith(t, e.Write(child, NewBytes([]byte(strings.Repeat("x", 20)))), "IoError_Failed")
+			failedWith(t, e.WriteBytes(child, NewBytes([]byte(strings.Repeat("x", 20)))), "IoError_Failed")
 			return Ok[Unit, HttpError](Unit{})
 		case "/closed":
 			e.Close(child)
 			failedWith(t, e.Read(child, None[int]()), "IoError_Closed")
 			failedWith(t, e.SendHeaders(child, 200, headersOf()), "HttpError_Closed")
-			failedWith(t, e.Write(child, NewBytes(nil)), "IoError_Closed")
+			failedWith(t, e.WriteBytes(child, NewBytes(nil)), "IoError_Closed")
 			if e.Path(child) != "/closed" || e.Query(child) != "q=1" {
 				t.Error("metadata after close")
 			}
@@ -779,7 +779,7 @@ func TestStreamingServerExchange(t *testing.T) {
 			if !part.Some {
 				return Ok[Unit, HttpError](Unit{})
 			}
-			must(t, e.Write(child, part.Val))
+			must(t, e.WriteBytes(child, part.Val))
 		}
 	}, &HttpServerOptions{MaxResponseBytes: Some(int(10)), MaxHeaderBytes: Some(int(1024)), Timeout: Some(Duration(3 * time.Second)), Grace: Some(Duration(10 * time.Millisecond))}))
 	address := server.Address(ctx)
