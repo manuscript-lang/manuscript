@@ -41,7 +41,7 @@ fn line(text: String) String:
 fn read(path: String) String:
     return filesystem().read_file(path: path)
         | value
-        | .to_string().unwrap_or("")
+        | .decode_utf8().unwrap_or("")
 
 fn missing(path: String) Bool:
     return filesystem().stat(path: path, follow_links: false).is_error()
