@@ -168,7 +168,7 @@ func TestStringBudgets(t *testing.T) {
 	if r := String_Repeat(tctx, "a", -1, None[int]()); !r.Failed {
 		t.Fatal("negative count")
 	}
-	if okString(t, String_PadStart(tctx, "7", 3, "ab", None[int]())) != "aba7" && okString(t, String_PadStart(tctx, "7", 3, "ab", None[int]())) != "ab7" {
+	if okString(t, String_PadStart(tctx, "7", 3, "ab", None[int]())) != "ab7" {
 		t.Fatal("pad_start")
 	}
 	if got := okString(t, String_PadEnd(tctx, "é", 4, "xy", None[int]())); got != "éxyx" {
@@ -197,6 +197,56 @@ func TestStringBudgets(t *testing.T) {
 	}
 	if got := okString(t, NormalizationForm_Normalize(tctx, NormalizationForm_Nfkc{}, "ﬁ", None[int]())); got != "fi" {
 		t.Fatal("nfkc")
+	}
+}
+
+func TestStringPaddingExactByteBudgets(t *testing.T) {
+	for _, atStart := range []bool{false, true} {
+		for _, tt := range []struct {
+			text, padding string
+			target        int
+			fill          string
+		}{
+			{"7", "ab", 3, "ab"},
+			{"é", "🙂x", 4, "🙂x🙂"},
+			{"", "é🙂", 3, "é🙂é"},
+			{"x", "é🙂", 8, "é🙂é🙂é🙂é"},
+		} {
+			want := tt.text + tt.fill
+			if atStart {
+				want = tt.fill + tt.text
+			}
+			for _, budget := range []Option[int]{None[int](), Some(len(want))} {
+				got := okString(t, stringPad(tctx, atStart, tt.text, tt.target, tt.padding, budget))
+				if got != want {
+					t.Fatalf("pad(start=%t, %q, %d, %q) = %q, want %q", atStart, tt.text, tt.target, tt.padding, got, want)
+				}
+			}
+			result := stringPad(tctx, atStart, tt.text, tt.target, tt.padding, Some(len(want)-1))
+			if !result.Failed {
+				t.Fatal("padding exceeded byte budget")
+			}
+			if _, ok := result.Err.(StringError_LimitExceeded); !ok {
+				t.Fatalf("wrong padding error: %v", result.Err)
+			}
+		}
+	}
+}
+
+func TestStringPaddingCancellation(t *testing.T) {
+	for _, atStart := range []bool{false, true} {
+		ctx := RootExecution()
+		cancelCtx, cancel := context.WithCancel(ctx.Context)
+		cancel()
+		ctx.Context = cancelCtx
+		func() {
+			defer func() {
+				if _, ok := recover().(cancelled); !ok {
+					t.Fatal("cancelled padding did not unwind")
+				}
+			}()
+			stringPad(ctx, atStart, "a", 65536, "x", None[int]())
+		}()
 	}
 }
 
