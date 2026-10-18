@@ -73,9 +73,7 @@ experts:
     file: benchmarks-and-performance.md
     topics: [performance benchmarks, agent benchmark, ns/op, Go parity, profiling guide]
     paths:
-      - "perf-bench/**"
-      - "agent-bench/**"
+      - "bench/perf/**"
+      - "bench/agent/**"
       - "bench/**"
-      - "scripts/benchmarks/**"
-      - "scripts/bench-*/**"
-      - "scripts/stdlib-bench.sh"
+      - "bench/perf/stdlib-bench.sh"

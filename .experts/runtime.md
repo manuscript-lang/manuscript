@@ -430,14 +430,14 @@ Verified: `Optional_Get`, `Result_Get`, `Result_Err` (then named `*_Unwrap*`) an
 
 Apply when: adding a helper that runs in constant time, or deciding where a runtime function should be a cancellation point. Keep the check in helpers that loop, wait, or call user callbacks.
 Evidence: `pkg/runtime/optional.go`, `pkg/runtime/result.go`, `pkg/runtime/string.go`, `pkg/lower/stmt.go` (`loopStatements`).
-Verify: compare `perf-bench/programs/run.sh` before and after; the loop-cancellation tests in `tests/e2e` must still pass.
+Verify: compare `bench/perf/programs/run.sh` before and after; the loop-cancellation tests in `tests/e2e` must still pass.
 
 ### ReadLine slices a buffered line under one lock
 Verified: `Io_ReadLine` used two mutex round trips, a closure pair and an intermediate `append` copy per line. When the read-ahead buffer already holds a full line shorter than the limit, it is now sliced out under one lock and copied once into the result string (136 to 95 ns/line on 200k lines; hand-written Go 73). Lines that cross a refill, exceed the limit, or come from streams without read-ahead take the original path, so limit and invalid-UTF-8 behavior are unchanged.
 
 Apply when: changing `Io_ReadLine`, `readAhead`, or stream buffering.
 Evidence: `pkg/runtime/io.go`, `tests/e2e/testdata/stdlib/io.ms`.
-Verify: `go test ./pkg/runtime ./tests/e2e` and `perf-bench/programs/run.sh` (`read_line`).
+Verify: `go test ./pkg/runtime ./tests/e2e` and `bench/perf/programs/run.sh` (`read_line`).
 
 ### Write operations take String; `_bytes` siblings take Bytes
 Decision: write APIs (`write`, `write_file`, `append_file`, `write_at`, on streams, files, connections, transports) accept `String`; raw bytes use a sibling named `<name>_bytes` (`write_bytes`, `write_file_bytes`). Network sends follow the same shape: `DatagramSocket.send`/`send_bytes`, `WebSocket.send`/`send_bytes(data, text: false)`, `ping`/`ping_bytes`, and `request`/`request_bytes` for the body. Interface operations cannot be generic or overloaded, so two names express the choice. Any source `impl` of `WriteStream` or `Transport` must declare both; implementing `write` as `self.write_bytes(data.to_bytes())` keeps one body.
