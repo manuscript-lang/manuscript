@@ -1,0 +1,27 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkLocalIntMapBatch/Go-4         	     378	    705149 ns/op	  591497 B/op	      79 allocs/op
+BenchmarkLocalIntMapBatch/Go-4         	     416	    603422 ns/op	  591306 B/op	      79 allocs/op
+BenchmarkLocalIntMapBatch/Go-4         	     397	    582984 ns/op	  591297 B/op	      79 allocs/op
+BenchmarkLocalIntMapBatch/Go-4         	     397	    574193 ns/op	  591390 B/op	      79 allocs/op
+BenchmarkLocalIntMapBatch/Go-4         	     400	    619311 ns/op	  591484 B/op	      79 allocs/op
+BenchmarkLocalIntMapBatch/Go-4         	     402	    620899 ns/op	  591300 B/op	      79 allocs/op
+BenchmarkLocalIntMapBatch/Go-4         	     403	    566655 ns/op	  591482 B/op	      79 allocs/op
+BenchmarkLocalIntMapBatch/Ordered-4    	     261	    946315 ns/op	 1414952 B/op	      99 allocs/op
+BenchmarkLocalIntMapBatch/Ordered-4    	     226	   1062183 ns/op	 1414625 B/op	      99 allocs/op
+BenchmarkLocalIntMapBatch/Ordered-4    	     256	    899413 ns/op	 1414951 B/op	      99 allocs/op
+BenchmarkLocalIntMapBatch/Ordered-4    	     250	    894453 ns/op	 1414952 B/op	      99 allocs/op
+BenchmarkLocalIntMapBatch/Ordered-4    	     282	    874310 ns/op	 1414951 B/op	      99 allocs/op
+BenchmarkLocalIntMapBatch/Ordered-4    	     284	    905897 ns/op	 1414822 B/op	      99 allocs/op
+BenchmarkLocalIntMapBatch/Ordered-4    	     232	    933229 ns/op	 1414475 B/op	      99 allocs/op
+BenchmarkLocalIntMapBatch/ClosedLocal-4         	     402	    615673 ns/op	  591392 B/op	      79 allocs/op
+BenchmarkLocalIntMapBatch/ClosedLocal-4         	     396	    579067 ns/op	  591481 B/op	      79 allocs/op
+BenchmarkLocalIntMapBatch/ClosedLocal-4         	     392	    602356 ns/op	  591387 B/op	      79 allocs/op
+BenchmarkLocalIntMapBatch/ClosedLocal-4         	     402	    592149 ns/op	  591482 B/op	      79 allocs/op
+BenchmarkLocalIntMapBatch/ClosedLocal-4         	     430	    568062 ns/op	  591395 B/op	      79 allocs/op
+BenchmarkLocalIntMapBatch/ClosedLocal-4         	     416	    564716 ns/op	  591395 B/op	      79 allocs/op
+BenchmarkLocalIntMapBatch/ClosedLocal-4         	     393	    599886 ns/op	  591389 B/op	      79 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	6.574s

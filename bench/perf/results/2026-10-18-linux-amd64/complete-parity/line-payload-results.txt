@@ -1,0 +1,139 @@
+before
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkReadLinePayload/Text-4         	     565	    463039 ns/op	  393218 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Presence-4     	     602	    397883 ns/op	  393219 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Go-4           	     639	    346552 ns/op	  397361 B/op	    8194 allocs/op
+PASS
+
+after
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkReadLinePayload/Text-4         	     535	    397202 ns/op	  393216 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Presence-4     	    1002	    212539 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReadLinePayload/Go-4           	     715	    347500 ns/op	  397362 B/op	    8194 allocs/op
+PASS
+
+after
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkReadLinePayload/Text-4         	     650	    375751 ns/op	  393226 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Presence-4     	    1167	    217534 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReadLinePayload/Go-4           	     660	    341366 ns/op	  397363 B/op	    8194 allocs/op
+PASS
+
+before
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkReadLinePayload/Text-4         	     666	    373946 ns/op	  393226 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Presence-4     	     642	    399282 ns/op	  393217 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Go-4           	     663	    436501 ns/op	  397362 B/op	    8194 allocs/op
+PASS
+
+before
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkReadLinePayload/Text-4         	     609	    383434 ns/op	  393227 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Presence-4     	     579	    446298 ns/op	  393218 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Go-4           	     584	    390597 ns/op	  397361 B/op	    8194 allocs/op
+PASS
+
+after
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkReadLinePayload/Text-4         	     552	    409873 ns/op	  393218 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Presence-4     	    1015	    220177 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReadLinePayload/Go-4           	     716	    349473 ns/op	  397362 B/op	    8194 allocs/op
+PASS
+
+after
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkReadLinePayload/Text-4         	     652	    359937 ns/op	  393226 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Presence-4     	    1147	    217654 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReadLinePayload/Go-4           	     709	    340057 ns/op	  397362 B/op	    8194 allocs/op
+PASS
+
+before
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkReadLinePayload/Text-4         	     618	    374022 ns/op	  393227 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Presence-4     	     612	    364998 ns/op	  393219 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Go-4           	     757	    374017 ns/op	  397361 B/op	    8194 allocs/op
+PASS
+
+before
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkReadLinePayload/Text-4         	     626	    399627 ns/op	  393227 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Presence-4     	     634	    365413 ns/op	  393217 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Go-4           	     748	    319953 ns/op	  397363 B/op	    8194 allocs/op
+PASS
+
+after
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkReadLinePayload/Text-4         	     682	    379571 ns/op	  393226 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Presence-4     	    1066	    210809 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReadLinePayload/Go-4           	     702	    368930 ns/op	  397363 B/op	    8194 allocs/op
+PASS
+
+after
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkReadLinePayload/Text-4         	     525	    423587 ns/op	  393228 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Presence-4     	    1009	    229692 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReadLinePayload/Go-4           	     681	    342132 ns/op	  397362 B/op	    8194 allocs/op
+PASS
+
+before
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkReadLinePayload/Text-4         	     627	    392064 ns/op	  393227 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Presence-4     	     631	    378939 ns/op	  393218 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Go-4           	     651	    358589 ns/op	  397362 B/op	    8194 allocs/op
+PASS
+
+before
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkReadLinePayload/Text-4         	     642	    370740 ns/op	  393227 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Presence-4     	     618	    396754 ns/op	  393218 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Go-4           	     694	    346692 ns/op	  397363 B/op	    8194 allocs/op
+PASS
+
+after
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkReadLinePayload/Text-4         	     682	    373176 ns/op	  393225 B/op	    8192 allocs/op
+BenchmarkReadLinePayload/Presence-4     	    1137	    208558 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReadLinePayload/Go-4           	     717	    335247 ns/op	  397362 B/op	    8194 allocs/op
+PASS

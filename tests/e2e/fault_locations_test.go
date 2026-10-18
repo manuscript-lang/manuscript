@@ -25,6 +25,33 @@ export fn main() Int:
     return chain(9223372036854775807).get()
 `, false, []string{"fault.ms:5 in checked", "fault.ms:7 in chain", "fault.ms:10 in main"}},
 
+		{"checked record method", `interface Counter:
+    fn bump(by: Int) Int
+type Cell:
+    total: Int
+impl Counter for Cell:
+    fn bump(by: Int) Int:
+        self.total += by
+        return self.total
+fn probe(value: Int) Int:
+    let cell = Cell(0)
+    cell.bump(value)
+    cell.bump(1)
+    return cell.total
+export fn main() Int:
+    return probe(9223372036854775807)
+`, false, []string{"fault.ms:7 in Cell.bump", "fault.ms:12 in probe", "fault.ms:15 in main"}},
+		{"presence tail argument fault", `import {read_line, ReadStream, stdin} from "@std/io.ms"
+fn limit() Int:
+    return 1 / 0
+fn probe(input: ReadStream) Bool:
+    if let line = read_line(input, limit()):
+        return line.is_some()
+    return false
+export fn main() Int:
+    if probe(stdin()): return 1
+    return 0
+`, false, []string{"fault.ms:3 in limit", "fault.ms:5 in probe", "fault.ms:9 in main"}},
 		{"Map add key fault", `fn crash() Int:
     return 1 / 0
 export fn main() Int:

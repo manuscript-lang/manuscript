@@ -1,0 +1,29 @@
+package msruntime
+
+// NewLocalIntMap and LocalIntMap_* are compiler-only operations for a proven
+// closed local Map[Int,Int]. Here index stores values, not ordered-slot indices.
+// No alias, capture or ordinary Map consumer may receive this storage. The
+// lowerer selects all of a binding's operations together, or selects none.
+// This reuses the Map Go type/layout without affecting ordinary map allocations.
+func NewLocalIntMap() *Map[int, int] {
+	return &Map[int, int]{index: make(map[int]int)}
+}
+
+func LocalIntMap_Add(_ *Execution, m *Map[int, int], key, value int) *Map[int, int] {
+	m.index[key] = value
+	return m
+}
+
+func LocalIntMap_Get(_ *Execution, m *Map[int, int], key int) Option[int] {
+	value, found := m.index[key]
+	return Option[int]{Val: value, Some: found}
+}
+
+func LocalIntMap_Length(_ *Execution, m *Map[int, int]) int { return len(m.index) }
+
+func LocalIntMap_Contains(_ *Execution, m *Map[int, int], key int) bool {
+	_, found := m.index[key]
+	return found
+}
+
+func LocalIntMap_GetPresent(_ *Execution,m *Map[int,int],key int)int{return m.index[key]}

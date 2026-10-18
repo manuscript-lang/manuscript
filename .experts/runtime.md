@@ -489,3 +489,23 @@ Decision: `Set[Int]([3, 1, 2])` and `Set([3, 1, 2])` build a Set from a list (in
 Apply when: adding collection constructors or writing fixtures that need a populated Set.
 Evidence: [Set declaration](../pkg/stdlib/collections.ms), [constructor uses](../tests/e2e/testdata/stdlib/preferred-names.ms), commit c025937b.
 Verify: duplicates collapse, first-seen order is kept, and `Set[Int]([])` is empty.
+
+
+### Keep checked arithmetic's cold fault eager
+
+Verified: passing the fixed overflow function into a private checked add/multiply
+helper lowers Go's call-site inline cost while retaining the exact predicates,
+including signed Mul64 correction and the 32-bit fallback. This is an implementation
+boundary, not deferred fault capture. Other arithmetic is unchanged. Match native
+source frames, message, panic identity and cleanup at extreme/sign cases; rerun
+inline-cost and whole-program controls when the Go toolchain changes.
+Evidence: [numeric helpers](../pkg/runtime/numeric.go),
+[source-frame tests](../tests/e2e/fault_locations_test.go),
+[measured alternatives](../bench/perf/programs/parity-plan.md).
+
+Verified: the compiler-only presence mode of read_line omits only the final String
+materialization after the same checks and buffer consumption. It adds no
+cancellation query to an already-buffered line and keeps custom byte-stream
+fallback behavior. Interleave ordinary text reads when testing this mode; checking
+only the Bool can miss lost read-ahead bytes. See `pkg/runtime/io_line_test.go` and
+`read-line-presence-tail.ms`.

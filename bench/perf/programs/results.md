@@ -1,119 +1,131 @@
 # Manuscript vs handwritten Go
 
-Go parity remains incomplete. This change improves builder appends, equality,
-matching, try propagation and native list searches under ordinary Go compilation.
-Small checked method calls remain the largest relative gap in these programs.
+Seven of ten complete workloads are within roughly20% of handwritten Go in this
+run. Method calls improve about8x, try about3.4x, and map put/get about1.9x over
+the previous merged compiler. Parity remains incomplete: generic accumulation,
+try and checked matching still cost more than the Go control.
 
-2026-10-18 UTC, Go 1.25.1, linux/amd64, AMD EPYC 9V74, 4 vCPU quota.
-Baseline compiler/runtime: **2b4962d19c4856efbcc3d8a156578ea9e466d9b7**.
-Both revisions compile the same current benchmark sources. Medians of 30 trials,
-cycling all six Go/before/after permutations; paired comparisons share the same
-Go samples. Compilation and correctness checks finished before sampling. Every
-program checksum and operation count is verified.
+2026-10-18 UTC; Go1.25.1, linux/amd64, AMD EPYC9V74, four-vCPU quota.
+Baseline: **d710e9bf68845ce8a23e2de3f91836459396dafe** (PR#688).
+Both revisions compile identical current benchmark sources. Thirty trials cycle
+all six Go/before/after orders and share the same Go samples. All counts and
+checksums match. Builds and correctness checks finish before sampling, with no
+simultaneous compiler/test work.
+
+All final executables use CGO_ENABLED=0, -buildvcs=false, -trimpath, and
+-ldflags='-s -w -buildid=' with ordinary Go inlining. The inherited Go control
+used by earlier experimental tables had default CGO/trim/link settings; those
+controls are historical. The benchmark script now uses the matching flags.
 
 | operation | before ns/op | after ns/op | Go ns/op | after / Go |
 |---|---:|---:|---:|---:|
-| string_append_50k | 6.42 | 3.60 | 2.83 | 1.27x |
-| read_line | 80.17 | 81.59 | 64.05 | 1.27x |
-| map_put_get_8k | 64.52 | 66.97 | 31.90 | 2.10x |
-| int_eq | 1.40 | 1.05 | 0.97 | 1.08x |
-| generic_call | 0.89 | 0.87 | 0.28 | 3.07x |
-| method_call | 2.33 | 2.59 | 0.27 | 9.44x |
-| try | 3.51 | 2.61 | 0.58 | 4.51x |
-| match | 5.72 | 4.23 | 1.57 | 2.69x |
-| builtin_length | 0.87 | 0.88 | 0.28 | 3.10x |
-| for_list | 0.89 | 0.90 | 0.38 | 2.37x |
+| string_append_50k | 3.94 | 3.52 | 2.93 | 1.20x |
+| read_line | 87.39 | 66.13 | 67.24 | 0.98x |
+| map_put_get_8k | 67.01 | 36.00 | 34.01 | 1.06x |
+| int_eq | 1.11 | 1.08 | 1.01 | 1.07x |
+| generic_call | 0.89 | 0.64 | 0.27 | 2.36x |
+| method_call | 2.71 | 0.33 | 0.29 | 1.14x |
+| try | 2.75 | 0.80 | 0.56 | 1.43x |
+| match | 4.33 | 3.52 | 1.59 | 2.21x |
+| builtin_length | 0.87 | 0.33 | 0.28 | 1.18x |
+| for_list | 0.94 | 0.46 | 0.40 | 1.16x |
 
-Builder appends are about 1.8x faster; equality, try and matching improve about
-25–26%. The checked method workload is about 11% slower than main and remains
-unresolved. Its arithmetic body is unchanged; these samples do not establish
-the cause. Maps and line reading show no improvement. Small differences in the
-remaining rows should be read with the paired intervals in the raw evidence.
+## Retained changes
 
-## Retained changes and invariants
+- Exact adjacent Result unwrap/rewrap tails return the original Result once.
+  Other try expressions still test failure and return the error directly.
+  Mutable bindings, type/error conversions, function payload ABI and Debug keep
+  their existing paths.
+- Function-local exact intervals remove only proved-safe Int +, - and * checks.
+  Finite loops budget every prefix, invalidate all modified peers before deriving
+  deltas, and isolate callable/branch facts. Unknown arithmetic remains checked.
+- A complete use inventory permits private Int-list length/element bounds and
+  exact one-field record updates. Aliases, captures, unsupported mutations,
+  defaults and unknown arguments retain ordinary semantics and calls.
+- Closed Map[Int,Int] uses exclusive helpers inside the same Go type/layout.
+  Its index maps keys to values, so every consumer must select together. Ordered
+  iteration, formatting, aliases, custom evidence and Debug retain ordinary maps.
+- Only the reviewed two-scalar constant-stride loop shape groups polling control.
+  Each original assignment executes individually. Queries occur at the identical
+  64th/128th/... body states, including partial chunks and signed endpoints.
+- A canonical Bool read_line presence tail omits its unobserved final String.
+  UTF-8, limits, consumption, locking, errors, custom reads and cancellation query
+  counts stay intact. An8192-line runtime batch drops8192 allocations to zero;
+  ordinary text-returning reads remain steady in seven alternating controls.
+- Checked add/multiply share their original predicates through fixed cold fault
+  callbacks. Fault messages, eager source stacks, cleanup and the32-bit multiply
+  fallback remain intact. Subtraction and negation retain their implementations.
+- File metadata construction removes temporary maps and discarded BigInt objects.
+  Its fourteen exact values/order and unsigned widths remain intact. The isolated
+  control drops66→52 allocations for metadata,70→56 for stat, with about21% lower
+  stat time. Final full-library stat improves about24%.
 
-- Keep fault stack capture out of line. Optional_Get/Result_Get costs fall from
-  93/94 to 75/76, below Go's inline budget of 80. Fault messages and source
-  locations remain intact.
-- Lower Result constructors as typed Go literals. `try` evaluates once, checks
-  `Failed`, and directly returns an exactly matching failed Result. Different
-  success types/error widening construct the enclosing Result. Empty error text
-  remains failure. The benchmark's chain cost falls from 91 to 80.
-- Store StringBuilder bytes directly. Generated aliases share a pointer and
-  sealing prevents writes after zero-copy freeze. Freeze observes cancellation
-  before sealing; frozen text survives its builder. Like strings.Builder, the
-  Go implementation value must not be copied after first use.
-- Inline nonnegative in-range list reads; retain the original normalization,
-  default and diagnostic handling in the fallback. Seven balanced microbenchmark
-  samples measured positive reads at 2.18 -> 0.64 ns with zero allocations.
-  Variable negative reads cost 2.19 -> 2.48 ns; defaults were roughly unchanged.
-  This approximately 0.3 ns fallback tradeoff is intentional and measured.
-- Derive polling phase from literal-start, strictly bounded unit-step counters
-  with one unconditional write and no continue. Dynamic starts and all excluded
-  forms retain ticks. `(distance + 1) & 63 == 0` preserves the exact checks before
-  source iterations 64/128, including raw Go modular arithmetic.
-- Keep only periodic native polling's cancellation call out of line. Poll and
-  PollIndex costs fall from 91/86 to 71/66; traversal call sites inline the
-  counter and predicate. Direct CheckCancelled calls are unchanged. Query counts,
-  uint32 wrap, cancellation identity, nil Execution and shielding are tested.
-- Align Go/MS per-workload functions, ordinary caller inlining, stdin acquisition
-  and setup/timing boundaries. Reject incomplete or incorrect evidence.
+The [canonical lowering rules](../../../documentation/contributing/compiler/lowering/_index.md)
+and [storage contract](../../../documentation/contributing/go-lowering-representation.md)
+state the proof boundaries.
 
-## Native library control
+## Remaining gaps and measured alternatives
 
-Thirty alternating samples per revision, all 66 operation names/counts verified.
-List.contains improves from 283,198 to 180,555 ns per search (paired 95% ratio interval 0.624–0.658). The isolated polling-only control independently
-measures 345,368 -> 177,280 ns; its paired 95% ratio interval is approximately
-0.496–0.534. The unchanged search/poll bodies in the initial whole-change control
-alone did not establish causation; the isolated control supports this change.
-The final whole-change run also measures fs.stat at 5,670 -> 6,510 ns
-(interval 1.030–1.279); this unresolved host-workload regression is reported
-alongside the gains. The complete library table, paired intervals and raw trials
-are archived below.
-Rounded sub-nanosecond library rows are not suitable for precise ratios.
+The labels time complete loops. Generic identity already disappears into native
+addition; its remaining loop has cooperative polling, spills and code-alignment
+sensitivity. Identical hot instructions relocated by32bytes varied around0.34–0.64ns
+in controlled builds. Canonical Go post clauses, outlining existing polling and
+broader chunks moved which tiny kernels won but regressed other kernels. No
+padding, special Go optimization flags, or lucky-placement tuning ships.
 
-The original allocation control measured builder construction/freeze of 50,000
-appends at 271,714 -> 104,531 ns versus Go 96,192 ns, with approximately
-211,706 B / 21 allocations unchanged. These earlier-baseline numbers are
-historical; the current whole-program comparison is the table above.
+Try still performs required checked arithmetic in its general source helper and
+caller. Matching still checks multiplication for arbitrary case payloads. The Go
+control uses unchecked machine arithmetic and has no cooperative polling. These
+identify current costs; they do not prove that further safe optimization is
+impossible. No claim of complete parity or a performance ceiling is made.
 
-## Remaining gaps and rejected experiments
+A map key-presence proof saved only about6% in a manual control and was deferred:
+line payload elision already removed most of the complete map row's remaining
+allocation/collection pressure. Global fault/cancellation changes and all-four
+arithmetic outlining were rejected for wider regressions. The
+[proposal/review record](parity-plan.md) labels every retained and rejected scope.
 
-Labels time complete loops. Equality and positive-literal remainder are native
-operators; identity inlines; length is len; list iteration is a Go range. Checked
-accumulation and cooperative cancellation still contribute. `chain` now inlines,
-but `checked` and the method's checked arithmetic exceed Go's ordinary budget.
-Matching still uses checked multiplication and optional access. Maps preserve
-insertion order and recoverable concurrent-access diagnostics, whereas the Go
-control is unordered. Line reads retain synchronization and UTF-8 validation.
-These are contributing costs, not proof that further optimization is impossible.
+## Library precision and regression controls
 
-Runtime-wide `-l=4`, alternative overflow formulas, a small-multiply fast path,
-and globally outlining CheckCancelled improved selected workloads but regressed
-others. They were rejected. No special Go flags, unchecked arithmetic, relaxed
-cancellation or representation change to Result ships. The
-[proposals and independent review constraints](optimization-notes.md) record
-why the narrower changes were retained.
+The library harness now prints consumed checksums and raw elapsed nanoseconds
+outside the timed region. The validator checks every one of66 names, counts,
+checksums and elapsed/rounded-row consistency on every execution. Ratios use raw
+elapsed/ops, fixing the previous integer rounding of small rows.
+
+The [complete library table](../stdlib/results.md) retains nominal slowdowns as
+well as gains. Earlier allocation changes move later collection pauses. Focused
+runs repeat an unchanged body20times in each of15 balanced processes; the large
+full-run string/map/encoding/fold/archive slowdowns do not reproduce there.
+Those controls and paired intervals accompany the full data, rather than replacing
+it. Collection-phase observations are not a claim that all differences are noise.
+
+Compiler proof-only allocation counts scale3683/7196/14210 at128/256/512 mixed
+loops. Median times are1.66/3.48/7.57ms. Profiling excess timing growth shows
+collector scanning at about28% cumulative; visited-node maps and undo journals
+avoid repeated subtree scans or whole-fact-map copies. Scalar-only proof medians
+are0.43/0.90/1.72ms; end-to-end compile medians5.12/11.86/22.17ms include checking,
+printing and GC. These are compiler costs, separate from native execution gains.
 
 ## Evidence and reproduction
 
-[Current-main comparison, isolated polling controls, hashes and intervals](../results/2026-10-18-linux-amd64/current-main/).
-[Earlier try/inlining experiments](../results/2026-10-18-linux-amd64/try-inlining/)
-and [initial allocation/assembly evidence](../results/2026-10-18-linux-amd64/)
-use older main revisions and are explicitly historical. Source hashes in those
-archives retain the paths that existed when they were measured. Best-of tables
-from older harnesses are not comparable to the corrected median controls.
+[Raw trials, controls, flags, source/binary hashes and intervals](../results/2026-10-18-linux-amd64/complete-parity/).
+Older result directories remain historical. The final primary comparison uses
+matching flags; intermediate experimental Go ratios are not the final parity result.
 
 ```sh
 make build
 BENCH_OUTPUT=.artifacts/perf-programs sh bench/perf/programs/run.sh 30
-python3 bench/perf/programs/compare.py --before /path/to/before/bench --after /path/to/after/bench --go /path/to/go/bench --input .artifacts/perf-programs/lines.txt --output .artifacts/perf-comparison --repeats 30
-toolchain/go/bin/go test ./pkg/runtime -run '^$' -bench '^(BenchmarkStringBuilderVsGo|BenchmarkListGetVsGo|BenchmarkListGetPaths)$' -benchmem -count=7 -benchtime=300ms
-python3 -m unittest discover -s bench/perf/programs -p 'test_*.py'
+python3 bench/perf/programs/compare.py --before /path/to/before-program --after /path/to/after-program --go /path/to/go-control --input .artifacts/perf-programs/lines.txt --output .artifacts/program-comparison --repeats 30
+python3 bench/perf/compare_stdlib.py --before /path/to/before-library --after /path/to/after-library --output .artifacts/library-comparison --repeats 30
 ```
 
-Validation includes make verify; native conformance and Go e2e; build/compiler/
-lower/runtime tests; native phase/source-frame/payload/bound-member checks;
-builder checkptr; ShellCheck; Python evidence tests; and standalone distribution
-compilation/tooling with fresh caches and no host tools. Measured execution is
-linux/amd64; CI covers additional hosts/distributions.
+Build both library revisions with the current harness so checksums and raw elapsed
+comments exist on each side. Obtain the baseline compiler from a separate d710e9bf
+worktree; invoke it on the same current benchmark projects and pinned SDK.
+
+Validation: make verify; go test ./...; make conformance (223files,0failed);
+make race; make book-check using CI's Hugo0.146.7; host make dist-check (packaged
+compilation, source tooling, LSP, terminal/DAP debugging and profiles without host
+Go/dlv/downloads); Python evidence tests. Source frames, cancellation state,
+cleanup, payload identity, defaults/aliases, Debug and standalone paths are called
+natively. Other platform execution remains CI coverage.

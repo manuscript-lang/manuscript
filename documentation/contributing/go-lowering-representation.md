@@ -44,6 +44,31 @@ Classify it in the table first, then add `goType` and a `TestRepresentation` row
 - A `Map` or `Set` carries an `*rt.Keys[K]` fixed at construction: `nil` is Go equality, structural keys project to a comparable array, and explicit `Equal`/`Hashable` becomes `rt.CustomKeys`.
 - A contract value is a generated view struct holding its receiver (`self`), plus `Describe` and `Receiver`. Views are per implementation scope when any module declares a local implementation.
 
-## Local records need no special case
+## Local records keep their pointer representation
 
-Records are always pointers and the lowerer does not track mutation. A record that stays in its function does not allocate, since escape analysis keeps `&Name{...}` on the stack. A per-type value representation would be wrong anyway: callees can mutate a record the caller built.
+Records always remain pointers. Go escape analysis can keep a local `&Name{...}`
+on the stack. A per-type value representation would break calls that mutate the
+caller's record.
+
+A checked-use inventory can prove a fresh local record with one concrete Int
+field has no aliases or captures. For exact two-statement methods that update
+that field by an Int parameter and return it, function-local interval analysis
+may expand a discarded call into the same individual field update when overflow
+is impossible. Arguments execute before the update. Generic records, defaults,
+other methods, unknown bounds and Debug retain ordinary checked calls. This
+changes neither the record's Go type nor the general method's behavior.
+
+## Closed local Int maps
+
+A fresh immutable local `Map[Int, Int]` may use alternate internal storage when
+an exhaustive checked-use inventory proves every use is a direct native
+`add` statement (discarding its result), `get`, `contains`, or `length` call.
+Aliases, captures, defaults, views, custom equality/hash evidence and any other
+use retain ordinary ordered maps. Debug also retains ordinary maps.
+
+The Go type and layout remain `*rt.Map[int, int]`. Compiler-only
+`NewLocalIntMap` / `LocalIntMap_*` helpers interpret its existing `index` as
+key-to-value storage, rather than key-to-ordered-slot storage. They are exclusive
+consumers: an ordinary Map operation must never receive that internal storage.
+All uses of a binding select this path together or none do. Order and concurrent
+sharing cannot be observed under this proof; ordinary maps retain both contracts.

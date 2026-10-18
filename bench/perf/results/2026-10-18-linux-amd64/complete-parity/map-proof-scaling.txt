@@ -1,0 +1,15 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/lower
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkClosedMapProofScaling/128-4         	    2408	    138386 ns/op	   71648 B/op	     196 allocs/op
+BenchmarkClosedMapProofScaling/128-4         	    2287	    138097 ns/op	   71648 B/op	     196 allocs/op
+BenchmarkClosedMapProofScaling/128-4         	    2713	    140070 ns/op	   71648 B/op	     196 allocs/op
+BenchmarkClosedMapProofScaling/256-4         	    1246	    279010 ns/op	  143744 B/op	     334 allocs/op
+BenchmarkClosedMapProofScaling/256-4         	    1220	    290030 ns/op	  143744 B/op	     334 allocs/op
+BenchmarkClosedMapProofScaling/256-4         	    1195	    292310 ns/op	  143744 B/op	     334 allocs/op
+BenchmarkClosedMapProofScaling/512-4         	     634	    567962 ns/op	  292000 B/op	     600 allocs/op
+BenchmarkClosedMapProofScaling/512-4         	     595	    564489 ns/op	  292000 B/op	     600 allocs/op
+BenchmarkClosedMapProofScaling/512-4         	     578	    574313 ns/op	  292000 B/op	     600 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/lower	3.598s

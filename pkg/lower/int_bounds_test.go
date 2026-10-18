@@ -1,0 +1,195 @@
+package lower
+
+import (
+	"fmt"
+	"math"
+	"math/big"
+	"math/rand"
+	"strings"
+	"testing"
+
+	"github.com/manuscript-lang/manuscript/pkg/syntax"
+)
+
+func TestAddIntBoundsAgainstBigInt(t *testing.T) {
+	values := []int64{math.MinInt64, math.MinInt64 + 1, -1, 0, 1, math.MaxInt64 - 1, math.MaxInt64}
+	rng := rand.New(rand.NewSource(47))
+	for range 100 {
+		values = append(values, int64(rng.Uint64()))
+	}
+	for i, low := range values {
+		a := intBounds{min(low, values[(i+1)%len(values)]), max(low, values[(i+1)%len(values)])}
+		for _, value := range values {
+			b := intBounds{min(value, int64(0)), max(value, int64(0))}
+			for _, sub := range []bool{false, true} {
+				got, valid := addIntBounds(a, b, sub)
+				// Independently enumerate all endpoint combinations with exact integers.
+				var lo, hi *big.Int
+				for _, x := range []int64{a.lo, a.hi} {
+					for _, y := range []int64{b.lo, b.hi} {
+						n := new(big.Int)
+						if sub {
+							n.Sub(big.NewInt(x), big.NewInt(y))
+						} else {
+							n.Add(big.NewInt(x), big.NewInt(y))
+						}
+						if lo == nil || n.Cmp(lo) < 0 {
+							lo = new(big.Int).Set(n)
+						}
+						if hi == nil || n.Cmp(hi) > 0 {
+							hi = new(big.Int).Set(n)
+						}
+					}
+				}
+				want := lo.IsInt64() && hi.IsInt64()
+				if valid != want || valid && got != (intBounds{lo.Int64(), hi.Int64()}) {
+					t.Fatalf("%v sub=%v %v: %v/%v vs [%s,%s]/%v", a, sub, b, got, valid, lo, hi, want)
+				}
+			}
+		}
+	}
+}
+
+// Isolate the new pass from parsing, checking, code generation and printing.
+func BenchmarkIntProofScaling(b *testing.B) {
+	for _, n := range []int{128, 256, 512} {
+		var source strings.Builder
+		source.WriteString("fn probe() Int:\n    var sum = 0\n")
+		for i := 0; i < n; i++ {
+			fmt.Fprintf(&source, "    var i%d = 0\n    while i%d < 100:\n        sum += i%d\n        i%d += 1\n", i, i, i, i)
+		}
+		source.WriteString("    return sum\n")
+		program := checkedLoweringProgram(b, source.String())
+		var body []*syntax.Statement
+		for _, module := range program.Modules {
+			for _, decl := range module.Declarations {
+				if decl.Name == "probe" {
+					body = decl.Body
+				}
+			}
+		}
+		if body == nil {
+			b.Fatal("missing probe body")
+		}
+		g := newGen(program)
+		b.Run(fmt.Sprint(n), func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				g.fn = &funcState{}
+				g.proveIntArithmetic(body)
+			}
+		})
+	}
+}
+
+func TestMultiplyIntBoundsAgainstInteriorOracle(t *testing.T) {
+	for alo := int64(-4); alo <= 4; alo++ {
+		for ahi := alo; ahi <= 4; ahi++ {
+			for blo := int64(-4); blo <= 4; blo++ {
+				for bhi := blo; bhi <= 4; bhi++ {
+					lo, hi := int64(100), int64(-100)
+					// Enumerate every interior point, independent of endpoint logic.
+					for x := alo; x <= ahi; x++ {
+						for y := blo; y <= bhi; y++ {
+							lo = min(lo, x*y)
+							hi = max(hi, x*y)
+						}
+					}
+					got, ok := multiplyIntBounds(intBounds{alo, ahi}, intBounds{blo, bhi})
+					if !ok || got != (intBounds{lo, hi}) {
+						t.Fatalf("[%d,%d]*[%d,%d]: %v/%v want [%d,%d]", alo, ahi, blo, bhi, got, ok, lo, hi)
+					}
+				}
+			}
+		}
+	}
+	values := []int64{math.MinInt64, math.MinInt64 + 1, -3037000500, -3037000499, -1, 0, 1, 3037000499, 3037000500, math.MaxInt64 - 1, math.MaxInt64}
+	rng := rand.New(rand.NewSource(53))
+	for range 100 {
+		values = append(values, int64(rng.Uint64()))
+	}
+	for _, x := range values {
+		for _, y := range values {
+			exact := new(big.Int).Mul(big.NewInt(x), big.NewInt(y))
+			got, ok := multiplyIntBounds(intBounds{x, x}, intBounds{y, y})
+			if ok != exact.IsInt64() || ok && (got.lo != exact.Int64() || got.hi != exact.Int64()) {
+				t.Fatalf("%d*%d: %v/%v vs %s", x, y, got, ok, exact)
+			}
+		}
+	}
+	if _, ok := multiplyIntBounds(intBounds{math.MinInt64, math.MaxInt64}, intBounds{-1, 1}); ok {
+		t.Fatal("proved MinInt*-1")
+	}
+}
+
+func BenchmarkClosedCellProofScaling(b *testing.B) {
+	for _, n := range []int{128, 256, 512} {
+		var source strings.Builder
+		source.WriteString("interface Counter:\n    fn bump(by: Int) Int\ntype Cell:\n    total: Int\nimpl Counter for Cell:\n    fn bump(by: Int) Int:\n        self.total += by\n        return self.total\nfn probe() Int:\n    var sum = 0\n")
+		for i := 0; i < n; i++ {
+			fmt.Fprintf(&source, "    let list%d = [1, 2, 3]\n    let cell%d = Cell(0)\n    var i%d = 0\n    while i%d < 1000:\n        cell%d.bump(1)\n        sum += list%d.length()\n        i%d += 1\n", i, i, i, i, i, i, i)
+		}
+		source.WriteString("    return sum\n")
+		program := checkedLoweringProgram(b, source.String())
+		var declaration *syntax.Declaration
+		for _, module := range program.Modules {
+			for _, d := range module.Declarations {
+				if d.Name == "probe" {
+					declaration = d
+				}
+			}
+		}
+		if declaration == nil {
+			b.Fatal("missing probe")
+		}
+		g := newGen(program)
+		b.Run(fmt.Sprint(n), func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				g.fn = &funcState{}
+				g.fn.localCollections = g.proveLocalCollections(declaration.Params, declaration.Body)
+				g.proveIntArithmetic(declaration.Body)
+			}
+		})
+	}
+}
+
+// Keep evidence lookup independent of the number of fresh map constructors.
+// Both the number of unrelated methods and the number of candidates grow here.
+func BenchmarkClosedMapProofScaling(b *testing.B) {
+	for _, n := range []int{128, 256, 512} {
+		var source strings.Builder
+		source.WriteString("interface Tag:\n    fn tag() Int\n")
+		for i := 0; i < n; i++ {
+			fmt.Fprintf(&source, "type Key%d:\n    value: Int\nimpl Tag for Key%d:\n    fn tag() Int: self.value\n", i, i)
+		}
+		source.WriteString("fn probe() Int:\n")
+		for i := 0; i < n; i++ {
+			fmt.Fprintf(&source, "    let map%d = Map[Int, Int]()\n    map%d.add(1, 2)\n", i, i)
+		}
+		source.WriteString("    return 0\n")
+		program := checkedLoweringProgram(b, source.String())
+		var declaration *syntax.Declaration
+		for _, module := range program.Modules {
+			for _, d := range module.Declarations {
+				if d.Name == "probe" {
+					declaration = d
+				}
+			}
+		}
+		if declaration == nil {
+			b.Fatal("missing probe")
+		}
+		g := newGen(program)
+		b.Run(fmt.Sprint(n), func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				g.fn = &funcState{}
+				inventory := g.proveLocalCollections(declaration.Params, declaration.Body)
+				if len(inventory.constructors) != n {
+					b.Fatalf("selected %d maps, want %d", len(inventory.constructors), n)
+				}
+			}
+		})
+	}
+}

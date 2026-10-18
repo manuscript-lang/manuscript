@@ -1,0 +1,14 @@
+{
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "repeats": 30,
+  "binaries": {
+    "before": {
+      "path": "/workspace/manuscript/.artifacts/perf-binaries/final-stdlib-before",
+      "sha256": "1f41d7d5517f6fd03bc1b31f5cf16e457f217680d890f9c062cb8926e4b506f0"
+    },
+    "after": {
+      "path": "/workspace/manuscript/.artifacts/perf-binaries/final-stdlib-after",
+      "sha256": "3471a64557ae5c49df685f2d73a1f15fde272253b94b7e37ae8efb42fb1f75a1"
+    }
+  }
+}

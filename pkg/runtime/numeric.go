@@ -11,12 +11,15 @@ import (
 // Checked Int arithmetic: overflow and division faults are Manuscript faults.
 // Each operation is small enough for the compiler to inline.
 
-func IntAdd(a, b int) int {
-	r := a + b
+func IntAdd(a, b int) int { return intAddChecked(a, b, intOverflow) }
+
+// The fixed cold callback lowers Go's inline cost without delaying fault frames.
+func intAddChecked(a, b int, overflow func()) (r int) {
+	r = a + b
 	if (a^r)&(b^r) < 0 {
-		intOverflow()
+		overflow()
 	}
-	return r
+	return
 }
 
 func IntSubtract(a, b int) int {
@@ -27,11 +30,13 @@ func IntSubtract(a, b int) int {
 	return r
 }
 
-func IntMultiply(a, b int) int {
+func IntMultiply(a, b int) int { return intMultiplyChecked(a, b, intOverflow) }
+
+func intMultiplyChecked(a, b int, overflow func()) (r int) {
 	if bits.UintSize == 32 {
 		r := int64(a) * int64(b)
 		if r != int64(int(r)) {
-			intOverflow()
+			overflow()
 		}
 		return int(r)
 	}
@@ -39,9 +44,10 @@ func IntMultiply(a, b int) int {
 	hi, lo := bits.Mul64(uint64(x), uint64(y))
 	hi -= uint64((x>>63)&y) + uint64((y>>63)&x)
 	if int64(hi) != int64(lo)>>63 {
-		intOverflow()
+		overflow()
 	}
-	return int(lo)
+	r = int(lo)
+	return
 }
 
 func IntDivide(a, b int) int {

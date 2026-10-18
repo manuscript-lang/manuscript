@@ -1,0 +1,4920 @@
+before string.upper
+string.upper	200	68624
+# checksum string.upper 3144600
+string.upper	200	53564
+# checksum string.upper 3144600
+string.upper	200	53088
+# checksum string.upper 3144600
+string.upper	200	55861
+# checksum string.upper 3144600
+string.upper	200	56594
+# checksum string.upper 3144600
+string.upper	200	56689
+# checksum string.upper 3144600
+string.upper	200	66210
+# checksum string.upper 3144600
+string.upper	200	58028
+# checksum string.upper 3144600
+string.upper	200	58057
+# checksum string.upper 3144600
+string.upper	200	51639
+# checksum string.upper 3144600
+string.upper	200	45938
+# checksum string.upper 3144600
+string.upper	200	50165
+# checksum string.upper 3144600
+string.upper	200	53348
+# checksum string.upper 3144600
+string.upper	200	57147
+# checksum string.upper 3144600
+string.upper	200	52877
+# checksum string.upper 3144600
+string.upper	200	55765
+# checksum string.upper 3144600
+string.upper	200	62047
+# checksum string.upper 3144600
+string.upper	200	55912
+# checksum string.upper 3144600
+string.upper	200	58378
+# checksum string.upper 3144600
+string.upper	200	62408
+# checksum string.upper 3144600
+after string.upper
+string.upper	200	59033
+# checksum string.upper 3144600
+string.upper	200	53199
+# checksum string.upper 3144600
+string.upper	200	64080
+# checksum string.upper 3144600
+string.upper	200	56646
+# checksum string.upper 3144600
+string.upper	200	55447
+# checksum string.upper 3144600
+string.upper	200	56760
+# checksum string.upper 3144600
+string.upper	200	86253
+# checksum string.upper 3144600
+string.upper	200	67135
+# checksum string.upper 3144600
+string.upper	200	76862
+# checksum string.upper 3144600
+string.upper	200	73101
+# checksum string.upper 3144600
+string.upper	200	101402
+# checksum string.upper 3144600
+string.upper	200	82114
+# checksum string.upper 3144600
+string.upper	200	88445
+# checksum string.upper 3144600
+string.upper	200	58172
+# checksum string.upper 3144600
+string.upper	200	64066
+# checksum string.upper 3144600
+string.upper	200	71946
+# checksum string.upper 3144600
+string.upper	200	53793
+# checksum string.upper 3144600
+string.upper	200	50367
+# checksum string.upper 3144600
+string.upper	200	64026
+# checksum string.upper 3144600
+string.upper	200	52774
+# checksum string.upper 3144600
+before map.string_put_get
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+map.string_put_get	100000	99
+# checksum map.string_put_get 50000
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000
+map.string_put_get	100000	56
+# checksum map.string_put_get 50000
+map.string_put_get	100000	56
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+map.string_put_get	100000	98
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	58
+# checksum map.string_put_get 50000
+map.string_put_get	100000	68
+# checksum map.string_put_get 50000
+map.string_put_get	100000	83
+# checksum map.string_put_get 50000
+map.string_put_get	100000	83
+# checksum map.string_put_get 50000
+map.string_put_get	100000	156
+# checksum map.string_put_get 50000
+map.string_put_get	100000	86
+# checksum map.string_put_get 50000
+map.string_put_get	100000	89
+# checksum map.string_put_get 50000
+map.string_put_get	100000	91
+# checksum map.string_put_get 50000
+map.string_put_get	100000	110
+# checksum map.string_put_get 50000
+map.string_put_get	100000	130
+# checksum map.string_put_get 50000
+map.string_put_get	100000	130
+# checksum map.string_put_get 50000
+after map.string_put_get
+map.string_put_get	100000	146
+# checksum map.string_put_get 50000
+map.string_put_get	100000	109
+# checksum map.string_put_get 50000
+map.string_put_get	100000	166
+# checksum map.string_put_get 50000
+map.string_put_get	100000	71
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	77
+# checksum map.string_put_get 50000
+map.string_put_get	100000	94
+# checksum map.string_put_get 50000
+map.string_put_get	100000	73
+# checksum map.string_put_get 50000
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	85
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+map.string_put_get	100000	87
+# checksum map.string_put_get 50000
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+map.string_put_get	100000	71
+# checksum map.string_put_get 50000
+map.string_put_get	100000	82
+# checksum map.string_put_get 50000
+map.string_put_get	100000	121
+# checksum map.string_put_get 50000
+map.string_put_get	100000	129
+# checksum map.string_put_get 50000
+map.string_put_get	100000	120
+# checksum map.string_put_get 50000
+map.string_put_get	100000	71
+# checksum map.string_put_get 50000
+before regex.find_all
+regex.find_all	2000	557
+# checksum regex.find_all 2000
+regex.find_all	2000	400
+# checksum regex.find_all 2000
+regex.find_all	2000	463
+# checksum regex.find_all 2000
+regex.find_all	2000	482
+# checksum regex.find_all 2000
+regex.find_all	2000	313
+# checksum regex.find_all 2000
+regex.find_all	2000	382
+# checksum regex.find_all 2000
+regex.find_all	2000	303
+# checksum regex.find_all 2000
+regex.find_all	2000	440
+# checksum regex.find_all 2000
+regex.find_all	2000	283
+# checksum regex.find_all 2000
+regex.find_all	2000	297
+# checksum regex.find_all 2000
+regex.find_all	2000	335
+# checksum regex.find_all 2000
+regex.find_all	2000	322
+# checksum regex.find_all 2000
+regex.find_all	2000	414
+# checksum regex.find_all 2000
+regex.find_all	2000	321
+# checksum regex.find_all 2000
+regex.find_all	2000	272
+# checksum regex.find_all 2000
+regex.find_all	2000	290
+# checksum regex.find_all 2000
+regex.find_all	2000	283
+# checksum regex.find_all 2000
+regex.find_all	2000	339
+# checksum regex.find_all 2000
+regex.find_all	2000	330
+# checksum regex.find_all 2000
+regex.find_all	2000	312
+# checksum regex.find_all 2000
+after regex.find_all
+regex.find_all	2000	484
+# checksum regex.find_all 2000
+regex.find_all	2000	440
+# checksum regex.find_all 2000
+regex.find_all	2000	452
+# checksum regex.find_all 2000
+regex.find_all	2000	407
+# checksum regex.find_all 2000
+regex.find_all	2000	432
+# checksum regex.find_all 2000
+regex.find_all	2000	332
+# checksum regex.find_all 2000
+regex.find_all	2000	401
+# checksum regex.find_all 2000
+regex.find_all	2000	348
+# checksum regex.find_all 2000
+regex.find_all	2000	293
+# checksum regex.find_all 2000
+regex.find_all	2000	336
+# checksum regex.find_all 2000
+regex.find_all	2000	302
+# checksum regex.find_all 2000
+regex.find_all	2000	350
+# checksum regex.find_all 2000
+regex.find_all	2000	444
+# checksum regex.find_all 2000
+regex.find_all	2000	359
+# checksum regex.find_all 2000
+regex.find_all	2000	288
+# checksum regex.find_all 2000
+regex.find_all	2000	429
+# checksum regex.find_all 2000
+regex.find_all	2000	341
+# checksum regex.find_all 2000
+regex.find_all	2000	309
+# checksum regex.find_all 2000
+regex.find_all	2000	740
+# checksum regex.find_all 2000
+regex.find_all	2000	343
+# checksum regex.find_all 2000
+before archive.tar_pack
+archive.tar_pack	2000	6496
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3126
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2153
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1902
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2041
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2090
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2023
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1825
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1957
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1693
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1801
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1906
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1861
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2095
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1839
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2159
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2437
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2915
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2709
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	5755
+# checksum archive.tar_pack 2049024
+after archive.tar_pack
+archive.tar_pack	2000	5625
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2458
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2333
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1929
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2003
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2585
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1857
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2527
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3721
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3205
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3472
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2787
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2003
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3116
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2207
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2302
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3069
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1864
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2564
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1823
+# checksum archive.tar_pack 2049024
+after map.string_put_get
+map.string_put_get	100000	80
+# checksum map.string_put_get 50000
+map.string_put_get	100000	83
+# checksum map.string_put_get 50000
+map.string_put_get	100000	68
+# checksum map.string_put_get 50000
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+map.string_put_get	100000	90
+# checksum map.string_put_get 50000
+map.string_put_get	100000	95
+# checksum map.string_put_get 50000
+map.string_put_get	100000	77
+# checksum map.string_put_get 50000
+map.string_put_get	100000	117
+# checksum map.string_put_get 50000
+map.string_put_get	100000	88
+# checksum map.string_put_get 50000
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	91
+# checksum map.string_put_get 50000
+map.string_put_get	100000	101
+# checksum map.string_put_get 50000
+map.string_put_get	100000	89
+# checksum map.string_put_get 50000
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	117
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	71
+# checksum map.string_put_get 50000
+map.string_put_get	100000	73
+# checksum map.string_put_get 50000
+map.string_put_get	100000	102
+# checksum map.string_put_get 50000
+before map.string_put_get
+map.string_put_get	100000	85
+# checksum map.string_put_get 50000
+map.string_put_get	100000	77
+# checksum map.string_put_get 50000
+map.string_put_get	100000	82
+# checksum map.string_put_get 50000
+map.string_put_get	100000	83
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	100
+# checksum map.string_put_get 50000
+map.string_put_get	100000	73
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	57
+# checksum map.string_put_get 50000
+map.string_put_get	100000	64
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	56
+# checksum map.string_put_get 50000
+map.string_put_get	100000	58
+# checksum map.string_put_get 50000
+map.string_put_get	100000	61
+# checksum map.string_put_get 50000
+map.string_put_get	100000	61
+# checksum map.string_put_get 50000
+map.string_put_get	100000	83
+# checksum map.string_put_get 50000
+map.string_put_get	100000	59
+# checksum map.string_put_get 50000
+map.string_put_get	100000	122
+# checksum map.string_put_get 50000
+after regex.find_all
+regex.find_all	2000	406
+# checksum regex.find_all 2000
+regex.find_all	2000	370
+# checksum regex.find_all 2000
+regex.find_all	2000	665
+# checksum regex.find_all 2000
+regex.find_all	2000	408
+# checksum regex.find_all 2000
+regex.find_all	2000	425
+# checksum regex.find_all 2000
+regex.find_all	2000	367
+# checksum regex.find_all 2000
+regex.find_all	2000	500
+# checksum regex.find_all 2000
+regex.find_all	2000	365
+# checksum regex.find_all 2000
+regex.find_all	2000	291
+# checksum regex.find_all 2000
+regex.find_all	2000	318
+# checksum regex.find_all 2000
+regex.find_all	2000	473
+# checksum regex.find_all 2000
+regex.find_all	2000	344
+# checksum regex.find_all 2000
+regex.find_all	2000	523
+# checksum regex.find_all 2000
+regex.find_all	2000	392
+# checksum regex.find_all 2000
+regex.find_all	2000	339
+# checksum regex.find_all 2000
+regex.find_all	2000	334
+# checksum regex.find_all 2000
+regex.find_all	2000	421
+# checksum regex.find_all 2000
+regex.find_all	2000	551
+# checksum regex.find_all 2000
+regex.find_all	2000	2541
+# checksum regex.find_all 2000
+regex.find_all	2000	359
+# checksum regex.find_all 2000
+before regex.find_all
+regex.find_all	2000	314
+# checksum regex.find_all 2000
+regex.find_all	2000	291
+# checksum regex.find_all 2000
+regex.find_all	2000	288
+# checksum regex.find_all 2000
+regex.find_all	2000	335
+# checksum regex.find_all 2000
+regex.find_all	2000	328
+# checksum regex.find_all 2000
+regex.find_all	2000	283
+# checksum regex.find_all 2000
+regex.find_all	2000	456
+# checksum regex.find_all 2000
+regex.find_all	2000	346
+# checksum regex.find_all 2000
+regex.find_all	2000	299
+# checksum regex.find_all 2000
+regex.find_all	2000	687
+# checksum regex.find_all 2000
+regex.find_all	2000	327
+# checksum regex.find_all 2000
+regex.find_all	2000	436
+# checksum regex.find_all 2000
+regex.find_all	2000	310
+# checksum regex.find_all 2000
+regex.find_all	2000	349
+# checksum regex.find_all 2000
+regex.find_all	2000	476
+# checksum regex.find_all 2000
+regex.find_all	2000	576
+# checksum regex.find_all 2000
+regex.find_all	2000	434
+# checksum regex.find_all 2000
+regex.find_all	2000	331
+# checksum regex.find_all 2000
+regex.find_all	2000	340
+# checksum regex.find_all 2000
+regex.find_all	2000	615
+# checksum regex.find_all 2000
+after archive.tar_pack
+archive.tar_pack	2000	6341
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2186
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2279
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3218
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3063
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1927
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2650
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2056
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1835
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2232
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	6638
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3309
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1908
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1990
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1874
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1909
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1965
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2047
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1958
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2312
+# checksum archive.tar_pack 2049024
+before archive.tar_pack
+archive.tar_pack	2000	4169
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2507
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2757
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2644
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2769
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2807
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	4877
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2351
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1957
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2367
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2468
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3481
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2478
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2186
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2161
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1948
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1925
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2145
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2329
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2158
+# checksum archive.tar_pack 2049024
+after string.upper
+string.upper	200	64262
+# checksum string.upper 3144600
+string.upper	200	51012
+# checksum string.upper 3144600
+string.upper	200	55078
+# checksum string.upper 3144600
+string.upper	200	50906
+# checksum string.upper 3144600
+string.upper	200	57517
+# checksum string.upper 3144600
+string.upper	200	62078
+# checksum string.upper 3144600
+string.upper	200	57774
+# checksum string.upper 3144600
+string.upper	200	53924
+# checksum string.upper 3144600
+string.upper	200	49123
+# checksum string.upper 3144600
+string.upper	200	49433
+# checksum string.upper 3144600
+string.upper	200	54335
+# checksum string.upper 3144600
+string.upper	200	54385
+# checksum string.upper 3144600
+string.upper	200	52027
+# checksum string.upper 3144600
+string.upper	200	53386
+# checksum string.upper 3144600
+string.upper	200	51334
+# checksum string.upper 3144600
+string.upper	200	55780
+# checksum string.upper 3144600
+string.upper	200	54063
+# checksum string.upper 3144600
+string.upper	200	54423
+# checksum string.upper 3144600
+string.upper	200	51047
+# checksum string.upper 3144600
+string.upper	200	50482
+# checksum string.upper 3144600
+before string.upper
+string.upper	200	69373
+# checksum string.upper 3144600
+string.upper	200	55716
+# checksum string.upper 3144600
+string.upper	200	51964
+# checksum string.upper 3144600
+string.upper	200	49673
+# checksum string.upper 3144600
+string.upper	200	56000
+# checksum string.upper 3144600
+string.upper	200	48312
+# checksum string.upper 3144600
+string.upper	200	49921
+# checksum string.upper 3144600
+string.upper	200	57331
+# checksum string.upper 3144600
+string.upper	200	50726
+# checksum string.upper 3144600
+string.upper	200	56186
+# checksum string.upper 3144600
+string.upper	200	52168
+# checksum string.upper 3144600
+string.upper	200	54706
+# checksum string.upper 3144600
+string.upper	200	60981
+# checksum string.upper 3144600
+string.upper	200	57082
+# checksum string.upper 3144600
+string.upper	200	62458
+# checksum string.upper 3144600
+string.upper	200	49141
+# checksum string.upper 3144600
+string.upper	200	54564
+# checksum string.upper 3144600
+string.upper	200	53447
+# checksum string.upper 3144600
+string.upper	200	50802
+# checksum string.upper 3144600
+string.upper	200	53794
+# checksum string.upper 3144600
+before regex.find_all
+regex.find_all	2000	365
+# checksum regex.find_all 2000
+regex.find_all	2000	468
+# checksum regex.find_all 2000
+regex.find_all	2000	378
+# checksum regex.find_all 2000
+regex.find_all	2000	447
+# checksum regex.find_all 2000
+regex.find_all	2000	384
+# checksum regex.find_all 2000
+regex.find_all	2000	392
+# checksum regex.find_all 2000
+regex.find_all	2000	393
+# checksum regex.find_all 2000
+regex.find_all	2000	435
+# checksum regex.find_all 2000
+regex.find_all	2000	294
+# checksum regex.find_all 2000
+regex.find_all	2000	319
+# checksum regex.find_all 2000
+regex.find_all	2000	291
+# checksum regex.find_all 2000
+regex.find_all	2000	341
+# checksum regex.find_all 2000
+regex.find_all	2000	355
+# checksum regex.find_all 2000
+regex.find_all	2000	276
+# checksum regex.find_all 2000
+regex.find_all	2000	304
+# checksum regex.find_all 2000
+regex.find_all	2000	460
+# checksum regex.find_all 2000
+regex.find_all	2000	331
+# checksum regex.find_all 2000
+regex.find_all	2000	322
+# checksum regex.find_all 2000
+regex.find_all	2000	714
+# checksum regex.find_all 2000
+regex.find_all	2000	324
+# checksum regex.find_all 2000
+after regex.find_all
+regex.find_all	2000	463
+# checksum regex.find_all 2000
+regex.find_all	2000	437
+# checksum regex.find_all 2000
+regex.find_all	2000	320
+# checksum regex.find_all 2000
+regex.find_all	2000	288
+# checksum regex.find_all 2000
+regex.find_all	2000	354
+# checksum regex.find_all 2000
+regex.find_all	2000	305
+# checksum regex.find_all 2000
+regex.find_all	2000	333
+# checksum regex.find_all 2000
+regex.find_all	2000	337
+# checksum regex.find_all 2000
+regex.find_all	2000	293
+# checksum regex.find_all 2000
+regex.find_all	2000	284
+# checksum regex.find_all 2000
+regex.find_all	2000	288
+# checksum regex.find_all 2000
+regex.find_all	2000	273
+# checksum regex.find_all 2000
+regex.find_all	2000	411
+# checksum regex.find_all 2000
+regex.find_all	2000	318
+# checksum regex.find_all 2000
+regex.find_all	2000	396
+# checksum regex.find_all 2000
+regex.find_all	2000	277
+# checksum regex.find_all 2000
+regex.find_all	2000	285
+# checksum regex.find_all 2000
+regex.find_all	2000	312
+# checksum regex.find_all 2000
+regex.find_all	2000	397
+# checksum regex.find_all 2000
+regex.find_all	2000	563
+# checksum regex.find_all 2000
+before archive.tar_pack
+archive.tar_pack	2000	4386
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2376
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1960
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2609
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3845
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2361
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2426
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2262
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	4208
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2375
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2508
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2564
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2365
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2274
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3570
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2155
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3401
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	4584
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	6995
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3677
+# checksum archive.tar_pack 2049024
+after archive.tar_pack
+archive.tar_pack	2000	8152
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2340
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2420
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2531
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2061
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2119
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2007
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2072
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2301
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1927
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1992
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2287
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1895
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2103
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1879
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2091
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2024
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2028
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1991
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1816
+# checksum archive.tar_pack 2049024
+before string.upper
+string.upper	200	68388
+# checksum string.upper 3144600
+string.upper	200	73148
+# checksum string.upper 3144600
+string.upper	200	53585
+# checksum string.upper 3144600
+string.upper	200	84430
+# checksum string.upper 3144600
+string.upper	200	57529
+# checksum string.upper 3144600
+string.upper	200	53900
+# checksum string.upper 3144600
+string.upper	200	51230
+# checksum string.upper 3144600
+string.upper	200	49903
+# checksum string.upper 3144600
+string.upper	200	49122
+# checksum string.upper 3144600
+string.upper	200	53485
+# checksum string.upper 3144600
+string.upper	200	54519
+# checksum string.upper 3144600
+string.upper	200	53333
+# checksum string.upper 3144600
+string.upper	200	49881
+# checksum string.upper 3144600
+string.upper	200	52755
+# checksum string.upper 3144600
+string.upper	200	52330
+# checksum string.upper 3144600
+string.upper	200	57772
+# checksum string.upper 3144600
+string.upper	200	58945
+# checksum string.upper 3144600
+string.upper	200	49516
+# checksum string.upper 3144600
+string.upper	200	54358
+# checksum string.upper 3144600
+string.upper	200	54099
+# checksum string.upper 3144600
+after string.upper
+string.upper	200	60054
+# checksum string.upper 3144600
+string.upper	200	52575
+# checksum string.upper 3144600
+string.upper	200	60165
+# checksum string.upper 3144600
+string.upper	200	54870
+# checksum string.upper 3144600
+string.upper	200	50770
+# checksum string.upper 3144600
+string.upper	200	52867
+# checksum string.upper 3144600
+string.upper	200	53279
+# checksum string.upper 3144600
+string.upper	200	48347
+# checksum string.upper 3144600
+string.upper	200	54596
+# checksum string.upper 3144600
+string.upper	200	50247
+# checksum string.upper 3144600
+string.upper	200	56446
+# checksum string.upper 3144600
+string.upper	200	50526
+# checksum string.upper 3144600
+string.upper	200	48762
+# checksum string.upper 3144600
+string.upper	200	51063
+# checksum string.upper 3144600
+string.upper	200	53290
+# checksum string.upper 3144600
+string.upper	200	53444
+# checksum string.upper 3144600
+string.upper	200	56278
+# checksum string.upper 3144600
+string.upper	200	50950
+# checksum string.upper 3144600
+string.upper	200	54375
+# checksum string.upper 3144600
+string.upper	200	56303
+# checksum string.upper 3144600
+before map.string_put_get
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000
+map.string_put_get	100000	86
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	60
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	110
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	87
+# checksum map.string_put_get 50000
+map.string_put_get	100000	83
+# checksum map.string_put_get 50000
+map.string_put_get	100000	97
+# checksum map.string_put_get 50000
+map.string_put_get	100000	96
+# checksum map.string_put_get 50000
+map.string_put_get	100000	81
+# checksum map.string_put_get 50000
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+map.string_put_get	100000	81
+# checksum map.string_put_get 50000
+map.string_put_get	100000	88
+# checksum map.string_put_get 50000
+map.string_put_get	100000	86
+# checksum map.string_put_get 50000
+map.string_put_get	100000	107
+# checksum map.string_put_get 50000
+map.string_put_get	100000	91
+# checksum map.string_put_get 50000
+map.string_put_get	100000	86
+# checksum map.string_put_get 50000
+after map.string_put_get
+map.string_put_get	100000	88
+# checksum map.string_put_get 50000
+map.string_put_get	100000	81
+# checksum map.string_put_get 50000
+map.string_put_get	100000	64
+# checksum map.string_put_get 50000
+map.string_put_get	100000	85
+# checksum map.string_put_get 50000
+map.string_put_get	100000	56
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	60
+# checksum map.string_put_get 50000
+map.string_put_get	100000	56
+# checksum map.string_put_get 50000
+map.string_put_get	100000	77
+# checksum map.string_put_get 50000
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+map.string_put_get	100000	60
+# checksum map.string_put_get 50000
+map.string_put_get	100000	52
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	61
+# checksum map.string_put_get 50000
+map.string_put_get	100000	60
+# checksum map.string_put_get 50000
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000
+map.string_put_get	100000	55
+# checksum map.string_put_get 50000
+map.string_put_get	100000	56
+# checksum map.string_put_get 50000
+map.string_put_get	100000	68
+# checksum map.string_put_get 50000
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+after archive.tar_pack
+archive.tar_pack	2000	6732
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1770
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1974
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1905
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1838
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1944
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2066
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1927
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2077
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2038
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2059
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1708
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2015
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1663
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2044
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1847
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1768
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1868
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1658
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1876
+# checksum archive.tar_pack 2049024
+before archive.tar_pack
+archive.tar_pack	2000	7368
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2209
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2416
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2145
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2002
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	6902
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1519
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1887
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1883
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1810
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1704
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1689
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2340
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2582
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1933
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1697
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1707
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1790
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1566
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1606
+# checksum archive.tar_pack 2049024
+after string.upper
+string.upper	200	52361
+# checksum string.upper 3144600
+string.upper	200	66680
+# checksum string.upper 3144600
+string.upper	200	48321
+# checksum string.upper 3144600
+string.upper	200	47437
+# checksum string.upper 3144600
+string.upper	200	48710
+# checksum string.upper 3144600
+string.upper	200	52910
+# checksum string.upper 3144600
+string.upper	200	47890
+# checksum string.upper 3144600
+string.upper	200	51157
+# checksum string.upper 3144600
+string.upper	200	51400
+# checksum string.upper 3144600
+string.upper	200	54947
+# checksum string.upper 3144600
+string.upper	200	49962
+# checksum string.upper 3144600
+string.upper	200	54252
+# checksum string.upper 3144600
+string.upper	200	48124
+# checksum string.upper 3144600
+string.upper	200	47545
+# checksum string.upper 3144600
+string.upper	200	48250
+# checksum string.upper 3144600
+string.upper	200	48695
+# checksum string.upper 3144600
+string.upper	200	49239
+# checksum string.upper 3144600
+string.upper	200	47200
+# checksum string.upper 3144600
+string.upper	200	47073
+# checksum string.upper 3144600
+string.upper	200	49525
+# checksum string.upper 3144600
+before string.upper
+string.upper	200	52274
+# checksum string.upper 3144600
+string.upper	200	45319
+# checksum string.upper 3144600
+string.upper	200	48923
+# checksum string.upper 3144600
+string.upper	200	52922
+# checksum string.upper 3144600
+string.upper	200	52614
+# checksum string.upper 3144600
+string.upper	200	51283
+# checksum string.upper 3144600
+string.upper	200	46455
+# checksum string.upper 3144600
+string.upper	200	46475
+# checksum string.upper 3144600
+string.upper	200	45662
+# checksum string.upper 3144600
+string.upper	200	49714
+# checksum string.upper 3144600
+string.upper	200	56844
+# checksum string.upper 3144600
+string.upper	200	53733
+# checksum string.upper 3144600
+string.upper	200	55128
+# checksum string.upper 3144600
+string.upper	200	49377
+# checksum string.upper 3144600
+string.upper	200	50624
+# checksum string.upper 3144600
+string.upper	200	54640
+# checksum string.upper 3144600
+string.upper	200	62691
+# checksum string.upper 3144600
+string.upper	200	63149
+# checksum string.upper 3144600
+string.upper	200	49894
+# checksum string.upper 3144600
+string.upper	200	47105
+# checksum string.upper 3144600
+after map.string_put_get
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	144
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	89
+# checksum map.string_put_get 50000
+map.string_put_get	100000	85
+# checksum map.string_put_get 50000
+map.string_put_get	100000	81
+# checksum map.string_put_get 50000
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	89
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	85
+# checksum map.string_put_get 50000
+map.string_put_get	100000	71
+# checksum map.string_put_get 50000
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000
+map.string_put_get	100000	62
+# checksum map.string_put_get 50000
+map.string_put_get	100000	73
+# checksum map.string_put_get 50000
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+map.string_put_get	100000	71
+# checksum map.string_put_get 50000
+before map.string_put_get
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	53
+# checksum map.string_put_get 50000
+map.string_put_get	100000	64
+# checksum map.string_put_get 50000
+map.string_put_get	100000	52
+# checksum map.string_put_get 50000
+map.string_put_get	100000	50
+# checksum map.string_put_get 50000
+map.string_put_get	100000	48
+# checksum map.string_put_get 50000
+map.string_put_get	100000	49
+# checksum map.string_put_get 50000
+map.string_put_get	100000	63
+# checksum map.string_put_get 50000
+map.string_put_get	100000	63
+# checksum map.string_put_get 50000
+map.string_put_get	100000	62
+# checksum map.string_put_get 50000
+map.string_put_get	100000	61
+# checksum map.string_put_get 50000
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+map.string_put_get	100000	63
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	53
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	63
+# checksum map.string_put_get 50000
+map.string_put_get	100000	60
+# checksum map.string_put_get 50000
+after regex.find_all
+regex.find_all	2000	300
+# checksum regex.find_all 2000
+regex.find_all	2000	283
+# checksum regex.find_all 2000
+regex.find_all	2000	286
+# checksum regex.find_all 2000
+regex.find_all	2000	288
+# checksum regex.find_all 2000
+regex.find_all	2000	390
+# checksum regex.find_all 2000
+regex.find_all	2000	367
+# checksum regex.find_all 2000
+regex.find_all	2000	372
+# checksum regex.find_all 2000
+regex.find_all	2000	356
+# checksum regex.find_all 2000
+regex.find_all	2000	328
+# checksum regex.find_all 2000
+regex.find_all	2000	303
+# checksum regex.find_all 2000
+regex.find_all	2000	300
+# checksum regex.find_all 2000
+regex.find_all	2000	283
+# checksum regex.find_all 2000
+regex.find_all	2000	298
+# checksum regex.find_all 2000
+regex.find_all	2000	292
+# checksum regex.find_all 2000
+regex.find_all	2000	330
+# checksum regex.find_all 2000
+regex.find_all	2000	337
+# checksum regex.find_all 2000
+regex.find_all	2000	294
+# checksum regex.find_all 2000
+regex.find_all	2000	353
+# checksum regex.find_all 2000
+regex.find_all	2000	322
+# checksum regex.find_all 2000
+regex.find_all	2000	563
+# checksum regex.find_all 2000
+before regex.find_all
+regex.find_all	2000	343
+# checksum regex.find_all 2000
+regex.find_all	2000	283
+# checksum regex.find_all 2000
+regex.find_all	2000	301
+# checksum regex.find_all 2000
+regex.find_all	2000	295
+# checksum regex.find_all 2000
+regex.find_all	2000	298
+# checksum regex.find_all 2000
+regex.find_all	2000	291
+# checksum regex.find_all 2000
+regex.find_all	2000	288
+# checksum regex.find_all 2000
+regex.find_all	2000	290
+# checksum regex.find_all 2000
+regex.find_all	2000	294
+# checksum regex.find_all 2000
+regex.find_all	2000	299
+# checksum regex.find_all 2000
+regex.find_all	2000	336
+# checksum regex.find_all 2000
+regex.find_all	2000	293
+# checksum regex.find_all 2000
+regex.find_all	2000	292
+# checksum regex.find_all 2000
+regex.find_all	2000	298
+# checksum regex.find_all 2000
+regex.find_all	2000	325
+# checksum regex.find_all 2000
+regex.find_all	2000	301
+# checksum regex.find_all 2000
+regex.find_all	2000	402
+# checksum regex.find_all 2000
+regex.find_all	2000	311
+# checksum regex.find_all 2000
+regex.find_all	2000	625
+# checksum regex.find_all 2000
+regex.find_all	2000	313
+# checksum regex.find_all 2000
+before string.upper
+string.upper	200	62517
+# checksum string.upper 3144600
+string.upper	200	47577
+# checksum string.upper 3144600
+string.upper	200	52473
+# checksum string.upper 3144600
+string.upper	200	48669
+# checksum string.upper 3144600
+string.upper	200	47672
+# checksum string.upper 3144600
+string.upper	200	45970
+# checksum string.upper 3144600
+string.upper	200	48885
+# checksum string.upper 3144600
+string.upper	200	50014
+# checksum string.upper 3144600
+string.upper	200	51901
+# checksum string.upper 3144600
+string.upper	200	49702
+# checksum string.upper 3144600
+string.upper	200	51405
+# checksum string.upper 3144600
+string.upper	200	49657
+# checksum string.upper 3144600
+string.upper	200	54335
+# checksum string.upper 3144600
+string.upper	200	51358
+# checksum string.upper 3144600
+string.upper	200	49886
+# checksum string.upper 3144600
+string.upper	200	52371
+# checksum string.upper 3144600
+string.upper	200	48225
+# checksum string.upper 3144600
+string.upper	200	48917
+# checksum string.upper 3144600
+string.upper	200	50037
+# checksum string.upper 3144600
+string.upper	200	49427
+# checksum string.upper 3144600
+after string.upper
+string.upper	200	59713
+# checksum string.upper 3144600
+string.upper	200	52283
+# checksum string.upper 3144600
+string.upper	200	48752
+# checksum string.upper 3144600
+string.upper	200	48203
+# checksum string.upper 3144600
+string.upper	200	48318
+# checksum string.upper 3144600
+string.upper	200	51168
+# checksum string.upper 3144600
+string.upper	200	48713
+# checksum string.upper 3144600
+string.upper	200	45334
+# checksum string.upper 3144600
+string.upper	200	47982
+# checksum string.upper 3144600
+string.upper	200	44297
+# checksum string.upper 3144600
+string.upper	200	55686
+# checksum string.upper 3144600
+string.upper	200	55721
+# checksum string.upper 3144600
+string.upper	200	49145
+# checksum string.upper 3144600
+string.upper	200	47189
+# checksum string.upper 3144600
+string.upper	200	47225
+# checksum string.upper 3144600
+string.upper	200	46484
+# checksum string.upper 3144600
+string.upper	200	46216
+# checksum string.upper 3144600
+string.upper	200	47483
+# checksum string.upper 3144600
+string.upper	200	47949
+# checksum string.upper 3144600
+string.upper	200	47030
+# checksum string.upper 3144600
+before map.string_put_get
+map.string_put_get	100000	57
+# checksum map.string_put_get 50000
+map.string_put_get	100000	54
+# checksum map.string_put_get 50000
+map.string_put_get	100000	64
+# checksum map.string_put_get 50000
+map.string_put_get	100000	103
+# checksum map.string_put_get 50000
+map.string_put_get	100000	83
+# checksum map.string_put_get 50000
+map.string_put_get	100000	71
+# checksum map.string_put_get 50000
+map.string_put_get	100000	112
+# checksum map.string_put_get 50000
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+map.string_put_get	100000	93
+# checksum map.string_put_get 50000
+map.string_put_get	100000	81
+# checksum map.string_put_get 50000
+map.string_put_get	100000	103
+# checksum map.string_put_get 50000
+map.string_put_get	100000	87
+# checksum map.string_put_get 50000
+map.string_put_get	100000	68
+# checksum map.string_put_get 50000
+map.string_put_get	100000	85
+# checksum map.string_put_get 50000
+map.string_put_get	100000	73
+# checksum map.string_put_get 50000
+map.string_put_get	100000	94
+# checksum map.string_put_get 50000
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+after map.string_put_get
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	94
+# checksum map.string_put_get 50000
+map.string_put_get	100000	77
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	81
+# checksum map.string_put_get 50000
+map.string_put_get	100000	93
+# checksum map.string_put_get 50000
+map.string_put_get	100000	93
+# checksum map.string_put_get 50000
+map.string_put_get	100000	93
+# checksum map.string_put_get 50000
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+map.string_put_get	100000	90
+# checksum map.string_put_get 50000
+map.string_put_get	100000	80
+# checksum map.string_put_get 50000
+map.string_put_get	100000	93
+# checksum map.string_put_get 50000
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+map.string_put_get	100000	63
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+before regex.find_all
+regex.find_all	2000	364
+# checksum regex.find_all 2000
+regex.find_all	2000	322
+# checksum regex.find_all 2000
+regex.find_all	2000	288
+# checksum regex.find_all 2000
+regex.find_all	2000	280
+# checksum regex.find_all 2000
+regex.find_all	2000	340
+# checksum regex.find_all 2000
+regex.find_all	2000	273
+# checksum regex.find_all 2000
+regex.find_all	2000	281
+# checksum regex.find_all 2000
+regex.find_all	2000	311
+# checksum regex.find_all 2000
+regex.find_all	2000	275
+# checksum regex.find_all 2000
+regex.find_all	2000	278
+# checksum regex.find_all 2000
+regex.find_all	2000	272
+# checksum regex.find_all 2000
+regex.find_all	2000	284
+# checksum regex.find_all 2000
+regex.find_all	2000	288
+# checksum regex.find_all 2000
+regex.find_all	2000	272
+# checksum regex.find_all 2000
+regex.find_all	2000	279
+# checksum regex.find_all 2000
+regex.find_all	2000	276
+# checksum regex.find_all 2000
+regex.find_all	2000	286
+# checksum regex.find_all 2000
+regex.find_all	2000	270
+# checksum regex.find_all 2000
+regex.find_all	2000	293
+# checksum regex.find_all 2000
+regex.find_all	2000	323
+# checksum regex.find_all 2000
+after regex.find_all
+regex.find_all	2000	319
+# checksum regex.find_all 2000
+regex.find_all	2000	285
+# checksum regex.find_all 2000
+regex.find_all	2000	292
+# checksum regex.find_all 2000
+regex.find_all	2000	284
+# checksum regex.find_all 2000
+regex.find_all	2000	295
+# checksum regex.find_all 2000
+regex.find_all	2000	281
+# checksum regex.find_all 2000
+regex.find_all	2000	279
+# checksum regex.find_all 2000
+regex.find_all	2000	305
+# checksum regex.find_all 2000
+regex.find_all	2000	288
+# checksum regex.find_all 2000
+regex.find_all	2000	300
+# checksum regex.find_all 2000
+regex.find_all	2000	280
+# checksum regex.find_all 2000
+regex.find_all	2000	294
+# checksum regex.find_all 2000
+regex.find_all	2000	356
+# checksum regex.find_all 2000
+regex.find_all	2000	278
+# checksum regex.find_all 2000
+regex.find_all	2000	315
+# checksum regex.find_all 2000
+regex.find_all	2000	325
+# checksum regex.find_all 2000
+regex.find_all	2000	282
+# checksum regex.find_all 2000
+regex.find_all	2000	316
+# checksum regex.find_all 2000
+regex.find_all	2000	281
+# checksum regex.find_all 2000
+regex.find_all	2000	773
+# checksum regex.find_all 2000
+before archive.tar_pack
+archive.tar_pack	2000	8554
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1909
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2142
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1824
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1941
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2144
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1868
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1968
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1919
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1885
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1958
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1699
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1879
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1947
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1770
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1752
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1798
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1743
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2096
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1876
+# checksum archive.tar_pack 2049024
+after archive.tar_pack
+archive.tar_pack	2000	6696
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2018
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1948
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1942
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1755
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1550
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1621
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1535
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1782
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1925
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1751
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2538
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2278
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1657
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1695
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3020
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2124
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1789
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1686
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1891
+# checksum archive.tar_pack 2049024
+after map.string_put_get
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+map.string_put_get	100000	92
+# checksum map.string_put_get 50000
+map.string_put_get	100000	60
+# checksum map.string_put_get 50000
+map.string_put_get	100000	64
+# checksum map.string_put_get 50000
+map.string_put_get	100000	52
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	89
+# checksum map.string_put_get 50000
+map.string_put_get	100000	95
+# checksum map.string_put_get 50000
+map.string_put_get	100000	83
+# checksum map.string_put_get 50000
+map.string_put_get	100000	62
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	91
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+map.string_put_get	100000	77
+# checksum map.string_put_get 50000
+map.string_put_get	100000	80
+# checksum map.string_put_get 50000
+before map.string_put_get
+map.string_put_get	100000	62
+# checksum map.string_put_get 50000
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+map.string_put_get	100000	58
+# checksum map.string_put_get 50000
+map.string_put_get	100000	59
+# checksum map.string_put_get 50000
+map.string_put_get	100000	56
+# checksum map.string_put_get 50000
+map.string_put_get	100000	57
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	97
+# checksum map.string_put_get 50000
+map.string_put_get	100000	86
+# checksum map.string_put_get 50000
+map.string_put_get	100000	71
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	86
+# checksum map.string_put_get 50000
+map.string_put_get	100000	94
+# checksum map.string_put_get 50000
+map.string_put_get	100000	88
+# checksum map.string_put_get 50000
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+after regex.find_all
+regex.find_all	2000	305
+# checksum regex.find_all 2000
+regex.find_all	2000	282
+# checksum regex.find_all 2000
+regex.find_all	2000	286
+# checksum regex.find_all 2000
+regex.find_all	2000	290
+# checksum regex.find_all 2000
+regex.find_all	2000	284
+# checksum regex.find_all 2000
+regex.find_all	2000	321
+# checksum regex.find_all 2000
+regex.find_all	2000	294
+# checksum regex.find_all 2000
+regex.find_all	2000	272
+# checksum regex.find_all 2000
+regex.find_all	2000	298
+# checksum regex.find_all 2000
+regex.find_all	2000	275
+# checksum regex.find_all 2000
+regex.find_all	2000	283
+# checksum regex.find_all 2000
+regex.find_all	2000	285
+# checksum regex.find_all 2000
+regex.find_all	2000	299
+# checksum regex.find_all 2000
+regex.find_all	2000	291
+# checksum regex.find_all 2000
+regex.find_all	2000	295
+# checksum regex.find_all 2000
+regex.find_all	2000	346
+# checksum regex.find_all 2000
+regex.find_all	2000	296
+# checksum regex.find_all 2000
+regex.find_all	2000	278
+# checksum regex.find_all 2000
+regex.find_all	2000	314
+# checksum regex.find_all 2000
+regex.find_all	2000	457
+# checksum regex.find_all 2000
+before regex.find_all
+regex.find_all	2000	313
+# checksum regex.find_all 2000
+regex.find_all	2000	294
+# checksum regex.find_all 2000
+regex.find_all	2000	285
+# checksum regex.find_all 2000
+regex.find_all	2000	299
+# checksum regex.find_all 2000
+regex.find_all	2000	281
+# checksum regex.find_all 2000
+regex.find_all	2000	288
+# checksum regex.find_all 2000
+regex.find_all	2000	564
+# checksum regex.find_all 2000
+regex.find_all	2000	293
+# checksum regex.find_all 2000
+regex.find_all	2000	280
+# checksum regex.find_all 2000
+regex.find_all	2000	287
+# checksum regex.find_all 2000
+regex.find_all	2000	325
+# checksum regex.find_all 2000
+regex.find_all	2000	285
+# checksum regex.find_all 2000
+regex.find_all	2000	294
+# checksum regex.find_all 2000
+regex.find_all	2000	291
+# checksum regex.find_all 2000
+regex.find_all	2000	291
+# checksum regex.find_all 2000
+regex.find_all	2000	278
+# checksum regex.find_all 2000
+regex.find_all	2000	314
+# checksum regex.find_all 2000
+regex.find_all	2000	303
+# checksum regex.find_all 2000
+regex.find_all	2000	295
+# checksum regex.find_all 2000
+regex.find_all	2000	428
+# checksum regex.find_all 2000
+after archive.tar_pack
+archive.tar_pack	2000	3812
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1907
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	5238
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	6866
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1913
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1699
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1968
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1755
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1700
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1981
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1661
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2762
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2036
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1715
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1750
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1531
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1601
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1703
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1482
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1474
+# checksum archive.tar_pack 2049024
+before archive.tar_pack
+archive.tar_pack	2000	6721
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2146
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1881
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1817
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1954
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1650
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1978
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2232
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2191
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1893
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1959
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1721
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1926
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1691
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1797
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2082
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1953
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1774
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2005
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1971
+# checksum archive.tar_pack 2049024
+after string.upper
+string.upper	200	53757
+# checksum string.upper 3144600
+string.upper	200	47983
+# checksum string.upper 3144600
+string.upper	200	47974
+# checksum string.upper 3144600
+string.upper	200	52444
+# checksum string.upper 3144600
+string.upper	200	47681
+# checksum string.upper 3144600
+string.upper	200	49509
+# checksum string.upper 3144600
+string.upper	200	46861
+# checksum string.upper 3144600
+string.upper	200	49588
+# checksum string.upper 3144600
+string.upper	200	48315
+# checksum string.upper 3144600
+string.upper	200	47274
+# checksum string.upper 3144600
+string.upper	200	58590
+# checksum string.upper 3144600
+string.upper	200	45921
+# checksum string.upper 3144600
+string.upper	200	48643
+# checksum string.upper 3144600
+string.upper	200	49719
+# checksum string.upper 3144600
+string.upper	200	48807
+# checksum string.upper 3144600
+string.upper	200	48887
+# checksum string.upper 3144600
+string.upper	200	50960
+# checksum string.upper 3144600
+string.upper	200	48931
+# checksum string.upper 3144600
+string.upper	200	47654
+# checksum string.upper 3144600
+string.upper	200	46726
+# checksum string.upper 3144600
+before string.upper
+string.upper	200	53111
+# checksum string.upper 3144600
+string.upper	200	46702
+# checksum string.upper 3144600
+string.upper	200	50346
+# checksum string.upper 3144600
+string.upper	200	46460
+# checksum string.upper 3144600
+string.upper	200	46359
+# checksum string.upper 3144600
+string.upper	200	45942
+# checksum string.upper 3144600
+string.upper	200	49407
+# checksum string.upper 3144600
+string.upper	200	47635
+# checksum string.upper 3144600
+string.upper	200	47945
+# checksum string.upper 3144600
+string.upper	200	48278
+# checksum string.upper 3144600
+string.upper	200	53065
+# checksum string.upper 3144600
+string.upper	200	46537
+# checksum string.upper 3144600
+string.upper	200	45268
+# checksum string.upper 3144600
+string.upper	200	46244
+# checksum string.upper 3144600
+string.upper	200	45951
+# checksum string.upper 3144600
+string.upper	200	47447
+# checksum string.upper 3144600
+string.upper	200	46998
+# checksum string.upper 3144600
+string.upper	200	45468
+# checksum string.upper 3144600
+string.upper	200	47525
+# checksum string.upper 3144600
+string.upper	200	47520
+# checksum string.upper 3144600
+before regex.find_all
+regex.find_all	2000	330
+# checksum regex.find_all 2000
+regex.find_all	2000	282
+# checksum regex.find_all 2000
+regex.find_all	2000	305
+# checksum regex.find_all 2000
+regex.find_all	2000	300
+# checksum regex.find_all 2000
+regex.find_all	2000	287
+# checksum regex.find_all 2000
+regex.find_all	2000	307
+# checksum regex.find_all 2000
+regex.find_all	2000	345
+# checksum regex.find_all 2000
+regex.find_all	2000	292
+# checksum regex.find_all 2000
+regex.find_all	2000	308
+# checksum regex.find_all 2000
+regex.find_all	2000	288
+# checksum regex.find_all 2000
+regex.find_all	2000	314
+# checksum regex.find_all 2000
+regex.find_all	2000	294
+# checksum regex.find_all 2000
+regex.find_all	2000	339
+# checksum regex.find_all 2000
+regex.find_all	2000	333
+# checksum regex.find_all 2000
+regex.find_all	2000	300
+# checksum regex.find_all 2000
+regex.find_all	2000	283
+# checksum regex.find_all 2000
+regex.find_all	2000	300
+# checksum regex.find_all 2000
+regex.find_all	2000	280
+# checksum regex.find_all 2000
+regex.find_all	2000	306
+# checksum regex.find_all 2000
+regex.find_all	2000	294
+# checksum regex.find_all 2000
+after regex.find_all
+regex.find_all	2000	315
+# checksum regex.find_all 2000
+regex.find_all	2000	280
+# checksum regex.find_all 2000
+regex.find_all	2000	307
+# checksum regex.find_all 2000
+regex.find_all	2000	301
+# checksum regex.find_all 2000
+regex.find_all	2000	291
+# checksum regex.find_all 2000
+regex.find_all	2000	319
+# checksum regex.find_all 2000
+regex.find_all	2000	283
+# checksum regex.find_all 2000
+regex.find_all	2000	365
+# checksum regex.find_all 2000
+regex.find_all	2000	305
+# checksum regex.find_all 2000
+regex.find_all	2000	323
+# checksum regex.find_all 2000
+regex.find_all	2000	283
+# checksum regex.find_all 2000
+regex.find_all	2000	334
+# checksum regex.find_all 2000
+regex.find_all	2000	292
+# checksum regex.find_all 2000
+regex.find_all	2000	333
+# checksum regex.find_all 2000
+regex.find_all	2000	310
+# checksum regex.find_all 2000
+regex.find_all	2000	343
+# checksum regex.find_all 2000
+regex.find_all	2000	298
+# checksum regex.find_all 2000
+regex.find_all	2000	311
+# checksum regex.find_all 2000
+regex.find_all	2000	288
+# checksum regex.find_all 2000
+regex.find_all	2000	296
+# checksum regex.find_all 2000
+before archive.tar_pack
+archive.tar_pack	2000	3666
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1873
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2192
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1903
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1717
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1666
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1745
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1743
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1685
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1698
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1651
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2154
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1651
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1891
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2239
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1630
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2761
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1588
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1793
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1834
+# checksum archive.tar_pack 2049024
+after archive.tar_pack
+archive.tar_pack	2000	6543
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2068
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2051
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2074
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1840
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2753
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2725
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	5732
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	5161
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2421
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2168
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2459
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1756
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2020
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2237
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1852
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1837
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2052
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1671
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2590
+# checksum archive.tar_pack 2049024
+before string.upper
+string.upper	200	57027
+# checksum string.upper 3144600
+string.upper	200	46524
+# checksum string.upper 3144600
+string.upper	200	48273
+# checksum string.upper 3144600
+string.upper	200	55045
+# checksum string.upper 3144600
+string.upper	200	45999
+# checksum string.upper 3144600
+string.upper	200	46191
+# checksum string.upper 3144600
+string.upper	200	48403
+# checksum string.upper 3144600
+string.upper	200	47972
+# checksum string.upper 3144600
+string.upper	200	51094
+# checksum string.upper 3144600
+string.upper	200	48494
+# checksum string.upper 3144600
+string.upper	200	44908
+# checksum string.upper 3144600
+string.upper	200	46990
+# checksum string.upper 3144600
+string.upper	200	46390
+# checksum string.upper 3144600
+string.upper	200	46784
+# checksum string.upper 3144600
+string.upper	200	46150
+# checksum string.upper 3144600
+string.upper	200	47991
+# checksum string.upper 3144600
+string.upper	200	46617
+# checksum string.upper 3144600
+string.upper	200	47562
+# checksum string.upper 3144600
+string.upper	200	45470
+# checksum string.upper 3144600
+string.upper	200	47563
+# checksum string.upper 3144600
+after string.upper
+string.upper	200	55655
+# checksum string.upper 3144600
+string.upper	200	47299
+# checksum string.upper 3144600
+string.upper	200	53705
+# checksum string.upper 3144600
+string.upper	200	47680
+# checksum string.upper 3144600
+string.upper	200	46758
+# checksum string.upper 3144600
+string.upper	200	46980
+# checksum string.upper 3144600
+string.upper	200	47307
+# checksum string.upper 3144600
+string.upper	200	53745
+# checksum string.upper 3144600
+string.upper	200	60561
+# checksum string.upper 3144600
+string.upper	200	48050
+# checksum string.upper 3144600
+string.upper	200	54111
+# checksum string.upper 3144600
+string.upper	200	59700
+# checksum string.upper 3144600
+string.upper	200	61422
+# checksum string.upper 3144600
+string.upper	200	50155
+# checksum string.upper 3144600
+string.upper	200	57147
+# checksum string.upper 3144600
+string.upper	200	47914
+# checksum string.upper 3144600
+string.upper	200	49326
+# checksum string.upper 3144600
+string.upper	200	49059
+# checksum string.upper 3144600
+string.upper	200	57490
+# checksum string.upper 3144600
+string.upper	200	48468
+# checksum string.upper 3144600
+before map.string_put_get
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	90
+# checksum map.string_put_get 50000
+map.string_put_get	100000	60
+# checksum map.string_put_get 50000
+map.string_put_get	100000	59
+# checksum map.string_put_get 50000
+map.string_put_get	100000	60
+# checksum map.string_put_get 50000
+map.string_put_get	100000	47
+# checksum map.string_put_get 50000
+map.string_put_get	100000	61
+# checksum map.string_put_get 50000
+map.string_put_get	100000	55
+# checksum map.string_put_get 50000
+map.string_put_get	100000	59
+# checksum map.string_put_get 50000
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+map.string_put_get	100000	98
+# checksum map.string_put_get 50000
+map.string_put_get	100000	73
+# checksum map.string_put_get 50000
+map.string_put_get	100000	57
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	105
+# checksum map.string_put_get 50000
+map.string_put_get	100000	68
+# checksum map.string_put_get 50000
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+map.string_put_get	100000	94
+# checksum map.string_put_get 50000
+after map.string_put_get
+map.string_put_get	100000	58
+# checksum map.string_put_get 50000
+map.string_put_get	100000	48
+# checksum map.string_put_get 50000
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+map.string_put_get	100000	88
+# checksum map.string_put_get 50000
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+map.string_put_get	100000	94
+# checksum map.string_put_get 50000
+map.string_put_get	100000	73
+# checksum map.string_put_get 50000
+map.string_put_get	100000	90
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+map.string_put_get	100000	82
+# checksum map.string_put_get 50000
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+map.string_put_get	100000	96
+# checksum map.string_put_get 50000
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	96
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000
+after archive.tar_pack
+archive.tar_pack	2000	5351
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2207
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2521
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2389
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2413
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	4261
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2139
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2291
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2139
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3005
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	5449
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1710
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1549
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	5790
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	5281
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3856
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1584
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1753
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2716
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2009
+# checksum archive.tar_pack 2049024
+before archive.tar_pack
+archive.tar_pack	2000	8001
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1852
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2293
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1964
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1964
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1704
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1975
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	6583
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1968
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1609
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1951
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2136
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2193
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2048
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1845
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2382
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	5169
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2126
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1916
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1854
+# checksum archive.tar_pack 2049024
+after string.upper
+string.upper	200	54966
+# checksum string.upper 3144600
+string.upper	200	47414
+# checksum string.upper 3144600
+string.upper	200	54425
+# checksum string.upper 3144600
+string.upper	200	49230
+# checksum string.upper 3144600
+string.upper	200	49428
+# checksum string.upper 3144600
+string.upper	200	48271
+# checksum string.upper 3144600
+string.upper	200	48455
+# checksum string.upper 3144600
+string.upper	200	49327
+# checksum string.upper 3144600
+string.upper	200	46193
+# checksum string.upper 3144600
+string.upper	200	46109
+# checksum string.upper 3144600
+string.upper	200	46683
+# checksum string.upper 3144600
+string.upper	200	47003
+# checksum string.upper 3144600
+string.upper	200	48188
+# checksum string.upper 3144600
+string.upper	200	49186
+# checksum string.upper 3144600
+string.upper	200	49281
+# checksum string.upper 3144600
+string.upper	200	47844
+# checksum string.upper 3144600
+string.upper	200	48591
+# checksum string.upper 3144600
+string.upper	200	48152
+# checksum string.upper 3144600
+string.upper	200	46471
+# checksum string.upper 3144600
+string.upper	200	46975
+# checksum string.upper 3144600
+before string.upper
+string.upper	200	53994
+# checksum string.upper 3144600
+string.upper	200	50943
+# checksum string.upper 3144600
+string.upper	200	48198
+# checksum string.upper 3144600
+string.upper	200	49770
+# checksum string.upper 3144600
+string.upper	200	50516
+# checksum string.upper 3144600
+string.upper	200	49196
+# checksum string.upper 3144600
+string.upper	200	47760
+# checksum string.upper 3144600
+string.upper	200	48988
+# checksum string.upper 3144600
+string.upper	200	46077
+# checksum string.upper 3144600
+string.upper	200	46018
+# checksum string.upper 3144600
+string.upper	200	45358
+# checksum string.upper 3144600
+string.upper	200	65441
+# checksum string.upper 3144600
+string.upper	200	69869
+# checksum string.upper 3144600
+string.upper	200	50727
+# checksum string.upper 3144600
+string.upper	200	49617
+# checksum string.upper 3144600
+string.upper	200	48527
+# checksum string.upper 3144600
+string.upper	200	47732
+# checksum string.upper 3144600
+string.upper	200	47837
+# checksum string.upper 3144600
+string.upper	200	50588
+# checksum string.upper 3144600
+string.upper	200	62347
+# checksum string.upper 3144600
+after map.string_put_get
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+map.string_put_get	100000	93
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	61
+# checksum map.string_put_get 50000
+map.string_put_get	100000	59
+# checksum map.string_put_get 50000
+map.string_put_get	100000	83
+# checksum map.string_put_get 50000
+map.string_put_get	100000	85
+# checksum map.string_put_get 50000
+map.string_put_get	100000	98
+# checksum map.string_put_get 50000
+map.string_put_get	100000	64
+# checksum map.string_put_get 50000
+map.string_put_get	100000	91
+# checksum map.string_put_get 50000
+map.string_put_get	100000	83
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+map.string_put_get	100000	215
+# checksum map.string_put_get 50000
+map.string_put_get	100000	77
+# checksum map.string_put_get 50000
+map.string_put_get	100000	93
+# checksum map.string_put_get 50000
+map.string_put_get	100000	73
+# checksum map.string_put_get 50000
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	61
+# checksum map.string_put_get 50000
+before map.string_put_get
+map.string_put_get	100000	81
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	58
+# checksum map.string_put_get 50000
+map.string_put_get	100000	60
+# checksum map.string_put_get 50000
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	73
+# checksum map.string_put_get 50000
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	80
+# checksum map.string_put_get 50000
+map.string_put_get	100000	83
+# checksum map.string_put_get 50000
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	73
+# checksum map.string_put_get 50000
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+map.string_put_get	100000	68
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+after regex.find_all
+regex.find_all	2000	295
+# checksum regex.find_all 2000
+regex.find_all	2000	291
+# checksum regex.find_all 2000
+regex.find_all	2000	284
+# checksum regex.find_all 2000
+regex.find_all	2000	302
+# checksum regex.find_all 2000
+regex.find_all	2000	298
+# checksum regex.find_all 2000
+regex.find_all	2000	282
+# checksum regex.find_all 2000
+regex.find_all	2000	294
+# checksum regex.find_all 2000
+regex.find_all	2000	282
+# checksum regex.find_all 2000
+regex.find_all	2000	291
+# checksum regex.find_all 2000
+regex.find_all	2000	288
+# checksum regex.find_all 2000
+regex.find_all	2000	290
+# checksum regex.find_all 2000
+regex.find_all	2000	290
+# checksum regex.find_all 2000
+regex.find_all	2000	296
+# checksum regex.find_all 2000
+regex.find_all	2000	336
+# checksum regex.find_all 2000
+regex.find_all	2000	301
+# checksum regex.find_all 2000
+regex.find_all	2000	286
+# checksum regex.find_all 2000
+regex.find_all	2000	314
+# checksum regex.find_all 2000
+regex.find_all	2000	281
+# checksum regex.find_all 2000
+regex.find_all	2000	316
+# checksum regex.find_all 2000
+regex.find_all	2000	578
+# checksum regex.find_all 2000
+before regex.find_all
+regex.find_all	2000	304
+# checksum regex.find_all 2000
+regex.find_all	2000	359
+# checksum regex.find_all 2000
+regex.find_all	2000	362
+# checksum regex.find_all 2000
+regex.find_all	2000	426
+# checksum regex.find_all 2000
+regex.find_all	2000	331
+# checksum regex.find_all 2000
+regex.find_all	2000	295
+# checksum regex.find_all 2000
+regex.find_all	2000	450
+# checksum regex.find_all 2000
+regex.find_all	2000	869
+# checksum regex.find_all 2000
+regex.find_all	2000	322
+# checksum regex.find_all 2000
+regex.find_all	2000	330
+# checksum regex.find_all 2000
+regex.find_all	2000	361
+# checksum regex.find_all 2000
+regex.find_all	2000	305
+# checksum regex.find_all 2000
+regex.find_all	2000	310
+# checksum regex.find_all 2000
+regex.find_all	2000	281
+# checksum regex.find_all 2000
+regex.find_all	2000	285
+# checksum regex.find_all 2000
+regex.find_all	2000	283
+# checksum regex.find_all 2000
+regex.find_all	2000	1029
+# checksum regex.find_all 2000
+regex.find_all	2000	274
+# checksum regex.find_all 2000
+regex.find_all	2000	355
+# checksum regex.find_all 2000
+regex.find_all	2000	317
+# checksum regex.find_all 2000
+before string.upper
+string.upper	200	55887
+# checksum string.upper 3144600
+string.upper	200	50079
+# checksum string.upper 3144600
+string.upper	200	46142
+# checksum string.upper 3144600
+string.upper	200	46995
+# checksum string.upper 3144600
+string.upper	200	48480
+# checksum string.upper 3144600
+string.upper	200	47209
+# checksum string.upper 3144600
+string.upper	200	51460
+# checksum string.upper 3144600
+string.upper	200	49749
+# checksum string.upper 3144600
+string.upper	200	68908
+# checksum string.upper 3144600
+string.upper	200	73565
+# checksum string.upper 3144600
+string.upper	200	48338
+# checksum string.upper 3144600
+string.upper	200	49035
+# checksum string.upper 3144600
+string.upper	200	49644
+# checksum string.upper 3144600
+string.upper	200	48374
+# checksum string.upper 3144600
+string.upper	200	49234
+# checksum string.upper 3144600
+string.upper	200	47893
+# checksum string.upper 3144600
+string.upper	200	52233
+# checksum string.upper 3144600
+string.upper	200	46637
+# checksum string.upper 3144600
+string.upper	200	55609
+# checksum string.upper 3144600
+string.upper	200	49363
+# checksum string.upper 3144600
+after string.upper
+string.upper	200	57130
+# checksum string.upper 3144600
+string.upper	200	48727
+# checksum string.upper 3144600
+string.upper	200	46998
+# checksum string.upper 3144600
+string.upper	200	55379
+# checksum string.upper 3144600
+string.upper	200	47441
+# checksum string.upper 3144600
+string.upper	200	50233
+# checksum string.upper 3144600
+string.upper	200	49513
+# checksum string.upper 3144600
+string.upper	200	57678
+# checksum string.upper 3144600
+string.upper	200	47944
+# checksum string.upper 3144600
+string.upper	200	47497
+# checksum string.upper 3144600
+string.upper	200	49937
+# checksum string.upper 3144600
+string.upper	200	52289
+# checksum string.upper 3144600
+string.upper	200	49468
+# checksum string.upper 3144600
+string.upper	200	50217
+# checksum string.upper 3144600
+string.upper	200	56333
+# checksum string.upper 3144600
+string.upper	200	50707
+# checksum string.upper 3144600
+string.upper	200	47755
+# checksum string.upper 3144600
+string.upper	200	46699
+# checksum string.upper 3144600
+string.upper	200	46316
+# checksum string.upper 3144600
+string.upper	200	54938
+# checksum string.upper 3144600
+before map.string_put_get
+map.string_put_get	100000	61
+# checksum map.string_put_get 50000
+map.string_put_get	100000	59
+# checksum map.string_put_get 50000
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+map.string_put_get	100000	63
+# checksum map.string_put_get 50000
+map.string_put_get	100000	46
+# checksum map.string_put_get 50000
+map.string_put_get	100000	48
+# checksum map.string_put_get 50000
+map.string_put_get	100000	53
+# checksum map.string_put_get 50000
+map.string_put_get	100000	64
+# checksum map.string_put_get 50000
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+map.string_put_get	100000	96
+# checksum map.string_put_get 50000
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+map.string_put_get	100000	82
+# checksum map.string_put_get 50000
+map.string_put_get	100000	77
+# checksum map.string_put_get 50000
+map.string_put_get	100000	71
+# checksum map.string_put_get 50000
+after map.string_put_get
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	73
+# checksum map.string_put_get 50000
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+map.string_put_get	100000	86
+# checksum map.string_put_get 50000
+map.string_put_get	100000	121
+# checksum map.string_put_get 50000
+map.string_put_get	100000	117
+# checksum map.string_put_get 50000
+map.string_put_get	100000	58
+# checksum map.string_put_get 50000
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	100
+# checksum map.string_put_get 50000
+map.string_put_get	100000	73
+# checksum map.string_put_get 50000
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+map.string_put_get	100000	101
+# checksum map.string_put_get 50000
+map.string_put_get	100000	94
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	77
+# checksum map.string_put_get 50000
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+map.string_put_get	100000	59
+# checksum map.string_put_get 50000
+map.string_put_get	100000	92
+# checksum map.string_put_get 50000
+before regex.find_all
+regex.find_all	2000	314
+# checksum regex.find_all 2000
+regex.find_all	2000	284
+# checksum regex.find_all 2000
+regex.find_all	2000	291
+# checksum regex.find_all 2000
+regex.find_all	2000	291
+# checksum regex.find_all 2000
+regex.find_all	2000	314
+# checksum regex.find_all 2000
+regex.find_all	2000	292
+# checksum regex.find_all 2000
+regex.find_all	2000	312
+# checksum regex.find_all 2000
+regex.find_all	2000	275
+# checksum regex.find_all 2000
+regex.find_all	2000	339
+# checksum regex.find_all 2000
+regex.find_all	2000	290
+# checksum regex.find_all 2000
+regex.find_all	2000	277
+# checksum regex.find_all 2000
+regex.find_all	2000	319
+# checksum regex.find_all 2000
+regex.find_all	2000	279
+# checksum regex.find_all 2000
+regex.find_all	2000	313
+# checksum regex.find_all 2000
+regex.find_all	2000	321
+# checksum regex.find_all 2000
+regex.find_all	2000	278
+# checksum regex.find_all 2000
+regex.find_all	2000	450
+# checksum regex.find_all 2000
+regex.find_all	2000	288
+# checksum regex.find_all 2000
+regex.find_all	2000	280
+# checksum regex.find_all 2000
+regex.find_all	2000	575
+# checksum regex.find_all 2000
+after regex.find_all
+regex.find_all	2000	339
+# checksum regex.find_all 2000
+regex.find_all	2000	296
+# checksum regex.find_all 2000
+regex.find_all	2000	294
+# checksum regex.find_all 2000
+regex.find_all	2000	294
+# checksum regex.find_all 2000
+regex.find_all	2000	300
+# checksum regex.find_all 2000
+regex.find_all	2000	290
+# checksum regex.find_all 2000
+regex.find_all	2000	368
+# checksum regex.find_all 2000
+regex.find_all	2000	281
+# checksum regex.find_all 2000
+regex.find_all	2000	324
+# checksum regex.find_all 2000
+regex.find_all	2000	304
+# checksum regex.find_all 2000
+regex.find_all	2000	282
+# checksum regex.find_all 2000
+regex.find_all	2000	283
+# checksum regex.find_all 2000
+regex.find_all	2000	289
+# checksum regex.find_all 2000
+regex.find_all	2000	307
+# checksum regex.find_all 2000
+regex.find_all	2000	295
+# checksum regex.find_all 2000
+regex.find_all	2000	357
+# checksum regex.find_all 2000
+regex.find_all	2000	320
+# checksum regex.find_all 2000
+regex.find_all	2000	283
+# checksum regex.find_all 2000
+regex.find_all	2000	282
+# checksum regex.find_all 2000
+regex.find_all	2000	304
+# checksum regex.find_all 2000
+before archive.tar_pack
+archive.tar_pack	2000	6211
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1952
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2571
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2062
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1909
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1729
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3700
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1988
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2359
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2779
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2053
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2268
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1732
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2065
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1989
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1904
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2541
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2018
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2451
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2443
+# checksum archive.tar_pack 2049024
+after archive.tar_pack
+archive.tar_pack	2000	4348
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	5728
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1664
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2841
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2864
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	5897
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	5615
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2110
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2390
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3391
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2073
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2106
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3419
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2833
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2155
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2304
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2281
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2443
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2217
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2919
+# checksum archive.tar_pack 2049024
+after map.string_put_get
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000
+map.string_put_get	100000	71
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	120
+# checksum map.string_put_get 50000
+map.string_put_get	100000	55
+# checksum map.string_put_get 50000
+map.string_put_get	100000	56
+# checksum map.string_put_get 50000
+map.string_put_get	100000	54
+# checksum map.string_put_get 50000
+map.string_put_get	100000	58
+# checksum map.string_put_get 50000
+map.string_put_get	100000	73
+# checksum map.string_put_get 50000
+map.string_put_get	100000	61
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+map.string_put_get	100000	63
+# checksum map.string_put_get 50000
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	57
+# checksum map.string_put_get 50000
+map.string_put_get	100000	59
+# checksum map.string_put_get 50000
+before map.string_put_get
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	71
+# checksum map.string_put_get 50000
+map.string_put_get	100000	64
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	73
+# checksum map.string_put_get 50000
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	81
+# checksum map.string_put_get 50000
+map.string_put_get	100000	91
+# checksum map.string_put_get 50000
+map.string_put_get	100000	80
+# checksum map.string_put_get 50000
+map.string_put_get	100000	100
+# checksum map.string_put_get 50000
+map.string_put_get	100000	64
+# checksum map.string_put_get 50000
+map.string_put_get	100000	71
+# checksum map.string_put_get 50000
+map.string_put_get	100000	57
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	107
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+after regex.find_all
+regex.find_all	2000	345
+# checksum regex.find_all 2000
+regex.find_all	2000	276
+# checksum regex.find_all 2000
+regex.find_all	2000	293
+# checksum regex.find_all 2000
+regex.find_all	2000	283
+# checksum regex.find_all 2000
+regex.find_all	2000	296
+# checksum regex.find_all 2000
+regex.find_all	2000	284
+# checksum regex.find_all 2000
+regex.find_all	2000	291
+# checksum regex.find_all 2000
+regex.find_all	2000	297
+# checksum regex.find_all 2000
+regex.find_all	2000	280
+# checksum regex.find_all 2000
+regex.find_all	2000	283
+# checksum regex.find_all 2000
+regex.find_all	2000	339
+# checksum regex.find_all 2000
+regex.find_all	2000	281
+# checksum regex.find_all 2000
+regex.find_all	2000	301
+# checksum regex.find_all 2000
+regex.find_all	2000	278
+# checksum regex.find_all 2000
+regex.find_all	2000	320
+# checksum regex.find_all 2000
+regex.find_all	2000	309
+# checksum regex.find_all 2000
+regex.find_all	2000	312
+# checksum regex.find_all 2000
+regex.find_all	2000	285
+# checksum regex.find_all 2000
+regex.find_all	2000	285
+# checksum regex.find_all 2000
+regex.find_all	2000	622
+# checksum regex.find_all 2000
+before regex.find_all
+regex.find_all	2000	349
+# checksum regex.find_all 2000
+regex.find_all	2000	360
+# checksum regex.find_all 2000
+regex.find_all	2000	391
+# checksum regex.find_all 2000
+regex.find_all	2000	430
+# checksum regex.find_all 2000
+regex.find_all	2000	303
+# checksum regex.find_all 2000
+regex.find_all	2000	339
+# checksum regex.find_all 2000
+regex.find_all	2000	356
+# checksum regex.find_all 2000
+regex.find_all	2000	311
+# checksum regex.find_all 2000
+regex.find_all	2000	293
+# checksum regex.find_all 2000
+regex.find_all	2000	282
+# checksum regex.find_all 2000
+regex.find_all	2000	290
+# checksum regex.find_all 2000
+regex.find_all	2000	305
+# checksum regex.find_all 2000
+regex.find_all	2000	319
+# checksum regex.find_all 2000
+regex.find_all	2000	417
+# checksum regex.find_all 2000
+regex.find_all	2000	298
+# checksum regex.find_all 2000
+regex.find_all	2000	297
+# checksum regex.find_all 2000
+regex.find_all	2000	332
+# checksum regex.find_all 2000
+regex.find_all	2000	341
+# checksum regex.find_all 2000
+regex.find_all	2000	788
+# checksum regex.find_all 2000
+regex.find_all	2000	341
+# checksum regex.find_all 2000
+after archive.tar_pack
+archive.tar_pack	2000	3744
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2042
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1964
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1589
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2083
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1995
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1891
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2705
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2119
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1787
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2017
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2022
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	4758
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	7843
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2843
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2087
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2262
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3624
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2162
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1931
+# checksum archive.tar_pack 2049024
+before archive.tar_pack
+archive.tar_pack	2000	8716
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2194
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2679
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2590
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2289
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2601
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2093
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2004
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1770
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2318
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2199
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1856
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1786
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1789
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1933
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2462
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1884
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1892
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2832
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1691
+# checksum archive.tar_pack 2049024
+after string.upper
+string.upper	200	100496
+# checksum string.upper 3144600
+string.upper	200	57408
+# checksum string.upper 3144600
+string.upper	200	67089
+# checksum string.upper 3144600
+string.upper	200	52294
+# checksum string.upper 3144600
+string.upper	200	83158
+# checksum string.upper 3144600
+string.upper	200	53401
+# checksum string.upper 3144600
+string.upper	200	50652
+# checksum string.upper 3144600
+string.upper	200	52304
+# checksum string.upper 3144600
+string.upper	200	49384
+# checksum string.upper 3144600
+string.upper	200	52465
+# checksum string.upper 3144600
+string.upper	200	77965
+# checksum string.upper 3144600
+string.upper	200	53281
+# checksum string.upper 3144600
+string.upper	200	53549
+# checksum string.upper 3144600
+string.upper	200	54386
+# checksum string.upper 3144600
+string.upper	200	61110
+# checksum string.upper 3144600
+string.upper	200	50101
+# checksum string.upper 3144600
+string.upper	200	47575
+# checksum string.upper 3144600
+string.upper	200	47360
+# checksum string.upper 3144600
+string.upper	200	52438
+# checksum string.upper 3144600
+string.upper	200	48747
+# checksum string.upper 3144600
+before string.upper
+string.upper	200	58796
+# checksum string.upper 3144600
+string.upper	200	46995
+# checksum string.upper 3144600
+string.upper	200	48571
+# checksum string.upper 3144600
+string.upper	200	47731
+# checksum string.upper 3144600
+string.upper	200	51175
+# checksum string.upper 3144600
+string.upper	200	47044
+# checksum string.upper 3144600
+string.upper	200	49663
+# checksum string.upper 3144600
+string.upper	200	48130
+# checksum string.upper 3144600
+string.upper	200	49705
+# checksum string.upper 3144600
+string.upper	200	51110
+# checksum string.upper 3144600
+string.upper	200	51038
+# checksum string.upper 3144600
+string.upper	200	47624
+# checksum string.upper 3144600
+string.upper	200	46982
+# checksum string.upper 3144600
+string.upper	200	47997
+# checksum string.upper 3144600
+string.upper	200	52090
+# checksum string.upper 3144600
+string.upper	200	48982
+# checksum string.upper 3144600
+string.upper	200	50782
+# checksum string.upper 3144600
+string.upper	200	54216
+# checksum string.upper 3144600
+string.upper	200	51168
+# checksum string.upper 3144600
+string.upper	200	46503
+# checksum string.upper 3144600
+before regex.find_all
+regex.find_all	2000	332
+# checksum regex.find_all 2000
+regex.find_all	2000	341
+# checksum regex.find_all 2000
+regex.find_all	2000	306
+# checksum regex.find_all 2000
+regex.find_all	2000	313
+# checksum regex.find_all 2000
+regex.find_all	2000	384
+# checksum regex.find_all 2000
+regex.find_all	2000	330
+# checksum regex.find_all 2000
+regex.find_all	2000	294
+# checksum regex.find_all 2000
+regex.find_all	2000	325
+# checksum regex.find_all 2000
+regex.find_all	2000	291
+# checksum regex.find_all 2000
+regex.find_all	2000	325
+# checksum regex.find_all 2000
+regex.find_all	2000	318
+# checksum regex.find_all 2000
+regex.find_all	2000	288
+# checksum regex.find_all 2000
+regex.find_all	2000	307
+# checksum regex.find_all 2000
+regex.find_all	2000	378
+# checksum regex.find_all 2000
+regex.find_all	2000	287
+# checksum regex.find_all 2000
+regex.find_all	2000	346
+# checksum regex.find_all 2000
+regex.find_all	2000	308
+# checksum regex.find_all 2000
+regex.find_all	2000	282
+# checksum regex.find_all 2000
+regex.find_all	2000	303
+# checksum regex.find_all 2000
+regex.find_all	2000	623
+# checksum regex.find_all 2000
+after regex.find_all
+regex.find_all	2000	349
+# checksum regex.find_all 2000
+regex.find_all	2000	307
+# checksum regex.find_all 2000
+regex.find_all	2000	282
+# checksum regex.find_all 2000
+regex.find_all	2000	278
+# checksum regex.find_all 2000
+regex.find_all	2000	366
+# checksum regex.find_all 2000
+regex.find_all	2000	308
+# checksum regex.find_all 2000
+regex.find_all	2000	305
+# checksum regex.find_all 2000
+regex.find_all	2000	305
+# checksum regex.find_all 2000
+regex.find_all	2000	286
+# checksum regex.find_all 2000
+regex.find_all	2000	282
+# checksum regex.find_all 2000
+regex.find_all	2000	294
+# checksum regex.find_all 2000
+regex.find_all	2000	273
+# checksum regex.find_all 2000
+regex.find_all	2000	297
+# checksum regex.find_all 2000
+regex.find_all	2000	298
+# checksum regex.find_all 2000
+regex.find_all	2000	406
+# checksum regex.find_all 2000
+regex.find_all	2000	294
+# checksum regex.find_all 2000
+regex.find_all	2000	277
+# checksum regex.find_all 2000
+regex.find_all	2000	283
+# checksum regex.find_all 2000
+regex.find_all	2000	286
+# checksum regex.find_all 2000
+regex.find_all	2000	734
+# checksum regex.find_all 2000
+before archive.tar_pack
+archive.tar_pack	2000	4037
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1997
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1975
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1784
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1928
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1712
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1730
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2014
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1767
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1772
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2220
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2435
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1881
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1684
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1822
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3238
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2200
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2209
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1868
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1962
+# checksum archive.tar_pack 2049024
+after archive.tar_pack
+archive.tar_pack	2000	7906
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	4532
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2221
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1942
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1785
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2587
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	4684
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1957
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1958
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2061
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2033
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1913
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2595
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2008
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2034
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1924
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2276
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	4469
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2100
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2135
+# checksum archive.tar_pack 2049024
+before string.upper
+string.upper	200	56577
+# checksum string.upper 3144600
+string.upper	200	49886
+# checksum string.upper 3144600
+string.upper	200	66690
+# checksum string.upper 3144600
+string.upper	200	55390
+# checksum string.upper 3144600
+string.upper	200	50879
+# checksum string.upper 3144600
+string.upper	200	52826
+# checksum string.upper 3144600
+string.upper	200	112971
+# checksum string.upper 3144600
+string.upper	200	88724
+# checksum string.upper 3144600
+string.upper	200	51282
+# checksum string.upper 3144600
+string.upper	200	58596
+# checksum string.upper 3144600
+string.upper	200	48928
+# checksum string.upper 3144600
+string.upper	200	50384
+# checksum string.upper 3144600
+string.upper	200	54403
+# checksum string.upper 3144600
+string.upper	200	57385
+# checksum string.upper 3144600
+string.upper	200	54144
+# checksum string.upper 3144600
+string.upper	200	48034
+# checksum string.upper 3144600
+string.upper	200	51734
+# checksum string.upper 3144600
+string.upper	200	50650
+# checksum string.upper 3144600
+string.upper	200	54408
+# checksum string.upper 3144600
+string.upper	200	51571
+# checksum string.upper 3144600
+after string.upper
+string.upper	200	66804
+# checksum string.upper 3144600
+string.upper	200	56638
+# checksum string.upper 3144600
+string.upper	200	52734
+# checksum string.upper 3144600
+string.upper	200	67339
+# checksum string.upper 3144600
+string.upper	200	51467
+# checksum string.upper 3144600
+string.upper	200	53254
+# checksum string.upper 3144600
+string.upper	200	50642
+# checksum string.upper 3144600
+string.upper	200	69915
+# checksum string.upper 3144600
+string.upper	200	76087
+# checksum string.upper 3144600
+string.upper	200	61494
+# checksum string.upper 3144600
+string.upper	200	58001
+# checksum string.upper 3144600
+string.upper	200	54527
+# checksum string.upper 3144600
+string.upper	200	52884
+# checksum string.upper 3144600
+string.upper	200	51168
+# checksum string.upper 3144600
+string.upper	200	48238
+# checksum string.upper 3144600
+string.upper	200	50367
+# checksum string.upper 3144600
+string.upper	200	49105
+# checksum string.upper 3144600
+string.upper	200	51802
+# checksum string.upper 3144600
+string.upper	200	53792
+# checksum string.upper 3144600
+string.upper	200	50159
+# checksum string.upper 3144600
+before map.string_put_get
+map.string_put_get	100000	73
+# checksum map.string_put_get 50000
+map.string_put_get	100000	63
+# checksum map.string_put_get 50000
+map.string_put_get	100000	61
+# checksum map.string_put_get 50000
+map.string_put_get	100000	80
+# checksum map.string_put_get 50000
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	118
+# checksum map.string_put_get 50000
+map.string_put_get	100000	110
+# checksum map.string_put_get 50000
+map.string_put_get	100000	86
+# checksum map.string_put_get 50000
+map.string_put_get	100000	103
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+map.string_put_get	100000	90
+# checksum map.string_put_get 50000
+map.string_put_get	100000	85
+# checksum map.string_put_get 50000
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	68
+# checksum map.string_put_get 50000
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+map.string_put_get	100000	81
+# checksum map.string_put_get 50000
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+after map.string_put_get
+map.string_put_get	100000	80
+# checksum map.string_put_get 50000
+map.string_put_get	100000	54
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	97
+# checksum map.string_put_get 50000
+map.string_put_get	100000	104
+# checksum map.string_put_get 50000
+map.string_put_get	100000	128
+# checksum map.string_put_get 50000
+map.string_put_get	100000	92
+# checksum map.string_put_get 50000
+map.string_put_get	100000	93
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	98
+# checksum map.string_put_get 50000
+map.string_put_get	100000	91
+# checksum map.string_put_get 50000
+map.string_put_get	100000	101
+# checksum map.string_put_get 50000
+map.string_put_get	100000	77
+# checksum map.string_put_get 50000
+map.string_put_get	100000	80
+# checksum map.string_put_get 50000
+map.string_put_get	100000	102
+# checksum map.string_put_get 50000
+map.string_put_get	100000	71
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	82
+# checksum map.string_put_get 50000
+map.string_put_get	100000	83
+# checksum map.string_put_get 50000
+after archive.tar_pack
+archive.tar_pack	2000	4591
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2341
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2232
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2667
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2535
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1807
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1770
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1969
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2216
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1956
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2152
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1955
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1835
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2358
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2162
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3191
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2923
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2569
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1938
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1947
+# checksum archive.tar_pack 2049024
+before archive.tar_pack
+archive.tar_pack	2000	6204
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	5264
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3321
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1961
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2048
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1973
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1877
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2389
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2991
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1889
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1801
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3115
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1807
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2245
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2051
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1686
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2054
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2210
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1918
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2712
+# checksum archive.tar_pack 2049024
+after string.upper
+string.upper	200	65598
+# checksum string.upper 3144600
+string.upper	200	52200
+# checksum string.upper 3144600
+string.upper	200	47743
+# checksum string.upper 3144600
+string.upper	200	48602
+# checksum string.upper 3144600
+string.upper	200	48400
+# checksum string.upper 3144600
+string.upper	200	47192
+# checksum string.upper 3144600
+string.upper	200	47487
+# checksum string.upper 3144600
+string.upper	200	46639
+# checksum string.upper 3144600
+string.upper	200	49023
+# checksum string.upper 3144600
+string.upper	200	49718
+# checksum string.upper 3144600
+string.upper	200	57065
+# checksum string.upper 3144600
+string.upper	200	52595
+# checksum string.upper 3144600
+string.upper	200	46903
+# checksum string.upper 3144600
+string.upper	200	49431
+# checksum string.upper 3144600
+string.upper	200	54057
+# checksum string.upper 3144600
+string.upper	200	53225
+# checksum string.upper 3144600
+string.upper	200	66237
+# checksum string.upper 3144600
+string.upper	200	83955
+# checksum string.upper 3144600
+string.upper	200	49270
+# checksum string.upper 3144600
+string.upper	200	49958
+# checksum string.upper 3144600
+before string.upper
+string.upper	200	53236
+# checksum string.upper 3144600
+string.upper	200	48505
+# checksum string.upper 3144600
+string.upper	200	60608
+# checksum string.upper 3144600
+string.upper	200	48911
+# checksum string.upper 3144600
+string.upper	200	49554
+# checksum string.upper 3144600
+string.upper	200	47691
+# checksum string.upper 3144600
+string.upper	200	49447
+# checksum string.upper 3144600
+string.upper	200	81502
+# checksum string.upper 3144600
+string.upper	200	56597
+# checksum string.upper 3144600
+string.upper	200	54600
+# checksum string.upper 3144600
+string.upper	200	48106
+# checksum string.upper 3144600
+string.upper	200	49866
+# checksum string.upper 3144600
+string.upper	200	61144
+# checksum string.upper 3144600
+string.upper	200	47412
+# checksum string.upper 3144600
+string.upper	200	47934
+# checksum string.upper 3144600
+string.upper	200	63663
+# checksum string.upper 3144600
+string.upper	200	51700
+# checksum string.upper 3144600
+string.upper	200	61370
+# checksum string.upper 3144600
+string.upper	200	51266
+# checksum string.upper 3144600
+string.upper	200	53819
+# checksum string.upper 3144600
+after map.string_put_get
+map.string_put_get	100000	68
+# checksum map.string_put_get 50000
+map.string_put_get	100000	85
+# checksum map.string_put_get 50000
+map.string_put_get	100000	68
+# checksum map.string_put_get 50000
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000
+map.string_put_get	100000	97
+# checksum map.string_put_get 50000
+map.string_put_get	100000	85
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	60
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	77
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	68
+# checksum map.string_put_get 50000
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	80
+# checksum map.string_put_get 50000
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	62
+# checksum map.string_put_get 50000
+map.string_put_get	100000	93
+# checksum map.string_put_get 50000
+map.string_put_get	100000	106
+# checksum map.string_put_get 50000
+before map.string_put_get
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+map.string_put_get	100000	120
+# checksum map.string_put_get 50000
+map.string_put_get	100000	108
+# checksum map.string_put_get 50000
+map.string_put_get	100000	82
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+map.string_put_get	100000	81
+# checksum map.string_put_get 50000
+map.string_put_get	100000	83
+# checksum map.string_put_get 50000
+map.string_put_get	100000	71
+# checksum map.string_put_get 50000
+map.string_put_get	100000	91
+# checksum map.string_put_get 50000
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+map.string_put_get	100000	83
+# checksum map.string_put_get 50000
+map.string_put_get	100000	58
+# checksum map.string_put_get 50000
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+map.string_put_get	100000	99
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+map.string_put_get	100000	80
+# checksum map.string_put_get 50000
+after regex.find_all
+regex.find_all	2000	326
+# checksum regex.find_all 2000
+regex.find_all	2000	298
+# checksum regex.find_all 2000
+regex.find_all	2000	329
+# checksum regex.find_all 2000
+regex.find_all	2000	293
+# checksum regex.find_all 2000
+regex.find_all	2000	317
+# checksum regex.find_all 2000
+regex.find_all	2000	299
+# checksum regex.find_all 2000
+regex.find_all	2000	290
+# checksum regex.find_all 2000
+regex.find_all	2000	310
+# checksum regex.find_all 2000
+regex.find_all	2000	303
+# checksum regex.find_all 2000
+regex.find_all	2000	303
+# checksum regex.find_all 2000
+regex.find_all	2000	296
+# checksum regex.find_all 2000
+regex.find_all	2000	328
+# checksum regex.find_all 2000
+regex.find_all	2000	299
+# checksum regex.find_all 2000
+regex.find_all	2000	351
+# checksum regex.find_all 2000
+regex.find_all	2000	286
+# checksum regex.find_all 2000
+regex.find_all	2000	333
+# checksum regex.find_all 2000
+regex.find_all	2000	350
+# checksum regex.find_all 2000
+regex.find_all	2000	311
+# checksum regex.find_all 2000
+regex.find_all	2000	607
+# checksum regex.find_all 2000
+regex.find_all	2000	322
+# checksum regex.find_all 2000
+before regex.find_all
+regex.find_all	2000	378
+# checksum regex.find_all 2000
+regex.find_all	2000	292
+# checksum regex.find_all 2000
+regex.find_all	2000	351
+# checksum regex.find_all 2000
+regex.find_all	2000	415
+# checksum regex.find_all 2000
+regex.find_all	2000	623
+# checksum regex.find_all 2000
+regex.find_all	2000	314
+# checksum regex.find_all 2000
+regex.find_all	2000	304
+# checksum regex.find_all 2000
+regex.find_all	2000	307
+# checksum regex.find_all 2000
+regex.find_all	2000	296
+# checksum regex.find_all 2000
+regex.find_all	2000	276
+# checksum regex.find_all 2000
+regex.find_all	2000	292
+# checksum regex.find_all 2000
+regex.find_all	2000	285
+# checksum regex.find_all 2000
+regex.find_all	2000	315
+# checksum regex.find_all 2000
+regex.find_all	2000	335
+# checksum regex.find_all 2000
+regex.find_all	2000	277
+# checksum regex.find_all 2000
+regex.find_all	2000	282
+# checksum regex.find_all 2000
+regex.find_all	2000	312
+# checksum regex.find_all 2000
+regex.find_all	2000	275
+# checksum regex.find_all 2000
+regex.find_all	2000	329
+# checksum regex.find_all 2000
+regex.find_all	2000	651
+# checksum regex.find_all 2000
+before string.upper
+string.upper	200	57030
+# checksum string.upper 3144600
+string.upper	200	52971
+# checksum string.upper 3144600
+string.upper	200	49811
+# checksum string.upper 3144600
+string.upper	200	51552
+# checksum string.upper 3144600
+string.upper	200	54150
+# checksum string.upper 3144600
+string.upper	200	48827
+# checksum string.upper 3144600
+string.upper	200	51083
+# checksum string.upper 3144600
+string.upper	200	48833
+# checksum string.upper 3144600
+string.upper	200	58242
+# checksum string.upper 3144600
+string.upper	200	51400
+# checksum string.upper 3144600
+string.upper	200	49771
+# checksum string.upper 3144600
+string.upper	200	55536
+# checksum string.upper 3144600
+string.upper	200	54330
+# checksum string.upper 3144600
+string.upper	200	47980
+# checksum string.upper 3144600
+string.upper	200	49497
+# checksum string.upper 3144600
+string.upper	200	50440
+# checksum string.upper 3144600
+string.upper	200	48229
+# checksum string.upper 3144600
+string.upper	200	80948
+# checksum string.upper 3144600
+string.upper	200	51504
+# checksum string.upper 3144600
+string.upper	200	57032
+# checksum string.upper 3144600
+after string.upper
+string.upper	200	53885
+# checksum string.upper 3144600
+string.upper	200	46342
+# checksum string.upper 3144600
+string.upper	200	46675
+# checksum string.upper 3144600
+string.upper	200	48395
+# checksum string.upper 3144600
+string.upper	200	47299
+# checksum string.upper 3144600
+string.upper	200	48943
+# checksum string.upper 3144600
+string.upper	200	51731
+# checksum string.upper 3144600
+string.upper	200	48700
+# checksum string.upper 3144600
+string.upper	200	49110
+# checksum string.upper 3144600
+string.upper	200	49489
+# checksum string.upper 3144600
+string.upper	200	58557
+# checksum string.upper 3144600
+string.upper	200	49653
+# checksum string.upper 3144600
+string.upper	200	55995
+# checksum string.upper 3144600
+string.upper	200	53440
+# checksum string.upper 3144600
+string.upper	200	54154
+# checksum string.upper 3144600
+string.upper	200	51350
+# checksum string.upper 3144600
+string.upper	200	51546
+# checksum string.upper 3144600
+string.upper	200	47909
+# checksum string.upper 3144600
+string.upper	200	47143
+# checksum string.upper 3144600
+string.upper	200	46577
+# checksum string.upper 3144600
+before map.string_put_get
+map.string_put_get	100000	59
+# checksum map.string_put_get 50000
+map.string_put_get	100000	51
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+map.string_put_get	100000	91
+# checksum map.string_put_get 50000
+map.string_put_get	100000	61
+# checksum map.string_put_get 50000
+map.string_put_get	100000	90
+# checksum map.string_put_get 50000
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+map.string_put_get	100000	73
+# checksum map.string_put_get 50000
+map.string_put_get	100000	77
+# checksum map.string_put_get 50000
+map.string_put_get	100000	85
+# checksum map.string_put_get 50000
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+map.string_put_get	100000	86
+# checksum map.string_put_get 50000
+map.string_put_get	100000	86
+# checksum map.string_put_get 50000
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	108
+# checksum map.string_put_get 50000
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+after map.string_put_get
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	64
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+map.string_put_get	100000	73
+# checksum map.string_put_get 50000
+map.string_put_get	100000	64
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	71
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+map.string_put_get	100000	63
+# checksum map.string_put_get 50000
+map.string_put_get	100000	80
+# checksum map.string_put_get 50000
+map.string_put_get	100000	62
+# checksum map.string_put_get 50000
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+map.string_put_get	100000	60
+# checksum map.string_put_get 50000
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+before regex.find_all
+regex.find_all	2000	292
+# checksum regex.find_all 2000
+regex.find_all	2000	352
+# checksum regex.find_all 2000
+regex.find_all	2000	322
+# checksum regex.find_all 2000
+regex.find_all	2000	282
+# checksum regex.find_all 2000
+regex.find_all	2000	302
+# checksum regex.find_all 2000
+regex.find_all	2000	325
+# checksum regex.find_all 2000
+regex.find_all	2000	283
+# checksum regex.find_all 2000
+regex.find_all	2000	325
+# checksum regex.find_all 2000
+regex.find_all	2000	335
+# checksum regex.find_all 2000
+regex.find_all	2000	391
+# checksum regex.find_all 2000
+regex.find_all	2000	295
+# checksum regex.find_all 2000
+regex.find_all	2000	301
+# checksum regex.find_all 2000
+regex.find_all	2000	286
+# checksum regex.find_all 2000
+regex.find_all	2000	288
+# checksum regex.find_all 2000
+regex.find_all	2000	280
+# checksum regex.find_all 2000
+regex.find_all	2000	355
+# checksum regex.find_all 2000
+regex.find_all	2000	301
+# checksum regex.find_all 2000
+regex.find_all	2000	311
+# checksum regex.find_all 2000
+regex.find_all	2000	458
+# checksum regex.find_all 2000
+regex.find_all	2000	653
+# checksum regex.find_all 2000
+after regex.find_all
+regex.find_all	2000	407
+# checksum regex.find_all 2000
+regex.find_all	2000	331
+# checksum regex.find_all 2000
+regex.find_all	2000	336
+# checksum regex.find_all 2000
+regex.find_all	2000	327
+# checksum regex.find_all 2000
+regex.find_all	2000	308
+# checksum regex.find_all 2000
+regex.find_all	2000	284
+# checksum regex.find_all 2000
+regex.find_all	2000	359
+# checksum regex.find_all 2000
+regex.find_all	2000	377
+# checksum regex.find_all 2000
+regex.find_all	2000	515
+# checksum regex.find_all 2000
+regex.find_all	2000	327
+# checksum regex.find_all 2000
+regex.find_all	2000	388
+# checksum regex.find_all 2000
+regex.find_all	2000	329
+# checksum regex.find_all 2000
+regex.find_all	2000	411
+# checksum regex.find_all 2000
+regex.find_all	2000	286
+# checksum regex.find_all 2000
+regex.find_all	2000	376
+# checksum regex.find_all 2000
+regex.find_all	2000	307
+# checksum regex.find_all 2000
+regex.find_all	2000	319
+# checksum regex.find_all 2000
+regex.find_all	2000	323
+# checksum regex.find_all 2000
+regex.find_all	2000	363
+# checksum regex.find_all 2000
+regex.find_all	2000	769
+# checksum regex.find_all 2000
+before archive.tar_pack
+archive.tar_pack	2000	4864
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1785
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2449
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2329
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1854
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2796
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2569
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3491
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2972
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2186
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2591
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2752
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3642
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2362
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2412
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2618
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3508
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2414
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	6265
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2299
+# checksum archive.tar_pack 2049024
+after archive.tar_pack
+archive.tar_pack	2000	4104
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2187
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2570
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2078
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3484
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1860
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3315
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1836
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1728
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2006
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2806
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	4235
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1950
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1950
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1761
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1929
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1741
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1855
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1864
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2052
+# checksum archive.tar_pack 2049024
+after map.string_put_get
+map.string_put_get	100000	96
+# checksum map.string_put_get 50000
+map.string_put_get	100000	74
+# checksum map.string_put_get 50000
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	83
+# checksum map.string_put_get 50000
+map.string_put_get	100000	105
+# checksum map.string_put_get 50000
+map.string_put_get	100000	138
+# checksum map.string_put_get 50000
+map.string_put_get	100000	71
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	77
+# checksum map.string_put_get 50000
+map.string_put_get	100000	77
+# checksum map.string_put_get 50000
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	77
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	125
+# checksum map.string_put_get 50000
+map.string_put_get	100000	82
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+before map.string_put_get
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000
+map.string_put_get	100000	77
+# checksum map.string_put_get 50000
+map.string_put_get	100000	68
+# checksum map.string_put_get 50000
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	66
+# checksum map.string_put_get 50000
+map.string_put_get	100000	65
+# checksum map.string_put_get 50000
+map.string_put_get	100000	60
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+map.string_put_get	100000	57
+# checksum map.string_put_get 50000
+map.string_put_get	100000	56
+# checksum map.string_put_get 50000
+map.string_put_get	100000	60
+# checksum map.string_put_get 50000
+map.string_put_get	100000	47
+# checksum map.string_put_get 50000
+map.string_put_get	100000	185
+# checksum map.string_put_get 50000
+map.string_put_get	100000	91
+# checksum map.string_put_get 50000
+map.string_put_get	100000	94
+# checksum map.string_put_get 50000
+after regex.find_all
+regex.find_all	2000	310
+# checksum regex.find_all 2000
+regex.find_all	2000	284
+# checksum regex.find_all 2000
+regex.find_all	2000	669
+# checksum regex.find_all 2000
+regex.find_all	2000	447
+# checksum regex.find_all 2000
+regex.find_all	2000	526
+# checksum regex.find_all 2000
+regex.find_all	2000	361
+# checksum regex.find_all 2000
+regex.find_all	2000	354
+# checksum regex.find_all 2000
+regex.find_all	2000	317
+# checksum regex.find_all 2000
+regex.find_all	2000	469
+# checksum regex.find_all 2000
+regex.find_all	2000	451
+# checksum regex.find_all 2000
+regex.find_all	2000	299
+# checksum regex.find_all 2000
+regex.find_all	2000	319
+# checksum regex.find_all 2000
+regex.find_all	2000	351
+# checksum regex.find_all 2000
+regex.find_all	2000	297
+# checksum regex.find_all 2000
+regex.find_all	2000	349
+# checksum regex.find_all 2000
+regex.find_all	2000	328
+# checksum regex.find_all 2000
+regex.find_all	2000	293
+# checksum regex.find_all 2000
+regex.find_all	2000	336
+# checksum regex.find_all 2000
+regex.find_all	2000	344
+# checksum regex.find_all 2000
+regex.find_all	2000	683
+# checksum regex.find_all 2000
+before regex.find_all
+regex.find_all	2000	338
+# checksum regex.find_all 2000
+regex.find_all	2000	310
+# checksum regex.find_all 2000
+regex.find_all	2000	349
+# checksum regex.find_all 2000
+regex.find_all	2000	391
+# checksum regex.find_all 2000
+regex.find_all	2000	335
+# checksum regex.find_all 2000
+regex.find_all	2000	331
+# checksum regex.find_all 2000
+regex.find_all	2000	328
+# checksum regex.find_all 2000
+regex.find_all	2000	452
+# checksum regex.find_all 2000
+regex.find_all	2000	280
+# checksum regex.find_all 2000
+regex.find_all	2000	422
+# checksum regex.find_all 2000
+regex.find_all	2000	1324
+# checksum regex.find_all 2000
+regex.find_all	2000	352
+# checksum regex.find_all 2000
+regex.find_all	2000	385
+# checksum regex.find_all 2000
+regex.find_all	2000	316
+# checksum regex.find_all 2000
+regex.find_all	2000	305
+# checksum regex.find_all 2000
+regex.find_all	2000	319
+# checksum regex.find_all 2000
+regex.find_all	2000	297
+# checksum regex.find_all 2000
+regex.find_all	2000	281
+# checksum regex.find_all 2000
+regex.find_all	2000	1195
+# checksum regex.find_all 2000
+regex.find_all	2000	364
+# checksum regex.find_all 2000
+after archive.tar_pack
+archive.tar_pack	2000	4418
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2694
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2601
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2577
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3298
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2356
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2220
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2129
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2207
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1958
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2556
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1824
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2436
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1944
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2297
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1827
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2098
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2600
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1668
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2718
+# checksum archive.tar_pack 2049024
+before archive.tar_pack
+archive.tar_pack	2000	5702
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2068
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2365
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1769
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1755
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1708
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1770
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1708
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2926
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2146
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2167
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2106
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3446
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1880
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2278
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2418
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1906
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1909
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2072
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2103
+# checksum archive.tar_pack 2049024
+after string.upper
+string.upper	200	60882
+# checksum string.upper 3144600
+string.upper	200	49112
+# checksum string.upper 3144600
+string.upper	200	48598
+# checksum string.upper 3144600
+string.upper	200	46630
+# checksum string.upper 3144600
+string.upper	200	56229
+# checksum string.upper 3144600
+string.upper	200	56037
+# checksum string.upper 3144600
+string.upper	200	54784
+# checksum string.upper 3144600
+string.upper	200	48453
+# checksum string.upper 3144600
+string.upper	200	51856
+# checksum string.upper 3144600
+string.upper	200	48220
+# checksum string.upper 3144600
+string.upper	200	48239
+# checksum string.upper 3144600
+string.upper	200	48992
+# checksum string.upper 3144600
+string.upper	200	46683
+# checksum string.upper 3144600
+string.upper	200	47391
+# checksum string.upper 3144600
+string.upper	200	48660
+# checksum string.upper 3144600
+string.upper	200	51410
+# checksum string.upper 3144600
+string.upper	200	48819
+# checksum string.upper 3144600
+string.upper	200	52165
+# checksum string.upper 3144600
+string.upper	200	50282
+# checksum string.upper 3144600
+string.upper	200	56616
+# checksum string.upper 3144600
+before string.upper
+string.upper	200	56536
+# checksum string.upper 3144600
+string.upper	200	50959
+# checksum string.upper 3144600
+string.upper	200	46363
+# checksum string.upper 3144600
+string.upper	200	47200
+# checksum string.upper 3144600
+string.upper	200	55328
+# checksum string.upper 3144600
+string.upper	200	53393
+# checksum string.upper 3144600
+string.upper	200	57233
+# checksum string.upper 3144600
+string.upper	200	52012
+# checksum string.upper 3144600
+string.upper	200	59661
+# checksum string.upper 3144600
+string.upper	200	50772
+# checksum string.upper 3144600
+string.upper	200	49124
+# checksum string.upper 3144600
+string.upper	200	51415
+# checksum string.upper 3144600
+string.upper	200	68185
+# checksum string.upper 3144600
+string.upper	200	107529
+# checksum string.upper 3144600
+string.upper	200	48489
+# checksum string.upper 3144600
+string.upper	200	66375
+# checksum string.upper 3144600
+string.upper	200	46932
+# checksum string.upper 3144600
+string.upper	200	90776
+# checksum string.upper 3144600
+string.upper	200	58099
+# checksum string.upper 3144600
+string.upper	200	49019
+# checksum string.upper 3144600
+before regex.find_all
+regex.find_all	2000	328
+# checksum regex.find_all 2000
+regex.find_all	2000	295
+# checksum regex.find_all 2000
+regex.find_all	2000	358
+# checksum regex.find_all 2000
+regex.find_all	2000	291
+# checksum regex.find_all 2000
+regex.find_all	2000	352
+# checksum regex.find_all 2000
+regex.find_all	2000	307
+# checksum regex.find_all 2000
+regex.find_all	2000	287
+# checksum regex.find_all 2000
+regex.find_all	2000	294
+# checksum regex.find_all 2000
+regex.find_all	2000	322
+# checksum regex.find_all 2000
+regex.find_all	2000	303
+# checksum regex.find_all 2000
+regex.find_all	2000	290
+# checksum regex.find_all 2000
+regex.find_all	2000	286
+# checksum regex.find_all 2000
+regex.find_all	2000	311
+# checksum regex.find_all 2000
+regex.find_all	2000	281
+# checksum regex.find_all 2000
+regex.find_all	2000	286
+# checksum regex.find_all 2000
+regex.find_all	2000	293
+# checksum regex.find_all 2000
+regex.find_all	2000	286
+# checksum regex.find_all 2000
+regex.find_all	2000	301
+# checksum regex.find_all 2000
+regex.find_all	2000	292
+# checksum regex.find_all 2000
+regex.find_all	2000	290
+# checksum regex.find_all 2000
+after regex.find_all
+regex.find_all	2000	324
+# checksum regex.find_all 2000
+regex.find_all	2000	284
+# checksum regex.find_all 2000
+regex.find_all	2000	303
+# checksum regex.find_all 2000
+regex.find_all	2000	302
+# checksum regex.find_all 2000
+regex.find_all	2000	453
+# checksum regex.find_all 2000
+regex.find_all	2000	571
+# checksum regex.find_all 2000
+regex.find_all	2000	312
+# checksum regex.find_all 2000
+regex.find_all	2000	330
+# checksum regex.find_all 2000
+regex.find_all	2000	305
+# checksum regex.find_all 2000
+regex.find_all	2000	359
+# checksum regex.find_all 2000
+regex.find_all	2000	299
+# checksum regex.find_all 2000
+regex.find_all	2000	296
+# checksum regex.find_all 2000
+regex.find_all	2000	345
+# checksum regex.find_all 2000
+regex.find_all	2000	298
+# checksum regex.find_all 2000
+regex.find_all	2000	296
+# checksum regex.find_all 2000
+regex.find_all	2000	326
+# checksum regex.find_all 2000
+regex.find_all	2000	411
+# checksum regex.find_all 2000
+regex.find_all	2000	307
+# checksum regex.find_all 2000
+regex.find_all	2000	315
+# checksum regex.find_all 2000
+regex.find_all	2000	608
+# checksum regex.find_all 2000
+before archive.tar_pack
+archive.tar_pack	2000	5549
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2047
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2145
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2086
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2874
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2419
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2363
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2111
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1963
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2077
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1909
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1819
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1696
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1709
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2235
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1877
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	6790
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2353
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3376
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1680
+# checksum archive.tar_pack 2049024
+after archive.tar_pack
+archive.tar_pack	2000	3673
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	4101
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2243
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1899
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1982
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1881
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1666
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2191
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1934
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2207
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2624
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1463
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1836
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1898
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	3744
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	4856
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2615
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	4180
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	2676
+# checksum archive.tar_pack 2049024
+archive.tar_pack	2000	1694
+# checksum archive.tar_pack 2049024
+before string.upper
+string.upper	200	60539
+# checksum string.upper 3144600
+string.upper	200	46367
+# checksum string.upper 3144600
+string.upper	200	47903
+# checksum string.upper 3144600
+string.upper	200	50085
+# checksum string.upper 3144600
+string.upper	200	48799
+# checksum string.upper 3144600
+string.upper	200	48768
+# checksum string.upper 3144600
+string.upper	200	48629
+# checksum string.upper 3144600
+string.upper	200	57878
+# checksum string.upper 3144600
+string.upper	200	52889
+# checksum string.upper 3144600
+string.upper	200	49724
+# checksum string.upper 3144600
+string.upper	200	50719
+# checksum string.upper 3144600
+string.upper	200	62058
+# checksum string.upper 3144600
+string.upper	200	53135
+# checksum string.upper 3144600
+string.upper	200	50758
+# checksum string.upper 3144600
+string.upper	200	53513
+# checksum string.upper 3144600
+string.upper	200	58178
+# checksum string.upper 3144600
+string.upper	200	58471
+# checksum string.upper 3144600
+string.upper	200	54920
+# checksum string.upper 3144600
+string.upper	200	54722
+# checksum string.upper 3144600
+string.upper	200	47395
+# checksum string.upper 3144600
+after string.upper
+string.upper	200	60279
+# checksum string.upper 3144600
+string.upper	200	51533
+# checksum string.upper 3144600
+string.upper	200	63794
+# checksum string.upper 3144600
+string.upper	200	51098
+# checksum string.upper 3144600
+string.upper	200	63297
+# checksum string.upper 3144600
+string.upper	200	57569
+# checksum string.upper 3144600
+string.upper	200	54588
+# checksum string.upper 3144600
+string.upper	200	55233
+# checksum string.upper 3144600
+string.upper	200	60544
+# checksum string.upper 3144600
+string.upper	200	59678
+# checksum string.upper 3144600
+string.upper	200	48902
+# checksum string.upper 3144600
+string.upper	200	59770
+# checksum string.upper 3144600
+string.upper	200	52593
+# checksum string.upper 3144600
+string.upper	200	49340
+# checksum string.upper 3144600
+string.upper	200	56085
+# checksum string.upper 3144600
+string.upper	200	56597
+# checksum string.upper 3144600
+string.upper	200	54320
+# checksum string.upper 3144600
+string.upper	200	51536
+# checksum string.upper 3144600
+string.upper	200	53736
+# checksum string.upper 3144600
+string.upper	200	51790
+# checksum string.upper 3144600
+before map.string_put_get
+map.string_put_get	100000	81
+# checksum map.string_put_get 50000
+map.string_put_get	100000	70
+# checksum map.string_put_get 50000
+map.string_put_get	100000	63
+# checksum map.string_put_get 50000
+map.string_put_get	100000	71
+# checksum map.string_put_get 50000
+map.string_put_get	100000	95
+# checksum map.string_put_get 50000
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000
+map.string_put_get	100000	91
+# checksum map.string_put_get 50000
+map.string_put_get	100000	102
+# checksum map.string_put_get 50000
+map.string_put_get	100000	91
+# checksum map.string_put_get 50000
+map.string_put_get	100000	81
+# checksum map.string_put_get 50000
+map.string_put_get	100000	100
+# checksum map.string_put_get 50000
+map.string_put_get	100000	100
+# checksum map.string_put_get 50000
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	90
+# checksum map.string_put_get 50000
+map.string_put_get	100000	75
+# checksum map.string_put_get 50000
+map.string_put_get	100000	90
+# checksum map.string_put_get 50000
+map.string_put_get	100000	85
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	97
+# checksum map.string_put_get 50000
+map.string_put_get	100000	63
+# checksum map.string_put_get 50000
+after map.string_put_get
+map.string_put_get	100000	79
+# checksum map.string_put_get 50000
+map.string_put_get	100000	62
+# checksum map.string_put_get 50000
+map.string_put_get	100000	76
+# checksum map.string_put_get 50000
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+map.string_put_get	100000	68
+# checksum map.string_put_get 50000
+map.string_put_get	100000	54
+# checksum map.string_put_get 50000
+map.string_put_get	100000	67
+# checksum map.string_put_get 50000
+map.string_put_get	100000	105
+# checksum map.string_put_get 50000
+map.string_put_get	100000	96
+# checksum map.string_put_get 50000
+map.string_put_get	100000	87
+# checksum map.string_put_get 50000
+map.string_put_get	100000	100
+# checksum map.string_put_get 50000
+map.string_put_get	100000	90
+# checksum map.string_put_get 50000
+map.string_put_get	100000	92
+# checksum map.string_put_get 50000
+map.string_put_get	100000	69
+# checksum map.string_put_get 50000
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000
+map.string_put_get	100000	96
+# checksum map.string_put_get 50000
+map.string_put_get	100000	84
+# checksum map.string_put_get 50000
+map.string_put_get	100000	78
+# checksum map.string_put_get 50000
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000
+map.string_put_get	100000	72
+# checksum map.string_put_get 50000

@@ -210,14 +210,30 @@ func fileInfoOf(info os.FileInfo, birth time.Time) *FileInfo {
 		result.Created = Some(timestampOf(created))
 	}
 	exact := NewMap[string, *BigInt]()
-	natives := map[string]hostos.Number{"device": stat.Dev, "inode": stat.Ino, "links": stat.Nlink, "uid": stat.Uid, "gid": stat.Gid, "rdev": stat.Rdev, "blocks": stat.Blocks, "block_size": stat.Blksize}
-	values := map[string]int{"size": result.Size, "mode": result.Mode, "device": result.Device, "inode": result.Inode, "links": result.Links, "uid": result.Uid, "gid": result.Gid, "block_size": result.BlockSize, "blocks": result.Blocks, "rdev": result.Rdev}
-	for _, name := range []string{"size", "mode", "device", "inode", "links", "uid", "gid", "block_size", "blocks", "rdev"} {
-		number := big.NewInt(int64(values[name]))
-		if native, ok := natives[name]; ok && stat.Valid && native.IsUnsigned {
-			number = new(big.Int).SetUint64(native.Unsigned)
+	values := [...]struct {
+		name   string
+		value  int
+		native hostos.Number
+	}{
+		{"size", result.Size, hostos.Number{}},
+		{"mode", result.Mode, hostos.Number{}},
+		{"device", result.Device, stat.Dev},
+		{"inode", result.Inode, stat.Ino},
+		{"links", result.Links, stat.Nlink},
+		{"uid", result.Uid, stat.Uid},
+		{"gid", result.Gid, stat.Gid},
+		{"block_size", result.BlockSize, stat.Blksize},
+		{"blocks", result.Blocks, stat.Blocks},
+		{"rdev", result.Rdev, stat.Rdev},
+	}
+	for _, field := range values {
+		var number *big.Int
+		if stat.Valid && field.native.IsUnsigned {
+			number = new(big.Int).SetUint64(field.native.Unsigned)
+		} else {
+			number = big.NewInt(int64(field.value))
 		}
-		exact.Put(name, bigIntOf(number))
+		exact.Put(field.name, bigIntOf(number))
 	}
 	exact.Put("accessed_ns", bigIntOf(nanosecondsSinceEpoch(accessed)))
 	exact.Put("modified_ns", bigIntOf(nanosecondsSinceEpoch(info.ModTime())))

@@ -1,0 +1,21 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/lower
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkClosedCellProofScaling/128-4         	     213	   1645606 ns/op	  785418 B/op	    3683 allocs/op
+BenchmarkClosedCellProofScaling/128-4         	     220	   1755746 ns/op	  785392 B/op	    3683 allocs/op
+BenchmarkClosedCellProofScaling/128-4         	     224	   1656292 ns/op	  785418 B/op	    3683 allocs/op
+BenchmarkClosedCellProofScaling/128-4         	     230	   1733085 ns/op	  785393 B/op	    3683 allocs/op
+BenchmarkClosedCellProofScaling/128-4         	     219	   1605438 ns/op	  785394 B/op	    3683 allocs/op
+BenchmarkClosedCellProofScaling/256-4         	      97	   3932093 ns/op	 1539536 B/op	    7196 allocs/op
+BenchmarkClosedCellProofScaling/256-4         	     100	   3364461 ns/op	 1539538 B/op	    7196 allocs/op
+BenchmarkClosedCellProofScaling/256-4         	     100	   3402381 ns/op	 1539537 B/op	    7196 allocs/op
+BenchmarkClosedCellProofScaling/256-4         	     100	   3477141 ns/op	 1539536 B/op	    7196 allocs/op
+BenchmarkClosedCellProofScaling/256-4         	      99	   3637206 ns/op	 1539537 B/op	    7196 allocs/op
+BenchmarkClosedCellProofScaling/512-4         	      56	   7190648 ns/op	 3155829 B/op	   14210 allocs/op
+BenchmarkClosedCellProofScaling/512-4         	      54	   7699073 ns/op	 3155827 B/op	   14210 allocs/op
+BenchmarkClosedCellProofScaling/512-4         	      48	   6916001 ns/op	 3155825 B/op	   14210 allocs/op
+BenchmarkClosedCellProofScaling/512-4         	      44	   7565673 ns/op	 3155825 B/op	   14210 allocs/op
+BenchmarkClosedCellProofScaling/512-4         	      50	   8290798 ns/op	 3155827 B/op	   14210 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/lower	6.583s

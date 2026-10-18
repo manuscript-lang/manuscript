@@ -17,7 +17,26 @@ func (g *gen) body(stmts []*syntax.Statement, result *checker.Type) []ast.Stmt {
 	fn.literalStarts = nil
 	defer func() { fn.literalStarts = saved }()
 	var out []ast.Stmt
-	for _, s := range stmts {
+	tail := g.tailResultOperand(stmts)
+	lineTail := g.tailLineOperand(stmts)
+	for i, s := range stmts {
+		if (tail != nil || lineTail != nil) && i == len(stmts)-2 {
+			// Use the ordinary expression plumbing: its pre-statements may
+			// themselves return or evaluate effectful operands.
+			saved := g.fn.pre
+			g.fn.pre = nil
+			var value ast.Expr
+			if lineTail != nil {
+				value = g.linePresence(lineTail)
+			} else {
+				value = g.valueAs(tail, g.fn.result)
+			}
+			lowered := append(g.fn.pre, returned(value))
+			g.fn.pre = saved
+			lowered[0] = g.locatedStatement(s.Pos, lowered[0])
+			out = append(out, lowered...)
+			break
+		}
 		lowered := g.statement(s)
 		g.recordLiteralStart(s)
 		if len(lowered) == 0 {
@@ -310,6 +329,9 @@ func (g *gen) loopStatements(s *syntax.Statement) []ast.Stmt {
 		}
 		body := g.body(s.Body, nil)
 		if len(pre) == 0 {
+			if chunk := g.fn.counterChunks[s]; chunk != nil {
+				return g.chunkLoop(s, chunk, cond, body)
+			}
 			return []ast.Stmt{declare, &ast.ForStmt{Cond: cond, Body: block(append([]ast.Stmt{poll}, body...)...)}}
 		}
 		var inner []ast.Stmt

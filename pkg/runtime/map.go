@@ -18,7 +18,7 @@ type Entry[K comparable, V any] struct {
 // applies to Set elements.
 type Map[K comparable, V any] struct {
 	keys    *Keys[K]
-	index   map[K]int
+	index   map[K]int // ordered slots; compiler-only closed Int maps instead store values (local_int_map.go)
 	project map[any]int
 	buckets map[int][]int
 	entries []mapSlot[K, V] // a slot with live false marks a removed entry until compaction

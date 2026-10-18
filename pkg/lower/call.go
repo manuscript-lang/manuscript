@@ -179,6 +179,9 @@ func (g *gen) symbolCall(e *syntax.Expression, info *checker.Info) ast.Expr {
 
 // recordCall constructs a record. Omitted fields take their defaults.
 func (g *gen) recordCall(e *syntax.Expression, info *checker.Info) ast.Expr {
+	if g.fn.localCollections != nil && g.fn.localCollections.constructors[e] {
+		return rtCall("NewLocalIntMap")
+	}
 	t := g.sub(info.Constructor)
 	if isStd(t, "Set") && len(info.Arguments) == 0 {
 		return g.construct(t, nil)
@@ -476,6 +479,20 @@ func (g *gen) methodCall(e *syntax.Expression, info *checker.Info) ast.Expr {
 		snapshot := define(name, receiver)
 		g.fn.pre = append(g.fn.pre[:mark:mark], append([]ast.Stmt{snapshot}, g.fn.pre[mark:]...)...)
 		receiver = ident(name)
+	}
+	if length, ok := g.fn.listLengths[e]; ok {
+		// The source receiver counts as a use even when its only observation
+		// becomes a constant. Keep the generated local valid after folding.
+		g.fn.pre = append(g.fn.pre, discard(receiver))
+		return intLiteral(int(length))
+	}
+	if g.fn.localCollections != nil {
+		if operation := g.fn.localCollections.calls[e]; operation != "" {
+			return rtCall("LocalIntMap_"+camel(operation), append([]ast.Expr{ident("ctx"), receiver}, args...)...)
+		}
+	}
+	if update := g.localRecordUpdate(e, m, receiver, args); update != nil {
+		return update
 	}
 	return g.invokeMethod(m, receiverType, receiver, member.Text, args, calleeInfo)
 }

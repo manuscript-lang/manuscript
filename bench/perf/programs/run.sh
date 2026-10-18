@@ -18,7 +18,7 @@ fi
 cp -r "$HERE/go" "$HERE/ms" "$W/"
 python3 -c "
 for i in range(200000): print('2026-03-01T00:00:00Z 10.1.2.3 GET /api/users/%d 200'%i)" > "$W/lines.txt"
-(cd "$W/go" && "$GO" build -buildvcs=false -o bench .)
+(cd "$W/go" && CGO_ENABLED=0 "$GO" build -buildvcs=false -trimpath -ldflags="-s -w -buildid=" -o bench .)
 (cd "$W/ms" && rm -f ms.lock && "$MS" build ms.toml -o bench >&2)
 "$GO" version > "$W/environment.txt"
 uname -sm >> "$W/environment.txt"

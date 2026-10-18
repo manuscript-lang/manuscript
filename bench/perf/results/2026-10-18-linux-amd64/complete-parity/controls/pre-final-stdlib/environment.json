@@ -1,0 +1,14 @@
+{
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "repeats": 30,
+  "binaries": {
+    "before": {
+      "path": "/tmp/manuscript-d710-checksum-stdlib",
+      "sha256": "518c1c4c0b341010d737297b52968472ea9857e181c25aebe9ae514b7892d9e7"
+    },
+    "after": {
+      "path": "/tmp/manuscript-parity2-presence-stdlib",
+      "sha256": "15cd3730952c40389c5d8030865b718f02edda8e202711f8ffbd50759b30d253"
+    }
+  }
+}
