@@ -5,6 +5,11 @@ weight = 118
 
 # Build, source, and task metadata
 
-`ms inspect <module-or-project>` emits format-1 JSON with a source-derived build identity, original source hashes, deterministic entity IDs, generated declaration and local names, type descriptions, call sites including implicit cleanup, conservative transitive effects, and statement header spans. Header spans are half-open ranges in original bytes and exclude line terminators. `ms diagram` emits the checked static call graph as an ascii outline (default) or Mermaid (`--format mermaid`). Native checked builds emit a separate executable/toolchain manifest.
+- `ms inspect <module-or-project>` emits format-1 JSON: build identity, source hashes, deterministic entity IDs, generated declaration and local names, types, call sites including implicit cleanup, conservative transitive effects, and statement header spans (half-open original-byte ranges excluding line terminators).
+- `ms diagram` emits the static call graph as ascii (default) or Mermaid (`--format mermaid`).
+- Native checked builds emit a separate executable and toolchain manifest.
 
-Generated source uses Go line directives, so Delve maps native lines back to `.ms` statements. Source programming faults collect Manuscript function positions. `--debug` retains native symbols, disables optimization/inlining, and uses absolute source paths. Generated local identifiers retain source names. Only the VS Code adapter (`extensions/vscode/debug-adapter.js`) interprets values as Manuscript records, collections, and variants; the interactive `ms debug` terminal and `ms dap` clients see Delve's Go values. Scripted `ms debug` (`--break`, `--script`) uses the same inspection to report source function names, source local names and types, and only Manuscript frames; it renders scalars and falls back to Delve's one-line form for other values. Versioned rename and code actions validate source edits.
+- Generated Go uses line directives, so Delve maps native lines to `.ms` statements. Locals keep source names.
+- `--debug` keeps native symbols, disables optimization and inlining, and uses absolute source paths.
+- Only the VS Code adapter (`extensions/vscode/debug-adapter.js`) shows records, collections, and variants as Manuscript values; interactive `ms debug` and `ms dap` clients see Delve's Go values.
+- Scripted `ms debug` (`--break`, `--script`) reports source function names, local names and types, and only Manuscript frames; scalars render directly, others use Delve's one-line form.

@@ -5,11 +5,11 @@ weight = 4
 
 # Strings and bytes
 
-Use `String` for text and `Bytes` for raw data. Both are immutable. Strings always contain valid UTF-8 and are available without an import. Import `Bytes` from `@std/bytes.ms` when naming that type. A byte sequence may need decoding before it can be treated as text.
+`String` is immutable, always valid UTF-8, and needs no import. `Bytes` is immutable raw data; import it from `@std/bytes.ms` to name the type.
 
 ## String literals
 
-A text literal starts and ends with `"` and occupies one physical source line, including its interpolation expressions. Raw newlines and raw control characters U+0000 through U+001F are rejected. Other Unicode scalar characters can appear directly. A literal evaluates to String; there are no single-quoted, raw, multiline, or byte literals.
+A literal is delimited by `"` and fits on one source line, interpolations included. Raw newlines and control characters U+0000 to U+001F are rejected; other Unicode appears directly. There are no single-quoted, raw, multiline, or byte literals.
 
 | Escape | Value |
 | --- | --- |
@@ -21,7 +21,7 @@ A text literal starts and ends with `"` and occupies one physical source line, i
 | `\{`, `\}` | Literal opening/closing brace |
 | `\u{H}` | Unicode scalar with one to six hexadecimal digits H |
 
-Scalar escapes accept uppercase or lowercase hexadecimal digits. Values above U+10FFFF and surrogates U+D800 through U+DFFF are compile errors. Unknown escapes, an unescaped closing brace, and an unterminated literal are compile errors. A brace inside a scalar escape belongs to that escape, not to interpolation. Null can be written as `\u{0}`; it remains valid String and is not a string terminator.
+Hex digits may be either case. Scalars above U+10FFFF, surrogates U+D800 to U+DFFF, unknown escapes, an unescaped closing brace, and unterminated literals are compile errors. `\u{0}` is a valid null character.
 
 ```manuscript
 let quote = "She said \"hello\"."
@@ -30,11 +30,11 @@ let lines = "first\nsecond"
 let symbol = "\u{1F642}"
 ```
 
-These are function-body fragments. String is stored and compared without implicit Unicode normalization. The single scalar `"é"` and the two-scalar `"e\u{301}"` remain distinct values even when they render similarly. UTF-8 encoding uniquely represents their scalar sequences; [String equality](../types/equality-and-hashing.md) compares those contents exactly.
+Strings are never normalized: `"é"` and `"e\u{301}"` are distinct values. [Equality](../types/equality-and-hashing.md) compares contents exactly.
 
 ## Interpolation
 
-An unescaped `{` opens an embedded [expression](expressions.md) that its matching `}` closes; calls and nested text literals are allowed, and braces inside a nested literal do not end the outer one. Empty expressions, format suffixes, comments, and newlines inside the literal are rejected, so a function expression with a suite cannot appear there. Escape both braces in JSON and similar text: `"\{\"a\": 1\}"`.
+An unescaped `{` opens an embedded [expression](expressions.md) closed by its matching `}`. Calls and nested literals are allowed. Empty expressions, format suffixes, comments, and newlines are rejected. Escape both braces for JSON-like text: `"\{\"a\": 1\}"`.
 
 ```manuscript
 let name = "Ada"
@@ -43,13 +43,11 @@ let greeting = "Welcome, {name}!"
 let calculated = "Next: {count + 1}"
 ```
 
-Embedded expressions evaluate once each from left to right. Each result is formatted before evaluating the next embedded expression. Plain surrounding text is concatenated with those formatted results. Result propagation or a fault stops evaluation of the remainder. Interpolation formats values; it does not permit implicit conversions at call, assignment, or return boundaries.
-
-Every value is directly formattable, including records, alternatives, collections, functions, Bytes, interface views, runtime resources, and unconstrained type parameters. Interpolation uses the same conversion as `toString()`.
+Embedded expressions evaluate once, left to right, each formatted before the next. Propagation or a fault stops the rest. Every value is formattable using the same conversion as `toString()`; interpolation adds no implicit conversions elsewhere.
 
 ## Converting values to String
 
-Every value has a built-in `toString()` method with signature `fn() -> String`. It needs no import or generic bound. A bound method retains its receiver and can be called later:
+Every value has a built-in `toString() -> String`, needing no import or bound. A bound method keeps its receiver:
 
 ```manuscript
 fn text[T](value: T) -> String:
@@ -63,21 +61,22 @@ test "string conversion":
     let embedded = "{count}"
 ```
 
-Each conversion above produces `"3"`. Every value supports explicit text conversion; the exact representations are defined below. Assignment, arguments, and return values still require compatible types: passing an Int to a String parameter requires an explicit `.toString()`.
+Each conversion produces `"3"`. Passing an Int to a String parameter still needs `.toString()`.
 
-The built-in method takes precedence over a field or interface operation named `toString`. It cannot be overridden. Application-specific display functions can return String explicitly. Conversion never invokes user-defined formatting operations or native resource operations; even a closed resource remains printable.
+The built-in method wins over any field or interface operation named `toString` and cannot be overridden. Conversion never calls user-defined formatting or resource operations; a closed resource is still printable.
 
 ## Indexing and character boundaries
 
-There is no `text[index]` or slicing syntax. String `at`, `scalar_at`, `index_of`, `last_index_of`, `slice`, and `slice_scalars` use Unicode scalar indexes, not byte offsets. `at` returns a one-scalar String; `scalar_at` returns its integer code point. Both accept negative indexes relative to the end and return `none` out of range. Search returns the first or last matching scalar index, or `none`; an empty search matches at zero for `index_of` and at `scalar_length()` for `last_index_of`.
+There is no `text[index]` or slice syntax. Byte positions, scalars, and graphemes differ: `"é"` is two UTF-8 bytes; `"e\u{301}"` is two scalars and may display as one grapheme. Grapheme indexing is unsupported.
 
-A byte position, a Unicode scalar, and a user-visible grapheme are different units. For example, `"é"` has two UTF-8 bytes; `"e\u{301}"` has two scalars but can display as one grapheme. Byte lookup alone cannot select a character.
-
-`length()` and `scalar_length()` count scalars; `is_empty()` reports whether that count is zero. `chars()` returns a fresh `List[String]` with one scalar per item, while `scalar_values()` returns their integer code points in order. `reverse()` reverses scalar order without normalization: `"e\u{301}".reverse()` is `"\u{301}e"`, so combining sequences and graphemes may change. Bytes use byte indexes and Lists use element indexes. Grapheme indexing is unsupported.
-
-`compare(other:)` returns exactly `-1`, `0`, or `1` in lexical Unicode scalar order. It compares case-sensitive contents without locale rules or normalization; a proper prefix sorts before the longer text. For example, `"Z".compare("a")` is `-1`, while `"é".compare("e\u{301}")` is `1`.
-
-`lines()` returns a fresh `List[String]`, splitting at LF or CRLF and removing those terminators. It preserves interior empty lines and every CR not immediately before LF. A terminal newline does not create an extra item, and empty text returns an empty list: `"a\r\nb\n".lines()` is `["a", "b"]`, `"\n\n".lines()` is `["", ""]`, and `"a\r".lines()` is `["a\r"]`. Other Unicode line separators remain ordinary contents. Both `lines()` and `chars()` leave the String unchanged and return independent mutable list storage on every call, including empty calls.
+- `at`, `scalar_at`, `index_of`, `last_index_of`, `slice`, and `slice_scalars` use scalar indexes. `at` returns a one-scalar String; `scalar_at` its code point. Negative indexes count from the end; out of range gives `none`.
+- Searches return the first or last scalar index or `none`. An empty search matches at 0 (`index_of`) or `scalar_length()` (`last_index_of`).
+- `length()` and `scalar_length()` count scalars; `is_empty()` tests for zero.
+- `chars()` returns a fresh `List[String]`; `scalar_values()` returns code points.
+- `reverse()` reverses scalars without normalization: `"e\u{301}".reverse()` is `"\u{301}e"`.
+- `compare(other:)` returns `-1`, `0`, or `1` by scalar order, case-sensitive, a prefix first: `"Z".compare("a")` is `-1`; `"é".compare("e\u{301}")` is `1`.
+- `lines()` splits at LF or CRLF, drops those terminators, keeps interior empty lines and lone CRs, and adds no item for a final newline: `"a\r\nb\n".lines()` is `["a", "b"]`, `"\n\n".lines()` is `["", ""]`, `"a\r".lines()` is `["a\r"]`.
+- `lines()` and `chars()` return fresh mutable lists on every call.
 
 ### Half-open slices
 
@@ -90,7 +89,7 @@ All slice operations include `start` and exclude `end`. Let `n` be the receiver'
 | `List.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return `CollectionError.OutOfRange`; success is a new shallow List with independent outer storage. |
 | `Bytes.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return `CollectionError.OutOfRange`; success is immutable Bytes that may share immutable storage. |
 
-Equal valid bounds select an empty range. Slices never clamp or swap bounds, so `text.slice(start: 0, end: n + 1)` is an `OutOfRange` error, not a shorter result or a fault. Negative bounds count from the end, as for `at`. String slices keep scalar boundaries and leave the receiver unchanged: `"aé🙂z".slice(start: -2, end: 4)` is `ok("🙂z")`, while `slice(start: 3, end: 1)` and `slice(start: 1, end: 10)` are `error(StringError.OutOfRange)`. Unwrap only when the bounds are known valid. See the [String](../../standard-library/reference/prelude.md#string), [collection](../../standard-library/reference/collections.md), and [Bytes](../../standard-library/reference/bytes.md) references.
+Equal bounds give an empty range. Bounds are never clamped or swapped; `text.slice(start: 0, end: n + 1)` is an `OutOfRange` error, not a fault. `"aé🙂z".slice(start: -2, end: 4)` is `ok("🙂z")`; `slice(start: 3, end: 1)` and `slice(start: 1, end: 10)` are `error(StringError.OutOfRange)`. See the [String](../../standard-library/reference/prelude.md#string), [collection](../../standard-library/reference/collections.md), and [Bytes](../../standard-library/reference/bytes.md) references.
 
 ## Encoding and parsing
 
@@ -102,11 +101,11 @@ Equal valid bounds select an empty range. Slices never clamp or swap bounds, so 
 | `Bytes` | `to_string() -> Optional[String]` |
 | `Bytes` | `values() -> List[Int]`; a fresh mutable list of unsigned byte values |
 
-`String.to_bytes` uses UTF-8. `Bytes.to_string` succeeds exactly for valid UTF-8, preserving contents without normalization; invalid bytes produce `none`. Byte `at` follows list index behavior and returns the unsigned byte as Int. An empty `Bytes(values: [])` is valid.
+`to_bytes` encodes UTF-8. `Bytes.to_string` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `at` returns the unsigned byte as Int.
 
-`Bytes(values:)` copies the supplied list; subsequent list mutation does not change the Bytes. `data.values()` returns a fresh list, so editing that result does not change `data`. The existing free function `values(data:)` from `@std/bytes.ms` returns the same kind of copy. `values` is a receiver operation, not a readable data field; the constructor's `values:` argument remains a List.
+`Bytes(values:)` copies its list, and `data.values()` (like the free function `values(data:)` in `@std/bytes.ms`) returns a fresh copy; editing either never changes the Bytes. `values` is a method, not a data field.
 
-`parse_int` accepts exactly an optional ASCII `+` or `-` followed by one or more ASCII decimal digits and an in-range mathematical value. It permits leading zeros, rejects whitespace, separators, fractions, exponents, and any unconsumed character, and returns `none` for invalid or out-of-range input. Runtime parsing is distinct from the stricter source literal grammar. See text and collection operations and numeric operations for more methods; exact signatures live in the [API reference](../../standard-library/reference/_index.md). Grapheme and locale operations remain unsupported.
+`parse_int` accepts an optional ASCII `+` or `-` then one or more ASCII digits, in range. Leading zeros are fine; whitespace, separators, fractions, exponents, and trailing characters give `none`. Exact signatures are in the [API reference](../../standard-library/reference/_index.md). Grapheme and locale operations are unsupported.
 
 ```manuscript
 import panic from "@std/faults.ms"
@@ -127,7 +126,7 @@ test "explicit byte conversion":
 
 ## Deterministic formatting
 
-Formatting never depends on locale, host display settings, or a process's decimal separator.
+Formatting never depends on locale or host settings.
 
 | Type | Formatting |
 | --- | --- |
@@ -155,18 +154,12 @@ Formatting never depends on locale, host display settings, or a process's decima
 | Regex | Pattern text |
 | Other opaque native values, authorities, and resources | `[object]`; internal state and addresses are not inspected |
 
-Type names in records and alternatives omit module identities and type arguments. Nested Strings retain their contents without quoting. Empty values use the same delimiters with no items, such as `[]`, `Map()`, and `Type()`. These text forms are for display; they are not a serialization or identity format. At nesting depth 64, conversion emits `...` for that value, so deeply nested or cyclic adapter values terminate. The outer value starts at depth zero; entering a field, payload, collection item, map key/value, or interface receiver adds one.
+Record and alternative names omit modules and type arguments. Nested Strings are unquoted. Empty values keep their delimiters: `[]`, `Map()`, `Type()`. These forms are for display, not serialization. At nesting depth 64 conversion emits `...`; the outer value is depth 0, and each field, payload, item, key/value, or interface receiver adds one.
 
-For a finite nonzero Float, choose the decimal significand with the fewest significant digits whose numerical conversion to binary64 under round-to-nearest, ties-to-even yields the original value. If several candidates have that digit count, choose the one numerically closest to the exact binary value; if equally close, choose the candidate with an even final significand digit. Remove trailing significand zeros and place the decimal point under the rendering rule below. A zero formats as `0`; negative zero formats as `-0`.
+**Float.** Choose the shortest decimal that converts back to the same binary64 (nearest, ties to even); among equal lengths take the closest to the exact value, then the even final digit. Strip trailing zeros. Zero is `0`, negative zero `-0`.
 
-For Decimal, use the exact stored numerical value rather than an intermediate Float conversion. Remove trailing fractional/significand zeros without changing the number, and use the same decimal-point rule. Any Decimal zero formats as `0`. Formatting does not round a Decimal to a smaller precision or preserve its source spelling: `1.00d` formats as `1`.
+**Decimal.** Use the exact value, strip trailing zeros, and apply the same placement rule. Any zero is `0`; `1.00d` formats as `1`. For fixed places use [`to_fixed`](numbers-and-booleans.md#scale-rounding-and-fixed-places): `25.50d.to_fixed(digits: 2)` is `ok("25.50")`.
 
-For a chosen number of fractional digits, use Decimal's [scale rounding and fixed-place formatting](numbers-and-booleans.md#scale-rounding-and-fixed-places). `25.50d.to_fixed(digits: 2)` returns `ok("25.50")`; interpolation and `toString()` retain the normalized representation above.
+**Placement.** With `e` the base-ten exponent of the first nonzero digit, use plain notation when -6 ≤ e ≤ 20. Otherwise write one digit, then any remaining digits after a point, then `e`, an explicit sign, and the exponent without leading zeros: `0.000001` is plain, `1e-7` and `1e+21` are not.
 
-For either finite numerical decimal, let e be the base-ten exponent of its first nonzero digit in scientific notation. Use plain decimal notation when -6 ≤ e ≤ 20, adding zeros as necessary. Otherwise use one digit before the decimal point, remaining significant digits after it (omit the point if there are none), followed by lowercase `e`, an explicit `+` or `-`, and the exponent magnitude without leading zeros. For example, `0.000001` uses plain notation and an exponent of -7 uses `1e-7`; an exponent of 21 uses `1e+21`.
-
-Non-finite Float values format as `NaN`, `Infinity`, or `-Infinity`; NaN payloads and signs do not affect that text. The [numeric rules](numbers-and-booleans.md#runtime-numeric-outcomes) define how these values arise; they have no source literal spelling.
-
-## External data
-
-See standard imports for the names available without imports.
+Non-finite Floats format as `NaN`, `Infinity`, or `-Infinity` (see [numeric rules](numbers-and-booleans.md#runtime-numeric-outcomes)); they have no literal spelling.
