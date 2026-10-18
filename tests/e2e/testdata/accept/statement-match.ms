@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 type Shape:
     case Circle(r: Int)
@@ -17,7 +17,7 @@ fn first_positive(values: List[Optional[Int]]) Int:
     var index = 0
 
     while index < values.length():
-        let item = values.at(index).get()
+        let item = values.get(index)
         index += 1
 
         match item:
@@ -53,29 +53,20 @@ fn side_effects(shape: Shape) Int:
     return count
 
 test "statement match returns from the enclosing function":
-    if not (area(Shape.Circle(2)) == 12):
-        return panic("circle")
-    if not (area(Shape.Rect(3, 4)) == 12):
-        return panic("rect")
-    if not (area(Shape.Dot) == 0):
-        return panic("dot")
+    try expect_equal(area(Shape.Circle(2)), 12)
+    try expect_equal(area(Shape.Rect(3, 4)), 12)
+    try expect_equal(area(Shape.Dot), 0)
 
 test "statement match controls the nearest loop":
     let values: List[Optional[Int]] = [none, some(0), some(5), some(9)]
-    if not (first_positive(values) == 5):
-        return panic("first positive")
-    if not (first_positive([none, some(-1)]) == -1):
-        return panic("no positive")
-
+    try expect_equal(first_positive(values), 5)
+    try expect_equal(first_positive([none, some(-1)]), -1)
     let rows: List[List[Optional[Int]]] = [
         [some(1), none, some(100)],
         [some(2), some(3)]
     ]
-    if not (nested(rows) == 2006):
-        return panic("nested")
+    try expect_equal(nested(rows), 2006)
 
 test "statement match arms assign enclosing locals":
-    if not (side_effects(Shape.Circle(7)) == 7):
-        return panic("bound arm")
-    if not (side_effects(Shape.Dot) == 100):
-        return panic("default arm")
+    try expect_equal(side_effects(Shape.Circle(7)), 7)
+    try expect_equal(side_effects(Shape.Dot), 100)

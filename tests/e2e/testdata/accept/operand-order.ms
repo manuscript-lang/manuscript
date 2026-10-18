@@ -1,3 +1,5 @@
+import expect_equal from "@std/testing.ms"
+
 export fn main() Int:
     var number = 1
     let total = number + (
@@ -11,3 +13,6 @@ export fn main() Int:
         return 1
 
     return 0
+
+test "operands retain evaluation order":
+    main() | try expect_equal(expected: 0)

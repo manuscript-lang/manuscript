@@ -1,0 +1,5 @@
+--- FAIL: TestPinnedIndexTokensRequireExactInput (0.03s)
+    index_tokens_test.go:49: fallback changed for "@std/archive.ms": errors <nil> / <nil>
+FAIL
+FAIL	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	0.030s
+FAIL

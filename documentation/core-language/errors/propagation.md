@@ -22,9 +22,10 @@ On `ok`, `value` holds the `Decimal`. On `error`, the function returns that erro
 `Result[Unit, E]` can be propagated as a statement:
 
 ```manuscript
-fn prepare() Result[Unit, String]: ok(unit)
+import {TextError} from "@std/errors.ms"
+fn prepare() Result[Unit, TextError]: ok(unit)
 
-fn ready_label() Result[String, String]:
+fn ready_label() Result[String, TextError]:
     try prepare()
     return ok("ready")
 ```

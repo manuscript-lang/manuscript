@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 fn pair(a: Int, b: Int) Int: a * 10 + b
 
@@ -13,7 +13,7 @@ test "arguments":
                 i
             none: 0
     )
-    if result != 12: return panic("argument order")
+    try expect_equal(result, 12)
 
 fn optional(value: Optional[Int]) Int: value.get()
 
@@ -22,11 +22,10 @@ fn defaulted(value: Int = 3) Int: value
 fn identity[T](value: T) T: value
 
 test "source call dispatch contracts":
-    if optional(4) != 4: return panic("optional argument")
-    if defaulted(5) != 5: return panic("explicit default")
-    if defaulted() != 3: return panic("omitted default")
-    if pair(b: 2, a: 1) != 12: return panic("reordered arguments")
-
+    try expect_equal(optional(4), 4)
+    try expect_equal(defaulted(5), 5)
+    try expect_equal(defaulted(), 3)
+    try expect_equal(pair(b: 2, a: 1), 12)
     let callback = pair
-    if callback(a: 3, b: 4) != 34: return panic("callback")
-    if identity(6) != 6: return panic("generic call")
+    try expect_equal(callback(a: 3, b: 4), 34)
+    try expect_equal(identity(6), 6)

@@ -23,10 +23,10 @@ export fn insert_bound[K: Hashable,V](m: Map[K,V], key: K, value: V) Map[K,V]:
 `,
 		"main.ms": `import first from "./first.ms"
 import second from "./second.ms"
-import panic from "@std/faults.ms"
+import expect_equal from "@std/testing.ms"
 test "map add generic and bound calls retain lexical key evidence":
-    if first()!=2: return panic("first scope")
-    if second()!=3: return panic("second scope")
+    (try first()) | try expect_equal(expected: 2)
+    (try second()) | try expect_equal(expected: 3)
 `,
 	}
 	for _, name := range []string{"first", "second"} {
@@ -38,7 +38,7 @@ test "map add generic and bound calls retain lexical key evidence":
 		}
 		sources[name+".ms"] = `import Key from "./domain.ms"
 import {insert,insert_bound} from "./helper.ms"
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 impl Equal for Key:
     fn equals(other: Equal) Bool:
         match other:
@@ -46,7 +46,7 @@ impl Equal for Key:
             _: return false
 impl Hashable for Key:
     fn hash() Int: ` + hash + `
-export fn ` + name + `() Int:
+export fn ` + name + `() Result[Int, Error]:
     let m=Map[Key,Int]()
     let original=Key(1.0)
     m.add(original,1)
@@ -54,10 +54,10 @@ export fn ` + name + `() Int:
     insert_bound(m,Key(1.0),3)
     let add=m.add
     add(value: 4, key: Key(2.0))
-    if m.get(Key(1.0)).get()!=3: return panic("replacement")
+    m.get(Key(1.0)).get() | try expect_equal(expected: 3)
     original.code=9.0
-    if m.keys()[0].get().code!=9.0: return panic("original key identity")
-    return m.length()
+    m.keys()[0].code | try expect_equal(expected: 9.0)
+    return ok(m.length())
 `
 	}
 	for name, source := range sources {

@@ -1,8 +1,7 @@
+import {expect_equal, expect_error, expect_false} from "@std/testing.ms"
 import {Queue, PriorityQueue} from "@std/queues.ms"
 import Synchronized from "@std/sync.ms"
 import {Scheduler, StartError, WorkStatus, check_cancelled, yield_now, TaskGroup} from "@std/tasks.ms"
-import panic from "@std/faults.ms"
-import expect_error from "@std/testing.ms"
 
 fn compare(left: Int, right: Int) Int: left - right
 
@@ -14,57 +13,43 @@ fn second() String: "two"
 
 test "FIFO capacity empty reads draining and reuse":
     let queue = Queue[Int](2)
-    if not queue.is_empty() or not queue.peek().is_none(): return panic("empty queue")
-    if (not queue.enqueue(1) or not queue.enqueue(2) or queue.enqueue(3)): return panic(
-        "queue capacity"
-    )
-    if queue.peek() != some(1) or queue.length() != 2: return panic("queue peek")
-    if queue.dequeue() != some(1) or queue.dequeue() != some(2): return panic("FIFO")
-    if not queue.dequeue().is_none() or not queue.enqueue(4): return panic(
-        "queue reuse"
-    )
+    try expect_false(not queue.is_empty() or not queue.peek().is_none())
+    try expect_false((not queue.enqueue(1) or not queue.enqueue(2) or queue.enqueue(3)))
+    try expect_false(queue.peek() != some(1) or queue.length() != 2)
+    try expect_false(queue.dequeue() != some(1) or queue.dequeue() != some(2))
+    try expect_false(not queue.dequeue().is_none() or not queue.enqueue(4))
 
 test "priority queue orders values and honors capacity":
     let queue = PriorityQueue(compare, 3)
     queue.enqueue(3)
     queue.enqueue(1)
     queue.enqueue(2)
-    if queue.enqueue(0): return panic("priority capacity")
-    if queue.peek() != some(1): return panic("priority peek")
-
+    try expect_false(queue.enqueue(0))
+    try expect_equal(queue.peek(), some(1))
     for expected in [1, 2, 3]:
-        if queue.dequeue() != some(expected): return panic("priority order")
-    if not queue.is_empty(): return panic("priority drain")
+        try expect_equal(queue.dequeue(), some(expected))
+    try expect_false(not queue.is_empty())
 
 test "synchronized guards update and release for later acquisition":
     let state = Synchronized(1)
 
     with guard = state.lock():
-        if guard.get() != 1: return panic("guard read")
-
+        try expect_equal(guard.get(), 1)
         guard.set(2)
 
     with guard = state.lock():
-        if guard.get() != 2: return panic("guard update or release")
+        try expect_equal(guard.get(), 2)
 
 test "scheduler delayed cancellation capacity and closed admission":
     let scheduler = Scheduler(1)
     let id = try scheduler.after(60.seconds, operation)
-    if scheduler.status(id) != WorkStatus.Running: return panic("scheduled status")
-    if (try expect_error(scheduler.start(operation))) != StartError.Full: return panic(
-        "scheduler capacity error"
-    )
-
+    try expect_equal(scheduler.status(id), WorkStatus.Running)
+    try expect_equal((try expect_error(scheduler.start(operation))), StartError.Full)
     scheduler.cancel(id)
     scheduler.close()
-    if scheduler.status(id) != WorkStatus.Cancelled: return panic(
-        "joined cancel status"
-    )
-
+    try expect_equal(scheduler.status(id), WorkStatus.Cancelled)
     scheduler.close()
-    if (try expect_error(scheduler.start(operation))) != StartError.Closed: return panic(
-        "closed scheduler error"
-    )
+    try expect_equal((try expect_error(scheduler.start(operation))), StartError.Closed)
 
 test "task group heterogeneous results and cancellation checkpoints":
     check_cancelled()
@@ -76,4 +61,4 @@ test "task group heterogeneous results and cancellation checkpoints":
         try tasks.join()
         let number = try number_task.join()
         let text = try text_task.join()
-        if number != 1 or text != "two": return panic("task results changed")
+        try expect_false(number != 1 or text != "two")

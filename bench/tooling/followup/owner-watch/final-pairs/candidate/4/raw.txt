@@ -1,0 +1,12 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/tooling/lsp
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkOwnerEvent/roots=2-2         	      20	    887486 ns/op	         1.000 B-retained/op	         6.500 canonical/op	         1.000 compiles/op	         3.000 manifest/op	         1.000 pubs/op	  426632 B/op	    3124 allocs/op
+BenchmarkOwnerEvent/roots=4-2         	      20	    892549 ns/op	         1.000 B-retained/op	         8.500 canonical/op	         1.000 compiles/op	         5.000 manifest/op	         1.000 pubs/op	  462112 B/op	    3415 allocs/op
+BenchmarkOwnerEvent/roots=8-2         	      20	   1157727 ns/op	         1.000 B-retained/op	        12.50 canonical/op	         1.000 compiles/op	         9.000 manifest/op	         1.000 pubs/op	  534100 B/op	    3999 allocs/op
+BenchmarkOrdinaryChange/roots=2-2     	      20	   1501442 ns/op	         0 B-retained/op	         6.000 canonical/op	         2.000 compiles/op	         2.000 manifest/op	         2.000 pubs/op	  917866 B/op	    6693 allocs/op
+BenchmarkOrdinaryChange/roots=4-2     	      20	   2746830 ns/op	         0 B-retained/op	        12.00 canonical/op	         4.000 compiles/op	         4.000 manifest/op	         4.000 pubs/op	 1903280 B/op	   13919 allocs/op
+BenchmarkOrdinaryChange/roots=8-2     	      20	   6832580 ns/op	         0 B-retained/op	        24.00 canonical/op	         8.000 compiles/op	         8.000 manifest/op	         8.000 pubs/op	 4088239 B/op	   30024 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	0.538s

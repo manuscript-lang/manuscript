@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_false} from "@std/testing.ms"
 import {Scheduler, TaskGroup} from "@std/tasks.ms"
 import {duration, sleep} from "@std/time.ms"
 
@@ -6,25 +6,25 @@ fn pass() Result[Unit, Error]: return ok(unit)
 
 test "scheduler bounds preserve omission none zero and positive meanings":
     with omitted = Scheduler():
-        if not omitted.start(pass).is_ok(): return panic("omitted scheduler")
+        try expect_false(not omitted.start(pass).is_ok())
     with absent = Scheduler(none, none, none):
-        if not absent.start(pass).is_ok(): return panic("none scheduler")
+        try expect_false(not absent.start(pass).is_ok())
     with zero = Scheduler(1, 0, duration(0)):
-        if not zero.start(pass).is_ok(): return panic("zero history/drain")
+        try expect_false(not zero.start(pass).is_ok())
     with maximum = Scheduler(
         9223372036854775807,
         9223372036854775807,
         duration(9223372036854775807)
     ):
-        if not maximum.start(pass).is_ok(): return panic("maximum bounds")
+        try expect_false(not maximum.start(pass).is_ok())
 
 test "task timeout bounds and zero sleep retain existing behavior":
     with omitted = TaskGroup():
-        if not omitted.join().is_ok(): return panic("omitted timeout")
+        try expect_false(not omitted.join().is_ok())
     with absent = TaskGroup(none):
-        if not absent.join().is_ok(): return panic("none timeout")
+        try expect_false(not absent.join().is_ok())
     with maximum = TaskGroup(duration(9223372036854775807)):
-        if not maximum.join().is_ok(): return panic("maximum timeout")
+        try expect_false(not maximum.join().is_ok())
     with zero = TaskGroup(duration(0)):
-        if not zero.join().is_ok(): return panic("zero timeout")
+        try expect_false(not zero.join().is_ok())
     sleep(duration(0))

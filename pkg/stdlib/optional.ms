@@ -29,7 +29,7 @@ impl Optional[T]:
 
     # Returns ok with the original payload, or error with the eager cause.
     # Without a cause, E is MissingValue and the error names the calling source file and line.
-    fn ok_or[E = MissingValue](cause: Optional[E] = none) Result[T, E]:
+    fn ok_or[E: Error = MissingValue](cause: Optional[E] = none) Result[T, E]:
 
     # Constructs an error once only for none; present payloads remain unchanged.
-    fn ok_or_else[E](create: fn() E) Result[T, E]:
+    fn ok_or_else[E: Error](create: fn() E) Result[T, E]:

@@ -140,7 +140,7 @@ Verify: Optional methods and Result propagation into Error execute without impor
 Decision: applications export `fn main() Int` and import the standard services they use. The user explicitly deferred enforcement; the earlier exploration of `using`, scoped replacement, and manifest permissions is not an accepted implementation requirement. Ordinary service parameters remain available for helpers and source fakes.
 
 Apply when: changing entrypoints, host roots, standard imports, tests, or authority documentation.
-Evidence: [CLI contract](../pkg/stdlib/cli.ms), [entry validation](../pkg/compiler/compiler.go), and [execution-local accessors](../pkg/runtime/host.go).
+Evidence: [CLI contract](../pkg/stdlib/process.ms), [entry validation](../pkg/compiler/compiler.go), and [execution-local accessors](../pkg/runtime/host.go).
 Verify: a parameterless entry runs; parameterized entries fail; imported accessors share roots across derived executions and imported helpers, while separate tests receive separate root wrappers.
 
 ### Keep short bodies available without a second function kind
@@ -184,13 +184,13 @@ Apply when: changing recursive data, automatic equality/hashing, or generic regu
 Evidence: [recursive data rules](../documentation/core-language/types/records.md#recursive-data), [declaration checks](../pkg/checker/type_recursion.go), [compiler regressions](../pkg/compiler/recursive_types_test.go), [shared-dependency regressions](../pkg/checker/layout_diagnostics_test.go), and [native recursive data fixture](../tests/e2e/testdata/accept/recursive-types.ms).
 Verify: direct and mutual trees execute; cyclic equality terminates; clone retains child references; uninitialized self-references and automatic recursive hashing fail. Finite nested generic applications pass; expanding cycles through fields, callbacks, or interfaces fail.
 
-### Match is uniformly a value expression; indexing preserves Optional
+### Match is uniformly a value expression; indexing returns the element
 
-Decision: when addressing familiar-language friction, the user explicitly chose a single `match` expression form rather than retaining a separate statement form. A standalone match discards the same checked result. The user also clarified that list brackets must preserve `.at()`'s Optional result, rather than unwrap or introduce bounds faults. Generic specialization retains its existing meaning.
+Decision: when addressing familiar-language friction, the user explicitly chose a single `match` expression form rather than retaining a separate statement form. A standalone match discards the same checked result. The earlier decision that brackets preserve `.at()`'s Optional result was reversed: `at` is removed, `[]` returns `T` and faults out of range, and `get(index, default: ...)` on List, String, and Bytes returns `T` or the default. Generic specialization retains its existing meaning.
 
 Apply when: changing matching, collection lookup, type application parsing, or examples migrating from other languages.
 Evidence: [match values](../documentation/core-language/control-flow/pattern-matching.md#arm-values), [list lookup](../documentation/core-language/types/collections.md#lookup-and-updates), and [native expression conformance](../tests/e2e/testdata/accept/expression-conveniences.ms).
-Verify: use `items[index].get(0)` for absent indexes, keep `identity[Int]` specialization, and exercise enclosing returns, propagation, cleanup, and loop exits from match arms. An effects-only arm ending in a value-returning call needs an explicit `unit` when another arm produces Unit.
+Verify: use `items.get(index, default: 0)` for absent indexes, keep `identity[Int]` specialization, and exercise enclosing returns, propagation, cleanup, and loop exits from match arms. An effects-only arm ending in a value-returning call needs an explicit `unit` when another arm produces Unit.
 
 ### Infer local callback signatures from context
 
@@ -233,3 +233,21 @@ Evidence: [pipe flows](../documentation/core-language/basics/expressions.md#pipe
 Verify: `try parse(text) | double | try check | .to_string_radix(radix: 10)` runs; a continuation line at the wrong indentation is rejected.
 
 Decision: the user asked to drop `->` before result types to save tokens (about 1% of source tokens measured with cl100k over the stdlib, accept tests, and examples; colons and `name: Type` were left alone). Named functions, methods, interface operations, and fn types still require the result type (`fn f(x: Int) Int:`, `fn(value: Int) Int`); lambdas may omit it and the parser reads a type after `)` as the result type and `:` as the body. `->` is a lexer token only so the parser can say to remove it. Call labels, map entries, and inline suites keep `:` because no separator would make `f(a [1])`, `a (b)`, and `a -1` unambiguous; the study is in the project thread. `ms fmt` reformats migrated files because shorter lines rewrap.
+
+Decision: the same spelling applies to displayed types, including LSP hover. Keep
+the shared [type formatter](../pkg/checker/types.go) consistent with source syntax;
+hover, completions, diagnostics, and API snapshots consume it. Consumers that parse
+displayed signatures must skip nested callback parameter lists before reading the
+outer result. Verify with [function hover regressions](../pkg/tooling/lsp/function_type_hover_test.go)
+and [error-type extraction cases](../pkg/tooling/facts_test.go), including a callback
+returning a Result when its enclosing function does not.
+
+### Result's error type is bounded by Error
+
+Decision: Chinmay required `Result[T, E: Error]`; arbitrary error values (`String`, `Int`, collections) are rejected. Plain text uses `TextError("message")` and domain errors declare `impl Error`. Generic helpers over Result write `E: Error`.
+
+Verified: the bound lives on `Result` in `pkg/stdlib/result.ms`, so annotations and inferred call results (including `Optional.ok_or`) hit the ordinary type-argument bound check. Native declaration default bounds (`ok_or[E: Error = MissingValue]`) are checked after standard impls bind.
+
+Apply when: adding Result-returning APIs, examples, or tests that need an error value.
+Evidence: [Result source](../pkg/stdlib/result.ms), [results guide](../documentation/core-language/errors/results.md).
+Verify: `Result[Int, String]` fails with "String does not satisfy Error"; `Result[Int, TextError]` and `Result[T, Error]` pass.

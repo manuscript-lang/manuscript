@@ -272,7 +272,11 @@ func (s *hostStream) readFile(ctx *Execution, data []byte) (int, error) {
 	return n, read.err
 }
 
-func (s *hostStream) Write(ctx *Execution, data *Bytes) Result[Unit, IoError] {
+func (s *hostStream) Write(ctx *Execution, data string) Result[Unit, IoError] {
+	return s.WriteBytes(ctx, NewBytes([]byte(data)))
+}
+
+func (s *hostStream) WriteBytes(ctx *Execution, data *Bytes) Result[Unit, IoError] {
 	release, ok := s.admit(ctx, true)
 	if !ok {
 		return ioFailure[Unit](IoError_Closed{})
@@ -367,7 +371,7 @@ func Io_Copy(ctx *Execution, input ReadStream, output WriteStream, maxBytes Opti
 		if len(data.Data) > max-total {
 			return ioFailure[int](IoError_LimitExceeded{})
 		}
-		if written := output.Write(ctx, data); written.Failed {
+		if written := output.WriteBytes(ctx, data); written.Failed {
 			return Fail[int](written.Err)
 		}
 		total += len(data.Data)

@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {stdout, stdin, read_line} from "@std/io.ms"
 import {clock, Instant} from "@std/time.ms"
 import {StringBuilder} from "@std/string.ms"
@@ -25,7 +26,7 @@ fn got_line() Bool:
     return false
 
 fn say(text: String) Unit:
-    let _ignored = stdout().write(text.to_bytes())
+    let _ignored = stdout().write(text)
 
 fn since(started: Instant) Int:
     return clock().now().difference(started).to_nanoseconds()
@@ -36,13 +37,13 @@ fn report(name: String, ops: Int, started: Instant) Unit:
 fn ident[T](x: T) T:
     return x
 
-fn checked(n: Int) Result[Int, String]:
+fn checked(n: Int) Result[Int, TextError]:
     if n < 0:
-        return error("negative")
+        return error(TextError("negative"))
 
     return ok(n + 1)
 
-fn chain(n: Int) Result[Int, String]:
+fn chain(n: Int) Result[Int, TextError]:
     let v = try checked(n)
     return ok(v)
 
@@ -152,7 +153,7 @@ export fn main() Int:
     var ma = 0
 
     while i < 1000000:
-        ma += area(shapes.at(i % 3).get())
+        ma += area(shapes.get(i % 3))
         i += 1
 
     report("match", 1000000, t)

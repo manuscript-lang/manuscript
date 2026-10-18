@@ -125,14 +125,14 @@ Builder mutations return Unit; `freeze` returns the sealed result.
 
 On a 64-bit host a List reserves 8 bytes per `Int` or `Float`, 1 per `Bool`, and 16 per `String` reference (text storage is extra and may be shared), plus a small header. Append reserves spare capacity and growth can briefly keep old arrays alive, so heap and peak RSS exceed the element budget. Storage never narrows `Int` or `Float`.
 
-A List keeps its identity and backing kind through generics, records, Optional, Result, and closures; explicit copies get independent backing. See [Go representation](../../contributing/go-lowering-representation.md).
+A List keeps its identity and backing kind through generics, records, Optional, Result, and closures; explicit copies get independent backing.
 
 ## Lookup and updates
 
 | Receiver or constructor | Signature/result |
 | --- | --- |
 | `List[T]()` | Empty `List[T]` |
-| `List[T]` | `length() Int`; `at(index: Int) Optional[T]`; `[index] Optional[T]` |
+| `List[T]` | `length() Int`; `get(index: Int, default: Optional[T] = none) T`; `[index] T` |
 | `List[T]` | `append(value: T) List[T]`; `concat(values: List[T]) List[T]` |
 | `List[T]` | `set(index: Int, value: T) List[T]`; `remove(index: Int) List[T]` |
 | `List[T]` | `insert(index: Int, value: T) List[T]`; `pop() Optional[T]` |
@@ -149,6 +149,7 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 | `Map[K, V]` | `some(predicate: fn(key: K, value: V) Bool) Bool`; `every` uses the same predicate |
 | `Map[K, V]` | `add(key: K, value: V) Map[K, V]`; `remove(key: K) Map[K, V]` |
 | `Set[T]()` | Empty `Set[T]` |
+| `Set[T](values)` | `Set[T]` of the distinct elements of the `List[T]` in first-seen order; `Set([1, 2])` infers `T` |
 | `Set[T]` | `length() Int`; `contains(value: T) Bool` |
 | `Set[T]` | `is_empty() Bool`; `filter(predicate: fn(value: T) Bool) Set[T]` |
 | `Set[T]` | `map[U: Hashable](transform: fn(value: T) U) Set[U]` |
@@ -159,39 +160,7 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 | `Set[T]` | `find_last` uses the same predicate and payload result, searching from the end |
 | `Set[T]` | `some(predicate: fn(value: T) Bool) Bool`; `every` uses the same predicate |
 
-An empty constructor needs explicit type arguments or a complete expected application, and creates fresh storage. `values[index]` equals `values.at(index)`: an `Optional[T]` accepting negative indexes, `none` out of range, so `values[0].get(0)` needs no length check. It narrows to `T` only when the index is proven ([Proven indexes](#proven-indexes)). Bytes `.at` is the same. A size above the maximum `Int` faults.
-
-### Proven indexes
-
-`values[index]` has type `T` when a call-free guard on the same local bindings proves it in range:
-
-```manuscript
-fn weighted(values: List[Int], index: Int) Int:
-    if index < 0 or index >= values.length():
-        return 0
-
-    return values[index] * 2
-
-fn total(values: List[Int]) Int:
-    var sum = 0
-    var i = 0
-
-    while i < values.length():
-        sum += values[i]
-        i += 1
-
-    return sum
-```
-
-Both bounds are required.
-
-- Lower: `index >= 0` (or equivalent), or an `Int` that starts at a nonnegative literal and is reassigned only nonnegative literals or `itself + literal`.
-- Upper: `index < values.length()` on the same `List` binding. A literal `n` needs `values.length() > n`.
-- Guards combine via `and`, `or` in a negated early exit, `if`/`else` branches, and `while` conditions.
-
-A proof ends at an assignment to the index or list, at any call other than `length()` in the statement (it may mutate an alias), and at a closure boundary. It does not cover other lists, copied lengths, or arithmetic indexes like `row * cols + col`. `.at(index)` stays `Optional[T]`.
-
-Narrowing changes only the type; the read still checks the index, so a list resized concurrently faults like `get()` on `none`. A `List[Optional[T]]` lookup narrows to `Optional[T]` unflattened, and where an `Optional[T]` is expected it keeps that form, so code checks with or without the guard.
+An empty constructor needs explicit type arguments or a complete expected application, and creates fresh storage. `values[index]` equals `values.get(index)`: the element at an index, where negative indexes count from the end. An index out of range faults. Pass a default to avoid the fault: `values.get(0, default: 0)` needs no length check. Bytes and String `get` work the same way, and a String element is a one-scalar String. A size above the maximum `Int` faults.
 
 `Map.add(key, value)` inserts or replaces and returns the same map. Replacing an equal map key keeps its original key and position; adding an existing set element changes nothing. Remove then add moves the entry to the end. Equality ignores insertion order. Use builders for construction with a sealed result.
 
@@ -229,8 +198,7 @@ fn positives(values: List[Int]) List[Int]:
 test "dynamic mutable data and explicit copies":
     if not (positives([3, -1, 2]) == [3, 2]):
         return panic("check failed")
-    let absent: Optional[Int] = none
-    if not ([1].at(5) == absent):
+    if [1].get(5, default: -1) != -1:
         return panic("check failed")
     let original = Map[String, Int]().add("a", 1)
     let updated = original.clone().add("b", 2).add("a", 3)

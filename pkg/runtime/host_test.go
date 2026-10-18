@@ -40,12 +40,8 @@ func wantFSError[T any](t *testing.T, r Result[T, FileSystemError], want FileSys
 
 func TestHostRootsAccessors(t *testing.T) {
 	ctx := rootExecution(context.Background(), []string{"a", "b"})
-	if got := Cli_Arguments(ctx).Items; len(got) != 2 || got[0] != "a" {
+	if got := Process_Arguments(ctx).Items; len(got) != 2 || got[0] != "a" {
 		t.Fatalf("arguments %v", got)
-	}
-	os.Setenv("RT_HOST_TEST", "1")
-	if v, _ := Cli_Environment(ctx).Lookup("RT_HOST_TEST"); v != "" {
-		t.Fatalf("environment is a startup snapshot, saw %q", v)
 	}
 	if Io_Stdout(ctx) == nil || Io_Stderr(ctx) == nil || Io_Stdin(ctx) == nil || Io_Files(ctx) == nil || Fs_Filesystem(ctx) == nil || Process_Commands(ctx) == nil || Process_Control(ctx) == nil || System_System(ctx) == nil || Time_Clock(ctx) == nil || Time_WallClock(ctx) == nil {
 		t.Fatal("missing root service")
@@ -77,7 +73,7 @@ func TestStreamsReadWriteCloseIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 	in, out := newHostStream(r, true), newHostStream(w, true)
-	mustOK(t, out.Write(ctx, NewBytes([]byte("hello\nworld\n"))))
+	mustOK(t, out.WriteBytes(ctx, NewBytes([]byte("hello\nworld\n"))))
 	mustOK(t, out.Flush(ctx))
 	line := mustOK(t, Io_ReadLine(ctx, in, None[int]()))
 	if !line.Some || line.Val != "hello" {
@@ -93,7 +89,7 @@ func TestStreamsReadWriteCloseIdempotent(t *testing.T) {
 	if string(rest.Data) != "ld\n" {
 		t.Fatalf("rest %q", rest.Data)
 	}
-	if res := out.Write(ctx, NewBytes([]byte("x"))); !res.Failed || res.Err != (IoError_Closed{}) {
+	if res := out.WriteBytes(ctx, NewBytes([]byte("x"))); !res.Failed || res.Err != (IoError_Closed{}) {
 		t.Fatalf("write after close: %#v", res)
 	}
 	if res := in.Read(ctx, Some(int(0))); !res.Failed || res.Err != (IoError_InvalidInput{}) {
@@ -183,7 +179,7 @@ func TestFileSystemEmptyPathsAreInvalid(t *testing.T) {
 	fs := &osFileSystem{directory: t.TempDir()}
 	b := NewBytes(nil)
 	wantFSError(t, fs.ReadFile(ctx, "", None[int]()), FileSystemError_InvalidInput{})
-	wantFSError(t, fs.WriteFile(ctx, "", b, true), FileSystemError_InvalidInput{})
+	wantFSError(t, fs.WriteFileBytes(ctx, "", b, true), FileSystemError_InvalidInput{})
 	wantFSError(t, fs.Stat(ctx, "", true), FileSystemError_InvalidInput{})
 	wantFSError(t, fs.List(ctx, "", None[int]()), FileSystemError_InvalidInput{})
 	wantFSError(t, fs.CreateDirectory(ctx, "", true), FileSystemError_InvalidInput{})
@@ -201,14 +197,14 @@ func TestFileSystemOperations(t *testing.T) {
 	ctx := testCtx(t)
 	base := t.TempDir()
 	fs := &osFileSystem{directory: base}
-	mustOK(t, fs.WriteFile(ctx, "a.txt", NewBytes([]byte("alpha\nbeta\r\n")), false))
-	wantFSError(t, fs.WriteFile(ctx, "a.txt", NewBytes(nil), false), FileSystemError_AlreadyExists{})
+	mustOK(t, fs.WriteFileBytes(ctx, "a.txt", NewBytes([]byte("alpha\nbeta\r\n")), false))
+	wantFSError(t, fs.WriteFileBytes(ctx, "a.txt", NewBytes(nil), false), FileSystemError_AlreadyExists{})
 	if got := mustOK(t, fs.ReadFile(ctx, "a.txt", None[int]())); string(got.Data) != "alpha\nbeta\r\n" {
 		t.Fatalf("read %q", got.Data)
 	}
 	wantFSError(t, fs.ReadFile(ctx, "a.txt", Some(int(3))), FileSystemError_LimitExceeded{})
 	wantFSError(t, fs.ReadFile(ctx, ".", None[int]()), FileSystemError_InvalidInput{})
-	mustOK(t, fs.AppendFile(ctx, "a.txt", NewBytes([]byte("more"))))
+	mustOK(t, fs.AppendFileBytes(ctx, "a.txt", NewBytes([]byte("more"))))
 	mustOK(t, fs.CreateDirectory(ctx, "sub/deep", true))
 	mustOK(t, fs.CopyFile(ctx, "a.txt", "sub/b.txt", false, None[int]()))
 	mustOK(t, fs.CreateLink(ctx, "ln", "a.txt"))
@@ -278,7 +274,7 @@ func TestFileHandleSemantics(t *testing.T) {
 	base := t.TempDir()
 	fs := &osFileSystem{directory: base}
 	h := mustOK(t, fs.Open(ctx, "f", "w+", 0600))
-	mustOK(t, h.Write(ctx, NewBytes([]byte("line1\nline2\nline3\n"))))
+	mustOK(t, h.WriteBytes(ctx, NewBytes([]byte("line1\nline2\nline3\n"))))
 	if n := mustOK(t, h.Seek(ctx, 0, 0)); n != 0 {
 		t.Fatal(n)
 	}
@@ -309,7 +305,7 @@ func TestFileHandleSemantics(t *testing.T) {
 		t.Fatalf("stream after close: %#v", res)
 	}
 	ro := mustOK(t, fs.Open(ctx, "f", "r", 0600))
-	wantFSError(t, ro.Write(ctx, NewBytes([]byte("x"))), FileSystemError_InvalidInput{})
+	wantFSError(t, ro.WriteBytes(ctx, NewBytes([]byte("x"))), FileSystemError_InvalidInput{})
 	ro.Close(ctx)
 	wo := mustOK(t, fs.Open(ctx, "f", "a", 0600))
 	if res := wo.Reader(ctx).Read(ctx, None[int]()); !res.Failed || res.Err != (IoError_InvalidInput{}) {
@@ -461,14 +457,11 @@ func TestSystemAndProcessControl(t *testing.T) {
 	}
 	name := "RT_CONFORMANCE"
 	mustOK(t, control.SetEnvironment(ctx, name, Some("v")))
-	if v := sys.Environment(ctx, name); !v.Some || v.Val != "v" {
-		t.Fatal("system environment")
-	}
 	if v, _ := mustOK(t, control.Environment(ctx)).Lookup(name); v != "v" {
 		t.Fatal("process environment")
 	}
 	mustOK(t, control.SetEnvironment(ctx, name, None[string]()))
-	if sys.Environment(ctx, name).Some {
+	if _, ok := mustOK(t, control.Environment(ctx)).Lookup(name); ok {
 		t.Fatal("unset")
 	}
 	if r := control.SetEnvironment(ctx, "A=B", None[string]()); !r.Failed || r.Err != (ProcessError_InvalidInput{}) {
@@ -542,7 +535,7 @@ func TestSubprocessStreamsAndCleanup(t *testing.T) {
 	}
 	ctx := testCtx(t)
 	child := mustOK(t, Process_Commands(ctx).Spawn(ctx, "cat", NewList[string]()))
-	mustOK(t, child.Stdin(ctx).Write(ctx, NewBytes([]byte("ping\n"))))
+	mustOK(t, child.Stdin(ctx).WriteBytes(ctx, NewBytes([]byte("ping\n"))))
 	line := mustOK(t, Io_ReadLine(ctx, child.Stdout(ctx), None[int]()))
 	if line.Val != "ping" {
 		t.Fatal(line)
@@ -576,7 +569,11 @@ func (c *captureStream) Close(*Execution) Unit { c.closed = true; return Unit{} 
 func (c *captureStream) Flush(*Execution) Result[Unit, IoError] {
 	return Ok[Unit, IoError](Unit{})
 }
-func (c *captureStream) Write(_ *Execution, b *Bytes) Result[Unit, IoError] {
+func (c *captureStream) Write(_ *Execution, s string) Result[Unit, IoError] {
+	c.data = append(c.data, s...)
+	return Ok[Unit, IoError](Unit{})
+}
+func (c *captureStream) WriteBytes(_ *Execution, b *Bytes) Result[Unit, IoError] {
 	c.data = append(c.data, b.Data...)
 	return Ok[Unit, IoError](Unit{})
 }
@@ -690,7 +687,7 @@ func TestHostErrorMessages(t *testing.T) {
 		{Errors_Message_TimeError(ctx, TimeError_OutOfRange{}), "time: value out of range"},
 		{Errors_Message_LogError(ctx, LogError_Io{Cause: IoError_Closed{}}), "I/O: resource is closed"},
 		{Errors_Message_LogError(ctx, LogError_Closed{}), "logging: resource is closed"},
-		{Errors_Message_TextError(ctx, TextError_Text{Message: "verbatim"}), "verbatim"},
+		{Errors_Message_TextError(ctx, &TextError{Text: "verbatim"}), "verbatim"},
 		{Errors_Message_MissingValue(ctx, MissingValue_Missing{Location: "a.ms:3"}), "missing value at a.ms:3"},
 		{Errors_Message_JsonError(ctx, JsonError_InvalidData{}), "JSON: invalid data"},
 		{Errors_Message_ExecutionError(ctx, ExecutionError_Crashed{Message: "boom"}), "boom"},
@@ -763,7 +760,7 @@ func TestReadLineLimitKeepsFollowingLinesAndIgnoresCarriageReturn(t *testing.T) 
 		t.Fatal(err)
 	}
 	in, out := newHostStream(r, true), newHostStream(w, true)
-	mustOK(t, out.Write(ctx, NewBytes([]byte("abcdefgh\nabcd\r\nzz\n"))))
+	mustOK(t, out.WriteBytes(ctx, NewBytes([]byte("abcdefgh\nabcd\r\nzz\n"))))
 	mustOK(t, out.Flush(ctx))
 	if res := Io_ReadLine(ctx, in, Some(5)); !res.Failed {
 		t.Fatalf("over-long line accepted: %v", res)

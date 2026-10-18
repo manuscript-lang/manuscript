@@ -1,6 +1,6 @@
 import {Logger, LogLevel, create, bind, record, stdout_transport, file_transport} from "@std/log.ms"
 import JsonValue from "@std/json.ms"
-import arguments from "@std/cli.ms"
+import arguments from "@std/process.ms"
 import stderr from "@std/io.ms"
 import {TaskGroup, Task} from "@std/tasks.ms"
 import range from "@std/collections.ms"
@@ -90,12 +90,12 @@ fn exercise(mode: String, path: String) Result[Unit, Error]:
 
 export fn main() Int:
     let args = arguments()
-    let mode = args.at(0).get("stdout")
-    let path = args.at(1).get("events.ndjson")
+    let mode = args.get(0, default: "stdout")
+    let path = args.get(1, default: "events.ndjson")
     let result = exercise(mode, path)
 
     if result.is_error():
-        let _ignored = stderr().write("{result.err().message()}\n".to_bytes())
+        let _ignored = stderr().write("{result.err().message()}\n")
         return 1
 
     return 0

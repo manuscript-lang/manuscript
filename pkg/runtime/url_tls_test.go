@@ -115,14 +115,14 @@ func TestTlsVerifiedConnectionAndHTTP2(t *testing.T) {
 	options := clientOptions()
 	options.Tls = &TlsOptions{RootsPem: roots}
 	client := must(t, n.HttpClient(ctx, options))
-	body := must(t, client.Request(ctx, get(), server.URL, headersOf(), NewBytes(nil), Some(int(100)), Some(Duration(time.Second))))
+	body := must(t, client.RequestBytes(ctx, get(), server.URL, headersOf(), NewBytes(nil), Some(int(100)), Some(Duration(time.Second))))
 	if got := someBytes(t, body.Read(ctx, Some(int(100)))); got != "HTTP/2.0" {
 		t.Fatal(got)
 	}
 	body.Close(ctx)
 	// Without the roots the certificate is not trusted: there is no insecure mode.
 	untrusted := must(t, n.HttpClient(ctx, clientOptions()))
-	failedWith(t, untrusted.Request(ctx, get(), server.URL, headersOf(), NewBytes(nil), Some(int(100)), Some(Duration(time.Second))), "HttpError_Failed")
+	failedWith(t, untrusted.RequestBytes(ctx, get(), server.URL, headersOf(), NewBytes(nil), Some(int(100)), Some(Duration(time.Second))), "HttpError_Failed")
 	conn := must(t, n.ConnectTlsConfig(ctx, server.Listener.Addr().String(), &TlsOptions{ServerName: "example.com", RootsPem: roots}, Some(Duration(time.Second))))
 	info := must(t, conn.TlsInfo(ctx))
 	if !info.Verified || info.Version < 0x0303 || len(info.PeerCertificates.Items) == 0 {
@@ -151,7 +151,7 @@ func TestTlsMutualListener(t *testing.T) {
 	go func() { accepted <- listener.Accept(ctx, Some(Duration(time.Second))) }()
 	client := must(t, n.ConnectTlsConfig(ctx, address, &TlsOptions{ServerName: "service.test", RootsPem: roots, CertificatePem: clientCert, PrivateKeyPem: clientKey}, Some(Duration(time.Second))))
 	server := must(t, <-accepted)
-	must(t, client.Write(ctx, NewBytes([]byte("verified")), None[Duration]()))
+	must(t, client.WriteBytes(ctx, NewBytes([]byte("verified")), None[Duration]()))
 	if got := someBytes(t, server.Read(ctx, Some(int(20)), Some(Duration(time.Second)))); got != "verified" {
 		t.Fatal(got)
 	}
@@ -165,7 +165,7 @@ func TestTlsMutualListener(t *testing.T) {
 	anonymous := n.ConnectTlsConfig(ctx, address, &TlsOptions{ServerName: "service.test", RootsPem: roots}, Some(Duration(time.Second)))
 	if !anonymous.Failed {
 		// TLS 1.3 reports the missing client certificate on first use.
-		anonymous.Val.Write(ctx, NewBytes([]byte("x")), None[Duration]())
+		anonymous.Val.WriteBytes(ctx, NewBytes([]byte("x")), None[Duration]())
 		anonymous.Val.Read(ctx, Some(int(1)), Some(Duration(time.Second)))
 	}
 	failedWith(t, <-accepted, "NetworkError_Failed")

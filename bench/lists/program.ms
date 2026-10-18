@@ -9,7 +9,7 @@ fn build(count: Int) List[Int]:
 fn index(values: List[Int], count: Int) Int:
     var total = 0
     for i in range(0, count):
-        total += values.at(i % values.length()).get()
+        total += values.get(i % values.length())
     return total
 
 fn iterate(values: List[Int]) Int:

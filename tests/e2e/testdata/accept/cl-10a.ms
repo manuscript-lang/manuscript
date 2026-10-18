@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
 interface ReadValue[T]:
     fn get() T
@@ -25,11 +25,7 @@ test "generic implementations":
     let text = Box[String]("hello")
     let number_view = ReadValue[Int](number)
     let text_view = ReadValue[String](text)
-    if not (number_view.get() == 7):
-        return panic("check failed")
-    if not (text_view.get() == "hello"):
-        return panic("check failed")
-    if not (compare(number, 7)):
-        return panic("check failed")
-    if not (not compare(number, 8)):
-        return panic("check failed")
+    try expect_equal(number_view.get(), 7)
+    try expect_equal(text_view.get(), "hello")
+    try expect_false(not (compare(number, 7)))
+    try expect_false(not (not compare(number, 8)))

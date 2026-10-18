@@ -17,7 +17,7 @@ let pieces = [
 export fn text(rng: Rng) String:
     var out = ""
     for piece in range(0, next(rng, 4)):
-        out += pieces[next(rng, pieces.length())].get("")
+        out += pieces[next(rng, pieces.length())]
     return out
 
 # Deletes, inserts or replaces one character-sized piece of source text.
@@ -26,5 +26,5 @@ export fn mutate(rng: Rng, source: String) String:
     let at = next(rng, chars.length() + 1)
     let kind = next(rng, 3)
     if kind != 1 and at < chars.length(): chars.remove(at)
-    if kind != 0: chars.insert(at, pieces[next(rng, pieces.length())].get(""))
+    if kind != 0: chars.insert(at, pieces[next(rng, pieces.length())])
     return chars.join("")

@@ -3,12 +3,15 @@ HUGO ?= hugo
 FUZZTIME ?= 10s
 BENCHREPEATS ?= 5
 BENCHFILTER ?=
+CONFORMANCE_SUITE ?= all
+CONFORMANCE_SHARD ?= 0
+CONFORMANCE_SHARDS ?= 1
 E2EFLAGS ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 export PATH := $(dir $(GO)):$(PATH)
 export STATICCHECK_CACHE ?= $(CURDIR)/.artifacts/staticcheck
 
-.PHONY: stdgen agent-bench-check toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test stdlib-bench repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check docs-coverage book book-check vendor-refresh
+.PHONY: conformance stdgen agent-bench-check toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test stdlib-bench repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check docs-coverage book book-check vendor-refresh
 
 toolchain:
 	sh scripts/bootstrap-go.sh
@@ -47,8 +50,12 @@ unit:
 stdlib-check:
 	"$(GO)" test ./tests/e2e -run '^TestStandardLibrarySources$$'
 
-stdlib-test:
-	"$(GO)" test $(E2EFLAGS) ./tests/e2e -run '^TestStandardLibrary(Sources|Conformance|Faults)$$'
+stdlib-test: build stdlib-check
+	./ms run scripts/conformance.ms -- "$(CURDIR)/ms" stdlib 0 1
+
+conformance: build
+	./ms test scripts/conformance.ms
+	./ms run scripts/conformance.ms -- "$(CURDIR)/ms" "$(CONFORMANCE_SUITE)" "$(CONFORMANCE_SHARD)" "$(CONFORMANCE_SHARDS)"
 
 examples-check:
 	"$(GO)" test ./tests/examples
@@ -71,7 +78,7 @@ payload: .build-payload.tar.gz
 build: payload
 	CGO_ENABLED=0 "$(GO)" build -trimpath -mod=vendor -tags exp.winarm64 -o ms ./cmd/ms
 
-test:
+test: conformance
 	"$(GO)" test ./...
 
 agent-bench-check: build
@@ -81,13 +88,13 @@ agent-bench-check: build
 stdlib-bench: build
 	bench/perf/stdlib-bench.sh $(BENCHREPEATS) $(BENCHFILTER)
 
-e2e:
+e2e: conformance
 	"$(GO)" test $(E2EFLAGS) ./tests/e2e
 
 race:
 	"$(GO)" test -race $$(cat scripts/race-packages)
 
-coverage:
+coverage: conformance
 	@mkdir -p .artifacts/coverage
 	MANUSCRIPT_EXAMPLES_NATIVE=1 "$(GO)" test -covermode=atomic -coverpkg="$$("$(GO)" list ./... | paste -sd, -)" -coverprofile=.artifacts/coverage/coverage.out ./...
 	"$(GO)" tool cover -func=.artifacts/coverage/coverage.out

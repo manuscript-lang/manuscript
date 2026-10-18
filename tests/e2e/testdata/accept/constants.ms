@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
 let LIMIT = 10
 let DOUBLE = LIMIT * 2
@@ -11,27 +11,20 @@ fn limit_plus(extra: Int) Int:
     return LIMIT + extra
 
 test "constants stand for their initializers":
-    if not (DOUBLE == 20):
-        return panic("check failed")
-    if not (limit_plus(1) == 11):
-        return panic("check failed")
-    if not (GREETING == "limit 10"):
-        return panic("check failed")
-    if not (NOTHING.is_none()):
-        return panic("check failed")
-    if not (from == 4):
-        return panic("check failed")
+    try expect_equal(DOUBLE, 20)
+    try expect_equal(limit_plus(1), 11)
+    try expect_equal(GREETING, "limit 10")
+    try expect_false(not (NOTHING.is_none()))
+    try expect_equal(from, 4)
 
 test "each use starts from a fresh collection":
     var names = NAMES
     names = names.append("c")
-    if not (names.length() == 3 and NAMES.length() == 2):
-        return panic("check failed")
+    try expect_false(not (names.length() == 3 and NAMES.length() == 2))
 
 test "a local binding shadows a constant":
     let LIMIT = 3
-    if not (LIMIT == 3):
-        return panic("check failed")
+    try expect_equal(LIMIT, 3)
 
 type Phase:
     case Idle
@@ -48,5 +41,4 @@ fn phase_name(phase: Phase) String:
             return "active {count}"
 
 test "a qualified payloadless case is a constant":
-    if not (phase_name(START) == "idle" and phase_name(NEXT) == "idle"):
-        return panic("check failed")
+    try expect_false(not (phase_name(START) == "idle" and phase_name(NEXT) == "idle"))

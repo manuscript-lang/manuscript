@@ -89,3 +89,17 @@ func TestRunnerShuffleIsReproducible(t *testing.T) {
 		}
 	}
 }
+
+func TestRunnerOptionsAreNotHostArguments(t *testing.T) {
+	runs := 0
+	test := Test{Name: "arguments.ms::empty", Run: unitRun(func(ctx *Execution) Unit {
+		runs++
+		if got := len(Process_Arguments(ctx).Items); got != 0 {
+			t.Errorf("test host received %d runner arguments", got)
+		}
+		return Unit{}
+	})}
+	if status := RunTests([]Test{test}, []string{"--filter=empty", "--timeout=1s", "--repeat=2"}); status != 0 || runs != 2 {
+		t.Fatalf("status %d, runs %d", status, runs)
+	}
+}

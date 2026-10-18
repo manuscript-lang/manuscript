@@ -249,7 +249,7 @@ func (l *jsonLogger) emit(ctx *Execution, level int, message string, fields *Map
 	if failure != nil {
 		return logFail[Unit](failure)
 	}
-	return l.transport.Write(ctx, NewBytes([]byte(encoded+"\n")))
+	return l.transport.WriteBytes(ctx, NewBytes([]byte(encoded+"\n")))
 }
 
 // logEncode renders a JSON value as compact text within max bytes. Numbers are
@@ -390,8 +390,12 @@ func (t *logTransport) Close(ctx *Execution) Unit {
 	return Unit{}
 }
 
-func (t *logTransport) Write(ctx *Execution, data *Bytes) Result[Unit, LogError] {
-	return t.operate(ctx, func(inner *Execution) Result[Unit, IoError] { return t.output.Write(inner, data) })
+func (t *logTransport) Write(ctx *Execution, data string) Result[Unit, LogError] {
+	return t.WriteBytes(ctx, NewBytes([]byte(data)))
+}
+
+func (t *logTransport) WriteBytes(ctx *Execution, data *Bytes) Result[Unit, LogError] {
+	return t.operate(ctx, func(inner *Execution) Result[Unit, IoError] { return t.output.WriteBytes(inner, data) })
 }
 
 func (t *logTransport) Flush(ctx *Execution) Result[Unit, LogError] {

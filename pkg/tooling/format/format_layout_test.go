@@ -49,6 +49,83 @@ func TestFormatExpressionLayouts(t *testing.T) {
 		name, source, want string
 	}{
 		{
+			name: "comparison argument uses the call continuation",
+			source: `fn work() Unit:
+    try expect_false(try parse("\"line\r\n\r\nbreak\"\r\n\"\"\r\n", options) != [["line\n\nbreak"], [""]])
+`,
+			want: `fn work() Unit:
+    try expect_false(
+        try parse("\"line\r\n\r\nbreak\"\r\n\"\"\r\n", options) != [
+            ["line\n\nbreak"],
+            [""]
+        ]
+    )
+`,
+		},
+		{
+			name: "argument width is measured after moving into the call",
+			source: `fn work() Unit:
+    send_message(condition: account_is_active and payment_is_allowed and remaining_balance > 0)
+`,
+			want: `fn work() Unit:
+    send_message(
+        condition: account_is_active and payment_is_allowed and remaining_balance > 0
+    )
+`,
+		},
+		{
+			name: "long argument operators use the call continuation",
+			source: `fn work() Unit:
+    send(condition: account_is_active or payment_is_allowed and remaining_balance > minimum_balance)
+`,
+			want: `fn work() Unit:
+    send(
+        condition: account_is_active
+        or payment_is_allowed and remaining_balance > minimum_balance
+    )
+`,
+		},
+		{
+			name: "long parameter default uses the signature continuation",
+			source: `fn work(balance: Int = initial_account_balance + pending_deposit_total * applicable_exchange_rate - pending_withdrawal_total) Int:
+    return balance
+`,
+			want: `fn work(
+    balance: Int = initial_account_balance
+    + pending_deposit_total * applicable_exchange_rate
+    - pending_withdrawal_total
+) Int:
+    return balance
+`,
+		},
+		{
+			name: "long map value uses the collection continuation",
+			source: `fn work() Unit:
+    let values = {"balance": initial_account_balance + pending_deposit_total * applicable_exchange_rate - pending_withdrawal_total}
+`,
+			want: `fn work() Unit:
+    let values = {
+        "balance": initial_account_balance
+        + pending_deposit_total * applicable_exchange_rate
+        - pending_withdrawal_total
+    }
+`,
+		},
+		{
+			name: "long member argument uses the call continuation",
+			source: `fn work() Unit:
+    send(payload: incoming_request_payload.normalize_whitespace().remove_legacy_separators().trim_whitespace())
+`,
+			want: `fn work() Unit:
+    send(
+        payload: incoming_request_payload
+        .normalize_whitespace()
+        .remove_legacy_separators()
+        .trim_whitespace()
+    )
+`,
+		},
+		{
 			name: "function-typed parameter measures only its own signature",
 			source: `fn map_box[T, U_wwwwwwwwwwww](b_wwwwwwwwwwwwwwwwwwwwwwww: Box_wwwwwwwwwwwwwwwwwww[T], f_wwwwwwwwwww: fn(v: T) U_wwwwwwwwwwww) Box_wwwwwwwwwwwwwwwwwww[U_wwwwwwwwwwww]:
     return b_wwwwwwwwwwwwwwwwwwwwwwww
@@ -380,11 +457,9 @@ fn work(first: Int, second: Int, third: Int, fourth: Int) Int: return first
 `,
 			want: `fn work() Unit:
     let values = [
-        (
-            initial_account_balance
-            + pending_deposit_total * applicable_exchange_rate
-            - pending_withdrawal_total
-        ),
+        initial_account_balance
+        + pending_deposit_total * applicable_exchange_rate
+        - pending_withdrawal_total,
         0
     ]
 `,

@@ -14,7 +14,7 @@ impl Error for Cause:
     fn message() String: "second {self.count}"
 
 export fn second_mapped() Set[Key]:
-    let values = Set[Int]().add(1).add(2)
+    let values = Set[Int]([1, 2])
     return transform_set(values, fn(n): Key(0, n.to_string()))
 
 export fn second_failure(cause: Cause) Result[String, Error]:
@@ -24,7 +24,7 @@ export fn second_failure(cause: Cause) Result[String, Error]:
 export fn second_queries() Bool:
     let key = Key(5, "original")
     let map = Map[Key, String]().add(key, "found")
-    let set = Set[Key]().add(key)
+    let set = Set[Key]([key])
     return (
         locate_map(map, Key(5, "different")).is_none()
         and locate_set(set, Key(5, "different")).is_none()

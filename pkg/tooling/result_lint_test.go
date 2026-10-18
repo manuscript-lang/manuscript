@@ -8,23 +8,23 @@ import (
 )
 
 func TestDiscardedResultLint(t *testing.T) {
-	const operation = "fn operation() Result[Int, String]: ok(1)\n"
+	const operation = "fn operation() Result[Int, Error]: ok(1)\n"
 	for _, tc := range []struct {
 		name, source string
 		want         int
 	}{
 		{"call", operation + "fn caller() Unit:\n    operation()\n", 1},
 		{"explicit standard import", "" + operation + "fn caller() Unit:\n    operation()\n", 1},
-		{"unit result", "fn operation() Result[Unit, String]: ok(unit)\nfn caller() Unit:\n    operation()\n", 1},
+		{"unit result", "fn operation() Result[Unit, Error]: ok(unit)\nfn caller() Unit:\n    operation()\n", 1},
 		{"nested closure", operation + "fn caller() Unit:\n    let callback = fn() Unit:\n        if true:\n            operation()\n    callback()\n", 1},
 		{"match value", operation + "fn caller() Unit:\n    match operation():\n        ok(value): operation()\n        error(cause): operation()\n", 1},
-		{"bound and returned", operation + "fn caller() Result[Int, String]:\n    let value = operation()\n    return value\n", 0},
-		{"argument consumed", operation + "fn consume(value: Result[Int, String]) Unit: unit\nfn caller() Unit:\n    consume(operation())\n", 0},
-		{"returned match", operation + "fn caller() Result[Int, String]:\n    return match operation():\n        ok(value): operation()\n        error(cause): operation()\n", 0},
-		{"discard in match arm body", operation + "fn caller() Result[Int, String]:\n    return match operation():\n        ok(value):\n            operation()\n            operation()\n        error(cause): operation()\n", 1},
+		{"bound and returned", operation + "fn caller() Result[Int, Error]:\n    let value = operation()\n    return value\n", 0},
+		{"argument consumed", operation + "fn consume(value: Result[Int, Error]) Unit: unit\nfn caller() Unit:\n    consume(operation())\n", 0},
+		{"returned match", operation + "fn caller() Result[Int, Error]:\n    return match operation():\n        ok(value): operation()\n        error(cause): operation()\n", 0},
+		{"discard in match arm body", operation + "fn caller() Result[Int, Error]:\n    return match operation():\n        ok(value):\n            operation()\n            operation()\n        error(cause): operation()\n", 1},
 		{"explicit discard", operation + "fn caller() Unit:\n    let _ignored = operation()\n", 0},
-		{"propagate unit", "fn operation() Result[Unit, String]: ok(unit)\nfn caller() Result[Int, String]:\n    try operation()\n    return ok(1)\n", 0},
-		{"inline return", operation + "fn caller() Result[Int, String]: operation()\n", 0},
+		{"propagate unit", "fn operation() Result[Unit, Error]: ok(unit)\nfn caller() Result[Int, Error]:\n    try operation()\n    return ok(1)\n", 0},
+		{"inline return", operation + "fn caller() Result[Int, Error]: operation()\n", 0},
 		{"ordinary value", "fn operation() Int: 1\nfn caller() Unit:\n    operation()\n", 0},
 		{"application record is not a Result", "type Outcome:\n    value: Int\nfn caller() Unit:\n    Outcome(1)\n", 0},
 	} {

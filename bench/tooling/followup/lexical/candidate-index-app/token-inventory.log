@@ -1,0 +1,4 @@
+=== RUN   TestLexicalPinnedTokenInventory
+    lexical_index_probe_test.go:348: lexical_tokens={"inventory":{"files":46,"initialized":0,"tokens":35727,"token_capacity":42293,"token_slot_bytes":4736816,"source_bytes":303169,"errors":0,"cached":false},"token_payload_sha256":"9e02c9461d2c4d4300286b249495134f4364cd523b4a404b1539bc9f6b8d828b"}
+--- PASS: TestLexicalPinnedTokenInventory (0.07s)
+PASS

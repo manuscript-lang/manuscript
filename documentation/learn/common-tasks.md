@@ -16,7 +16,7 @@ Save as `hello.ms`. Check both write and flush.
 import stdout from "@std/io.ms"
 
 fn run() Result[Unit, Error]:
-    try stdout().write("Hello, Manuscript!\n".to_bytes())
+    try stdout().write("Hello, Manuscript!\n")
     return stdout().flush()
 
 export fn main() Int:
@@ -37,12 +37,12 @@ Save as `args.ms`. `arguments()` excludes the executable; values after `--` reac
 
 <!-- manuscript-example: {"mode":"run","args":["Sam","Ada"],"stdout":"Hello, Sam!\nHello, Ada!\n","cases":[{"stdout":""}]} -->
 ```manuscript
-import arguments from "@std/cli.ms"
+import arguments from "@std/process.ms"
 import stdout from "@std/io.ms"
 
 fn run() Result[Unit, Error]:
     for name in arguments():
-        try stdout().write("Hello, {name}!\n".to_bytes())
+        try stdout().write("Hello, {name}!\n")
     return stdout().flush()
 
 export fn main() Int:
@@ -61,15 +61,16 @@ Save as `read.ms`. `to_string()` returns `none` for invalid UTF-8.
 
 <!-- manuscript-example: {"mode":"run","args":["notes.txt"],"files":{"notes.txt":"hello from a file\n"},"stdout":"hello from a file\n","cases":[{"args":["missing.txt"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/cli.ms"
+import arguments from "@std/process.ms"
 import {filesystem, FileSystemError} from "@std/fs.ms"
 import stdout from "@std/io.ms"
 
 fn run() Result[Unit, Error]:
-    let path = try arguments().at(0).ok_or(FileSystemError.InvalidInput)
-    let bytes = try filesystem().read_file(path, max_bytes: 1048576)
-    let text = try bytes.decode_utf8().ok_or(FileSystemError.InvalidData)
-    try stdout().write(text.to_bytes())
+    let path = try arguments().first().ok_or(FileSystemError.InvalidInput)
+    let text = try filesystem().read_file(path, max_bytes: 1048576)
+        | .decode_utf8().ok_or(FileSystemError.InvalidData)
+        | try
+    try stdout().write(text)
     return stdout().flush()
 
 export fn main() Int:
@@ -91,12 +92,12 @@ Save as `write.ms`. `replace: false` fails if the file exists.
 
 <!-- manuscript-example: {"mode":"run","args":["saved.txt"],"want_files":{"saved.txt":"saved notes\n"},"cases":[{"args":["saved.txt"],"files":{"saved.txt":"keep me"},"want_files":{"saved.txt":"keep me"},"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/cli.ms"
+import arguments from "@std/process.ms"
 import {filesystem, FileSystemError} from "@std/fs.ms"
 
 fn run() Result[Unit, Error]:
-    let path = try arguments().at(0).ok_or(FileSystemError.InvalidInput)
-    return filesystem().write_file(path, "saved notes\n".to_bytes(), replace: false)
+    let path = try arguments().first().ok_or(FileSystemError.InvalidInput)
+    return filesystem().write_file(path, "saved notes\n", replace: false)
 
 export fn main() Int:
     if run().is_error():
@@ -124,7 +125,7 @@ fn run() Result[Unit, Error]:
     while true:
         let line = try read_line(input, max_bytes: 4096)
         if let text = line:
-            try stdout().write("{text}\n".to_bytes())
+            try stdout().write("{text}\n")
         else:
             break
     return stdout().flush()
@@ -147,15 +148,15 @@ Save as `number.ms`. `parse_int()` returns an `Optional[Int]`.
 
 <!-- manuscript-example: {"mode":"run","args":["42"],"stdout":"42\n","cases":[{"args":["oops"],"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/cli.ms"
+import arguments from "@std/process.ms"
 import stdout from "@std/io.ms"
 
 fn show(number: Int) Result[Unit, Error]:
-    try stdout().write("{number}\n".to_bytes())
+    try stdout().write("{number}\n")
     return stdout().flush()
 
 export fn main() Int:
-    let number = arguments().at(0).get("42").parse_int()
+    let number = arguments().get(0, default: "42").parse_int()
     if let value = number:
         if show(value).is_ok():
             return 0
@@ -174,13 +175,13 @@ Save as `json.ms`. `parse[String]` errors on malformed JSON or another type.
 
 <!-- manuscript-example: {"mode":"run","args":["\"hello\""],"stdout":"hello\n","cases":[{"args":["{"],"exit_code":1},{"args":["42"],"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/cli.ms"
+import arguments from "@std/process.ms"
 import parse from "@std/json.ms"
 import stdout from "@std/io.ms"
 
 fn run() Result[Unit, Error]:
-    let text = try parse[String](arguments().at(0).get("\"hello\""))
-    try stdout().write("{text}\n".to_bytes())
+    let text = try parse[String](arguments().get(0, default: "\"hello\""))
+    try stdout().write("{text}\n")
     return stdout().flush()
 
 export fn main() Int:
@@ -201,7 +202,7 @@ Save as `config.ms`. Parse a record directly and serialize it back.
 
 <!-- manuscript-example: {"mode":"run","args":["{\"name\":\"Sam\"}"],"stdout":"{\"name\":\"Sam\",\"enabled\":true}\n","cases":[{"args":["{\"name\":\"Ada\",\"enabled\":false,\"extra\":1}"],"stdout":"{\"name\":\"Ada\",\"enabled\":false}\n"},{"args":["{}"],"exit_code":1},{"args":["{\"name\":42}"],"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/cli.ms"
+import arguments from "@std/process.ms"
 import {parse, stringify} from "@std/json.ms"
 import stdout from "@std/io.ms"
 
@@ -210,10 +211,10 @@ type Config:
     enabled: Bool = true
 
 fn run() Result[Unit, Error]:
-    let text = arguments().at(0).get("\{\"name\":\"Sam\"\}")
-    let config = try parse[Config](text)
-    let encoded = config | try stringify
-    try stdout().write("{encoded}\n".to_bytes())
+    let text = arguments().get(0, default: "\{\"name\":\"Sam\"\}")
+    let encoded = try parse[Config](text)
+        | try stringify
+    try stdout().write("{encoded}\n")
     return stdout().flush()
 
 export fn main() Int:
@@ -237,21 +238,21 @@ Save as `get.ms`. Status is `response.metadata().status`; bytes are `response.bo
 
 <!-- manuscript-example: {"mode":"run","args":["$HTTP_URL"],"http":{"status":200,"body":"hello from HTTP\n"},"stdout":"hello from HTTP\n","cases":[{"args":["$HTTP_URL"],"http":{"status":404,"body":"missing"},"exit_code":1},{"args":["invalid URL"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/cli.ms"
+import arguments from "@std/process.ms"
 import {HttpError, HttpMethod, headers} from "@std/http.ms"
 import network from "@std/net.ms"
 import stdout from "@std/io.ms"
 
 fn run() Result[Unit, Error]:
-    let url = try arguments().at(0).ok_or(HttpError.InvalidInput)
+    let url = try arguments().first().ok_or(HttpError.InvalidInput)
     let response = try network().request(
-        HttpMethod.Get, url, headers(), "".to_bytes(),
+        HttpMethod.Get, url, headers(), "",
         max_response_bytes: 1048576
     )
     if response.metadata().status != 200:
         return error(HttpError.InvalidData)
     let text = try response.body.decode_utf8().ok_or(HttpError.InvalidData)
-    try stdout().write(text.to_bytes())
+    try stdout().write(text)
     return stdout().flush()
 
 export fn main() Int:
@@ -285,7 +286,7 @@ fn run() Result[Unit, Error]:
             return 6 * 7
         )
         let answer = try task.join()
-        try stdout().write("{answer}\n".to_bytes())
+        try stdout().write("{answer}\n")
         try stdout().flush()
     return ok(unit)
 

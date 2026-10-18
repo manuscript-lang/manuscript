@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 fn positives(values: List[Int]) List[Int]:
     let result: List[Int] = []
@@ -8,16 +8,10 @@ fn positives(values: List[Int]) List[Int]:
     return result
 
 test "dynamic mutable data and explicit copies":
-    if not (positives([3, -1, 2]) == [3, 2]):
-        return panic("check failed")
-
+    try expect_equal(positives([3, -1, 2]), [3, 2])
     let absent: Optional[Int] = none
-    if not ([1].at(5) == absent):
-        return panic("check failed")
-
+    try expect_equal([1].get(5, default: -1), -1)
     let original = Map[String, Int]().add("a", 1)
     let updated = (original.clone().add("b", 2).add("a", 3))
-    if not (original.get("a") == some(1)):
-        return panic("check failed")
-    if not (updated.get("a") == some(3)):
-        return panic("check failed")
+    try expect_equal(original.get("a"), some(1))
+    try expect_equal(updated.get("a"), some(3))

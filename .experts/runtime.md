@@ -438,3 +438,10 @@ Verified: `Io_ReadLine` used two mutex round trips, a closure pair and an interm
 Apply when: changing `Io_ReadLine`, `readAhead`, or stream buffering.
 Evidence: `pkg/runtime/io.go`, `tests/e2e/testdata/stdlib/io.ms`.
 Verify: `go test ./pkg/runtime ./tests/e2e` and `bench/run.sh` (`read_line`).
+
+### Write operations take String; `_bytes` siblings take Bytes
+Decision: write APIs (`write`, `write_file`, `append_file`, `write_at`, on streams, files, connections, transports) accept `String`; raw bytes use a sibling named `<name>_bytes` (`write_bytes`, `write_file_bytes`). Network sends follow the same shape: `DatagramSocket.send`/`send_bytes`, `WebSocket.send`/`send_bytes(data, text: false)`, `ping`/`ping_bytes`, and `request`/`request_bytes` for the body. Interface operations cannot be generic or overloaded, so two names express the choice. Any source `impl` of `WriteStream` or `Transport` must declare both; implementing `write` as `self.write_bytes(data.to_bytes())` keeps one body.
+
+Apply when: adding or changing a write-like standard operation, or implementing `WriteStream`/`Transport` in source.
+Evidence: user request in the project thread; `pkg/stdlib/io.ms`, `pkg/stdlib/fs.ms`, `tests/e2e/testdata/stdlib/support/streams.ms`.
+Verify: `make stdlib-check`; `stdout().write("text")` and `write_bytes(bytes)` both type-check.

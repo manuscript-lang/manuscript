@@ -5,7 +5,7 @@ weight = 1
 
 # Expected failures with Result
 
-Use `Result[T, E]` when an operation succeeds with `T` or fails with an expected error `E`. `Result`, `ok`, and `error` are in the prelude.
+Use `Result[T, E]` when an operation succeeds with `T` or fails with an expected error `E`. `E` must implement `Error`, so `Result[Int, String]` is rejected; wrap text as `TextError("message")` or declare a domain error with `impl Error`. `Result`, `ok`, and `error` are in the prelude.
 
 Return `ok(value: ...)` for success and `error(cause: ...)` for failure. Both are ordinary values. A caller can test it with `is_error()`, read the success path with `if let`, or pass the error back with `try`. Validate runtime input with ordinary conditions before doing the work.
 
@@ -15,6 +15,12 @@ Return `ok(value: ...)` for success and `error(cause: ...)` for failure. Both ar
 type DiscountError:
     case InvalidPrice
     case InvalidPercent
+
+impl Error for DiscountError:
+    fn message() String:
+        match self:
+            InvalidPrice: return "invalid price"
+            InvalidPercent: return "invalid percent"
 
 fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:
     if price < 0d:
@@ -51,7 +57,7 @@ This caller discards the cause. To use it, call `err()` after `is_error()`, or [
 | `map[U](transform: fn(value: T) U) Result[U, E]` | Transform success once; preserve an error unchanged |
 | `and_then[U](transform: fn(value: T) Result[U, E]) Result[U, E]` | On success, return the callback's Result; preserve an existing error |
 
-`E` can be any value type; it need not implement Error. `map` wraps the callback's value in `ok`, even if it is a Result or Optional. `and_then` requires the same `E`; translate unrelated errors with ordinary functions.
+`map` wraps the callback's value in `ok`, even if it is a Result or Optional. `and_then` requires the same `E`; translate unrelated errors with ordinary functions.
 
 This fragment uses `discount` above:
 
@@ -67,7 +73,8 @@ Callbacks run sequentially in the caller's context; faults and cancellation prop
 `to_optional() Optional[T]` returns `some` with the original payload, or `none` on error. It does not clone or flatten the payload, and does not turn faults or cancellation into absence.
 
 ```manuscript
-fn successful_price(outcome: Result[Decimal, String]) Optional[Decimal]:
+import {TextError} from "@std/errors.ms"
+fn successful_price(outcome: Result[Decimal, TextError]) Optional[Decimal]:
     return outcome.to_optional()
 ```
 

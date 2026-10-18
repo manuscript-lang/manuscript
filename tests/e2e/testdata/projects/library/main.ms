@@ -1,103 +1,137 @@
+import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
 import control from "@std/process.ms"
-import arguments from "@std/cli.ms"
-import {entropy, uuid_v4, secure_int} from "@std/random.ms"
+import arguments from "@std/process.ms"
+import entropy from "@std/random.ms"
 import filesystem from "@std/fs.ms"
 import system from "@std/system.ms"
-import {wall_clock, parse_timestamp, sleep} from "@std/time.ms"
-import panic from "@std/faults.ms"
+import wall_clock from "@std/time.ms"
+import uuid_v4 from "@std/random.ms"
+import secure_int from "@std/random.ms"
+import parse_timestamp from "@std/time.ms"
 import Scheduler from "@std/tasks.ms"
-import {posix, win32} from "@std/path.ms"
+import sleep from "@std/time.ms"
+import posix from "@std/path.ms"
+import win32 from "@std/path.ms"
 
 fn timer_callback() Result[Unit, Error]:
     return ok(unit)
 
+fn common_result[T, E: Error](result: Result[T, E]) Result[T, Error]:
+    match result:
+        ok(value):
+            return ok(value)
+        error(cause):
+            return error(Error(cause))
+
 fn exercise(path: String) Result[Unit, Error]:
-    try filesystem().write_file(path, "hello".to_bytes(), replace: false)
-    if not (try filesystem().read_file(path, 5) == "hello".to_bytes()):
-        return panic("check failed")
-
-    let info = try filesystem().stat(path, follow_links: true)
-    if not (info.size == 5):
-        return panic("check failed")
-    if not (not info.directory):
-        return panic("check failed")
-
-    let bytes = try entropy().bytes(16)
-    if not (bytes.length() == 16):
-        return panic("check failed")
-
-    let identifier = try uuid_v4(entropy())
-    if not (identifier.byte_length() == 36):
-        return panic("check failed")
-
-    let random = try secure_int(entropy(), -2, 3)
-    if not (random >= -2 and random < 3):
-        return panic("check failed")
-
+    let written = try common_result(
+        result: filesystem().write_file(
+            path: path,
+            data: "hello",
+            replace: false
+        )
+    )
+    try expect_false(
+        not (
+            try common_result(
+                result: filesystem().read_file(path: path, max_bytes: 5)
+            ) == "hello".to_bytes()
+        )
+    )
+    let info = try common_result(
+        result: filesystem().stat(path: path, follow_links: true)
+    )
+    info.size | try expect_equal(expected: 5)
+    (not info.directory) | try expect_true
+    let bytes = try common_result(result: entropy().bytes(count: 16))
+    bytes.length() | try expect_equal(expected: 16)
+    let identifier = try common_result(result: uuid_v4(entropy: entropy()))
+    identifier.byte_length() | try expect_equal(expected: 36)
+    let random = try common_result(
+        result: secure_int(entropy: entropy(), min: -2, max_exclusive: 3)
+    )
+    (random >= -2 and random < 3) | try expect_true
     let now = wall_clock().now()
-    if not (try parse_timestamp(now.to_string()) == now):
-        return panic("check failed")
-    if not (system().info().cpu_count > 0):
-        return panic("check failed")
+    (try common_result(result: parse_timestamp(text: now.to_string()))) | try expect_equal(
+        expected: now
+    )
+    (system().info().cpu_count > 0) | try expect_true
 
-    with file = try filesystem().open(path, "r+", 384):
-        try file.write_at(0, "HELLO".to_bytes())
-        if not (try file.read_at(0, 5) == "HELLO".to_bytes()):
-            return panic("positional I/O failed")
-
-        try file.sync()
-        try file.truncate(3)
-        if not ((try file.stat()).size == 3):
-            return panic("handle stat failed")
-
-    with watcher = try filesystem().watch_native(
-        path,
-        recursive: false,
-        max_entries: 4,
-        max_events: 16,
-        overflow: "error"
+    with file = try common_result(
+        result: filesystem().open(path: path, flags: "r+", mode: 384)
     ):
-        try filesystem().append_file(path, "!".to_bytes())
-        let events = try watcher.next()
-        if not (events.length() > 0):
-            return panic("native watch returned no event")
+        let updated = try common_result(result: file.write_at(offset: 0, data: "HELLO"))
+        try expect_false(
+            not (
+                try common_result(
+                    result: file.read_at(offset: 0, max_bytes: 5)
+                ) == "HELLO".to_bytes()
+            )
+        )
+        let synced = try common_result(result: file.sync())
+        let resized = try common_result(result: file.truncate(size: 3))
+        (try common_result(result: file.stat())).size | try expect_equal(expected: 3)
+
+    with watcher = try common_result(
+        result: filesystem().watch_native(
+            path: path,
+            recursive: false,
+            max_entries: 4,
+            max_events: 16,
+            overflow: "error"
+        )
+    ):
+        let appended = try common_result(
+            result: filesystem().append_file(path: path, data: "!")
+        )
+        let events = try common_result(result: watcher.next())
+        (events.length() > 0) | try expect_true
 
     with scheduler = Scheduler():
-        let id = try scheduler.after(0.milliseconds, timer_callback)
-        sleep(10.milliseconds)
+        let id = try common_result(
+            result: scheduler.after(
+                duration: 0.milliseconds,
+                operation: timer_callback
+            )
+        )
+        sleep(duration: 10.milliseconds)
 
         match scheduler.status(id):
             Succeeded:
-                try scheduler.restart(id)
+                let restarted = try common_result(result: scheduler.restart(id))
             Running:
-                try scheduler.restart(id)
+                let restarted = try common_result(result: scheduler.restart(id))
             _:
-                return panic("scheduled work failed")
+                return fail(message: "scheduled work failed")
 
     let paths = posix()
-    if not (try paths.resolve("/work", ["a", "../b"]) == "/work/b"):
-        return panic("path resolution failed")
-
+    try expect_false(
+        not (
+            try common_result(
+                result: paths.resolve(
+                    base: "/work",
+                    parts: ["a", "../b"]
+                )
+            ) == "/work/b"
+        )
+    )
     let windows = win32()
-    if not (windows.parse("C:/work/file.txt").extension == ".txt"):
-        return panic("Windows path parse failed")
-
-    let process_info = try control().info()
-    if not (process_info.pid > 0):
-        return panic("process information failed")
-
-    let memory = try control().memory_usage()
-    if not (memory.heap_system > 0):
-        return panic("memory information failed")
-
-    try filesystem().remove(path, recursive: false)
+    windows.parse("C:/work/file.txt").extension | try expect_equal(expected: ".txt")
+    let process_info = try common_result(result: control().info())
+    (process_info.pid > 0) | try expect_true
+    let memory = try common_result(result: control().memory_usage())
+    (memory.heap_system > 0) | try expect_true
+    let removed = try common_result(
+        result: filesystem().remove(path: path, recursive: false)
+    )
     return ok(unit)
 
 export fn main() Int:
-    if let path = arguments().at(0):
-        if exercise(path).is_error():
-            return 1
+    let path = arguments().get(index: 0, default: "")
+    if path == "": return 2
 
-        return 0
-    else:
-        return 2
+    match exercise(path: path):
+        ok(_):
+            return 0
+        error(_):
+            return 1

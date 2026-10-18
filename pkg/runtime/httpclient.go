@@ -39,7 +39,11 @@ func httpURL(text string) (*url.URL, bool) {
 
 // Request performs one buffered HTTP request. Redirects are returned, not
 // followed, and no cookies or proxy settings apply.
-func (n *osNetwork) Request(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, body *Bytes, maxResponseBytes Option[int], timeout Option[Duration]) Result[*ClientResponse, HttpError] {
+func (n *osNetwork) Request(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, body string, maxResponseBytes Option[int], timeout Option[Duration]) Result[*ClientResponse, HttpError] {
+	return n.RequestBytes(ctx, method, address, headers, NewBytes([]byte(body)), maxResponseBytes, timeout)
+}
+
+func (n *osNetwork) RequestBytes(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, body *Bytes, maxResponseBytes Option[int], timeout Option[Duration]) Result[*ClientResponse, HttpError] {
 	if n.isClosed() {
 		return httpFail[*ClientResponse](errHTTPClosed)
 	}
@@ -103,7 +107,7 @@ func (n *osNetwork) Request(ctx *Execution, method HttpMethod, address string, h
 	if !textHeaders(response.Header) {
 		return httpFail[*ClientResponse](errHTTPInvalidData)
 	}
-	return Ok[*ClientResponse, HttpError](&ClientResponse{Head: &HttpResponseMetadata{Status: int(response.StatusCode), Headers: headersFrom(response.Header)}, Body: NewBytes(payload)})
+	return Ok[*ClientResponse, HttpError](&ClientResponse{Head: &HttpResponseMetadata{Status: int(response.StatusCode), Headers: headersFrom(response.Header), Protocol: response.Proto}, Body: NewBytes(payload)})
 }
 
 // osHTTPClient is a reusable client with connection pooling that dials
@@ -205,7 +209,11 @@ func (c *osHTTPClient) close() {
 	close(c.released)
 }
 
-func (c *osHTTPClient) Request(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, body *Bytes, maxResponseBytes Option[int], timeout Option[Duration]) Result[ResponseBody, HttpError] {
+func (c *osHTTPClient) Request(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, body string, maxResponseBytes Option[int], timeout Option[Duration]) Result[ResponseBody, HttpError] {
+	return c.RequestBytes(ctx, method, address, headers, NewBytes([]byte(body)), maxResponseBytes, timeout)
+}
+
+func (c *osHTTPClient) RequestBytes(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, body *Bytes, maxResponseBytes Option[int], timeout Option[Duration]) Result[ResponseBody, HttpError] {
 	var data []byte
 	if body != nil {
 		data = body.Data
@@ -293,7 +301,7 @@ func (c *osHTTPClient) do(ctx *Execution, method HttpMethod, address string, hea
 		response.Body.Close()
 		return httpFail[ResponseBody](errHTTPInvalidData)
 	}
-	resource := &osResponseBody{owner: c.owner, client: c, upload: bridge, response: response, metadata: &HttpResponseMetadata{Status: int(response.StatusCode), Headers: headersFrom(response.Header)}, reader: response.Body, remaining: max, finish: finish, gate: newGate(), released: make(chan struct{})}
+	resource := &osResponseBody{owner: c.owner, client: c, upload: bridge, response: response, metadata: &HttpResponseMetadata{Status: int(response.StatusCode), Headers: headersFrom(response.Header), Protocol: response.Proto}, reader: response.Body, remaining: max, finish: finish, gate: newGate(), released: make(chan struct{})}
 	c.owner.mu.Lock()
 	c.mu.Lock()
 	if c.closed || c.owner.closed {

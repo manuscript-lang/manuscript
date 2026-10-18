@@ -1,6 +1,6 @@
+import {expect_not_equal, fail} from "@std/testing.ms"
 import range from "@std/collections.ms"
 import {parse, stringify, TomlValue} from "@std/toml.ms"
-import panic from "@std/faults.ms"
 import {Rng, next, text, mutate} from "./support/generator.ms"
 
 fn generated(rng: Rng, depth: Int) TomlValue:
@@ -28,7 +28,7 @@ fn table(rng: Rng, depth: Int) TomlValue:
 
 fn check_round_trip(seed: Int, original: TomlValue) Result[Unit, Error]:
     let rendered = try stringify(original)
-    if (try parse(rendered)) != original: return panic(
+    if (try parse(rendered)) != original: return fail(
         "seed {seed}: changed\n{rendered}"
     )
 
@@ -36,7 +36,7 @@ fn check_round_trip(seed: Int, original: TomlValue) Result[Unit, Error]:
 
 fn check_stable(seed: Int, mutated: String, first: TomlValue) Result[Unit, Error]:
     let again = try stringify(first)
-    if (try parse(again)) != first: return panic(
+    if (try parse(again)) != first: return fail(
         "seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"
     )
 
@@ -60,4 +60,4 @@ test "TOML parse never faults on mutated documents and accepted input is stable"
                 accepted += 1
                 try check_stable(seed, mutated, first)
 
-    if accepted == 0: return panic("mutation never produced a valid document")
+    try expect_not_equal(accepted, 0)

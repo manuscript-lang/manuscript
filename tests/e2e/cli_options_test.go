@@ -11,24 +11,31 @@ import (
 func TestCLIInlineValueOptions(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(root, "main=a=b.ms")
-	code := `import arguments from "@std/cli.ms"
+	code := `import arguments from "@std/process.ms"
 import stdout from "@std/io.ms"
-import panic from "@std/faults.ms"
+import stderr from "@std/io.ms"
 
-fn write_line(text: String) Unit:
-    if stdout().write(data: "{text}\n".to_bytes()).is_error():
-        return panic(message: "write failed")
+fn write_line(text: String) Result[Unit, Error]:
+    try stdout().write(data: "{text}\n")
+    return ok(unit)
 
-export fn main() Int:
+fn exercise() Result[Int, Error]:
     let args = arguments()
     var index = 0
     while index < args.length():
-        write_line(args[index])
+        try write_line(args[index])
         index = index + 1
-    return 0
+    return ok(0)
+
+export fn main() Int:
+    match exercise():
+        ok(status): return status
+        error(cause):
+            let written = stderr().write("{cause.message()}\n")
+            return 1
 
 test "selected=a=b":
-    write_line("selected")
+    try write_line("selected")
 
 test "unselected":
     write_line("unselected")

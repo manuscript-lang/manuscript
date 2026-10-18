@@ -4,11 +4,66 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"github.com/manuscript-lang/manuscript/pkg/build"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+func TestVerifyBuildHashesCompleteExecutable(t *testing.T) {
+	for _, size := range []int{0, 1, 32767, 32768, 32769, 100003} {
+		root := t.TempDir()
+		binary := filepath.Join(root, "program")
+		data := make([]byte, size)
+		for i := range data {
+			data[i] = byte(i * 31)
+		}
+		sum := sha256.Sum256(data)
+		metadata := build.BuildMetadata{BuildPin: build.BuildPin{Format: 1}, ExecutableSHA256: hex.EncodeToString(sum[:])}
+		encoded, err := json.Marshal(metadata)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(binary+".ms-build.json", encoded, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(binary, data, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := build.VerifyBuild(binary, nil); err != nil {
+			t.Fatalf("size %d: %v", size, err)
+		}
+		if size > 0 {
+			data[size-1] ^= 1
+			if err := os.WriteFile(binary, data, 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := build.VerifyBuild(binary, nil); err == nil {
+				t.Fatalf("accepted altered final byte at size %d", size)
+			}
+		}
+	}
+}
+
+func TestVerifyBuildPreservesExecutableErrorsBeforeFormatCheck(t *testing.T) {
+	root := t.TempDir()
+	binary := filepath.Join(root, "program")
+	// Even invalid-format metadata must not hide a filesystem error.
+	if err := os.WriteFile(binary+".ms-build.json", []byte(`{"format":2}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := build.VerifyBuild(binary, nil); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("missing executable error lost: %v", err)
+	}
+	if err := os.Mkdir(binary, 0700); err != nil {
+		t.Fatal(err)
+	}
+	var pathError *os.PathError
+	if err := build.VerifyBuild(binary, nil); !errors.As(err, &pathError) || pathError.Path != binary {
+		t.Fatalf("directory read error lost: %v", err)
+	}
+}
 
 func TestVerifyBuildRejectsStaleArtifacts(t *testing.T) {
 	hash := func(value string) string {

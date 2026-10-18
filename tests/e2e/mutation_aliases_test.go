@@ -7,13 +7,6 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
-func TestMutationAliasesScopedImplementations(t *testing.T) {
-	data, err := execute(t, compiler.CompileFile("testdata/projects/map_remove/main.ms", compiler.Options{Tests: true}))
-	if err != nil || !strings.HasSuffix(strings.TrimSpace(string(data)), "1 tests, 0 failed") {
-		t.Fatalf("Map.remove scope: %v\n%s", err, data)
-	}
-}
-
 func TestMutationAliasesRetainSpliceFaults(t *testing.T) {
 	source := `test "new start":
     [1].splice(-1, 0, [])

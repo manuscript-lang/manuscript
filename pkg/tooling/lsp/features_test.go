@@ -255,7 +255,7 @@ fn extract(data: Bytes) List[Int]:
 			t.Fatal("missing Bytes.values hover")
 		}
 		text := hover.(map[string]any)["contents"].(map[string]any)["value"].(string)
-		if !strings.Contains(text, "fn()->List[Int]") || !strings.Contains(text, "fresh mutable list") || !strings.Contains(text, "leaves the Bytes unchanged") {
+		if !strings.Contains(text, "fn() List[Int]") || !strings.Contains(text, "fresh mutable list") || !strings.Contains(text, "leaves the Bytes unchanged") {
 			t.Fatalf("operation contract missing: %s", text)
 		}
 	}
@@ -277,7 +277,7 @@ func TestNavigationWithinStandardLibrary(t *testing.T) {
 		{"collections.ms", "Result[List[T]", "result.ms", "Result"},
 		{"collections.ms", "Optional[T]", "optional.ms", "Optional"},
 		{"collections.ms", "List[T]", "collections.ms", "List"},
-		{"cli.ms", "List[String]", "collections.ms", "List"},
+		{"process.ms", "List[String]", "collections.ms", "List"},
 	} {
 		t.Run(item.file+"/"+item.needle, func(t *testing.T) {
 			uri := "manuscript-stdlib:///" + item.file

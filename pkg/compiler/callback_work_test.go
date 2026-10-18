@@ -23,9 +23,9 @@ func TestCallbackProbeRetainsContextBoundaries(t *testing.T) {
 	for name, body := range map[string]string{
 		"deferred input":           `let value = chain(second: fn(item): item + 1, first: fn(): 2)`,
 		"deferred optional result": `let value = choose(first: fn(): none, second: fn(): some(3))`,
-		"deferred error result":    `let value = choose(first: fn(): error("failed"), second: fn(): Result[Int, String].ok(3))`,
+		"deferred error result":    `let value = choose(first: fn(): error(TextError("failed")), second: fn(): Result[Int, TextError].ok(3))`,
 		"partially inferred result": `let value = result(fn():
-        if true: return error("failed")
+        if true: return error(TextError("failed"))
         return ok(4)
     )`,
 		"deferred early optional": `let value = choose(first: fn():
@@ -34,7 +34,7 @@ func TestCallbackProbeRetainsContextBoundaries(t *testing.T) {
     , second: fn(): some(2))`,
 		"inferred enclosing result": `let value = choose(first: fn():
         let value = try checked()
-        return Result[Int, String].ok(value)
+        return Result[Int, TextError].ok(value)
     , second: fn(): ok(4))`,
 		"optional callback":   `optional(fn(item): item + 1)`,
 		"generic constructor": `let callback = Callback(fn(item: Int): item.to_string())`,
@@ -129,7 +129,7 @@ fn first() Unit:
 		}
 		if info.OptionalArgument != nil {
 			optional++
-			if info.OptionalArgument.String() != "Optional[fn(value: Int)->Int]" {
+			if info.OptionalArgument.String() != "Optional[fn(value: Int) Int]" {
 				t.Fatal(info.OptionalArgument)
 			}
 		}

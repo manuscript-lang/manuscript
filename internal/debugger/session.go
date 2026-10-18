@@ -2,6 +2,7 @@ package debugger
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -684,11 +685,21 @@ func (n Names) sourceLine(file string, line int) string {
 	if err != nil {
 		return ""
 	}
-	lines := strings.Split(string(data), "\n")
-	if line < 1 || line > len(lines) {
+	if line < 1 {
 		return ""
 	}
-	return strings.TrimRight(lines[line-1], "\r")
+	for i := 1; i < line; i++ {
+		end := bytes.IndexByte(data, '\n')
+		if end < 0 {
+			return ""
+		}
+		data = data[end+1:]
+	}
+	if end := bytes.IndexByte(data, '\n'); end >= 0 {
+		data = data[:end]
+	}
+	// Copy only this line; a stop event must not retain the entire source file.
+	return string(bytes.TrimRight(data, "\r"))
 }
 
 // location turns file:line or a function name into a Delve location expression.

@@ -63,7 +63,7 @@ type Hidden:
 			t.Fatal(declarations)
 		}
 		counter := declarations["Counter"]
-		if !slices.Equal(counter.Fields, []string{"count: Int", "undocumented: Int"}) || !slices.Contains(counter.Operations, "count: fn()->Int") {
+		if !slices.Equal(counter.Fields, []string{"count: Int", "undocumented: Int"}) || !slices.Contains(counter.Operations, "count: fn() Int") {
 			t.Fatal("legacy contracts changed", counter)
 		}
 		members := map[string]APIMember{}

@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_not_equal} from "@std/testing.ms"
 import Decimal from "@std/decimal.ms"
 
 type Callback:
@@ -14,17 +14,10 @@ test "derived value equality":
     let present: Optional[Int] = some(1)
     let same: Optional[Int] = some(1)
     let missing: Optional[Int] = none
-    if not (present == same):
-        return panic("check failed")
-    if not (present != missing):
-        return panic("check failed")
-    if not (1.00d == 1d):
-        return panic("check failed")
-    if not ([1, 2] == [1, 2]):
-        return panic("check failed")
-    if not ([1, 2] != [2, 1]):
-        return panic("check failed")
-    if not (preserve_key("key") == "key"):
-        return panic("check failed")
-
+    try expect_equal(present, same)
+    try expect_not_equal(present, missing)
+    try expect_equal(1.00d, 1d)
+    try expect_equal([1, 2], [1, 2])
+    try expect_not_equal([1, 2], [2, 1])
+    try expect_equal(preserve_key("key"), "key")
     let _callback = Callback(increment)

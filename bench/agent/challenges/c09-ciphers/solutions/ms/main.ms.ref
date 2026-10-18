@@ -17,7 +17,7 @@ fn transform(text: String, keys: List[Int], sign: Int) String:
             var base = 97
             if is_upper(c):
                 base = 65
-            let k = keys.at(i % keys.length()).get()
+            let k = keys.get(i % keys.length())
             let v = ((c - base + sign * k) % 26 + 26) % 26
             out.append(v + base)
             i = i + 1
@@ -31,7 +31,7 @@ fn parse_caesar_key(key: String) Optional[Int]:
     var start = 0
     var negative = false
 
-    if codes.length() > 0 and codes.at(0).get() == 45:
+    if codes.length() > 0 and codes.get(0) == 45:
         negative = true
         start = 1
 
@@ -43,7 +43,7 @@ fn parse_caesar_key(key: String) Optional[Int]:
     var i = start
 
     while i < codes.length():
-        let c = codes.at(i).get()
+        let c = codes.get(i)
         if c < 48 or c > 57:
             return none
 
@@ -69,9 +69,9 @@ fn solve_line(line: String) String:
     if rest.is_empty():
         return "error: bad command"
 
-    let cipher = parts.at(0).get()
-    let mode = parts.at(1).get()
-    let key = parts.at(2).get()
+    let cipher = parts.get(0)
+    let mode = parts.get(1)
+    let key = parts.get(2)
     if cipher != "caesar" and cipher != "vigenere":
         return "error: bad cipher"
     if mode != "enc" and mode != "dec":
@@ -113,7 +113,7 @@ fn run() Result[Unit, Error]:
         if line.replace_all(old: " ", new: "").get().is_empty():
             continue
 
-        try stdout().write("{solve_line(line)}\n".to_bytes())
+        try stdout().write("{solve_line(line)}\n")
 
     return stdout().flush()
 

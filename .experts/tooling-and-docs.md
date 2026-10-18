@@ -34,6 +34,10 @@ including those between match arms; derive paragraphs from structural rules.
 Wrap only when a group exceeds 88 columns or holds a comment or
 multi-statement suite; clause counts, argument counts, lambdas, and authored line
 breaks no longer force expansion. Reintroducing such rules spreads code again.
+Existing call, collection, and parameter delimiters already allow item continuations;
+adding parentheses before measuring the item's final indentation creates redundant
+groups. Break long item operators within those delimiters and verify precedence
+and idempotence with the [layout regressions](../pkg/tooling/format_layout_test.go).
 
 Verified: formatter policy changes also require refreshing the pinned standard
 sources, because exported editor files must pass `ms fmt --check`.
@@ -98,7 +102,7 @@ Decision: the string utility module is `@std/string.ms`, matching the intrinsic 
 Decision: the user explicitly removed the “Application hosts” section. CLI entry/accessor/shutdown contracts belong in the CLI package guide, and HTTP request/shutdown contracts belong in the HTTP package guide. Do not recreate a separate host category in the standard-library navigation.
 
 Apply when: organizing the standard-library guide or adding application-entry documentation.
-Evidence: [standard-library navigation](../pkg/stdlib/intrinsics.ms), [CLI guide](../pkg/stdlib/cli.ms), and [HTTP guide](../pkg/stdlib/http.ms).
+Evidence: [standard-library navigation](../pkg/stdlib/intrinsics.ms), [CLI guide](../pkg/stdlib/process.ms), and [HTTP guide](../pkg/stdlib/http.ms).
 Verify: build the book with destination cleanup and confirm there is no standard-library/hosts route or sidebar section; existing entry and request links resolve to package pages.
 
 ### Teach a runnable path before formal reference

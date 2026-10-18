@@ -1,6 +1,6 @@
+import {expect_equal, expect_false} from "@std/testing.ms"
 import Bytes from "@std/bytes.ms"
 import {compile, Regex, RegexError} from "@std/regex.ms"
-import panic from "@std/faults.ms"
 
 interface ListMutation:
     fn reverse_in_place() List[Int]
@@ -69,47 +69,39 @@ test "list names mutate aliases and retain shallow copies":
     let copied = items.clone()
     let returned = items.set(-1, 4)
     returned.remove(0)
-    if (items != [2, 4] or alias != [2, 4] or copied != [1, 2, 3]):
-        return panic("list alias or clone behavior")
-
+    try expect_false((items != [2, 4] or alias != [2, 4] or copied != [1, 2, 3]))
     let set = items.set
     let remove = items.remove
     set(value: 8, 0).remove(-1)
     remove(0).append(9)
-    if items != [9]: return panic("bound list receiver return")
-
+    try expect_equal(items, [9])
     let optional: List[Optional[Int]] = [some(1)]
     optional.set(0, 7)
-    if optional.at(0).get() != some(7): return panic("list Optional conversion")
-
+    try expect_equal(optional.get(0), some(7))
     let nested = [[1]]
     let outer_copy = nested.clone()
     nested.set(0, [2])
-    outer_copy.at(0).get().append(3)
-    if nested != [[2]] or outer_copy != [[1, 3]]: return panic("outer storage")
+    outer_copy.get(0).append(3)
+    try expect_false(nested != [[2]] or outer_copy != [[1, 3]])
 
 test "set names preserve receiver identity order and no-op membership":
-    let items = Set[Int]().add(3).add(1).add(2)
+    let items = Set[Int]([3, 1, 2])
     let alias = items
     let copied = items.clone()
     let add = items.add
     let remove = items.remove
     add(1).remove(99)
-    if items.values() != [3, 1, 2]: return panic("duplicate or absent membership")
-
+    try expect_equal(items.values(), [3, 1, 2])
     remove(1).add(1).remove(3)
-    if alias.values() != [2, 1] or copied.values() != [3, 1, 2]:
-        return panic("set order or clone")
-
+    try expect_false(alias.values() != [2, 1] or copied.values() != [3, 1, 2])
     add_generic(items, 4).remove(2)
     remove_generic(items, 1).add(5)
-    if items.values() != [4, 5]: return panic("generic receiver return")
-
+    try expect_equal(items.values(), [4, 5])
     let optional = Set[Optional[Int]]().add(7)
     let optional_add = optional.add
     optional_add(9)
     optional.remove(7)
-    if optional.values() != [some(9)]: return panic("set Optional conversion")
+    try expect_equal(optional.values(), [some(9)])
 
 interface FirstReplacement:
     fn replace_first(old: String, new: String, max_replacements: Optional[Int]) String
@@ -124,9 +116,7 @@ impl FirstReplacement for TextAdapter:
 test "explicit views and bound views preserve native mutation and field shadowing":
     let items = [1, 2, 3]
     let adapter = ListAdapter(items, fn(index: Int, value: Int) List[Int]: [99])
-    if adapter.set(0, 8) != [99] or items != [1, 2, 3]:
-        return panic("callable field shadowing")
-
+    try expect_false(adapter.set(0, 8) != [99] or items != [1, 2, 3])
     let view = ListMutation(adapter)
     let view_set = view.set
     let view_remove = view.remove
@@ -134,9 +124,8 @@ test "explicit views and bound views preserve native mutation and field shadowin
     view_set(1, 9)
     view.remove(-1)
     view_remove(0).append(5)
-    if items != [9, 3, 5]: return panic("List view mutation or bound receiver")
-
-    let set = Set[Int]().add(1).add(2)
+    try expect_equal(items, [9, 3, 5])
+    let set = Set[Int]([1, 2])
     let set_view = SetMutation(SetAdapter(set))
     let view_add = set_view.add
     let set_view_remove = set_view.remove
@@ -144,89 +133,82 @@ test "explicit views and bound views preserve native mutation and field shadowin
     view_add(4)
     set_view.remove(1)
     set_view_remove(2).add(5)
-    if set.values() != [3, 4, 5]: return panic("Set view mutation or order")
-
+    try expect_equal(set.values(), [3, 4, 5])
     let text_view = FirstReplacement(TextAdapter("aaaa"))
     let view_first = text_view.replace_first
-    if (
-        text_view.replace_first("a", "b", none) != "baaa"
-        or view_first("a", "b", 2) != "bbaa"
-    ):
-        return panic("String view replacement")
+    try expect_false(
+        (
+            text_view.replace_first("a", "b", none) != "baaa"
+            or view_first("a", "b", 2) != "bbaa"
+        )
+    )
 
 test "replace_first preserves first default explicit caps and scalar boundaries":
-    if "aaaa".replace_first("a", "b") != "baaa": return panic("first default")
-    if "aaaa".replace_first("a", "b", none) != "baaa": return panic("first none")
-    if "aaaa".replace_first("a", "b", 0) != "aaaa": return panic("zero cap")
-    if "aaaa".replace_first("a", "b", 2) != "bbaa": return panic("explicit cap")
-    if "aaaa".replace_first("a", "b", 9223372036854775807) != "bbbb":
-        return panic("large cap")
-    if "aa".replace_first("a", "aa", 2) != "aaaa": return panic(
-        "inserted text rescanned"
-    )
-    if "é🙂".replace_first("", "x", 2) != "xéx🙂": return panic("scalar boundaries")
-    if "".replace_first("", "x") != "x": return panic("empty text")
-    if "abc".replace_first("z", "x") != "abc": return panic("no match")
-
+    try expect_equal("aaaa".replace_first("a", "b"), "baaa")
+    try expect_equal("aaaa".replace_first("a", "b", none), "baaa")
+    try expect_equal("aaaa".replace_first("a", "b", 0), "aaaa")
+    try expect_equal("aaaa".replace_first("a", "b", 2), "bbaa")
+    try expect_equal("aaaa".replace_first("a", "b", 9223372036854775807), "bbbb")
+    try expect_equal("aa".replace_first("a", "aa", 2), "aaaa")
+    try expect_equal("é🙂".replace_first("", "x", 2), "xéx🙂")
+    try expect_equal("".replace_first("", "x"), "x")
+    try expect_equal("abc".replace_first("z", "x"), "abc")
     let first = "aaaa".replace_first
-    if first(new: "b", "a") != "baaa" or first("a", "b", 2) != "bbaa":
-        return panic("bound defaults or reordered labels")
-    if first("a", "b") != "aaaa".replace("a", "b"): return panic("old replace spelling")
+    try expect_false(first(new: "b", "a") != "baaa" or first("a", "b", 2) != "bbaa")
+    try expect_equal(first("a", "b"), "aaaa".replace("a", "b"))
 
 test "regex replace_all preserves literal text and exact output budgets":
     let pattern = try compile("(a)")
     let all = pattern.replace_all
-    if (try pattern.replace_all("aaa", "b")) != "bbb": return panic("all matches")
-    if (try all(replacement: "$1", "aa")) != "$1$1": return panic("capture expansion")
-    if (try pattern.replace_all("aa", "é", 4)) != "éé": return panic("UTF8 boundary")
-
+    try expect_equal((try pattern.replace_all("aaa", "b")), "bbb")
+    try expect_equal((try all(replacement: "$1", "aa")), "$1$1")
+    try expect_equal((try pattern.replace_all("aa", "é", 4)), "éé")
     let limited: Result[String, RegexError] = error(RegexError.LimitExceeded)
     let invalid: Result[String, RegexError] = error(RegexError.InvalidInput)
-    if pattern.replace_all("aa", "é", 3) != limited: return panic("output budget")
-    if all("a", "", -1) != invalid: return panic("negative budget")
-    if (try all("a", "", 0)) != "": return panic("empty output budget")
-    if pattern.replace_all("z", "b", 0) != limited: return panic(
-        "unchanged output budget"
+    try expect_equal(pattern.replace_all("aa", "é", 3), limited)
+    try expect_equal(all("a", "", -1), invalid)
+    try expect_equal((try all("a", "", 0)), "")
+    try expect_equal(pattern.replace_all("z", "b", 0), limited)
+    try expect_equal(
+        pattern.replace_all("aa", "b", none),
+        pattern.replace_all("aa", "b", none)
     )
-    if pattern.replace_all("aa", "b", none) != pattern.replace_all("aa", "b", none):
-        return panic("old regex spelling")
-
     let empty = try compile("")
-    if (try empty.replace_all("é🙂", "x")) != "xéx🙂x": return panic("empty pattern")
-
+    try expect_equal((try empty.replace_all("é🙂", "x")), "xéx🙂x")
     let view = RegexReplacement(RegexAdapter(pattern))
     let view_all = view.replace_all
-    if (
-        (try view.replace_all("aaa", "b", none)) != "bbb"
-        or (try view_all("aa", "b", 2)) != "bb"
-    ):
-        return panic("Regex interface view")
+    try expect_false(
+        (
+            (try view.replace_all("aaa", "b", none)) != "bbb"
+            or (try view_all("aa", "b", 2)) != "bb"
+        )
+    )
 
 test "new direct keyed calls capture receivers before arguments":
-    var items = Set[Int]().add(1)
+    var items = Set[Int]([1])
     let original = items
     let result = items.add(
         match some(0):
             some(_):
-                items = Set[Int]().add(8)
+                items = Set[Int]([8])
                 2
             none: 3
     )
-    if (
-        result.values() != [1, 2]
-        or original.values() != [1, 2]
-        or items.values() != [8]
-    ):
-        return panic("add receiver capture")
-
+    try expect_false(
+        (
+            result.values() != [1, 2]
+            or original.values() != [1, 2]
+            or items.values() != [8]
+        )
+    )
     result.remove(
         match some(0):
             some(_):
-                items = Set[Int]().add(9)
+                items = Set[Int]([9])
                 1
             none: 2
     )
-    if result.values() != [2] or items.values() != [9]: return panic("remove capture")
+    try expect_false(result.values() != [2] or items.values() != [9])
 
 type Cell:
     value: Int
@@ -247,33 +229,27 @@ test "list reversal names distinguish receiver mutation and shallow copies":
     let copied = items.reversed()
     let reverse = items.reverse_in_place
     reverse().append(4)
-    if (items != [3, 2, 1, 4] or alias != [3, 2, 1, 4] or copied != [3, 2, 1]):
-        return panic("reverse receiver or independent copy")
-
+    try expect_false(
+        (items != [3, 2, 1, 4] or alias != [3, 2, 1, 4] or copied != [3, 2, 1])
+    )
     copied.set(0, 8)
     let reversed = items.reversed
     reversed().remove(0)
-    if items != [3, 2, 1, 4]: return panic("bound reversed mutated receiver")
-
+    try expect_equal(items, [3, 2, 1, 4])
     items.reverse_in_place().reverse_in_place()
-    if items != [3, 2, 1, 4]: return panic("old reverse compatibility")
-
+    try expect_equal(items, [3, 2, 1, 4])
     let empty: List[Int] = []
     empty.reverse_in_place().reversed().append(1)
-    if not empty.is_empty(): return panic("empty reversed storage")
-
+    try expect_false(not empty.is_empty())
     let one = [1]
     one.reversed().set(0, 2)
-    if one != [1]: return panic("singleton reversed storage")
-
+    try expect_equal(one, [1])
     let nested = [Cell(1), Cell(2)]
     let shallow = nested.reversed()
-    let shared = shallow.at(0).get()
+    let shared = shallow.get(0)
     shared.value = 9
     shallow.set(1, Cell(7))
-    if nested.at(0).get().value != 1 or nested.at(1).get().value != 9:
-        return panic("reversed copy depth")
-
+    try expect_false(nested.get(0).value != 1 or nested.get(1).value != 9)
     let viewed = [4, 5]
     let adapter = ListAdapter(viewed, fn(index: Int, value: Int) List[Int]: [99])
     let view = ListMutation(adapter)
@@ -283,21 +259,28 @@ test "list reversal names distinguish receiver mutation and shallow copies":
     view.reverse_in_place()
     view_reversed().set(0, 7)
     view_reverse()
-    if viewed != [4, 5]: return panic("view reversal contracts")
+    try expect_equal(viewed, [4, 5])
 
 test "byte reversal names copy across direct bound and view calls":
     let data = Bytes([0, 1, 255])
     let reversed = data.reversed
     let view = ByteCopy(ByteAdapter(data))
     let view_reversed = view.reversed
-    if data.reversed() != Bytes([255, 1, 0]) or reversed() != data.reversed():
-        return panic("byte reverse compatibility")
-    if view.reversed() != data.reversed() or view_reversed() != data.reversed():
-        return panic("byte view reversal")
-
+    try expect_false(
+        (data.reversed() != Bytes([255, 1, 0]) or reversed() != data.reversed())
+    )
+    try expect_false(
+        (
+            view.reversed() != data.reversed()
+            or view_reversed() != data.reversed()
+        )
+    )
     let extracted = reversed().values()
     extracted.set(0, 7)
-    if data != Bytes([0, 1, 255]) or reversed() != Bytes([255, 1, 0]):
-        return panic("immutable byte reversal")
-    if Bytes([]).reversed().length() != 0 or Bytes([1]).reversed() != Bytes([1]):
-        return panic("empty singleton bytes")
+    try expect_false(data != Bytes([0, 1, 255]) or reversed() != Bytes([255, 1, 0]))
+    try expect_false(
+        (
+            Bytes([]).reversed().length() != 0
+            or Bytes([1]).reversed() != Bytes([1])
+        )
+    )

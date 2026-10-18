@@ -94,7 +94,7 @@ import {ErrorCategory, TextError, category} from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
 fn bytes() Bytes: Bytes([1])
 fn build() List[Int]: ListBuilder[Int]().freeze()
-fn text_error(message: String) TextError: TextError.Text(message)
+fn text_error(message: String) TextError: TextError(message)
 `,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -180,7 +180,7 @@ func TestPreludeImportPolicyUsesResolvedIdentity(t *testing.T) {
 
 func TestMissingValuePreludeDefaultsAndShadowing(t *testing.T) {
 	for name, source := range map[string]string{
-		"named default result": `fn first(values: List[Int]) Result[Int, MissingValue]: values.at(0).ok_or()
+		"named default result": `fn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
 fn message(values: List[Int]) String: first(values).err().message()
 fn widen(cause: MissingValue) Error: cause
 `,

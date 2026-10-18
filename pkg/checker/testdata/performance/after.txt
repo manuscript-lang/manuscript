@@ -1,0 +1,205 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/checker
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkCheckerEffects/chain/128         	     133	   1766859 ns/op	 1361352 B/op	    9767 allocs/op
+BenchmarkCheckerEffects/chain/256         	      64	   3604425 ns/op	 3327212 B/op	   19443 allocs/op
+BenchmarkCheckerEffects/chain/512         	      32	   7220183 ns/op	 6374995 B/op	   38910 allocs/op
+BenchmarkCheckerEffects/pure/128          	     199	   1243984 ns/op	 1119572 B/op	    7467 allocs/op
+BenchmarkCheckerEffects/pure/256          	      93	   2537493 ns/op	 2319198 B/op	   14838 allocs/op
+BenchmarkCheckerEffects/pure/512          	      61	   4775616 ns/op	 4526507 B/op	   29697 allocs/op
+BenchmarkCheckerEffects/pure-chain/128    	     162	   1498487 ns/op	 1316680 B/op	    9372 allocs/op
+BenchmarkCheckerEffects/pure-chain/256    	      70	   3501684 ns/op	 3239263 B/op	   18664 allocs/op
+BenchmarkCheckerEffects/pure-chain/512    	      38	   6929237 ns/op	 6196158 B/op	   37363 allocs/op
+BenchmarkCheckerEffects/cycle/128         	     150	   1591018 ns/op	 1364192 B/op	    9793 allocs/op
+BenchmarkCheckerEffects/cycle/256         	      66	   3589203 ns/op	 3330041 B/op	   19469 allocs/op
+BenchmarkCheckerEffects/cycle/512         	      33	   7588701 ns/op	 6377841 B/op	   38936 allocs/op
+BenchmarkCheckerEffects/fanout/128        	     123	   1875468 ns/op	 1364618 B/op	    9653 allocs/op
+BenchmarkCheckerEffects/fanout/256        	      63	   3681605 ns/op	 3334059 B/op	   19203 allocs/op
+BenchmarkCheckerEffects/fanout/512        	      33	   6934011 ns/op	 6389531 B/op	   38416 allocs/op
+BenchmarkCheckerGenerics/128              	     127	   1873012 ns/op	 1538428 B/op	    9515 allocs/op
+BenchmarkCheckerGenerics/256              	      61	   3783629 ns/op	 3141560 B/op	   18743 allocs/op
+BenchmarkCheckerGenerics/512              	      36	   7767051 ns/op	 6143363 B/op	   37437 allocs/op
+BenchmarkCheckerWideRecord/16             	     897	    236069 ns/op	  186931 B/op	    1044 allocs/op
+BenchmarkCheckerWideRecord/32             	     442	    525716 ns/op	  424632 B/op	    1825 allocs/op
+BenchmarkCheckerWideRecord/64             	     168	   1403358 ns/op	 1235719 B/op	    3423 allocs/op
+BenchmarkCheckerSubstitution/fields/16    	  105231	      2413 ns/op	    1768 B/op	       6 allocs/op
+BenchmarkCheckerSubstitution/cases/16     	  106198	      2368 ns/op	    1816 B/op	       7 allocs/op
+BenchmarkCheckerSubstitution/fields/32    	   48049	      5015 ns/op	    4104 B/op	       8 allocs/op
+BenchmarkCheckerSubstitution/cases/32     	   46545	      5135 ns/op	    4152 B/op	       9 allocs/op
+BenchmarkCheckerSubstitution/fields/64    	   23841	      9902 ns/op	    8488 B/op	      10 allocs/op
+BenchmarkCheckerSubstitution/cases/64     	   24493	      9911 ns/op	    8536 B/op	      11 allocs/op
+BenchmarkCheckerSubstitution/fields/128   	   12133	     19465 ns/op	   16456 B/op	      12 allocs/op
+BenchmarkCheckerSubstitution/cases/128    	   12144	     19817 ns/op	   16504 B/op	      13 allocs/op
+BenchmarkCheckerSubstitution/nongeneric   	 1000000	       205.8 ns/op	     184 B/op	       2 allocs/op
+BenchmarkCheckerSubstitution/empty-cases  	 4383686	        57.50 ns/op	      48 B/op	       1 allocs/op
+BenchmarkCheckerGenericGraph/8            	     580	    403676 ns/op	  180539 B/op	    2212 allocs/op
+BenchmarkCheckerGenericGraph/10           	     232	   1035017 ns/op	  228284 B/op	    5526 allocs/op
+BenchmarkCheckerGenericGraph/12           	      86	   3630004 ns/op	  347919 B/op	   18054 allocs/op
+BenchmarkNestedMapLiteral                 	     100	   2211942 ns/op	 1491692 B/op	   10251 allocs/op
+BenchmarkNestedListLiteral                	      49	   4883641 ns/op	 1408560 B/op	   10154 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/checker
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkCheckerEffects/chain/128         	     141	   1655259 ns/op	 1361353 B/op	    9767 allocs/op
+BenchmarkCheckerEffects/chain/256         	      66	   3569207 ns/op	 3327209 B/op	   19443 allocs/op
+BenchmarkCheckerEffects/chain/512         	      34	   7203690 ns/op	 6374996 B/op	   38910 allocs/op
+BenchmarkCheckerEffects/pure/128          	     201	   1244604 ns/op	 1119572 B/op	    7467 allocs/op
+BenchmarkCheckerEffects/pure/256          	      81	   2509536 ns/op	 2319198 B/op	   14838 allocs/op
+BenchmarkCheckerEffects/pure/512          	      57	   4743195 ns/op	 4526519 B/op	   29697 allocs/op
+BenchmarkCheckerEffects/pure-chain/128    	     152	   1550278 ns/op	 1316680 B/op	    9372 allocs/op
+BenchmarkCheckerEffects/pure-chain/256    	      70	   3371075 ns/op	 3239263 B/op	   18664 allocs/op
+BenchmarkCheckerEffects/pure-chain/512    	      33	   6904318 ns/op	 6196195 B/op	   37363 allocs/op
+BenchmarkCheckerEffects/cycle/128         	     147	   1631259 ns/op	 1364193 B/op	    9793 allocs/op
+BenchmarkCheckerEffects/cycle/256         	      64	   3624670 ns/op	 3330039 B/op	   19469 allocs/op
+BenchmarkCheckerEffects/cycle/512         	      31	   7553950 ns/op	 6377826 B/op	   38936 allocs/op
+BenchmarkCheckerEffects/fanout/128        	     132	   1787012 ns/op	 1364618 B/op	    9653 allocs/op
+BenchmarkCheckerEffects/fanout/256        	      61	   3792589 ns/op	 3334059 B/op	   19203 allocs/op
+BenchmarkCheckerEffects/fanout/512        	      32	   7336345 ns/op	 6389524 B/op	   38416 allocs/op
+BenchmarkCheckerGenerics/128              	     126	   1874001 ns/op	 1538427 B/op	    9515 allocs/op
+BenchmarkCheckerGenerics/256              	      63	   3811990 ns/op	 3141559 B/op	   18743 allocs/op
+BenchmarkCheckerGenerics/512              	      44	   7412945 ns/op	 6143367 B/op	   37437 allocs/op
+BenchmarkCheckerWideRecord/16             	     928	    242162 ns/op	  186931 B/op	    1044 allocs/op
+BenchmarkCheckerWideRecord/32             	     445	    528270 ns/op	  424632 B/op	    1825 allocs/op
+BenchmarkCheckerWideRecord/64             	     152	   1495634 ns/op	 1235719 B/op	    3423 allocs/op
+BenchmarkCheckerSubstitution/fields/16    	  105758	      2452 ns/op	    1768 B/op	       6 allocs/op
+BenchmarkCheckerSubstitution/cases/16     	  103257	      2446 ns/op	    1816 B/op	       7 allocs/op
+BenchmarkCheckerSubstitution/fields/32    	   46879	      5070 ns/op	    4104 B/op	       8 allocs/op
+BenchmarkCheckerSubstitution/cases/32     	   43560	      5598 ns/op	    4152 B/op	       9 allocs/op
+BenchmarkCheckerSubstitution/fields/64    	   23590	     10237 ns/op	    8488 B/op	      10 allocs/op
+BenchmarkCheckerSubstitution/cases/64     	   23930	     10477 ns/op	    8536 B/op	      11 allocs/op
+BenchmarkCheckerSubstitution/fields/128   	   12183	     19733 ns/op	   16456 B/op	      12 allocs/op
+BenchmarkCheckerSubstitution/cases/128    	   10000	     20781 ns/op	   16504 B/op	      13 allocs/op
+BenchmarkCheckerSubstitution/nongeneric   	 1321538	       180.8 ns/op	     184 B/op	       2 allocs/op
+BenchmarkCheckerSubstitution/empty-cases  	 4155204	        59.39 ns/op	      48 B/op	       1 allocs/op
+BenchmarkCheckerGenericGraph/8            	     566	    503408 ns/op	  180539 B/op	    2212 allocs/op
+BenchmarkCheckerGenericGraph/10           	     226	   1058330 ns/op	  228284 B/op	    5526 allocs/op
+BenchmarkCheckerGenericGraph/12           	      84	   3373000 ns/op	  347920 B/op	   18054 allocs/op
+BenchmarkNestedMapLiteral                 	     100	   2393706 ns/op	 1491694 B/op	   10251 allocs/op
+BenchmarkNestedListLiteral                	      50	   5020261 ns/op	 1408562 B/op	   10154 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/checker
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkCheckerEffects/chain/128         	     136	   1658964 ns/op	 1361353 B/op	    9767 allocs/op
+BenchmarkCheckerEffects/chain/256         	      68	   3493661 ns/op	 3327210 B/op	   19443 allocs/op
+BenchmarkCheckerEffects/chain/512         	      32	   6966287 ns/op	 6375003 B/op	   38910 allocs/op
+BenchmarkCheckerEffects/pure/128          	     207	   1154427 ns/op	 1119572 B/op	    7467 allocs/op
+BenchmarkCheckerEffects/pure/256          	      99	   2459081 ns/op	 2319199 B/op	   14838 allocs/op
+BenchmarkCheckerEffects/pure/512          	      57	   4841030 ns/op	 4526516 B/op	   29697 allocs/op
+BenchmarkCheckerEffects/pure-chain/128    	     153	   1525258 ns/op	 1316680 B/op	    9372 allocs/op
+BenchmarkCheckerEffects/pure-chain/256    	      73	   3252864 ns/op	 3239266 B/op	   18664 allocs/op
+BenchmarkCheckerEffects/pure-chain/512    	      39	   6553720 ns/op	 6196191 B/op	   37363 allocs/op
+BenchmarkCheckerEffects/cycle/128         	     145	   1636346 ns/op	 1364192 B/op	    9793 allocs/op
+BenchmarkCheckerEffects/cycle/256         	      64	   3613485 ns/op	 3330037 B/op	   19469 allocs/op
+BenchmarkCheckerEffects/cycle/512         	      32	   7069891 ns/op	 6377840 B/op	   38936 allocs/op
+BenchmarkCheckerEffects/fanout/128        	     156	   1540627 ns/op	 1364618 B/op	    9653 allocs/op
+BenchmarkCheckerEffects/fanout/256        	      60	   3753212 ns/op	 3334059 B/op	   19203 allocs/op
+BenchmarkCheckerEffects/fanout/512        	      32	   7037122 ns/op	 6389523 B/op	   38416 allocs/op
+BenchmarkCheckerGenerics/128              	     132	   1818796 ns/op	 1538428 B/op	    9515 allocs/op
+BenchmarkCheckerGenerics/256              	      64	   3620347 ns/op	 3141558 B/op	   18743 allocs/op
+BenchmarkCheckerGenerics/512              	      44	   7303649 ns/op	 6143391 B/op	   37437 allocs/op
+BenchmarkCheckerWideRecord/16             	     975	    230843 ns/op	  186931 B/op	    1044 allocs/op
+BenchmarkCheckerWideRecord/32             	     470	    529924 ns/op	  424632 B/op	    1825 allocs/op
+BenchmarkCheckerWideRecord/64             	     164	   1452617 ns/op	 1235719 B/op	    3423 allocs/op
+BenchmarkCheckerSubstitution/fields/16    	   95763	      2626 ns/op	    1768 B/op	       6 allocs/op
+BenchmarkCheckerSubstitution/cases/16     	  103645	      2518 ns/op	    1816 B/op	       7 allocs/op
+BenchmarkCheckerSubstitution/fields/32    	   44408	      5283 ns/op	    4104 B/op	       8 allocs/op
+BenchmarkCheckerSubstitution/cases/32     	   48132	      4999 ns/op	    4152 B/op	       9 allocs/op
+BenchmarkCheckerSubstitution/fields/64    	   23989	      9857 ns/op	    8488 B/op	      10 allocs/op
+BenchmarkCheckerSubstitution/cases/64     	   24480	      9935 ns/op	    8536 B/op	      11 allocs/op
+BenchmarkCheckerSubstitution/fields/128   	   12577	     20085 ns/op	   16456 B/op	      12 allocs/op
+BenchmarkCheckerSubstitution/cases/128    	   10000	     20230 ns/op	   16504 B/op	      13 allocs/op
+BenchmarkCheckerSubstitution/nongeneric   	 1370793	       177.2 ns/op	     184 B/op	       2 allocs/op
+BenchmarkCheckerSubstitution/empty-cases  	 4033820	        57.69 ns/op	      48 B/op	       1 allocs/op
+BenchmarkCheckerGenericGraph/8            	     520	    431639 ns/op	  180539 B/op	    2212 allocs/op
+BenchmarkCheckerGenericGraph/10           	     244	   1002640 ns/op	  228284 B/op	    5526 allocs/op
+BenchmarkCheckerGenericGraph/12           	      91	   3301753 ns/op	  347919 B/op	   18054 allocs/op
+BenchmarkNestedMapLiteral                 	      97	   2348110 ns/op	 1491693 B/op	   10251 allocs/op
+BenchmarkNestedListLiteral                	      51	   4795572 ns/op	 1408564 B/op	   10154 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/checker
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkCheckerEffects/chain/128         	     136	   1710195 ns/op	 1361354 B/op	    9767 allocs/op
+BenchmarkCheckerEffects/chain/256         	      67	   4090038 ns/op	 3327211 B/op	   19443 allocs/op
+BenchmarkCheckerEffects/chain/512         	      33	   7082536 ns/op	 6375007 B/op	   38910 allocs/op
+BenchmarkCheckerEffects/pure/128          	     159	   1727193 ns/op	 1119572 B/op	    7467 allocs/op
+BenchmarkCheckerEffects/pure/256          	      48	   4522208 ns/op	 2319198 B/op	   14838 allocs/op
+BenchmarkCheckerEffects/pure/512          	      33	  10374410 ns/op	 4526519 B/op	   29697 allocs/op
+BenchmarkCheckerEffects/pure-chain/128    	     100	   2210369 ns/op	 1316680 B/op	    9372 allocs/op
+BenchmarkCheckerEffects/pure-chain/256    	      74	   3234746 ns/op	 3239264 B/op	   18664 allocs/op
+BenchmarkCheckerEffects/pure-chain/512    	      40	   8233721 ns/op	 6196170 B/op	   37363 allocs/op
+BenchmarkCheckerEffects/cycle/128         	     100	   2504983 ns/op	 1364192 B/op	    9793 allocs/op
+BenchmarkCheckerEffects/cycle/256         	      33	   6819293 ns/op	 3330046 B/op	   19469 allocs/op
+BenchmarkCheckerEffects/cycle/512         	      22	   9657276 ns/op	 6377832 B/op	   38936 allocs/op
+BenchmarkCheckerEffects/fanout/128        	     150	   1626693 ns/op	 1364618 B/op	    9653 allocs/op
+BenchmarkCheckerEffects/fanout/256        	      63	   3674852 ns/op	 3334058 B/op	   19203 allocs/op
+BenchmarkCheckerEffects/fanout/512        	      32	   7195187 ns/op	 6389522 B/op	   38416 allocs/op
+BenchmarkCheckerGenerics/128              	     100	   3173053 ns/op	 1538429 B/op	    9515 allocs/op
+BenchmarkCheckerGenerics/256              	      60	   3988987 ns/op	 3141561 B/op	   18743 allocs/op
+BenchmarkCheckerGenerics/512              	      38	   7291457 ns/op	 6143382 B/op	   37437 allocs/op
+BenchmarkCheckerWideRecord/16             	     986	    229190 ns/op	  186931 B/op	    1044 allocs/op
+BenchmarkCheckerWideRecord/32             	     475	    508934 ns/op	  424632 B/op	    1825 allocs/op
+BenchmarkCheckerWideRecord/64             	     158	   1455230 ns/op	 1235720 B/op	    3423 allocs/op
+BenchmarkCheckerSubstitution/fields/16    	  105901	      2355 ns/op	    1768 B/op	       6 allocs/op
+BenchmarkCheckerSubstitution/cases/16     	  105570	      2348 ns/op	    1816 B/op	       7 allocs/op
+BenchmarkCheckerSubstitution/fields/32    	   46966	      5000 ns/op	    4104 B/op	       8 allocs/op
+BenchmarkCheckerSubstitution/cases/32     	   48792	      5095 ns/op	    4152 B/op	       9 allocs/op
+BenchmarkCheckerSubstitution/fields/64    	   25225	      9631 ns/op	    8488 B/op	      10 allocs/op
+BenchmarkCheckerSubstitution/cases/64     	   24722	      9817 ns/op	    8536 B/op	      11 allocs/op
+BenchmarkCheckerSubstitution/fields/128   	   12654	     19336 ns/op	   16456 B/op	      12 allocs/op
+BenchmarkCheckerSubstitution/cases/128    	   12372	     19470 ns/op	   16504 B/op	      13 allocs/op
+BenchmarkCheckerSubstitution/nongeneric   	 1349173	       176.5 ns/op	     184 B/op	       2 allocs/op
+BenchmarkCheckerSubstitution/empty-cases  	 4290996	        56.16 ns/op	      48 B/op	       1 allocs/op
+BenchmarkCheckerGenericGraph/8            	     597	    398304 ns/op	  180539 B/op	    2212 allocs/op
+BenchmarkCheckerGenericGraph/10           	     247	    986451 ns/op	  228284 B/op	    5526 allocs/op
+BenchmarkCheckerGenericGraph/12           	      91	   3279983 ns/op	  347919 B/op	   18054 allocs/op
+BenchmarkNestedMapLiteral                 	     100	   2173679 ns/op	 1491692 B/op	   10251 allocs/op
+BenchmarkNestedListLiteral                	      50	   4827706 ns/op	 1408560 B/op	   10154 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/checker
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkCheckerEffects/chain/128         	     140	   1636226 ns/op	 1361354 B/op	    9767 allocs/op
+BenchmarkCheckerEffects/chain/256         	      68	   3555579 ns/op	 3327212 B/op	   19443 allocs/op
+BenchmarkCheckerEffects/chain/512         	      33	   6992626 ns/op	 6375007 B/op	   38910 allocs/op
+BenchmarkCheckerEffects/pure/128          	     205	   1188252 ns/op	 1119572 B/op	    7467 allocs/op
+BenchmarkCheckerEffects/pure/256          	      98	   2427495 ns/op	 2319198 B/op	   14838 allocs/op
+BenchmarkCheckerEffects/pure/512          	      57	   4766108 ns/op	 4526515 B/op	   29697 allocs/op
+BenchmarkCheckerEffects/pure-chain/128    	     164	   1460365 ns/op	 1316679 B/op	    9372 allocs/op
+BenchmarkCheckerEffects/pure-chain/256    	      72	   3294950 ns/op	 3239264 B/op	   18664 allocs/op
+BenchmarkCheckerEffects/pure-chain/512    	      40	   6597978 ns/op	 6196195 B/op	   37363 allocs/op
+BenchmarkCheckerEffects/cycle/128         	     153	   1561939 ns/op	 1364192 B/op	    9793 allocs/op
+BenchmarkCheckerEffects/cycle/256         	      67	   3631013 ns/op	 3330041 B/op	   19469 allocs/op
+BenchmarkCheckerEffects/cycle/512         	      33	   7089054 ns/op	 6377829 B/op	   38936 allocs/op
+BenchmarkCheckerEffects/fanout/128        	     151	   1567275 ns/op	 1364617 B/op	    9653 allocs/op
+BenchmarkCheckerEffects/fanout/256        	      67	   3524722 ns/op	 3334059 B/op	   19203 allocs/op
+BenchmarkCheckerEffects/fanout/512        	      32	   7106477 ns/op	 6389524 B/op	   38416 allocs/op
+BenchmarkCheckerGenerics/128              	     129	   1840620 ns/op	 1538428 B/op	    9515 allocs/op
+BenchmarkCheckerGenerics/256              	      64	   3637204 ns/op	 3141560 B/op	   18743 allocs/op
+BenchmarkCheckerGenerics/512              	      37	   7368631 ns/op	 6143371 B/op	   37437 allocs/op
+BenchmarkCheckerWideRecord/16             	     951	    243102 ns/op	  186931 B/op	    1044 allocs/op
+BenchmarkCheckerWideRecord/32             	     458	    513923 ns/op	  424632 B/op	    1825 allocs/op
+BenchmarkCheckerWideRecord/64             	     175	   1360576 ns/op	 1235719 B/op	    3423 allocs/op
+BenchmarkCheckerSubstitution/fields/16    	  107646	      2286 ns/op	    1768 B/op	       6 allocs/op
+BenchmarkCheckerSubstitution/cases/16     	  104646	      2357 ns/op	    1816 B/op	       7 allocs/op
+BenchmarkCheckerSubstitution/fields/32    	   47922	      5325 ns/op	    4104 B/op	       8 allocs/op
+BenchmarkCheckerSubstitution/cases/32     	   49408	      5004 ns/op	    4152 B/op	       9 allocs/op
+BenchmarkCheckerSubstitution/fields/64    	   24802	      9775 ns/op	    8488 B/op	      10 allocs/op
+BenchmarkCheckerSubstitution/cases/64     	   25021	      9717 ns/op	    8536 B/op	      11 allocs/op
+BenchmarkCheckerSubstitution/fields/128   	   12332	     19463 ns/op	   16456 B/op	      12 allocs/op
+BenchmarkCheckerSubstitution/cases/128    	   12064	     19787 ns/op	   16504 B/op	      13 allocs/op
+BenchmarkCheckerSubstitution/nongeneric   	 1333972	       179.1 ns/op	     184 B/op	       2 allocs/op
+BenchmarkCheckerSubstitution/empty-cases  	 4052550	        57.99 ns/op	      48 B/op	       1 allocs/op
+BenchmarkCheckerGenericGraph/8            	     632	    409040 ns/op	  180539 B/op	    2212 allocs/op
+BenchmarkCheckerGenericGraph/10           	     229	   1029703 ns/op	  228284 B/op	    5526 allocs/op
+BenchmarkCheckerGenericGraph/12           	      84	   3067637 ns/op	  347921 B/op	   18054 allocs/op
+BenchmarkNestedMapLiteral                 	     100	   2279642 ns/op	 1491694 B/op	   10251 allocs/op
+BenchmarkNestedListLiteral                	      43	   5057645 ns/op	 1408562 B/op	   10154 allocs/op
+PASS

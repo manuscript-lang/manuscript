@@ -1,0 +1,6 @@
+=== RUN   TestDiscoverySharesPhysicalWalkButRetainsWrittenPaths
+    discovery_test.go:42: alias walk missed unopened source map[__workspace_index.ms:true]
+--- FAIL: TestDiscoverySharesPhysicalWalkButRetainsWrittenPaths (0.03s)
+FAIL
+FAIL	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	0.031s
+FAIL

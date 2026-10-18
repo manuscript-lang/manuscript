@@ -7,6 +7,9 @@ package msruntime
 func check_Process_Commands() {
 	var _ func(*Execution) Commands = Process_Commands
 }
+func check_Process_Arguments() {
+	var _ func(*Execution) *List[string] = Process_Arguments
+}
 func check_Process_Control() {
 	var _ func(*Execution) ProcessControl = Process_Control
 }

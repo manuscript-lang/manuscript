@@ -1,304 +1,431 @@
-import range from "@std/collections.ms"
+import {expect_equal, expect_false, expect_ok, expect_true, fail} from "@std/testing.ms"
 import from_scalars from "@std/string.ms"
+import TextError from "@std/errors.ms"
+import range from "@std/collections.ms"
 import {parse, stringify, YamlValue, YamlError, YamlLimits} from "@std/yaml.ms"
-import panic from "@std/faults.ms"
 
-fn entries(value: YamlValue) Map[String, YamlValue]:
+fn entries(value: YamlValue) Result[Map[String, YamlValue], Error]:
     match value:
-        ObjectValue(values): return values
-        _: return panic("expected YAML mapping")
+        ObjectValue(values): return ok(values)
+        _: return error(TextError("expected YAML mapping"))
 
-fn items(value: YamlValue) List[YamlValue]:
+fn items(value: YamlValue) Result[List[YamlValue], Error]:
     match value:
-        ArrayValue(values): return values
-        _: return panic("expected YAML sequence")
+        ArrayValue(values): return ok(values)
+        _: return error(TextError("expected YAML sequence"))
 
 fn limits(
     bytes: Optional[Int],
     depth: Optional[Int],
     values: Optional[Int]
 ) Optional[YamlLimits]:
-    return some(YamlLimits(bytes, depth, values))
+    return some(YamlLimits(max_bytes: bytes, max_depth: depth, max_values: values))
 
 type ScalarCase:
     text: String
     expected: String
 
 fn scalar(text: String, expected: String) Result[Unit, Error]:
-    let root = parse(text) | try | entries
-    if root.get("a").get() != YamlValue.StringValue(expected): return panic(
-        "scalar folding: {text}"
+    let root = parse(text: text) | try expect_ok | try entries
+    if root.get("a").get() != YamlValue.StringValue(expected): return error(
+        TextError("scalar folding: {text}")
     )
 
     return ok(unit)
 
 test "YAML issue 133 folded paragraph":
-    try scalar("a: >\n  x\n  y\n\n  z\n", "x y\nz\n")
+    (try scalar(text: "a: >\n  x\n  y\n\n  z\n", expected: "x y\nz\n"))
 
 test "YAML issue 133 folded multiple blank lines":
-    try scalar("a: >\n  x\n\n\n  z\n", "x\n\nz\n")
+    (try scalar(text: "a: >\n  x\n\n\n  z\n", expected: "x\n\nz\n"))
 
 test "YAML issue 133 single quoted paragraph":
-    try scalar("a: 'x\n\n  y'", "x\ny")
+    (try scalar(text: "a: 'x\n\n  y'", expected: "x\ny"))
 
 test "YAML issue 133 double quoted paragraphs":
-    try scalar("a: \"x\n\n\n  y\"", "x\n\ny")
+    (try scalar(text: "a: \"x\n\n\n  y\"", expected: "x\n\ny"))
 
 test "YAML issue 133 plain paragraph before sibling":
-    try scalar("a: x\n\n  y\nb: 1", "x\ny")
+    (try scalar(text: "a: x\n\n  y\nb: 1", expected: "x\ny"))
 
 test "YAML quoted folding trims physical whitespace and preserves escapes":
     let cases = [
-        ScalarCase("a: 'x \t\n \t\n  y'", "x\ny"),
-        ScalarCase("a: \"x \t\n \t\n\n  y\"", "x\n\ny"),
-        ScalarCase("a: ' x  \n  y '", " x y "),
-        ScalarCase("a: \"x\\t\n  y\"", "x\t y"),
-        ScalarCase("a: \"x\\ \n  y\"", "x  y"),
-        ScalarCase("a: \"x \\\n  y\"", "x y"),
-        ScalarCase("a: \"x \\\n \t\n\n  y\"", "x \n\ny"),
+        ScalarCase(text: "a: 'x \t\n \t\n  y'", expected: "x\ny"),
+        ScalarCase(text: "a: \"x \t\n \t\n\n  y\"", expected: "x\n\ny"),
+        ScalarCase(text: "a: ' x  \n  y '", expected: " x y "),
+        ScalarCase(text: "a: \"x\\t\n  y\"", expected: "x\t y"),
+        ScalarCase(text: "a: \"x\\ \n  y\"", expected: "x  y"),
+        ScalarCase(text: "a: \"x \\\n  y\"", expected: "x y"),
+        ScalarCase(text: "a: \"x \\\n \t\n\n  y\"", expected: "x \n\ny"),
         ScalarCase(
-            "a: 'x\n\n  # hash: text\n\n  it''s y' # outside",
-            "x\n# hash: text\nit's y"
+            text: "a: 'x\n\n  # hash: text\n\n  it''s y' # outside",
+            expected: "x\n# hash: text\nit's y"
         ),
-        ScalarCase("a: \"x\n\n  \\\"y\\\"\" # outside", "x\n\"y\"")
+        ScalarCase(
+            text: "a: \"x\n\n  \\\"y\\\"\" # outside",
+            expected: "x\n\"y\""
+        )
     ]
     for example in cases:
         for ending in ["\n", "\r\n", "\r"]:
-            try scalar(
-                (
-                    example
-                    .text
-                    .replace(
-                        "\n",
-                        ending,
-                        (example.text.byte_length())
-                    )
-                ),
-                example.expected
+            (
+                try scalar(
+                    text: (
+                        example
+                        .text
+                        .replace(
+                            old: "\n",
+                            new: ending,
+                            max_replacements: (
+                                example
+                                .text
+                                .byte_length()
+                            )
+                        )
+                    ),
+                    expected: example.expected
+                )
             )
-    if (try parse("'x\n\n  y'")) != YamlValue.StringValue("x\ny"):
-        return panic("root quoted paragraph")
-
-    let flow = parse("['x\n\n  y', \"z\\\n\n  w\"]") | try | items
-    if flow != [YamlValue.StringValue("x\ny"), YamlValue.StringValue("z\nw")]:
-        return panic("quoted folding inside flow collection")
+    parse(text: "'x\n\n  y'") | try expect_ok | try expect_equal(
+        expected: YamlValue.StringValue("x\ny")
+    )
+    let flow = parse(text: "['x\n\n  y', \"z\\\n\n  w\"]") | try expect_ok | try items
+    flow | try expect_equal(
+        expected: [YamlValue.StringValue("x\ny"), YamlValue.StringValue("z\nw")]
+    )
 
 test "YAML folded and literal blocks respect paragraphs indentation and chomping":
     let cases = [
-        ScalarCase("a: >-\n  x\n \n  y\n\n", "x\ny"),
-        ScalarCase("a: >\n  x\n\n  y\n\n\n", "x\ny\n"),
-        ScalarCase("a: >+\n  x\n\n  y\n\n\n", "x\ny\n\n\n"),
-        ScalarCase("a: >2-\n  x\n\n\n  y\n", "x\n\ny"),
-        ScalarCase("a: >\n  x\n\n    y\n\n  z\n", "x\n\n  y\n\nz\n"),
-        ScalarCase("a: >2-\n  x\n   \n  y\n", "x\n \ny"),
-        ScalarCase("a: >2-\n  x\n\n  \ty\n\n  z\n", "x\n\n\ty\n\nz"),
-        ScalarCase("a: >-\n\n  x\n\n  y\n", "\nx\ny"),
-        ScalarCase("a: |\n  x\n\n  y\n", "x\n\ny\n"),
-        ScalarCase("a: |+\n  x\n\n", "x\n\n"),
-        ScalarCase("a: >\n  x", "x"),
-        ScalarCase("a: |\n  x", "x"),
-        ScalarCase("a: >+\n  x\n\n  y", "x\ny"),
-        ScalarCase("a: >\n\n", ""),
-        ScalarCase("a: >+\n\n", "\n"),
-        ScalarCase("a: |-\n\n", ""),
-        ScalarCase("a: >\n   \n", ""),
-        ScalarCase("a: >+\n   \n", "\n"),
-        ScalarCase("a: >2+\n   \n", " \n"),
-        ScalarCase("a: >\n \t\n", "\t\n")
+        ScalarCase(text: "a: >-\n  x\n \n  y\n\n", expected: "x\ny"),
+        ScalarCase(text: "a: >\n  x\n\n  y\n\n\n", expected: "x\ny\n"),
+        ScalarCase(text: "a: >+\n  x\n\n  y\n\n\n", expected: "x\ny\n\n\n"),
+        ScalarCase(text: "a: >2-\n  x\n\n\n  y\n", expected: "x\n\ny"),
+        ScalarCase(
+            text: "a: >\n  x\n\n    y\n\n  z\n",
+            expected: "x\n\n  y\n\nz\n"
+        ),
+        ScalarCase(text: "a: >2-\n  x\n   \n  y\n", expected: "x\n \ny"),
+        ScalarCase(
+            text: "a: >2-\n  x\n\n  \ty\n\n  z\n",
+            expected: "x\n\n\ty\n\nz"
+        ),
+        ScalarCase(text: "a: >-\n\n  x\n\n  y\n", expected: "\nx\ny"),
+        ScalarCase(text: "a: |\n  x\n\n  y\n", expected: "x\n\ny\n"),
+        ScalarCase(text: "a: |+\n  x\n\n", expected: "x\n\n"),
+        ScalarCase(text: "a: >\n  x", expected: "x"),
+        ScalarCase(text: "a: |\n  x", expected: "x"),
+        ScalarCase(text: "a: >+\n  x\n\n  y", expected: "x\ny"),
+        ScalarCase(text: "a: >\n\n", expected: ""),
+        ScalarCase(text: "a: >+\n\n", expected: "\n"),
+        ScalarCase(text: "a: |-\n\n", expected: ""),
+        ScalarCase(text: "a: >\n   \n", expected: ""),
+        ScalarCase(text: "a: >+\n   \n", expected: "\n"),
+        ScalarCase(text: "a: >2+\n   \n", expected: " \n"),
+        ScalarCase(text: "a: >\n \t\n", expected: "\t\n")
     ]
     for example in cases:
         for ending in ["\n", "\r\n", "\r"]:
-            try scalar(
-                (
-                    example
-                    .text
-                    .replace(
-                        "\n",
-                        ending,
-                        (example.text.byte_length())
-                    )
-                ),
-                example.expected
+            (
+                try scalar(
+                    text: (
+                        example
+                        .text
+                        .replace(
+                            old: "\n",
+                            new: ending,
+                            max_replacements: (
+                                example
+                                .text
+                                .byte_length()
+                            )
+                        )
+                    ),
+                    expected: example.expected
+                )
             )
 
 test "YAML plain paragraphs retain boundaries and nested collections":
     for ending in ["\n", "\r\n", "\r"]:
         let text = "a: x  \n \t\n\n  y \t\n  z\n\nb: 1\n"
-        let root = text.replace("\n", ending, text.byte_length()) | parse | try | entries
-        if root.get("a").get() != YamlValue.StringValue("x\n\ny z"):
-            return panic("plain whitespace paragraphs")
-        if root.get("b").get() != YamlValue.NumberValue("1"):
-            return panic("plain folding consumed sibling")
+        let root = (
+            try entries(
+                (
+                    parse(
+                        text: text.replace(
+                            old: "\n",
+                            new: ending,
+                            max_replacements: text.byte_length()
+                        )
+                    ) | try expect_ok
+                )
+            )
+        )
+        (
+            root.get("a").get() | try expect_equal(
+                expected: YamlValue.StringValue("x\n\ny z")
+            )
+        )
+        root.get("b").get() | try expect_equal(expected: YamlValue.NumberValue("1"))
 
-    let root = parse("a:\n  - x\n\n    y\n  - z\nb: 1\n") | try | entries
-    if (
-        items(root.get("a").get()) != [
-            YamlValue.StringValue("x\ny"),
-            YamlValue.StringValue("z")
-        ]
-    ):
-        return panic("sequence plain paragraph")
-
-    try scalar("a: x\n\n# comment\nb: 1\n", "x")
-    try scalar("a: x\n\n", "x")
+    let root = parse(text: "a:\n  - x\n\n    y\n  - z\nb: 1\n") | try expect_ok | try entries
+    try expect_false(
+        (
+            (try items(root.get("a").get())) != [
+                YamlValue.StringValue("x\ny"),
+                YamlValue.StringValue("z")
+            ]
+        )
+    )
+    (try scalar(text: "a: x\n\n# comment\nb: 1\n", expected: "x"))
+    (try scalar(text: "a: x\n\n", expected: "x"))
 
 test "YAML blank line folding retains byte node and malformed input contracts":
     let text = "a: \"é\r\n\r\n  y\"\r\n"
-    let expected = try parse(text)
-    if ((try parse(text, limits(text.byte_length(), 2, 2))) != expected):
-        return panic("exact original byte and node budgets")
-
+    let expected = (parse(text: text) | try expect_ok)
+    try expect_false(
+        (
+            (
+                parse(
+                    text: text,
+                    limits: limits(
+                        bytes: text.byte_length(),
+                        depth: 2,
+                        values: 2
+                    )
+                ) | try expect_ok
+            ) != expected
+        )
+    )
     let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
-    if (parse(text, limits(text.byte_length() - 1, none, none)) != limited):
-        return panic("byte budget precedes line ending normalization")
-    if (parse(text, limits(none, none, 1)) != limited):
-        return panic("folding does not alter value counting")
+    try expect_false(
+        (
+            parse(
+                text: text,
+                limits: limits(
+                    bytes: text.byte_length() - 1,
+                    depth: none,
+                    values: none
+                )
+            ) != limited
+        )
+    )
+    try expect_false(
+        (
+            parse(
+                text: text,
+                limits: limits(bytes: none, depth: none, values: 1)
+            ) != limited
+        )
+    )
 
     for text in [
         "a: 'x\n\n  y", "a: \"x\n\n  y", "a: \"x\\\n\n  y\\q\"", "a: x\n\n  b: y",
         "a: x\n\n  - y", "a: x\n\n \ty", "a: x\n # comment\n  y", "a: >--\n\n  x",
         "a: >\n  x\n \t\n  y", "a: >2\n  x\n y"
     ]:
-        let parsed = parse(text)
-        if parsed.is_ok(): return panic("malformed multiline scalar accepted: {text}")
+        let cause = match parse(text: text):
+            ok(_): return fail("malformed multiline scalar accepted: {text}")
+            error(cause): cause
 
-        match parsed.err():
+        match cause:
             InvalidData(line, column, reason):
-                if (line < 1 or column < 1 or reason == ""): return panic(
-                    "multiline diagnostic"
-                )
-            _: return panic("wrong multiline error")
+                ((line < 1 or column < 1 or reason == "") | try expect_false)
+            _: return fail("wrong multiline error")
 
-    let indented = parse("a: x\n\n  b: y")
-    if indented.is_ok(): return panic("indented mapping accepted as plain continuation")
+    let cause = match parse(text: "a: x\n\n  b: y"):
+        error(cause): cause
+        ok(_): return fail("indented mapping accepted as plain continuation")
 
-    match indented.err():
+    match cause:
         InvalidData(line, column, _):
-            if line != 3 or column != 1: return panic("continuation error position")
-        _: return panic("wrong continuation error")
+            ((line != 3 or column != 1) | try expect_false)
+        _: return fail("wrong continuation error")
 
 test "YAML block mappings sequences exact scalars and core schema":
     let text = "name: é🙂\nlarge: 9007199254740993\nboolean: TRUE\nlegacy: yes\ndate: 2024-02-29\nempty:\nvalues:\n- null\n- false\n- 0xFF\npeople:\n  - name: Ada\n    age: 37\n  - name: Grace\n    skills:\n      - compilers\n"
-    let root = parse(text) | try | entries
-    if root.get("name").get() != YamlValue.StringValue("é🙂"): return panic(
-        "YAML Unicode"
+    let root = parse(text: text) | try expect_ok | try entries
+    root.get("name").get() | try expect_equal(expected: YamlValue.StringValue("é🙂"))
+    (
+        root.get("large").get() | try expect_equal(
+            expected: YamlValue.NumberValue("9007199254740993")
+        )
     )
-    if root.get("large").get() != YamlValue.NumberValue("9007199254740993"): return panic(
-        "YAML precision"
+    root.get("boolean").get() | try expect_equal(expected: YamlValue.BoolValue(true))
+    (
+        root.get("legacy").get() | try expect_equal(
+            expected: YamlValue.StringValue("yes")
+        )
     )
-    if root.get("boolean").get() != YamlValue.BoolValue(true): return panic(
-        "core boolean"
+    (
+        root.get("date").get() | try expect_equal(
+            expected: YamlValue.StringValue("2024-02-29")
+        )
     )
-    if root.get("legacy").get() != YamlValue.StringValue("yes"): return panic(
-        "YAML 1.2 yes"
+    root.get("empty").get() | try expect_equal(expected: YamlValue.Null)
+    try expect_false(
+        (
+            (try items(root.get("values").get())) != [
+                YamlValue.Null,
+                YamlValue.BoolValue(false),
+                YamlValue.NumberValue("0xFF")
+            ]
+        )
     )
-    if root.get("date").get() != YamlValue.StringValue("2024-02-29"): return panic(
-        "core date"
+    let people = (try items(root.get("people").get()))
+    try expect_false(
+        (
+            people.length() != 2
+            or (try entries(people.first().get())).get(
+                "age"
+            ).get() != YamlValue.NumberValue("37")
+        )
     )
-    if root.get("empty").get() != YamlValue.Null: return panic("empty scalar")
-    if (
-        items(root.get("values").get()) != [
-            YamlValue.Null,
-            YamlValue.BoolValue(false),
-            YamlValue.NumberValue("0xFF")
-        ]
-    ): return panic("indentless sequence")
-
-    let people = items(root.get("people").get())
-    if (
-        people.length() != 2
-        or entries(people.first().get()).get(
-            "age"
-        ).get() != YamlValue.NumberValue("37")
-    ): return panic("compact mappings")
-    if (
-        items(
-            entries(people.last().get()).get("skills").get()
-        ).first().get() != YamlValue.StringValue("compilers")
-    ): return panic("nested compact mapping")
+    try expect_false(
+        (
+            (
+                try items(
+                    (try entries(people.last().get())).get(
+                        "skills"
+                    ).get()
+                )
+            ).first().get() != YamlValue.StringValue("compilers")
+        )
+    )
 
 test "YAML flow collections quotes escapes comments and multiline values":
-    let root = parse(
-        "flow: \{name: 'it''s # fine', list: [true, 2, \"é\\u263A\",],\}\nurl: https://example.org/#fragment # comment\nquoted: \"hash # colon: brace \{\}\"\nmultiline: [1,\n  2, # comment\n  3]\ntext: a long\n  continued sentence\n"
-    ) | try | entries
-    if (
-        entries(root.get("flow").get()).get(
-            "name"
-        ).get() != YamlValue.StringValue("it's # fine")
-    ): return panic("single quotes")
-    if (
-        items(
-            entries(root.get("flow").get()).get("list").get()
-        ).last().get() != YamlValue.StringValue("é☺")
-    ): return panic("quoted escape")
-    if (root.get("url").get() != YamlValue.StringValue("https://example.org/#fragment")): return panic(
-        "URL comment"
+    let root = (
+        try entries(
+            (
+                parse(
+                    text: "flow: \{name: 'it''s # fine', list: [true, 2, \"é\\u263A\",],\}\nurl: https://example.org/#fragment # comment\nquoted: \"hash # colon: brace \{\}\"\nmultiline: [1,\n  2, # comment\n  3]\ntext: a long\n  continued sentence\n"
+                ) | try expect_ok
+            )
+        )
     )
-    if items(root.get("multiline").get()).length() != 3: return panic("multiline flow")
-    if (root.get("text").get() != YamlValue.StringValue("a long continued sentence")): return panic(
-        "plain folding"
+    try expect_false(
+        (
+            (try entries(root.get("flow").get())).get(
+                "name"
+            ).get() != YamlValue.StringValue("it's # fine")
+        )
     )
-    if (try parse("'literal\\n'")) != YamlValue.StringValue("literal\\n"): return panic(
-        "literal quote"
+    try expect_false(
+        (
+            (
+                try items(
+                    (try entries(root.get("flow").get())).get(
+                        "list"
+                    ).get()
+                )
+            ).last().get() != YamlValue.StringValue("é☺")
+        )
+    )
+    try expect_false(
+        (
+            root.get("url").get() != YamlValue.StringValue(
+                "https://example.org/#fragment"
+            )
+        )
+    )
+    (try items(root.get("multiline").get())).length() | try expect_equal(expected: 3)
+    (
+        root.get("text").get() | try expect_equal(
+            expected: YamlValue.StringValue("a long continued sentence")
+        )
+    )
+    parse(text: "'literal\\n'") | try expect_ok | try expect_equal(
+        expected: YamlValue.StringValue("literal\\n")
     )
 
 test "YAML literal folded and chomped block scalars preserve content":
-    let root = parse(
-        "literal: |\n  first # text\n  second\nfolded: >-\n  hello\n  world\nkeep: |+\n  line\n\nexplicit: |2-\n  indented\ntabs: |-\n  \tcontent\n"
-    ) | try | entries
-    if (root.get("literal").get() != YamlValue.StringValue("first # text\nsecond\n")): return panic(
-        "literal block"
+    let root = (
+        try entries(
+            (
+                parse(
+                    text: "literal: |\n  first # text\n  second\nfolded: >-\n  hello\n  world\nkeep: |+\n  line\n\nexplicit: |2-\n  indented\ntabs: |-\n  \tcontent\n"
+                ) | try expect_ok
+            )
+        )
     )
-    if root.get("folded").get() != YamlValue.StringValue("hello world"): return panic(
-        "folded block"
+    (
+        root.get("literal").get() | try expect_equal(
+            expected: YamlValue.StringValue("first # text\nsecond\n")
+        )
     )
-    if root.get("keep").get() != YamlValue.StringValue("line\n\n"): return panic(
-        "keep chomping"
+    (
+        root.get("folded").get() | try expect_equal(
+            expected: YamlValue.StringValue("hello world")
+        )
     )
-    if root.get("explicit").get() != YamlValue.StringValue("indented"): return panic(
-        "explicit indentation"
+    (
+        root.get("keep").get() | try expect_equal(
+            expected: YamlValue.StringValue("line\n\n")
+        )
     )
-    if root.get("tabs").get() != YamlValue.StringValue("\tcontent"): return panic(
-        "tabs in scalar content"
+    (
+        root.get("explicit").get() | try expect_equal(
+            expected: YamlValue.StringValue("indented")
+        )
+    )
+    (
+        root.get("tabs").get() | try expect_equal(
+            expected: YamlValue.StringValue("\tcontent")
+        )
     )
 
 test "YAML anchors aliases merge keys and override precedence":
     let text = "defaults: &defaults\n  retries: 3\n  enabled: true\ncopy: *defaults\nconfig:\n  <<: *defaults\n  retries: 5\nscalar: &answer 42\nalias: *answer\nflow: &flow [1, 2]\nflow_alias: *flow\n"
-    let root = parse(text) | try | entries
-    if root.get("defaults").get() != root.get("copy").get(): return panic(
-        "mapping alias"
+    let root = parse(text: text) | try expect_ok | try entries
+    (root.get("defaults").get() | try expect_equal(expected: root.get("copy").get()))
+    let config = (try entries(root.get("config").get()))
+    try expect_false(
+        (
+            config.get("retries").get() != YamlValue.NumberValue("5")
+            or config.get("enabled").get() != YamlValue.BoolValue(true)
+        )
     )
-
-    let config = entries(root.get("config").get())
-    if (
-        config.get("retries").get() != YamlValue.NumberValue("5")
-        or config.get("enabled").get() != YamlValue.BoolValue(true)
-    ): return panic("merge override")
-    if root.get("alias").get() != YamlValue.NumberValue("42"): return panic(
-        "scalar anchor"
+    root.get("alias").get() | try expect_equal(expected: YamlValue.NumberValue("42"))
+    (
+        root.get("flow_alias").get() | try expect_equal(
+            expected: (root.get("flow").get())
+        )
     )
-    if root.get("flow_alias").get() != root.get("flow").get(): return panic(
-        "flow anchor"
+    let merged = (
+        try entries(
+            (
+                parse(
+                    text: "a: &a \{x: 1\}\nb: &b \{x: 2, y: 3\}\nc: \{<<: [*a, *b], y: 4\}\n"
+                ) | try expect_ok
+            )
+        )
     )
-
-    let merged = parse(
-        "a: &a \{x: 1\}\nb: &b \{x: 2, y: 3\}\nc: \{<<: [*a, *b], y: 4\}\n"
-    ) | try | entries
-    let c = entries(merged.get("c").get())
-    if (
-        c.get("x").get() != YamlValue.NumberValue("1")
-        or c.get("y").get() != YamlValue.NumberValue("4")
-    ): return panic("merge precedence")
+    let c = (try entries(merged.get("c").get()))
+    try expect_false(
+        (
+            c.get("x").get() != YamlValue.NumberValue("1")
+            or c.get("y").get() != YamlValue.NumberValue("4")
+        )
+    )
 
 test "YAML documents BOM CRLF empty input and version directive":
-    let root = try parse("\u{feff}%YAML 1.2\r\n---\r\na: 1\r\n...\r\n# done\r\n")
-    if entries(root).get("a").get() != YamlValue.NumberValue("1"): return panic(
-        "document markers"
+    let root = (
+        parse(
+            text: "\u{feff}%YAML 1.2\r\n---\r\na: 1\r\n...\r\n# done\r\n"
+        ) | try expect_ok
     )
-    if (try parse("# comment\n")) != YamlValue.Null: return panic("empty YAML")
-    if (try parse("---\n...\n")) != YamlValue.Null: return panic("empty document")
-    if (parse("- - 1\n  - 2\n- - 3\n") | try | items | .length()) != 2: return panic(
-        "compact sequences"
+    (
+        (try entries(root)).get("a").get() | try expect_equal(
+            expected: YamlValue.NumberValue("1")
+        )
+    )
+    parse(text: "# comment\n") | try expect_ok | try expect_equal(
+        expected: YamlValue.Null
+    )
+    parse(text: "---\n...\n") | try expect_ok | try expect_equal(
+        expected: YamlValue.Null
+    )
+    (try items((parse(text: "- - 1\n  - 2\n- - 3\n") | try expect_ok))).length() | try expect_equal(
+        expected: 2
     )
 
 test "YAML rejects duplicates invalid indentation malformed flow and aliases":
@@ -308,313 +435,394 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
         "'unterminated", "*missing", "a: &loop [*loop]", "<<: 1",
         "---\na: 1\n---\nb: 2", "a: |0\n  text"
     ]:
-        let parsed = parse(text)
-        if parsed.is_ok(): return panic("invalid YAML accepted: {text}")
-
-        let cause = parsed.err()
+        let cause = match parse(text: text):
+            ok(_): return fail("invalid YAML accepted: {text}")
+            error(cause): cause
 
         match cause:
             InvalidData(line, column, reason):
-                if (line < 1 or column < 1 or reason == ""): return panic(
-                    "YAML diagnostic details"
-                )
-
+                (line < 1 or column < 1 or reason == "") | try expect_false
                 let boundary = Error(cause)
-                if not boundary.message().starts_with("YAML "): return panic(
-                    "source YAML Error"
-                )
-            _: return panic("wrong YAML error")
+                ((boundary.message().starts_with("YAML ")) | try expect_true)
+            _: return fail("wrong YAML error")
 
     for text in [
         "!custom value", "? complex\n: value", "%TAG ! tag:example.org\n---\na: 1"
     ]:
-        let parsed = parse(text)
-        if parsed.is_ok(): return panic("unsupported YAML accepted")
+        let cause = match parse(text: text):
+            ok(_): return fail("unsupported YAML accepted")
+            error(cause): cause
 
-        match parsed.err():
-            UnsupportedFeature(_, _): unit
-            _: return panic("expected unsupported feature")
+        match cause:
+            UnsupportedFeature(_, _): let expected = unit
+            _: return fail("expected unsupported feature")
 
 test "YAML limits cover root nested nodes aliases and exact bytes":
     let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
     let invalid: Result[YamlValue, YamlError] = error(YamlError.InvalidInput)
-    if (parse("é", limits(1, none, none)) != limited): return panic("UTF8 byte limit")
-    if (parse("[[[]]]", limits(none, 2, none)) != limited): return panic(
-        "flow depth limit"
+    try expect_false(
+        (
+            parse(
+                text: "é",
+                limits: limits(bytes: 1, depth: none, values: none)
+            ) != limited
+        )
     )
-    if (parse("a:\n  b: 1", limits(none, 2, none)) != limited): return panic(
-        "block depth limit"
+    try expect_false(
+        (
+            parse(
+                text: "[[[]]]",
+                limits: limits(bytes: none, depth: 2, values: none)
+            ) != limited
+        )
     )
-    if (parse("[1,2]", limits(none, none, 2)) != limited): return panic("value limit")
-    if (parse("a: &a [1,2]\nb: *a", limits(none, none, 6)) != limited): return panic(
-        "expanded alias limit"
+    try expect_false(
+        (
+            parse(
+                text: "a:\n  b: 1",
+                limits: limits(bytes: none, depth: 2, values: none)
+            ) != limited
+        )
     )
-    if (parse("", limits(0, 1, 1)) != parse("")): return panic("empty exact limits")
-    if (parse("", limits(none, none, 0)) != limited): return panic("zero values")
-    if (parse("", limits(none, -1, none)) != invalid): return panic("negative limit")
-    if (parse("[1,2]", limits(5, 2, 3)) != parse("[1,2]")): return panic("exact limits")
+    try expect_false(
+        (
+            parse(
+                text: "[1,2]",
+                limits: limits(bytes: none, depth: none, values: 2)
+            ) != limited
+        )
+    )
+    try expect_false(
+        (
+            parse(
+                text: "a: &a [1,2]\nb: *a",
+                limits: limits(bytes: none, depth: none, values: 6)
+            ) != limited
+        )
+    )
+    try expect_false(
+        (
+            parse(
+                text: "",
+                limits: limits(bytes: 0, depth: 1, values: 1)
+            ) != parse(text: "")
+        )
+    )
+    parse(text: "", limits: limits(bytes: none, depth: none, values: 0)) | try expect_equal(
+        expected: limited
+    )
+    try expect_false(
+        (
+            parse(
+                text: "",
+                limits: limits(bytes: none, depth: -1, values: none)
+            ) != invalid
+        )
+    )
+    try expect_false(
+        (
+            parse(
+                text: "[1,2]",
+                limits: limits(bytes: 5, depth: 2, values: 3)
+            ) != parse(text: "[1,2]")
+        )
+    )
 
 test "YAML exact decimal syntax does not depend on binary64 conversion":
     for text in [".5", "1.", "1.e2", "1e999999", ".Inf", ".NAN", "-0", "0001"]:
-        if (try parse(text)) != YamlValue.NumberValue(text): return panic(
+        if (parse(text: text) | try expect_ok) != YamlValue.NumberValue(text): return fail(
             "YAML number treated as string: {text}"
         )
     for text in [
         ".", "1e", "1_000", "+0xFF", "-.nan", ".iNF", "it's plain",
         "text [with] punctuation"
     ]:
-        if (try parse(text)) != YamlValue.StringValue(text): return panic(
+        if (parse(text: text) | try expect_ok) != YamlValue.StringValue(text): return fail(
             "plain scalar resolved incorrectly: {text}"
         )
 
 fn failure(text: String) String:
-    let parsed = parse(text)
-    if parsed.is_ok(): return "accepted"
-
-    return parsed.err().message()
+    match parse(text: text):
+        ok(_): return "accepted"
+        error(cause): return cause.message()
 
 test "YAML merge and block header errors name their own line":
-    if failure("<<: 1") != "YAML 1:1: merge requires mappings": return panic(
-        "single line merge"
+    failure("<<: 1") | try expect_equal(expected: "YAML 1:1: merge requires mappings")
+    failure("x: 1\ny: 2\n<<: 1") | try expect_equal(
+        expected: "YAML 3:1: merge requires mappings"
     )
-    if failure("x: 1\ny: 2\n<<: 1") != "YAML 3:1: merge requires mappings": return panic(
-        "later merge"
+    failure("a: |x") | try expect_equal(
+        expected: "YAML 1:5: invalid block scalar header"
     )
-    if failure("a: |x") != "YAML 1:5: invalid block scalar header": return panic(
-        "header"
-    )
-    if failure("x: 1\ny: |x\nz: 3") != "YAML 2:5: invalid block scalar header": return panic(
-        "later header"
+    failure("x: 1\ny: |x\nz: 3") | try expect_equal(
+        expected: "YAML 2:5: invalid block scalar header"
     )
 
 test "YAML limits fields default to none":
     let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
-    if parse("a: 1", some(YamlLimits(2))) != limited: return panic("partial byte limit")
-    if parse("a: 1", some(YamlLimits())) != parse("a: 1"): return panic("empty limits")
+    parse(text: "a: 1", limits: some(YamlLimits(max_bytes: 2))) | try expect_equal(
+        expected: limited
+    )
+    parse(text: "a: 1", limits: some(YamlLimits())) | try expect_equal(
+        expected: parse(text: "a: 1")
+    )
 
 test "YAML stringify round trips scalars sequences and mappings":
     let source = "title: \"é🙂 \\\"q\\\" \\t tab\"\nnone: null\nflag: true\nint: -42\nfloat: 1.5e3\nlist:\n  - 1\n  - two\n  - [3, 4]\n  - a: 1\n    b: [x, y]\nempty_list: []\nempty_map: \{\}\n\"odd key\": 1\n\"true\": 2\nnested:\n  deep:\n    value: ok\n"
-    let parsed = try parse(source)
-    let text = try stringify(parsed)
-    if (try parse(text)) != parsed: return panic("YAML stringify round trip")
-    if (parse(text) | try | stringify | try) != text: return panic(
-        "YAML stringify is stable"
+    let parsed = (parse(text: source) | try expect_ok)
+    let text = (stringify(value: parsed) | try expect_ok)
+    parse(text: text) | try expect_ok | try expect_equal(expected: parsed)
+    stringify(value: (parse(text: text) | try expect_ok)) | try expect_ok | try expect_equal(
+        expected: text
     )
 
 test "YAML stringify validates numbers and honors max_bytes":
     let invalid: Result[String, YamlError] = error(YamlError.InvalidInput)
     let limited: Result[String, YamlError] = error(YamlError.LimitExceeded)
-    if stringify(YamlValue.NumberValue("not a number")) != invalid: return panic(
-        "invalid number text"
+    stringify(value: YamlValue.NumberValue("not a number")) | try expect_equal(
+        expected: invalid
     )
-
-    let root = try parse("a: 1")
-    if stringify(root, 3) != limited: return panic("output limit")
-
+    let root = (parse(text: "a: 1") | try expect_ok)
+    stringify(value: root, max_bytes: 3) | try expect_equal(expected: limited)
     let exact: Result[String, YamlError] = ok("a: 1\n")
-    if stringify(root, 5) != exact: return panic("exact limit")
-    if stringify(root, -1) != invalid: return panic("negative limit")
+    stringify(value: root, max_bytes: 5) | try expect_equal(expected: exact)
+    stringify(value: root, max_bytes: -1) | try expect_equal(expected: invalid)
 
 test "YAML scalars and anchors on their own line continue at the same indentation":
-    let folded = parse("run:\n  util/check.sh\n  --flag value\nnext: 1\n") | try | entries
-    if (folded.get("run").get() != YamlValue.StringValue("util/check.sh --flag value")): return panic(
-        "plain scalar on its own line"
+    let folded = (
+        try entries(
+            (
+                parse(
+                    text: "run:\n  util/check.sh\n  --flag value\nnext: 1\n"
+                ) | try expect_ok
+            )
+        )
     )
-    if folded.get("next").get() != YamlValue.NumberValue("1"): return panic(
-        "sibling after scalar"
+    try expect_false(
+        (
+            folded.get("run").get() != YamlValue.StringValue(
+                "util/check.sh --flag value"
+            )
+        )
     )
-
-    let list = parse("- foo\n  bar\n-\n  baz\n  qux\n") | try | items
-    if list != [YamlValue.StringValue("foo bar"), YamlValue.StringValue("baz qux")]: return panic(
-        "sequence items"
+    folded.get("next").get() | try expect_equal(expected: YamlValue.NumberValue("1"))
+    let list = parse(text: "- foo\n  bar\n-\n  baz\n  qux\n") | try expect_ok | try items
+    list | try expect_equal(
+        expected: [
+            YamlValue.StringValue("foo bar"),
+            YamlValue.StringValue("baz qux")
+        ]
     )
-
-    let anchored = parse("a:\n  &x\n  k: 1\nb: *x\n") | try | entries
-    if anchored.get("a").get() != anchored.get("b").get(): return panic(
-        "anchor on its own line"
-    )
-    if (entries(anchored.get("b").get()).get("k").get() != YamlValue.NumberValue("1")): return panic(
-        "anchored mapping"
+    let anchored = parse(text: "a:\n  &x\n  k: 1\nb: *x\n") | try expect_ok | try entries
+    anchored.get("a").get() | try expect_equal(expected: anchored.get("b").get())
+    try expect_false(
+        (
+            (try entries(anchored.get("b").get())).get(
+                "k"
+            ).get() != YamlValue.NumberValue("1")
+        )
     )
 
 test "YAML quoted merge key is an ordinary string key":
-    let block = parse("\"<<\": 1\nplain: 3\n") | try | entries
-    if block.get("<<").get() != YamlValue.NumberValue("1"): return panic(
-        "block quoted key"
+    let block = parse(text: "\"<<\": 1\nplain: 3\n") | try expect_ok | try entries
+    block.get("<<").get() | try expect_equal(expected: YamlValue.NumberValue("1"))
+    block.length() | try expect_equal(expected: 2)
+    let single = parse(text: "'<<': 2\n") | try expect_ok | try entries
+    single.get("<<").get() | try expect_equal(expected: YamlValue.NumberValue("2"))
+    let flow = parse(text: "\{\"<<\": 1, a: 2\}\n") | try expect_ok | try entries
+    flow.get("<<").get() | try expect_equal(expected: YamlValue.NumberValue("1"))
+    let merged = (
+        try entries(
+            (
+                parse(
+                    text: "base: &b \{x: 1\}\nm:\n  <<: *b\n  y: 2\n"
+                ) | try expect_ok
+            )
+        )
     )
-    if block.length() != 2: return panic("block entries")
-
-    let single = parse("'<<': 2\n") | try | entries
-    if single.get("<<").get() != YamlValue.NumberValue("2"): return panic(
-        "single quoted key"
+    try expect_false(
+        (
+            (try entries(merged.get("m").get())).get(
+                "x"
+            ).get() != YamlValue.NumberValue("1")
+        )
     )
-
-    let flow = parse("\{\"<<\": 1, a: 2\}\n") | try | entries
-    if flow.get("<<").get() != YamlValue.NumberValue("1"): return panic(
-        "flow quoted key"
-    )
-
-    let merged = parse("base: &b \{x: 1\}\nm:\n  <<: *b\n  y: 2\n") | try | entries
-    if (entries(merged.get("m").get()).get("x").get() != YamlValue.NumberValue("1")): return panic(
-        "plain merge key"
-    )
-
-    let original = try parse("\"<<\": 1\n")
-    if (stringify(original) | try | parse | try) != original: return panic(
-        "quoted merge key round trip"
+    let original = (parse(text: "\"<<\": 1\n") | try expect_ok)
+    try expect_equal(
+        (
+            parse(
+                text: (stringify(value: original) | try expect_ok)
+            ) | try expect_ok
+        ),
+        original
     )
 
 test "YAML plain scalars continued inside flow collections fold their line breaks":
-    let root = parse("a: [x\n  y, z]\nb: \{k: one\n    two\}\nc: [p\n  q\n\n  r]\n") | try | entries
-    if (
-        items(root.get("a").get()) != [
-            YamlValue.StringValue("x y"),
-            YamlValue.StringValue("z")
-        ]
-    ): return panic("flow sequence fold")
-    if (entries(root.get("b").get()).get("k").get() != YamlValue.StringValue("one two")): return panic(
-        "flow mapping fold"
+    let root = (
+        try entries(
+            (
+                parse(
+                    text: "a: [x\n  y, z]\nb: \{k: one\n    two\}\nc: [p\n  q\n\n  r]\n"
+                ) | try expect_ok
+            )
+        )
     )
-    if items(root.get("c").get()) != [YamlValue.StringValue("p q\nr")]: return panic(
-        "flow blank line"
+    try expect_false(
+        (
+            (try items(root.get("a").get())) != [
+                YamlValue.StringValue("x y"),
+                YamlValue.StringValue("z")
+            ]
+        )
+    )
+    try expect_false(
+        (
+            (try entries(root.get("b").get())).get(
+                "k"
+            ).get() != YamlValue.StringValue("one two")
+        )
+    )
+    (try items(root.get("c").get())) | try expect_equal(
+        expected: [YamlValue.StringValue("p q\nr")]
     )
 
 test "YAML document start marker accepts same-line content":
-    if (try parse("--- a")) != YamlValue.StringValue("a"): return panic(
-        "scalar after marker"
+    parse(text: "--- a") | try expect_ok | try expect_equal(
+        expected: YamlValue.StringValue("a")
     )
-    if (parse("--- [1, 2]") | try | items | .length()) != 2: return panic(
-        "flow after marker"
+    (try items((parse(text: "--- [1, 2]") | try expect_ok))).length() | try expect_equal(
+        expected: 2
     )
-    if (try parse("--- # note\na: 1")) != (try parse("a: 1")): return panic(
-        "comment after marker"
+    parse(text: "--- # note\na: 1") | try expect_ok | try expect_equal(
+        expected: (parse(text: "a: 1") | try expect_ok)
     )
 
 test "YAML compact mapping after a sequence marker follows the marker's spacing":
-    let root = try parse("-   a: 1\n    b: 2\n-  - x\n   - y\n- c: 3\n  d: 4\n")
-    let list = items(root)
-    if list.length() != 3: return panic("sequence length")
-
-    let first = entries(list.first().get())
-    if first.get("b").get() != YamlValue.NumberValue("2"): return panic(
-        "wide marker spacing"
+    let root = (
+        parse(
+            text: "-   a: 1\n    b: 2\n-  - x\n   - y\n- c: 3\n  d: 4\n"
+        ) | try expect_ok
     )
-    if items(list.at(1).get()).length() != 2: return panic("wide nested sequence")
-    if entries(list.last().get()).get("d").get() != YamlValue.NumberValue("4"): return panic(
-        "single space marker"
+    let list = (try items(root))
+    list.length() | try expect_equal(expected: 3)
+    let first = (try entries(list.first().get()))
+    first.get("b").get() | try expect_equal(expected: YamlValue.NumberValue("2"))
+    (try items(list.get(1))).length() | try expect_equal(expected: 2)
+    (
+        (try entries(list.last().get())).get("d").get() | try expect_equal(
+            expected: YamlValue.NumberValue("4")
+        )
     )
 
 fn repeated(text: String, count: Int) String:
     if count <= 0: return ""
     if count == 1: return text
 
-    let half = repeated(text, count / 2)
+    let half = repeated(text: text, count: count / 2)
     if count % 2 == 1: return half.concat(half).concat(text)
 
     return half.concat(half)
 
 test "YAML long plain scalars and large mappings parse in linear time":
-    let long = repeated("x", 300000)
-    let scalar = parse("a: {long}") | try | entries
-    if scalar.get("a").get() != YamlValue.StringValue(long): return panic(
-        "long plain scalar"
-    )
-
+    let long = repeated(text: "x", count: 300000)
+    let scalar = parse(text: "a: {long}") | try expect_ok | try entries
+    scalar.get("a").get() | try expect_equal(expected: YamlValue.StringValue(long))
     var keys = ""
     for index in range(0, 30000):
         keys = keys.concat("k{index}: 1\n")
-    if (parse(keys) | try | entries | .length()) != 30000: return panic("many keys")
-    if parse(keys.concat("k7: 2\n")).is_ok(): return panic(
-        "duplicate key after many keys"
+    (try entries((parse(text: keys) | try expect_ok))).length() | try expect_equal(
+        expected: 30000
     )
+
+    match parse(text: keys.concat("k7: 2\n")):
+        ok(_): return fail("duplicate key after many keys")
+        error(_): return
 
 test "YAML flow mapping keys without a colon map to null":
-    let root = parse("a: \{x, y: 1, z\}\nb: \{\"q\", r: [1]\}") | try | entries
-    let first = entries(root.get("a").get())
-    if first.length() != 3: return panic("flow keys")
-    if first.get("x").get() != YamlValue.Null: return panic("first null key")
-    if first.get("y").get() != YamlValue.NumberValue("1"): return panic(
-        "explicit value"
-    )
-    if first.get("z").get() != YamlValue.Null: return panic("last null key")
+    let root = parse(text: "a: \{x, y: 1, z\}\nb: \{\"q\", r: [1]\}") | try expect_ok | try entries
+    let first = (try entries(root.get("a").get()))
+    first.length() | try expect_equal(expected: 3)
+    first.get("x").get() | try expect_equal(expected: YamlValue.Null)
+    first.get("y").get() | try expect_equal(expected: YamlValue.NumberValue("1"))
+    first.get("z").get() | try expect_equal(expected: YamlValue.Null)
+    let second = (try entries(root.get("b").get()))
+    second.get("q").get() | try expect_equal(expected: YamlValue.Null)
 
-    let second = entries(root.get("b").get())
-    if second.get("q").get() != YamlValue.Null: return panic("quoted null key")
-    if parse("\{x, x\}").is_ok(): return panic("duplicate null keys")
+    match parse(text: "\{x, x\}"):
+        ok(_): return fail("duplicate null keys")
+        error(_): let ignored = unit
 
-    let limited = limits(none, none, some(2))
-    if parse("\{a, b, c\}", limited).is_ok(): return panic(
-        "null keys count against the value limit"
-    )
+    let limited = limits(bytes: none, depth: none, values: some(2))
+
+    match parse(text: "\{a, b, c\}", limits: limited):
+        ok(_): return fail("null keys count against the value limit")
+        error(_): let ignored = unit
 
 test "YAML long quoted block and multi-line scalars decode and stringify in linear time":
-    let long = repeated("x", 300000)
-    let double = parse("a: \"{long}\"") | try | entries
-    if double.get("a").get() != YamlValue.StringValue(long): return panic(
-        "double quoted"
-    )
-
-    let single = parse("a: '{long}'") | try | entries
-    if single.get("a").get() != YamlValue.StringValue(long): return panic(
-        "single quoted"
-    )
-
-    let lines = repeated("word\n  ", 20000)
-    let plain = parse("a: {lines}end") | try | entries
-    if (
-        plain.get("a").get() != YamlValue.StringValue(
-            repeated("word ", 20000).concat("end")
+    let long = repeated(text: "x", count: 300000)
+    let double = parse(text: "a: \"{long}\"") | try expect_ok | try entries
+    double.get("a").get() | try expect_equal(expected: YamlValue.StringValue(long))
+    let single = parse(text: "a: '{long}'") | try expect_ok | try entries
+    single.get("a").get() | try expect_equal(expected: YamlValue.StringValue(long))
+    let lines = repeated(text: "word\n  ", count: 20000)
+    let plain = parse(text: "a: {lines}end") | try expect_ok | try entries
+    try expect_false(
+        (
+            plain.get("a").get() != YamlValue.StringValue(
+                repeated(text: "word ", count: 20000).concat("end")
+            )
         )
-    ): return panic("multi-line plain")
-
-    let body = repeated("  line\n", 20000)
-    let literal = parse("a: |\n{body}") | try | entries
-    if (literal.get("a").get() != YamlValue.StringValue(repeated("line\n", 20000))): return panic(
-        "literal block"
     )
-
-    let root = try parse("a: \"{long}\"")
-    if (stringify(root) | try | parse | try) != root: return panic(
-        "stringify round trip"
+    let body = repeated(text: "  line\n", count: 20000)
+    let literal = parse(text: "a: |\n{body}") | try expect_ok | try entries
+    try expect_false(
+        (
+            literal.get("a").get() != YamlValue.StringValue(
+                repeated(text: "line\n", count: 20000)
+            )
+        )
+    )
+    let root = (parse(text: "a: \"{long}\"") | try expect_ok)
+    parse(text: (stringify(value: root) | try expect_ok)) | try expect_ok | try expect_equal(
+        expected: root
     )
 
 test "YAML block scalar chomping counts every trailing line break":
-    try scalar("a: |\n  x\n\n\n\nb: 1", "x\n")
-    try scalar("a: |-\n  x\n\n\n\nb: 1", "x")
-    try scalar("a: |+\n  x\n\n\n\nb: 1", "x\n\n\n\n")
-    try scalar("a: >-\n  x\n\n\n", "x")
-    try scalar("a: |\n\n\nb: 1", "")
-    try scalar("a: |+\n\n\nb: 1", "\n\n")
+    (try scalar(text: "a: |\n  x\n\n\n\nb: 1", expected: "x\n"))
+    (try scalar(text: "a: |-\n  x\n\n\n\nb: 1", expected: "x"))
+    (try scalar(text: "a: |+\n  x\n\n\n\nb: 1", expected: "x\n\n\n\n"))
+    (try scalar(text: "a: >-\n  x\n\n\n", expected: "x"))
+    (try scalar(text: "a: |\n\n\nb: 1", expected: ""))
+    (try scalar(text: "a: |+\n\n\nb: 1", expected: "\n\n"))
 
 test "YAML compact nested sequences resume each level and parse deep chains in linear time":
-    let small = parse(
-        "- - - x\n    - y\n  - z\n- - 1\n  - - 2\n    - 3\n-\n  - -\n    - a: 1\n      b: 2\n"
-    ) | try | items
-    if small.length() != 3: return panic("compact chain top level")
-
-    let first = items(small.first().get())
-    if first.length() != 2: return panic("compact chain middle level")
-    if items(first.first().get()).length() != 2: return panic("compact chain innermost")
-    if first.last().get() != YamlValue.StringValue("z"): return panic(
-        "compact chain resumes outer level"
+    let small = (
+        try items(
+            (
+                parse(
+                    text: "- - - x\n    - y\n  - z\n- - 1\n  - - 2\n    - 3\n-\n  - -\n    - a: 1\n      b: 2\n"
+                ) | try expect_ok
+            )
+        )
     )
-
+    small.length() | try expect_equal(expected: 3)
+    let first = (try items(small.first().get()))
+    first.length() | try expect_equal(expected: 2)
+    (try items(first.first().get())).length() | try expect_equal(expected: 2)
+    first.last().get() | try expect_equal(expected: YamlValue.StringValue("z"))
     let depth = 3000
-    let source = "{repeated("- ", depth)}x\n"
-    var root = try parse(source)
+    var source = "{repeated(text: "- ", count: depth)}x\n"
+    var root = (parse(text: source) | try expect_ok)
 
     for level in range(1, depth):
-        let inner = items(root)
-        if inner.length() != 1: return panic("deep chain width")
-
+        let inner = (try items(root))
+        inner.length() | try expect_equal(expected: 1)
         root = inner.first().get()
 
-    if items(root) != [YamlValue.StringValue("x")]: return panic("deep chain leaf")
+    (try items(root)) | try expect_equal(expected: [YamlValue.StringValue("x")])
 
 test "YAML stringify escapes C1 control characters so output reparses":
     for code in [127, 128, 133, 150, 159]:
         let text = try from_scalars([97, code, 98])
         let encoded = try stringify(YamlValue.StringValue(text))
-        if (try parse(encoded)) != YamlValue.StringValue(text): return panic(
-            "C1 control scalar must round-trip"
-        )
+        try expect_equal((try parse(encoded)), YamlValue.StringValue(text))

@@ -1,0 +1,324 @@
+# sample=1 binary=before
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/parser
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkPartialContinuation/Valid/64         	     193	   1233947 ns/op	   0.75 MB/s	 2853530 B/op	    1174 allocs/op
+BenchmarkPartialContinuation/Valid/128        	      76	   4245935 ns/op	   0.44 MB/s	10915838 B/op	    2396 allocs/op
+BenchmarkPartialContinuation/Valid/256        	      18	  12514914 ns/op	   0.30 MB/s	43211927 B/op	    4985 allocs/op
+BenchmarkPartialContinuation/ValidCRLF/64     	     200	   1142751 ns/op	   0.87 MB/s	 2906380 B/op	    1310 allocs/op
+BenchmarkPartialContinuation/ValidCRLF/128    	      64	   3812480 ns/op	   0.52 MB/s	11116883 B/op	    2660 allocs/op
+BenchmarkPartialContinuation/ValidCRLF/256    	      16	  15390159 ns/op	   0.26 MB/s	44012949 B/op	    5506 allocs/op
+BenchmarkPartialContinuation/Imports/64       	     428	    554690 ns/op	   0.98 MB/s	 1446744 B/op	     973 allocs/op
+BenchmarkPartialContinuation/Imports/128      	     128	   1913369 ns/op	   0.57 MB/s	 5509065 B/op	    2002 allocs/op
+BenchmarkPartialContinuation/Imports/256      	      37	   6737290 ns/op	   0.33 MB/s	21379508 B/op	    4179 allocs/op
+BenchmarkPartialContinuation/Constants/64     	     439	    547196 ns/op	   0.40 MB/s	 1475268 B/op	    1041 allocs/op
+BenchmarkPartialContinuation/Constants/128    	     128	   1839605 ns/op	   0.22 MB/s	 5567653 B/op	    2135 allocs/op
+BenchmarkPartialContinuation/Constants/256    	      36	   6875123 ns/op	   0.12 MB/s	21492188 B/op	    4438 allocs/op
+BenchmarkPartialContinuation/ManyFunctions/64 	     454	    517378 ns/op	   5.44 MB/s	  965167 B/op	    3062 allocs/op
+BenchmarkPartialContinuation/ManyFunctions/128         	     204	   1157109 ns/op	   4.89 MB/s	 2059550 B/op	    6075 allocs/op
+BenchmarkPartialContinuation/ManyFunctions/256         	      75	   2708447 ns/op	   4.22 MB/s	 4134870 B/op	   12097 allocs/op
+BenchmarkPartialContinuation/Unterminated/64           	     261	    901803 ns/op	   1.01 MB/s	 2769853 B/op	    1021 allocs/op
+BenchmarkPartialContinuation/Unterminated/128          	      76	   3173996 ns/op	   0.58 MB/s	10748837 B/op	    2113 allocs/op
+BenchmarkPartialContinuation/Unterminated/256          	      18	  12513841 ns/op	   0.30 MB/s	42747674 B/op	    4442 allocs/op
+BenchmarkPartialContinuation/InvalidHeader/64          	     248	    938256 ns/op	   0.99 MB/s	 2855962 B/op	    1178 allocs/op
+BenchmarkPartialContinuation/InvalidHeader/128         	      72	   3269920 ns/op	   0.57 MB/s	10920570 B/op	    2400 allocs/op
+BenchmarkPartialContinuation/InvalidHeader/256         	      18	  12614716 ns/op	   0.30 MB/s	43221776 B/op	    4989 allocs/op
+BenchmarkPartialContinuation/InvalidBody/64            	     228	   1031366 ns/op	   0.92 MB/s	 2942995 B/op	    1346 allocs/op
+BenchmarkPartialContinuation/InvalidBody/128           	      72	   3372786 ns/op	   0.56 MB/s	11093132 B/op	    2698 allocs/op
+BenchmarkPartialContinuation/InvalidBody/256           	      18	  12320163 ns/op	   0.31 MB/s	43696223 B/op	    5547 allocs/op
+BenchmarkPartialContinuation/InvalidBodyCRLF/64        	     222	   1086481 ns/op	   0.94 MB/s	 2996898 B/op	    1485 allocs/op
+BenchmarkPartialContinuation/InvalidBodyCRLF/128       	      62	   3657828 ns/op	   0.55 MB/s	11297373 B/op	    2964 allocs/op
+BenchmarkPartialContinuation/InvalidBodyCRLF/256       	      16	  13730629 ns/op	   0.30 MB/s	44503638 B/op	    6070 allocs/op
+BenchmarkPartialContinuation/TinyUnterminated/64       	     417	    572333 ns/op	   2.69 MB/s	  394174 B/op	    1942 allocs/op
+BenchmarkPartialContinuation/TinyUnterminated/128      	     211	   1127491 ns/op	   2.75 MB/s	  764394 B/op	    3871 allocs/op
+BenchmarkPartialContinuation/TinyUnterminated/256      	     100	   2332659 ns/op	   2.70 MB/s	 1668423 B/op	    7720 allocs/op
+BenchmarkPartialContinuation/TinyInvalid/64            	     618	    392752 ns/op	   6.36 MB/s	  670984 B/op	    2361 allocs/op
+BenchmarkPartialContinuation/TinyInvalid/128           	     298	    804834 ns/op	   6.24 MB/s	 1480021 B/op	    4672 allocs/op
+BenchmarkPartialContinuation/TinyInvalid/256           	     100	   2010039 ns/op	   5.05 MB/s	 3573806 B/op	    9287 allocs/op
+BenchmarkPartialContinuation/UnsupportedCalls/64       	      76	   3209115 ns/op	   0.22 MB/s	10376058 B/op	    3176 allocs/op
+BenchmarkPartialContinuation/UnsupportedCalls/128      	      19	  12381081 ns/op	   0.11 MB/s	39427637 B/op	    6773 allocs/op
+BenchmarkPartialContinuation/UnsupportedCalls/256      	       4	  50186989 ns/op	   0.06 MB/s	162047730 B/op	   14608 allocs/op
+BenchmarkParsePartial/Declarations/64                  	     969	    239580 ns/op	   8.29 MB/s	  579631 B/op	    1524 allocs/op
+BenchmarkParsePartial/Continuation/64                  	     250	    950365 ns/op	   0.98 MB/s	 2853530 B/op	    1174 allocs/op
+BenchmarkParsePartial/Valid/64                         	    2234	    110086 ns/op	  17.93 MB/s	  305728 B/op	     664 allocs/op
+BenchmarkParsePartial/InvalidStatements/64             	    1322	    179298 ns/op	   6.69 MB/s	  541109 B/op	    1079 allocs/op
+BenchmarkParsePartial/Declarations/128                 	     481	    494608 ns/op	   8.08 MB/s	 1297100 B/op	    3001 allocs/op
+BenchmarkParsePartial/Continuation/128                 	      68	   3238759 ns/op	   0.57 MB/s	10915824 B/op	    2396 allocs/op
+BenchmarkParsePartial/Valid/128                        	    1035	    224233 ns/op	  17.78 MB/s	  750784 B/op	    1307 allocs/op
+BenchmarkParsePartial/InvalidStatements/128            	     709	    341815 ns/op	   6.88 MB/s	 1001827 B/op	    2044 allocs/op
+BenchmarkParsePartial/Declarations/256                 	     226	   1049555 ns/op	   7.71 MB/s	 2682477 B/op	    5951 allocs/op
+BenchmarkParsePartial/Continuation/256                 	      19	  12470891 ns/op	   0.30 MB/s	43211891 B/op	    4984 allocs/op
+BenchmarkParsePartial/Valid/256                        	     475	    501646 ns/op	  16.11 MB/s	 1591746 B/op	    2590 allocs/op
+BenchmarkParsePartial/InvalidStatements/256            	     373	    649641 ns/op	   7.17 MB/s	 1753397 B/op	    3971 allocs/op
+PASS
+# sample=2 binary=before
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/parser
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkPartialContinuation/Valid/64         	     262	    907746 ns/op	   1.02 MB/s	 2853531 B/op	    1174 allocs/op
+BenchmarkPartialContinuation/Valid/128        	      76	   3151608 ns/op	   0.59 MB/s	10915831 B/op	    2396 allocs/op
+BenchmarkPartialContinuation/Valid/256        	      19	  11953871 ns/op	   0.32 MB/s	43211925 B/op	    4985 allocs/op
+BenchmarkPartialContinuation/ValidCRLF/64     	     240	    996960 ns/op	   1.00 MB/s	 2905985 B/op	    1310 allocs/op
+BenchmarkPartialContinuation/ValidCRLF/128    	      66	   3498895 ns/op	   0.57 MB/s	11116879 B/op	    2660 allocs/op
+BenchmarkPartialContinuation/ValidCRLF/256    	      18	  13229796 ns/op	   0.30 MB/s	44012947 B/op	    5506 allocs/op
+BenchmarkPartialContinuation/Imports/64       	     465	    518087 ns/op	   1.05 MB/s	 1446744 B/op	     973 allocs/op
+BenchmarkPartialContinuation/Imports/128      	     136	   1747814 ns/op	   0.62 MB/s	 5509202 B/op	    2002 allocs/op
+BenchmarkPartialContinuation/Imports/256      	      37	   6313205 ns/op	   0.35 MB/s	21379412 B/op	    4178 allocs/op
+BenchmarkPartialContinuation/Constants/64     	     470	    510988 ns/op	   0.43 MB/s	 1475269 B/op	    1041 allocs/op
+BenchmarkPartialContinuation/Constants/128    	     140	   1697658 ns/op	   0.24 MB/s	 5567545 B/op	    2135 allocs/op
+BenchmarkPartialContinuation/Constants/256    	      38	   6163105 ns/op	   0.13 MB/s	21492183 B/op	    4438 allocs/op
+BenchmarkPartialContinuation/ManyFunctions/64 	     480	    497279 ns/op	   5.66 MB/s	  965167 B/op	    3062 allocs/op
+BenchmarkPartialContinuation/ManyFunctions/128         	     226	   1060967 ns/op	   5.34 MB/s	 2059554 B/op	    6075 allocs/op
+BenchmarkPartialContinuation/ManyFunctions/256         	      79	   2551472 ns/op	   4.48 MB/s	 4133419 B/op	   12096 allocs/op
+BenchmarkPartialContinuation/Unterminated/64           	     273	    863590 ns/op	   1.05 MB/s	 2769853 B/op	    1021 allocs/op
+BenchmarkPartialContinuation/Unterminated/128          	      79	   3101859 ns/op	   0.59 MB/s	10748836 B/op	    2113 allocs/op
+BenchmarkPartialContinuation/Unterminated/256          	      19	  11896684 ns/op	   0.32 MB/s	42747668 B/op	    4442 allocs/op
+BenchmarkPartialContinuation/InvalidHeader/64          	     264	    904974 ns/op	   1.03 MB/s	 2855962 B/op	    1178 allocs/op
+BenchmarkPartialContinuation/InvalidHeader/128         	      72	   3193194 ns/op	   0.58 MB/s	10920568 B/op	    2400 allocs/op
+BenchmarkPartialContinuation/InvalidHeader/256         	      19	  12192711 ns/op	   0.31 MB/s	43221760 B/op	    4989 allocs/op
+BenchmarkPartialContinuation/InvalidBody/64            	     250	    980602 ns/op	   0.97 MB/s	 2942992 B/op	    1346 allocs/op
+BenchmarkPartialContinuation/InvalidBody/128           	      70	   3263352 ns/op	   0.57 MB/s	11093130 B/op	    2698 allocs/op
+BenchmarkPartialContinuation/InvalidBody/256           	      19	  12296430 ns/op	   0.31 MB/s	43696208 B/op	    5547 allocs/op
+BenchmarkPartialContinuation/InvalidBodyCRLF/64        	     223	   1071287 ns/op	   0.95 MB/s	 2996898 B/op	    1485 allocs/op
+BenchmarkPartialContinuation/InvalidBodyCRLF/128       	      64	   3623124 ns/op	   0.55 MB/s	11297375 B/op	    2964 allocs/op
+BenchmarkPartialContinuation/InvalidBodyCRLF/256       	      16	  13553885 ns/op	   0.30 MB/s	44503636 B/op	    6070 allocs/op
+BenchmarkPartialContinuation/TinyUnterminated/64       	     424	    559289 ns/op	   2.75 MB/s	  394174 B/op	    1942 allocs/op
+BenchmarkPartialContinuation/TinyUnterminated/128      	     212	   1122227 ns/op	   2.76 MB/s	  764393 B/op	    3871 allocs/op
+BenchmarkPartialContinuation/TinyUnterminated/256      	     100	   2281560 ns/op	   2.76 MB/s	 1668420 B/op	    7720 allocs/op
+BenchmarkPartialContinuation/TinyInvalid/64            	     631	    381137 ns/op	   6.55 MB/s	  670984 B/op	    2361 allocs/op
+BenchmarkPartialContinuation/TinyInvalid/128           	     300	    800623 ns/op	   6.27 MB/s	 1480021 B/op	    4672 allocs/op
+BenchmarkPartialContinuation/TinyInvalid/256           	     100	   2005840 ns/op	   5.06 MB/s	 3573809 B/op	    9287 allocs/op
+BenchmarkPartialContinuation/UnsupportedCalls/64       	      76	   3216266 ns/op	   0.22 MB/s	10376060 B/op	    3176 allocs/op
+BenchmarkPartialContinuation/UnsupportedCalls/128      	      19	  11842252 ns/op	   0.12 MB/s	39427636 B/op	    6773 allocs/op
+BenchmarkPartialContinuation/UnsupportedCalls/256      	       5	  48451282 ns/op	   0.06 MB/s	162047812 B/op	   14608 allocs/op
+BenchmarkParsePartial/Declarations/64                  	     999	    236336 ns/op	   8.40 MB/s	  579630 B/op	    1524 allocs/op
+BenchmarkParsePartial/Continuation/64                  	     254	    924056 ns/op	   1.00 MB/s	 2853530 B/op	    1174 allocs/op
+BenchmarkParsePartial/Valid/64                         	    2246	    107092 ns/op	  18.43 MB/s	  305728 B/op	     664 allocs/op
+BenchmarkParsePartial/InvalidStatements/64             	    1366	    175077 ns/op	   6.85 MB/s	  541108 B/op	    1079 allocs/op
+BenchmarkParsePartial/Declarations/128                 	     487	    491233 ns/op	   8.14 MB/s	 1297101 B/op	    3001 allocs/op
+BenchmarkParsePartial/Continuation/128                 	      73	   3205257 ns/op	   0.58 MB/s	10915822 B/op	    2396 allocs/op
+BenchmarkParsePartial/Valid/128                        	    1088	    218596 ns/op	  18.23 MB/s	  750784 B/op	    1307 allocs/op
+BenchmarkParsePartial/InvalidStatements/128            	     714	    331735 ns/op	   7.09 MB/s	 1001827 B/op	    2044 allocs/op
+BenchmarkParsePartial/Declarations/256                 	     234	   1015270 ns/op	   7.97 MB/s	 2682477 B/op	    5951 allocs/op
+BenchmarkParsePartial/Continuation/256                 	      19	  12225485 ns/op	   0.31 MB/s	43211898 B/op	    4984 allocs/op
+BenchmarkParsePartial/Valid/256                        	     488	    486527 ns/op	  16.61 MB/s	 1591748 B/op	    2590 allocs/op
+BenchmarkParsePartial/InvalidStatements/256            	     374	    647827 ns/op	   7.19 MB/s	 1753395 B/op	    3971 allocs/op
+PASS
+# sample=3 binary=before
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/parser
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkPartialContinuation/Valid/64         	     258	    929361 ns/op	   1.00 MB/s	 2853531 B/op	    1174 allocs/op
+BenchmarkPartialContinuation/Valid/128        	      73	   3208777 ns/op	   0.58 MB/s	10915836 B/op	    2396 allocs/op
+BenchmarkPartialContinuation/Valid/256        	      18	  12372195 ns/op	   0.30 MB/s	43211926 B/op	    4985 allocs/op
+BenchmarkPartialContinuation/ValidCRLF/64     	     236	   1034076 ns/op	   0.96 MB/s	 2906140 B/op	    1310 allocs/op
+BenchmarkPartialContinuation/ValidCRLF/128    	      64	   3577819 ns/op	   0.55 MB/s	11116878 B/op	    2660 allocs/op
+BenchmarkPartialContinuation/ValidCRLF/256    	      16	  13458433 ns/op	   0.30 MB/s	44012940 B/op	    5506 allocs/op
+BenchmarkPartialContinuation/Imports/64       	     454	    526592 ns/op	   1.03 MB/s	 1446744 B/op	     973 allocs/op
+BenchmarkPartialContinuation/Imports/128      	     134	   1775943 ns/op	   0.61 MB/s	 5509100 B/op	    2002 allocs/op
+BenchmarkPartialContinuation/Imports/256      	      37	   6409098 ns/op	   0.35 MB/s	21379460 B/op	    4178 allocs/op
+BenchmarkPartialContinuation/Constants/64     	     458	    519720 ns/op	   0.42 MB/s	 1475269 B/op	    1041 allocs/op
+BenchmarkPartialContinuation/Constants/128    	     139	   1721227 ns/op	   0.24 MB/s	 5567509 B/op	    2135 allocs/op
+BenchmarkPartialContinuation/Constants/256    	      37	   6200295 ns/op	   0.13 MB/s	21492188 B/op	    4438 allocs/op
+BenchmarkPartialContinuation/ManyFunctions/64 	     478	    499601 ns/op	   5.64 MB/s	  965167 B/op	    3062 allocs/op
+BenchmarkPartialContinuation/ManyFunctions/128         	     228	   1049457 ns/op	   5.39 MB/s	 2059556 B/op	    6075 allocs/op
+BenchmarkPartialContinuation/ManyFunctions/256         	      80	   2775426 ns/op	   4.12 MB/s	 4137095 B/op	   12098 allocs/op
+BenchmarkPartialContinuation/Unterminated/64           	     270	    872469 ns/op	   1.04 MB/s	 2769854 B/op	    1021 allocs/op
+BenchmarkPartialContinuation/Unterminated/128          	      76	   3112302 ns/op	   0.59 MB/s	10748832 B/op	    2113 allocs/op
+BenchmarkPartialContinuation/Unterminated/256          	      19	  12020126 ns/op	   0.31 MB/s	42747701 B/op	    4443 allocs/op
+BenchmarkPartialContinuation/InvalidHeader/64          	     260	    921195 ns/op	   1.01 MB/s	 2855962 B/op	    1178 allocs/op
+BenchmarkPartialContinuation/InvalidHeader/128         	      75	   3216960 ns/op	   0.58 MB/s	10920568 B/op	    2400 allocs/op
+BenchmarkPartialContinuation/InvalidHeader/256         	      19	  12758425 ns/op	   0.30 MB/s	43221760 B/op	    4989 allocs/op
+BenchmarkPartialContinuation/InvalidBody/64            	     216	   1065927 ns/op	   0.89 MB/s	 2942995 B/op	    1346 allocs/op
+BenchmarkPartialContinuation/InvalidBody/128           	      67	   3683690 ns/op	   0.51 MB/s	11093135 B/op	    2698 allocs/op
+BenchmarkPartialContinuation/InvalidBody/256           	      16	  12952887 ns/op	   0.29 MB/s	43696217 B/op	    5547 allocs/op
+BenchmarkPartialContinuation/InvalidBodyCRLF/64        	     210	   1128603 ns/op	   0.90 MB/s	 2996896 B/op	    1485 allocs/op
+BenchmarkPartialContinuation/InvalidBodyCRLF/128       	      60	   3877563 ns/op	   0.52 MB/s	11297377 B/op	    2965 allocs/op
+BenchmarkPartialContinuation/InvalidBodyCRLF/256       	      16	  14805064 ns/op	   0.27 MB/s	44503636 B/op	    6070 allocs/op
+BenchmarkPartialContinuation/TinyUnterminated/64       	     387	    606108 ns/op	   2.54 MB/s	  394174 B/op	    1942 allocs/op
+BenchmarkPartialContinuation/TinyUnterminated/128      	     204	   1160747 ns/op	   2.67 MB/s	  764393 B/op	    3871 allocs/op
+BenchmarkPartialContinuation/TinyUnterminated/256      	     100	   2370954 ns/op	   2.66 MB/s	 1668423 B/op	    7720 allocs/op
+BenchmarkPartialContinuation/TinyInvalid/64            	     578	    397782 ns/op	   6.28 MB/s	  670984 B/op	    2361 allocs/op
+BenchmarkPartialContinuation/TinyInvalid/128           	     300	    808676 ns/op	   6.21 MB/s	 1480021 B/op	    4672 allocs/op
+BenchmarkPartialContinuation/TinyInvalid/256           	     100	   2029932 ns/op	   5.00 MB/s	 3573758 B/op	    9286 allocs/op
+BenchmarkPartialContinuation/UnsupportedCalls/64       	      76	   3250273 ns/op	   0.22 MB/s	10376056 B/op	    3176 allocs/op
+BenchmarkPartialContinuation/UnsupportedCalls/128      	      19	  12267472 ns/op	   0.12 MB/s	39427638 B/op	    6773 allocs/op
+BenchmarkPartialContinuation/UnsupportedCalls/256      	       5	  49140861 ns/op	   0.06 MB/s	162047707 B/op	   14608 allocs/op
+BenchmarkParsePartial/Declarations/64                  	     988	    240815 ns/op	   8.24 MB/s	  579630 B/op	    1524 allocs/op
+BenchmarkParsePartial/Continuation/64                  	     258	    932635 ns/op	   0.99 MB/s	 2853530 B/op	    1174 allocs/op
+BenchmarkParsePartial/Valid/64                         	    2166	    118769 ns/op	  16.62 MB/s	  305728 B/op	     664 allocs/op
+BenchmarkParsePartial/InvalidStatements/64             	    1305	    182262 ns/op	   6.58 MB/s	  541109 B/op	    1079 allocs/op
+BenchmarkParsePartial/Declarations/128                 	     466	    512878 ns/op	   7.79 MB/s	 1297100 B/op	    3001 allocs/op
+BenchmarkParsePartial/Continuation/128                 	      70	   3344128 ns/op	   0.55 MB/s	10915823 B/op	    2396 allocs/op
+BenchmarkParsePartial/Valid/128                        	    1046	    223597 ns/op	  17.83 MB/s	  750784 B/op	    1307 allocs/op
+BenchmarkParsePartial/InvalidStatements/128            	     697	    336218 ns/op	   6.99 MB/s	 1001828 B/op	    2044 allocs/op
+BenchmarkParsePartial/Declarations/256                 	     226	   1053888 ns/op	   7.68 MB/s	 2682477 B/op	    5951 allocs/op
+BenchmarkParsePartial/Continuation/256                 	      19	  13431616 ns/op	   0.28 MB/s	43211883 B/op	    4984 allocs/op
+BenchmarkParsePartial/Valid/256                        	     474	    536256 ns/op	  15.07 MB/s	 1591746 B/op	    2590 allocs/op
+BenchmarkParsePartial/InvalidStatements/256            	     375	    656037 ns/op	   7.10 MB/s	 1753396 B/op	    3971 allocs/op
+PASS
+# sample=4 binary=before
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/parser
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkPartialContinuation/Valid/64         	     236	    994022 ns/op	   0.93 MB/s	 2853531 B/op	    1174 allocs/op
+BenchmarkPartialContinuation/Valid/128        	      76	   3387775 ns/op	   0.55 MB/s	10915834 B/op	    2396 allocs/op
+BenchmarkPartialContinuation/Valid/256        	      19	  12534042 ns/op	   0.30 MB/s	43211925 B/op	    4985 allocs/op
+BenchmarkPartialContinuation/ValidCRLF/64     	     234	   1060693 ns/op	   0.94 MB/s	 2906147 B/op	    1311 allocs/op
+BenchmarkPartialContinuation/ValidCRLF/128    	      64	   3649101 ns/op	   0.54 MB/s	11116878 B/op	    2660 allocs/op
+BenchmarkPartialContinuation/ValidCRLF/256    	      16	  13376653 ns/op	   0.30 MB/s	44012949 B/op	    5506 allocs/op
+BenchmarkPartialContinuation/Imports/64       	     454	    528288 ns/op	   1.03 MB/s	 1446745 B/op	     973 allocs/op
+BenchmarkPartialContinuation/Imports/128      	     133	   1797232 ns/op	   0.60 MB/s	 5508770 B/op	    2002 allocs/op
+BenchmarkPartialContinuation/Imports/256      	      37	   6381720 ns/op	   0.35 MB/s	21379413 B/op	    4178 allocs/op
+BenchmarkPartialContinuation/Constants/64     	     453	    549763 ns/op	   0.40 MB/s	 1475265 B/op	    1041 allocs/op
+BenchmarkPartialContinuation/Constants/128    	     138	   1728151 ns/op	   0.24 MB/s	 5567741 B/op	    2135 allocs/op
+BenchmarkPartialContinuation/Constants/256    	      38	   6243071 ns/op	   0.13 MB/s	21492190 B/op	    4438 allocs/op
+BenchmarkPartialContinuation/ManyFunctions/64 	     474	    504208 ns/op	   5.59 MB/s	  965167 B/op	    3062 allocs/op
+BenchmarkPartialContinuation/ManyFunctions/128         	     229	   1043783 ns/op	   5.42 MB/s	 2059558 B/op	    6076 allocs/op
+BenchmarkPartialContinuation/ManyFunctions/256         	      81	   2592158 ns/op	   4.41 MB/s	 4134598 B/op	   12097 allocs/op
+BenchmarkPartialContinuation/Unterminated/64           	     273	    868056 ns/op	   1.04 MB/s	 2769853 B/op	    1021 allocs/op
+BenchmarkPartialContinuation/Unterminated/128          	      79	   3141773 ns/op	   0.58 MB/s	10748840 B/op	    2113 allocs/op
+BenchmarkPartialContinuation/Unterminated/256          	      19	  12042601 ns/op	   0.31 MB/s	42747675 B/op	    4442 allocs/op
+BenchmarkPartialContinuation/InvalidHeader/64          	     261	    917146 ns/op	   1.02 MB/s	 2855962 B/op	    1178 allocs/op
+BenchmarkPartialContinuation/InvalidHeader/128         	      76	   3159643 ns/op	   0.59 MB/s	10920569 B/op	    2400 allocs/op
+BenchmarkPartialContinuation/InvalidHeader/256         	      19	  13961694 ns/op	   0.27 MB/s	43221776 B/op	    4989 allocs/op
+BenchmarkPartialContinuation/InvalidBody/64            	     201	   1111009 ns/op	   0.85 MB/s	 2942991 B/op	    1346 allocs/op
+BenchmarkPartialContinuation/InvalidBody/128           	      70	   3402922 ns/op	   0.55 MB/s	11093132 B/op	    2698 allocs/op
+BenchmarkPartialContinuation/InvalidBody/256           	      18	  12958411 ns/op	   0.29 MB/s	43696214 B/op	    5547 allocs/op
+BenchmarkPartialContinuation/InvalidBodyCRLF/64        	     205	   1181475 ns/op	   0.86 MB/s	 2996897 B/op	    1485 allocs/op
+BenchmarkPartialContinuation/InvalidBodyCRLF/128       	      62	   3855596 ns/op	   0.52 MB/s	11297365 B/op	    2964 allocs/op
+BenchmarkPartialContinuation/InvalidBodyCRLF/256       	      16	  14042010 ns/op	   0.29 MB/s	44503645 B/op	    6070 allocs/op
+BenchmarkPartialContinuation/TinyUnterminated/64       	     416	    595655 ns/op	   2.58 MB/s	  394174 B/op	    1942 allocs/op
+BenchmarkPartialContinuation/TinyUnterminated/128      	     198	   1217902 ns/op	   2.55 MB/s	  764394 B/op	    3871 allocs/op
+BenchmarkPartialContinuation/TinyUnterminated/256      	      88	   2652674 ns/op	   2.38 MB/s	 1668420 B/op	    7720 allocs/op
+BenchmarkPartialContinuation/TinyInvalid/64            	     462	    434070 ns/op	   5.75 MB/s	  670984 B/op	    2361 allocs/op
+BenchmarkPartialContinuation/TinyInvalid/128           	     285	    834353 ns/op	   6.02 MB/s	 1480023 B/op	    4672 allocs/op
+BenchmarkPartialContinuation/TinyInvalid/256           	     100	   2248328 ns/op	   4.51 MB/s	 3573794 B/op	    9286 allocs/op
+BenchmarkPartialContinuation/UnsupportedCalls/64       	      76	   3532561 ns/op	   0.20 MB/s	10376060 B/op	    3176 allocs/op
+BenchmarkPartialContinuation/UnsupportedCalls/128      	      18	  12241459 ns/op	   0.12 MB/s	39427642 B/op	    6773 allocs/op
+BenchmarkPartialContinuation/UnsupportedCalls/256      	       4	  50066476 ns/op	   0.06 MB/s	162047762 B/op	   14608 allocs/op
+BenchmarkParsePartial/Declarations/64                  	     979	    238816 ns/op	   8.31 MB/s	  579631 B/op	    1524 allocs/op
+BenchmarkParsePartial/Continuation/64                  	     249	    944690 ns/op	   0.98 MB/s	 2853530 B/op	    1174 allocs/op
+BenchmarkParsePartial/Valid/64                         	    2148	    109006 ns/op	  18.11 MB/s	  305728 B/op	     664 allocs/op
+BenchmarkParsePartial/InvalidStatements/64             	    1396	    178730 ns/op	   6.71 MB/s	  541108 B/op	    1079 allocs/op
+BenchmarkParsePartial/Declarations/128                 	     483	    489669 ns/op	   8.16 MB/s	 1297100 B/op	    3001 allocs/op
+BenchmarkParsePartial/Continuation/128                 	      69	   3320372 ns/op	   0.56 MB/s	10915822 B/op	    2396 allocs/op
+BenchmarkParsePartial/Valid/128                        	    1083	    221172 ns/op	  18.02 MB/s	  750784 B/op	    1307 allocs/op
+BenchmarkParsePartial/InvalidStatements/128            	     714	    335484 ns/op	   7.01 MB/s	 1001827 B/op	    2044 allocs/op
+BenchmarkParsePartial/Declarations/256                 	     225	   1060140 ns/op	   7.63 MB/s	 2682478 B/op	    5951 allocs/op
+BenchmarkParsePartial/Continuation/256                 	      18	  12465713 ns/op	   0.30 MB/s	43211881 B/op	    4984 allocs/op
+BenchmarkParsePartial/Valid/256                        	     487	    487447 ns/op	  16.58 MB/s	 1591748 B/op	    2590 allocs/op
+BenchmarkParsePartial/InvalidStatements/256            	     375	    660396 ns/op	   7.05 MB/s	 1753395 B/op	    3971 allocs/op
+PASS
+# sample=5 binary=before
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/parser
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkPartialContinuation/Valid/64         	     254	    938541 ns/op	   0.99 MB/s	 2853530 B/op	    1174 allocs/op
+BenchmarkPartialContinuation/Valid/128        	      76	   3881671 ns/op	   0.48 MB/s	10915834 B/op	    2396 allocs/op
+BenchmarkPartialContinuation/Valid/256        	      18	  13519211 ns/op	   0.28 MB/s	43211926 B/op	    4985 allocs/op
+BenchmarkPartialContinuation/ValidCRLF/64     	     220	   1103506 ns/op	   0.90 MB/s	 2905997 B/op	    1310 allocs/op
+BenchmarkPartialContinuation/ValidCRLF/128    	      55	   4245611 ns/op	   0.47 MB/s	11116875 B/op	    2660 allocs/op
+BenchmarkPartialContinuation/ValidCRLF/256    	      16	  14105909 ns/op	   0.29 MB/s	44012958 B/op	    5506 allocs/op
+BenchmarkPartialContinuation/Imports/64       	     420	    562600 ns/op	   0.96 MB/s	 1446744 B/op	     973 allocs/op
+BenchmarkPartialContinuation/Imports/128      	     117	   1941308 ns/op	   0.56 MB/s	 5509045 B/op	    2002 allocs/op
+BenchmarkPartialContinuation/Imports/256      	      32	   6726206 ns/op	   0.33 MB/s	21379404 B/op	    4178 allocs/op
+BenchmarkPartialContinuation/Constants/64     	     427	    530095 ns/op	   0.42 MB/s	 1475270 B/op	    1041 allocs/op
+BenchmarkPartialContinuation/Constants/128    	     100	   2013176 ns/op	   0.20 MB/s	 5567758 B/op	    2135 allocs/op
+BenchmarkPartialContinuation/Constants/256    	      33	   6852947 ns/op	   0.12 MB/s	21492192 B/op	    4438 allocs/op
+BenchmarkPartialContinuation/ManyFunctions/64 	     474	    512655 ns/op	   5.49 MB/s	  965167 B/op	    3062 allocs/op
+BenchmarkPartialContinuation/ManyFunctions/128         	     210	   1089308 ns/op	   5.20 MB/s	 2059551 B/op	    6075 allocs/op
+BenchmarkPartialContinuation/ManyFunctions/256         	      81	   2769119 ns/op	   4.12 MB/s	 4135057 B/op	   12097 allocs/op
+BenchmarkPartialContinuation/Unterminated/64           	     273	    885788 ns/op	   1.02 MB/s	 2769853 B/op	    1021 allocs/op
+BenchmarkPartialContinuation/Unterminated/128          	      81	   3070577 ns/op	   0.60 MB/s	10748834 B/op	    2113 allocs/op
+BenchmarkPartialContinuation/Unterminated/256          	      19	  12055084 ns/op	   0.31 MB/s	42747675 B/op	    4442 allocs/op
+BenchmarkPartialContinuation/InvalidHeader/64          	     265	    903350 ns/op	   1.03 MB/s	 2855962 B/op	    1178 allocs/op
+BenchmarkPartialContinuation/InvalidHeader/128         	      76	   3171958 ns/op	   0.59 MB/s	10920567 B/op	    2400 allocs/op
+BenchmarkPartialContinuation/InvalidHeader/256         	      18	  12391672 ns/op	   0.30 MB/s	43221761 B/op	    4989 allocs/op
+BenchmarkPartialContinuation/InvalidBody/64            	     243	    994937 ns/op	   0.95 MB/s	 2942994 B/op	    1346 allocs/op
+BenchmarkPartialContinuation/InvalidBody/128           	      70	   3245071 ns/op	   0.58 MB/s	11093128 B/op	    2698 allocs/op
+BenchmarkPartialContinuation/InvalidBody/256           	      19	  12324755 ns/op	   0.31 MB/s	43696208 B/op	    5547 allocs/op
+BenchmarkPartialContinuation/InvalidBodyCRLF/64        	     226	   1059453 ns/op	   0.96 MB/s	 2996898 B/op	    1485 allocs/op
+BenchmarkPartialContinuation/InvalidBodyCRLF/128       	      61	   3663057 ns/op	   0.55 MB/s	11297372 B/op	    2964 allocs/op
+BenchmarkPartialContinuation/InvalidBodyCRLF/256       	      18	  13386753 ns/op	   0.30 MB/s	44503649 B/op	    6070 allocs/op
+BenchmarkPartialContinuation/TinyUnterminated/64       	     412	    568853 ns/op	   2.70 MB/s	  394174 B/op	    1942 allocs/op
+BenchmarkPartialContinuation/TinyUnterminated/128      	     208	   1139756 ns/op	   2.72 MB/s	  764393 B/op	    3871 allocs/op
+BenchmarkPartialContinuation/TinyUnterminated/256      	     100	   2333483 ns/op	   2.70 MB/s	 1668423 B/op	    7720 allocs/op
+BenchmarkPartialContinuation/TinyInvalid/64            	     631	    379350 ns/op	   6.58 MB/s	  670983 B/op	    2361 allocs/op
+BenchmarkPartialContinuation/TinyInvalid/128           	     297	    798728 ns/op	   6.29 MB/s	 1480021 B/op	    4672 allocs/op
+BenchmarkPartialContinuation/TinyInvalid/256           	     100	   2200824 ns/op	   4.61 MB/s	 3573778 B/op	    9286 allocs/op
+BenchmarkPartialContinuation/UnsupportedCalls/64       	      78	   3264913 ns/op	   0.22 MB/s	10376062 B/op	    3176 allocs/op
+BenchmarkPartialContinuation/UnsupportedCalls/128      	      19	  11925446 ns/op	   0.12 MB/s	39427635 B/op	    6773 allocs/op
+BenchmarkPartialContinuation/UnsupportedCalls/256      	       5	  49896417 ns/op	   0.06 MB/s	162047774 B/op	   14608 allocs/op
+BenchmarkParsePartial/Declarations/64                  	    1011	    237168 ns/op	   8.37 MB/s	  579629 B/op	    1524 allocs/op
+BenchmarkParsePartial/Continuation/64                  	     259	    994235 ns/op	   0.93 MB/s	 2853673 B/op	    1174 allocs/op
+BenchmarkParsePartial/Valid/64                         	    2216	    123561 ns/op	  15.98 MB/s	  305728 B/op	     664 allocs/op
+BenchmarkParsePartial/InvalidStatements/64             	    1381	    189114 ns/op	   6.34 MB/s	  541108 B/op	    1079 allocs/op
+BenchmarkParsePartial/Declarations/128                 	     416	    556758 ns/op	   7.18 MB/s	 1297099 B/op	    3001 allocs/op
+BenchmarkParsePartial/Continuation/128                 	      73	   3446561 ns/op	   0.54 MB/s	10915822 B/op	    2396 allocs/op
+BenchmarkParsePartial/Valid/128                        	    1054	    227341 ns/op	  17.53 MB/s	  750784 B/op	    1307 allocs/op
+BenchmarkParsePartial/InvalidStatements/128            	     732	    361466 ns/op	   6.50 MB/s	 1001825 B/op	    2044 allocs/op
+BenchmarkParsePartial/Declarations/256                 	     195	   1364452 ns/op	   5.93 MB/s	 2682477 B/op	    5951 allocs/op
+BenchmarkParsePartial/Continuation/256                 	      18	  12757044 ns/op	   0.30 MB/s	43211891 B/op	    4984 allocs/op
+BenchmarkParsePartial/Valid/256                        	     470	    499571 ns/op	  16.18 MB/s	 1591748 B/op	    2590 allocs/op
+BenchmarkParsePartial/InvalidStatements/256            	     367	    660845 ns/op	   7.04 MB/s	 1753398 B/op	    3971 allocs/op
+PASS
+# sample=6 binary=before
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/parser
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkPartialContinuation/Valid/64         	     253	    931616 ns/op	   1.00 MB/s	 2853530 B/op	    1174 allocs/op
+BenchmarkPartialContinuation/Valid/128        	      76	   3266002 ns/op	   0.57 MB/s	10915830 B/op	    2396 allocs/op
+BenchmarkPartialContinuation/Valid/256        	      19	  12270109 ns/op	   0.31 MB/s	43211932 B/op	    4985 allocs/op
+BenchmarkPartialContinuation/ValidCRLF/64     	     228	   1030393 ns/op	   0.97 MB/s	 2905991 B/op	    1310 allocs/op
+BenchmarkPartialContinuation/ValidCRLF/128    	      67	   3557958 ns/op	   0.56 MB/s	11116878 B/op	    2660 allocs/op
+BenchmarkPartialContinuation/ValidCRLF/256    	      16	  13907419 ns/op	   0.29 MB/s	44012949 B/op	    5506 allocs/op
+BenchmarkPartialContinuation/Imports/64       	     457	    535503 ns/op	   1.01 MB/s	 1446744 B/op	     973 allocs/op
+BenchmarkPartialContinuation/Imports/128      	     134	   1788246 ns/op	   0.61 MB/s	 5508825 B/op	    2002 allocs/op
+BenchmarkPartialContinuation/Imports/256      	      36	   6455235 ns/op	   0.35 MB/s	21379499 B/op	    4179 allocs/op
+BenchmarkPartialContinuation/Constants/64     	     454	    523860 ns/op	   0.42 MB/s	 1475269 B/op	    1041 allocs/op
+BenchmarkPartialContinuation/Constants/128    	     138	   1724454 ns/op	   0.24 MB/s	 5567472 B/op	    2135 allocs/op
+BenchmarkPartialContinuation/Constants/256    	      37	   6295925 ns/op	   0.13 MB/s	21492189 B/op	    4438 allocs/op
+BenchmarkPartialContinuation/ManyFunctions/64 	     465	    508061 ns/op	   5.54 MB/s	  965167 B/op	    3062 allocs/op
+BenchmarkPartialContinuation/ManyFunctions/128         	     223	   1068455 ns/op	   5.30 MB/s	 2059557 B/op	    6075 allocs/op
+BenchmarkPartialContinuation/ManyFunctions/256         	      81	   2713749 ns/op	   4.21 MB/s	 4129942 B/op	   12095 allocs/op
+BenchmarkPartialContinuation/Unterminated/64           	     270	    878647 ns/op	   1.03 MB/s	 2769853 B/op	    1021 allocs/op
+BenchmarkPartialContinuation/Unterminated/128          	      73	   3155599 ns/op	   0.58 MB/s	10748837 B/op	    2113 allocs/op
+BenchmarkPartialContinuation/Unterminated/256          	      19	  12039331 ns/op	   0.31 MB/s	42747690 B/op	    4442 allocs/op
+BenchmarkPartialContinuation/InvalidHeader/64          	     260	    921876 ns/op	   1.01 MB/s	 2855962 B/op	    1178 allocs/op
+BenchmarkPartialContinuation/InvalidHeader/128         	      74	   3217930 ns/op	   0.58 MB/s	10920571 B/op	    2400 allocs/op
+BenchmarkPartialContinuation/InvalidHeader/256         	      16	  12937303 ns/op	   0.29 MB/s	43221761 B/op	    4989 allocs/op
+BenchmarkPartialContinuation/InvalidBody/64            	     236	    988075 ns/op	   0.96 MB/s	 2942999 B/op	    1346 allocs/op
+BenchmarkPartialContinuation/InvalidBody/128           	      69	   3347547 ns/op	   0.56 MB/s	11093132 B/op	    2698 allocs/op
+BenchmarkPartialContinuation/InvalidBody/256           	      19	  12427006 ns/op	   0.31 MB/s	43696208 B/op	    5547 allocs/op
+BenchmarkPartialContinuation/InvalidBodyCRLF/64        	     219	   1087890 ns/op	   0.94 MB/s	 2997067 B/op	    1485 allocs/op
+BenchmarkPartialContinuation/InvalidBodyCRLF/128       	      63	   3691406 ns/op	   0.54 MB/s	11297373 B/op	    2964 allocs/op
+BenchmarkPartialContinuation/InvalidBodyCRLF/256       	      16	  13717640 ns/op	   0.30 MB/s	44503656 B/op	    6070 allocs/op
+BenchmarkPartialContinuation/TinyUnterminated/64       	     417	    576277 ns/op	   2.67 MB/s	  394174 B/op	    1942 allocs/op
+BenchmarkPartialContinuation/TinyUnterminated/128      	     211	   1139592 ns/op	   2.72 MB/s	  764393 B/op	    3871 allocs/op
+BenchmarkPartialContinuation/TinyUnterminated/256      	     100	   2323435 ns/op	   2.71 MB/s	 1668423 B/op	    7720 allocs/op
+BenchmarkPartialContinuation/TinyInvalid/64            	     614	    391481 ns/op	   6.38 MB/s	  670984 B/op	    2361 allocs/op
+BenchmarkPartialContinuation/TinyInvalid/128           	     295	    816358 ns/op	   6.15 MB/s	 1480021 B/op	    4672 allocs/op
+BenchmarkPartialContinuation/TinyInvalid/256           	     100	   2179740 ns/op	   4.65 MB/s	 3573798 B/op	    9286 allocs/op
+BenchmarkPartialContinuation/UnsupportedCalls/64       	      74	   3283217 ns/op	   0.22 MB/s	10376060 B/op	    3176 allocs/op
+BenchmarkPartialContinuation/UnsupportedCalls/128      	      18	  12316420 ns/op	   0.12 MB/s	39427644 B/op	    6773 allocs/op
+BenchmarkPartialContinuation/UnsupportedCalls/256      	       5	  49653650 ns/op	   0.06 MB/s	162047732 B/op	   14608 allocs/op
+BenchmarkParsePartial/Declarations/64                  	     979	    241126 ns/op	   8.23 MB/s	  579631 B/op	    1524 allocs/op
+BenchmarkParsePartial/Continuation/64                  	     255	    938504 ns/op	   0.99 MB/s	 2853530 B/op	    1174 allocs/op
+BenchmarkParsePartial/Valid/64                         	    2241	    110178 ns/op	  17.92 MB/s	  305728 B/op	     664 allocs/op
+BenchmarkParsePartial/InvalidStatements/64             	    1387	    177736 ns/op	   6.75 MB/s	  541108 B/op	    1079 allocs/op
+BenchmarkParsePartial/Declarations/128                 	     476	    502071 ns/op	   7.96 MB/s	 1297100 B/op	    3001 allocs/op
+BenchmarkParsePartial/Continuation/128                 	      69	   3310540 ns/op	   0.56 MB/s	10915822 B/op	    2396 allocs/op
+BenchmarkParsePartial/Valid/128                        	    1059	    225366 ns/op	  17.69 MB/s	  750784 B/op	    1307 allocs/op
+BenchmarkParsePartial/InvalidStatements/128            	     697	    343472 ns/op	   6.84 MB/s	 1001828 B/op	    2044 allocs/op
+BenchmarkParsePartial/Declarations/256                 	     226	   1061550 ns/op	   7.62 MB/s	 2682477 B/op	    5951 allocs/op
+BenchmarkParsePartial/Continuation/256                 	      18	  12578783 ns/op	   0.30 MB/s	43211900 B/op	    4984 allocs/op
+BenchmarkParsePartial/Valid/256                        	     459	    537108 ns/op	  15.05 MB/s	 1591747 B/op	    2590 allocs/op
+BenchmarkParsePartial/InvalidStatements/256            	     358	    641442 ns/op	   7.26 MB/s	 1753401 B/op	    3971 allocs/op
+PASS

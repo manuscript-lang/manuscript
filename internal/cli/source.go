@@ -80,11 +80,11 @@ func runSourceCommand(args []string, usage string) int {
 
 func inspectProgram(inv *invocation, result compiler.Result) int {
 	command, output, format := inv.command, inv.output, inv.format
-	inspection := tooling.Inspect(result.Program)
 	if command == "diagram" && (inv.view != "" || inv.entity != "") {
 		return writeView(inv, result)
 	}
 	if command == "diagram" {
+		inspection := tooling.Inspect(result.Program)
 		if format == "mermaid" {
 			return writeOutput(output, []byte(tooling.Diagram(inspection)))
 		}

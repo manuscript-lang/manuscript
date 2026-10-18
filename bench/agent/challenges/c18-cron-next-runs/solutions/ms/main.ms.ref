@@ -65,11 +65,11 @@ fn parse_field(text: String, lo: Int, hi: Int) Optional[List[Bool]]:
         if parts.length() > 2:
             return none
 
-        let body = parts.at(0).get()
+        let body = parts.get(0)
         var step = 1
 
         if parts.length() == 2:
-            let s = digits(parts.at(1).get(), 1, 2)
+            let s = digits(parts.get(1), 1, 2)
             if s.is_none() or s.get() < 1:
                 return none
 
@@ -93,8 +93,8 @@ fn parse_field(text: String, lo: Int, hi: Int) Optional[List[Bool]]:
             if r.length() != 2:
                 return none
 
-            let x = digits(r.at(0).get(), 1, 2)
-            let y = digits(r.at(1).get(), 1, 2)
+            let x = digits(r.get(0), 1, 2)
+            let y = digits(r.get(1), 1, 2)
             if x.is_none() or y.is_none() or x.get() > y.get():
                 return none
 
@@ -120,10 +120,10 @@ fn parse_start(s: String) List[Int]:
         return empty
     # '-' 45, 'T' 84, ':' 58
     if (
-        codes.at(4).get() != 45
-        or codes.at(7).get() != 45
-        or codes.at(10).get() != 84
-        or codes.at(13).get() != 58
+        codes.get(4) != 45
+        or codes.get(7) != 45
+        or codes.get(10) != 84
+        or codes.get(13) != 58
     ):
         return empty
 
@@ -151,7 +151,7 @@ fn parse_start(s: String) List[Int]:
 
     let leap = (year % 4 == 0 and year % 100 != 0) or year % 400 == 0
     let lengths = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-    var limit = lengths.at(month - 1).get()
+    var limit = lengths.get(month - 1)
     if month == 2 and leap:
         limit = 29
     if day > limit:
@@ -179,19 +179,19 @@ fn run() Result[Unit, Error]:
         let t = l.split(" ")
 
         if t.length() != 7:
-            try stdout().write("{pre} error: bad line\n".to_bytes())
+            try stdout().write("{pre} error: bad line\n")
             continue
 
-        let start = parse_start(t.at(0).get())
+        let start = parse_start(t.get(0))
 
         if start.is_empty():
-            try stdout().write("{pre} error: bad start\n".to_bytes())
+            try stdout().write("{pre} error: bad start\n")
             continue
 
-        let count_opt = digits(t.at(1).get(), 1, 2)
+        let count_opt = digits(t.get(1), 1, 2)
 
         if count_opt.is_none() or count_opt.get() < 1 or count_opt.get() > 20:
-            try stdout().write("{pre} error: bad count\n".to_bytes())
+            try stdout().write("{pre} error: bad count\n")
             continue
 
         let count = count_opt.get()
@@ -201,57 +201,57 @@ fn run() Result[Unit, Error]:
 
         while i < 5:
             let s = parse_field(
-                t.at(2 + i).get(),
-                lows.at(i).get(),
-                (highs.at(i).get())
+                t.get(2 + i),
+                lows.get(i),
+                (highs.get(i))
             )
 
             if s.is_none():
-                bad = names.at(i).get()
+                bad = names.get(i)
                 break
 
             sets.append(s.get())
             i = i + 1
 
         if not bad.is_empty():
-            try stdout().write("{pre} error: bad {bad}\n".to_bytes())
+            try stdout().write("{pre} error: bad {bad}\n")
             continue
 
-        let minutes = sets.at(0).get()
-        let hours = sets.at(1).get()
-        let doms = sets.at(2).get()
-        let months = sets.at(3).get()
-        let dows = sets.at(4).get()
+        let minutes = sets.get(0)
+        let hours = sets.get(1)
+        let doms = sets.get(2)
+        let months = sets.get(3)
+        let dows = sets.get(4)
         let runs = List[String]()
         var k = 0
 
         while k <= 3000 and runs.length() < count:
-            let day = start.at(0).get() + k
+            let day = start.get(0) + k
             let ymd = civil_from_days(day)
 
             if (
-                months.at(ymd.at(1).get()).get()
-                and doms.at(ymd.at(2).get()).get()
-                and dows.at(((day + 4) % 7)).get()
+                months.get(ymd.get(1))
+                and doms.get(ymd.get(2))
+                and dows.get(((day + 4) % 7))
             ):
                 var h = 0
 
                 while h < 24 and runs.length() < count:
-                    if hours.at(h).get():
+                    if hours.get(h):
                         var mn = 0
 
                         while mn < 60 and runs.length() < count:
                             if (
-                                minutes.at(mn).get()
+                                minutes.get(mn)
                                 and not (
                                     k == 0
-                                    and h * 60 + mn <= start.at(
+                                    and h * 60 + mn <= start.get(
                                         1
-                                    ).get()
+                                    )
                                 )
                             ):
                                 runs.append(
-                                    "{ymd.at(0).get()}-{pad2(ymd.at(1).get())}-{pad2(ymd.at(2).get())} {pad2(h)}:{pad2(mn)}"
+                                    "{ymd.get(0)}-{pad2(ymd.get(1))}-{pad2(ymd.get(2))} {pad2(h)}:{pad2(mn)}"
                                 )
                             mn = mn + 1
 
@@ -260,12 +260,12 @@ fn run() Result[Unit, Error]:
             k = k + 1
 
         if runs.is_empty():
-            try stdout().write("{pre} never\n".to_bytes())
+            try stdout().write("{pre} never\n")
             continue
 
-        try stdout().write("{pre} {runs.length()} runs\n".to_bytes())
+        try stdout().write("{pre} {runs.length()} runs\n")
         for r in runs:
-            try stdout().write("{r}\n".to_bytes())
+            try stdout().write("{r}\n")
 
     return stdout().flush()
 

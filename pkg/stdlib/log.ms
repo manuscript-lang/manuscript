@@ -45,7 +45,9 @@ export type LogLevel:
 export interface Transport:
     # Accepts encoded record bytes; native transports serialize writes and may return the original I/O cause.
     # Errors can follow a partial external write, without rollback.
-    fn write(data: Bytes) Result[Unit, LogError]
+    fn write(data: String) Result[Unit, LogError]
+    # Accepts encoded record bytes with the same rules as write.
+    fn write_bytes(data: Bytes) Result[Unit, LogError]
     # Delegates flush to the destination; persistence and buffering depend on that destination.
     fn flush() Result[Unit, LogError]
     # Releases owned resources; native close cancels admitted operations and leaves borrowed streams open.

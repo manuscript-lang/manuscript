@@ -107,10 +107,6 @@ func (c *checker) callback(e *syntax.Expression, expected *Type) *Info {
 	c.function = c.serial + 1
 	c.serial++
 	c.loops = 0
-	// A closure runs later; no proof about its creation point carries in.
-	oldFacts, oldAllowed := c.facts, c.allowedLookups
-	c.facts = nil
-	defer func() { c.facts, c.allowedLookups = oldFacts, oldAllowed }()
 	c.captures[c.function] = map[*Binding]bool{}
 	setLambdaParameters(e, nil)
 	bound := map[string]bool{}

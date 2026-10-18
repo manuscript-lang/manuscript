@@ -19,8 +19,8 @@ impl Bytes:
     # The immutable result may share storage with the receiver.
     fn slice(start: Int, end: Int) Result[Bytes, CollectionError]:
 
-    # Returns an unsigned byte; negative indexes are relative to the end, and out-of-range indexes return `none`.
-    fn at(index: Int) Optional[Int]:
+    # Returns an unsigned byte; negative indexes are relative to the end. An out-of-range index returns `default`, and without one raises a fault.
+    fn get(index: Int, default: Optional[Int] = none) Int:
 
     # Returns the first matching byte offset or `none`; empty `value` matches at zero.
     fn index_of(value: Bytes) Optional[Int]:

@@ -56,7 +56,7 @@ func run() error {
 			"encode(data)", "encode(data, false)",
 			"CsvOptions()", "CsvOptions(\",\", \"\\n\")",
 			"arguments: [])", "arguments: [], input: \"\".to_bytes())",
-			"fs.write_file(\"\", data)", "fs.write_file(\"\", data, false)",
+			"fs.write_file_bytes(\"\", data)", "fs.write_file_bytes(\"\", data, false)",
 		).Replace(string(source)))
 	}
 	result := compiler.CompileSource("benchmark.ms", string(source), compiler.Options{})

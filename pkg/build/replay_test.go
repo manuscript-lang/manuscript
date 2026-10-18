@@ -34,7 +34,7 @@ func testProgram(t *testing.T, label string) string {
 	result := compiler.CompileSource("main.ms", fmt.Sprintf(`import stdout from "@std/io.ms"
 
 export fn main() Int:
-    if stdout().write(data: %q.to_bytes()).is_error():
+    if stdout().write(data: %q).is_error():
         return 1
     return 0
 `, fmt.Sprint(label, " ", time.Now().UnixNano())), compiler.Options{Entry: true})

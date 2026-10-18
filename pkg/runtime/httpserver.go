@@ -223,7 +223,7 @@ func (s *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid or oversized request body", 413)
 		return
 	}
-	request := &HttpRequest{Method: methodOf(r.Method), Path: r.URL.Path, Query: r.URL.RawQuery, Headers: headersFrom(requestHeaders(r)), Body: NewBytes(data)}
+	request := &HttpRequest{Method: methodOf(r.Method), Path: r.URL.Path, Query: r.URL.RawQuery, Headers: headersFrom(requestHeaders(r)), Body: NewBytes(data), Protocol: r.Proto}
 	var response *HttpResponse
 	var failure any
 	func() {
@@ -485,6 +485,11 @@ func (e *httpExchange) Path(ctx *Execution) string {
 	return e.request.URL.Path
 }
 
+func (e *httpExchange) Protocol(ctx *Execution) string {
+	CheckCancelled(ctx)
+	return e.request.Proto
+}
+
 func (e *httpExchange) Query(ctx *Execution) string {
 	CheckCancelled(ctx)
 	return e.request.URL.RawQuery
@@ -586,7 +591,11 @@ func (e *httpExchange) SendHeaders(ctx *Execution, status int, headers *HttpHead
 	return Ok[Unit, HttpError](Unit{})
 }
 
-func (e *httpExchange) Write(ctx *Execution, data *Bytes) Result[Unit, IoError] {
+func (e *httpExchange) Write(ctx *Execution, data string) Result[Unit, IoError] {
+	return e.WriteBytes(ctx, NewBytes([]byte(data)))
+}
+
+func (e *httpExchange) WriteBytes(ctx *Execution, data *Bytes) Result[Unit, IoError] {
 	if !e.admitIO(ctx, e.writeGate) {
 		return ioFail[Unit](errIoClosed)
 	}

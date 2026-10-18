@@ -356,29 +356,34 @@ func stringSplitParts(text, separator string, maxParts Option[int]) []string {
 	return parts
 }
 
-func String_At(_ *Execution, text string, index int) Option[string] {
+// String_Get returns the one-scalar String at a possibly negative index, else
+// the default; an invalid index without a default is a fault.
+func String_Get(_ *Execution, text string, index int, def Option[string]) string {
 	count, ascii := stringShape(text)
 	i := txRelative(count, index)
 	if i < 0 || i >= count {
-		return None[string]()
+		return missingIndex(index, count, def)
 	}
 	if ascii {
-		return Some(text[i : i+1])
+		return text[i : i+1]
 	}
 	offset := scalarIndexOffset(text, i)
 	scalar, width := utf8.DecodeRuneInString(text[offset:])
 	if scalar == utf8.RuneError {
-		return Some(string(scalar))
+		return string(scalar)
 	}
-	return Some(text[offset : offset+width])
+	return text[offset : offset+width]
 }
 
-func String_ScalarAt(_ *Execution, text string, index int) Option[int] {
+// String_ScalarAt returns the code point at a possibly negative scalar index,
+// else the default; an invalid index without a default is a fault.
+func String_ScalarAt(_ *Execution, text string, index int, def Option[int]) int {
 	scalar, ok := stringScalarAt(text, index)
 	if !ok {
-		return None[int]()
+		count, _ := stringShape(text)
+		return missingIndex(index, int(count), def)
 	}
-	return Some(int(scalar))
+	return int(scalar)
 }
 
 func stringScalarAt(text string, index int) (rune, bool) {

@@ -23,11 +23,12 @@ func TestKnownStandardTypeImportHint(t *testing.T) {
 func TestReturnOnlyTypeParameterContext(t *testing.T) {
 	for _, body := range []string{
 		`return fail("empty")`,
-		`let result: Result[Int, String] = fail("empty")
+		`let result: Result[Int, TextError] = fail("empty")
     return result`,
 	} {
-		source := `fn fail[T](message: String) Result[T, String]: error(message)
-fn first() Result[Int, String]:
+		source := `import {TextError} from "@std/errors.ms"
+fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
+fn first() Result[Int, TextError]:
     ` + body + "\n"
 		m, err := parser.Parse("inference-hint.ms", source)
 		if err != nil {
@@ -42,7 +43,7 @@ fn first() Result[Int, String]:
 
 func TestUnknownTypeDoesNotCascadeIntoInference(t *testing.T) {
 	source := `fn collect[T, U](items: List[T], step: fn(value: T) Result[List[U], MissingError]) Result[List[U], MissingError]:
-    return step(items.at(0).get())
+    return step(items.get(0))
 fn first() Unit:
     let result = collect(items: [1, 2], step: fn(value: Int) Result[List[Int], MissingError]: ok([value]))
     let unrelated: Int = "wrong"
@@ -69,8 +70,9 @@ fn first() Unit:
 }
 
 func TestReturnOnlyTypeParameterExplicitSpecialization(t *testing.T) {
-	m, err := parser.Parse("explicit-inference.ms", `fn fail[T](message: String) Result[T, String]: error(message)
-fn first() Result[Int, String]: fail[Int]("empty")
+	m, err := parser.Parse("explicit-inference.ms", `import {TextError} from "@std/errors.ms"
+fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
+fn first() Result[Int, TextError]: fail[Int]("empty")
 `)
 	if err != nil {
 		t.Fatal(err)

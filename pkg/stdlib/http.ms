@@ -66,6 +66,8 @@ export type HttpResponseMetadata:
     status: Int
     # The shared mutable fields, with every repeated value retained.
     headers: HttpHeaders
+    # The protocol the response used, such as `HTTP/1.1` or `HTTP/2.0`; empty when the source does not report one.
+    protocol: String = ""
 
 # Buffered response body with explicit common metadata access.
 export type ClientResponse:
@@ -115,8 +117,17 @@ export interface HttpClient:
     # Cancels in-flight requests, closes open response bodies, and drops idle pooled connections.
     # Safe to call repeatedly; later requests return Closed.
     fn close() Unit
-    # Sends immutable Bytes and returns a scoped streaming response body.
+    # Sends the UTF-8 text body and returns a scoped streaming response body.
     fn request(
+        method: HttpMethod,
+        url: String,
+        headers: HttpHeaders,
+        body: String = "",
+        max_response_bytes: Optional[Int] = none,
+        timeout: Optional[Duration] = none
+    ) Result[ResponseBody, HttpError]
+    # Sends immutable Bytes and returns a scoped streaming response body.
+    fn request_bytes(
         method: HttpMethod,
         url: String,
         headers: HttpHeaders,
@@ -172,6 +183,8 @@ export interface HttpExchange:
     # Returns the percent-decoded request path with dot segments resolved.
     # Requests with an encoded slash or NUL are rejected before the handler runs.
     fn path() String
+    # Returns the protocol the request arrived over, such as `HTTP/1.1` or `HTTP/2.0`.
+    fn protocol() String
     # Returns the raw query string without the leading `?`; it is empty when there is none.
     fn query() String
     # Returns the next chunk of the request body, at most `max_bytes` and never more than 65536, or none at the end of the body.
@@ -189,7 +202,9 @@ export interface HttpExchange:
     ) Result[WebSocket, WebSocketError]
     # Writes one chunk of the response body and flushes it.
     # `send_headers` must come first, and writing beyond `max_response_bytes` returns IoError.Failed. Responses to HEAD requests and with status 204 or 304 cannot have a body.
-    fn write(data: Bytes) Result[Unit, IoError]
+    fn write(data: String) Result[Unit, IoError]
+    # Writes one chunk of raw bytes with the same rules as write.
+    fn write_bytes(data: Bytes) Result[Unit, IoError]
 
 # Buffered request accepted by the simple HTTP server handler.
 export type HttpRequest:
@@ -203,6 +218,8 @@ export type HttpRequest:
     headers: HttpHeaders
     # The complete request body, at most `max_body_bytes` long.
     body: Bytes
+    # The protocol the request arrived over, such as `HTTP/1.1` or `HTTP/2.0`; empty when not reported.
+    protocol: String = ""
 
 # Buffered response returned by the simple HTTP server handler.
 export type HttpResponse:

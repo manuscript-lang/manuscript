@@ -10,9 +10,6 @@ func check_Crypto_ConstantTimeEqual() {
 func check_Crypto_DeriveKey() {
 	var _ func(*Execution, *Bytes, *Bytes, int, int) Result[*Bytes, CryptoError] = Crypto_DeriveKey
 }
-func check_Crypto_Hmac() {
-	var _ func(*Execution, *Bytes, *Bytes, string) Result[*Bytes, CryptoError] = Crypto_Hmac
-}
 func check_Crypto_Open() {
 	var _ func(*Execution, *Bytes, *Bytes, *Bytes, *Bytes) Result[*Bytes, CryptoError] = Crypto_Open
 }
@@ -36,6 +33,51 @@ func check_Crypto_Sign() {
 }
 func check_Crypto_Verify() {
 	var _ func(*Execution, *Bytes, *Bytes, *Bytes) bool = Crypto_Verify
+}
+func check_Crypto_AesCtr() {
+	var _ func(*Execution, *Bytes, *Bytes, *Bytes) Result[*Bytes, CryptoError] = Crypto_AesCtr
+}
+func check_Crypto_AesCbcEncrypt() {
+	var _ func(*Execution, *Bytes, *Bytes, *Bytes) Result[*Bytes, CryptoError] = Crypto_AesCbcEncrypt
+}
+func check_Crypto_AesCbcDecrypt() {
+	var _ func(*Execution, *Bytes, *Bytes, *Bytes) Result[*Bytes, CryptoError] = Crypto_AesCbcDecrypt
+}
+func check_Crypto_EcdsaGenerate() {
+	var _ func(*Execution, Curve) Result[*Bytes, CryptoError] = Crypto_EcdsaGenerate
+}
+func check_Crypto_PublicKeyDer() {
+	var _ func(*Execution, *Bytes) Result[*Bytes, CryptoError] = Crypto_PublicKeyDer
+}
+func check_Crypto_EcdsaSign() {
+	var _ func(*Execution, *Bytes, HashAlgorithm, *Bytes) Result[*Bytes, CryptoError] = Crypto_EcdsaSign
+}
+func check_Crypto_EcdsaVerify() {
+	var _ func(*Execution, *Bytes, HashAlgorithm, *Bytes, *Bytes) bool = Crypto_EcdsaVerify
+}
+func check_Crypto_EcdhSharedSecret() {
+	var _ func(*Execution, *Bytes, *Bytes) Result[*Bytes, CryptoError] = Crypto_EcdhSharedSecret
+}
+func check_Crypto_RsaGenerate() {
+	var _ func(*Execution, int) Result[*Bytes, CryptoError] = Crypto_RsaGenerate
+}
+func check_Crypto_RsaSign() {
+	var _ func(*Execution, *Bytes, HashAlgorithm, *Bytes) Result[*Bytes, CryptoError] = Crypto_RsaSign
+}
+func check_Crypto_RsaVerify() {
+	var _ func(*Execution, *Bytes, HashAlgorithm, *Bytes, *Bytes) bool = Crypto_RsaVerify
+}
+func check_Crypto_RsaSignPss() {
+	var _ func(*Execution, *Bytes, HashAlgorithm, *Bytes) Result[*Bytes, CryptoError] = Crypto_RsaSignPss
+}
+func check_Crypto_RsaVerifyPss() {
+	var _ func(*Execution, *Bytes, HashAlgorithm, *Bytes, *Bytes) bool = Crypto_RsaVerifyPss
+}
+func check_Crypto_RsaEncrypt() {
+	var _ func(*Execution, *Bytes, HashAlgorithm, *Bytes) Result[*Bytes, CryptoError] = Crypto_RsaEncrypt
+}
+func check_Crypto_RsaDecrypt() {
+	var _ func(*Execution, *Bytes, HashAlgorithm, *Bytes) Result[*Bytes, CryptoError] = Crypto_RsaDecrypt
 }
 func check_HashAlgorithm_Digest() {
 	var _ func(*Execution, HashAlgorithm, *Bytes) *Bytes = HashAlgorithm_Digest

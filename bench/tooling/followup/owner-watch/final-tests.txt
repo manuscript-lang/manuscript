@@ -1,0 +1,1 @@
+ok  	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	1.971s

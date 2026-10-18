@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 fn double(value: Int) Int: value * 2
 
@@ -15,19 +15,16 @@ fn alternate(value: Int) Int:
         return 1
 
 test "inline functions and branches":
-    if choose(3) != 6: return panic("inline branch failed")
-    if choose(-3) != 0: return panic("inline else failed")
-    if alternate(0) != 0: return panic("inline else if failed")
-    if alternate(3) != 1: return panic("mixed branch failed")
-
+    try expect_equal(choose(3), 6)
+    try expect_equal(choose(-3), 0)
+    try expect_equal(alternate(0), 0)
+    try expect_equal(alternate(3), 1)
     let increment = fn(value: Int): value + 1
-    if increment(2) != 3: return panic("inline closure failed")
-
+    try expect_equal(increment(2), 3)
     let result = apply(4, fn(value): value * 3)
-    if result != 12: return panic("inline callback failed")
-
+    try expect_equal(result, 12)
     var count = 0
     while count < 3: count += 1
-    if count != 3: return panic("inline assignment failed")
+    try expect_equal(count, 3)
 
 test "inline test": return

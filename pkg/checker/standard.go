@@ -512,6 +512,9 @@ func (l *standardLoader) bindReceivers() error {
 // checkDefaults checks native default expressions and folds their constants.
 func (l *standardLoader) checkDefaults() error {
 	c := l.c
+	for _, check := range c.deferredDefaultBounds {
+		check()
+	}
 	// Check native default expressions with the ordinary expression checker.
 	// Lowering prepares concrete slots before native dispatch; the runtime does
 	// not own a second default-expression schema.

@@ -1,0 +1,40 @@
+File: checker-after.test
+Build ID: 5a837b0c5d9a2aa85f50452819ef9d928c925c04
+Type: cpu
+Time: 2026-10-18 07:18:23 UTC
+Duration: 2.46s, Total samples = 2280ms (92.81%)
+Showing nodes accounting for 1100ms, 48.25% of 2280ms total
+Dropped 69 nodes (cum <= 11.40ms)
+Showing top 12 nodes out of 177
+      flat  flat%   sum%        cum   cum%
+     170ms  7.46%  7.46%      570ms 25.00%  runtime.scanobject
+     150ms  6.58% 14.04%      260ms 11.40%  runtime.findObject
+     120ms  5.26% 19.30%      120ms  5.26%  runtime.memclrNoHeapPointers
+     100ms  4.39% 23.68%      970ms 42.54%  runtime.mapassign_faststr
+      90ms  3.95% 27.63%      260ms 11.40%  runtime.bulkBarrierPreWrite
+      90ms  3.95% 31.58%      100ms  4.39%  runtime.spanOf (inline)
+      80ms  3.51% 35.09%       80ms  3.51%  aeshashbody
+      80ms  3.51% 38.60%       80ms  3.51%  runtime.(*mspan).base (inline)
+      60ms  2.63% 41.23%       60ms  2.63%  runtime.duffcopy
+      60ms  2.63% 43.86%       60ms  2.63%  runtime.nextFreeFast (inline)
+      50ms  2.19% 46.05%      480ms 21.05%  github.com/manuscript-lang/manuscript/pkg/lexer.Lex
+      50ms  2.19% 48.25%      140ms  6.14%  runtime.greyobject
+File: checker-after.test
+Build ID: 5a837b0c5d9a2aa85f50452819ef9d928c925c04
+Type: cpu
+Time: 2026-10-18 07:18:23 UTC
+Duration: 2.46s, Total samples = 2.28s (92.81%)
+Showing nodes accounting for 0, 0% of 2.28s total
+Dropped 69 nodes (cum <= 0.01s)
+Showing top 10 nodes out of 177
+      flat  flat%   sum%        cum   cum%
+         0     0%     0%      2.20s 96.49%  github.com/manuscript-lang/manuscript/pkg/checker.BenchmarkCheckerWideRecord.func1
+         0     0%     0%      2.20s 96.49%  github.com/manuscript-lang/manuscript/pkg/checker.benchmarkCheck
+         0     0%     0%      2.20s 96.49%  github.com/manuscript-lang/manuscript/pkg/checker.benchmarkCheck.func1
+         0     0%     0%      2.20s 96.49%  testing.(*B).run1.func1
+         0     0%     0%      2.20s 96.49%  testing.(*B).runN
+         0     0%     0%      1.49s 65.35%  github.com/manuscript-lang/manuscript/pkg/checker.Check (inline)
+         0     0%     0%      1.49s 65.35%  github.com/manuscript-lang/manuscript/pkg/checker.CheckWithOptions
+         0     0%     0%      1.49s 65.35%  github.com/manuscript-lang/manuscript/pkg/checker.check
+         0     0%     0%      1.32s 57.89%  github.com/manuscript-lang/manuscript/pkg/checker.(*checker).checkModule
+         0     0%     0%      1.14s 50.00%  github.com/manuscript-lang/manuscript/pkg/checker.(*checker).block

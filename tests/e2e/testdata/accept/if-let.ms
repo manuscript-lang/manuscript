@@ -1,4 +1,5 @@
-import panic from "@std/faults.ms"
+import {TextError} from "@std/errors.ms"
+import {expect_true, fail} from "@std/testing.ms"
 
 fn describe(name: Optional[String]) String:
     if let value = name:
@@ -10,41 +11,40 @@ fn total(items: List[Optional[Int]]) Int:
     var sum = 0
     for item in items:
         if let value = item:
-            sum += value
+            sum = sum + value
     return sum
 
-fn check(value: Bool, message: String) Unit:
-    if not value:
-        panic(message)
+fn check(value: Bool, message: String) Result[Unit, Error]:
+    (value) | try expect_true
+    return ok(unit)
 
 test "if let unwraps a present optional":
     if let value = [4, 5].first():
-        check(value == 4, "wrong value")
+        (try check(value: value == 4, message: "wrong value"))
     else:
-        panic("expected some")
+        try fail(message: "expected some")
 
 test "if let takes else when absent and keeps falsy payloads":
-    check(describe(none) == "Hello!", "none")
-    check(describe(some("Ada")) == "Hello, Ada", "some")
+    (try check(value: describe(none) == "Hello!", message: "none"))
+    (try check(value: describe(some("Ada")) == "Hello, Ada", message: "some"))
     let items: List[Optional[Int]] = [some(1), none, some(0), some(2)]
-    check(total(items) == 3, "total")
+    (try check(value: total(items) == 3, message: "total"))
     let empty: List[Int] = []
-    if let value = empty.first():
-        panic("unexpected {value}")
+    if let value = empty.first(): return fail(message: "unexpected {value}")
 
-fn parse(text: String) Result[Int, String]:
+fn parse(text: String) Result[Int, TextError]:
     if text == "":
-        return error("empty")
+        return error(TextError("empty"))
 
     return ok(text.length())
 
 test "if let unwraps an ok result and takes else on error":
     if let value = parse("abc"):
-        check(value == 3, "ok value")
+        (try check(value: value == 3, message: "ok value"))
     else:
-        panic("expected ok")
+        try fail(message: "expected ok")
 
     if let value = parse(""):
-        panic("unexpected {value}")
+        try fail(message: "unexpected {value}")
     else:
-        check(true, "error branch")
+        (try check(value: true, message: "error branch"))

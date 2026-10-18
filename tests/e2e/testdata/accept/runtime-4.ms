@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 import Bytes from "@std/bytes.ms"
 import File from "@std/io.ms"
 import IoError from "@std/io.ms"
@@ -16,7 +16,5 @@ impl File for ClosedFile:
 test "contract-valued cleanup":
     with file = File(ClosedFile(unit)):
         let read = file.read(1)
-        if read.is_ok():
-            return panic("Unexpected case")
-        if not (read.err() == IoError.Closed):
-            return panic("check failed")
+        try expect_false(read.is_ok())
+        try expect_equal(read.err(), IoError.Closed)

@@ -119,7 +119,7 @@ fn append(w: Writer, data: Bytes) Result[Unit, LogError]:
     if not has_file(w): try open_active(w)
     if rotation_due(w, data.length()): try rotate(w)
     let handle = try active_file(w)
-    handle.write(data) | try lift
+    handle.write_bytes(data) | try lift
     w.size += data.length()
     return ok(unit)
 
@@ -179,7 +179,10 @@ fn wait_for_writer(t: AsyncFileTransport) Result[Unit, LogError]:
     return error(LogError.Closed)
 
 impl Transport for AsyncFileTransport:
-    fn write(data: Bytes) Result[Unit, LogError]:
+    fn write(data: String) Result[Unit, LogError]:
+        return self.write_bytes(data.to_bytes())
+
+    fn write_bytes(data: Bytes) Result[Unit, LogError]:
         if let cause = take_failure(self.failures, self.failure_lock): return error(
             cause
         )

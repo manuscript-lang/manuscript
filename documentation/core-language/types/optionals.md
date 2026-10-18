@@ -103,8 +103,8 @@ A [match](../control-flow/pattern-matching.md) with only `some` and `none` arms 
 
 ## Converting absence to a Result
 
-- `ok_or[E = MissingValue](cause: Optional[E] = none) Result[T, E]`: `ok` with the payload, or `error` with `cause` when absent. `cause` is evaluated eagerly; `E` need not implement `Error`.
-- `ok_or_else[E](create: fn() E) Result[T, E]`: calls `create` once, only on absence.
+- `ok_or[E: Error = MissingValue](cause: Optional[E] = none) Result[T, E]`: `ok` with the payload, or `error` with `cause` when absent. `cause` is evaluated eagerly; `E` must implement `Error`.
+- `ok_or_else[E: Error](create: fn() E) Result[T, E]`: calls `create` once, only on absence.
 
 Omitting the cause yields the prelude `MissingValue` (from `@std/errors.ms`), the [default type argument](generics.md#default-type-arguments). It records the source file and line of the `ok_or()` call, and `message()` reports them, such as `missing value at src/main.ms:12`. Since `MissingValue` implements `Error`, `try` flattens it in any function whose error type is `Error`:
 
@@ -114,7 +114,7 @@ fn port_number(text: String) Result[Int, Error]:
     return ok(port)
 ```
 
-A context fixing another error type, such as `Result[Int, String]`, needs a cause; omitting it faults with `called Optional.ok_or() without a cause for an error type other than MissingValue`.
+A context fixing another error type, such as `Result[Int, TextError]`, needs a cause; omitting it faults with `called Optional.ok_or() without a cause for an error type other than MissingValue`.
 
 [Result.to_optional](../errors/results.md#converting-success-to-an-optional) to keep success while discarding an error.
 

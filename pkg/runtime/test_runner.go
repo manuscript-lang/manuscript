@@ -102,7 +102,7 @@ func RunTests(tests []Test, args []string) int {
 	defer cancel()
 	watch := watchStops(cancel)
 	defer watch.stop()
-	return runTestsContext(tests, options, args, reporter, ctx)
+	return runTestsContext(tests, options, nil, reporter, ctx)
 }
 
 // RunTestsWith runs tests with explicit options and no structured reporter.

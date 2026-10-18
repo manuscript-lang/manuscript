@@ -106,11 +106,11 @@ func check_String_Trim() {
 func check_String_Upper() {
 	var _ func(*Execution, string) string = String_Upper
 }
-func check_String_At() {
-	var _ func(*Execution, string, int) Option[string] = String_At
+func check_String_Get() {
+	var _ func(*Execution, string, int, Option[string]) string = String_Get
 }
 func check_String_ScalarAt() {
-	var _ func(*Execution, string, int) Option[int] = String_ScalarAt
+	var _ func(*Execution, string, int, Option[int]) int = String_ScalarAt
 }
 func check_String_IndexOf() {
 	var _ func(*Execution, string, string) Option[int] = String_IndexOf

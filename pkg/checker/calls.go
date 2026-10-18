@@ -58,7 +58,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		i.Arguments = constructorArguments(e.Args, fields)
 		typ = c.instantiate(typ, fields, i.Arguments, expected, e.Pos)
 		fields = ConstructorSignature(typ).Params
-		if (std(typ, "Queue") || std(typ, "BlockingQueue")) && len(e.Args) == 0 {
+		if (std(typ, "Queue") || std(typ, "BlockingQueue") || std(typ, "Set")) && len(e.Args) == 0 {
 			fields = nil
 		}
 		i.NoReturn = c.argumentsFor(typ.Name, e.Pos, i.Arguments, fields, ConstructorSignature(typ).Defaults)
@@ -164,7 +164,10 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		}
 		signature = callable.Type
 		i.Method = callable.Method
-		i.Native = callable.Native
+		if callable.Native != "index" {
+			// An indexed callee (callbacks[0](2)) must not make the call itself lower as an index.
+			i.Native = callable.Native
+		}
 	}
 	if signature != nil && signature.ID == "<invalid>" {
 		i.Type = signature

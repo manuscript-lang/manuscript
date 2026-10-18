@@ -9,6 +9,12 @@ type Set[T comparable] struct {
 // NewSet returns a set holding items, matching elements by Go equality.
 func NewSet[T comparable](items ...T) *Set[T] { return NewSetWith(nil, items...) }
 
+// NewSetFromList returns a set of the list's elements in order, matching them
+// as keys say (nil matches by Go equality).
+func NewSetFromList[T comparable](keys *Keys[T], list *List[T]) *Set[T] {
+	return NewSetWith(keys, list.Items...)
+}
+
 // Keys is how the set matches elements.
 func (s *Set[T]) Keys() *Keys[T] { return s.m.keys }
 

@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 interface ReadValue[T]:
     fn get() T
@@ -43,11 +43,7 @@ test "contract views and callbacks":
     let _optional: Optional[ReadValue[Int]] = some(forwarded)
     let callback = CallbackReader(seven)
     let callback_view = ReadValue[Int](callback)
-    if not (first.get() == 7):
-        return panic("check failed")
-    if not (copied.get() == 7):
-        return panic("check failed")
-    if not (callback_view.get() == 7):
-        return panic("check failed")
-    if not (consume(holder.reader) == 7):
-        return panic("check failed")
+    try expect_equal(first.get(), 7)
+    try expect_equal(copied.get(), 7)
+    try expect_equal(callback_view.get(), 7)
+    try expect_equal(consume(holder.reader), 7)

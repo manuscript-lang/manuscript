@@ -1,0 +1,38 @@
+package lsp
+
+import (
+ "errors"
+ "os"
+ "path/filepath"
+ "strings"
+ "testing"
+)
+
+var deniedDiscoveryPath string
+var deniedDiscoveryReads int
+func discoveryProbeReadFile(path string) ([]byte,error) {
+ if path==deniedDiscoveryPath { deniedDiscoveryReads++; return nil,os.ErrPermission }
+ return os.ReadFile(path)
+}
+
+func TestDiscoveryAuthoritativeOverlaySurvivesDiskReadFailure(t *testing.T) {
+ root,files:=snapshotFiles(t,map[string]string{
+ "ms.toml":"[project]\nname = \"read_error\"\nsource = \".\"\nentry = \"main.ms\"\n",
+ "main.ms":"import value from \"./dep.ms\"\nfn main() Int: value()\n",
+ "dep.ms":"export fn value() Int: 1\n",
+ "sibling.ms":"fn sibling() Int: 2\n",
+ })
+ deniedDiscoveryPath=filepath.Join(root,"main.ms");deniedDiscoveryReads=0
+ defer func(){deniedDiscoveryPath=""}()
+ open:=files["main.ms"]
+ docs:=map[string]document{open.URI:open}
+ names:=map[string]bool{}
+ for _,item:=range workspaceSymbols(docs,[]string{root},"") { names[item.(map[string]any)["name"].(string)]=true }
+ if !names["main"]||!names["value"]||!names["sibling"] {t.Fatal("read failure lost valid overlay or closed sibling symbols",names)}
+ p:=Position(open.Text,strings.LastIndex(open.Text,"value"))
+ if refs:=workspaceReferences(open,docs,p,true);len(refs)!=3 {t.Fatal("read failure lost declaration/import/use references",refs)}
+ if deniedDiscoveryReads!=0 {t.Fatal("read authoritative overlay backing file",deniedDiscoveryReads)}
+ dummy:=document{URI:fileURI(filepath.Join(root,"__workspace_index.ms"))}
+ if _,err:=workspaceDocumentsWithCancel(dummy,nil,true,nil);!errors.Is(err,os.ErrPermission) {t.Fatal("closed-file I/O failure was concealed",err)}
+ if deniedDiscoveryReads!=1 {t.Fatal("closed-file negative control did not trigger injected I/O failure",deniedDiscoveryReads)}
+}

@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {stdin, stdout, read_line} from "@std/io.ms"
 
 type Parser:
@@ -8,7 +9,7 @@ type Parser:
 # Skips blanks and returns the next character code, or 0 at the end of the line.
 fn peek(p: Parser) Int:
     while p.pos < p.chars.length():
-        let c = p.chars.at(p.pos).get()
+        let c = p.chars.get(p.pos)
         if c != 32 and c != 9:
             return c
 
@@ -16,14 +17,14 @@ fn peek(p: Parser) Int:
 
     return 0
 
-fn atom(p: Parser) Result[Int, String]:
+fn atom(p: Parser) Result[Int, TextError]:
     let c = peek(p)
 
     if c >= 48 and c <= 57:
         var value = 0
 
         while p.pos < p.chars.length():
-            let d = p.chars.at(p.pos).get()
+            let d = p.chars.get(p.pos)
             if d < 48 or d > 57:
                 break
 
@@ -36,14 +37,14 @@ fn atom(p: Parser) Result[Int, String]:
         p.pos = p.pos + 1
         let inner = try expr(p)
         if peek(p) != 41:
-            return error("syntax")
+            return error(TextError("syntax"))
 
         p.pos = p.pos + 1
         return ok(inner)
 
-    return error("syntax")
+    return error(TextError("syntax"))
 
-fn unary(p: Parser) Result[Int, String]:
+fn unary(p: Parser) Result[Int, TextError]:
     if peek(p) == 45:
         p.pos = p.pos + 1
         let v = try unary(p)
@@ -51,7 +52,7 @@ fn unary(p: Parser) Result[Int, String]:
 
     return atom(p)
 
-fn term(p: Parser) Result[Int, String]:
+fn term(p: Parser) Result[Int, TextError]:
     var value = try unary(p)
 
     while true:
@@ -72,7 +73,7 @@ fn term(p: Parser) Result[Int, String]:
 
     return ok(value)
 
-fn expr(p: Parser) Result[Int, String]:
+fn expr(p: Parser) Result[Int, TextError]:
     var value = try term(p)
 
     while true:
@@ -114,7 +115,7 @@ fn run() Result[Unit, Error]:
         if line.trim().is_empty():
             continue
 
-        try stdout().write("{evaluate(line)}\n".to_bytes())
+        try stdout().write("{evaluate(line)}\n")
 
     return stdout().flush()
 

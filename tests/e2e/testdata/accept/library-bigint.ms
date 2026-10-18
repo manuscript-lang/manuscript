@@ -1,19 +1,18 @@
-import panic from "@std/faults.ms"
+import {expect_false} from "@std/testing.ms"
 import parse from "@std/bigint.ms"
+import BigInt from "@std/bigint.ms"
 import BigIntError from "@std/bigint.ms"
 
-fn verify_bigint() Result[Unit, BigIntError]:
-    let large = try parse("18446744073709551616", 10, 30)
-    if not (
-        ((large).multiply(large)).to_string_radix(
-            10
-        ) == "340282366920938463463374607431768211456"
-    ):
-        return panic("check failed")
-
+fn verify_bigint() Result[Unit, Error]:
+    let large = try parse(text: "18446744073709551616", radix: 10, max_digits: 30)
+    (
+        not (
+            ((large).multiply(other: large)).to_string_radix(
+                radix: 10
+            ) == "340282366920938463463374607431768211456"
+        )
+    ) | try expect_false
     return ok(unit)
 
 test "large integers are exact":
-    let expected: Result[Unit, BigIntError] = ok(unit)
-    if not (verify_bigint() == expected):
-        return panic("check failed")
+    try verify_bigint()

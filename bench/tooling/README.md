@@ -1,5 +1,9 @@
 # Tooling performance review and controls
 
+[Bounded remedy completion and newer measurements](followup/README.md) track
+what remains after the first merged stages; the original six findings are not
+all closed by those stages.
+
 The review found repeated checking/indexing, obsolete diagnostics and VS Code
 client ownership bugs. The bounded fixes retain full uncanceled results and
 conservative source-generation invalidation. They do not establish that every

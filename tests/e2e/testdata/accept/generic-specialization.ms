@@ -1,5 +1,5 @@
+import {expect_equal} from "@std/testing.ms"
 import range from "@std/collections.ms"
-import panic from "@std/faults.ms"
 
 fn ident[T](x: T) T:
     return x
@@ -20,19 +20,13 @@ test "static specializations are reused across calls":
     var acc = 0
     for i in range(0, 100):
         acc += ident(i)
-    if not (acc == 4950):
-        return panic("ident")
-    if not (ident("a") == "a"):
-        return panic("string")
+    try expect_equal(acc, 4950)
+    try expect_equal(ident("a"), "a")
 
 test "recursive generics with static arguments":
-    if not (depth() == 5):
-        return panic("recursion")
-    if not (countdown(1, 3) == 3):
-        return panic("int recursion")
+    try expect_equal(depth(), 5)
+    try expect_equal(countdown(1, 3), 3)
 
 test "generic calls with type-variable arguments still resolve":
-    if not (twice(4) == 4):
-        return panic("twice int")
-    if not (twice("b") == "b"):
-        return panic("twice string")
+    try expect_equal(twice(4), 4)
+    try expect_equal(twice("b"), "b")

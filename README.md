@@ -12,7 +12,7 @@ Most languages were shaped for human authors and then adapted to agents. Manuscr
 | --- | --- |
 | **A language with little to get wrong** | Statically typed, four-space blocks, no implicit conversion or truthiness, no special async syntax, and flat `match`. Failure is a value: `Optional`, `Result`, and `try`. Cleanup is scoped with `with`. Fewer concepts means fewer first-draft errors and less to review. |
 | **Tools that give evidence, not prose** | `--json` from `check`, `lint`, `test`, `build`, and `inspect`; `ms search_symbol` finds exact APIs, `ms guide` prints the cheat sheet, `ms verify` runs check, format, lint, and test in one result, and `ms review` and `ms diagram` show the effect of a change from the checked source, deterministically. |
-| **Native code without a second language to manage** | Source lowers to typed Go (no boxing, no `any` in signatures) and compiles with a bundled toolchain. On the [performance benchmark](bench/perf/programs/results.md) generated code runs about 0.8x to 3.3x the time of hand-written Go on microbenchmarks, and each gap is a tracked optimization target. |
+| **Native code without a second language to manage** | Source compiles to a native executable with a bundled toolchain. On the [performance benchmark](bench/perf/programs/results.md) generated code runs about 0.8x to 3.3x the time of hand-written Go on microbenchmarks, and each gap is a tracked optimization target. |
 | **One binary, always fresh** | `ms` is the compiler, formatter, linter, test runner, language server, debugger, and profiler. Nothing else to install. Rebuilds reuse a shared compiled-runtime workspace and replayed compile and link commands; no executable cache, so a stale binary never runs. |
 | **Measured on real agents** | [`agent-bench`](bench/agent/README.md) runs the same challenges in Manuscript, Go, TypeScript, and Rust. Failures there drive diagnostics, docs, and the cheat sheet. The latest Haiku baseline has Manuscript behind the others on pass rate and cost, and closing that gap is the current work. |
 
@@ -27,12 +27,12 @@ Manuscript is statically typed. Write `.ms` files and build native executables w
 This complete program prints the number of arguments it receives:
 
 ```manuscript
-import arguments from "@std/cli.ms"
+import arguments from "@std/process.ms"
 import stdout from "@std/io.ms"
 
 export fn main() Int:
     let message = "Arguments: {arguments().length()}\n"
-    if stdout().write(message.to_bytes()).is_error():
+    if stdout().write(message).is_error():
         return 1
     return 0
 ```

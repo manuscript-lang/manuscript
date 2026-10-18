@@ -76,10 +76,10 @@ interface StringOperations:
     fn trim() String
     # Returns locale-independent full Unicode uppercase mapping; the scalar length can change.
     fn upper() String
-    # Returns a one-scalar String; negative indexes are relative to the end, and invalid indexes return none.
-    fn at(index: Int) Optional[String]
-    # Returns an integer scalar code point; negative indexes are relative to the end, and invalid indexes return none.
-    fn scalar_at(index: Int) Optional[Int]
+    # Returns a one-scalar String; negative indexes are relative to the end. An invalid index returns `default`, and without one raises a fault.
+    fn get(index: Int, default: Optional[String] = none) String
+    # Returns an integer scalar code point; negative indexes are relative to the end. An invalid index returns `default`, and without one raises a fault.
+    fn scalar_at(index: Int, default: Optional[Int] = none) Int
     # Returns the first matching Unicode scalar index or none; empty value matches at zero.
     fn index_of(value: String) Optional[Int]
     # Returns the last matching Unicode scalar index or none; empty value matches at scalar_length().

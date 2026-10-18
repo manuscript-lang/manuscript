@@ -260,12 +260,12 @@ hits, and measure the emitted Go with `go build -gcflags=-cpuprofile`, since
 `emit` can stay linear while the Go build does not.
 
 
-### Index narrowing is a flow proof with a retained runtime check
-Verified: `list[index]` is `Optional[T]` unless `pkg/checker/bounds.go` proves a nonnegative index below `list.length()` on the same local bindings. Lists are shared references, so a proof dies at assignments to either binding, at any statement containing a call other than `length()`, and at closure and loop back-edges. `values[i]` parses as `KindApply` until checked, so analyses keyed on `KindIndex` miss most lookups. Lowering still emits `Optional_Unwrap(List_At(...))`; narrowing is typing only, and bounds-check elimination needs its own proof.
+### Indexing faults instead of narrowing
+Verified: `list[index]` is `T` and lowers to `List_Get(ctx, list, index, None)`, which faults out of range; `get(index, default:)` supplies a fallback. The earlier flow-sensitive bounds proof (#552) only narrowed the type while lowering kept the faulting read, so it was removed along with its facts, loop handling, and the Optional allocation on every read.
 
-Apply when: adding facts, loops, or new guard forms to indexing, or narrowing other lookups (`.at`, Map `get`).
-Evidence: #552; `pkg/checker/bounds.go`, `pkg/checker/bounds_test.go`, `tests/e2e/proven_index_test.go`.
-Verify: every guard form needs a paired rejection (upper-only, lower-only, other list, copied length, reassignment, mutation between, closure, flattened index).
+Apply when: adding new lookup forms or reintroducing bounds-check elimination, which needs its own proof.
+Evidence: `pkg/runtime/list.go` (`List_Get`), `pkg/lower/expr.go` (`indexValue`).
+Verify: out-of-range `[]` faults with the index and length; `get` with a default never faults.
 
 ### Lowered Int hot paths keep faults but not avoidable calls
 Verified: `Int` `/` and `%` by a positive literal cannot be zero, -1, or overflow, so they lower to Go's operators instead of `IntDivide`/`IntRemainder`; the loop cancellation poll is an inline `tick++; tick&63 == 0` on a plain local, because `Poll(ctx, &tick)` forced the counter into memory and halved a tight loop's speed (21.8 ms to 15.9 ms for 10M iterations). Integer identities (`+ 0`, `- 0`, `* 0`, `* 1`, including commuted `+`/`*`) also cannot overflow. Emit both operands in the Go operation to preserve effectful calls even when the result is constant. Other `+`, `-`, `*` stay checked: overflow faults are language behavior and need a range proof to remove.

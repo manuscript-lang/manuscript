@@ -43,16 +43,16 @@ fn lcs(a: String, b: String) Int:
         j = 0
 
         while j < y.length():
-            if ch == y.at(j).get():
-                cur.append(prev.at(j).get() + 1)
+            if ch == y.get(j):
+                cur.append(prev.get(j) + 1)
             else:
-                cur.append(max_int(prev.at(j + 1).get(), cur.at(j).get()))
+                cur.append(max_int(prev.get(j + 1), cur.get(j)))
 
             j = j + 1
 
         prev = cur
 
-    return prev.at(y.length()).get()
+    return prev.get(y.length())
 
 fn edit(a: String, b: String) Int:
     let x = a.scalar_values()
@@ -73,14 +73,14 @@ fn edit(a: String, b: String) Int:
 
         while j <= y.length():
             var sub = 1
-            if x.at(i - 1).get() == y.at(j - 1).get():
+            if x.get(i - 1) == y.get(j - 1):
                 sub = 0
             let best = min_int(
                 min_int(
-                    prev.at(j).get() + 1,
-                    (cur.at(j - 1).get() + 1)
+                    prev.get(j) + 1,
+                    (cur.get(j - 1) + 1)
                 ),
-                (prev.at((j - 1)).get() + sub)
+                (prev.get((j - 1)) + sub)
             )
             cur.append(best)
             j = j + 1
@@ -88,13 +88,13 @@ fn edit(a: String, b: String) Int:
         prev = cur
         i = i + 1
 
-    return prev.at(y.length()).get()
+    return prev.get(y.length())
 
 fn knap(t: List[String]) String:
     if t.length() < 2:
         return "error: bad command"
 
-    let cap_opt = parse_num(t.at(1).get())
+    let cap_opt = parse_num(t.get(1))
     if cap_opt.is_none():
         return "error: bad command"
 
@@ -109,12 +109,12 @@ fn knap(t: List[String]) String:
     var i = 2
 
     while i < t.length():
-        let p = t.at(i).get().split(":")
+        let p = t.get(i).split(":")
         if p.length() != 2:
             return "error: bad command"
 
-        let w_opt = parse_num(p.at(0).get())
-        let v_opt = parse_num(p.at(1).get())
+        let w_opt = parse_num(p.get(0))
+        let v_opt = parse_num(p.get(1))
         if w_opt.is_none() or v_opt.is_none() or w_opt.get() < 1:
             return "error: bad command"
 
@@ -123,20 +123,20 @@ fn knap(t: List[String]) String:
         c = capacity
 
         while c >= w:
-            let candidate = best.at(c - w).get() + v
-            if candidate > best.at(c).get():
+            let candidate = best.get(c - w) + v
+            if candidate > best.get(c):
                 best.set(c, candidate)
             c = c - 1
 
         i = i + 1
 
-    return "{best.at(capacity).get()}"
+    return "{best.get(capacity)}"
 
 fn coins(t: List[String]) String:
     if t.length() < 3:
         return "error: bad command"
 
-    let amount_opt = parse_num(t.at(1).get())
+    let amount_opt = parse_num(t.get(1))
     if amount_opt.is_none():
         return "error: bad command"
 
@@ -145,7 +145,7 @@ fn coins(t: List[String]) String:
     var i = 2
 
     while i < t.length():
-        let c = parse_num(t.at(i).get())
+        let c = parse_num(t.get(i))
         if c.is_none() or c.get() < 1:
             return "error: bad command"
 
@@ -160,12 +160,12 @@ fn coins(t: List[String]) String:
     while a <= amount:
         var here = inf
         for c in cs:
-            if c <= a and best.at(a - c).get() + 1 < here:
-                here = best.at(a - c).get() + 1
+            if c <= a and best.get(a - c) + 1 < here:
+                here = best.get(a - c) + 1
         best.append(here)
         a = a + 1
 
-    let answer = best.at(amount).get()
+    let answer = best.get(amount)
     if answer >= inf:
         return "impossible"
 
@@ -173,19 +173,19 @@ fn coins(t: List[String]) String:
 
 fn solve_line(line: String) String:
     let t = line.split(" ")
-    let name = t.at(0).get()
+    let name = t.get(0)
 
     if name == "lcs" or name == "edit":
         if (
             t.length() != 3
-            or t.at(1).get().is_empty()
-            or t.at(2).get().is_empty()
+            or t.get(1).is_empty()
+            or t.get(2).is_empty()
         ):
             return "error: bad command"
         if name == "lcs":
-            return "{lcs(t.at(1).get(), t.at(2).get())}"
+            return "{lcs(t.get(1), t.get(2))}"
 
-        return "{edit(t.at(1).get(), t.at(2).get())}"
+        return "{edit(t.get(1), t.get(2))}"
 
     if name == "knap":
         return knap(t)
@@ -204,7 +204,7 @@ fn run() Result[Unit, Error]:
         if line.replace_all(old: " ", new: "").get().is_empty():
             continue
 
-        try stdout().write("{solve_line(line)}\n".to_bytes())
+        try stdout().write("{solve_line(line)}\n")
 
     return stdout().flush()
 

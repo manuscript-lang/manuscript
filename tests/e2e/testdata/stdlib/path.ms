@@ -1,49 +1,32 @@
+import {expect_equal, expect_false} from "@std/testing.ms"
 import {posix, win32, PathError, dirname, basename_without} from "@std/path.ms"
-import panic from "@std/faults.ms"
 
 test "POSIX paths normalize resolve parse and match without host access":
     let paths = posix()
-    if paths.normalize("/a/./b/../c") != "/a/c": return panic("POSIX normalize")
-    if paths.join(["/a", "b", "c.txt"]) != "/a/b/c.txt": return panic("POSIX join")
-    if (try paths.relative("/a/b", "/a/c")) != "../c": return panic("POSIX relative")
-    if (try paths.resolve("/a", ["b", "../c"])) != "/a/c": return panic("POSIX resolve")
-
+    try expect_equal(paths.normalize("/a/./b/../c"), "/a/c")
+    try expect_equal(paths.join(["/a", "b", "c.txt"]), "/a/b/c.txt")
+    try expect_equal((try paths.relative("/a/b", "/a/c")), "../c")
+    try expect_equal((try paths.resolve("/a", ["b", "../c"])), "/a/c")
     let parsed = paths.parse("/a/file.tar.gz")
-    if parsed.name != "file.tar" or parsed.extension != ".gz": return panic(
-        "path parts"
-    )
-    if paths.format(parsed) != "/a/file.tar.gz": return panic("path format")
-    if not (try paths.matches_glob("src/main.ms", "src/*.ms")): return panic(
-        "glob match"
-    )
-    if (try paths.matches_glob("src/main.go", "src/*.ms")): return panic(
-        "glob mismatch"
-    )
+    try expect_false(parsed.name != "file.tar" or parsed.extension != ".gz")
+    try expect_equal(paths.format(parsed), "/a/file.tar.gz")
+    try expect_false(not (try paths.matches_glob("src/main.ms", "src/*.ms")))
+    try expect_false((try paths.matches_glob("src/main.go", "src/*.ms")))
 
 test "Windows paths use explicit dialect on every platform":
     let paths = win32()
-    if paths.separator() != "\\" or paths.delimiter() != ";": return panic(
-        "Windows separators"
-    )
-    if not paths.is_absolute("C:\\work\\file.txt"): return panic("drive absolute")
-    if paths.basename("C:\\work\\file.txt") != "file.txt": return panic(
-        "Windows basename"
-    )
-    if paths.normalize("C:\\a\\..\\b") != "C:\\b": return panic("Windows normalize")
-    if (try paths.relative("C:\\a", "C:\\b")) != "..\\b": return panic(
-        "Windows relative"
-    )
+    try expect_false(paths.separator() != "\\" or paths.delimiter() != ";")
+    try expect_false(not paths.is_absolute("C:\\work\\file.txt"))
+    try expect_equal(paths.basename("C:\\work\\file.txt"), "file.txt")
+    try expect_equal(paths.normalize("C:\\a\\..\\b"), "C:\\b")
+    try expect_equal((try paths.relative("C:\\a", "C:\\b")), "..\\b")
 
 test "module dirname and basename_without follow the host dialect":
-    if dirname("") != ".": return panic("empty dirname")
-    if basename_without("dir/file.txt", ".txt") != "file": return panic(
-        "basename_without suffix"
-    )
-    if basename_without("dir/file.txt", ".md") != "file.txt": return panic(
-        "basename_without keeps non-matching suffix"
-    )
+    try expect_equal(dirname(""), ".")
+    try expect_equal(basename_without("dir/file.txt", ".txt"), "file")
+    try expect_equal(basename_without("dir/file.txt", ".md"), "file.txt")
 
 test "glob matching rejects NUL in the path as it does in the pattern":
     let invalid: Result[Bool, PathError] = error(PathError.InvalidInput)
-    if posix().matches_glob("a\u{0}b", "*") != invalid: return panic("NUL path")
-    if posix().matches_glob("ab", "*\u{0}") != invalid: return panic("NUL pattern")
+    try expect_equal(posix().matches_glob("a\u{0}b", "*"), invalid)
+    try expect_equal(posix().matches_glob("ab", "*\u{0}"), invalid)

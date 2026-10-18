@@ -1,8 +1,9 @@
-import panic from "@std/faults.ms"
+import {TextError} from "@std/errors.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
-fn fail[T](message: String) Result[T, String]: error(message)
+fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 
-fn fail_cause[T, E](cause: E) Result[T, E]: error(cause)
+fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)
 
 fn absent[T]() Optional[T]: none
 
@@ -18,7 +19,7 @@ type Failure:
 impl Error for Failure:
     fn message() String: self.detail
 
-fn first() Result[List[Int], String]: fail("empty")
+fn first() Result[List[Int], TextError]: fail("empty")
 
 fn failed() Result[Int, Error]: fail_cause(Failure("domain"))
 
@@ -38,37 +39,29 @@ fn combine[T](events: Events, first: Optional[T], second: Optional[T]) Optional[
     return first
 
 test "expected generic results preserve behavior and call order":
-    let result: Result[List[Int], String] = first()
-    if result.is_ok(): return panic("expected failure")
-    if result.err() != "empty": return panic("wrong failure")
-
+    let result: Result[List[Int], TextError] = first()
+    try expect_false(result.is_ok())
+    try expect_equal(result.err().message(), "empty")
     let domain = failed()
-    if domain.is_ok(): return panic("expected domain failure")
-    if domain.err().message() != "domain": return panic("lost error dispatch")
-
+    try expect_false(domain.is_ok())
+    try expect_equal(domain.err().message(), "domain")
     let empty: Optional[Int] = forward()
-    if not empty.is_none(): return panic("expected none")
-
+    try expect_false(not empty.is_none())
     let values: List[Optional[Int]] = [1, 2].map(fn(item): absent())
-    if values.length() != 2: return panic("native contextual result")
-    if not values.at(0).get().is_none(): return panic("native callback result")
-
+    try expect_equal(values.length(), 2)
+    try expect_false(not values.get(0).is_none())
     let callback: fn(value: Int) String = transform(fn(item): item.to_string())
-    if callback(7) != "7": return panic("contextual callback parameter")
-
+    try expect_equal(callback(7), "7")
     let defaulted: fn(value: Int) Int = from_callback(
         fn(): fn(value: Int = 4): (value + 1)
     )
-    if defaulted(8) != 9: return panic("contextual function result")
-    if consume(identity(5)) != 5: return panic("optional argument wrapping")
-
+    try expect_equal(defaulted(8), 9)
+    try expect_equal(consume(identity(5)), 5)
     let events = Events([])
     let combined: Optional[Int] = combine(
         events,
         second: record(events, 2),
         first: record(events, 1)
     )
-    if not combined.is_none(): return panic("nested contextual result")
-    if events.values != [2, 1, 3]: return panic(
-        "nested calls evaluated more than once or out of order"
-    )
+    try expect_false(not combined.is_none())
+    try expect_equal(events.values, [2, 1, 3])
