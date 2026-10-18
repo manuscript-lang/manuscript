@@ -2,7 +2,6 @@ import {
     sha256,
     sha384,
     sha512,
-    hmac,
     derive_key,
     seal,
     open,
@@ -10,7 +9,8 @@ import {
     sign,
     verify,
     constant_time_equal,
-    CryptoError
+    CryptoError,
+    HashAlgorithm
 } from "@std/crypto.ms"
 import hex_encode from "@std/encoding.ms"
 import Bytes from "@std/bytes.ms"
@@ -27,10 +27,13 @@ test "crypto known SHA256 HMAC and PBKDF2 vectors":
         or sha512("abc".to_bytes()).length() != 64
     ): return panic("digest sizes")
 
-    let mac = try hmac(
-        "key".to_bytes(),
-        "The quick brown fox jumps over the lazy dog".to_bytes(),
-        "sha256"
+    let mac = (
+        try HashAlgorithm
+        .Sha256
+        .hmac(
+            "key".to_bytes(),
+            "The quick brown fox jumps over the lazy dog".to_bytes()
+        )
     )
     if (
         hex_encode(

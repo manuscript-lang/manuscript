@@ -25,7 +25,7 @@ func checkNativeResults(cli, directory string, environment []string) error {
 		return fmt.Errorf("version usage: %v, %d, %s, %s", err, status, alias, stderr)
 	}
 	source := filepath.Join(directory, "native-results=a=b.ms")
-	code := `import arguments from "@std/cli.ms"
+	code := `import arguments from "@std/process.ms"
 import {stdout, stderr} from "@std/io.ms"
 export fn main() Int:
     let args = arguments()

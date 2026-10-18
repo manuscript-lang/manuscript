@@ -148,7 +148,7 @@ export type ProcessInfo:
     parent_pid: Int
     # Absolute path of the running program file.
     executable: String
-    # Live native argv including argv[0]; cli.arguments() is the supplied startup tail without it.
+    # Live native argv including argv[0]; process.arguments() is the supplied startup tail without it.
     arguments: List[String]
     # Operating system name in Go's naming, such as `linux`, `darwin`, or `windows`.
     os: String
@@ -252,6 +252,10 @@ impl Error for CommandError:
 
 # Returns child-process operations for the current host.
 export fn commands() Commands:
+
+# Returns the host-supplied startup arguments, excluding the executable path.
+# Repeated calls share the same mutable list; mutations do not rewrite native argv.
+export fn arguments() List[String]:
 
 # Returns controls and process information for the current process.
 export fn control() ProcessControl:

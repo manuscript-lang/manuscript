@@ -4,7 +4,7 @@ export type BigIntError:
     case InvalidInput
     # The text is not an optionally signed integer made only of digits valid in the radix.
     case InvalidData
-    # The text has more digits than `max_digits`; the sign is not counted, and this check precedes syntax validation.
+    # The text exceeds `max_digits` after excluding at most one leading sign; this check precedes syntax validation.
     case LimitExceeded
 
 # An arbitrary-precision signed integer with explicit arithmetic operations.

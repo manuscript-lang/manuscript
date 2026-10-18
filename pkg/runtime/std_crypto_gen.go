@@ -10,9 +10,6 @@ func check_Crypto_ConstantTimeEqual() {
 func check_Crypto_DeriveKey() {
 	var _ func(*Execution, *Bytes, *Bytes, int, int) Result[*Bytes, CryptoError] = Crypto_DeriveKey
 }
-func check_Crypto_Hmac() {
-	var _ func(*Execution, *Bytes, *Bytes, string) Result[*Bytes, CryptoError] = Crypto_Hmac
-}
 func check_Crypto_Open() {
 	var _ func(*Execution, *Bytes, *Bytes, *Bytes, *Bytes) Result[*Bytes, CryptoError] = Crypto_Open
 }

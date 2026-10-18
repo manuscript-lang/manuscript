@@ -40,12 +40,8 @@ func wantFSError[T any](t *testing.T, r Result[T, FileSystemError], want FileSys
 
 func TestHostRootsAccessors(t *testing.T) {
 	ctx := rootExecution(context.Background(), []string{"a", "b"})
-	if got := Cli_Arguments(ctx).Items; len(got) != 2 || got[0] != "a" {
+	if got := Process_Arguments(ctx).Items; len(got) != 2 || got[0] != "a" {
 		t.Fatalf("arguments %v", got)
-	}
-	os.Setenv("RT_HOST_TEST", "1")
-	if v, _ := Cli_Environment(ctx).Lookup("RT_HOST_TEST"); v != "" {
-		t.Fatalf("environment is a startup snapshot, saw %q", v)
 	}
 	if Io_Stdout(ctx) == nil || Io_Stderr(ctx) == nil || Io_Stdin(ctx) == nil || Io_Files(ctx) == nil || Fs_Filesystem(ctx) == nil || Process_Commands(ctx) == nil || Process_Control(ctx) == nil || System_System(ctx) == nil || Time_Clock(ctx) == nil || Time_WallClock(ctx) == nil {
 		t.Fatal("missing root service")
@@ -461,14 +457,11 @@ func TestSystemAndProcessControl(t *testing.T) {
 	}
 	name := "RT_CONFORMANCE"
 	mustOK(t, control.SetEnvironment(ctx, name, Some("v")))
-	if v := sys.Environment(ctx, name); !v.Some || v.Val != "v" {
-		t.Fatal("system environment")
-	}
 	if v, _ := mustOK(t, control.Environment(ctx)).Lookup(name); v != "v" {
 		t.Fatal("process environment")
 	}
 	mustOK(t, control.SetEnvironment(ctx, name, None[string]()))
-	if sys.Environment(ctx, name).Some {
+	if _, ok := mustOK(t, control.Environment(ctx)).Lookup(name); ok {
 		t.Fatal("unset")
 	}
 	if r := control.SetEnvironment(ctx, "A=B", None[string]()); !r.Failed || r.Err != (ProcessError_InvalidInput{}) {
