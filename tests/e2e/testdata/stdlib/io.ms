@@ -10,10 +10,10 @@ test "stream compositions invoke source implementations and preserve EOF":
         closed: false
     )
     let input = ReadStream(reader)
-    if (try read_line(input: input)) != some("one"): return panic("CRLF line")
-    if (try read_line(input: input)) != some("two"): return panic("LF line")
-    if (try read_line(input: input)) != some("last"): return panic("unterminated line")
-    if not (try read_line(input: input)).is_none(): return panic("EOF")
+    if (try read_line(input)) != some("one"): return panic("CRLF line")
+    if (try read_line(input)) != some("two"): return panic("LF line")
+    if (try read_line(input)) != some("last"): return panic("unterminated line")
+    if not (try read_line(input)).is_none(): return panic("EOF")
 
     let output = MemoryStream(data: "".to_bytes(), offset: 0, closed: false)
     let source = MemoryStream(data: "é🙂".to_bytes(), offset: 0, closed: false)

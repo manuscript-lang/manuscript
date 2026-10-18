@@ -27,7 +27,7 @@ test "TLS certificate parsing verification hostname and expiration":
         chain_pem: certificate(),
         roots_pem: certificate(),
         server_name: "stdlib.test",
-        now: now
+        now
     )
     let failed: Result[Unit, TlsError] = error(TlsError.AuthenticationFailed)
     if (
@@ -35,7 +35,7 @@ test "TLS certificate parsing verification hostname and expiration":
             chain_pem: certificate(),
             roots_pem: certificate(),
             server_name: "wrong.test",
-            now: now
+            now
         ) != failed
     ): return panic("hostname validation")
 

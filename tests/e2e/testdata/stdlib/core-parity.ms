@@ -73,7 +73,7 @@ test "Result preserves unconstrained payloads and success-only composition":
     skipped.unwrap_error().calls = 2
     if counter.calls != 2: return panic("map copied error payload")
 
-    let mapped = success.map(transform: transform)
+    let mapped = success.map(transform)
     if mapped.unwrap() != "0" or counter.calls != 3: return panic("map success")
 
     let chain = fn(value: Int) Result[String, Counter]:
@@ -120,9 +120,7 @@ test "Result fallbacks are eager or lazy and bound methods keep receivers":
         cause.calls += 1
         return 12
     let lazy = success.unwrap_or_else
-    if lazy(create: create) != 0 or counter.calls != 1: return panic(
-        "success lazy fallback"
-    )
+    if lazy(create) != 0 or counter.calls != 1: return panic("success lazy fallback")
     if failure.unwrap_or_else(create) != 12 or counter.calls != 2: return panic(
         "error lazy fallback"
     )

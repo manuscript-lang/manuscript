@@ -162,7 +162,7 @@ test "Commands defaults cross concrete bound view and generic boundaries":
     )
 
     let input = Bytes([42])
-    let output = (try view.run(program: "fake", arguments: [], input: input)).stdout
+    let output = (try view.run(program: "fake", arguments: [], input)).stdout
     if output != input or capture.last != input:
         return panic("explicit input payload retains value")
 

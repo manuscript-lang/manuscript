@@ -5,7 +5,7 @@ type Transform:
     operation: fn(value: Int) Int
 
 fn apply[T](operation: fn(value: T) T, value: T) T:
-    return operation(value: value)
+    return operation(value)
 
 test "inline callbacks survive contextual rechecking":
     let value = apply(

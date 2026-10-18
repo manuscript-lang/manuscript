@@ -7,15 +7,15 @@ test "compression formats roundtrip and enforce expanded byte budgets":
     let input = "hello hello hello".to_bytes()
 
     for format in ["gzip", "zlib", "deflate"]:
-        let packed = try compress(data: input, format: format, level: 6)
-        if ((try decompress(data: packed, format: format, max_bytes: 17)) != input): return panic(
+        let packed = try compress(data: input, format, level: 6)
+        if ((try decompress(data: packed, format, max_bytes: 17)) != input): return panic(
             "compression roundtrip"
         )
 
         let limited: Result[Bytes, CompressionError] = error(
             CompressionError.LimitExceeded
         )
-        if (decompress(data: packed, format: format, max_bytes: 16) != limited): return panic(
+        if (decompress(data: packed, format, max_bytes: 16) != limited): return panic(
             "expanded byte budget"
         )
 
@@ -38,8 +38,8 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
     ]
 
     for format in ["zip", "tar"]:
-        let packed = try pack(entries: entries, format: format)
-        if (try unpack(data: packed, format: format)) != entries: return panic(
+        let packed = try pack(entries, format)
+        if (try unpack(data: packed, format)) != entries: return panic(
             "archive roundtrip"
         )
 
@@ -49,21 +49,21 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
         if (
             unpack(
                 data: packed,
-                format: format,
+                format,
                 limits: ArchiveLimits(max_entries: 1)
             ) != limited
         ): return panic("entry count")
         if (
             unpack(
                 data: packed,
-                format: format,
+                format,
                 limits: ArchiveLimits(max_entry_bytes: 4)
             ) != limited
         ): return panic("entry bytes")
         if (
             unpack(
                 data: packed,
-                format: format,
+                format,
                 limits: ArchiveLimits(max_total_bytes: 7)
             ) != limited
         ): return panic("total bytes")
@@ -72,7 +72,5 @@ test "archives reject traversal paths":
     let invalid: Result[Bytes, ArchiveError] = error(ArchiveError.InvalidInput)
 
     for path in ["../escape", "/absolute"]:
-        let entries = [ArchiveEntry(path: path, data: "".to_bytes(), directory: false)]
-        if pack(entries: entries, format: "zip") != invalid: return panic(
-            "unsafe archive path"
-        )
+        let entries = [ArchiveEntry(path, data: "".to_bytes(), directory: false)]
+        if pack(entries, format: "zip") != invalid: return panic("unsafe archive path")

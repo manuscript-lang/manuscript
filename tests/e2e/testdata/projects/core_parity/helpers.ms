@@ -6,7 +6,7 @@ export fn transform_set[T: Hashable, U: Hashable](
 
 export fn lookup[K: Hashable, V](values: Map[K, V], key: K, fallback: V) V:
     let get = values.get_or
-    return get(key, fallback: fallback)
+    return get(key, fallback)
 
 export fn locate_map[K: Hashable, V](
     values: Map[K, V],

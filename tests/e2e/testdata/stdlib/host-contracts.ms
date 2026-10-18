@@ -23,11 +23,9 @@ test "closed codec strings reject spelling changes with their domain errors":
     let data = "text".to_bytes()
     let hash_error: Result[Bytes, CryptoError] = error(CryptoError.Unsupported)
     for algorithm in ["SHA256", "sha-256", ""]:
-        if hmac(key: data, data: data, algorithm: algorithm) != hash_error: return panic(
-            "HMAC spelling"
-        )
+        if hmac(key: data, data, algorithm) != hash_error: return panic("HMAC spelling")
     for algorithm in ["sha256", "sha384", "sha512"]:
-        if (try hmac(key: data, data: data, algorithm: algorithm)).is_empty(): return panic(
+        if (try hmac(key: data, data, algorithm)).is_empty(): return panic(
             "HMAC algorithm"
         )
     let normalization_error: Result[String, StringError] = error(
@@ -44,17 +42,17 @@ test "closed codec strings reject spelling changes with their domain errors":
     )
 
     for format in ["GZIP", "ZLIB", "DEFLATE", ""]:
-        if compress(data: data, format: format, level: 0) != compression_error: return panic(
+        if compress(data, format, level: 0) != compression_error: return panic(
             "compression spelling"
         )
-        if decompress(data: data, format: format) != compression_error: return panic(
+        if decompress(data, format) != compression_error: return panic(
             "decompression spelling"
         )
 
     for format in ["gzip", "zlib", "deflate"]:
         for level in [0, 9]:
-            let encoded = try compress(data: data, format: format, level: level)
-            if (try decompress(data: encoded, format: format)) != data: return panic(
+            let encoded = try compress(data, format, level)
+            if (try decompress(data: encoded, format)) != data: return panic(
                 "compression level boundary"
             )
 
@@ -62,7 +60,7 @@ test "closed codec strings reject spelling changes with their domain errors":
         CompressionError.InvalidInput
     )
     for level in [-1, 10]:
-        if compress(data: data, format: "gzip", level: level) != level_error: return panic(
+        if compress(data, format: "gzip", level) != level_error: return panic(
             "compression level range"
         )
     let pack_error: Result[Bytes, ArchiveError] = error(ArchiveError.Unsupported)
@@ -71,12 +69,10 @@ test "closed codec strings reject spelling changes with their domain errors":
     )
 
     for format in ["ZIP", "TAR", ""]:
-        if pack(entries: [], format: format) != pack_error: return panic(
+        if pack(entries: [], format) != pack_error: return panic(
             "archive pack spelling"
         )
-        if unpack(data: data, format: format) != unpack_error: return panic(
-            "archive unpack spelling"
-        )
+        if unpack(data, format) != unpack_error: return panic("archive unpack spelling")
 
 test "all ten string open modes are accepted and changed spellings are invalid":
     let fs = filesystem()
@@ -85,8 +81,8 @@ test "all ten string open modes are accepted and changed spellings are invalid":
         for mode in ["r", "r+", "w", "wx", "w+", "wx+", "a", "ax", "a+", "ax+"]:
             let path = "{temporary.path()}/{mode}"
             if mode == "r" or mode == "r+":
-                try fs.write_file(path: path, data: "".to_bytes(), replace: false)
-            with handle = try fs.open(path: path, flags: mode, mode: 384):
+                try fs.write_file(path, data: "".to_bytes(), replace: false)
+            with handle = try fs.open(path, flags: mode, mode: 384):
                 let _fileinfo = try handle.stat()
 
         for mode in ["R", "rs", "w+x", " r", ""]:
@@ -109,7 +105,7 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
         let path = "{temporary.path()}/data"
         let data = (try "é".repeat(40000)).to_bytes()
 
-        with handle = try fs.open(path: path, flags: "w+", mode: 384):
+        with handle = try fs.open(path, flags: "w+", mode: 384):
             try handle.write(data)
             if (try handle.stat()).size != 80000: return panic(
                 "write did not write all bytes"

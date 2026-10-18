@@ -25,7 +25,7 @@ type ScalarCase:
     expected: String
 
 fn scalar(text: String, expected: String) Result[Unit, Error]:
-    let root = parse(text: text) | try | entries
+    let root = parse(text) | try | entries
     if root.get("a").unwrap() != YamlValue.StringValue(expected): return panic(
         "scalar folding: {text}"
     )
@@ -165,11 +165,11 @@ test "YAML plain paragraphs retain boundaries and nested collections":
 
 test "YAML blank line folding retains byte node and malformed input contracts":
     let text = "a: \"é\r\n\r\n  y\"\r\n"
-    let expected = try parse(text: text)
+    let expected = try parse(text)
     if (
         (
             try parse(
-                text: text,
+                text,
                 limits: limits(
                     bytes: text.byte_length(),
                     depth: 2,
@@ -183,7 +183,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
     let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
     if (
         parse(
-            text: text,
+            text,
             limits: limits(
                 bytes: text.byte_length() - 1,
                 depth: none,
@@ -192,12 +192,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
         ) != limited
     ):
         return panic("byte budget precedes line ending normalization")
-    if (
-        parse(
-            text: text,
-            limits: limits(bytes: none, depth: none, values: 1)
-        ) != limited
-    ):
+    if (parse(text, limits: limits(bytes: none, depth: none, values: 1)) != limited):
         return panic("folding does not alter value counting")
 
     for text in [
@@ -205,7 +200,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
         "a: x\n\n  - y", "a: x\n\n \ty", "a: x\n # comment\n  y", "a: >--\n\n  x",
         "a: >\n  x\n \t\n  y", "a: >2\n  x\n y"
     ]:
-        let parsed = parse(text: text)
+        let parsed = parse(text)
         if parsed.is_ok(): return panic("malformed multiline scalar accepted: {text}")
 
         match parsed.unwrap_error():
@@ -225,7 +220,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
 
 test "YAML block mappings sequences exact scalars and core schema":
     let text = "name: é🙂\nlarge: 9007199254740993\nboolean: TRUE\nlegacy: yes\ndate: 2024-02-29\nempty:\nvalues:\n- null\n- false\n- 0xFF\npeople:\n  - name: Ada\n    age: 37\n  - name: Grace\n    skills:\n      - compilers\n"
-    let root = parse(text: text) | try | entries
+    let root = parse(text) | try | entries
     if root.get("name").unwrap() != YamlValue.StringValue("é🙂"): return panic(
         "YAML Unicode"
     )
@@ -314,7 +309,7 @@ test "YAML literal folded and chomped block scalars preserve content":
 
 test "YAML anchors aliases merge keys and override precedence":
     let text = "defaults: &defaults\n  retries: 3\n  enabled: true\ncopy: *defaults\nconfig:\n  <<: *defaults\n  retries: 5\nscalar: &answer 42\nalias: *answer\nflow: &flow [1, 2]\nflow_alias: *flow\n"
-    let root = parse(text: text) | try | entries
+    let root = parse(text) | try | entries
     if root.get("defaults").unwrap() != root.get("copy").unwrap(): return panic(
         "mapping alias"
     )
@@ -358,7 +353,7 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
         "'unterminated", "*missing", "a: &loop [*loop]", "<<: 1",
         "---\na: 1\n---\nb: 2", "a: |0\n  text"
     ]:
-        let parsed = parse(text: text)
+        let parsed = parse(text)
         if parsed.is_ok(): return panic("invalid YAML accepted: {text}")
 
         let cause = parsed.unwrap_error()
@@ -378,7 +373,7 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
     for text in [
         "!custom value", "? complex\n: value", "%TAG ! tag:example.org\n---\na: 1"
     ]:
-        let parsed = parse(text: text)
+        let parsed = parse(text)
         if parsed.is_ok(): return panic("unsupported YAML accepted")
 
         match parsed.unwrap_error():
@@ -441,19 +436,19 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
 
 test "YAML exact decimal syntax does not depend on binary64 conversion":
     for text in [".5", "1.", "1.e2", "1e999999", ".Inf", ".NAN", "-0", "0001"]:
-        if (try parse(text: text)) != YamlValue.NumberValue(text): return panic(
+        if (try parse(text)) != YamlValue.NumberValue(text): return panic(
             "YAML number treated as string: {text}"
         )
     for text in [
         ".", "1e", "1_000", "+0xFF", "-.nan", ".iNF", "it's plain",
         "text [with] punctuation"
     ]:
-        if (try parse(text: text)) != YamlValue.StringValue(text): return panic(
+        if (try parse(text)) != YamlValue.StringValue(text): return panic(
             "plain scalar resolved incorrectly: {text}"
         )
 
 fn failure(text: String) String:
-    let parsed = parse(text: text)
+    let parsed = parse(text)
     if parsed.is_ok(): return "accepted"
 
     return parsed.unwrap_error().message()
@@ -485,8 +480,8 @@ test "YAML stringify round trips scalars sequences and mappings":
     let source = "title: \"é🙂 \\\"q\\\" \\t tab\"\nnone: null\nflag: true\nint: -42\nfloat: 1.5e3\nlist:\n  - 1\n  - two\n  - [3, 4]\n  - a: 1\n    b: [x, y]\nempty_list: []\nempty_map: \{\}\n\"odd key\": 1\n\"true\": 2\nnested:\n  deep:\n    value: ok\n"
     let parsed = try parse(text: source)
     let text = try stringify(value: parsed)
-    if (try parse(text: text)) != parsed: return panic("YAML stringify round trip")
-    if (parse(text: text) | try | stringify | try) != text: return panic(
+    if (try parse(text)) != parsed: return panic("YAML stringify round trip")
+    if (parse(text) | try | stringify | try) != text: return panic(
         "YAML stringify is stable"
     )
 
@@ -607,7 +602,7 @@ fn repeated(text: String, count: Int) String:
     if count <= 0: return ""
     if count == 1: return text
 
-    let half = repeated(text: text, count: count / 2)
+    let half = repeated(text, count: count / 2)
     if count % 2 == 1: return half.concat(half).concat(text)
 
     return half.concat(half)

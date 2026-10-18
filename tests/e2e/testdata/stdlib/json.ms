@@ -10,7 +10,7 @@ import panic from "@std/faults.ms"
 
 test "JSON exact numbers Unicode and nested roundtrip":
     let text = "\{\"n\":9007199254740993,\"s\":\"é🙂\",\"a\":[null,true,false]\}"
-    let parsed = try parse(text: text)
+    let parsed = try parse(text)
     if (try stringify(value: parsed)) != text: return panic("JSON precision or order")
     if (try parse(text: "\"\\uD83D\\uDE00\"")) != JsonValue.StringValue("😀"): return panic(
         "surrogate pair"
@@ -24,7 +24,7 @@ test "JSON rejects duplicate keys malformed Unicode and trailing values":
     for text in [
         "\{\"a\":1,\"\\u0061\":2\}", "\"\\uD800\"", "\"\\uDC00\"", "1 2", "NaN", "[1,]"
     ]:
-        if parse(text: text) != invalid: return panic("malformed JSON accepted")
+        if parse(text) != invalid: return panic("malformed JSON accepted")
 
 test "JSON independently enforces byte depth and value budgets":
     let limited: Result[JsonValue, JsonError] = error(JsonError.LimitExceeded)
@@ -245,7 +245,7 @@ test "JSON stringify encodes standard-library values":
         query: "x=1",
         fragment: ""
     )
-    let item = Stamped(at: at, took: duration(1500), data: "hi".to_bytes(), link: link)
+    let item = Stamped(at, took: duration(1500), data: "hi".to_bytes(), link)
     let expected = "\{\"at\":\"2023-11-14T22:13:20.5Z\",\"took\":1500,\"data\":\"aGk=\",\"link\":\"https://example.com:8080/a?x=1\"\}"
     if (try encoded(item)) != expected: return panic("timestamp duration bytes url")
     if (try encoded(TextError.Text("boom"))) != "\{\"Text\":\{\"message\":\"boom\"\}\}": return panic(
@@ -325,7 +325,7 @@ type Holder:
 
 test "JSON stringify omits interface values and monotonic instants":
     let who = Named(value: Person(name: "p"))
-    let holder = Holder(who: who, at: clock().now(), done: unit)
+    let holder = Holder(who, at: clock().now(), done: unit)
     if (try encoded(holder)) != "\{\}": return panic(
         "interface and instant fields have no JSON form"
     )
@@ -402,11 +402,11 @@ type Price:
     cents: BigInt
 
 fn decoded[T](text: String) Result[T, JsonError]:
-    return parse[T](text: text)
+    return parse[T](text)
 
 test "JSON parse decodes records by field name with defaults and optional fields":
     let text = "\{\"scores\":[1,2.5],\"name\":\"Ada\",\"labels\":\{\"a\":1\},\"ids\":[3,3,4]\}"
-    let profile: Profile = try parse[Profile](text: text)
+    let profile: Profile = try parse[Profile](text)
     if profile.name != "Ada": return panic("record field")
     if profile.age != 18: return panic("field default")
     if not profile.nickname.is_none(): return panic("missing optional is none")
@@ -539,11 +539,11 @@ test "JSON parse inverts stringify and works in generic code":
     )
 
 fn load_profile(text: String) Result[Profile, JsonError]:
-    let profile = try parse[Profile](text: text)
+    let profile = try parse[Profile](text)
     return ok(profile)
 
 fn load_default(text: String) Result[JsonValue, JsonError]:
-    return parse(text: text)
+    return parse(text)
 
 test "JSON parse takes its type from an explicit argument, the expected result or the JsonValue default":
     let profile = try load_profile(
@@ -570,9 +570,9 @@ test "JSON parse reads what stringify writes for standard values and scalar map 
         query: "x=1",
         fragment: ""
     )
-    let item = Stamped(at: at, took: duration(1500), data: "hi".to_bytes(), link: link)
+    let item = Stamped(at, took: duration(1500), data: "hi".to_bytes(), link)
     let text = try stringify(value: item)
-    let back: Stamped = try parse[Stamped](text: text)
+    let back: Stamped = try parse[Stamped](text)
     if (try stringify(value: back)) != text: return panic("standard values round trip")
     if back.took != duration(1500): return panic("duration nanoseconds")
 

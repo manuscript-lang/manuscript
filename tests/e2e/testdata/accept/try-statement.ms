@@ -7,12 +7,12 @@ fn parse(n: Int) Result[Int, String]:
     return ok(n)
 
 fn bound(n: Int) Result[Int, String]:
-    let v = try parse(n: n)
+    let v = try parse(n)
     return ok(v + 1)
 
 fn reassigned(n: Int) Result[Int, String]:
     var total = 1
-    total = try parse(n: n)
+    total = try parse(n)
     return ok(total * 2)
 
 fn check(n: Int) Result[Unit, String]:
@@ -22,17 +22,17 @@ fn check(n: Int) Result[Unit, String]:
     return ok(unit)
 
 fn discarded(n: Int) Result[Int, String]:
-    try check(n: n)
+    try check(n)
     return ok(7)
 
 fn code(r: Result[Int, String]) Int:
     return r.unwrap_or(-1)
 
 fn nested(n: Int) Result[Int, String]:
-    return ok((try parse(n: n)) + (try parse(n: n - 5)))
+    return ok((try parse(n)) + (try parse(n: n - 5)))
 
 fn chained(n: Int) Result[Int, String]:
-    let a = try bound(n: n)
+    let a = try bound(n)
     let b = try reassigned(n: a - 10)
     return ok(b)
 
@@ -44,7 +44,7 @@ fn in_loop(values: List[Int]) Result[Int, String]:
 
 fn in_lambda(n: Int) Result[Int, String]:
     let inner = fn() Result[Int, String]:
-        let v = try parse(n: n)
+        let v = try parse(n)
         return ok(v * 10)
     let r = try inner()
     return ok(r + 1)

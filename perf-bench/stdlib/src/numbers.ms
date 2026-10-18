@@ -90,7 +90,7 @@ export fn bench_numbers() Unit:
     )
 
 fn unpacked_length(data: Bytes) Int:
-    if let b = decompress(data: data, format: "gzip"):
+    if let b = decompress(data, format: "gzip"):
         return b.length()
 
     return 0

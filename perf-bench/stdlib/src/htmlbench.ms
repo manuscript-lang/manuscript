@@ -27,5 +27,5 @@ export fn bench_html() Unit:
         "html.escape_unescape",
         2000,
         fn() Int:
-            return unescape(text: escape(text: text)).length()
+            return unescape(text: escape(text)).length()
     )

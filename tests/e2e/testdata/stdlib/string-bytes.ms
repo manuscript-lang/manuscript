@@ -89,13 +89,13 @@ test "Bytes values direct bound and free calls return independent lists":
     let data = Bytes(values: input)
     input.set(index: 0, value: 42)
     let extract: fn() List[Int] = data.values
-    if data.values() != [0, 1, 255] or extract() != values(data: data): return panic(
+    if data.values() != [0, 1, 255] or extract() != values(data): return panic(
         "byte extraction or constructor changed"
     )
 
     let direct = data.values()
     let bound = extract()
-    let free = values(data: data)
+    let free = values(data)
     direct.set(index: 0, value: 99)
     bound.append(12)
     free.reverse_in_place()

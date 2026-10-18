@@ -9,7 +9,7 @@ type ZeroEntropy:
 impl Entropy for ZeroEntropy:
     fn bytes(count: Int) Result[Bytes, RandomError]:
         self.requested = count
-        return ok(Bytes(filled(value: 0, count: count).unwrap()))
+        return ok(Bytes(filled(value: 0, count).unwrap()))
 
 type FailedEntropy:
     message: String

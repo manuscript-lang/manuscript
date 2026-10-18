@@ -25,7 +25,7 @@ test "FIFO capacity empty reads draining and reuse":
     )
 
 test "priority queue orders values and honors capacity":
-    let queue = PriorityQueue(compare: compare, capacity: 3)
+    let queue = PriorityQueue(compare, capacity: 3)
     queue.enqueue(3)
     queue.enqueue(1)
     queue.enqueue(2)
@@ -49,7 +49,7 @@ test "synchronized guards update and release for later acquisition":
 
 test "scheduler delayed cancellation capacity and closed admission":
     let scheduler = Scheduler(limit: 1)
-    let id = try scheduler.after(duration: 60.seconds, operation: operation)
+    let id = try scheduler.after(duration: 60.seconds, operation)
     if scheduler.status(id) != WorkStatus.Running: return panic("scheduled status")
     if (try expect_error(scheduler.start(operation))) != StartError.Full: return panic(
         "scheduler capacity error"

@@ -32,7 +32,7 @@ test "process environment is live while CLI environment retains its snapshot":
     let name = "MANUSCRIPT_STDLIB_CONFORMANCE"
     let before = system().environment(name)
     let snapshot = environment().get(name)
-    try control().set_environment(name: name, value: "stdlib")
+    try control().set_environment(name, value: "stdlib")
     if system().environment(name) != some("stdlib"): return panic("system environment")
     if environment().get(name) != snapshot: return panic(
         "CLI environment snapshot changed"
@@ -41,7 +41,7 @@ test "process environment is live while CLI environment retains its snapshot":
         "process environment"
     )
 
-    try control().set_environment(name: name, value: before)
+    try control().set_environment(name, value: before)
 
 test "subprocess validation returns expected domain errors":
     let invalid: Result[CommandOutput, CommandError] = error(CommandError.InvalidInput)

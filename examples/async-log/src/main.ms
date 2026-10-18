@@ -15,11 +15,11 @@ test "records reach the file after flush and close":
         let path = "{directory.path()}/events.ndjson"
 
         with transport = try async_file_transport(path):
-            let logger = try create(transport: transport, timestamp: false)
+            let logger = try create(transport, timestamp: false)
             try logger.info(message: "one")
             try logger.info(message: "two")
             try logger.flush()
-            let data = try fs.read_file(path: path)
+            let data = try fs.read_file(path)
             if (
                 data.to_string() != some(
                     "\{\"level\":30,\"msg\":\"one\"\}\n\{\"level\":30,\"msg\":\"two\"\}\n"
@@ -28,25 +28,25 @@ test "records reach the file after flush and close":
 
             try logger.info(message: "three")
 
-        let after = try fs.read_file(path: path)
+        let after = try fs.read_file(path)
         if after.length() != 77: return panic("close drains: {after.length()}")
 
 fn line(text: String) String:
     return "\{\"level\":30,\"msg\":\"{text}\"\}\n"
 
 fn read(path: String) Result[String, Error]:
-    let data = try filesystem().read_file(path: path)
+    let data = try filesystem().read_file(path)
     return ok(data.to_string().unwrap_or(""))
 
 fn missing(path: String) Bool:
-    return filesystem().stat(path: path, follow_links: false).is_error()
+    return filesystem().stat(path, follow_links: false).is_error()
 
 test "size rotation keeps at most max_files files":
     with directory = try filesystem().temporary("alog-"):
         let path = "{directory.path()}/events.ndjson"
 
         with transport = try async_file_transport(path, max_bytes: 48, max_files: 3):
-            let logger = try create(transport: transport, timestamp: false)
+            let logger = try create(transport, timestamp: false)
             for name in ["m0", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9"]:
                 try logger.info(message: name)
 
@@ -64,7 +64,7 @@ test "a single allowed file is truncated by rotation":
         let path = "{directory.path()}/events.ndjson"
 
         with transport = try async_file_transport(path, max_bytes: 30, max_files: 1):
-            let logger = try create(transport: transport, timestamp: false)
+            let logger = try create(transport, timestamp: false)
             try logger.info(message: "a")
             try logger.info(message: "b")
 
@@ -76,7 +76,7 @@ test "age rotation starts a new file":
         let path = "{directory.path()}/events.ndjson"
 
         with transport = try async_file_transport(path, max_age: duration(50000000)):
-            let logger = try create(transport: transport, timestamp: false)
+            let logger = try create(transport, timestamp: false)
             try logger.info(message: "old")
             try logger.flush()
             sleep(duration(120000000))
@@ -89,12 +89,12 @@ test "an existing file's size counts toward rotation":
     with directory = try filesystem().temporary("alog-"):
         let path = "{directory.path()}/events.ndjson"
         try filesystem().write_file(
-            path: path,
+            path,
             data: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx".to_bytes()
         )
 
         with transport = try async_file_transport(path, max_bytes: 40):
-            let logger = try create(transport: transport, timestamp: false)
+            let logger = try create(transport, timestamp: false)
             try logger.info(message: "a")
 
         if try read("{path}.1") != "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx": return panic(

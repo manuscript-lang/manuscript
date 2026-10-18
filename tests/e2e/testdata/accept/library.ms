@@ -48,13 +48,10 @@ fn compare(left: Int, right: Int) Int:
 
 fn verify_json() Result[Unit, JsonError]:
     let limits = JsonLimits(max_bytes: 1024, max_depth: 8, max_values: 32)
-    let value = try parse(
-        text: "\{\"large\":9007199254740993,\"ok\":true\}",
-        limits: limits
-    )
+    let value = try parse(text: "\{\"large\":9007199254740993,\"ok\":true\}", limits)
     if not (
         try stringify(
-            value: value,
+            value,
             max_bytes: 1024
         ) == "\{\"large\":9007199254740993,\"ok\":true\}"
     ):
@@ -130,7 +127,7 @@ fn verify_archive() Result[Unit, ArchiveError]:
             directory: false
         )
     ]
-    let archive = try pack(entries: entries, format: "zip", max_bytes: 1024)
+    let archive = try pack(entries, format: "zip", max_bytes: 1024)
     if not (
         try unpack(
             data: archive,
@@ -173,7 +170,7 @@ test "expanded packages run through compiler":
         return panic(message: "check failed")
     if not (([1, 2, 3]).fold(initial: 0, step: sum) == 6):
         return panic(message: "check failed")
-    if not (([3, 1, 2]).sorted(compare: compare) == [1, 2, 3]):
+    if not (([3, 1, 2]).sorted(compare) == [1, 2, 3]):
         return panic(message: "check failed")
 
     let reverse_int = [1, 2].reverse_in_place
@@ -191,11 +188,11 @@ test "malformed and bounded inputs return errors":
 
     let limits = JsonLimits(max_bytes: 100, max_depth: 2, max_values: 10)
     let failure3: Result[JsonValue, JsonError] = error(JsonError.InvalidData)
-    if not (parse(text: "\{\"a\":1,\"a\":2\}", limits: limits) == failure3):
+    if not (parse(text: "\{\"a\":1,\"a\":2\}", limits) == failure3):
         return panic(message: "check failed")
 
     let failure4: Result[JsonValue, JsonError] = error(JsonError.LimitExceeded)
-    if not (parse(text: "[[[]]]", limits: limits) == failure4):
+    if not (parse(text: "[[[]]]", limits) == failure4):
         return panic(message: "check failed")
 
     let failure5: Result[Bytes, BinaryError] = error(BinaryError.OutOfRange)

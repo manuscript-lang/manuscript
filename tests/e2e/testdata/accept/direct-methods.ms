@@ -29,13 +29,13 @@ impl Bumper for Shape:
             Square(side): return side * by
 
 fn through_view(b: Bumper, by: Int) Int:
-    return b.bump(by: by)
+    return b.bump(by)
 
 fn guarded(c: Counter, by: Int) Int:
     if by < 0:
         return 0
 
-    return c.bump(by: by)
+    return c.bump(by)
 
 test "method calls on concrete receivers":
     let c = Counter(n: 4)
@@ -86,30 +86,30 @@ interface Step:
 
 impl Step for Chain:
     fn step(n: Int) Result[Int, String]:
-        return ok((try self.parser.parse(n: n)) + 1)
+        return ok((try self.parser.parse(n)) + 1)
 
 fn code(r: Result[Int, String]) Int:
     return r.unwrap_or(-1)
 
 fn run_direct(chain: Chain, n: Int) Int:
-    return chain.step(n: n) | code
+    return chain.step(n) | code
 
 fn run_view(chain: Chain, n: Int) Int:
-    return Step(value: chain).step(n: n) | code
+    return Step(value: chain).step(n) | code
 
 fn run_bound(chain: Chain, n: Int) Int:
     let callback = chain.step
-    return callback(n: n) | code
+    return callback(n) | code
 
 test "nested try in a direct method becomes an error result":
     let chain = Chain(parser: Parser(base: 10))
-    if not (run_direct(chain: chain, n: 5) == 16):
+    if not (run_direct(chain, n: 5) == 16):
         return panic(message: "ok")
-    if not (run_direct(chain: chain, n: -5) == -1):
+    if not (run_direct(chain, n: -5) == -1):
         return panic(message: "direct error result")
-    if not (run_view(chain: chain, n: -5) == -1):
+    if not (run_view(chain, n: -5) == -1):
         return panic(message: "view error result")
-    if not (run_bound(chain: chain, n: -5) == -1):
+    if not (run_bound(chain, n: -5) == -1):
         return panic(message: "bound error result")
-    if not (run_bound(chain: chain, n: 5) == 16):
+    if not (run_bound(chain, n: 5) == 16):
         return panic(message: "bound ok")

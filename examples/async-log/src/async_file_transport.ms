@@ -47,7 +47,7 @@ fn numbered(path: String, index: Int) String:
     return "{path}.{index}"
 
 fn exists(fs: FileSystem, path: String) Bool:
-    return fs.stat(path: path, follow_links: false).is_ok()
+    return fs.stat(path, follow_links: false).is_ok()
 
 fn age_of(modified: Timestamp) Duration:
     return wall_clock().now().difference(modified).unwrap_or(duration(0))
@@ -90,7 +90,7 @@ fn rotate(w: Writer) Result[Unit, LogError]:
     while index >= 0:
         let source = numbered(w.path, index)
         let destination = numbered(w.path, index + 1)
-        w.fs.rename(source: source, destination: destination) | try lift
+        w.fs.rename(source, destination) | try lift
         index -= 1
 
     if keep == 0: w.fs.remove(path: w.path) | try lift
@@ -224,7 +224,7 @@ export fn async_file_transport(
 
     let w = Writer(
         fs: filesystem(),
-        path: path,
+        path,
         max_bytes: max_bytes.unwrap_or(0),
         max_age_ns: (
             max_age
@@ -245,12 +245,12 @@ export fn async_file_transport(
     return ok(
         Transport(
             value: AsyncFileTransport(
-                queue: queue,
-                capacity: capacity,
-                failures: failures,
+                queue,
+                capacity,
+                failures,
                 failure_lock: Synchronized[Unit](unit),
-                group: group,
-                writer: writer
+                group,
+                writer
             )
         )
     )

@@ -54,16 +54,16 @@ test "authenticated encryption detects wrong associated data":
     let key = "01234567890123456789012345678901".to_bytes()
     let nonce = "012345678901".to_bytes()
     let encrypted = try seal(
-        key: key,
-        nonce: nonce,
+        key,
+        nonce,
         plaintext: "secret".to_bytes(),
         associated_data: "header".to_bytes()
     )
     if (
         (
             try open(
-                key: key,
-                nonce: nonce,
+                key,
+                nonce,
                 ciphertext: encrypted,
                 associated_data: "header".to_bytes()
             )
@@ -73,8 +73,8 @@ test "authenticated encryption detects wrong associated data":
     let failed: Result[Bytes, CryptoError] = error(CryptoError.AuthenticationFailed)
     if (
         open(
-            key: key,
-            nonce: nonce,
+            key,
+            nonce,
             ciphertext: encrypted,
             associated_data: "changed".to_bytes()
         ) != failed
@@ -84,7 +84,7 @@ test "authenticated encryption detects wrong associated data":
     if (
         seal(
             key: "short".to_bytes(),
-            nonce: nonce,
+            nonce,
             plaintext: "".to_bytes(),
             associated_data: "".to_bytes()
         ) != invalid
@@ -93,11 +93,11 @@ test "authenticated encryption detects wrong associated data":
 test "Ed25519 signatures verify only the signed data":
     let seed = "01234567890123456789012345678901".to_bytes()
     let key = try public_key(seed)
-    let signature = try sign(seed: seed, data: "message".to_bytes())
-    if not verify(key: key, data: "message".to_bytes(), signature: signature): return panic(
+    let signature = try sign(seed, data: "message".to_bytes())
+    if not verify(key, data: "message".to_bytes(), signature): return panic(
         "signature verification"
     )
-    if verify(key: key, data: "changed".to_bytes(), signature: signature): return panic(
+    if verify(key, data: "changed".to_bytes(), signature): return panic(
         "signature forgery"
     )
     if not constant_time_equal(left: seed, right: seed.clone()): return panic(

@@ -8,10 +8,10 @@ fn countdown[T](x: T, n: Int) Int:
     if n == 0:
         return 0
 
-    return 1 + countdown(x: x, n: n - 1)
+    return 1 + countdown(x, n: n - 1)
 
 fn twice[T](x: T) T:
-    return ident(x: ident(x: x))
+    return ident(x: ident(x))
 
 fn depth() Int:
     return countdown(x: "s", n: 5)

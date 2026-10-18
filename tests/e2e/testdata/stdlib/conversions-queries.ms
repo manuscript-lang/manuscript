@@ -141,10 +141,7 @@ test "Map fold uses ordered snapshots and returns accumulator aliases":
 
     let empty = Map[String, Counter]()
     let fold = empty.fold[List[String]]
-    let untouched = fold(
-        step: fn(acc, k, v): panic("empty fold callback"),
-        initial: initial
-    )
+    let untouched = fold(step: fn(acc, k, v): panic("empty fold callback"), initial)
     untouched.append("empty alias")
     if initial.length() != 5: return panic("empty fold changed initial identity")
 

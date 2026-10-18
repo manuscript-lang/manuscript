@@ -13,8 +13,8 @@ fn identity[T](value: T) T:
 test "typed operands retain evaluation order and generic boundaries":
     let counter = Counter(0)
     let total = (
-        step(counter: counter, value: 1)
-        + step(counter: counter, value: 2) * step(counter: counter, value: 3)
+        step(counter, value: 1)
+        + step(counter, value: 2) * step(counter, value: 3)
     )
     if total != 7 or counter.value != 123: return panic("operand order")
 

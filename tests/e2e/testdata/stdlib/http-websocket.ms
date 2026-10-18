@@ -36,7 +36,7 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
     let headers = list_headers(
         Map[String, List[String]]().add(key: "X-Test", value: ["manuscript"])
     )
-    try exchange.send_headers(status: 201, headers: headers)
+    try exchange.send_headers(status: 201, headers)
     exchange.write("hello".to_bytes()).unwrap()
     return ok(unit)
 
@@ -49,15 +49,11 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
         tls: none
     )
 
-    with server = try net.serve_stream(
-        address: "127.0.0.1:0",
-        handler: echo,
-        options: options
-    ):
+    with server = try net.serve_stream(address: "127.0.0.1:0", handler: echo, options):
         let url = "http://{server.address()}/"
         let response = try net.request(
             method: HttpMethod.Get,
-            url: url,
+            url,
             headers: text_headers(Map[String, String]()),
             body: "".to_bytes(),
             timeout: 2.seconds
@@ -78,7 +74,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
         with client = try net.http_client(client_options):
             with body = try client.request(
                 method: HttpMethod.Get,
-                url: url,
+                url,
                 headers: text_headers(Map[String, String]()),
                 body: "".to_bytes(),
                 max_response_bytes: 5,
@@ -92,7 +88,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 
         let budget = net.request(
             method: HttpMethod.Get,
-            url: url,
+            url,
             headers: text_headers(Map[String, String]()),
             body: "".to_bytes(),
             max_response_bytes: 4,
@@ -106,11 +102,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     let net = network()
     let options = HttpServerOptions(timeout: 3.seconds, grace: 0.seconds, tls: none)
 
-    with server = try net.serve_stream(
-        address: "127.0.0.1:0",
-        handler: echo,
-        options: options
-    ):
+    with server = try net.serve_stream(address: "127.0.0.1:0", handler: echo, options):
         let client_options = WebSocketOptions(
             max_message_bytes: 1024,
             timeout: 2.seconds,
@@ -150,7 +142,7 @@ test "HTTP streaming handlers see the Host request header":
     with server = try net.serve_stream(
         address: "127.0.0.1:0",
         handler: report_host,
-        options: options
+        options
     ):
         let response = try net.request(
             method: HttpMethod.Get,

@@ -8,7 +8,7 @@ fn run(re: Regex) Unit:
         "regex.find_all",
         2000,
         fn() Int:
-            if let m = re.find_all(text: text):
+            if let m = re.find_all(text):
                 return m.length()
 
             return 0
@@ -26,7 +26,7 @@ fn run(re: Regex) Unit:
         "regex.replace_all",
         2000,
         fn() Int:
-            if let s = re.replace_all(text: text, replacement: "w"):
+            if let s = re.replace_all(text, replacement: "w"):
                 return s.length()
 
             return 0

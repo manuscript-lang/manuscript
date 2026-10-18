@@ -12,11 +12,11 @@ fn timer_callback() Result[Unit, Error]:
     return ok(unit)
 
 fn exercise(path: String) Result[Unit, Error]:
-    try filesystem().write_file(path: path, data: "hello".to_bytes(), replace: false)
-    if not (try filesystem().read_file(path: path, max_bytes: 5) == "hello".to_bytes()):
+    try filesystem().write_file(path, data: "hello".to_bytes(), replace: false)
+    if not (try filesystem().read_file(path, max_bytes: 5) == "hello".to_bytes()):
         return panic(message: "check failed")
 
-    let info = try filesystem().stat(path: path, follow_links: true)
+    let info = try filesystem().stat(path, follow_links: true)
     if not (info.size == 5):
         return panic(message: "check failed")
     if not (not info.directory):
@@ -40,7 +40,7 @@ fn exercise(path: String) Result[Unit, Error]:
     if not (system().info().cpu_count > 0):
         return panic(message: "check failed")
 
-    with file = try filesystem().open(path: path, flags: "r+", mode: 384):
+    with file = try filesystem().open(path, flags: "r+", mode: 384):
         try file.write_at(offset: 0, data: "HELLO".to_bytes())
         if not (try file.read_at(offset: 0, max_bytes: 5) == "HELLO".to_bytes()):
             return panic(message: "positional I/O failed")
@@ -51,13 +51,13 @@ fn exercise(path: String) Result[Unit, Error]:
             return panic(message: "handle stat failed")
 
     with watcher = try filesystem().watch_native(
-        path: path,
+        path,
         recursive: false,
         max_entries: 4,
         max_events: 16,
         overflow: "error"
     ):
-        try filesystem().append_file(path: path, data: "!".to_bytes())
+        try filesystem().append_file(path, data: "!".to_bytes())
         let events = try watcher.next()
         if not (events.length() > 0):
             return panic(message: "native watch returned no event")
@@ -93,12 +93,12 @@ fn exercise(path: String) Result[Unit, Error]:
     if not (memory.heap_system > 0):
         return panic(message: "memory information failed")
 
-    try filesystem().remove(path: path, recursive: false)
+    try filesystem().remove(path, recursive: false)
     return ok(unit)
 
 export fn main() Int:
     if let path = arguments().at(index: 0):
-        if exercise(path: path).is_error():
+        if exercise(path).is_error():
             return 1
 
         return 0

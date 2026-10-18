@@ -1,13 +1,13 @@
 import panic from "@std/faults.ms"
 
 fn apply(value: Int, action: fn(value: Int) Int) Int:
-    return action(value: value)
+    return action(value)
 
 fn countdown[T](value: T, count: Int) T:
     if count == 0:
         return value
 
-    return countdown(value: value, count: count - 1)
+    return countdown(value, count: count - 1)
 
 test "snapshot reassignment and shadowing":
     var offset = 1

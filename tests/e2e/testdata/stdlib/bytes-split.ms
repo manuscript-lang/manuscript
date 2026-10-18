@@ -48,7 +48,7 @@ test "Bytes split optional limits truncate parts":
     if data.split(separator) != expected or data.split(separator, none) != expected: return panic(
         "omitted/none split cap"
     )
-    if data.split(separator: separator, max_parts: some(2)) != [Bytes([1]), Bytes([2])]: return panic(
+    if data.split(separator, max_parts: some(2)) != [Bytes([1]), Bytes([2])]: return panic(
         "some split cap"
     )
     if data.split(separator, max_parts: 1) != [Bytes([1])]: return panic(

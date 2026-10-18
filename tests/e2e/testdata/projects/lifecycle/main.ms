@@ -30,15 +30,15 @@ fn select(output: WriteStream) fn(first: Int, second: Int) Int:
     return combine
 
 fn early(output: WriteStream) Int:
-    with outer = Resource(label: "outer", output: output):
-        with inner = Resource(label: "inner", output: output):
-            return report(output: output, label: "return value", value: 5)
+    with outer = Resource(label: "outer", output):
+        with inner = Resource(label: "inner", output):
+            return report(output, label: "return value", value: 5)
 
 fn failure() Result[Int, String]:
     return error("expected")
 
 fn propagate(output: WriteStream) Result[Int, String]:
-    with resource = Resource(label: "propagation", output: output):
+    with resource = Resource(label: "propagation", output):
         let number = try failure()
         return ok(number)
 

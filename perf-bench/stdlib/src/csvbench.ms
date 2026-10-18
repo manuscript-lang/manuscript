@@ -6,12 +6,12 @@ export fn bench_csv() Unit:
     let rows: List[List[String]] = []
     for i in range(0, 5000):
         rows.append(["{i}", "name {i}", "a,b", "quote\"d"])
-    let csv_text = stringify(rows: rows).unwrap_or("")
+    let csv_text = stringify(rows).unwrap_or("")
     bench(
         "csv.stringify",
         5000,
         fn() Int:
-            if let s = stringify(rows: rows):
+            if let s = stringify(rows):
                 return s.length()
 
             return 0

@@ -1,7 +1,7 @@
 import panic from "@std/faults.ms"
 
 fn apply(value: Int, transform: fn(value: Int) Int) Int:
-    return transform(value: value)
+    return transform(value)
 
 test "function suite boundaries":
     let _dormant = fn():

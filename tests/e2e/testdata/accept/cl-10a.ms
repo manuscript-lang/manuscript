@@ -18,7 +18,7 @@ impl SameValue[T] for Box[T]:
         return self.value == other
 
 fn compare[T: Equal](box: Box[T], other: T) Bool:
-    return box.same(other: other)
+    return box.same(other)
 
 test "generic implementations":
     let number = Box[Int](7)

@@ -41,7 +41,7 @@ fn stream_route(exchange: HttpExchange) Result[Unit, HttpError]:
 fn check_route(url: String, expected: String) Result[Unit, Error]:
     let response = try network().request(
         method: HttpMethod.Get,
-        url: url,
+        url,
         headers: text_headers(Map[String, String]()),
         body: "".to_bytes(),
         timeout: 2.seconds
@@ -58,7 +58,7 @@ fn check_route(url: String, expected: String) Result[Unit, Error]:
 fn check_rejected(url: String) Result[Unit, Error]:
     let response = try network().request(
         method: HttpMethod.Get,
-        url: url,
+        url,
         headers: text_headers(Map[String, String]()),
         body: "".to_bytes(),
         timeout: 2.seconds
@@ -104,8 +104,8 @@ test "buffered and reusable clients reject malformed ports as InvalidInput":
         network().request(
             method: HttpMethod.Get,
             url: "http://127.0.0.1:99999/",
-            headers: headers,
-            body: body
+            headers,
+            body
         )
     )
     let tls = TlsOptions(
@@ -123,7 +123,7 @@ test "buffered and reusable clients reject malformed ports as InvalidInput":
             client.request(
                 method: HttpMethod.Get,
                 url: "http://127.0.0.1:65536/",
-                headers: headers,
-                body: body
+                headers,
+                body
             )
         )

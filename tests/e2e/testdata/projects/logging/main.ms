@@ -22,18 +22,13 @@ fn concurrent_records(logger: Logger) Result[Unit, Error]:
         for worker in range(0, 8):
             let task = group.start(
                 fn() Result[Unit, Error]:
-                    let child = try bind(
-                        logger: logger,
-                        bindings: Worker(worker: worker)
-                    )
+                    let child = try bind(logger, bindings: Worker(worker))
                     for sequence in range(0, 8):
                         try record(
                             logger: child,
                             level: LogLevel.Info,
                             message: "concurrent",
-                            fields: Sequence(
-                                sequence: sequence
-                            )
+                            fields: Sequence(sequence)
                         )
                     return ok(unit)
             )
@@ -53,8 +48,8 @@ fn exercise(mode: String, path: String) Result[Unit, Error]:
 
     if (mode == "file" or mode == "concurrent" or mode == "missing"):
         with transport = try file_transport(path):
-            let logger = try create(transport: transport, timestamp: false)
-                | try bind(bindings: bindings)
+            let logger = try create(transport, timestamp: false)
+                | try bind(bindings)
 
             if mode == "concurrent":
                 try concurrent_records(logger)
@@ -67,15 +62,15 @@ fn exercise(mode: String, path: String) Result[Unit, Error]:
 
     with transport = stdout_transport():
         if mode == "limit":
-            let logger = try create(transport: transport, max_bytes: 1)
+            let logger = try create(transport, max_bytes: 1)
             try logger.info(message: "too large")
         else:
-            let logger = try create(transport: transport)
-                | try bind(bindings: bindings)
+            let logger = try create(transport)
+                | try bind(bindings)
 
             if mode == "invalid":
                 try record(
-                    logger: logger,
+                    logger,
                     level: LogLevel.Info,
                     message: "invalid",
                     fields: JsonValue.NumberValue("NaN")
@@ -88,7 +83,7 @@ fn exercise(mode: String, path: String) Result[Unit, Error]:
                 try logger.flush()
 
     with transport = stdout_transport():
-        let logger = try create(transport: transport, timestamp: false)
+        let logger = try create(transport, timestamp: false)
         try logger.info(message: "still open")
 
     return ok(unit)
@@ -97,7 +92,7 @@ export fn main() Int:
     let args = arguments()
     let mode = args.at(0).unwrap_or("stdout")
     let path = args.at(1).unwrap_or("events.ndjson")
-    let result = exercise(mode: mode, path: path)
+    let result = exercise(mode, path)
 
     if result.is_error():
         let _ignored = stderr().write("{result.unwrap_error().message()}\n".to_bytes())

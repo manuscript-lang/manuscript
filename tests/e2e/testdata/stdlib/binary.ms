@@ -14,7 +14,7 @@ test "binary integer boundaries and both byte orders":
             if (
                 (
                     try read_integer(
-                        data: data,
+                        data,
                         offset: 0,
                         width: 8,
                         signed: true,

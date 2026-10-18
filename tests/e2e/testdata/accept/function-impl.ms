@@ -8,7 +8,7 @@ type Box[T]:
 
 impl Apply[T] for Box[fn(value: Int) T]:
     fn apply(value: Int) T:
-        return self.value(value: value)
+        return self.value(value)
 
 fn render(value: Int) String:
     return "{value}"

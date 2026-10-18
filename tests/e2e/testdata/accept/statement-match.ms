@@ -62,7 +62,7 @@ test "statement match returns from the enclosing function":
 
 test "statement match controls the nearest loop":
     let values: List[Optional[Int]] = [none, some(0), some(5), some(9)]
-    if not (first_positive(values: values) == 5):
+    if not (first_positive(values) == 5):
         return panic(message: "first positive")
     if not (first_positive(values: [none, some(-1)]) == -1):
         return panic(message: "no positive")
@@ -71,7 +71,7 @@ test "statement match controls the nearest loop":
         [some(1), none, some(100)],
         [some(2), some(3)]
     ]
-    if not (nested(rows: rows) == 2006):
+    if not (nested(rows) == 2006):
         return panic(message: "nested")
 
 test "statement match arms assign enclosing locals":

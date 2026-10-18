@@ -15,7 +15,7 @@ fn run(fs: FileSystem, root: String) Unit:
                     fs
                     .write_file(
                         path: "{root}/f{i}.bin",
-                        data: data,
+                        data,
                         replace: true
                     )
                     .is_ok()
@@ -54,11 +54,11 @@ fn run(fs: FileSystem, root: String) Unit:
     )
 
 fn log_run(path: String) Unit:
-    if let transport = file_transport(path: path):
+    if let transport = file_transport(path):
         log_with(transport)
 
 fn log_with(transport: Transport) Unit:
-    if let logger = create(transport: transport, timestamp: false):
+    if let logger = create(transport, timestamp: false):
         log_many(logger)
 
 fn log_many(logger: Logger) Unit:

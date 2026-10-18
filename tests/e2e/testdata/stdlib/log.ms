@@ -32,7 +32,7 @@ test "logger writes typed escaped records and protects metadata":
     let output = MemoryStream(data: "".to_bytes(), offset: 0, closed: false)
 
     with transport = stream_transport(WriteStream(output)):
-        let logger = try create(transport: transport, timestamp: false)
+        let logger = try create(transport, timestamp: false)
         let fields = Payload(
             count: 9007199254740993,
             ok: true,
@@ -41,12 +41,7 @@ test "logger writes typed escaped records and protects metadata":
             msg: "fake",
             time: 0
         )
-        try record(
-            logger: logger,
-            level: LogLevel.Info,
-            message: "say \"hi\"\nnext",
-            fields: fields
-        )
+        try record(logger, level: LogLevel.Info, message: "say \"hi\"\nnext", fields)
         let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\}\}\n"
         if output.data.to_string() != some(expected): return panic("typed log record")
 
@@ -58,14 +53,9 @@ test "non-object values are written under data":
     let output = MemoryStream(data: "".to_bytes(), offset: 0, closed: false)
 
     with transport = stream_transport(WriteStream(output)):
-        let logger = try create(transport: transport, timestamp: false)
-        try record(logger: logger, level: LogLevel.Info, message: "n", fields: 7)
-        try record(
-            logger: logger,
-            level: LogLevel.Warn,
-            message: "l",
-            fields: ["a", "b"]
-        )
+        let logger = try create(transport, timestamp: false)
+        try record(logger, level: LogLevel.Info, message: "n", fields: 7)
+        try record(logger, level: LogLevel.Warn, message: "l", fields: ["a", "b"])
         let expected = "\{\"level\":30,\"msg\":\"n\",\"data\":7\}\n\{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n"
         if output.data.to_string() != some(expected): return panic(
             "scalar and list fields"
@@ -75,11 +65,7 @@ test "levels filter methods and function values":
     let output = MemoryStream(data: "".to_bytes(), offset: 0, closed: false)
 
     with transport = stream_transport(WriteStream(output)):
-        let logger = try create(
-            transport: transport,
-            level: LogLevel.Warn,
-            timestamp: false
-        )
+        let logger = try create(transport, level: LogLevel.Warn, timestamp: false)
         if logger.enabled(LogLevel.Info) or not logger.enabled(LogLevel.Warn): return panic(
             "threshold"
         )
@@ -126,9 +112,9 @@ test "child bindings snapshot values and merge without mutating inputs":
     let output = MemoryStream(data: "".to_bytes(), offset: 0, closed: false)
 
     with transport = stream_transport(WriteStream(output)):
-        let root = try create(transport: transport, timestamp: false)
+        let root = try create(transport, timestamp: false)
         let logger = try bind(logger: root, bindings: Service(service: "api"))
-        let child = try bind(logger: logger, bindings: Request(request: 7))
+        let child = try bind(logger, bindings: Request(request: 7))
         logger.set_level(LogLevel.Fatal)
         if child.level() != LogLevel.Info: return panic("child level snapshot")
 
@@ -148,7 +134,7 @@ test "limits and unencodable values reject before writing":
     with transport = stream_transport(WriteStream(output)):
         let line = "\{\"level\":30,\"msg\":\"x\"\}\n"
         let logger = try create(
-            transport: transport,
+            transport,
             timestamp: false,
             max_bytes: (line.to_bytes().length())
         )
@@ -159,17 +145,15 @@ test "limits and unencodable values reject before writing":
         let limited: Result[Unit, LogError] = error(LogError.LimitExceeded)
         if logger.info(message: "xx") != limited: return panic("log budget")
 
-        let zero = try create(transport: transport, timestamp: false, max_bytes: 0)
+        let zero = try create(transport, timestamp: false, max_bytes: 0)
         if zero.info(message: "") != limited: return panic("zero budget")
         if (
             (
-                try expect_error(
-                    create(transport: transport, max_bytes: -1)
-                )
+                try expect_error(create(transport, max_bytes: -1))
             ) != LogError.InvalidInput
         ): return panic("negative budget")
 
-        let unlimited = try create(transport: transport, timestamp: false)
+        let unlimited = try create(transport, timestamp: false)
         let bad = JsonValue.NumberValue("NaN")
         let invalid_data: Result[Unit, LogError] = error(LogError.InvalidData)
         if (
@@ -185,7 +169,7 @@ test "limits and unencodable values reject before writing":
 test "transport closure and stream errors preserve identity":
     let output = MemoryStream(data: "".to_bytes(), offset: 0, closed: false)
     let transport = stream_transport(WriteStream(output))
-    let logger = try create(transport: transport)
+    let logger = try create(transport)
     output.closed = true
     let io_closed: Result[Unit, LogError] = error(LogError.Io(IoError.Closed))
     if logger.info(message: "closed") != io_closed: return panic("write cause")
@@ -204,15 +188,15 @@ test "file transport appends and flushes with scoped cleanup":
         let path = "{directory.path()}/events.ndjson"
 
         with transport = try file_transport(path):
-            let logger = try create(transport: transport, timestamp: false)
+            let logger = try create(transport, timestamp: false)
             try logger.info(message: "first")
             try logger.flush()
 
         with transport = try file_transport(path):
-            let logger = try create(transport: transport, timestamp: false)
+            let logger = try create(transport, timestamp: false)
             try logger.warn(message: "second")
 
-        let data = try fs.read_file(path: path)
+        let data = try fs.read_file(path)
         if (
             data.to_string() != some(
                 "\{\"level\":30,\"msg\":\"first\"\}\n\{\"level\":40,\"msg\":\"second\"\}\n"
@@ -230,7 +214,7 @@ test "file transport appends and flushes with scoped cleanup":
 
 test "stdout transport accepts records and leaves stdout open":
     with transport = stdout_transport():
-        let logger = try create(transport: transport, timestamp: false)
+        let logger = try create(transport, timestamp: false)
         try logger.info(message: "stdout log")
         try logger.flush()
 
@@ -256,7 +240,7 @@ test "source transports receive complete records and close through their contrac
     let sink = CaptureTransport(output)
 
     with transport = Transport(sink):
-        let logger = try create(transport: transport, timestamp: false)
+        let logger = try create(transport, timestamp: false)
         try logger.info(message: "source transport")
         try logger.flush()
         if (
@@ -271,7 +255,7 @@ test "log_json and child_json accept only JSON objects":
     let output = MemoryStream(data: "".to_bytes(), offset: 0, closed: false)
 
     with transport = stream_transport(WriteStream(output)):
-        let logger = try create(transport: transport, timestamp: false)
+        let logger = try create(transport, timestamp: false)
         let invalid: Result[Unit, LogError] = error(LogError.InvalidData)
 
         for text in ["[1]", "5", "null", "\"s\"", "nope"]:
@@ -289,7 +273,7 @@ test "log_json and child_json accept only JSON objects":
         if output.data.length() != 0: return panic("rejected fields wrote a record")
 
         try logger.log_json(level: LogLevel.Info, message: "m", fields: "\{\"a\":1\}")
-        try record(logger: logger, level: LogLevel.Info, message: "m", fields: [1])
+        try record(logger, level: LogLevel.Info, message: "m", fields: [1])
         let expected = "\{\"level\":30,\"msg\":\"m\",\"a\":1\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
         if output.data.to_string() != some(expected): return panic(
             "object and wrapped records"

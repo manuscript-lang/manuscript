@@ -69,7 +69,7 @@ fn exercise() Result[Unit, Error]:
             idle_timeout: 10.seconds,
             decompress: true,
             cookies: true,
-            tls: tls
+            tls
         )
 
         with client = try network().http_client(options: client_options):
@@ -93,7 +93,7 @@ fn exercise() Result[Unit, Error]:
         let websocket_options = WebSocketOptions(
             max_message_bytes: 1024,
             timeout: 2.seconds,
-            tls: tls,
+            tls,
             compression: false
         )
 

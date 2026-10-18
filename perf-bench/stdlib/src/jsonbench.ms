@@ -17,7 +17,7 @@ fn json_doc(count: Int) String:
     return sb.freeze()
 
 fn encoded_length(value: JsonValue) Int:
-    if let text = stringify(value: value):
+    if let text = stringify(value):
         return text.length()
 
     return 0

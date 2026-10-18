@@ -25,7 +25,7 @@ impl ReadStream for Chunks:
         return ok(none)
 
 fn stream(parts: List[Bytes], failure: Optional[IoError]) Chunks:
-    return Chunks(parts: parts, index: 0, closed: false, failure: failure)
+    return Chunks(parts, index: 0, closed: false, failure)
 
 # Splits at every byte boundary, one boundary at a time, plus one byte per chunk.
 fn splits(source: Bytes) List[List[Bytes]]:
@@ -72,10 +72,10 @@ fn expect(source: String, want: String) Result[Unit, Error]:
 
 test "LF CRLF and CR endings decode identically under every chunk split":
     let want = "message|a|-;message|b|-"
-    try expect(source: "data: a\n\ndata: b\n\n", want: want)
-    try expect(source: "data: a\r\n\r\ndata: b\r\n\r\n", want: want)
-    try expect(source: "data: a\r\rdata: b\r\r", want: want)
-    try expect(source: "data: a\r\n\ndata: b\n\r\n", want: want)
+    try expect(source: "data: a\n\ndata: b\n\n", want)
+    try expect(source: "data: a\r\n\r\ndata: b\r\n\r\n", want)
+    try expect(source: "data: a\r\rdata: b\r\r", want)
+    try expect(source: "data: a\r\n\ndata: b\n\r\n", want)
     try expect(source: "data: a\n\rdata: b\r\r", want: "message|a|-;message|b|-")
 
 test "CR LF straddling a chunk boundary is one ending":

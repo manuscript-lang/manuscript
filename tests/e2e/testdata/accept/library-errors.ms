@@ -27,7 +27,7 @@ fn json_error_code(cause: JsonError) Int:
 
 test "JSON errors need only JSON cases":
     let limits = JsonLimits(max_bytes: 100, max_depth: 8, max_values: 32)
-    let parsed = parse(text: "[", limits: limits)
+    let parsed = parse(text: "[", limits)
     if parsed.is_ok():
         return panic(message: "malformed JSON succeeded")
     if json_error_code(parsed.unwrap_error()) != 2:

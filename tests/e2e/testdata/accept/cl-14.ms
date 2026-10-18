@@ -13,7 +13,7 @@ fn checked(value: Int) Result[Int, Problem]:
     return ok(value)
 
 fn doubled(value: Int) Result[Int, Problem]:
-    let accepted = try checked(value: value)
+    let accepted = try checked(value)
     return ok(accepted * 2)
 
 fn summarize(outcome: Result[Int, Problem]) Int:

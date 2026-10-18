@@ -16,7 +16,7 @@ fn stringify(value: Int) String:
     return value.to_string(radix: 10)
 
 fn expand(value: Int) List[String]:
-    return [stringify(value: value), "x"]
+    return [stringify(value), "x"]
 
 fn total(accumulator: Int, value: Int) Int:
     return accumulator + value
@@ -150,7 +150,7 @@ test "list methods mutate explicit clones and remain typed":
         return panic(message: "check failed")
     if not (original.clone().reverse_in_place() == [1, 2, 1, 3]):
         return panic(message: "check failed")
-    if not (original.sorted(compare: compare) == [1, 1, 2, 3]):
+    if not (original.sorted(compare) == [1, 1, 2, 3]):
         return panic(message: "check failed")
     if not ([-1, 0, 2, 3].filter(predicate: positive) == [2, 3]):
         return panic(message: "check failed")
@@ -240,7 +240,7 @@ test "list methods mutate explicit clones and remain typed":
 test "map enumeration, merge, and clear preserve insertion order":
     let original = (Map[String, Int]().add(key: "a", value: 1).add(key: "b", value: 2))
     let other = (Map[String, Int]().add(key: "b", value: 3).add(key: "c", value: 4))
-    let merged = original.clone().merge(other: other)
+    let merged = original.clone().merge(other)
     if not (merged.keys() == ["a", "b", "c"]):
         return panic(message: "check failed")
     if not (merged.values() == [1, 3, 4]):

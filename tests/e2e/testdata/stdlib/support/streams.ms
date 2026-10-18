@@ -16,7 +16,7 @@ impl ReadStream for MemoryStream:
 
         var end = self.offset + count
         if end > self.data.length(): end = self.data.length()
-        let chunk = self.data.slice(start: self.offset, end: end).unwrap()
+        let chunk = self.data.slice(start: self.offset, end).unwrap()
         self.offset = end
         return ok(chunk)
 

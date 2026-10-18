@@ -74,7 +74,7 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
 
 test "TOML implicit parents dotted keys and arrays of tables":
     let text = "[owner.details]\nname = 'Ada'\n[owner]\nactive = true\n[[products]]\nname = 'Hammer'\n[products.meta]\nstock = 3\n[[products]]\nname = 'Nail'\n[[products.variants]]\nsize = 1\n[[products.variants]]\nsize = 2\n"
-    let root = parse(text: text) | try | entries
+    let root = parse(text) | try | entries
     let owner = entries(root.get("owner").unwrap())
     if (
         entries(owner.get("details").unwrap()).get(
@@ -106,7 +106,7 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
         "a=24:00:00", "a='unterminated", "a=\"\\uD800\"", "a=\"\\q\"", "a=true false",
         "a=1\rb=2", "[a.b.c]\nz=9\n[a]\nb.c.t=1", "[[a.b]]\n[a]\nb.y=2"
     ]:
-        let parsed = parse(text: text)
+        let parsed = parse(text)
         if parsed.is_ok(): return panic("invalid TOML accepted: {text}")
 
         let cause = parsed.unwrap_error()
@@ -190,7 +190,7 @@ test "TOML nonfinite floats CRLF and repeated separators":
     )
 
 fn failure(text: String) String:
-    let parsed = parse(text: text)
+    let parsed = parse(text)
     if parsed.is_ok(): return "accepted"
 
     return parsed.unwrap_error().message()
@@ -228,8 +228,8 @@ test "TOML stringify round trips scalars tables and arrays of tables":
     let source = "title = \"é🙂 \\\"q\\\" \\t tab\\u0001\"\nint = -42\nfloat = 3.0\nbig = 1e+21\nflag = true\ndate = 1979-05-27\nmixed = [1, \"two\", [3.5], \{a = 1\}]\nempty = []\n\"odd key\" = 1\n\n[server]\nhost = \"h\"\n\n[server.limits]\nmax = 5\n\n[[products]]\nname = \"a\"\n\n[[products]]\nname = \"b\"\n[products.tags]\nx = 1\n"
     let parsed = try parse(text: source)
     let text = try stringify(value: parsed)
-    if (try parse(text: text)) != parsed: return panic("TOML stringify round trip")
-    if (parse(text: text) | try | stringify | try) != text: return panic(
+    if (try parse(text)) != parsed: return panic("TOML stringify round trip")
+    if (parse(text) | try | stringify | try) != text: return panic(
         "TOML stringify is stable"
     )
 
@@ -249,7 +249,7 @@ fn repeated(text: String, count: Int) String:
     if count <= 0: return ""
     if count == 1: return text
 
-    let half = repeated(text: text, count: count / 2)
+    let half = repeated(text, count: count / 2)
     if count % 2 == 1: return half.concat(half).concat(text)
 
     return half.concat(half)
@@ -267,7 +267,7 @@ test "TOML long strings parse and stringify in linear time":
     )
 
     let text = try stringify(value: root)
-    if (try parse(text: text)) != root: return panic("long string round trip")
+    if (try parse(text)) != root: return panic("long string round trip")
 
 test "TOML stringify rejects invalid date-time text":
     let invalid: Result[String, TomlError] = error(TomlError.InvalidInput)

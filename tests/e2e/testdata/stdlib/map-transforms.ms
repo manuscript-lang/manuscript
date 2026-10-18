@@ -264,10 +264,9 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
     let empty_map = Map[String, Int]()
     let empty_set = Set[Int]()
     let map_fold = empty_map.fold_right[List[Int]]
-    map_fold(
-        step: fn(acc, k, v): panic("empty Map.fold_right callback"),
-        initial: initial
-    ).append(1)
+    map_fold(step: fn(acc, k, v): panic("empty Map.fold_right callback"), initial).append(
+        1
+    )
     let set_fold = empty_set.fold_right[List[Int]]
     set_fold(initial, fn(acc, v): panic("empty Set.fold_right callback")).append(2)
     if initial != [1, 2]: return panic("empty reverse fold initial identity")

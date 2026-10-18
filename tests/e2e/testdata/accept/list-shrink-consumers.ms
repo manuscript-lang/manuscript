@@ -21,7 +21,7 @@ fn observe[T](values: List[T], mode: String, replacement: T, callback: Bool) Lis
     let visit = fn(value: T) Unit:
         seen.append(value)
         if visits.count == 0:
-            mutate(values: values, mode: mode, replacement: replacement)
+            mutate(values, mode, replacement)
         visits.count += 1
 
     if callback:

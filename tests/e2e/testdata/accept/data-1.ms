@@ -4,7 +4,7 @@ fn positives(values: List[Int]) List[Int]:
     let result: List[Int] = []
     for value in values:
         if value > 0:
-            result.append(value: value)
+            result.append(value)
     return result
 
 test "dynamic mutable data and explicit copies":

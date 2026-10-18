@@ -13,7 +13,7 @@ type Payload:
     time: Int
 
 export fn emit(logger: Logger) Result[Unit, LogError]:
-    let child = try bind(logger: logger, bindings: Request(request: "req-1"))
+    let child = try bind(logger, bindings: Request(request: "req-1"))
     let fields = Payload(
         count: 9007199254740993,
         ok: true,
@@ -28,7 +28,7 @@ export fn emit(logger: Logger) Result[Unit, LogError]:
         logger: child,
         level: LogLevel.Info,
         message: "received \"payload\"\nnext",
-        fields: fields
+        fields
     )
     try logger.warn(message: "complete")
     return ok(unit)

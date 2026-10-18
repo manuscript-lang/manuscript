@@ -1,7 +1,7 @@
 import panic from "@std/faults.ms"
 
 fn replace[T](values: List[T], value: T) Unit:
-    values.set(index: 1, value: value)
+    values.set(index: 1, value)
 
 test "range observes backing writes and keeps initial length":
     let values = [1, 2, 3]

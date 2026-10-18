@@ -52,7 +52,7 @@ test "infer success and preserve concrete error identity":
     let wrapped = optional(r)
     let forwarded = forward(r)
     let known: Error = Failure(5)
-    let inferred_from_known = both(cause: known, r: r)
+    let inferred_from_known = both(cause: known, r)
     cause.code = 19
 
     for value in [inferred, explicit, wrapped, forwarded, inferred_from_known]:
@@ -105,9 +105,9 @@ test "nested success preserves its domain and inferred errors remain exact":
 test "inference and widening evaluate once in written order before defaults":
     let events = Events([])
     let result = ordered(
-        second: record(events: events, value: 2),
-        first: record(events: events, value: 1),
-        events: events
+        second: record(events, value: 2),
+        first: record(events, value: 1),
+        events
     )
     if events.values != [2, 1, 3, 4]: return panic("changed evaluation order")
 

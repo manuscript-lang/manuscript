@@ -45,13 +45,13 @@ test "record fields mutate through aliases methods views and captures":
 
     let box = Box(value: "old", child: counter)
     let copied = box.clone()
-    replace(box: box, value: "new")
+    replace(box, value: "new")
     copied.child.val = 9
     if not (box.value == "new" and copied.value == "old" and box.child.val == 9):
         return panic(message: "clones must be shallow")
 
     let log: List[Int] = []
-    receiver(log: log, value: counter).val = replacement(log)
+    receiver(log, value: counter).val = replacement(log)
     if not (log == [1, 2] and counter.val == 7):
         return panic(message: "assignment must evaluate receiver once before value")
 

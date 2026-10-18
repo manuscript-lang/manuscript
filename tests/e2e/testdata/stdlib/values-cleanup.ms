@@ -27,8 +27,8 @@ impl Closeable for Resource:
         self.order.append(self.id)
 
 fn leave(order: List[Int]) Int:
-    with outer = Resource(order: order, id: 1):
-        with inner = Resource(order: order, id: 2):
+    with outer = Resource(order, id: 1):
+        with inner = Resource(order, id: 2):
             return 42
 
 fn propagate(result: Result[Int, JsonError]) Result[Int, JsonError]:

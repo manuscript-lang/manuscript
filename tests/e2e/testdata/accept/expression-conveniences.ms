@@ -14,7 +14,7 @@ impl Closeable for Resource:
 fn identity[T](value: T) T: return value
 
 fn amount(text: String, counter: Counter) Result[Int, String]:
-    with resource = Resource(counter: counter):
+    with resource = Resource(counter):
         let cents = match text.parse_int():
             some(value):
                 value
@@ -109,11 +109,11 @@ test "match expressions preserve returns and cleanup":
         return panic("enclosing returns")
 
     let counter = Counter(count: 0)
-    let parsed = amount(text: "3", counter: counter)
+    let parsed = amount(text: "3", counter)
     if parsed != Result[Int, String].ok(value: 4) or counter.count != 1:
         return panic("successful cleanup")
 
-    let invalid = amount(text: "invalid", counter: counter)
+    let invalid = amount(text: "invalid", counter)
     if (
         invalid != Result[Int, String].error(cause: "Invalid amount")
         or counter.count != 2

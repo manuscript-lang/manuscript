@@ -41,7 +41,7 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
         )
         let entries = try fs.glob_entries(
             path: root,
-            options: options,
+            options,
             exclude: some(
                 fn(entry: PathEntry) Bool:
                     if entry.path == ".": options.patterns.set(0, "*.md")
@@ -114,29 +114,21 @@ test "filesystem scoped temporary directories and bounded file reads":
     with temporary = try fs.temporary("manuscript-stdlib-"):
         directory = temporary.path()
         let path = "{directory}/data.txt"
-        try fs.write_file(path: path, data: "hello".to_bytes(), replace: false)
-        if ((try fs.read_file(path: path, max_bytes: 5)) != "hello".to_bytes()): return panic(
+        try fs.write_file(path, data: "hello".to_bytes(), replace: false)
+        if ((try fs.read_file(path, max_bytes: 5)) != "hello".to_bytes()): return panic(
             "read file"
         )
 
         let limited: Result[Bytes, FileSystemError] = error(
             FileSystemError.LimitExceeded
         )
-        if fs.read_file(path: path, max_bytes: 4) != limited: return panic(
-            "file byte limit"
-        )
+        if fs.read_file(path, max_bytes: 4) != limited: return panic("file byte limit")
 
         let exists: Result[Unit, FileSystemError] = error(FileSystemError.AlreadyExists)
-        if (
-            fs.write_file(
-                path: path,
-                data: "changed".to_bytes(),
-                replace: false
-            ) != exists
-        ): return panic("exclusive write")
-        if (try fs.stat(path: path, follow_links: true)).size != 5: return panic(
-            "file stat"
+        if (fs.write_file(path, data: "changed".to_bytes(), replace: false) != exists): return panic(
+            "exclusive write"
         )
+        if (try fs.stat(path, follow_links: true)).size != 5: return panic("file stat")
         if (try fs.list(path: directory)).length() != 1: return panic("directory list")
 
         with input = try files().open(path):
@@ -155,8 +147,8 @@ test "file handles positional I/O stream adapters and closed errors":
 
     with temporary = try fs.temporary("manuscript-handles-"):
         let path = "{temporary.path()}/data.txt"
-        try fs.write_file(path: path, data: "abcdef".to_bytes(), replace: false)
-        let handle = try fs.open(path: path, flags: "r+", mode: 384)
+        try fs.write_file(path, data: "abcdef".to_bytes(), replace: false)
+        let handle = try fs.open(path, flags: "r+", mode: 384)
 
         with scoped = handle:
             if ((try handle.read_at(offset: 2, max_bytes: 2)) != "cd".to_bytes()): return panic(

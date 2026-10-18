@@ -14,12 +14,12 @@ impl Closeable for Resource:
 export fn main() Int:
     let output = stdout()
     let child = fn():
-        with resource = Resource(label: "child", output: output):
+        with resource = Resource(label: "child", output):
             let _ignored = output.write(data: "ready\n".to_bytes())
             while true:
                 continue
 
-    with resource = Resource(label: "parent", output: output):
+    with resource = Resource(label: "parent", output):
         with group = TaskGroup():
             let _ignored = group.start(child)
             let _joined = group.join()

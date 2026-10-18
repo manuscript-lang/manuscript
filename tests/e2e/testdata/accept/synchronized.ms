@@ -18,12 +18,12 @@ fn increment(locked: SynchronizedGuard[Int]) Unit:
 
 fn release_on_return(counter: Synchronized[Int]) Int:
     with locked = counter.lock():
-        increment(locked: locked)
+        increment(locked)
         return locked.get()
 
 fn release_on_error(counter: Synchronized[Int]) Result[Unit, String]:
     with locked = counter.lock():
-        increment(locked: locked)
+        increment(locked)
         return error("expected")
 
 fn read_and_add(value: Int) Int:
@@ -44,7 +44,7 @@ test "shared counter protects complete updates":
     let operation = fn():
         for unused in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
             with locked = counter.lock():
-                increment(locked: locked)
+                increment(locked)
 
     with group = TaskGroup():
         group.start(operation)
@@ -62,10 +62,10 @@ test "shared counter protects complete updates":
             if not (locked.get() == 100):
                 return panic(message: "check failed")
 
-    if not (release_on_return(counter: counter) == 101):
+    if not (release_on_return(counter) == 101):
         return panic(message: "check failed")
 
-    let _outcome = release_on_error(counter: counter)
+    let _outcome = release_on_error(counter)
     with locked = counter.lock():
         if not (locked.get() == 102):
             return panic(message: "check failed")

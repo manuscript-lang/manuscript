@@ -63,7 +63,7 @@ test "URL format rejects queries that would not round trip":
             host: base.host,
             port: base.port,
             path: base.path,
-            query: query,
+            query,
             fragment: ""
         )
         if format(bad) != invalid: return panic("query {query}")

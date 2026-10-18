@@ -14,7 +14,7 @@ test "semver parses and formats every component":
     )
     if version.prerelease != ["alpha", "1"]: return panic("prerelease")
     if version.build != ["build", "5"]: return panic("build")
-    if format(version: version) != "1.2.3-alpha.1+build.5": return panic("format")
+    if format(version) != "1.2.3-alpha.1+build.5": return panic("format")
     if format(version: (try parse(text: "0.0.0"))) != "0.0.0": return panic("plain")
 
 test "semver rejects malformed text":
@@ -23,7 +23,7 @@ test "semver rejects malformed text":
         "1.2.3+", "1.2.3-01", "1.2.3-a..b", "1.2.3-a_b", "1.2.3+é"
     ]
     for text in bad:
-        if failure(parse(text: text)) != SemverError.InvalidData: return panic(
+        if failure(parse(text)) != SemverError.InvalidData: return panic(
             "category {text}"
         )
 

@@ -9,8 +9,8 @@ fn mark(counter: Counter, value: Int) Int:
 
 type Ordered:
     counter: Counter
-    first: Int = mark(counter: counter, value: 3)
-    second: Int = mark(counter: counter, value: 4)
+    first: Int = mark(counter, value: 3)
+    second: Int = mark(counter, value: 4)
     third: Int = first + second
 
 type Data:
@@ -57,9 +57,9 @@ test "record defaults and explicit overrides":
 test "supplied fields precede defaults in field order":
     let counter = Counter()
     let ordered = Ordered(
-        counter: counter,
-        third: mark(counter: counter, value: 1),
-        second: mark(counter: counter, value: 2)
+        counter,
+        third: mark(counter, value: 1),
+        second: mark(counter, value: 2)
     )
     if (
         counter.value != 123
@@ -70,7 +70,7 @@ test "supplied fields precede defaults in field order":
         return panic("constructor evaluation order")
 
     counter.value = 0
-    let again = Ordered(counter: counter)
+    let again = Ordered(counter)
     if counter.value != 34 or again.third != 7:
         return panic("defaults must evaluate on each construction")
 

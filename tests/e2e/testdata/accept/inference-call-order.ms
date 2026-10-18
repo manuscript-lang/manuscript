@@ -30,16 +30,13 @@ fn record(events: Events, value: Int) Int:
 test "reused inference preserves evaluation and argument conversions":
     let events = Events([])
     let selected = first(
-        right: identity(identity(record(events: events, value: 2))),
-        left: identity(identity(record(events: events, value: 1)))
+        right: identity(identity(record(events, value: 2))),
+        left: identity(identity(record(events, value: 1)))
     )
     if selected != 1: return panic("wrong inferred argument")
     if events.values != [2, 1]: return panic("argument order or repeated evaluation")
 
-    let wrapped = optional(
-        value: identity(record(events: events, value: 3)),
-        fallback: 0
-    )
+    let wrapped = optional(value: identity(record(events, value: 3)), fallback: 0)
     if wrapped != 3: return panic("lost optional wrapping")
     if events.values != [2, 1, 3]: return panic("optional argument evaluated twice")
 

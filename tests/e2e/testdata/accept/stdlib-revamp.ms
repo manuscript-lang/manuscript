@@ -35,7 +35,7 @@ test "domain equality and hashing select interfaces":
     if not (view.equals(Equal(b))): return panic("interface view ignored")
 
 test "stable priority queue and optional capacity":
-    let queue = PriorityQueue(compare: compare)
+    let queue = PriorityQueue(compare)
     queue.enqueue(Key(id: 2, label: "later"))
     queue.enqueue(Key(id: 1, label: "first"))
     queue.enqueue(Key(id: 1, label: "second"))
@@ -50,7 +50,7 @@ test "stable priority queue and optional capacity":
     else:
         return panic("missing item")
 
-    let bounded = PriorityQueue(compare: compare, capacity: 1)
+    let bounded = PriorityQueue(compare, capacity: 1)
     if not (bounded.enqueue(Key(id: 1, label: "only"))): return panic("enqueue failed")
     if bounded.enqueue(Key(id: 0, label: "full")): return panic("capacity ignored")
 
@@ -66,11 +66,8 @@ fn operation() Result[Unit, Error]: ok(unit)
 test "one scheduler admits and schedules work":
     with scheduler = Scheduler():
         let _immediate = scheduler.start(operation)
-        let _delayed = scheduler.after(duration: 0.milliseconds, operation: operation)
-        let repeated = try scheduler.every(
-            interval: 1.milliseconds,
-            operation: operation
-        )
+        let _delayed = scheduler.after(duration: 0.milliseconds, operation)
+        let repeated = try scheduler.every(interval: 1.milliseconds, operation)
         scheduler.cancel(repeated)
 
 type EmptyReader:
