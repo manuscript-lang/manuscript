@@ -5,11 +5,11 @@ weight = 3
 
 # Understanding effects
 
-An effect describes external behavior reachable from a function. If a function calls another function that writes to storage, that write is also part of the caller's effect summary.
+An effect is external behavior reachable from a function; a callee's write is part of its caller's summary.
 
 ## Transitive analysis
 
-The compiler follows calls and combines their known effects. The vocabulary is `read`, `write`, `external-call`, and `unknown` (`pkg/checker/effects.go`).
+Effects combine along calls. The vocabulary is `read`, `write`, `external-call`, and `unknown` (`pkg/checker/effects.go`).
 
 | Call target | How it contributes to the summary |
 | --- | --- |
@@ -17,8 +17,8 @@ The compiler follows calls and combines their known effects. The vocabulary is `
 | Several known targets | Include the union of their effects. |
 | Unresolved function value or contract call | Include `unknown`; do not treat it as having no effects. |
 
-These summaries describe reachable behavior. Manuscript has no source syntax that promises static purity or restricts a function to an effect set.
+Summaries describe reachable behavior; no syntax promises purity or restricts effects.
 
 ## Effects and cancellation
 
-Cancellation can stop unfinished work and run cleanup. It cannot undo an external write that already completed. Review both a boundary's returned errors and its external effects when deciding how to retry or recover.
+Cancellation stops unfinished work and runs cleanup but cannot undo a completed external write. When retrying, review both returned errors and external effects.

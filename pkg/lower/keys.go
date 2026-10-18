@@ -73,6 +73,13 @@ func (g *gen) identityKeys(t *checker.Type) bool {
 	return false
 }
 
+// derivedHash is the hash of a value whose type has no explicit Hashable
+// implementation: equal values hash alike because both derive from the same
+// comparable projection that map keys match by.
+func (g *gen) derivedHash(t *checker.Type, v ast.Expr) ast.Expr {
+	return rtCall("HashKey", g.projected(t, v))
+}
+
 // projection is a function of (T) any returning the comparable form of a key.
 func (g *gen) projection(t *checker.Type) ast.Expr {
 	t = g.sub(t)

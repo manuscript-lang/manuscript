@@ -414,7 +414,7 @@ func (b *osResponseBody) Read(ctx *Execution, maxBytes Option[int]) Result[Optio
 		return ioFail[Option[*Bytes]](errIoClosed)
 	}
 	if err != nil {
-		return ioFail[Option[*Bytes]](ioFailed(err.Error()))
+		return ioFail[Option[*Bytes]](ioFailed(describeTransportError(err)))
 	}
 	return ioFail[Option[*Bytes]](ioFailed("empty read without EOF"))
 }

@@ -550,6 +550,15 @@ func characterHint(b byte) string {
 // continuationHint explains the usual cause of an over-indented line that
 // starts with a binary operator: the previous expression ended at the newline.
 func (s *scanner) continuationHint() string {
+	for i := len(s.tokens) - 1; i >= 0; i-- {
+		switch s.tokens[i].Kind {
+		case Newline, Indent, Dedent:
+			continue
+		case "|":
+			return "; a pipe step cannot follow the '|' on the next line, so end the previous line before '|' and start the continuation line with '|'"
+		}
+		break
+	}
 	rest := s.source[s.offset:]
 	end := 0
 	for end < len(rest) && rest[end] != ' ' && rest[end] != '\n' {

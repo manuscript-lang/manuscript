@@ -43,7 +43,7 @@ export type TomlValue:
 
 # Errors returned for invalid limits, malformed TOML, or exceeded resource bounds.
 export type TomlError:
-    # A supplied limit is negative, or stringify received a value that is not a table.
+    # A supplied limit is negative, or stringify received a value that is not a table or holds a DateTimeValue that is not a valid TOML date or time.
     case InvalidInput
     # Invalid syntax, duplicate/conflicting keys, unsupported value forms or numeric range failures.
     case InvalidData(
@@ -1119,6 +1119,19 @@ fn emit_table(
                     )
             _: let ignored = unit
 
+fn datetimes_valid(value: TomlValue) -> Bool:
+    match value:
+        DateTimeValue(text): return datetime_valid(text)
+        ArrayValue(values):
+            for item in values:
+                if not datetimes_valid(item): return false
+            return true
+        TableValue(values):
+            for entry in values.entries():
+                if not datetimes_valid(entry.value): return false
+            return true
+        _: return true
+
 # Serializes a table value as a TOML document. Tables and arrays of tables use headers; other values are written inline.
 export fn stringify(
     value: TomlValue,
@@ -1130,6 +1143,8 @@ export fn stringify(
     let root = match value:
         TableValue(values): values
         _: return error(TomlError.InvalidInput)
+
+    if not datetimes_valid(value): return error(TomlError.InvalidInput)
 
     let writer = Writer(out: StringBuilder(), started: false)
     emit_table(writer: writer, path: [], values: root)

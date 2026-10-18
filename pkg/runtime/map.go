@@ -1,5 +1,7 @@
 package msruntime
 
+import "sync/atomic"
+
 // Entry is a map literal element.
 type Entry[K comparable, V any] struct {
 	Key   K
@@ -21,6 +23,7 @@ type Map[K comparable, V any] struct {
 	buckets map[int][]int
 	entries []mapSlot[K, V] // a slot with live false marks a removed entry until compaction
 	live    int
+	writing uint32 // 1 while a task inserts, deletes or clears; detects unsynchronized sharing
 }
 
 // mapSlot stores an entry by value, so adding or replacing one allocates
@@ -78,7 +81,25 @@ func MapOf[K comparable, V any](keys *Keys[K], entries []Entry[K, V]) *Map[K, V]
 // Len is the number of entries.
 func (m *Map[K, V]) Len() int { return m.live }
 
+// Maps are not synchronized: tasks sharing one must lock a Synchronized around
+// every access. Go's own map would end the process with an unrecoverable
+// "concurrent map writes" trace, so overlapping use is caught first and
+// raised as an ordinary fault. Detection covers accesses that overlap an
+// insert, delete or clear; it is a diagnostic, not a guarantee.
+const concurrentMapMessage = "concurrent access to a Map or Set from several tasks; share it through a Synchronized and hold its lock around every read and write"
+
+func (m *Map[K, V]) beginWrite() {
+	if !atomic.CompareAndSwapUint32(&m.writing, 0, 1) {
+		Raise(concurrentMapMessage)
+	}
+}
+
+func (m *Map[K, V]) endWrite() { atomic.StoreUint32(&m.writing, 0) }
+
 func (m *Map[K, V]) find(key K) (int, bool) {
+	if atomic.LoadUint32(&m.writing) != 0 {
+		Raise(concurrentMapMessage)
+	}
 	switch {
 	case m.keys == nil:
 		i, ok := m.index[key]
@@ -131,12 +152,13 @@ func (m *Map[K, V]) unbind(key K, i int) {
 }
 
 // Lookup returns the value stored under key.
-func (m *Map[K, V]) Lookup(key K) (V, bool) {
-	if i, ok := m.find(key); ok {
-		return m.entries[i].Value, true
+// Named results keep this wrapper within the pinned Go compiler's inlining budget.
+func (m *Map[K, V]) Lookup(key K) (value V, found bool) {
+	i, found := m.find(key)
+	if found {
+		value = m.entries[i].Value
 	}
-	var zero V
-	return zero, false
+	return
 }
 
 // Put stores value under key, appending a new key.
@@ -147,9 +169,11 @@ func (m *Map[K, V]) Put(key K, value V) {
 		m.entries[i].Value = value
 		return
 	}
+	m.beginWrite()
 	m.bind(key, len(m.entries))
 	m.entries = append(m.entries, mapSlot[K, V]{Key: key, Value: value, live: true})
 	m.live++
+	m.endWrite()
 }
 
 // Delete removes key and reports whether it was present.
@@ -158,12 +182,14 @@ func (m *Map[K, V]) Delete(key K) bool {
 	if !ok {
 		return false
 	}
+	m.beginWrite()
 	m.unbind(m.entries[i].Key, i)
 	m.entries[i] = mapSlot[K, V]{}
 	m.live--
 	if len(m.entries) > 32 && m.live < len(m.entries)/2 {
 		m.compact()
 	}
+	m.endWrite()
 	return true
 }
 
@@ -184,9 +210,11 @@ func (m *Map[K, V]) compact() {
 
 // Clear removes every entry.
 func (m *Map[K, V]) Clear() {
+	m.beginWrite()
 	m.reset()
 	m.entries = nil
 	m.live = 0
+	m.endWrite()
 }
 
 // Snapshot returns the live entries in insertion order. A loop over a map

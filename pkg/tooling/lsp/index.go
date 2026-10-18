@@ -110,13 +110,16 @@ func sourceIndex(result compiler.Result) []occurrence {
 	}
 	for _, m := range sourceModules(result) {
 		for _, decl := range m.Declarations {
+			if decl.Synthetic && decl.Kind == syntax.KindInterface {
+				continue
+			}
 			if symbol := sourceSymbols(result, m.File)[decl.Name]; symbol != nil && symbol.Decl == decl {
 				add(symbolKey(symbol), symbol.Name, header(decl.Pos, symbol.Name), true, false, &checker.Info{Type: symbol.Type, Symbol: symbol})
 			}
 		}
 		for _, decl := range m.Declarations {
 			symbol := sourceSymbols(result, m.File)[decl.Name]
-			if symbol == nil || symbol.Decl != decl || symbol.Type == nil || symbol.Type.Def == nil {
+			if decl.Synthetic && decl.Kind == syntax.KindInterface || symbol == nil || symbol.Decl != decl || symbol.Type == nil || symbol.Type.Def == nil {
 				continue
 			}
 			for _, field := range decl.Fields {

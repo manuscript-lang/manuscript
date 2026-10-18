@@ -98,3 +98,34 @@ func TestNestedEmptyLiteralReportsOnce(t *testing.T) {
 		})
 	}
 }
+
+// Nested constructor calls infer ever larger types; checking each call's bounds
+// must not rebuild a structural key of the whole result per level.
+func TestNestedConstructorCheckingScalesWithDepth(t *testing.T) {
+	for _, shape := range []struct{ name, prelude, open string }{
+		{"some", "", "some("},
+		{"generic type", "type Box[T]:\n    value: T\n", "Box(value: "},
+	} {
+		t.Run(shape.name, func(t *testing.T) {
+			allocations := func(depth int) float64 {
+				source := shape.prelude + nestedLiteral(shape.open, "1", ")", depth)
+				return testing.AllocsPerRun(1, func() {
+					if p := checkNested(t, source); len(p.Diagnostics) != 0 {
+						t.Fatal(p.Diagnostics)
+					}
+				})
+			}
+			small, large := allocations(200), allocations(800)
+			if large > 6*small {
+				t.Fatalf("checking 800 levels allocated %.0f times, 200 levels %.0f; want near-linear growth", large, small)
+			}
+		})
+	}
+}
+
+func TestNestedUninferableConstructorReportsOnce(t *testing.T) {
+	program := checkNested(t, "fn f() -> Unit:\n    let x = some(some(none))\n")
+	if len(program.Diagnostics) != 1 || !strings.Contains(program.Diagnostics[0].Message, "cannot infer constructor type argument") {
+		t.Fatalf("want one inference error, got %+v", program.Diagnostics)
+	}
+}

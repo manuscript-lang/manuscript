@@ -71,22 +71,27 @@ func Collections_RangeBy(ctx *Execution, start, end, step int, maxItems Option[i
 	} else if step < 0 && start > end {
 		span, size = uint64(start)-uint64(end), -uint64(step)
 	}
-	if span > 0 && (span-1)/size >= uint64(limit) {
+	if span == 0 {
+		return Ok[*List[int], CollectionError](&List[int]{})
+	}
+	count := (span-1)/size + 1
+	if count > uint64(limit) {
 		return Fail[*List[int], CollectionError](CollectionError_LimitExceeded{})
 	}
-	var out []int
-	tick := uint32(0)
-	for n := start; step > 0 && n < end || step < 0 && n > end; {
-		Poll(ctx, &tick)
-		if len(out) == limit {
-			return Fail[*List[int], CollectionError](CollectionError_LimitExceeded{})
+	// Avoid a large allocation when a range that would poll is already cancelled.
+	if count >= 64 {
+		CheckCancelled(ctx)
+	}
+	out := make([]int, int(count))
+	n := start
+	for i := range out {
+		PollIndex(ctx, i)
+		out[i] = n
+		// Every remaining term lies within the representable end bound. Do not
+		// compute the unused term after the last item, which could overflow.
+		if i+1 < len(out) {
+			n += step
 		}
-		out = append(out, n)
-		// An overflowing next term lies outside every representable end.
-		if step > 0 && n > math.MaxInt-step || step < 0 && n < math.MinInt-step {
-			break
-		}
-		n += step
 	}
 	return Ok[*List[int], CollectionError](&List[int]{Items: out})
 }

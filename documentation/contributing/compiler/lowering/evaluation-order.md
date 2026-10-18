@@ -5,12 +5,12 @@ weight = 95
 
 # Evaluation order and call preparation
 
-Named arguments can be written in a different order from the parameters in a declaration. Generated Go must still evaluate them in the order the caller wrote. Consume the checker's resolved argument names, including positional and mixed calls; retain their written order. Evaluate each argument into a temporary value, then arrange those values for the Go call. Preserve short-circuit behavior too.
+Generated Go must evaluate arguments in the order the caller wrote them, even when named arguments differ from declaration order.
 
-Each TaskGroup.start prepares its callback before submitting that operation. Constructing closures snapshots their local captures without invoking their bodies. Earlier submissions may already be running while later callbacks are prepared; lexical group cleanup stops and joins them if later preparation fails. Native acquisitions retain their explicit delivery/cleanup contracts.
+- Consume the checker's resolved argument names (positional, named, mixed), evaluate each into a temporary in written order, then arrange them for the call. Preserve short-circuiting.
+- `TaskGroup.start` prepares its callback before submitting. Closure construction snapshots captures without running bodies. Earlier submissions may already run while later ones prepare; lexical group cleanup stops and joins them if preparation fails.
+- List elements evaluate left to right; an existing list argument evaluates once.
+- Destructuring evaluates its initializer once and extracts bindings in pattern order, keeping each type.
+- A `with` initializer evaluates once and registers the object's resolved `close` before the next cancellation checkpoint. Later alias assignment does not change that receiver.
 
-Ordinary list elements evaluate left to right; an existing list argument evaluates once. Destructuring evaluates the initializer once and extracts bindings in written pattern order, retaining each selected value's type.
-
-A `with` initializer evaluates once, then registers the initialized object's resolved close method before exposing another cancellation checkpoint. Later alias assignment does not change that receiver.
-
-See [source call order](../../../core-language/functions/declarations-and-calls.md), [operation preparation](../../../concurrency/task-groups.md#preparation), and [using with](../../../core-language/cleanup/scopes.md).
+See [source call order](../../../core-language/functions/declarations-and-calls.md) and [using with](../../../core-language/cleanup/scopes.md).

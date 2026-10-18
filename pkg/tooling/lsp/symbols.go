@@ -57,7 +57,7 @@ func documentSymbols(result compiler.Result, d document) []any {
 		}
 		if decl.Kind == syntax.KindImpl {
 			kind = 5
-			name = decl.Contract.Name + " for " + decl.Receiver.Name
+			name = decl.ImplName()
 		}
 		if decl.Kind == syntax.KindTest {
 			name = "test " + decl.Name
@@ -87,6 +87,9 @@ func documentSymbols(result compiler.Result, d document) []any {
 		return value
 	}
 	for i, decl := range m.Declarations {
+		if decl.Synthetic && decl.Kind == syntax.KindInterface {
+			continue
+		}
 		end := blockEnd(len(d.Text))
 		if i+1 < len(m.Declarations) {
 			end = blockEnd(m.Declarations[i+1].Pos.Offset)

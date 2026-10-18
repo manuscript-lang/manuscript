@@ -200,17 +200,47 @@ func requiredType(t *Type) *Type {
 	if t == nil {
 		return nil
 	}
+	// Share subtrees that carry no defaults: copying every level of a nested
+	// type per call made inference quadratic in nesting depth.
+	changed := t.Defaults != nil
+	var args []*Type
+	for i, a := range t.Args {
+		r := requiredType(a)
+		if r != a && args == nil {
+			args = append([]*Type(nil), t.Args...)
+			changed = true
+		}
+		if args != nil {
+			args[i] = r
+		}
+	}
+	var params []Param
+	for i, p := range t.Params {
+		r := requiredType(p.Type)
+		if r != p.Type && params == nil {
+			params = append([]Param(nil), t.Params...)
+			changed = true
+		}
+		if params != nil {
+			params[i].Type = r
+		}
+	}
+	result := requiredType(t.Result)
+	if result != t.Result {
+		changed = true
+	}
+	if !changed {
+		return t
+	}
 	r := *t
 	r.Defaults = nil
-	r.Args = nil
-	for _, a := range t.Args {
-		r.Args = append(r.Args, requiredType(a))
+	if args != nil {
+		r.Args = args
 	}
-	r.Params = nil
-	for _, p := range t.Params {
-		r.Params = append(r.Params, Param{p.Name, requiredType(p.Type)})
+	if params != nil {
+		r.Params = params
 	}
-	r.Result = requiredType(t.Result)
+	r.Result = result
 	return &r
 }
 func substitution(t *Type) map[string]*Type {
@@ -352,13 +382,8 @@ func variableSet(types []*Type) map[string]bool {
 }
 func formatMismatch(actual, expected *Type) string {
 	message := fmt.Sprintf("expected %s, found %s", expected, actual)
-	if len(actual.Args) > 0 && Same(actual.Args[0], expected) {
-		switch {
-		case std(actual, "Result"):
-			message += "; unwrap it with 'try' inside a function that returns a compatible Result, or with 'if let' or '.unwrap()'"
-		case std(actual, "Optional"):
-			message += "; unwrap it with 'if let', '.unwrap_or(default)', or '.unwrap()'"
-		}
+	if hint := resultUseHint(actual, expected); hint != "" {
+		message += "; " + hint
 	}
 	return message
 }

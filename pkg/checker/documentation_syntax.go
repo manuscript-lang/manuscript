@@ -15,10 +15,6 @@ func documentDeclaration(d *syntax.Declaration, keyword, name string, source ...
 	}
 	var b strings.Builder
 	b.WriteString(keyword + " " + name + documentTypeParameters(d.TypeParams))
-	if len(d.Fields)+len(d.Cases)+len(d.Methods) == 0 {
-		b.WriteString(":\n")
-		return b.String()
-	}
 	b.WriteString(":\n")
 	for _, field := range d.Fields {
 		b.WriteString("    " + field.Name + ": " + documentType(field.Type))
@@ -34,6 +30,10 @@ func documentDeclaration(d *syntax.Declaration, keyword, name string, source ...
 		}
 		b.WriteByte('\n')
 	}
+	if keyword == "type" && len(d.Methods) > 0 {
+		// A type's own methods are written in an `impl Type:` block.
+		b.WriteString("\nimpl " + name + documentTypeArguments(d.TypeParams) + ":\n")
+	}
 	for _, method := range d.Methods {
 		header := documentDeclaration(method, "fn", method.Name, source...)
 		if keyword == "interface" {
@@ -42,6 +42,19 @@ func documentDeclaration(d *syntax.Declaration, keyword, name string, source ...
 		b.WriteString("    " + header)
 	}
 	return b.String()
+}
+
+// documentTypeArguments writes the type's own parameters as the arguments of
+// its impl receiver, without bounds or defaults.
+func documentTypeArguments(parameters []syntax.TypeParameter) string {
+	if len(parameters) == 0 {
+		return ""
+	}
+	var names []string
+	for _, p := range parameters {
+		names = append(names, p.Name)
+	}
+	return "[" + strings.Join(names, ", ") + "]"
 }
 
 func documentTypeParameters(parameters []syntax.TypeParameter) string {

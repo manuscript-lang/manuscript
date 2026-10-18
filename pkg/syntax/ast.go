@@ -84,7 +84,9 @@ type Declaration struct {
 	// without parameters whose body returns the initializer, and every use
 	// evaluates that initializer. Result is the annotation, or a placeholder
 	// at the initializer's position until the checker infers the type.
-	Constant                   bool
+	Constant bool
+	// Synthetic marks a declaration the checker generated for `impl Type:`; editors skip it.
+	Synthetic                  bool
 	TypeParams                 []TypeParameter
 	Fields                     []Parameter
 	Cases                      []Case
@@ -164,4 +166,13 @@ type Statement struct {
 	Body, Else []*Statement
 	// Fact is the checker's annotation of this node; nil until it is checked.
 	Fact any
+}
+
+// ImplName is the display name of an impl declaration: "Contract for Type" for
+// a contract implementation and "Type" for a type's own methods.
+func (d *Declaration) ImplName() string {
+	if d.Contract == nil || d.Synthetic {
+		return d.Receiver.Name
+	}
+	return d.Contract.Name + " for " + d.Receiver.Name
 }

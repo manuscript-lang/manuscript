@@ -6,6 +6,9 @@ package msruntime
 
 type check_Decimal = *Decimal
 
+func check_Decimal_Compare() {
+	var _ func(*Execution, *Decimal, *Decimal) int = Decimal_Compare
+}
 func check_Decimal_ToFloat() {
 	var _ func(*Execution, *Decimal) float64 = Decimal_ToFloat
 }

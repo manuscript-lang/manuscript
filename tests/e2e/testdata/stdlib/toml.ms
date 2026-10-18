@@ -269,3 +269,30 @@ test "TOML long strings parse and stringify in linear time":
 
     let text = stringify(value: root) | value
     if value(parse(text: text)) != root: return panic("long string round trip")
+
+test "TOML stringify rejects invalid date-time text":
+    let invalid: Result[String, TomlError] = error(TomlError.InvalidInput)
+
+    for text in ["bogus", "", "2024-13-01", "1979-05-27T07:32:00 junk"]:
+        let table = Map[String, TomlValue]().add("x", TomlValue.DateTimeValue(text))
+        if stringify(value: TomlValue.TableValue(table)) != invalid: return panic(
+            "invalid date-time text"
+        )
+
+        let nested = Map[String, TomlValue]().add(
+            "a",
+            TomlValue.ArrayValue([TomlValue.TableValue(table)])
+        )
+        if stringify(value: TomlValue.TableValue(nested)) != invalid: return panic(
+            "nested invalid date-time text"
+        )
+
+    let good = Map[String, TomlValue]().add(
+        "x",
+        TomlValue.DateTimeValue("1979-05-27T07:32:00Z")
+    )
+    if (
+        value(
+            stringify(value: TomlValue.TableValue(good))
+        ) != "x = 1979-05-27T07:32:00Z\n"
+    ): return panic("valid date-time text")

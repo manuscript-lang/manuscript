@@ -5,10 +5,7 @@ weight = 2
 
 # Language reference
 
-These chapters define how Manuscript programs behave. If you are new, start
-with [your first program](../learn/getting-started.md) and the
-[language tour](../learn/tour.md); return here for an exact rule or a deeper
-explanation. The chapters build on one another in this order:
+These chapters define how Manuscript programs behave. New readers should start with [your first program](../learn/getting-started.md) and the [language tour](../learn/tour.md), then return here for exact rules, in this order:
 
 1. [Basics](basics/_index.md): source files, variables, numbers, text, and expressions.
 2. [Functions](functions/_index.md): parameters, calls, and closures.
@@ -18,4 +15,4 @@ explanation. The chapters build on one another in this order:
 6. [Modules](modules/_index.md): imports, exports, and public boundaries.
 7. [Managing resources](cleanup/_index.md): closing files and connections with `with`.
 
-Then use the [standard library](../standard-library/_index.md) to work with data and external services. [Concurrent work](../concurrency/_index.md) explains starting tasks, scheduling, and sharing mutable data.
+Find declarations in the generated [standard-library API reference](../standard-library/reference/_index.md).

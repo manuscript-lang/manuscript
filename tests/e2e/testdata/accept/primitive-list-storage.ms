@@ -1,3 +1,4 @@
+import range from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 fn append_value[T](values: List[T], value: T) -> List[T]:
@@ -14,12 +15,8 @@ test "primitive storage retains generic record Optional and saved aliases":
     let record = Lists(values)
     let wrapped: Optional[List[Int]] = some(values)
     let append = forwarded(values).append
-    var i = 0
-
-    while i < 4096:
+    for i in range(0, 4096):
         append_value(record.values, i)
-        i = i + 1
-
     append(17)
     wrapped.unwrap().set(0, 41)
     if not (

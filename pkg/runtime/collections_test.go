@@ -254,6 +254,14 @@ func TestCollectionsFilledAndRange(t *testing.T) {
 		{0, 5, 1, Some(int(5)), []int{0, 1, 2, 3, 4}, nil},
 		{math.MinInt64, math.MaxInt64, 1, None[int](), nil, CollectionError_LimitExceeded{}},
 		{math.MaxInt64 - 1, math.MaxInt64, 5, None[int](), []int{math.MaxInt64 - 1}, nil},
+		{math.MinInt, math.MaxInt, math.MaxInt, Some(3), []int{math.MinInt, -1, math.MaxInt - 1}, nil},
+		{math.MaxInt, math.MinInt, math.MinInt, Some(2), []int{math.MaxInt, -1}, nil},
+		{0, math.MinInt, math.MinInt, Some(1), []int{0}, nil},
+		{-1, math.MinInt, math.MinInt, Some(1), []int{-1}, nil},
+		{math.MinInt + 1, math.MinInt, -5, Some(1), []int{math.MinInt + 1}, nil},
+		{math.MinInt, math.MaxInt, math.MaxInt, Some(2), nil, CollectionError_LimitExceeded{}},
+		{0, 0, 1, Some(0), nil, nil},
+		{0, -1, 1, Some(0), nil, nil},
 	}
 	for _, c := range cases {
 		r := Collections_RangeBy(ctx, c.start, c.end, c.step, c.max)
@@ -267,6 +275,30 @@ func TestCollectionsFilledAndRange(t *testing.T) {
 			t.Errorf("%+v = %v", c, r)
 		}
 	}
+}
+
+func TestCollectionsRangeByCancellation(t *testing.T) {
+	ctx, cancel := cancelledExecution()
+	cancel()
+	// Argument and size errors precede cancellation; no result is allocated.
+	if r := Collections_RangeBy(ctx, 0, 100, 0, None[int]()); !r.Failed || r.Err != (CollectionError_InvalidInput{}) {
+		t.Fatal(r)
+	}
+	if r := Collections_RangeBy(ctx, 0, 100, 1, Some(50)); !r.Failed || r.Err != (CollectionError_LimitExceeded{}) {
+		t.Fatal(r)
+	}
+	// Short and empty ranges retain Poll's existing 64-iteration cadence.
+	for _, count := range []int{0, 63} {
+		if r := Collections_RangeBy(ctx, 0, count, 1, None[int]()); r.Failed || len(r.Val.Items) != count {
+			t.Fatal(r)
+		}
+	}
+	defer func() {
+		if _, ok := recover().(cancelled); !ok {
+			t.Fatal("expected cancellation for a range reaching the polling interval")
+		}
+	}()
+	Collections_RangeBy(ctx, 0, 64, 1, None[int]())
 }
 
 func TestCollectionsRangeCountsByOne(t *testing.T) {
@@ -643,4 +675,30 @@ func TestCollectionLoopsHonorCancellation(t *testing.T) {
 		}
 	}()
 	List_Count(ctx, ints(1, 2, 3), func(*Execution, int) bool { return true })
+}
+
+func TestSharedMapFaultsInsteadOfCrashing(t *testing.T) {
+	m := NewMap[int, int]()
+	m.writing = 1 // another task is inserting
+	for name, use := range map[string]func(){
+		"put":    func() { m.Put(1, 1) },
+		"get":    func() { m.Lookup(1) },
+		"delete": func() { m.Delete(1) },
+		"clear":  func() { m.Clear() },
+	} {
+		func() {
+			defer func() {
+				fault, ok := recover().(Fault)
+				if !ok || !strings.Contains(fault.Message, "Synchronized") {
+					t.Errorf("%s: recovered %v", name, fault)
+				}
+			}()
+			use()
+		}()
+	}
+	m.writing = 0
+	m.Put(1, 1)
+	if v, ok := m.Lookup(1); !ok || v != 1 || m.writing != 0 {
+		t.Fatal("map unusable after sequential writes")
+	}
 }

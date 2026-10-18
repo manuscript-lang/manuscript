@@ -151,8 +151,46 @@ func parseStandardSources() ([]*syntax.Module, error) {
 			return nil, result.err
 		}
 		modules[i] = result.module
+		if err := foldInherentImpls(result.module); err != nil {
+			return nil, err
+		}
 	}
 	return modules, nil
+}
+
+// foldInherentImpls moves the methods of each `impl Type:` block into the
+// declaration of Type in the same module. Bundled receiver operations are
+// bound to native code by type and method name, so they keep one record per
+// type regardless of how the source spells them.
+func foldInherentImpls(module *syntax.Module) error {
+	types := map[string]*syntax.Declaration{}
+	for _, d := range module.Declarations {
+		if d.Kind != syntax.KindImpl && d.Kind != syntax.KindTest && d.Kind != syntax.KindFn {
+			types[d.Name] = d
+		}
+	}
+	kept := module.Declarations[:0]
+	for _, d := range module.Declarations {
+		if d.Kind != syntax.KindImpl || d.Contract != nil {
+			kept = append(kept, d)
+			continue
+		}
+		target := types[d.Receiver.Name]
+		if target == nil || target.Kind == syntax.KindInterface {
+			return fmt.Errorf("inherent impl must name a type declared in the same module: %s", d.Pos)
+		}
+		if len(d.Receiver.Args) != len(target.TypeParams) {
+			return fmt.Errorf("inherent impl must repeat the type parameters of %s: %s", target.Name, d.Pos)
+		}
+		for i, argument := range d.Receiver.Args {
+			if argument.Name != target.TypeParams[i].Name || len(argument.Args) > 0 {
+				return fmt.Errorf("inherent impl must repeat the type parameters of %s: %s", target.Name, d.Pos)
+			}
+		}
+		target.Methods = append(target.Methods, d.Methods...)
+	}
+	module.Declarations = kept
+	return nil
 }
 
 // register records one bundled module: a source module is checked later, on

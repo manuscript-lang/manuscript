@@ -48,6 +48,8 @@ export type CompressionFormat:
     case Zlib
     # Raw DEFLATE without framing.
     case Deflate
+
+impl CompressionFormat:
     # Compresses with level 6 by default; explicit levels remain 0..9 (0 stores data).
     # Uses the same optional output budget/domain errors as compress.
     fn compress(
@@ -55,6 +57,7 @@ export type CompressionFormat:
         level: Int = 6,
         max_bytes: Optional[Int] = none
     ) -> Result[Bytes, CompressionError]:
+
     # Decompresses with the same cumulative output limit and validation as decompress.
     fn decompress(
         data: Bytes,

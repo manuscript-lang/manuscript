@@ -1,4 +1,19 @@
-import {acos, asin, atan, atan2, cosh, exp, log10, sinh, tan, tanh, abs, pi, e} from "@std/math.ms"
+import {
+    acos,
+    asin,
+    atan,
+    atan2,
+    cosh,
+    exp,
+    log10,
+    sinh,
+    tan,
+    tanh,
+    abs,
+    pi,
+    e,
+    remainder
+} from "@std/math.ms"
 import panic from "@std/faults.ms"
 
 fn near(actual: Float, expected: Float) -> Bool:
@@ -25,3 +40,11 @@ test "tangent hyperbolic exponential and logarithm functions":
     if not near(exp(0.0), 1.0): return panic("exp 0")
     if not near(exp(1.0), e()): return panic("exp 1")
     if not near(log10(1000.0), 3.0): return panic("log10 1000")
+
+test "float remainder takes the sign of the dividend":
+    if remainder(left: 5.0, right: 3.0) != 2.0: return panic("remainder positive")
+    if remainder(left: -5.0, right: 3.0) != -2.0: return panic("remainder negative")
+    if remainder(left: 7.0, right: 2.0) != 1.0: return panic("remainder half")
+    if not remainder(left: 5.0, right: 0.0).is_nan(): return panic(
+        "remainder zero divisor"
+    )

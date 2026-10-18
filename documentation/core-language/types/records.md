@@ -5,7 +5,7 @@ weight = 1
 
 # Records and nominal types
 
-A record groups named fields into one value. Its fields can be changed after construction. Assignment and argument passing retain the same instance; use `.clone()` when you need a separate copy. Each record declaration creates a distinct type; this is called nominal typing. Use a record when data has a known shape, such as a customer with a name and email.
+A record groups named fields into one value. Fields are mutable, assignment and argument passing share the same instance (use `.clone()` for a copy), and each declaration is a distinct nominal type.
 
 ```manuscript
 type Customer:
@@ -13,20 +13,18 @@ type Customer:
     email: Optional[String]
 ```
 
-Records have nominal identity and mutable fields. A resource field retains an ordinary reference to that object.
-
-A record declaration may have an empty schema, written as `type Marker:` followed by a newline. Field types are explicit. Duplicate field names are compile errors. A field may have a default expression checked against its declared type.
+Field types are explicit and names unique. An empty record is `type Marker:`. A field may have a default expression checked against its type.
 
 ## Construction
 
-Constructors supply each required field exactly once, positionally or by label, and may omit fields with defaults. Missing required fields, duplicate fields, and unknown fields are compile errors. Call order may differ from declaration order; supplied expressions evaluate in written call order, followed by omitted defaults in field declaration order. Each expression is checked against its declared field type, including expected-type checking for `none` and empty lists.
+Supply each required field exactly once, by position or label; fields with defaults may be omitted. Missing, duplicate, and unknown fields are compile errors. Supplied expressions evaluate in written order, then omitted defaults in declaration order. Each is checked against its field type, so `none` and `[]` get their expected type.
 
 ```manuscript
 let customer = Customer(name: "Ada", email: none)
 let name = customer.name
 ```
 
-Constructor arguments follow field declaration order and accept optional labels under the ordinary [call rules](../functions/declarations-and-calls.md#argument-names). `Box(3)` and `Box(value: 3)` are equivalent; multi-field records also accept positional and mixed arguments. `customer.name` reads the field. To use the optional email, handle its alternatives as described in [optional values](optionals.md).
+Positional arguments follow declaration order and labels are optional under the [call rules](../functions/declarations-and-calls.md#argument-names): `Box(3)` equals `Box(value: 3)`. Handle an optional field as described in [optional values](optionals.md).
 
 ```manuscript
 # Rejected: required email is missing.
@@ -35,7 +33,7 @@ let incomplete = Customer(name: "Ada")
 customer.name = "Grace"
 ```
 
-Generic records use explicit parameters, such as `type Box[T]:` with `value: T`. `Box[Int](value: 1)` constructs that application; see [generics](generics.md).
+Generic records declare parameters (`type Box[T]:`) and construct as `Box[Int](value: 1)`; see [generics](generics.md).
 
 ```manuscript
 type Options:
@@ -45,11 +43,11 @@ type Options:
 let options = Options(count: 5)  # total defaults to 6
 ```
 
-A default can refer to earlier fields and module declarations, including functions; it cannot refer to itself or a later field. Defaults evaluate anew on each construction, so collection defaults have fresh storage. Supplying a value, including `unit`, `none`, or zero, skips that field's default. Generic arguments come from supplied fields, explicit type arguments, or the expected type, rather than from defaults.
+A default may use earlier fields and module declarations, but not itself or later fields. It is evaluated on each construction, so collection defaults are fresh. Any supplied value, even `unit`, `none`, or zero, skips the default. Generic arguments never come from defaults.
 
 ## Mutation and cloning
 
-A method declared through an [interface implementation](contracts.md#explicit-implementations) can update its receiver's fields without replacing the record. User-defined methods require `impl Interface for Type:`; `impl Type:` and method declarations inside a source record are unsupported:
+Methods come from `impl Type:` or `impl Interface for Type:` ([explicit implementations](contracts.md#explicit-implementations)); methods inside the record are rejected. A method can update receiver fields in place:
 
 ```manuscript
 interface Counter:
@@ -63,15 +61,15 @@ impl Counter for Val:
         self.val = self.val + 1
 ```
 
-Field writes keep the declared field type. The receiver expression is evaluated once, before the replacement value. Nested fields, parameters, aliases, and closure captures refer to the same record storage.
+Field writes keep the declared type; the receiver evaluates once, before the new value. Parameters, aliases, nested fields, and closure captures share the same storage.
 
-`.clone()` returns a new record with independent field storage. It is shallow: nested records, collections, callbacks, and resource references are retained. Changing a clone's own field does not change the original; changing a shared nested object affects both.
+`.clone()` is shallow: it copies field storage and keeps nested records, collections, callbacks, and resource references. Changing a clone's own field leaves the original alone; changing a shared nested object affects both.
 
-Record and alternative values and `List`, `Map`, `Set`, and `Bytes` expose a built-in `.clone()`. Native file handles, sockets, queues, synchronization objects, guards, and other service handles do not. A record containing a handle can be cloned, but that keeps the same handle and its existing lifetime.
+Records, alternatives, `List`, `Map`, `Set`, and `Bytes` have `.clone()`. Files, sockets, queues, synchronization objects, guards, and other service handles do not; a cloned record keeps the same handle.
 
 ## Domain identity
 
-Distinct identifiers such as `CustomerId` use nominal field types.
+Wrap identifiers in their own records so they cannot be mixed up.
 
 ```manuscript
 type CustomerId:
@@ -81,25 +79,21 @@ type OrderId:
     value: String
 ```
 
-The two declarations represent distinct types even though their fields have the same shape. This keeps a customer identifier distinct from an order identifier at function boundaries.
-
 ```manuscript
-let customer_id = CustomerId(value: "42")
+let customer_id = CustomerId("42")
 # Rejected: equal field shapes do not make nominal types interchangeable.
 let order_id: OrderId = customer_id
 ```
 
-A nominal identity includes its defining module, declaration, and type arguments. Alternate normalized import paths to the same module do not create new types. Type applications are [invariant](compatibility.md).
+Identity is module, declaration, and type arguments; alternate import paths to one module do not create new types. Applications are [invariant](compatibility.md).
 
 ## Public data surfaces
 
-Exporting a record exports its constructor and every field. Field visibility modifiers and opaque exports are unsupported. Field types must satisfy [public signature closure](../modules/declarations.md#public-signature-closure), including types nested inside Optional or collections. Importing a record does not import the names of its field types.
+Exporting a record exports its constructor and every field; there are no field visibility modifiers or opaque exports. Field types must satisfy [public signature closure](../modules/declarations.md#public-signature-closure), including nested types. Importing a record does not import its field types' names.
 
 ## Recursive data
 
-Records and alternatives may refer directly to themselves or to each other. Their fields retain references to existing values; recursive payloads do not need a collection or an explicit box. Use a base case, `Optional`, or a collection when construction needs an endpoint.
-
-This alternative represents binary addition directly:
+Records and alternatives may refer to themselves or each other directly, with no box. Give construction an endpoint with a base case, `Optional`, or a collection.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -115,12 +109,12 @@ fn evaluate(expr: Expr) -> Int:
         Add(left, right): return evaluate(left) + evaluate(right)
 
 test "recursive expression":
-    let expr = Expr.Add(left: Expr.Num(1), right: Expr.Num(2))
+    let expr = Expr.Add(Expr.Num(1), Expr.Num(2))
     if evaluate(expr) != 3:
         panic("unexpected expression value")
 ```
 
-For a linked record, an absent successor provides the endpoint. After construction, ordinary mutation can connect existing values into a cycle:
+A linked record ends with an absent successor; mutation can later form a cycle:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -139,14 +133,12 @@ test "recursive links":
         panic("cloning must retain nested references")
 ```
 
-Every constructor still supplies all required fields. A binding is unavailable in its own initializer, so `let node = Node(value: 1, next: node)` is rejected. A declaration with only required recursive fields is permitted, but does not gain an implicit empty or partially initialized value. Use a terminating case or `Optional` when building finite values.
+Constructors still need every required field, and a binding is unavailable in its own initializer, so `let node = Node(value: 1, next: node)` is rejected. `.clone()` keeps recursive references. Recursive shapes derive no `Hashable`; keys need explicit implementations ([equality and hashing](equality-and-hashing.md)).
 
-Aliases observe field mutations, and `.clone()` copies only the outer storage, retaining recursive references. Structural equality terminates on cyclic data. Recursive shapes do not derive `Hashable` automatically; map keys and set elements need explicit, consistent `Equal` and `Hashable` implementations. See [equality and hashing](equality-and-hashing.md).
-
-Generic recursion must preserve its type parameters along every cycle, including references through collections, function signatures, and interfaces. See [finite recursive applications](generics.md#finite-recursive-applications).
+Generic recursion must preserve type parameters along every cycle; see [finite recursive applications](generics.md#finite-recursive-applications).
 
 ## Resource fields
 
-A record containing a resource does not implicitly close it or extend its open lifetime. Cleanup follows explicit [resource scopes](../cleanup/scopes.md). Copying a record does not duplicate a referenced native service; each service synchronizes its own state and lifecycle.
+A record holding a resource neither closes it nor extends its lifetime; cleanup follows [resource scopes](../cleanup/scopes.md). Copying does not duplicate native services.
 
-A `type` declaration uses fields or cases. Use [alternatives](alternatives.md) for a choice among cases and `interface` for [operation contracts](contracts.md) that declare required behavior.
+Use [alternatives](alternatives.md) for a choice among cases and `interface` for [operation contracts](contracts.md).

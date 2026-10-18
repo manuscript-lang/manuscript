@@ -2,12 +2,17 @@ package msruntime
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
+	"io"
 	"net"
 	"net/netip"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"unicode/utf8"
 )
 
@@ -290,7 +295,31 @@ func (n *osNetwork) failure(ctx *Execution, call context.Context, err error) Net
 	if e, ok := err.(net.Error); ok && e.Timeout() {
 		return errNetTimeout
 	}
-	return netFailed(err.Error())
+	return netFailed(describeTransportError(err))
+}
+
+// describeTransportError words a Go transport failure without the Go request
+// framing (`Get "url": ...`) or bare sentinels such as `EOF`.
+func describeTransportError(err error) string {
+	var wrapped *url.Error
+	if errors.As(err, &wrapped) && wrapped.Err != nil {
+		err = wrapped.Err
+	}
+	var dns *net.DNSError
+	var unknown x509.UnknownAuthorityError
+	switch {
+	case errors.Is(err, io.EOF), errors.Is(err, io.ErrUnexpectedEOF):
+		return "connection closed before the exchange completed"
+	case errors.Is(err, syscall.ECONNREFUSED):
+		return "connection refused"
+	case errors.Is(err, syscall.ECONNRESET):
+		return "connection reset by peer"
+	case errors.As(err, &dns):
+		return "cannot resolve host " + strconv.Quote(dns.Name)
+	case errors.As(err, &unknown):
+		return "certificate signed by an unknown authority"
+	}
+	return err.Error()
 }
 
 // Close cancels in-flight calls and closes everything this network opened.
@@ -418,7 +447,7 @@ func (n *osNetwork) Lookup(ctx *Execution, name string, maxRecords Option[int], 
 			}
 			return netFail[*List[string]](errNetTimeout)
 		}
-		return netFail[*List[string]](netFailed(err.Error()))
+		return netFail[*List[string]](netFailed(describeTransportError(err)))
 	}
 	if len(records) > max {
 		return netFail[*List[string]](errNetLimit)

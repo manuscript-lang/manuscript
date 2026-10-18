@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -67,5 +68,13 @@ func TestVerifyRejectsBadArguments(t *testing.T) {
 		if status, _, errors := invoke(t, args...); status != 2 || errors == "" {
 			t.Errorf("%v = %d, %q", args, status, errors)
 		}
+	}
+}
+
+func TestVerifyTextNamesTheFailingDiagnostic(t *testing.T) {
+	file := sourceFile(t, "export fn main() -> Int:\n    return \"wrong\"\n")
+	status, _, errors := invoke(t, "verify", file)
+	if status != 1 || !strings.Contains(errors, "expected Int, found String") {
+		t.Fatalf("verify text = %d %q", status, errors)
 	}
 }

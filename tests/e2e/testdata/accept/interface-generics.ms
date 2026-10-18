@@ -17,10 +17,10 @@ impl Same[T] for Box[T]:
     fn same(other: T) -> Bool:
         return self.value == other
 
-type Comparable[T: Equal]:
+type Matching[T: Equal]:
     value: T
 
-impl Same[T] for Comparable[T]:
+impl Same[T] for Matching[T]:
     fn same(other: T) -> Bool:
         return self.value == other
 
@@ -42,7 +42,7 @@ test "parameters and bounds belong to interfaces and types":
     let value = Box(7)
     if not (Same[Int](value).same(other: 7)):
         return panic(message: "check failed")
-    if not (Comparable(8).same(other: 8)):
+    if not (Matching(8).same(other: 8)):
         return panic(message: "check failed")
 
     let pair = Pair(left: 1, right: value)

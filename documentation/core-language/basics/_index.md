@@ -5,7 +5,7 @@ weight = 1
 
 # Basics
 
-Start here to understand a source file and the values inside a function. Read source structure and bindings first. The grammar is an exact reference; you can return to it when you need to check a particular syntax rule.
+Start with source files and bindings. Use the grammar as a reference.
 
 | Concept | What you will learn |
 | --- | --- |
@@ -15,5 +15,3 @@ Start here to understand a source file and the values inside a function. Read so
 | [Strings and bytes](text-and-bytes.md) | Interpolate text, encode UTF-8, and distinguish character boundaries. |
 | [Expressions and operators](expressions.md) | Apply precedence, operand types, and evaluation order. |
 | [Source grammar](grammar.md) | Check the exact accepted tokens, declarations, suites, and patterns. |
-
-Read the grammar as a reference after the practical pages.

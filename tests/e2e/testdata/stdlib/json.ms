@@ -1,3 +1,4 @@
+import range from "@std/collections.ms"
 import {parse, stringify, JsonValue, JsonLimits, JsonError, JsonEncode} from "@std/json.ms"
 import {timestamp, duration, clock, Timestamp, Duration, Instant} from "@std/time.ms"
 import {Url} from "@std/url.ms"
@@ -55,12 +56,10 @@ test "JSON stringify rejects number text with trailing whitespace":
 test "JSON parse bounds nesting even without a depth limit":
     var text = ""
     var closing = ""
-    var i = 0
 
-    while i < 150000:
+    for i in range(0, 150000):
         text = text + "["
         closing = closing + "]"
-        i = i + 1
 
     let limited: Result[JsonValue, JsonError] = error(JsonError.LimitExceeded)
     if parse(text: text + closing) != limited: return panic("unbounded nesting")
@@ -648,12 +647,8 @@ type Wrap:
 
 test "JSON stringify fails on nesting deeper than parse accepts":
     var head = Link(next: none, n: 0)
-    var i = 1
-
-    while i < 300000:
+    for i in range(1, 300000):
         head = Link(next: some(head), n: i)
-        i = i + 1
-
     let r = stringify(head)
     if r.is_ok(): return panic("nesting beyond the parse ceiling must fail")
 

@@ -5,11 +5,11 @@ weight = 20
 
 # Go representation: reference or value
 
-Every Manuscript type lowers to exactly one Go type, chosen by `goType` in `pkg/lower/types.go`. The choice is a language rule, not an optimization: Manuscript aliases mutable data, so a Go value copy where the language promises sharing is a silent semantic bug.
+Each Manuscript type lowers to exactly one Go type, chosen by `goType` in `pkg/lower/types.go`. The choice is a language rule: Manuscript aliases mutable data, so copying a Go value where the language promises sharing is a silent bug.
 
 ## The rule
 
-A type is a **reference** (Go pointer, or a type holding one) when the language lets a holder observe another holder's mutation or identity. Every other type is a **value** (Go scalar, struct, or interface of structs) and is never mutated after construction.
+A type is a **reference** (Go pointer, or a type holding one) when a holder can observe another holder's mutation or identity. Every other type is a **value** and is never mutated after construction.
 
 | Manuscript type | Go type | Class | Why |
 | --- | --- | --- | --- |
@@ -24,26 +24,26 @@ A type is a **reference** (Go pointer, or a type holding one) when the language 
 | `Result[T, E]` | `rt.Result[T, E]` | value | Immutable wrapper; payloads keep their class. |
 | contract | Go interface over generated view structs | value | A view holds its receiver; the receiver keeps its class. |
 
-A value type holding a reference type shares that reference. `Optional[List[Int]]` copies the wrapper, not the list.
+A value type holding a reference shares it: `Optional[List[Int]]` copies the wrapper, not the list.
 
 ## Consequences the lowerer must honor
 
-- A value struct is never addressed or mutated. Only records, collections, and handles are written through pointers.
-- Assignment, argument passing, capture, and `return` copy the Go value as is. Do not add copies for references and never share a copy of a value-class struct that something later mutates.
+- Never address or mutate a value struct; only records, collections, and handles are written through pointers.
+- Assignment, argument passing, capture, and `return` copy the Go value as is. Add no copies for references.
 - `.clone()` is the only operation that copies a reference type, and it is shallow.
-- A zero-valued pointer is a bug: construction always allocates. `nil` never represents `none`; use `rt.Option`.
-- Reference representation does not determine equality. Records and collections follow their structural equality rules; explicit `Equal` and `Hashable` implementations can override them. See [equality and hashing](../core-language/types/equality-and-hashing.md).
+- Construction always allocates; `nil` never represents `none`, so use `rt.Option`.
+- Representation does not decide equality: records and collections use structural equality unless `Equal` and `Hashable` implementations override it. See [equality and hashing](../core-language/types/equality-and-hashing.md).
 
 ## Adding a type
 
-New runtime types classify themselves with this table first. Add the row, then `goType`, then the `TestRepresentation` row in `pkg/lower`. A type that fits neither class needs a language decision, not a lowering decision.
+Classify it in the table first, then add `goType` and a `TestRepresentation` row in `pkg/lower`. A type fitting neither class needs a language decision.
 
 ## Parameters, defaults, and equality
 
-- A parameter that declares a default is an `rt.Arg[T]{Val, Set}`. The callee fills in an omitted argument in its own scope; native functions, record constructors, and standard contracts take plain parameters and the caller evaluates their defaults.
-- A `Map` or `Set` carries an `*rt.Keys[K]`. `nil` means Go equality; structural keys project to a comparable array; an explicit `Equal`/`Hashable` becomes `rt.CustomKeys`. The collection keeps the keys it was built with.
+- A parameter with a default is `rt.Arg[T]{Val, Set}`, filled in by the callee. Native functions, record constructors, and standard contracts take plain parameters and callers evaluate defaults.
+- A `Map` or `Set` carries an `*rt.Keys[K]` fixed at construction: `nil` is Go equality, structural keys project to a comparable array, and explicit `Equal`/`Hashable` becomes `rt.CustomKeys`.
 - A contract value is a generated view struct holding its receiver (`self`), plus `Describe` and `Receiver`. Views are per implementation scope when any module declares a local implementation.
 
 ## Local records need no special case
 
-Records are always pointers, and the lowerer does not track which ones are mutated. A record that never leaves its function does not allocate: Go's escape analysis keeps `&Name{...}` on the stack (measured 0 allocs, 0.38 ns for a local pointer vs 0.62 ns for a struct value). A value representation chosen per type would be wrong anyway, because argument passing retains the same instance, so a callee can mutate a record the caller built.
+Records are always pointers and the lowerer does not track mutation. A record that stays in its function does not allocate, since escape analysis keeps `&Name{...}` on the stack. A per-type value representation would be wrong anyway: callees can mutate a record the caller built.

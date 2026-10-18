@@ -1,3 +1,4 @@
+import range from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 test "List count calls the predicate once per element":
@@ -99,12 +100,10 @@ test "List parity operations support generic and bound use":
 test "List distinct handles large Int and String lists":
     var numbers: List[Int] = []
     var words: List[String] = []
-    var index = 0
 
-    while index < 60000:
+    for index in range(0, 60000):
         numbers.append(index % 30000)
         words.append("w{index % 20000}")
-        index = index + 1
 
     let unique = numbers.distinct()
     if (

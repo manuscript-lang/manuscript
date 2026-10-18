@@ -5,12 +5,12 @@ weight = 21
 
 # Go lowering units
 
-`pkg/lower` lowers a checked program in independent units so lowering scales with cores and a change stays local.
+`pkg/lower` lowers a checked program in independent units, so lowering scales with cores and changes stay local.
 
-- **Unit.** One function instance: a function or method at concrete type arguments. A unit reads the checked program, which is immutable, and owns its scratch state (`gen`: substitution, temporaries, captured bindings).
-- **Registry.** `shared` interns instances, types, and helper functions (`equal_T`, `format_T`) once, under a mutex. The first unit to need an item builds it; others only use its name. A unit never reads another unit's output while it runs.
-- **Waves.** `assemble` lowers the functions discovered so far in parallel, then merges their results in the order they were first requested and queues the functions they need. Output order is discovery order and does not depend on scheduling. Nothing is sorted.
-- **Names.** A generated name derives from the source name and type arguments, plus a hash of the identity where several declarations share a source name (`duplicateNames`). It never depends on which unit ran first. Two identities claiming one name fail lowering.
-- **Located statements.** Source-line labels are numbered during the merge, so the numbering follows output order.
+- **Unit:** one function instance at concrete type arguments. It reads the immutable checked program and owns its scratch state (`gen`).
+- **Registry:** `shared` interns instances, types, and helpers (`equal_T`, `format_T`) once, under a mutex. A unit never reads another's output while running.
+- **Waves:** `assemble` lowers discovered functions in parallel, merges results in first-requested order, and queues new needs. Output follows discovery order, never scheduling.
+- **Names:** derived from source name and type arguments, plus an identity hash where declarations share a name (`duplicateNames`). Two identities claiming one name fail lowering.
+- **Located statements:** line labels are numbered during the merge.
 
-Rules for new lowering code: keep per-unit state on `gen`, put anything shared in `shared` behind `mu`, record dependencies with `touch`, and build shared items inside `building` so their dependencies attach to the item. Run `go test -race ./pkg/lower` when changing any of this.
+New lowering code keeps per-unit state on `gen`, puts shared state in `shared` behind `mu`, records dependencies with `touch`, and builds shared items inside `building`. Run `go test -race ./pkg/lower` after changes.

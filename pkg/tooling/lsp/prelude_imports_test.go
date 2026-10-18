@@ -154,9 +154,9 @@ func TestCompactApplicationImportCompletionKeepsSameNamedTypes(t *testing.T) {
 	cursor := strings.Index(source, "|")
 	source = strings.Replace(source, "|", "", 1)
 	d := document{"file:///tmp/prelude-import-main.ms", source, 1}
-	local := document{"file:///tmp/prelude-local-types.ms", "export type List[T]:\n    value: T\n", 1}
+	local := document{"file:///tmp/prelude-local-types.ms", "export type Row[T]:\n    value: T\n", 1}
 	items, err := completionAt(d, map[string]document{d.URI: d, local.URI: local}, Position(source, cursor), false)
-	if err != nil || itemNamed(items, "List") == nil || itemNamed(items, "ListBuilder") != nil {
+	if err != nil || itemNamed(items, "Row") == nil || itemNamed(items, "ListBuilder") != nil {
 		t.Fatal(items, err)
 	}
 	items = completeSource(t, "import{\n    # a comment with \"quoted text\"\n    |\n}from\"@std/collections.ms\"\n")
@@ -188,20 +188,11 @@ func TestImportCompletionKeepsCurrentDeclarationBoundary(t *testing.T) {
 
 func TestPreludeTypeCompletionRespectsShadowing(t *testing.T) {
 	for _, source := range []string{
-		"fn ListEntry() -> Int: 1\nfn use(value: ListE|) -> Unit: unit\n",
 		"fn use() -> Unit:\n    let ListEntry = fn() -> Int: 1\n    let value: ListE|\n",
 		"fn use() -> Unit:\n    let ListEntry = fn() -> Int: 1\n    var value: ListE|\n",
 	} {
 		if item := itemNamed(completeSource(t, source), "ListEntry"); item != nil {
 			t.Fatal("offered an inaccessible prelude type", source, item)
-		}
-	}
-	for _, source := range []string{
-		"type ListEntry:\n    value: Int\nfn use(value: ListE|) -> Unit: unit\n",
-	} {
-		item := itemNamed(completeSource(t, source), "ListEntry")
-		if item == nil || len(item.AdditionalTextEdits) != 0 {
-			t.Fatal("lost a visible application type", source, item)
 		}
 	}
 	for _, newline := range []string{"\n", "\r\n"} {

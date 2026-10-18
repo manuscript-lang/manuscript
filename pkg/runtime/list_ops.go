@@ -1,6 +1,9 @@
 package msruntime
 
-import "strconv"
+import (
+	"strconv"
+	"strings"
+)
 
 // nativeMaxItems is the allocation ceiling of collection factories.
 const nativeMaxItems = 1 << 28
@@ -511,21 +514,7 @@ func List_Join[T any](_ *Execution, l *List[T], separator string) string {
 	if !ok {
 		Raise("runtime invariant: List.join requires List[String]")
 	}
-	n := 0
-	if len(parts) > 0 {
-		n = len(separator) * (len(parts) - 1)
-	}
-	for _, p := range parts {
-		n += len(p)
-	}
-	b := make([]byte, 0, n)
-	for i, p := range parts {
-		if i > 0 {
-			b = append(b, separator...)
-		}
-		b = append(b, p...)
-	}
-	return string(b)
+	return strings.Join(parts, separator)
 }
 
 // List_Append adds value at the end in place.

@@ -85,7 +85,7 @@ func Log_Record[T any](ctx *Execution, enc func(*JsonScope, T) (JsonValue, bool)
 	if text.Failed {
 		return logFail[Unit](LogError_InvalidData{})
 	}
-	return logger.LogJson(ctx, level, message, text.Val)
+	return logger.LogJson(ctx, level, message, logObjectText(text.Val))
 }
 
 // Log_Bind returns a logger that adds the JSON form of bindings to each record.
@@ -94,22 +94,29 @@ func Log_Bind[T any](ctx *Execution, enc func(*JsonScope, T) (JsonValue, bool), 
 	if text.Failed {
 		return logFail[Logger](LogError_InvalidData{})
 	}
-	return logger.ChildJson(ctx, text.Val)
+	return logger.ChildJson(ctx, logObjectText(text.Val))
 }
 
-// logFields reads the JSON text of a record's fields. An object contributes its
-// members; any other value is carried under the key "data".
+// logObjectText returns stringified JSON as an object: an object is unchanged
+// and any other value is carried under the key "data".
+func logObjectText(text string) string {
+	if strings.HasPrefix(text, "{") {
+		return text
+	}
+	return `{"data":` + text + `}`
+}
+
+// logFields reads the JSON text of a record's fields, which must be an object.
 func logFields(ctx *Execution, text string) (*Map[string, JsonValue], bool) {
 	tree := jsonParseTree(ctx, text, None[*JsonLimits]())
 	if tree.Failed {
 		return nil, false
 	}
-	if object, ok := tree.Val.(JsonValue_ObjectValue); ok {
-		return object.Values, true
+	object, ok := tree.Val.(JsonValue_ObjectValue)
+	if !ok {
+		return nil, false
 	}
-	fields := NewMap[string, JsonValue]()
-	fields.Put("data", tree.Val)
-	return fields, true
+	return object.Values, true
 }
 
 // logMerge copies top-level membership; later maps override earlier values

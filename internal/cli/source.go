@@ -70,17 +70,24 @@ func runSourceCommand(args []string, usage string) int {
 	}
 	switch inv.command {
 	case "inspect", "diagram":
-		return inspectProgram(inv.command, inv.output, result)
+		return inspectProgram(inv, result)
 	case "emit":
 		return emitSource(inv.output, result)
 	}
 	return runNativeProgram(inv, p.kind, result)
 }
 
-func inspectProgram(command, output string, result compiler.Result) int {
+func inspectProgram(inv *invocation, result compiler.Result) int {
+	command, output, format := inv.command, inv.output, inv.format
 	inspection := tooling.Inspect(result.Program)
+	if command == "diagram" && (inv.view != "" || inv.entity != "") {
+		return writeView(inv, result)
+	}
 	if command == "diagram" {
-		return writeOutput(output, []byte(tooling.Diagram(inspection)))
+		if format == "mermaid" {
+			return writeOutput(output, []byte(tooling.Diagram(inspection)))
+		}
+		return writeOutput(output, []byte(tooling.DiagramASCII(inspection)))
 	}
 	data, err := json.MarshalIndent(inspectionWithGoLocals(result), "", "  ")
 	if err != nil {
@@ -170,4 +177,30 @@ func runDebugScript(ctx context.Context, inv *invocation, result compiler.Result
 		_ = debugger.ReportError(ctx, os.Stderr, err)
 	}
 	return status
+}
+
+// writeView prints one scoped diagram view of the checked program.
+func writeView(inv *invocation, result compiler.Result) int {
+	view := inv.view
+	if view == "" {
+		view = "calls"
+	}
+	facts := tooling.CollectFacts(result.Program)
+	tree, err := tooling.BuildView(facts, view, inv.entity, inv.depth)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ms diagram: %v\n", err)
+		return 2
+	}
+	if inv.diff != "" {
+		entry := filepath.Base(inv.filename) == "ms.toml"
+		input, base, status := diffInputs(inv.filename, inv.diff, result, entry)
+		if status != 0 {
+			return status
+		}
+		tooling.MarkChanges(tree, tooling.CompareFacts(base, facts, input), input.Touched)
+	}
+	if inv.format == "mermaid" {
+		return writeOutput(inv.output, []byte(tree.Mermaid()))
+	}
+	return writeOutput(inv.output, []byte(tree.ASCII()))
 }

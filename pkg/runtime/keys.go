@@ -1,6 +1,11 @@
 package msruntime
 
-import "strconv"
+import (
+	"encoding/binary"
+	"math"
+	"reflect"
+	"strconv"
+)
 
 // Keys says how a Map or Set matches keys whose Go equality is not their
 // Manuscript equality. A nil *Keys means Go equality: scalars, strings, and
@@ -44,6 +49,73 @@ func KeyBigInt(b *BigInt) string { return b.n.String() }
 
 // KeyDecimal is the projection of Decimal inside a structural key.
 func KeyDecimal(d *Decimal) string { return d.String() }
+
+// HashKey is a deterministic hash of a comparable key projection, so equal
+// projections hash alike in every run.
+func HashKey(key any) int {
+	h := fnvHash(14695981039346656037)
+	hashValue(&h, reflect.ValueOf(key))
+	return int(h)
+}
+
+// fnvHash is FNV-1a; the embedded toolchain carries no hash/fnv.
+type fnvHash uint64
+
+func (h *fnvHash) Write(p []byte) {
+	for _, b := range p {
+		*h = (*h ^ fnvHash(b)) * 1099511628211
+	}
+}
+
+func hashValue(h *fnvHash, v reflect.Value) {
+	if !v.IsValid() {
+		h.Write([]byte{0})
+		return
+	}
+	var buf [8]byte
+	switch v.Kind() {
+	case reflect.Bool:
+		if v.Bool() {
+			h.Write([]byte{1})
+		} else {
+			h.Write([]byte{2})
+		}
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		binary.LittleEndian.PutUint64(buf[:], uint64(v.Int()))
+		h.Write(buf[:])
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		binary.LittleEndian.PutUint64(buf[:], v.Uint())
+		h.Write(buf[:])
+	case reflect.Float32, reflect.Float64:
+		binary.LittleEndian.PutUint64(buf[:], math.Float64bits(v.Float()))
+		h.Write(buf[:])
+	case reflect.String:
+		binary.LittleEndian.PutUint64(buf[:], uint64(v.Len()))
+		h.Write(buf[:])
+		h.Write([]byte(v.String()))
+	case reflect.Array:
+		for i := 0; i < v.Len(); i++ {
+			hashValue(h, v.Index(i))
+		}
+	case reflect.Struct:
+		h.Write([]byte(v.Type().String()))
+		for i := 0; i < v.NumField(); i++ {
+			hashValue(h, v.Field(i))
+		}
+	case reflect.Interface:
+		if v.IsNil() {
+			h.Write([]byte{0})
+			return
+		}
+		hashValue(h, v.Elem())
+	default:
+		// Handles and other reference keys match by identity.
+		if v.CanAddr() || v.Kind() == reflect.Pointer || v.Kind() == reflect.Chan || v.Kind() == reflect.Map || v.Kind() == reflect.Func {
+			binary.LittleEndian.PutUint64(buf[:], uint64(v.Pointer()))
+			h.Write(buf[:])
+		}
+	}
+}
 
 var _ = strconv.Itoa
 

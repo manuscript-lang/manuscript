@@ -21,7 +21,12 @@ func (c *checker) checkExpression(e *syntax.Expression, i *Info, expected *Type)
 	if i.Type.ID == "Never" {
 		i.NoReturn = true
 	}
-	if expected != nil && i.Type.ID != "<invalid>" && !compatible(i.Type, expected) {
+	if expected != nil && i.Proven && std(expected, "Optional") && len(expected.Args) == 1 &&
+		compatible(i.Type, expected.Args[0]) && !compatible(i.Type, expected) {
+		// A proven lookup keeps its Optional form where one is expected.
+		i.Type, i.Proven = standard("Optional", i.Type), false
+	}
+	if expected != nil && i.Type.ID != "<invalid>" && expected.ID != "<invalid>" && !compatible(i.Type, expected) {
 		if c.errorAssignable(i.Type, expected) {
 			i.ErrorSource = i.Type
 			cause := i.Type
@@ -178,6 +183,7 @@ func (c *checker) inferName(e *syntax.Expression, expected *Type, i *Info) *Info
 			i.Symbol = s
 			if len(s.Variables) > 0 {
 				c.error(e.Pos, "type", "a generic function value requires explicit specialization; write "+e.Text+"[Type] or call it with arguments")
+				i.Type = primitive("<invalid>")
 			}
 		}
 		return i
@@ -268,6 +274,11 @@ func (c *checker) inferMember(e *syntax.Expression, expected *Type, i *Info) *In
 		return i
 	}
 	methods := c.methods(receiver.Type, e.Text)
+	if len(methods) > 1 {
+		c.error(e.Pos, "resolution", c.ambiguousMember(receiver.Type, e.Text, methods))
+		i.Type = primitive("<invalid>")
+		return i
+	}
 	if len(methods) != 1 {
 		c.error(e.Pos, "resolution", c.unknownMember(receiver.Type, e.Text))
 		// Later diagnostics that only restate the missing member are noise.
@@ -473,10 +484,24 @@ func (c *checker) inferBinary(e *syntax.Expression, expected *Type, i *Info) *In
 	if common.ID == "Never" {
 		common = b.Type
 	}
+	if invalidType(a.Type) || invalidType(b.Type) {
+		// An operand already reported its own error; do not restate it.
+		i.Type = primitive("<invalid>")
+		if e.Text == "==" || e.Text == "!=" || isOrdering(e.Text) {
+			i.Type = primitive("Bool")
+		}
+		return i
+	}
 	if common.ID == "Never" || !compatible(a.Type, common) || !compatible(b.Type, common) {
 		hint := optionalUseHint(a.Type, b.Type)
 		if hint == "" {
 			hint = optionalUseHint(b.Type, a.Type)
+		}
+		if hint == "" {
+			hint = resultUseHint(a.Type, b.Type)
+		}
+		if hint == "" {
+			hint = resultUseHint(b.Type, a.Type)
 		}
 		if hint == "" {
 			hint = "convert one side so both have one type (e.g. toString() for text, or an Int/Float conversion)"

@@ -5,7 +5,7 @@ weight = 5
 
 # Error handling
 
-Choose the outcome that matches the situation: `Result` for an expected failure with an explanation, `Optional` for a missing value, and a fault for a broken programming assumption. These pages show how callers respond to each one.
+Use `Result` for an expected failure with a cause, `Optional` for a missing value, and a fault for a broken programming assumption.
 
 | Concept | What you will learn |
 | --- | --- |

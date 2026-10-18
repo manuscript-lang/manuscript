@@ -12,14 +12,14 @@ type Fault struct {
 
 func (f Fault) Error() string {
 	message := f.Message
-	if len(f.Secondary) > 0 {
-		message += "; cleanup faults: " + strings.Join(f.Secondary, "; ")
-	}
 	if len(f.Frames) > 0 {
 		message += "\n  at " + strings.Join(f.Frames, "\n  at ")
 	}
 	if f.Truncated {
 		message += "\n  ... outer frames omitted"
+	}
+	for _, secondary := range f.Secondary {
+		message += "\ncleanup fault: " + secondary
 	}
 	return message
 }

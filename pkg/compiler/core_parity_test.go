@@ -21,10 +21,10 @@ func TestCoreParityRejectsInvalidContracts(t *testing.T) {
 		{"Map predicate result", `fn wrong(value: Map[String, Int]) -> Unit:
     let output = value.filter(fn(k, n): n)`, "Bool"},
 		{"Map fallback payload", `fn wrong(value: Map[String, Int]) -> Int: value.get_or("key", "wrong")`, "Int"},
-		{"local Result gets no methods", `type Result[T, E]:
+		{"local Result declaration is rejected", `type Result[T, E]:
     case ok(value: T)
     case error(cause: E)
-fn wrong(value: Result[Int, String]) -> Int: value.unwrap()`, "no fields or operations"},
+fn wrong(value: Result[Int, String]) -> Int: value.unwrap()`, "reuses a prelude name"},
 		{"private native Result helper", `import unwrap from "@std/result.ms"`, "unwrap"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

@@ -5,7 +5,7 @@ weight = 1
 
 # Conditionals
 
-Use `if` to run a block when a Boolean condition is true. Add `else` to run a different block when it is false. Only the selected branch runs.
+`if` runs a block when a `Bool` condition is true; `else` runs otherwise.
 
 ```manuscript
 fn status(active: Bool) -> String:
@@ -15,7 +15,7 @@ fn status(active: Bool) -> String:
         return "Inactive"
 ```
 
-A short branch can use one simple statement on the same line:
+A short branch can be one simple statement on the same line:
 
 ```manuscript
 fn status(active: Bool) -> String:
@@ -25,11 +25,12 @@ fn status(active: Bool) -> String:
 
 See the [suite rules](../basics/grammar.md#statements-and-patterns) for mixing inline and indented bodies.
 
-Conditions require `Bool`. The condition in this example is already a Boolean; numeric and text values do not acquire truth values implicitly.
-
-`if` is a statement and does not produce a value. Evaluate its condition once; execute exactly one selected branch, or neither branch when the condition is false and no `else` is present. `else` and `else if` start on separate lines, aligned with the corresponding `if`. An additional conditional uses `else if`, not `elif`.
-
-Each branch has its own lexical scope. Names declared in a branch are not visible after the conditional; assignments to an outer `var` affect that existing binding. An `else if` chain checks conditions in order and stops after selecting a branch.
+- Conditions must be `Bool`; numbers and text have no truth values.
+- `if` is a statement, not an expression.
+- The condition is evaluated once; at most one branch runs.
+- `else` and `else if` start on their own line, aligned with `if`. There is no `elif`.
+- Each branch has its own scope; assignments to an outer `var` persist.
+- An `else if` chain tests in order and stops at the first match.
 
 ```manuscript
 fn classify(value: Int) -> String:
@@ -41,11 +42,11 @@ fn classify(value: Int) -> String:
         return "positive"
 ```
 
-`if 1:` is rejected because its condition is `Int`. `let result = if active: ...` is rejected because `if` is not an expression. Use branch-local assignment to a declared `var` or explicit returns to select a result. The [function return rules](../functions/declarations-and-calls.md#unit-and-never) determine whether all reachable paths return.
+`if 1:` and `let result = if active: ...` are rejected. Select a result with an assigned `var` or explicit returns; the [return rules](../functions/declarations-and-calls.md#unit-and-never) require every reachable path to return.
 
 ## Unwrapping an Optional or Result
 
-`if let name = expression:` runs its block only when an [Optional](../types/optionals.md) holds a value or a [Result](../errors/results.md) is `ok`, and binds `name` to that value inside the block. The expression evaluates once. An `else` block runs when the Optional is `none` or the Result is an error, and `name` is not visible there or after the conditional. A Result's error is not captured; use `try`, or `is_error()` with `unwrap_error()`, when the error matters. The binding is immutable and `expression` must be an `Optional` or `Result`; a `Bool` condition is rejected.
+`if let name = expression:` runs its block when an [Optional](../types/optionals.md) holds a value or a [Result](../errors/results.md) is `ok`, binding `name` immutably inside the block. `else` runs for `none` or an error, where `name` is not visible. A Result's error is not captured; use `try` or `unwrap_error()` when it matters. The expression evaluates once and must be an `Optional` or `Result`.
 
 ```manuscript
 fn greeting(name: Optional[String]) -> String:
@@ -62,11 +63,11 @@ fn port(lookup: Result[Int, String]) -> Int:
     return 8080
 ```
 
-A present payload such as `0`, `false`, or an empty string still takes the first branch. The binding takes one name; destructure the payload inside the block. Prefer `if let` to a two-arm `match` on `some` and `none` for an Optional, which `ms lint` reports as **MSL108**.
+A present `0`, `false`, or empty string still takes the first branch. The binding is one name; destructure inside the block. Prefer `if let` to a two-arm `match` on `some`/`none` (**MSL108**).
 
 ## Validating inputs
 
-Validation uses the same ordinary control flow as any other decision:
+Validate with an early return:
 
 ```manuscript
 fn nonnegative(value: Int) -> Bool:
@@ -76,10 +77,8 @@ fn nonnegative(value: Int) -> Bool:
     return true
 ```
 
-The early `return` exits the function on the negative path. The final return runs on the remaining path. [Expected failures](../errors/results.md) uses this structure to reject invalid input with a domain error.
+[Expected failures](../errors/results.md) uses this shape to reject invalid input with a domain error.
 
 ## Bindings after a branch
 
-Every binding is initialized at declaration. To select a value for use after the conditional, initialize an outer `var` and assign to it in the branches. Branch-local names stay inside their branch. See [bindings](../basics/bindings.md).
-
-Use [pattern matching](pattern-matching.md) when the decision depends on which case of an alternative value is present.
+To select a value for use after the conditional, initialize an outer `var` and assign it in the branches. See [bindings](../basics/bindings.md). Use [pattern matching](pattern-matching.md) to branch on the case of an alternative.

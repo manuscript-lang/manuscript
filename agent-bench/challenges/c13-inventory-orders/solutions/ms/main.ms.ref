@@ -1,0 +1,207 @@
+import {stdin, stdout, read_line} from "@std/io.ms"
+
+type Item:
+    sku: String
+    qty: Int
+
+type Order:
+    items: List[Item]
+    status: String
+    total: Int
+
+type Warehouse:
+    stock: Map[String, Int]
+    price: Map[String, Int]
+    orders: Map[String, Order]
+
+fn money(c: Int) -> String:
+    let cents = c % 100
+    if cents < 10:
+        return "{c / 100}.0{cents}"
+    return "{c / 100}.{cents}"
+
+fn is_sku_char(c: Int) -> Bool:
+    return (c >= 65 and c <= 90) or (c >= 48 and c <= 57) or c == 45
+
+fn is_oid_char(c: Int) -> Bool:
+    return (c >= 97 and c <= 122) or (c >= 48 and c <= 57) or c == 45
+
+fn valid_sku(s: String) -> Bool:
+    let codes = s.scalar_values()
+    if codes.is_empty():
+        return false
+    for c in codes:
+        if not is_sku_char(c):
+            return false
+    return true
+
+fn valid_oid(s: String) -> Bool:
+    let codes = s.scalar_values()
+    if codes.is_empty():
+        return false
+    for c in codes:
+        if not is_oid_char(c):
+            return false
+    return true
+
+# 1 to 7 ASCII digits.
+fn number(s: String) -> Optional[Int]:
+    let codes = s.scalar_values()
+    if codes.length() < 1 or codes.length() > 7:
+        return none
+    var n = 0
+    for c in codes:
+        if c < 48 or c > 57:
+            return none
+        n = n * 10 + (c - 48)
+    return some(n)
+
+fn quantity(s: String) -> Optional[Int]:
+    let n = number(s)
+    if n.is_none() or n.unwrap() < 1 or n.unwrap() > 100000:
+        return none
+    return n
+
+fn arity(name: String) -> Int:
+    if name == "stock" or name == "price":
+        return 3
+    if name == "cancel" or name == "ship":
+        return 2
+    if name == "report":
+        return 1
+    return 0
+
+fn place_order(w: Warehouse, t: List[String]) -> List[String]:
+    let id = t.at(1).unwrap()
+    if not valid_oid(id):
+        return ["error: bad order id"]
+    if w.orders.contains(id):
+        return ["error: order {id} already exists"]
+    let items = List[Item]()
+    var i = 2
+    while i < t.length():
+        let token = t.at(i).unwrap()
+        i = i + 1
+        let p = token.split(":")
+        if p.length() != 2 or not valid_sku(p.at(0).unwrap()):
+            return ["error: bad item {token}"]
+        let q = quantity(p.at(1).unwrap())
+        if q.is_none():
+            return ["error: bad item {token}"]
+        items.append(Item(sku: p.at(0).unwrap(), qty: q.unwrap()))
+    let seen = Set[String]()
+    for it in items:
+        if seen.contains(it.sku):
+            return ["error: duplicate sku {it.sku}"]
+        let have = w.stock.get(it.sku)
+        if have.is_none():
+            return ["error: unknown sku {it.sku}"]
+        if it.qty > have.unwrap():
+            return ["error: insufficient stock for {it.sku} (have {have.unwrap()}, need {it.qty})"]
+        seen.add(it.sku)
+    var total = 0
+    for it in items:
+        w.stock.add(key: it.sku, value: w.stock.get(it.sku).unwrap() - it.qty)
+        let unit_price = w.price.get(it.sku).unwrap()
+        if it.qty >= 10:
+            total = total + (it.qty * unit_price * 90 + 50) / 100
+        else:
+            total = total + it.qty * unit_price
+    w.orders.add(key: id, value: Order(items: items, status: "placed", total: total))
+    return ["ok {id} total={money(total)}"]
+
+fn report(w: Warehouse) -> List[String]:
+    let reserved = Map[String, Int]()
+    var placed = 0
+    var shipped = 0
+    var cancelled = 0
+    var revenue = 0
+    for id in w.orders.keys():
+        let o = w.orders.get(id).unwrap()
+        if o.status == "placed":
+            placed = placed + 1
+            for it in o.items:
+                reserved.add(key: it.sku, value: reserved.get_or(key: it.sku, fallback: 0) + it.qty)
+        else if o.status == "shipped":
+            shipped = shipped + 1
+            revenue = revenue + o.total
+        else:
+            cancelled = cancelled + 1
+    let out = List[String]()
+    let skus = w.stock.keys().sorted(compare: fn(left: String, right: String) -> Int:
+        return left.compare(right)
+    )
+    for sku in skus:
+        out.append("{sku} stock={w.stock.get(sku).unwrap()} price={money(w.price.get(sku).unwrap())} reserved={reserved.get_or(key: sku, fallback: 0)}")
+    out.append("orders placed={placed} shipped={shipped} cancelled={cancelled}")
+    out.append("revenue={money(revenue)}")
+    return out
+
+fn run_command(w: Warehouse, line: String) -> List[String]:
+    let t = line.split(" ")
+    let name = t.at(0).unwrap()
+    let want = arity(name)
+    if want == 0 and name != "order":
+        return ["error: unknown command"]
+    if (name == "order" and t.length() < 3) or (name != "order" and t.length() != want):
+        return ["error: usage"]
+    if name == "stock":
+        let sku = t.at(1).unwrap()
+        if not valid_sku(sku):
+            return ["error: bad sku"]
+        let q = quantity(t.at(2).unwrap())
+        if q.is_none():
+            return ["error: bad quantity"]
+        let now = w.stock.get_or(key: sku, fallback: 0) + q.unwrap()
+        w.stock.add(key: sku, value: now)
+        w.price.add_default(key: sku, value: 0)
+        return ["ok {sku} stock={now}"]
+    if name == "price":
+        let p = number(t.at(2).unwrap())
+        if p.is_none() or p.unwrap() > 10000000:
+            return ["error: bad price"]
+        let sku = t.at(1).unwrap()
+        if not w.stock.contains(sku):
+            return ["error: unknown sku {sku}"]
+        w.price.add(key: sku, value: p.unwrap())
+        return ["ok"]
+    if name == "order":
+        return place_order(w, t)
+    if name == "report":
+        return report(w)
+    let id = t.at(1).unwrap()
+    let found = w.orders.get(id)
+    if found.is_none():
+        return ["error: unknown order {id}"]
+    let o = found.unwrap()
+    if name == "cancel":
+        if o.status != "placed":
+            return ["error: order {id} already {o.status}"]
+        for it in o.items:
+            w.stock.add(key: it.sku, value: w.stock.get(it.sku).unwrap() + it.qty)
+        o.status = "cancelled"
+        return ["ok"]
+    if o.status == "shipped":
+        return ["error: order {id} already shipped"]
+    if o.status == "cancelled":
+        return ["error: order {id} is cancelled"]
+    o.status = "shipped"
+    return ["ok"]
+
+fn run() -> Result[Unit, Error]:
+    let w = Warehouse(stock: Map[String, Int](), price: Map[String, Int](), orders: Map[String, Order]())
+    while true:
+        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        if next.is_none():
+            break
+        let line = next.unwrap()
+        if line.replace_all(old: " ", new: "").unwrap().is_empty():
+            continue
+        for out in run_command(w, line):
+            try stdout().write("{out}\n".to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

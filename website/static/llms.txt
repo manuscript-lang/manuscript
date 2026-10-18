@@ -8,15 +8,12 @@ Links are relative to this file so GitHub Pages project paths and custom domains
 - [Get started](learn/getting-started/): a complete application and CLI commands
 - [Language tour](learn/tour/): functions, data, and expected failures
 - [Language](core-language/): basics, functions, types, control flow, errors, modules, and resources
-- [Standard library](standard-library/): imports, services, data, files, processes, and networking
-- [Concurrent work](concurrency/): tasks, cancellation, scheduling, and synchronized updates
+- [Standard library API reference](standard-library/reference/): generated declarations and import paths
 - [Developer tools](developer-tooling/): commands, projects, source tools, and debugging
 
 ## Look up a declaration
-- [Entire standard library as Markdown](stdlib.md): every standard module, intrinsic prelude, generic bound, field, case, operation, and special call rule
+- [Entire standard library as Markdown](stdlib.md): every standard module, intrinsic prelude, generic bound, field, case, and operation
 - [Standard library JSON](stdlib.json): versioned structured declaration snapshot
-- [API reference](standard-library/reference/): browsable generated declarations
-- [Special call rules](standard-library/call-rules/): additional compiler checks
 - [Glossary](glossary/): language terminology
 
 ## Contribute

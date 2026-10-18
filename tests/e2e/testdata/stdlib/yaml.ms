@@ -1,3 +1,5 @@
+import range from "@std/collections.ms"
+import from_scalars from "@std/string.ms"
 import {parse, stringify, YamlValue, YamlError, YamlLimits} from "@std/yaml.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
@@ -619,11 +621,8 @@ test "YAML long plain scalars and large mappings parse in linear time":
     )
 
     var keys = ""
-    var index = 0
-
-    while index < 30000:
+    for index in range(0, 30000):
         keys = keys.concat("k{index}: 1\n")
-        index = index + 1
 
     if (parse(text: keys) | value | entries | .length()) != 30000: return panic(
         "many keys"
@@ -710,13 +709,19 @@ test "YAML compact nested sequences resume each level and parse deep chains in l
     let depth = 3000
     var source = "{repeated(text: "- ", count: depth)}x\n"
     var root = parse(text: source) | value
-    var level = 1
 
-    while level < depth:
+    for level in range(1, depth):
         let inner = items(root)
         if inner.length() != 1: return panic("deep chain width")
 
         root = inner.first().unwrap()
-        level = level + 1
 
     if items(root) != [YamlValue.StringValue("x")]: return panic("deep chain leaf")
+
+test "YAML stringify escapes C1 control characters so output reparses":
+    for code in [127, 128, 133, 150, 159]:
+        let text = value(from_scalars(values: [97, code, 98]))
+        let encoded = value(stringify(value: YamlValue.StringValue(text)))
+        if value(parse(text: encoded)) != YamlValue.StringValue(text): return panic(
+            "C1 control scalar must round-trip"
+        )

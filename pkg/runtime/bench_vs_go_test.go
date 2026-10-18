@@ -343,6 +343,21 @@ func BenchmarkVsGoStringScalarAtUnicodeStrided(b *testing.B) {
 	_ = n
 }
 
+func BenchmarkStringScalarAtUnicodeParallel(b *testing.B) {
+	count := String_Length(tctx, vsGoUnicode)
+	b.ReportAllocs()
+	b.RunParallel(func(pb *testing.PB) {
+		index := 0
+		for pb.Next() {
+			if !String_ScalarAt(tctx, vsGoUnicode, index%count).Some {
+				b.Error("missing scalar")
+				return
+			}
+			index++
+		}
+	})
+}
+
 func BenchmarkVsGoStringSliceASCII(b *testing.B) {
 	b.ReportAllocs()
 	n := 0
@@ -410,6 +425,34 @@ func BenchmarkVsGoStringSplitGo(b *testing.B) {
 		n += len(strings.Split(vsGoASCII, " "))
 	}
 	_ = n
+}
+
+func BenchmarkStringSplitLimited(b *testing.B) {
+	// Use the same loop as the other VsGo cases: b.Loop suppresses inlining
+	// here and would force the otherwise stack-local List wrapper to escape.
+	for _, size := range []int{16, 65536} {
+		text := strings.Repeat("field,", size)
+		b.Run(strconv.Itoa(size), func(b *testing.B) {
+			b.Run("MS", func(b *testing.B) {
+				b.ReportAllocs()
+				for i := 0; i < b.N; i++ {
+					result := String_Split(tctx, text, ",", Some(2))
+					if len(result.Items) != 2 || result.Items[1] != "field" {
+						b.Fatal("incorrect split result")
+					}
+				}
+			})
+			b.Run("Go", func(b *testing.B) {
+				b.ReportAllocs()
+				for i := 0; i < b.N; i++ {
+					result := strings.SplitN(text, ",", 3)
+					if len(result) < 2 || result[1] != "field" {
+						b.Fatal("incorrect split result")
+					}
+				}
+			})
+		})
+	}
 }
 
 func BenchmarkVsGoStringUpperMS(b *testing.B) {
