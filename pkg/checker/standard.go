@@ -42,10 +42,12 @@ type receiverRequirement struct {
 }
 
 type standardBindings struct {
-	NativeTypes          map[string]string            `json:"native_types"`
-	FunctionOverrides    map[string]string            `json:"function_overrides"`
-	IntrinsicReceivers   map[string]string            `json:"intrinsic_receivers"`
-	Implementations      map[string]string            `json:"implementations"`
+	NativeTypes        map[string]string `json:"native_types"`
+	FunctionOverrides  map[string]string `json:"function_overrides"`
+	IntrinsicReceivers map[string]string `json:"intrinsic_receivers"`
+	// ContractMethods names the native identity shared by every standard
+	// implementation of a contract method, keyed Contract/method.
+	ContractMethods      map[string]string            `json:"contract_methods"`
 	ReceiverRequirements map[string]map[string]string `json:"receiver_requirements"`
 }
 
@@ -415,17 +417,18 @@ func (l *standardLoader) bindImplementations() error {
 			for _, method := range c.Methods[start:] {
 				key := module.File + "/" + d.Receiver.Name + "/" + d.Contract.Name + "/" + method.Decl.Name
 				method.ID = key
-				method.Native = l.bindings.Implementations[key]
+				contract := d.Contract.Name + "/" + method.Decl.Name
+				method.Native = l.bindings.ContractMethods[contract]
 				if method.Native == "" {
-					return fmt.Errorf("missing native implementation binding: %s", method.Decl.Pos)
+					return fmt.Errorf("missing native implementation binding for %s: %s", contract, method.Decl.Pos)
 				}
-				used[key] = true
+				used[contract] = true
 			}
 		}
 	}
-	for key := range l.bindings.Implementations {
-		if !used[key] {
-			return fmt.Errorf("unused native implementation binding: %s", key)
+	for contract := range l.bindings.ContractMethods {
+		if !used[contract] {
+			return fmt.Errorf("unused native implementation binding: %s", contract)
 		}
 	}
 	standardImplementations = append([]*Method{}, c.Methods...)

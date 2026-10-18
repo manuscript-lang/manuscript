@@ -48,5 +48,5 @@ Go has no `-Os` equivalent, so `MinSizeRel` currently matches `Release` and prom
 ## Compiler API
 
 - `Build` defaults to Release; `BuildWithType` and `BuildCheckedWithType` select a level explicitly. The `BuildChecked` boolean selects Debug when true.
-- `CompileSource` and `CompileFile` return ordinary Go in `Result.Source`. To select lowering by build kind, use `CompileSourceForBuild` or `CompileFileForBuild`, then pass the result and kind to `BuildCheckedWithType`.
+- `CompileSource` and `CompileFile` return Go in `Result.Source`. To select lowering by build kind, set `Options.BuildType`, then pass the result and kind to `BuildCheckedWithType`.
 - Building uses the supplied `Result.Source` (including caller edits) and does not mutate the result.

@@ -19,7 +19,7 @@ effectful/mixed lists, other excluded constants and nested-depth scope remain.
 
 ## Build-mode design and compatibility
 
-`CompileSourceForBuild`/`CompileFileForBuild` take the build kind before lowering.
+`Options.BuildType` selects the build kind before lowering.
 The CLI passes its selected kind through this additive API and lowers once.
 `CompileSource`/`CompileFile` keep ordinary default Go. Their existing
 `BuildChecked(result, ..., true)` flow stays valid and uses ordinary lowering;
