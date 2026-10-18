@@ -34,7 +34,7 @@ test "Bytes empty separator splits bytes without decoding":
     if scalars != [Bytes([195]), Bytes([169])]: return panic(
         "byte split used scalar indexes"
     )
-    if scalars.at(0).unwrap().to_string().is_some(): return panic(
+    if scalars.at(0).unwrap().decode_utf8().is_some(): return panic(
         "byte split repaired invalid UTF-8"
     )
     if "é".to_bytes().split(Bytes([169])) != [Bytes([195]), empty]: return panic(

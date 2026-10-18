@@ -20,11 +20,11 @@ Verify: new confined overlay files compile without being written to disk; overla
 
 ### String conversion is available on every value
 
-Decision: the user requested conversion with `toString()` on everything. This supersedes the previous restriction of interpolation to scalars. Conversion is available in unconstrained generic code and uses the same representations as interpolation; ordinary type compatibility at assignment, call, and return boundaries remains explicit.
+Decision: the user requested conversion with `to_string()` on everything. This supersedes the previous restriction of interpolation to scalars. Conversion is available in unconstrained generic code and uses the same representations as interpolation; ordinary type compatibility at assignment, call, and return boundaries remains explicit.
 
 Apply when: changing interpolation, member resolution, formatting, or editor member queries.
 Evidence: [canonical conversion rules](../documentation/core-language/basics/text-and-bytes.md#converting-values-to-string); [native source conformance](../tests/e2e/testdata/accept/to-string.ms); opaque and cyclic formatting checks.
-Verify: a record and an unconstrained `T` both support `.toString()` and direct interpolation; a closed resource converts without invoking an operation; passing that record directly to a String parameter is still rejected.
+Verify: a record and an unconstrained `T` both support `.to_string()` and direct interpolation; a closed resource converts without invoking an operation; passing that record directly to a String parameter is still rejected.
 
 ### Invalid bounds must not survive recovery
 
@@ -230,6 +230,6 @@ Verified: `pkg/parser` rewrites each step to the plain call or `try` it names, s
 
 Apply when: changing operator precedence, line layout, `try`, or call argument binding.
 Evidence: [pipe flows](../documentation/core-language/basics/expressions.md#pipe-flows), [parser tests](../pkg/parser/pipe_test.go), [formatter test](../pkg/tooling/format_pipe_test.go), and [native fixture](../tests/e2e/testdata/accept/pipe-flow.ms).
-Verify: `try parse(text) | double | try check | .to_string(radix: 10)` runs; a continuation line at the wrong indentation is rejected.
+Verify: `try parse(text) | double | try check | .to_string_radix(radix: 10)` runs; a continuation line at the wrong indentation is rejected.
 
 Decision: the user asked to drop `->` before result types to save tokens (about 1% of source tokens measured with cl100k over the stdlib, accept tests, and examples; colons and `name: Type` were left alone). Named functions, methods, interface operations, and fn types still require the result type (`fn f(x: Int) Int:`, `fn(value: Int) Int`); lambdas may omit it and the parser reads a type after `)` as the result type and `:` as the body. `->` is a lexer token only so the parser can say to remove it. Call labels, map entries, and inline suites keep `:` because no separator would make `f(a [1])`, `a (b)`, and `a -1` unambiguous; the study is in the project thread. `ms fmt` reformats migrated files because shorter lines rewrap.

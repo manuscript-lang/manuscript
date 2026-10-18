@@ -81,7 +81,7 @@ test "lines preserve interior empties and recognize LF and CRLF only":
     ]
     for line_case in cases:
         if line_case.text.lines() != line_case.expected: return panic(
-            "line boundary: {line_case.text.toString()}"
+            "line boundary: {line_case.text.to_string()}"
         )
 
 test "String basic bound methods capture immutable receiver values":

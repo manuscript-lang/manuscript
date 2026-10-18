@@ -19,7 +19,7 @@ type Failure[T]:
     detail: T
 
 impl Error for Failure[T]:
-    fn message() String: self.detail.toString()
+    fn message() String: self.detail.to_string()
 
 fn record(events: Events, value: Int) Int:
     events.values = events.values.append(value)

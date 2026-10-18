@@ -509,7 +509,7 @@ func (g *gen) resolveMethod(m *checker.Method, receiver *checker.Type, name stri
 func (g *gen) invokeMethod(m *checker.Method, receiverType *checker.Type, receiver ast.Expr, name string, args []ast.Expr, calleeInfo *checker.Info) ast.Expr {
 	receiverType = g.sub(receiverType)
 	switch {
-	case m.Decl != nil && m.Decl.Name == "toString" && len(args) == 0:
+	case m.Decl != nil && m.Decl.Name == "to_string" && len(args) == 0:
 		return g.format(receiverType, receiver)
 	case m.Native == "contract":
 		return call(selector(receiver, exportName(name)), append([]ast.Expr{ident("ctx")}, args...)...)

@@ -105,7 +105,7 @@ Capture request-data snapshots and services, then acquire job resources inside t
 ```manuscript
 
 fn names() List[String]:
-    return [1, 2].map(fn(value): value.toString())
+    return [1, 2].map(fn(value): value.to_string())
 ```
 
 The list supplies `Int` for `value`, and the expected `List[String]` supplies the callback result. Other arguments may establish callback inputs in any written order; callbacks are revisited as context appears, and runtime order is unchanged. An unambiguous expected result may establish generic arguments first ([inference](../types/generics.md#inference-from-arguments)). A Result context supplies the error type while the body gives the success type. Otherwise add a specialization or annotation.

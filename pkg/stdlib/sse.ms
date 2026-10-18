@@ -114,15 +114,19 @@ fn exceeds(value: Int, limit: Optional[Int]) Bool:
 # Chunks may split any line, line ending or UTF-8 scalar. An error is final for the decoder.
 export fn feed(decoder: SseDecoder, chunk: Bytes) Result[List[SseEvent], SseError]:
     let events = List[SseEvent]()
-    if let failure = decoder.failure: return error(failure)
+    if decoder.failure.is_some(): return error(decoder.failure.unwrap())
     if decoder.closed: return error(SseError.InvalidInput)
 
     var index = 0
     let total = chunk.length()
 
     while index < total:
-        let step = consume(decoder, chunk.at(index).unwrap(), events)
-        index += 1
+        let step = consume(
+            decoder: decoder,
+            byte: chunk.at(index).unwrap(),
+            events: events
+        )
+        index = index + 1
 
         if step.is_error():
             let failure = step.unwrap_error()
@@ -134,7 +138,7 @@ export fn feed(decoder: SseDecoder, chunk: Bytes) Result[List[SseEvent], SseErro
 # Ends the stream. A stream with no partial line and no unfinished event ends cleanly;
 # otherwise the result is Truncated and the unfinished event is never dispatched.
 export fn finish(decoder: SseDecoder) Result[Unit, SseError]:
-    if let failure = decoder.failure: return error(failure)
+    if decoder.failure.is_some(): return error(decoder.failure.unwrap())
     if decoder.closed: return error(SseError.InvalidInput)
 
     decoder.closed = true
@@ -156,11 +160,11 @@ fn consume(
 
     if byte == 10 or byte == 13:
         decoder.carriage = byte == 13
-        return end_line(decoder, events)
+        return end_line(decoder: decoder, events: events)
 
     decoder.line.append(byte)
-    decoder.line_bytes += 1
-    if exceeds(decoder.line_bytes, decoder.limits.max_line_bytes): return error(
+    decoder.line_bytes = decoder.line_bytes + 1
+    if exceeds(value: decoder.line_bytes, limit: decoder.limits.max_line_bytes): return error(
         SseError.LimitExceeded
     )
 
@@ -180,19 +184,22 @@ fn end_line(decoder: SseDecoder, events: List[SseEvent]) Result[Unit, SseError]:
         )
 
     if bytes.is_empty():
-        dispatch(decoder, events)
+        dispatch(decoder: decoder, events: events)
         return ok(unit)
 
-    let line = try bytes.to_string().ok_or(SseError.InvalidData)
+    let text = bytes.decode_utf8()
+    if text.is_none(): return error(SseError.InvalidData)
+
+    let line = text.unwrap()
     if line.starts_with(":"): return ok(unit)
 
-    decoder.event_bytes += bytes.length()
-    if exceeds(decoder.event_bytes, decoder.limits.max_event_bytes): return error(
+    decoder.event_bytes = decoder.event_bytes + bytes.length()
+    if exceeds(value: decoder.event_bytes, limit: decoder.limits.max_event_bytes): return error(
         SseError.LimitExceeded
     )
 
     decoder.open_block = true
-    apply(decoder, line)
+    apply(decoder: decoder, line: line)
     return ok(unit)
 
 fn apply(decoder: SseDecoder, line: String) Unit:
@@ -200,15 +207,15 @@ fn apply(decoder: SseDecoder, line: String) Unit:
     var value = ""
     let colon = line.index_of(":")
 
-    if let at = colon:
-        name = line.slice(0, at).unwrap()
-        value = line.slice(at + 1, line.length()).unwrap()
+    if colon.is_some():
+        name = line.slice(0, colon.unwrap()).unwrap()
+        value = line.slice(colon.unwrap() + 1, line.length()).unwrap()
         if value.starts_with(" "): value = value.slice(1, value.length()).unwrap()
 
     if name == "event": decoder.event_type = value
     else if name == "data": decoder.data.append(value)
-    else if name == "id": identify(decoder, value)
-    else if name == "retry": reconnect(decoder, value)
+    else if name == "id": identify(decoder: decoder, value: value)
+    else if name == "retry": reconnect(decoder: decoder, value: value)
 
 # An ID containing NUL is ignored, so it neither replaces nor clears the last ID.
 fn identify(decoder: SseDecoder, value: String) Unit:
@@ -227,7 +234,13 @@ fn dispatch(decoder: SseDecoder, events: List[SseEvent]) Unit:
     if decoder.data.length() > 0:
         var name = decoder.event_type
         if name == "": name = "message"
-        events.append(SseEvent(name, decoder.data.join("\n"), decoder.last_id))
+        events.append(
+            SseEvent(
+                event: name,
+                data: decoder.data.join("\n"),
+                id: decoder.last_id
+            )
+        )
 
     decoder.event_type = ""
     decoder.data = List[String]()
@@ -242,12 +255,12 @@ impl ReadStream for BorrowedBody:
         return unit
 
     fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
-        return self.body.read(max_bytes)
+        return self.body.read(max_bytes: max_bytes)
 
 # Views an HTTP response body as a ReadStream that the response keeps owning.
 # Closing the view does nothing, so close the body itself, usually with `with`.
 export fn borrow_body(body: ResponseBody) ReadStream:
-    return ReadStream(value: BorrowedBody(body))
+    return ReadStream(value: BorrowedBody(body: body))
 
 # Pulls events from a borrowed ReadStream. The reader never closes the stream:
 # its owner closes it, and closing it makes a blocked read fail with ReadFailed.
@@ -273,7 +286,7 @@ export fn reader(
 ) Result[SseReader, SseError]:
     if not positive(chunk_bytes): return error(SseError.InvalidInput)
 
-    let created = try decoder(limits)
+    let created = try decoder(limits: limits)
     return ok(
         SseReader(
             input: input,
@@ -291,22 +304,24 @@ export fn next_event(reader: SseReader) Result[Optional[SseEvent], SseError]:
     while true:
         if reader.next < reader.ready.length():
             let event = reader.ready.at(reader.next).unwrap()
-            reader.next += 1
+            reader.next = reader.next + 1
             return ok(some(event))
 
         if reader.finished: return ok(none)
 
         reader.ready = List[SseEvent]()
         reader.next = 0
-        let read = reader.input.read(reader.chunk_bytes)
+        let read = reader.input.read(max_bytes: reader.chunk_bytes)
         if read.is_error(): return error(
             SseError.ReadFailed(cause: read.unwrap_error())
         )
 
         let chunk = read.unwrap()
 
-        if let bytes = chunk:
-            reader.ready = try feed(reader.decoder, bytes)
+        if chunk.is_some():
+            reader.ready = try feed(decoder: reader.decoder, chunk: chunk.unwrap())
         else:
-            try finish(reader.decoder)
+            try finish(decoder: reader.decoder)
             reader.finished = true
+
+    return ok(none)

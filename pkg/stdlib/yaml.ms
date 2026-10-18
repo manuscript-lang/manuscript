@@ -1308,7 +1308,7 @@ export fn parse(
     return ok(result)
 
 fn hex4(code: Int) String:
-    var digits = code.to_string(16)
+    var digits = code.to_string_radix(16)
     while digits.length() < 4: digits = "0".concat(digits)
     return digits
 
@@ -1360,7 +1360,7 @@ fn valid_number(text: String) Bool:
 fn scalar_text(value: YamlValue) Result[String, YamlError]:
     match value:
         Null: return ok("null")
-        BoolValue(flag): return ok(flag.toString())
+        BoolValue(flag): return ok(flag.to_string())
         StringValue(text): return ok(quote_text(text))
         NumberValue(text):
             if not valid_number(text): return error(YamlError.InvalidInput)

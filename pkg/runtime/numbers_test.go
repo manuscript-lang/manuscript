@@ -85,10 +85,10 @@ func TestFloatFormatting(t *testing.T) {
 }
 
 func TestIntOperations(t *testing.T) {
-	if Int_ToString(tctx, -255, 16) != "-ff" || Int_ToString(tctx, 35, 36) != "z" {
+	if Int_ToStringRadix(tctx, -255, 16) != "-ff" || Int_ToStringRadix(tctx, 35, 36) != "z" {
 		t.Fatal("radix")
 	}
-	if got := faultMessage(func() { Int_ToString(tctx, 1, 37) }); got != "Int.to_string: radix must be between 2 and 36, found 37" {
+	if got := faultMessage(func() { Int_ToStringRadix(tctx, 1, 37) }); got != "Int.to_string_radix: radix must be between 2 and 36, found 37" {
 		t.Fatalf("radix fault %q", got)
 	}
 	if Int_Seconds(tctx, 2) != Duration(2e9) || Int_Minutes(tctx, 1) != Duration(60e9) || Int_Milliseconds(tctx, 3) != Duration(3e6) {
@@ -155,10 +155,10 @@ func TestBigInt(t *testing.T) {
 	if BigInt_Compare(tctx, a, b) != -1 || BigInt_Compare(tctx, b, b) != 0 || BigInt_Add(tctx, a, b).String() != "-5" || BigInt_Subtract(tctx, a, b).String() != "-9" {
 		t.Fatal("arithmetic")
 	}
-	if BigInt_ToString(tctx, Bigint_FromInt(tctx, 35), 36) != "z" || BigInt_ToString(tctx, Bigint_FromInt(tctx, -35), 2) != "-100011" {
+	if BigInt_ToStringRadix(tctx, Bigint_FromInt(tctx, 35), 36) != "z" || BigInt_ToStringRadix(tctx, Bigint_FromInt(tctx, -35), 2) != "-100011" {
 		t.Fatal("radix")
 	}
-	if got := faultMessage(func() { BigInt_ToString(tctx, a, 1) }); got != "BigInt.to_string: radix must be between 2 and 36, found 1" {
+	if got := faultMessage(func() { BigInt_ToStringRadix(tctx, a, 1) }); got != "BigInt.to_string_radix: radix must be between 2 and 36, found 1" {
 		t.Fatalf("radix fault %q", got)
 	}
 	for _, tt := range []struct {
@@ -221,7 +221,7 @@ func TestBytesOperations(t *testing.T) {
 	if clone := Bytes_Clone(tctx, data); &clone.Data[0] == &data.Data[0] {
 		t.Fatal("clone shares storage")
 	}
-	if Bytes_ToString(tctx, NewBytes([]byte("é"))) != Some("é") || Bytes_ToString(tctx, NewBytes([]byte{0xff})).Some {
+	if Bytes_DecodeUtf8(tctx, NewBytes([]byte("é"))) != Some("é") || Bytes_DecodeUtf8(tctx, NewBytes([]byte{0xff})).Some {
 		t.Fatal("to_string")
 	}
 }

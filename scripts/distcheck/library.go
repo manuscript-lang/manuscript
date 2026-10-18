@@ -45,7 +45,7 @@ test "copied native defaults":
         return panic("default CSV parse failed")
     if base64_encode("f".to_bytes()) != "Zg==": return panic("default alphabet")
     if let bytes = base64_decode("Zg=="):
-        if bytes.to_string().unwrap() != "f": return panic("default decoded bytes")
+        if bytes.decode_utf8().unwrap() != "f": return panic("default decoded bytes")
     else:
         return panic("default Base64 decode failed")
     let run = commands().run

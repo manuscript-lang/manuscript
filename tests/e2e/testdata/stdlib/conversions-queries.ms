@@ -130,7 +130,7 @@ test "Map fold uses ordered snapshots and returns accumulator aliases":
                 (values.add("a", Counter(99)).remove("c").add("d", Counter(4)))
                 later.calls = 7
 
-            acc.append(k + v.calls.toString())
+            acc.append(k + v.calls.to_string())
             return acc
     )
     if visits != ["b2", "a1", "c7"] or initial != visits:

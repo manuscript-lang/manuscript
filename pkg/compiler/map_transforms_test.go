@@ -17,7 +17,7 @@ func TestMapTransformContracts(t *testing.T) {
 fn wrong(values: Map[String, Int]) Map[String, Int]: values.map(transform)`, "key"},
 		{"last-match predicate returns Bool", `fn wrong(values: Map[String, Int]) Unit:
     let found = values.find_last(fn(k, v): v)`, "Bool"},
-		{"reverse fold keeps accumulator type", `fn wrong(values: Set[Int]) Int: values.fold_right(0, fn(acc, v): v.toString())`, "Int"},
+		{"reverse fold keeps accumulator type", `fn wrong(values: Set[Int]) Int: values.fold_right(0, fn(acc, v): v.to_string())`, "Int"},
 		{"last Map match returns entry", `fn wrong(values: Map[String, Int]) Optional[Int]: values.find_last(fn(k, v): true)`, "MapEntry"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

@@ -98,7 +98,7 @@ fn construct(state: State) Options:
 }
 
 func TestUniversalToStringReadsWithoutInvokingResources(t *testing.T) {
-	source := "fn text[T](value: T) String:\n    return value.toString()\n"
+	source := "fn text[T](value: T) String:\n    return value.to_string()\n"
 	result := compiler.CompileSource("conversion.ms", source, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)

@@ -43,7 +43,7 @@ func TestExpectedResultGenericInference(t *testing.T) {
 		"field":           `fn first() Holder: Holder(absent())`,
 		"callback return": `fn first() Unit:
     let callback: fn() Optional[Int] = fn(): absent()`,
-		"callback inputs":            `fn first() fn(value: Int) String: transform(fn(item): item.toString())`,
+		"callback inputs":            `fn first() fn(value: Int) String: transform(fn(item): item.to_string())`,
 		"callback factory":           `fn first() Optional[Int]: from_callback(fn(): absent())`,
 		"native callback":            `fn first() List[Optional[Int]]: [1].map(fn(item): absent())`,
 		"empty argument":             `fn first() List[Int]: identity([])`,

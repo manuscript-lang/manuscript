@@ -238,8 +238,8 @@ func TestUniversalToStringCompletion(t *testing.T) {
 		"import Queue from \"@std/queues.ms\"\nfn text(value: Queue[Int]) String:\n    return value.|\n",
 	} {
 		items := completeSource(t, source)
-		item := itemNamed(items, "toString")
-		if item == nil || item.Detail != "fn()->String" || item.TextEdit.(map[string]any)["newText"] != "toString()$0" {
+		item := itemNamed(items, "to_string")
+		if item == nil || item.Detail != "fn()->String" || item.TextEdit.(map[string]any)["newText"] != "to_string()$0" {
 			t.Fatalf("missing universal method for %s: %+v", source, items)
 		}
 	}

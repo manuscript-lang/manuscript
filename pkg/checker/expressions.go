@@ -263,7 +263,7 @@ func (c *checker) inferMember(e *syntax.Expression, expected *Type, i *Info) *In
 		return i
 	}
 	for _, f := range Fields(receiver.Type) {
-		if receiver.Type.Kind == syntax.KindRecord && f.Name == e.Text && e.Text != "toString" {
+		if receiver.Type.Kind == syntax.KindRecord && f.Name == e.Text && e.Text != "to_string" {
 			i.Type = f.Type
 			return i
 		}
@@ -504,7 +504,7 @@ func (c *checker) inferBinary(e *syntax.Expression, expected *Type, i *Info) *In
 			hint = resultUseHint(b.Type, a.Type)
 		}
 		if hint == "" {
-			hint = "convert one side so both have one type (e.g. toString() for text, or an Int/Float conversion)"
+			hint = "convert one side so both have one type (e.g. to_string() for text, or an Int/Float conversion)"
 		}
 		c.error(e.Pos, "type", fmt.Sprintf("operator operands require the same independently known type, found %s %s %s; %s", a.Type, e.Text, b.Type, hint))
 		c.unknownType = true // later "<invalid>" diagnostics only restate this one

@@ -28,8 +28,8 @@ func check_Float_Compare() {
 func check_Float_TruncateToInt() {
 	var _ func(*Execution, float64) Option[int] = Float_TruncateToInt
 }
-func check_Int_ToString() {
-	var _ func(*Execution, int, int) string = Int_ToString
+func check_Int_ToStringRadix() {
+	var _ func(*Execution, int, int) string = Int_ToStringRadix
 }
 func check_Int_ToFloat() {
 	var _ func(*Execution, int) float64 = Int_ToFloat

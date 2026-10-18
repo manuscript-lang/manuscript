@@ -36,7 +36,7 @@ func TestCollectionQueryCallbackFaultLocations(t *testing.T) {
 
 func TestLazyConversionFaultLocation(t *testing.T) {
 	source := `fn crash() String:
-    return (1 / 0).toString()
+    return (1 / 0).to_string()
 export fn main() Int:
     let value: Optional[Int] = none
     let result = value.ok_or_else(crash)

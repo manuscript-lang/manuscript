@@ -27,7 +27,7 @@ test "Optional presence and extraction preserve false and zero":
     if value_or(missing, 7) != 7: return panic("generic fallback")
     if value_or(present, 7) != 0: return panic("generic payload")
     if missing.is_some():
-        return panic(missing.unwrap().toString())
+        return panic(missing.unwrap().to_string())
 
 test "Optional fallbacks distinguish eager and lazy evaluation":
     let present: Optional[Int] = some(0)

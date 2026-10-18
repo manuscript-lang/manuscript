@@ -21,7 +21,7 @@ fn check(n: Int) Result[Int, String]:
 fn flow(text: String) Result[Int, String]:
     let n = try parse(text)
         | double
-        | add(3)
+        | add(by: 3)
         | try check
     return ok(n)
 
@@ -31,22 +31,22 @@ fn bare(text: String) Result[Int, String]:
 fn describe(text: String) Result[String, String]:
     let label = try parse(text)
         | try check
-        | add(1)
-        .to_string(10)
+        | add(by: 1)
+        .to_string_radix(radix: 10)
     return ok(label)
 
 fn order(log: List[String]) Int:
-    return trace(log, "a") | add(trace(log, "b")) | double
+    return trace(log, "a") | add(by: trace(log, "b")) | double
 
 fn trace(log: List[String], name: String) Int:
     log.append(name)
     return 1
 
 fn code(r: Result[Int, String]) Int:
-    if let v = r:
-        return v
+    if r.is_error():
+        return 0 - r.unwrap_error().length()
 
-    return 0 - r.unwrap_error().length()
+    return r.unwrap()
 
 test "pipe steps call functions with the value first":
     if code(flow("abc")) != 9:

@@ -152,8 +152,8 @@ fn describe(cause: Error) String:
 }
 
 func TestUniversalToStringNavigation(t *testing.T) {
-	source := "fn text[T](value: T) String:\n    return value.toString()\n"
-	file, _, hover := definitionAt(t, source, strings.Index(source, "toString"))
+	source := "fn text[T](value: T) String:\n    return value.to_string()\n"
+	file, _, hover := definitionAt(t, source, strings.Index(source, "to_string"))
 	if file != "@std/intrinsics.ms" || !strings.Contains(hover, "fn()->String") {
 		t.Fatal("universal method must navigate to its source signature", file, hover)
 	}
