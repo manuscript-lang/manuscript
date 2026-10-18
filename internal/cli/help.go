@@ -111,19 +111,23 @@ func commandHelp(command string) (string, bool) {
 		options = "  --view <name>        calls, effects, errors, modules, flow, or scope (default calls with --entity)\n  --entity <name>      Root the view at one declaration or module\n  --depth <n>          Expansion depth for a view (default 3)\n  --diff <path|->      Mark what a unified diff changed in the view (tree is the after state)\n  --format <name>      ascii (default) or mermaid\n" + outputHelp + jsonErrorsHelp
 		examples = "ms diagram main.ms\n  ms diagram ms.toml --format mermaid -o calls.mmd\n  ms diagram ms.toml --view effects --entity save\n  ms diagram ms.toml --view errors\n  ms diagram ms.toml --view flow --entity main --depth 2\n  ms diagram ms.toml --view flow --entity save --diff change.patch"
 	case "review":
-		usage = "<file.ms|ms.toml> [--diff <file|->] [--explain n|id] [--format ascii|markdown|json] [--all] [-o output]"
+		usage = "<file.ms|ms.toml> [--diff <file|->] [--explain n|id] [--format ascii|markdown] [--json] [--all] [-o output]"
 		description = "Print a fixed-template report of where to look. Without --diff it maps the project:\npublic surface, entry points with effects, error types, resources, imports.\nWith a unified diff it compares the checked program before and after the change and\nranks entities by contract, effect, error-flow, and resource changes and their reach.\nms never runs git: pipe the diff in. The tree must be the diff's after state; the\nbefore state is rebuilt from the diff and verified. Output is deterministic, with no\ntimestamps, absolute paths, or generated prose, and ends with a digest."
-		options = "  --diff <path|->      Unified diff to review (- reads standard input)\n  --format <name>      ascii (default), markdown, or json\n  --explain <n|id>     Show one finding in full: score terms, evidence, callers (needs --diff)\n  --all                Show every row instead of the first five per section\n" + outputHelp
+		options = "  --diff <path|->      Unified diff to review (- reads standard input)\n  --format <name>      ascii (default) or markdown\n  --json               Emit the report as versioned JSON (not with --format or --explain)\n  --explain <n|id>     Show one finding in full: score terms, evidence, callers (needs --diff)\n  --all                Show every row instead of the first five per section\n" + outputHelp
 		examples = "ms review ms.toml\n  git diff --no-renames main... | ms review ms.toml --diff -\n  ms review ms.toml --diff change.patch --format markdown\n  ms review ms.toml --diff change.patch --explain 1"
 	case "profile":
 		usage = "<file.ms|ms.toml> [--json] [--out-dir directory] [--trace] [--build-type level] [-- program arguments]"
 		description = "Build and run an application with CPU and heap capture.\nThe bundle contains the executable, cpu.pprof, heap.pprof, inspection.json,\nand manifest.json. Add --trace to also write trace.out. The directory must be new.\nSource labels/regions identify entry and work boundaries; CPU stacks retain nested calls.\nProfiling adds overhead; tracing can add substantial time and disk usage.\nMeasure normal execution separately. Arguments after -- go to the application; its exit status is returned."
-		options = "  --out-dir <directory>    Bundle directory (default: ./profile)\n  -o, --output <directory>  Compatible aliases for --out-dir\n  --json                   Emit one versioned result; capture stdout, keep stderr live\n  --trace                  Also capture an execution trace\n"
+		options = "  --out-dir <directory>    Bundle directory (default: ./profile)\n  --json                   Emit one versioned result; capture stdout, keep stderr live\n  --trace                  Also capture an execution trace\n"
 		examples = "ms profile ms.toml\n  ms profile main.ms --out-dir capture --trace -- first second"
-	case "pprof", "trace":
+	case "pprof":
 		usage = "[viewer options] <profile file>"
-		description = "Inspect captured profiles with the embedded SDK viewer."
-		examples = "ms pprof -top heap.pprof\n  ms trace -http=127.0.0.1:8080 trace.out"
+		description = "Inspect a captured CPU or heap profile with the embedded SDK viewer."
+		examples = "ms pprof -top heap.pprof\n  ms pprof -http=127.0.0.1:8080 cpu.pprof"
+	case "trace":
+		usage = "[viewer options] <trace file>"
+		description = "Inspect a captured execution trace with the embedded SDK viewer."
+		examples = "ms trace -http=127.0.0.1:8080 trace.out"
 	case "dap":
 		description = "Serve one Delve DAP session on stdin/stdout.\nExits on disconnect, closed input, or termination."
 		examples = "ms dap"
@@ -159,8 +163,8 @@ func commandHelp(command string) (string, bool) {
 		description = "Serve one Delve DAP session on stdin/stdout.\nExits on disconnect, closed input, or termination."
 		examples = "ms dap"
 	case "debug":
-		usage = "<file.ms|ms.toml> [--build-type Debug] [--break location]... | --script file [--json] [-- program arguments]"
-		options += "  --build-type Debug  Debug is required for Delve\n  --break <location>  Run to the first of file:line or function name, report the stop, and exit (repeatable)\n  --script <file>     Run debugger commands from a file, or - for standard input\n  --json              With --script or --break, print JSON Lines events instead of text\n  Script commands: break, clear, breakpoints, continue, next, step, stepout, stack, locals, print <name>, exit\n"
+		usage = "<file.ms|ms.toml> [--break location]... | --script file [--json] [-- program arguments]"
+		options += "  --break <location>  Run to the first of file:line or function name, report the stop, and exit (repeatable)\n  --script <file>     Run debugger commands from a file, or - for standard input\n  --json              With --script or --break, print JSON Lines events instead of text\n  Script commands: break, clear, breakpoints, continue, next, step, stepout, stack, locals, print <name>, exit\n"
 	}
 	text := fmt.Sprintf("Usage: ms %s", command)
 	if usage != "" {

@@ -13,14 +13,13 @@ import (
 
 type reviewArguments struct {
 	filename, diff, format, output, explain string
-	all                                     bool
+	all, json                               bool
 }
 
 // parseReviewArguments reads ms review's options; a false result carries the
 // status for the problem already reported.
 func parseReviewArguments(args []string) (reviewArguments, int, bool) {
 	var a reviewArguments
-	a.format = "ascii"
 	if len(args) < 2 {
 		return a, usageError("ms review: missing the file argument; pass a .ms file or a project ms.toml, e.g. ms review ms.toml"), false
 	}
@@ -38,6 +37,8 @@ func parseReviewArguments(args []string) (reviewArguments, int, bool) {
 		switch flag {
 		case "--all":
 			a.all = true
+		case "--json":
+			a.json = true
 		case "--diff", "--format", "--explain", "-o", "--output":
 			value, ok := requiredValue(args, &i, value, inline)
 			if !ok {
@@ -57,10 +58,17 @@ func parseReviewArguments(args []string) (reviewArguments, int, bool) {
 			return a, usageError("unknown option %s for ms review; run 'ms help review' for its options", args[i]), false
 		}
 	}
-	switch a.format {
-	case "ascii", "markdown", "json":
-	default:
-		return a, usageError("unknown --format %q for ms review; use ascii, markdown, or json", a.format), false
+	switch {
+	case a.json && a.format != "":
+		return a, usageError("--json and --format cannot be combined; --json is the JSON report"), false
+	case a.json && a.explain != "":
+		return a, usageError("--explain prints text and cannot be combined with --json"), false
+	case a.json:
+		a.format = "json"
+	case a.format == "":
+		a.format = "ascii"
+	case a.format != "ascii" && a.format != "markdown":
+		return a, usageError("unknown --format %q for ms review; use ascii or markdown (--json for JSON)", a.format), false
 	}
 	if a.explain != "" && a.diff == "" {
 		return a, usageError("--explain needs --diff; it explains one finding of a diff report, e.g. ms review ms.toml --diff change.patch --explain 1"), false

@@ -112,7 +112,7 @@ func TestCLICommands(t *testing.T) {
 		}
 	}
 	bundle := filepath.Join(project, "profile")
-	if data, err := commandOutput(t, binary, "profile", manifest, "-o", bundle); err != nil {
+	if data, err := commandOutput(t, binary, "profile", manifest, "--out-dir", bundle); err != nil {
 		t.Fatalf("profile bundle: %v %s", err, data)
 	}
 	for _, name := range []string{"program", "program.ms-build.json", "inspection.json", "manifest.json", "cpu.pprof", "heap.pprof"} {
@@ -129,7 +129,7 @@ func TestCLICommands(t *testing.T) {
 		t.Fatal("default manifest advertises a trace", err)
 	}
 	traced := filepath.Join(project, "traced")
-	if data, err := commandOutput(t, binary, "profile", manifest, "-o", traced, "--trace", "--", "first", "second"); err != nil || string(data) != "Arguments: 2\n" {
+	if data, err := commandOutput(t, binary, "profile", manifest, "--out-dir", traced, "--trace", "--", "first", "second"); err != nil || string(data) != "Arguments: 2\n" {
 		t.Fatalf("explicit trace bundle: %v %s", err, data)
 	}
 	manifestData, err = os.ReadFile(filepath.Join(traced, "manifest.json"))
@@ -145,7 +145,7 @@ func TestCLICommands(t *testing.T) {
 			t.Fatalf("invalid captured artifact: %v %s", err, data)
 		}
 	}
-	if err := exec.Command(binary, "profile", manifest, "-o", bundle).Run(); err == nil {
+	if err := exec.Command(binary, "profile", manifest, "--out-dir", bundle).Run(); err == nil {
 		t.Fatal("profile bundle overwrote existing directory")
 	}
 

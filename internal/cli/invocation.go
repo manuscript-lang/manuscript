@@ -240,8 +240,11 @@ func pathRequirement(flag string) string {
 func (inv *invocation) setPath(flag, value string) (int, bool) {
 	switch flag {
 	case "-o", "--output", "--out-dir":
-		if flag == "--out-dir" && inv.command != "profile" {
+		switch {
+		case flag == "--out-dir" && inv.command != "profile":
 			return usageError("--out-dir is valid only for ms profile, not ms %s; use -o for commands that write a file", inv.command), false
+		case flag != "--out-dir" && inv.command == "profile":
+			return usageError("%s is not valid for ms profile; use --out-dir for the bundle directory", flag), false
 		}
 		inv.output = value
 	case "--cpu-profile":
@@ -332,13 +335,16 @@ func (inv *invocation) validate() (plan, int, bool) {
 		fmt.Fprintln(os.Stderr, err)
 		return p, 2, false
 	}
-	if inv.buildTypeSet && !inv.isOneOf("build", "run", "test", "debug", "profile") {
-		return p, usageError("--build-type requires build, run, test, debug, or profile, not %s; remove the flag", command), false
+	if inv.buildTypeSet && command == "debug" {
+		return p, usageError("ms debug always uses build type Debug; remove --build-type"), false
+	}
+	if inv.buildTypeSet && !inv.isOneOf("build", "run", "test", "profile") {
+		return p, usageError("--build-type requires build, run, test, or profile, not %s; remove the flag", command), false
 	}
 	switch {
 	case inv.debug || command == "debug":
 		if inv.buildTypeSet && kind != compiler.Debug {
-			return p, usageError("debug requires build type Debug; remove --build-type or pass --build-type Debug"), false
+			return p, usageError("--debug requires build type Debug; remove --build-type or pass --build-type Debug"), false
 		}
 		kind = compiler.Debug
 	case (command == "profile" || (command == "test" && inv.hasProfilePaths())) && !inv.buildTypeSet:
