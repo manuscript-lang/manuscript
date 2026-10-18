@@ -49,7 +49,7 @@ test "expected generic results preserve behavior and call order":
     try expect_false(not empty.is_none())
     let values: List[Optional[Int]] = [1, 2].map(fn(item): absent())
     try expect_equal(values.length(), 2)
-    try expect_false(not values.at(0).get().is_none())
+    try expect_false(not values.get(0).is_none())
     let callback: fn(value: Int) String = transform(fn(item): item.to_string())
     try expect_equal(callback(7), "7")
     let defaulted: fn(value: Int) Int = from_callback(

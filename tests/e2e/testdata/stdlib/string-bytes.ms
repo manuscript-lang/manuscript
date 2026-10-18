@@ -7,8 +7,8 @@ test "Unicode scalar indexing differs from byte length":
     let text = "aé🙂"
     try expect_false(text.byte_length() != 7 or text.scalar_length() != 3)
     try expect_equal(text.scalar_values(), [97, 233, 128578])
-    try expect_false(text.at(-1) != some("🙂") or text.scalar_at(1) != some(233))
-    try expect_false(not text.at(3).is_none())
+    try expect_false(text.get(-1) != "🙂" or text.scalar_at(1) != 233)
+    try expect_equal(text.get(3, default: "none"), "none")
     try expect_equal((text.scalar_values() | from_scalars | try), text)
     try expect_equal((try text.slice_scalars(1, 3)), "é🙂")
     try expect_equal((try "é".normalize("NFC")), "é")
@@ -37,8 +37,8 @@ test "strings honor omitted none zero and explicit output limits":
 
 test "bytes copy slice search and UTF8 validation":
     let data = Bytes([0, 1, 255, 1])
-    try expect_equal(data.at(-1), some(1))
-    try expect_false(not data.at(4).is_none())
+    try expect_equal(data.get(-1), 1)
+    try expect_equal(data.get(4, default: -1), -1)
     try expect_equal(data.index_of(Bytes([1])), some(1))
     try expect_equal(data.last_index_of(Bytes([1])), some(3))
     try expect_equal(data.slice(1, 3).get(), Bytes([1, 255]))
@@ -48,7 +48,7 @@ test "bytes copy slice search and UTF8 validation":
     try expect_equal(data.slice(-10, 2), byte_range)
     try expect_equal(data.reversed(), Bytes([1, 255, 1, 0]))
     let copied = data.clone().with_value(0, 42)
-    try expect_false(copied.at(0) != some(42) or data.at(0) != some(0))
+    try expect_false(copied.get(0) != 42 or data.get(0) != 0)
     try expect_false(not Bytes([255]).decode_utf8().is_none())
     try expect_equal("é".to_bytes().decode_utf8(), some("é"))
 
@@ -117,17 +117,13 @@ test "indexing and slicing long mixed-width text matches scalar positions":
     # Forward, backward and jumping reads of the same long text.
     var forward = 0
     for step in range(0, 2400):
-        forward += text.scalar_at(step).get()
+        forward += text.scalar_at(step)
     var backward = 0
     for step in range(0, 2400):
-        backward += text.scalar_at(2399 - step).get()
+        backward += text.scalar_at(2399 - step)
     try expect_false(forward != 600 * (97 + 233 + 8364 + 128578) or backward != forward)
     try expect_false(
-        (
-            text.at(1200) != some("a")
-            or text.at(2399) != some("🙂")
-            or text.at(-2) != some("€")
-        )
+        (text.get(1200) != "a" or text.get(2399) != "🙂" or text.get(-2) != "€")
     )
     try expect_equal((try text.slice(1199, 1203)), "🙂aé€")
     try expect_equal((try text.slice(2396, 2400)), block)

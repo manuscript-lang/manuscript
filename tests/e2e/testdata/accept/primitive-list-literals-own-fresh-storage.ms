@@ -22,9 +22,7 @@ test "literals":
     )
     floats.append(value: 3.5)
     words.append(value: "c")
-    try expect_true(
-        (floats.at(index: 2) == some(3.5) and words.at(index: 2) == some("c"))
-    )
+    try expect_true((floats.get(index: 2) == 3.5 and words.get(index: 2) == "c"))
     try expect_true(([1, 2] == [1, 2] and not ([1, 2] == [2, 1])))
     let rows = [[1], [2, 3]]
-    try expect_true((rows.at(index: 1) == some([2, 3])))
+    try expect_true((rows.get(index: 1) == [2, 3]))

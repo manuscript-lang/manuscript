@@ -40,7 +40,7 @@ func TestCollectionSupportPreludeEditorContracts(t *testing.T) {
 func TestRedundantPreludeImportEditorFix(t *testing.T) {
 	for _, newline := range []string{"\n", "\r\n"} {
 		for _, source := range []string{
-			"import MissingValue from \"@std/errors.ms\" # keep\nfn first(values: List[Int]) Result[Int, MissingValue]: values.at(0).ok_or()\n",
+			"import MissingValue from \"@std/errors.ms\" # keep\nfn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()\n",
 			"import List from \"@std/collections.ms\" # keep\nfn count() Int: List[Int]().length()\n",
 			"import {ListBuilder, List} from \"@std/collections.ms\"\nfn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()\n",
 			"import {\n    List, # keep\n    ListBuilder,\n} from \"@std/collections.ms\"\nfn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()\n",
@@ -86,7 +86,7 @@ func TestRedundantPreludeImportEditorFix(t *testing.T) {
 
 func TestMissingValuePreludeNavigation(t *testing.T) {
 	for _, newline := range []string{"\n", "\r\n"} {
-		source := strings.ReplaceAll("fn first(values: List[Int]) Result[Int, MissingValue]: values.at(0).ok_or()\n", "\n", newline)
+		source := strings.ReplaceAll("fn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()\n", "\n", newline)
 		d := document{"file:///tmp/missing-prelude.ms", source, 1}
 		checked := analyze(d, map[string]document{d.URI: d})
 		if !checked.Success() {

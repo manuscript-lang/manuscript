@@ -250,10 +250,10 @@ test "native collection methods preserve ordinary function values":
                 return value
     )
     let first = fn() Result[Int, Error]:
-        let callback = (callbacks.at(0) | try expect_some)
+        let callback = (callbacks.get(0))
         return ok(callback())
     let second = fn() Result[Int, Error]:
-        let callback = (callbacks.at(1) | try expect_some)
+        let callback = (callbacks.get(1))
         return ok(callback())
 
     with group = TaskGroup():

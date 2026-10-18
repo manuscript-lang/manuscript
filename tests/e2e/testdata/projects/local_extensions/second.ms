@@ -65,7 +65,7 @@ export fn second_resource(resource: Resource) Closeable:
 test "second local cleanup":
     let events = ListBuilder[Int]()
     leave(Resource(events))
-    events.freeze().at(index: 0) | try expect_equal(expected: some(20))
+    events.freeze().get(index: 0) | try expect_equal(expected: 20)
 
 import mixed from "./first.ms"
 

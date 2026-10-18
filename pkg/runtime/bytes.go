@@ -109,12 +109,14 @@ func Bytes_Slice(_ *Execution, b *Bytes, start, end int) Result[*Bytes, Collecti
 	return Ok[*Bytes, CollectionError](NewBytes(b.Data[s:e:e]))
 }
 
-func Bytes_At(_ *Execution, b *Bytes, index int) Option[int] {
+// Bytes_Get returns the byte at a possibly negative index, else the default;
+// an invalid index without a default is a fault.
+func Bytes_Get(_ *Execution, b *Bytes, index int, def Option[int]) int {
 	i := txRelative(len(b.Data), index)
 	if i < 0 || i >= len(b.Data) {
-		return None[int]()
+		return missingIndex(index, len(b.Data), def)
 	}
-	return Some(int(b.Data[i]))
+	return int(b.Data[i])
 }
 
 func Bytes_IndexOf(_ *Execution, b, value *Bytes) Option[int] {

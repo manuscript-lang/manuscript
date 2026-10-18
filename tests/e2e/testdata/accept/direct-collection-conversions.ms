@@ -14,30 +14,28 @@ test "direct append preserves checked argument conversions":
     values.append(7)
     append_generic(values, 8)
     values.append(none)
-    try expect_false(values.at(0).get().get() != 7 or values.at(1).get().get() != 8)
-    try expect_false(not values.at(2).get().is_none())
+    try expect_false(values.get(0).get() != 7 or values.get(1).get() != 8)
+    try expect_false(not values.get(2).is_none())
     let flags: List[Optional[Bool]] = []
     flags.append(false)
-    try expect_false(flags.at(0).get().is_none() or flags.at(0).get().get())
+    try expect_false(flags.get(0).is_none() or flags.get(0).get())
     let units: List[Optional[Unit]] = []
     units.append(unit)
-    try expect_false(units.at(0).get().is_none())
+    try expect_false(units.get(0).is_none())
     let inner: Optional[Int] = none
     let nested: List[Optional[Optional[Int]]] = []
     nested.append(inner)
-    try expect_false(
-        (nested.at(0).get().is_none() or not nested.at(0).get().get().is_none())
-    )
+    try expect_false((nested.get(0).is_none() or not nested.get(0).get().is_none()))
     let callbacks: List[Optional[fn(value: Int) Int]] = []
     callbacks.append(fn(value): value + 1)
-    try expect_equal(callbacks.at(0).get().get()(7), 8)
+    try expect_equal(callbacks.get(0).get()(7), 8)
     let errors: List[Error] = []
     errors.append(Failure(1))
-    try expect_equal(errors.at(0).get().message(), "failure")
+    try expect_equal(errors.get(0).message(), "failure")
     let results: List[Optional[Result[Int, Error]]] = []
     let failed: Result[Int, Failure] = error(Failure(2))
     results.append(failed)
-    let widened = results.at(0).get().get()
+    let widened = results.get(0).get()
     try expect_false(widened.is_ok())
     try expect_equal(widened.err().message(), "failure")
 
@@ -70,7 +68,7 @@ test "direct calls capture receiver and arguments in written order":
                 none: 0
         ) + 0
     )
-    try expect_false(first.at(0).get().get() != 7 or not second.is_empty())
+    try expect_false(first.get(0).get() != 7 or not second.is_empty())
     let entries = Map[Int, Optional[Int]]()
     var key = 1
     entries.add(

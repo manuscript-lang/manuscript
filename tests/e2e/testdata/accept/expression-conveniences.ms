@@ -50,20 +50,20 @@ test "indexing and generic applications coexist":
     let index = 1
     let indices = [0, 1]
     let counter = Counter(count: 0)
-    ((items[0].get() != 10 or items[index].get() != 20 or items[-1].get() != 20)) | try expect_false
-    (items[indices[index].get()].get() != 20 or items[index - 1].get() != 10) | try expect_false
-    (items[counter.count].get() != 10 or [items][0].get() [1].get() != 20) | try expect_false
-    (values(counter) [(try tick(counter))].get() != 7 or counter.count != 2) | try expect_false
-    identity[Int](items[0].get()) | try expect_equal(expected: 10)
+    ((items[0] != 10 or items[index] != 20 or items[-1] != 20)) | try expect_false
+    (items[indices[index]] != 20 or items[index - 1] != 10) | try expect_false
+    (items[counter.count] != 10 or [items][0][1] != 20) | try expect_false
+    (values(counter) [(try tick(counter))] != 7 or counter.count != 2) | try expect_false
+    identity[Int](items[0]) | try expect_equal(expected: 10)
     let callbacks: List[fn(value: Int) Int] = [identity[Int]]
-    (callbacks[0].get()(2) != 2 or callbacks[indices[0].get()].get()(3) != 3) | try expect_false
+    (callbacks[0](2) != 2 or callbacks[indices[0]](3) != 3) | try expect_false
 
 test "empty list constructors have fresh typed storage":
     let empty = List[String]()
     let contextual: List[Int] = List()
     let other = List[String]()
     empty.append("a")
-    (empty[0].get() != "a" or other.length() != 0 or contextual.length() != 0) | try expect_false
+    (empty[0] != "a" or other.length() != 0 or contextual.length() != 0) | try expect_false
     let map = Map[String, Int]()
     map.length() | try expect_equal(expected: 0)
 
@@ -129,17 +129,13 @@ test "match expressions preserve returns and cleanup":
         return number
     callback(absent) | try expect_equal(expected: 42)
 
-test "missing indexes are optional":
+test "indexes read elements and get supplies defaults":
     let values = [1, 2]
-    (
-        (
-            values[2].is_some()
-            or values[-3].is_some()
-            or values[-9223372036854775808].is_some()
-        )
-    ) | try expect_false
-    (values[0] != values.at(0) or values[-1] != values.at(-1)) | try expect_false
-    List[Int]() [0].is_some() | try expect_false
+    values.get(2, default: 0) | try expect_equal(0)
+    values.get(-3, default: 0) | try expect_equal(0)
+    values.get(-9223372036854775808, default: 0) | try expect_equal(0)
+    (values[0] != values.get(0) or values[-1] != values.get(-1)) | try expect_false
+    List[Int]().get(0, default: 7) | try expect_equal(7)
 
 test "match blocks produce their final value":
     let present: Optional[Int] = some(value: 5)
@@ -178,7 +174,7 @@ test "contextual values infer from later arms":
         none: []
         some(value): [value]
 
-    list[0].get() | try expect_equal(expected: 5)
+    list[0] | try expect_equal(expected: 5)
 
 fn returned_argument(counter: Counter) Result[Int, Error]:
     let absent: Optional[Int] = none
@@ -260,10 +256,9 @@ test "match in a loop header exits its lexical enclosing loop":
 
 test "indexing preserves zero and nested optionals":
     let numbers = [0]
-    (numbers[0].is_none() or numbers[0].get(99) != 0) | try expect_false
+    (numbers[0] != 0 or numbers.get(0, default: 99) != 0) | try expect_false
     let nested: List[Optional[Int]] = [none, some(value: 0)]
-    (nested[0].is_none() or nested[0].get().is_some()) | try expect_false
-    (nested[1].get().get() != 0 or nested[2].is_some()) | try expect_false
+    (nested[0].is_some() or nested[1].get() != 0) | try expect_false
 
 fn observed_optional(counter: Counter) Optional[Int]:
     counter.count = counter.count + 1
@@ -293,9 +288,9 @@ test "match composes with inferred callbacks and map literals":
             some(number): number + 1
             none: 0
     )
-    (mapped[0].get() != 4 or mapped[1].get() != 0) | try expect_false
+    (mapped[0] != 4 or mapped[1] != 0) | try expect_false
     let lookup = {
-        "value": match values[0].get():
+        "value": match values[0]:
             some(number): number
             none: 0
     }

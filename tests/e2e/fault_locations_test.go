@@ -28,7 +28,7 @@ export fn main() Int:
     return add(value: crash(), key: 1).length()
 `, false, []string{"fault.ms:2 in crash", "fault.ms:6 in main"}},
 		{"List at unwrap out of range", `fn pick(values: List[Int], index: Int) Int:
-    return values.at(index).get()
+    return values.get(index)
 export fn main() Int:
     return pick([1, 2, 3], 3)
 `, false, []string{"fault.ms:2 in pick", "fault.ms:4 in main"}},
@@ -77,7 +77,7 @@ export fn main() Int:
     return value.and_then(crash).get()
 `, false, []string{"fault.ms:2 in crash", "fault.ms:5 in main"}},
 		{"unwrap and caller", `fn deep(l: List[Int], i: Int) Int:
-    return l.at(i).get()
+    return l.get(i)
 export fn main() Int:
     return deep(l: [1], i: 5)
 `, false, []string{"fault.ms:2 in deep", "fault.ms:4 in main"}},

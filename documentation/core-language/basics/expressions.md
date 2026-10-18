@@ -54,7 +54,7 @@ MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
 - `a < b == c`, `a == b == c`, and `a < b < c` are syntax errors; `(a < b) == flag` is ordinary Bool equality.
 - `not a == b` means `not (a == b)`.
 - `try read() + 1` means `(try read()) + 1`; write `try (expression)` to propagate a larger expression.
-- Brackets after a generic declaration supply types (`identity[Int]`, `Box[String]`); after a list value they look up: `values[index]` equals `values.at(index)`, an `Optional[T]` accepting negative indexes. Slicing and indexed assignment are unsupported.
+- Brackets after a generic declaration supply types (`identity[Int]`, `Box[String]`); after a list value they look up: `values[index]` equals `values.get(index)`, a `T` accepting negative indexes that faults out of range. Slicing and indexed assignment are unsupported.
 - Calls take positional arguments and optional labels ([call rules](../functions/declarations-and-calls.md#argument-names)). Single-payload constructors and [contract views](../types/contracts.md#explicit-contract-views) may omit the label: `Box(3)`, `some(3)`, `Payments(card)`. A view needs an explicit implementation and exactly one `value` argument.
 
 ## Pipe flows

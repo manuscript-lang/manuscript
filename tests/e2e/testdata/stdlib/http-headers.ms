@@ -141,16 +141,16 @@ test "lookup shares mutable membership and clone separates it":
     values.length() | try expect_equal(expected: 3)
     let changed = values.set(0, "changed".to_bytes())
     (
-        fields.values("x-dup").get().at(0) | try expect_equal(
-            expected: some("changed".to_bytes())
+        fields.values("x-dup").get().get(0) | try expect_equal(
+            expected: "changed".to_bytes()
         )
     )
     let copy = fields.clone()
     let copied_values = copy.values("x-dup").get()
     let copied_changed = copied_values.set(0, "copy".to_bytes())
     (
-        fields.values("x-dup").get().at(0) | try expect_equal(
-            expected: some("changed".to_bytes())
+        fields.values("x-dup").get().get(0) | try expect_equal(
+            expected: "changed".to_bytes()
         )
     )
     (fields.values("missing").is_none()) | try expect_true

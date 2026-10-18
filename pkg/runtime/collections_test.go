@@ -31,12 +31,14 @@ func eqInt(_ *Execution, a, b int) bool { return a == b }
 func TestListAccessAndMutation(t *testing.T) {
 	ctx := RootExecution()
 	l := ints(1, 2, 3)
-	if got := List_At(ctx, l, -1); got != Some(int(3)) {
-		t.Fatalf("at(-1) = %v", got)
+	none := None[int]()
+	if got := List_Get(ctx, l, -1, none); got != 3 {
+		t.Fatalf("get(-1) = %v", got)
 	}
-	if List_At(ctx, l, 3).Some || List_At(ctx, l, -4).Some || List_At(ctx, l, math.MinInt64).Some {
-		t.Fatal("out of range at must be none")
+	if List_Get(ctx, l, 3, Some(9)) != 9 || List_Get(ctx, l, -4, Some(9)) != 9 || List_Get(ctx, l, math.MinInt64, Some(9)) != 9 {
+		t.Fatal("out of range get must use the default")
 	}
+	fault(t, "index 3 out of range for length 3", func() { List_Get(ctx, l, 3, none) })
 	if List_First(ctx, ints()).Some || List_Last(ctx, ints()).Some {
 		t.Fatal("empty first/last")
 	}

@@ -16,8 +16,8 @@ impl List[T]:
     # Returns a shallow copy with independent list storage.
     fn clone() List[T]:
 
-    # Returns an element; negative indexes are relative to the end, and out-of-range indexes return none.
-    fn at(index: Int) Optional[T]:
+    # Returns an element; negative indexes are relative to the end. An out-of-range index returns `default`, and without one raises a fault.
+    fn get(index: Int, default: Optional[T] = none) T:
 
     # Reports whether any element equals `value`, using the element type's Equal implementation; an empty list returns false.
     fn contains(value: T) Bool:

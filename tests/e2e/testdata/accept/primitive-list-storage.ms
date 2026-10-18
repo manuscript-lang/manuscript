@@ -22,15 +22,15 @@ test "primitive storage retains generic record Optional and saved aliases":
     try expect_false(
         not (
             values.length() == 4099
-            and record.values[0].get() == 41
-            and values[-1].get() == 17
+            and record.values[0] == 41
+            and values[-1] == 17
         )
     )
     let copy = values.clone()
     values.set(0, 42)
-    try expect_equal(copy[0].get(), 41)
+    try expect_equal(copy[0], 41)
     let nested: List[Optional[Int]] = [some(7), none]
-    try expect_false(not (nested[0].get().get() == 7 and nested[1].get().is_none()))
+    try expect_false(not (nested[0].get() == 7 and nested[1].is_none()))
 
 test "Float Bool and String preserve mutation traversal and width":
     let floats = [1e-300, 1e300, 0.25]
@@ -44,7 +44,7 @@ test "Float Bool and String preserve mutation traversal and width":
             floats.set(1, 0.5)
         index += 1
 
-    try expect_false(not (seen == [1e-300, 0.5, 0.25] and clone[1].get() == 1e300))
+    try expect_false(not (seen == [1e-300, 0.5, 0.25] and clone[1] == 1e300))
     let booleans = [true, false, true]
     booleans.remove(0)
     booleans.prepend(false)
@@ -58,11 +58,11 @@ test "stable sort and strict Result slice preserve separate storage":
     let values = [7, 1, 4, 8, 2, 5]
     let sorted = values.sorted(fn(left, right): return left % 3 - right % 3)
     sorted.set(0, 99)
-    try expect_equal(values[0].get(), 7)
+    try expect_equal(values[0], 7)
 
     if let copy = values.slice(-2, 6):
         copy.set(0, 12)
-        try expect_false(not (copy == [12, 5] and values[4].get() == 2))
+        try expect_false(not (copy == [12, 5] and values[4] == 2))
     else:
         return fail("valid strict slice failed")
 

@@ -10,13 +10,20 @@ fn advance(counter: Counter) Int:
 fn mixed(counter: Counter) List[Int]:
     var value = 1
     return [
-        value, counter.value, counter.value, advance(counter), value,
+        value,
+        counter.value,
+        counter.value,
+        advance(counter),
+        value,
         match some(2):
             some(number):
                 value = number
                 advance(counter)
             none: 0
-        , value, counter.value, advance(counter)
+        ,
+        value,
+        counter.value,
+        advance(counter)
     ]
 
 test "multiple captures survive later statement growth":
@@ -28,13 +35,20 @@ test "multiple captures survive later statement growth":
 test "pending captures grow beyond the small buffer":
     let counter = Counter(0)
     let values = [
-        counter.value, counter.value, counter.value,
-        counter.value, counter.value, counter.value,
-        counter.value, counter.value, counter.value,
+        counter.value,
+        counter.value,
+        counter.value,
+        counter.value,
+        counter.value,
+        counter.value,
+        counter.value,
+        counter.value,
+        counter.value,
         advance(counter)
     ]
     if values != [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]:
         return panic("earlier field reads changed")
+
     let alias = counter
     let shared = [alias.value, advance(alias), alias.value]
     if shared != [1, 2, 2]: return panic("immutable alias lost shared mutations")

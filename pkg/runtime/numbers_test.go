@@ -183,7 +183,7 @@ func TestBigInt(t *testing.T) {
 
 func TestBytesOperations(t *testing.T) {
 	data := NewBytes([]byte{1, 0, 2, 0, 3})
-	if Bytes_At(tctx, data, -1) != Some(int(3)) || Bytes_At(tctx, data, 5).Some || Bytes_At(tctx, data, -6).Some {
+	if Bytes_Get(tctx, data, -1, None[int]()) != 3 || Bytes_Get(tctx, data, 5, Some(-1)) != -1 || Bytes_Get(tctx, data, -6, Some(-1)) != -1 {
 		t.Fatal("at")
 	}
 	if r := Bytes_Slice(tctx, data, 1, -1); r.Failed || !reflect.DeepEqual(r.Val.Data, []byte{0, 2, 0}) || cap(r.Val.Data) != 3 {

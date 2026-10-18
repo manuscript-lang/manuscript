@@ -16,7 +16,7 @@ impl ReadStream for Chunks:
 
     fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
         if self.index < self.parts.length():
-            let part = self.parts.at(self.index).get()
+            let part = self.parts.get(self.index)
             self.index += 1
             return ok(some(part))
 

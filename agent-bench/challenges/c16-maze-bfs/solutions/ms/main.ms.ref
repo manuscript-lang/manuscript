@@ -5,11 +5,11 @@ fn validate(rows: List[List[Int]]) String:
     var r = 0
 
     while r < rows.length():
-        let row = rows.at(r).get()
+        let row = rows.get(r)
         var c = 0
 
         while c < row.length():
-            let ch = row.at(c).get()
+            let ch = row.get(c)
             # '#' 35, '.' 46, 'S' 83, 'E' 69
             if ch != 35 and ch != 46 and ch != 83 and ch != 69:
                 return "error: bad character at {r + 1},{c + 1}"
@@ -19,7 +19,7 @@ fn validate(rows: List[List[Int]]) String:
         r = r + 1
 
     for row in rows:
-        if row.length() != rows.at(0).get().length():
+        if row.length() != rows.get(0).length():
             return "error: ragged grid"
     var starts = 0
     var ends = 0
@@ -48,7 +48,7 @@ fn solve(rows: List[List[Int]]) String:
         return problem
 
     let height = rows.length()
-    let width = rows.at(0).get().length()
+    let width = rows.get(0).length()
     let flat = List[Int]()
     let dist = List[Int]()
     var start = 0
@@ -68,26 +68,26 @@ fn solve(rows: List[List[Int]]) String:
     let dc = [0, 0, 1, -1]
 
     while head < queue.length():
-        let cur = queue.at(head).get()
+        let cur = queue.get(head)
         head = head + 1
-        if flat.at(cur).get() == 69:
-            return "{dist.at(cur).get()}"
+        if flat.get(cur) == 69:
+            return "{dist.get(cur)}"
 
         let r = cur / width
         let c = cur % width
         var d = 0
 
         while d < 4:
-            let nr = r + dr.at(d).get()
-            let nc = c + dc.at(d).get()
+            let nr = r + dr.get(d)
+            let nc = c + dc.get(d)
             d = d + 1
             if nr < 0 or nr >= height or nc < 0 or nc >= width:
                 continue
 
             let ni = nr * width + nc
 
-            if flat.at(ni).get() != 35 and dist.at(ni).get() < 0:
-                dist.set(ni, dist.at(cur).get() + 1)
+            if flat.get(ni) != 35 and dist.get(ni) < 0:
+                dist.set(ni, dist.get(cur) + 1)
                 queue.append(ni)
 
     return "no path"
@@ -102,7 +102,7 @@ fn run() Result[Unit, Error]:
 
         rows.append(next.get().scalar_values())
 
-    while rows.length() > 0 and rows.at(rows.length() - 1).get().is_empty():
+    while rows.length() > 0 and rows.get(rows.length() - 1).is_empty():
         rows.remove(rows.length() - 1)
     try stdout().write("{solve(rows)}\n")
     return stdout().flush()

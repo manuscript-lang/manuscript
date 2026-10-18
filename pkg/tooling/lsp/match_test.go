@@ -7,7 +7,7 @@ import (
 
 func TestMatchExpressionAndIndexReferences(t *testing.T) {
 	source := `fn read(values: List[Int], index: Int) Int:
-    let result = match values[index]:
+    let result = match values.take(index).first():
         some(number):
             let doubled = number * 2
             doubled
@@ -24,7 +24,7 @@ func TestMatchExpressionAndIndexReferences(t *testing.T) {
 		text, name string
 		count      int
 	}{
-		{"index]", "index", 2}, {"number *", "number", 2}, {"doubled\n", "doubled", 2},
+		{"index)", "index", 2}, {"number *", "number", 2}, {"doubled\n", "doubled", 2},
 	} {
 		pos := Position(source, strings.Index(source, item.text))
 		refs := references(result, d, pos, true)

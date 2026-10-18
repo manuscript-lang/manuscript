@@ -63,7 +63,7 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
             )
         )
         entries.length() | try expect_equal(expected: 1)
-        entries.at(0).get().path | try expect_equal(expected: "b.md")
+        entries.get(0).path | try expect_equal(expected: "b.md")
 
 test "ordinary filesystem misuse retains typed cases":
     let fs = filesystem()

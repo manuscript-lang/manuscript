@@ -18,14 +18,25 @@ func Positions[T any](l *List[T], n int) []T {
 	return l.Items
 }
 
-// List_At returns the element at a possibly negative index, or none.
-func List_At[T any](_ *Execution, l *List[T], index int) Option[T] {
+// List_Get returns the element at a possibly negative index, else the default;
+// an invalid index without a default is a fault.
+func List_Get[T any](_ *Execution, l *List[T], index int, def Option[T]) T {
 	n := len(l.Items)
-	if index < 0 {
-		index += n
+	i := index
+	if i < 0 {
+		i += n
 	}
-	if index < 0 || index >= n {
-		return Option[T]{}
+	if i >= 0 && i < n {
+		return l.Items[i]
 	}
-	return Option[T]{Val: l.Items[index], Some: true}
+	return missingIndex(index, n, def)
+}
+
+// missingIndex returns the default of a failed index read, or faults without one.
+func missingIndex[T any](index, length int, def Option[T]) T {
+	if def.Some {
+		return def.Val
+	}
+	Raise("index " + FormatInt(index) + " out of range for length " + FormatInt(length) + "; pass a default: get(index:, default: ...)")
+	panic("unreachable")
 }
