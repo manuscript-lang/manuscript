@@ -4,6 +4,7 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"unicode"
 	"unicode/utf8"
@@ -588,16 +589,17 @@ func stringScalarCount(text string) int {
 	return count
 }
 
-// stringScalarHint remembers the byte offset of one scalar index in the last
-// long non-ASCII string, so sequential or nearby indexing walks a few scalars
-// instead of rescanning from the start.
+// stringScalarHint remembers the byte offset of one scalar index in a long
+// non-ASCII string, so sequential or nearby indexing walks a few scalars
+// instead of rescanning from the start. Each lookup borrows exclusive access
+// to a hint; pool eviction only loses an optimization.
 type stringScalarHint struct {
 	text   string
 	scalar int
 	offset int
 }
 
-var stringScalarHintCache atomic.Pointer[stringScalarHint]
+var stringScalarHintCache = sync.Pool{New: func() any { return &stringScalarHint{} }}
 
 // scalarIndexOffset returns the byte offset of scalar n of text, which callers
 // have checked lies within 0..scalar count.
@@ -606,7 +608,8 @@ func scalarIndexOffset(text string, n int) int {
 		return stringScalarOffset(text, n)
 	}
 	scalar, offset := 0, 0
-	if h := stringScalarHintCache.Load(); h != nil && stringSameText(h.text, text) && txAbs(h.scalar-n) < n {
+	h := stringScalarHintCache.Get().(*stringScalarHint)
+	if stringSameText(h.text, text) && txAbs(h.scalar-n) < n {
 		scalar, offset = h.scalar, h.offset
 	}
 	for ; scalar < n && offset < len(text); scalar++ {
@@ -617,7 +620,8 @@ func scalarIndexOffset(text string, n int) int {
 		_, width := utf8.DecodeLastRuneInString(text[:offset])
 		offset -= width
 	}
-	stringScalarHintCache.Store(&stringScalarHint{text, scalar, offset})
+	*h = stringScalarHint{text, scalar, offset}
+	stringScalarHintCache.Put(h)
 	return offset
 }
 

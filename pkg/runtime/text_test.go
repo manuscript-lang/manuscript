@@ -5,6 +5,7 @@ import (
 	"math"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -33,6 +34,26 @@ func TestScalarOffsetCacheMatchesFreshScan(t *testing.T) {
 	}
 	if got := String_At(tctx, text, -1); got.Val != "😀" {
 		t.Fatalf("relative index: %v", got)
+	}
+}
+
+func TestScalarOffsetCacheConcurrentTexts(t *testing.T) {
+	for i, unit := range []string{"aé€😀", "🙂xyz", "λ\xffé", "界é"} {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			t.Parallel()
+			text := strings.Repeat(unit, 600)
+			runes := []rune(text)
+			for step := 0; step < 2000; step++ {
+				n := (step * 977) % len(runes)
+				index := n
+				if step%2 == 0 {
+					index -= len(runes)
+				}
+				if got := String_ScalarAt(tctx, text, index); !got.Some || got.Val != int(runes[n]) {
+					t.Fatalf("scalar %d: got %v, want %U", index, got, runes[n])
+				}
+			}
+		})
 	}
 }
 

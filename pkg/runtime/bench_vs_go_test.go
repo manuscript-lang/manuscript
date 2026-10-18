@@ -343,6 +343,21 @@ func BenchmarkVsGoStringScalarAtUnicodeStrided(b *testing.B) {
 	_ = n
 }
 
+func BenchmarkStringScalarAtUnicodeParallel(b *testing.B) {
+	count := String_Length(tctx, vsGoUnicode)
+	b.ReportAllocs()
+	b.RunParallel(func(pb *testing.PB) {
+		index := 0
+		for pb.Next() {
+			if !String_ScalarAt(tctx, vsGoUnicode, index%count).Some {
+				b.Error("missing scalar")
+				return
+			}
+			index++
+		}
+	})
+}
+
 func BenchmarkVsGoStringSliceASCII(b *testing.B) {
 	b.ReportAllocs()
 	n := 0
