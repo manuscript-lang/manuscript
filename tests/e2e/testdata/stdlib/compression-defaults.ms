@@ -25,7 +25,7 @@ test "compression omission equals explicit level six for every format":
     var index = 0
 
     for format in formats:
-        let name = names.at(index).get()
+        let name = names.get(index)
         index += 1
         let expected = try compress(data, name, 6)
         try expect_equal((try alias(data, name)), expected)

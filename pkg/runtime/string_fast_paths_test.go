@@ -28,14 +28,14 @@ func TestStringFastPathsMatchGeneralPaths(t *testing.T) {
 			if chars[i] != scalars[i] {
 				t.Errorf("chars(%q)[%d] = %q, want %q", text, i, chars[i], scalars[i])
 			}
-			if at := String_At(tctx, text, i); !at.Some || at.Val != scalars[i] {
+			if at := String_Get(tctx, text, i, Some("?")); at != scalars[i] {
 				t.Errorf("at(%q, %d) = %v, want %q", text, i, at, scalars[i])
 			}
-			if at := String_At(tctx, text, i-len(scalars)); !at.Some || at.Val != scalars[i] {
+			if at := String_Get(tctx, text, i-len(scalars), Some("?")); at != scalars[i] {
 				t.Errorf("at(%q, %d) = %v, want %q", text, i-len(scalars), at, scalars[i])
 			}
 		}
-		if String_At(tctx, text, len(scalars)).Some || String_At(tctx, text, -len(scalars)-1).Some {
+		if String_Get(tctx, text, len(scalars), Some("?")) != "?" || String_Get(tctx, text, -len(scalars)-1, Some("?")) != "?" {
 			t.Errorf("at(%q) accepted an out-of-range index", text)
 		}
 	}

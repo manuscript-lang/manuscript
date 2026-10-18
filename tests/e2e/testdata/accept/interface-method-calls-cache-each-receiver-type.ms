@@ -38,12 +38,7 @@ test "three receiver types alternate at one site":
         var i = 0
 
         while i < 3:
-            match shapes.at(i):
-                some(s):
-                    total = total + measure(shape: s, scale: 2)
-                none:
-                    unit
-
+            total = total + measure(shape: shapes[i], scale: 2)
             i = i + 1
 
         round = round + 1

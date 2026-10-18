@@ -21,8 +21,8 @@ fn text_content(node: HtmlNode) String:
         _: return ""
 
 fn body_nodes(node: HtmlNode) List[HtmlNode]:
-    let html = children(node).at(0).get()
-    return children(children(html).at(1).get())
+    let html = children(node).get(0)
+    return children(children(html).get(1))
 
 test "HTML escaping preserves Unicode and escapes all markup characters":
     try expect_equal(escape("<&>\"'"), "&lt;&amp;&gt;&#34;&#39;")
@@ -33,7 +33,7 @@ test "HTML parses nested elements attributes entities and comments":
     let doc = try parse(
         "<DIV id='main' title='A &amp; B' hidden>Hello <b>é🙂</b> &lt;world&gt;<!--note--><br></DIV>"
     )
-    let div = body_nodes(doc).at(0).get()
+    let div = body_nodes(doc).get(0)
 
     match div:
         Element(tag, namespace, attributes, items):
@@ -49,16 +49,14 @@ test "HTML parses nested elements attributes entities and comments":
             )
             try expect_false(
                 (
-                    items.at(0).get() != HtmlNode.Text("Hello ")
-                    or items.at(2).get() != HtmlNode.Text(
-                        " <world>"
-                    )
+                    items.get(0) != HtmlNode.Text("Hello ")
+                    or items.get(2) != HtmlNode.Text(" <world>")
                 )
             )
-            try expect_equal(items.at(3).get(), HtmlNode.Comment("note"))
+            try expect_equal(items.get(3), HtmlNode.Comment("note"))
             try expect_false(
                 (
-                    items.at(4).get() != HtmlNode.Element(
+                    items.get(4) != HtmlNode.Element(
                         tag: "br",
                         namespace: "",
                         attributes: [],
@@ -73,23 +71,23 @@ test "HTML parses nested elements attributes entities and comments":
 test "HTML recovers unclosed tags and inserts document and table structure":
     let doc = try parse("<ul><li>one<li>two</ul><table><tr><td>cell")
     let nodes = body_nodes(doc)
-    let entries = children(nodes.at(0).get())
+    let entries = children(nodes.get(0))
     try expect_false(
         (
             entries.length() != 2
-            or text_content(entries.at(0).get()) != "one"
-            or text_content((entries.at(1).get())) != "two"
+            or text_content(entries.get(0)) != "one"
+            or text_content((entries.get(1))) != "two"
         )
     )
 
-    match children(nodes.at(1).get()).at(0).get():
+    match children(nodes.get(1)).get(0):
         Element(tag, _, _, _):
             try expect_equal(tag, "tbody")
         _: return fail("expected tbody")
 
-    try expect_equal(text_content(nodes.at(1).get()), "cell")
+    try expect_equal(text_content(nodes.get(1)), "cell")
     let empty = try parse("")
-    try expect_equal(children(children(empty).at(0).get()).length(), 2)
+    try expect_equal(children(children(empty).get(0)).length(), 2)
 
 test "HTML preserves doctypes foreign namespaces and raw script text":
     let doc = try parse(
@@ -98,28 +96,28 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
     let nodes = children(doc)
     try expect_false(
         (
-            nodes.at(0).get() != HtmlNode.Doctype(
+            nodes.get(0) != HtmlNode.Doctype(
                 name: "html",
                 public_id: "public",
                 system_id: "system"
             )
         )
     )
-    try expect_equal(nodes.at(1).get(), HtmlNode.Comment("before"))
-    let body = children(children(nodes.at(2).get()).at(1).get())
+    try expect_equal(nodes.get(1), HtmlNode.Comment("before"))
+    let body = children(children(nodes.get(2)).get(1))
 
-    let svg_items = match body.at(0).get():
+    let svg_items = match body.get(0):
         Element(tag, namespace, _, items):
             try expect_false(tag != "svg" or namespace != "svg")
             items
         _: return fail("expected SVG")
 
-    match svg_items.at(0).get():
+    match svg_items.get(0):
         Element(_, child_namespace, attributes, _):
             try expect_false(
                 (
                     child_namespace != "svg"
-                    or attributes.at(0).get() != HtmlAttribute(
+                    or attributes.get(0) != HtmlAttribute(
                         "href",
                         "xlink",
                         "#icon"
@@ -128,7 +126,7 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
             )
         _: return fail("expected SVG anchor")
 
-    try expect_equal(text_content(body.at(1).get()), "if (a < b) x = '&amp;';")
+    try expect_equal(text_content(body.get(1)), "if (a < b) x = '&amp;';")
 
 test "HTML honors optional byte depth and node limits":
     let empty = try parse("")

@@ -73,7 +73,7 @@ export fn bench_string() Unit:
         fn() Int:
             var n = 0
             for i in range(0, 100000):
-                n += text.at(i % 5000).get("").length()
+                n += text.get(i % 5000, default: "").length()
             return n
     )
     bench(

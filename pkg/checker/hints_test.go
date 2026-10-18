@@ -55,7 +55,7 @@ func TestDiagnosticsStateCauseAndFix(t *testing.T) {
 		{"positional generic call", "fn pick[T](items: List[T], keep: fn(value: T) Bool) Optional[T]:\n    return none\nfn f() Int:\n    let nums = [1, 2]\n    let hit = pick(nums, fn(value: Int) Bool: value > 1)\n    return hit.get(0)\n", nil, 0},
 		{"String length is a declared member", "fn f() Int:\n    return \"abc\".length()\n", nil, 0},
 		{"member synonym on String", "fn f() Int:\n    let n = \"abc\".len()\n    return 0\n", []string{"did you mean", "'length'", "'byte_length'", "'scalar_length'"}, 1},
-		{"member list is complete", "fn f() Int:\n    let n = \"abc\".foo()\n    return 0\n", []string{"available: at,", "upper"}, 1},
+		{"member list is complete", "fn f() Int:\n    let n = \"abc\".foo()\n    return 0\n", []string{"available: byte_length,", "upper"}, 1},
 		{"join on non-String list", "fn f() String:\n    return [1].join(separator: \",\")\n", []string{"only available on List[String]", "separator"}, 1},
 		{"callback label mismatch is one error", "fn double(n: Int) Int:\n    return n * 2\nfn f() Int:\n    return [1, 2].map(double).length()\n", []string{"the function's parameter is named n", "expects value"}, 1},
 		{"non-generic callback label mismatch", "fn positive(n: Int) Bool:\n    return n > 0\nfn f() Int:\n    return [1].filter(positive).length()\n", []string{"expected fn(value: Int) Bool", "expects value"}, 1},

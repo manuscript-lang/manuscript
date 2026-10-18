@@ -88,7 +88,7 @@ export fn main() Int:
     let _err = stderr().write(data: "stderr\n")
     var index = 0
     while index < args.length():
-        let _arg = stdout().write(data: "arg={args[index].get()}\n")
+        let _arg = stdout().write(data: "arg={args[index]}\n")
         index = index + 1
     if args.length() > 0 and args[0] == "fail":
         return 23

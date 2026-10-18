@@ -89,11 +89,11 @@ test "List splice preserves shallow replacement references and Optional elements
     let replacement = [item]
     let values = [Item(2)]
     let returned = values.splice(0, 1, replacement)
-    returned[0].get().value = 7
-    try expect_false(item.value != 7 or replacement[0].get().value != 7)
+    returned[0].value = 7
+    try expect_false(item.value != 7 or replacement[0].value != 7)
     let optional: List[Optional[Int]] = [some(1)]
     optional.splice(0, 1, [some(2)])
-    try expect_equal(optional[0].get(), some(2))
+    try expect_equal(optional[0], some(2))
 
 interface ListSplicing:
     fn splice(start: Int, delete_count: Int, replacement: List[Int]) List[Int]

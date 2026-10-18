@@ -66,7 +66,7 @@ import {filesystem, FileSystemError} from "@std/fs.ms"
 import stdout from "@std/io.ms"
 
 fn run() Result[Unit, Error]:
-    let path = try arguments().at(0).ok_or(FileSystemError.InvalidInput)
+    let path = try arguments().first().ok_or(FileSystemError.InvalidInput)
     let text = try filesystem().read_file(path, max_bytes: 1048576)
         | .decode_utf8().ok_or(FileSystemError.InvalidData)
         | try
@@ -96,7 +96,7 @@ import arguments from "@std/process.ms"
 import {filesystem, FileSystemError} from "@std/fs.ms"
 
 fn run() Result[Unit, Error]:
-    let path = try arguments().at(0).ok_or(FileSystemError.InvalidInput)
+    let path = try arguments().first().ok_or(FileSystemError.InvalidInput)
     return filesystem().write_file(path, "saved notes\n", replace: false)
 
 export fn main() Int:
@@ -156,7 +156,7 @@ fn show(number: Int) Result[Unit, Error]:
     return stdout().flush()
 
 export fn main() Int:
-    let number = arguments().at(0).get("42").parse_int()
+    let number = arguments().get(0, default: "42").parse_int()
     if let value = number:
         if show(value).is_ok():
             return 0
@@ -180,7 +180,7 @@ import parse from "@std/json.ms"
 import stdout from "@std/io.ms"
 
 fn run() Result[Unit, Error]:
-    let text = try parse[String](arguments().at(0).get("\"hello\""))
+    let text = try parse[String](arguments().get(0, default: "\"hello\""))
     try stdout().write("{text}\n")
     return stdout().flush()
 
@@ -211,7 +211,7 @@ type Config:
     enabled: Bool = true
 
 fn run() Result[Unit, Error]:
-    let text = arguments().at(0).get("\{\"name\":\"Sam\"\}")
+    let text = arguments().get(0, default: "\{\"name\":\"Sam\"\}")
     let encoded = try parse[Config](text)
         | try stringify
     try stdout().write("{encoded}\n")
@@ -244,7 +244,7 @@ import network from "@std/net.ms"
 import stdout from "@std/io.ms"
 
 fn run() Result[Unit, Error]:
-    let url = try arguments().at(0).ok_or(HttpError.InvalidInput)
+    let url = try arguments().first().ok_or(HttpError.InvalidInput)
     let response = try network().request(
         HttpMethod.Get, url, headers(), "",
         max_response_bytes: 1048576

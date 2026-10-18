@@ -21,7 +21,7 @@ process startup and shutdown. `results.json` includes raw samples and medians.
   comparison, conditional increment loop; checksum 2,600,000.
 - `calls.ms`: 5 million calls to a two-argument source `add`, summing the index;
   checksum 12,499,997,500,000.
-- `list.ms`: 5 million `List.at(i % 8).get()` reads; checksum 22,500,000.
+- `list.ms`: 5 million `List.get(i % 8)` reads; checksum 22,500,000.
 - `life.ms`: 128 by 128 toroidal Game of Life, 50 generations, using Optional
   reads and two mutable lists. The deterministic initial board has a live cell
   when `(i * 17 + (i / 128) * 13) % 7 < 3`. Final population is 3,914,

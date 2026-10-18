@@ -47,8 +47,8 @@ test "semver orders by precedence":
             var expected = 0
             if i < j: expected = -1
             if i > j: expected = 1
-            let left = ordered[i].get()
-            let right = ordered[j].get()
+            let left = ordered[i]
+            let right = ordered[j]
             if (
                 compare(
                     left: (parse(text: left) | try expect_ok),

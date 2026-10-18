@@ -58,7 +58,7 @@ test "typed JSON and Optional payloads":
     let number = try expect_ok(parse[Int]("3"))
     try expect_equal(number, 3)
     try expect_error(parse[Int]("true")) | try expect_equal(JsonError.InvalidData)
-    try expect_some([number].at(0)) | try expect_equal(3)
+    try expect_some([number].first()) | try expect_equal(3)
 ```
 
 Tests can also propagate errors from calls whose error type implements `Error`. See [Results](../core-language/errors/results.md).

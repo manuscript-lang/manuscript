@@ -67,5 +67,5 @@ test "Optional fallbacks preserve standard option records":
 
 test "Optional methods work on inferred library return values":
     let values = [1, 2]
-    try expect_equal(values.at(0).get(), 1)
-    try expect_equal(values.at(5).get(9), 9)
+    try expect_equal(values.get(0), 1)
+    try expect_equal(values.get(5, default: 9), 9)

@@ -32,7 +32,7 @@ test "issue 187 programs need no collection imports":
     points.add(Point(1, 2), 7)
     try expect_equal(points.get(Point(1, 2)).get(), 7)
     let nested: List[Map[String, List[Int]]] = [{}, {"a": []}]
-    try expect_equal(nested[1].get().get("a").get().length(), 0)
+    try expect_equal(nested[1].get("a").get().length(), 0)
 
 test "map add returns receiver and retains aliases clone and insertion order":
     let values = {"a": 1, "b": 2}

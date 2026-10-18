@@ -164,7 +164,10 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		}
 		signature = callable.Type
 		i.Method = callable.Method
-		i.Native = callable.Native
+		if callable.Native != "index" {
+			// An indexed callee (callbacks[0](2)) must not make the call itself lower as an index.
+			i.Native = callable.Native
+		}
 	}
 	if signature != nil && signature.ID == "<invalid>" {
 		i.Type = signature

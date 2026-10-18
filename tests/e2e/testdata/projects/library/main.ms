@@ -127,10 +127,8 @@ fn exercise(path: String) Result[Unit, Error]:
     return ok(unit)
 
 export fn main() Int:
-    let path = match arguments().at(index: 0):
-        some(path): path
-        none:
-            return 2
+    let path = arguments().get(index: 0, default: "")
+    if path == "": return 2
 
     match exercise(path: path):
         ok(_):

@@ -68,7 +68,7 @@ test "leading dot after a step applies to its result":
 test "head is evaluated before step arguments":
     let log: List[String] = []
     try expect_equal(order(log), 4)
-    try expect_false(log.at(0).get() != "a" or log.at(1).get() != "b")
+    try expect_false(log.get(0) != "a" or log.get(1) != "b")
 
 test "dot steps call methods on the value":
     let size = "abc" | .length() | double

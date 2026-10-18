@@ -1,4 +1,4 @@
-import {expect_true} from "@std/testing.ms"
+import {expect_equal, expect_true} from "@std/testing.ms"
 
 fn fallback() Int: 9
 
@@ -18,8 +18,11 @@ test "optional members":
     )
     try expect_true((present.map(fn(value: Int) Int: value + 1).get() == 4))
     let items = List[Int]()
-    try expect_true((items.at(index: 0).is_none()))
+    try expect_equal(items.get(index: 0, default: -1), -1)
     items.append(value: 5)
     try expect_true(
-        (items.at(index: 0).is_some() and items.first().get(default: 0) == 5)
+        (
+            items.get(index: 0, default: -1) == 5
+            and items.first().get(default: 0) == 5
+        )
     )

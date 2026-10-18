@@ -9,7 +9,7 @@ import (
 
 func TestFormatMatchExpressions(t *testing.T) {
 	source := `fn read(values: List[Int]) Int:
-    let result=match values[0]:
+    let result=match values.first():
         some(number):
             let doubled=number*2
             doubled

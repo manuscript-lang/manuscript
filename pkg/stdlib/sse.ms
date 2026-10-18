@@ -135,7 +135,7 @@ impl SseDecoder for Decoder:
         let total = chunk.length()
 
         while index < total:
-            let step = consume(self, chunk.at(index).get(), events)
+            let step = consume(self, chunk.get(index), events)
             index += 1
 
             if step.is_error():
@@ -301,7 +301,7 @@ export fn reader(
 export fn next_event(reader: SseReader) Result[Optional[SseEvent], SseError]:
     while true:
         if reader.next < reader.ready.length():
-            let event = reader.ready.at(reader.next).get()
+            let event = reader.ready.get(reader.next)
             reader.next += 1
             return ok(some(event))
 

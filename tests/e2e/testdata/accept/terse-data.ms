@@ -26,7 +26,7 @@ test "map literals and positional identifier arguments":
     let values = {"a": 1, "b": 2, "a": 3}
     try expect_false(values.length() != 2 or values.get("a").get() != 3)
     let keys = values.keys()
-    try expect_false(keys.at(0).get() != "a" or keys.at(1).get() != "b")
+    try expect_false(keys.get(0) != "a" or keys.get(1) != "b")
     let empty: Map[String, Int] = {}
     try expect_false((empty.length() != 0 or size({}) != 0 or optional_size({}) != 0))
     let nested: Map[String, Map[String, Int]] = {"a": {}, "b": {"c": 1}}

@@ -44,7 +44,7 @@ test "contextual callbacks and inline returns":
     try expect_equal(view.get(), 7)
     try expect_false(invoke() != 0 or invoke(fn(item): item + 1) != 5)
     let functions: List[fn(value: Int) Int] = [fn(item): item + 4]
-    try expect_equal(functions.at(0).get()(2), 6)
+    try expect_equal(functions.get(0)(2), 6)
     let nested = fn(value: Int):
         let inner = fn(): "text"
         return value + inner().scalar_length()

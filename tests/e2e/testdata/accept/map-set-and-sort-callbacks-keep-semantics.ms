@@ -69,16 +69,11 @@ test "set callbacks":
 test "sort with a comparator":
     let words = ["ccc", "a", "bb"]
     let sorted = words.sorted(compare: byLength)
-    try expect_true(
-        (
-            sorted.at(index: 0) == some("a")
-            and sorted.at(index: 2) == some("ccc")
-        )
-    )
+    try expect_true((sorted.get(index: 0) == "a" and sorted.get(index: 2) == "ccc"))
     let lambda = words.sorted(
         compare: fn(left: String, right: String) Int: (
             right.length()
             - left.length()
         )
     )
-    try expect_true((lambda.at(index: 0) == some("ccc")))
+    try expect_true((lambda.get(index: 0) == "ccc"))

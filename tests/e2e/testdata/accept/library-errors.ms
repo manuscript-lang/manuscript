@@ -138,11 +138,7 @@ test "type patterns compare exact generic applications":
 test "Error views can be stored and matched":
     let shared = Error(CustomError("shared diagnostic"))
     let errors: List[Error] = [shared]
-
-    let cause = match errors.at(index: 0):
-        some(cause): cause
-        none:
-            return fail(message: "shared errors collection was empty")
+    let cause = errors[0]
 
     match cause:
         CustomError(custom):

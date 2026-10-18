@@ -49,7 +49,7 @@ test "List pop and distinct retain payload references":
     let nested = [1]
     let lists = [nested, [1], [2]]
     let unique = lists.distinct()
-    unique.at(0).get().append(3)
+    unique.get(0).append(3)
     try expect_false(unique.length() != 2 or nested != [1, 3])
 
 test "List distinct keeps the first equal element in order":
@@ -96,4 +96,4 @@ test "List distinct handles large Int and String lists":
         )
     )
     let uniqueWords = words.distinct()
-    try expect_false(uniqueWords.length() != 20000 or uniqueWords.at(1) != some("w1"))
+    try expect_false(uniqueWords.length() != 20000 or uniqueWords.get(1) != "w1")

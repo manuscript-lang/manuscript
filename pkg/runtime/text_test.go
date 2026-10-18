@@ -24,15 +24,15 @@ func TestScalarOffsetCacheMatchesFreshScan(t *testing.T) {
 	text := strings.Repeat("aé€😀", 600)
 	runes := []rune(text)
 	for _, n := range []int{0, 5, 5, 3, 1000, 1001, 2399, 7, 2399} {
-		got := String_At(tctx, text, int(n))
-		if !got.Some || got.Val != string(runes[n]) {
+		got := String_Get(tctx, text, int(n), None[string]())
+		if got != string(runes[n]) {
 			t.Fatalf("scalar %d: got %v, want %q", n, got, string(runes[n]))
 		}
 	}
-	if String_At(tctx, text, 2400).Some {
+	if String_Get(tctx, text, 2400, Some("?")) != "?" {
 		t.Fatal("past the end")
 	}
-	if got := String_At(tctx, text, -1); got.Val != "😀" {
+	if got := String_Get(tctx, text, -1, None[string]()); got != "😀" {
 		t.Fatalf("relative index: %v", got)
 	}
 }
@@ -49,7 +49,7 @@ func TestScalarOffsetCacheConcurrentTexts(t *testing.T) {
 				if step%2 == 0 {
 					index -= len(runes)
 				}
-				if got := String_ScalarAt(tctx, text, index); !got.Some || got.Val != int(runes[n]) {
+				if got := String_ScalarAt(tctx, text, index, None[int]()); got != int(runes[n]) {
 					t.Fatalf("scalar %d: got %v, want %U", index, got, runes[n])
 				}
 			}
@@ -174,7 +174,7 @@ func TestStringSlicesAndScalars(t *testing.T) {
 			t.Errorf("accepted scalar %d", bad)
 		}
 	}
-	if String_ScalarAt(tctx, "a😀", -1) != Some(int(0x1F600)) {
+	if String_ScalarAt(tctx, "a😀", -1, None[int]()) != 0x1F600 || String_ScalarAt(tctx, "a😀", 2, Some(-1)) != -1 {
 		t.Fatal("scalar_at")
 	}
 }

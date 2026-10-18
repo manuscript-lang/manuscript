@@ -566,7 +566,7 @@ export type Box[T]:
 import {expect_true, fail} from "@std/testing.ms"
 test "imported constructor retains default module and generic scope":
     let box = Box(value: "text")
-    if box.copied != "text" or box.items.at(0).get() != "text":
+    if box.copied != "text" or box.items.get(0) != "text":
         return fail("imported generic defaults")
 `,
 	}

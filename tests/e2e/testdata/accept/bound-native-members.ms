@@ -24,8 +24,8 @@ test "string members":
 test "list members":
     let xs = [1, 2, 3]
     xs.set(index: -1, value: 9)
-    (xs.at(index: 2) == some(9)) | try expect_true
-    (replace_first(xs: xs, value: 5).at(index: 0) == some(5)) | try expect_true
+    (xs.get(index: 2) == 9) | try expect_true
+    (replace_first(xs: xs, value: 5).get(index: 0) == 5) | try expect_true
     (xs.contains(value: 9)) | try expect_true
 
 test "custom equality is kept for bound members":

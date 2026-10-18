@@ -129,6 +129,6 @@ test "optional and payload kinds":
 
 test "list at unwrap":
     let items = [10, 20, 30]
-    try expect_equal(items.at(0).get(), 10)
-    try expect_equal(items.at(-1).get(), 30)
-    try expect_equal(items.at(1).get() + items.at(2).get(), 50)
+    try expect_equal(items.get(0), 10)
+    try expect_equal(items.get(-1), 30)
+    try expect_equal(items.get(1) + items.get(2), 50)

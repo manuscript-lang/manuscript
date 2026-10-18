@@ -12,7 +12,7 @@ import arguments from "@std/process.ms"
 import stdout from "@std/io.ms"
 
 export fn main() Int:
-    let name = arguments().at(0).get("world")
+    let name = arguments().get(0, default: "world")
     let message = "Hello, {name}!\n"
     if stdout().write(message).is_error():
         return 1

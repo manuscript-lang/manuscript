@@ -16,14 +16,14 @@ fn parse_amount(s: String) Optional[Int]:
     if parts.length() > 2:
         return none
 
-    let whole = parts.at(0).get()
+    let whole = parts.get(0)
     if not all_digits(whole):
         return none
 
     var cents = whole.parse_int().get() * 100
 
     if parts.length() == 2:
-        let frac = parts.at(1).get()
+        let frac = parts.get(1)
         if not all_digits(frac) or frac.length() > 2:
             return none
 
@@ -62,8 +62,8 @@ fn parse_line(line: String) Optional[Record]:
         if parts.length() != 2:
             return none
 
-        category = parts.at(0).get()
-        amount = parts.at(1).get()
+        category = parts.get(0)
+        amount = parts.get(1)
 
     if category.is_empty() or category.contains("\"") or amount.contains(","):
         return none

@@ -12,7 +12,7 @@ fn group[T, K: Hashable](values: List[T], key: fn(value: T) K) Map[K, List[T]]: 
 
 fn index[T: Equal](values: List[T], value: T) Optional[Int]: values.index_of(value)
 
-fn first(values: List[Int]) Result[Int, MissingValue]: values.at(0).ok_or()
+fn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
 
 fn unique[T: Hashable](values: List[T]) Set[T]: values.to_set()
 
@@ -24,14 +24,14 @@ test "public collection support types retain their standard runtime identities":
     let values = [3, 4]
     let entries: List[ListEntry[Int]] = list_entries(values)
     let entry: ListEntry[Int] = ListEntry(0, 3)
-    try expect_equal(entries[0].get(), entry)
+    try expect_equal(entries[0], entry)
     let map = Map[String, Int]().add("a", 3)
     let pairs: List[MapEntry[String, Int]] = map_entries(map)
     let pair: MapEntry[String, Int] = MapEntry("a", 3)
     let found: Optional[MapEntry[String, Int]] = map.find(
         fn(key: String, value: Int) Bool: (value == 3)
     )
-    try expect_false(pairs[0].get() != pair or found.get() != pair)
+    try expect_false(pairs[0] != pair or found.get() != pair)
     let selected: Result[List[Int], CollectionError] = slice(values)
     try expect_equal(selected.get(), [3])
     let invalid: Result[List[Int], CollectionError] = values.slice(0, 9)

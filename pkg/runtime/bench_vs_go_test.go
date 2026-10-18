@@ -312,9 +312,7 @@ func BenchmarkVsGoStringAtASCII(b *testing.B) {
 	b.ReportAllocs()
 	n := 0
 	for i := 0; i < b.N; i++ {
-		if o := String_At(tctx, vsGoASCII, i%1000); o.Some {
-			n += len(o.Val)
-		}
+		n += len(String_Get(tctx, vsGoASCII, i%1000, None[string]()))
 	}
 	_ = n
 }
@@ -324,9 +322,7 @@ func BenchmarkVsGoStringScalarAtUnicodeSequential(b *testing.B) {
 	n := 0
 	count := String_Length(tctx, vsGoUnicode)
 	for i := 0; i < b.N; i++ {
-		if o := String_ScalarAt(tctx, vsGoUnicode, i%count); o.Some {
-			n += o.Val
-		}
+		n += String_ScalarAt(tctx, vsGoUnicode, i%count, None[int]())
 	}
 	_ = n
 }
@@ -336,9 +332,7 @@ func BenchmarkVsGoStringScalarAtUnicodeStrided(b *testing.B) {
 	n := 0
 	count := String_Length(tctx, vsGoUnicode)
 	for i := 0; i < b.N; i++ {
-		if o := String_ScalarAt(tctx, vsGoUnicode, (i*977)%count); o.Some {
-			n += o.Val
-		}
+		n += String_ScalarAt(tctx, vsGoUnicode, (i*977)%count, None[int]())
 	}
 	_ = n
 }
@@ -349,10 +343,7 @@ func BenchmarkStringScalarAtUnicodeParallel(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		index := 0
 		for pb.Next() {
-			if !String_ScalarAt(tctx, vsGoUnicode, index%count).Some {
-				b.Error("missing scalar")
-				return
-			}
+			String_ScalarAt(tctx, vsGoUnicode, index%count, None[int]())
 			index++
 		}
 	})
