@@ -14,7 +14,9 @@ interface Payments:
 
 ## Explicit implementations
 
-Methods exist only through `impl Contract for DataType:`, with the methods inside the block. There are no inherent methods (`impl DataType:` is unsupported), no inheritance, and no default implementations. A free function `fn reset(counter: Counter)` is called `reset(counter)`, never `counter.reset()`; see the [counter example](../../learn/tour.md#behavior-on-types). The relationship is always declared, never inferred from matching names.
+Methods are written in `impl` blocks, never inside the `type`. `impl DataType:` declares the type's own methods and `impl Contract for DataType:` implements an interface; without `for` the one name is the type, with it the interface comes first. There is no inheritance and no default implementation. A free function `fn reset(counter: Counter)` is called `reset(counter)`, never `counter.reset()`; see the [counter example](../../learn/tour.md#behavior-on-types). The relationship is always declared, never inferred from matching names.
+
+`impl DataType:` is accepted only in the module that declares the type; to add operations to another module's type, declare an interface and use a [local extension](#coherence-and-visibility). Several own-method blocks merge, and method names must be unique across them. The standard library declares its methods the same way. Source methods cannot declare their own type parameters yet; use a generic function taking the receiver.
 
 ```manuscript
 interface Increment:

@@ -302,9 +302,16 @@ func (p *Parser) declaration() *syntax.Declaration {
 		d.Result = &syntax.Type{Name: "Unit", Pos: token.Pos}
 		d.Body = p.suite()
 	case p.take("impl"):
-		d.Contract = p.namedType()
-		p.need("for")
-		d.Receiver = p.namedType()
+		// `impl Contract for Type:` implements a contract; `impl Type:` declares
+		// the type's own methods. The first name is the type exactly when no
+		// `for` follows.
+		first := p.namedType()
+		if p.take("for") {
+			d.Contract = first
+			d.Receiver = p.namedType()
+		} else {
+			d.Receiver = first
+		}
 		p.need(":")
 		p.need(lexer.Newline)
 		p.newlines()
@@ -319,6 +326,9 @@ func (p *Parser) declaration() *syntax.Declaration {
 			p.need("fn")
 			name := p.need(lexer.Name)
 			m := &syntax.Declaration{Pos: name.Pos, Kind: syntax.KindFn, Name: name.Text}
+			if d.Contract == nil {
+				m.TypeParams = p.typeParams()
+			}
 			m.Params = p.parameters(true, false)
 			p.need("->")
 			m.Result = p.typ()
@@ -369,19 +379,15 @@ func (p *Parser) declaration() *syntax.Declaration {
 				d.Cases = append(d.Cases, c)
 				p.end()
 			} else if p.take("fn") {
+				if token.Kind == "type" {
+					p.fail(p.previous(), "a type declares only fields or cases; write its methods in an 'impl "+d.Name+typeParamNames(d.TypeParams)+":' block, or implement an interface with 'impl <Interface> for "+d.Name+typeParamNames(d.TypeParams)+":'")
+				}
 				name := p.need(lexer.Name)
 				m := &syntax.Declaration{Pos: name.Pos, Name: name.Text, Kind: syntax.KindFn}
-				if token.Kind == "type" {
-					m.TypeParams = p.typeParams()
-				}
 				m.Params = p.parameters(true, false)
 				p.need("->")
 				m.Result = p.typ()
-				if token.Kind == "interface" {
-					p.end()
-				} else {
-					m.Body = p.statementSuite(false, true)
-				}
+				p.end()
 				d.Methods = append(d.Methods, m)
 			} else {
 				name := p.need(lexer.Name)
@@ -1196,4 +1202,16 @@ func needHint(kind string, found lexer.Token) string {
 		return "; indent the block body by four spaces under its header"
 	}
 	return ""
+}
+
+// typeParamNames spells a type's parameters as the arguments of its impl receiver.
+func typeParamNames(parameters []syntax.TypeParameter) string {
+	if len(parameters) == 0 {
+		return ""
+	}
+	names := make([]string, len(parameters))
+	for i, parameter := range parameters {
+		names[i] = parameter.Name
+	}
+	return "[" + strings.Join(names, ", ") + "]"
 }

@@ -60,11 +60,14 @@ export type ArchiveFormat:
     case Zip
     # TAR files and directories.
     case Tar
+
+impl ArchiveFormat:
     # Packs entries with the same optional output budget and path validation as pack.
     fn pack(
         entries: List[ArchiveEntry],
         max_bytes: Optional[Int] = none
     ) -> Result[Bytes, ArchiveError]:
+
     # Unpacks in memory with the same entry/byte limits and domain errors as unpack.
     fn unpack(
         data: Bytes,

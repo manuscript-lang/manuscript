@@ -22,6 +22,8 @@ export type NormalizationForm:
     case Nfkc
     # Compatibility decomposition with combining marks placed in canonical order.
     case Nfkd
+
+impl NormalizationForm:
     # Normalizes text with the existing String.normalize budgets and StringError cases.
     # Omission or none adds no output budget; a supplied budget counts UTF-8 bytes.
     fn normalize(
@@ -38,7 +40,10 @@ impl Error for StringError:
 
 # Mutable builder for constructing a string without repeated intermediate copies.
 export type StringBuilder:
+
+impl StringBuilder:
     # Appends the supplied text in order; mutation after freeze raises a sealed-builder fault.
     fn append(value: String) -> Unit:
+
     # Seals the builder and returns immutable text; repeated freeze returns the same text value.
     fn freeze() -> String:

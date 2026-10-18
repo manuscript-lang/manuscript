@@ -112,21 +112,19 @@ ConstantDeclaration = "let", Name, [ ":", Type ], "=", Expression, NEWLINE ;
 
 TypeDeclaration = "type", Name, [ TypeParameters ], ":", NEWLINE,
                   INDENT, (RecordBody | AlternativeBody), DEDENT ;
-RecordBody    = { Field | ReceiverDeclaration } ;
+RecordBody    = { Field } ;
 Field         = Name, ":", Type, [ "=", Expression ], NEWLINE ;
-AlternativeBody = CaseDeclaration, { CaseDeclaration | ReceiverDeclaration } ;
+AlternativeBody = CaseDeclaration, { CaseDeclaration } ;
 CaseDeclaration = "case", Name, [ "(", Parameters, ")" ], NEWLINE ;
 InterfaceDeclaration = "interface", Name, [ TypeParameters ], ":", NEWLINE,
                        INDENT, ContractBody, DEDENT ;
 ContractBody  = OperationSignature, { OperationSignature } ;
 OperationSignature = "fn", Name, "(", [ FunctionParameters ], ")", "->", Type, NEWLINE ;
-ReceiverDeclaration = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
-                      "->", Type, FunctionSuite ;
-
 FunctionDeclaration = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
                       "->", Type, FunctionSuite ;
-Implementation = "impl", NamedType, "for", NamedType, ":", NEWLINE,
+Implementation = "impl", NamedType, [ "for", NamedType ], ":", NEWLINE,
                  [ INDENT, MethodDeclaration, { MethodDeclaration }, DEDENT ] ;
+(* With "for", the first NamedType is the interface and the second the type. Without it, the only NamedType is the type and the block declares its own methods. *)
 MethodDeclaration = "fn", Name, "(", [ FunctionParameters ], ")", "->", Type, FunctionSuite ;
 FunctionSuite = ":", (Expression | SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
 TestDeclaration = "test", PlainStringLiteral, Suite ;
@@ -149,13 +147,13 @@ TypeArguments = "[", Type, { ",", Type }, [ "," ], "]" ;
 FunctionType  = "fn", "(", [ Parameters ], ")", "->", Type ;
 ```
 
-- A `type` declares record fields or alternative cases, never both, plus optional receiver functions. An `interface` holds only operation signatures. A nullary case is `case Ready`, without `()`. Names are unique per scope.
+- A `type` declares record fields or alternative cases, never both; its methods go in an `impl` block, `impl Type:` for its own or `impl Interface for Type:` for an interface. An `interface` holds only operation signatures. A nullary case is `case Ready`, without `()`. Names are unique per scope.
 - Named functions need explicit parameter and result types; anonymous ones may infer them ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)).
 - Defaults: [function parameters](../functions/declarations-and-calls.md#default-arguments), [record fields](../types/records.md#construction), and `= none` on Optional interface parameters. Function types and alternative payloads have none. No variadics or parameter patterns.
 - Named function and method suites may be empty (`fn commands() -> Commands:` then a newline), as can type schemas (`type Duration:`); the standard library uses this for runtime-bound implementations. Interface, implementation, test, and control-flow suites are nonempty.
 - Imports and declarations may interleave; order does not affect resolution. Import paths and test names are plain literals (escapes allowed, no interpolation).
 - `export` applies to types, interfaces, and named functions, not tests or `impl` blocks.
-- `impl` blocks declare no type parameters: in `impl Contract[T] for Data[T]:`, `T` comes from the receiver type and bounds from the declarations. Every parameter in the signatures must occur in the receiver application, and operations and methods cannot declare their own. Overlap follows [contracts](../types/contracts.md#generic-implementations).
+- `impl` blocks declare no type parameters, and `impl Type:` is accepted only in the module that declares `Type`: in `impl Contract[T] for Data[T]:`, `T` comes from the receiver type and bounds from the declarations. Every parameter in the signatures must occur in the receiver application, and operations and source methods cannot declare their own. Overlap follows [contracts](../types/contracts.md#generic-implementations).
 - `&` only combines generic bounds, as in `T: Read & Closeable`; order is irrelevant. There is no intersection or refinement syntax for value types.
 - No module-level statements or `var`; a top-level `let` is a [constant](../modules/declarations.md#constants). Snippets of local bindings are body fragments. Type paths add no wildcard imports; see [module rules](../modules/declarations.md).
 

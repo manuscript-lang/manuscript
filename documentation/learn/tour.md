@@ -231,7 +231,7 @@ Closures snapshot variable values when created, but captured collections and rec
 
 ## Behavior on types
 
-Declare an `interface`, then `impl Interface for Type:`; `self` is the receiver:
+Methods live in `impl` blocks, never inside the `type`. Declare an `interface`, then `impl Interface for Type:`; `self` is the receiver:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -258,7 +258,26 @@ test "counter behavior":
     try expect_equal(counter.value, 0)
 ```
 
-There are no inherent methods (`impl Counter:` is unsupported); free functions are called as `reset(counter)`. See [interfaces and implementations](../core-language/types/contracts.md#explicit-implementations).
+A type's own methods go in `impl Counter:`, without an interface:
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import expect_equal from "@std/testing.ms"
+
+type Counter:
+    value: Int
+
+impl Counter:
+    fn increment() -> Unit:
+        self.value = self.value + 1
+
+test "own methods":
+    let counter = Counter(0)
+    counter.increment()
+    try expect_equal(counter.value, 1)
+```
+
+Use an interface when callers should depend on behavior rather than on the type. Free functions are called as `reset(counter)`. See [interfaces and implementations](../core-language/types/contracts.md#explicit-implementations).
 
 ## Files and cleanup
 

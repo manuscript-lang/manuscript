@@ -112,7 +112,7 @@ func collectBodies(facts Facts, module *syntax.Module, flow *flowBuilder) {
 			kind = "constant"
 		}
 		if declaration.Kind == syntax.KindImpl {
-			name = declaration.Contract.Name + " for " + declaration.Receiver.Name
+			name = declaration.ImplName()
 		}
 		if fact := facts.Entities[factKey(module.File, kind, name)]; fact != nil {
 			fact.First, fact.Last = declaration.Pos.Line, last

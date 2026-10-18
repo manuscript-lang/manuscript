@@ -47,7 +47,7 @@ A default may use earlier fields and module declarations, but not itself or late
 
 ## Mutation and cloning
 
-Methods come only from `impl Interface for Type:` ([explicit implementations](contracts.md#explicit-implementations)); `impl Type:` and methods inside a record are unsupported. A method can update receiver fields in place:
+Methods come from `impl Type:` or `impl Interface for Type:` ([explicit implementations](contracts.md#explicit-implementations)); methods inside the record are rejected. A method can update receiver fields in place:
 
 ```manuscript
 interface Counter:

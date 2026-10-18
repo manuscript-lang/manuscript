@@ -110,6 +110,8 @@ export type DnsKind:
     case PTR
     # Service location records with priority, weight and port.
     case SRV
+
+impl DnsKind:
     # Returns the uppercase wire category.
     fn text() -> String:
 
@@ -119,18 +121,25 @@ export type IpFamily:
     case IPv4
     # A sixteen-byte numeric address.
     case IPv6
+
+impl IpFamily:
     # Returns IPv4 or IPv6.
     fn text() -> String:
 
 # A validated numeric IPv4/IPv6 address without a port or zone.
 export type IpAddress:
+
+impl IpAddress:
     # Returns canonical text; mapped IPv6 input is normalized to IPv4.
     fn text() -> String:
+
     # Returns the normalized address family.
     fn family() -> IpFamily:
 
 # A validated, masked numeric CIDR range.
 export type Cidr:
+
+impl Cidr:
     # Returns the canonical masked prefix without reparsing.
     fn text() -> String:
 
