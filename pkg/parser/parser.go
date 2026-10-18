@@ -969,11 +969,15 @@ func (p *Parser) callArguments(callee *syntax.Expression) *syntax.Expression {
 
 func (p *Parser) text(token lexer.Token) *syntax.Expression {
 	raw := token.Text[1 : len(token.Text)-1]
-	e := &syntax.Expression{Kind: syntax.KindText, Pos: token.Pos}
 	if strings.IndexByte(raw, '\\') < 0 && strings.IndexByte(raw, '{') < 0 {
-		e.Parts = []syntax.TextPart{{Text: strings.Clone(raw)}}
-		return e
+		return &syntax.Expression{Kind: syntax.KindText, Pos: token.Pos, Parts: []syntax.TextPart{{Text: strings.Clone(raw)}}}
 	}
+	return p.textParts(token)
+}
+
+func (p *Parser) textParts(token lexer.Token) *syntax.Expression {
+	raw := token.Text[1 : len(token.Text)-1]
+	e := &syntax.Expression{Kind: syntax.KindText, Pos: token.Pos}
 	var literal strings.Builder
 	flush := func() {
 		if literal.Len() > 0 {
