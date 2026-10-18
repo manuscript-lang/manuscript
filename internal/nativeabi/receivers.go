@@ -98,8 +98,6 @@ var ReceiverBindings = map[string]map[string]string{
 		"find_last_index":  "collections/find_last_index",
 		"count":            "collections/count",
 		"distinct":         "collections/distinct",
-		"max":              "collections/list_max",
-		"min":              "collections/list_min",
 		"some":             "collections/some",
 		"every":            "collections/every",
 		"for_each":         "collections/for_each",

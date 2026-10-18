@@ -69,3 +69,26 @@ func Math_Min[T any](ctx *Execution, cmp Cmp[T], left, right T) T {
 	}
 	return right
 }
+
+// Math_MaxOf returns the greatest element, keeping the first of equals.
+func Math_MaxOf[T any](ctx *Execution, cmp Cmp[T], values *List[T]) Option[T] {
+	return extreme(ctx, cmp, values, 1)
+}
+
+// Math_MinOf returns the least element, keeping the first of equals.
+func Math_MinOf[T any](ctx *Execution, cmp Cmp[T], values *List[T]) Option[T] {
+	return extreme(ctx, cmp, values, -1)
+}
+
+func extreme[T any](ctx *Execution, cmp Cmp[T], values *List[T], sign int) Option[T] {
+	if len(values.Items) == 0 {
+		return None[T]()
+	}
+	best := values.Items[0]
+	for _, v := range values.Items[1:] {
+		if cmp(ctx, v, best)*sign > 0 {
+			best = v
+		}
+	}
+	return Some(best)
+}

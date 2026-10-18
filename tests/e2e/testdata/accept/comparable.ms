@@ -1,4 +1,4 @@
-import {max, min} from "@std/math.ms"
+import {max, max_of, min, min_of} from "@std/math.ms"
 import panic from "@std/faults.ms"
 import Decimal from "@std/decimal.ms"
 
@@ -46,13 +46,13 @@ test "compare through an explicit view":
         name: "equal"
     )
 
-test "list max and min":
+test "max_of and min_of over a list":
     let numbers = [3, 9, 2]
     let empty: List[Int] = []
-    check(ok: numbers.max() == some(9) and numbers.min() == some(2), name: "ints")
-    check(ok: empty.max().is_none() and empty.min().is_none(), name: "empty")
+    check(ok: max_of(numbers) == some(9) and min_of(numbers) == some(2), name: "ints")
+    check(ok: max_of(empty).is_none() and min_of(empty).is_none(), name: "empty")
     check(
-        ok: [Version(major: 4), Version(major: 8)].max() == some(
+        ok: max_of([Version(major: 4), Version(major: 8)]) == some(
             Version(major: 8)
         ),
         name: "versions"

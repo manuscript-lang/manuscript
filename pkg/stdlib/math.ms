@@ -52,6 +52,12 @@ export fn max[T: Comparable](left: T, right: T) -> T:
 # Returns the lesser of two values, or `left` when they compare equal. Float orders NaN above every other value.
 export fn min[T: Comparable](left: T, right: T) -> T:
 
+# Returns the greatest of the values, keeping the first of equal ones, or none for an empty list. Float orders NaN above every other value.
+export fn max_of[T: Comparable](values: List[T]) -> Optional[T]:
+
+# Returns the least of the values, keeping the first of equal ones, or none for an empty list. Float orders NaN above every other value.
+export fn min_of[T: Comparable](values: List[T]) -> Optional[T]:
+
 # Returns π, the ratio of a circle's circumference to its diameter.
 export fn pi() -> Float:
 
