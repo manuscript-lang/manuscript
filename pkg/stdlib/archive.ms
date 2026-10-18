@@ -39,7 +39,7 @@ export fn pack(
     entries: List[ArchiveEntry],
     format: String,
     max_bytes: Optional[Int] = none
-) -> Result[Bytes, ArchiveError]:
+) Result[Bytes, ArchiveError]:
 
 # Decodes exactly `zip` or `tar` (case-sensitive); other formats return Unsupported.
 # Applies each supplied entry and total-size limit.
@@ -47,11 +47,11 @@ export fn unpack(
     data: Bytes,
     format: String,
     limits: Optional[ArchiveLimits] = none
-) -> Result[List[ArchiveEntry], ArchiveError]:
+) Result[List[ArchiveEntry], ArchiveError]:
 
 impl Error for ArchiveError:
     # Returns original Failed text, or an archive-prefixed diagnostic for other cases.
-    fn message() -> String:
+    fn message() String:
 
 # Selects a supported archive format without a runtime string spelling check.
 # Existing pack/unpack format: String calls remain available.
@@ -66,10 +66,10 @@ impl ArchiveFormat:
     fn pack(
         entries: List[ArchiveEntry],
         max_bytes: Optional[Int] = none
-    ) -> Result[Bytes, ArchiveError]:
+    ) Result[Bytes, ArchiveError]:
 
     # Unpacks in memory with the same entry/byte limits and domain errors as unpack.
     fn unpack(
         data: Bytes,
         limits: Optional[ArchiveLimits] = none
-    ) -> Result[List[ArchiveEntry], ArchiveError]:
+    ) Result[List[ArchiveEntry], ArchiveError]:

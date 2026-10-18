@@ -1,7 +1,7 @@
 import panic from "@std/faults.ms"
 
 interface ReadValue[T]:
-    fn get() -> T
+    fn get() T
 
 type Box[T]:
     value: T
@@ -10,26 +10,26 @@ type ReaderHolder:
     reader: ReadValue[Int]
 
 type CallbackReader:
-    read_value: fn() -> Int
+    read_value: fn() Int
 
 impl ReadValue[T] for Box[T]:
-    fn get() -> T:
+    fn get() T:
         return self.value
 
 impl ReadValue[Int] for CallbackReader:
-    fn get() -> Int:
+    fn get() Int:
         return self.read_value()
 
-fn seven() -> Int:
+fn seven() Int:
     return 7
 
-fn make_view[T: ReadValue[Int]](source: T) -> ReadValue[Int]:
+fn make_view[T: ReadValue[Int]](source: T) ReadValue[Int]:
     return ReadValue[Int](source)
 
-fn forward_view[T: ReadValue[Int]](source: T) -> ReadValue[Int]:
+fn forward_view[T: ReadValue[Int]](source: T) ReadValue[Int]:
     return ReadValue[Int](source)
 
-fn consume[T: ReadValue[Int]](source: T) -> Int:
+fn consume[T: ReadValue[Int]](source: T) Int:
     return source.get()
 
 test "contract views and callbacks":

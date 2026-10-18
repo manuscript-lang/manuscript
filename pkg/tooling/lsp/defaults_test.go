@@ -6,13 +6,13 @@ import (
 )
 
 func TestDefaultClosureAssignmentReferencesAndListHints(t *testing.T) {
-	source := `fn answer(value: Int = (fn() -> Int:
+	source := `fn answer(value: Int = (fn() Int:
     var current = 0
     current = current + 1
     return current
-)()) -> Int:
+)()) Int:
     let callbacks = [
-        fn() -> Int:
+        fn() Int:
             let nested = 1
             return nested
     ]
@@ -42,7 +42,7 @@ func TestDefaultClosureAssignmentReferencesAndListHints(t *testing.T) {
 }
 
 func TestDefaultArgumentEditorSupport(t *testing.T) {
-	source := "fn subtract(amount: Int, deduction: Int = 1) -> Int:\n    return amount - deduction\nfn call() -> Int:\n    return sub|\n"
+	source := "fn subtract(amount: Int, deduction: Int = 1) Int:\n    return amount - deduction\nfn call() Int:\n    return sub|\n"
 	item := itemNamed(completeSource(t, source), "subtract")
 	if item == nil || !strings.Contains(item.Detail, "deduction: Int = ...") {
 		t.Fatal("default not shown in completion", item)
@@ -53,17 +53,17 @@ func TestDefaultArgumentEditorSupport(t *testing.T) {
 	}
 	signature := signatureSource(t, strings.Replace(source, "sub|", "subtract(amount: 5, |", 1))
 	label := signature["signatures"].([]any)[0].(map[string]any)["label"]
-	if label != "subtract(amount: Int, deduction: Int = ...) -> Int" {
+	if label != "subtract(amount: Int, deduction: Int = ...) Int" {
 		t.Fatal(label)
 	}
-	items := completeSource(t, "fn combine(first: Int = 3, second: Int = fir|) -> Int:\n    return second\n")
+	items := completeSource(t, "fn combine(first: Int = 3, second: Int = fir|) Int:\n    return second\n")
 	if itemNamed(items, "first") == nil || itemNamed(items, "second") != nil {
 		t.Fatal("default scope should expose earlier parameters", items)
 	}
 }
 
 func TestRenameParameterUsedInDefault(t *testing.T) {
-	source := "fn combine(first: Int = 3, second: Int = first) -> Int:\n    return first + second\n"
+	source := "fn combine(first: Int = 3, second: Int = first) Int:\n    return first + second\n"
 	d := document{"file:///tmp/defaults.ms", source, 1}
 	docs := map[string]document{d.URI: d}
 	result := analyze(d, docs)
@@ -78,7 +78,7 @@ func TestRenameParameterUsedInDefault(t *testing.T) {
 }
 
 func TestFieldDefaultNavigationAndRename(t *testing.T) {
-	source := "type Options:\n    first: Int = 3\n    second: Int = first + 1\nfn read() -> Int: return Options().first\n"
+	source := "type Options:\n    first: Int = 3\n    second: Int = first + 1\nfn read() Int: return Options().first\n"
 	d := document{"file:///tmp/field-defaults.ms", source, 1}
 	docs := map[string]document{d.URI: d}
 	result := analyze(d, docs)
@@ -105,7 +105,7 @@ func TestFieldDefaultCompletionAndSignature(t *testing.T) {
 	if itemNamed(items, "first") == nil || itemNamed(items, "second") != nil || itemNamed(items, "later") != nil {
 		t.Fatal("incorrect field-default scope", items)
 	}
-	source := "type Options:\n    required: Int\n    count: Int = 3\nfn read() -> Options:\n    return Options(required: 1, |)\n"
+	source := "type Options:\n    required: Int\n    count: Int = 3\nfn read() Options:\n    return Options(required: 1, |)\n"
 	help := signatureSource(t, source)
 	label := help["signatures"].([]any)[0].(map[string]any)["label"].(string)
 	if !strings.Contains(label, "required: Int, count: Int = ...") {

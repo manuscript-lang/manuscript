@@ -7,7 +7,7 @@ type Counter:
 type Outer:
     inner: Counter
 
-fn tally(values: List[Int]) -> Int:
+fn tally(values: List[Int]) Int:
     var total = 0
     for value in values:
         total += value

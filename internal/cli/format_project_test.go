@@ -12,8 +12,8 @@ func TestFormatTargets(t *testing.T) {
 	for _, mode := range []string{"manifest", "directory", "files"} {
 		t.Run(mode, func(t *testing.T) {
 			root := t.TempDir()
-			original := "fn value() -> Int:   \n    return 3   \n"
-			clean := "fn value() -> Int:\n    return 3\n"
+			original := "fn value() Int:   \n    return 3   \n"
+			clean := "fn value() Int:\n    return 3\n"
 			files := []string{"src/a.ms", "src/nested/b.ms", "test.ms", "tests/value_test.ms"}
 			excluded := []string{"src/.hidden/skip.ms", "src/vendor/skip.ms", "src/node_modules/skip.ms", "notes.txt"}
 			for _, name := range append(append([]string{}, files...), excluded...) {
@@ -83,7 +83,7 @@ func TestFormatTargets(t *testing.T) {
 }
 
 func TestFormatReportsAllFailures(t *testing.T) {
-	good := sourceFile(t, "fn value() -> Int:   \n    return 3   \n")
+	good := sourceFile(t, "fn value() Int:   \n    return 3   \n")
 	bad := sourceFile(t, "fn broken(\n")
 	missing := filepath.Join(t.TempDir(), "missing.ms")
 	for _, check := range []bool{true, false} {
@@ -122,7 +122,7 @@ func TestFormatOptionsAndExplicitExcludedFile(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(path, []byte("fn value() -> Int:   \n    return 3   \n"), 0644); err != nil {
+	if err := os.WriteFile(path, []byte("fn value() Int:   \n    return 3   \n"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	if status, _, diagnostics := invoke(t, "fmt", "--check", path); status != 1 || !strings.Contains(diagnostics, "Formatting needed") {
@@ -138,7 +138,7 @@ func TestFormatOptionsAndExplicitExcludedFile(t *testing.T) {
 
 func TestFormatSymlinkDiscovery(t *testing.T) {
 	root := t.TempDir()
-	outside := sourceFile(t, "fn value() -> Int:   \n    return 3   \n")
+	outside := sourceFile(t, "fn value() Int:   \n    return 3   \n")
 	link := filepath.Join(root, "linked.ms")
 	if err := os.Symlink(outside, link); err != nil {
 		t.Skip(err)
@@ -163,7 +163,7 @@ func TestFormatSymlinkDiscovery(t *testing.T) {
 
 func TestFormatManifestScopeAndTraversalFailure(t *testing.T) {
 	root := t.TempDir()
-	original := "fn value() -> Int:   \n    return 3   \n"
+	original := "fn value() Int:   \n    return 3   \n"
 	for _, name := range []string{"src/module.ms", "entry.ms", "unrelated.ms", "tests/test.ms"} {
 		path := filepath.Join(root, name)
 		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {

@@ -3,11 +3,11 @@ import panic from "@std/faults.ms"
 type Counter:
     value: Int
 
-fn step(counter: Counter, value: Int) -> Int:
+fn step(counter: Counter, value: Int) Int:
     counter.value = counter.value * 10 + value
     return value
 
-fn identity[T](value: T) -> T:
+fn identity[T](value: T) T:
     return value
 
 test "typed operands retain evaluation order and generic boundaries":
@@ -20,7 +20,7 @@ test "typed operands retain evaluation order and generic boundaries":
 
     var value = identity(9)
     value = value + 1
-    let snapshot = fn() -> Int: return value * 2
+    let snapshot = fn() Int: return value * 2
     value = value - 1
     if snapshot() != 20 or value != 9: return panic("boxed capture")
     if - 9223372036854775808 % -1 != 0: return panic("minimum remainder")

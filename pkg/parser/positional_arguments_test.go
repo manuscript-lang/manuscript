@@ -9,7 +9,7 @@ import (
 
 func TestMixedArgumentsStrictAndPartial(t *testing.T) {
 	for _, newline := range []string{"\n", "\r\n"} {
-		source := strings.ReplaceAll("fn run() -> Int:\n    return select[Int](\n        1,\n        last: 3,\n        fn(value): value + 1,\n    )\n", "\n", newline)
+		source := strings.ReplaceAll("fn run() Int:\n    return select[Int](\n        1,\n        last: 3,\n        fn(value): value + 1,\n    )\n", "\n", newline)
 		strict, err := parser.Parse("mixed.ms", source)
 		if err != nil {
 			t.Fatal(err)

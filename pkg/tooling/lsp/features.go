@@ -62,7 +62,7 @@ func signatureHelp(d document, docs map[string]document, p position) (any, error
 			}
 		}
 	}
-	label := name + "(" + strings.Join(labels, ", ") + ") -> " + t.Result.String()
+	label := name + "(" + strings.Join(labels, ", ") + ") " + t.Result.String()
 	var doc any
 	if info := a.result.Program.Info(call.Left); info != nil {
 		if info.Symbol != nil {

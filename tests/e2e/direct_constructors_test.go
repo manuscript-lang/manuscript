@@ -10,11 +10,11 @@ import (
 func TestRecordConstructorsWithDefaultsMatchDynamicConstruction(t *testing.T) {
 	result := compiler.CompileSource("direct-constructors.ms", `import panic from "@std/faults.ms"
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
-fn twice(n: Int) -> Int: n * 2
+fn twice(n: Int) Int: n * 2
 
 type Options:
     count: Int

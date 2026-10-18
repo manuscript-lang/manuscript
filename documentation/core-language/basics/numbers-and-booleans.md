@@ -34,7 +34,7 @@ Decimal literals need `import Decimal from "@std/decimal.ms"`. Integer literals 
 - This guide assumes 64-bit `Int`; 32-bit targets narrow the range.
 
 ```manuscript
-fn literals() -> Unit:
+fn literals() Unit:
     let smallest: Int = -9223372036854775808
     let exponent: Float = 1e3
     let precise: Decimal = 1e3d
@@ -46,9 +46,9 @@ fn literals() -> Unit:
 
 | Receiver | Signature/result |
 | --- | --- |
-| `Int` | `to_float() -> Float`; `to_decimal() -> Decimal` |
-| `Float` | `truncate_to_int() -> Optional[Int]` |
-| `Decimal` | `to_float() -> Float`; `truncate_to_int() -> Optional[Int]` |
+| `Int` | `to_float() Float`; `to_decimal() Decimal` |
+| `Float` | `truncate_to_int() Optional[Int]` |
+| `Decimal` | `to_float() Float`; `truncate_to_int() Optional[Int]` |
 
 Int→Decimal is exact. Int→Float and Decimal→Float round once to nearest binary64, ties to even. `truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `none` (`1e300.truncate_to_int()` is `none`; Float +2^63 fails, -2^63 converts).
 
@@ -116,7 +116,7 @@ import Decimal from "@std/decimal.ms"
 import NumberError from "@std/numbers.ms"
 import panic from "@std/faults.ms"
 
-fn amount_text() -> Result[String, NumberError]:
+fn amount_text() Result[String, NumberError]:
     let subtotal = 19.99d * 3d
     let tax = try (subtotal * 0.0825d).round(places: 2)
     let tax_text = try tax.to_fixed(digits: 2)

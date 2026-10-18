@@ -21,7 +21,7 @@ import {network, DnsKind, IpFamily, IpAddress, Cidr} from "@std/net.ms"
 		"opaque prefix constructor":  `let prefix = Cidr()`,
 	} {
 		t.Run(name, func(t *testing.T) {
-			result := compiler.CompileSource("migration.ms", prefix+"fn check() -> Unit:\n    "+body+"\n", compiler.Options{})
+			result := compiler.CompileSource("migration.ms", prefix+"fn check() Unit:\n    "+body+"\n", compiler.Options{})
 			if result.Success() {
 				t.Fatal("legacy or malformed migration input accepted")
 			}

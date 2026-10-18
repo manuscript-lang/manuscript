@@ -8,11 +8,11 @@ export type NumberError:
     case OutOfRange
 
 # Parses a decimal floating-point number using Manuscript's numeric syntax.
-export fn parse_float(text: String) -> Result[Float, NumberError]:
+export fn parse_float(text: String) Result[Float, NumberError]:
 
 # Parses an integer in a radix from 2 through 36.
-export fn parse_int(text: String, radix: Int) -> Result[Int, NumberError]:
+export fn parse_int(text: String, radix: Int) Result[Int, NumberError]:
 
 impl Error for NumberError:
     # Returns the fixed diagnostic `number: <reason>`, such as `number: invalid data`, without echoing the input text.
-    fn message() -> String:
+    fn message() String:

@@ -2,9 +2,9 @@ import panic from "@std/faults.ms"
 import TaskGroup from "@std/tasks.ms"
 
 type Transform:
-    operation: fn(value: Int) -> Int
+    operation: fn(value: Int) Int
 
-fn apply[T](operation: fn(value: T) -> T, value: T) -> T:
+fn apply[T](operation: fn(value: T) T, value: T) T:
     return operation(value: value)
 
 test "inline callbacks survive contextual rechecking":

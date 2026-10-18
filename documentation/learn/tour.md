@@ -15,7 +15,7 @@ Save this complete program as `hello.ms` and run `ms run hello.ms`:
 ```manuscript
 import stdout from "@std/io.ms"
 
-export fn main() -> Int:
+export fn main() Int:
     if stdout().write("Hello, Manuscript!\n".to_bytes()).is_error():
         return 1
     return 0
@@ -104,10 +104,10 @@ test "count five iterations":
 ## Functions
 
 ```manuscript
-fn greeting(name: String = "world") -> String:
+fn greeting(name: String = "world") String:
     return "Hello, {name}!"
 
-fn line_total(price: Int, quantity: Int) -> Int:
+fn line_total(price: Int, quantity: Int) Int:
     return price * quantity
 
 let welcome = greeting("Sam")
@@ -122,10 +122,10 @@ Functions are values:
 ```manuscript
 
 let prices = [12, 8, 25]
-let discounted = prices.map(fn(value: Int) -> Int:
+let discounted = prices.map(fn(value: Int) Int:
     return value - 2
 )
-let affordable = discounted.filter(fn(value: Int) -> Bool:
+let affordable = discounted.filter(fn(value: Int) Bool:
     return value <= 10
 )
 # affordable contains [10, 6]; prices is unchanged.
@@ -145,7 +145,7 @@ type Status:
     case Draft
     case Published(url: String)
 
-fn status_label(status: Status) -> String:
+fn status_label(status: Status) String:
     match status:
         Draft:
             return "Not published"
@@ -173,12 +173,12 @@ test "publish a help page":
 type QuantityError:
     case MustBePositive
 
-fn quantity(value: Int) -> Result[Int, QuantityError]:
+fn quantity(value: Int) Result[Int, QuantityError]:
     if value <= 0:
         return error(QuantityError.MustBePositive)
     return ok(value)
 
-fn order_total(count: Int) -> Result[Int, QuantityError]:
+fn order_total(count: Int) Result[Int, QuantityError]:
     let valid_count = try quantity(count)
     return ok(valid_count * 12)
 ```
@@ -195,7 +195,7 @@ Each `.ms` file is a module; `export` what others need.
 ```manuscript
 export let UNIT_PRICE = 12
 
-export fn line_total(quantity: Int) -> Int:
+export fn line_total(quantity: Int) Int:
     return UNIT_PRICE * quantity
 ```
 
@@ -204,7 +204,7 @@ In another file in the same directory:
 ```manuscript
 import line_total from "./pricing.ms"
 
-export fn checkout_total() -> Int:
+export fn checkout_total() Int:
     return line_total(quantity: 3)
 ```
 
@@ -215,13 +215,13 @@ Module-level `let` is a constant used without `()`. Import standard APIs from `@
 ```manuscript
 
 var subject = "Weekly update"
-let headline = fn() -> String:
+let headline = fn() String:
     return subject
 subject = "Launch announcement"
 # headline() returns "Weekly update".
 
 let tags = ["docs"]
-let tag_count = fn() -> Int:
+let tag_count = fn() Int:
     return tags.length()
 tags.append("release")
 # tag_count() returns 2.
@@ -238,16 +238,16 @@ Methods live in `impl` blocks, never inside the `type`. Declare an `interface`, 
 import expect_equal from "@std/testing.ms"
 
 interface Increment:
-    fn increment() -> Unit
+    fn increment() Unit
 
 type Counter:
     value: Int
 
 impl Increment for Counter:
-    fn increment() -> Unit:
+    fn increment() Unit:
         self.value = self.value + 1
 
-fn reset(counter: Counter) -> Unit:
+fn reset(counter: Counter) Unit:
     counter.value = 0
 
 test "counter behavior":
@@ -268,7 +268,7 @@ type Counter:
     value: Int
 
 impl Counter:
-    fn increment() -> Unit:
+    fn increment() Unit:
         self.value = self.value + 1
 
 test "own methods":
@@ -284,7 +284,7 @@ Use an interface when callers should depend on behavior rather than on the type.
 ```manuscript
 import {filesystem, FileSystemError} from "@std/fs.ms"
 
-fn copy_notes() -> Result[Unit, FileSystemError]:
+fn copy_notes() Result[Unit, FileSystemError]:
     with source = try filesystem().open("notes.txt", flags: "r", mode: 0):
         let contents = try source.read_file(max_bytes: 1048576)
         try filesystem().write_file(path: "backup.txt", data: contents, replace: true)

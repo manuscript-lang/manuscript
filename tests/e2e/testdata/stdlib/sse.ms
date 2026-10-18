@@ -22,10 +22,10 @@ type Chunks:
     failure: Optional[IoError]
 
 impl ReadStream for Chunks:
-    fn close() -> Unit:
+    fn close() Unit:
         self.closed = true
 
-    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]:
+    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
         if self.index < self.parts.length():
             let part = self.parts.at(self.index).unwrap()
             self.index = self.index + 1
@@ -35,11 +35,11 @@ impl ReadStream for Chunks:
 
         return ok(none)
 
-fn stream(parts: List[Bytes], failure: Optional[IoError]) -> Chunks:
+fn stream(parts: List[Bytes], failure: Optional[IoError]) Chunks:
     return Chunks(parts: parts, index: 0, closed: false, failure: failure)
 
 # Splits at every byte boundary, one boundary at a time, plus one byte per chunk.
-fn splits(source: Bytes) -> List[List[Bytes]]:
+fn splits(source: Bytes) List[List[Bytes]]:
     let all = List[List[Bytes]]()
     let size = source.length()
     var cut = 0
@@ -56,7 +56,7 @@ fn splits(source: Bytes) -> List[List[Bytes]]:
     all.append(single)
     return all
 
-fn decode(parts: List[Bytes]) -> Result[List[SseEvent], SseError]:
+fn decode(parts: List[Bytes]) Result[List[SseEvent], SseError]:
     let created = try decoder()
     let events = List[SseEvent]()
 
@@ -67,14 +67,14 @@ fn decode(parts: List[Bytes]) -> Result[List[SseEvent], SseError]:
     try finish(decoder: created)
     return ok(events)
 
-fn summary(events: List[SseEvent]) -> String:
+fn summary(events: List[SseEvent]) String:
     return (
         events
         .map(fn(event): "{event.event}|{event.data}|{event.id.unwrap_or("-")}")
         .join(";")
     )
 
-fn expect(source: String, want: String) -> Unit:
+fn expect(source: String, want: String) Unit:
     for parts in splits(source.to_bytes()):
         let events = value(decode(parts))
         let got = summary(events)
@@ -142,14 +142,14 @@ test "a byte order mark is dropped only at the start of the stream":
 test "multi-byte scalars survive every chunk split":
     expect(source: "data: é\u{20ac}😀\nevent: 世界\n\n", want: "世界|é\u{20ac}😀|-")
 
-fn invalid_bytes() -> Bytes:
+fn invalid_bytes() Bytes:
     let builder = BytesBuilder()
     builder.concat("data: ".to_bytes())
     builder.append(255)
     builder.concat("\n\n".to_bytes())
     return builder.freeze()
 
-fn is_case(result: Result[List[SseEvent], SseError], want: SseError) -> Bool:
+fn is_case(result: Result[List[SseEvent], SseError], want: SseError) Bool:
     if not result.is_error(): return false
 
     return result.unwrap_error() == want

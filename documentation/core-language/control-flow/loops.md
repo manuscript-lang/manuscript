@@ -10,7 +10,7 @@ weight = 2
 ## Traversing a list
 
 ```manuscript
-fn sum(values: List[Int]) -> Int:
+fn sum(values: List[Int]) Int:
     var total = 0
     for value in values:
         total += value
@@ -88,7 +88,7 @@ The iterable is evaluated once. A List traversal keeps its original slice and le
 `MapEntry[K, V]` is a record with `key: K` and `value: V` (constructor from `@std/collections.ms`; iteration needs no import). It is not a positional pair; destructure it in the body.
 
 ```manuscript
-fn total(values: Map[String, Int]) -> Int:
+fn total(values: Map[String, Int]) Int:
     var sum = 0
     for entry in values:
         let {key, value} = entry
@@ -101,7 +101,7 @@ fn total(values: Map[String, Int]) -> Int:
 ## Repeating while a condition holds
 
 ```manuscript
-fn count_down(start: Int) -> Int:
+fn count_down(start: Int) Int:
     var remaining = start
     while remaining > 0:
         remaining -= 1

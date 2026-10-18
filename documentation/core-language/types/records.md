@@ -51,13 +51,13 @@ Methods come from `impl Type:` or `impl Interface for Type:` ([explicit implemen
 
 ```manuscript
 interface Counter:
-    fn increment() -> Unit
+    fn increment() Unit
 
 type Val:
     val: Int
 
 impl Counter for Val:
-    fn increment() -> Unit:
+    fn increment() Unit:
         self.val = self.val + 1
 ```
 
@@ -103,7 +103,7 @@ type Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
 
-fn evaluate(expr: Expr) -> Int:
+fn evaluate(expr: Expr) Int:
     match expr:
         Num(value): return value
         Add(left, right): return evaluate(left) + evaluate(right)

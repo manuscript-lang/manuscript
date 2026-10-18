@@ -1,6 +1,6 @@
 import panic from "@std/faults.ms"
 
-fn selected_sum(values: List[Int]) -> Int:
+fn selected_sum(values: List[Int]) Int:
     var total = 0
 
     for value in values:

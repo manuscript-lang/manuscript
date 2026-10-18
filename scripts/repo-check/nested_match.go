@@ -80,7 +80,7 @@ func nestedMatchIssues(path, source string) ([]string, error) {
 				}
 			}
 			code = strings.Join(lines, "\n")
-			module, _ = frontend.Parse(path, "fn fragment() -> Unit:\n    "+strings.ReplaceAll(code, "\n", "\n    "), true)
+			module, _ = frontend.Parse(path, "fn fragment() Unit:\n    "+strings.ReplaceAll(code, "\n", "\n    "), true)
 		}
 		for _, match := range syntax.NestedMatches(module) {
 			lines := strings.Split(code, "\n")

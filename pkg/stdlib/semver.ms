@@ -20,14 +20,14 @@ export type Version:
 
 # Compares two versions by SemVer precedence, returning -1, 0 or 1.
 # Build metadata is ignored, and a pre-release sorts before its release.
-export fn compare(left: Version, right: Version) -> Int:
+export fn compare(left: Version, right: Version) Int:
 
 # Formats a version as `major.minor.patch[-prerelease][+build]`.
-export fn format(version: Version) -> String:
+export fn format(version: Version) String:
 
 # Parses strict Semantic Versioning 2.0.0 text. A leading `v` and surrounding space are rejected.
-export fn parse(text: String) -> Result[Version, SemverError]:
+export fn parse(text: String) Result[Version, SemverError]:
 
 impl Error for SemverError:
     # Returns a semver-prefixed diagnostic without echoing the input text.
-    fn message() -> String:
+    fn message() String:

@@ -84,22 +84,22 @@ func TestDocumentationUsesManuscriptDeclarations(t *testing.T) {
 		}
 	}
 	for key, want := range map[string]string{
-		"@std/net.ms#DatagramSocket": "interface DatagramSocket:\n    fn address() -> String\n    fn close() -> Unit\n    fn receive(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[Datagram, NetworkError]\n    fn send(data: Bytes, address: String, timeout: Optional[Duration] = none) -> Result[Unit, NetworkError]\n",
+		"@std/net.ms#DatagramSocket": "interface DatagramSocket:\n    fn address() String\n    fn close() Unit\n    fn receive(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) Result[Datagram, NetworkError]\n    fn send(data: Bytes, address: String, timeout: Optional[Duration] = none) Result[Unit, NetworkError]\n",
 		"@std/net.ms#DnsRecord":      "type DnsRecord:\n    kind: DnsKind\n    value: String\n    priority: Int\n    weight: Int\n    port: Int\n",
-		"@std/optional.ms#Optional":  "type Optional[T]:\n    case some(value: T)\n    case none\n\nimpl Optional[T]:\n    fn is_some() -> Bool:\n    fn is_none() -> Bool:\n    fn unwrap() -> T:\n    fn unwrap_or(fallback: T) -> T:\n    fn unwrap_or_else(create: fn() -> T) -> T:\n    fn map[U](transform: fn(value: T) -> U) -> Optional[U]:\n    fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:\n    fn or_else(create: fn() -> Optional[T]) -> Optional[T]:\n    fn ok_or[E = MissingValue](cause: Optional[E] = none) -> Result[T, E]:\n    fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:\n",
+		"@std/optional.ms#Optional":  "type Optional[T]:\n    case some(value: T)\n    case none\n\nimpl Optional[T]:\n    fn is_some() Bool:\n    fn is_none() Bool:\n    fn unwrap() T:\n    fn unwrap_or(fallback: T) T:\n    fn unwrap_or_else(create: fn() T) T:\n    fn map[U](transform: fn(value: T) U) Optional[U]:\n    fn and_then[U](transform: fn(value: T) Optional[U]) Optional[U]:\n    fn or_else(create: fn() Optional[T]) Optional[T]:\n    fn ok_or[E = MissingValue](cause: Optional[E] = none) Result[T, E]:\n    fn ok_or_else[E](create: fn() E) Result[T, E]:\n",
 	} {
 		if got := exports[key].Declaration; got != want {
 			t.Errorf("%s declaration:\ngot %s\nwant %s", key, got, want)
 		}
 	}
 	for key, want := range map[string]string{
-		"@std/time.ms#Duration":    "    fn to_nanoseconds() -> Int",
-		"@std/time.ms#Instant":     "    fn difference(other: Instant) -> Duration",
-		"@std/time.ms#Timestamp":   "    fn shift(duration: Duration) -> Result[Timestamp, TimeError]",
+		"@std/time.ms#Duration":    "    fn to_nanoseconds() Int",
+		"@std/time.ms#Instant":     "    fn difference(other: Instant) Duration",
+		"@std/time.ms#Timestamp":   "    fn shift(duration: Duration) Result[Timestamp, TimeError]",
 		"@std/collections.ms#Map":  "type Map[T: Hashable, U]:",
-		"@std/collections.ms#List": "    fn group_by[K: Hashable](key: fn(value: T) -> K) -> Map[K, List[T]]",
-		"@std/bytes.ms#Bytes":      "    fn values() -> List[Int]",
-		"prelude#String":           "    fn to_bytes() -> Bytes",
+		"@std/collections.ms#List": "    fn group_by[K: Hashable](key: fn(value: T) K) Map[K, List[T]]",
+		"@std/bytes.ms#Bytes":      "    fn values() List[Int]",
+		"prelude#String":           "    fn to_bytes() Bytes",
 	} {
 		if !strings.Contains(exports[key].Declaration, want) {
 			t.Errorf("%s lost source syntax %q: %s", key, want, exports[key].Declaration)
@@ -125,11 +125,11 @@ func TestBytesValuesDocumentationIsAnOperation(t *testing.T) {
 }
 
 func TestModuleDocumentationRetainsDefaults(t *testing.T) {
-	source := `fn helper(left: Int, right: Int) -> Int:
+	source := `fn helper(left: Int, right: Int) Int:
     return left + right
-export fn defaults(first: Int = -3, second: Int = helper(left: first, right: 2), text: String = "literal, )", callback: fn(value: Int) -> Int = (fn(value: Int) -> Int:
+export fn defaults(first: Int = -3, second: Int = helper(left: first, right: 2), text: String = "literal, )", callback: fn(value: Int) Int = (fn(value: Int) Int:
     return value + 1
-)) -> Int:
+)) Int:
     return callback(second)
 `
 	module, err := parser.Parse("defaults.ms", source)
@@ -145,7 +145,7 @@ export fn defaults(first: Int = -3, second: Int = helper(left: first, right: 2),
 		t.Fatal(documentation)
 	}
 	declaration := documentation[0].Declarations[0].Declaration
-	for _, want := range []string{"first: Int = -3", "second: Int = helper(left: first, right: 2)", `text: String = "literal, )"`, "callback: fn(value: Int) -> Int = (fn(value: Int) -> Int:\n    return value + 1\n)"} {
+	for _, want := range []string{"first: Int = -3", "second: Int = helper(left: first, right: 2)", `text: String = "literal, )"`, "callback: fn(value: Int) Int = (fn(value: Int) Int:\n    return value + 1\n)"} {
 		if !strings.Contains(declaration, want) {
 			t.Errorf("default missing %q: %s", want, declaration)
 		}
@@ -178,19 +178,19 @@ func TestRecordDefaultDocumentation(t *testing.T) {
 func TestModuleDocumentationCapturesLeadingComments(t *testing.T) {
 	source := `# Adds two numbers.
 # Never rounds.
-export fn add(a: Int, b: Int) -> Int:
+export fn add(a: Int, b: Int) Int:
     return a + b
 
 # Detached by a blank line.
 
-export fn sub(a: Int, b: Int) -> Int:
+export fn sub(a: Int, b: Int) Int:
     return a - b
 
 # Not a doc comment: private declaration.
-fn helper() -> Int:
+fn helper() Int:
     return 1
 
-export fn bare() -> Int:
+export fn bare() Int:
     return 0
 `
 	module, err := parser.Parse("docs.ms", source)

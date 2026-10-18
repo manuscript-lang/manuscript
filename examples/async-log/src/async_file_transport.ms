@@ -1,23 +1,10 @@
 import {Transport, LogError} from "@std/log.ms"
 import Bytes from "@std/bytes.ms"
-import {
-    filesystem,
-    FileSystem,
-    FileHandle,
-    FileInfo,
-    FileSystemError
-} from "@std/fs.ms"
+import {filesystem, FileSystem, FileHandle, FileInfo, FileSystemError} from "@std/fs.ms"
 import BlockingQueue from "@std/queues.ms"
 import Synchronized from "@std/sync.ms"
 import {TaskGroup, Task} from "@std/tasks.ms"
-import {
-    Duration,
-    Instant,
-    Timestamp,
-    clock,
-    wall_clock,
-    duration
-} from "@std/time.ms"
+import {Duration, Instant, Timestamp, clock, wall_clock, duration} from "@std/time.ms"
 
 # A queued request for the writer task: append a record, or acknowledge once earlier records are on disk.
 type Item:
@@ -46,37 +33,36 @@ type AsyncFileTransport:
     group: TaskGroup
     writer: Task[Unit]
 
-fn io_error(cause: FileSystemError) -> LogError:
+fn io_error(cause: FileSystemError) LogError:
     return LogError.FileSystem(cause)
 
-fn lift(result: Result[Unit, FileSystemError]) -> Result[Unit, LogError]:
+fn lift(result: Result[Unit, FileSystemError]) Result[Unit, LogError]:
     match result:
         ok(_): return ok(unit)
         error(cause): return error(io_error(cause))
 
-fn numbered(path: String, index: Int) -> String:
+fn numbered(path: String, index: Int) String:
     if index == 0: return path
 
     return "{path}.{index}"
 
-fn exists(fs: FileSystem, path: String) -> Bool:
+fn exists(fs: FileSystem, path: String) Bool:
     match fs.stat(path: path, follow_links: false):
         ok(_): return true
         error(_): return false
 
-fn age_of(modified: Timestamp) -> Duration:
+fn age_of(modified: Timestamp) Duration:
     match wall_clock().now().difference(modified):
         ok(age): return age
         error(_): return duration(0)
 
 # Adopts an existing file's size, and its modification time as the start of its age.
-fn adopt(w: Writer, info: FileInfo) -> Unit:
+fn adopt(w: Writer, info: FileInfo) Unit:
     w.size = info.size
-
     if info.size > 0: w.opened = clock().now().shift(age_of(info.modified).negate())
 
 # Opens the active file for append and reads its size and age.
-fn open_active(w: Writer) -> Result[Unit, LogError]:
+fn open_active(w: Writer) Result[Unit, LogError]:
     let handle = match w.fs.open(path: w.path, flags: "a", mode: 384):
         ok(opened): opened
         error(cause): return error(io_error(cause))
@@ -91,23 +77,18 @@ fn open_active(w: Writer) -> Result[Unit, LogError]:
 
     return ok(unit)
 
-fn close_file(w: Writer) -> Unit:
+fn close_file(w: Writer) Unit:
     if let handle = w.handle: handle.close()
-
     w.handle = none
 
 # Shifts path to path.1, path.1 to path.2, and so on. Files past max_files are removed.
-fn rotate(w: Writer) -> Result[Unit, LogError]:
+fn rotate(w: Writer) Result[Unit, LogError]:
     close_file(w)
     var last = 0
-
     while exists(w.fs, numbered(w.path, last + 1)):
         last = last + 1
-
     var keep = last + 1
-
     if w.max_files > 0: keep = w.max_files - 1
-
     var drop = last
 
     while drop >= keep and drop > 0:
@@ -115,7 +96,6 @@ fn rotate(w: Writer) -> Result[Unit, LogError]:
         drop = drop - 1
 
     var index = last
-
     if keep - 1 < index: index = keep - 1
 
     while index >= 0:
@@ -132,10 +112,9 @@ fn rotate(w: Writer) -> Result[Unit, LogError]:
         index = index - 1
 
     if keep == 0: try lift(w.fs.remove(path: w.path))
-
     return open_active(w)
 
-fn rotation_due(w: Writer, length: Int) -> Bool:
+fn rotation_due(w: Writer, length: Int) Bool:
     if w.size == 0: return false
     if w.max_bytes > 0 and w.size + length > w.max_bytes: return true
     if w.max_age_ns > 0: return (
@@ -144,32 +123,30 @@ fn rotation_due(w: Writer, length: Int) -> Bool:
 
     return false
 
-fn active_file(w: Writer) -> Result[FileHandle, LogError]:
+fn active_file(w: Writer) Result[FileHandle, LogError]:
     if let handle = w.handle: return ok(handle)
 
     return error(LogError.Closed)
 
-fn has_file(w: Writer) -> Bool:
+fn has_file(w: Writer) Bool:
     if let _handle = w.handle: return true
 
     return false
 
-fn append(w: Writer, data: Bytes) -> Result[Unit, LogError]:
+fn append(w: Writer, data: Bytes) Result[Unit, LogError]:
     if not has_file(w): try open_active(w)
-
     if rotation_due(w, data.length()): try rotate(w)
-
     let handle = try active_file(w)
     try lift(handle.write(data))
     w.size = w.size + data.length()
     return ok(unit)
 
-fn sync_file(w: Writer) -> Result[Unit, LogError]:
+fn sync_file(w: Writer) Result[Unit, LogError]:
     let handle = try active_file(w)
     return lift(handle.sync())
 
 # Keeps the first failure until a producer reports it.
-fn record_failure(failures: BlockingQueue[LogError], cause: LogError) -> Unit:
+fn record_failure(failures: BlockingQueue[LogError], cause: LogError) Unit:
     if failures.length() == 0: failures.put(cause)
 
 # Returns the failure the writer reported since the last call, if any. The unlocked length check keeps
@@ -177,7 +154,7 @@ fn record_failure(failures: BlockingQueue[LogError], cause: LogError) -> Unit:
 fn take_failure(
     failures: BlockingQueue[LogError],
     failure_lock: Synchronized[Unit]
-) -> Optional[LogError]:
+) Optional[LogError]:
     if failures.length() == 0: return none
 
     with locked = failure_lock.lock():
@@ -185,19 +162,19 @@ fn take_failure(
 
         return failures.take()
 
-fn store(w: Writer, failures: BlockingQueue[LogError], data: Bytes) -> Unit:
+fn store(w: Writer, failures: BlockingQueue[LogError], data: Bytes) Unit:
     match append(w, data):
         ok(_): return unit
         error(cause): return record_failure(failures, cause)
 
-fn serve(w: Writer, failures: BlockingQueue[LogError], item: Item) -> Unit:
+fn serve(w: Writer, failures: BlockingQueue[LogError], item: Item) Unit:
     match item:
         Record(data): return store(w, failures, data)
         Flush(reply):
             reply.put(sync_file(w))
             return unit
 
-fn run(w: Writer, queue: BlockingQueue[Item], failures: BlockingQueue[LogError]) -> Unit:
+fn run(w: Writer, queue: BlockingQueue[Item], failures: BlockingQueue[LogError]) Unit:
     while true:
         if let item = queue.take():
             serve(w, failures, item)
@@ -206,49 +183,47 @@ fn run(w: Writer, queue: BlockingQueue[Item], failures: BlockingQueue[LogError])
 
 # Queues a record without waiting. The queue holds 4096 items of headroom beyond `capacity`, so a put never waits
 # even when concurrent producers pass the length check together; only the writer removes items.
-fn admit(t: AsyncFileTransport, data: Bytes) -> Result[Unit, LogError]:
+fn admit(t: AsyncFileTransport, data: Bytes) Result[Unit, LogError]:
     if t.queue.length() >= t.capacity: return error(LogError.LimitExceeded)
     if not t.queue.put(Item.Record(data: data)): return error(LogError.Closed)
 
     return ok(unit)
 
-fn wait_for_writer(t: AsyncFileTransport) -> Result[Unit, LogError]:
+fn wait_for_writer(t: AsyncFileTransport) Result[Unit, LogError]:
     let reply = BlockingQueue[Result[Unit, LogError]](1)
     if not t.queue.put(Item.Flush(reply: reply)): return error(LogError.Closed)
-
     if let result = reply.take(): return result
 
     return error(LogError.Closed)
 
 impl Transport for AsyncFileTransport:
-    fn write(data: Bytes) -> Result[Unit, LogError]:
+    fn write(data: Bytes) Result[Unit, LogError]:
         if let cause = take_failure(self.failures, self.failure_lock): return error(
             cause
         )
 
         return admit(self, data)
 
-    fn flush() -> Result[Unit, LogError]:
+    fn flush() Result[Unit, LogError]:
         try wait_for_writer(self)
-
         if let cause = take_failure(self.failures, self.failure_lock): return error(
             cause
         )
 
         return ok(unit)
 
-    fn close() -> Unit:
+    fn close() Unit:
         self.queue.close()
         let _ignored = self.writer.join()
         self.group.close()
 
-fn not_positive(limit: Optional[Int]) -> Bool:
-    return limit.map(fn(value: Int) -> Bool: value <= 0).unwrap_or(false)
+fn not_positive(limit: Optional[Int]) Bool:
+    return limit.map(fn(value: Int) Bool: value <= 0).unwrap_or(false)
 
-fn age_not_positive(limit: Optional[Duration]) -> Bool:
+fn age_not_positive(limit: Optional[Duration]) Bool:
     return (
         limit
-        .map(fn(value: Duration) -> Bool: value.compare(duration(0)) <= 0)
+        .map(fn(value: Duration) Bool: value.compare(duration(0)) <= 0)
         .unwrap_or(false)
     )
 
@@ -259,7 +234,7 @@ export fn async_file_transport(
     max_age: Optional[Duration] = none,
     max_files: Optional[Int] = none,
     queue_size: Optional[Int] = none
-) -> Result[Transport, LogError]:
+) Result[Transport, LogError]:
     if not_positive(max_bytes) or not_positive(max_files) or not_positive(queue_size): return error(
         LogError.InvalidInput
     )
@@ -271,7 +246,7 @@ export fn async_file_transport(
         max_bytes: max_bytes.unwrap_or(0),
         max_age_ns: (
             max_age
-            .map(fn(limit: Duration) -> Int: limit.to_nanoseconds())
+            .map(fn(limit: Duration) Int: limit.to_nanoseconds())
             .unwrap_or(0)
         ),
         max_files: max_files.unwrap_or(0),
@@ -284,7 +259,7 @@ export fn async_file_transport(
     let queue = BlockingQueue[Item](capacity + 4096)
     let failures = BlockingQueue[LogError]()
     let group = TaskGroup()
-    let writer = group.start(fn() -> Unit: run(w, queue, failures))
+    let writer = group.start(fn() Unit: run(w, queue, failures))
     return ok(
         Transport(
             value: AsyncFileTransport(

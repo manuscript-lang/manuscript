@@ -12,7 +12,7 @@ func TestStandardContractCallsReuseOperationsPerSite(t *testing.T) {
 import {stdout} from "@std/io.ms"
 import {clock} from "@std/time.ms"
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
@@ -20,9 +20,9 @@ type Boom:
     code: Int
 
 impl Error for Boom:
-    fn message() -> String: "boom {self.code}"
+    fn message() String: "boom {self.code}"
 
-fn describe(e: Error) -> String: e.message()
+fn describe(e: Error) String: e.message()
 
 test "repeated calls through one site":
     let c = clock()

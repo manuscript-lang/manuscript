@@ -25,7 +25,7 @@ export fn compress(
     format: String,
     level: Int = 6,
     max_bytes: Optional[Int] = none
-) -> Result[Bytes, CompressionError]:
+) Result[Bytes, CompressionError]:
 
 # Decompresses exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive); others return Unsupported.
 # Stops when the supplied output limit is reached.
@@ -33,11 +33,11 @@ export fn decompress(
     data: Bytes,
     format: String,
     max_bytes: Optional[Int] = none
-) -> Result[Bytes, CompressionError]:
+) Result[Bytes, CompressionError]:
 
 impl Error for CompressionError:
     # Returns original Failed text, or a compression-prefixed diagnostic for other cases.
-    fn message() -> String:
+    fn message() String:
 
 # Selects a supported compression format; Deflate is raw DEFLATE without a wrapper.
 # Existing compress/decompress format: String calls remain available.
@@ -56,10 +56,10 @@ impl CompressionFormat:
         data: Bytes,
         level: Int = 6,
         max_bytes: Optional[Int] = none
-    ) -> Result[Bytes, CompressionError]:
+    ) Result[Bytes, CompressionError]:
 
     # Decompresses with the same cumulative output limit and validation as decompress.
     fn decompress(
         data: Bytes,
         max_bytes: Optional[Int] = none
-    ) -> Result[Bytes, CompressionError]:
+    ) Result[Bytes, CompressionError]:

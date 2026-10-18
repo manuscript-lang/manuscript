@@ -19,13 +19,13 @@ func TestPositionalArgumentStopsLaterEvaluation(t *testing.T) {
 	} {
 		t.Run(call, func(t *testing.T) {
 			source := `import panic from "@std/faults.ms"
-fn fail() -> Int: panic("first supplied argument")
-fn later() -> Int: panic("later argument or default")
-fn outer(first: Int, second: Int = later()) -> Int: panic("outer body")
+fn fail() Int: panic("first supplied argument")
+fn later() Int: panic("later argument or default")
+fn outer(first: Int, second: Int = later()) Int: panic("outer body")
 type Pair:
     first: Int
     second: Int
-export fn main() -> Int:
+export fn main() Int:
     let ignored = ` + call + `
     return 0
 `
@@ -43,7 +43,7 @@ func TestPositionalDiagnosticsJSON(t *testing.T) {
 		{"f(1)", "missing argument second"},
 		{"f(1, first: 2, second: 3)", "duplicate argument first"},
 	} {
-		source := "fn f(first: Int, second: Int) -> Int: first\nexport fn main() -> Int:\n    return " + tc.call + "\n"
+		source := "fn f(first: Int, second: Int) Int: first\nexport fn main() Int:\n    return " + tc.call + "\n"
 		file := filepath.Join(t.TempDir(), "arguments.ms")
 		if err := os.WriteFile(file, []byte(source), 0600); err != nil {
 			t.Fatal(err)

@@ -11,23 +11,23 @@ import (
 
 func TestDefaultArgumentBoundaries(t *testing.T) {
 	for _, tt := range []struct{ name, source, want string }{
-		{"wrong default type", "fn f(value: Int = true) -> Int:\n    return value\n", "expected Int, found Bool"},
-		{"later parameter", "fn f(first: Int = second, second: Int = 2) -> Int:\n    return first\n", "unknown binding second"},
-		{"self reference", "fn f(value: Int = value) -> Int:\n    return value\n", "unknown binding value"},
-		{"missing required", "fn f(first: Int = 1, second: Int) -> Int:\n    return first + second\nfn call() -> Int:\n    return f()\n", "missing argument second"},
-		{"duplicate argument", "fn f(value: Int = 1) -> Int:\n    return value\nfn call() -> Int:\n    return f(2, value: 3)\n", "duplicate argument value"},
-		{"unknown label", "fn f(value: Int = 1) -> Int:\n    return value\nfn call() -> Int:\n    return f(other: 3)\n", "unknown argument other"},
-		{"default does not infer generics", "fn f[T](value: T = 3) -> T:\n    return value\n", "expected T, found Int"},
-		{"omitted generic source", "fn f[T](value: T, copy: T = value) -> T:\n    return copy\nfn call() -> Int:\n    return f()\n", "missing argument value"},
-		{"annotation erases defaults", "fn f(value: Int = 1) -> Int:\n    return value\nfn call() -> Int:\n    let copy: fn(value: Int) -> Int = f\n    return copy()\n", "missing argument value"},
-		{"mutable binding erases defaults", "fn f(value: Int = 1) -> Int:\n    return value\nfn g(value: Int) -> Int:\n    return value\nfn call() -> Int:\n    var copy = f\n    copy = g\n    return copy()\n", "missing argument value"},
-		{"function parameter erases defaults", "fn f(value: Int = 1) -> Int:\n    return value\nfn apply(callback: fn(value: Int) -> Int) -> Int:\n    return callback()\n", "missing argument value"},
-		{"function result erases defaults", "fn f(value: Int = 1) -> Int:\n    return value\nfn make() -> fn(value: Int) -> Int:\n    return f\nfn call() -> Int:\n    return make()()\n", "missing argument value"},
-		{"generic forwarding erases defaults", "fn f(value: Int = 1) -> Int:\n    return value\nfn forward[T](value: T) -> T:\n    return value\nfn call() -> Int:\n    let copy = forward(f)\n    return copy()\n", "missing argument value"},
-		{"contract requires arguments", "interface Add:\n    fn add(value: Int) -> Int\ntype Offset:\n    value: Int\nimpl Add for Offset:\n    fn add(value: Int = self.value) -> Int:\n        return value\nfn call(value: Add) -> Int:\n    return value.add()\n", "missing argument value"},
-		{"defaults count toward callback arity", "import TaskGroup from \"@std/tasks.ms\"\nfn f(value: Int = 1) -> Int:\n    return value\nfn call() -> Unit:\n    let group = TaskGroup()\n    let result = group.start(f)\n", "takes 1 parameter but this position expects 0"},
-		{"capture assignment in default", "fn f() -> Unit:\n    var outer = 1\n    let callback = fn(value: Int = (fn() -> Int:\n        outer = 2\n        return outer\n    )()) -> Int:\n        return value\n", "cannot assign a captured binding"},
-		{"recursive specialization in default", "fn grow[T](value: T, optional: Int = grow(value: [value])) -> Int:\n    return optional\n", "recursive generic applications must preserve their parameters"},
+		{"wrong default type", "fn f(value: Int = true) Int:\n    return value\n", "expected Int, found Bool"},
+		{"later parameter", "fn f(first: Int = second, second: Int = 2) Int:\n    return first\n", "unknown binding second"},
+		{"self reference", "fn f(value: Int = value) Int:\n    return value\n", "unknown binding value"},
+		{"missing required", "fn f(first: Int = 1, second: Int) Int:\n    return first + second\nfn call() Int:\n    return f()\n", "missing argument second"},
+		{"duplicate argument", "fn f(value: Int = 1) Int:\n    return value\nfn call() Int:\n    return f(2, value: 3)\n", "duplicate argument value"},
+		{"unknown label", "fn f(value: Int = 1) Int:\n    return value\nfn call() Int:\n    return f(other: 3)\n", "unknown argument other"},
+		{"default does not infer generics", "fn f[T](value: T = 3) T:\n    return value\n", "expected T, found Int"},
+		{"omitted generic source", "fn f[T](value: T, copy: T = value) T:\n    return copy\nfn call() Int:\n    return f()\n", "missing argument value"},
+		{"annotation erases defaults", "fn f(value: Int = 1) Int:\n    return value\nfn call() Int:\n    let copy: fn(value: Int) Int = f\n    return copy()\n", "missing argument value"},
+		{"mutable binding erases defaults", "fn f(value: Int = 1) Int:\n    return value\nfn g(value: Int) Int:\n    return value\nfn call() Int:\n    var copy = f\n    copy = g\n    return copy()\n", "missing argument value"},
+		{"function parameter erases defaults", "fn f(value: Int = 1) Int:\n    return value\nfn apply(callback: fn(value: Int) Int) Int:\n    return callback()\n", "missing argument value"},
+		{"function result erases defaults", "fn f(value: Int = 1) Int:\n    return value\nfn make() fn(value: Int) Int:\n    return f\nfn call() Int:\n    return make()()\n", "missing argument value"},
+		{"generic forwarding erases defaults", "fn f(value: Int = 1) Int:\n    return value\nfn forward[T](value: T) T:\n    return value\nfn call() Int:\n    let copy = forward(f)\n    return copy()\n", "missing argument value"},
+		{"contract requires arguments", "interface Add:\n    fn add(value: Int) Int\ntype Offset:\n    value: Int\nimpl Add for Offset:\n    fn add(value: Int = self.value) Int:\n        return value\nfn call(value: Add) Int:\n    return value.add()\n", "missing argument value"},
+		{"defaults count toward callback arity", "import TaskGroup from \"@std/tasks.ms\"\nfn f(value: Int = 1) Int:\n    return value\nfn call() Unit:\n    let group = TaskGroup()\n    let result = group.start(f)\n", "takes 1 parameter but this position expects 0"},
+		{"capture assignment in default", "fn f() Unit:\n    var outer = 1\n    let callback = fn(value: Int = (fn() Int:\n        outer = 2\n        return outer\n    )()) Int:\n        return value\n", "cannot assign a captured binding"},
+		{"recursive specialization in default", "fn grow[T](value: T, optional: Int = grow(value: [value])) Int:\n    return optional\n", "recursive generic applications must preserve their parameters"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			m, err := parser.Parse("defaults.ms", tt.source)
@@ -46,7 +46,7 @@ func TestDefaultArgumentBoundaries(t *testing.T) {
 }
 
 func TestDefaultsDoNotMutateSourceAST(t *testing.T) {
-	m, err := parser.Parse("defaults.ms", "fn f(value: Int = 3) -> Int:\n    return value\nfn call() -> Int:\n    return f()\n")
+	m, err := parser.Parse("defaults.ms", "fn f(value: Int = 3) Int:\n    return value\nfn call() Int:\n    return f()\n")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,11 +66,11 @@ func TestDefaultsDoNotMutateSourceAST(t *testing.T) {
 func TestDefaultCapturesShareFreely(t *testing.T) {
 	source := `import TaskGroup from "@std/tasks.ms"
 interface Read:
-    fn get() -> Int
-fn call(view: Read) -> Unit:
-    let callback = fn(value: Int = view.get()) -> Int:
+    fn get() Int
+fn call(view: Read) Unit:
+    let callback = fn(value: Int = view.get()) Int:
         return value
-    let task = fn() -> Int:
+    let task = fn() Int:
         return callback()
     let group = TaskGroup()
     let result = group.start(task)
@@ -86,7 +86,7 @@ fn call(view: Read) -> Unit:
 }
 
 func TestUnknownTypeDoesNotCascade(t *testing.T) {
-	m, err := parser.Parse("cascade.ms", "fn peek() -> Missing:\n    return 0\nfn f() -> Int:\n    match peek():\n        some(x):\n            return x\n        none:\n            return 0\n")
+	m, err := parser.Parse("cascade.ms", "fn peek() Missing:\n    return 0\nfn f() Int:\n    match peek():\n        some(x):\n            return x\n        none:\n            return 0\n")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func TestUnknownTypeDoesNotCascade(t *testing.T) {
 }
 
 func TestPositionalCallNeedsNoLabelDiagnostic(t *testing.T) {
-	m, err := parser.Parse("labels.ms", "fn f(a: Int, b: Int) -> Int:\n    return a + b\nfn call() -> Int:\n    return f(1, 2)\n")
+	m, err := parser.Parse("labels.ms", "fn f(a: Int, b: Int) Int:\n    return a + b\nfn call() Int:\n    return f(1, 2)\n")
 	if err != nil {
 		t.Fatal(err)
 	}

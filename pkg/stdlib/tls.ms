@@ -60,7 +60,7 @@ export type TlsOptions:
 export fn parse_certificates(
     pem: String,
     max_certificates: Optional[Int] = none
-) -> Result[List[CertificateInfo], TlsError]:
+) Result[List[CertificateInfo], TlsError]:
 
 # Verifies a PEM certificate chain against roots, name constraints, and the supplied time.
 export fn verify_certificates(
@@ -68,8 +68,8 @@ export fn verify_certificates(
     roots_pem: String,
     server_name: String,
     now: Timestamp
-) -> Result[Unit, TlsError]:
+) Result[Unit, TlsError]:
 
 impl Error for TlsError:
     # Returns the fixed diagnostic `TLS: <reason>`, such as `TLS: authentication failed`, without echoing certificate text.
-    fn message() -> String:
+    fn message() String:

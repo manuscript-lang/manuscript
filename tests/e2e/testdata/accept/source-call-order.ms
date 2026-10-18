@@ -1,6 +1,6 @@
 import panic from "@std/faults.ms"
 
-fn pair(a: Int, b: Int) -> Int: a * 10 + b
+fn pair(a: Int, b: Int) Int: a * 10 + b
 
 test "arguments":
     var value = 1
@@ -15,11 +15,11 @@ test "arguments":
     )
     if result != 12: return panic("argument order")
 
-fn optional(value: Optional[Int]) -> Int: value.unwrap()
+fn optional(value: Optional[Int]) Int: value.unwrap()
 
-fn defaulted(value: Int = 3) -> Int: value
+fn defaulted(value: Int = 3) Int: value
 
-fn identity[T](value: T) -> T: value
+fn identity[T](value: T) T: value
 
 test "source call dispatch contracts":
     if optional(4) != 4: return panic("optional argument")

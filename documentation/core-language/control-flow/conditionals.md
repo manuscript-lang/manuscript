@@ -8,7 +8,7 @@ weight = 1
 `if` runs a block when a `Bool` condition is true; `else` runs otherwise.
 
 ```manuscript
-fn status(active: Bool) -> String:
+fn status(active: Bool) String:
     if active:
         return "Active"
     else:
@@ -18,7 +18,7 @@ fn status(active: Bool) -> String:
 A short branch can be one simple statement on the same line:
 
 ```manuscript
-fn status(active: Bool) -> String:
+fn status(active: Bool) String:
     if active: return "Active"
     else: return "Inactive"
 ```
@@ -33,7 +33,7 @@ See the [suite rules](../basics/grammar.md#statements-and-patterns) for mixing i
 - An `else if` chain tests in order and stops at the first match.
 
 ```manuscript
-fn classify(value: Int) -> String:
+fn classify(value: Int) String:
     if value < 0:
         return "negative"
     else if value == 0:
@@ -49,7 +49,7 @@ fn classify(value: Int) -> String:
 `if let name = expression:` runs its block when an [Optional](../types/optionals.md) holds a value or a [Result](../errors/results.md) is `ok`, binding `name` immutably inside the block. `else` runs for `none` or an error, where `name` is not visible. A Result's error is not captured; use `try` or `unwrap_error()` when it matters. The expression evaluates once and must be an `Optional` or `Result`.
 
 ```manuscript
-fn greeting(name: Optional[String]) -> String:
+fn greeting(name: Optional[String]) String:
     if let value = name:
         return "Hello, " + value
     else:
@@ -57,7 +57,7 @@ fn greeting(name: Optional[String]) -> String:
 ```
 
 ```manuscript
-fn port(lookup: Result[Int, String]) -> Int:
+fn port(lookup: Result[Int, String]) Int:
     if let value = lookup:
         return value
     return 8080
@@ -70,7 +70,7 @@ A present `0`, `false`, or empty string still takes the first branch. The bindin
 Validate with an early return:
 
 ```manuscript
-fn nonnegative(value: Int) -> Bool:
+fn nonnegative(value: Int) Bool:
     if value < 0:
         return false
 

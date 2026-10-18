@@ -44,7 +44,7 @@ SharedViewConstruction = "(", SharedContractType, ")", CallArguments ;
 ListLiteral   = "[", [ Expression, { ",", Expression }, [ "," ] ], "]" ;
 MapLiteral    = "{", [ MapEntry, { ",", MapEntry }, [ "," ] ], "}" ;
 MapEntry      = Expression, ":", Expression ;
-FunctionExpression = "fn", "(", [ CallbackParameters ], ")", [ "->", Type ], FunctionSuite ;
+FunctionExpression = "fn", "(", [ CallbackParameters ], ")", [ Type ], FunctionSuite ;
 MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
                   MatchArm, { MatchArm }, DEDENT ;
 ```
@@ -71,7 +71,7 @@ MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
 | `x \| try` | `try x`: unwrap the value so far |
 
 ```manuscript
-fn load(path: String) -> Result[Config, ConfigError]:
+fn load(path: String) Result[Config, ConfigError]:
     let config = try read(path)
         | try parse
         | normalize
@@ -138,7 +138,7 @@ See [compatibility](../types/compatibility.md) and [error propagation](../errors
 ## Examples
 
 ```manuscript
-fn calculated(value: Int, active: Bool) -> Int:
+fn calculated(value: Int, active: Bool) Int:
     let product = 1 + 2 * 3             # 7
     let same = not value == product     # not (value == product)
     if active and same:
@@ -147,7 +147,7 @@ fn calculated(value: Int, active: Bool) -> Int:
 ```
 
 ```manuscript
-fn invalid(value: Int, ratio: Float) -> Bool:
+fn invalid(value: Int, ratio: Float) Bool:
     let mixed = value + ratio           # Type error: exact numeric types differ.
     return 0 < value < 10               # Syntax error: comparison chain.
 ```

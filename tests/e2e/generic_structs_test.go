@@ -10,7 +10,7 @@ import (
 func TestGenericRecordInstantiationsKeepSemantics(t *testing.T) {
 	result := compiler.CompileSource("generic-structs.ms", `import panic from "@std/faults.ms"
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
@@ -22,13 +22,13 @@ type Pair[A, B]:
     first: A
     second: B
 
-fn wrap[T](value: T) -> Box[T]:
+fn wrap[T](value: T) Box[T]:
     return Box[T](v: value, n: 1)
 
-fn unwrap[T](b: Box[T]) -> T:
+fn unwrap[T](b: Box[T]) T:
     return b.v
 
-fn bump(b: Box[Int]) -> Int:
+fn bump(b: Box[Int]) Int:
     return b.v + b.n
 
 test "generic records":

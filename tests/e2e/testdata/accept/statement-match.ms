@@ -5,7 +5,7 @@ type Shape:
     case Rect(w: Int, h: Int)
     case Dot
 
-fn area(shape: Shape) -> Int:
+fn area(shape: Shape) Int:
     match shape:
         Circle(r): return 3 * r * r
         Rect(w, h): return w * h
@@ -13,7 +13,7 @@ fn area(shape: Shape) -> Int:
 
     return -1
 
-fn first_positive(values: List[Optional[Int]]) -> Int:
+fn first_positive(values: List[Optional[Int]]) Int:
     var index = 0
 
     while index < values.length():
@@ -28,7 +28,7 @@ fn first_positive(values: List[Optional[Int]]) -> Int:
 
     return -1
 
-fn nested(rows: List[List[Optional[Int]]]) -> Int:
+fn nested(rows: List[List[Optional[Int]]]) Int:
     var total = 0
 
     for row in rows:
@@ -41,7 +41,7 @@ fn nested(rows: List[List[Optional[Int]]]) -> Int:
 
     return total
 
-fn side_effects(shape: Shape) -> Int:
+fn side_effects(shape: Shape) Int:
     var count = 0
 
     match shape:

@@ -4,14 +4,14 @@ import JsonLimits from "@std/json.ms"
 type Counter:
     calls: Int
 
-fn fallback(counter: Counter) -> Int:
+fn fallback(counter: Counter) Int:
     counter.calls = counter.calls + 1
     return 42
 
-fn value_or[T](value: Optional[T], fallback: T) -> T:
+fn value_or[T](value: Optional[T], fallback: T) T:
     return value.unwrap_or(fallback)
 
-fn increment(value: Int) -> Int: value + 1
+fn increment(value: Int) Int: value + 1
 
 test "Optional presence and extraction preserve false and zero":
     let present: Optional[Int] = some(0)
@@ -57,7 +57,7 @@ test "Optional methods retain generic payload and receiver identity":
     extract().calls = 4
     if counter.calls != 4: return panic("stored method lost its receiver")
 
-    let callback: Optional[fn(value: Int) -> Int] = some(increment)
+    let callback: Optional[fn(value: Int) Int] = some(increment)
     if callback.unwrap()(2) != 3: return panic("function payload type lost")
 
     let snapshot = outer.clone()

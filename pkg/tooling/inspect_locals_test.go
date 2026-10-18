@@ -8,7 +8,7 @@ import (
 )
 
 func TestLocalMetadataIsDeterministic(t *testing.T) {
-	source := "fn answer(input: Int) -> Int:\n    let value = input\n    return value\n"
+	source := "fn answer(input: Int) Int:\n    let value = input\n    return value\n"
 	compile := func() []byte {
 		result := compiler.CompileSource("main.ms", source, compiler.Options{})
 		if !result.Success() {

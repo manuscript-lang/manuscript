@@ -8,12 +8,12 @@ type Resource:
     counter: Counter
 
 impl Closeable for Resource:
-    fn close() -> Unit:
+    fn close() Unit:
         self.counter.count = self.counter.count + 1
 
-fn identity[T](value: T) -> T: return value
+fn identity[T](value: T) T: return value
 
-fn amount(text: String, counter: Counter) -> Result[Int, String]:
+fn amount(text: String, counter: Counter) Result[Int, String]:
     with resource = Resource(counter: counter):
         let cents = match text.parse_int():
             some(value):
@@ -23,25 +23,25 @@ fn amount(text: String, counter: Counter) -> Result[Int, String]:
 
         return ok(value: cents + 1)
 
-fn early(value: Optional[Int]) -> Int:
+fn early(value: Optional[Int]) Int:
     let number = match value:
         some(number): number
         none: return 9
 
     return number + 1
 
-fn all_return(value: Optional[Int]) -> Int:
+fn all_return(value: Optional[Int]) Int:
     let unreachable = match value:
         some(number): return number
         none: return 9
 
-fn tick(counter: Counter) -> Int:
+fn tick(counter: Counter) Int:
     if counter.count != 1: return panic("receiver must evaluate first")
 
     counter.count = counter.count + 1
     return 0
 
-fn values(counter: Counter) -> List[Int]:
+fn values(counter: Counter) List[Int]:
     counter.count = counter.count + 1
     return [7, 8]
 
@@ -65,7 +65,7 @@ test "indexing and generic applications coexist":
     if identity[Int](items[0].unwrap()) != 10:
         return panic("generic call")
 
-    let callbacks: List[fn(value: Int) -> Int] = [identity[Int]]
+    let callbacks: List[fn(value: Int) Int] = [identity[Int]]
     if callbacks[0].unwrap()(2) != 2 or callbacks[indices[0].unwrap()].unwrap()(3) != 3:
         return panic("indexed callable")
 
@@ -94,7 +94,7 @@ test "string concatenation and scalar ordering":
         return panic("Unicode scalar order")
 
     let sorted = ["z", "a", "b"].sorted(
-        fn(left: String, right: String) -> Int:
+        fn(left: String, right: String) Int:
             if left < right: return -1
             if left > right: return 1
 
@@ -143,7 +143,7 @@ test "match expressions preserve returns and cleanup":
     )
     if result != 4: return panic("match argument")
 
-    let callback = fn(value: Optional[Int]) -> Int:
+    let callback = fn(value: Optional[Int]) Int:
         let number = match value:
             some(number): number
             none: return 42
@@ -203,7 +203,7 @@ test "contextual values infer from later arms":
 
     if list[0].unwrap() != 5: return panic("list inference")
 
-fn returned_argument(counter: Counter) -> Int:
+fn returned_argument(counter: Counter) Int:
     let absent: Optional[Int] = none
     return combine(
         first: match absent:
@@ -213,9 +213,9 @@ fn returned_argument(counter: Counter) -> Int:
         second: tick(counter)
     )
 
-fn combine(first: Int, second: Int) -> Int: return first + second
+fn combine(first: Int, second: Int) Int: return first + second
 
-fn propagated(text: String) -> Result[Int, String]:
+fn propagated(text: String) Result[Int, String]:
     let result = match text.parse_int():
         some(value):
             try Result[Int, String].ok(value: value)
@@ -224,7 +224,7 @@ fn propagated(text: String) -> Result[Int, String]:
 
     return ok(value: result)
 
-fn returned_loop(value: Optional[Int]) -> Int:
+fn returned_loop(value: Optional[Int]) Int:
     var index = 0
 
     while true:
@@ -268,7 +268,7 @@ test "expression exits preserve caller boundaries and evaluation order":
 
     if iterations != 3: return panic("nested loop target")
 
-fn condition_exit(value: Optional[Int]) -> Int:
+fn condition_exit(value: Optional[Int]) Int:
     while true:
         while (
             match value:
@@ -294,7 +294,7 @@ test "indexing preserves zero and nested optionals":
     if nested[1].unwrap().unwrap() != 0 or nested[2].is_some():
         return panic("nested optional indexing")
 
-fn observed_optional(counter: Counter) -> Optional[Int]:
+fn observed_optional(counter: Counter) Optional[Int]:
     counter.count = counter.count + 1
     return some(value: 5)
 
@@ -310,7 +310,7 @@ test "match evaluates its input once and only the selected arm":
     if result != 6 or counter.count != 11:
         return panic("match evaluation count")
 
-fn inline_match(value: Optional[Int]) -> Int: match value:
+fn inline_match(value: Optional[Int]) Int: match value:
     some(number): number
     none: 0
 

@@ -4,14 +4,14 @@ import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
-fn texts(values: List[JsonValue]) -> List[String]:
+fn texts(values: List[JsonValue]) List[String]:
     let result: List[String] = []
     for item in values:
         result.append(value(stringify(item)))
     return result
 
 # Feeds the input in chunks of `size` bytes and returns every decoded value as text.
-fn decode(input: Bytes, size: Int) -> List[String]:
+fn decode(input: Bytes, size: Int) List[String]:
     let reader = value(decoder())
     let result: List[String] = []
     var offset = 0

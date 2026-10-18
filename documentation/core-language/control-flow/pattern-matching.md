@@ -10,7 +10,7 @@ weight = 3
 `match` is an expression: it can initialize a binding, be an argument, or stand alone with its result discarded. The scrutinee evaluates once and only the selected arm runs. This handles the `Payment` type from [alternatives](../types/alternatives.md):
 
 ```manuscript
-fn describe(payment: Payment) -> String:
+fn describe(payment: Payment) String:
     match payment:
         Paid(receipt):
             return "Paid: {receipt}"
@@ -36,7 +36,7 @@ type Cents:
     case Valid(amount: Int)
     case Invalid
 
-fn total(cents: Cents) -> Result[Int, String]:
+fn total(cents: Cents) Result[Int, String]:
     let amount = match cents:
         Valid(value):
             value
@@ -58,7 +58,7 @@ type Position:
     case Point(x: Int, y: Int)
     case Unknown
 
-fn horizontal(position: Position) -> Int:
+fn horizontal(position: Position) Int:
     match position:
         Position.Point(horizontal_value, _):
             return horizontal_value
@@ -78,7 +78,7 @@ fn horizontal(position: Position) -> Int:
 Arms never fall through, and a missing case is a compile error. `_:` is the wildcard: allowed once, last, binds nothing, and covers the remaining cases. Rejected: duplicate or unknown cases (qualified and unqualified spellings of one case are duplicates), an arm after the wildcard, and a wildcard after every case is covered.
 
 ```manuscript
-fn paid(payment: Payment) -> Bool:
+fn paid(payment: Payment) Bool:
     match payment:
         Paid(_):
             return true
@@ -99,13 +99,13 @@ A contract view keeps its concrete receiver. `ConcreteType(receiver)` recovers i
 ```text
 import JsonError from "@std/json.ms"
 
-fn describe(cause: Error) -> String:
+fn describe(cause: Error) String:
     match cause:
         JsonError(json): return describe_json(json)
         _:
             return cause.message()
 
-fn describe_json(cause: JsonError) -> String:
+fn describe_json(cause: JsonError) String:
     match cause:
         InvalidInput: return "Invalid JSON limits"
         InvalidData: return "Malformed JSON"

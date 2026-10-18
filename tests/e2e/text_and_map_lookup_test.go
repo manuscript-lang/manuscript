@@ -14,16 +14,16 @@ type Point:
     x: Int
     y: Int
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
-fn halve(n: Int) -> Optional[Int]:
+fn halve(n: Int) Optional[Int]:
     if n % 2 != 0:
         return none
     return some(value: n / 2)
 
-fn describe(key: Point, m: Map[Point, String]) -> String:
+fn describe(key: Point, m: Map[Point, String]) String:
     match m.get(key: key):
         some(v):
             return "found {v}"

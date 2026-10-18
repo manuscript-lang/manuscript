@@ -12,11 +12,11 @@ import (
 
 func TestActionableDiagnosticsCLI(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "money.ms"), []byte("export type MoneyError:\n    case Invalid\nexport fn parse_cents() -> Int: 0\nexport fn format_cents() -> String: \"0\"\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "money.ms"), []byte("export type MoneyError:\n    case Invalid\nexport fn parse_cents() Int: 0\nexport fn format_cents() String: \"0\"\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct{ name, source, token, code, hint string }{
-		{"string-match", "fn f(command: String) -> Int:\n    match command:\n        \"réport\": return 1\n    return 0\n", "\"réport\"", "MS1000", "compare strings with 'if"},
+		{"string-match", "fn f(command: String) Int:\n    match command:\n        \"réport\": return 1\n    return 0\n", "\"réport\"", "MS1000", "compare strings with 'if"},
 		{"import", "import money from \"./money.ms\"\n", "money", "MS2002", "exports: MoneyError, format_cents, parse_cents; namespace imports are unsupported"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -63,7 +63,7 @@ func TestCompoundAssignmentRunsNatively(t *testing.T) {
 		want string
 	}{{"+", "14"}, {"-", "10"}, {"*", "24"}, {"/", "6"}, {"%", "0"}} {
 		t.Run(tc.op, func(t *testing.T) {
-			source := "export fn main() -> Int:\r\n    var total = 12\r\n    total " + tc.op + "= 2 # preserve\r\n    return total - " + tc.want + "\r\n"
+			source := "export fn main() Int:\r\n    var total = 12\r\n    total " + tc.op + "= 2 # preserve\r\n    return total - " + tc.want + "\r\n"
 			file := filepath.Join(t.TempDir(), "main.ms")
 			if err := os.WriteFile(file, []byte(source), 0600); err != nil {
 				t.Fatal(err)

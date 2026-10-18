@@ -11,7 +11,7 @@ import (
 // bodies. Native declarations use the same declaration-only syntax as stdlib/*.ms.
 func documentDeclaration(d *syntax.Declaration, keyword, name string, source ...string) string {
 	if d.Kind == syntax.KindFn {
-		return "fn " + name + documentTypeParameters(d.TypeParams) + documentParameters(d.Params, source...) + " -> " + documentType(d.Result) + ":\n"
+		return "fn " + name + documentTypeParameters(d.TypeParams) + documentParameters(d.Params, source...) + " " + documentType(d.Result) + ":\n"
 	}
 	var b strings.Builder
 	b.WriteString(keyword + " " + name + documentTypeParameters(d.TypeParams))
@@ -93,7 +93,7 @@ func documentParameters(parameters []syntax.Parameter, source ...string) string 
 
 func documentType(t *syntax.Type) string {
 	if t.Name == "fn" {
-		return "fn" + documentParameters(t.Params) + " -> " + documentType(t.Result)
+		return "fn" + documentParameters(t.Params) + " " + documentType(t.Result)
 	}
 	value := t.Name
 	if len(t.Args) > 0 {

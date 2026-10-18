@@ -3,7 +3,7 @@ import panic from "@std/faults.ms"
 type Counter:
     value: Int = 0
 
-fn mark(counter: Counter, value: Int) -> Int:
+fn mark(counter: Counter, value: Int) Int:
     counter.value = counter.value * 10 + value
     return value
 
@@ -16,7 +16,7 @@ type Ordered:
 type Data:
     number: Int = 5
     values: List[Int] = [number]
-    callback: fn() -> Int = (
+    callback: fn() Int = (
         fn():
             return number
     )
@@ -82,18 +82,18 @@ test "mutable defaults have fresh storage":
         return panic("record defaults must not share collection storage")
 
 interface ReadWithDefault:
-    fn get(fallback: Optional[Int] = none) -> Int
+    fn get(fallback: Optional[Int] = none) Int
 
 type Reader:
     number: Int = 5
 
 impl ReadWithDefault for Reader:
-    fn get(fallback: Optional[Int]) -> Int:
+    fn get(fallback: Optional[Int]) Int:
         return fallback.unwrap_or(self.number)
 
 type Marker:
 
-fn no_op() -> Unit:
+fn no_op() Unit:
 
 test "ordinary empty declarations and interface omission":
     no_op()

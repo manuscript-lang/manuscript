@@ -132,32 +132,32 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 | Receiver or constructor | Signature/result |
 | --- | --- |
 | `List[T]()` | Empty `List[T]` |
-| `List[T]` | `length() -> Int`; `at(index: Int) -> Optional[T]`; `[index] -> Optional[T]` |
-| `List[T]` | `append(value: T) -> List[T]`; `concat(values: List[T]) -> List[T]` |
-| `List[T]` | `set(index: Int, value: T) -> List[T]`; `remove(index: Int) -> List[T]` |
-| `List[T]` | `insert(index: Int, value: T) -> List[T]`; `pop() -> Optional[T]` |
+| `List[T]` | `length() Int`; `at(index: Int) Optional[T]`; `[index] Optional[T]` |
+| `List[T]` | `append(value: T) List[T]`; `concat(values: List[T]) List[T]` |
+| `List[T]` | `set(index: Int, value: T) List[T]`; `remove(index: Int) List[T]` |
+| `List[T]` | `insert(index: Int, value: T) List[T]`; `pop() Optional[T]` |
 | `Map[K, V]()` | Empty `Map[K, V]` |
-| `Map[K, V]` | `length() -> Int`; `get(key: K) -> Optional[V]`; `contains(key: K) -> Bool` |
-| `Map[K, V]` | `is_empty() -> Bool`; `get_or(key: K, fallback: V) -> V` |
-| `Map[K, V]` | `filter(predicate: fn(key: K, value: V) -> Bool) -> Map[K, V]` |
-| `Map[K, V]` | `map[W](transform: fn(key: K, value: V) -> W) -> Map[K, W]` |
-| `Map[K, V]` | `map_keys[W: Hashable](transform: fn(key: K, value: V) -> W) -> Map[W, V]` |
-| `Map[K, V]` | `fold[A](initial: A, step: fn(accumulator: A, key: K, value: V) -> A) -> A` |
+| `Map[K, V]` | `length() Int`; `get(key: K) Optional[V]`; `contains(key: K) Bool` |
+| `Map[K, V]` | `is_empty() Bool`; `get_or(key: K, fallback: V) V` |
+| `Map[K, V]` | `filter(predicate: fn(key: K, value: V) Bool) Map[K, V]` |
+| `Map[K, V]` | `map[W](transform: fn(key: K, value: V) W) Map[K, W]` |
+| `Map[K, V]` | `map_keys[W: Hashable](transform: fn(key: K, value: V) W) Map[W, V]` |
+| `Map[K, V]` | `fold[A](initial: A, step: fn(accumulator: A, key: K, value: V) A) A` |
 | `Map[K, V]` | `fold_right[A]` uses the same step in reverse insertion order |
-| `Map[K, V]` | `find(predicate: fn(key: K, value: V) -> Bool) -> Optional[MapEntry[K, V]]` |
+| `Map[K, V]` | `find(predicate: fn(key: K, value: V) Bool) Optional[MapEntry[K, V]]` |
 | `Map[K, V]` | `find_last` uses the same predicate and entry result, searching from the end |
-| `Map[K, V]` | `some(predicate: fn(key: K, value: V) -> Bool) -> Bool`; `every` uses the same predicate |
-| `Map[K, V]` | `add(key: K, value: V) -> Map[K, V]`; `remove(key: K) -> Map[K, V]` |
+| `Map[K, V]` | `some(predicate: fn(key: K, value: V) Bool) Bool`; `every` uses the same predicate |
+| `Map[K, V]` | `add(key: K, value: V) Map[K, V]`; `remove(key: K) Map[K, V]` |
 | `Set[T]()` | Empty `Set[T]` |
-| `Set[T]` | `length() -> Int`; `contains(value: T) -> Bool` |
-| `Set[T]` | `is_empty() -> Bool`; `filter(predicate: fn(value: T) -> Bool) -> Set[T]` |
-| `Set[T]` | `map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]` |
-| `Set[T]` | `add(value: T) -> Set[T]`; `remove(value: T) -> Set[T]` |
-| `Set[T]` | `fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A` |
+| `Set[T]` | `length() Int`; `contains(value: T) Bool` |
+| `Set[T]` | `is_empty() Bool`; `filter(predicate: fn(value: T) Bool) Set[T]` |
+| `Set[T]` | `map[U: Hashable](transform: fn(value: T) U) Set[U]` |
+| `Set[T]` | `add(value: T) Set[T]`; `remove(value: T) Set[T]` |
+| `Set[T]` | `fold[A](initial: A, step: fn(accumulator: A, value: T) A) A` |
 | `Set[T]` | `fold_right[A]` uses the same step in reverse insertion order |
-| `Set[T]` | `find(predicate: fn(value: T) -> Bool) -> Optional[T]` |
+| `Set[T]` | `find(predicate: fn(value: T) Bool) Optional[T]` |
 | `Set[T]` | `find_last` uses the same predicate and payload result, searching from the end |
-| `Set[T]` | `some(predicate: fn(value: T) -> Bool) -> Bool`; `every` uses the same predicate |
+| `Set[T]` | `some(predicate: fn(value: T) Bool) Bool`; `every` uses the same predicate |
 
 An empty constructor needs explicit type arguments or a complete expected application, and creates fresh storage. `values[index]` equals `values.at(index)`: an `Optional[T]` accepting negative indexes, `none` out of range, so `values[0].unwrap_or(0)` needs no length check. It narrows to `T` only when the index is proven ([Proven indexes](#proven-indexes)). Bytes `.at` is the same. A size above the maximum `Int` faults.
 
@@ -166,13 +166,13 @@ An empty constructor needs explicit type arguments or a complete expected applic
 `values[index]` has type `T` when a call-free guard on the same local bindings proves it in range:
 
 ```manuscript
-fn weighted(values: List[Int], index: Int) -> Int:
+fn weighted(values: List[Int], index: Int) Int:
     if index < 0 or index >= values.length():
         return 0
 
     return values[index] * 2
 
-fn total(values: List[Int]) -> Int:
+fn total(values: List[Int]) Int:
     var sum = 0
     var i = 0
 
@@ -219,7 +219,7 @@ Set `union`, `intersection`, `difference`, and `symmetric_difference` (values in
 import panic from "@std/faults.ms"
 
 
-fn positives(values: List[Int]) -> List[Int]:
+fn positives(values: List[Int]) List[Int]:
     var result: List[Int] = []
     for value in values:
         if value > 0:
@@ -247,7 +247,7 @@ Map `get_or` evaluates its fallback eagerly and never inserts. Map and Set `filt
 `map` transforms values and keeps keys; `map_keys` transforms keys (outputs must be `Hashable`) and keeps values. Callbacks receive `key` and `value`, visit a snapshot, and return fresh Map storage with shallow references. Equal transformed keys keep the first key and position, and later entries replace the value, as in ordinary insertion. Optional and Result values are not flattened, and output values need not be `Hashable`.
 
 ```manuscript
-fn increment_scores(scores: Map[String, Int]) -> Map[String, Int]:
+fn increment_scores(scores: Map[String, Int]) Map[String, Int]:
     return scores.map(fn(name, score): score + 1)
 ```
 

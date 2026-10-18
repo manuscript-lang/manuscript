@@ -1,26 +1,26 @@
 import panic from "@std/faults.ms"
 
-fn apply[T, U](value: T, transform: fn(value: T) -> U) -> U: transform(value)
+fn apply[T, U](value: T, transform: fn(value: T) U) U: transform(value)
 
-fn chain[T, U](first: fn() -> T, second: fn(value: T) -> U) -> U: second(first())
+fn chain[T, U](first: fn() T, second: fn(value: T) U) U: second(first())
 
-fn with_result[T](transform: fn() -> Result[T, String]) -> Result[T, String]: transform()
+fn with_result[T](transform: fn() Result[T, String]) Result[T, String]: transform()
 
-fn checked() -> Result[Int, String]: ok(3)
+fn checked() Result[Int, String]: ok(3)
 
 type Box[T]:
     value: T
 
 type Callback[T, U]:
-    transform: fn(value: T) -> U
+    transform: fn(value: T) U
 
 interface Read:
-    fn get() -> Int
+    fn get() Int
 
 impl Read for Box[Int]:
-    fn get() -> Int: self.value
+    fn get() Int: self.value
 
-fn invoke(transform: Optional[fn(value: Int) -> Int] = none) -> Int:
+fn invoke(transform: Optional[fn(value: Int) Int] = none) Int:
     match transform:
         some(callback): return callback(4)
         none: return 0
@@ -49,7 +49,7 @@ test "contextual callbacks and inline returns":
         "optional callback"
     )
 
-    let functions: List[fn(value: Int) -> Int] = [fn(item): item + 4]
+    let functions: List[fn(value: Int) Int] = [fn(item): item + 4]
     if functions.at(0).unwrap()(2) != 6: return panic("list callback")
 
     let nested = fn(value: Int):
@@ -79,12 +79,12 @@ test "contextual callbacks and inline returns":
         "inferred Result error"
     )
 
-    let subtract: fn(left: Int, right: Int) -> Int = fn(a, b): a - b
+    let subtract: fn(left: Int, right: Int) Int = fn(a, b): a - b
     if subtract(right: 2, left: 7) != 5: return panic("context labels and order")
 
-    let defaulted: fn(value: Int) -> Int = fn(item: Int = 4): item + 1
+    let defaulted: fn(value: Int) Int = fn(item: Int = 4): item + 1
     if defaulted(value: 8) != 9: return panic("context default parameter")
 
-    let outer: fn(value: Int) -> fn(input: Int) -> Int = fn(base):
+    let outer: fn(value: Int) fn(input: Int) Int = fn(base):
         return fn(extra): base + extra
     if outer(value: 3)(input: 4) != 7: return panic("nested context labels")

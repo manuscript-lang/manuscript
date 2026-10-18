@@ -67,7 +67,7 @@ export type SseDecoder:
 
 impl Error for SseError:
     # Returns a fixed diagnostic that does not echo stream contents.
-    fn message() -> String:
+    fn message() String:
         match self:
             InvalidInput: return "SSE invalid input"
             InvalidData: return "SSE line is not valid UTF-8"
@@ -76,7 +76,7 @@ impl Error for SseError:
             ReadFailed(cause): return "SSE read failed: {cause.message()}"
 
 # Creates a decoder. Supplied limits must be positive.
-export fn decoder(limits: SseLimits = SseLimits()) -> Result[SseDecoder, SseError]:
+export fn decoder(limits: SseLimits = SseLimits()) Result[SseDecoder, SseError]:
     if not positive(limits.max_line_bytes): return error(SseError.InvalidInput)
     if not positive(limits.max_event_bytes): return error(SseError.InvalidInput)
 
@@ -98,13 +98,13 @@ export fn decoder(limits: SseLimits = SseLimits()) -> Result[SseDecoder, SseErro
         )
     )
 
-fn positive(limit: Optional[Int]) -> Bool:
+fn positive(limit: Optional[Int]) Bool:
     if let maximum = limit:
         return maximum > 0
 
     return true
 
-fn exceeds(value: Int, limit: Optional[Int]) -> Bool:
+fn exceeds(value: Int, limit: Optional[Int]) Bool:
     if let maximum = limit:
         return value > maximum
 
@@ -112,7 +112,7 @@ fn exceeds(value: Int, limit: Optional[Int]) -> Bool:
 
 # Decodes one chunk and returns the events it completed, in order.
 # Chunks may split any line, line ending or UTF-8 scalar. An error is final for the decoder.
-export fn feed(decoder: SseDecoder, chunk: Bytes) -> Result[List[SseEvent], SseError]:
+export fn feed(decoder: SseDecoder, chunk: Bytes) Result[List[SseEvent], SseError]:
     let events = List[SseEvent]()
     if decoder.failure.is_some(): return error(decoder.failure.unwrap())
     if decoder.closed: return error(SseError.InvalidInput)
@@ -137,7 +137,7 @@ export fn feed(decoder: SseDecoder, chunk: Bytes) -> Result[List[SseEvent], SseE
 
 # Ends the stream. A stream with no partial line and no unfinished event ends cleanly;
 # otherwise the result is Truncated and the unfinished event is never dispatched.
-export fn finish(decoder: SseDecoder) -> Result[Unit, SseError]:
+export fn finish(decoder: SseDecoder) Result[Unit, SseError]:
     if decoder.failure.is_some(): return error(decoder.failure.unwrap())
     if decoder.closed: return error(SseError.InvalidInput)
 
@@ -153,7 +153,7 @@ fn consume(
     decoder: SseDecoder,
     byte: Int,
     events: List[SseEvent]
-) -> Result[Unit, SseError]:
+) Result[Unit, SseError]:
     let after_carriage = decoder.carriage
     decoder.carriage = false
     if byte == 10 and after_carriage: return ok(unit)
@@ -170,7 +170,7 @@ fn consume(
 
     return ok(unit)
 
-fn end_line(decoder: SseDecoder, events: List[SseEvent]) -> Result[Unit, SseError]:
+fn end_line(decoder: SseDecoder, events: List[SseEvent]) Result[Unit, SseError]:
     var bytes = decoder.line.freeze()
     decoder.line = BytesBuilder()
     decoder.line_bytes = 0
@@ -202,7 +202,7 @@ fn end_line(decoder: SseDecoder, events: List[SseEvent]) -> Result[Unit, SseErro
     apply(decoder: decoder, line: line)
     return ok(unit)
 
-fn apply(decoder: SseDecoder, line: String) -> Unit:
+fn apply(decoder: SseDecoder, line: String) Unit:
     var name = line
     var value = ""
     let colon = line.index_of(":")
@@ -218,19 +218,19 @@ fn apply(decoder: SseDecoder, line: String) -> Unit:
     else if name == "retry": reconnect(decoder: decoder, value: value)
 
 # An ID containing NUL is ignored, so it neither replaces nor clears the last ID.
-fn identify(decoder: SseDecoder, value: String) -> Unit:
+fn identify(decoder: SseDecoder, value: String) Unit:
     if value.to_bytes().contains("\u{0}".to_bytes()): return unit
 
     decoder.last_id = some(value)
 
 # Only ASCII digits form a retry time; overflow and signs are ignored.
-fn reconnect(decoder: SseDecoder, value: String) -> Unit:
+fn reconnect(decoder: SseDecoder, value: String) Unit:
     if (value.is_empty() or value.starts_with("-") or value.starts_with("+")): return unit
 
     let milliseconds = value.parse_int()
     if milliseconds.is_some(): decoder.retry = milliseconds
 
-fn dispatch(decoder: SseDecoder, events: List[SseEvent]) -> Unit:
+fn dispatch(decoder: SseDecoder, events: List[SseEvent]) Unit:
     if decoder.data.length() > 0:
         var name = decoder.event_type
         if name == "": name = "message"
@@ -251,15 +251,15 @@ type BorrowedBody:
     body: ResponseBody
 
 impl ReadStream for BorrowedBody:
-    fn close() -> Unit:
+    fn close() Unit:
         return unit
 
-    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]:
+    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
         return self.body.read(max_bytes: max_bytes)
 
 # Views an HTTP response body as a ReadStream that the response keeps owning.
 # Closing the view does nothing, so close the body itself, usually with `with`.
-export fn borrow_body(body: ResponseBody) -> ReadStream:
+export fn borrow_body(body: ResponseBody) ReadStream:
     return ReadStream(value: BorrowedBody(body: body))
 
 # Pulls events from a borrowed ReadStream. The reader never closes the stream:
@@ -283,7 +283,7 @@ export fn reader(
     input: ReadStream,
     limits: SseLimits = SseLimits(),
     chunk_bytes: Optional[Int] = none
-) -> Result[SseReader, SseError]:
+) Result[SseReader, SseError]:
     if not positive(chunk_bytes): return error(SseError.InvalidInput)
 
     let created = try decoder(limits: limits)
@@ -300,7 +300,7 @@ export fn reader(
 
 # Returns the next event, or none after a clean end of stream.
 # A read failure, malformed line, exceeded limit or truncated event is an error.
-export fn next_event(reader: SseReader) -> Result[Optional[SseEvent], SseError]:
+export fn next_event(reader: SseReader) Result[Optional[SseEvent], SseError]:
     while true:
         if reader.next < reader.ready.length():
             let event = reader.ready.at(reader.next).unwrap()

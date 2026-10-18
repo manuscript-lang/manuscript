@@ -114,7 +114,7 @@ test "typed addresses preserve normalization and reject zones":
         "normalized IPv4 matched mapped IPv6 prefix"
     )
 
-fn expect_ip_error(input: String) -> Unit:
+fn expect_ip_error(input: String) Unit:
     match parse_ip(input):
         ok(_): return panic("invalid IP accepted")
         error(cause):

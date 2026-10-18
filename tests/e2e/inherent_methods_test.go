@@ -12,7 +12,7 @@ func TestInherentImplDeclaresTypeMethods(t *testing.T) {
 	result := compiler.CompileSource("inherent.ms", `import panic from "@std/faults.ms"
 
 interface Show:
-    fn show() -> String
+    fn show() String
 
 type Counter:
     value: Int
@@ -25,34 +25,34 @@ type Shape:
     case Square(s: Int)
 
 impl Counter:
-    fn double() -> Int:
+    fn double() Int:
         return self.value * 2
-    fn bump(by: Int = 1) -> Counter:
+    fn bump(by: Int = 1) Counter:
         return Counter(value: self.value + by)
-    fn depth(n: Int) -> Int:
+    fn depth(n: Int) Int:
         if n == 0:
             return self.value
         return self.depth(n: n - 1) + 1
 
 impl Counter:
-    fn overflow() -> Int:
+    fn overflow() Int:
         return self.value * self.value
 
 impl Show for Counter:
-    fn show() -> String:
+    fn show() String:
         return "counter"
 
 impl Box[T]:
-    fn get() -> T:
+    fn get() T:
         return self.item
 
 impl Shape:
-    fn area() -> Int:
+    fn area() Int:
         match self:
             Circle(r): return r * r * 3
             Square(s): return s * s
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
@@ -81,13 +81,13 @@ test "inherent fault frame":
 
 func TestInherentImplRejections(t *testing.T) {
 	for _, item := range []struct{ source, want string }{
-		{"type A:\n    x: Int\n    fn f() -> Int:\n        return 1\n", "a type declares only fields or cases"},
-		{"interface I:\n    fn f() -> Int\nimpl I:\n    fn f() -> Int:\n        return 1\n", "I is an interface"},
-		{"import Duration from \"@std/time.ms\"\nimpl Duration:\n    fn f() -> Int:\n        return 1\n", "inherent methods belong in the module that declares Duration"},
-		{"type B[T]:\n    x: T\nimpl B:\n    fn f() -> Int:\n        return 1\n", "impl must repeat the type parameters of B"},
-		{"type B:\n    x: Int\nimpl B:\n    fn m[U](u: U) -> U:\n        return u\n", "declares its own type parameters"},
-		{"type B:\n    x: Int\nimpl B:\n    fn m() -> Int:\n        return 1\nimpl B:\n    fn m() -> Int:\n        return 2\n", "duplicate implementation operation m"},
-		{"type B:\n    x: Int\nimpl B:\n    fn m() -> Int:\n", "reachable fallthrough"},
+		{"type A:\n    x: Int\n    fn f() Int:\n        return 1\n", "a type declares only fields or cases"},
+		{"interface I:\n    fn f() Int\nimpl I:\n    fn f() Int:\n        return 1\n", "I is an interface"},
+		{"import Duration from \"@std/time.ms\"\nimpl Duration:\n    fn f() Int:\n        return 1\n", "inherent methods belong in the module that declares Duration"},
+		{"type B[T]:\n    x: T\nimpl B:\n    fn f() Int:\n        return 1\n", "impl must repeat the type parameters of B"},
+		{"type B:\n    x: Int\nimpl B:\n    fn m[U](u: U) U:\n        return u\n", "declares its own type parameters"},
+		{"type B:\n    x: Int\nimpl B:\n    fn m() Int:\n        return 1\nimpl B:\n    fn m() Int:\n        return 2\n", "duplicate implementation operation m"},
+		{"type B:\n    x: Int\nimpl B:\n    fn m() Int:\n", "reachable fallthrough"},
 	} {
 		result := compiler.CompileSource("rejected.ms", item.source, compiler.Options{AnalyzeOnly: true})
 		if result.Success() || !strings.Contains(fmt.Sprint(result.Diagnostics), item.want) {

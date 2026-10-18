@@ -8,38 +8,38 @@ import (
 func TestTypedCodecSelectorsRejectInvalidCasesAndTypes(t *testing.T) {
 	for _, test := range []struct{ name, source, want string }{
 		{"normalization typo", `import NormalizationForm from "@std/string.ms"
-fn wrong() -> Unit:
+fn wrong() Unit:
     let form = NormalizationForm.NFC
 `, "NFC"},
 		{"string into normalization selector", `import NormalizationForm from "@std/string.ms"
-fn choose(form: NormalizationForm) -> Unit:
+fn choose(form: NormalizationForm) Unit:
     return unit
-fn wrong() -> Unit:
+fn wrong() Unit:
     choose("NFC")
 `, "NormalizationForm"},
 		{"algorithm typo", `import HashAlgorithm from "@std/crypto.ms"
-fn wrong() -> Unit:
+fn wrong() Unit:
     let algorithm = HashAlgorithm.Sha257
 `, "Sha257"},
 		{"compression typo", `import CompressionFormat from "@std/compress.ms"
-fn wrong() -> Unit:
+fn wrong() Unit:
     let format = CompressionFormat.GZip
 `, "GZip"},
 		{"archive typo", `import ArchiveFormat from "@std/archive.ms"
-fn wrong() -> Unit:
+fn wrong() Unit:
     let format = ArchiveFormat.TAR
 `, "TAR"},
 		{"string into typed selector", `import HashAlgorithm from "@std/crypto.ms"
-fn choose(algorithm: HashAlgorithm) -> Unit:
+fn choose(algorithm: HashAlgorithm) Unit:
     return unit
-fn wrong() -> Unit:
+fn wrong() Unit:
     choose("sha256")
 `, "HashAlgorithm"},
 		{"wrong selector family", `import HashAlgorithm from "@std/crypto.ms"
 import CompressionFormat from "@std/compress.ms"
-fn choose(algorithm: HashAlgorithm) -> Unit:
+fn choose(algorithm: HashAlgorithm) Unit:
     return unit
-fn wrong() -> Unit:
+fn wrong() Unit:
     choose(CompressionFormat.Gzip)
 `, "HashAlgorithm"},
 	} {

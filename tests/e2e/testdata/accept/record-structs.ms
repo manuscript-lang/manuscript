@@ -15,9 +15,9 @@ type Sized:
     width: Int
     height: Int = 2
 
-fn area(shape: Sized) -> Int: shape.width * shape.height
+fn area(shape: Sized) Int: shape.width * shape.height
 
-fn shifted(point: Point, by: Int) -> Point:
+fn shifted(point: Point, by: Int) Point:
     return Point(x: point.x + by, y: point.y + by)
 
 test "struct records read write compare format and clone":

@@ -1,12 +1,12 @@
 import panic from "@std/faults.ms"
 
-fn identity[T](value: T) -> T: value
+fn identity[T](value: T) T: value
 
-fn first[T](left: T, right: T) -> T: left
+fn first[T](left: T, right: T) T: left
 
-fn optional[T](value: Optional[T], fallback: T) -> T: value.unwrap_or(fallback)
+fn optional[T](value: Optional[T], fallback: T) T: value.unwrap_or(fallback)
 
-fn describe[T](value: T, cause: Error) -> String: cause.message()
+fn describe[T](value: T, cause: Error) String: cause.message()
 
 type Events:
     values: List[Int]
@@ -15,15 +15,15 @@ type Failure:
     detail: String
 
 impl Error for Failure:
-    fn message() -> String: self.detail
+    fn message() String: self.detail
 
 type GenericFailure[T]:
     detail: T
 
 impl Error for GenericFailure[T]:
-    fn message() -> String: self.detail.toString()
+    fn message() String: self.detail.toString()
 
-fn record(events: Events, value: Int) -> Int:
+fn record(events: Events, value: Int) Int:
     events.values = events.values.append(value)
     return value
 

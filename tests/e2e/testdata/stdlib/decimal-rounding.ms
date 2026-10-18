@@ -45,7 +45,7 @@ test "decimal rounding modes include signed ties and coarse scales":
     let fixed = 25.5d.to_fixed
     if value(fixed(digits: 2)) != "25.50": return panic("bound default")
 
-    let rounded: fn(places: Int, mode: Optional[RoundingMode]) -> Result[
+    let rounded: fn(places: Int, mode: Optional[RoundingMode]) Result[
         Decimal,
         NumberError
     ] = 2.5d.round

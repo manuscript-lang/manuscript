@@ -21,8 +21,8 @@ func TestLibrarySourceCommandsDiscoverExportsAndErrors(t *testing.T) {
 		}
 	}
 	write("ms.toml", "[project]\nname = \"library\"\nsource = \"src\"\n")
-	write("src/value.ms", "export fn value() -> Int: return 3\n")
-	write("src/other.ms", "export fn other() -> Int: return 4\n")
+	write("src/value.ms", "export fn value() Int: return 3\n")
+	write("src/other.ms", "export fn other() Int: return 4\n")
 	write("tests/value_test.ms", "test \"value\":\n    return unit\n")
 	manifest := filepath.Join(root, "ms.toml")
 	for _, command := range []string{"check", "lint", "inspect", "diagram"} {
@@ -31,7 +31,7 @@ func TestLibrarySourceCommandsDiscoverExportsAndErrors(t *testing.T) {
 			t.Fatalf("%s: %d %s %s", command, status, output, errs)
 		}
 	}
-	write("src/other.ms", "export fn other() -> Int: return \"bad\"\n")
+	write("src/other.ms", "export fn other() Int: return \"bad\"\n")
 	for _, command := range []string{"check", "lint"} {
 		status, _, errs := invoke(t, command, manifest)
 		if status != 1 || !strings.Contains(errs, "other.ms:1:") {

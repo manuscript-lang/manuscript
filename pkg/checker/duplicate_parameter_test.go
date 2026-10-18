@@ -12,8 +12,8 @@ import (
 // A repeated parameter name is reported once, not again as a duplicate local.
 func TestDuplicateParameterReportsOnce(t *testing.T) {
 	for _, tt := range []struct{ name, source string }{
-		{"function", "fn f(a: Int, a: Int) -> Int:\n    return a\n"},
-		{"callback", "fn f() -> Int:\n    let g = fn(a: Int, a: Int) -> Int: return a\n    return 1\n"},
+		{"function", "fn f(a: Int, a: Int) Int:\n    return a\n"},
+		{"callback", "fn f() Int:\n    let g = fn(a: Int, a: Int) Int: return a\n    return 1\n"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			m, err := parser.Parse("dup.ms", tt.source)

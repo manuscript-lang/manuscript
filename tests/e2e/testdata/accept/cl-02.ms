@@ -1,6 +1,6 @@
 import panic from "@std/faults.ms"
 
-fn invalid_division(zero: Int) -> Bool:
+fn invalid_division(zero: Int) Bool:
     return 1 / zero == 0
 
 test "grouping and short circuit":

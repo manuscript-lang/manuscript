@@ -3,34 +3,34 @@ import Closeable from "@std/cleanup.ms"
 import Synchronized from "@std/sync.ms"
 
 interface OtherClose:
-    fn close(flag: Bool) -> Int
+    fn close(flag: Bool) Int
 
 interface Disposable:
-    fn close() -> Unit
+    fn close() Unit
 
 type Resource:
     closed: Synchronized[Bool]
 
 impl OtherClose for Resource:
-    fn close(flag: Bool) -> Int:
+    fn close(flag: Bool) Int:
         return panic(message: "Unexpected case")
         return 0
 
 impl Closeable for Resource:
-    fn close() -> Unit:
+    fn close() Unit:
         with locked = self.closed.lock():
             locked.set(value: true)
 
 impl Disposable for Resource:
-    fn close() -> Unit:
+    fn close() Unit:
         with locked = self.closed.lock():
             locked.set(value: true)
 
-fn bound_cleanup[T: Disposable](resource: T) -> Unit:
+fn bound_cleanup[T: Disposable](resource: T) Unit:
     with item = resource:
         let completed = unit
 
-fn canonical_cleanup[T: Closeable](resource: T) -> Unit:
+fn canonical_cleanup[T: Closeable](resource: T) Unit:
     with item = resource:
         let completed = unit
 

@@ -10,7 +10,7 @@ import (
 
 func TestMatchPayloadPositionsSurviveRecovery(t *testing.T) {
 	for _, newline := range []string{"\n", "\r\n"} {
-		source := strings.ReplaceAll("# café 🦀\nfn use(value: Envelope) -> Int:\n    match value:\n        Pair(\n            _,\n            NotFound,\n        ): return 1\n", "\n", newline)
+		source := strings.ReplaceAll("# café 🦀\nfn use(value: Envelope) Int:\n    match value:\n        Pair(\n            _,\n            NotFound,\n        ): return 1\n", "\n", newline)
 		for _, recover := range []bool{false, true} {
 			input := source
 			var module *syntax.Module

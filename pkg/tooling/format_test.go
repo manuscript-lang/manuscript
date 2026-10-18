@@ -41,7 +41,7 @@ func TestFormatFixturesPreservesMeaningAndIsIdempotent(t *testing.T) {
 }
 
 func TestFormatImplicitReturnPreservesOperands(t *testing.T) {
-	source := "fn sum(first_value: Int, second_value: Int, third_value: Int, fourth_value: Int) -> Int: first_value + second_value + third_value + fourth_value\n"
+	source := "fn sum(first_value: Int, second_value: Int, third_value: Int, fourth_value: Int) Int: first_value + second_value + third_value + fourth_value\n"
 	formatted, err := tooling.Format("implicit.ms", source)
 	if err != nil {
 		t.Fatal(err)
@@ -133,8 +133,8 @@ func assertFormatMeaning(t *testing.T, filename, original, formatted string) {
 	}
 }
 func TestFormatCommentsAndErrors(t *testing.T) {
-	input := "# leading\r\nfn sum( left:Int,right:Int )->Int: # sum\r\n    return left+right # trailing\r\n"
-	want := "# leading\nfn sum(left: Int, right: Int) -> Int:  # sum\n    return left + right  # trailing\n"
+	input := "# leading\r\nfn sum( left:Int,right:Int ) Int: # sum\r\n    return left+right # trailing\r\n"
+	want := "# leading\nfn sum(left: Int, right: Int) Int:  # sum\n    return left + right  # trailing\n"
 	formatted, err := tooling.Format("sum.ms", input)
 	if err != nil || formatted != want {
 		t.Fatalf("got %q, err %v", formatted, err)
@@ -145,7 +145,7 @@ func TestFormatCommentsAndErrors(t *testing.T) {
 	}
 }
 func TestInspectionDeterminismAndOriginalSpans(t *testing.T) {
-	source := "fn one() -> Int:\r\n    return 1\r\ntest \"calls\":\r\n    if one() != 1:\r\n        return\r\n"
+	source := "fn one() Int:\r\n    return 1\r\ntest \"calls\":\r\n    if one() != 1:\r\n        return\r\n"
 	result := compiler.CompileSource("inspect.ms", source, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
@@ -166,7 +166,7 @@ func TestInspectionDeterminismAndOriginalSpans(t *testing.T) {
 }
 
 func TestInspectInterface(t *testing.T) {
-	source := "export interface Read[T]:\n    fn get() -> T\n"
+	source := "export interface Read[T]:\n    fn get() T\n"
 	result := compiler.CompileSource("interface.ms", source, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
@@ -195,8 +195,8 @@ func TestFormatGroupedImports(t *testing.T) {
 }
 
 func TestFormatMultilineFunctionParameters(t *testing.T) {
-	input := "export fn render(\r\n    arguments:List[String], # arguments\r\n    output:WriteStream,\r\n)->Int:\r\n    let message=\"Arguments: {arguments.join(\",\")}\\n\"\r\n    match output.write(data:message.to_bytes()):\r\n        ok(_):\r\n            return 0\r\n        error(_):\r\n            return 1\r\n"
-	want := "export fn render(\n    arguments: List[String],  # arguments\n    output: WriteStream,\n) -> Int:\n    let message = \"Arguments: {arguments.join(\",\")}\\n\"\n\n    match output.write(data: message.to_bytes()):\n        ok(_):\n            return 0\n        error(_):\n            return 1\n"
+	input := "export fn render(\r\n    arguments:List[String], # arguments\r\n    output:WriteStream,\r\n) Int:\r\n    let message=\"Arguments: {arguments.join(\",\")}\\n\"\r\n    match output.write(data:message.to_bytes()):\r\n        ok(_):\r\n            return 0\r\n        error(_):\r\n            return 1\r\n"
+	want := "export fn render(\n    arguments: List[String],  # arguments\n    output: WriteStream,\n) Int:\n    let message = \"Arguments: {arguments.join(\",\")}\\n\"\n\n    match output.write(data: message.to_bytes()):\n        ok(_):\n            return 0\n        error(_):\n            return 1\n"
 	formatted, err := tooling.Format("main.ms", input)
 	if err != nil || formatted != want {
 		t.Fatalf("got %q, err %v", formatted, err)
@@ -208,12 +208,12 @@ func TestFormatMultilineFunctionParameters(t *testing.T) {
 }
 
 func TestFormatInlineSuites(t *testing.T) {
-	source := "fn double(x:Int)->Int:return x*2\nfn f(x:Int)->Int:\n    if x>0:return double(x)\n    else:return 0\n"
+	source := "fn double(x:Int) Int:return x*2\nfn f(x:Int) Int:\n    if x>0:return double(x)\n    else:return 0\n"
 	formatted, err := tooling.Format("inline.ms", source)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "fn double(x: Int) -> Int: return x * 2\n\nfn f(x: Int) -> Int:\n    if x > 0: return double(x)\n    else: return 0\n"
+	want := "fn double(x: Int) Int: return x * 2\n\nfn f(x: Int) Int:\n    if x > 0: return double(x)\n    else: return 0\n"
 	if formatted != want {
 		t.Fatalf("got %q, want %q", formatted, want)
 	}
@@ -224,7 +224,7 @@ func TestFormatInlineSuites(t *testing.T) {
 }
 
 func TestFormatMapAndShorthand(t *testing.T) {
-	source := "fn f() -> Unit:\n    let values={\"a\":1,\"b\":{1:2},}\n    consume(values,other: {})\n"
+	source := "fn f() Unit:\n    let values={\"a\":1,\"b\":{1:2},}\n    consume(values,other: {})\n"
 	formatted, err := tooling.Format("map.ms", source)
 	if err != nil {
 		t.Fatal(err)
@@ -239,8 +239,8 @@ func TestFormatMapAndShorthand(t *testing.T) {
 }
 
 func TestFormatKeepsConsecutiveConstantsTogether(t *testing.T) {
-	source := "import ListBuilder from \"@std/collections.ms\"\nlet A = 1\nlet B = 2\nfn f() -> Int:\n    return A + B\n"
-	want := "import ListBuilder from \"@std/collections.ms\"\n\nlet A = 1\nlet B = 2\n\nfn f() -> Int:\n    return A + B\n"
+	source := "import ListBuilder from \"@std/collections.ms\"\nlet A = 1\nlet B = 2\nfn f() Int:\n    return A + B\n"
+	want := "import ListBuilder from \"@std/collections.ms\"\n\nlet A = 1\nlet B = 2\n\nfn f() Int:\n    return A + B\n"
 	got, err := tooling.Format("constants.ms", source)
 	if err != nil || got != want {
 		t.Fatalf("got %q, %v", got, err)

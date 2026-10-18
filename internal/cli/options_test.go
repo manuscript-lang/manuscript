@@ -29,7 +29,7 @@ func TestSplitValueOption(t *testing.T) {
 }
 
 func TestCLIValueSpellingsAndErrors(t *testing.T) {
-	file := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
+	file := sourceFile(t, "export fn main() Int:\n    return 0\n")
 	for _, command := range []string{"emit", "inspect", "diagram"} {
 		for _, inline := range []bool{false, true} {
 			output := filepath.Join(t.TempDir(), "output=a=b")

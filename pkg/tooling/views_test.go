@@ -40,7 +40,7 @@ func TestViewsAnswerOneQuestionEach(t *testing.T) {
 }
 
 func TestViewDepthCycleAndErrors(t *testing.T) {
-	facts := factsOf(t, "fn a(n: Int) -> Int:\n    return b(n)\n\nfn b(n: Int) -> Int:\n    return a(n)\n")
+	facts := factsOf(t, "fn a(n: Int) Int:\n    return b(n)\n\nfn b(n: Int) Int:\n    return a(n)\n")
 	node, err := BuildView(facts, "calls", "a", 5)
 	if err != nil || !strings.Contains(node.ASCII(), "a  (cycle)") {
 		t.Fatalf("%v\n%s", err, node.ASCII())
@@ -59,19 +59,19 @@ func TestViewDepthCycleAndErrors(t *testing.T) {
 
 const flowSource = `import stdout from "@std/io.ms"
 
-fn load(n: Int) -> Result[Int, Error]:
+fn load(n: Int) Result[Int, Error]:
     if n > 3:
         return ok(0)
     return ok(n)
 
-fn guarded(n: Int) -> Result[Int, Error]:
+fn guarded(n: Int) Result[Int, Error]:
     with out = stdout():
         let v = try load(n)
         if v > 1:
             return ok(2)
     return ok(0)
 
-export fn main() -> Int:
+export fn main() Int:
     match guarded(1):
         ok(_): return 0
         error(_): return 1

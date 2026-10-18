@@ -45,24 +45,24 @@ export type NetworkError:
 export interface Connection:
     # Closes the socket, interrupting calls in progress, and waits for them to stop.
     # Safe to call repeatedly; later calls wait for the first. Reads and writes afterwards return Closed.
-    fn close() -> Unit
+    fn close() Unit
     # Returns this end's address as `host:port` text, with IPv6 hosts in brackets; for Unix sockets it is the socket path.
-    fn local_address() -> String
+    fn local_address() String
     # Returns the remote end's address as `host:port` text, with IPv6 hosts in brackets.
-    fn peer_address() -> String
+    fn peer_address() String
     # Returns a positive chunk or none at EOF; local timeout uses IoError.Failed, not NetworkError.Timeout.
     fn read(
         max_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
-    ) -> Result[Optional[Bytes], IoError]
+    ) Result[Optional[Bytes], IoError]
     # Half-closes the connection so the peer sees end of stream, while this side can keep reading.
     # Returns Unsupported for stream kinds that cannot half-close, and Closed on a closed connection.
-    fn shutdown_write() -> Result[Unit, NetworkError]
+    fn shutdown_write() Result[Unit, NetworkError]
     # Returns the negotiated TLS version, cipher suite, protocol, and peer certificates.
     # A connection that is not TLS returns InvalidInput.
-    fn tls_info() -> Result[TlsInfo, TlsError]
+    fn tls_info() Result[TlsInfo, TlsError]
     # Writes all bytes on success; failure can leave a prefix. Local timeout uses IoError.Failed.
-    fn write(data: Bytes, timeout: Optional[Duration] = none) -> Result[Unit, IoError]
+    fn write(data: Bytes, timeout: Optional[Duration] = none) Result[Unit, IoError]
 
 # One datagram and the address from which it was received.
 export type Datagram:
@@ -74,23 +74,23 @@ export type Datagram:
 # A connectionless socket for sending and receiving datagrams.
 export interface DatagramSocket:
     # Returns the bound local address as `host:port` text, which reveals the port chosen when binding port 0.
-    fn address() -> String
+    fn address() String
     # Closes the socket, interrupting calls in progress, and waits for them to stop.
     # Safe to call repeatedly.
-    fn close() -> Unit
+    fn close() Unit
     # Waits for one datagram and returns its bytes with the sender's address. `max_bytes` is 1 through 65535 and defaults to 65535.
     # A larger datagram returns LimitExceeded and is discarded. A timeout returns Timeout and a closed socket returns Closed.
     fn receive(
         max_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
-    ) -> Result[Datagram, NetworkError]
+    ) Result[Datagram, NetworkError]
     # Sends `data` as a single datagram to `address` (`host:port`), resolving a host name with the network's resolver.
     # The network's restrictions apply to both the name and the resolved address. A short send returns Failed; a timeout returns Timeout.
     fn send(
         data: Bytes,
         address: String,
         timeout: Optional[Duration] = none
-    ) -> Result[Unit, NetworkError]
+    ) Result[Unit, NetworkError]
 
 # Supported DNS query categories; unknown spellings are rejected by checking.
 export type DnsKind:
@@ -113,7 +113,7 @@ export type DnsKind:
 
 impl DnsKind:
     # Returns the uppercase wire category.
-    fn text() -> String:
+    fn text() String:
 
 # Numeric address families reported by IP values and host interfaces.
 export type IpFamily:
@@ -124,24 +124,24 @@ export type IpFamily:
 
 impl IpFamily:
     # Returns IPv4 or IPv6.
-    fn text() -> String:
+    fn text() String:
 
 # A validated numeric IPv4/IPv6 address without a port or zone.
 export type IpAddress:
 
 impl IpAddress:
     # Returns canonical text; mapped IPv6 input is normalized to IPv4.
-    fn text() -> String:
+    fn text() String:
 
     # Returns the normalized address family.
-    fn family() -> IpFamily:
+    fn family() IpFamily:
 
 # A validated, masked numeric CIDR range.
 export type Cidr:
 
 impl Cidr:
     # Returns the canonical masked prefix without reparsing.
-    fn text() -> String:
+    fn text() String:
 
 # DNS record data returned by a typed lookup.
 export type DnsRecord:
@@ -160,83 +160,83 @@ export type DnsRecord:
 export interface Listener:
     # Waits for the next incoming connection and returns it. A timeout returns Timeout and a closed listener returns Closed.
     # On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and returns Failed.
-    fn accept(timeout: Optional[Duration] = none) -> Result[Connection, NetworkError]
+    fn accept(timeout: Optional[Duration] = none) Result[Connection, NetworkError]
     # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
-    fn address() -> String
+    fn address() String
     # Stops accepting, interrupts a pending `accept`, and waits for it to stop.
     # Safe to call repeatedly; connections already accepted stay open.
-    fn close() -> Unit
+    fn close() Unit
 
 # Reports whether an IP address belongs to a CIDR range.
-export fn contains_ip(cidr: Cidr, address: IpAddress) -> Result[Bool, NetworkError]:
+export fn contains_ip(cidr: Cidr, address: IpAddress) Result[Bool, NetworkError]:
 
 # Validates and canonicalizes an IPv4 or IPv6 CIDR range.
-export fn parse_cidr(text: String) -> Result[Cidr, NetworkError]:
+export fn parse_cidr(text: String) Result[Cidr, NetworkError]:
 
 # Validates and canonicalizes an IPv4 or IPv6 address.
-export fn parse_ip(text: String) -> Result[IpAddress, NetworkError]:
+export fn parse_ip(text: String) Result[IpAddress, NetworkError]:
 
 impl Error for NetworkError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `network: <reason>`.
-    fn message() -> String:
+    fn message() String:
 
 # Network, DNS, HTTP, and WebSocket operations for the current host.
 export interface Network:
     # Binds a UDP socket to `address` (`host:port`; port 0 picks a free port).
     # A restricted network without listening permission, or an address outside its CIDRs, returns PermissionDenied.
-    fn bind_datagram(address: String) -> Result[DatagramSocket, NetworkError]
+    fn bind_datagram(address: String) Result[DatagramSocket, NetworkError]
     # Cancels in-flight calls and closes every connection, listener, socket, HTTP client, and server this network opened, including those of derived networks.
     # Safe to call repeatedly. A request handler of a server on this network cannot close it and faults.
-    fn close() -> Unit
+    fn close() Unit
     # Resolves `address` (`host:port`) and opens a TCP connection to the first reachable permitted address.
     # Returns PermissionDenied for names or addresses a restricted network disallows, Timeout when `timeout` elapses, and Failed when every address refuses.
     fn connect(
         address: String,
         timeout: Optional[Duration] = none
-    ) -> Result[Connection, NetworkError]
+    ) Result[Connection, NetworkError]
     # Connects over TCP to `address` and completes a TLS handshake verifying the server certificate against the system roots for `server_name`, with at least TLS 1.2.
     # An empty `server_name` returns InvalidInput, and `timeout` bounds the whole attempt.
     fn connect_tls(
         address: String,
         server_name: String,
         timeout: Optional[Duration] = none
-    ) -> Result[Connection, NetworkError]
+    ) Result[Connection, NetworkError]
     # Connects over TCP to `address` and completes a TLS handshake using `options`, with at least TLS 1.2.
     # Invalid options return InvalidInput, handshake and verification failures return Failed, and `timeout` bounds the whole attempt.
     fn connect_tls_config(
         address: String,
         options: TlsOptions,
         timeout: Optional[Duration] = none
-    ) -> Result[Connection, NetworkError]
+    ) Result[Connection, NetworkError]
     # Connects to the Unix domain socket at `path`.
     # Any restricted network returns PermissionDenied because Unix sockets bypass host and CIDR checks. `timeout` bounds the attempt.
     fn connect_unix(
         path: String,
         timeout: Optional[Duration] = none
-    ) -> Result[Connection, NetworkError]
+    ) Result[Connection, NetworkError]
     # Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
     # Invalid or negative options return InvalidInput. Closing the network closes the client.
-    fn http_client(options: HttpClientOptions) -> Result[HttpClient, HttpError]
+    fn http_client(options: HttpClientOptions) Result[HttpClient, HttpError]
     # Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
     # A restricted network needs `allow_listen` and an IP-literal address inside its CIDRs, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.
-    fn listen(address: String) -> Result[Listener, NetworkError]
+    fn listen(address: String) Result[Listener, NetworkError]
     # Listens for TCP connections on `address` and completes a TLS handshake for each accepted connection, within `handshake_timeout` when supplied.
     # `options` must hold a certificate and key, otherwise InvalidInput is returned.
     fn listen_tls(
         address: String,
         options: TlsOptions,
         handshake_timeout: Optional[Duration] = none
-    ) -> Result[Listener, NetworkError]
+    ) Result[Listener, NetworkError]
     # Listens on a Unix domain socket at `path`.
     # Any restricted network returns PermissionDenied.
-    fn listen_unix(path: String) -> Result[Listener, NetworkError]
+    fn listen_unix(path: String) Result[Listener, NetworkError]
     # Resolves a host name to its IPv4 and IPv6 address strings through the network's resolver.
     # More than `max_records` addresses returns LimitExceeded, `timeout` bounds the lookup, and a failed lookup returns Failed.
     fn lookup(
         name: String,
         max_records: Optional[Int] = none,
         timeout: Optional[Duration] = none
-    ) -> Result[List[String], NetworkError]
+    ) Result[List[String], NetworkError]
     # Performs one buffered HTTP request and returns the status, headers, and complete body.
     # Only `http` and `https` URLs without user info are accepted. Redirects are returned, not followed, and no cookies or proxy settings apply. A body over `max_response_bytes` returns LimitExceeded; error statuses are ordinary responses.
     fn request(
@@ -246,39 +246,39 @@ export interface Network:
         body: Bytes = "".to_bytes(),
         max_response_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
-    ) -> Result[ClientResponse, HttpError]
+    ) Result[ClientResponse, HttpError]
     # Resolves the selected supported category, retaining it in each record.
     fn resolve(
         name: String,
         kind: DnsKind,
         max_records: Optional[Int] = none,
         timeout: Optional[Duration] = none
-    ) -> Result[List[DnsRecord], NetworkError]
+    ) Result[List[DnsRecord], NetworkError]
     # Returns a derived network limited to the given host names and CIDR ranges.
     # Names match case-insensitively without a trailing dot, and IP-literal hosts also match through `cidrs`. With `cidrs`, every resolved address must be inside one of them. `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A derived restriction can only narrow its parent, and closing the parent closes the child. Invalid host or CIDR text returns InvalidInput.
     fn restrict(
         hosts: List[String],
         cidrs: List[String],
         allow_listen: Bool
-    ) -> Result[Network, NetworkError]
+    ) Result[Network, NetworkError]
     # Starts an HTTP server on `address` that calls `handler` with each fully buffered request and sends the returned response.
     # A request beyond `limit` concurrent requests is answered with 503, an oversized request body with 413, and a handler fault with 500. An address that cannot be bound returns IoError.Unavailable.
     fn serve(
         address: String,
-        handler: fn(request: HttpRequest) -> HttpResponse,
+        handler: fn(request: HttpRequest) HttpResponse,
         max_requests: Optional[Int] = none,
         max_body_bytes: Optional[Int] = none,
         max_response_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none,
         grace: Optional[Duration] = none
-    ) -> Result[HttpServer, IoError]
+    ) Result[HttpServer, IoError]
     # Starts an HTTP server on `address` whose handler receives each request as a streaming exchange. Limits, timeouts, and TLS come from `options`.
     # Returns PermissionDenied when a restricted network disallows listening, and InvalidInput for invalid options. Close the server to stop it.
     fn serve_stream(
         address: String,
-        handler: fn(exchange: HttpExchange) -> Result[Unit, HttpError],
+        handler: fn(exchange: HttpExchange) Result[Unit, HttpError],
         options: HttpServerOptions
-    ) -> Result[HttpServer, HttpError]
+    ) Result[HttpServer, HttpError]
     # Opens a WebSocket client connection to a `ws` or `wss` URL, sending the given headers and offering `subprotocols` in order.
     # Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. Failures use WebSocketError.
     fn web_socket(
@@ -286,10 +286,10 @@ export interface Network:
         headers: HttpHeaders,
         subprotocols: List[String],
         options: WebSocketOptions
-    ) -> Result[WebSocket, WebSocketError]
+    ) Result[WebSocket, WebSocketError]
     # Returns a derived network that resolves names through the DNS server at `address`, an IP literal with port, instead of the system resolver.
     # The address must be allowed by this network's restrictions, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.
-    fn with_resolver(address: String) -> Result[Network, NetworkError]
+    fn with_resolver(address: String) Result[Network, NetworkError]
 
 # Returns network operations for the current host.
-export fn network() -> Network:
+export fn network() Network:

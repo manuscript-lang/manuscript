@@ -30,7 +30,7 @@ func TestAcceptedDesignFixtures(t *testing.T) {
 }
 
 func TestOmittedLabelPreservesSourceAST(t *testing.T) {
-	source := "fn identity[T](value: T) -> T:\n    return value\nfn call() -> Int:\n    return identity(3)\n"
+	source := "fn identity[T](value: T) T:\n    return value\nfn call() Int:\n    return identity(3)\n"
 	module, err := parser.Parse("argument.ms", source)
 	if err != nil {
 		t.Fatal(err)
@@ -52,7 +52,7 @@ func TestOmittedLabelPreservesSourceAST(t *testing.T) {
 }
 
 func TestContextualCallbackPreservesSourceAST(t *testing.T) {
-	source := "type Callback:\n    value: fn(value: Int) -> Int\nfn example() -> Unit:\n    let callback = Callback(fn(value): value + 1)\n"
+	source := "type Callback:\n    value: fn(value: Int) Int\nfn example() Unit:\n    let callback = Callback(fn(value): value + 1)\n"
 	module, err := parser.Parse("callback.ms", source)
 	if err != nil {
 		t.Fatal(err)
@@ -104,7 +104,7 @@ type Node:
 }
 
 func TestBareIdentifiersArePositionalAndPreserveSourceAST(t *testing.T) {
-	source := "fn first[T](left: T, right: T) -> T: return left\nfn call(left: Int, right: Int) -> Int: return first(right, left)\n"
+	source := "fn first[T](left: T, right: T) T: return left\nfn call(left: Int, right: Int) Int: return first(right, left)\n"
 	module, err := parser.Parse("shorthand.ms", source)
 	if err != nil {
 		t.Fatal(err)

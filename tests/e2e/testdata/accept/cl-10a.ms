@@ -1,23 +1,23 @@
 import panic from "@std/faults.ms"
 
 interface ReadValue[T]:
-    fn get() -> T
+    fn get() T
 
 interface SameValue[T: Equal]:
-    fn same(other: T) -> Bool
+    fn same(other: T) Bool
 
 type Box[T]:
     value: T
 
 impl ReadValue[T] for Box[T]:
-    fn get() -> T:
+    fn get() T:
         return self.value
 
 impl SameValue[T] for Box[T]:
-    fn same(other: T) -> Bool:
+    fn same(other: T) Bool:
         return self.value == other
 
-fn compare[T: Equal](box: Box[T], other: T) -> Bool:
+fn compare[T: Equal](box: Box[T], other: T) Bool:
     return box.same(other: other)
 
 test "generic implementations":

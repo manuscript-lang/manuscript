@@ -6,7 +6,7 @@ import (
 )
 
 func TestRecursiveFieldsKeepEditorNavigation(t *testing.T) {
-	source := "type Node:\n    value: Int\n    next: Optional[Node]\nfn read(node: Node) -> Int:\n    return node.next.unwrap().value\n"
+	source := "type Node:\n    value: Int\n    next: Optional[Node]\nfn read(node: Node) Int:\n    return node.next.unwrap().value\n"
 	d := document{"file:///tmp/recursive-editor.ms", source, 1}
 	result := analyze(d, map[string]document{d.URI: d})
 	if !result.Success() {
@@ -27,7 +27,7 @@ func TestRecursiveFieldsKeepEditorNavigation(t *testing.T) {
 }
 
 func TestRecursiveGenericEditorDiagnostic(t *testing.T) {
-	source := "type Grow[T]:\n    next: fn() -> Grow[List[T]]\n"
+	source := "type Grow[T]:\n    next: fn() Grow[List[T]]\n"
 	d := document{"file:///tmp/recursive-editor.ms", source, 1}
 	result := analyze(d, map[string]document{d.URI: d})
 	if len(result.Diagnostics) != 1 {

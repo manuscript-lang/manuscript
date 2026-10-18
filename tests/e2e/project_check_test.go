@@ -33,7 +33,7 @@ func TestCLIProjectCheck(t *testing.T) {
 	if err != nil || !strings.Contains(string(output), "Checked") {
 		t.Fatalf("file check: %v\n%s", err, output)
 	}
-	if err := os.WriteFile(filepath.Join(root, "src/report.ms"), []byte("fn number() -> Int: return 1\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "src/report.ms"), []byte("fn number() Int: return 1\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	output, err = commandOutput(t, cliBinary, "check", manifest)

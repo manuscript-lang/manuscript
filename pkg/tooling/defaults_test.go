@@ -11,12 +11,12 @@ import (
 
 func TestDefaultExpressionsParticipateInTooling(t *testing.T) {
 	source := `import SynchronizedGuard from "@std/sync.ms"
-fn read(state: SynchronizedGuard[Int]) -> Int:
+fn read(state: SynchronizedGuard[Int]) Int:
     return state.get()
-fn named(state: SynchronizedGuard[Int], value: Int = read(state)) -> Int:
+fn named(state: SynchronizedGuard[Int], value: Int = read(state)) Int:
     return value
-fn nested(state: SynchronizedGuard[Int]) -> Unit:
-    let callback = fn(value: Int = read(state)) -> Int:
+fn nested(state: SynchronizedGuard[Int]) Unit:
+    let callback = fn(value: Int = read(state)) Int:
         return value
 `
 	result := compiler.CompileSource("defaults.ms", source, compiler.Options{})

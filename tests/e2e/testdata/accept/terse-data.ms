@@ -1,14 +1,14 @@
 import panic from "@std/faults.ms"
 
-fn subtract(amount: Int, deduction: Int = 1) -> Int: amount - deduction
+fn subtract(amount: Int, deduction: Int = 1) Int: amount - deduction
 
-fn first[T](left: T, right: T) -> T: left
+fn first[T](left: T, right: T) T: left
 
-fn size(values: Map[String, Int]) -> Int: values.length()
+fn size(values: Map[String, Int]) Int: values.length()
 
-fn optional_size(values: Optional[Map[String, Int]]) -> Int: (values.unwrap().length())
+fn optional_size(values: Optional[Map[String, Int]]) Int: (values.unwrap().length())
 
-fn mark(log: List[Int], value: Int) -> Int:
+fn mark(log: List[Int], value: Int) Int:
     log.append(value)
     return value
 
@@ -23,7 +23,7 @@ test "map literals and positional identifier arguments":
     let right = 8
     if first(left, right) != 4: return panic("generic inference")
 
-    let stored: fn(amount: Int, deduction: Int) -> Int = subtract
+    let stored: fn(amount: Int, deduction: Int) Int = subtract
     if stored(amount, deduction) != 7: return panic("function value")
 
     let values = {"a": 1, "b": 2, "a": 3}
@@ -72,13 +72,13 @@ type Key:
     label: String
 
 impl Equal for Key:
-    fn equals(other: Equal) -> Bool:
+    fn equals(other: Equal) Bool:
         match other:
             Key(value): return self.id == value.id
             _: return false
 
 impl Hashable for Key:
-    fn hash() -> Int: self.id
+    fn hash() Int: self.id
 
 test "map literal uses custom key equality":
     let a = Key(id: 1, label: "first")

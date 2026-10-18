@@ -1,10 +1,10 @@
 import range from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
-fn append_value[T](values: List[T], value: T) -> List[T]:
+fn append_value[T](values: List[T], value: T) List[T]:
     return values.append(value)
 
-fn forwarded[T](values: List[T]) -> List[T]:
+fn forwarded[T](values: List[T]) List[T]:
     return values
 
 type Lists:

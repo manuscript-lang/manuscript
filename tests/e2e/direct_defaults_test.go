@@ -10,22 +10,22 @@ import (
 func TestDirectCallsFillOmittedDefaults(t *testing.T) {
 	result := compiler.CompileSource("direct-defaults.ms", `import panic from "@std/faults.ms"
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
-fn scaled(base: Int, factor: Int = 2, label: String = "x") -> String: "{label}{base * factor}"
+fn scaled(base: Int, factor: Int = 2, label: String = "x") String: "{label}{base * factor}"
 
-fn chained(base: Int, plus: Int = base + 1) -> Int: base + plus
+fn chained(base: Int, plus: Int = base + 1) Int: base + plus
 
-fn maybe(value: Int, extra: Optional[Int] = none) -> Int:
+fn maybe(value: Int, extra: Optional[Int] = none) Int:
     match extra:
         some(number):
             return value + number
         none:
             return value
 
-fn countdown(n: Int, step: Int = 1) -> Int:
+fn countdown(n: Int, step: Int = 1) Int:
     if n <= 0:
         return 0
     return n + countdown(n: n - step, step: step)

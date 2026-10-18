@@ -14,20 +14,20 @@ export fn base64_decode(
     text: String,
     url_safe: Bool = false,
     max_bytes: Optional[Int] = none
-) -> Result[Bytes, EncodingError]:
+) Result[Bytes, EncodingError]:
 
 # Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text.
-export fn base64_encode(data: Bytes, url_safe: Bool = false) -> String:
+export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
 
 # Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
 export fn hex_decode(
     text: String,
     max_bytes: Optional[Int] = none
-) -> Result[Bytes, EncodingError]:
+) Result[Bytes, EncodingError]:
 
 # Encodes each byte as two lowercase hexadecimal digits.
-export fn hex_encode(data: Bytes) -> String:
+export fn hex_encode(data: Bytes) String:
 
 impl Error for EncodingError:
     # Returns an encoding-prefixed diagnostic without echoing the encoded input.
-    fn message() -> String:
+    fn message() String:

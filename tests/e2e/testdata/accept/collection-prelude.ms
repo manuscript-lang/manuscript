@@ -8,11 +8,11 @@ type Point:
     x: Int
     y: Int
 
-fn roll(i: Int) -> Result[Int, String]: ok(i)
+fn roll(i: Int) Result[Int, String]: ok(i)
 
-fn count(values: List[String]) -> Int: values.length()
+fn count(values: List[String]) Int: values.length()
 
-fn update[K: Hashable, V](values: Map[K, V], key: K, value: V) -> Map[K, V]:
+fn update[K: Hashable, V](values: Map[K, V], key: K, value: V) Map[K, V]:
     return values.add(key, value)
 
 test "issue 187 programs need no collection imports":

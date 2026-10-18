@@ -21,13 +21,13 @@ type Val:
     val: Int
 `
 	for _, test := range []struct{ name, source, diagnostic string }{
-		{"field type", "fn f(value: Val) -> Unit:\n    value.val = true\n", "expected Int"},
-		{"fixed binding", "fn f() -> Unit:\n    let value = Val(val: 0)\n    value = Val(val: 1)\n", "cannot assign immutable binding"},
-		{"type assignment", "fn f() -> Unit:\n    Val.val = 1\n", "assignment requires a record field"},
-		{"file clone", "fn f(file: File) -> Unit:\n    file.clone()\n", "unknown or ambiguous member clone"},
-		{"socket clone", "fn f(socket: Connection) -> Unit:\n    socket.clone()\n", "unknown or ambiguous member clone"},
-		{"lock clone", "fn f(lock: Synchronized[Int]) -> Unit:\n    lock.clone()\n", "unknown or ambiguous member clone"},
-		{"guard clone", "fn f(guard: SynchronizedGuard[Int]) -> Unit:\n    guard.clone()\n", "unknown or ambiguous member clone"},
+		{"field type", "fn f(value: Val) Unit:\n    value.val = true\n", "expected Int"},
+		{"fixed binding", "fn f() Unit:\n    let value = Val(val: 0)\n    value = Val(val: 1)\n", "cannot assign immutable binding"},
+		{"type assignment", "fn f() Unit:\n    Val.val = 1\n", "assignment requires a record field"},
+		{"file clone", "fn f(file: File) Unit:\n    file.clone()\n", "unknown or ambiguous member clone"},
+		{"socket clone", "fn f(socket: Connection) Unit:\n    socket.clone()\n", "unknown or ambiguous member clone"},
+		{"lock clone", "fn f(lock: Synchronized[Int]) Unit:\n    lock.clone()\n", "unknown or ambiguous member clone"},
+		{"guard clone", "fn f(guard: SynchronizedGuard[Int]) Unit:\n    guard.clone()\n", "unknown or ambiguous member clone"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -56,7 +56,7 @@ import IoError from "@std/io.ms"
 type Holder:
     file: File
     label: String
-export fn main() -> Int:
+export fn main() Int:
     let file = match files().open("data.txt"):
         ok(file): file
         error(_):

@@ -1,51 +1,51 @@
 import panic from "@std/faults.ms"
 
-fn parse(n: Int) -> Result[Int, String]:
+fn parse(n: Int) Result[Int, String]:
     if n < 0:
         return error("neg")
 
     return ok(n)
 
-fn bound(n: Int) -> Result[Int, String]:
+fn bound(n: Int) Result[Int, String]:
     let v = try parse(n: n)
     return ok(v + 1)
 
-fn reassigned(n: Int) -> Result[Int, String]:
+fn reassigned(n: Int) Result[Int, String]:
     var total = 1
     total = try parse(n: n)
     return ok(total * 2)
 
-fn check(n: Int) -> Result[Unit, String]:
+fn check(n: Int) Result[Unit, String]:
     if n < 0:
         return error("neg")
 
     return ok(unit)
 
-fn discarded(n: Int) -> Result[Int, String]:
+fn discarded(n: Int) Result[Int, String]:
     try check(n: n)
     return ok(7)
 
-fn code(r: Result[Int, String]) -> Int:
+fn code(r: Result[Int, String]) Int:
     return match r:
         ok(v): v
         error(e): -1
 
-fn nested(n: Int) -> Result[Int, String]:
+fn nested(n: Int) Result[Int, String]:
     return ok((try parse(n: n)) + (try parse(n: n - 5)))
 
-fn chained(n: Int) -> Result[Int, String]:
+fn chained(n: Int) Result[Int, String]:
     let a = try bound(n: n)
     let b = try reassigned(n: a - 10)
     return ok(b)
 
-fn in_loop(values: List[Int]) -> Result[Int, String]:
+fn in_loop(values: List[Int]) Result[Int, String]:
     var sum = 0
     for v in values:
         sum = sum + (try parse(n: v))
     return ok(sum)
 
-fn in_lambda(n: Int) -> Result[Int, String]:
-    let inner = fn() -> Result[Int, String]:
+fn in_lambda(n: Int) Result[Int, String]:
+    let inner = fn() Result[Int, String]:
         let v = try parse(n: n)
         return ok(v * 10)
     let r = try inner()

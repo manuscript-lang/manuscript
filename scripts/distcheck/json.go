@@ -43,7 +43,7 @@ func checkJSONResults(cli, directory string, environment []string) error {
 		return err
 	}
 	formatFile := filepath.Join(formatDir, "value=a=b.ms")
-	original := []byte("fn value() -> Int:   \n    return 0   \n")
+	original := []byte("fn value() Int:   \n    return 0   \n")
 	if err := os.WriteFile(formatFile, original, 0600); err != nil {
 		return err
 	}

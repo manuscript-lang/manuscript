@@ -2,15 +2,15 @@ import {ListBuilder, MapBuilder, SetBuilder, range, range_by, filled, map_from_e
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
-fn positive(value: Int) -> Bool: value > 0
+fn positive(value: Int) Bool: value > 0
 
-fn twice(value: Int) -> Int: value * 2
+fn twice(value: Int) Int: value * 2
 
-fn duplicate(value: Int) -> List[Int]: [value, value]
+fn duplicate(value: Int) List[Int]: [value, value]
 
-fn sum(accumulator: Int, value: Int) -> Int: accumulator + value
+fn sum(accumulator: Int, value: Int) Int: accumulator + value
 
-fn parity(value: Int) -> Int: value % 2
+fn parity(value: Int) Int: value % 2
 
 test "list search callbacks empty identities and folding":
     let list = [-1, 2, 0, 3]
@@ -170,7 +170,7 @@ test "for over range counts without a list":
 
     if skipped != 16: return panic("continue and break in range loop")
 
-    let callbacks: List[fn() -> Int] = []
+    let callbacks: List[fn() Int] = []
     for index in range(0, 3):
         callbacks.append(fn(): index)
     if callbacks.map(fn(call): call()) != [0, 1, 2]: return panic("range loop captures")

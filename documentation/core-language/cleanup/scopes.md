@@ -31,7 +31,7 @@ The compiler needs a valid close operation:
 | Value's type | Required evidence |
 | --- | --- |
 | Concrete type | An explicit implementation of standard `Closeable`. |
-| Contract view | A declared `fn close() -> Unit` operation. |
+| Contract view | A declared `fn close() Unit` operation. |
 | Generic parameter | A bound proving one of those operations. |
 
 See [Closeable](closeable.md) for exact checks.

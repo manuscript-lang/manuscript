@@ -9,7 +9,7 @@ import (
 
 func pipeValue(t *testing.T, expression string) *syntax.Expression {
 	t.Helper()
-	source := "fn f() -> Int:\n    let v = " + expression + "\n    return 0\n"
+	source := "fn f() Int:\n    let v = " + expression + "\n    return 0\n"
 	module, err := Parse("pipe.ms", source)
 	if err != nil {
 		t.Fatalf("%s: %v", expression, err)
@@ -52,7 +52,7 @@ func TestPipeIsLeftAssociativeAndLowestPrecedence(t *testing.T) {
 }
 
 func TestPipeContinuationLines(t *testing.T) {
-	source := "fn f() -> Int:\n    let v = x\n        | f # first\n\n        # explain\n        | g(a: 1)\n        .size()\n    return 0\n"
+	source := "fn f() Int:\n    let v = x\n        | f # first\n\n        # explain\n        | g(a: 1)\n        .size()\n    return 0\n"
 	module, err := Parse("pipe.ms", source)
 	if err != nil {
 		t.Fatal(err)
@@ -78,7 +78,7 @@ func TestPipeRejections(t *testing.T) {
 		"x | f\n        | g": "",
 		"x | f\n    | g":     "indented four spaces",
 	} {
-		module := "fn f() -> Int:\n    let v = " + source + "\n    return 0\n"
+		module := "fn f() Int:\n    let v = " + source + "\n    return 0\n"
 		_, err := Parse("pipe.ms", module)
 		if want == "" {
 			if err != nil {
@@ -95,7 +95,7 @@ func TestPipeRejections(t *testing.T) {
 func TestPipeNextLineDotAppliesToStepResult(t *testing.T) {
 	parse := func(body string) *syntax.Expression {
 		t.Helper()
-		module, err := Parse("pipe.ms", "fn f() -> Int:\n    let v = x\n"+body+"    return 0\n")
+		module, err := Parse("pipe.ms", "fn f() Int:\n    let v = x\n"+body+"    return 0\n")
 		if err != nil {
 			t.Fatalf("%q: %v", body, err)
 		}
@@ -121,7 +121,7 @@ func TestPipeDiagnosticsExplainRejectedShapes(t *testing.T) {
 		{"x | f[Int]", "cannot take type arguments"},
 		{"x |\n", "start the next line with '|'"},
 	} {
-		source := "fn f() -> Int:\n    let v = " + test.expression + "\n    return 0\n"
+		source := "fn f() Int:\n    let v = " + test.expression + "\n    return 0\n"
 		_, err := Parse("pipe.ms", source)
 		if err == nil || !strings.Contains(err.Error(), test.want) {
 			t.Errorf("%q: %v, want %q", test.expression, err, test.want)

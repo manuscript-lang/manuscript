@@ -7,7 +7,7 @@ let GREETING = "limit {LIMIT}"
 let NOTHING: Optional[Int] = none
 let from = 4
 
-fn limit_plus(extra: Int) -> Int:
+fn limit_plus(extra: Int) Int:
     return LIMIT + extra
 
 test "constants stand for their initializers":
@@ -40,7 +40,7 @@ type Phase:
 let START = Phase.Idle
 let NEXT: Phase = Idle
 
-fn phase_name(phase: Phase) -> String:
+fn phase_name(phase: Phase) String:
     match phase:
         Idle:
             return "idle"
