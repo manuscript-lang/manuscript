@@ -971,7 +971,7 @@ func (p *Parser) text(token lexer.Token) *syntax.Expression {
 	raw := token.Text[1 : len(token.Text)-1]
 	e := &syntax.Expression{Kind: syntax.KindText, Pos: token.Pos}
 	if !strings.ContainsAny(raw, "\\{") {
-		e.Parts = []syntax.TextPart{{Text: raw}}
+		e.Parts = []syntax.TextPart{{Text: strings.Clone(raw)}}
 		return e
 	}
 	var literal strings.Builder
