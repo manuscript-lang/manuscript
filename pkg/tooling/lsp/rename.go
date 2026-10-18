@@ -17,7 +17,15 @@ func renameWithCancel(result compiler.Result, d document, p position, name strin
 	if isCanceled(canceled) {
 		return nil, context.Canceled
 	}
-	index := sourceIndex(result)
+	return renameIndexed(result, sourceIndex(result), d, p, name, canceled, open...)
+}
+
+// Callers with a live checked index need not rebuild it for rename. The entry
+// checkpoint also observes cancellation that arrived during index construction.
+func renameIndexed(result compiler.Result, index []occurrence, d document, p position, name string, canceled func() bool, open ...map[string]document) (any, error) {
+	if isCanceled(canceled) {
+		return nil, context.Canceled
+	}
 	selected := occurrenceAt(result, d, p, index)
 	if selected == nil {
 		return nil, fmt.Errorf("select a resolved source declaration or use")
@@ -38,11 +46,7 @@ func renameWithCancel(result compiler.Result, d document, p position, name strin
 			return nil, err
 		}
 	}
-	type replacement struct {
-		start, end int
-		newText    string
-	}
-	byURI := map[string][]replacement{}
+	byURI := map[string][]renameReplacement{}
 	content := map[string]document{}
 	hasDeclaration := false
 	for _, target := range targets {
@@ -57,6 +61,9 @@ func renameWithCancel(result compiler.Result, d document, p position, name strin
 				return nil, context.Canceled
 			}
 			entries = sourceIndex(checked)
+		}
+		if isCanceled(canceled) {
+			return nil, context.Canceled
 		}
 		if checked.Program == nil {
 			continue
@@ -89,7 +96,7 @@ func renameWithCancel(result compiler.Result, d document, p position, name strin
 				}
 			}
 			if !exists {
-				byURI[uri] = append(byURI[uri], replacement{entry.pos.Offset, entry.end, name})
+				byURI[uri] = append(byURI[uri], renameReplacement{entry.pos.Offset, entry.end, name})
 			}
 		}
 	}
@@ -106,6 +113,24 @@ func renameWithCancel(result compiler.Result, d document, p position, name strin
 	if name == selected.name {
 		return map[string]any{"documentChanges": []any{}}, nil
 	}
+	modified, changes, err := renameChanges(docs, content, byURI, name, canceled)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateRename(targets, docs, modified, canceled); err != nil {
+		return nil, err
+	}
+	return map[string]any{"documentChanges": changes}, nil
+}
+
+type renameReplacement struct {
+	start, end int
+	newText    string
+}
+
+// Build one versioned edit per source file, stopping at each file boundary.
+// Partial edits and modified overlays never escape a canceled phase.
+func renameChanges(docs, content map[string]document, byURI map[string][]renameReplacement, name string, canceled func() bool) (map[string]document, []any, error) {
 	modified := copyDocuments(docs)
 	changes := []any{}
 	uris := []string{}
@@ -114,14 +139,17 @@ func renameWithCancel(result compiler.Result, d document, p position, name strin
 	}
 	sort.Strings(uris)
 	for _, uri := range uris {
+		if isCanceled(canceled) {
+			return nil, nil, context.Canceled
+		}
 		file := content[uri]
 		tokens, e := lexer.Lex(filename(uri), file.Text)
 		if e != nil {
-			return nil, e
+			return nil, nil, e
 		}
 		for _, token := range tokens {
 			if token.Kind == lexer.Name && token.Text == name {
-				return nil, fmt.Errorf("%s already occurs in %s; rename could capture another binding", name, filename(uri))
+				return nil, nil, fmt.Errorf("%s already occurs in %s; rename could capture another binding", name, filename(uri))
 			}
 		}
 		edits := byURI[uri]
@@ -130,7 +158,7 @@ func renameWithCancel(result compiler.Result, d document, p position, name strin
 		newSource := file.Text
 		for _, edit := range edits {
 			if edit.end > len(newSource) {
-				return nil, fmt.Errorf("source revision changed")
+				return nil, nil, fmt.Errorf("source revision changed")
 			}
 			lspEdits = append(lspEdits, map[string]any{"range": span{Position(file.Text, edit.start), Position(file.Text, edit.end)}, "newText": edit.newText})
 			newSource = newSource[:edit.start] + edit.newText + newSource[edit.end:]
@@ -144,34 +172,38 @@ func renameWithCancel(result compiler.Result, d document, p position, name strin
 		}
 		changes = append(changes, map[string]any{"textDocument": map[string]any{"uri": uri, "version": version}, "edits": lspEdits})
 	}
-	// Validate the complete affected workspace snapshot before proposing any edit.
+	return modified, changes, nil
+}
+
+// Validate the complete affected workspace before proposing any edit.
+func validateRename(targets []document, docs, modified map[string]document, canceled func() bool) error {
 	// Signature labels, imports, constructors and type annotations participate in
 	// the same index, so a rename cannot quietly break another module's contract.
 	for _, target := range targets {
 		if isCanceled(canceled) {
-			return nil, context.Canceled
+			return context.Canceled
 		}
 		before := workspaceAnalysis(target, docs)
 		if isCanceled(canceled) {
-			return nil, context.Canceled
+			return context.Canceled
 		}
 		if !before.Success() {
-			return nil, fmt.Errorf("rename requires a clean workspace: %s", filename(target.URI))
+			return fmt.Errorf("rename requires a clean workspace: %s", filename(target.URI))
 		}
 		if updated, ok := modified[target.URI]; ok {
 			target = updated
 		}
 		after := workspaceAnalysis(target, modified)
 		if isCanceled(canceled) {
-			return nil, context.Canceled
+			return context.Canceled
 		}
 		if !after.Success() {
 			message := "unknown checking failure"
 			if len(after.Diagnostics) > 0 {
 				message = after.Diagnostics[0].Message
 			}
-			return nil, fmt.Errorf("rename would break %s: %s", filename(target.URI), message)
+			return fmt.Errorf("rename would break %s: %s", filename(target.URI), message)
 		}
 	}
-	return map[string]any{"documentChanges": changes}, nil
+	return nil
 }
