@@ -95,7 +95,7 @@ test "unselected":
 		t.Fatalf("trace passthrough: %v\n%s", err, data)
 	}
 	bundle := filepath.Join(t.TempDir(), "bundle=a=b")
-	if data, err := commandOutput(t, cliBinary, "profile", source, "--output="+bundle, "--build-type=Release", "--", "--filter=a=b"); err != nil || string(data) != "--filter=a=b\n" {
+	if data, err := commandOutput(t, cliBinary, "profile", source, "--out-dir="+bundle, "--build-type=Release", "--", "--filter=a=b"); err != nil || string(data) != "--filter=a=b\n" {
 		t.Fatalf("bundle directory/forwarding: %v\n%s", err, data)
 	}
 	if _, err := os.Stat(filepath.Join(bundle, "manifest.json")); err != nil {
