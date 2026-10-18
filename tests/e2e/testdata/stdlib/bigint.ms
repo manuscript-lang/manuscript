@@ -44,6 +44,4 @@ test "big integer budgets exclude at most one leading sign before validation":
         if parse(text, 10, 1).is_error(): return panic(
             "valid sign consumes no digit budget"
         )
-        if parse(text, 10, 0) != limited: return panic(
-            "zero digit budget"
-        )
+        if parse(text, 10, 0) != limited: return panic("zero digit budget")
