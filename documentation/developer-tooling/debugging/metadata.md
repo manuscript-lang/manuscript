@@ -9,7 +9,7 @@ weight = 118
 - `ms diagram` emits the static call graph as ascii (default) or Mermaid (`--format mermaid`).
 - Native checked builds emit a separate executable and toolchain manifest.
 
-- Generated Go uses line directives, so Delve maps native lines to `.ms` statements. Locals keep source names.
+- Debuggers map native lines back to `.ms` statements, and locals keep source names.
 - `--debug` keeps native symbols, disables optimization and inlining, and uses absolute source paths.
 - Only the VS Code adapter (`extensions/vscode/debug-adapter.js`) shows records, collections, and variants as Manuscript values; interactive `ms debug` and `ms dap` clients see Delve's Go values.
 - Scripted `ms debug` (`--break`, `--script`) reports source function names, local names and types, and only Manuscript frames; scalars render directly, others use Delve's one-line form.

@@ -198,20 +198,15 @@ Test results:
 - Outcomes come from a separate result channel, so test output that looks like RUN/PASS/FAIL creates none. Stderr never enters the JSON.
 - No test blocks: exit 0, `reason: "no_tests"`. Unmatched filter: exit 1, `reason: "no_match"`. Test failures exit 1; abrupt native exits keep their status with `completed: false`. `MST001` marks non-source execution, build, or report failures.
 
-`ms emit ms.toml -o main.go` writes generated Go with the runtime included. Compiling it directly needs the repository's pinned `go.mod`, `go.sum`, `vendor/` tree, and `internal/hostos/`; from a checkout use `toolchain/go/bin/go build -mod=vendor main.go`. `build`, `run`, and `test` supply these themselves. See [how it works](how-it-works.md).
-
 ## Editor features
 
 The language server provides incremental sync with validated UTF-16 ranges, diagnostics and lint codes, document and workspace symbols, semantic tokens, folding, inferred-local type hints, hover, definition and type-definition navigation, highlights, references, signature help, formatting, import organization, code actions, and rename.
 
 - Completion follows the checker's lexical scope and member rules: visible parameters and locals, generic-bound operations, record fields, collection and service methods, variant cases, named arguments, snippets (if the client supports them), standard and project auto-imports, and import paths. Used arguments, inaccessible opaque fields, and sibling-scope locals are excluded. An accepted auto-import adds an ordinary import.
-- Incomplete member accesses and calls are analyzed on a private snapshot with declaration recovery. Recovery is editor-only; strict checking, formatting, and builds never accept repaired source. A parse error elsewhere does not erase completion or outlining.
+- Completion keeps working while code is incomplete; checking, formatting, and builds never accept repaired source.
 - References and rename cover declarations, uses, assignments, type annotations, imports, parameter labels, record fields and constructors, and interface operations, including unopened modules. Rename checks the proposed snapshot, rejects identifiers that could capture, and cannot rename external declarations or malformed source.
 - Standard-library definitions open read-only in VS Code with hover and navigation.
 - VS Code hides inline type hints by default; hover still shows types. Set `editor.inlayHints.enabled` to `on` or `offUnlessPressed` under `[manuscript]` to show hints.
-- Open documents share recovering project analysis, occurrence indexes and lint findings within the current source generation. Any source or manifest change discards that generation; repaired completion and strict workspace checks remain separate. Consecutive already-queued edits apply in order and may publish only the latest diagnostics before the next request or lifecycle event.
-- Transport limits: 16 MiB frames, 8 KiB headers. Invalid JSON or parameters get protocol errors without ending the session. Canceled requests return `RequestCancelled`.
-- Cancellation skips queued requests and stops workspace work between files and checking phases. A compiler check or occurrence-index construction already in progress finishes before cancellation is observed.
 
 ## Linting and formatting
 
@@ -231,8 +226,6 @@ The language server provides incremental sync with validated UTF-16 ranges, diag
 | MSL108 | `match` on an Optional with only `some` and `none` arms; use `if let` or an Optional method |
 
 Implicit imports (such as `List` for list literals) count as uses. Unused-import and whitespace fixes are editor actions; initializers with possible effects are never silently removed.
-
-`String.replace_first` still accepts a cap greater than one, so renaming every `String.replace` call would conceal that behavior; both names keep their signatures.
 
 `fmt` takes files, directories, and manifests (see [formatting](source/formatting.md)).
 
@@ -262,7 +255,6 @@ Expression layout uses a soft limit of 88 columns:
 `ms debug` opens Delve's terminal UI. `ms debug --break <location>` and `ms debug --script <file>` are non-interactive; see [scripted debugging](debugging/debugger-integration.md#scripted-debugging-for-agents).
 
 - Profiling is explicit and local: CPU and heap use pprof, traces use Go tracing. New files are created exclusively with mode 0600 and existing files are never overwritten. Setup or heap-write errors exit 70. One capture runs per process.
-- Source entry boundaries add `ms.source` CPU labels and, when tracing, `source:<position>` regions. Nested calls inherit the label and appear in sampled stacks through native source mappings. Each task-group or scheduled operation starts a fresh boundary; joining and cleanup have named trace regions. Heap-only capture adds no instrumentation.
 - Profiling changes timing and allocation: CPU capture waits for samples to flush, heap capture forces a garbage collection, and tracing can add time and disk use. Use optimized builds, and measure an unprofiled executable when comparing speed.
 - The VS Code debugger shows native runtime frames as subdued entries (scripted `ms debug` omits them), and complex watch expressions keep native Go syntax.
 

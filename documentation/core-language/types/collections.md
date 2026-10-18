@@ -125,7 +125,7 @@ Builder mutations return Unit; `freeze` returns the sealed result.
 
 On a 64-bit host a List reserves 8 bytes per `Int` or `Float`, 1 per `Bool`, and 16 per `String` reference (text storage is extra and may be shared), plus a small header. Append reserves spare capacity and growth can briefly keep old arrays alive, so heap and peak RSS exceed the element budget. Storage never narrows `Int` or `Float`.
 
-A List keeps its identity and backing kind through generics, records, Optional, Result, and closures; explicit copies get independent backing. See [Go representation](../../contributing/go-lowering-representation.md).
+A List keeps its identity and backing kind through generics, records, Optional, Result, and closures; explicit copies get independent backing.
 
 ## Lookup and updates
 
