@@ -1,6 +1,6 @@
+import {expect_true, fail} from "@std/testing.ms"
 import Synchronized from "@std/sync.ms"
 import TaskGroup from "@std/tasks.ms"
-import panic from "@std/faults.ms"
 
 fn wait_until_ready(ready: Synchronized[Bool]) -> Bool:
     with locked = ready.lock():
@@ -22,10 +22,9 @@ test "wait returns after another task notifies":
 
         match waiter.join():
             ok(seen):
-                if not seen:
-                    return panic(message: "waiter woke before the value changed")
+                ((seen) | try expect_true)
             error(_):
-                return panic(message: "waiter failed")
+                return fail(message: "waiter failed")
 
 test "group close cancels a waiting task":
     let ready = Synchronized(false)

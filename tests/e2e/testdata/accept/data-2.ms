@@ -1,14 +1,9 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 import Bytes from "@std/bytes.ms"
 
 test "explicit byte conversion":
-    if not ("é".byte_length() == 2):
-        return panic(message: "check failed")
-    if not ("é".to_bytes().to_string() == some("é")):
-        return panic(message: "check failed")
-
+    "é".byte_length() | try expect_equal(expected: 2)
+    "é".to_bytes().to_string() | try expect_equal(expected: some("é"))
     let invalid: Optional[String] = none
-    if not (Bytes([255]).to_string() == invalid):
-        return panic(message: "check failed")
-    if not ("-007".parse_int() == some(-7)):
-        return panic(message: "check failed")
+    Bytes([255]).to_string() | try expect_equal(expected: invalid)
+    "-007".parse_int() | try expect_equal(expected: some(-7))

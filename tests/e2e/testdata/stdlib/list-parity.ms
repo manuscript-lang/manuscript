@@ -1,5 +1,5 @@
+import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
 import range from "@std/collections.ms"
-import panic from "@std/faults.ms"
 
 test "List count calls the predicate once per element":
     let values = [1, 2, 3, 4]
@@ -9,45 +9,34 @@ test "List count calls the predicate once per element":
             seen.append(value)
             return value % 2 == 0
     )
-    if even != 2 or seen != values: return panic("count matches")
-
+    (even != 2 or seen != values) | try expect_false
     let empty: List[Int] = []
-    if empty.count(fn(value: Int) -> Bool: true) != 0: return panic("empty count")
+    try expect_equal(empty.count(fn(value: Int) -> Bool: true), 0)
 
 test "List insert mutates in place and returns the same list":
     let values = [1, 3]
     let alias = values
     let returned = values.insert(1, 2)
-    if (values != [1, 2, 3] or alias != [1, 2, 3] or returned != values): return panic(
-        "middle insert"
-    )
-
+    (values != [1, 2, 3] or alias != [1, 2, 3] or returned != values) | try expect_false
     returned.append(4)
-    if values != [1, 2, 3, 4]: return panic("insert returned a copy")
-
+    values | try expect_equal(expected: [1, 2, 3, 4])
     values.insert(0, 0).insert(5, 5)
-    if values != [0, 1, 2, 3, 4, 5]: return panic("boundary insert")
-
+    values | try expect_equal(expected: [0, 1, 2, 3, 4, 5])
     values.insert(-1, 9)
-    if values != [0, 1, 2, 3, 4, 9, 5]: return panic("relative insert")
-
+    values | try expect_equal(expected: [0, 1, 2, 3, 4, 9, 5])
     values.insert(-7, 8)
-    if values != [8, 0, 1, 2, 3, 4, 9, 5]: return panic("first relative insert")
-
+    values | try expect_equal(expected: [8, 0, 1, 2, 3, 4, 9, 5])
     let empty: List[String] = []
-    if empty.insert(0, "a") != ["a"]: return panic("empty insert")
+    empty.insert(0, "a") | try expect_equal(expected: ["a"])
 
 test "List pop removes and returns the last element":
     let values = [1, 2, 3]
     let alias = values
     let last = values.pop()
-    if (last != some(3) or values != [1, 2] or alias != [1, 2]): return panic(
-        "pop last"
-    )
-
+    (last != some(3) or values != [1, 2] or alias != [1, 2]) | try expect_false
     values.pop()
     values.pop()
-    if values.pop().is_some() or not (values.is_empty()): return panic("pop empty")
+    (values.pop().is_some() or not (values.is_empty())) | try expect_false
 
 type Box:
     value: Int
@@ -56,46 +45,39 @@ test "List pop and distinct retain payload references":
     let shared = Box(1)
     let boxes = [shared]
     boxes.pop().unwrap().value = 2
-    if shared.value != 2: return panic("pop payload cloned")
-
+    shared.value | try expect_equal(expected: 2)
     let nested = [1]
     let lists = [nested, [1], [2]]
     let unique = lists.distinct()
     unique.at(0).unwrap().append(3)
-    if unique.length() != 2 or nested != [1, 3]: return panic("distinct payload cloned")
+    (unique.length() != 2 or nested != [1, 3]) | try expect_false
 
 test "List distinct keeps the first equal element in order":
     let values = [3, 1, 3, 2, 1]
     let unique = values.distinct()
-    if unique != [3, 1, 2] or values != [3, 1, 3, 2, 1]: return panic("distinct order")
-
+    (unique != [3, 1, 2] or values != [3, 1, 3, 2, 1]) | try expect_false
     unique.append(4)
-    if values.length() != 5: return panic("distinct storage alias")
-
+    values.length() | try expect_equal(expected: 5)
     let words = ["b", "a", "b"]
-    if words.distinct() != ["b", "a"]: return panic("distinct text")
-
+    words.distinct() | try expect_equal(expected: ["b", "a"])
     let empty: List[Int] = []
     let copy = empty.distinct()
     copy.append(1)
-    if not (empty.is_empty()): return panic("empty distinct alias")
+    (empty.is_empty()) | try expect_true
 
 fn unique_count[T: Equal](values: List[T]) -> Int:
     return values.distinct().length()
 
 test "List parity operations support generic and bound use":
-    if unique_count([1, 1, 2]) != 2: return panic("generic distinct")
-
+    unique_count([1, 1, 2]) | try expect_equal(expected: 2)
     var values = [1, 2]
     let insert = values.insert
     let pop: fn() -> Optional[Int] = values.pop
     let count = values.count
     values = [9]
     insert(index: 2, value: 3)
-    if pop() != some(3) or count(fn(value: Int) -> Bool: value > 0) != 2: return panic(
-        "bound receiver"
-    )
-    if values != [9]: return panic("bound receiver rebinding")
+    try expect_false(pop() != some(3) or count(fn(value: Int) -> Bool: value > 0) != 2)
+    values | try expect_equal(expected: [9])
 
 test "List distinct handles large Int and String lists":
     var numbers: List[Int] = []
@@ -106,13 +88,12 @@ test "List distinct handles large Int and String lists":
         words.append("w{index % 20000}")
 
     let unique = numbers.distinct()
-    if (
-        unique.length() != 30000
-        or unique.first() != some(0)
-        or unique.last() != some(29999)
-    ): return panic("distinct ints")
-
-    let uniqueWords = words.distinct()
-    if uniqueWords.length() != 20000 or uniqueWords.at(1) != some("w1"): return panic(
-        "distinct strings"
+    try expect_false(
+        (
+            unique.length() != 30000
+            or unique.first() != some(0)
+            or unique.last() != some(29999)
+        )
     )
+    let uniqueWords = words.distinct()
+    (uniqueWords.length() != 20000 or uniqueWords.at(1) != some("w1")) | try expect_false

@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 interface Increment:
     fn apply(value: Int) -> Int
@@ -17,5 +17,4 @@ test "explicit contract conversion":
     let offset = Offset(1)
     let operation = Increment(offset)
     let same_view = Increment(operation)
-    if not (use_increment(operation: same_view) == 5):
-        return panic(message: "check failed")
+    use_increment(operation: same_view) | try expect_equal(expected: 5)

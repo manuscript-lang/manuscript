@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 fn parse(n: Int) -> Result[Int, String]:
     if n < 0:
@@ -52,35 +52,21 @@ fn in_lambda(n: Int) -> Result[Int, String]:
     return ok(r + 1)
 
 test "statement try returns the error and binds the value":
-    if not (code(r: bound(n: 4)) == 5):
-        return panic(message: "bound ok")
-    if not (code(r: bound(n: -1)) == -1):
-        return panic(message: "bound error")
-    if not (code(r: reassigned(n: 3)) == 6):
-        return panic(message: "assign ok")
-    if not (code(r: reassigned(n: -2)) == -1):
-        return panic(message: "assign error")
-    if not (code(r: discarded(n: 1)) == 7):
-        return panic(message: "discard ok")
-    if not (code(r: discarded(n: -1)) == -1):
-        return panic(message: "discard error")
+    code(r: bound(n: 4)) | try expect_equal(expected: 5)
+    code(r: bound(n: -1)) | try expect_equal(expected: -1)
+    code(r: reassigned(n: 3)) | try expect_equal(expected: 6)
+    code(r: reassigned(n: -2)) | try expect_equal(expected: -1)
+    code(r: discarded(n: 1)) | try expect_equal(expected: 7)
+    code(r: discarded(n: -1)) | try expect_equal(expected: -1)
 
 test "try nested in expressions and chains still propagates":
-    if not (code(r: nested(n: 6)) == 7):
-        return panic(message: "nested ok")
-    if not (code(r: nested(n: 2)) == -1):
-        return panic(message: "nested error")
-    if not (code(r: chained(n: 12)) == 6):
-        return panic(message: "chained ok")
-    if not (code(r: chained(n: 3)) == -1):
-        return panic(message: "chained error")
+    code(r: nested(n: 6)) | try expect_equal(expected: 7)
+    code(r: nested(n: 2)) | try expect_equal(expected: -1)
+    code(r: chained(n: 12)) | try expect_equal(expected: 6)
+    code(r: chained(n: 3)) | try expect_equal(expected: -1)
 
 test "try in loops and lambdas":
-    if not (code(r: in_loop(values: [1, 2, 3])) == 6):
-        return panic(message: "loop ok")
-    if not (code(r: in_loop(values: [1, -2, 3])) == -1):
-        return panic(message: "loop error")
-    if not (code(r: in_lambda(n: 2)) == 21):
-        return panic(message: "lambda ok")
-    if not (code(r: in_lambda(n: -2)) == -1):
-        return panic(message: "lambda error")
+    code(r: in_loop(values: [1, 2, 3])) | try expect_equal(expected: 6)
+    code(r: in_loop(values: [1, -2, 3])) | try expect_equal(expected: -1)
+    code(r: in_lambda(n: 2)) | try expect_equal(expected: 21)
+    code(r: in_lambda(n: -2)) | try expect_equal(expected: -1)

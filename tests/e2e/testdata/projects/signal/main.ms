@@ -1,5 +1,4 @@
 import stdout from "@std/io.ms"
-import panic from "@std/faults.ms"
 import WriteStream from "@std/io.ms"
 import Closeable from "@std/cleanup.ms"
 import TaskGroup from "@std/tasks.ms"

@@ -1,5 +1,5 @@
+import {expect_equal, fail} from "@std/testing.ms"
 import range from "@std/collections.ms"
-import panic from "@std/faults.ms"
 
 fn checked(n: Int) -> Result[Int, String]:
     if n < 0:
@@ -84,136 +84,113 @@ fn sum_all(count: Int) -> Result[Int, String]:
 test "result matching":
     match chain(3):
         ok(v):
-            if not (v == 8):
-                return panic(message: "chain ok")
+            try expect_equal(v, 8)
         error(_):
-            return panic(message: "chain error")
+            return fail(message: "chain error")
 
     match chain(-1):
         ok(_):
-            return panic(message: "chain should fail")
+            return fail(message: "chain should fail")
         error(cause):
-            if not (cause == "negative"):
-                return panic(message: "cause")
+            try expect_equal(cause, "negative")
 
 test "try chains":
     match deeper(1):
         ok(v):
-            if not (v == 4 + 10):
-                return panic(message: "deeper {v}")
+            if not (v == 4 + 10): return fail(message: "deeper {v}")
         error(_):
-            return panic(message: "deeper error")
+            return fail(message: "deeper error")
 
     match deeper(-5):
         ok(_):
-            return panic(message: "deeper should fail")
+            return fail(message: "deeper should fail")
         error(e):
-            if not (e == "negative"):
-                return panic(message: "deeper cause")
+            try expect_equal(e, "negative")
 
     match expression_try(4):
         ok(v):
-            if not (v == 105):
-                return panic(message: "expression try")
+            try expect_equal(v, 105)
         error(_):
-            return panic(message: "expression try error")
+            return fail(message: "expression try error")
 
     match expression_try(-4):
         ok(_):
-            return panic(message: "expression try should fail")
+            return fail(message: "expression try should fail")
         error(_):
             unit
 
     match sum_all(5):
         ok(v):
-            if not (v == 15):
-                return panic(message: "sum {v}")
+            if not (v == 15): return fail(message: "sum {v}")
         error(_):
-            return panic(message: "sum error")
+            return fail(message: "sum error")
 
 test "boxed consumers":
-    if not ("{checked(2)}" == "{passthrough(2)}"):
-        return panic(message: "display parity")
-    if not (checked(2) == through_local(2)):
-        return panic(message: "equality")
-    if not (checked(-2) == passthrough(-2)):
-        return panic(message: "error equality")
-
+    "{checked(2)}" | try expect_equal(expected: "{passthrough(2)}")
+    checked(2) | try expect_equal(expected: through_local(2))
+    checked(-2) | try expect_equal(expected: passthrough(-2))
     let f = checked
 
     match f(n: 6):
         ok(v):
-            if not (v == 7):
-                return panic(message: "first class")
+            try expect_equal(v, 7)
         error(_):
-            return panic(message: "first class error")
+            return fail(message: "first class error")
 
-    if not (matched_value(3) == 4):
-        return panic(message: "match value")
-    if not (matched_value(-3) == -1):
-        return panic(message: "match value error")
+    matched_value(3) | try expect_equal(expected: 4)
+    matched_value(-3) | try expect_equal(expected: -1)
 
 test "optional and payload kinds":
     match halve(8):
         some(h):
-            if not (h == 4):
-                return panic(message: "halve")
+            try expect_equal(h, 4)
         none:
-            return panic(message: "halve none")
+            return fail(message: "halve none")
 
     match halve(7):
         some(_):
-            return panic(message: "halve odd")
+            return fail(message: "halve odd")
         none:
             unit
 
     match word(3):
         ok(w):
-            if not (w == "w3"):
-                return panic(message: "word")
+            try expect_equal(w, "w3")
         error(_):
-            return panic(message: "word error")
+            return fail(message: "word error")
 
     match ratio(1):
         ok(r):
-            if not (r == 1.5):
-                return panic(message: "ratio")
+            try expect_equal(r, 1.5)
         error(_):
-            return panic(message: "ratio error")
+            return fail(message: "ratio error")
 
     match nothing(true):
         ok(u):
-            if not (u == unit):
-                return panic(message: "unit payload")
+            try expect_equal(u, unit)
         error(_):
-            return panic(message: "unit error")
+            return fail(message: "unit error")
 
     match nested(4):
         some(inner):
-            if not (inner == some(value: 2)):
-                return panic(message: "nested inner")
+            try expect_equal(inner, some(value: 2))
         none:
-            return panic(message: "nested none")
+            return fail(message: "nested none")
 
     match closure_return(5):
         ok(_):
-            return panic(message: "closure return should fail")
+            return fail(message: "closure return should fail")
         error(e):
-            if not (e == "odd"):
-                return panic(message: "closure return cause")
+            try expect_equal(e, "odd")
 
     match closure_return(6):
         ok(v):
-            if not (v == 3):
-                return panic(message: "closure return ok")
+            try expect_equal(v, 3)
         error(_):
-            return panic(message: "closure return error")
+            return fail(message: "closure return error")
 
 test "list at unwrap":
     let items = [10, 20, 30]
-    if not (items.at(0).unwrap() == 10):
-        return panic(message: "first")
-    if not (items.at(-1).unwrap() == 30):
-        return panic(message: "negative index")
-    if not (items.at(1).unwrap() + items.at(2).unwrap() == 50):
-        return panic(message: "sum")
+    items.at(0).unwrap() | try expect_equal(expected: 10)
+    items.at(-1).unwrap() | try expect_equal(expected: 30)
+    (items.at(1).unwrap() + items.at(2).unwrap()) | try expect_equal(expected: 50)

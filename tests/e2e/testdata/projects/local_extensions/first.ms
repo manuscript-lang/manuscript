@@ -1,8 +1,8 @@
+import {expect_equal, expect_false} from "@std/testing.ms"
 import {Item, Box, Holder, Choice} from "./domain.ms"
 import {Read, invoke, relay, as_view} from "./contracts.ms"
 import Closeable from "@std/cleanup.ms"
 import ListBuilder from "@std/collections.ms"
-import panic from "@std/faults.ms"
 
 impl Read[Int] for Item:
     fn get() -> Int:
@@ -42,18 +42,12 @@ export fn first_generic() -> fn(value: Item) -> Int:
 
 test "first local extensions":
     let item = Item(2)
-    if (item.get() != 12 or invoke(item) != 12 or relay(item) != 12):
-        return panic("local dispatch")
-    if as_view(item).get() != 12:
-        return panic("generic view")
-
+    (item.get() != 12 or invoke(item) != 12 or relay(item) != 12) | try expect_false
+    as_view(item).get() | try expect_equal(expected: 12)
     let holder = Holder(item)
-    if (holder.get() != 12 or invoke(holder) != 12 or holder.extract() != 12):
-        return panic("nested generic dispatch")
-    if Box("hello").get() != "hello":
-        return panic("generic extension")
-    if Choice.Some(2).get() != 12:
-        return panic("alternative extension")
+    (holder.get() != 12 or invoke(holder) != 12 or holder.extract() != 12) | try expect_false
+    Box("hello").get() | try expect_equal(expected: "hello")
+    Choice.Some(2).get() | try expect_equal(expected: 12)
 
 import Resource from "./domain.ms"
 
@@ -71,8 +65,7 @@ export fn first_resource(resource: Resource) -> Closeable:
 test "first local cleanup":
     let events = ListBuilder[Int]()
     leave(Resource(events))
-    if events.freeze().at(index: 0) != some(10):
-        return panic("local cleanup")
+    events.freeze().at(index: 0) | try expect_equal(expected: some(10))
 
 export fn mixed[T: Read[Int]](value: T, concrete: Item) -> Int:
     return value.get() + concrete.get()

@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, fail} from "@std/testing.ms"
 
 type Result:
     diagnostic: String
@@ -13,14 +13,12 @@ fn general(value: Result) -> Error:
 test "an application error named Result retains its nominal identity":
     let original = Result("application diagnostic")
     let cause = general(original)
-    if cause.message() != "application diagnostic":
-        return panic(message: "application Result was treated as a standard Result")
+    cause.message() | try expect_equal(expected: "application diagnostic")
 
     match cause:
         Result(receiver):
             receiver.diagnostic = "changed diagnostic"
         _:
-            return panic(message: "application Result lost concrete type")
+            return fail(message: "application Result lost concrete type")
 
-    if original.diagnostic != "changed diagnostic":
-        return panic(message: "Error boundary copied application Result")
+    original.diagnostic | try expect_equal(expected: "changed diagnostic")

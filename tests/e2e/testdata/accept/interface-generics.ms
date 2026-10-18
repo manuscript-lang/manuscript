@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_true} from "@std/testing.ms"
 
 interface Read[V]:
     fn get() -> V
@@ -40,15 +40,9 @@ fn read[T](box: Box[T]) -> T:
 
 test "parameters and bounds belong to interfaces and types":
     let value = Box(7)
-    if not (Same[Int](value).same(other: 7)):
-        return panic(message: "check failed")
-    if not (Comparable(8).same(other: 8)):
-        return panic(message: "check failed")
-
+    (Same[Int](value).same(other: 7)) | try expect_true
+    (Comparable(8).same(other: 8)) | try expect_true
     let pair = Pair(left: 1, right: value)
-    if not (pair.get() == 7):
-        return panic(message: "check failed")
-
+    pair.get() | try expect_equal(expected: 7)
     let callback = Box(identity)
-    if not (read(box: callback)(value: 9) == 9):
-        return panic(message: "check failed")
+    read(box: callback)(value: 9) | try expect_equal(expected: 9)

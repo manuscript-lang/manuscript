@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_not_equal} from "@std/testing.ms"
 import Decimal from "@std/decimal.ms"
 
 fn quotient(value: Int, divisor: Int) -> Int:
@@ -8,26 +8,15 @@ fn remainder(value: Int, divisor: Int) -> Int:
     return value % divisor
 
 test "numeric boundary rules":
-    if not (quotient(value: -7, divisor: 2) == -3):
-        return panic(message: "check failed")
-    if not (remainder(value: -7, divisor: 3) == -1):
-        return panic(message: "check failed")
-    if not (remainder(value: -9223372036854775808, divisor: -1) == 0):
-        return panic(message: "check failed")
-
+    quotient(value: -7, divisor: 2) | try expect_equal(expected: -3)
+    remainder(value: -7, divisor: 3) | try expect_equal(expected: -1)
+    remainder(value: -9223372036854775808, divisor: -1) | try expect_equal(expected: 0)
     let infinity = 1.0 / 0.0
     let nan = 0.0 / 0.0
-    if not ("{infinity}" == "Infinity"):
-        return panic(message: "check failed")
-    if not (nan != nan):
-        return panic(message: "check failed")
-
+    "{infinity}" | try expect_equal(expected: "Infinity")
+    nan | try expect_not_equal(expected: nan)
     let third = 1d / 3d
-    if not ("{third}" == "0.3333333333333333333333333333333333"):
-        return panic(message: "check failed")
-
+    "{third}" | try expect_equal(expected: "0.3333333333333333333333333333333333")
     let absent: Optional[Int] = none
-    if not (1e300.truncate_to_int() == absent):
-        return panic(message: "check failed")
-    if not ((2.seconds + 1.seconds) == 3.seconds):
-        return panic(message: "check failed")
+    1e300.truncate_to_int() | try expect_equal(expected: absent)
+    (2.seconds + 1.seconds) | try expect_equal(expected: 3.seconds)

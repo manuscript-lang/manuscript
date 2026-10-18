@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 type Counter:
     n: Int
@@ -39,31 +39,23 @@ fn guarded(c: Counter, by: Int) -> Int:
 
 test "method calls on concrete receivers":
     let c = Counter(n: 4)
-    if not (c.bump(by: 3) == 7):
-        return panic(message: "record")
-    if not (Shape.Circle(r: 2).bump(by: 1) == 3):
-        return panic(message: "circle")
-    if not (Shape.Square(side: 3).bump(by: 2) == 6):
-        return panic(message: "square")
+    c.bump(by: 3) | try expect_equal(expected: 7)
+    Shape.Circle(r: 2).bump(by: 1) | try expect_equal(expected: 3)
+    Shape.Square(side: 3).bump(by: 2) | try expect_equal(expected: 6)
 
 test "one call site sees different receiver types":
     let counters: List[Counter] = [Counter(n: 1), Counter(n: 2), Counter(n: 3)]
     var total = 0
     for counter in counters:
         total = total + guarded(c: counter, by: 10)
-    if not (total == 36):
-        return panic(message: "loop")
+    total | try expect_equal(expected: 36)
 
 test "views, defaults, and reordered labels keep dispatch":
     let c = Counter(n: 5)
-    if not (through_view(b: Bumper(value: c), by: 2) == 7):
-        return panic(message: "view")
-    if not (c.scale(factor: 2) == 10):
-        return panic(message: "default")
-    if not (c.scale(offset: some(1), factor: 2) == 11):
-        return panic(message: "reordered")
-    if not (c.scale(factor: 2, offset: some(3)) == 13):
-        return panic(message: "ordered")
+    through_view(b: Bumper(value: c), by: 2) | try expect_equal(expected: 7)
+    c.scale(factor: 2) | try expect_equal(expected: 10)
+    c.scale(offset: some(1), factor: 2) | try expect_equal(expected: 11)
+    c.scale(factor: 2, offset: some(3)) | try expect_equal(expected: 13)
 
 type Parser:
     base: Int
@@ -105,13 +97,8 @@ fn run_bound(chain: Chain, n: Int) -> Int:
 
 test "nested try in a direct method becomes an error result":
     let chain = Chain(parser: Parser(base: 10))
-    if not (run_direct(chain: chain, n: 5) == 16):
-        return panic(message: "ok")
-    if not (run_direct(chain: chain, n: -5) == -1):
-        return panic(message: "direct error result")
-    if not (run_view(chain: chain, n: -5) == -1):
-        return panic(message: "view error result")
-    if not (run_bound(chain: chain, n: -5) == -1):
-        return panic(message: "bound error result")
-    if not (run_bound(chain: chain, n: 5) == 16):
-        return panic(message: "bound ok")
+    run_direct(chain: chain, n: 5) | try expect_equal(expected: 16)
+    run_direct(chain: chain, n: -5) | try expect_equal(expected: -1)
+    run_view(chain: chain, n: -5) | try expect_equal(expected: -1)
+    run_bound(chain: chain, n: -5) | try expect_equal(expected: -1)
+    run_bound(chain: chain, n: 5) | try expect_equal(expected: 16)

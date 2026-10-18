@@ -1,5 +1,3 @@
-import panic from "@std/faults.ms"
-
 # Deterministic generator so failures reproduce from the seed in the message.
 export type Rng:
     state: Int

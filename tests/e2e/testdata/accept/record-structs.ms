@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false, expect_not_equal, expect_true, fail} from "@std/testing.ms"
 
 type Point:
     x: Int
@@ -23,21 +23,14 @@ fn shifted(point: Point, by: Int) -> Point:
 test "struct records read write compare format and clone":
     let a = Point(x: 1, y: 2)
     let b = Point(y: 2, x: 1)
-    if not (a == b):
-        return panic(message: "equal fields must compare equal")
-
+    a | try expect_equal(expected: b)
     b.x = 5
-    if a == b:
-        return panic(message: "mutated record still equal")
-    if not (a.x == 1 and b.x == 5 and shifted(a, by: 3).y == 5):
-        return panic(message: "field read or write failed")
-
+    a | try expect_not_equal(expected: b)
+    (a.x == 1 and b.x == 5 and shifted(a, by: 3).y == 5) | try expect_true
     let copy = a.clone()
     copy.y = 9
-    if not (a.y == 2 and copy.y == 9):
-        return panic(message: "clone shares storage")
-    if "{a}" != "Point(x: 1, y: 2)":
-        return panic(message: "format changed: {a}")
+    (a.y == 2 and copy.y == 9) | try expect_true
+    if "{a}" != "Point(x: 1, y: 2)": return fail(message: "format changed: {a}")
 
 test "struct records with mixed field types":
     let shape = Shape(
@@ -51,23 +44,21 @@ test "struct records with mixed field types":
     shape.name = "{shape.name}!"
     shape.corner.x = 4
     shape.tags.append("b")
-    if not (
-        shape.weight == 3.0
-        and shape.name == "disc!"
-        and shape.solid
-        and shape.corner.x == 4
-        and shape.tags.length() == 2
-    ):
-        return panic(message: "mixed field access failed")
+    (
+        not (
+            shape.weight == 3.0
+            and shape.name == "disc!"
+            and shape.solid
+            and shape.corner.x == 4
+            and shape.tags.length() == 2
+        )
+    ) | try expect_false
 
 test "struct records as keys and defaults":
     let set: Set[Point] = Set[Point]()
     set.add(Point(x: 1, y: 1))
     set.add(Point(x: 1, y: 1))
     set.add(Point(x: 2, y: 1))
-    if set.length() != 2:
-        return panic(message: "record keys must hash structurally")
-
+    set.length() | try expect_equal(expected: 2)
     let sized = Sized(width: 3)
-    if area(sized) != 6 or area(Sized(width: 3, height: 5)) != 15:
-        return panic(message: "defaulted record failed")
+    (area(sized) != 6 or area(Sized(width: 3, height: 5)) != 15) | try expect_false

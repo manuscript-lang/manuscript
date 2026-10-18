@@ -1,11 +1,11 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_true, fail} from "@std/testing.ms"
 import ExecutionError from "@std/tasks.ms"
 import TaskGroup from "@std/tasks.ms"
 
 fn identity[T](value: T) -> T:
     return value
 
-fn probe() -> Result[Unit, ExecutionError]:
+fn probe() -> Result[Unit, Error]:
     let first = fn() -> Result[Int, String]:
         return ok(3)
     let second = fn():
@@ -16,15 +16,13 @@ fn probe() -> Result[Unit, ExecutionError]:
         let flag_task = group.start(second)
         let number = try number_task.join()
         let flag = try flag_task.join()
-        if not (flag):
-            return panic(message: "check failed")
+        (flag) | try expect_true
 
         match number:
             ok(value):
-                if not (value == 3):
-                    return panic(message: "check failed")
+                try expect_equal(value, 3)
             error(_):
-                return panic(message: "Unexpected case")
+                return fail(message: "Unexpected case")
 
         return ok(unit)
 
@@ -33,7 +31,7 @@ test "typed task helper":
         ok(_):
             let completed = unit
         error(_):
-            return panic(message: "Unexpected case")
+            return fail(message: "Unexpected case")
 
 fn describe(outcome: Result[Int, Int]) -> Result[Int, String]:
     match outcome:
@@ -45,10 +43,7 @@ fn describe(outcome: Result[Int, Int]) -> Result[Int, String]:
 test "explicit error conversion":
     let failed: Result[Int, Int] = error(7)
     let expected: Result[Int, String] = error("Error 7")
-    if not (describe(outcome: failed) == expected):
-        return panic(message: "check failed")
-
+    describe(outcome: failed) | try expect_equal(expected: expected)
     let succeeded: Result[Int, Int] = ok(3)
     let unchanged: Result[Int, String] = ok(3)
-    if not (describe(outcome: succeeded) == unchanged):
-        return panic(message: "check failed")
+    describe(outcome: succeeded) | try expect_equal(expected: unchanged)

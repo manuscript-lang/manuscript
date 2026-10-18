@@ -1,6 +1,7 @@
+import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import {TaskGroup, Task, ExecutionError} from "@std/tasks.ms"
+import Synchronized from "@std/sync.ms"
 import Closeable from "@std/cleanup.ms"
-import panic from "@std/faults.ms"
 
 type Stored:
     task: Task[Int]
@@ -8,7 +9,7 @@ type Stored:
 fn forward[T](task: Task[T]) -> Task[T]:
     return task
 
-fn exercise() -> Result[Unit, ExecutionError]:
+fn exercise() -> Result[Unit, Error]:
     with group = TaskGroup():
         let start = group.start[Int]
         let number: Task[Int] = start(fn(): 41)
@@ -21,37 +22,32 @@ fn exercise() -> Result[Unit, ExecutionError]:
         let value = try stored.task.join()
         let value_again = try number.join()
         let message = try text.join()
-        if (value != 41 or value_again != 41 or message != "hello"):
-            return panic("typed results changed")
+        (value != 41 or value_again != 41 or message != "hello") | try expect_false
 
         for handle in handles:
             let saved_join: fn() -> Result[Int, ExecutionError] = handle.join
             let saved_value = try saved_join()
-            if saved_value != 41:
-                return panic("saved task join changed")
+            saved_value | try expect_equal(expected: 41)
 
         let outcome = try domain.join()
 
         match outcome:
             error(cause):
-                if cause != "expected":
-                    return panic("domain error changed")
+                try expect_equal(cause, "expected")
             ok(_):
-                return panic("domain error flattened")
+                return fail("domain error flattened")
 
         let resource = Closeable(group)
         resource.close()
         let after_close = try number.join()
-        if after_close != 41:
-            return panic("close erased result")
+        after_close | try expect_equal(expected: 41)
 
     with group = TaskGroup():
         let first = group.start(fn(): 1)
         let value = try first.join()
         let second = group.start(fn(): value + 1)
         let following = try second.join()
-        if following != 2:
-            return panic("individual join sealed group")
+        following | try expect_equal(expected: 2)
 
     return ok(unit)
 
@@ -60,7 +56,7 @@ test "typed tasks group joins and cached outcomes":
         ok(_):
             return
         error(_):
-            return panic("task group failed")
+            return fail("task group failed")
 
 test "empty group joins and closes repeatedly":
     with group = TaskGroup(0.seconds):
@@ -69,19 +65,25 @@ test "empty group joins and closes repeatedly":
                 group.close()
                 group.close()
             error(_):
-                return panic("empty group timed out")
+                return fail("empty group timed out")
 
 test "zero timeout starts no callback":
+    let calls = Synchronized(0)
+
     with group = TaskGroup(0.seconds):
-        let task = group.start(fn(): panic("zero timeout invoked callback"))
+        let task = group.start(
+            fn() -> Unit:
+                with count = calls.lock():
+                    count.set(count.get() + 1)
+        )
 
         let cause = match task.join():
             error(cause): cause
-            ok(_):
-                return panic("zero timeout succeeded")
+            ok(_): return fail("zero timeout succeeded")
 
         match cause:
-            Timeout:
-                return
-            _:
-                return panic("wrong timeout outcome")
+            Timeout: unit
+            _: return fail("wrong timeout outcome")
+
+    with count = calls.lock():
+        count.get() | try expect_equal(expected: 0)

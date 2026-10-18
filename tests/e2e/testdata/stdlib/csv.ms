@@ -1,6 +1,5 @@
+import {expect_equal, expect_false, expect_ok} from "@std/testing.ms"
 import {parse, stringify, CsvOptions, CsvError} from "@std/csv.ms"
-import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 test "CSV retains single empty fields and distinguishes empty rows":
     for ending in ["\n", "\r\n"]:
@@ -8,40 +7,46 @@ test "CSV retains single empty fields and distinguishes empty rows":
             let options = CsvOptions(delimiter: delimiter, line_ending: ending)
             let rows = [["a"], [""], ["b"], [""], [""]]
             let expected = "a{ending}\"\"{ending}b{ending}\"\"{ending}\"\"{ending}"
-            let text = value(stringify(rows: rows, options: options))
-            if text != expected: return panic("single empty field encoding")
-            if value(parse(text: text, options: options)) != rows: return panic(
-                "single empty field roundtrip"
+            let text = (stringify(rows: rows, options: options) | try expect_ok)
+            text | try expect_equal(expected: expected)
+            parse(text: text, options: options) | try expect_ok | try expect_equal(
+                expected: rows
             )
-
             let empty_rows: List[List[String]] = [[], []]
-            if (
-                value(
-                    stringify(rows: empty_rows, options: options)
-                ) != "{ending}{ending}"
-            ):
-                return panic("empty rows encoding")
-
-            let no_rows: List[List[String]] = []
-            if value(parse(text: "{ending}{ending}", options: options)) != no_rows:
-                return panic("blank lines are skipped")
-            if (
-                value(
-                    parse(
-                        text: "{ending}\"\"{ending}{ending}\"\"",
-                        options: options
-                    )
-                ) != [[""], [""]]
-            ):
-                return panic(
-                    "quoted empty fields with blank lines and no final terminator"
+            (
+                (
+                    (
+                        stringify(
+                            rows: empty_rows,
+                            options: options
+                        ) | try expect_ok
+                    ) != "{ending}{ending}"
                 )
-            if (
-                value(
-                    stringify(rows: [["", ""]], options: options)
-                ) != "{delimiter}{ending}"
-            ):
-                return panic("multiple empty cells encoding")
+            ) | try expect_false
+            let no_rows: List[List[String]] = []
+            parse(text: "{ending}{ending}", options: options) | try expect_ok | try expect_equal(
+                expected: no_rows
+            )
+            (
+                (
+                    (
+                        parse(
+                            text: "{ending}\"\"{ending}{ending}\"\"",
+                            options: options
+                        ) | try expect_ok
+                    ) != [[""], [""]]
+                )
+            ) | try expect_false
+            (
+                (
+                    (
+                        stringify(
+                            rows: [["", ""]],
+                            options: options
+                        ) | try expect_ok
+                    ) != "{delimiter}{ending}"
+                )
+            ) | try expect_false
 
 test "CSV quoted empty fields respect exact row cell and byte budgets":
     for ending in ["\n", "\r\n"]:
@@ -49,102 +54,112 @@ test "CSV quoted empty fields respect exact row cell and byte budgets":
         let rows = [[""], ["a"], [""]]
         let text = "\"\"{ending}a{ending}\"\"{ending}"
         let bytes = text.byte_length()
-        if value(stringify(rows: rows, options: options, max_bytes: bytes)) != text:
-            return panic("exact quoted output budget")
-
+        stringify(rows: rows, options: options, max_bytes: bytes) | try expect_ok | try expect_equal(
+            expected: text
+        )
         let limited_text: Result[String, CsvError] = error(CsvError.LimitExceeded)
-        if (
-            stringify(
-                rows: rows,
-                options: options,
-                max_bytes: bytes - 1
-            ) != limited_text
-        ):
-            return panic("quotes and terminators count toward output budget")
-        if stringify(rows: [[""]], options: options, max_bytes: 0) != limited_text:
-            return panic("zero quoted output budget")
-        if (
-            value(
-                parse(
-                    text: text,
+        (
+            (
+                stringify(
+                    rows: rows,
                     options: options,
-                    max_rows: 3,
-                    max_cells: 3
-                )
-            ) != rows
-        ):
-            return panic("exact quoted row and cell budgets")
-
+                    max_bytes: bytes - 1
+                ) != limited_text
+            )
+        ) | try expect_false
+        stringify(rows: [[""]], options: options, max_bytes: 0) | try expect_equal(
+            expected: limited_text
+        )
+        (
+            (
+                (
+                    parse(
+                        text: text,
+                        options: options,
+                        max_rows: 3,
+                        max_cells: 3
+                    ) | try expect_ok
+                ) != rows
+            )
+        ) | try expect_false
         let limited_rows: Result[List[List[String]], CsvError] = error(
             CsvError.LimitExceeded
         )
-        if parse(text: text, options: options, max_rows: 2) != limited_rows:
-            return panic("quoted empty row counts")
-        if parse(text: text, options: options, max_cells: 2) != limited_rows:
-            return panic("quoted empty cell counts")
-        if parse(text: "\"\"", options: options, max_rows: 0) != limited_rows:
-            return panic("zero quoted row budget")
-        if parse(text: "\"\"", options: options, max_cells: 0) != limited_rows:
-            return panic("zero quoted cell budget")
+        parse(text: text, options: options, max_rows: 2) | try expect_equal(
+            expected: limited_rows
+        )
+        parse(text: text, options: options, max_cells: 2) | try expect_equal(
+            expected: limited_rows
+        )
+        parse(text: "\"\"", options: options, max_rows: 0) | try expect_equal(
+            expected: limited_rows
+        )
+        parse(text: "\"\"", options: options, max_cells: 0) | try expect_equal(
+            expected: limited_rows
+        )
 
 test "CSV preserves whitespace and normalizes quoted CRLF":
     let options = CsvOptions(delimiter: ",", line_ending: "\n")
     let rows = [[" "], ["\t"], ["line\n\nbreak"], ["\""], ["", "", ""]]
-    if (
-        value(
-            parse(
-                text: value(stringify(rows: rows, options: options)),
-                options: options
-            )
-        ) != rows
-    ):
-        return panic("whitespace and quoted multiline roundtrip")
-    if (
-        value(
-            parse(
-                text: "\"line\r\n\r\nbreak\"\r\n\"\"\r\n",
-                options: options
-            )
-        ) != [["line\n\nbreak"], [""]]
-    ):
-        return panic("quoted CRLF normalization")
+    (
+        (
+            (
+                parse(
+                    text: (
+                        stringify(
+                            rows: rows,
+                            options: options
+                        ) | try expect_ok
+                    ),
+                    options: options
+                ) | try expect_ok
+            ) != rows
+        )
+    ) | try expect_false
+    (
+        (
+            (
+                parse(
+                    text: "\"line\r\n\r\nbreak\"\r\n\"\"\r\n",
+                    options: options
+                ) | try expect_ok
+            ) != [["line\n\nbreak"], [""]]
+        )
+    ) | try expect_false
 
 test "CSV quotes delimiters multiline cells and line endings":
     let options = CsvOptions(delimiter: ",", line_ending: "\n")
     let rows = [["a,b", "say \"hi\"", "line\nbreak"], ["", "é", "last"]]
-    let text = value(stringify(rows: rows, options: options))
-    if (value(parse(text: text, options: options, max_rows: 2, max_cells: 6)) != rows): return panic(
-        "quoted CSV roundtrip"
+    let text = (stringify(rows: rows, options: options) | try expect_ok)
+    parse(text: text, options: options, max_rows: 2, max_cells: 6) | try expect_ok | try expect_equal(
+        expected: rows
     )
-
     let windows = CsvOptions(delimiter: ";", line_ending: "\r\n")
-    if value(stringify(rows: [["a", "b"]], options: windows)) != "a;b\r\n": return panic(
-        "delimiter and CRLF"
+    stringify(rows: [["a", "b"]], options: windows) | try expect_ok | try expect_equal(
+        expected: "a;b\r\n"
     )
 
 test "CSV rejects malformed records invalid options and limits":
     let options = CsvOptions(delimiter: ",", line_ending: "\n")
     let malformed: Result[List[List[String]], CsvError] = error(CsvError.InvalidData)
-    if parse(text: "\"unterminated", options: options) != malformed: return panic(
-        "unclosed quote"
+    parse(text: "\"unterminated", options: options) | try expect_equal(
+        expected: malformed
     )
-
     for text in ["\"\"x\n", "x\"\"\n", "\"\"\"\n"]:
-        if parse(text: text, options: options) != malformed: return panic(
-            "malformed quoting"
-        )
+        parse(text: text, options: options) | try expect_equal(expected: malformed)
     let limited: Result[List[List[String]], CsvError] = error(CsvError.LimitExceeded)
-    if parse(text: "a,b\n", options: options, max_cells: 1) != limited: return panic(
-        "cell budget"
+    parse(text: "a,b\n", options: options, max_cells: 1) | try expect_equal(
+        expected: limited
     )
-    if parse(text: "a\nb\n", options: options, max_rows: 1) != limited: return panic(
-        "row budget"
+    parse(text: "a\nb\n", options: options, max_rows: 1) | try expect_equal(
+        expected: limited
     )
-
     let invalid: Result[String, CsvError] = error(CsvError.InvalidInput)
-    if (
-        stringify(
-            rows: [["a"]],
-            options: CsvOptions(delimiter: "::", line_ending: "\n")
-        ) != invalid
-    ): return panic("invalid delimiter")
+    (
+        (
+            stringify(
+                rows: [["a"]],
+                options: CsvOptions(delimiter: "::", line_ending: "\n")
+            ) != invalid
+        )
+    ) | try expect_false

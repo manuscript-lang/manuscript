@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 fn apply(value: Int, action: fn(value: Int) -> Int) -> Int:
     return action(value: value)
@@ -14,24 +14,18 @@ test "snapshot reassignment and shadowing":
     let action = fn(value: Int):
         return value + offset
     offset = 10
-    if not (action(value: 3) == 4):
-        return panic(message: "check failed")
+    action(value: 3) | try expect_equal(expected: 4)
 
     if true:
         var offset = 20
         offset = 30
-        if not (action(value: offset) == 31):
-            return panic(message: "check failed")
+        action(value: offset) | try expect_equal(expected: 31)
 
-    if not (offset == 10):
-        return panic(message: "check failed")
-    if not (countdown(value: "ready", count: 4) == "ready"):
-        return panic(message: "check failed")
-
+    offset | try expect_equal(expected: 10)
+    countdown(value: "ready", count: 4) | try expect_equal(expected: "ready")
     let factory = fn(value: Int) -> fn(value: Int) -> Int:
         return fn(value):
             return value + offset
     let nested = factory(value: 99)
     offset = 100
-    if not (nested(value: 1) == 11):
-        return panic(message: "check failed")
+    nested(value: 1) | try expect_equal(expected: 11)

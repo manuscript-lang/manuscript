@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
 type Spelled:
     x_: Int
@@ -31,23 +31,20 @@ fn nil(value: Int) -> Int:
 
 test "field names that differ only in underscores stay distinct":
     let value = Spelled(x_: 1, x: 2, a_b: 3, aB: 4)
-    if value.x_ != 1 or value.x != 2 or value.a_b != 3 or value.aB != 4: return panic(
-        "fields"
-    )
-
+    (value.x_ != 1 or value.x != 2 or value.a_b != 3 or value.aB != 4) | try expect_false
     let clone = value.clone()
     clone.x_ = 9
-    if value.x_ != 1 or clone.x_ != 9: return panic("clone")
-    if value != Spelled(x_: 1, x: 2, a_b: 3, aB: 4): return panic("equality")
+    (value.x_ != 1 or clone.x_ != 9) | try expect_false
+    value | try expect_equal(expected: Spelled(x_: 1, x: 2, a_b: 3, aB: 4))
 
 test "operation names that differ only in underscores stay distinct":
     let methods = Methods(value: Spelled(x_: 1, x: 2, a_b: 3, aB: 4))
-    if methods.foo_bar() != 1 or methods.fooBar() != 2: return panic("operations")
+    (methods.foo_bar() != 1 or methods.fooBar() != 2) | try expect_false
 
 test "functions named like Go predeclared identifiers still lower":
     let text = "{string(1)}{int(1)}{float64(1)}{nil(1)}"
     let floats = [1.5, 2.5]
-    if text != "2345" or floats.length() != 2: return panic("predeclared names")
+    (text != "2345" or floats.length() != 2) | try expect_false
 
 type Box[T]:
     value: T
@@ -70,9 +67,9 @@ fn side(shape: Shape) -> Int:
 test "declared names stay apart from instantiation and case names":
     let boxed = Box[Int](value: 1)
     let named = Box_Int(value: "one")
-    if boxed.value != 1 or named.value != "one": return panic("instantiation")
-    if side(Shape.Circle(3)) != 3 or side(Shape.Square(4)) != 4: return panic("cases")
-    if Shape_Circle(radius: "r").radius != "r": return panic("declared case-like name")
+    (boxed.value != 1 or named.value != "one") | try expect_false
+    (side(Shape.Circle(3)) != 3 or side(Shape.Square(4)) != 4) | try expect_false
+    Shape_Circle(radius: "r").radius | try expect_equal(expected: "r")
 
 interface Counter:
     fn count() -> Int
@@ -94,8 +91,8 @@ test "view and helper names stay apart from declared names":
     let tally = Tally(total: 1)
     let copy = tally.clone()
     let view = Counter(value: tally)
-    if view.count() != 1 or Counter_Tally(other: 2).other != 2: return panic("view")
-    if copy.total != 1 or clone_Tally(tally) != 2: return panic("helper")
+    (view.count() != 1 or Counter_Tally(other: 2).other != 2) | try expect_false
+    (copy.total != 1 or clone_Tally(tally) != 2) | try expect_false
 
 interface Reporter:
     fn describe() -> String
@@ -110,6 +107,4 @@ impl Reporter for Tally:
 
 test "operations named like generated view methods stay callable":
     let reporter = Reporter(value: Tally(total: 3))
-    if reporter.describe() != "describe 3" or reporter.receiver() != "receiver 3": return panic(
-        "view methods"
-    )
+    (reporter.describe() != "describe 3" or reporter.receiver() != "receiver 3") | try expect_false

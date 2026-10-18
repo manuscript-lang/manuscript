@@ -27,18 +27,18 @@ func TestLibraryProjectCommandsAndCache(t *testing.T) {
 	configuration := "# library\n[project]\nname = \"library\"\nsource = \"src\"\n[aliases]\n\"@lib\" = \"src\"\n"
 	write("ms.toml", configuration)
 	write("src/value.ms", "export fn value() -> Int: return 3\n")
-	write("src/other.ms", "import panic from \"@std/faults.ms\"\nexport fn other() -> Int: return 4\ntest \"unimported\":\n    if other() != 4: return panic(\"bad other\")\n")
+	write("src/other.ms", "import fail from \"@std/testing.ms\"\nexport fn other() -> Int: return 4\ntest \"unimported\":\n    if other() != 4: return fail(\"bad other\")\n")
 	write("golden/input.txt", "fixture")
 	write("test.ms", `import value from "@lib/value.ms"
 import filesystem from "@std/fs.ms"
-import panic from "@std/faults.ms"
+import fail from "@std/testing.ms"
 test "root":
-    if value() != 3: return panic("bad value")
+    if value() != 3: return fail("bad value")
     match filesystem().read_file(path: "golden/input.txt", max_bytes: 1024):
         ok(data):
-            if data.length() != 7: return panic("wrong fixture size")
+            if data.length() != 7: return fail("wrong fixture size")
         error(_):
-            return panic("fixture not found from project directory")
+            return fail("fixture not found from project directory")
 `)
 	write("tests/value_test.ms", "test \"nested\":\n    return unit\n")
 	// Invoke from an unrelated directory: module and lock paths remain manifest-relative.
@@ -64,7 +64,7 @@ test "root":
 		}
 	}
 	// Editing an unimported source module must invalidate native test artifacts.
-	write("src/other.ms", "import panic from \"@std/faults.ms\"\nexport fn other() -> Int: return 4\ntest \"unimported\":\n    return panic(\"changed unimported test\")\n")
+	write("src/other.ms", "import fail from \"@std/testing.ms\"\nexport fn other() -> Int: return 4\ntest \"unimported\":\n    return fail(\"changed unimported test\")\n")
 	data, err := run("test", manifest)
 	if err == nil || !strings.Contains(data, "changed unimported test") || !strings.Contains(data, "1 failed") {
 		t.Fatalf("stale library test executable: %v %s", err, data)

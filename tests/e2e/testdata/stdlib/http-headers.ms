@@ -1,3 +1,4 @@
+import {expect_equal, expect_false, expect_ok, expect_true, fail} from "@std/testing.ms"
 import {
     headers,
     HttpHeaders,
@@ -11,67 +12,93 @@ import {
 } from "@std/http.ms"
 import network from "@std/net.ms"
 import Bytes from "@std/bytes.ms"
-import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
-fn repeated_headers() -> HttpHeaders:
+fn repeated_headers() -> Result[HttpHeaders, Error]:
     let fields = headers()
-    let first = value(fields.append("x-dup", "first".to_bytes()))
-    let second = value(fields.append("X-Dup", "second".to_bytes()))
-    let cookie = value(
+    let first = (fields.append("x-dup", "first".to_bytes()) | try expect_ok)
+    let second = (fields.append("X-Dup", "second".to_bytes()) | try expect_ok)
+    let cookie = (
         fields.append(
             "Set-Cookie",
             "a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT".to_bytes()
-        )
+        ) | try expect_ok
     )
-    let other = value(fields.append("set-cookie", "b=2".to_bytes()))
-    return fields
+    let other = (fields.append("set-cookie", "b=2".to_bytes()) | try expect_ok)
+    return ok(fields)
+
+fn header_failure(message: String) -> HttpResponse:
+    return HttpResponse(status: 500, headers: headers(), body: message.to_bytes())
 
 fn handle_headers(request: HttpRequest) -> HttpResponse:
-    if request.method != HttpMethod.Get: return panic("typed request method")
-    if value(request.headers.text("X-DUP")) != some(["first", "second"]): return panic(
+    if request.method != HttpMethod.Get: return header_failure("typed request method")
+
+    let received = match request.headers.text("X-DUP"):
+        ok(found): found
+        error(cause): return header_failure(cause.message())
+
+    if received != some(["first", "second"]): return header_failure(
         "case-insensitive received fields"
     )
 
-    return HttpResponse(status: 200, headers: repeated_headers(), body: "ok".to_bytes())
+    let fields = match repeated_headers():
+        ok(found): found
+        error(cause): return header_failure(cause.message())
+
+    return HttpResponse(status: 200, headers: fields, body: "ok".to_bytes())
 
 test "one header type preserves repeated values through buffered requests":
-    with server = value(
+    with server = (
         network().serve(
             address: "127.0.0.1:0",
             handler: handle_headers,
             max_requests: 2
-        )
+        ) | try expect_ok
     ):
-        let response = value(
+        let response = (
             network().request(
                 method: HttpMethod.Get,
                 url: "http://{server.address()}/",
-                headers: repeated_headers(),
+                headers: (try repeated_headers()),
                 body: "".to_bytes()
-            )
+            ) | try expect_ok
         )
         let metadata = response.metadata()
-        if metadata.status != 200: return panic("metadata status")
-        if value(metadata.headers.text("x-dup")) != some(["first", "second"]): return panic(
-            "response repeats lost"
+        metadata.status | try expect_equal(expected: 200)
+        (
+            metadata.headers.text(
+                "x-dup"
+            ) | try expect_ok | try expect_equal(expected: some(["first", "second"]))
         )
-        if (
-            value(metadata.headers.text("SET-COOKIE")) != some(
-                ["a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT", "b=2"]
+        try expect_false(
+            (
+                (
+                    metadata
+                    .headers
+                    .text("SET-COOKIE") | try expect_ok
+                ) != some(["a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT", "b=2"])
             )
-        ): return panic("cookies combined or lost")
-
-        let appended = value(metadata.headers.append("x-dup", "third".to_bytes()))
-        if (
-            value(response.metadata().headers.text("X-Dup")) != some(
-                ["first", "second", "third"]
+        )
+        let appended = (
+            (
+                metadata
+                .headers
+                .append("x-dup", "third".to_bytes())
+            ) | try expect_ok
+        )
+        try expect_false(
+            (
+                (
+                    response
+                    .metadata()
+                    .headers
+                    .text("X-Dup") | try expect_ok
+                ) != some(["first", "second", "third"])
             )
-        ): return panic("metadata copied header object")
+        )
 
 fn echo_headers(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let received = exchange.headers()
-    if value(received.text("X-DUP")) != some(["first", "second"]): return error(
+    if (try received.text("X-DUP")) != some(["first", "second"]): return error(
         HttpError.InvalidData
     )
 
@@ -81,92 +108,94 @@ fn echo_headers(exchange: HttpExchange) -> Result[Unit, HttpError]:
     return exchange.send_headers(status: 200, headers: output)
 
 test "streaming proxy uses the same byte-valued header type":
-    with server = value(
+    with server = (
         network().serve_stream(
             address: "127.0.0.1:0",
             handler: echo_headers,
             options: HttpServerOptions(tls: none)
-        )
+        ) | try expect_ok
     ):
-        let response = value(
+        let response = (
             network().request(
                 method: HttpMethod.Get,
                 url: "http://{server.address()}/",
-                headers: repeated_headers(),
+                headers: (try repeated_headers()),
                 body: "".to_bytes()
+            ) | try expect_ok
+        )
+        try expect_false(
+            (
+                (
+                    response
+                    .metadata()
+                    .headers
+                    .text("x-DUP") | try expect_ok
+                ) != some(["first", "second"])
             )
         )
-        if (
-            value(response.metadata().headers.text("x-DUP")) != some(
-                ["first", "second"]
-            )
-        ): return panic("stream proxy lost fields")
 
 test "lookup shares mutable membership and clone separates it":
-    let fields = repeated_headers()
+    let fields = (try repeated_headers())
     let values = fields.values("X-DUP").unwrap()
-    let appended = value(fields.append("x-dup", "third".to_bytes()))
-    if values.length() != 3: return panic("lookup copied membership")
-
+    let appended = (fields.append("x-dup", "third".to_bytes()) | try expect_ok)
+    values.length() | try expect_equal(expected: 3)
     let changed = values.set(0, "changed".to_bytes())
-    if fields.values("x-dup").unwrap().at(0) != some("changed".to_bytes()): return panic(
-        "list mutation not shared"
+    (
+        fields.values("x-dup").unwrap().at(0) | try expect_equal(
+            expected: some("changed".to_bytes())
+        )
     )
-
     let copy = fields.clone()
     let copied_values = copy.values("x-dup").unwrap()
     let copied_changed = copied_values.set(0, "copy".to_bytes())
-    if fields.values("x-dup").unwrap().at(0) != some("changed".to_bytes()): return panic(
-        "clone shared membership"
+    (
+        fields.values("x-dup").unwrap().at(0) | try expect_equal(
+            expected: some("changed".to_bytes())
+        )
     )
-    if not fields.values("missing").is_none(): return panic("absent header")
-
-    let k = value(fields.append("K", "ASCII".to_bytes()))
-    if not fields.values("K").is_none(): return panic("Unicode folding")
-
+    (fields.values("missing").is_none()) | try expect_true
+    let k = (fields.append("K", "ASCII".to_bytes()) | try expect_ok)
+    (fields.values("K").is_none()) | try expect_true
     let removed = fields.remove("X-DUP")
-    let new_field = value(fields.append("X-Dup", "new".to_bytes()))
-    if values.length() != 3 or fields.values("x-dup").unwrap().length() != 1: return panic(
-        "removed list alias reattached"
-    )
+    let new_field = (fields.append("X-Dup", "new".to_bytes()) | try expect_ok)
+    (values.length() != 3 or fields.values("x-dup").unwrap().length() != 1) | try expect_false
 
 test "explicit text extraction fails with typed UTF8 error":
     let fields = headers()
-    let valid = value(fields.append("Raw", "first".to_bytes()))
-    let invalid = value(fields.append("raw", Bytes(values: [255])))
+    let valid = (fields.append("Raw", "first".to_bytes()) | try expect_ok)
+    let invalid = (fields.append("raw", Bytes(values: [255])) | try expect_ok)
 
     match fields.text("RAW"):
-        ok(_): return panic("invalid UTF8 accepted")
+        ok(_): return fail("invalid UTF8 accepted")
         error(cause):
-            if cause != HttpError.InvalidData: return panic("wrong UTF8 error")
+            try expect_equal(cause, HttpError.InvalidData)
 
     match fields.append("bad name", "value".to_bytes()):
-        ok(_): return panic("malformed name accepted")
+        ok(_): return fail("malformed name accepted")
         error(cause):
-            if cause != HttpError.InvalidInput: return panic("wrong name error")
+            try expect_equal(cause, HttpError.InvalidInput)
 
 test "empty options and an omitted request body use checked defaults":
     let client_options = HttpClientOptions()
-    if client_options.decompress or client_options.cookies: return panic(
-        "client Bool defaults changed"
-    )
-    if not HttpServerOptions().tls.is_none(): return panic("server TLS default changed")
-
-    with server = value(
+    (client_options.decompress or client_options.cookies) | try expect_false
+    (HttpServerOptions().tls.is_none()) | try expect_true
+    with server = (
         network().serve_stream(
             address: "127.0.0.1:0",
             handler: echo_headers,
             options: HttpServerOptions()
-        )
+        ) | try expect_ok
     ):
-        with client = value(network().http_client(options: HttpClientOptions())):
-            with response = value(
+        with client = (
+            network().http_client(
+                options: HttpClientOptions()
+            ) | try expect_ok
+        ):
+            with response = (
                 client.request(
                     method: HttpMethod.Get,
                     url: "http://{server.address()}/",
-                    headers: repeated_headers()
-                )
+                    headers: (try repeated_headers())
+                ) | try expect_ok
             ):
-                if response.metadata().status != 200: return panic(
-                    "plain request failed"
-                )
+                response.metadata().status | try expect_equal(expected: 200)

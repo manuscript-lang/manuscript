@@ -1,3 +1,4 @@
+import {expect_equal, expect_false, expect_ok, expect_true, fail} from "@std/testing.ms"
 import {
     parse,
     format,
@@ -10,52 +11,54 @@ import {
     Url,
     UrlError
 } from "@std/url.ms"
-import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 test "URL canonicalization and relative references":
-    let url = value(parse("https://EXAMPLE.com:443/a/b?q=1#fragment"))
-    if url.host != "example.com" or url.port != some(443): return panic("host and port")
-    if value(format(url)) != "https://example.com:443/a/b?q=1#fragment": return panic(
-        "URL format"
+    let url = (parse("https://EXAMPLE.com:443/a/b?q=1#fragment") | try expect_ok)
+    (url.host != "example.com" or url.port != some(443)) | try expect_false
+    format(url) | try expect_ok | try expect_equal(
+        expected: "https://example.com:443/a/b?q=1#fragment"
     )
-    if (
-        value(
-            format(value(resolve(base: url, reference: "../c")))
-        ) != "https://example.com:443/c"
-    ): return panic("relative reference")
-    if encode_component("a b/é") != "a%20b%2F%C3%A9": return panic("component escaping")
-    if value(decode_component("a%20b%2F%C3%A9")) != "a b/é": return panic(
-        "component decoding"
+    try expect_false(
+        (
+            (
+                format(
+                    (
+                        resolve(
+                            base: url,
+                            reference: "../c"
+                        ) | try expect_ok
+                    )
+                ) | try expect_ok
+            ) != "https://example.com:443/c"
+        )
+    )
+    encode_component("a b/é") | try expect_equal(expected: "a%20b%2F%C3%A9")
+    decode_component("a%20b%2F%C3%A9") | try expect_ok | try expect_equal(
+        expected: "a b/é"
     )
 
 test "URL query retains duplicate keys empty values and spaces":
-    let entries = value(parse_query(text: "a=1&a=2&empty=&space=hello+world"))
-    if entries.length() != 4 or entries.at(3).unwrap().value != "hello world": return panic(
-        "query values"
+    let entries = (
+        parse_query(text: "a=1&a=2&empty=&space=hello+world") | try expect_ok
     )
-    if format_query(entries) != "a=1&a=2&empty=&space=hello+world": return panic(
-        "query order"
+    (entries.length() != 4 or entries.at(3).unwrap().value != "hello world") | try expect_false
+    format_query(entries) | try expect_equal(
+        expected: "a=1&a=2&empty=&space=hello+world"
     )
-
     let limited: Result[List[QueryEntry], UrlError] = error(UrlError.LimitExceeded)
-    if parse_query(text: "a=1&b=2", max_entries: 1) != limited: return panic(
-        "query limit"
-    )
-
+    parse_query(text: "a=1&b=2", max_entries: 1) | try expect_equal(expected: limited)
     let invalid: Result[String, UrlError] = error(UrlError.InvalidData)
-    if decode_component("%zz") != invalid: return panic("malformed escape")
+    decode_component("%zz") | try expect_equal(expected: invalid)
 
 test "URL query skips empty segments":
-    let entries = value(parse_query(text: "&a=1&&b=2&"))
-    if format_query(entries) != "a=1&b=2": return panic("empty segments kept")
-    if not value(parse_query(text: "&&")).is_empty(): return panic("only separators")
-
-    let bounded = value(parse_query(text: "a=1&&b=2", max_entries: 2))
-    if bounded.length() != 2: return panic("empty segments counted")
+    let entries = (parse_query(text: "&a=1&&b=2&") | try expect_ok)
+    format_query(entries) | try expect_equal(expected: "a=1&b=2")
+    ((parse_query(text: "&&") | try expect_ok).is_empty()) | try expect_true
+    let bounded = (parse_query(text: "a=1&&b=2", max_entries: 2) | try expect_ok)
+    bounded.length() | try expect_equal(expected: 2)
 
 test "URL format rejects queries that would not round trip":
-    let base = value(parse("http://h/p"))
+    let base = (parse("http://h/p") | try expect_ok)
     let invalid: Result[String, UrlError] = error(UrlError.InvalidInput)
 
     for query in ["a#b", "a b", "%zz", "a%2"]:
@@ -67,7 +70,7 @@ test "URL format rejects queries that would not round trip":
             query: query,
             fragment: ""
         )
-        if format(bad) != invalid: return panic("query {query}")
+        if format(bad) != invalid: return fail("query {query}")
 
     let good = Url(
         scheme: base.scheme,
@@ -77,4 +80,4 @@ test "URL format rejects queries that would not round trip":
         query: "a=%41&b",
         fragment: ""
     )
-    if value(format(good)) != "http://h/p?a=%41&b": return panic("valid query")
+    format(good) | try expect_ok | try expect_equal(expected: "http://h/p?a=%41&b")

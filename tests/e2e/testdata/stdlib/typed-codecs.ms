@@ -1,9 +1,8 @@
+import {expect_equal, expect_ok} from "@std/testing.ms"
 import {HashAlgorithm, sha256, sha384, sha512, hmac, CryptoError} from "@std/crypto.ms"
 import {CompressionFormat, compress, decompress, CompressionError} from "@std/compress.ms"
 import {ArchiveFormat, pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError} from "@std/archive.ms"
 import Bytes from "@std/bytes.ms"
-import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 fn digest(algorithm: HashAlgorithm, data: Bytes) -> Bytes:
     return algorithm.digest(data)
@@ -23,20 +22,12 @@ fn bounded_compression(
 
 test "typed SHA selectors match their algorithms and retain bound operations":
     let data = "abc".to_bytes()
-    if digest(HashAlgorithm.Sha256, data) != sha256(data): return panic(
-        "SHA-256 selector"
-    )
-    if digest(HashAlgorithm.Sha384, data) != sha384(data): return panic(
-        "SHA-384 selector"
-    )
-    if digest(HashAlgorithm.Sha512, data) != sha512(data): return panic(
-        "SHA-512 selector"
-    )
-
+    digest(HashAlgorithm.Sha256, data) | try expect_equal(expected: sha256(data))
+    digest(HashAlgorithm.Sha384, data) | try expect_equal(expected: sha384(data))
+    digest(HashAlgorithm.Sha512, data) | try expect_equal(expected: sha512(data))
     let stored = HashAlgorithm.Sha384.digest
-    if stored(data) != sha384(data): return panic("stored digest")
-    if call_digest(stored, data) != sha384(data): return panic("generic stored digest")
-
+    stored(data) | try expect_equal(expected: sha384(data))
+    call_digest(stored, data) | try expect_equal(expected: sha384(data))
     let key = "key".to_bytes()
 
     for algorithm in [HashAlgorithm.Sha256, HashAlgorithm.Sha384, HashAlgorithm.Sha512]:
@@ -45,17 +36,16 @@ test "typed SHA selectors match their algorithms and retain bound operations":
             Sha384: "sha384"
             Sha512: "sha512"
 
-        if value(algorithm.hmac(key, data)) != value(hmac(key, data, name)): return panic(
-            "typed HMAC"
+        algorithm.hmac(key, data) | try expect_ok | try expect_equal(
+            expected: (hmac(key, data, name) | try expect_ok)
         )
 
     let hmac_operation = HashAlgorithm.Sha512.hmac
-    if value(hmac_operation(key, data)) != value(hmac(key, data, "sha512")): return panic(
-        "stored HMAC"
+    hmac_operation(key, data) | try expect_ok | try expect_equal(
+        expected: (hmac(key, data, "sha512") | try expect_ok)
     )
-
     let unsupported: Result[Bytes, CryptoError] = error(CryptoError.Unsupported)
-    if hmac(key, data, "SHA256") != unsupported: return panic("legacy HMAC rejection")
+    hmac(key, data, "SHA256") | try expect_equal(expected: unsupported)
 
 test "typed compression preserves bytes limits errors and optional arguments":
     let data = "typed codecs typed codecs".to_bytes()
@@ -71,45 +61,53 @@ test "typed compression preserves bytes limits errors and optional arguments":
             Deflate: "deflate"
 
         for level in [0, 9]:
-            let encoded = value(format.compress(data, level))
-            if encoded != value(compress(data, name, level, none)): return panic(
-                "typed encoded bytes"
+            let encoded = (format.compress(data, level) | try expect_ok)
+            encoded | try expect_equal(
+                expected: (
+                    compress(
+                        data,
+                        name,
+                        level,
+                        none
+                    ) | try expect_ok
+                )
             )
-            if value(format.decompress(encoded, none)) != data: return panic(
-                "typed decompression"
+            format.decompress(encoded, none) | try expect_ok | try expect_equal(
+                expected: data
             )
-            if value(format.decompress(encoded, data.length())) != data: return panic(
-                "typed exact budget"
+            try expect_equal(
+                (
+                    format.decompress(
+                        encoded,
+                        data.length()
+                    ) | try expect_ok
+                ),
+                data
             )
-
             let limited: Result[Bytes, CompressionError] = error(
                 CompressionError.LimitExceeded
             )
-            if format.decompress(encoded, data.length() - 1) != limited: return panic(
-                "typed byte limit"
+            format.decompress(encoded, data.length() - 1) | try expect_equal(
+                expected: limited
             )
 
         let invalid: Result[Bytes, CompressionError] = error(
             CompressionError.InvalidInput
         )
-        if format.compress(data, -1) != invalid: return panic("typed level validation")
-        if format.compress(data, 6, -1) != invalid: return panic("typed output budget")
-
+        format.compress(data, -1) | try expect_equal(expected: invalid)
+        format.compress(data, 6, -1) | try expect_equal(expected: invalid)
         let zero: Result[Bytes, CompressionError] = error(
             CompressionError.LimitExceeded
         )
-        if format.compress(data, 6, 0) != zero: return panic("typed zero output budget")
+        format.compress(data, 6, 0) | try expect_equal(expected: zero)
 
     let stored = CompressionFormat.Gzip.compress
-    let encoded = value(bounded_compression(stored, data))
+    let encoded = (bounded_compression(stored, data) | try expect_ok)
     let decoder = CompressionFormat.Gzip.decompress
-    if value(decoder(encoded)) != data: return panic("stored decoder default")
-    if value(decompress(encoded, "gzip")) != data: return panic("legacy decompression")
-
+    decoder(encoded) | try expect_ok | try expect_equal(expected: data)
+    decompress(encoded, "gzip") | try expect_ok | try expect_equal(expected: data)
     let malformed: Result[Bytes, CompressionError] = error(CompressionError.InvalidData)
-    if CompressionFormat.Gzip.decompress(data) != malformed: return panic(
-        "typed malformed error"
-    )
+    CompressionFormat.Gzip.decompress(data) | try expect_equal(expected: malformed)
 
 test "typed archives retain entry limits validation and existing string calls":
     let entries = [ArchiveEntry("file.txt", "data".to_bytes(), false)]
@@ -119,31 +117,33 @@ test "typed archives retain entry limits validation and existing string calls":
             Zip: "zip"
             Tar: "tar"
 
-        let encoded = value(format.pack(entries))
-        if encoded != value(pack(entries, name)): return panic("typed archive bytes")
-        if value(format.unpack(encoded)) != entries: return panic(
-            "typed archive roundtrip"
+        let encoded = (format.pack(entries) | try expect_ok)
+        encoded | try expect_equal(expected: (pack(entries, name) | try expect_ok))
+        format.unpack(encoded) | try expect_ok | try expect_equal(expected: entries)
+        format.unpack(encoded, none) | try expect_ok | try expect_equal(
+            expected: entries
         )
-        if value(format.unpack(encoded, none)) != entries: return panic(
-            "typed archive none"
-        )
-        if value(unpack(encoded, name)) != entries: return panic("legacy archive")
-
+        unpack(encoded, name) | try expect_ok | try expect_equal(expected: entries)
         let limited: Result[List[ArchiveEntry], ArchiveError] = error(
             ArchiveError.LimitExceeded
         )
-        if format.unpack(encoded, ArchiveLimits(max_entries: 0)) != limited: return panic(
-            "typed entry limit"
+        format.unpack(encoded, ArchiveLimits(max_entries: 0)) | try expect_equal(
+            expected: limited
         )
-
         let invalid: Result[Bytes, ArchiveError] = error(ArchiveError.InvalidInput)
-        if format.pack([ArchiveEntry("../escape", "".to_bytes(), false)]) != invalid: return panic(
-            "typed path validation"
+        format.pack([ArchiveEntry("../escape", "".to_bytes(), false)]) | try expect_equal(
+            expected: invalid
         )
-        if format.pack(entries, -1) != invalid: return panic("typed negative budget")
+        format.pack(entries, -1) | try expect_equal(expected: invalid)
 
     let stored = ArchiveFormat.Zip.pack
     let unpacker = ArchiveFormat.Zip.unpack
-    if value(unpacker(value(stored(entries, none)), ArchiveLimits())) != entries: return panic(
-        "stored archive operations"
+    try expect_equal(
+        (
+            unpacker(
+                (stored(entries, none) | try expect_ok),
+                ArchiveLimits()
+            ) | try expect_ok
+        ),
+        entries
     )

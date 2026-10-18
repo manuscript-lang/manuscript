@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 type List:
     count: Int
@@ -13,14 +13,10 @@ fn ordinary() -> Result:
     return Result.Value(compute(value: 3))
 
 test "standard spellings are ordinary names":
-    if not (List(2).count == 2):
-        return panic(message: "check failed")
-
+    List(2).count | try expect_equal(expected: 2)
     let forward = compute
-    if not (forward(value: 4) == 4):
-        return panic(message: "check failed")
+    forward(value: 4) | try expect_equal(expected: 4)
 
     match ordinary():
         Value(value):
-            if not (value == 3):
-                return panic(message: "check failed")
+            try expect_equal(value, 3)

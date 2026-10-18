@@ -102,7 +102,8 @@ func RunTests(tests []Test, args []string) int {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return runTestsContext(tests, options, args, reporter, ctx)
+	// Runner flags are not application arguments; each test has an empty CLI tail.
+	return runTestsContext(tests, options, nil, reporter, ctx)
 }
 
 // RunTestsWith runs tests with explicit options and no structured reporter.

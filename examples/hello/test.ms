@@ -1,5 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 test "getting started":
-    if not (2 + 3 == 5):
-        return panic(message: "arithmetic failed")
+    (2 + 3) | try expect_equal(expected: 5)

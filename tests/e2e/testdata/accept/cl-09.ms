@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_true} from "@std/testing.ms"
 
 type Box[T]:
     value: T
@@ -11,9 +11,6 @@ fn same[T: Equal](left: T, right: T) -> Bool:
 
 test "generic argument inference":
     let box = Box[Int](6)
-    if not (unwrap(box: box) == 6):
-        return panic(message: "check failed")
-    if not (unwrap[Int](box: box) == 6):
-        return panic(message: "check failed")
-    if not (same(left: 6, right: 6)):
-        return panic(message: "check failed")
+    unwrap(box: box) | try expect_equal(expected: 6)
+    unwrap[Int](box: box) | try expect_equal(expected: 6)
+    (same(left: 6, right: 6)) | try expect_true

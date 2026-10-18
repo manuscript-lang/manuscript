@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_true, fail} from "@std/testing.ms"
 import check_cancelled from "@std/tasks.ms"
 import TaskGroup from "@std/tasks.ms"
 import ExecutionError from "@std/tasks.ms"
@@ -7,7 +7,7 @@ import StartError from "@std/tasks.ms"
 import OperationId from "@std/tasks.ms"
 import WorkStatus from "@std/tasks.ms"
 
-fn run() -> Result[Unit, ExecutionError]:
+fn run() -> Result[Unit, Error]:
     var offset = 3
     let first = fn():
         return offset
@@ -21,16 +21,14 @@ fn run() -> Result[Unit, ExecutionError]:
         let joined = try group.join()
         let number = try number_task.join()
         let flag = try flag_task.join()
-        if not (number == 3):
-            return panic(message: "check failed")
-        if not flag:
-            return panic(message: "check failed")
+        number | try expect_equal(expected: 3)
+        (flag) | try expect_true
 
     with empty = TaskGroup(0.seconds):
         let joined = try empty.join()
     return ok(unit)
 
-fn scheduler_probe() -> Unit:
+fn scheduler_probe() -> Result[Unit, Error]:
     with service = Scheduler(limit: 1, drain: 2.seconds):
         let task = fn() -> Result[Unit, Error]:
             return ok(unit)
@@ -40,27 +38,28 @@ fn scheduler_probe() -> Unit:
             ok(id):
                 let completed = unit
             error(_):
-                return panic(message: "Unexpected case")
+                return fail(message: "Unexpected case")
 
         service.close()
 
         match launch(operation: task):
             ok(_):
-                return panic(message: "Unexpected case")
+                return fail(message: "Unexpected case")
             error(cause):
-                if not (cause == StartError.Closed):
-                    return panic(message: "check failed")
+                try expect_equal(cause, StartError.Closed)
+
+    return ok(unit)
 
 test "joined work and snapshot captures":
     match run():
         ok(_):
             let completed = unit
         error(_):
-            return panic(message: "Unexpected case")
+            return fail(message: "Unexpected case")
 
-    scheduler_probe()
+    (try scheduler_probe())
 
-fn standard_task() -> Result[Unit, ExecutionError]:
+fn standard_task() -> Result[Unit, Error]:
     with empty = TaskGroup():
         let joined = try empty.join()
     let checkpoint = check_cancelled
@@ -68,8 +67,7 @@ fn standard_task() -> Result[Unit, ExecutionError]:
     with group = TaskGroup():
         let task = group.start(checkpoint)
         let completed = try task.join()
-        if not (completed == unit):
-            return panic(message: "check failed")
+        completed | try expect_equal(expected: unit)
 
     return ok(unit)
 
@@ -78,4 +76,4 @@ test "standard functions can run concurrently":
         ok(_):
             let completed = unit
         error(_):
-            return panic(message: "Unexpected case")
+            return fail(message: "Unexpected case")

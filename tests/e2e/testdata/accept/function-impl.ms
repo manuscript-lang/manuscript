@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 interface Apply[T]:
     fn apply(value: Int) -> T
@@ -15,9 +15,6 @@ fn render(value: Int) -> String:
 
 test "implementation variables inside function signatures":
     let box = Box(render)
-    if not (box.apply(value: 3) == "3"):
-        return panic(message: "check failed")
-
+    box.apply(value: 3) | try expect_equal(expected: "3")
     let operation = Apply[String](box)
-    if not (operation.apply(value: 4) == "4"):
-        return panic(message: "check failed")
+    operation.apply(value: 4) | try expect_equal(expected: "4")

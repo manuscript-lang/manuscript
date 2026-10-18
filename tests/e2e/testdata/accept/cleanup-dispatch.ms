@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_true} from "@std/testing.ms"
 import Closeable from "@std/cleanup.ms"
 import Synchronized from "@std/sync.ms"
 
@@ -10,10 +10,11 @@ interface Disposable:
 
 type Resource:
     closed: Synchronized[Bool]
+    unexpected: List[Int]
 
 impl OtherClose for Resource:
     fn close(flag: Bool) -> Int:
-        return panic(message: "Unexpected case")
+        self.unexpected.append(1)
         return 0
 
 impl Closeable for Resource:
@@ -36,22 +37,20 @@ fn canonical_cleanup[T: Closeable](resource: T) -> Unit:
 
 test "cleanup uses the selected contract":
     let closed = Synchronized(false)
-    with resource = Resource(closed):
+    let unexpected: List[Int] = []
+    with resource = Resource(closed, unexpected):
         with locked = closed.lock():
-            if not (not locked.get()):
-                return panic(message: "check failed")
+            (not locked.get()) | try expect_true
     with locked = closed.lock():
-        if not (locked.get()):
-            return panic(message: "check failed")
+        (locked.get()) | try expect_true
     with locked = closed.lock():
         locked.set(value: false)
-    bound_cleanup(resource: Resource(closed))
+    bound_cleanup(resource: Resource(closed, unexpected))
     with locked = closed.lock():
-        if not (locked.get()):
-            return panic(message: "check failed")
+        (locked.get()) | try expect_true
     with locked = closed.lock():
         locked.set(value: false)
-    canonical_cleanup(resource: Resource(closed))
+    canonical_cleanup(resource: Resource(closed, unexpected))
     with locked = closed.lock():
-        if not (locked.get()):
-            return panic(message: "check failed")
+        (locked.get()) | try expect_true
+    unexpected.is_empty() | try expect_true

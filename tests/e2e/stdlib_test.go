@@ -1,7 +1,6 @@
 package e2e_test
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,17 +18,33 @@ import (
 // Imports and checked prelude type uses establish module coverage, not exhaustive operation/branch coverage.
 func TestStandardLibrarySources(t *testing.T) {
 	covered := map[string]bool{}
-	files := append(standardLibraryFixtures(t), "testdata/stdlib/faults/faults.ms")
-	for _, file := range files {
-		module := standardLibraryFixture(t, file)
+	sources := map[string]string{"runner-faults.ms": runnerFaultSource}
+	for _, file := range standardLibraryFixtures(t) {
+		source, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sources[file] = string(source)
+	}
+	for file, source := range sources {
+		module, err := parser.Parse(file, source)
+		if err != nil {
+			t.Fatal(err)
+		}
 		for _, imported := range module.Imports {
 			if strings.HasPrefix(imported.Path, "@std/") {
 				covered[strings.TrimPrefix(imported.Path, "@std/")] = true
 			}
 		}
-		result := compiler.CompileFile(file, compiler.Options{Tests: true, AnalyzeOnly: true})
+		var result compiler.Result
+		if file == "runner-faults.ms" {
+			result = compiler.CompileSource(file, source, compiler.Options{Tests: true, AnalyzeOnly: true})
+		} else {
+			result = compiler.CompileFile(file, compiler.Options{Tests: true, AnalyzeOnly: true})
+		}
 		if !result.Success() {
 			t.Errorf("%s: %v", file, result.Diagnostics)
+			continue
 		}
 		// Prelude-only modules cannot be covered by imports. Count source uses
 		// of their checked canonical types, rather than every ambient symbol.
@@ -66,13 +81,16 @@ func TestStandardLibrarySources(t *testing.T) {
 	}
 }
 
-// Faults are intentionally failing Manuscript tests, so they need a separate
+// This is a runner protocol regression, not a standard-library launcher.
+// Faults intentionally escape their test blocks, so they need a separate
 // transcript expectation. Verify every failure and the final passing test;
 // merely observing a nonzero status could hide checking/building failures.
-func TestStandardLibraryFaults(t *testing.T) {
-	file := "testdata/stdlib/faults/faults.ms"
-	module := standardLibraryFixture(t, file)
-	result := compiler.CompileFile(file, compiler.Options{Tests: true})
+func TestRunnerFaultIsolation(t *testing.T) {
+	module, parseErr := parser.Parse("faults.ms", runnerFaultSource)
+	if parseErr != nil {
+		t.Fatal(parseErr)
+	}
+	result := compiler.CompileSource("faults.ms", runnerFaultSource, compiler.Options{Tests: true})
 	data, err := execute(t, result)
 	if err == nil {
 		t.Fatalf("expected stdlib faults, got success:\n%s", data)
@@ -116,30 +134,6 @@ func TestStandardLibraryFaults(t *testing.T) {
 	}
 }
 
-// The Go harness only builds and launches tests. All library calls and
-// behavioral expectations live in Manuscript test blocks.
-func TestStandardLibraryConformance(t *testing.T) {
-	for _, file := range standardLibraryFixtures(t) {
-		t.Run(filepath.Base(file), func(t *testing.T) {
-			module := standardLibraryFixture(t, file)
-			tests := 0
-			for _, declaration := range module.Declarations {
-				if declaration.Kind == syntax.KindTest {
-					tests++
-				}
-			}
-			result := compiler.CompileFile(file, compiler.Options{Tests: true})
-			data, err := execute(t, result)
-			if err != nil {
-				t.Fatalf("stdlib execution failed: %v\n%s", err, data)
-			}
-			if !strings.HasSuffix(strings.TrimSpace(string(data)), fmt.Sprintf("%d tests, 0 failed", tests)) {
-				t.Fatalf("test runner did not execute all checks: %s", data)
-			}
-		})
-	}
-}
-
 func standardLibraryFixtures(t *testing.T) []string {
 	t.Helper()
 	files, err := filepath.Glob("testdata/stdlib/*.ms")
@@ -152,21 +146,58 @@ func standardLibraryFixtures(t *testing.T) []string {
 	return files
 }
 
-func standardLibraryFixture(t *testing.T, file string) *syntax.Module {
-	t.Helper()
-	source, err := os.ReadFile(file)
-	if err != nil {
-		t.Fatal(err)
-	}
-	module, err := parser.Parse(file, string(source))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, declaration := range module.Declarations {
-		if declaration.Kind == syntax.KindTest {
-			return module
-		}
-	}
-	t.Fatalf("%s has no executable Manuscript test blocks", file)
-	return nil
-}
+const runnerFaultSource = `import panic from "@std/faults.ms"
+import Closeable from "@std/cleanup.ms"
+import {ListBuilder} from "@std/collections.ms"
+import {Queue} from "@std/queues.ms"
+import Synchronized from "@std/sync.ms"
+import {stdout, WriteStream} from "@std/io.ms"
+import Bytes from "@std/bytes.ms"
+
+fn emit(message: String) -> Unit:
+    let written = stdout().write(message.to_bytes()).unwrap()
+
+type Resource:
+    output: WriteStream
+
+impl Closeable for Resource:
+    fn close() -> Unit:
+        let written = self.output.write("fault cleanup completed\n".to_bytes()).unwrap()
+
+test "panic unwinds Closeable":
+    with resource = Resource(stdout()):
+        return panic("intentional stdlib panic")
+
+test "absent Optional unwrap faults":
+    let absent: Optional[Int] = none
+    let impossible = absent.unwrap()
+
+test "sealed builder mutation faults":
+    let builder = ListBuilder[Int]()
+    let sealed = builder.freeze()
+    builder.append(1)
+
+test "zero queue capacity faults":
+    let queue = Queue[Int](0)
+
+test "negative queue capacity faults":
+    let queue = Queue[Int](-1)
+
+test "stale synchronized guard faults":
+    let state = Synchronized(1)
+    let guard = state.lock()
+    guard.close()
+    let impossible = guard.get()
+
+test "unwrapping an out of range slice faults":
+    let impossible = ([1, 2]).slice(start: 0, end: 3).unwrap()
+
+test "negative split limit faults":
+    let impossible = "a,b,c".split(separator: ",", max_parts: -1)
+
+test "negative replace limit faults":
+    let impossible = "aaa".replace(old: "a", new: "b", max_replacements: -1)
+
+test "runner continues with fresh roots after faults":
+    emit("fresh root after stdlib faults\n")
+`

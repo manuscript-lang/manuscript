@@ -8,11 +8,8 @@ import (
 )
 
 func TestGuardedCounterStepsKeepOverflowFaults(t *testing.T) {
-	result := compiler.CompileSource("counter-step.ms", `import panic from "@std/faults.ms"
+	result := compiler.CompileSource("counter-step.ms", `import {expect_true, fail} from "@std/testing.ms"
 
-fn check(ok: Bool, name: String) -> Unit:
-    if not ok:
-        return panic(message: name)
 
 fn count_up(limit: Int) -> Int:
     var i = limit - 3
@@ -46,8 +43,8 @@ fn nested_reset(flag: Bool) -> Int:
     return i
 
 test "counts reach the extreme without a fault":
-    check(ok: count_up(limit: 9223372036854775807) == 3, name: "up to maximum")
-    check(ok: count_down(limit: -9223372036854775807) == 3, name: "down to minimum")
+    (count_up(limit: 9223372036854775807) == 3) | try expect_true
+    (count_down(limit: -9223372036854775807) == 3) | try expect_true
 
 test "reassigned counter still faults":
     let bad = reset_then_step()

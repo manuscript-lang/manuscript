@@ -1,5 +1,15 @@
 # Repository maintenance lessons
 
+### Manuscript conformance runs through the public test command
+
+Decision: the user asked to replace panic assertions with the standard testing API, use pipe chains where they clarify the flow, and remove Go orchestration of Manuscript conformance. Assertions return Result; helpers must propagate errors and task callers must inspect returned Results after joining. Go tests still own compiler/source checks and native process protocols. Audit embedded Go source strings and multi-file projects as well as flat source directories; launch-only wrappers belong in the Manuscript inventory. Physical `.ms` tests use Result errors and execute through `ms test`; keep deliberate fault/Never/nonexecution subjects in Go string fixtures. Prove skipped callbacks with invocation assertions instead of panic sentinels.
+
+Verified: the previous Go conformance loops accepted `0 tests, 0 failed` and bypassed CLI argument handling. The Manuscript dispatcher checks complete, nonempty JSON reports, including explicit skips and lifecycle errors, with one isolated child per file. Runner flags must not become test host arguments.
+
+Apply when: adding source conformance cases, assertion helpers, or changing test entrypoints.
+Evidence: [Manuscript dispatcher and its tests](../scripts/conformance.ms), [native argument regression](../pkg/runtime/test_runner_test.go), and [contributor commands](../documentation/contributing/development.md#conformance-and-coverage).
+Verify: `make conformance` and `make verify`; source tests use `try`, pipeline calls do not discard Result errors, and invalid/empty/incomplete reports fail. Keep escaping-fault continuation checks in the Go runner protocol regression.
+
 ### CI discovery failures must not become empty shards
 
 Verified: a successful pipeline filter can hide a failed Go discovery command under POSIX `set -e`. `go test -list` also runs the end-to-end `TestMain`, which builds the CLI and can fail before listing tests. Capture Go output in checked assignments before filtering; reuse the complete package inventory and reject an empty split-package test inventory. An individual shard may legitimately select no tests.

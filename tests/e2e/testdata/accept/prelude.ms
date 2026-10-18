@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false, fail} from "@std/testing.ms"
 
 type Failure:
     message_text: String
@@ -20,26 +20,28 @@ test "prelude cases and optional methods need no imports":
     let inferred = some(value: 3)
     let absent: Optional[Int] = none
     let qualified = Optional[Int].some(value: 5)
-    if not inferred.is_some() or not absent.is_none():
-        return panic("presence check failed")
-    if inferred.unwrap() != 3 or qualified.unwrap() != 5:
-        return panic("payload changed")
-    if absent.unwrap_or(9) != 9 or absent.unwrap_or_else(fn() -> Int: return 11) != 11:
-        return panic("fallback failed")
+    (not inferred.is_some() or not absent.is_none()) | try expect_false
+    (inferred.unwrap() != 3 or qualified.unwrap() != 5) | try expect_false
+    try expect_false(
+        (
+            absent.unwrap_or(9) != 9
+            or absent.unwrap_or_else(fn() -> Int: return 11) != 11
+        )
+    )
 
     match success():
         ok(value):
-            if value.unwrap() != 7: return panic("result payload changed")
-        error(cause): return panic(cause.message())
+            try expect_equal(value.unwrap(), 7)
+        error(cause): return fail(cause.message())
 
 test "prelude Error preserves concrete failures through try":
     let cause = match propagated():
-        ok(value): return panic("failure did not propagate")
+        ok(value): return fail("failure did not propagate")
         error(cause): cause
 
-    if cause.message() != "failed": return panic("error receiver lost")
+    cause.message() | try expect_equal(expected: "failed")
 
     match cause:
         Failure(value):
-            if value.message_text != "failed": return panic("error payload lost")
-        _: return panic("concrete error lost")
+            try expect_equal(value.message_text, "failed")
+        _: return fail("concrete error lost")

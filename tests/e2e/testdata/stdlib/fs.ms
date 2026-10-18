@@ -1,209 +1,224 @@
+import {expect_equal, expect_false, expect_ok, fail} from "@std/testing.ms"
+import TextError from "@std/errors.ms"
 import {filesystem, FileSystemError, FileHandle, GlobOptions, PathEntry} from "@std/fs.ms"
 import {files, read_all, IoError} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
-import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 fn expect_fs_error[T](
     outcome: Result[T, FileSystemError],
     expected: FileSystemError
-) -> Unit:
+) -> Result[Unit, Error]:
     match outcome:
-        ok(_): return panic("filesystem misuse succeeded")
+        ok(_): return error(TextError.Text("filesystem misuse succeeded"))
         error(cause):
-            if cause != expected: return panic("wrong filesystem error")
+            if cause != expected: return error(TextError.Text("wrong filesystem error"))
+
+    return ok(unit)
 
 test "glob queries reuse patterns without changing hidden paths limits or callbacks":
     let fs = filesystem()
 
-    with temporary = value(fs.temporary("manuscript-glob-")):
+    with temporary = (fs.temporary("manuscript-glob-") | try expect_ok):
         let root = temporary.path()
-        value(fs.create_directory(path: "{root}/sub", recursive: false))
+        (fs.create_directory(path: "{root}/sub", recursive: false) | try expect_ok)
         for name in ["a.txt", "b.md", ".hidden.txt", "sub/c.txt"]:
-            value(
+            (
                 fs.write_file(
                     path: "{root}/{name}",
                     data: "".to_bytes(),
                     replace: false
-                )
+                ) | try expect_ok
             )
-        let matches = value(fs.glob(path: root, pattern: "**/*.\{txt,md\}"))
-        if matches != ["a.txt", "b.md", "sub/c.txt"]: return panic("glob matches")
-
-        expect_fs_error(
-            fs.glob(path: root, pattern: "**/*.\{txt,md\}", max_entries: 2),
-            FileSystemError.LimitExceeded
+        let matches = (fs.glob(path: root, pattern: "**/*.\{txt,md\}") | try expect_ok)
+        matches | try expect_equal(expected: ["a.txt", "b.md", "sub/c.txt"])
+        (
+            fs.glob(
+                path: root,
+                pattern: "**/*.\{txt,md\}",
+                max_entries: 2
+            ) | try expect_fs_error(expected: FileSystemError.LimitExceeded)
         )
-        expect_fs_error(
-            fs.glob(path: root, pattern: "\{a.txt,[\}"),
-            FileSystemError.InvalidInput
+        (
+            fs.glob(
+                path: root,
+                pattern: "\{a.txt,[\}"
+            ) | try expect_fs_error(expected: FileSystemError.InvalidInput)
         )
         let options = GlobOptions(
             patterns: ["*.txt"],
             exclude: ["sub/**"],
             follow_links: false
         )
-        let entries = value(
-            fs.glob_entries(
-                path: root,
-                options: options,
-                exclude: some(
-                    fn(entry: PathEntry) -> Bool:
-                        if entry.path == ".": options.patterns.set(0, "*.md")
-                        return false
+        let entries = (
+            try expect_ok(
+                fs.glob_entries(
+                    path: root,
+                    options: options,
+                    exclude: some(
+                        fn(entry: PathEntry) -> Bool:
+                            if entry.path == ".": options.patterns.set(0, "*.md")
+                            return false
+                    )
                 )
             )
         )
-        if entries.length() != 1: return panic("glob_entries count")
-        if entries.at(0).unwrap().path != "b.md": return panic(
-            "callback changed pattern"
-        )
+        entries.length() | try expect_equal(expected: 1)
+        entries.at(0).unwrap().path | try expect_equal(expected: "b.md")
 
 test "ordinary filesystem misuse retains typed cases":
     let fs = filesystem()
 
-    with temporary = value(fs.temporary("manuscript-errors-")):
+    with temporary = (fs.temporary("manuscript-errors-") | try expect_ok):
         let directory = "{temporary.path()}/directory"
         let file = "{temporary.path()}/file"
-        let created = value(fs.create_directory(path: directory, recursive: false))
-        let child = value(
+        let created = (
+            fs.create_directory(
+                path: directory,
+                recursive: false
+            ) | try expect_ok
+        )
+        let child = (
             fs.write_file(
                 path: "{directory}/child",
                 data: "x".to_bytes(),
                 replace: false
-            )
+            ) | try expect_ok
         )
-        let written = value(
+        let written = (
             fs.write_file(
                 path: file,
                 data: "abc".to_bytes(),
                 replace: false
+            ) | try expect_ok
+        )
+        (
+            fs.remove(
+                path: directory,
+                recursive: false
+            ) | try expect_fs_error(expected: FileSystemError.NotEmpty)
+        )
+        (
+            fs.list(path: file) | try expect_fs_error(
+                expected: FileSystemError.InvalidInput
             )
         )
-        expect_fs_error(
-            outcome: fs.remove(path: directory, recursive: false),
-            expected: FileSystemError.NotEmpty
+        (
+            fs.read_file(path: directory) | try expect_fs_error(
+                expected: FileSystemError.InvalidInput
+            )
         )
-        expect_fs_error(
-            outcome: fs.list(path: file),
-            expected: FileSystemError.InvalidInput
-        )
-        expect_fs_error(
-            outcome: fs.read_file(path: directory),
-            expected: FileSystemError.InvalidInput
-        )
-        expect_fs_error(
-            outcome: fs.create_directory(path: file, recursive: false),
-            expected: FileSystemError.AlreadyExists
+        (
+            fs.create_directory(
+                path: file,
+                recursive: false
+            ) | try expect_fs_error(expected: FileSystemError.AlreadyExists)
         )
 
-        with reader = value(fs.open(path: file, flags: "r", mode: 384)):
-            expect_fs_error(
-                outcome: reader.write("x".to_bytes()),
-                expected: FileSystemError.InvalidInput
+        with reader = (fs.open(path: file, flags: "r", mode: 384) | try expect_ok):
+            (
+                reader.write("x".to_bytes()) | try expect_fs_error(
+                    expected: FileSystemError.InvalidInput
+                )
             )
-            expect_fs_error(
-                outcome: reader.seek(offset: -1, origin: 0),
-                expected: FileSystemError.InvalidInput
+            (
+                reader.seek(
+                    offset: -1,
+                    origin: 0
+                ) | try expect_fs_error(expected: FileSystemError.InvalidInput)
             )
-            expect_fs_error(
-                outcome: reader.seek(offset: 0, origin: 3),
-                expected: FileSystemError.InvalidInput
+            (
+                reader.seek(offset: 0, origin: 3) | try expect_fs_error(
+                    expected: FileSystemError.InvalidInput
+                )
             )
 
-        with writer = value(fs.open(path: file, flags: "a", mode: 384)):
-            expect_fs_error(
-                outcome: writer.read(1),
-                expected: FileSystemError.InvalidInput
+        with writer = (fs.open(path: file, flags: "a", mode: 384) | try expect_ok):
+            (
+                writer.read(1) | try expect_fs_error(
+                    expected: FileSystemError.InvalidInput
+                )
             )
-            expect_fs_error(
-                outcome: writer.read_file(),
-                expected: FileSystemError.InvalidInput
+            (
+                writer.read_file() | try expect_fs_error(
+                    expected: FileSystemError.InvalidInput
+                )
             )
 
 test "filesystem scoped temporary directories and bounded file reads":
     let fs = filesystem()
     var directory = ""
 
-    with temporary = value(fs.temporary("manuscript-stdlib-")):
+    with temporary = (fs.temporary("manuscript-stdlib-") | try expect_ok):
         directory = temporary.path()
         let path = "{directory}/data.txt"
-        let written = value(
+        let written = (
             fs.write_file(
                 path: path,
                 data: "hello".to_bytes(),
                 replace: false
-            )
+            ) | try expect_ok
         )
-        if (value(fs.read_file(path: path, max_bytes: 5)) != "hello".to_bytes()): return panic(
-            "read file"
+        fs.read_file(path: path, max_bytes: 5) | try expect_ok | try expect_equal(
+            expected: "hello".to_bytes()
         )
-
         let limited: Result[Bytes, FileSystemError] = error(
             FileSystemError.LimitExceeded
         )
-        if fs.read_file(path: path, max_bytes: 4) != limited: return panic(
-            "file byte limit"
-        )
-
+        fs.read_file(path: path, max_bytes: 4) | try expect_equal(expected: limited)
         let exists: Result[Unit, FileSystemError] = error(FileSystemError.AlreadyExists)
-        if (
-            fs.write_file(
-                path: path,
-                data: "changed".to_bytes(),
-                replace: false
-            ) != exists
-        ): return panic("exclusive write")
-        if value(fs.stat(path: path, follow_links: true)).size != 5: return panic(
-            "file stat"
+        (
+            (
+                fs.write_file(
+                    path: path,
+                    data: "changed".to_bytes(),
+                    replace: false
+                ) != exists
+            )
+        ) | try expect_false
+        (fs.stat(path: path, follow_links: true) | try expect_ok).size | try expect_equal(
+            expected: 5
         )
-        if value(fs.list(path: directory)).length() != 1: return panic("directory list")
-
-        with input = value(files().open(path)):
-            if value(input.read(5)).unwrap() != "hello".to_bytes(): return panic(
-                "read-only Files host"
+        (fs.list(path: directory) | try expect_ok).length() | try expect_equal(
+            expected: 1
+        )
+        with input = (files().open(path) | try expect_ok):
+            (input.read(5) | try expect_ok).unwrap() | try expect_equal(
+                expected: "hello".to_bytes()
             )
 
     match fs.stat(path: directory, follow_links: true):
-        ok(_): return panic("temporary directory not removed")
+        ok(_): return fail("temporary directory not removed")
         error(cause):
-            if cause != FileSystemError.NotFound: return panic(
-                "temporary cleanup error"
-            )
+            try expect_equal(cause, FileSystemError.NotFound)
 
 test "file handles positional I/O stream adapters and closed errors":
     let fs = filesystem()
 
-    with temporary = value(fs.temporary("manuscript-handles-")):
+    with temporary = (fs.temporary("manuscript-handles-") | try expect_ok):
         let path = "{temporary.path()}/data.txt"
-        let written = value(
+        let written = (
             fs.write_file(
                 path: path,
                 data: "abcdef".to_bytes(),
                 replace: false
-            )
+            ) | try expect_ok
         )
-        let handle = value(fs.open(path: path, flags: "r+", mode: 384))
+        let handle = (fs.open(path: path, flags: "r+", mode: 384) | try expect_ok)
 
         with scoped = handle:
-            if (value(handle.read_at(offset: 2, max_bytes: 2)) != "cd".to_bytes()): return panic(
-                "positional read"
+            handle.read_at(offset: 2, max_bytes: 2) | try expect_ok | try expect_equal(
+                expected: "cd".to_bytes()
             )
-
-            value(handle.write_at(offset: 1, data: "XY".to_bytes()))
-            let resized = value(handle.truncate(4))
-            if value(handle.stat()).size != 4: return panic("handle stat")
-
-            let sought = value(handle.seek(offset: 0, origin: 0))
-            if value(read_all(input: handle.reader())) != "aXYd".to_bytes(): return panic(
-                "reader adapter"
+            (handle.write_at(offset: 1, data: "XY".to_bytes()) | try expect_ok)
+            let resized = (handle.truncate(4) | try expect_ok)
+            (handle.stat() | try expect_ok).size | try expect_equal(expected: 4)
+            let sought = (handle.seek(offset: 0, origin: 0) | try expect_ok)
+            read_all(input: handle.reader()) | try expect_ok | try expect_equal(
+                expected: "aXYd".to_bytes()
             )
 
         let closed: Result[Bytes, FileSystemError] = error(FileSystemError.Closed)
-        if handle.read_at(offset: 0, max_bytes: 1) != closed: return panic(
-            "closed handle"
-        )
-
+        handle.read_at(offset: 0, max_bytes: 1) | try expect_equal(expected: closed)
         handle.close()
 
 test "empty paths are rejected instead of resolving to the working directory":
@@ -211,19 +226,13 @@ test "empty paths are rejected instead of resolving to the working directory":
     let invalid: Result[Unit, FileSystemError] = error(
         cause: FileSystemError.InvalidInput
     )
-    if fs.remove(path: "", recursive: true) != invalid: return panic(
-        "recursive remove of empty path"
-    )
-    if fs.create_directory(path: "", recursive: true) != invalid: return panic(
-        "create empty directory"
-    )
-    if fs.write_file(path: "", data: "x".to_bytes(), replace: true) != invalid: return panic(
-        "write empty path"
+    fs.remove(path: "", recursive: true) | try expect_equal(expected: invalid)
+    fs.create_directory(path: "", recursive: true) | try expect_equal(expected: invalid)
+    fs.write_file(path: "", data: "x".to_bytes(), replace: true) | try expect_equal(
+        expected: invalid
     )
 
     match fs.stat(path: "", follow_links: true):
-        ok(_): return panic("stat empty path")
+        ok(_): return fail("stat empty path")
         error(cause):
-            if cause != FileSystemError.InvalidInput: return panic(
-                "stat empty path error"
-            )
+            try expect_equal(cause, FileSystemError.InvalidInput)

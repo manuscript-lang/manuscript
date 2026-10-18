@@ -136,7 +136,7 @@ Fixture: `tests/e2e/testdata/accept/cl-05.ms`.
 
 Contract: [declarations and calls](../../../core-language/functions/declarations-and-calls.md), [conditionals](../../../core-language/control-flow/conditionals.md), and [faults](../../../core-language/errors/faults.md).
 
-Fixture: `tests/e2e/testdata/accept/cl-06.ms`.
+Fixture: the `cl-06` source string in `tests/e2e/intentional_faults_test.go`.
 
 The faulting branch has no normal successor. `discard` accepts normal fallthrough because it returns `Unit`.
 
@@ -446,7 +446,7 @@ Contract: [Unit and Never](../../../core-language/functions/declarations-and-cal
 
 The following independent module is a type-checking fixture; its faulting functions are not invoked as passing tests.
 
-Fixture: `tests/e2e/testdata/accept/cl-17.ms`.
+Fixture: the `cl-17` source string in `tests/e2e/intentional_faults_test.go`.
 
 Accept: the initializer and return expression cannot produce values; the literal-true loop has no reachable break and therefore no normal exit. An expected annotation does not make a `Never` expression return an `Int` at runtime.
 

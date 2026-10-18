@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, fail} from "@std/testing.ms"
 
 type Input:
     names: List[Optional[String]]
@@ -16,10 +16,8 @@ test "data constructor context":
     let failure: Result[Int, String] = error("unavailable")
     let absent: Optional[Int] = none
     let nested: List[List[Int]] = [[], [1]]
-    if not (outcome_value(outcome: success) == 3):
-        return panic(message: "check failed")
-    if not (outcome_value(outcome: failure) == -1):
-        return panic(message: "check failed")
+    outcome_value(outcome: success) | try expect_equal(expected: 3)
+    outcome_value(outcome: failure) | try expect_equal(expected: -1)
 
 type Box[T]:
     value: T
@@ -39,10 +37,10 @@ test "nested constructor arguments receive inferred context":
         none:
             let completed = unit
         some(_):
-            return panic(message: "Unexpected case")
+            return fail(message: "Unexpected case")
 
     match request.box.value:
         none:
             let completed = unit
         some(_):
-            return panic(message: "Unexpected case")
+            return fail(message: "Unexpected case")

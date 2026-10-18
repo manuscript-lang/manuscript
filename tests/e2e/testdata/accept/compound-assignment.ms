@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
 type Counter:
     count: Int
@@ -24,15 +24,13 @@ test "compound assignment on bindings":
     ratio *= 2.0
     var text = "a"
     text += "b"
-    if number != 4 or ratio != 3.0 or text != "ab":
-        return panic("compound assignment on bindings")
+    (number != 4 or ratio != 3.0 or text != "ab") | try expect_false
 
 test "right side groups as one operand":
     var number = 10
     number -= 4 - 1
     number *= 1 + 1
-    if number != 14:
-        return panic("compound right side")
+    number | try expect_equal(expected: 14)
 
 test "compound assignment on fields":
     let counter = Counter(count: 1, label: "x")
@@ -41,8 +39,7 @@ test "compound assignment on fields":
     counter.label += "y"
     let outer = Outer(inner: counter)
     outer.inner.count -= 5
-    if counter.count != 20 or counter.label != "xy" or tally([1, 2, 3]) != 6:
-        return panic("compound assignment on fields")
+    (counter.count != 20 or counter.label != "xy" or tally([1, 2, 3]) != 6) | try expect_false
 
 test "compound assignment in loops":
     var index = 0
@@ -52,5 +49,4 @@ test "compound assignment in loops":
         total += index
         index += 1
 
-    if total != 10 or index != 5:
-        return panic("compound assignment loop")
+    (total != 10 or index != 5) | try expect_false

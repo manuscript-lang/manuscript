@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 type Outcome:
     case Ready(value: Int)
@@ -12,7 +12,5 @@ fn score(outcome: Outcome) -> Int:
             return 0
 
 test "alternative result":
-    if not (score(outcome: Outcome.Ready(8)) == 8):
-        return panic(message: "check failed")
-    if not (score(outcome: Outcome.Failed("unavailable")) == 0):
-        return panic(message: "check failed")
+    score(outcome: Outcome.Ready(8)) | try expect_equal(expected: 8)
+    score(outcome: Outcome.Failed("unavailable")) | try expect_equal(expected: 0)

@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 import Synchronized from "@std/sync.ms"
 import File from "@std/io.ms"
 import IoError from "@std/io.ms"
@@ -13,44 +13,31 @@ test "atomic state and sealed builders":
     let state = Synchronized(3)
 
     with locked = state.lock():
-        if not (locked.get() == 3):
-            return panic(message: "check failed")
-
+        locked.get() | try expect_equal(expected: 3)
         locked.set(value: 4)
 
     with locked = state.lock():
-        if not (locked.get() == 4):
-            return panic(message: "check failed")
+        locked.get() | try expect_equal(expected: 4)
     let list = ListBuilder[Int]()
     list.append(value: 1)
     list.append(value: 2)
-    if not (list.freeze() == [1, 2]):
-        return panic(message: "check failed")
-    if not (list.freeze() == [1, 2]):
-        return panic(message: "check failed")
-
+    list.freeze() | try expect_equal(expected: [1, 2])
+    list.freeze() | try expect_equal(expected: [1, 2])
     let map = MapBuilder[String, Int]()
     map.add(key: "a", value: 1)
     map.add(key: "a", value: 2)
     let expected: Optional[Int] = some(2)
-    if not (map.freeze().get(key: "a") == expected):
-        return panic(message: "check failed")
-
+    map.freeze().get(key: "a") | try expect_equal(expected: expected)
     let set = SetBuilder[Int]()
     set.add(value: 3)
     set.add(value: 3)
-    if not (set.freeze().length() == 1):
-        return panic(message: "check failed")
-
+    set.freeze().length() | try expect_equal(expected: 1)
     let bytes = BytesBuilder()
     bytes.append(value: 65)
     bytes.concat(values: "B".to_bytes())
     let expected_text: Optional[String] = some("AB")
-    if not (bytes.freeze().to_string() == expected_text):
-        return panic(message: "check failed")
-
+    bytes.freeze().to_string() | try expect_equal(expected: expected_text)
     let text = StringBuilder()
     text.append(value: "hello")
     text.append(value: " world")
-    if not (text.freeze() == "hello world"):
-        return panic(message: "check failed")
+    text.freeze() | try expect_equal(expected: "hello world")

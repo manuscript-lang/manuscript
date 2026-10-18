@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 # Sum three integer values with explicit named arguments.
 export fn total(first: Int, second: Int, third: Int) -> Int:
@@ -16,5 +16,4 @@ export fn compute(iterations: Int) -> Int:
     return result
 
 test "named arguments":
-    if total(first: 10, second: 20, third: 30) != 60:
-        return panic(message: "named argument result differs")
+    total(first: 10, second: 20, third: 30) | try expect_equal(expected: 60)

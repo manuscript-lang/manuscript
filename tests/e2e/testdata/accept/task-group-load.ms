@@ -1,5 +1,5 @@
+import {expect_false, fail} from "@std/testing.ms"
 import {TaskGroup, ExecutionError} from "@std/tasks.ms"
-import panic from "@std/faults.ms"
 
 type Summary:
     count: Int
@@ -18,7 +18,6 @@ fn load() -> Result[Summary, ExecutionError]:
 test "load independent typed values":
     match load():
         ok(summary):
-            if summary.count != 3 or summary.label != "ready":
-                return panic("task values changed")
+            ((summary.count != 3 or summary.label != "ready") | try expect_false)
         error(_):
-            return panic("task group failed")
+            return fail("task group failed")

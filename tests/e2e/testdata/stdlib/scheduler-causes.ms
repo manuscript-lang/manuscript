@@ -1,10 +1,9 @@
+import {expect_equal, expect_ok} from "@std/testing.ms"
 import {Scheduler, SchedulerFailure} from "@std/tasks.ms"
 import {category, ErrorCategory, TextError} from "@std/errors.ms"
 import {IoError} from "@std/io.ms"
 import Synchronized from "@std/sync.ms"
 import sleep from "@std/time.ms"
-import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 fn typed_failure() -> Result[Unit, Error]:
     return error(IoError.Unavailable)
@@ -25,9 +24,9 @@ test "scheduler failures retain typed and text causes":
             _: unit
 
     with scheduler = Scheduler(reporter: reporter):
-        value(scheduler.start(typed_failure))
-        value(scheduler.start(text_failure))
+        let checked_28 = (scheduler.start(typed_failure) | try expect_ok)
+        let checked_29 = (scheduler.start(text_failure) | try expect_ok)
         sleep(100.milliseconds)
 
     with guard = seen.lock():
-        if guard.get() != 11: return panic("scheduler causes were not retained")
+        guard.get() | try expect_equal(expected: 11)

@@ -1,7 +1,7 @@
+import {expect_equal, expect_false} from "@std/testing.ms"
 import {MapBuilder, SetBuilder, ListBuilder} from "@std/collections.ms"
 import {Bytes, BytesBuilder} from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
-import panic from "@std/faults.ms"
 
 type Counter:
     calls: Int
@@ -38,39 +38,26 @@ test "default insertion keeps eager and lazy calls and receiver identity":
     let values = Map[String, Int]().add("a", 1)
     let counter = Counter(0)
     let alias = values.add_default("a", eager(counter))
-    if counter.calls != 1 or values.get("a") != some(1): return panic("eager default")
-
+    (counter.calls != 1 or values.get("a") != some(1)) | try expect_false
     alias.add("b", 2)
-    if values.keys() != ["a", "b"]: return panic("default receiver identity")
-
+    values.keys() | try expect_equal(expected: ["a", "b"])
     let create = fn(key: String) -> Int:
         counter.calls = counter.calls + 1
         return key.length()
     let lazy: fn(key: String, create: fn(key: String) -> Int) -> Map[String, Int] = values.add_default_from
     lazy("a", create)
-    if counter.calls != 1: return panic("existing key called creator")
-
+    counter.calls | try expect_equal(expected: 1)
     lazy("ccc", create).add_default("d", 4)
-    if counter.calls != 2 or values.values() != [1, 2, 3, 4]: return panic(
-        "lazy insertion"
-    )
-
+    (counter.calls != 2 or values.values() != [1, 2, 3, 4]) | try expect_false
     let view = Defaults(DefaultAdapter(values))
     view.add_default("a", 88)
     view.add_default_from("ee", create)
     let copy = values.clone().add_default("copy", 6)
-    if values.contains("copy") or not copy.contains("copy"): return panic(
-        "explicit copy"
-    )
-    if counter.calls != 3 or values.keys() != ["a", "b", "ccc", "d", "ee"]: return panic(
-        "adapter order"
-    )
-
+    (values.contains("copy") or not copy.contains("copy")) | try expect_false
+    (counter.calls != 3 or values.keys() != ["a", "b", "ccc", "d", "ee"]) | try expect_false
     let legacy: fn(key: String, value: Int) -> Map[String, Int] = values.add_default
     legacy("a", 100).add_default_from("ff", create)
-    if counter.calls != 4 or values.get("a") != some(1): return panic(
-        "legacy compatibility"
-    )
+    (counter.calls != 4 or values.get("a") != some(1)) | try expect_false
 
 test "all builders keep Unit mutation function types":
     let list = ListBuilder[Int]()
@@ -78,8 +65,7 @@ test "all builders keep Unit mutation function types":
     append_list(1)
     let list_result = list.freeze()
     list_result.append(2)
-    if list.freeze() != [1, 2]: return panic("list freeze alias")
-
+    list.freeze() | try expect_equal(expected: [1, 2])
     let map = MapBuilder[String, Int]()
     let map_alias = map
     let add_map: fn(key: String, value: Int) -> Unit = map.add
@@ -91,13 +77,9 @@ test "all builders keep Unit mutation function types":
     add_view("b", 2)
     legacy_map("a", 3)
     let map_result = map.freeze()
-    if map_result.keys() != ["a", "b"] or map_result.values() != [3, 2]: return panic(
-        "builder map order"
-    )
-
+    (map_result.keys() != ["a", "b"] or map_result.values() != [3, 2]) | try expect_false
     map_result.add("c", 4)
-    if map_alias.freeze().keys() != ["a", "b", "c"]: return panic("map freeze alias")
-
+    map_alias.freeze().keys() | try expect_equal(expected: ["a", "b", "c"])
     let set = SetBuilder[Int]()
     let add_set: fn(value: Int) -> Unit = set.add
     let legacy_set: fn(value: Int) -> Unit = set.add
@@ -105,37 +87,28 @@ test "all builders keep Unit mutation function types":
     set.add(1)
     legacy_set(2)
     let set_result = set.freeze()
-    if set_result.values() != [2, 1]: return panic("builder set order")
-
+    set_result.values() | try expect_equal(expected: [2, 1])
     set_result.add(3)
-    if set.freeze().values() != [2, 1, 3]: return panic("set freeze alias")
-
+    set.freeze().values() | try expect_equal(expected: [2, 1, 3])
     let bytes = BytesBuilder()
     let append_byte: fn(value: Int) -> Unit = bytes.append
     let concat_bytes: fn(values: Bytes) -> Unit = bytes.concat
     append_byte(65)
     concat_bytes("B".to_bytes())
-    if bytes.freeze() != "AB".to_bytes() or bytes.freeze() != "AB".to_bytes(): return panic(
-        "bytes freeze"
-    )
-
+    (bytes.freeze() != "AB".to_bytes() or bytes.freeze() != "AB".to_bytes()) | try expect_false
     let text = StringBuilder()
     let append_text: fn(value: String) -> Unit = text.append
     append_text("ab")
-    if text.freeze() != "ab" or text.freeze() != "ab": return panic("text freeze")
+    (text.freeze() != "ab" or text.freeze() != "ab") | try expect_false
 
 test "copy names preserve Bytes and collection storage":
     let bytes = Bytes([1, 2, 3])
     let copied = bytes.with_value(0, 9)
-    if bytes != Bytes([1, 2, 3]) or copied != Bytes([9, 2, 3]): return panic(
-        "Bytes copy"
-    )
-
+    (bytes != Bytes([1, 2, 3]) or copied != Bytes([9, 2, 3])) | try expect_false
     let values = [1, 2, 3]
     let reversed = values.reversed()
     reversed.set(0, 9)
-    if values != [1, 2, 3] or reversed != [9, 2, 1]: return panic("List reversed copy")
-
+    (values != [1, 2, 3] or reversed != [9, 2, 1]) | try expect_false
     let set = Set[Int]().add(1)
     set.clone().add(2)
-    if set.values() != [1]: return panic("explicit Set clone")
+    set.values() | try expect_equal(expected: [1])

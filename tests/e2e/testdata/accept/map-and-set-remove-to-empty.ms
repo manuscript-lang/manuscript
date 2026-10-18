@@ -1,0 +1,27 @@
+import {expect_equal, fail} from "@std/testing.ms"
+
+test "maps and sets keep distinct keys after removal to empty":
+    let m = Map[String, Int]()
+    m.add(key: "cap", value: 1)
+    m.remove("cap")
+    m.add(key: "pen", value: 2)
+    m.add(key: "cap", value: 3)
+    if m.length() != 2: return fail("without: length {m.length()}")
+
+    m.get("pen").unwrap() | try expect_equal(expected: 2)
+    m.get("cap").unwrap() | try expect_equal(expected: 3)
+    let n = Map[Int, Int]()
+    n.add(key: 1, value: 10)
+    n.remove(key: 1)
+    n.add(key: 2, value: 20)
+    n.add(key: 1, value: 30)
+    if n.length() != 2: return fail("remove: length {n.length()}")
+
+    n.get(2).unwrap() | try expect_equal(expected: 20)
+    n.get(1).unwrap() | try expect_equal(expected: 30)
+    let s = Set[String]()
+    s.add("cap")
+    s.remove("cap")
+    s.add("pen")
+    s.add("cap")
+    if s.length() != 2: return fail("set: length {s.length()}")

@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
 
 fn append_generic[T](values: List[Optional[T]], value: T) -> Unit:
     values.append(value)
@@ -14,68 +14,46 @@ test "direct append preserves checked argument conversions":
     values.append(7)
     append_generic(values, value: 8)
     values.append(none)
-    if values.at(0).unwrap().unwrap() != 7 or values.at(1).unwrap().unwrap() != 8:
-        return panic("append lost some wrapping")
-    if not values.at(2).unwrap().is_none(): return panic("explicit none was wrapped")
-
+    (values.at(0).unwrap().unwrap() != 7 or values.at(1).unwrap().unwrap() != 8) | try expect_false
+    (values.at(2).unwrap().is_none()) | try expect_true
     let flags: List[Optional[Bool]] = []
     flags.append(false)
-    if flags.at(0).unwrap().is_none() or flags.at(0).unwrap().unwrap():
-        return panic("false became absent")
-
+    (flags.at(0).unwrap().is_none() or flags.at(0).unwrap().unwrap()) | try expect_false
     let units: List[Optional[Unit]] = []
     units.append(unit)
-    if units.at(0).unwrap().is_none(): return panic("Unit became absent")
-
+    units.at(0).unwrap().is_none() | try expect_false
     let inner: Optional[Int] = none
     let nested: List[Optional[Optional[Int]]] = []
     nested.append(inner)
-    if nested.at(0).unwrap().is_none() or not nested.at(0).unwrap().unwrap().is_none():
-        return panic("some(none) was flattened")
-
+    (nested.at(0).unwrap().is_none() or not nested.at(0).unwrap().unwrap().is_none()) | try expect_false
     let callbacks: List[Optional[fn(value: Int) -> Int]] = []
     callbacks.append(fn(value): value + 1)
-    if callbacks.at(0).unwrap().unwrap()(7) != 8: return panic(
-        "callback conversion lost"
-    )
-
+    callbacks.at(0).unwrap().unwrap()(7) | try expect_equal(expected: 8)
     let errors: List[Error] = []
     errors.append(Failure(1))
-    if errors.at(0).unwrap().message() != "failure": return panic(
-        "Error conversion lost"
-    )
-
+    errors.at(0).unwrap().message() | try expect_equal(expected: "failure")
     let results: List[Optional[Result[Int, Error]]] = []
     let failed: Result[Int, Failure] = error(Failure(2))
     results.append(failed)
 
     match results.at(0).unwrap().unwrap():
-        ok(value): return panic("error became success")
+        ok(value): return fail("error became success")
         error(cause):
-            if cause.message() != "failure": return panic("Result error widening lost")
+            try expect_equal(cause.message(), "failure")
 
 test "direct keyed calls preserve optional keys and values":
     let values: List[Optional[Int]] = []
     values.append(7)
-    if not values.contains(7) or values.contains(8): return panic(
-        "contains conversion lost"
-    )
-
+    (not values.contains(7) or values.contains(8)) | try expect_false
     let entries = Map[Optional[Int], Optional[Int]]()
     entries.add(7, 9)
-    if not entries.contains(7) or entries.get(7).unwrap().unwrap() != 9:
-        return panic("map conversion lost")
-
+    (not entries.contains(7) or entries.get(7).unwrap().unwrap() != 9) | try expect_false
     entries.add(value: 10, key: 8)
-    if entries.get(8).unwrap().unwrap() != 10: return panic(
-        "reordered fallback differs"
-    )
-
+    entries.get(8).unwrap().unwrap() | try expect_equal(expected: 10)
     let keys = Set[Optional[Int]]()
     keys.add(7)
     keys.add(none)
-    if (not keys.contains(7) or not keys.contains(none) or keys.length() != 2):
-        return panic("set conversion lost")
+    (not keys.contains(7) or not keys.contains(none) or keys.length() != 2) | try expect_false
 
 test "direct calls capture receiver and arguments in written order":
     let first: List[Optional[Int]] = []
@@ -90,9 +68,7 @@ test "direct calls capture receiver and arguments in written order":
                 none: 0
         ) + 0
     )
-    if first.at(0).unwrap().unwrap() != 7 or not second.is_empty():
-        return panic("receiver read moved past argument")
-
+    (first.at(0).unwrap().unwrap() != 7 or not second.is_empty()) | try expect_false
     let entries = Map[Int, Optional[Int]]()
     var key = 1
     entries.add(
@@ -105,5 +81,4 @@ test "direct calls capture receiver and arguments in written order":
                 none: 0
         ) + 0
     )
-    if (entries.get(1).unwrap().unwrap() != 7 or entries.contains(2) or key != 2):
-        return panic("key read moved past value")
+    (entries.get(1).unwrap().unwrap() != 7 or entries.contains(2) or key != 2) | try expect_false

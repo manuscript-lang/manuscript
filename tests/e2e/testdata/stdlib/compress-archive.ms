@@ -1,36 +1,31 @@
+import {expect_equal, expect_false, expect_ok} from "@std/testing.ms"
 import {compress, decompress, CompressionError} from "@std/compress.ms"
 import {pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError} from "@std/archive.ms"
 import Bytes from "@std/bytes.ms"
-import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 test "compression formats roundtrip and enforce expanded byte budgets":
     let input = "hello hello hello".to_bytes()
 
     for format in ["gzip", "zlib", "deflate"]:
-        let packed = value(compress(data: input, format: format, level: 6))
-        if (value(decompress(data: packed, format: format, max_bytes: 17)) != input): return panic(
-            "compression roundtrip"
+        let packed = (compress(data: input, format: format, level: 6) | try expect_ok)
+        decompress(data: packed, format: format, max_bytes: 17) | try expect_ok | try expect_equal(
+            expected: input
         )
-
         let limited: Result[Bytes, CompressionError] = error(
             CompressionError.LimitExceeded
         )
-        if (decompress(data: packed, format: format, max_bytes: 16) != limited): return panic(
-            "expanded byte budget"
+        decompress(data: packed, format: format, max_bytes: 16) | try expect_equal(
+            expected: limited
         )
 
     let unsupported: Result[Bytes, CompressionError] = error(
         CompressionError.Unsupported
     )
-    if compress(data: input, format: "invalid", level: 6) != unsupported: return panic(
-        "unsupported format"
+    compress(data: input, format: "invalid", level: 6) | try expect_equal(
+        expected: unsupported
     )
-
     let malformed: Result[Bytes, CompressionError] = error(CompressionError.InvalidData)
-    if decompress(data: input, format: "gzip") != malformed: return panic(
-        "invalid compressed data"
-    )
+    decompress(data: input, format: "gzip") | try expect_equal(expected: malformed)
 
 test "ZIP and TAR preserve entries and independently enforce archive limits":
     let entries = [
@@ -39,41 +34,44 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
     ]
 
     for format in ["zip", "tar"]:
-        let packed = value(pack(entries: entries, format: format))
-        if value(unpack(data: packed, format: format)) != entries: return panic(
-            "archive roundtrip"
+        let packed = (pack(entries: entries, format: format) | try expect_ok)
+        unpack(data: packed, format: format) | try expect_ok | try expect_equal(
+            expected: entries
         )
-
         let limited: Result[List[ArchiveEntry], ArchiveError] = error(
             ArchiveError.LimitExceeded
         )
-        if (
-            unpack(
-                data: packed,
-                format: format,
-                limits: ArchiveLimits(max_entries: 1)
-            ) != limited
-        ): return panic("entry count")
-        if (
-            unpack(
-                data: packed,
-                format: format,
-                limits: ArchiveLimits(max_entry_bytes: 4)
-            ) != limited
-        ): return panic("entry bytes")
-        if (
-            unpack(
-                data: packed,
-                format: format,
-                limits: ArchiveLimits(max_total_bytes: 7)
-            ) != limited
-        ): return panic("total bytes")
+        (
+            (
+                unpack(
+                    data: packed,
+                    format: format,
+                    limits: ArchiveLimits(max_entries: 1)
+                ) != limited
+            )
+        ) | try expect_false
+        (
+            (
+                unpack(
+                    data: packed,
+                    format: format,
+                    limits: ArchiveLimits(max_entry_bytes: 4)
+                ) != limited
+            )
+        ) | try expect_false
+        (
+            (
+                unpack(
+                    data: packed,
+                    format: format,
+                    limits: ArchiveLimits(max_total_bytes: 7)
+                ) != limited
+            )
+        ) | try expect_false
 
 test "archives reject traversal paths":
     let invalid: Result[Bytes, ArchiveError] = error(ArchiveError.InvalidInput)
 
     for path in ["../escape", "/absolute"]:
         let entries = [ArchiveEntry(path: path, data: "".to_bytes(), directory: false)]
-        if pack(entries: entries, format: "zip") != invalid: return panic(
-            "unsafe archive path"
-        )
+        pack(entries: entries, format: "zip") | try expect_equal(expected: invalid)

@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 type State:
     case Ready
@@ -21,7 +21,5 @@ fn loop(state: State) -> Int:
     return count
 
 test "match controls nearest source loop":
-    if not (loop(state: State.Ready) == 1):
-        return panic(message: "check failed")
-    if not (loop(state: State.Waiting) == 3):
-        return panic(message: "check failed")
+    loop(state: State.Ready) | try expect_equal(expected: 1)
+    loop(state: State.Waiting) | try expect_equal(expected: 3)

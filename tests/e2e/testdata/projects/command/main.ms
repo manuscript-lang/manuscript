@@ -1,8 +1,9 @@
+import {expect_equal} from "@std/testing.ms"
+import stderr from "@std/io.ms"
 import commands from "@std/process.ms"
 import stdout from "@std/io.ms"
-import panic from "@std/faults.ms"
 
-export fn main() -> Int:
+fn exercise() -> Result[Int, Error]:
     match commands().run(
         program: "/bin/printf",
         arguments: ["hello"],
@@ -11,10 +12,15 @@ export fn main() -> Int:
         timeout: 1.seconds
     ):
         error(_):
-            return 1
+            return ok(1)
         ok(output):
-            if not (output.exit_code == 0):
-                return panic(message: "check failed")
-
+            output.exit_code | try expect_equal(expected: 0)
             stdout().write(data: output.stdout)
-            return 0
+            return ok(0)
+
+export fn main() -> Int:
+    match exercise():
+        ok(status): return status
+        error(cause):
+            let written = stderr().write("{cause.message()}\n".to_bytes())
+            return 1

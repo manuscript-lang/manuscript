@@ -1,7 +1,7 @@
+import {expect_not_equal, expect_ok} from "@std/testing.ms"
+import TextError from "@std/errors.ms"
 import range from "@std/collections.ms"
 import {parse, stringify, TomlValue} from "@std/toml.ms"
-import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 import {Rng, next, text, mutate} from "./support/generator.ms"
 
 fn generated(rng: Rng, depth: Int) -> TomlValue:
@@ -35,23 +35,29 @@ fn table(rng: Rng, depth: Int) -> TomlValue:
 
     return TomlValue.TableValue(entries)
 
-fn check_round_trip(seed: Int, original: TomlValue) -> Unit:
-    let rendered = value(stringify(original))
-    if value(parse(rendered)) != original: return panic(
-        "seed {seed}: changed\n{rendered}"
+fn check_round_trip(seed: Int, original: TomlValue) -> Result[Unit, Error]:
+    let rendered = (stringify(original) | try expect_ok)
+    if (parse(rendered) | try expect_ok) != original: return error(
+        TextError.Text("seed {seed}: changed\n{rendered}")
     )
 
-fn check_stable(seed: Int, mutated: String, first: TomlValue) -> Unit:
-    let again = value(stringify(first))
-    if value(parse(again)) != first: return panic(
-        "seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"
+    return ok(unit)
+
+fn check_stable(seed: Int, mutated: String, first: TomlValue) -> Result[Unit, Error]:
+    let again = (stringify(first) | try expect_ok)
+    if (parse(again) | try expect_ok) != first: return error(
+        TextError.Text(
+            "seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"
+        )
     )
+
+    return ok(unit)
 
 test "TOML stringify then parse preserves generated documents":
     var seed = 1
 
     while seed <= 300:
-        check_round_trip(seed, table(Rng(seed), 0))
+        (try check_round_trip(seed, table(Rng(seed), 0)))
         seed = seed + 1
 
 test "TOML parse never faults on mutated documents and accepted input is stable":
@@ -60,7 +66,7 @@ test "TOML parse never faults on mutated documents and accepted input is stable"
 
     while seed <= 300:
         let rng = Rng(seed)
-        let rendered = table(rng, 0) | stringify | value
+        let rendered = table(rng, 0) | stringify | try expect_ok
 
         for round in range(0, 4):
             let mutated = mutate(rng, rendered)
@@ -69,8 +75,8 @@ test "TOML parse never faults on mutated documents and accepted input is stable"
                 error(cause): let rejected = cause.message()
                 ok(first):
                     accepted = accepted + 1
-                    check_stable(seed, mutated, first)
+                    (try check_stable(seed, mutated, first))
 
         seed = seed + 1
 
-    if accepted == 0: return panic("mutation never produced a valid document")
+    accepted | try expect_not_equal(expected: 0)

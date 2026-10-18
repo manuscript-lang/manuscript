@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 fn ident[T](x: T) -> T:
     return x
@@ -23,19 +23,13 @@ test "static specializations are reused across calls":
         acc = acc + ident(x: i)
         i = i + 1
 
-    if not (acc == 4950):
-        return panic(message: "ident")
-    if not (ident(x: "a") == "a"):
-        return panic(message: "string")
+    acc | try expect_equal(expected: 4950)
+    ident(x: "a") | try expect_equal(expected: "a")
 
 test "recursive generics with static arguments":
-    if not (depth() == 5):
-        return panic(message: "recursion")
-    if not (countdown(x: 1, n: 3) == 3):
-        return panic(message: "int recursion")
+    depth() | try expect_equal(expected: 5)
+    countdown(x: 1, n: 3) | try expect_equal(expected: 3)
 
 test "generic calls with type-variable arguments still resolve":
-    if not (twice(x: 4) == 4):
-        return panic(message: "twice int")
-    if not (twice(x: "b") == "b"):
-        return panic(message: "twice string")
+    twice(x: 4) | try expect_equal(expected: 4)
+    twice(x: "b") | try expect_equal(expected: "b")

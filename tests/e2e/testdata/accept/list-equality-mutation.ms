@@ -1,5 +1,5 @@
+import {fail} from "@std/testing.ms"
 import range from "@std/collections.ms"
-import panic from "@std/faults.ms"
 
 type Element:
     id: Int
@@ -19,7 +19,7 @@ type Visits:
 fn noop() -> Unit:
     return
 
-fn check_equality(side: String, mutation: String) -> Unit:
+fn check_equality(side: String, mutation: String) -> Result[Unit, Error]:
     let left: List[Element] = []
     let right: List[Element] = []
     let calls = Visits(0)
@@ -69,10 +69,11 @@ fn check_equality(side: String, mutation: String) -> Unit:
     if mutation == "append_write" or mutation == "overwrite":
         expected_calls = 2
     let same = left == right
-    if same != expected or calls.count != expected_calls:
-        return panic(
-            "{side}/{mutation}: equality {same}/{calls.count}, expected {expected}/{expected_calls}"
-        )
+    if same != expected or calls.count != expected_calls: return fail(
+        "{side}/{mutation}: equality {same}/{calls.count}, expected {expected}/{expected_calls}"
+    )
+
+    return ok(unit)
 
 test "element Equal mutating either List retains both captured headers":
     for side in ["left", "right"]:
@@ -80,4 +81,4 @@ test "element Equal mutating either List retains both captured headers":
             "shrink", "shrink_mismatch", "append", "append_write", "grow_write",
             "overwrite"
         ]:
-            check_equality(side, mutation)
+            (try check_equality(side, mutation))

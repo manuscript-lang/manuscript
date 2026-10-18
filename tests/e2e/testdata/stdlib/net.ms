@@ -1,3 +1,5 @@
+import {expect_equal, expect_false, expect_ok, fail} from "@std/testing.ms"
+import TextError from "@std/errors.ms"
 import {
     network,
     parse_ip,
@@ -9,113 +11,139 @@ import {
     IpFamily
 } from "@std/net.ms"
 import IoError from "@std/io.ms"
-import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 test "IP parsing CIDR normalization and containment":
-    if value(parse_ip("2001:0db8::1")).text() != "2001:db8::1": return panic(
-        "IPv6 normalization"
+    (parse_ip("2001:0db8::1") | try expect_ok).text() | try expect_equal(
+        expected: "2001:db8::1"
     )
-    if value(parse_cidr("192.0.2.3/24")).text() != "192.0.2.0/24": return panic(
-        "CIDR mask"
+    (parse_cidr("192.0.2.3/24") | try expect_ok).text() | try expect_equal(
+        expected: "192.0.2.0/24"
     )
-    if not value(
-        contains_ip(
-            cidr: value(parse_cidr("192.0.2.0/24")),
-            address: value(parse_ip("192.0.2.255"))
+    try expect_false(
+        not (
+            contains_ip(
+                cidr: (parse_cidr("192.0.2.0/24") | try expect_ok),
+                address: (parse_ip("192.0.2.255") | try expect_ok)
+            ) | try expect_ok
         )
-    ): return panic("CIDR membership")
-    if value(
-        contains_ip(
-            cidr: value(parse_cidr("192.0.2.0/24")),
-            address: value(parse_ip("192.0.3.0"))
+    )
+    try expect_false(
+        (
+            contains_ip(
+                cidr: (parse_cidr("192.0.2.0/24") | try expect_ok),
+                address: (parse_ip("192.0.3.0") | try expect_ok)
+            ) | try expect_ok
         )
-    ): return panic("CIDR exclusion")
-
-    expect_ip_error("999.1.1.1")
+    )
+    ("999.1.1.1" | try expect_ip_error)
 
 test "TCP loopback writes reads half close and EOF":
     let net = network()
 
-    with listener = value(net.listen("127.0.0.1:0")):
-        with client = value(
-            net.connect(address: listener.address(), timeout: 2.seconds)
+    with listener = (net.listen("127.0.0.1:0") | try expect_ok):
+        with client = (
+            net.connect(
+                address: listener.address(),
+                timeout: 2.seconds
+            ) | try expect_ok
         ):
-            with server = value(listener.accept(timeout: 2.seconds)):
-                let sent = value(
+            with server = (listener.accept(timeout: 2.seconds) | try expect_ok):
+                let sent = (
                     client.write(
                         data: "hello".to_bytes(),
                         timeout: 2.seconds
+                    ) | try expect_ok
+                )
+                try expect_false(
+                    (
+                        (
+                            server.read(
+                                max_bytes: 5,
+                                timeout: 2.seconds
+                            ) | try expect_ok
+                        ).unwrap() != "hello".to_bytes()
                     )
                 )
-                if (
-                    value(
+                server.peer_address() | try expect_equal(
+                    expected: client.local_address()
+                )
+                let shutdown = (client.shutdown_write() | try expect_ok)
+                try expect_false(
+                    not (
                         server.read(
                             max_bytes: 5,
                             timeout: 2.seconds
-                        )
-                    ).unwrap() != "hello".to_bytes()
-                ): return panic("TCP bytes")
-                if server.peer_address() != client.local_address(): return panic(
-                    "TCP address"
-                )
-
-                let shutdown = value(client.shutdown_write())
-                if not value(server.read(max_bytes: 5, timeout: 2.seconds)).is_none(): return panic(
-                    "TCP EOF"
+                        ) | try expect_ok
+                    ).is_none()
                 )
 
 test "UDP loopback preserves datagram data and sender":
     let net = network()
 
-    with receiver = value(net.bind_datagram("127.0.0.1:0")):
-        with sender = value(net.bind_datagram("127.0.0.1:0")):
-            let sent = value(
+    with receiver = (net.bind_datagram("127.0.0.1:0") | try expect_ok):
+        with sender = (net.bind_datagram("127.0.0.1:0") | try expect_ok):
+            let sent = (
                 sender.send(
                     data: "packet".to_bytes(),
                     address: receiver.address(),
                     timeout: 2.seconds
-                )
+                ) | try expect_ok
             )
-            let packet = value(receiver.receive(max_bytes: 64, timeout: 2.seconds))
-            if packet.data != "packet".to_bytes() or packet.sender != sender.address(): return panic(
-                "UDP datagram"
+            let packet = (
+                receiver.receive(
+                    max_bytes: 64,
+                    timeout: 2.seconds
+                ) | try expect_ok
+            )
+            try expect_false(
+                (
+                    packet.data != "packet".to_bytes()
+                    or packet.sender != sender.address()
+                )
             )
 
 test "network restriction denies admission and close rejects acquisitions":
-    let restricted = value(
-        network().restrict(hosts: [], cidrs: [], allow_listen: false)
+    let restricted = (
+        network().restrict(
+            hosts: [],
+            cidrs: [],
+            allow_listen: false
+        ) | try expect_ok
     )
 
     with scoped = restricted:
         match restricted.listen("127.0.0.1:0"):
-            ok(_): return panic("listen permission ignored")
+            ok(_): return fail("listen permission ignored")
             error(cause):
-                if cause != NetworkError.PermissionDenied: return panic(
-                    "listen denial identity"
-                )
+                try expect_equal(cause, NetworkError.PermissionDenied)
 
     match restricted.connect(address: "127.0.0.1:1", timeout: 1.seconds):
-        ok(_): return panic("closed network admitted connection")
+        ok(_): return fail("closed network admitted connection")
         error(cause):
-            if cause != NetworkError.Closed: return panic("network close identity")
+            try expect_equal(cause, NetworkError.Closed)
 
 test "typed addresses preserve normalization and reject zones":
-    let ip = value(parse_ip("::ffff:192.0.2.1"))
-    if ip.text() != "192.0.2.1" or ip.family() != IpFamily.IPv4: return panic(
-        "mapped normalization"
+    let ip = (parse_ip("::ffff:192.0.2.1") | try expect_ok)
+    (ip.text() != "192.0.2.1" or ip.family() != IpFamily.IPv4) | try expect_false
+    (parse_ip("2001:db8::1") | try expect_ok).family() | try expect_equal(
+        expected: IpFamily.IPv6
     )
-    if value(parse_ip("2001:db8::1")).family() != IpFamily.IPv6: return panic(
-        "IPv6 family"
+    ("fe80::1%eth0" | try expect_ip_error)
+    try expect_false(
+        (
+            contains_ip(
+                (parse_cidr("::ffff:192.0.2.0/120") | try expect_ok),
+                ip
+            ) | try expect_ok
+        )
     )
 
-    expect_ip_error("fe80::1%eth0")
-    if value(contains_ip(value(parse_cidr("::ffff:192.0.2.0/120")), ip)): return panic(
-        "normalized IPv4 matched mapped IPv6 prefix"
-    )
-
-fn expect_ip_error(input: String) -> Unit:
+fn expect_ip_error(input: String) -> Result[Unit, Error]:
     match parse_ip(input):
-        ok(_): return panic("invalid IP accepted")
+        ok(_): return error(TextError.Text("invalid IP accepted"))
         error(cause):
-            if cause != NetworkError.InvalidData: return panic("wrong address error")
+            if cause != NetworkError.InvalidData: return error(
+                TextError.Text("wrong address error")
+            )
+
+    return ok(unit)

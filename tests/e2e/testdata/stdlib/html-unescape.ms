@@ -1,8 +1,8 @@
+import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import {escape, unescape} from "@std/html.ms"
-import panic from "@std/faults.ms"
 
 test "HTML unescape has an explicit text counterpart":
-    if unescape("&lt;é&gt;&amp;") != "<é>&": return panic("HTML text unescape")
+    unescape("&lt;é&gt;&amp;") | try expect_equal(expected: "<é>&")
 
 type EntityCase:
     encoded: String
@@ -23,30 +23,24 @@ test "HTML unescape recognizes named numeric and multi-scalar references":
         EntityCase("a\u{0}b", "a\u{0}b")
     ]
     for entity in cases:
-        if unescape(text: entity.encoded) != entity.decoded: return panic(
+        if unescape(text: entity.encoded) != entity.decoded: return fail(
             "HTML reference: {entity.encoded}"
         )
 
 test "HTML unescape applies text rules with a single decoding pass":
-    if unescape("&amp &lt") != "& <": return panic("semicolonless references")
-    if unescape("&ampx &notit;") != "&x ¬it;": return panic("text reference prefix")
-    if unescape("&bogus; &#; &;") != "&bogus; &#; &;": return panic(
-        "unrecognized references"
-    )
-    if unescape("&amp;lt; &amp;amp;") != "&lt; &amp;": return panic(
-        "repeated reference decoding"
-    )
-    if unescape("<p>&amp;</p>") != "<p>&</p>": return panic("unescape parsed markup")
-    if unescape("&AMP;") != "&" or unescape("&Amp;") != "&Amp;": return panic(
-        "reference name case"
-    )
+    unescape("&amp &lt") | try expect_equal(expected: "& <")
+    unescape("&ampx &notit;") | try expect_equal(expected: "&x ¬it;")
+    unescape("&bogus; &#; &;") | try expect_equal(expected: "&bogus; &#; &;")
+    unescape("&amp;lt; &amp;amp;") | try expect_equal(expected: "&lt; &amp;")
+    unescape("<p>&amp;</p>") | try expect_equal(expected: "<p>&</p>")
+    (unescape("&AMP;") != "&" or unescape("&Amp;") != "&Amp;") | try expect_false
 
 test "HTML numeric references use replacement rules":
-    if unescape("&#0;&#xD800;&#x110000;") != "\u{fffd}\u{fffd}\u{fffd}": return panic(
-        "invalid numeric scalars"
+    unescape("&#0;&#xD800;&#x110000;") | try expect_equal(
+        expected: "\u{fffd}\u{fffd}\u{fffd}"
     )
-    if unescape("&#128;&#x80;") != "€€": return panic("HTML C1 replacement")
-    if unescape("&#x10FFFF;") != "\u{10ffff}": return panic("maximum scalar reference")
+    unescape("&#128;&#x80;") | try expect_equal(expected: "€€")
+    unescape("&#x10FFFF;") | try expect_equal(expected: "\u{10ffff}")
 
 fn apply[T, U](text: T, operation: fn(text: T) -> U) -> U:
     return operation(text)
@@ -54,18 +48,14 @@ fn apply[T, U](text: T, operation: fn(text: T) -> U) -> U:
 test "HTML unescape stored and generic calls preserve labels":
     let convert = unescape
     let typed: fn(text: String) -> String = unescape
-    if convert("&lt;") != "<" or typed(text: "&gt;") != ">": return panic(
-        "stored unescape"
-    )
-    if apply[String, String]("&amp;", unescape) != "&": return panic("generic unescape")
+    (convert("&lt;") != "<" or typed(text: "&gt;") != ">") | try expect_false
+    apply[String, String]("&amp;", unescape) | try expect_equal(expected: "&")
 
 test "HTML escape and unescape retain immutable text":
     let texts = ["", "<&>\"'é🙂", "&amp;lt;", "e\u{301}", "a\u{0}b", "\n\r\t"]
     for text in texts:
-        if unescape(escape(text)) != text: return panic("HTML escape round trip")
+        unescape(escape(text)) | try expect_equal(expected: text)
     let original = "&lt;é&gt;"
     let alias = original
     let decoded = unescape(original)
-    if (alias != "&lt;é&gt;" or original != alias or decoded != "<é>"): return panic(
-        "unescape text alias"
-    )
+    (alias != "&lt;é&gt;" or original != alias or decoded != "<é>") | try expect_false

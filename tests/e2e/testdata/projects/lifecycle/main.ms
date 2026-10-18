@@ -1,5 +1,6 @@
+import {expect_equal, fail} from "@std/testing.ms"
+import stderr from "@std/io.ms"
 import stdout from "@std/io.ms"
-import panic from "@std/faults.ms"
 import WriteStream from "@std/io.ms"
 import Closeable from "@std/cleanup.ms"
 
@@ -43,21 +44,17 @@ fn iterable(output: WriteStream) -> List[Int]:
     output.write(data: "iterable\n".to_bytes())
     return [1, 2]
 
-export fn main() -> Int:
+fn exercise() -> Result[Int, Error]:
     let total = select(output: stdout())(
         second: report(output: stdout(), label: "second", value: 2),
         first: report(output: stdout(), label: "first", value: 1)
     )
-    if not (total == 3):
-        return panic(message: "check failed")
-
+    total | try expect_equal(expected: 3)
     let pair = Pair(
         second: report(output: stdout(), label: "pair second", value: 2),
         first: report(output: stdout(), label: "pair first", value: 1)
     )
-    if not (pair.first + pair.second == 3):
-        return panic(message: "check failed")
-
+    (pair.first + pair.second) | try expect_equal(expected: 3)
     with resource = Resource(label: "normal", output: stdout()):
         let completed = unit
     stdout().write(data: "after normal\n".to_bytes())
@@ -74,12 +71,17 @@ export fn main() -> Int:
 
     match propagate(output: stdout()):
         ok(_):
-            return panic(message: "Unexpected case")
+            try fail(message: "Unexpected case")
         error(_):
             let completed = unit
 
-    if not (early(output: stdout()) == 5):
-        return panic(message: "check failed")
-
+    early(output: stdout()) | try expect_equal(expected: 5)
     stdout().write(data: "finished\n".to_bytes())
-    return 0
+    return ok(0)
+
+export fn main() -> Int:
+    match exercise():
+        ok(status): return status
+        error(cause):
+            let written = stderr().write("{cause.message()}\n".to_bytes())
+            return 1

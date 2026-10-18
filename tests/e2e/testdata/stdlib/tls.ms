@@ -1,68 +1,74 @@
+import {expect_equal, expect_false, expect_ok} from "@std/testing.ms"
+import http_result from "./support/http.ms"
 import {headers, HttpMethod} from "@std/http.ms"
 import {text_headers, list_headers} from "./support/http.ms"
 import {parse_certificates, verify_certificates, CertificateInfo, TlsError, TlsOptions} from "@std/tls.ms"
 import {HttpExchange, HttpError, HttpServerOptions, HttpClientOptions} from "@std/http.ms"
 import network from "@std/net.ms"
 import timestamp from "@std/time.ms"
-import panic from "@std/faults.ms"
 import {certificate, private_key} from "./support/certificates.ms"
-import value from "./support/results.ms"
 
 fn hello(exchange: HttpExchange) -> Result[Unit, HttpError]:
-    let started = value(
-        exchange.send_headers(
+    let started = (
+        try exchange.send_headers(
             status: 200,
-            headers: list_headers(Map[String, List[String]]())
+            headers: (try list_headers(Map[String, List[String]]()))
         )
     )
-    let written = value(exchange.write("secure".to_bytes()))
+    let written = (try http_result(exchange.write("secure".to_bytes())))
     return ok(unit)
 
 test "TLS certificate parsing verification hostname and expiration":
-    let certificates = value(
-        parse_certificates(pem: certificate(), max_certificates: 1)
+    let certificates = (
+        parse_certificates(
+            pem: certificate(),
+            max_certificates: 1
+        ) | try expect_ok
     )
-    if (
-        certificates.length() != 1
-        or certificates.at(0).unwrap().dns_names != ["stdlib.test"]
-    ): return panic("certificate metadata")
-
-    let now = value(timestamp(seconds: 1893456000, nanoseconds: 0))
-    let verified = value(
-        verify_certificates(
-            chain_pem: certificate(),
-            roots_pem: certificate(),
-            server_name: "stdlib.test",
-            now: now
+    try expect_false(
+        (
+            certificates.length() != 1
+            or certificates.at(0).unwrap().dns_names != ["stdlib.test"]
         )
     )
-    let failed: Result[Unit, TlsError] = error(TlsError.AuthenticationFailed)
-    if (
-        verify_certificates(
-            chain_pem: certificate(),
-            roots_pem: certificate(),
-            server_name: "wrong.test",
-            now: now
-        ) != failed
-    ): return panic("hostname validation")
-
-    let expired = value(timestamp(seconds: 4133980800, nanoseconds: 0))
-    if (
+    let now = (timestamp(seconds: 1893456000, nanoseconds: 0) | try expect_ok)
+    let verified = (
         verify_certificates(
             chain_pem: certificate(),
             roots_pem: certificate(),
             server_name: "stdlib.test",
-            now: expired
-        ) != failed
-    ): return panic("expiration validation")
+            now: now
+        ) | try expect_ok
+    )
+    let failed: Result[Unit, TlsError] = error(TlsError.AuthenticationFailed)
+    try expect_false(
+        (
+            verify_certificates(
+                chain_pem: certificate(),
+                roots_pem: certificate(),
+                server_name: "wrong.test",
+                now: now
+            ) != failed
+        )
+    )
+    let expired = (timestamp(seconds: 4133980800, nanoseconds: 0) | try expect_ok)
+    try expect_false(
+        (
+            verify_certificates(
+                chain_pem: certificate(),
+                roots_pem: certificate(),
+                server_name: "stdlib.test",
+                now: expired
+            ) != failed
+        )
+    )
 
 test "TLS rejects malformed PEM and certificate budgets":
     let invalid: Result[List[CertificateInfo], TlsError] = error(TlsError.InvalidData)
-    if parse_certificates(pem: "not PEM") != invalid: return panic("malformed PEM")
-
+    parse_certificates(pem: "not PEM") | try expect_equal(expected: invalid)
     let limited: Result[List[CertificateInfo], TlsError] = error(TlsError.LimitExceeded)
-    if (parse_certificates(pem: certificate(), max_certificates: 0) != limited): return panic(
-        "certificate budget"
+    parse_certificates(pem: certificate(), max_certificates: 0) | try expect_equal(
+        expected: limited
     )
 
 test "HTTPS trusts only the explicitly supplied local test root":
@@ -81,12 +87,12 @@ test "HTTPS trusts only the explicitly supplied local test root":
         tls: server_tls
     )
 
-    with server = value(
+    with server = (
         net.serve_stream(
             address: "127.0.0.1:0",
             handler: hello,
             options: server_options
-        )
+        ) | try expect_ok
     ):
         let client_tls = TlsOptions(
             server_name: "stdlib.test",
@@ -96,27 +102,31 @@ test "HTTPS trusts only the explicitly supplied local test root":
             alpn: ["http/1.1"],
             require_client_certificate: false
         )
-        with client = value(
+        with client = (
             net.http_client(
                 HttpClientOptions(
                     decompress: false,
                     cookies: false,
                     tls: client_tls
                 )
-            )
+            ) | try expect_ok
         ):
-            with response = value(
+            with response = (
                 client.request(
                     method: HttpMethod.Get,
                     url: "https://{server.address()}/",
-                    headers: text_headers(Map[String, String]()),
+                    headers: (
+                        try text_headers(Map[String, String]())
+                    ),
                     body: "".to_bytes(),
                     timeout: 2.seconds
-                )
+                ) | try expect_ok
             ):
-                if (
-                    response.metadata().status != 200
-                    or value(
-                        response.read()
-                    ).unwrap() != "secure".to_bytes()
-                ): return panic("HTTPS response")
+                try expect_false(
+                    (
+                        response.metadata().status != 200
+                        or (
+                            response.read() | try expect_ok
+                        ).unwrap() != "secure".to_bytes()
+                    )
+                )

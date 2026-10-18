@@ -1,11 +1,12 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 fn apply(value: Int, transform: fn(value: Int) -> Int) -> Int:
     return transform(value: value)
 
 test "function suite boundaries":
-    let dormant = fn():
-        return panic(message: "body is not run at creation")
+    let calls: List[Int] = []
+    let dormant = fn() -> Unit:
+        calls.append(1)
     let grouped = apply(
         transform: (
             fn(value):
@@ -21,7 +22,6 @@ test "function suite boundaries":
         transform: fn(value):
             return value - 1
     )
-    if not (grouped == 2):
-        return panic(message: "check failed")
-    if not (final_argument == 2):
-        return panic(message: "check failed")
+    calls.length() | try expect_equal(expected: 0)
+    grouped | try expect_equal(expected: 2)
+    final_argument | try expect_equal(expected: 2)

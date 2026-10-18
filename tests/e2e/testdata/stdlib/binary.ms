@@ -1,84 +1,92 @@
+import {expect_equal, expect_false, expect_ok} from "@std/testing.ms"
 import {read_integer, write_integer, read_float, write_float, BinaryError} from "@std/binary.ms"
 import Bytes from "@std/bytes.ms"
-import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 test "binary integer boundaries and both byte orders":
     for little in [false, true]:
         for number in [-9223372036854775808, -32768, -1, 0, 32767, 9223372036854775807]:
-            let data = value(
+            let data = (
                 write_integer(
                     value: number,
                     width: 8,
                     signed: true,
                     little_endian: little
-                )
+                ) | try expect_ok
             )
-            if (
-                value(
-                    read_integer(
-                        data: data,
-                        offset: 0,
-                        width: 8,
-                        signed: true,
-                        little_endian: little
-                    )
-                ) != number
-            ): return panic("signed roundtrip")
+            (
+                (
+                    (
+                        read_integer(
+                            data: data,
+                            offset: 0,
+                            width: 8,
+                            signed: true,
+                            little_endian: little
+                        ) | try expect_ok
+                    ) != number
+                )
+            ) | try expect_false
 
-        let data = value(
+        let data = (
             write_integer(
                 value: 258,
                 width: 2,
                 signed: false,
                 little_endian: little
-            )
+            ) | try expect_ok
         )
 
         if little:
-            if data != Bytes([2, 1]): return panic("little endian vector")
+            data | try expect_equal(expected: Bytes([2, 1]))
         else:
-            if data != Bytes([1, 2]): return panic("big endian vector")
+            data | try expect_equal(expected: Bytes([1, 2]))
 
-        if (
-            value(
-                read_float(
-                    data: write_float(
-                        value: -1.25,
+        (
+            (
+                (
+                    read_float(
+                        data: write_float(
+                            value: -1.25,
+                            little_endian: little
+                        ),
+                        offset: 0,
                         little_endian: little
-                    ),
-                    offset: 0,
-                    little_endian: little
-                )
-            ) != -1.25
-        ): return panic("float roundtrip")
+                    ) | try expect_ok
+                ) != -1.25
+            )
+        ) | try expect_false
 
 test "binary errors preserve domain and range":
     let range_error: Result[Bytes, BinaryError] = error(BinaryError.OutOfRange)
-    if (
-        write_integer(
-            value: 256,
-            width: 1,
-            signed: false,
-            little_endian: false
-        ) != range_error
-    ): return panic("unsigned overflow")
-    if (
-        write_integer(
-            value: -1,
-            width: 1,
-            signed: false,
-            little_endian: false
-        ) != range_error
-    ): return panic("negative unsigned")
-
+    (
+        (
+            write_integer(
+                value: 256,
+                width: 1,
+                signed: false,
+                little_endian: false
+            ) != range_error
+        )
+    ) | try expect_false
+    (
+        (
+            write_integer(
+                value: -1,
+                width: 1,
+                signed: false,
+                little_endian: false
+            ) != range_error
+        )
+    ) | try expect_false
     let invalid: Result[Int, BinaryError] = error(BinaryError.OutOfRange)
-    if (
-        read_integer(
-            data: Bytes([0]),
-            offset: -1,
-            width: 1,
-            signed: true,
-            little_endian: false
-        ) != invalid
-    ): return panic("negative offset")
+    (
+        (
+            read_integer(
+                data: Bytes([0]),
+                offset: -1,
+                width: 1,
+                signed: true,
+                little_endian: false
+            ) != invalid
+        )
+    ) | try expect_false

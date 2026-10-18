@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false, fail} from "@std/testing.ms"
 
 type Expr:
     case Num(value: Int)
@@ -46,18 +46,20 @@ impl Hashable for Link:
 
 test "recursive alternatives construct match compare and clone":
     let expr = Expr.Add(left: Expr.Num(7), right: Expr.Neg(Expr.Num(2)))
-    if evaluate(expr) != 5 or expr != expr.clone():
-        panic("recursive expression failed")
+    (evaluate(expr) != 5 or expr != expr.clone()) | try expect_false
     let tree = Tree[Int].Branch(left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2))
-    if tree != Tree[Int].Branch(left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2)):
-        panic("generic tree equality failed")
+    tree | try expect_equal(
+        expected: Tree[Int].Branch(
+            left: Tree[Int].Leaf(1),
+            right: Tree[Int].Leaf(2)
+        )
+    )
     let forest = Forest.More(MutualTree(value: 3, rest: Forest.Empty))
 
     match forest:
         More(tree):
-            if tree.value != 3 or tree.rest != Forest.Empty:
-                panic("mutual tree payload failed")
-        Empty: panic("lost mutual tree")
+            ((tree.value != 3 or tree.rest != Forest.Empty) | try expect_false)
+        Empty: return fail("lost mutual tree")
 
 test "recursive records retain aliases and clone only outer storage":
     let child = Node(value: 2, next: none)
@@ -66,55 +68,42 @@ test "recursive records retain aliases and clone only outer storage":
     let copy = root.clone()
     alias.value = 3
     copy.next.unwrap().value = 4
-    if (root.value != 3 or copy.value != 1 or child.value != 4):
-        panic("recursive alias or shallow clone failed")
+    (root.value != 3 or copy.value != 1 or child.value != 4) | try expect_false
     copy.next = none
-    if root.next.is_none():
-        panic("clone shared its outer fields")
+    root.next.is_none() | try expect_false
 
 test "recursive structural equality terminates and checks unequal fields":
     let left = Node(value: 1, next: none)
     let right = Node(value: 1, next: none)
     left.next = some(left)
     right.next = some(right)
-    if left != right:
-        panic("equivalent cycles differ")
+    left | try expect_equal(expected: right)
     let copy = left.clone()
     copy.next.unwrap().value = 2
-    if (left.value != 2 or copy.value != 1 or left == right):
-        panic("cyclic clone or unequal cycle failed")
+    (left.value != 2 or copy.value != 1 or left == right) | try expect_false
     let a = Node(value: 1, next: none)
     let b = Node(value: 1, next: a)
     a.next = some(b)
-    if right != a:
-        panic("equivalent one-node and two-node cycles differ")
+    right | try expect_equal(expected: a)
 
 test "recursive domain hashing uses explicit implementations":
     let left = Link(value: 7, next: none)
     let right = Link(value: 7, next: none)
     left.next = some(left)
     right.next = some(right)
-    if left != right or left.hash() != right.hash():
-        panic("explicit cyclic identity hashing failed")
+    (left != right or left.hash() != right.hash()) | try expect_false
     let values = Map[Link, Int]().add(key: left, value: 9)
     let members = Set[Link]().add(left)
-    if values.get(right).unwrap() != 9 or not members.contains(right):
-        panic("explicit recursive key lookup failed")
+    (values.get(right).unwrap() != 9 or not members.contains(right)) | try expect_false
     values.add(key: right, value: 10)
     members.add(right)
-    if (
-        values.length() != 1
-        or members.length() != 1
-        or values.get(left).unwrap() != 10
-    ):
-        panic("equivalent recursive keys were not deduplicated")
+    (values.length() != 1 or members.length() != 1 or values.get(left).unwrap() != 10) | try expect_false
 
 test "recursive defaults construct independent complete objects":
     let first = DefaultNode(value: 1)
     let second = DefaultNode(value: 2)
     first.next = some(first)
-    if second.next.is_some() or first.next.unwrap().value != 1:
-        panic("recursive default initialization failed")
+    (second.next.is_some() or first.next.unwrap().value != 1) | try expect_false
 
 type Entry:
     name: String
@@ -138,32 +127,28 @@ type Pair[T, U]:
 
 test "finite nested generic composition constructs and extracts values":
     let person = Person(Entry(name: "Ada", nickname: some("A")))
-    if person.primary.unwrap().nickname.unwrap() != "A":
-        panic("composed optional entry failed")
+    person.primary.unwrap().nickname.unwrap() | try expect_equal(expected: "A")
     let optional = NestedOptional.Value(some(some(4)))
 
     match optional:
         Value(value):
-            if value.unwrap().unwrap() != 4:
-                panic("nested optional payload failed")
+            try expect_equal(value.unwrap().unwrap(), 4)
 
     let result = NestedResult(ok(ok(5)))
 
     let inner = match result.value:
         ok(inner): inner
-        error(_): panic("unexpected outer result error")
+        error(_): return fail("unexpected outer result error")
 
     match inner:
         ok(value):
-            if value != 5: panic("nested result value failed")
-        error(_): panic("unexpected inner result error")
+            try expect_equal(value, 5)
+        error(_): return fail("unexpected inner result error")
 
     let box = Box(Box(6))
-    if box.value.value != 6:
-        panic("nested box failed")
+    box.value.value | try expect_equal(expected: 6)
     let pair: Pair[Optional[Int], Optional[Optional[String]]] = Pair(
         first: some(7),
         second: some(some("nested"))
     )
-    if pair.first.unwrap() != 7 or pair.second.unwrap().unwrap() != "nested":
-        panic("nested optional generic pair failed")
+    (pair.first.unwrap() != 7 or pair.second.unwrap().unwrap() != "nested") | try expect_false

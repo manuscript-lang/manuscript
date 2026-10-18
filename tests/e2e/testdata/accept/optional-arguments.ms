@@ -1,5 +1,5 @@
+import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
 import Queue from "@std/queues.ms"
-import panic from "@std/faults.ms"
 
 fn number(value: Optional[Int] = none) -> Int: value.unwrap_or(-1)
 
@@ -62,99 +62,77 @@ fn increment(value: Int) -> Int: value + 1
 fn mutate(value: Optional[Counter]) -> Unit: value.unwrap().calls = 9
 
 test "plain values and explicit optionals share the call contract":
-    if number(4) != 4: return panic("plain argument")
-    if number(value: 0) != 0: return panic("zero must be present")
-
+    number(4) | try expect_equal(expected: 4)
+    number(value: 0) | try expect_equal(expected: 0)
     let supplied: Optional[Int] = some(4)
-    if number(supplied) != 4: return panic("explicit some")
-    if number() != -1: return panic("explicit none")
-    if number() != -1: return panic("default none")
-
+    number(supplied) | try expect_equal(expected: 4)
+    number() | try expect_equal(expected: -1)
+    number() | try expect_equal(expected: -1)
     let stored: fn(value: Optional[Int]) -> Int = number
-    if stored(5) != 5: return panic("stored function")
-    if present(6).unwrap() != 6: return panic("generic inference")
-    if present[Int](7).unwrap() != 7: return panic("explicit specialization")
-
+    stored(5) | try expect_equal(expected: 5)
+    present(6).unwrap() | try expect_equal(expected: 6)
+    present[Int](7).unwrap() | try expect_equal(expected: 7)
     let generic_supplied: Optional[Int] = some(8)
-    if present(generic_supplied).unwrap() != 8: return panic(
-        "generic optional identity"
-    )
-
+    present(generic_supplied).unwrap() | try expect_equal(expected: 8)
     let missing: Optional[Int] = none
-    if not (nested(missing)): return panic("nested none must be wrapped once")
-
+    (nested(missing)) | try expect_true
     let outer: Optional[Optional[Int]] = some(missing)
-    if not (nested(outer)): return panic("nested optional identity")
-    if list_size([]) != 0: return panic("empty payload context")
-    if list_size([1, 2]) != 2: return panic("list payload")
-    if context(value: none, fallback: 9) != 9: return panic("generic none context")
-    if context(value: [], fallback: [1]).length() != 0: return panic(
-        "generic list context"
-    )
-    if success(ok(10)) != 10: return panic("result payload context")
-    if flag(false): return panic("false must be present")
-    if flag(true and false): return panic("folded false must be wrapped")
-    if invoke(increment) != 5: return panic("function payload")
-    if invoke(fn(value): value + 2) != 6: return panic("closure payload")
+    (nested(outer)) | try expect_true
+    list_size([]) | try expect_equal(expected: 0)
+    list_size([1, 2]) | try expect_equal(expected: 2)
+    context(value: none, fallback: 9) | try expect_equal(expected: 9)
+    context(value: [], fallback: [1]).length() | try expect_equal(expected: 0)
+    success(ok(10)) | try expect_equal(expected: 10)
+    flag(false) | try expect_false
+    flag(true and false) | try expect_false
+    invoke(increment) | try expect_equal(expected: 5)
+    try expect_equal(invoke(fn(value): value + 2), 6)
 
 test "constructor fields and methods use optional arguments":
     let defaulted = DefaultBox()
-    if not (defaulted.value.is_none()): return panic("optional record default")
-
+    (defaulted.value.is_none()) | try expect_true
     let supplied = DefaultBox(3)
-    if supplied.value.unwrap() != 3: return panic(
-        "optional argument with record default"
-    )
-
+    supplied.value.unwrap() | try expect_equal(expected: 3)
     let box = Box(4)
-    if box.value.unwrap() != 4: return panic("generic record constructor")
-
+    box.value.unwrap() | try expect_equal(expected: 4)
     let choice = Choice.chosen(5)
 
     match choice:
         chosen(value):
-            if value.unwrap() != 5: return panic("generic alternative constructor")
+            try expect_equal(value.unwrap(), 5)
 
     let reader = Reader(2)
-    if reader.read(3) != 5: return panic("method argument")
-
+    reader.read(3) | try expect_equal(expected: 5)
     let read = reader.read
-    if read(4) != 6: return panic("bound method argument")
-
+    read(4) | try expect_equal(expected: 6)
     let view = Read(reader)
-    if view.read(5) != 7: return panic("interface argument")
-
+    view.read(5) | try expect_equal(expected: 7)
     let counter = Counter(0)
     mutate(counter)
-    if counter.calls != 9: return panic("wrapping copied the payload")
-
+    counter.calls | try expect_equal(expected: 9)
     let notice = Notice(Failure("detail"))
-    if notice.failure.unwrap().message() != "detail": return panic(
-        "error payload conversion"
-    )
+    notice.failure.unwrap().message() | try expect_equal(expected: "detail")
 
 test "wrapping evaluates arguments once in written order":
     let counter = Counter(0)
-    if ordered(second: next(counter), first: next(counter)) != 21:
-        return panic("argument order changed")
-    if counter.calls != 2: return panic("argument evaluated more than once")
+    ordered(second: next(counter), first: next(counter)) | try expect_equal(
+        expected: 21
+    )
+    counter.calls | try expect_equal(expected: 2)
 
 test "queue capacity accepts a plain value or omission":
     let bounded = Queue[Int](4)
     for value in [1, 2, 3, 4]:
-        if not (bounded.enqueue(value)): return panic("capacity rejected a value")
-    if bounded.enqueue(5): return panic("capacity bound was lost")
-    if bounded.dequeue().unwrap() != 1: return panic("queue order changed")
-
+        (bounded.enqueue(value)) | try expect_true
+    bounded.enqueue(5) | try expect_false
+    bounded.dequeue().unwrap() | try expect_equal(expected: 1)
     let unbounded = Queue[Int]()
     let absent = Queue[Int]()
     let capacity: Optional[Int] = some(4)
     let explicit = Queue[Int](capacity)
 
     for value in [1, 2, 3, 4, 5]:
-        if not (unbounded.enqueue(value)): return panic(
-            "omitted capacity became bounded"
-        )
-        if not (absent.enqueue(value)): return panic("none capacity became bounded")
+        (unbounded.enqueue(value)) | try expect_true
+        (absent.enqueue(value)) | try expect_true
 
-    if not (explicit.enqueue(1)): return panic("explicit capacity changed")
+    (explicit.enqueue(1)) | try expect_true

@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false, expect_not_equal, expect_true} from "@std/testing.ms"
 import Closeable from "@std/cleanup.ms"
 
 type Counter:
@@ -24,27 +24,21 @@ fn returning_match() -> Bool:
 
 test "primitive equality captures operands once in order":
     let counter = Counter()
-    if mark(counter, digit: 1) == mark(counter, digit: 2):
-        return panic("distinct integers compared equal")
-    if counter.value != 12: return panic("operand order or count changed")
-
+    mark(counter, digit: 1) | try expect_not_equal(expected: mark(counter, digit: 2))
+    counter.value | try expect_equal(expected: 12)
     var original = 1
     let captured = original == match some(1):
         some(value):
             original = 2
             value
         none: 0
-    if not captured or original != 2: return panic(
-        "left read moved past right mutation"
-    )
-
+    (not captured or original != 2) | try expect_false
     let skipped = false and mark(counter, digit: 3) == 3
     let skipped_again = true or mark(counter, digit: 4) == 4
-    if (skipped or not skipped_again or counter.value != 12):
-        return panic("comparison escaped short circuit")
-    if "é" == "e\u{0301}" or "λ🙂" != "λ🙂": return panic("Unicode equality changed")
-    if not generic(left: true, right: true): return panic("generic equality changed")
-    if returning_match(): return panic("operand match return changed")
+    (skipped or not skipped_again or counter.value != 12) | try expect_false
+    ("é" == "e\u{0301}" or "λ🙂" != "λ🙂") | try expect_false
+    (generic(left: true, right: true)) | try expect_true
+    returning_match() | try expect_false
 
 fn conditional(counter: Counter, take: Bool) -> Int:
     if take:
@@ -131,47 +125,48 @@ fn value_match_loop_try(counter: Counter) -> Result[Int, String]:
 
 test "combined lowering retains callable state and try boundaries":
     let counter = Counter()
-    if (
-        nested_results(counter) != Result[Int, String].error("expected")
-        or counter.value != 1
-    ):
-        return panic("nested callable result or cleanup state leaked")
-    if (
-        statement_match_try(counter) != Result[Int, String].error("expected")
-        or counter.value != 2
-    ):
-        return panic("statement match try lost cleanup")
-    if (
-        value_match_loop_try(counter) != Result[Int, String].error("expected")
-        or counter.value != 3
-    ):
-        return panic("value match loop swallowed propagation")
+    (
+        (
+            nested_results(counter) != Result[Int, String].error("expected")
+            or counter.value != 1
+        )
+    ) | try expect_false
+    (
+        (
+            statement_match_try(counter) != Result[Int, String].error(
+                "expected"
+            )
+            or counter.value != 2
+        )
+    ) | try expect_false
+    (
+        (
+            value_match_loop_try(counter) != Result[Int, String].error(
+                "expected"
+            )
+            or counter.value != 3
+        )
+    ) | try expect_false
 
 test "cleanup remains owned by its source callable":
     let counter = Counter()
-    if conditional(counter, take: false) != 8 or counter.value != 0:
-        return panic("untaken cleanup ran")
-    if conditional(counter, take: true) != 7 or counter.value != 1:
-        return panic("conditional return cleanup lost")
-    if matched(counter) != 1 or counter.value != 2:
-        return panic("match source return cleanup lost")
-    if defaulted(counter) != 2 or counter.value != 3:
-        return panic("default match cleanup lost")
-    if defaulted(counter, value: 9) != 9 or counter.value != 3:
-        return panic("explicit argument ran default cleanup")
-
+    (conditional(counter, take: false) != 8 or counter.value != 0) | try expect_false
+    (conditional(counter, take: true) != 7 or counter.value != 1) | try expect_false
+    (matched(counter) != 1 or counter.value != 2) | try expect_false
+    (defaulted(counter) != 2 or counter.value != 3) | try expect_false
+    (defaulted(counter, value: 9) != 9 or counter.value != 3) | try expect_false
     nested(counter)
-    if counter.value != 4: return panic("nested callable cleanup lost")
-    if (
-        propagate(counter) != Result[Int, String].error("expected")
-        or counter.value != 5
-    ):
-        return panic("propagation cleanup changed")
-    if bare_propagate() != Result[Int, String].error("expected"):
-        return panic("empty unwind affected propagation")
-    if equality_propagate() != Result[Bool, String].error("expected"):
-        return panic("equality operand propagation changed")
-
+    counter.value | try expect_equal(expected: 4)
+    (
+        (
+            propagate(counter) != Result[Int, String].error("expected")
+            or counter.value != 5
+        )
+    ) | try expect_false
+    bare_propagate() | try expect_equal(expected: Result[Int, String].error("expected"))
+    equality_propagate() | try expect_equal(
+        expected: Result[Bool, String].error("expected")
+    )
     var index = 0
 
     while index < 3:
@@ -181,4 +176,4 @@ test "cleanup remains owned by its source callable":
             if index == 1: continue
             if index == 2: break
 
-    if counter.value != 7: return panic("loop cleanup exits changed")
+    counter.value | try expect_equal(expected: 7)

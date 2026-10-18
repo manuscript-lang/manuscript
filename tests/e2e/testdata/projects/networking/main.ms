@@ -1,6 +1,6 @@
+import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
 import {headers, HttpMethod} from "@std/http.ms"
 import network from "@std/net.ms"
-import panic from "@std/faults.ms"
 import HttpError from "@std/http.ms"
 import WebSocketError from "@std/websocket.ms"
 import IoError from "@std/io.ms"
@@ -66,7 +66,7 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
         error(_):
             return error(HttpError.Failed("write failed"))
 
-fn exercise() -> Result[Unit, HttpError]:
+fn exercise() -> Result[Unit, Error]:
     let tls = TlsOptions(
         server_name: "",
         roots_pem: "",
@@ -109,24 +109,24 @@ fn exercise() -> Result[Unit, HttpError]:
                 max_response_bytes: 1024,
                 timeout: 2.seconds
             ):
-                if not (response.metadata().status == 200):
-                    return panic(message: "check failed")
+                response.metadata().status | try expect_equal(expected: 200)
 
                 let part = match response.read(max_bytes: 1024):
                     ok(part): part
                     error(_):
-                        return panic(message: "Unexpected case")
+                        return fail(message: "Unexpected case")
 
                 match part:
                     some(data):
-                        if not (
-                            data.to_string() == some(
-                                "hello from streaming Manuscript"
+                        try expect_false(
+                            not (
+                                data.to_string() == some(
+                                    "hello from streaming Manuscript"
+                                )
                             )
-                        ):
-                            return panic(message: "check failed")
+                        )
                     none:
-                        return panic(message: "Unexpected case")
+                        return fail(message: "Unexpected case")
 
         let websocket_options = WebSocketOptions(
             max_message_bytes: 1024,
@@ -143,9 +143,7 @@ fn exercise() -> Result[Unit, HttpError]:
                 options: websocket_options
             )
         ):
-            if not (socket.subprotocol() == "echo"):
-                return panic(message: "check failed")
-
+            socket.subprotocol() | try expect_equal(expected: "echo")
             let sent = try socket_result(
                 result: socket.send(
                     data: "echo me".to_bytes(),
@@ -155,12 +153,10 @@ fn exercise() -> Result[Unit, HttpError]:
 
             match try socket_result(result: socket.receive()):
                 some(message):
-                    if not (message.text):
-                        return panic(message: "check failed")
-                    if not (message.data.to_string() == some("echo me")):
-                        return panic(message: "check failed")
+                    (message.text) | try expect_true
+                    try expect_equal(message.data.to_string(), some("echo me"))
                 none:
-                    return panic(message: "Unexpected case")
+                    return fail(message: "Unexpected case")
 
     return ok(unit)
 

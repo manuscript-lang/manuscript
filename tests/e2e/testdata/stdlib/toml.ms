@@ -1,16 +1,16 @@
+import {expect_equal, expect_false, expect_ok, expect_true, fail} from "@std/testing.ms"
+import TextError from "@std/errors.ms"
 import {parse, stringify, TomlValue, TomlError, TomlLimits} from "@std/toml.ms"
-import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
-fn entries(value: TomlValue) -> Map[String, TomlValue]:
+fn entries(value: TomlValue) -> Result[Map[String, TomlValue], Error]:
     match value:
-        TableValue(values): return values
-        _: return panic("expected TOML table")
+        TableValue(values): return ok(values)
+        _: return error(TextError.Text("expected TOML table"))
 
-fn items(value: TomlValue) -> List[TomlValue]:
+fn items(value: TomlValue) -> Result[List[TomlValue], Error]:
     match value:
-        ArrayValue(values): return values
-        _: return panic("expected TOML array")
+        ArrayValue(values): return ok(values)
+        _: return error(TextError.Text("expected TOML array"))
 
 fn limits(
     bytes: Optional[Int],
@@ -21,86 +21,118 @@ fn limits(
 
 test "TOML scalars quoted keys comments exact integers and dates":
     let source = "title = \"é🙂 # text\" # comment\n'' = 'literal\\n'\nbool = true\nlarge = 9007199254740993\nhex = 0xDEAD_BEEF\noct = 0o755\nbin = 0b1010\nfloat = -1_2.5e+2\ndate = 2024-02-29\ntime = 07:32:00.123\nstamp = 1979-05-27 07:32:00-07:00\n"
-    let root = parse(text: source) | value | entries
-    if root.get("title").unwrap() != TomlValue.StringValue("é🙂 # text"): return panic(
-        "TOML text"
-    )
-    if root.get("").unwrap() != TomlValue.StringValue("literal\\n"): return panic(
-        "literal string"
-    )
-    if root.get("large").unwrap() != TomlValue.IntValue(9007199254740993): return panic(
-        "exact integer"
-    )
-    if root.get("hex").unwrap() != TomlValue.IntValue(3735928559): return panic("hex")
-    if root.get("oct").unwrap() != TomlValue.IntValue(493): return panic("octal")
-    if root.get("bin").unwrap() != TomlValue.IntValue(10): return panic("binary")
-    if root.get("float").unwrap() != TomlValue.FloatValue(-1250.0): return panic(
-        "float"
-    )
-    if (
-        root.get("stamp").unwrap() != TomlValue.DateTimeValue(
-            "1979-05-27 07:32:00-07:00"
+    let root = parse(text: source) | try expect_ok | try entries
+    (
+        root.get("title").unwrap() | try expect_equal(
+            expected: TomlValue.StringValue("é🙂 # text")
         )
-    ): return panic("date time")
-    if root.get("date").unwrap() != TomlValue.DateTimeValue("2024-02-29"): return panic(
-        "date"
     )
-    if root.get("time").unwrap() != TomlValue.DateTimeValue("07:32:00.123"): return panic(
-        "time"
+    (
+        root.get("").unwrap() | try expect_equal(
+            expected: TomlValue.StringValue("literal\\n")
+        )
     )
-
-test "TOML multiline strings Unicode escapes arrays and inline tables":
-    let root = entries(
-        value(
-            parse(
-                text: "basic = \"\"\"\nhello \\\n    world\\u0021\"\"\"\nliteral = '''\nraw\\text\nnext'''\narray = [1, # first\n true, \{name = 'Ada', meta.age = 37\},]\n"
+    (
+        root.get("large").unwrap() | try expect_equal(
+            expected: TomlValue.IntValue(9007199254740993)
+        )
+    )
+    (
+        root.get("hex").unwrap() | try expect_equal(
+            expected: TomlValue.IntValue(3735928559)
+        )
+    )
+    root.get("oct").unwrap() | try expect_equal(expected: TomlValue.IntValue(493))
+    root.get("bin").unwrap() | try expect_equal(expected: TomlValue.IntValue(10))
+    (
+        root.get("float").unwrap() | try expect_equal(
+            expected: TomlValue.FloatValue(-1250.0)
+        )
+    )
+    try expect_false(
+        (
+            root.get("stamp").unwrap() != TomlValue.DateTimeValue(
+                "1979-05-27 07:32:00-07:00"
             )
         )
     )
-    if root.get("basic").unwrap() != TomlValue.StringValue("hello world!"): return panic(
-        "multiline basic"
+    (
+        root.get("date").unwrap() | try expect_equal(
+            expected: TomlValue.DateTimeValue("2024-02-29")
+        )
     )
-    if root.get("literal").unwrap() != TomlValue.StringValue("raw\\text\nnext"): return panic(
-        "multiline literal"
+    (
+        root.get("time").unwrap() | try expect_equal(
+            expected: TomlValue.DateTimeValue("07:32:00.123")
+        )
     )
 
-    let array = items(root.get("array").unwrap())
-    if array.length() != 3: return panic("array")
-
-    let person = entries(array.at(2).unwrap())
-    if person.get("name").unwrap() != TomlValue.StringValue("Ada"): return panic(
-        "inline table"
+test "TOML multiline strings Unicode escapes arrays and inline tables":
+    let root = (
+        try entries(
+            (
+                parse(
+                    text: "basic = \"\"\"\nhello \\\n    world\\u0021\"\"\"\nliteral = '''\nraw\\text\nnext'''\narray = [1, # first\n true, \{name = 'Ada', meta.age = 37\},]\n"
+                ) | try expect_ok
+            )
+        )
     )
-    if (
-        entries(person.get("meta").unwrap()).get(
-            "age"
-        ).unwrap() != TomlValue.IntValue(37)
-    ): return panic("inline dotted key")
+    (
+        root.get("basic").unwrap() | try expect_equal(
+            expected: TomlValue.StringValue("hello world!")
+        )
+    )
+    (
+        root.get("literal").unwrap() | try expect_equal(
+            expected: TomlValue.StringValue("raw\\text\nnext")
+        )
+    )
+    let array = (try items(root.get("array").unwrap()))
+    array.length() | try expect_equal(expected: 3)
+    let person = (try entries(array.at(2).unwrap()))
+    (
+        person.get("name").unwrap() | try expect_equal(
+            expected: TomlValue.StringValue("Ada")
+        )
+    )
+    try expect_false(
+        (
+            (try entries(person.get("meta").unwrap())).get(
+                "age"
+            ).unwrap() != TomlValue.IntValue(37)
+        )
+    )
 
 test "TOML implicit parents dotted keys and arrays of tables":
     let text = "[owner.details]\nname = 'Ada'\n[owner]\nactive = true\n[[products]]\nname = 'Hammer'\n[products.meta]\nstock = 3\n[[products]]\nname = 'Nail'\n[[products.variants]]\nsize = 1\n[[products.variants]]\nsize = 2\n"
-    let root = parse(text: text) | value | entries
-    let owner = entries(root.get("owner").unwrap())
-    if (
-        entries(owner.get("details").unwrap()).get(
-            "name"
-        ).unwrap() != TomlValue.StringValue("Ada")
-    ): return panic("implicit parent")
-
-    let products = items(root.get("products").unwrap())
-    if products.length() != 2: return panic("table array")
-    if (
-        entries(entries(products.first().unwrap()).get("meta").unwrap()).get(
-            "stock"
-        ).unwrap() != TomlValue.IntValue(3)
-    ): return panic("array child table")
-    if items(entries(products.last().unwrap()).get("variants").unwrap()).length() != 2: return panic(
-        "nested table arrays"
+    let root = parse(text: text) | try expect_ok | try entries
+    let owner = (try entries(root.get("owner").unwrap()))
+    try expect_false(
+        (
+            (try entries(owner.get("details").unwrap())).get(
+                "name"
+            ).unwrap() != TomlValue.StringValue("Ada")
+        )
     )
-
-    let dotted = parse(text: "a.b.c = 1\na.b.d = 2\n") | value | entries
-    if entries(entries(dotted.get("a").unwrap()).get("b").unwrap()).length() != 2: return panic(
-        "dotted assignment"
+    let products = (try items(root.get("products").unwrap()))
+    products.length() | try expect_equal(expected: 2)
+    try expect_false(
+        (
+            (
+                try entries(
+                    (try entries(products.first().unwrap())).get(
+                        "meta"
+                    ).unwrap()
+                )
+            ).get("stock").unwrap() != TomlValue.IntValue(3)
+        )
+    )
+    (try items((try entries(products.last().unwrap())).get("variants").unwrap())).length() | try expect_equal(
+        expected: 2
+    )
+    let dotted = parse(text: "a.b.c = 1\na.b.d = 2\n") | try expect_ok | try entries
+    (try entries((try entries(dotted.get("a").unwrap())).get("b").unwrap())).length() | try expect_equal(
+        expected: 2
     )
 
 test "TOML rejects malformed data redefinitions and closed inline tables":
@@ -112,89 +144,101 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
         "a=1\rb=2", "[a.b.c]\nz=9\n[a]\nb.c.t=1", "[[a.b]]\n[a]\nb.y=2"
     ]:
         let cause = match parse(text: text):
-            ok(_): return panic("invalid TOML accepted: {text}")
+            ok(_): return fail("invalid TOML accepted: {text}")
             error(cause): cause
 
         match cause:
             InvalidData(line, column, reason):
-                if (line < 1 or column < 1 or reason == ""): return panic(
-                    "TOML error details"
-                )
-
+                (line < 1 or column < 1 or reason == "") | try expect_false
                 let boundary = Error(cause)
-                if not boundary.message().starts_with("TOML "): return panic(
-                    "source Error implementation"
-                )
-            _: return panic("wrong TOML error")
+                ((boundary.message().starts_with("TOML ")) | try expect_true)
+            _: return fail("wrong TOML error")
 
 test "TOML optional limits include implicit tables and zero":
     let limited: Result[TomlValue, TomlError] = error(TomlError.LimitExceeded)
     let invalid: Result[TomlValue, TomlError] = error(TomlError.InvalidInput)
-    if (
-        parse(
-            text: "a=1",
-            limits: limits(bytes: 2, depth: none, values: none)
-        ) != limited
-    ): return panic("byte limit")
-    if (
-        parse(
-            text: "a.b=1",
-            limits: limits(bytes: none, depth: 2, values: none)
-        ) != limited
-    ): return panic("depth limit")
-    if (
-        parse(
-            text: "a.b=1",
-            limits: limits(bytes: none, depth: none, values: 2)
-        ) != limited
-    ): return panic("value limit")
-    if (
-        parse(text: "", limits: limits(bytes: 0, depth: 1, values: 1)) != parse(
-            text: ""
+    try expect_false(
+        (
+            parse(
+                text: "a=1",
+                limits: limits(bytes: 2, depth: none, values: none)
+            ) != limited
         )
-    ): return panic("empty exact limits")
-    if (parse(text: "", limits: limits(bytes: none, depth: none, values: 0)) != limited): return panic(
-        "zero values"
     )
-    if (
-        parse(
-            text: "",
-            limits: limits(bytes: none, depth: -1, values: none)
-        ) != invalid
-    ): return panic("negative limit")
-    if (
-        parse(
-            text: "a=1",
-            limits: limits(bytes: 3, depth: 2, values: 2)
-        ) != parse(text: "a=1")
-    ): return panic("exact limits")
+    try expect_false(
+        (
+            parse(
+                text: "a.b=1",
+                limits: limits(bytes: none, depth: 2, values: none)
+            ) != limited
+        )
+    )
+    try expect_false(
+        (
+            parse(
+                text: "a.b=1",
+                limits: limits(bytes: none, depth: none, values: 2)
+            ) != limited
+        )
+    )
+    try expect_false(
+        (
+            parse(
+                text: "",
+                limits: limits(bytes: 0, depth: 1, values: 1)
+            ) != parse(text: "")
+        )
+    )
+    parse(text: "", limits: limits(bytes: none, depth: none, values: 0)) | try expect_equal(
+        expected: limited
+    )
+    try expect_false(
+        (
+            parse(
+                text: "",
+                limits: limits(bytes: none, depth: -1, values: none)
+            ) != invalid
+        )
+    )
+    try expect_false(
+        (
+            parse(
+                text: "a=1",
+                limits: limits(bytes: 3, depth: 2, values: 2)
+            ) != parse(text: "a=1")
+        )
+    )
 
 test "TOML nonfinite floats CRLF and repeated separators":
-    let root = entries(
-        value(
-            parse(
-                text: "positive=inf\r\nnegative=-inf\r\nnan=+nan\r\ninteger=1_000_000\r\n"
+    let root = (
+        try entries(
+            (
+                parse(
+                    text: "positive=inf\r\nnegative=-inf\r\nnan=+nan\r\ninteger=1_000_000\r\n"
+                ) | try expect_ok
             )
         )
     )
 
     match root.get("positive").unwrap():
         FloatValue(number):
-            if number.is_finite() or number < 0.0: return panic("positive infinity")
-        _: return panic("expected float")
+            ((number.is_finite() or number < 0.0) | try expect_false)
+        _: return fail("expected float")
 
     match root.get("negative").unwrap():
         FloatValue(number):
-            if number.is_finite() or number > 0.0: return panic("negative infinity")
-        _: return panic("expected float")
+            ((number.is_finite() or number > 0.0) | try expect_false)
+        _: return fail("expected float")
 
     match root.get("nan").unwrap():
         FloatValue(number):
-            if not number.is_nan(): return panic("NaN")
-        _: return panic("expected float")
+            ((number.is_nan()) | try expect_true)
+        _: return fail("expected float")
 
-    if root.get("integer").unwrap() != TomlValue.IntValue(1000000): return panic(
-        "repeated underscore separators"
+    (
+        root.get("integer").unwrap() | try expect_equal(
+            expected: TomlValue.IntValue(1000000)
+        )
     )
 
 fn failure(text: String) -> String:
@@ -203,54 +247,50 @@ fn failure(text: String) -> String:
         error(cause): return cause.message()
 
 test "TOML errors report the offending line and column":
-    if failure("x = 1\ny = \"a\u{1}b\"") != "TOML 2:7: invalid control character": return panic(
-        "control character position"
+    failure("x = 1\ny = \"a\u{1}b\"") | try expect_equal(
+        expected: "TOML 2:7: invalid control character"
     )
-    if failure("x = 1\ny = 2\rz = 3") != "TOML 2:6: bare carriage return": return panic(
-        "carriage return position"
+    failure("x = 1\ny = 2\rz = 3") | try expect_equal(
+        expected: "TOML 2:6: bare carriage return"
     )
-    if failure("x = 1\n\u{0}") != "TOML 2:1: invalid control character": return panic(
-        "NUL position"
+    failure("x = 1\n\u{0}") | try expect_equal(
+        expected: "TOML 2:1: invalid control character"
     )
-    if failure("a = 1\u{0}") != "TOML 1:6: invalid control character": return panic(
-        "trailing NUL position"
+    failure("a = 1\u{0}") | try expect_equal(
+        expected: "TOML 1:6: invalid control character"
     )
-    if failure("y = True") != "TOML 1:5: invalid value": return panic("True")
-    if failure("y = yes") != "TOML 1:5: invalid value": return panic("yes")
-    if failure("y = abc") != "TOML 1:5: invalid value": return panic("abc")
-    if failure("x = 1\ny = 1e") != "TOML 2:5: invalid exponent": return panic(
-        "exponent position"
-    )
+    failure("y = True") | try expect_equal(expected: "TOML 1:5: invalid value")
+    failure("y = yes") | try expect_equal(expected: "TOML 1:5: invalid value")
+    failure("y = abc") | try expect_equal(expected: "TOML 1:5: invalid value")
+    failure("x = 1\ny = 1e") | try expect_equal(expected: "TOML 2:5: invalid exponent")
 
 test "TOML limits fields default to none":
     let limited: Result[TomlValue, TomlError] = error(TomlError.LimitExceeded)
-    if parse(text: "a=1", limits: some(TomlLimits(max_bytes: 2))) != limited: return panic(
-        "partial byte limit"
+    parse(text: "a=1", limits: some(TomlLimits(max_bytes: 2))) | try expect_equal(
+        expected: limited
     )
-    if parse(text: "a=1", limits: some(TomlLimits())) != parse(text: "a=1"): return panic(
-        "empty limits"
+    parse(text: "a=1", limits: some(TomlLimits())) | try expect_equal(
+        expected: parse(text: "a=1")
     )
 
 test "TOML stringify round trips scalars tables and arrays of tables":
     let source = "title = \"é🙂 \\\"q\\\" \\t tab\\u0001\"\nint = -42\nfloat = 3.0\nbig = 1e+21\nflag = true\ndate = 1979-05-27\nmixed = [1, \"two\", [3.5], \{a = 1\}]\nempty = []\n\"odd key\" = 1\n\n[server]\nhost = \"h\"\n\n[server.limits]\nmax = 5\n\n[[products]]\nname = \"a\"\n\n[[products]]\nname = \"b\"\n[products.tags]\nx = 1\n"
-    let parsed = value(parse(text: source))
-    let text = value(stringify(value: parsed))
-    if value(parse(text: text)) != parsed: return panic("TOML stringify round trip")
-    if value(stringify(value: value(parse(text: text)))) != text: return panic(
-        "TOML stringify is stable"
+    let parsed = (parse(text: source) | try expect_ok)
+    let text = (stringify(value: parsed) | try expect_ok)
+    parse(text: text) | try expect_ok | try expect_equal(expected: parsed)
+    stringify(value: (parse(text: text) | try expect_ok)) | try expect_ok | try expect_equal(
+        expected: text
     )
 
 test "TOML stringify requires a table root and honors max_bytes":
     let wrong: Result[String, TomlError] = error(TomlError.InvalidInput)
     let limited: Result[String, TomlError] = error(TomlError.LimitExceeded)
-    if stringify(value: TomlValue.IntValue(1)) != wrong: return panic("non-table root")
-
-    let root = value(parse(text: "a = 1"))
-    if stringify(value: root, max_bytes: 3) != limited: return panic("output limit")
-
+    stringify(value: TomlValue.IntValue(1)) | try expect_equal(expected: wrong)
+    let root = (parse(text: "a = 1") | try expect_ok)
+    stringify(value: root, max_bytes: 3) | try expect_equal(expected: limited)
     let exact: Result[String, TomlError] = ok("a = 1\n")
-    if stringify(value: root, max_bytes: 6) != exact: return panic("exact limit")
-    if stringify(value: root, max_bytes: -1) != wrong: return panic("negative limit")
+    stringify(value: root, max_bytes: 6) | try expect_equal(expected: exact)
+    stringify(value: root, max_bytes: -1) | try expect_equal(expected: wrong)
 
 fn repeated(text: String, count: Int) -> String:
     if count <= 0: return ""
@@ -264,14 +304,17 @@ fn repeated(text: String, count: Int) -> String:
 test "TOML long strings parse and stringify in linear time":
     let long = repeated(text: "x\\n", count: 150000)
     let expected = repeated(text: "x\n", count: 150000)
-    let root = value(parse(text: "a = \"{long}\"\nb = '''{expected}'''"))
-    let table = entries(root)
-    if table.get("a").unwrap() != TomlValue.StringValue(expected): return panic(
-        "basic string"
+    let root = (parse(text: "a = \"{long}\"\nb = '''{expected}'''") | try expect_ok)
+    let table = (try entries(root))
+    (
+        table.get("a").unwrap() | try expect_equal(
+            expected: TomlValue.StringValue(expected)
+        )
     )
-    if table.get("b").unwrap() != TomlValue.StringValue(expected): return panic(
-        "literal multi-line string"
+    (
+        table.get("b").unwrap() | try expect_equal(
+            expected: TomlValue.StringValue(expected)
+        )
     )
-
-    let text = value(stringify(value: root))
-    if value(parse(text: text)) != root: return panic("long string round trip")
+    let text = (stringify(value: root) | try expect_ok)
+    parse(text: text) | try expect_ok | try expect_equal(expected: root)

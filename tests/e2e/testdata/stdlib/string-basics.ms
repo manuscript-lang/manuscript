@@ -1,60 +1,49 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
 
 test "String basic counterparts are callable":
-    if "é🙂".length() != 2: return panic("scalar length")
-    if not ("".is_empty()) or "a".is_empty(): return panic("empty text")
-    if "é🙂".chars() != ["é", "🙂"]: return panic("scalar chars")
-    if "é🙂".reverse() != "🙂é": return panic("scalar reverse")
-    if ("a".compare("b") != -1 or "b".compare("a") != 1 or "é".compare("é") != 0): return panic(
-        "text comparison"
+    "é🙂".length() | try expect_equal(expected: 2)
+    (not ("".is_empty()) or "a".is_empty()) | try expect_false
+    "é🙂".chars() | try expect_equal(expected: ["é", "🙂"])
+    "é🙂".reverse() | try expect_equal(expected: "🙂é")
+    try expect_false(
+        (
+            "a".compare("b") != -1
+            or "b".compare("a") != 1
+            or "é".compare("é") != 0
+        )
     )
-    if "a\r\nb\n".lines() != ["a", "b"]: return panic("text lines")
+    "a\r\nb\n".lines() | try expect_equal(expected: ["a", "b"])
 
 test "length and chars use scalars and preserve text boundaries":
     let text = "é🙂e\u{301}"
-    if text.length() != 4 or text.length() != text.scalar_length(): return panic(
-        "String length unit"
-    )
-    if text.chars() != ["é", "🙂", "e", "\u{301}"]: return panic(
-        "combining scalar chars"
-    )
-    if "👩\u{200d}🚀".length() != 3: return panic("graphemes are not scalars")
-    if "a\u{0}b".chars() != ["a", "\u{0}", "b"]: return panic("NUL scalar lost")
-    if not ("".chars().is_empty()) or "".length() != 0: return panic(
-        "empty scalar collection"
-    )
-
+    (text.length() != 4 or text.length() != text.scalar_length()) | try expect_false
+    text.chars() | try expect_equal(expected: ["é", "🙂", "e", "\u{301}"])
+    "👩\u{200d}🚀".length() | try expect_equal(expected: 3)
+    "a\u{0}b".chars() | try expect_equal(expected: ["a", "\u{0}", "b"])
+    (not ("".chars().is_empty()) or "".length() != 0) | try expect_false
     let characters = text.chars()
     let second = text.chars()
     characters.set(0, "changed").append("new")
-    if second != ["é", "🙂", "e", "\u{301}"] or text != "é🙂e\u{301}": return panic(
-        "chars storage alias"
-    )
+    (second != ["é", "🙂", "e", "\u{301}"] or text != "é🙂e\u{301}") | try expect_false
 
 test "reverse operates on scalars without normalization":
-    if "aé🙂z".reverse() != "z🙂éa": return panic("reverse split UTF-8")
-    if "e\u{301}".reverse() != "\u{301}e": return panic("reverse normalized grapheme")
-    if "👩\u{200d}🚀".reverse() != "🚀\u{200d}👩": return panic("reverse grapheme unit")
-    if "a\u{0}b".reverse() != "b\u{0}a": return panic("reverse lost NUL")
-    if "".reverse() != "" or "🙂".reverse() != "🙂": return panic("empty/single reverse")
-
+    "aé🙂z".reverse() | try expect_equal(expected: "z🙂éa")
+    "e\u{301}".reverse() | try expect_equal(expected: "\u{301}e")
+    "👩\u{200d}🚀".reverse() | try expect_equal(expected: "🚀\u{200d}👩")
+    "a\u{0}b".reverse() | try expect_equal(expected: "b\u{0}a")
+    ("".reverse() != "" or "🙂".reverse() != "🙂") | try expect_false
     let original = "é🙂e\u{301}"
-    if original.reverse().reverse() != original: return panic("reverse round trip")
+    original.reverse().reverse() | try expect_equal(expected: original)
 
 test "compare is normalized sign and scalar lexical order":
-    if "".compare("a") != -1 or "a".compare("") != 1: return panic("empty comparison")
-    if "ab".compare("abc") != -1 or "abc".compare("ab") != 1: return panic(
-        "prefix comparison"
-    )
-    if "Z".compare("a") != -1: return panic("comparison case folding")
-    if "é".compare("e\u{301}") != 1: return panic("comparison normalization")
-    if "\u{e000}".compare("\u{10000}") != -1: return panic(
-        "comparison used UTF-16 units"
-    )
-    if "a\u{0}".compare("a\u{1}") != -1: return panic("comparison NUL boundary")
-
+    ("".compare("a") != -1 or "a".compare("") != 1) | try expect_false
+    ("ab".compare("abc") != -1 or "abc".compare("ab") != 1) | try expect_false
+    "Z".compare("a") | try expect_equal(expected: -1)
+    "é".compare("e\u{301}") | try expect_equal(expected: 1)
+    "\u{e000}".compare("\u{10000}") | try expect_equal(expected: -1)
+    "a\u{0}".compare("a\u{1}") | try expect_equal(expected: -1)
     let equal = "é🙂"
-    if equal.compare(equal) != 0: return panic("comparison equality")
+    equal.compare(equal) | try expect_equal(expected: 0)
 
 type LineCase:
     text: String
@@ -80,7 +69,7 @@ test "lines preserve interior empties and recognize LF and CRLF only":
         LineCase("a\u{85}b\u{2028}c\u{2029}d", ["a\u{85}b\u{2028}c\u{2029}d"])
     ]
     for line_case in cases:
-        if line_case.text.lines() != line_case.expected: return panic(
+        if line_case.text.lines() != line_case.expected: return fail(
             "line boundary: {line_case.text.toString()}"
         )
 
@@ -93,19 +82,13 @@ test "String basic bound methods capture immutable receiver values":
     let empty = text.is_empty
     let compare = text.compare
     text = "changed"
-    if chars() != ["é", "\n", "🙂", "\n"] or lines() != ["é", "🙂"]: return panic(
-        "bound text collection receiver"
-    )
-    if (reverse() != "\n🙂\né" or length() != 4 or empty()): return panic(
-        "bound scalar receiver"
-    )
-    if compare(other: "é\n🙂\n") != 0: return panic("bound compare receiver/label")
-
+    (chars() != ["é", "\n", "🙂", "\n"] or lines() != ["é", "🙂"]) | try expect_false
+    (reverse() != "\n🙂\né" or length() != 4 or empty()) | try expect_false
+    compare(other: "é\n🙂\n") | try expect_equal(expected: 0)
     let first = lines()
     let second = lines()
     first.set(0, "changed").append("new")
-    if second != ["é", "🙂"]: return panic("lines storage alias")
-
+    second | try expect_equal(expected: ["é", "🙂"])
     let empty_lines = "".lines()
     empty_lines.append("new")
-    if not ("".lines().is_empty()): return panic("empty lines storage alias")
+    ("".lines().is_empty()) | try expect_true

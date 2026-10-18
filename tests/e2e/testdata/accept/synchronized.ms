@@ -1,10 +1,19 @@
+import {
+    expect_contains,
+    expect_equal,
+    expect_error,
+    expect_fault,
+    expect_ok,
+    expect_some,
+    expect_true,
+    fail
+} from "@std/testing.ms"
 import Synchronized from "@std/sync.ms"
 import SynchronizedGuard from "@std/sync.ms"
 import Closeable from "@std/cleanup.ms"
 import ListBuilder from "@std/collections.ms"
 import ExecutionError from "@std/tasks.ms"
 import TaskGroup from "@std/tasks.ms"
-import panic from "@std/faults.ms"
 import sleep from "@std/time.ms"
 
 fn identity[T](value: T) -> T:
@@ -63,19 +72,14 @@ test "shared counter protects complete updates":
         match group.join():
             ok(_):
                 with locked = counter.lock():
-                    if not (locked.get() == 100):
-                        return panic(message: "check failed")
+                    locked.get() | try expect_equal(expected: 100)
             error(_):
-                if not (false):
-                    return panic(message: "check failed")
+                ((false) | try expect_true)
 
-    if not (release_on_return(counter: counter) == 101):
-        return panic(message: "check failed")
-
+    release_on_return(counter: counter) | try expect_equal(expected: 101)
     let outcome = release_on_error(counter: counter)
     with locked = counter.lock():
-        if not (locked.get() == 102):
-            return panic(message: "check failed")
+        locked.get() | try expect_equal(expected: 102)
 
 test "function fields collections and interface views share freely":
     var captured = 7
@@ -87,22 +91,18 @@ test "function fields collections and interface views share freely":
     for stored in callbacks:
         match execute(operation: stored):
             ok(value):
-                if not (value == 7):
-                    return panic(message: "check failed")
+                try expect_equal(value, 7)
             error(_):
-                if not (false):
-                    return panic(message: "check failed")
+                ((false) | try expect_true)
 
     let readers: List[Read] = [Read(Reader(callback))]
 
     for reader in readers:
         match execute(operation: reader.get):
             ok(value):
-                if not (value == 7):
-                    return panic(message: "check failed")
+                try expect_equal(value, 7)
             error(_):
-                if not (false):
-                    return panic(message: "check failed")
+                ((false) | try expect_true)
 
     let make_function = fn():
         return read_and_add
@@ -113,15 +113,13 @@ test "function fields collections and interface views share freely":
         match group.join():
             ok(_): unit
             error(_):
-                if not (false):
-                    return panic(message: "check failed")
+                ((false) | try expect_true)
 
         match first_task.join():
             ok(returned):
-                if not (returned(value: 3) == 4):
-                    return panic(message: "check failed")
+                try expect_equal(returned(value: 3), 4)
             error(_):
-                return panic("task result unavailable")
+                return fail("task result unavailable")
 
 test "builders can be captured and stored callbacks can map":
     let builder = ListBuilder[Int]()
@@ -131,27 +129,24 @@ test "builders can be captured and stored callbacks can map":
     append_item(item: 2)
     append_item(item: 3)
     append_item(item: 4)
-    if not (builder.freeze().length() == 4):
-        return panic(message: "check failed")
+    builder.freeze().length() | try expect_equal(expected: 4)
 
-test "fault releases guard and preserves committed writes":
+test "error releases guard and preserves committed writes":
     let counter = Synchronized(0)
-    let fail = fn():
+    let attempt = fn() -> Result[Unit, Error]:
         with locked = counter.lock():
             locked.set(value: 8)
-            panic(message: "expected")
+            return fail("expected")
 
     with group = TaskGroup():
-        let first_task = group.start(fail)
+        let task = group.start(attempt)
+        try group.join()
+        let result = task.join() | try expect_ok
+        let cause = result | try expect_error
+        cause.message() | try expect_equal(expected: "expected")
 
-        match group.join():
-            ok(_):
-                if not (false):
-                    return panic(message: "check failed")
-            error(_):
-                with locked = counter.lock():
-                    if not (locked.get() == 8):
-                        return panic(message: "check failed")
+    with locked = counter.lock():
+        locked.get() | try expect_equal(expected: 8)
 
 test "guard aliases close once and stale methods fault":
     let counter = Synchronized(0)
@@ -169,32 +164,23 @@ test "guard aliases close once and stale methods fault":
 
             match group.join():
                 ok(_):
-                    if not (false):
-                        return panic(message: "check failed")
+                    ((false) | try expect_true)
                 error(_):
-                    if not (second.get() == 2):
-                        return panic(message: "check failed")
+                    try expect_equal(second.get(), 2)
 
 test "same-task reentry faults and releases its guard":
     let counter = Synchronized(0)
-    let acquire = fn():
-        with locked = counter.lock():
-            with again = counter.lock():
-                return panic(message: "reentry should fault")
-
-    with group = TaskGroup():
-        let first_task = group.start(acquire)
-
-        match group.join():
-            ok(_):
-                return panic(message: "reentry did not fault")
-            error(_):
-                with locked = counter.lock():
-                    locked.set(value: 3)
+    let message = try expect_fault(
+        fn():
+            with locked = counter.lock():
+                with again = counter.lock():
+                    again.set(3)
+    )
+    message | try expect_contains(expected: "held by this operation")
 
     with locked = counter.lock():
-        if locked.get() != 3:
-            return panic(message: "fault leaked guard")
+        locked.set(3)
+        locked.get() | try expect_equal(expected: 3)
 
 test "parent holds lock while a running child waits for it":
     let cell = Synchronized(0)
@@ -213,10 +199,9 @@ test "parent holds lock while a running child waits for it":
 
         match child.join():
             ok(value):
-                if value != 7:
-                    return panic(message: "got {value}")
+                if value != 7: return fail(message: "got {value}")
             error(_):
-                return panic(message: "child failed")
+                return fail(message: "child failed")
 
 test "ordinary cross-task lock cycle stops at the group timeout":
     let cell = Synchronized(0)
@@ -231,18 +216,17 @@ test "ordinary cross-task lock cycle stops at the group timeout":
 
             let cause = match child.join():
                 ok(_):
-                    return panic(message: "cycle acquired before release")
+                    return fail(message: "cycle acquired before release")
                 error(cause): cause
 
             match cause:
                 Timeout:
                     locked.set(value: 3)
                 _:
-                    return panic(message: "unexpected failure {cause}")
+                    return fail(message: "unexpected failure {cause}")
 
     with locked = cell.lock():
-        if locked.get() != 3:
-            return panic(message: "timeout lost committed data")
+        locked.get() | try expect_equal(expected: 3)
 
 test "loop exits release the guard":
     let counter = Synchronized(0)
@@ -256,8 +240,7 @@ test "loop exits release the guard":
             break
 
     with locked = counter.lock():
-        if not (locked.get() == 2):
-            return panic(message: "check failed")
+        locked.get() | try expect_equal(expected: 2)
 
 test "native collection methods preserve ordinary function values":
     let callbacks = [1, 2].map(
@@ -265,36 +248,16 @@ test "native collection methods preserve ordinary function values":
             return fn():
                 return value
     )
-    let first = fn():
-        match callbacks.at(index: 0):
-            some(callback):
-                return callback()
-            none:
-                return panic(message: "missing callback")
-    let second = fn():
-        match callbacks.at(index: 1):
-            some(callback):
-                return callback()
-            none:
-                return panic(message: "missing callback")
+    let first = fn() -> Result[Int, Error]:
+        let callback = (callbacks.at(0) | try expect_some)
+        return ok(callback())
+    let second = fn() -> Result[Int, Error]:
+        let callback = (callbacks.at(1) | try expect_some)
+        return ok(callback())
 
     with group = TaskGroup():
         let first_task = group.start(first)
         let second_task = group.start(second)
-
-        match group.join():
-            ok(_): unit
-            error(_):
-                return panic(message: "task callbacks failed")
-
-        let first_value = match first_task.join():
-            ok(first_value): first_value
-            error(_):
-                return panic("task result unavailable")
-
-        match second_task.join():
-            ok(second_value):
-                if first_value != 1 or second_value != 2:
-                    return panic(message: "check failed")
-            error(_):
-                return panic("task result unavailable")
+        let joined = try group.join()
+        (try first_task.join()) | try expect_ok | try expect_equal(expected: 1)
+        (try second_task.join()) | try expect_ok | try expect_equal(expected: 2)

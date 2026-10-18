@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
 type Counter:
     value: Int
@@ -16,28 +16,23 @@ test "typed operands retain evaluation order and generic boundaries":
         step(counter: counter, value: 1)
         + step(counter: counter, value: 2) * step(counter: counter, value: 3)
     )
-    if total != 7 or counter.value != 123: return panic("operand order")
-
+    (total != 7 or counter.value != 123) | try expect_false
     var value = identity(9)
     value = value + 1
     let snapshot = fn() -> Int: return value * 2
     value = value - 1
-    if snapshot() != 20 or value != 9: return panic("boxed capture")
-    if - 9223372036854775808 % -1 != 0: return panic("minimum remainder")
-    if - 7 / 2 != -3 or - 7 % 3 != -1: return panic("signed arithmetic")
-    if 9223372036854775807 * 0 != 0: return panic("zero multiplication")
+    (snapshot() != 20 or value != 9) | try expect_false
+    (-9223372036854775808 % -1) | try expect_equal(expected: 0)
+    (-7 / 2 != -3 or - 7 % 3 != -1) | try expect_false
+    (9223372036854775807 * 0) | try expect_equal(expected: 0)
 
 test "floating operations retain binary64 edge behavior":
     let negative_zero = -0.0
-    if "{1.0 / negative_zero}" != "-Infinity": return panic("signed zero")
-
+    "{1.0 / negative_zero}" | try expect_equal(expected: "-Infinity")
     let nan = 0.0 / 0.0
-    if (nan <= 0.0 or nan >= 0.0 or nan < 0.0 or nan > 0.0): return panic(
-        "NaN comparisons"
-    )
-    if 5e-324 <= 0.0 or 5e-324 / 2.0 != 0.0: return panic("subnormal rounding")
-    if "{1.7976931348623157e308 * 2.0}" != "Infinity": return panic("floating overflow")
-
+    (nan <= 0.0 or nan >= 0.0 or nan < 0.0 or nan > 0.0) | try expect_false
+    (5e-324 <= 0.0 or 5e-324 / 2.0 != 0.0) | try expect_false
+    "{1.7976931348623157e308 * 2.0}" | try expect_equal(expected: "Infinity")
     let a = 1.0000000074505806
     let b = 0.9999999925494194
-    if a * b - 1.0 != 0.0: return panic("per-operation rounding")
+    (a * b - 1.0) | try expect_equal(expected: 0.0)

@@ -1,74 +1,76 @@
+import {expect_equal, expect_false, expect_not_equal, expect_ok, expect_true} from "@std/testing.ms"
 import {arguments, environment} from "@std/cli.ms"
 import {system, endianness, end_of_line, os_type, dev_null} from "@std/system.ms"
 import {control, commands, CommandError, CommandOutput} from "@std/process.ms"
 import {read_line} from "@std/io.ms"
-import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 test "CLI test roots have empty arguments and host metadata agrees":
-    if not arguments().is_empty(): return panic("test arguments")
-
+    (arguments().is_empty()) | try expect_true
     let info = system().info()
-    if (
-        info.cpu_count <= 0
-        or info.os.byte_length() == 0
-        or info.architecture.byte_length() == 0
-    ): return panic("system info")
-
-    let process = value(control().info())
-    if (
-        process.pid <= 0
-        or process.os != info.os
-        or process.architecture != info.architecture
-    ): return panic("process info")
-    if system().working_directory() != value(control().working_directory()): return panic(
-        "working directory"
+    (
+        (
+            info.cpu_count <= 0
+            or info.os.byte_length() == 0
+            or info.architecture.byte_length() == 0
+        )
+    ) | try expect_false
+    let process = (control().info() | try expect_ok)
+    (
+        (
+            process.pid <= 0
+            or process.os != info.os
+            or process.architecture != info.architecture
+        )
+    ) | try expect_false
+    system().working_directory() | try expect_equal(
+        expected: (control().working_directory() | try expect_ok)
     )
-    if endianness() != "LE" and endianness() != "BE": return panic("endianness")
-    if end_of_line() != "\n" and end_of_line() != "\r\n": return panic("line ending")
-    if os_type().byte_length() == 0: return panic("os type")
-    if dev_null().byte_length() == 0: return panic("null device")
+    (endianness() != "LE" and endianness() != "BE") | try expect_false
+    (end_of_line() != "\n" and end_of_line() != "\r\n") | try expect_false
+    os_type().byte_length() | try expect_not_equal(expected: 0)
+    dev_null().byte_length() | try expect_not_equal(expected: 0)
 
 test "process environment is live while CLI environment retains its snapshot":
     let name = "MANUSCRIPT_STDLIB_CONFORMANCE"
     let before = system().environment(name)
     let snapshot = environment().get(name)
-    let assigned = value(control().set_environment(name: name, value: "stdlib"))
-    if system().environment(name) != some("stdlib"): return panic("system environment")
-    if environment().get(name) != snapshot: return panic(
-        "CLI environment snapshot changed"
+    let assigned = (
+        control().set_environment(name: name, value: "stdlib") | try expect_ok
     )
-    if value(control().environment()).get(name) != some("stdlib"): return panic(
-        "process environment"
+    system().environment(name) | try expect_equal(expected: some("stdlib"))
+    environment().get(name) | try expect_equal(expected: snapshot)
+    (control().environment() | try expect_ok).get(name) | try expect_equal(
+        expected: some("stdlib")
     )
-
-    let restored = value(control().set_environment(name: name, value: before))
+    let restored = (
+        control().set_environment(name: name, value: before) | try expect_ok
+    )
 
 test "subprocess validation returns expected domain errors":
     let invalid: Result[CommandOutput, CommandError] = error(CommandError.InvalidInput)
-    if commands().run(program: "", arguments: [], input: "".to_bytes()) != invalid: return panic(
-        "empty program"
+    commands().run(program: "", arguments: [], input: "".to_bytes()) | try expect_equal(
+        expected: invalid
     )
-
     let unavailable: Result[CommandOutput, CommandError] = error(
         CommandError.Unavailable
     )
-    if (
-        commands().run(
-            program: "manuscript-nonexistent-command-stdlib",
-            arguments: [],
-            input: "".to_bytes()
-        ) != unavailable
-    ): return panic("missing command")
+    (
+        (
+            commands().run(
+                program: "manuscript-nonexistent-command-stdlib",
+                arguments: [],
+                input: "".to_bytes()
+            ) != unavailable
+        )
+    ) | try expect_false
 
 test "managed subprocess streams incrementally and cleans up on scope exit":
     if os_type() == "windows": return
 
-    with child = value(commands().spawn(program: "cat", arguments: [])):
-        value(child.stdin().write("ping\n".to_bytes()))
-        let line = value(read_line(input: child.stdout()))
-        if line.unwrap_or("") != "ping": return panic("echo")
-
+    with child = (commands().spawn(program: "cat", arguments: []) | try expect_ok):
+        (child.stdin().write("ping\n".to_bytes()) | try expect_ok)
+        let line = (read_line(input: child.stdout()) | try expect_ok)
+        line.unwrap_or("") | try expect_equal(expected: "ping")
         child.stdin().close()
-        if value(child.wait()) != 0: return panic("exit status")
-        if value(child.stdout().read()).is_some(): return panic("stdout eof")
+        child.wait() | try expect_ok | try expect_equal(expected: 0)
+        (child.stdout().read() | try expect_ok).is_some() | try expect_false

@@ -1,5 +1,5 @@
+import {expect_equal} from "@std/testing.ms"
 import {NormalizationForm, StringError} from "@std/string.ms"
-import panic from "@std/faults.ms"
 
 fn normalize(form: NormalizationForm, text: String) -> Result[String, StringError]:
     return form.normalize(text)
@@ -12,18 +12,16 @@ fn call[T](
 
 test "typed Unicode forms retain normalization and bound dispatch":
     let decomposed = "é"
-    if normalize(NormalizationForm.Nfc, decomposed).unwrap() != "é": return panic(
-        "canonical composition"
+    normalize(NormalizationForm.Nfc, decomposed).unwrap() | try expect_equal(
+        expected: "é"
     )
-    if NormalizationForm.Nfd.normalize("é").unwrap() != decomposed: return panic(
-        "canonical decomposition"
+    (
+        NormalizationForm.Nfd.normalize("é").unwrap() | try expect_equal(
+            expected: decomposed
+        )
     )
-    if NormalizationForm.Nfkc.normalize("ﬁ").unwrap() != "fi": return panic(
-        "compatibility composition"
-    )
-    if NormalizationForm.Nfkd.normalize("ﬁ").unwrap() != "fi": return panic(
-        "compatibility decomposition"
-    )
+    NormalizationForm.Nfkc.normalize("ﬁ").unwrap() | try expect_equal(expected: "fi")
+    NormalizationForm.Nfkd.normalize("ﬁ").unwrap() | try expect_equal(expected: "fi")
 
     for form in [
         NormalizationForm.Nfc,
@@ -37,32 +35,36 @@ test "typed Unicode forms retain normalization and bound dispatch":
             Nfkc: "NFKC"
             Nfkd: "NFKD"
 
-        if form.normalize("ﬁé").unwrap() != "ﬁé".normalize(spelling).unwrap(): return panic(
-            "existing implementation changed"
+        (
+            form
+            .normalize("ﬁé")
+            .unwrap() | try expect_equal(
+                expected: ("ﬁé".normalize(spelling).unwrap())
+            )
         )
 
     let stored = NormalizationForm.Nfc.normalize
-    if call(stored, decomposed).unwrap() != "é": return panic(
-        "stored generic operation"
-    )
+    call(stored, decomposed).unwrap() | try expect_equal(expected: "é")
 
 test "typed normalization keeps UTF-8 byte budgets and domain errors":
     let form = NormalizationForm.Nfc
-    if form.normalize("é", max_bytes: 2).unwrap() != "é": return panic(
-        "exact byte budget"
+    form.normalize("é", max_bytes: 2).unwrap() | try expect_equal(expected: "é")
+    form.normalize("", max_bytes: 0).unwrap() | try expect_equal(expected: "")
+    (
+        form.normalize("é", max_bytes: 1).unwrap_error() | try expect_equal(
+            expected: StringError.LimitExceeded
+        )
     )
-    if form.normalize("", max_bytes: 0).unwrap() != "": return panic(
-        "empty zero budget"
+    (
+        form.normalize("x", max_bytes: 0).unwrap_error() | try expect_equal(
+            expected: StringError.LimitExceeded
+        )
     )
-    if form.normalize("é", max_bytes: 1).unwrap_error() != StringError.LimitExceeded: return panic(
-        "UTF-8 byte budget"
+    (
+        form.normalize("", max_bytes: -1).unwrap_error() | try expect_equal(
+            expected: StringError.InvalidInput
+        )
     )
-    if form.normalize("x", max_bytes: 0).unwrap_error() != StringError.LimitExceeded: return panic(
-        "nonempty zero budget"
-    )
-    if form.normalize("", max_bytes: -1).unwrap_error() != StringError.InvalidInput: return panic(
-        "negative byte budget"
-    )
-    if "x".normalize("nfc").unwrap_error() != StringError.InvalidInput: return panic(
-        "legacy form validation"
+    "x".normalize("nfc").unwrap_error() | try expect_equal(
+        expected: StringError.InvalidInput
     )

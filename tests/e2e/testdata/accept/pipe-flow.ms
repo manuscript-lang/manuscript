@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
 fn parse(text: String) -> Result[Int, String]:
     if text == "-":
@@ -48,36 +48,26 @@ fn code(r: Result[Int, String]) -> Int:
         error(cause): 0 - cause.length()
 
 test "pipe steps call functions with the value first":
-    if code(flow("abc")) != 9:
-        return panic("flow ok")
-    if code(flow("-")) != -1:
-        return panic("flow first failure")
-    if code(flow("big")) != -3:
-        return panic("flow later failure")
+    code(flow("abc")) | try expect_equal(expected: 9)
+    code(flow("-")) | try expect_equal(expected: -1)
+    code(flow("big")) | try expect_equal(expected: -3)
 
 test "bare try unwraps the value so far":
-    if bare("abc").unwrap() != 6:
-        return panic("bare ok")
-    if code(bare("-")) != -1:
-        return panic("bare early return")
+    bare("abc").unwrap() | try expect_equal(expected: 6)
+    code(bare("-")) | try expect_equal(expected: -1)
 
 test "pipe passes a Result through a step without try":
     let r = parse("abcd") | .map(fn(value: Int) -> Int: value * 2)
-    if r.unwrap() != 8:
-        return panic("map step")
+    r.unwrap() | try expect_equal(expected: 8)
 
 test "leading dot after a step applies to its result":
-    if describe("xy").unwrap() != "3":
-        return panic("describe")
+    describe("xy").unwrap() | try expect_equal(expected: "3")
 
 test "head is evaluated before step arguments":
     let log: List[String] = []
-    if order(log) != 4:
-        return panic("order value")
-    if log.at(0).unwrap() != "a" or log.at(1).unwrap() != "b":
-        return panic("order trace")
+    order(log) | try expect_equal(expected: 4)
+    (log.at(0).unwrap() != "a" or log.at(1).unwrap() != "b") | try expect_false
 
 test "dot steps call methods on the value":
     let size = "abc" | .length() | double
-    if size != 6:
-        return panic("method step")
+    size | try expect_equal(expected: 6)
