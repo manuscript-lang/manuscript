@@ -623,7 +623,6 @@ test "YAML long plain scalars and large mappings parse in linear time":
     var keys = ""
     for index in range(0, 30000):
         keys = keys.concat("k{index}: 1\n")
-
     if (parse(text: keys) | value | entries | .length()) != 30000: return panic(
         "many keys"
     )

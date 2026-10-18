@@ -69,11 +69,10 @@ test "sum even indexes":
     var total = 0
     for index in indexes:
         total += index
-    if total != 6:
-        return panic("Expected 6, got {total}")
+    try expect_equal(total, 6)
 ```
 
-Use `try` in a function returning a compatible Result, otherwise `unwrap()` or `unwrap_or`. `for index in 0..5:` is unsupported. See the [range declarations](../../standard-library/reference/collections.md#range).
+`try` unwraps the range in a function or test whose error type is compatible; `unwrap_or([])` supplies a fallback. `for index in 0..5:` is unsupported. See the [range declarations](../../standard-library/reference/collections.md#range).
 
 ## Iterable types and binding
 
