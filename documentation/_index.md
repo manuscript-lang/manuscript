@@ -14,8 +14,8 @@ import stdout from "@std/io.ms"
 export fn main() -> Int:
     let name = arguments().at(0).unwrap_or("world")
     let message = "Hello, {name}!\n".to_bytes()
-    match stdout().write(message):
-        ok(_): return 0
-        error(_): return 1
+    if stdout().write(message).is_error():
+        return 1
+    return 0
 ```
 {{< /docs-home >}}

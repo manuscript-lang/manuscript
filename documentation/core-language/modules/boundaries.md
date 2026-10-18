@@ -18,7 +18,7 @@ export type Item:
 export fn total(items: List[Item]) -> Int:
     var result = 0
     for item in items:
-        result = result + item.price * item.quantity
+        result += item.price * item.quantity
     return result
 ```
 

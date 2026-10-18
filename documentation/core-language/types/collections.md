@@ -181,8 +181,8 @@ fn total(values: List[Int]) -> Int:
     var i = 0
 
     while i < values.length():
-        sum = sum + values[i]
-        i = i + 1
+        sum += values[i]
+        i += 1
 
     return sum
 ```
@@ -191,7 +191,7 @@ Both bounds are required. The lower bound comes from `index >= 0` (or an equival
 
 A proof ends at an assignment to the index or list binding, at a statement containing any call other than `length()` (the call may mutate an alias), and at a closure boundary. A lookup in a statement with a call that does not enclose it stays optional. The proof does not cover other lists, copied lengths, a length from another binding, or arithmetic indexes such as `row * cols + col`. Equivalent `.at(index)` calls remain `Optional[T]`.
 
-Narrowing only changes the type. The generated read still checks the index, so a list resized by a concurrent task after the guard faults like `unwrap()` on `none` and never reads out of range. A `List[Optional[T]]` lookup narrows to `Optional[T]`, without flattening the element.
+Narrowing only changes the type. The generated read still checks the index, so a list resized by a concurrent task after the guard faults like `unwrap()` on `none` and never reads out of range. A `List[Optional[T]]` lookup narrows to `Optional[T]`, without flattening the element. Where an `Optional[T]` is expected, such as an annotated binding, an argument, or a return, a proven lookup keeps its `Optional[T]` form and `Optional[T]` is what it produces, so the same source checks with or without the guard.
 
 `Map.add(key, value)` inserts or replaces a value and returns the same map.
 
