@@ -108,7 +108,8 @@ Import        = "import", ( Name | "{", Name, { ",", Name }, [ "," ], "}" ),
 Declaration   = [ "export" ], (TypeDeclaration | InterfaceDeclaration | FunctionDeclaration
               | ConstantDeclaration)
               | Implementation | TestDeclaration ;
-ConstantDeclaration = "let", Name, [ ":", Type ], "=", Expression, NEWLINE ;
+ConstantDeclaration = "let", ( ConstantBinding | "(", NEWLINE, INDENT, ConstantBinding, { ConstantBinding }, DEDENT, ")", NEWLINE ) ;
+ConstantBinding = Name, [ ":", Type ], "=", Expression, NEWLINE ;
 
 TypeDeclaration = "type", Name, [ TypeParameters ], ":", NEWLINE,
                   INDENT, (RecordBody | AlternativeBody), DEDENT ;
@@ -167,8 +168,9 @@ Statement     = SimpleStatement, NEWLINE
               | WithStatement ;
 SimpleStatement = Binding | Assignment | CompoundAssignment | ReturnStatement | "break" | "continue"
                 | CallStatement ;
-Binding       = ("let" | "var"), (Name, [ ":", Type ] | PositionalPattern | RecordPattern),
-                "=", Expression ;
+Binding       = ("let" | "var"), ( BindingEntry
+              | "(", NEWLINE, { BindingEntry, NEWLINE }, ")" ) ;
+BindingEntry  = (Name, [ ":", Type ] | PositionalPattern | RecordPattern), "=", Expression ;
 Assignment    = (Name | Expression, ".", Name), "=", Expression ;
 CompoundAssignment = Name, { ".", Name }, ( "+=" | "-=" | "*=" | "/=" | "%=" ), Expression ;
 ReturnStatement = "return", [ Expression ] ;
