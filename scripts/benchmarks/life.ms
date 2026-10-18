@@ -3,8 +3,8 @@ import panic from "@std/faults.ms"
 
 fn make_cells() -> List[Int]:
     match filled(value: 0, count: 16384):
-        ok(values): return values
-        error(_): return panic("fill failure")
+    ok(values): return values
+    error(_): return panic("fill failure")
 
 export fn main() -> Int:
     var cells = make_cells()

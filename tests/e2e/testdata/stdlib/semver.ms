@@ -4,8 +4,8 @@ import value from "./support/results.ms"
 
 fn failure(result: Result[Version, SemverError]) -> SemverError:
     match result:
-        ok(_): return panic("accepted")
-        error(cause): return cause
+    ok(_): return panic("accepted")
+    error(cause): return cause
 
 test "semver parses and formats every component":
     let version = value(parse(text: "1.2.3-alpha.1+build.5"))

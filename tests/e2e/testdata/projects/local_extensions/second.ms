@@ -18,10 +18,10 @@ impl Read[T] for Box[T]:
 impl Read[Int] for Choice:
     fn get() -> Int:
         match self:
-            Some(value):
-                return value + delta()
-            Empty:
-                return delta()
+        Some(value):
+            return value + delta()
+        Empty:
+            return delta()
 
 # A local interface can use the receiver's inherited bound.
 interface Extract:

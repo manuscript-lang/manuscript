@@ -44,10 +44,10 @@ fn observe_entry(key: String, value: Int) -> Unit:
 
 fn common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
     match result:
-        ok(value):
-            return ok(value)
-        error(cause):
-            return error(Error(cause))
+    ok(value):
+        return ok(value)
+    error(cause):
+        return error(Error(cause))
 
 fn checked_expansion() -> Result[Unit, Error]:
     if not (
@@ -381,10 +381,10 @@ test "string methods use Unicode scalars":
         return panic(message: "check failed")
 
     match checked_expansion():
-        ok(_):
-            let completed = unit
-        error(cause):
-            return panic(message: cause.message())
+    ok(_):
+        let completed = unit
+    error(cause):
+        return panic(message: cause.message())
 
 test "bytes have analogous immutable operations":
     let data = Bytes([1, 2, 3, 2])
@@ -543,10 +543,10 @@ fn verify_text_and_numbers() -> Result[Unit, Error]:
 
 test "normalization, empty separators, and precision formatting":
     match verify_text_and_numbers():
-        ok(_):
-            let completed = unit
-        error(cause):
-            return panic(message: cause.message())
+    ok(_):
+        let completed = unit
+    error(cause):
+        return panic(message: cause.message())
 
     if not ("é🙂".split(separator: "", max_parts: 8) == ["é", "🙂"]):
         return panic(message: "check failed")
@@ -619,10 +619,10 @@ fn verify_bigint_and_regex() -> Result[Unit, Error]:
 
 test "BigInt and Regex share function implementations with methods":
     match verify_bigint_and_regex():
-        ok(_):
-            let completed = unit
-        error(cause):
-            return panic(message: cause.message())
+    ok(_):
+        let completed = unit
+    error(cause):
+        return panic(message: cause.message())
 
 test "generic native methods accept omitted single-parameter labels":
     let values = [1, 2]

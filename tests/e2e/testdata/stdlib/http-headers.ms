@@ -136,14 +136,14 @@ test "explicit text extraction fails with typed UTF8 error":
     let invalid = value(fields.append("raw", Bytes(values: [255])))
 
     match fields.text("RAW"):
-        ok(_): return panic("invalid UTF8 accepted")
-        error(cause):
-            if cause != HttpError.InvalidData: return panic("wrong UTF8 error")
+    ok(_): return panic("invalid UTF8 accepted")
+    error(cause):
+        if cause != HttpError.InvalidData: return panic("wrong UTF8 error")
 
     match fields.append("bad name", "value".to_bytes()):
-        ok(_): return panic("malformed name accepted")
-        error(cause):
-            if cause != HttpError.InvalidInput: return panic("wrong name error")
+    ok(_): return panic("malformed name accepted")
+    error(cause):
+        if cause != HttpError.InvalidInput: return panic("wrong name error")
 
 test "empty options and an omitted request body use checked defaults":
     let client_options = HttpClientOptions()

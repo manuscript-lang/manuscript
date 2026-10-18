@@ -6,14 +6,14 @@ type Choice:
     case Other(value: Int)
 fn choose(value: Choice) -> String:
     match value:
-        Zero:
-            return "zero # unchanged"
-        # Keep this comment with the arm.
-        One:
-            return "one"
+    Zero:
+        return "zero # unchanged"
+    # Keep this comment with the arm.
+    One:
+        return "one"
 
-        Other(number):
-            return "value {number}"
+    Other(number):
+        return "value {number}"
 fn count() -> Int:
     return apply(value: 2, transform: fn(value: Int) -> Int: return value + 10 + 20 + 30 + 40)
 test "compact formatting preserves behavior":

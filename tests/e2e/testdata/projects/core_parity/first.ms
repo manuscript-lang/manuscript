@@ -12,8 +12,8 @@ import {
 impl Equal for Key:
     fn equals(other: Equal) -> Bool:
         match other:
-            Key(value): return self.id == value.id
-            _: return false
+        Key(value): return self.id == value.id
+        _: return false
 
 impl Hashable for Key:
     fn hash() -> Int: self.id

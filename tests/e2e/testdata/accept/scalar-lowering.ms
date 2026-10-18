@@ -19,8 +19,8 @@ fn generic[T: Equal](left: T, right: T) -> Bool: left == right
 
 fn returning_match() -> Bool:
     return true == match some(1):
-        some(value): return false
-        none: false
+    some(value): return false
+    none: false
 
 test "primitive equality captures operands once in order":
     let counter = Counter()
@@ -30,10 +30,10 @@ test "primitive equality captures operands once in order":
 
     var original = 1
     let captured = original == match some(1):
-        some(value):
-            original = 2
-            value
-        none: 0
+    some(value):
+        original = 2
+        value
+    none: 0
     if not captured or original != 2: return panic(
         "left read moved past right mutation"
     )
@@ -53,19 +53,19 @@ fn conditional(counter: Counter, take: Bool) -> Int:
 
 fn matched(counter: Counter) -> Int:
     return match some(1):
-        some(value):
-            with resource = Resource(counter): return value
-            0
-        none: 0
+    some(value):
+        with resource = Resource(counter): return value
+        0
+    none: 0
 
 fn defaulted(
     counter: Counter,
     value: Int = match some(2):
-        some(number):
-            with resource = Resource(counter):
-                let used = unit
-            number
-        none: 0
+    some(number):
+        with resource = Resource(counter):
+            let used = unit
+        number
+    none: 0
 ) -> Int: value
 
 fn nested(counter: Counter) -> Unit:
@@ -105,11 +105,11 @@ fn nested_results(counter: Counter) -> Result[Int, String]:
 
 fn statement_match_try(counter: Counter) -> Result[Int, String]:
     match some(1):
-        some(number):
-            with resource = Resource(counter):
-                let value = try failed()
-                return ok(value)
-        none: return ok(0)
+    some(number):
+        with resource = Resource(counter):
+            let value = try failed()
+            return ok(value)
+    none: return ok(0)
 
     return ok(-1)
 
@@ -118,12 +118,12 @@ fn value_match_loop_try(counter: Counter) -> Result[Int, String]:
 
     while index < 2:
         let selected = match some(index):
-            some(number):
-                with resource = Resource(counter):
-                    let value = try failed()
-                    let used = value
-                number
-            none: 0
+        some(number):
+            with resource = Resource(counter):
+                let value = try failed()
+                let used = value
+            number
+        none: 0
 
         index = index + 1
 

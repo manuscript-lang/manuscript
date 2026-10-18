@@ -25,9 +25,9 @@ import Cause from "./domain.ms"
 import panic from "@std/faults.ms"
 fn describe(r: Result[Int, Error]) -> String:
     match r:
-        ok(_): return "unexpected success"
-        error(cause):
-            return cause.message()
+    ok(_): return "unexpected success"
+    error(cause):
+        return cause.message()
 test "local implementations remain selected after inference and forwarding":
     if describe(first()) != "first 7": return panic("lost first scope")
     if describe(second()) != "second 7": return panic("lost second scope")

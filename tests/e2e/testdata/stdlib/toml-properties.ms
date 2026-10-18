@@ -66,10 +66,10 @@ test "TOML parse never faults on mutated documents and accepted input is stable"
             let mutated = mutate(rng, rendered)
 
             match parse(mutated):
-                error(cause): let rejected = cause.message()
-                ok(first):
-                    accepted = accepted + 1
-                    check_stable(seed, mutated, first)
+            error(cause): let rejected = cause.message()
+            ok(first):
+                accepted = accepted + 1
+                check_stable(seed, mutated, first)
 
         seed = seed + 1
 

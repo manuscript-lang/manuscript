@@ -86,7 +86,7 @@ fn call(view: Read) -> Unit:
 }
 
 func TestUnknownTypeDoesNotCascade(t *testing.T) {
-	m, err := parser.Parse("cascade.ms", "fn peek() -> Missing:\n    return 0\nfn f() -> Int:\n    match peek():\n        some(x):\n            return x\n        none:\n            return 0\n")
+	m, err := parser.Parse("cascade.ms", "fn peek() -> Missing:\n    return 0\nfn f() -> Int:\n    match peek():\n    some(x):\n        return x\n    none:\n        return 0\n")
 	if err != nil {
 		t.Fatal(err)
 	}

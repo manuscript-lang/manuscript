@@ -28,10 +28,10 @@ impl Closeable for Server:
         check_cancelled()
         sleep(duration: 10.milliseconds)
         match self.client.write(data: "farewell\n".to_bytes(), timeout: 1.seconds):
-            ok(_):
-                stdout().write(data: "farewell sent\n".to_bytes())
-            error(cause):
-                stdout().write(data: "farewell failed: {cause.message()}\n".to_bytes())
+        ok(_):
+            stdout().write(data: "farewell sent\n".to_bytes())
+        error(cause):
+            stdout().write(data: "farewell failed: {cause.message()}\n".to_bytes())
         self.client.close()
 
 fn serve() -> Result[Unit, Error]:
@@ -54,8 +54,8 @@ fn serve() -> Result[Unit, Error]:
 
 export fn main() -> Int:
     match serve():
-        ok(_):
-            return 0
-        error(cause):
-            stdout().write(data: "{cause.message()}\n".to_bytes())
-            return 1
+    ok(_):
+        return 0
+    error(cause):
+        stdout().write(data: "{cause.message()}\n".to_bytes())
+        return 1

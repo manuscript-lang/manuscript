@@ -29,8 +29,8 @@ fn other() -> Result[Int, E2]: error(E2(2))
 fn ignore[T](r: Result[T, Error]) -> Int: 1
 fn h[T](r: Result[T, Error]) -> T:
     match r:
-        ok(value): return value
-        error(_): return panic("unused")
+    ok(value): return value
+    error(_): return panic("unused")
 fn pair[T](first: Result[T, Error], second: Result[T, Error]) -> Unit: return
 fn optional[T](r: Optional[Result[T, Error]]) -> Unit: return
 fn convert[T, U](r: Result[T, Error]) -> Optional[U]: none

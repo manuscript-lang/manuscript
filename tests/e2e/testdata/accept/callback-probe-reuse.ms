@@ -66,9 +66,9 @@ test "callback inference retains captures and contextual metadata":
     )
 
     match failed:
-        ok(_): return panic("expected domain failure")
-        error(cause):
-            if cause.message() != "9": return panic("generic Error dispatch")
+    ok(_): return panic("expected domain failure")
+    error(cause):
+        if cause.message() != "9": return panic("generic Error dispatch")
 
 fn absent[T]() -> Optional[T]: none
 

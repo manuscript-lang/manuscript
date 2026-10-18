@@ -7,9 +7,9 @@ type Shape:
 
 fn area(shape: Shape) -> Int:
     match shape:
-        Circle(r): return 3 * r * r
-        Rect(w, h): return w * h
-        Dot: return 0
+    Circle(r): return 3 * r * r
+    Rect(w, h): return w * h
+    Dot: return 0
 
     return -1
 
@@ -21,10 +21,10 @@ fn first_positive(values: List[Optional[Int]]) -> Int:
         index = index + 1
 
         match item:
-            none: continue
-            some(value):
-                if value > 0:
-                    return value
+        none: continue
+        some(value):
+            if value > 0:
+                return value
 
     return -1
 
@@ -34,8 +34,8 @@ fn nested(rows: List[List[Optional[Int]]]) -> Int:
     for row in rows:
         for item in row:
             match item:
-                none: break
-                some(value): total = total + value
+            none: break
+            some(value): total = total + value
 
         total = total + 1000
 
@@ -45,10 +45,10 @@ fn side_effects(shape: Shape) -> Int:
     var count = 0
 
     match shape:
-        Circle(r):
-            count = count + r
-        _:
-            count = count + 100
+    Circle(r):
+        count = count + r
+    _:
+        count = count + 100
 
     return count
 

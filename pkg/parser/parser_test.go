@@ -265,8 +265,29 @@ func TestMapLiteralBoundaries(t *testing.T) {
 }
 
 func TestTryStatementInsideMatchArm(t *testing.T) {
-	source := "fn f(x: Optional[Int]) -> Result[Unit, Error]:\n    match x:\n        some(n):\n            try g(n)\n            return ok(unit)\n        none: return ok(unit)\n"
+	source := "fn f(x: Optional[Int]) -> Result[Unit, Error]:\n    match x:\n    some(n):\n        try g(n)\n        return ok(unit)\n    none: return ok(unit)\n"
 	if _, err := parser.Parse("arm.ms", source); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMatchArmsShareTheMatchIndentation(t *testing.T) {
+	for name, source := range map[string]string{
+		"statement":      "fn f(x: Optional[Int]) -> Int:\n    match x:\n    some(n): return n\n    none: return 0\n",
+		"after match":    "fn f(x: Optional[Int]) -> Int:\n    var n = 0\n    match x:\n    some(v):\n        n = v\n    none: unit\n    return n\n",
+		"binding":        "fn f(x: Optional[Int]) -> Int:\n    let n = match x:\n    some(v): v\n    none: 0\n    return n\n",
+		"multiline head": "fn f(x: Optional[Int]) -> Int:\n    match g(\n        x\n    ):\n    some(n): return n\n    none: return 0\n",
+	} {
+		_, err := parser.Parse("arms.ms", source)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+	}
+}
+
+func TestIndentedMatchArmsExplainTheNewLayout(t *testing.T) {
+	_, err := parser.Parse("old.ms", "fn f(x: Optional[Int]) -> Int:\n    match x:\n        some(n): return n\n        none: return 0\n")
+	if err == nil || !strings.Contains(err.Error(), "same indentation") {
 		t.Fatal(err)
 	}
 }

@@ -35,8 +35,8 @@ fn generic_remove[T: FileSystem](fs: T, path: String) -> Result[Unit, FileSystem
 
 fn rejected(result: Result[Unit, FileSystemError]) -> Unit:
     match result:
-        error(_): return
-        ok(_): return panic("exclusive or nonrecursive operation succeeded")
+    error(_): return
+    ok(_): return panic("exclusive or nonrecursive operation succeeded")
 
 fn text(fs: FileSystem, path: String) -> String:
     return value(fs.read_file(path)).to_string().unwrap()

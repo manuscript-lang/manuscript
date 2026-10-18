@@ -73,8 +73,8 @@ fn guarded(n: Int) -> Result[Int, Error]:
 
 export fn main() -> Int:
     match guarded(1):
-        ok(_): return 0
-        error(_): return 1
+    ok(_): return 0
+    error(_): return 1
 `
 
 func TestFlowViewOutlinesSignificantSteps(t *testing.T) {

@@ -17,8 +17,8 @@ fn load() -> Result[Summary, ExecutionError]:
 
 test "load independent typed values":
     match load():
-        ok(summary):
-            if summary.count != 3 or summary.label != "ready":
-                return panic("task values changed")
-        error(_):
-            return panic("task group failed")
+    ok(summary):
+        if summary.count != 3 or summary.label != "ready":
+            return panic("task values changed")
+    error(_):
+        return panic("task group failed")

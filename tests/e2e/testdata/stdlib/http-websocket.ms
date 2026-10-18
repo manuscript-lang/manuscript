@@ -104,9 +104,9 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
             max_response_bytes: 4,
             timeout: 2.seconds
         ):
-            ok(_): return panic("HTTP output budget ignored")
-            error(cause):
-                if cause != HttpError.LimitExceeded: return panic("HTTP output error")
+        ok(_): return panic("HTTP output budget ignored")
+        error(cause):
+            if cause != HttpError.LimitExceeded: return panic("HTTP output error")
 
 test "WebSocket negotiates a protocol and echoes a text frame":
     let net = network()
@@ -187,6 +187,6 @@ test "HTTP requests reject an empty method":
         body: "".to_bytes(),
         timeout: 1.seconds
     ):
-        ok(_): return panic("empty method accepted")
-        error(cause):
-            if cause != HttpError.InvalidInput: return panic("empty method error")
+    ok(_): return panic("empty method accepted")
+    error(cause):
+        if cause != HttpError.InvalidInput: return panic("empty method error")

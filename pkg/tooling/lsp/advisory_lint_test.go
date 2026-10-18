@@ -15,9 +15,9 @@ func TestSafetyAdvisoriesPublishAsWarnings(t *testing.T) {
 		line               int
 	}{
 		// manuscript:allow-nested-match editor warning must point at the inner match
-		{"nested match", "fn use(value: Optional[Int]) -> Unit:\n    match value:\n        some(_):\n            match value:\n                some(_): unit\n                none: unit\n        none: unit\n", "MSL107", 3},
-		{"pattern binding", "import filesystem from \"@std/fs.ms\"\nfn use(path: String) -> Int:\n    match filesystem().stat(path: path, follow_links: true):\n        error(NotFound): return 1\n        ok(_): return 0\n", "MSL106", 3},
-		{"pattern binding CRLF and Unicode", "# café 🦀\r\nimport filesystem from \"@std/fs.ms\"\r\nfn use(path: String) -> Int:\r\n    match filesystem().stat(path: path, follow_links: true):\r\n        error(NotFound): return 1\r\n        ok(_): return 0\r\n", "MSL106", 4},
+		{"nested match", "fn use(value: Optional[Int]) -> Unit:\n    match value:\n    some(_):\n        match value:\n        some(_): unit\n        none: unit\n    none: unit\n", "MSL107", 3},
+		{"pattern binding", "import filesystem from \"@std/fs.ms\"\nfn use(path: String) -> Int:\n    match filesystem().stat(path: path, follow_links: true):\n    error(NotFound): return 1\n    ok(_): return 0\n", "MSL106", 3},
+		{"pattern binding CRLF and Unicode", "# café 🦀\r\nimport filesystem from \"@std/fs.ms\"\r\nfn use(path: String) -> Int:\r\n    match filesystem().stat(path: path, follow_links: true):\r\n    error(NotFound): return 1\r\n    ok(_): return 0\r\n", "MSL106", 4},
 		{"discarded result", "fn fail() -> Result[Int, String]:\n    return error(\"boom\")\nfn use() -> Unit:\n    fail()\n", "MSL104", 3},
 		{"concurrent capture", "import TaskGroup from \"@std/tasks.ms\"\nfn use() -> Unit:\n    let shared = Map[Int, Int]()\n    with tasks = TaskGroup():\n        let _task = tasks.start(fn() -> Unit:\n            shared.add(key: 1, value: 2)\n        )\n", "MSL105", 5},
 		{"prelude Map add concurrent capture", "import TaskGroup from \"@std/tasks.ms\"\nfn use() -> Unit:\n    let shared = Map[Int, Int]()\n    with tasks = TaskGroup():\n        let _task = tasks.start(fn() -> Unit:\n            shared.add(key: 1, value: 2)\n        )\n", "MSL105", 5},
@@ -62,13 +62,13 @@ func TestSafetyAdvisoriesPublishAsWarnings(t *testing.T) {
 					}
 					if diagnostic.Code == tc.code {
 						found = true
-						if tc.code == "MSL106" && (diagnostic.Range.Start.Character != 14 || diagnostic.Range.End != (position{Line: tc.line, Character: 22})) {
+						if tc.code == "MSL106" && (diagnostic.Range.Start.Character != 10 || diagnostic.Range.End != (position{Line: tc.line, Character: 18})) {
 							t.Fatalf("warning must cover only NotFound: %+v", diagnostic)
 						}
 						if diagnostic.Severity != 2 || diagnostic.Source != "manuscript-lint" || diagnostic.Range.Start.Line != tc.line {
 							t.Fatalf("wrong advisory: %+v", diagnostic)
 						}
-						if tc.code == "MSL107" && (diagnostic.Range.Start.Character != 12 || diagnostic.Range.End.Line != tc.line || diagnostic.Range.End.Character != 17) {
+						if tc.code == "MSL107" && (diagnostic.Range.Start.Character != 8 || diagnostic.Range.End.Line != tc.line || diagnostic.Range.End.Character != 13) {
 							t.Fatalf("nested-match warning did not span the inner keyword: %+v", diagnostic.Range)
 						}
 					}

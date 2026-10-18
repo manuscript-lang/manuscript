@@ -24,8 +24,8 @@ fn compare() -> Result[Int, ExecutionError]:
 
 export fn main() -> Int:
     match compare():
-        ok(code):
-            return code
+    ok(code):
+        return code
 
-        error(_):
-            return 1
+    error(_):
+        return 1

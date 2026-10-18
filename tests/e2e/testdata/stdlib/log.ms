@@ -180,9 +180,9 @@ test "limits and unencodable values reject before writing":
         if zero.info(message: "") != limited: return panic("zero budget")
 
         match create(transport: transport, max_bytes: -1):
-            ok(_): return panic("negative budget accepted")
-            error(cause):
-                if cause != LogError.InvalidInput: return panic("negative budget")
+        ok(_): return panic("negative budget accepted")
+        error(cause):
+            if cause != LogError.InvalidInput: return panic("negative budget")
 
         let unlimited = value(create(transport: transport, timestamp: false))
         let bad = JsonValue.NumberValue("NaN")
@@ -235,11 +235,11 @@ test "file transport appends and flushes with scoped cleanup":
         ): return panic("file append")
 
         match file_transport("{directory.path()}/missing/events.ndjson"):
-            ok(_): return panic("missing parent accepted")
-            error(cause):
-                if cause != LogError.FileSystem(FileSystemError.NotFound): return panic(
-                    "file error cause"
-                )
+        ok(_): return panic("missing parent accepted")
+        error(cause):
+            if cause != LogError.FileSystem(FileSystemError.NotFound): return panic(
+                "file error cause"
+            )
 
 test "stdout transport accepts records and leaves stdout open":
     with transport = stdout_transport():

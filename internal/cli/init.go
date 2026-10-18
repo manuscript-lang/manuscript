@@ -32,10 +32,10 @@ export fn main() -> Int:
     let message = "Arguments: {arguments().length()}\n"
 
     match stdout().write(data: message.to_bytes()):
-        ok(_):
-            return 0
-        error(_):
-            return 1
+    ok(_):
+        return 0
+    error(_):
+        return 1
 `
 
 const initTest = `import panic from "@std/faults.ms"

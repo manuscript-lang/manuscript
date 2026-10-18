@@ -24,7 +24,7 @@ func TestRunWatchRebuildsAfterEdits(t *testing.T) {
 		}
 	}
 	program := func(text string) string {
-		return fmt.Sprintf("import stdout from \"@std/io.ms\"\n\nexport fn main() -> Int:\n    match stdout().write(data: %q.to_bytes()):\n        ok(_):\n            return 0\n        error(_):\n            return 1\n", text+"\n")
+		return fmt.Sprintf("import stdout from \"@std/io.ms\"\n\nexport fn main() -> Int:\n    match stdout().write(data: %q.to_bytes()):\n    ok(_):\n        return 0\n    error(_):\n        return 1\n", text+"\n")
 	}
 	write(program("first"))
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)

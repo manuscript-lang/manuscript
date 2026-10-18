@@ -7,10 +7,10 @@ test "list elements read before a later match assigns them":
     let items = [
         x,
         match some(5):
-            some(value):
-                x = 50
-                value
-            none: 0
+        some(value):
+            x = 50
+            value
+        none: 0
         ,
         x
     ]
@@ -19,10 +19,10 @@ test "list elements read before a later match assigns them":
     let texts = [
         y,
         match some("b"):
-            some(value):
-                y = "z"
-                value
-            none: ""
+        some(value):
+            y = "z"
+            value
+        none: ""
     ]
     if texts != ["a", "b"]: return panic("text element read after a later match")
 
@@ -30,10 +30,10 @@ test "map keys read before a later match assigns them":
     var key = 1
     let entries = {
         key: match some(5):
-            some(value):
-                key = 50
-                value
-            none: 0
+        some(value):
+            key = 50
+            value
+        none: 0
         ,
         key: key
     }
@@ -45,10 +45,10 @@ test "map keys read before a later match assigns them":
 test "generic binary operands read before a later match assigns them":
     var amount = 1.5d
     let sum = amount + match some(2.5d):
-        some(value):
-            amount = 100d
-            value
-        none: 0d
+    some(value):
+        amount = 100d
+        value
+    none: 0d
     if sum != 4d: return panic("decimal operand read after a later match")
 
 type Cell:
@@ -60,10 +60,10 @@ test "field assignment evaluates its receiver before the value":
     let original = cell
 
     cell.n = match some(2):
-        some(value):
-            cell = Cell(n: 100, s: "replacement")
-            value
-        none: 0
+    some(value):
+        cell = Cell(n: 100, s: "replacement")
+        value
+    none: 0
 
     if original.n != 2: return panic(
         "numeric field write used the receiver chosen by the value"
@@ -74,10 +74,10 @@ test "field assignment evaluates its receiver before the value":
     let before = texts
 
     texts.s = match some("q"):
-        some(value):
-            texts = Cell(n: 100, s: "replacement")
-            value
-        none: ""
+    some(value):
+        texts = Cell(n: 100, s: "replacement")
+        value
+    none: ""
 
     if before.s != "q": return panic(
         "text field write used the receiver chosen by the value"

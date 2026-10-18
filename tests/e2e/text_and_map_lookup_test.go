@@ -25,10 +25,10 @@ fn halve(n: Int) -> Optional[Int]:
 
 fn describe(key: Point, m: Map[Point, String]) -> String:
     match m.get(key: key):
-        some(v):
-            return "found {v}"
-        none:
-            return "missing"
+    some(v):
+        return "found {v}"
+    none:
+        return "missing"
 
 test "text interpolation":
     let n = 42
@@ -50,15 +50,15 @@ test "map lookup":
     let m = Map[Int, Int]()
     m.add(key: 1, value: 10)
     match m.get(key: 1):
-        some(v):
-            check(ok: v == 10, name: "present")
-        none:
-            panic(message: "expected value")
+    some(v):
+        check(ok: v == 10, name: "present")
+    none:
+        panic(message: "expected value")
     match m.get(key: 2):
-        some(v):
-            panic(message: "unexpected {v}")
-        none:
-            unit
+    some(v):
+        panic(message: "unexpected {v}")
+    none:
+        unit
     let points = Map[Point, String]()
     points.add(key: Point(x: 1, y: 2), value: "a")
     check(ok: describe(key: Point(x: 1, y: 2), m: points) == "found a", name: "composite key")

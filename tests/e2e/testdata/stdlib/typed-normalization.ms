@@ -32,10 +32,10 @@ test "typed Unicode forms retain normalization and bound dispatch":
         NormalizationForm.Nfkd
     ]:
         let spelling = match form:
-            Nfc: "NFC"
-            Nfd: "NFD"
-            Nfkc: "NFKC"
-            Nfkd: "NFKD"
+        Nfc: "NFC"
+        Nfd: "NFD"
+        Nfkc: "NFKC"
+        Nfkd: "NFKD"
 
         if form.normalize("ﬁé").unwrap() != "ﬁé".normalize(spelling).unwrap(): return panic(
             "existing implementation changed"

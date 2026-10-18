@@ -28,8 +28,8 @@ export fn main() -> Int:
     let output = "{package.title}: {sum}; checksum {checksum}\n"
 
     match stdout().write(data: output.to_bytes()):
-        ok(_):
-            return 0
+    ok(_):
+        return 0
 
-        error(_):
-            return 1
+    error(_):
+        return 1

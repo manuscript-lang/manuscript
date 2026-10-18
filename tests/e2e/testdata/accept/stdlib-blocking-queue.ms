@@ -8,19 +8,19 @@ fn work(jobs: BlockingQueue[Int]) -> Int:
 
     while true:
         match jobs.take():
-            some(value):
-                total = total + value
-            none:
-                return total
+        some(value):
+            total = total + value
+        none:
+            return total
 
     return total
 
 fn total_of(task: Task[Int]) -> Int:
     match task.join():
-        ok(total):
-            return total
-        error(_):
-            return panic(message: "worker failed")
+    ok(total):
+        return total
+    error(_):
+        return panic(message: "worker failed")
 
 test "bounded put and take block until the other side acts":
     let jobs = BlockingQueue[Int](2)
@@ -51,11 +51,11 @@ test "close drains queued values then ends takers":
         return panic(message: "queued value lost")
 
     match jobs.take():
-        some(value):
-            if not (value == 7):
-                return panic(message: "wrong value")
-        none:
-            return panic(message: "queued value lost")
+    some(value):
+        if not (value == 7):
+            return panic(message: "wrong value")
+    none:
+        return panic(message: "queued value lost")
 
     if jobs.take().is_some():
         return panic(message: "closed empty queue returned a value")

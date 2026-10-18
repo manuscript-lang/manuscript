@@ -5,10 +5,10 @@ type Input:
 
 fn outcome_value(outcome: Result[Int, String]) -> Int:
     match outcome:
-        ok(value):
-            return value
-        error(_):
-            return -1
+    ok(value):
+        return value
+    error(_):
+        return -1
 
 test "data constructor context":
     let input = Input([none, some("Ada")])
@@ -36,13 +36,13 @@ test "nested constructor arguments receive inferred context":
     let selected = select(first: Box(none), second: Box(provided))
 
     match selected.value:
-        none:
-            let completed = unit
-        some(_):
-            return panic(message: "Unexpected case")
+    none:
+        let completed = unit
+    some(_):
+        return panic(message: "Unexpected case")
 
     match request.box.value:
-        none:
-            let completed = unit
-        some(_):
-            return panic(message: "Unexpected case")
+    none:
+        let completed = unit
+    some(_):
+        return panic(message: "Unexpected case")

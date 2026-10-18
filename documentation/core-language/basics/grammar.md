@@ -205,7 +205,7 @@ fn positive(value: Int) -> Bool:
 ```
 
 - `else` and `else if` start on their own line at the `if` header's indentation; inline and indented branches may mix. `elif` is not syntax.
-- A match arm holds one statement or value inline, or statements then a value when indented.
+- Match arms sit at the same indentation as the line holding `match`, like `case` in a Go `switch`; the lexer emits `INDENT` before the first arm and `DEDENT` after the last. The first later line at that indentation that does not start with a pattern and `:` ends the match. A match arm holds one statement or value inline, or statements then a value when indented one level past the pattern.
 - Match patterns use positional payloads, not labels. On a contract view, a pattern names a complete concrete type and one receiver binding, with a final wildcard ([pattern matching](../control-flow/pattern-matching.md)).
 - `match` is an expression even when discarded; `if`, loops, and `with` are statements.
 - Local type, implementation, import, test, and named function declarations are rejected; bind an anonymous function to a name.

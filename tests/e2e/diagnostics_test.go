@@ -16,7 +16,7 @@ func TestActionableDiagnosticsCLI(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct{ name, source, token, code, hint string }{
-		{"string-match", "fn f(command: String) -> Int:\n    match command:\n        \"réport\": return 1\n    return 0\n", "\"réport\"", "MS1000", "compare strings with 'if"},
+		{"string-match", "fn f(command: String) -> Int:\n    match command:\n    \"réport\": return 1\n    return 0\n", "\"réport\"", "MS1000", "compare strings with 'if"},
 		{"import", "import money from \"./money.ms\"\n", "money", "MS2002", "exports: MoneyError, format_cents, parse_cents; namespace imports are unsupported"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

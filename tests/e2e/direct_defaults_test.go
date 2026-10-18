@@ -20,10 +20,10 @@ fn chained(base: Int, plus: Int = base + 1) -> Int: base + plus
 
 fn maybe(value: Int, extra: Optional[Int] = none) -> Int:
     match extra:
-        some(number):
-            return value + number
-        none:
-            return value
+    some(number):
+        return value + number
+    none:
+        return value
 
 fn countdown(n: Int, step: Int = 1) -> Int:
     if n <= 0:

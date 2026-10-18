@@ -75,14 +75,14 @@ fn expr(p: Parser) -> Result[Int, String]:
 fn evaluate(line: String) -> String:
     let p = Parser(chars: line.scalar_values(), pos: 0, div_zero: false)
     match expr(p):
-        ok(value):
-            if peek(p) != 0:
-                return "error: syntax"
-            if p.div_zero:
-                return "error: division by zero"
-            return "{value}"
-        error(_):
+    ok(value):
+        if peek(p) != 0:
             return "error: syntax"
+        if p.div_zero:
+            return "error: division by zero"
+        return "{value}"
+    error(_):
+        return "error: syntax"
 
 fn run() -> Result[Unit, Error]:
     while true:
@@ -97,5 +97,5 @@ fn run() -> Result[Unit, Error]:
 
 export fn main() -> Int:
     match run():
-        ok(_): return 0
-        error(_): return 1
+    ok(_): return 0
+    error(_): return 1

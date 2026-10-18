@@ -18,10 +18,8 @@ test "Error boundaries retain selected local and generic implementations":
 
     for result in [first_result(original), first_propagated(original), relay(first)]:
         match result:
-            ok(_):
-                return panic(message: "expected domain failure")
-            error(cause):
-                if cause.message() != "first 8":
-                    return panic(
-                        message: "Error Result changed identity or local dispatch"
-                    )
+        ok(_):
+            return panic(message: "expected domain failure")
+        error(cause):
+            if cause.message() != "first 8":
+                return panic(message: "Error Result changed identity or local dispatch")
