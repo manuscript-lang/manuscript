@@ -1,4 +1,5 @@
 import Bytes from "@std/bytes.ms"
+import {ReadStream} from "@std/io.ms"
 
 # Errors returned when compressed data is unsupported, invalid, or exceeds a limit.
 export type CompressionError:
@@ -63,3 +64,13 @@ impl CompressionFormat:
         data: Bytes,
         max_bytes: Optional[Int] = none
     ) Result[Bytes, CompressionError]:
+
+    # Returns a stream of this format's compressed bytes, reading `input` chunk by chunk.
+    # Level defaults to 6 and must be 0..9, otherwise reads fail with InvalidInput.
+    # Closing the result closes `input`.
+    fn compress_stream(input: ReadStream, level: Int = 6) ReadStream:
+
+    # Returns a stream of decompressed bytes, reading `input` chunk by chunk.
+    # Malformed data fails reads with InvalidData; `max_bytes` bounds total output and exceeding it fails with LimitExceeded.
+    # Closing the result closes `input`.
+    fn decompress_stream(input: ReadStream, max_bytes: Optional[Int] = none) ReadStream:

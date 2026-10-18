@@ -14,8 +14,8 @@ func NewDnsRecord(kind DnsKind, value string, priority int, weight int, port int
 }
 
 // NewHttpResponseMetadata builds a HttpResponseMetadata.
-func NewHttpResponseMetadata(status int, headers *HttpHeaders) *HttpResponseMetadata {
-	return &HttpResponseMetadata{Status: status, Headers: headers}
+func NewHttpResponseMetadata(status int, headers *HttpHeaders, protocol string) *HttpResponseMetadata {
+	return &HttpResponseMetadata{Status: status, Headers: headers, Protocol: protocol}
 }
 
 // NewClientResponse builds a ClientResponse.
@@ -29,8 +29,8 @@ func NewHttpClientOptions(maxRedirects Option[int], maxIdleConnections Option[in
 }
 
 // NewHttpRequest builds a HttpRequest.
-func NewHttpRequest(method HttpMethod, path string, query string, headers *HttpHeaders, body *Bytes) *HttpRequest {
-	return &HttpRequest{Method: method, Path: path, Query: query, Headers: headers, Body: body}
+func NewHttpRequest(method HttpMethod, path string, query string, headers *HttpHeaders, body *Bytes, protocol string) *HttpRequest {
+	return &HttpRequest{Method: method, Path: path, Query: query, Headers: headers, Body: body, Protocol: protocol}
 }
 
 // NewHttpResponse builds a HttpResponse.

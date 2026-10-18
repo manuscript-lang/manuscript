@@ -205,9 +205,58 @@ type CryptoError_AuthenticationFailed struct {
 func (CryptoError_AuthenticationFailed) isCryptoError() {
 }
 
+type Curve interface {
+	isCurve()
+}
+type Curve_P256 struct {
+}
+
+func (Curve_P256) isCurve() {
+}
+
+type Curve_P384 struct {
+}
+
+func (Curve_P384) isCurve() {
+}
+
+type Curve_P521 struct {
+}
+
+func (Curve_P521) isCurve() {
+}
+
+type Curve_X25519 struct {
+}
+
+func (Curve_X25519) isCurve() {
+}
+
+type Hasher interface {
+	Update(ctx *Execution, a0 *Bytes) Unit
+	Finish(ctx *Execution) *Bytes
+}
 type HashAlgorithm interface {
 	isHashAlgorithm()
 }
+type HashAlgorithm_Md5 struct {
+}
+
+func (HashAlgorithm_Md5) isHashAlgorithm() {
+}
+
+type HashAlgorithm_Sha1 struct {
+}
+
+func (HashAlgorithm_Sha1) isHashAlgorithm() {
+}
+
+type HashAlgorithm_Sha224 struct {
+}
+
+func (HashAlgorithm_Sha224) isHashAlgorithm() {
+}
+
 type HashAlgorithm_Sha256 struct {
 }
 
@@ -224,6 +273,24 @@ type HashAlgorithm_Sha512 struct {
 }
 
 func (HashAlgorithm_Sha512) isHashAlgorithm() {
+}
+
+type HashAlgorithm_Sha3_256 struct {
+}
+
+func (HashAlgorithm_Sha3_256) isHashAlgorithm() {
+}
+
+type HashAlgorithm_Sha3_384 struct {
+}
+
+func (HashAlgorithm_Sha3_384) isHashAlgorithm() {
+}
+
+type HashAlgorithm_Sha3_512 struct {
+}
+
+func (HashAlgorithm_Sha3_512) isHashAlgorithm() {
 }
 
 type CsvError interface {
@@ -709,8 +776,9 @@ func (HttpError_Failed) isHttpError() {
 }
 
 type HttpResponseMetadata struct {
-	Status  int
-	Headers *HttpHeaders
+	Status   int
+	Headers  *HttpHeaders
+	Protocol string
 }
 type ClientResponse struct {
 	Head *HttpResponseMetadata
@@ -800,6 +868,7 @@ type HttpExchange interface {
 	Headers(ctx *Execution) *HttpHeaders
 	Method(ctx *Execution) HttpMethod
 	Path(ctx *Execution) string
+	Protocol(ctx *Execution) string
 	Query(ctx *Execution) string
 	Read(ctx *Execution, a0 Option[int]) Result[Option[*Bytes], IoError]
 	SendHeaders(ctx *Execution, a0 int, a1 *HttpHeaders) Result[Unit, HttpError]
@@ -808,11 +877,12 @@ type HttpExchange interface {
 	WriteBytes(ctx *Execution, a0 *Bytes) Result[Unit, IoError]
 }
 type HttpRequest struct {
-	Method  HttpMethod
-	Path    string
-	Query   string
-	Headers *HttpHeaders
-	Body    *Bytes
+	Method   HttpMethod
+	Path     string
+	Query    string
+	Headers  *HttpHeaders
+	Body     *Bytes
+	Protocol string
 }
 type HttpResponse struct {
 	Status  int

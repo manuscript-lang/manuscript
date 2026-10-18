@@ -66,6 +66,8 @@ export type HttpResponseMetadata:
     status: Int
     # The shared mutable fields, with every repeated value retained.
     headers: HttpHeaders
+    # The protocol the response used, such as `HTTP/1.1` or `HTTP/2.0`; empty when the source does not report one.
+    protocol: String = ""
 
 # Buffered response body with explicit common metadata access.
 export type ClientResponse:
@@ -181,6 +183,8 @@ export interface HttpExchange:
     # Returns the percent-decoded request path with dot segments resolved.
     # Requests with an encoded slash or NUL are rejected before the handler runs.
     fn path() String
+    # Returns the protocol the request arrived over, such as `HTTP/1.1` or `HTTP/2.0`.
+    fn protocol() String
     # Returns the raw query string without the leading `?`; it is empty when there is none.
     fn query() String
     # Returns the next chunk of the request body, at most `max_bytes` and never more than 65536, or none at the end of the body.
@@ -214,6 +218,8 @@ export type HttpRequest:
     headers: HttpHeaders
     # The complete request body, at most `max_body_bytes` long.
     body: Bytes
+    # The protocol the request arrived over, such as `HTTP/1.1` or `HTTP/2.0`; empty when not reported.
+    protocol: String = ""
 
 # Buffered response returned by the simple HTTP server handler.
 export type HttpResponse:

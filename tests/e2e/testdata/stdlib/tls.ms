@@ -130,3 +130,67 @@ test "HTTPS trusts only the explicitly supplied local test root":
                         ).get() != "secure".to_bytes()
                     )
                 )
+
+fn report_protocol(exchange: HttpExchange) Result[Unit, HttpError]:
+    let started = (
+        try exchange.send_headers(
+            status: 200,
+            headers: (try list_headers(Map[String, List[String]]()))
+        )
+    )
+    let written = (try http_result(exchange.write(exchange.protocol())))
+    return ok(unit)
+
+test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
+    let net = network()
+    let server_options = HttpServerOptions(
+        timeout: 3.seconds,
+        grace: 0.seconds,
+        tls: TlsOptions(
+            server_name: "",
+            roots_pem: "",
+            certificate_pem: certificate(),
+            private_key_pem: private_key(),
+            alpn: ["h2", "http/1.1"],
+            require_client_certificate: false
+        )
+    )
+
+    with server = (
+        net.serve_stream(
+            address: "127.0.0.1:0",
+            handler: report_protocol,
+            options: server_options
+        ) | try expect_ok
+    ):
+        let client_tls = TlsOptions(
+            server_name: "stdlib.test",
+            roots_pem: certificate(),
+            certificate_pem: "",
+            private_key_pem: "",
+            alpn: ["h2", "http/1.1"],
+            require_client_certificate: false
+        )
+
+        with client = (
+            net.http_client(
+                HttpClientOptions(
+                    decompress: false,
+                    cookies: false,
+                    tls: client_tls
+                )
+            ) | try expect_ok
+        ):
+            with response = (
+                client.request(
+                    method: HttpMethod.Get,
+                    url: "https://{server.address()}/",
+                    headers: (
+                        try text_headers(Map[String, String]())
+                    ),
+                    body: "",
+                    timeout: 2.seconds
+                ) | try expect_ok
+            ):
+                try expect_equal(response.metadata().protocol, "HTTP/2.0")
+                try expect_equal((try response.read()).get(), "HTTP/2.0".to_bytes())
