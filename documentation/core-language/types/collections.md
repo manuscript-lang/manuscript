@@ -7,7 +7,7 @@ weight = 3
 
 Use `List[T]` for an ordered sequence, `Map[K, V]` for key/value entries, and `Set[T]` for distinct values. The type arguments state the element, key, and value types. All three collections are mutable references. Assignment retains the same instance; `.clone()` copies its storage.
 
-`List`, `Map`, and `Set`, together with their public support types `CollectionError`, `ListEntry[T]`, and `MapEntry[K: Hashable, V]`, are available through the prelude. Use these declarations directly; explicit standard imports of them are rejected. `Optional`, `Result`, `Error`, `MissingValue`, `Equal`, and `Hashable` are also in the prelude, so collection results, callbacks, annotations and bounds need no imports. Builders and factory functions remain explicit imports. See [names and declaration order](../modules/declarations.md#names-and-declaration-order) for the identity and shadowing rules. Literals always use the canonical standard types; declarations and application imports cannot reuse these names.
+`List`, `Map`, `Set`, and their support types `CollectionError`, `ListEntry[T]`, and `MapEntry[K: Hashable, V]` come from the prelude; explicit standard imports of them are rejected. `Optional`, `Result`, `Error`, `MissingValue`, `Equal`, and `Hashable` are prelude too, so results, callbacks, annotations, and bounds need no imports. Builders and factory functions remain explicit imports. Literals always use these canonical types; see [names and declaration order](../modules/declarations.md#names-and-declaration-order).
 
 | Type | Contents |
 | --- | --- |
@@ -72,7 +72,7 @@ Map and set iteration follows insertion order. A [for loop](../control-flow/loop
 
 ## Mutation and copies
 
-`append`, `prepend`, `insert`, `set`, `remove`, `splice`, `fill`, `copy_within`, and `reverse_in_place` update a list and return the same instance. `set(index:, value:)` replaces an element; `remove(index:)` removes one. Both accept negative indexes relative to the end and fault on invalid indexes. `insert(index:, value:)` places a value before `index`, accepting `-length()` through `length()`; `length()` appends, and other indexes fault with the valid range. `pop()` also updates the list: it removes the last element and returns it as `some(value)`, or returns `none` for an empty list. `splice(start:, delete_count:, replacement:)` requires nonnegative bounds with `start <= length()` and `delete_count <= length() - start`; it stages a self-replacement and retains shallow references. Invalid bounds fault without clamping. Append reuses available capacity and grows storage when necessary; it does not copy the full list on each call.
+`append`, `prepend`, `insert`, `set`, `remove`, `splice`, `fill`, `copy_within`, and `reverse_in_place` update a list and return the same instance. `set(index:, value:)` and `remove(index:)` accept negative indexes and fault on invalid ones. `insert(index:, value:)` places a value before `index` (valid range `-length()` through `length()`; `length()` appends). `pop()` removes and returns the last element as `some(value)`, or `none` when empty. `splice(start:, delete_count:, replacement:)` needs `0 <= start <= length()` and `delete_count <= length() - start`, and retains shallow references. Invalid bounds fault without clamping. Append reuses capacity and does not copy the list on each call.
 
 Map `add`, `remove`, `add_default`, `add_default_from`, `merge`, and `clear` update the receiver. Set `add`, `remove`, and `clear` update the receiver. Map `remove` is a no-op for an absent key and keeps scoped lookup and insertion order. Their return values retain that instance for chaining.
 
@@ -163,7 +163,7 @@ and the measured constructor/access/comparator paths.
 | `Set[T]` | `find_last` uses the same predicate and payload result, searching from the end |
 | `Set[T]` | `some(predicate: fn(value: T) -> Bool) -> Bool`; `every` uses the same predicate |
 
-All existing element and key bounds apply. An empty List/Map/Set constructor requires explicit type arguments or a complete expected application; it supplies no inference evidence by itself. Each call creates fresh storage. Lists also support bracket literals. `values[index]` is equivalent to `values.at(index)`: both return `Optional[T]`, accept relative negative indexes, and return `none` out of range. For example, `values[0].unwrap_or(0)` supplies a default without a separate length check. The checker narrows a bracket lookup to `T` only where it proves the index in range; see [Proven indexes](#proven-indexes). Bytes `.at` also accepts relative negative indexes and returns `none` out of range. A size exceeding the target platform’s maximum `Int` faults.
+All element and key bounds still apply. An empty List, Map, or Set constructor needs explicit type arguments or a complete expected application, and each call creates fresh storage. `values[index]` equals `values.at(index)`: an `Optional[T]` that accepts negative indexes and is `none` out of range, so `values[0].unwrap_or(0)` needs no length check. The checker narrows a lookup to `T` only when it proves the index in range ([Proven indexes](#proven-indexes)). Bytes `.at` behaves the same. A size above the platform's maximum `Int` faults.
 
 ### Proven indexes
 

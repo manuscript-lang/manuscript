@@ -95,7 +95,7 @@ Exported contracts expose every operation. Types in their operation signatures o
 
 ## Generic implementations
 
-An implementation uses generic parameters from its receiver type declaration. Its receiver must be an application of a local or imported source nominal data declaration. Parameter names in the receiver application come from that data declaration. Inherited bounds retain their original nominal identities; an extending module need not import the names used in those bounds. Only parameters occurring in the receiver application are in scope for the interface and methods; matching the receiver determines all implementation arguments. Concrete and nested receiver applications remain supported. Interface parameter names need not match data parameter names: an application substitutes the receiver parameters positionally. An undeclared name such as `U` in `impl ReadValue[U] for Box[U]` is rejected when `Box` declares only `T`.
+An implementation uses the generic parameters of its receiver's type declaration; the receiver must be an application of a local or imported source data type. Only parameters occurring in the receiver application are in scope, and matching the receiver determines every implementation argument. Interface parameter names need not match: substitution is positional. Inherited bounds keep their nominal identities without extra imports. An undeclared name is rejected: `impl ReadValue[U] for Box[U]` fails when `Box` declares only `T`.
 
 ```manuscript
 interface ReadValue[T]:

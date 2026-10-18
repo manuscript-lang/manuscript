@@ -34,7 +34,7 @@ These are function-body fragments. String is stored and compared without implici
 
 ## Interpolation
 
-An unescaped `{` opens an embedded expression, and its matching `}` closes it. Interpolation uses the ordinary [expression grammar](expressions.md), including calls and nested text literals. The scanner balances expression delimiters and recognizes text escapes/nested text literals; braces inside a nested literal do not terminate the enclosing expression. Empty expressions, interpolation format suffixes, comments within the embedded expression, and physical newlines inside an interpolated literal are rejected. A function expression with a statement suite consequently cannot appear inside interpolation. JSON, code snippets, and other text containing braces must escape both braces (`"\{\"a\": 1\}"`); a failure inside an interpolation reminds the writer of the escape.
+An unescaped `{` opens an embedded [expression](expressions.md) that its matching `}` closes; calls and nested text literals are allowed, and braces inside a nested literal do not end the outer one. Empty expressions, format suffixes, comments, and newlines inside the literal are rejected, so a function expression with a suite cannot appear there. Escape both braces in JSON and similar text: `"\{\"a\": 1\}"`.
 
 ```manuscript
 let name = "Ada"
@@ -90,7 +90,7 @@ All slice operations include `start` and exclude `end`. Let `n` be the receiver'
 | `List.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return `CollectionError.OutOfRange`; success is a new shallow List with independent outer storage. |
 | `Bytes.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return `CollectionError.OutOfRange`; success is immutable Bytes that may share immutable storage. |
 
-Equal valid bounds select an empty range. Slices never clamp or swap bounds, so an off-by-one such as `text.slice(start: 0, end: n + 1)` is an expected `OutOfRange` error rather than a shorter result or a fault. Negative bounds are relative to the end, as for `at`. String slices preserve scalar boundaries and leave their receiver unchanged. For example, `"aé🙂z".slice(start: -2, end: 4)` is `ok("🙂z")`, while `"aé🙂z".slice(start: 3, end: 1)` and `"aé🙂z".slice(start: 1, end: 10)` are `error(StringError.OutOfRange)`. Unwrap only when the bounds are known to be valid. Exact signatures appear in the [String reference](../../standard-library/reference/prelude.md#string), [collection reference](../../standard-library/reference/collections.md), and [Bytes reference](../../standard-library/reference/bytes.md).
+Equal valid bounds select an empty range. Slices never clamp or swap bounds, so `text.slice(start: 0, end: n + 1)` is an `OutOfRange` error, not a shorter result or a fault. Negative bounds count from the end, as for `at`. String slices keep scalar boundaries and leave the receiver unchanged: `"aé🙂z".slice(start: -2, end: 4)` is `ok("🙂z")`, while `slice(start: 3, end: 1)` and `slice(start: 1, end: 10)` are `error(StringError.OutOfRange)`. Unwrap only when the bounds are known valid. See the [String](../../standard-library/reference/prelude.md#string), [collection](../../standard-library/reference/collections.md), and [Bytes](../../standard-library/reference/bytes.md) references.
 
 ## Encoding and parsing
 
