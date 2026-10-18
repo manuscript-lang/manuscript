@@ -129,7 +129,7 @@ fn first() Unit:
 		}
 		if info.OptionalArgument != nil {
 			optional++
-			if info.OptionalArgument.String() != "Optional[fn(value: Int)->Int]" {
+			if info.OptionalArgument.String() != "Optional[fn(value: Int) Int]" {
 				t.Fatal(info.OptionalArgument)
 			}
 		}

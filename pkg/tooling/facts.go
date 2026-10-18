@@ -154,12 +154,26 @@ func countSites(declaration *syntax.Declaration) (tries, withs int) {
 
 // errorType extracts E from a function type whose result is Result[T, E].
 func errorType(signature string) string {
-	_, result, ok := strings.Cut(signature, ")->")
-	if !ok || !strings.HasPrefix(result, "Result[") {
+	params, ok := strings.CutPrefix(signature, "fn(")
+	if !ok {
+		return ""
+	}
+	end, depth := 0, 1
+	for end < len(params) && depth > 0 {
+		switch params[end] {
+		case '(':
+			depth++
+		case ')':
+			depth--
+		}
+		end++
+	}
+	result := strings.TrimSpace(params[end:])
+	if depth != 0 || !strings.HasPrefix(result, "Result[") {
 		return ""
 	}
 	inner := strings.TrimSuffix(strings.TrimPrefix(result, "Result["), "]")
-	depth := 0
+	depth = 0
 	for i := 0; i < len(inner); i++ {
 		switch inner[i] {
 		case '[', '(':

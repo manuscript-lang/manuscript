@@ -70,7 +70,7 @@ func TestHoverSurvivesSyntaxErrorInsideCalledFunction(t *testing.T) {
 		t.Fatal(checked.Diagnostics)
 	}
 	hover, ok := navigation(checked, d, Position(source, strings.LastIndex(source, "work")), "textDocument/hover").(map[string]any)
-	if !ok || !strings.Contains(hover["contents"].(map[string]any)["value"].(string), "work: fn(a: Int)->Int") {
+	if !ok || !strings.Contains(hover["contents"].(map[string]any)["value"].(string), "work: fn(a: Int) Int") {
 		t.Fatalf("hover %v", hover)
 	}
 }
@@ -84,7 +84,7 @@ func TestNavigationSurvivesUnterminatedDelimiterInsideBody(t *testing.T) {
 			t.Fatal("expected a diagnostic")
 		}
 		hover, ok := navigation(checked, d, Position(source, strings.Index(source, "add(a: 1")), "textDocument/hover").(map[string]any)
-		if !ok || !strings.Contains(hover["contents"].(map[string]any)["value"].(string), "add: fn(a: Int, b: Int)->Int") {
+		if !ok || !strings.Contains(hover["contents"].(map[string]any)["value"].(string), "add: fn(a: Int, b: Int) Int") {
 			t.Fatalf("hover %q %v", newline, hover)
 		}
 		hover, ok = navigation(checked, d, Position(source, strings.LastIndex(source, "return s")+len("return ")), "textDocument/hover").(map[string]any)

@@ -9,7 +9,7 @@ import (
 )
 
 func TestMemberDescriptionsReachMarkdownAndCompatibleJSON(t *testing.T) {
-	module := checker.APIModule{Path: "example.ms", Declarations: []checker.APIDeclaration{{Name: "Data", Kind: "record", Type: "Data", Declaration: "type Data:\n    value: Int\n", Fields: []string{"value: Int"}, Cases: []string{"Ready(value: Int)"}, Operations: []string{"read: fn()->Int"}, Members: []checker.APIMember{
+	module := checker.APIModule{Path: "example.ms", Declarations: []checker.APIDeclaration{{Name: "Data", Kind: "record", Type: "Data", Declaration: "type Data:\n    value: Int\n", Fields: []string{"value: Int"}, Cases: []string{"Ready(value: Int)"}, Operations: []string{"read: fn() Int"}, Members: []checker.APIMember{
 		{Name: "value", Kind: "field", Signature: "value: Int", Doc: "The **stored** count.\n\nMeasured in items."},
 		{Name: "Ready", Kind: "case", Signature: "case Ready(value: Int)", Doc: "Completed work."},
 		{Name: "read", Kind: "operation", Signature: "fn read() Int", Doc: "Reads without mutation."},
@@ -38,7 +38,7 @@ func TestMemberDescriptionsReachMarkdownAndCompatibleJSON(t *testing.T) {
 	if err := json.Unmarshal(data, &legacy); err != nil {
 		t.Fatal(err)
 	}
-	if legacy.Format != 1 || legacy.Modules[0].Declarations[0].Fields[0] != "value: Int" || legacy.Modules[0].Declarations[0].Cases[0] != "Ready(value: Int)" || legacy.Modules[0].Declarations[0].Operations[0] != "read: fn()->Int" {
+	if legacy.Format != 1 || legacy.Modules[0].Declarations[0].Fields[0] != "value: Int" || legacy.Modules[0].Declarations[0].Cases[0] != "Ready(value: Int)" || legacy.Modules[0].Declarations[0].Operations[0] != "read: fn() Int" {
 		t.Fatal(string(data))
 	}
 }

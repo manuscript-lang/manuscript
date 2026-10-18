@@ -15,7 +15,7 @@ func TestDeclarationKindPresentation(t *testing.T) {
 	} {
 		t.Run(tc.kind, func(t *testing.T) {
 			module := checker.APIModule{Path: "example.ms", Declarations: []checker.APIDeclaration{
-				{Name: "example", Kind: tc.kind, Type: "fn(value: String)->Bool", Declaration: "fn example(value: String) Bool\n"},
+				{Name: "example", Kind: tc.kind, Type: "fn(value: String) Bool", Declaration: "fn example(value: String) Bool\n"},
 			}}
 			site := renderModule(module, true)
 			if !strings.Contains(site, "## example {data-api-kind=\""+tc.label+"\"}") {
@@ -41,7 +41,7 @@ func TestDeclarationKindPresentation(t *testing.T) {
 			if err := json.Unmarshal(data, &decoded); err != nil {
 				t.Fatal(err)
 			}
-			if decoded.Format != 1 || decoded.Modules[0].Declarations[0].Kind != tc.kind || decoded.Modules[0].Declarations[0].Type != "fn(value: String)->Bool" || strings.Contains(string(data), "Declaration") {
+			if decoded.Format != 1 || decoded.Modules[0].Declarations[0].Kind != tc.kind || decoded.Modules[0].Declarations[0].Type != "fn(value: String) Bool" || strings.Contains(string(data), "Declaration") {
 				t.Fatalf("JSON must retain the raw compiler classification: %s", data)
 			}
 		})

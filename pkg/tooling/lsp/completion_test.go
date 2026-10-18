@@ -239,7 +239,7 @@ func TestUniversalToStringCompletion(t *testing.T) {
 	} {
 		items := completeSource(t, source)
 		item := itemNamed(items, "to_string")
-		if item == nil || item.Detail != "fn()->String" || item.TextEdit.(map[string]any)["newText"] != "to_string()$0" {
+		if item == nil || item.Detail != "fn() String" || item.TextEdit.(map[string]any)["newText"] != "to_string()$0" {
 			t.Fatalf("missing universal method for %s: %+v", source, items)
 		}
 	}

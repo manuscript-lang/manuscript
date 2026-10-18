@@ -93,7 +93,7 @@ test "methods":
 	for _, item := range []struct{ needle, file, hover string }{
 		{"map(transform:", "@std/collections.ms", "List[String]"},
 		{"map[String]", "@std/collections.ms", "List[String]"},
-		{"trim()", "@std/intrinsics.ms", "fn()->String"},
+		{"trim()", "@std/intrinsics.ms", "fn() String"},
 	} {
 		file, _, hover := definitionAt(t, source, strings.Index(source, item.needle))
 		if file != item.file || !strings.Contains(hover, item.hover) {
@@ -110,7 +110,7 @@ fn extract(data: Bytes) List[Int]:
 `
 	for _, offset := range []int{strings.Index(source, "values\n"), strings.Index(source, "values()")} {
 		file, _, hover := definitionAt(t, source, offset)
-		if file != "@std/bytes.ms" || !strings.Contains(hover, "fn()->List[Int]") {
+		if file != "@std/bytes.ms" || !strings.Contains(hover, "fn() List[Int]") {
 			t.Fatalf("Bytes.values navigation lost callable signature: %s %q", file, hover)
 		}
 	}
@@ -154,7 +154,7 @@ fn describe(cause: Error) String:
 func TestUniversalToStringNavigation(t *testing.T) {
 	source := "fn text[T](value: T) String:\n    return value.to_string()\n"
 	file, _, hover := definitionAt(t, source, strings.Index(source, "to_string"))
-	if file != "@std/intrinsics.ms" || !strings.Contains(hover, "fn()->String") {
+	if file != "@std/intrinsics.ms" || !strings.Contains(hover, "fn() String") {
 		t.Fatal("universal method must navigate to its source signature", file, hover)
 	}
 }
