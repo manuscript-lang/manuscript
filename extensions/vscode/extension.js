@@ -2,7 +2,7 @@ const vscode = require('vscode');
 const { LanguageClient } = require('vscode-languageclient/node');
 const path = require('node:path');
 const { targetFor } = require('./project-target');
-let client;
+let stopClient;
 const documentSelector = [
   { scheme: 'file', language: 'manuscript' },
   { scheme: 'manuscript-stdlib', language: 'manuscript' },
@@ -10,17 +10,35 @@ const documentSelector = [
 
 async function activate(context) {
   const output = vscode.window.createOutputChannel('Manuscript', { log: true });
-  const watcher = vscode.workspace.createFileSystemWatcher('**/*.{ms,toml}');
+  const watcher = vscode.workspace.createFileSystemWatcher('{**/*.ms,**/ms.toml}');
   context.subscriptions.push(output, watcher);
   const serverPath = () => vscode.workspace.getConfiguration('manuscript').get('serverPath', 'ms');
   let command = serverPath();
   const makeClient = () => new LanguageClient('manuscript', 'Manuscript', { command, args: ['lsp'] }, {
     documentSelector, synchronize: { fileEvents: watcher }, outputChannel: output,
   });
-  client = makeClient();
+  let client = makeClient();
+  let startup, restarting, shutdown, shuttingDown = false;
+  const stopCurrent = async () => {
+    const previous = client;
+    client = undefined;
+    // Failed starts can reject stop(); keep recovery and shutdown available.
+    if (previous) try { await previous.stop(); } catch (error) { output.appendLine(error.message); }
+  };
+  stopClient = () => {
+    shuttingDown = true;
+    return shutdown ??= (async () => {
+      await startup?.catch(() => {});
+      await restarting;
+      await stopCurrent();
+    })();
+  };
   context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('manuscript-stdlib', {
-    provideTextDocumentContent(uri) {
-      return client.sendRequest('manuscript/standardLibrarySource', { textDocument: { uri: uri.toString() } });
+    async provideTextDocumentContent(uri, token) {
+      if (token?.isCancellationRequested) return;
+      await (restarting || startup?.catch(() => {}));
+      if (shuttingDown || !client || token?.isCancellationRequested) return;
+      return client.sendRequest('manuscript/standardLibrarySource', { textDocument: { uri: uri.toString() } }, token);
     },
   }));
   async function savedEditor() {
@@ -60,22 +78,32 @@ async function activate(context) {
       });
     } catch (error) { vscode.window.showErrorMessage(`Manuscript debug failed: ${error.message}`); }
   }));
-  const restartServer = async () => {
-    // A client whose start failed (for example, a missing binary) rejects stop(),
-    // but restarting after fixing manuscript.serverPath is exactly that case.
-    try { await client.stop(); } catch (error) { output.appendLine(error.message); }
-    try { command = serverPath(); client = makeClient(); await client.start(); }
-    catch (error) { output.appendLine(error.message); output.show(); }
+  const restartServer = () => {
+    if (shuttingDown) return Promise.resolve();
+    if (restarting) return restarting;
+    restarting = (async () => {
+      await startup.catch(() => {});
+      do {
+        await stopCurrent();
+        if (shuttingDown) return;
+        try { command = serverPath(); client = makeClient(); await client.start(); }
+        catch (error) { await stopCurrent(); output.appendLine(error.message); output.show(); }
+      } while (!shuttingDown && serverPath() !== command);
+    })().finally(() => { restarting = undefined; });
+    return restarting;
   };
   context.subscriptions.push(vscode.commands.registerCommand('manuscript.restartServer', restartServer));
   if (vscode.workspace.onDidChangeConfiguration) context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
     if (event.affectsConfiguration('manuscript.serverPath') && serverPath() !== command) restartServer();
   }));
   if (vscode.tasks) context.subscriptions.push(vscode.tasks.registerTaskProvider('manuscript', {
-    async provideTasks() {
-      const manifests = await vscode.workspace.findFiles('**/ms.toml', '**/{node_modules,.git}/**');
+    async provideTasks(token) {
+      if (token?.isCancellationRequested) return [];
+      const manifests = await vscode.workspace.findFiles('**/ms.toml', '**/{node_modules,.git}/**', undefined, token);
+      if (token?.isCancellationRequested) return [];
       const tasks = [];
       for (const manifest of manifests) for (const operation of ['check', 'build', 'test', 'lint']) {
+        if (token?.isCancellationRequested) return [];
         const folder = vscode.workspace.getWorkspaceFolder(manifest);
         const definition = { type: 'manuscript', command: operation, project: manifest.fsPath };
         const task = new vscode.Task(definition, folder, `${operation}: ${path.basename(path.dirname(manifest.fsPath))}`, 'Manuscript',
@@ -111,7 +139,8 @@ async function activate(context) {
       terminal.show();
     } catch (error) { vscode.window.showErrorMessage(error.message); }
   }));
-  await client.start();
+  startup = client.start().catch(async (error) => { await stopCurrent(); throw error; });
+  await startup;
 }
-async function deactivate() { if (client) await client.stop().catch(() => {}); }
+async function deactivate() { await stopClient?.(); }
 module.exports = { activate, deactivate };
