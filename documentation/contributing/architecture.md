@@ -71,7 +71,7 @@ Each layer imports only layers above it in this list; `scripts/repo-check/policy
 | `internal/decimal/`, `internal/nativeabi/` | Decimal literal rules, receiver-to-function identities, test-event protocol |
 | `internal/hostos/` | Platform helpers for filesystem, process, and OS operations |
 | `internal/cli/` | Command orchestration, status codes, signals, documentation commands |
-| Root Go files | Embedded vendor/module dependencies and toolchain payload; Go embed paths cannot traverse upward, so they stay beside `go.mod` and `vendor/` |
+| `embed.go` | Embedded vendor/module dependencies, toolchain payload, and release version; Go embed paths cannot traverse upward, so they stay beside `go.mod` and `vendor/` |
 
 ## Keep shared behavior in one implementation
 
@@ -91,6 +91,7 @@ Each layer imports only layers above it in this list; `scripts/repo-check/policy
 | `website/static/stdlib.md`, `stdlib.json` | Generated API downloads; not committed |
 | `.artifacts/book/` | Ignored generated HTML, search data, and downloads |
 | `scripts/` | Bootstrap, lint setup, `mktoolchain/`, `package.sh`, `distcheck/`, `docgen/`, maintenance, repo checks |
+| `bench/` | Benchmarks: `perf/` and `language/` (speed), `agent/` (agent pass rates), and focused `lists/`, `lowering/`, `tooling/`, `debug-literals/`, `http-headers/` studies |
 | `examples/` | Hello project and tooling demo |
 | `extensions/vscode/` | VS Code client, grammar, snippets, debug adapter, tests |
 | `vendor/` | Pinned offline native dependencies and licenses |

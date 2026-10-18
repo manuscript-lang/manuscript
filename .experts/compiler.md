@@ -183,7 +183,7 @@ Verify: run native conformance and the native DAP test; compare edited-source bu
 Verified: standalone generation merges runtime declarations and deduplicates imports by import path. Inconsistent aliases for the same Go package can pass ordinary runtime package compilation while breaking every emitted application. Platform helper packages also need inclusion in the standalone dependency bundle; embedding the main runtime sources alone does not carry imported repository packages.
 
 Apply when: adding native runtime implementation files or platform adapters.
-Evidence: [standalone merger](../pkg/build/build.go), [import-alias regression check](../pkg/build/library_test.go), [native dependency bundle](../native_bundle.go), and [platform bridge](../internal/hostos/hostos.go).
+Evidence: [standalone merger](../pkg/build/build.go), [import-alias regression check](../pkg/build/library_test.go), [native dependency bundle](../embed.go), and [platform bridge](../internal/hostos/hostos.go).
 Verify: `TestBundledRuntimeImportAliasesAgree`, source-to-native CLI tests, and the packaged binary check with an empty cache and no system Go.
 
 Verified: native compilation must build the temporary module (`go build .`) rather than an absolute source filename. A filename build can give the main package the synthetic `command-line-arguments` identity and reject bundled internal imports when path canonicalization differs, as on macOS temporary paths. [Native build regression](../pkg/build/library_test.go) exercises a symlinked temporary root; [module build](../pkg/build/build.go) preserves the dependency namespace.
