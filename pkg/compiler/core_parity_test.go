@@ -7,8 +7,8 @@ import (
 
 func TestCoreParityRejectsInvalidContracts(t *testing.T) {
 	for _, test := range []struct{ name, source, want string }{
-		{"Result fallback type", `fn wrong(value: Result[Int, String]) Int: value.unwrap_or("wrong")`, "expected Int, found String"},
-		{"Result fallback callback labels", `fn wrong(value: Result[Int, String], create: fn(value: String) Int) Int: value.unwrap_or_else(create)`, "cause"},
+		{"Result fallback type", `fn wrong(value: Result[Int, String]) Int: value.get("wrong")`, "expected Optional[Int], found String"},
+		{"Result fallback callback labels", `fn wrong(value: Result[Int, String], create: fn(value: String) Int) Int: value.or_else(create)`, "cause"},
 		{"Result chain keeps error type", `fn wrong(value: Result[Int, String]) Result[Int, Int]: value.and_then(fn(n): Result[Int, Int].ok(n))`, "String"},
 		{"Result map does not map errors", `fn wrong(value: Result[Int, String]) Result[Int, Int]: value.map(fn(n): n)`, "Result[U, String]"},
 		{"Result map does not flatten", `fn wrong(value: Result[Int, String]) Int: value.map(fn(n): n)`, "Result[U, String]"},
@@ -24,7 +24,7 @@ func TestCoreParityRejectsInvalidContracts(t *testing.T) {
 		{"local Result declaration is rejected", `type Result[T, E]:
     case ok(value: T)
     case error(cause: E)
-fn wrong(value: Result[Int, String]) Int: value.unwrap()`, "reuses a prelude name"},
+fn wrong(value: Result[Int, String]) Int: value.get()`, "reuses a prelude name"},
 		{"private native Result helper", `import unwrap from "@std/result.ms"`, "unwrap"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

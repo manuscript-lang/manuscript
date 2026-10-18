@@ -61,7 +61,7 @@ Verified: when rebasing standard-library work onto current main, migrate new con
 
 ### Error translation does not need a dedicated standard helper
 
-Decision: remove the specialized Result error-mapping helper and keep domain translation in ordinary functions that test `is_error()` and read `unwrap_error()`, never a `match`. The newer error simplification permits specific errors to pass directly into the standard Error boundary, including through `try`; unrelated domain errors still require explicit translation. Do not restore a dedicated mapping helper.
+Decision: remove the specialized Result error-mapping helper and keep domain translation in ordinary functions that test `is_error()` and read `err()`, never a `match`. The newer error simplification permits specific errors to pass directly into the standard Error boundary, including through `try`; unrelated domain errors still require explicit translation. Do not restore a dedicated mapping helper.
 
 Decision: the user requested "please remove nested match from everywhere, note it as anti pattern and ensure it never gets repeated", then reaffirmed "nested match is anti pattern, solve it another way". This includes implementation, examples, documentation and diagnostic remedies. Keep grammar and execution semantics available for compatibility and meaningful syntax/semantic regressions. Use compatible `try`, early-exit payload bindings, Optional methods, or small helpers; the user also rejected elaborate loading examples, so avoid contrived domain models and helper layers added only to make an example work.
 
@@ -153,7 +153,7 @@ Verify: parse an inline callback inside a call without consuming the enclosing d
 
 ### Optional values need presence and extraction methods
 
-Decision: the user explicitly rejected relying on `match` for routine Optional handling. Keep one receiver surface: `is_some`, `is_none`, `unwrap`, `unwrap_or`, and `unwrap_or_else`. Preserve Optional as an ordinary alternative; these methods do not introduce flattening or new syntax. The private native helpers are implementation bindings, not exported aliases.
+Decision: the user explicitly rejected relying on `match` for routine Optional handling. Keep one receiver surface: `is_some`, `is_none`, `get`, `get(default)`, and `get_or_else`. Preserve Optional as an ordinary alternative; these methods do not introduce flattening or new syntax. The private native helpers are implementation bindings, not exported aliases.
 
 ### No special `get` accessor declarations
 
@@ -166,7 +166,7 @@ Verify: `get` is an ordinary identifier everywhere; a List `length()` call lower
 Decision: the later request to accept `Queue[Int](capacity: 4)` permits a plain payload at standard Optional argument boundaries. Routine calls and current examples use plain values rather than redundant `some(...)` arguments. Keep this separate from omission permissions and ordinary assignment/return compatibility. Lower the supplied argument to a real `some` value so source implementations and native APIs receive the same representation; preserve written evaluation order and payload identity.
 
 
-Decision: the user asked for `if let name = optional:` (with `else`) and that a match with only two arms is an anti-pattern. `if let` unwraps an Optional (present) or a Result (ok, error not captured; extended by a later request); the binding is immutable and scoped to the then-branch. MSL108 advises on Optional matches whose only arms are some and none, and MSL109 on Result matches whose only arms are ok and error; user alternatives are not covered. Decision (Chinmay, after #587): show no `match` as a way to unwrap a Result anywhere (docs, examples, stdlib, fixtures that are not testing pattern semantics): use `try`, `if let`, `unwrap_or`, or `is_ok`/`is_error`/`unwrap_error`. Stdlib sources use `if let`; accepted conformance fixtures keep their some/none matches because they exercise match-expression semantics.
+Decision: the user asked for `if let name = optional:` (with `else`) and that a match with only two arms is an anti-pattern. `if let` unwraps an Optional (present) or a Result (ok, error not captured; extended by a later request); the binding is immutable and scoped to the then-branch. MSL108 advises on Optional matches whose only arms are some and none, and MSL109 on Result matches whose only arms are ok and error; user alternatives are not covered. Decision (Chinmay, after #587): show no `match` as a way to unwrap a Result anywhere (docs, examples, stdlib, fixtures that are not testing pattern semantics): use `try`, `if let`, `get(default)`, or `is_ok`/`is_error`/`err`. Stdlib sources use `if let`; accepted conformance fixtures keep their some/none matches because they exercise match-expression semantics.
 Evidence: [if let rules](../documentation/core-language/control-flow/conditionals.md#unwrapping-an-optional-or-result), [native fixture](../tests/e2e/testdata/accept/if-let.ms), [lint](../pkg/tooling/optional_match_lint.go).
 Apply when: changing Optional declarations, alternative method lookup, fallback evaluation, or introductory examples.
 Evidence: [Optional contract](../documentation/core-language/types/optionals.md#checking-and-extracting-values), [optional argument rules](../documentation/core-language/types/optionals.md#passing-optional-arguments), [canonical declaration](../pkg/stdlib/optional.ms), [compiled method fixture](../tests/e2e/testdata/accept/optional-methods.ms), and [argument conformance](../tests/e2e/testdata/accept/optional-arguments.ms).
@@ -190,7 +190,7 @@ Decision: when addressing familiar-language friction, the user explicitly chose 
 
 Apply when: changing matching, collection lookup, type application parsing, or examples migrating from other languages.
 Evidence: [match values](../documentation/core-language/control-flow/pattern-matching.md#arm-values), [list lookup](../documentation/core-language/types/collections.md#lookup-and-updates), and [native expression conformance](../tests/e2e/testdata/accept/expression-conveniences.ms).
-Verify: use `items[index].unwrap_or(0)` for absent indexes, keep `identity[Int]` specialization, and exercise enclosing returns, propagation, cleanup, and loop exits from match arms. An effects-only arm ending in a value-returning call needs an explicit `unit` when another arm produces Unit.
+Verify: use `items[index].get(0)` for absent indexes, keep `identity[Int]` specialization, and exercise enclosing returns, propagation, cleanup, and loop exits from match arms. An effects-only arm ending in a value-returning call needs an explicit `unit` when another arm produces Unit.
 
 ### Infer local callback signatures from context
 

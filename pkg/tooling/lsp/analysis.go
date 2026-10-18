@@ -13,6 +13,12 @@ func analyze(d document, docs map[string]document) compiler.Result {
 	return analyzeOptions(d, docs, compiler.Options{AnalyzeOnly: true, Recover: true})
 }
 func analyzeOptions(d document, docs map[string]document, options compiler.Options) compiler.Result {
+	return analyzeWith(d, docs, options, compiler.CompileFile)
+}
+
+// analyzeWith keeps selection and overlay validation identical for uncached
+// callers and the server's single live generation of shared analyses.
+func analyzeWith(d document, docs map[string]document, options compiler.Options, compile func(string, compiler.Options) compiler.Result) compiler.Result {
 	if standardLibraryDocument(d) != nil {
 		// Standard signatures are already checked by the compiler at startup.
 		// They are library declarations, not standalone executable modules.
@@ -40,13 +46,13 @@ func analyzeOptions(d document, docs map[string]document, options compiler.Optio
 	if options.ScopeMarker != "" && target != path {
 		options.Module = path
 	}
-	result := compiler.CompileFile(target, options)
+	result := compile(target, options)
 	if result.Program == nil && result.SourceRoot == "" && target == path {
 		return compiler.CompileSource(path, d.Text, options)
 	}
 	if target != path && result.Program != nil && module(result, d) == nil {
 		options.Module = path
-		return compiler.CompileFile(target, options)
+		return compile(target, options)
 	}
 	return result
 }
@@ -104,8 +110,13 @@ func at(result compiler.Result, d document, p position, index []occurrence) (*sy
 	}
 	return selected, info
 }
-func navigation(result compiler.Result, d document, p position, method string) any {
-	index := sourceIndex(result)
+func navigation(result compiler.Result, d document, p position, method string, cached ...[]occurrence) any {
+	var index []occurrence
+	if len(cached) > 0 {
+		index = cached[0]
+	} else {
+		index = sourceIndex(result)
+	}
 	e, i := at(result, d, p, index)
 	if e == nil || i == nil {
 		return nil
@@ -189,16 +200,24 @@ func declarationDocumentation(result compiler.Result, decl *syntax.Declaration) 
 		if m.File != decl.Pos.File {
 			continue
 		}
-		lines := strings.Split(m.Source, "\n")
-		line := decl.Pos.Line - 2
+		if decl.Pos.Line <= 1 || decl.Pos.Offset < 0 || decl.Pos.Offset > len(m.Source) {
+			return ""
+		}
+		// Offsets are in the original source, including CRLF and recovered
+		// declarations. Only inspect the immediately preceding line spans.
+		end := strings.LastIndexByte(m.Source[:decl.Pos.Offset], '\n')
 		var notes []string
-		for line >= 0 {
-			text := strings.TrimSpace(lines[line])
+		for end >= 0 {
+			start := strings.LastIndexByte(m.Source[:end], '\n') + 1
+			text := strings.TrimSpace(m.Source[start:end])
 			if !strings.HasPrefix(text, "#") {
 				break
 			}
-			notes = append([]string{strings.TrimSpace(strings.TrimPrefix(text, "#"))}, notes...)
-			line--
+			notes = append(notes, strings.TrimSpace(strings.TrimPrefix(text, "#")))
+			end = start - 1
+		}
+		for left, right := 0, len(notes)-1; left < right; left, right = left+1, right-1 {
+			notes[left], notes[right] = notes[right], notes[left]
 		}
 		return strings.TrimSpace(strings.Join(notes, "\n"))
 	}

@@ -10,14 +10,8 @@ func check_Optional_IsSome[T any]() {
 func check_Optional_IsNone[T any]() {
 	var _ func(*Execution, Option[T]) bool = Optional_IsNone[T]
 }
-func check_Optional_Unwrap[T any]() {
-	var _ func(*Execution, Option[T]) T = Optional_Unwrap[T]
-}
-func check_Optional_UnwrapOr[T any]() {
-	var _ func(*Execution, Option[T], T) T = Optional_UnwrapOr[T]
-}
-func check_Optional_UnwrapOrElse[T any]() {
-	var _ func(*Execution, Option[T], func(ctx *Execution) T) T = Optional_UnwrapOrElse[T]
+func check_Optional_Get[T any]() {
+	var _ func(*Execution, Option[T], Option[T]) T = Optional_Get[T]
 }
 func check_Optional_Map[T any, U any]() {
 	var _ func(*Execution, Option[T], func(ctx *Execution, a0 T) U) Option[U] = Optional_Map[T, U]

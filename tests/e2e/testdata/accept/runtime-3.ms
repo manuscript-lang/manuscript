@@ -1,6 +1,5 @@
 import panic from "@std/faults.ms"
-import ExecutionError from "@std/tasks.ms"
-import TaskGroup from "@std/tasks.ms"
+import {ExecutionError, TaskGroup} from "@std/tasks.ms"
 
 fn identity[T](value: T) T:
     return value
@@ -17,9 +16,9 @@ fn probe() Result[Unit, ExecutionError]:
         let number = try number_task.join()
         let flag = try flag_task.join()
         if not (flag):
-            return panic(message: "check failed")
-        if not (number.unwrap_or(0) == 3):
-            return panic(message: "check failed")
+            return panic("check failed")
+        if not (number.get(0) == 3):
+            return panic("check failed")
 
         return ok(unit)
 
@@ -27,18 +26,18 @@ test "typed task helper":
     try probe()
 
 fn describe(outcome: Result[Int, Int]) Result[Int, String]:
-    if outcome.is_ok():
-        return ok(outcome.unwrap())
+    if let value = outcome:
+        return ok(value)
 
-    return error("Error {outcome.unwrap_error()}")
+    return error("Error {outcome.err()}")
 
 test "explicit error conversion":
     let failed: Result[Int, Int] = error(7)
     let expected: Result[Int, String] = error("Error 7")
-    if not (describe(outcome: failed) == expected):
-        return panic(message: "check failed")
+    if not (describe(failed) == expected):
+        return panic("check failed")
 
     let succeeded: Result[Int, Int] = ok(3)
     let unchanged: Result[Int, String] = ok(3)
-    if not (describe(outcome: succeeded) == unchanged):
-        return panic(message: "check failed")
+    if not (describe(succeeded) == unchanged):
+        return panic("check failed")

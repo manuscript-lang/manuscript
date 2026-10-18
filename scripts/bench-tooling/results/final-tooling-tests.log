@@ -1,0 +1,4 @@
+ok  	github.com/manuscript-lang/manuscript/pkg/tooling	4.280s
+ok  	github.com/manuscript-lang/manuscript/pkg/tooling/docgen	0.171s
+ok  	github.com/manuscript-lang/manuscript/pkg/tooling/guide	21.704s
+ok  	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	6.391s

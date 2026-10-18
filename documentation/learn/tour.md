@@ -184,7 +184,7 @@ fn order_total(count: Int) Result[Int, QuantityError]:
 ```
 
 - `Result` is `ok(value)` or `error(cause)`; `try` unwraps success or returns the error.
-- Use one error type or the common `Error` boundary. Otherwise handle outcomes with `if let`, `unwrap_or`, or `is_error()` and `unwrap_error()`; see [error compatibility](../core-language/errors/propagation.md#error-compatibility).
+- Use one error type or the common `Error` boundary. Otherwise handle outcomes with `if let`, `get(default)`, or `is_error()` and `err()`; see [error compatibility](../core-language/errors/propagation.md#error-compatibility).
 
 ## Modules
 

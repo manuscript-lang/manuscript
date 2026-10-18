@@ -435,7 +435,7 @@ func optionalUseHint(actual, expected *Type) string {
 	if actual == nil || expected == nil || !std(actual, "Optional") || len(actual.Args) != 1 || std(expected, "Optional") {
 		return ""
 	}
-	return actual.String() + " may be absent; unwrap it first with 'if let', unwrap_or(default), is_some() before unwrap(), or match"
+	return actual.String() + " may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match"
 }
 
 // resultUseHint names the fix when a Result is used where its success type is
@@ -444,7 +444,7 @@ func resultUseHint(actual, expected *Type) string {
 	if actual == nil || expected == nil || !std(actual, "Result") || len(actual.Args) == 0 || !Same(actual.Args[0], expected) {
 		return ""
 	}
-	return "unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.unwrap()'"
+	return "unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'"
 }
 
 // numberConversionHint names the explicit conversion between Int and Float;
@@ -457,7 +457,7 @@ func numberConversionHint(actual, expected *Type) string {
 	case actual.ID == "Int" && expected.ID == "Float":
 		return "Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value"
 	case actual.ID == "Float" && expected.ID == "Int":
-		return "Float does not convert to Int implicitly; truncate_to_int() returns Optional[Int], so unwrap it, e.g. value.truncate_to_int().unwrap_or(0)"
+		return "Float does not convert to Int implicitly; truncate_to_int() returns Optional[Int], so unwrap it, e.g. value.truncate_to_int().get(0)"
 	}
 	return ""
 }

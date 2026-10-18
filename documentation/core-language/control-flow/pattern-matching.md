@@ -25,9 +25,9 @@ fn describe(payment: Payment) String:
 Nested `match` is an anti-pattern. Bind the outer payload with an early exit, propagate with `try`, use Optional methods, or call a small helper (the contract handler below shows a helper).
 
 - `ms lint` reports **MSL107** at each inner match, including inside inline callbacks. Helpers and sequential matches are fine. The checker still accepts nesting; this is style only.
-- A two-arm `some`/`none` match on an `Optional` is **MSL108**. Use [`if let`](conditionals.md#unwrapping-an-optional-or-result), `unwrap_or`, or `map`.
+- A two-arm `some`/`none` match on an `Optional` is **MSL108**. Use [`if let`](conditionals.md#unwrapping-an-optional-or-result), `get(default)`, or `map`.
 
-Matching a `Result` with only `ok` and `error` arms is flagged the same way as advisory **MSL109**. Use `try`, `if let value = result:` with `else:`, or a Result method such as `unwrap_or`, `is_error`, or `unwrap_error`.
+Matching a `Result` with only `ok` and `error` arms is flagged the same way as advisory **MSL109**. Use `try`, `if let value = result:` with `else:`, or a Result method such as `get(default)`, `is_error`, or `err`.
 
 ## Arm values
 
@@ -92,7 +92,7 @@ Adding a case breaks matches without a wildcard; a wildcard absorbs it. Return c
 
 ## Optional and result values
 
-[Optional](../types/optionals.md) and [Result](../errors/results.md) are alternatives, but do not match them. Use `if let value = expression:` for a value or success, `unwrap_or` for a default, `try` to propagate an error, and `is_error()` with `unwrap_error()` to read a cause.
+[Optional](../types/optionals.md) and [Result](../errors/results.md) are alternatives, but do not match them. Use `if let value = expression:` for a value or success, `get(default)` for a default, `try` to propagate an error, and `is_error()` with `err()` to read a cause.
 
 ## Contract type patterns
 

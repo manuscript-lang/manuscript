@@ -1,0 +1,402 @@
+{"group": "medium/initialize_fresh_process", "ms": 12.044387, "response_bytes": 935}
+{"group": "medium/first_open_fresh_process", "ms": 69.59468, "notifications": 1, "memory": {"VmHWM": "36232 kB", "VmRSS": "36232 kB", "Threads": "7"}}
+{"group": "medium/initialize_fresh_process", "ms": 4.818566, "response_bytes": 935}
+{"group": "medium/first_open_fresh_process", "ms": 64.165362, "notifications": 1, "memory": {"VmHWM": "35448 kB", "VmRSS": "35448 kB", "Threads": "7"}}
+{"group": "medium/initialize_fresh_process", "ms": 3.956615, "response_bytes": 935}
+{"group": "medium/first_open_fresh_process", "ms": 42.619692, "notifications": 1, "memory": {"VmHWM": "37464 kB", "VmRSS": "37464 kB", "Threads": "7"}}
+{"group": "medium/initialize_fresh_process", "ms": 3.612986, "response_bytes": 935}
+{"group": "medium/first_open_fresh_process", "ms": 43.944542, "notifications": 1, "memory": {"VmHWM": "36272 kB", "VmRSS": "36272 kB", "Threads": "7"}}
+{"group": "medium/initialize_fresh_process", "ms": 3.075146, "response_bytes": 935}
+{"group": "medium/first_open_fresh_process", "ms": 58.832701, "notifications": 1, "memory": {"VmHWM": "35288 kB", "VmRSS": "35288 kB", "Threads": "6"}}
+{"group": "medium/initialize_fresh_process", "ms": 3.39157, "response_bytes": 935}
+{"group": "medium/first_open_fresh_process", "ms": 54.088068, "notifications": 1, "memory": {"VmHWM": "35092 kB", "VmRSS": "35092 kB", "Threads": "6"}}
+{"group": "medium/initialize_fresh_process", "ms": 5.566985, "response_bytes": 935}
+{"group": "medium/first_open_fresh_process", "ms": 37.536212, "notifications": 1, "memory": {"VmHWM": "35548 kB", "VmRSS": "35548 kB", "Threads": "7"}}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.179519, "response_bytes": 81}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.11906, "response_bytes": 81}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.075496, "response_bytes": 81}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.069578, "response_bytes": 81}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.054024, "response_bytes": 81}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.053804, "response_bytes": 81}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.038892, "response_bytes": 81}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.051811, "response_bytes": 82}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.0375, "response_bytes": 82}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.03722, "response_bytes": 82}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.038071, "response_bytes": 82}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.056868, "response_bytes": 82}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.038511, "response_bytes": 82}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.036658, "response_bytes": 82}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.047384, "response_bytes": 82}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.03747, "response_bytes": 82}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.036459, "response_bytes": 82}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.03707, "response_bytes": 82}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.036548, "response_bytes": 82}
+{"group": "medium/tabs1/warm_transport_error_baseline", "ms": 0.036699, "response_bytes": 82}
+{"group": "medium/tabs1/warm_hover", "ms": 40.380664, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 24.326398, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 32.927594, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 24.887637, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 21.635216, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 21.183533, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 23.677105, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 24.601071, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 22.93524, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 23.3096, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 19.654854, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 22.414366, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 19.129492, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 21.385024, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 25.685154, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 36.087463, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 22.74748, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 21.667474, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 32.473415, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_hover", "ms": 20.023349, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_definition", "ms": 20.996378, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 25.945968, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 33.618327, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 24.704564, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 24.162108, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 24.867715, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 22.273334, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 21.069406, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 24.68806, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 35.470227, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 25.303104, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 19.131865, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 22.683937, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 21.79462, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 31.307202, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 21.661495, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 32.536608, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 22.869209, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 26.153082, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_definition", "ms": 22.532745, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs1/warm_completion", "ms": 35.495368, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 25.633505, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 33.033603, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 31.629641, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 28.921243, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 31.318434, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 31.206524, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 29.747662, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 28.758789, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 34.051403, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 29.881518, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 31.032889, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 31.130152, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 33.287386, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 33.222615, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 28.809695, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 34.115377, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 36.656158, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 34.744311, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_completion", "ms": 31.333321, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 8.113216, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 12.605103, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 9.327405, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 9.868869, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 12.52396, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 8.930006, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 9.757291, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 11.754795, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 8.985136, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 11.260349, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 13.049406, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 11.035528, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 7.53092, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 10.371783, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 9.567653, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 7.14213, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 9.944726, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 7.74877, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 9.821155, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_signatureHelp", "ms": 12.161252, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 266.79857, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 262.576028, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 272.417909, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 255.218433, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 251.020962, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 254.95836, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 252.021497, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 250.134184, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 249.657419, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 269.228759, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 269.616619, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 280.740472, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 256.209873, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 250.791324, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 252.688591, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 268.010195, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 260.671972, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 272.178307, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 262.988334, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_semanticTokens/full", "ms": 261.664144, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.362202, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.320721, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.198482, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.176079, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.172283, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.182999, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.198742, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.173916, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.176369, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.220554, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.162328, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.1424, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.144973, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.147266, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.166614, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.166665, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.147446, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.189228, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.183279, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/warm_documentSymbol", "ms": 0.146485, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 15.993361}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 15.993361, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 11.810066}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 11.810066, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 15.133568}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 15.133568, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 16.935723}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 16.935723, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 12.313155}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 12.313155, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 12.894929}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 12.894929, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 12.876602}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 12.876602, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 12.625473}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 12.625473, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 11.665774}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 11.665774, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 12.301528}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 12.301528, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 11.487321}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 11.487321, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 10.809286}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 10.809286, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 11.712472}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 11.712472, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 11.827086}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 11.827086, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 11.962164}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 11.962164, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 11.558777}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 11.558777, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 15.738761}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 15.738761, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 14.852745}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 14.852745, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 11.111108}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 11.111108, "notifications": 1}
+{"group": "medium/tabs1/edit_to_own_diagnostics", "ms": 10.993642}
+{"group": "medium/tabs1/edit_to_all_diagnostics", "ms": 10.993642, "notifications": 1}
+{"group": "medium/tabs1/burst10_to_all_diagnostics", "ms": 117.176142, "notifications": 10, "versions": [22, 23, 24, 25, 26, 27, 28, 29, 30, 31]}
+{"group": "medium/tabs1/burst10_to_all_diagnostics", "ms": 125.655031, "notifications": 10, "versions": [32, 33, 34, 35, 36, 37, 38, 39, 40, 41]}
+{"group": "medium/tabs1/burst10_to_all_diagnostics", "ms": 118.307069, "notifications": 10, "versions": [42, 43, 44, 45, 46, 47, 48, 49, 50, 51]}
+{"group": "medium/tabs1/warm_textDocument/references", "ms": 702.706297, "response_bytes": 562, "result_items": 3}
+{"group": "medium/tabs1/warm_textDocument/references", "ms": 716.674209, "response_bytes": 562, "result_items": 3}
+{"group": "medium/tabs1/warm_textDocument/references", "ms": 768.420887, "response_bytes": 562, "result_items": 3}
+{"group": "medium/tabs1/warm_workspace/symbol", "ms": 694.414003, "response_bytes": 251, "result_items": 1}
+{"group": "medium/tabs1/warm_workspace/symbol", "ms": 659.138218, "response_bytes": 251, "result_items": 1}
+{"group": "medium/tabs1/warm_workspace/symbol", "ms": 591.077023, "response_bytes": 251, "result_items": 1}
+{"group": "medium/tabs1/canceled_workspace_symbol", "ms": 651.907953, "response": {"error": {"code": -32800, "message": "request canceled"}, "id": 172, "jsonrpc": "2.0"}}
+{"group": "medium/tabs1/hover_queued_after_cancel", "ms": 667.886664}
+{"group": "medium/tabs1/unrelated_watched_toml", "ms": 13.727629, "notifications": 1}
+{"group": "medium/tabs1/unrelated_watched_toml", "ms": 12.814327, "notifications": 1}
+{"group": "medium/tabs1/unrelated_watched_toml", "ms": 12.022519, "notifications": 1}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.121839, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.080729, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.099696, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.06125, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.077134, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.070413, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.043374, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.037294, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.035703, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.036204, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.037345, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.035903, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.112726, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.037866, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.035762, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.035101, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.036003, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.035282, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.036673, "response_bytes": 82}
+{"group": "medium/tabs10/warm_transport_error_baseline", "ms": 0.035071, "response_bytes": 82}
+{"group": "medium/tabs10/warm_hover", "ms": 45.114891, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 32.223697, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 49.019511, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 32.478615, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 19.400827, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 33.680852, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 35.650275, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 15.907255, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 29.174923, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 31.450035, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 19.380266, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 41.300935, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 23.554798, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 20.279968, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 27.568323, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 27.394658, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 16.740899, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 30.535041, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 17.103722, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_hover", "ms": 27.7562, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_definition", "ms": 27.823027, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 16.429332, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 39.818096, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 17.124914, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 31.652041, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 19.825711, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 31.826347, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 20.663812, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 28.101536, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 17.044526, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 27.504149, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 19.086755, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 30.360504, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 16.55736, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 28.559809, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 16.261485, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 27.024414, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 16.827287, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 25.680301, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_definition", "ms": 16.221897, "response_bytes": 212, "result_items": 1}
+{"group": "medium/tabs10/warm_completion", "ms": 46.681608, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 46.606131, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 35.662848, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 43.25583, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 41.057912, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 43.135059, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 42.383495, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 41.634674, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 48.614557, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 40.005421, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 43.446115, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 37.133413, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 46.752557, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 40.421272, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 38.360966, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 44.103691, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 46.601801, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 40.782888, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 53.649166, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_completion", "ms": 41.218829, "response_bytes": 60962, "result_items": 152}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 10.542906, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 8.404405, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 7.607034, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 10.746354, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 19.220252, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 7.558913, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 6.88278, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 17.87125, "response_bytes": 249, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 11.411391, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 7.113409, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 6.305732, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 14.599534, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 8.979104, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 6.953047, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 6.291537, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 20.93455, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 7.023827, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 6.990878, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 11.498951, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_signatureHelp", "ms": 12.20013, "response_bytes": 250, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 257.734098, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 284.551673, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 256.062073, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 267.799782, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 247.024372, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 239.091517, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 263.988015, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 265.735086, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 267.37525, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 272.711411, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 244.169188, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 265.815174, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 242.304705, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 253.282743, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 259.167476, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 261.193872, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 261.906223, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 249.074038, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 248.02048, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_semanticTokens/full", "ms": 252.13693, "response_bytes": 1786, "result_items": null}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.273847, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.141833, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.134412, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.237413, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.139119, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.142344, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.117007, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.111339, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.13273, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.106922, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.100383, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.097428, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.099812, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.239887, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.118679, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.166169, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.114653, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.102406, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.144868, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/warm_documentSymbol", "ms": 0.106081, "response_bytes": 253, "result_items": 1}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 13.38318}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 93.247741, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 10.963215}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 101.85064, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 16.330328}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 108.007122, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 9.156448}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 98.270738, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 10.520826}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 104.492285, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 8.715205}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 105.021754, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 10.656956}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 95.857318, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 11.930932}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 97.552684, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 11.853774}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 97.918096, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 9.174138}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 108.108897, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 8.914036}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 89.603123, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 9.895883}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 92.780415, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 8.58614}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 97.354152, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 9.463103}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 111.210832, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 9.916899}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 105.998512, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 8.669622}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 107.67528, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 9.158611}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 109.919682, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 9.428453}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 109.562682, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 15.819392}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 115.933914, "notifications": 10}
+{"group": "medium/tabs10/edit_to_own_diagnostics", "ms": 20.072784}
+{"group": "medium/tabs10/edit_to_all_diagnostics", "ms": 108.629591, "notifications": 10}
+{"group": "medium/tabs10/burst10_to_all_diagnostics", "ms": 990.384757, "notifications": 100, "versions": [22, 23, 24, 25, 26, 27, 28, 29, 30, 31]}
+{"group": "medium/tabs10/burst10_to_all_diagnostics", "ms": 1096.547473, "notifications": 100, "versions": [32, 33, 34, 35, 36, 37, 38, 39, 40, 41]}
+{"group": "medium/tabs10/burst10_to_all_diagnostics", "ms": 1071.94022, "notifications": 100, "versions": [42, 43, 44, 45, 46, 47, 48, 49, 50, 51]}
+{"group": "medium/tabs10/warm_textDocument/references", "ms": 743.485402, "response_bytes": 562, "result_items": 3}
+{"group": "medium/tabs10/warm_textDocument/references", "ms": 765.134682, "response_bytes": 562, "result_items": 3}
+{"group": "medium/tabs10/warm_textDocument/references", "ms": 690.685816, "response_bytes": 562, "result_items": 3}
+{"group": "medium/tabs10/warm_workspace/symbol", "ms": 724.840473, "response_bytes": 251, "result_items": 1}
+{"group": "medium/tabs10/warm_workspace/symbol", "ms": 681.916434, "response_bytes": 251, "result_items": 1}
+{"group": "medium/tabs10/warm_workspace/symbol", "ms": 705.982745, "response_bytes": 251, "result_items": 1}
+{"group": "medium/tabs10/canceled_workspace_symbol", "ms": 708.852719, "response": {"error": {"code": -32800, "message": "request canceled"}, "id": 181, "jsonrpc": "2.0"}}
+{"group": "medium/tabs10/hover_queued_after_cancel", "ms": 734.685537}
+{"group": "medium/tabs10/unrelated_watched_toml", "ms": 101.184526, "notifications": 10}
+{"group": "medium/tabs10/unrelated_watched_toml", "ms": 103.233549, "notifications": 10}
+{"group": "medium/tabs10/unrelated_watched_toml", "ms": 107.304108, "notifications": 10}

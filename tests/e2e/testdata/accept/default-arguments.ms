@@ -16,8 +16,8 @@ fn mark(state: SynchronizedGuard[Int], value: Int) Int:
 
 fn ordered(
     state: SynchronizedGuard[Int],
-    first: Int = mark(state: state, value: 3),
-    second: Int = mark(state: state, value: 4),
+    first: Int = mark(state, value: 3),
+    second: Int = mark(state, value: 4),
     third: Int = 0
 ) Int:
     state.set(value: state.get() * 10 + 5)
@@ -77,20 +77,20 @@ test "default evaluation order and repeated calls":
 
     with state = counter.lock():
         let total = ordered(
-            state: state,
-            third: mark(state: state, value: 1),
-            second: mark(state: state, value: 2)
+            state,
+            third: mark(state, value: 1),
+            second: mark(state, value: 2)
         )
         if total != 6 or state.get() != 1235:
             return panic("supplied arguments precede defaults and body")
 
         state.set(value: 0)
-        let ignored = ordered(state: state)
+        ordered(state)
         if state.get() != 345:
             return panic("defaults evaluate in declaration order")
 
         state.set(value: 0)
-        let again = ordered(state: state)
+        ordered(state)
         if state.get() != 345:
             return panic("defaults run on every call")
 

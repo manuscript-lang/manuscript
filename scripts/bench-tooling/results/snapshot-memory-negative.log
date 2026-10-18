@@ -1,0 +1,6 @@
+=== RUN   TestSnapshotMemoryEvidence
+    snapshot_memory_review_test.go:88: retained 10 programs, expected "1": <nil>
+--- FAIL: TestSnapshotMemoryEvidence (0.49s)
+FAIL
+FAIL	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	0.499s
+FAIL

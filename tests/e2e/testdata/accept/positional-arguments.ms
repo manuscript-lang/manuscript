@@ -43,7 +43,7 @@ impl Subtract for Offset:
 
 fn apply(callback: fn(left: Int, right: Int) Int, input: Int) Int: callback(input, 2)
 
-fn optional(value: Optional[Int], fallback: Int = 0) Int: value.unwrap_or(fallback)
+fn optional(value: Optional[Int], fallback: Int = 0) Int: value.get(fallback)
 
 fn default_before_required(first: Int = 9, second: Int) Int: first - second
 
@@ -68,10 +68,8 @@ test "positional labeled mixed and identifier calls":
 
 test "generic calls constructors and callback inference":
     if first(3, 4) != 3 or first[Int](right: 4, 3) != 3: return panic("generic call")
-    if pick([1, 2], fn(item): item > 1).unwrap_or(0) != 2: return panic(
-        "generic callback"
-    )
-    if pick(keep: fn(item): item > 1, [1, 2]).unwrap_or(0) != 2: return panic(
+    if pick([1, 2], fn(item): item > 1).get(0) != 2: return panic("generic callback")
+    if pick(keep: fn(item): item > 1, [1, 2]).get(0) != 2: return panic(
         "callback before inference input"
     )
 
@@ -132,13 +130,13 @@ test "methods native APIs function values and contextual labels":
         return panic("context labels and local callback names")
 
     let memo = Map[Int, Int]()
-    let ignored = memo.add(1, 7)
+    memo.add(1, 7)
     let add = memo.add
-    let more = add(value: 8, 2)
-    if memo.get(1).unwrap() != 7 or memo.get(2).unwrap() != 8: return panic(
+    add(value: 8, 2)
+    if memo.get(1).get() != 7 or memo.get(2).get() != 8: return panic(
         "native multi parameter methods"
     )
-    if "abcd".slice(1, 3).unwrap() != "bc": return panic("native string arguments")
+    if "abcd".slice(1, 3).get() != "bc": return panic("native string arguments")
 
 test "written order before omitted defaults and body":
     let counter = Counter()
@@ -183,7 +181,7 @@ test "written order before omitted defaults and body":
 test "callable expression precedes positional arguments":
     let counter = Counter()
     let factory = fn() fn(amount: Int, deduction: Int) Int:
-        let ignored = mark(counter, 1)
+        mark(counter, 1)
         return subtract
     let result = factory()(mark(counter, 2), mark(counter, 3))
     if result != -1 or counter.value != 123: return panic("callable expression order")

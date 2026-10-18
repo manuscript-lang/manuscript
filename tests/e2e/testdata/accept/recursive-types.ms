@@ -45,13 +45,13 @@ impl Hashable for Link:
     fn hash() Int: return self.value
 
 test "recursive alternatives construct match compare and clone":
-    let expr = Expr.Add(left: Expr.Num(7), right: Expr.Neg(Expr.Num(2)))
+    let expr = Expr.Add(Expr.Num(7), Expr.Neg(Expr.Num(2)))
     if evaluate(expr) != 5 or expr != expr.clone():
         panic("recursive expression failed")
-    let tree = Tree[Int].Branch(left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2))
-    if tree != Tree[Int].Branch(left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2)):
+    let tree = Tree[Int].Branch(Tree[Int].Leaf(1), Tree[Int].Leaf(2))
+    if tree != Tree[Int].Branch(Tree[Int].Leaf(1), Tree[Int].Leaf(2)):
         panic("generic tree equality failed")
-    let forest = Forest.More(MutualTree(value: 3, rest: Forest.Empty))
+    let forest = Forest.More(MutualTree(3, Forest.Empty))
 
     match forest:
         More(tree):
@@ -60,12 +60,12 @@ test "recursive alternatives construct match compare and clone":
         Empty: panic("lost mutual tree")
 
 test "recursive records retain aliases and clone only outer storage":
-    let child = Node(value: 2, next: none)
-    let root = Node(value: 1, next: child)
+    let child = Node(2, none)
+    let root = Node(1, child)
     let alias = root
     let copy = root.clone()
     alias.value = 3
-    copy.next.unwrap().value = 4
+    copy.next.get().value = 4
     if (root.value != 3 or copy.value != 1 or child.value != 4):
         panic("recursive alias or shallow clone failed")
     copy.next = none
@@ -73,47 +73,43 @@ test "recursive records retain aliases and clone only outer storage":
         panic("clone shared its outer fields")
 
 test "recursive structural equality terminates and checks unequal fields":
-    let left = Node(value: 1, next: none)
-    let right = Node(value: 1, next: none)
+    let left = Node(1, none)
+    let right = Node(1, none)
     left.next = some(left)
     right.next = some(right)
     if left != right:
         panic("equivalent cycles differ")
     let copy = left.clone()
-    copy.next.unwrap().value = 2
+    copy.next.get().value = 2
     if (left.value != 2 or copy.value != 1 or left == right):
         panic("cyclic clone or unequal cycle failed")
-    let a = Node(value: 1, next: none)
-    let b = Node(value: 1, next: a)
+    let a = Node(1, none)
+    let b = Node(1, a)
     a.next = some(b)
     if right != a:
         panic("equivalent one-node and two-node cycles differ")
 
 test "recursive domain hashing uses explicit implementations":
-    let left = Link(value: 7, next: none)
-    let right = Link(value: 7, next: none)
+    let left = Link(7, none)
+    let right = Link(7, none)
     left.next = some(left)
     right.next = some(right)
     if left != right or left.hash() != right.hash():
         panic("explicit cyclic identity hashing failed")
-    let values = Map[Link, Int]().add(key: left, value: 9)
+    let values = Map[Link, Int]().add(left, 9)
     let members = Set[Link]().add(left)
-    if values.get(right).unwrap() != 9 or not members.contains(right):
+    if values.get(right).get() != 9 or not members.contains(right):
         panic("explicit recursive key lookup failed")
-    values.add(key: right, value: 10)
+    values.add(right, 10)
     members.add(right)
-    if (
-        values.length() != 1
-        or members.length() != 1
-        or values.get(left).unwrap() != 10
-    ):
+    if (values.length() != 1 or members.length() != 1 or values.get(left).get() != 10):
         panic("equivalent recursive keys were not deduplicated")
 
 test "recursive defaults construct independent complete objects":
-    let first = DefaultNode(value: 1)
-    let second = DefaultNode(value: 2)
+    let first = DefaultNode(1)
+    let second = DefaultNode(2)
     first.next = some(first)
-    if second.next.is_some() or first.next.unwrap().value != 1:
+    if second.next.is_some() or first.next.get().value != 1:
         panic("recursive default initialization failed")
 
 type Entry:
@@ -137,24 +133,24 @@ type Pair[T, U]:
     second: U
 
 test "finite nested generic composition constructs and extracts values":
-    let person = Person(Entry(name: "Ada", nickname: some("A")))
-    if person.primary.unwrap().nickname.unwrap() != "A":
+    let person = Person(Entry("Ada", some("A")))
+    if person.primary.get().nickname.get() != "A":
         panic("composed optional entry failed")
     let optional = NestedOptional.Value(some(some(4)))
 
     match optional:
         Value(value):
-            if value.unwrap().unwrap() != 4:
+            if value.get().get() != 4:
                 panic("nested optional payload failed")
 
     let result = NestedResult(ok(ok(5)))
-    if result.value.unwrap().unwrap_or(0) != 5: panic("nested result value failed")
+    if result.value.get().get(0) != 5: panic("nested result value failed")
     let box = Box(Box(6))
     if box.value.value != 6:
         panic("nested box failed")
     let pair: Pair[Optional[Int], Optional[Optional[String]]] = Pair(
-        first: some(7),
-        second: some(some("nested"))
+        some(7),
+        some(some("nested"))
     )
-    if pair.first.unwrap() != 7 or pair.second.unwrap().unwrap() != "nested":
+    if pair.first.get() != 7 or pair.second.get().get() != "nested":
         panic("nested optional generic pair failed")

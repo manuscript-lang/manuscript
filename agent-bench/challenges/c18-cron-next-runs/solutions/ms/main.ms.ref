@@ -65,15 +65,15 @@ fn parse_field(text: String, lo: Int, hi: Int) Optional[List[Bool]]:
         if parts.length() > 2:
             return none
 
-        let body = parts.at(0).unwrap()
+        let body = parts.at(0).get()
         var step = 1
 
         if parts.length() == 2:
-            let s = digits(parts.at(1).unwrap(), 1, 2)
-            if s.is_none() or s.unwrap() < 1:
+            let s = digits(parts.at(1).get(), 1, 2)
+            if s.is_none() or s.get() < 1:
                 return none
 
-            step = s.unwrap()
+            step = s.get()
 
         var a = 0
         var b = 0
@@ -86,20 +86,20 @@ fn parse_field(text: String, lo: Int, hi: Int) Optional[List[Bool]]:
             if parts.length() == 2:
                 return none
 
-            a = single.unwrap()
-            b = single.unwrap()
+            a = single.get()
+            b = single.get()
         else:
             let r = body.split("-")
             if r.length() != 2:
                 return none
 
-            let x = digits(r.at(0).unwrap(), 1, 2)
-            let y = digits(r.at(1).unwrap(), 1, 2)
-            if x.is_none() or y.is_none() or x.unwrap() > y.unwrap():
+            let x = digits(r.at(0).get(), 1, 2)
+            let y = digits(r.at(1).get(), 1, 2)
+            if x.is_none() or y.is_none() or x.get() > y.get():
                 return none
 
-            a = x.unwrap()
-            b = y.unwrap()
+            a = x.get()
+            b = y.get()
 
         if a < lo or b > hi:
             return none
@@ -120,44 +120,44 @@ fn parse_start(s: String) List[Int]:
         return empty
     # '-' 45, 'T' 84, ':' 58
     if (
-        codes.at(4).unwrap() != 45
-        or codes.at(7).unwrap() != 45
-        or codes.at(10).unwrap() != 84
-        or codes.at(13).unwrap() != 58
+        codes.at(4).get() != 45
+        or codes.at(7).get() != 45
+        or codes.at(10).get() != 84
+        or codes.at(13).get() != 58
     ):
         return empty
 
-    let y = digits(s.slice(0, 4).unwrap(), 4, 4)
-    let mo = digits(s.slice(5, 7).unwrap(), 2, 2)
-    let d = digits(s.slice(8, 10).unwrap(), 2, 2)
-    let h = digits(s.slice(11, 13).unwrap(), 2, 2)
-    let mi = digits(s.slice(14, 16).unwrap(), 2, 2)
+    let y = digits(s.slice(0, 4).get(), 4, 4)
+    let mo = digits(s.slice(5, 7).get(), 2, 2)
+    let d = digits(s.slice(8, 10).get(), 2, 2)
+    let h = digits(s.slice(11, 13).get(), 2, 2)
+    let mi = digits(s.slice(14, 16).get(), 2, 2)
     if y.is_none() or mo.is_none() or d.is_none() or h.is_none() or mi.is_none():
         return empty
 
-    let year = y.unwrap()
-    let month = mo.unwrap()
-    let day = d.unwrap()
+    let year = y.get()
+    let month = mo.get()
+    let day = d.get()
     if (
         year < 1970
         or year > 2099
         or month < 1
         or month > 12
         or day < 1
-        or h.unwrap() > 23
-        or mi.unwrap() > 59
+        or h.get() > 23
+        or mi.get() > 59
     ):
         return empty
 
     let leap = (year % 4 == 0 and year % 100 != 0) or year % 400 == 0
     let lengths = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-    var limit = lengths.at(month - 1).unwrap()
+    var limit = lengths.at(month - 1).get()
     if month == 2 and leap:
         limit = 29
     if day > limit:
         return empty
 
-    return [days_from_civil(year, month, day), h.unwrap() * 60 + mi.unwrap()]
+    return [days_from_civil(year, month, day), h.get() * 60 + mi.get()]
 
 fn run() Result[Unit, Error]:
     let names = ["minute", "hour", "day-of-month", "month", "day-of-week"]
@@ -171,8 +171,8 @@ fn run() Result[Unit, Error]:
             break
 
         n = n + 1
-        let l = next.unwrap()
-        if l.replace_all(old: " ", new: "").unwrap().is_empty():
+        let l = next.get()
+        if l.replace_all(old: " ", new: "").get().is_empty():
             continue
 
         let pre = "line {n}:"
@@ -182,76 +182,76 @@ fn run() Result[Unit, Error]:
             try stdout().write("{pre} error: bad line\n".to_bytes())
             continue
 
-        let start = parse_start(t.at(0).unwrap())
+        let start = parse_start(t.at(0).get())
 
         if start.is_empty():
             try stdout().write("{pre} error: bad start\n".to_bytes())
             continue
 
-        let count_opt = digits(t.at(1).unwrap(), 1, 2)
+        let count_opt = digits(t.at(1).get(), 1, 2)
 
-        if count_opt.is_none() or count_opt.unwrap() < 1 or count_opt.unwrap() > 20:
+        if count_opt.is_none() or count_opt.get() < 1 or count_opt.get() > 20:
             try stdout().write("{pre} error: bad count\n".to_bytes())
             continue
 
-        let count = count_opt.unwrap()
+        let count = count_opt.get()
         let sets = List[List[Bool]]()
         var bad = ""
         var i = 0
 
         while i < 5:
             let s = parse_field(
-                t.at(2 + i).unwrap(),
-                lows.at(i).unwrap(),
-                (highs.at(i).unwrap())
+                t.at(2 + i).get(),
+                lows.at(i).get(),
+                (highs.at(i).get())
             )
 
             if s.is_none():
-                bad = names.at(i).unwrap()
+                bad = names.at(i).get()
                 break
 
-            sets.append(s.unwrap())
+            sets.append(s.get())
             i = i + 1
 
         if not bad.is_empty():
             try stdout().write("{pre} error: bad {bad}\n".to_bytes())
             continue
 
-        let minutes = sets.at(0).unwrap()
-        let hours = sets.at(1).unwrap()
-        let doms = sets.at(2).unwrap()
-        let months = sets.at(3).unwrap()
-        let dows = sets.at(4).unwrap()
+        let minutes = sets.at(0).get()
+        let hours = sets.at(1).get()
+        let doms = sets.at(2).get()
+        let months = sets.at(3).get()
+        let dows = sets.at(4).get()
         let runs = List[String]()
         var k = 0
 
         while k <= 3000 and runs.length() < count:
-            let day = start.at(0).unwrap() + k
+            let day = start.at(0).get() + k
             let ymd = civil_from_days(day)
 
             if (
-                months.at(ymd.at(1).unwrap()).unwrap()
-                and doms.at(ymd.at(2).unwrap()).unwrap()
-                and dows.at(((day + 4) % 7)).unwrap()
+                months.at(ymd.at(1).get()).get()
+                and doms.at(ymd.at(2).get()).get()
+                and dows.at(((day + 4) % 7)).get()
             ):
                 var h = 0
 
                 while h < 24 and runs.length() < count:
-                    if hours.at(h).unwrap():
+                    if hours.at(h).get():
                         var mn = 0
 
                         while mn < 60 and runs.length() < count:
                             if (
-                                minutes.at(mn).unwrap()
+                                minutes.at(mn).get()
                                 and not (
                                     k == 0
                                     and h * 60 + mn <= start.at(
                                         1
-                                    ).unwrap()
+                                    ).get()
                                 )
                             ):
                                 runs.append(
-                                    "{ymd.at(0).unwrap()}-{pad2(ymd.at(1).unwrap())}-{pad2(ymd.at(2).unwrap())} {pad2(h)}:{pad2(mn)}"
+                                    "{ymd.at(0).get()}-{pad2(ymd.at(1).get())}-{pad2(ymd.at(2).get())} {pad2(h)}:{pad2(mn)}"
                                 )
                             mn = mn + 1
 

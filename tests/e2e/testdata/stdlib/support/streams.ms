@@ -11,12 +11,12 @@ impl ReadStream for MemoryStream:
         if self.closed: return error(IoError.Closed)
         if self.offset == self.data.length(): return ok(none)
 
-        let count = max_bytes.unwrap_or(self.data.length() - self.offset)
+        let count = max_bytes.get(self.data.length() - self.offset)
         if count <= 0: return error(IoError.InvalidInput)
 
         var end = self.offset + count
         if end > self.data.length(): end = self.data.length()
-        let chunk = self.data.slice(start: self.offset, end: end).unwrap()
+        let chunk = self.data.slice(self.offset, end).get()
         self.offset = end
         return ok(chunk)
 

@@ -45,7 +45,7 @@ test "copied native defaults":
         return panic("default CSV parse failed")
     if base64_encode("f".to_bytes()) != "Zg==": return panic("default alphabet")
     if let bytes = base64_decode("Zg=="):
-        if bytes.decode_utf8().unwrap() != "f": return panic("default decoded bytes")
+        if bytes.decode_utf8().get() != "f": return panic("default decoded bytes")
     else:
         return panic("default Base64 decode failed")
     let run = commands().run
@@ -67,11 +67,11 @@ test "copied native defaults":
         return panic("default retained file")
     if fs.remove("defaults", recursive: true).is_error(): return panic("explicit recursive removal")
     let data = "compression defaults".to_bytes()
-    let compressed = compress(data, "gzip").unwrap()
-    if compressed != compress(data, "gzip", 6).unwrap(): return panic("default compression level")
+    let compressed = compress(data, "gzip").get()
+    if compressed != compress(data, "gzip", 6).get(): return panic("default compression level")
     let encode = CompressionFormat.Gzip.compress
-    if encode(data).unwrap() != compressed: return panic("bound default compression level")
-    if decompress(compressed, "gzip").unwrap() != data: return panic("default compression round trip")
+    if encode(data).get() != compressed: return panic("bound default compression level")
+    if decompress(compressed, "gzip").get() != data: return panic("default compression round trip")
 `, cli),
 	} {
 		path := filepath.Join(root, name)

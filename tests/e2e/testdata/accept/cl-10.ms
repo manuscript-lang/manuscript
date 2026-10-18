@@ -11,11 +11,11 @@ impl Increment for Offset:
         return value + self.delta
 
 fn use_increment(operation: Increment) Int:
-    return operation.apply(value: 4)
+    return operation.apply(4)
 
 test "explicit contract conversion":
     let offset = Offset(1)
     let operation = Increment(offset)
     let same_view = Increment(operation)
-    if not (use_increment(operation: same_view) == 5):
-        return panic(message: "check failed")
+    if not (use_increment(same_view) == 5):
+        return panic("check failed")

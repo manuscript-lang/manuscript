@@ -13,14 +13,14 @@ fn checked(value: Int) Result[Int, Problem]:
     return ok(value)
 
 fn doubled(value: Int) Result[Int, Problem]:
-    let accepted = try checked(value: value)
+    let accepted = try checked(value)
     return ok(accepted * 2)
 
 fn summarize(outcome: Result[Int, Problem]) Int:
-    return outcome.unwrap_or(-1)
+    return outcome.get(-1)
 
 test "unchanged propagated error":
-    if not (summarize(outcome: doubled(value: 3)) == 6):
-        return panic(message: "check failed")
-    if not (summarize(outcome: doubled(value: -1)) == -1):
-        return panic(message: "check failed")
+    if not (summarize(doubled(3)) == 6):
+        return panic("check failed")
+    if not (summarize(doubled(-1)) == -1):
+        return panic("check failed")

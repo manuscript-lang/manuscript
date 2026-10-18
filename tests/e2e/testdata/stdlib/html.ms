@@ -1,6 +1,5 @@
 import {escape, parse, HtmlNode, HtmlAttribute, HtmlLimits, HtmlError} from "@std/html.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 fn children(node: HtmlNode) List[HtmlNode]:
     match node:
@@ -22,8 +21,8 @@ fn text_content(node: HtmlNode) String:
         _: return ""
 
 fn body_nodes(node: HtmlNode) List[HtmlNode]:
-    let html = children(node).at(0).unwrap()
-    return children(children(html).at(1).unwrap())
+    let html = children(node).at(0).get()
+    return children(children(html).at(1).get())
 
 test "HTML escaping preserves Unicode and escapes all markup characters":
     if escape("<&>\"'") != "&lt;&amp;&gt;&#34;&#39;": return panic("HTML entities")
@@ -31,42 +30,30 @@ test "HTML escaping preserves Unicode and escapes all markup characters":
     if escape("") != "": return panic("empty HTML")
 
 test "HTML parses nested elements attributes entities and comments":
-    let doc = parse(
-        text: "<DIV id='main' title='A &amp; B' hidden>Hello <b>é🙂</b> &lt;world&gt;<!--note--><br></DIV>"
-    ) | value
-    let div = body_nodes(doc).at(0).unwrap()
+    let doc = try parse(
+        "<DIV id='main' title='A &amp; B' hidden>Hello <b>é🙂</b> &lt;world&gt;<!--note--><br></DIV>"
+    )
+    let div = body_nodes(doc).at(0).get()
 
     match div:
         Element(tag, namespace, attributes, items):
             if tag != "div" or namespace != "": return panic("HTML name normalization")
             if (
                 attributes != [
-                    HtmlAttribute(
-                        name: "id",
-                        namespace: "",
-                        value: "main"
-                    ),
-                    HtmlAttribute(
-                        name: "title",
-                        namespace: "",
-                        value: "A & B"
-                    ),
-                    HtmlAttribute(
-                        name: "hidden",
-                        namespace: "",
-                        value: ""
-                    )
+                    HtmlAttribute("id", "", "main"),
+                    HtmlAttribute("title", "", "A & B"),
+                    HtmlAttribute("hidden", "", "")
                 ]
             ): return panic("HTML attributes")
             if (
-                items.at(0).unwrap() != HtmlNode.Text("Hello ")
-                or items.at(2).unwrap() != HtmlNode.Text(" <world>")
+                items.at(0).get() != HtmlNode.Text("Hello ")
+                or items.at(2).get() != HtmlNode.Text(" <world>")
             ): return panic("HTML text ordering or entities")
-            if items.at(3).unwrap() != HtmlNode.Comment("note"): return panic(
+            if items.at(3).get() != HtmlNode.Comment("note"): return panic(
                 "HTML comment"
             )
             if (
-                items.at(4).unwrap() != HtmlNode.Element(
+                items.at(4).get() != HtmlNode.Element(
                     tag: "br",
                     namespace: "",
                     attributes: [],
@@ -78,98 +65,85 @@ test "HTML parses nested elements attributes entities and comments":
     if text_content(doc) != "Hello é🙂 <world>": return panic("tree traversal")
 
 test "HTML recovers unclosed tags and inserts document and table structure":
-    let doc = parse(text: "<ul><li>one<li>two</ul><table><tr><td>cell") | value
+    let doc = try parse("<ul><li>one<li>two</ul><table><tr><td>cell")
     let nodes = body_nodes(doc)
-    let entries = children(nodes.at(0).unwrap())
+    let entries = children(nodes.at(0).get())
     if (
         entries.length() != 2
-        or text_content(entries.at(0).unwrap()) != "one"
-        or text_content((entries.at(1).unwrap())) != "two"
+        or text_content(entries.at(0).get()) != "one"
+        or text_content((entries.at(1).get())) != "two"
     ): return panic("implicit li closure")
 
-    match children(nodes.at(1).unwrap()).at(0).unwrap():
+    match children(nodes.at(1).get()).at(0).get():
         Element(tag, _, _, _):
             if tag != "tbody": return panic("implicit tbody")
         _: return panic("expected tbody")
 
-    if text_content(nodes.at(1).unwrap()) != "cell": return panic("unclosed table")
+    if text_content(nodes.at(1).get()) != "cell": return panic("unclosed table")
 
-    let empty = parse(text: "") | value
-    if children(children(empty).at(0).unwrap()).length() != 2: return panic(
+    let empty = try parse("")
+    if children(children(empty).at(0).get()).length() != 2: return panic(
         "implicit head and body"
     )
 
 test "HTML preserves doctypes foreign namespaces and raw script text":
-    let doc = parse(
-        text: "<!DOCTYPE html PUBLIC 'public' 'system'><!--before--><svg><a xlink:href='#icon'/></svg><script>if (a < b) x = '&amp;';</script>"
-    ) | value
+    let doc = try parse(
+        "<!DOCTYPE html PUBLIC 'public' 'system'><!--before--><svg><a xlink:href='#icon'/></svg><script>if (a < b) x = '&amp;';</script>"
+    )
     let nodes = children(doc)
     if (
-        nodes.at(0).unwrap() != HtmlNode.Doctype(
+        nodes.at(0).get() != HtmlNode.Doctype(
             name: "html",
             public_id: "public",
             system_id: "system"
         )
     ): return panic("doctype identifiers")
-    if nodes.at(1).unwrap() != HtmlNode.Comment("before"): return panic(
-        "document comment"
-    )
+    if nodes.at(1).get() != HtmlNode.Comment("before"): return panic("document comment")
 
-    let body = children(children(nodes.at(2).unwrap()).at(1).unwrap())
+    let body = children(children(nodes.at(2).get()).at(1).get())
 
-    let svg_items = match body.at(0).unwrap():
+    let svg_items = match body.at(0).get():
         Element(tag, namespace, _, items):
             if tag != "svg" or namespace != "svg": return panic("SVG namespace")
             items
         _: return panic("expected SVG")
 
-    match svg_items.at(0).unwrap():
+    match svg_items.at(0).get():
         Element(_, child_namespace, attributes, _):
             if (
                 child_namespace != "svg"
-                or attributes.at(0).unwrap() != HtmlAttribute(
-                    name: "href",
-                    namespace: "xlink",
-                    value: "#icon"
+                or attributes.at(0).get() != HtmlAttribute(
+                    "href",
+                    "xlink",
+                    "#icon"
                 )
             ): return panic("namespaced attribute")
         _: return panic("expected SVG anchor")
 
-    if text_content(body.at(1).unwrap()) != "if (a < b) x = '&amp;';": return panic(
+    if text_content(body.at(1).get()) != "if (a < b) x = '&amp;';": return panic(
         "script raw text"
     )
 
 test "HTML honors optional byte depth and node limits":
-    let empty = parse(text: "") | value
-    if (
-        value(
-            parse(
-                text: "",
-                limits: HtmlLimits(
-                    max_bytes: 0,
-                    max_depth: 2,
-                    max_nodes: 4
-                )
-            )
-        ) != empty
-    ): return panic("exact HTML limits")
-    if (value(parse(text: "é", limits: HtmlLimits())) != value(parse(text: "é"))): return panic(
+    let empty = try parse("")
+    if ((try parse("", HtmlLimits(0, 2, 4))) != empty): return panic(
+        "exact HTML limits"
+    )
+    if ((try parse("é", HtmlLimits())) != (try parse("é"))): return panic(
         "omitted HTML limits"
     )
 
     let limited: Result[HtmlNode, HtmlError] = error(HtmlError.LimitExceeded)
-    if (parse(text: "é", limits: HtmlLimits(max_bytes: 1)) != limited): return panic(
-        "UTF-8 byte limit"
-    )
-    if (parse(text: "", limits: HtmlLimits(max_depth: 1)) != limited): return panic(
+    if (parse("é", HtmlLimits(1)) != limited): return panic("UTF-8 byte limit")
+    if (parse("", HtmlLimits(max_depth: 1)) != limited): return panic(
         "implicit node depth limit"
     )
-    if (parse(text: "", limits: HtmlLimits(max_nodes: 3)) != limited): return panic(
+    if (parse("", HtmlLimits(max_nodes: 3)) != limited): return panic(
         "implicit node count limit"
     )
 
     let invalid: Result[HtmlNode, HtmlError] = error(HtmlError.InvalidInput)
-    if (parse(text: "", limits: HtmlLimits(max_nodes: -1)) != invalid): return panic(
+    if (parse("", HtmlLimits(max_nodes: -1)) != invalid): return panic(
         "negative HTML limit"
     )
     if HtmlError.InvalidData.message() == "": return panic("HTML error diagnostic")

@@ -8,10 +8,10 @@ export fn bench_map_set() Unit:
         fn() Int:
             let m = Map[Int, Int]()
             for i in range(0, 100000):
-                m.add(key: i, value: i * 2)
+                m.add(i, i * 2)
             var n = 0
             for i in range(0, 100000):
-                n = n + m.get(key: i).unwrap_or(0)
+                n += m.get(i).get(0)
             return n
     )
     bench(
@@ -21,10 +21,10 @@ export fn bench_map_set() Unit:
             let keys = words(50000)
             let m = Map[String, Int]()
             for k in keys:
-                m.add(key: k, value: 1)
+                m.add(k, 1)
             var n = 0
             for k in keys:
-                n = n + m.get(key: k).unwrap_or(0)
+                n += m.get(k).get(0)
             return n
     )
     bench(
@@ -33,10 +33,10 @@ export fn bench_map_set() Unit:
         fn() Int:
             let m = Map[Int, Int]()
             for i in range(0, 100000):
-                m.add(key: i, value: i)
+                m.add(i, i)
             var n = 0
             for e in m.entries():
-                n = n + e.value
+                n += e.value
             return n
     )
     bench(
@@ -48,6 +48,6 @@ export fn bench_map_set() Unit:
                 s.add(i)
             var n = 0
             for i in range(0, 100000):
-                if s.contains(i): n = n + 1
+                if s.contains(i): n += 1
             return n
     )

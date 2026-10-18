@@ -36,7 +36,7 @@ test "local FIFO aliases and saved methods":
         return panic("new queue is not empty")
     if not (dequeue() == missing and queue.peek() == missing):
         return panic("empty reads must return none")
-    if not (enqueue(3) and enqueue(value: 4)):
+    if not (enqueue(3) and enqueue(4)):
         return panic("enqueue failed before capacity")
     if enqueue(5):
         return panic("full queue accepted an item")
@@ -61,12 +61,11 @@ test "queue elements include ordinary functions":
             return 7
     )
 
-    match queue.dequeue():
-        some(callback):
-            if not (callback() == 7):
-                return panic("callback changed")
-        none:
-            return panic("callback missing")
+    if let callback = queue.dequeue():
+        if not (callback() == 7):
+            return panic("callback changed")
+    else:
+        return panic("callback missing")
 
 test "shared queue uses explicit lock scopes":
     let shared = Synchronized(Queue[Int]())
@@ -81,13 +80,13 @@ test "shared queue uses explicit lock scopes":
                 if not (queue.dequeue() == expected):
                     return panic("critical section interleaved")
     let task1 = fn():
-        operation(item: 1)
+        operation(1)
     let task2 = fn():
-        operation(item: 2)
+        operation(2)
     let task3 = fn():
-        operation(item: 3)
+        operation(3)
     let task4 = fn():
-        operation(item: 4)
+        operation(4)
 
     with group = TaskGroup():
         group.start(task1)

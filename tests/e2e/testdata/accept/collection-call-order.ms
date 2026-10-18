@@ -9,5 +9,5 @@ test "receiver before index":
                 values = [9]
                 i
             none: 0
-    ).unwrap()
+    ).get()
     if result != 7: return panic("receiver evaluated after index")

@@ -7,74 +7,82 @@ type Resource:
     label: String
     output: WriteStream
 
+fn emit(output: WriteStream, text: String) Unit:
+    let _ignored = output.write(text.to_bytes())
+
 impl Closeable for Resource:
     fn close() Unit:
-        self.output.write(data: "close {self.label}\n".to_bytes())
+        emit(self.output, "close {self.label}\n")
 
 type Pair:
     first: Int
     second: Int
 
 fn report(output: WriteStream, label: String, value: Int) Int:
-    output.write(data: "{label}\n".to_bytes())
+    emit(output, "{label}\n")
     return value
 
 fn combine(first: Int, second: Int) Int:
     return first + second
 
 fn select(output: WriteStream) fn(first: Int, second: Int) Int:
-    output.write(data: "callable\n".to_bytes())
+    emit(output, "callable\n")
     return combine
 
 fn early(output: WriteStream) Int:
-    with outer = Resource(label: "outer", output: output):
-        with inner = Resource(label: "inner", output: output):
-            return report(output: output, label: "return value", value: 5)
+    with outer = Resource("outer", output):
+        with inner = Resource("inner", output):
+            return report(output, "return value", 5)
 
 fn failure() Result[Int, String]:
     return error("expected")
 
 fn propagate(output: WriteStream) Result[Int, String]:
-    with resource = Resource(label: "propagation", output: output):
+    with resource = Resource("propagation", output):
         let number = try failure()
         return ok(number)
 
 fn iterable(output: WriteStream) List[Int]:
-    output.write(data: "iterable\n".to_bytes())
+    emit(output, "iterable\n")
     return [1, 2]
 
 export fn main() Int:
-    let total = select(output: stdout())(
-        second: report(output: stdout(), label: "second", value: 2),
-        first: report(output: stdout(), label: "first", value: 1)
+    let total = select(stdout())(
+        second: report(stdout(), "second", 2),
+        first: report(stdout(), "first", 1)
     )
     if not (total == 3):
-        return panic(message: "check failed")
+        return panic("check failed")
 
     let pair = Pair(
-        second: report(output: stdout(), label: "pair second", value: 2),
-        first: report(output: stdout(), label: "pair first", value: 1)
+        second: report(stdout(), "pair second", 2),
+        first: report(stdout(), "pair first", 1)
     )
     if not (pair.first + pair.second == 3):
-        return panic(message: "check failed")
+        return panic("check failed")
 
-    with resource = Resource(label: "normal", output: stdout()):
-        let completed = unit
-    stdout().write(data: "after normal\n".to_bytes())
     var count = 0
+    with resource = Resource("normal", stdout()):
+        count += 1
+    if count != 1:
+        return panic("check failed")
+
+    emit(stdout(), "after normal\n")
+    count = 0
 
     while count < 2:
-        with resource = Resource(label: "iteration", output: stdout()):
-            count = count + 1
+        with resource = Resource("iteration", stdout()):
+            count += 1
             continue
 
-    for value in iterable(output: stdout()):
-        with resource = Resource(label: "break", output: stdout()):
+    for value in iterable(stdout()):
+        with resource = Resource("break", stdout()):
             break
-    if propagate(output: stdout()).is_ok():
-        return panic(message: "Unexpected case")
-    if not (early(output: stdout()) == 5):
-        return panic(message: "check failed")
+    if propagate(stdout()).is_ok():
+        return panic("Unexpected case")
+    if not (early(stdout()) == 5):
+        return panic("check failed")
+    if stdout().write("finished\n".to_bytes()).is_error():
+        return 1
 
-    stdout().write(data: "finished\n".to_bytes())
     return 0

@@ -21,7 +21,7 @@ fn check(n: Int) Result[Int, String]:
 fn flow(text: String) Result[Int, String]:
     let n = try parse(text)
         | double
-        | add(by: 3)
+        | add(3)
         | try check
     return ok(n)
 
@@ -31,22 +31,22 @@ fn bare(text: String) Result[Int, String]:
 fn describe(text: String) Result[String, String]:
     let label = try parse(text)
         | try check
-        | add(by: 1)
-        .to_string_radix(radix: 10)
+        | add(1)
+        .to_string_radix(10)
     return ok(label)
 
 fn order(log: List[String]) Int:
-    return trace(log, "a") | add(by: trace(log, "b")) | double
+    return trace(log, "a") | add(trace(log, "b")) | double
 
 fn trace(log: List[String], name: String) Int:
     log.append(name)
     return 1
 
 fn code(r: Result[Int, String]) Int:
-    if r.is_error():
-        return 0 - r.unwrap_error().length()
+    if let v = r:
+        return v
 
-    return r.unwrap()
+    return 0 - r.err().length()
 
 test "pipe steps call functions with the value first":
     if code(flow("abc")) != 9:
@@ -57,25 +57,25 @@ test "pipe steps call functions with the value first":
         return panic("flow later failure")
 
 test "bare try unwraps the value so far":
-    if bare("abc").unwrap() != 6:
+    if bare("abc").get() != 6:
         return panic("bare ok")
     if code(bare("-")) != -1:
         return panic("bare early return")
 
 test "pipe passes a Result through a step without try":
     let r = parse("abcd") | .map(fn(value: Int) Int: value * 2)
-    if r.unwrap() != 8:
+    if r.get() != 8:
         return panic("map step")
 
 test "leading dot after a step applies to its result":
-    if describe("xy").unwrap() != "3":
+    if describe("xy").get() != "3":
         return panic("describe")
 
 test "head is evaluated before step arguments":
     let log: List[String] = []
     if order(log) != 4:
         return panic("order value")
-    if log.at(0).unwrap() != "a" or log.at(1).unwrap() != "b":
+    if log.at(0).get() != "a" or log.at(1).get() != "b":
         return panic("order trace")
 
 test "dot steps call methods on the value":

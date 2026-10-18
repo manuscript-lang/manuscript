@@ -6,13 +6,13 @@ export fn bench_csv() Unit:
     let rows: List[List[String]] = []
     for i in range(0, 5000):
         rows.append(["{i}", "name {i}", "a,b", "quote\"d"])
-
-    let csv_text = stringify(rows: rows).unwrap_or("")
+    let csv_text = stringify(rows).get("")
     bench(
         "csv.stringify",
         5000,
         fn() Int:
-            if let s = stringify(rows: rows): return s.length()
+            if let s = stringify(rows):
+                return s.length()
 
             return 0
     )
@@ -20,7 +20,8 @@ export fn bench_csv() Unit:
         "csv.parse",
         5000,
         fn() Int:
-            if let r = parse(text: csv_text): return r.length()
+            if let r = parse(csv_text):
+                return r.length()
 
             return 0
     )

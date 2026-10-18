@@ -7,13 +7,13 @@ import {pack, unpack, ArchiveEntry, ArchiveError} from "@std/archive.ms"
 import StringError from "@std/string.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
+import expect_error from "@std/testing.ms"
 
 test "raw monotonic nanoseconds share the typed process uptime origin":
     let process = control()
-    let before = process.uptime() | value
-    let reading = process.monotonic_time() | duration
-    let after = process.uptime() | value
+    let before = try process.uptime()
+    let reading = duration(process.monotonic_time())
+    let after = try process.uptime()
     if reading.compare(before) < 0 or reading.compare(after) > 0: return panic(
         "monotonic units or origin"
     )
@@ -28,31 +28,29 @@ test "closed codec strings reject spelling changes with their domain errors":
             "normalization spelling"
         )
     for form in ["NFC", "NFD", "NFKC", "NFKD"]:
-        if value("text".normalize(form)) != "text": return panic("normalization form")
+        if (try "text".normalize(form)) != "text": return panic("normalization form")
     let compression_error: Result[Bytes, CompressionError] = error(
         CompressionError.Unsupported
     )
 
     for format in ["GZIP", "ZLIB", "DEFLATE", ""]:
-        if compress(data: data, format: format, level: 0) != compression_error: return panic(
+        if compress(data, format, 0) != compression_error: return panic(
             "compression spelling"
         )
-        if decompress(data: data, format: format) != compression_error: return panic(
+        if decompress(data, format) != compression_error: return panic(
             "decompression spelling"
         )
 
     for format in ["gzip", "zlib", "deflate"]:
         for level in [0, 9]:
-            let encoded = compress(data: data, format: format, level: level) | value
-            if value(decompress(data: encoded, format: format)) != data: return panic(
+            if (try compress(data, format, level) | try decompress(format)) != data: return panic(
                 "compression level boundary"
             )
-
     let level_error: Result[Bytes, CompressionError] = error(
         CompressionError.InvalidInput
     )
     for level in [-1, 10]:
-        if compress(data: data, format: "gzip", level: level) != level_error: return panic(
+        if compress(data, "gzip", level) != level_error: return panic(
             "compression level range"
         )
     let pack_error: Result[Bytes, ArchiveError] = error(ArchiveError.Unsupported)
@@ -61,87 +59,75 @@ test "closed codec strings reject spelling changes with their domain errors":
     )
 
     for format in ["ZIP", "TAR", ""]:
-        if pack(entries: [], format: format) != pack_error: return panic(
-            "archive pack spelling"
-        )
-        if unpack(data: data, format: format) != unpack_error: return panic(
-            "archive unpack spelling"
-        )
+        if pack([], format) != pack_error: return panic("archive pack spelling")
+        if unpack(data, format) != unpack_error: return panic("archive unpack spelling")
 
 test "all ten string open modes are accepted and changed spellings are invalid":
     let fs = filesystem()
 
-    with temporary = fs.temporary("manuscript-open-modes-") | value:
+    with temporary = try fs.temporary("manuscript-open-modes-"):
         for mode in ["r", "r+", "w", "wx", "w+", "wx+", "a", "ax", "a+", "ax+"]:
             let path = "{temporary.path()}/{mode}"
             if mode == "r" or mode == "r+":
-                let created = fs.write_file(
-                    path: path,
-                    data: "".to_bytes(),
-                    replace: false
-                ) | value
-            with handle = fs.open(path: path, flags: mode, mode: 384) | value:
-                let info = handle.stat() | value
+                try fs.write_file(path, "".to_bytes(), replace: false)
+            with handle = try fs.open(path, mode, 384):
+                let _fileinfo = try handle.stat()
 
         for mode in ["R", "rs", "w+x", " r", ""]:
-            let opened = fs.open(
-                path: "{temporary.path()}/invalid",
-                flags: mode,
-                mode: 384
-            )
-            if opened.is_ok(): return panic("open spelling")
-            if opened.unwrap_error() != FileSystemError.InvalidInput: return panic(
-                "open spelling error"
-            )
+            if (
+                (
+                    try expect_error(
+                        fs.open(
+                            "{temporary.path()}/invalid",
+                            mode,
+                            384
+                        )
+                    )
+                ) != FileSystemError.InvalidInput
+            ): return panic("open spelling error")
 
 test "full byte counts positions EOF and stream aliases retain their contracts":
     let fs = filesystem()
 
-    with temporary = fs.temporary("manuscript-write-contract-") | value:
+    with temporary = try fs.temporary("manuscript-write-contract-"):
         let path = "{temporary.path()}/data"
-        let data = value("é".repeat(40000)).to_bytes()
+        let data = (try "é".repeat(40000)).to_bytes()
 
-        with handle = fs.open(path: path, flags: "w+", mode: 384) | value:
-            handle.write(data) | value
-            if value(handle.stat()).size != 80000: return panic(
+        with handle = try fs.open(path, "w+", 384):
+            try handle.write(data)
+            if (try handle.stat()).size != 80000: return panic(
                 "write did not write all bytes"
             )
-            if value(handle.read()).is_some(): return panic("sequential EOF")
-            if value(handle.read_at(offset: 80000)).length() != 0: return panic(
-                "positional EOF"
-            )
-            if value(handle.read_at(offset: 0, max_bytes: 80000)).length() != 65536: return panic(
+            if (try handle.read()).is_some(): return panic("sequential EOF")
+            if (try handle.read_at(80000)).length() != 0: return panic("positional EOF")
+            if (try handle.read_at(0, 80000)).length() != 65536: return panic(
                 "chunk cap"
             )
-            if value(handle.read_file()).length() != 0: return panic(
+            if (try handle.read_file()).length() != 0: return panic(
                 "positional read moved sequential position"
             )
-            if value(handle.seek(offset: 0, origin: 0)) != 0: return panic("seek start")
-            if value(handle.read()).unwrap().length() != 65536: return panic(
+            if (try handle.seek(0, 0)) != 0: return panic("seek start")
+            if (try handle.read()).get().length() != 65536: return panic(
                 "default read chunk"
             )
-            if value(handle.read_file()).length() != 14464: return panic(
+            if (try handle.read_file()).length() != 14464: return panic(
                 "remaining read"
             )
 
-            let rewind = handle.seek(offset: 0, origin: 0) | value
-            let overwritten = handle.append_file("XY".to_bytes()) | value
-            if value(handle.read_at(offset: 0, max_bytes: 2)) != "XY".to_bytes(): return panic(
+            let _count = try handle.seek(0, 0)
+            try handle.append_file("XY".to_bytes())
+            if (try handle.read_at(0, 2)) != "XY".to_bytes(): return panic(
                 "handle append repositioned"
             )
-            if value(handle.stat()).size != 80000: return panic(
-                "handle append extended"
-            )
+            if (try handle.stat()).size != 80000: return panic("handle append extended")
 
-            handle.write_at(offset: 4, data: "ZZ".to_bytes()) | value
-            if value(handle.seek(offset: 0, origin: 1)) != 2: return panic(
-                "write_at moved position"
-            )
+            try handle.write_at(4, "ZZ".to_bytes())
+            if (try handle.seek(0, 1)) != 2: return panic("write_at moved position")
 
             let writer = handle.writer()
-            let delivered = writer.write("AB".to_bytes()) | value
-            let flushed = writer.flush() | value
-            if value(handle.read_at(offset: 2, max_bytes: 4)) != "ABZZ".to_bytes(): return panic(
+            try writer.write("AB".to_bytes())
+            try writer.flush()
+            if (try handle.read_at(2, 4)) != "ABZZ".to_bytes(): return panic(
                 "writer position"
             )
 
@@ -150,25 +136,17 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
             let closed_read: Result[Bytes, FileSystemError] = error(
                 FileSystemError.Closed
             )
-            if handle.read_at(offset: 0) != closed_read: return panic(
+            if handle.read_at(0) != closed_read: return panic(
                 "adapter did not close handle"
             )
-
-            let alias_read = reader.read()
-            if alias_read.is_ok(): return panic("reader alias survived close")
-            if alias_read.unwrap_error() != IoError.Closed: return panic(
+            if (try expect_error(reader.read())) != IoError.Closed: return panic(
                 "adapter Closed translation"
             )
 
         let missing = "{temporary.path()}/missing"
-        let missing_file = fs.open(path: missing, flags: "r", mode: 384)
-        if missing_file.is_ok(): return panic("missing filesystem file opened")
-        if missing_file.unwrap_error() != FileSystemError.NotFound: return panic(
+        if ((try expect_error(fs.open(missing, "r", 384))) != FileSystemError.NotFound): return panic(
             "filesystem missing mapping"
         )
-
-        let missing_io = files().open(missing)
-        if missing_io.is_ok(): return panic("missing io file opened")
-        if missing_io.unwrap_error() != IoError.Unavailable: return panic(
+        if (try expect_error(files().open(missing))) != IoError.Unavailable: return panic(
             "io missing mapping"
         )

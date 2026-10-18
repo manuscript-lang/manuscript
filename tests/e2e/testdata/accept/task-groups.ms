@@ -16,8 +16,8 @@ fn exercise() Result[Unit, ExecutionError]:
         let domain = group.start(fn() Result[Int, String]: error("expected"))
         let stored = Stored(forward(number))
         let handles: List[Task[Int]] = [stored.task]
-        let joined = try group.join()
-        let joined_again = try group.join()
+        try group.join()
+        try group.join()
         let value = try stored.task.join()
         let value_again = try number.join()
         let message = try text.join()
@@ -33,7 +33,7 @@ fn exercise() Result[Unit, ExecutionError]:
         let outcome = try domain.join()
         if outcome.is_ok():
             return panic("domain error flattened")
-        if outcome.unwrap_error() != "expected":
+        if outcome.err() != "expected":
             return panic("domain error changed")
 
         let resource = Closeable(group)
@@ -43,10 +43,8 @@ fn exercise() Result[Unit, ExecutionError]:
             return panic("close erased result")
 
     with group = TaskGroup():
-        let first = group.start(fn(): 1)
-        let value = try first.join()
-        let second = group.start(fn(): value + 1)
-        let following = try second.join()
+        let value = try group.start(fn(): 1).join()
+        let following = try group.start(fn(): value + 1).join()
         if following != 2:
             return panic("individual join sealed group")
 
@@ -68,7 +66,7 @@ test "zero timeout starts no callback":
         if joined.is_ok():
             return panic("zero timeout succeeded")
 
-        let cause = joined.unwrap_error()
+        let cause = joined.err()
 
         match cause:
             Timeout:

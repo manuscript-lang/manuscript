@@ -21,9 +21,10 @@ impl Read for Box[Int]:
     fn get() Int: self.value
 
 fn invoke(transform: Optional[fn(value: Int) Int] = none) Int:
-    match transform:
-        some(callback): return callback(4)
-        none: return 0
+    if let callback = transform:
+        return callback(4)
+
+    return 0
 
 test "contextual callbacks and inline returns":
     let offset = 3
@@ -50,7 +51,7 @@ test "contextual callbacks and inline returns":
     )
 
     let functions: List[fn(value: Int) Int] = [fn(item): item + 4]
-    if functions.at(0).unwrap()(2) != 6: return panic("list callback")
+    if functions.at(0).get()(2) != 6: return panic("list callback")
 
     let nested = fn(value: Int):
         let inner = fn(): "text"

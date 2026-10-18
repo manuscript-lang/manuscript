@@ -12,7 +12,7 @@ fn score(outcome: Outcome) Int:
             return 0
 
 test "alternative result":
-    if not (score(outcome: Outcome.Ready(8)) == 8):
-        return panic(message: "check failed")
-    if not (score(outcome: Outcome.Failed("unavailable")) == 0):
-        return panic(message: "check failed")
+    if not (score(Outcome.Ready(8)) == 8):
+        return panic("check failed")
+    if not (score(Outcome.Failed("unavailable")) == 0):
+        return panic("check failed")

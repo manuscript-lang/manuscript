@@ -1,7 +1,6 @@
 import Bytes from "@std/bytes.ms"
 import {compile, Regex, RegexError} from "@std/regex.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 interface ListMutation:
     fn reverse_in_place() List[Int]
@@ -68,25 +67,25 @@ test "list names mutate aliases and retain shallow copies":
     let items = [1, 2, 3]
     let alias = items
     let copied = items.clone()
-    let returned = items.set(index: -1, value: 4)
-    returned.remove(index: 0)
+    let returned = items.set(-1, 4)
+    returned.remove(0)
     if (items != [2, 4] or alias != [2, 4] or copied != [1, 2, 3]):
         return panic("list alias or clone behavior")
 
     let set = items.set
     let remove = items.remove
-    set(value: 8, index: 0).remove(-1)
+    set(value: 8, 0).remove(-1)
     remove(0).append(9)
     if items != [9]: return panic("bound list receiver return")
 
     let optional: List[Optional[Int]] = [some(1)]
     optional.set(0, 7)
-    if optional.at(0).unwrap() != some(7): return panic("list Optional conversion")
+    if optional.at(0).get() != some(7): return panic("list Optional conversion")
 
     let nested = [[1]]
     let outer_copy = nested.clone()
     nested.set(0, [2])
-    outer_copy.at(0).unwrap().append(3)
+    outer_copy.at(0).get().append(3)
     if nested != [[2]] or outer_copy != [[1, 3]]: return panic("outer storage")
 
 test "set names preserve receiver identity order and no-op membership":
@@ -156,7 +155,7 @@ test "explicit views and bound views preserve native mutation and field shadowin
         return panic("String view replacement")
 
 test "replace_first preserves first default explicit caps and scalar boundaries":
-    if "aaaa".replace_first(old: "a", new: "b") != "baaa": return panic("first default")
+    if "aaaa".replace_first("a", "b") != "baaa": return panic("first default")
     if "aaaa".replace_first("a", "b", none) != "baaa": return panic("first none")
     if "aaaa".replace_first("a", "b", 0) != "aaaa": return panic("zero cap")
     if "aaaa".replace_first("a", "b", 2) != "bbaa": return panic("explicit cap")
@@ -170,38 +169,36 @@ test "replace_first preserves first default explicit caps and scalar boundaries"
     if "abc".replace_first("z", "x") != "abc": return panic("no match")
 
     let first = "aaaa".replace_first
-    if first(new: "b", old: "a") != "baaa" or first("a", "b", 2) != "bbaa":
+    if first(new: "b", "a") != "baaa" or first("a", "b", 2) != "bbaa":
         return panic("bound defaults or reordered labels")
     if first("a", "b") != "aaaa".replace("a", "b"): return panic("old replace spelling")
 
 test "regex replace_all preserves literal text and exact output budgets":
-    let pattern = compile("(a)") | value
+    let pattern = try compile("(a)")
     let all = pattern.replace_all
-    if value(pattern.replace_all("aaa", "b")) != "bbb": return panic("all matches")
-    if value(all(replacement: "$1", text: "aa")) != "$1$1": return panic(
-        "capture expansion"
-    )
-    if value(pattern.replace_all("aa", "é", 4)) != "éé": return panic("UTF8 boundary")
+    if (try pattern.replace_all("aaa", "b")) != "bbb": return panic("all matches")
+    if (try all(replacement: "$1", "aa")) != "$1$1": return panic("capture expansion")
+    if (try pattern.replace_all("aa", "é", 4)) != "éé": return panic("UTF8 boundary")
 
     let limited: Result[String, RegexError] = error(RegexError.LimitExceeded)
     let invalid: Result[String, RegexError] = error(RegexError.InvalidInput)
     if pattern.replace_all("aa", "é", 3) != limited: return panic("output budget")
     if all("a", "", -1) != invalid: return panic("negative budget")
-    if value(all("a", "", 0)) != "": return panic("empty output budget")
+    if (try all("a", "", 0)) != "": return panic("empty output budget")
     if pattern.replace_all("z", "b", 0) != limited: return panic(
         "unchanged output budget"
     )
     if pattern.replace_all("aa", "b", none) != pattern.replace_all("aa", "b", none):
         return panic("old regex spelling")
 
-    let empty = compile("") | value
-    if value(empty.replace_all("é🙂", "x")) != "xéx🙂x": return panic("empty pattern")
+    let empty = try compile("")
+    if (try empty.replace_all("é🙂", "x")) != "xéx🙂x": return panic("empty pattern")
 
     let view = RegexReplacement(RegexAdapter(pattern))
     let view_all = view.replace_all
     if (
-        value(view.replace_all("aaa", "b", none)) != "bbb"
-        or value(view_all("aa", "b", 2)) != "bb"
+        (try view.replace_all("aaa", "b", none)) != "bbb"
+        or (try view_all("aa", "b", 2)) != "bb"
     ):
         return panic("Regex interface view")
 
@@ -271,10 +268,10 @@ test "list reversal names distinguish receiver mutation and shallow copies":
 
     let nested = [Cell(1), Cell(2)]
     let shallow = nested.reversed()
-    let shared = shallow.at(0).unwrap()
+    let shared = shallow.at(0).get()
     shared.value = 9
     shallow.set(1, Cell(7))
-    if nested.at(0).unwrap().value != 1 or nested.at(1).unwrap().value != 9:
+    if nested.at(0).get().value != 1 or nested.at(1).get().value != 9:
         return panic("reversed copy depth")
 
     let viewed = [4, 5]

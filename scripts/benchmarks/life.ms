@@ -2,7 +2,7 @@ import {filled, range} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 fn make_cells() List[Int]:
-    if let values = filled(value: 0, count: 16384): return values
+    if let values = filled(0, 16384): return values
 
     return panic("fill failure")
 
@@ -13,43 +13,37 @@ export fn main() Int:
     for i in range(0, 16384):
         var value = 0
         if (i * 17 + i / 128 * 13) % 7 < 3: value = 1
-        cells.set(index: i, value: value)
+        cells.set(i, value)
 
     for generation in range(0, 50):
         for y in range(0, 128):
             for x in range(0, 128):
                 var neighbors = 0
-                var dy = -1
 
-                while dy <= 1:
-                    var dx = -1
-
-                    while dx <= 1:
+                for dy in range(-1, 2):
+                    for dx in range(-1, 2):
                         if dx != 0 or dy != 0:
                             let index = (
                                 (
-                                    (y + dy + 128)
-                                    % 128
-                                ) * 128
+                                    y
+                                    + dy
+                                    + 128
+                                ) % 128 * 128
                                 + (x + dx + 128) % 128
                             )
-                            neighbors = neighbors + cells.at(index).unwrap()
-
-                        dx = dx + 1
-
-                    dy = dy + 1
+                            neighbors += cells.at(index).get()
 
                 let index = y * 128 + x
                 let alive = (
                     neighbors == 3
                     or (
                         neighbors == 2
-                        and cells.at(index).unwrap() == 1
+                        and cells.at(index).get() == 1
                     )
                 )
                 var value = 0
                 if alive: value = 1
-                next.set(index: index, value: value)
+                next.set(index, value)
 
         let old = cells
         cells = next
@@ -57,7 +51,7 @@ export fn main() Int:
 
     var sum = 0
     for i in range(0, 16384):
-        sum = sum + cells.at(i).unwrap()
+        sum += cells.at(i).get()
     if sum != 3914: return panic("life checksum")
 
     return 0

@@ -6,6 +6,6 @@ fn amount() Result[Decimal, String]:
 
 test "explicit standard imports":
     if not ([1, 2].length() == 2):
-        return panic(message: "check failed")
-    if not (amount().unwrap_or(0.0d) == 12.50d):
-        return panic(message: "check failed")
+        return panic("check failed")
+    if not (amount().get(0.0d) == 12.50d):
+        return panic("check failed")

@@ -155,7 +155,7 @@ fn show(number: Int) Result[Unit, Error]:
     return stdout().flush()
 
 export fn main() Int:
-    let number = arguments().at(0).unwrap_or("42").parse_int()
+    let number = arguments().at(0).get("42").parse_int()
     if let value = number:
         if show(value).is_ok():
             return 0
@@ -166,7 +166,7 @@ export fn main() Int:
 ms run number.ms -- 42
 ```
 
-Use `unwrap_or` for a default, or `if let` with a failure path ([Optional values](../core-language/types/optionals.md)).
+Use `get(default)` for a default, or `if let` with a failure path ([Optional values](../core-language/types/optionals.md)).
 
 ## Parse JSON
 
@@ -179,7 +179,7 @@ import parse from "@std/json.ms"
 import stdout from "@std/io.ms"
 
 fn run() Result[Unit, Error]:
-    let text = try parse[String](arguments().at(0).unwrap_or("\"hello\""))
+    let text = try parse[String](arguments().at(0).get("\"hello\""))
     try stdout().write("{text}\n".to_bytes())
     return stdout().flush()
 
@@ -210,7 +210,7 @@ type Config:
     enabled: Bool = true
 
 fn run() Result[Unit, Error]:
-    let text = arguments().at(0).unwrap_or("\{\"name\":\"Sam\"\}")
+    let text = arguments().at(0).get("\{\"name\":\"Sam\"\}")
     let config = try parse[Config](text)
     let encoded = config | try stringify
     try stdout().write("{encoded}\n".to_bytes())

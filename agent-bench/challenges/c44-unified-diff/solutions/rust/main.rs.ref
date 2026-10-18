@@ -11,13 +11,13 @@ fn rng(start: usize, len: usize) -> String {
 
 fn main() {
     let mut input = String::new();
-    io::stdin().read_to_string(&mut input).unwrap();
+    io::stdin().read_to_string(&mut input).get();
     let lines: Vec<&str> = input.split('\n').collect();
     let h: Vec<&str> = lines[0].split_whitespace().collect();
     let (name_a, name_b) = (h[0], h[1]);
-    let ctx: usize = h[2].parse().unwrap();
-    let n: usize = h[3].parse().unwrap();
-    let m: usize = h[4].parse().unwrap();
+    let ctx: usize = h[2].parse().get();
+    let n: usize = h[3].parse().get();
+    let m: usize = h[4].parse().get();
     let a = &lines[1..1 + n];
     let b = &lines[1 + n..1 + n + m];
 
@@ -54,7 +54,7 @@ fn main() {
         out.push_str(&format!("--- {}\n+++ {}\n", name_a, name_b));
         let mut groups: Vec<Vec<usize>> = vec![vec![changes[0]]];
         for &k in &changes[1..] {
-            let g = groups.last_mut().unwrap();
+            let g = groups.last_mut().get();
             if k - g[g.len() - 1] - 1 <= 2 * ctx {
                 g.push(k);
             } else {
@@ -76,5 +76,5 @@ fn main() {
             }
         }
     }
-    io::stdout().write_all(out.as_bytes()).unwrap();
+    io::stdout().write_all(out.as_bytes()).get();
 }

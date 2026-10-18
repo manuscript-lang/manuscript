@@ -12,7 +12,7 @@ import (
 // bindings, are established by call-free guards, and die at an assignment to
 // either binding or at anything that may mutate a list. Lowering keeps a
 // checked read, so a lookup that a concurrent task invalidated faults like
-// Optional.unwrap() instead of reading out of range.
+// Optional.get() instead of reading out of range.
 type boundFact struct {
 	kind        byte // 'n': index >= 0; 'u': index < list.length(); 'l': list.length() >= min
 	list, index *Binding

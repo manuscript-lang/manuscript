@@ -19,7 +19,7 @@ test "issue 187 programs need no collection imports":
     let shapes = [Shape.Circle(1.0)]
     if shapes.length() != 1 or count(["/var", "log"]) != 2: return panic("literals")
 
-    var rolls: List[Int] = []
+    let rolls: List[Int] = []
 
     for i in range(0, 5):
         if let n = roll(i):
@@ -31,17 +31,17 @@ test "issue 187 programs need no collection imports":
 
     let points = Map[Point, Int]()
     points.add(Point(1, 2), 7)
-    if points.get(Point(1, 2)).unwrap() != 7: return panic("constructor")
+    if points.get(Point(1, 2)).get() != 7: return panic("constructor")
 
     let nested: List[Map[String, List[Int]]] = [{}, {"a": []}]
-    if nested[1].unwrap().get("a").unwrap().length() != 0: return panic("empty context")
+    if nested[1].get().get("a").get().length() != 0: return panic("empty context")
 
 test "map add returns receiver and retains aliases clone and insertion order":
     let values = {"a": 1, "b": 2}
     let alias = values
     let copy = values.clone()
     let returned = values.add("a", 3)
-    returned.add(key: "c", value: 4)
+    returned.add("c", 4)
     alias.add(value: 5, key: "b")
     let bound = values.add
     bound("d", 6)
@@ -57,7 +57,7 @@ test "map add returns receiver and retains aliases clone and insertion order":
     let payload = [1]
     let nested = Map[Int, List[Int]]().add(1, payload)
     payload.append(2)
-    if nested.get(1).unwrap() != [1, 2]: return panic("payload reference")
+    if nested.get(1).get() != [1, 2]: return panic("payload reference")
 
 test "map add retains optional wrapping and generic bound calls":
     let values = Map[Optional[Int], Optional[Int]]()
@@ -65,12 +65,12 @@ test "map add retains optional wrapping and generic bound calls":
     values.add(value: 3, key: 1)
     let bound = values.add
     bound(4, 5)
-    if values.get(1).unwrap().unwrap() != 3: return panic("optional conversion")
-    if values.get(4).unwrap().unwrap() != 5: return panic("bound conversion")
+    if values.get(1).get().get() != 3: return panic("optional conversion")
+    if values.get(4).get().get() != 5: return panic("bound conversion")
 
     let generic = update[Optional[Int], Optional[Int]](values, some(6), some(7))
     generic.add(8, 9)
-    if values.get(6).unwrap().unwrap() != 7 or values.get(8).unwrap().unwrap() != 9: return panic(
+    if values.get(6).get().get() != 7 or values.get(8).get().get() != 9: return panic(
         "generic receiver"
     )
 
@@ -87,7 +87,7 @@ test "map add captures receivers and arguments in written order":
         ,
         2
     )
-    if original.get(1).unwrap() != 2 or not other.is_empty(): return panic(
+    if original.get(1).get() != 2 or not other.is_empty(): return panic(
         "receiver capture"
     )
 
@@ -100,9 +100,7 @@ test "map add captures receivers and arguments in written order":
                 5
             none: 0
     )
-    if original.get(3).unwrap() != 5 or original.contains(4): return panic(
-        "key capture"
-    )
+    if original.get(3).get() != 5 or original.contains(4): return panic("key capture")
 
     var order = 0
     original.add(
@@ -120,4 +118,4 @@ test "map add captures receivers and arguments in written order":
                 6
             none: 0
     )
-    if order != 2 or original.get(6).unwrap() != 7: return panic("reordered labels")
+    if order != 2 or original.get(6).get() != 7: return panic("reordered labels")

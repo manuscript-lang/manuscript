@@ -7,9 +7,9 @@ fn mutate[T](values: List[T], mode: String, replacement: T) Unit:
     if mode == "remove":
         values.remove(0)
     if mode == "splice":
-        values.splice(start: 1, delete_count: 2, replacement: [replacement])
+        values.splice(1, 2, [replacement])
     if mode == "clear" or mode == "clear_append":
-        values.splice(start: 0, delete_count: values.length(), replacement: [])
+        values.splice(0, values.length(), [])
 
     if mode == "clear_append":
         values.append(replacement)
@@ -21,8 +21,8 @@ fn observe[T](values: List[T], mode: String, replacement: T, callback: Bool) Lis
     let visit = fn(value: T) Unit:
         seen.append(value)
         if visits.count == 0:
-            mutate(values: values, mode: mode, replacement: replacement)
-        visits.count = visits.count + 1
+            mutate(values, mode, replacement)
+        visits.count += 1
 
     if callback:
         let each = values.for_each
@@ -60,8 +60,8 @@ test "Int consumers see valid shifted and retained tail values":
             let want = expected(mode, 1, 2, 3, 9)
             var total = 0
             var wanted = 0
-            for value in seen: total = total + value
-            for value in want: wanted = wanted + value
+            for value in seen: total += value
+            for value in want: wanted += value
             if not (
                 total == wanted
                 and seen == want
@@ -79,8 +79,8 @@ test "Float consumers see valid shifted and retained tail values":
             let want = expected(mode, 1.5, 2.5, 3.5, 9.5)
             var total = 0.0
             var wanted = 0.0
-            for value in seen: total = total + value
-            for value in want: wanted = wanted + value
+            for value in seen: total += value
+            for value in want: wanted += value
             if not (
                 total == wanted
                 and seen == want
@@ -97,7 +97,7 @@ test "String consumers see valid shifted and retained tail values":
             let seen = observe(values, mode, "replacement", callback)
             let want = expected(mode, "a", "bb", "ccc", "replacement")
             var text = ""
-            for value in seen: text = text + value
+            for value in seen: text += value
             if not (
                 text == want.join("")
                 and seen == want
@@ -128,8 +128,8 @@ test "record consumers retain shallow references after shrink":
             let want = expected(mode, first, second, last, replacement)
             var total = 0
             var wanted = 0
-            for value in seen: total = total + value.value
-            for value in want: wanted = wanted + value.value
+            for value in seen: total += value.value
+            for value in want: wanted += value.value
             if not (
                 total == wanted
                 and seen == want
@@ -144,10 +144,7 @@ test "record consumers retain shallow references after shrink":
                 return panic("record shrink consumer lost a valid reference")
 
             last.value = 11
-            if not (
-                seen.last().unwrap().value == 11
-                and clone.last().unwrap().value == 11
-            ):
+            if not (seen.last().get().value == 11 and clone.last().get().value == 11):
                 return panic("record references were deep copied")
 
 type Choice:
@@ -171,8 +168,8 @@ test "alternative consumers retain tags and payloads after shrink":
             let want = expected(mode, first, second, last, replacement)
             var total = 0
             var wanted = 0
-            for value in seen: total = total + score(value)
-            for value in want: wanted = wanted + score(value)
+            for value in seen: total += score(value)
+            for value in want: wanted += score(value)
             if not (
                 total == wanted
                 and seen == want
@@ -199,8 +196,8 @@ test "nested list consumers retain inner handles after shrink":
             let want = expected(mode, first, second, last, replacement)
             var total = 0
             var wanted = 0
-            for value in seen: total = total + value.first().unwrap()
-            for value in want: wanted = wanted + value.first().unwrap()
+            for value in seen: total += value.first().get()
+            for value in want: wanted += value.first().get()
             if not (
                 total == wanted
                 and seen == want
@@ -215,10 +212,7 @@ test "nested list consumers retain inner handles after shrink":
                 return panic("nested shrink consumer lost an inner handle")
 
             last.append(11)
-            if not (
-                seen.last().unwrap() == [3, 11]
-                and clone.last().unwrap() == [3, 11]
-            ):
+            if not (seen.last().get() == [3, 11] and clone.last().get() == [3, 11]):
                 return panic("nested references were deep copied")
 
 test "map and folds consume valid retained cells":
@@ -227,7 +221,7 @@ test "map and folds consume valid retained cells":
     let output = mapped.map(
         fn(value):
             if visits.count == 0: mapped.remove(0)
-            visits.count = visits.count + 1
+            visits.count += 1
             return value + 10
     )
     if not (output == [11, 13, 13] and mapped == [2, 3]):
@@ -238,12 +232,8 @@ test "map and folds consume valid retained cells":
     let total = folded.fold(
         0,
         fn(accumulator, value):
-            if visits.count == 0: folded.splice(
-                start: 0,
-                delete_count: 3,
-                replacement: []
-            )
-            visits.count = visits.count + 1
+            if visits.count == 0: folded.splice(0, 3, [])
+            visits.count += 1
             return accumulator + value
     )
     if not (total == 6 and folded.is_empty() and visits.count == 3):
@@ -255,7 +245,7 @@ test "map and folds consume valid retained cells":
         0,
         fn(accumulator, value):
             if visits.count == 0: reversed.remove(0)
-            visits.count = visits.count + 1
+            visits.count += 1
             return accumulator * 10 + value
     )
     if not (backwards == 332 and reversed == [2, 3] and visits.count == 3):
@@ -281,8 +271,8 @@ test "interface view consumers dispatch after shrink":
             let want = expected(mode, first, second, last, replacement)
             var total = 0
             var wanted = 0
-            for value in seen: total = total + value.read()
-            for value in want: wanted = wanted + value.read()
+            for value in seen: total += value.read()
+            for value in want: wanted += value.read()
             if not (
                 total == wanted
                 and values.length() == remaining(
@@ -296,10 +286,7 @@ test "interface view consumers dispatch after shrink":
                 return panic("interface dispatch after shrink lost its receiver")
 
             last_record.value = 11
-            if not (
-                seen.last().unwrap().read() == 11
-                and clone.last().unwrap().read() == 11
-            ):
+            if not (seen.last().get().read() == 11 and clone.last().get().read() == 11):
                 return panic("interface views did not retain shallow references")
 
 test "find returns the value passed to a mutating predicate":
@@ -309,7 +296,7 @@ test "find returns the value passed to a mutating predicate":
             forward.remove(0)
             return value == 1
     )
-    if not (found.unwrap() == 1 and forward == [2, 3]):
+    if not (found.get() == 1 and forward == [2, 3]):
         return panic("find reloaded a shifted backing cell")
 
     let replaced = [1, 2, 3]
@@ -318,7 +305,7 @@ test "find returns the value passed to a mutating predicate":
             replaced.set(0, 9)
             return value == 1
     )
-    if not (original.unwrap() == 1 and replaced == [9, 2, 3]):
+    if not (original.get() == 1 and replaced == [9, 2, 3]):
         return panic("find returned a replacement rather than its argument")
 
     let reverse = [1, 2, 3]
@@ -327,7 +314,7 @@ test "find returns the value passed to a mutating predicate":
             if value == 2: reverse.remove(1)
             return value == 2
     )
-    if not (last.unwrap() == 2 and reverse == [1, 3]):
+    if not (last.get() == 2 and reverse == [1, 3]):
         return panic("find_last reloaded a shifted current cell")
 
     let last_replaced = [1, 2, 3]
@@ -336,7 +323,7 @@ test "find returns the value passed to a mutating predicate":
             last_replaced.set(2, 9)
             return value == 3
     )
-    if not (before.unwrap() == 3 and last_replaced == [1, 2, 9]):
+    if not (before.get() == 3 and last_replaced == [1, 2, 9]):
         return panic("find_last returned a replacement rather than its argument")
 
     let indexes = [1, 2, 3]
@@ -351,7 +338,7 @@ test "find returns the value passed to a mutating predicate":
             if value == 2: reverse_indexes.remove(1)
             return value == 2
     )
-    if not (index.unwrap() == 0 and last_index.unwrap() == 1):
+    if not (index.get() == 0 and last_index.get() == 1):
         return panic("find index variants lost the captured index")
 
     let record = Payload(1)
@@ -365,12 +352,12 @@ test "find returns the value passed to a mutating predicate":
                 records.set(0, Payload(9))
                 return matches
         )
-        .unwrap()
+        .get()
     )
     if not (
         retained.value == 7
         and record.value == 7
-        and records.first().unwrap().value == 9
+        and records.first().get().value == 9
     ):
         return panic("find copied its matching shallow reference")
 
@@ -386,8 +373,8 @@ test "preferred List mutators and explicit reversed copy preserve aliases":
         seen.append(value)
 
         if seen.length() == 1:
-            set(index: 1, value: 9)
-            remove(index: 0)
+            set(1, 9)
+            remove(0)
 
     if not (seen == [1, 3, 3] and alias == [9, 3] and clone == [1, 2, 3]):
         return panic("preferred mutation copied traversal or lost an alias")
@@ -409,5 +396,5 @@ test "preferred List mutators and explicit reversed copy preserve aliases":
     let shallow = children.reversed()
     child.value = 7
     children.remove(0)
-    if not (shallow.last().unwrap().value == 7 and children.length() == 1):
+    if not (shallow.last().get().value == 7 and children.length() == 1):
         return panic("reversed changed shallow child reference sharing")

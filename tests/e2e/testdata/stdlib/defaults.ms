@@ -3,7 +3,6 @@ import {base64_encode, base64_decode, EncodingError} from "@std/encoding.ms"
 import {Commands, Subprocess, CommandOutput, CommandError, commands} from "@std/process.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 fn forward[T](item: T) T: item
 
@@ -20,7 +19,7 @@ impl Commands for Capture:
         timeout: Optional[Duration]
     ) Result[CommandOutput, CommandError]:
         self.last = input
-        self.calls = self.calls + 1
+        self.calls += 1
         return ok(CommandOutput(0, input, "".to_bytes()))
 
     fn spawn(program: String, arguments: List[String]) Result[Subprocess, CommandError]:
@@ -28,8 +27,8 @@ impl Commands for Capture:
 
 import Duration from "@std/time.ms"
 
-fn generic_run[T: Commands](service: T) Bytes:
-    return value(service.run(program: "fake", arguments: [])).stdout
+fn generic_run[T: Commands](service: T) Result[Bytes, Error]:
+    return ok((try service.run("fake", [])).stdout)
 
 type Override:
     input: Bytes
@@ -39,15 +38,15 @@ test "bound receiver is captured before supplied arguments":
     let second = Capture("second".to_bytes(), 0)
     var selected = first
     let index: Optional[Int] = some(0)
-    let output = selected.run(
-        program: match index:
+    let output = try selected.run(
+        match index:
             some(_):
                 selected = second
                 "fake"
             none: "fake"
         ,
-        arguments: []
-    ) | value
+        []
+    )
     if (first.calls != 1 or second.calls != 0 or output.stdout.length() != 0):
         return panic("receiver capture order changed")
 
@@ -67,19 +66,15 @@ impl Commands for Override:
 test "concrete implementation defaults and interface defaults stay distinct":
     let service = Override("custom".to_bytes())
     let concrete = service.run
-    if value(concrete(program: "fake", arguments: [])).stdout != service.input:
+    if (try concrete("fake", [])).stdout != service.input:
         return panic("concrete input override")
 
     let viewed = Commands(service).run
-    if value(viewed(program: "fake", arguments: [])).stdout.length() != 0:
+    if (try viewed("fake", [])).stdout.length() != 0:
         return panic("interface input default")
 
     let explicit = "explicit".to_bytes()
-    if (
-        value(
-            viewed(program: "fake", arguments: [], input: explicit)
-        ).stdout != explicit
-    ):
+    if ((try viewed("fake", [], explicit)).stdout != explicit):
         return panic("explicit input skips both defaults")
 
 test "CSV defaults are fresh and explicit options retain their meaning":
@@ -90,20 +85,20 @@ test "CSV defaults are fresh and explicit options retain their meaning":
     let second = CsvOptions()
     if (first.delimiter != ";" or second.delimiter != "," or second.line_ending != "\n"):
         return panic("CSV construction must allocate fresh mutable storage")
-    if CsvOptions(delimiter: "\t").line_ending != "\n": return panic("ending default")
+    if CsvOptions("\t").line_ending != "\n": return panic("ending default")
     if CsvOptions(line_ending: "\r\n").delimiter != ",": return panic(
         "delimiter default"
     )
-    if value(stringify([["a", "b"]])) != "a,b\n": return panic("CSV default output")
-    if value(stringify([["a", "b"]], options: first)) != "a;b\r\n":
+    if (try stringify([["a", "b"]])) != "a,b\n": return panic("CSV default output")
+    if (try stringify([["a", "b"]], first)) != "a;b\r\n":
         return panic("explicit CSV options")
-    if value(parse("a,b\n")) != [["a", "b"]]: return panic("CSV default parse")
+    if (try parse("a,b\n")) != [["a", "b"]]: return panic("CSV default parse")
 
     let bound = stringify
-    if value(bound([["a", "b"]])) != "a,b\n": return panic("stored CSV default")
+    if (try bound([["a", "b"]])) != "a,b\n": return panic("stored CSV default")
 
     let typed = forward(stringify)
-    if value(typed([["a", "b"]], second, none)) != "a,b\n":
+    if (try typed([["a", "b"]], second, none)) != "a,b\n":
         return panic("generic forwarding with full arguments")
 
     let limited: Result[List[List[String]], CsvError] = error(CsvError.LimitExceeded)
@@ -114,7 +109,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
         return panic("distinct CSV budgets")
 
     let invalid: Result[String, CsvError] = error(CsvError.InvalidInput)
-    if stringify([["a"]], options: CsvOptions(delimiter: "")) != invalid:
+    if stringify([["a"]], CsvOptions("")) != invalid:
         return panic("explicit invalid options still validate")
 
 test "Base64 defaults support stored functions and explicit alphabets":
@@ -130,13 +125,13 @@ test "Base64 defaults support stored functions and explicit alphabets":
     let typed: fn(data: Bytes, url_safe: Bool) String = encode
     if typed(bytes, false) != "/w==": return panic("complete typed callable")
     if (
-        value(base64_decode("/w==")) != bytes
-        or value(base64_decode("_w==", true)) != bytes
+        (try base64_decode("/w==")) != bytes
+        or (try base64_decode("_w==", true)) != bytes
     ):
         return panic("decode alphabet")
 
     let decode = base64_decode
-    if value(decode("/w==", max_bytes: 1)) != bytes: return panic(
+    if (try decode("/w==", max_bytes: 1)) != bytes: return panic(
         "stored decode default"
     )
 
@@ -149,28 +144,30 @@ test "Base64 defaults support stored functions and explicit alphabets":
 test "Commands defaults cross concrete bound view and generic boundaries":
     let capture = Capture("x".to_bytes(), 0)
     let bound = capture.run
-    if value(bound(program: "fake", arguments: [])).stdout.length() != 0:
+    if (try bound("fake", [])).stdout.length() != 0:
         return panic("bound input default")
-    if value(capture.run(program: "fake", arguments: [])).stdout.length() != 0:
+    if (try capture.run("fake", [])).stdout.length() != 0:
         return panic("concrete input default")
 
     let view = Commands(capture)
     let viewed = view.run
-    if value(viewed(program: "fake", arguments: [])).stdout.length() != 0:
+    if (try viewed("fake", [])).stdout.length() != 0:
         return panic("viewed input default")
-    if generic_run(capture).length() != 0: return panic("bounded generic input default")
+    if (try generic_run(capture)).length() != 0: return panic(
+        "bounded generic input default"
+    )
 
     let input = Bytes([42])
-    let output = value(view.run(program: "fake", arguments: [], input: input)).stdout
+    let output = (try view.run("fake", [], input)).stdout
     if output != input or capture.last != input:
         return panic("explicit input payload retains value")
 
     let forwarded = forward(view.run)
-    if value(forwarded("fake", [], input, none, none)).stdout.at(0).unwrap() != 42:
+    if (try forwarded("fake", [], input, none, none)).stdout.at(0).get() != 42:
         return panic("generic forwarding preserves full callable ABI")
     if capture.calls != 6: return panic("each invocation executes once")
 
     let invalid: Result[CommandOutput, CommandError] = error(CommandError.InvalidInput)
     let native = commands().run
-    if native(program: "", arguments: []) != invalid:
+    if native("", []) != invalid:
         return panic("native empty stdin default reaches validation")

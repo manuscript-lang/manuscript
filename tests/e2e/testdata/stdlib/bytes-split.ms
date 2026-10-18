@@ -34,7 +34,7 @@ test "Bytes empty separator splits bytes without decoding":
     if scalars != [Bytes([195]), Bytes([169])]: return panic(
         "byte split used scalar indexes"
     )
-    if scalars.at(0).unwrap().decode_utf8().is_some(): return panic(
+    if scalars.at(0).get().decode_utf8().is_some(): return panic(
         "byte split repaired invalid UTF-8"
     )
     if "é".to_bytes().split(Bytes([169])) != [Bytes([195]), empty]: return panic(
@@ -48,10 +48,10 @@ test "Bytes split optional limits truncate parts":
     if data.split(separator) != expected or data.split(separator, none) != expected: return panic(
         "omitted/none split cap"
     )
-    if data.split(separator: separator, max_parts: some(2)) != [Bytes([1]), Bytes([2])]: return panic(
+    if data.split(separator, some(2)) != [Bytes([1]), Bytes([2])]: return panic(
         "some split cap"
     )
-    if data.split(separator, max_parts: 1) != [Bytes([1])]: return panic(
+    if data.split(separator, 1) != [Bytes([1])]: return panic(
         "split retained unsplit remainder"
     )
     if (
@@ -79,7 +79,7 @@ test "Bytes split bound methods and generic forwarding retain contracts":
     if split(Bytes([0])) != [Bytes([1]), Bytes([2])]: return panic(
         "bound byte receiver"
     )
-    if split(max_parts: 1, separator: Bytes([0])) != [Bytes([1])]: return panic(
+    if split(max_parts: 1, Bytes([0])) != [Bytes([1])]: return panic(
         "bound byte labels/defaults"
     )
     if call_split(typed) != [Bytes([1]), Bytes([2])]: return panic(
@@ -97,7 +97,7 @@ test "Bytes split returns independent List storage and immutable views":
     let data = Bytes([1, 0, 2])
     let first = data.split(Bytes([0]))
     let second = data.split(Bytes([0]))
-    let payload = first.at(0).unwrap()
+    let payload = first.at(0).get()
     let edited = payload.with_value(0, 99)
     let extracted = payload.values()
     extracted.set(0, 88)

@@ -29,7 +29,7 @@ func lintOptionalMatches(program *checker.Program) []LintFinding {
 		if some && none {
 			findings = append(findings, LintFinding{
 				Code:     "MSL108",
-				Message:  "Matching an Optional with only some and none; use 'if let value = ...:' with 'else:', or an Optional method such as unwrap_or or map",
+				Message:  "Matching an Optional with only some and none; use 'if let value = ...:' with 'else:', or an Optional method such as get(default) or map",
 				Position: e.Pos,
 			})
 		}

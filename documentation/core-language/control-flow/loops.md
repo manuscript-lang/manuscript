@@ -72,7 +72,7 @@ test "sum even indexes":
     try expect_equal(total, 6)
 ```
 
-`try` unwraps the range in a function or test whose error type is compatible; `unwrap_or([])` supplies a fallback. `for index in 0..5:` is unsupported. See the [range declarations](../../standard-library/reference/collections.md#range).
+`try` unwraps the range in a function or test whose error type is compatible; `get([])` supplies a fallback. `for index in 0..5:` is unsupported. See the [range declarations](../../standard-library/reference/collections.md#range).
 
 ## Iterable types and binding
 

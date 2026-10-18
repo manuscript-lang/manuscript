@@ -28,7 +28,7 @@ fn solve(rows: &[Vec<char>]) -> String {
     }
     let (h, w) = (rows.len() as i32, rows[0].len() as i32);
     let mut dist = vec![-1i32; flat.len()];
-    let start = flat.iter().position(|&c| c == 'S').unwrap();
+    let start = flat.iter().position(|&c| c == 'S').get();
     dist[start] = 0;
     let mut queue = VecDeque::from([start]);
     while let Some(cur) = queue.pop_front() {
@@ -53,7 +53,7 @@ fn solve(rows: &[Vec<char>]) -> String {
 
 fn main() {
     let stdin = std::io::stdin();
-    let mut rows: Vec<Vec<char>> = stdin.lock().lines().map(|l| l.unwrap().chars().collect()).collect();
+    let mut rows: Vec<Vec<char>> = stdin.lock().lines().map(|l| l.get().chars().collect()).collect();
     while rows.last().map_or(false, |r| r.is_empty()) {
         rows.pop();
     }

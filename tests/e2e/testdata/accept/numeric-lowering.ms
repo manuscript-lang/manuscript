@@ -12,16 +12,13 @@ fn identity[T](value: T) T:
 
 test "typed operands retain evaluation order and generic boundaries":
     let counter = Counter(0)
-    let total = (
-        step(counter: counter, value: 1)
-        + step(counter: counter, value: 2) * step(counter: counter, value: 3)
-    )
+    let total = (step(counter, 1) + step(counter, 2) * step(counter, 3))
     if total != 7 or counter.value != 123: return panic("operand order")
 
     var value = identity(9)
-    value = value + 1
+    value += 1
     let snapshot = fn() Int: return value * 2
-    value = value - 1
+    value -= 1
     if snapshot() != 20 or value != 9: return panic("boxed capture")
     if - 9223372036854775808 % -1 != 0: return panic("minimum remainder")
     if - 7 / 2 != -3 or - 7 % 3 != -1: return panic("signed arithmetic")

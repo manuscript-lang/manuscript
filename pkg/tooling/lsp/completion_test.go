@@ -106,7 +106,7 @@ func TestCollectionPreludeExpressionCompletionNeedsNoImport(t *testing.T) {
 }
 
 func TestPreludeNavigationUsesStandardSource(t *testing.T) {
-	source := "fn work(value: Optional[Int]) Result[Int, Error]:\n    return ok(value: value.unwrap())\n"
+	source := "fn work(value: Optional[Int]) Result[Int, Error]:\n    return ok(value: value.get())\n"
 	d := document{"file:///tmp/prelude.ms", source, 1}
 	result := analyze(d, map[string]document{d.URI: d})
 	if !result.Success() {
@@ -139,7 +139,7 @@ func TestTypedCompletionWhileEditing(t *testing.T) {
 		{"auto import", "fn work() Unit:\n    Que|\n", []string{"Queue"}, nil},
 		{"comments", "fn work() Unit:\n    # Que|\n    unit\n", nil, []string{"Queue"}},
 		{"strings", "fn work() String:\n    return \"Que|\"\n", nil, []string{"Queue"}},
-		{"optional methods", "fn work(value: Optional[Int]) Int:\n    return value.|\n", []string{"is_some", "is_none", "unwrap", "unwrap_or", "unwrap_or_else"}, []string{"some", "none", "get"}},
+		{"optional methods", "fn work(value: Optional[Int]) Int:\n    return value.|\n", []string{"is_some", "is_none", "get", "or_else"}, []string{"some", "none", "unwrap"}},
 		{"generic alternative", "fn work() Optional[Int]:\n    return Optional[Int].|\n", []string{"some", "none"}, nil},
 		{"prelude result cases", "fn work() Result[Int, String]:\n    return Result[Int, String].|\n", []string{"ok", "error"}, nil},
 	}

@@ -17,7 +17,8 @@ fn json_doc(count: Int) String:
     return sb.freeze()
 
 fn encoded_length(value: JsonValue) Int:
-    if let text = stringify(value: value): return text.length()
+    if let text = stringify(value):
+        return text.length()
 
     return 0
 
@@ -27,7 +28,8 @@ export fn bench_json() Unit:
         "json.parse",
         5000,
         fn() Int:
-            if parse(text: doc).is_ok(): return 1
+            if parse(doc).is_ok():
+                return 1
 
             return 0
     )
@@ -35,7 +37,8 @@ export fn bench_json() Unit:
         "json.roundtrip",
         5000,
         fn() Int:
-            if let v = parse(text: doc): return encoded_length(v)
+            if let v = parse(doc):
+                return encoded_length(v)
 
             return 0
     )

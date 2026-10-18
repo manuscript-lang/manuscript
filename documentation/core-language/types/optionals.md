@@ -53,9 +53,7 @@ Receiver methods:
 | --- | --- |
 | `is_some() Bool` | Whether the optional contains a value, including `false`, zero, or an empty string |
 | `is_none() Bool` | Whether the optional is absent |
-| `unwrap() T` | Return the contained value; [fault](../errors/faults.md) with `called Optional.unwrap() on none` when absent |
-| `unwrap_or(fallback: T) T` | Return the contained value or the supplied fallback |
-| `unwrap_or_else(create: fn() T) T` | Return the contained value or call `create` once when absent |
+| `get(default: Optional[T] = none) T` | Return the contained value, or `default` when absent; without a default, [fault](../errors/faults.md) with `called Optional.get() on none` |
 | `map[U](transform: fn(value: T) U) Optional[U]` | Transform a present payload once; preserve absence |
 | `and_then[U](transform: fn(value: T) Optional[U]) Optional[U]` | Return the callback's Optional when present; preserve absence |
 | `or_else(create: fn() Optional[T]) Optional[T]` | Keep a present Optional or call `create` once when absent |
@@ -64,17 +62,17 @@ Fallback for routine absence:
 
 ```manuscript
 fn display_name(name: Optional[String]) String:
-    return name.unwrap_or("Anonymous")
+    return name.get("Anonymous")
 ```
 
-`unwrap_or` always evaluates its argument. Use `unwrap_or_else` when the fallback costs work:
+`get(default)` always evaluates its argument. Use `or_else` with `get()` when the fallback costs work:
 
 ```manuscript
-fn display_name(name: Optional[String], create: fn() String) String:
-    return name.unwrap_or_else(create)
+fn display_name(name: Optional[String], create: fn() Optional[String]) String:
+    return name.or_else(create).get()
 ```
 
-Prefer `if let` to test and unwrap in one step over `is_some()` then `unwrap()`; use `unwrap` only when absence is a programming error:
+Prefer `if let` to test and unwrap in one step over `is_some()` then `get()`; use `get` only when absence is a programming error:
 
 ```manuscript
 fn greet(name: Optional[String]) String:

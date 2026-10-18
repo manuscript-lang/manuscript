@@ -3,7 +3,6 @@ import {system, endianness, end_of_line, os_type, dev_null} from "@std/system.ms
 import {control, commands, CommandError, CommandOutput} from "@std/process.ms"
 import {read_line} from "@std/io.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 test "CLI test roots have empty arguments and host metadata agrees":
     if not arguments().is_empty(): return panic("test arguments")
@@ -15,13 +14,13 @@ test "CLI test roots have empty arguments and host metadata agrees":
         or info.architecture.byte_length() == 0
     ): return panic("system info")
 
-    let process = value(control().info())
+    let process = try control().info()
     if (
         process.pid <= 0
         or process.os != info.os
         or process.architecture != info.architecture
     ): return panic("process info")
-    if system().working_directory() != value(control().working_directory()): return panic(
+    if system().working_directory() != (try control().working_directory()): return panic(
         "working directory"
     )
     if endianness() != "LE" and endianness() != "BE": return panic("endianness")
@@ -31,39 +30,37 @@ test "CLI test roots have empty arguments and host metadata agrees":
 
 test "process environment reflects live changes":
     let name = "MANUSCRIPT_STDLIB_CONFORMANCE"
-    let before = value(control().environment()).get(name)
-    let assigned = value(control().set_environment(name: name, value: "stdlib"))
-    if value(control().environment()).get(name) != some("stdlib"): return panic(
+    let before = (try control().environment()).get(name)
+    try control().set_environment(name, "stdlib")
+    if (try control().environment()).get(name) != some("stdlib"): return panic(
         "process environment"
     )
 
-    let restored = value(control().set_environment(name: name, value: before))
+    try control().set_environment(name, before)
 
 test "subprocess validation returns expected domain errors":
     let invalid: Result[CommandOutput, CommandError] = error(CommandError.InvalidInput)
-    if commands().run(program: "", arguments: [], input: "".to_bytes()) != invalid: return panic(
-        "empty program"
-    )
+    if commands().run("", [], "".to_bytes()) != invalid: return panic("empty program")
 
     let unavailable: Result[CommandOutput, CommandError] = error(
         CommandError.Unavailable
     )
     if (
         commands().run(
-            program: "manuscript-nonexistent-command-stdlib",
-            arguments: [],
-            input: "".to_bytes()
+            "manuscript-nonexistent-command-stdlib",
+            [],
+            "".to_bytes()
         ) != unavailable
     ): return panic("missing command")
 
 test "managed subprocess streams incrementally and cleans up on scope exit":
     if os_type() == "windows": return
 
-    with child = value(commands().spawn(program: "cat", arguments: [])):
-        value(child.stdin().write("ping\n".to_bytes()))
-        let line = child.stdout() | read_line | value
-        if line.unwrap_or("") != "ping": return panic("echo")
+    with child = try commands().spawn("cat", []):
+        try child.stdin().write("ping\n".to_bytes())
+        let line = try read_line(child.stdout())
+        if line.get("") != "ping": return panic("echo")
 
         child.stdin().close()
-        if value(child.wait()) != 0: return panic("exit status")
-        if value(child.stdout().read()).is_some(): return panic("stdout eof")
+        if (try child.wait()) != 0: return panic("exit status")
+        if (try child.stdout().read()).is_some(): return panic("stdout eof")

@@ -159,7 +159,7 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 | `Set[T]` | `find_last` uses the same predicate and payload result, searching from the end |
 | `Set[T]` | `some(predicate: fn(value: T) Bool) Bool`; `every` uses the same predicate |
 
-An empty constructor needs explicit type arguments or a complete expected application, and creates fresh storage. `values[index]` equals `values.at(index)`: an `Optional[T]` accepting negative indexes, `none` out of range, so `values[0].unwrap_or(0)` needs no length check. It narrows to `T` only when the index is proven ([Proven indexes](#proven-indexes)). Bytes `.at` is the same. A size above the maximum `Int` faults.
+An empty constructor needs explicit type arguments or a complete expected application, and creates fresh storage. `values[index]` equals `values.at(index)`: an `Optional[T]` accepting negative indexes, `none` out of range, so `values[0].get(0)` needs no length check. It narrows to `T` only when the index is proven ([Proven indexes](#proven-indexes)). Bytes `.at` is the same. A size above the maximum `Int` faults.
 
 ### Proven indexes
 
@@ -191,7 +191,7 @@ Both bounds are required.
 
 A proof ends at an assignment to the index or list, at any call other than `length()` in the statement (it may mutate an alias), and at a closure boundary. It does not cover other lists, copied lengths, or arithmetic indexes like `row * cols + col`. `.at(index)` stays `Optional[T]`.
 
-Narrowing changes only the type; the read still checks the index, so a list resized concurrently faults like `unwrap()` on `none`. A `List[Optional[T]]` lookup narrows to `Optional[T]` unflattened, and where an `Optional[T]` is expected it keeps that form, so code checks with or without the guard.
+Narrowing changes only the type; the read still checks the index, so a list resized concurrently faults like `get()` on `none`. A `List[Optional[T]]` lookup narrows to `Optional[T]` unflattened, and where an `Optional[T]` is expected it keeps that form, so code checks with or without the guard.
 
 `Map.add(key, value)` inserts or replaces and returns the same map. Replacing an equal map key keeps its original key and position; adding an existing set element changes nothing. Remove then add moves the entry to the end. Equality ignores insertion order. Use builders for construction with a sealed result.
 

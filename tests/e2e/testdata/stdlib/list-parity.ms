@@ -55,13 +55,13 @@ type Box:
 test "List pop and distinct retain payload references":
     let shared = Box(1)
     let boxes = [shared]
-    boxes.pop().unwrap().value = 2
+    boxes.pop().get().value = 2
     if shared.value != 2: return panic("pop payload cloned")
 
     let nested = [1]
     let lists = [nested, [1], [2]]
     let unique = lists.distinct()
-    unique.at(0).unwrap().append(3)
+    unique.at(0).get().append(3)
     if unique.length() != 2 or nested != [1, 3]: return panic("distinct payload cloned")
 
 test "List distinct keeps the first equal element in order":
@@ -91,15 +91,15 @@ test "List parity operations support generic and bound use":
     let pop: fn() Optional[Int] = values.pop
     let count = values.count
     values = [9]
-    insert(index: 2, value: 3)
+    insert(2, 3)
     if pop() != some(3) or count(fn(value: Int) Bool: value > 0) != 2: return panic(
         "bound receiver"
     )
     if values != [9]: return panic("bound receiver rebinding")
 
 test "List distinct handles large Int and String lists":
-    var numbers: List[Int] = []
-    var words: List[String] = []
+    let numbers: List[Int] = []
+    let words: List[String] = []
 
     for index in range(0, 60000):
         numbers.append(index % 30000)

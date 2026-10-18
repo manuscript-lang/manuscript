@@ -1,5 +1,5 @@
 import {arguments, control} from "@std/process.ms"
-import {stdin, stdout, stderr} from "@std/io.ms"
+import {IoError, stdin, stdout, stderr} from "@std/io.ms"
 import {clock, wall_clock} from "@std/time.ms"
 import entropy from "@std/random.ms"
 import system from "@std/system.ms"
@@ -22,7 +22,7 @@ fn check_services() Unit:
     if control().environment().is_error():
         return panic("environment unavailable")
 
-    if let data = entropy().bytes(count: 0):
+    if let data = entropy().bytes(0):
         if data.length() != 0:
             return panic("unexpected entropy size")
     else:
@@ -46,12 +46,8 @@ test "repeated accessors retain closed root state":
     let written = stdout().write("".to_bytes())
     if written.is_ok():
         return panic("accessor reopened stdout")
-
-    match written.unwrap_error():
-        Closed:
-            return
-        _:
-            return panic("unexpected closed-stream error")
+    if written.err() != IoError.Closed:
+        return panic("unexpected closed-stream error")
 
 test "a later test receives fresh standard output":
     if stdout().write("".to_bytes()).is_error():

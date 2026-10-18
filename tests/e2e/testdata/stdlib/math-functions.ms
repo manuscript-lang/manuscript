@@ -42,9 +42,7 @@ test "tangent hyperbolic exponential and logarithm functions":
     if not near(log10(1000.0), 3.0): return panic("log10 1000")
 
 test "float remainder takes the sign of the dividend":
-    if remainder(left: 5.0, right: 3.0) != 2.0: return panic("remainder positive")
-    if remainder(left: -5.0, right: 3.0) != -2.0: return panic("remainder negative")
-    if remainder(left: 7.0, right: 2.0) != 1.0: return panic("remainder half")
-    if not remainder(left: 5.0, right: 0.0).is_nan(): return panic(
-        "remainder zero divisor"
-    )
+    if remainder(5.0, 3.0) != 2.0: return panic("remainder positive")
+    if remainder(-5.0, 3.0) != -2.0: return panic("remainder negative")
+    if remainder(7.0, 2.0) != 1.0: return panic("remainder half")
+    if not remainder(5.0, 0.0).is_nan(): return panic("remainder zero divisor")

@@ -24,14 +24,14 @@ fn check_equality(side: String, mutation: String) Unit:
     let right: List[Element] = []
     let calls = Visits(0)
     let visit = fn():
-        calls.count = calls.count + 1
+        calls.count += 1
         if calls.count != 1:
             return
 
         var target = left
         if side == "right":
             target = right
-        let next_action = target[1].unwrap().on_equal
+        let next_action = target[1].get().on_equal
 
         if mutation == "shrink" or mutation == "shrink_mismatch":
             target.splice(0, target.length(), [])

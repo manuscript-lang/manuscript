@@ -54,9 +54,9 @@ export fn ` + name + `() Int:
     insert_bound(m,Key(1.0),3)
     let add=m.add
     add(value: 4, key: Key(2.0))
-    if m.get(Key(1.0)).unwrap()!=3: return panic("replacement")
+    if m.get(Key(1.0)).get()!=3: return panic("replacement")
     original.code=9.0
-    if m.keys()[0].unwrap().code!=9.0: return panic("original key identity")
+    if m.keys()[0].get().code!=9.0: return panic("original key identity")
     return m.length()
 `
 	}

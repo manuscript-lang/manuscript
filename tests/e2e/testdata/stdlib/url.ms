@@ -11,27 +11,24 @@ import {
     UrlError
 } from "@std/url.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 test "URL canonicalization and relative references":
-    let url = parse("https://EXAMPLE.com:443/a/b?q=1#fragment") | value
+    let url = try parse("https://EXAMPLE.com:443/a/b?q=1#fragment")
     if url.host != "example.com" or url.port != some(443): return panic("host and port")
-    if value(format(url)) != "https://example.com:443/a/b?q=1#fragment": return panic(
+    if (try format(url)) != "https://example.com:443/a/b?q=1#fragment": return panic(
         "URL format"
     )
-    if (
-        (
-            resolve(base: url, reference: "../c") | value | format | value
-        ) != "https://example.com:443/c"
-    ): return panic("relative reference")
+    if ((url | try resolve("../c") | try format) != "https://example.com:443/c"): return panic(
+        "relative reference"
+    )
     if encode_component("a b/é") != "a%20b%2F%C3%A9": return panic("component escaping")
-    if value(decode_component("a%20b%2F%C3%A9")) != "a b/é": return panic(
+    if (try decode_component("a%20b%2F%C3%A9")) != "a b/é": return panic(
         "component decoding"
     )
 
 test "URL query retains duplicate keys empty values and spaces":
-    let entries = parse_query(text: "a=1&a=2&empty=&space=hello+world") | value
-    if entries.length() != 4 or entries.at(3).unwrap().value != "hello world": return panic(
+    let entries = try parse_query("a=1&a=2&empty=&space=hello+world")
+    if entries.length() != 4 or entries.at(3).get().value != "hello world": return panic(
         "query values"
     )
     if format_query(entries) != "a=1&a=2&empty=&space=hello+world": return panic(
@@ -39,52 +36,37 @@ test "URL query retains duplicate keys empty values and spaces":
     )
 
     let limited: Result[List[QueryEntry], UrlError] = error(UrlError.LimitExceeded)
-    if parse_query(text: "a=1&b=2", max_entries: 1) != limited: return panic(
-        "query limit"
-    )
+    if parse_query("a=1&b=2", 1) != limited: return panic("query limit")
 
     let invalid: Result[String, UrlError] = error(UrlError.InvalidData)
     if decode_component("%zz") != invalid: return panic("malformed escape")
 
 test "URL query skips empty segments":
-    let entries = parse_query(text: "&a=1&&b=2&") | value
-    if format_query(entries) != "a=1&b=2": return panic("empty segments kept")
-    if not value(parse_query(text: "&&")).is_empty(): return panic("only separators")
+    if (try parse_query("&a=1&&b=2&") | format_query) != "a=1&b=2": return panic(
+        "empty segments kept"
+    )
+    if not (try parse_query("&&")).is_empty(): return panic("only separators")
 
-    let bounded = parse_query(text: "a=1&&b=2", max_entries: 2) | value
+    let bounded = try parse_query("a=1&&b=2", 2)
     if bounded.length() != 2: return panic("empty segments counted")
 
 test "URL format rejects queries that would not round trip":
-    let base = parse("http://h/p") | value
+    let base = try parse("http://h/p")
     let invalid: Result[String, UrlError] = error(UrlError.InvalidInput)
 
     for query in ["a#b", "a b", "%zz", "a%2"]:
-        let bad = Url(
-            scheme: base.scheme,
-            host: base.host,
-            port: base.port,
-            path: base.path,
-            query: query,
-            fragment: ""
-        )
+        let bad = Url(base.scheme, base.host, base.port, base.path, query, "")
         if format(bad) != invalid: return panic("query {query}")
 
-    let good = Url(
-        scheme: base.scheme,
-        host: base.host,
-        port: base.port,
-        path: base.path,
-        query: "a=%41&b",
-        fragment: ""
-    )
-    if value(format(good)) != "http://h/p?a=%41&b": return panic("valid query")
+    let good = Url(base.scheme, base.host, base.port, base.path, "a=%41&b", "")
+    if (try format(good)) != "http://h/p?a=%41&b": return panic("valid query")
 
 test "URL parse rejects malformed hosts and queries and keeps an empty authority":
     let invalid: Result[Url, UrlError] = error(UrlError.InvalidData)
     for text in ["http://host:80:80/", "http://h/p?q=a b", "http://h/p?q=%zz"]:
         if parse(text) != invalid: return panic("accepted {text}")
-    let empty = value(parse("http://"))
-    if value(format(empty)) != "http://": return panic("empty authority text")
-    if value(parse(value(format(empty)))) != empty: return panic(
+    let empty = try parse("http://")
+    if (try format(empty)) != "http://": return panic("empty authority text")
+    if (empty | try format | try parse) != empty: return panic(
         "empty authority round trip"
     )
