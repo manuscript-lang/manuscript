@@ -1,0 +1,40 @@
+File: checker-before.test
+Build ID: 6f390a4aa7b7bc23d52f9103bf80c34cb0da3b9f
+Type: cpu
+Time: 2026-10-18 07:18:11 UTC
+Duration: 2.68s, Total samples = 2490ms (93.03%)
+Showing nodes accounting for 1800ms, 72.29% of 2490ms total
+Dropped 66 nodes (cum <= 12.45ms)
+Showing top 12 nodes out of 102
+      flat  flat%   sum%        cum   cum%
+     530ms 21.29% 21.29%      800ms 32.13%  internal/runtime/maps.(*Iter).Next
+     210ms  8.43% 29.72%      210ms  8.43%  aeshashbody
+     180ms  7.23% 36.95%      570ms 22.89%  runtime.mapaccess1_faststr
+     160ms  6.43% 43.37%      160ms  6.43%  internal/runtime/maps.(*groupReference).key (inline)
+     150ms  6.02% 49.40%     1930ms 77.51%  github.com/manuscript-lang/manuscript/pkg/checker.propagateEffects
+     150ms  6.02% 55.42%      370ms 14.86%  internal/runtime/maps.(*Iter).Init
+     100ms  4.02% 59.44%      100ms  4.02%  internal/chacha8rand.block
+      80ms  3.21% 62.65%       80ms  3.21%  internal/runtime/maps.ctrlGroup.matchH2 (inline)
+      80ms  3.21% 65.86%      140ms  5.62%  runtime.scanobject
+      60ms  2.41% 68.27%      130ms  5.22%  runtime.wbBufFlush1
+      50ms  2.01% 70.28%       50ms  2.01%  internal/runtime/maps.(*groupReference).ctrls (inline)
+      50ms  2.01% 72.29%       50ms  2.01%  runtime.memclrNoHeapPointers
+File: checker-before.test
+Build ID: 6f390a4aa7b7bc23d52f9103bf80c34cb0da3b9f
+Type: cpu
+Time: 2026-10-18 07:18:11 UTC
+Duration: 2.68s, Total samples = 2.49s (93.03%)
+Showing nodes accounting for 0.16s, 6.43% of 2.49s total
+Dropped 66 nodes (cum <= 0.01s)
+Showing top 10 nodes out of 102
+      flat  flat%   sum%        cum   cum%
+         0     0%     0%      2.46s 98.80%  github.com/manuscript-lang/manuscript/pkg/checker.BenchmarkCheckerEffects.func1
+         0     0%     0%      2.46s 98.80%  github.com/manuscript-lang/manuscript/pkg/checker.benchmarkCheck
+         0     0%     0%      2.46s 98.80%  github.com/manuscript-lang/manuscript/pkg/checker.benchmarkCheck.func1
+         0     0%     0%      2.46s 98.80%  testing.(*B).run1.func1
+         0     0%     0%      2.46s 98.80%  testing.(*B).runN
+         0     0%     0%      2.17s 87.15%  github.com/manuscript-lang/manuscript/pkg/checker.Check (inline)
+         0     0%     0%      2.17s 87.15%  github.com/manuscript-lang/manuscript/pkg/checker.CheckWithOptions
+         0     0%     0%      2.17s 87.15%  github.com/manuscript-lang/manuscript/pkg/checker.check
+     0.01s   0.4%   0.4%      1.98s 79.52%  github.com/manuscript-lang/manuscript/pkg/checker.(*checker).effectSummaries
+     0.15s  6.02%  6.43%      1.93s 77.51%  github.com/manuscript-lang/manuscript/pkg/checker.propagateEffects (inline)
