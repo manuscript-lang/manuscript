@@ -10,17 +10,14 @@ func check_Result_IsOk[T any, E any]() {
 func check_Result_IsError[T any, E any]() {
 	var _ func(*Execution, Result[T, E]) bool = Result_IsError[T, E]
 }
-func check_Result_Unwrap[T any, E any]() {
-	var _ func(*Execution, Result[T, E]) T = Result_Unwrap[T, E]
+func check_Result_Get[T any, E any]() {
+	var _ func(*Execution, Result[T, E], Option[T]) T = Result_Get[T, E]
 }
-func check_Result_UnwrapError[T any, E any]() {
-	var _ func(*Execution, Result[T, E]) E = Result_UnwrapError[T, E]
+func check_Result_Err[T any, E any]() {
+	var _ func(*Execution, Result[T, E]) E = Result_Err[T, E]
 }
-func check_Result_UnwrapOr[T any, E any]() {
-	var _ func(*Execution, Result[T, E], T) T = Result_UnwrapOr[T, E]
-}
-func check_Result_UnwrapOrElse[T any, E any]() {
-	var _ func(*Execution, Result[T, E], func(ctx *Execution, a0 E) T) T = Result_UnwrapOrElse[T, E]
+func check_Result_OrElse[T any, E any]() {
+	var _ func(*Execution, Result[T, E], func(ctx *Execution, a0 E) T) T = Result_OrElse[T, E]
 }
 func check_Result_Map[T any, E any, U any]() {
 	var _ func(*Execution, Result[T, E], func(ctx *Execution, a0 T) U) Result[U, E] = Result_Map[T, E, U]

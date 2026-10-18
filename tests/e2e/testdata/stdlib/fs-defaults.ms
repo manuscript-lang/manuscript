@@ -35,7 +35,7 @@ fn rejected(result: Result[Unit, FileSystemError]) Unit:
     )
 
 fn text(fs: FileSystem, path: String) Result[String, Error]:
-    return ok((try fs.read_file(path)).decode_utf8().unwrap())
+    return ok((try fs.read_file(path)).decode_utf8().get())
 
 fn argument(log: List[String], mark: String, path: String) String:
     log.append(mark)

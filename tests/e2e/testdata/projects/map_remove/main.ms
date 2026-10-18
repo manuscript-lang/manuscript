@@ -19,5 +19,5 @@ test "Map removal keeps direct bound generic and defining-module key scopes":
     let returned_values = id_map()
     let remove = id_returned(returned_values)
     remove(Key(1, "different"))
-    if returned_values.length() != 2 or returned_values.keys() [0].unwrap().id != 2:
+    if returned_values.length() != 2 or returned_values.keys() [0].get().id != 2:
         return panic("returned bound scope or order")

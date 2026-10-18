@@ -45,19 +45,17 @@ fn reverse_set[T: Hashable, A](
 test "Map transformations and directional queries are callable":
     let source: Map[String, Int] = {"b": 2, "a": 1}
     let mapped = source.map(fn(k, v): v.to_string())
-    if mapped.get("b").unwrap() != "2": return panic("Map value transformation")
+    if mapped.get("b").get() != "2": return panic("Map value transformation")
 
     let keyed = source.map_keys(fn(k, v): v)
-    if keyed.get(2).unwrap() != 2: return panic("Map key transformation")
-    if source.find_last(fn(k, v): true).unwrap().key != "a": return panic(
-        "Map find_last"
-    )
+    if keyed.get(2).get() != 2: return panic("Map key transformation")
+    if source.find_last(fn(k, v): true).get().key != "a": return panic("Map find_last")
     if source.fold_right("", fn(acc, k, v): acc + k) != "ab": return panic(
         "Map fold_right"
     )
 
     let values = Set[Int]().add(2).add(1)
-    if values.find_last(fn(v): true).unwrap() != 1: return panic("Set find_last")
+    if values.find_last(fn(v): true).get() != 1: return panic("Set find_last")
     if values.fold_right("", fn(acc, v): acc + v.to_string()) != "12": return panic(
         "Set fold_right"
     )
@@ -91,12 +89,12 @@ test "Map value transformation copies ordered snapshots and retains aliases":
     )
     if mapped.keys().map(fn(k): k.id) != [2, 1, 3]: return panic("Map.map key order")
 
-    mapped.get(first).unwrap().count = 7
-    if counter.count != 7 or source.get(first).unwrap().count != 7: return panic(
+    mapped.get(first).get().count = 7
+    if counter.count != 7 or source.get(first).get().count != 7: return panic(
         "Map.map copied payload"
     )
 
-    mapped.keys().at(0).unwrap().label = "shared"
+    mapped.keys().at(0).get().label = "shared"
     if first.label != "shared": return panic("Map.map copied keys")
 
     mapped.remove(first).add(Key(5, "other"), Counter(5))
@@ -128,14 +126,11 @@ test "Map key transformation retains first equal keys and last values":
         "last colliding input value"
     )
 
-    mapped.keys().at(0).unwrap().label = "first alias"
-    if (
-        created.at(0).unwrap().label != "first alias"
-        or created.at(2).unwrap().label != "4"
-    ):
+    mapped.keys().at(0).get().label = "first alias"
+    if (created.at(0).get().label != "first alias" or created.at(2).get().label != "4"):
         return panic("map_keys did not retain first key reference")
 
-    mapped.get(Key(0, "lookup")).unwrap().count = 9
+    mapped.get(Key(0, "lookup")).get().count = 9
     if three.count != 9: return panic("map_keys copied retained value")
 
     mapped.clear().add(Key(7, "fresh"), Counter(10))
@@ -156,20 +151,18 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
     if seen != [2, 1, 3] or mapped.keys() != ["2", "1", "3"]: return panic(
         "map_keys mutation snapshot"
     )
-    if mapped.get("3").unwrap().count != 7: return panic(
+    if mapped.get("3").get().count != 7: return panic(
         "map_keys deep copied snapshot values"
     )
 
     let values: Map[String, Int] = {"a": 0}
     let map = values.map[Optional[Int]]
-    if not (map(fn(k, v): none).get("a").unwrap().is_none()): return panic(
+    if not (map(fn(k, v): none).get("a").get().is_none()): return panic(
         "Map.map flattened Optional"
     )
 
     let nested = values.map(fn(k, v): Result[Int, String].error("nested"))
-    if nested.get("a").unwrap().unwrap_error() != "nested": return panic(
-        "Map.map flattened Result"
-    )
+    if nested.get("a").get().err() != "nested": return panic("Map.map flattened Result")
 
 test "empty transformations skip callbacks and allocate independent storage":
     let source = Map[String, Int]()
@@ -210,7 +203,7 @@ test "Map reverse fold and last match retain ordered shallow snapshots":
             seen.append(k)
             (source.remove("a").add("b", Counter(99)).add("new", Counter(4)))
             return k == "a"
-    ).unwrap()
+    ).get()
     if seen != ["c", "a"] or found.key != "a": return panic(
         "Map.find_last snapshot or short circuit"
     )
@@ -253,7 +246,7 @@ test "Set reverse fold and last match preserve references and callbacks":
             seen.append(v.id)
             source.remove(a).add(Key(4, "new"))
             return v.id == 1
-    ).unwrap()
+    ).get()
     if seen != [3, 1]: return panic("Set.find_last snapshot or short circuit")
 
     found.label = "found"

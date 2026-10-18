@@ -42,7 +42,7 @@ test "standalone try propagates and cleans up before returning":
     let state = State(0, 0)
     let failed = exact(state, fail: true)
     if failed.is_ok(): return panic("failure swallowed")
-    if failed.unwrap_error().code != 42: return panic("payload lost")
+    if failed.err().code != 42: return panic("payload lost")
     if state.calls != 1 or state.closed != 1: return panic("failure order changed")
 
 test "standalone try preserves concrete errors at Error boundaries":
@@ -50,7 +50,7 @@ test "standalone try preserves concrete errors at Error boundaries":
     let outcome = widened(state)
     if outcome.is_ok(): return panic("failure swallowed")
 
-    let cause = outcome.unwrap_error()
+    let cause = outcome.err()
 
     match cause:
         Failure(value):
@@ -66,5 +66,5 @@ test "standalone try in closure returns from that closure":
         return ok(unit)
     let outcome = callback()
     if outcome.is_ok(): return panic("failure swallowed")
-    if outcome.unwrap_error().code != 42: return panic("payload lost")
+    if outcome.err().code != 42: return panic("payload lost")
     if state.calls != 1: return panic("operation repeated")

@@ -4,12 +4,12 @@ import {headers, HttpHeaders} from "@std/http.ms"
 export fn text_headers(fields: Map[String, String]) HttpHeaders:
     let result = headers()
     for name in fields.keys():
-        result.append(name, fields.get(name).unwrap().to_bytes()).unwrap()
+        result.append(name, fields.get(name).get().to_bytes()).get()
     return result
 
 export fn list_headers(fields: Map[String, List[String]]) HttpHeaders:
     let result = headers()
     for name in fields.keys():
-        for item in fields.get(name).unwrap():
-            result.append(name, item.to_bytes()).unwrap()
+        for item in fields.get(name).get():
+            result.append(name, item.to_bytes()).get()
     return result

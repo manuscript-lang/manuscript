@@ -146,7 +146,7 @@ type ApiFixture:
 fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(status: 200, headers: headers(), body: "shared".to_bytes())
 fn make_fixture() ApiFixture:
-    return ApiFixture(server: network().serve(address: "127.0.0.1:0", handler: handle).unwrap())
+    return ApiFixture(server: network().serve(address: "127.0.0.1:0", handler: handle).get())
 impl TestHooks for ApiFixture:
     fn after_all() Unit:
         self.server.close()

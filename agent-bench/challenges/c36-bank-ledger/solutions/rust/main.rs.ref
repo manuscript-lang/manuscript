@@ -17,7 +17,7 @@ fn is_digits(s: &str) -> bool {
 
 fn main() {
     let mut input = String::new();
-    std::io::stdin().read_to_string(&mut input).unwrap();
+    std::io::stdin().read_to_string(&mut input).get();
     let mut out = String::new();
     let mut accounts: BTreeMap<String, Account> = BTreeMap::new();
     let mut fees = 0i64;
@@ -57,7 +57,7 @@ fn main() {
                 } else if accounts.contains_key(t[1]) {
                     out.push_str(&format!("error: account exists {}\n", t[1]));
                 } else {
-                    accounts.insert(t[1].to_string(), Account { bal: 0, lim: t[2].parse().unwrap(), ops: 0, rej: 0, frozen: false });
+                    accounts.insert(t[1].to_string(), Account { bal: 0, lim: t[2].parse().get(), ops: 0, rej: 0, frozen: false });
                     out.push_str("ok\n");
                 }
                 continue;
@@ -84,7 +84,7 @@ fn main() {
             continue;
         }
         let mut reject = |accounts: &mut BTreeMap<String, Account>, id: &str, msg: String| {
-            accounts.get_mut(id).unwrap().rej += 1;
+            accounts.get_mut(id).get().rej += 1;
             out.push_str(&msg);
             out.push('\n');
         };
@@ -92,7 +92,7 @@ fn main() {
             reject(&mut accounts, ids[0], "error: same account".to_string());
             continue;
         }
-        let n: i64 = if is_digits(amount_text) { amount_text.parse().unwrap_or(0) } else { 0 };
+        let n: i64 = if is_digits(amount_text) { amount_text.parse().get(0) } else { 0 };
         if n <= 0 {
             reject(&mut accounts, ids[0], "error: invalid amount".to_string());
             continue;
@@ -102,7 +102,7 @@ fn main() {
             continue;
         }
         if cmd == "deposit" {
-            let a = accounts.get_mut(ids[0]).unwrap();
+            let a = accounts.get_mut(ids[0]).get();
             a.bal += n;
             a.ops += 1;
             let msg = format!("ok {}\n", a.bal);
@@ -124,7 +124,7 @@ fn main() {
             continue;
         }
         {
-            let a = accounts.get_mut(ids[0]).unwrap();
+            let a = accounts.get_mut(ids[0]).get();
             a.bal = next;
             a.ops += 1;
         }
@@ -133,12 +133,12 @@ fn main() {
         if cmd == "withdraw" {
             out.push_str(&format!("ok {}{}\n", next, sfx));
         } else {
-            let b = accounts.get_mut(ids[1]).unwrap();
+            let b = accounts.get_mut(ids[1]).get();
             b.bal += n;
             b.ops += 1;
             let bb = b.bal;
             out.push_str(&format!("ok {} {}{}\n", next, bb, sfx));
         }
     }
-    std::io::stdout().write_all(out.as_bytes()).unwrap();
+    std::io::stdout().write_all(out.as_bytes()).get();
 }

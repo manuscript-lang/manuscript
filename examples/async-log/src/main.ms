@@ -36,7 +36,7 @@ fn line(text: String) String:
 
 fn read(path: String) Result[String, Error]:
     let data = try filesystem().read_file(path)
-    return ok(data.decode_utf8().unwrap_or(""))
+    return ok(data.decode_utf8().get(""))
 
 fn missing(path: String) Bool:
     return filesystem().stat(path, follow_links: false).is_error()
@@ -130,7 +130,7 @@ test "a full queue returns LimitExceeded without waiting":
                 let outcome = transport.write("x\n".to_bytes())
 
                 if outcome.is_error():
-                    if outcome.unwrap_error() != LogError.LimitExceeded:
+                    if outcome.err() != LogError.LimitExceeded:
                         return panic("unexpected error")
 
                     rejected = true

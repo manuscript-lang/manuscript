@@ -33,7 +33,7 @@ fn exercise() Result[Unit, ExecutionError]:
         let outcome = try domain.join()
         if outcome.is_ok():
             return panic("domain error flattened")
-        if outcome.unwrap_error() != "expected":
+        if outcome.err() != "expected":
             return panic("domain error changed")
 
         let resource = Closeable(group)
@@ -66,7 +66,7 @@ test "zero timeout starts no callback":
         if joined.is_ok():
             return panic("zero timeout succeeded")
 
-        let cause = joined.unwrap_error()
+        let cause = joined.err()
 
         match cause:
             Timeout:

@@ -39,18 +39,18 @@ test "Optional lazy fallbacks preserve nested absence and payload identity":
     let counter = Counter(0)
     let create = fn():
         counter.calls += 1
-        return 42
+        return some(42)
     let present: Optional[Int] = some(0)
     let missing: Optional[Int] = none
-    if present.unwrap_or_else(create) != 0 or counter.calls != 0: return panic(
+    if present.or_else(create).get() != 0 or counter.calls != 0: return panic(
         "eager lazy fallback"
     )
-    if missing.unwrap_or_else(create) != 42 or counter.calls != 1: return panic(
+    if missing.or_else(create).get() != 42 or counter.calls != 1: return panic(
         "missing fallback"
     )
 
     let nested: Optional[Optional[Int]] = some(missing)
-    if not nested.is_some() or not nested.unwrap().is_none(): return panic(
+    if not nested.is_some() or not nested.get().is_none(): return panic(
         "nested optional flattened"
     )
 

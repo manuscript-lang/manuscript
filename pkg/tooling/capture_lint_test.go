@@ -251,10 +251,10 @@ func TestConcurrentCaptureLintDocumentationFragments(t *testing.T) {
 		declaration, operation string
 		count                  int
 	}{
-		{`let counts = {"hits": 0}`, `counts.add(key: "hits", value: counts.get("hits").unwrap_or(0) + 1)`, 1},
+		{`let counts = {"hits": 0}`, `counts.add(key: "hits", value: counts.get("hits").get(0) + 1)`, 1},
 		{`let counts = Synchronized({"hits": 0})`, `with locked = counts.lock():
                 let values = locked.get()
-                values.add(key: "hits", value: values.get("hits").unwrap_or(0) + 1)`, 0},
+                values.add(key: "hits", value: values.get("hits").get(0) + 1)`, 0},
 	} {
 		source := `import TaskGroup from "@std/tasks.ms"
 import Synchronized from "@std/sync.ms"

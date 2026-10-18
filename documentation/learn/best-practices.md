@@ -12,8 +12,8 @@ Habits that keep the next change easy to understand.
 Use `Optional[T]` when a value may be missing and `Result[T, E]` when a failure
 needs an explanation. Propagate errors with `try`. Use `if let` when you only
 need a present value or successful result; a Result's error is discarded in
-this form. Use `is_error()` with `unwrap_error()` when you need to inspect the
-cause, and `unwrap_or` when absence has a sensible default.
+this form. Use `is_error()` with `err()` when you need to inspect the
+cause, and `get(default)` when absence has a sensible default.
 
 See [error handling](../core-language/errors/_index.md).
 

@@ -128,7 +128,7 @@ test "recursive links":
     let node = Node(value: 1, next: none)
     node.next = some(node)
     let copy = node.clone()
-    copy.next.unwrap().value = 2
+    copy.next.get().value = 2
     if node.value != 2 or copy.value != 1:
         panic("cloning must retain nested references")
 ```

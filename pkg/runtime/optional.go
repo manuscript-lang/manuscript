@@ -2,7 +2,7 @@ package msruntime
 
 import "strings"
 
-const unwrapNoneMessage = "called Optional.unwrap() on none; check is_some first, or use unwrap_or(fallback: ...) to supply a default"
+const unwrapNoneMessage = "called Optional.get() on none; check is_some first, or pass a default: get(default: ...)"
 
 // Optional_IsSome reports whether a payload is present.
 func Optional_IsSome[T any](_ *Execution, o Option[T]) bool { return o.Some }
@@ -10,28 +10,17 @@ func Optional_IsSome[T any](_ *Execution, o Option[T]) bool { return o.Some }
 // Optional_IsNone reports whether the Optional is empty.
 func Optional_IsNone[T any](_ *Execution, o Option[T]) bool { return !o.Some }
 
-// Optional_Unwrap returns the payload; none is a fault.
-func Optional_Unwrap[T any](_ *Execution, o Option[T]) T {
-	if !o.Some {
-		Raise(unwrapNoneMessage)
-	}
-	return o.Val
-}
-
-// Optional_UnwrapOr returns the payload or fallback.
-func Optional_UnwrapOr[T any](_ *Execution, o Option[T], fallback T) T {
+// Optional_Get returns the payload, else the default; none without a
+// default is a fault.
+func Optional_Get[T any](_ *Execution, o Option[T], def Option[T]) T {
 	if o.Some {
 		return o.Val
 	}
-	return fallback
-}
-
-// Optional_UnwrapOrElse returns the payload or create(), called only for none.
-func Optional_UnwrapOrElse[T any](ctx *Execution, o Option[T], create func(*Execution) T) T {
-	if o.Some {
-		return o.Val
+	if def.Some {
+		return def.Val
 	}
-	return create(ctx)
+	Raise(unwrapNoneMessage)
+	panic("unreachable")
 }
 
 // Optional_Map transforms a present payload.

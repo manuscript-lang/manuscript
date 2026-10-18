@@ -14,7 +14,7 @@ fn decode_bad_input() Result[Unit, ApplicationError]:
     if decoded.is_ok():
         return ok(unit)
 
-    return error(encoding_error(decoded.unwrap_error()))
+    return error(encoding_error(decoded.err()))
 
 fn json_error_code(cause: JsonError) Int:
     match cause:
@@ -30,7 +30,7 @@ test "JSON errors need only JSON cases":
     let parsed = parse("[", limits)
     if parsed.is_ok():
         return panic("malformed JSON succeeded")
-    if json_error_code(parsed.unwrap_error()) != 2:
+    if json_error_code(parsed.err()) != 2:
         return panic("wrong JSON cause")
 
 test "explicit error mapping preserves the cause":
@@ -120,7 +120,7 @@ test "generic handling preserves the concrete error and its payload":
     if propagated.is_ok():
         return panic("invalid data succeeded")
 
-    let cause = propagated.unwrap_error()
+    let cause = propagated.err()
 
     match cause:
         EncodingError(encoding):
@@ -149,7 +149,7 @@ test "Error views can be stored and matched":
     if first.is_none():
         return panic("shared errors collection was empty")
 
-    match first.unwrap():
+    match first.get():
         CustomError(custom):
             if custom.detail != "shared diagnostic":
                 return panic("shared view lost receiver")
@@ -178,7 +178,7 @@ test "domain error fields survive propagation without a wrapper":
     if propagated.is_ok():
         return panic("failed read succeeded")
 
-    let cause = propagated.unwrap_error()
+    let cause = propagated.err()
     if (cause.path != "settings.json" or cause.attempt != 2 or not cause.retryable):
         return panic("lost typed error fields")
 
@@ -233,7 +233,7 @@ test "specific errors pass directly into Error boundaries":
         if result.is_ok():
             return panic("failed read succeeded")
 
-        let cause = result.unwrap_error()
+        let cause = result.err()
 
         match cause:
             ReadError(read):
@@ -282,7 +282,7 @@ test "domain case payloads need no Error implementation":
     if invalid.is_ok():
         return panic("invalid field succeeded")
 
-    let cause = invalid.unwrap_error()
+    let cause = invalid.err()
 
     match cause:
         InvalidField(field, expected, actual):
@@ -377,7 +377,7 @@ fn check_missing_file() Result[Unit, FileSystemError]:
     if read.is_ok():
         return panic("missing file read succeeded")
 
-    let cause = read.unwrap_error()
+    let cause = read.err()
 
     match cause:
         NotFound:
@@ -394,7 +394,7 @@ fn check_missing_file() Result[Unit, FileSystemError]:
     let stat = fs.stat(missing, follow_links: true)
     if stat.is_ok():
         return panic("missing file stat succeeded")
-    if stat.unwrap_error().message() != "filesystem: file or directory not found":
+    if stat.err().message() != "filesystem: file or directory not found":
         return panic("stat diagnostic lost")
 
     try fs.remove(directory, recursive: false)

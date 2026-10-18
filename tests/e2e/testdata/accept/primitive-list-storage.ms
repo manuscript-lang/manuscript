@@ -18,21 +18,21 @@ test "primitive storage retains generic record Optional and saved aliases":
     for i in range(0, 4096):
         append_value(record.values, i)
     append(17)
-    wrapped.unwrap().set(0, 41)
+    wrapped.get().set(0, 41)
     if not (
         values.length() == 4099
-        and record.values[0].unwrap() == 41
-        and values[-1].unwrap() == 17
+        and record.values[0].get() == 41
+        and values[-1].get() == 17
     ):
         return panic("generic or saved alias lost mutable identity")
 
     let copy = values.clone()
     values.set(0, 42)
-    if copy[0].unwrap() != 41:
+    if copy[0].get() != 41:
         return panic("primitive clone shares backing")
 
     let nested: List[Optional[Int]] = [some(7), none]
-    if not (nested[0].unwrap().unwrap() == 7 and nested[1].unwrap().is_none()):
+    if not (nested[0].get().get() == 7 and nested[1].get().is_none()):
         return panic("generic Optional payload was stored as a primitive")
 
 test "Float Bool and String preserve mutation traversal and width":
@@ -47,7 +47,7 @@ test "Float Bool and String preserve mutation traversal and width":
             floats.set(1, 0.5)
         index += 1
 
-    if not (seen == [1e-300, 0.5, 0.25] and clone[1].unwrap() == 1e300):
+    if not (seen == [1e-300, 0.5, 0.25] and clone[1].get() == 1e300):
         return panic("Float backing narrowed or traversal copied")
 
     let booleans = [true, false, true]
@@ -62,12 +62,12 @@ test "stable sort and strict Result slice preserve separate storage":
     let values = [7, 1, 4, 8, 2, 5]
     let sorted = values.sorted(fn(left, right): return left % 3 - right % 3)
     sorted.set(0, 99)
-    if values[0].unwrap() != 7:
+    if values[0].get() != 7:
         return panic("sorting shared outer backing")
 
     if let copy = values.slice(-2, 6):
         copy.set(0, 12)
-        if not (copy == [12, 5] and values[4].unwrap() == 2):
+        if not (copy == [12, 5] and values[4].get() == 2):
             return panic("slice shared outer backing or changed negative bounds")
     else:
         return panic("valid strict slice failed")

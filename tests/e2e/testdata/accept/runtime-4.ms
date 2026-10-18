@@ -18,5 +18,5 @@ test "contract-valued cleanup":
         let read = file.read(1)
         if read.is_ok():
             return panic("Unexpected case")
-        if not (read.unwrap_error() == IoError.Closed):
+        if not (read.err() == IoError.Closed):
             return panic("check failed")

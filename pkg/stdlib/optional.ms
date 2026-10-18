@@ -15,14 +15,8 @@ impl Optional[T]:
     # Reports whether this value is absent.
     fn is_none() Bool:
 
-    # Returns the payload. Calling this on `none` raises a fault.
-    fn unwrap() T:
-
-    # Returns the contained value, or `fallback` when this is `none`.
-    fn unwrap_or(fallback: T) T:
-
-    # Computes a fallback only when this is `none`.
-    fn unwrap_or_else(create: fn() T) T:
+    # Returns the payload, or `default` when this is `none`. Without a default, `none` raises a fault.
+    fn get(default: Optional[T] = none) T:
 
     # Transforms a present payload; none remains absent.
     fn map[U](transform: fn(value: T) U) Optional[U]:

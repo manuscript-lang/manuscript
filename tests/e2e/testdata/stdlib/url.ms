@@ -28,7 +28,7 @@ test "URL canonicalization and relative references":
 
 test "URL query retains duplicate keys empty values and spaces":
     let entries = try parse_query("a=1&a=2&empty=&space=hello+world")
-    if entries.length() != 4 or entries.at(3).unwrap().value != "hello world": return panic(
+    if entries.length() != 4 or entries.at(3).get().value != "hello world": return panic(
         "query values"
     )
     if format_query(entries) != "a=1&a=2&empty=&space=hello+world": return panic(

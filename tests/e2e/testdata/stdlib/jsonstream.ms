@@ -76,4 +76,4 @@ test "JSON decoder applies per-value budgets":
 
     let negative = decoder(JsonLimits(max_values: -1))
     if not negative.is_error(): return panic("negative limit accepted")
-    if negative.unwrap_error() != JsonError.InvalidInput: return panic("negative limit")
+    if negative.err() != JsonError.InvalidInput: return panic("negative limit")

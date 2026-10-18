@@ -30,7 +30,7 @@ func lintResultMatches(program *checker.Program) []LintFinding {
 		if ok && failed {
 			findings = append(findings, LintFinding{
 				Code:     "MSL109",
-				Message:  "Matching a Result with only ok and error; use 'try', 'if let value = ...:' with 'else:', or a Result method such as unwrap_or, is_error, or unwrap_error",
+				Message:  "Matching a Result with only ok and error; use 'try', 'if let value = ...:' with 'else:', or a Result method such as get(default), is_error, or err",
 				Position: e.Pos,
 			})
 		}

@@ -46,7 +46,7 @@ fn code(r: Result[Int, String]) Int:
     if let v = r:
         return v
 
-    return 0 - r.unwrap_error().length()
+    return 0 - r.err().length()
 
 test "pipe steps call functions with the value first":
     if code(flow("abc")) != 9:
@@ -57,25 +57,25 @@ test "pipe steps call functions with the value first":
         return panic("flow later failure")
 
 test "bare try unwraps the value so far":
-    if bare("abc").unwrap() != 6:
+    if bare("abc").get() != 6:
         return panic("bare ok")
     if code(bare("-")) != -1:
         return panic("bare early return")
 
 test "pipe passes a Result through a step without try":
     let r = parse("abcd") | .map(fn(value: Int) Int: value * 2)
-    if r.unwrap() != 8:
+    if r.get() != 8:
         return panic("map step")
 
 test "leading dot after a step applies to its result":
-    if describe("xy").unwrap() != "3":
+    if describe("xy").get() != "3":
         return panic("describe")
 
 test "head is evaluated before step arguments":
     let log: List[String] = []
     if order(log) != 4:
         return panic("order value")
-    if log.at(0).unwrap() != "a" or log.at(1).unwrap() != "b":
+    if log.at(0).get() != "a" or log.at(1).get() != "b":
         return panic("order trace")
 
 test "dot steps call methods on the value":

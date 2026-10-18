@@ -90,12 +90,12 @@ fn exercise(mode: String, path: String) Result[Unit, Error]:
 
 export fn main() Int:
     let args = arguments()
-    let mode = args.at(0).unwrap_or("stdout")
-    let path = args.at(1).unwrap_or("events.ndjson")
+    let mode = args.at(0).get("stdout")
+    let path = args.at(1).get("events.ndjson")
     let result = exercise(mode, path)
 
     if result.is_error():
-        let _ignored = stderr().write("{result.unwrap_error().message()}\n".to_bytes())
+        let _ignored = stderr().write("{result.err().message()}\n".to_bytes())
         return 1
 
     return 0

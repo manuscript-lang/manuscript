@@ -73,7 +73,7 @@ type EmptyReader:
 
 impl ReadStream for EmptyReader:
     fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
-        self.requested = max_bytes.unwrap_or(0)
+        self.requested = max_bytes.get(0)
         return ok(none)
 
     fn close() Unit: unit

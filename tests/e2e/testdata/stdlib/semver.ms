@@ -5,7 +5,7 @@ import panic from "@std/faults.ms"
 fn failure(result: Result[Version, SemverError]) SemverError:
     if not result.is_error(): return panic("accepted")
 
-    return result.unwrap_error()
+    return result.err()
 
 test "semver parses and formats every component":
     let version = try parse("1.2.3-alpha.1+build.5")
@@ -44,8 +44,8 @@ test "semver orders by precedence":
             var expected = 0
             if i < j: expected = -1
             if i > j: expected = 1
-            let left = ordered[i].unwrap()
-            let right = ordered[j].unwrap()
+            let left = ordered[i].get()
+            let right = ordered[j].get()
             if (compare(try parse(left), try parse(right)) != expected):
                 return panic("order {left} {right}")
 

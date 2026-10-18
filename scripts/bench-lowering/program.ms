@@ -17,5 +17,5 @@ fn calls(limit: Int) Int:
 fn items(values: List[Int], limit: Int) Int:
     var total = 0
     for index in range(0, limit):
-        total += values.at(index).unwrap()
+        total += values.at(index).get()
     return total

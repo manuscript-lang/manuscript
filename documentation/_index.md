@@ -12,7 +12,7 @@ import arguments from "@std/cli.ms"
 import stdout from "@std/io.ms"
 
 export fn main() Int:
-    let name = arguments().at(0).unwrap_or("world")
+    let name = arguments().at(0).get("world")
     let message = "Hello, {name}!\n".to_bytes()
     if stdout().write(message).is_error():
         return 1

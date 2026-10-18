@@ -9,7 +9,7 @@ fn expect_fs_error[T](
     expected: FileSystemError
 ) Unit:
     if not outcome.is_error(): return panic("filesystem misuse succeeded")
-    if outcome.unwrap_error() != expected: return panic("wrong filesystem error")
+    if outcome.err() != expected: return panic("wrong filesystem error")
 
 test "glob queries reuse patterns without changing hidden paths limits or callbacks":
     let fs = filesystem()
@@ -38,9 +38,7 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
             )
         )
         if entries.length() != 1: return panic("glob_entries count")
-        if entries.at(0).unwrap().path != "b.md": return panic(
-            "callback changed pattern"
-        )
+        if entries.at(0).get().path != "b.md": return panic("callback changed pattern")
 
 test "ordinary filesystem misuse retains typed cases":
     let fs = filesystem()
@@ -96,7 +94,7 @@ test "filesystem scoped temporary directories and bounded file reads":
         if (try fs.list(directory)).length() != 1: return panic("directory list")
 
         with input = try files().open(path):
-            if (try input.read(5)).unwrap() != "hello".to_bytes(): return panic(
+            if (try input.read(5)).get() != "hello".to_bytes(): return panic(
                 "read-only Files host"
             )
 

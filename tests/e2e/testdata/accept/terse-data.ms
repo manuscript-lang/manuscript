@@ -6,7 +6,7 @@ fn first[T](left: T, right: T) T: left
 
 fn size(values: Map[String, Int]) Int: values.length()
 
-fn optional_size(values: Optional[Map[String, Int]]) Int: (values.unwrap().length())
+fn optional_size(values: Optional[Map[String, Int]]) Int: (values.get().length())
 
 fn mark(log: List[Int], value: Int) Int:
     log.append(value)
@@ -27,12 +27,10 @@ test "map literals and positional identifier arguments":
     if stored(amount, deduction) != 7: return panic("function value")
 
     let values = {"a": 1, "b": 2, "a": 3}
-    if values.length() != 2 or values.get("a").unwrap() != 3: return panic(
-        "duplicate key"
-    )
+    if values.length() != 2 or values.get("a").get() != 3: return panic("duplicate key")
 
     let keys = values.keys()
-    if keys.at(0).unwrap() != "a" or keys.at(1).unwrap() != "b": return panic(
+    if keys.at(0).get() != "a" or keys.at(1).get() != "b": return panic(
         "insertion order"
     )
 
@@ -42,27 +40,25 @@ test "map literals and positional identifier arguments":
     )
 
     let nested: Map[String, Map[String, Int]] = {"a": {}, "b": {"c": 1}}
-    if nested.get("b").unwrap().get("c").unwrap() != 1: return panic("nested map")
+    if nested.get("b").get().get("c").get() != 1: return panic("nested map")
 
     let optional: Map[String, Optional[Int]] = {"a": none, "b": some(2)}
-    if not optional.get("a").unwrap().is_none(): return panic("context")
+    if not optional.get("a").get().is_none(): return panic("context")
 
     let key = "c"
     let value = 5
     values.add(key, value)
-    if values.get(key).unwrap() != value: return panic("method identifiers")
+    if values.get(key).get() != value: return panic("method identifiers")
 
     let log: List[Int] = []
     let ordered = {mark(log, 1): mark(log, 2), mark(log, 1): mark(log, 3)}
-    if log != [1, 2, 1, 3] or ordered.get(1).unwrap() != 3: return panic(
+    if log != [1, 2, 1, 3] or ordered.get(1).get() != 3: return panic(
         "evaluation order"
     )
 
     let shared = {"x": values}
     values.add("d", 6)
-    if shared.get("x").unwrap().get("d").unwrap() != 6: return panic(
-        "shared references"
-    )
+    if shared.get("x").get().get("d").get() != 6: return panic("shared references")
 
 type Key:
     id: Int
@@ -81,6 +77,6 @@ test "map literal uses custom key equality":
     let a = Key(1, "first")
     let b = Key(1, "second")
     let values = {a: "a", b: "b"}
-    if values.length() != 1 or values.get(a).unwrap() != "b": return panic(
+    if values.length() != 1 or values.get(a).get() != "b": return panic(
         "custom key equality"
     )

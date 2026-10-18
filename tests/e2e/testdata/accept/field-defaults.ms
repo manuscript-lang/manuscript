@@ -31,13 +31,13 @@ type Explicit:
 
 test "record defaults and explicit overrides":
     let data = Data()
-    if (data.number != 5 or data.values.at(0).unwrap() != 5 or data.callback() != 5):
+    if (data.number != 5 or data.values.at(0).get() != 5 or data.callback() != 5):
         return panic("dependent field and closure defaults")
 
     let changed = Data(0)
     if (
         changed.number != 0
-        or changed.values.at(0).unwrap() != 0
+        or changed.values.at(0).get() != 0
         or changed.callback() != 0
     ):
         return panic("explicit field overrides dependent defaults")
@@ -85,7 +85,7 @@ type Reader:
 
 impl ReadWithDefault for Reader:
     fn get(fallback: Optional[Int]) Int:
-        return fallback.unwrap_or(self.number)
+        return fallback.get(self.number)
 
 type Marker:
 

@@ -102,13 +102,13 @@ test "List splice preserves shallow replacement references and Optional elements
     let replacement = [item]
     let values = [Item(2)]
     let returned = values.splice(0, 1, replacement)
-    returned[0].unwrap().value = 7
-    if item.value != 7 or replacement[0].unwrap().value != 7:
+    returned[0].get().value = 7
+    if item.value != 7 or replacement[0].get().value != 7:
         return panic("replacement was deep copied")
 
     let optional: List[Optional[Int]] = [some(1)]
     optional.splice(0, 1, [some(2)])
-    if optional[0].unwrap() != some(2): return panic("element conversion")
+    if optional[0].get() != some(2): return panic("element conversion")
 
 interface ListSplicing:
     fn splice(start: Int, delete_count: Int, replacement: List[Int]) List[Int]

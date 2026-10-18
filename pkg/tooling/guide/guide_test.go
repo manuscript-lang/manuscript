@@ -42,7 +42,7 @@ func TestCheatsheetClaimsMatchTheCompiler(t *testing.T) {
 		"    let m = Map[String, Int]()\n    let s = Set[Int]()\n",
 		"    var n = 1\n    n = 2\n",
 		"    var n = 1\n    n += 2\n    n %= 2\n",
-		"    let o: Optional[Int] = none\n    let v = o.unwrap_or(3)\n",
+		"    let o: Optional[Int] = none\n    let v = o.get(3)\n",
 		"    let name = \"x\"\n    let text = \"hi {name}\"\n",
 	}
 	for _, body := range accepted {

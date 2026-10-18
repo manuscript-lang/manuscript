@@ -21,30 +21,26 @@ fn limits(
 test "TOML scalars quoted keys comments exact integers and dates":
     let source = "title = \"é🙂 # text\" # comment\n'' = 'literal\\n'\nbool = true\nlarge = 9007199254740993\nhex = 0xDEAD_BEEF\noct = 0o755\nbin = 0b1010\nfloat = -1_2.5e+2\ndate = 2024-02-29\ntime = 07:32:00.123\nstamp = 1979-05-27 07:32:00-07:00\n"
     let root = parse(source) | try | entries
-    if root.get("title").unwrap() != TomlValue.StringValue("é🙂 # text"): return panic(
+    if root.get("title").get() != TomlValue.StringValue("é🙂 # text"): return panic(
         "TOML text"
     )
-    if root.get("").unwrap() != TomlValue.StringValue("literal\\n"): return panic(
+    if root.get("").get() != TomlValue.StringValue("literal\\n"): return panic(
         "literal string"
     )
-    if root.get("large").unwrap() != TomlValue.IntValue(9007199254740993): return panic(
+    if root.get("large").get() != TomlValue.IntValue(9007199254740993): return panic(
         "exact integer"
     )
-    if root.get("hex").unwrap() != TomlValue.IntValue(3735928559): return panic("hex")
-    if root.get("oct").unwrap() != TomlValue.IntValue(493): return panic("octal")
-    if root.get("bin").unwrap() != TomlValue.IntValue(10): return panic("binary")
-    if root.get("float").unwrap() != TomlValue.FloatValue(-1250.0): return panic(
-        "float"
+    if root.get("hex").get() != TomlValue.IntValue(3735928559): return panic("hex")
+    if root.get("oct").get() != TomlValue.IntValue(493): return panic("octal")
+    if root.get("bin").get() != TomlValue.IntValue(10): return panic("binary")
+    if root.get("float").get() != TomlValue.FloatValue(-1250.0): return panic("float")
+    if (root.get("stamp").get() != TomlValue.DateTimeValue("1979-05-27 07:32:00-07:00")): return panic(
+        "date time"
     )
-    if (
-        root.get("stamp").unwrap() != TomlValue.DateTimeValue(
-            "1979-05-27 07:32:00-07:00"
-        )
-    ): return panic("date time")
-    if root.get("date").unwrap() != TomlValue.DateTimeValue("2024-02-29"): return panic(
+    if root.get("date").get() != TomlValue.DateTimeValue("2024-02-29"): return panic(
         "date"
     )
-    if root.get("time").unwrap() != TomlValue.DateTimeValue("07:32:00.123"): return panic(
+    if root.get("time").get() != TomlValue.DateTimeValue("07:32:00.123"): return panic(
         "time"
     )
 
@@ -52,49 +48,47 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
     let root = parse(
         "basic = \"\"\"\nhello \\\n    world\\u0021\"\"\"\nliteral = '''\nraw\\text\nnext'''\narray = [1, # first\n true, \{name = 'Ada', meta.age = 37\},]\n"
     ) | try | entries
-    if root.get("basic").unwrap() != TomlValue.StringValue("hello world!"): return panic(
+    if root.get("basic").get() != TomlValue.StringValue("hello world!"): return panic(
         "multiline basic"
     )
-    if root.get("literal").unwrap() != TomlValue.StringValue("raw\\text\nnext"): return panic(
+    if root.get("literal").get() != TomlValue.StringValue("raw\\text\nnext"): return panic(
         "multiline literal"
     )
 
-    let array = items(root.get("array").unwrap())
+    let array = items(root.get("array").get())
     if array.length() != 3: return panic("array")
 
-    let person = entries(array.at(2).unwrap())
-    if person.get("name").unwrap() != TomlValue.StringValue("Ada"): return panic(
+    let person = entries(array.at(2).get())
+    if person.get("name").get() != TomlValue.StringValue("Ada"): return panic(
         "inline table"
     )
-    if (
-        entries(person.get("meta").unwrap()).get(
-            "age"
-        ).unwrap() != TomlValue.IntValue(37)
-    ): return panic("inline dotted key")
+    if (entries(person.get("meta").get()).get("age").get() != TomlValue.IntValue(37)): return panic(
+        "inline dotted key"
+    )
 
 test "TOML implicit parents dotted keys and arrays of tables":
     let text = "[owner.details]\nname = 'Ada'\n[owner]\nactive = true\n[[products]]\nname = 'Hammer'\n[products.meta]\nstock = 3\n[[products]]\nname = 'Nail'\n[[products.variants]]\nsize = 1\n[[products.variants]]\nsize = 2\n"
     let root = parse(text) | try | entries
-    let owner = entries(root.get("owner").unwrap())
+    let owner = entries(root.get("owner").get())
     if (
-        entries(owner.get("details").unwrap()).get(
+        entries(owner.get("details").get()).get(
             "name"
-        ).unwrap() != TomlValue.StringValue("Ada")
+        ).get() != TomlValue.StringValue("Ada")
     ): return panic("implicit parent")
 
-    let products = items(root.get("products").unwrap())
+    let products = items(root.get("products").get())
     if products.length() != 2: return panic("table array")
     if (
-        entries(entries(products.first().unwrap()).get("meta").unwrap()).get(
+        entries(entries(products.first().get()).get("meta").get()).get(
             "stock"
-        ).unwrap() != TomlValue.IntValue(3)
+        ).get() != TomlValue.IntValue(3)
     ): return panic("array child table")
-    if items(entries(products.last().unwrap()).get("variants").unwrap()).length() != 2: return panic(
+    if items(entries(products.last().get()).get("variants").get()).length() != 2: return panic(
         "nested table arrays"
     )
 
     let dotted = parse("a.b.c = 1\na.b.d = 2\n") | try | entries
-    if entries(entries(dotted.get("a").unwrap()).get("b").unwrap()).length() != 2: return panic(
+    if entries(entries(dotted.get("a").get()).get("b").get()).length() != 2: return panic(
         "dotted assignment"
     )
 
@@ -109,7 +103,7 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
         let parsed = parse(text)
         if parsed.is_ok(): return panic("invalid TOML accepted: {text}")
 
-        let cause = parsed.unwrap_error()
+        let cause = parsed.err()
 
         match cause:
             InvalidData(line, column, reason):
@@ -139,22 +133,22 @@ test "TOML nonfinite floats CRLF and repeated separators":
         "positive=inf\r\nnegative=-inf\r\nnan=+nan\r\ninteger=1_000_000\r\n"
     ) | try | entries
 
-    match root.get("positive").unwrap():
+    match root.get("positive").get():
         FloatValue(number):
             if number.is_finite() or number < 0.0: return panic("positive infinity")
         _: return panic("expected float")
 
-    match root.get("negative").unwrap():
+    match root.get("negative").get():
         FloatValue(number):
             if number.is_finite() or number > 0.0: return panic("negative infinity")
         _: return panic("expected float")
 
-    match root.get("nan").unwrap():
+    match root.get("nan").get():
         FloatValue(number):
             if not number.is_nan(): return panic("NaN")
         _: return panic("expected float")
 
-    if root.get("integer").unwrap() != TomlValue.IntValue(1000000): return panic(
+    if root.get("integer").get() != TomlValue.IntValue(1000000): return panic(
         "repeated underscore separators"
     )
 
@@ -162,7 +156,7 @@ fn failure(text: String) String:
     let parsed = parse(text)
     if parsed.is_ok(): return "accepted"
 
-    return parsed.unwrap_error().message()
+    return parsed.err().message()
 
 test "TOML errors report the offending line and column":
     if failure("x = 1\ny = \"a\u{1}b\"") != "TOML 2:7: invalid control character": return panic(
@@ -224,10 +218,10 @@ test "TOML long strings parse and stringify in linear time":
     let expected = repeated("x\n", 150000)
     let root = try parse("a = \"{long}\"\nb = '''{expected}'''")
     let table = entries(root)
-    if table.get("a").unwrap() != TomlValue.StringValue(expected): return panic(
+    if table.get("a").get() != TomlValue.StringValue(expected): return panic(
         "basic string"
     )
-    if table.get("b").unwrap() != TomlValue.StringValue(expected): return panic(
+    if table.get("b").get() != TomlValue.StringValue(expected): return panic(
         "literal multi-line string"
     )
 

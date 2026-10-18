@@ -55,7 +55,7 @@ fn nested(n: Int) Optional[Optional[Int]]:
     return some(halve(n))
 
 fn matched_value(n: Int) Int:
-    return checked(n).unwrap_or(-1)
+    return checked(n).get(-1)
 
 fn closure_return(n: Int) Result[Int, String]:
     if let y = halve(n):
@@ -73,34 +73,34 @@ fn sum_all(count: Int) Result[Int, String]:
     return ok(total)
 
 test "result matching":
-    let v = chain(3).unwrap()
+    let v = chain(3).get()
     if not (v == 8):
         return panic("chain ok")
 
     let failure = chain(-1)
     if not failure.is_error():
         return panic("chain should fail")
-    if not (failure.unwrap_error() == "negative"):
+    if not (failure.err() == "negative"):
         return panic("cause")
 
 test "try chains":
-    let v = deeper(1).unwrap()
+    let v = deeper(1).get()
     if not (v == 4 + 10):
         return panic("deeper {v}")
 
     let deeper_failure = deeper(-5)
     if not deeper_failure.is_error():
         return panic("deeper should fail")
-    if not (deeper_failure.unwrap_error() == "negative"):
+    if not (deeper_failure.err() == "negative"):
         return panic("deeper cause")
 
-    let x = expression_try(4).unwrap()
+    let x = expression_try(4).get()
     if not (x == 105):
         return panic("expression try")
     if not expression_try(-4).is_error():
         return panic("expression try should fail")
 
-    let total = sum_all(5).unwrap()
+    let total = sum_all(5).get()
     if not (total == 15):
         return panic("sum {total}")
 
@@ -113,7 +113,7 @@ test "boxed consumers":
         return panic("error equality")
 
     let f = checked
-    let v = f(6).unwrap()
+    let v = f(6).get()
     if not (v == 7):
         return panic("first class")
     if not (matched_value(3) == 4):
@@ -131,15 +131,15 @@ test "optional and payload kinds":
     if halve(7).is_some():
         return panic("halve odd")
 
-    let w = word(3).unwrap()
+    let w = word(3).get()
     if not (w == "w3"):
         return panic("word")
 
-    let r = ratio(1).unwrap()
+    let r = ratio(1).get()
     if not (r == 1.5):
         return panic("ratio")
 
-    nothing(true).unwrap()
+    nothing(true).get()
 
     if let inner = nested(4):
         if not (inner == some(2)):
@@ -150,18 +150,18 @@ test "optional and payload kinds":
     let odd = closure_return(5)
     if not odd.is_error():
         return panic("closure return should fail")
-    if not (odd.unwrap_error() == "odd"):
+    if not (odd.err() == "odd"):
         return panic("closure return cause")
 
-    let even = closure_return(6).unwrap()
+    let even = closure_return(6).get()
     if not (even == 3):
         return panic("closure return ok")
 
 test "list at unwrap":
     let items = [10, 20, 30]
-    if not (items.at(0).unwrap() == 10):
+    if not (items.at(0).get() == 10):
         return panic("first")
-    if not (items.at(-1).unwrap() == 30):
+    if not (items.at(-1).get() == 30):
         return panic("negative index")
-    if not (items.at(1).unwrap() + items.at(2).unwrap() == 50):
+    if not (items.at(1).get() + items.at(2).get() == 50):
         return panic("sum")

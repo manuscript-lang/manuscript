@@ -12,9 +12,9 @@ fn tls_options() TlsOptions:
 
 fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
     if exchange.path() == "/ws":
-        with socket = (exchange.upgrade([], ["echo"], 1024).unwrap()):
-            let message = socket.receive().unwrap().unwrap()
-            socket.send(message.data, text: message.text).unwrap()
+        with socket = (exchange.upgrade([], ["echo"], 1024).get()):
+            let message = socket.receive().get().get()
+            socket.send(message.data, text: message.text).get()
 
         return ok(unit)
 
@@ -22,7 +22,7 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
         Map[String, List[String]]().add("X-Test", ["manuscript"])
     )
     try exchange.send_headers(201, headers)
-    exchange.write("hello".to_bytes()).unwrap()
+    exchange.write("hello".to_bytes()).get()
     return ok(unit)
 
 test "HTTP buffered and streaming clients call a Manuscript handler":
@@ -61,7 +61,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
                 2.seconds
             ):
                 if body.metadata().status != 201: return panic("streaming status")
-                if (try body.read(5)).unwrap() != "hello".to_bytes(): return panic(
+                if (try body.read(5)).get() != "hello".to_bytes(): return panic(
                     "streaming bytes"
                 )
                 if not (try body.read(5)).is_none(): return panic("streaming EOF")
@@ -99,15 +99,15 @@ test "WebSocket negotiates a protocol and echoes a text frame":
             if socket.subprotocol() != "echo": return panic("WebSocket subprotocol")
 
             try socket.send("é🙂".to_bytes(), text: true)
-            let message = (try socket.receive()).unwrap()
+            let message = (try socket.receive()).get()
             if not message.text or message.data != "é🙂".to_bytes(): return panic(
                 "WebSocket echo"
             )
 
 fn report_host(exchange: HttpExchange) Result[Unit, HttpError]:
-    let hosts = (try exchange.headers().text("Host")).unwrap_or([])
+    let hosts = (try exchange.headers().text("Host")).get([])
     try exchange.send_headers(200, headers())
-    exchange.write(hosts.join(",").to_bytes()).unwrap()
+    exchange.write(hosts.join(",").to_bytes()).get()
     return ok(unit)
 
 test "HTTP streaming handlers see the Host request header":
@@ -135,6 +135,4 @@ test "HTTP requests reject an empty method":
         timeout: 1.seconds
     )
     if empty.is_ok(): return panic("empty method accepted")
-    if empty.unwrap_error() != HttpError.InvalidInput: return panic(
-        "empty method error"
-    )
+    if empty.err() != HttpError.InvalidInput: return panic("empty method error")

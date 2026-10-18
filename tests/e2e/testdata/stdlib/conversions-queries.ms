@@ -39,8 +39,8 @@ fn locate[K: Hashable, V](
 test "conversions and collection queries are callable":
     let present: Optional[Int] = some(2)
     let missing: Optional[Int] = none
-    if present.ok_or("absent").unwrap() != 2: return panic("Optional eager conversion")
-    if missing.ok_or_else(fn(): "absent").unwrap_error() != "absent": return panic(
+    if present.ok_or("absent").get() != 2: return panic("Optional eager conversion")
+    if missing.ok_or_else(fn(): "absent").err() != "absent": return panic(
         "Optional lazy conversion"
     )
 
@@ -49,13 +49,13 @@ test "conversions and collection queries are callable":
 
     let entries: Map[String, Int] = {"b": 2, "a": 1}
     if entries.fold(0, fn(acc, k, v): acc + v) != 3: return panic("Map fold")
-    if entries.find(fn(k, v): v == 1).unwrap().key != "a": return panic("Map find")
+    if entries.find(fn(k, v): v == 1).get().key != "a": return panic("Map find")
     if not (entries.some(fn(k, v): v == 1)): return panic("Map some")
     if not (entries.every(fn(k, v): v > 0)): return panic("Map every")
 
     let values = Set[Int]().add(2).add(1)
     if values.fold(0, fn(acc, n): acc + n) != 3: return panic("Set fold")
-    if values.find(fn(n): n == 1).unwrap() != 1: return panic("Set find")
+    if values.find(fn(n): n == 1).get() != 1: return panic("Set find")
     if not (values.some(fn(n): n == 1)): return panic("Set some")
     if not (values.every(fn(n): n > 0)): return panic("Set every")
 
@@ -63,31 +63,29 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     let counter = Counter(0)
     let present: Optional[Int] = some(0)
     let missing: Optional[Int] = none
-    if require_value(present, counted(counter)).unwrap() != 0 or counter.calls != 1:
+    if require_value(present, counted(counter)).get() != 0 or counter.calls != 1:
         return panic("eager conversion skipped cause expression")
 
-    let cause = require_value(missing, counter).unwrap_error()
+    let cause = require_value(missing, counter).err()
     cause.calls = 2
     if counter.calls != 2: return panic("conversion copied error")
 
     let create = fn() Counter: counted(counter)
-    if require_lazy(present, create).unwrap() != 0 or counter.calls != 2:
+    if require_lazy(present, create).get() != 0 or counter.calls != 2:
         return panic("present invoked lazy error construction")
 
     let error_result = require_lazy(missing, create)
     if counter.calls != 3: return panic("lazy error construction must run once")
 
-    error_result.unwrap_error().calls = 4
+    error_result.err().calls = 4
     if counter.calls != 4: return panic("lazy conversion copied cause")
 
     let bound = missing.ok_or[Counter]
-    bound(counter).unwrap_error().calls = 5
+    bound(counter).err().calls = 5
     if counter.calls != 5: return panic("bound eager conversion lost receiver")
 
     let bound_lazy = missing.ok_or_else[Counter]
-    if bound_lazy(create).unwrap_error().calls != 6: return panic(
-        "bound lazy conversion"
-    )
+    if bound_lazy(create).err().calls != 6: return panic("bound lazy conversion")
 
     let failure: Result[Counter, List[Int]] = error([1, 2])
     if not (success_only(failure).is_none()): return panic(
@@ -96,16 +94,16 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 
     let success: Result[Counter, Bool] = ok(counter)
     let extract = success.to_optional
-    extract().unwrap().calls = 7
+    extract().get().calls = 7
     if counter.calls != 7: return panic("Result conversion copied success")
 
     let nested: Optional[Optional[Int]] = some(none)
     let converted = nested.ok_or("absent")
-    if not (converted.is_ok()) or not (converted.to_optional().unwrap().is_none()):
+    if not (converted.is_ok()) or not (converted.to_optional().get().is_none()):
         return panic("conversion flattened nested Optional")
 
     let false_value: Optional[Bool] = some(false)
-    if false_value.ok_or(unit).to_optional().unwrap(): return panic(
+    if false_value.ok_or(unit).to_optional().get(): return panic(
         "false payload changed"
     )
 
@@ -115,7 +113,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     )
 
     let nested_result: Optional[Result[Int, String]] = some(error("nested"))
-    if nested_result.ok_or(false).to_optional().unwrap().unwrap_error() != "nested":
+    if nested_result.ok_or(false).to_optional().get().err() != "nested":
         return panic("conversion flattened nested Result")
 
 test "Map fold uses ordered snapshots and returns accumulator aliases":
@@ -151,7 +149,7 @@ test "Map fold uses ordered snapshots and returns accumulator aliases":
         .add("a", 3)
         .fold(success, fn(acc, k, v): acc.map(fn(n): (n + v)))
     )
-    if nested.unwrap() != 5: return panic("fold flattened Result accumulator")
+    if nested.get() != 5: return panic("fold flattened Result accumulator")
 
 test "Map find returns fresh entry shells with original payload references":
     let counter = Counter(2)
@@ -163,21 +161,21 @@ test "Map find returns fresh entry shells with original payload references":
             visits.append(k)
             (values.remove("a").add("c", Counter(99)).add("new", Counter(9)))
             return k == "a"
-    ).unwrap()
+    ).get()
     if (visits != ["b", "a"] or found.key != "a" or found.value.calls != 1):
         return panic("Map find order snapshot or short circuit")
 
     let source = Map[String, Counter]().add("b", counter)
     let find = source.find
-    let original = find(fn(k, v): true).unwrap()
+    let original = find(fn(k, v): true).get()
     original.value.calls = 5
     if counter.calls != 5: return panic("Map find copied payload")
 
     original.key = "other"
     original.value = Counter(9)
-    if not (source.contains("b")) or source.get("b").unwrap().calls != 5:
+    if not (source.contains("b")) or source.get("b").get().calls != 5:
         return panic("Map entry shell aliased source storage")
-    if source.find(fn(k, v): true).unwrap().key != "b": return panic(
+    if source.find(fn(k, v): true).get().key != "b": return panic(
         "find reused entry shell"
     )
     if not (source.find(fn(k, v): false).is_none()): return panic("missing Map match")
@@ -279,7 +277,7 @@ test "Set fold and find preserve ordered snapshots and reference identity":
             seen.append(v.id)
             values.remove(a).add(Key(4, "new"))
             return v.id == 1
-    ).unwrap()
+    ).get()
     if seen != [2, 1]: return panic("Set find snapshot or short circuit")
 
     found.label = "found"
@@ -291,7 +289,7 @@ test "Set fold and find preserve ordered snapshots and reference identity":
     )
 
     let flags = Set[Bool]().add(false)
-    if flags.find(fn(v): true).unwrap(): return panic("false match disappeared")
+    if flags.find(fn(v): true).get(): return panic("false match disappeared")
 
 test "Set predicates short circuit over snapshots and keep empty identities":
     let values = Set[Int]().add(2).add(1).add(3)
@@ -414,17 +412,17 @@ fn find_port(port: Optional[Int]) Result[Int, Error]:
 test "ok_or without a cause records the calling file and line":
     let absent: Optional[Int] = none
     let direct: Result[Int, MissingValue] = absent.ok_or()
-    if not (direct.unwrap_error().message().contains("conversions-queries.ms:")): return panic(
+    if not (direct.err().message().contains("conversions-queries.ms:")): return panic(
         "missing location"
     )
 
-    let message = find_port(none).unwrap_error().message()
+    let message = find_port(none).err().message()
     if not (message.starts_with("missing value at ")): return panic(message)
-    if find_port(some(8080)).unwrap() != 8080: return panic("present payload")
+    if find_port(some(8080)).get() != 8080: return panic("present payload")
 
     let named: Result[Int, String] = absent.ok_or("port")
-    if named.unwrap_error() != "port": return panic("explicit cause")
+    if named.err() != "port": return panic("explicit cause")
 
-    match find_port(none).unwrap_error():
+    match find_port(none).err():
         MissingValue(_): unit
         _: return panic("default cause is not MissingValue")

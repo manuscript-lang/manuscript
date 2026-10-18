@@ -17,7 +17,7 @@ fn first_positive(values: List[Optional[Int]]) Int:
     var index = 0
 
     while index < values.length():
-        let item = values.at(index).unwrap()
+        let item = values.at(index).get()
         index += 1
 
         match item:

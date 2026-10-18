@@ -47,4 +47,4 @@ export fn second_bound_keys() fn(transform: fn(key: Int, value: Int) Key) Map[Ke
 export fn second_value_transform() Int:
     let input = Map[Key, Int]().add(Key(5, "original"), 2)
     let mapped = remap_values(input, fn(key, value): value + 1)
-    return mapped.get(Key(5, "different")).unwrap_or(0)
+    return mapped.get(Key(5, "different")).get(0)

@@ -16,18 +16,18 @@ fn parse_amount(s: String) Optional[Int]:
     if parts.length() > 2:
         return none
 
-    let whole = parts.at(0).unwrap()
+    let whole = parts.at(0).get()
     if not all_digits(whole):
         return none
 
-    var cents = whole.parse_int().unwrap() * 100
+    var cents = whole.parse_int().get() * 100
 
     if parts.length() == 2:
-        let frac = parts.at(1).unwrap()
+        let frac = parts.at(1).get()
         if not all_digits(frac) or frac.length() > 2:
             return none
 
-        let digits = frac.parse_int().unwrap()
+        let digits = frac.parse_int().get()
 
         if frac.length() == 1:
             cents = cents + digits * 10
@@ -45,25 +45,25 @@ fn parse_line(line: String) Optional[Record]:
     var amount = ""
 
     if line.starts_with("\""):
-        let rest = line.slice(1, line.length()).unwrap()
+        let rest = line.slice(1, line.length()).get()
         let close = rest.index_of("\"")
         if close.is_none():
             return none
 
-        let at = close.unwrap()
-        category = rest.slice(0, at).unwrap()
-        let after = rest.slice(at + 1, rest.length()).unwrap()
+        let at = close.get()
+        category = rest.slice(0, at).get()
+        let after = rest.slice(at + 1, rest.length()).get()
         if not after.starts_with(","):
             return none
 
-        amount = after.slice(1, after.length()).unwrap()
+        amount = after.slice(1, after.length()).get()
     else:
         let parts = line.split(",")
         if parts.length() != 2:
             return none
 
-        category = parts.at(0).unwrap()
-        amount = parts.at(1).unwrap()
+        category = parts.at(0).get()
+        amount = parts.at(1).get()
 
     if category.is_empty() or category.contains("\"") or amount.contains(","):
         return none
@@ -72,7 +72,7 @@ fn parse_line(line: String) Optional[Record]:
     if cents.is_none():
         return none
 
-    return some(Record(category: category, cents: cents.unwrap()))
+    return some(Record(category: category, cents: cents.get()))
 
 fn two_digits(n: Int) String:
     if n < 10:
@@ -89,7 +89,7 @@ fn run() Result[Unit, Error]:
         if next.is_none():
             break
 
-        let line = next.unwrap().replace(old: "\r", new: "")
+        let line = next.get().replace(old: "\r", new: "")
         if line.trim().is_empty():
             continue
 
@@ -98,7 +98,7 @@ fn run() Result[Unit, Error]:
         if rec.is_none():
             bad = bad + 1
         else:
-            let r = rec.unwrap()
+            let r = rec.get()
             totals.add(
                 key: r.category,
                 value: (

@@ -215,7 +215,7 @@ Verified: normalizing every runtime record recognized as an options record corru
 
 Apply when: changing native argument normalization or generic receiver methods.
 Evidence: normalization boundary, runtime Optional regression, and [compiled record fallback](../tests/e2e/testdata/accept/optional-methods.ms).
-Verify: unwrap_or returns a JsonLimits record with negative and absent Optional fields unchanged and mutations retain its identity; concrete limits passed to their native operations remain validated.
+Verify: get(default) returns a JsonLimits record with negative and absent Optional fields unchanged and mutations retain its identity; concrete limits passed to their native operations remain validated.
 
 ### CSV writer defaults can erase a single empty field
 

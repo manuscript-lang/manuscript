@@ -579,14 +579,10 @@ func TestOptional(t *testing.T) {
 	if !Optional_IsSome(ctx, some) || Optional_IsSome(ctx, none) || !Optional_IsNone(ctx, none) {
 		t.Fatal("is")
 	}
-	if Optional_Unwrap(ctx, some) != 4 || Optional_UnwrapOr(ctx, none, 7) != 7 || Optional_UnwrapOr(ctx, some, 7) != 4 {
-		t.Fatal("unwrap")
+	if Optional_Get(ctx, some, None[int]()) != 4 || Optional_Get(ctx, none, Some(7)) != 7 || Optional_Get(ctx, some, Some(7)) != 4 {
+		t.Fatal("get")
 	}
-	fault(t, "called Optional.unwrap() on none; check is_some first", func() { Optional_Unwrap(ctx, none) })
-	create := func(*Execution) int { return 9 }
-	if Optional_UnwrapOrElse(ctx, none, create) != 9 || Optional_UnwrapOrElse(ctx, some, func(*Execution) int { t.Fatal("eager"); return 0 }) != 4 {
-		t.Fatal("unwrap_or_else")
-	}
+	fault(t, "called Optional.get() on none; check is_some first", func() { Optional_Get(ctx, none, None[int]()) })
 	double := func(_ *Execution, v int) int { return v * 2 }
 	if Optional_Map(ctx, some, double) != Some(int(8)) || Optional_Map(ctx, none, double).Some {
 		t.Fatal("map")
@@ -624,13 +620,13 @@ func TestResult(t *testing.T) {
 	if !Result_IsOk(ctx, ok) || Result_IsOk(ctx, bad) || !Result_IsError(ctx, bad) {
 		t.Fatal("is")
 	}
-	if Result_Unwrap(ctx, ok) != 4 || Result_UnwrapError(ctx, bad) != "e" || Result_UnwrapOr(ctx, bad, 1) != 1 || Result_UnwrapOr(ctx, ok, 1) != 4 {
-		t.Fatal("unwrap")
+	if Result_Get(ctx, ok, None[int]()) != 4 || Result_Err(ctx, bad) != "e" || Result_Get(ctx, bad, Some(1)) != 1 || Result_Get(ctx, ok, Some(1)) != 4 {
+		t.Fatal("get")
 	}
-	fault(t, "called Result.unwrap() on error; check is_ok first", func() { Result_Unwrap(ctx, bad) })
-	fault(t, "called Result.unwrap_error() on ok; check is_error first", func() { Result_UnwrapError(ctx, ok) })
-	if Result_UnwrapOrElse(ctx, bad, func(_ *Execution, e string) int { return int(len(e)) + 10 }) != 11 {
-		t.Fatal("unwrap_or_else")
+	fault(t, "called Result.get() on error; check is_ok first", func() { Result_Get(ctx, bad, None[int]()) })
+	fault(t, "called Result.err() on ok; check is_error first", func() { Result_Err(ctx, ok) })
+	if Result_OrElse(ctx, bad, func(_ *Execution, e string) int { return int(len(e)) + 10 }) != 11 {
+		t.Fatal("or_else")
 	}
 	double := func(_ *Execution, v int) int { return v * 2 }
 	if r := Result_Map(ctx, ok, double); r.Val != 8 || r.Failed {

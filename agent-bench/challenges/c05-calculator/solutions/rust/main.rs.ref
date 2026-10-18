@@ -92,7 +92,7 @@ fn main() {
         .stack_size(256 << 20)
         .spawn(|| {
             for line in std::io::stdin().lock().lines() {
-                let line = line.unwrap();
+                let line = line.get();
                 let line = line.trim_end_matches('\r');
                 if line.trim().is_empty() {
                     continue;
@@ -100,7 +100,7 @@ fn main() {
                 println!("{}", eval(line));
             }
         })
-        .unwrap()
+        .get()
         .join()
-        .unwrap();
+        .get();
 }

@@ -17,7 +17,7 @@ fn doubled(value: Int) Result[Int, Problem]:
     return ok(accepted * 2)
 
 fn summarize(outcome: Result[Int, Problem]) Int:
-    return outcome.unwrap_or(-1)
+    return outcome.get(-1)
 
 test "unchanged propagated error":
     if not (summarize(doubled(3)) == 6):

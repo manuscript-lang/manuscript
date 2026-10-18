@@ -27,25 +27,25 @@ test "core parity operations are callable":
     let success: Result[Int, String] = ok(2)
     let failure: Result[Int, String] = error("failed")
     if not (success.is_ok()) or success.is_error(): return panic("Result predicates")
-    if success.unwrap() != 2 or failure.unwrap_error() != "failed": return panic(
+    if success.get() != 2 or failure.err() != "failed": return panic(
         "Result extraction"
     )
-    if failure.unwrap_or(7) != 7: return panic("Result fallback")
-    if failure.unwrap_or_else(fn(cause): cause.scalar_length()) != 6: return panic(
+    if failure.get(7) != 7: return panic("Result fallback")
+    if failure.or_else(fn(cause): cause.scalar_length()) != 6: return panic(
         "Result lazy fallback"
     )
-    if success.map(fn(n): n + 1).unwrap() != 3: return panic("Result map")
+    if success.map(fn(n): n + 1).get() != 3: return panic("Result map")
 
     let chained: Result[String, String] = success.and_then(fn(n): ok(n.to_string()))
-    if chained.unwrap() != "2": return panic("Result and_then")
+    if chained.get() != "2": return panic("Result and_then")
 
     let present: Optional[Int] = some(2)
     let missing: Optional[Int] = none
-    if present.map(fn(n): n + 1).unwrap() != 3: return panic("Optional map")
-    if present.and_then(fn(n): some(n.to_string())).unwrap() != "2": return panic(
+    if present.map(fn(n): n + 1).get() != 3: return panic("Optional map")
+    if present.and_then(fn(n): some(n.to_string())).get() != "2": return panic(
         "Optional and_then"
     )
-    if missing.or_else(fn(): some(4)).unwrap() != 4: return panic("Optional or_else")
+    if missing.or_else(fn(): some(4)).get() != 4: return panic("Optional or_else")
 
     let values: Map[String, Int] = {"a": 1, "b": 2}
     if values.is_empty() or values.get_or("absent", 8) != 8: return panic("Map lookup")
@@ -70,11 +70,11 @@ test "Result preserves unconstrained payloads and success-only composition":
     if (not (skipped.is_error()) or skipped.is_ok() or counter.calls != 0):
         return panic("map invoked on error")
 
-    skipped.unwrap_error().calls = 2
+    skipped.err().calls = 2
     if counter.calls != 2: return panic("map copied error payload")
 
     let mapped = success.map(transform)
-    if mapped.unwrap() != "0" or counter.calls != 3: return panic("map success")
+    if mapped.get() != "0" or counter.calls != 3: return panic("map success")
 
     let chain = fn(value: Int) Result[String, Counter]:
         counter.calls += 1
@@ -82,57 +82,57 @@ test "Result preserves unconstrained payloads and success-only composition":
     let propagated = chain_result(failure, chain)
     if counter.calls != 3: return panic("and_then invoked on error")
 
-    propagated.unwrap_error().calls = 4
+    propagated.err().calls = 4
     if counter.calls != 4: return panic("and_then copied original error")
 
     let produced = success.and_then(chain)
     if counter.calls != 5: return panic("and_then success callback count")
 
-    produced.unwrap_error().calls = 6
+    produced.err().calls = 6
     if counter.calls != 6: return panic("and_then copied callback error")
 
     let collection_error: Result[Bool, List[Int]] = error([1])
-    collection_error.map(fn(flag): not flag).unwrap_error().append(2)
-    if collection_error.unwrap_error() != [1, 2]: return panic("unconstrained error")
+    collection_error.map(fn(flag): not flag).err().append(2)
+    if collection_error.err() != [1, 2]: return panic("unconstrained error")
 
     let limits = JsonLimits(-1)
     let record: Result[JsonLimits, String] = ok(limits)
-    record.map(fn(value): value).unwrap().max_values = some(7)
-    if limits.max_values.unwrap() != 7: return panic("map normalized or copied payload")
+    record.map(fn(value): value).get().max_values = some(7)
+    if limits.max_values.get() != 7: return panic("map normalized or copied payload")
 
     let nested = success.map(fn(n): some(n))
-    if nested.unwrap().unwrap() != 0: return panic("Result map flattened success")
+    if nested.get().get() != 0: return panic("Result map flattened success")
 
     let unit_result: Result[Unit, Bool] = ok(unit)
     if not (unit_result.is_ok()): return panic("unit success")
 
     let bool_result: Result[Bool, String] = ok(false)
-    if bool_result.unwrap_or(true): return panic("false success absent")
+    if bool_result.get(true): return panic("false success absent")
 
 test "Result fallbacks are eager or lazy and bound methods keep receivers":
     let counter = Counter(0)
     let success: Result[Int, Counter] = ok(0)
     let failure: Result[Int, Counter] = error(counter)
-    if success.unwrap_or(bump(counter)) != 0 or counter.calls != 1:
+    if success.get(bump(counter)) != 0 or counter.calls != 1:
         return panic("eager fallback evaluation")
 
     let create = fn(cause: Counter) Int:
         cause.calls += 1
         return 12
-    let lazy = success.unwrap_or_else
+    let lazy = success.or_else
     if lazy(create) != 0 or counter.calls != 1: return panic("success lazy fallback")
-    if failure.unwrap_or_else(create) != 12 or counter.calls != 2: return panic(
+    if failure.or_else(create) != 12 or counter.calls != 2: return panic(
         "error lazy fallback"
     )
 
-    let extract = failure.unwrap_error
+    let extract = failure.err
     extract().calls = 3
     if counter.calls != 3: return panic("bound extraction identity")
 
     let bound_map = success.map[String]
     let bound_chain = success.and_then[String]
-    if bound_map(fn(n): n.to_string()).unwrap() != "0": return panic("bound Result map")
-    if bound_chain(fn(n): ok(n.to_string())).unwrap() != "0": return panic(
+    if bound_map(fn(n): n.to_string()).get() != "0": return panic("bound Result map")
+    if bound_chain(fn(n): ok(n.to_string())).get() != "0": return panic(
         "bound Result chain"
     )
 
@@ -149,11 +149,11 @@ test "Optional composition keeps nesting identity and lazy callback counts":
     let mapped = present.map(transform)
     if counter.calls != 1: return panic("Optional map callback count")
 
-    mapped.unwrap().calls = 2
+    mapped.get().calls = 2
     if counter.calls != 2: return panic("Optional map identity")
 
     let chained = present.and_then(fn(value): some(value))
-    chained.unwrap().calls = 3
+    chained.get().calls = 3
     if counter.calls != 3: return panic("Optional and_then identity")
 
     let absent = present.and_then(fn(unused): Optional[Int].none)
@@ -163,22 +163,22 @@ test "Optional composition keeps nesting identity and lazy callback counts":
         counter.calls += 1
         return some(counter)
     let bound = present.or_else
-    bound(create).unwrap().calls = 4
+    bound(create).get().calls = 4
     if counter.calls != 4: return panic("or_else called on some")
 
     let fallback = missing.or_else(create)
     if counter.calls != 5: return panic("or_else callback count")
 
-    fallback.unwrap().calls = 6
+    fallback.get().calls = 6
     if counter.calls != 6: return panic("or_else copied payload")
 
     let nested = present.map(fn(unused): Optional[Int].none)
-    if not (nested.is_some()) or not (nested.unwrap().is_none()): return panic(
+    if not (nested.is_some()) or not (nested.get().is_none()): return panic(
         "map flattened Optional"
     )
 
     let bound_map = present.map[String]
-    if bound_map(fn(value): value.calls.to_string()).unwrap() != "6": return panic(
+    if bound_map(fn(value): value.calls.to_string()).get() != "6": return panic(
         "bound Optional map"
     )
 
@@ -272,8 +272,8 @@ test "Set filter and map copy snapshots and deduplicate in first-result order":
     let mapped = map_set(input, fn(n): Key(n % 2, n.to_string()))
     if (
         mapped.length() != 2
-        or mapped.values().at(0).unwrap().label != "2"
-        or mapped.values().at(1).unwrap().label != "3"
+        or mapped.values().at(0).get().label != "2"
+        or mapped.values().at(1).get().label != "3"
     ):
         return panic("Set map hashing or order")
 
@@ -292,8 +292,8 @@ test "Set filter and map copy snapshots and deduplicate in first-result order":
 
     let key = Key(5, "shared")
     let keys = Set[Key]().add(key)
-    keys.filter(fn(unused): true).values().at(0).unwrap().label = "changed"
-    keys.map(fn(value): value).values().at(0).unwrap().label = "again"
+    keys.filter(fn(unused): true).values().at(0).get().label = "changed"
+    keys.map(fn(value): value).values().at(0).get().label = "again"
     if key.label != "again": return panic("Set copied payloads")
     if not (Set[Int]().map(fn(n): n.to_string()).is_empty()): return panic(
         "empty mapped set"

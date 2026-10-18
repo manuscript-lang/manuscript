@@ -19,7 +19,7 @@ impl Bumper for Counter:
 impl Scaler for Counter:
     fn scale(factor: Int, offset: Optional[Int] = none) Int: (
         self.n * factor
-        + offset.unwrap_or(0)
+        + offset.get(0)
     )
 
 impl Bumper for Shape:
@@ -89,7 +89,7 @@ impl Step for Chain:
         return ok((try self.parser.parse(n)) + 1)
 
 fn code(r: Result[Int, String]) Int:
-    return r.unwrap_or(-1)
+    return r.get(-1)
 
 fn run_direct(chain: Chain, n: Int) Int:
     return chain.step(n) | code

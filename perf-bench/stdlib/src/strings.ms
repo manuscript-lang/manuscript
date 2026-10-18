@@ -37,7 +37,7 @@ export fn bench_string() Unit:
         fn() Int:
             var n = 0
             for i in range(0, 200):
-                n = (n + text.replace_all("word", "w").unwrap_or("").length())
+                n = (n + text.replace_all("word", "w").get("").length())
             return n
     )
     bench(
@@ -73,7 +73,7 @@ export fn bench_string() Unit:
         fn() Int:
             var n = 0
             for i in range(0, 100000):
-                n += text.at(i % 5000).unwrap_or("").length()
+                n += text.at(i % 5000).get("").length()
             return n
     )
     bench(
@@ -91,7 +91,7 @@ export fn bench_string() Unit:
         fn() Int:
             var n = 0
             for i in range(0, 100000):
-                n += "12345".parse_int().unwrap_or(0)
+                n += "12345".parse_int().get(0)
             return n
     )
     bench(

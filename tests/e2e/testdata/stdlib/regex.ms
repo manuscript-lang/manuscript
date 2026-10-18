@@ -12,9 +12,7 @@ test "regex receivers execute matching replacement and empty results":
 test "regex rejects invalid expressions and exhausted budgets":
     let invalid = compile("[")
     if not invalid.is_error(): return panic("invalid pattern accepted")
-    if invalid.unwrap_error() != RegexError.InvalidData: return panic(
-        "pattern error identity"
-    )
+    if invalid.err() != RegexError.InvalidData: return panic("pattern error identity")
 
     let regex = try compile("[0-9]+")
     let limited: Result[List[String], RegexError] = error(RegexError.LimitExceeded)

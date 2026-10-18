@@ -39,7 +39,7 @@ fn io_error(cause: FileSystemError) LogError:
 fn lift[T](result: Result[T, FileSystemError]) Result[T, LogError]:
     if let value = result: return ok(value)
 
-    return result.unwrap_error() | io_error | error
+    return result.err() | io_error | error
 
 fn numbered(path: String, index: Int) String:
     if index == 0: return path
@@ -50,7 +50,7 @@ fn exists(fs: FileSystem, path: String) Bool:
     return fs.stat(path, follow_links: false).is_ok()
 
 fn age_of(modified: Timestamp) Duration:
-    return wall_clock().now().difference(modified).unwrap_or(duration(0))
+    return wall_clock().now().difference(modified).get(duration(0))
 
 # Adopts an existing file's size, and its modification time as the start of its age.
 fn adopt(w: Writer, info: FileInfo) Unit:
@@ -145,7 +145,7 @@ fn take_failure(
 
 fn store(w: Writer, failures: BlockingQueue[LogError], data: Bytes) Unit:
     let appended = append(w, data)
-    if appended.is_error(): return record_failure(failures, appended.unwrap_error())
+    if appended.is_error(): return record_failure(failures, appended.err())
 
     return unit
 
@@ -200,13 +200,13 @@ impl Transport for AsyncFileTransport:
         self.group.close()
 
 fn not_positive(limit: Optional[Int]) Bool:
-    return limit.map(fn(value: Int) Bool: value <= 0).unwrap_or(false)
+    return limit.map(fn(value: Int) Bool: value <= 0).get(false)
 
 fn age_not_positive(limit: Optional[Duration]) Bool:
     return (
         limit
         .map(fn(value: Duration) Bool: value.compare(duration(0)) <= 0)
-        .unwrap_or(false)
+        .get(false)
     )
 
 # Appends log records to a file without blocking the logger.
@@ -225,19 +225,19 @@ export fn async_file_transport(
     let w = Writer(
         fs: filesystem(),
         path,
-        max_bytes: max_bytes.unwrap_or(0),
+        max_bytes: max_bytes.get(0),
         max_age_ns: (
             max_age
             .map(fn(limit: Duration) Int: limit.to_nanoseconds())
-            .unwrap_or(0)
+            .get(0)
         ),
-        max_files: max_files.unwrap_or(0),
+        max_files: max_files.get(0),
         handle: none,
         size: 0,
         opened: clock().now()
     )
     try open_active(w)
-    let capacity = queue_size.unwrap_or(8192)
+    let capacity = queue_size.get(8192)
     let queue = BlockingQueue[Item](capacity + 4096)
     let failures = BlockingQueue[LogError]()
     let group = TaskGroup()
