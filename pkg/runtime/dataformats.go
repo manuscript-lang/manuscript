@@ -60,7 +60,10 @@ func dfReadBounded(ctx *Execution, reader io.Reader, max, hint int) ([]byte, str
 	// hint is the declared size: a capacity guess only, capped so a lying header cannot force a large allocation.
 	hint = max0(min(hint, max, 1<<20))
 	out.Grow(hint)
-	buffer := make([]byte, 32768)
+	const chunkSize = 32 * 1024
+	// One spare byte detects an exceeded limit. Clamp before adding so an
+	// unbounded MaxInt limit cannot overflow.
+	buffer := make([]byte, min(max, chunkSize-1)+1)
 	if hint > 0 {
 		buffer = buffer[:min(len(buffer), hint+1)]
 	}
