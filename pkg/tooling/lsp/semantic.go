@@ -4,7 +4,7 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/lexer"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
-	"github.com/manuscript-lang/manuscript/pkg/tooling"
+	"github.com/manuscript-lang/manuscript/pkg/tooling/format"
 	"strings"
 )
 
@@ -144,7 +144,7 @@ func semanticWithIndex(d document, checked []compiler.Result, index []occurrence
 }
 func actions(d document) []any {
 	result := []any{}
-	formatted, e := tooling.Format(filename(d.URI), d.Text)
+	formatted, e := format.Format(filename(d.URI), d.Text)
 	if e != nil || formatted == d.Text {
 		return result
 	}

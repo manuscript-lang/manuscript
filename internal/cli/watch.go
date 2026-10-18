@@ -42,7 +42,8 @@ func watchProgram(command, filename string, options compiler.Options, kind compi
 	watched := map[string]fileState{}
 	generation := 0
 	rebuild := func(started time.Time, reason string) {
-		result := compiler.CompileFileForBuild(filename, options, kind)
+		options.BuildType = kind
+		result := compiler.CompileFile(filename, options)
 		for _, path := range watchedFiles(filename, result) {
 			if _, ok := watched[path]; !ok {
 				watched[path] = statFile(path)

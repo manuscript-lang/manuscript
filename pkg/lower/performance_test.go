@@ -73,8 +73,8 @@ func BenchmarkGo(b *testing.B) {
 	}
 	b.Run("MixedOperands", func(b *testing.B) { benchmarkGo(b, mixedOperandsSource) })
 	for _, fixture := range []struct{ name, file string }{
-		{"NativeDefaults", "../../scripts/bench-lowering/native-defaults.ms"},
-		{"Cleanup", "../../scripts/bench-lowering/production.ms"},
+		{"NativeDefaults", "../../bench/lowering/native-defaults.ms"},
+		{"Cleanup", "../../bench/lowering/production.ms"},
 		{"Views", "../../tests/e2e/testdata/accept/interface-view-callables.ms"},
 	} {
 		b.Run(fixture.name, func(b *testing.B) {

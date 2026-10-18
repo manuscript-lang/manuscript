@@ -269,14 +269,14 @@ panic. A `[]Value` nil oracle and a native loop ignoring its binding both missed
 typed-consumption safety. Parent approved non-clearing behavior without implicit
 copies or invented zero values. Evidence: typed Go oracles,
 [called consumers](../tests/e2e/testdata/accept/list-shrink-consumers.ms),
-[original reproducer now succeeding](../scripts/bench-lists/repro-cleared-tail.ms),
-and [fix/retention review](../scripts/bench-lists/go-range-review.md#non-clearing-shrink).
+[original reproducer now succeeding](../bench/lists/repro-cleared-tail.ms),
+and [fix/retention review](../bench/lists/go-range-review.md#non-clearing-shrink).
 
 Apply when: changing List traversal, callbacks, writers or typed numeric storage.
 Evidence: range/mutation oracle,
 [called native Go-range cases](../tests/e2e/testdata/accept/list-go-range.ms),
 [loop contract](../documentation/core-language/control-flow/loops.md#iterable-types-and-binding),
-and [measured no-copy follow-on](../scripts/bench-lists/go-range-review.md).
+and [measured no-copy follow-on](../bench/lists/go-range-review.md).
 Verify: capture once, mutate in place, append with/without growth, shrink, reverse
 and self-splice; observed reads match ordinary Go backing-array behavior. Explicit
 clones stay separate and append-only callbacks visit only the initial length.
@@ -311,7 +311,7 @@ and comparator consumers together with storage. Typed comparator constructors
 accept raw bodies and install exactly one guarded admission; passing an already
 guarded body doubles accounting. Evidence: storage migration,
 primitive Go oracles and allocation/guard tests,
-and [measured storage/access paths](../scripts/bench-lists/typed-storage.md).
+and [measured storage/access paths](../bench/lists/typed-storage.md).
 Verify: fresh constructors and effectful sized initialization use two allocations,
 typed `get`/index reads use none, generic forwarding retains identity, and comparator
 profiling/returns/cancellation/depth/fault frames match ordinary source calls.
@@ -430,14 +430,14 @@ Verified: `Optional_Get`, `Result_Get`, `Result_Err` (then named `*_Unwrap*`) an
 
 Apply when: adding a helper that runs in constant time, or deciding where a runtime function should be a cancellation point. Keep the check in helpers that loop, wait, or call user callbacks.
 Evidence: `pkg/runtime/optional.go`, `pkg/runtime/result.go`, `pkg/runtime/string.go`, `pkg/lower/stmt.go` (`loopStatements`).
-Verify: compare `perf-bench/programs/run.sh` before and after; the loop-cancellation tests in `tests/e2e` must still pass.
+Verify: compare `bench/perf/programs/run.sh` before and after; the loop-cancellation tests in `tests/e2e` must still pass.
 
 ### ReadLine slices a buffered line under one lock
 Verified: `Io_ReadLine` used two mutex round trips, a closure pair and an intermediate `append` copy per line. When the read-ahead buffer already holds a full line shorter than the limit, it is now sliced out under one lock and copied once into the result string (136 to 95 ns/line on 200k lines; hand-written Go 73). Lines that cross a refill, exceed the limit, or come from streams without read-ahead take the original path, so limit and invalid-UTF-8 behavior are unchanged.
 
 Apply when: changing `Io_ReadLine`, `readAhead`, or stream buffering.
 Evidence: `pkg/runtime/io.go`, `tests/e2e/testdata/stdlib/io.ms`.
-Verify: `go test ./pkg/runtime ./tests/e2e` and `perf-bench/programs/run.sh` (`read_line`).
+Verify: `go test ./pkg/runtime ./tests/e2e` and `bench/perf/programs/run.sh` (`read_line`).
 
 ### Write operations take String; `_bytes` siblings take Bytes
 Decision: write APIs (`write`, `write_file`, `append_file`, `write_at`, on streams, files, connections, transports) accept `String`; raw bytes use a sibling named `<name>_bytes` (`write_bytes`, `write_file_bytes`). Network sends follow the same shape: `DatagramSocket.send`/`send_bytes`, `WebSocket.send`/`send_bytes(data, text: false)`, `ping`/`ping_bytes`, and `request`/`request_bytes` for the body. Interface operations cannot be generic or overloaded, so two names express the choice. Any source `impl` of `WriteStream` or `Transport` must declare both; implementing `write` as `self.write_bytes(data.to_bytes())` keeps one body.

@@ -72,7 +72,7 @@ stdgen: | toolchain
 payload: .build-payload.tar.gz
 
 # Rebuilt only when the pinned SDK, packaging code, or runtime imports change.
-.build-payload.tar.gz: .go-version go.mod $(wildcard scripts/mktoolchain/*.go scripts/internal/devtool/*.go pkg/runtime/*.go) | toolchain
+.build-payload.tar.gz: .go-version go.mod $(wildcard scripts/mktoolchain/*.go internal/devtool/*.go pkg/runtime/*.go) | toolchain
 	CGO_ENABLED=0 "$(GO)" run ./scripts/mktoolchain "$(CURDIR)/toolchain/go" .build-payload.tar.gz $$("$(GO)" env GOHOSTOS) $$("$(GO)" env GOHOSTARCH)
 
 build: payload
@@ -82,11 +82,11 @@ test: conformance
 	"$(GO)" test ./...
 
 agent-bench-check: build
-	PATH="$(CURDIR):$$PATH" python3 agent-bench/run.py oracle
-	python3 -m unittest discover -s agent-bench/tests
+	PATH="$(CURDIR):$$PATH" python3 bench/agent/run.py oracle
+	python3 -m unittest discover -s bench/agent/tests
 
 stdlib-bench: build
-	scripts/stdlib-bench.sh $(BENCHREPEATS) $(BENCHFILTER)
+	bench/perf/stdlib-bench.sh $(BENCHREPEATS) $(BENCHFILTER)
 
 e2e: conformance
 	"$(GO)" test $(E2EFLAGS) ./tests/e2e

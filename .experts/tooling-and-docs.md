@@ -14,9 +14,9 @@ adjacent call names.
 
 Apply when: changing source formatting or adding layout heuristics.
 Evidence: [formatting policy](../documentation/developer-tooling/implementation.md#linting-and-formatting),
-[syntax boundaries](../pkg/tooling/format_paragraphs.go),
-[expression layout](../pkg/tooling/format_layout.go), and
-[layout regressions](../pkg/tooling/format_layout_test.go).
+[syntax boundaries](../pkg/tooling/format/format_paragraphs.go),
+[expression layout](../pkg/tooling/format/format_layout.go), and
+[layout regressions](../pkg/tooling/format/format_layout_test.go).
 Verify: bindings and consecutive guards stay together; subsequent work starts a
 paragraph; branch families and leading comments remain attached; LF/CRLF output
 preserves literal spellings and is identical after a second format. Added grouping
@@ -24,7 +24,7 @@ must preserve the entire parsed syntax tree, especially inline callback return
 boundaries and mixed-precedence conditions. Moving a callback argument must move
 its suite indentation too. A later call in a chain must budget its own arguments;
 a callback body must not consume the parameter signature's width budget.
-The [compact golden fixture](../pkg/tooling/testdata/format/compact.golden.ms)
+The [compact golden fixture](../pkg/tooling/format/testdata/compact.golden.ms)
 exercises these boundaries alongside comments and literal spellings.
 
 Update: later feedback asks for compact output that reads well on a phone and a

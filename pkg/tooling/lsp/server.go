@@ -8,6 +8,7 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
+	"github.com/manuscript-lang/manuscript/pkg/tooling/format"
 	"io"
 	"net/url"
 	"path/filepath"
@@ -496,7 +497,7 @@ func (s *server) documentRequest(r *request) (result any, rpcError any) {
 		if isStandardLibraryURI(d.URI) {
 			return []any{}, nil
 		}
-		formatted, e := tooling.Format(filename(d.URI), d.Text)
+		formatted, e := format.Format(filename(d.URI), d.Text)
 		if e != nil {
 			return nil, rpcFailure(-32602, e.Error())
 		}

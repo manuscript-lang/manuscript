@@ -70,19 +70,19 @@ increase allocations. Classify uses and ABI boundaries before choosing a local
 representation; Go's optimizer does not reliably remove those allocations.
 
 Verified: primitive List storage also needs a use/ABI classification. The
-[numeric List experiment](../scripts/bench-lists/README.md) separates boxed
+[numeric List experiment](../bench/lists/README.md) separates boxed
 storage from scalar-local boxing; its typed storage adds payload allocations
 when fed through the unchanged Optional/comparator ABI. The production storage
 review also found ordinary iteration/callback payload boxing and constant iterator
 capture allocations; typed controls cannot replace these acceptance workloads.
-See [the explicit allocation ledger](../scripts/bench-lists/typed-storage.md#review-correction-traversal-allocation-regressions). Preserve one authoritative
+See [the explicit allocation ledger](../bench/lists/typed-storage.md#review-correction-traversal-allocation-regressions). Preserve one authoritative
 mutable handle across typed and generic aliases rather than keeping a boxed mirror.
 
 Apply when: optimizing Go lowering, representations, calls, or collection access.
 Evidence: [lowering direction and what it already does](../documentation/contributing/compiler/lowering/_index.md#typed-go),
 [lowering objectives and staged scope](../documentation/contributing/compiler/lowering/_index.md),
-and [generated/handwritten comparison](../scripts/bench-lowering/harness.go.txt).
-Verify: run `go run ./scripts/bench-lowering` with the pinned SDK, inspect the
+and [generated/handwritten comparison](../bench/lowering/harness.go.txt).
+Verify: run `go run ./bench/lowering` with the pinned SDK, inspect the
 retained generated Go and escape analysis, and compare allocation counts as well
 as runtime. Preserve fault, cancellation, aliasing, callback, and debugger tests
 when promoting a benchmark candidate into production lowering.
@@ -92,7 +92,7 @@ their source functions never run. Per-construction B/op and Go HeapAlloc omit
 that static data. The bounded Debug prototype measured zero/one/repeated calls,
 multiple literals, child RSS and ELF segments; a lower GC target exposed a
 repeatable construction slowdown despite faster native compilation. Treat those
-as separate review costs. Evidence: [literal memory/runtime controls](../scripts/bench-debug-literals/README.md#current-matched-main-evidence-after-api-review).
+as separate review costs. Evidence: [literal memory/runtime controls](../bench/debug-literals/README.md#current-matched-main-evidence-after-api-review).
 
 Verified (#147): the Go compiler's cost for a large `[]rt.Value{int64(n), ...}`
 literal is per item, not only per function: moving it into a helper function
@@ -160,7 +160,7 @@ retains fresh storage without that frame; native DAP tests must compare against
 the unchanged baseline, including existing bookkeeping-line coalescing.
 Evidence: [large-list DAP regression](../extensions/vscode/tests/debug-large-literal.test.js),
 bounded Debug lowering, and
-[independent measurement/provenance](../scripts/bench-debug-literals/README.md).
+[independent measurement/provenance](../bench/debug-literals/README.md).
 Verify: break before and after construction, step, inspect source locals and
 watches, and mutate one of two independent evaluations. Default/Release
 generation and caller-edited `Result.Source` must remain unchanged.
@@ -183,7 +183,7 @@ Verify: run native conformance and the native DAP test; compare edited-source bu
 Verified: standalone generation merges runtime declarations and deduplicates imports by import path. Inconsistent aliases for the same Go package can pass ordinary runtime package compilation while breaking every emitted application. Platform helper packages also need inclusion in the standalone dependency bundle; embedding the main runtime sources alone does not carry imported repository packages.
 
 Apply when: adding native runtime implementation files or platform adapters.
-Evidence: [standalone merger](../pkg/build/build.go), [import-alias regression check](../pkg/build/library_test.go), [native dependency bundle](../native_bundle.go), and [platform bridge](../internal/hostos/hostos.go).
+Evidence: [standalone merger](../pkg/build/build.go), [import-alias regression check](../pkg/build/library_test.go), [native dependency bundle](../embed.go), and [platform bridge](../internal/hostos/hostos.go).
 Verify: `TestBundledRuntimeImportAliasesAgree`, source-to-native CLI tests, and the packaged binary check with an empty cache and no system Go.
 
 Verified: native compilation must build the temporary module (`go build .`) rather than an absolute source filename. A filename build can give the main package the synthetic `command-line-arguments` identity and reject bundled internal imports when path canonicalization differs, as on macOS temporary paths. [Native build regression](../pkg/build/library_test.go) exercises a symlinked temporary root; [module build](../pkg/build/build.go) preserves the dependency namespace.
@@ -272,7 +272,7 @@ Verified: `Int` `/` and `%` by a positive literal cannot be zero, -1, or overflo
 
 Apply when: changing Int arithmetic lowering or loop back-edge polling.
 Evidence: `pkg/lower/expr.go` (`uncheckedIntArithmetic`), `pkg/lower/stmt.go` (`loopStatements`), `tests/e2e/int_literal_divisor_test.go`, `tests/e2e/int_identity_test.go`, `tests/e2e/numeric_lowering_test.go`.
-Verify: compare `ms emit` output and `perf-bench/programs/run.sh` before and after; the fault tests must still pass.
+Verify: compare `ms emit` output and `bench/perf/programs/run.sh` before and after; the fault tests must still pass.
 
 ### Guarded counter steps skip the overflow check
 Verified: in `while i < n`, `i = i + 1` cannot overflow if it is the first statement in the body that assigns `i` (and `while i > n` with `i - 1` likewise), because locals change only by assignment in their own function and closures snapshot captures. `markCounterStep` in `pkg/lower/stmt.go` marks only that exact step; any earlier or nested assignment to `i` leaves the checked `IntAdd`. The measured gain is small (about 10% on a 10M-iteration counter loop), so widen it only with a benchmark.

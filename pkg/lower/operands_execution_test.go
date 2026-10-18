@@ -12,7 +12,7 @@ import (
 func TestOperandCapturesExecuteInSourceOrder(t *testing.T) {
 	for _, kind := range []compiler.BuildType{compiler.Release, compiler.Debug} {
 		t.Run(string(kind), func(t *testing.T) {
-			result := compiler.CompileFileForBuild("testdata/operand-captures.ms", compiler.Options{Tests: true}, kind)
+			result := compiler.CompileFile("testdata/operand-captures.ms", compiler.Options{Tests: true, BuildType: kind})
 			if !result.Success() {
 				t.Fatal(result.Diagnostics)
 			}

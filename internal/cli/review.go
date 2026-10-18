@@ -76,7 +76,7 @@ func runReview(args []string, _ string) int {
 		return status
 	}
 	options := compiler.Options{AnalyzeOnly: true, Entry: filepath.Base(a.filename) == "ms.toml"}
-	head := compiler.CompileFileForBuild(a.filename, options, compiler.Release)
+	head := compiler.CompileFile(a.filename, options)
 	if !head.Success() {
 		return reportDiagnostics(head)
 	}
@@ -125,7 +125,7 @@ func diffInputs(filename, diff string, head compiler.Result, entry bool) (toolin
 		fmt.Fprintf(os.Stderr, "ms review: diff does not match the tree: %v; run it from the checkout the diff was made against\n", err)
 		return input, none, 2
 	}
-	base := compiler.CompileFileForBuild(filename, compiler.Options{AnalyzeOnly: true, Entry: entry, Overlay: overlay}, compiler.Release)
+	base := compiler.CompileFile(filename, compiler.Options{AnalyzeOnly: true, Entry: entry, Overlay: overlay})
 	var baseFacts tooling.Facts
 	if base.Success() {
 		input.BaseChecked = true

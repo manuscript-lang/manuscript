@@ -7,7 +7,7 @@ import (
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/parser"
-	"github.com/manuscript-lang/manuscript/pkg/tooling"
+	"github.com/manuscript-lang/manuscript/pkg/tooling/format"
 )
 
 func TestDiskStandardDeclarationsUseOrdinarySyntax(t *testing.T) {
@@ -18,7 +18,7 @@ func TestDiskStandardDeclarationsUseOrdinarySyntax(t *testing.T) {
 			if _, err := parser.Parse(filepath.Base(expected.File), d.Text); err != nil {
 				t.Fatal("stdlib is not valid ordinary syntax", err)
 			}
-			if _, err := tooling.Format(filepath.Base(expected.File), d.Text); err != nil {
+			if _, err := format.Format(filepath.Base(expected.File), d.Text); err != nil {
 				t.Fatal("stdlib cannot be formatted", err)
 			}
 			checked := analyze(d, map[string]document{d.URI: d})

@@ -6,9 +6,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/manuscript-lang/manuscript/internal/devtool"
 	"github.com/manuscript-lang/manuscript/pkg/frontend"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
-	"github.com/manuscript-lang/manuscript/scripts/internal/devtool"
 	"go/ast"
 	"go/format"
 	"go/parser"
@@ -344,7 +344,7 @@ func dependencyIssues(rules policy, packages map[string]pkg) []string {
 		}
 	}
 	for name, p := range packages {
-		if strings.HasPrefix(name, "scripts/") || strings.HasPrefix(name, "tests/") || name == "." {
+		if strings.HasPrefix(name, "scripts/") || strings.HasPrefix(name, "bench/") || strings.HasPrefix(name, "tests/") || name == "." {
 			continue
 		}
 		if _, ok := rules.Dependencies[name]; !ok {

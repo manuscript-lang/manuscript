@@ -141,7 +141,8 @@ func runNativeCommand(command, filename, output string, options compiler.Options
 		}
 	}
 	go build.CurrentPin()
-	result := compiler.CompileFileForBuild(filename, options, kind)
+	options.BuildType = kind
+	result := compiler.CompileFile(filename, options)
 	document.SourceRoot = result.SourceRoot
 	if !result.Success() {
 		if !structured {

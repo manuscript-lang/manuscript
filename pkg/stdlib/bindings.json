@@ -1,43 +1,11 @@
 {
+  "contract_methods": {
+    "Error/message": "errors/message"
+  },
   "function_overrides": {
     "@std/faults.ms/panic": "panic",
     "@std/tasks.ms/check_cancelled": "check_cancelled",
     "@std/time.ms/sleep": "sleep"
-  },
-  "implementations": {
-    "@std/archive.ms/ArchiveError/Error/message": "errors/message",
-    "@std/bigint.ms/BigIntError/Error/message": "errors/message",
-    "@std/binary.ms/BinaryError/Error/message": "errors/message",
-    "@std/collections.ms/CollectionError/Error/message": "errors/message",
-    "@std/compress.ms/CompressionError/Error/message": "errors/message",
-    "@std/crypto.ms/CryptoError/Error/message": "errors/message",
-    "@std/csv.ms/CsvError/Error/message": "errors/message",
-    "@std/encoding.ms/EncodingError/Error/message": "errors/message",
-    "@std/errors.ms/TextError/Error/message": "errors/message",
-    "@std/errors.ms/MissingValue/Error/message": "errors/message",
-    "@std/fs.ms/FileSystemError/Error/message": "errors/message",
-    "@std/html.ms/HtmlError/Error/message": "errors/message",
-    "@std/http.ms/HttpError/Error/message": "errors/message",
-    "@std/io.ms/IoError/Error/message": "errors/message",
-    "@std/json.ms/JsonError/Error/message": "errors/message",
-    "@std/log.ms/LogError/Error/message": "errors/message",
-    "@std/net.ms/NetworkError/Error/message": "errors/message",
-    "@std/numbers.ms/NumberError/Error/message": "errors/message",
-    "@std/path.ms/PathError/Error/message": "errors/message",
-    "@std/process.ms/CommandError/Error/message": "errors/message",
-    "@std/process.ms/ProcessError/Error/message": "errors/message",
-    "@std/random.ms/RandomError/Error/message": "errors/message",
-    "@std/regex.ms/RegexError/Error/message": "errors/message",
-    "@std/semver.ms/SemverError/Error/message": "errors/message",
-    "@std/string.ms/StringError/Error/message": "errors/message",
-    "@std/system.ms/SystemError/Error/message": "errors/message",
-    "@std/tasks.ms/ExecutionError/Error/message": "errors/message",
-    "@std/tasks.ms/StartError/Error/message": "errors/message",
-    "@std/terminal.ms/TerminalError/Error/message": "errors/message",
-    "@std/time.ms/TimeError/Error/message": "errors/message",
-    "@std/tls.ms/TlsError/Error/message": "errors/message",
-    "@std/url.ms/UrlError/Error/message": "errors/message",
-    "@std/websocket.ms/WebSocketError/Error/message": "errors/message"
   },
   "intrinsic_receivers": {
     "Float": "FloatOperations",
@@ -55,6 +23,9 @@
     "@std/collections.ms/Set": "native",
     "@std/collections.ms/SetBuilder": "native",
     "@std/decimal.ms/Decimal": "native",
+    "@std/http.ms/HttpHeaders": "native",
+    "@std/net.ms/Cidr": "native",
+    "@std/net.ms/IpAddress": "native",
     "@std/queues.ms/BlockingQueue": "native",
     "@std/queues.ms/PriorityQueue": "native",
     "@std/queues.ms/Queue": "native",
@@ -68,10 +39,7 @@
     "@std/tasks.ms/TaskGroup": "native",
     "@std/time.ms/Duration": "native",
     "@std/time.ms/Instant": "native",
-    "@std/time.ms/Timestamp": "native",
-    "@std/http.ms/HttpHeaders": "native",
-    "@std/net.ms/IpAddress": "native",
-    "@std/net.ms/Cidr": "native"
+    "@std/time.ms/Timestamp": "native"
   },
   "receiver_requirements": {
     "@std/collections.ms/List/contains": {

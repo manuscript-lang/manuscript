@@ -43,7 +43,7 @@ Each layer imports only layers above it in this list; `scripts/repo-check/policy
 4. `lower`: checked program to Go source (no native tools, no runtime import)
 5. `compiler`: the source-to-Go pipeline facade
 6. `build`: native builds, caches, pins, and toolchains
-7. Tooling: `tooling`, `tooling/docgen`, `tooling/lsp`, `tooling/guide`
+7. Tooling: `tooling/format`, `tooling`, `tooling/docgen`, `tooling/lsp`, `tooling/guide`
 8. `internal/cli` and `cmd/ms`
 
 `runtime` and the `internal/` helpers it embeds form a separate leaf stack that generated programs link against.
@@ -62,15 +62,16 @@ Each layer imports only layers above it in this list; `scripts/repo-check/policy
 | `pkg/lower/` | Checked program to Go source; consumes only checker identities |
 | `pkg/build/` | Native builds: assembly, pins, command replay, shared workspace, SDKs |
 | `pkg/runtime/` | Values, numerics, work lifetimes, cleanup, synchronization, host implementations |
-| `pkg/stdlib/` | Public `.ms` declarations, `bindings.json` native identities, embedded sources; the signature authority |
-| `pkg/tooling/` | Formatter, lint, navigation, inspection, static diagrams |
+| `pkg/stdlib/` | Public `.ms` declarations, `bindings.json` native identities (opaque types, function and contract-method overrides), embedded sources; the signature authority |
+| `pkg/tooling/format/` | Formatter; needs only syntax, lexer, and frontend, never the checker |
+| `pkg/tooling/` | Lint, navigation, inspection, review, static diagrams |
 | `pkg/tooling/lsp/` | Transport, snapshots, typed editor features |
 | `pkg/tooling/guide/` | Backs `ms search_symbol` and `ms guide`, generated from checker definitions |
 | `pkg/tooling/docgen/` | Markdown/JSON and site API reference from standard declarations |
 | `internal/decimal/`, `internal/nativeabi/` | Decimal literal rules, receiver-to-function identities, test-event protocol |
 | `internal/hostos/` | Platform helpers for filesystem, process, and OS operations |
 | `internal/cli/` | Command orchestration, status codes, signals, documentation commands |
-| Root Go files | Embedded vendor/module dependencies and toolchain payload; Go embed paths cannot traverse upward, so they stay beside `go.mod` and `vendor/` |
+| `embed.go` | Embedded vendor/module dependencies, toolchain payload, and release version; Go embed paths cannot traverse upward, so they stay beside `go.mod` and `vendor/` |
 
 ## Keep shared behavior in one implementation
 
@@ -90,6 +91,7 @@ Each layer imports only layers above it in this list; `scripts/repo-check/policy
 | `website/static/stdlib.md`, `stdlib.json` | Generated API downloads; not committed |
 | `.artifacts/book/` | Ignored generated HTML, search data, and downloads |
 | `scripts/` | Bootstrap, lint setup, `mktoolchain/`, `package.sh`, `distcheck/`, `docgen/`, maintenance, repo checks |
+| `bench/` | Benchmarks: `perf/` and `language/` (speed), `agent/` (agent pass rates), and focused `lists/`, `lowering/`, `tooling/`, `debug-literals/`, `http-headers/` studies |
 | `examples/` | Hello project and tooling demo |
 | `extensions/vscode/` | VS Code client, grammar, snippets, debug adapter, tests |
 | `vendor/` | Pinned offline native dependencies and licenses |

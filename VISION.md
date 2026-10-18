@@ -26,7 +26,7 @@ Version 0.1 already delivers the core of this premise. The vision below is still
 - **One self-contained binary.** `ms` checks, formats, lints, tests, builds, profiles, and debugs, lowering to typed Go and compiling with a bundled toolchain. Nothing else to install.
 - **Structured evidence for agents.** `--json` output from `check`, `lint`, `test`, `build`, and `inspect`; `ms search_symbol`, `ms guide`, `ms verify`, `ms review`, and `ms diagram` give deterministic views of a program and of a change.
 - **Editor and debugger support.** A language server, a VS Code extension, and a source-level debugger.
-- **A measured loop.** `agent-bench` runs the same challenges in Manuscript, Go, TypeScript, and Rust, and `perf-bench` compares generated code with hand-written Go.
+- **A measured loop.** `agent-bench` runs the same challenges in Manuscript, Go, TypeScript, and Rust, and `bench/perf` compares generated code with hand-written Go.
 
 Still ahead: a broader library ecosystem, external adapters, incremental frontend compilation, and the deployment story beyond a single binary.
 
