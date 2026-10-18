@@ -15,6 +15,14 @@ Verify: run `BenchmarkStringSplitLimited` with `-benchmem`; both local-use
 controls allocate one 48-byte backing slice on linux/amd64. Confirm caller inlining with
 `-gcflags=-m=2` when changing the wrapper or benchmark.
 
+Verified: keeping List construction in small exported String wrappers also removes
+the temporary heap List for local `chars`, `lines`, and `scalar_values` callers.
+The traversal remains in private slice-returning helpers, preserving its order,
+cancellation checks, and fresh mutable result storage. Empty local-use calls
+allocate nothing; nonempty calls save the 24-byte wrapper on linux/amd64.
+Evidence: [String collection benchmarks](../pkg/runtime/string_collections_bench_test.go),
+[String implementation](../pkg/runtime/string.go), and the native String fixtures.
+
 ### Prepared queries must preserve callback-visible list mutations
 
 Verified: `glob_entries` retains the include/exclude slice descriptors before
