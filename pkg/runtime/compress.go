@@ -119,15 +119,15 @@ func Errors_Message_CompressionError(_ *Execution, e CompressionError) string {
 	case CompressionError_Failed:
 		return e.Message
 	case CompressionError_InvalidInput:
-		return dfMessage("compression", reasonInvalidInput)
+		return diagnostic("compression", reasonInvalidInput)
 	case CompressionError_InvalidData:
-		return dfMessage("compression", reasonInvalidData)
+		return diagnostic("compression", reasonInvalidData)
 	case CompressionError_LimitExceeded:
-		return dfMessage("compression", reasonLimitExceeded)
+		return diagnostic("compression", reasonLimit)
 	case CompressionError_Unsupported:
-		return dfMessage("compression", reasonUnsupported)
+		return diagnostic("compression", reasonUnsupported)
 	}
-	return dfMessage("compression", "operation failed")
+	return diagnostic("compression", "operation failed")
 }
 
 // pullReader exposes a Manuscript ReadStream as an io.Reader, remembering the

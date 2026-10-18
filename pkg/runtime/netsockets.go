@@ -240,7 +240,7 @@ func (c *osConnection) Read(ctx *Execution, maxBytes Option[int], timeout Option
 	if n > 65536 {
 		n = 65536
 	}
-	stop := netInterruptDeadline(s.exec, c.conn.SetReadDeadline)
+	stop := interruptDeadline(s.exec, c.conn.SetReadDeadline)
 	b := make([]byte, n)
 	count, err := c.conn.Read(b)
 	stop()
@@ -282,7 +282,7 @@ func (c *osConnection) WriteBytes(ctx *Execution, data *Bytes, timeout Option[Du
 		return ioFail[Unit](errIoClosed)
 	}
 	defer c.life.leave()
-	stop := netInterruptDeadline(s.exec, c.conn.SetWriteDeadline)
+	stop := interruptDeadline(s.exec, c.conn.SetWriteDeadline)
 	defer stop()
 	b := data.Data
 	for len(b) > 0 {
@@ -369,18 +369,12 @@ func (l *osListener) closeResource(*Execution) { l.close() }
 func (l *osListener) Close(*Execution) Unit { l.close(); return Unit{} }
 
 func (l *osListener) close() {
-	l.life.mu.Lock()
-	if l.life.closed {
-		done := l.life.released
-		l.life.mu.Unlock()
-		<-done
+	if !l.life.begin() {
 		return
 	}
-	l.life.closed = true
 	if l.cancel != nil {
 		l.cancel()
 	}
-	l.life.mu.Unlock()
 	l.listener.Close()
 	l.life.finish()
 	l.owner.forget(l)
@@ -423,7 +417,7 @@ func (l *osListener) Accept(ctx *Execution, timeout Option[Duration]) Result[Con
 		}
 		return net.ErrClosed
 	}
-	stopDeadline := netInterruptDeadline(netChild(ctx, call), setDeadline)
+	stopDeadline := interruptDeadline(netChild(ctx, call), setDeadline)
 	conn, err := l.listener.Accept()
 	stopDeadline()
 	if err != nil {
@@ -478,18 +472,12 @@ func (d *osDatagram) closeResource(*Execution) { d.close() }
 func (d *osDatagram) Close(*Execution) Unit { d.close(); return Unit{} }
 
 func (d *osDatagram) close() {
-	d.life.mu.Lock()
-	if d.life.closed {
-		done := d.life.released
-		d.life.mu.Unlock()
-		<-done
+	if !d.life.begin() {
 		return
 	}
-	d.life.closed = true
 	if d.cancel != nil {
 		d.cancel()
 	}
-	d.life.mu.Unlock()
 	d.conn.Close()
 	d.life.finish()
 	d.owner.forget(d)
@@ -515,7 +503,7 @@ func (d *osDatagram) Receive(ctx *Execution, maxBytes Option[int], timeout Optio
 	if max <= 0 || max > 65535 {
 		return netFail[*Datagram](errNetInvalidInput)
 	}
-	stop := netInterruptDeadline(s.exec, d.conn.SetReadDeadline)
+	stop := interruptDeadline(s.exec, d.conn.SetReadDeadline)
 	b := make([]byte, max+1)
 	count, from, err := d.conn.ReadFrom(b)
 	stop()
@@ -567,7 +555,7 @@ func (d *osDatagram) SendBytes(ctx *Execution, data *Bytes, address string, time
 		}
 		return netFail[Unit](netFailed(describeTransportError(err)))
 	}
-	stop := netInterruptDeadline(s.exec, d.conn.SetWriteDeadline)
+	stop := interruptDeadline(s.exec, d.conn.SetWriteDeadline)
 	n, err := d.conn.WriteTo(data.Data, target)
 	stop()
 	if s.timedOut() {

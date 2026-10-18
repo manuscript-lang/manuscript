@@ -91,11 +91,11 @@ func Errors_Message_RandomError(_ *Execution, e RandomError) string {
 	case RandomError_Failed:
 		return e.Message
 	case RandomError_InvalidInput:
-		return dfMessage("random", reasonInvalidInput)
+		return diagnostic("random", reasonInvalidInput)
 	case RandomError_LimitExceeded:
-		return dfMessage("random", reasonLimitExceeded)
+		return diagnostic("random", reasonLimit)
 	}
-	return dfMessage("random", "operation failed")
+	return diagnostic("random", "operation failed")
 }
 
 // Random_Float returns a secure Float in [0, 1) with 53 random bits.
