@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	_ "time/tzdata" // zone lookups must not depend on host tzdata
 )
 
 // Duration is a signed count of nanoseconds.
@@ -291,3 +292,93 @@ func Instant_Equal(_ *Execution, a, b Instant) bool {
 
 // Equal makes Instant satisfy native equality; it faults across clock domains.
 func (i Instant) Equal(ctx *Execution, other Instant) bool { return Instant_Equal(ctx, i, other) }
+
+var fixedOffsetPattern = regexp.MustCompile(`^[+-](?:[01][0-9]|2[0-3]):[0-5][0-9]$`)
+
+// loadZone resolves UTC, Local, a fixed offset, or an IANA name.
+func loadZone(zone string) (*time.Location, bool) {
+	switch zone {
+	case "UTC", "":
+		return time.UTC, true
+	case "Local":
+		return time.Local, true
+	}
+	if fixedOffsetPattern.MatchString(zone) {
+		seconds := (int(zone[1]-'0')*10+int(zone[2]-'0'))*3600 + (int(zone[4]-'0')*10+int(zone[5]-'0'))*60
+		if zone[0] == '-' {
+			seconds = -seconds
+		}
+		return time.FixedZone(zone, seconds), true
+	}
+	loc, err := time.LoadLocation(zone)
+	return loc, err == nil
+}
+
+// Timestamp_Calendar breaks a timestamp into calendar fields in a zone.
+func Timestamp_Calendar(_ *Execution, value Timestamp, zone string) Result[*Calendar, TimeError] {
+	loc, ok := loadZone(zone)
+	if !ok {
+		return timeFail[*Calendar](TimeError_InvalidInput{})
+	}
+	t := timeOf(value).In(loc)
+	name, offset := t.Zone()
+	return Ok[*Calendar, TimeError](&Calendar{
+		Year: t.Year(), Month: int(t.Month()), Day: t.Day(),
+		Hour: t.Hour(), Minute: t.Minute(), Second: t.Second(), Nanosecond: t.Nanosecond(),
+		Weekday: int(t.Weekday()), DayOfYear: t.YearDay(), OffsetSeconds: offset, Zone: name,
+	})
+}
+
+// Timestamp_Format renders a timestamp in a zone with a token pattern.
+func Timestamp_Format(_ *Execution, value Timestamp, pattern, zone string) Result[string, TimeError] {
+	loc, ok := loadZone(zone)
+	if !ok {
+		return timeFail[string](TimeError_InvalidInput{})
+	}
+	t := timeOf(value).In(loc)
+	name, offset := t.Zone()
+	sign := '+'
+	if offset < 0 {
+		sign, offset = '-', -offset
+	}
+	replacer := strings.NewReplacer(
+		"YYYY", fmt.Sprintf("%04d", t.Year()),
+		"MM", fmt.Sprintf("%02d", int(t.Month())),
+		"DD", fmt.Sprintf("%02d", t.Day()),
+		"HH", fmt.Sprintf("%02d", t.Hour()),
+		"mm", fmt.Sprintf("%02d", t.Minute()),
+		"ss", fmt.Sprintf("%02d", t.Second()),
+		"SSS", fmt.Sprintf("%03d", t.Nanosecond()/1e6),
+		"ZZ", fmt.Sprintf("%c%02d:%02d", sign, offset/3600, offset%3600/60),
+		"zone", name,
+	)
+	return Ok[string, TimeError](replacer.Replace(pattern))
+}
+
+// Time_FromCalendar builds a timestamp from strictly validated calendar fields.
+func Time_FromCalendar(_ *Execution, year, month, day, hour, minute, second, nanosecond int, zone string) Result[Timestamp, TimeError] {
+	loc, ok := loadZone(zone)
+	if !ok {
+		return timeFail[Timestamp](TimeError_InvalidInput{})
+	}
+	if year < 1 || year > 9999 || month < 1 || month > 12 || day < 1 || hour < 0 || hour > 23 ||
+		minute < 0 || minute > 59 || second < 0 || second > 59 || nanosecond < 0 || nanosecond >= 1e9 {
+		return timeFail[Timestamp](TimeError_OutOfRange{})
+	}
+	t := time.Date(year, time.Month(month), day, hour, minute, second, nanosecond, loc)
+	if t.Day() != day || int(t.Month()) != month {
+		return timeFail[Timestamp](TimeError_OutOfRange{})
+	}
+	if !inTimestampRange(t) {
+		return timeFail[Timestamp](TimeError_OutOfRange{})
+	}
+	return Ok[Timestamp, TimeError](timestampOf(t))
+}
+
+// Time_LocalZone names the host's local zone.
+func Time_LocalZone(_ *Execution) string {
+	if name := time.Local.String(); name != "Local" && name != "" {
+		return name
+	}
+	return "UTC"
+}

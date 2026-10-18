@@ -14,6 +14,12 @@ func check_Time_Duration() {
 func check_Time_ParseTimestamp() {
 	var _ func(*Execution, string) Result[Timestamp, TimeError] = Time_ParseTimestamp
 }
+func check_Time_FromCalendar() {
+	var _ func(*Execution, int, int, int, int, int, int, int, string) Result[Timestamp, TimeError] = Time_FromCalendar
+}
+func check_Time_LocalZone() {
+	var _ func(*Execution) string = Time_LocalZone
+}
 func check_Sleep() {
 	var _ func(*Execution, Duration) Unit = Sleep
 }
@@ -91,6 +97,12 @@ func check_Timestamp_Difference() {
 }
 func check_Timestamp_Compare() {
 	var _ func(*Execution, Timestamp, Timestamp) int = Timestamp_Compare
+}
+func check_Timestamp_Calendar() {
+	var _ func(*Execution, Timestamp, string) Result[*Calendar, TimeError] = Timestamp_Calendar
+}
+func check_Timestamp_Format() {
+	var _ func(*Execution, Timestamp, string, string) Result[string, TimeError] = Timestamp_Format
 }
 func check_Errors_Message_TimeError() {
 	var _ func(*Execution, TimeError) string = Errors_Message_TimeError
