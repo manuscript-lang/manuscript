@@ -82,6 +82,8 @@ Results are kept in date-named files: `results/trials-YYYY-MM-DD.jsonl` (one lin
 
 `agent tokens` is what the agent consumed (input including cache reads, plus output). `solution size (tokens)` is the number of lexical tokens (identifiers, literals and punctuation; comments excluded) in the final source the agent left in the workspace, computed by `core/codetokens.py` in the verifier. It is language-neutral, not any model's tokenizer count, and `n/a` for runs that predate it.
 
+The 2026-10-18 baseline is Claude Code with Haiku (`claude-haiku-5-5`), one trial per challenge and language (80 trials), against Manuscript compiler `2dc8d488`, run through Harbor with the local-process environment and 6 trials in parallel. Agent timeouts are graded and count as failures. Wall time was measured under parallel load.
+
 The 2026-10-14 baseline predates the specs tightened afterwards for c52, c55, c58, c59 and c60 (several cases failed in most languages because the spec left oracle behaviour unstated), so those challenges' results there have not been re-run.
 
 ## Known limits
