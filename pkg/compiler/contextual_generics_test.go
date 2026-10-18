@@ -10,7 +10,7 @@ import (
 
 const contextualGenericsSource = `import {TextError} from "@std/errors.ms"
 import panic from "@std/faults.ms"
-fn fail[T](message: String) Result[T, TextError]: error(TextError.Text(message))
+fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)
 fn absent[T]() Optional[T]: none
 fn identity[T](value: T) T: value

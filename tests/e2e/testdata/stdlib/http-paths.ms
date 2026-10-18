@@ -65,7 +65,7 @@ fn check_route(url: String, expected: String) Result[Unit, Error]:
         ) | try expect_ok
     )
     if response.metadata().status != 200 or response.body != expected.to_bytes(): return error(
-        TextError.Text("path or raw query changed")
+        TextError("path or raw query changed")
     )
     if (
         (
@@ -74,7 +74,7 @@ fn check_route(url: String, expected: String) Result[Unit, Error]:
             .headers
             .text("SET-cookie") | try expect_ok
         ) != some(["a=1", "b=2"])
-    ): return error(TextError.Text("#257 repeated cookies regressed"))
+    ): return error(TextError("#257 repeated cookies regressed"))
 
     return ok(unit)
 
@@ -89,7 +89,7 @@ fn check_rejected(url: String) Result[Unit, Error]:
         ) | try expect_ok
     )
     if response.metadata().status != 400: return error(
-        TextError.Text("unsafe or invalid path was dispatched")
+        TextError("unsafe or invalid path was dispatched")
     )
 
     return ok(unit)
@@ -122,10 +122,10 @@ test "streaming routes validate original input and decode once":
 
 fn expect_http_error[T](outcome: Result[T, HttpError]) Result[Unit, Error]:
     match outcome:
-        ok(_): return error(TextError.Text("invalid URL succeeded"))
+        ok(_): return error(TextError("invalid URL succeeded"))
         error(cause):
             if cause != HttpError.InvalidInput: return error(
-                TextError.Text("malformed URL leaked transport error")
+                TextError("malformed URL leaked transport error")
             )
 
     return ok(unit)

@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
 
 type Counter:
@@ -133,8 +134,8 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
     let values: Map[String, Int] = {"a": 0}
     let map = values.map[Optional[Int]]
     try expect_true((map(fn(k, v): none).get("a").get().is_none()))
-    let nested = values.map(fn(k, v): Result[Int, String].error("nested"))
-    nested.get("a").get().err() | try expect_equal(expected: "nested")
+    let nested = values.map(fn(k, v): Result[Int, TextError].error(TextError("nested")))
+    nested.get("a").get().err().message() | try expect_equal(expected: "nested")
 
 test "empty transformations skip callbacks and allocate independent storage":
     let empty_calls: List[Int] = []

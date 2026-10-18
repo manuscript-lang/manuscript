@@ -8,12 +8,13 @@ import (
 )
 
 func TestDirectMethodsKeepSemantics(t *testing.T) {
-	result := compiler.CompileSource("methods.ms", `import {expect_true, fail} from "@std/testing.ms"
+	result := compiler.CompileSource("methods.ms", `import {TextError} from "@std/errors.ms"
+import {expect_true, fail} from "@std/testing.ms"
 
 interface Shape:
     fn area() Int
     fn scaled(by: Int) Int
-    fn checked(limit: Int) Result[Int, String]
+    fn checked(limit: Int) Result[Int, TextError]
     fn grow(depth: Int) Int
 
 type Rect:
@@ -29,9 +30,9 @@ impl Shape for Rect:
         return self.w * self.h
     fn scaled(by: Int) Int:
         return self.area() * by
-    fn checked(limit: Int) Result[Int, String]:
+    fn checked(limit: Int) Result[Int, TextError]:
         if self.area() > limit:
-            return error(cause: "too big")
+            return error(cause: TextError("too big"))
         return ok(value: self.area())
     fn grow(depth: Int) Int:
         if depth == 0:
@@ -45,7 +46,7 @@ impl Shape for Sign:
             Minus(n): return 0 - n
     fn scaled(by: Int) Int:
         return self.area() * by
-    fn checked(limit: Int) Result[Int, String]:
+    fn checked(limit: Int) Result[Int, TextError]:
         return ok(value: self.area())
     fn grow(depth: Int) Int:
         return depth
@@ -54,7 +55,7 @@ impl Shape for Sign:
 fn through(shape: Shape) Int:
     return shape.scaled(by: 2)
 
-fn tried(rect: Rect, limit: Int) Result[Int, String]:
+fn tried(rect: Rect, limit: Int) Result[Int, TextError]:
     let first = try rect.checked(limit: limit)
     return ok(value: first + (try rect.checked(limit: limit + 100)))
 
@@ -76,10 +77,10 @@ test "direct methods":
     (rect.grow(depth: 10) == 13) | try expect_true
     match tried(rect: rect, limit: 12):
         ok(value): (value == 24) | try expect_true
-        error(cause): return fail(cause)
+        error(cause): return fail(cause.message())
     match tried(rect: rect, limit: 11):
         ok(value): return fail("expected failure")
-        error(cause): (cause == "too big") | try expect_true
+        error(cause): (cause.message() == "too big") | try expect_true
     let log = List[String]()
     (order(rect: rect, log: log) == 12) | try expect_true
     (log.join(separator: ",") == "receiver,argument") | try expect_true

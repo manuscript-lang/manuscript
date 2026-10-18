@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {expect_equal, expect_false, fail} from "@std/testing.ms"
 
 type Expr:
@@ -116,7 +117,7 @@ type NestedOptional:
     case Value(value: Optional[Optional[Int]])
 
 type NestedResult:
-    value: Result[Result[Int, String], String]
+    value: Result[Result[Int, TextError], TextError]
 
 type Box[T]:
     value: T

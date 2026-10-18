@@ -244,7 +244,7 @@ returning a Result when its enclosing function does not.
 
 ### Result's error type is bounded by Error
 
-Decision: Chinmay required `Result[T, E: Error]`; arbitrary error values (`String`, `Int`, collections) are rejected. Plain text uses `TextError.Text("message")` and domain errors declare `impl Error`. Generic helpers over Result write `E: Error`.
+Decision: Chinmay required `Result[T, E: Error]`; arbitrary error values (`String`, `Int`, collections) are rejected. Plain text uses `TextError("message")` and domain errors declare `impl Error`. Generic helpers over Result write `E: Error`.
 
 Verified: the bound lives on `Result` in `pkg/stdlib/result.ms`, so annotations and inferred call results (including `Optional.ok_or`) hit the ordinary type-argument bound check. Native declaration default bounds (`ok_or[E: Error = MissingValue]`) are checked after standard impls bind.
 

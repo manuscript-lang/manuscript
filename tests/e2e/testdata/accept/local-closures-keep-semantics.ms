@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {expect_true} from "@std/testing.ms"
 
 fn bump(factor: Int) Int:
@@ -26,14 +27,14 @@ fn lookup(limit: Int) Int:
 
     return total
 
-fn parse(text: String) Result[Int, String]:
-    let guard = fn(number: Int) Result[Int, String]:
+fn parse(text: String) Result[Int, TextError]:
+    let guard = fn(number: Int) Result[Int, TextError]:
         if number < 0:
-            return Result[Int, String].error("negative")
+            return Result[Int, TextError].error(TextError("negative"))
 
-        return Result[Int, String].ok(number)
+        return Result[Int, TextError].ok(number)
     let checked = try guard(number: text.length())
-    return Result[Int, String].ok(checked + 1)
+    return Result[Int, TextError].ok(checked + 1)
 
 fn labels(prefix: String) String:
     let join = fn(left: String, right: String) String: "{prefix}{left}-{right}"
@@ -55,7 +56,7 @@ fn nested(n: Int) Int:
 test "local closures":
     try expect_true((bump(factor: 3) == 16))
     try expect_true((lookup(limit: 3) == 0 + 2 + 4 + 100 + 100))
-    try expect_true((parse(text: "abc") == Result[Int, String].ok(4)))
+    try expect_true((parse(text: "abc") == Result[Int, TextError].ok(4)))
     try expect_true((labels(prefix: ">") == ">a-b"))
     try expect_true((reordered() == 5))
     try expect_true((passed().length() == 3 and passed().at(index: 2) == some(6)))

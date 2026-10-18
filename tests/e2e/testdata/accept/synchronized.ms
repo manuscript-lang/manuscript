@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {
     expect_contains,
     expect_equal,
@@ -32,10 +33,10 @@ fn release_on_return(counter: Synchronized[Int]) Int:
         increment(locked: locked)
         return locked.get()
 
-fn release_on_error(counter: Synchronized[Int]) Result[Unit, String]:
+fn release_on_error(counter: Synchronized[Int]) Result[Unit, TextError]:
     with locked = counter.lock():
         increment(locked: locked)
-        return error("expected")
+        return error(TextError("expected"))
 
 fn read_and_add(value: Int) Int:
     return value + 1

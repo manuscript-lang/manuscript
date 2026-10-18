@@ -23,9 +23,9 @@ func TestCallbackProbeRetainsContextBoundaries(t *testing.T) {
 	for name, body := range map[string]string{
 		"deferred input":           `let value = chain(second: fn(item): item + 1, first: fn(): 2)`,
 		"deferred optional result": `let value = choose(first: fn(): none, second: fn(): some(3))`,
-		"deferred error result":    `let value = choose(first: fn(): error(TextError.Text("failed")), second: fn(): Result[Int, TextError].ok(3))`,
+		"deferred error result":    `let value = choose(first: fn(): error(TextError("failed")), second: fn(): Result[Int, TextError].ok(3))`,
 		"partially inferred result": `let value = result(fn():
-        if true: return error(TextError.Text("failed"))
+        if true: return error(TextError("failed"))
         return ok(4)
     )`,
 		"deferred early optional": `let value = choose(first: fn():

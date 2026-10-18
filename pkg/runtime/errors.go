@@ -1,11 +1,8 @@
 package msruntime
 
 // Errors_Message_TextError is the wrapped text, verbatim.
-func Errors_Message_TextError(_ *Execution, cause TextError) string {
-	if cause, ok := cause.(TextError_Text); ok {
-		return cause.Message
-	}
-	return "text: operation failed"
+func Errors_Message_TextError(_ *Execution, cause *TextError) string {
+	return cause.Text
 }
 
 // Errors_Message_MissingValue names where the absent value was converted to

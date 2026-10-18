@@ -102,7 +102,7 @@ The expected result (return type, annotation, field, argument, or callback) fill
 
 ```manuscript
 import {TextError} from "@std/errors.ms"
-fn fail[T](message: String) Result[T, TextError]: error(TextError.Text(message))
+fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 
 fn first() Result[Int, TextError]: fail("empty")  # T = Int
 let failed: Result[Int, TextError] = fail("empty")

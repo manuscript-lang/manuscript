@@ -37,7 +37,7 @@ func TestCollectionQueryCallbackFaultLocations(t *testing.T) {
 func TestLazyConversionFaultLocation(t *testing.T) {
 	source := `import {TextError} from "@std/errors.ms"
 fn crash() TextError:
-    return TextError.Text((1 / 0).to_string())
+    return TextError((1 / 0).to_string())
 export fn main() Int:
     let value: Optional[Int] = none
     let result = value.ok_or_else(crash)

@@ -5,7 +5,7 @@ weight = 1
 
 # Expected failures with Result
 
-Use `Result[T, E]` when an operation succeeds with `T` or fails with an expected error `E`. `E` must implement `Error`, so `Result[Int, String]` is rejected; wrap text as `TextError.Text("message")` or declare a domain error with `impl Error`. `Result`, `ok`, and `error` are in the prelude.
+Use `Result[T, E]` when an operation succeeds with `T` or fails with an expected error `E`. `E` must implement `Error`, so `Result[Int, String]` is rejected; wrap text as `TextError("message")` or declare a domain error with `impl Error`. `Result`, `ok`, and `error` are in the prelude.
 
 Return `ok(value: ...)` for success and `error(cause: ...)` for failure. Both are ordinary values. A caller can test it with `is_error()`, read the success path with `if let`, or pass the error back with `try`. Validate runtime input with ordinary conditions before doing the work.
 

@@ -57,7 +57,7 @@ func TestContextualCallbacks(t *testing.T) {
         return ok(n)
     )`,
 		`let value = result(fn():
-        if true: return error(TextError.Text("failed"))
+        if true: return error(TextError("failed"))
         return ok(4)
     )`,
 	} {
@@ -77,7 +77,7 @@ func TestCallbackInferenceRejections(t *testing.T) {
 		`let callback: fn(value: Int) Int = fn(item: Int = 4): item
     callback()`,
 		`let callback = fn(value): value`,
-		`let callback = result(fn(): error(TextError.Text("failed")))`,
+		`let callback = result(fn(): error(TextError("failed")))`,
 
 		`let callback: fn(value: Int) Int = fn(): 1`,
 		`let callback: fn(value: Int) Int = fn(value): "wrong"`,

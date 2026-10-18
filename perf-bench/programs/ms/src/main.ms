@@ -39,7 +39,7 @@ fn ident[T](x: T) T:
 
 fn checked(n: Int) Result[Int, TextError]:
     if n < 0:
-        return error(TextError.Text("negative"))
+        return error(TextError("negative"))
 
     return ok(n + 1)
 

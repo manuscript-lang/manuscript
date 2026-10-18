@@ -33,9 +33,7 @@ fn generic_remove[T: FileSystem](fs: T, path: String) Result[Unit, FileSystemErr
 fn rejected(result: Result[Unit, FileSystemError]) Result[Unit, Error]:
     match result:
         error(_): return ok(unit)
-        ok(_): return error(
-            TextError.Text("exclusive or nonrecursive operation succeeded")
-        )
+        ok(_): return error(TextError("exclusive or nonrecursive operation succeeded"))
 
     return ok(unit)
 

@@ -4,7 +4,7 @@ import {parse, format, compare, Version, SemverError} from "@std/semver.ms"
 
 fn failure(result: Result[Version, SemverError]) Result[SemverError, Error]:
     match result:
-        ok(_): return error(TextError.Text("accepted"))
+        ok(_): return error(TextError("accepted"))
         error(cause): return ok(cause)
 
 test "semver parses and formats every component":

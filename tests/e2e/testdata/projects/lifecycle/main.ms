@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {expect_equal, fail} from "@std/testing.ms"
 import stderr from "@std/io.ms"
 import stdout from "@std/io.ms"
@@ -32,10 +33,10 @@ fn early(output: WriteStream) Int:
         with inner = Resource(label: "inner", output: output):
             return report(output: output, label: "return value", value: 5)
 
-fn failure() Result[Int, String]:
-    return error("expected")
+fn failure() Result[Int, TextError]:
+    return error(TextError("expected"))
 
-fn propagate(output: WriteStream) Result[Int, String]:
+fn propagate(output: WriteStream) Result[Int, TextError]:
     with resource = Resource(label: "propagation", output: output):
         let number = try failure()
         return ok(number)

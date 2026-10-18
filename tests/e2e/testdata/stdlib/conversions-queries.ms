@@ -1,19 +1,29 @@
+import {TextError} from "@std/errors.ms"
 import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
 
 type Counter:
     calls: Int
 
+impl Error for Counter:
+    fn message() String: "counter"
+
+type Pending:
+    values: List[Int]
+
+impl Error for Pending:
+    fn message() String: "pending"
+
 fn counted(counter: Counter) Counter:
     counter.calls = counter.calls + 1
     return counter
 
-fn require_value[T, E](value: Optional[T], cause: E) Result[T, E]:
+fn require_value[T, E: Error](value: Optional[T], cause: E) Result[T, E]:
     return value.ok_or(cause)
 
-fn require_lazy[T, E](value: Optional[T], create: fn() E) Result[T, E]:
+fn require_lazy[T, E: Error](value: Optional[T], create: fn() E) Result[T, E]:
     return value.ok_or_else[E](create)
 
-fn success_only[T, E](value: Result[T, E]) Optional[T]:
+fn success_only[T, E: Error](value: Result[T, E]) Optional[T]:
     return value.to_optional()
 
 fn reduce_map[K: Hashable, V, A](
@@ -39,9 +49,12 @@ fn locate[K: Hashable, V](
 test "conversions and collection queries are callable":
     let present: Optional[Int] = some(2)
     let missing: Optional[Int] = none
-    present.ok_or("absent").get() | try expect_equal(expected: 2)
-    try expect_equal(missing.ok_or_else(fn(): "absent").err(), "absent")
-    let failed: Result[Int, String] = error("failed")
+    present.ok_or(TextError("absent")).get() | try expect_equal(expected: 2)
+    try expect_equal(
+        missing.ok_or_else(fn(): TextError("absent")).err().message(),
+        "absent"
+    )
+    let failed: Result[Int, TextError] = error(TextError("failed"))
     (failed.to_optional().is_none()) | try expect_true
     let entries: Map[String, Int] = {"b": 2, "a": 1}
     try expect_equal(entries.fold(0, fn(acc, k, v): acc + v), 3)
@@ -73,24 +86,26 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     counter.calls | try expect_equal(expected: 5)
     let bound_lazy = missing.ok_or_else[Counter]
     bound_lazy(create).err().calls | try expect_equal(expected: 6)
-    let failure: Result[Counter, List[Int]] = error([1, 2])
+    let failure: Result[Counter, Pending] = error(Pending([1, 2]))
     (success_only(failure).is_none()) | try expect_true
-    let success: Result[Counter, Bool] = ok(counter)
+    let success: Result[Counter, TextError] = ok(counter)
     let extract = success.to_optional
     extract().get().calls = 7
     counter.calls | try expect_equal(expected: 7)
     let nested: Optional[Optional[Int]] = some(none)
-    let converted = nested.ok_or("absent")
+    let converted = nested.ok_or(TextError("absent"))
     (not (converted.is_ok()) or not (converted.to_optional().get().is_none())) | try expect_false
     let false_value: Optional[Bool] = some(false)
-    false_value.ok_or(unit).to_optional().get() | try expect_false
+    false_value.ok_or(TextError("absent")).to_optional().get() | try expect_false
     let unit_value: Optional[Unit] = some(unit)
-    (unit_value.ok_or(false).to_optional().is_some()) | try expect_true
-    let nested_result: Optional[Result[Int, String]] = some(error("nested"))
+    (unit_value.ok_or(TextError("absent")).to_optional().is_some()) | try expect_true
+    let nested_result: Optional[Result[Int, TextError]] = some(
+        error(TextError("nested"))
+    )
     (
-        nested_result.ok_or(false).to_optional().get().err() | try expect_equal(
-            expected: "nested"
-        )
+        nested_result.ok_or(
+            TextError("absent")
+        ).to_optional().get().err().message() | try expect_equal(expected: "nested")
     )
 
 test "Map fold uses ordered snapshots and returns accumulator aliases":
@@ -456,8 +471,8 @@ test "ok_or without a cause records the calling file and line":
     let message = find_port(none).err().message()
     (message.starts_with("missing value at ")) | try expect_true
     find_port(some(8080)).get() | try expect_equal(expected: 8080)
-    let named: Result[Int, String] = absent.ok_or("port")
-    named.err() | try expect_equal(expected: "port")
+    let named: Result[Int, TextError] = absent.ok_or(TextError("port"))
+    named.err().message() | try expect_equal(expected: "port")
 
     match find_port(none).err():
         MissingValue(found): unit

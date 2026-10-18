@@ -6,11 +6,8 @@ export interface Error:
 
 # An error that carries only intentional text, for callers that have no domain error to return.
 export type TextError:
-    # Wraps the human-readable description returned by message().
-    case Text(
-        # Description returned verbatim by message().
-        message: String
-    )
+    # Description returned verbatim by message().
+    text: String
 
 impl Error for TextError:
     # Returns the wrapped text verbatim.

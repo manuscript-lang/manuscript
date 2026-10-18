@@ -44,7 +44,7 @@ fn total(cents: Cents) Result[Int, TextError]:
         Valid(value):
             value
         Invalid:
-            return error(TextError.Text("Invalid amount"))
+            return error(TextError("Invalid amount"))
     return ok(amount)
 ```
 

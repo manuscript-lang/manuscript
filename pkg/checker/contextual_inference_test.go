@@ -72,7 +72,7 @@ fn first() Unit:
 
 func TestExpectedGenericResultUnknownContextDoesNotCascade(t *testing.T) {
 	source := `import {TextError} from "@std/errors.ms"
-fn fail[T](message: String) Result[T, TextError]: error(TextError.Text(message))
+fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 fn first() Result[Int, Missing]: fail("empty")
 `
 	m, err := parser.Parse("unknown-context.ms", source)

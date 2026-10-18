@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import {TaskGroup, Task, ExecutionError} from "@std/tasks.ms"
 import Synchronized from "@std/sync.ms"
@@ -14,7 +15,9 @@ fn exercise() Result[Unit, Error]:
         let start = group.start[Int]
         let number: Task[Int] = start(fn(): 41)
         let text = group.start(fn(): "hello")
-        let domain = group.start(fn() Result[Int, String]: error("expected"))
+        let domain = group.start(
+            fn() Result[Int, TextError]: error(TextError("expected"))
+        )
         let stored = Stored(forward(number))
         let handles: List[Task[Int]] = [stored.task]
         let joined = try group.join()
@@ -33,7 +36,7 @@ fn exercise() Result[Unit, Error]:
 
         match outcome:
             error(cause):
-                try expect_equal(cause, "expected")
+                try expect_equal(cause.message(), "expected")
             ok(_):
                 return fail("domain error flattened")
 

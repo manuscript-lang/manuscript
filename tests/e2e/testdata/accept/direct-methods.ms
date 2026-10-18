@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {expect_equal} from "@std/testing.ms"
 
 type Counter:
@@ -61,12 +62,12 @@ type Parser:
     base: Int
 
 interface Parse:
-    fn parse(n: Int) Result[Int, String]
+    fn parse(n: Int) Result[Int, TextError]
 
 impl Parse for Parser:
-    fn parse(n: Int) Result[Int, String]:
+    fn parse(n: Int) Result[Int, TextError]:
         if n < 0:
-            return error("negative")
+            return error(TextError("negative"))
 
         return ok(self.base + n)
 
@@ -74,13 +75,13 @@ type Chain:
     parser: Parser
 
 interface Step:
-    fn step(n: Int) Result[Int, String]
+    fn step(n: Int) Result[Int, TextError]
 
 impl Step for Chain:
-    fn step(n: Int) Result[Int, String]:
+    fn step(n: Int) Result[Int, TextError]:
         return ok((try self.parser.parse(n)) + 1)
 
-fn code(r: Result[Int, String]) Int:
+fn code(r: Result[Int, TextError]) Int:
     return r.get(-1)
 
 fn run_direct(chain: Chain, n: Int) Int:

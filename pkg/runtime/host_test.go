@@ -687,7 +687,7 @@ func TestHostErrorMessages(t *testing.T) {
 		{Errors_Message_TimeError(ctx, TimeError_OutOfRange{}), "time: value out of range"},
 		{Errors_Message_LogError(ctx, LogError_Io{Cause: IoError_Closed{}}), "I/O: resource is closed"},
 		{Errors_Message_LogError(ctx, LogError_Closed{}), "logging: resource is closed"},
-		{Errors_Message_TextError(ctx, TextError_Text{Message: "verbatim"}), "verbatim"},
+		{Errors_Message_TextError(ctx, &TextError{Text: "verbatim"}), "verbatim"},
 		{Errors_Message_MissingValue(ctx, MissingValue_Missing{Location: "a.ms:3"}), "missing value at a.ms:3"},
 		{Errors_Message_JsonError(ctx, JsonError_InvalidData{}), "JSON: invalid data"},
 		{Errors_Message_ExecutionError(ctx, ExecutionError_Crashed{Message: "boom"}), "boom"},

@@ -1,15 +1,16 @@
+import {TextError} from "@std/errors.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
 
 type Input:
     names: List[Optional[String]]
 
-fn outcome_value(outcome: Result[Int, String]) Int:
+fn outcome_value(outcome: Result[Int, TextError]) Int:
     return outcome.get(-1)
 
 test "data constructor context":
     let _input = Input([none, some("Ada")])
-    let success: Result[Int, String] = ok(3)
-    let failure: Result[Int, String] = error("unavailable")
+    let success: Result[Int, TextError] = ok(3)
+    let failure: Result[Int, TextError] = error(TextError("unavailable"))
     let _absent: Optional[Int] = none
     let _nested: List[List[Int]] = [[], [1]]
     try expect_equal(outcome_value(success), 3)

@@ -36,13 +36,13 @@ export fn main() Int:
 fn deep(value: Result[Int, TextError]) Int:
     return value.get()
 export fn main() Int:
-    return deep(error(TextError.Text("expected failure")))
+    return deep(error(TextError("expected failure")))
 `, false, []string{"fault.ms:3 in deep", "fault.ms:5 in main"}},
 		{"bound Result err", `import {TextError} from "@std/errors.ms"
 export fn main() Int:
     let value: Result[Int, TextError] = ok(0)
     let extract = value.err
-    return extract().message().scalar_length()
+    return extract().text.scalar_length()
 `, false, []string{"fault.ms:5 in main"}},
 		{"Result callback fault", `import {TextError} from "@std/errors.ms"
 fn crash(value: Int) Int:
@@ -55,7 +55,7 @@ export fn main() Int:
 fn crash(cause: TextError) Int:
     return 1 / 0
 export fn main() Int:
-    let value: Result[Int, TextError] = error(TextError.Text("expected failure"))
+    let value: Result[Int, TextError] = error(TextError("expected failure"))
     return value.or_else(crash)
 `, false, []string{"fault.ms:3 in crash", "fault.ms:6 in main"}},
 		{"Map filter callback fault", `fn crash(key: String, value: Int) Bool:

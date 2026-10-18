@@ -1,10 +1,11 @@
+import {TextError} from "@std/errors.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
 
-fn parse(text: String) Result[Int, String]:
+fn parse(text: String) Result[Int, TextError]:
     if text == "-":
-        return error("n")
+        return error(TextError("n"))
     if text == "big":
-        return error("big")
+        return error(TextError("big"))
 
     return ok(text.length())
 
@@ -12,23 +13,23 @@ fn double(n: Int) Int: n * 2
 
 fn add(n: Int, by: Int) Int: n + by
 
-fn check(n: Int) Result[Int, String]:
+fn check(n: Int) Result[Int, TextError]:
     if n > 100:
-        return error("big")
+        return error(TextError("big"))
 
     return ok(n)
 
-fn flow(text: String) Result[Int, String]:
+fn flow(text: String) Result[Int, TextError]:
     let n = try parse(text)
         | double
         | add(3)
         | try check
     return ok(n)
 
-fn bare(text: String) Result[Int, String]:
+fn bare(text: String) Result[Int, TextError]:
     return ok(try parse(text) | double | check | try)
 
-fn describe(text: String) Result[String, String]:
+fn describe(text: String) Result[String, TextError]:
     let label = try parse(text)
         | try check
         | add(1)
@@ -42,11 +43,11 @@ fn trace(log: List[String], name: String) Int:
     log.append(name)
     return 1
 
-fn code(r: Result[Int, String]) Int:
+fn code(r: Result[Int, TextError]) Int:
     if let v = r:
         return v
 
-    return 0 - r.err().length()
+    return 0 - r.err().message().length()
 
 test "pipe steps call functions with the value first":
     try expect_equal(code(flow("abc")), 9)

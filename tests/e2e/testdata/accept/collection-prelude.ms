@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import range from "@std/collections.ms"
 
@@ -8,7 +9,7 @@ type Point:
     x: Int
     y: Int
 
-fn roll(i: Int) Result[Int, String]: ok(i)
+fn roll(i: Int) Result[Int, TextError]: ok(i)
 
 fn count(values: List[String]) Int: values.length()
 
