@@ -53,3 +53,29 @@ experts:
       - "documentation/contributing/**"
       - "go.mod"
       - "Makefile"
+  - id: stdlib-design
+    file: stdlib-design.md
+    topics: [stdlib API shape, failure modes, Result and Error, TextError, write and write_bytes, Set construction, module consolidation]
+    paths:
+      - "pkg/stdlib/**"
+      - "documentation/standard-library/**"
+      - "tests/e2e/testdata/stdlib/**"
+  - id: testing-and-conformance
+    file: testing-and-conformance.md
+    topics: [test layers, accept and reject fixtures, ms test, conformance, fuzzing, fixture migration]
+    paths:
+      - "tests/**"
+      - "scripts/conformance.ms"
+      - "scripts/ci-test.sh"
+      - "scripts/repo-check/**"
+      - "**/*_test.go"
+  - id: benchmarks-and-performance
+    file: benchmarks-and-performance.md
+    topics: [performance benchmarks, agent benchmark, ns/op, Go parity, profiling guide]
+    paths:
+      - "perf-bench/**"
+      - "agent-bench/**"
+      - "bench/**"
+      - "scripts/benchmarks/**"
+      - "scripts/bench-*/**"
+      - "scripts/stdlib-bench.sh"

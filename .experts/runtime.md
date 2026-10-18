@@ -313,7 +313,7 @@ guarded body doubles accounting. Evidence: storage migration,
 primitive Go oracles and allocation/guard tests,
 and [measured storage/access paths](../bench/lists/typed-storage.md).
 Verify: fresh constructors and effectful sized initialization use two allocations,
-typed at/unwrap uses none, generic forwarding retains identity, and comparator
+typed `get`/index reads use none, generic forwarding retains identity, and comparator
 profiling/returns/cancellation/depth/fault frames match ordinary source calls.
 
 Verified: private map/filter result construction must preserve `NewList`'s boxed
@@ -426,18 +426,18 @@ Evidence: [declarations and guide](../pkg/stdlib/json.ms), [generator](../pkg/lo
 Verify: a record with a function field and a `none` field encodes without them; `Wrapper[Wrapper[String]]` with a defaulted field decodes; a round trip through `stringify` returns identical text.
 
 ### O(1) runtime helpers do not poll for cancellation
-Verified: `Optional_Unwrap`, `Result_Unwrap`, `Result_UnwrapError` and `StringBuilder_Append` used to call `CheckCancelled`, which reads `ctx.Err()` (a mutex-guarded context lookup) on every call. Loops already poll every 64 iterations through the lowered back edge, so these only added per-operation cost: removing them took `match` from 7.5 to 6.1 ns/op and `string_append` from 9.2 to 7.1 ns/op. The trade-off is that straight-line code with no loop, such as deep recursion that only unwraps, reaches a cancellation point later.
+Verified: `Optional_Get`, `Result_Get`, `Result_Err` (then named `*_Unwrap*`) and `StringBuilder_Append` used to call `CheckCancelled`, which reads `ctx.Err()` (a mutex-guarded context lookup) on every call. Loops already poll every 64 iterations through the lowered back edge, so these only added per-operation cost: removing them took `match` from 7.5 to 6.1 ns/op and `string_append` from 9.2 to 7.1 ns/op. The trade-off is that straight-line code with no loop, such as deep recursion that only unwraps, reaches a cancellation point later.
 
 Apply when: adding a helper that runs in constant time, or deciding where a runtime function should be a cancellation point. Keep the check in helpers that loop, wait, or call user callbacks.
 Evidence: `pkg/runtime/optional.go`, `pkg/runtime/result.go`, `pkg/runtime/string.go`, `pkg/lower/stmt.go` (`loopStatements`).
-Verify: compare `bench/run.sh` before and after; the loop-cancellation tests in `tests/e2e` must still pass.
+Verify: compare `perf-bench/programs/run.sh` before and after; the loop-cancellation tests in `tests/e2e` must still pass.
 
 ### ReadLine slices a buffered line under one lock
 Verified: `Io_ReadLine` used two mutex round trips, a closure pair and an intermediate `append` copy per line. When the read-ahead buffer already holds a full line shorter than the limit, it is now sliced out under one lock and copied once into the result string (136 to 95 ns/line on 200k lines; hand-written Go 73). Lines that cross a refill, exceed the limit, or come from streams without read-ahead take the original path, so limit and invalid-UTF-8 behavior are unchanged.
 
 Apply when: changing `Io_ReadLine`, `readAhead`, or stream buffering.
 Evidence: `pkg/runtime/io.go`, `tests/e2e/testdata/stdlib/io.ms`.
-Verify: `go test ./pkg/runtime ./tests/e2e` and `bench/run.sh` (`read_line`).
+Verify: `go test ./pkg/runtime ./tests/e2e` and `perf-bench/programs/run.sh` (`read_line`).
 
 ### Write operations take String; `_bytes` siblings take Bytes
 Decision: write APIs (`write`, `write_file`, `append_file`, `write_at`, on streams, files, connections, transports) accept `String`; raw bytes use a sibling named `<name>_bytes` (`write_bytes`, `write_file_bytes`). Network sends follow the same shape: `DatagramSocket.send`/`send_bytes`, `WebSocket.send`/`send_bytes(data, text: false)`, `ping`/`ping_bytes`, and `request`/`request_bytes` for the body. Interface operations cannot be generic or overloaded, so two names express the choice. Any source `impl` of `WriteStream` or `Transport` must declare both; implementing `write` as `self.write_bytes(data.to_bytes())` keeps one body.
@@ -445,3 +445,11 @@ Decision: write APIs (`write`, `write_file`, `append_file`, `write_at`, on strea
 Apply when: adding or changing a write-like standard operation, or implementing `WriteStream`/`Transport` in source.
 Evidence: user request in the project thread; `pkg/stdlib/io.ms`, `pkg/stdlib/fs.ms`, `tests/e2e/testdata/stdlib/support/streams.ms`.
 Verify: `make stdlib-check`; `stdout().write("text")` and `write_bytes(bytes)` both type-check.
+
+### Collections are constructed from lists, not chained mutation
+
+Decision: `Set[Int]([3, 1, 2])` and `Set([3, 1, 2])` build a Set from a list (insertion order kept, duplicates collapsed); migrate chained `.add` construction in tests and examples. Do not add a second construction spelling (variadic, literal) without a new decision.
+
+Apply when: adding collection constructors or writing fixtures that need a populated Set.
+Evidence: [Set declaration](../pkg/stdlib/collections.ms), [constructor uses](../tests/e2e/testdata/stdlib/preferred-names.ms), commit c025937b.
+Verify: duplicates collapse, first-seen order is kept, and `Set[Int]([])` is empty.

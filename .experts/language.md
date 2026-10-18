@@ -153,7 +153,7 @@ Verify: parse an inline callback inside a call without consuming the enclosing d
 
 ### Optional values need presence and extraction methods
 
-Decision: the user explicitly rejected relying on `match` for routine Optional handling. Keep one receiver surface: `is_some`, `is_none`, `get`, `get(default)`, and `get_or_else`. Preserve Optional as an ordinary alternative; these methods do not introduce flattening or new syntax. The private native helpers are implementation bindings, not exported aliases.
+Decision: the user explicitly rejected relying on `match` for routine Optional handling. Keep one receiver surface: `is_some`, `is_none`, and `get(default)`; `or_else` takes a lazy Optional fallback. `unwrap`, `unwrap_or`, `unwrap_or_else`, `unwrap_error`, and `at` are removed (Result keeps `get(default)`, `or_else`, `err`). Preserve Optional as an ordinary alternative; these methods do not introduce flattening or new syntax. The private native helpers are implementation bindings, not exported aliases.
 
 ### No special `get` accessor declarations
 
@@ -170,7 +170,7 @@ Decision: the user asked for `if let name = optional:` (with `else`) and that a 
 Evidence: [if let rules](../documentation/core-language/control-flow/conditionals.md#unwrapping-an-optional-or-result), [native fixture](../tests/e2e/testdata/accept/if-let.ms), [lint](../pkg/tooling/optional_match_lint.go).
 Apply when: changing Optional declarations, alternative method lookup, fallback evaluation, or introductory examples.
 Evidence: [Optional contract](../documentation/core-language/types/optionals.md#checking-and-extracting-values), [optional argument rules](../documentation/core-language/types/optionals.md#passing-optional-arguments), [canonical declaration](../pkg/stdlib/optional.ms), [compiled method fixture](../tests/e2e/testdata/accept/optional-methods.ms), and [argument conformance](../tests/e2e/testdata/accept/optional-arguments.ms).
-Verify: false and zero are present; eager defaults evaluate normally; lazy defaults run exactly once only for none; unwrap on none faults clearly. Extraction retains nested type arguments and payload identity, stored receiver methods still work, and local alternatives with the same spelling receive no native methods.
+Verify: false and zero are present; eager `get(default)` values evaluate normally; `or_else` callbacks run exactly once only for none; `get()` with no default on none or error faults clearly. Extraction retains nested type arguments and payload identity, stored receiver methods still work, and local alternatives with the same spelling receive no native methods.
 
 Verified: Optional argument checking retains the expression's source type and records wrapping separately, so editor queries and Boolean folding keep their existing meaning. Reuse an inferred payload type before retrying with context: checking every nested call twice causes exponential work for both accepted and rejected inputs. Evidence: [source/AST regression](../pkg/checker/optional_test.go), [nested call regression](../pkg/compiler/optional_test.go), and [argument checking](../pkg/checker/calls.go). The same rule applies to successful independent generic argument checks: reuse their checked information within the owning call, then apply ordinary expected-type and conversion checks. Do not cache probes across calls or scopes. Contextual callback probes can be retained within their owning call only when their final function signature is identical and contains no unresolved inference variables; replay retained root diagnostics once. A complete result signature alone is insufficient: earlier unresolved or conflicting returns, and `try` checked before the enclosing result is known, can require the final context to repair a valid body. Record this dependence and recheck those bodies; invalid result slots can be reused only when the final signature retains exactly those slots. Evidence: [callback complexity and context regressions](../pkg/compiler/callback_work_test.go), [native callback metadata](../tests/e2e/testdata/accept/callback-probe-reuse.ms), and [issue #151](https://github.com/manuscript-lang/manuscript/issues/151). Evidence: [deep generic arguments](../pkg/compiler/inference_work_test.go) and [native order, conversions, and captures](../tests/e2e/testdata/accept/inference-call-order.ms).
 
@@ -251,3 +251,11 @@ Verified: the bound lives on `Result` in `pkg/stdlib/result.ms`, so annotations 
 Apply when: adding Result-returning APIs, examples, or tests that need an error value.
 Evidence: [Result source](../pkg/stdlib/result.ms), [results guide](../documentation/core-language/errors/results.md).
 Verify: `Result[Int, String]` fails with "String does not satisfy Error"; `Result[Int, TextError]` and `Result[T, Error]` pass.
+
+### Grouped bindings are one-kind blocks, not tuple patterns
+
+Decision: `let (` / `var (` declare several bindings of one kind, one entry per line, closing `)` aligned with the keyword; each entry is an ordinary binding (annotation or destructuring allowed) and sees earlier entries. Parenthesized patterns such as `let (a, b) = value` remain rejected, so a grouped block and a tuple pattern must stay distinguishable by the token after the keyword.
+
+Apply when: changing binding grammar, formatter layout of declarations, or destructuring.
+Evidence: [grouping rules](../documentation/core-language/basics/bindings.md#grouping-bindings), [destructuring](../documentation/core-language/types/destructuring.md), [module constants](../documentation/core-language/modules/declarations.md).
+Verify: `let (` entries evaluate in order with earlier ones in scope, `export let (` exports every entry, and `let (a, b) = pair` still fails with the not-a-binding-pattern diagnostic.
