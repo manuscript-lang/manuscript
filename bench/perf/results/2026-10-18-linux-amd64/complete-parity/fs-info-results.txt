@@ -1,0 +1,98 @@
+before goos: linux
+before goarch: amd64
+before pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+before cpu: AMD EPYC 9V74 80-Core Processor
+before BenchmarkFileInfoConstruction-4   	   73654	      3184 ns/op	    3456 B/op	      66 allocs/op
+before BenchmarkFileSystemStat-4         	   51121	      4572 ns/op	    3808 B/op	      70 allocs/op
+before PASS
+after goos: linux
+after goarch: amd64
+after pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+after cpu: AMD EPYC 9V74 80-Core Processor
+after BenchmarkFileInfoConstruction-4   	  106202	      2275 ns/op	    2768 B/op	      52 allocs/op
+after BenchmarkFileSystemStat-4         	   59464	      3885 ns/op	    3152 B/op	      56 allocs/op
+after PASS
+after goos: linux
+after goarch: amd64
+after pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+after cpu: AMD EPYC 9V74 80-Core Processor
+after BenchmarkFileInfoConstruction-4   	  100435	      2174 ns/op	    2768 B/op	      52 allocs/op
+after BenchmarkFileSystemStat-4         	   66862	      3648 ns/op	    3152 B/op	      56 allocs/op
+after PASS
+before goos: linux
+before goarch: amd64
+before pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+before cpu: AMD EPYC 9V74 80-Core Processor
+before BenchmarkFileInfoConstruction-4   	   75922	      3084 ns/op	    3456 B/op	      66 allocs/op
+before BenchmarkFileSystemStat-4         	   52227	      4597 ns/op	    3840 B/op	      70 allocs/op
+before PASS
+before goos: linux
+before goarch: amd64
+before pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+before cpu: AMD EPYC 9V74 80-Core Processor
+before BenchmarkFileInfoConstruction-4   	   78280	      3088 ns/op	    3456 B/op	      66 allocs/op
+before BenchmarkFileSystemStat-4         	   53126	      4907 ns/op	    3840 B/op	      70 allocs/op
+before PASS
+after goos: linux
+after goarch: amd64
+after pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+after cpu: AMD EPYC 9V74 80-Core Processor
+after BenchmarkFileInfoConstruction-4   	  107452	      2202 ns/op	    2768 B/op	      52 allocs/op
+after BenchmarkFileSystemStat-4         	   56374	      3926 ns/op	    3152 B/op	      56 allocs/op
+after PASS
+after goos: linux
+after goarch: amd64
+after pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+after cpu: AMD EPYC 9V74 80-Core Processor
+after BenchmarkFileInfoConstruction-4   	  107252	      2221 ns/op	    2768 B/op	      52 allocs/op
+after BenchmarkFileSystemStat-4         	   63372	      3609 ns/op	    3152 B/op	      56 allocs/op
+after PASS
+before goos: linux
+before goarch: amd64
+before pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+before cpu: AMD EPYC 9V74 80-Core Processor
+before BenchmarkFileInfoConstruction-4   	   70998	      3075 ns/op	    3456 B/op	      66 allocs/op
+before BenchmarkFileSystemStat-4         	   50008	      4765 ns/op	    3808 B/op	      70 allocs/op
+before PASS
+before goos: linux
+before goarch: amd64
+before pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+before cpu: AMD EPYC 9V74 80-Core Processor
+before BenchmarkFileInfoConstruction-4   	   74486	      3025 ns/op	    3456 B/op	      66 allocs/op
+before BenchmarkFileSystemStat-4         	   51794	      4495 ns/op	    3840 B/op	      70 allocs/op
+before PASS
+after goos: linux
+after goarch: amd64
+after pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+after cpu: AMD EPYC 9V74 80-Core Processor
+after BenchmarkFileInfoConstruction-4   	   96109	      2230 ns/op	    2768 B/op	      52 allocs/op
+after BenchmarkFileSystemStat-4         	   56408	      3741 ns/op	    3152 B/op	      56 allocs/op
+after PASS
+after goos: linux
+after goarch: amd64
+after pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+after cpu: AMD EPYC 9V74 80-Core Processor
+after BenchmarkFileInfoConstruction-4   	   95340	      2317 ns/op	    2768 B/op	      52 allocs/op
+after BenchmarkFileSystemStat-4         	   59400	      4738 ns/op	    3152 B/op	      56 allocs/op
+after PASS
+before goos: linux
+before goarch: amd64
+before pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+before cpu: AMD EPYC 9V74 80-Core Processor
+before BenchmarkFileInfoConstruction-4   	   74323	      3126 ns/op	    3456 B/op	      66 allocs/op
+before BenchmarkFileSystemStat-4         	   51104	      4866 ns/op	    3840 B/op	      70 allocs/op
+before PASS
+before goos: linux
+before goarch: amd64
+before pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+before cpu: AMD EPYC 9V74 80-Core Processor
+before BenchmarkFileInfoConstruction-4   	   79051	      3261 ns/op	    3456 B/op	      66 allocs/op
+before BenchmarkFileSystemStat-4         	   50116	      4774 ns/op	    3840 B/op	      70 allocs/op
+before PASS
+after goos: linux
+after goarch: amd64
+after pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+after cpu: AMD EPYC 9V74 80-Core Processor
+after BenchmarkFileInfoConstruction-4   	   94540	      2369 ns/op	    2768 B/op	      52 allocs/op
+after BenchmarkFileSystemStat-4         	   63885	      3776 ns/op	    3120 B/op	      56 allocs/op
+after PASS

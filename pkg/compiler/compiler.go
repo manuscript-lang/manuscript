@@ -110,7 +110,7 @@ func compile(graph frontend.Graph, options Options) Result {
 		return result
 	}
 
-	source, err := lower.Go(checked, graph.Entry, lower.Options{Tests: options.Tests, Entry: options.Entry, CPUProfile: options.CPUProfile, HeapProfile: options.HeapProfile, Trace: options.Trace, DebugLiterals: kind == Debug})
+	source, err := lower.Go(checked, graph.Entry, lower.Options{Tests: options.Tests, Entry: options.Entry, CPUProfile: options.CPUProfile, HeapProfile: options.HeapProfile, Trace: options.Trace, DebugLiterals: kind == Debug, PreserveBindings: kind == Debug})
 	if err != nil {
 		result.Diagnostics = append(result.Diagnostics, syntax.Diagnostic{Position: syntax.Position{File: graph.Entry, Line: 1, Column: 1}, Phase: "lowering", Message: err.Error()})
 	} else {
@@ -156,7 +156,7 @@ type Local struct{ Function, Go, Name, Type string }
 // show. The names match those of a Debug build of the same program.
 func DebugLocals(program *checker.Program) []Local {
 	var locals []Local
-	_, _ = lower.Go(program, "", lower.Options{Tests: true, Locals: func(function, goName string, b *checker.Binding) {
+	_, _ = lower.Go(program, "", lower.Options{Tests: true, PreserveBindings: true, Locals: func(function, goName string, b *checker.Binding) {
 		locals = append(locals, Local{function, goName, b.Name, b.Type.String()})
 	}})
 	return locals

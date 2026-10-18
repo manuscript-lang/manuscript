@@ -1,0 +1,77 @@
+{
+  "string.upper": {
+    "before": 49642.7,
+    "after": 49706.895,
+    "ratio": 1.0012931407840429
+  },
+  "map.string_put_get": {
+    "before": 77.97666000000001,
+    "after": 78.06394,
+    "ratio": 1.0011193092907544
+  },
+  "regex.find_all": {
+    "before": 331.7255,
+    "after": 315.2165,
+    "ratio": 0.9502329486277057
+  },
+  "archive.tar_pack": {
+    "before": 2068.05975,
+    "after": 2100.90075,
+    "ratio": 1.0158801021102024
+  },
+  "path.basename": {
+    "before": 13.7989,
+    "after": 13.64818,
+    "ratio": 0.9890773902267572
+  },
+  "bytes.builder": {
+    "before": 4.86004,
+    "after": 5.01802,
+    "ratio": 1.032505905301191
+  },
+  "list.at": {
+    "before": 1.8394949999999999,
+    "after": 1.70547,
+    "ratio": 0.9271403292751544
+  },
+  "string.index_char_at": {
+    "before": 6.8309,
+    "after": 6.98818,
+    "ratio": 1.0230247844354332
+  },
+  "compress.gzip": {
+    "before": 2.524175568181818,
+    "after": 2.6006017045454546,
+    "ratio": 1.0302776626661856
+  },
+  "compress.roundtrip": {
+    "before": 3.1478545454545452,
+    "after": 3.168500568181818,
+    "ratio": 1.006558760079015
+  },
+  "list.fold": {
+    "before": 1.9480300000000002,
+    "after": 1.955935,
+    "ratio": 1.0040579457195218
+  },
+  "encoding.hex_encode": {
+    "before": 2.4858075071818577,
+    "after": 2.5004470825485607,
+    "ratio": 1.0058892634785306
+  },
+  "crypto.sha256": {
+    "before": 0.5482785736481302,
+    "after": 0.5474858740939444,
+    "ratio": 0.9985542029320765
+  },
+  "html.escape_unescape": {
+    "before": 106.36475,
+    "after": 107.89949999999999,
+    "ratio": 1.0144291224301283
+  },
+  "queue.enqueue_dequeue": {
+    "before": 6.7137075,
+    "after": 7.072627499999999,
+    "ratio": 1.053460774095386
+  }
+}

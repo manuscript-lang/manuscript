@@ -43,6 +43,7 @@ Desktop.ini
 /hello
 /main.go
 /coverage.out
+__pycache__/
 
 .ms-cache/
 *.ms-build.json

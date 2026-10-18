@@ -410,6 +410,17 @@ func Io_ReadAll(ctx *Execution, input ReadStream, maxBytes Option[int]) Result[*
 
 // Io_ReadLine reads one line, omitting its line ending; none at end of stream.
 func Io_ReadLine(ctx *Execution, input ReadStream, maxBytes Option[int]) Result[Option[string], IoError] {
+	return ioReadLine(ctx, input, maxBytes, true)
+}
+
+// Io_HasLine is selected only when checked source observes success/presence.
+// Validation and stream consumption share the ordinary read-line algorithm.
+func Io_HasLine(ctx *Execution, input ReadStream, maxBytes Option[int]) bool {
+	line := ioReadLine(ctx, input, maxBytes, false)
+	return !line.Failed && line.Val.Some
+}
+
+func ioReadLine(ctx *Execution, input ReadStream, maxBytes Option[int], keepText bool) Result[Option[string], IoError] {
 	max, ok := optionLimit(maxBytes, unlimited)
 	if !ok || max <= 0 {
 		return ioFailure[Option[string]](IoError_InvalidInput{})
@@ -431,6 +442,9 @@ func Io_ReadLine(ctx *Execution, input ReadStream, maxBytes Option[int]) Result[
 		}
 		if !utf8.Valid(line) {
 			return ioFailure[Option[string]](IoError_InvalidData{})
+		}
+		if !keepText {
+			return Ok[Option[string], IoError](Some(""))
 		}
 		return Ok[Option[string], IoError](Some(string(line)))
 	}
@@ -483,6 +497,9 @@ func Io_ReadLine(ctx *Execution, input ReadStream, maxBytes Option[int]) Result[
 	}
 	if !utf8.Valid(b) {
 		return ioFailure[Option[string]](IoError_InvalidData{})
+	}
+	if !keepText {
+		return Ok[Option[string], IoError](Some(""))
 	}
 	return Ok[Option[string], IoError](Some(string(b)))
 }

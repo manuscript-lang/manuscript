@@ -103,6 +103,8 @@ func (g *gen) lowerFunction(f *funcDecl) {
 
 	d := f.decl
 	g.fn = &funcState{decl: f, result: g.sub(f.typ.Result)}
+	g.fn.localCollections = g.proveLocalCollections(d.Params, d.Body)
+	g.proveIntArithmetic(d.Body)
 	var params []*ast.Field
 	params = append(params, field("ctx", pointerTo(rtName("Execution"))))
 	bindings := g.program.ParameterBindings(d)

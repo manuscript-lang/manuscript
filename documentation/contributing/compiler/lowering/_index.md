@@ -53,3 +53,37 @@ Compare against handwritten Go with the same checked arithmetic, fault positions
 - [Source guarantees and Go representations](value-representations.md)
 - [Evaluation order and call preparation](evaluation-order.md)
 - [Cleanup and fault lowering](cleanup-and-faults.md)
+
+
+## Local arithmetic proofs
+
+Release lowering can remove an Int arithmetic check only when exact interval
+arithmetic proves every result fits. Facts belong to checked bindings in one
+callable; unknown control flow discards them. Finite unit-step loops bound every
+prefix of each accumulator using separate positive and negative budgets. All
+modified scalar, list and record facts become unknown before deriving any new
+invariant, so another accumulator's initial value cannot justify a check removal.
+
+An exhaustive use inventory permits bounds for fresh private Int lists and
+one-field Int records. Aliases, captures, unsupported mutations and calls retain
+the checked path. Record specialization also falls back inside generic callers.
+List access still performs its ordinary index/default checks;
+only a proved length becomes constant. Debug retains the source bindings and
+checked operations. Closed Int maps use the exclusive helpers described in
+[Go representation](../../go-lowering-representation.md#closed-local-int-maps).
+
+Only a finite ascending loop with two safe scalar updates, a constant independent
+stride, a last counter step, and at least 256 iterations may group its polling
+control. Each original assignment still executes individually. Queries occur
+before exactly the same 64th, 128th, and subsequent iterations; partial tails
+and signed endpoints retain that phase.
+
+An exact adjacent `let value = try result; return ok(value)` can return the
+original Result when payload and error types agree without conversion. Other
+`try` expressions still evaluate once, test failure and return the error. Function
+payloads retain their calling-convention conversion path.
+
+A Bool tail that only asks whether canonical `read_line` succeeded with a present
+line can omit materializing its unused String. The runtime shares the ordinary
+algorithm and retains validation, limits, locking, consumption, errors and
+cancellation queries. Text-returning reads and other source shapes are unchanged.

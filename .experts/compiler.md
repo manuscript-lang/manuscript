@@ -281,7 +281,7 @@ Evidence: `pkg/runtime/list.go` (`List_Get`), `pkg/lower/expr.go` (`indexValue`)
 Verify: out-of-range `[]` faults with the index and length; `get` with a default never faults.
 
 ### Lowered Int hot paths keep faults but not avoidable calls
-Verified: `Int` `/` and `%` by a positive literal cannot be zero, -1, or overflow, so they lower to Go's operators instead of `IntDivide`/`IntRemainder`; the loop cancellation poll is an inline `tick++; tick&63 == 0` on a plain local, because `Poll(ctx, &tick)` forced the counter into memory and halved a tight loop's speed (21.8 ms to 15.9 ms for 10M iterations). Integer identities (`+ 0`, `- 0`, `* 0`, `* 1`, including commuted `+`/`*`) also cannot overflow. Emit both operands in the Go operation to preserve effectful calls even when the result is constant. Other `+`, `-`, `*` stay checked: overflow faults are language behavior and need a range proof to remove.
+Verified: `Int` `/` and `%` by a positive literal cannot be zero, -1, or overflow, so they lower to Go's operators instead of `IntDivide`/`IntRemainder`; the loop cancellation poll is an inline `tick++; tick&63 == 0` on a plain local, because `Poll(ctx, &tick)` forced the counter into memory and halved a tight loop's speed (21.8 ms to 15.9 ms for 10M iterations). Integer identities (`+ 0`, `- 0`, `* 0`, `* 1`, including commuted `+`/`*`) also cannot overflow. Emit both operands in the Go operation to preserve effectful calls even when the result is constant. Unknown `+`, `-`, `*` stay checked: overflow faults are language behavior. Function-local interval proofs may remove only checks whose complete result range fits.
 
 Apply when: changing Int arithmetic lowering or loop back-edge polling.
 Evidence: `pkg/lower/expr.go` (`uncheckedIntArithmetic`), `pkg/lower/stmt.go` (`loopStatements`), `tests/e2e/int_literal_divisor_test.go`, `tests/e2e/int_identity_test.go`, `tests/e2e/numeric_lowering_test.go`.
@@ -309,3 +309,37 @@ Verify negative/nonzero starts, both directions, nested entry, reset/continue
 fallbacks, and source faults before widening the proof. Derive phase with raw Go
 subtraction: modular overflow preserves the low six bits of the iteration count.
 Use `(distance + 1) & 63 == 0` for the same phase with a cheaper zero test.
+
+
+### Local interval proofs must cover prefixes and peer writes
+
+Verified: scalar/list/one-field-record bounds use exact compiler arithmetic and
+checked binding identities. Invalidate every modified cell before deriving any
+loop delta; a peer's initial value is not an invariant. Budget positive and
+negative contributions separately, including zero iterations and every prefix;
+a safe net delta does not make an overflowing intermediate update safe. Explicit
+Optional defaults are unknown unless their active payload is proved; none.Val is
+not a default value. Unknown branches, statement expressions, closures and loops
+kill facts rather than sharing speculative state.
+
+Apply when: widening `pkg/lower/int_bounds.go`, `list_bounds.go` or `record_bounds.go`.
+Evidence: [paired lowering tests](../pkg/compiler/int_bounds_test.go),
+[list fallbacks](../pkg/compiler/list_bounds_test.go),
+[record fallbacks](../pkg/compiler/record_bounds_test.go), and native fixtures
+`bounded-int-arithmetic.ms`, `closed-int-list-bounds.ms`, `closed-record-int-bounds.ms`.
+Verify native overflow, aliases/default evaluation, closure isolation, Debug,
+standalone and source frames. Run `BenchmarkIntProofScaling` and
+`BenchmarkClosedCellProofScaling` at N/2N/4N; profile excess doubling before
+calling it linear. Epochs plus an undo journal avoid copying full fact maps at joins.
+
+Verified: a closed-map storage proof inventories every use, including defaults,
+match bodies and nested captures. Its compiler-only helpers reuse `*rt.Map[int,int]`
+but interpret index values differently, so selecting only some consumers is
+unsound. `add` returns the receiver: only discarded root calls can preserve the
+no-alias proof. See [the storage contract](../documentation/contributing/go-lowering-representation.md#closed-local-int-maps).
+
+Verified: `Program.ResolveMethods` scans the method registry. Cache global Int
+map-evidence decisions once when no local implementations exist; otherwise a
+linear AST inventory can still cost candidates times methods. Concrete record
+specialization conservatively excludes generic callers that would re-resolve
+methods per candidate. `BenchmarkClosedMapProofScaling` grows both dimensions.

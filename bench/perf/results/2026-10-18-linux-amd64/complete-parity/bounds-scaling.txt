@@ -1,0 +1,21 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/compiler
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkScalarIntBoundsScaling/128-4         	      45	   5122147 ns/op	 4171154 B/op	   33911 allocs/op
+BenchmarkScalarIntBoundsScaling/128-4         	      48	   5061641 ns/op	 4160628 B/op	   33910 allocs/op
+BenchmarkScalarIntBoundsScaling/128-4         	      44	   4898487 ns/op	 4164834 B/op	   33910 allocs/op
+BenchmarkScalarIntBoundsScaling/128-4         	      45	   5668100 ns/op	 4169512 B/op	   33911 allocs/op
+BenchmarkScalarIntBoundsScaling/128-4         	      38	   5462295 ns/op	 4163165 B/op	   33911 allocs/op
+BenchmarkScalarIntBoundsScaling/256-4         	      26	  11862174 ns/op	 9232970 B/op	   67388 allocs/op
+BenchmarkScalarIntBoundsScaling/256-4         	      21	  12014548 ns/op	 9223963 B/op	   67386 allocs/op
+BenchmarkScalarIntBoundsScaling/256-4         	      21	  12007173 ns/op	 9231421 B/op	   67389 allocs/op
+BenchmarkScalarIntBoundsScaling/256-4         	      19	  11439354 ns/op	 9231697 B/op	   67389 allocs/op
+BenchmarkScalarIntBoundsScaling/256-4         	      22	  10193905 ns/op	 9230427 B/op	   67387 allocs/op
+BenchmarkScalarIntBoundsScaling/512-4         	      10	  22172239 ns/op	17999251 B/op	  134560 allocs/op
+BenchmarkScalarIntBoundsScaling/512-4         	      10	  26595878 ns/op	17971156 B/op	  134553 allocs/op
+BenchmarkScalarIntBoundsScaling/512-4         	      10	  21941720 ns/op	17953684 B/op	  134556 allocs/op
+BenchmarkScalarIntBoundsScaling/512-4         	      10	  25782137 ns/op	17980480 B/op	  134557 allocs/op
+BenchmarkScalarIntBoundsScaling/512-4         	      10	  20742377 ns/op	17978101 B/op	  134556 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/compiler	4.093s

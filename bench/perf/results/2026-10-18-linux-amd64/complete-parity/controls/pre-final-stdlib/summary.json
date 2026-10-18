@@ -1,0 +1,464 @@
+{
+  "string.append_builder": {
+    "ops": 100000,
+    "checksum": 100000,
+    "before": 3.0,
+    "after": 3.0,
+    "ratio": 1.0
+  },
+  "string.concat": {
+    "ops": 20000,
+    "checksum": 20000,
+    "before": 1831.0,
+    "after": 1822.5,
+    "ratio": 0.9953577280174768
+  },
+  "string.split": {
+    "ops": 200,
+    "checksum": 400000,
+    "before": 21964.0,
+    "after": 21994.5,
+    "ratio": 1.001388635949736
+  },
+  "string.replace_all": {
+    "ops": 200,
+    "checksum": 1944600,
+    "before": 48757.5,
+    "after": 48217.0,
+    "ratio": 0.9889145259703636
+  },
+  "string.contains": {
+    "ops": 2000,
+    "checksum": 2000,
+    "before": 4558.0,
+    "after": 4536.5,
+    "ratio": 0.9952830188679245
+  },
+  "string.upper": {
+    "ops": 200,
+    "checksum": 3144600,
+    "before": 44981.5,
+    "after": 50150.0,
+    "ratio": 1.114902793370608
+  },
+  "string.trim": {
+    "ops": 100000,
+    "checksum": 600000,
+    "before": 9.0,
+    "after": 9.0,
+    "ratio": 1.0
+  },
+  "string.index_char_at": {
+    "ops": 100000,
+    "checksum": 100000,
+    "before": 6.0,
+    "after": 7.0,
+    "ratio": 1.1666666666666667
+  },
+  "string.chars": {
+    "ops": 20,
+    "checksum": 314460,
+    "before": 126458.5,
+    "after": 125169.0,
+    "ratio": 0.9898029788428615
+  },
+  "string.parse_int": {
+    "ops": 100000,
+    "checksum": 1234500000,
+    "before": 19.0,
+    "after": 20.0,
+    "ratio": 1.0526315789473684
+  },
+  "string.interpolate": {
+    "ops": 100000,
+    "checksum": 2031636,
+    "before": 86.0,
+    "after": 87.0,
+    "ratio": 1.0116279069767442
+  },
+  "list.append": {
+    "ops": 200000,
+    "checksum": 200000,
+    "before": 41.0,
+    "after": 43.5,
+    "ratio": 1.0609756097560976
+  },
+  "list.at": {
+    "ops": 200000,
+    "checksum": 1000609836,
+    "before": 1.5,
+    "after": 2.0,
+    "ratio": 1.3333333333333333
+  },
+  "list.for_in": {
+    "ops": 100000,
+    "checksum": 500304918,
+    "before": 0.0,
+    "after": 0.0,
+    "ratio": null
+  },
+  "list.map": {
+    "ops": 100000,
+    "checksum": 100000,
+    "before": 4.0,
+    "after": 4.0,
+    "ratio": 1.0
+  },
+  "list.filter": {
+    "ops": 100000,
+    "checksum": 50004,
+    "before": 9.0,
+    "after": 8.5,
+    "ratio": 0.9444444444444444
+  },
+  "list.fold": {
+    "ops": 100000,
+    "checksum": 500304918,
+    "before": 2.0,
+    "after": 2.0,
+    "ratio": 1.0
+  },
+  "list.sorted": {
+    "ops": 100000,
+    "checksum": 100000,
+    "before": 111.0,
+    "after": 113.0,
+    "ratio": 1.018018018018018
+  },
+  "list.contains": {
+    "ops": 100,
+    "checksum": 0,
+    "before": 179173.5,
+    "after": 181377.5,
+    "ratio": 1.0123009261972333
+  },
+  "list.distinct": {
+    "ops": 100000,
+    "checksum": 10007,
+    "before": 19.5,
+    "after": 19.0,
+    "ratio": 0.9743589743589743
+  },
+  "list.concat_reverse": {
+    "ops": 100000,
+    "checksum": 200000,
+    "before": 16.0,
+    "after": 16.5,
+    "ratio": 1.03125
+  },
+  "list.records_map": {
+    "ops": 100000,
+    "checksum": 500404918,
+    "before": 28.5,
+    "after": 28.0,
+    "ratio": 0.9824561403508771
+  },
+  "map.int_put_get": {
+    "ops": 200000,
+    "checksum": 9999900000,
+    "before": 125.5,
+    "after": 39.0,
+    "ratio": 0.3107569721115538
+  },
+  "map.string_put_get": {
+    "ops": 100000,
+    "checksum": 50000,
+    "before": 59.0,
+    "after": 69.5,
+    "ratio": 1.1779661016949152
+  },
+  "map.iterate_entries": {
+    "ops": 100000,
+    "checksum": 4999950000,
+    "before": 229.5,
+    "after": 228.5,
+    "ratio": 0.9956427015250545
+  },
+  "set.add_contains": {
+    "ops": 200000,
+    "checksum": 100000,
+    "before": 78.0,
+    "after": 80.0,
+    "ratio": 1.0256410256410255
+  },
+  "json.parse": {
+    "ops": 5000,
+    "checksum": 1,
+    "before": 1276.5,
+    "after": 1283.0,
+    "ratio": 1.0050920485703094
+  },
+  "json.roundtrip": {
+    "ops": 5000,
+    "checksum": 356671,
+    "before": 2034.0,
+    "after": 2117.0,
+    "ratio": 1.0408062930186823
+  },
+  "csv.stringify": {
+    "ops": 5000,
+    "checksum": 157780,
+    "before": 259.5,
+    "after": 273.5,
+    "ratio": 1.0539499036608864
+  },
+  "csv.parse": {
+    "ops": 5000,
+    "checksum": 5000,
+    "before": 209.5,
+    "after": 165.5,
+    "ratio": 0.7899761336515513
+  },
+  "encoding.base64_encode": {
+    "ops": 157689,
+    "checksum": 210252,
+    "before": 1.5,
+    "after": 1.0,
+    "ratio": 0.6666666666666666
+  },
+  "encoding.base64_decode": {
+    "ops": 157689,
+    "checksum": 157689,
+    "before": 1.5,
+    "after": 1.0,
+    "ratio": 0.6666666666666666
+  },
+  "encoding.hex_encode": {
+    "ops": 157689,
+    "checksum": 315378,
+    "before": 2.5,
+    "after": 3.0,
+    "ratio": 1.2
+  },
+  "crypto.sha256": {
+    "ops": 157689,
+    "checksum": 32,
+    "before": 0.0,
+    "after": 0.5,
+    "ratio": null
+  },
+  "bytes.builder": {
+    "ops": 100000,
+    "checksum": 100000,
+    "before": 4.5,
+    "after": 6.0,
+    "ratio": 1.3333333333333333
+  },
+  "regex.find_all": {
+    "ops": 2000,
+    "checksum": 2000,
+    "before": 282.0,
+    "after": 311.0,
+    "ratio": 1.1028368794326242
+  },
+  "regex.matches": {
+    "ops": 10000,
+    "checksum": 10000,
+    "before": 90.5,
+    "after": 95.0,
+    "ratio": 1.0497237569060773
+  },
+  "regex.replace_all": {
+    "ops": 2000,
+    "checksum": 3999,
+    "before": 365.0,
+    "after": 304.5,
+    "ratio": 0.8342465753424657
+  },
+  "path.join_normalize": {
+    "ops": 50000,
+    "checksum": 500000,
+    "before": 538.5,
+    "after": 560.5,
+    "ratio": 1.0408542246982357
+  },
+  "path.basename": {
+    "ops": 100000,
+    "checksum": 800000,
+    "before": 12.0,
+    "after": 16.0,
+    "ratio": 1.3333333333333333
+  },
+  "url.parse": {
+    "ops": 20000,
+    "checksum": 20000,
+    "before": 370.0,
+    "after": 382.5,
+    "ratio": 1.0337837837837838
+  },
+  "url.encode_component": {
+    "ops": 50000,
+    "checksum": 1100000,
+    "before": 133.5,
+    "after": 134.0,
+    "ratio": 1.00374531835206
+  },
+  "math.sqrt_sin": {
+    "ops": 1000000,
+    "checksum": 2255684,
+    "before": 8.0,
+    "after": 8.0,
+    "ratio": 1.0
+  },
+  "yaml.parse": {
+    "ops": 2000,
+    "checksum": 1,
+    "before": 7580.5,
+    "after": 7430.5,
+    "ratio": 0.9802123870457093
+  },
+  "yaml.roundtrip": {
+    "ops": 2000,
+    "checksum": 139780,
+    "before": 10755.0,
+    "after": 10755.5,
+    "ratio": 1.000046490004649
+  },
+  "toml.parse": {
+    "ops": 2000,
+    "checksum": 1,
+    "before": 5701.0,
+    "after": 5448.0,
+    "ratio": 0.9556218207332047
+  },
+  "html.parse": {
+    "ops": 2000,
+    "checksum": 1,
+    "before": 1847.0,
+    "after": 1835.5,
+    "ratio": 0.9937736870600975
+  },
+  "html.escape_unescape": {
+    "ops": 2000,
+    "checksum": 23719,
+    "before": 151.0,
+    "after": 145.5,
+    "ratio": 0.9635761589403974
+  },
+  "bigint.factorial_1000": {
+    "ops": 1000,
+    "checksum": 2568,
+    "before": 287.0,
+    "after": 242.0,
+    "ratio": 0.8432055749128919
+  },
+  "decimal.add_round": {
+    "ops": 20000,
+    "checksum": 200010000,
+    "before": 1467.5,
+    "after": 1474.5,
+    "ratio": 1.0047700170357752
+  },
+  "compress.gzip": {
+    "ops": 880000,
+    "checksum": 2638,
+    "before": 2.0,
+    "after": 2.5,
+    "ratio": 1.25
+  },
+  "compress.roundtrip": {
+    "ops": 880000,
+    "checksum": 880000,
+    "before": 4.5,
+    "after": 5.0,
+    "ratio": 1.1111111111111112
+  },
+  "time.parse_timestamp": {
+    "ops": 20000,
+    "checksum": 80000,
+    "before": 312.5,
+    "after": 302.0,
+    "ratio": 0.9664
+  },
+  "queue.enqueue_dequeue": {
+    "ops": 200000,
+    "checksum": 4999950000,
+    "before": 10.0,
+    "after": 10.0,
+    "ratio": 1.0
+  },
+  "priority_queue.enqueue_dequeue": {
+    "ops": 100000,
+    "checksum": 250160470,
+    "before": 147.5,
+    "after": 135.0,
+    "ratio": 0.9152542372881356
+  },
+  "archive.zip_pack": {
+    "ops": 2000,
+    "checksum": 322692,
+    "before": 1403.0,
+    "after": 1386.0,
+    "ratio": 0.9878831076265147
+  },
+  "archive.tar_pack": {
+    "ops": 2000,
+    "checksum": 2049024,
+    "before": 4727.5,
+    "after": 5497.0,
+    "ratio": 1.1627710206240085
+  },
+  "archive.zip_unpack": {
+    "ops": 2000,
+    "checksum": 2000,
+    "before": 8691.5,
+    "after": 9040.5,
+    "ratio": 1.0401541736179025
+  },
+  "sse.feed": {
+    "ops": 2000,
+    "checksum": 2000,
+    "before": 1694.0,
+    "after": 1764.5,
+    "ratio": 1.0416174734356554
+  },
+  "time.timestamp_to_string": {
+    "ops": 20000,
+    "checksum": 480000,
+    "before": 103.5,
+    "after": 107.0,
+    "ratio": 1.0338164251207729
+  },
+  "random.uuid_v4": {
+    "ops": 20000,
+    "checksum": 720000,
+    "before": 429.0,
+    "after": 427.5,
+    "ratio": 0.9965034965034965
+  },
+  "fs.write_file_64k": {
+    "ops": 200,
+    "checksum": 200,
+    "before": 19001.5,
+    "after": 19038.5,
+    "ratio": 1.0019472146935768
+  },
+  "fs.read_file_64k": {
+    "ops": 200,
+    "checksum": 13107200,
+    "before": 40157.5,
+    "after": 43376.0,
+    "ratio": 1.080146921496607
+  },
+  "fs.stat": {
+    "ops": 200,
+    "checksum": 200,
+    "before": 5676.0,
+    "after": 4838.0,
+    "ratio": 0.8523608174770966
+  },
+  "fs.list_200": {
+    "ops": 1,
+    "checksum": 200,
+    "before": 68521.5,
+    "after": 68646.5,
+    "ratio": 1.0018242449450172
+  },
+  "log.info": {
+    "ops": 20000,
+    "checksum": 20000,
+    "before": 3759.0,
+    "after": 3806.0,
+    "ratio": 1.0125033253524873
+  }
+}

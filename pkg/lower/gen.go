@@ -25,6 +25,8 @@ type Options struct {
 	// Locals, when set, is told which Go local each source binding became in
 	// which function, so a debugger can map Go variables back to source.
 	Locals func(function, goName string, binding *checker.Binding)
+	// PreserveBindings keeps source locals and statement boundaries for Debug.
+	PreserveBindings bool
 	// DebugLiterals trades repeated literal construction cost for faster
 	// native compilation, as Debug builds do.
 	DebugLiterals bool
@@ -58,7 +60,14 @@ func newGen(program *checker.Program) *gen {
 	sh.dup = duplicateNames(program)
 	sh.declared = declaredNames(program)
 	sh.recursive = recursiveDeclarations(program)
-	return &gen{shared: sh, stack: []*node{{}}}
+	g := &gen{shared: sh, stack: []*node{{}}}
+	// Without local implementations concrete Int evidence cannot vary by
+	// callable/module. Resolve once instead of scanning methods per constructor.
+	if program != nil && !sh.localImpl {
+		sh.closedIntMap = g.explicit(intType, "hash", "@std/Hashable") == nil &&
+			g.explicit(intType, "equals", "@std/Equal") == nil
+	}
+	return g
 }
 
 // duplicateNames finds the source names several declarations share, which
@@ -136,16 +145,17 @@ func (g *gen) derivedOrClaim(name, key string, isDerived bool) string {
 // instances, types, and helpers, each created once under mu. A unit never
 // reads another unit's results while it runs.
 type shared struct {
-	options    Options
-	program    *checker.Program
-	err        error
-	inRuntime  bool                         // generating the runtime package itself: type variables stay variables
-	localImpl  bool                         // some module declares an extension implementation
-	localEq    bool                         // some module declares an extension Equal implementation
-	dup        map[string]bool              // source names more than one declaration uses
-	declared   map[string]bool              // Go names the source declarations themselves take
-	recursive  map[*syntax.Declaration]bool // functions on a call cycle
-	methodByID map[string]*checker.Method
+	options      Options
+	program      *checker.Program
+	err          error
+	inRuntime    bool                         // generating the runtime package itself: type variables stay variables
+	localImpl    bool                         // some module declares an extension implementation
+	localEq      bool                         // some module declares an extension Equal implementation
+	closedIntMap bool                         // program-wide evidence permits closed Int storage
+	dup          map[string]bool              // source names more than one declaration uses
+	declared     map[string]bool              // Go names the source declarations themselves take
+	recursive    map[*syntax.Declaration]bool // functions on a call cycle
+	methodByID   map[string]*checker.Method
 
 	mu      sync.Mutex
 	types   map[string]*typeDecl
@@ -252,6 +262,12 @@ type funcState struct {
 	// stepped marks `i + 1` and `i - 1` expressions that a loop guard proves
 	// cannot overflow.
 	stepped map[*syntax.Expression]bool
+	// safeInt contains function-local proofs of nonoverflowing Int +/-/* nodes.
+	safeInt          map[*syntax.Expression]bool
+	listLengths      map[*syntax.Expression]int64
+	counterChunks    map[*syntax.Statement]*counterChunk
+	recordUpdates    map[*syntax.Expression]*localRecordCall
+	localCollections *localCollectionProof
 	// literalStarts is conservative, body-local eligibility for counter polling.
 	literalStarts map[*checker.Binding]bool
 }

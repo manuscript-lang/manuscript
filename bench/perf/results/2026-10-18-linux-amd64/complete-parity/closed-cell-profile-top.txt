@@ -1,0 +1,131 @@
+File: lower.test
+Build ID: ab1780b06d1149a0bf32c3dcb4e941da1f2d526c
+Type: cpu
+Time: 2026-10-18 18:10:37 UTC
+Duration: 5.13s, Total samples = 7.16s (139.60%)
+Showing nodes accounting for 6.28s, 87.71% of 7.16s total
+Dropped 196 nodes (cum <= 0.04s)
+      flat  flat%   sum%        cum   cum%
+     1.17s 16.34% 16.34%      2.02s 28.21%  runtime.scanobject
+     0.46s  6.42% 22.77%      0.92s 12.85%  runtime.mapaccess1_fast64
+     0.27s  3.77% 26.54%      0.39s  5.45%  github.com/manuscript-lang/manuscript/pkg/lower.(*intProof).literal
+     0.26s  3.63% 30.17%      0.26s  3.63%  internal/runtime/maps.ctrlGroup.matchH2 (inline)
+     0.23s  3.21% 33.38%      1.59s 22.21%  github.com/manuscript-lang/manuscript/pkg/lower.(*intProof).hazardous
+     0.19s  2.65% 36.03%      0.19s  2.65%  internal/runtime/maps.h2 (inline)
+     0.19s  2.65% 38.69%      0.19s  2.65%  runtime.memclrNoHeapPointers
+     0.18s  2.51% 41.20%      1.35s 18.85%  runtime.mapassign_fast64ptr
+     0.16s  2.23% 43.44%      0.76s 10.61%  github.com/manuscript-lang/manuscript/pkg/syntax.Visitor.expression
+     0.16s  2.23% 45.67%      0.16s  2.23%  runtime.memhash64
+     0.15s  2.09% 47.77%      0.25s  3.49%  runtime.findObject
+     0.14s  1.96% 49.72%      0.14s  1.96%  runtime.(*mspan).heapBitsSmallForAddr
+     0.12s  1.68% 51.40%      0.47s  6.56%  github.com/manuscript-lang/manuscript/pkg/lower.(*gen).proveLocalCollections.func4
+     0.12s  1.68% 53.07%      0.12s  1.68%  internal/runtime/maps.(*groupReference).elem (inline)
+     0.12s  1.68% 54.75%      0.12s  1.68%  internal/runtime/maps.ctrlGroup.matchEmptyOrDeleted (inline)
+     0.11s  1.54% 56.28%      0.11s  1.54%  runtime.typePointers.nextFast (inline)
+     0.10s  1.40% 57.68%      0.32s  4.47%  github.com/manuscript-lang/manuscript/pkg/lower.(*gen).proveLocalCollections.func3
+     0.10s  1.40% 59.08%      0.53s  7.40%  internal/runtime/maps.(*table).uncheckedPutSlot
+     0.10s  1.40% 60.47%      2.13s 29.75%  runtime.gcDrain
+     0.10s  1.40% 61.87%      0.30s  4.19%  runtime.greyobject
+     0.10s  1.40% 63.27%      0.10s  1.40%  runtime.memmove
+     0.09s  1.26% 64.53%      0.19s  2.65%  github.com/manuscript-lang/manuscript/pkg/lower.(*gen).info
+     0.09s  1.26% 65.78%      0.09s  1.26%  github.com/manuscript-lang/manuscript/pkg/lower.(*gen).proveLocalCollections.func1
+     0.09s  1.26% 67.04%      0.09s  1.26%  runtime.spanOf (inline)
+     0.08s  1.12% 68.16%      1.13s 15.78%  github.com/manuscript-lang/manuscript/pkg/syntax.Visitor.statements
+     0.08s  1.12% 69.27%      0.09s  1.26%  runtime.(*gcBits).bitp (inline)
+     0.08s  1.12% 70.39%      0.08s  1.12%  runtime.(*mspan).base (inline)
+     0.07s  0.98% 71.37%      0.18s  2.51%  runtime.typedmemmove
+     0.06s  0.84% 72.21%      0.06s  0.84%  github.com/manuscript-lang/manuscript/pkg/checker.exprFactsOf (inline)
+     0.06s  0.84% 73.04%      1.37s 19.13%  github.com/manuscript-lang/manuscript/pkg/lower.(*intProof).boundedBody
+     0.05s   0.7% 73.74%      0.10s  1.40%  github.com/manuscript-lang/manuscript/pkg/checker.(*Program).Info (inline)
+     0.05s   0.7% 74.44%      0.10s  1.40%  github.com/manuscript-lang/manuscript/pkg/lower.(*intProof).set
+     0.05s   0.7% 75.14%      0.06s  0.84%  internal/runtime/maps.(*Iter).Next
+     0.05s   0.7% 75.84%      0.05s   0.7%  internal/runtime/maps.(*groupsReference).group (inline)
+     0.05s   0.7% 76.54%      0.05s   0.7%  runtime.futex
+     0.05s   0.7% 77.23%      0.05s   0.7%  runtime.nextFreeFast (inline)
+     0.04s  0.56% 77.79%      0.15s  2.09%  github.com/manuscript-lang/manuscript/pkg/lower.(*gen).localRecordMethod
+     0.04s  0.56% 78.35%      1.33s 18.58%  github.com/manuscript-lang/manuscript/pkg/lower.(*gen).proveLocalCollections
+     0.04s  0.56% 78.91%      0.22s  3.07%  internal/runtime/maps.typedmemmove
+     0.04s  0.56% 79.47%      0.10s  1.40%  runtime.mallocgcSmallNoscan
+     0.04s  0.56% 80.03%      0.07s  0.98%  runtime.mapaccess2_fast64
+     0.04s  0.56% 80.59%      0.05s   0.7%  runtime.typePointers.next
+     0.03s  0.42% 81.01%      3.42s 47.77%  github.com/manuscript-lang/manuscript/pkg/lower.(*intProof).body
+     0.03s  0.42% 81.42%      0.09s  1.26%  github.com/manuscript-lang/manuscript/pkg/lower.(*intProof).listCall (inline)
+     0.03s  0.42% 81.84%      2.27s 31.70%  github.com/manuscript-lang/manuscript/pkg/lower.(*intProof).loop
+     0.03s  0.42% 82.26%      0.55s  7.68%  internal/runtime/maps.(*table).split
+     0.03s  0.42% 82.68%      0.17s  2.37%  runtime.(*mspan).typePointersOfUnchecked
+     0.03s  0.42% 83.10%      0.54s  7.54%  runtime.mallocgc
+     0.03s  0.42% 83.52%      0.05s   0.7%  strconv.ParseInt
+     0.02s  0.28% 83.80%      1.13s 15.78%  github.com/manuscript-lang/manuscript/pkg/lower.(*intProof).expression
+     0.02s  0.28% 84.08%      0.10s  1.40%  github.com/manuscript-lang/manuscript/pkg/lower.(*intProof).restore (inline)
+     0.02s  0.28% 84.36%      0.04s  0.56%  github.com/manuscript-lang/manuscript/pkg/lower.isStd (inline)
+     0.02s  0.28% 84.64%      1.13s 15.78%  github.com/manuscript-lang/manuscript/pkg/syntax.Visitor.Callable
+     0.02s  0.28% 84.92%      0.29s  4.05%  internal/runtime/maps.(*table).grow
+     0.02s  0.28% 85.20%      0.12s  1.68%  math/big.(*Int).Add
+     0.02s  0.28% 85.47%      0.04s  0.56%  runtime.bulkBarrierPreWrite
+     0.02s  0.28% 85.75%      0.04s  0.56%  runtime.mallocgcTiny
+     0.01s  0.14% 85.89%      0.05s   0.7%  github.com/manuscript-lang/manuscript/pkg/checker.Fields
+     0.01s  0.14% 86.03%      0.10s  1.40%  github.com/manuscript-lang/manuscript/pkg/checker.TypeKey
+     0.01s  0.14% 86.17%      0.14s  1.96%  github.com/manuscript-lang/manuscript/pkg/lower.(*intProof).listOperation
+     0.01s  0.14% 86.31%      0.10s  1.40%  github.com/manuscript-lang/manuscript/pkg/lower.(*intProof).recordField (inline)
+     0.01s  0.14% 86.45%      0.23s  3.21%  github.com/manuscript-lang/manuscript/pkg/lower.(*intProof).setCell
+     0.01s  0.14% 86.59%      0.10s  1.40%  github.com/manuscript-lang/manuscript/pkg/lower.addIntBounds
+     0.01s  0.14% 86.73%      0.20s  2.79%  internal/runtime/maps.newTable
+     0.01s  0.14% 86.87%      0.04s  0.56%  math/big.(*Int).mul
+     0.01s  0.14% 87.01%      0.04s  0.56%  runtime.(*mcache).nextFree
+     0.01s  0.14% 87.15%      0.21s  2.93%  runtime.growslice
+     0.01s  0.14% 87.29%      0.12s  1.68%  runtime.makeslice
+     0.01s  0.14% 87.43%      0.12s  1.68%  runtime.mallocgcSmallScanNoHeader
+     0.01s  0.14% 87.57%      0.04s  0.56%  runtime.schedule
+     0.01s  0.14% 87.71%      0.05s   0.7%  runtime.wbBufFlush1
+         0     0% 87.71%      0.06s  0.84%  github.com/manuscript-lang/manuscript/pkg/checker.infoOf (inline)
+         0     0% 87.71%      0.04s  0.56%  github.com/manuscript-lang/manuscript/pkg/checker.parseStandardSources.func1
+         0     0% 87.71%      0.09s  1.26%  github.com/manuscript-lang/manuscript/pkg/checker.typeKey (inline)
+         0     0% 87.71%      0.09s  1.26%  github.com/manuscript-lang/manuscript/pkg/checker.writeTypeKey
+         0     0% 87.71%      0.05s   0.7%  github.com/manuscript-lang/manuscript/pkg/lexer.(*scanner).emit (inline)
+         0     0% 87.71%      0.05s   0.7%  github.com/manuscript-lang/manuscript/pkg/lexer.Lex
+         0     0% 87.71%      3.42s 47.77%  github.com/manuscript-lang/manuscript/pkg/lower.(*gen).proveIntArithmetic
+         0     0% 87.71%      0.06s  0.84%  github.com/manuscript-lang/manuscript/pkg/lower.(*intProof).literalList
+         0     0% 87.71%      0.81s 11.31%  github.com/manuscript-lang/manuscript/pkg/lower.(*intProof).loopWrites
+         0     0% 87.71%      0.11s  1.54%  github.com/manuscript-lang/manuscript/pkg/lower.(*intProof).recordCall (inline)
+         0     0% 87.71%      0.20s  2.79%  github.com/manuscript-lang/manuscript/pkg/lower.(*intProof).recordOperation
+         0     0% 87.71%      0.06s  0.84%  github.com/manuscript-lang/manuscript/pkg/lower.(*intProof).setList (inline)
+         0     0% 87.71%      0.05s   0.7%  github.com/manuscript-lang/manuscript/pkg/lower.BenchmarkClosedCellProofScaling
+         0     0% 87.71%      4.75s 66.34%  github.com/manuscript-lang/manuscript/pkg/lower.BenchmarkClosedCellProofScaling.func1
+         0     0% 87.71%      0.05s   0.7%  github.com/manuscript-lang/manuscript/pkg/lower.checkedLoweringProgram
+         0     0% 87.71%      0.06s  0.84%  github.com/manuscript-lang/manuscript/pkg/parser.Parse
+         0     0% 87.71%      0.84s 11.73%  internal/runtime/maps.(*table).rehash
+         0     0% 87.71%      0.18s  2.51%  internal/runtime/maps.(*table).reset
+         0     0% 87.71%      0.18s  2.51%  internal/runtime/maps.newGroups (inline)
+         0     0% 87.71%      0.18s  2.51%  internal/runtime/maps.newarray
+         0     0% 87.71%      0.04s  0.56%  math/big.(*Int).Mul (inline)
+         0     0% 87.71%      0.10s  1.40%  math/big.nat.add
+         0     0% 87.71%      0.11s  1.54%  math/big.nat.make (inline)
+         0     0% 87.71%      0.06s  0.84%  math/big.nat.set (inline)
+         0     0% 87.71%      0.09s  1.26%  runtime.(*mspan).markBitsForIndex (inline)
+         0     0% 87.71%      0.04s  0.56%  runtime.bgsweep
+         0     0% 87.71%      0.05s   0.7%  runtime.deductAssistCredit
+         0     0% 87.71%      0.05s   0.7%  runtime.forEachP (inline)
+         0     0% 87.71%      0.05s   0.7%  runtime.forEachPInternal
+         0     0% 87.71%      0.05s   0.7%  runtime.gcAssistAlloc
+         0     0% 87.71%      0.05s   0.7%  runtime.gcAssistAlloc.func2
+         0     0% 87.71%      0.05s   0.7%  runtime.gcAssistAlloc1
+         0     0% 87.71%      2.20s 30.73%  runtime.gcBgMarkWorker
+         0     0% 87.71%      2.13s 29.75%  runtime.gcBgMarkWorker.func2
+         0     0% 87.71%      0.70s  9.78%  runtime.gcDrainMarkWorkerDedicated (inline)
+         0     0% 87.71%      1.43s 19.97%  runtime.gcDrainMarkWorkerIdle (inline)
+         0     0% 87.71%      0.05s   0.7%  runtime.gcDrainN
+         0     0% 87.71%      0.07s  0.98%  runtime.gcMarkDone
+         0     0% 87.71%      0.05s   0.7%  runtime.gcMarkDone.forEachP.func5
+         0     0% 87.71%      0.18s  2.51%  runtime.mallocgcSmallScanHeader
+         0     0% 87.71%      0.05s   0.7%  runtime.mapIterStart
+         0     0% 87.71%      0.04s  0.56%  runtime.mcall
+         0     0% 87.71%      0.18s  2.51%  runtime.newarray
+         0     0% 87.71%      0.10s  1.40%  runtime.newobject
+         0     0% 87.71%      0.04s  0.56%  runtime.sweepone
+         0     0% 87.71%      2.33s 32.54%  runtime.systemstack
+         0     0% 87.71%      0.05s   0.7%  runtime.wbBufFlush
+         0     0% 87.71%      0.05s   0.7%  runtime.wbBufFlush.func1
+         0     0% 87.71%      0.09s  1.26%  strings.(*Builder).WriteString (inline)
+         0     0% 87.71%      4.74s 66.20%  testing.(*B).launch
+         0     0% 87.71%      0.06s  0.84%  testing.(*B).run1.func1
+         0     0% 87.71%      4.80s 67.04%  testing.(*B).runN

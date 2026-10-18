@@ -33,3 +33,23 @@ Verified: editor and CLI changes (lexical token reuse, shared analysis, rename i
 Apply when: optimizing LSP, formatter, or checker passes.
 Evidence: [tooling benchmarks](../bench/tooling/README.md), [list storage measurements](../bench/lists/typed-storage.md), commit 12ef3b75.
 Verify: rerun the harness against the previous revision and compare medians.
+
+
+### Consume library checksums and separate allocation phase from local cost
+
+Verified: a returned checksum that the harness discards is not evidence that the
+work stayed observable. Print each checksum after stopping the clock and reject
+missing, duplicate, changed counts/checksums on every trial. The corrected
+`compare_stdlib.py` validates all 66 cases. Changing an earlier allocating workload
+can move later collection pauses: line payload elision also closed most of the
+following map row's gap. Full-suite apparent string/regex/archive regressions did
+not reproduce when the same cases ran repeatedly in separate focused processes.
+Keep both results and state that distinction; do not silently replace the full run.
+
+Apply when: retaining a benchmark win or diagnosing a nominal unrelated slowdown.
+Evidence: [stdlib validator](../bench/perf/compare_stdlib.py),
+[program measurements](../bench/perf/programs/results.md).
+Verify balanced process order, identical tool flags/inputs, no simultaneous CPU
+work, raw samples plus source/binary hashes, and focused controls for regressions.
+Identical native instructions can also vary when relocated across loop-alignment
+boundaries; preserve assembly and reject arbitrary padding or lucky-placement tuning.

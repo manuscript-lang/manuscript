@@ -458,12 +458,8 @@ func (g *gen) binaryExpr(e *syntax.Expression, info *checker.Info) ast.Expr {
 		if op, ok := comparisons[e.Text]; ok {
 			return binary(a, op, b)
 		}
-		if g.fn.stepped[e] {
-			op := token.ADD
-			if e.Text == "-" {
-				op = token.SUB
-			}
-			return binary(a, op, b)
+		if g.fn.stepped[e] || g.fn.safeInt[e] {
+			return binary(a, arithmeticOps[e.Text], b)
 		}
 		if uncheckedIntArithmetic(e.Text, a, b) {
 			op := token.REM
@@ -554,7 +550,8 @@ func (g *gen) lambda(e *syntax.Expression, info *checker.Info) ast.Expr {
 	saved := g.fn
 	defer func() { g.fn = saved }()
 	result := g.sub(info.Type.Result)
-	g.fn = &funcState{decl: saved.decl, result: result, lambda: true}
+	g.fn = &funcState{decl: saved.decl, result: result, lambda: true, localCollections: saved.localCollections}
+	g.proveIntArithmetic(e.Body)
 	var snapshots []ast.Stmt
 	restore := map[*checker.Binding]*string{}
 	for _, b := range sortedBindings(info.Captures) {

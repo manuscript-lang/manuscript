@@ -13,9 +13,11 @@ export fn say(text: String) Unit:
 # Runs `body` once and prints `name<TAB>ops<TAB>ns_per_op`; `body` returns a checksum that keeps its work observable.
 export fn bench(name: String, ops: Int, body: fn() Int) Unit:
     let started = clock().now()
-    body()
+    let checksum = body()
     let elapsed = clock().now().difference(started).to_nanoseconds()
     say("{name}\t{ops}\t{elapsed / ops}\n")
+    say("# checksum {name} {checksum}\n")
+    say("# elapsed {name} {elapsed}\n")
 
 export fn ints(count: Int) List[Int]:
     let out: List[Int] = []

@@ -24,7 +24,7 @@ def main():
         for version in orders[iteration % len(orders)]:
             with args.input.open("rb") as data:
                 results[version] = subprocess.run(
-                    [programs[version]], stdin=data, capture_output=True, text=True, check=True
+                    [programs[version]], stdin=data, capture_output=True, text=True, check=True, timeout=120
                 ).stdout
         for revision, lines in raw.items():
             for version, content in (("go", results["go"]), ("ms", results[revision])):
