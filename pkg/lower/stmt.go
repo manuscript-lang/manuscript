@@ -12,9 +12,14 @@ import (
 // matches, tries, and spilled operands) come first, and the first emitted
 // statement carries the source position.
 func (g *gen) body(stmts []*syntax.Statement, result *checker.Type) []ast.Stmt {
+	fn := g.fn
+	saved := fn.literalStarts
+	fn.literalStarts = nil
+	defer func() { fn.literalStarts = saved }()
 	var out []ast.Stmt
 	for _, s := range stmts {
 		lowered := g.statement(s)
+		g.recordLiteralStart(s)
 		if len(lowered) == 0 {
 			continue
 		}
@@ -22,6 +27,30 @@ func (g *gen) body(stmts []*syntax.Statement, result *checker.Type) []ast.Stmt {
 		out = append(out, lowered...)
 	}
 	return out
+}
+
+// Keep only straight-line literal writes. Any other statement may contain a
+// nested assignment (including in a match expression), so discard all facts.
+// Each body owns its facts; no scans or facts from enclosing branches are needed.
+func (g *gen) recordLiteralStart(s *syntax.Statement) {
+	var binding *checker.Binding
+	if s.Kind == syntax.KindBind && s.Pattern.Kind == syntax.KindName {
+		binding = g.program.PatternBinding(s.Pattern)
+	} else if s.Kind == syntax.KindAssign && s.Target == nil {
+		binding = g.program.AssignedBinding(s.Value)
+	}
+	value := s.Value
+	if value != nil && value.Kind == syntax.KindUnary && value.Text == "-" {
+		value = value.Right
+	}
+	if binding != nil && binding.Type.ID == "Int" && value != nil && value.Kind == syntax.KindNumber {
+		if g.fn.literalStarts == nil {
+			g.fn.literalStarts = map[*checker.Binding]bool{}
+		}
+		g.fn.literalStarts[binding] = true
+		return
+	}
+	g.fn.literalStarts = nil
 }
 
 // statement lowers one statement, flushing the pre-statements its expressions
@@ -261,6 +290,24 @@ func (g *gen) loopStatements(s *syntax.Statement) []ast.Stmt {
 		pre := g.fn.pre
 		g.fn.pre = saved
 		g.markCounterStep(s)
+		if len(pre) == 0 {
+			if counter, descending := g.pollCounter(s); counter != nil {
+				initial := g.temp()
+				value := ident(g.bindingName(counter))
+				declare = define(initial, value)
+				distance := binary(value, token.SUB, ident(initial))
+				if descending {
+					distance = binary(ident(initial), token.SUB, value)
+				}
+				// The same 64th-iteration phase, expressed as a zero test so
+				// Go can use an add and bit test instead of a masked compare.
+				distance = binary(distance, token.ADD, intLiteral(1))
+				poll = &ast.IfStmt{
+					Cond: binary(binary(distance, token.AND, intLiteral(63)), token.EQL, intLiteral(0)),
+					Body: block(evaluated(rtCall("CheckCancelled", ident("ctx")))),
+				}
+			}
+		}
 		body := g.body(s.Body, nil)
 		if len(pre) == 0 {
 			return []ast.Stmt{declare, &ast.ForStmt{Cond: cond, Body: block(append([]ast.Stmt{poll}, body...)...)}}
@@ -290,6 +337,42 @@ func (g *gen) loopStatements(s *syntax.Statement) []ast.Stmt {
 	body := g.body(s.Body, nil)
 	body = append([]ast.Stmt{poll}, body...)
 	return append([]ast.Stmt{declare}, g.rangeLoop(s, binding, iterable, body)...)
+}
+
+// pollCounter recognizes a counter that advances exactly once per completed
+// iteration. Unlike the overflow proof, it must reject every other write and
+// every continue: either could leave the poll phase unrelated to iterations.
+func (g *gen) pollCounter(s *syntax.Statement) (*checker.Binding, bool) {
+	cond := s.Value
+	if cond.Kind != syntax.KindBinary || cond.Left.Kind != syntax.KindName ||
+		(cond.Text != "<" && cond.Text != ">") || cond.Right.Kind != syntax.KindNumber {
+		return nil, false
+	}
+	counter := g.info(cond.Left).Binding
+	if counter == nil || counter.Type.ID != "Int" || !g.fn.literalStarts[counter] {
+		return nil, false
+	}
+	var step *syntax.Statement
+	for _, stmt := range s.Body {
+		if stmt.Kind == syntax.KindAssign && stmt.Target == nil && g.fn.stepped[stmt.Value] &&
+			g.program.AssignedBinding(stmt.Value) == counter {
+			step = stmt
+		}
+	}
+	if step == nil {
+		return nil, false
+	}
+	valid := true
+	syntax.Visitor{Statement: func(stmt *syntax.Statement) {
+		if stmt.Kind == syntax.KindContinue || stmt.Kind == syntax.KindAssign && stmt.Target == nil &&
+			g.program.AssignedBinding(stmt.Value) == counter && stmt != step {
+			valid = false
+		}
+	}}.Callable(nil, s.Body)
+	if !valid {
+		return nil, false
+	}
+	return counter, cond.Text == ">"
 }
 
 // countingRange recognizes `range(start, end)` from @std/collections.ms as the

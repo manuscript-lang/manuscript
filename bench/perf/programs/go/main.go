@@ -23,10 +23,8 @@ func (Circle) isShape() {}
 func (Square) isShape() {}
 func (Tri) isShape()    {}
 
-//go:noinline
 func ident[T any](x T) T { return x }
 
-//go:noinline
 func checked(n int) (int, error) {
 	if n < 0 {
 		return 0, errors.New("negative")
@@ -34,7 +32,6 @@ func checked(n int) (int, error) {
 	return n + 1, nil
 }
 
-//go:noinline
 func chain(n int) (int, error) {
 	v, err := checked(n)
 	if err != nil {
@@ -43,7 +40,6 @@ func chain(n int) (int, error) {
 	return v, nil
 }
 
-//go:noinline
 func area(s Shape) int {
 	out := 0
 	switch v := s.(type) {
@@ -61,9 +57,7 @@ func report(name string, ops int, start time.Time) {
 	fmt.Printf("%s %d %d\n", name, ops, time.Since(start).Nanoseconds())
 }
 
-var sink int
-
-func main() {
+func benchString() int {
 	t := time.Now()
 	var sb strings.Builder
 	for i := 0; i < 50000; i++ {
@@ -71,8 +65,11 @@ func main() {
 	}
 	built := sb.String()
 	report("string_append_50k", 50000, t)
+	return len(built)
+}
 
-	t = time.Now()
+func benchReadLine() {
+	t := time.Now()
 	lines := 0
 	r := bufio.NewReader(os.Stdin)
 	for {
@@ -83,8 +80,10 @@ func main() {
 		lines++
 	}
 	report("read_line", lines, t)
+}
 
-	t = time.Now()
+func benchMap() int {
+	t := time.Now()
 	m := map[int]int{}
 	for i := 0; i < 8000; i++ {
 		m[i] = i * 2
@@ -94,8 +93,11 @@ func main() {
 		sum += m[i]
 	}
 	report("map_put_get_8k", 16000, t)
+	return sum
+}
 
-	t = time.Now()
+func benchIntEq() int {
+	t := time.Now()
 	hits := 0
 	for i := 0; i < 10000000; i++ {
 		if i%3 == 0 {
@@ -103,23 +105,32 @@ func main() {
 		}
 	}
 	report("int_eq", 10000000, t)
+	return hits
+}
 
-	t = time.Now()
+func benchGeneric() int {
+	t := time.Now()
 	g := 0
 	for i := 0; i < 1000000; i++ {
 		g += ident[int](i)
 	}
 	report("generic_call", 1000000, t)
+	return g
+}
 
-	t = time.Now()
+func benchMethod() int {
+	t := time.Now()
 	acc := &Acc{}
 	var c Counter = acc
 	for i := 0; i < 1000000; i++ {
 		c.Bump(1)
 	}
 	report("method_call", 1000000, t)
+	return acc.total
+}
 
-	t = time.Now()
+func benchTry() int {
+	t := time.Now()
 	tr := 0
 	for i := 0; i < 1000000; i++ {
 		if v, err := chain(i); err == nil {
@@ -129,36 +140,58 @@ func main() {
 		}
 	}
 	report("try", 1000000, t)
+	return tr
+}
 
-	t = time.Now()
+func benchMatch() int {
+	t := time.Now()
 	shapes := []Shape{Circle{2}, Square{3}, Tri{4}}
 	ma := 0
 	for i := 0; i < 1000000; i++ {
 		ma += area(shapes[i%3])
 	}
 	report("match", 1000000, t)
+	return ma
+}
 
+func benchLength() int {
 	xs := make([]int, 0)
 	for i := 0; i < 100; i++ {
 		xs = append(xs, i)
 	}
-	t = time.Now()
+	t := time.Now()
 	ln := 0
 	for i := 0; i < 1000000; i++ {
 		ln += len(xs)
 	}
 	report("builtin_length", 1000000, t)
+	return ln
+}
 
+func benchForList() int {
 	big := make([]int, 0)
 	for i := 0; i < 1000000; i++ {
 		big = append(big, i)
 	}
-	t = time.Now()
+	t := time.Now()
 	fs := 0
 	for _, x := range big {
 		fs += x
 	}
 	report("for_list", 1000000, t)
+	return fs
+}
 
-	fmt.Printf("# sink %d %d %d %d %d %d %d %d %d\n", len(built), sum, hits, g, acc.total, tr, ma, ln, fs)
+func main() {
+	built := benchString()
+	benchReadLine()
+	sum := benchMap()
+	hits := benchIntEq()
+	g := benchGeneric()
+	total := benchMethod()
+	tr := benchTry()
+	ma := benchMatch()
+	ln := benchLength()
+	fs := benchForList()
+	fmt.Printf("# sink %d %d %d %d %d %d %d %d %d\n", built, sum, hits, g, total, tr, ma, ln, fs)
 }

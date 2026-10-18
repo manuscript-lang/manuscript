@@ -1,0 +1,266 @@
+{
+  "string.append_builder": {
+    "before": 5.5,
+    "after": 3.0
+  },
+  "string.concat": {
+    "before": 1744.0,
+    "after": 1789.5
+  },
+  "string.split": {
+    "before": 21380.5,
+    "after": 20826.0
+  },
+  "string.replace_all": {
+    "before": 47481.0,
+    "after": 48974.0
+  },
+  "string.contains": {
+    "before": 4482.0,
+    "after": 4542.0
+  },
+  "string.upper": {
+    "before": 51340.5,
+    "after": 45289.0
+  },
+  "string.trim": {
+    "before": 9.0,
+    "after": 9.0
+  },
+  "string.index_char_at": {
+    "before": 7.0,
+    "after": 6.0
+  },
+  "string.chars": {
+    "before": 112908.5,
+    "after": 122004.0
+  },
+  "string.parse_int": {
+    "before": 20.0,
+    "after": 19.0
+  },
+  "string.interpolate": {
+    "before": 86.0,
+    "after": 87.0
+  },
+  "list.append": {
+    "before": 49.0,
+    "after": 46.0
+  },
+  "list.at": {
+    "before": 2.0,
+    "after": 1.0
+  },
+  "list.for_in": {
+    "before": 0.0,
+    "after": 0.0
+  },
+  "list.map": {
+    "before": 5.0,
+    "after": 4.5
+  },
+  "list.filter": {
+    "before": 10.0,
+    "after": 8.0
+  },
+  "list.fold": {
+    "before": 3.0,
+    "after": 2.0
+  },
+  "list.sorted": {
+    "before": 109.5,
+    "after": 110.0
+  },
+  "list.contains": {
+    "before": 283197.5,
+    "after": 180554.5
+  },
+  "list.distinct": {
+    "before": 21.0,
+    "after": 19.0
+  },
+  "list.concat_reverse": {
+    "before": 18.0,
+    "after": 18.0
+  },
+  "list.records_map": {
+    "before": 29.0,
+    "after": 27.0
+  },
+  "map.int_put_get": {
+    "before": 112.0,
+    "after": 122.0
+  },
+  "map.string_put_get": {
+    "before": 58.0,
+    "after": 58.5
+  },
+  "map.iterate_entries": {
+    "before": 246.5,
+    "after": 230.0
+  },
+  "set.add_contains": {
+    "before": 82.0,
+    "after": 85.5
+  },
+  "json.parse": {
+    "before": 1263.5,
+    "after": 1237.5
+  },
+  "json.roundtrip": {
+    "before": 2117.5,
+    "after": 2003.5
+  },
+  "csv.stringify": {
+    "before": 279.0,
+    "after": 271.0
+  },
+  "csv.parse": {
+    "before": 209.0,
+    "after": 199.0
+  },
+  "encoding.base64_encode": {
+    "before": 1.5,
+    "after": 1.0
+  },
+  "encoding.base64_decode": {
+    "before": 1.0,
+    "after": 1.0
+  },
+  "encoding.hex_encode": {
+    "before": 2.0,
+    "after": 2.5
+  },
+  "crypto.sha256": {
+    "before": 0.0,
+    "after": 0.0
+  },
+  "bytes.builder": {
+    "before": 5.5,
+    "after": 5.0
+  },
+  "regex.find_all": {
+    "before": 289.5,
+    "after": 293.0
+  },
+  "regex.matches": {
+    "before": 94.5,
+    "after": 92.0
+  },
+  "regex.replace_all": {
+    "before": 316.0,
+    "after": 322.5
+  },
+  "path.join_normalize": {
+    "before": 542.0,
+    "after": 548.5
+  },
+  "path.basename": {
+    "before": 16.0,
+    "after": 12.0
+  },
+  "url.parse": {
+    "before": 370.5,
+    "after": 368.5
+  },
+  "url.encode_component": {
+    "before": 134.5,
+    "after": 132.0
+  },
+  "math.sqrt_sin": {
+    "before": 8.0,
+    "after": 7.0
+  },
+  "yaml.parse": {
+    "before": 7702.0,
+    "after": 7696.0
+  },
+  "yaml.roundtrip": {
+    "before": 11166.0,
+    "after": 11009.5
+  },
+  "toml.parse": {
+    "before": 5889.0,
+    "after": 5582.0
+  },
+  "html.parse": {
+    "before": 1731.0,
+    "after": 1875.0
+  },
+  "html.escape_unescape": {
+    "before": 206.0,
+    "after": 200.5
+  },
+  "bigint.factorial_1000": {
+    "before": 267.0,
+    "after": 234.0
+  },
+  "decimal.add_round": {
+    "before": 1475.5,
+    "after": 1446.5
+  },
+  "compress.gzip": {
+    "before": 2.0,
+    "after": 2.0
+  },
+  "compress.roundtrip": {
+    "before": 5.5,
+    "after": 4.0
+  },
+  "time.parse_timestamp": {
+    "before": 302.0,
+    "after": 310.0
+  },
+  "queue.enqueue_dequeue": {
+    "before": 11.0,
+    "after": 9.5
+  },
+  "priority_queue.enqueue_dequeue": {
+    "before": 147.0,
+    "after": 140.0
+  },
+  "archive.zip_pack": {
+    "before": 1378.5,
+    "after": 1409.0
+  },
+  "archive.tar_pack": {
+    "before": 5492.5,
+    "after": 4663.0
+  },
+  "archive.zip_unpack": {
+    "before": 8999.0,
+    "after": 8410.0
+  },
+  "sse.feed": {
+    "before": 1666.0,
+    "after": 1693.5
+  },
+  "time.timestamp_to_string": {
+    "before": 100.0,
+    "after": 95.0
+  },
+  "random.uuid_v4": {
+    "before": 431.0,
+    "after": 438.0
+  },
+  "fs.write_file_64k": {
+    "before": 21002.5,
+    "after": 20472.0
+  },
+  "fs.read_file_64k": {
+    "before": 42939.5,
+    "after": 44587.5
+  },
+  "fs.stat": {
+    "before": 5669.5,
+    "after": 6510.5
+  },
+  "fs.list_200": {
+    "before": 70614.0,
+    "after": 73753.5
+  },
+  "log.info": {
+    "before": 3778.0,
+    "after": 3697.0
+  }
+}

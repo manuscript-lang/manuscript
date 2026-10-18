@@ -15,6 +15,42 @@ Verify: run `BenchmarkStringSplitLimited` with `-benchmem`; both local-use
 controls allocate one 48-byte backing slice on linux/amd64. Confirm caller inlining with
 `-gcflags=-m=2` when changing the wrapper or benchmark.
 
+Verified: keep cold fault capture out of line. Inlining `Raise` made
+`Optional_Get`/`Result_Get` exceed Go 1.25.1's budget (93/94 versus 80);
+outlining it lowers their costs to 75/76. The older List.at/Optional.get chain
+then inlined; current List.get has its own index/default contract and cost.
+StringBuilder's pointer-only, sealed lifetime also
+permits direct byte storage and immutable zero-copy freeze, removing the
+redundant strings.Builder value-copy guard. Supported Go callers must not copy
+the implementation value after use. Evidence: [fault helper](../pkg/runtime/fault.go),
+[builder invariants](../pkg/runtime/string.go), [alias/GC/cancellation tests](../pkg/runtime/string_builder_test.go),
+and [retained allocation/runtime comparison](../bench/perf/programs/results.md).
+Verify native fault locations as well as allocation counts; registered source
+frames must remain intact when cold helpers stop inlining.
+
+Verified: after the indexing API change, List_Get costs 99 inline points.
+Keeping the nonnegative in-range path in the public wrapper lowers it to 80,
+with unchanged normalization/default/fault handling in a private slow helper.
+Ordinary caller benchmarks measure roughly 2.18 -> 0.64 ns with zero allocations.
+Variable negative indices pay about 0.3 ns for the guard; report that tradeoff
+and measure the fallback paths as well. Test original-index diagnostics at
+MinInt/MaxInt, empty lists, and reference/default identity.
+Evidence: [list reads](../pkg/runtime/list.go),
+[boundary tests](../pkg/runtime/list_get_test.go), and
+[path benchmarks](../pkg/runtime/list_get_bench_test.go).
+
+Verified: a private out-of-line cancellation call only inside Poll/PollIndex
+reduces their Go 1.25.1 inline costs from 91/86 to 71/66. Native traversal
+call sites then inline their counters and predicates. Keep direct CheckCancelled
+calls unchanged: globally outlining it regressed generated-loop workloads.
+Poll still queries exactly every 64th iteration, including uint32 wrap; nil
+Execution, cancellation identity and shielded cleanup keep their behavior.
+Evidence: [polling boundary](../pkg/runtime/exec.go),
+[phase/query/wrap tests](../pkg/runtime/exec_poll_test.go), and
+[isolated and whole-change measurements](../bench/perf/programs/results.md).
+Verify actual call-site inlining and balanced full-workload results on Go upgrades;
+a lower inline cost alone does not establish a performance improvement.
+
 Verified: keeping List construction in small exported String wrappers also removes
 the temporary heap List for local `chars`, `lines`, and `scalar_values` callers.
 The traversal remains in private slice-returning helpers, preserving its order,

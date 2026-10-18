@@ -1,5 +1,5 @@
 import {TextError} from "@std/errors.ms"
-import {stdout, stdin, read_line} from "@std/io.ms"
+import {stdout, stdin, read_line, ReadStream} from "@std/io.ms"
 import {clock, Instant} from "@std/time.ms"
 import {StringBuilder} from "@std/string.ms"
 
@@ -19,8 +19,8 @@ type Shape:
     case Square(s: Int)
     case Tri(b: Int)
 
-fn got_line() Bool:
-    if let line = read_line(stdin()):
+fn got_line(input: ReadStream) Bool:
+    if let line = read_line(input):
         return line.is_some()
 
     return false
@@ -60,9 +60,8 @@ fn area(s: Shape) Int:
 
     return out
 
-export fn main() Int:
-    # string_append: 50k appends
-    var t = clock().now()
+fn bench_string() Int:
+    let t = clock().now()
     let sb = StringBuilder()
     var i = 0
 
@@ -72,22 +71,26 @@ export fn main() Int:
 
     let built = sb.freeze()
     report("string_append_50k", 50000, t)
-    # read_line: every line on stdin
-    t = clock().now()
+    return built.byte_length()
+
+fn bench_read_line() Unit:
+    let t = clock().now()
+    let input = stdin()
     var lines = 0
     var more = true
 
     while more:
-        if got_line():
+        if got_line(input):
             lines += 1
         else:
             more = false
 
     report("read_line", lines, t)
-    # map_put_get: 8k Int keys
-    t = clock().now()
+
+fn bench_map() Int:
+    let t = clock().now()
     let m = Map[Int, Int]()
-    i = 0
+    var i = 0
 
     while i < 8000:
         m.add(i, i * 2)
@@ -101,10 +104,12 @@ export fn main() Int:
         i += 1
 
     report("map_put_get_8k", 16000, t)
-    # int_eq
-    t = clock().now()
+    return sum
+
+fn bench_int_eq() Int:
+    let t = clock().now()
     var hits = 0
-    i = 0
+    var i = 0
 
     while i < 10000000:
         if i % 3 == 0:
@@ -112,9 +117,11 @@ export fn main() Int:
         i += 1
 
     report("int_eq", 10000000, t)
-    # generic call
-    t = clock().now()
-    i = 0
+    return hits
+
+fn bench_generic() Int:
+    let t = clock().now()
+    var i = 0
     var g = 0
 
     while i < 1000000:
@@ -122,19 +129,23 @@ export fn main() Int:
         i += 1
 
     report("generic_call", 1000000, t)
-    # method call
-    t = clock().now()
+    return g
+
+fn bench_method() Int:
+    let t = clock().now()
     let acc = Acc(0)
-    i = 0
+    var i = 0
 
     while i < 1000000:
         acc.bump(1)
         i += 1
 
     report("method_call", 1000000, t)
-    # try
-    t = clock().now()
-    i = 0
+    return acc.total
+
+fn bench_try() Int:
+    let t = clock().now()
+    var i = 0
     var tr = 0
 
     while i < 1000000:
@@ -146,10 +157,12 @@ export fn main() Int:
         i += 1
 
     report("try", 1000000, t)
-    # statement match
-    t = clock().now()
+    return tr
+
+fn bench_match() Int:
+    let t = clock().now()
     let shapes = [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]
-    i = 0
+    var i = 0
     var ma = 0
 
     while i < 1000000:
@@ -157,15 +170,17 @@ export fn main() Int:
         i += 1
 
     report("match", 1000000, t)
-    # builtin method: length()
-    t = clock().now()
+    return ma
+
+fn bench_length() Int:
     let xs: List[Int] = []
-    i = 0
+    var i = 0
 
     while i < 100:
         xs.append(i)
         i += 1
 
+    let t = clock().now()
     i = 0
     var ln = 0
 
@@ -174,20 +189,33 @@ export fn main() Int:
         i += 1
 
     report("builtin_length", 1000000, t)
-    # for loop over a list
+    return ln
+
+fn bench_for_list() Int:
     let big: List[Int] = []
-    i = 0
+    var i = 0
 
     while i < 1000000:
         big.append(i)
         i += 1
 
-    t = clock().now()
+    let t = clock().now()
     var fs = 0
     for x in big:
         fs += x
     report("for_list", 1000000, t)
-    say(
-        "# sink {built.byte_length()} {sum} {hits} {g} {acc.total} {tr} {ma} {ln} {fs}\n"
-    )
+    return fs
+
+export fn main() Int:
+    let built = bench_string()
+    bench_read_line()
+    let sum = bench_map()
+    let hits = bench_int_eq()
+    let g = bench_generic()
+    let total = bench_method()
+    let tr = bench_try()
+    let ma = bench_match()
+    let ln = bench_length()
+    let fs = bench_for_list()
+    say("# sink {built} {sum} {hits} {g} {total} {tr} {ma} {ln} {fs}\n")
     return 0

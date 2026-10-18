@@ -1,0 +1,154 @@
+before goos: linux
+before goarch: amd64
+before pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+before cpu: AMD EPYC 9V74 80-Core Processor
+before BenchmarkListGetVsGo/Manuscript-4         	100000000	         2.322 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetVsGo/Go-4                 	369504697	         0.6436 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/positive-4          	100000000	         2.182 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/negative-4          	100000000	         2.244 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/default_positive-4  	68057689	         3.702 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/default_negative-4  	66417986	         3.658 ns/op	       0 B/op	       0 allocs/op
+before PASS
+after goos: linux
+after goarch: amd64
+after pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+after cpu: AMD EPYC 9V74 80-Core Processor
+after BenchmarkListGetVsGo/Manuscript-4         	390349714	         0.6259 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetVsGo/Go-4                 	549922364	         0.4364 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/positive-4          	367062042	         0.5782 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/negative-4          	100000000	         2.508 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/default_positive-4  	70903107	         4.465 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/default_negative-4  	54828493	         3.911 ns/op	       0 B/op	       0 allocs/op
+after PASS
+after goos: linux
+after goarch: amd64
+after pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+after cpu: AMD EPYC 9V74 80-Core Processor
+after BenchmarkListGetVsGo/Manuscript-4         	336503650	         0.6778 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetVsGo/Go-4                 	501653292	         0.5535 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/positive-4          	328905709	         0.6728 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/negative-4          	98384324	         2.386 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/default_positive-4  	58782165	         3.673 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/default_negative-4  	65316999	         3.688 ns/op	       0 B/op	       0 allocs/op
+after PASS
+before goos: linux
+before goarch: amd64
+before pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+before cpu: AMD EPYC 9V74 80-Core Processor
+before BenchmarkListGetVsGo/Manuscript-4         	100000000	         2.062 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetVsGo/Go-4                 	365639034	         0.6057 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/positive-4          	100000000	         2.249 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/negative-4          	94620172	         2.181 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/default_positive-4  	56910877	         4.011 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/default_negative-4  	70736928	         3.797 ns/op	       0 B/op	       0 allocs/op
+before PASS
+before goos: linux
+before goarch: amd64
+before pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+before cpu: AMD EPYC 9V74 80-Core Processor
+before BenchmarkListGetVsGo/Manuscript-4         	100000000	         2.225 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetVsGo/Go-4                 	392425488	         0.6063 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/positive-4          	100000000	         2.195 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/negative-4          	100000000	         2.193 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/default_positive-4  	55214148	         3.990 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/default_negative-4  	67578678	         3.740 ns/op	       0 B/op	       0 allocs/op
+before PASS
+after goos: linux
+after goarch: amd64
+after pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+after cpu: AMD EPYC 9V74 80-Core Processor
+after BenchmarkListGetVsGo/Manuscript-4         	376120327	         0.6342 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetVsGo/Go-4                 	564616393	         0.4519 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/positive-4          	398832430	         0.5749 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/negative-4          	96951403	         2.306 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/default_positive-4  	70906479	         3.562 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/default_negative-4  	68571604	         3.746 ns/op	       0 B/op	       0 allocs/op
+after PASS
+after goos: linux
+after goarch: amd64
+after pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+after cpu: AMD EPYC 9V74 80-Core Processor
+after BenchmarkListGetVsGo/Manuscript-4         	402211081	         0.6167 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetVsGo/Go-4                 	583543929	         0.4357 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/positive-4          	381079231	         0.6601 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/negative-4          	100000000	         2.501 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/default_positive-4  	61722282	         3.780 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/default_negative-4  	69648370	         3.945 ns/op	       0 B/op	       0 allocs/op
+after PASS
+before goos: linux
+before goarch: amd64
+before pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+before cpu: AMD EPYC 9V74 80-Core Processor
+before BenchmarkListGetVsGo/Manuscript-4         	87590665	         2.495 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetVsGo/Go-4                 	415640388	         0.6592 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/positive-4          	100000000	         2.196 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/negative-4          	91668025	         2.306 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/default_positive-4  	62453199	         3.713 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/default_negative-4  	66722935	         3.657 ns/op	       0 B/op	       0 allocs/op
+before PASS
+before goos: linux
+before goarch: amd64
+before pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+before cpu: AMD EPYC 9V74 80-Core Processor
+before BenchmarkListGetVsGo/Manuscript-4         	100000000	         2.154 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetVsGo/Go-4                 	426115858	         0.5951 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/positive-4          	100000000	         2.136 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/negative-4          	100000000	         2.119 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/default_positive-4  	63249006	         3.561 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/default_negative-4  	67963484	         3.477 ns/op	       0 B/op	       0 allocs/op
+before PASS
+after goos: linux
+after goarch: amd64
+after pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+after cpu: AMD EPYC 9V74 80-Core Processor
+after BenchmarkListGetVsGo/Manuscript-4         	342001976	         0.6321 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetVsGo/Go-4                 	574456778	         0.4528 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/positive-4          	407396396	         0.6440 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/negative-4          	96468993	         2.471 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/default_positive-4  	57517197	         3.633 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/default_negative-4  	65568412	         4.105 ns/op	       0 B/op	       0 allocs/op
+after PASS
+after goos: linux
+after goarch: amd64
+after pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+after cpu: AMD EPYC 9V74 80-Core Processor
+after BenchmarkListGetVsGo/Manuscript-4         	377716406	         0.6138 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetVsGo/Go-4                 	560315736	         0.4233 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/positive-4          	378657595	         0.6124 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/negative-4          	91341856	         2.522 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/default_positive-4  	68801539	         3.637 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/default_negative-4  	64749627	         3.540 ns/op	       0 B/op	       0 allocs/op
+after PASS
+before goos: linux
+before goarch: amd64
+before pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+before cpu: AMD EPYC 9V74 80-Core Processor
+before BenchmarkListGetVsGo/Manuscript-4         	123343236	         2.175 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetVsGo/Go-4                 	417611868	         0.5651 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/positive-4          	100000000	         2.119 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/negative-4          	118071957	         2.263 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/default_positive-4  	71363388	         3.694 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/default_negative-4  	61125301	         3.588 ns/op	       0 B/op	       0 allocs/op
+before PASS
+before goos: linux
+before goarch: amd64
+before pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+before cpu: AMD EPYC 9V74 80-Core Processor
+before BenchmarkListGetVsGo/Manuscript-4         	114070260	         2.089 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetVsGo/Go-4                 	424362134	         0.5891 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/positive-4          	100000000	         2.109 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/negative-4          	100000000	         2.182 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/default_positive-4  	68275056	         3.727 ns/op	       0 B/op	       0 allocs/op
+before BenchmarkListGetPaths/default_negative-4  	57059386	         3.675 ns/op	       0 B/op	       0 allocs/op
+before PASS
+after goos: linux
+after goarch: amd64
+after pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+after cpu: AMD EPYC 9V74 80-Core Processor
+after BenchmarkListGetVsGo/Manuscript-4         	385347204	         0.6178 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetVsGo/Go-4                 	539057743	         0.4465 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/positive-4          	371166326	         0.6362 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/negative-4          	102854642	         2.484 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/default_positive-4  	70666840	         3.750 ns/op	       0 B/op	       0 allocs/op
+after BenchmarkListGetPaths/default_negative-4  	59669683	         3.618 ns/op	       0 B/op	       0 allocs/op
+after PASS

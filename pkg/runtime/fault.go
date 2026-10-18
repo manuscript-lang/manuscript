@@ -25,6 +25,10 @@ func (f Fault) Error() string {
 }
 
 // Raise raises a fault with message; it never returns.
+// Keep stack capture on the cold path. Inlining it into small checked helpers
+// otherwise prevents those helpers from inlining at their ordinary call sites.
+//
+//go:noinline
 func Raise(message string) {
 	frames, truncated := captureFrames()
 	panic(Fault{Message: message, Frames: frames, Truncated: truncated})

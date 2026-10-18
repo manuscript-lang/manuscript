@@ -50,6 +50,19 @@ emitted Go is not a constraint. Maintainable compiler code, precise
 source/debugger mapping, and supported platform behavior remain requirements.
 Unsafe or runtime-internal techniques need documented invariants and tests.
 
+Verified: keep `try` as one evaluation and a Go `if`/return. An exactly matching
+failed Result can be returned directly; changing the success type or widening
+the error still requires a result of the enclosing type. Test the discriminator,
+since an error with empty text is still failure. Direct typed Result
+literals avoid constructor-call inlining costs: on Go 1.25.1 they bring the
+benchmark's `chain` from cost 91 to the ordinary budget of 80. An experiment
+using `-l=4` for the runtime made more small checked methods inline, but was
+rejected after the broader stdlib suite exposed regressions. Lower inlining
+costs and wins in tiny call benchmarks alone do not establish an improvement.
+Evidence: [try lowering](../pkg/lower/contracts.go),
+[payload execution checks](../tests/e2e/testdata/accept/try-result-payloads.ms), and
+[measurements and proposals](../bench/perf/programs/optimization-notes.md).
+
 Decision: the language is designed to lower cheaply, so use Go's own
 mechanisms. `try` returns the error as a Go value instead of panicking; source
 methods become plain Go methods called directly; `Optional` and `Result` stay
@@ -280,3 +293,19 @@ Verified: in `while i < n`, `i = i + 1` cannot overflow if it is the first state
 Apply when: extending overflow-check elimination to other expressions (`i + k`, `<=` guards, `for` ranges).
 Evidence: `pkg/lower/stmt.go`, `tests/e2e/counter_step_test.go`.
 Verify: the reset and conditional-reset cases in the test must still fault with `Int overflow;`.
+
+Verified: cancellation can reuse a literal-start unit-step counter while retaining
+the exact 64th/128th poll phase. Unlike the overflow proof, this requires exactly
+one unconditional assignment to the checked binding across the entire body and
+no continue. Eligibility facts are body-local: preserve direct Int literal writes
+and discard all facts at every other statement; do not scan backwards through
+prefixes or carry facts across branches. Dynamic starts retained a live initial
+value and regressed a prototype, so they keep the ordinary inline tick fallback.
+Evidence: [poll selection and linear eligibility facts](../pkg/lower/stmt.go),
+[eligibility pairs](../pkg/compiler/loop_poll_test.go),
+[native phase oracle](../pkg/build/loop_poll_test.go), and
+[measurements and assembly](../bench/perf/programs/results.md).
+Verify negative/nonzero starts, both directions, nested entry, reset/continue
+fallbacks, and source faults before widening the proof. Derive phase with raw Go
+subtraction: modular overflow preserves the low six bits of the iteration count.
+Use `(distance + 1) & 63 == 0` for the same phase with a cheaper zero test.

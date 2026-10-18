@@ -13,6 +13,17 @@ func TestFaultSourceLocations(t *testing.T) {
 		tests        bool
 		frames       []string
 	}{
+		{"try checked overflow", `import TextError from "@std/errors.ms"
+fn checked(n: Int) Result[Int, TextError]:
+    if n < 0:
+        return error(TextError("negative"))
+    return ok(n + 1)
+fn chain(n: Int) Result[Int, TextError]:
+    let value = try checked(n)
+    return ok(value)
+export fn main() Int:
+    return chain(9223372036854775807).get()
+`, false, []string{"fault.ms:5 in checked", "fault.ms:7 in chain", "fault.ms:10 in main"}},
 
 		{"Map add key fault", `fn crash() Int:
     return 1 / 0
