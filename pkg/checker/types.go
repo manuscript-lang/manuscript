@@ -277,6 +277,9 @@ func ConstructorSignature(t *Type) *Type {
 	if std(t, "Bytes") {
 		params = []Param{{"values", standard("List", primitive("Int"))}}
 	}
+	if std(t, "Set") && len(t.Args) == 1 {
+		params = []Param{{"values", standard("List", t.Args[0])}}
+	}
 	signature := function(params, t)
 	if t.Def != nil && t.Def.Symbol != nil && t.Def.Symbol.Decl != nil {
 		for _, field := range t.Def.Symbol.Decl.Fields {

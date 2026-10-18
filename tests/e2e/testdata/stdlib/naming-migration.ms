@@ -113,6 +113,6 @@ test "copy names preserve Bytes and collection storage":
     let reversed = values.reversed()
     reversed.set(0, 9)
     try expect_false(values != [1, 2, 3] or reversed != [9, 2, 1])
-    let set = Set[Int]().add(1)
+    let set = Set[Int]([1])
     set.clone().add(2)
     try expect_equal(set.values(), [1])

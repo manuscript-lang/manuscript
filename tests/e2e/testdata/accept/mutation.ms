@@ -73,7 +73,7 @@ test "collection updates retain identity and clone separates storage":
     let map_copy = map.clone()
     map.add("b", 2).remove("a")
     try expect_false(not (map_alias.keys() == ["b"] and map_copy.keys() == ["a"]))
-    let set = Set[Int]().add(1)
+    let set = Set[Int]([1])
     let set_alias = set
     let set_copy = set.clone()
     set.add(2).remove(1)
@@ -179,7 +179,7 @@ test "map and set clear affect aliases while copies retain contents":
     )
     entries.clear()
     try expect_false(not (alias.length() == 0 and copy.length() == 1))
-    let values = Set[Int]().add(1)
+    let values = Set[Int]([1])
     let set_alias = values
     let set_copy = values.clone()
     values.add(1).add(2).remove(9)

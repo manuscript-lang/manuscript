@@ -41,7 +41,7 @@ test "core parity operations are callable":
     let values: Map[String, Int] = {"a": 1, "b": 2}
     try expect_false(values.is_empty() or values.get_or("absent", 8) != 8)
     try expect_equal(values.filter(fn(k, v): k == "b" and v == 2).length(), 1)
-    let members = Set[Int]().add(2).add(3)
+    let members = Set[Int]([2, 3])
     try expect_false(members.is_empty() or members.filter(fn(n): n == 2).length() != 1)
     try expect_equal(members.map(fn(n): n.to_string()).values(), ["2", "3"])
 
@@ -195,7 +195,7 @@ impl Hashable for Key:
     fn hash() Int: 0
 
 test "Set filter and map copy snapshots and deduplicate in first-result order":
-    let values = Set[Int]().add(3).add(1).add(2)
+    let values = Set[Int]([3, 1, 2])
     let visits: List[Int] = []
     let copied = values.filter(
         fn(n):
@@ -208,7 +208,7 @@ test "Set filter and map copy snapshots and deduplicate in first-result order":
     try expect_equal(values.values(), [9])
     let bound_filter = copied.filter
     try expect_equal(bound_filter(fn(n): n == 8).values(), [8])
-    let input = Set[Int]().add(2).add(3).add(4)
+    let input = Set[Int]([2, 3, 4])
     let mapped = map_set(input, fn(n): Key(n % 2, n.to_string()))
     try expect_false(
         (
@@ -229,7 +229,7 @@ test "Set filter and map copy snapshots and deduplicate in first-result order":
     mapped_snapshot.add("8")
     try expect_equal(input.length(), 1)
     let key = Key(5, "shared")
-    let keys = Set[Key]().add(key)
+    let keys = Set[Key]([key])
     keys.filter(fn(unused): true).values().at(0).get().label = "changed"
     keys.map(fn(value): value).values().at(0).get().label = "again"
     try expect_equal(key.label, "again")

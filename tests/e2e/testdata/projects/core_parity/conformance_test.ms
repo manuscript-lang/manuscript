@@ -32,7 +32,7 @@ test "mapped output keeps lexical Hashable and Equal evidence":
     let bound = first_bound_map()
     let mapped = bound(fn(n): Key(0, n.to_string()))
     mapped.length() | try expect_equal(expected: 1)
-    let input = Set[Int]().add(1).add(2)
+    let input = Set[Int]([1, 2])
     first_generic_map(input).length() | try expect_equal(expected: 1)
     first_lookup() | try expect_equal(expected: "found")
 

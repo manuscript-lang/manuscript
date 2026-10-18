@@ -11,7 +11,7 @@ impl Hashable for Key:
     fn hash() Int: self.label.scalar_length()
 
 export fn second_run() Set[Key]:
-    let items = Set[Key]().add(Key(1, "original"))
+    let items = Set[Key]([Key(1, "original")])
     let add = items.add
     let remove = items.remove
     add(Key(1, "duplicate"))
