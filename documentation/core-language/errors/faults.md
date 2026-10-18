@@ -16,9 +16,9 @@ import panic from "@std/faults.ms"
 
 fn discount_validated(price: Decimal, percent: Decimal) -> Decimal:
     if price <= 0d:
-        return panic(message: "Price must be positive")
+        return panic("Price must be positive")
     if percent <= 0d or percent >= 100d:
-        return panic(message: "Percent must be positive and below 100")
+        return panic("Percent must be positive and below 100")
     return price * (1d - percent / 100d)
 ```
 
@@ -29,7 +29,7 @@ The example treats nonpositive prices and percentages outside (0, 100) as faults
 `panic(message: message)` raises a programming fault. Its type is `fn(message: String) -> Never`: it never completes normally and fits any result type, but it is not a catchable error and does not permit fallthrough in a non-`Unit` function. See [Unit and Never](../functions/declarations-and-calls.md#unit-and-never).
 
 ```manuscript
-panic(message: "Required invariant was violated.")
+panic("Required invariant was violated.")
 ```
 
 A fault aborts the current operation after cleanup.

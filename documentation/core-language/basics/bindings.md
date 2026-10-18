@@ -19,7 +19,7 @@ Parameters and return types are explicit; local annotations are optional. `let c
 
 ```manuscript
 let customer = Customer(name: "Ada", active: true)
-let greeting = welcome(customer: customer)
+let greeting = welcome(customer)
 let count: Int = 3
 var remaining = count
 remaining -= 1

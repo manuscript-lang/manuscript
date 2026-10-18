@@ -54,7 +54,7 @@ tags.append("news")
 # original still has three tags.
 
 let visits = {"/help": 12}
-visits.add(key: "/tour", value: 4)
+visits.add("/tour", 4)
 let subscribers = Set[String]()
 subscribers.add("sam@example.com")
 
@@ -122,10 +122,10 @@ Functions are values:
 ```manuscript
 
 let prices = [12, 8, 25]
-let discounted = prices.map(transform: fn(value: Int) -> Int:
+let discounted = prices.map(fn(value: Int) -> Int:
     return value - 2
 )
-let affordable = discounted.filter(predicate: fn(value: Int) -> Bool:
+let affordable = discounted.filter(fn(value: Int) -> Bool:
     return value <= 10
 )
 # affordable contains [10, 6]; prices is unchanged.
@@ -153,7 +153,7 @@ fn status_label(status: Status) -> String:
             return "Published at {url}"
 
 test "publish a help page":
-    let todo = Todo(title: "Update the help page")
+    let todo = Todo("Update the help page")
     todo.completed = true
     let backup = todo.clone()
     todo.title = "Update the contact page"
@@ -266,7 +266,7 @@ There are no inherent methods (`impl Counter:` is unsupported); free functions a
 import {filesystem, FileSystemError} from "@std/fs.ms"
 
 fn copy_notes() -> Result[Unit, FileSystemError]:
-    with source = try filesystem().open(path: "notes.txt", flags: "r", mode: 0):
+    with source = try filesystem().open("notes.txt", flags: "r", mode: 0):
         let contents = try source.read_file(max_bytes: 1048576)
         try filesystem().write_file(path: "backup.txt", data: contents, replace: true)
     return ok(unit)

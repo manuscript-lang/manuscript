@@ -72,7 +72,7 @@ MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
 
 ```manuscript
 fn load(path: String) -> Result[Config, ConfigError]:
-    let config = try read(path: path)
+    let config = try read(path)
         | try parse
         | normalize
         | try validate

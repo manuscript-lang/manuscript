@@ -94,6 +94,30 @@ All assertions return `Result`, so use `try`:
 
 Without `make_fixture`, no hooks run. Define `fn make_fixture() -> T` where `T` implements `TestHooks` from `@std/testing.ms`; tests then read it as `fixture`.
 
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import {TestHooks, expect_equal} from "@std/testing.ms"
+
+type Counter:
+    count: Int
+
+fn make_fixture() -> Counter:
+    return Counter(0)
+
+impl TestHooks for Counter:
+    fn before_each() -> Unit:
+        self.count = 0
+
+test "increments":
+    fixture.count += 1
+    try expect_equal(fixture.count, 1)
+
+test "starts fresh":
+    try expect_equal(fixture.count, 0)
+```
+
+`make_fixture` runs once per file. `before_each` resets the shared `Counter` before every test, so the second test sees `0` even though the first changed it.
+
 - One instance per file, created only when the file has selected tests and shared across repetitions.
 - Optional hooks (use `self`, no arguments, return `Unit`): `before_all`, `before_each`, `after_each`, `after_all`.
 - Build in `make_fixture`, reset in `before_each`, release in `after_all`.

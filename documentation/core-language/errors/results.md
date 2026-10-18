@@ -33,7 +33,7 @@ This continues the declarations above:
 
 ```manuscript
 fn discount_message(price: Decimal, percent: Decimal) -> String:
-    if let value = discount(price: price, percent: percent):
+    if let value = discount(price, percent):
         return "Discounted price: {value}"
     return "Discount could not be calculated."
 ```
@@ -93,7 +93,7 @@ import Bytes from "@std/bytes.ms"
 import hex_decode from "@std/encoding.ms"
 
 fn decode(text: String) -> Result[Bytes, Error]:
-    let bytes = try hex_decode(text: text)
+    let bytes = try hex_decode(text)
     return ok(bytes)
 ```
 
