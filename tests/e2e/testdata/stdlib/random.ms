@@ -1,5 +1,5 @@
 import {expect_equal} from "@std/testing.ms"
-import {Entropy, RandomError, secure_int, uuid_v4, entropy} from "@std/random.ms"
+import {Entropy, RandomError, secure_int, uuid_v4, entropy, float, shuffle, choice} from "@std/random.ms"
 import Bytes from "@std/bytes.ms"
 import {filled} from "@std/collections.ms"
 
@@ -41,3 +41,17 @@ test "random accepts negative exclusive upper bounds":
     let source = ZeroEntropy(0)
     try expect_equal((try secure_int(Entropy(source), -3, -2)), -3)
     try expect_equal((try secure_int(Entropy(source), -10, -5)), -10)
+
+test "float shuffle and choice use the supplied entropy":
+    let zero = ZeroEntropy(0)
+    try expect_equal(try float(Entropy(value: zero)), 0.0)
+    let sample = try float(entropy())
+    try expect_equal(sample >= 0.0 and sample < 1.0, true)
+    let values = [1, 2, 3, 4, 5]
+    let shuffled = try shuffle(entropy(), values)
+    try expect_equal(
+        shuffled.sorted(fn(left: Int, right: Int) Int: left - right),
+        [1, 2, 3, 4, 5]
+    )
+    try expect_equal(try choice(Entropy(value: zero), [7, 8, 9]), some(7))
+    try expect_equal(try choice(entropy(), List[Int]()), none)

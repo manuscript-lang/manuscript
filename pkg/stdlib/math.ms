@@ -87,3 +87,81 @@ export fn tanh(value: Float) Float:
 
 # Truncates a value toward zero.
 export fn truncate(value: Float) Float:
+
+# Returns the inverse hyperbolic cosine; values below 1.0 give NaN.
+export fn acosh(value: Float) Float:
+
+# Returns the inverse hyperbolic sine.
+export fn asinh(value: Float) Float:
+
+# Returns the inverse hyperbolic tangent; magnitudes above 1.0 give NaN.
+export fn atanh(value: Float) Float:
+
+# Returns the real cube root, which is defined for negative values.
+export fn cbrt(value: Float) Float:
+
+# Returns e raised to `value` minus one, accurate for values near zero.
+export fn expm1(value: Float) Float:
+
+# Returns the natural logarithm of one plus `value`, accurate for values near zero.
+export fn log1p(value: Float) Float:
+
+# Returns -1.0, 0.0 or 1.0 by sign, preserving signed zero and NaN.
+export fn sign(value: Float) Float:
+
+# Returns -1, 0 or 1 as the integer is negative, zero or positive.
+export fn sign_int(value: Int) Int:
+
+# Rounds to the nearest 32-bit floating-point value and widens it back to Float.
+export fn to_float32(value: Float) Float:
+
+# Reports whether the value is finite and has no fractional part.
+export fn is_integer(value: Float) Bool:
+
+# Reports whether the value is an integer within -(2^53 - 1) through 2^53 - 1, where Float represents integers exactly.
+export fn is_safe_integer(value: Float) Bool:
+
+# Returns positive infinity, the Float that exceeds every finite value; negate it for negative infinity.
+export fn infinity() Float:
+
+# Returns NaN, the Float that is not equal to itself under IEEE rules; use `is_nan()` to detect it.
+export fn nan() Float:
+
+# Returns the difference between 1.0 and the next larger Float.
+export fn epsilon() Float:
+
+# Returns the largest finite Float.
+export fn max_float() Float:
+
+# Returns the smallest positive Float, a subnormal value.
+export fn min_float() Float:
+
+# Returns the largest Int.
+export fn max_int() Int:
+
+# Returns the smallest Int.
+export fn min_int() Int:
+
+# Returns 2^53 - 1, the largest integer every smaller integer of which a Float represents exactly.
+export fn max_safe_integer() Int:
+
+# Returns -(2^53 - 1).
+export fn min_safe_integer() Int:
+
+# Returns the natural logarithm of 2.
+export fn ln2() Float:
+
+# Returns the natural logarithm of 10.
+export fn ln10() Float:
+
+# Returns the base-2 logarithm of e.
+export fn log2e() Float:
+
+# Returns the base-10 logarithm of e.
+export fn log10e() Float:
+
+# Returns the square root of 2.
+export fn sqrt2() Float:
+
+# Returns the square root of 1/2.
+export fn sqrt_half() Float:

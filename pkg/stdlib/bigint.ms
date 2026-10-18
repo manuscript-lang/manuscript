@@ -40,6 +40,30 @@ impl BigInt:
     # Returns the bitwise XOR using infinite-width two's-complement semantics, so negative operands behave as if sign-extended.
     fn bit_xor(other: BigInt) BigInt:
 
+    # Returns the bitwise complement using infinite-width two's-complement semantics, so `bit_not(x)` equals `-x - 1`.
+    fn bit_not() BigInt:
+
+    # Returns the value with its sign flipped.
+    fn negate() BigInt:
+
+    # Returns the absolute value, which is never negative.
+    fn abs() BigInt:
+
+    # Returns -1, 0 or 1 as the value is negative, zero or positive.
+    fn sign() Int:
+
+    # Raises to a nonnegative `exponent`. A negative exponent returns InvalidInput, and a result above 16777216 bits returns LimitExceeded.
+    fn pow(exponent: Int) Result[BigInt, BigIntError]:
+
+    # Shifts left by `count` bits, multiplying by two to that power. A negative count returns InvalidInput, and a result above 16777216 bits returns LimitExceeded.
+    fn shift_left(count: Int) Result[BigInt, BigIntError]:
+
+    # Shifts right by `count` bits with floor semantics for negatives, so -5 shifted by 1 is -3. A negative count returns InvalidInput.
+    fn shift_right(count: Int) Result[BigInt, BigIntError]:
+
+    # Converts to the nearest Float, or infinity of the same sign when the magnitude exceeds the Float range.
+    fn to_float() Float:
+
     # Returns the value as an Int when it fits in the platform's Int, or none when it is outside that range.
     fn to_int() Optional[Int]:
 
