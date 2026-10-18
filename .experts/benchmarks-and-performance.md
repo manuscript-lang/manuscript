@@ -61,3 +61,13 @@ Native replay and ordinary builds can differ only in ELF build-id notes; compare
 code/data sections and normalize identical link flags before attributing library
 timing variation to generated code. The Result-bound increment produces identical
 normalized library binaries despite timing variation in diagnostic CLI builds.
+
+- Safe finite-loop aggregation measurements must retain logical source operation
+  counts and explicitly say work was combined. Native observers should inspect
+  original locals at actual emitted queries, including signed updates, partial
+  tails, cancellation/shield/nil, cleanup and query-raised source frames. Scaling
+  must assert accepted aggregates; capturing the carry only measures fallback.
+- Canonicalize native-cache paths before Go overlay mapping and assert executable
+  hashes change. A symlink mapping can silently miss the actual compiler input.
+  Match clone controls improved matching but regressed traversal; the candidate
+  was rejected. Lower inline cost alone also did not improve builder append.

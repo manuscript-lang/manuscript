@@ -13,6 +13,16 @@ func TestFaultSourceLocations(t *testing.T) {
 		tests        bool
 		frames       []string
 	}{
+		{"rejected affine aggregate overflow", `fn probe() Int:
+    var sum = 0
+    var i = -9223372036854775808
+    while i < -9223372036854775487:
+        sum += i
+        i += 1
+    return sum
+export fn main() Int:
+    return probe()
+`, false, []string{"fault.ms:5 in probe", "fault.ms:9 in main"}},
 		{"try checked overflow", `import TextError from "@std/errors.ms"
 fn checked(n: Int) Result[Int, TextError]:
     if n < 0:

@@ -373,7 +373,7 @@ func (p *intProof) loop(s *syntax.Statement) bool {
 	counterBounds := intBounds{min(start.lo, last), max(start.hi, last)}
 	p.boundedBody(s.Body, count, counter, counterBounds, intBounds{last, last}, writes, appends)
 	if step == "+" && count.Int64() >= 256 {
-		p.chunk(s, counter, limit)
+		p.chunk(s, counter, limit, counterBounds)
 	}
 	return true
 }

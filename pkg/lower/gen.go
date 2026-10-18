@@ -68,6 +68,7 @@ func newGen(program *checker.Program) *gen {
 			g.explicit(intType, "equals", "@std/Equal") == nil
 	}
 	sh.resultBounds = g.resultIntSummaries()
+	sh.capturedBindings = g.captureInventory()
 	return g
 }
 
@@ -146,18 +147,19 @@ func (g *gen) derivedOrClaim(name, key string, isDerived bool) string {
 // instances, types, and helpers, each created once under mu. A unit never
 // reads another unit's results while it runs.
 type shared struct {
-	options      Options
-	program      *checker.Program
-	err          error
-	inRuntime    bool // generating the runtime package itself: type variables stay variables
-	localImpl    bool // some module declares an extension implementation
-	localEq      bool // some module declares an extension Equal implementation
-	resultBounds map[*syntax.Declaration]resultIntSummary
-	closedIntMap bool                         // program-wide evidence permits closed Int storage
-	dup          map[string]bool              // source names more than one declaration uses
-	declared     map[string]bool              // Go names the source declarations themselves take
-	recursive    map[*syntax.Declaration]bool // functions on a call cycle
-	methodByID   map[string]*checker.Method
+	options          Options
+	program          *checker.Program
+	err              error
+	inRuntime        bool // generating the runtime package itself: type variables stay variables
+	localImpl        bool // some module declares an extension implementation
+	localEq          bool // some module declares an extension Equal implementation
+	resultBounds     map[*syntax.Declaration]resultIntSummary
+	capturedBindings map[*checker.Binding]bool
+	closedIntMap     bool                         // program-wide evidence permits closed Int storage
+	dup              map[string]bool              // source names more than one declaration uses
+	declared         map[string]bool              // Go names the source declarations themselves take
+	recursive        map[*syntax.Declaration]bool // functions on a call cycle
+	methodByID       map[string]*checker.Method
 
 	mu      sync.Mutex
 	types   map[string]*typeDecl
