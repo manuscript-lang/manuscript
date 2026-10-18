@@ -154,6 +154,15 @@ and [Windows console regression](../internal/debugger/process_windows_test.go).
 Verify console behavior on a native Windows host; pipe tests and cross-compilation
 do not validate `ReadConsoleInputW` cancellation or console mode restoration.
 
+Verified: a deferred completion-channel close can release a join before the
+goroutine's wrapper return epilogue disappears from runtime.Stack. The terminal
+leak oracle must match active Run/RunWithContext/guard frames, not the broad Run
+prefix or creator ancestry: CI observed only the already-joined guard wrapper
+as runnable. Preserve immediate history-close and target-exit assertions and
+active prompt-reader detection; do not add sleeps to hide a missing join.
+Evidence: [stack-oracle regressions](../internal/debugger/native_lifecycle_stack_test.go)
+and [native lifecycle checks](../internal/debugger/native_lifecycle_test.go).
+
 Verified: a fatal command-reader error must be latched before reporting it;
 stop the target before a bounded, joined diagnostic attempt. A final CLI stderr
 write can block again when stderr shares the unread event-output pipe, so it
