@@ -13,17 +13,17 @@ type Resource:
 
 impl OtherClose for Resource:
     fn close(flag: Bool) Int:
-        return panic(message: "Unexpected case")
+        return panic("Unexpected case")
 
 impl Closeable for Resource:
     fn close() Unit:
         with locked = self.closed.lock():
-            locked.set(value: true)
+            locked.set(true)
 
 impl Disposable for Resource:
     fn close() Unit:
         with locked = self.closed.lock():
-            locked.set(value: true)
+            locked.set(true)
 
 fn bound_cleanup[T: Disposable](resource: T) Unit:
     with item = resource:
@@ -38,19 +38,19 @@ test "cleanup uses the selected contract":
     with resource = Resource(closed):
         with locked = closed.lock():
             if not (not locked.get()):
-                return panic(message: "check failed")
+                return panic("check failed")
     with locked = closed.lock():
         if not (locked.get()):
-            return panic(message: "check failed")
+            return panic("check failed")
     with locked = closed.lock():
-        locked.set(value: false)
-    bound_cleanup(resource: Resource(closed))
-    with locked = closed.lock():
-        if not (locked.get()):
-            return panic(message: "check failed")
-    with locked = closed.lock():
-        locked.set(value: false)
-    canonical_cleanup(resource: Resource(closed))
+        locked.set(false)
+    bound_cleanup(Resource(closed))
     with locked = closed.lock():
         if not (locked.get()):
-            return panic(message: "check failed")
+            return panic("check failed")
+    with locked = closed.lock():
+        locked.set(false)
+    canonical_cleanup(Resource(closed))
+    with locked = closed.lock():
+        if not (locked.get()):
+            return panic("check failed")

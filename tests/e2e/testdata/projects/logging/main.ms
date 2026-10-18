@@ -22,7 +22,7 @@ fn concurrent_records(logger: Logger) Result[Unit, Error]:
         for worker in range(0, 8):
             let task = group.start(
                 fn() Result[Unit, Error]:
-                    let child = try bind(logger, bindings: Worker(worker))
+                    let child = try bind(logger, Worker(worker))
                     for sequence in range(0, 8):
                         try record(
                             logger: child,
@@ -44,7 +44,7 @@ fn concurrent_records(logger: Logger) Result[Unit, Error]:
     return ok(unit)
 
 fn exercise(mode: String, path: String) Result[Unit, Error]:
-    let bindings = Service(service: "api")
+    let bindings = Service("api")
 
     if (mode == "file" or mode == "concurrent" or mode == "missing"):
         with transport = try file_transport(path):
@@ -63,7 +63,7 @@ fn exercise(mode: String, path: String) Result[Unit, Error]:
     with transport = stdout_transport():
         if mode == "limit":
             let logger = try create(transport, max_bytes: 1)
-            try logger.info(message: "too large")
+            try logger.info("too large")
         else:
             let logger = try create(transport)
                 | try bind(bindings)
@@ -77,14 +77,14 @@ fn exercise(mode: String, path: String) Result[Unit, Error]:
                 )
             else if mode == "closed":
                 transport.close()
-                try logger.info(message: "closed")
+                try logger.info("closed")
             else:
                 try emit(logger)
                 try logger.flush()
 
     with transport = stdout_transport():
         let logger = try create(transport, timestamp: false)
-        try logger.info(message: "still open")
+        try logger.info("still open")
 
     return ok(unit)
 

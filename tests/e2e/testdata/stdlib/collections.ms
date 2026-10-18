@@ -22,10 +22,7 @@ test "list search callbacks empty identities and folding":
     ): return panic("find indices")
     if list.filter(positive).map(twice) != [4, 6]: return panic("sequential callbacks")
     if ([1, 2]).flat_map(duplicate) != [1, 1, 2, 2]: return panic("flat map")
-    if (
-        list.fold(initial: 0, step: sum) != 4
-        or list.fold_right(initial: 0, step: sum) != 4
-    ): return panic("fold")
+    if (list.fold(0, sum) != 4 or list.fold_right(0, sum) != 4): return panic("fold")
 
     let empty: List[Int] = []
     if empty.some(positive) or not empty.every(positive): return panic(
@@ -43,26 +40,22 @@ test "list search callbacks empty identities and folding":
 test "list mutation and clone keep separate storage":
     let original = [1, 2, 3]
     let copy = original.clone()
-    copy.splice(start: 1, delete_count: 1, replacement: [8, 9])
+    copy.splice(1, 1, [8, 9])
     if copy != [1, 8, 9, 3] or original != [1, 2, 3]: return panic("splice clone")
 
-    copy.fill(value: 0, start: 1, end: 3)
+    copy.fill(0, 1, 3)
     if copy != [1, 0, 0, 3]: return panic("fill")
 
     let overlapping = [1, 2, 3, 4]
-    overlapping.copy_within(target: 1, start: 0, end: 3)
+    overlapping.copy_within(1, 0, 3)
     if overlapping != [1, 1, 2, 3]: return panic("overlapping copy")
 
 test "maps preserve insertion order and overwrite duplicate keys":
-    let entries = [
-        MapEntry(key: "a", value: 1),
-        MapEntry(key: "b", value: 2),
-        MapEntry(key: "a", value: 3)
-    ]
+    let entries = [MapEntry("a", 1), MapEntry("b", 2), MapEntry("a", 3)]
     let map = map_from_entries(entries)
     if map.keys() != ["a", "b"] or map.values() != [3, 2]: return panic("map order")
 
-    map.add_default(key: "a", value: 99)
+    map.add_default("a", 99)
     if map.get("a") != some(3): return panic("default overwrote value")
 
     let copy = map.clone().remove("a")
@@ -83,44 +76,36 @@ test "set algebra removes duplicates and preserves values":
     if not left.is_disjoint_from(([3]).to_set()): return panic("disjoint")
 
 test "collection constructors validate bounds and exact limits":
-    if ((try range_by(start: 3, end: -1, step: -1, max_items: 4)) != [3, 2, 1, 0]): return panic(
-        "descending range"
-    )
-    if (try filled(value: "x", count: 2)) != ["x", "x"]: return panic("filled")
+    if ((try range_by(3, -1, -1, 4)) != [3, 2, 1, 0]): return panic("descending range")
+    if (try filled("x", 2)) != ["x", "x"]: return panic("filled")
 
     let invalid: Result[List[Int], CollectionError] = error(
         CollectionError.InvalidInput
     )
-    if range_by(start: 0, end: 1, step: 0) != invalid: return panic("zero step")
+    if range_by(0, 1, 0) != invalid: return panic("zero step")
 
     let limited: Result[List[Int], CollectionError] = error(
         CollectionError.LimitExceeded
     )
-    if range_by(start: 0, end: 3, step: 1, max_items: 2) != limited: return panic(
-        "range budget"
-    )
+    if range_by(0, 3, 1, 2) != limited: return panic("range budget")
 
 test "stepped ranges handle full-width spans and minimum negative steps":
     let minimum = -9223372036854775808
     let maximum = 9223372036854775807
-    if (
-        (try range_by(minimum, maximum, maximum, max_items: 3)) != [
-            minimum,
-            -1,
-            (maximum - 1)
-        ]
-    ): return panic("full-width ascending range")
-    if (try range_by(maximum, minimum, minimum, max_items: 2)) != [maximum, -1]: return panic(
+    if ((try range_by(minimum, maximum, maximum, 3)) != [minimum, -1, (maximum - 1)]): return panic(
+        "full-width ascending range"
+    )
+    if (try range_by(maximum, minimum, minimum, 2)) != [maximum, -1]: return panic(
         "minimum negative step"
     )
-    if (try range_by(0, minimum, minimum, max_items: 1)) != [0]: return panic(
+    if (try range_by(0, minimum, minimum, 1)) != [0]: return panic(
         "exclusive minimum endpoint"
     )
 
     let limited: Result[List[Int], CollectionError] = error(
         CollectionError.LimitExceeded
     )
-    if range_by(minimum, maximum, maximum, max_items: 2) != limited: return panic(
+    if range_by(minimum, maximum, maximum, 2) != limited: return panic(
         "full-width range limit"
     )
 
@@ -128,7 +113,7 @@ test "range counts up by one":
     if range(0, 4) != [0, 1, 2, 3]: return panic("range")
 
     let none_between: List[Int] = []
-    if range(start: 2, end: 2) != none_between or range(5, 1) != none_between: return panic(
+    if range(2, 2) != none_between or range(5, 1) != none_between: return panic(
         "empty range"
     )
     if range(-2, 1) != [-2, -1, 0]: return panic("negative range")
@@ -178,19 +163,11 @@ test "huge sizes return LimitExceeded instead of exhausting memory":
     let limited: Result[List[Int], CollectionError] = error(
         CollectionError.LimitExceeded
     )
-    if filled(value: 1, count: 9223372036854775807) != limited: return panic(
-        "filled huge"
+    if filled(1, 9223372036854775807) != limited: return panic("filled huge")
+    if (filled(1, 4611686018427387904, 9223372036854775807) != limited): return panic(
+        "filled huge explicit limit"
     )
-    if (
-        filled(
-            value: 1,
-            count: 4611686018427387904,
-            max_items: 9223372036854775807
-        ) != limited
-    ): return panic("filled huge explicit limit")
-    if range_by(start: 0, end: 9223372036854775807, step: 1) != limited: return panic(
-        "range huge"
-    )
+    if range_by(0, 9223372036854775807, 1) != limited: return panic("range huge")
 
 test "collection builders freeze all accumulated values":
     let list = ListBuilder[Int]()
@@ -199,8 +176,8 @@ test "collection builders freeze all accumulated values":
     if list.freeze() != [1, 2] or list.freeze() != [1, 2]: return panic("list builder")
 
     let map = MapBuilder[String, Int]()
-    map.add(key: "a", value: 1)
-    map.add(key: "a", value: 2)
+    map.add("a", 1)
+    map.add("a", 2)
     if map.freeze().get("a") != some(2): return panic("map builder")
 
     let set = SetBuilder[Int]()
@@ -210,7 +187,7 @@ test "collection builders freeze all accumulated values":
 
 test "imported map add interoperates with with_entry":
     let values = Map[String, Int]().add("a", 1)
-    values.add("b", 2).add(value: 3, key: "a")
+    values.add("b", 2).add(value: 3, "a")
     let add = values.add
     add("c", 4)
     if values.keys() != ["a", "b", "c"] or values.values() != [3, 2, 4]: return panic(

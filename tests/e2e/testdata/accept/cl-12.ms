@@ -16,8 +16,8 @@ fn set_total(values: Set[Int]) Int:
     return total
 
 test "map entry type":
-    let entry = MapEntry[String, Int](key: "a", value: 3)
+    let entry = MapEntry[String, Int]("a", 3)
     if not (entry.key == "a"):
-        return panic(message: "check failed")
+        return panic("check failed")
     if not (entry.value == 3):
-        return panic(message: "check failed")
+        return panic("check failed")

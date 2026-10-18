@@ -28,7 +28,7 @@ impl Commands for Capture:
 import Duration from "@std/time.ms"
 
 fn generic_run[T: Commands](service: T) Result[Bytes, Error]:
-    return ok((try service.run(program: "fake", arguments: [])).stdout)
+    return ok((try service.run("fake", [])).stdout)
 
 type Override:
     input: Bytes
@@ -39,13 +39,13 @@ test "bound receiver is captured before supplied arguments":
     var selected = first
     let index: Optional[Int] = some(0)
     let output = try selected.run(
-        program: match index:
+        match index:
             some(_):
                 selected = second
                 "fake"
             none: "fake"
         ,
-        arguments: []
+        []
     )
     if (first.calls != 1 or second.calls != 0 or output.stdout.length() != 0):
         return panic("receiver capture order changed")
@@ -66,19 +66,15 @@ impl Commands for Override:
 test "concrete implementation defaults and interface defaults stay distinct":
     let service = Override("custom".to_bytes())
     let concrete = service.run
-    if (try concrete(program: "fake", arguments: [])).stdout != service.input:
+    if (try concrete("fake", [])).stdout != service.input:
         return panic("concrete input override")
 
     let viewed = Commands(service).run
-    if (try viewed(program: "fake", arguments: [])).stdout.length() != 0:
+    if (try viewed("fake", [])).stdout.length() != 0:
         return panic("interface input default")
 
     let explicit = "explicit".to_bytes()
-    if (
-        (
-            try viewed(program: "fake", arguments: [], input: explicit)
-        ).stdout != explicit
-    ):
+    if ((try viewed("fake", [], explicit)).stdout != explicit):
         return panic("explicit input skips both defaults")
 
 test "CSV defaults are fresh and explicit options retain their meaning":
@@ -89,12 +85,12 @@ test "CSV defaults are fresh and explicit options retain their meaning":
     let second = CsvOptions()
     if (first.delimiter != ";" or second.delimiter != "," or second.line_ending != "\n"):
         return panic("CSV construction must allocate fresh mutable storage")
-    if CsvOptions(delimiter: "\t").line_ending != "\n": return panic("ending default")
+    if CsvOptions("\t").line_ending != "\n": return panic("ending default")
     if CsvOptions(line_ending: "\r\n").delimiter != ",": return panic(
         "delimiter default"
     )
     if (try stringify([["a", "b"]])) != "a,b\n": return panic("CSV default output")
-    if (try stringify([["a", "b"]], options: first)) != "a;b\r\n":
+    if (try stringify([["a", "b"]], first)) != "a;b\r\n":
         return panic("explicit CSV options")
     if (try parse("a,b\n")) != [["a", "b"]]: return panic("CSV default parse")
 
@@ -113,7 +109,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
         return panic("distinct CSV budgets")
 
     let invalid: Result[String, CsvError] = error(CsvError.InvalidInput)
-    if stringify([["a"]], options: CsvOptions(delimiter: "")) != invalid:
+    if stringify([["a"]], CsvOptions("")) != invalid:
         return panic("explicit invalid options still validate")
 
 test "Base64 defaults support stored functions and explicit alphabets":
@@ -148,21 +144,21 @@ test "Base64 defaults support stored functions and explicit alphabets":
 test "Commands defaults cross concrete bound view and generic boundaries":
     let capture = Capture("x".to_bytes(), 0)
     let bound = capture.run
-    if (try bound(program: "fake", arguments: [])).stdout.length() != 0:
+    if (try bound("fake", [])).stdout.length() != 0:
         return panic("bound input default")
-    if (try capture.run(program: "fake", arguments: [])).stdout.length() != 0:
+    if (try capture.run("fake", [])).stdout.length() != 0:
         return panic("concrete input default")
 
     let view = Commands(capture)
     let viewed = view.run
-    if (try viewed(program: "fake", arguments: [])).stdout.length() != 0:
+    if (try viewed("fake", [])).stdout.length() != 0:
         return panic("viewed input default")
     if (try generic_run(capture)).length() != 0: return panic(
         "bounded generic input default"
     )
 
     let input = Bytes([42])
-    let output = (try view.run(program: "fake", arguments: [], input)).stdout
+    let output = (try view.run("fake", [], input)).stdout
     if output != input or capture.last != input:
         return panic("explicit input payload retains value")
 
@@ -173,5 +169,5 @@ test "Commands defaults cross concrete bound view and generic boundaries":
 
     let invalid: Result[CommandOutput, CommandError] = error(CommandError.InvalidInput)
     let native = commands().run
-    if native(program: "", arguments: []) != invalid:
+    if native("", []) != invalid:
         return panic("native empty stdin default reaches validation")

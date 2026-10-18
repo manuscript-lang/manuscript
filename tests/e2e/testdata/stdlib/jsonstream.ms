@@ -19,11 +19,11 @@ fn decode(input: Bytes, size: Int) Result[List[String], Error]:
     while offset < input.length():
         var end = offset + size
         if end > input.length(): end = input.length()
-        for text in try texts(try reader.feed(try input.slice(offset, end))):
+        for text in try input.slice(offset, end) | try reader.feed | try texts:
             result.append(text)
         offset = end
 
-    for text in try texts(try reader.finish()):
+    for text in try reader.finish() | try texts:
         result.append(text)
     return ok(result)
 
@@ -65,7 +65,7 @@ test "JSON decoder rejects invalid UTF-8 and stays failed":
 
 test "JSON decoder applies per-value budgets":
     let limited: Result[List[JsonValue], JsonError] = error(JsonError.LimitExceeded)
-    let bytes = try decoder(JsonLimits(max_bytes: 5))
+    let bytes = try decoder(JsonLimits(5))
     if bytes.feed("[1,2]".to_bytes()) == limited: return panic(
         "value at the byte limit"
     )

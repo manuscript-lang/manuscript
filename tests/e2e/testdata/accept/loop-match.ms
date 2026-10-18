@@ -21,7 +21,7 @@ fn loop(state: State) Int:
     return count
 
 test "match controls nearest source loop":
-    if not (loop(state: State.Ready) == 1):
-        return panic(message: "check failed")
-    if not (loop(state: State.Waiting) == 3):
-        return panic(message: "check failed")
+    if not (loop(State.Ready) == 1):
+        return panic("check failed")
+    if not (loop(State.Waiting) == 3):
+        return panic("check failed")

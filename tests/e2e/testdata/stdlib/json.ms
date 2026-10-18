@@ -10,14 +10,13 @@ import panic from "@std/faults.ms"
 
 test "JSON exact numbers Unicode and nested roundtrip":
     let text = "\{\"n\":9007199254740993,\"s\":\"é🙂\",\"a\":[null,true,false]\}"
-    let parsed = try parse(text)
-    if (try stringify(value: parsed)) != text: return panic("JSON precision or order")
-    if (try parse(text: "\"\\uD83D\\uDE00\"")) != JsonValue.StringValue("😀"): return panic(
+    if (try parse(text) | try stringify) != text: return panic(
+        "JSON precision or order"
+    )
+    if (try parse("\"\\uD83D\\uDE00\"")) != JsonValue.StringValue("😀"): return panic(
         "surrogate pair"
     )
-    if ((try stringify(value: try parse(text: "null"), max_bytes: 4)) != "null"): return panic(
-        "exact budget"
-    )
+    if ((try parse("null") | try stringify(4)) != "null"): return panic("exact budget")
 
 test "JSON rejects duplicate keys malformed Unicode and trailing values":
     let invalid: Result[JsonValue, JsonError] = error(JsonError.InvalidData)
@@ -28,29 +27,23 @@ test "JSON rejects duplicate keys malformed Unicode and trailing values":
 
 test "JSON independently enforces byte depth and value budgets":
     let limited: Result[JsonValue, JsonError] = error(JsonError.LimitExceeded)
-    if (parse(text: "null", limits: JsonLimits(max_bytes: 3)) != limited): return panic(
-        "JSON byte budget"
-    )
-    if (parse(text: "[[[]]]", limits: JsonLimits(max_depth: 2)) != limited): return panic(
+    if (parse("null", JsonLimits(3)) != limited): return panic("JSON byte budget")
+    if (parse("[[[]]]", JsonLimits(max_depth: 2)) != limited): return panic(
         "JSON depth budget"
     )
-    if (parse(text: "[1,2]", limits: JsonLimits(max_values: 2)) != limited): return panic(
+    if (parse("[1,2]", JsonLimits(max_values: 2)) != limited): return panic(
         "JSON value budget"
     )
 
     let invalid: Result[JsonValue, JsonError] = error(JsonError.InvalidInput)
-    if (parse(text: "null", limits: JsonLimits(max_bytes: -1)) != invalid): return panic(
-        "negative JSON budget"
-    )
+    if (parse("null", JsonLimits(-1)) != invalid): return panic("negative JSON budget")
 
 test "JSON stringify rejects number text with trailing whitespace":
     let padded: Result[String, JsonError] = error(JsonError.InvalidData)
-    if stringify(value: JsonValue.NumberValue("1\n")) != padded: return panic(
+    if stringify(JsonValue.NumberValue("1\n")) != padded: return panic(
         "trailing newline"
     )
-    if stringify(value: JsonValue.NumberValue("1 ")) != padded: return panic(
-        "trailing space"
-    )
+    if stringify(JsonValue.NumberValue("1 ")) != padded: return panic("trailing space")
 
 test "JSON parse bounds nesting even without a depth limit":
     var text = ""
@@ -61,7 +54,7 @@ test "JSON parse bounds nesting even without a depth limit":
         closing += "]"
 
     let limited: Result[JsonValue, JsonError] = error(JsonError.LimitExceeded)
-    if parse(text: text + closing) != limited: return panic("unbounded nesting")
+    if parse(text + closing) != limited: return panic("unbounded nesting")
 
 type Request:
     model: String
@@ -89,16 +82,10 @@ type Node:
     next: Optional[Node]
 
 fn encoded[T](item: T) Result[String, Error]:
-    return stringify(value: item)
+    return stringify(item)
 
 test "JSON stringify encodes records in declaration order and omits none fields":
-    let request = Request(
-        model: "m",
-        stream: true,
-        user: none,
-        temperature: 0.5,
-        tags: ["a", "b"]
-    )
+    let request = Request("m", stream: true, none, 0.5, ["a", "b"])
     let expected = "\{\"model\":\"m\",\"stream\":true,\"temperature\":0.5,\"tags\":[\"a\",\"b\"]\}"
     if (try encoded(request)) != expected: return panic(
         "record order or omitted none field"
@@ -107,21 +94,15 @@ test "JSON stringify encodes records in declaration order and omits none fields"
     request.user = some("u")
     let named = "\{\"model\":\"m\",\"stream\":true,\"user\":\"u\",\"temperature\":0.5,\"tags\":[\"a\",\"b\"]\}"
     if (try encoded(request)) != named: return panic("present optional field")
-    if (try encoded(Box[Int](first: 1, second: none))) != "\{\"first\":1\}": return panic(
+    if (try encoded(Box[Int](1, none))) != "\{\"first\":1\}": return panic(
         "generic record order"
     )
-    if (
-        (
-            try encoded(Box[Int](first: 1, second: some(2)))
-        ) != "\{\"first\":1,\"second\":2\}"
-    ): return panic("generic optional field")
+    if ((try encoded(Box[Int](1, some(2)))) != "\{\"first\":1,\"second\":2\}"): return panic(
+        "generic optional field"
+    )
 
 test "JSON stringify encodes alternatives and nested optionals":
-    let scene = Scene(
-        shape: Shape.Circle(2),
-        shapes: [Shape.Dot, Shape.Rect(1, 2)],
-        note: none
-    )
+    let scene = Scene(Shape.Circle(2), [Shape.Dot, Shape.Rect(1, 2)], none)
     let expected = "\{\"shape\":\{\"Circle\":\{\"radius\":2\}\},\"shapes\":[\"Dot\",\{\"Rect\":\{\"width\":1,\"height\":2\}\}]\}"
     if (try encoded(scene)) != expected: return panic("alternative encoding")
 
@@ -142,32 +123,30 @@ test "JSON stringify keeps map insertion order and encodes scalars exactly":
     if (try encoded(1e300)) != "1e+300": return panic("exponent Float")
     if (try encoded("<é\n")) != "\"\\u003cé\\n\"": return panic("string escaping")
 
-    let parsed = try parse(text: "\{\"n\":1.50\}")
-    let mixed = Box[JsonValue](first: parsed, second: none)
+    let parsed = try parse("\{\"n\":1.50\}")
+    let mixed = Box[JsonValue](parsed, none)
     if (try encoded(mixed)) != "\{\"first\":\{\"n\":1.50\}\}": return panic(
         "JsonValue passthrough"
     )
 
 test "JSON stringify reports cycles non-finite numbers and budgets as errors":
     let invalid: Result[String, JsonError] = error(JsonError.InvalidData)
-    var node = Node(label: "a", next: none)
+    let node = Node("a", none)
     node.next = some(node)
-    if stringify(value: node) != invalid: return panic("cyclic record")
+    if stringify(node) != invalid: return panic("cyclic record")
     if (try encoded(1e308 * 10.0)) != "null": return panic("infinite Float is null")
     if (try encoded(1e308 * 10.0 - 1e308 * 10.0)) != "null": return panic(
         "NaN Float is null"
     )
 
     let limited: Result[String, JsonError] = error(JsonError.LimitExceeded)
-    if stringify(value: "abcdef", max_bytes: 4) != limited: return panic(
-        "output budget"
-    )
+    if stringify("abcdef", 4) != limited: return panic("output budget")
 
     let negative: Result[String, JsonError] = error(JsonError.InvalidInput)
-    if stringify(value: 1, max_bytes: -1) != negative: return panic("negative budget")
+    if stringify(1, -1) != negative: return panic("negative budget")
 
 test "JSON stringify repeats shared acyclic values and reads current field values":
-    let shared = Node(label: "s", next: none)
+    let shared = Node("s", none)
     let pair = [shared, shared]
     let before = try encoded(pair)
     shared.label = "changed"
@@ -209,7 +188,7 @@ type Tagged:
     case Plain
 
 test "JSON stringify omits values without a JSON form and writes null for list elements":
-    let handler = Handler(name: "h", callback: one, retries: none, note: none)
+    let handler = Handler("h", one, none, none)
     if (try encoded(handler)) != "\{\"name\":\"h\"\}": return panic(
         "function and none fields omitted"
     )
@@ -233,19 +212,12 @@ test "JSON stringify omits values without a JSON form and writes null for list e
     if (try encoded(named)) != "\{\"a\":1\}": return panic("map")
 
     let invalid: Result[String, JsonError] = error(JsonError.InvalidData)
-    if stringify(value: one) != invalid: return panic("root function has no JSON form")
+    if stringify(one) != invalid: return panic("root function has no JSON form")
 
 test "JSON stringify encodes standard-library values":
-    let at = try timestamp(seconds: 1700000000, nanoseconds: 500000000)
-    let link = Url(
-        scheme: "https",
-        host: "example.com",
-        port: some(8080),
-        path: "/a",
-        query: "x=1",
-        fragment: ""
-    )
-    let item = Stamped(at, took: duration(1500), data: "hi".to_bytes(), link)
+    let at = try timestamp(1700000000, 500000000)
+    let link = Url("https", "example.com", some(8080), "/a", "x=1", "")
+    let item = Stamped(at, duration(1500), "hi".to_bytes(), link)
     let expected = "\{\"at\":\"2023-11-14T22:13:20.5Z\",\"took\":1500,\"data\":\"aGk=\",\"link\":\"https://example.com:8080/a?x=1\"\}"
     if (try encoded(item)) != expected: return panic("timestamp duration bytes url")
     if (try encoded(TextError.Text("boom"))) != "\{\"Text\":\{\"message\":\"boom\"\}\}": return panic(
@@ -276,37 +248,29 @@ test "JSON stringify encodes scalar map keys and rejects the rest":
 
     let invalid: Result[String, JsonError] = error(JsonError.InvalidData)
     let records = Map[Money, Int]().add(Money(1), 1)
-    if stringify(value: records) != invalid: return panic("record keys")
+    if stringify(records) != invalid: return panic("record keys")
 
 test "JSON stringify honors JsonEncode wherever the value appears":
-    let invoice = Invoice(total: Money(500), lines: [Money(200), Money(300)])
+    let invoice = Invoice(Money(500), [Money(200), Money(300)])
     let expected = "\{\"total\":\"usd:500\",\"lines\":[\"usd:200\",\"usd:300\"]\}"
     if (try encoded(invoice)) != expected: return panic("to_json hook")
     if (try encoded(Money(7))) != "\"usd:7\"": return panic("root hook")
 
 test "JSON stringify indents like JSON.stringify and clamps at ten":
-    let request = Request(
-        model: "m",
-        stream: true,
-        user: none,
-        temperature: 0.5,
-        tags: ["a"]
-    )
-    let pretty = try stringify(value: request, indent: 2)
+    let request = Request("m", stream: true, none, 0.5, ["a"])
+    let pretty = try stringify(request, indent: 2)
     let expected = "\{\n  \"model\": \"m\",\n  \"stream\": true,\n  \"temperature\": 0.5,\n  \"tags\": [\n    \"a\"\n  ]\n\}"
     if pretty != expected: return panic("indented output")
 
     let empty: List[Int] = []
-    if (try stringify(value: empty, indent: 4)) != "[]": return panic("empty container")
-    if (try stringify(value: [1], indent: 0)) != "[1]": return panic(
-        "zero indent is compact"
-    )
+    if (try stringify(empty, indent: 4)) != "[]": return panic("empty container")
+    if (try stringify([1], indent: 0)) != "[1]": return panic("zero indent is compact")
 
-    let wide = try stringify(value: [1], indent: 99)
+    let wide = try stringify([1], indent: 99)
     if wide != "[\n          1\n]": return panic("indent clamps at ten")
 
     let negative: Result[String, JsonError] = error(JsonError.InvalidInput)
-    if stringify(value: 1, indent: -1) != negative: return panic("negative indent")
+    if stringify(1, indent: -1) != negative: return panic("negative indent")
 
 interface Named:
     fn label() String
@@ -324,15 +288,15 @@ type Holder:
     done: Unit
 
 test "JSON stringify omits interface values and monotonic instants":
-    let who = Named(value: Person(name: "p"))
-    let holder = Holder(who, at: clock().now(), done: unit)
+    let who = Named(Person("p"))
+    let holder = Holder(who, clock().now(), unit)
     if (try encoded(holder)) != "\{\}": return panic(
         "interface and instant fields have no JSON form"
     )
 
     let invalid: Result[String, JsonError] = error(JsonError.InvalidData)
-    if stringify(value: clock().now()) != invalid: return panic("root instant")
-    if stringify(value: unit) != invalid: return panic("root unit")
+    if stringify(clock().now()) != invalid: return panic("root instant")
+    if stringify(unit) != invalid: return panic("root unit")
 
     let failed: Result[Int, JsonError] = error(JsonError.LimitExceeded)
     if (try encoded(failed)) != "\{\"error\":\{\"cause\":\"LimitExceeded\"\}\}": return panic(
@@ -362,7 +326,7 @@ test "JSON stringify lets JsonEncode override the structural encoding of an alte
         "custom tagged alternative"
     )
 
-    let feed = Feed(events: [Event.Created(1), Event.Deleted(2)])
+    let feed = Feed([Event.Created(1), Event.Deleted(2)])
     let expected = "\{\"events\":[\{\"type\":\"created\",\"id\":1\},\{\"type\":\"deleted\",\"id\":2\}]\}"
     if (try encoded(feed)) != expected: return panic(
         "custom encoding nested in a record"
@@ -417,7 +381,7 @@ test "JSON parse decodes records by field name with defaults and optional fields
     if profile.ids.length() != 2: return panic("set drops repeats")
 
     let full = "\{\"name\":\"B\",\"age\":30,\"nickname\":\"bee\",\"scores\":[],\"labels\":\{\},\"ids\":[]\}"
-    let other: Profile = try parse[Profile](text: full)
+    let other: Profile = try parse[Profile](full)
     if other.age != 30 or other.nickname.unwrap() != "bee": return panic(
         "present members"
     )
@@ -425,71 +389,67 @@ test "JSON parse decodes records by field name with defaults and optional fields
 test "JSON parse rejects shape mismatches as InvalidData":
     let invalid: Result[Profile, JsonError] = error(JsonError.InvalidData)
     let missing = "\{\"scores\":[],\"labels\":\{\},\"ids\":[]\}"
-    if parse[Profile](text: missing) != invalid: return panic("missing required field")
+    if parse[Profile](missing) != invalid: return panic("missing required field")
 
     let unknown = "\{\"name\":\"A\",\"scores\":[],\"labels\":\{\},\"ids\":[],\"extra\":1\}"
-    if parse[Profile](text: unknown, ignore_unknown_fields: false) != invalid: return panic(
+    if parse[Profile](unknown, ignore_unknown_fields: false) != invalid: return panic(
         "unknown member in strict mode"
     )
 
-    let lenient: Profile = try parse[Profile](text: unknown)
+    let lenient: Profile = try parse[Profile](unknown)
     if lenient.name != "A": return panic("unknown members are ignored by default")
 
     let wrong = "\{\"name\":1,\"scores\":[],\"labels\":\{\},\"ids\":[]\}"
-    if parse[Profile](text: wrong) != invalid: return panic("wrong member type")
+    if parse[Profile](wrong) != invalid: return panic("wrong member type")
 
     let fractional = "\{\"name\":\"A\",\"age\":1.5,\"scores\":[],\"labels\":\{\},\"ids\":[]\}"
-    if parse[Profile](text: fractional) != invalid: return panic(
-        "fraction is not an Int"
-    )
+    if parse[Profile](fractional) != invalid: return panic("fraction is not an Int")
 
     let overflow = "\{\"name\":\"A\",\"age\":9223372036854775808,\"scores\":[],\"labels\":\{\},\"ids\":[]\}"
-    if parse[Profile](text: overflow) != invalid: return panic("Int overflow")
-    if parse[Profile](text: "[]") != invalid: return panic("array is not a record")
+    if parse[Profile](overflow) != invalid: return panic("Int overflow")
+    if parse[Profile]("[]") != invalid: return panic("array is not a record")
 
     let malformed: Result[Profile, JsonError] = error(JsonError.InvalidData)
-    if parse[Profile](text: "\{") != malformed: return panic(
-        "syntax errors stay InvalidData"
-    )
+    if parse[Profile]("\{") != malformed: return panic("syntax errors stay InvalidData")
 
     let limited: Result[Profile, JsonError] = error(JsonError.LimitExceeded)
-    if parse[Profile](text: missing, limits: JsonLimits(max_bytes: 2)) != limited: return panic(
+    if parse[Profile](missing, JsonLimits(2)) != limited: return panic(
         "limits apply before decoding"
     )
 
 test "JSON parse decodes alternatives and generic records":
-    let shape: Shape = try parse[Shape](text: "\"Dot\"")
+    let shape: Shape = try parse[Shape]("\"Dot\"")
     if shape != Shape.Dot: return panic("case without payload")
 
-    let circle: Shape = try parse[Shape](text: "\{\"Circle\":\{\"radius\":2\}\}")
+    let circle: Shape = try parse[Shape]("\{\"Circle\":\{\"radius\":2\}\}")
     if circle != Shape.Circle(2): return panic("case with payload")
 
     let invalid: Result[Shape, JsonError] = error(JsonError.InvalidData)
-    if parse[Shape](text: "\"Circle\"") != invalid: return panic(
+    if parse[Shape]("\"Circle\"") != invalid: return panic(
         "payload case needs its fields"
     )
-    if parse[Shape](text: "\{\"Dot\":\{\}\}") != invalid: return panic(
+    if parse[Shape]("\{\"Dot\":\{\}\}") != invalid: return panic(
         "payload on a nullary case"
     )
-    if parse[Shape](text: "\"Square\"") != invalid: return panic("unknown case")
-    if parse[Shape](text: "\{\"Circle\":\{\"radius\":1\},\"Dot\":\{\}\}") != invalid: return panic(
+    if parse[Shape]("\"Square\"") != invalid: return panic("unknown case")
+    if parse[Shape]("\{\"Circle\":\{\"radius\":1\},\"Dot\":\{\}\}") != invalid: return panic(
         "two cases"
     )
 
     let scene: Scene = try parse[Scene](
-        text: "\{\"shape\":\"Dot\",\"shapes\":[\{\"Rect\":\{\"width\":1,\"height\":2\}\}]\}"
+        "\{\"shape\":\"Dot\",\"shapes\":[\{\"Rect\":\{\"width\":1,\"height\":2\}\}]\}"
     )
     if scene.shapes.at(0).unwrap() != Shape.Rect(1, 2): return panic(
         "nested alternative"
     )
 
-    let wrapper: Wrapper[Int] = try parse[Wrapper[Int]](text: "\{\"first\":1\}")
+    let wrapper: Wrapper[Int] = try parse[Wrapper[Int]]("\{\"first\":1\}")
     if wrapper.first != 1 or not wrapper.second.is_none() or wrapper.extra != 7: return panic(
         "generic record"
     )
 
     let nested: Wrapper[Wrapper[String]] = try parse[Wrapper[Wrapper[String]]](
-        text: "\{\"first\":\{\"first\":\"x\",\"extra\":1\},\"second\":null\}"
+        "\{\"first\":\{\"first\":\"x\",\"extra\":1\},\"second\":null\}"
     )
     if nested.first.first != "x" or nested.first.extra != 1 or nested.extra != 7: return panic(
         "nested generic record with defaults"
@@ -497,43 +457,43 @@ test "JSON parse decodes alternatives and generic records":
 
 test "JSON parse decodes recursive types exact numbers and passthrough values":
     let tree: Tree = try parse[Tree](
-        text: "\{\"label\":\"r\",\"children\":[\{\"label\":\"c\",\"children\":[]\}]\}"
+        "\{\"label\":\"r\",\"children\":[\{\"label\":\"c\",\"children\":[]\}]\}"
     )
     if tree.children.at(0).unwrap().label != "c": return panic("recursive record")
 
     let price: Price = try parse[Price](
-        text: "\{\"amount\":1.5,\"cents\":123456789012345678901234567890\}"
+        "\{\"amount\":1.5,\"cents\":123456789012345678901234567890\}"
     )
     let price_text: Result[String, JsonError] = ok(
         "\{\"amount\":1.5,\"cents\":123456789012345678901234567890\}"
     )
-    if stringify(value: price) != price_text: return panic("exact numbers round trip")
+    if stringify(price) != price_text: return panic("exact numbers round trip")
 
-    let raw = try parse(text: "\{\"n\":1.50\}")
+    let raw = try parse("\{\"n\":1.50\}")
     let boxed: Wrapper[JsonValue] = try parse[Wrapper[JsonValue]](
-        text: "\{\"first\":\{\"n\":1.50\}\}"
+        "\{\"first\":\{\"n\":1.50\}\}"
     )
     if boxed.first != raw: return panic("JsonValue keeps its subtree")
 
-    let list: List[Optional[Int]] = try parse[List[Optional[Int]]](text: "[1,null]")
+    let list: List[Optional[Int]] = try parse[List[Optional[Int]]]("[1,null]")
     if list.at(1).unwrap().is_some(): return panic("null element is none")
 
 test "JSON parse inverts stringify and works in generic code":
     let profile = Profile(
-        name: "Ada",
-        age: 20,
-        nickname: some("a"),
-        scores: [0.5],
-        labels: Map[String, Int]().add("k", 1),
-        ids: Set[Int]().add(2)
+        "Ada",
+        20,
+        some("a"),
+        [0.5],
+        Map[String, Int]().add("k", 1),
+        Set[Int]().add(2)
     )
-    let text = try stringify(value: profile)
+    let text = try stringify(profile)
     let again: Profile = try decoded[Profile](text)
-    if (try stringify(value: again)) != text: return panic("round trip")
+    if (try stringify(again)) != text: return panic("round trip")
     if again.nickname.unwrap() != "a": return panic("optional round trip")
 
     let shapes: List[Shape] = [Shape.Dot, Shape.Rect(3, 4)]
-    let shapesBack: List[Shape] = try decoded[List[Shape]](try stringify(value: shapes))
+    let shapesBack: List[Shape] = try decoded[List[Shape]](try stringify(shapes))
     if shapesBack.at(1).unwrap() != Shape.Rect(3, 4): return panic(
         "alternative round trip"
     )
@@ -557,65 +517,58 @@ test "JSON parse takes its type from an explicit argument, the expected result o
     )
 
     let raw = try load_default("\{\"a\":[1]\}")
-    let again = try parse(text: "\{\"a\":[1]\}")
+    let again = try parse("\{\"a\":[1]\}")
     if raw != again: return panic("default keeps the parsed tree")
 
 test "JSON parse reads what stringify writes for standard values and scalar map keys":
-    let at = try timestamp(seconds: 1700000000, nanoseconds: 500000000)
-    let link = Url(
-        scheme: "https",
-        host: "example.com",
-        port: some(8080),
-        path: "/a",
-        query: "x=1",
-        fragment: ""
-    )
-    let item = Stamped(at, took: duration(1500), data: "hi".to_bytes(), link)
-    let text = try stringify(value: item)
+    let at = try timestamp(1700000000, 500000000)
+    let link = Url("https", "example.com", some(8080), "/a", "x=1", "")
+    let item = Stamped(at, duration(1500), "hi".to_bytes(), link)
+    let text = try stringify(item)
     let back: Stamped = try parse[Stamped](text)
-    if (try stringify(value: back)) != text: return panic("standard values round trip")
+    if (try stringify(back)) != text: return panic("standard values round trip")
     if back.took != duration(1500): return panic("duration nanoseconds")
 
     let ints: Map[Int, String] = try parse[Map[Int, String]](
-        text: "\{\"2\":\"b\",\"1\":\"a\"\}"
+        "\{\"2\":\"b\",\"1\":\"a\"\}"
     )
     if ints.get(2).unwrap() != "b": return panic("Int keys decode")
 
     let bad: Result[Map[Int, String], JsonError] = error(JsonError.InvalidData)
-    if parse[Map[Int, String]](text: "\{\"x\":\"b\"\}") != bad: return panic(
+    if parse[Map[Int, String]]("\{\"x\":\"b\"\}") != bad: return panic(
         "unparsable key is InvalidData"
     )
 
-    let flags: Map[Bool, Int] = try parse[Map[Bool, Int]](text: "\{\"true\":1\}")
+    let flags: Map[Bool, Int] = try parse[Map[Bool, Int]]("\{\"true\":1\}")
     if flags.get(true).unwrap() != 1: return panic("Bool keys decode")
 
-    let kinds: Map[Tagged, Int] = try parse[Map[Tagged, Int]](text: "\{\"Plain\":3\}")
+    let kinds: Map[Tagged, Int] = try parse[Map[Tagged, Int]]("\{\"Plain\":3\}")
     if kinds.get(Tagged.Plain).unwrap() != 3: return panic(
         "payloadless case keys decode"
     )
 
 test "JSON parse needs a default for fields without a JSON form":
-    let outcome = parse[Handler](text: "\{\"name\":\"n\"\}")
+    let outcome = parse[Handler]("\{\"name\":\"n\"\}")
     if outcome.is_ok(): return panic("function field is required")
 
 test "JSON parse reads standard alternatives and rejects keys that collide":
     let good: Result[Int, JsonError] = try parse[Result[Int, JsonError]](
-        text: "\{\"ok\":\{\"value\":5\}\}"
+        "\{\"ok\":\{\"value\":5\}\}"
     )
     let want_ok: Result[Int, JsonError] = ok(5)
     if good != want_ok: return panic("Result ok reads back")
 
     let failed: Result[Int, JsonError] = try parse[Result[Int, JsonError]](
-        text: "\{\"error\":\{\"cause\":\"InvalidData\"\}\}"
+        "\{\"error\":\{\"cause\":\"InvalidData\"\}\}"
     )
     let want_error: Result[Int, JsonError] = error(JsonError.InvalidData)
     if failed != want_error: return panic("Result error reads back")
 
-    let kind: JsonError = try parse[JsonError](text: "\"LimitExceeded\"")
+    let kind: JsonError = try parse[JsonError]("\"LimitExceeded\"")
     if kind != JsonError.LimitExceeded: return panic("payloadless standard case")
 
     let collide: Result[Map[Int, String], JsonError] = error(JsonError.InvalidData)
-    if parse[Map[Int, String]](text: "\{\"1\":\"a\",\"01\":\"b\"\}") != collide: return panic(
+    if parse[Map[Int, String]]("\{\"1\":\"a\",\"01\":\"b\"\}") != collide: return panic(
         "1 and 01 are one Int key"
     )
 
@@ -648,38 +601,38 @@ type Wrap:
     byTime: Map[Duration, String]
 
 test "JSON stringify fails on nesting deeper than parse accepts":
-    var head = Link(next: none, n: 0)
+    var head = Link(none, 0)
     for i in range(1, 300000):
-        head = Link(next: some(head), n: i)
+        head = Link(some(head), i)
     let r = stringify(head)
     if r.is_ok(): return panic("nesting beyond the parse ceiling must fail")
 
 test "JSON parse runs field defaults that read earlier fields":
-    let d = try parse[Defaults](text: "\{\"a\":5\}")
+    let d = try parse[Defaults]("\{\"a\":5\}")
     if d.b != 6 or d.c != "x6": return panic("default chain {d.b} {d.c}")
 
 test "JSON round trips fields named like Go keywords":
-    let k = Kw(type_: 1, func: 2, range: 3)
+    let k = Kw(1, 2, 3)
     let t = try stringify(k)
-    let back = try parse[Kw](text: t)
+    let back = try parse[Kw](t)
     if back.range != 3: return panic(t)
 
 test "JSON round trips generic records alternatives and Duration keys":
     let w = Wrap(
-        ops: [Op.Add(1, 2), Op.Neg(none), Op.Neg(some(3)), Op.Nop],
-        pairs: [Pair(left: 1, right: Op.Nop)],
-        byTime: Map[Duration, String]().add(duration(5), "five")
+        [Op.Add(1, 2), Op.Neg(none), Op.Neg(some(3)), Op.Nop],
+        [Pair(1, Op.Nop)],
+        Map[Duration, String]().add(duration(5), "five")
     )
     let t = try stringify(w)
-    let back = try parse[Wrap](text: t)
+    let back = try parse[Wrap](t)
     if (try stringify(back)) != t: return panic(t)
 
 test "JSON parse returns InvalidData for targets that cannot be read":
-    if parse[Unit](text: "null").is_ok(): return panic("unit")
+    if parse[Unit]("null").is_ok(): return panic("unit")
 
-    let f = parse[fn() Int](text: "1")
+    let f = parse[fn() Int]("1")
     if f.is_ok(): return panic("fn")
-    if parse[Int](text: "-0").is_error(): return panic("-0")
-    if parse[Float](text: "1e999").is_ok(): return panic("inf")
-    if parse[String](text: "1").is_ok(): return panic("str")
-    if parse[List[Int]](text: "[1,\"a\"]").is_ok(): return panic("elem")
+    if parse[Int]("-0").is_error(): return panic("-0")
+    if parse[Float]("1e999").is_ok(): return panic("inf")
+    if parse[String]("1").is_ok(): return panic("str")
+    if parse[List[Int]]("[1,\"a\"]").is_ok(): return panic("elem")

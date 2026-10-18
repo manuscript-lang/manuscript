@@ -27,7 +27,7 @@ fn check_services() Unit:
         else:
             return panic("environment entry missing")
 
-    if let data = entropy().bytes(count: 0):
+    if let data = entropy().bytes(0):
         if data.length() != 0:
             return panic("unexpected entropy size")
     else:

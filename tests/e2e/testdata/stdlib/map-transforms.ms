@@ -147,7 +147,7 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
     let seen: List[Int] = []
     let bound = source.map_keys[String]
     let mapped = bound(
-        transform: fn(k, v):
+        fn(k, v):
             seen.append(k)
             source.remove(1).add(3, Counter(99)).add(4, Counter(4))
             later.count = 7
@@ -206,7 +206,7 @@ test "Map reverse fold and last match retain ordered shallow snapshots":
     let seen: List[String] = []
     let find = source.find_last
     let found = find(
-        predicate: fn(k, v):
+        fn(k, v):
             seen.append(k)
             (source.remove("a").add("b", Counter(99)).add("new", Counter(4)))
             return k == "a"

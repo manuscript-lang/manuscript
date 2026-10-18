@@ -11,16 +11,13 @@ test "IP parsing CIDR normalization and containment":
     )
     if not (
         try contains_ip(
-            cidr: try parse_cidr("192.0.2.0/24"),
-            address: try parse_ip("192.0.2.255")
+            try parse_cidr("192.0.2.0/24"),
+            try parse_ip("192.0.2.255")
         )
     ): return panic("CIDR membership")
-    if (
-        try contains_ip(
-            cidr: try parse_cidr("192.0.2.0/24"),
-            address: try parse_ip("192.0.3.0")
-        )
-    ): return panic("CIDR exclusion")
+    if (try contains_ip(try parse_cidr("192.0.2.0/24"), try parse_ip("192.0.3.0"))): return panic(
+        "CIDR exclusion"
+    )
 
     try expect_ip_error("999.1.1.1")
 
@@ -28,23 +25,18 @@ test "TCP loopback writes reads half close and EOF":
     let net = network()
 
     with listener = try net.listen("127.0.0.1:0"):
-        with client = try net.connect(address: listener.address(), timeout: 2.seconds):
-            with server = try listener.accept(timeout: 2.seconds):
-                try client.write(data: "hello".to_bytes(), timeout: 2.seconds)
-                if (
-                    (
-                        try server.read(
-                            max_bytes: 5,
-                            timeout: 2.seconds
-                        )
-                    ).unwrap() != "hello".to_bytes()
-                ): return panic("TCP bytes")
+        with client = try net.connect(listener.address(), 2.seconds):
+            with server = try listener.accept(2.seconds):
+                try client.write("hello".to_bytes(), 2.seconds)
+                if ((try server.read(5, 2.seconds)).unwrap() != "hello".to_bytes()): return panic(
+                    "TCP bytes"
+                )
                 if server.peer_address() != client.local_address(): return panic(
                     "TCP address"
                 )
 
                 try client.shutdown_write()
-                if not (try server.read(max_bytes: 5, timeout: 2.seconds)).is_none(): return panic(
+                if not (try server.read(5, 2.seconds)).is_none(): return panic(
                     "TCP EOF"
                 )
 
@@ -53,18 +45,14 @@ test "UDP loopback preserves datagram data and sender":
 
     with receiver = try net.bind_datagram("127.0.0.1:0"):
         with sender = try net.bind_datagram("127.0.0.1:0"):
-            try sender.send(
-                data: "packet".to_bytes(),
-                address: receiver.address(),
-                timeout: 2.seconds
-            )
-            let packet = try receiver.receive(max_bytes: 64, timeout: 2.seconds)
+            try sender.send("packet".to_bytes(), receiver.address(), 2.seconds)
+            let packet = try receiver.receive(64, 2.seconds)
             if packet.data != "packet".to_bytes() or packet.sender != sender.address(): return panic(
                 "UDP datagram"
             )
 
 test "network restriction denies admission and close rejects acquisitions":
-    let restricted = try network().restrict(hosts: [], cidrs: [], allow_listen: false)
+    let restricted = try network().restrict([], [], allow_listen: false)
     with scoped = restricted:
         if (
             (
@@ -73,12 +61,7 @@ test "network restriction denies admission and close rejects acquisitions":
         ): return panic("listen denial identity")
     if (
         (
-            try expect_error(
-                restricted.connect(
-                    address: "127.0.0.1:1",
-                    timeout: 1.seconds
-                )
-            )
+            try expect_error(restricted.connect("127.0.0.1:1", 1.seconds))
         ) != NetworkError.Closed
     ): return panic("network close identity")
 

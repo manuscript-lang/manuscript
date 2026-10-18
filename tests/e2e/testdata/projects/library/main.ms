@@ -12,43 +12,43 @@ fn timer_callback() Result[Unit, Error]:
     return ok(unit)
 
 fn exercise(path: String) Result[Unit, Error]:
-    try filesystem().write_file(path, data: "hello".to_bytes(), replace: false)
-    if not (try filesystem().read_file(path, max_bytes: 5) == "hello".to_bytes()):
-        return panic(message: "check failed")
+    try filesystem().write_file(path, "hello".to_bytes(), replace: false)
+    if not (try filesystem().read_file(path, 5) == "hello".to_bytes()):
+        return panic("check failed")
 
     let info = try filesystem().stat(path, follow_links: true)
     if not (info.size == 5):
-        return panic(message: "check failed")
+        return panic("check failed")
     if not (not info.directory):
-        return panic(message: "check failed")
+        return panic("check failed")
 
-    let bytes = try entropy().bytes(count: 16)
+    let bytes = try entropy().bytes(16)
     if not (bytes.length() == 16):
-        return panic(message: "check failed")
+        return panic("check failed")
 
-    let identifier = try uuid_v4(entropy: entropy())
+    let identifier = try uuid_v4(entropy())
     if not (identifier.byte_length() == 36):
-        return panic(message: "check failed")
+        return panic("check failed")
 
-    let random = try secure_int(entropy: entropy(), min: -2, max_exclusive: 3)
+    let random = try secure_int(entropy(), -2, 3)
     if not (random >= -2 and random < 3):
-        return panic(message: "check failed")
+        return panic("check failed")
 
     let now = wall_clock().now()
-    if not (try parse_timestamp(text: now.to_string()) == now):
-        return panic(message: "check failed")
+    if not (try parse_timestamp(now.to_string()) == now):
+        return panic("check failed")
     if not (system().info().cpu_count > 0):
-        return panic(message: "check failed")
+        return panic("check failed")
 
-    with file = try filesystem().open(path, flags: "r+", mode: 384):
-        try file.write_at(offset: 0, data: "HELLO".to_bytes())
-        if not (try file.read_at(offset: 0, max_bytes: 5) == "HELLO".to_bytes()):
-            return panic(message: "positional I/O failed")
+    with file = try filesystem().open(path, "r+", 384):
+        try file.write_at(0, "HELLO".to_bytes())
+        if not (try file.read_at(0, 5) == "HELLO".to_bytes()):
+            return panic("positional I/O failed")
 
         try file.sync()
-        try file.truncate(size: 3)
+        try file.truncate(3)
         if not ((try file.stat()).size == 3):
-            return panic(message: "handle stat failed")
+            return panic("handle stat failed")
 
     with watcher = try filesystem().watch_native(
         path,
@@ -57,17 +57,14 @@ fn exercise(path: String) Result[Unit, Error]:
         max_events: 16,
         overflow: "error"
     ):
-        try filesystem().append_file(path, data: "!".to_bytes())
+        try filesystem().append_file(path, "!".to_bytes())
         let events = try watcher.next()
         if not (events.length() > 0):
-            return panic(message: "native watch returned no event")
+            return panic("native watch returned no event")
 
     with scheduler = Scheduler():
-        let id = try scheduler.after(
-            duration: 0.milliseconds,
-            operation: timer_callback
-        )
-        sleep(duration: 10.milliseconds)
+        let id = try scheduler.after(0.milliseconds, timer_callback)
+        sleep(10.milliseconds)
 
         match scheduler.status(id):
             Succeeded:
@@ -75,29 +72,29 @@ fn exercise(path: String) Result[Unit, Error]:
             Running:
                 try scheduler.restart(id)
             _:
-                return panic(message: "scheduled work failed")
+                return panic("scheduled work failed")
 
     let paths = posix()
-    if not (try paths.resolve(base: "/work", parts: ["a", "../b"]) == "/work/b"):
-        return panic(message: "path resolution failed")
+    if not (try paths.resolve("/work", ["a", "../b"]) == "/work/b"):
+        return panic("path resolution failed")
 
     let windows = win32()
     if not (windows.parse("C:/work/file.txt").extension == ".txt"):
-        return panic(message: "Windows path parse failed")
+        return panic("Windows path parse failed")
 
     let process_info = try control().info()
     if not (process_info.pid > 0):
-        return panic(message: "process information failed")
+        return panic("process information failed")
 
     let memory = try control().memory_usage()
     if not (memory.heap_system > 0):
-        return panic(message: "memory information failed")
+        return panic("memory information failed")
 
     try filesystem().remove(path, recursive: false)
     return ok(unit)
 
 export fn main() Int:
-    if let path = arguments().at(index: 0):
+    if let path = arguments().at(0):
         if exercise(path).is_error():
             return 1
 

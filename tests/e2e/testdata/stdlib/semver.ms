@@ -8,14 +8,14 @@ fn failure(result: Result[Version, SemverError]) SemverError:
     return result.unwrap_error()
 
 test "semver parses and formats every component":
-    let version = try parse(text: "1.2.3-alpha.1+build.5")
+    let version = try parse("1.2.3-alpha.1+build.5")
     if version.major != 1 or version.minor != 2 or version.patch != 3: return panic(
         "core"
     )
     if version.prerelease != ["alpha", "1"]: return panic("prerelease")
     if version.build != ["build", "5"]: return panic("build")
     if format(version) != "1.2.3-alpha.1+build.5": return panic("format")
-    if format(version: (try parse(text: "0.0.0"))) != "0.0.0": return panic("plain")
+    if format((try parse("0.0.0"))) != "0.0.0": return panic("plain")
 
 test "semver rejects malformed text":
     let bad = [
@@ -28,7 +28,7 @@ test "semver rejects malformed text":
         )
 
 test "semver reports numbers beyond Int":
-    if failure(parse(text: "99999999999999999999.0.0")) != SemverError.OutOfRange: return panic(
+    if failure(parse("99999999999999999999.0.0")) != SemverError.OutOfRange: return panic(
         "expected out of range"
     )
 
@@ -46,22 +46,17 @@ test "semver orders by precedence":
             if i > j: expected = 1
             let left = ordered[i].unwrap()
             let right = ordered[j].unwrap()
-            if (
-                compare(
-                    left: try parse(text: left),
-                    right: try parse(text: right)
-                ) != expected
-            ):
+            if (compare(try parse(left), try parse(right)) != expected):
                 return panic("order {left} {right}")
 
 test "semver ignores build metadata and compares huge numeric identifiers":
-    let a = try parse(text: "1.0.0+a")
-    let b = try parse(text: "1.0.0+b")
-    if compare(left: a, right: b) != 0: return panic("build ignored")
+    let a = try parse("1.0.0+a")
+    let b = try parse("1.0.0+b")
+    if compare(a, b) != 0: return panic("build ignored")
 
-    let small = try parse(text: "1.0.0-99999999999999999999")
-    let large = try parse(text: "1.0.0-100000000000000000000")
-    if compare(left: small, right: large) != -1: return panic("numeric identifiers")
+    let small = try parse("1.0.0-99999999999999999999")
+    let large = try parse("1.0.0-100000000000000000000")
+    if compare(small, large) != -1: return panic("numeric identifiers")
     if SemverError.OutOfRange.message() != "semver: value out of range": return panic(
         "message"
     )

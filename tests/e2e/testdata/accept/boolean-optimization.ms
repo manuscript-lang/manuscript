@@ -4,7 +4,7 @@ type Counter:
     calls: Int
 
 fn touch(counter: Counter) Bool:
-    counter.calls = counter.calls + 1
+    counter.calls += 1
     return true
 
 fn fail() Bool:

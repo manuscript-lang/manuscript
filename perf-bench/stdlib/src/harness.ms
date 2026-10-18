@@ -8,13 +8,13 @@ export type Point:
     y: Int
 
 export fn say(text: String) Unit:
-    let _ignored = stdout().write(data: text.to_bytes())
+    let _ignored = stdout().write(text.to_bytes())
 
 # Runs `body` once and prints `name<TAB>ops<TAB>ns_per_op`; `body` returns a checksum that keeps its work observable.
 export fn bench(name: String, ops: Int, body: fn() Int) Unit:
     let started = clock().now()
     body()
-    let elapsed = clock().now().difference(other: started).to_nanoseconds()
+    let elapsed = clock().now().difference(started).to_nanoseconds()
     say("{name}\t{ops}\t{elapsed / ops}\n")
 
 export fn ints(count: Int) List[Int]:

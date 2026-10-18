@@ -53,29 +53,29 @@ fn side_effects(shape: Shape) Int:
     return count
 
 test "statement match returns from the enclosing function":
-    if not (area(shape: Shape.Circle(r: 2)) == 12):
-        return panic(message: "circle")
-    if not (area(shape: Shape.Rect(w: 3, h: 4)) == 12):
-        return panic(message: "rect")
-    if not (area(shape: Shape.Dot) == 0):
-        return panic(message: "dot")
+    if not (area(Shape.Circle(2)) == 12):
+        return panic("circle")
+    if not (area(Shape.Rect(3, 4)) == 12):
+        return panic("rect")
+    if not (area(Shape.Dot) == 0):
+        return panic("dot")
 
 test "statement match controls the nearest loop":
     let values: List[Optional[Int]] = [none, some(0), some(5), some(9)]
     if not (first_positive(values) == 5):
-        return panic(message: "first positive")
-    if not (first_positive(values: [none, some(-1)]) == -1):
-        return panic(message: "no positive")
+        return panic("first positive")
+    if not (first_positive([none, some(-1)]) == -1):
+        return panic("no positive")
 
     let rows: List[List[Optional[Int]]] = [
         [some(1), none, some(100)],
         [some(2), some(3)]
     ]
     if not (nested(rows) == 2006):
-        return panic(message: "nested")
+        return panic("nested")
 
 test "statement match arms assign enclosing locals":
-    if not (side_effects(shape: Shape.Circle(r: 7)) == 7):
-        return panic(message: "bound arm")
-    if not (side_effects(shape: Shape.Dot) == 100):
-        return panic(message: "default arm")
+    if not (side_effects(Shape.Circle(7)) == 7):
+        return panic("bound arm")
+    if not (side_effects(Shape.Dot) == 100):
+        return panic("default arm")

@@ -95,7 +95,7 @@ test "Result preserves unconstrained payloads and success-only composition":
     collection_error.map(fn(flag): not flag).unwrap_error().append(2)
     if collection_error.unwrap_error() != [1, 2]: return panic("unconstrained error")
 
-    let limits = JsonLimits(max_bytes: -1)
+    let limits = JsonLimits(-1)
     let record: Result[JsonLimits, String] = ok(limits)
     record.map(fn(value): value).unwrap().max_values = some(7)
     if limits.max_values.unwrap() != 7: return panic("map normalized or copied payload")
@@ -190,12 +190,12 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 test "Map filter copies ordered membership and get_or never inserts":
     let counter = Counter(0)
     let values: Map[String, Counter] = {"b": counter, "a": Counter(2), "c": Counter(3)}
-    let selected = values.filter(predicate: fn(k, v): k != "a" and v.calls >= 0)
+    let selected = values.filter(fn(k, v): k != "a" and v.calls >= 0)
     if selected.keys() != ["b", "c"] or values.length() != 3: return panic(
         "Map order or mutation"
     )
 
-    selected.get_or(key: "b", fallback: Counter(9)).calls = 7
+    selected.get_or("b", Counter(9)).calls = 7
     if counter.calls != 7: return panic("Map filter copied payload")
 
     selected.remove("b").add("d", Counter(4))
@@ -203,7 +203,7 @@ test "Map filter copies ordered membership and get_or never inserts":
 
     let fallback = Counter(8)
     let lookup = values.get_or
-    lookup(fallback: fallback, key: "absent").calls = 9
+    lookup(fallback: fallback, "absent").calls = 9
     if fallback.calls != 9 or values.contains("absent"): return panic(
         "get_or inserted or copied"
     )
@@ -279,7 +279,7 @@ test "Set filter and map copy snapshots and deduplicate in first-result order":
 
     let bound = input.map[String]
     let mapped_snapshot = bound(
-        transform: fn(n):
+        fn(n):
             input.remove(n).add(7)
             return n.toString()
     )

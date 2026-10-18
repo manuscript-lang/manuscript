@@ -7,9 +7,9 @@ fn mutate[T](values: List[T], mode: String, replacement: T) Unit:
     if mode == "remove":
         values.remove(0)
     if mode == "splice":
-        values.splice(start: 1, delete_count: 2, replacement: [replacement])
+        values.splice(1, 2, [replacement])
     if mode == "clear" or mode == "clear_append":
-        values.splice(start: 0, delete_count: values.length(), replacement: [])
+        values.splice(0, values.length(), [])
 
     if mode == "clear_append":
         values.append(replacement)
@@ -238,11 +238,7 @@ test "map and folds consume valid retained cells":
     let total = folded.fold(
         0,
         fn(accumulator, value):
-            if visits.count == 0: folded.splice(
-                start: 0,
-                delete_count: 3,
-                replacement: []
-            )
+            if visits.count == 0: folded.splice(0, 3, [])
             visits.count += 1
             return accumulator + value
     )
@@ -386,8 +382,8 @@ test "preferred List mutators and explicit reversed copy preserve aliases":
         seen.append(value)
 
         if seen.length() == 1:
-            set(index: 1, value: 9)
-            remove(index: 0)
+            set(1, 9)
+            remove(0)
 
     if not (seen == [1, 3, 3] and alias == [9, 3] and clone == [1, 2, 3]):
         return panic("preferred mutation copied traversal or lost an alias")

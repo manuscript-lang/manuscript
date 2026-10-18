@@ -39,7 +39,7 @@ fn io_error(cause: FileSystemError) LogError:
 fn lift[T](result: Result[T, FileSystemError]) Result[T, LogError]:
     if let value = result: return ok(value)
 
-    return error(io_error(result.unwrap_error()))
+    return result.unwrap_error() | io_error | error
 
 fn numbered(path: String, index: Int) String:
     if index == 0: return path
@@ -59,7 +59,7 @@ fn adopt(w: Writer, info: FileInfo) Unit:
 
 # Opens the active file for append and reads its size and age.
 fn open_active(w: Writer) Result[Unit, LogError]:
-    let handle = try lift(w.fs.open(path: w.path, flags: "a", mode: 384))
+    let handle = w.fs.open(w.path, "a", 384) | try lift
     w.handle = some(handle)
     w.size = 0
     w.opened = clock().now()
@@ -81,7 +81,7 @@ fn rotate(w: Writer) Result[Unit, LogError]:
     var drop = last
 
     while drop >= keep and drop > 0:
-        w.fs.remove(path: numbered(w.path, drop)) | try lift
+        w.fs.remove(numbered(w.path, drop)) | try lift
         drop -= 1
 
     var index = last
@@ -93,7 +93,7 @@ fn rotate(w: Writer) Result[Unit, LogError]:
         w.fs.rename(source, destination) | try lift
         index -= 1
 
-    if keep == 0: w.fs.remove(path: w.path) | try lift
+    if keep == 0: w.fs.remove(w.path) | try lift
     return open_active(w)
 
 fn rotation_due(w: Writer, length: Int) Bool:
@@ -167,13 +167,13 @@ fn run(w: Writer, queue: BlockingQueue[Item], failures: BlockingQueue[LogError])
 # even when concurrent producers pass the length check together; only the writer removes items.
 fn admit(t: AsyncFileTransport, data: Bytes) Result[Unit, LogError]:
     if t.queue.length() >= t.capacity: return error(LogError.LimitExceeded)
-    if not t.queue.put(Item.Record(data: data)): return error(LogError.Closed)
+    if not t.queue.put(Item.Record(data)): return error(LogError.Closed)
 
     return ok(unit)
 
 fn wait_for_writer(t: AsyncFileTransport) Result[Unit, LogError]:
     let reply = BlockingQueue[Result[Unit, LogError]](1)
-    if not t.queue.put(Item.Flush(reply: reply)): return error(LogError.Closed)
+    if not t.queue.put(Item.Flush(reply)): return error(LogError.Closed)
     if let result = reply.take(): return result
 
     return error(LogError.Closed)

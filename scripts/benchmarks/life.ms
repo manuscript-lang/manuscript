@@ -2,7 +2,7 @@ import {filled, range} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 fn make_cells() List[Int]:
-    if let values = filled(value: 0, count: 16384): return values
+    if let values = filled(0, 16384): return values
 
     return panic("fill failure")
 
@@ -13,7 +13,7 @@ export fn main() Int:
     for i in range(0, 16384):
         var value = 0
         if (i * 17 + i / 128 * 13) % 7 < 3: value = 1
-        cells.set(index: i, value: value)
+        cells.set(i, value)
 
     for generation in range(0, 50):
         for y in range(0, 128):
@@ -43,7 +43,7 @@ export fn main() Int:
                 )
                 var value = 0
                 if alive: value = 1
-                next.set(index: index, value: value)
+                next.set(index, value)
 
         let old = cells
         cells = next

@@ -38,9 +38,7 @@ test "compression omission equals explicit level six for every format":
         let method = format.compress
         let copied = method
         if (try copied(data)) != expected: return panic("bound format default bytes")
-        if (try method(data, level: 6)) != expected: return panic(
-            "explicit bound level"
-        )
+        if (try method(data, 6)) != expected: return panic("explicit bound level")
         if (try format.compress(data, max_bytes: expected.length())) != expected: return panic(
             "exact output budget"
         )
@@ -105,7 +103,7 @@ test "compression defaults retain invalid levels formats and output budgets":
 test "compression default preparation retains supplied argument order":
     let log: List[String] = []
     let data = "data".to_bytes()
-    let encoded = try compress(format: chosen(log, "gzip"), data: supplied(log, data))
+    let encoded = try compress(format: chosen(log, "gzip"), supplied(log, data))
     if log != ["format", "data"]: return panic("default reordered supplied arguments")
     if (try decompress(encoded, "gzip")) != data: return panic(
         "ordered compression output"

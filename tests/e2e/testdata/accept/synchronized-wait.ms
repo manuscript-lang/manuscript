@@ -21,7 +21,7 @@ test "wait returns after another task notifies":
         mark_ready(ready)
         let seen = try waiter.join()
         if not seen:
-            return panic(message: "waiter woke before the value changed")
+            return panic("waiter woke before the value changed")
 
 test "group close cancels a waiting task":
     let ready = Synchronized(false)

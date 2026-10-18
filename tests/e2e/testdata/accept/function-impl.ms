@@ -15,9 +15,9 @@ fn render(value: Int) String:
 
 test "implementation variables inside function signatures":
     let box = Box(render)
-    if not (box.apply(value: 3) == "3"):
-        return panic(message: "check failed")
+    if not (box.apply(3) == "3"):
+        return panic("check failed")
 
     let operation = Apply[String](box)
-    if not (operation.apply(value: 4) == "4"):
-        return panic(message: "check failed")
+    if not (operation.apply(4) == "4"):
+        return panic("check failed")

@@ -12,10 +12,7 @@ fn identity[T](value: T) T:
 
 test "typed operands retain evaluation order and generic boundaries":
     let counter = Counter(0)
-    let total = (
-        step(counter, value: 1)
-        + step(counter, value: 2) * step(counter, value: 3)
-    )
+    let total = (step(counter, 1) + step(counter, 2) * step(counter, 3))
     if total != 7 or counter.value != 123: return panic("operand order")
 
     var value = identity(9)

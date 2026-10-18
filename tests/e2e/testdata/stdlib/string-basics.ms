@@ -99,7 +99,7 @@ test "String basic bound methods capture immutable receiver values":
     if (reverse() != "\n🙂\né" or length() != 4 or empty()): return panic(
         "bound scalar receiver"
     )
-    if compare(other: "é\n🙂\n") != 0: return panic("bound compare receiver/label")
+    if compare("é\n🙂\n") != 0: return panic("bound compare receiver/label")
 
     let first = lines()
     let second = lines()

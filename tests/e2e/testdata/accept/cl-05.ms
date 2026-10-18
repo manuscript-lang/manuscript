@@ -8,5 +8,5 @@ fn apply(value: Int, transform: fn(value: Int) Int) Int:
 
 test "function label compatibility":
     let transform: fn(value: Int) Int = increase
-    if not (apply(value: 4, transform) == 5):
-        return panic(message: "check failed")
+    if not (apply(4, transform) == 5):
+        return panic("check failed")

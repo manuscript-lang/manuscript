@@ -20,7 +20,7 @@ export fn bench_csv() Unit:
         "csv.parse",
         5000,
         fn() Int:
-            if let r = parse(text: csv_text):
+            if let r = parse(csv_text):
                 return r.length()
 
             return 0

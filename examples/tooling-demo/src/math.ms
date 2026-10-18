@@ -13,5 +13,5 @@ export fn compute(iterations: Int) Int:
     return result
 
 test "named arguments":
-    if total(first: 10, second: 20, third: 30) != 60:
-        return panic(message: "named argument result differs")
+    if total(10, 20, 30) != 60:
+        return panic("named argument result differs")

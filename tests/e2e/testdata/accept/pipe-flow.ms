@@ -21,7 +21,7 @@ fn check(n: Int) Result[Int, String]:
 fn flow(text: String) Result[Int, String]:
     let n = try parse(text)
         | double
-        | add(by: 3)
+        | add(3)
         | try check
     return ok(n)
 
@@ -31,12 +31,12 @@ fn bare(text: String) Result[Int, String]:
 fn describe(text: String) Result[String, String]:
     let label = try parse(text)
         | try check
-        | add(by: 1)
-        .to_string(radix: 10)
+        | add(1)
+        .to_string(10)
     return ok(label)
 
 fn order(log: List[String]) Int:
-    return trace(log, "a") | add(by: trace(log, "b")) | double
+    return trace(log, "a") | add(trace(log, "b")) | double
 
 fn trace(log: List[String], name: String) Int:
     log.append(name)

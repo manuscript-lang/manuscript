@@ -14,25 +14,22 @@ import panic from "@std/faults.ms"
 
 fn route(request: HttpRequest) HttpResponse:
     return HttpResponse(
-        status: 200,
-        headers: text_headers(
+        200,
+        text_headers(
             (
                 Map[String, String]()
-                .add(key: "Set-Cookie", value: "a=1")
-                .add(key: "set-cookie", value: "b=2")
+                .add("Set-Cookie", "a=1")
+                .add("set-cookie", "b=2")
             )
         ),
-        body: "{request.path}|{request.query}".to_bytes()
+        "{request.path}|{request.query}".to_bytes()
     )
 
 fn stream_route(exchange: HttpExchange) Result[Unit, HttpError]:
     try exchange.send_headers(
-        status: 200,
-        headers: list_headers(
-            Map[String, List[String]]().add(
-                key: "Set-Cookie",
-                value: ["a=1", "b=2"]
-            )
+        200,
+        list_headers(
+            Map[String, List[String]]().add("Set-Cookie", ["a=1", "b=2"])
         )
     )
     exchange.write("{exchange.path()}|{exchange.query()}".to_bytes()).unwrap()
@@ -40,10 +37,10 @@ fn stream_route(exchange: HttpExchange) Result[Unit, HttpError]:
 
 fn check_route(url: String, expected: String) Result[Unit, Error]:
     let response = try network().request(
-        method: HttpMethod.Get,
+        HttpMethod.Get,
         url,
-        headers: text_headers(Map[String, String]()),
-        body: "".to_bytes(),
+        text_headers(Map[String, String]()),
+        "".to_bytes(),
         timeout: 2.seconds
     )
     if response.metadata().status != 200 or response.body != expected.to_bytes(): return panic(
@@ -57,10 +54,10 @@ fn check_route(url: String, expected: String) Result[Unit, Error]:
 
 fn check_rejected(url: String) Result[Unit, Error]:
     let response = try network().request(
-        method: HttpMethod.Get,
+        HttpMethod.Get,
         url,
-        headers: text_headers(Map[String, String]()),
-        body: "".to_bytes(),
+        text_headers(Map[String, String]()),
+        "".to_bytes(),
         timeout: 2.seconds
     )
     if response.metadata().status != 400: return panic(
@@ -70,24 +67,24 @@ fn check_rejected(url: String) Result[Unit, Error]:
     return ok(unit)
 
 fn check_paths(base: String) Result[Unit, Error]:
-    try check_route(url: "{base}/a%20b", expected: "/a b|")
-    try check_route(url: "{base}/%2e%2e/x?y=%2F", expected: "/x|y=%2F")
-    try check_route(url: "{base}/a/../b/", expected: "/b/|")
-    try check_route(url: "{base}/a%252Fb?x=%2500", expected: "/a%2Fb|x=%2500")
+    try check_route("{base}/a%20b", "/a b|")
+    try check_route("{base}/%2e%2e/x?y=%2F", "/x|y=%2F")
+    try check_route("{base}/a/../b/", "/b/|")
+    try check_route("{base}/a%252Fb?x=%2500", "/a%2Fb|x=%2500")
     try check_rejected("{base}/a%2Fb")
     try check_rejected("{base}/a%00b")
     try check_rejected("{base}/bad%ff/../x")
     return ok(unit)
 
 test "buffered routes validate original input and decode once":
-    with server = try network().serve(address: "127.0.0.1:0", handler: route):
+    with server = try network().serve("127.0.0.1:0", route):
         try check_paths("http://{server.address()}")
 
 test "streaming routes validate original input and decode once":
     with server = try network().serve_stream(
-        address: "127.0.0.1:0",
-        handler: stream_route,
-        options: HttpServerOptions(tls: none)
+        "127.0.0.1:0",
+        stream_route,
+        HttpServerOptions(tls: none)
     ):
         try check_paths("http://{server.address()}")
 
@@ -102,27 +99,20 @@ test "buffered and reusable clients reject malformed ports as InvalidInput":
     let body = "".to_bytes()
     expect_http_error(
         network().request(
-            method: HttpMethod.Get,
-            url: "http://127.0.0.1:99999/",
+            HttpMethod.Get,
+            "http://127.0.0.1:99999/",
             headers,
             body
         )
     )
-    let tls = TlsOptions(
-        server_name: "",
-        roots_pem: "",
-        certificate_pem: "",
-        private_key_pem: "",
-        alpn: [],
-        require_client_certificate: false
-    )
+    let tls = TlsOptions("", "", "", "", [], require_client_certificate: false)
     with client = try network().http_client(
         HttpClientOptions(decompress: false, cookies: false, tls: tls)
     ):
         expect_http_error(
             client.request(
-                method: HttpMethod.Get,
-                url: "http://127.0.0.1:65536/",
+                HttpMethod.Get,
+                "http://127.0.0.1:65536/",
                 headers,
                 body
             )

@@ -131,7 +131,7 @@ test "typed archives retain entry limits validation and existing string calls":
         let limited: Result[List[ArchiveEntry], ArchiveError] = error(
             ArchiveError.LimitExceeded
         )
-        if format.unpack(encoded, ArchiveLimits(max_entries: 0)) != limited: return panic(
+        if format.unpack(encoded, ArchiveLimits(0)) != limited: return panic(
             "typed entry limit"
         )
 

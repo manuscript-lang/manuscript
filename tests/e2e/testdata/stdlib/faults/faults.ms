@@ -45,13 +45,13 @@ test "stale synchronized guard faults":
     guard.get()
 
 test "unwrapping an out of range slice faults":
-    ([1, 2]).slice(start: 0, end: 3).unwrap()
+    ([1, 2]).slice(0, 3).unwrap()
 
 test "negative split limit faults":
-    "a,b,c".split(separator: ",", max_parts: -1)
+    "a,b,c".split(",", -1)
 
 test "negative replace limit faults":
-    "aaa".replace(old: "a", new: "b", max_replacements: -1)
+    "aaa".replace("a", "b", -1)
 
 test "runner continues with fresh roots after faults":
     emit("fresh root after stdlib faults\n")

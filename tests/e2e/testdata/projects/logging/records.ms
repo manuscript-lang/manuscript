@@ -13,7 +13,7 @@ type Payload:
     time: Int
 
 export fn emit(logger: Logger) Result[Unit, LogError]:
-    let child = try bind(logger, bindings: Request(request: "req-1"))
+    let child = try bind(logger, Request("req-1"))
     let fields = Payload(
         count: 9007199254740993,
         ok: true,
@@ -23,12 +23,12 @@ export fn emit(logger: Logger) Result[Unit, LogError]:
         msg: "spoofed",
         time: 0
     )
-    try child.debug(message: "filtered")
+    try child.debug("filtered")
     try record(
         logger: child,
         level: LogLevel.Info,
         message: "received \"payload\"\nnext",
         fields
     )
-    try logger.warn(message: "complete")
+    try logger.warn("complete")
     return ok(unit)

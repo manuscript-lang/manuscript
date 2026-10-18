@@ -79,6 +79,6 @@ export fn bench_list() Unit:
         "list.records_map",
         100000,
         fn() Int:
-            let points = data.map(fn(x: Int) Point: Point(x, y: x + 1))
+            let points = data.map(fn(x: Int) Point: Point(x, x + 1))
             return points.fold(0, fn(acc: Int, p: Point) Int: acc + p.y)
     )

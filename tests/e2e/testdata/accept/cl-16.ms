@@ -12,10 +12,10 @@ test "data constructor context":
     let failure: Result[Int, String] = error("unavailable")
     let _absent: Optional[Int] = none
     let _nested: List[List[Int]] = [[], [1]]
-    if not (outcome_value(outcome: success) == 3):
-        return panic(message: "check failed")
-    if not (outcome_value(outcome: failure) == -1):
-        return panic(message: "check failed")
+    if not (outcome_value(success) == 3):
+        return panic("check failed")
+    if not (outcome_value(failure) == -1):
+        return panic("check failed")
 
 type Box[T]:
     value: T
@@ -29,8 +29,8 @@ fn select[T](first: T, second: T) T:
 test "nested constructor arguments receive inferred context":
     let request = Request(Box(none))
     let provided = some(3)
-    let selected = select(first: Box(none), second: Box(provided))
+    let selected = select(Box(none), Box(provided))
     if not selected.value.is_none():
-        return panic(message: "Unexpected case")
+        return panic("Unexpected case")
     if not request.box.value.is_none():
-        return panic(message: "Unexpected case")
+        return panic("Unexpected case")

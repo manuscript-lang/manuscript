@@ -14,7 +14,7 @@ import panic from "@std/faults.ms"
 fn stream_events(exchange: HttpExchange) Result[Unit, HttpError]:
     let sent = headers()
     try sent.append("Content-Type", "text/event-stream".to_bytes())
-    try exchange.send_headers(status: 200, headers: sent)
+    try exchange.send_headers(200, sent)
     exchange.write("event: greet\r\ndata: h".to_bytes()).unwrap()
     exchange.write("é".to_bytes().slice(0, 1).unwrap()).unwrap()
     exchange.write("\u{e9}!\r".to_bytes().slice(1, 4).unwrap()).unwrap()
@@ -23,15 +23,15 @@ fn stream_events(exchange: HttpExchange) Result[Unit, HttpError]:
 
 test "HTTP response bodies decode as SSE without being closed by the reader":
     with server = try network().serve_stream(
-        address: "127.0.0.1:0",
-        handler: stream_events,
-        options: HttpServerOptions()
+        "127.0.0.1:0",
+        stream_events,
+        HttpServerOptions()
     ):
-        with client = try network().http_client(options: HttpClientOptions()):
+        with client = try network().http_client(HttpClientOptions()):
             with response = try client.request(
-                method: HttpMethod.Get,
-                url: "http://{server.address()}/",
-                headers: headers()
+                HttpMethod.Get,
+                "http://{server.address()}/",
+                headers()
             ):
                 let events = try reader(borrow_body(response))
                 let first = (try next_event(events)).unwrap()

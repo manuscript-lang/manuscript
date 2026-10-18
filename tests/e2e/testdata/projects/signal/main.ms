@@ -9,17 +9,17 @@ type Resource:
 
 impl Closeable for Resource:
     fn close() Unit:
-        let _ignored = self.output.write(data: "close {self.label}\n".to_bytes())
+        let _ignored = self.output.write("close {self.label}\n".to_bytes())
 
 export fn main() Int:
     let output = stdout()
     let child = fn():
-        with resource = Resource(label: "child", output):
-            let _ignored = output.write(data: "ready\n".to_bytes())
+        with resource = Resource("child", output):
+            let _ignored = output.write("ready\n".to_bytes())
             while true:
                 continue
 
-    with resource = Resource(label: "parent", output):
+    with resource = Resource("parent", output):
         with group = TaskGroup():
             let _ignored = group.start(child)
             let _joined = group.join()

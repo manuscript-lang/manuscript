@@ -3,12 +3,12 @@ import panic from "@std/faults.ms"
 test "Map remove direct and bound preserve aliases order and no-op absence":
     let values = Map[Int, String]().add(1, "one").add(2, "two").add(3, "three")
     let alias = values
-    let returned = values.remove(key: 2)
+    let returned = values.remove(2)
     returned.add(4, "four")
     if alias.keys() != [1, 3, 4]: return panic("receiver return or insertion order")
 
     let remove = values.remove
-    let bound_result = remove(key: 1)
+    let bound_result = remove(1)
     bound_result.add(5, "five")
     if alias.keys() != [3, 4, 5]: return panic("bound receiver return")
 
@@ -29,7 +29,7 @@ test "Map remove captures its receiver before the key and keeps conversions":
     var selected = first
     let trigger = some(1)
     selected.remove(
-        key: match trigger:
+        match trigger:
             some(key):
                 selected = second
                 some(key)
@@ -72,7 +72,7 @@ test "Map explicit and bound interface views preserve field shadowing":
 test "List splice direct and bound retain self staging and receiver returns":
     let values = [1, 2, 3]
     let alias = values
-    let returned = values.splice(start: 1, delete_count: 1, replacement: values)
+    let returned = values.splice(1, 1, values)
     returned.append(4)
     if alias != [1, 1, 2, 3, 3, 4]: return panic("self staging or return")
 

@@ -34,8 +34,8 @@ fn consume[T: ReadValue[Int]](source: T) Int:
 
 test "contract views and callbacks":
     let box = Box[Int](7)
-    let first = make_view(source: box)
-    let forwarded = forward_view(source: box)
+    let first = make_view(box)
+    let forwarded = forward_view(box)
     let identity = ReadValue[Int](forwarded)
     let copied = ReadValue[Int](identity)
     let holder = ReaderHolder(identity)
@@ -44,10 +44,10 @@ test "contract views and callbacks":
     let callback = CallbackReader(seven)
     let callback_view = ReadValue[Int](callback)
     if not (first.get() == 7):
-        return panic(message: "check failed")
+        return panic("check failed")
     if not (copied.get() == 7):
-        return panic(message: "check failed")
+        return panic("check failed")
     if not (callback_view.get() == 7):
-        return panic(message: "check failed")
-    if not (consume(source: holder.reader) == 7):
-        return panic(message: "check failed")
+        return panic("check failed")
+    if not (consume(holder.reader) == 7):
+        return panic("check failed")

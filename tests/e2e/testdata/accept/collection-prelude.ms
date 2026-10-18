@@ -41,7 +41,7 @@ test "map add returns receiver and retains aliases clone and insertion order":
     let alias = values
     let copy = values.clone()
     let returned = values.add("a", 3)
-    returned.add(key: "c", value: 4)
+    returned.add("c", 4)
     alias.add(value: 5, key: "b")
     let bound = values.add
     bound("d", 6)

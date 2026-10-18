@@ -2,30 +2,26 @@ import {parse_int, parse_float, NumberError} from "@std/numbers.ms"
 import panic from "@std/faults.ms"
 
 test "numbers radix and signed boundaries":
-    if (try parse_int(text: "7fffffffffffffff", radix: 16)) != 9223372036854775807: return panic(
+    if (try parse_int("7fffffffffffffff", 16)) != 9223372036854775807: return panic(
         "maximum int"
     )
-    if (
-        (
-            try parse_int(text: "-9223372036854775808", radix: 10)
-        ) != -9223372036854775808
-    ): return panic("minimum int")
-    if 255.to_string(radix: 16) != "ff": return panic("radix formatting")
+    if ((try parse_int("-9223372036854775808", 10)) != -9223372036854775808): return panic(
+        "minimum int"
+    )
+    if 255.to_string(16) != "ff": return panic("radix formatting")
     if (try parse_float("-1.25e2")) != -125.0: return panic("exponent")
-    if (try 1.25.to_fixed(digits: 2)) != "1.25": return panic("fixed formatting")
+    if (try 1.25.to_fixed(2)) != "1.25": return panic("fixed formatting")
     if 1.9.truncate_to_int() != some(1): return panic("float truncation")
 
 test "numbers reject whitespace separators overflow and invalid radix":
     let invalid: Result[Int, NumberError] = error(NumberError.InvalidData)
     for text in [" 1", "1_0", "0x10", "+", "١"]:
-        if parse_int(text, radix: 10) != invalid: return panic("nondecimal input")
+        if parse_int(text, 10) != invalid: return panic("nondecimal input")
     let overflow: Result[Int, NumberError] = error(NumberError.OutOfRange)
-    if parse_int(text: "9223372036854775808", radix: 10) != overflow: return panic(
-        "overflow"
-    )
+    if parse_int("9223372036854775808", 10) != overflow: return panic("overflow")
 
     let radix_error: Result[Int, NumberError] = error(NumberError.InvalidInput)
-    if parse_int(text: "1", radix: 1) != radix_error: return panic("invalid radix")
+    if parse_int("1", 1) != radix_error: return panic("invalid radix")
 
     let float_error: Result[Float, NumberError] = error(NumberError.InvalidData)
     for text in [" 1.0", "1_0", "1.", "0x1p2"]:

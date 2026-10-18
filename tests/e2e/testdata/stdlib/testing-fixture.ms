@@ -4,7 +4,7 @@ type Counter:
     value: Int
 
 fn make_fixture() Counter:
-    return Counter(value: 0)
+    return Counter(0)
 
 impl TestHooks for Counter:
     fn before_each() Unit:

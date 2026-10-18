@@ -6,7 +6,7 @@ import {TaskGroup, check_cancelled} from "@std/tasks.ms"
 import sleep from "@std/time.ms"
 
 fn say(text: String) Unit:
-    let _ignored = stdout().write(data: text.to_bytes())
+    let _ignored = stdout().write(text.to_bytes())
 
 type WorkerCleanup:
     label: String
@@ -30,12 +30,8 @@ impl Closeable for Server:
         self.listener.close()
         self.workers.close()
         check_cancelled()
-        sleep(duration: 10.milliseconds)
-        let farewell = (
-            self
-            .client
-            .write(data: "farewell\n".to_bytes(), timeout: 1.seconds)
-        )
+        sleep(10.milliseconds)
+        let farewell = self.client.write("farewell\n".to_bytes(), timeout: 1.seconds)
 
         if farewell.is_error():
             say("farewell failed: {farewell.unwrap_error().message()}\n")
@@ -45,8 +41,8 @@ impl Closeable for Server:
         self.client.close()
 
 fn serve() Result[Unit, Error]:
-    with signals = try control().watch_signals(signals: [2, 15]):
-        with listener = try network().listen(address: "127.0.0.1:0"):
+    with signals = try control().watch_signals([2, 15]):
+        with listener = try network().listen("127.0.0.1:0"):
             say("{listener.address()}\n")
 
             with client = try listener.accept():
@@ -60,7 +56,7 @@ fn serve() Result[Unit, Error]:
                             fn():
                                 with cleanup = WorkerCleanup(label: "worker"):
                                     say("ready\n")
-                                    sleep(duration: 3600.seconds)
+                                    sleep(3600.seconds)
                                     let _sent = client.write(
                                         data: "worker farewell\n".to_bytes()
                                     )

@@ -31,7 +31,7 @@ fn bound_stringify[T: Named](value: T) String:
 
 fn check(value: String, expected: String) Unit:
     if value != expected:
-        panic(message: "expected {expected}, received {value}")
+        panic("expected {expected}, received {value}")
 
 fn answer() Int:
     return 42
@@ -39,83 +39,77 @@ fn answer() Int:
 fn next(state: Synchronized[Int]) Person:
     with locked = state.lock():
         let value = locked.get()
-        locked.set(value: value + 1)
-        return Person(name: "Ada", age: value)
+        locked.set(value + 1)
+        return Person("Ada", value)
 
 test "every scalar has toString":
-    check(value: "hello".toString(), expected: "hello")
-    check(value: true.toString(), expected: "true")
-    check(value: false.toString(), expected: "false")
-    check(value: unit.toString(), expected: "unit")
-    check(value: (42).toString(), expected: "42")
-    check(value: (-7).toString(), expected: "-7")
-    check(value: (1.5).toString(), expected: "1.5")
-    check(value: (-0.0).toString(), expected: "-0")
-    check(value: (1.0 / 0.0).toString(), expected: "Infinity")
-    check(value: (0.0 / 0.0).toString(), expected: "NaN")
-    check(value: (1.00d).toString(), expected: "1")
+    check("hello".toString(), "hello")
+    check(true.toString(), "true")
+    check(false.toString(), "false")
+    check(unit.toString(), "unit")
+    check((42).toString(), "42")
+    check((-7).toString(), "-7")
+    check((1.5).toString(), "1.5")
+    check((-0.0).toString(), "-0")
+    check((1.0 / 0.0).toString(), "Infinity")
+    check((0.0 / 0.0).toString(), "NaN")
+    check((1.00d).toString(), "1")
 
 test "records alternatives and collections convert":
-    let person = Person(name: "Ada", age: 37)
-    check(value: person.toString(), expected: "Person(age: 37, name: Ada)")
-    check(value: "{person}", expected: person.toString())
-    check(
-        value: Outcome.Ready(person).toString(),
-        expected: "Outcome.Ready(Person(age: 37, name: Ada))"
-    )
-    check(value: Outcome.Waiting.toString(), expected: "Outcome.Waiting")
+    let person = Person("Ada", 37)
+    check(person.toString(), "Person(age: 37, name: Ada)")
+    check("{person}", person.toString())
+    check(Outcome.Ready(person).toString(), "Outcome.Ready(Person(age: 37, name: Ada))")
+    check(Outcome.Waiting.toString(), "Outcome.Waiting")
     let absent: Optional[Int] = none
     let present: Optional[Int] = some(3)
     let result: Result[Int, String] = error("failed")
-    check(value: absent.toString(), expected: "Optional.none")
-    check(value: present.toString(), expected: "Optional.some(3)")
-    check(value: result.toString(), expected: "Result.error(failed)")
-    check(value: [1, 2, 3].toString(), expected: "[1, 2, 3]")
-    check(value: [[1], [2, 3]].toString(), expected: "[[1], [2, 3]]")
+    check(absent.toString(), "Optional.none")
+    check(present.toString(), "Optional.some(3)")
+    check(result.toString(), "Result.error(failed)")
+    check([1, 2, 3].toString(), "[1, 2, 3]")
+    check([[1], [2, 3]].toString(), "[[1], [2, 3]]")
     let empty: List[Int] = []
-    check(value: empty.toString(), expected: "[]")
-    let map = (Map[String, Int]().add(key: "b", value: 2).add(key: "a", value: 1))
-    check(value: map.toString(), expected: "Map(b: 2, a: 1)")
+    check(empty.toString(), "[]")
+    let map = (Map[String, Int]().add("b", 2).add("a", 1))
+    check(map.toString(), "Map(b: 2, a: 1)")
     let set = Set[Int]().add(2).add(1)
-    check(value: set.toString(), expected: "Set(2, 1)")
+    check(set.toString(), "Set(2, 1)")
     let bytes = Bytes([0, 65, 255])
-    check(value: bytes.toString(), expected: "Bytes(0, 65, 255)")
-    check(
-        value: "{map}|{set}|{bytes}",
-        expected: "Map(b: 2, a: 1)|Set(2, 1)|Bytes(0, 65, 255)"
-    )
+    check(bytes.toString(), "Bytes(0, 65, 255)")
+    check("{map}|{set}|{bytes}", "Map(b: 2, a: 1)|Set(2, 1)|Bytes(0, 65, 255)")
 
 test "generics views bound methods functions and resources":
-    let person = Person(name: "Ada", age: 37)
-    check(value: stringify(person), expected: person.toString())
-    check(value: interpolate(person), expected: person.toString())
-    check(value: bound_stringify(person), expected: person.toString())
+    let person = Person("Ada", 37)
+    check(stringify(person), person.toString())
+    check(interpolate(person), person.toString())
+    check(bound_stringify(person), person.toString())
     let view = Named(person)
-    check(value: view.toString(), expected: person.toString())
-    check(value: "{view}", expected: person.toString())
+    check(view.toString(), person.toString())
+    check("{view}", person.toString())
     let convert: fn() String = view.toString
-    check(value: convert(), expected: person.toString())
-    check(value: answer.toString(), expected: "[function]")
-    check(value: "{answer}", expected: "[function]")
+    check(convert(), person.toString())
+    check(answer.toString(), "[function]")
+    check("{answer}", "[function]")
     let queue = Queue[Int](1)
-    check(value: queue.toString(), expected: "[object]")
-    check(value: "{queue}", expected: "[object]")
+    check(queue.toString(), "[object]")
+    check("{queue}", "[object]")
 
-    with service = Scheduler(limit: 1):
-        check(value: service.toString(), expected: "[object]")
-        check(value: "{service}", expected: "[object]")
+    with service = Scheduler(1):
+        check(service.toString(), "[object]")
+        check("{service}", "[object]")
         let bound = service.toString
         service.close()
-        check(value: bound(), expected: "[object]")
+        check(bound(), "[object]")
 
 test "interpolation and bound conversion evaluate each receiver once":
     let state = Synchronized[Int](1)
     check(
-        value: "{next(state)}|{next(state)}",
-        expected: "Person(age: 1, name: Ada)|Person(age: 2, name: Ada)"
+        "{next(state)}|{next(state)}",
+        "Person(age: 1, name: Ada)|Person(age: 2, name: Ada)"
     )
     let convert = next(state).toString
-    check(value: convert(), expected: "Person(age: 3, name: Ada)")
-    check(value: convert(), expected: "Person(age: 3, name: Ada)")
+    check(convert(), "Person(age: 3, name: Ada)")
+    check(convert(), "Person(age: 3, name: Ada)")
     with locked = state.lock():
-        check(value: locked.get().toString(), expected: "4")
+        check(locked.get().toString(), "4")

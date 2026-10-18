@@ -84,7 +84,7 @@ test "filesystem file copies default to no replacement and retain byte limits":
             "copy overwrote destination"
         )
 
-        try copy(source, destination, replace: true, max_bytes: none)
+        try copy(source, destination, replace: true, none)
         if (try text(fs, destination)) != "changed": return panic(
             "explicit copy replacement"
         )
@@ -130,7 +130,7 @@ test "filesystem tree copies default to no replacement with distinct budgets":
             "tree replaced existing data"
         )
 
-        try copy(source, destination, true, max_entries: none, max_bytes: none)
+        try copy(source, destination, true, none, none)
         if (try text(fs, "{destination}/data")) != "xyz": return panic(
             "explicit tree replacement"
         )
@@ -212,7 +212,7 @@ test "filesystem default preparation retains written argument order":
         let log: List[String] = []
         try fs.write_file(
             data: data_argument(log),
-            path: argument(log, "path", "{temporary.path()}/ordered")
+            argument(log, "path", "{temporary.path()}/ordered")
         )
         if log != ["data", "path"]: return panic("default reordered supplied arguments")
 
@@ -223,7 +223,7 @@ test "filesystem default preparation retains written argument order":
                 "destination",
                 "{temporary.path()}/copy"
             ),
-            source: argument(log, "source", "{temporary.path()}/ordered")
+            argument(log, "source", "{temporary.path()}/ordered")
         )
         if log != ["data", "path", "destination", "source"]: return panic(
             "bound default reordered arguments"

@@ -26,10 +26,10 @@ test "generic implementations":
     let number_view = ReadValue[Int](number)
     let text_view = ReadValue[String](text)
     if not (number_view.get() == 7):
-        return panic(message: "check failed")
+        return panic("check failed")
     if not (text_view.get() == "hello"):
-        return panic(message: "check failed")
-    if not (compare(box: number, other: 7)):
-        return panic(message: "check failed")
-    if not (not compare(box: number, other: 8)):
-        return panic(message: "check failed")
+        return panic("check failed")
+    if not (compare(number, 7)):
+        return panic("check failed")
+    if not (not compare(number, 8)):
+        return panic("check failed")

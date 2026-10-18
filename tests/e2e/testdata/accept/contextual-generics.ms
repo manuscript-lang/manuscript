@@ -65,8 +65,8 @@ test "expected generic results preserve behavior and call order":
     let events = Events([])
     let combined: Optional[Int] = combine(
         events,
-        second: record(events, value: 2),
-        first: record(events, value: 1)
+        second: record(events, 2),
+        first: record(events, 1)
     )
     if not combined.is_none(): return panic("nested contextual result")
     if events.values != [2, 1, 3]: return panic(

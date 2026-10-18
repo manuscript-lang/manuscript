@@ -63,7 +63,7 @@ test "constructor arguments retain written order and capture snapshots":
                     let nested = fn() Int: value
                     return mark(log, "call;", nested())
             ),
-            first: match some(2):
+            match some(2):
                 some(number):
                     value = 70
                     mark(log, "first;", number)

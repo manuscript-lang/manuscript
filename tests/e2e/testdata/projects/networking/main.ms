@@ -13,16 +13,12 @@ import TlsOptions from "@std/tls.ms"
 
 fn relay(socket: WebSocket) Result[Unit, WebSocketError]:
     if let message = try socket.receive():
-        try socket.send(data: message.data, text: message.text)
+        try socket.send(message.data, text: message.text)
     return ok(unit)
 
 fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
     if exchange.path() == "/ws":
-        if let acquired = exchange.upgrade(
-            allowed_origins: [],
-            subprotocols: ["echo"],
-            max_message_bytes: 1024
-        ):
+        if let acquired = exchange.upgrade([], ["echo"], 1024):
             with socket = acquired:
                 if relay(socket).is_error():
                     return error(HttpError.Failed("websocket relay failed"))
@@ -32,8 +28,8 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
 
     let fields = headers()
     try fields.append("X-Test", "stream".to_bytes())
-    try exchange.send_headers(status: 200, headers: fields)
-    if exchange.write(data: "hello from streaming Manuscript".to_bytes()).is_error():
+    try exchange.send_headers(200, fields)
+    if exchange.write("hello from streaming Manuscript".to_bytes()).is_error():
         return error(HttpError.Failed("write failed"))
 
     return ok(unit)
@@ -57,11 +53,7 @@ fn exercise() Result[Unit, Error]:
         tls: none
     )
 
-    with server = try network().serve_stream(
-        address: "127.0.0.1:0",
-        handler: echo,
-        options: server_options
-    ):
+    with server = try network().serve_stream("127.0.0.1:0", echo, server_options):
         let client_options = HttpClientOptions(
             max_redirects: 2,
             max_idle_connections: 4,
@@ -72,7 +64,7 @@ fn exercise() Result[Unit, Error]:
             tls
         )
 
-        with client = try network().http_client(options: client_options):
+        with client = try network().http_client(client_options):
             with response = try client.request(
                 method: HttpMethod.Get,
                 url: "http://{server.address()}/",
@@ -82,13 +74,13 @@ fn exercise() Result[Unit, Error]:
                 timeout: 2.seconds
             ):
                 if not (response.metadata().status == 200):
-                    return panic(message: "check failed")
+                    return panic("check failed")
 
-                if let data = try response.read(max_bytes: 1024):
+                if let data = try response.read(1024):
                     if data.to_string() != some("hello from streaming Manuscript"):
-                        return panic(message: "check failed")
+                        return panic("check failed")
                 else:
-                    return panic(message: "Unexpected case")
+                    return panic("Unexpected case")
 
         let websocket_options = WebSocketOptions(
             max_message_bytes: 1024,
@@ -104,17 +96,17 @@ fn exercise() Result[Unit, Error]:
             options: websocket_options
         ):
             if not (socket.subprotocol() == "echo"):
-                return panic(message: "check failed")
+                return panic("check failed")
 
-            try socket.send(data: "echo me".to_bytes(), text: true)
+            try socket.send("echo me".to_bytes(), text: true)
 
             if let message = try socket.receive():
                 if not (message.text):
-                    return panic(message: "check failed")
+                    return panic("check failed")
                 if not (message.data.to_string() == some("echo me")):
-                    return panic(message: "check failed")
+                    return panic("check failed")
             else:
-                return panic(message: "Unexpected case")
+                return panic("Unexpected case")
 
     return ok(unit)
 

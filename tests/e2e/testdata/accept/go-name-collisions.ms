@@ -30,7 +30,7 @@ fn nil(value: Int) Int:
     return value + 4
 
 test "field names that differ only in underscores stay distinct":
-    let value = Spelled(x_: 1, x: 2, a_b: 3, aB: 4)
+    let value = Spelled(1, 2, 3, 4)
     if value.x_ != 1 or value.x != 2 or value.a_b != 3 or value.aB != 4: return panic(
         "fields"
     )
@@ -38,10 +38,10 @@ test "field names that differ only in underscores stay distinct":
     let clone = value.clone()
     clone.x_ = 9
     if value.x_ != 1 or clone.x_ != 9: return panic("clone")
-    if value != Spelled(x_: 1, x: 2, a_b: 3, aB: 4): return panic("equality")
+    if value != Spelled(1, 2, 3, 4): return panic("equality")
 
 test "operation names that differ only in underscores stay distinct":
-    let methods = Methods(value: Spelled(x_: 1, x: 2, a_b: 3, aB: 4))
+    let methods = Methods(Spelled(1, 2, 3, 4))
     if methods.foo_bar() != 1 or methods.fooBar() != 2: return panic("operations")
 
 test "functions named like Go predeclared identifiers still lower":
@@ -68,11 +68,11 @@ fn side(shape: Shape) Int:
         Square(side): return side
 
 test "declared names stay apart from instantiation and case names":
-    let boxed = Box[Int](value: 1)
-    let named = Box_Int(value: "one")
+    let boxed = Box[Int](1)
+    let named = Box_Int("one")
     if boxed.value != 1 or named.value != "one": return panic("instantiation")
     if side(Shape.Circle(3)) != 3 or side(Shape.Square(4)) != 4: return panic("cases")
-    if Shape_Circle(radius: "r").radius != "r": return panic("declared case-like name")
+    if Shape_Circle("r").radius != "r": return panic("declared case-like name")
 
 interface Counter:
     fn count() Int
@@ -91,10 +91,10 @@ fn clone_Tally(tally: Tally) Int:
     return tally.total + 1
 
 test "view and helper names stay apart from declared names":
-    let tally = Tally(total: 1)
+    let tally = Tally(1)
     let copy = tally.clone()
-    let view = Counter(value: tally)
-    if view.count() != 1 or Counter_Tally(other: 2).other != 2: return panic("view")
+    let view = Counter(tally)
+    if view.count() != 1 or Counter_Tally(2).other != 2: return panic("view")
     if copy.total != 1 or clone_Tally(tally) != 2: return panic("helper")
 
 interface Reporter:
@@ -109,7 +109,7 @@ impl Reporter for Tally:
         return "receiver {self.total}"
 
 test "operations named like generated view methods stay callable":
-    let reporter = Reporter(value: Tally(total: 3))
+    let reporter = Reporter(Tally(3))
     if reporter.describe() != "describe 3" or reporter.receiver() != "receiver 3": return panic(
         "view methods"
     )

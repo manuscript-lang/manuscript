@@ -11,8 +11,8 @@ export fn main() Int:
         timeout: 1.seconds
     ):
         if not (output.exit_code == 0):
-            return panic(message: "check failed")
-        if stdout().write(data: output.stdout).is_error():
+            return panic("check failed")
+        if stdout().write(output.stdout).is_error():
             return 1
 
         return 0

@@ -4,14 +4,14 @@ fn positive(value: Int) Int:
     if value > 0:
         return value
     else:
-        panic(message: "positive value required")
+        panic("positive value required")
 
 fn discard(value: Int) Unit:
     if not (value > 0):
-        return panic(message: "check failed")
+        return panic("check failed")
 
 test "return contracts":
-    if not (positive(value: 3) == 3):
-        return panic(message: "check failed")
+    if not (positive(3) == 3):
+        return panic("check failed")
 
-    discard(value: 1)
+    discard(1)

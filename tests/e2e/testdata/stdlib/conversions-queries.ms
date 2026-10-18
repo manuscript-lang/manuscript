@@ -81,7 +81,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     if counter.calls != 4: return panic("lazy conversion copied cause")
 
     let bound = missing.ok_or[Counter]
-    bound(cause: counter).unwrap_error().calls = 5
+    bound(counter).unwrap_error().calls = 5
     if counter.calls != 5: return panic("bound eager conversion lost receiver")
 
     let bound_lazy = missing.ok_or_else[Counter]
@@ -208,7 +208,7 @@ test "Map predicates short circuit over snapshots including empty receivers":
     let every = values.every
     if (
         every(
-            predicate: fn(k, v):
+            fn(k, v):
                 seen.append(k)
                 values.remove("a").add("c", 99).add("new", 4)
                 return v > 1

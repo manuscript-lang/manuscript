@@ -10,7 +10,7 @@ export let (
 
 test "a constant group declares each constant":
     if not (HIGH == 10 and LABEL == "range 1..10"):
-        return panic(message: "check failed")
+        return panic("check failed")
 
 test "a var group declares mutable locals":
     var (
@@ -18,9 +18,9 @@ test "a var group declares mutable locals":
         step = fn(value: Int) Int:
             return value + 1
     )
-    total = step(value: total)
+    total = step(total)
     if not (total == 1):
-        return panic(message: "check failed")
+        return panic("check failed")
 
 test "a let group declares immutable locals":
     let (
@@ -28,4 +28,4 @@ test "a let group declares immutable locals":
         [first, second] = [1, 2]
     )
     if not (name == "Ada" and first + second == 3):
-        return panic(message: "check failed")
+        return panic("check failed")

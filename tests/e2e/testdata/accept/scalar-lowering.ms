@@ -24,7 +24,7 @@ fn returning_match() Bool:
 
 test "primitive equality captures operands once in order":
     let counter = Counter()
-    if mark(counter, digit: 1) == mark(counter, digit: 2):
+    if mark(counter, 1) == mark(counter, 2):
         return panic("distinct integers compared equal")
     if counter.value != 12: return panic("operand order or count changed")
 
@@ -38,8 +38,8 @@ test "primitive equality captures operands once in order":
         "left read moved past right mutation"
     )
 
-    let skipped = false and mark(counter, digit: 3) == 3
-    let skipped_again = true or mark(counter, digit: 4) == 4
+    let skipped = false and mark(counter, 3) == 3
+    let skipped_again = true or mark(counter, 4) == 4
     if (skipped or not skipped_again or counter.value != 12):
         return panic("comparison escaped short circuit")
     if "é" == "e\u{0301}" or "λ🙂" != "λ🙂": return panic("Unicode equality changed")
@@ -156,7 +156,7 @@ test "cleanup remains owned by its source callable":
         return panic("match source return cleanup lost")
     if defaulted(counter) != 2 or counter.value != 3:
         return panic("default match cleanup lost")
-    if defaulted(counter, value: 9) != 9 or counter.value != 3:
+    if defaulted(counter, 9) != 9 or counter.value != 3:
         return panic("explicit argument ran default cleanup")
 
     nested(counter)

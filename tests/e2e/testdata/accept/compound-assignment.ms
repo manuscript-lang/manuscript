@@ -35,11 +35,11 @@ test "right side groups as one operand":
         return panic("compound right side")
 
 test "compound assignment on fields":
-    let counter = Counter(count: 1, label: "x")
+    let counter = Counter(1, "x")
     counter.count += 4
     counter.count *= counter.count
     counter.label += "y"
-    let outer = Outer(inner: counter)
+    let outer = Outer(counter)
     outer.inner.count -= 5
     if counter.count != 20 or counter.label != "xy" or tally([1, 2, 3]) != 6:
         return panic("compound assignment on fields")

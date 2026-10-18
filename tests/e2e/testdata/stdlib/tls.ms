@@ -8,64 +8,51 @@ import panic from "@std/faults.ms"
 import {certificate, private_key} from "./support/certificates.ms"
 
 fn hello(exchange: HttpExchange) Result[Unit, HttpError]:
-    try exchange.send_headers(
-        status: 200,
-        headers: list_headers(Map[String, List[String]]())
-    )
+    try exchange.send_headers(200, list_headers(Map[String, List[String]]()))
     exchange.write("secure".to_bytes()).unwrap()
     return ok(unit)
 
 test "TLS certificate parsing verification hostname and expiration":
-    let certificates = try parse_certificates(pem: certificate(), max_certificates: 1)
+    let certificates = try parse_certificates(certificate(), 1)
     if (
         certificates.length() != 1
         or certificates.at(0).unwrap().dns_names != ["stdlib.test"]
     ): return panic("certificate metadata")
 
-    let now = try timestamp(seconds: 1893456000, nanoseconds: 0)
-    try verify_certificates(
-        chain_pem: certificate(),
-        roots_pem: certificate(),
-        server_name: "stdlib.test",
-        now
-    )
+    let now = try timestamp(1893456000, 0)
+    try verify_certificates(certificate(), certificate(), "stdlib.test", now)
     let failed: Result[Unit, TlsError] = error(TlsError.AuthenticationFailed)
-    if (
-        verify_certificates(
-            chain_pem: certificate(),
-            roots_pem: certificate(),
-            server_name: "wrong.test",
-            now
-        ) != failed
-    ): return panic("hostname validation")
+    if (verify_certificates(certificate(), certificate(), "wrong.test", now) != failed): return panic(
+        "hostname validation"
+    )
 
-    let expired = try timestamp(seconds: 4133980800, nanoseconds: 0)
+    let expired = try timestamp(4133980800, 0)
     if (
         verify_certificates(
-            chain_pem: certificate(),
-            roots_pem: certificate(),
-            server_name: "stdlib.test",
-            now: expired
+            certificate(),
+            certificate(),
+            "stdlib.test",
+            expired
         ) != failed
     ): return panic("expiration validation")
 
 test "TLS rejects malformed PEM and certificate budgets":
     let invalid: Result[List[CertificateInfo], TlsError] = error(TlsError.InvalidData)
-    if parse_certificates(pem: "not PEM") != invalid: return panic("malformed PEM")
+    if parse_certificates("not PEM") != invalid: return panic("malformed PEM")
 
     let limited: Result[List[CertificateInfo], TlsError] = error(TlsError.LimitExceeded)
-    if (parse_certificates(pem: certificate(), max_certificates: 0) != limited): return panic(
+    if (parse_certificates(certificate(), 0) != limited): return panic(
         "certificate budget"
     )
 
 test "HTTPS trusts only the explicitly supplied local test root":
     let net = network()
     let server_tls = TlsOptions(
-        server_name: "",
-        roots_pem: "",
-        certificate_pem: certificate(),
-        private_key_pem: private_key(),
-        alpn: ["http/1.1"],
+        "",
+        "",
+        certificate(),
+        private_key(),
+        ["http/1.1"],
         require_client_certificate: false
     )
     let server_options = HttpServerOptions(
@@ -74,17 +61,13 @@ test "HTTPS trusts only the explicitly supplied local test root":
         tls: server_tls
     )
 
-    with server = try net.serve_stream(
-        address: "127.0.0.1:0",
-        handler: hello,
-        options: server_options
-    ):
+    with server = try net.serve_stream("127.0.0.1:0", hello, server_options):
         let client_tls = TlsOptions(
-            server_name: "stdlib.test",
-            roots_pem: certificate(),
-            certificate_pem: "",
-            private_key_pem: "",
-            alpn: ["http/1.1"],
+            "stdlib.test",
+            certificate(),
+            "",
+            "",
+            ["http/1.1"],
             require_client_certificate: false
         )
         with client = try net.http_client(
@@ -95,10 +78,10 @@ test "HTTPS trusts only the explicitly supplied local test root":
             )
         ):
             with response = try client.request(
-                method: HttpMethod.Get,
-                url: "https://{server.address()}/",
-                headers: text_headers(Map[String, String]()),
-                body: "".to_bytes(),
+                HttpMethod.Get,
+                "https://{server.address()}/",
+                text_headers(Map[String, String]()),
+                "".to_bytes(),
                 timeout: 2.seconds
             ):
                 if (

@@ -33,20 +33,20 @@ fn widened(state: State) Result[Int, Error]:
     return ok(0)
 
 test "standalone try evaluates once and continues on Unit success":
-    let state = State(calls: 0, closed: 0)
+    let state = State(0, 0)
     let value = try exact(state, fail: false)
     if value != "done": return panic("success lost")
     if state.calls != 11 or state.closed != 1: return panic("success order changed")
 
 test "standalone try propagates and cleans up before returning":
-    let state = State(calls: 0, closed: 0)
+    let state = State(0, 0)
     let failed = exact(state, fail: true)
     if failed.is_ok(): return panic("failure swallowed")
     if failed.unwrap_error().code != 42: return panic("payload lost")
     if state.calls != 1 or state.closed != 1: return panic("failure order changed")
 
 test "standalone try preserves concrete errors at Error boundaries":
-    let state = State(calls: 0, closed: 0)
+    let state = State(0, 0)
     let outcome = widened(state)
     if outcome.is_ok(): return panic("failure swallowed")
 
@@ -60,7 +60,7 @@ test "standalone try preserves concrete errors at Error boundaries":
     if state.calls != 1: return panic("operation repeated")
 
 test "standalone try in closure returns from that closure":
-    let state = State(calls: 0, closed: 0)
+    let state = State(0, 0)
     let callback = fn() Result[Unit, Failure]:
         if true: try operation(state, fail: true)
         return ok(unit)

@@ -2,7 +2,7 @@ import {timestamp, parse_timestamp, Timestamp, TimeError, clock, wall_clock, sle
 import panic from "@std/faults.ms"
 
 test "timestamps preserve nanoseconds and shift across epoch":
-    let epoch = try timestamp(seconds: 0, nanoseconds: 123)
+    let epoch = try timestamp(0, 123)
     if epoch.unix_seconds() != 0 or epoch.nanoseconds() != 123: return panic(
         "timestamp units"
     )
@@ -21,9 +21,7 @@ test "time rejects invalid timestamps and out of range nanoseconds":
     )
 
     let out_of_range: Result[Timestamp, TimeError] = error(TimeError.OutOfRange)
-    if timestamp(seconds: 0, nanoseconds: 1000000000) != out_of_range: return panic(
-        "nanosecond range"
-    )
+    if timestamp(0, 1000000000) != out_of_range: return panic("nanosecond range")
 
 test "host clocks are usable and zero sleep completes":
     let monotonic = clock()

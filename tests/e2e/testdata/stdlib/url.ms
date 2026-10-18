@@ -18,18 +18,16 @@ test "URL canonicalization and relative references":
     if (try format(url)) != "https://example.com:443/a/b?q=1#fragment": return panic(
         "URL format"
     )
-    if (
-        (
-            try format(try resolve(base: url, reference: "../c"))
-        ) != "https://example.com:443/c"
-    ): return panic("relative reference")
+    if ((url | try resolve("../c") | try format) != "https://example.com:443/c"): return panic(
+        "relative reference"
+    )
     if encode_component("a b/é") != "a%20b%2F%C3%A9": return panic("component escaping")
     if (try decode_component("a%20b%2F%C3%A9")) != "a b/é": return panic(
         "component decoding"
     )
 
 test "URL query retains duplicate keys empty values and spaces":
-    let entries = try parse_query(text: "a=1&a=2&empty=&space=hello+world")
+    let entries = try parse_query("a=1&a=2&empty=&space=hello+world")
     if entries.length() != 4 or entries.at(3).unwrap().value != "hello world": return panic(
         "query values"
     )
@@ -38,19 +36,18 @@ test "URL query retains duplicate keys empty values and spaces":
     )
 
     let limited: Result[List[QueryEntry], UrlError] = error(UrlError.LimitExceeded)
-    if parse_query(text: "a=1&b=2", max_entries: 1) != limited: return panic(
-        "query limit"
-    )
+    if parse_query("a=1&b=2", 1) != limited: return panic("query limit")
 
     let invalid: Result[String, UrlError] = error(UrlError.InvalidData)
     if decode_component("%zz") != invalid: return panic("malformed escape")
 
 test "URL query skips empty segments":
-    let entries = try parse_query(text: "&a=1&&b=2&")
-    if format_query(entries) != "a=1&b=2": return panic("empty segments kept")
-    if not (try parse_query(text: "&&")).is_empty(): return panic("only separators")
+    if (try parse_query("&a=1&&b=2&") | format_query) != "a=1&b=2": return panic(
+        "empty segments kept"
+    )
+    if not (try parse_query("&&")).is_empty(): return panic("only separators")
 
-    let bounded = try parse_query(text: "a=1&&b=2", max_entries: 2)
+    let bounded = try parse_query("a=1&&b=2", 2)
     if bounded.length() != 2: return panic("empty segments counted")
 
 test "URL format rejects queries that would not round trip":
@@ -58,24 +55,10 @@ test "URL format rejects queries that would not round trip":
     let invalid: Result[String, UrlError] = error(UrlError.InvalidInput)
 
     for query in ["a#b", "a b", "%zz", "a%2"]:
-        let bad = Url(
-            scheme: base.scheme,
-            host: base.host,
-            port: base.port,
-            path: base.path,
-            query,
-            fragment: ""
-        )
+        let bad = Url(base.scheme, base.host, base.port, base.path, query, "")
         if format(bad) != invalid: return panic("query {query}")
 
-    let good = Url(
-        scheme: base.scheme,
-        host: base.host,
-        port: base.port,
-        path: base.path,
-        query: "a=%41&b",
-        fragment: ""
-    )
+    let good = Url(base.scheme, base.host, base.port, base.path, "a=%41&b", "")
     if (try format(good)) != "http://h/p?a=%41&b": return panic("valid query")
 
 test "URL parse rejects malformed hosts and queries and keeps an empty authority":
@@ -84,6 +67,6 @@ test "URL parse rejects malformed hosts and queries and keeps an empty authority
         if parse(text) != invalid: return panic("accepted {text}")
     let empty = try parse("http://")
     if (try format(empty)) != "http://": return panic("empty authority text")
-    if (try parse(try format(empty))) != empty: return panic(
+    if (empty | try format | try parse) != empty: return panic(
         "empty authority round trip"
     )

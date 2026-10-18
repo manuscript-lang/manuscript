@@ -19,16 +19,16 @@ type Shape:
     case Tri(b: Int)
 
 fn got_line() Bool:
-    if let line = read_line(input: stdin()):
+    if let line = read_line(stdin()):
         return line.is_some()
 
     return false
 
 fn say(text: String) Unit:
-    let _ignored = stdout().write(data: text.to_bytes())
+    let _ignored = stdout().write(text.to_bytes())
 
 fn since(started: Instant) Int:
-    return clock().now().difference(other: started).to_nanoseconds()
+    return clock().now().difference(started).to_nanoseconds()
 
 fn report(name: String, ops: Int, started: Instant) Unit:
     say("{name} {ops} {since(started)}\n")
@@ -38,13 +38,13 @@ fn ident[T](x: T) T:
 
 fn checked(n: Int) Result[Int, String]:
     if n < 0:
-        return error(cause: "negative")
+        return error("negative")
 
-    return ok(value: n + 1)
+    return ok(n + 1)
 
 fn chain(n: Int) Result[Int, String]:
     let v = try checked(n)
-    return ok(value: v)
+    return ok(v)
 
 fn area(s: Shape) Int:
     var out = 0
@@ -70,7 +70,7 @@ export fn main() Int:
         i += 1
 
     let built = sb.freeze()
-    report(name: "string_append_50k", ops: 50000, started: t)
+    report("string_append_50k", 50000, t)
     # read_line: every line on stdin
     t = clock().now()
     var lines = 0
@@ -82,24 +82,24 @@ export fn main() Int:
         else:
             more = false
 
-    report(name: "read_line", ops: lines, started: t)
+    report("read_line", lines, t)
     # map_put_get: 8k Int keys
     t = clock().now()
     let m = Map[Int, Int]()
     i = 0
 
     while i < 8000:
-        m.add(key: i, value: i * 2)
+        m.add(i, i * 2)
         i += 1
 
     var sum = 0
     i = 0
 
     while i < 8000:
-        sum += m.get(key: i).unwrap()
+        sum += m.get(i).unwrap()
         i += 1
 
-    report(name: "map_put_get_8k", ops: 16000, started: t)
+    report("map_put_get_8k", 16000, t)
     # int_eq
     t = clock().now()
     var hits = 0
@@ -110,7 +110,7 @@ export fn main() Int:
             hits += 1
         i += 1
 
-    report(name: "int_eq", ops: 10000000, started: t)
+    report("int_eq", 10000000, t)
     # generic call
     t = clock().now()
     i = 0
@@ -120,17 +120,17 @@ export fn main() Int:
         g += ident[Int](i)
         i += 1
 
-    report(name: "generic_call", ops: 1000000, started: t)
+    report("generic_call", 1000000, t)
     # method call
     t = clock().now()
-    let acc = Acc(total: 0)
+    let acc = Acc(0)
     i = 0
 
     while i < 1000000:
-        acc.bump(by: 1)
+        acc.bump(1)
         i += 1
 
-    report(name: "method_call", ops: 1000000, started: t)
+    report("method_call", 1000000, t)
     # try
     t = clock().now()
     i = 0
@@ -144,10 +144,10 @@ export fn main() Int:
 
         i += 1
 
-    report(name: "try", ops: 1000000, started: t)
+    report("try", 1000000, t)
     # statement match
     t = clock().now()
-    let shapes = [Shape.Circle(r: 2), Shape.Square(s: 3), Shape.Tri(b: 4)]
+    let shapes = [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]
     i = 0
     var ma = 0
 
@@ -155,7 +155,7 @@ export fn main() Int:
         ma += area(shapes.at(i % 3).unwrap())
         i += 1
 
-    report(name: "match", ops: 1000000, started: t)
+    report("match", 1000000, t)
     # builtin method: length()
     t = clock().now()
     let xs: List[Int] = []
@@ -172,7 +172,7 @@ export fn main() Int:
         ln += xs.length()
         i += 1
 
-    report(name: "builtin_length", ops: 1000000, started: t)
+    report("builtin_length", 1000000, t)
     # for loop over a list
     let big: List[Int] = []
     i = 0
@@ -185,7 +185,7 @@ export fn main() Int:
     var fs = 0
     for x in big:
         fs += x
-    report(name: "for_list", ops: 1000000, started: t)
+    report("for_list", 1000000, t)
     say(
         "# sink {built.byte_length()} {sum} {hits} {g} {acc.total} {tr} {ma} {ln} {fs}\n"
     )

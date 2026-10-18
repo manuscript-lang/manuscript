@@ -3,11 +3,7 @@ import network from "@std/net.ms"
 import stdout from "@std/io.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
-    return HttpResponse(
-        status: 200,
-        headers: headers(),
-        body: "hello {request.path}".to_bytes()
-    )
+    return HttpResponse(200, headers(), "hello {request.path}".to_bytes())
 
 export fn main() Int:
     let serve = network().serve
@@ -22,7 +18,7 @@ export fn main() Int:
         grace: 0.seconds
     ):
         with server = acquired:
-            if stdout().write(data: "{server.address()}\n".to_bytes()).is_error():
+            if stdout().write("{server.address()}\n".to_bytes()).is_error():
                 return 1
 
             let _ignored = server.wait()

@@ -19,7 +19,7 @@ impl Bumper for Counter:
 impl Scaler for Counter:
     fn scale(factor: Int, offset: Optional[Int] = none) Int: (
         self.n * factor
-        + offset.unwrap_or(fallback: 0)
+        + offset.unwrap_or(0)
     )
 
 impl Bumper for Shape:
@@ -38,32 +38,32 @@ fn guarded(c: Counter, by: Int) Int:
     return c.bump(by)
 
 test "method calls on concrete receivers":
-    let c = Counter(n: 4)
-    if not (c.bump(by: 3) == 7):
-        return panic(message: "record")
-    if not (Shape.Circle(r: 2).bump(by: 1) == 3):
-        return panic(message: "circle")
-    if not (Shape.Square(side: 3).bump(by: 2) == 6):
-        return panic(message: "square")
+    let c = Counter(4)
+    if not (c.bump(3) == 7):
+        return panic("record")
+    if not (Shape.Circle(2).bump(1) == 3):
+        return panic("circle")
+    if not (Shape.Square(3).bump(2) == 6):
+        return panic("square")
 
 test "one call site sees different receiver types":
-    let counters: List[Counter] = [Counter(n: 1), Counter(n: 2), Counter(n: 3)]
+    let counters: List[Counter] = [Counter(1), Counter(2), Counter(3)]
     var total = 0
     for counter in counters:
-        total = total + guarded(c: counter, by: 10)
+        total += guarded(counter, 10)
     if not (total == 36):
-        return panic(message: "loop")
+        return panic("loop")
 
 test "views, defaults, and reordered labels keep dispatch":
-    let c = Counter(n: 5)
-    if not (through_view(b: Bumper(value: c), by: 2) == 7):
-        return panic(message: "view")
-    if not (c.scale(factor: 2) == 10):
-        return panic(message: "default")
+    let c = Counter(5)
+    if not (through_view(Bumper(c), 2) == 7):
+        return panic("view")
+    if not (c.scale(2) == 10):
+        return panic("default")
     if not (c.scale(offset: some(1), factor: 2) == 11):
-        return panic(message: "reordered")
-    if not (c.scale(factor: 2, offset: some(3)) == 13):
-        return panic(message: "ordered")
+        return panic("reordered")
+    if not (c.scale(2, some(3)) == 13):
+        return panic("ordered")
 
 type Parser:
     base: Int
@@ -95,21 +95,21 @@ fn run_direct(chain: Chain, n: Int) Int:
     return chain.step(n) | code
 
 fn run_view(chain: Chain, n: Int) Int:
-    return Step(value: chain).step(n) | code
+    return Step(chain).step(n) | code
 
 fn run_bound(chain: Chain, n: Int) Int:
     let callback = chain.step
     return callback(n) | code
 
 test "nested try in a direct method becomes an error result":
-    let chain = Chain(parser: Parser(base: 10))
-    if not (run_direct(chain, n: 5) == 16):
-        return panic(message: "ok")
-    if not (run_direct(chain, n: -5) == -1):
-        return panic(message: "direct error result")
-    if not (run_view(chain, n: -5) == -1):
-        return panic(message: "view error result")
-    if not (run_bound(chain, n: -5) == -1):
-        return panic(message: "bound error result")
-    if not (run_bound(chain, n: 5) == 16):
-        return panic(message: "bound ok")
+    let chain = Chain(Parser(10))
+    if not (run_direct(chain, 5) == 16):
+        return panic("ok")
+    if not (run_direct(chain, -5) == -1):
+        return panic("direct error result")
+    if not (run_view(chain, -5) == -1):
+        return panic("view error result")
+    if not (run_bound(chain, -5) == -1):
+        return panic("bound error result")
+    if not (run_bound(chain, 5) == 16):
+        return panic("bound ok")

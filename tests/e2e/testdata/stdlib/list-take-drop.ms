@@ -79,7 +79,7 @@ test "List take and drop support generic and nested values":
     )
 
     let callbacks = [fn(value: Int) Int: value + 1]
-    if callbacks.take(1).drop(0).at(0).unwrap()(value: 1) != 2: return panic(
+    if callbacks.take(1).drop(0).at(0).unwrap()(1) != 2: return panic(
         "unconstrained function payload"
     )
 
@@ -89,7 +89,7 @@ test "List take and drop bound methods read the retained receiver at call time":
     let drop: fn(count: Int) List[Int] = values.drop
     values.append(4)
     values = [9]
-    if take(count: 7) != [1, 2, 3, 4] or drop(2) != [3, 4]: return panic(
+    if take(7) != [1, 2, 3, 4] or drop(2) != [3, 4]: return panic(
         "bound receiver membership"
     )
 

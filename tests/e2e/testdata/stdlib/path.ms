@@ -5,22 +5,18 @@ test "POSIX paths normalize resolve parse and match without host access":
     let paths = posix()
     if paths.normalize("/a/./b/../c") != "/a/c": return panic("POSIX normalize")
     if paths.join(["/a", "b", "c.txt"]) != "/a/b/c.txt": return panic("POSIX join")
-    if (try paths.relative(base: "/a/b", target: "/a/c")) != "../c": return panic(
-        "POSIX relative"
-    )
-    if (try paths.resolve(base: "/a", parts: ["b", "../c"])) != "/a/c": return panic(
-        "POSIX resolve"
-    )
+    if (try paths.relative("/a/b", "/a/c")) != "../c": return panic("POSIX relative")
+    if (try paths.resolve("/a", ["b", "../c"])) != "/a/c": return panic("POSIX resolve")
 
     let parsed = paths.parse("/a/file.tar.gz")
     if parsed.name != "file.tar" or parsed.extension != ".gz": return panic(
         "path parts"
     )
     if paths.format(parsed) != "/a/file.tar.gz": return panic("path format")
-    if not (try paths.matches_glob(path: "src/main.ms", pattern: "src/*.ms")): return panic(
+    if not (try paths.matches_glob("src/main.ms", "src/*.ms")): return panic(
         "glob match"
     )
-    if (try paths.matches_glob(path: "src/main.go", pattern: "src/*.ms")): return panic(
+    if (try paths.matches_glob("src/main.go", "src/*.ms")): return panic(
         "glob mismatch"
     )
 
@@ -34,24 +30,20 @@ test "Windows paths use explicit dialect on every platform":
         "Windows basename"
     )
     if paths.normalize("C:\\a\\..\\b") != "C:\\b": return panic("Windows normalize")
-    if (try paths.relative(base: "C:\\a", target: "C:\\b")) != "..\\b": return panic(
+    if (try paths.relative("C:\\a", "C:\\b")) != "..\\b": return panic(
         "Windows relative"
     )
 
 test "module dirname and basename_without follow the host dialect":
     if dirname("") != ".": return panic("empty dirname")
-    if basename_without(path: "dir/file.txt", suffix: ".txt") != "file": return panic(
+    if basename_without("dir/file.txt", ".txt") != "file": return panic(
         "basename_without suffix"
     )
-    if basename_without(path: "dir/file.txt", suffix: ".md") != "file.txt": return panic(
+    if basename_without("dir/file.txt", ".md") != "file.txt": return panic(
         "basename_without keeps non-matching suffix"
     )
 
 test "glob matching rejects NUL in the path as it does in the pattern":
     let invalid: Result[Bool, PathError] = error(PathError.InvalidInput)
-    if posix().matches_glob(path: "a\u{0}b", pattern: "*") != invalid: return panic(
-        "NUL path"
-    )
-    if posix().matches_glob(path: "ab", pattern: "*\u{0}") != invalid: return panic(
-        "NUL pattern"
-    )
+    if posix().matches_glob("a\u{0}b", "*") != invalid: return panic("NUL path")
+    if posix().matches_glob("ab", "*\u{0}") != invalid: return panic("NUL pattern")

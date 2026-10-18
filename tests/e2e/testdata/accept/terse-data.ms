@@ -16,7 +16,7 @@ test "map literals and positional identifier arguments":
     let amount = 10
     let deduction = 3
     if subtract(amount, deduction) != 7: return panic("argument order")
-    if subtract(amount, deduction: 2) != 8: return panic("mixed labels")
+    if subtract(amount, 2) != 8: return panic("mixed labels")
     if subtract(amount) != 9: return panic("default")
 
     let left = 4
@@ -53,16 +53,13 @@ test "map literals and positional identifier arguments":
     if values.get(key).unwrap() != value: return panic("method identifiers")
 
     let log: List[Int] = []
-    let ordered = {
-        mark(log, value: 1): mark(log, value: 2),
-        mark(log, value: 1): mark(log, value: 3)
-    }
+    let ordered = {mark(log, 1): mark(log, 2), mark(log, 1): mark(log, 3)}
     if log != [1, 2, 1, 3] or ordered.get(1).unwrap() != 3: return panic(
         "evaluation order"
     )
 
     let shared = {"x": values}
-    values.add(key: "d", value: 6)
+    values.add("d", 6)
     if shared.get("x").unwrap().get("d").unwrap() != 6: return panic(
         "shared references"
     )
@@ -81,8 +78,8 @@ impl Hashable for Key:
     fn hash() Int: self.id
 
 test "map literal uses custom key equality":
-    let a = Key(id: 1, label: "first")
-    let b = Key(id: 1, label: "second")
+    let a = Key(1, "first")
+    let b = Key(1, "second")
     let values = {a: "a", b: "b"}
     if values.length() != 1 or values.get(a).unwrap() != "b": return panic(
         "custom key equality"

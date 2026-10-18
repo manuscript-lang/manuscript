@@ -17,15 +17,15 @@ export fn bench_html() Unit:
         "html.parse",
         2000,
         fn() Int:
-            if parse(text: html).is_ok():
+            if parse(html).is_ok():
                 return 1
 
             return 0
     )
-    let text = words(2000).join(separator: " <&> ")
+    let text = words(2000).join(" <&> ")
     bench(
         "html.escape_unescape",
         2000,
         fn() Int:
-            return unescape(text: escape(text)).length()
+            return text | escape | unescape | .length()
     )

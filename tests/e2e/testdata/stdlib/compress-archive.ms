@@ -7,70 +7,52 @@ test "compression formats roundtrip and enforce expanded byte budgets":
     let input = "hello hello hello".to_bytes()
 
     for format in ["gzip", "zlib", "deflate"]:
-        let packed = try compress(data: input, format, level: 6)
-        if ((try decompress(data: packed, format, max_bytes: 17)) != input): return panic(
+        let packed = try compress(input, format, 6)
+        if ((try decompress(packed, format, 17)) != input): return panic(
             "compression roundtrip"
         )
 
         let limited: Result[Bytes, CompressionError] = error(
             CompressionError.LimitExceeded
         )
-        if (decompress(data: packed, format, max_bytes: 16) != limited): return panic(
+        if (decompress(packed, format, 16) != limited): return panic(
             "expanded byte budget"
         )
 
     let unsupported: Result[Bytes, CompressionError] = error(
         CompressionError.Unsupported
     )
-    if compress(data: input, format: "invalid", level: 6) != unsupported: return panic(
-        "unsupported format"
-    )
+    if compress(input, "invalid", 6) != unsupported: return panic("unsupported format")
 
     let malformed: Result[Bytes, CompressionError] = error(CompressionError.InvalidData)
-    if decompress(data: input, format: "gzip") != malformed: return panic(
-        "invalid compressed data"
-    )
+    if decompress(input, "gzip") != malformed: return panic("invalid compressed data")
 
 test "ZIP and TAR preserve entries and independently enforce archive limits":
     let entries = [
-        ArchiveEntry(path: "a.txt", data: "hello".to_bytes(), directory: false),
-        ArchiveEntry(path: "b.txt", data: "bye".to_bytes(), directory: false)
+        ArchiveEntry("a.txt", "hello".to_bytes(), directory: false),
+        ArchiveEntry("b.txt", "bye".to_bytes(), directory: false)
     ]
 
     for format in ["zip", "tar"]:
         let packed = try pack(entries, format)
-        if (try unpack(data: packed, format)) != entries: return panic(
-            "archive roundtrip"
-        )
+        if (try unpack(packed, format)) != entries: return panic("archive roundtrip")
 
         let limited: Result[List[ArchiveEntry], ArchiveError] = error(
             ArchiveError.LimitExceeded
         )
-        if (
-            unpack(
-                data: packed,
-                format,
-                limits: ArchiveLimits(max_entries: 1)
-            ) != limited
-        ): return panic("entry count")
-        if (
-            unpack(
-                data: packed,
-                format,
-                limits: ArchiveLimits(max_entry_bytes: 4)
-            ) != limited
-        ): return panic("entry bytes")
-        if (
-            unpack(
-                data: packed,
-                format,
-                limits: ArchiveLimits(max_total_bytes: 7)
-            ) != limited
-        ): return panic("total bytes")
+        if (unpack(packed, format, ArchiveLimits(1)) != limited): return panic(
+            "entry count"
+        )
+        if (unpack(packed, format, ArchiveLimits(max_entry_bytes: 4)) != limited): return panic(
+            "entry bytes"
+        )
+        if (unpack(packed, format, ArchiveLimits(max_total_bytes: 7)) != limited): return panic(
+            "total bytes"
+        )
 
 test "archives reject traversal paths":
     let invalid: Result[Bytes, ArchiveError] = error(ArchiveError.InvalidInput)
 
     for path in ["../escape", "/absolute"]:
-        let entries = [ArchiveEntry(path, data: "".to_bytes(), directory: false)]
-        if pack(entries, format: "zip") != invalid: return panic("unsafe archive path")
+        let entries = [ArchiveEntry(path, "".to_bytes(), directory: false)]
+        if pack(entries, "zip") != invalid: return panic("unsafe archive path")

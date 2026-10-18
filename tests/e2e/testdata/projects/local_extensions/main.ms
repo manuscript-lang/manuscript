@@ -38,5 +38,5 @@ test "views and functions retain local implementations across modules":
         return panic("cleanup scopes were skipped")
 
     let values = events.freeze()
-    if values.at(index: 0) != some(10) or values.at(index: 1) != some(20):
+    if values.at(0) != some(10) or values.at(1) != some(20):
         return panic("cleanup views")

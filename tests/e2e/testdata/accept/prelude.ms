@@ -8,18 +8,18 @@ impl Error for Failure:
         return self.message_text
 
 fn success() Result[Optional[Int], Error]:
-    return ok(value: some(value: 7))
+    return ok(some(7))
 
 fn failure() Result[Int, Failure]:
-    return error(cause: Failure(message_text: "failed"))
+    return error(Failure("failed"))
 
 fn propagated() Result[Int, Error]:
-    return ok(value: try failure())
+    return ok(try failure())
 
 test "prelude cases and optional methods need no imports":
-    let inferred = some(value: 3)
+    let inferred = some(3)
     let absent: Optional[Int] = none
-    let qualified = Optional[Int].some(value: 5)
+    let qualified = Optional[Int].some(5)
     if not inferred.is_some() or not absent.is_none():
         return panic("presence check failed")
     if inferred.unwrap() != 3 or qualified.unwrap() != 5:

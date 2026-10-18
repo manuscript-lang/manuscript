@@ -32,7 +32,7 @@ test "process environment is live while CLI environment retains its snapshot":
     let name = "MANUSCRIPT_STDLIB_CONFORMANCE"
     let before = system().environment(name)
     let snapshot = environment().get(name)
-    try control().set_environment(name, value: "stdlib")
+    try control().set_environment(name, "stdlib")
     if system().environment(name) != some("stdlib"): return panic("system environment")
     if environment().get(name) != snapshot: return panic(
         "CLI environment snapshot changed"
@@ -41,31 +41,29 @@ test "process environment is live while CLI environment retains its snapshot":
         "process environment"
     )
 
-    try control().set_environment(name, value: before)
+    try control().set_environment(name, before)
 
 test "subprocess validation returns expected domain errors":
     let invalid: Result[CommandOutput, CommandError] = error(CommandError.InvalidInput)
-    if commands().run(program: "", arguments: [], input: "".to_bytes()) != invalid: return panic(
-        "empty program"
-    )
+    if commands().run("", [], "".to_bytes()) != invalid: return panic("empty program")
 
     let unavailable: Result[CommandOutput, CommandError] = error(
         CommandError.Unavailable
     )
     if (
         commands().run(
-            program: "manuscript-nonexistent-command-stdlib",
-            arguments: [],
-            input: "".to_bytes()
+            "manuscript-nonexistent-command-stdlib",
+            [],
+            "".to_bytes()
         ) != unavailable
     ): return panic("missing command")
 
 test "managed subprocess streams incrementally and cleans up on scope exit":
     if os_type() == "windows": return
 
-    with child = try commands().spawn(program: "cat", arguments: []):
+    with child = try commands().spawn("cat", []):
         try child.stdin().write("ping\n".to_bytes())
-        let line = try read_line(input: child.stdout())
+        let line = try read_line(child.stdout())
         if line.unwrap_or("") != "ping": return panic("echo")
 
         child.stdin().close()

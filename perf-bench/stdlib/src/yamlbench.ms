@@ -21,7 +21,7 @@ export fn bench_yaml() Unit:
         "yaml.parse",
         2000,
         fn() Int:
-            if parse(text: yaml).is_ok():
+            if parse(yaml).is_ok():
                 return 1
 
             return 0
@@ -30,7 +30,7 @@ export fn bench_yaml() Unit:
         "yaml.roundtrip",
         2000,
         fn() Int:
-            if let v = parse(text: yaml):
+            if let v = parse(yaml):
                 return yaml_length(v)
 
             return 0

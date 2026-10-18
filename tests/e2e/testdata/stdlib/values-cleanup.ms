@@ -27,8 +27,8 @@ impl Closeable for Resource:
         self.order.append(self.id)
 
 fn leave(order: List[Int]) Int:
-    with outer = Resource(order, id: 1):
-        with inner = Resource(order, id: 2):
+    with outer = Resource(order, 1):
+        with inner = Resource(order, 2):
             return 42
 
 fn propagate(result: Result[Int, JsonError]) Result[Int, JsonError]:
@@ -71,15 +71,11 @@ test "Result propagation and Error views preserve concrete causes":
         _: return panic("error receiver erased")
 
 test "custom equality and hashing define map key identity":
-    let first = Key(id: 1, label: "first")
-    let second = Key(id: 1, label: "second")
+    let first = Key(1, "first")
+    let second = Key(1, "second")
     if first != second or first.hash() != second.hash(): return panic("domain equality")
 
-    let map = (
-        Map[Key, String]()
-        .add(key: first, value: "a")
-        .add(key: second, value: "b")
-    )
+    let map = (Map[Key, String]().add(first, "a").add(second, "b"))
     if map.length() != 1 or map.get(first) != some("b"): return panic(
         "domain map identity"
     )

@@ -43,10 +43,8 @@ fn exercise() Result[Unit, ExecutionError]:
             return panic("close erased result")
 
     with group = TaskGroup():
-        let first = group.start(fn(): 1)
-        let value = try first.join()
-        let second = group.start(fn(): value + 1)
-        let following = try second.join()
+        let value = try group.start(fn(): 1).join()
+        let following = try group.start(fn(): value + 1).join()
         if following != 2:
             return panic("individual join sealed group")
 

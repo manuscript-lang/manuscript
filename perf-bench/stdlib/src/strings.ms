@@ -3,7 +3,7 @@ import {bench, words} from "./harness.ms"
 import {StringBuilder} from "@std/string.ms"
 
 export fn bench_string() Unit:
-    let text = words(2000).join(separator: " ")
+    let text = words(2000).join(" ")
     bench(
         "string.append_builder",
         100000,
@@ -28,7 +28,7 @@ export fn bench_string() Unit:
         fn() Int:
             var n = 0
             for i in range(0, 200):
-                n += text.split(separator: " ").length()
+                n += text.split(" ").length()
             return n
     )
     bench(
@@ -37,7 +37,7 @@ export fn bench_string() Unit:
         fn() Int:
             var n = 0
             for i in range(0, 200):
-                n = (n + text.replace_all(old: "word", new: "w").unwrap_or("").length())
+                n = (n + text.replace_all("word", "w").unwrap_or("").length())
             return n
     )
     bench(
