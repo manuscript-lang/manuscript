@@ -96,7 +96,7 @@ export fn main() Int:
     i = 0
 
     while i < 8000:
-        sum += m.get(i).unwrap()
+        sum += m.get(i).get()
         i += 1
 
     report("map_put_get_8k", 16000, t)
@@ -152,7 +152,7 @@ export fn main() Int:
     var ma = 0
 
     while i < 1000000:
-        ma += area(shapes.at(i % 3).unwrap())
+        ma += area(shapes.at(i % 3).get())
         i += 1
 
     report("match", 1000000, t)

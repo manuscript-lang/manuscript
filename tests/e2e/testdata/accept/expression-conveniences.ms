@@ -50,23 +50,19 @@ test "indexing and generic applications coexist":
     let index = 1
     let indices = [0, 1]
     let counter = Counter(0)
-    if (
-        items[0].unwrap() != 10
-        or items[index].unwrap() != 20
-        or items[-1].unwrap() != 20
-    ):
+    if (items[0].get() != 10 or items[index].get() != 20 or items[-1].get() != 20):
         return panic("index result")
-    if items[indices[index].unwrap()].unwrap() != 20 or items[index - 1].unwrap() != 10:
+    if items[indices[index].get()].get() != 20 or items[index - 1].get() != 10:
         return panic("computed index")
-    if items[counter.count].unwrap() != 10 or [items][0].unwrap() [1].unwrap() != 20:
+    if items[counter.count].get() != 10 or [items][0].get() [1].get() != 20:
         return panic("nested or field index")
-    if values(counter) [tick(counter)].unwrap() != 7 or counter.count != 2:
+    if values(counter) [tick(counter)].get() != 7 or counter.count != 2:
         return panic("index evaluation order")
-    if identity[Int](items[0].unwrap()) != 10:
+    if identity[Int](items[0].get()) != 10:
         return panic("generic call")
 
     let callbacks: List[fn(value: Int) Int] = [identity[Int]]
-    if callbacks[0].unwrap()(2) != 2 or callbacks[indices[0].unwrap()].unwrap()(3) != 3:
+    if callbacks[0].get()(2) != 2 or callbacks[indices[0].get()].get()(3) != 3:
         return panic("indexed callable")
 
 test "empty list constructors have fresh typed storage":
@@ -74,7 +70,7 @@ test "empty list constructors have fresh typed storage":
     let contextual: List[Int] = List()
     let other = List[String]()
     empty.append("a")
-    if (empty[0].unwrap() != "a" or other.length() != 0 or contextual.length() != 0):
+    if (empty[0].get() != "a" or other.length() != 0 or contextual.length() != 0):
         return panic("fresh list construction")
 
     let map = Map[String, Int]()
@@ -192,13 +188,13 @@ test "contextual values infer from later arms":
         none: none
         some(value): some(value)
 
-    if optional.unwrap() != 5: return panic("optional inference")
+    if optional.get() != 5: return panic("optional inference")
 
     let list = match present:
         none: []
         some(value): [value]
 
-    if list[0].unwrap() != 5: return panic("list inference")
+    if list[0].get() != 5: return panic("list inference")
 
 fn returned_argument(counter: Counter) Int:
     let absent: Optional[Int] = none
@@ -282,13 +278,13 @@ test "match in a loop header exits its lexical enclosing loop":
 
 test "indexing preserves zero and nested optionals":
     let numbers = [0]
-    if numbers[0].is_none() or numbers[0].unwrap_or(99) != 0:
+    if numbers[0].is_none() or numbers[0].get(99) != 0:
         return panic("zero must be present")
 
     let nested: List[Optional[Int]] = [none, some(0)]
-    if nested[0].is_none() or nested[0].unwrap().is_some():
+    if nested[0].is_none() or nested[0].get().is_some():
         return panic("present none must retain both optional layers")
-    if nested[1].unwrap().unwrap() != 0 or nested[2].is_some():
+    if nested[1].get().get() != 0 or nested[2].is_some():
         return panic("nested optional indexing")
 
 fn observed_optional(counter: Counter) Optional[Int]:
@@ -318,15 +314,15 @@ test "match composes with inferred callbacks and map literals":
             some(number): number + 1
             none: 0
     )
-    if mapped[0].unwrap() != 4 or mapped[1].unwrap() != 0:
+    if mapped[0].get() != 4 or mapped[1].get() != 0:
         return panic("match callback inference")
 
     let lookup = {
-        "value": match values[0].unwrap():
+        "value": match values[0].get():
             some(number): number
             none: 0
     }
-    if lookup.get("value").unwrap() != 3:
+    if lookup.get("value").get() != 3:
         return panic("match in map literal")
     if inline_match(none) != 0 or inline_match(some(5)) != 5:
         return panic("inline match result")

@@ -18,17 +18,14 @@ impl Result[T, E]:
     # Reports whether this result contains an expected error.
     fn is_error() Bool:
 
-    # Returns the successful payload; faults when this is an error.
-    fn unwrap() T:
+    # Returns the successful payload, or `default` when this is an error. Without a default, an error raises a fault.
+    fn get(default: Optional[T] = none) T:
 
     # Returns the error payload; faults when this is successful.
-    fn unwrap_error() E:
-
-    # Returns the successful payload, or the eagerly evaluated fallback.
-    fn unwrap_or(fallback: T) T:
+    fn err() E:
 
     # Calls create once with the original error only when this is an error.
-    fn unwrap_or_else(create: fn(cause: E) T) T:
+    fn or_else(create: fn(cause: E) T) T:
 
     # Transforms only a successful payload, preserving an error unchanged.
     fn map[U](transform: fn(value: T) U) Result[U, E]:

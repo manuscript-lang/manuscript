@@ -51,7 +51,7 @@ test "repeated accessors retain closed root state":
     let written = stdout().write("".to_bytes())
     if written.is_ok():
         return panic("accessor reopened stdout")
-    if written.unwrap_error() != IoError.Closed:
+    if written.err() != IoError.Closed:
         return panic("unexpected closed-stream error")
 
 test "a later test receives fresh standard output":

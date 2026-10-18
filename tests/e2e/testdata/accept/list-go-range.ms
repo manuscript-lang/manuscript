@@ -144,7 +144,7 @@ test "clone slice and nested references retain their own contracts":
     let child = Child(1)
     let values = [child, child]
     let clone = values.clone()
-    let slice = values.slice(0, 2).unwrap()
+    let slice = values.slice(0, 2).get()
     let seen: List[Int] = []
     values.for_each(
         fn(value):
@@ -155,8 +155,8 @@ test "clone slice and nested references retain their own contracts":
     if not (
         seen == [1, 9]
         and child.value == 2
-        and clone.first().unwrap().value == 2
-        and slice.first().unwrap().value == 2
+        and clone.first().get().value == 2
+        and slice.first().get().value == 2
     ):
         return panic("reference sharing or explicit outer copy changed")
 
@@ -188,5 +188,5 @@ test "function values can replace later backing elements":
             seen.append(value())
             functions.fill(replacement, 0, 2)
     )
-    if not (seen == [1, 7, 2, 9] and clone.first().unwrap()() == 7):
+    if not (seen == [1, 7, 2, 9] and clone.first().get()() == 7):
         return panic("function callback copied backing or lost clone")

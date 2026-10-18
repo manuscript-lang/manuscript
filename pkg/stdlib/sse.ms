@@ -121,11 +121,11 @@ export fn feed(decoder: SseDecoder, chunk: Bytes) Result[List[SseEvent], SseErro
     let total = chunk.length()
 
     while index < total:
-        let step = consume(decoder, chunk.at(index).unwrap(), events)
+        let step = consume(decoder, chunk.at(index).get(), events)
         index += 1
 
         if step.is_error():
-            let failure = step.unwrap_error()
+            let failure = step.err()
             decoder.failure = some(failure)
             return error(failure)
 
@@ -176,7 +176,7 @@ fn end_line(decoder: SseDecoder, events: List[SseEvent]) Result[Unit, SseError]:
         if bytes.starts_with("\u{feff}".to_bytes()): bytes = (
             bytes
             .slice(3, bytes.length())
-            .unwrap()
+            .get()
         )
 
     if bytes.is_empty():
@@ -201,9 +201,9 @@ fn apply(decoder: SseDecoder, line: String) Unit:
     let colon = line.index_of(":")
 
     if let at = colon:
-        name = line.slice(0, at).unwrap()
-        value = line.slice(at + 1, line.length()).unwrap()
-        if value.starts_with(" "): value = value.slice(1, value.length()).unwrap()
+        name = line.slice(0, at).get()
+        value = line.slice(at + 1, line.length()).get()
+        if value.starts_with(" "): value = value.slice(1, value.length()).get()
 
     if name == "event": decoder.event_type = value
     else if name == "data": decoder.data.append(value)
@@ -290,7 +290,7 @@ export fn reader(
 export fn next_event(reader: SseReader) Result[Optional[SseEvent], SseError]:
     while true:
         if reader.next < reader.ready.length():
-            let event = reader.ready.at(reader.next).unwrap()
+            let event = reader.ready.at(reader.next).get()
             reader.next += 1
             return ok(some(event))
 
@@ -299,11 +299,9 @@ export fn next_event(reader: SseReader) Result[Optional[SseEvent], SseError]:
         reader.ready = List[SseEvent]()
         reader.next = 0
         let read = reader.input.read(reader.chunk_bytes)
-        if read.is_error(): return error(
-            SseError.ReadFailed(cause: read.unwrap_error())
-        )
+        if read.is_error(): return error(SseError.ReadFailed(cause: read.err()))
 
-        let chunk = read.unwrap()
+        let chunk = read.get()
 
         if let bytes = chunk:
             reader.ready = try feed(reader.decoder, bytes)

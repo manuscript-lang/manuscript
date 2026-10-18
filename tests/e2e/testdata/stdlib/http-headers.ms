@@ -27,11 +27,11 @@ fn repeated_headers() Result[HttpHeaders, HttpError]:
 
 fn handle_headers(request: HttpRequest) HttpResponse:
     if request.method != HttpMethod.Get: return panic("typed request method")
-    if request.headers.text("X-DUP").unwrap() != some(["first", "second"]): return panic(
+    if request.headers.text("X-DUP").get() != some(["first", "second"]): return panic(
         "case-insensitive received fields"
     )
 
-    return HttpResponse(200, repeated_headers().unwrap(), "ok".to_bytes())
+    return HttpResponse(200, repeated_headers().get(), "ok".to_bytes())
 
 test "one header type preserves repeated values through buffered requests":
     with server = try network().serve("127.0.0.1:0", handle_headers, 2):
@@ -90,19 +90,19 @@ test "streaming proxy uses the same byte-valued header type":
 
 test "lookup shares mutable membership and clone separates it":
     let fields = try repeated_headers()
-    let values = fields.values("X-DUP").unwrap()
+    let values = fields.values("X-DUP").get()
     try fields.append("x-dup", "third".to_bytes())
     if values.length() != 3: return panic("lookup copied membership")
 
     values.set(0, "changed".to_bytes())
-    if fields.values("x-dup").unwrap().at(0) != some("changed".to_bytes()): return panic(
+    if fields.values("x-dup").get().at(0) != some("changed".to_bytes()): return panic(
         "list mutation not shared"
     )
 
     let copy = fields.clone()
-    let copied_values = copy.values("x-dup").unwrap()
+    let copied_values = copy.values("x-dup").get()
     copied_values.set(0, "copy".to_bytes())
-    if fields.values("x-dup").unwrap().at(0) != some("changed".to_bytes()): return panic(
+    if fields.values("x-dup").get().at(0) != some("changed".to_bytes()): return panic(
         "clone shared membership"
     )
     if not fields.values("missing").is_none(): return panic("absent header")
@@ -112,7 +112,7 @@ test "lookup shares mutable membership and clone separates it":
 
     fields.remove("X-DUP")
     try fields.append("X-Dup", "new".to_bytes())
-    if values.length() != 3 or fields.values("x-dup").unwrap().length() != 1: return panic(
+    if values.length() != 3 or fields.values("x-dup").get().length() != 1: return panic(
         "removed list alias reattached"
     )
 

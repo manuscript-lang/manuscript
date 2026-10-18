@@ -89,7 +89,7 @@ func TestCLIEntryAndNativeBuild(t *testing.T) {
 }
 func TestRuntimeFaults(t *testing.T) {
 	for name, source := range map[string]string{
-		"absent optional": "test \"fault\":\n    let missing: Optional[Int] = none\n    let impossible = missing.unwrap()\n",
+		"absent optional": "test \"fault\":\n    let missing: Optional[Int] = none\n    let impossible = missing.get()\n",
 		"failed check":    "import panic from \"@std/faults.ms\"\ntest \"fault\":\n    if 2 + 3 != 6:\n        return panic(message: \"arithmetic check failed\")\n",
 		"overflow":        "fn sum(value: Int) Int:\n    return value + 1\ntest \"fault\":\n    let impossible = sum(value: 9223372036854775807)\n",
 		"division":        "fn divide(value: Int, divisor: Int) Int:\n    return value / divisor\ntest \"fault\":\n    let impossible = divide(value: 3, divisor: 0)\n",
@@ -483,7 +483,7 @@ export fn main() Int:
         let started = service.start(task)
         if started.is_error():
             return 2
-        let id = started.unwrap()
+        let id = started.get()
 
         while true:
             match service.status(id):
@@ -497,7 +497,7 @@ export fn main() Int:
     let written = stdout().write("".to_bytes())
     if written.is_ok():
         return 3
-    let cause = written.unwrap_error()
+    let cause = written.err()
 
     match cause:
         Closed:
@@ -591,7 +591,7 @@ export type Box[T]:
 import panic from "@std/faults.ms"
 test "imported constructor retains default module and generic scope":
     let box = Box(value: "text")
-    if box.copied != "text" or box.items.at(0).unwrap() != "text":
+    if box.copied != "text" or box.items.at(0).get() != "text":
         return panic("imported generic defaults")
 `,
 	}

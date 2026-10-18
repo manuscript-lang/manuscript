@@ -15,7 +15,7 @@ test "arguments":
     )
     if result != 12: return panic("argument order")
 
-fn optional(value: Optional[Int]) Int: value.unwrap()
+fn optional(value: Optional[Int]) Int: value.get()
 
 fn defaulted(value: Int = 3) Int: value
 

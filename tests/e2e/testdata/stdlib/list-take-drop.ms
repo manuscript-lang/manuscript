@@ -50,15 +50,15 @@ test "List take and drop retain shallow payload references":
     let boxes = [shared, Box(2)]
     let prefix = boxes.take(1)
     let remainder = boxes.drop(0)
-    prefix.at(0).unwrap().value = 7
-    if shared.value != 7 or remainder.at(0).unwrap().value != 7: return panic(
+    prefix.at(0).get().value = 7
+    if shared.value != 7 or remainder.at(0).get().value != 7: return panic(
         "record payload cloned"
     )
 
     let lists = [nested]
     let copied = lists.take(1).drop(0)
-    copied.at(0).unwrap().append(2)
-    if nested != [1, 2] or lists.at(0).unwrap() != nested: return panic(
+    copied.at(0).get().append(2)
+    if nested != [1, 2] or lists.at(0).get() != nested: return panic(
         "nested list payload cloned"
     )
 
@@ -74,12 +74,12 @@ test "List take and drop support generic and nested values":
         ok(some(1)),
         error(["cause"])
     ]
-    if copy_window(values, 2, 1).at(0).unwrap().unwrap_error() != ["cause"]: return panic(
+    if copy_window(values, 2, 1).at(0).get().err() != ["cause"]: return panic(
         "nested result copying"
     )
 
     let callbacks = [fn(value: Int) Int: value + 1]
-    if callbacks.take(1).drop(0).at(0).unwrap()(1) != 2: return panic(
+    if callbacks.take(1).drop(0).at(0).get()(1) != 2: return panic(
         "unconstrained function payload"
     )
 

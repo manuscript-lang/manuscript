@@ -103,10 +103,10 @@ fn table(explicit: Bool, dotted: Bool) Table:
     )
 
 fn peek(reader: Reader) String:
-    return reader.chars.at(reader.pos).unwrap_or("")
+    return reader.chars.at(reader.pos).get("")
 
 fn ahead(reader: Reader, offset: Int) String:
-    return reader.chars.at(reader.pos + offset).unwrap_or("")
+    return reader.chars.at(reader.pos + offset).get("")
 
 fn advance(reader: Reader) String:
     let c = peek(reader)
@@ -194,7 +194,7 @@ fn string_value(reader: Reader, key: Bool) Result[String, TomlError]:
             result.append(c)
             continue
 
-        let code = c.scalar_at(0).unwrap()
+        let code = c.scalar_at(0).get()
         if (code < 32 and c != "\t" and not (multiline and c == "\n")) or code == 127:
             return error(invalid(reader, "control character in string"))
 
@@ -246,7 +246,7 @@ fn string_value(reader: Reader, key: Bool) Result[String, TomlError]:
                 invalid(reader, "invalid Unicode escape")
             )
 
-            if let text = from_scalars([parsed.unwrap()]):
+            if let text = from_scalars([parsed.get()]):
                 result.append(text)
             else:
                 return error(invalid(reader, "invalid Unicode scalar"))
@@ -294,7 +294,7 @@ fn child(
         parent.entries.add(key, Node.TableNode(created))
         return ok(created)
 
-    let node = existing.unwrap()
+    let node = existing.get()
 
     match node:
         TableNode(value):
@@ -307,7 +307,7 @@ fn child(
         TableArray(tables):
             if dotted: return error(invalid(reader, "dotted key extends a table array"))
 
-            return ok(tables.last().unwrap())
+            return ok(tables.last().get())
         _: return error(invalid(reader, "key is already a value"))
 
 fn append_table(
@@ -323,7 +323,7 @@ fn append_table(
         parent.entries.add(key, Node.TableArray([next]))
         return ok(unit)
 
-    let node = existing.unwrap()
+    let node = existing.get()
 
     match node:
         TableArray(tables):
@@ -344,12 +344,12 @@ fn assign(
         current = try child(
             reader: reader,
             parent: current,
-            key: (keys.at(index).unwrap()),
+            key: (keys.at(index).get()),
             dotted: true
         )
         index += 1
 
-    let key = keys.last().unwrap()
+    let key = keys.last().get()
     if current.sealed or current.entries.contains(key): return error(
         invalid(reader, "duplicate or closed key")
     )
@@ -402,22 +402,22 @@ fn date_number(text: String, minimum: Int, maximum: Int) Bool:
 fn date_valid(text: String) Bool:
     if (
         text.scalar_length() != 10
-        or text.at(4).unwrap_or("") != "-"
-        or text.at(7).unwrap_or("") != "-"
+        or text.at(4).get("") != "-"
+        or text.at(7).get("") != "-"
     ): return false
 
-    let year = text.slice(0, 4).unwrap_or("")
-    let month = text.slice(5, 7).unwrap_or("")
-    let day = text.slice(8, 10).unwrap_or("")
+    let year = text.slice(0, 4).get("")
+    let month = text.slice(5, 7).get("")
+    let day = text.slice(8, 10).get("")
     if (not date_number(year, 0, 9999) or not date_number(month, 1, 12)): return false
 
-    let m = month.parse_int().unwrap()
+    let m = month.parse_int().get()
     var maximum = 31
     if (m == 4 or m == 6 or m == 9 or m == 11): maximum = 30
 
     if m == 2:
         maximum = 28
-        let y = year.parse_int().unwrap()
+        let y = year.parse_int().get()
         if y % 4 == 0 and (y % 100 != 0 or y % 400 == 0): maximum = 29
 
     return date_number(day, 1, maximum)
@@ -425,17 +425,17 @@ fn date_valid(text: String) Bool:
 fn time_valid(text: String) Bool:
     if (
         text.scalar_length() < 8
-        or text.at(2).unwrap_or("") != ":"
-        or text.at(5).unwrap_or("") != ":"
+        or text.at(2).get("") != ":"
+        or text.at(5).get("") != ":"
     ): return false
-    if not date_number(text.slice(0, 2).unwrap_or(""), 0, 23): return false
-    if not date_number(text.slice(3, 5).unwrap_or(""), 0, 59): return false
-    if not date_number(text.slice(6, 8).unwrap_or(""), 0, 60): return false
+    if not date_number(text.slice(0, 2).get(""), 0, 23): return false
+    if not date_number(text.slice(3, 5).get(""), 0, 59): return false
+    if not date_number(text.slice(6, 8).get(""), 0, 60): return false
     if text.scalar_length() == 8: return true
 
-    let fraction = text.slice(9, text.scalar_length()).unwrap_or("")
+    let fraction = text.slice(9, text.scalar_length()).get("")
     return (
-        text.at(8).unwrap_or("") == "."
+        text.at(8).get("") == "."
         and decimal_digits(fraction)
         and not fraction.contains("_")
     )
@@ -443,24 +443,24 @@ fn time_valid(text: String) Bool:
 fn datetime_valid(text: String) Bool:
     if date_valid(text): return true
     if time_valid(text): return true
-    if (text.scalar_length() < 19 or not date_valid((text.slice(0, 10).unwrap_or("")))): return false
+    if (text.scalar_length() < 19 or not date_valid((text.slice(0, 10).get("")))): return false
 
-    let separator = text.at(10).unwrap_or("")
+    let separator = text.at(10).get("")
     if (separator != "T" and separator != "t" and separator != " "): return false
 
-    var rest = text.slice(11, text.scalar_length()).unwrap_or("")
+    var rest = text.slice(11, text.scalar_length()).get("")
 
     if rest.ends_with("Z") or rest.ends_with("z"):
-        rest = rest.slice(0, rest.scalar_length() - 1).unwrap_or("")
+        rest = rest.slice(0, rest.scalar_length() - 1).get("")
     else if rest.contains("+") or rest.contains("-"):
-        var index = rest.index_of("+").unwrap_or(-1)
-        if index < 0: index = rest.index_of("-").unwrap_or(-1)
-        let zone = rest.slice(index + 1, rest.scalar_length()).unwrap_or("")
-        if zone.scalar_length() != 5 or zone.at(2).unwrap_or("") != ":": return false
-        if not date_number(zone.slice(0, 2).unwrap_or(""), 0, 23): return false
-        if not date_number(zone.slice(3, 5).unwrap_or(""), 0, 59): return false
+        var index = rest.index_of("+").get(-1)
+        if index < 0: index = rest.index_of("-").get(-1)
+        let zone = rest.slice(index + 1, rest.scalar_length()).get("")
+        if zone.scalar_length() != 5 or zone.at(2).get("") != ":": return false
+        if not date_number(zone.slice(0, 2).get(""), 0, 23): return false
+        if not date_number(zone.slice(3, 5).get(""), 0, 59): return false
 
-        rest = rest.slice(0, index).unwrap_or("")
+        rest = rest.slice(0, index).get("")
 
     return time_valid(rest)
 
@@ -474,7 +474,7 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
 
     if clean.starts_with("+") or clean.starts_with("-"):
         signed = true
-        clean = clean.slice(1, clean.scalar_length()).unwrap_or("")
+        clean = clean.slice(1, clean.scalar_length()).get("")
 
     var radix = 10
     var alphabet = "0123456789"
@@ -493,7 +493,7 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
         if (
             signed
             or not digits(
-                clean.slice(2, clean.scalar_length()).unwrap_or(""),
+                clean.slice(2, clean.scalar_length()).get(""),
                 alphabet
             )
         ):
@@ -502,7 +502,7 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
             (
                 clean
                 .slice(2, clean.scalar_length())
-                .unwrap_or("")
+                .get("")
                 .replace("_", "", text.byte_length())
             ),
             radix
@@ -515,7 +515,7 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
     if (
         clean != "inf"
         and clean != "nan"
-        and not "0123456789".contains(clean.at(0).unwrap_or("x"))
+        and not "0123456789".contains(clean.at(0).get("x"))
     ): return error(invalid(reader, "invalid value"))
 
     if (
@@ -530,21 +530,21 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
             if parts.length() > 2: return error(invalid(reader, "invalid float"))
 
             if parts.length() == 2:
-                var exponent = parts.at(1).unwrap()
+                var exponent = parts.at(1).get()
                 if exponent.starts_with("+") or exponent.starts_with("-"): exponent = (
                     exponent
                     .slice(1, exponent.scalar_length())
-                    .unwrap_or("")
+                    .get("")
                 )
                 if not decimal_digits(exponent): return error(
                     invalid(reader, "invalid exponent")
                 )
 
-            let fraction = parts.first().unwrap().split(".")
-            if fraction.length() > 2 or not decimal_part(fraction.first().unwrap()): return error(
+            let fraction = parts.first().get().split(".")
+            if fraction.length() > 2 or not decimal_part(fraction.first().get()): return error(
                 invalid(reader, "invalid float")
             )
-            if fraction.length() == 2 and not decimal_digits(fraction.at(1).unwrap()): return error(
+            if fraction.length() == 2 and not decimal_digits(fraction.at(1).get()): return error(
                 invalid(reader, "invalid fraction")
             )
 
@@ -778,12 +778,12 @@ export fn parse(
                 parent = try child(
                     reader: reader,
                     parent: parent,
-                    key: (keys.at(index).unwrap()),
+                    key: (keys.at(index).get()),
                     dotted: false
                 )
                 index += 1
 
-            let key = keys.last().unwrap()
+            let key = keys.last().get()
             if parent.sealed: return error(invalid(reader, "inline table is closed"))
 
             if array:
@@ -838,7 +838,7 @@ fn quote_text(text: String) String:
     result.append("\"")
 
     for c in text.chars():
-        let code = c.scalar_at(0).unwrap()
+        let code = c.scalar_at(0).get()
 
         if c == "\"": result.append("\\\"")
         else if c == "\\": result.append("\\\\")

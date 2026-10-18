@@ -51,10 +51,8 @@ test "bytes copy slice search and UTF8 validation":
     if not data.at(4).is_none(): return panic("missing byte")
     if data.index_of(Bytes([1])) != some(1): return panic("byte search")
     if data.last_index_of(Bytes([1])) != some(3): return panic("last byte search")
-    if data.slice(1, 3).unwrap() != Bytes([1, 255]): return panic("byte slice")
-    if data.slice(-3, -1).unwrap() != Bytes([1, 255]): return panic(
-        "relative byte slice"
-    )
+    if data.slice(1, 3).get() != Bytes([1, 255]): return panic("byte slice")
+    if data.slice(-3, -1).get() != Bytes([1, 255]): return panic("relative byte slice")
 
     let byte_range: Result[Bytes, CollectionError] = error(CollectionError.OutOfRange)
     if data.slice(1, 10) != byte_range: return panic("byte slice past length")
@@ -142,10 +140,10 @@ test "indexing and slicing long mixed-width text matches scalar positions":
     # Forward, backward and jumping reads of the same long text.
     var forward = 0
     for step in range(0, 2400):
-        forward += text.scalar_at(step).unwrap()
+        forward += text.scalar_at(step).get()
     var backward = 0
     for step in range(0, 2400):
-        backward += text.scalar_at(2399 - step).unwrap()
+        backward += text.scalar_at(2399 - step).get()
     if forward != 600 * (97 + 233 + 8364 + 128578) or backward != forward: return panic(
         "scalar sums"
     )

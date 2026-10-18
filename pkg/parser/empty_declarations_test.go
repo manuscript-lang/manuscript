@@ -10,7 +10,7 @@ func TestEmptyFunctionDeclarations(t *testing.T) {
 		"export fn commands() Commands:\n",
 		"export type Duration:\n",
 		"type List[T]:\nimpl List[T]:\n    fn map[U](transform: fn(value: T) U) List[U]:\n    fn length() Int:\n",
-		"type Optional[T]:\n    case none\n    case some(value: T)\nimpl Optional[T]:\n    fn unwrap() T:\n",
+		"type Optional[T]:\n    case none\n    case some(value: T)\nimpl Optional[T]:\n    fn get() T:\n",
 		"type Counter:\n    value: Int\nimpl Counter:\n    fn double() Int:\n        return self.value * 2\n",
 		"interface Read:\n    fn read(limit: Optional[Int] = none) Int\n",
 		"impl Error for Failure:\n    fn message() String:\n",

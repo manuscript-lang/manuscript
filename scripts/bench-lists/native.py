@@ -29,15 +29,15 @@ for name, n in (("append", 1000000), ("append", 4000000), ("sort", 200000)):
     body = f"""export fn main() Int:
     let values = build({n})
     if values.length() != {n}: return 1
-    if values.first().unwrap() != 0: return 2
-    if values.last().unwrap() != {last}: return 3
+    if values.first().get() != 0: return 2
+    if values.last().get() != {last}: return 3
 """
     if name == "sort":
         body += f"""    let result = sorted(values)
     if result.length() != {n}: return 4
-    if result.first().unwrap() != 0: return 5
-    if result.last().unwrap() != 100002: return 6
-    if values.last().unwrap() != {last}: return 7
+    if result.first().get() != 0: return 5
+    if result.last().get() != 100002: return 6
+    if values.last().get() != {last}: return 7
 """
     body += "    return 0\n"
     label = f"{name}-{n}"

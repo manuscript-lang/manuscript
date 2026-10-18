@@ -113,7 +113,7 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
                 "positional read moved sequential position"
             )
             if (try handle.seek(0, 0)) != 0: return panic("seek start")
-            if (try handle.read()).unwrap().length() != 65536: return panic(
+            if (try handle.read()).get().length() != 65536: return panic(
                 "default read chunk"
             )
             if (try handle.read_file()).length() != 14464: return panic(

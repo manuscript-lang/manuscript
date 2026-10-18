@@ -80,12 +80,12 @@ func TestStandardLibraryFaults(t *testing.T) {
 	output := string(data)
 	faults := map[string]string{
 		"panic unwinds Closeable":                 "intentional stdlib panic",
-		"absent Optional unwrap faults":           "called Optional.unwrap() on none",
+		"absent Optional unwrap faults":           "called Optional.get() on none",
 		"sealed builder mutation faults":          "builder is sealed",
 		"zero queue capacity faults":              "Queue: capacity must be between 1 and 9223372036854775807",
 		"negative queue capacity faults":          "Queue: capacity must be between 1 and 9223372036854775807",
 		"stale synchronized guard faults":         "Synchronized guard is closed",
-		"unwrapping an out of range slice faults": "called Result.unwrap() on error",
+		"unwrapping an out of range slice faults": "called Result.get() on error",
 		"negative split limit faults":             "split: max_parts must be nonnegative, found -1",
 		"negative replace limit faults":           "replace: max_replacements must be nonnegative, found -1",
 	}

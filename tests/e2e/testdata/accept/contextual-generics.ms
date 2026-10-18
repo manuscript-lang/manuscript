@@ -24,7 +24,7 @@ fn failed() Result[Int, Error]: fail_cause(Failure("domain"))
 
 fn forward[T]() Optional[T]: absent()
 
-fn consume(value: Optional[Int]) Int: value.unwrap_or(0)
+fn consume(value: Optional[Int]) Int: value.get(0)
 
 type Events:
     values: List[Int]
@@ -40,18 +40,18 @@ fn combine[T](events: Events, first: Optional[T], second: Optional[T]) Optional[
 test "expected generic results preserve behavior and call order":
     let result: Result[List[Int], String] = first()
     if result.is_ok(): return panic("expected failure")
-    if result.unwrap_error() != "empty": return panic("wrong failure")
+    if result.err() != "empty": return panic("wrong failure")
 
     let domain = failed()
     if domain.is_ok(): return panic("expected domain failure")
-    if domain.unwrap_error().message() != "domain": return panic("lost error dispatch")
+    if domain.err().message() != "domain": return panic("lost error dispatch")
 
     let empty: Optional[Int] = forward()
     if not empty.is_none(): return panic("expected none")
 
     let values: List[Optional[Int]] = [1, 2].map(fn(item): absent())
     if values.length() != 2: return panic("native contextual result")
-    if not values.at(0).unwrap().is_none(): return panic("native callback result")
+    if not values.at(0).get().is_none(): return panic("native callback result")
 
     let callback: fn(value: Int) String = transform(fn(item): item.to_string())
     if callback(7) != "7": return panic("contextual callback parameter")

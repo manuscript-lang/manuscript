@@ -51,7 +51,7 @@ test "contextual callbacks and inline returns":
     )
 
     let functions: List[fn(value: Int) Int] = [fn(item): item + 4]
-    if functions.at(0).unwrap()(2) != 6: return panic("list callback")
+    if functions.at(0).get()(2) != 6: return panic("list callback")
 
     let nested = fn(value: Int):
         let inner = fn(): "text"

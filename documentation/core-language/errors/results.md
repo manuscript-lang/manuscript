@@ -38,17 +38,16 @@ fn discount_message(price: Decimal, percent: Decimal) String:
     return "Discount could not be calculated."
 ```
 
-This caller discards the cause. To use it, call `unwrap_error()` after `is_error()`, or [propagate it with try](propagation.md).
+This caller discards the cause. To use it, call `err()` after `is_error()`, or [propagate it with try](propagation.md).
 
 ## Checking, extracting, and composing
 
 | Method | Behavior |
 | --- | --- |
 | `is_ok()`, `is_error()` | Test the case, including successful zero, false, or Unit values |
-| `unwrap() T` | Return the successful payload; [fault](faults.md) on an error |
-| `unwrap_error() E` | Return the error payload; fault on success |
-| `unwrap_or(fallback: T) T` | Return success or the eagerly evaluated fallback |
-| `unwrap_or_else(create: fn(cause: E) T) T` | Call `create` once with the original error only on failure |
+| `get(default: Optional[T] = none) T` | Return the successful payload, or `default` on an error; without a default, [fault](faults.md) on an error |
+| `err() E` | Return the error payload; fault on success |
+| `or_else(create: fn(cause: E) T) T` | Call `create` once with the original error only on failure |
 | `map[U](transform: fn(value: T) U) Result[U, E]` | Transform success once; preserve an error unchanged |
 | `and_then[U](transform: fn(value: T) Result[U, E]) Result[U, E]` | On success, return the callback's Result; preserve an existing error |
 
@@ -57,11 +56,11 @@ This caller discards the cause. To use it, call `unwrap_error()` after `is_error
 This fragment uses `discount` above:
 
 ```manuscript
-let price = discount(price: 20d, percent: 10d).unwrap_or(0d)
+let price = discount(price: 20d, percent: 10d).get(0d)
 let text = discount(price: 20d, percent: 10d).map(fn(value): value.to_string())
 ```
 
-Callbacks run sequentially in the caller's context; faults and cancellation propagate normally. `unwrap` reports `called Result.unwrap() on error`; use it only when success is established. Routine failures use a fallback, `if let`, or `try`.
+Callbacks run sequentially in the caller's context; faults and cancellation propagate normally. `get` reports `called Result.get() on error`; use it only when success is established. Routine failures use a fallback, `if let`, or `try`.
 
 ## Converting success to an Optional
 

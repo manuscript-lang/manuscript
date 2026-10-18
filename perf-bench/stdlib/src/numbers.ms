@@ -25,13 +25,13 @@ export fn bench_numbers() Unit:
             var n = 0
             for i in range(0, 20000):
                 if let d = (i.to_decimal() + rate).round(2):
-                    n += d.truncate_to_int().unwrap_or(0)
+                    n += d.truncate_to_int().get(0)
             return n
     )
     let blob = (
         "the quick brown fox jumps over the lazy dog "
         .repeat(20000)
-        .unwrap_or("")
+        .get("")
         .to_bytes()
     )
     bench(
@@ -71,7 +71,7 @@ export fn bench_numbers() Unit:
                 q.enqueue(i)
             var n = 0
             while not q.is_empty():
-                n += q.dequeue().unwrap_or(0)
+                n += q.dequeue().get(0)
             return n
     )
     bench(
@@ -85,7 +85,7 @@ export fn bench_numbers() Unit:
                 q.enqueue((i * 7919) % 10007)
             var n = 0
             while not q.is_empty():
-                n += q.dequeue().unwrap_or(0)
+                n += q.dequeue().get(0)
             return n
     )
 

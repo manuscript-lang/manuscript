@@ -9,14 +9,14 @@ import {certificate, private_key} from "./support/certificates.ms"
 
 fn hello(exchange: HttpExchange) Result[Unit, HttpError]:
     try exchange.send_headers(200, list_headers(Map[String, List[String]]()))
-    exchange.write("secure".to_bytes()).unwrap()
+    exchange.write("secure".to_bytes()).get()
     return ok(unit)
 
 test "TLS certificate parsing verification hostname and expiration":
     let certificates = try parse_certificates(certificate(), 1)
     if (
         certificates.length() != 1
-        or certificates.at(0).unwrap().dns_names != ["stdlib.test"]
+        or certificates.at(0).get().dns_names != ["stdlib.test"]
     ): return panic("certificate metadata")
 
     let now = try timestamp(1893456000, 0)
@@ -88,5 +88,5 @@ test "HTTPS trusts only the explicitly supplied local test root":
                     response.metadata().status != 200
                     or (
                         try response.read()
-                    ).unwrap() != "secure".to_bytes()
+                    ).get() != "secure".to_bytes()
                 ): return panic("HTTPS response")

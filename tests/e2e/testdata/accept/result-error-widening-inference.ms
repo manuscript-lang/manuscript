@@ -15,7 +15,7 @@ fn succeeding() Result[Int, Failure]:
 
 fn describe[T](r: Result[T, Error]) String:
     if r.is_error():
-        return r.unwrap_error().message()
+        return r.err().message()
 
     return "ok"
 

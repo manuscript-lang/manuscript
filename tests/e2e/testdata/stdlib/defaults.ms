@@ -163,7 +163,7 @@ test "Commands defaults cross concrete bound view and generic boundaries":
         return panic("explicit input payload retains value")
 
     let forwarded = forward(view.run)
-    if (try forwarded("fake", [], input, none, none)).stdout.at(0).unwrap() != 42:
+    if (try forwarded("fake", [], input, none, none)).stdout.at(0).get() != 42:
         return panic("generic forwarding preserves full callable ABI")
     if capture.calls != 6: return panic("each invocation executes once")
 

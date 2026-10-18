@@ -80,7 +80,7 @@ test "shared categories keep exact standard domain values":
         "SSE truncation has no shared category"
     )
 
-    let allocation_error = range_by(0, 268435457, 1).unwrap_error()
+    let allocation_error = range_by(0, 268435457, 1).err()
     if category(allocation_error) != some(ErrorCategory.LimitExceeded): return panic(
         "native allocation limit category"
     )

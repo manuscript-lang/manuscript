@@ -6,12 +6,12 @@ import panic from "@std/faults.ms"
 test "bound and forwarded calls keep the equality of the collection creator":
     let first = first_run().values()
     let second = second_run().values()
-    if first.length() != 1 or first.at(0).unwrap().id != 2:
+    if first.length() != 1 or first.at(0).get().id != 2:
         return panic("first equality scope")
     if (
         second.length() != 1
-        or second.at(0).unwrap().id != 1
-        or second.at(0).unwrap().label != "original"
+        or second.at(0).get().id != 1
+        or second.at(0).get().label != "original"
     ):
         return panic("second scope or original payload")
 

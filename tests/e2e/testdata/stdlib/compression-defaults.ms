@@ -25,7 +25,7 @@ test "compression omission equals explicit level six for every format":
     var index = 0
 
     for format in formats:
-        let name = names.at(index).unwrap()
+        let name = names.at(index).get()
         index += 1
         let expected = try compress(data, name, 6)
         if (try alias(data, name)) != expected: return panic(

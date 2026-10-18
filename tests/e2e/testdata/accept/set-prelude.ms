@@ -24,7 +24,7 @@ test "set construction and methods need no import":
     if values.map(fn(value: Int) Int: value * 2).values() != [6, 4]: return panic("map")
 
     let nested: List[Set[Int]] = [values]
-    if nested[0].unwrap().length() != 2: return panic("nested annotation")
+    if nested[0].get().length() != 2: return panic("nested annotation")
 
     values.clear()
     if not values.is_empty() or copy.length() != 3: return panic("clear")

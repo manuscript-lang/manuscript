@@ -28,31 +28,31 @@ export fn main() Int:
     return add(value: crash(), key: 1).length()
 `, false, []string{"fault.ms:2 in crash", "fault.ms:6 in main"}},
 		{"List at unwrap out of range", `fn pick(values: List[Int], index: Int) Int:
-    return values.at(index).unwrap()
+    return values.at(index).get()
 export fn main() Int:
     return pick([1, 2, 3], 3)
 `, false, []string{"fault.ms:2 in pick", "fault.ms:4 in main"}},
 		{"Result unwrap", `fn deep(value: Result[Int, String]) Int:
-    return value.unwrap()
+    return value.get()
 export fn main() Int:
     return deep(error("expected failure"))
 `, false, []string{"fault.ms:2 in deep", "fault.ms:4 in main"}},
-		{"bound Result unwrap_error", `export fn main() Int:
+		{"bound Result err", `export fn main() Int:
     let value: Result[Int, String] = ok(0)
-    let extract = value.unwrap_error
+    let extract = value.err
     return extract().scalar_length()
 `, false, []string{"fault.ms:4 in main"}},
 		{"Result callback fault", `fn crash(value: Int) Int:
     return 1 / value
 export fn main() Int:
     let value: Result[Int, String] = ok(0)
-    return value.map(crash).unwrap()
+    return value.map(crash).get()
 `, false, []string{"fault.ms:2 in crash", "fault.ms:5 in main"}},
 		{"Result lazy fallback fault", `fn crash(cause: String) Int:
     return 1 / 0
 export fn main() Int:
     let value: Result[Int, String] = error("expected failure")
-    return value.unwrap_or_else(crash)
+    return value.or_else(crash)
 `, false, []string{"fault.ms:2 in crash", "fault.ms:5 in main"}},
 		{"Map filter callback fault", `fn crash(key: String, value: Int) Bool:
     return 1 / value == 0
@@ -70,10 +70,10 @@ export fn main() Int:
     return some(1 / value)
 export fn main() Int:
     let value: Optional[Int] = some(0)
-    return value.and_then(crash).unwrap()
+    return value.and_then(crash).get()
 `, false, []string{"fault.ms:2 in crash", "fault.ms:5 in main"}},
 		{"unwrap and caller", `fn deep(l: List[Int], i: Int) Int:
-    return l.at(i).unwrap()
+    return l.at(i).get()
 export fn main() Int:
     return deep(l: [1], i: 5)
 `, false, []string{"fault.ms:2 in deep", "fault.ms:4 in main"}},
@@ -109,7 +109,7 @@ export fn main() Int:
     return crash()
 `, false, []string{"fault.ms:3 in <anonymous>", "fault.ms:4 in main"}},
 		{"generic function", `fn extract[T](value: Optional[T]) T:
-    return value.unwrap()
+    return value.get()
 export fn main() Int:
     return extract[Int](none)
 `, false, []string{"fault.ms:2 in extract", "fault.ms:4 in main"}},

@@ -110,7 +110,7 @@ test "list methods mutate explicit clones and remain typed":
         return panic("check failed")
     if not (original.clone().remove(1) == [3, 2, 1]):
         return panic("check failed")
-    if not (original.slice(1, 3).unwrap() == [1, 2]):
+    if not (original.slice(1, 3).get() == [1, 2]):
         return panic("check failed")
     if not (original.clone().reverse_in_place() == [1, 2, 1, 3]):
         return panic("check failed")
@@ -278,7 +278,7 @@ test "string methods use Unicode scalars":
         return panic("check failed")
     if not ("é🙂é".last_index_of("z") == absent):
         return panic("check failed")
-    if not ("é🙂é".slice(-2, 3).unwrap() == "🙂é"):
+    if not ("é🙂é".slice(-2, 3).get() == "🙂é"):
         return panic("check failed")
     if not ("é🙂é".slice(2, 1).is_error()):
         return panic("check failed")
@@ -335,7 +335,7 @@ test "bytes have analogous immutable operations":
         return panic("check failed")
     if not (data.ends_with(Bytes([3, 2]))):
         return panic("check failed")
-    if not (data.slice(1, 3).unwrap() == Bytes([2, 3])):
+    if not (data.slice(1, 3).get() == Bytes([2, 3])):
         return panic("check failed")
     if not (data.reversed() == Bytes([2, 3, 2, 1])):
         return panic("check failed")

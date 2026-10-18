@@ -5,7 +5,7 @@ fn apply[T, U](value: T, transform: fn(value: T) U) U: transform(value)
 fn choose[T](first: fn() T, second: fn() T) T: first()
 
 fn optional[T, U](value: T, transform: Optional[fn(value: T) U]) U:
-    return transform.unwrap()(value)
+    return transform.get()(value)
 
 fn with_result[T](transform: fn() Result[T, String]) Result[T, String]: transform()
 
@@ -65,7 +65,7 @@ test "callback inference retains captures and contextual metadata":
         transform: fn(item): error(Failure(item))
     )
     if failed.is_ok(): return panic("expected domain failure")
-    if failed.unwrap_error().message() != "9": return panic("generic Error dispatch")
+    if failed.err().message() != "9": return panic("generic Error dispatch")
 
 fn absent[T]() Optional[T]: none
 

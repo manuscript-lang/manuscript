@@ -196,7 +196,7 @@ test "ordinary cross-task lock cycle stops at the group timeout":
             if joined.is_ok():
                 return panic("cycle acquired before release")
 
-            let cause = joined.unwrap_error()
+            let cause = joined.err()
 
             match cause:
                 Timeout:

@@ -80,12 +80,12 @@ test "list names mutate aliases and retain shallow copies":
 
     let optional: List[Optional[Int]] = [some(1)]
     optional.set(0, 7)
-    if optional.at(0).unwrap() != some(7): return panic("list Optional conversion")
+    if optional.at(0).get() != some(7): return panic("list Optional conversion")
 
     let nested = [[1]]
     let outer_copy = nested.clone()
     nested.set(0, [2])
-    outer_copy.at(0).unwrap().append(3)
+    outer_copy.at(0).get().append(3)
     if nested != [[2]] or outer_copy != [[1, 3]]: return panic("outer storage")
 
 test "set names preserve receiver identity order and no-op membership":
@@ -268,10 +268,10 @@ test "list reversal names distinguish receiver mutation and shallow copies":
 
     let nested = [Cell(1), Cell(2)]
     let shallow = nested.reversed()
-    let shared = shallow.at(0).unwrap()
+    let shared = shallow.at(0).get()
     shared.value = 9
     shallow.set(1, Cell(7))
-    if nested.at(0).unwrap().value != 1 or nested.at(1).unwrap().value != 9:
+    if nested.at(0).get().value != 1 or nested.at(1).get().value != 9:
         return panic("reversed copy depth")
 
     let viewed = [4, 5]

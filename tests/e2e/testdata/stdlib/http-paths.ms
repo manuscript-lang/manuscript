@@ -32,7 +32,7 @@ fn stream_route(exchange: HttpExchange) Result[Unit, HttpError]:
             Map[String, List[String]]().add("Set-Cookie", ["a=1", "b=2"])
         )
     )
-    exchange.write("{exchange.path()}|{exchange.query()}".to_bytes()).unwrap()
+    exchange.write("{exchange.path()}|{exchange.query()}".to_bytes()).get()
     return ok(unit)
 
 fn check_route(url: String, expected: String) Result[Unit, Error]:
@@ -90,7 +90,7 @@ test "streaming routes validate original input and decode once":
 
 fn expect_http_error[T](outcome: Result[T, HttpError]) Unit:
     if not outcome.is_error(): return panic("invalid URL succeeded")
-    if outcome.unwrap_error() != HttpError.InvalidInput: return panic(
+    if outcome.err() != HttpError.InvalidInput: return panic(
         "malformed URL leaked transport error"
     )
 

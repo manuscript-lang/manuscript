@@ -7,7 +7,7 @@ fn digits(s: &str) -> bool {
 
 fn main() {
     let mut input = String::new();
-    io::stdin().read_to_string(&mut input).unwrap();
+    io::stdin().read_to_string(&mut input).get();
     let levels = ["DEBUG", "INFO", "WARN", "ERROR"];
     let methods = ["GET", "POST", "PUT", "DELETE"];
     let mut level_counts = [0usize; 4];
@@ -36,17 +36,17 @@ fn main() {
             continue;
         }
         valid += 1;
-        level_counts[lv.unwrap()] += 1;
+        level_counts[lv.get()] += 1;
         let c = f[4].as_bytes()[0];
         classes[if (b'2'..=b'5').contains(&c) { (c - b'2') as usize } else { 4 }] += 1;
-        let lat: u64 = f[5].parse().unwrap();
+        let lat: u64 = f[5].parse().get();
         latencies.push(lat);
         if slowest.as_ref().map_or(true, |(l, _)| lat > *l) {
             slowest = Some((lat, format!("{} {} {} {}", lat, f[2], f[3], f[0])));
         }
         let e = stats.entry(f[3].to_string()).or_insert((0, 0));
         e.0 += 1;
-        e.1 += f[5].parse::<u64>().unwrap();
+        e.1 += f[5].parse::<u64>().get();
     }
     let mut out = format!("valid: {}\nmalformed: {}\n", valid, malformed);
     for (i, l) in levels.iter().enumerate() {
@@ -64,5 +64,5 @@ fn main() {
     for (path, (n, sum)) in ranked.into_iter().take(3) {
         out.push_str(&format!("{} {} avg={}\n", path, n, sum / *n as u64));
     }
-    io::stdout().write_all(out.as_bytes()).unwrap();
+    io::stdout().write_all(out.as_bytes()).get();
 }

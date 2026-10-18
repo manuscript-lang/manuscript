@@ -26,7 +26,7 @@ fn discarded(n: Int) Result[Int, String]:
     return ok(7)
 
 fn code(r: Result[Int, String]) Int:
-    return r.unwrap_or(-1)
+    return r.get(-1)
 
 fn nested(n: Int) Result[Int, String]:
     return ok((try parse(n)) + (try parse(n - 5)))

@@ -25,7 +25,7 @@ test "panic unwinds Closeable":
 
 test "absent Optional unwrap faults":
     let absent: Optional[Int] = none
-    absent.unwrap()
+    absent.get()
 
 test "sealed builder mutation faults":
     let builder = ListBuilder[Int]()
@@ -45,7 +45,7 @@ test "stale synchronized guard faults":
     guard.get()
 
 test "unwrapping an out of range slice faults":
-    ([1, 2]).slice(0, 3).unwrap()
+    ([1, 2]).slice(0, 3).get()
 
 test "negative split limit faults":
     "a,b,c".split(",", -1)

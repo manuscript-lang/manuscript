@@ -18,7 +18,7 @@ export fn bench_list() Unit:
         fn() Int:
             var n = 0
             for i in range(0, 200000):
-                n += data.at(i % 100000).unwrap_or(0)
+                n += data.at(i % 100000).get(0)
             return n
     )
     bench(

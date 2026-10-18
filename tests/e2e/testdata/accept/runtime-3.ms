@@ -17,7 +17,7 @@ fn probe() Result[Unit, ExecutionError]:
         let flag = try flag_task.join()
         if not (flag):
             return panic("check failed")
-        if not (number.unwrap_or(0) == 3):
+        if not (number.get(0) == 3):
             return panic("check failed")
 
         return ok(unit)
@@ -29,7 +29,7 @@ fn describe(outcome: Result[Int, Int]) Result[Int, String]:
     if let value = outcome:
         return ok(value)
 
-    return error("Error {outcome.unwrap_error()}")
+    return error("Error {outcome.err()}")
 
 test "explicit error conversion":
     let failed: Result[Int, Int] = error(7)

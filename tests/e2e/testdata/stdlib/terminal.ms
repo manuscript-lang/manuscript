@@ -14,4 +14,4 @@ test "redirected streams report no terminal and refuse raw mode":
         active.close()
         return panic("raw mode on redirected input")
 
-    if raw.unwrap_error() != TerminalError.NotTerminal: return panic("wrong error")
+    if raw.err() != TerminalError.NotTerminal: return panic("wrong error")

@@ -85,14 +85,14 @@ test "timestamp methods and expected range failures":
     let shifted = maximum.shift(duration(1))
     if shifted.is_ok():
         return panic("timestamp shift must reject year 10000")
-    if shifted.unwrap_error() != TimeError.OutOfRange:
+    if shifted.err() != TimeError.OutOfRange:
         return panic("unexpected timestamp range error")
 
     let minimum = try timestamp(-62135596800, 0)
     let difference = maximum.difference(minimum)
     if difference.is_ok():
         return panic("timestamp difference must reject duration overflow")
-    if difference.unwrap_error() != TimeError.OutOfRange:
+    if difference.err() != TimeError.OutOfRange:
         return panic("unexpected timestamp difference error")
     if maximum.compare(minimum) != 1:
         return panic("timestamp compare must work across full range")

@@ -16,7 +16,7 @@ test "byte updates retain relative bounds and immutable storage":
     if not bytes.at(-3).is_none() or not bytes.at(2).is_none(): return panic(
         "absent byte"
     )
-    if bytes.slice(2, 2).unwrap() != Bytes([]): return panic("empty byte slice")
+    if bytes.slice(2, 2).get() != Bytes([]): return panic("empty byte slice")
 
     let builder = BytesBuilder()
     builder.append(0)

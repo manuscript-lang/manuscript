@@ -34,7 +34,7 @@ test "Bytes empty separator splits bytes without decoding":
     if scalars != [Bytes([195]), Bytes([169])]: return panic(
         "byte split used scalar indexes"
     )
-    if scalars.at(0).unwrap().decode_utf8().is_some(): return panic(
+    if scalars.at(0).get().decode_utf8().is_some(): return panic(
         "byte split repaired invalid UTF-8"
     )
     if "é".to_bytes().split(Bytes([169])) != [Bytes([195]), empty]: return panic(
@@ -97,7 +97,7 @@ test "Bytes split returns independent List storage and immutable views":
     let data = Bytes([1, 0, 2])
     let first = data.split(Bytes([0]))
     let second = data.split(Bytes([0]))
-    let payload = first.at(0).unwrap()
+    let payload = first.at(0).get()
     let edited = payload.with_value(0, 99)
     let extracted = payload.values()
     extracted.set(0, 88)

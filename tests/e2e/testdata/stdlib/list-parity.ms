@@ -55,13 +55,13 @@ type Box:
 test "List pop and distinct retain payload references":
     let shared = Box(1)
     let boxes = [shared]
-    boxes.pop().unwrap().value = 2
+    boxes.pop().get().value = 2
     if shared.value != 2: return panic("pop payload cloned")
 
     let nested = [1]
     let lists = [nested, [1], [2]]
     let unique = lists.distinct()
-    unique.at(0).unwrap().append(3)
+    unique.at(0).get().append(3)
     if unique.length() != 2 or nested != [1, 3]: return panic("distinct payload cloned")
 
 test "List distinct keeps the first equal element in order":

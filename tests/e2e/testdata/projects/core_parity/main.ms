@@ -29,7 +29,7 @@ test "mapped output keeps lexical Hashable and Equal evidence":
     let by_label = second_mapped()
     if by_id.length() != 1 or by_label.length() != 2:
         return panic("generic result scope was replaced by input scope")
-    if by_id.values().at(0).unwrap().label != "1": return panic(
+    if by_id.values().at(0).get().label != "1": return panic(
         "first mapped payload lost"
     )
 
@@ -46,14 +46,11 @@ test "Result composition retains concrete Error and its local implementation":
     let cause = Cause(1)
     let one = first_failure(cause)
     let two = second_failure(cause)
-    if (
-        one.unwrap_error().message() != "first 1"
-        or two.unwrap_error().message() != "second 1"
-    ):
+    if (one.err().message() != "first 1" or two.err().message() != "second 1"):
         return panic("Result error scope changed")
 
     cause.count = 2
-    if cause.count != 2 or two.unwrap_error().message() != "second 2":
+    if cause.count != 2 or two.err().message() != "second 2":
         return panic("Result copied concrete Error")
 
 test "conversions and queries retain scoped generic evidence and Error identity":
@@ -63,17 +60,11 @@ test "conversions and queries retain scoped generic evidence and Error identity"
     let cause = Cause(1)
     let one = first_converted(cause)
     let two = second_converted(cause)
-    if (
-        one.unwrap_error().message() != "first 1"
-        or two.unwrap_error().message() != "second 1"
-    ):
+    if (one.err().message() != "first 1" or two.err().message() != "second 1"):
         return panic("conversion replaced Error implementation")
 
     cause.count = 3
-    if (
-        one.unwrap_error().message() != "first 3"
-        or two.unwrap_error().message() != "second 3"
-    ):
+    if (one.err().message() != "first 3" or two.err().message() != "second 3"):
         return panic("conversion copied concrete Error")
     if not (one.to_optional().is_none()): return panic("error converted to success")
 
@@ -94,7 +85,7 @@ test "Map transformations preserve input and output equality evidence":
     let two = second_key_transform(input)
     if one.length() != 1 or two.length() != 2:
         return panic("Map key transform used input scope for output keys")
-    if one.keys().at(0).unwrap().label != "1" or one.values() != [20]:
+    if one.keys().at(0).get().label != "1" or one.values() != [20]:
         return panic("Map key transform collision identity")
 
     let bound_one = first_bound_keys()

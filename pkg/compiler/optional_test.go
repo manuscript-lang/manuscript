@@ -11,7 +11,7 @@ func TestOptionalArgumentsCompose(t *testing.T) {
 		for range 32 {
 			argument = "number(" + argument + ")"
 		}
-		source := "fn number(value: Optional[Int]) Int: return value.unwrap()\nfn call() Int: return " + argument + "\n"
+		source := "fn number(value: Optional[Int]) Int: return value.get()\nfn call() Int: return " + argument + "\n"
 		result := CompileSource("nested.ms", source, Options{})
 		if result.Success() != (payload == "4") {
 			t.Fatal("incorrect nested argument compatibility", result.Diagnostics)
@@ -32,7 +32,7 @@ func TestOptionalArgumentBoundaries(t *testing.T) {
 		{"invariant optionals", "fn f(value: Optional[Float]) Unit: return\nfn call(value: Optional[Int]) Unit: f(value)\n", "expected Optional[Float], found Optional[Int]"},
 		{"conflicting inference", "fn f[T](first: Optional[T], second: T) Unit: return\nfn call() Unit: f(first: 4, second: \"wrong\")\n", "conflicting generic inference"},
 		{"omission does not infer", "fn f[T](value: Optional[T] = none) Unit: return\nfn call() Unit: f()\n", "cannot infer type argument T"},
-		{"missing result context", "fn f[T](value: Optional[T]) T: return value.unwrap()\nfn call() Unit: let value = f(none)\n", "cannot infer type argument T"},
+		{"missing result context", "fn f[T](value: Optional[T]) T: return value.get()\nfn call() Unit: let value = f(none)\n", "cannot infer type argument T"},
 		{"collection elements stay exact", "fn f(values: List[Optional[Int]]) Unit: return\nfn call() Unit: f([4])\n", "expected Optional[Int], found Int"},
 		{"function identity stays exact", "fn f(value: Int) Int: return value\nfn call() Unit:\n    let callback: fn(value: Optional[Int]) Int = f\n", "expected fn(value: Optional[Int])"},
 		{"unknown label", "fn f(value: Optional[Int]) Unit: return\nfn call() Unit: f(other: 4)\n", "unknown argument other"},
@@ -60,18 +60,10 @@ func TestOptionalArgumentBoundaries(t *testing.T) {
 func TestOptionalMethodsRejectInvalidContracts(t *testing.T) {
 	for name, source := range map[string]string{
 		"wrong fallback": `fn wrong(value: Optional[Int]) Int:
-    return value.unwrap_or("missing")
-`,
-		"wrong lazy fallback result": `fn create() String: return "missing"
-fn wrong(value: Optional[Int]) Int:
-    return value.unwrap_or_else(create)
-`,
-		"lazy fallback requires zero parameters": `fn create(value: Int) Int: return value
-fn wrong(value: Optional[Int]) Int:
-    return value.unwrap_or_else(create)
+    return value.get("missing")
 `,
 		"nested values do not flatten": `fn wrong(value: Optional[Optional[Int]]) Int:
-    return value.unwrap()
+    return value.get()
 `,
 		"result does not inherit optional predicates": `fn wrong(value: Result[Int, String]) Bool:
     return value.is_some()
@@ -80,7 +72,7 @@ fn wrong(value: Optional[Int]) Int:
     case some(value: T)
     case none
 fn wrong(value: Optional[Int]) Int:
-    return value.unwrap()
+    return value.get()
 `,
 		"private implementation is not a second public spelling": `import unwrap from "@std/optional.ms"
 `,

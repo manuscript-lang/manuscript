@@ -104,12 +104,12 @@ fn main() {
     let stdin = std::io::stdin();
     let mut out = String::new();
     for line in stdin.lock().lines() {
-        let line = line.unwrap();
+        let line = line.get();
         if line.trim_matches(' ').is_empty() {
             continue;
         }
         out.push_str(&solve_line(&line));
         out.push('\n');
     }
-    std::io::stdout().write_all(out.as_bytes()).unwrap();
+    std::io::stdout().write_all(out.as_bytes()).get();
 }

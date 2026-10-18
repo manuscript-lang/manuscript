@@ -374,17 +374,15 @@ test "JSON parse decodes records by field name with defaults and optional fields
     if profile.name != "Ada": return panic("record field")
     if profile.age != 18: return panic("field default")
     if not profile.nickname.is_none(): return panic("missing optional is none")
-    if profile.scores.length() != 2 or profile.scores.at(1).unwrap() != 2.5: return panic(
+    if profile.scores.length() != 2 or profile.scores.at(1).get() != 2.5: return panic(
         "float list"
     )
-    if profile.labels.get("a").unwrap() != 1: return panic("map member")
+    if profile.labels.get("a").get() != 1: return panic("map member")
     if profile.ids.length() != 2: return panic("set drops repeats")
 
     let full = "\{\"name\":\"B\",\"age\":30,\"nickname\":\"bee\",\"scores\":[],\"labels\":\{\},\"ids\":[]\}"
     let other: Profile = try parse[Profile](full)
-    if other.age != 30 or other.nickname.unwrap() != "bee": return panic(
-        "present members"
-    )
+    if other.age != 30 or other.nickname.get() != "bee": return panic("present members")
 
 test "JSON parse rejects shape mismatches as InvalidData":
     let invalid: Result[Profile, JsonError] = error(JsonError.InvalidData)
@@ -439,9 +437,7 @@ test "JSON parse decodes alternatives and generic records":
     let scene: Scene = try parse[Scene](
         "\{\"shape\":\"Dot\",\"shapes\":[\{\"Rect\":\{\"width\":1,\"height\":2\}\}]\}"
     )
-    if scene.shapes.at(0).unwrap() != Shape.Rect(1, 2): return panic(
-        "nested alternative"
-    )
+    if scene.shapes.at(0).get() != Shape.Rect(1, 2): return panic("nested alternative")
 
     let wrapper: Wrapper[Int] = try parse[Wrapper[Int]]("\{\"first\":1\}")
     if wrapper.first != 1 or not wrapper.second.is_none() or wrapper.extra != 7: return panic(
@@ -459,7 +455,7 @@ test "JSON parse decodes recursive types exact numbers and passthrough values":
     let tree: Tree = try parse[Tree](
         "\{\"label\":\"r\",\"children\":[\{\"label\":\"c\",\"children\":[]\}]\}"
     )
-    if tree.children.at(0).unwrap().label != "c": return panic("recursive record")
+    if tree.children.at(0).get().label != "c": return panic("recursive record")
 
     let price: Price = try parse[Price](
         "\{\"amount\":1.5,\"cents\":123456789012345678901234567890\}"
@@ -476,7 +472,7 @@ test "JSON parse decodes recursive types exact numbers and passthrough values":
     if boxed.first != raw: return panic("JsonValue keeps its subtree")
 
     let list: List[Optional[Int]] = try parse[List[Optional[Int]]]("[1,null]")
-    if list.at(1).unwrap().is_some(): return panic("null element is none")
+    if list.at(1).get().is_some(): return panic("null element is none")
 
 test "JSON parse inverts stringify and works in generic code":
     let profile = Profile(
@@ -490,11 +486,11 @@ test "JSON parse inverts stringify and works in generic code":
     let text = try stringify(profile)
     let again: Profile = try decoded[Profile](text)
     if (try stringify(again)) != text: return panic("round trip")
-    if again.nickname.unwrap() != "a": return panic("optional round trip")
+    if again.nickname.get() != "a": return panic("optional round trip")
 
     let shapes: List[Shape] = [Shape.Dot, Shape.Rect(3, 4)]
     let shapesBack: List[Shape] = try decoded[List[Shape]](try stringify(shapes))
-    if shapesBack.at(1).unwrap() != Shape.Rect(3, 4): return panic(
+    if shapesBack.at(1).get() != Shape.Rect(3, 4): return panic(
         "alternative round trip"
     )
 
@@ -532,7 +528,7 @@ test "JSON parse reads what stringify writes for standard values and scalar map 
     let ints: Map[Int, String] = try parse[Map[Int, String]](
         "\{\"2\":\"b\",\"1\":\"a\"\}"
     )
-    if ints.get(2).unwrap() != "b": return panic("Int keys decode")
+    if ints.get(2).get() != "b": return panic("Int keys decode")
 
     let bad: Result[Map[Int, String], JsonError] = error(JsonError.InvalidData)
     if parse[Map[Int, String]]("\{\"x\":\"b\"\}") != bad: return panic(
@@ -540,12 +536,10 @@ test "JSON parse reads what stringify writes for standard values and scalar map 
     )
 
     let flags: Map[Bool, Int] = try parse[Map[Bool, Int]]("\{\"true\":1\}")
-    if flags.get(true).unwrap() != 1: return panic("Bool keys decode")
+    if flags.get(true).get() != 1: return panic("Bool keys decode")
 
     let kinds: Map[Tagged, Int] = try parse[Map[Tagged, Int]]("\{\"Plain\":3\}")
-    if kinds.get(Tagged.Plain).unwrap() != 3: return panic(
-        "payloadless case keys decode"
-    )
+    if kinds.get(Tagged.Plain).get() != 3: return panic("payloadless case keys decode")
 
 test "JSON parse needs a default for fields without a JSON form":
     let outcome = parse[Handler]("\{\"name\":\"n\"\}")

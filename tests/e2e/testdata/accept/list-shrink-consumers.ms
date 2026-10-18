@@ -144,10 +144,7 @@ test "record consumers retain shallow references after shrink":
                 return panic("record shrink consumer lost a valid reference")
 
             last.value = 11
-            if not (
-                seen.last().unwrap().value == 11
-                and clone.last().unwrap().value == 11
-            ):
+            if not (seen.last().get().value == 11 and clone.last().get().value == 11):
                 return panic("record references were deep copied")
 
 type Choice:
@@ -199,8 +196,8 @@ test "nested list consumers retain inner handles after shrink":
             let want = expected(mode, first, second, last, replacement)
             var total = 0
             var wanted = 0
-            for value in seen: total += value.first().unwrap()
-            for value in want: wanted += value.first().unwrap()
+            for value in seen: total += value.first().get()
+            for value in want: wanted += value.first().get()
             if not (
                 total == wanted
                 and seen == want
@@ -215,10 +212,7 @@ test "nested list consumers retain inner handles after shrink":
                 return panic("nested shrink consumer lost an inner handle")
 
             last.append(11)
-            if not (
-                seen.last().unwrap() == [3, 11]
-                and clone.last().unwrap() == [3, 11]
-            ):
+            if not (seen.last().get() == [3, 11] and clone.last().get() == [3, 11]):
                 return panic("nested references were deep copied")
 
 test "map and folds consume valid retained cells":
@@ -292,10 +286,7 @@ test "interface view consumers dispatch after shrink":
                 return panic("interface dispatch after shrink lost its receiver")
 
             last_record.value = 11
-            if not (
-                seen.last().unwrap().read() == 11
-                and clone.last().unwrap().read() == 11
-            ):
+            if not (seen.last().get().read() == 11 and clone.last().get().read() == 11):
                 return panic("interface views did not retain shallow references")
 
 test "find returns the value passed to a mutating predicate":
@@ -305,7 +296,7 @@ test "find returns the value passed to a mutating predicate":
             forward.remove(0)
             return value == 1
     )
-    if not (found.unwrap() == 1 and forward == [2, 3]):
+    if not (found.get() == 1 and forward == [2, 3]):
         return panic("find reloaded a shifted backing cell")
 
     let replaced = [1, 2, 3]
@@ -314,7 +305,7 @@ test "find returns the value passed to a mutating predicate":
             replaced.set(0, 9)
             return value == 1
     )
-    if not (original.unwrap() == 1 and replaced == [9, 2, 3]):
+    if not (original.get() == 1 and replaced == [9, 2, 3]):
         return panic("find returned a replacement rather than its argument")
 
     let reverse = [1, 2, 3]
@@ -323,7 +314,7 @@ test "find returns the value passed to a mutating predicate":
             if value == 2: reverse.remove(1)
             return value == 2
     )
-    if not (last.unwrap() == 2 and reverse == [1, 3]):
+    if not (last.get() == 2 and reverse == [1, 3]):
         return panic("find_last reloaded a shifted current cell")
 
     let last_replaced = [1, 2, 3]
@@ -332,7 +323,7 @@ test "find returns the value passed to a mutating predicate":
             last_replaced.set(2, 9)
             return value == 3
     )
-    if not (before.unwrap() == 3 and last_replaced == [1, 2, 9]):
+    if not (before.get() == 3 and last_replaced == [1, 2, 9]):
         return panic("find_last returned a replacement rather than its argument")
 
     let indexes = [1, 2, 3]
@@ -347,7 +338,7 @@ test "find returns the value passed to a mutating predicate":
             if value == 2: reverse_indexes.remove(1)
             return value == 2
     )
-    if not (index.unwrap() == 0 and last_index.unwrap() == 1):
+    if not (index.get() == 0 and last_index.get() == 1):
         return panic("find index variants lost the captured index")
 
     let record = Payload(1)
@@ -361,12 +352,12 @@ test "find returns the value passed to a mutating predicate":
                 records.set(0, Payload(9))
                 return matches
         )
-        .unwrap()
+        .get()
     )
     if not (
         retained.value == 7
         and record.value == 7
-        and records.first().unwrap().value == 9
+        and records.first().get().value == 9
     ):
         return panic("find copied its matching shallow reference")
 
@@ -405,5 +396,5 @@ test "preferred List mutators and explicit reversed copy preserve aliases":
     let shallow = children.reversed()
     child.value = 7
     children.remove(0)
-    if not (shallow.last().unwrap().value == 7 and children.length() == 1):
+    if not (shallow.last().get().value == 7 and children.length() == 1):
         return panic("reversed changed shallow child reference sharing")

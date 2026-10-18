@@ -1,20 +1,20 @@
 import Queue from "@std/queues.ms"
 import panic from "@std/faults.ms"
 
-fn number(value: Optional[Int] = none) Int: value.unwrap_or(-1)
+fn number(value: Optional[Int] = none) Int: value.get(-1)
 
 fn present[T](value: Optional[T]) Optional[T]: value
 
-fn nested(value: Optional[Optional[Int]]) Bool: value.unwrap().is_none()
+fn nested(value: Optional[Optional[Int]]) Bool: value.get().is_none()
 
-fn list_size(value: Optional[List[Int]]) Int: value.unwrap().length()
+fn list_size(value: Optional[List[Int]]) Int: value.get().length()
 
-fn flag(value: Optional[Bool]) Bool: value.unwrap()
+fn flag(value: Optional[Bool]) Bool: value.get()
 
 fn success(value: Optional[Result[Int, String]]) Int:
-    return value.unwrap().unwrap_or(-1)
+    return value.get().get(-1)
 
-fn context[T](value: Optional[T], fallback: T) T: value.unwrap_or(fallback)
+fn context[T](value: Optional[T], fallback: T) T: value.get(fallback)
 
 type Failure:
     detail: String
@@ -41,7 +41,7 @@ type Reader:
     offset: Int
 
 impl Read for Reader:
-    fn read(value: Optional[Int]) Int: value.unwrap_or(0) + self.offset
+    fn read(value: Optional[Int]) Int: value.get(0) + self.offset
 
 type Counter:
     calls: Int
@@ -51,13 +51,13 @@ fn next(counter: Counter) Int:
     return counter.calls
 
 fn ordered(first: Optional[Int], second: Optional[Int]) Int:
-    return first.unwrap() * 10 + second.unwrap()
+    return first.get() * 10 + second.get()
 
-fn invoke(value: Optional[fn(value: Int) Int]) Int: value.unwrap()(4)
+fn invoke(value: Optional[fn(value: Int) Int]) Int: value.get()(4)
 
 fn increment(value: Int) Int: value + 1
 
-fn mutate(value: Optional[Counter]) Unit: value.unwrap().calls = 9
+fn mutate(value: Optional[Counter]) Unit: value.get().calls = 9
 
 test "plain values and explicit optionals share the call contract":
     if number(4) != 4: return panic("plain argument")
@@ -70,13 +70,11 @@ test "plain values and explicit optionals share the call contract":
 
     let stored: fn(value: Optional[Int]) Int = number
     if stored(5) != 5: return panic("stored function")
-    if present(6).unwrap() != 6: return panic("generic inference")
-    if present[Int](7).unwrap() != 7: return panic("explicit specialization")
+    if present(6).get() != 6: return panic("generic inference")
+    if present[Int](7).get() != 7: return panic("explicit specialization")
 
     let generic_supplied: Optional[Int] = some(8)
-    if present(generic_supplied).unwrap() != 8: return panic(
-        "generic optional identity"
-    )
+    if present(generic_supplied).get() != 8: return panic("generic optional identity")
 
     let missing: Optional[Int] = none
     if not (nested(missing)): return panic("nested none must be wrapped once")
@@ -100,18 +98,16 @@ test "constructor fields and methods use optional arguments":
     if not (defaulted.value.is_none()): return panic("optional record default")
 
     let supplied = DefaultBox(3)
-    if supplied.value.unwrap() != 3: return panic(
-        "optional argument with record default"
-    )
+    if supplied.value.get() != 3: return panic("optional argument with record default")
 
     let box = Box(4)
-    if box.value.unwrap() != 4: return panic("generic record constructor")
+    if box.value.get() != 4: return panic("generic record constructor")
 
     let choice = Choice.chosen(5)
 
     match choice:
         chosen(value):
-            if value.unwrap() != 5: return panic("generic alternative constructor")
+            if value.get() != 5: return panic("generic alternative constructor")
 
     let reader = Reader(2)
     if reader.read(3) != 5: return panic("method argument")
@@ -127,7 +123,7 @@ test "constructor fields and methods use optional arguments":
     if counter.calls != 9: return panic("wrapping copied the payload")
 
     let notice = Notice(Failure("detail"))
-    if notice.failure.unwrap().message() != "detail": return panic(
+    if notice.failure.get().message() != "detail": return panic(
         "error payload conversion"
     )
 
@@ -142,7 +138,7 @@ test "queue capacity accepts a plain value or omission":
     for value in [1, 2, 3, 4]:
         if not (bounded.enqueue(value)): return panic("capacity rejected a value")
     if bounded.enqueue(5): return panic("capacity bound was lost")
-    if bounded.dequeue().unwrap() != 1: return panic("queue order changed")
+    if bounded.dequeue().get() != 1: return panic("queue order changed")
 
     let unbounded = Queue[Int]()
     let absent = Queue[Int]()

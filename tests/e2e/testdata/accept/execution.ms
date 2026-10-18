@@ -36,7 +36,7 @@ fn scheduler_probe() Unit:
         let closed = launch(task)
         if closed.is_ok():
             return panic("Unexpected case")
-        if not (closed.unwrap_error() == StartError.Closed):
+        if not (closed.err() == StartError.Closed):
             return panic("check failed")
 
 test "joined work and snapshot captures":
