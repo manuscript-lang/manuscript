@@ -8,9 +8,9 @@ fn run(re: Regex) Unit:
         "regex.find_all",
         2000,
         fn() Int:
-            match re.find_all(text: text):
-                ok(m): return m.length()
-                error(_): return 0
+            if let m = re.find_all(text: text): return m.length()
+
+            return 0
     )
     bench(
         "regex.matches",
@@ -25,12 +25,10 @@ fn run(re: Regex) Unit:
         "regex.replace_all",
         2000,
         fn() Int:
-            match re.replace_all(text: text, replacement: "w"):
-                ok(s): return s.length()
-                error(_): return 0
+            if let s = re.replace_all(text: text, replacement: "w"): return s.length()
+
+            return 0
     )
 
 export fn bench_regex() Unit:
-    match compile(pattern: "word[0-9]+"):
-        ok(re): run(re)
-        error(_): unit
+    if let re = compile(pattern: "word[0-9]+"): run(re)

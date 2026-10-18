@@ -480,10 +480,10 @@ export fn main() Int:
         let task = fn() Result[Unit, Error]:
             close_output()
             return ok(value: unit)
-        let id = match service.start(task):
-            ok(id): id
-            error(_):
-                return 2
+        let started = service.start(task)
+        if started.is_error():
+            return 2
+        let id = started.unwrap()
 
         while true:
             match service.status(id):
@@ -494,10 +494,10 @@ export fn main() Int:
                 _:
                     return 5
 
-    let cause = match stdout().write("".to_bytes()):
-        ok(_):
-            return 3
-        error(cause): cause
+    let written = stdout().write("".to_bytes())
+    if written.is_ok():
+        return 3
+    let cause = written.unwrap_error()
 
     match cause:
         Closed:

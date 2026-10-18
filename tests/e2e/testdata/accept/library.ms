@@ -147,42 +147,12 @@ fn verify_archive() Result[Unit, ArchiveError]:
     return ok(unit)
 
 test "expanded packages run through compiler":
-    match verify_json():
-        ok(_):
-            let verified = unit
-        error(_):
-            return panic(message: "json failed")
-
-    match verify_encoding():
-        ok(_):
-            let verified = unit
-        error(_):
-            return panic(message: "encoding failed")
-
-    match verify_url():
-        ok(_):
-            let verified = unit
-        error(_):
-            return panic(message: "url failed")
-
-    match verify_binary():
-        ok(_):
-            let verified = unit
-        error(_):
-            return panic(message: "binary failed")
-
-    match verify_compression():
-        ok(_):
-            let verified = unit
-        error(_):
-            return panic(message: "compression failed")
-
-    match verify_archive():
-        ok(_):
-            let verified = unit
-        error(_):
-            return panic(message: "archive failed")
-
+    try verify_json()
+    try verify_encoding()
+    try verify_url()
+    try verify_binary()
+    try verify_compression()
+    try verify_archive()
     if not (("a,,b").split(separator: ",", max_parts: 2) == ["a", ""]):
         return panic(message: "check failed")
     if not (("é🙂").scalar_length() == 2):

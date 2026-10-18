@@ -3,15 +3,15 @@ import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
 test "timestamps preserve nanoseconds and shift across epoch":
-    let epoch = value(timestamp(seconds: 0, nanoseconds: 123))
+    let epoch = timestamp(seconds: 0, nanoseconds: 123) | value
     if epoch.unix_seconds() != 0 or epoch.nanoseconds() != 123: return panic(
         "timestamp units"
     )
-    if value(parse_timestamp(epoch.to_string())) != epoch: return panic(
+    if (epoch.to_string() | parse_timestamp | value) != epoch: return panic(
         "timestamp roundtrip"
     )
 
-    let later = value(epoch.shift(2.seconds))
+    let later = epoch.shift(2.seconds) | value
     if value(later.difference(epoch)) != 2.seconds: return panic("time difference")
     if value(later.shift((-2).seconds)) != epoch: return panic("negative shift")
 
@@ -33,7 +33,7 @@ test "host clocks are usable and zero sleep completes":
     if monotonic.now() < before: return panic("clock went backwards")
 
     let now = wall_clock().now()
-    if value(parse_timestamp(now.to_string())) != now: return panic(
+    if (now.to_string() | parse_timestamp | value) != now: return panic(
         "wall clock roundtrip"
     )
 

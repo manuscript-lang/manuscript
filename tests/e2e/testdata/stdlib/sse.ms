@@ -76,7 +76,7 @@ fn summary(events: List[SseEvent]) String:
 
 fn expect(source: String, want: String) Unit:
     for parts in splits(source.to_bytes()):
-        let events = value(decode(parts))
+        let events = decode(parts) | value
         let got = summary(events)
         if got != want:
             panic("{source.to_bytes().values()}: want {want}, got {got}")
@@ -90,9 +90,9 @@ test "LF CRLF and CR endings decode identically under every chunk split":
     expect(source: "data: a\n\rdata: b\r\r", want: "message|a|-;message|b|-")
 
 test "CR LF straddling a chunk boundary is one ending":
-    let created = value(decoder())
-    let first = value(feed(decoder: created, chunk: "data: a\r".to_bytes()))
-    let second = value(feed(decoder: created, chunk: "\n\r\n".to_bytes()))
+    let created = decoder() | value
+    let first = feed(decoder: created, chunk: "data: a\r".to_bytes()) | value
+    let second = feed(decoder: created, chunk: "\n\r\n".to_bytes()) | value
     if first.length() != 0 or second.length() != 1:
         panic("CRLF split across chunks must dispatch exactly once")
 
@@ -124,15 +124,13 @@ test "events without data are not dispatched and reset the event type":
     expect(source: ": only comments\n\n\n", want: "")
 
 test "retry accepts digits only and survives between events":
-    let created = value(decoder())
-    value(feed(decoder: created, chunk: "retry: 1500\n\n".to_bytes()))
+    let created = decoder() | value
+    feed(decoder: created, chunk: "retry: 1500\n\n".to_bytes()) | value
     if created.retry.unwrap_or(0) != 1500: panic("retry was not recorded")
-    value(
-        feed(
-            decoder: created,
-            chunk: "retry: 12x\nretry: -5\nretry:\nretry: 99999999999999999999\n\n".to_bytes()
-        )
-    )
+    feed(
+        decoder: created,
+        chunk: "retry: 12x\nretry: -5\nretry:\nretry: 99999999999999999999\n\n".to_bytes()
+    ) | value
     if created.retry.unwrap_or(0) != 1500: panic("invalid retry values must be ignored")
 
 test "a byte order mark is dropped only at the start of the stream":
@@ -156,7 +154,7 @@ fn is_case(result: Result[List[SseEvent], SseError], want: SseError) Bool:
 
 test "invalid UTF-8 is InvalidData and final":
     for parts in splits(invalid_bytes()):
-        let created = value(decoder())
+        let created = decoder() | value
         var failure = false
 
         for part in parts:
@@ -172,48 +170,46 @@ test "invalid UTF-8 is InvalidData and final":
             panic("a failed decoder must keep reporting its failure")
 
 test "line and event budgets report LimitExceeded":
-    let tight = value(decoder(limits: SseLimits(max_line_bytes: some(7))))
+    let tight = decoder(limits: SseLimits(max_line_bytes: some(7))) | value
     if not is_case(
         feed(decoder: tight, chunk: "data: 12\n\n".to_bytes()),
         SseError.LimitExceeded
     ):
         panic("line budget")
-    let exact = value(decoder(limits: SseLimits(max_line_bytes: some(8))))
+    let exact = decoder(limits: SseLimits(max_line_bytes: some(8))) | value
     if value(feed(decoder: exact, chunk: "data: 12\n\n".to_bytes())).length() != 1:
         panic("a line at the budget is accepted")
-    let event = value(decoder(limits: SseLimits(max_event_bytes: some(10))))
-    value(feed(decoder: event, chunk: "data: 1\n".to_bytes()))
+    let event = decoder(limits: SseLimits(max_event_bytes: some(10))) | value
+    feed(decoder: event, chunk: "data: 1\n".to_bytes()) | value
     if not is_case(
         feed(decoder: event, chunk: "data: 2\n".to_bytes()),
         SseError.LimitExceeded
     ):
         panic("event budget")
-    let comments = value(decoder(limits: SseLimits(max_event_bytes: some(10))))
-    value(
-        feed(
-            decoder: comments,
-            chunk: ": a long comment is not counted\ndata: 1\n\n".to_bytes()
-        )
-    )
+    let comments = decoder(limits: SseLimits(max_event_bytes: some(10))) | value
+    feed(
+        decoder: comments,
+        chunk: ": a long comment is not counted\ndata: 1\n\n".to_bytes()
+    ) | value
     if decoder(limits: SseLimits(max_line_bytes: some(0))).is_ok(): panic(
         "zero line budget"
     )
 
 test "truncated streams fail and clean ends succeed":
     for source in ["data: a\n", "data: a", "data: a\n\ndata", "id: 1\n"]:
-        let created = value(decoder())
-        value(feed(decoder: created, chunk: source.to_bytes()))
+        let created = decoder() | value
+        feed(decoder: created, chunk: source.to_bytes()) | value
         let ending = finish(created)
         if ending.is_ok() or ending.unwrap_error() != SseError.Truncated:
             panic("{source} must be Truncated")
 
     for source in ["", "data: a\n\n", ": keepalive\n", "data: a\r\n\r\n", "\n"]:
-        let created = value(decoder())
-        value(feed(decoder: created, chunk: source.to_bytes()))
-        value(finish(created))
+        let created = decoder() | value
+        feed(decoder: created, chunk: source.to_bytes()) | value
+        finish(created) | value
 
-    let done = value(decoder())
-    value(finish(done))
+    let done = decoder() | value
+    finish(done) | value
     if not is_case(feed(decoder: done, chunk: "x".to_bytes()), SseError.InvalidInput):
         panic("feed after finish")
 
@@ -226,7 +222,7 @@ test "reader decodes a borrowed stream and leaves it open":
         ],
         failure: none
     )
-    let events = value(reader(input: ReadStream(value: source)))
+    let events = reader(input: ReadStream(value: source)) | value
     let first = value(next_event(events)).unwrap()
     let second = value(next_event(events)).unwrap()
     if first.data != "hello" or second.data != "2": panic("reader events")
@@ -235,46 +231,37 @@ test "reader decodes a borrowed stream and leaves it open":
     if source.closed: panic("the reader must not close a borrowed stream")
 
 test "reader reports truncation limits and read failures":
-    let cut = value(
-        reader(
-            input: ReadStream(
-                value: stream(
-                    parts: ["data: a\n".to_bytes()],
-                    failure: none
-                )
-            )
+    let cut = reader(
+        input: ReadStream(
+            value: stream(parts: ["data: a\n".to_bytes()], failure: none)
         )
-    )
+    ) | value
     let truncated = next_event(cut)
     if truncated.is_ok() or truncated.unwrap_error() != SseError.Truncated: panic(
         "truncated"
     )
-    let big = value(
-        reader(
-            input: ReadStream(
-                value: stream(
-                    parts: ["data: abcdef\n\n".to_bytes()],
-                    failure: none
-                )
-            ),
-            limits: SseLimits(max_line_bytes: some(4))
-        )
-    )
+    let big = reader(
+        input: ReadStream(
+            value: stream(
+                parts: ["data: abcdef\n\n".to_bytes()],
+                failure: none
+            )
+        ),
+        limits: SseLimits(max_line_bytes: some(4))
+    ) | value
     let limited = next_event(big)
     if limited.is_ok() or limited.unwrap_error() != SseError.LimitExceeded: panic(
         "limit"
     )
-    let broken = value(
-        reader(
-            input: ReadStream(
-                value: stream(
-                    parts: ["data: a\n\n".to_bytes()],
-                    failure: some(IoError.Closed)
-                )
+    let broken = reader(
+        input: ReadStream(
+            value: stream(
+                parts: ["data: a\n\n".to_bytes()],
+                failure: some(IoError.Closed)
             )
         )
-    )
-    value(next_event(broken))
+    ) | value
+    next_event(broken) | value
     let failed = next_event(broken)
     if failed.is_ok(): panic("read failure")
     if failed.unwrap_error() != SseError.ReadFailed(cause: IoError.Closed):

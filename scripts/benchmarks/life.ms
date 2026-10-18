@@ -2,9 +2,9 @@ import {filled, range} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 fn make_cells() List[Int]:
-    match filled(value: 0, count: 16384):
-        ok(values): return values
-        error(_): return panic("fill failure")
+    if let values = filled(value: 0, count: 16384): return values
+
+    return panic("fill failure")
 
 export fn main() Int:
     var cells = make_cells()

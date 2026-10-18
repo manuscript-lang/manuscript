@@ -27,6 +27,8 @@ Nested `match` is an anti-pattern. Bind the outer payload with an early exit, pr
 - `ms lint` reports **MSL107** at each inner match, including inside inline callbacks. Helpers and sequential matches are fine. The checker still accepts nesting; this is style only.
 - A two-arm `some`/`none` match on an `Optional` is **MSL108**. Use [`if let`](conditionals.md#unwrapping-an-optional-or-result), `unwrap_or`, or `map`.
 
+Matching a `Result` with only `ok` and `error` arms is flagged the same way as advisory **MSL109**. Use `try`, `if let value = result:` with `else:`, or a Result method such as `unwrap_or`, `is_error`, or `unwrap_error`.
+
 ## Arm values
 
 An arm may hold statements then a final expression, which is its value; ending in a statement gives `Unit`. Value-producing arms must share a compatible type, taken from the annotation or expected type, or else from the arms themselves. Arms that exit via `return`, `break`, `continue`, or `Never` contribute no value.

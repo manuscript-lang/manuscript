@@ -60,7 +60,7 @@ func TestDiagnosticsStateCauseAndFix(t *testing.T) {
 		{"callback label mismatch is one error", "fn double(n: Int) Int:\n    return n * 2\nfn f() Int:\n    return [1, 2].map(double).length()\n", []string{"the function's parameter is named n", "expects value"}, 1},
 		{"non-generic callback label mismatch", "fn positive(n: Int) Bool:\n    return n > 0\nfn f() Int:\n    return [1].filter(positive).length()\n", []string{"expected fn(value: Int)->Bool", "expects value"}, 1},
 		{"binding catch-all arm", "type S:\n    case A\n    case B\nfn f(s: S) Int:\n    match s:\n        A:\n            return 1\n        other:\n            return 2\n", []string{"'other' is not a case of S", "use '_'"}, 1},
-		{"with on Result suggests unwrapping", "import Closeable from \"@std/cleanup.ms\"\ntype R:\n    n: Int\nimpl Closeable for R:\n    fn close() Unit:\n        return unit\nfn mk() Result[R, String]:\n    return ok(R(n: 1))\nfn f() Int:\n    with x = mk():\n        return 1\n    return 0\n", []string{"with needs a Closeable value", "Result[R, String]", "'try'", "'match'"}, 1},
+		{"with on Result suggests unwrapping", "import Closeable from \"@std/cleanup.ms\"\ntype R:\n    n: Int\nimpl Closeable for R:\n    fn close() Unit:\n        return unit\nfn mk() Result[R, String]:\n    return ok(R(n: 1))\nfn f() Int:\n    with x = mk():\n        return 1\n    return 0\n", []string{"with needs a Closeable value", "Result[R, String]", "'try'", "'if let'"}, 1},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			m, err := parser.Parse("hints.ms", tt.source)

@@ -64,7 +64,7 @@ test "Bytes split optional limits truncate parts":
     )
 
 fn split_then[T](data: Bytes, separator: Bytes, transform: fn(value: List[Bytes]) T) T:
-    return transform(data.split(separator))
+    return data.split(separator) | transform
 
 fn call_split(
     operation: fn(separator: Bytes, max_parts: Optional[Int]) List[Bytes]

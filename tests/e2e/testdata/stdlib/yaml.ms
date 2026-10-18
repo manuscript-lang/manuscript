@@ -140,17 +140,11 @@ test "YAML folded and literal blocks respect paragraphs indentation and chomping
 test "YAML plain paragraphs retain boundaries and nested collections":
     for ending in ["\n", "\r\n", "\r"]:
         let text = "a: x  \n \t\n\n  y \t\n  z\n\nb: 1\n"
-        let root = entries(
-            value(
-                parse(
-                    text: text.replace(
-                        old: "\n",
-                        new: ending,
-                        max_replacements: text.byte_length()
-                    )
-                )
-            )
-        )
+        let root = text.replace(
+            old: "\n",
+            new: ending,
+            max_replacements: text.byte_length()
+        ) | parse | value | entries
         if root.get("a").unwrap() != YamlValue.StringValue("x\n\ny z"):
             return panic("plain whitespace paragraphs")
         if root.get("b").unwrap() != YamlValue.NumberValue("1"):
@@ -170,7 +164,7 @@ test "YAML plain paragraphs retain boundaries and nested collections":
 
 test "YAML blank line folding retains byte node and malformed input contracts":
     let text = "a: \"é\r\n\r\n  y\"\r\n"
-    let expected = value(parse(text: text))
+    let expected = parse(text: text) | value
     if (
         value(
             parse(
@@ -210,22 +204,20 @@ test "YAML blank line folding retains byte node and malformed input contracts":
         "a: x\n\n  - y", "a: x\n\n \ty", "a: x\n # comment\n  y", "a: >--\n\n  x",
         "a: >\n  x\n \t\n  y", "a: >2\n  x\n y"
     ]:
-        let cause = match parse(text: text):
-            ok(_): return panic("malformed multiline scalar accepted: {text}")
-            error(cause): cause
+        let parsed = parse(text: text)
+        if parsed.is_ok(): return panic("malformed multiline scalar accepted: {text}")
 
-        match cause:
+        match parsed.unwrap_error():
             InvalidData(line, column, reason):
                 if (line < 1 or column < 1 or reason == ""): return panic(
                     "multiline diagnostic"
                 )
             _: return panic("wrong multiline error")
 
-    let cause = match parse(text: "a: x\n\n  b: y"):
-        error(cause): cause
-        ok(_): return panic("indented mapping accepted as plain continuation")
+    let indented = parse(text: "a: x\n\n  b: y")
+    if indented.is_ok(): return panic("indented mapping accepted as plain continuation")
 
-    match cause:
+    match indented.unwrap_error():
         InvalidData(line, column, _):
             if line != 3 or column != 1: return panic("continuation error position")
         _: return panic("wrong continuation error")
@@ -271,13 +263,9 @@ test "YAML block mappings sequences exact scalars and core schema":
     ): return panic("nested compact mapping")
 
 test "YAML flow collections quotes escapes comments and multiline values":
-    let root = entries(
-        value(
-            parse(
-                text: "flow: \{name: 'it''s # fine', list: [true, 2, \"é\\u263A\",],\}\nurl: https://example.org/#fragment # comment\nquoted: \"hash # colon: brace \{\}\"\nmultiline: [1,\n  2, # comment\n  3]\ntext: a long\n  continued sentence\n"
-            )
-        )
-    )
+    let root = parse(
+        text: "flow: \{name: 'it''s # fine', list: [true, 2, \"é\\u263A\",],\}\nurl: https://example.org/#fragment # comment\nquoted: \"hash # colon: brace \{\}\"\nmultiline: [1,\n  2, # comment\n  3]\ntext: a long\n  continued sentence\n"
+    ) | value | entries
     if (
         entries(root.get("flow").unwrap()).get(
             "name"
@@ -304,13 +292,9 @@ test "YAML flow collections quotes escapes comments and multiline values":
     )
 
 test "YAML literal folded and chomped block scalars preserve content":
-    let root = entries(
-        value(
-            parse(
-                text: "literal: |\n  first # text\n  second\nfolded: >-\n  hello\n  world\nkeep: |+\n  line\n\nexplicit: |2-\n  indented\ntabs: |-\n  \tcontent\n"
-            )
-        )
-    )
+    let root = parse(
+        text: "literal: |\n  first # text\n  second\nfolded: >-\n  hello\n  world\nkeep: |+\n  line\n\nexplicit: |2-\n  indented\ntabs: |-\n  \tcontent\n"
+    ) | value | entries
     if (root.get("literal").unwrap() != YamlValue.StringValue("first # text\nsecond\n")): return panic(
         "literal block"
     )
@@ -346,13 +330,9 @@ test "YAML anchors aliases merge keys and override precedence":
         "flow anchor"
     )
 
-    let merged = entries(
-        value(
-            parse(
-                text: "a: &a \{x: 1\}\nb: &b \{x: 2, y: 3\}\nc: \{<<: [*a, *b], y: 4\}\n"
-            )
-        )
-    )
+    let merged = parse(
+        text: "a: &a \{x: 1\}\nb: &b \{x: 2, y: 3\}\nc: \{<<: [*a, *b], y: 4\}\n"
+    ) | value | entries
     let c = entries(merged.get("c").unwrap())
     if (
         c.get("x").unwrap() != YamlValue.NumberValue("1")
@@ -360,9 +340,7 @@ test "YAML anchors aliases merge keys and override precedence":
     ): return panic("merge precedence")
 
 test "YAML documents BOM CRLF empty input and version directive":
-    let root = value(
-        parse(text: "\u{feff}%YAML 1.2\r\n---\r\na: 1\r\n...\r\n# done\r\n")
-    )
+    let root = parse(text: "\u{feff}%YAML 1.2\r\n---\r\na: 1\r\n...\r\n# done\r\n") | value
     if entries(root).get("a").unwrap() != YamlValue.NumberValue("1"): return panic(
         "document markers"
     )
@@ -370,7 +348,7 @@ test "YAML documents BOM CRLF empty input and version directive":
     if value(parse(text: "---\n...\n")) != YamlValue.Null: return panic(
         "empty document"
     )
-    if items(value(parse(text: "- - 1\n  - 2\n- - 3\n"))).length() != 2: return panic(
+    if (parse(text: "- - 1\n  - 2\n- - 3\n") | value | items | .length()) != 2: return panic(
         "compact sequences"
     )
 
@@ -381,9 +359,10 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
         "'unterminated", "*missing", "a: &loop [*loop]", "<<: 1",
         "---\na: 1\n---\nb: 2", "a: |0\n  text"
     ]:
-        let cause = match parse(text: text):
-            ok(_): return panic("invalid YAML accepted: {text}")
-            error(cause): cause
+        let parsed = parse(text: text)
+        if parsed.is_ok(): return panic("invalid YAML accepted: {text}")
+
+        let cause = parsed.unwrap_error()
 
         match cause:
             InvalidData(line, column, reason):
@@ -400,11 +379,10 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
     for text in [
         "!custom value", "? complex\n: value", "%TAG ! tag:example.org\n---\na: 1"
     ]:
-        let cause = match parse(text: text):
-            ok(_): return panic("unsupported YAML accepted")
-            error(cause): cause
+        let parsed = parse(text: text)
+        if parsed.is_ok(): return panic("unsupported YAML accepted")
 
-        match cause:
+        match parsed.unwrap_error():
             UnsupportedFeature(_, _): let expected = unit
             _: return panic("expected unsupported feature")
 
@@ -476,9 +454,10 @@ test "YAML exact decimal syntax does not depend on binary64 conversion":
         )
 
 fn failure(text: String) String:
-    match parse(text: text):
-        ok(_): return "accepted"
-        error(cause): return cause.message()
+    let parsed = parse(text: text)
+    if parsed.is_ok(): return "accepted"
+
+    return parsed.unwrap_error().message()
 
 test "YAML merge and block header errors name their own line":
     if failure("<<: 1") != "YAML 1:1: merge requires mappings": return panic(
@@ -505,10 +484,10 @@ test "YAML limits fields default to none":
 
 test "YAML stringify round trips scalars sequences and mappings":
     let source = "title: \"é🙂 \\\"q\\\" \\t tab\"\nnone: null\nflag: true\nint: -42\nfloat: 1.5e3\nlist:\n  - 1\n  - two\n  - [3, 4]\n  - a: 1\n    b: [x, y]\nempty_list: []\nempty_map: \{\}\n\"odd key\": 1\n\"true\": 2\nnested:\n  deep:\n    value: ok\n"
-    let parsed = value(parse(text: source))
-    let text = value(stringify(value: parsed))
+    let parsed = parse(text: source) | value
+    let text = stringify(value: parsed) | value
     if value(parse(text: text)) != parsed: return panic("YAML stringify round trip")
-    if value(stringify(value: value(parse(text: text)))) != text: return panic(
+    if (parse(text: text) | value | stringify | value) != text: return panic(
         "YAML stringify is stable"
     )
 
@@ -519,7 +498,7 @@ test "YAML stringify validates numbers and honors max_bytes":
         "invalid number text"
     )
 
-    let root = value(parse(text: "a: 1"))
+    let root = parse(text: "a: 1") | value
     if stringify(value: root, max_bytes: 3) != limited: return panic("output limit")
 
     let exact: Result[String, YamlError] = ok("a: 1\n")
@@ -527,9 +506,7 @@ test "YAML stringify validates numbers and honors max_bytes":
     if stringify(value: root, max_bytes: -1) != invalid: return panic("negative limit")
 
 test "YAML scalars and anchors on their own line continue at the same indentation":
-    let folded = entries(
-        value(parse(text: "run:\n  util/check.sh\n  --flag value\nnext: 1\n"))
-    )
+    let folded = parse(text: "run:\n  util/check.sh\n  --flag value\nnext: 1\n") | value | entries
     if (
         folded.get("run").unwrap() != YamlValue.StringValue(
             "util/check.sh --flag value"
@@ -571,28 +548,22 @@ test "YAML quoted merge key is an ordinary string key":
         "flow quoted key"
     )
 
-    let merged = entries(
-        value(parse(text: "base: &b \{x: 1\}\nm:\n  <<: *b\n  y: 2\n"))
-    )
+    let merged = parse(text: "base: &b \{x: 1\}\nm:\n  <<: *b\n  y: 2\n") | value | entries
     if (
         entries(merged.get("m").unwrap()).get(
             "x"
         ).unwrap() != YamlValue.NumberValue("1")
     ): return panic("plain merge key")
 
-    let original = value(parse(text: "\"<<\": 1\n"))
-    if value(parse(text: value(stringify(value: original)))) != original: return panic(
+    let original = parse(text: "\"<<\": 1\n") | value
+    if (stringify(value: original) | value | parse | value) != original: return panic(
         "quoted merge key round trip"
     )
 
 test "YAML plain scalars continued inside flow collections fold their line breaks":
-    let root = entries(
-        value(
-            parse(
-                text: "a: [x\n  y, z]\nb: \{k: one\n    two\}\nc: [p\n  q\n\n  r]\n"
-            )
-        )
-    )
+    let root = parse(
+        text: "a: [x\n  y, z]\nb: \{k: one\n    two\}\nc: [p\n  q\n\n  r]\n"
+    ) | value | entries
     if (
         items(root.get("a").unwrap()) != [
             YamlValue.StringValue("x y"),
@@ -612,7 +583,7 @@ test "YAML document start marker accepts same-line content":
     if value(parse(text: "--- a")) != YamlValue.StringValue("a"): return panic(
         "scalar after marker"
     )
-    if items(value(parse(text: "--- [1, 2]"))).length() != 2: return panic(
+    if (parse(text: "--- [1, 2]") | value | items | .length()) != 2: return panic(
         "flow after marker"
     )
     if value(parse(text: "--- # note\na: 1")) != value(parse(text: "a: 1")): return panic(
@@ -620,9 +591,7 @@ test "YAML document start marker accepts same-line content":
     )
 
 test "YAML compact mapping after a sequence marker follows the marker's spacing":
-    let root = value(
-        parse(text: "-   a: 1\n    b: 2\n-  - x\n   - y\n- c: 3\n  d: 4\n")
-    )
+    let root = parse(text: "-   a: 1\n    b: 2\n-  - x\n   - y\n- c: 3\n  d: 4\n") | value
     let list = items(root)
     if list.length() != 3: return panic("sequence length")
 
@@ -654,11 +623,12 @@ test "YAML long plain scalars and large mappings parse in linear time":
     var keys = ""
     for index in range(0, 30000):
         keys = keys.concat("k{index}: 1\n")
-    if entries(value(parse(text: keys))).length() != 30000: return panic("many keys")
-
-    match parse(text: keys.concat("k7: 2\n")):
-        ok(_): return panic("duplicate key after many keys")
-        error(_): return
+    if (parse(text: keys) | value | entries | .length()) != 30000: return panic(
+        "many keys"
+    )
+    if parse(text: keys.concat("k7: 2\n")).is_ok(): return panic(
+        "duplicate key after many keys"
+    )
 
 test "YAML flow mapping keys without a colon map to null":
     let root = parse(text: "a: \{x, y: 1, z\}\nb: \{\"q\", r: [1]\}") | value | entries
@@ -672,16 +642,12 @@ test "YAML flow mapping keys without a colon map to null":
 
     let second = entries(root.get("b").unwrap())
     if second.get("q").unwrap() != YamlValue.Null: return panic("quoted null key")
-
-    match parse(text: "\{x, x\}"):
-        ok(_): return panic("duplicate null keys")
-        error(_): let ignored = unit
+    if parse(text: "\{x, x\}").is_ok(): return panic("duplicate null keys")
 
     let limited = limits(bytes: none, depth: none, values: some(2))
-
-    match parse(text: "\{a, b, c\}", limits: limited):
-        ok(_): return panic("null keys count against the value limit")
-        error(_): let ignored = unit
+    if parse(text: "\{a, b, c\}", limits: limited).is_ok(): return panic(
+        "null keys count against the value limit"
+    )
 
 test "YAML long quoted block and multi-line scalars decode and stringify in linear time":
     let long = repeated(text: "x", count: 300000)
@@ -711,8 +677,8 @@ test "YAML long quoted block and multi-line scalars decode and stringify in line
         )
     ): return panic("literal block")
 
-    let root = value(parse(text: "a: \"{long}\""))
-    if value(parse(text: value(stringify(value: root)))) != root: return panic(
+    let root = parse(text: "a: \"{long}\"") | value
+    if (stringify(value: root) | value | parse | value) != root: return panic(
         "stringify round trip"
     )
 
@@ -725,13 +691,9 @@ test "YAML block scalar chomping counts every trailing line break":
     scalar(text: "a: |+\n\n\nb: 1", expected: "\n\n")
 
 test "YAML compact nested sequences resume each level and parse deep chains in linear time":
-    let small = items(
-        value(
-            parse(
-                text: "- - - x\n    - y\n  - z\n- - 1\n  - - 2\n    - 3\n-\n  - -\n    - a: 1\n      b: 2\n"
-            )
-        )
-    )
+    let small = parse(
+        text: "- - - x\n    - y\n  - z\n- - 1\n  - - 2\n    - 3\n-\n  - -\n    - a: 1\n      b: 2\n"
+    ) | value | items
     if small.length() != 3: return panic("compact chain top level")
 
     let first = items(small.first().unwrap())
@@ -745,7 +707,7 @@ test "YAML compact nested sequences resume each level and parse deep chains in l
 
     let depth = 3000
     var source = "{repeated(text: "- ", count: depth)}x\n"
-    var root = value(parse(text: source))
+    var root = parse(text: source) | value
 
     for level in range(1, depth):
         let inner = items(root)

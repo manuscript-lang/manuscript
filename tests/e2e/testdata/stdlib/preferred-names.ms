@@ -175,7 +175,7 @@ test "replace_first preserves first default explicit caps and scalar boundaries"
     if first("a", "b") != "aaaa".replace("a", "b"): return panic("old replace spelling")
 
 test "regex replace_all preserves literal text and exact output budgets":
-    let pattern = value(compile("(a)"))
+    let pattern = compile("(a)") | value
     let all = pattern.replace_all
     if value(pattern.replace_all("aaa", "b")) != "bbb": return panic("all matches")
     if value(all(replacement: "$1", text: "aa")) != "$1$1": return panic(
@@ -194,7 +194,7 @@ test "regex replace_all preserves literal text and exact output budgets":
     if pattern.replace_all("aa", "b", none) != pattern.replace_all("aa", "b", none):
         return panic("old regex spelling")
 
-    let empty = value(compile(""))
+    let empty = compile("") | value
     if value(empty.replace_all("é🙂", "x")) != "xéx🙂x": return panic("empty pattern")
 
     let view = RegexReplacement(RegexAdapter(pattern))

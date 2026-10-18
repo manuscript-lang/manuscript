@@ -251,23 +251,18 @@ fn string_value(reader: Reader, key: Bool) Result[String, TomlError]:
                 hex = hex.concat(digit)
                 count = count - 1
 
-            let scalar = match parse_int(text: hex, radix: 16):
-                error(_): return error(
-                    invalid(
-                        reader: reader,
-                        reason: "invalid Unicode escape"
-                    )
+            let parsed = parse_int(text: hex, radix: 16)
+            if parsed.is_error(): return error(
+                invalid(
+                    reader: reader,
+                    reason: "invalid Unicode escape"
                 )
-                ok(scalar): scalar
+            )
 
-            match from_scalars([scalar]):
-                error(_): return error(
-                    invalid(
-                        reader: reader,
-                        reason: "invalid Unicode scalar"
-                    )
-                )
-                ok(text): result.append(text)
+            if let text = from_scalars([parsed.unwrap()]):
+                result.append(text)
+            else:
+                return error(invalid(reader: reader, reason: "invalid Unicode scalar"))
         else:
             return error(invalid(reader: reader, reason: "invalid string escape"))
 
@@ -432,10 +427,10 @@ fn decimal_part(text: String) Bool:
 
 fn date_number(text: String, minimum: Int, maximum: Int) Bool:
     if not digits(text: text, alphabet: "0123456789") or text.contains("_"): return false
+    if let value = parse_int(text: text, radix: 10):
+        return value >= minimum and value <= maximum
 
-    match parse_int(text: text, radix: 10):
-        error(_): return false
-        ok(value): return value >= minimum and value <= maximum
+    return false
 
 fn date_valid(text: String) Bool:
     if (
@@ -565,8 +560,7 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
             )
         ):
             return error(invalid(reader: reader, reason: "invalid integer"))
-
-        match parse_int(
+        if let value = parse_int(
             text: (
                 clean
                 .slice(start: 2, end: clean.scalar_length())
@@ -578,11 +572,9 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
                 )
             ),
             radix: radix
-        ):
-            ok(value): return ok(Node.Leaf(TomlValue.IntValue(value)))
-            error(_): return error(
-                invalid(reader: reader, reason: "integer out of range")
-            )
+        ): return ok(Node.Leaf(TomlValue.IntValue(value)))
+
+        return error(invalid(reader: reader, reason: "integer out of range"))
 
     # Bare words such as True, yes, or abc are not numbers, even when they
     # contain an e.
@@ -639,27 +631,25 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
             new: "",
             max_replacements: text.byte_length()
         )
+        if let value = parse_float(number): return ok(
+            Node.Leaf(TomlValue.FloatValue(value))
+        )
 
-        match parse_float(number):
-            ok(value): return ok(Node.Leaf(TomlValue.FloatValue(value)))
-            error(_): return error(
-                invalid(reader: reader, reason: "float out of range")
-            )
+        return error(invalid(reader: reader, reason: "float out of range"))
 
     if not decimal_part(clean): return error(
         invalid(reader: reader, reason: "invalid value")
     )
-
-    match parse_int(
+    if let value = parse_int(
         text: text.replace(
             old: "_",
             new: "",
             max_replacements: text.byte_length()
         ),
         radix: 10
-    ):
-        ok(value): return ok(Node.Leaf(TomlValue.IntValue(value)))
-        error(_): return error(invalid(reader: reader, reason: "integer out of range"))
+    ): return ok(Node.Leaf(TomlValue.IntValue(value)))
+
+    return error(invalid(reader: reader, reason: "integer out of range"))
 
 fn read_value(reader: Reader, depth: Int) Result[Node, TomlError]:
     let allocated = try allocate(reader)

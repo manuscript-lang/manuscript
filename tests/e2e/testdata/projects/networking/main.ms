@@ -28,29 +28,20 @@ fn websocket_error(cause: WebSocketError) HttpError:
             return HttpError.Failed(message)
 
 fn socket_result[T](result: Result[T, WebSocketError]) Result[T, HttpError]:
-    match result:
-        ok(value):
-            return ok(value)
-        error(cause):
-            return error(websocket_error(cause))
+    if let value = result: return ok(value)
+
+    return error(websocket_error(result.unwrap_error()))
 
 fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
     if exchange.path() == "/ws":
-        with socket = try socket_result(
-            result: exchange.upgrade(
-                allowed_origins: [],
-                subprotocols: ["echo"],
-                max_message_bytes: 1024
-            )
-        ):
-            match try socket_result(result: socket.receive()):
+        with socket = exchange.upgrade(
+            allowed_origins: [],
+            subprotocols: ["echo"],
+            max_message_bytes: 1024
+        ) | try socket_result:
+            match socket.receive() | try socket_result:
                 some(message):
-                    let sent = try socket_result(
-                        result: socket.send(
-                            data: message.data,
-                            text: message.text
-                        )
-                    )
+                    let sent = socket.send(data: message.data, text: message.text) | try socket_result
                 none:
                     return ok(unit)
 
@@ -59,12 +50,10 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
     let fields = headers()
     let appended = try fields.append("X-Test", "stream".to_bytes())
     let started = try exchange.send_headers(status: 200, headers: fields)
+    let written = exchange.write(data: "hello from streaming Manuscript".to_bytes())
+    if written.is_error(): return error(HttpError.Failed("write failed"))
 
-    match exchange.write(data: "hello from streaming Manuscript".to_bytes()):
-        ok(_):
-            return ok(unit)
-        error(_):
-            return error(HttpError.Failed("write failed"))
+    return ok(unit)
 
 fn exercise() Result[Unit, HttpError]:
     let tls = TlsOptions(
@@ -112,10 +101,10 @@ fn exercise() Result[Unit, HttpError]:
                 if not (response.metadata().status == 200):
                     return panic(message: "check failed")
 
-                let part = match response.read(max_bytes: 1024):
-                    ok(part): part
-                    error(_):
-                        return panic(message: "Unexpected case")
+                let read = response.read(max_bytes: 1024)
+                if read.is_error(): return panic(message: "Unexpected case")
+
+                let part = read.unwrap()
 
                 match part:
                     some(data):
@@ -146,14 +135,9 @@ fn exercise() Result[Unit, HttpError]:
             if not (socket.subprotocol() == "echo"):
                 return panic(message: "check failed")
 
-            let sent = try socket_result(
-                result: socket.send(
-                    data: "echo me".to_bytes(),
-                    text: true
-                )
-            )
+            let sent = socket.send(data: "echo me".to_bytes(), text: true) | try socket_result
 
-            match try socket_result(result: socket.receive()):
+            match socket.receive() | try socket_result:
                 some(message):
                     if not (message.text):
                         return panic(message: "check failed")
@@ -165,8 +149,6 @@ fn exercise() Result[Unit, HttpError]:
     return ok(unit)
 
 export fn main() Int:
-    match exercise():
-        ok(_):
-            return 0
-        error(_):
-            return 1
+    if exercise().is_error(): return 1
+
+    return 0

@@ -148,16 +148,7 @@ test "finite nested generic composition constructs and extracts values":
                 panic("nested optional payload failed")
 
     let result = NestedResult(ok(ok(5)))
-
-    let inner = match result.value:
-        ok(inner): inner
-        error(_): panic("unexpected outer result error")
-
-    match inner:
-        ok(value):
-            if value != 5: panic("nested result value failed")
-        error(_): panic("unexpected inner result error")
-
+    if result.value.unwrap().unwrap_or(0) != 5: panic("nested result value failed")
     let box = Box(Box(6))
     if box.value.value != 6:
         panic("nested box failed")

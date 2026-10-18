@@ -3,12 +3,12 @@ import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
 fn failure(result: Result[Version, SemverError]) SemverError:
-    match result:
-        ok(_): return panic("accepted")
-        error(cause): return cause
+    if result.is_ok(): return panic("accepted")
+
+    return result.unwrap_error()
 
 test "semver parses and formats every component":
-    let version = value(parse(text: "1.2.3-alpha.1+build.5"))
+    let version = parse(text: "1.2.3-alpha.1+build.5") | value
     if version.major != 1 or version.minor != 2 or version.patch != 3: return panic(
         "core"
     )
@@ -62,12 +62,12 @@ test "semver orders by precedence":
         i = i + 1
 
 test "semver ignores build metadata and compares huge numeric identifiers":
-    let a = value(parse(text: "1.0.0+a"))
-    let b = value(parse(text: "1.0.0+b"))
+    let a = parse(text: "1.0.0+a") | value
+    let b = parse(text: "1.0.0+b") | value
     if compare(left: a, right: b) != 0: return panic("build ignored")
 
-    let small = value(parse(text: "1.0.0-99999999999999999999"))
-    let large = value(parse(text: "1.0.0-100000000000000000000"))
+    let small = parse(text: "1.0.0-99999999999999999999") | value
+    let large = parse(text: "1.0.0-100000000000000000000") | value
     if compare(left: small, right: large) != -1: return panic("numeric identifiers")
     if SemverError.OutOfRange.message() != "semver: value out of range": return panic(
         "message"

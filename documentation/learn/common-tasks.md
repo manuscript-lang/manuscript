@@ -212,7 +212,7 @@ type Config:
 fn run() Result[Unit, Error]:
     let text = arguments().at(0).unwrap_or("\{\"name\":\"Sam\"\}")
     let config = try parse[Config](text)
-    let encoded = try stringify(config)
+    let encoded = config | try stringify
     try stdout().write("{encoded}\n".to_bytes())
     return stdout().flush()
 

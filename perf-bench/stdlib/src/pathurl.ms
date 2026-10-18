@@ -11,14 +11,8 @@ export fn bench_path_url_math() Unit:
         fn() Int:
             var n = 0
             for i in range(0, 50000):
-                n = (
-                    n
-                    + normalize(
-                        path: join(
-                            parts: ["/a", "b/../c", "d.txt"]
-                        )
-                    ).length()
-                )
+                n = n + (join(parts: ["/a", "b/../c", "d.txt"]) | normalize | .length())
+
             return n
     )
     bench(
@@ -34,12 +28,11 @@ export fn bench_path_url_math() Unit:
         "url.parse",
         20000,
         fn() Int:
+            let address = "https://example.com:8080/a/b?x=1&y=2#frag"
             var n = 0
 
             for i in range(0, 20000):
-                match parse(text: "https://example.com:8080/a/b?x=1&y=2#frag"):
-                    ok(_): n = n + 1
-                    error(_): unit
+                if parse(text: address).is_ok(): n = n + 1
 
             return n
     )

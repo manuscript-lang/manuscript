@@ -17,9 +17,9 @@ export fn bench_binary() Unit:
         "encoding.base64_decode",
         blob.length(),
         fn() Int:
-            match base64_decode(text: b64):
-                ok(b): return b.length()
-                error(_): return 0
+            if let b = base64_decode(text: b64): return b.length()
+
+            return 0
     )
     bench(
         "encoding.hex_encode",

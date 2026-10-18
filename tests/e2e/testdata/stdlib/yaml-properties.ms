@@ -33,13 +33,13 @@ fn generated(rng: Rng, depth: Int) YamlValue:
     return YamlValue.ObjectValue(entries)
 
 fn check_round_trip(seed: Int, original: YamlValue) Unit:
-    let rendered = value(stringify(original))
+    let rendered = stringify(original) | value
     if value(parse(rendered)) != original: return panic(
         "seed {seed}: changed\n{rendered}"
     )
 
 fn check_stable(seed: Int, mutated: String, first: YamlValue) Unit:
-    let again = value(stringify(first))
+    let again = stringify(first) | value
     if value(parse(again)) != first: return panic(
         "seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"
     )
@@ -61,12 +61,13 @@ test "YAML parse never faults on mutated documents and accepted input is stable"
 
         for round in range(0, 4):
             let mutated = mutate(rng, rendered)
+            let parsed = parse(mutated)
 
-            match parse(mutated):
-                error(cause): let rejected = cause.message()
-                ok(first):
-                    accepted = accepted + 1
-                    check_stable(seed, mutated, first)
+            if let first = parsed:
+                accepted = accepted + 1
+                check_stable(seed, mutated, first)
+            else:
+                let rejected = parsed.unwrap_error().message()
 
         seed = seed + 1
 

@@ -9,11 +9,11 @@ Habits that keep the next change easy to understand.
 
 ## Make outcomes explicit
 
-- `Optional[T]` for a value that may be missing; `Result[T, E]` when failure needs a cause.
-- Propagate with `try`; use `unwrap_or` when absence has a sensible default.
-- `if let` takes a present value or success and discards a Result's error; read it with `is_error()` and `unwrap_error()`.
-- Do not `match` a `Result` or `Optional`.
-- Keep one exit-status boundary in `main`, and keep matches flat: return early, `try`, or extract a helper.
+Use `Optional[T]` when a value may be missing and `Result[T, E]` when a failure
+needs an explanation. Propagate errors with `try`. Use `if let` when you only
+need a present value or successful result; a Result's error is discarded in
+this form. Use `is_error()` with `unwrap_error()` when you need to inspect the
+cause, and `unwrap_or` when absence has a sensible default.
 
 See [error handling](../core-language/errors/_index.md).
 
@@ -33,16 +33,14 @@ type Config:
     port: Int = 8080
 
 fn port_of(text: String) Result[Int, Error]:
-    let config = try parse[Config](text)
-    return ok(config.port)
+    return ok(try parse[Config](text) | .port)
 
 test "configuration defaults":
     try expect_equal(try port_of("\{\}"), 8080)
     try expect_equal(try port_of("\{\"port\": 9000\}"), 9000)
 
 test "configuration rejects a wrong type":
-    let cause = try expect_error(parse[Config]("\{\"port\": true\}"))
-    try expect_equal(cause, JsonError.InvalidData)
+    try expect_error(parse[Config]("\{\"port\": true\}")) | try expect_equal(JsonError.InvalidData)
 ```
 
 See the [testing guide](testing.md) for more.

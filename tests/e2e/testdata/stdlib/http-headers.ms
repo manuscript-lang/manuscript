@@ -16,15 +16,13 @@ import value from "./support/results.ms"
 
 fn repeated_headers() HttpHeaders:
     let fields = headers()
-    let first = value(fields.append("x-dup", "first".to_bytes()))
-    let second = value(fields.append("X-Dup", "second".to_bytes()))
-    let cookie = value(
-        fields.append(
-            "Set-Cookie",
-            "a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT".to_bytes()
-        )
-    )
-    let other = value(fields.append("set-cookie", "b=2".to_bytes()))
+    let first = fields.append("x-dup", "first".to_bytes()) | value
+    let second = fields.append("X-Dup", "second".to_bytes()) | value
+    let cookie = fields.append(
+        "Set-Cookie",
+        "a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT".to_bytes()
+    ) | value
+    let other = fields.append("set-cookie", "b=2".to_bytes()) | value
     return fields
 
 fn handle_headers(request: HttpRequest) HttpResponse:
@@ -62,7 +60,7 @@ test "one header type preserves repeated values through buffered requests":
             )
         ): return panic("cookies combined or lost")
 
-        let appended = value(metadata.headers.append("x-dup", "third".to_bytes()))
+        let appended = metadata.headers.append("x-dup", "third".to_bytes()) | value
         if (
             value(response.metadata().headers.text("X-Dup")) != some(
                 ["first", "second", "third"]
@@ -105,7 +103,7 @@ test "streaming proxy uses the same byte-valued header type":
 test "lookup shares mutable membership and clone separates it":
     let fields = repeated_headers()
     let values = fields.values("X-DUP").unwrap()
-    let appended = value(fields.append("x-dup", "third".to_bytes()))
+    let appended = fields.append("x-dup", "third".to_bytes()) | value
     if values.length() != 3: return panic("lookup copied membership")
 
     let changed = values.set(0, "changed".to_bytes())
@@ -121,29 +119,28 @@ test "lookup shares mutable membership and clone separates it":
     )
     if not fields.values("missing").is_none(): return panic("absent header")
 
-    let k = value(fields.append("K", "ASCII".to_bytes()))
+    let k = fields.append("K", "ASCII".to_bytes()) | value
     if not fields.values("K").is_none(): return panic("Unicode folding")
 
     let removed = fields.remove("X-DUP")
-    let new_field = value(fields.append("X-Dup", "new".to_bytes()))
+    let new_field = fields.append("X-Dup", "new".to_bytes()) | value
     if values.length() != 3 or fields.values("x-dup").unwrap().length() != 1: return panic(
         "removed list alias reattached"
     )
 
 test "explicit text extraction fails with typed UTF8 error":
     let fields = headers()
-    let valid = value(fields.append("Raw", "first".to_bytes()))
-    let invalid = value(fields.append("raw", Bytes(values: [255])))
+    let valid = fields.append("Raw", "first".to_bytes()) | value
+    let invalid = fields.append("raw", Bytes(values: [255])) | value
+    let text = fields.text("RAW")
+    if text.is_ok(): return panic("invalid UTF8 accepted")
+    if text.unwrap_error() != HttpError.InvalidData: return panic("wrong UTF8 error")
 
-    match fields.text("RAW"):
-        ok(_): return panic("invalid UTF8 accepted")
-        error(cause):
-            if cause != HttpError.InvalidData: return panic("wrong UTF8 error")
-
-    match fields.append("bad name", "value".to_bytes()):
-        ok(_): return panic("malformed name accepted")
-        error(cause):
-            if cause != HttpError.InvalidInput: return panic("wrong name error")
+    let malformed = fields.append("bad name", "value".to_bytes())
+    if malformed.is_ok(): return panic("malformed name accepted")
+    if malformed.unwrap_error() != HttpError.InvalidInput: return panic(
+        "wrong name error"
+    )
 
 test "empty options and an omitted request body use checked defaults":
     let client_options = HttpClientOptions()
@@ -160,13 +157,11 @@ test "empty options and an omitted request body use checked defaults":
         )
     ):
         with client = value(network().http_client(options: HttpClientOptions())):
-            with response = value(
-                client.request(
-                    method: HttpMethod.Get,
-                    url: "http://{server.address()}/",
-                    headers: repeated_headers()
-                )
-            ):
+            with response = client.request(
+                method: HttpMethod.Get,
+                url: "http://{server.address()}/",
+                headers: repeated_headers()
+            ) | value:
                 if response.metadata().status != 200: return panic(
                     "plain request failed"
                 )

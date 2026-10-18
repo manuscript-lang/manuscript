@@ -17,9 +17,9 @@ export fn bench_html() Unit:
         "html.parse",
         2000,
         fn() Int:
-            match parse(text: html):
-                ok(_): return 1
-                error(_): return 0
+            if parse(text: html).is_ok(): return 1
+
+            return 0
     )
     let text = words(2000).join(separator: " <&> ")
     bench(

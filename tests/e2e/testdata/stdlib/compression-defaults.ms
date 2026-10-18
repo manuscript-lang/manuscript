@@ -28,7 +28,7 @@ test "compression omission equals explicit level six for every format":
     for format in formats:
         let name = names.at(index).unwrap()
         index = index + 1
-        let expected = value(compress(data, name, 6))
+        let expected = compress(data, name, 6) | value
         if value(alias(data, name)) != expected: return panic(
             "stored function default bytes"
         )
@@ -49,7 +49,7 @@ test "compression omission equals explicit level six for every format":
         if value(decompress(expected, name)) != data: return panic("string round trip")
 
         for level in [0, 9]:
-            let output = value(format.compress(data, level))
+            let output = format.compress(data, level) | value
             if value(decompress(output, name)) != data: return panic(
                 "explicit level endpoints"
             )
@@ -106,9 +106,7 @@ test "compression defaults retain invalid levels formats and output budgets":
 test "compression default preparation retains supplied argument order":
     let log: List[String] = []
     let data = "data".to_bytes()
-    let encoded = value(
-        compress(format: chosen(log, "gzip"), data: supplied(log, data))
-    )
+    let encoded = compress(format: chosen(log, "gzip"), data: supplied(log, data)) | value
     if log != ["format", "data"]: return panic("default reordered supplied arguments")
     if value(decompress(encoded, "gzip")) != data: return panic(
         "ordered compression output"

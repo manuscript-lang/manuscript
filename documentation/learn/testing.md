@@ -57,10 +57,8 @@ import {expect_equal, expect_ok, expect_error, expect_some} from "@std/testing.m
 test "typed JSON and Optional payloads":
     let number = try expect_ok(parse[Int]("3"))
     try expect_equal(number, 3)
-    let cause = try expect_error(parse[Int]("true"))
-    try expect_equal(cause, JsonError.InvalidData)
-    let first = try expect_some([number].at(0))
-    try expect_equal(first, 3)
+    try expect_error(parse[Int]("true")) | try expect_equal(JsonError.InvalidData)
+    try expect_some([number].at(0)) | try expect_equal(3)
 ```
 
 Tests can also propagate errors from calls whose error type implements `Error`. See [Results](../core-language/errors/results.md).

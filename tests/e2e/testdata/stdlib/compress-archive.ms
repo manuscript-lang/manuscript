@@ -8,7 +8,7 @@ test "compression formats roundtrip and enforce expanded byte budgets":
     let input = "hello hello hello".to_bytes()
 
     for format in ["gzip", "zlib", "deflate"]:
-        let packed = value(compress(data: input, format: format, level: 6))
+        let packed = compress(data: input, format: format, level: 6) | value
         if (value(decompress(data: packed, format: format, max_bytes: 17)) != input): return panic(
             "compression roundtrip"
         )
@@ -39,7 +39,7 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
     ]
 
     for format in ["zip", "tar"]:
-        let packed = value(pack(entries: entries, format: format))
+        let packed = pack(entries: entries, format: format) | value
         if value(unpack(data: packed, format: format)) != entries: return panic(
             "archive roundtrip"
         )

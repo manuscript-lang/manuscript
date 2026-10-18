@@ -114,7 +114,7 @@ Decimal imposes no currency policy; scaled Int cents also work. This example rou
 ```manuscript
 import Decimal from "@std/decimal.ms"
 import NumberError from "@std/numbers.ms"
-import panic from "@std/faults.ms"
+import expect_equal from "@std/testing.ms"
 
 fn amount_text() Result[String, NumberError]:
     let subtotal = 19.99d * 3d
@@ -125,9 +125,7 @@ fn amount_text() Result[String, NumberError]:
     return ok("tax {tax_text} total {total_text} padded {padded}")
 
 test "decimal amounts":
-    let text = try amount_text()
-    if text != "tax 4.95 total 64.92 padded 25.50":
-        return panic("unexpected amount text")
+    try amount_text() | try expect_equal("tax 4.95 total 64.92 padded 25.50")
 ```
 
 ## Booleans

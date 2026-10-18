@@ -441,7 +441,7 @@ func (c *checker) checkTry(e *syntax.Expression, operand, i *Info) {
 	}
 	i.Type = result.Args[0]
 	if !std(c.result, "Result") || len(c.result.Args) != 2 {
-		c.error(e.Pos, "type", "try requires an enclosing Result; declare this function to return Result[T, E] or handle the error with match")
+		c.error(e.Pos, "type", "try requires an enclosing Result; declare this function to return Result[T, E], or use 'if let', '.unwrap_or(default)', or '.unwrap()'")
 		return
 	}
 	failure, returned := result.Args[1], c.result.Args[1]

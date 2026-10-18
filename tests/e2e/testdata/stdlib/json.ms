@@ -11,12 +11,12 @@ import value from "./support/results.ms"
 
 test "JSON exact numbers Unicode and nested roundtrip":
     let text = "\{\"n\":9007199254740993,\"s\":\"é🙂\",\"a\":[null,true,false]\}"
-    let parsed = value(parse(text: text))
+    let parsed = parse(text: text) | value
     if value(stringify(value: parsed)) != text: return panic("JSON precision or order")
     if value(parse(text: "\"\\uD83D\\uDE00\"")) != JsonValue.StringValue("😀"): return panic(
         "surrogate pair"
     )
-    if (value(stringify(value: value(parse(text: "null")), max_bytes: 4)) != "null"): return panic(
+    if ((parse(text: "null") | value | stringify(max_bytes: 4) | value) != "null"): return panic(
         "exact budget"
     )
 
@@ -90,7 +90,7 @@ type Node:
     next: Optional[Node]
 
 fn encoded[T](item: T) String:
-    return value(stringify(value: item))
+    return stringify(value: item) | value
 
 test "JSON stringify encodes records in declaration order and omits none fields":
     let request = Request(
@@ -137,7 +137,7 @@ test "JSON stringify keeps map insertion order and encodes scalars exactly":
     if encoded(1e300) != "1e+300": return panic("exponent Float")
     if encoded("<é\n") != "\"\\u003cé\\n\"": return panic("string escaping")
 
-    let parsed = value(parse(text: "\{\"n\":1.50\}"))
+    let parsed = parse(text: "\{\"n\":1.50\}") | value
     let mixed = Box[JsonValue](first: parsed, second: none)
     if encoded(mixed) != "\{\"first\":\{\"n\":1.50\}\}": return panic(
         "JsonValue passthrough"
@@ -225,7 +225,7 @@ test "JSON stringify omits values without a JSON form and writes null for list e
     if stringify(value: one) != invalid: return panic("root function has no JSON form")
 
 test "JSON stringify encodes standard-library values":
-    let at = value(timestamp(seconds: 1700000000, nanoseconds: 500000000))
+    let at = timestamp(seconds: 1700000000, nanoseconds: 500000000) | value
     let link = Url(
         scheme: "https",
         host: "example.com",
@@ -272,14 +272,13 @@ test "JSON stringify honors JsonEncode wherever the value appears":
     if encoded(Money(7)) != "\"usd:7\"": return panic("root hook")
 
 test "JSON stringify indents like JSON.stringify and clamps at ten":
-    let request = Request(
+    let pretty = Request(
         model: "m",
         stream: true,
         user: none,
         temperature: 0.5,
         tags: ["a"]
-    )
-    let pretty = value(stringify(value: request, indent: 2))
+    ) | stringify(indent: 2) | value
     let expected = "\{\n  \"model\": \"m\",\n  \"stream\": true,\n  \"temperature\": 0.5,\n  \"tags\": [\n    \"a\"\n  ]\n\}"
     if pretty != expected: return panic("indented output")
 
@@ -291,7 +290,7 @@ test "JSON stringify indents like JSON.stringify and clamps at ten":
         "zero indent is compact"
     )
 
-    let wide = value(stringify(value: [1], indent: 99))
+    let wide = stringify(value: [1], indent: 99) | value
     if wide != "[\n          1\n]": return panic("indent clamps at ten")
 
     let negative: Result[String, JsonError] = error(JsonError.InvalidInput)
@@ -504,7 +503,7 @@ test "JSON parse decodes recursive types exact numbers and passthrough values":
     )
     if stringify(value: price) != price_text: return panic("exact numbers round trip")
 
-    let raw = value(parse(text: "\{\"n\":1.50\}"))
+    let raw = parse(text: "\{\"n\":1.50\}") | value
     let boxed: Wrapper[JsonValue] = value(
         parse[Wrapper[JsonValue]](text: "\{\"first\":\{\"n\":1.50\}\}")
     )
@@ -514,15 +513,14 @@ test "JSON parse decodes recursive types exact numbers and passthrough values":
     if list.at(1).unwrap().is_some(): return panic("null element is none")
 
 test "JSON parse inverts stringify and works in generic code":
-    let profile = Profile(
+    let text = Profile(
         name: "Ada",
         age: 20,
         nickname: some("a"),
         scores: [0.5],
         labels: Map[String, Int]().add("k", 1),
         ids: Set[Int]().add(2)
-    )
-    let text = value(stringify(value: profile))
+    ) | stringify | value
     let again: Profile = value(decoded[Profile](text))
     if value(stringify(value: again)) != text: return panic("round trip")
     if again.nickname.unwrap() != "a": return panic("optional round trip")
@@ -543,11 +541,9 @@ fn load_default(text: String) Result[JsonValue, JsonError]:
     return parse(text: text)
 
 test "JSON parse takes its type from an explicit argument, the expected result or the JsonValue default":
-    let profile = value(
-        load_profile(
-            "\{\"name\":\"Ada\",\"scores\":[],\"labels\":\{\},\"ids\":[]\}"
-        )
-    )
+    let profile = load_profile(
+        "\{\"name\":\"Ada\",\"scores\":[],\"labels\":\{\},\"ids\":[]\}"
+    ) | value
     if profile.name != "Ada": return panic("try keeps the explicit type")
 
     let invalid: Result[Profile, JsonError] = error(JsonError.InvalidData)
@@ -555,12 +551,12 @@ test "JSON parse takes its type from an explicit argument, the expected result o
         "try propagates the decode error"
     )
 
-    let raw = value(load_default("\{\"a\":[1]\}"))
-    let again = value(parse(text: "\{\"a\":[1]\}"))
+    let raw = load_default("\{\"a\":[1]\}") | value
+    let again = parse(text: "\{\"a\":[1]\}") | value
     if raw != again: return panic("default keeps the parsed tree")
 
 test "JSON parse reads what stringify writes for standard values and scalar map keys":
-    let at = value(timestamp(seconds: 1700000000, nanoseconds: 500000000))
+    let at = timestamp(seconds: 1700000000, nanoseconds: 500000000) | value
     let link = Url(
         scheme: "https",
         host: "example.com",
@@ -569,8 +565,7 @@ test "JSON parse reads what stringify writes for standard values and scalar map 
         query: "x=1",
         fragment: ""
     )
-    let item = Stamped(at: at, took: duration(1500), data: "hi".to_bytes(), link: link)
-    let text = value(stringify(value: item))
+    let text = Stamped(at: at, took: duration(1500), data: "hi".to_bytes(), link: link) | stringify | value
     let back: Stamped = value(parse[Stamped](text: text))
     if value(stringify(value: back)) != text: return panic("standard values round trip")
     if back.took != duration(1500): return panic("duration nanoseconds")
@@ -662,18 +657,16 @@ test "JSON parse runs field defaults that read earlier fields":
     if d.b != 6 or d.c != "x6": return panic("default chain {d.b} {d.c}")
 
 test "JSON round trips fields named like Go keywords":
-    let k = Kw(type_: 1, func: 2, range: 3)
-    let t = value(stringify(k))
+    let t = Kw(type_: 1, func: 2, range: 3) | stringify | value
     let back = value(parse[Kw](text: t))
     if back.range != 3: return panic(t)
 
 test "JSON round trips generic records alternatives and Duration keys":
-    let w = Wrap(
+    let t = Wrap(
         ops: [Op.Add(1, 2), Op.Neg(none), Op.Neg(some(3)), Op.Nop],
         pairs: [Pair(left: 1, right: Op.Nop)],
         byTime: Map[Duration, String]().add(duration(5), "five")
-    )
-    let t = value(stringify(w))
+    ) | stringify | value
     let back = value(parse[Wrap](text: t))
     if value(stringify(back)) != t: return panic(t)
 

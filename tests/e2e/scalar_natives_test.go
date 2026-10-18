@@ -131,16 +131,14 @@ fn check(ok: Bool, name: String) Unit:
         return panic(message: name)
 
 test "omitted none defaults":
-    match "ab".repeat(count: 2):
-        ok(v):
-            check(ok: v == "abab", name: "repeat")
-        error(_):
-            check(ok: false, name: "repeat error")
-    match "ab".pad_start(target_length: 4, padding: "-"):
-        ok(v):
-            check(ok: v == "--ab", name: "pad_start")
-        error(_):
-            check(ok: false, name: "pad_start error")
+    if let v = "ab".repeat(count: 2):
+        check(ok: v == "abab", name: "repeat")
+    else:
+        check(ok: false, name: "repeat error")
+    if let v = "ab".pad_start(target_length: 4, padding: "-"):
+        check(ok: v == "--ab", name: "pad_start")
+    else:
+        check(ok: false, name: "pad_start error")
 `, compiler.Options{Tests: true})
 	output, err := execute(t, result)
 	if err != nil || !strings.Contains(string(output), "PASS") {

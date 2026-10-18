@@ -145,8 +145,13 @@ func TestInferredStandardErrorPayload(t *testing.T) {
 	if !checked.Success() {
 		t.Fatal(checked.Diagnostics)
 	}
-	findings := LintProgram(checked.Program)
-	if len(findings) != 1 || findings[0].Code != "MSL106" || !strings.Contains(findings[0].Message, "NotFound is a case of FileSystemError") {
+	var findings []LintFinding
+	for _, finding := range LintProgram(checked.Program) {
+		if finding.Code == "MSL106" {
+			findings = append(findings, finding)
+		}
+	}
+	if len(findings) != 1 || !strings.Contains(findings[0].Message, "NotFound is a case of FileSystemError") {
 		t.Fatal(findings)
 	}
 }

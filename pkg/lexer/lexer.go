@@ -549,7 +549,7 @@ func characterHint(b byte) string {
 	case '!':
 		return "; write 'not x' for negation and '!=' for inequality"
 	case '?':
-		return "; Manuscript has no ? operator, so use Optional values and match, or 'try' for Result"
+		return "; Manuscript has no ? operator, so use 'if let' for Optional values, or 'try' for Result"
 	case '`':
 		return "; text uses double quotes with {expression} interpolation"
 	case '$', '@', '\\', '^', '~':

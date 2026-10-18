@@ -57,14 +57,14 @@ test "stable priority queue and optional capacity":
     if bounded.enqueue(Key(id: 0, label: "full")): return panic("capacity ignored")
 
 test "limits can be omitted or supplied":
-    match "ab".repeat(count: 3):
-        ok(value):
-            if value != "ababab": return panic("omitted limit failed")
-        error(_): return panic("omitted limit rejected")
+    if let value = "ab".repeat(count: 3):
+        if value != "ababab": return panic("omitted limit failed")
+    else:
+        return panic("omitted limit rejected")
 
-    match "ab".repeat(count: 3, max_bytes: 5):
-        ok(_): return panic("supplied limit ignored")
-        error(_): return
+    if "ab".repeat(count: 3, max_bytes: 5).is_ok(): return panic(
+        "supplied limit ignored"
+    )
 
 fn operation() Result[Unit, Error]: ok(unit)
 
@@ -74,9 +74,10 @@ test "one scheduler admits and schedules work":
         let delayed = scheduler.after(duration: 0.milliseconds, operation: operation)
         let repeated = scheduler.every(interval: 1.milliseconds, operation: operation)
 
-        match repeated:
-            ok(id): scheduler.cancel(id)
-            error(_): return panic("unbounded admission failed")
+        if let id = repeated:
+            scheduler.cancel(id)
+        else:
+            return panic("unbounded admission failed")
 
 type EmptyReader:
     requested: Int

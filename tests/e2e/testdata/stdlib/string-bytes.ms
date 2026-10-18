@@ -13,7 +13,7 @@ test "Unicode scalar indexing differs from byte length":
         "scalar indexing"
     )
     if not text.at(3).is_none(): return panic("out of bounds optional")
-    if value(from_scalars(text.scalar_values())) != text: return panic(
+    if (text.scalar_values() | from_scalars | value) != text: return panic(
         "scalar roundtrip"
     )
     if value(text.slice_scalars(start: 1, end: 3)) != "é🙂": return panic("scalar slice")
@@ -164,7 +164,7 @@ test "empty text splits into one part and case mapping is full Unicode":
 
 test "indexing and slicing long mixed-width text matches scalar positions":
     let block = "aé€🙂"
-    let text = value(block.repeat(count: 600))
+    let text = block.repeat(count: 600) | value
     if text.length() != 2400: return panic("long length")
 
     # Forward, backward and jumping reads of the same long text.

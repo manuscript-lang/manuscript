@@ -216,23 +216,18 @@ fn quoted(flow: Flow) Result[String, YamlError]:
                 hex = hex.concat(digit)
                 count = count - 1
 
-            let value = match parse_int(text: hex, radix: 16):
-                error(_): return error(
-                    flow_invalid(
-                        flow: flow,
-                        reason: "invalid Unicode escape"
-                    )
+            let parsed = parse_int(text: hex, radix: 16)
+            if parsed.is_error(): return error(
+                flow_invalid(
+                    flow: flow,
+                    reason: "invalid Unicode escape"
                 )
-                ok(value): value
+            )
 
-            match from_scalars([value]):
-                error(_): return error(
-                    flow_invalid(
-                        flow: flow,
-                        reason: "invalid Unicode scalar"
-                    )
-                )
-                ok(text): result.append(text)
+            if let text = from_scalars([parsed.unwrap()]):
+                result.append(text)
+            else:
+                return error(flow_invalid(flow: flow, reason: "invalid Unicode scalar"))
         else:
             return error(flow_invalid(flow: flow, reason: "invalid string escape"))
 
@@ -399,8 +394,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) Result[YamlValue, YamlError]:
 
     if c == "*":
         advance(flow)
-        let name = try anchor_name(flow)
-        if let value = flow.context.anchors.get(name):
+        if let value = try anchor_name(flow) | flow.context.anchors.get:
             return ok(value)
 
         return error(flow_invalid(flow: flow, reason: "unknown or recursive alias"))
@@ -1460,9 +1454,9 @@ fn format_key(key: String) String:
 
 # A number keeps its original token, so it must resolve back to a number.
 fn valid_number(text: String) Bool:
-    match parse(text: text):
-        ok(parsed): return parsed == YamlValue.NumberValue(text)
-        error(_): return false
+    if let parsed = parse(text: text): return parsed == YamlValue.NumberValue(text)
+
+    return false
 
 fn scalar_text(value: YamlValue) Result[String, YamlError]:
     match value:

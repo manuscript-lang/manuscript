@@ -16,11 +16,8 @@ import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
 
 fn write_line(text: String) Unit:
-    match stdout().write(data: "{text}\n".to_bytes()):
-        ok(_):
-            return
-        error(_):
-            return panic(message: "write failed")
+    if stdout().write(data: "{text}\n".to_bytes()).is_error():
+        return panic(message: "write failed")
 
 export fn main() Int:
     let args = arguments()

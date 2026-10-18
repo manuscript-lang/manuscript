@@ -89,19 +89,17 @@ impl Step for Chain:
         return ok((try self.parser.parse(n: n)) + 1)
 
 fn code(r: Result[Int, String]) Int:
-    match r:
-        ok(value): return value
-        error(_): return -1
+    return r.unwrap_or(-1)
 
 fn run_direct(chain: Chain, n: Int) Int:
-    return code(r: chain.step(n: n))
+    return chain.step(n: n) | code
 
 fn run_view(chain: Chain, n: Int) Int:
-    return code(r: Step(value: chain).step(n: n))
+    return Step(value: chain).step(n: n) | code
 
 fn run_bound(chain: Chain, n: Int) Int:
     let callback = chain.step
-    return code(r: callback(n: n))
+    return callback(n: n) | code
 
 test "nested try in a direct method becomes an error result":
     let chain = Chain(parser: Parser(base: 10))

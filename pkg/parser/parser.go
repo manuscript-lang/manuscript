@@ -643,7 +643,7 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 					p.fail(t, "'"+e.Text+"' is not a keyword; write 'let name = ...' for a binding that is not reassigned, or 'var name = ...' when it changes")
 				}
 				if e.Kind == syntax.KindName && (e.Text == "throw" || e.Text == "raise" || e.Text == "catch") {
-					p.fail(t, "'"+e.Text+"' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'match'")
+					p.fail(t, "'"+e.Text+"' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'")
 				}
 				if e.Kind == syntax.KindName && e.Text == "elif" {
 					p.fail(t, "'elif' is not a keyword; write 'else if <condition>:' for a further branch")

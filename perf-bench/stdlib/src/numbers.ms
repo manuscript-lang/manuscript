@@ -29,9 +29,10 @@ export fn bench_numbers() Unit:
             var n = 0
 
             for i in range(0, 20000):
-                match (i.to_decimal() + rate).round(places: 2):
-                    ok(d): n = n + d.truncate_to_int().unwrap_or(0)
-                    error(_): unit
+                if let d = (i.to_decimal() + rate).round(places: 2): n = (
+                    n
+                    + d.truncate_to_int().unwrap_or(0)
+                )
 
             return n
     )
@@ -45,17 +46,21 @@ export fn bench_numbers() Unit:
         "compress.gzip",
         blob.length(),
         fn() Int:
-            match compress(data: blob, format: "gzip", level: 6):
-                ok(b): return b.length()
-                error(_): return 0
+            if let b = compress(data: blob, format: "gzip", level: 6): return b.length()
+
+            return 0
     )
     bench(
         "compress.roundtrip",
         blob.length(),
         fn() Int:
-            match compress(data: blob, format: "gzip", level: 6):
-                ok(b): return unpacked_length(b)
-                error(_): return 0
+            if let b = compress(
+                data: blob,
+                format: "gzip",
+                level: 6
+            ): return unpacked_length(b)
+
+            return 0
     )
     bench(
         "time.parse_timestamp",
@@ -64,9 +69,10 @@ export fn bench_numbers() Unit:
             var n = 0
 
             for i in range(0, 20000):
-                match parse_timestamp(text: "2026-03-01T12:30:45.123Z"):
-                    ok(t): n = n + t.unix_seconds() % 7
-                    error(_): unit
+                if let t = parse_timestamp(text: "2026-03-01T12:30:45.123Z"): n = (
+                    n
+                    + t.unix_seconds() % 7
+                )
 
             return n
     )
@@ -98,6 +104,6 @@ export fn bench_numbers() Unit:
     )
 
 fn unpacked_length(data: Bytes) Int:
-    match decompress(data: data, format: "gzip"):
-        ok(b): return b.length()
-        error(_): return 0
+    if let b = decompress(data: data, format: "gzip"): return b.length()
+
+    return 0

@@ -112,14 +112,10 @@ test "Synchronized protects record mutation without replacement":
         group.start(operation)
         group.start(operation)
         group.start(operation)
-
-        match group.join():
-            ok(_):
-                with guard = counter.lock():
-                    if not (guard.get().val == 400):
-                        return panic(message: "synchronized mutation lost updates")
-            error(_):
-                return panic(message: "task mutation failed")
+        try group.join()
+        with guard = counter.lock():
+            if not (guard.get().val == 400):
+                return panic(message: "synchronized mutation lost updates")
 
 test "callbacks capture length while mutating their source":
     let values = [1, 2, 3]

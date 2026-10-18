@@ -7,7 +7,7 @@ weight = 1
 
 Use `Result[T, E]` when an operation succeeds with `T` or fails with an expected error `E`. `Result`, `ok`, and `error` are in the prelude.
 
-Return `ok(value: ...)` or `error(cause: ...)`. Callers forward the error with `try`, unwrap with `if let`, `unwrap_or`, or `unwrap`, or test with `is_ok()` and `is_error()`. Do not `match` a `Result`. Validate runtime input with ordinary conditions first.
+Return `ok(value: ...)` for success and `error(cause: ...)` for failure. Both are ordinary values. A caller can test it with `is_error()`, read the success path with `if let`, or pass the error back with `try`. Validate runtime input with ordinary conditions before doing the work.
 
 ## Returning a domain error
 

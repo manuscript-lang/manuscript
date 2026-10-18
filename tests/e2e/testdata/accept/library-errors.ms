@@ -10,11 +10,11 @@ fn encoding_error(cause: EncodingError) ApplicationError:
     return Encoding(cause)
 
 fn decode_bad_input() Result[Unit, ApplicationError]:
-    match hex_decode(text: "zz", max_bytes: 10):
-        ok(_):
-            return ok(unit)
-        error(cause):
-            return error(encoding_error(cause))
+    let decoded = hex_decode(text: "zz", max_bytes: 10)
+    if decoded.is_ok():
+        return ok(unit)
+
+    return error(encoding_error(decoded.unwrap_error()))
 
 fn json_error_code(cause: JsonError) Int:
     match cause:
@@ -27,13 +27,11 @@ fn json_error_code(cause: JsonError) Int:
 
 test "JSON errors need only JSON cases":
     let limits = JsonLimits(max_bytes: 100, max_depth: 8, max_values: 32)
-
-    match parse(text: "[", limits: limits):
-        ok(_):
-            return panic(message: "malformed JSON succeeded")
-        error(cause):
-            if json_error_code(cause) != 2:
-                return panic(message: "wrong JSON cause")
+    let parsed = parse(text: "[", limits: limits)
+    if parsed.is_ok():
+        return panic(message: "malformed JSON succeeded")
+    if json_error_code(parsed.unwrap_error()) != 2:
+        return panic(message: "wrong JSON cause")
 
 test "explicit error mapping preserves the cause":
     let expected: Result[Unit, ApplicationError] = error(
@@ -118,10 +116,11 @@ test "generic handling preserves the concrete error and its payload":
     if describe_error(wrapped) != "malformed JSON":
         return panic(message: "repeated views changed concrete identity")
 
-    let cause = match propagate_generic():
-        ok(_):
-            return panic(message: "invalid data succeeded")
-        error(cause): cause
+    let propagated = propagate_generic()
+    if propagated.is_ok():
+        return panic(message: "invalid data succeeded")
+
+    let cause = propagated.unwrap_error()
 
     match cause:
         EncodingError(encoding):
@@ -184,11 +183,11 @@ fn propagate_read() Result[Unit, ReadError]:
     return ok(unit)
 
 test "domain error fields survive propagation without a wrapper":
-    let cause = match propagate_read():
-        ok(_):
-            return panic(message: "failed read succeeded")
-        error(cause): cause
+    let propagated = propagate_read()
+    if propagated.is_ok():
+        return panic(message: "failed read succeeded")
 
+    let cause = propagated.unwrap_error()
     if (cause.path != "settings.json" or cause.attempt != 2 or not cause.retryable):
         return panic(message: "lost typed error fields")
 
@@ -245,10 +244,10 @@ test "specific errors pass directly into Error boundaries":
     original.attempt = 3
 
     for result in results:
-        let cause = match result:
-            ok(_):
-                return panic(message: "failed read succeeded")
-            error(cause): cause
+        if result.is_ok():
+            return panic(message: "failed read succeeded")
+
+        let cause = result.unwrap_error()
 
         match cause:
             ReadError(read):
@@ -280,12 +279,11 @@ fn general_read_success() Result[Int, Error]:
     return read_success()
 
 test "Error Result forwarding preserves successful payloads":
-    match general_read_success():
-        ok(value):
-            if value != 7:
-                return panic(message: "Error Result changed success")
-        error(_):
-            return panic(message: "Error Result turned success into failure")
+    if let value = general_read_success():
+        if value != 7:
+            return panic(message: "Error Result changed success")
+    else:
+        return panic(message: "Error Result turned success into failure")
 
 type ValidationError:
     case InvalidField(field: String, expected: Int, actual: Int)
@@ -294,10 +292,11 @@ fn invalid_field() Result[Unit, ValidationError]:
     return error(InvalidField(field: "attempt", expected: 1, actual: 0))
 
 test "domain case payloads need no Error implementation":
-    let cause = match invalid_field():
-        ok(_):
-            return panic(message: "invalid field succeeded")
-        error(cause): cause
+    let invalid = invalid_field()
+    if invalid.is_ok():
+        return panic(message: "invalid field succeeded")
+
+    let cause = invalid.unwrap_error()
 
     match cause:
         InvalidField(field, expected, actual):
@@ -388,11 +387,11 @@ fn check_missing_file() Result[Unit, FileSystemError]:
     let fs = filesystem()
     let directory = try fs.temporary_directory("manuscript-errors-")
     let missing = "{directory}/missing-secret-token"
+    let read = fs.read_file(path: missing)
+    if read.is_ok():
+        return panic(message: "missing file read succeeded")
 
-    let cause = match fs.read_file(path: missing):
-        ok(_):
-            return panic(message: "missing file read succeeded")
-        error(cause): cause
+    let cause = read.unwrap_error()
 
     match cause:
         NotFound:
@@ -406,19 +405,14 @@ fn check_missing_file() Result[Unit, FileSystemError]:
         _:
             return panic(message: "missing file changed error case")
 
-    match fs.stat(path: missing, follow_links: true):
-        ok(_):
-            return panic(message: "missing file stat succeeded")
-        error(cause):
-            if cause.message() != "filesystem: file or directory not found":
-                return panic(message: "stat diagnostic lost")
+    let stat = fs.stat(path: missing, follow_links: true)
+    if stat.is_ok():
+        return panic(message: "missing file stat succeeded")
+    if stat.unwrap_error().message() != "filesystem: file or directory not found":
+        return panic(message: "stat diagnostic lost")
 
     let removed = try fs.remove(path: directory, recursive: false)
     return ok(unit)
 
 test "missing file diagnostics preserve the filesystem case":
-    match check_missing_file():
-        ok(_):
-            return unit
-        error(cause):
-            return panic(message: cause.message())
+    try check_missing_file()
