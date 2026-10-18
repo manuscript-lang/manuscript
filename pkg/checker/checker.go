@@ -71,6 +71,7 @@ func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]strin
 	return check(modules, imports, options)
 }
 func check(modules []*syntax.Module, imports map[*syntax.Import]string, options CheckOptions) *Program {
+	inherent := desugarInherentImpls(modules)
 	modules, dependencyDiagnostics := sourceStandardDependencies(modules)
 	p := newProgram(modules)
 	p.Diagnostics = dependencyDiagnostics
@@ -78,12 +79,8 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 	if options.bundled != nil {
 		c.idScope = "standard_" + strings.TrimSuffix(strings.TrimPrefix(options.bundled.File, "@std/"), ".ms") + "_"
 	}
-	for _, module := range modules {
-		for _, d := range module.Declarations {
-			if d.Kind != syntax.KindInterface && d.Kind != syntax.KindImpl && len(d.Methods) > 0 {
-				c.error(d.Pos, "type", "receiver operation declarations require standard-library bindings; move source methods into an explicit 'impl Interface for Type:' block")
-			}
-		}
+	for _, e := range inherent {
+		c.error(e.pos, "type", e.message)
 	}
 	if len(p.Diagnostics) > 0 {
 		return p

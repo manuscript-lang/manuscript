@@ -71,7 +71,10 @@ export type HashAlgorithm:
     case Sha384
     # SHA-512, producing a 64-byte digest or HMAC.
     case Sha512
+
+impl HashAlgorithm:
     # Computes this algorithm's digest, checking cancellation between chunks.
     fn digest(data: Bytes) -> Bytes:
+
     # Computes HMAC with this algorithm and retains CryptoError results.
     fn hmac(key: Bytes, data: Bytes) -> Result[Bytes, CryptoError]:

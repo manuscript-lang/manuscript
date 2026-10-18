@@ -40,7 +40,7 @@ func TestStandardLibrarySyntax(t *testing.T) {
 func TestStandardSyntaxGate(t *testing.T) {
 	valid := fstest.MapFS{
 		"process.ms":    {Data: []byte("export fn commands() -> Commands:\n")},
-		"data.ms":       {Data: []byte("type Data:\n    count: Int = 3\n    fn read() -> Int:\n")},
+		"data.ms":       {Data: []byte("type Data:\n    count: Int = 3\nimpl Data:\n    fn read() -> Int:\n")},
 		"bindings.json": {Data: []byte("not Manuscript source")},
 	}
 	if err := checkStandardSyntax(valid, "pkg/stdlib"); err != nil {
@@ -48,7 +48,8 @@ func TestStandardSyntaxGate(t *testing.T) {
 	}
 	for name, source := range map[string]string{
 		"function": "export fn commands() -> Commands\n",
-		"receiver": "type Data:\n    fn read() -> Int\n",
+		"receiver": "type Data:\nimpl Data:\n    fn read() -> Int\n",
+		"inline":   "type Data:\n    fn read() -> Int:\n",
 		"schema":   "type Data:\n    count Int\n",
 		"default":  "type Data:\n    count: Int =\n",
 		"trailing": "fn valid() -> Unit:\nvar invalid = 3\n",

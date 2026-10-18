@@ -36,17 +36,24 @@ export type HttpError:
 # Names keep first-insertion order and spelling; values keep append order.
 # Lookup shares list membership. Use clone() to separate mutable membership.
 export type HttpHeaders:
+
+impl HttpHeaders:
     # Appends raw bytes under a valid HTTP name; invalid names return InvalidInput.
     # Transport operations additionally validate UTF-8, framing and field values.
     fn append(name: String, value: Bytes) -> Result[Unit, HttpError]:
+
     # Returns shared mutable membership, or none for an absent name.
     fn values(name: String) -> Optional[List[Bytes]]:
+
     # Decodes every value; invalid UTF-8 returns InvalidData without partial success.
     fn text(name: String) -> Result[Optional[List[String]], HttpError]:
+
     # Returns first-inserted spellings in insertion order.
     fn names() -> List[String]:
+
     # Removes a name; existing list aliases are detached from this header object.
     fn remove(name: String) -> Bool:
+
     # Copies name/list membership and shares immutable Bytes values.
     fn clone() -> HttpHeaders:
 
@@ -66,6 +73,8 @@ export type ClientResponse:
     head: HttpResponseMetadata
     # The complete response payload within the supplied byte bound.
     body: Bytes
+
+impl ClientResponse:
     # Returns current head without copying; record clone is shallow.
     # Clone headers explicitly when separate mutable membership is needed.
     fn metadata() -> HttpResponseMetadata:
@@ -95,6 +104,8 @@ export type HttpMethod:
         # The method token; it must be a non-empty HTTP token such as PURGE.
         value: String
     )
+
+impl HttpMethod:
     # Returns the method token; outgoing requests reject malformed Custom tokens.
     fn text() -> String:
 

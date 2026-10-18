@@ -18,9 +18,11 @@ The caller can see the amount accepted, the receipt returned on success, and the
 
 ## Explicit implementations
 
-User-defined methods exist through explicit interface implementations: write `impl Contract for DataType:`, with methods inside that block. Manuscript has no user-defined inherent methods, so `impl DataType:` is unsupported and a source record cannot declare its own method bodies. Implementations bind `self` to the receiver. Contracts have no inheritance or default implementations.
+A type's methods are written in `impl` blocks, never inside the `type` declaration. `impl DataType:` declares the type's own methods, and `impl Contract for DataType:` implements an interface, with methods inside the block. Without `for`, the one name is always the type; with it, the first name is the interface and the second the type. Implementations bind `self` to the receiver. Contracts have no inheritance or default implementations.
 
-An ordinary free function remains a function call, such as `reset(counter)`: declaring `fn reset(counter: Counter) -> Unit` does not make `counter.reset()` a method. See the [complete counter example](../../learn/tour.md#behavior-on-types). Built-in operations such as `.clone()` and native standard declarations have their own supported receiver surfaces; they do not add an inherent-method declaration form for application code.
+An own-method block is accepted only in the module that declares the type, so one module cannot add methods to another module's type; use an interface and a [local extension](#coherence-and-visibility) for that. Several `impl DataType:` blocks in the module merge, and method names must be unique across them. The standard library declares its own methods with the same `impl Type:` form. Source methods cannot declare their own type parameters yet; use a generic function that takes the receiver.
+
+An ordinary free function remains a function call, such as `reset(counter)`: declaring `fn reset(counter: Counter) -> Unit` does not make `counter.reset()` a method. See the [complete counter example](../../learn/tour.md#behavior-on-types). Built-in operations such as `.clone()` have their own supported receiver surfaces.
 
 An implementation supplies the contract's operations for the named data type. The implementation relationship is declared explicitly rather than inferred from coincidentally similar operation names.
 

@@ -1,5 +1,15 @@
 # Language lessons
 
+### Standard and user code share one method syntax
+
+Decision: the user required that the standard library, as the reference, use only forms user code can write. Methods live in `impl` blocks, never in `type` bodies: `impl Type:` declares a type's own methods and `impl Interface for Type:` implements an interface; the presence of `for` fixes which name is the type, so no lookup is needed. Rejected spellings: `impl Type as/with/satisfies Interface`, a comma form, and a stdlib-only `native impl`.
+
+Verified: source `impl Type:` is desugared in the checker to a hidden `Type$methods` interface plus an ordinary contract impl, so visibility, selection, and lowering are the existing paths. Bundled modules fold their `impl Type:` methods back into the type declaration, keeping native binding keys unchanged. Method-level type parameters work only in bundled modules; source methods reject them, a known gap.
+
+Apply when: changing impl parsing, method declaration rules, stdlib receiver operations, or docs that show type declarations with methods.
+Evidence: [proposal](../documentation/core-language/types/contracts.md#explicit-implementations), [parser](../pkg/parser/parser.go), [desugaring](../pkg/checker/inherent.go), [native acceptance and rejection tests](../tests/e2e/inherent_methods_test.go).
+Verify: `fn` in a `type` body is a parse error; `impl Type:` works across modules for exported types; `impl Interface:`, `impl Foreign:`, and generic methods give targeted errors; `make stdlib-test` still binds every receiver operation.
+
 ### An unsaved overlay cannot replace a dangling source symlink
 
 Verified: editor overlays may create a file beneath an existing confined directory, but a dangling symlink remains a filesystem entry whose target identity must be respected. Treating every `EvalSymlinks` not-found result as an unsaved file allowed an overlay to hide an unresolved external target. Source path resolution now rejects that fallback for existing entries.

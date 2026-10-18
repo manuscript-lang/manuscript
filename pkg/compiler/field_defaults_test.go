@@ -15,7 +15,7 @@ func TestFieldDefaultBoundaries(t *testing.T) {
 		{"type Box[T]:\n    value: T = 1\n", "expected T, found Int"},
 		{"type Growing[T]:\n    value: T\n    next: Int = grow([value])\nfn grow[T](value: T) -> Int:\n    let item = Growing(value: value)\n    return 0\n", "recursive generic applications must preserve their parameters"},
 		{"fn missing() -> Int:\n", "reachable fallthrough"},
-		{"type Handle:\n    fn read() -> Int:\n", "receiver operation declarations require standard-library bindings"},
+		{"type Handle:\n    fn read() -> Int:\n", "a type declares only fields or cases"},
 	} {
 		result := CompileSource("fields.ms", item.source, Options{AnalyzeOnly: true})
 		if result.Success() || !strings.Contains(fmt.Sprint(result.Diagnostics), item.want) {

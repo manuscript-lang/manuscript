@@ -232,7 +232,7 @@ A closure remembers each binding's value when created. Reassigning a local varia
 
 ## Behavior on types
 
-Declare an interface for user-defined methods, then implement it with `impl Interface for Type:`. The method's `self` is its receiver:
+Methods live in `impl` blocks, never inside the `type`. Declare an interface when callers should depend on behavior, then implement it with `impl Interface for Type:`. The method's `self` is its receiver:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -259,7 +259,26 @@ test "counter behavior":
     try expect_equal(counter.value, 0)
 ```
 
-Manuscript has no user-defined inherent methods: `impl Counter:` is unsupported. A free function is called as `reset(counter)`, not `counter.reset()`. Interface operations can be called on a concrete receiver when exactly one visible interface implementation supplies that name. See [interfaces and implementations](../core-language/types/contracts.md#explicit-implementations) for signatures, visibility, and selecting an interface view when names are ambiguous.
+A type's own methods go in `impl Counter:`, without an interface:
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import expect_equal from "@std/testing.ms"
+
+type Counter:
+    value: Int
+
+impl Counter:
+    fn increment() -> Unit:
+        self.value = self.value + 1
+
+test "own methods":
+    let counter = Counter(0)
+    counter.increment()
+    try expect_equal(counter.value, 1)
+```
+
+Use an interface when callers should depend on behavior rather than on the type. A free function is still called as `reset(counter)`, not `counter.reset()`. Interface operations can be called on a concrete receiver when exactly one visible interface implementation supplies that name. See [interfaces and implementations](../core-language/types/contracts.md#explicit-implementations) for signatures, visibility, and selecting an interface view when names are ambiguous.
 
 ## Files and cleanup
 

@@ -9,8 +9,9 @@ func TestEmptyFunctionDeclarations(t *testing.T) {
 	for _, source := range []string{
 		"export fn commands() -> Commands:\n",
 		"export type Duration:\n",
-		"type List[T]:\n    fn map[U](transform: fn(value: T) -> U) -> List[U]:\n    fn length() -> Int:\n",
-		"type Optional[T]:\n    case none\n    case some(value: T)\n    fn unwrap() -> T:\n",
+		"type List[T]:\nimpl List[T]:\n    fn map[U](transform: fn(value: T) -> U) -> List[U]:\n    fn length() -> Int:\n",
+		"type Optional[T]:\n    case none\n    case some(value: T)\nimpl Optional[T]:\n    fn unwrap() -> T:\n",
+		"type Counter:\n    value: Int\nimpl Counter:\n    fn double() -> Int:\n        return self.value * 2\n",
 		"interface Read:\n    fn read(limit: Optional[Int] = none) -> Int\n",
 		"impl Error for Failure:\n    fn message() -> String:\n",
 		"type Options:\n    count: Int = 3\n    total: Int = count + 1\n",
@@ -27,7 +28,10 @@ func TestEmptyFunctionDeclarations(t *testing.T) {
 	}
 	for _, source := range []string{
 		"export fn commands() -> Commands\n",
-		"type List[T]:\n    fn get() -> T\n",
+		"type List[T]:\nimpl List[T]:\n    fn get() -> T\n",
+		"type List[T]:\n    fn get() -> T:\n",
+		"type A:\n    x: Int\n    fn f() -> Int:\n        return x\n",
+		"impl Show Point:\n    fn show() -> String:\n",
 		"type Duration\n",
 		"native fn commands() -> Commands\n",
 		"fn f() -> Unit:\n    if true:\n",

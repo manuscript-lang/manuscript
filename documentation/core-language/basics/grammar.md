@@ -122,21 +122,20 @@ ConstantDeclaration = "let", Name, [ ":", Type ], "=", Expression, NEWLINE ;
 
 TypeDeclaration = "type", Name, [ TypeParameters ], ":", NEWLINE,
                   INDENT, (RecordBody | AlternativeBody), DEDENT ;
-RecordBody    = { Field | ReceiverDeclaration } ;
+RecordBody    = { Field } ;
 Field         = Name, ":", Type, [ "=", Expression ], NEWLINE ;
-AlternativeBody = CaseDeclaration, { CaseDeclaration | ReceiverDeclaration } ;
+AlternativeBody = CaseDeclaration, { CaseDeclaration } ;
 CaseDeclaration = "case", Name, [ "(", Parameters, ")" ], NEWLINE ;
 InterfaceDeclaration = "interface", Name, [ TypeParameters ], ":", NEWLINE,
                        INDENT, ContractBody, DEDENT ;
 ContractBody  = OperationSignature, { OperationSignature } ;
 OperationSignature = "fn", Name, "(", [ FunctionParameters ], ")", "->", Type, NEWLINE ;
-ReceiverDeclaration = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
-                      "->", Type, FunctionSuite ;
 
 FunctionDeclaration = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
                       "->", Type, FunctionSuite ;
-Implementation = "impl", NamedType, "for", NamedType, ":", NEWLINE,
+Implementation = "impl", NamedType, [ "for", NamedType ], ":", NEWLINE,
                  [ INDENT, MethodDeclaration, { MethodDeclaration }, DEDENT ] ;
+(* With "for", the first NamedType is the interface and the second the type. Without it, the only NamedType is the type and the block declares its own methods. *)
 MethodDeclaration = "fn", Name, "(", [ FunctionParameters ], ")", "->", Type, FunctionSuite ;
 FunctionSuite = ":", (Expression | SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
 TestDeclaration = "test", PlainStringLiteral, Suite ;
@@ -159,11 +158,11 @@ TypeArguments = "[", Type, { ",", Type }, [ "," ], "]" ;
 FunctionType  = "fn", "(", [ Parameters ], ")", "->", Type ;
 ```
 
-A `type` declares record fields or alternative cases, never both, and may contain receiver functions. An `interface` contains only operation signatures. A nullary case is `case Ready`, without `()`. Names must be unique in their scope. Named functions need explicit parameter and result types; anonymous ones may take them from context ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)). Function declarations and expressions accept [default arguments](../functions/declarations-and-calls.md#default-arguments), records accept [default expressions](../types/records.md#construction), and interface signatures may declare `= none` on Optional parameters. Function types and alternative payloads have no defaults. Variadic parameters and parameter patterns are not accepted.
+A `type` declares record fields or alternative cases, never both; its methods are written in an `impl` block, either `impl Type:` for its own methods or `impl Interface for Type:` to implement an interface. An `interface` contains only operation signatures. A nullary case is `case Ready`, without `()`. Names must be unique in their scope. Named functions need explicit parameter and result types; anonymous ones may take them from context ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)). Function declarations and expressions accept [default arguments](../functions/declarations-and-calls.md#default-arguments), records accept [default expressions](../types/records.md#construction), and interface signatures may declare `= none` on Optional parameters. Function types and alternative payloads have no defaults. Variadic parameters and parameter patterns are not accepted.
 
 Named function and method suites may be empty: `fn commands() -> Commands:` followed by a newline is valid syntax. The standard library uses these empty functions for implementations supplied by its pinned runtime bindings. Empty type schemas likewise use `type Duration:` with a newline. No parser mode or `native` keyword changes the syntax. Application functions still need valid return behavior, and source receiver implementations use explicit `impl` blocks. Interface, implementation, test, and control-flow suites remain nonempty.
 
-Imports and declarations may be interleaved; import visibility and declaration resolution do not depend on written order. Import paths and test names are plain text literals: escapes are permitted, interpolation is rejected. `export` applies to types, interfaces, and named module functions, not tests or implementation blocks. Implementation blocks declare no type parameters. In `impl Contract[T] for Data[T]:`, `T` comes from the receiver type declaration; applicable bounds come from the type and interface declarations.
+Imports and declarations may be interleaved; import visibility and declaration resolution do not depend on written order. Import paths and test names are plain text literals: escapes are permitted, interpolation is rejected. `export` applies to types, interfaces, and named module functions, not tests or implementation blocks. Implementation blocks declare no type parameters, and `impl Type:` is accepted only in the module that declares `Type`. In `impl Contract[T] for Data[T]:`, `T` comes from the receiver type declaration; applicable bounds come from the type and interface declarations.
 
 Every parameter used in the interface or method signatures must occur in the nominal receiver application. Contract operations and implementation methods cannot declare their own type parameters. Implementation applicability and overlap follow [contracts](../types/contracts.md#generic-implementations).
 

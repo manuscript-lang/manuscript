@@ -13,30 +13,38 @@ export type Scheduler:
     # Called with a SchedulerFailure for each operation that returns an error or faults, one report at a time and in completion order.
     # none writes a one-line diagnostic to standard error instead. A reporter fault is also written to standard error, and the reporter cannot close its own scheduler.
     reporter: Optional[fn(failure: SchedulerFailure) -> Unit] = none
+
+impl Scheduler:
     # Runs `operation` once after `duration` has elapsed and returns its OperationId. A zero duration runs it as soon as it is scheduled.
     # A negative duration returns InvalidInput; a closing scheduler returns Closed and a full one returns Full. Cancelling during the wait prevents the call.
     fn after(
         duration: Duration,
         operation: fn() -> Result[Unit, Error]
     ) -> Result[OperationId, StartError]:
+
     # Runs `operation` repeatedly, sleeping `interval` before the first run and again after each run finishes, so runs never overlap.
     # It stops after the first operation that returns an error, which is reported as Failed. A zero or negative interval returns InvalidInput; Closed and Full apply as for `after`.
     fn every(
         interval: Duration,
         operation: fn() -> Result[Unit, Error]
     ) -> Result[OperationId, StartError]:
+
     # Cancels the operation `id` if it is still running, waits for it to stop, and schedules a new run with the same delay, repeat mode, and callback. Returns the new OperationId; the old id keeps its final status.
     # Only work created by `after` or `every` can restart. An unknown, evicted, or `start`-created id returns InvalidInput, and a closing scheduler returns Closed. An operation of this scheduler calling restart faults.
     fn restart(id: OperationId) -> Result[OperationId, StartError]:
+
     # Requests cancellation of a running operation and returns without waiting for it to stop; the final status becomes Cancelled.
     # An unknown or already finished id is ignored.
     fn cancel(id: OperationId) -> Unit:
+
     # Stops accepting work, waits up to `drain` for running operations, cancels the rest, and waits for them and for pending failure reports to finish.
     # Calling it again waits for the first close to complete. An operation or reporter of this scheduler calling close faults.
     fn close() -> Unit:
+
     # Runs `operation` right away as a background task and returns its OperationId.
     # Returns Closed after `close` begins and Full when `limit` operations are already running. An Err result is reported as Failed and a fault as Crashed.
     fn start(operation: fn() -> Result[Unit, Error]) -> Result[OperationId, StartError]:
+
     # Returns the operation's current status, or its final status once it has ended.
     # Unknown means the id was never issued by this scheduler, was evicted by `history_limit`, or finished while `history_limit` was 0.
     fn status(id: OperationId) -> WorkStatus:
@@ -110,18 +118,24 @@ export type TaskGroup:
     # Time budget for all tasks in the group, measured from the first `start`. When it elapses with tasks still running, they are cancelled and `join` returns Timeout.
     # A zero duration expires immediately, none sets no limit, and a negative duration faults.
     timeout: Optional[Duration] = none
+
+impl TaskGroup:
     # Starts `operation` as a concurrent child task and returns its handle without waiting.
     # Starting after `join` or `close` faults. After the group has failed or been cancelled, the operation is not run and its handle reports the group failure.
     fn start[T](operation: fn() -> T) -> Task[T]:
+
     # Seals the group against new tasks and waits for every task to finish, including cleanup. Returns Ok when all succeeded, or the group's first failure, with Crashed taking precedence.
     # A task or descendant calling join on its own group faults.
     fn join() -> Result[Unit, ExecutionError]:
+
     # Cancels unfinished tasks, waits for them, and releases the group; calling it again waits for the first close.
     # A task fault no `join` has observed is raised as a fault here, unless the surrounding task is itself being cancelled. A task of this group calling close faults.
     fn close() -> Unit:
 
 # A handle to a child task. Join it to collect its result and observe failures.
 export type Task[T]:
+
+impl Task[T]:
     # Waits for the task and returns its result. If the task did not complete, returns the group's failure after sibling tasks finish cleanup.
     # Joining from inside the same group faults.
     fn join() -> Result[T, ExecutionError]:

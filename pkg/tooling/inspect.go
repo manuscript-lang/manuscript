@@ -139,6 +139,9 @@ func Inspect(program *checker.Program) Inspection {
 	for _, module := range program.Modules {
 		result.Sources = append(result.Sources, Source{module.File, hash(module.Source)})
 		for _, declaration := range module.Declarations {
+			if declaration.Synthetic && declaration.Kind == syntax.KindInterface {
+				continue
+			}
 			id := module.File + "#" + entityKind(declaration) + "#" + declaration.Name
 			entity := Entity{ID: id, Kind: entityKind(declaration), Name: declaration.Name, Span: sourceSpan(module, declaration.Pos), Exported: declaration.Export}
 			if symbol := program.Symbol(module.File, declaration.Name); symbol != nil && symbol.Decl == declaration {
@@ -148,7 +151,7 @@ func Inspect(program *checker.Program) Inspection {
 			}
 			if declaration.Kind == syntax.KindImpl {
 				entity.ID = fmt.Sprintf("%s#impl#%d", module.File, declaration.Pos.Offset)
-				entity.Name = declaration.Contract.Name + " for " + declaration.Receiver.Name
+				entity.Name = declaration.ImplName()
 			}
 			result.Entities = append(result.Entities, entity)
 			visitor := syntax.Visitor{Expression: func(e *syntax.Expression) {
