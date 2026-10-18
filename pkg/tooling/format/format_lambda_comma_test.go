@@ -1,11 +1,11 @@
-package tooling_test
+package format_test
 
 import (
 	"strings"
 	"testing"
 
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
-	"github.com/manuscript-lang/manuscript/pkg/tooling"
+	"github.com/manuscript-lang/manuscript/pkg/tooling/format"
 )
 
 func TestFormatBlockLambdaFollowedByArgument(t *testing.T) {
@@ -16,12 +16,12 @@ func TestFormatBlockLambdaFollowedByArgument(t *testing.T) {
 		}
 		for _, newline := range []string{"\n", "\r\n"} {
 			input := strings.ReplaceAll(source, "\n", newline)
-			formatted, err := tooling.Format("lambda.ms", input)
+			formatted, err := format.Format("lambda.ms", input)
 			if err != nil {
 				t.Fatal(err)
 			}
 			assertFormatMeaning(t, "lambda.ms", input, formatted)
-			twice, err := tooling.Format("lambda.ms", formatted)
+			twice, err := format.Format("lambda.ms", formatted)
 			if err != nil || twice != formatted {
 				t.Fatalf("not idempotent: %v", err)
 			}

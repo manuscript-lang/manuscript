@@ -1,8 +1,8 @@
-package tooling_test
+package format_test
 
 import (
 	"github.com/manuscript-lang/manuscript/pkg/lexer"
-	"github.com/manuscript-lang/manuscript/pkg/tooling"
+	"github.com/manuscript-lang/manuscript/pkg/tooling/format"
 	"strings"
 	"testing"
 )
@@ -292,14 +292,14 @@ fn example() Int:
 			}
 			t.Run(name, func(t *testing.T) {
 				source := strings.ReplaceAll(tc.source, "\n", newline)
-				got, err := tooling.Format("paragraphs.ms", source)
+				got, err := format.Format("paragraphs.ms", source)
 				if err != nil {
 					t.Fatal(err)
 				}
 				if got != tc.want {
 					t.Fatalf("formatted source:\n%s\nwant:\n%s", got, tc.want)
 				}
-				twice, err := tooling.Format("paragraphs.ms", got)
+				twice, err := format.Format("paragraphs.ms", got)
 				if err != nil || twice != got {
 					t.Fatalf("formatting is not idempotent: %v\n%s", err, twice)
 				}

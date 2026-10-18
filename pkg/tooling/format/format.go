@@ -1,5 +1,5 @@
 // Package tooling supplies deterministic source formatting and checked-program views.
-package tooling
+package format
 
 import (
 	"github.com/manuscript-lang/manuscript/pkg/frontend"

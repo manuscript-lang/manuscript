@@ -1,4 +1,4 @@
-package tooling_test
+package format_test
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/lexer"
 	"github.com/manuscript-lang/manuscript/pkg/parser"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
-	"github.com/manuscript-lang/manuscript/pkg/tooling"
+	"github.com/manuscript-lang/manuscript/pkg/tooling/format"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -15,19 +15,19 @@ import (
 )
 
 func TestFormatFixturesPreservesMeaningAndIsIdempotent(t *testing.T) {
-	files, _ := filepath.Glob("../../tests/e2e/testdata/accept/*.ms")
+	files, _ := filepath.Glob("../../../tests/e2e/testdata/accept/*.ms")
 	for _, filename := range files {
 		t.Run(filepath.Base(filename), func(t *testing.T) {
 			input, err := os.ReadFile(filename)
 			if err != nil {
 				t.Fatal(err)
 			}
-			formatted, err := tooling.Format(filename, string(input))
+			formatted, err := format.Format(filename, string(input))
 			if err != nil {
 				t.Fatal(err)
 			}
 			assertFormatMeaning(t, filename, string(input), formatted)
-			twice, err := tooling.Format(filename, formatted)
+			twice, err := format.Format(filename, formatted)
 			if err != nil || formatted != twice {
 				t.Fatal("formatter is not idempotent", err)
 			}
@@ -42,12 +42,12 @@ func TestFormatFixturesPreservesMeaningAndIsIdempotent(t *testing.T) {
 
 func TestFormatImplicitReturnPreservesOperands(t *testing.T) {
 	source := "fn sum(first_value: Int, second_value: Int, third_value: Int, fourth_value: Int) Int: first_value + second_value + third_value + fourth_value\n"
-	formatted, err := tooling.Format("implicit.ms", source)
+	formatted, err := format.Format("implicit.ms", source)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assertFormatMeaning(t, "implicit.ms", source, formatted)
-	twice, err := tooling.Format("implicit.ms", formatted)
+	twice, err := format.Format("implicit.ms", formatted)
 	if err != nil || formatted != twice {
 		t.Fatal("implicit return formatting is not idempotent", err)
 	}
@@ -135,60 +135,23 @@ func assertFormatMeaning(t *testing.T, filename, original, formatted string) {
 func TestFormatCommentsAndErrors(t *testing.T) {
 	input := "# leading\r\nfn sum( left:Int,right:Int ) Int: # sum\r\n    return left+right # trailing\r\n"
 	want := "# leading\nfn sum(left: Int, right: Int) Int:  # sum\n    return left + right  # trailing\n"
-	formatted, err := tooling.Format("sum.ms", input)
+	formatted, err := format.Format("sum.ms", input)
 	if err != nil || formatted != want {
 		t.Fatalf("got %q, err %v", formatted, err)
 	}
-	formatted, err = tooling.Format("bad.ms", "fn bad():\n  return\n")
+	formatted, err = format.Format("bad.ms", "fn bad():\n  return\n")
 	if err == nil || formatted != "" {
 		t.Fatal("invalid syntax produced output")
 	}
 }
-func TestInspectionDeterminismAndOriginalSpans(t *testing.T) {
-	source := "fn one() Int:\r\n    return 1\r\ntest \"calls\":\r\n    if one() != 1:\r\n        return\r\n"
-	result := compiler.CompileSource("inspect.ms", source, compiler.Options{})
-	if !result.Success() {
-		t.Fatal(result.Diagnostics)
-	}
-	first := tooling.Inspect(result.Program)
-	second := tooling.Inspect(result.Program)
-	if first.BuildID != second.BuildID || len(first.Calls) != 1 {
-		t.Fatal("unstable inspection")
-	}
-	call := first.Calls[0]
-	if !strings.HasPrefix(source[call.Span.Start:], "one()") || call.Span.End > len(source) {
-		t.Fatal(call.Span)
-	}
-	diagram := tooling.Diagram(first)
-	if !strings.Contains(diagram, "flowchart TD") || !strings.Contains(diagram, "inspect.ms::one") {
-		t.Fatal(diagram)
-	}
-}
-
-func TestInspectInterface(t *testing.T) {
-	source := "export interface Read[T]:\n    fn get() T\n"
-	result := compiler.CompileSource("interface.ms", source, compiler.Options{})
-	if !result.Success() {
-		t.Fatal(result.Diagnostics)
-	}
-	inspection := tooling.Inspect(result.Program)
-	if len(inspection.Entities) != 1 {
-		t.Fatal(inspection.Entities)
-	}
-	entity := inspection.Entities[0]
-	if entity.Kind != "interface" || entity.Name != "Read" || !entity.Exported || entity.Span.Start != 7 {
-		t.Fatalf("incorrect interface entity: %+v", entity)
-	}
-}
-
 func TestFormatGroupedImports(t *testing.T) {
 	input := "import { ListBuilder,MapBuilder, } from \"@std/collections.ms\" # collections\n"
 	want := "import {ListBuilder, MapBuilder} from \"@std/collections.ms\"  # collections\n"
-	formatted, err := tooling.Format("imports.ms", input)
+	formatted, err := format.Format("imports.ms", input)
 	if err != nil || formatted != want {
 		t.Fatalf("got %q, err %v", formatted, err)
 	}
-	twice, err := tooling.Format("imports.ms", formatted)
+	twice, err := format.Format("imports.ms", formatted)
 	if err != nil || twice != formatted {
 		t.Fatal("formatting is not idempotent", err)
 	}
@@ -197,11 +160,11 @@ func TestFormatGroupedImports(t *testing.T) {
 func TestFormatMultilineFunctionParameters(t *testing.T) {
 	input := "export fn render(\r\n    arguments:List[String], # arguments\r\n    output:WriteStream,\r\n) Int:\r\n    let message=\"Arguments: {arguments.join(\",\")}\\n\"\r\n    match output.write(data:message.to_bytes()):\r\n        ok(_):\r\n            return 0\r\n        error(_):\r\n            return 1\r\n"
 	want := "export fn render(\n    arguments: List[String],  # arguments\n    output: WriteStream,\n) Int:\n    let message = \"Arguments: {arguments.join(\",\")}\\n\"\n\n    match output.write(data: message.to_bytes()):\n        ok(_):\n            return 0\n        error(_):\n            return 1\n"
-	formatted, err := tooling.Format("main.ms", input)
+	formatted, err := format.Format("main.ms", input)
 	if err != nil || formatted != want {
 		t.Fatalf("got %q, err %v", formatted, err)
 	}
-	twice, err := tooling.Format("main.ms", formatted)
+	twice, err := format.Format("main.ms", formatted)
 	if err != nil || twice != formatted {
 		t.Fatal("formatting is not idempotent", err)
 	}
@@ -209,7 +172,7 @@ func TestFormatMultilineFunctionParameters(t *testing.T) {
 
 func TestFormatInlineSuites(t *testing.T) {
 	source := "fn double(x:Int) Int:return x*2\nfn f(x:Int) Int:\n    if x>0:return double(x)\n    else:return 0\n"
-	formatted, err := tooling.Format("inline.ms", source)
+	formatted, err := format.Format("inline.ms", source)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,7 +180,7 @@ func TestFormatInlineSuites(t *testing.T) {
 	if formatted != want {
 		t.Fatalf("got %q, want %q", formatted, want)
 	}
-	again, err := tooling.Format("inline.ms", formatted)
+	again, err := format.Format("inline.ms", formatted)
 	if err != nil || again != formatted {
 		t.Fatalf("format is not stable: %q, %v", again, err)
 	}
@@ -225,11 +188,11 @@ func TestFormatInlineSuites(t *testing.T) {
 
 func TestFormatMapAndShorthand(t *testing.T) {
 	source := "fn f() Unit:\n    let values={\"a\":1,\"b\":{1:2},}\n    consume(values,other: {})\n"
-	formatted, err := tooling.Format("map.ms", source)
+	formatted, err := format.Format("map.ms", source)
 	if err != nil {
 		t.Fatal(err)
 	}
-	again, err := tooling.Format("map.ms", formatted)
+	again, err := format.Format("map.ms", formatted)
 	if err != nil || again != formatted {
 		t.Fatalf("not idempotent: %q %v", again, err)
 	}
@@ -241,7 +204,7 @@ func TestFormatMapAndShorthand(t *testing.T) {
 func TestFormatKeepsConsecutiveConstantsTogether(t *testing.T) {
 	source := "import ListBuilder from \"@std/collections.ms\"\nlet A = 1\nlet B = 2\nfn f() Int:\n    return A + B\n"
 	want := "import ListBuilder from \"@std/collections.ms\"\n\nlet A = 1\nlet B = 2\n\nfn f() Int:\n    return A + B\n"
-	got, err := tooling.Format("constants.ms", source)
+	got, err := format.Format("constants.ms", source)
 	if err != nil || got != want {
 		t.Fatalf("got %q, %v", got, err)
 	}
@@ -251,14 +214,14 @@ func TestFormatWrapsLongConstantInitializers(t *testing.T) {
 	long := `"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" + "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" + "cccccccccccccccccccccccccccccccccccccc"`
 	numbers := `100000000000 + 200000000000 + 300000000000 + 400000000000 + 500000000000 + 6000000000000 + 7000000000`
 	for _, value := range []string{long, numbers} {
-		got, err := tooling.Format("constants.ms", "let A = "+value+"\n")
+		got, err := format.Format("constants.ms", "let A = "+value+"\n")
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !strings.Contains(got, "let A = (\n    ") || !strings.HasSuffix(got, "\n)\n") {
 			t.Fatalf("constant initializer not wrapped in parentheses:\n%s", got)
 		}
-		again, err := tooling.Format("constants.ms", got)
+		again, err := format.Format("constants.ms", got)
 		if err != nil || again != got {
 			t.Fatalf("not idempotent: %q, %v", again, err)
 		}

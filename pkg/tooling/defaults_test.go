@@ -7,6 +7,7 @@ import (
 
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
+	"github.com/manuscript-lang/manuscript/pkg/tooling/format"
 )
 
 func TestDefaultExpressionsParticipateInTooling(t *testing.T) {
@@ -38,7 +39,7 @@ fn nested(state: SynchronizedGuard[Int]) Unit:
 	if defaults != 2 {
 		t.Fatal("default calls missing from inspection", inspection.Calls)
 	}
-	formatted, err := tooling.Format("defaults.ms", source)
+	formatted, err := format.Format("defaults.ms", source)
 	if err != nil || !strings.Contains(formatted, "value: Int = read(state)") {
 		t.Fatal(formatted, err)
 	}

@@ -43,7 +43,7 @@ Each layer imports only layers above it in this list; `scripts/repo-check/policy
 4. `lower`: checked program to Go source (no native tools, no runtime import)
 5. `compiler`: the source-to-Go pipeline facade
 6. `build`: native builds, caches, pins, and toolchains
-7. Tooling: `tooling`, `tooling/docgen`, `tooling/lsp`, `tooling/guide`
+7. Tooling: `tooling/format`, `tooling`, `tooling/docgen`, `tooling/lsp`, `tooling/guide`
 8. `internal/cli` and `cmd/ms`
 
 `runtime` and the `internal/` helpers it embeds form a separate leaf stack that generated programs link against.
@@ -63,7 +63,8 @@ Each layer imports only layers above it in this list; `scripts/repo-check/policy
 | `pkg/build/` | Native builds: assembly, pins, command replay, shared workspace, SDKs |
 | `pkg/runtime/` | Values, numerics, work lifetimes, cleanup, synchronization, host implementations |
 | `pkg/stdlib/` | Public `.ms` declarations, `bindings.json` native identities (opaque types, function and contract-method overrides), embedded sources; the signature authority |
-| `pkg/tooling/` | Formatter, lint, navigation, inspection, static diagrams |
+| `pkg/tooling/format/` | Formatter; needs only syntax, lexer, and frontend, never the checker |
+| `pkg/tooling/` | Lint, navigation, inspection, review, static diagrams |
 | `pkg/tooling/lsp/` | Transport, snapshots, typed editor features |
 | `pkg/tooling/guide/` | Backs `ms search_symbol` and `ms guide`, generated from checker definitions |
 | `pkg/tooling/docgen/` | Markdown/JSON and site API reference from standard declarations |

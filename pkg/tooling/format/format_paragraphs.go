@@ -1,4 +1,4 @@
-package tooling
+package format
 
 import (
 	"github.com/manuscript-lang/manuscript/pkg/syntax"

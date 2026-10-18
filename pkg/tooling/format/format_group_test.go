@@ -1,4 +1,4 @@
-package tooling
+package format
 
 import "testing"
 

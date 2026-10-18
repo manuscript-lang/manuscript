@@ -10,6 +10,7 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/project"
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
+	"github.com/manuscript-lang/manuscript/pkg/tooling/format"
 )
 
 func runFormat(args []string) int {
@@ -153,7 +154,7 @@ func formatFile(path, display string, check, dropLabels bool) (string, error) {
 		}
 		text, _ = tooling.DropRedundantLabels(result.Program, text)
 	}
-	formatted, err := tooling.Format(display, text)
+	formatted, err := format.Format(display, text)
 	if err != nil {
 		return "error", formatSourceError{display, err}
 	}
@@ -167,7 +168,7 @@ func formatFile(path, display string, check, dropLabels bool) (string, error) {
 	if err != nil {
 		return "error", err
 	}
-	if err := tooling.WriteFormatted(path, formatted, info.Mode().Perm()); err != nil {
+	if err := format.WriteFormatted(path, formatted, info.Mode().Perm()); err != nil {
 		return "error", err
 	}
 	return "formatted", nil

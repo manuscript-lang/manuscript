@@ -39,6 +39,11 @@
       "pkg/checker",
       "pkg/frontend"
     ],
+    "pkg/tooling/format": [
+      "pkg/syntax",
+      "pkg/lexer",
+      "pkg/frontend"
+    ],
     "pkg/tooling/docgen": [
       "pkg/checker",
       "pkg/stdlib"
@@ -50,6 +55,7 @@
       "pkg/project",
       "pkg/compiler",
       "pkg/tooling",
+      "pkg/tooling/format",
       "pkg/frontend"
     ],
     "pkg/tooling/guide": [
@@ -62,6 +68,7 @@
       "pkg/project",
       "pkg/syntax",
       "pkg/tooling",
+      "pkg/tooling/format",
       "pkg/tooling/lsp",
       "pkg/tooling/guide",
       "pkg/tooling/docgen",

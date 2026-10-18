@@ -1,9 +1,9 @@
-package tooling_test
+package format_test
 
 import (
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/parser"
-	"github.com/manuscript-lang/manuscript/pkg/tooling"
+	"github.com/manuscript-lang/manuscript/pkg/tooling/format"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -12,18 +12,18 @@ import (
 )
 
 func TestFormatCompactGolden(t *testing.T) {
-	input, err := os.ReadFile("testdata/format/compact.input.ms")
+	input, err := os.ReadFile("testdata/compact.input.ms")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, err := os.ReadFile("testdata/format/compact.golden.ms")
+	want, err := os.ReadFile("testdata/compact.golden.ms")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, newline := range []string{"\n", "\r\n", "\n\n\n"} {
 		// Authored blank lines do not affect canonical paragraph boundaries.
 		source := strings.ReplaceAll(string(input), "\n", newline)
-		got, err := tooling.Format("compact.ms", source)
+		got, err := format.Format("compact.ms", source)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -31,7 +31,7 @@ func TestFormatCompactGolden(t *testing.T) {
 			t.Fatalf("formatted:\n%s\nwant:\n%s", got, want)
 		}
 		assertFormatMeaning(t, "compact.ms", source, got)
-		twice, err := tooling.Format("compact.ms", got)
+		twice, err := format.Format("compact.ms", got)
 		if err != nil || twice != got {
 			t.Fatalf("formatting is not idempotent: %v\n%s", err, twice)
 		}
@@ -462,7 +462,7 @@ fn work(first: Int, second: Int, third: Int, fourth: Int) Int: return first
 			}
 			t.Run(name, func(t *testing.T) {
 				source := strings.ReplaceAll(tc.source, "\n", newline)
-				got, err := tooling.Format("layout.ms", source)
+				got, err := format.Format("layout.ms", source)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -470,7 +470,7 @@ fn work(first: Int, second: Int, third: Int, fourth: Int) Int: return first
 					t.Fatalf("formatted:\n%s\nwant:\n%s", got, tc.want)
 				}
 				assertFormatMeaning(t, "layout.ms", source, got)
-				twice, err := tooling.Format("layout.ms", got)
+				twice, err := format.Format("layout.ms", got)
 				if err != nil || twice != got {
 					t.Fatalf("formatting is not idempotent: %v\n%s", err, twice)
 				}
@@ -481,11 +481,11 @@ fn work(first: Int, second: Int, third: Int, fourth: Int) Int: return first
 
 func TestFormatTestCorpusIsCanonical(t *testing.T) {
 	files := []string{
-		"../../examples/hello/src/main.ms",
-		"../../examples/hello/test.ms",
-		"../../examples/tooling-demo/src/math.ms",
+		"../../../examples/hello/src/main.ms",
+		"../../../examples/hello/test.ms",
+		"../../../examples/tooling-demo/src/math.ms",
 	}
-	err := filepath.WalkDir("../../tests/e2e/testdata", func(path string, entry fs.DirEntry, err error) error {
+	err := filepath.WalkDir("../../../tests/e2e/testdata", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -506,7 +506,7 @@ func TestFormatTestCorpusIsCanonical(t *testing.T) {
 			if _, err := parser.Parse(path, string(source)); err != nil {
 				return // Preserve deliberate syntax-rejection fixtures.
 			}
-			formatted, err := tooling.Format(path, string(source))
+			formatted, err := format.Format(path, string(source))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -519,9 +519,9 @@ func TestFormatTestCorpusIsCanonical(t *testing.T) {
 
 func FuzzFormat(f *testing.F) {
 	for _, path := range []string{
-		"../../tests/e2e/testdata/accept/builtin-parity.ms",
-		"../../tests/e2e/testdata/accept/inline-suites.ms",
-		"../../tests/e2e/testdata/accept/cl-18.ms",
+		"../../../tests/e2e/testdata/accept/builtin-parity.ms",
+		"../../../tests/e2e/testdata/accept/inline-suites.ms",
+		"../../../tests/e2e/testdata/accept/cl-18.ms",
 	} {
 		source, err := os.ReadFile(path)
 		if err != nil {
@@ -532,7 +532,7 @@ func FuzzFormat(f *testing.F) {
 	f.Add("fn f() Bool:\n    return active or allowed and remaining > 0\n")
 	f.Fuzz(func(t *testing.T, source string) {
 		_, parseError := parser.Parse("fuzz.ms", source)
-		formatted, err := tooling.Format("fuzz.ms", source)
+		formatted, err := format.Format("fuzz.ms", source)
 		if parseError != nil {
 			if err == nil || formatted != "" {
 				t.Fatal("invalid syntax produced formatted output")
@@ -543,7 +543,7 @@ func FuzzFormat(f *testing.F) {
 			t.Fatal(err)
 		}
 		assertFormatMeaning(t, "fuzz.ms", source, formatted)
-		twice, err := tooling.Format("fuzz.ms", formatted)
+		twice, err := format.Format("fuzz.ms", formatted)
 		if err != nil || twice != formatted {
 			t.Fatalf("formatting is not idempotent: %v", err)
 		}

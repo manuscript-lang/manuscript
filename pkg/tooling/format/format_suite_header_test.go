@@ -1,10 +1,10 @@
-package tooling_test
+package format_test
 
 import (
 	"testing"
 
 	"github.com/manuscript-lang/manuscript/pkg/parser"
-	"github.com/manuscript-lang/manuscript/pkg/tooling"
+	"github.com/manuscript-lang/manuscript/pkg/tooling/format"
 )
 
 // A suite is indented relative to the last line of a multi-line header. The
@@ -29,11 +29,11 @@ func TestFormatMovesSuiteWithMisindentedHeaderClose(t *testing.T) {
 			if _, err := parser.Parse("input.ms", test.source); err != nil {
 				t.Fatalf("input must be valid source: %v", err)
 			}
-			formatted, err := tooling.Format("input.ms", test.source)
+			formatted, err := format.Format("input.ms", test.source)
 			if err != nil || formatted != test.want {
 				t.Fatalf("got %q, err %v, want %q", formatted, err, test.want)
 			}
-			twice, err := tooling.Format("input.ms", formatted)
+			twice, err := format.Format("input.ms", formatted)
 			if err != nil || twice != formatted {
 				t.Fatalf("formatting is not idempotent: %q, %v", twice, err)
 			}
