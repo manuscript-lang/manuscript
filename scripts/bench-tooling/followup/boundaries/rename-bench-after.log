@@ -1,0 +1,9 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/tooling/lsp
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPrepareRenameLiveIndex-4   	    6111	     57058 ns/op	   12240 B/op	     117 allocs/op
+BenchmarkPrepareRenameLiveIndex-4   	    6418	     59233 ns/op	   12240 B/op	     117 allocs/op
+BenchmarkPrepareRenameLiveIndex-4   	    6199	     62219 ns/op	   12240 B/op	     117 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	1.427s

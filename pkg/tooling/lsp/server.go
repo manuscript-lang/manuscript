@@ -469,7 +469,14 @@ func (s *server) documentRequest(r *request) (result any, rpcError any) {
 			return nil, notOpen()
 		}
 		checked := s.checkedDocument(d)
-		return semanticWithIndex(d, []compiler.Result{checked}, s.documentIndex(checked)), nil
+		if s.requestCanceled(r) {
+			return nil, nil
+		}
+		index := s.documentIndex(checked)
+		if s.requestCanceled(r) {
+			return nil, nil
+		}
+		return semanticWithIndex(d, []compiler.Result{checked}, index), nil
 	case "textDocument/codeAction":
 		if !ok {
 			return nil, notOpen()
@@ -477,7 +484,11 @@ func (s *server) documentRequest(r *request) (result any, rpcError any) {
 		if isStandardLibraryURI(d.URI) {
 			return []any{}, nil
 		}
-		return editorActions(d, s.checkedDocument(d), p.Range, p.Context.Only), nil
+		checked := s.checkedDocument(d)
+		if s.requestCanceled(r) {
+			return nil, nil
+		}
+		return editorActions(d, checked, p.Range, p.Context.Only), nil
 	case "textDocument/formatting":
 		if !ok {
 			return nil, notOpen()
@@ -523,18 +534,29 @@ func (s *server) documentRequest(r *request) (result any, rpcError any) {
 			return nil, nil
 		}
 		checked := s.checkedDocument(d)
+		if s.requestCanceled(r) {
+			return nil, nil
+		}
 		if checked.Program == nil {
 			return nil, nil
 		}
 		if r.Method == "textDocument/references" {
 			return workspaceReferencesChecked(checked, s.documentIndex(checked), d, s.docs, p.Position, p.Context.IncludeDeclaration, func() bool { return s.requestCanceled(r) }), nil
 		}
-		return navigation(checked, d, p.Position, r.Method, s.documentIndex(checked)), nil
+		index := s.documentIndex(checked)
+		if s.requestCanceled(r) {
+			return nil, nil
+		}
+		return navigation(checked, d, p.Position, r.Method, index), nil
 	case "textDocument/documentSymbol":
 		if !ok {
 			return []any{}, nil
 		}
-		return documentSymbols(s.checkedDocument(d), d), nil
+		checked := s.checkedDocument(d)
+		if s.requestCanceled(r) {
+			return nil, nil
+		}
+		return documentSymbols(checked, d), nil
 	}
 	if len(r.ID) > 0 {
 		return nil, rpcFailure(-32601, "method not supported")
@@ -545,6 +567,9 @@ func (s *server) documentRequest(r *request) (result any, rpcError any) {
 func (s *server) rename(r *request, d document) (any, any) {
 	p := &r.params
 	checked := s.checkedDocument(d)
+	if s.requestCanceled(r) {
+		return nil, nil
+	}
 	if !checked.Success() {
 		return nil, rpcFailure(-32602, "rename requires a checked document")
 	}
@@ -555,7 +580,7 @@ func (s *server) rename(r *request, d document) (any, any) {
 	if r.Method == "textDocument/prepareRename" {
 		name = ""
 	}
-	edit, err := renameWithCancel(checked, d, p.Position, name, func() bool { return s.requestCanceled(r) }, s.docs)
+	edit, err := renameIndexed(checked, s.documentIndex(checked), d, p.Position, name, func() bool { return s.requestCanceled(r) }, s.docs)
 	if err != nil {
 		return nil, rpcFailure(-32602, err.Error())
 	}
@@ -567,17 +592,25 @@ func (s *server) rename(r *request, d document) (any, any) {
 func (s *server) documentFeature(r *request, d document) any {
 	p := &r.params
 	checked := s.checkedDocument(d)
+	if s.requestCanceled(r) {
+		return nil
+	}
 	switch r.Method {
 	case "textDocument/foldingRange":
 		return foldingRanges(d)
 	case "textDocument/inlayHint":
 		return inlayHints(checked, d, p.Range)
-	case "textDocument/typeDefinition":
-		return typeDefinition(checked, d, p.Position, s.documentIndex(checked))
+	}
+	index := s.documentIndex(checked)
+	if s.requestCanceled(r) {
+		return nil
+	}
+	if r.Method == "textDocument/typeDefinition" {
+		return typeDefinition(checked, d, p.Position, index)
 	}
 	highlights := []any{}
 	if checked.Program != nil {
-		for _, raw := range referencesWithIndex(checked, s.documentIndex(checked), d, p.Position, true) {
+		for _, raw := range referencesWithIndex(checked, index, d, p.Position, true) {
 			loc := raw.(map[string]any)
 			if filename(loc["uri"].(string)) == filename(d.URI) {
 				highlights = append(highlights, map[string]any{"range": loc["range"], "kind": 2})

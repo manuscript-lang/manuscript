@@ -70,3 +70,34 @@ test "URL parse rejects malformed hosts and queries and keeps an empty authority
     if (empty | try format | try parse) != empty: return panic(
         "empty authority round trip"
     )
+
+test "URL format and resolve reject invalid schemes and hostless relative paths":
+    let invalid_text: Result[String, UrlError] = error(UrlError.InvalidInput)
+    let invalid_url: Result[Url, UrlError] = error(UrlError.InvalidInput)
+
+    for scheme in [
+        "", "1http", "http:", "http:other", "http/other", "http?query", "http#fragment"
+    ]:
+        let bad = Url(scheme, "host", none, "/path", "", "")
+        if format(bad) != invalid_text: return panic(
+            "invalid scheme accepted: {scheme}"
+        )
+        if resolve(bad, "/next") != invalid_url: return panic("invalid base scheme")
+
+    let relative = Url("custom", "", none, "relative", "", "")
+    if format(relative) != invalid_text: return panic("relative path became a hostname")
+    if resolve(relative, "/next") != invalid_url: return panic("relative base accepted")
+
+    for text in ["custom:/path", "custom+v1.2://host/path", "file:///path", "http://"]:
+        let original = try parse(text)
+        if (original | try format | try parse) != original: return panic(
+            "hierarchical URL round trip: {text}"
+        )
+
+    let uppercase = Url("HTTP", "host", none, "/path", "", "")
+    if (uppercase | try format | try parse).scheme != "http": return panic(
+        "uppercase scheme rejected"
+    )
+    if (try resolve(uppercase, "/next")).scheme != "http": return panic(
+        "uppercase base scheme rejected"
+    )

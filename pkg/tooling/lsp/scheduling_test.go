@@ -218,24 +218,23 @@ func TestRenameCancellationAfterBeforeCheck(t *testing.T) {
 	if !checked.Success() {
 		t.Fatal(checked.Diagnostics)
 	}
-	// A local binding avoids discovery and has one rename target. The third
-	// checkpoint precedes its strict "before" check. Make that check fail on
+	// Enter validation with one target. The first checkpoint precedes its
+	// strict "before" check. Make that check fail on
 	// disk, then cancel: the post-check checkpoint must win over its error and
 	// prevent starting the proposed-source check.
 	calls := 0
 	canceled := func() bool {
 		calls++
-		if calls == 3 {
+		if calls == 1 {
 			path := filepath.Join(filepath.Dir(filename(d.URI)), "part_0.ms")
 			if err := os.WriteFile(path, []byte("invalid source!\n"), 0600); err != nil {
 				t.Fatal(err)
 			}
 		}
-		return calls >= 4
+		return calls >= 2
 	}
-	use := Position(d.Text, strings.LastIndex(d.Text, "result"))
-	edit, err := renameWithCancel(checked, d, use, "renamed", canceled, docs)
-	if edit != nil || !errors.Is(err, context.Canceled) || calls != 4 {
-		t.Fatal("rename did not observe cancellation immediately after checking", edit, err, calls)
+	err := validateRename([]document{d}, docs, docs, canceled)
+	if !errors.Is(err, context.Canceled) || calls != 2 {
+		t.Fatal("rename did not observe cancellation immediately after checking", err, calls)
 	}
 }
