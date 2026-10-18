@@ -43,10 +43,10 @@ export fn expect_some[T](actual: Optional[T]) Result[T, Error]:
 export fn expect_none[T](actual: Optional[T]) Result[Unit, Error]:
 
 # Requires ok and returns its original payload; reports an unexpected error.
-export fn expect_ok[T, E](actual: Result[T, E]) Result[T, Error]:
+export fn expect_ok[T, E: Error](actual: Result[T, E]) Result[T, Error]:
 
 # Requires error and returns its original cause; fails on success.
-export fn expect_error[T, E](actual: Result[T, E]) Result[E, Error]:
+export fn expect_error[T, E: Error](actual: Result[T, E]) Result[E, Error]:
 
 # Calls operation once, requires a programming fault, and returns its message. Cancellation and skip propagate.
 export fn expect_fault(operation: fn() Unit) Result[String, Error]:
@@ -86,10 +86,10 @@ export fn assert_some[T](actual: Optional[T]) Result[T, Error]:
 export fn assert_none[T](actual: Optional[T]) Result[Unit, Error]:
 
 # TDD spelling of `expect_ok` with the same comparison and failure behavior.
-export fn assert_ok[T, E](actual: Result[T, E]) Result[T, Error]:
+export fn assert_ok[T, E: Error](actual: Result[T, E]) Result[T, Error]:
 
 # TDD spelling of `expect_error` with the same comparison and failure behavior.
-export fn assert_error[T, E](actual: Result[T, E]) Result[E, Error]:
+export fn assert_error[T, E: Error](actual: Result[T, E]) Result[E, Error]:
 
 # TDD spelling of `expect_fault`; checks a programming fault and returns its message.
 export fn assert_fault(operation: fn() Unit) Result[String, Error]:

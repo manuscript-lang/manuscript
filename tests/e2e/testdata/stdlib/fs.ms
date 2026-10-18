@@ -9,9 +9,9 @@ fn expect_fs_error[T](
     expected: FileSystemError
 ) Result[Unit, Error]:
     match outcome:
-        ok(_): return error(TextError.Text("filesystem misuse succeeded"))
+        ok(_): return error(TextError("filesystem misuse succeeded"))
         error(cause):
-            if cause != expected: return error(TextError.Text("wrong filesystem error"))
+            if cause != expected: return error(TextError("wrong filesystem error"))
 
     return ok(unit)
 

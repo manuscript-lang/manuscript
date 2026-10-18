@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {fail} from "@std/testing.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"
@@ -69,10 +70,15 @@ test "records alternatives and collections convert":
     (try check(value: Outcome.Waiting.to_string(), expected: "Outcome.Waiting"))
     let absent: Optional[Int] = none
     let present: Optional[Int] = some(3)
-    let result: Result[Int, String] = error("failed")
+    let result: Result[Int, TextError] = error(TextError("failed"))
     (try check(value: absent.to_string(), expected: "Optional.none"))
     (try check(value: present.to_string(), expected: "Optional.some(3)"))
-    (try check(value: result.to_string(), expected: "Result.error(failed)"))
+    (
+        try check(
+            value: result.to_string(),
+            expected: "Result.error(TextError(text: failed))"
+        )
+    )
     (try check(value: [1, 2, 3].to_string(), expected: "[1, 2, 3]"))
     (try check(value: [[1], [2, 3]].to_string(), expected: "[[1], [2, 3]]"))
     let empty: List[Int] = []

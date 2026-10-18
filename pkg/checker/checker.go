@@ -37,9 +37,10 @@ func (s *scope) typ(name string) *Type {
 }
 
 type checker struct {
-	scopeMarker          string
-	standardDeclarations bool
-	idScope              string // prefixes ids made while checking a bundled module
+	scopeMarker           string
+	standardDeclarations  bool
+	deferredDefaultBounds []func() // native default bounds wait for impls to be bound
+	idScope               string   // prefixes ids made while checking a bundled module
 	*Program
 	module                  *syntax.Module
 	names                   map[string]*Symbol
@@ -251,8 +252,15 @@ func (c *checker) typeDefaults(params []syntax.TypeParameter, vars []*Type) {
 			continue
 		}
 		for _, bound := range vars[index].Bounds {
-			if !c.satisfies(resolved, bound) {
-				c.error(p.Default.Pos, "type", c.unsatisfiedMessage(resolved, bound, "choose a default that already implements it"))
+			check := func() {
+				if !c.satisfies(resolved, bound) {
+					c.error(p.Default.Pos, "type", c.unsatisfiedMessage(resolved, bound, "choose a default that already implements it"))
+				}
+			}
+			if c.standardDeclarations {
+				c.deferredDefaultBounds = append(c.deferredDefaultBounds, check)
+			} else {
+				check()
 			}
 		}
 		vars[index].Default = resolved

@@ -39,7 +39,7 @@ fn is_missing(cause: Error) Bool:
 fn yaml_error(cause: Error) Result[YamlError, Error]:
     match cause:
         YamlError(found): return ok(found)
-        _: return error(TextError.Text("category changed domain"))
+        _: return error(TextError("category changed domain"))
 
 test "shared categories keep exact standard domain values":
     (is_missing(FileSystemError.NotFound)) | try expect_true

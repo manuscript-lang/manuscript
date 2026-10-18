@@ -13,7 +13,7 @@ func TestExpectedResultKeepsConcreteSpecialization(t *testing.T) {
     detail: String
 impl Error for Failure:
     fn message() String: self.detail
-fn fail_cause[T, E](cause: E) Result[T, E]: error(cause)
+fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)
 fn first() Result[Int, Error]: fail_cause(Failure("empty"))
 `
 	m, err := parser.Parse("context-specialization.ms", source)
@@ -71,7 +71,8 @@ fn first() Unit:
 }
 
 func TestExpectedGenericResultUnknownContextDoesNotCascade(t *testing.T) {
-	source := `fn fail[T](message: String) Result[T, String]: error(message)
+	source := `import {TextError} from "@std/errors.ms"
+fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 fn first() Result[Int, Missing]: fail("empty")
 `
 	m, err := parser.Parse("unknown-context.ms", source)

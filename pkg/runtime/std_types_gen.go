@@ -308,16 +308,9 @@ func (EncodingError_LimitExceeded) isEncodingError() {
 type Error interface {
 	Message(ctx *Execution) string
 }
-type TextError interface {
-	isTextError()
+type TextError struct {
+	Text string
 }
-type TextError_Text struct {
-	Message string
-}
-
-func (TextError_Text) isTextError() {
-}
-
 type MissingValue interface {
 	isMissingValue()
 }

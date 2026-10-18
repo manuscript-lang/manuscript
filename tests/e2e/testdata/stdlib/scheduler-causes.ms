@@ -9,7 +9,7 @@ fn typed_failure() Result[Unit, Error]:
     return error(IoError.Unavailable)
 
 fn text_failure() Result[Unit, Error]:
-    return error(TextError.Text("intentional text"))
+    return error(TextError("intentional text"))
 
 test "scheduler failures retain typed and text causes":
     let seen = Synchronized(0)

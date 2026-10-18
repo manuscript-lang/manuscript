@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
 
 test "List take and drop copy prefix and remainder":
@@ -53,11 +54,11 @@ fn copy_window[T](values: List[T], first: Int, skip: Int) List[T]:
 
 test "List take and drop support generic and nested values":
     try expect_equal(copy_window[String](["a", "b", "c"], 2, 1), ["b"])
-    let values: List[Result[Optional[Int], List[String]]] = [
+    let values: List[Result[Optional[Int], TextError]] = [
         ok(some(1)),
-        error(["cause"])
+        error(TextError("cause"))
     ]
-    try expect_equal(copy_window(values, 2, 1).at(0).get().err(), ["cause"])
+    try expect_equal(copy_window(values, 2, 1).at(0).get().err().message(), "cause")
     let callbacks = [fn(value: Int) Int: value + 1]
     try expect_equal(callbacks.take(1).drop(0).at(0).get()(1), 2)
 

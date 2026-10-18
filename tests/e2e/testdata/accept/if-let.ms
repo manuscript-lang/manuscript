@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {expect_true, fail} from "@std/testing.ms"
 
 fn describe(name: Optional[String]) String:
@@ -31,9 +32,9 @@ test "if let takes else when absent and keeps falsy payloads":
     let empty: List[Int] = []
     if let value = empty.first(): return fail(message: "unexpected {value}")
 
-fn parse(text: String) Result[Int, String]:
+fn parse(text: String) Result[Int, TextError]:
     if text == "":
-        return error("empty")
+        return error(TextError("empty"))
 
     return ok(text.length())
 

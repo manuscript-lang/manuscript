@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {
     assert_equal,
     expect_close,
@@ -30,10 +31,10 @@ test "testing assertions":
     let absent: Optional[Int] = none
     ((present | try expect_some)) | try expect_equal(expected: 7)
     absent | try expect_none
-    let success: Result[Int, String] = ok(9)
-    let failure: Result[Int, String] = error("bad")
+    let success: Result[Int, TextError] = ok(9)
+    let failure: Result[Int, TextError] = error(TextError("bad"))
     ((success | try expect_ok)) | try expect_equal(expected: 9)
-    ((failure | try expect_error)) | try expect_equal(expected: "bad")
+    ((failure | try expect_error)) | try expect_equal(expected: TextError("bad"))
     let mismatch = expect_equal(1, 2)
     let mismatch_cause = (mismatch | try expect_error)
     mismatch_cause.message() | try expect_contains(expected: "expected 2, got 1")

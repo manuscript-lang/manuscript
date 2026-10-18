@@ -14,7 +14,7 @@ func TestOptionalMatchLint(t *testing.T) {
 		{"statement", "fn use(value: Optional[Int]) Int:\n    match value:\n        some(n): return n\n        none: return 0\n", 1},
 		{"value", "fn use(value: Optional[Int]) Int:\n    return match value:\n        some(n): n\n        none: 0\n", 1},
 		{"if let", "fn use(value: Optional[Int]) Int:\n    if let n = value:\n        return n\n    return 0\n", 0},
-		{"result", "fn use(value: Result[Int, String]) Int:\n    return match value:\n        ok(n): n\n        error(_): 0\n", 0},
+		{"result", "fn use(value: Result[Int, Error]) Int:\n    return match value:\n        ok(n): n\n        error(_): 0\n", 0},
 		{"alternative", "type Shape:\n    case Dot\n    case Line\nfn use(value: Shape) Int:\n    return match value:\n        Dot: 0\n        Line: 1\n", 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

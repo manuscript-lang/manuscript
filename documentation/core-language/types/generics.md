@@ -101,10 +101,11 @@ let mixed = choose(1, 2.0)
 The expected result (return type, annotation, field, argument, or callback) fills missing parameters but never overrides argument evidence or explicit specialization. A parameter in neither arguments nor result needs an explicit type argument.
 
 ```manuscript
-fn fail[T](message: String) Result[T, String]: error(message)
+import {TextError} from "@std/errors.ms"
+fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 
-fn first() Result[Int, String]: fail("empty")  # T = Int
-let failed: Result[Int, String] = fail("empty")
+fn first() Result[Int, TextError]: fail("empty")  # T = Int
+let failed: Result[Int, TextError] = fail("empty")
 ```
 
 Matching adds no numeric conversions, implicit interface views, or `Optional` wrapping. A domain error implementing `Error` still widens to `Error`, so a `Result[T, Error]` parameter infers `T` from `Result[Int, Failure]`. Success types and other Optional or collection applications must match exactly. Inferred function types lose default-argument omission.

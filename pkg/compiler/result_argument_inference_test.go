@@ -9,7 +9,8 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
-const resultArgumentSource = `import panic from "@std/faults.ms"
+const resultArgumentSource = `import {TextError} from "@std/errors.ms"
+import panic from "@std/faults.ms"
 type E1:
     code: Int
 impl Error for E1:
@@ -35,7 +36,7 @@ fn pair[T](first: Result[T, Error], second: Result[T, Error]) Unit: return
 fn optional[T](r: Optional[Result[T, Error]]) Unit: return
 fn convert[T, U](r: Result[T, Error]) Optional[U]: none
 fn apply[T, U](r: Result[T, Error], callback: fn(value: T) U) U: callback(h(r))
-fn exact[T, E](r: Result[T, E]) Result[T, E]: r
+fn exact[T, E: Error](r: Result[T, E]) Result[T, E]: r
 `
 
 func TestResultArgumentInference(t *testing.T) {
@@ -65,9 +66,9 @@ fn first() Unit: bounded(f())`,
 		"already optional exact":                `fn first(r: Optional[Result[Int, Error]]) Unit: optional(r)`,
 		"exact domain inference":                `fn first() Result[Int, E1]: exact(f())`,
 		"argument domain before result context": `fn first() Result[Int, Error]: exact(f())`,
-		"known Error parameter": `fn both[T, E](cause: E, r: Result[T, E]) Unit: return
+		"known Error parameter": `fn both[T, E: Error](cause: E, r: Result[T, E]) Unit: return
 fn first(cause: Error) Unit: both(cause: cause, r: f())`,
-		"explicit Error parameter": `fn both[T, E](cause: E, r: Result[T, E]) Unit: return
+		"explicit Error parameter": `fn both[T, E: Error](cause: E, r: Result[T, E]) Unit: return
 fn first(cause: Error) Unit: both[Int, Error](cause: cause, r: f())`,
 		"constructor field": `type Holder[T]:
     r: Result[T, Error]
@@ -75,8 +76,6 @@ fn first() Holder[Int]: Holder(f())`,
 		"alternative payload": `type Wrapped[T]:
     case value(r: Result[T, Error])
 fn first() Wrapped[Int]: Wrapped.value(f())`,
-		"shadowed Error parameter": `fn shadow[T, Error](r: Result[T, Error]) Result[T, Error]: r
-fn first() Result[Int, E1]: shadow(f())`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			result := compiler.CompileSource("result-arguments.ms", resultArgumentSource+source+"\n", compiler.Options{AnalyzeOnly: true})
@@ -141,6 +140,10 @@ func TestFailedResultArgumentDoesNotConstrainLaterEvidence(t *testing.T) {
 			if name == "failed exact error" {
 				errorType = "E2"
 			}
+			wantDiagnostics := 2
+			if name == "failed widening" {
+				wantDiagnostics = 3 // Missing does not implement Error
+			}
 			source := "fn target[T](r: Result[T, " + errorType + "], value: T) Unit: return\nfn first(r: " + actual + ") Unit: target(r: r, value: \"later\")\n"
 			result := compiler.CompileSource("result-transaction.ms", resultArgumentSource+source, compiler.Options{AnalyzeOnly: true})
 			if result.Success() {
@@ -156,7 +159,7 @@ func TestFailedResultArgumentDoesNotConstrainLaterEvidence(t *testing.T) {
 					t.Fatalf("failed match committed its success prefix: %v", info.TypeArgs)
 				}
 			}
-			if !found || len(result.Diagnostics) != 2 || strings.Contains(fmt.Sprint(result.Diagnostics), "<invalid>") {
+			if !found || len(result.Diagnostics) != wantDiagnostics || strings.Contains(fmt.Sprint(result.Diagnostics), "<invalid>") {
 				t.Fatalf("lost later evidence or cascaded diagnostics: %v", result.Diagnostics)
 			}
 		})
@@ -175,7 +178,7 @@ fn first(r: Result[Error, E1]) Unit: bounded(r)`, "does not satisfy Equal"},
 		{"expected success conflict", `fn first() String: h(f())`, "expected String, found Int"},
 		{"domain mismatch", `fn domain[T](r: Result[T, E2]) Unit: return
 fn first() Unit: domain(f())`, "conflicting generic inference"},
-		{"repeated error mismatch", `fn same[T, E](first: Result[T, E], second: Result[T, E]) Unit: return
+		{"repeated error mismatch", `fn same[T, E: Error](first: Result[T, E], second: Result[T, E]) Unit: return
 fn first() Unit: same(first: f(), second: other())`, "conflicting generic inference"},
 		{"numeric success", `fn first() Float: h(f())`, "expected Float, found Int"},
 		{"no result wrapping", `fn first() Int: h(1)`, "conflicting generic inference"},

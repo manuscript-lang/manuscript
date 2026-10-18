@@ -1,29 +1,30 @@
+import {TextError} from "@std/errors.ms"
 import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import range from "@std/collections.ms"
 
-fn checked(n: Int) Result[Int, String]:
+fn checked(n: Int) Result[Int, TextError]:
     if n < 0:
-        return error("negative")
+        return error(TextError("negative"))
 
     return ok(n + 1)
 
-fn chain(n: Int) Result[Int, String]:
+fn chain(n: Int) Result[Int, TextError]:
     let v = try checked(n)
     return ok(v * 2)
 
-fn deeper(n: Int) Result[Int, String]:
+fn deeper(n: Int) Result[Int, TextError]:
     let a = try chain(n)
     let b = try chain(a)
     return ok(a + b)
 
-fn expression_try(n: Int) Result[Int, String]:
+fn expression_try(n: Int) Result[Int, TextError]:
     let x = (try checked(n)) + 100
     return ok(x)
 
-fn passthrough(n: Int) Result[Int, String]:
+fn passthrough(n: Int) Result[Int, TextError]:
     return checked(n)
 
-fn through_local(n: Int) Result[Int, String]:
+fn through_local(n: Int) Result[Int, TextError]:
     let r = checked(n)
     return r
 
@@ -33,20 +34,20 @@ fn halve(n: Int) Optional[Int]:
 
     return some(n / 2)
 
-fn word(n: Int) Result[String, String]:
+fn word(n: Int) Result[String, TextError]:
     if n == 0:
-        return error("zero")
+        return error(TextError("zero"))
 
     return ok("w{n}")
 
-fn ratio(n: Int) Result[Float, String]:
+fn ratio(n: Int) Result[Float, TextError]:
     return ok(1.5)
 
-fn nothing(flag: Bool) Result[Unit, String]:
+fn nothing(flag: Bool) Result[Unit, TextError]:
     if flag:
         return ok(unit)
 
-    return error("no")
+    return error(TextError("no"))
 
 fn nested(n: Int) Optional[Optional[Int]]:
     if n == 0:
@@ -57,13 +58,13 @@ fn nested(n: Int) Optional[Optional[Int]]:
 fn matched_value(n: Int) Int:
     return checked(n).get(-1)
 
-fn closure_return(n: Int) Result[Int, String]:
+fn closure_return(n: Int) Result[Int, TextError]:
     if let y = halve(n):
         return ok(y)
 
-    return error("odd")
+    return error(TextError("odd"))
 
-fn sum_all(count: Int) Result[Int, String]:
+fn sum_all(count: Int) Result[Int, TextError]:
     var total = 0
 
     for i in range(0, count):
@@ -77,7 +78,7 @@ test "result matching":
     try expect_equal(v, 8)
     let failure = chain(-1)
     try expect_false(not failure.is_error())
-    try expect_equal(failure.err(), "negative")
+    try expect_equal(failure.err().message(), "negative")
 
 test "try chains":
     let v = deeper(1).get()
@@ -85,7 +86,7 @@ test "try chains":
 
     let deeper_failure = deeper(-5)
     try expect_false(not deeper_failure.is_error())
-    try expect_equal(deeper_failure.err(), "negative")
+    try expect_equal(deeper_failure.err().message(), "negative")
     let x = expression_try(4).get()
     try expect_equal(x, 105)
     try expect_false(not expression_try(-4).is_error())
@@ -122,7 +123,7 @@ test "optional and payload kinds":
 
     let odd = closure_return(5)
     try expect_false(not odd.is_error())
-    try expect_equal(odd.err(), "odd")
+    try expect_equal(odd.err().message(), "odd")
     let even = closure_return(6).get()
     try expect_equal(even, 3)
 

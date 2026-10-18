@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
 
 fn apply[T, U](value: T, transform: fn(value: T) U) U: transform(value)
@@ -7,7 +8,7 @@ fn choose[T](first: fn() T, second: fn() T) T: first()
 fn optional[T, U](value: T, transform: Optional[fn(value: T) U]) U:
     return transform.get()(value)
 
-fn with_result[T](transform: fn() Result[T, String]) Result[T, String]: transform()
+fn with_result[T](transform: fn() Result[T, TextError]) Result[T, TextError]: transform()
 
 type Callback[T, U]:
     transform: fn(value: T) U
@@ -48,11 +49,11 @@ test "callback inference retains captures and contextual metadata":
     try expect_false(not missing.is_none())
     let failure = with_result(
         fn():
-            if true: return error("expected")
+            if true: return error(TextError("expected"))
 
             return ok(4)
     )
-    try expect_equal(failure, Result[Int, String].error("expected"))
+    try expect_equal(failure, Result[Int, TextError].error(TextError("expected")))
     let failed: Result[Int, Error] = apply(
         value: 9,
         transform: fn(item): error(Failure(item))
@@ -80,12 +81,12 @@ test "later returns repair incomplete and convertible evidence":
     )
     try expect_equal(cause.message(), "2")
 
-fn operation() Result[Int, String]: ok(4)
+fn operation() Result[Int, TextError]: ok(4)
 
 test "try rechecks the inferred enclosing result":
     let value = from_callback(
         fn():
             let number = try operation()
-            return Result[Int, String].ok(number)
+            return Result[Int, TextError].ok(number)
     )
-    try expect_equal(value, Result[Int, String].ok(4))
+    try expect_equal(value, Result[Int, TextError].ok(4))

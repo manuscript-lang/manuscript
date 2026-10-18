@@ -1,12 +1,13 @@
+import {TextError} from "@std/errors.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
 
 fn apply[T, U](value: T, transform: fn(value: T) U) U: transform(value)
 
 fn chain[T, U](first: fn() T, second: fn(value: T) U) U: second(first())
 
-fn with_result[T](transform: fn() Result[T, String]) Result[T, String]: transform()
+fn with_result[T](transform: fn() Result[T, TextError]) Result[T, TextError]: transform()
 
-fn checked() Result[Int, String]: ok(3)
+fn checked() Result[Int, TextError]: ok(3)
 
 type Box[T]:
     value: T
@@ -49,20 +50,20 @@ test "contextual callbacks and inline returns":
         return value + inner().scalar_length()
     try expect_equal(nested(2), 6)
     let success = with_result(fn(): ok(4))
-    try expect_equal(success, Result[Int, String].ok(4))
+    try expect_equal(success, Result[Int, TextError].ok(4))
     let propagated = with_result(
         fn():
             let value = try checked()
             return ok(value + 2)
     )
-    try expect_equal(propagated, Result[Int, String].ok(5))
+    try expect_equal(propagated, Result[Int, TextError].ok(5))
     let failed = with_result(
         fn():
-            if true: return error("expected")
+            if true: return error(TextError("expected"))
 
             return ok(4)
     )
-    try expect_equal(failed, Result[Int, String].error("expected"))
+    try expect_equal(failed, Result[Int, TextError].error(TextError("expected")))
     let subtract: fn(left: Int, right: Int) Int = fn(a, b): a - b
     try expect_equal(subtract(right: 2, left: 7), 5)
     let defaulted: fn(value: Int) Int = fn(item: Int = 4): item + 1

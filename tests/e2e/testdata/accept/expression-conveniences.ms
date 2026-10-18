@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
 import Closeable from "@std/cleanup.ms"
 
@@ -13,13 +14,13 @@ impl Closeable for Resource:
 
 fn identity[T](value: T) T: return value
 
-fn amount(text: String, counter: Counter) Result[Int, String]:
+fn amount(text: String, counter: Counter) Result[Int, TextError]:
     with resource = Resource(counter: counter):
         let cents = match text.parse_int():
             some(value):
                 value
             none:
-                return error(cause: "Invalid amount")
+                return error(cause: TextError("Invalid amount"))
 
         return ok(value: cents + 1)
 
@@ -88,11 +89,13 @@ test "match expressions preserve returns and cleanup":
     (early(present) != 5 or early(absent) != 9 or all_return(present) != 4) | try expect_false
     let counter = Counter(count: 0)
     let parsed = amount(text: "3", counter: counter)
-    (parsed != Result[Int, String].ok(value: 4) or counter.count != 1) | try expect_false
+    (parsed != Result[Int, TextError].ok(value: 4) or counter.count != 1) | try expect_false
     let invalid = amount(text: "invalid", counter: counter)
     (
         (
-            invalid != Result[Int, String].error(cause: "Invalid amount")
+            invalid != Result[Int, TextError].error(
+                cause: TextError("Invalid amount")
+            )
             or counter.count != 2
         )
     ) | try expect_false
@@ -191,12 +194,12 @@ fn returned_argument(counter: Counter) Result[Int, Error]:
 
 fn combine(first: Int, second: Int) Int: return first + second
 
-fn propagated(text: String) Result[Int, String]:
+fn propagated(text: String) Result[Int, TextError]:
     let result = match text.parse_int():
         some(value):
-            try Result[Int, String].ok(value: value)
+            try Result[Int, TextError].ok(value: value)
         none:
-            try Result[Int, String].error(cause: "missing")
+            try Result[Int, TextError].error(cause: TextError("missing"))
 
     return ok(value: result)
 
@@ -217,9 +220,9 @@ fn returned_loop(value: Optional[Int]) Int:
 test "expression exits preserve caller boundaries and evaluation order":
     let counter = Counter(count: 0)
     ((try returned_argument(counter)) != 17 or counter.count != 0) | try expect_false
-    propagated("3") | try expect_equal(expected: Result[Int, String].ok(value: 3))
+    propagated("3") | try expect_equal(expected: Result[Int, TextError].ok(value: 3))
     propagated("no") | try expect_equal(
-        expected: Result[Int, String].error(cause: "missing")
+        expected: Result[Int, TextError].error(cause: TextError("missing"))
     )
     let present: Optional[Int] = some(value: 1)
     let absent: Optional[Int] = none

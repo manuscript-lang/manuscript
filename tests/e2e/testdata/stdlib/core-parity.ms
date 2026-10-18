@@ -1,17 +1,30 @@
+import {TextError} from "@std/errors.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
 import JsonLimits from "@std/json.ms"
 
 type Counter:
     calls: Int
 
+impl Error for Counter:
+    fn message() String: "counter"
+
+type Pending:
+    values: List[Int]
+
+impl Error for Pending:
+    fn message() String: "pending"
+
 fn bump(counter: Counter) Int:
     counter.calls += 1
     return 9
 
-fn map_result[T, E, U](value: Result[T, E], transform: fn(value: T) U) Result[U, E]:
+fn map_result[T, E: Error, U](
+    value: Result[T, E],
+    transform: fn(value: T) U
+) Result[U, E]:
     return value.map(transform)
 
-fn chain_result[T, E, U](
+fn chain_result[T, E: Error, U](
     value: Result[T, E],
     transform: fn(value: T) Result[U, E]
 ) Result[U, E]:
@@ -24,14 +37,14 @@ fn map_set[T: Hashable, U: Hashable](values: Set[T], transform: fn(value: T) U) 
     return values.map[U](transform)
 
 test "core parity operations are callable":
-    let success: Result[Int, String] = ok(2)
-    let failure: Result[Int, String] = error("failed")
+    let success: Result[Int, TextError] = ok(2)
+    let failure: Result[Int, TextError] = error(TextError("failed"))
     try expect_false(not (success.is_ok()) or success.is_error())
-    try expect_false(success.get() != 2 or failure.err() != "failed")
+    try expect_false(success.get() != 2 or failure.err().message() != "failed")
     try expect_equal(failure.get(7), 7)
-    try expect_equal(failure.or_else(fn(cause): cause.scalar_length()), 6)
+    try expect_equal(failure.or_else(fn(cause): cause.message().scalar_length()), 6)
     try expect_equal(success.map(fn(n): n + 1).get(), 3)
-    let chained: Result[String, String] = success.and_then(fn(n): ok(n.to_string()))
+    let chained: Result[String, TextError] = success.and_then(fn(n): ok(n.to_string()))
     try expect_equal(chained.get(), "2")
     let present: Optional[Int] = some(2)
     let missing: Optional[Int] = none
@@ -71,18 +84,18 @@ test "Result preserves unconstrained payloads and success-only composition":
     try expect_equal(counter.calls, 5)
     produced.err().calls = 6
     try expect_equal(counter.calls, 6)
-    let collection_error: Result[Bool, List[Int]] = error([1])
-    collection_error.map(fn(flag): not flag).err().append(2)
-    try expect_equal(collection_error.err(), [1, 2])
+    let collection_error: Result[Bool, Pending] = error(Pending([1]))
+    collection_error.map(fn(flag): not flag).err().values.append(2)
+    try expect_equal(collection_error.err().values, [1, 2])
     let limits = JsonLimits(-1)
-    let record: Result[JsonLimits, String] = ok(limits)
+    let record: Result[JsonLimits, TextError] = ok(limits)
     record.map(fn(value): value).get().max_values = some(7)
     try expect_equal(limits.max_values.get(), 7)
     let nested = success.map(fn(n): some(n))
     try expect_equal(nested.get().get(), 0)
-    let unit_result: Result[Unit, Bool] = ok(unit)
+    let unit_result: Result[Unit, TextError] = ok(unit)
     try expect_false(not (unit_result.is_ok()))
-    let bool_result: Result[Bool, String] = ok(false)
+    let bool_result: Result[Bool, TextError] = ok(false)
     try expect_false(bool_result.get(true))
 
 test "Result fallbacks are eager or lazy and bound methods keep receivers":

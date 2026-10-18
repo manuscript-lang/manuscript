@@ -14,7 +14,7 @@ func TestResultArgumentInferenceKeepsLocalErrorScope(t *testing.T) {
 	sources := map[string]string{
 		"domain.ms": `export type Cause[T]:
     value: T
-export fn make() Result[Int, Cause[Int]]: error(Cause(7))
+export fn make() Cause[Int]: Cause(7)
 `,
 		"helper.ms": `export fn erase[T](r: Result[T, Error]) Result[T, Error]: r
 export fn forward[T, E: Error](r: Result[T, E]) Result[T, Error]: erase(r)
@@ -40,8 +40,8 @@ test "local implementations remain selected after inference and forwarding":
 import {erase, forward} from "./helper.ms"
 impl Error for Cause[T]:
     fn message() String: "` + name + ` {self.value}"
-export fn ` + name + `() Result[Int, Error]: erase(make())
-export fn ` + name + `_generic() Result[Int, Error]: forward(make())
+export fn ` + name + `() Result[Int, Error]: erase(Result[Int, Cause[Int]].error(make()))
+export fn ` + name + `_generic() Result[Int, Error]: forward(Result[Int, Cause[Int]].error(make()))
 `
 	}
 	for name, source := range sources {

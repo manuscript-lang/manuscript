@@ -30,7 +30,7 @@ test "addition":
 - `type T:` with fields, built `T(a: 1)` (labels optional: `T(1)`); alternatives use `case A` and `case B(x: Int)`; types are nominal.
 - `Optional`: `some(x)` / `none`; unwrap with `if let x = value:` and optional `else:`, or `.get(d)`.
 - `match v:` on your own types: arms `Case(x):`, `_:`; exhaustive. Never match `Result`/`Optional` or nest `match`; use `try`/`if let`.
-- Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `try e` unwraps or returns the error; `if let x = result:` handles success when the error can be discarded. `Error` is the common boundary (`.message()`). Faults (`panic`, failed `get()`) abort.
+- Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `E` must implement `Error`; `try e` unwraps or returns the error; `if let x = result:` handles success when the error can be discarded. `Error` is the common boundary (`.message()`). Faults (`panic`, failed `get()`) abort.
 - Methods: `impl T:` (own) or `impl I for T:`, never in `type`; else `f(x)`.
 - Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`; `| try` unwraps. Lines starting `|` or `.` continue.
 - Closures snapshot bindings. `with f = try ...:` closes `f` at block end.

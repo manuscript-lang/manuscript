@@ -7,12 +7,12 @@ import {parse, stringify, YamlValue, YamlError, YamlLimits} from "@std/yaml.ms"
 fn entries(value: YamlValue) Result[Map[String, YamlValue], Error]:
     match value:
         ObjectValue(values): return ok(values)
-        _: return error(TextError.Text("expected YAML mapping"))
+        _: return error(TextError("expected YAML mapping"))
 
 fn items(value: YamlValue) Result[List[YamlValue], Error]:
     match value:
         ArrayValue(values): return ok(values)
-        _: return error(TextError.Text("expected YAML sequence"))
+        _: return error(TextError("expected YAML sequence"))
 
 fn limits(
     bytes: Optional[Int],
@@ -28,7 +28,7 @@ type ScalarCase:
 fn scalar(text: String, expected: String) Result[Unit, Error]:
     let root = parse(text: text) | try expect_ok | try entries
     if root.get("a").get() != YamlValue.StringValue(expected): return error(
-        TextError.Text("scalar folding: {text}")
+        TextError("scalar folding: {text}")
     )
 
     return ok(unit)

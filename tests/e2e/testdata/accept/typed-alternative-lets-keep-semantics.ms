@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {expect_true} from "@std/testing.ms"
 
 fn halve(n: Int) Optional[Int]:
@@ -6,9 +7,9 @@ fn halve(n: Int) Optional[Int]:
 
     return some(value: n / 2)
 
-fn parse(n: Int) Result[Int, String]:
+fn parse(n: Int) Result[Int, TextError]:
     if n < 0:
-        return error(cause: "negative")
+        return error(cause: TextError("negative"))
 
     return ok(value: n)
 
@@ -46,7 +47,7 @@ fn results(n: Int) String:
         ok(v):
             return "ok {v}"
         error(cause):
-            return cause
+            return cause.message()
 
 fn formatted(n: Int) String:
     let found = halve(n: n)

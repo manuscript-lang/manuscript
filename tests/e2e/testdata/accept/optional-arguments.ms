@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
 import Queue from "@std/queues.ms"
 
@@ -11,7 +12,7 @@ fn list_size(value: Optional[List[Int]]) Int: value.get().length()
 
 fn flag(value: Optional[Bool]) Bool: value.get()
 
-fn success(value: Optional[Result[Int, String]]) Int:
+fn success(value: Optional[Result[Int, TextError]]) Int:
     return value.get().get(-1)
 
 fn context[T](value: Optional[T], fallback: T) T: value.get(fallback)

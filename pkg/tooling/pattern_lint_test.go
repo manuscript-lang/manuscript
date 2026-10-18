@@ -9,7 +9,7 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
-const patternCaptureSource = "type Failure:\n    case NotFound\n    case Denied(reason: String)\nfn classify(result: Result[Int, Failure]) Int:\n    match result:\n        error(NotFound): return 1\n        ok(value): return value\n"
+const patternCaptureSource = "type Failure:\n    case NotFound\n    case Denied(reason: String)\nimpl Error for Failure:\n    fn message() String: \"f\"\nfn classify(result: Result[Int, Failure]) Int:\n    match result:\n        error(NotFound): return 1\n        ok(value): return value\n"
 
 func TestPatternBindingAdvisory(t *testing.T) {
 	cases := []struct {
@@ -25,7 +25,7 @@ func TestPatternBindingAdvisory(t *testing.T) {
 		{"primitive type name", "fn use(value: Optional[Int]) Int:\n    match value:\n        some(Int): return Int\n        none: return 0\n", []string{"Int is a type name"}},
 		{"visible unrelated case", "type Flag:\n    case Ready\nfn use(value: Optional[Int]) Int:\n    match value:\n        some(Ready): return Ready\n        none: return 0\n", []string{"Ready is a case of Flag", "fresh binding for every Int payload"}},
 		{"ambiguous visible case", "type First:\n    case Ready\ntype Second:\n    case Ready\nfn use(value: Optional[Int]) Int:\n    match value:\n        some(Ready): return Ready\n        none: return 0\n", []string{"Ready is a visible alternative case name"}},
-		{"generic payload application", "type Failure[T]:\n    case NotFound\n    case Denied(reason: T)\nfn use[T](value: Result[Int, Failure[T]]) Int:\n    match value:\n        error(NotFound): return 1\n        ok(value): return value\n", []string{"NotFound is a case of Failure[T]", "fresh binding for every Failure[T] payload", "match payload:"}},
+		{"generic payload application", "type Failure[T]:\n    case NotFound\n    case Denied(reason: T)\nimpl Error for Failure[T]:\n    fn message() String: \"f\"\nfn use[T](value: Result[Int, Failure[T]]) Int:\n    match value:\n        error(NotFound): return 1\n        ok(value): return value\n", []string{"NotFound is a case of Failure[T]", "fresh binding for every Failure[T] payload", "match payload:"}},
 		{"contract receiver", "interface Describe:\n    fn describe() String\ntype State:\n    case Ready\n    case Waiting\nimpl Describe for State:\n    fn describe() String: \"state\"\nfn use(value: Describe) Int:\n    match value:\n        State(Ready): return 1\n        _: return 0\n", []string{"Ready is a case of State", "State(payload):", "Ready:"}},
 		{"generic record constructor", "type Box[T]:\n    value: T\nfn use[T](value: Optional[Box[T]]) T:\n    match value:\n        some(Box): return Box.value\n        none: return panic(message: \"empty\")\n", []string{"Box is a type name", "every Box[T] payload"}},
 		{"owning type shadow", "type Flag:\n    case Ready\nfn use(value: Optional[Int]) Int:\n    let Flag = 2\n    match value:\n        some(Ready): return Ready\n        none: return 0\n", nil},
@@ -41,7 +41,7 @@ func TestPatternBindingAdvisory(t *testing.T) {
 		{"type variable shadow", strings.Replace(patternCaptureSource, "fn classify(", "fn classify[NotFound](", 1), nil},
 		{"ordinary binding", "type Failure:\n    case NotFound\nfn use() Int:\n    let NotFound = 1\n    return NotFound\n", nil},
 		{"generic unknown binder", "fn use[T](value: Optional[T]) T:\n    match value:\n        some(Value): return Value\n        none: return panic(message: \"empty\")\n", nil},
-		{"separate payload helper", "type Failure:\n    case NotFound\n    case Denied(reason: String)\nfn failure_code(cause: Failure) Int:\n    match cause:\n        NotFound: return 1\n        Denied(_): return 2\nfn classify(result: Result[Int, Failure]) Int:\n    match result:\n        error(cause): return failure_code(cause)\n        ok(value): return value\n", nil},
+		{"separate payload helper", "type Failure:\n    case NotFound\n    case Denied(reason: String)\nimpl Error for Failure:\n    fn message() String: \"f\"\nfn failure_code(cause: Failure) Int:\n    match cause:\n        NotFound: return 1\n        Denied(_): return 2\nfn classify(result: Result[Int, Failure]) Int:\n    match result:\n        error(cause): return failure_code(cause)\n        ok(value): return value\n", nil},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -94,7 +94,7 @@ func TestPatternBindingPositions(t *testing.T) {
 			}
 			found = true
 			offset := strings.Index(source, "error(NotFound)") + len("error(")
-			if finding.Position.File != "range.ms" || finding.Position.Offset != offset || finding.Position.Line != 7 || finding.Position.Column != 15 {
+			if finding.Position.File != "range.ms" || finding.Position.Offset != offset || finding.Position.Line != 9 || finding.Position.Column != 15 {
 				t.Fatalf("wrong binding position: %+v", finding)
 			}
 			if source[offset:offset+len("NotFound")] != "NotFound" {
@@ -111,7 +111,7 @@ func TestImportedPatternNamesAndAliases(t *testing.T) {
 	root := t.TempDir()
 	files := map[string]string{
 		"ms.toml":   "[project]\nname = \"pattern-hints\"\nsource = \".\"\nentry = \"main.ms\"\n[aliases]\n\"@domain\" = \"./domain.ms\"\n",
-		"domain.ms": "export type Failure:\n    case NotFound\n    case Denied(reason: String)\nexport type Item:\n    value: Int\nexport fn fail() Result[Int, Failure]: error(Failure.Denied(\"denied\"))\n",
+		"domain.ms": "export type Failure:\n    case NotFound\n    case Denied(reason: String)\nimpl Error for Failure:\n    fn message() String: \"f\"\nexport type Item:\n    value: Int\nexport fn fail() Result[Int, Failure]: error(Failure.Denied(\"denied\"))\n",
 	}
 	for name, source := range files {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {

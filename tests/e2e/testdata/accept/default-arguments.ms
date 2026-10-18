@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
 import {Synchronized, SynchronizedGuard} from "@std/sync.ms"
 
@@ -32,10 +33,10 @@ fn unit_value(calls: List[Int], value: Unit = unit_default(calls)) Unit:
 fn optional(value: Optional[Int] = some(3)) Optional[Int]:
     return value
 
-fn fail() Result[Int, String]:
-    return error("default failure")
+fn fail() Result[Int, TextError]:
+    return error(TextError("default failure"))
 
-fn propagate(value: Int = try fail()) Result[Int, String]:
+fn propagate(value: Int = try fail()) Result[Int, TextError]:
     return ok(value)
 
 interface Add:
@@ -68,8 +69,10 @@ test "omitted and explicit defaults":
     (optional(value: none) != Optional[Int].none or optional() != some(3)) | try expect_false
     (
         (
-            propagate() != Result[Int, String].error("default failure")
-            or propagate(7) != Result[Int, String].ok(7)
+            propagate() != Result[Int, TextError].error(
+                TextError("default failure")
+            )
+            or propagate(7) != Result[Int, TextError].ok(7)
         )
     ) | try expect_false
 

@@ -5,12 +5,12 @@ import {parse, stringify, TomlValue, TomlError, TomlLimits} from "@std/toml.ms"
 fn entries(value: TomlValue) Result[Map[String, TomlValue], Error]:
     match value:
         TableValue(values): return ok(values)
-        _: return error(TextError.Text("expected TOML table"))
+        _: return error(TextError("expected TOML table"))
 
 fn items(value: TomlValue) Result[List[TomlValue], Error]:
     match value:
         ArrayValue(values): return ok(values)
-        _: return error(TextError.Text("expected TOML array"))
+        _: return error(TextError("expected TOML array"))
 
 fn limits(
     bytes: Optional[Int],
