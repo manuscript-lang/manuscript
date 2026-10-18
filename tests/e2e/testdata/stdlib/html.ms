@@ -1,6 +1,5 @@
 import {escape, parse, HtmlNode, HtmlAttribute, HtmlLimits, HtmlError} from "@std/html.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 fn children(node: HtmlNode) List[HtmlNode]:
     match node:
@@ -31,9 +30,9 @@ test "HTML escaping preserves Unicode and escapes all markup characters":
     if escape("") != "": return panic("empty HTML")
 
 test "HTML parses nested elements attributes entities and comments":
-    let doc = parse(
+    let doc = try parse(
         text: "<DIV id='main' title='A &amp; B' hidden>Hello <b>é🙂</b> &lt;world&gt;<!--note--><br></DIV>"
-    ) | value
+    )
     let div = body_nodes(doc).at(0).unwrap()
 
     match div:
@@ -78,7 +77,7 @@ test "HTML parses nested elements attributes entities and comments":
     if text_content(doc) != "Hello é🙂 <world>": return panic("tree traversal")
 
 test "HTML recovers unclosed tags and inserts document and table structure":
-    let doc = parse(text: "<ul><li>one<li>two</ul><table><tr><td>cell") | value
+    let doc = try parse(text: "<ul><li>one<li>two</ul><table><tr><td>cell")
     let nodes = body_nodes(doc)
     let entries = children(nodes.at(0).unwrap())
     if (
@@ -94,15 +93,15 @@ test "HTML recovers unclosed tags and inserts document and table structure":
 
     if text_content(nodes.at(1).unwrap()) != "cell": return panic("unclosed table")
 
-    let empty = parse(text: "") | value
+    let empty = try parse(text: "")
     if children(children(empty).at(0).unwrap()).length() != 2: return panic(
         "implicit head and body"
     )
 
 test "HTML preserves doctypes foreign namespaces and raw script text":
-    let doc = parse(
+    let doc = try parse(
         text: "<!DOCTYPE html PUBLIC 'public' 'system'><!--before--><svg><a xlink:href='#icon'/></svg><script>if (a < b) x = '&amp;';</script>"
-    ) | value
+    )
     let nodes = children(doc)
     if (
         nodes.at(0).unwrap() != HtmlNode.Doctype(
@@ -140,10 +139,10 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
     )
 
 test "HTML honors optional byte depth and node limits":
-    let empty = parse(text: "") | value
+    let empty = try parse(text: "")
     if (
-        value(
-            parse(
+        (
+            try parse(
                 text: "",
                 limits: HtmlLimits(
                     max_bytes: 0,
@@ -153,7 +152,7 @@ test "HTML honors optional byte depth and node limits":
             )
         ) != empty
     ): return panic("exact HTML limits")
-    if (value(parse(text: "é", limits: HtmlLimits())) != value(parse(text: "é"))): return panic(
+    if ((try parse(text: "é", limits: HtmlLimits())) != (try parse(text: "é"))): return panic(
         "omitted HTML limits"
     )
 

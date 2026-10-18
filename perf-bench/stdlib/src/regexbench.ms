@@ -8,7 +8,8 @@ fn run(re: Regex) Unit:
         "regex.find_all",
         2000,
         fn() Int:
-            if let m = re.find_all(text: text): return m.length()
+            if let m = re.find_all(text: text):
+                return m.length()
 
             return 0
     )
@@ -18,17 +19,19 @@ fn run(re: Regex) Unit:
         fn() Int:
             var n = 0
             for i in range(0, 10000):
-                if re.matches(text: "xx word123 yy"): n = n + 1
+                if re.matches(text: "xx word123 yy"): n += 1
             return n
     )
     bench(
         "regex.replace_all",
         2000,
         fn() Int:
-            if let s = re.replace_all(text: text, replacement: "w"): return s.length()
+            if let s = re.replace_all(text: text, replacement: "w"):
+                return s.length()
 
             return 0
     )
 
 export fn bench_regex() Unit:
-    if let re = compile(pattern: "word[0-9]+"): run(re)
+    if let re = compile(pattern: "word[0-9]+"):
+        run(re)

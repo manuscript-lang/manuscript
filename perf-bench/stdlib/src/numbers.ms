@@ -14,12 +14,8 @@ export fn bench_numbers() Unit:
         1000,
         fn() Int:
             var acc = from_int(1)
-            var i = 1
-
-            while i <= 1000:
+            for i in range(1, 1001):
                 acc = acc.multiply(from_int(i))
-                i = i + 1
-
             return acc.to_string(radix: 10).length()
     )
     bench(
@@ -27,13 +23,9 @@ export fn bench_numbers() Unit:
         20000,
         fn() Int:
             var n = 0
-
             for i in range(0, 20000):
-                if let d = (i.to_decimal() + rate).round(places: 2): n = (
-                    n
-                    + d.truncate_to_int().unwrap_or(0)
-                )
-
+                if let d = (i.to_decimal() + rate).round(places: 2):
+                    n += d.truncate_to_int().unwrap_or(0)
             return n
     )
     let blob = (
@@ -46,7 +38,8 @@ export fn bench_numbers() Unit:
         "compress.gzip",
         blob.length(),
         fn() Int:
-            if let b = compress(data: blob, format: "gzip", level: 6): return b.length()
+            if let b = compress(data: blob, format: "gzip", level: 6):
+                return b.length()
 
             return 0
     )
@@ -54,11 +47,8 @@ export fn bench_numbers() Unit:
         "compress.roundtrip",
         blob.length(),
         fn() Int:
-            if let b = compress(
-                data: blob,
-                format: "gzip",
-                level: 6
-            ): return unpacked_length(b)
+            if let b = compress(data: blob, format: "gzip", level: 6):
+                return unpacked_length(b)
 
             return 0
     )
@@ -67,13 +57,9 @@ export fn bench_numbers() Unit:
         20000,
         fn() Int:
             var n = 0
-
             for i in range(0, 20000):
-                if let t = parse_timestamp(text: "2026-03-01T12:30:45.123Z"): n = (
-                    n
-                    + t.unix_seconds() % 7
-                )
-
+                if let t = parse_timestamp(text: "2026-03-01T12:30:45.123Z"):
+                    n += t.unix_seconds() % 7
             return n
     )
     bench(
@@ -85,7 +71,7 @@ export fn bench_numbers() Unit:
                 q.enqueue(i)
             var n = 0
             while not q.is_empty():
-                n = n + q.dequeue().unwrap_or(0)
+                n += q.dequeue().unwrap_or(0)
             return n
     )
     bench(
@@ -99,11 +85,12 @@ export fn bench_numbers() Unit:
                 q.enqueue((i * 7919) % 10007)
             var n = 0
             while not q.is_empty():
-                n = n + q.dequeue().unwrap_or(0)
+                n += q.dequeue().unwrap_or(0)
             return n
     )
 
 fn unpacked_length(data: Bytes) Int:
-    if let b = decompress(data: data, format: "gzip"): return b.length()
+    if let b = decompress(data: data, format: "gzip"):
+        return b.length()
 
     return 0

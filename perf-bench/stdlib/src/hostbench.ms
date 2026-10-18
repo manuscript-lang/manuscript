@@ -30,7 +30,8 @@ fn bench_archive() Unit:
         "archive.zip_pack",
         2000,
         fn() Int:
-            if let b = pack(entries: list, format: "zip"): return b.length()
+            if let b = pack(entries: list, format: "zip"):
+                return b.length()
 
             return 0
     )
@@ -38,18 +39,21 @@ fn bench_archive() Unit:
         "archive.tar_pack",
         2000,
         fn() Int:
-            if let b = pack(entries: list, format: "tar"): return b.length()
+            if let b = pack(entries: list, format: "tar"):
+                return b.length()
 
             return 0
     )
-    if let packed = pack(entries: list, format: "zip"): bench_unpack(packed)
+    if let packed = pack(entries: list, format: "zip"):
+        bench_unpack(packed)
 
 fn bench_unpack(packed: Bytes) Unit:
     bench(
         "archive.zip_unpack",
         2000,
         fn() Int:
-            if let e = unpack(data: packed, format: "zip"): return e.length()
+            if let e = unpack(data: packed, format: "zip"):
+                return e.length()
 
             return 0
     )
@@ -60,13 +64,15 @@ fn bench_sse() Unit:
         "sse.feed",
         2000,
         fn() Int:
-            if let d = decoder(): return feed_all(d, stream)
+            if let d = decoder():
+                return feed_all(d, stream)
 
             return 0
     )
 
 fn feed_all(d: SseDecoder, stream: Bytes) Int:
-    if let events = feed(decoder: d, chunk: stream): return events.length()
+    if let events = feed(decoder: d, chunk: stream):
+        return events.length()
 
     return 0
 
@@ -78,11 +84,9 @@ export fn bench_host() Unit:
         20000,
         fn() Int:
             var n = 0
-
             if let t = parse_timestamp(text: "2026-03-01T12:30:45.123Z"):
                 for i in range(0, 20000):
-                    n = n + t.to_string().length()
-
+                    n += t.to_string().length()
             return n
     )
     bench(
@@ -91,9 +95,8 @@ export fn bench_host() Unit:
         fn() Int:
             var n = 0
             let source = entropy()
-
             for i in range(0, 20000):
-                if let u = uuid_v4(entropy: source): n = n + u.length()
-
+                if let u = uuid_v4(entropy: source):
+                    n += u.length()
             return n
     )

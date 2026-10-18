@@ -1,8 +1,6 @@
-import {headers, HttpMethod} from "@std/http.ms"
+import {headers, HttpRequest, HttpResponse} from "@std/http.ms"
 import network from "@std/net.ms"
 import stdout from "@std/io.ms"
-import HttpRequest from "@std/http.ms"
-import HttpResponse from "@std/http.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(
@@ -13,7 +11,8 @@ fn handle(request: HttpRequest) HttpResponse:
 
 export fn main() Int:
     let serve = network().serve
-    let served = serve(
+
+    if let acquired = serve(
         address: "127.0.0.1:0",
         handler: handle,
         max_requests: 2,
@@ -21,12 +20,12 @@ export fn main() Int:
         max_response_bytes: 1024,
         timeout: 2.seconds,
         grace: 0.seconds
-    )
-
-    if let acquired = served:
+    ):
         with server = acquired:
-            stdout().write(data: "{server.address()}\n".to_bytes())
-            let outcome = server.wait()
+            if stdout().write(data: "{server.address()}\n".to_bytes()).is_error():
+                return 1
+
+            let _ignored = server.wait()
             return 0
 
     return 1

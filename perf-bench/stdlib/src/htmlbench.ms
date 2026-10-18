@@ -17,7 +17,8 @@ export fn bench_html() Unit:
         "html.parse",
         2000,
         fn() Int:
-            if parse(text: html).is_ok(): return 1
+            if parse(text: html).is_ok():
+                return 1
 
             return 0
     )

@@ -1,6 +1,5 @@
 import {parse, stringify, CsvOptions, CsvError} from "@std/csv.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 test "CSV retains single empty fields and distinguishes empty rows":
     for ending in ["\n", "\r\n"]:
@@ -8,26 +7,29 @@ test "CSV retains single empty fields and distinguishes empty rows":
             let options = CsvOptions(delimiter: delimiter, line_ending: ending)
             let rows = [["a"], [""], ["b"], [""], [""]]
             let expected = "a{ending}\"\"{ending}b{ending}\"\"{ending}\"\"{ending}"
-            let text = stringify(rows: rows, options: options) | value
+            let text = try stringify(rows: rows, options: options)
             if text != expected: return panic("single empty field encoding")
-            if value(parse(text: text, options: options)) != rows: return panic(
+            if (try parse(text: text, options: options)) != rows: return panic(
                 "single empty field roundtrip"
             )
 
             let empty_rows: List[List[String]] = [[], []]
             if (
-                value(
-                    stringify(rows: empty_rows, options: options)
+                (
+                    try stringify(
+                        rows: empty_rows,
+                        options: options
+                    )
                 ) != "{ending}{ending}"
             ):
                 return panic("empty rows encoding")
 
             let no_rows: List[List[String]] = []
-            if value(parse(text: "{ending}{ending}", options: options)) != no_rows:
+            if (try parse(text: "{ending}{ending}", options: options)) != no_rows:
                 return panic("blank lines are skipped")
             if (
-                value(
-                    parse(
+                (
+                    try parse(
                         text: "{ending}\"\"{ending}{ending}\"\"",
                         options: options
                     )
@@ -37,8 +39,11 @@ test "CSV retains single empty fields and distinguishes empty rows":
                     "quoted empty fields with blank lines and no final terminator"
                 )
             if (
-                value(
-                    stringify(rows: [["", ""]], options: options)
+                (
+                    try stringify(
+                        rows: [["", ""]],
+                        options: options
+                    )
                 ) != "{delimiter}{ending}"
             ):
                 return panic("multiple empty cells encoding")
@@ -49,7 +54,7 @@ test "CSV quoted empty fields respect exact row cell and byte budgets":
         let rows = [[""], ["a"], [""]]
         let text = "\"\"{ending}a{ending}\"\"{ending}"
         let bytes = text.byte_length()
-        if value(stringify(rows: rows, options: options, max_bytes: bytes)) != text:
+        if (try stringify(rows: rows, options: options, max_bytes: bytes)) != text:
             return panic("exact quoted output budget")
 
         let limited_text: Result[String, CsvError] = error(CsvError.LimitExceeded)
@@ -64,8 +69,8 @@ test "CSV quoted empty fields respect exact row cell and byte budgets":
         if stringify(rows: [[""]], options: options, max_bytes: 0) != limited_text:
             return panic("zero quoted output budget")
         if (
-            value(
-                parse(
+            (
+                try parse(
                     text: text,
                     options: options,
                     max_rows: 3,
@@ -92,15 +97,16 @@ test "CSV preserves whitespace and normalizes quoted CRLF":
     let rows = [[" "], ["\t"], ["line\n\nbreak"], ["\""], ["", "", ""]]
     if (
         (
-            stringify(rows: rows, options: options) | value | parse(
+            try parse(
+                text: try stringify(rows: rows, options: options),
                 options: options
-            ) | value
+            )
         ) != rows
     ):
         return panic("whitespace and quoted multiline roundtrip")
     if (
-        value(
-            parse(
+        (
+            try parse(
                 text: "\"line\r\n\r\nbreak\"\r\n\"\"\r\n",
                 options: options
             )
@@ -111,13 +117,13 @@ test "CSV preserves whitespace and normalizes quoted CRLF":
 test "CSV quotes delimiters multiline cells and line endings":
     let options = CsvOptions(delimiter: ",", line_ending: "\n")
     let rows = [["a,b", "say \"hi\"", "line\nbreak"], ["", "é", "last"]]
-    let text = stringify(rows: rows, options: options) | value
-    if (value(parse(text: text, options: options, max_rows: 2, max_cells: 6)) != rows): return panic(
+    let text = try stringify(rows: rows, options: options)
+    if ((try parse(text: text, options: options, max_rows: 2, max_cells: 6)) != rows): return panic(
         "quoted CSV roundtrip"
     )
 
     let windows = CsvOptions(delimiter: ";", line_ending: "\r\n")
-    if value(stringify(rows: [["a", "b"]], options: windows)) != "a;b\r\n": return panic(
+    if (try stringify(rows: [["a", "b"]], options: windows)) != "a;b\r\n": return panic(
         "delimiter and CRLF"
     )
 

@@ -1,7 +1,6 @@
 import Bytes from "@std/bytes.ms"
 import {compile, Regex, RegexError} from "@std/regex.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 interface ListMutation:
     fn reverse_in_place() List[Int]
@@ -175,33 +174,33 @@ test "replace_first preserves first default explicit caps and scalar boundaries"
     if first("a", "b") != "aaaa".replace("a", "b"): return panic("old replace spelling")
 
 test "regex replace_all preserves literal text and exact output budgets":
-    let pattern = compile("(a)") | value
+    let pattern = try compile("(a)")
     let all = pattern.replace_all
-    if value(pattern.replace_all("aaa", "b")) != "bbb": return panic("all matches")
-    if value(all(replacement: "$1", text: "aa")) != "$1$1": return panic(
+    if (try pattern.replace_all("aaa", "b")) != "bbb": return panic("all matches")
+    if (try all(replacement: "$1", text: "aa")) != "$1$1": return panic(
         "capture expansion"
     )
-    if value(pattern.replace_all("aa", "é", 4)) != "éé": return panic("UTF8 boundary")
+    if (try pattern.replace_all("aa", "é", 4)) != "éé": return panic("UTF8 boundary")
 
     let limited: Result[String, RegexError] = error(RegexError.LimitExceeded)
     let invalid: Result[String, RegexError] = error(RegexError.InvalidInput)
     if pattern.replace_all("aa", "é", 3) != limited: return panic("output budget")
     if all("a", "", -1) != invalid: return panic("negative budget")
-    if value(all("a", "", 0)) != "": return panic("empty output budget")
+    if (try all("a", "", 0)) != "": return panic("empty output budget")
     if pattern.replace_all("z", "b", 0) != limited: return panic(
         "unchanged output budget"
     )
     if pattern.replace_all("aa", "b", none) != pattern.replace_all("aa", "b", none):
         return panic("old regex spelling")
 
-    let empty = compile("") | value
-    if value(empty.replace_all("é🙂", "x")) != "xéx🙂x": return panic("empty pattern")
+    let empty = try compile("")
+    if (try empty.replace_all("é🙂", "x")) != "xéx🙂x": return panic("empty pattern")
 
     let view = RegexReplacement(RegexAdapter(pattern))
     let view_all = view.replace_all
     if (
-        value(view.replace_all("aaa", "b", none)) != "bbb"
-        or value(view_all("aa", "b", 2)) != "bb"
+        (try view.replace_all("aaa", "b", none)) != "bbb"
+        or (try view_all("aa", "b", 2)) != "bb"
     ):
         return panic("Regex interface view")
 

@@ -43,10 +43,10 @@ fn trace(log: List[String], name: String) Int:
     return 1
 
 fn code(r: Result[Int, String]) Int:
-    if r.is_error():
-        return 0 - r.unwrap_error().length()
+    if let v = r:
+        return v
 
-    return r.unwrap()
+    return 0 - r.unwrap_error().length()
 
 test "pipe steps call functions with the value first":
     if code(flow("abc")) != 9:

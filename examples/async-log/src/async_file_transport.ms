@@ -36,10 +36,10 @@ type AsyncFileTransport:
 fn io_error(cause: FileSystemError) LogError:
     return LogError.FileSystem(cause)
 
-fn lift(result: Result[Unit, FileSystemError]) Result[Unit, LogError]:
-    if result.is_error(): return error(io_error(result.unwrap_error()))
+fn lift[T](result: Result[T, FileSystemError]) Result[T, LogError]:
+    if let value = result: return ok(value)
 
-    return ok(unit)
+    return error(io_error(result.unwrap_error()))
 
 fn numbered(path: String, index: Int) String:
     if index == 0: return path
@@ -59,10 +59,7 @@ fn adopt(w: Writer, info: FileInfo) Unit:
 
 # Opens the active file for append and reads its size and age.
 fn open_active(w: Writer) Result[Unit, LogError]:
-    let opened = w.fs.open(path: w.path, flags: "a", mode: 384)
-    if opened.is_error(): return error(io_error(opened.unwrap_error()))
-
-    let handle = opened.unwrap()
+    let handle = try lift(w.fs.open(path: w.path, flags: "a", mode: 384))
     w.handle = some(handle)
     w.size = 0
     w.opened = clock().now()
@@ -78,14 +75,14 @@ fn rotate(w: Writer) Result[Unit, LogError]:
     close_file(w)
     var last = 0
     while exists(w.fs, numbered(w.path, last + 1)):
-        last = last + 1
+        last += 1
     var keep = last + 1
     if w.max_files > 0: keep = w.max_files - 1
     var drop = last
 
     while drop >= keep and drop > 0:
         w.fs.remove(path: numbered(w.path, drop)) | try lift
-        drop = drop - 1
+        drop -= 1
 
     var index = last
     if keep - 1 < index: index = keep - 1
@@ -94,7 +91,7 @@ fn rotate(w: Writer) Result[Unit, LogError]:
         let source = numbered(w.path, index)
         let destination = numbered(w.path, index + 1)
         w.fs.rename(source: source, destination: destination) | try lift
-        index = index - 1
+        index -= 1
 
     if keep == 0: w.fs.remove(path: w.path) | try lift
     return open_active(w)
@@ -123,7 +120,7 @@ fn append(w: Writer, data: Bytes) Result[Unit, LogError]:
     if rotation_due(w, data.length()): try rotate(w)
     let handle = try active_file(w)
     handle.write(data) | try lift
-    w.size = w.size + data.length()
+    w.size += data.length()
     return ok(unit)
 
 fn sync_file(w: Writer) Result[Unit, LogError]:

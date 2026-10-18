@@ -45,7 +45,7 @@ test "Float Bool and String preserve mutation traversal and width":
         seen.append(value)
         if index == 0:
             floats.set(1, 0.5)
-        index = index + 1
+        index += 1
 
     if not (seen == [1e-300, 0.5, 0.25] and clone[1].unwrap() == 1e300):
         return panic("Float backing narrowed or traversal copied")

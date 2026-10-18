@@ -16,8 +16,8 @@ fn exercise() Result[Unit, ExecutionError]:
         let domain = group.start(fn() Result[Int, String]: error("expected"))
         let stored = Stored(forward(number))
         let handles: List[Task[Int]] = [stored.task]
-        let joined = try group.join()
-        let joined_again = try group.join()
+        try group.join()
+        try group.join()
         let value = try stored.task.join()
         let value_again = try number.join()
         let message = try text.join()

@@ -1,61 +1,44 @@
-import {headers, HttpMethod} from "@std/http.ms"
+import {
+    headers,
+    HttpMethod,
+    HttpError,
+    HttpExchange,
+    HttpServerOptions,
+    HttpClientOptions
+} from "@std/http.ms"
 import network from "@std/net.ms"
 import panic from "@std/faults.ms"
-import HttpError from "@std/http.ms"
-import WebSocketError from "@std/websocket.ms"
-import IoError from "@std/io.ms"
-import HttpExchange from "@std/http.ms"
-import HttpServerOptions from "@std/http.ms"
-import HttpClientOptions from "@std/http.ms"
+import {WebSocket, WebSocketError, WebSocketOptions} from "@std/websocket.ms"
 import TlsOptions from "@std/tls.ms"
-import WebSocketOptions from "@std/websocket.ms"
 
-fn websocket_error(cause: WebSocketError) HttpError:
-    match cause:
-        InvalidInput:
-            return HttpError.InvalidInput
-        InvalidData:
-            return HttpError.InvalidData
-        LimitExceeded:
-            return HttpError.LimitExceeded
-        PermissionDenied:
-            return HttpError.PermissionDenied
-        Closed:
-            return HttpError.Closed
-        Timeout:
-            return HttpError.Timeout
-        Failed(message):
-            return HttpError.Failed(message)
-
-fn socket_result[T](result: Result[T, WebSocketError]) Result[T, HttpError]:
-    if let value = result: return ok(value)
-
-    return error(websocket_error(result.unwrap_error()))
+fn relay(socket: WebSocket) Result[Unit, WebSocketError]:
+    if let message = try socket.receive():
+        try socket.send(data: message.data, text: message.text)
+    return ok(unit)
 
 fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
     if exchange.path() == "/ws":
-        with socket = exchange.upgrade(
+        if let acquired = exchange.upgrade(
             allowed_origins: [],
             subprotocols: ["echo"],
             max_message_bytes: 1024
-        ) | try socket_result:
-            match socket.receive() | try socket_result:
-                some(message):
-                    let sent = socket.send(data: message.data, text: message.text) | try socket_result
-                none:
-                    return ok(unit)
+        ):
+            with socket = acquired:
+                if relay(socket).is_error():
+                    return error(HttpError.Failed("websocket relay failed"))
+            return ok(unit)
 
-        return ok(unit)
+        return error(HttpError.Failed("websocket upgrade failed"))
 
     let fields = headers()
-    let appended = try fields.append("X-Test", "stream".to_bytes())
-    let started = try exchange.send_headers(status: 200, headers: fields)
-    let written = exchange.write(data: "hello from streaming Manuscript".to_bytes())
-    if written.is_error(): return error(HttpError.Failed("write failed"))
+    try fields.append("X-Test", "stream".to_bytes())
+    try exchange.send_headers(status: 200, headers: fields)
+    if exchange.write(data: "hello from streaming Manuscript".to_bytes()).is_error():
+        return error(HttpError.Failed("write failed"))
 
     return ok(unit)
 
-fn exercise() Result[Unit, HttpError]:
+fn exercise() Result[Unit, Error]:
     let tls = TlsOptions(
         server_name: "",
         roots_pem: "",
@@ -101,21 +84,11 @@ fn exercise() Result[Unit, HttpError]:
                 if not (response.metadata().status == 200):
                     return panic(message: "check failed")
 
-                let read = response.read(max_bytes: 1024)
-                if read.is_error(): return panic(message: "Unexpected case")
-
-                let part = read.unwrap()
-
-                match part:
-                    some(data):
-                        if not (
-                            data.to_string() == some(
-                                "hello from streaming Manuscript"
-                            )
-                        ):
-                            return panic(message: "check failed")
-                    none:
-                        return panic(message: "Unexpected case")
+                if let data = try response.read(max_bytes: 1024):
+                    if data.to_string() != some("hello from streaming Manuscript"):
+                        return panic(message: "check failed")
+                else:
+                    return panic(message: "Unexpected case")
 
         let websocket_options = WebSocketOptions(
             max_message_bytes: 1024,
@@ -124,31 +97,29 @@ fn exercise() Result[Unit, HttpError]:
             compression: false
         )
 
-        with socket = try socket_result(
-            result: network().web_socket(
-                url: "ws://{server.address()}/ws",
-                headers: headers(),
-                subprotocols: ["echo"],
-                options: websocket_options
-            )
+        with socket = try network().web_socket(
+            url: "ws://{server.address()}/ws",
+            headers: headers(),
+            subprotocols: ["echo"],
+            options: websocket_options
         ):
             if not (socket.subprotocol() == "echo"):
                 return panic(message: "check failed")
 
-            let sent = socket.send(data: "echo me".to_bytes(), text: true) | try socket_result
+            try socket.send(data: "echo me".to_bytes(), text: true)
 
-            match socket.receive() | try socket_result:
-                some(message):
-                    if not (message.text):
-                        return panic(message: "check failed")
-                    if not (message.data.to_string() == some("echo me")):
-                        return panic(message: "check failed")
-                none:
-                    return panic(message: "Unexpected case")
+            if let message = try socket.receive():
+                if not (message.text):
+                    return panic(message: "check failed")
+                if not (message.data.to_string() == some("echo me")):
+                    return panic(message: "check failed")
+            else:
+                return panic(message: "Unexpected case")
 
     return ok(unit)
 
 export fn main() Int:
-    if exercise().is_error(): return 1
+    if exercise().is_error():
+        return 1
 
     return 0

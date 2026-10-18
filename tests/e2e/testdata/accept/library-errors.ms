@@ -58,11 +58,11 @@ impl Error for TaggedError[T]:
         return "tagged failure"
 
 fn decode_generically() Result[Unit, Error]:
-    let bytes = try hex_decode(text: "zz", max_bytes: 10)
+    let _bytes = try hex_decode(text: "zz", max_bytes: 10)
     return ok(unit)
 
 fn propagate_generic() Result[Unit, Error]:
-    let completed = try decode_generically()
+    try decode_generically()
     return ok(unit)
 
 fn describe_error(cause: Error) String:
@@ -145,13 +145,11 @@ test "type patterns compare exact generic applications":
 test "Error views can be stored and matched":
     let shared = Error(CustomError("shared diagnostic"))
     let errors: List[Error] = [shared]
+    let first = errors.at(index: 0)
+    if first.is_none():
+        return panic(message: "shared errors collection was empty")
 
-    let cause = match errors.at(index: 0):
-        some(cause): cause
-        none:
-            return panic(message: "shared errors collection was empty")
-
-    match cause:
+    match first.unwrap():
         CustomError(custom):
             if custom.detail != "shared diagnostic":
                 return panic(message: "shared view lost receiver")
@@ -179,7 +177,7 @@ fn failed_read() Result[Unit, ReadError]:
     )
 
 fn propagate_read() Result[Unit, ReadError]:
-    let completed = try failed_read()
+    try failed_read()
     return ok(unit)
 
 test "domain error fields survive propagation without a wrapper":
@@ -208,7 +206,7 @@ fn read_failure(cause: ReadError) Result[Unit, ReadError]:
     return error(cause)
 
 fn general_read(cause: ReadError) Result[Unit, Error]:
-    let completed = try read_failure(cause)
+    try read_failure(cause)
     return ok(unit)
 
 fn forward_read(cause: ReadError) Result[Unit, Error]:
@@ -218,7 +216,7 @@ fn generic_failure[E: Error](cause: E) Result[Unit, E]:
     return error(cause)
 
 fn generic_propagation[E: Error](cause: E) Result[Unit, Error]:
-    let completed = try generic_failure(cause)
+    try generic_failure(cause)
     return ok(unit)
 
 fn describe_direct(cause: Error) String:
@@ -411,7 +409,7 @@ fn check_missing_file() Result[Unit, FileSystemError]:
     if stat.unwrap_error().message() != "filesystem: file or directory not found":
         return panic(message: "stat diagnostic lost")
 
-    let removed = try fs.remove(path: directory, recursive: false)
+    try fs.remove(path: directory, recursive: false)
     return ok(unit)
 
 test "missing file diagnostics preserve the filesystem case":

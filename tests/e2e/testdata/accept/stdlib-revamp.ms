@@ -1,10 +1,8 @@
 import {ReadStream, IoError, read_line} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
-import {Queue, PriorityQueue} from "@std/queues.ms"
-import {Scheduler, WorkStatus} from "@std/tasks.ms"
-import {sleep} from "@std/time.ms"
-import {parse, JsonValue} from "@std/json.ms"
+import {PriorityQueue} from "@std/queues.ms"
+import {Scheduler} from "@std/tasks.ms"
 
 type Key:
     id: Int
@@ -42,26 +40,23 @@ test "stable priority queue and optional capacity":
     queue.enqueue(Key(id: 1, label: "first"))
     queue.enqueue(Key(id: 1, label: "second"))
 
-    match queue.dequeue():
-        some(value):
-            if value.label != "first": return panic("priority order")
-        none: return panic("missing item")
+    if let value = queue.dequeue():
+        if value.label != "first": return panic("priority order")
+    else:
+        return panic("missing item")
 
-    match queue.dequeue():
-        some(value):
-            if value.label != "second": return panic("unstable priority order")
-        none: return panic("missing item")
+    if let value = queue.dequeue():
+        if value.label != "second": return panic("unstable priority order")
+    else:
+        return panic("missing item")
 
     let bounded = PriorityQueue(compare: compare, capacity: 1)
     if not (bounded.enqueue(Key(id: 1, label: "only"))): return panic("enqueue failed")
     if bounded.enqueue(Key(id: 0, label: "full")): return panic("capacity ignored")
 
 test "limits can be omitted or supplied":
-    if let value = "ab".repeat(count: 3):
-        if value != "ababab": return panic("omitted limit failed")
-    else:
-        return panic("omitted limit rejected")
-
+    let repeated = try "ab".repeat(count: 3)
+    if repeated != "ababab": return panic("omitted limit failed")
     if "ab".repeat(count: 3, max_bytes: 5).is_ok(): return panic(
         "supplied limit ignored"
     )
@@ -70,24 +65,20 @@ fn operation() Result[Unit, Error]: ok(unit)
 
 test "one scheduler admits and schedules work":
     with scheduler = Scheduler():
-        let immediate = scheduler.start(operation)
-        let delayed = scheduler.after(duration: 0.milliseconds, operation: operation)
-        let repeated = scheduler.every(interval: 1.milliseconds, operation: operation)
-
-        if let id = repeated:
-            scheduler.cancel(id)
-        else:
-            return panic("unbounded admission failed")
+        let _immediate = scheduler.start(operation)
+        let _delayed = scheduler.after(duration: 0.milliseconds, operation: operation)
+        let repeated = try scheduler.every(
+            interval: 1.milliseconds,
+            operation: operation
+        )
+        scheduler.cancel(repeated)
 
 type EmptyReader:
     requested: Int
 
 impl ReadStream for EmptyReader:
     fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
-        match max_bytes:
-            none: self.requested = 0
-            some(value): self.requested = value
-
+        self.requested = max_bytes.unwrap_or(0)
         return ok(none)
 
     fn close() Unit: unit
@@ -95,15 +86,15 @@ impl ReadStream for EmptyReader:
 test "native compositions preserve Optional arguments for source implementations":
     let reader = EmptyReader(-1)
     let stream = ReadStream(reader)
-    let omitted = stream.read()
+    let _omitted = stream.read()
     if reader.requested != 0: return panic(
         "omitted limit did not reach the source implementation"
     )
 
-    let supplied = stream.read(8)
+    let _supplied = stream.read(8)
     if reader.requested != 8: return panic("supplied limit was not an Optional")
 
-    let line = read_line(input: stream)
+    let _line = read_line(input: stream)
     if reader.requested != 1: return panic(
         "native helper bypassed the interface contract"
     )

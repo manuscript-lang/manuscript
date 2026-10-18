@@ -3,7 +3,6 @@ import {CompressionFormat, compress, decompress, CompressionError} from "@std/co
 import {ArchiveFormat, pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError} from "@std/archive.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 fn digest(algorithm: HashAlgorithm, data: Bytes) Bytes:
     return algorithm.digest(data)
@@ -45,12 +44,12 @@ test "typed SHA selectors match their algorithms and retain bound operations":
             Sha384: "sha384"
             Sha512: "sha512"
 
-        if value(algorithm.hmac(key, data)) != value(hmac(key, data, name)): return panic(
+        if (try algorithm.hmac(key, data)) != (try hmac(key, data, name)): return panic(
             "typed HMAC"
         )
 
     let hmac_operation = HashAlgorithm.Sha512.hmac
-    if value(hmac_operation(key, data)) != value(hmac(key, data, "sha512")): return panic(
+    if (try hmac_operation(key, data)) != (try hmac(key, data, "sha512")): return panic(
         "stored HMAC"
     )
 
@@ -71,14 +70,14 @@ test "typed compression preserves bytes limits errors and optional arguments":
             Deflate: "deflate"
 
         for level in [0, 9]:
-            let encoded = format.compress(data, level) | value
-            if encoded != value(compress(data, name, level, none)): return panic(
+            let encoded = try format.compress(data, level)
+            if encoded != (try compress(data, name, level, none)): return panic(
                 "typed encoded bytes"
             )
-            if value(format.decompress(encoded, none)) != data: return panic(
+            if (try format.decompress(encoded, none)) != data: return panic(
                 "typed decompression"
             )
-            if value(format.decompress(encoded, data.length())) != data: return panic(
+            if (try format.decompress(encoded, data.length())) != data: return panic(
                 "typed exact budget"
             )
 
@@ -101,10 +100,10 @@ test "typed compression preserves bytes limits errors and optional arguments":
         if format.compress(data, 6, 0) != zero: return panic("typed zero output budget")
 
     let stored = CompressionFormat.Gzip.compress
-    let encoded = bounded_compression(stored, data) | value
+    let encoded = try bounded_compression(stored, data)
     let decoder = CompressionFormat.Gzip.decompress
-    if value(decoder(encoded)) != data: return panic("stored decoder default")
-    if value(decompress(encoded, "gzip")) != data: return panic("legacy decompression")
+    if (try decoder(encoded)) != data: return panic("stored decoder default")
+    if (try decompress(encoded, "gzip")) != data: return panic("legacy decompression")
 
     let malformed: Result[Bytes, CompressionError] = error(CompressionError.InvalidData)
     if CompressionFormat.Gzip.decompress(data) != malformed: return panic(
@@ -119,15 +118,15 @@ test "typed archives retain entry limits validation and existing string calls":
             Zip: "zip"
             Tar: "tar"
 
-        let encoded = format.pack(entries) | value
-        if encoded != value(pack(entries, name)): return panic("typed archive bytes")
-        if value(format.unpack(encoded)) != entries: return panic(
+        let encoded = try format.pack(entries)
+        if encoded != (try pack(entries, name)): return panic("typed archive bytes")
+        if (try format.unpack(encoded)) != entries: return panic(
             "typed archive roundtrip"
         )
-        if value(format.unpack(encoded, none)) != entries: return panic(
+        if (try format.unpack(encoded, none)) != entries: return panic(
             "typed archive none"
         )
-        if value(unpack(encoded, name)) != entries: return panic("legacy archive")
+        if (try unpack(encoded, name)) != entries: return panic("legacy archive")
 
         let limited: Result[List[ArchiveEntry], ArchiveError] = error(
             ArchiveError.LimitExceeded
@@ -144,6 +143,6 @@ test "typed archives retain entry limits validation and existing string calls":
 
     let stored = ArchiveFormat.Zip.pack
     let unpacker = ArchiveFormat.Zip.unpack
-    if (stored(entries, none) | value | unpacker(ArchiveLimits()) | value) != entries: return panic(
+    if (stored(entries, none) | try | unpacker(ArchiveLimits()) | try) != entries: return panic(
         "stored archive operations"
     )

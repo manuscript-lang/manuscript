@@ -1,9 +1,8 @@
 import {Queue, PriorityQueue} from "@std/queues.ms"
 import Synchronized from "@std/sync.ms"
 import {Scheduler, StartError, WorkStatus, check_cancelled, yield_now, TaskGroup} from "@std/tasks.ms"
-import {ListBuilder} from "@std/collections.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
+import expect_error from "@std/testing.ms"
 
 fn compare(left: Int, right: Int) Int: left - right
 
@@ -50,12 +49,11 @@ test "synchronized guards update and release for later acquisition":
 
 test "scheduler delayed cancellation capacity and closed admission":
     let scheduler = Scheduler(limit: 1)
-    let id = scheduler.after(duration: 60.seconds, operation: operation) | value
+    let id = try scheduler.after(duration: 60.seconds, operation: operation)
     if scheduler.status(id) != WorkStatus.Running: return panic("scheduled status")
-
-    let full = scheduler.start(operation)
-    if full.is_ok(): return panic("scheduler capacity ignored")
-    if full.unwrap_error() != StartError.Full: return panic("scheduler capacity error")
+    if (try expect_error(scheduler.start(operation))) != StartError.Full: return panic(
+        "scheduler capacity error"
+    )
 
     scheduler.cancel(id)
     scheduler.close()
@@ -64,9 +62,7 @@ test "scheduler delayed cancellation capacity and closed admission":
     )
 
     scheduler.close()
-    let closed = scheduler.start(operation)
-    if closed.is_ok(): return panic("closed scheduler admitted work")
-    if closed.unwrap_error() != StartError.Closed: return panic(
+    if (try expect_error(scheduler.start(operation))) != StartError.Closed: return panic(
         "closed scheduler error"
     )
 
@@ -77,7 +73,7 @@ test "task group heterogeneous results and cancellation checkpoints":
     with tasks = TaskGroup():
         let number_task = tasks.start(first)
         let text_task = tasks.start(second)
-        let completed = tasks.join() | value
-        let number = number_task.join() | value
-        let text = text_task.join() | value
+        try tasks.join()
+        let number = try number_task.join()
+        let text = try text_task.join()
         if number != 1 or text != "two": return panic("task results changed")

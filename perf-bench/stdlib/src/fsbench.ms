@@ -10,7 +10,6 @@ fn run(fs: FileSystem, root: String) Unit:
         200,
         fn() Int:
             var n = 0
-
             for i in range(0, 200):
                 if (
                     fs
@@ -20,8 +19,8 @@ fn run(fs: FileSystem, root: String) Unit:
                         replace: true
                     )
                     .is_ok()
-                ): n = (n + 1)
-
+                ):
+                    n += 1
             return n
     )
     bench(
@@ -29,10 +28,9 @@ fn run(fs: FileSystem, root: String) Unit:
         200,
         fn() Int:
             var n = 0
-
             for i in range(0, 200):
-                if let b = fs.read_file(path: "{root}/f{i}.bin"): n = n + b.length()
-
+                if let b = fs.read_file(path: "{root}/f{i}.bin"):
+                    n += b.length()
             return n
     )
     bench(
@@ -40,29 +38,28 @@ fn run(fs: FileSystem, root: String) Unit:
         200,
         fn() Int:
             var n = 0
-
             for i in range(0, 200):
-                if fs.stat(path: "{root}/f{i}.bin", follow_links: true).is_ok(): n = (
-                    n
-                    + 1
-                )
-
+                if fs.stat(path: "{root}/f{i}.bin", follow_links: true).is_ok():
+                    n += 1
             return n
     )
     bench(
         "fs.list_200",
         1,
         fn() Int:
-            if let entries = fs.list(path: root): return entries.length()
+            if let entries = fs.list(path: root):
+                return entries.length()
 
             return 0
     )
 
 fn log_run(path: String) Unit:
-    if let transport = file_transport(path: path): log_with(transport)
+    if let transport = file_transport(path: path):
+        log_with(transport)
 
 fn log_with(transport: Transport) Unit:
-    if let logger = create(transport: transport, timestamp: false): log_many(logger)
+    if let logger = create(transport: transport, timestamp: false):
+        log_many(logger)
 
 fn log_many(logger: Logger) Unit:
     bench(
@@ -70,10 +67,9 @@ fn log_many(logger: Logger) Unit:
         20000,
         fn() Int:
             var n = 0
-
             for i in range(0, 20000):
-                if logger.info("request {i} handled").is_ok(): n = n + 1
-
+                if logger.info("request {i} handled").is_ok():
+                    n += 1
             return n
     )
 

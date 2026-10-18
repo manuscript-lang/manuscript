@@ -1,9 +1,7 @@
-import Synchronized from "@std/sync.ms"
-import SynchronizedGuard from "@std/sync.ms"
+import {Synchronized, SynchronizedGuard} from "@std/sync.ms"
 import Closeable from "@std/cleanup.ms"
 import ListBuilder from "@std/collections.ms"
-import ExecutionError from "@std/tasks.ms"
-import TaskGroup from "@std/tasks.ms"
+import {ExecutionError, TaskGroup} from "@std/tasks.ms"
 import panic from "@std/faults.ms"
 import sleep from "@std/time.ms"
 
@@ -49,8 +47,8 @@ test "shared counter protects complete updates":
                 increment(locked: locked)
 
     with group = TaskGroup():
-        let first_task = group.start(operation)
-        let second_task = group.start(operation)
+        group.start(operation)
+        group.start(operation)
         group.start(operation)
         group.start(operation)
         group.start(operation)
@@ -67,7 +65,7 @@ test "shared counter protects complete updates":
     if not (release_on_return(counter: counter) == 101):
         return panic(message: "check failed")
 
-    let outcome = release_on_error(counter: counter)
+    let _outcome = release_on_error(counter: counter)
     with locked = counter.lock():
         if not (locked.get() == 102):
             return panic(message: "check failed")
@@ -78,13 +76,19 @@ test "function fields collections and interface views share freely":
         return captured
     captured = 9
     let callbacks: List[fn() Int] = [identity(value: callback)]
+
     for stored in callbacks:
-        if not (execute(operation: stored).unwrap_or(0) == 7):
+        let value = try execute(operation: stored)
+        if not (value == 7):
             return panic(message: "check failed")
+
     let readers: List[Read] = [Read(Reader(callback))]
+
     for reader in readers:
-        if not (execute(operation: reader.get).unwrap_or(0) == 7):
+        let value = try execute(operation: reader.get)
+        if not (value == 7):
             return panic(message: "check failed")
+
     let make_function = fn():
         return read_and_add
 
@@ -114,7 +118,7 @@ test "fault releases guard and preserves committed writes":
             panic(message: "expected")
 
     with group = TaskGroup():
-        let first_task = group.start(fail)
+        group.start(fail)
         if group.join().is_ok():
             return panic(message: "check failed")
 
@@ -134,7 +138,7 @@ test "guard aliases close once and stale methods fault":
         second.set(value: 2)
 
         with group = TaskGroup():
-            let first_task = group.start(saved_get)
+            group.start(saved_get)
             if group.join().is_ok():
                 return panic(message: "check failed")
             if not (second.get() == 2):
@@ -148,7 +152,7 @@ test "same-task reentry faults and releases its guard":
                 return panic(message: "reentry should fault")
 
     with group = TaskGroup():
-        let first_task = group.start(acquire)
+        group.start(acquire)
         if group.join().is_ok():
             return panic(message: "reentry did not fault")
 
@@ -226,17 +230,15 @@ test "native collection methods preserve ordinary function values":
                 return value
     )
     let first = fn():
-        match callbacks.at(index: 0):
-            some(callback):
-                return callback()
-            none:
-                return panic(message: "missing callback")
+        if let callback = callbacks.at(index: 0):
+            return callback()
+
+        return panic(message: "missing callback")
     let second = fn():
-        match callbacks.at(index: 1):
-            some(callback):
-                return callback()
-            none:
-                return panic(message: "missing callback")
+        if let callback = callbacks.at(index: 1):
+            return callback()
+
+        return panic(message: "missing callback")
 
     with group = TaskGroup():
         let first_task = group.start(first)

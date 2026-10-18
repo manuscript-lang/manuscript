@@ -1,7 +1,7 @@
+import range from "@std/collections.ms"
 import {from_scalars, StringError, StringBuilder} from "@std/string.ms"
 import {Bytes, BytesBuilder, values} from "@std/bytes.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 test "Unicode scalar indexing differs from byte length":
     let text = "aé🙂"
@@ -13,23 +13,23 @@ test "Unicode scalar indexing differs from byte length":
         "scalar indexing"
     )
     if not text.at(3).is_none(): return panic("out of bounds optional")
-    if (text.scalar_values() | from_scalars | value) != text: return panic(
+    if (text.scalar_values() | from_scalars | try) != text: return panic(
         "scalar roundtrip"
     )
-    if value(text.slice_scalars(start: 1, end: 3)) != "é🙂": return panic("scalar slice")
-    if value("é".normalize(form: "NFC")) != "é": return panic("normalization")
+    if (try text.slice_scalars(start: 1, end: 3)) != "é🙂": return panic("scalar slice")
+    if (try "é".normalize(form: "NFC")) != "é": return panic("normalization")
 
 test "strings honor omitted none zero and explicit output limits":
-    if value("ab".repeat(count: 2)) != "abab": return panic("omitted repeat budget")
-    if value("ab".repeat(count: 2)) != "abab": return panic("none repeat budget")
-    if value("ab".repeat(count: 0, max_bytes: 0)) != "": return panic("zero repeat")
+    if (try "ab".repeat(count: 2)) != "abab": return panic("omitted repeat budget")
+    if (try "ab".repeat(count: 2)) != "abab": return panic("none repeat budget")
+    if (try "ab".repeat(count: 0, max_bytes: 0)) != "": return panic("zero repeat")
 
     let limited: Result[String, StringError] = error(StringError.LimitExceeded)
     if "é".repeat(count: 2, max_bytes: 3) != limited: return panic("byte budget")
-    if value("x".pad_start(target_length: 3, padding: "ab")) != "abx": return panic(
+    if (try "x".pad_start(target_length: 3, padding: "ab")) != "abx": return panic(
         "pad start"
     )
-    if value("x".pad_end(target_length: 3, padding: "ab")) != "xab": return panic(
+    if (try "x".pad_end(target_length: 3, padding: "ab")) != "xab": return panic(
         "pad end"
     )
     if "ab".repeat(count: 4611686018427387904) != limited: return panic("repeat huge")
@@ -43,7 +43,7 @@ test "strings honor omitted none zero and explicit output limits":
             max_bytes: 9223372036854775807
         ) != limited
     ): return panic("pad end huge")
-    if value("aa".replace_all(old: "a", new: "xy")) != "xyxy": return panic(
+    if (try "aa".replace_all(old: "a", new: "xy")) != "xyxy": return panic(
         "replace all"
     )
     if "a,,b".split(separator: ",", max_parts: 2) != ["a", ""]: return panic(
@@ -111,9 +111,9 @@ test "Bytes values direct bound and free calls return independent lists":
 test "String slice uses Unicode scalars with relative bounds and OutOfRange errors":
     let text = "aé🙂z"
     let out_of_range: Result[String, StringError] = error(StringError.OutOfRange)
-    if value(text.slice(start: -2, end: 4)) != "🙂z": return panic("relative slice")
-    if value(text.slice(start: 0, end: -1)) != "aé🙂": return panic("relative end")
-    if value(text.slice(start: 4, end: 4)) != "": return panic("empty end slice")
+    if (try text.slice(start: -2, end: 4)) != "🙂z": return panic("relative slice")
+    if (try text.slice(start: 0, end: -1)) != "aé🙂": return panic("relative end")
+    if (try text.slice(start: 4, end: 4)) != "": return panic("empty end slice")
     if text.slice(start: -2, end: 10) != out_of_range: return panic(
         "slice end past length"
     )
@@ -129,7 +129,7 @@ test "String slice uses Unicode scalars with relative bounds and OutOfRange erro
     if text.slice_scalars(start: -2, end: 4) != invalid: return panic("strict negative")
     if text.slice_scalars(start: 1, end: 10) != invalid: return panic("strict end")
     if text.slice_scalars(start: 3, end: 1) != invalid: return panic("strict inverted")
-    if value(text.slice_scalars(start: 4, end: 4)) != "": return panic(
+    if (try text.slice_scalars(start: 4, end: 4)) != "": return panic(
         "empty strict end"
     )
 
@@ -164,24 +164,16 @@ test "empty text splits into one part and case mapping is full Unicode":
 
 test "indexing and slicing long mixed-width text matches scalar positions":
     let block = "aé€🙂"
-    let text = block.repeat(count: 600) | value
+    let text = try block.repeat(count: 600)
     if text.length() != 2400: return panic("long length")
 
     # Forward, backward and jumping reads of the same long text.
     var forward = 0
-    var step = 0
-
-    while step < 2400:
-        forward = forward + text.scalar_at(step).unwrap()
-        step = step + 1
-
+    for step in range(0, 2400):
+        forward += text.scalar_at(step).unwrap()
     var backward = 0
-    step = 2399
-
-    while step >= 0:
-        backward = backward + text.scalar_at(step).unwrap()
-        step = step - 1
-
+    for step in range(0, 2400):
+        backward += text.scalar_at(2399 - step).unwrap()
     if forward != 600 * (97 + 233 + 8364 + 128578) or backward != forward: return panic(
         "scalar sums"
     )
@@ -190,14 +182,14 @@ test "indexing and slicing long mixed-width text matches scalar positions":
         or text.at(2399) != some("🙂")
         or text.at(-2) != some("€")
     ): return panic("scalar at positions")
-    if value(text.slice(start: 1199, end: 1203)) != "🙂aé€": return panic("slice mid")
-    if value(text.slice(start: 2396, end: 2400)) != block: return panic("slice tail")
-    if value(text.slice(start: 0, end: 4)) != block: return panic("slice head")
-    if value(text.slice(start: 7, end: 7)) != "": return panic("empty slice")
-    if value(text.slice_scalars(start: 1199, end: 1203)) != "🙂aé€": return panic(
+    if (try text.slice(start: 1199, end: 1203)) != "🙂aé€": return panic("slice mid")
+    if (try text.slice(start: 2396, end: 2400)) != block: return panic("slice tail")
+    if (try text.slice(start: 0, end: 4)) != block: return panic("slice head")
+    if (try text.slice(start: 7, end: 7)) != "": return panic("empty slice")
+    if (try text.slice_scalars(start: 1199, end: 1203)) != "🙂aé€": return panic(
         "slice_scalars mid"
     )
-    if value(text.slice_scalars(start: 2399, end: 2400)) != "🙂": return panic(
+    if (try text.slice_scalars(start: 2399, end: 2400)) != "🙂": return panic(
         "slice_scalars last"
     )
 

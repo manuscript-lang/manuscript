@@ -3,18 +3,18 @@ import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
 
 export fn main() Int:
-    let ran = commands().run(
+    if let output = commands().run(
         program: "/bin/printf",
         arguments: ["hello"],
         input: "".to_bytes(),
         max_output_bytes: 64,
         timeout: 1.seconds
-    )
-    if ran.is_error(): return 1
+    ):
+        if not (output.exit_code == 0):
+            return panic(message: "check failed")
+        if stdout().write(data: output.stdout).is_error():
+            return 1
 
-    let output = ran.unwrap()
-    if not (output.exit_code == 0):
-        return panic(message: "check failed")
+        return 0
 
-    stdout().write(data: output.stdout)
-    return 0
+    return 1

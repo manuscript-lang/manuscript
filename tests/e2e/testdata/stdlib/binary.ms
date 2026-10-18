@@ -1,20 +1,19 @@
 import {read_integer, write_integer, read_float, write_float, BinaryError} from "@std/binary.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
-import value from "./support/results.ms"
 
 test "binary integer boundaries and both byte orders":
     for little in [false, true]:
         for number in [-9223372036854775808, -32768, -1, 0, 32767, 9223372036854775807]:
-            let data = write_integer(
+            let data = try write_integer(
                 value: number,
                 width: 8,
                 signed: true,
                 little_endian: little
-            ) | value
+            )
             if (
-                value(
-                    read_integer(
+                (
+                    try read_integer(
                         data: data,
                         offset: 0,
                         width: 8,
@@ -24,12 +23,12 @@ test "binary integer boundaries and both byte orders":
                 ) != number
             ): return panic("signed roundtrip")
 
-        let data = write_integer(
+        let data = try write_integer(
             value: 258,
             width: 2,
             signed: false,
             little_endian: little
-        ) | value
+        )
 
         if little:
             if data != Bytes([2, 1]): return panic("little endian vector")
@@ -37,8 +36,8 @@ test "binary integer boundaries and both byte orders":
             if data != Bytes([1, 2]): return panic("big endian vector")
 
         if (
-            value(
-                read_float(
+            (
+                try read_float(
                     data: write_float(
                         value: -1.25,
                         little_endian: little

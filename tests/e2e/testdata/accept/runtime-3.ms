@@ -1,6 +1,5 @@
 import panic from "@std/faults.ms"
-import ExecutionError from "@std/tasks.ms"
-import TaskGroup from "@std/tasks.ms"
+import {ExecutionError, TaskGroup} from "@std/tasks.ms"
 
 fn identity[T](value: T) T:
     return value
@@ -27,8 +26,8 @@ test "typed task helper":
     try probe()
 
 fn describe(outcome: Result[Int, Int]) Result[Int, String]:
-    if outcome.is_ok():
-        return ok(outcome.unwrap())
+    if let value = outcome:
+        return ok(value)
 
     return error("Error {outcome.unwrap_error()}")
 

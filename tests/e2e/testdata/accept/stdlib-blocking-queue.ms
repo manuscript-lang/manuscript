@@ -1,25 +1,21 @@
 import BlockingQueue from "@std/queues.ms"
-import TaskGroup from "@std/tasks.ms"
-import Task from "@std/tasks.ms"
+import {TaskGroup, Task} from "@std/tasks.ms"
 import panic from "@std/faults.ms"
 
 fn work(jobs: BlockingQueue[Int]) Int:
     var total = 0
 
     while true:
-        match jobs.take():
-            some(value):
-                total = total + value
-            none:
-                return total
-
-    return total
+        if let value = jobs.take():
+            total += value
+        else:
+            return total
 
 fn total_of(task: Task[Int]) Int:
     if let total = task.join():
         return total
-    else:
-        return panic(message: "worker failed")
+
+    return panic(message: "worker failed")
 
 test "bounded put and take block until the other side acts":
     let jobs = BlockingQueue[Int](2)
@@ -49,12 +45,11 @@ test "close drains queued values then ends takers":
     if not (jobs.length() == 1):
         return panic(message: "queued value lost")
 
-    match jobs.take():
-        some(value):
-            if not (value == 7):
-                return panic(message: "wrong value")
-        none:
-            return panic(message: "queued value lost")
+    if let value = jobs.take():
+        if not (value == 7):
+            return panic(message: "wrong value")
+    else:
+        return panic(message: "queued value lost")
 
     if jobs.take().is_some():
         return panic(message: "closed empty queue returned a value")

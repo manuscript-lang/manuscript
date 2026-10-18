@@ -26,5 +26,5 @@ test "task timeout bounds and zero sleep retain existing behavior":
     with maximum = TaskGroup(timeout: duration(9223372036854775807)):
         if not maximum.join().is_ok(): return panic("maximum timeout")
     with zero = TaskGroup(timeout: duration(0)):
-        let accepted_zero_timeout = 0
-    duration(0) | sleep
+        if not zero.join().is_ok(): return panic("zero timeout")
+    sleep(duration(0))
