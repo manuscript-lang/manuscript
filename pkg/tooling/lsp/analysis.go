@@ -189,16 +189,24 @@ func declarationDocumentation(result compiler.Result, decl *syntax.Declaration) 
 		if m.File != decl.Pos.File {
 			continue
 		}
-		lines := strings.Split(m.Source, "\n")
-		line := decl.Pos.Line - 2
+		if decl.Pos.Line <= 1 || decl.Pos.Offset < 0 || decl.Pos.Offset > len(m.Source) {
+			return ""
+		}
+		// Offsets are in the original source, including CRLF and recovered
+		// declarations. Only inspect the immediately preceding line spans.
+		end := strings.LastIndexByte(m.Source[:decl.Pos.Offset], '\n')
 		var notes []string
-		for line >= 0 {
-			text := strings.TrimSpace(lines[line])
+		for end >= 0 {
+			start := strings.LastIndexByte(m.Source[:end], '\n') + 1
+			text := strings.TrimSpace(m.Source[start:end])
 			if !strings.HasPrefix(text, "#") {
 				break
 			}
-			notes = append([]string{strings.TrimSpace(strings.TrimPrefix(text, "#"))}, notes...)
-			line--
+			notes = append(notes, strings.TrimSpace(strings.TrimPrefix(text, "#")))
+			end = start - 1
+		}
+		for left, right := 0, len(notes)-1; left < right; left, right = left+1, right-1 {
+			notes[left], notes[right] = notes[right], notes[left]
 		}
 		return strings.TrimSpace(strings.Join(notes, "\n"))
 	}

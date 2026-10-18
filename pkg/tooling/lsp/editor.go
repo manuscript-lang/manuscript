@@ -39,11 +39,7 @@ func offset(source string, p position, clamp bool) (int, error) {
 			return at, nil
 		}
 		r, size := utf8.DecodeRuneInString(source[at:])
-		width := 1
-		if r > 0xffff {
-			width = 2
-		}
-		column += width
+		column += utf16RuneWidth(r)
 		at += size
 		if column > p.Character {
 			return 0, fmt.Errorf("position splits a surrogate pair")

@@ -12,6 +12,7 @@ var tokenTypes = []string{"keyword", "variable", "number", "string", "comment", 
 
 func semantic(d document, checked ...compiler.Result) map[string]any {
 	data := []int{}
+	positions := newSourcePositions(d.Text)
 	tokens, e := lexer.Lex(filename(d.URI), d.Text)
 	if e != nil {
 		tokens = []lexer.Token{}
@@ -34,7 +35,7 @@ func semantic(d document, checked ...compiler.Result) map[string]any {
 			case "comment":
 				kind = "COMMENT"
 			}
-			p := Position(d.Text, token.start)
+			p := positions.position(token.start)
 			tokens = append(tokens, lexer.Token{Kind: kind, Text: token.text, Pos: syntax.Position{Offset: token.start, Line: p.Line + 1, Column: 1}})
 		}
 	}
@@ -125,8 +126,8 @@ func semantic(d document, checked ...compiler.Result) map[string]any {
 		offset := token.Pos.Offset
 		for _, part := range strings.SplitAfter(token.Text, "\n") {
 			text := strings.TrimSuffix(strings.TrimSuffix(part, "\n"), "\r")
-			start := Position(d.Text, offset)
-			end := Position(d.Text, offset+len(text))
+			start := positions.position(offset)
+			end := positions.position(offset + len(text))
 			appendToken(start, end.Character-start.Character, kind)
 			offset += len(part)
 		}

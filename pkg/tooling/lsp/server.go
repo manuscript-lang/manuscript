@@ -13,7 +13,6 @@ import (
 	"runtime"
 	"sort"
 	"strings"
-	"unicode/utf16"
 )
 
 type position struct {
@@ -40,8 +39,8 @@ func Position(source string, offset int) position {
 	}
 	prefix := source[:offset]
 	line := strings.Count(prefix, "\n")
-	tail := prefix[strings.LastIndex(prefix, "\n")+1:]
-	return position{line, len(utf16.Encode([]rune(tail)))}
+	tail := prefix[strings.LastIndexByte(prefix, '\n')+1:]
+	return position{line, utf16Length(tail)}
 }
 
 // server holds the state of one language-server session.
