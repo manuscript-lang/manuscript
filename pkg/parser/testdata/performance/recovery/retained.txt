@@ -1,0 +1,24 @@
+# before sample 1
+retained_heap_delta_bytes=38736
+# after sample 1
+retained_heap_delta_bytes=38736
+# before sample 2
+retained_heap_delta_bytes=38736
+# after sample 2
+retained_heap_delta_bytes=38736
+# before sample 3
+retained_heap_delta_bytes=38736
+# after sample 3
+retained_heap_delta_bytes=38720
+# before sample 4
+retained_heap_delta_bytes=38736
+# after sample 4
+retained_heap_delta_bytes=38736
+# before sample 5
+retained_heap_delta_bytes=38736
+# after sample 5
+retained_heap_delta_bytes=38736
+# before sample 6
+retained_heap_delta_bytes=38720
+# after sample 6
+retained_heap_delta_bytes=38720
