@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -65,6 +66,25 @@ func BenchmarkParsePlainText(b *testing.B) {
 			b.ReportAllocs()
 			for b.Loop() {
 				if _, err := Parse("text.ms", source); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkParseCorpus(b *testing.B) {
+	for _, file := range []string{"../stdlib/collections.ms", "../stdlib/testing.ms", "../../tests/e2e/testdata/accept/pipe-flow.ms"} {
+		source, err := os.ReadFile(file)
+		if err != nil {
+			b.Fatal(err)
+		}
+		text := string(source)
+		b.Run(file, func(b *testing.B) {
+			b.SetBytes(int64(len(text)))
+			b.ReportAllocs()
+			for b.Loop() {
+				if _, err := Parse(file, text); err != nil {
 					b.Fatal(err)
 				}
 			}
