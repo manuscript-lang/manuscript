@@ -103,7 +103,9 @@ Task recipes must also preserve I/O failure: matching a failed stdout write and 
 
 Decision: documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator. Native builds were subsequently requested to work from a single binary without separately installing Go, with CGO excluded. The later requirement makes the bundled toolchain mandatory: no external override, PATH fallback, or ambient Go configuration may select another tool. OS-specific prerequisites such as Apple debugserver remain permitted. This establishes a delivery boundary for user-facing tooling: test the command from the user's installation context.
 
-Apply when: adding CLI tooling or making claims about installation requirements.
+Verified: `vscode-languageclient` 10 requires a log output channel, including `onDidChangeLogLevel` and severity methods. A plain output channel fails during editor activation even when a direct compiler LSP handshake succeeds. Create the shared channel with `{ log: true }`; activation and restart tests must exercise the logging API rather than making client startup a no-op. Evidence: [client setup](../extensions/vscode/extension.js), [dependency pin](../extensions/vscode/package-lock.json), and [activation/restart regression](../extensions/vscode/tests/extension.test.js).
+
+Apply when: adding CLI tooling, upgrading the editor client, or making claims about installation requirements.
 Evidence: [native build contract](../documentation/developer-tooling/how-it-works.md); [payload construction](../scripts/mktoolchain/main.go); [standalone distribution checks](../scripts/distcheck/main.go).
 Verify: exercise a copied binary outside the checkout with empty caches, no Go on PATH, and package downloads disabled. Include ordinary/debug builds and profiling so the reduced payload covers emitted runtime references. Confirm actual debugger backend prerequisites separately; do not generalize one platform’s prerequisites to all tooling.
 

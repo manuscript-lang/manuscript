@@ -9,7 +9,7 @@ const documentSelector = [
 ];
 
 async function activate(context) {
-  const output = vscode.window.createOutputChannel('Manuscript');
+  const output = vscode.window.createOutputChannel('Manuscript', { log: true });
   const watcher = vscode.workspace.createFileSystemWatcher('**/*.{ms,toml}');
   context.subscriptions.push(output, watcher);
   const serverPath = () => vscode.workspace.getConfiguration('manuscript').get('serverPath', 'ms');
