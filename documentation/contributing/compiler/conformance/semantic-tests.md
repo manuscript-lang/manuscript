@@ -7,7 +7,7 @@ weight = 104
 
 A conformance test checks a required rule by observing a program. For concurrency, use controlled transitions to exercise specific races and stress tests to exercise real scheduling.
 
-[Core-language fixtures](core-language.md) specify independent accepted modules and rejected variants for the grammar, operators, inference, contracts, and control flow. Their parse/resolution/type outcomes are authoritative for this core pass; the runtime coverage below remains a separate conformance track.
+The core-language fixtures in `tests/e2e/testdata/accept/` (`cl-*.ms`) specify independent accepted modules and rejected variants for the grammar, operators, inference, contracts, and control flow. Their parse/resolution/type outcomes are authoritative for this core pass; the runtime coverage below remains a separate conformance track.
 
 Tests use `test "name":` blocks and ordinary `if`/`return` guards. Import `panic` from `@std/faults.ms` and return `panic(message: ...)` when a check fails; a bare `return` completes a `Unit` test successfully. Control fake I/O, virtual clocks, and barriers around runtime transitions; Go goroutine scheduling remains nondeterministic. Stress and race tests exercise real transitions. Required coverage includes source-order preparation, exact heterogeneous results, domain errors, snapshot captures, universal sharing, synchronized critical sections, `with` registration and cleanup, closed-resource aliases, atomic admission/completion/close races, cleanup faults, and fixed deadline parents.
 
