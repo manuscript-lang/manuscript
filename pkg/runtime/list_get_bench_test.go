@@ -28,3 +28,26 @@ func BenchmarkListGetVsGo(b *testing.B) {
 		benchmarkListGetSink = sum
 	})
 }
+
+func BenchmarkListGetPaths(b *testing.B) {
+	for _, tc := range []struct {
+		name  string
+		start int
+	}{
+		{"positive", 0},
+		{"negative", -8},
+		{"default positive", 8},
+		{"default negative", -16},
+	} {
+		b.Run(tc.name, func(b *testing.B) {
+			values := NewList(1, 2, 3, 4, 5, 6, 7, 8)
+			b.ReportAllocs()
+			b.ResetTimer()
+			sum := 0
+			for n := 0; n < b.N; n++ {
+				sum += List_Get(nil, values, tc.start+(n&7), Some(9))
+			}
+			benchmarkListGetSink = sum
+		})
+	}
+}

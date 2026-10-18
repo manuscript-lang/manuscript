@@ -53,14 +53,14 @@ Unsafe or runtime-internal techniques need documented invariants and tests.
 Verified: keep `try` as one evaluation and a Go `if`/return. An exactly matching
 failed Result can be returned directly; changing the success type or widening
 the error still requires a result of the enclosing type. Test the discriminator,
-since an empty string or false error is still failure. Direct typed Result
+since an error with empty text is still failure. Direct typed Result
 literals avoid constructor-call inlining costs: on Go 1.25.1 they bring the
 benchmark's `chain` from cost 91 to the ordinary budget of 80. An experiment
 using `-l=4` for the runtime made more small checked methods inline, but was
 rejected after the broader stdlib suite exposed regressions. Lower inlining
 costs and wins in tiny call benchmarks alone do not establish an improvement.
 Evidence: [try lowering](../pkg/lower/contracts.go),
-[payload execution checks](../tests/e2e/try_result_test.go), and
+[payload execution checks](../tests/e2e/testdata/accept/try-result-payloads.ms), and
 [measurements and proposals](../perf-bench/programs/optimization-notes.md).
 
 Decision: the language is designed to lower cheaply, so use Go's own

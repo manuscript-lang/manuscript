@@ -1,5 +1,31 @@
 # Performance work
 
+## Nonnegative list reads after the current-main rebase
+
+Main's new List.get implementation costs 99 inline points in Go 1.25.1. A
+nonnegative in-range read needs only an unsigned bounds check and slice access.
+Keep that path in List_Get (cost 80) and move the unchanged original body to a
+private fallback for negative/out-of-range indices. This does not change index
+normalization, original-index diagnostics, defaults, aliases, or cancellation.
+
+An isolated overlay comparison measured ordinary nonnegative reads at about
+2.18 -> 0.64 ns/op with zero allocations. Variable negative reads cost about
+2.19 -> 2.48 ns because they take the added guard; this tradeoff is explicit.
+Default paths were roughly unchanged. A branchless-normalization variant did
+not improve the negative path and was discarded. A separate small-multiply
+fast path nearly halved small-operand cost but slowed large operands by 16%,
+so it was discarded. No inlining flags or arithmetic semantics changes ship.
+Comparison-based overflow formulas (including a narrower addition-only variant)
+reduced try from about 2.60 to 2.05 ns, but consistently slowed the length loop
+from 0.87 to 1.15 ns, so they were also discarded.
+
+The derived poll now uses `(distance + 1) & 63 == 0`, algebraically equivalent
+to `distance & 63 == 63` even when Go Int wraps. This preserves checks before
+the 64th/128th source loop bodies. A 30-run native overlay comparison improved
+integer equality 1.21 -> 1.10 ns (paired after/before interval 0.871–0.949) and
+matching 4.53 -> 4.21 ns (0.897–0.978). Other intervals include 1, including
+the noisy map row. Dynamic starts and conservative exclusions are unchanged.
+
 ## Result construction and rejected checked-helper inlining experiment
 
 `try` already lowers to one evaluation followed by `if result.Failed { return ... }`.

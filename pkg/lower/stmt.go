@@ -299,8 +299,11 @@ func (g *gen) loopStatements(s *syntax.Statement) []ast.Stmt {
 				if descending {
 					distance = binary(ident(initial), token.SUB, value)
 				}
+				// The same 64th-iteration phase, expressed as a zero test so
+				// Go can use an add and bit test instead of a masked compare.
+				distance = binary(distance, token.ADD, intLiteral(1))
 				poll = &ast.IfStmt{
-					Cond: binary(binary(distance, token.AND, intLiteral(63)), token.EQL, intLiteral(63)),
+					Cond: binary(binary(distance, token.AND, intLiteral(63)), token.EQL, intLiteral(0)),
 					Body: block(evaluated(rtCall("CheckCancelled", ident("ctx")))),
 				}
 			}

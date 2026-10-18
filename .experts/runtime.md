@@ -17,8 +17,9 @@ controls allocate one 48-byte backing slice on linux/amd64. Confirm caller inlin
 
 Verified: keep cold fault capture out of line. Inlining `Raise` made
 `Optional_Get`/`Result_Get` exceed Go 1.25.1's budget (93/94 versus 80);
-outlining it lowers their costs to 75/76 and lets list lookup/get inline without
-extra fallback wrappers. StringBuilder's pointer-only, sealed lifetime also
+outlining it lowers their costs to 75/76. The older List.at/Optional.get chain
+then inlined; current List.get has its own index/default contract and cost.
+StringBuilder's pointer-only, sealed lifetime also
 permits direct byte storage and immutable zero-copy freeze, removing the
 redundant strings.Builder value-copy guard. Supported Go callers must not copy
 the implementation value after use. Evidence: [fault helper](../pkg/runtime/fault.go),
@@ -26,6 +27,17 @@ the implementation value after use. Evidence: [fault helper](../pkg/runtime/faul
 and [retained allocation/runtime comparison](../perf-bench/programs/results.md).
 Verify native fault locations as well as allocation counts; registered source
 frames must remain intact when cold helpers stop inlining.
+
+Verified: after the indexing API change, List_Get costs 99 inline points.
+Keeping the nonnegative in-range path in the public wrapper lowers it to 80,
+with unchanged normalization/default/fault handling in a private slow helper.
+Ordinary caller benchmarks measure roughly 2.18 -> 0.64 ns with zero allocations.
+Variable negative indices pay about 0.3 ns for the guard; report that tradeoff
+and measure the fallback paths as well. Test original-index diagnostics at
+MinInt/MaxInt, empty lists, and reference/default identity.
+Evidence: [list reads](../pkg/runtime/list.go),
+[boundary tests](../pkg/runtime/list_get_test.go), and
+[path benchmarks](../pkg/runtime/optional_bench_test.go).
 
 Verified: keeping List construction in small exported String wrappers also removes
 the temporary heap List for local `chars`, `lines`, and `scalar_values` callers.

@@ -21,6 +21,15 @@ func Positions[T any](l *List[T], n int) []T {
 // List_Get returns the element at a possibly negative index, else the default;
 // an invalid index without a default is a fault.
 func List_Get[T any](_ *Execution, l *List[T], index int, def Option[T]) T {
+	// Keep the common nonnegative read within Go's inline budget. Relative
+	// indices and missing values keep the same normalization and diagnostics.
+	if uint(index) < uint(len(l.Items)) {
+		return l.Items[index]
+	}
+	return listGetSlow(l, index, def)
+}
+
+func listGetSlow[T any](l *List[T], index int, def Option[T]) T {
 	n := len(l.Items)
 	i := index
 	if i < 0 {
