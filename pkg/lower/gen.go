@@ -270,6 +270,7 @@ type funcState struct {
 	safeInt          map[*syntax.Expression]bool
 	listLengths      map[*syntax.Expression]int64
 	counterChunks    map[*syntax.Statement]*counterChunk
+	rangeChunks      map[*syntax.Statement]bool
 	recordUpdates    map[*syntax.Expression]*localRecordCall
 	localCollections *localCollectionProof
 	// literalStarts is conservative, body-local eligibility for counter polling.

@@ -356,6 +356,9 @@ func (g *gen) loopStatements(s *syntax.Statement) []ast.Stmt {
 		return append(append(setup, declare), count)
 	}
 	iterable := g.expr(s.Value)
+	if out, ok := g.closedRangeChunk(s, iterable); ok {
+		return out
+	}
 	body := g.body(s.Body, nil)
 	body = append([]ast.Stmt{poll}, body...)
 	return append([]ast.Stmt{declare}, g.rangeLoop(s, binding, iterable, body)...)

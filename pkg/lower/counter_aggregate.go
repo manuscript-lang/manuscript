@@ -5,9 +5,13 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"go/ast"
 	"go/token"
+	"strings"
 )
 
 type counterAggregate struct {
+	builder          bool
+	fragment         string
+	pos              syntax.Position
 	binding          *checker.Binding
 	field            string
 	delta            int64
@@ -93,6 +97,11 @@ func (p *intProof) aggregateUpdate(update *syntax.Statement, counter *checker.Bi
 	var result counterAggregate
 	var stride *syntax.Expression
 	if update.Kind == syntax.KindCall {
+		if local := p.g.fn.localCollections; local != nil {
+			if op, ok := local.builderAppends[update.Value]; ok {
+				return &counterAggregate{binding: op.binding, builder: true, fragment: op.fragment, pos: update.Pos}
+			}
+		}
 		op := p.g.fn.recordUpdates[update.Value]
 		if op == nil || len(update.Value.Args) != 1 {
 			return nil
@@ -158,11 +167,16 @@ func (g *gen) aggregateChunk(chunk *counterChunk, cond ast.Expr, body []ast.Stmt
 	if chunk.aggregate.subtract {
 		operator = token.SUB
 	}
-	polled := append([]ast.Stmt{evaluated(rtCall("CheckCancelled", ident("ctx")))}, body...)
+	polled := append([]ast.Stmt{g.locatedStatement(chunk.pos, evaluated(rtCall("CheckCancelled", ident("ctx"))))}, body...)
+	var change ast.Stmt = assign(target, token.ASSIGN, binary(target, operator, delta))
+	if chunk.aggregate.builder {
+		text := &ast.SliceExpr{X: textLiteral(strings.Repeat(chunk.aggregate.fragment, 63)), High: binary(ident(n), token.MUL, intLiteral(len(chunk.aggregate.fragment)))}
+		change = g.locatedStatement(chunk.aggregate.pos, evaluated(rtCall("StringBuilder_Append", ident("ctx"), target, text)))
+	}
 	inner := []ast.Stmt{
 		define(n, binary(limit, token.SUB, counter)),
 		&ast.IfStmt{Cond: binary(ident(n), token.GTR, intLiteral(63)), Body: block(assign(ident(n), token.ASSIGN, intLiteral(63)))},
-		assign(target, token.ASSIGN, binary(target, operator, delta)),
+		change,
 		assign(counter, token.ASSIGN, binary(counter, token.ADD, ident(n))),
 		&ast.IfStmt{Cond: cond, Body: block(polled...)},
 	}

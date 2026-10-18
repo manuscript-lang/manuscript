@@ -1,0 +1,464 @@
+{
+  "string.append_builder": {
+    "ops": 100000,
+    "checksum": 100000,
+    "before": 3.2147550000000003,
+    "after": 3.256115,
+    "ratio": 1.012865677166689
+  },
+  "string.concat": {
+    "ops": 20000,
+    "checksum": 20000,
+    "before": 1736.026275,
+    "after": 1869.994525,
+    "ratio": 1.0771694829330853
+  },
+  "string.split": {
+    "ops": 200,
+    "checksum": 400000,
+    "before": 20656.902499999997,
+    "after": 20547.965,
+    "ratio": 0.9947263390530117
+  },
+  "string.replace_all": {
+    "ops": 200,
+    "checksum": 1944600,
+    "before": 47220.1225,
+    "after": 47949.2725,
+    "ratio": 1.015441510131618
+  },
+  "string.contains": {
+    "ops": 2000,
+    "checksum": 2000,
+    "before": 4413.004,
+    "after": 4468.61175,
+    "ratio": 1.0126008836611071
+  },
+  "string.upper": {
+    "ops": 200,
+    "checksum": 3144600,
+    "before": 47448.6325,
+    "after": 47695.835,
+    "ratio": 1.0052098972504635
+  },
+  "string.trim": {
+    "ops": 100000,
+    "checksum": 600000,
+    "before": 9.968435,
+    "after": 9.964974999999999,
+    "ratio": 0.9996529043927156
+  },
+  "string.index_char_at": {
+    "ops": 100000,
+    "checksum": 100000,
+    "before": 6.589840000000001,
+    "after": 6.8050049999999995,
+    "ratio": 1.0326510203586126
+  },
+  "string.chars": {
+    "ops": 20,
+    "checksum": 314460,
+    "before": 121675.57500000001,
+    "after": 119930.85,
+    "ratio": 0.9856608444217337
+  },
+  "string.parse_int": {
+    "ops": 100000,
+    "checksum": 1234500000,
+    "before": 19.800915,
+    "after": 19.426105,
+    "ratio": 0.9810710767658969
+  },
+  "string.interpolate": {
+    "ops": 100000,
+    "checksum": 2031636,
+    "before": 87.756985,
+    "after": 86.52146,
+    "ratio": 0.9859210637193154
+  },
+  "list.append": {
+    "ops": 200000,
+    "checksum": 200000,
+    "before": 47.43917,
+    "after": 43.2468975,
+    "ratio": 0.9116284601943923
+  },
+  "list.at": {
+    "ops": 200000,
+    "checksum": 1000609836,
+    "before": 1.7885675,
+    "after": 1.677905,
+    "ratio": 0.9381278593064002
+  },
+  "list.for_in": {
+    "ops": 100000,
+    "checksum": 500304918,
+    "before": 1.111345,
+    "after": 1.117555,
+    "ratio": 1.005587823763098
+  },
+  "list.map": {
+    "ops": 100000,
+    "checksum": 100000,
+    "before": 4.76374,
+    "after": 3.110645,
+    "ratio": 0.6529837900473157
+  },
+  "list.filter": {
+    "ops": 100000,
+    "checksum": 50004,
+    "before": 10.146325000000001,
+    "after": 9.878345,
+    "ratio": 0.9735884667601322
+  },
+  "list.fold": {
+    "ops": 100000,
+    "checksum": 500304918,
+    "before": 2.4536749999999996,
+    "after": 2.1177799999999998,
+    "ratio": 0.8631053419870195
+  },
+  "list.sorted": {
+    "ops": 100000,
+    "checksum": 100000,
+    "before": 111.11946499999999,
+    "after": 111.67088,
+    "ratio": 1.0049623619048202
+  },
+  "list.contains": {
+    "ops": 100,
+    "checksum": 0,
+    "before": 182358.745,
+    "after": 180896.635,
+    "ratio": 0.9919822326042002
+  },
+  "list.distinct": {
+    "ops": 100000,
+    "checksum": 10007,
+    "before": 19.933660000000003,
+    "after": 19.329214999999998,
+    "ratio": 0.9696771691701371
+  },
+  "list.concat_reverse": {
+    "ops": 100000,
+    "checksum": 200000,
+    "before": 18.31402,
+    "after": 18.354845,
+    "ratio": 1.0022291665074081
+  },
+  "list.records_map": {
+    "ops": 100000,
+    "checksum": 500404918,
+    "before": 28.518765000000002,
+    "after": 27.98776,
+    "ratio": 0.9813805050814788
+  },
+  "map.int_put_get": {
+    "ops": 200000,
+    "checksum": 9999900000,
+    "before": 39.297515000000004,
+    "after": 38.9218575,
+    "ratio": 0.99044068053667
+  },
+  "map.string_put_get": {
+    "ops": 100000,
+    "checksum": 50000,
+    "before": 66.229905,
+    "after": 67.52604500000001,
+    "ratio": 1.0195703134407337
+  },
+  "map.iterate_entries": {
+    "ops": 100000,
+    "checksum": 4999950000,
+    "before": 244.38163500000002,
+    "after": 230.019355,
+    "ratio": 0.9412301173940504
+  },
+  "set.add_contains": {
+    "ops": 200000,
+    "checksum": 100000,
+    "before": 88.38199,
+    "after": 80.23729,
+    "ratio": 0.9078466099258458
+  },
+  "json.parse": {
+    "ops": 5000,
+    "checksum": 1,
+    "before": 1262.8528999999999,
+    "after": 1220.032,
+    "ratio": 0.9660919335894149
+  },
+  "json.roundtrip": {
+    "ops": 5000,
+    "checksum": 356671,
+    "before": 1967.5822,
+    "after": 2011.6669000000002,
+    "ratio": 1.0224055188139027
+  },
+  "csv.stringify": {
+    "ops": 5000,
+    "checksum": 157780,
+    "before": 272.4546,
+    "after": 267.9961,
+    "ratio": 0.9836358057452507
+  },
+  "csv.parse": {
+    "ops": 5000,
+    "checksum": 5000,
+    "before": 217.9341,
+    "after": 202.20080000000002,
+    "ratio": 0.9278070756251546
+  },
+  "encoding.base64_encode": {
+    "ops": 157689,
+    "checksum": 210252,
+    "before": 2.5700207370203376,
+    "after": 1.338533442408792,
+    "ratio": 0.5208259307513127
+  },
+  "encoding.base64_decode": {
+    "ops": 157689,
+    "checksum": 157689,
+    "before": 2.0680706961170405,
+    "after": 1.5689141284426942,
+    "ratio": 0.7586366033755274
+  },
+  "encoding.hex_encode": {
+    "ops": 157689,
+    "checksum": 315378,
+    "before": 2.297963079225564,
+    "after": 2.6570750020610188,
+    "ratio": 1.1562740176645827
+  },
+  "crypto.sha256": {
+    "ops": 157689,
+    "checksum": 32,
+    "before": 0.5721927337988065,
+    "after": 0.5788894596325679,
+    "ratio": 1.0117036191447268
+  },
+  "bytes.builder": {
+    "ops": 100000,
+    "checksum": 100000,
+    "before": 4.6354500000000005,
+    "after": 5.13339,
+    "ratio": 1.1074199915865772
+  },
+  "regex.find_all": {
+    "ops": 2000,
+    "checksum": 2000,
+    "before": 287.19674999999995,
+    "after": 295.3665,
+    "ratio": 1.028446526640709
+  },
+  "regex.matches": {
+    "ops": 10000,
+    "checksum": 10000,
+    "before": 94.2082,
+    "after": 100.16655,
+    "ratio": 1.0632466175980435
+  },
+  "regex.replace_all": {
+    "ops": 2000,
+    "checksum": 3999,
+    "before": 311.195,
+    "after": 326.6425,
+    "ratio": 1.0496392936904513
+  },
+  "path.join_normalize": {
+    "ops": 50000,
+    "checksum": 500000,
+    "before": 559.31311,
+    "after": 547.20278,
+    "ratio": 0.9783478524220537
+  },
+  "path.basename": {
+    "ops": 100000,
+    "checksum": 800000,
+    "before": 12.837720000000001,
+    "after": 12.964165000000001,
+    "ratio": 1.009849490407954
+  },
+  "url.parse": {
+    "ops": 20000,
+    "checksum": 20000,
+    "before": 371.9299,
+    "after": 378.3529,
+    "ratio": 1.0172693832897006
+  },
+  "url.encode_component": {
+    "ops": 50000,
+    "checksum": 1100000,
+    "before": 132.77924000000002,
+    "after": 135.26083999999997,
+    "ratio": 1.0186896686560336
+  },
+  "math.sqrt_sin": {
+    "ops": 1000000,
+    "checksum": 2255684,
+    "before": 8.180119000000001,
+    "after": 8.279756500000001,
+    "ratio": 1.0121804462746813
+  },
+  "yaml.parse": {
+    "ops": 2000,
+    "checksum": 1,
+    "before": 7521.76425,
+    "after": 7595.48375,
+    "ratio": 1.009800825650711
+  },
+  "yaml.roundtrip": {
+    "ops": 2000,
+    "checksum": 139780,
+    "before": 11024.34575,
+    "after": 10871.957750000001,
+    "ratio": 0.986177138901871
+  },
+  "toml.parse": {
+    "ops": 2000,
+    "checksum": 1,
+    "before": 5520.3345,
+    "after": 5509.33975,
+    "ratio": 0.9980083181553582
+  },
+  "html.parse": {
+    "ops": 2000,
+    "checksum": 1,
+    "before": 1682.18575,
+    "after": 1843.63225,
+    "ratio": 1.095974240656836
+  },
+  "html.escape_unescape": {
+    "ops": 2000,
+    "checksum": 23719,
+    "before": 243.26075,
+    "after": 143.77249999999998,
+    "ratio": 0.5910221850421821
+  },
+  "bigint.factorial_1000": {
+    "ops": 1000,
+    "checksum": 2568,
+    "before": 236.31900000000002,
+    "after": 259.974,
+    "ratio": 1.1000977492287964
+  },
+  "decimal.add_round": {
+    "ops": 20000,
+    "checksum": 200010000,
+    "before": 1468.000425,
+    "after": 1464.304,
+    "ratio": 0.9974820000477862
+  },
+  "compress.gzip": {
+    "ops": 880000,
+    "checksum": 2638,
+    "before": 2.560778977272727,
+    "after": 2.6358721590909093,
+    "ratio": 1.0293243510996632
+  },
+  "compress.roundtrip": {
+    "ops": 880000,
+    "checksum": 880000,
+    "before": 4.784089204545454,
+    "after": 4.232831818181818,
+    "ratio": 0.8847727617955209
+  },
+  "time.parse_timestamp": {
+    "ops": 20000,
+    "checksum": 80000,
+    "before": 299.818075,
+    "after": 298.95052499999997,
+    "ratio": 0.9971064119466445
+  },
+  "queue.enqueue_dequeue": {
+    "ops": 200000,
+    "checksum": 4999950000,
+    "before": 10.2421875,
+    "after": 10.1013275,
+    "ratio": 0.9862470785659802
+  },
+  "priority_queue.enqueue_dequeue": {
+    "ops": 100000,
+    "checksum": 250160470,
+    "before": 140.745345,
+    "after": 140.705615,
+    "ratio": 0.9997177171294724
+  },
+  "archive.zip_pack": {
+    "ops": 2000,
+    "checksum": 322692,
+    "before": 1447.9035,
+    "after": 1498.49725,
+    "ratio": 1.034942763796068
+  },
+  "archive.tar_pack": {
+    "ops": 2000,
+    "checksum": 2049024,
+    "before": 5086.0650000000005,
+    "after": 5147.4220000000005,
+    "ratio": 1.0120637467275782
+  },
+  "archive.zip_unpack": {
+    "ops": 2000,
+    "checksum": 2000,
+    "before": 9427.468499999999,
+    "after": 8778.399249999999,
+    "ratio": 0.931151268232824
+  },
+  "sse.feed": {
+    "ops": 2000,
+    "checksum": 2000,
+    "before": 1769.3925,
+    "after": 1738.69425,
+    "ratio": 0.9826504011970211
+  },
+  "time.timestamp_to_string": {
+    "ops": 20000,
+    "checksum": 480000,
+    "before": 106.157875,
+    "after": 97.09975,
+    "ratio": 0.9146730753606361
+  },
+  "random.uuid_v4": {
+    "ops": 20000,
+    "checksum": 720000,
+    "before": 442.721325,
+    "after": 441.22517500000004,
+    "ratio": 0.9966205603491092
+  },
+  "fs.write_file_64k": {
+    "ops": 200,
+    "checksum": 200,
+    "before": 21038.739999999998,
+    "after": 21007.317499999997,
+    "ratio": 0.9985064457282138
+  },
+  "fs.read_file_64k": {
+    "ops": 200,
+    "checksum": 13107200,
+    "before": 44295.2025,
+    "after": 44268.3975,
+    "ratio": 0.9993948554586696
+  },
+  "fs.stat": {
+    "ops": 200,
+    "checksum": 200,
+    "before": 4794.5599999999995,
+    "after": 4539.445,
+    "ratio": 0.9467907378362144
+  },
+  "fs.list_200": {
+    "ops": 1,
+    "checksum": 200,
+    "before": 76598.5,
+    "after": 71746.0,
+    "ratio": 0.9366501954999119
+  },
+  "log.info": {
+    "ops": 20000,
+    "checksum": 20000,
+    "before": 3741.3914999999997,
+    "after": 3663.7091,
+    "ratio": 0.9792370298590779
+  }
+}

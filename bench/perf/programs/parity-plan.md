@@ -614,3 +614,111 @@ controls regress append3.72→4.01ns. Reject it; inline cost alone is not a spee
 Rewriting each match-arm assignment as an immediate return while retaining the
 same checked arithmetic changes match3.49→3.47ns in30trials. Reject this no-gain
 rewrite rather than add compiler machinery for a timing-neutral source shape.
+
+## Combine closed-builder literal appends between original queries
+
+Proposal before implementation; require30-trial manual control and independent
+skeptical review. A fresh private builder's literal append loop still spends
+~3.5ns per operation versus Go~2.8. A manual unsealed-check-only control improves
+3.70→3.47ns but leaves most work. Instead use the existing finite two-statement
+aggregation grammar to append up to63 identical fragments in one ordinary native
+append, then perform the original query and original one-body append/step.
+Preserve exact text/counter before every query and at exit. Keep ordinary sealed
+checks and freeze behavior. This reduces invisible append work, not append cost.
+
+Prove a fresh immutable canonical StringBuilder declared directly in the callable
+body, with exhaustive checked direct append/freeze uses only; no aliases, capture,
+escape, arbitrary methods or defaults. Require every freeze to be a direct
+statement/binding/return in the top-level body and after every possible append's
+enclosing top-level statement. Reject a freeze within loops, branches, nested
+callables or arguments. Thus the builder stays open throughout selected loops.
+Existing capture inventory and Debug fallbacks remain. Calls in other append
+arguments cannot receive or capture this private builder under the same inventory.
+
+Only a canonical append statement with one direct checked String literal (at most
+1024 UTF-8 bytes), followed by the already-proved counter step, qualifies. Repeat
+that bounded literal63 times at compile time; append the prefix of n*byteLength
+for n in1..63. This keeps generated source bounded per site and every new product
+within64512. Empty/Unicode fragments preserve byte sequences. Keep original append
+call for the queried body. Allocation capacity and GC timing may differ, as with
+ordinary allocation optimizations; no supported builder capacity API exists.
+
+Alternatives: keep individual appends (measured overhead); remove sealing globally
+(unsound); cold callback (measured regression); arbitrary builder escape analysis
+or general loop vectorization (unnecessary scope). Require native actual-query
+text/counter observers, partial tails, cancellation/cleanup/source frames, Unicode
+and empty strings, aliases/captures/freeze-order/Debug fallbacks, N/2N/4N scaling,
+and whole program/library controls before retention. Do not alter raw Go baseline.
+
+## Group safe closed-list traversal polling
+
+Proposal before implementation; require isolated/combined30-trial controls and
+independent review. Existing closed Int-list traversal already proves every
+accumulator prefix safe, but still increments a separate tick and tests it on
+each body. Code-size changes in earlier functions repeatedly shift its tiny hot
+loop and regress timing, blocking otherwise useful controls.
+
+For a direct closed private List[Int] name with a single body statement
+`carry += element` or `carry -= element`, require that exact checked update be
+proved safe and neither carry nor loop element is captured. Snapshot Items once
+as ordinary range does. Execute at most63 original updates in an indexed inner
+loop, bind the next original element, query at the same64th phase, then execute
+the original queried update. Preserve exact carry/element state and list reads at
+every query, partial tails, order, and exits. Every individual assignment remains;
+no summation reorder, new arithmetic proof or list access elision is introduced.
+Use `len(items)-index>63` before `index+63` to avoid endpoint overflow. Unsupported
+shapes, aliases/captures/escaping lists, unknown overflow and Debug fall back.
+
+Alternatives: leave the extra per-iteration polling work; placement padding
+(rejected); reuse index in the mask (measured no benefit); unrestricted traversal
+batching (unnecessary). Native query observers must cover signed elements,
+256/257/319/320/321 lengths, cancellation, cleanup, source frames, standalone,
+checked-overflow fallback and alias/capture/Debug cases. Require linear proof cost
+and complete program/library controls, including combined candidates.
+
+Refinement before implementation: group traversal over a slice of at most63
+items, with three sequential original updates per inner iteration and a tail
+range. This bounds code expansion to three copies and removes per-item polling
+without bounds checks on every indexed read. No update is reordered or omitted.
+Select initially only proved lengths>=256. Earlier index/slice-only grouping
+controls regress traversal and are rejected; keep their evidence.
+
+Thirty balanced unroll controls: traversal-only0.40ns versusGo0.36; builder plus
+traversal gives builder2.03vsGo2.80 and traversal0.38vs0.33. Neither introduces a
+material wider gap. These controls justify implementing the independently
+reviewed narrow proofs, followed by actual compiler measurements and native
+query-state/overflow/alias/capture/Debug/short-length tests. Match clones remain
+unshipped; the arithmetic-equivalent Go control is diagnostic only.
+
+Acceptance tests planned for the refined builder/range implementation:
+
+- Builder selection/fallback: canonical fresh constructor; literal/empty/Unicode
+  append; aliases, captures/default captures, constructor aliases, effectful text,
+  freeze before/inside/conditional after appends, literals over1024bytes, Debug.
+- Traversal selection/fallback: exact checked sum/add/subtract element identity;
+  private list, captured carry/element/list, aliases, changed update, unknown
+  overflow, short lengths0/1/63/64/65, and all partial long chunks.
+- Native emitted-query observers: record counter/text for builder and
+  element/carry for traversal before each query; cancel first/last query, verify
+  cleanup and final values. Fault at query retains loop line; injected append
+  fault retains original append line without leaking onto the next query.
+- Compile-time scaling: N/2N/4N accepted sites, selection asserted before timing;
+  inventories and lowering must avoid rescanning enclosing AST/callee trees.
+
+Actual implementation review found no blocker. The1024-byte worst-case control
+emits34MB of Go for512 sites and allocates~496MB in0.69seconds. Although linear,
+that expansion is excessive: lower the admitted fragment cap to128 decoded bytes
+(8064 repeated bytes per site), without caching or changing the selected benchmark
+literal. Retain both the rejected-cap and final-cap scaling results.
+
+Outcome: retain closed-builder batching and ordered range unrolling. Independent
+actual-code review found no blocker. Compiler selection and native observed
+query-state/fault-line/cleanup/standalone tests pass, as do makeverify, compiler/
+lower race checks and book checks. Final30-trial actual compiler output gives
+builder2.13vsGo3.53 and traversal0.38vs0.34. Nineof10 workloads are within about15%
+of rawGo or faster. Matching remains2.19xrawGo; the separate equivalent checked/
+queried handwritten-Go control gives3.18vsManuscript3.44 (1.08x). Do not change
+rawGo or call its remaining gap closed. Both measured benchmark generated sources
+and normalized binaries are byte-identical across the cap reduction; library
+baseline/final are themselves byte-identical, with all66 diagnostic rows retained.
+Final-cap512-site emission is~0.15s/~93MB, versus0.69s/~496MB at rejectedcap1024.

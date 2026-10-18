@@ -78,6 +78,7 @@ func (g *gen) proveIntArithmetic(body []*syntax.Statement) {
 	g.fn.safeInt = map[*syntax.Expression]bool{}
 	g.fn.listLengths = map[*syntax.Expression]int64{}
 	g.fn.counterChunks = map[*syntax.Statement]*counterChunk{}
+	g.fn.rangeChunks = map[*syntax.Statement]bool{}
 	g.fn.recordUpdates = map[*syntax.Expression]*localRecordCall{}
 	p.body(body)
 }

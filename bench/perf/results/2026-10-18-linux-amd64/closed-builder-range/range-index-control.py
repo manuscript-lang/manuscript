@@ -1,0 +1,5 @@
+from pathlib import Path
+import json,subprocess,os,hashlib
+root=Path('/workspace/manuscript');m=json.loads(Path('/tmp/manuscript-aggregate-matched-manifest.json').read_text());app=Path(m['program']['app']).resolve();s=(app/'main.go').read_text();a=s.index('func bench_for_list');b=s.index('\nfunc ',a+1);part=s[a:b].replace('var t6 uint32','').replace('for _, x := range big.Items','for t6, x := range big.Items').replace('if t6++; t6&63 == 0','if (t6+1)&63 == 0');assert part!=s[a:b];s=s[:a]+part+s[b:]
+p=Path('/tmp/manuscript-range-index.go');p.write_text(s);ov=p.with_suffix('.json');ov.write_text(json.dumps({'Replace':{str(app/'main.go'):str(p)}}));subprocess.run([str(root/'toolchain/go/bin/go'),'build','-buildvcs=false','-trimpath','-ldflags=-s -w -buildid=','-overlay='+str(ov),'-o','/tmp/manuscript-range-index','.'],cwd=app,env={**os.environ,'CGO_ENABLED':'0'},check=True)
+Path('/tmp/manuscript-range-index-manifest.json').write_text(json.dumps({'source_sha256':hashlib.sha256(s.encode()).hexdigest(),'binary_sha256':hashlib.sha256(Path('/tmp/manuscript-range-index').read_bytes()).hexdigest()},indent=2)+'\n')

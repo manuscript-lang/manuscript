@@ -1,0 +1,10 @@
+{
+  "plain": {
+    "source_sha256": "a14b76dda242bc2bac98328a347112f196a6d5aeed164f6c6a0e13eae3fd10ae",
+    "binary_sha256": "233430d18010576e68b2259d9630b9588d0f07a55fb290865fdc73f060da5e37"
+  },
+  "clone": {
+    "source_sha256": "bdf89370a51ffb7b17a5db6a3b5775e3be8462060987ae3c34bd675f332a358c",
+    "binary_sha256": "2c00ab1e504960c373f069607286eb2a6465b1fac23f937b1e40e2a0bf11e836"
+  }
+}

@@ -9,6 +9,7 @@ import (
 )
 
 type counterChunk struct {
+	pos       syntax.Position
 	counter   *checker.Binding
 	limit     int64
 	aggregate *counterAggregate
@@ -28,7 +29,7 @@ func (p *intProof) chunk(s *syntax.Statement, counter *checker.Binding, limit in
 	}
 	aggregate := p.aggregateUpdate(update, counter, bounds)
 	if aggregate != nil {
-		p.g.fn.counterChunks[s] = &counterChunk{counter: counter, limit: limit, aggregate: aggregate}
+		p.g.fn.counterChunks[s] = &counterChunk{counter: counter, limit: limit, aggregate: aggregate, pos: s.Pos}
 		return
 	}
 	carry := p.target(update)

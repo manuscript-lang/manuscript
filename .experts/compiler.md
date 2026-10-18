@@ -353,3 +353,14 @@ collection, scope success bindings with journal rollback while all modified peer
 stay unknown; never transfer accumulator assignments in that walk. See
 `TestSuccessfulResultBoundsRejectDifferentReturns`, `TestSuccessfulResultBoundsRestoreElseScope`,
 and `TestSuccessfulResultBoundsKeepPeerAndPrefixChecks`.
+
+### Keep grouped query state and marker ownership explicit
+
+Closed-builder grouping requires an exhaustive use inventory and every freeze
+after every possible append-containing top-level statement. Keep decoded byte
+lengths bounded: 1024-byte fragments produced34MB Go and~496MB allocation for512
+sites; cap128 limits each repeated literal to8064 bytes. Closed-list traversal
+may unroll already-safe sequential updates, but bind the queried element before
+querying, snapshot Items once, and guard len-index before index+63. New lowering
+of each copied body gives unique markers. Grouped native append and query need
+distinct explicit source positions; test raised faults at both sites.

@@ -13,6 +13,15 @@ func TestFaultSourceLocations(t *testing.T) {
 		tests        bool
 		frames       []string
 	}{
+		{"rejected range grouping overflow", `fn probe() Int:
+    let values = [1, 2, 3]
+    var sum = 9223372036854775807
+    for x in values:
+        sum += x
+    return sum
+export fn main() Int:
+    return probe()
+`, false, []string{"fault.ms:5 in probe", "fault.ms:8 in main"}},
 		{"rejected affine aggregate overflow", `fn probe() Int:
     var sum = 0
     var i = -9223372036854775808

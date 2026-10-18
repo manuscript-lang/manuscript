@@ -1,0 +1,42 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/lower
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkBuilderRangeScaling/1bytes/128/inventory-4         	       1	    442464 ns/op	  125544 B/op	    2397 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/128/inventory-4         	       1	    429455 ns/op	  125544 B/op	    2397 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/128/inventory-4         	       1	    505427 ns/op	  125544 B/op	    2397 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/128/emit-4              	       1	  17228771 ns/op	  10.87 MB/s	 8006384 B/op	  101530 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/128/emit-4              	       1	  16657787 ns/op	  11.24 MB/s	 7972096 B/op	  101517 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/128/emit-4              	       1	  15440448 ns/op	  12.12 MB/s	 7972128 B/op	  101516 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/256/inventory-4         	       1	   1283396 ns/op	  249128 B/op	    4713 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/256/inventory-4         	       1	   1156660 ns/op	  249128 B/op	    4713 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/256/inventory-4         	       1	   1013608 ns/op	  249128 B/op	    4713 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/256/emit-4              	       1	  33269246 ns/op	  11.45 MB/s	16325704 B/op	  200765 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/256/emit-4              	       1	  32002524 ns/op	  11.90 MB/s	16275728 B/op	  200757 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/256/emit-4              	       1	  34625610 ns/op	  11.00 MB/s	16178592 B/op	  200760 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/512/inventory-4         	       1	   1836575 ns/op	  499320 B/op	    9342 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/512/inventory-4         	       1	   1969280 ns/op	  499320 B/op	    9342 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/512/inventory-4         	       1	   2567585 ns/op	  499320 B/op	    9342 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/512/emit-4              	       1	  77164330 ns/op	   9.96 MB/s	33270936 B/op	  399224 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/512/emit-4              	       1	  69872359 ns/op	  10.99 MB/s	33270680 B/op	  399223 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/512/emit-4              	       1	  75399557 ns/op	  10.19 MB/s	33139800 B/op	  399220 allocs/op
+BenchmarkBuilderRangeScaling/128bytes/128/inventory-4       	       1	    612685 ns/op	  140904 B/op	    2397 allocs/op
+BenchmarkBuilderRangeScaling/128bytes/128/inventory-4       	       1	    766733 ns/op	  140904 B/op	    2397 allocs/op
+BenchmarkBuilderRangeScaling/128bytes/128/inventory-4       	       1	    575661 ns/op	  140904 B/op	    2397 allocs/op
+BenchmarkBuilderRangeScaling/128bytes/128/emit-4            	       1	  37908958 ns/op	  32.39 MB/s	23199536 B/op	  101919 allocs/op
+BenchmarkBuilderRangeScaling/128bytes/128/emit-4            	       1	  40551187 ns/op	  30.28 MB/s	23198496 B/op	  101915 allocs/op
+BenchmarkBuilderRangeScaling/128bytes/128/emit-4            	       1	  37979276 ns/op	  32.33 MB/s	23198448 B/op	  101914 allocs/op
+BenchmarkBuilderRangeScaling/128bytes/256/inventory-4       	       1	   1079075 ns/op	  279848 B/op	    4713 allocs/op
+BenchmarkBuilderRangeScaling/128bytes/256/inventory-4       	       1	   1857725 ns/op	  279848 B/op	    4713 allocs/op
+BenchmarkBuilderRangeScaling/128bytes/256/inventory-4       	       1	    978977 ns/op	  279848 B/op	    4713 allocs/op
+BenchmarkBuilderRangeScaling/128bytes/256/emit-4            	       1	  74733864 ns/op	  32.95 MB/s	46616392 B/op	  201546 allocs/op
+BenchmarkBuilderRangeScaling/128bytes/256/emit-4            	       1	  91230068 ns/op	  26.99 MB/s	46616232 B/op	  201544 allocs/op
+BenchmarkBuilderRangeScaling/128bytes/256/emit-4            	       1	  68592824 ns/op	  35.90 MB/s	46616232 B/op	  201544 allocs/op
+BenchmarkBuilderRangeScaling/128bytes/512/inventory-4       	       1	   1895521 ns/op	  560760 B/op	    9342 allocs/op
+BenchmarkBuilderRangeScaling/128bytes/512/inventory-4       	       1	   2024552 ns/op	  560760 B/op	    9342 allocs/op
+BenchmarkBuilderRangeScaling/128bytes/512/inventory-4       	       1	   1964133 ns/op	  560760 B/op	    9342 allocs/op
+BenchmarkBuilderRangeScaling/128bytes/512/emit-4            	       1	 161738337 ns/op	  30.49 MB/s	93493800 B/op	  400778 allocs/op
+BenchmarkBuilderRangeScaling/128bytes/512/emit-4            	       1	 150312682 ns/op	  32.80 MB/s	93378904 B/op	  400774 allocs/op
+BenchmarkBuilderRangeScaling/128bytes/512/emit-4            	       1	 149005630 ns/op	  33.09 MB/s	93493112 B/op	  400774 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/lower	1.471s

@@ -1,0 +1,16 @@
+{
+  "program": {
+    "app": "/workspace/manuscript/.artifacts/build-storage/native-cache/manuscript/workspaces/51d6451cce4232a6cd2c5a4664cccae2/apps/d6086d65d6267d8ef3945beefa6c0fc1",
+    "binary": "/workspace/manuscript/.artifacts/perf-binaries/builder-range-matched-program",
+    "source_sha256": "4d99a8292364c64b0c29fc9848fde846bc4435e6fde41082e5c2a96c8e160fb8",
+    "binary_sha256": "f9e1bbfb43116b4e1aec64069c185f5195a5e130a56dbc4b16b201479b918537",
+    "metadata": "/workspace/manuscript/.artifacts/perf-binaries/builder-range-matched-program: go1.25.1\n\tpath\tgithub.com/manuscript-lang/manuscript/apps/d6086d65d6267d8ef3945beefa6c0fc1\n\tmod\tgithub.com/manuscript-lang/manuscript\t(devel)\t\n\tdep\tgithub.com/fsnotify/fsnotify\tv1.9.0\t\n\tdep\tgithub.com/gorilla/websocket\tv1.5.3\t\n\tdep\tgithub.com/shirou/gopsutil/v4\tv4.25.9\t\n\tdep\tgithub.com/tklauser/go-sysconf\tv0.3.15\t\n\tdep\tgithub.com/tklauser/numcpus\tv0.10.0\t\n\tdep\tgolang.org/x/net\tv0.43.0\t\n\tdep\tgolang.org/x/sys\tv0.35.0\t\n\tdep\tgolang.org/x/text\tv0.28.0\t\n\tbuild\t-buildmode=exe\n\tbuild\t-compiler=gc\n\tbuild\t-trimpath=true\n\tbuild\tCGO_ENABLED=0\n\tbuild\tGOARCH=amd64\n\tbuild\tGOOS=linux\n\tbuild\tGOAMD64=v1\n"
+  },
+  "stdlib": {
+    "app": "/workspace/manuscript/.artifacts/build-storage/native-cache/manuscript/workspaces/51d6451cce4232a6cd2c5a4664cccae2/apps/413fcceec2b78b21bd8624c8a15fbafc",
+    "binary": "/workspace/manuscript/.artifacts/perf-binaries/builder-range-matched-stdlib",
+    "source_sha256": "94b4c02974a24ea9860210fdb454fd1efe34f9d096af7bdee7bfd6f7715ea41a",
+    "binary_sha256": "b405605dd4ec5316df604e0b82197ec2c2013e2525866c23266892e58b67f8f6",
+    "metadata": "/workspace/manuscript/.artifacts/perf-binaries/builder-range-matched-stdlib: go1.25.1\n\tpath\tgithub.com/manuscript-lang/manuscript/apps/413fcceec2b78b21bd8624c8a15fbafc\n\tmod\tgithub.com/manuscript-lang/manuscript\t(devel)\t\n\tdep\tgithub.com/fsnotify/fsnotify\tv1.9.0\t\n\tdep\tgithub.com/gorilla/websocket\tv1.5.3\t\n\tdep\tgithub.com/shirou/gopsutil/v4\tv4.25.9\t\n\tdep\tgithub.com/tklauser/go-sysconf\tv0.3.15\t\n\tdep\tgithub.com/tklauser/numcpus\tv0.10.0\t\n\tdep\tgolang.org/x/net\tv0.43.0\t\n\tdep\tgolang.org/x/sys\tv0.35.0\t\n\tdep\tgolang.org/x/text\tv0.28.0\t\n\tbuild\t-buildmode=exe\n\tbuild\t-compiler=gc\n\tbuild\t-trimpath=true\n\tbuild\tCGO_ENABLED=0\n\tbuild\tGOARCH=amd64\n\tbuild\tGOOS=linux\n\tbuild\tGOAMD64=v1\n"
+  }
+}

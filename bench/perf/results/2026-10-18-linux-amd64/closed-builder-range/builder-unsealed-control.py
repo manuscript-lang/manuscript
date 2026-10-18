@@ -1,0 +1,5 @@
+from pathlib import Path
+import subprocess,os,json,hashlib
+root=Path('/workspace/manuscript');m=json.loads(Path('/tmp/manuscript-aggregate-matched-manifest.json').read_text());app=Path(m['program']['app']).resolve();runtime=app.parents[1]/'pkg/runtime/string.go';s=runtime.read_text();a=s.index('func StringBuilder_Append(');b=s.index('\nfunc StringBuilder_Freeze',a);part=s[a:b].replace('if b.sealed {\n\t\tRaise("builder is sealed")\n\t}','');assertpart=part!=s[a:b];assert assertpart;s=s[:a]+part+s[b:];p=Path('/tmp/manuscript-builder-unsealed.go');p.write_text(s);ov=p.with_suffix('.json');ov.write_text(json.dumps({'Replace':{str(runtime):str(p)}}))
+subprocess.run([str(root/'toolchain/go/bin/go'),'build','-buildvcs=false','-trimpath','-ldflags=-s -w -buildid=','-overlay='+str(ov),'-o','/tmp/manuscript-builder-unsealed','.'],cwd=app,env={**os.environ,'CGO_ENABLED':'0'},check=True)
+Path('/tmp/manuscript-builder-unsealed-manifest.json').write_text(json.dumps({'runtime_sha256':hashlib.sha256(s.encode()).hexdigest(),'binary_sha256':hashlib.sha256(Path('/tmp/manuscript-builder-unsealed').read_bytes()).hexdigest()},indent=2)+'\n')

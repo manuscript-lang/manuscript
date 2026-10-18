@@ -1,0 +1,10 @@
+{
+  "checked": {
+    "source_sha256": "8f8c0142de2800bd1b86a945a3caf94494b33e8a6217d74808bce7f44a2444f7",
+    "binary_sha256": "9af0a854bb512adefac939e0fa21cefacca700e88bb9e17fedaf83892c7d2153"
+  },
+  "queried": {
+    "source_sha256": "b32583c8f6afe56f0f7fed078a5f24619bd0fe212f680ae898ffa4d0837be2e8",
+    "binary_sha256": "17c4d3ed13b45c04aa97abebafc28d9f71d9c3bfd6e52f92ff788b2dcc9fbba4"
+  }
+}

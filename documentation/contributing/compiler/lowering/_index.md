@@ -83,6 +83,23 @@ original prefix proof. Captured counters, carries or stride inputs reject this
 stronger path. The queried body executes unchanged; other safe loops keep their
 individual assignments. Debug retains ordinary source execution.
 
+A fresh closed StringBuilder can combine literal appends in the same finite-loop
+framework. Its exhaustive inventory rejects aliases, escapes and captures, and
+requires all freezes to be direct top-level uses after every append-containing
+statement. Only direct literals up to 128 decoded UTF-8 bytes qualify. A repeated
+literal supplies the exact byte prefix for up to 63 bodies; the ordinary native
+append, sealed checks, queried body and freeze remain. Allocation capacity and GC
+timing can differ. Grouped append and query retain their separate source lines.
+
+A closed Int-list traversal of proved length at least 256 can group its polling
+when its sole body is an already-proved safe addition/subtraction of the exact
+loop element to an uncaptured accumulator. Items are snapshotted once, matching
+ordinary range. Batches contain at most 63 individual updates, with a fixed
+three-update unroll and tail. Every element is read and every update executes in
+original order; the next element is bound before the original query. Short lists,
+captures, aliases, unknown overflow, other bodies and Debug retain ordinary range.
+The guarded endpoint avoids overflowing index arithmetic near the maximum length.
+
 A fixed nongeneric helper can also describe its normally returned successful Int
 payload: one immutable Int parameter, a pure parameter/literal comparison with
 one literal-only early error, then `ok(parameter +/- IntLiteral)`. A literal error

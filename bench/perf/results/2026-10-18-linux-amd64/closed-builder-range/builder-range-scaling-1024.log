@@ -1,0 +1,18 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/lower
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkBuilderRangeScaling/1bytes/128/inventory-4         	       1	    399480 ns/op	  125544 B/op	    2397 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/128/emit-4              	       1	  17518124 ns/op	  10.69 MB/s	 8006560 B/op	  101530 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/256/inventory-4         	       1	   1613945 ns/op	  249128 B/op	    4713 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/256/emit-4              	       1	  33286757 ns/op	  11.44 MB/s	16325448 B/op	  200762 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/512/inventory-4         	       1	   1907710 ns/op	  499320 B/op	    9342 allocs/op
+BenchmarkBuilderRangeScaling/1bytes/512/emit-4              	       1	  73169432 ns/op	  10.50 MB/s	33271368 B/op	  399228 allocs/op
+BenchmarkBuilderRangeScaling/1024bytes/128/inventory-4      	       1	   2919875 ns/op	  255592 B/op	    2397 allocs/op
+BenchmarkBuilderRangeScaling/1024bytes/128/emit-4           	       1	 187253680 ns/op	  45.76 MB/s	125357552 B/op	  101932 allocs/op
+BenchmarkBuilderRangeScaling/1024bytes/256/inventory-4      	       1	   1354792 ns/op	  509224 B/op	    4713 allocs/op
+BenchmarkBuilderRangeScaling/1024bytes/256/emit-4           	       1	 351851091 ns/op	  48.72 MB/s	249255168 B/op	  201566 allocs/op
+BenchmarkBuilderRangeScaling/1024bytes/512/inventory-4      	       1	   4092579 ns/op	 1019512 B/op	    9342 allocs/op
+BenchmarkBuilderRangeScaling/1024bytes/512/emit-4           	       1	 692607249 ns/op	  49.51 MB/s	495745168 B/op	  400790 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/lower	1.564s
