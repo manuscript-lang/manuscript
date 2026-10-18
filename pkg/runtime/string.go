@@ -64,6 +64,10 @@ func String_IsEmpty(_ *Execution, text string) bool { return len(text) == 0 }
 func String_ByteLength(_ *Execution, text string) int { return len(text) }
 
 func String_Chars(ctx *Execution, text string) *List[string] {
+	return NewList(stringCharacters(ctx, text)...)
+}
+
+func stringCharacters(ctx *Execution, text string) []string {
 	items := make([]string, 0, utf8.RuneCountInString(text))
 	for i, scalar := range text {
 		if len(items)%1024 == 0 {
@@ -76,7 +80,7 @@ func String_Chars(ctx *Execution, text string) *List[string] {
 		// A valid scalar is a substring of its text: no allocation.
 		items = append(items, text[i:i+utf8.RuneLen(scalar)])
 	}
-	return NewList(items...)
+	return items
 }
 
 func String_Reverse(ctx *Execution, text string) string {
@@ -96,6 +100,10 @@ func String_Reverse(ctx *Execution, text string) string {
 func String_Compare(_ *Execution, a, b string) int { return int(strings.Compare(a, b)) }
 
 func String_Lines(ctx *Execution, text string) *List[string] {
+	return NewList(stringLines(ctx, text)...)
+}
+
+func stringLines(ctx *Execution, text string) []string {
 	items := []string{}
 	start := 0
 	for i := 0; i < len(text); i++ {
@@ -115,7 +123,7 @@ func String_Lines(ctx *Execution, text string) *List[string] {
 	if start < len(text) {
 		items = append(items, text[start:])
 	}
-	return NewList(items...)
+	return items
 }
 
 func normalizeText(ctx *Execution, form norm.Form, text string, maxBytes Option[int]) Result[string, StringError] {
@@ -263,6 +271,10 @@ func String_ReplaceN(_ *Execution, text, old, replacement string, max int) strin
 }
 
 func String_ScalarValues(ctx *Execution, text string) *List[int] {
+	return NewList(stringScalarValues(ctx, text)...)
+}
+
+func stringScalarValues(ctx *Execution, text string) []int {
 	items := make([]int, 0, len(text))
 	for i, r := range text {
 		if i%4096 == 0 {
@@ -270,7 +282,7 @@ func String_ScalarValues(ctx *Execution, text string) *List[int] {
 		}
 		items = append(items, int(r))
 	}
-	return NewList(items...)
+	return items
 }
 
 func String_FromScalars(ctx *Execution, values *List[int]) Result[string, StringError] {
