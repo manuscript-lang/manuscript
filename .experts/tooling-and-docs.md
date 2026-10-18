@@ -34,6 +34,10 @@ including those between match arms; derive paragraphs from structural rules.
 Wrap only when a group exceeds 88 columns or holds a comment or
 multi-statement suite; clause counts, argument counts, lambdas, and authored line
 breaks no longer force expansion. Reintroducing such rules spreads code again.
+Existing call, collection, and parameter delimiters already allow item continuations;
+adding parentheses before measuring the item's final indentation creates redundant
+groups. Break long item operators within those delimiters and verify precedence
+and idempotence with the [layout regressions](../pkg/tooling/format_layout_test.go).
 
 Verified: formatter policy changes also require refreshing the pinned standard
 sources, because exported editor files must pass `ms fmt --check`.
