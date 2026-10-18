@@ -18,16 +18,6 @@ func dfBudget(o Option[int]) int {
 	return math.MaxInt
 }
 
-// dfMessage builds the fixed, input-independent diagnostic "domain: reason".
-func dfMessage(domain, reason string) string { return domain + ": " + reason }
-
-const (
-	reasonInvalidInput  = "invalid input"
-	reasonInvalidData   = "invalid data"
-	reasonLimitExceeded = "limit exceeded"
-	reasonUnsupported   = "operation not supported"
-)
-
 // dfBytes returns the contents of b; a missing Bytes is empty.
 func dfBytes(b *Bytes) []byte {
 	if b == nil {

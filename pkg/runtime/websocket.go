@@ -223,7 +223,7 @@ func (w *osWebSocket) Receive(ctx *Execution) Result[Option[*WebSocketMessage], 
 	}
 	defer w.read.release()
 	defer w.life.leave()
-	defer interruptWith(ctx, func() { w.conn.Close() })()
+	defer interruptFunc(ctx, func() { w.conn.Close() })()
 	kind, reader, err := w.conn.NextReader()
 	var data []byte
 	if err == nil {
@@ -275,7 +275,7 @@ func (w *osWebSocket) PingBytes(ctx *Execution, data *Bytes) Result[Unit, WebSoc
 	}
 	defer w.write.release()
 	defer w.life.leave()
-	defer interruptWith(ctx, func() { w.conn.Close() })()
+	defer interruptFunc(ctx, func() { w.conn.Close() })()
 	if len(data.Data) > 125 {
 		return wsFail[Unit](errWSInvalidInput)
 	}
@@ -297,7 +297,7 @@ func (w *osWebSocket) SendBytes(ctx *Execution, data *Bytes, text bool) Result[U
 	}
 	defer w.write.release()
 	defer w.life.leave()
-	defer interruptWith(ctx, func() { w.conn.Close() })()
+	defer interruptFunc(ctx, func() { w.conn.Close() })()
 	if len(data.Data) > w.max {
 		return wsFail[Unit](errWSLimit)
 	}

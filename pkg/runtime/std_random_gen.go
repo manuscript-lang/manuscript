@@ -10,6 +10,15 @@ func check_Random_SecureInt() {
 func check_Random_UuidV4() {
 	var _ func(*Execution, Entropy) Result[string, RandomError] = Random_UuidV4
 }
+func check_Random_Float() {
+	var _ func(*Execution, Entropy) Result[float64, RandomError] = Random_Float
+}
+func check_Random_Shuffle[T any]() {
+	var _ func(*Execution, Entropy, *List[T]) Result[*List[T], RandomError] = Random_Shuffle[T]
+}
+func check_Random_Choice[T any]() {
+	var _ func(*Execution, Entropy, *List[T]) Result[Option[T], RandomError] = Random_Choice[T]
+}
 func check_Random_Entropy() {
 	var _ func(*Execution) Entropy = Random_Entropy
 }

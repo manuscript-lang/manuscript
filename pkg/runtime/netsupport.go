@@ -159,27 +159,6 @@ func (l *lifecycle) finish() {
 	close(l.released)
 }
 
-// interruptWith runs interrupt when ctx ends; stop disarms it and waits for a
-// started interrupt.
-func interruptWith(ctx *Execution, interrupt func()) func() {
-	done := make(chan struct{})
-	stop := context.AfterFunc(ctx.Context, func() { defer close(done); interrupt() })
-	return func() {
-		if !stop() {
-			<-done
-		}
-	}
-}
-
-// netInterruptDeadline expires an I/O deadline when ctx ends; stop also clears it.
-func netInterruptDeadline(ctx *Execution, deadline func(time.Time) error) func() {
-	stop := interruptWith(ctx, func() { deadline(time.Now()) })
-	return func() {
-		stop()
-		deadline(time.Time{})
-	}
-}
-
 // joinFaults folds failures recovered from cleanup into one fault.
 func joinFaults(failures []any) any {
 	var pending any
@@ -199,18 +178,19 @@ func joinFaults(failures []any) any {
 // Diagnostic messages carry no input values: URLs, data, and host arguments
 // can contain secrets. Only an explicit Failed text is returned verbatim.
 const (
-	netReasonInvalidInput = "invalid input"
-	netReasonInvalidData  = "invalid data"
-	reasonLimit           = "limit exceeded"
-	reasonDenied          = "permission denied"
-	netReasonUnsupported  = "operation not supported"
-	reasonClosed          = "resource is closed"
-	reasonTimeout         = "operation timed out"
-	reasonAuthenticated   = "authentication failed"
-	reasonOperation       = "operation failed"
+	reasonInvalidInput  = "invalid input"
+	reasonInvalidData   = "invalid data"
+	reasonLimit         = "limit exceeded"
+	reasonDenied        = "permission denied"
+	reasonUnsupported   = "operation not supported"
+	reasonClosed        = "resource is closed"
+	reasonTimeout       = "operation timed out"
+	reasonAuthenticated = "authentication failed"
+	reasonOperation     = "operation failed"
 )
 
-func domainMessage(domain, reason string) string { return domain + ": " + reason }
+// diagnostic builds the fixed, input-independent message "domain: reason".
+func diagnostic(domain, reason string) string { return domain + ": " + reason }
 
 // Errors_Message_NetworkError returns the Failed text verbatim, and otherwise
 // the fixed diagnostic `network: <reason>`.
@@ -219,21 +199,21 @@ func Errors_Message_NetworkError(_ *Execution, e NetworkError) string {
 	case NetworkError_Failed:
 		return e.Message
 	case NetworkError_InvalidInput:
-		return domainMessage("network", netReasonInvalidInput)
+		return diagnostic("network", reasonInvalidInput)
 	case NetworkError_InvalidData:
-		return domainMessage("network", netReasonInvalidData)
+		return diagnostic("network", reasonInvalidData)
 	case NetworkError_LimitExceeded:
-		return domainMessage("network", reasonLimit)
+		return diagnostic("network", reasonLimit)
 	case NetworkError_PermissionDenied:
-		return domainMessage("network", reasonDenied)
+		return diagnostic("network", reasonDenied)
 	case NetworkError_Unsupported:
-		return domainMessage("network", netReasonUnsupported)
+		return diagnostic("network", reasonUnsupported)
 	case NetworkError_Closed:
-		return domainMessage("network", reasonClosed)
+		return diagnostic("network", reasonClosed)
 	case NetworkError_Timeout:
-		return domainMessage("network", reasonTimeout)
+		return diagnostic("network", reasonTimeout)
 	}
-	return domainMessage("network", reasonOperation)
+	return diagnostic("network", reasonOperation)
 }
 
 // Errors_Message_HttpError returns the Failed text verbatim, and otherwise the
@@ -243,19 +223,19 @@ func Errors_Message_HttpError(_ *Execution, e HttpError) string {
 	case HttpError_Failed:
 		return e.Message
 	case HttpError_InvalidInput:
-		return domainMessage("HTTP", netReasonInvalidInput)
+		return diagnostic("HTTP", reasonInvalidInput)
 	case HttpError_InvalidData:
-		return domainMessage("HTTP", netReasonInvalidData)
+		return diagnostic("HTTP", reasonInvalidData)
 	case HttpError_LimitExceeded:
-		return domainMessage("HTTP", reasonLimit)
+		return diagnostic("HTTP", reasonLimit)
 	case HttpError_PermissionDenied:
-		return domainMessage("HTTP", reasonDenied)
+		return diagnostic("HTTP", reasonDenied)
 	case HttpError_Closed:
-		return domainMessage("HTTP", reasonClosed)
+		return diagnostic("HTTP", reasonClosed)
 	case HttpError_Timeout:
-		return domainMessage("HTTP", reasonTimeout)
+		return diagnostic("HTTP", reasonTimeout)
 	}
-	return domainMessage("HTTP", reasonOperation)
+	return diagnostic("HTTP", reasonOperation)
 }
 
 // Errors_Message_WebSocketError returns the Failed text verbatim, and
@@ -265,19 +245,19 @@ func Errors_Message_WebSocketError(_ *Execution, e WebSocketError) string {
 	case WebSocketError_Failed:
 		return e.Message
 	case WebSocketError_InvalidInput:
-		return domainMessage("WebSocket", netReasonInvalidInput)
+		return diagnostic("WebSocket", reasonInvalidInput)
 	case WebSocketError_InvalidData:
-		return domainMessage("WebSocket", netReasonInvalidData)
+		return diagnostic("WebSocket", reasonInvalidData)
 	case WebSocketError_LimitExceeded:
-		return domainMessage("WebSocket", reasonLimit)
+		return diagnostic("WebSocket", reasonLimit)
 	case WebSocketError_PermissionDenied:
-		return domainMessage("WebSocket", reasonDenied)
+		return diagnostic("WebSocket", reasonDenied)
 	case WebSocketError_Closed:
-		return domainMessage("WebSocket", reasonClosed)
+		return diagnostic("WebSocket", reasonClosed)
 	case WebSocketError_Timeout:
-		return domainMessage("WebSocket", reasonTimeout)
+		return diagnostic("WebSocket", reasonTimeout)
 	}
-	return domainMessage("WebSocket", reasonOperation)
+	return diagnostic("WebSocket", reasonOperation)
 }
 
 // Errors_Message_TlsError returns the fixed diagnostic `TLS: <reason>`
@@ -285,15 +265,15 @@ func Errors_Message_WebSocketError(_ *Execution, e WebSocketError) string {
 func Errors_Message_TlsError(_ *Execution, e TlsError) string {
 	switch e.(type) {
 	case TlsError_InvalidInput:
-		return domainMessage("TLS", netReasonInvalidInput)
+		return diagnostic("TLS", reasonInvalidInput)
 	case TlsError_InvalidData:
-		return domainMessage("TLS", netReasonInvalidData)
+		return diagnostic("TLS", reasonInvalidData)
 	case TlsError_LimitExceeded:
-		return domainMessage("TLS", reasonLimit)
+		return diagnostic("TLS", reasonLimit)
 	case TlsError_AuthenticationFailed:
-		return domainMessage("TLS", reasonAuthenticated)
+		return diagnostic("TLS", reasonAuthenticated)
 	}
-	return domainMessage("TLS", reasonOperation)
+	return diagnostic("TLS", reasonOperation)
 }
 
 // Errors_Message_UrlError returns a URL-prefixed diagnostic that never echoes
@@ -301,13 +281,13 @@ func Errors_Message_TlsError(_ *Execution, e TlsError) string {
 func Errors_Message_UrlError(_ *Execution, e UrlError) string {
 	switch e.(type) {
 	case UrlError_InvalidInput:
-		return domainMessage("URL", netReasonInvalidInput)
+		return diagnostic("URL", reasonInvalidInput)
 	case UrlError_InvalidData:
-		return domainMessage("URL", netReasonInvalidData)
+		return diagnostic("URL", reasonInvalidData)
 	case UrlError_LimitExceeded:
-		return domainMessage("URL", reasonLimit)
+		return diagnostic("URL", reasonLimit)
 	}
-	return domainMessage("URL", reasonOperation)
+	return diagnostic("URL", reasonOperation)
 }
 
 func netFail[T any](e NetworkError) Result[T, NetworkError]    { return Fail[T, NetworkError](e) }

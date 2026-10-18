@@ -81,7 +81,7 @@ func TestCLIInlineValuesKeepValidationAndForwarding(t *testing.T) {
 	}{
 		{[]string{"build", "missing.ms", "--build-type=Debug", "--build-type", "Release"}, "may only be specified once"},
 		{[]string{"build", "missing.ms", "--build-type=invalid"}, "unknown build type"},
-		{[]string{"debug", "missing.ms", "--build-type=Release"}, "debug requires build type Debug"},
+		{[]string{"debug", "missing.ms", "--build-type=Debug"}, "ms debug always uses build type Debug"},
 		{[]string{"run", "missing.ms", "--break=main"}, "--script and --break are valid only for ms debug, not ms run"},
 		{[]string{"check", "missing.ms", "--script=commands.txt"}, "--script and --break are valid only for ms debug, not ms check"},
 		{[]string{"debug", "missing.ms", "--script", "commands.txt", "--break", "main"}, "--script and --break cannot be combined"},

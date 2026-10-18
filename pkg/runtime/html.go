@@ -142,11 +142,11 @@ func Html_Parse(ctx *Execution, text string, limits Option[*HtmlLimits]) Result[
 func Errors_Message_HtmlError(_ *Execution, e HtmlError) string {
 	switch e.(type) {
 	case HtmlError_InvalidInput:
-		return dfMessage("HTML", reasonInvalidInput)
+		return diagnostic("HTML", reasonInvalidInput)
 	case HtmlError_InvalidData:
-		return dfMessage("HTML", reasonInvalidData)
+		return diagnostic("HTML", reasonInvalidData)
 	case HtmlError_LimitExceeded:
-		return dfMessage("HTML", reasonLimitExceeded)
+		return diagnostic("HTML", reasonLimit)
 	}
-	return dfMessage("HTML", "operation failed")
+	return diagnostic("HTML", "operation failed")
 }

@@ -93,6 +93,40 @@ impl Timestamp:
     # Returns -1, 0, or 1 across the full calendar range.
     fn compare(other: Timestamp) Int:
 
+    # Breaks this timestamp into calendar fields in a time zone: `"UTC"`, `"Local"`, an IANA name such as `"America/New_York"`, or a fixed offset such as `"+05:30"`.
+    # An unknown zone returns InvalidInput.
+    fn calendar(zone: String) Result[Calendar, TimeError]:
+
+    # Formats this timestamp in a zone with a token pattern.
+    # Tokens are `YYYY`, `MM`, `DD`, `HH`, `mm`, `ss`, `SSS` (milliseconds), `ZZ` (offset such as `+05:30`), and `zone` (abbreviation); other text is copied.
+    # An unknown zone returns InvalidInput.
+    fn format(pattern: String, zone: String) Result[String, TimeError]:
+
+# Calendar fields of a timestamp in one time zone.
+export type Calendar:
+    # The year, 1 through 9999 in UTC and nearby values in other zones.
+    year: Int
+    # The month, 1 (January) through 12.
+    month: Int
+    # The day of the month, starting at 1.
+    day: Int
+    # The hour, 0 through 23.
+    hour: Int
+    # The minute, 0 through 59.
+    minute: Int
+    # The second, 0 through 59.
+    second: Int
+    # The nanosecond within the second, 0 through 999999999.
+    nanosecond: Int
+    # The day of the week, 0 (Sunday) through 6 (Saturday).
+    weekday: Int
+    # The day of the year, starting at 1.
+    day_of_year: Int
+    # The zone's offset from UTC in seconds at this moment; positive is east.
+    offset_seconds: Int
+    # The zone abbreviation at this moment, such as `UTC` or `EST`.
+    zone: String
+
 # A clock that reports calendar time.
 export interface WallClock:
     # Returns the current calendar time as a UTC Timestamp with nanosecond precision.
@@ -104,6 +138,23 @@ export fn duration(nanoseconds: Int) Duration:
 
 # Parses an RFC 3339 timestamp with an explicit time zone.
 export fn parse_timestamp(text: String) Result[Timestamp, TimeError]:
+
+# Builds a timestamp from calendar fields interpreted in a time zone (see `Timestamp.calendar` for zone names).
+# Fields outside their calendar range, such as month 13 or February 30, return OutOfRange; an unknown zone returns InvalidInput.
+# A local time skipped or repeated by a daylight-saving change resolves to the earlier valid offset.
+export fn from_calendar(
+    year: Int,
+    month: Int,
+    day: Int,
+    hour: Int,
+    minute: Int,
+    second: Int,
+    nanosecond: Int,
+    zone: String
+) Result[Timestamp, TimeError]:
+
+# Returns the host's local time zone name, or `UTC` when it cannot be determined.
+export fn local_zone() String:
 
 # Suspends the current task for at least the requested duration.
 export fn sleep(duration: Duration) Unit:

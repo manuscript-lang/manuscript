@@ -274,13 +274,13 @@ func jsonPlainASCII(s string) bool {
 func Errors_Message_JsonError(_ *Execution, e JsonError) string {
 	switch e.(type) {
 	case JsonError_InvalidInput:
-		return dfMessage("JSON", reasonInvalidInput)
+		return diagnostic("JSON", reasonInvalidInput)
 	case JsonError_InvalidData:
-		return dfMessage("JSON", reasonInvalidData)
+		return diagnostic("JSON", reasonInvalidData)
 	case JsonError_LimitExceeded:
-		return dfMessage("JSON", reasonLimitExceeded)
+		return diagnostic("JSON", reasonLimit)
 	}
-	return dfMessage("JSON", "operation failed")
+	return diagnostic("JSON", "operation failed")
 }
 
 // jsonNumberText reports whether s is exactly one JSON number.

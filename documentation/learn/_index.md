@@ -9,6 +9,8 @@ Run a program, learn the language, then build something useful. You only need th
 
 ## New to Manuscript?
 
+[Why Manuscript](why-manuscript.md) is a one-page summary of what makes it worth trying.
+
 1. **[Run your first program](getting-started.md).** Install `ms` and build an executable.
 2. **[Take the language tour](tour.md).** Bindings, collections, functions, types, errors, modules.
 3. **[Test your code](testing.md).** Write tests and run the cases you want.

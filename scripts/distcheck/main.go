@@ -212,7 +212,7 @@ func check() error {
 		return err
 	}
 	profile := filepath.Join(directory, "profile")
-	if data, err := run(cli, "profile", manifest, "-o", profile, "--trace", "--", "first", "second"); err != nil {
+	if data, err := run(cli, "profile", manifest, "--out-dir", profile, "--trace", "--", "first", "second"); err != nil {
 		return err
 	} else if data != "Arguments: 2\n" {
 		return fmt.Errorf("unexpected profile output: %q", data)
@@ -237,7 +237,7 @@ func check() error {
 		}
 	}
 	defaultProfile := filepath.Join(directory, "default-profile")
-	if _, err := run(cli, "profile", manifest, "-o", defaultProfile); err != nil {
+	if _, err := run(cli, "profile", manifest, "--out-dir", defaultProfile); err != nil {
 		return err
 	}
 	if _, err := os.Stat(filepath.Join(defaultProfile, "trace.out")); !os.IsNotExist(err) {

@@ -2036,6 +2036,19 @@ func (TimeError_OutOfRange) isTimeError() {
 type Clock interface {
 	Now(ctx *Execution) Instant
 }
+type Calendar struct {
+	Year          int
+	Month         int
+	Day           int
+	Hour          int
+	Minute        int
+	Second        int
+	Nanosecond    int
+	Weekday       int
+	DayOfYear     int
+	OffsetSeconds int
+	Zone          string
+}
 type WallClock interface {
 	Now(ctx *Execution) Timestamp
 }

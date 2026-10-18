@@ -91,9 +91,42 @@ func Errors_Message_RandomError(_ *Execution, e RandomError) string {
 	case RandomError_Failed:
 		return e.Message
 	case RandomError_InvalidInput:
-		return dfMessage("random", reasonInvalidInput)
+		return diagnostic("random", reasonInvalidInput)
 	case RandomError_LimitExceeded:
-		return dfMessage("random", reasonLimitExceeded)
+		return diagnostic("random", reasonLimit)
 	}
-	return dfMessage("random", "operation failed")
+	return diagnostic("random", "operation failed")
+}
+
+// Random_Float returns a secure Float in [0, 1) with 53 random bits.
+func Random_Float(ctx *Execution, entropy Entropy) Result[float64, RandomError] {
+	bits := Random_SecureInt(ctx, entropy, 0, Some(1<<53))
+	if bits.Failed {
+		return Fail[float64, RandomError](bits.Err)
+	}
+	return Ok[float64, RandomError](float64(bits.Val) / (1 << 53))
+}
+
+// Random_Shuffle shuffles values in place with Fisher-Yates and returns them.
+func Random_Shuffle[T any](ctx *Execution, entropy Entropy, values *List[T]) Result[*List[T], RandomError] {
+	for i := len(values.Items) - 1; i > 0; i-- {
+		j := Random_SecureInt(ctx, entropy, 0, Some(i+1))
+		if j.Failed {
+			return Fail[*List[T], RandomError](j.Err)
+		}
+		values.Items[i], values.Items[j.Val] = values.Items[j.Val], values.Items[i]
+	}
+	return Ok[*List[T], RandomError](values)
+}
+
+// Random_Choice returns a uniformly chosen item, or none for an empty list.
+func Random_Choice[T any](ctx *Execution, entropy Entropy, values *List[T]) Result[Option[T], RandomError] {
+	if len(values.Items) == 0 {
+		return Ok[Option[T], RandomError](None[T]())
+	}
+	i := Random_SecureInt(ctx, entropy, 0, Some(len(values.Items)))
+	if i.Failed {
+		return Fail[Option[T], RandomError](i.Err)
+	}
+	return Ok[Option[T], RandomError](Some(values.Items[i.Val]))
 }

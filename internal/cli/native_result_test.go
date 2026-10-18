@@ -40,7 +40,11 @@ func TestNativeJSONCompileFailuresPreserveOutputs(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		status, stdout, stderr := invoke(t, command, file, "--json", "--output="+output)
+		flag := "--output="
+		if command == "profile" {
+			flag = "--out-dir="
+		}
+		status, stdout, stderr := invoke(t, command, file, "--json", flag+output)
 		var document nativeResult
 		if status != 1 || stderr != "" || json.Unmarshal([]byte(stdout), &document) != nil || document.Format != 1 || document.Command != command || document.Completed || document.ExitCode != 1 || document.Reason != "compile_error" || document.Output != output || len(document.Diagnostics) != 1 || document.Diagnostics[0].Position.Line != 2 || len(document.Artifacts) == 0 {
 			t.Fatalf("%s compile result: %d, %s, %q", command, status, stdout, stderr)
@@ -60,7 +64,7 @@ func TestProfileOutDirSpellingsUsageAndHelp(t *testing.T) {
 	file := sourceFile(t, "export fn main() Int:\n    return unknown_name\n")
 	output := filepath.Join(t.TempDir(), "capture=a=b")
 	var previous string
-	for _, values := range [][]string{{"--out-dir", output}, {"--out-dir=" + output}, {"--output", output}, {"-o", output}} {
+	for _, values := range [][]string{{"--out-dir", output}, {"--out-dir=" + output}} {
 		status, stdout, stderr := invoke(t, append([]string{"profile", file, "--json"}, values...)...)
 		if status != 1 || stderr != "" || previous != "" && stdout != previous {
 			t.Fatalf("profile aliases %v: %d, %q, %q", values, status, stdout, stderr)
@@ -76,6 +80,12 @@ func TestProfileOutDirSpellingsUsageAndHelp(t *testing.T) {
 	status, stdout, stderr := invoke(t, "profile", "missing.ms", "--out-dir", "--help")
 	if status != 1 || stdout != "" || !strings.Contains(stderr, "file not found") {
 		t.Fatalf("out-dir value consumed as help: %d, %q, %q", status, stdout, stderr)
+	}
+	for _, flag := range []string{"-o", "--output"} {
+		status, stdout, stderr := invoke(t, "profile", file, flag, output)
+		if status != 2 || stdout != "" || !strings.Contains(stderr, "not valid for ms profile") {
+			t.Fatalf("profile %s: %d, %q, %q", flag, status, stdout, stderr)
+		}
 	}
 	for _, command := range []string{"build", "run", "test", "check", "lint", "inspect", "diagram", "debug"} {
 		status, stdout, stderr := invoke(t, command, file, "--out-dir="+output)

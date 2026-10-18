@@ -229,6 +229,34 @@ tags.append("release")
 
 Closures snapshot variable values when created, but captured collections and records stay shared. See [closure examples](../core-language/functions/function-values-and-closures.md#snapshot-captures).
 
+## Pipe flows
+
+`|` passes a value to the next step, so a sequence of calls reads top to bottom. `try` inside a flow unwraps a `Result` and returns early on error:
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import expect_equal from "@std/testing.ms"
+
+type Reading:
+    celsius: Int
+
+fn parse_reading(text: String) Result[Reading, Error]:
+    let celsius = try text.trim().parse_int().ok_or()
+    return ok(Reading(celsius))
+
+fn to_fahrenheit(reading: Reading) Int:
+    return reading.celsius * 9 / 5 + 32
+
+fn fahrenheit(text: String) Result[Int, Error]:
+    let value = try parse_reading(text) | to_fahrenheit
+    return ok(value)
+
+test "pipe flow":
+    try expect_equal(try fahrenheit(" 100 "), 212)
+```
+
+`x | f` is `f(x)`; `x | .m()` is `x.m()`. See [pipe flows](../core-language/basics/expressions.md#pipe-flows).
+
 ## Behavior on types
 
 Methods live in `impl` blocks, never inside the `type`. Declare an `interface`, then `impl Interface for Type:`; `self` is the receiver:

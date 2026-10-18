@@ -6,8 +6,8 @@ This project exercises typed completions, source navigation/refactoring, native 
 ms check ms.toml
 ms test ms.toml
 ms run ms.toml
-ms profile ms.toml -o captures --trace
-ms profile src/work.ms -o work-captures
+ms profile ms.toml --out-dir captures --trace
+ms profile src/work.ms --out-dir work-captures
 ms pprof -tags work-captures/cpu.pprof
 ms pprof -http=127.0.0.1:8080 captures/program captures/cpu.pprof
 ms trace captures/trace.out

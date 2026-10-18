@@ -288,7 +288,7 @@ func TestSourceCommandsRetainProjectEntryValidation(t *testing.T) {
 func TestFailedProfileDoesNotCreateAnArtifactDirectory(t *testing.T) {
 	file := sourceFile(t, "fn value() Int:\n    return unknown\n")
 	output := filepath.Join(t.TempDir(), "profile")
-	status, _, errors := invoke(t, "profile", file, "-o", output)
+	status, _, errors := invoke(t, "profile", file, "--out-dir", output)
 	if status != 1 || errors == "" {
 		t.Fatalf("invalid profile source: %d, %q", status, errors)
 	}
@@ -312,7 +312,7 @@ func TestFailedProfileBuildRemovesItsArtifactDirectory(t *testing.T) {
 	}
 	t.Setenv("MANUSCRIPT_CACHE_DIR", blocked)
 	output := filepath.Join(t.TempDir(), "profile")
-	status, _, errors := invoke(t, "profile", filepath.Join(root, "ms.toml"), "-o", output)
+	status, _, errors := invoke(t, "profile", filepath.Join(root, "ms.toml"), "--out-dir", output)
 	if status != 1 || errors == "" {
 		t.Fatalf("blocked cache profile: %d, %q", status, errors)
 	}
