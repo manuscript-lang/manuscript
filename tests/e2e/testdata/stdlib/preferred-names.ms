@@ -85,7 +85,7 @@ test "list names mutate aliases and retain shallow copies":
     try expect_false(nested != [[2]] or outer_copy != [[1, 3]])
 
 test "set names preserve receiver identity order and no-op membership":
-    let items = Set[Int]().add(3).add(1).add(2)
+    let items = Set[Int]([3, 1, 2])
     let alias = items
     let copied = items.clone()
     let add = items.add
@@ -125,7 +125,7 @@ test "explicit views and bound views preserve native mutation and field shadowin
     view.remove(-1)
     view_remove(0).append(5)
     try expect_equal(items, [9, 3, 5])
-    let set = Set[Int]().add(1).add(2)
+    let set = Set[Int]([1, 2])
     let set_view = SetMutation(SetAdapter(set))
     let view_add = set_view.add
     let set_view_remove = set_view.remove
@@ -185,12 +185,12 @@ test "regex replace_all preserves literal text and exact output budgets":
     )
 
 test "new direct keyed calls capture receivers before arguments":
-    var items = Set[Int]().add(1)
+    var items = Set[Int]([1])
     let original = items
     let result = items.add(
         match some(0):
             some(_):
-                items = Set[Int]().add(8)
+                items = Set[Int]([8])
                 2
             none: 3
     )
@@ -204,7 +204,7 @@ test "new direct keyed calls capture receivers before arguments":
     result.remove(
         match some(0):
             some(_):
-                items = Set[Int]().add(9)
+                items = Set[Int]([9])
                 1
             none: 2
     )

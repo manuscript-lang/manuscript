@@ -61,7 +61,7 @@ test "conversions and collection queries are callable":
     try expect_equal(entries.find(fn(k, v): v == 1).get().key, "a")
     try expect_true((entries.some(fn(k, v): v == 1)))
     try expect_true((entries.every(fn(k, v): v > 0)))
-    let values = Set[Int]().add(2).add(1)
+    let values = Set[Int]([2, 1])
     try expect_equal(values.fold(0, fn(acc, n): acc + n), 3)
     try expect_equal(values.find(fn(n): n == 1).get(), 1)
     try expect_true((values.some(fn(n): n == 1)))
@@ -264,7 +264,7 @@ test "Set fold and find preserve ordered snapshots and reference identity":
     let a = Key(1, "a")
     let b = Key(2, "b")
     let c = Key(3, "c")
-    let values = Set[Key]().add(b).add(a).add(c)
+    let values = Set[Key]([b, a, c])
     let initial: List[String] = []
     let visits = reduce_set(
         values,
@@ -316,13 +316,13 @@ test "Set fold and find preserve ordered snapshots and reference identity":
             .is_none()
         )
     )
-    let flags = Set[Bool]().add(false)
+    let flags = Set[Bool]([false])
     try expect_false(flags.find(fn(v): true).get())
     empty_calls.is_empty() | try expect_true
 
 test "Set predicates short circuit over snapshots and keep empty identities":
     let empty_calls: List[Int] = []
-    let values = Set[Int]().add(2).add(1).add(3)
+    let values = Set[Int]([2, 1, 3])
     let seen: List[Int] = []
     let some = values.some
     try expect_false(
@@ -373,7 +373,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
             )
         )
     )
-    let complete = Set[Int]().add(2).add(1)
+    let complete = Set[Int]([2, 1])
     try expect_false(complete.some(fn(v): false) or not (complete.every(fn(v): true)))
     try expect_true((complete.find(fn(v): false).is_none()))
     empty_calls.is_empty() | try expect_true
@@ -419,7 +419,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
             or map_visits != ["b", "a", "c"]
         )
     )
-    let set = Set[Int]().add(2).add(1).add(3)
+    let set = Set[Int]([2, 1, 3])
     let set_visits: List[Int] = []
     try expect_false(
         (

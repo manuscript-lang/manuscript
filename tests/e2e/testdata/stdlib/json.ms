@@ -400,7 +400,7 @@ test "JSON parse inverts stringify and works in generic code":
         some("a"),
         [0.5],
         Map[String, Int]().add("k", 1),
-        Set[Int]().add(2)
+        Set[Int]([2])
     )
     let text = try stringify(profile)
     let again: Profile = try decoded[Profile](text)

@@ -22,11 +22,11 @@ impl Error for Cause:
     fn message() String: "first {self.count}"
 
 export fn first_mapped() Set[Key]:
-    let values = Set[Int]().add(1).add(2)
+    let values = Set[Int]([1, 2])
     return transform_set(values, fn(n): Key(0, n.to_string()))
 
 export fn first_bound_map() fn(transform: fn(value: Int) Key) Set[Key]:
-    return Set[Int]().add(1).add(2).map[Key]
+    return Set[Int]([1, 2]).map[Key]
 
 export fn first_generic_map[T: Hashable](values: Set[T]) Set[Key]:
     return transform_set(values, fn(n): Key(0, n.to_string()))
@@ -42,7 +42,7 @@ export fn first_failure(cause: Cause) Result[String, Error]:
 export fn first_queries() Bool:
     let key = Key(5, "original")
     let map = Map[Key, String]().add(key, "found")
-    let set = Set[Key]().add(key)
+    let set = Set[Key]([key])
     return (
         locate_map(map, Key(5, "different")).is_some()
         and locate_set(set, Key(5, "different")).is_some()

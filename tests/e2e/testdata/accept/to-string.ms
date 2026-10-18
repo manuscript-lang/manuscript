@@ -85,7 +85,7 @@ test "records alternatives and collections convert":
     (try check(value: empty.to_string(), expected: "[]"))
     let map = (Map[String, Int]().add(key: "b", value: 2).add(key: "a", value: 1))
     (try check(value: map.to_string(), expected: "Map(b: 2, a: 1)"))
-    let set = Set[Int]().add(2).add(1)
+    let set = Set[Int]([2, 1])
     (try check(value: set.to_string(), expected: "Set(2, 1)"))
     let bytes = Bytes([0, 65, 255])
     (try check(value: bytes.to_string(), expected: "Bytes(0, 65, 255)"))

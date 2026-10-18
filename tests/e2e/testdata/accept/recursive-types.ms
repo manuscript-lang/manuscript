@@ -94,7 +94,7 @@ test "recursive domain hashing uses explicit implementations":
     right.next = some(right)
     (left != right or left.hash() != right.hash()) | try expect_false
     let values = Map[Link, Int]().add(key: left, value: 9)
-    let members = Set[Link]().add(left)
+    let members = Set[Link]([left])
     (values.get(right).get() != 9 or not members.contains(right)) | try expect_false
     values.add(key: right, value: 10)
     members.add(right)

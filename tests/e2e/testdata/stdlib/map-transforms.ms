@@ -51,7 +51,7 @@ test "Map transformations and directional queries are callable":
     keyed.get(2).get() | try expect_equal(expected: 2)
     try expect_equal(source.find_last(fn(k, v): true).get().key, "a")
     try expect_equal(source.fold_right("", fn(acc, k, v): acc + k), "ab")
-    let values = Set[Int]().add(2).add(1)
+    let values = Set[Int]([2, 1])
     try expect_equal(values.find_last(fn(v): true).get(), 1)
     try expect_equal(values.fold_right("", fn(acc, v): acc + v.to_string()), "12")
 
@@ -196,7 +196,7 @@ test "Set reverse fold and last match preserve references and callbacks":
     let b = Key(2, "b")
     let a = Key(1, "a")
     let c = Key(3, "c")
-    let source = Set[Key]().add(b).add(a).add(c)
+    let source = Set[Key]([b, a, c])
     let initial: List[String] = []
     let folded = reverse_set(
         source,
@@ -289,7 +289,7 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
             or seen_map != ["c", "a", "b"]
         )
     )
-    let members = Set[Int]().add(2).add(1).add(3)
+    let members = Set[Int]([2, 1, 3])
     let seen_set: List[Int] = []
     try expect_false(
         (

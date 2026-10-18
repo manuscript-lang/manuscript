@@ -180,6 +180,9 @@ func (g *gen) symbolCall(e *syntax.Expression, info *checker.Info) ast.Expr {
 // recordCall constructs a record. Omitted fields take their defaults.
 func (g *gen) recordCall(e *syntax.Expression, info *checker.Info) ast.Expr {
 	t := g.sub(info.Constructor)
+	if isStd(t, "Set") && len(info.Arguments) == 0 {
+		return g.construct(t, nil)
+	}
 	args := g.arguments(info.Arguments, g.recordCallee(t))
 	return g.construct(t, args)
 }
@@ -243,7 +246,12 @@ func (g *gen) stdRecord(t *checker.Type, values []ast.Expr) ast.Expr {
 			}
 		}
 	}
-	if len(keys) > 0 && (name == "Map" || name == "Set") {
+	if name == "Set" && len(values) == 1 {
+		name = "SetFromList"
+		if len(keys) == 0 {
+			keys = append(keys, ident("nil"))
+		}
+	} else if len(keys) > 0 && (name == "Map" || name == "Set") {
 		name += "With"
 	}
 	return call(generic(rtName("New"+name), typeArgs...), append(keys, values...)...)
