@@ -118,12 +118,16 @@ func commandHelp(command string) (string, bool) {
 	case "profile":
 		usage = "<file.ms|ms.toml> [--json] [--out-dir directory] [--trace] [--build-type level] [-- program arguments]"
 		description = "Build and run an application with CPU and heap capture.\nThe bundle contains the executable, cpu.pprof, heap.pprof, inspection.json,\nand manifest.json. Add --trace to also write trace.out. The directory must be new.\nSource labels/regions identify entry and work boundaries; CPU stacks retain nested calls.\nProfiling adds overhead; tracing can add substantial time and disk usage.\nMeasure normal execution separately. Arguments after -- go to the application; its exit status is returned."
-		options = "  --out-dir <directory>    Bundle directory (default: ./profile)\n  -o, --output <directory>  Compatible aliases for --out-dir\n  --json                   Emit one versioned result; capture stdout, keep stderr live\n  --trace                  Also capture an execution trace\n"
+		options = "  --out-dir <directory>    Bundle directory (default: ./profile)\n  --json                   Emit one versioned result; capture stdout, keep stderr live\n  --trace                  Also capture an execution trace\n"
 		examples = "ms profile ms.toml\n  ms profile main.ms --out-dir capture --trace -- first second"
-	case "pprof", "trace":
+	case "pprof":
 		usage = "[viewer options] <profile file>"
-		description = "Inspect captured profiles with the embedded SDK viewer."
-		examples = "ms pprof -top heap.pprof\n  ms trace -http=127.0.0.1:8080 trace.out"
+		description = "Inspect a captured CPU or heap profile with the embedded SDK viewer."
+		examples = "ms pprof -top heap.pprof\n  ms pprof -http=127.0.0.1:8080 cpu.pprof"
+	case "trace":
+		usage = "[viewer options] <trace file>"
+		description = "Inspect a captured execution trace with the embedded SDK viewer."
+		examples = "ms trace -http=127.0.0.1:8080 trace.out"
 	case "dap":
 		description = "Serve one Delve DAP session on stdin/stdout.\nExits on disconnect, closed input, or termination."
 		examples = "ms dap"
@@ -159,8 +163,8 @@ func commandHelp(command string) (string, bool) {
 		description = "Serve one Delve DAP session on stdin/stdout.\nExits on disconnect, closed input, or termination."
 		examples = "ms dap"
 	case "debug":
-		usage = "<file.ms|ms.toml> [--build-type Debug] [--break location]... | --script file [--json] [-- program arguments]"
-		options += "  --build-type Debug  Debug is required for Delve\n  --break <location>  Run to the first of file:line or function name, report the stop, and exit (repeatable)\n  --script <file>     Run debugger commands from a file, or - for standard input\n  --json              With --script or --break, print JSON Lines events instead of text\n  Script commands: break, clear, breakpoints, continue, next, step, stepout, stack, locals, print <name>, exit\n"
+		usage = "<file.ms|ms.toml> [--break location]... | --script file [--json] [-- program arguments]"
+		options += "  --break <location>  Run to the first of file:line or function name, report the stop, and exit (repeatable)\n  --script <file>     Run debugger commands from a file, or - for standard input\n  --json              With --script or --break, print JSON Lines events instead of text\n  Script commands: break, clear, breakpoints, continue, next, step, stepout, stack, locals, print <name>, exit\n"
 	}
 	text := fmt.Sprintf("Usage: ms %s", command)
 	if usage != "" {

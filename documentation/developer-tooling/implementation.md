@@ -258,7 +258,7 @@ Expression layout uses a soft limit of 88 columns:
 - Profiling changes timing and allocation: CPU capture waits for samples to flush, heap capture forces a garbage collection, and tracing can add time and disk use. Use optimized builds, and measure an unprofiled executable when comparing speed.
 - The VS Code debugger shows native runtime frames as subdued entries (scripted `ms debug` omits them), and complex watch expressions keep native Go syntax.
 
-`ms profile module-or-project --out-dir new-directory` captures `cpu.pprof` and `heap.pprof` and keeps the optimized executable, build and source metadata, static inspection, and a bundle manifest for symbolization. `-o` and `--output` alias `--out-dir`. `--trace` adds `trace.out` (off by default). Existing directories are rejected. For individual paths use `ms run … --cpu-profile path --heap-profile path --trace path`.
+`ms profile module-or-project --out-dir new-directory` captures `cpu.pprof` and `heap.pprof` and keeps the optimized executable, build and source metadata, static inspection, and a bundle manifest for symbolization. `--trace` adds `trace.out` (off by default). Existing directories are rejected. For individual paths use `ms run … --cpu-profile path --heap-profile path --trace path`.
 
 ```sh
 ms profile main.ms --out-dir samples

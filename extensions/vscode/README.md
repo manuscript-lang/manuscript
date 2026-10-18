@@ -28,6 +28,6 @@ Install the generated VSIX with **Extensions: Install from VSIX**. CI checks Go/
 
 The server rechecks affected modules rather than individual syntax nodes. Rename refuses colliding names and requires a clean affected workspace. Runtime frames remain available as subdued native entries; complex watch expressions use Delve's native syntax.
 
-`ms profile module-or-project -o new-directory` captures all three profiles and retains the optimized executable, build/source metadata, static inspection, and a bundle manifest for reproducible symbolization. Existing directories are rejected.
+`ms profile module-or-project --out-dir new-directory` captures all three profiles and retains the optimized executable, build/source metadata, static inspection, and a bundle manifest for reproducible symbolization. Existing directories are rejected.
 
 Debugger value views are read-only. Locals whose native container slot has been recycled after its final use are shown as unavailable; complex watches retain native Go syntax.
