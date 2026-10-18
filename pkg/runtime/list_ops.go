@@ -542,3 +542,26 @@ func List_Sorted[T any](ctx *Execution, l *List[T], compare func(*Execution, T, 
 	})
 	return &List[T]{Items: out}
 }
+
+// List_Max returns the greatest element, keeping the first of equals.
+func List_Max[T any](ctx *Execution, cmp Cmp[T], l *List[T]) Option[T] {
+	return extreme(ctx, cmp, l, 1)
+}
+
+// List_Min returns the least element, keeping the first of equals.
+func List_Min[T any](ctx *Execution, cmp Cmp[T], l *List[T]) Option[T] {
+	return extreme(ctx, cmp, l, -1)
+}
+
+func extreme[T any](ctx *Execution, cmp Cmp[T], l *List[T], sign int) Option[T] {
+	if len(l.Items) == 0 {
+		return None[T]()
+	}
+	best := l.Items[0]
+	for _, v := range l.Items[1:] {
+		if cmp(ctx, v, best)*sign > 0 {
+			best = v
+		}
+	}
+	return Some(best)
+}

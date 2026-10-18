@@ -21,6 +21,7 @@ Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Clos
 | Bound | Required property |
 | --- | --- |
 | `Equal` | Values can be compared by their contents with `==` and `!=` |
+| `Comparable` | Values have an order: `a.compare(Comparable(value: b))` is negative, zero, or positive. Int, Float, String, Decimal, BigInt, Duration, Instant, and Timestamp qualify; other types opt in with `impl Comparable` |
 | `Hashable` | Values can be map keys or set elements; also supports equality |
 | A named operation contract | Type supplies the required operations through an explicit implementation |
 

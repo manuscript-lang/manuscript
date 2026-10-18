@@ -1,6 +1,7 @@
 package msruntime
 
 import (
+	"cmp"
 	"fmt"
 	"math"
 	"math/big"
@@ -162,4 +163,22 @@ func Int_ToFloat(_ *Execution, v int) float64 { return float64(v) }
 
 func Int_ToDecimal(_ *Execution, v int) *Decimal {
 	return &Decimal{Value: new(big.Rat).SetInt64(int64(v))}
+}
+
+func Int_Compare(_ *Execution, a, b int) int { return cmp.Compare(a, b) }
+
+// Float_Compare is a total order: -0.0 equals 0.0 and NaN, equal to itself,
+// sorts after every other value.
+func Float_Compare(_ *Execution, a, b float64) int {
+	if math.IsNaN(a) || math.IsNaN(b) {
+		return cmp.Compare(boolToInt(math.IsNaN(a)), boolToInt(math.IsNaN(b)))
+	}
+	return cmp.Compare(a, b)
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }

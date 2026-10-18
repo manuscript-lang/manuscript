@@ -15,6 +15,8 @@ export type RoundingMode:
 
 # An exact decimal value. Conversions are explicit because binary floats may round.
 export type Decimal:
+    # Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`; trailing zeros do not matter.
+    fn compare(other: Decimal) -> Int:
     # Converts to the nearest Float, which can lose precision because binary floats cannot represent most decimal fractions exactly.
     # Values beyond the Float range convert to an infinity.
     fn to_float() -> Float:

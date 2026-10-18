@@ -202,3 +202,24 @@ func (g *gen) equalBodyOf(t *checker.Type) []ast.Stmt {
 	g.fail("no equality for %s", t)
 	return []ast.Stmt{returned(ident("false"))}
 }
+
+// compareFunc is an expression of type rt.Cmp[T] for a Comparable type: the
+// native compare of a standard type, or the visible `impl Comparable`.
+func (g *gen) compareFunc(t *checker.Type) ast.Expr {
+	t = g.sub(t)
+	contract := checker.StandardContract("Comparable")
+	key := "compare:" + checker.TypeKey(t)
+	if g.localImpl {
+		key += "@" + g.module + "@" + g.scope
+	}
+	return g.helperFunc(key, "compare_"+g.nameOf(t), func(name string) ast.Decl {
+		m := g.resolveContractMethod(t, contract, "compare")
+		var other ast.Expr = ident("b")
+		if m.Native == "" {
+			other = g.viewOf(other, t, contract) // a source impl takes the view
+		}
+		body := g.invokeMethod(m, t, ident("a"), "compare", []ast.Expr{other}, &checker.Info{Type: m.Type})
+		params := []*ast.Field{field("ctx", pointerTo(rtName("Execution"))), field("a", g.goType(t)), field("b", g.goType(t))}
+		return &ast.FuncDecl{Name: ident(name), Type: functionType(params, ident("int")), Body: block(returned(body))}
+	})
+}

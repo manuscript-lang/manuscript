@@ -10,6 +10,8 @@ weight = 8
 
 Both are prelude interfaces from `@std/equality.ms`; importing them is rejected. They are independent of sharing and resource lifetime.
 
+`Comparable` (also in `@std/equality.ms`) orders values for `max`, `min`, and `List.max`/`min`. It does not imply `Equal`: Float orders NaN above every value yet NaN != NaN. Make `compare` return zero exactly when `equals` is true.
+
 ```manuscript
 interface Equal:
     fn equals(other: Equal) -> Bool

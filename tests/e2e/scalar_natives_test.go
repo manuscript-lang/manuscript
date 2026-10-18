@@ -9,7 +9,7 @@ import (
 
 func TestScalarStandardCallsMatchDynamicCalls(t *testing.T) {
 	result := compiler.CompileSource("scalar-natives.ms", `import panic from "@std/faults.ms"
-import {abs, abs_int, atan2, ceil, floor, max, max_int, min, min_int, pow, remainder, round, sqrt, truncate} from "@std/math.ms"
+import {abs, abs_int, atan2, ceil, floor, max, min, pow, remainder, round, sqrt, truncate} from "@std/math.ms"
 
 fn check(ok: Bool, name: String) -> Unit:
     if not ok:
@@ -20,7 +20,7 @@ fn viaValue(f: fn(value: Float) -> Float, x: Float) -> Float: f(value: x)
 test "typed math":
     check(ok: sqrt(value: 9.0) == 3.0, name: "sqrt")
     check(ok: viaValue(f: sqrt, x: 16.0) == 4.0, name: "sqrt value")
-    check(ok: max_int(left: 0 - 2, right: 3) == 3 and min_int(left: 0 - 2, right: 3) == 0 - 2, name: "max_int/min_int")
+    check(ok: max(left: 0 - 2, right: 3) == 3 and min(left: 0 - 2, right: 3) == 0 - 2, name: "int max min")
     check(ok: abs(value: 0.0 - 2.5) == 2.5 and abs_int(value: 0 - 7) == 7, name: "abs")
     check(ok: floor(value: 2.7) == 2.0 and ceil(value: 2.1) == 3.0 and truncate(value: 0.0 - 2.7) == 0.0 - 2.0, name: "rounding")
     check(ok: round(value: 2.5) == 3.0 and round(value: 0.0 - 2.5) == 0.0 - 2.0, name: "round half up")

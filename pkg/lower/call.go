@@ -396,11 +396,14 @@ func (g *gen) capabilityArgs(caps []checker.Capability, bind map[string]*checker
 			g.fail("%s capability for %s is not determined", c.Property, c.Variable.Name)
 			continue
 		}
-		if c.Property == "Hashable" {
+		switch c.Property {
+		case "Hashable":
 			out = append(out, g.keysFor(t))
-			continue
+		case "Comparable":
+			out = append(out, g.compareFunc(t))
+		default:
+			out = append(out, g.equalFunc(t))
 		}
-		out = append(out, g.equalFunc(t))
 	}
 	return out
 }
@@ -413,8 +416,8 @@ func (g *gen) nativeFunctionValue(s *checker.Symbol, typeArgs []*checker.Type, i
 	}
 	if len(checker.BoundCapabilities(s.Variables)) > 0 {
 		for _, c := range checker.BoundCapabilities(s.Variables) {
-			if c.Property == "Equal" || c.Property == "Hashable" {
-				g.fail("%s needs an equality capability and cannot be used as a function value", s.Name)
+			if c.Property == "Equal" || c.Property == "Hashable" || c.Property == "Comparable" {
+				g.fail("%s needs an equality or ordering capability and cannot be used as a function value", s.Name)
 			}
 		}
 	}
@@ -545,7 +548,25 @@ func (g *gen) nativeMethodCall(m *checker.Method, receiverType *checker.Type, re
 	if op, ok := checker.NativeOperationFor(receiverType, m.Decl.Name); ok {
 		leading = append(leading, g.capabilityArgs(checker.OperationCapabilities(receiverType, op.Requirements, op.Variables), bind)...)
 	}
+	if calleeInfo != nil && calleeInfo.Type != nil {
+		args = g.unviewArgs(args, calleeInfo.Type, receiverType)
+	}
 	return call(generic(rtName(fn), targs...), append(append(leading, receiver), args...)...)
+}
+
+// unviewArgs unwraps the Comparable argument of a native compare to the
+// receiver's own type, which is what the native operation takes.
+func (g *gen) unviewArgs(args []ast.Expr, callee, receiverType *checker.Type) []ast.Expr {
+	out := append([]ast.Expr(nil), args...)
+	for i := range out {
+		if i >= len(callee.Params) {
+			break
+		}
+		if p := g.sub(callee.Params[i].Type); p.ID == "@std/Comparable" && p.ID != receiverType.ID {
+			out[i] = call(generic(rtName("Unview"), g.goType(receiverType)), out[i])
+		}
+	}
+	return out
 }
 
 func (g *gen) nativeMethodName(m *checker.Method, receiverType *checker.Type) string {

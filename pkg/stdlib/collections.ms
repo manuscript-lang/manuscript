@@ -98,6 +98,10 @@ export type List[T]:
     # Copies the elements in [start, end) to begin at index `target`, in place, and returns this list.
     # The list never grows: copying stops at the end of the list. Source bounds must satisfy 0 <= start <= end <= length() and a target must be within 0 through length(); otherwise the call faults.
     fn copy_within(target: Int, start: Int, end: Int) -> List[T]:
+    # Returns the greatest element, keeping the first of equal ones, or none for an empty list. Needs a Comparable element type.
+    fn max() -> Optional[T]:
+    # Returns the least element, keeping the first of equal ones, or none for an empty list. Needs a Comparable element type.
+    fn min() -> Optional[T]:
     # Returns a new set of the distinct elements, using Hashable equality; the first of equal elements is kept in insertion order.
     fn to_set() -> Set[T]:
     # Returns a new list of the zero-based indexes 0 through length() - 1.

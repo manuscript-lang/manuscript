@@ -253,6 +253,16 @@ func (c *checker) implements(receiver, contract *Type) bool {
 			return true
 		}
 	}
+	return std(contract, "Comparable") && builtinComparable(receiver)
+}
+
+// builtinComparable reports the standard types whose native compare operation
+// satisfies Comparable without an impl.
+func builtinComparable(t *Type) bool {
+	switch t.ID {
+	case "Int", "Float", "String", "@std/Decimal", "@std/BigInt", "@std/Duration", "@std/Instant", "@std/Timestamp":
+		return true
+	}
 	return false
 }
 func (c *checker) boundsSatisfied(vars []*Type, sub map[string]*Type) bool {

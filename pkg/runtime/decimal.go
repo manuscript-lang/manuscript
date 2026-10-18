@@ -295,3 +295,5 @@ func Decimal_ToFixed(_ *Execution, d *Decimal, digits int, mode Option[RoundingM
 	}
 	return Ok[string, NumberError](text)
 }
+
+func Decimal_Compare(_ *Execution, a, b *Decimal) int { return a.Value.Cmp(b.Value) }
