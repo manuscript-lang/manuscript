@@ -140,7 +140,7 @@ func (t *Type) String() string {
 			}
 			p = append(p, label)
 		}
-		return "fn(" + strings.Join(p, ", ") + ")->" + t.Result.String()
+		return "fn(" + strings.Join(p, ", ") + ") " + t.Result.String()
 	}
 	s := t.Name
 	if len(t.Args) > 0 {

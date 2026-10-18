@@ -255,7 +255,7 @@ fn extract(data: Bytes) List[Int]:
 			t.Fatal("missing Bytes.values hover")
 		}
 		text := hover.(map[string]any)["contents"].(map[string]any)["value"].(string)
-		if !strings.Contains(text, "fn()->List[Int]") || !strings.Contains(text, "fresh mutable list") || !strings.Contains(text, "leaves the Bytes unchanged") {
+		if !strings.Contains(text, "fn() List[Int]") || !strings.Contains(text, "fresh mutable list") || !strings.Contains(text, "leaves the Bytes unchanged") {
 			t.Fatalf("operation contract missing: %s", text)
 		}
 	}

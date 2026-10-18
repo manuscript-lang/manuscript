@@ -38,10 +38,10 @@ func TestStandardLibrarySnapshot(t *testing.T) {
 		if !ok {
 			t.Fatalf("missing %s", key)
 		}
-		if key == "prelude#String" && (!slices.Contains(d.Operations, "trim: fn()->String") || !slices.Contains(d.Operations, "byte_length: fn()->Int")) {
+		if key == "prelude#String" && (!slices.Contains(d.Operations, "trim: fn() String") || !slices.Contains(d.Operations, "byte_length: fn() Int")) {
 			t.Fatalf("missing intrinsic operation: %+v", d)
 		}
-		if key == "@std/collections.ms#List" && (len(d.Parameters) != 1 || d.Parameters[0] != "T" || !slices.Contains(d.Operations, "map[U]: fn(transform: fn(value: T)->U)->List[U]") || !slices.Contains(d.Operations, "at: fn(index: Int)->Optional[T]")) {
+		if key == "@std/collections.ms#List" && (len(d.Parameters) != 1 || d.Parameters[0] != "T" || !slices.Contains(d.Operations, "map[U]: fn(transform: fn(value: T) U) List[U]") || !slices.Contains(d.Operations, "at: fn(index: Int) Optional[T]")) {
 			t.Fatalf("lost bounds or native methods: %+v", d)
 		}
 	}
@@ -114,7 +114,7 @@ func TestBytesValuesDocumentationIsAnOperation(t *testing.T) {
 		}
 		for _, d := range module.Declarations {
 			if d.Name == "Bytes" {
-				if len(d.Fields) != 0 || !slices.Contains(d.Operations, "values: fn()->List[Int]") {
+				if len(d.Fields) != 0 || !slices.Contains(d.Operations, "values: fn() List[Int]") {
 					t.Fatalf("Bytes values must be callable, not a data field: %+v", d)
 				}
 				return

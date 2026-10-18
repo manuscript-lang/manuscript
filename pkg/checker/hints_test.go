@@ -41,7 +41,7 @@ func TestDiagnosticsStateCauseAndFix(t *testing.T) {
 		{"optional where plain value expected", "fn f(n: Optional[Int]) Int:\n    return n\n", []string{"expected Int, found Optional[Int]", "may be absent", "get(default)"}, 1},
 		{"int where float expected", "fn f() Float:\n    let x: Float = 3\n    return x\n", []string{"expected Float, found Int", "write a Float literal such as 3.0", "to_float()"}, 1},
 		{"float where int expected", "fn f() Int:\n    return 3.5\n", []string{"expected Int, found Float", "truncate_to_int()", "get(0)"}, 1},
-		{"operation named without a call", "fn f() Int:\n    return [1, 2].length\n", []string{"expected Int, found fn()->Int", "call it with parentheses"}, 1},
+		{"operation named without a call", "fn f() Int:\n    return [1, 2].length\n", []string{"expected Int, found fn() Int", "call it with parentheses"}, 1},
 		{"print is not built in", "fn f() Unit:\n    println(\"hi\")\n", []string{"unknown binding println", "import stdout from \"@std/io.ms\""}, 1},
 		{"null is not a value", "fn f() Int:\n    let s = null\n    return 0\n", []string{"unknown binding null", "absence is an Optional, written none"}, 1},
 		{"not a function", "fn f() Int:\n    let x = 1\n    return x()\n", []string{"x is not a function (it has type Int)"}, 1},
@@ -58,7 +58,7 @@ func TestDiagnosticsStateCauseAndFix(t *testing.T) {
 		{"member list is complete", "fn f() Int:\n    let n = \"abc\".foo()\n    return 0\n", []string{"available: at,", "upper"}, 1},
 		{"join on non-String list", "fn f() String:\n    return [1].join(separator: \",\")\n", []string{"only available on List[String]", "separator"}, 1},
 		{"callback label mismatch is one error", "fn double(n: Int) Int:\n    return n * 2\nfn f() Int:\n    return [1, 2].map(double).length()\n", []string{"the function's parameter is named n", "expects value"}, 1},
-		{"non-generic callback label mismatch", "fn positive(n: Int) Bool:\n    return n > 0\nfn f() Int:\n    return [1].filter(positive).length()\n", []string{"expected fn(value: Int)->Bool", "expects value"}, 1},
+		{"non-generic callback label mismatch", "fn positive(n: Int) Bool:\n    return n > 0\nfn f() Int:\n    return [1].filter(positive).length()\n", []string{"expected fn(value: Int) Bool", "expects value"}, 1},
 		{"binding catch-all arm", "type S:\n    case A\n    case B\nfn f(s: S) Int:\n    match s:\n        A:\n            return 1\n        other:\n            return 2\n", []string{"'other' is not a case of S", "use '_'"}, 1},
 		{"with on Result suggests unwrapping", "import Closeable from \"@std/cleanup.ms\"\ntype R:\n    n: Int\nimpl Closeable for R:\n    fn close() Unit:\n        return unit\nfn mk() Result[R, String]:\n    return ok(R(n: 1))\nfn f() Int:\n    with x = mk():\n        return 1\n    return 0\n", []string{"with needs a Closeable value", "Result[R, String]", "'try'", "'if let'"}, 1},
 	} {

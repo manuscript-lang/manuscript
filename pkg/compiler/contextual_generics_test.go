@@ -85,7 +85,7 @@ impl Read for Box:
 fn first() Read: identity(Box(1))`, "expected Read, found Box"},
 		{"function label", `fn first() fn(value: Int) Int:
     let callback = fn(item: Int): item
-    return identity(callback)`, "expected fn(value: Int)->Int"},
+    return identity(callback)`, "expected fn(value: Int) Int"},
 		{"context erases callback defaults", `fn first() Unit:
     let callback: fn(value: Int) Int = from_callback(fn(): fn(value: Int = 4): value)
     callback()`, "missing argument value"},
