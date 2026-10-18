@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 interface Compare[T]:
     fn compare(other: T) Int
@@ -12,5 +12,4 @@ impl Compare[Key] for Key:
     fn compare(other: Key) Int: self.value - other.value
 
 test "interface bounds may reference their parameter":
-    if compare(Key(7), Key(4)) != 3:
-        panic("lost recursive interface bound")
+    try expect_equal(compare(Key(7), Key(4)), 3)

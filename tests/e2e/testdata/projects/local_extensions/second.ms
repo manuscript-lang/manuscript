@@ -1,8 +1,8 @@
+import {expect_equal, expect_false} from "@std/testing.ms"
 import {Item, Box, Holder, Choice} from "./domain.ms"
 import {Read, invoke, relay, as_view} from "./contracts.ms"
 import Closeable from "@std/cleanup.ms"
 import ListBuilder from "@std/collections.ms"
-import panic from "@std/faults.ms"
 
 impl Read[Int] for Item:
     fn get() Int:
@@ -42,24 +42,18 @@ export fn second_generic() fn(value: Item) Int:
 
 test "second local extensions":
     let item = Item(2)
-    if (item.get() != 22 or invoke(item) != 22 or relay(item) != 22):
-        return panic("local dispatch")
-    if as_view(item).get() != 22:
-        return panic("generic view")
-
+    (item.get() != 22 or invoke(item) != 22 or relay(item) != 22) | try expect_false
+    as_view(item).get() | try expect_equal(expected: 22)
     let holder = Holder(item)
-    if (holder.get() != 22 or invoke(holder) != 22 or holder.extract() != 22):
-        return panic("nested generic dispatch")
-    if Box("hello").get() != "hello":
-        return panic("generic extension")
-    if Choice.Some(2).get() != 22:
-        return panic("alternative extension")
+    (holder.get() != 22 or invoke(holder) != 22 or holder.extract() != 22) | try expect_false
+    Box("hello").get() | try expect_equal(expected: "hello")
+    Choice.Some(2).get() | try expect_equal(expected: 22)
 
 import Resource from "./domain.ms"
 
 impl Closeable for Resource:
     fn close() Unit:
-        self.events.append(20)
+        self.events.append(value: 20)
 
 fn leave(resource: Resource) Unit:
     with local = resource:
@@ -71,12 +65,10 @@ export fn second_resource(resource: Resource) Closeable:
 test "second local cleanup":
     let events = ListBuilder[Int]()
     leave(Resource(events))
-    if events.freeze().at(0) != some(20):
-        return panic("local cleanup")
+    events.freeze().at(index: 0) | try expect_equal(expected: some(20))
 
 import mixed from "./first.ms"
 
 test "generic evidence does not change concrete lexical dispatch":
     let item = Item(2)
-    if mixed(item, item) != 34:
-        return panic("generic evidence changed concrete dispatch")
+    mixed(value: item, concrete: item) | try expect_equal(expected: 34)

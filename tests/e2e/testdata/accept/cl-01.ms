@@ -1,9 +1,8 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 fn subtract(amount: Int, deduction: Int) Int:
     return amount - deduction
 
 test "named multiline call":
     let remaining = subtract(deduction: 2, amount: 9)
-    if not (remaining == 7):
-        return panic("check failed")
+    try expect_equal(remaining, 7)

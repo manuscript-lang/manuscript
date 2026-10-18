@@ -1,0 +1,21 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/tooling/lsp
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkLexicalSourceIndex
+    lexical_index_probe_test.go:273: std_source_sha256=aa9a0469bbb766e1ad598564f45e59371bb3945a0c51f9e539001dc3e031c1f4 occurrences=4486 full_payload_sha256=a2f1c3086caecfdd08511f86b8362f40d5361a28974333f2a5db22d8f3f3b34b
+    lexical_index_probe_test.go:273: std_source_sha256=aa9a0469bbb766e1ad598564f45e59371bb3945a0c51f9e539001dc3e031c1f4 occurrences=4486 full_payload_sha256=a2f1c3086caecfdd08511f86b8362f40d5361a28974333f2a5db22d8f3f3b34b
+BenchmarkLexicalSourceIndex-4   	      34	  15832865 ns/op	21412738 B/op	   70192 allocs/op
+    lexical_index_probe_test.go:273: std_source_sha256=aa9a0469bbb766e1ad598564f45e59371bb3945a0c51f9e539001dc3e031c1f4 occurrences=4486 full_payload_sha256=a2f1c3086caecfdd08511f86b8362f40d5361a28974333f2a5db22d8f3f3b34b
+    lexical_index_probe_test.go:273: std_source_sha256=aa9a0469bbb766e1ad598564f45e59371bb3945a0c51f9e539001dc3e031c1f4 occurrences=4486 full_payload_sha256=a2f1c3086caecfdd08511f86b8362f40d5361a28974333f2a5db22d8f3f3b34b
+BenchmarkLexicalSourceIndex-4   	      39	  18145630 ns/op	21412860 B/op	   70194 allocs/op
+    lexical_index_probe_test.go:273: std_source_sha256=aa9a0469bbb766e1ad598564f45e59371bb3945a0c51f9e539001dc3e031c1f4 occurrences=4486 full_payload_sha256=a2f1c3086caecfdd08511f86b8362f40d5361a28974333f2a5db22d8f3f3b34b
+    lexical_index_probe_test.go:273: std_source_sha256=aa9a0469bbb766e1ad598564f45e59371bb3945a0c51f9e539001dc3e031c1f4 occurrences=4486 full_payload_sha256=a2f1c3086caecfdd08511f86b8362f40d5361a28974333f2a5db22d8f3f3b34b
+BenchmarkLexicalSourceIndex-4   	      33	  16732238 ns/op	21412837 B/op	   70194 allocs/op
+    lexical_index_probe_test.go:273: std_source_sha256=aa9a0469bbb766e1ad598564f45e59371bb3945a0c51f9e539001dc3e031c1f4 occurrences=4486 full_payload_sha256=a2f1c3086caecfdd08511f86b8362f40d5361a28974333f2a5db22d8f3f3b34b
+    lexical_index_probe_test.go:273: std_source_sha256=aa9a0469bbb766e1ad598564f45e59371bb3945a0c51f9e539001dc3e031c1f4 occurrences=4486 full_payload_sha256=a2f1c3086caecfdd08511f86b8362f40d5361a28974333f2a5db22d8f3f3b34b
+BenchmarkLexicalSourceIndex-4   	      34	  15057143 ns/op	21412887 B/op	   70194 allocs/op
+    lexical_index_probe_test.go:273: std_source_sha256=aa9a0469bbb766e1ad598564f45e59371bb3945a0c51f9e539001dc3e031c1f4 occurrences=4486 full_payload_sha256=a2f1c3086caecfdd08511f86b8362f40d5361a28974333f2a5db22d8f3f3b34b
+    lexical_index_probe_test.go:273: std_source_sha256=aa9a0469bbb766e1ad598564f45e59371bb3945a0c51f9e539001dc3e031c1f4 occurrences=4486 full_payload_sha256=a2f1c3086caecfdd08511f86b8362f40d5361a28974333f2a5db22d8f3f3b34b
+BenchmarkLexicalSourceIndex-4   	      42	  14341399 ns/op	21412913 B/op	   70195 allocs/op
+PASS

@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
 fn apply[T, U](value: T, transform: fn(value: T) U) U: transform(value)
 
@@ -33,59 +33,40 @@ test "contextual callbacks and inline returns":
         .filter(fn(item): item > 1)
         .map(fn(number): (number + offset).to_string())
     )
-    if strings.join(",") != "5,6": return panic("callback inference")
-
+    try expect_equal(strings.join(","), "5,6")
     let result = apply(transform: fn(item): item + offset, value: 2)
-    if result != 5: return panic("generic callback")
-    if chain(second: fn(item): item + 2, first: fn(): 3) != 5: return panic(
-        "deferred callback"
-    )
-
+    try expect_equal(result, 5)
+    try expect_equal(chain(second: fn(item): item + 2, first: fn(): 3), 5)
     let callback = Callback(fn(item: Int): item + 1)
-    if callback.transform(3) != 4: return panic("constructor inference")
-
+    try expect_equal(callback.transform(3), 4)
     let view = Read(Box(7))
-    if view.get() != 7: return panic("constructor payloads")
-    if invoke() != 0 or invoke(fn(item): item + 1) != 5: return panic(
-        "optional callback"
-    )
-
+    try expect_equal(view.get(), 7)
+    try expect_false(invoke() != 0 or invoke(fn(item): item + 1) != 5)
     let functions: List[fn(value: Int) Int] = [fn(item): item + 4]
-    if functions.at(0).get()(2) != 6: return panic("list callback")
-
+    try expect_equal(functions.at(0).get()(2), 6)
     let nested = fn(value: Int):
         let inner = fn(): "text"
         return value + inner().scalar_length()
-    if nested(2) != 6: return panic("nested return inference")
-
+    try expect_equal(nested(2), 6)
     let success = with_result(fn(): ok(4))
-    if success != Result[Int, String].ok(4): return panic("partial Result context")
-
+    try expect_equal(success, Result[Int, String].ok(4))
     let propagated = with_result(
         fn():
             let value = try checked()
             return ok(value + 2)
     )
-    if propagated != Result[Int, String].ok(5): return panic(
-        "inferred Result propagation"
-    )
-
+    try expect_equal(propagated, Result[Int, String].ok(5))
     let failed = with_result(
         fn():
             if true: return error("expected")
 
             return ok(4)
     )
-    if failed != Result[Int, String].error("expected"): return panic(
-        "inferred Result error"
-    )
-
+    try expect_equal(failed, Result[Int, String].error("expected"))
     let subtract: fn(left: Int, right: Int) Int = fn(a, b): a - b
-    if subtract(right: 2, left: 7) != 5: return panic("context labels and order")
-
+    try expect_equal(subtract(right: 2, left: 7), 5)
     let defaulted: fn(value: Int) Int = fn(item: Int = 4): item + 1
-    if defaulted(value: 8) != 9: return panic("context default parameter")
-
+    try expect_equal(defaulted(value: 8), 9)
     let outer: fn(value: Int) fn(input: Int) Int = fn(base):
         return fn(extra): base + extra
-    if outer(value: 3)(input: 4) != 7: return panic("nested context labels")
+    try expect_equal(outer(value: 3)(input: 4), 7)

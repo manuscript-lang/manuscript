@@ -1,6 +1,6 @@
+import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import {ReadStream, IoError, read_line} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
-import panic from "@std/faults.ms"
 import {PriorityQueue} from "@std/queues.ms"
 import {Scheduler} from "@std/tasks.ms"
 
@@ -23,16 +23,14 @@ fn compare(left: Key, right: Key) Int:
 test "domain equality and hashing select interfaces":
     let a = Key(1, "first")
     let b = Key(1, "second")
-    if not (a == b): return panic("custom equality ignored")
-    if not (a.hash() == b.hash()): return panic("custom hash ignored")
-
+    try expect_equal(a, b)
+    try expect_equal(a.hash(), b.hash())
     let values = (Map[Key, String]().add(a, "a").add(b, "b"))
-    if values.length() != 1: return panic("custom key lookup ignored")
-    if values.get(a) != some("b"): return panic("custom key update ignored")
-    if not ([a].contains(b)): return panic("custom search ignored")
-
+    try expect_equal(values.length(), 1)
+    try expect_equal(values.get(a), some("b"))
+    try expect_false(not ([a].contains(b)))
     let view = Equal(Equal(a))
-    if not (view.equals(Equal(b))): return panic("interface view ignored")
+    try expect_false(not (view.equals(Equal(b))))
 
 test "stable priority queue and optional capacity":
     let queue = PriorityQueue(compare)
@@ -41,23 +39,23 @@ test "stable priority queue and optional capacity":
     queue.enqueue(Key(1, "second"))
 
     if let value = queue.dequeue():
-        if value.label != "first": return panic("priority order")
+        try expect_equal(value.label, "first")
     else:
-        return panic("missing item")
+        return fail("missing item")
 
     if let value = queue.dequeue():
-        if value.label != "second": return panic("unstable priority order")
+        try expect_equal(value.label, "second")
     else:
-        return panic("missing item")
+        return fail("missing item")
 
     let bounded = PriorityQueue(compare, 1)
-    if not (bounded.enqueue(Key(1, "only"))): return panic("enqueue failed")
-    if bounded.enqueue(Key(0, "full")): return panic("capacity ignored")
+    try expect_false(not (bounded.enqueue(Key(1, "only"))))
+    try expect_false(bounded.enqueue(Key(0, "full")))
 
 test "limits can be omitted or supplied":
     let repeated = try "ab".repeat(3)
-    if repeated != "ababab": return panic("omitted limit failed")
-    if "ab".repeat(3, 5).is_ok(): return panic("supplied limit ignored")
+    try expect_equal(repeated, "ababab")
+    try expect_false("ab".repeat(3, 5).is_ok())
 
 fn operation() Result[Unit, Error]: ok(unit)
 
@@ -82,14 +80,8 @@ test "native compositions preserve Optional arguments for source implementations
     let reader = EmptyReader(-1)
     let stream = ReadStream(reader)
     let _omitted = stream.read()
-    if reader.requested != 0: return panic(
-        "omitted limit did not reach the source implementation"
-    )
-
+    try expect_equal(reader.requested, 0)
     let _supplied = stream.read(8)
-    if reader.requested != 8: return panic("supplied limit was not an Optional")
-
+    try expect_equal(reader.requested, 8)
     let _line = read_line(stream)
-    if reader.requested != 1: return panic(
-        "native helper bypassed the interface contract"
-    )
+    try expect_equal(reader.requested, 1)

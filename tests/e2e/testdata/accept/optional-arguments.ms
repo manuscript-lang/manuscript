@@ -1,5 +1,5 @@
+import {expect_equal, expect_false} from "@std/testing.ms"
 import Queue from "@std/queues.ms"
-import panic from "@std/faults.ms"
 
 fn number(value: Optional[Int] = none) Int: value.get(-1)
 
@@ -60,95 +60,75 @@ fn increment(value: Int) Int: value + 1
 fn mutate(value: Optional[Counter]) Unit: value.get().calls = 9
 
 test "plain values and explicit optionals share the call contract":
-    if number(4) != 4: return panic("plain argument")
-    if number(value: 0) != 0: return panic("zero must be present")
-
+    try expect_equal(number(4), 4)
+    try expect_equal(number(value: 0), 0)
     let supplied: Optional[Int] = some(4)
-    if number(supplied) != 4: return panic("explicit some")
-    if number() != -1: return panic("explicit none")
-    if number() != -1: return panic("default none")
-
+    try expect_equal(number(supplied), 4)
+    try expect_equal(number(), -1)
+    try expect_equal(number(), -1)
     let stored: fn(value: Optional[Int]) Int = number
-    if stored(5) != 5: return panic("stored function")
-    if present(6).get() != 6: return panic("generic inference")
-    if present[Int](7).get() != 7: return panic("explicit specialization")
-
+    try expect_equal(stored(5), 5)
+    try expect_equal(present(6).get(), 6)
+    try expect_equal(present[Int](7).get(), 7)
     let generic_supplied: Optional[Int] = some(8)
-    if present(generic_supplied).get() != 8: return panic("generic optional identity")
-
+    try expect_equal(present(generic_supplied).get(), 8)
     let missing: Optional[Int] = none
-    if not (nested(missing)): return panic("nested none must be wrapped once")
-
+    try expect_false(not (nested(missing)))
     let outer: Optional[Optional[Int]] = some(missing)
-    if not (nested(outer)): return panic("nested optional identity")
-    if list_size([]) != 0: return panic("empty payload context")
-    if list_size([1, 2]) != 2: return panic("list payload")
-    if context(value: none, fallback: 9) != 9: return panic("generic none context")
-    if context(value: [], fallback: [1]).length() != 0: return panic(
-        "generic list context"
-    )
-    if success(ok(10)) != 10: return panic("result payload context")
-    if flag(false): return panic("false must be present")
-    if flag(true and false): return panic("folded false must be wrapped")
-    if invoke(increment) != 5: return panic("function payload")
-    if invoke(fn(value): value + 2) != 6: return panic("closure payload")
+    try expect_false(not (nested(outer)))
+    try expect_equal(list_size([]), 0)
+    try expect_equal(list_size([1, 2]), 2)
+    try expect_equal(context(value: none, fallback: 9), 9)
+    try expect_equal(context(value: [], fallback: [1]).length(), 0)
+    try expect_equal(success(ok(10)), 10)
+    try expect_false(flag(false))
+    try expect_false(flag(true and false))
+    try expect_equal(invoke(increment), 5)
+    try expect_equal(invoke(fn(value): value + 2), 6)
 
 test "constructor fields and methods use optional arguments":
     let defaulted = DefaultBox()
-    if not (defaulted.value.is_none()): return panic("optional record default")
-
+    try expect_false(not (defaulted.value.is_none()))
     let supplied = DefaultBox(3)
-    if supplied.value.get() != 3: return panic("optional argument with record default")
-
+    try expect_equal(supplied.value.get(), 3)
     let box = Box(4)
-    if box.value.get() != 4: return panic("generic record constructor")
-
+    try expect_equal(box.value.get(), 4)
     let choice = Choice.chosen(5)
 
     match choice:
         chosen(value):
-            if value.get() != 5: return panic("generic alternative constructor")
+            try expect_equal(value.get(), 5)
 
     let reader = Reader(2)
-    if reader.read(3) != 5: return panic("method argument")
-
+    try expect_equal(reader.read(3), 5)
     let read = reader.read
-    if read(4) != 6: return panic("bound method argument")
-
+    try expect_equal(read(4), 6)
     let view = Read(reader)
-    if view.read(5) != 7: return panic("interface argument")
-
+    try expect_equal(view.read(5), 7)
     let counter = Counter(0)
     mutate(counter)
-    if counter.calls != 9: return panic("wrapping copied the payload")
-
+    try expect_equal(counter.calls, 9)
     let notice = Notice(Failure("detail"))
-    if notice.failure.get().message() != "detail": return panic(
-        "error payload conversion"
-    )
+    try expect_equal(notice.failure.get().message(), "detail")
 
 test "wrapping evaluates arguments once in written order":
     let counter = Counter(0)
-    if ordered(second: next(counter), first: next(counter)) != 21:
-        return panic("argument order changed")
-    if counter.calls != 2: return panic("argument evaluated more than once")
+    try expect_equal(ordered(second: next(counter), first: next(counter)), 21)
+    try expect_equal(counter.calls, 2)
 
 test "queue capacity accepts a plain value or omission":
     let bounded = Queue[Int](4)
     for value in [1, 2, 3, 4]:
-        if not (bounded.enqueue(value)): return panic("capacity rejected a value")
-    if bounded.enqueue(5): return panic("capacity bound was lost")
-    if bounded.dequeue().get() != 1: return panic("queue order changed")
-
+        try expect_false(not (bounded.enqueue(value)))
+    try expect_false(bounded.enqueue(5))
+    try expect_equal(bounded.dequeue().get(), 1)
     let unbounded = Queue[Int]()
     let absent = Queue[Int]()
     let capacity: Optional[Int] = some(4)
     let explicit = Queue[Int](capacity)
 
     for value in [1, 2, 3, 4, 5]:
-        if not (unbounded.enqueue(value)): return panic(
-            "omitted capacity became bounded"
-        )
-        if not (absent.enqueue(value)): return panic("none capacity became bounded")
+        try expect_false(not (unbounded.enqueue(value)))
+        try expect_false(not (absent.enqueue(value)))
 
-    if not (explicit.enqueue(1)): return panic("explicit capacity changed")
+    try expect_false(not (explicit.enqueue(1)))

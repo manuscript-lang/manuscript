@@ -1,5 +1,5 @@
+import {expect_equal} from "@std/testing.ms"
 import Decimal from "@std/decimal.ms"
-import panic from "@std/faults.ms"
 
 test "list elements read before a later match assigns them":
     var x = 1
@@ -14,8 +14,7 @@ test "list elements read before a later match assigns them":
         ,
         x
     ]
-    if items != [1, 5, 50]: return panic("list element read after a later match")
-
+    try expect_equal(items, [1, 5, 50])
     let texts = [
         y,
         match some("b"):
@@ -24,7 +23,7 @@ test "list elements read before a later match assigns them":
                 value
             none: ""
     ]
-    if texts != ["a", "b"]: return panic("text element read after a later match")
+    try expect_equal(texts, ["a", "b"])
 
 test "map keys read before a later match assigns them":
     var key = 1
@@ -37,10 +36,8 @@ test "map keys read before a later match assigns them":
         ,
         key: key
     }
-    if entries.length() != 2: return panic("map key read after a later match")
-    if entries.get(key: 1) != some(5): return panic(
-        "first map key changed by a later match"
-    )
+    try expect_equal(entries.length(), 2)
+    try expect_equal(entries.get(key: 1), some(5))
 
 test "generic binary operands read before a later match assigns them":
     var amount = 1.5d
@@ -49,7 +46,7 @@ test "generic binary operands read before a later match assigns them":
             amount = 100d
             value
         none: 0d
-    if sum != 4d: return panic("decimal operand read after a later match")
+    try expect_equal(sum, 4d)
 
 type Cell:
     n: Int
@@ -65,11 +62,8 @@ test "field assignment evaluates its receiver before the value":
             value
         none: 0
 
-    if original.n != 2: return panic(
-        "numeric field write used the receiver chosen by the value"
-    )
-    if cell.n != 100: return panic("replacement receiver was modified")
-
+    try expect_equal(original.n, 2)
+    try expect_equal(cell.n, 100)
     var texts = Cell(n: 1, s: "a")
     let before = texts
 
@@ -79,6 +73,4 @@ test "field assignment evaluates its receiver before the value":
             value
         none: ""
 
-    if before.s != "q": return panic(
-        "text field write used the receiver chosen by the value"
-    )
+    try expect_equal(before.s, "q")

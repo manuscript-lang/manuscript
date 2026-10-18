@@ -1,3 +1,4 @@
+import {expect_equal, expect_error, expect_false} from "@std/testing.ms"
 import {filesystem, FileSystemError} from "@std/fs.ms"
 import {files, IoError} from "@std/io.ms"
 import {control} from "@std/process.ms"
@@ -6,17 +7,13 @@ import {compress, decompress, CompressionError} from "@std/compress.ms"
 import {pack, unpack, ArchiveEntry, ArchiveError} from "@std/archive.ms"
 import StringError from "@std/string.ms"
 import Bytes from "@std/bytes.ms"
-import panic from "@std/faults.ms"
-import expect_error from "@std/testing.ms"
 
 test "raw monotonic nanoseconds share the typed process uptime origin":
     let process = control()
     let before = try process.uptime()
     let reading = duration(process.monotonic_time())
     let after = try process.uptime()
-    if reading.compare(before) < 0 or reading.compare(after) > 0: return panic(
-        "monotonic units or origin"
-    )
+    try expect_false(reading.compare(before) < 0 or reading.compare(after) > 0)
 
 test "closed codec strings reject spelling changes with their domain errors":
     let data = "text".to_bytes()
@@ -24,43 +21,42 @@ test "closed codec strings reject spelling changes with their domain errors":
         StringError.InvalidInput
     )
     for form in ["nfc", "NFC ", ""]:
-        if "text".normalize(form) != normalization_error: return panic(
-            "normalization spelling"
-        )
+        try expect_equal("text".normalize(form), normalization_error)
     for form in ["NFC", "NFD", "NFKC", "NFKD"]:
-        if (try "text".normalize(form)) != "text": return panic("normalization form")
+        try expect_equal((try "text".normalize(form)), "text")
     let compression_error: Result[Bytes, CompressionError] = error(
         CompressionError.Unsupported
     )
 
     for format in ["GZIP", "ZLIB", "DEFLATE", ""]:
-        if compress(data, format, 0) != compression_error: return panic(
-            "compression spelling"
-        )
-        if decompress(data, format) != compression_error: return panic(
-            "decompression spelling"
-        )
+        try expect_equal(compress(data, format, 0), compression_error)
+        try expect_equal(decompress(data, format), compression_error)
 
     for format in ["gzip", "zlib", "deflate"]:
         for level in [0, 9]:
-            if (try compress(data, format, level) | try decompress(format)) != data: return panic(
-                "compression level boundary"
+            try expect_equal(
+                (
+                    try compress(
+                        data,
+                        format,
+                        level
+                    ) | try decompress(format)
+                ),
+                data
             )
     let level_error: Result[Bytes, CompressionError] = error(
         CompressionError.InvalidInput
     )
     for level in [-1, 10]:
-        if compress(data, "gzip", level) != level_error: return panic(
-            "compression level range"
-        )
+        try expect_equal(compress(data, "gzip", level), level_error)
     let pack_error: Result[Bytes, ArchiveError] = error(ArchiveError.Unsupported)
     let unpack_error: Result[List[ArchiveEntry], ArchiveError] = error(
         ArchiveError.Unsupported
     )
 
     for format in ["ZIP", "TAR", ""]:
-        if pack([], format) != pack_error: return panic("archive pack spelling")
-        if unpack(data, format) != unpack_error: return panic("archive unpack spelling")
+        try expect_equal(pack([], format), pack_error)
+        try expect_equal(unpack(data, format), unpack_error)
 
 test "all ten string open modes are accepted and changed spellings are invalid":
     let fs = filesystem()
@@ -74,17 +70,19 @@ test "all ten string open modes are accepted and changed spellings are invalid":
                 let _fileinfo = try handle.stat()
 
         for mode in ["R", "rs", "w+x", " r", ""]:
-            if (
+            try expect_false(
                 (
-                    try expect_error(
-                        fs.open(
-                            "{temporary.path()}/invalid",
-                            mode,
-                            384
+                    (
+                        try expect_error(
+                            fs.open(
+                                "{temporary.path()}/invalid",
+                                mode,
+                                384
+                            )
                         )
-                    )
-                ) != FileSystemError.InvalidInput
-            ): return panic("open spelling error")
+                    ) != FileSystemError.InvalidInput
+                )
+            )
 
 test "full byte counts positions EOF and stream aliases retain their contracts":
     let fs = filesystem()
@@ -95,58 +93,35 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
 
         with handle = try fs.open(path, "w+", 384):
             try handle.write_bytes(data)
-            if (try handle.stat()).size != 80000: return panic(
-                "write did not write all bytes"
-            )
-            if (try handle.read()).is_some(): return panic("sequential EOF")
-            if (try handle.read_at(80000)).length() != 0: return panic("positional EOF")
-            if (try handle.read_at(0, 80000)).length() != 65536: return panic(
-                "chunk cap"
-            )
-            if (try handle.read_file()).length() != 0: return panic(
-                "positional read moved sequential position"
-            )
-            if (try handle.seek(0, 0)) != 0: return panic("seek start")
-            if (try handle.read()).get().length() != 65536: return panic(
-                "default read chunk"
-            )
-            if (try handle.read_file()).length() != 14464: return panic(
-                "remaining read"
-            )
-
+            try expect_equal((try handle.stat()).size, 80000)
+            try expect_false((try handle.read()).is_some())
+            try expect_equal((try handle.read_at(80000)).length(), 0)
+            try expect_equal((try handle.read_at(0, 80000)).length(), 65536)
+            try expect_equal((try handle.read_file()).length(), 0)
+            try expect_equal((try handle.seek(0, 0)), 0)
+            try expect_equal((try handle.read()).get().length(), 65536)
+            try expect_equal((try handle.read_file()).length(), 14464)
             let _count = try handle.seek(0, 0)
             try handle.append_file("XY")
-            if (try handle.read_at(0, 2)) != "XY".to_bytes(): return panic(
-                "handle append repositioned"
-            )
-            if (try handle.stat()).size != 80000: return panic("handle append extended")
-
+            try expect_equal((try handle.read_at(0, 2)), "XY".to_bytes())
+            try expect_equal((try handle.stat()).size, 80000)
             try handle.write_at(4, "ZZ")
-            if (try handle.seek(0, 1)) != 2: return panic("write_at moved position")
-
+            try expect_equal((try handle.seek(0, 1)), 2)
             let writer = handle.writer()
             try writer.write("AB")
             try writer.flush()
-            if (try handle.read_at(2, 4)) != "ABZZ".to_bytes(): return panic(
-                "writer position"
-            )
-
+            try expect_equal((try handle.read_at(2, 4)), "ABZZ".to_bytes())
             let reader = handle.reader()
             writer.close()
             let closed_read: Result[Bytes, FileSystemError] = error(
                 FileSystemError.Closed
             )
-            if handle.read_at(0) != closed_read: return panic(
-                "adapter did not close handle"
-            )
-            if (try expect_error(reader.read())) != IoError.Closed: return panic(
-                "adapter Closed translation"
-            )
+            try expect_equal(handle.read_at(0), closed_read)
+            try expect_equal((try expect_error(reader.read())), IoError.Closed)
 
         let missing = "{temporary.path()}/missing"
-        if ((try expect_error(fs.open(missing, "r", 384))) != FileSystemError.NotFound): return panic(
-            "filesystem missing mapping"
+        try expect_equal(
+            (try expect_error(fs.open(missing, "r", 384))),
+            FileSystemError.NotFound
         )
-        if (try expect_error(files().open(missing))) != IoError.Unavailable: return panic(
-            "io missing mapping"
-        )
+        try expect_equal((try expect_error(files().open(missing))), IoError.Unavailable)

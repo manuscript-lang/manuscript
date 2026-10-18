@@ -1,0 +1,20 @@
+File: tooling.test
+Build ID: e90aed333b5d1db8098ffe43fc795cfa806d781c
+Type: cpu
+Time: 2026-10-18 07:14:05 UTC
+Duration: 1.20s, Total samples = 1260ms (104.56%)
+Showing nodes accounting for 680ms, 53.97% of 1260ms total
+Showing top 12 nodes out of 120
+      flat  flat%   sum%        cum   cum%
+     100ms  7.94%  7.94%      340ms 26.98%  runtime.mapaccess1_faststr
+      80ms  6.35% 14.29%      200ms 15.87%  runtime.scanobject
+      70ms  5.56% 19.84%       70ms  5.56%  aeshashbody
+      60ms  4.76% 24.60%      210ms 16.67%  internal/runtime/maps.(*table).uncheckedPutSlot
+      60ms  4.76% 29.37%       60ms  4.76%  runtime.memmove
+      50ms  3.97% 33.33%      940ms 74.60%  github.com/manuscript-lang/manuscript/pkg/tooling.reachCounts
+      50ms  3.97% 37.30%       50ms  3.97%  internal/runtime/maps.h2 (inline)
+      50ms  3.97% 41.27%       50ms  3.97%  runtime.memclrNoHeapPointers
+      40ms  3.17% 44.44%       40ms  3.17%  internal/runtime/maps.(*groupReference).key (inline)
+      40ms  3.17% 47.62%       40ms  3.17%  internal/runtime/maps.ctrlGroup.matchH2 (inline)
+      40ms  3.17% 50.79%       40ms  3.17%  memeqbody
+      40ms  3.17% 53.97%       50ms  3.97%  runtime.typePointers.next

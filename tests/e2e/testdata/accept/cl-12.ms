@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 fn map_total(values: Map[String, Int]) Int:
     var total = 0
@@ -17,7 +17,5 @@ fn set_total(values: Set[Int]) Int:
 
 test "map entry type":
     let entry = MapEntry[String, Int]("a", 3)
-    if not (entry.key == "a"):
-        return panic("check failed")
-    if not (entry.value == 3):
-        return panic("check failed")
+    try expect_equal(entry.key, "a")
+    try expect_equal(entry.value, 3)

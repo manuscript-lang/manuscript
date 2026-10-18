@@ -35,7 +35,8 @@ export fn decode_component(text: String) Result[String, UrlError]:
 # Percent-encodes one URL component using UTF-8 bytes.
 export fn encode_component(text: String) String:
 
-# Formats URL components as an absolute or relative URL.
+# Formats URL components as an absolute hierarchical URL.
+# Missing or malformed schemes and hostless relative paths return InvalidInput, as do other invalid components.
 export fn format(value: Url) Result[String, UrlError]:
 
 # Encodes query entries as a query string.

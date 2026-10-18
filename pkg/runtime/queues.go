@@ -224,7 +224,7 @@ func PriorityQueue_Dequeue[T any](ctx *Execution, q *PriorityQueue[T]) Option[T]
 	value := q.items[0].value
 	last := len(q.items) - 1
 	entry := q.items[last]
-	var path []int
+	depth := 0
 	at := 0
 	for {
 		child := at*2 + 1
@@ -237,11 +237,16 @@ func PriorityQueue_Dequeue[T any](ctx *Execution, q *PriorityQueue[T]) Option[T]
 		if !q.before(ctx, q.items[child], entry) {
 			break
 		}
-		path = append(path, child)
+		depth++
 		at = child
 	}
+	// The binary digits of a heap index + 1, after the leading 1, encode
+	// its left/right path. Replay it only after every comparison succeeds,
+	// keeping comparator faults atomic without allocating a path slice.
+	path := at + 1
 	at = 0
-	for _, child := range path {
+	for level := depth - 1; level >= 0; level-- {
+		child := at*2 + 1 + ((path >> level) & 1)
 		q.items[at] = q.items[child]
 		at = child
 	}

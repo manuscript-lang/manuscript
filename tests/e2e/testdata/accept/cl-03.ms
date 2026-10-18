@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 type CustomerId:
     value: String
@@ -16,5 +16,4 @@ fn customer_name(customer: Customer) String:
 
 test "nominal record and nested binding":
     let customer = Customer(CustomerId("c1"), "Ada")
-    if not (customer_name(customer) == "c1: Ada"):
-        return panic("check failed")
+    try expect_equal(customer_name(customer), "c1: Ada")

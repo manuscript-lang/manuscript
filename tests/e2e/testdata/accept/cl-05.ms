@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 fn increase(value: Int) Int:
     return value + 1
@@ -8,5 +8,4 @@ fn apply(value: Int, transform: fn(value: Int) Int) Int:
 
 test "function label compatibility":
     let transform: fn(value: Int) Int = increase
-    if not (apply(4, transform) == 5):
-        return panic("check failed")
+    try expect_equal(apply(4, transform), 5)

@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import expect_equal from "@std/testing.ms"
 
 fn apply(value: Int, transform: fn(value: Int) Int) Int: transform(value)
 
@@ -31,10 +31,10 @@ test "compact formatting preserves behavior":
         transform: fn(value: Int) Int:
             return value + 1
     )
-    if values != [1, 2, 2, 4, 3, 6]: return panic("list changed")
-    if nested != [[1, 2], [3, 4]]: return panic("nested list changed")
-    if invalid.length() != 6: return panic("literal list changed")
-    if mapped != [2, 3, 4, 5, 6, 7]: return panic("callback changed")
-    if count() != 102: return panic("inline callback changed")
-    if choose(Choice.Zero) != "zero # unchanged": return panic("match changed")
-    if choose(Choice.Other(3)) != "value 3": return panic("interpolation changed")
+    values | try expect_equal(expected: [1, 2, 2, 4, 3, 6])
+    nested | try expect_equal(expected: [[1, 2], [3, 4]])
+    invalid.length() | try expect_equal(expected: 6)
+    mapped | try expect_equal(expected: [2, 3, 4, 5, 6, 7])
+    count() | try expect_equal(expected: 102)
+    choose(Choice.Zero) | try expect_equal(expected: "zero # unchanged")
+    choose(Choice.Other(3)) | try expect_equal(expected: "value 3")

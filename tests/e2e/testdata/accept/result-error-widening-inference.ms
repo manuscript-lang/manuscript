@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 type Failure:
     code: Int
@@ -20,7 +20,5 @@ fn describe[T](r: Result[T, Error]) String:
     return "ok"
 
 test "a generic Result[T, Error] parameter infers T and widens a domain error":
-    if describe(failing()) != "failure 7":
-        return panic("domain error was not preserved through widening")
-    if describe(succeeding()) != "ok":
-        return panic("success was not preserved through widening")
+    try expect_equal(describe(failing()), "failure 7")
+    try expect_equal(describe(succeeding()), "ok")

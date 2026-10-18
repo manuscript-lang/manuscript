@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
 fn subtract(amount: Int, deduction: Int = 1) Int: amount - deduction
 
@@ -15,50 +15,34 @@ fn mark(log: List[Int], value: Int) Int:
 test "map literals and positional identifier arguments":
     let amount = 10
     let deduction = 3
-    if subtract(amount, deduction) != 7: return panic("argument order")
-    if subtract(amount, 2) != 8: return panic("mixed labels")
-    if subtract(amount) != 9: return panic("default")
-
+    try expect_equal(subtract(amount, deduction), 7)
+    try expect_equal(subtract(amount, 2), 8)
+    try expect_equal(subtract(amount), 9)
     let left = 4
     let right = 8
-    if first(left, right) != 4: return panic("generic inference")
-
+    try expect_equal(first(left, right), 4)
     let stored: fn(amount: Int, deduction: Int) Int = subtract
-    if stored(amount, deduction) != 7: return panic("function value")
-
+    try expect_equal(stored(amount, deduction), 7)
     let values = {"a": 1, "b": 2, "a": 3}
-    if values.length() != 2 or values.get("a").get() != 3: return panic("duplicate key")
-
+    try expect_false(values.length() != 2 or values.get("a").get() != 3)
     let keys = values.keys()
-    if keys.at(0).get() != "a" or keys.at(1).get() != "b": return panic(
-        "insertion order"
-    )
-
+    try expect_false(keys.at(0).get() != "a" or keys.at(1).get() != "b")
     let empty: Map[String, Int] = {}
-    if (empty.length() != 0 or size({}) != 0 or optional_size({}) != 0): return panic(
-        "empty context"
-    )
-
+    try expect_false((empty.length() != 0 or size({}) != 0 or optional_size({}) != 0))
     let nested: Map[String, Map[String, Int]] = {"a": {}, "b": {"c": 1}}
-    if nested.get("b").get().get("c").get() != 1: return panic("nested map")
-
+    try expect_equal(nested.get("b").get().get("c").get(), 1)
     let optional: Map[String, Optional[Int]] = {"a": none, "b": some(2)}
-    if not optional.get("a").get().is_none(): return panic("context")
-
+    try expect_false(not optional.get("a").get().is_none())
     let key = "c"
     let value = 5
     values.add(key, value)
-    if values.get(key).get() != value: return panic("method identifiers")
-
+    try expect_equal(values.get(key).get(), value)
     let log: List[Int] = []
     let ordered = {mark(log, 1): mark(log, 2), mark(log, 1): mark(log, 3)}
-    if log != [1, 2, 1, 3] or ordered.get(1).get() != 3: return panic(
-        "evaluation order"
-    )
-
+    try expect_false(log != [1, 2, 1, 3] or ordered.get(1).get() != 3)
     let shared = {"x": values}
     values.add("d", 6)
-    if shared.get("x").get().get("d").get() != 6: return panic("shared references")
+    try expect_equal(shared.get("x").get().get("d").get(), 6)
 
 type Key:
     id: Int
@@ -77,6 +61,4 @@ test "map literal uses custom key equality":
     let a = Key(1, "first")
     let b = Key(1, "second")
     let values = {a: "a", b: "b"}
-    if values.length() != 1 or values.get(a).get() != "b": return panic(
-        "custom key equality"
-    )
+    try expect_false(values.length() != 1 or values.get(a).get() != "b")

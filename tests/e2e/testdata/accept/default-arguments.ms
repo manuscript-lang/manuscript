@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 import {Synchronized, SynchronizedGuard} from "@std/sync.ms"
 
 fn increment(value: Int = 3) Int:
@@ -16,14 +16,17 @@ fn mark(state: SynchronizedGuard[Int], value: Int) Int:
 
 fn ordered(
     state: SynchronizedGuard[Int],
-    first: Int = mark(state, value: 3),
-    second: Int = mark(state, value: 4),
+    first: Int = mark(state: state, value: 3),
+    second: Int = mark(state: state, value: 4),
     third: Int = 0
 ) Int:
     state.set(value: state.get() * 10 + 5)
     return first + second + third
 
-fn unit_value(value: Unit = panic("unexpected default")) Unit:
+fn unit_default(calls: List[Int]) Unit:
+    calls.append(1)
+
+fn unit_value(calls: List[Int], value: Unit = unit_default(calls)) Unit:
     return value
 
 fn optional(value: Optional[Int] = some(3)) Optional[Int]:
@@ -56,76 +59,57 @@ impl Read[T] for Box[T]:
         return value
 
 test "omitted and explicit defaults":
-    if (increment() != 4 or increment(7) != 8 or increment(value: 0) != 1):
-        return panic("single parameter defaults")
-    if combine(second: 5) != 14 or combine(third: 0, second: 5, first: 0) != 5:
-        return panic("required arguments and dependent defaults")
-    if identity(value: 9) != 9 or identity(value: 9, fallback: 4) != 4:
-        return panic("generic defaults")
-
-    unit_value(unit)
-    if optional(value: none) != Optional[Int].none or optional() != some(3):
-        return panic("explicit none must override default")
-    if (
-        propagate() != Result[Int, String].error("default failure")
-        or propagate(7) != Result[Int, String].ok(7)
-    ):
-        return panic("default propagation belongs to callee")
+    (increment() != 4 or increment(7) != 8 or increment(value: 0) != 1) | try expect_false
+    (combine(second: 5) != 14 or combine(third: 0, second: 5, first: 0) != 5) | try expect_false
+    (identity(value: 9) != 9 or identity(value: 9, fallback: 4) != 4) | try expect_false
+    let calls: List[Int] = []
+    unit_value(calls, unit)
+    calls.length() | try expect_equal(expected: 0)
+    (optional(value: none) != Optional[Int].none or optional() != some(3)) | try expect_false
+    (
+        (
+            propagate() != Result[Int, String].error("default failure")
+            or propagate(7) != Result[Int, String].ok(7)
+        )
+    ) | try expect_false
 
 test "default evaluation order and repeated calls":
     let counter = Synchronized[Int](0)
 
     with state = counter.lock():
         let total = ordered(
-            state,
-            third: mark(state, value: 1),
-            second: mark(state, value: 2)
+            state: state,
+            third: mark(state: state, value: 1),
+            second: mark(state: state, value: 2)
         )
-        if total != 6 or state.get() != 1235:
-            return panic("supplied arguments precede defaults and body")
-
+        (total != 6 or state.get() != 1235) | try expect_false
         state.set(value: 0)
-        ordered(state)
-        if state.get() != 345:
-            return panic("defaults evaluate in declaration order")
-
+        let ignored = ordered(state: state)
+        state.get() | try expect_equal(expected: 345)
         state.set(value: 0)
-        ordered(state)
-        if state.get() != 345:
-            return panic("defaults run on every call")
+        let again = ordered(state: state)
+        state.get() | try expect_equal(expected: 345)
 
 test "function values and captures":
     let copy = increment
     let copied = copy
-    if copied() != 4:
-        return panic("inferred immutable copies retain defaults")
-
+    copied() | try expect_equal(expected: 4)
     let typed: fn(value: Int) Int = increment
-    if typed(2) != 3:
-        return panic("explicit function type remains compatible")
-
+    typed(2) | try expect_equal(expected: 3)
     var offset = 5
     let callback = fn(value: Int = offset):
         return value
     offset = 9
-    if callback() != 5 or callback(0) != 0:
-        return panic("default expressions capture snapshots")
-
+    (callback() != 5 or callback(0) != 0) | try expect_false
     let nested = fn(first: Int = 6, second: Int = first + 1):
         return second
-    if nested() != 7:
-        return panic("anonymous dependent defaults")
+    nested() | try expect_equal(expected: 7)
 
 test "implementation and bound method defaults":
     let offset = Offset(4)
     let bound = offset.add
-    if (offset.add() != 8 or bound() != 8 or bound(0) != 4):
-        return panic("receiver defaults")
-
+    (offset.add() != 8 or bound() != 8 or bound(0) != 4) | try expect_false
     let view = Add(offset)
-    if view.add(2) != 6:
-        return panic("contract view call")
-
+    view.add(2) | try expect_equal(expected: 6)
     let box = Box[String]("boxed")
-    if box.read() != "boxed":
-        return panic("generic method defaults")
+    box.read() | try expect_equal(expected: "boxed")

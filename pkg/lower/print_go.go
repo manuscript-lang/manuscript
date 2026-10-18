@@ -22,8 +22,10 @@ func (g *gen) locatedStatement(pos syntax.Position, statement ast.Stmt) ast.Stmt
 	return &ast.LabeledStmt{Label: label, Stmt: statement}
 }
 
+var sourceFilenameReplacer = strings.NewReplacer("\n", "_", "\r", "_")
+
 func sourceDirective(pos syntax.Position) string {
-	filename := strings.NewReplacer("\n", "_", "\r", "_").Replace(pos.File)
+	filename := sourceFilenameReplacer.Replace(pos.File)
 	return fmt.Sprintf("//line %s:%d", filename, pos.Line)
 }
 

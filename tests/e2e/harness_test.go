@@ -26,7 +26,9 @@ func TestMain(m *testing.M) {
 	cliBinary = filepath.Join(directory, "ms")
 	tool, err := filepath.Abs("../../toolchain/go/bin/go")
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "resolve conformance toolchain: %v\n", err)
+		os.RemoveAll(directory)
+		os.Exit(1)
 	}
 	if runtime.GOOS == "windows" {
 		tool += ".exe"

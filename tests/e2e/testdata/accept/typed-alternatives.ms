@@ -1,5 +1,5 @@
+import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import range from "@std/collections.ms"
-import panic from "@std/faults.ms"
 
 fn checked(n: Int) Result[Int, String]:
     if n < 0:
@@ -74,94 +74,60 @@ fn sum_all(count: Int) Result[Int, String]:
 
 test "result matching":
     let v = chain(3).get()
-    if not (v == 8):
-        return panic("chain ok")
-
+    try expect_equal(v, 8)
     let failure = chain(-1)
-    if not failure.is_error():
-        return panic("chain should fail")
-    if not (failure.err() == "negative"):
-        return panic("cause")
+    try expect_false(not failure.is_error())
+    try expect_equal(failure.err(), "negative")
 
 test "try chains":
     let v = deeper(1).get()
-    if not (v == 4 + 10):
-        return panic("deeper {v}")
+    if not (v == 4 + 10): return fail("deeper {v}")
 
     let deeper_failure = deeper(-5)
-    if not deeper_failure.is_error():
-        return panic("deeper should fail")
-    if not (deeper_failure.err() == "negative"):
-        return panic("deeper cause")
-
+    try expect_false(not deeper_failure.is_error())
+    try expect_equal(deeper_failure.err(), "negative")
     let x = expression_try(4).get()
-    if not (x == 105):
-        return panic("expression try")
-    if not expression_try(-4).is_error():
-        return panic("expression try should fail")
-
+    try expect_equal(x, 105)
+    try expect_false(not expression_try(-4).is_error())
     let total = sum_all(5).get()
-    if not (total == 15):
-        return panic("sum {total}")
+    if not (total == 15): return fail("sum {total}")
 
 test "boxed consumers":
-    if not ("{checked(2)}" == "{passthrough(2)}"):
-        return panic("display parity")
-    if not (checked(2) == through_local(2)):
-        return panic("equality")
-    if not (checked(-2) == passthrough(-2)):
-        return panic("error equality")
-
+    try expect_equal("{checked(2)}", "{passthrough(2)}")
+    try expect_equal(checked(2), through_local(2))
+    try expect_equal(checked(-2), passthrough(-2))
     let f = checked
     let v = f(6).get()
-    if not (v == 7):
-        return panic("first class")
-    if not (matched_value(3) == 4):
-        return panic("match value")
-    if not (matched_value(-3) == -1):
-        return panic("match value error")
+    try expect_equal(v, 7)
+    try expect_equal(matched_value(3), 4)
+    try expect_equal(matched_value(-3), -1)
 
 test "optional and payload kinds":
     if let h = halve(8):
-        if not (h == 4):
-            return panic("halve")
+        try expect_equal(h, 4)
     else:
-        return panic("halve none")
+        return fail("halve none")
 
-    if halve(7).is_some():
-        return panic("halve odd")
-
+    try expect_false(halve(7).is_some())
     let w = word(3).get()
-    if not (w == "w3"):
-        return panic("word")
-
+    try expect_equal(w, "w3")
     let r = ratio(1).get()
-    if not (r == 1.5):
-        return panic("ratio")
-
+    try expect_equal(r, 1.5)
     nothing(true).get()
 
     if let inner = nested(4):
-        if not (inner == some(2)):
-            return panic("nested inner")
+        try expect_equal(inner, some(2))
     else:
-        return panic("nested none")
+        return fail("nested none")
 
     let odd = closure_return(5)
-    if not odd.is_error():
-        return panic("closure return should fail")
-    if not (odd.err() == "odd"):
-        return panic("closure return cause")
-
+    try expect_false(not odd.is_error())
+    try expect_equal(odd.err(), "odd")
     let even = closure_return(6).get()
-    if not (even == 3):
-        return panic("closure return ok")
+    try expect_equal(even, 3)
 
 test "list at unwrap":
     let items = [10, 20, 30]
-    if not (items.at(0).get() == 10):
-        return panic("first")
-    if not (items.at(-1).get() == 30):
-        return panic("negative index")
-    if not (items.at(1).get() + items.at(2).get() == 50):
-        return panic("sum")
+    try expect_equal(items.at(0).get(), 10)
+    try expect_equal(items.at(-1).get(), 30)
+    try expect_equal(items.at(1).get() + items.at(2).get(), 50)

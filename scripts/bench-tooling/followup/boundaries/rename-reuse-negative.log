@@ -1,0 +1,5 @@
+--- FAIL: TestPrepareRenameReusesLiveIndex (0.22s)
+    rename_reuse_test.go:31: prepareRename rebuilt index-sized work: prepare=58386 index=58302 allocations
+FAIL
+FAIL	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	0.220s
+FAIL

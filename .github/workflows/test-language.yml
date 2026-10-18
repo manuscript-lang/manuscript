@@ -12,7 +12,8 @@ permissions:
 # is sharded, and the editor tests reuse the CLI built for the hello run.
 jobs:
   # Every Go test runs once: in-process packages under the race detector, the
-  # rest (unit, stdlib, examples, native end-to-end) with coverage.
+  # rest (unit, examples, native process regressions) with coverage.
+  # Manuscript conformance runs through the bundled CLI in the dist job.
   go:
     name: Go tests (shard ${{ matrix.shard }})
     env:
@@ -82,6 +83,10 @@ jobs:
           make build
           ./ms check examples/hello/ms.toml
           ./ms run examples/hello/ms.toml -- first second
+      - name: Manuscript core and standard-library conformance
+        run: |
+          ./ms test scripts/conformance.ms
+          ./ms run scripts/conformance.ms -- "$GITHUB_WORKSPACE/ms" all 0 1
       # Standalone distribution checks run once, per target, in release.yml.
       - name: Parser and compiler fuzzing
         run: make fuzz

@@ -14,6 +14,14 @@ import (
 
 func fixture(t *testing.T, name string) string {
 	t.Helper()
+	// Panic and Never subjects remain Go string fixtures; physical .ms tests use errors.
+	switch name {
+	case "cl-06":
+		return returnContractFixture
+	case "cl-17":
+		return neverContractFixture
+	}
+
 	source, err := os.ReadFile("../../tests/e2e/testdata/accept/" + name + ".ms")
 	if err != nil {
 		t.Fatal(err)
@@ -83,7 +91,7 @@ func TestRejectedConformanceVariants(t *testing.T) {
 	variants := []struct{ name, fixture, old, replacement, phase string }{
 		{"to_string arity", "to-string", "true.to_string()", "true.to_string(value: 1)", "type"},
 		{"to_string result", "to-string", "let convert: fn() String", "let convert: fn() Int", "type"},
-		{"no implicit string conversion", "to-string", "check(person.to_string()", "check(person", "type"},
+		{"no implicit string conversion", "to-string", "check(value: person.to_string()", "check(value: person", "type"},
 		{"duplicate argument", "cl-01", "deduction: 2,", "amount: 2,", "type"},
 		{"missing argument", "cl-01", "deduction: 2,", "", "type"},
 		{"unknown argument", "cl-01", "deduction: 2,", "discount: 2,", "type"},
@@ -112,7 +120,7 @@ func TestRejectedConformanceVariants(t *testing.T) {
 		{"unreachable wildcard", "cl-07", "            return 0\n", "            return 0\n        _:\n            return 0\n", "type"},
 		{"noniterable", "cl-08", "for value in values:", "for value in 3:", "type"},
 		{"immutable iteration", "cl-08", "total += value", "value = 4", "type"},
-		{"break outside loop", "cl-08", "    if not (selected_sum([]) == 0):\n        return panic(\"check failed\")", "    break", "type"},
+		{"break outside loop", "cl-08", "    try expect_equal(selected_sum([]), 0)", "    break", "type"},
 		{"generic arity", "cl-09", "Box[Int](6)", "Box[Int, String](6)", "type"},
 		{"generic field", "cl-09", "Box[Int](6)", "Box[String](6)", "type"},
 		{"explicit specialization mismatch", "cl-09", "unwrap[Int](box)", "unwrap[String](box)", "type"},
@@ -140,9 +148,9 @@ func TestRejectedConformanceVariants(t *testing.T) {
 		{"result payload", "cl-14", "ok(value)", "ok(true)", "type"},
 		{"try nonresult", "cl-14", "try checked(value)", "try value", "type"},
 		{"try no backward context", "cl-14", "let accepted = try checked(value)", "let accepted: Int = try ok(3)", "type"},
-		{"record equality eligibility", "cl-15", "let _callback = Callback(increment)", "let callback = Callback(increment)\n    if not (callback == callback):\n        return panic(\"check failed\")", "type"},
-		{"float hashing", "cl-15", "preserve_key(\"key\") == \"key\"", "preserve_key(1.0) == 1.0", "type"},
-		{"list hashing", "cl-15", "preserve_key(\"key\") == \"key\"", "preserve_key([1, 2]) == [1, 2]", "type"},
+		{"record equality eligibility", "cl-15", "let _callback = Callback(increment)", "let callback = Callback(increment)\n    callback | try expect_equal(expected: callback)", "type"},
+		{"float hashing", "cl-15", "try expect_equal(preserve_key(\"key\"), \"key\")", "try expect_equal(preserve_key(1.0), 1.0)", "type"},
+		{"list hashing", "cl-15", "try expect_equal(preserve_key(\"key\"), \"key\")", "try expect_equal(preserve_key([1, 2]), [1, 2])", "type"},
 		{"optional invariance", "cl-15", "let missing: Optional[Int] = none", "let wrong: Optional[Float] = present", "type"},
 		{"result insufficient context", "cl-16", "let success: Result[Int, String]", "let success", "type"},
 		{"none insufficient context", "cl-16", "let _absent: Optional[Int]", "let _absent", "type"},
@@ -268,6 +276,9 @@ func TestGenericRecursionAndNamespaceRules(t *testing.T) {
 	}
 }
 func FuzzCompile(f *testing.F) {
+	// Keep the moved return/Never programs in the mutation corpus.
+	f.Add(returnContractFixture)
+	f.Add(neverContractFixture)
 	for _, s := range []string{"fn f() Int:\n    return 1\n", "type Box[T]:\n    value: T\nfn f() Box[Int]:\n    return Box(value: 1)\n", "import panic from \"@std/faults.ms\"\n\ntest \"list\":\n    let values = [1, 2]\n    if not (values.length() == 2):\n        return panic(message: \"check failed\")\n"} {
 		f.Add(s)
 	}
@@ -675,3 +686,35 @@ func TestLocalQueueBoundaries(t *testing.T) {
 		})
 	}
 }
+
+const returnContractFixture = `import panic from "@std/faults.ms"
+
+fn positive(value: Int) Int:
+    if value > 0:
+        return value
+    else:
+        panic("positive value required")
+
+fn discard(value: Int) Unit:
+    if not (value > 0):
+        return panic("check failed")
+
+test "return contracts":
+    if not (positive(3) == 3):
+        return panic("check failed")
+
+    discard(1)
+`
+
+const neverContractFixture = `import panic from "@std/faults.ms"
+
+fn failed_initializer() Never:
+    let _impossible: Int = panic("initializer cannot return")
+
+fn returned_failure() Int:
+    return panic("result cannot return")
+
+fn endless() Int:
+    while true:
+        continue
+`

@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
 let (
     LOW = 1
@@ -9,8 +9,7 @@ export let (
 )
 
 test "a constant group declares each constant":
-    if not (HIGH == 10 and LABEL == "range 1..10"):
-        return panic("check failed")
+    try expect_false(not (HIGH == 10 and LABEL == "range 1..10"))
 
 test "a var group declares mutable locals":
     var (
@@ -19,13 +18,11 @@ test "a var group declares mutable locals":
             return value + 1
     )
     total = step(total)
-    if not (total == 1):
-        return panic("check failed")
+    try expect_equal(total, 1)
 
 test "a let group declares immutable locals":
     let (
         name = "Ada"
         [first, second] = [1, 2]
     )
-    if not (name == "Ada" and first + second == 3):
-        return panic("check failed")
+    try expect_false(not (name == "Ada" and first + second == 3))

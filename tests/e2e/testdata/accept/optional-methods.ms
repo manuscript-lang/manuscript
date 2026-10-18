@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 import JsonLimits from "@std/json.ms"
 
 type Counter:
@@ -16,66 +16,56 @@ fn increment(value: Int) Int: value + 1
 test "Optional presence and extraction preserve false and zero":
     let present: Optional[Int] = some(0)
     let missing: Optional[Int] = none
-    if not (present.is_some()): return panic("zero was absent")
-    if present.is_none(): return panic("some reported none")
-    if missing.is_some(): return panic("none reported some")
-    if not (missing.is_none()): return panic("none was present")
-    if present.get() != 0: return panic("payload lost")
-
+    try expect_false(not (present.is_some()))
+    try expect_false(present.is_none())
+    try expect_false(missing.is_some())
+    try expect_false(not (missing.is_none()))
+    try expect_equal(present.get(), 0)
     let flag: Optional[Bool] = some(false)
-    if flag.get(): return panic("false payload lost")
-    if value_or(missing, 7) != 7: return panic("generic fallback")
-    if value_or(present, 7) != 0: return panic("generic payload")
-    if missing.is_some():
-        return panic(missing.get().to_string())
+    try expect_false(flag.get())
+    try expect_equal(value_or(missing, 7), 7)
+    try expect_equal(value_or(present, 7), 0)
+    try expect_false(missing.is_some())
 
 test "Optional fallbacks distinguish eager and lazy evaluation":
     let present: Optional[Int] = some(0)
     let missing: Optional[Int] = none
     let counter = Counter(0)
-    if present.get(fallback(counter)) != 0: return panic("eager fallback result")
-    if counter.calls != 1: return panic("fallback expression was not evaluated")
-
+    try expect_equal(present.get(fallback(counter)), 0)
+    try expect_equal(counter.calls, 1)
     let create = fn(): some(fallback(counter))
-    if present.or_else(create).get() != 0: return panic("lazy payload")
-    if counter.calls != 1: return panic("some invoked fallback")
-    if missing.or_else(create).get() != 42: return panic("lazy fallback")
-    if counter.calls != 2: return panic("none must invoke fallback once")
+    try expect_equal(present.or_else(create).get(), 0)
+    try expect_equal(counter.calls, 1)
+    try expect_equal(missing.or_else(create).get(), 42)
+    try expect_equal(counter.calls, 2)
 
 test "Optional methods retain generic payload and receiver identity":
     let inner: Optional[Int] = none
     let outer: Optional[Optional[Int]] = some(inner)
-    if not (outer.is_some()): return panic("nested optional flattened")
-    if not (outer.get().is_none()): return panic("nested none lost")
-
+    try expect_false(not (outer.is_some()))
+    try expect_false(not (outer.get().is_none()))
     let counter = Counter(0)
     let record: Optional[Counter] = some(counter)
     record.get().calls = 3
-    if counter.calls != 3: return panic("unwrap copied the payload")
-
+    try expect_equal(counter.calls, 3)
     let extract = record.get
     extract().calls = 4
-    if counter.calls != 4: return panic("stored method lost its receiver")
-
+    try expect_equal(counter.calls, 4)
     let callback: Optional[fn(value: Int) Int] = some(increment)
-    if callback.get()(2) != 3: return panic("function payload type lost")
-
+    try expect_equal(callback.get()(2), 3)
     let snapshot = outer.clone()
-    if snapshot != outer: return panic("optional value semantics changed")
+    try expect_equal(snapshot, outer)
 
 test "Optional fallbacks preserve standard option records":
     let limits = JsonLimits(-1)
     let missing: Optional[JsonLimits] = none
     let extracted = missing.get(limits)
-    if extracted.max_bytes.get() != -1: return panic("generic record normalized")
-    if not (extracted.max_depth.is_none()): return panic(
-        "generic record default changed"
-    )
-
+    try expect_equal(extracted.max_bytes.get(), -1)
+    try expect_false(not (extracted.max_depth.is_none()))
     extracted.max_values = some(7)
-    if limits.max_values.get() != 7: return panic("generic fallback cloned the record")
+    try expect_equal(limits.max_values.get(), 7)
 
 test "Optional methods work on inferred library return values":
     let values = [1, 2]
-    if values.at(0).get() != 1: return panic("inferred payload")
-    if values.at(5).get(9) != 9: return panic("inferred fallback")
+    try expect_equal(values.at(0).get(), 1)
+    try expect_equal(values.at(5).get(9), 9)

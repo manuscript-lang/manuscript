@@ -59,48 +59,60 @@ func cliStreams(t *testing.T, args ...string) (int, []byte, string) {
 }
 
 func TestCLITestJSONPreservesOutputsFailuresAndLocations(t *testing.T) {
-	root := t.TempDir()
-	path := filepath.Join(root, "test=a=b.ms")
-	source := `import {stdout, stderr} from "@std/io.ms"
-import panic from "@std/faults.ms"
+	for _, fault := range []bool{false, true} {
+		name := "result failure"
+		if fault {
+			name = "fault with stack location"
+		}
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			path := filepath.Join(root, "test=a=b.ms")
+			source := `import {stdout, stderr} from "@std/io.ms"
+import fail from "@std/testing.ms"
 
 test "first=pass":
     let _out = stdout().write(data: "PASS fake test\nuser stdout\n")
     let _err = stderr().write(data: "user stderr\n")
 
 test "second=fails":
-    return panic(message: "expected failure")
+    return fail("expected failure")
 
 test "third=after":
     return unit
 `
-	if err := os.WriteFile(path, []byte(source), 0600); err != nil {
-		t.Fatal(err)
-	}
-	humanStatus, humanOut, humanErr := cliStreams(t, "test", path, "--timeout=0")
-	status, output, stderr := cliStreams(t, "test", path, "--timeout=0", "--json")
-	var doc jsonTestDocument
-	if status != humanStatus || status != 1 || json.Unmarshal(output, &doc) != nil || doc.Format != 1 || !doc.Completed || doc.ExitCode != 1 || len(doc.Diagnostics) != 0 || len(doc.Tests) != 3 {
-		t.Fatalf("test JSON: %d %s %s", status, output, stderr)
-	}
-	if doc.Stdout != string(humanOut) || stderr != humanErr || stderr != "user stderr\n" {
-		t.Fatalf("streams changed: stdout=%q/%q stderr=%q/%q", doc.Stdout, humanOut, stderr, humanErr)
-	}
-	if doc.Summary.Available != 3 || doc.Summary.Selected != 3 || doc.Summary.Passed != 2 || doc.Summary.Failed != 1 || doc.Tests[0].Status != "passed" || doc.Tests[1].Status != "failed" || doc.Tests[2].Status != "passed" || !strings.Contains(doc.Tests[1].Failure, "expected failure") || !strings.Contains(doc.Tests[1].Failure, "test=a=b.ms:9") || doc.SourceRoot != root {
-		t.Fatalf("outcomes/locations/order: %s", output)
-	}
-	for _, filter := range []string{"first=pass", "nothing=matches"} {
-		status, output, stderr = cliStreams(t, "test", path, "--filter="+filter, "--json")
-		if json.Unmarshal(output, &doc) != nil || !doc.Completed || doc.Summary.Available != 3 {
-			t.Fatalf("filter: %d %s %s", status, output, stderr)
-		}
-		if filter == "first=pass" {
-			if status != 0 || doc.Summary.Selected != 1 || doc.Tests[0].Status != "passed" {
-				t.Fatalf("selected: %s", output)
+			if fault {
+				source = strings.Replace(source, "import fail from \"@std/testing.ms\"", "import panic from \"@std/faults.ms\"", 1)
+				source = strings.Replace(source, "return fail(\"expected failure\")", "return panic(\"expected failure\")", 1)
 			}
-		} else if status != 1 || doc.Reason != "no_match" || len(doc.Tests) != 0 || doc.Summary.Selected != 0 {
-			t.Fatalf("unmatched: %s", output)
-		}
+			if err := os.WriteFile(path, []byte(source), 0600); err != nil {
+				t.Fatal(err)
+			}
+			humanStatus, humanOut, humanErr := cliStreams(t, "test", path, "--timeout=0")
+			status, output, stderr := cliStreams(t, "test", path, "--timeout=0", "--json")
+			var doc jsonTestDocument
+			if status != humanStatus || status != 1 || json.Unmarshal(output, &doc) != nil || doc.Format != 1 || !doc.Completed || doc.ExitCode != 1 || len(doc.Diagnostics) != 0 || len(doc.Tests) != 3 {
+				t.Fatalf("test JSON: %d %s %s", status, output, stderr)
+			}
+			if doc.Stdout != string(humanOut) || stderr != humanErr || stderr != "user stderr\n" {
+				t.Fatalf("streams changed: stdout=%q/%q stderr=%q/%q", doc.Stdout, humanOut, stderr, humanErr)
+			}
+			if doc.Summary.Available != 3 || doc.Summary.Selected != 3 || doc.Summary.Passed != 2 || doc.Summary.Failed != 1 || doc.Tests[0].Status != "passed" || doc.Tests[1].Status != "failed" || doc.Tests[2].Status != "passed" || !strings.Contains(doc.Tests[1].Failure, "expected failure") || (fault && !strings.Contains(doc.Tests[1].Failure, "test=a=b.ms:9")) || doc.SourceRoot != root {
+				t.Fatalf("outcomes/locations/order: %s", output)
+			}
+			for _, filter := range []string{"first=pass", "nothing=matches"} {
+				status, output, stderr = cliStreams(t, "test", path, "--filter="+filter, "--json")
+				if json.Unmarshal(output, &doc) != nil || !doc.Completed || doc.Summary.Available != 3 {
+					t.Fatalf("filter: %d %s %s", status, output, stderr)
+				}
+				if filter == "first=pass" {
+					if status != 0 || doc.Summary.Selected != 1 || doc.Tests[0].Status != "passed" {
+						t.Fatalf("selected: %s", output)
+					}
+				} else if status != 1 || doc.Reason != "no_match" || len(doc.Tests) != 0 || doc.Summary.Selected != 0 {
+					t.Fatalf("unmatched: %s", output)
+				}
+			}
+		})
 	}
 }
 

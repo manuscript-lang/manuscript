@@ -1,38 +1,70 @@
-import {
-    headers,
-    HttpMethod,
-    HttpError,
-    HttpExchange,
-    HttpServerOptions,
-    HttpClientOptions
-} from "@std/http.ms"
+import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
+import {headers, HttpMethod} from "@std/http.ms"
 import network from "@std/net.ms"
-import panic from "@std/faults.ms"
-import {WebSocket, WebSocketError, WebSocketOptions} from "@std/websocket.ms"
+import HttpError from "@std/http.ms"
+import WebSocketError from "@std/websocket.ms"
+import IoError from "@std/io.ms"
+import HttpExchange from "@std/http.ms"
+import HttpServerOptions from "@std/http.ms"
+import HttpClientOptions from "@std/http.ms"
 import TlsOptions from "@std/tls.ms"
+import WebSocketOptions from "@std/websocket.ms"
 
-fn relay(socket: WebSocket) Result[Unit, WebSocketError]:
-    if let message = try socket.receive():
-        try socket.send_bytes(message.data, text: message.text)
-    return ok(unit)
+fn websocket_error(cause: WebSocketError) HttpError:
+    match cause:
+        InvalidInput:
+            return HttpError.InvalidInput
+        InvalidData:
+            return HttpError.InvalidData
+        LimitExceeded:
+            return HttpError.LimitExceeded
+        PermissionDenied:
+            return HttpError.PermissionDenied
+        Closed:
+            return HttpError.Closed
+        Timeout:
+            return HttpError.Timeout
+        Failed(message):
+            return HttpError.Failed(message)
+
+fn socket_result[T](result: Result[T, WebSocketError]) Result[T, HttpError]:
+    match result:
+        ok(value):
+            return ok(value)
+        error(cause):
+            return error(websocket_error(cause))
 
 fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
     if exchange.path() == "/ws":
-        if let acquired = exchange.upgrade([], ["echo"], 1024):
-            with socket = acquired:
-                if relay(socket).is_error():
-                    return error(HttpError.Failed("websocket relay failed"))
-            return ok(unit)
+        with socket = try socket_result(
+            result: exchange.upgrade(
+                allowed_origins: [],
+                subprotocols: ["echo"],
+                max_message_bytes: 1024
+            )
+        ):
+            match try socket_result(result: socket.receive()):
+                some(message):
+                    let sent = try socket_result(
+                        result: socket.send_bytes(
+                            data: message.data,
+                            text: message.text
+                        )
+                    )
+                none:
+                    return ok(unit)
 
-        return error(HttpError.Failed("websocket upgrade failed"))
+        return ok(unit)
 
     let fields = headers()
-    try fields.append("X-Test", "stream".to_bytes())
-    try exchange.send_headers(200, fields)
-    if exchange.write("hello from streaming Manuscript").is_error():
-        return error(HttpError.Failed("write failed"))
+    let appended = try fields.append("X-Test", "stream".to_bytes())
+    let started = try exchange.send_headers(status: 200, headers: fields)
 
-    return ok(unit)
+    match exchange.write(data: "hello from streaming Manuscript"):
+        ok(_):
+            return ok(unit)
+        error(_):
+            return error(HttpError.Failed("write failed"))
 
 fn exercise() Result[Unit, Error]:
     let tls = TlsOptions(
@@ -53,7 +85,11 @@ fn exercise() Result[Unit, Error]:
         tls: none
     )
 
-    with server = try network().serve_stream("127.0.0.1:0", echo, server_options):
+    with server = try network().serve_stream(
+        address: "127.0.0.1:0",
+        handler: echo,
+        options: server_options
+    ):
         let client_options = HttpClientOptions(
             max_redirects: 2,
             max_idle_connections: 4,
@@ -61,10 +97,10 @@ fn exercise() Result[Unit, Error]:
             idle_timeout: 10.seconds,
             decompress: true,
             cookies: true,
-            tls
+            tls: tls
         )
 
-        with client = try network().http_client(client_options):
+        with client = try network().http_client(options: client_options):
             with response = try client.request(
                 method: HttpMethod.Get,
                 url: "http://{server.address()}/",
@@ -73,45 +109,55 @@ fn exercise() Result[Unit, Error]:
                 max_response_bytes: 1024,
                 timeout: 2.seconds
             ):
-                if not (response.metadata().status == 200):
-                    return panic("check failed")
+                response.metadata().status | try expect_equal(expected: 200)
 
-                if let data = try response.read(1024):
-                    if data.decode_utf8() != some("hello from streaming Manuscript"):
-                        return panic("check failed")
-                else:
-                    return panic("Unexpected case")
+                let part = match response.read(max_bytes: 1024):
+                    ok(part): part
+                    error(_):
+                        return fail(message: "Unexpected case")
+
+                match part:
+                    some(data):
+                        try expect_false(
+                            not (
+                                data.decode_utf8() == some(
+                                    "hello from streaming Manuscript"
+                                )
+                            )
+                        )
+                    none:
+                        return fail(message: "Unexpected case")
 
         let websocket_options = WebSocketOptions(
             max_message_bytes: 1024,
             timeout: 2.seconds,
-            tls,
+            tls: tls,
             compression: false
         )
 
-        with socket = try network().web_socket(
-            url: "ws://{server.address()}/ws",
-            headers: headers(),
-            subprotocols: ["echo"],
-            options: websocket_options
+        with socket = try socket_result(
+            result: network().web_socket(
+                url: "ws://{server.address()}/ws",
+                headers: headers(),
+                subprotocols: ["echo"],
+                options: websocket_options
+            )
         ):
-            if not (socket.subprotocol() == "echo"):
-                return panic("check failed")
+            socket.subprotocol() | try expect_equal(expected: "echo")
+            let sent = try socket_result(result: socket.send(data: "echo me"))
 
-            try socket.send("echo me")
-
-            if let message = try socket.receive():
-                if not (message.text):
-                    return panic("check failed")
-                if not (message.data.decode_utf8() == some("echo me")):
-                    return panic("check failed")
-            else:
-                return panic("Unexpected case")
+            match try socket_result(result: socket.receive()):
+                some(message):
+                    (message.text) | try expect_true
+                    try expect_equal(message.data.decode_utf8(), some("echo me"))
+                none:
+                    return fail(message: "Unexpected case")
 
     return ok(unit)
 
 export fn main() Int:
-    if exercise().is_error():
-        return 1
-
-    return 0
+    match exercise():
+        ok(_):
+            return 0
+        error(_):
+            return 1

@@ -1,6 +1,6 @@
+import {expect_equal, expect_false, expect_not_equal, fail} from "@std/testing.ms"
 import Synchronized from "@std/sync.ms"
 import TaskGroup from "@std/tasks.ms"
-import panic from "@std/faults.ms"
 import range from "@std/collections.ms"
 
 interface Counter:
@@ -40,20 +40,21 @@ test "record fields mutate through aliases methods views and captures":
     let callback = fn():
         counter.val += 1
     callback()
-    if not (alias.val == 4 and copy.val == 0):
-        return panic("counter alias or clone failed")
-
+    try expect_false(not (alias.val == 4 and copy.val == 0))
     let box = Box("old", counter)
     let copied = box.clone()
     replace(box, "new")
     copied.child.val = 9
-    if not (box.value == "new" and copied.value == "old" and box.child.val == 9):
-        return panic("clones must be shallow")
-
+    try expect_false(
+        not (
+            box.value == "new"
+            and copied.value == "old"
+            and box.child.val == 9
+        )
+    )
     let log: List[Int] = []
     receiver(log, counter).val = replacement(log)
-    if not (log == [1, 2] and counter.val == 7):
-        return panic("assignment must evaluate receiver once before value")
+    try expect_false(not (log == [1, 2] and counter.val == 7))
 
 test "collection updates retain identity and clone separates storage":
     let values = [1, 2]
@@ -62,30 +63,21 @@ test "collection updates retain identity and clone separates storage":
     let append = values.append
     append(3)
     values.prepend(0).set(1, 9)
-    if not (alias == [0, 9, 2, 3] and copy == [1, 2]):
-        return panic("list aliases lost storage or length")
-
+    try expect_false(not (alias == [0, 9, 2, 3] and copy == [1, 2]))
     values.remove(1).reverse_in_place().fill(8, 0, 1)
-    if not (alias == [8, 2, 0]):
-        return panic("list updates must mutate")
-
+    try expect_equal(alias, [8, 2, 0])
     values.splice(1, 1, values)
-    if not (alias == [8, 8, 2, 0, 0]):
-        return panic("self replacement failed")
-
+    try expect_equal(alias, [8, 8, 2, 0, 0])
     let map = Map[String, Int]().add("a", 1)
     let map_alias = map
     let map_copy = map.clone()
     map.add("b", 2).remove("a")
-    if not (map_alias.keys() == ["b"] and map_copy.keys() == ["a"]):
-        return panic("map aliases or clone failed")
-
+    try expect_false(not (map_alias.keys() == ["b"] and map_copy.keys() == ["a"]))
     let set = Set[Int]().add(1)
     let set_alias = set
     let set_copy = set.clone()
     set.add(2).remove(1)
-    if not (set_alias.values() == [2] and set_copy.values() == [1]):
-        return panic("set aliases or clone failed")
+    try expect_false(not (set_alias.values() == [2] and set_copy.values() == [1]))
 
 test "for loop captures length and observes backing writes":
     let values = [1, 2, 3]
@@ -95,8 +87,7 @@ test "for loop captures length and observes backing writes":
         seen.append(value)
         values.fill(9, 0, 3)
 
-    if not (seen == [1, 9, 9] and values == [9, 9, 9]):
-        return panic("range did not observe backing writes")
+    try expect_false(not (seen == [1, 9, 9] and values == [9, 9, 9]))
 
 test "Synchronized protects record mutation without replacement":
     let counter = Synchronized(Val(0))
@@ -112,8 +103,7 @@ test "Synchronized protects record mutation without replacement":
         group.start(operation)
         try group.join()
         with guard = counter.lock():
-            if not (guard.get().val == 400):
-                return panic("synchronized mutation lost updates")
+            try expect_equal(guard.get().val, 400)
 
 test "callbacks capture length while mutating their source":
     let values = [1, 2, 3]
@@ -122,8 +112,7 @@ test "callbacks capture length while mutating their source":
             values.fill(9, 0, 3)
             return value + 1
     )
-    if not (result == [2, 10, 10] and values == [9, 9, 9]):
-        return panic("callback copied backing membership")
+    try expect_false(not (result == [2, 10, 10] and values == [9, 9, 9]))
 
 test "list growth and saved clone methods preserve current contents":
     let values: List[Int] = []
@@ -134,20 +123,18 @@ test "list growth and saved clone methods preserve current contents":
     let copy = clone()
     alias.append(2048)
     values.set(0, -1)
-    if not (alias.length() == 2049 and alias.last() == some(2048)):
-        return panic("growth lost the aliased collection header")
-    if not (
-        copy.length() == 2048
-        and copy.first() == some(0)
-        and copy.last() == some(2047)
-    ):
-        return panic("saved clone method failed to separate current storage")
-
+    try expect_false(not (alias.length() == 2049 and alias.last() == some(2048)))
+    try expect_false(
+        not (
+            copy.length() == 2048
+            and copy.first() == some(0)
+            and copy.last() == some(2047)
+        )
+    )
     let empty: List[Int] = []
     let empty_copy = empty.clone()
     empty_copy.append(1)
-    if not (empty.length() == 0 and empty_copy.length() == 1):
-        return panic("empty clone retained mutable storage")
+    try expect_false(not (empty.length() == 0 and empty_copy.length() == 1))
 
 test "collection clones retain nested object references":
     let child = Val(1)
@@ -160,23 +147,21 @@ test "collection clones retain nested object references":
     for entry in copied_entries.entries():
         if entry.key == "child":
             entry.value.val = 7
-    if not (
-        values.length() == 1
-        and copied_values.length() == 2
-        and entries.length() == 1
-        and copied_entries.length() == 2
-    ):
-        return panic("cloned collection storage was still shared")
-
+    try expect_false(
+        not (
+            values.length() == 1
+            and copied_values.length() == 2
+            and entries.length() == 1
+            and copied_entries.length() == 2
+        )
+    )
     for value in values:
-        if not (value.val == 7):
-            return panic("list clone unexpectedly copied nested records")
+        try expect_equal(value.val, 7)
 
     if let value = entries.get("child"):
-        if not (value.val == 7):
-            return panic("map clone unexpectedly copied nested records")
+        try expect_equal(value.val, 7)
     else:
-        return panic("cloning removed an original map entry")
+        return fail("cloning removed an original map entry")
 
 test "map and set clear affect aliases while copies retain contents":
     let entries = Map[String, Int]().add("a", 1)
@@ -185,27 +170,22 @@ test "map and set clear affect aliases while copies retain contents":
     let update = entries.add
     update("a", 2)
     entries.merge(Map[String, Int]().add("b", 3))
-    if not (
-        alias.keys() == ["a", "b"]
-        and alias.values() == [2, 3]
-        and copy.values() == [1]
-    ):
-        return panic("map replacement or merge lost identity")
-
+    try expect_false(
+        not (
+            alias.keys() == ["a", "b"]
+            and alias.values() == [2, 3]
+            and copy.values() == [1]
+        )
+    )
     entries.clear()
-    if not (alias.length() == 0 and copy.length() == 1):
-        return panic("map clear changed a clone or lost an alias")
-
+    try expect_false(not (alias.length() == 0 and copy.length() == 1))
     let values = Set[Int]().add(1)
     let set_alias = values
     let set_copy = values.clone()
     values.add(1).add(2).remove(9)
-    if not (set_alias.values() == [1, 2] and set_copy.values() == [1]):
-        return panic("set duplicate or missing removal changed membership")
-
+    try expect_false(not (set_alias.values() == [1, 2] and set_copy.values() == [1]))
     values.clear()
-    if not (set_alias.length() == 0 and set_copy.length() == 1):
-        return panic("set clear changed a clone or lost an alias")
+    try expect_false(not (set_alias.length() == 0 and set_copy.length() == 1))
 
 type Choice:
     case Present(value: Val)
@@ -220,18 +200,16 @@ test "alternative clones retain tags and shared payload references":
         Choice.Present(value):
             value.val = 9
         Choice.Missing:
-            return panic("clone changed the alternative tag")
+            return fail("clone changed the alternative tag")
 
     match original:
         Choice.Present(value):
-            if not (value.val == 9):
-                return panic("clone duplicated a nested payload record")
+            try expect_equal(value.val, 9)
         Choice.Missing:
-            return panic("clone changed the original alternative")
+            return fail("clone changed the original alternative")
 
     let missing = Choice.Missing.clone()
-    if not (missing == Choice.Missing):
-        return panic("nullary alternative cloning failed")
+    try expect_equal(missing, Choice.Missing)
 
 type Node:
     value: Int
@@ -242,18 +220,11 @@ test "mutable recursive graphs compare and clone without recursion failures":
     let right = Node(1, [])
     left.children.append(left)
     right.children.append(right)
-    if not (left == right):
-        return panic("equivalent cyclic graphs compare unequal")
-
+    try expect_equal(left, right)
     let copy = left.clone()
     copy.value = 2
-    if not (left.value == 1 and left != copy):
-        return panic("cloning a cyclic graph did not separate record fields")
-
+    try expect_false(not (left.value == 1 and left != copy))
     copy.children.append(Node(3, []))
-    if not (left.children.length() == 2):
-        return panic("cyclic graph clone was not shallow")
-
+    try expect_equal(left.children.length(), 2)
     right.value = 4
-    if not (left != right):
-        return panic("cyclic equality ignored unequal fields")
+    try expect_not_equal(left, right)

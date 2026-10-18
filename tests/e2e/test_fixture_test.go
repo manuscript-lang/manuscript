@@ -18,7 +18,7 @@ const fileFixtureSource = `import {TestHooks, expect_equal, fail, skip} from "@s
 import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
 fn println(message: String) Unit:
-    if stdout().write("{message}\n").is_error(): return panic("cannot write fixture transcript")
+    let written = stdout().write("{message}\n").get()
 
 type State:
     value: Int
@@ -105,9 +105,8 @@ func TestCLITestFileFixtureLifecycle(t *testing.T) {
 func TestCLITestFileFixtureListAndDefaultHooks(t *testing.T) {
 	source := `import {TestHooks, expect_equal} from "@std/testing.ms"
 import stdout from "@std/io.ms"
-import panic from "@std/faults.ms"
 fn println(message: String) Unit:
-    if stdout().write("{message}\n").is_error(): return panic("cannot write fixture transcript")
+    let written = stdout().write("{message}\n").get()
 
 type State:
     value: Int
@@ -256,18 +255,18 @@ test "later":
 
 func TestCLITestWithoutFactoryDoesNotRunHooks(t *testing.T) {
 	source := `import {TestHooks, expect_equal} from "@std/testing.ms"
-import panic from "@std/faults.ms"
+import stdout from "@std/io.ms"
 type UnusedFixture:
     value: Int
 impl TestHooks for UnusedFixture:
     fn before_all() Unit:
-        panic("unused before_all must not run")
+        let written = stdout().write("UNUSED before_all").get()
     fn before_each() Unit:
-        panic("unused before_each must not run")
+        let written = stdout().write("UNUSED before_each").get()
     fn after_each() Unit:
-        panic("unused after_each must not run")
+        let written = stdout().write("UNUSED after_each").get()
     fn after_all() Unit:
-        panic("unused after_all must not run")
+        let written = stdout().write("UNUSED after_all").get()
 test "plain test":
     try expect_equal(1 + 1, 2)
 `
@@ -277,7 +276,7 @@ test "plain test":
 	}
 	status, output, stderr := cliStreams(t, "test", file, "--json")
 	var doc fixtureReport
-	if json.Unmarshal(output, &doc) != nil || status != 0 || !doc.Completed || doc.Summary.Passed != 1 || len(doc.FixtureErrors) != 0 {
+	if json.Unmarshal(output, &doc) != nil || status != 0 || !doc.Completed || doc.Summary.Passed != 1 || len(doc.FixtureErrors) != 0 || strings.Contains(doc.Stdout, "UNUSED") {
 		t.Fatalf("no-factory file must run normally: %d %s %s", status, output, stderr)
 	}
 }

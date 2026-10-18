@@ -1,0 +1,102 @@
+package tooling
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+
+	"github.com/manuscript-lang/manuscript/pkg/compiler"
+)
+
+// External overlay only. Baseline performance probes; no production edits.
+var probeAny any
+
+func probeChain(n int) Facts {
+	f := Facts{Entities: map[string]*Fact{}, Imports: map[string][]string{}}
+	for i := 0; i < n; i++ {
+		key := fmt.Sprintf("main.ms#fn#f_%04d", i)
+		fact := &Fact{Key: key, File: "main.ms", Name: fmt.Sprintf("f_%04d", i), Kind: "fn", Type: "fn()->Int", Line: i+1, First: i+1, Last: i+1}
+		if i > 0 { fact.Calls = []string{fmt.Sprintf("main.ms#fn#f_%04d", i-1)} }
+		f.Entities[key] = fact
+	}
+	return f
+}
+
+func probeFormatSource(n int) string {
+	var b strings.Builder
+	b.WriteString("fn main() Int:\n")
+	for i := 0; i < n; i++ { fmt.Fprintf(&b, "    let value_%04d = %s1\n", i, strings.Repeat("1 + ", 30)) }
+	b.WriteString("    return 0\n")
+	return b.String()
+}
+
+func TestNonLSPProbeContracts(t *testing.T) {
+	f := probeChain(32)
+	if got := CompareFacts(f, f, DiffInput{BaseChecked: true}); len(got) != 0 { t.Fatal("identical facts changed", got) }
+	source := probeFormatSource(16)
+	grouped, err := groupStatementExpressions("main.ms", source)
+	if err != nil || len(grouped) != len(source)+32 { t.Fatal("probe did not wrap every long expression", len(source), len(grouped), err) }
+	formatted, err := Format("main.ms", source)
+	if err != nil { t.Fatal(err) }
+	again, err := Format("main.ms", formatted)
+	if err != nil || again != formatted { t.Fatal("format probe not idempotent", err) }
+	independent := probeChain(300)
+	for _, fact := range independent.Entities { fact.Calls = nil }
+	view, err := BuildView(independent, "calls", "", 3)
+	if err != nil { t.Fatal(err) }
+	t.Logf("independent-root cap observation: roots=%d documentedNodeCap=%d", len(view.Children), nodeCap)
+	if len(view.Children) != 300 { t.Fatal("baseline view-cap behavior changed; inspect it before reporting", len(view.Children)) }
+}
+
+func TestNonLSPNodeCapNegativeControl(t *testing.T) {
+	facts := probeChain(300)
+	for _, fact := range facts.Entities { fact.Calls = nil }
+	view, err := BuildView(facts, "calls", "", 3)
+	if err != nil { t.Fatal(err) }
+	if len(view.Children) > nodeCap { t.Fatalf("uncapped independent roots: got %d nodes, budget %d", len(view.Children), nodeCap) }
+}
+
+func BenchmarkNonLSPReviewUnchangedChain(b *testing.B) {
+	for _, n := range []int{256, 512, 1024} {
+		b.Run(fmt.Sprintf("N%d", n), func(b *testing.B) {
+			facts := probeChain(n)
+			b.ReportAllocs(); b.ResetTimer()
+			for i := 0; i < b.N; i++ { probeAny = CompareFacts(facts, facts, DiffInput{BaseChecked: true}) }
+		})
+	}
+}
+
+func BenchmarkNonLSPFormatter(b *testing.B) {
+	for _, n := range []int{128, 256, 512} {
+		source := probeFormatSource(n)
+		for _, groupOnly := range []bool{true, false} {
+			label := "Full"; if groupOnly { label = "GroupExpressions" }
+			b.Run(fmt.Sprintf("%s/N%d", label, n), func(b *testing.B) {
+				b.ReportAllocs(); b.SetBytes(int64(len(source))); b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					var output string; var err error
+					if groupOnly { output, err = groupStatementExpressions("main.ms", source) } else { output, err = Format("main.ms", source) }
+					if err != nil { b.Fatal(err) }; probeAny = output
+				}
+			})
+		}
+	}
+}
+
+func BenchmarkNonLSPCheckedPipeline(b *testing.B) {
+	for _, n := range []int{128, 256, 512} {
+		var source strings.Builder
+		source.WriteString("fn f_0000() Int: 1\n")
+		for i := 1; i < n; i++ { fmt.Fprintf(&source, "fn f_%04d() Int: f_%04d()\n", i, i-1) }
+		result := compiler.CompileSource("main.ms", source.String(), compiler.Options{AnalyzeOnly: true})
+		if !result.Success() { b.Fatal(result.Diagnostics) }
+		for _, operation := range []string{"Inspect", "CollectFacts", "LintProgram"} {
+			b.Run(fmt.Sprintf("%s/N%d", operation, n), func(b *testing.B) {
+				b.ReportAllocs(); b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					switch operation { case "Inspect": probeAny = Inspect(result.Program); case "CollectFacts": probeAny = CollectFacts(result.Program); case "LintProgram": probeAny = LintProgram(result.Program) }
+				}
+			})
+		}
+	}
+}

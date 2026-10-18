@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import {expect_equal, expect_false} from "@std/testing.ms"
 
 fn append_generic[T](values: List[Optional[T]], value: T) Unit:
     values.append(value)
@@ -14,60 +14,48 @@ test "direct append preserves checked argument conversions":
     values.append(7)
     append_generic(values, 8)
     values.append(none)
-    if values.at(0).get().get() != 7 or values.at(1).get().get() != 8:
-        return panic("append lost some wrapping")
-    if not values.at(2).get().is_none(): return panic("explicit none was wrapped")
-
+    try expect_false(values.at(0).get().get() != 7 or values.at(1).get().get() != 8)
+    try expect_false(not values.at(2).get().is_none())
     let flags: List[Optional[Bool]] = []
     flags.append(false)
-    if flags.at(0).get().is_none() or flags.at(0).get().get():
-        return panic("false became absent")
-
+    try expect_false(flags.at(0).get().is_none() or flags.at(0).get().get())
     let units: List[Optional[Unit]] = []
     units.append(unit)
-    if units.at(0).get().is_none(): return panic("Unit became absent")
-
+    try expect_false(units.at(0).get().is_none())
     let inner: Optional[Int] = none
     let nested: List[Optional[Optional[Int]]] = []
     nested.append(inner)
-    if nested.at(0).get().is_none() or not nested.at(0).get().get().is_none():
-        return panic("some(none) was flattened")
-
+    try expect_false(
+        (nested.at(0).get().is_none() or not nested.at(0).get().get().is_none())
+    )
     let callbacks: List[Optional[fn(value: Int) Int]] = []
     callbacks.append(fn(value): value + 1)
-    if callbacks.at(0).get().get()(7) != 8: return panic("callback conversion lost")
-
+    try expect_equal(callbacks.at(0).get().get()(7), 8)
     let errors: List[Error] = []
     errors.append(Failure(1))
-    if errors.at(0).get().message() != "failure": return panic("Error conversion lost")
-
+    try expect_equal(errors.at(0).get().message(), "failure")
     let results: List[Optional[Result[Int, Error]]] = []
     let failed: Result[Int, Failure] = error(Failure(2))
     results.append(failed)
     let widened = results.at(0).get().get()
-    if widened.is_ok(): return panic("error became success")
-    if widened.err().message() != "failure": return panic("Result error widening lost")
+    try expect_false(widened.is_ok())
+    try expect_equal(widened.err().message(), "failure")
 
 test "direct keyed calls preserve optional keys and values":
     let values: List[Optional[Int]] = []
     values.append(7)
-    if not values.contains(7) or values.contains(8): return panic(
-        "contains conversion lost"
-    )
-
+    try expect_false(not values.contains(7) or values.contains(8))
     let entries = Map[Optional[Int], Optional[Int]]()
     entries.add(7, 9)
-    if not entries.contains(7) or entries.get(7).get().get() != 9:
-        return panic("map conversion lost")
-
+    try expect_false(not entries.contains(7) or entries.get(7).get().get() != 9)
     entries.add(value: 10, key: 8)
-    if entries.get(8).get().get() != 10: return panic("reordered fallback differs")
-
+    try expect_equal(entries.get(8).get().get(), 10)
     let keys = Set[Optional[Int]]()
     keys.add(7)
     keys.add(none)
-    if (not keys.contains(7) or not keys.contains(none) or keys.length() != 2):
-        return panic("set conversion lost")
+    try expect_false(
+        (not keys.contains(7) or not keys.contains(none) or keys.length() != 2)
+    )
 
 test "direct calls capture receiver and arguments in written order":
     let first: List[Optional[Int]] = []
@@ -82,9 +70,7 @@ test "direct calls capture receiver and arguments in written order":
                 none: 0
         ) + 0
     )
-    if first.at(0).get().get() != 7 or not second.is_empty():
-        return panic("receiver read moved past argument")
-
+    try expect_false(first.at(0).get().get() != 7 or not second.is_empty())
     let entries = Map[Int, Optional[Int]]()
     var key = 1
     entries.add(
@@ -97,5 +83,6 @@ test "direct calls capture receiver and arguments in written order":
                 none: 0
         ) + 0
     )
-    if (entries.get(1).get().get() != 7 or entries.contains(2) or key != 2):
-        return panic("key read moved past value")
+    try expect_false(
+        (entries.get(1).get().get() != 7 or entries.contains(2) or key != 2)
+    )

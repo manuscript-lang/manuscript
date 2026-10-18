@@ -1,3 +1,5 @@
+import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
+import TextError from "@std/errors.ms"
 import {category, ErrorCategory} from "@std/errors.ms"
 import {FileSystemError} from "@std/fs.ms"
 import {SystemError} from "@std/system.ms"
@@ -14,7 +16,6 @@ import {YamlError} from "@std/yaml.ms"
 import {TomlError} from "@std/toml.ms"
 import {SseError} from "@std/sse.ms"
 import {range_by} from "@std/collections.ms"
-import panic from "@std/faults.ms"
 
 type CustomError:
     calls: Int
@@ -29,77 +30,81 @@ impl Error for PathError:
 
 impl Error for CustomError:
     fn message() String:
-        self.calls += 1
+        self.calls = self.calls + 1
         return self.message
 
 fn is_missing(cause: Error) Bool:
     return category(cause) == some(ErrorCategory.NotFound)
 
-fn yaml_error(cause: Error) YamlError:
+fn yaml_error(cause: Error) Result[YamlError, Error]:
     match cause:
-        YamlError(found): return found
-        _: return panic("category changed domain")
+        YamlError(found): return ok(found)
+        _: return error(TextError.Text("category changed domain"))
 
 test "shared categories keep exact standard domain values":
-    if not is_missing(FileSystemError.NotFound): return panic("filesystem category")
-    if not is_missing(SystemError.NotFound): return panic("system category")
-    if not is_missing(ProcessError.NotFound): return panic("process category")
-    if category(IoError.Unavailable) != some(ErrorCategory.Unavailable): return panic(
-        "unavailable inferred as missing"
+    (is_missing(FileSystemError.NotFound)) | try expect_true
+    (is_missing(SystemError.NotFound)) | try expect_true
+    (is_missing(ProcessError.NotFound)) | try expect_true
+    category(IoError.Unavailable) | try expect_equal(
+        expected: some(ErrorCategory.Unavailable)
     )
-    if category(JsonError.InvalidData) != some(ErrorCategory.InvalidData): return panic(
-        "data category"
+    category(JsonError.InvalidData) | try expect_equal(
+        expected: some(ErrorCategory.InvalidData)
     )
-    if category(FileSystemError.AlreadyExists) != some(ErrorCategory.AlreadyExists): return panic(
-        "exists category"
+    category(FileSystemError.AlreadyExists) | try expect_equal(
+        expected: some(ErrorCategory.AlreadyExists)
     )
-    if category(SystemError.PermissionDenied) != some(ErrorCategory.PermissionDenied): return panic(
-        "permission category"
+    category(SystemError.PermissionDenied) | try expect_equal(
+        expected: some(ErrorCategory.PermissionDenied)
     )
-    if category(CryptoError.Unsupported) != some(ErrorCategory.Unsupported): return panic(
-        "unsupported category"
+    category(CryptoError.Unsupported) | try expect_equal(
+        expected: some(ErrorCategory.Unsupported)
     )
-    if category(IoError.Closed) != some(ErrorCategory.Closed): return panic(
-        "closed category"
-    )
-    if (
-        category(TomlError.InvalidData(1, 2, "detail")) != some(
-            ErrorCategory.InvalidData
+    category(IoError.Closed) | try expect_equal(expected: some(ErrorCategory.Closed))
+    (
+        (
+            category(
+                TomlError.InvalidData(
+                    line: 1,
+                    column: 2,
+                    reason: "detail"
+                )
+            ) != some(ErrorCategory.InvalidData)
         )
-    ): return panic("source TOML category")
-    if category(YamlError.LimitExceeded) != some(ErrorCategory.LimitExceeded): return panic(
-        "source YAML budget category"
+    ) | try expect_false
+    category(YamlError.LimitExceeded) | try expect_equal(
+        expected: some(ErrorCategory.LimitExceeded)
     )
-    if category(TomlError.InvalidInput) != some(ErrorCategory.InvalidInput): return panic(
-        "source TOML input category"
+    category(TomlError.InvalidInput) | try expect_equal(
+        expected: some(ErrorCategory.InvalidInput)
     )
-    if category(SseError.LimitExceeded) != some(ErrorCategory.LimitExceeded): return panic(
-        "source SSE budget category"
+    category(SseError.LimitExceeded) | try expect_equal(
+        expected: some(ErrorCategory.LimitExceeded)
     )
-    if category(SseError.Truncated).is_some(): return panic(
-        "SSE truncation has no shared category"
+    category(SseError.Truncated).is_some() | try expect_false
+    let allocation_error = range_by(start: 0, end: 268435457, step: 1).err()
+    category(allocation_error) | try expect_equal(
+        expected: some(ErrorCategory.LimitExceeded)
     )
-
-    let allocation_error = range_by(0, 268435457, 1).err()
-    if category(allocation_error) != some(ErrorCategory.LimitExceeded): return panic(
-        "native allocation limit category"
-    )
-
     let original: Error = YamlError.InvalidData(
         line: 3,
         column: 9,
         reason: "retained detail"
     )
-    if category(original) != some(ErrorCategory.InvalidData): return panic(
-        "payload category"
-    )
+    category(original) | try expect_equal(expected: some(ErrorCategory.InvalidData))
 
-    match yaml_error(original):
+    match (try yaml_error(original)):
         InvalidData(line, column, reason):
-            if (line != 3 or column != 9 or reason != "retained detail"): return panic(
-                "category lost payload"
+            (
+                (
+                    (
+                        line != 3
+                        or column != 9
+                        or reason != "retained detail"
+                    )
+                ) | try expect_false
             )
-        _: return panic("category changed variant")
+        _: return fail("category changed variant")
 
 test "timeout classification keeps timeout spelling out of generic handling":
     let causes: List[Error] = [
@@ -110,17 +115,15 @@ test "timeout classification keeps timeout spelling out of generic handling":
     ]
     let query = category
     for cause in causes:
-        if query(cause) != some(ErrorCategory.Timeout): return panic("timeout category")
+        query(cause) | try expect_equal(expected: some(ErrorCategory.Timeout))
 
 test "classification does not parse messages invoke user code or guess domain-specific cases":
-    let custom = CustomError(0, "filesystem: file or directory not found")
-    if category(custom).is_some() or custom.calls != 0: return panic(
-        "classifier invoked message"
+    let custom = CustomError(
+        calls: 0,
+        message: "filesystem: file or directory not found"
     )
-    if category(PathError.InvalidInput).is_some(): return panic(
-        "local standard name was classified"
-    )
-
+    (category(custom).is_some() or custom.calls != 0) | try expect_false
+    category(PathError.InvalidInput).is_some() | try expect_false
     let causes: List[Error] = [
         IoError.Failed("not found; operation timed out"),
         NumberError.OutOfRange,
@@ -128,8 +131,8 @@ test "classification does not parse messages invoke user code or guess domain-sp
         CommandError.OutputLimit,
         CryptoError.AuthenticationFailed,
         ExecutionError.Cancelled,
-        YamlError.UnsupportedFeature(7, "detail"),
+        YamlError.UnsupportedFeature(line: 7, reason: "detail"),
         LogError.Io(IoError.Closed)
     ]
     for cause in causes:
-        if category(cause).is_some(): return panic("domain-specific cause guessed")
+        category(cause).is_some() | try expect_false
