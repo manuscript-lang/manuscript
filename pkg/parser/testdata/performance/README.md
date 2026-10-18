@@ -64,6 +64,9 @@ Medians; exact samples and all cases are in the adjacent files.
 The representative lexer allocation count falls about 97%, while byte savings
 are smaller because token-slice storage dominates. Declaration time varies: the
 128-declaration CRLF median is 2.6% slower, so no universal speedup is claimed.
+Full Parse of 128 CRLF declarations is also 8.2% slower (1.739 to 1.881 ms),
+with overlapping ranges of 1.687–1.837 and 1.776–1.932 ms. These declaration
+workloads have no text literals and receive only the lexer changes.
 Long-comment CRLF allocated bytes fall 91.7% and time falls 72.9%. Per-line mapping
 particularly helps long lines; short-line files have smaller memory gains.
 
