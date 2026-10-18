@@ -1,6 +1,6 @@
 +++
 title = "Why Manuscript"
-weight = 1
+weight = 6
 +++
 
 # Why Manuscript
