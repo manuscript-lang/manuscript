@@ -25,7 +25,6 @@ func TestDiagnosticFixes(t *testing.T) {
 		{"Float is not Hashable", "fn f() Int:\n    let s = Set[Float]()\n    return 0\n", []string{"Float has no Hashable implementation", "Decimal"}, []string{"add 'impl"}, 1},
 		{"List is not Hashable", "fn f() Int:\n    let m = Map[List[Int], Int]()\n    return 0\n", []string{"collections have no Hashable implementation", "record key"}, []string{"add 'impl"}, 1},
 		{"record still suggests impl", "type K:\n    v: Float\nimpl Equal for K:\n    fn equals(other: Equal) Bool:\n        return true\nfn f() Int:\n    let s = Set[K]()\n    return 0\n", []string{"add 'impl Hashable for K:'"}, nil, 1},
-		{"test try with unrelated error", "fn g() Result[Int, String]:\n    return ok(1)\ntest \"x\":\n    let v = try g()\n", []string{"this function returns Result[Unit, Error] but the operand fails with String"}, nil, 1},
 		{"assign to function", "fn helper() Int:\n    return 1\nfn f() Int:\n    helper = 2\n    return 0\n", []string{"cannot assign to function helper"}, []string{"unknown binding"}, 1},
 		{"assign to type", "type Point:\n    x: Int\nfn f() Int:\n    Point = 2\n    return 0\n", []string{"cannot assign to type Point"}, []string{"unknown binding"}, 1},
 		{"assign to import", "import panic from \"@std/faults.ms\"\nfn f() Int:\n    panic = 2\n    return 0\n", []string{"cannot assign to imported function panic"}, []string{"unknown binding", "add: import"}, 1},

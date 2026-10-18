@@ -32,28 +32,32 @@ export fn main() Int:
 export fn main() Int:
     return pick([1, 2, 3], 3)
 `, false, []string{"fault.ms:2 in pick", "fault.ms:4 in main"}},
-		{"Result unwrap", `fn deep(value: Result[Int, String]) Int:
+		{"Result unwrap", `import {TextError} from "@std/errors.ms"
+fn deep(value: Result[Int, TextError]) Int:
     return value.get()
 export fn main() Int:
-    return deep(error("expected failure"))
-`, false, []string{"fault.ms:2 in deep", "fault.ms:4 in main"}},
-		{"bound Result err", `export fn main() Int:
-    let value: Result[Int, String] = ok(0)
+    return deep(error(TextError.Text("expected failure")))
+`, false, []string{"fault.ms:3 in deep", "fault.ms:5 in main"}},
+		{"bound Result err", `import {TextError} from "@std/errors.ms"
+export fn main() Int:
+    let value: Result[Int, TextError] = ok(0)
     let extract = value.err
-    return extract().scalar_length()
-`, false, []string{"fault.ms:4 in main"}},
-		{"Result callback fault", `fn crash(value: Int) Int:
+    return extract().message().scalar_length()
+`, false, []string{"fault.ms:5 in main"}},
+		{"Result callback fault", `import {TextError} from "@std/errors.ms"
+fn crash(value: Int) Int:
     return 1 / value
 export fn main() Int:
-    let value: Result[Int, String] = ok(0)
+    let value: Result[Int, TextError] = ok(0)
     return value.map(crash).get()
-`, false, []string{"fault.ms:2 in crash", "fault.ms:5 in main"}},
-		{"Result lazy fallback fault", `fn crash(cause: String) Int:
+`, false, []string{"fault.ms:3 in crash", "fault.ms:6 in main"}},
+		{"Result lazy fallback fault", `import {TextError} from "@std/errors.ms"
+fn crash(cause: TextError) Int:
     return 1 / 0
 export fn main() Int:
-    let value: Result[Int, String] = error("expected failure")
+    let value: Result[Int, TextError] = error(TextError.Text("expected failure"))
     return value.or_else(crash)
-`, false, []string{"fault.ms:2 in crash", "fault.ms:5 in main"}},
+`, false, []string{"fault.ms:3 in crash", "fault.ms:6 in main"}},
 		{"Map filter callback fault", `fn crash(key: String, value: Int) Bool:
     return 1 / value == 0
 export fn main() Int:

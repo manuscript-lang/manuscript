@@ -141,7 +141,7 @@ func TestTypedCompletionWhileEditing(t *testing.T) {
 		{"strings", "fn work() String:\n    return \"Que|\"\n", nil, []string{"Queue"}},
 		{"optional methods", "fn work(value: Optional[Int]) Int:\n    return value.|\n", []string{"is_some", "is_none", "get", "or_else"}, []string{"some", "none", "unwrap"}},
 		{"generic alternative", "fn work() Optional[Int]:\n    return Optional[Int].|\n", []string{"some", "none"}, nil},
-		{"prelude result cases", "fn work() Result[Int, String]:\n    return Result[Int, String].|\n", []string{"ok", "error"}, nil},
+		{"prelude result cases", "fn work() Result[Int, Error]:\n    return Result[Int, Error].|\n", []string{"ok", "error"}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -152,7 +152,7 @@ func TestRejectedConformanceVariants(t *testing.T) {
 		{"float hashing", "cl-15", "try expect_equal(preserve_key(\"key\"), \"key\")", "try expect_equal(preserve_key(1.0), 1.0)", "type"},
 		{"list hashing", "cl-15", "try expect_equal(preserve_key(\"key\"), \"key\")", "try expect_equal(preserve_key([1, 2]), [1, 2])", "type"},
 		{"optional invariance", "cl-15", "let missing: Optional[Int] = none", "let wrong: Optional[Float] = present", "type"},
-		{"result insufficient context", "cl-16", "let success: Result[Int, String]", "let success", "type"},
+		{"result insufficient context", "cl-16", "let success: Result[Int, TextError]", "let success", "type"},
 		{"none insufficient context", "cl-16", "let _absent: Optional[Int]", "let _absent", "type"},
 		{"optional payload context", "cl-16", "some(\"Ada\")", "some(3)", "type"},
 		{"no result wrapping", "cl-16", "ok(3)", "3", "type"},

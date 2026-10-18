@@ -6,6 +6,9 @@ type ApplicationError:
     case Json(cause: JsonError)
     case Encoding(cause: EncodingError)
 
+impl Error for ApplicationError:
+    fn message() String: "ApplicationError"
+
 fn encoding_error(cause: EncodingError) ApplicationError:
     return Encoding(cause)
 
@@ -276,6 +279,9 @@ test "Error Result forwarding preserves successful payloads":
 
 type ValidationError:
     case InvalidField(field: String, expected: Int, actual: Int)
+
+impl Error for ValidationError:
+    fn message() String: "ValidationError"
 
 fn invalid_field() Result[Unit, ValidationError]:
     return error(InvalidField(field: "attempt", expected: 1, actual: 0))

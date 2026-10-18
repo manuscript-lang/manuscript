@@ -6,10 +6,11 @@ import (
 	"testing"
 )
 
-const callbackDeclarations = `fn apply[T, U](value: T, transform: fn(value: T) U) U: transform(value)
+const callbackDeclarations = `import {TextError} from "@std/errors.ms"
+fn apply[T, U](value: T, transform: fn(value: T) U) U: transform(value)
 fn chain[T, U](first: fn() T, second: fn(value: T) U) U: second(first())
-fn result[T](transform: fn() Result[T, String]) Result[T, String]: transform()
-fn checked() Result[Int, String]: ok(3)
+fn result[T](transform: fn() Result[T, TextError]) Result[T, TextError]: transform()
+fn checked() Result[Int, TextError]: ok(3)
 fn choose[T](first: fn() T, second: fn() T) T: second()
 fn optional(transform: Optional[fn(value: Int) Int] = none) Unit: return
 type Box[T]:
@@ -50,13 +51,13 @@ func TestContextualCallbacks(t *testing.T) {
 		`let choice: Choice[fn(value: Int) Int] = Choice.Payload(fn(value): value + 1)`,
 		`let view = Read(Box(1))`,
 		`let callback = fn(): unit`,
-		`let value: Result[Int, String] = result(fn(): ok(4))`,
+		`let value: Result[Int, TextError] = result(fn(): ok(4))`,
 		`let value = result(fn():
         let n = try checked()
         return ok(n)
     )`,
 		`let value = result(fn():
-        if true: return error("failed")
+        if true: return error(TextError.Text("failed"))
         return ok(4)
     )`,
 	} {
@@ -76,7 +77,7 @@ func TestCallbackInferenceRejections(t *testing.T) {
 		`let callback: fn(value: Int) Int = fn(item: Int = 4): item
     callback()`,
 		`let callback = fn(value): value`,
-		`let callback = result(fn(): error("failed"))`,
+		`let callback = result(fn(): error(TextError.Text("failed")))`,
 
 		`let callback: fn(value: Int) Int = fn(): 1`,
 		`let callback: fn(value: Int) Int = fn(value): "wrong"`,

@@ -1,5 +1,5 @@
 # Holds either a successful value (`ok`) or an expected failure (`error`).
-export type Result[T, E]:
+export type Result[T, E: Error]:
     # A successful result, retaining its payload without a deep copy.
     case ok(
         # The successful value returned by unwrap, matching, or propagation.

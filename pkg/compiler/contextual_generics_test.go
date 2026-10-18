@@ -8,9 +8,10 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
-const contextualGenericsSource = `import panic from "@std/faults.ms"
-fn fail[T](message: String) Result[T, String]: error(message)
-fn fail_cause[T, E](cause: E) Result[T, E]: error(cause)
+const contextualGenericsSource = `import {TextError} from "@std/errors.ms"
+import panic from "@std/faults.ms"
+fn fail[T](message: String) Result[T, TextError]: error(TextError.Text(message))
+fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)
 fn absent[T]() Optional[T]: none
 fn identity[T](value: T) T: value
 fn convert[T, U](value: T) Optional[U]: none
@@ -33,11 +34,11 @@ fn consume(value: Optional[Int]) Unit: return
 
 func TestExpectedResultGenericInference(t *testing.T) {
 	for name, source := range map[string]string{
-		"return": `fn first() Result[Int, String]: fail("empty")`,
+		"return": `fn first() Result[Int, TextError]: fail("empty")`,
 		"binding": `fn first() Unit:
-    let result: Result[Int, String] = fail("empty")`,
-		"nested":          `fn first() Result[List[Optional[Int]], String]: fail("empty")`,
-		"outer generic":   `fn first[T]() Result[T, String]: fail("empty")`,
+    let result: Result[Int, TextError] = fail("empty")`,
+		"nested":          `fn first() Result[List[Optional[Int]], TextError]: fail("empty")`,
+		"outer generic":   `fn first[T]() Result[T, TextError]: fail("empty")`,
 		"known arguments": `fn first() Optional[String]: convert(1)`,
 		"argument":        `fn first() Unit: consume(absent())`,
 		"field":           `fn first() Holder: Holder(absent())`,
@@ -50,7 +51,7 @@ func TestExpectedResultGenericInference(t *testing.T) {
 		"optional argument wrapping": `fn first() Unit: consume(identity(1))`,
 		"anonymous label context":    `fn first() fn(value: Int) Int: identity(fn(item: Int): item)`,
 		"none argument":              `fn first() Optional[Int]: identity(none)`,
-		"explicit":                   `fn first() Result[Int, String]: fail[Int]("empty")`,
+		"explicit":                   `fn first() Result[Int, TextError]: fail[Int]("empty")`,
 		"error boundary":             `fn first() Result[Int, Error]: fail_cause(Failure("empty"))`,
 		"fixed error boundary": `fn failed[T]() Result[T, Failure]: error(Failure("empty"))
 fn first() Result[Int, Error]: failed()`,
@@ -95,7 +96,7 @@ fn first() Unit:
     callback = required
     callback()`, "missing argument value"},
 		{"bare generic value", `fn first() Unit:
-    let value: fn(message: String) Result[Int, String] = fail`, "requires explicit specialization"},
+    let value: fn(message: String) Result[Int, TextError] = fail`, "requires explicit specialization"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			result := compiler.CompileSource("context.ms", contextualGenericsSource+tt.source+"\n", compiler.Options{AnalyzeOnly: true})

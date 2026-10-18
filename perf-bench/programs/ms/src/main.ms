@@ -1,3 +1,4 @@
+import {TextError} from "@std/errors.ms"
 import {stdout, stdin, read_line} from "@std/io.ms"
 import {clock, Instant} from "@std/time.ms"
 import {StringBuilder} from "@std/string.ms"
@@ -36,13 +37,13 @@ fn report(name: String, ops: Int, started: Instant) Unit:
 fn ident[T](x: T) T:
     return x
 
-fn checked(n: Int) Result[Int, String]:
+fn checked(n: Int) Result[Int, TextError]:
     if n < 0:
-        return error("negative")
+        return error(TextError.Text("negative"))
 
     return ok(n + 1)
 
-fn chain(n: Int) Result[Int, String]:
+fn chain(n: Int) Result[Int, TextError]:
     let v = try checked(n)
     return ok(v)
 

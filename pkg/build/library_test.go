@@ -76,12 +76,6 @@ import EncodingError from "@std/encoding.ms"
 fn wrong(value: Impostor) Error:
     return value
 `,
-		"unimplemented try error": `fn failure() Result[Unit, String]:
-    return error(cause: "diagnostic")
-fn wrong() Result[Unit, Error]:
-    let completed = try failure()
-    return ok(value: unit)
-`,
 		"result success remains exact": `fn wrong() Result[String, Error]:
     return Result[Int, JsonError].ok(value: 1)
 `,

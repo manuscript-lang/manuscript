@@ -23,11 +23,12 @@ func TestKnownStandardTypeImportHint(t *testing.T) {
 func TestReturnOnlyTypeParameterContext(t *testing.T) {
 	for _, body := range []string{
 		`return fail("empty")`,
-		`let result: Result[Int, String] = fail("empty")
+		`let result: Result[Int, TextError] = fail("empty")
     return result`,
 	} {
-		source := `fn fail[T](message: String) Result[T, String]: error(message)
-fn first() Result[Int, String]:
+		source := `import {TextError} from "@std/errors.ms"
+fn fail[T](message: String) Result[T, TextError]: error(TextError.Text(message))
+fn first() Result[Int, TextError]:
     ` + body + "\n"
 		m, err := parser.Parse("inference-hint.ms", source)
 		if err != nil {
@@ -69,8 +70,9 @@ fn first() Unit:
 }
 
 func TestReturnOnlyTypeParameterExplicitSpecialization(t *testing.T) {
-	m, err := parser.Parse("explicit-inference.ms", `fn fail[T](message: String) Result[T, String]: error(message)
-fn first() Result[Int, String]: fail[Int]("empty")
+	m, err := parser.Parse("explicit-inference.ms", `import {TextError} from "@std/errors.ms"
+fn fail[T](message: String) Result[T, TextError]: error(TextError.Text(message))
+fn first() Result[Int, TextError]: fail[Int]("empty")
 `)
 	if err != nil {
 		t.Fatal(err)

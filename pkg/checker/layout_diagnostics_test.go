@@ -26,7 +26,7 @@ func TestRecursiveDataAndFiniteTypeApplications(t *testing.T) {
 		{"optional entry composition", "type Entry:\n    name: String\n    nickname: Optional[String]\ntype Person:\n    primary: Optional[Entry]\n", true},
 		{"nested optional field", "type Config:\n    value: Optional[Optional[Int]]\n", true},
 		{"nested optional payload", "type Config:\n    case Value(value: Optional[Optional[Int]])\n", true},
-		{"nested result field", "type Config:\n    value: Result[Result[Int, String], String]\n", true},
+		{"nested result field", "type Config:\n    value: Result[Result[Int, Error], Error]\n", true},
 		{"nested optional generic pair", "type Pair[T, U]:\n    first: T\n    second: U\ntype Config:\n    value: Pair[Optional[Int], Optional[Optional[String]]]\n", true},
 		{"nested optional collection", "type Config:\n    value: Optional[List[Optional[Int]]]\n", true},
 		{"regular callback", "type Node[T]:\n    build: fn() Node[T]\n", true},

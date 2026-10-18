@@ -18,9 +18,9 @@ fn forward[T, E: Error](r: Result[T, E]) Result[T, Error]: erase(r)
 
 fn optional[T](r: Optional[Result[T, Error]]) Result[T, Error]: r.get()
 
-fn same[T, E](r: Result[T, E]) Result[T, E]: r
+fn same[T, E: Error](r: Result[T, E]) Result[T, E]: r
 
-fn both[T, E](cause: E, r: Result[T, E]) Result[T, E]: r
+fn both[T, E: Error](cause: E, r: Result[T, E]) Result[T, E]: r
 
 fn number() Result[Int, Failure]: ok(7)
 

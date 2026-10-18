@@ -35,14 +35,15 @@ func TestCollectionQueryCallbackFaultLocations(t *testing.T) {
 }
 
 func TestLazyConversionFaultLocation(t *testing.T) {
-	source := `fn crash() String:
-    return (1 / 0).to_string()
+	source := `import {TextError} from "@std/errors.ms"
+fn crash() TextError:
+    return TextError.Text((1 / 0).to_string())
 export fn main() Int:
     let value: Optional[Int] = none
     let result = value.ok_or_else(crash)
     return 0
 `
-	assertQueryFaultFrames(t, source, []string{"query-fault.ms:2 in crash", "query-fault.ms:5 in main"})
+	assertQueryFaultFrames(t, source, []string{"query-fault.ms:3 in crash", "query-fault.ms:6 in main"})
 }
 
 func assertQueryFaultFrames(t *testing.T, source string, expected []string) {
