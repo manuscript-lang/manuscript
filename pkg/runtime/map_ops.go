@@ -5,7 +5,9 @@ package msruntime
 // Map_Clone returns a shallow copy.
 func Map_Clone[K comparable, V any](_ *Execution, m *Map[K, V]) *Map[K, V] {
 	out := NewMapWith[K, V](m.keys)
-	for _, e := range m.Snapshot() {
+	entries := m.Snapshot()
+	out.entries = make([]mapSlot[K, V], 0, len(entries))
+	for _, e := range entries {
 		out.Put(e.Key, e.Value)
 	}
 	return out
