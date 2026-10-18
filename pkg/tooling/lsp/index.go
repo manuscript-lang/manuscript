@@ -76,7 +76,7 @@ func sourceIndex(result compiler.Result) []occurrence {
 	tokens := map[string][]lexer.Token{}
 	seen := map[string]bool{}
 	for _, m := range modules {
-		lexed, e := lexer.Lex(m.File, m.Source)
+		lexed, e := indexTokens(m)
 		if e == nil {
 			tokens[m.File] = lexed
 		}
