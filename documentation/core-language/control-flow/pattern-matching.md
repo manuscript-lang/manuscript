@@ -41,8 +41,8 @@ fn total(cents: Cents) -> Result[Int, String]:
         Valid(value):
             value
         Invalid:
-            return error(cause: "Invalid amount")
-    return ok(value: amount)
+            return error("Invalid amount")
+    return ok(amount)
 ```
 
 `return` exits the enclosing function even from inside another expression, running cleanup; `break` and `continue` target the enclosing loop; an anonymous function has its own return boundary.

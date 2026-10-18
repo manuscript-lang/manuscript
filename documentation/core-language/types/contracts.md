@@ -124,13 +124,13 @@ A view keeps the same receiver reference: no copy, no lifetime extension, no add
 
 ```manuscript
 fn use_increment(operation: Increment) -> Int:
-    return operation.apply(value: 1)
+    return operation.apply(1)
 
-let offset = Offset(delta: 2)
-let view = Increment(value: offset)
-let result = use_increment(operation: view)
+let offset = Offset(2)
+let view = Increment(offset)
+let result = use_increment(view)
 # Rejected: conversion is not implicit at a call boundary.
-let wrong = use_increment(operation: offset)
+let wrong = use_increment(offset)
 ```
 
 The constructor accepts an implementing value or an existing view of the exact same application (identity). Other contracts and unchecked downcasts are rejected; a [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover the concrete receiver by runtime nominal check. Generic arguments are written explicitly or come from an expected application.
@@ -143,10 +143,10 @@ A contract type satisfies its own exact generic bound without an `impl`: `Conver
 
 ```manuscript
 fn invoke[T: Increment](operation: T) -> Int:
-    return Increment(value: operation).apply(value: 1)
+    return Increment(operation).apply(1)
 
-let from_concrete = invoke(operation: offset)
-let from_view = invoke(operation: view)
+let from_concrete = invoke(offset)
+let from_view = invoke(view)
 ```
 
 Both calls satisfy the bound without implicit conversion.

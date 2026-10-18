@@ -80,7 +80,7 @@ type OrderId:
 ```
 
 ```manuscript
-let customer_id = CustomerId(value: "42")
+let customer_id = CustomerId("42")
 # Rejected: equal field shapes do not make nominal types interchangeable.
 let order_id: OrderId = customer_id
 ```
@@ -109,7 +109,7 @@ fn evaluate(expr: Expr) -> Int:
         Add(left, right): return evaluate(left) + evaluate(right)
 
 test "recursive expression":
-    let expr = Expr.Add(left: Expr.Num(1), right: Expr.Num(2))
+    let expr = Expr.Add(Expr.Num(1), Expr.Num(2))
     if evaluate(expr) != 3:
         panic("unexpected expression value")
 ```

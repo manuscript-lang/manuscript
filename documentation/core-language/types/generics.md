@@ -40,7 +40,7 @@ fn accepts(value: Equal) -> Unit:
     return
 
 fn use_view() -> Unit:
-    accepts(Equal(value: Key(id: 1)))
+    accepts(Equal(Key(1)))
 ```
 
 ## Declarations and applications
@@ -56,8 +56,8 @@ fn same[T: Equal](left: T, right: T) -> Bool:
     return left == right
 
 let box = Box[Int](1)
-let exact = identity[Int](value: 1)
-let inferred = identity(value: 1)
+let exact = identity[Int](1)
+let inferred = identity(1)
 ```
 
 - Parameter names are unique; an application supplies one argument each, except trailing [defaults](#default-type-arguments).
@@ -92,9 +92,9 @@ A call may omit type arguments when its arguments and expected result uniquely d
 fn choose[T](first: T, second: T) -> T:
     return first
 
-let value = choose(first: 1, second: 2)  # T = Int
+let value = choose(1, 2)  # T = Int
 # Rejected: conflicting evidence for T.
-let mixed = choose(first: 1, second: 2.0)
+let mixed = choose(1, 2.0)
 ```
 
 The expected result (return type, annotation, field, argument, or callback) fills missing parameters but never overrides argument evidence or explicit specialization. A parameter in neither arguments nor result needs an explicit type argument.
@@ -114,9 +114,9 @@ Empty lists, `none`, and similar expressions give no evidence of their own; once
 fn count[T](values: List[T]) -> Int:
     return 0
 
-let known = count[Int](values: [])
+let known = count[Int]([])
 # Rejected: the empty list does not determine T.
-let unknown = count(values: [])
+let unknown = count([])
 ```
 
 Generic constructors infer from fields or payloads, or from an expected application: `let box: Box[Int] = Box(value: 1)`. The result must be one complete application.
@@ -146,10 +146,10 @@ Generic function calls and specialized function values follow the same rule acro
 
 ```manuscript
 fn repeat[T](value: T) -> Never:
-    return repeat[T](value: value)  # Regular specialization; allowed.
+    return repeat[T](value)  # Regular specialization; allowed.
 
 fn grow[T](value: T) -> Never:
-    return grow[List[T]](value: [value])  # Rejected: expanding specialization.
+    return grow[List[T]]([value])  # Rejected: expanding specialization.
 ```
 
 The check also covers mutual recursion, function values such as `grow[List[T]]`, and generic implementation method calls.

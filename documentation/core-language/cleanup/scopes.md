@@ -8,7 +8,7 @@ weight = 1
 `with` acquires a resource and closes it when its indented block ends. The introduced name cannot be reassigned.
 
 ```manuscript
-with file = try files.open(path: "data.txt"):
+with file = try files.open("data.txt"):
     let chunk = try file.read(max_bytes: 4096)
 ```
 

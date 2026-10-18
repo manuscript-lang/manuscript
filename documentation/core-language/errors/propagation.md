@@ -11,7 +11,7 @@ The following continues the `discount` and `DiscountError` declarations in [expe
 
 ```manuscript
 fn discounted_label(price: Decimal, percent: Decimal) -> Result[String, DiscountError]:
-    let value = try discount(price: price, percent: percent)
+    let value = try discount(price, percent)
     return ok("Discounted price: {value}")
 ```
 
@@ -39,7 +39,7 @@ Omitting `try` discards the Result and triggers lint `MSL104`. To ignore it deli
 
 ```manuscript
 fn discounted_label(price: Decimal, percent: Decimal) -> Result[String, DiscountError]:
-    return ok(try discount(price: price, percent: percent) | label)
+    return ok(try discount(price, percent) | label)
 ```
 
 ## Error compatibility

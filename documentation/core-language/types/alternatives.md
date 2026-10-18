@@ -24,8 +24,8 @@ Alternatives are tagged and exhaustively matched.
 ## Construction and identity
 
 ```manuscript
-let payment = Payment.Paid(receipt: "receipt-42")
-let declined: Payment = Declined(reason: "Card rejected")
+let payment = Payment.Paid("receipt-42")
+let declined: Payment = Declined("Card rejected")
 ```
 
 - `Type.Case` names a case of that nominal type. It is not a module path: import the type, then qualify its case.
