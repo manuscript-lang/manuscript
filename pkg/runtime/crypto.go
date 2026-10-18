@@ -69,12 +69,12 @@ func HashAlgorithm_Digest(ctx *Execution, algorithm HashAlgorithm, data *Bytes) 
 // HashAlgorithm_Hmac computes an HMAC with the selected algorithm.
 func HashAlgorithm_Hmac(ctx *Execution, algorithm HashAlgorithm, key, data *Bytes) Result[*Bytes, CryptoError] {
 	CheckCancelled(ctx)
-	return Crypto_Hmac(ctx, key, data, cryptoHashName(algorithm))
+	return cryptoHmac(ctx, key, data, cryptoHashName(algorithm))
 }
 
-// Crypto_Hmac computes an HMAC for "sha256", "sha384" or "sha512"; any other
+// cryptoHmac computes an HMAC for "sha256", "sha384" or "sha512"; any other
 // algorithm is Unsupported.
-func Crypto_Hmac(ctx *Execution, key, data *Bytes, algorithm string) Result[*Bytes, CryptoError] {
+func cryptoHmac(ctx *Execution, key, data *Bytes, algorithm string) Result[*Bytes, CryptoError] {
 	if cryptoHash(algorithm) == nil {
 		return Fail[*Bytes, CryptoError](CryptoError_Unsupported{})
 	}
