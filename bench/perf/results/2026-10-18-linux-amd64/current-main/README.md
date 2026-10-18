@@ -30,3 +30,12 @@ No correctness tests or compiler jobs ran concurrently with measured trials.
 The Go control uses ordinary handwritten operations and normal inlining; maps
 have different documented ordering/diagnostic guarantees. Read the report's
 remaining gaps and regressions before interpreting any aggregate parity claim.
+
+The final native program binary intentionally has the same SHA-256 as the
+pre-polling-change program: rebuilding an unstripped executable from the new
+runtime workspace confirms no Poll, PollIndex or pollCancelled symbol is linked
+by these ten programs. The stdlib binary does change and exercises those paths.
+The experimental overlay binaries were built directly with ordinary Go build
+and retain Go build IDs; native replay outputs omit build IDs. This metadata
+and source-position distinction limits interpretation of small experimental
+program differences. The final tables use native builds on both revisions.

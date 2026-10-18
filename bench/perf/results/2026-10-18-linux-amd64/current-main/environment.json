@@ -55,5 +55,7 @@
     "poll_only_before_stdlib": "f7f33582245309e54a79a1b1a496f370daff497ead237abffa5b3a3601e1f39e",
     "poll_only_after_stdlib": "4d98bca0139a1b7878b61a3d36929950b5992507da3434a344be4aeb910db37c"
   },
-  "statistics": "paired bootstrap ratio of medians, 5000 resamples, deterministic seed142, percentile95%; stdlib integer ns/op is rounded by original harness"
+  "statistics": "paired bootstrap ratio of medians, 5000 resamples, deterministic seed142, percentile95%; stdlib integer ns/op is rounded by original harness",
+  "isolated_overlay_build_note": "Experimental overlay after binaries use go build -buildvcs=false -trimpath -ldflags=\"-s -w\" and retain Go build IDs. Native before/final replay outputs omit build IDs. No custom inline flags. Exact binary hashes identify these artifacts.",
+  "final_program_identity_note": "Final native program equals pre-poll-helper binary because no periodic native polling symbols are linked. New runtime workspace source contains the helper; final native stdlib binary differs and exercises it."
 }
