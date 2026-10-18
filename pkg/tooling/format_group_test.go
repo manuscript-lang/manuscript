@@ -3,16 +3,16 @@ package tooling
 import "testing"
 
 func TestFormatKeepsBindingGroupsTogether(t *testing.T) {
-	source := `fn helper() -> Int: 1
+	source := `fn helper() Int: 1
 let (
     A = 1
     B: Int   = A+1
 )
-fn main() -> Unit:
+fn main() Unit:
     let x = 1
     var (
         a = 10
-        b = fn(x: Int) -> Int:
+        b = fn(x: Int) Int:
             return x + 1
     )
     let (
@@ -21,18 +21,18 @@ fn main() -> Unit:
     )
     a += x + b(c)
 `
-	want := `fn helper() -> Int: 1
+	want := `fn helper() Int: 1
 
 let (
     A = 1
     B: Int = A + 1
 )
 
-fn main() -> Unit:
+fn main() Unit:
     let x = 1
     var (
         a = 10
-        b = fn(x: Int) -> Int:
+        b = fn(x: Int) Int:
             return x + 1
     )
     let (

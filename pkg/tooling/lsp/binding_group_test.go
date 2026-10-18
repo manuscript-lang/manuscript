@@ -10,7 +10,7 @@ const groupSource = `let (
     HIGH: Int = LOW + 9
 )
 
-fn total() -> Int:
+fn total() Int:
     var (
         sum = LOW
         extra = HIGH

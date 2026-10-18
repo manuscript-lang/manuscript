@@ -15,7 +15,7 @@ test "a constant group declares each constant":
 test "a var group declares mutable locals":
     var (
         total = 0
-        step = fn(value: Int) -> Int:
+        step = fn(value: Int) Int:
             return value + 1
     )
     total = step(value: total)

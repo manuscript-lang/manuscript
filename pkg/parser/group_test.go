@@ -13,10 +13,10 @@ func TestBindingGroupsParseAsIndividualBindings(t *testing.T) {
     B: Int = A + 1
 )
 
-fn main() -> Unit:
+fn main() Unit:
     var (
         a = 10
-        b = fn(x: Int) -> Int:
+        b = fn(x: Int) Int:
             return x + 1
     )
     let (
@@ -62,7 +62,7 @@ func TestBindingGroupRejections(t *testing.T) {
 		"let (\n    a = 1\n    )\n":    "aligns with",
 		"let (a, b) = pair\n":          "next line",
 		"var (\n    a = 1\n)\n":        "top level holds only",
-		"fn main() -> Unit:\n    if true: let (\n        a = 1\n    )\n": "own lines",
+		"fn main() Unit:\n    if true: let (\n        a = 1\n    )\n": "own lines",
 	}
 	for source, want := range cases {
 		_, err := Parse("bad.ms", source)
