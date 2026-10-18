@@ -12,11 +12,11 @@ func TestMemberDescriptionsReachMarkdownAndCompatibleJSON(t *testing.T) {
 	module := checker.APIModule{Path: "example.ms", Declarations: []checker.APIDeclaration{{Name: "Data", Kind: "record", Type: "Data", Declaration: "type Data:\n    value: Int\n", Fields: []string{"value: Int"}, Cases: []string{"Ready(value: Int)"}, Operations: []string{"read: fn()->Int"}, Members: []checker.APIMember{
 		{Name: "value", Kind: "field", Signature: "value: Int", Doc: "The **stored** count.\n\nMeasured in items."},
 		{Name: "Ready", Kind: "case", Signature: "case Ready(value: Int)", Doc: "Completed work."},
-		{Name: "read", Kind: "operation", Signature: "fn read() -> Int", Doc: "Reads without mutation."},
+		{Name: "read", Kind: "operation", Signature: "fn read() Int", Doc: "Reads without mutation."},
 		{Name: "missing", Kind: "field", Signature: "missing: Int"},
 	}}}}
 	for _, output := range []string{RenderModule(module), renderModule(module, true)} {
-		for _, want := range []string{"### Data.value", "The **stored** count.\n\nMeasured in items.", "### Data.Ready", "Completed work.", "### Data.read", "Reads without mutation.", "fn read() -> Int"} {
+		for _, want := range []string{"### Data.value", "The **stored** count.\n\nMeasured in items.", "### Data.Ready", "Completed work.", "### Data.read", "Reads without mutation.", "fn read() Int"} {
 			if !strings.Contains(output, want) {
 				t.Fatalf("missing %q: %s", want, output)
 			}

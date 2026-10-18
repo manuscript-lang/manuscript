@@ -6,25 +6,25 @@ import Bytes from "@std/bytes.ms"
 import NumberError from "@std/numbers.ms"
 import StringError from "@std/string.ms"
 
-fn positive(value: Int) -> Bool:
+fn positive(value: Int) Bool:
     return value > 0
 
-fn negative(value: Int) -> Bool:
+fn negative(value: Int) Bool:
     return value < 0
 
-fn stringify(value: Int) -> String:
+fn stringify(value: Int) String:
     return value.to_string(radix: 10)
 
-fn expand(value: Int) -> List[String]:
+fn expand(value: Int) List[String]:
     return [stringify(value: value), "x"]
 
-fn total(accumulator: Int, value: Int) -> Int:
+fn total(accumulator: Int, value: Int) Int:
     return accumulator + value
 
-fn ordered(accumulator: String, value: Int) -> String:
+fn ordered(accumulator: String, value: Int) String:
     return "{accumulator}{value}"
 
-fn compare(left: Int, right: Int) -> Int:
+fn compare(left: Int, right: Int) Int:
     if left < right:
         return -1
     if left > right:
@@ -32,20 +32,20 @@ fn compare(left: Int, right: Int) -> Int:
 
     return 0
 
-fn observe(value: Int) -> Unit:
+fn observe(value: Int) Unit:
     if not (value > 0):
         return panic(message: "check failed")
 
-fn observe_entry(key: String, value: Int) -> Unit:
+fn observe_entry(key: String, value: Int) Unit:
     if not (key.byte_length() > 0):
         return panic(message: "check failed")
     if not (value > 0):
         return panic(message: "check failed")
 
-fn common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
+fn common_result[T, E: Error](result: Result[T, E]) Result[T, Error]:
     return ok(try result)
 
-fn checked_expansion() -> Result[Unit, Error]:
+fn checked_expansion() Result[Unit, Error]:
     if not (
         try common_result(
             result: filled(value: "a", count: 3, max_items: 3)
@@ -456,16 +456,16 @@ test "growth limits and invalid inputs return values":
     if not (filled(value: 1, count: 2, max_items: 1) == list_limit):
         return panic(message: "check failed")
 
-fn parity(value: Int) -> Int:
+fn parity(value: Int) Int:
     return value % 2
 
-fn default_value(key: String) -> Int:
+fn default_value(key: String) Int:
     if not (key == "c"):
         return panic(message: "check failed")
 
     return 3
 
-fn must_not_run(key: String) -> Int:
+fn must_not_run(key: String) Int:
     if not (false):
         return panic(message: "check failed")
 
@@ -499,7 +499,7 @@ test "grouping and lazy map defaults":
     if not (original.values() == [1]):
         return panic(message: "check failed")
 
-fn verify_text_and_numbers() -> Result[Unit, Error]:
+fn verify_text_and_numbers() Result[Unit, Error]:
     if not (("é".normalize(form: "NFC", max_bytes: 2) | try common_result) == "é"):
         return panic(message: "check failed")
     if not (("é".normalize(form: "NFD", max_bytes: 3) | try common_result) == "é"):
@@ -560,7 +560,7 @@ test "normalization, empty separators, and precision formatting":
     if not (1.0.to_precision(precision: 0) == invalid_number):
         return panic(message: "check failed")
 
-fn verify_bigint_and_regex() -> Result[Unit, Error]:
+fn verify_bigint_and_regex() Result[Unit, Error]:
     let a = from_int(value: 12)
     let b = from_int(value: 5)
     if not (a.add(other: b).to_string(radix: 10) == "17"):

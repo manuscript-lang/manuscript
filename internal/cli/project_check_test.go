@@ -13,8 +13,8 @@ func TestProjectCheckFindsUnimportedErrors(t *testing.T) {
 	root := t.TempDir()
 	for name, source := range map[string]string{
 		"ms.toml":       "[project]\nname = \"check\"\nsource = \"src\"\nentry = \"src/main.ms\"\n",
-		"src/main.ms":   "export fn main() -> Int:\n    return 0\n",
-		"src/report.ms": "fn number() -> Int:\n    return \"wrong\"\n\nfn text() -> String:\n    return 1\n",
+		"src/main.ms":   "export fn main() Int:\n    return 0\n",
+		"src/report.ms": "fn number() Int:\n    return \"wrong\"\n\nfn text() String:\n    return 1\n",
 	} {
 		path := filepath.Join(root, name)
 		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
@@ -46,10 +46,10 @@ func TestProjectCheckDiscoveryAndReporting(t *testing.T) {
 				}
 			}
 			write("ms.toml", "[project]\nname = \"check\"\nsource = \""+sourceDir+"\"\nentry = \"main.ms\"\n[aliases]\n\"@lib\" = \"lib\"\n")
-			write("main.ms", "import value from \"./lib/value.ms\"\nexport fn main() -> Int:\n    return value()\n")
-			write("lib/value.ms", "export fn value() -> Int: return 0\n")
+			write("main.ms", "import value from \"./lib/value.ms\"\nexport fn main() Int:\n    return value()\n")
+			write("lib/value.ms", "export fn value() Int: return 0\n")
 			// Both entry reachability and discovery lead to value.ms; count it once.
-			write("src/nested/report.ms", "import value from \"@lib/value.ms\"\nfn report() -> Int: return value()\n")
+			write("src/nested/report.ms", "import value from \"@lib/value.ms\"\nfn report() Int: return value()\n")
 			write("test.ms", "import panic from \"@std/faults.ms\"\ntest \"never execute\":\n    return panic(\"check executed code\")\n")
 			write("tests/report_test.ms", "test \"valid\":\n    let n = 1\n")
 			for _, dir := range []string{".hidden", "vendor", "node_modules", "src/.hidden", "src/vendor", "src/node_modules"} {
@@ -70,7 +70,7 @@ func TestProjectCheckDiscoveryAndReporting(t *testing.T) {
 						t.Fatal(err)
 					}
 					defer write(name, string(previous))
-					write(name, string(previous)+"\nfn broken() -> Int: return \"bad\"\n")
+					write(name, string(previous)+"\nfn broken() Int: return \"bad\"\n")
 					status, output, errors := invoke(t, "check", manifest, "--json")
 					var result struct {
 						Format      int                 `json:"format"`
@@ -101,8 +101,8 @@ func TestProjectCheckIgnoresUnrelatedSourceOutsideSourceDirectory(t *testing.T) 
 	root := t.TempDir()
 	for name, source := range map[string]string{
 		"ms.toml":           "[project]\nname = \"check\"\nsource = \"src\"\nentry = \"main.ms\"\n",
-		"main.ms":           "export fn main() -> Int: return 0\n",
-		"src/library.ms":    "fn value() -> Int: return 1\n",
+		"main.ms":           "export fn main() Int: return 0\n",
+		"src/library.ms":    "fn value() Int: return 1\n",
 		"scratch/broken.ms": "invalid source!",
 	} {
 		path := filepath.Join(root, name)
@@ -123,7 +123,7 @@ func TestProjectCheckDiscoveredSymlinks(t *testing.T) {
 	root := t.TempDir()
 	for name, source := range map[string]string{
 		"ms.toml": "[project]\nname = \"check\"\nsource = \".\"\nentry = \"main.ms\"\n",
-		"main.ms": "export fn main() -> Int: return 0\n",
+		"main.ms": "export fn main() Int: return 0\n",
 	} {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {
 			t.Fatal(err)
@@ -140,7 +140,7 @@ func TestProjectCheckDiscoveredSymlinks(t *testing.T) {
 	if err := os.Remove(link); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(sourceFile(t, "fn value() -> Int: return 0\n"), link); err != nil {
+	if err := os.Symlink(sourceFile(t, "fn value() Int: return 0\n"), link); err != nil {
 		t.Fatal(err)
 	}
 	status, output, errors = invoke(t, "check", filepath.Join(root, "ms.toml"))

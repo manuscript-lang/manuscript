@@ -242,7 +242,7 @@ func (c *checker) unknownMember(receiver *Type, name string) string {
 		}
 	}
 	if std(receiver, "List") && name == "join" {
-		return message + "; join is only available on List[String]; convert the elements first, e.g. xs.map(transform: fn(value: Int) -> String: \"{value}\").join(separator: \",\")"
+		return message + "; join is only available on List[String]; convert the elements first, e.g. xs.map(transform: fn(value: Int) String: \"{value}\").join(separator: \",\")"
 	}
 	if hint := synonymHint(name, available); hint != "" {
 		return message + hint
@@ -366,7 +366,7 @@ func (c *checker) exportMessage(item *syntax.Import, imports map[*syntax.Import]
 	return message + "; " + item.Path + " exports: " + list(exports, 12) + "; namespace imports are unsupported, so import individual exports with 'import { Name, OtherName } from \"" + item.Path + "\"'"
 }
 
-// signatureText renders "(a: Int, b: String) -> Bool" for a function type.
+// signatureText renders "(a: Int, b: String) Bool" for a function type.
 func signatureText(t *Type) string {
 	if t == nil || t.Kind != "function" {
 		return ""
@@ -375,7 +375,7 @@ func signatureText(t *Type) string {
 	for i, p := range t.Params {
 		parts[i] = p.Name + ": " + p.Type.String()
 	}
-	return "(" + strings.Join(parts, ", ") + ") -> " + t.Result.String()
+	return "(" + strings.Join(parts, ", ") + ") " + t.Result.String()
 }
 
 // assignmentMismatch adds a view hint only when the expected type itself is
@@ -423,7 +423,7 @@ func labelMismatchHint(actual, expected *Type) string {
 	}
 	for i, p := range actual.Params {
 		if p.Name != expected.Params[i].Name {
-			return "the function's parameter is named " + p.Name + " but this position expects " + expected.Params[i].Name + "; rename the parameter to " + expected.Params[i].Name + ", or wrap the function in a lambda: fn(" + expected.Params[i].Name + ": ...) -> ...: f(" + p.Name + ": " + expected.Params[i].Name + ")"
+			return "the function's parameter is named " + p.Name + " but this position expects " + expected.Params[i].Name + "; rename the parameter to " + expected.Params[i].Name + ", or wrap the function in a lambda: fn(" + expected.Params[i].Name + ": ...) ...: f(" + p.Name + ": " + expected.Params[i].Name + ")"
 		}
 	}
 	return ""

@@ -10,7 +10,7 @@ import HttpClientOptions from "@std/http.ms"
 import TlsOptions from "@std/tls.ms"
 import WebSocketOptions from "@std/websocket.ms"
 
-fn websocket_error(cause: WebSocketError) -> HttpError:
+fn websocket_error(cause: WebSocketError) HttpError:
     match cause:
         InvalidInput:
             return HttpError.InvalidInput
@@ -27,12 +27,12 @@ fn websocket_error(cause: WebSocketError) -> HttpError:
         Failed(message):
             return HttpError.Failed(message)
 
-fn socket_result[T](result: Result[T, WebSocketError]) -> Result[T, HttpError]:
+fn socket_result[T](result: Result[T, WebSocketError]) Result[T, HttpError]:
     if let value = result: return ok(value)
 
     return error(websocket_error(result.unwrap_error()))
 
-fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
+fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
     if exchange.path() == "/ws":
         with socket = exchange.upgrade(
             allowed_origins: [],
@@ -55,7 +55,7 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
 
     return ok(unit)
 
-fn exercise() -> Result[Unit, HttpError]:
+fn exercise() Result[Unit, HttpError]:
     let tls = TlsOptions(
         server_name: "",
         roots_pem: "",
@@ -148,7 +148,7 @@ fn exercise() -> Result[Unit, HttpError]:
 
     return ok(unit)
 
-export fn main() -> Int:
+export fn main() Int:
     if exercise().is_error(): return 1
 
     return 0

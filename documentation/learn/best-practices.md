@@ -32,7 +32,7 @@ import {parse, JsonError} from "@std/json.ms"
 type Config:
     port: Int = 8080
 
-fn port_of(text: String) -> Result[Int, Error]:
+fn port_of(text: String) Result[Int, Error]:
     return ok(try parse[Config](text) | .port)
 
 test "configuration defaults":

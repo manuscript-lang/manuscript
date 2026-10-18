@@ -86,11 +86,11 @@ export type EraseRegion:
 # Queries the terminal and enters raw input mode.
 export interface Terminal:
     # Reports terminal availability and color support without changing terminal state.
-    fn capabilities() -> TerminalCapabilities
+    fn capabilities() TerminalCapabilities
     # Returns the terminal size, or `NotTerminal` when output is redirected.
-    fn size() -> Result[TerminalSize, TerminalError]
+    fn size() Result[TerminalSize, TerminalError]
     # Acquires raw input with an optional alternate screen; returns `Busy` while another raw terminal is open and `NotTerminal` when streams are redirected.
-    fn raw_mode(alternate_screen: Bool) -> Result[RawTerminal, TerminalError]
+    fn raw_mode(alternate_screen: Bool) Result[RawTerminal, TerminalError]
 
 # Raw terminal input and cursor control. Closing it, or leaving the `with`
 # scope that acquired it by return, error, fault, or cancellation, restores the
@@ -98,23 +98,23 @@ export interface Terminal:
 # In raw mode, Ctrl-C arrives as a `c` key with `ctrl` set instead of cancelling.
 export interface RawTerminal:
     # Restores the terminal; closing again does nothing.
-    fn close() -> Unit
+    fn close() Unit
     # Waits for the next event; none means the timeout elapsed. Waits honor cancellation and concurrent callers are serialized.
     fn next_event(
         timeout: Optional[Duration] = none
-    ) -> Result[Optional[TerminalEvent], TerminalError]
+    ) Result[Optional[TerminalEvent], TerminalError]
     # Returns the current terminal size, or `Closed` after close.
-    fn size() -> Result[TerminalSize, TerminalError]
+    fn size() Result[TerminalSize, TerminalError]
     # Moves the cursor to a zero-based row and column; negative or very large values return `InvalidInput`.
-    fn move_cursor(row: Int, column: Int) -> Result[Unit, TerminalError]
+    fn move_cursor(row: Int, column: Int) Result[Unit, TerminalError]
     # Shows or hides the cursor until the terminal is restored on close.
-    fn show_cursor(visible: Bool) -> Result[Unit, TerminalError]
+    fn show_cursor(visible: Bool) Result[Unit, TerminalError]
     # Erases the selected screen region without moving the cursor.
-    fn erase(region: EraseRegion) -> Result[Unit, TerminalError]
+    fn erase(region: EraseRegion) Result[Unit, TerminalError]
 
 impl Error for TerminalError:
     # Returns a fixed diagnostic, or the host message for `Failed`.
-    fn message() -> String:
+    fn message() String:
 
 # Returns terminal operations for the current process.
-export fn terminal() -> Terminal:
+export fn terminal() Terminal:

@@ -7,14 +7,14 @@ import (
 
 func TestCollectionSupportPreludeEditorContracts(t *testing.T) {
 	for _, name := range []string{"CollectionError", "ListEntry", "MapEntry", "MissingValue", "Equal", "Hashable"} {
-		items := completeSource(t, "fn use(value: "+name[:3]+"|) -> Unit: unit\n")
+		items := completeSource(t, "fn use(value: "+name[:3]+"|) Unit: unit\n")
 		item := itemNamed(items, name)
 		if item == nil || len(item.AdditionalTextEdits) != 0 {
 			t.Fatal(name, item)
 		}
 	}
 	for _, newline := range []string{"\n", "\r\n"} {
-		source := strings.ReplaceAll("fn entries(values: List[Int]) -> List[ListEntry[Int]]: values.entries()\nfn pairs(values: Map[String, Int]) -> List[MapEntry[String, Int]]: values.entries()\nfn cut(values: List[Int]) -> Result[List[Int], CollectionError]: values.slice(0, 1)\n", "\n", newline)
+		source := strings.ReplaceAll("fn entries(values: List[Int]) List[ListEntry[Int]]: values.entries()\nfn pairs(values: Map[String, Int]) List[MapEntry[String, Int]]: values.entries()\nfn cut(values: List[Int]) Result[List[Int], CollectionError]: values.slice(0, 1)\n", "\n", newline)
 		d := document{"file:///tmp/support.ms", source, 1}
 		checked := analyze(d, map[string]document{d.URI: d})
 		if !checked.Success() {
@@ -40,10 +40,10 @@ func TestCollectionSupportPreludeEditorContracts(t *testing.T) {
 func TestRedundantPreludeImportEditorFix(t *testing.T) {
 	for _, newline := range []string{"\n", "\r\n"} {
 		for _, source := range []string{
-			"import MissingValue from \"@std/errors.ms\" # keep\nfn first(values: List[Int]) -> Result[Int, MissingValue]: values.at(0).ok_or()\n",
-			"import List from \"@std/collections.ms\" # keep\nfn count() -> Int: List[Int]().length()\n",
-			"import {ListBuilder, List} from \"@std/collections.ms\"\nfn count() -> Int: ListBuilder[Int]().freeze().length()+List[Int]().length()\n",
-			"import {\n    List, # keep\n    ListBuilder,\n} from \"@std/collections.ms\"\nfn count() -> Int: ListBuilder[Int]().freeze().length()+List[Int]().length()\n",
+			"import MissingValue from \"@std/errors.ms\" # keep\nfn first(values: List[Int]) Result[Int, MissingValue]: values.at(0).ok_or()\n",
+			"import List from \"@std/collections.ms\" # keep\nfn count() Int: List[Int]().length()\n",
+			"import {ListBuilder, List} from \"@std/collections.ms\"\nfn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()\n",
+			"import {\n    List, # keep\n    ListBuilder,\n} from \"@std/collections.ms\"\nfn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()\n",
 		} {
 			source = strings.ReplaceAll(source, "\n", newline)
 			d := document{"file:///tmp/imports.ms", source, 7}
@@ -86,7 +86,7 @@ func TestRedundantPreludeImportEditorFix(t *testing.T) {
 
 func TestMissingValuePreludeNavigation(t *testing.T) {
 	for _, newline := range []string{"\n", "\r\n"} {
-		source := strings.ReplaceAll("fn first(values: List[Int]) -> Result[Int, MissingValue]: values.at(0).ok_or()\n", "\n", newline)
+		source := strings.ReplaceAll("fn first(values: List[Int]) Result[Int, MissingValue]: values.at(0).ok_or()\n", "\n", newline)
 		d := document{"file:///tmp/missing-prelude.ms", source, 1}
 		checked := analyze(d, map[string]document{d.URI: d})
 		if !checked.Success() {
@@ -120,7 +120,7 @@ func TestPreludeImportCompletionSpacingAndRecovery(t *testing.T) {
 		}
 		for _, source := range []string{
 			"import List from \"@std/collections.ms\"\nfn broken(\n",
-			"fn bad() -> Unit:\n   unit\nimport {ListBuilder, List} from \"@std/collections.ms\"\n",
+			"fn bad() Unit:\n   unit\nimport {ListBuilder, List} from \"@std/collections.ms\"\n",
 		} {
 			source = strings.ReplaceAll(source, "\n", newline)
 			d := document{"file:///tmp/recovery.ms", source, 1}
@@ -188,8 +188,8 @@ func TestImportCompletionKeepsCurrentDeclarationBoundary(t *testing.T) {
 
 func TestPreludeTypeCompletionRespectsShadowing(t *testing.T) {
 	for _, source := range []string{
-		"fn use() -> Unit:\n    let ListEntry = fn() -> Int: 1\n    let value: ListE|\n",
-		"fn use() -> Unit:\n    let ListEntry = fn() -> Int: 1\n    var value: ListE|\n",
+		"fn use() Unit:\n    let ListEntry = fn() Int: 1\n    let value: ListE|\n",
+		"fn use() Unit:\n    let ListEntry = fn() Int: 1\n    var value: ListE|\n",
 	} {
 		if item := itemNamed(completeSource(t, source), "ListEntry"); item != nil {
 			t.Fatal("offered an inaccessible prelude type", source, item)
@@ -197,10 +197,10 @@ func TestPreludeTypeCompletionRespectsShadowing(t *testing.T) {
 	}
 	for _, newline := range []string{"\n", "\r\n"} {
 		for _, source := range []string{
-			"fn use[ListEntry](value: ListE|) -> Unit: unit\n",
-			"fn use[ListEntry](value: ListE|) -> Unit:\n",
-			"fn use[ListEntry](value: ListE|) -> Unit:\nfn other() -> Unit: unit\n",
-			"fn use[ListEntry](value: ListE|) -> Unit: unit\nfn broken(\n",
+			"fn use[ListEntry](value: ListE|) Unit: unit\n",
+			"fn use[ListEntry](value: ListE|) Unit:\n",
+			"fn use[ListEntry](value: ListE|) Unit:\nfn other() Unit: unit\n",
+			"fn use[ListEntry](value: ListE|) Unit: unit\nfn broken(\n",
 		} {
 			source = strings.ReplaceAll(source, "\n", newline)
 			item := itemNamed(completeSource(t, source), "ListEntry")

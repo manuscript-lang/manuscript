@@ -1,60 +1,60 @@
 import range from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
-fn checked(n: Int) -> Result[Int, String]:
+fn checked(n: Int) Result[Int, String]:
     if n < 0:
         return error(cause: "negative")
 
     return ok(value: n + 1)
 
-fn chain(n: Int) -> Result[Int, String]:
+fn chain(n: Int) Result[Int, String]:
     let v = try checked(n)
     return ok(value: v * 2)
 
-fn deeper(n: Int) -> Result[Int, String]:
+fn deeper(n: Int) Result[Int, String]:
     let a = try chain(n)
     let b = try chain(a)
     return ok(value: a + b)
 
-fn expression_try(n: Int) -> Result[Int, String]:
+fn expression_try(n: Int) Result[Int, String]:
     let x = (try checked(n)) + 100
     return ok(value: x)
 
-fn passthrough(n: Int) -> Result[Int, String]:
+fn passthrough(n: Int) Result[Int, String]:
     return checked(n)
 
-fn through_local(n: Int) -> Result[Int, String]:
+fn through_local(n: Int) Result[Int, String]:
     let r = checked(n)
     return r
 
-fn halve(n: Int) -> Optional[Int]:
+fn halve(n: Int) Optional[Int]:
     if n % 2 != 0:
         return none
 
     return some(value: n / 2)
 
-fn word(n: Int) -> Result[String, String]:
+fn word(n: Int) Result[String, String]:
     if n == 0:
         return error(cause: "zero")
 
     return ok(value: "w{n}")
 
-fn ratio(n: Int) -> Result[Float, String]:
+fn ratio(n: Int) Result[Float, String]:
     return ok(value: 1.5)
 
-fn nothing(flag: Bool) -> Result[Unit, String]:
+fn nothing(flag: Bool) Result[Unit, String]:
     if flag:
         return ok(value: unit)
 
     return error(cause: "no")
 
-fn nested(n: Int) -> Optional[Optional[Int]]:
+fn nested(n: Int) Optional[Optional[Int]]:
     if n == 0:
         return none
 
     return some(value: halve(n))
 
-fn matched_value(n: Int) -> Int:
+fn matched_value(n: Int) Int:
     let r = match checked(n):
         ok(v):
             v
@@ -63,7 +63,7 @@ fn matched_value(n: Int) -> Int:
 
     return r
 
-fn closure_return(n: Int) -> Result[Int, String]:
+fn closure_return(n: Int) Result[Int, String]:
     let y = match halve(n):
         some(h):
             h
@@ -72,7 +72,7 @@ fn closure_return(n: Int) -> Result[Int, String]:
 
     return ok(value: y)
 
-fn sum_all(count: Int) -> Result[Int, String]:
+fn sum_all(count: Int) Result[Int, String]:
     var total = 0
 
     for i in range(0, count):

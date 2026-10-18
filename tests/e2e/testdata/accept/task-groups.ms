@@ -5,15 +5,15 @@ import panic from "@std/faults.ms"
 type Stored:
     task: Task[Int]
 
-fn forward[T](task: Task[T]) -> Task[T]:
+fn forward[T](task: Task[T]) Task[T]:
     return task
 
-fn exercise() -> Result[Unit, ExecutionError]:
+fn exercise() Result[Unit, ExecutionError]:
     with group = TaskGroup():
         let start = group.start[Int]
         let number: Task[Int] = start(fn(): 41)
         let text = group.start(fn(): "hello")
-        let domain = group.start(fn() -> Result[Int, String]: error("expected"))
+        let domain = group.start(fn() Result[Int, String]: error("expected"))
         let stored = Stored(forward(number))
         let handles: List[Task[Int]] = [stored.task]
         let joined = try group.join()
@@ -25,7 +25,7 @@ fn exercise() -> Result[Unit, ExecutionError]:
             return panic("typed results changed")
 
         for handle in handles:
-            let saved_join: fn() -> Result[Int, ExecutionError] = handle.join
+            let saved_join: fn() Result[Int, ExecutionError] = handle.join
             let saved_value = try saved_join()
             if saved_value != 41:
                 return panic("saved task join changed")

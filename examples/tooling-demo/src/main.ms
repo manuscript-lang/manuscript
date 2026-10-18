@@ -8,7 +8,7 @@ type Package:
     count: Int
 
 # A real entry point: records, generics, a local queue, and a native workload.
-export fn main() -> Int:
+export fn main() Int:
     let package = Package(title: "Manuscript", count: 42)
     let values = [10, 20, 30]
     let optional = Optional[Int].some(5)

@@ -5,13 +5,13 @@ import {ListBuilder} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
-fn compare(left: Int, right: Int) -> Int: left - right
+fn compare(left: Int, right: Int) Int: left - right
 
-fn operation() -> Result[Unit, Error]: ok(unit)
+fn operation() Result[Unit, Error]: ok(unit)
 
-fn first() -> Int: 1
+fn first() Int: 1
 
-fn second() -> String: "two"
+fn second() String: "two"
 
 test "FIFO capacity empty reads draining and reuse":
     let queue = Queue[Int](2)

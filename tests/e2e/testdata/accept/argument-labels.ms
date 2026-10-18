@@ -3,56 +3,56 @@ import abs_int from "@std/math.ms"
 import Scheduler from "@std/tasks.ms"
 import Synchronized from "@std/sync.ms"
 
-fn increment(value: Int) -> Int:
+fn increment(value: Int) Int:
     return value + 1
 
-fn identity[T](value: T) -> T:
+fn identity[T](value: T) T:
     return value
 
-fn sum(values: List[Int]) -> Int:
+fn sum(values: List[Int]) Int:
     var total = 0
     for value in values:
         total = total + value
     return total
 
-fn apply(transform: fn(value: Int) -> Int) -> Int:
+fn apply(transform: fn(value: Int) Int) Int:
     return transform(4)
 
-fn select() -> fn(value: Int) -> Int:
+fn select() fn(value: Int) Int:
     return increment
 
-fn subtract(amount: Int, deduction: Int) -> Int:
+fn subtract(amount: Int, deduction: Int) Int:
     return amount - deduction
 
 interface Increment:
-    fn apply(value: Int) -> Int
+    fn apply(value: Int) Int
 
 type Offset:
     delta: Int
 
 impl Increment for Offset:
-    fn apply(value: Int) -> Int:
+    fn apply(value: Int) Int:
         return value + self.delta
 
-fn next(state: Synchronized[Int]) -> Int:
+fn next(state: Synchronized[Int]) Int:
     with locked = state.lock():
         let value = locked.get()
         locked.set(value + 1)
         return value
 
-fn prepare_receiver(state: Synchronized[Int]) -> Offset:
+fn prepare_receiver(state: Synchronized[Int]) Offset:
     if not (next(state) == 0):
         return panic(message: "check failed")
 
     return Offset(2)
 
-fn prepare_function(state: Synchronized[Int]) -> fn(value: Int) -> Int:
+fn prepare_function(state: Synchronized[Int]) fn(value: Int) Int:
     if not (next(state) == 4):
         return panic(message: "check failed")
 
     return increment
 
-fn absent(value: Optional[Int]) -> Bool:
+fn absent(value: Optional[Int]) Bool:
     let missing: Optional[Int] = none
     return value == missing
 
@@ -133,7 +133,7 @@ test "optional labels on methods and native functions":
         return panic(message: "check failed")
 
     with service = Scheduler(limit: 1, drain: 2.seconds):
-        let operation = fn() -> Result[Unit, Error]:
+        let operation = fn() Result[Unit, Error]:
             return ok(unit)
         if service.start(operation).is_error():
             return panic(message: "check failed")

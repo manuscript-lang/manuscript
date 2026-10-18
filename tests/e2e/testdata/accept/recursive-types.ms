@@ -5,7 +5,7 @@ type Expr:
     case Add(left: Expr, right: Expr)
     case Neg(inner: Expr)
 
-fn evaluate(expr: Expr) -> Int:
+fn evaluate(expr: Expr) Int:
     match expr:
         Num(value): return value
         Add(left, right): return evaluate(left) + evaluate(right)
@@ -36,13 +36,13 @@ type Link:
     next: Optional[Link]
 
 impl Equal for Link:
-    fn equals(other: Equal) -> Bool:
+    fn equals(other: Equal) Bool:
         match other:
             Link(value): return self.value == value.value
             _: return false
 
 impl Hashable for Link:
-    fn hash() -> Int: return self.value
+    fn hash() Int: return self.value
 
 test "recursive alternatives construct match compare and clone":
     let expr = Expr.Add(left: Expr.Num(7), right: Expr.Neg(Expr.Num(2)))

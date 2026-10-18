@@ -7,43 +7,40 @@ fn generic_write[T: FileSystem](
     fs: T,
     path: String,
     data: Bytes
-) -> Result[Unit, FileSystemError]:
+) Result[Unit, FileSystemError]:
     return fs.write_file(path, data)
 
 fn generic_copy[T: FileSystem](
     fs: T,
     source: String,
     destination: String
-) -> Result[Unit, FileSystemError]:
+) Result[Unit, FileSystemError]:
     return fs.copy_file(source, destination)
 
 fn generic_tree[T: FileSystem](
     fs: T,
     source: String,
     destination: String
-) -> Result[Unit, FileSystemError]:
+) Result[Unit, FileSystemError]:
     return fs.copy_tree(source, destination)
 
-fn generic_directory[T: FileSystem](
-    fs: T,
-    path: String
-) -> Result[Unit, FileSystemError]:
+fn generic_directory[T: FileSystem](fs: T, path: String) Result[Unit, FileSystemError]:
     return fs.create_directory(path)
 
-fn generic_remove[T: FileSystem](fs: T, path: String) -> Result[Unit, FileSystemError]:
+fn generic_remove[T: FileSystem](fs: T, path: String) Result[Unit, FileSystemError]:
     return fs.remove(path)
 
-fn rejected(result: Result[Unit, FileSystemError]) -> Unit:
+fn rejected(result: Result[Unit, FileSystemError]) Unit:
     if result.is_ok(): return panic("exclusive or nonrecursive operation succeeded")
 
-fn text(fs: FileSystem, path: String) -> String:
+fn text(fs: FileSystem, path: String) String:
     return value(fs.read_file(path)).to_string().unwrap()
 
-fn argument(log: List[String], mark: String, path: String) -> String:
+fn argument(log: List[String], mark: String, path: String) String:
     log.append(mark)
     return path
 
-fn data_argument(log: List[String]) -> Bytes:
+fn data_argument(log: List[String]) Bytes:
     log.append("data")
     return "new".to_bytes()
 

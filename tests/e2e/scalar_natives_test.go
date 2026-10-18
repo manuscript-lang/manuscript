@@ -11,11 +11,11 @@ func TestScalarStandardCallsMatchDynamicCalls(t *testing.T) {
 	result := compiler.CompileSource("scalar-natives.ms", `import panic from "@std/faults.ms"
 import {abs, abs_int, atan2, ceil, floor, max, min, pow, remainder, round, sqrt, truncate} from "@std/math.ms"
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
-fn viaValue(f: fn(value: Float) -> Float, x: Float) -> Float: f(value: x)
+fn viaValue(f: fn(value: Float) Float, x: Float) Float: f(value: x)
 
 test "typed math":
     check(ok: sqrt(value: 9.0) == 3.0, name: "sqrt")
@@ -65,7 +65,7 @@ test "overflow":
 func TestScalarMembersMatchDynamicCalls(t *testing.T) {
 	result := compiler.CompileSource("scalar-members.ms", `import panic from "@std/faults.ms"
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
@@ -85,7 +85,7 @@ test "string and float members":
 func TestStringSplitReplaceJoinMatchDynamicCalls(t *testing.T) {
 	result := compiler.CompileSource("split-replace-join.ms", `import panic from "@std/faults.ms"
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
@@ -126,7 +126,7 @@ func TestNegativeSplitCapStillFaults(t *testing.T) {
 func TestBoundNativeCallsOmitNoneDefaults(t *testing.T) {
 	result := compiler.CompileSource("bound-omitted.ms", `import panic from "@std/faults.ms"
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
@@ -149,11 +149,11 @@ test "omitted none defaults":
 func TestStringParseIntAndToBytesMatchDynamicCalls(t *testing.T) {
 	result := compiler.CompileSource("parse-int.ms", `import panic from "@std/faults.ms"
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
-fn parsed(text: String) -> Int:
+fn parsed(text: String) Int:
     match text.parse_int():
         some(v):
             return v

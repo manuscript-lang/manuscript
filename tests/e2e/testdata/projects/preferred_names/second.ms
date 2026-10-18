@@ -2,15 +2,15 @@ import Key from "./domain.ms"
 import {add_generic, remove_generic} from "./helpers.ms"
 
 impl Equal for Key:
-    fn equals(other: Equal) -> Bool:
+    fn equals(other: Equal) Bool:
         match other:
             Key(value): return self.label == value.label
             _: return false
 
 impl Hashable for Key:
-    fn hash() -> Int: self.label.scalar_length()
+    fn hash() Int: self.label.scalar_length()
 
-export fn second_run() -> Set[Key]:
+export fn second_run() Set[Key]:
     let items = Set[Key]().add(Key(1, "original"))
     let add = items.add
     let remove = items.remove

@@ -15,11 +15,11 @@ Save as `hello.ms`. Check both write and flush.
 ```manuscript
 import stdout from "@std/io.ms"
 
-fn run() -> Result[Unit, Error]:
+fn run() Result[Unit, Error]:
     try stdout().write("Hello, Manuscript!\n".to_bytes())
     return stdout().flush()
 
-export fn main() -> Int:
+export fn main() Int:
     if run().is_error():
         return 1
     return 0
@@ -40,12 +40,12 @@ Save as `args.ms`. `arguments()` excludes the executable; values after `--` reac
 import arguments from "@std/cli.ms"
 import stdout from "@std/io.ms"
 
-fn run() -> Result[Unit, Error]:
+fn run() Result[Unit, Error]:
     for name in arguments():
         try stdout().write("Hello, {name}!\n".to_bytes())
     return stdout().flush()
 
-export fn main() -> Int:
+export fn main() Int:
     if run().is_error():
         return 1
     return 0
@@ -65,14 +65,14 @@ import arguments from "@std/cli.ms"
 import {filesystem, FileSystemError} from "@std/fs.ms"
 import stdout from "@std/io.ms"
 
-fn run() -> Result[Unit, Error]:
+fn run() Result[Unit, Error]:
     let path = try arguments().at(0).ok_or(FileSystemError.InvalidInput)
     let bytes = try filesystem().read_file(path, max_bytes: 1048576)
     let text = try bytes.to_string().ok_or(FileSystemError.InvalidData)
     try stdout().write(text.to_bytes())
     return stdout().flush()
 
-export fn main() -> Int:
+export fn main() Int:
     if run().is_error():
         return 1
     return 0
@@ -94,11 +94,11 @@ Save as `write.ms`. `replace: false` fails if the file exists.
 import arguments from "@std/cli.ms"
 import {filesystem, FileSystemError} from "@std/fs.ms"
 
-fn run() -> Result[Unit, Error]:
+fn run() Result[Unit, Error]:
     let path = try arguments().at(0).ok_or(FileSystemError.InvalidInput)
     return filesystem().write_file(path, "saved notes\n".to_bytes(), replace: false)
 
-export fn main() -> Int:
+export fn main() Int:
     if run().is_error():
         return 1
     return 0
@@ -119,7 +119,7 @@ Save as `lines.ms`. `try` the `Result`, then check the `Optional` for EOF.
 ```manuscript
 import {stdin, stdout, read_line} from "@std/io.ms"
 
-fn run() -> Result[Unit, Error]:
+fn run() Result[Unit, Error]:
     let input = stdin()
     while true:
         let line = try read_line(input, max_bytes: 4096)
@@ -129,7 +129,7 @@ fn run() -> Result[Unit, Error]:
             break
     return stdout().flush()
 
-export fn main() -> Int:
+export fn main() Int:
     if run().is_error():
         return 1
     return 0
@@ -150,11 +150,11 @@ Save as `number.ms`. `parse_int()` returns an `Optional[Int]`.
 import arguments from "@std/cli.ms"
 import stdout from "@std/io.ms"
 
-fn show(number: Int) -> Result[Unit, Error]:
+fn show(number: Int) Result[Unit, Error]:
     try stdout().write("{number}\n".to_bytes())
     return stdout().flush()
 
-export fn main() -> Int:
+export fn main() Int:
     let number = arguments().at(0).unwrap_or("42").parse_int()
     if let value = number:
         if show(value).is_ok():
@@ -178,12 +178,12 @@ import arguments from "@std/cli.ms"
 import parse from "@std/json.ms"
 import stdout from "@std/io.ms"
 
-fn run() -> Result[Unit, Error]:
+fn run() Result[Unit, Error]:
     let text = try parse[String](arguments().at(0).unwrap_or("\"hello\""))
     try stdout().write("{text}\n".to_bytes())
     return stdout().flush()
 
-export fn main() -> Int:
+export fn main() Int:
     if run().is_error():
         return 1
     return 0
@@ -209,14 +209,14 @@ type Config:
     name: String
     enabled: Bool = true
 
-fn run() -> Result[Unit, Error]:
+fn run() Result[Unit, Error]:
     let text = arguments().at(0).unwrap_or("\{\"name\":\"Sam\"\}")
     let config = try parse[Config](text)
     let encoded = config | try stringify
     try stdout().write("{encoded}\n".to_bytes())
     return stdout().flush()
 
-export fn main() -> Int:
+export fn main() Int:
     if run().is_error():
         return 1
     return 0
@@ -242,7 +242,7 @@ import {HttpError, HttpMethod, headers} from "@std/http.ms"
 import network from "@std/net.ms"
 import stdout from "@std/io.ms"
 
-fn run() -> Result[Unit, Error]:
+fn run() Result[Unit, Error]:
     let url = try arguments().at(0).ok_or(HttpError.InvalidInput)
     let response = try network().request(
         HttpMethod.Get, url, headers(), "".to_bytes(),
@@ -254,7 +254,7 @@ fn run() -> Result[Unit, Error]:
     try stdout().write(text.to_bytes())
     return stdout().flush()
 
-export fn main() -> Int:
+export fn main() Int:
     if run().is_error():
         return 1
     return 0
@@ -279,9 +279,9 @@ Save as `task.ms`. `TaskGroup.start` returns a handle; `join` returns its result
 import TaskGroup from "@std/tasks.ms"
 import stdout from "@std/io.ms"
 
-fn run() -> Result[Unit, Error]:
+fn run() Result[Unit, Error]:
     with group = TaskGroup():
-        let task = group.start(fn() -> Int:
+        let task = group.start(fn() Int:
             return 6 * 7
         )
         let answer = try task.join()
@@ -289,7 +289,7 @@ fn run() -> Result[Unit, Error]:
         try stdout().flush()
     return ok(unit)
 
-export fn main() -> Int:
+export fn main() Int:
     if run().is_error():
         return 1
     return 0

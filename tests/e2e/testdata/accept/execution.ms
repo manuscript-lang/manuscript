@@ -7,7 +7,7 @@ import StartError from "@std/tasks.ms"
 import OperationId from "@std/tasks.ms"
 import WorkStatus from "@std/tasks.ms"
 
-fn run() -> Result[Unit, ExecutionError]:
+fn run() Result[Unit, ExecutionError]:
     var offset = 3
     let first = fn():
         return offset
@@ -30,9 +30,9 @@ fn run() -> Result[Unit, ExecutionError]:
         let joined = try empty.join()
     return ok(unit)
 
-fn scheduler_probe() -> Unit:
+fn scheduler_probe() Unit:
     with service = Scheduler(limit: 1, drain: 2.seconds):
-        let task = fn() -> Result[Unit, Error]:
+        let task = fn() Result[Unit, Error]:
             return ok(unit)
         let launch = service.start
         if launch(operation: task).is_error():
@@ -49,7 +49,7 @@ test "joined work and snapshot captures":
     try run()
     scheduler_probe()
 
-fn standard_task() -> Result[Unit, ExecutionError]:
+fn standard_task() Result[Unit, ExecutionError]:
     with empty = TaskGroup():
         let joined = try empty.join()
     let checkpoint = check_cancelled

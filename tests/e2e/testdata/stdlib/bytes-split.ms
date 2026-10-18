@@ -63,22 +63,18 @@ test "Bytes split optional limits truncate parts":
         "empty separator cap"
     )
 
-fn split_then[T](
-    data: Bytes,
-    separator: Bytes,
-    transform: fn(value: List[Bytes]) -> T
-) -> T:
+fn split_then[T](data: Bytes, separator: Bytes, transform: fn(value: List[Bytes]) T) T:
     return data.split(separator) | transform
 
 fn call_split(
-    operation: fn(separator: Bytes, max_parts: Optional[Int]) -> List[Bytes]
-) -> List[Bytes]:
+    operation: fn(separator: Bytes, max_parts: Optional[Int]) List[Bytes]
+) List[Bytes]:
     return operation(Bytes([0]), some(2))
 
 test "Bytes split bound methods and generic forwarding retain contracts":
     var data = Bytes([1, 0, 2])
     let split = data.split
-    let typed: fn(separator: Bytes, max_parts: Optional[Int]) -> List[Bytes] = data.split
+    let typed: fn(separator: Bytes, max_parts: Optional[Int]) List[Bytes] = data.split
     data = Bytes([9])
     if split(Bytes([0])) != [Bytes([1]), Bytes([2])]: return panic(
         "bound byte receiver"

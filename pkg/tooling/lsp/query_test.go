@@ -10,7 +10,7 @@ import (
 func TestQuerySymbolFindsTypeDefinitionAndReferences(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "main.ms")
-	source := "fn double(value: Int) -> Int:\n    return value * 2\n\nexport fn main() -> Int:\n    let x = double(4)\n    return x - 8\n"
+	source := "fn double(value: Int) Int:\n    return value * 2\n\nexport fn main() Int:\n    let x = double(4)\n    return x - 8\n"
 	if err := os.WriteFile(path, []byte(source), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestCharacterPositionCountsUTF16Units(t *testing.T) {
 
 func TestSearchSymbolsRanksExactBeforePrefixBeforeSubstring(t *testing.T) {
 	dir := t.TempDir()
-	source := "fn parse_all() -> Int:\n    return 1\n\nfn reparse() -> Int:\n    return 2\n\nfn parse() -> Int:\n    return 3\n\nexport fn main() -> Int:\n    return parse()\n"
+	source := "fn parse_all() Int:\n    return 1\n\nfn reparse() Int:\n    return 2\n\nfn parse() Int:\n    return 3\n\nexport fn main() Int:\n    return parse()\n"
 	if err := os.WriteFile(filepath.Join(dir, "main.ms"), []byte(source), 0o644); err != nil {
 		t.Fatal(err)
 	}

@@ -1,48 +1,48 @@
 import panic from "@std/faults.ms"
 
 interface Read[T]:
-    fn read() -> T
+    fn read() T
 
 type Reader[T]:
-    operation: fn() -> T
+    operation: fn() T
 
 impl Read[T] for Reader[T]:
-    fn read() -> T:
+    fn read() T:
         return self.operation()
 
 type Log:
     events: String
 
-fn mark(log: Log, event: String, value: Int) -> Int:
+fn mark(log: Log, event: String, value: Int) Int:
     log.events = log.events + event
     return value
 
-fn prepare(log: Log, value: Int) -> fn() -> Int:
+fn prepare(log: Log, value: Int) fn() Int:
     mark(log, "prepare;", 0)
-    return fn() -> Int:
+    return fn() Int:
         return mark(log, "call;", value)
 
-fn wrap[T](operation: fn() -> T) -> Read[T]:
+fn wrap[T](operation: fn() T) Read[T]:
     return Read[T](Reader[T](operation))
 
-fn invoke[T: Read[Int]](value: T) -> Int:
+fn invoke[T: Read[Int]](value: T) Int:
     return value.read()
 
 type OrderedReader:
     first: Int
-    operation: fn() -> Int
+    operation: fn() Int
     last: Int
 
 impl Read[Int] for OrderedReader:
-    fn read() -> Int:
+    fn read() Int:
         return self.first + self.operation() + self.last
 
 type DefaultReader:
     base: Int
-    operation: fn() -> Int = fn() -> Int: base
+    operation: fn() Int = fn() Int: base
 
 impl Read[Int] for DefaultReader:
-    fn read() -> Int:
+    fn read() Int:
         return self.operation()
 
 test "nested view receiver prepares once and calls later":
@@ -59,8 +59,8 @@ test "constructor arguments retain written order and capture snapshots":
         OrderedReader(
             last: mark(log, "last;", 3),
             operation: (
-                fn() -> Int:
-                    let nested = fn() -> Int: value
+                fn() Int:
+                    let nested = fn() Int: value
                     return mark(log, "call;", nested())
             ),
             first: match some(2):
@@ -80,18 +80,18 @@ test "constructor arguments retain written order and capture snapshots":
 test "explicit nested views and bound methods retain generic dispatch":
     var value = 5
     let view = wrap(
-        fn() -> Int:
-            let nested = fn() -> Int: value
+        fn() Int:
+            let nested = fn() Int: value
             return nested()
     )
     value = 80
     let bound = view.read
     if bound() != 5: return panic("bound interface method")
     if invoke(view) != 5: return panic("bounded generic method")
-    if Read[Int](Read[Int](Reader(fn() -> Int: 6))).read() != 6:
+    if Read[Int](Read[Int](Reader(fn() Int: 6))).read() != 6:
         return panic("nested explicit views")
-    if Reader(fn() -> Int: 8).read() != 8: return panic("concrete method")
-    if wrap(fn() -> String: "text").read() != "text": return panic("generic result")
+    if Reader(fn() Int: 8).read() != 8: return panic("concrete method")
+    if wrap(fn() String: "text").read() != "text": return panic("generic result")
 
 test "source constructors with callable defaults prepare once":
     let log = Log("")
@@ -106,10 +106,10 @@ test "match receiver side effects and callable body remain ordered":
         match some(mark(log, "select;", 1)):
             some(value):
                 mark(log, "chosen;", 0)
-                Reader(fn() -> Int: mark(log, "call;", 9))
+                Reader(fn() Int: mark(log, "call;", 9))
             none:
                 mark(log, "wrong;", 0)
-                Reader(fn() -> Int: 0)
+                Reader(fn() Int: 0)
     )
     if log.events != "select;chosen;": return panic("match receiver count/order")
     if view.read() != 9: return panic("match view result")

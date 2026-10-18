@@ -7,7 +7,7 @@ import (
 )
 
 func TestInspectDescribesConstantsAsConstants(t *testing.T) {
-	source := "let LIMIT = 10\nfn size() -> Int:\n    return LIMIT\n"
+	source := "let LIMIT = 10\nfn size() Int:\n    return LIMIT\n"
 	result := compiler.CompileSource("main.ms", source, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)

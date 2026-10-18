@@ -26,7 +26,7 @@ func TestDiskStandardDeclarationsUseOrdinarySyntax(t *testing.T) {
 				t.Fatal("missing native binding context", checked.Diagnostics)
 			}
 			changed := d
-			changed.Text += "fn missing_binding() -> Int:\n"
+			changed.Text += "fn missing_binding() Int:\n"
 			if result := analyze(changed, map[string]document{changed.URI: changed}); result.Success() {
 				t.Fatal("unbound native declaration accepted")
 			}
@@ -41,7 +41,7 @@ func TestDiskCommandsDefinition(t *testing.T) {
 	}
 	d := document{fileURI(filepath.Join(t.TempDir(), "process.ms")), source, 1}
 	result := analyze(d, map[string]document{d.URI: d})
-	pos := Position(source, strings.Index(source, "commands() -> Commands")+len("commands() -> "))
+	pos := Position(source, strings.Index(source, "commands() Commands")+len("commands() "))
 	if target := navigation(result, d, pos, "textDocument/definition"); target == nil || target.([]any)[0].(map[string]any)["uri"] != "manuscript-stdlib:///process.ms" {
 		t.Fatal("missing Commands definition", target)
 	}

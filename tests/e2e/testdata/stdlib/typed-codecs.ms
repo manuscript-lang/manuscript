@@ -5,10 +5,10 @@ import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
-fn digest(algorithm: HashAlgorithm, data: Bytes) -> Bytes:
+fn digest(algorithm: HashAlgorithm, data: Bytes) Bytes:
     return algorithm.digest(data)
 
-fn call_digest[T](operation: fn(data: Bytes) -> T, data: Bytes) -> T:
+fn call_digest[T](operation: fn(data: Bytes) T, data: Bytes) T:
     return operation(data)
 
 fn bounded_compression(
@@ -16,9 +16,9 @@ fn bounded_compression(
         data: Bytes,
         level: Int,
         max_bytes: Optional[Int]
-    ) -> Result[Bytes, CompressionError],
+    ) Result[Bytes, CompressionError],
     data: Bytes
-) -> Result[Bytes, CompressionError]:
+) Result[Bytes, CompressionError]:
     return operation(data, 6, 1024)
 
 test "typed SHA selectors match their algorithms and retain bound operations":

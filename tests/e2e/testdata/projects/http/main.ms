@@ -4,14 +4,14 @@ import stdout from "@std/io.ms"
 import HttpRequest from "@std/http.ms"
 import HttpResponse from "@std/http.ms"
 
-fn handle(request: HttpRequest) -> HttpResponse:
+fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(
         status: 200,
         headers: headers(),
         body: "hello {request.path}".to_bytes()
     )
 
-export fn main() -> Int:
+export fn main() Int:
     let serve = network().serve
     let served = serve(
         address: "127.0.0.1:0",

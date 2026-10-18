@@ -3,27 +3,27 @@ import TaskGroup from "@std/tasks.ms"
 import panic from "@std/faults.ms"
 
 interface Counter:
-    fn increment() -> Unit
+    fn increment() Unit
 
 type Val:
     val: Int
 
 impl Counter for Val:
-    fn increment() -> Unit:
+    fn increment() Unit:
         self.val = self.val + 1
 
 type Box[T]:
     value: T
     child: Val
 
-fn replace[T](box: Box[T], value: T) -> Unit:
+fn replace[T](box: Box[T], value: T) Unit:
     box.value = value
 
-fn receiver(log: List[Int], value: Val) -> Val:
+fn receiver(log: List[Int], value: Val) Val:
     log.append(1)
     return value
 
-fn replacement(log: List[Int]) -> Int:
+fn replacement(log: List[Int]) Int:
     log.append(2)
     return 7
 

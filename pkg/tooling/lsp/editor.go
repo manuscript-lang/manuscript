@@ -216,7 +216,7 @@ func contextAt(d document, p position) (cursorContext, error) {
 	}
 	lineStart := strings.LastIndex(d.Text[:c.start], "\n") + 1
 	line := strings.TrimSpace(d.Text[lineStart:c.start])
-	c.typeContext = strings.HasSuffix(line, "->") || (strings.Contains(line, "let ") || strings.Contains(line, "var ")) && strings.Contains(line, ":") && !strings.Contains(line, "=") || (strings.HasPrefix(line, "fn ") || strings.HasPrefix(line, "export fn ")) && strings.Contains(line, ":")
+	c.typeContext = (strings.HasPrefix(line, "fn ") || strings.HasPrefix(line, "export fn ")) && strings.HasSuffix(line, ")") || (strings.Contains(line, "let ") || strings.Contains(line, "var ")) && strings.Contains(line, ":") && !strings.Contains(line, "=") || (strings.HasPrefix(line, "fn ") || strings.HasPrefix(line, "export fn ")) && strings.Contains(line, ":")
 	// A default is an expression inside a function header. Track only separators
 	// at that parameter list's depth so nested calls and types keep their context.
 	for index := len(stack) - 1; index >= 0; index-- {

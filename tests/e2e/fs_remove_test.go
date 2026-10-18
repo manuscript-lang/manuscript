@@ -16,7 +16,7 @@ func TestFileSystemRemoveProtectsWorkingDirectory(t *testing.T) {
 	// regression in the source checkout: on an unfixed runtime it deletes cwd.
 	source := `import {filesystem, FileSystemError} from "@std/fs.ms"
 
-export fn main() -> Int:
+export fn main() Int:
     let fs = filesystem()
     let invalid: Result[Unit, FileSystemError] = error(FileSystemError.InvalidInput)
     if fs.remove(path: "", recursive: true) != invalid: return 1

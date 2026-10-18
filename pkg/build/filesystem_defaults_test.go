@@ -16,7 +16,7 @@ import (
 func TestFilesystemDefaultCallableBoundaries(t *testing.T) {
 	const imports = `import {filesystem, FileSystemError} from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"
-fn forward[T](item: T) -> T: item
+fn forward[T](item: T) T: item
 `
 	for _, method := range []struct{ name, args, typ, flag string }{
 		{"write_file", `"", "".to_bytes()`, "path: String, data: Bytes, replace: Bool", "replace"},
@@ -33,10 +33,10 @@ fn forward[T](item: T) -> T: item
 				{"none", "let call = filesystem()." + method.name, ", " + method.flag + ": none", "expected Bool"},
 				{"mutable", "var call = filesystem()." + method.name, "", "missing argument " + method.flag},
 				{"forwarded", "let call = forward(filesystem()." + method.name + ")", "", "missing argument " + method.flag},
-				{"typed", "let call: fn(" + method.typ + ") -> Result[Unit, FileSystemError] = filesystem()." + method.name, "", "missing argument " + method.flag},
+				{"typed", "let call: fn(" + method.typ + ") Result[Unit, FileSystemError] = filesystem()." + method.name, "", "missing argument " + method.flag},
 			} {
 				t.Run(item.name, func(t *testing.T) {
-					source := imports + "fn check() -> Unit:\n    " + item.binding + "\n    call(" + method.args + item.extra + ")\n"
+					source := imports + "fn check() Unit:\n    " + item.binding + "\n    call(" + method.args + item.extra + ")\n"
 					r := compiler.CompileSource("filesystem-boundary.ms", source, compiler.Options{AnalyzeOnly: true})
 					got := fmt.Sprint(r.Diagnostics)
 					if item.want == "" && !r.Success() || item.want != "" && (r.Success() || !strings.Contains(got, item.want)) {
@@ -50,7 +50,7 @@ fn forward[T](item: T) -> T: item
 
 func TestFilesystemExplicitFlagsKeepDirectDispatch(t *testing.T) {
 	r := compiler.CompileSource("explicit-filesystem.ms", `import filesystem from "@std/fs.ms"
-fn explicit() -> Unit:
+fn explicit() Unit:
     let fs = filesystem()
     fs.write_file("", "".to_bytes(), false)
     fs.copy_file("", "", true)
@@ -106,7 +106,7 @@ func TestFilesystemImplementationDefaultsOverrideOnlyConcreteCalls(t *testing.T)
 				source.WriteString(" = true")
 			}
 		}
-		fmt.Fprintf(&source, ") -> %s:\n", filesystemFixtureType(method.Result))
+		fmt.Fprintf(&source, ") %s:\n", filesystemFixtureType(method.Result))
 		if flag := flags[method.Name]; flag != "" {
 			fmt.Fprintf(&source, "        self.received = %s\n        return ok(unit)\n", flag)
 		} else {
@@ -139,7 +139,7 @@ func filesystemFixtureType(typ *syntax.Type) string {
 		for _, parameter := range typ.Params {
 			params = append(params, parameter.Name+": "+filesystemFixtureType(parameter.Type))
 		}
-		return "fn(" + strings.Join(params, ", ") + ") -> " + filesystemFixtureType(typ.Result)
+		return "fn(" + strings.Join(params, ", ") + ") " + filesystemFixtureType(typ.Result)
 	}
 	var args []string
 	for _, argument := range typ.Args {

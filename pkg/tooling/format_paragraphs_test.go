@@ -13,7 +13,7 @@ func TestFormatParagraphs(t *testing.T) {
 	}{
 		{
 			name: "single step blocks cluster with adjacent work",
-			source: `fn work(enabled: Bool) -> Int:
+			source: `fn work(enabled: Bool) Int:
     let count = 2
     if enabled:
         run(count)
@@ -23,7 +23,7 @@ func TestFormatParagraphs(t *testing.T) {
         run(resource)
     return count
 `,
-			want: `fn work(enabled: Bool) -> Int:
+			want: `fn work(enabled: Bool) Int:
     let count = 2
     if enabled:
         run(count)
@@ -36,22 +36,22 @@ func TestFormatParagraphs(t *testing.T) {
 		},
 		{
 			name: "interleaved import sections",
-			source: `fn first() -> Int: return 1
+			source: `fn first() Int: return 1
 import Value from "./value.ms"
 import Other from "./other.ms"
-fn last() -> Int: return 2
+fn last() Int: return 2
 `,
-			want: `fn first() -> Int: return 1
+			want: `fn first() Int: return 1
 
 import Value from "./value.ms"
 import Other from "./other.ms"
 
-fn last() -> Int: return 2
+fn last() Int: return 2
 `,
 		},
 		{
 			name: "bindings guards and outcome handling",
-			source: `fn process(input: String) -> Int:
+			source: `fn process(input: String) Int:
     let records = parse(input)
     if records.length() == 0: return 0
     if records.length() > 100: return 1
@@ -63,7 +63,7 @@ fn last() -> Int: return 2
         error(_):
             return 1
 `,
-			want: `fn process(input: String) -> Int:
+			want: `fn process(input: String) Int:
     let records = parse(input)
     if records.length() == 0: return 0
     if records.length() > 100: return 1
@@ -80,7 +80,7 @@ fn last() -> Int: return 2
 		},
 		{
 			name: "branch families loops and cleanup",
-			source: `fn work(enabled: Bool) -> Int:
+			source: `fn work(enabled: Bool) Int:
     let count = 2
     if enabled:
         run(count)
@@ -98,7 +98,7 @@ fn last() -> Int: return 2
         run(resource)
     return count
 `,
-			want: `fn work(enabled: Bool) -> Int:
+			want: `fn work(enabled: Bool) Int:
     let count = 2
 
     if enabled:
@@ -125,7 +125,7 @@ fn last() -> Int: return 2
 		},
 		{
 			name: "compact and indented match arms",
-			source: `fn choose(value: Choice) -> Int:
+			source: `fn choose(value: Choice) Int:
     match value:
         first: return 1
         second: return 2
@@ -135,7 +135,7 @@ fn last() -> Int: return 2
         _: return 0
     return 3
 `,
-			want: `fn choose(value: Choice) -> Int:
+			want: `fn choose(value: Choice) Int:
     match value:
         first: return 1
         second: return 2
@@ -151,13 +151,13 @@ fn last() -> Int: return 2
 			name: "comments stay attached",
 			source: `# A public contract.
 export interface Run:
-    fn first() -> Int
-    fn second() -> Int
+    fn first() Int
+    fn second() Int
 # The implementation.
 impl Run for Runner:
-    fn first() -> Int: return 1
+    fn first() Int: return 1
     # Explain the second operation.
-    fn second() -> Int:
+    fn second() Int:
         let value = 2
         # Handle both outcomes.
         # Keep these comments together.
@@ -167,19 +167,19 @@ impl Run for Runner:
             _:
                 return 2
 # Application entry.
-fn main() -> Int: return 0
+fn main() Int: return 0
 `,
 			want: `# A public contract.
 export interface Run:
-    fn first() -> Int
-    fn second() -> Int
+    fn first() Int
+    fn second() Int
 
 # The implementation.
 impl Run for Runner:
-    fn first() -> Int: return 1
+    fn first() Int: return 1
 
     # Explain the second operation.
-    fn second() -> Int:
+    fn second() Int:
         let value = 2
 
         # Handle both outcomes.
@@ -191,16 +191,16 @@ impl Run for Runner:
                 return 2
 
 # Application entry.
-fn main() -> Int: return 0
+fn main() Int: return 0
 `,
 		},
 		{
 			name: "nested closure paragraphs",
-			source: `fn example() -> Int:
+			source: `fn example() Int:
     let result = apply(
         value: 3,
         transform: (
-            fn(value: Int) -> Int:
+            fn(value: Int) Int:
                 if value == 0: return 0
                 let next = value + 1
                 return next
@@ -208,11 +208,11 @@ fn main() -> Int: return 0
     )
     return result
 `,
-			want: `fn example() -> Int:
+			want: `fn example() Int:
     let result = apply(
         value: 3,
         transform: (
-            fn(value: Int) -> Int:
+            fn(value: Int) Int:
                 if value == 0: return 0
 
                 let next = value + 1
@@ -225,7 +225,7 @@ fn main() -> Int: return 0
 		{
 			name: "discard author paragraphs and retain different indent comments",
 			source: `# File introduction.
-fn example() -> Int:
+fn example() Int:
     let first = 1
 
 
@@ -238,7 +238,7 @@ fn example() -> Int:
     return second
 `,
 			want: `# File introduction.
-fn example() -> Int:
+fn example() Int:
     let first = 1
     # A deliberate new step.
     let second = first + 1
@@ -256,7 +256,7 @@ fn example() -> Int:
         first: 1,
         second: 2
     )
-) -> Int:
+) Int:
     let text = "# if value: return {value}"
     let next = choose(
         first: value,
@@ -269,7 +269,7 @@ fn example() -> Int:
     ): return next
     return 0
 `,
-			want: `fn example(value: Int = choose(first: 1, second: 2)) -> Int:
+			want: `fn example(value: Int = choose(first: 1, second: 2)) Int:
     let text = "# if value: return {value}"
     let next = choose(
         first: value,

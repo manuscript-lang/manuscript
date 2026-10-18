@@ -12,7 +12,7 @@ import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
 # Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.
-fn stream_events(exchange: HttpExchange) -> Result[Unit, HttpError]:
+fn stream_events(exchange: HttpExchange) Result[Unit, HttpError]:
     let sent = headers()
     sent.append("Content-Type", "text/event-stream".to_bytes()) | value
     exchange.send_headers(status: 200, headers: sent) | value

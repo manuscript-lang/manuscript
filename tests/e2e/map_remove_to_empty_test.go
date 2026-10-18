@@ -11,7 +11,7 @@ import (
 func TestMapAndSetRemoveToEmptyThenAdd(t *testing.T) {
 	source := `import panic from "@std/faults.ms"
 
-export fn main() -> Int:
+export fn main() Int:
     let m = Map[String, Int]()
     m.add(key: "cap", value: 1)
     m.remove("cap")

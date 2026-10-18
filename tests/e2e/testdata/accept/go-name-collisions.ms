@@ -7,26 +7,26 @@ type Spelled:
     aB: Int
 
 interface Methods:
-    fn foo_bar() -> Int
-    fn fooBar() -> Int
+    fn foo_bar() Int
+    fn fooBar() Int
 
 impl Methods for Spelled:
-    fn foo_bar() -> Int:
+    fn foo_bar() Int:
         return self.x_
 
-    fn fooBar() -> Int:
+    fn fooBar() Int:
         return self.x
 
-fn string(value: Int) -> Int:
+fn string(value: Int) Int:
     return value + 1
 
-fn int(value: Int) -> Int:
+fn int(value: Int) Int:
     return value + 2
 
-fn float64(value: Int) -> Int:
+fn float64(value: Int) Int:
     return value + 3
 
-fn nil(value: Int) -> Int:
+fn nil(value: Int) Int:
     return value + 4
 
 test "field names that differ only in underscores stay distinct":
@@ -62,7 +62,7 @@ type Shape:
 type Shape_Circle:
     radius: String
 
-fn side(shape: Shape) -> Int:
+fn side(shape: Shape) Int:
     match shape:
         Circle(radius): return radius
         Square(side): return side
@@ -75,19 +75,19 @@ test "declared names stay apart from instantiation and case names":
     if Shape_Circle(radius: "r").radius != "r": return panic("declared case-like name")
 
 interface Counter:
-    fn count() -> Int
+    fn count() Int
 
 type Tally:
     total: Int
 
 impl Counter for Tally:
-    fn count() -> Int:
+    fn count() Int:
         return self.total
 
 type Counter_Tally:
     other: Int
 
-fn clone_Tally(tally: Tally) -> Int:
+fn clone_Tally(tally: Tally) Int:
     return tally.total + 1
 
 test "view and helper names stay apart from declared names":
@@ -98,14 +98,14 @@ test "view and helper names stay apart from declared names":
     if copy.total != 1 or clone_Tally(tally) != 2: return panic("helper")
 
 interface Reporter:
-    fn describe() -> String
-    fn receiver() -> String
+    fn describe() String
+    fn receiver() String
 
 impl Reporter for Tally:
-    fn describe() -> String:
+    fn describe() String:
         return "describe {self.total}"
 
-    fn receiver() -> String:
+    fn receiver() String:
         return "receiver {self.total}"
 
 test "operations named like generated view methods stay callable":

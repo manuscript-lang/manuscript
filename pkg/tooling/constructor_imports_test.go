@@ -17,7 +17,7 @@ func TestConstructorNamesRetainImports(t *testing.T) {
 		{"CsvOptions", "csv", `CsvOptions(delimiter: ",", line_ending: "\\n")`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source := "import " + tc.name + " from \"@std/" + tc.module + ".ms\"\nfn example() -> Unit:\n    " + tc.expression + "\n"
+			source := "import " + tc.name + " from \"@std/" + tc.module + ".ms\"\nfn example() Unit:\n    " + tc.expression + "\n"
 			checked := compiler.CompileSource("source.ms", source, compiler.Options{AnalyzeOnly: true})
 			if !checked.Success() {
 				t.Fatal(checked.Diagnostics)
@@ -33,7 +33,7 @@ func TestConstructorNamesRetainImports(t *testing.T) {
 
 func TestShadowedConstructorNameDoesNotRetainImport(t *testing.T) {
 	source := `import CsvOptions from "@std/csv.ms"
-fn example(CsvOptions: fn() -> Unit) -> Unit:
+fn example(CsvOptions: fn() Unit) Unit:
     CsvOptions()
 `
 	checked := compiler.CompileSource("source.ms", source, compiler.Options{AnalyzeOnly: true})

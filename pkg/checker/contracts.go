@@ -618,9 +618,9 @@ func (c *checker) withNotCloseableMessage(t *Type) string {
 		return "with needs a Closeable value, but this expression is " + name + "; unwrap it first with 'try' (inside a function that returns a compatible Result) or 'if let'"
 	}
 	if t.Def == nil || t.Def.Symbol == nil || t.Def.Symbol.Native != "" || (t.Kind != syntax.KindRecord && t.Kind != "alternative") {
-		return "with needs a Closeable value, but this expression is " + name + ", which cannot implement Closeable; bind a source type that has 'impl Closeable' or declares close() -> Unit"
+		return "with needs a Closeable value, but this expression is " + name + ", which cannot implement Closeable; bind a source type that has 'impl Closeable' or declares close() Unit"
 	}
-	return "with requires an explicit Closeable implementation or a contract declaring close() -> Unit; " + name + " has none, so add 'impl Closeable for " + name + ":' with fn close() -> Unit"
+	return "with requires an explicit Closeable implementation or a contract declaring close() Unit; " + name + " has none, so add 'impl Closeable for " + name + ":' with fn close() Unit"
 }
 
 func operationNames(ops []Operation) []string {

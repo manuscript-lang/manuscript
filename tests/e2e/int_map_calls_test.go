@@ -10,11 +10,11 @@ import (
 func TestIntKeyedMapCallsKeepSemantics(t *testing.T) {
 	result := compiler.CompileSource("int-map.ms", `import panic from "@std/faults.ms"
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
-fn lookup(m: Map[Int, String], key: Int) -> String:
+fn lookup(m: Map[Int, String], key: Int) String:
     match m.get(key: key):
         some(v):
             return v
@@ -46,11 +46,11 @@ test "int map":
 func TestStringKeyedMapCallsKeepSemantics(t *testing.T) {
 	result := compiler.CompileSource("string-map.ms", `import panic from "@std/faults.ms"
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
-fn lookup(m: Map[String, Int], key: String) -> Int:
+fn lookup(m: Map[String, Int], key: String) Int:
     match m.get(key: key):
         some(v):
             return v

@@ -6,7 +6,7 @@ import (
 )
 
 func TestPartialParserPreservesPositionsAndStrictFailure(t *testing.T) {
-	source := "# prefix\r\nfn good(input: Int) -> Int:\r\n    return input\r\nfn broken(\r\nfn later() -> Int:\r\n    return 2\r\n"
+	source := "# prefix\r\nfn good(input: Int) Int:\r\n    return input\r\nfn broken(\r\nfn later() Int:\r\n    return 2\r\n"
 	if _, err := Parse("source.ms", source); err == nil {
 		t.Fatal("strict parser accepted incomplete source")
 	}
@@ -21,7 +21,7 @@ func TestPartialParserPreservesPositionsAndStrictFailure(t *testing.T) {
 }
 
 func FuzzParsePartial(f *testing.F) {
-	for _, seed := range []string{"", "fn unfinished(\nfn valid() -> Int:\n    return 1\n", "type Box:\n    value: String\n", "# 😀\r\nfn read() -> Int:\r\n    return 2\r\n", "fn (\n", "export type [\n"} {
+	for _, seed := range []string{"", "fn unfinished(\nfn valid() Int:\n    return 1\n", "type Box:\n    value: String\n", "# 😀\r\nfn read() Int:\r\n    return 2\r\n", "fn (\n", "export type [\n"} {
 		f.Add(seed)
 	}
 	f.Fuzz(func(t *testing.T, source string) {
@@ -43,7 +43,7 @@ func FuzzParsePartial(f *testing.F) {
 }
 
 func TestPartialGroupedImportsPreserveSymbolOffsets(t *testing.T) {
-	source := "fn first() -> Int:\n    return 1\nimport {\nListBuilder,\nMapBuilder,\n} from \"@std/collections.ms\"\nfn broken(\nfn later() -> Int:\n    return 2\n"
+	source := "fn first() Int:\n    return 1\nimport {\nListBuilder,\nMapBuilder,\n} from \"@std/collections.ms\"\nfn broken(\nfn later() Int:\n    return 2\n"
 	module, issues := ParsePartial("grouped.ms", source)
 	if len(issues) == 0 || len(module.Imports) != 2 || len(module.Declarations) != 2 {
 		t.Fatal(module, issues)
@@ -56,7 +56,7 @@ func TestPartialGroupedImportsPreserveSymbolOffsets(t *testing.T) {
 }
 
 func TestPartialDefaultsPreserveExpressionPositions(t *testing.T) {
-	source := "fn broken(\nfn later(first: Int = 3, second: Int = first + 1) -> Int:\n    return second\n"
+	source := "fn broken(\nfn later(first: Int = 3, second: Int = first + 1) Int:\n    return second\n"
 	module, issues := ParsePartial("defaults.ms", source)
 	if len(issues) == 0 || len(module.Declarations) != 1 {
 		t.Fatal(module, issues)
@@ -70,21 +70,21 @@ func TestPartialDefaultsPreserveExpressionPositions(t *testing.T) {
 func TestPartialMultilineDeclarations(t *testing.T) {
 	for _, ending := range []string{"\n", "\r\n"} {
 		source := strings.ReplaceAll(`# prefix
-fn first() -> Int:
+fn first() Int:
     return 1
 export fn echo(
 value: String,
-) -> String:
+) String:
     return value
 fn sum[
 T,
 ](
 left: Int,
 right: Int,
-) -> Int:
+) Int:
     return left + right
 fn broken(
-fn later() -> Int:
+fn later() Int:
     return 2
 `, "\n", ending)
 		module, issues := ParsePartial("multiline.ms", source)
@@ -111,7 +111,7 @@ fn later() -> Int:
 func TestPartialMatchExpressionPositions(t *testing.T) {
 	for _, ending := range []string{"\n", "\r\n"} {
 		source := strings.ReplaceAll(`fn broken(
-fn later(values: List[Int]) -> Int:
+fn later(values: List[Int]) Int:
     let result = match values[0]:
         some(number):
             let doubled = number * 2
@@ -132,7 +132,7 @@ fn later(values: List[Int]) -> Int:
 
 func TestPartialIndexCandidatesOwnTheirPositions(t *testing.T) {
 	source := `fn broken(
-fn later(values: List[Int]) -> Unit:
+fn later(values: List[Int]) Unit:
     let field = values[holder . index]
     let nested = values[indices[index]]
 `
@@ -153,7 +153,7 @@ fn later(values: List[Int]) -> Unit:
 }
 
 func TestPartialRecoversAroundInvalidStatement(t *testing.T) {
-	source := "fn work(a: Int) -> Int:\r\n    let b = a + 1\r\n    let c = = 3\r\n    if b > 0:\r\n        let d = )\r\n        let e = b\r\n    return b\r\n"
+	source := "fn work(a: Int) Int:\r\n    let b = a + 1\r\n    let c = = 3\r\n    if b > 0:\r\n        let d = )\r\n        let e = b\r\n    return b\r\n"
 	module, issues := ParsePartial("source.ms", source)
 	if len(module.Declarations) != 1 || len(module.Omitted) != 0 || len(issues) != 2 {
 		t.Fatal(module.Declarations, module.Omitted, issues)
@@ -168,21 +168,21 @@ func TestPartialRecoversAroundInvalidStatement(t *testing.T) {
 }
 
 func TestPartialOmitsDeclarationWithInvalidSignature(t *testing.T) {
-	module, _ := ParsePartial("source.ms", "fn broken(a: ) -> Int:\n    return 1\nfn ok() -> Int:\n    return 2\n")
+	module, _ := ParsePartial("source.ms", "fn broken(a: ) Int:\n    return 1\nfn ok() Int:\n    return 2\n")
 	if len(module.Declarations) != 1 || len(module.Omitted) != 1 || module.Omitted[0] != "broken" || len(module.Recovered) != 0 {
 		t.Fatal(module)
 	}
 }
 
 func TestPartialOmitsDeclarationWhenInvalidStatementIsAnEntireBlock(t *testing.T) {
-	module, _ := ParsePartial("source.ms", "fn a() -> Int:\n    if true:\n        let y = = 3\n    return 1\n")
+	module, _ := ParsePartial("source.ms", "fn a() Int:\n    if true:\n        let y = = 3\n    return 1\n")
 	if len(module.Declarations) != 0 || len(module.Omitted) != 1 {
 		t.Fatal(module)
 	}
 }
 
 func TestPartialReportsRecoveredIssuesInSourceOrder(t *testing.T) {
-	_, issues := ParsePartial("source.ms", "fn a() -> Int:\n    if true:\n        let y = = 3\n        let z = 1\n    let w = = 4\n    return 1\n")
+	_, issues := ParsePartial("source.ms", "fn a() Int:\n    if true:\n        let y = = 3\n        let z = 1\n    let w = = 4\n    return 1\n")
 	for index := 1; index < len(issues); index++ {
 		if issues[index].Position.Offset < issues[index-1].Position.Offset {
 			t.Fatal(issues)
@@ -192,7 +192,7 @@ func TestPartialReportsRecoveredIssuesInSourceOrder(t *testing.T) {
 
 func TestPartialRecoversAroundUnterminatedDelimiter(t *testing.T) {
 	for _, opener := range []string{"(", "[", "add(a: 1,"} {
-		source := "fn add(a: Int, b: Int) -> Int:\r\n    return a + b\r\n\r\nexport fn main() -> Int:\r\n    let s = add(a: 1, b: 2)\r\n    let q = " + opener + "\r\n    return s\r\n"
+		source := "fn add(a: Int, b: Int) Int:\r\n    return a + b\r\n\r\nexport fn main() Int:\r\n    let s = add(a: 1, b: 2)\r\n    let q = " + opener + "\r\n    return s\r\n"
 		module, issues := ParsePartial("source.ms", source)
 		if len(module.Declarations) != 2 || len(module.Omitted) != 0 || len(issues) != 1 {
 			t.Fatal(opener, module.Declarations, module.Omitted, issues)

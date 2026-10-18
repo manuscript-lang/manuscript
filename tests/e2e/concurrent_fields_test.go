@@ -16,13 +16,13 @@ export type Counter:
     hits: Int
     last: String
 
-export fn main() -> Int:
+export fn main() Int:
     let counter = Counter(hits: 0, last: "")
     with tasks = TaskGroup():
         var t = 0
         while t < 8:
             let id = t
-            tasks.start(fn() -> Int:
+            tasks.start(fn() Int:
                 var i = 0
                 while i < 2000:
                     counter.hits = counter.hits + 1

@@ -4,29 +4,23 @@ import JsonLimits from "@std/json.ms"
 type Counter:
     calls: Int
 
-fn bump(counter: Counter) -> Int:
+fn bump(counter: Counter) Int:
     counter.calls = counter.calls + 1
     return 9
 
-fn map_result[T, E, U](
-    value: Result[T, E],
-    transform: fn(value: T) -> U
-) -> Result[U, E]:
+fn map_result[T, E, U](value: Result[T, E], transform: fn(value: T) U) Result[U, E]:
     return value.map(transform)
 
 fn chain_result[T, E, U](
     value: Result[T, E],
-    transform: fn(value: T) -> Result[U, E]
-) -> Result[U, E]:
+    transform: fn(value: T) Result[U, E]
+) Result[U, E]:
     return value.and_then(transform)
 
-fn map_optional[T, U](value: Optional[T], transform: fn(value: T) -> U) -> Optional[U]:
+fn map_optional[T, U](value: Optional[T], transform: fn(value: T) U) Optional[U]:
     return value.map(transform)
 
-fn map_set[T: Hashable, U: Hashable](
-    values: Set[T],
-    transform: fn(value: T) -> U
-) -> Set[U]:
+fn map_set[T: Hashable, U: Hashable](values: Set[T], transform: fn(value: T) U) Set[U]:
     return values.map[U](transform)
 
 test "core parity operations are callable":
@@ -69,7 +63,7 @@ test "Result preserves unconstrained payloads and success-only composition":
     let counter = Counter(0)
     let failure: Result[Int, Counter] = error(counter)
     let success: Result[Int, Counter] = ok(0)
-    let transform = fn(value: Int) -> String:
+    let transform = fn(value: Int) String:
         counter.calls = counter.calls + 1
         return value.toString()
     let skipped = map_result(failure, transform)
@@ -82,7 +76,7 @@ test "Result preserves unconstrained payloads and success-only composition":
     let mapped = success.map(transform: transform)
     if mapped.unwrap() != "0" or counter.calls != 3: return panic("map success")
 
-    let chain = fn(value: Int) -> Result[String, Counter]:
+    let chain = fn(value: Int) Result[String, Counter]:
         counter.calls = counter.calls + 1
         return error(counter)
     let propagated = chain_result(failure, chain)
@@ -122,7 +116,7 @@ test "Result fallbacks are eager or lazy and bound methods keep receivers":
     if success.unwrap_or(bump(counter)) != 0 or counter.calls != 1:
         return panic("eager fallback evaluation")
 
-    let create = fn(cause: Counter) -> Int:
+    let create = fn(cause: Counter) Int:
         cause.calls = cause.calls + 1
         return 12
     let lazy = success.unwrap_or_else
@@ -148,7 +142,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
     let counter = Counter(0)
     let present: Optional[Counter] = some(counter)
     let missing: Optional[Counter] = none
-    let transform = fn(value: Counter) -> Counter:
+    let transform = fn(value: Counter) Counter:
         value.calls = value.calls + 1
         return value
     if not (map_optional(missing, transform).is_none()) or counter.calls != 0:
@@ -167,7 +161,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
     let absent = present.and_then(fn(unused): Optional[Int].none)
     if not (absent.is_none()): return panic("and_then wrapped none")
 
-    let create = fn() -> Optional[Counter]:
+    let create = fn() Optional[Counter]:
         counter.calls = counter.calls + 1
         return some(counter)
     let bound = present.or_else
@@ -249,13 +243,13 @@ type Key:
     label: String
 
 impl Equal for Key:
-    fn equals(other: Equal) -> Bool:
+    fn equals(other: Equal) Bool:
         match other:
             Key(value): return self.id == value.id
             _: return false
 
 impl Hashable for Key:
-    fn hash() -> Int: 0
+    fn hash() Int: 0
 
 test "Set filter and map copy snapshots and deduplicate in first-result order":
     let values = Set[Int]().add(3).add(1).add(2)

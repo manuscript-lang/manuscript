@@ -26,7 +26,7 @@ func TestBuildTypes(t *testing.T) {
 	if _, err := compiler.ParseBuildType("Fast"); err == nil {
 		t.Fatal("accepted unknown build type")
 	}
-	result := compiler.CompileSource("main.ms", "export fn main() -> Int:\n    return 0\n", compiler.Options{Entry: true})
+	result := compiler.CompileSource("main.ms", "export fn main() Int:\n    return 0\n", compiler.Options{Entry: true})
 	if _, err := build.BuildCheckedWithType(result, filepath.Join(t.TempDir(), "program"), "Fast"); err == nil {
 		t.Fatal("build accepted unknown build type")
 	}
@@ -35,7 +35,7 @@ func TestBuildTypes(t *testing.T) {
 func TestNativeBuildTypes(t *testing.T) {
 	root := t.TempDir()
 	filename := filepath.Join(root, "main.ms")
-	if err := os.WriteFile(filename, []byte("export fn main() -> Int:\n    return 0\n"), 0600); err != nil {
+	if err := os.WriteFile(filename, []byte("export fn main() Int:\n    return 0\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	result := compiler.CompileFile(filename, compiler.Options{Entry: true})

@@ -8,11 +8,11 @@ import (
 )
 
 func TestTypedNumericFaults(t *testing.T) {
-	result := compiler.CompileSource("numeric-faults.ms", `fn add(a: Int, b: Int) -> Int: return a + b
-fn subtract(a: Int, b: Int) -> Int: return a - b
-fn multiply(a: Int, b: Int) -> Int: return a * b
-fn divide(a: Int, b: Int) -> Int: return a / b
-fn remainder(a: Int, b: Int) -> Int: return a % b
+	result := compiler.CompileSource("numeric-faults.ms", `fn add(a: Int, b: Int) Int: return a + b
+fn subtract(a: Int, b: Int) Int: return a - b
+fn multiply(a: Int, b: Int) Int: return a * b
+fn divide(a: Int, b: Int) Int: return a / b
+fn remainder(a: Int, b: Int) Int: return a % b
 test "add high":
     let bad = add(a: 9223372036854775807, b: 1)
 test "add low":
@@ -44,9 +44,9 @@ test "remainder zero":
 func TestTypedNegation(t *testing.T) {
 	result := compiler.CompileSource("negation.ms", `import panic from "@std/faults.ms"
 
-fn negate(a: Int) -> Int: return -a
-fn flip(a: Float) -> Float: return -a
-fn check(ok: Bool, name: String) -> Unit:
+fn negate(a: Int) Int: return -a
+fn flip(a: Float) Float: return -a
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 test "negation":
@@ -78,18 +78,18 @@ type Folded:
     name: String
 
 impl Equal for Folded:
-    fn equals(other: Equal) -> Bool:
+    fn equals(other: Equal) Bool:
         return true
 
 impl Hashable for Folded:
-    fn hash() -> Int:
+    fn hash() Int:
         return 1
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
-fn replace_first[T](xs: List[T], value: T) -> List[T]:
+fn replace_first[T](xs: List[T], value: T) List[T]:
     return xs.set(index: 0, value: value)
 
 test "string members":
@@ -106,7 +106,7 @@ test "custom equality is kept for bound members":
     a.add(value: Folded(name: "x"))
     a.add(value: Folded(name: "y"))
     check(ok: a.length() == 1, name: "set add uses Equal")
-    let mapped = a.map(transform: fn(value: Folded) -> Folded: return Folded(name: "z"))
+    let mapped = a.map(transform: fn(value: Folded) Folded: return Folded(name: "z"))
     check(ok: mapped.length() == 1, name: "set map deduplicates")
 test "builder":
     let sb = StringBuilder()
@@ -128,33 +128,33 @@ test "sealed builder":
 func TestNestedTryReturnsInSourceOrder(t *testing.T) {
 	result := compiler.CompileSource("nested_try.ms", `import panic from "@std/faults.ms"
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 
-fn step(log: List[String], name: String, n: Int) -> Result[Int, String]:
+fn step(log: List[String], name: String, n: Int) Result[Int, String]:
     log.append(value: name)
     if n < 0:
         return error(cause: name)
     return ok(value: n)
 
-fn add(x: Int, y: Int) -> Int:
+fn add(x: Int, y: Int) Int:
     return x + y
 
-fn sum(log: List[String], a: Int, b: Int) -> Result[Int, String]:
+fn sum(log: List[String], a: Int, b: Int) Result[Int, String]:
     let v = (try step(log: log, name: "a", n: a)) + (try step(log: log, name: "b", n: b))
     log.append(value: "done")
     return ok(value: v)
 
-fn arguments(log: List[String], a: Int, b: Int) -> Result[Int, String]:
+fn arguments(log: List[String], a: Int, b: Int) Result[Int, String]:
     return ok(value: add(x: try step(log: log, name: "x", n: a), y: try step(log: log, name: "y", n: b)))
 
-fn effect_first(log: List[String], a: Int) -> Result[Int, String]:
+fn effect_first(log: List[String], a: Int) Result[Int, String]:
     log.append(value: "before")
     let v = add(x: 1, y: try step(log: log, name: "s", n: a))
     return ok(value: v)
 
-fn loop(log: List[String], n: Int) -> Result[Int, String]:
+fn loop(log: List[String], n: Int) Result[Int, String]:
     var total = 0
     var i = 0
     while i < n:
@@ -162,10 +162,10 @@ fn loop(log: List[String], n: Int) -> Result[Int, String]:
         i = i + 1
     return ok(value: total)
 
-fn joined(log: List[String]) -> Result[String, String]:
+fn joined(log: List[String]) Result[String, String]:
     return ok(value: "{try step(log: log, name: "p", n: 1)}-{try step(log: log, name: "q", n: -1)}")
 
-fn text(log: List[String]) -> String:
+fn text(log: List[String]) String:
     return log.join(separator: ",")
 
 test "nested try":

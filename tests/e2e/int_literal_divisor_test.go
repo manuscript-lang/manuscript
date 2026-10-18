@@ -10,7 +10,7 @@ import (
 func TestIntLiteralDivisorsKeepSemantics(t *testing.T) {
 	result := compiler.CompileSource("int-literal-divisor.ms", `import panic from "@std/faults.ms"
 
-fn check(ok: Bool, name: String) -> Unit:
+fn check(ok: Bool, name: String) Unit:
     if not ok:
         return panic(message: name)
 

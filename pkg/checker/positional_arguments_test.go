@@ -23,7 +23,7 @@ func TestArgumentBindingPreservesWrittenOrderAndSource(t *testing.T) {
 		{"f()", ""},
 	} {
 		t.Run(tc.call, func(t *testing.T) {
-			source := "fn f(first: Int = 1, second: Int = 2, third: Int = 3) -> Int: first\nfn run(first: Int, second: Int, third: Int) -> Int: " + tc.call + "\n"
+			source := "fn f(first: Int = 1, second: Int = 2, third: Int = 3) Int: first\nfn run(first: Int, second: Int, third: Int) Int: " + tc.call + "\n"
 			m, err := parser.Parse("arguments.ms", source)
 			if err != nil {
 				t.Fatal(err)
@@ -55,20 +55,20 @@ func TestPositionalArgumentDiagnostics(t *testing.T) {
 		name, declarations, call, cause string
 		count                           int
 	}{
-		{"missing", "fn f(first: Int, second: Int) -> Int: first", "f(1)", "missing argument second", 1},
-		{"default before required", "fn f(first: Int = 1, second: Int) -> Int: second", "f(2)", "missing argument second", 1},
-		{"excess", "fn f(first: Int, second: Int) -> Int: first", "f(1, 2, 3)", "too many positional arguments", 1},
-		{"nullary", "fn f() -> Int: 1", "f(1)", "too many positional arguments", 1},
-		{"duplicate mixed", "fn f(first: Int, second: Int = 2) -> Int: first", "f(1, first: 2)", "duplicate argument first", 1},
-		{"duplicate label", "fn f(first: Int) -> Int: first", "f(first: 1, first: 2)", "duplicate argument first", 1},
-		{"unknown label", "fn f(first: Int) -> Int: first", "f(other: 1, 2)", "unknown argument other", 1},
-		{"wrong type", "fn f(first: Int, second: Bool) -> Int: first", "f(1, 2)", "expected Bool, found Int", 1},
+		{"missing", "fn f(first: Int, second: Int) Int: first", "f(1)", "missing argument second", 1},
+		{"default before required", "fn f(first: Int = 1, second: Int) Int: second", "f(2)", "missing argument second", 1},
+		{"excess", "fn f(first: Int, second: Int) Int: first", "f(1, 2, 3)", "too many positional arguments", 1},
+		{"nullary", "fn f() Int: 1", "f(1)", "too many positional arguments", 1},
+		{"duplicate mixed", "fn f(first: Int, second: Int = 2) Int: first", "f(1, first: 2)", "duplicate argument first", 1},
+		{"duplicate label", "fn f(first: Int) Int: first", "f(first: 1, first: 2)", "duplicate argument first", 1},
+		{"unknown label", "fn f(first: Int) Int: first", "f(other: 1, 2)", "unknown argument other", 1},
+		{"wrong type", "fn f(first: Int, second: Bool) Int: first", "f(1, 2)", "expected Bool, found Int", 1},
 		{"constructor missing", "type Pair:\n    first: Int\n    second: Int", "Pair(1)", "missing argument second", 1},
 		{"constructor excess", "type Pair:\n    first: Int\n    second: Int", "Pair(1, 2, 3)", "too many positional arguments", 1},
-		{"callback labels remain identity", "fn f(n: Int) -> Int: n\nfn apply(callback: fn(value: Int) -> Int, input: Int) -> Int: callback(input)", "apply(f, 1)", "expects value", 1},
+		{"callback labels remain identity", "fn f(n: Int) Int: n\nfn apply(callback: fn(value: Int) Int, input: Int) Int: callback(input)", "apply(f, 1)", "expects value", 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			m, err := parser.Parse("arguments.ms", tc.declarations+"\nfn run() -> Unit:\n    let ignored = "+tc.call+"\n")
+			m, err := parser.Parse("arguments.ms", tc.declarations+"\nfn run() Unit:\n    let ignored = "+tc.call+"\n")
 			if err != nil {
 				t.Fatal(err)
 			}

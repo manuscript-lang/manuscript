@@ -10,9 +10,9 @@ export let MAX_ITEMS = 100
 let NAMES: List[String] = ["a"]
 let LIMIT = MAX_ITEMS * 2
 
-fn is_full(count: Int) -> Bool:
+fn is_full(count: Int) Bool:
     return count >= LIMIT
-fn names() -> Int:
+fn names() Int:
     return NAMES.length()
 `
 
@@ -63,7 +63,7 @@ func TestConstantDocumentSymbolsAreConstants(t *testing.T) {
 }
 
 func TestHoverSurvivesSyntaxErrorInsideCalledFunction(t *testing.T) {
-	source := "fn work(a: Int) -> Int:\n    let b = a + 1\n    let c = = 3\n    return b\n\nexport fn main() -> Int:\n    return work(2)\n"
+	source := "fn work(a: Int) Int:\n    let b = a + 1\n    let c = = 3\n    return b\n\nexport fn main() Int:\n    return work(2)\n"
 	d := document{"file:///tmp/recovered.ms", source, 1}
 	checked := analyze(d, map[string]document{d.URI: d})
 	if len(checked.Diagnostics) != 1 {
@@ -77,7 +77,7 @@ func TestHoverSurvivesSyntaxErrorInsideCalledFunction(t *testing.T) {
 
 func TestNavigationSurvivesUnterminatedDelimiterInsideBody(t *testing.T) {
 	for _, newline := range []string{"\n", "\r\n"} {
-		source := strings.ReplaceAll("fn add(a: Int, b: Int) -> Int:\n    return a + b\n\nexport fn main() -> Int:\n    let label = \"héllo 😀\"\n    let s = add(a: 1, b: 2)\n    let q = (\n    return s\n", "\n", newline)
+		source := strings.ReplaceAll("fn add(a: Int, b: Int) Int:\n    return a + b\n\nexport fn main() Int:\n    let label = \"héllo 😀\"\n    let s = add(a: 1, b: 2)\n    let q = (\n    return s\n", "\n", newline)
 		d := document{"file:///tmp/unterminated.ms", source, 1}
 		checked := analyze(d, map[string]document{d.URI: d})
 		if len(checked.Diagnostics) == 0 {

@@ -17,23 +17,23 @@ import (
 const fileFixtureSource = `import {TestHooks, expect_equal, fail, skip} from "@std/testing.ms"
 import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
-fn println(message: String) -> Unit:
+fn println(message: String) Unit:
     if stdout().write("{message}\n".to_bytes()).is_error(): return panic("cannot write fixture transcript")
 
 type State:
     value: Int
-fn make_fixture() -> State:
+fn make_fixture() State:
     println("factory")
     return State(0)
 impl TestHooks for State:
-    fn before_all() -> Unit:
+    fn before_all() Unit:
         println("before_all")
-    fn before_each() -> Unit:
+    fn before_each() Unit:
         self.value = self.value + 1
         println("before_each")
-    fn after_each() -> Unit:
+    fn after_each() Unit:
         println("after_each")
-    fn after_all() -> Unit:
+    fn after_all() Unit:
         println("after_all {self.value}")
 test "first":
     try expect_equal(fixture.value, 1)
@@ -106,12 +106,12 @@ func TestCLITestFileFixtureListAndDefaultHooks(t *testing.T) {
 	source := `import {TestHooks, expect_equal} from "@std/testing.ms"
 import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
-fn println(message: String) -> Unit:
+fn println(message: String) Unit:
     if stdout().write("{message}\n".to_bytes()).is_error(): return panic("cannot write fixture transcript")
 
 type State:
     value: Int
-fn make_fixture() -> State:
+fn make_fixture() State:
     println("FACTORY")
     return State(7)
 impl TestHooks for State:
@@ -143,12 +143,12 @@ import {HttpServer, HttpRequest, HttpResponse, HttpMethod, headers} from "@std/h
 import network from "@std/net.ms"
 type ApiFixture:
     server: HttpServer
-fn handle(request: HttpRequest) -> HttpResponse:
+fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(status: 200, headers: headers(), body: "shared".to_bytes())
-fn make_fixture() -> ApiFixture:
+fn make_fixture() ApiFixture:
     return ApiFixture(server: network().serve(address: "127.0.0.1:0", handler: handle).unwrap())
 impl TestHooks for ApiFixture:
-    fn after_all() -> Unit:
+    fn after_all() Unit:
         self.server.close()
 test "first request":
     let response = try expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: "".to_bytes()))
@@ -175,7 +175,7 @@ func TestCLITestFixturesStayLocalToEachFile(t *testing.T) {
 	a := strings.ReplaceAll(source, `println("factory")`, `println("factory A")`)
 	b := strings.ReplaceAll(source, `println("factory")`, `println("factory B")`)
 	a = "import helper from \"./other.ms\"\n" + a
-	b = "export fn helper() -> Unit:\n    return\n" + b
+	b = "export fn helper() Unit:\n    return\n" + b
 	path := filepath.Join(root, "test.ms")
 	if err := os.WriteFile(path, []byte(a), 0600); err != nil {
 		t.Fatal(err)
@@ -260,13 +260,13 @@ import panic from "@std/faults.ms"
 type UnusedFixture:
     value: Int
 impl TestHooks for UnusedFixture:
-    fn before_all() -> Unit:
+    fn before_all() Unit:
         panic("unused before_all must not run")
-    fn before_each() -> Unit:
+    fn before_each() Unit:
         panic("unused before_each must not run")
-    fn after_each() -> Unit:
+    fn after_each() Unit:
         panic("unused after_each must not run")
-    fn after_all() -> Unit:
+    fn after_all() Unit:
         panic("unused after_all must not run")
 test "plain test":
     try expect_equal(1 + 1, 2)

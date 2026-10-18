@@ -2,7 +2,7 @@ import {parse, format, compare, Version, SemverError} from "@std/semver.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
-fn failure(result: Result[Version, SemverError]) -> SemverError:
+fn failure(result: Result[Version, SemverError]) SemverError:
     if result.is_ok(): return panic("accepted")
 
     return result.unwrap_error()

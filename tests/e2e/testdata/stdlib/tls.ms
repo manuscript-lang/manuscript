@@ -8,7 +8,7 @@ import panic from "@std/faults.ms"
 import {certificate, private_key} from "./support/certificates.ms"
 import value from "./support/results.ms"
 
-fn hello(exchange: HttpExchange) -> Result[Unit, HttpError]:
+fn hello(exchange: HttpExchange) Result[Unit, HttpError]:
     let started = exchange.send_headers(
         status: 200,
         headers: list_headers(Map[String, List[String]]())

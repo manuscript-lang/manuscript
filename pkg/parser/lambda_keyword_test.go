@@ -10,7 +10,7 @@ import (
 
 func TestBlockLambdaCommaDiagnostic(t *testing.T) {
 	for _, newline := range []string{"\n", "\r\n"} {
-		source := strings.ReplaceAll("fn before() -> Int: 0\nfn broken() -> Int:\n    return apply(\n        op: fn(value: Int) -> Int:\n            return value + 1,\n        times: 3\n    )\nfn after() -> Int: 2\n", "\n", newline)
+		source := strings.ReplaceAll("fn before() Int: 0\nfn broken() Int:\n    return apply(\n        op: fn(value: Int) Int:\n            return value + 1,\n        times: 3\n    )\nfn after() Int: 2\n", "\n", newline)
 		_, err := parser.Parse("comma.ms", source)
 		d, ok := err.(syntax.Diagnostic)
 		if !ok || !strings.Contains(d.Message, "comma on its own line dedented to the fn header") || d.Position.Offset != strings.Index(source, ",") || d.Position.Line != 5 {
@@ -29,7 +29,7 @@ func TestBlockLambdaCommaDiagnostic(t *testing.T) {
 		}
 	}
 	// An ordinary function must retain the general statement diagnostic.
-	_, err := parser.Parse("ordinary.ms", "fn f() -> Int:\n    return 1,\n")
+	_, err := parser.Parse("ordinary.ms", "fn f() Int:\n    return 1,\n")
 	if err == nil || strings.Contains(err.Error(), "dedented") {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestBlockLambdaCommaDiagnostic(t *testing.T) {
 
 func TestUnitBindingKeywordDiagnostic(t *testing.T) {
 	for _, binding := range []string{"let unit", "var unit", "let [unit]", "let {value: unit}"} {
-		source := "fn before() -> Unit: unit\nfn broken() -> Unit:\n    " + binding + " = read_hex4()\nfn after() -> Unit: unit\n"
+		source := "fn before() Unit: unit\nfn broken() Unit:\n    " + binding + " = read_hex4()\nfn after() Unit: unit\n"
 		_, err := parser.Parse("unit.ms", source)
 		d, ok := err.(syntax.Diagnostic)
 		if !ok || !strings.Contains(d.Message, "unit is a reserved value keyword") || !strings.Contains(d.Message, "choose another name") || d.Position.Line != 3 {
@@ -48,7 +48,7 @@ func TestUnitBindingKeywordDiagnostic(t *testing.T) {
 			t.Fatalf("%+v: %v", module, diagnostics)
 		}
 	}
-	if _, err := parser.Parse("unit.ms", "fn f() -> Unit:\n    let code_unit = unit\n    return code_unit\n"); err != nil {
+	if _, err := parser.Parse("unit.ms", "fn f() Unit:\n    let code_unit = unit\n    return code_unit\n"); err != nil {
 		t.Fatal(err)
 	}
 }

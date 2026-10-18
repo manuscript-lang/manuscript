@@ -45,20 +45,20 @@ test "Map remove captures its receiver before the key and keeps conversions":
     if not second.is_empty(): return panic("stored receiver capture")
 
 interface MapRemoval:
-    fn remove(key: Int) -> Map[Int, String]
+    fn remove(key: Int) Map[Int, String]
 
 type MapAdapter:
     values: Map[Int, String]
-    remove: fn(key: Int) -> Map[Int, String]
+    remove: fn(key: Int) Map[Int, String]
 
 impl MapRemoval for MapAdapter:
-    fn remove(key: Int) -> Map[Int, String]:
+    fn remove(key: Int) Map[Int, String]:
         return self.values.remove(key)
 
 test "Map explicit and bound interface views preserve field shadowing":
     let values = Map[Int, String]().add(1, "one").add(2, "two").add(3, "three")
     let marker = Map[Int, String]().add(9, "field")
-    let adapter = MapAdapter(values, fn(key: Int) -> Map[Int, String]: marker)
+    let adapter = MapAdapter(values, fn(key: Int) Map[Int, String]: marker)
     if adapter.remove(1) != marker or values.length() != 3:
         return panic("callable field shadowing")
 
@@ -111,14 +111,14 @@ test "List splice preserves shallow replacement references and Optional elements
     if optional[0].unwrap() != some(2): return panic("element conversion")
 
 interface ListSplicing:
-    fn splice(start: Int, delete_count: Int, replacement: List[Int]) -> List[Int]
+    fn splice(start: Int, delete_count: Int, replacement: List[Int]) List[Int]
 
 type ListAdapter:
     values: List[Int]
-    splice: fn(start: Int, delete_count: Int, replacement: List[Int]) -> List[Int]
+    splice: fn(start: Int, delete_count: Int, replacement: List[Int]) List[Int]
 
 impl ListSplicing for ListAdapter:
-    fn splice(start: Int, delete_count: Int, replacement: List[Int]) -> List[Int]:
+    fn splice(start: Int, delete_count: Int, replacement: List[Int]) List[Int]:
         return self.values.splice(start, delete_count, replacement)
 
 test "List explicit and bound interface views preserve field shadowing":
@@ -126,7 +126,7 @@ test "List explicit and bound interface views preserve field shadowing":
     let marker = [99]
     let adapter = ListAdapter(
         values,
-        fn(start: Int, delete_count: Int, replacement: List[Int]) -> List[
+        fn(start: Int, delete_count: Int, replacement: List[Int]) List[
             Int
         ]: marker
     )
@@ -143,9 +143,7 @@ test "List splice through a dispatched view follows reviewed Go range shrink sem
     let values = [1, 2, 3]
     let adapter = ListAdapter(
         values,
-        fn(start: Int, delete_count: Int, replacement: List[Int]) -> List[
-            Int
-        ]: []
+        fn(start: Int, delete_count: Int, replacement: List[Int]) List[Int]: []
     )
     let view = ListSplicing(adapter)
     var total = 0

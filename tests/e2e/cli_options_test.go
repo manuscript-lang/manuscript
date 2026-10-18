@@ -15,11 +15,11 @@ func TestCLIInlineValueOptions(t *testing.T) {
 import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
 
-fn write_line(text: String) -> Unit:
+fn write_line(text: String) Unit:
     if stdout().write(data: "{text}\n".to_bytes()).is_error():
         return panic(message: "write failed")
 
-export fn main() -> Int:
+export fn main() Int:
     let args = arguments()
     var index = 0
     while index < args.length():

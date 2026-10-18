@@ -10,10 +10,10 @@ import (
 func TestIntIdentitiesKeepBoundariesAndOperandEffects(t *testing.T) {
 	result := compiler.CompileSource("int-identities.ms", `import panic from "@std/faults.ms"
 
-fn check(ok: Bool) -> Unit:
+fn check(ok: Bool) Unit:
     if not ok: return panic("integer identity")
 
-fn touch(log: List[Int], value: Int) -> Int:
+fn touch(log: List[Int], value: Int) Int:
     log.append(value)
     return value
 

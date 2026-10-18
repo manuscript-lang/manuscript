@@ -10,9 +10,9 @@ import (
 // Runaway recursion is a Manuscript fault with a bounded trace, not Go's
 // unrecoverable stack overflow.
 func TestRunawayRecursionIsAFault(t *testing.T) {
-	result := compiler.CompileSource("depth.ms", `fn depth(n: Int) -> Int:
+	result := compiler.CompileSource("depth.ms", `fn depth(n: Int) Int:
     return 1 + depth(n + 1)
-export fn main() -> Int:
+export fn main() Int:
     return depth(0)
 `, compiler.Options{Entry: true})
 	data, err := execute(t, result)
@@ -36,11 +36,11 @@ export fn main() -> Int:
 
 // Recursion deeper than a typical program still runs normally.
 func TestDeepRecursionBelowTheLimit(t *testing.T) {
-	result := compiler.CompileSource("depth.ms", `fn depth(n: Int, limit: Int) -> Int:
+	result := compiler.CompileSource("depth.ms", `fn depth(n: Int, limit: Int) Int:
     if n == limit:
         return 0
     return 1 + depth(n: n + 1, limit: limit)
-export fn main() -> Int:
+export fn main() Int:
     return depth(n: 0, limit: 100000) - 100000
 `, compiler.Options{Entry: true})
 	if data, err := execute(t, result); err != nil {
@@ -53,11 +53,11 @@ func TestRunawayMethodRecursionIsAFault(t *testing.T) {
 	result := compiler.CompileSource("depth.ms", `type Walker:
     step: Int
 interface Walk:
-    fn walk(n: Int) -> Int
+    fn walk(n: Int) Int
 impl Walk for Walker:
-    fn walk(n: Int) -> Int:
+    fn walk(n: Int) Int:
         return 1 + self.walk(n: n + self.step)
-export fn main() -> Int:
+export fn main() Int:
     return Walker(step: 1).walk(n: 0)
 `, compiler.Options{Entry: true})
 	data, err := execute(t, result)
@@ -74,13 +74,13 @@ func TestDeepMethodRecursionBelowTheLimit(t *testing.T) {
 	result := compiler.CompileSource("depth.ms", `type Walker:
     limit: Int
 interface Walk:
-    fn walk(n: Int) -> Int
+    fn walk(n: Int) Int
 impl Walk for Walker:
-    fn walk(n: Int) -> Int:
+    fn walk(n: Int) Int:
         if n == self.limit:
             return 0
         return 1 + self.walk(n: n + 1)
-export fn main() -> Int:
+export fn main() Int:
     return Walker(limit: 100000).walk(n: 0) - 100000
 `, compiler.Options{Entry: true})
 	if data, err := execute(t, result); err != nil {

@@ -1,26 +1,26 @@
 import Queue from "@std/queues.ms"
 import panic from "@std/faults.ms"
 
-fn number(value: Optional[Int] = none) -> Int: value.unwrap_or(-1)
+fn number(value: Optional[Int] = none) Int: value.unwrap_or(-1)
 
-fn present[T](value: Optional[T]) -> Optional[T]: value
+fn present[T](value: Optional[T]) Optional[T]: value
 
-fn nested(value: Optional[Optional[Int]]) -> Bool: value.unwrap().is_none()
+fn nested(value: Optional[Optional[Int]]) Bool: value.unwrap().is_none()
 
-fn list_size(value: Optional[List[Int]]) -> Int: value.unwrap().length()
+fn list_size(value: Optional[List[Int]]) Int: value.unwrap().length()
 
-fn flag(value: Optional[Bool]) -> Bool: value.unwrap()
+fn flag(value: Optional[Bool]) Bool: value.unwrap()
 
-fn success(value: Optional[Result[Int, String]]) -> Int:
+fn success(value: Optional[Result[Int, String]]) Int:
     return value.unwrap().unwrap_or(-1)
 
-fn context[T](value: Optional[T], fallback: T) -> T: value.unwrap_or(fallback)
+fn context[T](value: Optional[T], fallback: T) T: value.unwrap_or(fallback)
 
 type Failure:
     detail: String
 
 impl Error for Failure:
-    fn message() -> String: self.detail
+    fn message() String: self.detail
 
 type Notice:
     failure: Optional[Error]
@@ -35,29 +35,29 @@ type Choice[T]:
     case chosen(value: Optional[T])
 
 interface Read:
-    fn read(value: Optional[Int]) -> Int
+    fn read(value: Optional[Int]) Int
 
 type Reader:
     offset: Int
 
 impl Read for Reader:
-    fn read(value: Optional[Int]) -> Int: value.unwrap_or(0) + self.offset
+    fn read(value: Optional[Int]) Int: value.unwrap_or(0) + self.offset
 
 type Counter:
     calls: Int
 
-fn next(counter: Counter) -> Int:
+fn next(counter: Counter) Int:
     counter.calls = counter.calls + 1
     return counter.calls
 
-fn ordered(first: Optional[Int], second: Optional[Int]) -> Int:
+fn ordered(first: Optional[Int], second: Optional[Int]) Int:
     return first.unwrap() * 10 + second.unwrap()
 
-fn invoke(value: Optional[fn(value: Int) -> Int]) -> Int: value.unwrap()(4)
+fn invoke(value: Optional[fn(value: Int) Int]) Int: value.unwrap()(4)
 
-fn increment(value: Int) -> Int: value + 1
+fn increment(value: Int) Int: value + 1
 
-fn mutate(value: Optional[Counter]) -> Unit: value.unwrap().calls = 9
+fn mutate(value: Optional[Counter]) Unit: value.unwrap().calls = 9
 
 test "plain values and explicit optionals share the call contract":
     if number(4) != 4: return panic("plain argument")
@@ -68,7 +68,7 @@ test "plain values and explicit optionals share the call contract":
     if number() != -1: return panic("explicit none")
     if number() != -1: return panic("default none")
 
-    let stored: fn(value: Optional[Int]) -> Int = number
+    let stored: fn(value: Optional[Int]) Int = number
     if stored(5) != 5: return panic("stored function")
     if present(6).unwrap() != 6: return panic("generic inference")
     if present[Int](7).unwrap() != 7: return panic("explicit specialization")

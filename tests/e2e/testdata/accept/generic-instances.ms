@@ -3,20 +3,20 @@ import panic from "@std/faults.ms"
 type Point:
     x: Int
 
-fn ident[T](x: T) -> T:
+fn ident[T](x: T) T:
     return x
 
-fn pick[T](first: Bool, left: T, right: T) -> T:
+fn pick[T](first: Bool, left: T, right: T) T:
     var chosen = left
     if not first:
         chosen = right
     return chosen
 
-fn keep[T](value: T) -> T:
+fn keep[T](value: T) T:
     let copy = value
     return copy
 
-fn count(value: Int) -> Int:
+fn count(value: Int) Int:
     return value + 1
 
 test "parametric generics keep each instantiation's values":

@@ -26,8 +26,8 @@ func TestLibraryProjectCommandsAndCache(t *testing.T) {
 	manifest := filepath.Join(root, "ms.toml")
 	configuration := "# library\n[project]\nname = \"library\"\nsource = \"src\"\n[aliases]\n\"@lib\" = \"src\"\n"
 	write("ms.toml", configuration)
-	write("src/value.ms", "export fn value() -> Int: return 3\n")
-	write("src/other.ms", "import panic from \"@std/faults.ms\"\nexport fn other() -> Int: return 4\ntest \"unimported\":\n    if other() != 4: return panic(\"bad other\")\n")
+	write("src/value.ms", "export fn value() Int: return 3\n")
+	write("src/other.ms", "import panic from \"@std/faults.ms\"\nexport fn other() Int: return 4\ntest \"unimported\":\n    if other() != 4: return panic(\"bad other\")\n")
 	write("golden/input.txt", "fixture")
 	write("test.ms", `import value from "@lib/value.ms"
 import filesystem from "@std/fs.ms"
@@ -63,7 +63,7 @@ test "root":
 		}
 	}
 	// Editing an unimported source module must invalidate native test artifacts.
-	write("src/other.ms", "import panic from \"@std/faults.ms\"\nexport fn other() -> Int: return 4\ntest \"unimported\":\n    return panic(\"changed unimported test\")\n")
+	write("src/other.ms", "import panic from \"@std/faults.ms\"\nexport fn other() Int: return 4\ntest \"unimported\":\n    return panic(\"changed unimported test\")\n")
 	data, err := run("test", manifest)
 	if err == nil || !strings.Contains(data, "changed unimported test") || !strings.Contains(data, "1 failed") {
 		t.Fatalf("stale library test executable: %v %s", err, data)
@@ -74,14 +74,14 @@ test "root":
 			t.Fatalf("%s accepted a library: %v %s", command, err, data)
 		}
 	}
-	write("src/other.ms", "export fn other() -> Int: return 4\n")
+	write("src/other.ms", "export fn other() Int: return 4\n")
 	write("ms.toml", strings.Replace(configuration, "[aliases]", "entry = \"src/missing.ms\"\n[aliases]", 1))
 	data, err = run("check", manifest)
 	if err == nil || !strings.Contains(data, "ms.toml:5:9:") {
 		t.Fatalf("explicit entry treated as library: %v %s", err, data)
 	}
-	write("src/main.ms", "import value from \"@lib/value.ms\"\nexport fn main() -> Int: return value() - 3\n")
-	write("src/other.ms", "export fn other() -> Int: return \"bad\"\n")
+	write("src/main.ms", "import value from \"@lib/value.ms\"\nexport fn main() Int: return value() - 3\n")
+	write("src/other.ms", "export fn other() Int: return \"bad\"\n")
 	write("ms.toml", strings.Replace(configuration, "[aliases]", "entry = \"src/main.ms\"\n[aliases]", 1))
 	data, err = run("run", manifest)
 	if err != nil {

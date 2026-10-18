@@ -10,7 +10,7 @@ import (
 )
 
 func nestedLiteral(open, leaf, close string, depth int) string {
-	return "fn example() -> Int:\n    let x = " +
+	return "fn example() Int:\n    let x = " +
 		strings.Repeat(open, depth) + leaf + strings.Repeat(close, depth) + "\n    return 0\n"
 }
 
@@ -124,7 +124,7 @@ func TestNestedConstructorCheckingScalesWithDepth(t *testing.T) {
 }
 
 func TestNestedUninferableConstructorReportsOnce(t *testing.T) {
-	program := checkNested(t, "fn f() -> Unit:\n    let x = some(some(none))\n")
+	program := checkNested(t, "fn f() Unit:\n    let x = some(some(none))\n")
 	if len(program.Diagnostics) != 1 || !strings.Contains(program.Diagnostics[0].Message, "cannot infer constructor type argument") {
 		t.Fatalf("want one inference error, got %+v", program.Diagnostics)
 	}

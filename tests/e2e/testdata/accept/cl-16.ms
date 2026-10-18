@@ -3,7 +3,7 @@ import panic from "@std/faults.ms"
 type Input:
     names: List[Optional[String]]
 
-fn outcome_value(outcome: Result[Int, String]) -> Int:
+fn outcome_value(outcome: Result[Int, String]) Int:
     return outcome.unwrap_or(-1)
 
 test "data constructor context":
@@ -23,7 +23,7 @@ type Box[T]:
 type Request:
     box: Box[Optional[Int]]
 
-fn select[T](first: T, second: T) -> T:
+fn select[T](first: T, second: T) T:
     return first
 
 test "nested constructor arguments receive inferred context":

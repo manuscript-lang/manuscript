@@ -88,7 +88,7 @@ test "Bytes values direct bound and free calls return independent lists":
     let input = [0, 1, 255]
     let data = Bytes(values: input)
     input.set(index: 0, value: 42)
-    let extract: fn() -> List[Int] = data.values
+    let extract: fn() List[Int] = data.values
     if data.values() != [0, 1, 255] or extract() != values(data: data): return panic(
         "byte extraction or constructor changed"
     )

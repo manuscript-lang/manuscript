@@ -2,13 +2,13 @@ import {escape, parse, HtmlNode, HtmlAttribute, HtmlLimits, HtmlError} from "@st
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
-fn children(node: HtmlNode) -> List[HtmlNode]:
+fn children(node: HtmlNode) List[HtmlNode]:
     match node:
         Document(items): return items
         Element(_, _, _, items): return items
         _: return []
 
-fn text_content(node: HtmlNode) -> String:
+fn text_content(node: HtmlNode) String:
     match node:
         Text(text): return text
         Document(items):
@@ -21,7 +21,7 @@ fn text_content(node: HtmlNode) -> String:
             return text
         _: return ""
 
-fn body_nodes(node: HtmlNode) -> List[HtmlNode]:
+fn body_nodes(node: HtmlNode) List[HtmlNode]:
     let html = children(node).at(0).unwrap()
     return children(children(html).at(1).unwrap())
 

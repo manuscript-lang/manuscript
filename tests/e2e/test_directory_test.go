@@ -22,7 +22,7 @@ func TestTestsRunInProjectDirectory(t *testing.T) {
 		}
 	}
 	write("ms.toml", "[project]\nname = \"fixtures\"\nsource = \"./src\"\nentry = \"./src/main.ms\"\n")
-	write("src/main.ms", "export fn main() -> Int:\n    return 0\n")
+	write("src/main.ms", "export fn main() Int:\n    return 0\n")
 	write("golden/input.txt", "fixture")
 	write("test.ms", `import filesystem from "@std/fs.ms"
 import panic from "@std/faults.ms"

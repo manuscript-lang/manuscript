@@ -5,14 +5,14 @@ test "List count calls the predicate once per element":
     let values = [1, 2, 3, 4]
     let seen: List[Int] = []
     let even = values.count(
-        fn(value: Int) -> Bool:
+        fn(value: Int) Bool:
             seen.append(value)
             return value % 2 == 0
     )
     if even != 2 or seen != values: return panic("count matches")
 
     let empty: List[Int] = []
-    if empty.count(fn(value: Int) -> Bool: true) != 0: return panic("empty count")
+    if empty.count(fn(value: Int) Bool: true) != 0: return panic("empty count")
 
 test "List insert mutates in place and returns the same list":
     let values = [1, 3]
@@ -80,7 +80,7 @@ test "List distinct keeps the first equal element in order":
     copy.append(1)
     if not (empty.is_empty()): return panic("empty distinct alias")
 
-fn unique_count[T: Equal](values: List[T]) -> Int:
+fn unique_count[T: Equal](values: List[T]) Int:
     return values.distinct().length()
 
 test "List parity operations support generic and bound use":
@@ -88,11 +88,11 @@ test "List parity operations support generic and bound use":
 
     var values = [1, 2]
     let insert = values.insert
-    let pop: fn() -> Optional[Int] = values.pop
+    let pop: fn() Optional[Int] = values.pop
     let count = values.count
     values = [9]
     insert(index: 2, value: 3)
-    if pop() != some(3) or count(fn(value: Int) -> Bool: value > 0) != 2: return panic(
+    if pop() != some(3) or count(fn(value: Int) Bool: value > 0) != 2: return panic(
         "bound receiver"
     )
     if values != [9]: return panic("bound receiver rebinding")

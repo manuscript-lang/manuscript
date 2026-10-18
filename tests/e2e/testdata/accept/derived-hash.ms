@@ -9,7 +9,7 @@ type Shape:
     case Dot(x: Int)
     case Line(a: Int, b: Optional[Int])
 
-fn code[T: Hashable](value: T) -> Int:
+fn code[T: Hashable](value: T) Int:
     return value.hash()
 
 test "derived hashes agree for equal values and are stable":

@@ -13,8 +13,8 @@ import (
 // not also be called a non-nominal receiver or a non-interface target.
 func TestImplUnknownTypeReportsOnce(t *testing.T) {
 	for _, tt := range []struct{ name, source string }{
-		{"receiver", "interface I:\n    fn m() -> Int\nimpl I for Missing:\n    fn m() -> Int: return 1\n"},
-		{"interface", "type S:\n    x: Int\nimpl Missing for S:\n    fn m() -> Int: return 1\n"},
+		{"receiver", "interface I:\n    fn m() Int\nimpl I for Missing:\n    fn m() Int: return 1\n"},
+		{"interface", "type S:\n    x: Int\nimpl Missing for S:\n    fn m() Int: return 1\n"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			m, err := parser.Parse("impl.ms", tt.source)

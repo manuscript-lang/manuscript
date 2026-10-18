@@ -7,38 +7,38 @@ import TaskGroup from "@std/tasks.ms"
 import panic from "@std/faults.ms"
 import sleep from "@std/time.ms"
 
-fn identity[T](value: T) -> T:
+fn identity[T](value: T) T:
     return value
 
-fn execute(operation: fn() -> Int) -> Result[Int, ExecutionError]:
+fn execute(operation: fn() Int) Result[Int, ExecutionError]:
     with group = TaskGroup():
         let task = group.start(operation)
         return task.join()
 
-fn increment(locked: SynchronizedGuard[Int]) -> Unit:
+fn increment(locked: SynchronizedGuard[Int]) Unit:
     locked.set(value: locked.get() + 1)
 
-fn release_on_return(counter: Synchronized[Int]) -> Int:
+fn release_on_return(counter: Synchronized[Int]) Int:
     with locked = counter.lock():
         increment(locked: locked)
         return locked.get()
 
-fn release_on_error(counter: Synchronized[Int]) -> Result[Unit, String]:
+fn release_on_error(counter: Synchronized[Int]) Result[Unit, String]:
     with locked = counter.lock():
         increment(locked: locked)
         return error("expected")
 
-fn read_and_add(value: Int) -> Int:
+fn read_and_add(value: Int) Int:
     return value + 1
 
 interface Read:
-    fn get() -> Int
+    fn get() Int
 
 type Reader:
-    callback: fn() -> Int
+    callback: fn() Int
 
 impl Read for Reader:
-    fn get() -> Int:
+    fn get() Int:
         return self.callback()
 
 test "shared counter protects complete updates":
@@ -77,7 +77,7 @@ test "function fields collections and interface views share freely":
     let callback = fn():
         return captured
     captured = 9
-    let callbacks: List[fn() -> Int] = [identity(value: callback)]
+    let callbacks: List[fn() Int] = [identity(value: callback)]
     for stored in callbacks:
         if not (execute(operation: stored).unwrap_or(0) == 7):
             return panic(message: "check failed")
@@ -164,7 +164,7 @@ test "parent holds lock while a running child waits for it":
 
     with tasks = TaskGroup():
         let child = tasks.start(
-            fn() -> Int:
+            fn() Int:
                 sleep(duration: 20.milliseconds)
                 with locked = cell.lock():
                     return locked.get()
@@ -184,7 +184,7 @@ test "ordinary cross-task lock cycle stops at the group timeout":
     with locked = cell.lock():
         with tasks = TaskGroup(timeout: 40.milliseconds):
             let child = tasks.start(
-                fn() -> Int:
+                fn() Int:
                     with acquired = cell.lock():
                         return acquired.get()
             )

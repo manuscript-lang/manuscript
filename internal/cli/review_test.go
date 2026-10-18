@@ -7,12 +7,12 @@ import (
 	"testing"
 )
 
-const reviewHead = "fn add(a: Int, b: Int) -> Int:\n    let total = a + b\n    return total\n\nexport fn main() -> Int:\n    return add(1, 2)\n"
+const reviewHead = "fn add(a: Int, b: Int) Int:\n    let total = a + b\n    return total\n\nexport fn main() Int:\n    return add(1, 2)\n"
 
 const reviewPatch = `--- a/main.ms
 +++ b/main.ms
 @@ -1,3 +1,4 @@
- fn add(a: Int, b: Int) -> Int:
+ fn add(a: Int, b: Int) Int:
 -    return a + b
 +    let total = a + b
 +    return total

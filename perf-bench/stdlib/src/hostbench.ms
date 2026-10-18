@@ -6,7 +6,7 @@ import {decoder, feed, SseDecoder} from "@std/sse.ms"
 import {parse_timestamp} from "@std/time.ms"
 import {uuid_v4, entropy} from "@std/random.ms"
 
-fn entries(count: Int) -> List[ArchiveEntry]:
+fn entries(count: Int) List[ArchiveEntry]:
     let out: List[ArchiveEntry] = []
     for i in range(0, count):
         out.append(
@@ -18,18 +18,18 @@ fn entries(count: Int) -> List[ArchiveEntry]:
         )
     return out
 
-fn sse_stream(count: Int) -> Bytes:
+fn sse_stream(count: Int) Bytes:
     let parts: List[String] = []
     for i in range(0, count):
         parts.append("event: tick\nid: {i}\ndata: payload {i}\ndata: second line\n\n")
     return parts.join(separator: "").to_bytes()
 
-fn bench_archive() -> Unit:
+fn bench_archive() Unit:
     let list = entries(2000)
     bench(
         "archive.zip_pack",
         2000,
-        fn() -> Int:
+        fn() Int:
             if let b = pack(entries: list, format: "zip"): return b.length()
 
             return 0
@@ -37,46 +37,46 @@ fn bench_archive() -> Unit:
     bench(
         "archive.tar_pack",
         2000,
-        fn() -> Int:
+        fn() Int:
             if let b = pack(entries: list, format: "tar"): return b.length()
 
             return 0
     )
     if let packed = pack(entries: list, format: "zip"): bench_unpack(packed)
 
-fn bench_unpack(packed: Bytes) -> Unit:
+fn bench_unpack(packed: Bytes) Unit:
     bench(
         "archive.zip_unpack",
         2000,
-        fn() -> Int:
+        fn() Int:
             if let e = unpack(data: packed, format: "zip"): return e.length()
 
             return 0
     )
 
-fn bench_sse() -> Unit:
+fn bench_sse() Unit:
     let stream = sse_stream(2000)
     bench(
         "sse.feed",
         2000,
-        fn() -> Int:
+        fn() Int:
             if let d = decoder(): return feed_all(d, stream)
 
             return 0
     )
 
-fn feed_all(d: SseDecoder, stream: Bytes) -> Int:
+fn feed_all(d: SseDecoder, stream: Bytes) Int:
     if let events = feed(decoder: d, chunk: stream): return events.length()
 
     return 0
 
-export fn bench_host() -> Unit:
+export fn bench_host() Unit:
     bench_archive()
     bench_sse()
     bench(
         "time.timestamp_to_string",
         20000,
-        fn() -> Int:
+        fn() Int:
             var n = 0
 
             if let t = parse_timestamp(text: "2026-03-01T12:30:45.123Z"):
@@ -88,7 +88,7 @@ export fn bench_host() -> Unit:
     bench(
         "random.uuid_v4",
         20000,
-        fn() -> Int:
+        fn() Int:
             var n = 0
             let source = entropy()
 

@@ -9,26 +9,26 @@ type Failure:
     code: Int
 
 impl Error for Failure:
-    fn message() -> String: "failed"
+    fn message() String: "failed"
 
 impl Closeable for State:
-    fn close() -> Unit:
+    fn close() Unit:
         self.closed = self.closed + 1
 
-fn operation(state: State, fail: Bool) -> Result[Unit, Failure]:
+fn operation(state: State, fail: Bool) Result[Unit, Failure]:
     state.calls = state.calls + 1
     if fail: return error(Failure(42))
 
     return ok(unit)
 
-fn exact(state: State, fail: Bool) -> Result[String, Failure]:
+fn exact(state: State, fail: Bool) Result[String, Failure]:
     with resource = state:
         try operation(state: state, fail: fail)
         state.calls = state.calls + 10
 
     return ok("done")
 
-fn widened(state: State) -> Result[Int, Error]:
+fn widened(state: State) Result[Int, Error]:
     try operation(state: state, fail: true)
     return ok(0)
 
@@ -65,7 +65,7 @@ test "standalone try preserves concrete errors at Error boundaries":
 
 test "standalone try in closure returns from that closure":
     let state = State(calls: 0, closed: 0)
-    let callback = fn() -> Result[Unit, Failure]:
+    let callback = fn() Result[Unit, Failure]:
         if true: try operation(state: state, fail: true)
         return ok(unit)
     let outcome = callback()

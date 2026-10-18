@@ -73,10 +73,10 @@ def main():
         else:
             values = [json.dumps(f"item:{j}:{i:06}") for i in range(args.elements)]
             expected.append(f"item:{j}:000000")
-        parts.append(f"fn values{j}() -> List[{args.kind}]:\n    return [" + ", ".join(values) + "]\n")
+        parts.append(f"fn values{j}() List[{args.kind}]:\n    return [" + ", ".join(values) + "]\n")
     # The source main executes no literal; all tested constructors are reached
     # only through the harness's runtime mode to prevent link-time elimination.
-    parts.append("export fn main() -> Int: 0\n")
+    parts.append("export fn main() Int: 0\n")
     source = root / "source.ms"
     source.write_text("".join(parts))
     binaries = {}

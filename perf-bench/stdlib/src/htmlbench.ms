@@ -3,7 +3,7 @@ import {bench, words} from "./harness.ms"
 import {StringBuilder} from "@std/string.ms"
 import {parse, escape, unescape} from "@std/html.ms"
 
-fn html_doc(count: Int) -> String:
+fn html_doc(count: Int) String:
     let sb = StringBuilder()
     sb.append("<div>")
     for i in range(0, count):
@@ -11,12 +11,12 @@ fn html_doc(count: Int) -> String:
     sb.append("</div>")
     return sb.freeze()
 
-export fn bench_html() -> Unit:
+export fn bench_html() Unit:
     let html = html_doc(2000)
     bench(
         "html.parse",
         2000,
-        fn() -> Int:
+        fn() Int:
             if parse(text: html).is_ok(): return 1
 
             return 0
@@ -25,6 +25,6 @@ export fn bench_html() -> Unit:
     bench(
         "html.escape_unescape",
         2000,
-        fn() -> Int:
+        fn() Int:
             return unescape(text: escape(text: text)).length()
     )

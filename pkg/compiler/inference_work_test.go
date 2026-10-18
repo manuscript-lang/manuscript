@@ -13,7 +13,7 @@ func TestDeepGenericArgumentsCheckedOnce(t *testing.T) {
 	// require trillions of checks. Both success and final mismatch stay bounded.
 	for _, value := range []string{"1", `"wrong"`} {
 		expression := strings.Repeat("identity(", 40) + value + strings.Repeat(")", 40)
-		source := "fn identity[T](value: T) -> T: value\nfn first() -> Int: " + expression + "\n"
+		source := "fn identity[T](value: T) T: value\nfn first() Int: " + expression + "\n"
 		result := compiler.CompileSource("nested-inference.ms", source, compiler.Options{})
 		if value == "1" {
 			if !result.Success() {

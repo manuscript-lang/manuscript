@@ -3,12 +3,12 @@ import {bench} from "./harness.ms"
 import {filesystem, FileSystem} from "@std/fs.ms"
 import {create, file_transport, Transport, Logger} from "@std/log.ms"
 
-fn run(fs: FileSystem, root: String) -> Unit:
+fn run(fs: FileSystem, root: String) Unit:
     let data = "0123456789abcdef".repeat(count: 4096).unwrap_or("").to_bytes()
     bench(
         "fs.write_file_64k",
         200,
-        fn() -> Int:
+        fn() Int:
             var n = 0
 
             for i in range(0, 200):
@@ -27,7 +27,7 @@ fn run(fs: FileSystem, root: String) -> Unit:
     bench(
         "fs.read_file_64k",
         200,
-        fn() -> Int:
+        fn() Int:
             var n = 0
 
             for i in range(0, 200):
@@ -38,7 +38,7 @@ fn run(fs: FileSystem, root: String) -> Unit:
     bench(
         "fs.stat",
         200,
-        fn() -> Int:
+        fn() Int:
             var n = 0
 
             for i in range(0, 200):
@@ -52,23 +52,23 @@ fn run(fs: FileSystem, root: String) -> Unit:
     bench(
         "fs.list_200",
         1,
-        fn() -> Int:
+        fn() Int:
             if let entries = fs.list(path: root): return entries.length()
 
             return 0
     )
 
-fn log_run(path: String) -> Unit:
+fn log_run(path: String) Unit:
     if let transport = file_transport(path: path): log_with(transport)
 
-fn log_with(transport: Transport) -> Unit:
+fn log_with(transport: Transport) Unit:
     if let logger = create(transport: transport, timestamp: false): log_many(logger)
 
-fn log_many(logger: Logger) -> Unit:
+fn log_many(logger: Logger) Unit:
     bench(
         "log.info",
         20000,
-        fn() -> Int:
+        fn() Int:
             var n = 0
 
             for i in range(0, 20000):
@@ -77,7 +77,7 @@ fn log_many(logger: Logger) -> Unit:
             return n
     )
 
-export fn bench_fs() -> Unit:
+export fn bench_fs() Unit:
     let fs = filesystem()
 
     if let dir = fs.temporary("ms-bench-"):

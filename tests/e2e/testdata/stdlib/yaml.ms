@@ -4,12 +4,12 @@ import {parse, stringify, YamlValue, YamlError, YamlLimits} from "@std/yaml.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
-fn entries(value: YamlValue) -> Map[String, YamlValue]:
+fn entries(value: YamlValue) Map[String, YamlValue]:
     match value:
         ObjectValue(values): return values
         _: return panic("expected YAML mapping")
 
-fn items(value: YamlValue) -> List[YamlValue]:
+fn items(value: YamlValue) List[YamlValue]:
     match value:
         ArrayValue(values): return values
         _: return panic("expected YAML sequence")
@@ -18,14 +18,14 @@ fn limits(
     bytes: Optional[Int],
     depth: Optional[Int],
     values: Optional[Int]
-) -> Optional[YamlLimits]:
+) Optional[YamlLimits]:
     return some(YamlLimits(max_bytes: bytes, max_depth: depth, max_values: values))
 
 type ScalarCase:
     text: String
     expected: String
 
-fn scalar(text: String, expected: String) -> Unit:
+fn scalar(text: String, expected: String) Unit:
     let root = parse(text: text) | value | entries
     if root.get("a").unwrap() != YamlValue.StringValue(expected): return panic(
         "scalar folding: {text}"
@@ -453,7 +453,7 @@ test "YAML exact decimal syntax does not depend on binary64 conversion":
             "plain scalar resolved incorrectly: {text}"
         )
 
-fn failure(text: String) -> String:
+fn failure(text: String) String:
     let parsed = parse(text: text)
     if parsed.is_ok(): return "accepted"
 
@@ -604,7 +604,7 @@ test "YAML compact mapping after a sequence marker follows the marker's spacing"
         "single space marker"
     )
 
-fn repeated(text: String, count: Int) -> String:
+fn repeated(text: String, count: Int) String:
     if count <= 0: return ""
     if count == 1: return text
 

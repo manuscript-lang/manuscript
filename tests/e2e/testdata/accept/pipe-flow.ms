@@ -1,6 +1,6 @@
 import panic from "@std/faults.ms"
 
-fn parse(text: String) -> Result[Int, String]:
+fn parse(text: String) Result[Int, String]:
     if text == "-":
         return error("n")
     if text == "big":
@@ -8,41 +8,41 @@ fn parse(text: String) -> Result[Int, String]:
 
     return ok(text.length())
 
-fn double(n: Int) -> Int: n * 2
+fn double(n: Int) Int: n * 2
 
-fn add(n: Int, by: Int) -> Int: n + by
+fn add(n: Int, by: Int) Int: n + by
 
-fn check(n: Int) -> Result[Int, String]:
+fn check(n: Int) Result[Int, String]:
     if n > 100:
         return error("big")
 
     return ok(n)
 
-fn flow(text: String) -> Result[Int, String]:
+fn flow(text: String) Result[Int, String]:
     let n = try parse(text)
         | double
         | add(by: 3)
         | try check
     return ok(n)
 
-fn bare(text: String) -> Result[Int, String]:
+fn bare(text: String) Result[Int, String]:
     return ok(try parse(text) | double | check | try)
 
-fn describe(text: String) -> Result[String, String]:
+fn describe(text: String) Result[String, String]:
     let label = try parse(text)
         | try check
         | add(by: 1)
         .to_string(radix: 10)
     return ok(label)
 
-fn order(log: List[String]) -> Int:
+fn order(log: List[String]) Int:
     return trace(log, "a") | add(by: trace(log, "b")) | double
 
-fn trace(log: List[String], name: String) -> Int:
+fn trace(log: List[String], name: String) Int:
     log.append(name)
     return 1
 
-fn code(r: Result[Int, String]) -> Int:
+fn code(r: Result[Int, String]) Int:
     if r.is_error():
         return 0 - r.unwrap_error().length()
 
@@ -63,7 +63,7 @@ test "bare try unwraps the value so far":
         return panic("bare early return")
 
 test "pipe passes a Result through a step without try":
-    let r = parse("abcd") | .map(fn(value: Int) -> Int: value * 2)
+    let r = parse("abcd") | .map(fn(value: Int) Int: value * 2)
     if r.unwrap() != 8:
         return panic("map step")
 

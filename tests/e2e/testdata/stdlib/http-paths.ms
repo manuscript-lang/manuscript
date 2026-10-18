@@ -15,7 +15,7 @@ import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
-fn route(request: HttpRequest) -> HttpResponse:
+fn route(request: HttpRequest) HttpResponse:
     return HttpResponse(
         status: 200,
         headers: (
@@ -30,7 +30,7 @@ fn route(request: HttpRequest) -> HttpResponse:
         body: "{request.path}|{request.query}".to_bytes()
     )
 
-fn stream_route(exchange: HttpExchange) -> Result[Unit, HttpError]:
+fn stream_route(exchange: HttpExchange) Result[Unit, HttpError]:
     let sent = try exchange.send_headers(
         status: 200,
         headers: list_headers(
@@ -43,7 +43,7 @@ fn stream_route(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let written = exchange.write("{exchange.path()}|{exchange.query()}".to_bytes()) | value
     return ok(unit)
 
-fn check_route(url: String, expected: String) -> Unit:
+fn check_route(url: String, expected: String) Unit:
     let response = value(
         network().request(
             method: HttpMethod.Get,
@@ -60,7 +60,7 @@ fn check_route(url: String, expected: String) -> Unit:
         "#257 repeated cookies regressed"
     )
 
-fn check_rejected(url: String) -> Unit:
+fn check_rejected(url: String) Unit:
     let response = value(
         network().request(
             method: HttpMethod.Get,
@@ -74,7 +74,7 @@ fn check_rejected(url: String) -> Unit:
         "unsafe or invalid path was dispatched"
     )
 
-fn check_paths(base: String) -> Unit:
+fn check_paths(base: String) Unit:
     check_route(url: "{base}/a%20b", expected: "/a b|")
     check_route(url: "{base}/%2e%2e/x?y=%2F", expected: "/x|y=%2F")
     check_route(url: "{base}/a/../b/", expected: "/b/|")
@@ -97,7 +97,7 @@ test "streaming routes validate original input and decode once":
     ):
         check_paths("http://{server.address()}")
 
-fn expect_http_error[T](outcome: Result[T, HttpError]) -> Unit:
+fn expect_http_error[T](outcome: Result[T, HttpError]) Unit:
     if outcome.is_ok(): return panic("invalid URL succeeded")
     if outcome.unwrap_error() != HttpError.InvalidInput: return panic(
         "malformed URL leaked transport error"

@@ -2,7 +2,7 @@ import commands from "@std/process.ms"
 import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
 
-export fn main() -> Int:
+export fn main() Int:
     let ran = commands().run(
         program: "/bin/printf",
         arguments: ["hello"],

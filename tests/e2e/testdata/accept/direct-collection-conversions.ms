@@ -1,13 +1,13 @@
 import panic from "@std/faults.ms"
 
-fn append_generic[T](values: List[Optional[T]], value: T) -> Unit:
+fn append_generic[T](values: List[Optional[T]], value: T) Unit:
     values.append(value)
 
 type Failure:
     code: Int
 
 impl Error for Failure:
-    fn message() -> String: "failure"
+    fn message() String: "failure"
 
 test "direct append preserves checked argument conversions":
     let values: List[Optional[Int]] = []
@@ -33,7 +33,7 @@ test "direct append preserves checked argument conversions":
     if nested.at(0).unwrap().is_none() or not nested.at(0).unwrap().unwrap().is_none():
         return panic("some(none) was flattened")
 
-    let callbacks: List[Optional[fn(value: Int) -> Int]] = []
+    let callbacks: List[Optional[fn(value: Int) Int]] = []
     callbacks.append(fn(value): value + 1)
     if callbacks.at(0).unwrap().unwrap()(7) != 8: return panic(
         "callback conversion lost"

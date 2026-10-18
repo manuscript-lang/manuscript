@@ -3,7 +3,7 @@ import TaskGroup from "@std/tasks.ms"
 import Task from "@std/tasks.ms"
 import panic from "@std/faults.ms"
 
-fn work(jobs: BlockingQueue[Int]) -> Int:
+fn work(jobs: BlockingQueue[Int]) Int:
     var total = 0
 
     while true:
@@ -15,7 +15,7 @@ fn work(jobs: BlockingQueue[Int]) -> Int:
 
     return total
 
-fn total_of(task: Task[Int]) -> Int:
+fn total_of(task: Task[Int]) Int:
     if let total = task.join():
         return total
     else:

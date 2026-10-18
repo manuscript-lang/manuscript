@@ -2,13 +2,13 @@ import Synchronized from "@std/sync.ms"
 import TaskGroup from "@std/tasks.ms"
 import panic from "@std/faults.ms"
 
-fn wait_until_ready(ready: Synchronized[Bool]) -> Bool:
+fn wait_until_ready(ready: Synchronized[Bool]) Bool:
     with locked = ready.lock():
         while not locked.get():
             locked.wait()
         return locked.get()
 
-fn mark_ready(ready: Synchronized[Bool]) -> Unit:
+fn mark_ready(ready: Synchronized[Bool]) Unit:
     with locked = ready.lock():
         locked.set(true)
         locked.notify_all()

@@ -4,7 +4,7 @@ import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 import {Rng, next, text, mutate} from "./support/generator.ms"
 
-fn generated(rng: Rng, depth: Int) -> YamlValue:
+fn generated(rng: Rng, depth: Int) YamlValue:
     var choices = 6
     if depth > 2: choices = 4
     let kind = next(rng, choices)
@@ -32,13 +32,13 @@ fn generated(rng: Rng, depth: Int) -> YamlValue:
 
     return YamlValue.ObjectValue(entries)
 
-fn check_round_trip(seed: Int, original: YamlValue) -> Unit:
+fn check_round_trip(seed: Int, original: YamlValue) Unit:
     let rendered = stringify(original) | value
     if value(parse(rendered)) != original: return panic(
         "seed {seed}: changed\n{rendered}"
     )
 
-fn check_stable(seed: Int, mutated: String, first: YamlValue) -> Unit:
+fn check_stable(seed: Int, mutated: String, first: YamlValue) Unit:
     let again = stringify(first) | value
     if value(parse(again)) != first: return panic(
         "seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"

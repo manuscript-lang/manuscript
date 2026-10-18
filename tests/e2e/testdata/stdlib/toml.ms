@@ -2,12 +2,12 @@ import {parse, stringify, TomlValue, TomlError, TomlLimits} from "@std/toml.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
-fn entries(value: TomlValue) -> Map[String, TomlValue]:
+fn entries(value: TomlValue) Map[String, TomlValue]:
     match value:
         TableValue(values): return values
         _: return panic("expected TOML table")
 
-fn items(value: TomlValue) -> List[TomlValue]:
+fn items(value: TomlValue) List[TomlValue]:
     match value:
         ArrayValue(values): return values
         _: return panic("expected TOML array")
@@ -16,7 +16,7 @@ fn limits(
     bytes: Optional[Int],
     depth: Optional[Int],
     values: Optional[Int]
-) -> Optional[TomlLimits]:
+) Optional[TomlLimits]:
     return some(TomlLimits(max_bytes: bytes, max_depth: depth, max_values: values))
 
 test "TOML scalars quoted keys comments exact integers and dates":
@@ -190,7 +190,7 @@ test "TOML nonfinite floats CRLF and repeated separators":
         "repeated underscore separators"
     )
 
-fn failure(text: String) -> String:
+fn failure(text: String) String:
     let parsed = parse(text: text)
     if parsed.is_ok(): return "accepted"
 
@@ -246,7 +246,7 @@ test "TOML stringify requires a table root and honors max_bytes":
     if stringify(value: root, max_bytes: 6) != exact: return panic("exact limit")
     if stringify(value: root, max_bytes: -1) != wrong: return panic("negative limit")
 
-fn repeated(text: String, count: Int) -> String:
+fn repeated(text: String, count: Int) String:
     if count <= 0: return ""
     if count == 1: return text
 

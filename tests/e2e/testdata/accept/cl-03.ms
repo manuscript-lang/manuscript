@@ -10,7 +10,7 @@ type Customer:
     id: CustomerId
     name: String
 
-fn customer_name(customer: Customer) -> String:
+fn customer_name(customer: Customer) String:
     let {id: {value}, name: display_name} = customer
     return "{value}: {display_name}"
 

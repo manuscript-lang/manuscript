@@ -7,7 +7,7 @@ import TlsOptions from "@std/tls.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
-fn tls_options() -> TlsOptions:
+fn tls_options() TlsOptions:
     return TlsOptions(
         server_name: "",
         roots_pem: "",
@@ -17,7 +17,7 @@ fn tls_options() -> TlsOptions:
         require_client_certificate: false
     )
 
-fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
+fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
     if exchange.path() == "/ws":
         with socket = exchange.upgrade(
             allowed_origins: [],
@@ -130,7 +130,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
                 "WebSocket echo"
             )
 
-fn report_host(exchange: HttpExchange) -> Result[Unit, HttpError]:
+fn report_host(exchange: HttpExchange) Result[Unit, HttpError]:
     let hosts = value(exchange.headers().text("Host")).unwrap_or([])
     let started = exchange.send_headers(status: 200, headers: headers()) | value
     let written = exchange.write(hosts.join(",").to_bytes()) | value

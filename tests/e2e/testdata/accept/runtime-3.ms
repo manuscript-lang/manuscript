@@ -2,11 +2,11 @@ import panic from "@std/faults.ms"
 import ExecutionError from "@std/tasks.ms"
 import TaskGroup from "@std/tasks.ms"
 
-fn identity[T](value: T) -> T:
+fn identity[T](value: T) T:
     return value
 
-fn probe() -> Result[Unit, ExecutionError]:
-    let first = fn() -> Result[Int, String]:
+fn probe() Result[Unit, ExecutionError]:
+    let first = fn() Result[Int, String]:
         return ok(3)
     let second = fn():
         return true
@@ -26,7 +26,7 @@ fn probe() -> Result[Unit, ExecutionError]:
 test "typed task helper":
     try probe()
 
-fn describe(outcome: Result[Int, Int]) -> Result[Int, String]:
+fn describe(outcome: Result[Int, Int]) Result[Int, String]:
     if outcome.is_ok():
         return ok(outcome.unwrap())
 

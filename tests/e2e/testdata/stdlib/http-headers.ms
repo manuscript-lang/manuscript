@@ -14,7 +14,7 @@ import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
-fn repeated_headers() -> HttpHeaders:
+fn repeated_headers() HttpHeaders:
     let fields = headers()
     let first = fields.append("x-dup", "first".to_bytes()) | value
     let second = fields.append("X-Dup", "second".to_bytes()) | value
@@ -25,7 +25,7 @@ fn repeated_headers() -> HttpHeaders:
     let other = fields.append("set-cookie", "b=2".to_bytes()) | value
     return fields
 
-fn handle_headers(request: HttpRequest) -> HttpResponse:
+fn handle_headers(request: HttpRequest) HttpResponse:
     if request.method != HttpMethod.Get: return panic("typed request method")
     if value(request.headers.text("X-DUP")) != some(["first", "second"]): return panic(
         "case-insensitive received fields"
@@ -67,7 +67,7 @@ test "one header type preserves repeated values through buffered requests":
             )
         ): return panic("metadata copied header object")
 
-fn echo_headers(exchange: HttpExchange) -> Result[Unit, HttpError]:
+fn echo_headers(exchange: HttpExchange) Result[Unit, HttpError]:
     let received = exchange.headers()
     if value(received.text("X-DUP")) != some(["first", "second"]): return error(
         HttpError.InvalidData

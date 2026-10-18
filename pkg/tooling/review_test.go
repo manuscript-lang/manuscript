@@ -24,14 +24,14 @@ func review(t *testing.T, base, head string, touched ...int) Report {
 
 const reviewBase = `import stdout from "@std/io.ms"
 
-fn say(text: String) -> Result[Unit, Error]:
+fn say(text: String) Result[Unit, Error]:
     try stdout().write("{text}\n".to_bytes())
     return stdout().flush()
 
-fn add(a: Int, b: Int) -> Int:
+fn add(a: Int, b: Int) Int:
     return a + b
 
-export fn run() -> Int:
+export fn run() Int:
     return add(1, 2)
 `
 
@@ -50,8 +50,8 @@ func TestReviewRanksEffectGainThroughCallers(t *testing.T) {
 }
 
 func TestReviewNamesErrorFlowAndContractChanges(t *testing.T) {
-	base := "export fn load(n: Int) -> Result[Int, String]:\n    return ok(n)\n"
-	head := "export fn load(n: Int) -> Result[Int, Error]:\n    return ok(n)\n"
+	base := "export fn load(n: Int) Result[Int, String]:\n    return ok(n)\n"
+	head := "export fn load(n: Int) Result[Int, Error]:\n    return ok(n)\n"
 	text := review(t, base, head, 1).Render("ascii")
 	for _, want := range []string{"CONTRACT", "ERROR", "error type: String -> Error"} {
 		if !strings.Contains(text, want) {
@@ -103,8 +103,8 @@ func TestProjectReportMapsPublicSurfaceAndEntryPoints(t *testing.T) {
 func TestReportCapsRowsUnlessAll(t *testing.T) {
 	var base, head strings.Builder
 	for i := 0; i < 8; i++ {
-		base.WriteString("export fn f" + string(rune('a'+i)) + "() -> Int:\n    return 1\n\n")
-		head.WriteString("export fn f" + string(rune('a'+i)) + "() -> String:\n    return \"x\"\n\n")
+		base.WriteString("export fn f" + string(rune('a'+i)) + "() Int:\n    return 1\n\n")
+		head.WriteString("export fn f" + string(rune('a'+i)) + "() String:\n    return \"x\"\n\n")
 	}
 	input := DiffInput{Files: 1, Sources: 1, Added: map[string]bool{}, Touched: map[string][]int{}, BaseChecked: true}
 	capped := DiffReport(factsOf(t, base.String()), factsOf(t, head.String()), input, ReviewOptions{}).Render("ascii")
@@ -118,7 +118,7 @@ func TestReportCapsRowsUnlessAll(t *testing.T) {
 }
 
 func TestDiagramASCIIIsAnOrderedOutline(t *testing.T) {
-	result := compiler.CompileSource("d.ms", "fn one() -> Int:\n    return 1\n\nfn two() -> Int:\n    return one() + one()\n", compiler.Options{AnalyzeOnly: true})
+	result := compiler.CompileSource("d.ms", "fn one() Int:\n    return 1\n\nfn two() Int:\n    return one() + one()\n", compiler.Options{AnalyzeOnly: true})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}

@@ -14,16 +14,16 @@ func TestResultArgumentInferenceKeepsLocalErrorScope(t *testing.T) {
 	sources := map[string]string{
 		"domain.ms": `export type Cause[T]:
     value: T
-export fn make() -> Result[Int, Cause[Int]]: error(Cause(7))
+export fn make() Result[Int, Cause[Int]]: error(Cause(7))
 `,
-		"helper.ms": `export fn erase[T](r: Result[T, Error]) -> Result[T, Error]: r
-export fn forward[T, E: Error](r: Result[T, E]) -> Result[T, Error]: erase(r)
+		"helper.ms": `export fn erase[T](r: Result[T, Error]) Result[T, Error]: r
+export fn forward[T, E: Error](r: Result[T, E]) Result[T, Error]: erase(r)
 `,
 		"main.ms": `import {first, first_generic} from "./first.ms"
 import {second, second_generic} from "./second.ms"
 import Cause from "./domain.ms"
 import panic from "@std/faults.ms"
-fn describe(r: Result[Int, Error]) -> String:
+fn describe(r: Result[Int, Error]) String:
     if r.is_ok(): return "unexpected success"
     return r.unwrap_error().message()
 test "local implementations remain selected after inference and forwarding":
@@ -37,9 +37,9 @@ test "local implementations remain selected after inference and forwarding":
 		sources[name+".ms"] = `import {Cause, make} from "./domain.ms"
 import {erase, forward} from "./helper.ms"
 impl Error for Cause[T]:
-    fn message() -> String: "` + name + ` {self.value}"
-export fn ` + name + `() -> Result[Int, Error]: erase(make())
-export fn ` + name + `_generic() -> Result[Int, Error]: forward(make())
+    fn message() String: "` + name + ` {self.value}"
+export fn ` + name + `() Result[Int, Error]: erase(make())
+export fn ` + name + `_generic() Result[Int, Error]: forward(make())
 `
 	}
 	for name, source := range sources {
@@ -56,7 +56,7 @@ export fn ` + name + `_generic() -> Result[Int, Error]: forward(make())
 	// Loading both implementation modules must not expose either implementation
 	// to a raw Cause value in this importing module.
 	invalid := sources["main.ms"] + `import erase from "./helper.ms"
-fn invalid(r: Result[Int, Cause[Int]]) -> Result[Int, Error]: erase(r)
+fn invalid(r: Result[Int, Cause[Int]]) Result[Int, Error]: erase(r)
 `
 	if err := os.WriteFile(filepath.Join(root, "main.ms"), []byte(invalid), 0600); err != nil {
 		t.Fatal(err)

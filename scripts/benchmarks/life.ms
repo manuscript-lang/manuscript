@@ -1,14 +1,15 @@
 import {filled, range} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
-fn make_cells() -> List[Int]:
+fn make_cells() List[Int]:
     if let values = filled(value: 0, count: 16384): return values
 
     return panic("fill failure")
 
-export fn main() -> Int:
+export fn main() Int:
     var cells = make_cells()
     var next = make_cells()
+
     for i in range(0, 16384):
         var value = 0
         if (i * 17 + i / 128 * 13) % 7 < 3: value = 1
@@ -57,7 +58,6 @@ export fn main() -> Int:
     var sum = 0
     for i in range(0, 16384):
         sum = sum + cells.at(i).unwrap()
-
     if sum != 3914: return panic("life checksum")
 
     return 0

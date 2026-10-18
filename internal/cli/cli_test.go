@@ -148,8 +148,8 @@ func TestStructuredDiagnosticsAndFailedEmit(t *testing.T) {
 		source string
 		status int
 	}{
-		{"fn value() -> Int:\n    return 3\n", 0},
-		{"fn value() -> Int:\n    return unknown\n", 1},
+		{"fn value() Int:\n    return 3\n", 0},
+		{"fn value() Int:\n    return unknown\n", 1},
 		{"fn value(\n", 1},
 	} {
 		file := sourceFile(t, tc.source)
@@ -183,9 +183,9 @@ func TestFormattingCheckAndPermissionPreservation(t *testing.T) {
 	for _, tc := range []struct {
 		name, source, want string
 	}{
-		{"spacing", "fn value() -> Int:   \n    return 3   \n", "fn value() -> Int:\n    return 3\n"},
-		{"paragraphs", "fn value() -> Int:\n    if true: return 3\n    return 0\n", "fn value() -> Int:\n    if true: return 3\n\n    return 0\n"},
-		{"expressions", "fn value() -> Int:\n    return sum(left:read(1),right:2)\n", "fn value() -> Int:\n    return sum(left: read(1), right: 2)\n"},
+		{"spacing", "fn value() Int:   \n    return 3   \n", "fn value() Int:\n    return 3\n"},
+		{"paragraphs", "fn value() Int:\n    if true: return 3\n    return 0\n", "fn value() Int:\n    if true: return 3\n\n    return 0\n"},
+		{"expressions", "fn value() Int:\n    return sum(left:read(1),right:2)\n", "fn value() Int:\n    return sum(left: read(1), right: 2)\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			checkFormattingAndPermissions(t, tc.source, tc.want)
@@ -229,8 +229,8 @@ func TestProjectLintChecksImportedSource(t *testing.T) {
 	root := t.TempDir()
 	for name, source := range map[string]string{
 		"ms.toml":  "[project]\nname = \"lint\"\nsource = \".\"\nentry = \"main.ms\"\n",
-		"main.ms":  "import value from \"./other.ms\"\nfn read() -> Int:\n    return value()\n",
-		"other.ms": "export fn value() -> Int:   \n    return 3\n",
+		"main.ms":  "import value from \"./other.ms\"\nfn read() Int:\n    return value()\n",
+		"other.ms": "export fn value() Int:   \n    return 3\n",
 	} {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {
 			t.Fatal(err)
@@ -257,7 +257,7 @@ func TestProjectLintChecksImportedSource(t *testing.T) {
 
 func TestSourceCommandsNeedNoNativeToolchain(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
-	file := sourceFile(t, "export fn value() -> Int:\n    return 3\n")
+	file := sourceFile(t, "export fn value() Int:\n    return 3\n")
 	for _, command := range []string{"check", "inspect", "diagram", "emit"} {
 		status, output, errors := invoke(t, command, file)
 		if status != 0 || output == "" || errors != "" {
@@ -274,7 +274,7 @@ func TestSourceCommandsRetainProjectEntryValidation(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "ms.toml"), []byte("[project]\nname = \"invalid-entry\"\nsource = \".\"\nentry = \"main.ms\"\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "main.ms"), []byte("export fn helper() -> Int:\n    return 1\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "main.ms"), []byte("export fn helper() Int:\n    return 1\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	for _, command := range []string{"check", "inspect", "diagram"} {
@@ -286,7 +286,7 @@ func TestSourceCommandsRetainProjectEntryValidation(t *testing.T) {
 }
 
 func TestFailedProfileDoesNotCreateAnArtifactDirectory(t *testing.T) {
-	file := sourceFile(t, "fn value() -> Int:\n    return unknown\n")
+	file := sourceFile(t, "fn value() Int:\n    return unknown\n")
 	output := filepath.Join(t.TempDir(), "profile")
 	status, _, errors := invoke(t, "profile", file, "-o", output)
 	if status != 1 || errors == "" {
@@ -302,7 +302,7 @@ func TestFailedProfileBuildRemovesItsArtifactDirectory(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "ms.toml"), []byte("[project]\nname = \"stale\"\nsource = \".\"\nentry = \"main.ms\"\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "main.ms"), []byte("export fn main() -> Int:\n    return 0\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "main.ms"), []byte("export fn main() Int:\n    return 0\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	// A cache directory that is a regular file makes the native build fail.
@@ -334,7 +334,7 @@ func TestCLIErrorsNameTheFix(t *testing.T) {
 	if status != 1 || !strings.Contains(errors, "file not found: missing-file.ms") {
 		t.Fatalf("missing format file: %d, %q", status, errors)
 	}
-	source := sourceFile(t, "fn value() -> Int:\n    return 1\n")
+	source := sourceFile(t, "fn value() Int:\n    return 1\n")
 	status, _, errors = invoke(t, "check", source, "--bogus")
 	if status != 2 || !strings.Contains(errors, "unknown option --bogus for ms check; run 'ms help check'") {
 		t.Fatalf("unknown option: %d, %q", status, errors)
@@ -342,7 +342,7 @@ func TestCLIErrorsNameTheFix(t *testing.T) {
 }
 
 func TestLintJSONReportsParseAndTypeErrors(t *testing.T) {
-	for _, source := range []string{"export fn main() -> Int:\n    return \"a\"\n", "fn (\n"} {
+	for _, source := range []string{"export fn main() Int:\n    return \"a\"\n", "fn (\n"} {
 		status, output, _ := invoke(t, "lint", sourceFile(t, source), "--json")
 		var document struct {
 			Format      int               `json:"format"`
@@ -355,7 +355,7 @@ func TestLintJSONReportsParseAndTypeErrors(t *testing.T) {
 }
 
 func TestArgumentMistakesNameTheProblem(t *testing.T) {
-	source := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
+	source := sourceFile(t, "export fn main() Int:\n    return 0\n")
 	status, _, errors := invoke(t, "build", source, "extra.ms")
 	if status != 2 || !strings.Contains(errors, "unexpected extra argument extra.ms (ms build takes one file") {
 		t.Fatalf("extra argument: %d, %q", status, errors)
@@ -372,7 +372,7 @@ func TestArgumentMistakesNameTheProblem(t *testing.T) {
 }
 
 func TestBuildRefusesToOverwriteSources(t *testing.T) {
-	source := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
+	source := sourceFile(t, "export fn main() Int:\n    return 0\n")
 	for _, target := range []string{source, filepath.Join(filepath.Dir(source), "ms.toml"), filepath.Join(filepath.Dir(source), "other.ms")} {
 		status, _, errors := invoke(t, "build", source, "-o", target)
 		if status != 2 || !strings.Contains(errors, "would overwrite") {
@@ -385,7 +385,7 @@ func TestBuildRefusesToOverwriteSources(t *testing.T) {
 }
 
 func TestEmptyInputArgumentIsRejected(t *testing.T) {
-	source := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
+	source := sourceFile(t, "export fn main() Int:\n    return 0\n")
 	for _, args := range [][]string{{"check", ""}, {"run", ""}, {"build", ""}, {"check", source, ""}} {
 		status, _, errors := invoke(t, args...)
 		if status != 2 || !strings.Contains(errors, "empty") {
@@ -395,7 +395,7 @@ func TestEmptyInputArgumentIsRejected(t *testing.T) {
 }
 
 func TestTextOutputsRefuseToOverwriteSources(t *testing.T) {
-	source := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
+	source := sourceFile(t, "export fn main() Int:\n    return 0\n")
 	for _, command := range []string{"emit", "inspect", "diagram"} {
 		status, _, errors := invoke(t, command, source, "-o", source)
 		if status != 2 || !strings.Contains(errors, "would overwrite") {
@@ -419,7 +419,7 @@ func TestDirectoryArgumentUsesManifestOrExplains(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(directory, "ms.toml"), []byte("[project]\nname = \"demo\"\nsource = \"src\"\nentry = \"./src/main.ms\"\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(directory, "src", "main.ms"), []byte("export fn main() -> Int:\n    return 0\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(directory, "src", "main.ms"), []byte("export fn main() Int:\n    return 0\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	status, output, errors := invoke(t, "check", directory)
@@ -429,7 +429,7 @@ func TestDirectoryArgumentUsesManifestOrExplains(t *testing.T) {
 }
 
 func TestLintIgnoresBundledStandardModules(t *testing.T) {
-	source := sourceFile(t, "import TomlValue from \"@std/toml.ms\"\n\nexport fn main() -> Int:\n    let v: Optional[TomlValue] = none\n    if v.is_some():\n        return 1\n    return 0\n")
+	source := sourceFile(t, "import TomlValue from \"@std/toml.ms\"\n\nexport fn main() Int:\n    let v: Optional[TomlValue] = none\n    if v.is_some():\n        return 1\n    return 0\n")
 	status, output, errors := invoke(t, "lint", source)
 	if status != 0 || strings.Contains(errors, "@std/") || output != "" {
 		t.Fatalf("%d, %q, %q", status, output, errors)
@@ -446,7 +446,7 @@ func TestServerCommandsRejectArguments(t *testing.T) {
 }
 
 func TestFormatDropLabelsOnlyForCheckedSource(t *testing.T) {
-	source := "fn add(left: Int, right: Int) -> Int: left + right\n\nfn total(left: Int, right: Int) -> Int:\n    return add(left: left, right: right)\n"
+	source := "fn add(left: Int, right: Int) Int: left + right\n\nfn total(left: Int, right: Int) Int:\n    return add(left: left, right: right)\n"
 	want := strings.Replace(source, "add(left: left, right: right)", "add(left, right)", 1)
 	file := sourceFile(t, source)
 	if status, _, _ := invoke(t, "fmt", file, "--check"); status != 0 {
@@ -461,7 +461,7 @@ func TestFormatDropLabelsOnlyForCheckedSource(t *testing.T) {
 	if got, _ := os.ReadFile(file); string(got) != want {
 		t.Fatalf("got %q, want %q", got, want)
 	}
-	broken := sourceFile(t, "fn total(left: Int) -> Int:\n    return add(left: left)\n")
+	broken := sourceFile(t, "fn total(left: Int) Int:\n    return add(left: left)\n")
 	before, _ := os.ReadFile(broken)
 	if status, _, errors := invoke(t, "fmt", broken, "--drop-labels"); status != 1 || !strings.Contains(errors, "--drop-labels needs source that checks") {
 		t.Fatalf("source that does not check: %d %q", status, errors)

@@ -4,7 +4,7 @@ import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 import {Rng, next, text, mutate} from "./support/generator.ms"
 
-fn generated(rng: Rng, depth: Int) -> TomlValue:
+fn generated(rng: Rng, depth: Int) TomlValue:
     var choices = 7
     if depth > 2: choices = 4
     let kind = next(rng, choices)
@@ -25,7 +25,7 @@ fn generated(rng: Rng, depth: Int) -> TomlValue:
 
     return table(rng, depth + 1)
 
-fn table(rng: Rng, depth: Int) -> TomlValue:
+fn table(rng: Rng, depth: Int) TomlValue:
     let entries: Map[String, TomlValue] = {}
     var count = next(rng, 4)
 
@@ -35,13 +35,13 @@ fn table(rng: Rng, depth: Int) -> TomlValue:
 
     return TomlValue.TableValue(entries)
 
-fn check_round_trip(seed: Int, original: TomlValue) -> Unit:
+fn check_round_trip(seed: Int, original: TomlValue) Unit:
     let rendered = stringify(original) | value
     if value(parse(rendered)) != original: return panic(
         "seed {seed}: changed\n{rendered}"
     )
 
-fn check_stable(seed: Int, mutated: String, first: TomlValue) -> Unit:
+fn check_stable(seed: Int, mutated: String, first: TomlValue) Unit:
     let again = stringify(first) | value
     if value(parse(again)) != first: return panic(
         "seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"

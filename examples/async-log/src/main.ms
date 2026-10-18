@@ -4,12 +4,12 @@ import panic from "@std/faults.ms"
 import {sleep, duration} from "@std/time.ms"
 import {async_file_transport} from "./async_file_transport.ms"
 
-fn value[T, E: Error](result: Result[T, E]) -> T:
+fn value[T, E: Error](result: Result[T, E]) T:
     if result.is_error(): return panic(message: result.unwrap_error().message())
 
     return result.unwrap()
 
-export fn main() -> Int:
+export fn main() Int:
     return 0
 
 test "records reach the file after flush and close":
@@ -35,15 +35,15 @@ test "records reach the file after flush and close":
         let after = fs.read_file(path: path) | value
         if after.length() != 77: return panic("close drains: {after.length()}")
 
-fn line(text: String) -> String:
+fn line(text: String) String:
     return "\{\"level\":30,\"msg\":\"{text}\"\}\n"
 
-fn read(path: String) -> String:
+fn read(path: String) String:
     return filesystem().read_file(path: path)
         | value
         | .to_string().unwrap_or("")
 
-fn missing(path: String) -> Bool:
+fn missing(path: String) Bool:
     return filesystem().stat(path: path, follow_links: false).is_error()
 
 test "size rotation keeps at most max_files files":

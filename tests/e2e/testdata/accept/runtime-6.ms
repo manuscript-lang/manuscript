@@ -1,10 +1,10 @@
 import panic from "@std/faults.ms"
 import Decimal from "@std/decimal.ms"
 
-fn quotient(value: Int, divisor: Int) -> Int:
+fn quotient(value: Int, divisor: Int) Int:
     return value / divisor
 
-fn remainder(value: Int, divisor: Int) -> Int:
+fn remainder(value: Int, divisor: Int) Int:
     return value % divisor
 
 test "numeric boundary rules":

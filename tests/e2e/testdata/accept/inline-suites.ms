@@ -1,14 +1,14 @@
 import panic from "@std/faults.ms"
 
-fn double(value: Int) -> Int: value * 2
+fn double(value: Int) Int: value * 2
 
-fn apply(value: Int, transform: fn(value: Int) -> Int) -> Int: transform(value)
+fn apply(value: Int, transform: fn(value: Int) Int) Int: transform(value)
 
-fn choose(value: Int) -> Int:
+fn choose(value: Int) Int:
     if value > 0: return double(value)
     else: return 0
 
-fn alternate(value: Int) -> Int:
+fn alternate(value: Int) Int:
     if value < 0: return -1
     else if value == 0: return 0
     else:

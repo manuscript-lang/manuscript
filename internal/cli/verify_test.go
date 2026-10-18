@@ -24,7 +24,7 @@ func stepStatuses(document verifyResult) map[string]string {
 }
 
 func TestVerifyReportsEveryStepAsOneDocument(t *testing.T) {
-	file := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
+	file := sourceFile(t, "export fn main() Int:\n    return 0\n")
 	status, output, errors := invoke(t, "verify", file, "--json")
 	document := decodeVerify(t, output)
 	if status != 0 || !document.OK || errors != "" || len(document.Steps) != 4 {
@@ -38,7 +38,7 @@ func TestVerifyReportsEveryStepAsOneDocument(t *testing.T) {
 }
 
 func TestVerifyFailingCheckSkipsLintAndTestButStillFormats(t *testing.T) {
-	file := sourceFile(t, "export fn main() -> Int:\n    return \"wrong\"\n")
+	file := sourceFile(t, "export fn main() Int:\n    return \"wrong\"\n")
 	status, output, _ := invoke(t, "verify", file, "--json")
 	document := decodeVerify(t, output)
 	want := map[string]string{"check": "failed", "fmt": "passed", "lint": "skipped", "test": "skipped"}
@@ -54,7 +54,7 @@ func TestVerifyFailingCheckSkipsLintAndTestButStillFormats(t *testing.T) {
 }
 
 func TestVerifyReportsFormattingDriftAndNoTestSkip(t *testing.T) {
-	file := sourceFile(t, "export fn main() -> Int:\n    return   0\n")
+	file := sourceFile(t, "export fn main() Int:\n    return   0\n")
 	status, output, _ := invoke(t, "verify", file, "--json", "--no-test")
 	document := decodeVerify(t, output)
 	got := stepStatuses(document)
@@ -72,7 +72,7 @@ func TestVerifyRejectsBadArguments(t *testing.T) {
 }
 
 func TestVerifyTextNamesTheFailingDiagnostic(t *testing.T) {
-	file := sourceFile(t, "export fn main() -> Int:\n    return \"wrong\"\n")
+	file := sourceFile(t, "export fn main() Int:\n    return \"wrong\"\n")
 	status, _, errors := invoke(t, "verify", file)
 	if status != 1 || !strings.Contains(errors, "expected Int, found String") {
 		t.Fatalf("verify text = %d %q", status, errors)

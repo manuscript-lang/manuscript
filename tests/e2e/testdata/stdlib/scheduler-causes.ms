@@ -6,15 +6,15 @@ import sleep from "@std/time.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
-fn typed_failure() -> Result[Unit, Error]:
+fn typed_failure() Result[Unit, Error]:
     return error(IoError.Unavailable)
 
-fn text_failure() -> Result[Unit, Error]:
+fn text_failure() Result[Unit, Error]:
     return error(TextError.Text("intentional text"))
 
 test "scheduler failures retain typed and text causes":
     let seen = Synchronized(0)
-    let reporter = fn(failure: SchedulerFailure) -> Unit:
+    let reporter = fn(failure: SchedulerFailure) Unit:
         match failure:
             Failed(_, cause):
                 with guard = seen.lock():

@@ -105,7 +105,7 @@ test "typed addresses preserve normalization and reject zones":
         "normalized IPv4 matched mapped IPv6 prefix"
     )
 
-fn expect_ip_error(input: String) -> Unit:
+fn expect_ip_error(input: String) Unit:
     let parsed = parse_ip(input)
     if parsed.is_ok(): return panic("invalid IP accepted")
     if parsed.unwrap_error() != NetworkError.InvalidData: return panic(

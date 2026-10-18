@@ -5,7 +5,7 @@ import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
-fn forward[T](item: T) -> T: item
+fn forward[T](item: T) T: item
 
 type Capture:
     last: Bytes
@@ -18,20 +18,17 @@ impl Commands for Capture:
         input: Bytes,
         max_output_bytes: Optional[Int],
         timeout: Optional[Duration]
-    ) -> Result[CommandOutput, CommandError]:
+    ) Result[CommandOutput, CommandError]:
         self.last = input
         self.calls = self.calls + 1
         return ok(CommandOutput(0, input, "".to_bytes()))
 
-    fn spawn(
-        program: String,
-        arguments: List[String]
-    ) -> Result[Subprocess, CommandError]:
+    fn spawn(program: String, arguments: List[String]) Result[Subprocess, CommandError]:
         return error(CommandError.Unavailable)
 
 import Duration from "@std/time.ms"
 
-fn generic_run[T: Commands](service: T) -> Bytes:
+fn generic_run[T: Commands](service: T) Bytes:
     return value(service.run(program: "fake", arguments: [])).stdout
 
 type Override:
@@ -61,13 +58,10 @@ impl Commands for Override:
         input: Bytes = self.input,
         max_output_bytes: Optional[Int] = none,
         timeout: Optional[Duration]
-    ) -> Result[CommandOutput, CommandError]:
+    ) Result[CommandOutput, CommandError]:
         return ok(CommandOutput(0, input, "".to_bytes()))
 
-    fn spawn(
-        program: String,
-        arguments: List[String]
-    ) -> Result[Subprocess, CommandError]:
+    fn spawn(program: String, arguments: List[String]) Result[Subprocess, CommandError]:
         return error(CommandError.Unavailable)
 
 test "concrete implementation defaults and interface defaults stay distinct":
@@ -133,7 +127,7 @@ test "Base64 defaults support stored functions and explicit alphabets":
     let copied = encode
     if copied(bytes) != "/w==": return panic("copied native callable")
 
-    let typed: fn(data: Bytes, url_safe: Bool) -> String = encode
+    let typed: fn(data: Bytes, url_safe: Bool) String = encode
     if typed(bytes, false) != "/w==": return panic("complete typed callable")
     if (
         value(base64_decode("/w==")) != bytes

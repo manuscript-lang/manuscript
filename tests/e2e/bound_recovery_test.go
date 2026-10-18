@@ -8,7 +8,7 @@ import (
 )
 
 func TestInvalidBoundsProduceDiagnosticsWithoutExecutable(t *testing.T) {
-	source := "type Box[Error: Error]:\n    cause: Error\nimpl Error for Box[Error]:\n    fn message() -> String: self.cause.message()\nexport fn main() -> Int: 0\n"
+	source := "type Box[Error: Error]:\n    cause: Error\nimpl Error for Box[Error]:\n    fn message() String: self.cause.message()\nexport fn main() Int: 0\n"
 	file := filepath.Join(t.TempDir(), "bounds.ms")
 	if err := os.WriteFile(file, []byte(source), 0600); err != nil {
 		t.Fatal(err)

@@ -29,14 +29,14 @@ func TestRecursiveDataAndFiniteTypeApplications(t *testing.T) {
 		{"nested result field", "type Config:\n    value: Result[Result[Int, String], String]\n", true},
 		{"nested optional generic pair", "type Pair[T, U]:\n    first: T\n    second: U\ntype Config:\n    value: Pair[Optional[Int], Optional[Optional[String]]]\n", true},
 		{"nested optional collection", "type Config:\n    value: Optional[List[Optional[Int]]]\n", true},
-		{"regular callback", "type Node[T]:\n    build: fn() -> Node[T]\n", true},
-		{"regular interface", "interface Node[T]:\n    fn build() -> Node[T]\n", true},
+		{"regular callback", "type Node[T]:\n    build: fn() Node[T]\n", true},
+		{"regular interface", "interface Node[T]:\n    fn build() Node[T]\n", true},
 		{"expanding direct", "type Grow[T]:\n    next: Grow[List[T]]\n", false},
 		{"expanding container", "type Grow[T]:\n    next: List[Grow[List[T]]]\n", false},
 		{"expanding mutual", "type A[T]:\n    b: B[List[T]]\ntype B[U]:\n    a: A[U]\n", false},
-		{"expanding callback", "type Grow[T]:\n    next: fn() -> Grow[List[T]]\n", false},
-		{"expanding callback parameter", "type Grow[T]:\n    next: fn(value: Grow[List[T]]) -> Unit\n", false},
-		{"expanding interface", "interface Grow[T]:\n    fn next() -> Grow[List[T]]\n", false},
+		{"expanding callback", "type Grow[T]:\n    next: fn() Grow[List[T]]\n", false},
+		{"expanding callback parameter", "type Grow[T]:\n    next: fn(value: Grow[List[T]]) Unit\n", false},
+		{"expanding interface", "interface Grow[T]:\n    fn next() Grow[List[T]]\n", false},
 		{"concrete substitution", "type Grow[T]:\n    next: Grow[Int]\n", false},
 		{"permutation", "type Flip[T, U]:\n    next: Flip[U, T]\n", false},
 		{"nongeneric bridge", "type Grow[T]:\n    next: Bridge\ntype Bridge:\n    next: Grow[Int]\n", false},
@@ -102,8 +102,8 @@ func TestStructuralPropertiesShareRepeatedDependencies(t *testing.T) {
 	for i := 1; i <= 32; i++ {
 		fmt.Fprintf(&source, "type Layer%d:\n    left: Layer%d\n    right: Layer%d\n", i, i-1, i-1)
 	}
-	source.WriteString("fn hash(value: Layer32) -> Int: return value.hash()\n")
-	source.WriteString("fn equal(left: Layer32, right: Layer32) -> Bool: return left == right\n")
+	source.WriteString("fn hash(value: Layer32) Int: return value.hash()\n")
+	source.WriteString("fn equal(left: Layer32, right: Layer32) Bool: return left == right\n")
 	module, err := parser.Parse("properties.ms", source.String())
 	if err != nil {
 		t.Fatal(err)

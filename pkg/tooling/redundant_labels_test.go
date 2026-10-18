@@ -12,18 +12,18 @@ func TestDropRedundantLabels(t *testing.T) {
     x: Int
     y: Int
 
-fn bump(map: Int, key: Int, step: Int = 1) -> Int: map + key + step
+fn bump(map: Int, key: Int, step: Int = 1) Int: map + key + step
 
 type Counter:
     total: Int
 
 interface Adder:
-    fn add(amount: Int, extra: Int) -> Int
+    fn add(amount: Int, extra: Int) Int
 
 impl Adder for Counter:
-    fn add(amount: Int, extra: Int) -> Int: self.total + amount + extra
+    fn add(amount: Int, extra: Int) Int: self.total + amount + extra
 
-fn use(map: Int, key: Int, y: Int, x: Int, counter: Counter) -> Int:
+fn use(map: Int, key: Int, y: Int, x: Int, counter: Counter) Int:
 `
 	for _, test := range []struct{ name, body, want string }{
 		{"all in order", "return bump(map: map, key: key)", "return bump(map, key)"},
@@ -60,7 +60,7 @@ fn use(map: Int, key: Int, y: Int, x: Int, counter: Counter) -> Int:
 }
 
 func TestDropRedundantLabelsSkipsBrokenSource(t *testing.T) {
-	source := "fn f(a: Int) -> Int:\n    return g(a: a)\n"
+	source := "fn f(a: Int) Int:\n    return g(a: a)\n"
 	result := compiler.CompileSource("broken.ms", source, compiler.Options{AnalyzeOnly: true})
 	if got, n := tooling.DropRedundantLabels(result.Program, source); n != 0 || got != source {
 		t.Fatalf("edited source with errors: %d %q", n, got)
