@@ -175,7 +175,13 @@ impl<'a> FnLower<'a> {
         x: Val,
         at: ms_mir::ir::Block,
     ) -> Result<Val, Error> {
-        if x.own || self.dead || self.b.current() == at || !self.is_place(e) {
+        // A value that needs no drop stays valid, and keeps the value of its written position.
+        if x.own
+            || self.dead
+            || self.b.current() == at
+            || !self.needs_drop(self.ty_of(x.v))
+            || !self.is_place(e)
+        {
             return Ok(x);
         }
         self.expr(e)

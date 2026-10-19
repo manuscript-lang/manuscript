@@ -297,9 +297,18 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v: out, own: true })
             }
             (TyKind::List(elem), "get") => {
-                let mut it = args.into_iter();
-                let index = it.next().ok_or_else(|| Error::new("get without index"))?;
-                self.list_get_or(recv, elem, index, it.next())
+                // Arguments arrive in written order; the names say which is which.
+                let mut index = None;
+                let mut default = None;
+                for a in args {
+                    if a.name.as_str() == "default" {
+                        default = Some(a);
+                    } else {
+                        index = Some(a);
+                    }
+                }
+                let index = index.ok_or_else(|| Error::new("get without index"))?;
+                self.list_get_or(recv, elem, index, default)
             }
             (TyKind::Int, "to_float") => {
                 let x = self.borrow(recv);
