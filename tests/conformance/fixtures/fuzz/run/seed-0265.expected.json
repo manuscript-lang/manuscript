@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "fib(37) = 24157817\nQUOTE\"D\ns1 = [héllo]\nl2 = [-21, -9, 10, 0, 17] len 5\ns3 = [olléh]\ni4 = -2\ns5 = [héllox]\nf6 = 1e+25\nx\ns7 = [-2:héllo]\n",
+    "stderr": ""
+  }
+}

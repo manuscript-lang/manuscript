@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "5 490821 true sum 490826\ns1 = [ahpla]\ncollatz(829) = 90\nacc2 = 0\ns3 = [héllo]\nhéllo\nl4 = [-3, -28, 29] len 3\n115 -6 false sum 109\n21709972 -287934158770 false sum -287912448798\ni5 = -156\nb6 = false\ni7 = 116220\ni8 = 3261446162\ngcd(4136, 2314) = 2\nb9 = false\ns10 = [ahplahéllo]\ns11 = [-12:alphaalpha]\nb12 = true\nf13 = 815.999\n",
+    "stderr": ""
+  }
+}

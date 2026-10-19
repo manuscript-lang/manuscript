@@ -1,0 +1,75 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "successful-result-int-bounds.ms::bounded successful Results preserve both branch budgets",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "successful-result-int-bounds.ms::Result payload bounds retain intermediate overflow",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "successful-result-int-bounds.ms::Result helper overflow still occurs in the original call",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "successful-result-int-bounds.ms::hidden successful returns in error construction keep checks",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "successful-result-int-bounds.ms::Result bounds preserve argument effects and cleanup",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN successful-result-int-bounds.ms::bounded successful Results preserve both branch budgets\nPASS successful-result-int-bounds.ms::bounded successful Results preserve both branch budgets\nRUN successful-result-int-bounds.ms::Result payload bounds retain intermediate overflow\nPASS successful-result-int-bounds.ms::Result payload bounds retain intermediate overflow\nRUN successful-result-int-bounds.ms::Result helper overflow still occurs in the original call\nPASS successful-result-int-bounds.ms::Result helper overflow still occurs in the original call\nRUN successful-result-int-bounds.ms::hidden successful returns in error construction keep checks\nPASS successful-result-int-bounds.ms::hidden successful returns in error construction keep checks\nRUN successful-result-int-bounds.ms::Result bounds preserve argument effects and cleanup\nPASS successful-result-int-bounds.ms::Result bounds preserve argument effects and cleanup\n5 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

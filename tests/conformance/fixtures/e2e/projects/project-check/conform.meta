@@ -1,0 +1,3 @@
+# conform: tags=diagnostics,projects,strings,tier-core,try-result
+# conform: phase=check
+# conform: origin=tests/e2e/testdata/projects/project_check

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "interface Read:\n    fn get() Int\n\nimpl Read for E1:\n    fn get() Int: self.code\n\nfn read[T](r: Result[T, Read]) Unit: return\n\nfn first() Unit: read(f())\n"
+  }
+}

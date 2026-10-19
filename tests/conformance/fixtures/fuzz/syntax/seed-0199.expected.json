@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "unexpected source character '\\\\'; this character is not part of Manuscript's syntax outside text",
+        "position": {
+          "file": "seed-0199.ms",
+          "line": 12,
+          "column": 18,
+          "offset": 358
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

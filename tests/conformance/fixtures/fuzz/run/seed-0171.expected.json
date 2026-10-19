@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 8073\ni2 = 8073\nf3 = -1.1363636362338598e+22\ni4 = -1\nb5 = false\nl6 = [26, 26, -4, 1, -23] len 5\ns7 = [MiXeD CaSe]\nl8 = [26, 26] len 2\nl9 = [3] len 1\nf10 = -2.2727272724677196e+22\nf11 = 0\nl12 = [-23, -4, 1, 26, 26] len 5\ns13 = [MIXED CASE]\ncollatz(250) = 109\nacc14 = -40\nb15 = false\nl16 = [-20, 27, 17, 27, 14] len 5\n144 28 false sum 172\ns17 = [  deddap  語本日]\n",
+    "stderr": ""
+  }
+}

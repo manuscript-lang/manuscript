@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn collect[T, U](\n    items: List[T],\n    step: fn(value: T) Result[List[U], MissingError]\n) Result[List[U], MissingError]:\n    return step(items.get(0))\n\nfn first() Unit:\n    let result = collect(\n        items: [1, 2],\n        step: fn(value: Int) Result[List[Int], MissingError]: ok([value])\n    )\n    let unrelated: Int = \"wrong\"\n"
+  }
+}

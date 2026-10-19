@@ -62,3 +62,4 @@ __pycache__/
 
 # Rust workspace build output
 /target/
+/target-rs/

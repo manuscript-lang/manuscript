@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import stdout from \"@std/io.ms\"\n\nexport fn main() Int:\n    if stdout().write(\"Hello, Manuscript!\\n\").is_error():\n        return 1\n\n    return 0\n"
+  }
+}

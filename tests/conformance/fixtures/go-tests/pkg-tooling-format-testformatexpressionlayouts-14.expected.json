@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "pkg-tooling-format-testformatexpressionlayouts-14.ms",
+          "line": 5,
+          "column": 33,
+          "offset": 233
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "pkg-tooling-format-testformatexpressionlayouts-14.ms",
+          "line": 7,
+          "column": 3,
+          "offset": 306
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-14.ms:5:33: resolution: unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import it\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-14.ms:7:3: resolution: unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

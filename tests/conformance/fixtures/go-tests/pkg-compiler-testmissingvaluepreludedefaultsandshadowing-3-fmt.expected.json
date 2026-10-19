@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type Other:\n    case Missing(value: Int)\n\nfn get() Other: Missing(1)\n"
+  }
+}

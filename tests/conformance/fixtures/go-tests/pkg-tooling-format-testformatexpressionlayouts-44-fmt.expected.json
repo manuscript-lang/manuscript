@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn work() Bool:\n    return (\n        account_is_active\n        and payment_is_allowed\n        and remaining_balance > minimum_balance\n    )\n"
+  }
+}

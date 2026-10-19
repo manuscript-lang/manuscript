@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "method m declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument",
+        "position": {
+          "file": "tests-e2e-testinherentimplrejections-5.ms",
+          "line": 7,
+          "column": 8,
+          "offset": 197
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/tests-e2e-testinherentimplrejections-5.ms:7:8: type: method m declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

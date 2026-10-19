@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn cause(value: Int) String: \"cause\"\n\nfn wrong(value: Optional[Int]) Result[Int, String]: value.ok_or_else(cause)\n"
+  }
+}

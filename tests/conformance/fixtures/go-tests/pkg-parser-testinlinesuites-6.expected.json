@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding use; declare it with 'let use = ...' before use, define 'fn use(...)', or import it from a module",
+        "position": {
+          "file": "pkg-parser-testinlinesuites-6.ms",
+          "line": 6,
+          "column": 5,
+          "offset": 189
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected fn() Unit, found fn() Int",
+        "position": {
+          "file": "pkg-parser-testinlinesuites-6.ms",
+          "line": 7,
+          "column": 34,
+          "offset": 262
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-parser-testinlinesuites-6.ms:6:5: resolution: unknown binding use; declare it with 'let use = ...' before use, define 'fn use(...)', or import it from a module\n<DIR>/pkg-parser-testinlinesuites-6.ms:7:34: type: expected fn() Unit, found fn() Int\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

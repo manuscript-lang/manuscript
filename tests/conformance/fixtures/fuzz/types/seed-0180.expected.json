@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "operator operands require the same independently known type, found Float + Int; convert one side so both have one type (e.g. to_string() for text, or an Int/Float conversion)",
+        "position": {
+          "file": "seed-0180.ms",
+          "line": 28,
+          "column": 19,
+          "offset": 873
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/seed-0180.ms:28:19: type: operator operands require the same independently known type, found Float + Int; convert one side so both have one type (e.g. to_string() for text, or an Int/Float conversion)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

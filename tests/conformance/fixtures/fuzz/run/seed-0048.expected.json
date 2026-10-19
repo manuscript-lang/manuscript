@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s2 = [héllo]\nl3 = [-25, 13] len 2\ni4 = -10\nb5 = true\ni6 = 0\n562794 13 false sum 562807\nl7 = [17, -29, 28] len 3\ni8 = -27\ns9 = [HÉLLO]\nacc10 = 0\ni11 = 0\n7401092 -11 false sum 7401081\ni12 = -611\n",
+    "stderr": ""
+  }
+}

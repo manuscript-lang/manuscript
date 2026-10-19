@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "GAMMA\nb1 = false\nacc2 = 19\nb3 = false\ni4 = 885831341796\nb5 = false\nl6 = [-22, 5] len 2\n",
+    "stderr": ""
+  }
+}

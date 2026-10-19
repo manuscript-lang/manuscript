@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Money; declare it with 'type Money:' / 'interface Money:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "core-language-types-contracts-1.ms",
+          "line": 5,
+          "column": 23,
+          "offset": 193
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Receipt; declare it with 'type Receipt:' / 'interface Receipt:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "core-language-types-contracts-1.ms",
+          "line": 5,
+          "column": 37,
+          "offset": 207
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type PaymentError; declare it with 'type PaymentError:' / 'interface PaymentError:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "core-language-types-contracts-1.ms",
+          "line": 5,
+          "column": 46,
+          "offset": 216
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/core-language-types-contracts-1.ms:5:23: resolution: unknown type Money; declare it with 'type Money:' / 'interface Money:', declare it as a type parameter, or import it\n<DIR>/core-language-types-contracts-1.ms:5:37: resolution: unknown type Receipt; declare it with 'type Receipt:' / 'interface Receipt:', declare it as a type parameter, or import it\n<DIR>/core-language-types-contracts-1.ms:5:46: resolution: unknown type PaymentError; declare it with 'type PaymentError:' / 'interface PaymentError:', declare it as a type parameter, or import it\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import filesystem from \"@std/fs.ms\"\n\nfn classify(path: String) String:\n    match filesystem().stat(path: path, follow_links: true):\n        error(NotFound): return \"missing\"\n        ok(_): return \"exists\"\n"
+  }
+}

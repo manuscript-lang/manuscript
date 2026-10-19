@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "call-depth.ms::runaway recursion is a fault",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "call-depth.ms::runaway method recursion faults like function recursion",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "call-depth.ms::recursion below the limit runs normally",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "call-depth.ms::method recursion below the limit runs normally",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN call-depth.ms::runaway recursion is a fault\nPASS call-depth.ms::runaway recursion is a fault\nRUN call-depth.ms::runaway method recursion faults like function recursion\nPASS call-depth.ms::runaway method recursion faults like function recursion\nRUN call-depth.ms::recursion below the limit runs normally\nPASS call-depth.ms::recursion below the limit runs normally\nRUN call-depth.ms::method recursion below the limit runs normally\nPASS call-depth.ms::method recursion below the limit runs normally\n4 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

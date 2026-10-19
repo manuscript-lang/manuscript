@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 70,
+    "stdout": "",
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at tests-e2e-testfaultsourcelocations-4.ms:10 in Cell.bump\n  at tests-e2e-testfaultsourcelocations-4.ms:15 in probe\n  at tests-e2e-testfaultsourcelocations-4.ms:18 in main\n"
+  }
+}

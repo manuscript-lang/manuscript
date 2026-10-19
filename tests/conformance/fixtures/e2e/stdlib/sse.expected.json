@@ -1,0 +1,125 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "sse.ms::LF CRLF and CR endings decode identically under every chunk split",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "sse.ms::CR LF straddling a chunk boundary is one ending",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "sse.ms::repeated data lines join with LF and bare data is an empty line",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "sse.ms::comments, unknown fields and a single leading space are handled",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "sse.ms::event type applies to one event and id persists",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "sse.ms::ids containing NUL are ignored",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "sse.ms::events without data are not dispatched and reset the event type",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "sse.ms::retry accepts digits only and survives between events",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "sse.ms::a byte order mark is dropped only at the start of the stream",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "sse.ms::multi-byte scalars survive every chunk split",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "sse.ms::invalid UTF-8 is InvalidData and final",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "sse.ms::line and event budgets report LimitExceeded",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "sse.ms::truncated streams fail and clean ends succeed",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "sse.ms::reader decodes a borrowed stream and leaves it open",
+          "status": "passed"
+        },
+        {
+          "index": 14,
+          "name": "sse.ms::reader reports truncation limits and read failures",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 15,
+        "selected": 15,
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN sse.ms::LF CRLF and CR endings decode identically under every chunk split\nPASS sse.ms::LF CRLF and CR endings decode identically under every chunk split\nRUN sse.ms::CR LF straddling a chunk boundary is one ending\nPASS sse.ms::CR LF straddling a chunk boundary is one ending\nRUN sse.ms::repeated data lines join with LF and bare data is an empty line\nPASS sse.ms::repeated data lines join with LF and bare data is an empty line\nRUN sse.ms::comments, unknown fields and a single leading space are handled\nPASS sse.ms::comments, unknown fields and a single leading space are handled\nRUN sse.ms::event type applies to one event and id persists\nPASS sse.ms::event type applies to one event and id persists\nRUN sse.ms::ids containing NUL are ignored\nPASS sse.ms::ids containing NUL are ignored\nRUN sse.ms::events without data are not dispatched and reset the event type\nPASS sse.ms::events without data are not dispatched and reset the event type\nRUN sse.ms::retry accepts digits only and survives between events\nPASS sse.ms::retry accepts digits only and survives between events\nRUN sse.ms::a byte order mark is dropped only at the start of the stream\nPASS sse.ms::a byte order mark is dropped only at the start of the stream\nRUN sse.ms::multi-byte scalars survive every chunk split\nPASS sse.ms::multi-byte scalars survive every chunk split\nRUN sse.ms::invalid UTF-8 is InvalidData and final\nPASS sse.ms::invalid UTF-8 is InvalidData and final\nRUN sse.ms::line and event budgets report LimitExceeded\nPASS sse.ms::line and event budgets report LimitExceeded\nRUN sse.ms::truncated streams fail and clean ends succeed\nPASS sse.ms::truncated streams fail and clean ends succeed\nRUN sse.ms::reader decodes a borrowed stream and leaves it open\nPASS sse.ms::reader decodes a borrowed stream and leaves it open\nRUN sse.ms::reader reports truncation limits and read failures\nPASS sse.ms::reader reports truncation limits and read failures\n15 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

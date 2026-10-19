@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn f(counts: Map[String, Int], names: List[String], found: Optional[Int]) Unit:\n    match found:\n        some(n):\n            counts.add(key: \"a\", value: n)\n        none:\n            names.append(\"x\")\n"
+  }
+}

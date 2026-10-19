@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected an expression, found end of line; write a value, name, call, or literal here",
+        "position": {
+          "file": "pkg-parser-testmapliteralboundaries-1.ms",
+          "line": 5,
+          "column": 17,
+          "offset": 158
+        },
+        "end": {
+          "file": "pkg-parser-testmapliteralboundaries-1.ms",
+          "line": 5,
+          "column": 17,
+          "offset": 158
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

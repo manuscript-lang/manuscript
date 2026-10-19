@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type Key:\n    value: Int\n\nimpl Equal for Key:\n    fn equals(other: Equal) Bool: true\n\nimpl Hashable for Key:\n    fn hash() Int: 0\n\nfn probe() Int:\n    let values = Map[Key, Int]()\n    values.add(Key(1), 10)\n    values.add(Key(2), 20)\n    return values.length()\n"
+  }
+}

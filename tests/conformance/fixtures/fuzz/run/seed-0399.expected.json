@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "100 -531 false sum -431\ns1 = [deltaline\nbreakbrace{s}]\ni2 = -1\nf4 = 445.25\ns5 = [24]\nfact(12) = 479001600\ns6 = [back\\slash24]\ns7 = [24]\ns8 = [Tab\there24]\n-1 2 true sum 1\ni9 = 985488\nb10 = false\nb11 = false\ni12 = -1\nb13 = false\ni14 = 1213816374540\n",
+    "stderr": ""
+  }
+}

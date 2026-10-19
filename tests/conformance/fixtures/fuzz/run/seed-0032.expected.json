@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 784983\nacc2 = 5\ni3 = -784983\ni4 = -2730\nMiXeD CaSe\ni5 = 36\nhélloback\\slash\ni6 = -801242\nl7 = [] len 0\nf8 = 100000508.864\nl9 = [] len 0\nf10 = 99999908.614\nb11 = true\ns12 = [naïve]\ni13 = 35324260\ngcd(4201, 302) = 1\nf14 = 8e+24\ni15 = 1\nnaïve\n",
+    "stderr": ""
+  }
+}

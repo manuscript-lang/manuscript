@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 427026424055\nb2 = true\n854052848134 0 false sum 854052848134\nf3 = 8.227445222875083e-13\nbeta\nacc4 = 5\nb5 = true\nl6 = [26, 10, 15, 3] len 4\n",
+    "stderr": ""
+  }
+}

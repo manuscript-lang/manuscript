@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = -38070\ni2 = 1446660\nl3 = [-19, -18, -26, -7] len 4\ns4 = [4:hsals\\kcaba日本語]\ni5 = -537355\nf6 = 51.25\n",
+    "stderr": ""
+  }
+}

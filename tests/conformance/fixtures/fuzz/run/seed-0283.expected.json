@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "b1 = false\nf2 = 878.264\ns3 = [quote\"d]\nb4 = true\ns5 = [日本語x]\ni6 = -941\nback\\slash\ns7 = [beta]\nf8 = 441.462\ni9 = -941\ngcd(4287, 140) = 1\ns10 = [gamma]\nacc11 = 32\ns12 = [quote\"dnaïve]\ni13 = -21631\nf14 = 746.927\nb15 = true\n-941 -23513 false sum -24454\n",
+    "stderr": ""
+  }
+}

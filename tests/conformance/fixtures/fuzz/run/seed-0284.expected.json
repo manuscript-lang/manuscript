@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "gcd(1595, 4472) = 1\nf1 = 236053.46493000002\ns2 = [24héllo]\ni3 = -11\ns4 = [24HÉLLO]\ns5 = [line\nbreak  padded24HÉLLO]\ns6 = [dlrow olleholléh42deddap  kaerb\nenil]\nl7 = [-17, -19, -3, -25, -26] len 5\n",
+    "stderr": ""
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding cell; declare it with 'let cell = ...' before use, define 'fn cell(...)', or import it from a module",
+        "position": {
+          "file": "pkg-compiler-testcounteraggregateprivatecellselection-1.ms",
+          "line": 4,
+          "column": 13,
+          "offset": 174
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-compiler-testcounteraggregateprivatecellselection-1.ms:4:13: resolution: unknown binding cell; declare it with 'let cell = ...' before use, define 'fn cell(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

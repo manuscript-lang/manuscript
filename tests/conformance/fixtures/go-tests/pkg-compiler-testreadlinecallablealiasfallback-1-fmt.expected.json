@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {read_line, ReadStream} from \"@std/io.ms\"\n\nfn probe(input: ReadStream) Bool:\n    let next = read_line\n    if let line = next(input):\n        return line.is_some()\n\n    return false\n"
+  }
+}

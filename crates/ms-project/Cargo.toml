@@ -1,0 +1,11 @@
+[package]
+name = "ms-project"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Manuscript project manifests (ms.toml), aliases, confined import resolution and module discovery"
+
+[lints]
+workspace = true
+
+[dependencies]

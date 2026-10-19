@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "l1 = [] len 0\ni2 = 19\nacc3 = -3\ngcd(4227, 4952) = 1\nf4 = 325680.317531\nl5 = [] len 0\nb6 = false\nf7 = 410073919.8257372\nl8 = [] len 0\ni9 = 19\ni10 = -996229910132\nl11 = [] len 0\nf12 = 71867726872806740000\n",
+    "stderr": ""
+  }
+}

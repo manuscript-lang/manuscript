@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = -26347684\ngcd(2938, 1113) = 1\nl2 = [] len 0\nl3 = [] len 0\ndeltaquote\"d\nf4 = 281886899999997800000\ns5 = [back\\slashbrace{s}alpha]\n-26347684 -49 true sum -26347733\nf6 = 281886899999997800000\n",
+    "stderr": ""
+  }
+}

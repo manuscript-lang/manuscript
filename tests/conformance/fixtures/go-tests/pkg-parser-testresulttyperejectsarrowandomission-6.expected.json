@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "every fn declares its result type after the parameter list, e.g. fn f() Unit:",
+        "position": {
+          "file": "pkg-parser-testresulttyperejectsarrowandomission-6.ms",
+          "line": 5,
+          "column": 14,
+          "offset": 186
+        },
+        "end": {
+          "file": "pkg-parser-testresulttyperejectsarrowandomission-6.ms",
+          "line": 5,
+          "column": 14,
+          "offset": 186
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

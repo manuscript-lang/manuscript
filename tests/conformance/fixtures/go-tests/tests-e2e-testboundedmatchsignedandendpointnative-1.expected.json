@@ -1,0 +1,93 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...)', or import it from a module",
+        "position": {
+          "file": "tests-e2e-testboundedmatchsignedandendpointnative-1.ms",
+          "line": 5,
+          "column": 19,
+          "offset": 214
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...)', or import it from a module",
+        "position": {
+          "file": "tests-e2e-testboundedmatchsignedandendpointnative-1.ms",
+          "line": 5,
+          "column": 37,
+          "offset": 232
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...)', or import it from a module",
+        "position": {
+          "file": "tests-e2e-testboundedmatchsignedandendpointnative-1.ms",
+          "line": 5,
+          "column": 54,
+          "offset": 249
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...)', or import it from a module",
+        "position": {
+          "file": "tests-e2e-testboundedmatchsignedandendpointnative-1.ms",
+          "line": 6,
+          "column": 8,
+          "offset": 271
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...)', or import it from a module",
+        "position": {
+          "file": "tests-e2e-testboundedmatchsignedandendpointnative-1.ms",
+          "line": 7,
+          "column": 8,
+          "offset": 315
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...)', or import it from a module",
+        "position": {
+          "file": "tests-e2e-testboundedmatchsignedandendpointnative-1.ms",
+          "line": 8,
+          "column": 8,
+          "offset": 357
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...)', or import it from a module",
+        "position": {
+          "file": "tests-e2e-testboundedmatchsignedandendpointnative-1.ms",
+          "line": 9,
+          "column": 8,
+          "offset": 400
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/tests-e2e-testboundedmatchsignedandendpointnative-1.ms:5:19: resolution: unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...)', or import it from a module\n<DIR>/tests-e2e-testboundedmatchsignedandendpointnative-1.ms:5:37: resolution: unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...)', or import it from a module\n<DIR>/tests-e2e-testboundedmatchsignedandendpointnative-1.ms:5:54: resolution: unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...)', or import it from a module\n<DIR>/tests-e2e-testboundedmatchsignedandendpointnative-1.ms:6:8: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...)', or import it from a module\n<DIR>/tests-e2e-testboundedmatchsignedandendpointnative-1.ms:7:8: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...)', or import it from a module\n<DIR>/tests-e2e-testboundedmatchsignedandendpointnative-1.ms:8:8: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...)', or import it from a module\n<DIR>/tests-e2e-testboundedmatchsignedandendpointnative-1.ms:9:8: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...)', or import it from a module\n7 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

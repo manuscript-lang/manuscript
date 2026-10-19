@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1002",
+        "phase": "parse",
+        "message": "a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4",
+        "position": {
+          "file": "pkg-compiler-testcallbackinferencerejections-6.ms",
+          "line": 5,
+          "column": 9,
+          "offset": 203
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

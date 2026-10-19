@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "b1 = false\ni2 = 490569730900\ns3 = [x]\ni4 = -3163228438298138129\nl5 = [] len 0\ns6 = [QUOTE\"DHÉLLOX]\ni7 = -3163228438298138129\nl8 = [-10, -10, -9, 16] len 4\nl9 = [16, -9, -10, -10] len 4\n-490569324888 -3163228017380059124 false sum -3163228507949384012\ni10 = 632886\n",
+    "stderr": ""
+  }
+}

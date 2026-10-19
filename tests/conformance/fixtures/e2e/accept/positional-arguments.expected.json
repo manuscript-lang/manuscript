@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "positional-arguments.ms::positional labeled mixed and identifier calls",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "positional-arguments.ms::generic calls constructors and callback inference",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "positional-arguments.ms::methods native APIs function values and contextual labels",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "positional-arguments.ms::written order before omitted defaults and body",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "positional-arguments.ms::callable expression precedes positional arguments",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "positional-arguments.ms::mutable callable value is captured before arguments",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN positional-arguments.ms::positional labeled mixed and identifier calls\nPASS positional-arguments.ms::positional labeled mixed and identifier calls\nRUN positional-arguments.ms::generic calls constructors and callback inference\nPASS positional-arguments.ms::generic calls constructors and callback inference\nRUN positional-arguments.ms::methods native APIs function values and contextual labels\nPASS positional-arguments.ms::methods native APIs function values and contextual labels\nRUN positional-arguments.ms::written order before omitted defaults and body\nPASS positional-arguments.ms::written order before omitted defaults and body\nRUN positional-arguments.ms::callable expression precedes positional arguments\nPASS positional-arguments.ms::callable expression precedes positional arguments\nRUN positional-arguments.ms::mutable callable value is captured before arguments\nPASS positional-arguments.ms::mutable callable value is captured before arguments\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

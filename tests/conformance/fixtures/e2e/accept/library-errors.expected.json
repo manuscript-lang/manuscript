@@ -1,0 +1,115 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "library-errors.ms::JSON errors need only JSON cases",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "library-errors.ms::explicit error mapping preserves the cause",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "library-errors.ms::generic handling preserves the concrete error and its payload",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "library-errors.ms::type patterns compare exact generic applications",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "library-errors.ms::Error views can be stored and matched",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "library-errors.ms::domain error fields survive propagation without a wrapper",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "library-errors.ms::specific errors pass directly into Error boundaries",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "library-errors.ms::Error Result forwarding preserves successful payloads",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "library-errors.ms::domain case payloads need no Error implementation",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "library-errors.ms::standard error diagnostics work directly",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "library-errors.ms::standard diagnostics preserve messages and wrapped causes",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "library-errors.ms::contract matches evaluate once and preserve ordinary contract semantics",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "library-errors.ms::missing file diagnostics preserve the filesystem case",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 13,
+        "selected": 13,
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN library-errors.ms::JSON errors need only JSON cases\nPASS library-errors.ms::JSON errors need only JSON cases\nRUN library-errors.ms::explicit error mapping preserves the cause\nPASS library-errors.ms::explicit error mapping preserves the cause\nRUN library-errors.ms::generic handling preserves the concrete error and its payload\nPASS library-errors.ms::generic handling preserves the concrete error and its payload\nRUN library-errors.ms::type patterns compare exact generic applications\nPASS library-errors.ms::type patterns compare exact generic applications\nRUN library-errors.ms::Error views can be stored and matched\nPASS library-errors.ms::Error views can be stored and matched\nRUN library-errors.ms::domain error fields survive propagation without a wrapper\nPASS library-errors.ms::domain error fields survive propagation without a wrapper\nRUN library-errors.ms::specific errors pass directly into Error boundaries\nPASS library-errors.ms::specific errors pass directly into Error boundaries\nRUN library-errors.ms::Error Result forwarding preserves successful payloads\nPASS library-errors.ms::Error Result forwarding preserves successful payloads\nRUN library-errors.ms::domain case payloads need no Error implementation\nPASS library-errors.ms::domain case payloads need no Error implementation\nRUN library-errors.ms::standard error diagnostics work directly\nPASS library-errors.ms::standard error diagnostics work directly\nRUN library-errors.ms::standard diagnostics preserve messages and wrapped causes\nPASS library-errors.ms::standard diagnostics preserve messages and wrapped causes\nRUN library-errors.ms::contract matches evaluate once and preserve ordinary contract semantics\nPASS library-errors.ms::contract matches evaluate once and preserve ordinary contract semantics\nRUN library-errors.ms::missing file diagnostics preserve the filesystem case\nPASS library-errors.ms::missing file diagnostics preserve the filesystem case\n13 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

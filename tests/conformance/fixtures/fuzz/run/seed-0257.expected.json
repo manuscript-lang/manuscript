@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = -704938\nl2 = [-5] len 1\nl3 = [-17, -28, 15, -20] len 4\ns4 = [  padded  alphabrace{s}😀 ijome]\ncollatz(2631) = 190\nl5 = [] len 0\ns6 = [x]\ni7 = -11983950\nl8 = [-5] len 1\ns9 = [-11983950:  padded  alphabrace{s}😀 ijome]\nb10 = false\n",
+    "stderr": ""
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = -948684\nb2 = false\ni3 = -948684\ns4 = [delta]\nf5 = 114.90300000000002\nfib(37) = 24157817\nf6 = 5530160.320845411\ni7 = -948684\ngammadelta\nb8 = false\ns9 = [MiXeD CaSe]\n",
+    "stderr": ""
+  }
+}

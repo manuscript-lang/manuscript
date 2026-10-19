@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn use() Set[Int]:\n    let values: Set[Int] = Set()\n    return values.add(1)\n"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {expect_equal} from \"@std/testing.ms\"\nimport Bytes from \"@std/bytes.ms\"\n\ntest \"explicit byte conversion\":\n    try expect_equal(\"é\".byte_length(), 2)\n    try expect_equal(\"é\".to_bytes().decode_utf8(), some(\"é\"))\n    let invalid: Optional[String] = none\n    try expect_equal(Bytes([255]).decode_utf8(), invalid)\n    try expect_equal(\"-007\".parse_int(), some(-7))\n"
+  }
+}

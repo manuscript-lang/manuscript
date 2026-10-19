@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1002",
+        "phase": "parse",
+        "message": "suite cannot be empty; add at least one statement (e.g. 'return') in the indented block",
+        "position": {
+          "file": "pkg-compiler-testclosedintlistexactlength-1.ms",
+          "line": 9,
+          "column": 1,
+          "offset": 275
+        },
+        "end": {
+          "file": "pkg-compiler-testclosedintlistexactlength-1.ms",
+          "line": 9,
+          "column": 1,
+          "offset": 275
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn value() String:\n    return \"héllo \\u{1F600} {1 + 2} \\{literal\\}\"\n"
+  }
+}

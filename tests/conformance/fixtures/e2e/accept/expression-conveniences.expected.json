@@ -1,0 +1,110 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "expression-conveniences.ms::indexing and generic applications coexist",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "expression-conveniences.ms::empty list constructors have fresh typed storage",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "expression-conveniences.ms::string concatenation and scalar ordering",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "expression-conveniences.ms::match expressions preserve returns and cleanup",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "expression-conveniences.ms::indexes read elements and get supplies defaults",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "expression-conveniences.ms::match blocks produce their final value",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "expression-conveniences.ms::contextual values infer from later arms",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "expression-conveniences.ms::expression exits preserve caller boundaries and evaluation order",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "expression-conveniences.ms::match in a loop header exits its lexical enclosing loop",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "expression-conveniences.ms::indexing preserves zero and nested optionals",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "expression-conveniences.ms::match evaluates its input once and only the selected arm",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "expression-conveniences.ms::match composes with inferred callbacks and map literals",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 12,
+        "selected": 12,
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN expression-conveniences.ms::indexing and generic applications coexist\nPASS expression-conveniences.ms::indexing and generic applications coexist\nRUN expression-conveniences.ms::empty list constructors have fresh typed storage\nPASS expression-conveniences.ms::empty list constructors have fresh typed storage\nRUN expression-conveniences.ms::string concatenation and scalar ordering\nPASS expression-conveniences.ms::string concatenation and scalar ordering\nRUN expression-conveniences.ms::match expressions preserve returns and cleanup\nPASS expression-conveniences.ms::match expressions preserve returns and cleanup\nRUN expression-conveniences.ms::indexes read elements and get supplies defaults\nPASS expression-conveniences.ms::indexes read elements and get supplies defaults\nRUN expression-conveniences.ms::match blocks produce their final value\nPASS expression-conveniences.ms::match blocks produce their final value\nRUN expression-conveniences.ms::contextual values infer from later arms\nPASS expression-conveniences.ms::contextual values infer from later arms\nRUN expression-conveniences.ms::expression exits preserve caller boundaries and evaluation order\nPASS expression-conveniences.ms::expression exits preserve caller boundaries and evaluation order\nRUN expression-conveniences.ms::match in a loop header exits its lexical enclosing loop\nPASS expression-conveniences.ms::match in a loop header exits its lexical enclosing loop\nRUN expression-conveniences.ms::indexing preserves zero and nested optionals\nPASS expression-conveniences.ms::indexing preserves zero and nested optionals\nRUN expression-conveniences.ms::match evaluates its input once and only the selected arm\nPASS expression-conveniences.ms::match evaluates its input once and only the selected arm\nRUN expression-conveniences.ms::match composes with inferred callbacks and map literals\nPASS expression-conveniences.ms::match composes with inferred callbacks and map literals\n12 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

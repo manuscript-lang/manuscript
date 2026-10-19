@@ -1,0 +1,75 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "closed-record-int-bounds.ms::closed cell updates preserve each operation",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "closed-record-int-bounds.ms::closed cells retain prefix overflow",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "closed-record-int-bounds.ms::peer cells and scalar carries are not initial invariants",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "closed-record-int-bounds.ms::record aliases keep ordinary shared mutation",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "closed-record-int-bounds.ms::record arguments execute exactly once before the update",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN closed-record-int-bounds.ms::closed cell updates preserve each operation\nPASS closed-record-int-bounds.ms::closed cell updates preserve each operation\nRUN closed-record-int-bounds.ms::closed cells retain prefix overflow\nPASS closed-record-int-bounds.ms::closed cells retain prefix overflow\nRUN closed-record-int-bounds.ms::peer cells and scalar carries are not initial invariants\nPASS closed-record-int-bounds.ms::peer cells and scalar carries are not initial invariants\nRUN closed-record-int-bounds.ms::record aliases keep ordinary shared mutation\nPASS closed-record-int-bounds.ms::record aliases keep ordinary shared mutation\nRUN closed-record-int-bounds.ms::record arguments execute exactly once before the update\nPASS closed-record-int-bounds.ms::record arguments execute exactly once before the update\n5 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

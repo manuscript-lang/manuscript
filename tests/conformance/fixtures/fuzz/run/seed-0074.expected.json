@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [MIXED CASENAÏVE]\ncollatz(1681) = 42\ni3 = -19\nf4 = 504.404\ni5 = -19\ni6 = 19\nb7 = false\nb9 = false\nf10 = 0\n-19 19 true sum 0\ni11 = 50029044\ns12 = [MiXeD CaSe]\ni13 = -19\nf14 = 504.404\nfact(2) = 2\nacc15 = 0\ns16 = [olléhMiXeD CaSe]\n",
+    "stderr": ""
+  }
+}

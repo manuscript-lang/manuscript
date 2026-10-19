@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected '}', found '|'; close the brace, separating items with commas",
+        "position": {
+          "file": "pkg-tooling-lsp-testgroupedimportcompletion-2.ms",
+          "line": 6,
+          "column": 7,
+          "offset": 202
+        },
+        "end": {
+          "file": "pkg-tooling-lsp-testgroupedimportcompletion-2.ms",
+          "line": 6,
+          "column": 8,
+          "offset": 203
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

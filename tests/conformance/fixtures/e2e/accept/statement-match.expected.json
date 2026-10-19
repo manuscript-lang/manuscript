@@ -1,0 +1,65 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "statement-match.ms::statement match returns from the enclosing function",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "statement-match.ms::statement match controls the nearest loop",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "statement-match.ms::statement match arms assign enclosing locals",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 3,
+        "selected": 3,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN statement-match.ms::statement match returns from the enclosing function\nPASS statement-match.ms::statement match returns from the enclosing function\nRUN statement-match.ms::statement match controls the nearest loop\nPASS statement-match.ms::statement match controls the nearest loop\nRUN statement-match.ms::statement match arms assign enclosing locals\nPASS statement-match.ms::statement match arms assign enclosing locals\n3 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

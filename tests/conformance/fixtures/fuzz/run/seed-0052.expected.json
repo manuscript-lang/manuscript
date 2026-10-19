@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 4\ni2 = 57\nf3 = 221.25\ns4 = [A]\nl5 = [-10, -8] len 2\nl6 = [-40, -32] len 2\nl7 = [-8, -16, 20, -6, -23] len 5\n2223:héllo\na\nA\ns8 = [héllo]\nl9 = [-23] len 1\nf10 = Infinity\nb11 = true\ni12 = -28978629\n-28978539 -29886742 false sum -58865281\nb13 = true\ncollatz(1355) = 114\nb14 = true\n",
+    "stderr": ""
+  }
+}

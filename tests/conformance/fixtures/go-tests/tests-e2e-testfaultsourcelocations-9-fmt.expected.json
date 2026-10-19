@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {TextError} from \"@std/errors.ms\"\n\nfn deep(value: Result[Int, TextError]) Int:\n    return value.get()\n\nexport fn main() Int:\n    return deep(error(TextError(\"expected failure\")))\n"
+  }
+}

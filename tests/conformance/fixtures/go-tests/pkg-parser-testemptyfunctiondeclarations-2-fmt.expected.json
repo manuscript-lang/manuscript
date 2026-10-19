@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type List[T]:\n\nimpl List[T]:\n    fn map[U](transform: fn(value: T) U) List[U]:\n\n    fn length() Int:\n"
+  }
+}

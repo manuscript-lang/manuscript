@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "acc1 = 168\nl2 = [-17, 21, 4, 14] len 4\nl3 = [-17, 4, 14, 21] len 4\ni4 = 35\ni5 = 35\nf6 = -357860.70674999995\n",
+    "stderr": ""
+  }
+}

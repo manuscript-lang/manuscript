@@ -1,0 +1,3 @@
+[build]
+# Fault traces and the sampling profiler walk frame pointers.
+rustflags = ["-C", "force-frame-pointers=yes"]

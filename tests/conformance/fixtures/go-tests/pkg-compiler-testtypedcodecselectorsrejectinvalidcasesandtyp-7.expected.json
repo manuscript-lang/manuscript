@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected HashAlgorithm, found CompressionFormat",
+        "position": {
+          "file": "pkg-compiler-testtypedcodecselectorsrejectinvalidcasesandtyp-7.ms",
+          "line": 9,
+          "column": 30,
+          "offset": 405
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-compiler-testtypedcodecselectorsrejectinvalidcasesandtyp-7.ms:9:30: type: expected HashAlgorithm, found CompressionFormat\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {Read, Reader} from \"./domain.ms\"\n\nimpl Read for Reader:\n    fn read() Int: self.operation() + 10\n\nexport fn left() Read:\n    let value = 1\n    return Read(Reader(fn() Int: value))\n"
+  }
+}

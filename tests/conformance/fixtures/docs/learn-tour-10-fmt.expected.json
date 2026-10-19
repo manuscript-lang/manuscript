@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "export let UNIT_PRICE = 12\n\nexport fn line_total(quantity: Int) Int:\n    return UNIT_PRICE * quantity\n"
+  }
+}

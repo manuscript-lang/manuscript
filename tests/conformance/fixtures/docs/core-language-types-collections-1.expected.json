@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
+        "position": {
+          "file": "core-language-types-collections-1.ms",
+          "line": 6,
+          "column": 18,
+          "offset": 203
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/core-language-types-collections-1.ms:6:18: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

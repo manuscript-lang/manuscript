@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Int, found String",
+        "position": {
+          "file": "seed-0194.ms",
+          "line": 26,
+          "column": 26,
+          "offset": 790
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/seed-0194.ms:26:26: type: expected Int, found String\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

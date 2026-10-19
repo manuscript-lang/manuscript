@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "47 363296353295300643 true sum 363296353295300690\ni1 = -257538\nacc2 = 5\nb3 = false\nb4 = true\ni5 = 0\nl6 = [-8, 13, -5, 16] len 4\nacc7 = 79\nMiXeD CaSe\nl8 = [16, -3, -13] len 3\n0:a\nb9 = true\ni10 = -257518\n",
+    "stderr": ""
+  }
+}

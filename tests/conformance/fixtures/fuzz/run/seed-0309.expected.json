@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 46777\nquote\"dnaïve\ni2 = 46777\ni3 = -316008045711\nb4 = false\ncollatz(675) = 113\ni5 = 559999\nf6 = 651.379\nacc7 = 268\ns8 = [line\nbreakkaerb\nenil]\nf9 = 95112676647.20381\ni10 = 13588343952270\nl11 = [-4, 17] len 2\ni12 = -46738\n",
+    "stderr": ""
+  }
+}

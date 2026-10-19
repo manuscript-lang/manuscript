@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "a\nacc1 = 9\ns2 = [138580478251:gamma]\ns3 = [138580478251:GAMMA  PADDED  quote\"d138580478251:gamma138580478251:gammaTab\there]\ni4 = 0\ns5 = [138580478251:gamma138580478251:gamma]\nl6 = [4, 22, 17, -29, 28] len 5\nfib(31) = 1346269\ncollatz(2205) = 45\ni7 = 0\ni8 = 24\ns9 = [51:138580478251:GAMMA  PADDED  quote\"d138580478251:gamma138580478251:gammaTab\there]\ns10 = [ammag:152874085831ammag:152874085831:42]\ns11 = [0:ms]\nb12 = true\ni13 = 26\ni14 = 96\ns15 = [gamma]\n",
+    "stderr": ""
+  }
+}

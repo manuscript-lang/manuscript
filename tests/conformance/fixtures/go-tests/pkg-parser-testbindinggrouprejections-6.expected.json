@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "a binding group starts its entries on the next line; write 'let (' then one 'name = value' per indented line, or destructure with 'let [a, b] = value' or 'let {x, y} = value'",
+        "position": {
+          "file": "pkg-parser-testbindinggrouprejections-6.ms",
+          "line": 4,
+          "column": 6,
+          "offset": 148
+        },
+        "end": {
+          "file": "pkg-parser-testbindinggrouprejections-6.ms",
+          "line": 4,
+          "column": 7,
+          "offset": 149
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

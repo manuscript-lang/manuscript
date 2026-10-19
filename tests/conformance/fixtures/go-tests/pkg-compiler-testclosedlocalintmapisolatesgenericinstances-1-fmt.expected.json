@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn lookup[T: Hashable](key: T, value: T) T:\n    let values = Map[T, T]()\n    values.add(key, value)\n    return values.get(key).get()\n\nfn probe() Int:\n    let number = lookup[Int](1, 2)\n    let text = lookup[String](\"one\", \"two\")\n    return number\n"
+  }
+}

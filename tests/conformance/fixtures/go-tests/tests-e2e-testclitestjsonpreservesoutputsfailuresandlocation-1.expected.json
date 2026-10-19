@@ -1,0 +1,67 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::first=pass",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::second=fails",
+          "status": "failed",
+          "failure": "expected failure"
+        },
+        {
+          "index": 2,
+          "name": "tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::third=after",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 3,
+        "selected": 3,
+        "passed": 2,
+        "failed": 1,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 1,
+      "stdout": "RUN tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::first=pass\nPASS fake test\nuser stdout\nPASS tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::first=pass\nRUN tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::second=fails\nFAIL tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::second=fails: expected failure\nRUN tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::third=after\nPASS tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::third=after\n3 tests, 1 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].failure",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": "user stderr\n"
+  }
+}

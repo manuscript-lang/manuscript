@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {expect_false, expect_true} from \"@std/testing.ms\"\nimport Key from \"./key.ms\"\nimport {id_map, id_direct, id_bound, id_generic, id_returned} from \"./by_id.ms\"\nimport {label_map, label_direct, label_bound, label_generic} from \"./by_label.ms\"\n\ntest \"Map removal keeps direct bound generic and defining-module key scopes\":\n    let first = id_map()\n    id_direct(first, Key(1, \"different\"))\n    id_bound(first, Key(2, \"different\"))\n    id_generic(first, Key(3, \"different\"))\n    (first.is_empty()) | try expect_true\n    let second = label_map()\n    label_direct(second, Key(99, \"one\"))\n    label_bound(second, Key(99, \"two\"))\n    label_generic(second, Key(99, \"three\"))\n    (second.is_empty()) | try expect_true\n    let returned_values = id_map()\n    let remove = id_returned(returned_values)\n    remove(Key(1, \"different\"))\n    try expect_false(\n        (returned_values.length() != 2 or returned_values.keys() [0].id != 2)\n    )\n"
+  }
+}

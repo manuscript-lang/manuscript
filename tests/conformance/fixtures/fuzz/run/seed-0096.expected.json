@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "l1 = [17] len 1\nf2 = Infinity\nb3 = false\nf4 = Infinity\ni5 = 2349180\ni6 = 17\ns7 = [117459000:語本日]\ns8 = [TAB\tHERE117459000:語本日quote\"d117459000:語本日]\n",
+    "stderr": ""
+  }
+}

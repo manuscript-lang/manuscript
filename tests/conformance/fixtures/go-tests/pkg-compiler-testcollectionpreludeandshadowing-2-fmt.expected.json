@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type Selection:\n    values: Set[Int]\n\nfn keep[T: Hashable](values: Set[T], value: T) Set[T]: values.add(value)\n\nfn use() Set[Int]:\n    let values: Set[Int] = Set[Int]()\n    let nested: List[Set[Int]] = [values]\n    return keep(nested[0], 1)\n"
+  }
+}

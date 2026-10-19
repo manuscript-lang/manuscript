@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 70,
+    "stdout": "s1 = [line\nbreaknaïvealpha]\nb2 = true\nf3 = 103.367\nl4 = [] len 0\nacc5 = 84\ncollatz(1676) = 42\n",
+    "stderr": "index 2 out of range for length 0; pass a default: get(index:, default: ...)\n  at seed-0028.ms:37 in main\n"
+  }
+}

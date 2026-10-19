@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import panic from \"@std/faults.ms\"\n\ntest \"check must not execute tests\":\n    return panic(\"check must not execute tests\")\n"
+  }
+}
