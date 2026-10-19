@@ -8,6 +8,12 @@ use ms_std_fs::err::{Fail, Res};
 use ms_std_fs::ops::read_bounded;
 use ms_std_fs::sys::{self, CPath};
 
+/// The group id type `getgrouplist` takes: `int` on macOS, `gid_t` elsewhere.
+#[cfg(target_os = "macos")]
+type GroupId = libc::c_int;
+#[cfg(not(target_os = "macos"))]
+type GroupId = libc::gid_t;
+
 fn utf8(bytes: Vec<u8>) -> Res<Vec<u8>> {
     match core::str::from_utf8(&bytes) {
         Ok(_) => Ok(bytes),
@@ -121,9 +127,9 @@ pub fn initialize_groups(username: &[u8], gid: i64) -> Res<()> {
         });
     }
     // SAFETY: `pw` is a valid passwd record.
-    let primary = unsafe { (*pw).pw_gid };
+    let primary: GroupId = unsafe { (*pw).pw_gid } as _;
     let mut count: libc::c_int = 32;
-    let mut ids: Vec<libc::gid_t> = alloc::vec![0; count as usize];
+    let mut ids: Vec<GroupId> = alloc::vec![0; count as usize];
     loop {
         // SAFETY: `ids` has room for `count` entries.
         let r = unsafe { libc::getgrouplist(name.as_ptr(), primary, ids.as_mut_ptr(), &mut count) };
