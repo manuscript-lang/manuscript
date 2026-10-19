@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn use_increment(operation: Increment) Int:\n    return operation.apply(1)\n\nlet offset = Offset(2)\nlet view = Increment(offset)\nlet result = use_increment(view)\n# Rejected: conversion is not implicit at a call boundary.\nlet wrong = use_increment(offset)\n"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {expect_equal, expect_false} from \"@std/testing.ms\"\nimport {ReadStream, WriteStream, IoError, read_all, read_line, copy} from \"@std/io.ms\"\nimport Bytes from \"@std/bytes.ms\"\nimport MemoryStream from \"./support/streams.ms\"\n\ntest \"stream compositions invoke source implementations and preserve EOF\":\n    let reader = MemoryStream(\"one\\r\\ntwo\\nlast\".to_bytes(), 0, closed: false)\n    let input = ReadStream(reader)\n    try expect_equal((try read_line(input)), some(\"one\"))\n    try expect_equal((try read_line(input)), some(\"two\"))\n    try expect_equal((try read_line(input)), some(\"last\"))\n    try expect_false(not (try read_line(input)).is_none())\n    let output = MemoryStream(\"\".to_bytes(), 0, closed: false)\n    let source = MemoryStream(\"é🙂\".to_bytes(), 0, closed: false)\n    try expect_equal((try copy(ReadStream(source), WriteStream(output), 6)), 6)\n    try expect_equal(output.data, \"é🙂\".to_bytes())\n\ntest \"streams enforce byte limits and preserve original errors\":\n    let reader = MemoryStream(\"abc\".to_bytes(), 0, closed: false)\n    let limited: Result[Bytes, IoError] = error(IoError.LimitExceeded)\n    try expect_equal(read_all(ReadStream(reader), 2), limited)\n    reader.closed = true\n    let closed: Result[Bytes, IoError] = error(IoError.Closed)\n    try expect_equal(read_all(ReadStream(reader)), closed)\n"
+  }
+}

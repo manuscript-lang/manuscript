@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "gcd(4107, 1264) = 1\ni1 = 188784\ns2 = [dlrow olleh24]\nf3 = -4.977881434152141e-21\ni4 = -188784\nf5 = 688.25\nb6 = true\ns7 = [hsals\\kcab42hello world42hello world:997881-]\ns8 = [hsals\\kcab42hello world42hello world:997881-ms]\n0 188784 true sum 188784\ni9 = 1\n42\n",
+    "stderr": ""
+  }
+}

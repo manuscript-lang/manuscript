@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [hélloa]\nf2 = 64669272.96643831\nf3 = -64669272.48348524\nb4 = true\ni5 = 45\ns7 = [hélloa]\ni8 = 790626811094\nhélloa\nf9 = 190.642\ni10 = 18\ni11 = 45\n42:back\\slash\n",
+    "stderr": ""
+  }
+}

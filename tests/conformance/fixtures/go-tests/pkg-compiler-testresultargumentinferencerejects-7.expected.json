@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "pkg-compiler-testresultargumentinferencerejects-7.ms",
+          "line": 5,
+          "column": 39,
+          "offset": 296
+        }
+      },
+      {
+        "code": "MS3080",
+        "phase": "type",
+        "message": "conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)",
+        "position": {
+          "file": "pkg-compiler-testresultargumentinferencerejects-7.ms",
+          "line": 5,
+          "column": 59,
+          "offset": 316
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-compiler-testresultargumentinferencerejects-7.ms:5:39: resolution: unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import it\n<DIR>/pkg-compiler-testresultargumentinferencerejects-7.ms:5:59: type: conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

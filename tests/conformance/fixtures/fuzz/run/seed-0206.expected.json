@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 1\ni2 = -6\nf3 = 0\ni4 = 763147\n0 217344 true sum 217344\ns5 = [44:naïveMiXeD CaSe42]\nb6 = false\ni7 = -13\nl8 = [-4, 20, 22, 24] len 4\ni9 = -6\nl10 = [0, 24, 26, 28] len 4\nl11 = [-4, 20, 22, 24, 0, 24, 26, 28] len 8\nacc12 = 78\nacc13 = 97\nacc14 = 61\nf15 = 0\n",
+    "stderr": ""
+  }
+}

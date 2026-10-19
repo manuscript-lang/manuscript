@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "xa\nb1 = false\ni2 = -431955\nfib(20) = 6765\nf3 = 83.25\ni4 = 254957119224\ni5 = 0\nf6 = 40\nb7 = true\nTab\there\nl8 = [19] len 1\ni9 = 254957119224\ns10 = [delta]\nl11 = [19] len 1\nf12 = 533333358308.3334\nb13 = false\nacc14 = 3\ni15 = -10453241888183\ni16 = 253618058724\n",
+    "stderr": ""
+  }
+}

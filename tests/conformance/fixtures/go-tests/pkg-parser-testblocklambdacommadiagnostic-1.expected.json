@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1002",
+        "phase": "parse",
+        "message": "a comma cannot end a statement in an indented function body; to separate enclosing arguments, put the comma on its own line dedented to the fn header, or group the function in parentheses",
+        "position": {
+          "file": "pkg-parser-testblocklambdacommadiagnostic-1.ms",
+          "line": 8,
+          "column": 29,
+          "offset": 265
+        },
+        "end": {
+          "file": "pkg-parser-testblocklambdacommadiagnostic-1.ms",
+          "line": 8,
+          "column": 30,
+          "offset": 266
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

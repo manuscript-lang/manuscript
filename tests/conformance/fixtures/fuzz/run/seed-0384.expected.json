@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [  padded  tab\there]\ns2 = [Tab\there]\ns3 = [naïve]\ncollatz(1020) = 49\ns4 = [  padded  tab\therehello world]\ni5 = 139170\ns6 = [emoji 😀]\nl7 = [19, -2, -23, 16] len 4\n\ni8 = -139168\nf9 = 489.077\ns10 = [naïveTAB\tHERE]\nb11 = true\ndelta\ns12 = [naïve]\n4 0 false sum 4\ns13 = [TAB\tHERE]\n",
+    "stderr": ""
+  }
+}

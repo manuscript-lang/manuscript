@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "acc1 = 60\ni2 = 195125\nl3 = [] len 0\nfact(10) = 3628800\ns4 = [  deddap  ]\nb5 = false\ns6 = [  padded  ]\nb7 = false\nl8 = [] len 0\ni9 = 0\ni10 = 26\ni11 = 0\ni12 = 195175\ndeddap\ni13 = -86388573707\nacc14 = 0\n",
+    "stderr": ""
+  }
+}

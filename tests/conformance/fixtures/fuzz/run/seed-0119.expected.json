@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 510713\nf2 = -426.5481\ni3 = 13278538\ngcd(289, 1728) = 1\n-20471 510693 true sum 490222\nl4 = [11, 0, -26] len 3\nl5 = [-19, -28, -30, -18] len 4\nalpha\ni6 = 8\ns7 = [quote\"d24:068795276622]\n17 -510706 false sum -510689\nfact(9) = 362880\nb8 = false\nl9 = [11, 0, -26, -19, -28, -30, -18] len 7\nl10 = [11, 0] len 2\ns11 = [7:beta]\ns12 = [betaateb:7]\n",
+    "stderr": ""
+  }
+}

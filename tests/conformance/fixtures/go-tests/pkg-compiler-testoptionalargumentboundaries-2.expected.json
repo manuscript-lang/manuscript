@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Optional[Float], found Int",
+        "position": {
+          "file": "pkg-compiler-testoptionalargumentboundaries-2.ms",
+          "line": 5,
+          "column": 19,
+          "offset": 220
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-2.ms:5:19: type: expected Optional[Float], found Int\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

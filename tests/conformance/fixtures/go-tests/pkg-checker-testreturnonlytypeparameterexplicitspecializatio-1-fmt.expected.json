@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {TextError} from \"@std/errors.ms\"\n\nfn fail[T](message: String) Result[T, TextError]: error(TextError(message))\n\nfn first() Result[Int, TextError]: fail[Int](\"empty\")\n"
+  }
+}

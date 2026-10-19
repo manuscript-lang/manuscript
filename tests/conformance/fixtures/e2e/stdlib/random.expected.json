@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "random.ms::random algorithms call Manuscript entropy implementations",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "random.ms::random errors propagate and invalid ranges do not read entropy",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "random.ms::random accepts negative exclusive upper bounds",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "random.ms::float shuffle and choice use the supplied entropy",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN random.ms::random algorithms call Manuscript entropy implementations\nPASS random.ms::random algorithms call Manuscript entropy implementations\nRUN random.ms::random errors propagate and invalid ranges do not read entropy\nPASS random.ms::random errors propagate and invalid ranges do not read entropy\nRUN random.ms::random accepts negative exclusive upper bounds\nPASS random.ms::random accepts negative exclusive upper bounds\nRUN random.ms::float shuffle and choice use the supplied entropy\nPASS random.ms::float shuffle and choice use the supplied entropy\n4 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

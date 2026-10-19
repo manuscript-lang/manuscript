@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import range from \"@std/collections.ms\"\n\n# Deterministic generator so failures reproduce from the seed in the message.\nexport type Rng:\n    state: Int\n\nexport fn next(rng: Rng, bound: Int) Int:\n    rng.state = (rng.state * 1103515245 + 12345) % 2147483648\n    return (rng.state / 65536) % bound\n\nlet pieces = [\n    \"\", \" \", \"a\", \"key\", \"-\", \"- \", \":\", \": \", \"#\", \" #\", \"'\", \"\\\"\", \"\\\\\", \"\\n\", \"\\t\",\n    \"é\", \"🙂\", \"null\", \"true\", \"yes\", \"123\", \"1e3\", \"~\", \"[\", \"]\", \"\\{\", \"\\}\", \",\", \"&a\",\n    \"*a\", \"!\", \"|\", \">\", \"%\", \"---\", \"...\", \"@\", \"`\", \"?\", \"=\"\n]\n\nexport fn text(rng: Rng) String:\n    var out = \"\"\n    for piece in range(0, next(rng, 4)):\n        out += pieces[next(rng, pieces.length())]\n    return out\n\n# Deletes, inserts or replaces one character-sized piece of source text.\nexport fn mutate(rng: Rng, source: String) String:\n    let chars = source.chars()\n    let at = next(rng, chars.length() + 1)\n    let kind = next(rng, 3)\n    if kind != 1 and at < chars.length(): chars.remove(at)\n    if kind != 0: chars.insert(at, pieces[next(rng, pieces.length())])\n    return chars.join(\"\")\n"
+  }
+}

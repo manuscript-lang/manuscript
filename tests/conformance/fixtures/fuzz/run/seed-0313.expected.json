@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 48\ns2 = [brace{s}]\ns3 = [tab\therebrace{s}]\nl4 = [-22, -28] len 2\nf5 = 173668719001.57397\n-5 48 true sum 43\nacc6 = -50\ni7 = 48\nalpha\nb8 = false\ni9 = -242798\nfact(14) = 87178291200\ni10 = -22\ns11 = [BRACE{S}BRACE{S}]\nb12 = false\nf13 = 173668719001.57397\ni14 = 8\ni15 = 8\n",
+    "stderr": ""
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 70,
+    "stdout": "l1 = [-16, -18, -30] len 3\nb2 = true\nl3 = [-18, -30] len 2\nl4 = [-3, 4, -21, 20] len 4\nl5 = [-16, -18, -30, 87] len 4\nfib(52) = 32951280099\ni6 = -20983844\nfib(21) = 10946\nl7 = [-18, 5, 12, 19] len 4\n",
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0155.ms:40 in main\n"
+  }
+}

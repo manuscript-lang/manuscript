@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 241521\n482992 0 false sum 482992\nl2 = [30, 28, 15] len 3\ni3 = 29\ncollatz(1871) = 130\nnaïve\nf4 = 79049.33382438179\n  padded  x\n0 241521 true sum 241521\ns5 = [241521:x]\nf6 = 216.875\nback\\slash\n-24 30 true sum 6\n241521:x\nf7 = -100556.2994637579\n",
+    "stderr": ""
+  }
+}

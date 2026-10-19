@@ -1,0 +1,7 @@
+[project]
+name = "tooling-demo"
+source = "./src"
+entry = "./src/main.ms"
+
+[aliases]
+"@math" = "./src/math.ms"

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "gcd(2485, 3913) = 7\nf1 = 102189451.53472319\n-600 -34 true sum -634\ni2 = 352869\ni3 = 455413\ni4 = 0\ni5 = -9223372036854775807\nf6 = 5420741645.110912\n",
+    "stderr": ""
+  }
+}

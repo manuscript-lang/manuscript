@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [MiXeD CaSe]\ni2 = 9\ns3 = [MiXeD CaSe]\n-4 7655400 true sum 7655396\nf4 = 61082862913936.414\nl5 = [-24, -28, -6] len 3\nb6 = false\n",
+    "stderr": ""
+  }
+}

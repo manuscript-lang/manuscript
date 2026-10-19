@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn display_name(name: Optional[String]) String:\n    if let value = name:\n        return value\n\n    return \"Anonymous\"\n"
+  }
+}

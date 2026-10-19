@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "# Rejected alongside the generic block above: both apply to Box[Int].\nimpl ReadValue[Int] for Box[Int]:\n    fn get() Int:\n        return self.value\n"
+  }
+}

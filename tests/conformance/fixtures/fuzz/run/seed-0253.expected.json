@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "b1 = true\ni2 = 1\nb3 = true\ni4 = -1380\nl5 = [27, 27, -10] len 3\nl6 = [-10, 27, 27] len 3\ns7 = [hello world]\ngcd(358, 3875) = 1\nalphaMiXeD CaSe\ns8 = [hello worldmshello world42]\nl9 = [27, 27, -10] len 3\nf10 = 21.298\nacc11 = 54\ni12 = 11\nb13 = false\ns14 = [mshello worldmshello world42]\n",
+    "stderr": ""
+  }
+}

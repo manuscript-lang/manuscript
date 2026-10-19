@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "pkg-compiler-testresultargumentinferencerejects-1.ms",
+          "line": 5,
+          "column": 27,
+          "offset": 266
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "Error does not satisfy Equal; pass a type that already implements it",
+        "position": {
+          "file": "pkg-compiler-testresultargumentinferencerejects-1.ms",
+          "line": 5,
+          "column": 38,
+          "offset": 277
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-compiler-testresultargumentinferencerejects-1.ms:5:27: resolution: unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import it\n<DIR>/pkg-compiler-testresultargumentinferencerejects-1.ms:5:38: type: Error does not satisfy Equal; pass a type that already implements it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

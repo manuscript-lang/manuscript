@@ -2,7 +2,7 @@
 
 ### The implementation is moving to Rust and Cranelift without a GC
 
-Decision: on 2026-10-19 the owner directed moving the compiler, runtime, standard library, tools, and generated code off Go to Rust with Cranelift, under a value-semantics memory model (`mut` instead of `var`, one owner per value, borrowed parameters, explicit `Shared`/`Arena`/`Synchronized` identity). The [proposal](../proposals/rust-cranelift-backend.md) holds the plan, contracts, workstreams, and gates. Until its cutover workstream lands, the Go implementation and the decisions below stay in force for it; the proposal lists which entries it replaces.
+Decision: on 2026-10-19 the owner directed moving the compiler, runtime, standard library, tools, and generated code off Go to Rust with Cranelift, under a value-semantics memory model (`mut` instead of `var`, copy-on-write values with no implicit aliasing, borrowed parameters, explicit `Ref`/`Shared`/`Arena`/`Synchronized` sharing). The [proposal](../proposals/rust-cranelift-backend.md) holds the plan, contracts, workstreams, and gates. Until its cutover workstream lands, the Go implementation and the decisions below stay in force for it; the proposal lists which entries it replaces.
 
 Verified (experiments, not the shipped toolchain): the same checked semantics in C run 1.1x–3.5x faster than today's Go output, and a Cranelift spike compiles the kernels correctly in ~50 ms ([C baselines](../bench/perf/kernels/README.md#c-baselines-for-a-no-gc-backend), [spike](../experiments/cranelift-spike/README.md)). A non-atomic cancellation load is hoisted out of loops by Cranelift, and Cranelift 0.136's inliner mis-maps symbol global values.
 

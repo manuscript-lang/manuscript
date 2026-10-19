@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "delta\nb1 = true\nb2 = false\ni3 = 0\nb4 = false\nb5 = true\ni6 = 0\nfact(0) = 1\nl7 = [] len 0\ni8 = -49\n1 0 false sum 1\n",
+    "stderr": ""
+  }
+}

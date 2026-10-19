@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "l1 = [1, 15] len 2\ns2 = [ammagbeta]\nacc3 = -2\ni4 = 18\ni5 = 18\ni6 = 14528088\ni7 = 1899588068421696\ni8 = 14528088\nb9 = false\nb10 = true\n",
+    "stderr": ""
+  }
+}

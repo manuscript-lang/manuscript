@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import panic from \"@std/faults.ms\"\n\nexport fn main() Int:\n    let values = [1, 2, 3]\n    var total = 0\n    var count = 0\n\n    for value in values:\n        total += value\n        if count == 0:\n            values.remove(0)\n        count += 1\n\n    if total != 7:\n        panic(\"unexpected sum\")\n    return 0\n"
+  }
+}

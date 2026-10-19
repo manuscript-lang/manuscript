@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {sleep, duration} from \"@std/time.ms\"\n\ntest \"timeout\":\n    sleep(duration(nanoseconds: 1000000000))\n\ntest \"after\":\n    return unit\n"
+  }
+}

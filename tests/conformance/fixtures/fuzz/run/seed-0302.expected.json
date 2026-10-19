@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = -517452.10051100014\ni2 = 0\nb3 = true\nfib(54) = 86267571272\ni5 = 0\nb6 = true\nl7 = [-6, -26, -9, 21, 25] len 5\ns8 = [MiXeD CaSe]\nl9 = [-15, 10, 13] len 3\n42\nb10 = false\nl11 = [-8, 22, 26] len 3\n42\ni12 = -826947\n",
+    "stderr": ""
+  }
+}

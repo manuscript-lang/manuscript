@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "l1 = [-2] len 1\ns2 = [line\nbreak]\ns3 = [line\nbreak]\ncollatz(955) = 28\nl4 = [] len 0\nb5 = true\ni6 = 10\ns7 = [kaerb\nenil]\nb8 = false\n",
+    "stderr": ""
+  }
+}

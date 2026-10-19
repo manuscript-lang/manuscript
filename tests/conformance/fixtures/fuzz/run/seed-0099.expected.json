@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "fact(5) = 120\ns1 = [  padded  emoji 😀]\nb2 = false\ns3 = [emoji 😀]\nacc4 = 1\ni5 = -997656\n415964147645 -997656 false sum 415963149989\nf6 = 90000000000000000000\ns7 = [emoji 😀]\nb8 = true\ni9 = -1995340\nfib(38) = 39088169\ni10 = -9245\nacc11 = -4\ns12 = [GAMMA  PADDED  ]\nl13 = [-24, 9, 21] len 3\ni14 = -9245\ns15 = [GAMMA  PADDED  ]\n",
+    "stderr": ""
+  }
+}

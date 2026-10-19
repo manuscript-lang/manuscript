@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "there is no slice syntax; call slice(start: 0, end: 2) on a List or String",
+        "position": {
+          "file": "pkg-parser-testsyntaxerrorsstatethefix-25.ms",
+          "line": 5,
+          "column": 17,
+          "offset": 158
+        },
+        "end": {
+          "file": "pkg-parser-testsyntaxerrorsstatethefix-25.ms",
+          "line": 5,
+          "column": 18,
+          "offset": 159
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

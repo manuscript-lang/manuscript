@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown or ambiguous member hash on Node; available: next",
+        "position": {
+          "file": "tests-e2e-testrecursivetypesrejectunsafeconstructionandhashi-2.ms",
+          "line": 9,
+          "column": 17,
+          "offset": 313
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/tests-e2e-testrecursivetypesrejectunsafeconstructionandhashi-2.ms:9:17: resolution: unknown or ambiguous member hash on Node; available: next\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

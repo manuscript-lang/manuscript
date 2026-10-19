@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = 6.762062125376387e+23\nl2 = [2, 4, 29] len 3\nl3 = [] len 0\ni4 = -25\nb5 = false\nfib(45) = 1134903170\nl6 = [2, 4, 29, 2, 4, 29] len 6\nacc7 = 5\nf8 = 4.5725484187449816e+47\nf9 = 2.0908199041767232e+95\nfib(44) = 701408733\n",
+    "stderr": ""
+  }
+}

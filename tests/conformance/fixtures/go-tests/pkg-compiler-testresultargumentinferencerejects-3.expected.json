@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3080",
+        "phase": "type",
+        "message": "cannot infer type argument T for same; write same[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
+        "position": {
+          "file": "pkg-compiler-testresultargumentinferencerejects-3.ms",
+          "line": 5,
+          "column": 18,
+          "offset": 279
+        }
+      },
+      {
+        "code": "MS3080",
+        "phase": "type",
+        "message": "cannot infer type argument E for same; write same[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter",
+        "position": {
+          "file": "pkg-compiler-testresultargumentinferencerejects-3.ms",
+          "line": 5,
+          "column": 18,
+          "offset": 279
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...)', or import it from a module",
+        "position": {
+          "file": "pkg-compiler-testresultargumentinferencerejects-3.ms",
+          "line": 5,
+          "column": 30,
+          "offset": 291
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding other; declare it with 'let other = ...' before use, define 'fn other(...)', or import it from a module",
+        "position": {
+          "file": "pkg-compiler-testresultargumentinferencerejects-3.ms",
+          "line": 5,
+          "column": 43,
+          "offset": 304
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-compiler-testresultargumentinferencerejects-3.ms:5:18: type: cannot infer type argument T for same; write same[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n<DIR>/pkg-compiler-testresultargumentinferencerejects-3.ms:5:18: type: cannot infer type argument E for same; write same[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter\n<DIR>/pkg-compiler-testresultargumentinferencerejects-3.ms:5:30: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...)', or import it from a module\n<DIR>/pkg-compiler-testresultargumentinferencerejects-3.ms:5:43: resolution: unknown binding other; declare it with 'let other = ...' before use, define 'fn other(...)', or import it from a module\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

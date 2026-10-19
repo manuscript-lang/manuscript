@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type WriteStream; add: import WriteStream from \"@std/io.ms\"",
+        "position": {
+          "file": "pkg-tooling-format-testformatmultilinefunctionparameters-2.ms",
+          "line": 6,
+          "column": 13,
+          "offset": 261
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-tooling-format-testformatmultilinefunctionparameters-2.ms:6:13: resolution: unknown type WriteStream; add: import WriteStream from \"@std/io.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

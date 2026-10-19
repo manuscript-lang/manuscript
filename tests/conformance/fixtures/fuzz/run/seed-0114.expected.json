@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "fib(23) = 28657\ni1 = -935874\nf2 = 0\nl3 = [-16, -2, 22, 15] len 4\ni4 = -935874\ni5 = -935874\nacc6 = 73\n0 935874 true sum 935874\nacc7 = 0\nb8 = false\nf9 = 0.3081370593640051\ni10 = 875837682900\nl11 = [-16, -2, 22, 15, -16, -2, 22, 15] len 8\ni12 = 0\nacc13 = 7\ns14 = [a]\nl15 = [3, 27, -7, 6, -20] len 5\n",
+    "stderr": ""
+  }
+}

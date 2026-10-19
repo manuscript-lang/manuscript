@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import panic from \"@std/faults.ms\"\n\ntype Expr:\n    case Num(value: Int)\n    case Add(left: Expr, right: Expr)\n\nfn evaluate(expr: Expr) Int:\n    match expr:\n        Num(value): return value\n        Add(left, right): return evaluate(left) + evaluate(right)\n\ntest \"recursive expression\":\n    let expr = Expr.Add(Expr.Num(1), Expr.Num(2))\n    if evaluate(expr) != 3:\n        panic(\"unexpected expression value\")\n"
+  }
+}

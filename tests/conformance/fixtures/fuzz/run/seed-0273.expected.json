@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "b1 = false\ns3 = [line\nbreakgamma  padded  ]\ns4 = [line\nbreakgamma  padded  ]\nl5 = [-7, 19, -29, 9, 1] len 5\ni6 = 607888385042\nline\nbreakgamma  padded  \ni7 = -607888385025\nammag\n",
+    "stderr": ""
+  }
+}

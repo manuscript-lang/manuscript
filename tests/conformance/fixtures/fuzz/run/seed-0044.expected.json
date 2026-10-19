@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "acc1 = -140\nf2 = 11391.226372780864\nl4 = [-16, 27, 5, 4, -25] len 5\ni5 = -12412726471552\ni6 = 0\ngcd(895, 147) = 1\nf7 = -Infinity\ns8 = [a日本語]\ni9 = 45\n45 -12412726471642 false sum -12412726471597\n",
+    "stderr": ""
+  }
+}

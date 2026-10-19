@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = -6834797475957\nf2 = -16145549825103800000\nb3 = false\nf4 = -16145549825103800000\ns5 = [back\\slash]\nb6 = false\ns7 = [-6834797475957:-13669594951914:quote\"dgamma-13669594951914:back\\slash]\nacc8 = 90\nb9 = false\ni10 = 18\n",
+    "stderr": ""
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "-76 -19 true sum -95\ns1 = [BACK\\SLASHX]\ns2 = [BACK\\SLASHX]\nb3 = false\nBACK\\SLASHX\nl4 = [] len 0\n16081436 115 false sum 16081551\nf5 = 800000000000000000\n",
+    "stderr": ""
+  }
+}

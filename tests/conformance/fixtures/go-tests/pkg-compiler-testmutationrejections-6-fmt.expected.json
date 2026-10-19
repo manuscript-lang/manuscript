@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn f() Unit:\n    let value = Val(val: 0)\n    value = Val(val: 1)\n"
+  }
+}

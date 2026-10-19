@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type Data:\n    value: Int\n\nimpl Equal for Data:\n    fn compare() Unit:\n        return\n"
+  }
+}

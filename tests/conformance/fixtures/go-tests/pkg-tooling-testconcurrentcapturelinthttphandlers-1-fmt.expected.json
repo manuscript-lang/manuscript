@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import network from \"@std/net.ms\"\nimport {HttpResponse, HttpServerOptions} from \"@std/http.ms\"\nimport panic from \"@std/faults.ms\"\n\nfn run() Unit:\n    let values = [0]\n"
+  }
+}

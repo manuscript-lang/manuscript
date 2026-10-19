@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 280848\ni2 = 699858\nhéllo\ni3 = -73427525092\nb4 = false\nb5 = false\n280848:ms\ni6 = 73427516929\nf7 = 59413619235837.836\nacc8 = 0\nl9 = [5, 4] len 2\ngcd(4377, 4875) = 3\nf10 = 395.689\ns11 = [280817:HÉLLOMiXeD CaSe]\nl12 = [4, 5] len 2\ni13 = -73427525092\nf14 = 14483911510771618\nb15 = false\n",
+    "stderr": ""
+  }
+}

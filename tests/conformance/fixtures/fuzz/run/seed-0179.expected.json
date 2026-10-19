@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = -928283\ns2 = [gamma]\nacc3 = 12\nf4 = 161.032\nammag\n-928283 0 true sum -928283\nf5 = 309.25\nf6 = 0.3180285418404211\ni7 = 0\nb8 = true\nl9 = [-7, 4, -4] len 3\nf10 = 461.821\nf11 = 147.429\ns12 = [mixed case]\nl13 = [-7, 4, -4, -7, 4, -4] len 6\n5 0 false sum 5\n",
+    "stderr": ""
+  }
+}

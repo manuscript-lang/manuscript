@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = 118.79\nb2 = false\nf3 = 79640.32308\nb4 = false\nmsms\ns5 = [back\\slash]\ni6 = -28638220\ni7 = 10\ns8 = [-21:24:48:back\\slash]\n-1030975920 15 true sum -1030975905\ni9 = 28638220\ni10 = 286382190\n😀 ijome\n-21:24:48:back\\slashback\\slash\nback\\slashback\\slash\ngcd(1969, 3256) = 11\n",
+    "stderr": ""
+  }
+}

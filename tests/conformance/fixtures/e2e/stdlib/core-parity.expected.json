@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "core-parity.ms::core parity operations are callable",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "core-parity.ms::Result preserves unconstrained payloads and success-only composition",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "core-parity.ms::Result fallbacks are eager or lazy and bound methods keep receivers",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "core-parity.ms::Optional composition keeps nesting identity and lazy callback counts",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "core-parity.ms::Map filter copies ordered membership and get_or never inserts",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "core-parity.ms::Set filter and map copy snapshots and deduplicate in first-result order",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN core-parity.ms::core parity operations are callable\nPASS core-parity.ms::core parity operations are callable\nRUN core-parity.ms::Result preserves unconstrained payloads and success-only composition\nPASS core-parity.ms::Result preserves unconstrained payloads and success-only composition\nRUN core-parity.ms::Result fallbacks are eager or lazy and bound methods keep receivers\nPASS core-parity.ms::Result fallbacks are eager or lazy and bound methods keep receivers\nRUN core-parity.ms::Optional composition keeps nesting identity and lazy callback counts\nPASS core-parity.ms::Optional composition keeps nesting identity and lazy callback counts\nRUN core-parity.ms::Map filter copies ordered membership and get_or never inserts\nPASS core-parity.ms::Map filter copies ordered membership and get_or never inserts\nRUN core-parity.ms::Set filter and map copy snapshots and deduplicate in first-result order\nPASS core-parity.ms::Set filter and map copy snapshots and deduplicate in first-result order\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

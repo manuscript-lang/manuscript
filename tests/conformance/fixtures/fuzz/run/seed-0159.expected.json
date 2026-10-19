@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [}s{ecarb]\nl2 = [28, 14, -4, 9] len 4\ns3 = [x]\ni4 = 0\ns5 = [ms}s{ecarb]\nfib(48) = 4807526976\nacc6 = 0\n",
+    "stderr": ""
+  }
+}

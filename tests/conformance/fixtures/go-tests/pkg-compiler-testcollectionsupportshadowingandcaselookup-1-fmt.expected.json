@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type Other:\n    case OutOfRange\n\nfn other() Other: Other.OutOfRange\n\nfn standard() CollectionError: CollectionError.OutOfRange\n\nfn recognize(value: Other) Int:\n    match value:\n        OutOfRange: return 1\n"
+  }
+}

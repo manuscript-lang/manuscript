@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
+        "position": {
+          "file": "core-language-types-optionals-2.ms",
+          "line": 4,
+          "column": 16,
+          "offset": 178
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
+        "position": {
+          "file": "core-language-types-optionals-2.ms",
+          "line": 5,
+          "column": 33,
+          "offset": 235
+        }
+      },
+      {
+        "code": "MS3080",
+        "phase": "type",
+        "message": "cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding",
+        "position": {
+          "file": "core-language-types-optionals-2.ms",
+          "line": 7,
+          "column": 15,
+          "offset": 305
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Optional[String], found String",
+        "position": {
+          "file": "core-language-types-optionals-2.ms",
+          "line": 9,
+          "column": 31,
+          "offset": 394
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/core-language-types-optionals-2.ms:4:16: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-optionals-2.ms:5:33: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-optionals-2.ms:7:15: type: cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding\n<DIR>/core-language-types-optionals-2.ms:9:31: type: expected Optional[String], found String\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

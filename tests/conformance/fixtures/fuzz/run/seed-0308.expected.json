@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 28\ns2 = [beta]\nb3 = false\ni4 = -28\ncollatz(1230) = 70\ni5 = 14\ni6 = 28\ns7 = [MiXeD CaSe]\nf8 = 107.20499999999993\ni9 = 52799\nf10 = 748.105\n28 14 false sum 42\nb11 = false\n52799 24794728 true sum 24847527\n",
+    "stderr": ""
+  }
+}

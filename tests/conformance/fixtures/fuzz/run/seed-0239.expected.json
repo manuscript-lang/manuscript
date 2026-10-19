@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 70,
+    "stdout": "b1 = false\ns2 = [42]\ns3 = [4242MiXeD CaSe]\nf4 = -3.559158e+23\nl5 = [] len 0\ncollatz(2371) = 151\nfib(37) = 24157817\n",
+    "stderr": "Int./: division by zero; right must be nonzero, found 0\n  at seed-0239.ms:47 in main\n"
+  }
+}

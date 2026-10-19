@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn f(value: Int = 1) Int:\n    return value\n\nfn forward[T](value: T) T:\n    return value\n\nfn call() Int:\n    let copy = forward(f)\n    return copy()\n"
+  }
+}

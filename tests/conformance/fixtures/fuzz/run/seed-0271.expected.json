@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 70,
+    "stdout": "gcd(2994, 4542) = 6\nfact(6) = 720\nf1 = 4e+21\nfib(18) = 2584\nb2 = false\ngcd(4840, 3324) = 4\ni3 = 43\ni4 = -27\nl5 = [-19] len 1\nf6 = 1.6e+43\ns7 = [ms]\ns8 = [msback\\slashammag]\nacc9 = 0\nf10 = 8.062382686033183e+61\n",
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0271.ms:61 in main\n"
+  }
+}

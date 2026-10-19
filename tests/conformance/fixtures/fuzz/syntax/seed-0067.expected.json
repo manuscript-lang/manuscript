@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "mismatched closing delimiter ')'; the '[' opened at line 13:14 needs ']'",
+        "position": {
+          "file": "seed-0067.ms",
+          "line": 13,
+          "column": 26,
+          "offset": 408
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

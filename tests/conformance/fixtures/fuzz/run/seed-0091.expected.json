@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "42brace{s}\nl1 = [] len 0\ni2 = -632383322554\n-632383322554 -632383322554 false sum -1264766645108\nf3 = 539.333\n-632383322554 -632383322554 false sum -1264766645108\nl4 = [] len 0\ni5 = -41\ngcd(1352, 4833) = 1\nf6 = 20.534\nl7 = [] len 0\ni8 = -632383322554\ni9 = 632383322554\n",
+    "stderr": ""
+  }
+}

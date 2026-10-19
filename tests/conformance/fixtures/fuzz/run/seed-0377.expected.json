@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "\nf1 = -0.0010635584120566755\nf2 = 909.1301271168242\ns3 = [EMOJI 😀brace{s}]\ni4 = -44\ni5 = -44\nf6 = 0\ngcd(595, 3686) = 1\nl7 = [-29, 1, 13, 10] len 4\ni8 = 549833113185\ns9 = [BACK\\SLASHEMOJI 😀brace{s}]\ns10 = [42]\ns11 = [atled:44-]\nl12 = [-232, 8, 104, 80] len 4\nfib(33) = 3524578\nacc13 = 0\n",
+    "stderr": ""
+  }
+}

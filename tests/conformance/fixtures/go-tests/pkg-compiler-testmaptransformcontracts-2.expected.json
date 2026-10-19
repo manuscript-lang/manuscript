@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3021",
+        "phase": "type",
+        "message": "W does not satisfy Hashable; pass a type that already implements it",
+        "position": {
+          "file": "pkg-compiler-testmaptransformcontracts-2.ms",
+          "line": 5,
+          "column": 25,
+          "offset": 276
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-compiler-testmaptransformcontracts-2.ms:5:25: type: W does not satisfy Hashable; pass a type that already implements it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

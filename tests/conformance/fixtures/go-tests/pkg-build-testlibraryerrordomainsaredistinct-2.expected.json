@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type JsonError; add: import JsonError from \"@std/json.ms\"",
+        "position": {
+          "file": "pkg-build-testlibraryerrordomainsaredistinct-2.ms",
+          "line": 4,
+          "column": 25,
+          "offset": 178
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding EncodingError; add: import EncodingError from \"@std/encoding.ms\"",
+        "position": {
+          "file": "pkg-build-testlibraryerrordomainsaredistinct-2.ms",
+          "line": 5,
+          "column": 25,
+          "offset": 214
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-build-testlibraryerrordomainsaredistinct-2.ms:4:25: resolution: unknown type JsonError; add: import JsonError from \"@std/json.ms\"\n<DIR>/pkg-build-testlibraryerrordomainsaredistinct-2.ms:5:25: resolution: unknown binding EncodingError; add: import EncodingError from \"@std/encoding.ms\"\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

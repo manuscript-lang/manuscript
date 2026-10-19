@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import Queue from \"@std/queues.ms\"\n\ntest \"opaque\":\n    let queue = Queue[Int](capacity: 1)\n    let capacity = queue.capacity\n"
+  }
+}

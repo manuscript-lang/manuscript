@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import panic from \"@std/faults.ms\"\n\ntype Counter:\n    value: Int\n\nfn advance(counter: Counter) Int:\n    counter.value += 1\n    return counter.value\n\nfn mixed(counter: Counter) List[Int]:\n    var value = 1\n    return [\n        value,\n        counter.value,\n        counter.value,\n        advance(counter),\n        value,\n        match some(2):\n            some(number):\n                value = number\n                advance(counter)\n            none: 0\n        ,\n        value,\n        counter.value,\n        advance(counter)\n    ]\n\ntest \"multiple captures survive later statement growth\":\n    let counter = Counter(0)\n    if mixed(counter) != [1, 0, 0, 1, 1, 2, 2, 2, 3]:\n        return panic(\"operand evaluation order changed\")\n    if counter.value != 3: return panic(\"effect count changed\")\n\ntest \"pending captures grow beyond the small buffer\":\n    let counter = Counter(0)\n    let values = [\n        counter.value,\n        counter.value,\n        counter.value,\n        counter.value,\n        counter.value,\n        counter.value,\n        counter.value,\n        counter.value,\n        counter.value,\n        advance(counter)\n    ]\n    if values != [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]:\n        return panic(\"earlier field reads changed\")\n\n    let alias = counter\n    let shared = [alias.value, advance(alias), alias.value]\n    if shared != [1, 2, 2]: return panic(\"immutable alias lost shared mutations\")\n    if counter.value != 2: return panic(\"aliased effect count changed\")\n"
+  }
+}

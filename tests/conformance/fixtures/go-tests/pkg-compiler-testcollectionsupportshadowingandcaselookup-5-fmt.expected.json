@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type CollectionError:\n    case OutOfRange\n\nfn get() Result[List[Int], CollectionError]: [1].slice(0, 1)\n"
+  }
+}
