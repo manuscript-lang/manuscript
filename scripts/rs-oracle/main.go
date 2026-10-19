@@ -576,9 +576,7 @@ func genRegex(dir string) {
 		`é`, `日本`, `(?i)É`, `.`, `[é]`, `[日-本]`, `\p{Han}+`, `x*`, `(x*)*`, `(a*)+`, `(a|b)*c`, `((a)|(b))+`, `(a+)+b`, `(?:)`, `()`, `(|a)`, `a|b|c|d`, `abc|abd|ab`, `a.*b`, `a.*?b`, `.*`, `.+`, `\s*`, `[^,]*`, `(\w+)@(\w+)\.com`, `\d{3}-\d{4}`, `(?i)hello|world`, `\bcat\b`, `[A-Z][a-z]+`, `^\s*$`, `(?m)^\s*$`,
 		`a{1000}`, `(a{500}){2}`, `(a{1000}){1000}`, `(((a{100}){100}){100})`, `(?:a{2}){3}`, `.{3}`, `[a-c]{2,4}`, `x{0}`, `x{0,0}`, `(?i)[k]`, `(?i)[^k]`, `(?i)[a-z]`, `\w+?\s`, `(?s:.)+`, `(?s).*`, `(?-s).`, `(?m-s)a$`, `(?i-i)a`, `(?--i)a`, `(?i-)a`, `(?-)a`, `(?:(?i)a)b`, `((?i)a)b`,
 	}
-	for _, rx := range randomStrings(31, 120, 6, strings.Split("ab()[]|*+?.\\^$-{},0129dwsDWSbBpP:", "")) {
-		patterns = append(patterns, rx)
-	}
+	patterns = append(patterns, randomStrings(31, 120, 6, strings.Split("ab()[]|*+?.\\^$-{},0129dwsDWSbBpP:", ""))...)
 	texts := []string{"", "a", "baaab", "a b  c", "foo bar foo", "Hello World", "héllo wörld", "日本語 text", "K ſ k", "line1\nline2\n\nline4", "x@y.com, z@w.com", "123-4567 555-1234", "a1_b2 c3", "abcabcabc", "😀 emoji"}
 	limits := []rt.Option[int]{{}, rt.Some(0), rt.Some(1), rt.Some(3), rt.Some(-1)}
 	for _, p := range patterns {
@@ -692,9 +690,6 @@ func genArchive(dir string) {
 		for _, format := range []string{"tar", "zip", "rar", ""} {
 			for _, max := range []rt.Option[int]{{}, rt.Some(0), rt.Some(1024), rt.Some(-1)} {
 				res := rt.Archive_Pack(nil, rt.NewList(set...), format, max)
-				if si == 2 || si == 4 || si == 5 || si == 6 || si == 7 || max.Some {
-					// keep rows small: pack rows for only some sets with every limit
-				}
 				switch {
 				case res.Failed:
 					r.row("pack", format, strconv.Itoa(si), opt(max), "=>", "err "+errName(res.Err))
