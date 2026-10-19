@@ -8,7 +8,12 @@ edition = "2024"
 publish = false
 
 [workspace.lints.rust]
-unsafe_op_in_unsafe_fn = "warn"
+# Only ms-rt and ms-rt-abi (the C ABI the compiled code links against) opt out.
+unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+undocumented_unsafe_blocks = "deny"
 
 [profile.release]
 debug = 1
