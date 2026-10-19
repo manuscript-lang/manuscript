@@ -5,7 +5,7 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
-// lintSharedCaptures recognizes direct writes in inline concurrent callbacks.
+// lintSharedCaptures recognizes direct writes in inline server handlers, which run concurrently.
 // It deliberately does not infer aliasing, helper effects, or lock ownership.
 func lintSharedCaptures(program *checker.Program) []LintFinding {
 	var findings []LintFinding
@@ -15,15 +15,6 @@ func lintSharedCaptures(program *checker.Program) []LintFinding {
 		}
 		argument := ""
 		switch info.Method.Receiver.ID {
-		case "@std/TaskGroup":
-			if info.Method.Decl.Name == "start" {
-				argument = "operation"
-			}
-		case "@std/Scheduler":
-			switch info.Method.Decl.Name {
-			case "start", "after", "every":
-				argument = "operation"
-			}
 		case "@std/Network":
 			switch info.Method.Decl.Name {
 			case "serve", "serve_stream":
@@ -70,7 +61,7 @@ func lintSharedCaptures(program *checker.Program) []LintFinding {
 				}
 				findings = append(findings, LintFinding{
 					"MSL105",
-					"Concurrent callback mutates captured value " + receiverInfo.Binding.Name + "; protect shared access with Synchronized and mutate the value through its guard",
+					"Concurrent callback mutates captured value " + receiverInfo.Binding.Name + "; handlers run concurrently, so keep per-request state local instead of sharing it",
 					pos,
 				})
 			}

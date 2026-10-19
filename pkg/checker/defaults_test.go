@@ -25,7 +25,7 @@ func TestDefaultArgumentBoundaries(t *testing.T) {
 		{"function result erases defaults", "fn f(value: Int = 1) Int:\n    return value\nfn make() fn(value: Int) Int:\n    return f\nfn call() Int:\n    return make()()\n", "missing argument value"},
 		{"generic forwarding erases defaults", "fn f(value: Int = 1) Int:\n    return value\nfn forward[T](value: T) T:\n    return value\nfn call() Int:\n    let copy = forward(f)\n    return copy()\n", "missing argument value"},
 		{"contract requires arguments", "interface Add:\n    fn add(value: Int) Int\ntype Offset:\n    value: Int\nimpl Add for Offset:\n    fn add(value: Int = self.value) Int:\n        return value\nfn call(value: Add) Int:\n    return value.add()\n", "missing argument value"},
-		{"defaults count toward callback arity", "import TaskGroup from \"@std/tasks.ms\"\nfn f(value: Int = 1) Int:\n    return value\nfn call() Unit:\n    let group = TaskGroup()\n    let result = group.start(f)\n", "takes 1 parameter but this position expects 0"},
+		{"defaults count toward callback arity", "fn run[T](operation: fn() T) T:\n    return operation()\nfn f(value: Int = 1) Int:\n    return value\nfn call() Int:\n    return run(f)\n", "takes 1 parameter but this position expects 0"},
 		{"capture assignment in default", "fn f() Unit:\n    var outer = 1\n    let callback = fn(value: Int = (fn() Int:\n        outer = 2\n        return outer\n    )()) Int:\n        return value\n", "cannot assign a captured binding"},
 		{"recursive specialization in default", "fn grow[T](value: T, optional: Int = grow(value: [value])) Int:\n    return optional\n", "recursive generic applications must preserve their parameters"},
 	} {
@@ -64,7 +64,8 @@ func TestDefaultsDoNotMutateSourceAST(t *testing.T) {
 }
 
 func TestDefaultCapturesShareFreely(t *testing.T) {
-	source := `import TaskGroup from "@std/tasks.ms"
+	source := `fn run[T](operation: fn() T) T:
+    return operation()
 interface Read:
     fn get() Int
 fn call(view: Read) Unit:
@@ -72,8 +73,7 @@ fn call(view: Read) Unit:
         return value
     let task = fn() Int:
         return callback()
-    let group = TaskGroup()
-    let result = group.start(task)
+    let result = run(task)
 `
 	module, err := parser.Parse("defaults.ms", source)
 	if err != nil {

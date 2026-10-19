@@ -62,7 +62,6 @@ func RunMain(main func(*Execution) int, args []string) (exit int) {
 	if hostShutdown != nil {
 		defer Cleanup(execution, hostShutdown)
 	}
-	defer FinishExecution(execution)
 	defer terminalRestoreAll()
 	value := main(execution)
 	CheckCancelled(execution)

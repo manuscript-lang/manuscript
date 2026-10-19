@@ -1,7 +1,6 @@
 import stdout from "@std/io.ms"
 import WriteStream from "@std/io.ms"
 import Closeable from "@std/cleanup.ms"
-import TaskGroup from "@std/tasks.ms"
 
 type Resource:
     label: String
@@ -13,14 +12,11 @@ impl Closeable for Resource:
 
 export fn main() Int:
     let output = stdout()
-    let child = fn():
-        with resource = Resource("child", output):
+
+    with resource = Resource("parent", output):
+        with child = Resource("child", output):
             let _ignored = output.write("ready\n")
             while true:
                 continue
 
-    with resource = Resource("parent", output):
-        with group = TaskGroup():
-            let _ignored = group.start(child)
-            let _joined = group.join()
-            return 0
+    return 0

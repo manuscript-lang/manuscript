@@ -10,8 +10,7 @@ import (
 func TestMutationRejections(t *testing.T) {
 	declarations := `import stdout from "@std/io.ms"
 import File from "@std/io.ms"
-import Synchronized from "@std/sync.ms"
-import SynchronizedGuard from "@std/sync.ms"
+import Queue from "@std/queues.ms"
 interface Read:
     fn get() Int
 type Val:
@@ -35,9 +34,8 @@ impl Read for Val:
 		{"resource clone", "fn f() Unit:\n    stdout().clone()\n", "unknown or ambiguous member clone"},
 		{"file clone", "fn f(file: File) Unit:\n    file.clone()\n", "unknown or ambiguous member clone"},
 		{"socket clone", "import Connection from \"@std/net.ms\"\nfn f(socket: Connection) Unit:\n    socket.clone()\n", "unknown or ambiguous member clone"},
-		{"lock clone", "fn f(lock: Synchronized[Int]) Unit:\n    lock.clone()\n", "unknown or ambiguous member clone"},
-		{"guard clone", "fn f(guard: SynchronizedGuard[Int]) Unit:\n    guard.clone()\n", "unknown or ambiguous member clone"},
-		{"service fields opaque", "fn f(lock: Synchronized[Int]) Unit:\n    lock.value = 1\n", "not readable or assignable"},
+		{"queue clone", "fn f(queue: Queue[Int]) Unit:\n    queue.clone()\n", "unknown or ambiguous member clone"},
+		{"native fields opaque", "fn f(queue: Queue[Int]) Unit:\n    queue.capacity = 1\n", "not readable or assignable"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			result := compiler.CompileSource("rejected.ms", declarations+test.source, compiler.Options{})

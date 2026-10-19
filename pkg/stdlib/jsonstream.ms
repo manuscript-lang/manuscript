@@ -1,7 +1,6 @@
 # Incremental JSON decoder implemented in Manuscript.
 import {Bytes, BytesBuilder} from "@std/bytes.ms"
 import {parse, JsonValue, JsonLimits, JsonError} from "@std/json.ms"
-import check_cancelled from "@std/tasks.ms"
 
 # Decodes a sequence of JSON values from byte chunks of any size.
 #
@@ -161,7 +160,6 @@ fn step(state: Decoder, byte: Int) Result[Optional[JsonValue], JsonError]:
 
 impl JsonDecoder for Decoder:
     fn feed(chunk: Bytes) Result[List[JsonValue], JsonError]:
-        check_cancelled()
         if self.finished: return error(JsonError.InvalidInput)
         if let failure = self.failure: return error(failure)
 

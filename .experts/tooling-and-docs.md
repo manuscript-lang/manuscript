@@ -257,8 +257,8 @@ Verify: `go test ./tests/e2e -run TestDebug`; a `next` over a statement must lan
 Decision: the user requires `.ms` standard-library sources to own all library
 documentation. Guide and special-call-rule comment blocks ship with the pinned
 sources; generated Markdown is disposable and lives under `.artifacts/docs/`.
-Keep existing routes when moving prose. Concurrency API contracts belong with
-`tasks.ms`, `sync.ms`, `queues.ms`, and `process.ms`.
+Keep existing routes when moving prose. API contracts belong with
+their `.ms` modules.
 
 Apply when: changing library docs or the book pipeline.
 Evidence: [guide extraction](../pkg/tooling/docgen/guides.go),

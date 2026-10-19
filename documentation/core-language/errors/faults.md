@@ -44,4 +44,4 @@ A fault aborts the current operation after cleanup.
 
 Cleanup runs after a fault. A cleanup fault can replace a pending return, domain error, or cancellation; secondary faults are kept as diagnostics. See [lexical cleanup](../cleanup/_index.md).
 
-A TaskGroup or failed Task join observes an operation fault as `ExecutionError.Crashed` after siblings are cancelled and joined. Scheduler faults go to the service's failure observer. [try](propagation.md) propagates only `Result` errors, never faults.
+[try](propagation.md) propagates only `Result` errors, never faults.

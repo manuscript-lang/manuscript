@@ -121,9 +121,6 @@ func (SystemError_PermissionDenied) Category() ErrorCategory {
 }
 func (SystemError_Unsupported) Category() ErrorCategory     { return ErrorCategory_Unsupported{} }
 func (SystemError_Closed) Category() ErrorCategory          { return ErrorCategory_Closed{} }
-func (ExecutionError_Timeout) Category() ErrorCategory      { return ErrorCategory_Timeout{} }
-func (StartError_Closed) Category() ErrorCategory           { return ErrorCategory_Closed{} }
-func (StartError_InvalidInput) Category() ErrorCategory     { return ErrorCategory_InvalidInput{} }
 func (TerminalError_InvalidInput) Category() ErrorCategory  { return ErrorCategory_InvalidInput{} }
 func (TerminalError_Unsupported) Category() ErrorCategory   { return ErrorCategory_Unsupported{} }
 func (TerminalError_Closed) Category() ErrorCategory        { return ErrorCategory_Closed{} }

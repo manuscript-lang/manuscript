@@ -27,7 +27,7 @@ Records, alternatives, collections, and closures may hold resource references. S
 - Closing a resource affects every alias, including nested ones.
 - Dropping an aggregate does not close its fields.
 - A library object managing several resources can implement `Closeable` and close them itself.
-- Builders follow the same rules and are not synchronized.
+- Builders follow the same rules.
 - [Destructuring](destructuring.md) does not change cleanup.
 
 ## Memory and open resources

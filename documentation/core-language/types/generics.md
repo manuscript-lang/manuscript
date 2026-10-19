@@ -158,4 +158,4 @@ The check also covers mutual recursion, function values such as `grow[List[T]]`,
 
 ## Built-in requirements
 
-`List[T]`, `Queue[T]`, `Synchronized[T]`, and other collections accept any value type, including functions and contract views. Map keys and set elements require `Hashable` ([equality and hashing](equality-and-hashing.md)).
+`List[T]`, `Queue[T]`, and other collections accept any value type, including functions and contract views. Map keys and set elements require `Hashable` ([equality and hashing](equality-and-hashing.md)).

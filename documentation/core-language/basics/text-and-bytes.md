@@ -148,7 +148,6 @@ Formatting never depends on locale or host settings.
 | Function | `[function]`, including bound methods; the function is not called |
 | Duration | Signed nanoseconds followed by `ns`, such as `2000000ns` |
 | Instant | `Instant(tick)`, with its nanosecond tick in base ten |
-| OperationId | `OperationId(number)`, with its number in base ten |
 | BigInt | Base-ten integer digits |
 | Timestamp | UTC RFC 3339 text with fractional seconds as needed |
 | Regex | Pattern text |

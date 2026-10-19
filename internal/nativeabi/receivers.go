@@ -14,12 +14,6 @@ var ReceiverBindings = map[string]map[string]string{
 	"HttpHeaders":       {"append": "http/headers_append", "values": "http/headers_values", "text": "http/headers_text", "names": "http/headers_names", "clone": "http/headers_clone", "remove": "http/headers_remove"},
 	"ClientResponse":    {"metadata": "http/client_response_metadata"},
 	"HttpMethod":        {"text": "http/method_text"},
-	"TaskGroup": {
-		"start": "tasks/task_group_start",
-		"join":  "tasks/task_group_join",
-		"close": "tasks/task_group_close",
-	},
-	"Task": {"join": "tasks/task_join"},
 	"Duration": {
 		"add":             "time/duration_add",
 		"subtract":        "time/duration_subtract",

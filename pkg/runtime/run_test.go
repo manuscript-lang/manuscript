@@ -155,23 +155,20 @@ func TestRunMainExitStatuses(t *testing.T) {
 	}
 }
 
-func TestRunMainArgumentsHooksAndJoin(t *testing.T) {
+func TestRunMainArgumentsAndHooks(t *testing.T) {
 	var gotArgs []string
 	var shutdown bool
 	hostArguments = func(e *Execution, a []string) { gotArgs = a }
 	hostShutdown = func(*Execution) { shutdown = true }
 	defer func() { hostArguments, hostShutdown = nil, nil }()
-	var stopped bool
 	exit := RunMain(func(ctx *Execution) int {
-		if len(ctx.State.Tasks.Arguments) != 2 {
-			t.Error("arguments not stored in TaskState")
+		if len(ctx.State.Program.Arguments) != 2 {
+			t.Error("arguments not stored in ProgramState")
 		}
-		g := NewTaskGroup(None[Duration]())
-		TaskGroup_Start(ctx, g, func(c *Execution) Unit { <-c.Context.Done(); stopped = true; return Unit{} })
-		return 0 // the unjoined group is closed by the work lifetime
+		return 0
 	}, []string{"a", "b"})
-	if exit != 0 || !stopped || !shutdown || len(gotArgs) != 2 {
-		t.Fatalf("exit=%d stopped=%v shutdown=%v args=%v", exit, stopped, shutdown, gotArgs)
+	if exit != 0 || !shutdown || len(gotArgs) != 2 {
+		t.Fatalf("exit=%d shutdown=%v args=%v", exit, shutdown, gotArgs)
 	}
 }
 

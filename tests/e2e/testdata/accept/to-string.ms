@@ -3,8 +3,6 @@ import {fail} from "@std/testing.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"
 import Queue from "@std/queues.ms"
-import Synchronized from "@std/sync.ms"
-import Scheduler from "@std/tasks.ms"
 
 type Person:
     name: String
@@ -38,11 +36,13 @@ fn check(value: String, expected: String) Result[Unit, Error]:
 fn answer() Int:
     return 42
 
-fn next(state: Synchronized[Int]) Person:
-    with locked = state.lock():
-        let value = locked.get()
-        locked.set(value: value + 1)
-        return Person(name: "Ada", age: value)
+type Counter:
+    value: Int
+
+fn next(state: Counter) Person:
+    let value = state.value
+    state.value = value + 1
+    return Person(name: "Ada", age: value)
 
 test "every scalar has to_string":
     (try check(value: "hello".to_string(), expected: "hello"))
@@ -112,15 +112,8 @@ test "generics views bound methods functions and resources":
     (try check(value: queue.to_string(), expected: "[object]"))
     (try check(value: "{queue}", expected: "[object]"))
 
-    with service = Scheduler(limit: 1):
-        (try check(value: service.to_string(), expected: "[object]"))
-        (try check(value: "{service}", expected: "[object]"))
-        let bound = service.to_string
-        service.close()
-        (try check(value: bound(), expected: "[object]"))
-
 test "interpolation and bound conversion evaluate each receiver once":
-    let state = Synchronized[Int](1)
+    let state = Counter(value: 1)
     (
         try check(
             value: "{next(state)}|{next(state)}",
@@ -130,5 +123,4 @@ test "interpolation and bound conversion evaluate each receiver once":
     let convert = next(state).to_string
     (try check(value: convert(), expected: "Person(age: 3, name: Ada)"))
     (try check(value: convert(), expected: "Person(age: 3, name: Ada)"))
-    with locked = state.lock():
-        (try check(value: locked.get().to_string(), expected: "4"))
+    (try check(value: state.value.to_string(), expected: "4"))

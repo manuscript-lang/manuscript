@@ -15,8 +15,6 @@ func TestMutationCLIRejectsInvalidAssignmentsAndHandleClones(t *testing.T) {
 	binary := cliBinary
 	declarations := `import File from "@std/io.ms"
 import Connection from "@std/net.ms"
-import Synchronized from "@std/sync.ms"
-import SynchronizedGuard from "@std/sync.ms"
 type Val:
     val: Int
 `
@@ -26,8 +24,6 @@ type Val:
 		{"type assignment", "fn f() Unit:\n    Val.val = 1\n", "assignment requires a record field"},
 		{"file clone", "fn f(file: File) Unit:\n    file.clone()\n", "unknown or ambiguous member clone"},
 		{"socket clone", "fn f(socket: Connection) Unit:\n    socket.clone()\n", "unknown or ambiguous member clone"},
-		{"lock clone", "fn f(lock: Synchronized[Int]) Unit:\n    lock.clone()\n", "unknown or ambiguous member clone"},
-		{"guard clone", "fn f(guard: SynchronizedGuard[Int]) Unit:\n    guard.clone()\n", "unknown or ambiguous member clone"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			dir := t.TempDir()

@@ -45,7 +45,7 @@ Entries are `key: value`, trailing commas allowed. Keys are expressions: `{name:
 
 ## Element requirements
 
-Collections accept any value type (functions, contract views, builders, services, resources); storing a resource neither keeps it open nor registers cleanup. Map keys and set elements also require `Hashable`. Coordinate shared mutation with `Synchronized`.
+Collections accept any value type (functions, contract views, builders, services, resources); storing a resource neither keeps it open nor registers cleanup. Map keys and set elements also require `Hashable`.
 
 Applications are invariant: `List[Int]` is not a `List[Float]`, and no implicit unions or numeric conversions apply.
 
@@ -61,7 +61,7 @@ An expected type propagates into inner literals. Without one, elements must agre
 
 ## Iteration
 
-Maps and sets iterate in insertion order, with a [for loop](../control-flow/loops.md). Traversal order implies nothing about concurrent operations.
+Maps and sets iterate in insertion order, with a [for loop](../control-flow/loops.md).
 
 ## Mutation and copies
 
@@ -99,7 +99,7 @@ A List `for` loop or callback captures its backing slice and initial length once
 - `fill` and `copy_within` write the backing and can affect later visits.
 - `.clone()` first when you need stable storage.
 
-Map and Set loops and callbacks traverse a membership snapshot, so additions, removals, and replacements during the traversal are not seen. Guard shared mutation with `Synchronized`, using one lock for every alias.
+Map and Set loops and callbacks traverse a membership snapshot, so additions, removals, and replacements during the traversal are not seen.
 
 ### Naming and migration
 

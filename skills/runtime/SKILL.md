@@ -1,24 +1,24 @@
 ---
 name: runtime
-description: Implement or review Manuscript native execution, resources, cancellation, cleanup, concurrent work, runtime dispatch, and standard-library declarations, bindings, and API design.
+description: Implement or review Manuscript native execution, resources, cancellation, cleanup, runtime dispatch, and standard-library declarations, bindings, and API design.
 ---
 
 # Runtime
 
-Use for `pkg/runtime/`, `internal/hostos/`, `pkg/stdlib/*.ms`, `bindings.json`, or lowering that changes execution. Read [runtime lessons](../../.experts/runtime.md), [cleanup](../../documentation/core-language/cleanup/_index.md), and [concurrency](../../pkg/stdlib/tasks.ms).
+Use for `pkg/runtime/`, `internal/hostos/`, `pkg/stdlib/*.ms`, `bindings.json`, or lowering that changes execution. Read [runtime lessons](../../.experts/runtime.md), [cleanup](../../documentation/core-language/cleanup/_index.md).
 
 - State observable result/error identity, evaluation order, aliasing, cancellation, close, join, and use-after-close behavior before editing.
 - Keep sharing, resource lifetime, and work lifetime separate. Passing references needs no sharing proof and does not extend resource lifetime. Explicit synchronization protects complete shared updates; local Queue has no implicit locks/waiting/close.
 - Trace admission → acquisition → delivery → scope exit/cancellation → close. Cancelled undelivered acquisitions release resources; stale guards/aliases cannot access reused handles. Consult newer stdlib direction before retaining APIs scheduled for removal.
-- Exercise return/error/fault/cancellation/break/continue across cleanup scopes. Cleanup completes before joins return; close accounts for admitted work without deadlocking callbacks/reentry.
-- Keep data mutable and cloning shallow; native resource handles cannot be cloned. Guard validation/synchronization covers actual operations and reads where required.
+- Exercise return/error/fault/cancellation/break/continue across cleanup scopes. Close does not deadlock callbacks or reentry.
+- Keep data mutable and cloning shallow; native resource handles cannot be cloned. Guard validation covers actual operations and reads where required.
 - Native I/O remains interruptible after descriptor metadata access. Completeness includes blocked I/O, concurrent close, bounded streaming, and shutdown, beyond successful return values. Process `stdin`/`stdout` reads and writes need not be cancellable (the user dropped that item).
-- Concurrency stays API-shaped: do not expose channels. Waiting between tasks belongs in standard types and `Synchronized` guard operations.
+- Concurrency is intentionally absent from the language and standard library until it is redesigned from the ground up; do not add task, scheduler, lock, or channel APIs without a new user direction.
 - Map and Set are hash-indexed and iterate in insertion order. Key and element types must be `Hashable`; an unhashable key type is a compile error, never a linear-scan fallback. `Equal` and `Hashable` are ordinary source interfaces.
 - Preserve declared error types/cases/causes and checked binding identities.
 - Include new runtime/platform sources in standalone bundles and implementation identity; aliases must agree when runtime files are merged. Verify emitted programs as well as ordinary package compilation.
 - The standard declarations in `pkg/runtime/std_*_gen.go` come from `make stdgen`; change the `.ms` declaration, regenerate, and implement the signature the `rtcheck` build reports. See [runtime conventions](../../documentation/contributing/runtime-conventions.md).
-- Run affected runtime tests and called native conformance; concurrency/lifetime changes need relevant race checks and bounded coordinated cancellation/shutdown cases. Report material untested platform limits.
+- Run affected runtime tests and called native conformance; lifetime changes need bounded cancellation/shutdown cases. Report material untested platform limits.
 
 ## Standard library
 

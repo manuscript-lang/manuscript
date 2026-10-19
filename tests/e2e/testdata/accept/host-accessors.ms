@@ -1,11 +1,10 @@
-import {expect_equal, expect_false, expect_ok, fail} from "@std/testing.ms"
+import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import {arguments, control} from "@std/process.ms"
 import {stdin, stdout, stderr} from "@std/io.ms"
 import {clock, wall_clock} from "@std/time.ms"
 import entropy from "@std/random.ms"
 import system from "@std/system.ms"
 import network from "@std/net.ms"
-import TaskGroup from "@std/tasks.ms"
 
 fn check_services() Result[Unit, Error]:
     arguments().length() | try expect_equal(expected: 0)
@@ -24,16 +23,9 @@ fn check_services() Result[Unit, Error]:
 
     return ok(unit)
 
-test "host accessors work in callbacks and task executions":
+test "host accessors work in callbacks":
     let check = check_services
     try check()
-
-    with group = TaskGroup():
-        let first = group.start(check)
-        let second = group.start(check)
-        let joined = try group.join()
-        (try first.join()) | try expect_ok
-        (try second.join()) | try expect_ok
 
 test "repeated accessors retain closed root state":
     stdin().close()

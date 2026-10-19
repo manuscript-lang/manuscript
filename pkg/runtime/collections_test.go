@@ -687,7 +687,7 @@ func TestSharedMapFaultsInsteadOfCrashing(t *testing.T) {
 		func() {
 			defer func() {
 				fault, ok := recover().(Fault)
-				if !ok || !strings.Contains(fault.Message, "Synchronized") {
+				if !ok || !strings.Contains(fault.Message, "concurrent access") {
 					t.Errorf("%s: recovered %v", name, fault)
 				}
 			}()

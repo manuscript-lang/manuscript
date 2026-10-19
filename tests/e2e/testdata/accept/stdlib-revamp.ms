@@ -2,7 +2,6 @@ import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import {ReadStream, IoError, read_line} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 import {PriorityQueue} from "@std/queues.ms"
-import {Scheduler} from "@std/tasks.ms"
 
 type Key:
     id: Int
@@ -56,15 +55,6 @@ test "limits can be omitted or supplied":
     let repeated = try "ab".repeat(3)
     try expect_equal(repeated, "ababab")
     try expect_false("ab".repeat(3, 5).is_ok())
-
-fn operation() Result[Unit, Error]: ok(unit)
-
-test "one scheduler admits and schedules work":
-    with scheduler = Scheduler():
-        let _immediate = scheduler.start(operation)
-        let _delayed = scheduler.after(0.milliseconds, operation)
-        let repeated = try scheduler.every(1.milliseconds, operation)
-        scheduler.cancel(repeated)
 
 type EmptyReader:
     requested: Int

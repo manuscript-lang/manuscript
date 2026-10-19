@@ -271,35 +271,4 @@ ms run get.ms -- http://127.0.0.1:8000/notes.txt
 
 The server needs Python 3 and a `notes.txt` (from the file-reading recipe). Transport failures and non-200 statuses exit 1; the body is capped at one megabyte.
 
-## Start and join a task
-
-Save as `task.ms`. `TaskGroup.start` returns a handle; `join` returns its result.
-
-<!-- manuscript-example: {"mode":"run","stdout":"42\n"} -->
-```manuscript
-import TaskGroup from "@std/tasks.ms"
-import stdout from "@std/io.ms"
-
-fn run() Result[Unit, Error]:
-    with group = TaskGroup():
-        let task = group.start(fn() Int:
-            return 6 * 7
-        )
-        let answer = try task.join()
-        try stdout().write("{answer}\n")
-        try stdout().flush()
-    return ok(unit)
-
-export fn main() Int:
-    if run().is_error():
-        return 1
-    return 0
-```
-
-```sh
-ms run task.ms
-```
-
-`with` joins child work on every exit. Keep resources a task needs open until it finishes.
-
 Next: [testing](testing.md) and [counting loops](../core-language/control-flow/loops.md#counting-loops).

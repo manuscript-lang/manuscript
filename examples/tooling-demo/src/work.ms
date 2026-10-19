@@ -1,4 +1,3 @@
-import {TaskGroup, ExecutionError} from "@std/tasks.ms"
 import range from "@std/collections.ms"
 
 fn compute() Int:
@@ -7,19 +6,13 @@ fn compute() Int:
         result += index % 7
     return result
 
-fn compare() Result[Int, ExecutionError]:
-    with group = TaskGroup():
-        let first = group.start(compute)
-        let second = group.start(compute)
-        let left = try first.join()
-        let right = try second.join()
-        if left != right:
-            return ok(1)
+fn compare() Int:
+    let left = compute()
+    let right = compute()
+    if left != right:
+        return 1
 
-        return ok(0)
+    return 0
 
 export fn main() Int:
-    if let code = compare():
-        return code
-
-    return 1
+    return compare()

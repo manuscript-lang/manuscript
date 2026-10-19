@@ -23,7 +23,7 @@ type Map[K comparable, V any] struct {
 	buckets map[int][]int
 	entries []mapSlot[K, V] // a slot with live false marks a removed entry until compaction
 	live    int
-	writing uint32 // 1 while a task inserts, deletes or clears; detects unsynchronized sharing
+	writing uint32 // 1 while a caller inserts, deletes or clears; detects concurrent use
 }
 
 // mapSlot stores an entry by value, so adding or replacing one allocates
@@ -81,12 +81,12 @@ func MapOf[K comparable, V any](keys *Keys[K], entries []Entry[K, V]) *Map[K, V]
 // Len is the number of entries.
 func (m *Map[K, V]) Len() int { return m.live }
 
-// Maps are not synchronized: tasks sharing one must lock a Synchronized around
-// every access. Go's own map would end the process with an unrecoverable
+// Maps are not synchronized, so concurrent callers must not share one. Go's
+// own map would end the process with an unrecoverable
 // "concurrent map writes" trace, so overlapping use is caught first and
 // raised as an ordinary fault. Detection covers accesses that overlap an
 // insert, delete or clear; it is a diagnostic, not a guarantee.
-const concurrentMapMessage = "concurrent access to a Map or Set from several tasks; share it through a Synchronized and hold its lock around every read and write"
+const concurrentMapMessage = "concurrent access to a Map or Set; Maps and Sets are not safe for concurrent use"
 
 func (m *Map[K, V]) beginWrite() {
 	if !atomic.CompareAndSwapUint32(&m.writing, 0, 1) {

@@ -1,7 +1,5 @@
 import {expect_equal, expect_true} from "@std/testing.ms"
 import abs_int from "@std/math.ms"
-import Scheduler from "@std/tasks.ms"
-import Synchronized from "@std/sync.ms"
 
 fn increment(value: Int) Int:
     return value + 1
@@ -34,17 +32,19 @@ impl Increment for Offset:
     fn apply(value: Int) Int:
         return value + self.delta
 
-fn next(state: Synchronized[Int]) Int:
-    with locked = state.lock():
-        let value = locked.get()
-        locked.set(value + 1)
-        return value
+type Counter:
+    value: Int
 
-fn prepare_receiver(state: Synchronized[Int]) Result[Offset, Error]:
+fn next(state: Counter) Int:
+    let value = state.value
+    state.value = value + 1
+    return value
+
+fn prepare_receiver(state: Counter) Result[Offset, Error]:
     next(state) | try expect_equal(expected: 0)
     return ok(Offset(2))
 
-fn prepare_function(state: Synchronized[Int]) Result[fn(value: Int) Int, Error]:
+fn prepare_function(state: Counter) Result[fn(value: Int) Int, Error]:
     next(state) | try expect_equal(expected: 4)
     return ok(increment)
 
@@ -96,29 +96,15 @@ test "optional labels on methods and native functions":
     lookup(1) | try expect_equal(expected: 5)
     [4, 5].get(0) | try expect_equal(expected: 4)
 
-    with service = Scheduler(limit: 1, drain: 2.seconds):
-        let operation = fn() Result[Unit, Error]:
-            return ok(unit)
-
-        match service.start(operation):
-            ok(_):
-                ((true) | try expect_true)
-            error(_):
-                ((false) | try expect_true)
-
 test "omitted labels preserve evaluation order":
-    let state = Synchronized(0)
+    let state = Counter(value: 0)
     (try prepare_receiver(state)).apply(next(state)) | try expect_equal(expected: 3)
-    with locked = state.lock():
-        locked.get() | try expect_equal(expected: 2)
+    state.value | try expect_equal(expected: 2)
     subtract(deduction: next(state), amount: next(state)) | try expect_equal(
         expected: 1
     )
-    with locked = state.lock():
-        locked.get() | try expect_equal(expected: 4)
+    state.value | try expect_equal(expected: 4)
     (try prepare_function(state))(next(state)) | try expect_equal(expected: 6)
-    with locked = state.lock():
-        locked.get() | try expect_equal(expected: 6)
+    state.value | try expect_equal(expected: 6)
     sum([next(state), next(state)]) | try expect_equal(expected: 13)
-    with locked = state.lock():
-        locked.get() | try expect_equal(expected: 8)
+    state.value | try expect_equal(expected: 8)

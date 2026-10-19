@@ -171,7 +171,6 @@ class ManuscriptAdapter {
     if (expected && kind !== expected) { result.value = '<unavailable after last use>'; result.variablesReference = 0; return result; }
     if (primitive) { result.variablesReference = 0; return result; }
     if (kind === 'Unit' || declaredType === 'Unit') { result.value = 'unit'; result.type = 'Unit'; result.variablesReference = 0; return result; }
-    if (kind === 'OperationId') { const number = /number: (\d+)/.exec(result.value); result.value = number ? `Operation ${number[1]}` : 'OperationId'; result.variablesReference = 0; return result; }
     if (!kind) return result;
     const count = pattern => { const match = pattern.exec(result.value); return match ? ` (${match[1]} items)` : ''; };
     let handled = true;
@@ -223,12 +222,12 @@ class ManuscriptAdapter {
     const types = typeArguments(handle.sourceType);
     if (handle.kind === 'Execution') {
       const children = await this.valueFields(handle.ref);
-      const names = { Context: 'Cancellation context', Lifetime: 'Work lifetime', Owners: 'Scheduler services', TaskGroups: 'Task groups', HostServices: 'HTTP services' };
+      const names = { Context: 'Cancellation context', HostServices: 'HTTP services' };
       return children.filter(v => names[v.name]).map(v => ({ ...v, name: names[v.name] }));
     }
     const children = await this.valueFields(handle.ref);
-    const serviceFields={TaskGroup:{active:'Active tasks',sealed:'Joined',closing:'Closing',closed:'Closed',failure:'Execution failure'},Task:{id:'Operation',value:'Result',committed:'Completed',group:'Task group'},PriorityQueue:{capacity:'Capacity',items:'Queued priorities',compare:'Comparator'},Queue:{capacity:'Capacity',items:'Queued values'},Synchronized:{value:'Value',holder:'Active guard'},SynchronizedGuard:{cell:'Synchronized value'},Scheduler:{limit:'Admission limit',active:'Active operations',history:'Recent outcomes',closing:'Closing',closed:'Closed'}}[handle.kind];
-    if (serviceFields) return children.filter(v=>serviceFields[v.name]).map(v=>this.render(v,serviceFields[v.name],handle.kind==='Task'&&v.name==='value'?types[0]:undefined));
+    const serviceFields={PriorityQueue:{capacity:'Capacity',items:'Queued priorities',compare:'Comparator'},Queue:{capacity:'Capacity',items:'Queued values'}}[handle.kind];
+    if (serviceFields) return children.filter(v=>serviceFields[v.name]).map(v=>this.render(v,serviceFields[v.name],undefined));
     switch (handle.kind) {
       case 'Record': return children.filter(v => /^[A-Z]/.test(v.name)).map(v => this.render(v, sourceField(v.name)));
       case 'Option': return children.filter(v => v.name === 'Val').map(v => this.render(v, 'value', types[0]));

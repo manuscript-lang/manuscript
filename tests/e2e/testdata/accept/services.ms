@@ -1,20 +1,11 @@
 import {expect_equal} from "@std/testing.ms"
-import Synchronized from "@std/sync.ms"
 import ListBuilder from "@std/collections.ms"
 import MapBuilder from "@std/collections.ms"
 import SetBuilder from "@std/collections.ms"
 import BytesBuilder from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
 
-test "atomic state and sealed builders":
-    let state = Synchronized(3)
-
-    with locked = state.lock():
-        try expect_equal(locked.get(), 3)
-        locked.set(4)
-
-    with locked = state.lock():
-        try expect_equal(locked.get(), 4)
+test "sealed builders":
     let list = ListBuilder[Int]()
     list.append(1)
     list.append(2)

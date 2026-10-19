@@ -227,9 +227,6 @@ func (c *checker) implements(receiver, contract *Type) bool {
 	if receiver == nil || contract == nil {
 		return false
 	}
-	if std(contract, "Closeable") && (std(receiver, "TaskGroup") || std(receiver, "Scheduler") || std(receiver, "SynchronizedGuard")) {
-		return true
-	}
 	if receiver.ID == contract.ID {
 		return Same(receiver, contract)
 	}
@@ -358,7 +355,7 @@ func (c *checker) property(t *Type, property string, state *propertyState) (resu
 	if std(t, "Decimal") || std(t, "Bytes") || std(t, "Duration") || std(t, "Instant") {
 		return true
 	}
-	if std(t, "Task") || std(t, "TaskGroup") || std(t, "OperationId") || std(t, "Scheduler") || std(t, "Queue") || std(t, "BlockingQueue") || std(t, "PriorityQueue") || std(t, "Synchronized") || std(t, "SynchronizedGuard") {
+	if std(t, "Queue") || std(t, "PriorityQueue") {
 		return false
 	}
 	if std(t, "List") || std(t, "Map") || std(t, "Set") {
@@ -486,9 +483,6 @@ func nativeMethod(t *Type, name string) *Method {
 }
 
 func (c *checker) closeable(t *Type) bool {
-	if std(t, "TaskGroup") || std(t, "Scheduler") || std(t, "SynchronizedGuard") {
-		return true
-	}
 	if t.Kind == "contract" || t.Kind == "variable" {
 		for _, m := range c.methods(t, "close") {
 			if len(m.Type.Params) == 0 && m.Type.Result.ID == "Unit" {

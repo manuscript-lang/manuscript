@@ -102,7 +102,6 @@ func TestRunnerFaultIsolation(t *testing.T) {
 		"sealed builder mutation faults":          "builder is sealed",
 		"zero queue capacity faults":              "Queue: capacity must be between 1 and 9223372036854775807",
 		"negative queue capacity faults":          "Queue: capacity must be between 1 and 9223372036854775807",
-		"stale synchronized guard faults":         "Synchronized guard is closed",
 		"unwrapping an out of range slice faults": "called Result.get() on error",
 		"negative split limit faults":             "split: max_parts must be nonnegative, found -1",
 		"negative replace limit faults":           "replace: max_replacements must be nonnegative, found -1",
@@ -127,7 +126,7 @@ func TestRunnerFaultIsolation(t *testing.T) {
 			t.Errorf("missing %s%s:\n%s", prefix, declaration.Name, output)
 		}
 	}
-	for _, expected := range []string{"fault cleanup completed\n", "fresh root after stdlib faults\n", "10 tests, 9 failed"} {
+	for _, expected := range []string{"fault cleanup completed\n", "fresh root after stdlib faults\n", "9 tests, 8 failed"} {
 		if !strings.Contains(output, expected) {
 			t.Errorf("missing transcript %q:\n%s", expected, output)
 		}
@@ -150,7 +149,6 @@ const runnerFaultSource = `import panic from "@std/faults.ms"
 import Closeable from "@std/cleanup.ms"
 import {ListBuilder} from "@std/collections.ms"
 import {Queue} from "@std/queues.ms"
-import Synchronized from "@std/sync.ms"
 import {stdout, WriteStream} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 
@@ -182,12 +180,6 @@ test "zero queue capacity faults":
 
 test "negative queue capacity faults":
     let queue = Queue[Int](-1)
-
-test "stale synchronized guard faults":
-    let state = Synchronized(1)
-    let guard = state.lock()
-    guard.close()
-    let impossible = guard.get()
 
 test "unwrapping an out of range slice faults":
     let impossible = ([1, 2]).slice(start: 0, end: 3).get()

@@ -313,7 +313,6 @@ func runTestContext(test Test, timeout time.Duration, parent context.Context, ar
 		if hostShutdown != nil {
 			defer Cleanup(execution, hostShutdown)
 		}
-		defer FinishExecution(execution)
 		if outcome := test.Run(execution); outcome.Failed {
 			failure = testReturnedError(execution, outcome.Err)
 		}

@@ -111,39 +111,6 @@ func TestLoggingCLI(t *testing.T) {
 		}
 	})
 
-	t.Run("concurrent child records", func(t *testing.T) {
-		path := filepath.Join(root, "concurrent.ndjson")
-		if output, err := commandOutput(t, binary, "concurrent", path); err != nil || len(output) != 0 {
-			t.Fatalf("concurrent logging failed: %v\n%s", err, output)
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		records := loggingRecords(t, data)
-		if len(records) != 64 {
-			t.Fatalf("got %d concurrent records, want 64", len(records))
-		}
-		seen := map[[2]int64]bool{}
-		for _, record := range records {
-			worker, workerOK := record["worker"].(json.Number)
-			sequence, sequenceOK := record["sequence"].(json.Number)
-			if !workerOK || !sequenceOK {
-				t.Fatalf("missing task identity: %#v", record)
-			}
-			w, wErr := worker.Int64()
-			s, sErr := sequence.Int64()
-			key := [2]int64{w, s}
-			if wErr != nil || sErr != nil || w < 0 || w >= 8 || s < 0 || s >= 8 || seen[key] {
-				t.Fatalf("invalid or duplicated task identity: %#v", record)
-			}
-			seen[key] = true
-			if len(record) != 5 || record["level"] != json.Number("30") || record["msg"] != "concurrent" || record["service"] != "api" {
-				t.Fatalf("corrupt concurrent record: %#v", record)
-			}
-		}
-	})
-
 	for _, test := range []struct{ mode, diagnostic string }{
 		{"missing", "filesystem: file or directory not found"},
 		{"invalid", "logging: invalid data"},

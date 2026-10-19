@@ -54,28 +54,6 @@ test "Never faults propagate through initializers and returned values":
         "result cannot return"
     )
 `},
-		{"synchronized-fault-cleanup", `import {expect_true, expect_equal} from "@std/testing.ms"
-import Synchronized from "@std/sync.ms"
-import TaskGroup from "@std/tasks.ms"
-import panic from "@std/faults.ms"
-
-test "fault releases guard and preserves committed writes":
-    let counter = Synchronized(0)
-    let fail = fn():
-        with locked = counter.lock():
-            locked.set(value: 8)
-            panic(message: "expected")
-
-    with group = TaskGroup():
-        let first_task = group.start(fail)
-
-        match group.join():
-            ok(_):
-                ((false) | try expect_true)
-            error(_):
-                with locked = counter.lock():
-                    locked.get() | try expect_equal(expected: 8)
-`},
 		{"expect-fault", `import {expect_contains, expect_fault} from "@std/testing.ms"
 import panic from "@std/faults.ms"
 test "expect_fault reports the injected fault":

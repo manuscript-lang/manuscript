@@ -22,7 +22,7 @@ Version 0.1 already delivers the core of this premise. The vision below is still
 
 - **A small, regular language.** Statically typed, with `let`/`var`, nominal `type`s with alternatives, exhaustive `match`, `Optional`, `Result` with `try`, generics, and `impl` blocks. Result types follow the parameter list with no arrow (`fn add(a: Int, b: Int) Int:`).
 - **Scoped cleanup.** `with` closes resources at block end, and cancellation and shutdown run cleanup deterministically.
-- **Concurrency as a library.** Concurrent work, scheduling, and host services come from `@std` APIs, not new syntax.
+- **No concurrency yet.** Concurrency is intentionally absent until it can be designed from the ground up.
 - **One self-contained binary.** `ms` checks, formats, lints, tests, builds, profiles, and debugs, lowering to typed Go and compiling with a bundled toolchain. Nothing else to install.
 - **Structured evidence for agents.** `--json` output from `check`, `lint`, `test`, `build`, and `inspect`; `ms search_symbol`, `ms guide`, `ms verify`, `ms review`, and `ms diagram` give deterministic views of a program and of a change.
 - **Editor and debugger support.** A language server, a VS Code extension, and a source-level debugger.
@@ -62,7 +62,7 @@ This does not mean that a compiler or diagram can prove every program correct. T
 
 The Manuscript experience brings the essential development tools together: compiling, building, testing, profiling, and debugging ship in one `ms` binary, and `ms build` produces a standalone native executable. The work ahead is making deployment as seamless as the development loop, so these pieces feel like one workflow rather than a collection of unrelated tools.
 
-Concurrency illustrates the value of keeping the language core small. Manuscript exposes concurrency through standard-library APIs, so programs use functions and receive values without special asynchronous syntax throughout the language. This keeps the core easier to read and analyze while allowing applications to use concurrent behavior through libraries.
+Keeping the language core small matters. Manuscript has no special asynchronous syntax, so programs use functions and receive values. Concurrency is intentionally absent until it can be designed correctly from the ground up.
 
 ### An ecosystem agents can help expand
 

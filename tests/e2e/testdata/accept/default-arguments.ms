@@ -1,6 +1,8 @@
 import {TextError} from "@std/errors.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
-import {Synchronized, SynchronizedGuard} from "@std/sync.ms"
+
+type Cell:
+    value: Int
 
 fn increment(value: Int = 3) Int:
     return value + 1
@@ -11,17 +13,17 @@ fn combine(first: Int = 2, second: Int, third: Int = first + second) Int:
 fn identity[T](value: T, fallback: T = value) T:
     return fallback
 
-fn mark(state: SynchronizedGuard[Int], value: Int) Int:
-    state.set(value: state.get() * 10 + value)
+fn mark(state: Cell, value: Int) Int:
+    state.value = state.value * 10 + value
     return value
 
 fn ordered(
-    state: SynchronizedGuard[Int],
+    state: Cell,
     first: Int = mark(state: state, value: 3),
     second: Int = mark(state: state, value: 4),
     third: Int = 0
 ) Int:
-    state.set(value: state.get() * 10 + 5)
+    state.value = state.value * 10 + 5
     return first + second + third
 
 fn unit_default(calls: List[Int]) Unit:
@@ -77,21 +79,19 @@ test "omitted and explicit defaults":
     ) | try expect_false
 
 test "default evaluation order and repeated calls":
-    let counter = Synchronized[Int](0)
-
-    with state = counter.lock():
-        let total = ordered(
-            state: state,
-            third: mark(state: state, value: 1),
-            second: mark(state: state, value: 2)
-        )
-        (total != 6 or state.get() != 1235) | try expect_false
-        state.set(value: 0)
-        let ignored = ordered(state: state)
-        state.get() | try expect_equal(expected: 345)
-        state.set(value: 0)
-        let again = ordered(state: state)
-        state.get() | try expect_equal(expected: 345)
+    let state = Cell(value: 0)
+    let total = ordered(
+        state: state,
+        third: mark(state: state, value: 1),
+        second: mark(state: state, value: 2)
+    )
+    (total != 6 or state.value != 1235) | try expect_false
+    state.value = 0
+    let ignored = ordered(state: state)
+    state.value | try expect_equal(expected: 345)
+    state.value = 0
+    let again = ordered(state: state)
+    state.value | try expect_equal(expected: 345)
 
 test "function values and captures":
     let copy = increment

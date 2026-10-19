@@ -107,7 +107,7 @@ Fix generated output through its generator, never by editing HTML or copying sta
 | --- | --- |
 | Syntax or type rules | Guide, syntax/lexer/parser/checker, lowering, formatting and LSP, accepted/rejected fixtures |
 | Standard operation | `.ms` declaration, native binding, runtime dispatch, editor info, generated reference; test in a called test block |
-| Resource or concurrent work | Checking/dispatch, acquisition, cancellation, close, join; verify exit ordering and run race tests |
+| Resource work | Checking/dispatch, acquisition, cancellation, close; verify exit ordering |
 | Manifest, alias, or import | `project`, module graph, overlays, pin/cache identity; test equivalent paths, escapes, malformed input |
 | CLI command | `internal/cli`, relevant package, status/output contract; failed checking preserves outputs |
 | Documentation | Markdown or generator, `make docs-check`, `make book-check`, `make book` |

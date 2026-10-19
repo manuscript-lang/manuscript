@@ -34,9 +34,28 @@ Reference-versus-value rules are in [Go representation](go-lowering-representati
 
 `msruntime.Sources` lists every non-test `.go` file except `bundle.go`. It feeds pin identity, the shared workspace, and `Standalone` bundles. Keep one import alias per path, because bundling folds files together.
 
+## Host escalation
+
+Cleanup waits for work to end. The runtime cannot terminate a goroutine, so work ignoring cancellation can block cleanup forever. Escalation is the host's last resort: it ends the process and never reports stuck work as joined.
+
+Each host runs one watchdog, started when the host begins shutdown or gets a stop request (SIGINT, SIGTERM, server shutdown), not by ordinary timeouts. It covers `with` cleanup and resource close.
+
+| Setting | Default |
+| --- | --- |
+| Grace period after the stop request | 30 seconds |
+| A second stop request during the grace period | Escalates immediately |
+
+On escalation the host:
+
+1. writes one stderr diagnostic per outstanding operation with its current suspension location, and accepted stop reason;
+2. writes retained primary and secondary fault diagnostics;
+3. terminates without further cleanup.
+
+The CLI exits 70, labeled incomplete cleanup. Native `RunMain` and the test runner implement the grace period and second-request rule but today write one `incomplete cleanup: <reason>` line, and the grace period is not configurable. Conformance treats an escalated exit as program failure. See [cleanup faults](../core-language/cleanup/cleanup-faults.md).
+
 ## Verifying
 
 - `go build ./pkg/runtime && go vet ./pkg/runtime`
 - `go build -tags rtcheck -gcflags=-e ./pkg/runtime` shows no `std_*_gen.go` errors.
-- `go test ./pkg/runtime`, with `-race` for concurrent code.
+- `go test ./pkg/runtime`.
 - `make stdlib-test` and `make e2e` run fixtures end to end.

@@ -107,7 +107,7 @@ Evaluation follows source order; named arguments never reorder it.
 2. Evaluate supplied arguments left to right.
 3. Arrange values into declaration order, then evaluate omitted [defaults](#default-arguments) before the body.
 
-A failed or nonreturning argument prevents later arguments and the call. Constructor fields follow the same rule. Concurrency callbacks are prepared in the caller before the operation starts.
+A failed or nonreturning argument prevents later arguments and the call. Constructor fields follow the same rule.
 
 ## Unit and Never
 
@@ -151,8 +151,8 @@ fn incomplete(active: Bool) Int:
 
 Unreachable statements are still parsed, resolved, and type-checked. A `Never` function has no reachable normal exit. A bare call may be a statement; other expressions cannot.
 
-## Calls that suspend
+## Calls that block
 
-A blocking library call suspends the current lightweight task without starting another. There is no `async` or `await`; Manuscript has one function kind, and sequential code stays sequential.
+A blocking library call waits for its result before the next statement runs. There is no `async` or `await`; Manuscript has one function kind, and code runs sequentially.
 
 See [function values and closures](function-values-and-closures.md) for functions as data.

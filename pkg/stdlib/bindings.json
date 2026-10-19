@@ -4,7 +4,6 @@
   },
   "function_overrides": {
     "@std/faults.ms/panic": "panic",
-    "@std/tasks.ms/check_cancelled": "check_cancelled",
     "@std/time.ms/sleep": "sleep"
   },
   "intrinsic_receivers": {
@@ -26,17 +25,10 @@
     "@std/http.ms/HttpHeaders": "native",
     "@std/net.ms/Cidr": "native",
     "@std/net.ms/IpAddress": "native",
-    "@std/queues.ms/BlockingQueue": "native",
     "@std/queues.ms/PriorityQueue": "native",
     "@std/queues.ms/Queue": "native",
     "@std/regex.ms/Regex": "native",
     "@std/string.ms/StringBuilder": "native",
-    "@std/sync.ms/Synchronized": "native",
-    "@std/sync.ms/SynchronizedGuard": "native",
-    "@std/tasks.ms/OperationId": "native",
-    "@std/tasks.ms/Scheduler": "native",
-    "@std/tasks.ms/Task": "native",
-    "@std/tasks.ms/TaskGroup": "native",
     "@std/time.ms/Duration": "native",
     "@std/time.ms/Instant": "native",
     "@std/time.ms/Timestamp": "native"

@@ -5,7 +5,6 @@
 package msruntime
 
 type check_Queue[T any] = *Queue[T]
-type check_BlockingQueue[T any] = *BlockingQueue[T]
 type check_PriorityQueue[T any] = *PriorityQueue[T]
 
 func check_Queue_Enqueue[T any]() {
@@ -22,21 +21,6 @@ func check_Queue_Length[T any]() {
 }
 func check_Queue_IsEmpty[T any]() {
 	var _ func(*Execution, *Queue[T]) bool = Queue_IsEmpty[T]
-}
-func check_BlockingQueue_Put[T any]() {
-	var _ func(*Execution, *BlockingQueue[T], T) bool = BlockingQueue_Put[T]
-}
-func check_BlockingQueue_Take[T any]() {
-	var _ func(*Execution, *BlockingQueue[T]) Option[T] = BlockingQueue_Take[T]
-}
-func check_BlockingQueue_Close[T any]() {
-	var _ func(*Execution, *BlockingQueue[T]) Unit = BlockingQueue_Close[T]
-}
-func check_BlockingQueue_Length[T any]() {
-	var _ func(*Execution, *BlockingQueue[T]) int = BlockingQueue_Length[T]
-}
-func check_BlockingQueue_IsClosed[T any]() {
-	var _ func(*Execution, *BlockingQueue[T]) bool = BlockingQueue_IsClosed[T]
 }
 func check_PriorityQueue_Enqueue[T any]() {
 	var _ func(*Execution, *PriorityQueue[T], T) bool = PriorityQueue_Enqueue[T]

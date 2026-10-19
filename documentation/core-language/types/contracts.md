@@ -153,10 +153,6 @@ let from_view = invoke(view)
 
 Both calls satisfy the bound without implicit conversion.
 
-## Concurrent use
-
-Concurrent invocation follows the receiver's own contract. A view adds no synchronization, equality, hashing, cleanup, or lifetime extension. Native services synchronize themselves; source implementations sharing a mutable queue across concurrent calls keep it behind Synchronized.
-
 ## Interfaces and services
 
 Pass a service as an interface value when a function needs storage, networking, or a clock. Contracts also serve as [generic bounds](generics.md) naming the operations a type argument must provide.
