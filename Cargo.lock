@@ -337,6 +337,14 @@ name = "ms-conform"
 version = "0.1.0"
 
 [[package]]
+name = "ms-guide"
+version = "0.1.0"
+dependencies = [
+ "ms-check",
+ "ms-syntax",
+]
+
+[[package]]
 name = "ms-lower"
 version = "0.0.0"
 dependencies = [
