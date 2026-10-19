@@ -314,7 +314,11 @@ dependencies = [
 name = "ms-cli"
 version = "0.1.0"
 dependencies = [
+ "ms-check",
+ "ms-driver",
+ "ms-mir",
  "ms-project",
+ "ms-syntax",
  "regex",
 ]
 
@@ -328,12 +332,24 @@ dependencies = [
  "cranelift-native",
  "cranelift-object",
  "ms-mir",
+ "ms-rt-abi",
  "target-lexicon",
 ]
 
 [[package]]
 name = "ms-conform"
 version = "0.1.0"
+
+[[package]]
+name = "ms-driver"
+version = "0.0.0"
+dependencies = [
+ "ms-check",
+ "ms-clif",
+ "ms-mir",
+ "ms-project",
+ "ms-syntax",
+]
 
 [[package]]
 name = "ms-mir"

@@ -19,7 +19,7 @@ This is the working contract for the parallel workstreams in [the proposal](../p
     -> ms-mir    (HIR lowering, ownership/RC elaboration, optimizer, verifier, text format, interpreter)
     -> ms-clif   (MIR -> Cranelift -> object file; line tables; perf map)
     -> linker driver + ms-rt (static runtime) -> executable
-tools: ms-project (manifest, lock, aliases, import resolution), ms-tooling (lint, inspect, review, diagram, docgen, guide), ms-lsp, ms-cli (`ms`), ms-conform (conformance runner)
+tools: ms-project (manifest, lock, aliases, import resolution), ms-driver (module graph loading, entry rule, lowering seam, optimize, codegen and link; the `ms build/run/test/profile` engine in ms-cli sits on it), ms-tooling (lint, inspect, review, diagram, docgen, guide), ms-lsp, ms-cli (`ms`), ms-conform (conformance runner)
 ```
 
 Each crate has one owner session. Cross-crate API changes go through the owner; keep public APIs small and documented with rustdoc.

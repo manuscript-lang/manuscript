@@ -1,9 +1,15 @@
-//! The `ms` executable. Engines are linked in here; until they exist every
-//! command that needs one reports "not yet implemented" and exits with 70.
+//! The `ms` executable. Engines are linked in here; a command whose engine
+//! does not exist yet reports "not yet implemented" and exits with 70.
+//!
+//! Native builds (`build`, `run`, `test`, `profile`) run on the Rust pipeline;
+//! until HIR to MIR lowering lands its lowering stage reports a `lowering`
+//! diagnostic after the program has been loaded and checked.
 
 use std::io::Write;
 
-use ms_cli::backend::{Io, NoEngines};
+use ms_cli::backend::Io;
+use ms_cli::engine::RustBackend;
+use ms_driver::Unavailable;
 
 fn main() {
     let args: Vec<String> = std::env::args_os()
@@ -20,7 +26,7 @@ fn main() {
             stdout: &mut stdout,
             stderr: &mut stderr,
         };
-        ms_cli::run(&args, &NoEngines, &mut io)
+        ms_cli::run(&args, &RustBackend::new(Unavailable), &mut io)
     };
     let _ = stdout.flush();
     drop(stdout);
