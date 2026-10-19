@@ -507,6 +507,20 @@ pub extern "C-unwind" fn msrt_cleanup_run(handle: usize) {
     }
 }
 
+/// Drops the action behind `handle` (and newer pending ones) without running them.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_cleanup_discard(handle: usize) {
+    // SAFETY: single threaded access to the cleanup stack.
+    unsafe {
+        let stack = &mut *CLEANUPS.ptr();
+        while stack.len() >= handle && handle > 0 {
+            if stack.pop().is_none() {
+                break;
+            }
+        }
+    }
+}
+
 /// Unwinds on a stop request: runs cleanups and exits 130/143.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_cancelled() -> ! {
