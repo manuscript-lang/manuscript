@@ -357,33 +357,33 @@ msstd_math_abs_int(n: i64) -> i64
 msstd_math_sign_int(n: i64) -> i64
 msstd_math_is_integer(v: f64) -> u8
 msstd_math_is_safe_integer(v: f64) -> u8
-msstd_math_abs (unary f64 -> f64)
-msstd_math_acos (unary f64 -> f64)
-msstd_math_asin (unary f64 -> f64)
-msstd_math_atan (unary f64 -> f64)
-msstd_math_ceil (unary f64 -> f64)
-msstd_math_cos (unary f64 -> f64)
-msstd_math_cosh (unary f64 -> f64)
-msstd_math_exp (unary f64 -> f64)
-msstd_math_floor (unary f64 -> f64)
-msstd_math_log (unary f64 -> f64)
-msstd_math_log10 (unary f64 -> f64)
-msstd_math_log2 (unary f64 -> f64)
-msstd_math_round (unary f64 -> f64)
-msstd_math_sin (unary f64 -> f64)
-msstd_math_sinh (unary f64 -> f64)
-msstd_math_sqrt (unary f64 -> f64)
-msstd_math_tan (unary f64 -> f64)
-msstd_math_tanh (unary f64 -> f64)
-msstd_math_truncate (unary f64 -> f64)
-msstd_math_acosh (unary f64 -> f64)
-msstd_math_asinh (unary f64 -> f64)
-msstd_math_atanh (unary f64 -> f64)
-msstd_math_cbrt (unary f64 -> f64)
-msstd_math_expm1 (unary f64 -> f64)
-msstd_math_log1p (unary f64 -> f64)
-msstd_math_sign (unary f64 -> f64)
-msstd_math_to_float32 (unary f64 -> f64)
+msstd_math_abs(value: f64) -> f64
+msstd_math_acos(value: f64) -> f64
+msstd_math_asin(value: f64) -> f64
+msstd_math_atan(value: f64) -> f64
+msstd_math_ceil(value: f64) -> f64
+msstd_math_cos(value: f64) -> f64
+msstd_math_cosh(value: f64) -> f64
+msstd_math_exp(value: f64) -> f64
+msstd_math_floor(value: f64) -> f64
+msstd_math_log(value: f64) -> f64
+msstd_math_log10(value: f64) -> f64
+msstd_math_log2(value: f64) -> f64
+msstd_math_round(value: f64) -> f64
+msstd_math_sin(value: f64) -> f64
+msstd_math_sinh(value: f64) -> f64
+msstd_math_sqrt(value: f64) -> f64
+msstd_math_tan(value: f64) -> f64
+msstd_math_tanh(value: f64) -> f64
+msstd_math_truncate(value: f64) -> f64
+msstd_math_acosh(value: f64) -> f64
+msstd_math_asinh(value: f64) -> f64
+msstd_math_atanh(value: f64) -> f64
+msstd_math_cbrt(value: f64) -> f64
+msstd_math_expm1(value: f64) -> f64
+msstd_math_log1p(value: f64) -> f64
+msstd_math_sign(value: f64) -> f64
+msstd_math_to_float32(value: f64) -> f64
 msstd_math_e() -> f64
 msstd_math_pi() -> f64
 msstd_math_infinity() -> f64
