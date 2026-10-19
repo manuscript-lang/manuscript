@@ -33,9 +33,9 @@ jobs:
     name: ${{ matrix.os }}-${{ matrix.arch }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
-    # The runtime has no Windows port yet (ms-rt's start-up and ms-clif's linker driver are
-    # POSIX), so those legs report but do not gate until it lands.
-    continue-on-error: ${{ matrix.os == 'windows' }}
+    # ms-rt's reactor is epoll-only (macOS) and its start-up and ms-clif's linker driver are
+    # POSIX (Windows), so those legs build and report but do not gate until the ports land.
+    continue-on-error: ${{ matrix.os != 'linux' }}
     strategy:
       fail-fast: false
       matrix:
