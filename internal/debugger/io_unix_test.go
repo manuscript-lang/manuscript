@@ -120,6 +120,32 @@ func TestDuplicateIODoesNotTrustNullDisplayName(t *testing.T) {
 	}
 }
 
+// fillPipe writes until the pipe is full. A write that times out before it wrote anything proves
+// nothing (a slow scheduler can pass the deadline before the first write), so it retries until a
+// write that moved bytes also blocks.
+func fillPipe(t *testing.T, w *os.File) {
+	t.Helper()
+	chunk := make([]byte, 64*1024)
+	written := 0
+	for attempt := 0; attempt < 100; attempt++ {
+		if err := w.SetWriteDeadline(time.Now().Add(50 * time.Millisecond)); err != nil {
+			t.Fatal(err)
+		}
+		n, err := w.Write(chunk)
+		written += n
+		if errors.Is(err, os.ErrDeadlineExceeded) {
+			if written > 0 {
+				return
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Fatalf("output did not fill after %d bytes", written)
+}
+
 func TestBoundedDiagnosticPreservesSharedBorrowedOutput(t *testing.T) {
 	input, output, err := os.Pipe()
 	if err != nil {
@@ -136,12 +162,7 @@ func TestBoundedDiagnosticPreservesSharedBorrowedOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := owned.SetWriteDeadline(time.Now().Add(10 * time.Millisecond)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := owned.Write(make([]byte, 1024*1024)); !errors.Is(err, os.ErrDeadlineExceeded) {
-		t.Fatalf("output did not fill: %v", err)
-	}
+	fillPipe(t, owned)
 	if err := errors.Join(owned.Close(), undo()); err != nil {
 		t.Fatal(err)
 	}
