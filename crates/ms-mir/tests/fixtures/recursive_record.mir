@@ -1,0 +1,29 @@
+module "recrec"
+record Node { v: int, next: opt<Node> }
+entry @main
+fn @main() -> int {
+b0:
+  %one: int = iconst 1
+  %b: opt<Node> = opt.none
+  %none: opt<Node> = copy %b
+  %n1: Node = rec.new Node %one, %none
+  %s1: opt<Node> = opt.some %n1
+  %two: int = iconst 2
+  %n2: Node = rec.new Node %two, %s1
+  %s2: opt<Node> = opt.some %n2
+  %three: int = iconst 3
+  %n3: Node = rec.new Node %three, %s2
+  %c: Node = copy %n3
+  %nx: opt<Node> = rec.get Node.next %c
+  %has: bool = opt.is_some %nx
+  %m: Node = opt.unwrap %nx
+  %v: int = rec.get Node.v %m
+  %w: int = rec.get Node.v %c
+  %r: int = imul %v, %w
+  %ten: int = iconst 10
+  %r2: int = iadd.chk %r, %ten
+  drop %m
+  drop %c
+  drop %n3
+  ret %r2
+}

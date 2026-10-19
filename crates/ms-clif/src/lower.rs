@@ -213,7 +213,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         match m.types.kind(ty) {
             TyKind::Str | TyKind::Fn(..) => self.release(vs[0]),
             TyKind::Obj(n, _) if n != "Map" && n != "Set" => self.release(vs[0]),
-            TyKind::Opt(inner) if self.g.lay.opt_is_nullable(*inner) => {
+            TyKind::Opt(inner)
+                if self.g.lay.opt_is_nullable(*inner) && !self.g.lay.opt_is_boxed(*inner) =>
+            {
                 let p = vs[0];
                 let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, p, 0);
                 self.if_then(nn, |s| s.release(p));
@@ -428,6 +430,19 @@ impl<'a, 'm> Lower<'a, 'm> {
                     }
                 }
             }
+            TyKind::Opt(inner) if self.g.lay.opt_is_boxed(inner) => {
+                // Payload lives in a heap block behind a nullable pointer.
+                let p = vs[0];
+                let leaves = self.g.lay.leaves(inner);
+                let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, p, 0);
+                self.if_then(nn, |s| {
+                    if m.needs_drop(inner) {
+                        let payload = s.load_leaves(p, 0, &leaves);
+                        s.drop_value(inner, &payload);
+                    }
+                    s.free(p);
+                });
+            }
             TyKind::Opt(inner) => {
                 // Non-nullable optional: [present, payload...].
                 let present = vs[0];
@@ -511,6 +526,24 @@ impl<'a, 'm> Lower<'a, 'm> {
                     out.extend(self.copy_value(fty, &vs[at..at + w]));
                 }
                 out
+            }
+            TyKind::Opt(inner) if self.g.lay.opt_is_boxed(inner) => {
+                // Null stays null; otherwise copy the payload into a fresh block.
+                let p = vs[0];
+                let leaves = self.g.lay.leaves(inner);
+                let size = mem_layout(&leaves).size as i64;
+                let join = self.b.create_block();
+                self.b.append_block_param(join, types::I64);
+                let yes = self.b.create_block();
+                self.b.ins().brif(p, yes, &[], join, &[BlockArg::Value(p)]);
+                self.b.switch_to_block(yes);
+                let payload = self.load_leaves(p, 0, &leaves);
+                let c = self.copy_value(inner, &payload);
+                let q = self.alloc(size);
+                self.store_leaves(q, 0, &leaves, &c);
+                self.b.ins().jump(join, &[BlockArg::Value(q)]);
+                self.b.switch_to_block(join);
+                vec![self.b.block_params(join)[0]]
             }
             TyKind::Opt(inner) => {
                 if self.g.lay.opt_is_nullable(inner) {
@@ -1182,7 +1215,15 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::OptSome => {
                 let ty = res_ty.expect("opt.some result");
                 let v = self.a(inst, 0);
-                if self.opt_nullable(ty) {
+                if self.opt_boxed(ty) {
+                    let TyKind::Opt(inner) = self.g.m.types.kind(ty).clone() else {
+                        unreachable!()
+                    };
+                    let leaves = self.g.lay.leaves(inner);
+                    let p = self.alloc(mem_layout(&leaves).size as i64);
+                    self.store_leaves(p, 0, &leaves, &v);
+                    vec![p]
+                } else if self.opt_nullable(ty) {
                     v
                 } else {
                     let one = self.b.ins().iconst(types::I8, 1);
@@ -1213,7 +1254,23 @@ impl<'a, 'm> Lower<'a, 'm> {
                     let none = self.b.ins().icmp_imm_s(IntCC::Equal, v[0], 0);
                     self.fault_if(none, "msrt_fault_unwrap_none", vec![]);
                 }
-                if nullable { v } else { v[1..].to_vec() }
+                let TyKind::Opt(inner) = self.g.m.types.kind(ty).clone() else {
+                    unreachable!()
+                };
+                let payload = if self.opt_boxed(ty) {
+                    let leaves = self.g.lay.leaves(inner);
+                    self.load_leaves(v[0], 0, &leaves)
+                } else if nullable {
+                    v
+                } else {
+                    v[1..].to_vec()
+                };
+                // `unwrap` returns an owned value; `get` borrows.
+                if inst.op == Op::OptUnwrap {
+                    self.copy_value(inner, &payload)
+                } else {
+                    payload
+                }
             }
             Op::StrLen => {
                 // Scalar count: cached in the object, else computed (and cached) by the runtime.
@@ -1453,6 +1510,13 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
         };
         self.set(inst, out);
+    }
+
+    fn opt_boxed(&self, opt: Ty) -> bool {
+        match self.g.m.types.kind(opt) {
+            TyKind::Opt(inner) => self.g.lay.opt_is_boxed(*inner),
+            _ => false,
+        }
     }
 
     fn opt_nullable(&self, opt: Ty) -> bool {
