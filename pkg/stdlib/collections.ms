@@ -406,4 +406,4 @@ export fn flatten[T](lists: List[List[T]]) List[T]:
 
 # Removes and returns the first item, or none when the list is empty (JavaScript `Array.prototype.shift`).
 # The list is mutated in place and shared by aliases.
-export fn shift[T](values: List[T]) Optional[T]:
+export fn shift[T](var values: List[T]) Optional[T]:

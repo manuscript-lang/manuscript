@@ -177,7 +177,7 @@ test "flatten concatenates and shift removes the first item":
     try expect_equal(flatten([[1, 2], [], [3]]), [1, 2, 3])
     try expect_equal(flatten(List[List[Int]]()), List[Int]())
     let values = [1, 2, 3]
-    try expect_equal(shift(values), some(1))
+    try expect_equal(shift(var values), some(1))
     try expect_equal(values, [2, 3])
     let empty = List[Int]()
-    try expect_equal(shift(empty), none)
+    try expect_equal(shift(var empty), none)
