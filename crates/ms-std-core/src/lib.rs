@@ -17,7 +17,7 @@ use alloc::vec::Vec;
 use ms_rt_abi::KIND_LIST;
 pub use ms_rt_abi::{
     STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK,
-    STATUS_OUT_OF_RANGE, StrObj, TypeDesc, VecVal,
+    STATUS_OUT_OF_RANGE, STATUS_UNSUPPORTED, StrObj, TypeDesc, VecVal,
 };
 
 unsafe extern "C" {
@@ -41,9 +41,6 @@ pub enum Fail {
     /// `Unsupported` (compression and archive formats).
     Unsupported,
 }
-
-/// Status of the `Unsupported` error case, which `ms-rt-abi` has no shared code for.
-pub const STATUS_UNSUPPORTED: u8 = 5;
 
 impl Fail {
     /// The status byte returned across the C ABI.
