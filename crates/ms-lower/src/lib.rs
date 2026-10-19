@@ -16,6 +16,7 @@ mod iface;
 mod iterate;
 mod mapset;
 mod matching;
+mod mathops;
 mod messages;
 mod mutation;
 mod natiface;

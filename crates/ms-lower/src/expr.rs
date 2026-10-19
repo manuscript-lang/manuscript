@@ -4,7 +4,7 @@ use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_check::hir::Resolution;
 use ms_check::types::{self as ct, Kind};
-use ms_mir::ir::{Cc, Op, Value};
+use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
@@ -402,6 +402,25 @@ impl<'a> FnLower<'a> {
             let c = self.call_runtime("msrt_string_compare", &[a, b], MTy::INT)?;
             let zero = self.b.iconst(0);
             return Ok(self.b.icmp(cc, c, zero));
+        }
+        if let TyKind::Rec(rid) = self.b.m.types.kind(t).clone() {
+            // Two-word time records order through the runtime, which takes their addresses.
+            let name = self.b.m.records[rid.index()].name.to_lowercase();
+            if name == "timestamp" || name == "instant" {
+                let (a, b) = (self.borrow(l), self.borrow(r));
+                let address = |s: &mut Self, v: Value| {
+                    let slot =
+                        s.b.emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
+                            .expect("slot");
+                    s.b.emit(Op::Store, &[slot, v], Imm::None, None);
+                    slot
+                };
+                let (pa, pb) = (address(self, a), address(self, b));
+                let sym = format!("msstd_time_{name}_compare");
+                let c = self.call_runtime(&sym, &[pa, pb], MTy::INT)?;
+                let zero = self.b.iconst(0);
+                return Ok(self.b.icmp(cc, c, zero));
+            }
         }
         Err(Error::new("ordering this type is not supported yet"))
     }

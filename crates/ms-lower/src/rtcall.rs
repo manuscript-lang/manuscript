@@ -39,9 +39,12 @@ pub(crate) fn function_symbol(native: &str) -> Option<String> {
         return Some((*sym).to_string());
     }
     let (module, name) = native.split_once('/')?;
+    // The list functions of `collections` share the runtime's `list` entry points.
+    let alias = (module == "collections").then(|| format!("msrt_list_{name}"));
     ["msrt", "msstd"]
         .iter()
         .map(|prefix| format!("{prefix}_{module}_{name}"))
+        .chain(alias)
         .find(|sym| rt_sig(sym).is_some())
 }
 
@@ -95,6 +98,11 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
     let name = native.rsplit('/').next().unwrap_or(native);
     let name = match name {
         "format_int" => "to_string_radix",
+        "format_precision" => "to_precision",
+        "format_exponential" => "to_exponential",
+        "format_fixed" => "to_fixed",
+        "format_float" => "to_string",
+        "compare_int" | "compare_float" => "compare",
         other => other,
     };
     let name = name

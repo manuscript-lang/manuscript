@@ -109,6 +109,37 @@ impl<'a> FnLower<'a> {
             "io/stdout" => self.std_stream(e, false),
             "io/stderr" => self.std_stream(e, true),
             "io/read_line" => self.read_line_native(e, view, params),
+            "time/duration" => {
+                // A `Duration` is its count of nanoseconds.
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::INT));
+                }
+                let n = args
+                    .first()
+                    .ok_or_else(|| Error::new("duration without nanoseconds"))?;
+                Ok(Val {
+                    v: self.borrow(n.val),
+                    own: false,
+                })
+            }
+            "sleep" => {
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let d = args
+                    .first()
+                    .ok_or_else(|| Error::new("sleep without a duration"))?;
+                let d = self.borrow(d.val);
+                self.at(e.pos);
+                self.call_runtime("msstd_time_sleep", &[d], MTy::UNIT)?;
+                Ok(self.dummy(MTy::UNIT))
+            }
+            "math/min" => self.math_extreme(view, false),
+            "math/max" => self.math_extreme(view, true),
+            "math/min_of" => self.math_extreme_of(e, view, false),
+            "math/max_of" => self.math_extreme_of(e, view, true),
             "io/read_all" => self.stream_native(e, view, crate::streamloop::Loop::ReadAll),
             "io/copy" => self.stream_native(e, view, crate::streamloop::Loop::Copy),
             other
@@ -221,6 +252,27 @@ impl<'a> FnLower<'a> {
             let r = self.borrow(recv);
             let text = self.b.call(f, &[r]);
             return Ok(Val { v: text, own: true });
+        }
+        if native == "string/form_normalize" {
+            // The form is a payload-free alternative: its case index selects the algorithm.
+            let result = self.emty(e)?;
+            let find = |n: &str| args.iter().find(|a| a.name.as_str() == n).copied();
+            let text = find("text").ok_or_else(|| Error::new("normalize without text"))?;
+            let text = self.borrow(text.val);
+            let form = self.borrow(recv);
+            let kind = self.b.alt_tag(form);
+            let (has, max) = self.optional_int(find("max_bytes"))?;
+            let sym = "msrt_string_normalize_kind";
+            let sig = crate::rtcall::rt_sig(sym)
+                .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
+            return self.finish_rt_call(sym, &sig, true, vec![text, kind, has, max], result);
+        }
+        if native == "time/duration_nanoseconds" {
+            // A `Duration` is its count of nanoseconds.
+            return Ok(Val {
+                v: self.borrow(recv),
+                own: false,
+            });
         }
         let name = native.rsplit('/').next().unwrap_or(native);
         let rty = self.ty_of(recv.v);
@@ -1207,7 +1259,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// Visits each element with `body(index, element)`; a returned condition leaves the loop when true.
-    fn each_element(
+    pub(crate) fn each_element(
         &mut self,
         lv: ms_mir::builder::Var,
         body: &mut ElementBody<'_, Self>,
