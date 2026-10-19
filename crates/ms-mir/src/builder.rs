@@ -185,8 +185,9 @@ impl<'m> FuncBuilder<'m> {
         self.val(Op::RecGet, &[obj], Imm::Field(r, field), ty)
     }
     /// `rec.set` by field index.
-    pub fn rec_set(&mut self, r: RecId, field: u32, obj: Value, v: Value) {
-        self.emit(Op::RecSet, &[obj, v], Imm::Field(r, field), None);
+    pub fn rec_set(&mut self, r: RecId, field: u32, obj: Value, v: Value) -> Value {
+        let t = self.ty(obj);
+        self.val(Op::RecSet, &[obj, v], Imm::Field(r, field), t)
     }
     /// `alt.new`.
     pub fn alt_new(&mut self, a: AltId, case: u32, fields: &[Value]) -> Value {
@@ -225,12 +226,14 @@ impl<'m> FuncBuilder<'m> {
         self.val(Op::ListGet, &[l, i], Imm::None, e)
     }
     /// `list.set`.
-    pub fn list_set(&mut self, l: Value, i: Value, v: Value) {
-        self.emit(Op::ListSet, &[l, i, v], Imm::None, None);
+    pub fn list_set(&mut self, l: Value, i: Value, v: Value) -> Value {
+        let t = self.ty(l);
+        self.val(Op::ListSet, &[l, i, v], Imm::None, t)
     }
     /// `list.push`.
-    pub fn list_push(&mut self, l: Value, v: Value) {
-        self.emit(Op::ListPush, &[l, v], Imm::None, None);
+    pub fn list_push(&mut self, l: Value, v: Value) -> Value {
+        let t = self.ty(l);
+        self.val(Op::ListPush, &[l, v], Imm::None, t)
     }
 
     // Optionals.
