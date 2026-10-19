@@ -87,7 +87,7 @@ pub const VEC_SIZE: usize = 24;
 /// `Map[K, V]` and `Set[T]`: six words. Insertion ordered: `slots` is an
 /// append-only array of entries (`hash: u64` with the top bit set for live
 /// entries and 0 for removed ones, then key, then value, `stride` bytes apart)
-/// and `index` an open-addressing hash index of slot numbers. Only `len` is a
+/// and `index` an open-addressing hash index of `u64` entries (hash tag, slot number). Only `len` is a
 /// stable generated-code field; the rest is internal to the runtime.
 #[repr(C)]
 #[derive(Clone, Copy)]

@@ -1,8 +1,9 @@
 //! `Map[K, V]` and `Set[T]`: insertion-ordered hash tables stored as `MapVal`.
 //!
 //! `slots` is an append-only array of entries `{ hash: u64 (top bit set = live), key, value }`
-//! spaced `stride` bytes apart; `index` is an open-addressing table of slot numbers
-//! (`0` empty, `u32::MAX` removed, otherwise slot + 1). Removal leaves a hole that scans
+//! spaced `stride` bytes apart; `index` is an open-addressing table of `u64` entries: the
+//! high word is the hash's high word (a tag, so probes skip non-matching slots without touching
+//! them) and the low word is the slot number (`0` empty, `u32::MAX` removed, otherwise slot + 1). Removal leaves a hole that scans
 //! skip and compaction reclaims once more than half the slots are holes.
 use crate::alloc;
 use crate::desc::{slot_copy, slot_drop, slot_eq, slot_hash};
@@ -10,7 +11,17 @@ use crate::fault;
 use ms_rt_abi::*;
 
 const LIVE: u64 = 1 << 63;
-const REMOVED: u32 = u32::MAX;
+const REMOVED: u64 = u32::MAX as u64;
+
+#[inline(always)]
+fn entry(h: u64, slot: usize) -> u64 {
+    (h & !0xFFFF_FFFF) | (slot as u64 + 1)
+}
+
+#[inline(always)]
+fn index_of(m: &MapVal) -> *mut u64 {
+    m.index as *mut u64
+}
 
 pub fn empty() -> MapVal {
     MapVal {
@@ -85,14 +96,15 @@ unsafe fn find(
         let l = layout(kd, vd);
         let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
         loop {
-            let e = *m.index.add(pos);
+            let e = *index_of(m).add(pos);
             if e == 0 {
                 return None;
             }
-            if e != REMOVED {
-                let p = slot(m, &l, (e - 1) as usize);
+            if (e ^ h) >> 32 == 0 {
+                let i = (e as u32 - 1) as usize;
+                let p = slot(m, &l, i);
                 if slot_hash_of(p) == h && slot_eq(kd, p.add(l.koff), key) {
-                    return Some((e - 1) as usize);
+                    return Some(i);
                 }
             }
             pos = (pos + 1) & m.mask;
@@ -106,7 +118,7 @@ unsafe fn rebuild_index(m: &mut MapVal, l: &Layout, index_size: usize) {
         if !m.index.is_null() {
             alloc::free(m.index as *mut u8);
         }
-        m.index = alloc::alloc_zeroed(index_size * 4) as *mut u32;
+        m.index = alloc::alloc_zeroed(index_size * 8) as *mut u32;
         m.mask = index_size - 1;
         for i in 0..m.used {
             let p = slot(m, l, i);
@@ -115,10 +127,10 @@ unsafe fn rebuild_index(m: &mut MapVal, l: &Layout, index_size: usize) {
                 continue;
             }
             let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
-            while *m.index.add(pos) != 0 {
+            while *index_of(m).add(pos) != 0 {
                 pos = (pos + 1) & m.mask;
             }
-            *m.index.add(pos) = (i + 1) as u32;
+            *index_of(m).add(pos) = entry(h, i);
         }
     }
 }
@@ -217,13 +229,13 @@ pub unsafe fn insert(
         }
         let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
         loop {
-            let e = *m.index.add(pos);
+            let e = *index_of(m).add(pos);
             if e == 0 || e == REMOVED {
                 break;
             }
             pos = (pos + 1) & m.mask;
         }
-        *m.index.add(pos) = (m.used + 1) as u32;
+        *index_of(m).add(pos) = entry(h, m.used);
         m.used += 1;
         m.len += 1;
         true
@@ -263,10 +275,10 @@ pub unsafe fn remove(m: &mut MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, key: 
         let p = slot(m, &l, i);
         // Mark the index entry removed.
         let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
-        while *m.index.add(pos) != (i + 1) as u32 {
+        while *index_of(m).add(pos) != entry(h, i) {
             pos = (pos + 1) & m.mask;
         }
-        *m.index.add(pos) = REMOVED;
+        *index_of(m).add(pos) = REMOVED;
         slot_drop(kd, p.add(l.koff));
         if let Some(vd) = vd {
             slot_drop(vd, p.add(l.voff));
