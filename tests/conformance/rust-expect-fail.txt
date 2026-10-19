@@ -6,31 +6,9 @@ go-tests/tests-e2e-testfaultsourcelocations-20
 # -23, -4: method frames print `run`/`bump`, Go prints `Item.run`/`Cell.bump`.
 go-tests/tests-e2e-testfaultsourcelocations-23
 go-tests/tests-e2e-testfaultsourcelocations-4
-# check: redundant-prelude-import lint and prelude shadowing diagnostics are not ported to ms-check yet.
-go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-10
-go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-11
-go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12
-go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-2
-go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-3
-go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-4
-go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-5
-go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-6
-go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-7
-go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-8
-go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-9
-go-tests/pkg-compiler-testcollectionpreludeandshadowing-12
-go-tests/pkg-compiler-testcollectionpreludeandshadowing-13
-go-tests/pkg-compiler-testcollectionpreludeandshadowing-18
-go-tests/pkg-compiler-testcollectionpreludeandshadowing-19
-go-tests/pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2
-go-tests/pkg-tooling-lsp-testredundantpreludeimporteditorfix-1
-go-tests/pkg-tooling-lsp-testredundantpreludeimporteditorfix-2
-go-tests/pkg-tooling-lsp-testredundantpreludeimporteditorfix-3
-go-tests/pkg-tooling-lsp-testredundantpreludeimporteditorfix-4
 # check/lsp/examples fixtures that depend on lint, inspect or LSP output of the Go tools.
 examples/hello
 examples/tooling-demo
-go-tests/internal-cli-testanalysiscollectionrangesandsymlinkconfineme-1
 go-tests/pkg-tooling-lsp-testnativegenericmethodnavigation-1
 # test: modules owned by the standard-library threads (fs, net, html, random, terminal, host, math ordering, test CLI shape).
 docs/learn-testing-3
