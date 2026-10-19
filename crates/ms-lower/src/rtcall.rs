@@ -16,19 +16,28 @@ use ms_mir::types::{Ty as MTy, TyKind};
 const CATALOGUE: &str = include_str!("../../ms-rt/SYMBOLS.md");
 
 /// One declared runtime parameter.
-struct RtParam {
-    name: String,
-    ty: String,
+pub(crate) struct RtParam {
+    pub name: String,
+    pub ty: String,
 }
 
 /// A runtime function's parameters and return type (empty for none).
-struct RtSig {
-    params: Vec<RtParam>,
-    ret: String,
+pub(crate) struct RtSig {
+    pub params: Vec<RtParam>,
+    pub ret: String,
 }
+
+const RENAMED: [(&str, &str); 2] = [
+    ("process/arguments", "msrt_args"),
+    ("collections/filled", "msrt_list_filled"),
+];
 
 /// The runtime symbol implementing the native function `native` (`module/name`).
 pub(crate) fn function_symbol(native: &str) -> Option<String> {
+    // Exports whose runtime name predates the `<module>_<name>` scheme.
+    if let Some((_, sym)) = RENAMED.iter().find(|(n, _)| *n == native) {
+        return Some((*sym).to_string());
+    }
     let (module, name) = native.split_once('/')?;
     ["msrt", "msstd"]
         .iter()
@@ -36,7 +45,7 @@ pub(crate) fn function_symbol(native: &str) -> Option<String> {
         .find(|sym| rt_sig(sym).is_some())
 }
 
-fn rt_sig(sym: &str) -> Option<RtSig> {
+pub(crate) fn rt_sig(sym: &str) -> Option<RtSig> {
     for line in CATALOGUE.lines() {
         // `msstd_math_sin (unary f64 -> f64)`: one `f64` in, one out.
         if line.strip_prefix(sym) == Some(" (unary f64 -> f64)") {
@@ -92,7 +101,39 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         .strip_prefix("map_")
         .or_else(|| name.strip_prefix("set_"))
         .unwrap_or(name);
+    if let TyKind::Rec(rid) = m.types.kind(recv) {
+        let record = m.records[rid.index()].name.as_str();
+        if matches!(record, "Timestamp" | "Instant") {
+            let name = native.rsplit('/').next().unwrap_or(native);
+            let prefixed = format!("msstd_time_{}_{name}", record.to_lowercase());
+            return [format!("msstd_time_{name}"), prefixed]
+                .into_iter()
+                .find(|sym| rt_sig(sym).is_some());
+        }
+    }
+    // `time/duration_seconds` is `Duration.to_seconds`: the runtime spells the conversions out.
+    if let Some(stem) = native.strip_prefix("time/") {
+        let spelled = stem
+            .split_once('_')
+            .map(|(ty, rest)| format!("msstd_time_{ty}_to_{rest}"));
+        let direct = format!("msstd_time_{stem}");
+        return [Some(direct), spelled]
+            .into_iter()
+            .flatten()
+            .find(|sym| rt_sig(sym).is_some());
+    }
+    if matches!(m.types.kind(recv), TyKind::Obj(n, _) if n == "BigInt") {
+        let name = if name == "format" {
+            "to_string_radix"
+        } else {
+            name
+        };
+        let sym = format!("msstd_bigint_{name}");
+        return rt_sig(&sym).map(|_| sym);
+    }
     let prefix = match m.types.kind(recv) {
+        TyKind::Obj(n, _) if n == "Queue" => "queue",
+        TyKind::Obj(n, _) if n == "PriorityQueue" => "priority_queue",
         TyKind::Str => "string",
         TyKind::List(_) => "list",
         TyKind::Bytes => "bytes",
@@ -114,16 +155,126 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         .flatten()
 }
 
-/// Status codes of `ms-rt-abi` and the error cases they name.
-const STATUS_CASES: [(i64, &str); 4] = [
+/// Status codes of `ms-rt-abi` and the error cases they name. Status 11 (`Failed`) carries the
+/// module's `failure_message` text when the error case has a `String` field.
+const STATUS_CASES: [(i64, &str); 13] = [
     (1, "InvalidInput"),
     (2, "OutOfRange"),
     (3, "LimitExceeded"),
     (4, "InvalidData"),
+    (5, "NotFound"),
+    (6, "AlreadyExists"),
+    (7, "NotEmpty"),
+    (8, "PermissionDenied"),
+    (9, "Unsupported"),
+    (10, "Closed"),
+    (11, "Failed"),
+    (12, "Unavailable"),
+    (13, "Timeout"),
 ];
+
+/// `STATUS_NONE`: end of stream or an absent optional.
+const STATUS_NONE: i64 = 16;
 
 impl FnLower<'_> {
     /// Calls the runtime function `sym` for a method call.
+    /// `Queue[T]()`, `Queue[T](capacity: n)` or `PriorityQueue[T](compare: f, capacity: n)`:
+    /// a runtime queue of elements of `T`.
+    pub(crate) fn construct_queue(
+        &mut self,
+        view: &ms_check::hir::CallView<'_>,
+        ty: MTy,
+    ) -> Result<Val, Error> {
+        let TyKind::Obj(name, args) = self.b.m.types.kind(ty).clone() else {
+            return Err(Error::new("queue without an element type"));
+        };
+        let prioritized = name == "PriorityQueue";
+        let desc = self.type_desc(args[0]);
+        let mut compare = None;
+        let mut capacity = None;
+        for a in &view.arguments {
+            let x = self.expr(a.expr)?;
+            if self.dead {
+                return Ok(self.dummy(ty));
+            }
+            if a.slot.name.as_str() == "compare" {
+                compare = Some(x);
+            } else {
+                capacity = Some(Input {
+                    val: Some(x),
+                    wrapped: a.wrap_optional.is_some(),
+                });
+            }
+        }
+        let (has, cap) = match capacity {
+            None => (self.b.bconst(false), self.b.iconst(0)),
+            Some(input) => self.flatten_optional(input, "i64")?,
+        };
+        if !prioritized {
+            let q = self.call_runtime("msrt_queue_new", &[desc, has, cap], ty)?;
+            return Ok(Val { v: q, own: true });
+        }
+        let user = compare.ok_or_else(|| Error::new("PriorityQueue without a comparator"))?;
+        let user = self.owned(user);
+        let thunk = self.compare_closure(args[0], user);
+        // The queue keeps its own reference to the comparator.
+        let q = self.call_runtime("msrt_priority_queue_new", &[desc, thunk, has, cap], ty)?;
+        self.drop_value(thunk);
+        Ok(Val { v: q, own: true })
+    }
+
+    /// A closure the runtime calls as `code(closure, a, b)` with element slots, which loads
+    /// both elements and calls the user comparator `user` (captured, consumed).
+    fn compare_closure(&mut self, elem: MTy, user: Value) -> Value {
+        use ms_mir::builder::FuncBuilder;
+        use ms_mir::ir::{FuncKind, Mode, Param};
+        let user_ty = self.ty_of(user);
+        let key = format!("compare-thunk:{}", elem.0);
+        let fty = self.b.m.types.func(vec![MTy::PTR, MTy::PTR], MTy::INT);
+        let thunk = match self.cx.helpers.get(&key) {
+            Some(t) => *t,
+            None => {
+                let ps = vec![
+                    Param {
+                        ty: MTy::PTR,
+                        mode: Mode::Borrow,
+                    },
+                    Param {
+                        ty: MTy::PTR,
+                        mode: Mode::Borrow,
+                    },
+                    Param {
+                        ty: MTy::PTR,
+                        mode: Mode::Borrow,
+                    },
+                ];
+                let mut b = FuncBuilder::new(self.b.m, "priority_queue.compare", ps, MTy::INT);
+                b.func_mut().kind = FuncKind::Closure {
+                    captures: vec![user_ty],
+                };
+                let p = b.params();
+                let f = b
+                    .emit(Op::ClosureCap, &[p[0]], Imm::Idx(0), Some(user_ty))
+                    .expect("capture");
+                let a = b
+                    .emit(Op::Load, &[p[1]], Imm::Ty(elem), Some(elem))
+                    .expect("load");
+                let c = b
+                    .emit(Op::Load, &[p[2]], Imm::Ty(elem), Some(elem))
+                    .expect("load");
+                let r = b.call_ind(f, &[a, c]);
+                b.ret(Some(r));
+                let func = b.into_func();
+                let id = self.b.m.add_func(func);
+                self.cx.helpers.insert(key, id);
+                id
+            }
+        };
+        self.b
+            .emit(Op::ClosureNew, &[user], Imm::Func(thunk), Some(fty))
+            .expect("closure")
+    }
+
     pub(crate) fn rt_method(
         &mut self,
         sym: &str,
@@ -196,8 +347,12 @@ impl FnLower<'_> {
             let p = &sig.params[i];
             match p.name.as_str() {
                 "d" => {
-                    let recv_ty = recv_ty
-                        .ok_or_else(|| Error::new(format!("{sym}: descriptor without receiver")))?;
+                    // A constructor such as `filled` has no receiver: its result names the element.
+                    let mut recv_ty = recv_ty.unwrap_or(result);
+                    if let TyKind::Alt(a) = self.b.m.types.kind(recv_ty).clone() {
+                        let ok = self.ok_case_index(a)?;
+                        recv_ty = self.b.m.alts[a.index()].cases[ok].fields[0].1;
+                    }
                     let e = match self.b.m.types.kind(recv_ty).clone() {
                         TyKind::List(e) => e,
                         TyKind::Obj(_, a) if !a.is_empty() => a[0],
@@ -254,8 +409,20 @@ impl FnLower<'_> {
                         }
                         return Err(Error::new(format!("{sym}: missing argument {}", p.name)));
                     };
+                    // A `String` for a byte-vector parameter is encoded first.
+                    let x = if p.ty.ends_with("VecVal") && self.ty_of(x.v) == MTy::STR {
+                        let s = self.borrow(x);
+                        let bytes = self.call_runtime("msrt_string_to_bytes", &[s], MTy::BYTES)?;
+                        Val {
+                            v: bytes,
+                            own: true,
+                        }
+                    } else {
+                        x
+                    };
                     let consumed_aggregate = p.ty == "*mut VecVal" || p.ty == "*mut MapVal";
-                    if p.ty == "*const u8" || p.ty == "*mut u8" || consumed_aggregate {
+                    let clock = p.ty == "*const Timestamp" || p.ty == "*const Instant";
+                    if p.ty == "*const u8" || p.ty == "*mut u8" || consumed_aggregate || clock {
                         // A generic element slot: pass the address of the value in memory.
                         // `*mut` hands the value over; `*const` is lent and taken back.
                         let x = if input.wrapped {
@@ -341,13 +508,53 @@ impl FnLower<'_> {
             "" | "()" => Some(MTy::UNIT),
             _ => None,
         };
+        // A new runtime object (`BigInt`) is returned as its pointer.
+        let object = sig.ret.starts_with("*mut ")
+            && match self.b.m.types.kind(result) {
+                TyKind::Obj(n, _) => n == "BigInt",
+                TyKind::Iface(_) => sig.ret.starts_with("*mut Handle<"),
+                _ => false,
+            };
         let ret = direct(&sig.ret)
+            .or(object.then_some(result))
             .ok_or_else(|| Error::new(format!("{sym}: unsupported return {}", sig.ret)))?;
         if !has_out {
             if ret == MTy::BOOL && matches!(self.b.m.types.kind(result), TyKind::Alt(_)) {
                 // A bare status: `Result[Unit, E]`.
                 let status = self.call_runtime(sym, &vals, MTy::BOOL)?;
-                return self.status_result(status, None, result);
+                return self.status_result(sym, status, None, None, result);
+            }
+            if ret == MTy::STR && matches!(self.b.m.types.kind(result), TyKind::Alt(_)) {
+                // A string that cannot fail: `Result[String, E]`.
+                let text = self.call_runtime(sym, &vals, MTy::STR)?;
+                let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
+                    unreachable!()
+                };
+                let ok = self.ok_case_index(a)?;
+                let v = self.b.alt_new(a, ok as u32, &[text]);
+                return Ok(Val { v, own: true });
+            }
+            if ret == MTy::BOOL && result == MTy::UNIT {
+                // A status the interface ignores: `Unit`.
+                self.call_runtime(sym, &vals, MTy::BOOL)?;
+                return Ok(Val {
+                    v: self.b.unit(),
+                    own: false,
+                });
+            }
+            // A handle for a stream interface: `Subprocess.stdout()`.
+            if sig.ret.starts_with("*mut Handle<")
+                && let TyKind::Iface(i) = self.b.m.types.kind(result).clone()
+            {
+                let hir = self.hir.clone();
+                let vt = self.cx.handle_vtable_of(self.b.m, &hir, sym, i)?;
+                let ht = crate::natiface::handle_ty(self.b.m);
+                let h = self.call_runtime(sym, &vals, ht)?;
+                let v = self
+                    .b
+                    .emit(Op::IfaceNew, &[h], Imm::Vtable(vt), Some(result))
+                    .expect("iface");
+                return Ok(Val { v, own: true });
             }
             // A null string pointer is the absent `Optional[String]`.
             let ret = match self.b.m.types.kind(result) {
@@ -386,12 +593,37 @@ impl FnLower<'_> {
             TyKind::Opt(t) => t,
             _ => return Err(Error::new(format!("{sym}: unexpected result type"))),
         };
+        // `Result[Optional[T], E]`: the runtime writes a `T` and answers `STATUS_NONE` for none.
+        let eof = match (self.b.m.types.kind(result), self.b.m.types.kind(payload)) {
+            (TyKind::Alt(_), TyKind::Opt(inner)) => Some(*inner),
+            _ => None,
+        };
+        // `Result[Interface, E]`: the runtime writes a handle, which the interface value wraps.
+        let wrap = match (self.b.m.types.kind(result), self.b.m.types.kind(payload)) {
+            (TyKind::Alt(_), TyKind::Iface(i)) => Some(*i),
+            _ => None,
+        };
+        let slot_ty = match wrap {
+            Some(_) => crate::natiface::handle_ty(self.b.m),
+            None => eof.unwrap_or(payload),
+        };
         let slot = self
             .b
-            .emit(Op::Slot, &[], Imm::Ty(payload), Some(MTy::PTR))
+            .emit(Op::Slot, &[], Imm::Ty(slot_ty), Some(MTy::PTR))
             .expect("slot");
         vals.push(slot);
         let status = self.call_runtime(sym, &vals, MTy::BOOL)?;
+        if let Some(inner) = eof {
+            return self.status_optional_result(sym, status, slot, inner, result);
+        }
+        let wrap = match wrap {
+            Some(i) => {
+                let hir = self.hir.clone();
+                let vt = self.cx.handle_vtable_of(self.b.m, &hir, sym, i)?;
+                Some((vt, payload))
+            }
+            None => None,
+        };
         if matches!(self.b.m.types.kind(result), TyKind::Opt(_)) {
             return self.two_ways(
                 status,
@@ -405,31 +637,40 @@ impl FnLower<'_> {
                 &mut |s| Ok(Some(s.none_owned(result))),
             );
         }
-        self.status_result(status, Some((slot, payload)), result)
+        self.status_result(sym, status, Some((slot, slot_ty)), wrap, result)
     }
 
     /// The error case of `ea` that the status `code` names; the last listed case otherwise.
+    /// `failure` is the symbol returning the text of a `Failed` status.
     fn status_error(
         &mut self,
         ea: ms_mir::types::AltId,
         code: Value,
         cases: &[(i64, usize)],
+        failure: Option<&str>,
     ) -> Result<Value, Error> {
         let (&(n, idx), rest) = cases
             .split_first()
             .ok_or_else(|| Error::new("no error case for a runtime status"))?;
+        let build = |s: &mut Self| -> Result<Value, Error> {
+            let carries_text = s.b.m.alts[ea.index()].cases[idx].fields.len() == 1;
+            match failure {
+                Some(sym) if n == 11 && carries_text => {
+                    let text = s.call_runtime(sym, &[], MTy::STR)?;
+                    Ok(s.b.alt_new(ea, idx as u32, &[text]))
+                }
+                _ => Ok(s.b.alt_new(ea, idx as u32, &[])),
+            }
+        };
         if rest.is_empty() {
-            return Ok(self.b.alt_new(ea, idx as u32, &[]));
+            return build(self);
         }
         let k = self.b.iconst(n);
         let hit = self.b.icmp(Cc::Eq, code, k);
         let ty = self.b.m.types.alt(ea);
-        let r = self.two_ways(
-            hit,
-            ty,
-            &mut |s| Ok(Some(s.b.alt_new(ea, idx as u32, &[]))),
-            &mut |s| s.status_error(ea, code, rest).map(Some),
-        )?;
+        let r = self.two_ways(hit, ty, &mut |s| build(s).map(Some), &mut |s| {
+            s.status_error(ea, code, rest, failure).map(Some)
+        })?;
         Ok(r.v)
     }
 
@@ -441,22 +682,48 @@ impl FnLower<'_> {
             .ok_or_else(|| Error::new("not a Result"))
     }
 
+    /// The `error(..)` value of `result` for a nonzero runtime status `code`.
+    fn status_failure(&mut self, result: MTy, code: Value, sym: &str) -> Result<Value, Error> {
+        let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
+            return Err(Error::new("a status needs a Result"));
+        };
+        let err = self.b.m.alts[a.index()]
+            .cases
+            .iter()
+            .position(|c| c.name == "error")
+            .ok_or_else(|| Error::new("not a Result"))?;
+        let et = self.b.m.alts[a.index()].cases[err].fields[0].1;
+        let TyKind::Alt(ea) = self.b.m.types.kind(et).clone() else {
+            return Err(Error::new("a runtime status needs an error alternative"));
+        };
+        let cases: Vec<(i64, usize)> = STATUS_CASES
+            .iter()
+            .filter_map(|(n, name)| {
+                let idx = self.b.m.alts[ea.index()]
+                    .cases
+                    .iter()
+                    .position(|c| c.name == *name)?;
+                Some((*n, idx))
+            })
+            .collect();
+        let failure = failure_symbol(sym);
+        let e = self.status_error(ea, code, &cases, failure.as_deref())?;
+        Ok(self.b.alt_new(a, err as u32, &[e]))
+    }
+
     /// `ok(value)` when the status is zero, else the error case the status names.
     fn status_result(
         &mut self,
+        sym: &str,
         status: Value,
         out: Option<(Value, MTy)>,
+        wrap: Option<(ms_mir::ir::VtableId, MTy)>,
         result: MTy,
     ) -> Result<Val, Error> {
         let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
             return Err(Error::new("a status needs a Result"));
         };
         let ok = self.ok_case_index(a)?;
-        let err = self.b.m.alts[a.index()]
-            .cases
-            .iter()
-            .position(|c| c.name == "error")
-            .ok_or_else(|| Error::new("not a Result"))?;
         let code = self
             .b
             .emit(Op::B2I, &[status], Imm::None, Some(MTy::INT))
@@ -474,26 +741,70 @@ impl FnLower<'_> {
                     }
                     None => s.b.unit(),
                 };
+                let payload = match wrap {
+                    Some((vt, it)) => {
+                        s.b.emit(Op::IfaceNew, &[payload], Imm::Vtable(vt), Some(it))
+                            .expect("iface")
+                    }
+                    None => payload,
+                };
                 Ok(Some(s.b.alt_new(a, ok as u32, &[payload])))
             },
+            &mut |s| s.status_failure(result, code, sym).map(Some),
+        )
+    }
+
+    /// `ok(some(value))` for status zero, `ok(none)` for `STATUS_NONE`, else the error the status names.
+    fn status_optional_result(
+        &mut self,
+        sym: &str,
+        status: Value,
+        slot: Value,
+        inner: MTy,
+        result: MTy,
+    ) -> Result<Val, Error> {
+        let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
+            return Err(Error::new("a status needs a Result"));
+        };
+        let ok = self.ok_case_index(a)?;
+        let opt = self.b.m.alts[a.index()].cases[ok].fields[0].1;
+        let code = self
+            .b
+            .emit(Op::B2I, &[status], Imm::None, Some(MTy::INT))
+            .expect("b2i");
+        let zero = self.b.iconst(0);
+        let none = self.b.iconst(STATUS_NONE);
+        let good = self.b.icmp(Cc::Eq, code, zero);
+        let end = self.b.icmp(Cc::Eq, code, none);
+        self.two_ways(
+            good,
+            result,
             &mut |s| {
-                let et = s.b.m.alts[a.index()].cases[err].fields[0].1;
-                let TyKind::Alt(ea) = s.b.m.types.kind(et).clone() else {
-                    return Err(Error::new("a runtime status needs an error alternative"));
-                };
-                let cases: Vec<(i64, usize)> = STATUS_CASES
-                    .iter()
-                    .filter_map(|(n, name)| {
-                        let idx = s.b.m.alts[ea.index()]
-                            .cases
-                            .iter()
-                            .position(|c| c.name == *name)?;
-                        Some((*n, idx))
-                    })
-                    .collect();
-                let e = s.status_error(ea, code, &cases)?;
-                Ok(Some(s.b.alt_new(a, err as u32, &[e])))
+                let v =
+                    s.b.emit(Op::Take, &[slot], Imm::Ty(inner), Some(inner))
+                        .expect("take");
+                let some = s.b.opt_some(v);
+                Ok(Some(s.b.alt_new(a, ok as u32, &[some])))
+            },
+            &mut |s| {
+                let r = s.two_ways(
+                    end,
+                    result,
+                    &mut |s| {
+                        let n = s.none_owned(opt);
+                        Ok(Some(s.b.alt_new(a, ok as u32, &[n])))
+                    },
+                    &mut |s| s.status_failure(result, code, sym).map(Some),
+                )?;
+                Ok(Some(r.v))
             },
         )
     }
+}
+
+/// The symbol returning the text of a `Failed` status of `sym`'s module, when it has one.
+fn failure_symbol(sym: &str) -> Option<String> {
+    let module = sym.strip_prefix("msstd_")?.split('_').next()?;
+    let failure = format!("msstd_{module}_failure_message");
+    rt_sig(&failure).map(|_| failure)
 }

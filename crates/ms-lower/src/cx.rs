@@ -25,6 +25,8 @@ pub enum JobKind {
     Lambda(Rc<LambdaJob>),
     /// Structural equality of two values of the MIR type.
     Equal(MTy),
+    /// A forwarder of an interface operation to a runtime handle function.
+    HandleMethod(Rc<crate::natiface::MethodJob>),
 }
 
 /// A lambda waiting to be lowered.
@@ -63,6 +65,8 @@ pub struct Cx {
     pub helpers: HashMap<String, FuncId>,
     /// Interface implementation tables built by lowering.
     pub vtables: HashMap<String, ms_mir::ir::VtableId>,
+    /// The checker type of every lowered interface.
+    pub contracts: HashMap<ms_mir::types::IfaceId, ct::Ty>,
     /// Every implementation method of the program.
     pub methods: Vec<ct::MethodRef>,
     /// Types whose descriptor glue is registered.
@@ -93,6 +97,7 @@ impl Cx {
             queue: Vec::new(),
             helpers: HashMap::new(),
             vtables: HashMap::new(),
+            contracts: HashMap::new(),
             methods: program.methods.clone(),
         }
     }
@@ -189,6 +194,7 @@ impl Cx {
                 });
                 let ty = m.types.iface(id);
                 self.tycache.insert(key.to_string(), ty);
+                self.contracts.insert(id, t.clone());
                 let subst = ct::substitution(t);
                 let mut methods = Vec::new();
                 if let Some(def) = &t.def {
@@ -234,6 +240,41 @@ impl Cx {
         // Builders are growable byte buffers.
         if t.is_std("Bytes") || t.is_std("StringBuilder") || t.is_std("BytesBuilder") {
             return Ok(MTy::BYTES);
+        }
+        // A queue is a refcounted runtime object shared by its copies.
+        if t.is_std("Queue") {
+            let elem = self.lower_ty(m, &t.args[0])?;
+            return Ok(m.types.obj("Queue", vec![elem]));
+        }
+        if t.is_std("PriorityQueue") {
+            let elem = self.lower_ty(m, &t.args[0])?;
+            return Ok(m.types.obj("PriorityQueue", vec![elem]));
+        }
+        // A duration is its nanosecond count.
+        if t.is_std("Duration") {
+            return Ok(MTy::INT);
+        }
+        // Arbitrary-precision integers have no runtime yet; the type exists so interfaces
+        // that mention one (`FileInfo.exact`) can be declared.
+        if t.is_std("BigInt") {
+            return Ok(m.types.obj("BigInt", Vec::new()));
+        }
+        // Clock values are two-word C structs in the runtime (`Timestamp`, `Instant`), so a
+        // record of two `Int`s shares their memory layout.
+        if t.is_std("Timestamp") || t.is_std("Instant") {
+            let name = if t.is_std("Timestamp") {
+                "Timestamp"
+            } else {
+                "Instant"
+            };
+            let words = if name == "Timestamp" {
+                ["seconds", "nanoseconds"]
+            } else {
+                ["domain", "tick"]
+            };
+            let fields = words.iter().map(|w| (w.to_string(), MTy::INT)).collect();
+            let (_, ty) = m.add_record(name, fields);
+            return Ok(ty);
         }
         Err(Error::new(format!("unsupported native type {t}")))
     }
