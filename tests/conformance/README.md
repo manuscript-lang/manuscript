@@ -49,7 +49,8 @@ Tier (what a Rust milestone needs): `tier-core` imports nothing, `tier-stdlib` i
 1. Write the `.ms` file with a header (or run `harvest`), choose tags and phase.
 2. `ms-conform record --ms ./ms --id <slug>` writes the expectation; each fixture runs twice and is refused if the answers differ (`deterministic=true` skips this for time- or random-dependent output you have normalized). `--prune` deletes fixtures that cannot be recorded.
 3. `ms-conform lint` checks metadata, unknown tags, orphaned expectations.
-4. Review the expectation. It records what Go does, bugs included; a fixture that pins a Go bug gets a comment and the `go-bug` entry in `expect-fail.txt` for the Rust gate instead of being deleted.
+4. Review the expectation. It records what Go does, bugs included; a fixture that pins a Go bug keeps its expectation and joins the Rust gate's `--expect-fail` file with a reason.
+5. Fixtures whose Go output varies between runs (for example diagnostics emitted in map order) must be deleted, not recorded: one was found this way, `MS3040` ordering for a recursive generic field default, and removed.
 
 Regenerating the harvested set (rarely needed; the corpus is the source of truth afterwards):
 
@@ -62,3 +63,5 @@ ms-conform record --ms ./ms --prune
 ## Hostile fixtures
 
 Programs importing `http`, `net`, `tls`, `websocket`, `sse`, `process`, `terminal`, `system`, `random` or `time` are checked but not run by the harvester, since they bind sockets, wait on signals or depend on the clock. Add run fixtures for them by hand with deterministic output.
+
+`make conform-oracle CONFORM_SHARD=i/n` replays the corpus against the Go oracle; CI runs it in four shards. Changing a fixture's `# conform:` header shifts byte offsets in its diagnostics, so re-record after editing tags by hand (`ms-conform retag` only touches `tier-*`; run `record` after it).
