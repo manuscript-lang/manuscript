@@ -147,9 +147,7 @@ impl<'a> FnLower<'a> {
             Resolution::Function(sym) if sym.native.as_str().is_empty() => {
                 self.function_value(e, &sym)
             }
-            Resolution::Function(_) => Err(Error::new(
-                "native functions as values are not supported yet",
-            )),
+            Resolution::Function(sym) => self.native_function_value(e, &sym),
             other => Err(Error::new(format!(
                 "unsupported name {}",
                 match other {
@@ -196,6 +194,11 @@ impl<'a> FnLower<'a> {
     fn member(&mut self, e: &Expr, left: &Expr, name: &str) -> Result<Val, Error> {
         if let Resolution::Constructor { ty, case } = self.hir.resolution(e) {
             return self.construct_unit(e, &ty, case);
+        }
+        if let Resolution::Method(m) = self.hir.resolution(e) {
+            if m.native.as_str() == "to_string" && m.ty.params.is_empty() {
+                return self.bound_to_string(left);
+            }
         }
         let lt = self.ety(left);
         if lt.kind != Kind::Record {

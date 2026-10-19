@@ -34,7 +34,7 @@ pub(crate) fn runtime_fn(m: &mut Module, sym: &str, params: &[MTy], ret: MTy) ->
 
 /// Calls a leaf formatter for scalar/string types; `None` for compound types.
 /// The quoted form (`repr`) wraps strings in quotes.
-fn scalar_text(b: &mut FuncBuilder<'_>, t: MTy, v: Value, repr: bool) -> Option<(Value, bool)> {
+pub(crate) fn scalar_text(b: &mut FuncBuilder<'_>, t: MTy, v: Value, repr: bool) -> Option<(Value, bool)> {
     let sym = if t == MTy::INT {
         "msrt_int_to_string"
     } else if t == MTy::FLOAT {
@@ -387,6 +387,19 @@ pub(crate) fn build_format(
             b.switch_to(exit);
             append_lit(&mut b, acc, ")");
             let r = b.use_var(acc);
+            b.ret(Some(r));
+        }
+        TyKind::Fn(..) | TyKind::Obj(..) => {
+            // Functions and native objects print as a fixed marker.
+            let text = if matches!(b.m.types.kind(t), TyKind::Fn(..)) {
+                "[function]"
+            } else {
+                "[object]"
+            };
+            let lit = b.str_lit(text);
+            let r = b
+                .emit(Op::Copy, &[lit], Imm::None, Some(MTy::STR))
+                .expect("copy");
             b.ret(Some(r));
         }
         _ => {

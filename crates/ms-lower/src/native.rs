@@ -112,17 +112,77 @@ impl<'a> FnLower<'a> {
                 self.testing_native(e, view, &other["testing/".len()..])
             }
             other => {
-                let Some(sym) = crate::rtcall::function_symbol(other) else {
+                if !self.has_native_call(other) {
                     return Err(Error::new(format!("unsupported native function {other}")));
-                };
+                }
                 let args = self.native_args(view)?;
                 if self.dead {
                     return Ok(self.dummy(MTy::UNIT));
                 }
                 let result = self.emty(e)?;
-                self.rt_function(&sym, params, &args, result)
+                self.at(e.pos);
+                self.native_call(other, params, &args, result)
             }
         }
+    }
+
+    /// Whether `native_call` lowers the native function `native`.
+    fn has_native_call(&self, native: &str) -> bool {
+        matches!(native, "math/min" | "math/max") || crate::rtcall::function_symbol(native).is_some()
+    }
+
+    /// A native function applied to evaluated arguments (borrowed by the callee).
+    pub(crate) fn native_call(
+        &mut self,
+        native: &str,
+        params: &[ct::Param],
+        args: &[NArg],
+        result: MTy,
+    ) -> Result<Val, Error> {
+        if matches!(native, "math/min" | "math/max") {
+            return self.min_max(native == "math/max", args);
+        }
+        let sym = crate::rtcall::function_symbol(native)
+            .ok_or_else(|| Error::new(format!("unsupported native function {native}")))?;
+        self.rt_function(&sym, params, args, result)
+    }
+
+    /// `max(left, right)` / `min(left, right)`: `left` unless `right` is strictly greater
+    /// (lesser). Floats order NaN above every other value.
+    fn min_max(&mut self, max: bool, args: &[NArg]) -> Result<Val, Error> {
+        use ms_mir::ir::{Cc, Op};
+        let (left, right) = (self.borrow(args[0].val), self.borrow(args[1].val));
+        let t = self.ty_of(left);
+        // `a` ordered strictly above `b`.
+        let (a, b) = if max { (right, left) } else { (left, right) };
+        let above = if t == MTy::INT {
+            self.b.icmp(Cc::Gt, a, b)
+        } else if t == MTy::FLOAT {
+            let gt = self.b.fcmp(Cc::Gt, a, b);
+            let a_nan = self.b.fcmp(Cc::Ne, a, a);
+            let b_num = self.b.fcmp(Cc::Eq, b, b);
+            let nan_above = self.b.binop(Op::And, a_nan, b_num);
+            self.b.binop(Op::Or, gt, nan_above)
+        } else if t == MTy::STR {
+            let c = self.call_runtime("msrt_string_compare", &[a, b], MTy::INT)?;
+            let zero = self.b.iconst(0);
+            self.b.icmp(Cc::Gt, c, zero)
+        } else {
+            return Err(Error::new(format!(
+                "unsupported min/max on {}",
+                ms_mir::print::ty_str(self.b.m, t)
+            )));
+        };
+        if !self.needs_drop(t) {
+            let v = self.b.select(above, right, left);
+            return Ok(Val { v, own: false });
+        }
+        self.two_ways(
+            above,
+            t,
+            &mut |s| Ok(Some(s.owned(Val { v: right, own: false }))),
+            &mut |s| Ok(Some(s.owned(Val { v: left, own: false }))),
+        )
     }
 
     /// `stdout()` / `stderr()`: an interface value over a MIR-built vtable.

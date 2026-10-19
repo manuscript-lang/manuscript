@@ -25,6 +25,18 @@ pub enum JobKind {
     Lambda(Rc<LambdaJob>),
     /// Structural equality of two values of the MIR type.
     Equal(MTy),
+    /// A native function used as a value.
+    NativeThunk(Rc<NativeThunkJob>),
+}
+
+/// A native function value waiting to be lowered.
+pub struct NativeThunkJob {
+    /// The native, `module/name`.
+    pub native: String,
+    /// Declared parameters under the use site's substitution.
+    pub params: Vec<ct::Param>,
+    /// Module the use is written in.
+    pub hir: Rc<ModuleHir>,
 }
 
 /// A lambda waiting to be lowered.
