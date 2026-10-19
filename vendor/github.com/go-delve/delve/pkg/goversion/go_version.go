@@ -119,9 +119,15 @@ func Parse(ver string) (GoVersion, bool) {
 				// old boringcrypto version goX.YbZ
 				_, err3 = strconv.Atoi(rest)
 			case hasPrefix("rc"):
-				// old rc release goX.YrcZ
+				i := 0
+				for i < len(rest) && rest[i] >= '0' && rest[i] <= '9' {
+					i++
+				}
 				var rc int
-				rc, err3 = strconv.Atoi(rest)
+				rc, err3 = strconv.Atoi(rest[:i])
+				if err3 != nil || i == 0 {
+					return GoVersion{}, false
+				}
 				r.Rev = rcRev(rc)
 			default:
 				// what is this?
@@ -217,6 +223,9 @@ func (v *GoVersion) IsDevelBuild() bool {
 
 func (v *GoVersion) String() string {
 	switch {
+	case v.Rev == versionedDevel:
+		// versioned development build
+		return fmt.Sprintf("devel go%d.%d", v.Major, v.Minor)
 	case v.Rev < betaStart:
 		// beta version
 		return fmt.Sprintf("go%d.%dbeta%d", v.Major, v.Minor, v.Rev-betaEnd)
@@ -282,7 +291,7 @@ func ProducerAfterOrEqual(producer string, major, minor int) bool {
 	if ver.IsOldDevel() {
 		return true
 	}
-	return ver.AfterOrEqual(GoVersion{major, minor, 0, "", ""})
+	return ver.AfterOrEqual(GoVersion{major, minor, versionedDevel, "", ""})
 }
 
 func ParseProducer(producer string) GoVersion {

@@ -24,6 +24,7 @@ type TargetGroup struct {
 	Selected          *Target
 	followExecEnabled bool
 	followExecRegex   *regexp.Regexp
+	eventsFn          func(*Event)
 
 	RecordingManipulation
 	recman RecordingManipulationInternal
@@ -53,6 +54,11 @@ type NewTargetGroupConfig struct {
 }
 
 type AddTargetFunc func(ProcessInternal, int, Thread, string, StopReason, string) (*Target, error)
+
+// A hit condition can be in the following formats:
+// - "number"
+// - "OP number"
+var hitConditionRegex = regexp.MustCompile(`(([=><%!])+|)( |)((\d|_)+)`)
 
 // NewGroup creates a TargetGroup containing the specified Target.
 func NewGroup(procgrp ProcessGroup, cfg NewTargetGroupConfig) (*TargetGroup, AddTargetFunc) {
@@ -106,12 +112,38 @@ func Restart(grp, oldgrp *TargetGroup, discard func(*LogicalBreakpoint, error)) 
 func (grp *TargetGroup) addTarget(p ProcessInternal, pid int, currentThread Thread, path string, stopReason StopReason, cmdline string) (*Target, error) {
 	logger := logflags.DebuggerLogger()
 	if len(grp.targets) > 0 {
+		matchesPattern := grp.followExecRegex == nil || grp.followExecRegex.MatchString(cmdline)
 		if !grp.followExecEnabled {
 			logger.Debugf("Detaching from child target (follow-exec disabled) %d %q", pid, cmdline)
-			return nil, nil
-		}
-		if grp.followExecRegex != nil && !grp.followExecRegex.MatchString(cmdline) {
+		} else if !matchesPattern {
 			logger.Debugf("Detaching from child target (follow-exec regex not matched) %d %q", pid, cmdline)
+		}
+
+		// Notify listeners that a child process was spawned.
+		//
+		// We do this regardless of whether the process is debuggable and
+		// regardless of whether follow-exec is enabled; when run by an IDE in
+		// DAP mode, we want to give the IDE a chance to handle the spawned
+		// process.
+		//
+		// Defer the call so that - if the process _can_ be debugged - listeners
+		// are notified after the new target is set up.
+		willFollow := grp.followExecEnabled && matchesPattern
+		if grp.Selected != nil {
+			if fn := grp.Selected.BinInfo().eventsFn; fn != nil {
+				defer fn(&Event{
+					Kind: EventProcessSpawned,
+					ProcessSpawnedEventDetails: &ProcessSpawnedEventDetails{
+						PID:        pid,
+						ThreadID:   currentThread.ThreadID(),
+						Cmdline:    cmdline,
+						WillFollow: willFollow,
+					},
+				})
+			}
+		}
+
+		if !willFollow {
 			return nil, nil
 		}
 	}
@@ -132,16 +164,32 @@ func (grp *TargetGroup) addTarget(p ProcessInternal, pid int, currentThread Thre
 	if grp.Selected == nil {
 		grp.Selected = t
 	}
+	t.BinInfo().eventsFn = grp.eventsFn
 	t.Breakpoints().Logical = grp.LogicalBreakpoints
 	for _, lbp := range grp.LogicalBreakpoints {
 		if lbp.LogicalID < 0 {
 			continue
+		}
+		var wasSuspended bool
+		if grp.eventsFn != nil {
+			wasSuspended = lbp.isSuspendedOnGroup(grp)
 		}
 		err := enableBreakpointOnTarget(t, lbp)
 		if err != nil {
 			logger.Debugf("could not enable breakpoint %d on new target %d: %v", lbp.LogicalID, t.Pid(), err)
 		} else {
 			logger.Debugf("breakpoint %d enabled on new target %d: %v", lbp.LogicalID, t.Pid(), err)
+			if grp.eventsFn != nil {
+				isSuspended := lbp.isSuspendedOnTarget(t)
+				if wasSuspended && !isSuspended {
+					grp.eventsFn(&Event{
+						Kind: EventBreakpointMaterialized,
+						BreakpointMaterializedEventDetails: &BreakpointMaterializedEventDetails{
+							Breakpoint: lbp,
+						},
+					})
+				}
+			}
 		}
 	}
 	grp.targets = append(grp.targets, t)
@@ -236,7 +284,9 @@ func (grp *TargetGroup) HasSteppingBreakpoints() bool {
 func (grp *TargetGroup) ClearSteppingBreakpoints() error {
 	for _, t := range grp.targets {
 		if t.Breakpoints().HasSteppingBreakpoints() {
-			return t.ClearSteppingBreakpoints()
+			if err := t.ClearSteppingBreakpoints(); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -445,11 +495,6 @@ func (grp *TargetGroup) ChangeBreakpointCondition(lbp *LogicalBreakpoint, cond, 
 }
 
 func parseHitCondition(hitCond string) (token.Token, int, error) {
-	// A hit condition can be in the following formats:
-	// - "number"
-	// - "OP number"
-	hitConditionRegex := regexp.MustCompile(`(([=><%!])+|)( |)((\d|_)+)`)
-
 	match := hitConditionRegex.FindStringSubmatch(strings.TrimSpace(hitCond))
 	if match == nil || len(match) != 6 {
 		return 0, 0, fmt.Errorf("unable to parse breakpoint hit condition: %q\nhit conditions should be of the form \"number\" or \"OP number\"", hitCond)
@@ -540,7 +585,26 @@ func (grp *TargetGroup) FollowExecEnabled() bool {
 // SetEventsFn sets a function that is called to communicate events
 // happening while the target process is running.
 func (grp *TargetGroup) SetEventsFn(eventsFn func(*Event)) {
-	grp.Selected.BinInfo().eventsFn = eventsFn
+	grp.eventsFn = eventsFn
+	it := ValidTargets{Group: grp}
+	for it.Next() {
+		it.BinInfo().eventsFn = eventsFn
+	}
+}
+
+// CancelDownloads cancels ongoing downloads, if any.
+func (grp *TargetGroup) CancelDownloads() bool {
+	r := false
+	it := ValidTargets{Group: grp}
+	for it.Next() {
+		it.BinInfo().cancelDownloadsMu.Lock()
+		if it.BinInfo().cancelDownloads != nil {
+			it.BinInfo().cancelDownloads()
+			r = true
+		}
+		it.BinInfo().cancelDownloadsMu.Unlock()
+	}
+	return r
 }
 
 // ValidTargets iterates through all valid targets in Group.
@@ -575,6 +639,8 @@ func (it *ValidTargets) Reset() {
 type Event struct {
 	Kind EventKind
 	*BinaryInfoDownloadEventDetails
+	*BreakpointMaterializedEventDetails
+	*ProcessSpawnedEventDetails
 }
 
 type EventKind uint8
@@ -583,9 +649,25 @@ const (
 	EventResumed EventKind = iota
 	EventStopped
 	EventBinaryInfoDownload
+	EventBreakpointMaterialized
+	EventProcessSpawned
+	EventDownloadLibraryInfoDone
 )
 
-// BinaryInfoDownloadEventDetails details of a BinaryInfoDownload event.
+// BinaryInfoDownloadEventDetails describes the details of a BinaryInfoDownloadEvent
 type BinaryInfoDownloadEventDetails struct {
 	ImagePath, Progress string
+}
+
+// BreakpointMaterializedEventDetails describes the details of a BreakpointMaterializedEvent
+type BreakpointMaterializedEventDetails struct {
+	Breakpoint *LogicalBreakpoint
+}
+
+// ProcessSpawnedEventDetails describes the details of a ProcessSpawnedEvent
+type ProcessSpawnedEventDetails struct {
+	PID        int
+	ThreadID   int
+	Cmdline    string
+	WillFollow bool
 }

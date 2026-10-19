@@ -7,6 +7,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/go-delve/delve/pkg/dwarf/op"
 	"github.com/go-delve/delve/pkg/goversion"
@@ -66,7 +67,10 @@ type Target struct {
 	// have read and parsed from the targets memory.
 	// This must be cleared whenever the target is resumed.
 	gcache goroutineCache
-	iscgo  *bool
+	// scache is a cache for stack traces.
+	scache stackCache
+
+	iscgo *bool
 
 	// exitStatus is the exit status of the process we are debugging.
 	// Saved here to relay to any future commands.
@@ -79,6 +83,10 @@ type Target struct {
 	fakeMemoryRegistryMap map[string]*compositeMemory
 
 	partOfGroup bool
+
+	// onInitialGoImage ensures that Go-specific breakpoints are only set up
+	// once when transitioning from no Go images to having a Go image.
+	onInitialGoImage sync.Once
 }
 
 type KeepSteppingBreakpoints uint8
@@ -97,6 +105,15 @@ type ErrProcessExited struct {
 
 func (pe ErrProcessExited) Error() string {
 	return fmt.Sprintf("Process %d has exited with status %d", pe.Pid, pe.Status)
+}
+
+// ErrBadBinaryInfo indicates that loading binary info for the process failed.
+type ErrBadBinaryInfo struct {
+	Err error
+}
+
+func (e *ErrBadBinaryInfo) Error() string {
+	return e.Err.Error()
 }
 
 // StopReason describes the reason why the target process is stopped.
@@ -127,6 +144,8 @@ func (sr StopReason) String() string {
 		return "call returned"
 	case StopWatchpoint:
 		return "watchpoint"
+	case StopSharedLibLoaded:
+		return "shared library loaded"
 	default:
 		return ""
 	}
@@ -143,6 +162,7 @@ const (
 	StopNextFinished                   // The next/step/stepout/stepInstruction command terminated
 	StopCallReturned                   // An injected call completed
 	StopWatchpoint                     // The target process hit one or more watchpoints
+	StopSharedLibLoaded                // A Go shared library was loaded
 )
 
 // DisableAsyncPreemptEnv returns a process environment (like os.Environ)
@@ -169,11 +189,17 @@ func (grp *TargetGroup) newTarget(p ProcessInternal, pid int, currentThread Thre
 
 	err = p.BinInfo().LoadBinaryInfo(path, entryPoint, grp.cfg.DebugInfoDirs)
 	if err != nil {
-		return nil, err
+		// If this is a non-Go binary, log a warning and continue.
+		// A Go shared object may be loaded later via dlopen.
+		if len(p.BinInfo().Images) > 0 && !p.BinInfo().Images[0].IsGo {
+			logflags.DebuggerLogger().Warnf("Initial binary is not a Go binary: %v", err)
+		} else {
+			return nil, &ErrBadBinaryInfo{Err: err}
+		}
 	}
 	for _, image := range p.BinInfo().Images {
-		if image.loadErr != nil {
-			return nil, image.loadErr
+		if image.loadErr != nil && image.IsGo {
+			return nil, &ErrBadBinaryInfo{Err: image.loadErr}
 		}
 	}
 
@@ -201,6 +227,7 @@ func (grp *TargetGroup) newTarget(p ProcessInternal, pid int, currentThread Thre
 	t.createPluginOpenBreakpoint()
 
 	t.gcache.init(p.BinInfo())
+	t.scache.init()
 	t.fakeMemoryRegistryMap = make(map[string]*compositeMemory)
 
 	if grp.cfg.DisableAsyncPreempt {
@@ -223,7 +250,7 @@ func (t *Target) IsCgo() bool {
 	scope := globalScope(t, t.BinInfo(), t.BinInfo().Images[0], t.Memory())
 	iscgov, err := scope.findGlobal("runtime", "iscgo")
 	if err == nil {
-		iscgov.loadValue(loadFullValue)
+		iscgov.loadValue(LoadFullValue())
 		if iscgov.Unreadable == nil {
 			t.iscgo = new(bool)
 			*t.iscgo = constant.BoolVal(iscgov.Value)
@@ -252,13 +279,14 @@ func (t *Target) Valid() (bool, error) {
 // Currently only non-recorded processes running on AMD64 support
 // function calls.
 func (t *Target) SupportsFunctionCalls() bool {
-	return t.Process.BinInfo().Arch.Name == "amd64" || (t.Process.BinInfo().Arch.Name == "arm64" && t.Process.BinInfo().GOOS != "windows") || t.Process.BinInfo().Arch.Name == "ppc64le"
+	return t.Process.BinInfo().Arch.Name == "amd64" || (t.Process.BinInfo().Arch.Name == "arm64" && t.Process.BinInfo().GOOS != "windows") || t.Process.BinInfo().Arch.Name == "ppc64le" || t.Process.BinInfo().Arch.Name == "loong64"
 }
 
 // ClearCaches clears internal caches that should not survive a restart.
 // This should be called anytime the target process executes instructions.
 func (t *Target) ClearCaches() {
 	t.clearFakeMemory()
+	clear(t.scache.m)
 	t.gcache.Clear()
 	t.BinInfo().moduleDataCache = nil
 	for _, thread := range t.ThreadList() {
@@ -324,6 +352,40 @@ func (t *Target) SwitchThread(tid int) error {
 	return fmt.Errorf("thread %d does not exist", tid)
 }
 
+// SetNextExecutionPoint sets the program counter of the current thread to
+// addr without executing any of the instructions in between, also known as
+// "set next statement" or "jump". addr must be inside the function the
+// current thread is stopped in: jumping to a different function would leave
+// the stack frame set up for the old function and corrupt execution.
+//
+// Even with optimizations disabled the compiler reorders instructions and
+// inserts hidden initialization, so skipping over code can skip setup that
+// later instructions rely on.
+func (t *Target) SetNextExecutionPoint(addr uint64) error {
+	if ok, err := t.Valid(); !ok {
+		return err
+	}
+
+	thread := t.CurrentThread()
+	regs, err := thread.Registers()
+	if err != nil {
+		return err
+	}
+
+	currentFn := t.BinInfo().PCToFunc(regs.PC())
+	destFn := t.BinInfo().PCToFunc(addr)
+	if currentFn == nil || destFn == nil || currentFn != destFn {
+		return errors.New("can not set the next execution point outside of the current function")
+	}
+
+	if err := setPC(thread, addr); err != nil {
+		return err
+	}
+
+	t.selectedGoroutine, _ = GetG(t.CurrentThread())
+	return nil
+}
+
 // setAsyncPreemptOff enables or disables async goroutine preemption by
 // writing the value 'v' to runtime.debug.asyncpreemptoff.
 // A value of '1' means off, a value of '0' means on.
@@ -343,12 +405,12 @@ func setAsyncPreemptOff(p *Target, v int64) {
 		logger.Warnf("runtime/debug variable unreadable: %v", err, debugv.Unreadable)
 		return
 	}
-	asyncpreemptoffv, err := debugv.structMember("asyncpreemptoff") // +rtype int32
+	asyncpreemptoffv, err := debugv.structField("asyncpreemptoff") // +rtype int32
 	if err != nil {
 		logger.Warnf("could not find asyncpreemptoff field: %v", err)
 		return
 	}
-	asyncpreemptoffv.loadValue(loadFullValue)
+	asyncpreemptoffv.loadValue(LoadFullValue())
 	if asyncpreemptoffv.Unreadable != nil {
 		logger.Warnf("asyncpreemptoff field unreadable: %v", asyncpreemptoffv.Unreadable)
 		return
@@ -373,6 +435,7 @@ func (t *Target) createUnrecoveredPanicBreakpoint() {
 		if err == nil {
 			bp.Logical.Name = UnrecoveredPanic
 			bp.Logical.Variables = []string{"runtime.curg._panic.arg"}
+			bp.Logical.Set.PidAddrs = append(bp.Logical.Set.PidAddrs, PidAddr{Pid: t.Pid(), Addr: panicpcs[0]})
 		}
 	}
 }
@@ -384,6 +447,7 @@ func (t *Target) createFatalThrowBreakpoint() {
 			bp, err := t.SetBreakpoint(fatalThrowID, pcs[0], UserBreakpoint, nil)
 			if err == nil {
 				bp.Logical.Name = FatalThrow
+				bp.Logical.Set.PidAddrs = append(bp.Logical.Set.PidAddrs, PidAddr{Pid: t.Pid(), Addr: pcs[0]})
 			}
 		}
 	}
@@ -408,6 +472,44 @@ func (t *Target) createPluginOpenBreakpoint() {
 	}
 }
 
+// CreateSharedLibBreakpoint sets a breakpoint at the given address (the
+// dynamic linker's r_brk notification function) to detect shared library
+// loading. When a new Go shared library is detected, Go-specific breakpoints
+// are set up.
+func (t *Target) CreateSharedLibBreakpoint(rBrkAddr uint64) {
+	if rBrkAddr == 0 {
+		return
+	}
+	bp, err := t.SetBreakpoint(0, rBrkAddr, SharedLibBreakpoint, nil)
+	if err != nil {
+		t.BinInfo().logger.Errorf("could not set shared lib breakpoint at %#x: %v", rBrkAddr, err)
+		return
+	}
+	bp.Breaklets[len(bp.Breaklets)-1].callback = t.sharedLibCallback
+}
+
+func (t *Target) sharedLibCallback(th Thread, tgt *Target) (bool, error) {
+	// Check if any newly loaded image is a Go binary.
+	// ElfUpdateSharedObjects has already run by this point (called in stop1
+	// before breakpoint callbacks), so new images are already in BinInfo.
+	if !tgt.BinInfo().HasGoImage() {
+		return false, nil
+	}
+
+	didRun := false
+	tgt.onInitialGoImage.Do(func() {
+		didRun = true
+		logger := logflags.DebuggerLogger()
+		logger.Info("Go shared library detected, setting up Go-specific breakpoints")
+
+		tgt.createUnrecoveredPanicBreakpoint()
+		tgt.createFatalThrowBreakpoint()
+		tgt.createPluginOpenBreakpoint()
+	})
+
+	return didRun, nil
+}
+
 // CurrentThread returns the currently selected thread which will be used
 // for next/step/stepout and for reading variables, unless a goroutine is
 // selected.
@@ -423,29 +525,38 @@ type UProbeTraceResult struct {
 	ReturnParams []*Variable
 }
 
-func (t *Target) GetBufferedTracepoints() []*UProbeTraceResult {
+func (t *Target) GetBufferedTracepoints(cfg LoadConfig) []*UProbeTraceResult {
 	var results []*UProbeTraceResult
 	tracepoints := t.proc.GetBufferedTracepoints()
 	convertInputParamToVariable := func(ip *ebpf.RawUProbeParam) *Variable {
 		v := &Variable{}
+		v.Name = ip.Name
 		v.RealType = ip.RealType
+		v.DwarfType = ip.RealType // needed so ConstDescr doesn't panic when bi is set
 		v.Len = ip.Len
 		v.Base = ip.Base
 		v.Addr = ip.Addr
 		v.Kind = ip.Kind
+		v.bi = t.BinInfo()
 
+		if ip.Unreadable != nil {
+			v.Unreadable = ip.Unreadable
+			return v
+		}
 		if v.RealType == nil {
 			v.Unreadable = errors.New("type not supported by ebpf")
 			return v
 		}
 
 		cachedMem := CreateLoadedCachedMemory(ip.Data)
-		compMem, _ := CreateCompositeMemory(cachedMem, t.BinInfo().Arch, op.DwarfRegisters{}, ip.Pieces, ip.RealType.Common().ByteSize)
+		compMem, compErr := CreateCompositeMemory(cachedMem, t.BinInfo().Arch, op.DwarfRegisters{}, ip.Pieces, ip.RealType.Common().ByteSize)
+		if compErr != nil {
+			v.Unreadable = fmt.Errorf("ebpf composite memory: %w", compErr)
+			return v
+		}
 		v.mem = compMem
 
-		// Load the value here so that we don't have to export
-		// loadValue outside of proc.
-		v.loadValue(loadFullValue)
+		v.loadValue(cfg)
 
 		return v
 	}
@@ -482,8 +593,13 @@ func (grp *TargetGroup) RequestManualStop() error {
 }
 
 const (
-	FakeAddressBase     = 0xbeef000000000000
-	fakeAddressUnresolv = 0xbeed000000000000 // this address never resolves to memory
+	FakeAddressBase = 0xbeef000000000000
+	// fakeAddressUnresolv is a sentinel base address for variables that live in
+	// fake (non-process) memory: composite memory, CPU register variables, etc.
+	// It is chosen to never resolve to a real process address.
+	// The ebpf subpackage has its own copy (fakeAddressUnresolv in helpers.go);
+	// both must stay in sync.
+	fakeAddressUnresolv = 0xbeed000000000000
 )
 
 // newCompositeMemory creates a new compositeMemory object and registers it.
@@ -556,7 +672,7 @@ func (t *Target) dwrapUnwrap(fn *Function) *Function {
 	if fn == nil {
 		return nil
 	}
-	if !strings.Contains(fn.Name, "·dwrap·") && !fn.trampoline {
+	if !strings.Contains(fn.Name, "·dwrap·") && !fn.Trampoline {
 		return fn
 	}
 	if unwrap := t.BinInfo().dwrapUnwrapCache[fn.Entry]; unwrap != nil {
@@ -578,19 +694,33 @@ func (t *Target) dwrapUnwrap(fn *Function) *Function {
 func (t *Target) pluginOpenCallback(Thread, *Target) (bool, error) {
 	logger := logflags.DebuggerLogger()
 	for _, lbp := range t.Breakpoints().Logical {
-		if isSuspended(t, lbp) {
-			err := enableBreakpointOnTarget(t, lbp)
-			if err != nil {
-				logger.Debugf("could not enable breakpoint %d: %v", lbp.LogicalID, err)
-			} else {
-				logger.Debugf("suspended breakpoint %d enabled", lbp.LogicalID)
-			}
+		// If the breakpoint is suspended, materialize it.
+		if !lbp.isSuspendedOnTarget(t) {
+			continue
+		}
+
+		err := enableBreakpointOnTarget(t, lbp)
+		if err != nil {
+			logger.Debugf("could not enable breakpoint %d: %v", lbp.LogicalID, err)
+			continue
+		}
+
+		logger.Debugf("suspended breakpoint %d enabled", lbp.LogicalID)
+
+		// Notify the client.
+		if fn := t.BinInfo().eventsFn; fn != nil {
+			fn(&Event{
+				Kind: EventBreakpointMaterialized,
+				BreakpointMaterializedEventDetails: &BreakpointMaterializedEventDetails{
+					Breakpoint: lbp,
+				},
+			})
 		}
 	}
 	return false, nil
 }
 
-func isSuspended(t *Target, lbp *LogicalBreakpoint) bool {
+func (lbp *LogicalBreakpoint) isSuspendedOnTarget(t *Target) bool {
 	for _, bp := range t.Breakpoints().M {
 		if bp.LogicalID() == lbp.LogicalID {
 			return false
@@ -599,8 +729,17 @@ func isSuspended(t *Target, lbp *LogicalBreakpoint) bool {
 	return true
 }
 
-type dummyRecordingManipulation struct {
+func (lbp *LogicalBreakpoint) isSuspendedOnGroup(grp *TargetGroup) bool {
+	it := ValidTargets{Group: grp}
+	for it.Next() {
+		if !lbp.isSuspendedOnTarget(it.Target) {
+			return false
+		}
+	}
+	return true
 }
+
+type dummyRecordingManipulation struct{}
 
 // Recorded always returns false for the native proc backend.
 func (*dummyRecordingManipulation) Recorded() (bool, string) { return false, "" }

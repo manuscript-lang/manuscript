@@ -25,7 +25,7 @@ import (
 	"github.com/go-delve/delve/service/rpc2"
 )
 
-//go:generate go run ../../_scripts/gen-suitablemethods.go suitablemethods
+//go:generate go run github.com/go-delve/build-tools/cmd/gen-suitablemethods@latest suitablemethods
 
 // ServerImpl implements a JSON-RPC server that can switch between two
 // versions of the API.
@@ -238,7 +238,9 @@ func (s *ServerImpl) serveJSONCodec(conn io.ReadWriteCloser) {
 		}
 		// argv guaranteed to be a pointer now.
 		if err = codec.ReadRequestBody(argv.Interface()); err != nil {
-			return
+			s.log.Errorf("can't read request body: %v", err)
+			s.sendResponse(sending, &req, &rpc.Response{}, nil, codec, fmt.Sprintf("malformed request body: %v", err))
+			continue
 		}
 		if argIsValue {
 			argv = argv.Elem()
@@ -252,7 +254,7 @@ func (s *ServerImpl) serveJSONCodec(conn io.ReadWriteCloser) {
 			replyv = reflect.New(mtype.ReplyType.Elem())
 			function := mtype.method
 			var returnValues []reflect.Value
-			var errInter interface{}
+			var errInter any
 			func() {
 				defer func() {
 					if ierr := recover(); ierr != nil {
@@ -303,7 +305,7 @@ func (s *ServerImpl) serveJSONCodec(conn io.ReadWriteCloser) {
 // contains an error when it is used.
 var invalidRequest = struct{}{}
 
-func (s *ServerImpl) sendResponse(sending *sync.Mutex, req *rpc.Request, resp *rpc.Response, reply interface{}, codec rpc.ServerCodec, errmsg string) {
+func (s *ServerImpl) sendResponse(sending *sync.Mutex, req *rpc.Request, resp *rpc.Response, reply any, codec rpc.ServerCodec, errmsg string) {
 	resp.ServiceMethod = req.ServiceMethod
 	if errmsg != "" {
 		resp.Error = errmsg
@@ -318,7 +320,7 @@ func (s *ServerImpl) sendResponse(sending *sync.Mutex, req *rpc.Request, resp *r
 	}
 }
 
-func (cb *RPCCallback) Return(out interface{}, err error) {
+func (cb *RPCCallback) Return(out any, err error) {
 	select {
 	case <-cb.setupDone:
 		// already closed
@@ -378,7 +380,7 @@ func (s *RPCServer) SetApiVersion(args api.SetAPIVersionIn, out *api.SetAPIVersi
 }
 
 type internalError struct {
-	Err   interface{}
+	Err   any
 	Stack []internalErrorFrame
 }
 
@@ -389,7 +391,7 @@ type internalErrorFrame struct {
 	Line int
 }
 
-func newInternalError(ierr interface{}, skip int) *internalError {
+func newInternalError(ierr any, skip int) *internalError {
 	logflags.Bug.Inc()
 	r := &internalError{ierr, nil}
 	for i := skip; ; i++ {

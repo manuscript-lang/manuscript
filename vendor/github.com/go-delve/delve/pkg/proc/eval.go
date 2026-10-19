@@ -253,7 +253,7 @@ func (scope *EvalScope) ChanGoroutines(expr string, start, count int) ([]int64, 
 	structMemberMulti := func(v *Variable, names ...string) *Variable {
 		for _, name := range names {
 			var err error
-			v, err = v.structMember(name)
+			v, err = v.structField(name)
 			if err != nil {
 				return nil
 			}
@@ -297,7 +297,7 @@ func (scope *EvalScope) ChanGoroutines(expr string, start, count int) ([]int64, 
 				goids = append(goids, goid)
 			}
 
-			nextVar, err := qvar.structMember("next")
+			nextVar, err := qvar.structField("next")
 			if err != nil {
 				return err
 			}
@@ -490,7 +490,7 @@ func (scope *EvalScope) simpleLocals(flags localsFlags, wantedName string) ([]*V
 
 		if isCapturedVar && int(val.DeclLine) == scope.Line && scope.Fn != nil && entry.Tag == dwarf.TagVariable && (flags&localsFakeFunctionEntryScope == 0) {
 			// For variables captured by closures if we are "early" in the function
-			// read  the value from the closure struct instead of their location.
+			// read the value from the closure struct instead of their location.
 			// First check that we are actually between the entry point of the
 			// function and the end of the prologue in case the code has not been
 			// gofmt'd.
@@ -881,6 +881,7 @@ type evalStack struct {
 	curthread           Thread
 	lastRetiredFncall   *functionCallState
 	debugPinner         *Variable
+	disabledErrors      bool
 }
 
 func (s *evalStack) push(v *Variable) {
@@ -916,7 +917,9 @@ func (s *evalStack) fncallPeek() *functionCallState {
 
 func (s *evalStack) pushErr(v *Variable, err error) {
 	s.err = err
-	s.stack = append(s.stack, v)
+	if err == nil {
+		s.stack = append(s.stack, v)
+	}
 }
 
 // eval evaluates ops. When it returns if callInjectionContinue is set the
@@ -1057,7 +1060,7 @@ func (stack *evalStack) run() {
 					regs, _ := curthread.Registers()
 					setSP(curthread, regs.SP()+uint64(scope.BinInfo.Arch.PtrSize()))
 					setPC(curthread, fncall.undoInjection.oldpc)
-				case "arm64", "ppc64le":
+				case "arm64", "ppc64le", "loong64":
 					setLR(curthread, fncall.undoInjection.oldlr)
 					setPC(curthread, fncall.undoInjection.oldpc)
 				default:
@@ -1148,27 +1151,30 @@ func (stack *evalStack) executeOp() {
 		stack.push(nilVariable)
 
 	case *evalop.PushPackageVarOrSelect:
-		v, err := scope.findGlobal(op.Name, op.Sel)
-		if err != nil && !isSymbolNotFound(err) {
-			stack.err = err
-			return
-		}
-		if v != nil {
-			stack.push(v)
-		} else {
-			if op.NameIsString {
-				stack.err = fmt.Errorf("%q (type string) is not a struct", op.Name)
-				return
-			}
-			found := stack.pushIdent(scope, op.Name)
+		var savedErr error
+		found := false
+		if !op.NameIsString {
+			found = stack.pushIdent(scope, op.Name)
 			if stack.err != nil {
-				return
+				savedErr = stack.err
+				stack.err = nil
+				found = false
 			}
 			if found {
 				scope.evalStructSelector(&evalop.Select{Name: op.Sel}, stack)
-			} else {
-				stack.err = fmt.Errorf("could not find symbol value for %s", op.Name)
+				if stack.err != nil {
+					savedErr = stack.err
+					stack.err = nil
+					found = false
+				}
 			}
+		}
+		if !found {
+			v, err := scope.findGlobal(op.Name, op.Sel)
+			if err != nil && savedErr != nil {
+				err = savedErr
+			}
+			stack.pushErr(v, err)
 		}
 
 	case *evalop.PushIdent:
@@ -1217,7 +1223,7 @@ func (stack *evalStack) executeOp() {
 			stack.err = errors.New("internal debugger error: expected boolean")
 			return
 		}
-		x.loadValue(loadFullValue)
+		x.loadValue(LoadFullValue())
 		stack.push(newConstant(x.Value, scope.BinInfo, scope.Mem))
 
 	case *evalop.Pop:
@@ -1327,6 +1333,9 @@ func (stack *evalStack) executeOp() {
 
 	case *evalop.PushNewFakeVariable:
 		stack.pushNewFakeVariable(scope, op.Type)
+
+	case *evalop.DisableErrors:
+		stack.disabledErrors = true
 
 	default:
 		stack.err = fmt.Errorf("internal debugger error: unknown eval opcode: %#v", op)
@@ -1494,7 +1503,7 @@ func (scope *EvalScope) evalJump(op *evalop.Jump, stack *evalStack) {
 		}
 		return
 	}
-	x.loadValue(loadFullValue)
+	x.loadValue(LoadFullValue())
 	if x.Unreadable != nil {
 		stack.err = x.Unreadable
 		return
@@ -1649,7 +1658,7 @@ func (scope *EvalScope) evalTypeCast(op *evalop.TypeCast, stack *evalStack) {
 		}
 	}
 
-	cfg := loadFullValue
+	cfg := LoadFullValue()
 	if scope.loadCfg != nil {
 		cfg = *scope.loadCfg
 	}
@@ -1900,7 +1909,7 @@ func capBuiltin(args []*Variable, nodeargs []ast.Expr) (*Variable, error) {
 	case reflect.Slice:
 		return newConstant(constant.MakeInt64(arg.Cap), arg.bi, arg.mem), nil
 	case reflect.Chan:
-		arg.loadValue(loadFullValue)
+		arg.loadValue(LoadFullValue())
 		if arg.Unreadable != nil {
 			return nil, arg.Unreadable
 		}
@@ -1933,7 +1942,7 @@ func lenBuiltin(args []*Variable, nodeargs []ast.Expr) (*Variable, error) {
 		}
 		return newConstant(constant.MakeInt64(arg.Len), arg.bi, arg.mem), nil
 	case reflect.Chan:
-		arg.loadValue(loadFullValue)
+		arg.loadValue(LoadFullValue())
 		if arg.Unreadable != nil {
 			return nil, arg.Unreadable
 		}
@@ -2057,7 +2066,7 @@ func minmaxBuiltin(name string, op token.Token, args []*Variable, nodeargs []ast
 		if args[i].Kind == reflect.String {
 			args[i].loadValue(loadFullValueLongerStrings)
 		} else {
-			args[i].loadValue(loadFullValue)
+			args[i].loadValue(LoadFullValue())
 		}
 
 		if args[i].Unreadable != nil {
@@ -2112,16 +2121,7 @@ func (scope *EvalScope) evalStructSelector(op *evalop.Select, stack *evalStack) 
 		return
 	}
 
-	rv, err := xv.findMethod(op.Name)
-	if err != nil {
-		stack.err = err
-		return
-	}
-	if rv != nil {
-		stack.push(rv)
-		return
-	}
-	stack.pushErr(xv.structMember(op.Name))
+	stack.pushErr(xv.findStructMemberOrMethod(op.Name, true))
 }
 
 // Evaluates expressions <subexpr>.(<type>)
@@ -2131,7 +2131,7 @@ func (scope *EvalScope) evalTypeAssert(op *evalop.TypeAssert, stack *evalStack) 
 		stack.err = fmt.Errorf("expression %q not an interface", astutil.ExprToString(op.Node.X))
 		return
 	}
-	xv.loadInterface(0, false, loadFullValue)
+	xv.loadInterface(0, false, LoadFullValue())
 	if xv.Unreadable != nil {
 		stack.err = xv.Unreadable
 		return
@@ -2229,7 +2229,7 @@ func (scope *EvalScope) evalIndex(op *evalop.Index, stack *evalStack) {
 		return
 
 	case reflect.Map:
-		idxev.loadValue(loadFullValue)
+		idxev.loadValue(LoadFullValue())
 		if idxev.Unreadable != nil {
 			stack.err = idxev.Unreadable
 			return
@@ -2495,14 +2495,14 @@ func (scope *EvalScope) evalBinary(binop *evalop.Binary, stack *evalStack) {
 	xv := stack.pop()
 
 	if xv.Kind != reflect.String { // delay loading strings until we use them
-		xv.loadValue(loadFullValue)
+		xv.loadValue(LoadFullValue())
 	}
 	if xv.Unreadable != nil {
 		stack.err = xv.Unreadable
 		return
 	}
 	if yv.Kind != reflect.String { // delay loading strings until we use them
-		yv.loadValue(loadFullValue)
+		yv.loadValue(LoadFullValue())
 	}
 	if yv.Unreadable != nil {
 		stack.err = yv.Unreadable
@@ -2883,12 +2883,16 @@ func (v *Variable) sliceAccess(idx int) (*Variable, error) {
 }
 
 func (v *Variable) mapAccess(idx *Variable) (*Variable, error) {
+	// TODO(aarzilli): here if the memory is corrupt we could end up looking at
+	// a lot of memory, and taking a long time. However there is also no
+	// obvious limit that we can impose.
+	// Maybe this isn't necessary, segfaults may stop us quickly enough.
 	it := v.mapIterator(0)
 	if it == nil {
 		return nil, fmt.Errorf("can not access unreadable map: %v", v.Unreadable)
 	}
 
-	lcfg := loadFullValue
+	lcfg := LoadFullValue()
 	if idx.Kind == reflect.String && int64(len(constant.StringVal(idx.Value))) == idx.Len && idx.Len > int64(lcfg.MaxStringLen) {
 		// If the index is a string load as much of the keys to at least match the length of the index.
 		//TODO(aarzilli): when struct literals are implemented this needs to be
@@ -3005,18 +3009,60 @@ func (v *Variable) reslice(low int64, high int64, trustLen bool) (*Variable, err
 	return r, nil
 }
 
-// findMethod finds method mname in the type of variable v
-func (v *Variable) findMethod(mname string) (*Variable, error) {
-	if _, isiface := v.RealType.(*godwarf.InterfaceType); isiface {
-		v.loadInterface(0, false, loadFullValue)
+// findStructMemberOrMethod finds struct member or method name in the type of variable v
+func (v *Variable) findStructMemberOrMethod(name string, includeStructMember bool) (*Variable, error) {
+	if v.Unreadable != nil {
+		return v.clone(), nil
+	}
+	vname := v.Name
+	if v.Name == "" {
+		vname = v.DwarfType.String()
+	}
+	if v.loaded && (v.Flags&VariableFakeAddress) != 0 {
+		for i := range v.Children {
+			if v.Children[i].Name == name {
+				return &v.Children[i], nil
+			}
+		}
+		return nil, fmt.Errorf("%s has no member %s", vname, name)
+	}
+	closure := false
+	switch v.Kind {
+	case reflect.Chan:
+		v = v.clone()
+		v.RealType = godwarf.ResolveTypedef(&(v.RealType.(*godwarf.ChanType).TypedefType))
+	case reflect.Interface:
+		v.loadInterface(0, false, LoadConfig{})
+		if len(v.Children) > 0 {
+			v = &v.Children[0]
+		}
+	case reflect.Func:
+		fn := v.bi.PCToFunc(v.Base)
+		v.loadFunctionPtr(0, LoadConfig{MaxVariableRecurse: -1})
 		if v.Unreadable != nil {
+			cst := fn.extra(v.bi).closureStructType
+			if cst == nil || cst.ByteSize == 0 {
+				// Not a closure, normal function
+				if _, ok := v.bi.PackageMap[vname]; ok {
+					return nil, fmt.Errorf("package %s has no function %s", vname, name)
+				}
+				return nil, fmt.Errorf("%s has no member %s", vname, name)
+			}
 			return nil, v.Unreadable
 		}
-		return v.Children[0].findMethod(mname)
+		if v.closureAddr != 0 {
+			fn = v.bi.PCToFunc(v.Base)
+			if fn != nil {
+				cst := fn.extra(v.bi).closureStructType
+				v = v.newVariable(v.Name, v.closureAddr, cst, v.mem)
+				closure = true
+			}
+		}
 	}
 
 	queue := []*Variable{v}
 	seen := map[string]struct{}{}
+	first := true
 
 	for len(queue) > 0 {
 		v := queue[0]
@@ -3032,42 +3078,20 @@ func (v *Variable) findMethod(mname string) (*Variable, error) {
 			typ = ptyp.Type
 		}
 
+		var pkg, receiver string
 		typePath := typ.Common().Name
 		dot := strings.LastIndex(typePath, ".")
-		if dot < 0 {
-			// probably just a C type
-			continue
+		if dot >= 0 {
+			pkg, receiver = typePath[:dot], typePath[dot+1:]
 		}
 
-		pkg := typePath[:dot]
-		receiver := typePath[dot+1:]
-
-		//TODO(aarzilli): support generic functions?
-
-		if fns := v.bi.LookupFunc()[fmt.Sprintf("%s.%s.%s", pkg, receiver, mname)]; len(fns) == 1 {
-			r, err := functionToVariable(fns[0], v.bi, v.mem)
+		if len(pkg) > 0 && len(receiver) > 0 {
+			rv, err := lookupMethod(v, isptr, pkg, receiver, name)
 			if err != nil {
 				return nil, err
+			} else if rv != nil {
+				return rv, nil
 			}
-			if isptr {
-				r.Children = append(r.Children, *(v.maybeDereference()))
-			} else {
-				r.Children = append(r.Children, *v)
-			}
-			return r, nil
-		}
-
-		if fns := v.bi.LookupFunc()[fmt.Sprintf("%s.(*%s).%s", pkg, receiver, mname)]; len(fns) == 1 {
-			r, err := functionToVariable(fns[0], v.bi, v.mem)
-			if err != nil {
-				return nil, err
-			}
-			if isptr {
-				r.Children = append(r.Children, *v)
-			} else {
-				r.Children = append(r.Children, *(v.pointerToVariable()))
-			}
-			return r, nil
 		}
 
 		// queue embedded fields for search
@@ -3079,14 +3103,88 @@ func (v *Variable) findMethod(mname string) (*Variable, error) {
 		switch t := structVar.RealType.(type) {
 		case *godwarf.StructType:
 			for _, field := range t.Field {
-				if field.Embedded {
+				if !includeStructMember {
+					if !field.Embedded {
+						continue
+					}
 					embeddedVar, err := structVar.toField(field)
 					if err != nil {
 						return nil, err
 					}
 					queue = append(queue, embeddedVar)
+					continue
+				}
+
+				if field.Name == name {
+					return structVar.toField(field)
+				}
+				if len(queue) == 0 && field.Name == "&"+name && closure {
+					f, err := structVar.toField(field)
+					if err != nil {
+						return nil, err
+					}
+					return f.maybeDereference(), nil
+				}
+				if !field.Embedded {
+					continue
+				}
+				embeddedVar, err := structVar.toField(field)
+				if err != nil {
+					return nil, err
+				}
+				// Check for embedded field referenced by type name
+				parts := strings.Split(field.Name, ".")
+				if includeStructMember && len(parts) > 1 && parts[1] == name {
+					return embeddedVar, nil
+				}
+				embeddedVar.Name = structVar.Name
+				queue = append(queue, embeddedVar)
+			}
+		case *godwarf.InterfaceType:
+			v.loadInterface(0, false, LoadConfig{})
+			if len(v.Children) > 0 {
+				if rv, _ := v.Children[0].findStructMemberOrMethod(name, false); rv != nil {
+					return rv, nil
 				}
 			}
+		default:
+			if first {
+				return nil, fmt.Errorf("%s (type %s) has no member %s", vname, structVar.TypeString(), name)
+			}
+		}
+		first = false
+	}
+
+	return nil, fmt.Errorf("%s has no member %s", vname, name)
+}
+
+func lookupMethod(v *Variable, isptr bool, pkg, receiver, name string) (*Variable, error) {
+	checks := []struct {
+		fmt     string
+		ptrRecv bool
+	}{
+		{"%s.(*%s).%s", true},
+		{"%s.%s.%s", false},
+	}
+	if !isptr {
+		checks[0], checks[1] = checks[1], checks[0]
+	}
+
+	for _, check := range checks {
+		if fns := v.bi.LookupFunc()[fmt.Sprintf(check.fmt, pkg, receiver, name)]; len(fns) == 1 {
+			r, err := functionToVariable(fns[0], v.bi, v.mem)
+			if err != nil {
+				return nil, err
+			}
+			switch {
+			case isptr == check.ptrRecv:
+				r.Children = append(r.Children, *v)
+			case isptr && !check.ptrRecv:
+				r.Children = append(r.Children, *(v.maybeDereference()))
+			case !isptr && check.ptrRecv:
+				r.Children = append(r.Children, *(v.pointerToVariable()))
+			}
+			return r, nil
 		}
 	}
 

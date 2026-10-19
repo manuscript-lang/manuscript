@@ -4,10 +4,16 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"go/constant"
+	"reflect"
+	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/go-delve/delve/pkg/config"
+	"github.com/go-delve/delve/service/api"
+	"github.com/go-delve/delve/service/rpc2"
 	"github.com/google/go-dap"
 )
 
@@ -19,10 +25,8 @@ func (s *Session) delveCmd(goid, frame int, cmdstr string) (string, error) {
 		args = strings.TrimSpace(vals[1])
 	}
 	for _, cmd := range debugCommands(s) {
-		for _, alias := range cmd.aliases {
-			if alias == cmdname {
-				return cmd.cmdFn(goid, frame, args)
-			}
+		if slices.Contains(cmd.aliases, cmdname) {
+			return cmd.cmdFn(goid, frame, args)
 		}
 	}
 	return "", errNoCmd
@@ -75,6 +79,45 @@ Type "help" followed by the name of a command for more information about it.`
 	dlv sources [<regex>]
 
 If regex is specified only the source files matching it will be returned.`
+
+	msgTypes = `Print list of types.
+
+	dlv types [<regex>]
+
+If regex is specified only the types matching it will be returned.`
+
+	msgTarget = `Manages child process debugging.
+
+        target follow-exec [-on [regex]] [-off]
+
+Enables or disables follow exec mode. When follow exec mode Delve will automatically attach to new child processes executed by the target process. An optional regular expression can be passed to 'target follow-exec', only child processes with a command line matching the regular expression will be followed.
+
+        target list
+
+List currently attached processes.
+
+        target switch [pid]
+
+Switches to the specified process.`
+
+	msgExamineMemory = `Examine raw memory at the given address.
+
+Examine memory:
+
+	examinemem [-fmt <format>] [-count|-len <count>] [-size <size>] <address>
+	examinemem [-fmt <format>] [-count|-len <count>] [-size <size>] -x <expression>
+
+Format represents the data format and the value is one of this list (default hex): bin(binary), oct(octal), dec(decimal), hex(hexadecimal) and raw.
+Length is the number of bytes (default 1) and must be less than or equal to 1000.
+Address is the memory location of the target to examine. Please note '-len' is deprecated by '-count and -size'.
+Expression can be an integer expression or pointer value of the memory location to examine.
+
+For example:
+
+    x -fmt hex -count 20 -size 1 0xc00008af38
+    x -fmt hex -count 20 -size 1 -x 0xc00008af38 + 8
+    x -fmt hex -count 20 -size 1 -x &myVar
+    x -fmt hex -count 20 -size 1 -x myPtrVar`
 )
 
 // debugCommands returns a list of commands with default commands defined.
@@ -83,6 +126,9 @@ func debugCommands(s *Session) []command {
 		{aliases: []string{"help", "h"}, cmdFn: s.helpMessage, helpMsg: msgHelp},
 		{aliases: []string{"config"}, cmdFn: s.evaluateConfig, helpMsg: msgConfig},
 		{aliases: []string{"sources", "s"}, cmdFn: s.sources, helpMsg: msgSources},
+		{aliases: []string{"types"}, cmdFn: s.types, helpMsg: msgTypes},
+		{aliases: []string{"target"}, cmdFn: s.targetCmd, helpMsg: msgTarget},
+		{aliases: []string{"examinemem", "x"}, cmdFn: s.examineMemory, helpMsg: msgExamineMemory},
 	}
 }
 
@@ -92,10 +138,8 @@ func (s *Session) helpMessage(_, _ int, args string) (string, error) {
 	var buf bytes.Buffer
 	if args != "" {
 		for _, cmd := range debugCommands(s) {
-			for _, alias := range cmd.aliases {
-				if alias == args {
-					return cmd.helpMsg, nil
-				}
+			if slices.Contains(cmd.aliases, args) {
+				return cmd.helpMsg, nil
 			}
 		}
 		return "", errNoCmd
@@ -120,6 +164,53 @@ func (s *Session) helpMessage(_, _ int, args string) (string, error) {
 	return buf.String(), nil
 }
 
+func (s *Session) examineMemory(goid, frame int, argstr string) (string, error) {
+	args, err := api.ParseExamineMemoryArg(argstr)
+	if err != nil {
+		return fmt.Errorf("bad arguments: %w", err).Error(), nil
+	}
+
+	var address uint64
+
+	if args.IsExpr {
+		val, err := s.debugger.EvalVariableInScope(int64(goid), frame, 0, args.Operand, s.loadConfig())
+		if err != nil {
+			return "", err
+		}
+
+		switch val.Kind {
+		case reflect.Pointer: // "-x &myVar" or "-x myPtrVar"
+			if len(val.Children) < 1 {
+				return fmt.Errorf("bug? invalid pointer: %#v", val).Error(), nil
+			}
+			address = val.Children[0].Addr
+
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64: // "-x 0xc000079f20 + 8" or -x 824634220320 + 8
+			n, _ := constant.Int64Val(val.Value)
+			address = uint64(n)
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr: // "-x 0xc000079f20 + 8" or -x 824634220320 + 8
+			address, _ = constant.Uint64Val(val.Value)
+		default:
+			return fmt.Errorf("unsupported expression type: %s", val.Kind).Error(), nil
+		}
+	} else {
+		address, err = strconv.ParseUint(args.Operand, 0, 64)
+		if err != nil {
+			return fmt.Errorf("convert address into uintptr type failed, %s", err).Error(), nil
+		}
+	}
+
+	memory, err := s.debugger.ExamineMemory(
+		address,
+		min(int(args.Count*args.Size), rpc2.ExamineMemoryLengthLimit),
+	)
+	if err != nil {
+		return fmt.Errorf("examine memory error: %w", err).Error(), nil
+	}
+
+	return api.PrettyExamineMemory(uintptr(address), memory, true, args.Format, int(args.Size)), nil
+}
+
 func (s *Session) evaluateConfig(_, _ int, expr string) (string, error) {
 	argv := config.Split2PartsBySpace(expr)
 	name := argv[0]
@@ -140,7 +231,7 @@ func (s *Session) evaluateConfig(_, _ int, expr string) (string, error) {
 		case "showGlobalVariables", "showRegisters":
 			// Variable data has become invalidated.
 			s.send(&dap.InvalidatedEvent{
-				Event: *newEvent("invalidated"),
+				Event: *s.newEvent("invalidated"),
 				Body: dap.InvalidatedEventBody{
 					Areas: []dap.InvalidatedAreas{"variables"},
 				},
@@ -148,7 +239,7 @@ func (s *Session) evaluateConfig(_, _ int, expr string) (string, error) {
 		case "goroutineFilters", "hideSystemGoroutines", "showPprofLabels":
 			// Thread related data has become invalidated.
 			s.send(&dap.InvalidatedEvent{
-				Event: *newEvent("invalidated"),
+				Event: *s.newEvent("invalidated"),
 				Body: dap.InvalidatedEventBody{
 					Areas: []dap.InvalidatedAreas{"threads"},
 				},
@@ -166,4 +257,88 @@ func (s *Session) sources(_, _ int, filter string) (string, error) {
 	}
 	sort.Strings(sources)
 	return strings.Join(sources, "\n"), nil
+}
+
+func (s *Session) types(_, _ int, filter string) (string, error) {
+	types, err := s.debugger.Types(filter)
+	if err != nil {
+		return "", err
+	}
+	// Debugger.Types already sorts and deduplicates its result.
+	return strings.Join(types, "\n"), nil
+}
+
+func (s *Session) targetCmd(_, _ int, argstr string) (string, error) {
+	argv := config.Split2PartsBySpace(argstr)
+	switch argv[0] {
+	case "list":
+		tgrp, unlock := s.debugger.LockTargetGroup()
+		defer unlock()
+		curpid := tgrp.Selected.Pid()
+		var tgtListStr strings.Builder
+		for _, tgt := range tgrp.Targets() {
+			if _, err := tgt.Valid(); err == nil {
+				selected := ""
+				if tgt.Pid() == curpid {
+					selected = "*"
+				}
+				tgtListStr.WriteString(fmt.Sprintf("%s\t%d\t%s\n", selected, tgt.Pid(), tgt.CmdLine))
+			}
+		}
+		return tgtListStr.String(), nil
+	case "follow-exec":
+		if len(argv) == 1 {
+			if s.debugger.FollowExecEnabled() {
+				return "Follow exec mode is enabled", nil
+			} else {
+				return "Follow exec mode is disabled", nil
+			}
+		}
+		argv = config.Split2PartsBySpace(argv[1])
+		switch argv[0] {
+		case "-on":
+			var regex string
+			if len(argv) == 2 {
+				regex = argv[1]
+			}
+			if err := s.debugger.FollowExec(true, regex); err != nil {
+				return "", err
+			}
+			if regex != "" {
+				return fmt.Sprintf("Follow exec mode enabled with regex %q", regex), nil
+			}
+			return "Follow exec mode enabled", nil
+		case "-off":
+			if len(argv) > 1 {
+				return "", errors.New("too many arguments")
+			}
+			if err := s.debugger.FollowExec(false, ""); err != nil {
+				return "", err
+			}
+			return "Follow exec mode disabled", nil
+		default:
+			return "", fmt.Errorf("unknown argument %q to 'target follow-exec'", argv[0])
+		}
+	case "switch": // TODO: This may cause inconsistency between debugger and frontend.
+		tgrp, unlock := s.debugger.LockTargetGroup()
+		defer unlock()
+		pid, err := strconv.Atoi(argv[1])
+		if err != nil {
+			return "", err
+		}
+		found := false
+		for _, tgt := range tgrp.Targets() {
+			if _, err = tgt.Valid(); err == nil && tgt.Pid() == pid {
+				found = true
+				tgrp.Selected = tgt
+				tgt.SwitchThread(pid)
+			}
+		}
+		if !found {
+			return "", fmt.Errorf("could not find target %d", pid)
+		}
+		return fmt.Sprintf("Switched to process %d", pid), err
+	default:
+		return "", fmt.Errorf("unknown target command")
+	}
 }

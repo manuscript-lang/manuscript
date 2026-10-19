@@ -155,9 +155,9 @@ func readLinuxOrPlatformIndependentCore(corePath, exePath string) (*process, pro
 		if err != nil {
 			return nil, nil, err
 		}
-		bi = proc.NewBinaryInfo(goos, goarch)
+		bi = proc.NewBinaryInfo(goos, goarch, false)
 	} else if goarch, ok := supportedLinuxMachines[machineType]; ok {
-		bi = proc.NewBinaryInfo("linux", goarch)
+		bi = proc.NewBinaryInfo("linux", goarch, false)
 	} else {
 		return nil, nil, errors.New("unsupported machine type")
 	}
@@ -255,7 +255,7 @@ func (t *linuxLOONG64Thread) ThreadID() int {
 type note struct {
 	Type elf.NType
 	Name string
-	Desc interface{} // Decoded Desc from the
+	Desc any // Decoded Desc from the
 }
 
 // readNotes reads all the notes from the notes prog in core.

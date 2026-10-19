@@ -94,6 +94,7 @@ func cacheMemory(mem MemoryReadWriter, addr uint64, size int) MemoryReadWriter {
 		if cacheMem.contains(addr, size) {
 			return mem
 		}
+		return &memCache{false, addr, make([]byte, size), cacheMem.mem}
 	case *compositeMemory:
 		return mem
 	}
@@ -147,15 +148,14 @@ func newCompositeMemory(mem MemoryReadWriter, arch *Arch, regs op.DwarfRegisters
 			cmem.data = append(cmem.data, reg[:piece.Size]...)
 		case op.AddrPiece:
 			buf := make([]byte, piece.Size)
-			mem.ReadMemory(buf, piece.Val)
+			if _, err := mem.ReadMemory(buf, piece.Val); err != nil {
+				return nil, fmt.Errorf("could not read %d bytes from address %#x: %v", piece.Size, piece.Val, err)
+			}
 			cmem.data = append(cmem.data, buf...)
 		case op.ImmPiece:
 			buf := piece.Bytes
 			if buf == nil {
-				sz := 8
-				if piece.Size > sz {
-					sz = piece.Size
-				}
+				sz := max(piece.Size, 8)
 				if piece.Size == 0 && i == len(pieces)-1 {
 					piece.Size = arch.PtrSize() // DWARF doesn't say what this should be
 				}

@@ -10,7 +10,6 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 )
@@ -29,15 +28,12 @@ type State struct {
 	winch       chan os.Signal
 	pending     []rune
 	useCHA      bool
-	inputDone   chan struct{}
-	inputClose  sync.Once
 }
 
 // NewLiner initializes a new *State, and sets the terminal into raw mode. To
 // restore the terminal to its previous state, call State.Close().
 func NewLiner() *State {
 	var s State
-	s.inputDone = make(chan struct{})
 	s.r = bufio.NewReader(os.Stdin)
 
 	s.terminalSupported = TerminalSupported()
@@ -95,20 +91,14 @@ func (s *State) inputWaiting() bool {
 
 func (s *State) restartPrompt() {
 	next := make(chan nexter, 200)
-	s.inputReaders.Add(1)
 	go func() {
-		defer s.inputReaders.Done()
-		defer close(next)
 		for {
 			var n nexter
 			n.r, _, n.err = s.r.ReadRune()
-			select {
-			case next <- n:
-			case <-s.inputDone:
-				return
-			}
+			next <- n
 			// Shut down nexter loop when an end condition has been reached
 			if n.err != nil || n.r == '\n' || n.r == '\r' || n.r == ctrlC || n.r == ctrlD {
+				close(next)
 				return
 			}
 		}
@@ -365,7 +355,6 @@ func (s *State) readNext() (interface{}, error) {
 
 // Close returns the terminal to its previous mode
 func (s *State) Close() error {
-	s.inputClose.Do(func() { close(s.inputDone) })
 	signal.Stop(s.winch)
 	if !s.inputRedirected {
 		s.origMode.ApplyMode()
