@@ -101,7 +101,7 @@ pub fn quote(s: &str) -> String {
 }
 
 fn mode_prefix(m: &Module, ty: Ty, mode: Mode) -> &'static str {
-    if mode == Mode::Own && m.types.is_rc(ty) { "own " } else { "" }
+    if mode == Mode::Own && m.needs_drop(ty) { "own " } else { "" }
 }
 
 /// Renders a module as canonical text.

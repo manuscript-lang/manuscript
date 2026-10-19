@@ -68,13 +68,6 @@ pub fn verify_module_with(m: &Module, opts: VerifyOptions) -> Result<(), Vec<Ver
 
 fn verify_decls(m: &Module, errs: &mut Vec<VerifyError>) {
     let mut bad = |msg: String| errs.push(VerifyError { func: "<module>".into(), block: None, message: msg });
-    for t in 0..m.types.len() {
-        if let TyKind::Opt(inner) = m.types.kind(Ty(t as u32)) {
-            if !(m.types.is_scalar(*inner) || m.types.is_ref(*inner) || *inner == Ty::PTR) {
-                bad(format!("optional payload must be a scalar or a single-word reference, found {}", crate::print::ty_str(m, *inner)));
-            }
-        }
-    }
     for (i, vt) in m.vtables.iter().enumerate() {
         let iface = &m.ifaces[vt.iface.index()];
         if vt.methods.len() != iface.methods.len() {
@@ -169,7 +162,7 @@ impl Verifier<'_> {
             return;
         }
         for (bp, p) in entry.params.iter().zip(&f.params) {
-            if bp.value.index() >= f.values.len() || f.ty(bp.value) != p.ty || (self.m.types.is_rc(p.ty) && bp.mode != p.mode) {
+            if bp.value.index() >= f.values.len() || f.ty(bp.value) != p.ty || (self.m.needs_drop(p.ty) && bp.mode != p.mode) {
                 self.err(Some(0), "entry block parameter differs from the signature");
                 return;
             }
@@ -180,7 +173,7 @@ impl Verifier<'_> {
                 if f.params.first().map(|p| p.ty) != Some(Ty::PTR) {
                     self.err(None, "closure and method functions take the erased environment/receiver as parameter 0 (ptr)");
                 }
-                if f.params.iter().any(|p| p.mode == Mode::Own && self.m.types.is_rc(p.ty)) {
+                if f.params.iter().any(|p| p.mode == Mode::Own && self.m.needs_drop(p.ty)) {
                     self.err(None, "closure and method functions take all parameters borrowed");
                 }
             }
@@ -401,7 +394,7 @@ impl Verifier<'_> {
             }
             Op::Select => {
                 arity(3)?;
-                want(t(0) == Ty::BOOL && t(1) == t(2) && res == Some(t(1)) && !m.types.is_rc(t(1)), "select takes bool, two equal non-reference values")
+                want(t(0) == Ty::BOOL && t(1) == t(2) && res == Some(t(1)) && !m.needs_drop(t(1)), "select takes bool, two equal non-reference values")
             }
             Op::RecNew => {
                 let Imm::Rec(r) = inst.imm else { return Err("missing record".into()) };
@@ -611,15 +604,15 @@ impl Verifier<'_> {
             }
             Op::Copy => {
                 arity(1)?;
-                want(res == Some(t(0)) && m.types.is_rc(t(0)), "copy duplicates a droppable value")
+                want(res == Some(t(0)) && m.needs_drop(t(0)), "copy duplicates a droppable value")
             }
             Op::Drop => {
                 arity(1)?;
-                want(m.types.is_rc(t(0)), "drop takes a droppable value")
+                want(m.needs_drop(t(0)), "drop takes a droppable value")
             }
             Op::DropIf => {
                 arity(2)?;
-                want(t(0) == Ty::BOOL && m.types.is_rc(t(1)), "drop.if takes a flag and a droppable value")
+                want(t(0) == Ty::BOOL && m.needs_drop(t(1)), "drop.if takes a flag and a droppable value")
             }
             Op::Slot => {
                 arity(0)?;
@@ -628,11 +621,11 @@ impl Verifier<'_> {
             Op::Load => {
                 arity(1)?;
                 let Imm::Ty(ty) = inst.imm else { return Err("missing type".into()) };
-                want(t(0) == Ty::PTR && res == Some(ty) && !m.types.is_rc(ty), "load reads a non-droppable value through a ptr")
+                want(t(0) == Ty::PTR && res == Some(ty) && !m.needs_drop(ty), "load reads a non-droppable value through a ptr")
             }
             Op::Store => {
                 arity(2)?;
-                want(t(0) == Ty::PTR && !m.types.is_rc(t(1)), "store writes a non-droppable value through a ptr")
+                want(t(0) == Ty::PTR && !m.needs_drop(t(1)), "store writes a non-droppable value through a ptr")
             }
             Op::TypeDesc => {
                 arity(0)?;
@@ -661,7 +654,7 @@ impl Verifier<'_> {
 
     fn check_ownership(&mut self, rpo: &[Block]) {
         let (m, f) = (self.m, self.f);
-        let rc = |v: Value| m.types.is_rc(f.ty(v));
+        let rc = |v: Value| m.needs_drop(f.ty(v));
         // Ownership mode of every value from its definition.
         let mut owned_def = vec![false; f.values.len()];
         for b in &f.blocks {

@@ -1057,10 +1057,43 @@ impl Module {
         }
     }
 
+    /// Whether values of `ty` own resources that must be dropped (strings, lists,
+    /// maps, closures, interfaces, boxed or recursive alternatives, and records,
+    /// alternatives and optionals containing them). Plain data is copied freely.
+    pub fn needs_drop(&self, ty: Ty) -> bool {
+        self.needs_drop_in(ty, &mut Vec::new())
+    }
+
+    fn needs_drop_in(&self, ty: Ty, seen: &mut Vec<Ty>) -> bool {
+        match self.types.kind(ty) {
+            TyKind::Unit | TyKind::Bool | TyKind::Int | TyKind::Float | TyKind::Ptr => false,
+            TyKind::Opt(inner) => self.needs_drop_in(*inner, seen),
+            TyKind::Rec(r) => {
+                if seen.contains(&ty) {
+                    return true;
+                }
+                seen.push(ty);
+                let out = self.records[r.index()].fields.iter().any(|f| self.needs_drop_in(f.1, seen));
+                seen.pop();
+                out
+            }
+            TyKind::Alt(a) => {
+                if seen.contains(&ty) {
+                    return true;
+                }
+                seen.push(ty);
+                let out = self.alts[a.index()].cases.iter().any(|c| c.fields.iter().any(|f| self.needs_drop_in(f.1, seen)));
+                seen.pop();
+                out
+            }
+            _ => true,
+        }
+    }
+
     /// The ownership mode of the result of `inst` in `f`, if it is reference counted.
     pub fn result_mode(&self, f: &Func, inst: &Inst) -> Option<Mode> {
         let res = inst.res?;
-        if !self.types.is_rc(f.ty(res)) {
+        if !self.needs_drop(f.ty(res)) {
             return None;
         }
         Some(match inst.op {
