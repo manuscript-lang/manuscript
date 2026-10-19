@@ -235,7 +235,7 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
         g.vtables.push(id);
         let drop = g.glue(Glue::BlockDrop, vt.data_ty);
         let mut d = DataDescription::new();
-        d.define_zeroinit(8 * (1 + vt.methods.len()));
+        d.define(vec![0u8; 8 * (1 + vt.methods.len())].into_boxed_slice());
         d.set_align(8);
         let r = g.module.declare_func_in_data(drop, &mut d);
         d.write_function_addr(0, r);

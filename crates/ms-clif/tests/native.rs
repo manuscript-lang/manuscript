@@ -43,7 +43,8 @@ pub fn run_interp(src: &str) -> Outcome {
     let mut it = Interp::new(&m);
     let r = it.run_entry();
     let code = match r {
-        Ok(v) => v as i32,
+        Ok(v) if (0..=125).contains(&v) => v as i32,
+        Ok(_) => 70,
         Err(_) => 70,
     };
     Outcome { stdout: it.stdout().to_string(), code }
@@ -57,7 +58,7 @@ pub fn run_native_with(src: &str, opts: &Options, tag: &str) -> Outcome {
     std::fs::write(&objp, obj).unwrap();
     let exe = d.join(tag);
     link(&objp, runtime(), &exe).unwrap_or_else(|e| panic!("{e}"));
-    let out = Command::new(&exe).output().expect("run");
+    let out = Command::new(&exe).env("MSRT_LEAKCHECK", "1").output().expect("run");
     Outcome { stdout: String::from_utf8_lossy(&out.stdout).into_owned(), code: out.status.code().unwrap_or(-1) }
 }
 
@@ -103,4 +104,22 @@ b0:
 "#;
     let o = same(src, "sum_loop");
     assert_eq!(o.code, 4950 % 7);
+}
+
+/// Every fixture shared with the interpreter tests must agree natively.
+#[test]
+fn shared_fixtures() {
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../ms-mir/tests/fixtures");
+    let mut names: Vec<_> = std::fs::read_dir(&dir).unwrap().map(|e| e.unwrap().path()).filter(|p| p.extension().is_some_and(|e| e == "mir")).collect();
+    names.sort();
+    let mut failures = Vec::new();
+    for p in names {
+        let src = std::fs::read_to_string(&p).unwrap();
+        let tag = p.file_stem().unwrap().to_string_lossy().into_owned();
+        let r = std::panic::catch_unwind(|| same(&src, &tag));
+        if r.is_err() {
+            failures.push(tag);
+        }
+    }
+    assert!(failures.is_empty(), "fixtures failed: {failures:?}");
 }

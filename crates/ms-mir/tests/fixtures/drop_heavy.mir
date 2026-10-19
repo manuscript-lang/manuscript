@@ -1,0 +1,34 @@
+module "drops"
+entry @main
+fn @build(%n: int) -> list<list<int>> {
+b0:
+  %cap: int = iconst 0
+  %outer: list<list<int>> = list.new %cap
+  %z: int = iconst 0
+  br loop(%z, %outer)
+loop(%i: int, %acc: own list<list<int>>):
+  %c: bool = icmp.lt %i, %n
+  br_if %c, body(), done()
+body:
+  %inner0: list<int> = list.new %cap
+  %inner: list<int> = list.push %inner0, %i
+  %acc2: list<list<int>> = list.push %acc, %inner
+  %one: int = iconst 1
+  %j: int = iadd %i, %one
+  br loop(%j, %acc2)
+done:
+  ret %acc
+}
+fn @main() -> int {
+b0:
+  %n: int = iconst 1000
+  %l: list<list<int>> = call @build (%n)
+  %len: int = list.len %l
+  %k: int = iconst 999
+  %row: list<int> = list.get %l, %k
+  %v: int = iconst 0
+  %e: int = list.get %row, %v
+  drop %l
+  %r: int = iadd %len, %e
+  ret %r
+}

@@ -84,6 +84,10 @@ int msrt_start(int64_t (*main_fn)(void), const void *tables, int argc, char **ar
   (void)tables; (void)argc; (void)argv;
   int64_t r = main_fn();
   fflush(stdout);
+  if (getenv("MSRT_LEAKCHECK") && msrt_live_allocs != 0) {
+    fprintf(stderr, "leak: %lld live allocations\n", (long long)msrt_live_allocs);
+    return 99;
+  }
   if (r < 0 || r > 125) { fprintf(stderr, "exit code out of range\n"); return 70; }
   return (int)r;
 }
