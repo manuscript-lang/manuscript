@@ -367,6 +367,14 @@ name = "ms-rt-abi"
 version = "0.1.0"
 
 [[package]]
+name = "ms-std-core"
+version = "0.1.0"
+dependencies = [
+ "ms-rt",
+ "ms-rt-abi",
+]
+
+[[package]]
 name = "ms-syntax"
 version = "0.0.0"
 
