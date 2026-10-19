@@ -166,6 +166,9 @@ const METHODS: &[MethodRow] = &[
         "msstd_fs_temporary_open",
         &[],
     ),
+    ("fs", "FileSystem", "open", "msstd_fs_open", &[]),
+    ("fs", "FileHandle", "reader", "msstd_fs_file_reader", &[]),
+    ("fs", "FileHandle", "writer", "msstd_fs_file_writer", &[]),
     ("fs", "FileHandle", "close", "msstd_io_close", &[]),
     ("fs", "FileHandle", "read", "msstd_io_read", &[]),
     ("fs", "FileHandle", "write", "msstd_io_write", &[]),
@@ -230,6 +233,18 @@ const METHODS: &[MethodRow] = &[
     ),
     ("fs", "FileHandle", "chmod", "msstd_fs_file_chmod", &[]),
     ("fs", "FileHandle", "chown", "msstd_fs_file_chown", &[]),
+    ("fs", "FileSystem", "stat", "msstd_fs_stat", &[]),
+    ("fs", "FileHandle", "stat", "msstd_fs_file_stat", &[]),
+    (
+        "fs",
+        "FileSystem",
+        "glob_entries",
+        "msstd_fs_glob_entries",
+        &[],
+    ),
+    ("fs", "FileSystem", "copy", "msstd_fs_copy", &[]),
+    ("fs", "FileSystem", "list", "msstd_fs_list", &[]),
+    ("fs", "Directory", "read", "msstd_fs_directory_read", &[]),
     ("fs", "Directory", "path", "msstd_fs_directory_path", &[]),
     ("fs", "Directory", "close", "msstd_fs_directory_close", &[]),
     (
@@ -244,6 +259,20 @@ const METHODS: &[MethodRow] = &[
         "TemporaryDirectory",
         "close",
         "msstd_fs_temporary_close",
+        &[],
+    ),
+    (
+        "crypto",
+        "Hasher",
+        "update",
+        "msrt_crypto_hasher_update",
+        &[],
+    ),
+    (
+        "crypto",
+        "Hasher",
+        "finish",
+        "msrt_crypto_hasher_finish",
         &[],
     ),
     ("time", "Clock", "now", "msstd_time_clock_now", &[]),
@@ -343,6 +372,7 @@ impl Cx {
     ) -> Result<VtableId, Error> {
         let mut module = sym
             .strip_prefix("msstd_")
+            .or_else(|| sym.strip_prefix("msrt_"))
             .and_then(|r| r.split('_').next())
             .ok_or_else(|| Error::new(format!("{sym} returns an interface")))?;
         let ity = self
@@ -506,6 +536,11 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
             val: Val { v, own: false },
             wrapped: false,
         });
+    }
+    if matches!(sym.as_str(), "msstd_fs_glob_entries" | "msstd_fs_copy") {
+        let r = fl.fs_walk(sym, &decl, &nargs, job.ret)?;
+        fl.emit_return(Some(r));
+        return Ok(());
     }
     let r = match recv {
         Some(recv) => fl.rt_method(sym, recv, &decl, &nargs, job.ret)?,

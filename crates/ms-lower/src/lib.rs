@@ -8,16 +8,20 @@
 
 mod call;
 mod closure;
+mod codecstream;
 mod cx;
 mod eq;
 mod expr;
 mod fixture;
+mod fsinfo;
+mod fswalk;
 mod func;
 mod iface;
 mod iterate;
 mod json;
 mod mapset;
 mod matching;
+mod mathops;
 mod messages;
 mod mutation;
 mod natiface;

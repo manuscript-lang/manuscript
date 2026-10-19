@@ -33,6 +33,8 @@ pub enum JobKind {
     Json(Rc<crate::json::JsonJob>),
     /// A forwarder of an interface operation to a runtime handle function.
     HandleMethod(Rc<crate::natiface::MethodJob>),
+    /// An operation of a compression stream.
+    Codec(Rc<crate::codecstream::CodecJob>),
 }
 
 /// A bound native method waiting to be lowered; the closure holds the receiver.

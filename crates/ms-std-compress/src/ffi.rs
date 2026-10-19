@@ -1,7 +1,7 @@
 //! C ABI shims for `@std/compress.ms` (`msrt_compress_*`). The format is passed by name
 //! (`"gzip"`, `"zlib"`, `"deflate"`); `CompressionFormat` methods pass the matching constant.
 //! Statuses: `STATUS_INVALID_INPUT`, `STATUS_INVALID_DATA`, `STATUS_LIMIT_EXCEEDED` and
-//! `STATUS_UNSUPPORTED` (5); `Failed(message)` is never produced.
+//! `STATUS_UNSUPPORTED` (9); `Failed(message)` is never produced.
 #![allow(unsafe_code, clippy::missing_safety_doc)]
 
 use crate::Format;
