@@ -596,6 +596,9 @@ impl<'a> FnLower<'a> {
             || t.is_std("Bytes")
             || t.is_std("StringBuilder")
             || t.is_std("BytesBuilder")
+            || t.is_std("ListBuilder")
+            || t.is_std("MapBuilder")
+            || t.is_std("SetBuilder")
         {
             return self.construct_collection(view, mt);
         }

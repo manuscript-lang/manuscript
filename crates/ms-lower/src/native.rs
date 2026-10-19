@@ -15,6 +15,18 @@ use ms_syntax::ast::*;
 /// the runtime wants the case index (else the lowercase case name).
 const FORMAT_METHODS: &[(&str, &str, &str, bool)] = &[
     (
+        "crypto/hash_algorithm_digest",
+        "msrt_crypto_digest",
+        "alg",
+        true,
+    ),
+    (
+        "crypto/hash_algorithm_hmac",
+        "msrt_crypto_hmac",
+        "alg",
+        true,
+    ),
+    (
         "string/form_normalize",
         "msrt_string_normalize_kind",
         "kind",
@@ -88,7 +100,15 @@ fn opt_method(name: &str) -> bool {
 fn is_higher_order(name: &str) -> bool {
     matches!(
         name,
-        "map" | "filter" | "count" | "some" | "every" | "for_each" | "find" | "find_index"
+        "map"
+            | "filter"
+            | "count"
+            | "some"
+            | "every"
+            | "for_each"
+            | "find"
+            | "find_index"
+            | "find_last_index"
     )
 }
 
@@ -173,6 +193,69 @@ impl<'a> FnLower<'a> {
                 let want = self.emty(e)?;
                 self.fit_ty(r, &declared, want)
             }
+            // The SHA-2 shorthands are `HashAlgorithm.digest` with a fixed case index.
+            "crypto/sha256" | "crypto/sha384" | "crypto/sha512" => {
+                let mut args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let index = match native {
+                    "crypto/sha256" => 3,
+                    "crypto/sha384" => 4,
+                    _ => 5,
+                };
+                let alg = self.b.iconst(index);
+                let name = ct::Name::from("alg");
+                args.push(NArg {
+                    name,
+                    val: Val { v: alg, own: false },
+                    wrapped: false,
+                });
+                let mut decl = vec![ct::Param {
+                    name,
+                    ty: ct::primitive("Int"),
+                }];
+                decl.extend(params.iter().cloned());
+                let result = self.emty(e)?;
+                self.at(e.pos);
+                self.rt_function("msrt_crypto_digest", &decl, &args, result)
+            }
+            "collections/map_from_entries" => {
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let result = self.emty(e)?;
+                self.at(e.pos);
+                self.map_from_entries(args[0].val, result)
+            }
+            // `shift(values)` removes the first item of the caller's list.
+            "collections/shift" => {
+                let arg = view
+                    .arguments
+                    .first()
+                    .ok_or_else(|| Error::new("shift without a list"))?
+                    .expr;
+                let result = self.emty(e)?;
+                if !self.is_place(arg) {
+                    let x = self.expr(arg)?;
+                    if self.dead {
+                        return Ok(x);
+                    }
+                    let old = self.owned(x);
+                    let (new, r) = self.mutate_list("shift", old, &[])?;
+                    self.drop_value(new);
+                    return r.ok_or_else(|| Error::new("shift yields the first item"));
+                }
+                let mut shifted = None;
+                self.place_update(arg, &mut |s, old| {
+                    let (new, r) = s.mutate_list("shift", old, &[])?;
+                    shifted = r;
+                    Ok(new)
+                })?;
+                let _ = result;
+                shifted.ok_or_else(|| Error::new("shift yields the first item"))
+            }
             "io/stdout" => self.std_stream(e, false),
             "io/stderr" => self.std_stream(e, true),
             "time/clock" => self.time_clock(e, false),
@@ -193,6 +276,23 @@ impl<'a> FnLower<'a> {
             }
             other if other.starts_with("testing/") => {
                 self.testing_native(e, view, &other["testing/".len()..])
+            }
+            "math/min" | "math/max" | "math/min_of" | "math/max_of" => {
+                let mut args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let func = sym.decl.as_ref().and_then(|d| d.func());
+                self.fill_native_defaults(sym.module, func, params, &mut args)?;
+                self.at(e.pos);
+                let ty = self.ety(e);
+                if native.ends_with("_of") {
+                    let result = self.emty(e)?;
+                    let elem = ty.args.first().cloned().unwrap_or_else(|| ty.clone());
+                    self.extreme_of(native == "math/max_of", &args, result, Some((&elem, e)))
+                } else {
+                    self.min_max(native == "math/max", &args, Some((&ty, e)))
+                }
             }
             other => {
                 if !self.has_native_call(other) {
@@ -228,10 +328,10 @@ impl<'a> FnLower<'a> {
         result: MTy,
     ) -> Result<Val, Error> {
         if matches!(native, "math/min" | "math/max") {
-            return self.min_max(native == "math/max", args);
+            return self.min_max(native == "math/max", args, None);
         }
         if matches!(native, "math/max_of" | "math/min_of") {
-            return self.extreme_of(native == "math/max_of", args, result);
+            return self.extreme_of(native == "math/max_of", args, result, None);
         }
         if native == "time/duration" {
             return Ok(Val {
@@ -245,7 +345,12 @@ impl<'a> FnLower<'a> {
     }
 
     /// Whether `a` orders strictly above `b`; Float orders NaN above every other value.
-    fn strictly_above(&mut self, a: Value, b: Value) -> Result<Value, Error> {
+    fn strictly_above(
+        &mut self,
+        a: Value,
+        b: Value,
+        user: Option<(&ct::Ty, &Expr)>,
+    ) -> Result<Value, Error> {
         use ms_mir::ir::{Cc, Op};
         let t = self.ty_of(a);
         let above = if t == MTy::INT {
@@ -264,6 +369,10 @@ impl<'a> FnLower<'a> {
             let c = self.call_runtime(sym, &[a, b], MTy::INT)?;
             let zero = self.b.iconst(0);
             self.b.icmp(Cc::Gt, c, zero)
+        } else if let Some((concrete, e)) = user {
+            let c = self.user_compare(concrete, a, b, e)?;
+            let zero = self.b.iconst(0);
+            self.b.icmp(Cc::Gt, c, zero)
         } else {
             return Err(Error::new(format!(
                 "unsupported min/max on {}",
@@ -273,14 +382,69 @@ impl<'a> FnLower<'a> {
         Ok(above)
     }
 
+    /// The `Int` a user `Comparable` implementation of `concrete` answers for `a.compare(b)`.
+    fn user_compare(
+        &mut self,
+        concrete: &ct::Ty,
+        a: Value,
+        b: Value,
+        e: &Expr,
+    ) -> Result<Value, Error> {
+        let im = self
+            .cx
+            .methods
+            .iter()
+            .find(|m| {
+                m.name().is_some_and(|n| n.as_str() == "compare")
+                    && !m.id.as_str().is_empty()
+                    && m.contract.is_some()
+                    && ct::unify(
+                        &m.receiver,
+                        concrete,
+                        &ct::variable_set(&m.variables),
+                        &mut ct::Subst::new(),
+                    )
+            })
+            .cloned()
+            .ok_or_else(|| Error::new(format!("{concrete} has no Comparable implementation")))?;
+        let decl = im
+            .decl
+            .as_ref()
+            .ok_or_else(|| Error::new("compare without declaration"))?;
+        let c = self.callable_of_decl(im.module, Some(decl.id()))?;
+        let mut subst = ct::Subst::new();
+        ct::unify(
+            &im.receiver,
+            concrete,
+            &ct::variable_set(&im.variables),
+            &mut subst,
+        );
+        let iface = self.mty(&ct::sub(&im.ty.params[0].ty, &subst))?;
+        let mark = self.temps.len();
+        let other = self.fit_ty(Val { v: b, own: false }, concrete, iface)?;
+        let args = crate::call::Args {
+            slots: vec![Some(Val { v: a, own: false }), Some(other)],
+            places: vec![None, None],
+        };
+        let r = self.call_callable(&c, &subst, args, e)?;
+        let v = self.borrow(r);
+        self.flush_temps(mark);
+        Ok(v)
+    }
+
     /// `max(left, right)` / `min(left, right)`: `left` unless `right` is strictly greater
     /// (lesser). Floats order NaN above every other value.
-    fn min_max(&mut self, max: bool, args: &[NArg]) -> Result<Val, Error> {
+    fn min_max(
+        &mut self,
+        max: bool,
+        args: &[NArg],
+        user: Option<(&ct::Ty, &Expr)>,
+    ) -> Result<Val, Error> {
         let (left, right) = (self.borrow(args[0].val), self.borrow(args[1].val));
         let t = self.ty_of(left);
         // `a` ordered strictly above `b`.
         let (a, b) = if max { (right, left) } else { (left, right) };
-        let above = self.strictly_above(a, b)?;
+        let above = self.strictly_above(a, b, user)?;
         if !self.needs_drop(t) {
             let v = self.b.select(above, right, left);
             return Ok(Val { v, own: false });
@@ -304,7 +468,13 @@ impl<'a> FnLower<'a> {
     }
 
     /// `max_of(values)` / `min_of(values)`: the first greatest (least) element, or `none`.
-    fn extreme_of(&mut self, max: bool, args: &[NArg], result: MTy) -> Result<Val, Error> {
+    fn extreme_of(
+        &mut self,
+        max: bool,
+        args: &[NArg],
+        result: MTy,
+        user: Option<(&ct::Ty, &Expr)>,
+    ) -> Result<Val, Error> {
         use ms_mir::ir::{Cc, Op};
         // The list lives in a variable so the loop and the branches may read it.
         let list = self.borrow(args[0].val);
@@ -335,9 +505,9 @@ impl<'a> FnLower<'a> {
         let cur = self.b.list_get(l, iv);
         let held = self.b.list_get(l, bv);
         let above = if max {
-            self.strictly_above(cur, held)?
+            self.strictly_above(cur, held, user)?
         } else {
-            self.strictly_above(held, cur)?
+            self.strictly_above(held, cur, user)?
         };
         let pick = self.b.select(above, iv, bv);
         self.b.def_var(best, pick);
@@ -472,6 +642,62 @@ impl<'a> FnLower<'a> {
 
     /// A method of a format enum (`ArchiveFormat.pack`): the runtime takes the format as a
     /// parameter after the first declared one, spelled as the lowercase case name or as its index.
+    /// `map_from_entries(entries)`: later entries replace earlier values for a repeated key.
+    fn map_from_entries(&mut self, entries: Val, map: MTy) -> Result<Val, Error> {
+        let list = self.borrow(entries);
+        let lt = self.ty_of(list);
+        let TyKind::List(entry) = self.b.m.types.kind(lt).clone() else {
+            return Err(Error::new("map_from_entries takes a list"));
+        };
+        let TyKind::Rec(rid) = self.b.m.types.kind(entry).clone() else {
+            return Err(Error::new("map_from_entries takes entry records"));
+        };
+        let lvar = self.fresh_var(lt);
+        let held = self.owned(Val {
+            v: list,
+            own: false,
+        });
+        self.b.def_var(lvar, held);
+        let acc = self.fresh_var(map);
+        let fresh = self.map_new(map)?;
+        self.b.def_var(acc, fresh);
+        self.each_element(lvar, &mut |s, _, item| {
+            let (k, v) = (s.b.rec_get(rid, 0, item), s.b.rec_get(rid, 1, item));
+            let k = s.owned(Val { v: k, own: false });
+            let v = s.owned(Val { v, own: false });
+            let old = s.b.use_var(acc);
+            let new = s.map_insert(old, k, v)?;
+            s.b.def_var(acc, new);
+            Ok(None)
+        })?;
+        self.release_source(lvar, true);
+        let out = self.b.use_var(acc);
+        Ok(Val { v: out, own: true })
+    }
+
+    /// The lowercase name of the case `tag` selects, for cases `from..` of `names`.
+    fn case_text(&mut self, tag: Value, names: &[String], from: usize) -> Result<Val, Error> {
+        if from + 1 >= names.len() {
+            let name = names.last().map_or("", String::as_str);
+            return Ok(self.lit(name));
+        }
+        let idx = self.b.iconst(from as i64);
+        let hit = self.b.icmp(ms_mir::ir::Cc::Eq, tag, idx);
+        let out = self.two_ways(
+            hit,
+            MTy::STR,
+            &mut |s| {
+                let l = s.lit(&names[from]);
+                Ok(Some(s.owned(l)))
+            },
+            &mut |s| {
+                let v = s.case_text(tag, names, from + 1)?;
+                Ok(Some(s.owned(v)))
+            },
+        )?;
+        Ok(out)
+    }
+
     fn format_method(
         &mut self,
         result: MTy,
@@ -489,14 +715,8 @@ impl<'a> FnLower<'a> {
                 .iter()
                 .map(|c| c.name.as_str().to_lowercase())
                 .collect();
-            let mut out = self.lit(names.last().map_or("", String::as_str)).v;
-            for (k, name) in names.iter().enumerate().rev().skip(1) {
-                let idx = self.b.iconst(k as i64);
-                let hit = self.b.icmp(ms_mir::ir::Cc::Eq, tag, idx);
-                let text = self.lit(name).v;
-                out = self.b.select(hit, text, out);
-            }
-            out
+            let t = self.case_text(tag, &names, 0)?;
+            self.borrow(t)
         };
         let name = ct::Name::from(param);
         args.push(NArg {
@@ -509,8 +729,16 @@ impl<'a> FnLower<'a> {
                 .first()
                 .ok_or_else(|| Error::new("format method without arguments"))?
                 .clone();
-        let mut decl = vec![first.clone()];
-        decl.push(ct::Param { name, ty: first.ty });
+        let selector = ct::Param {
+            name,
+            ty: first.ty.clone(),
+        };
+        // The selector leads the runtime's parameters of the hash functions, follows the data elsewhere.
+        let mut decl = if param == "alg" {
+            vec![selector, first]
+        } else {
+            vec![first, selector]
+        };
         decl.extend(m.ty.params.iter().skip(1).cloned());
         self.rt_function(sym, &decl, &args, result)
     }
@@ -1626,7 +1854,7 @@ impl<'a> FnLower<'a> {
                 self.drop_value(old);
                 Ok((out, None))
             }
-            "pop" => {
+            "pop" | "shift" => {
                 let optty = self.b.m.types.opt(elem);
                 let n = self.b.list_len(old);
                 let zero = self.b.iconst(0);
@@ -1643,12 +1871,17 @@ impl<'a> FnLower<'a> {
                 let cur = self.b.use_var(acc);
                 let one = self.b.iconst(1);
                 let last = self.b.binop(Op::ISub, n, one);
-                let x = self.b.list_get(cur, last);
+                let at = if name == "pop" { last } else { zero };
+                let x = self.b.list_get(cur, at);
                 let xo = self.owned(Val { v: x, own: false });
                 let some = self.b.opt_some(xo);
                 self.b.def_var(res, some);
                 let d2 = self.type_desc(elem);
-                let rest = self.call_runtime("msrt_list_take", &[cur, d2, last], lt)?;
+                let rest = if name == "pop" {
+                    self.call_runtime("msrt_list_take", &[cur, d2, last], lt)?
+                } else {
+                    self.call_runtime("msrt_list_drop_n", &[cur, d2, one], lt)?
+                };
                 self.drop_value(cur);
                 self.b.def_var(acc, rest);
                 self.b.br(join, &[]);
@@ -1833,8 +2066,10 @@ impl<'a> FnLower<'a> {
                 let u = self.b.unit();
                 Ok(Val { v: u, own: false })
             }
-            "find" | "find_index" => {
-                let by_index = name == "find_index";
+            "find" | "find_index" | "find_last_index" => {
+                let by_index = name != "find";
+                // The last match wins: keep scanning past hits.
+                let last = name == "find_last_index";
                 let acc = self.fresh_var(out);
                 let none = self.none_owned(out);
                 self.b.def_var(acc, none);
@@ -1857,7 +2092,7 @@ impl<'a> FnLower<'a> {
                     s.b.def_var(acc, some);
                     s.b.br(miss, &[]);
                     s.b.switch_to(miss);
-                    Ok(Some(r))
+                    Ok((!last).then_some(r))
                 })?;
                 Ok(Val {
                     v: self.b.use_var(acc),

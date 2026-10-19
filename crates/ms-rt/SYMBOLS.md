@@ -370,6 +370,7 @@ msrt_cancelled() -> !
 msrt_io_flush()
 msrt_html_escape(text: *const StrObj) -> *mut StrObj
 msrt_html_unescape(text: *const StrObj) -> *mut StrObj
+msrt_html_parse( text: *const StrObj, has_max_bytes: u8, max_bytes: i64, has_max_depth: u8, max_depth: i64, has_max_nodes: u8, max_nodes: i64, out: *mut *mut TreeObj, root: *mut u32, ) -> u8
 msrt_html_kind(t: *const TreeObj, id: u32) -> u8
 msrt_html_data(t: *const TreeObj, id: u32) -> *mut StrObj
 msrt_html_namespace(t: *const TreeObj, id: u32) -> *mut StrObj
@@ -399,6 +400,7 @@ msstd_io_is_closed(h: *const Host) -> u8
 msrt_cancel_flag (data)
 msrt_cancelled() -> !
 msrt_io_flush()
+msrt_json_parse( text: *const StrObj, has_max_bytes: u8, max_bytes: i64, has_max_depth: u8, max_depth: i64, has_max_values: u8, max_values: i64, out: *mut *mut DocObj, root: *mut u32, ) -> u8
 msrt_json_kind(d: *const DocObj, id: u32) -> u8
 msrt_json_bool(d: *const DocObj, id: u32) -> u8
 msrt_json_text(d: *const DocObj, id: u32) -> *mut StrObj

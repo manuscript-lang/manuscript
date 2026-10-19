@@ -27,7 +27,8 @@ pub(crate) struct RtSig {
     pub ret: String,
 }
 
-const RENAMED: [(&str, &str); 2] = [
+const RENAMED: [(&str, &str); 3] = [
+    ("collections/flatten", "msrt_list_flatten"),
     ("process/arguments", "msrt_args"),
     ("collections/filled", "msrt_list_filled"),
 ];
@@ -96,6 +97,9 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
     let name = native.rsplit('/').next().unwrap_or(native);
     let name = match name {
         "format_int" => "to_string_radix",
+        "format_precision" => "to_precision",
+        "format_exponential" => "to_exponential",
+        "format_fixed" => "to_fixed",
         other => other,
     };
     let name = name
