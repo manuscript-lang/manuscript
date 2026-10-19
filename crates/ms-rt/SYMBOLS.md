@@ -304,6 +304,9 @@ msstd_fs_chown(path: *const StrObj, uid: i64, gid: i64, follow: u8) -> u8
 msstd_fs_truncate(path: *const StrObj, size: i64) -> u8
 msstd_fs_set_times( path: *const StrObj, accessed_seconds: i64, accessed_nanos: i64, modified_seconds: i64, modified_nanos: i64, follow: u8, ) -> u8
 msstd_fs_file_open( path: *const StrObj, flags: i64, mode: i64, out: *mut *mut FileHandle, ) -> u8
+msstd_fs_open( path: *const StrObj, flags: *const StrObj, mode: i64, out: *mut *mut FileHandle, ) -> u8
+msstd_fs_file_reader(h: *mut FileHandle) -> *mut Handle<stream::Stream>
+msstd_fs_file_writer(h: *mut FileHandle) -> *mut Handle<stream::Stream>
 msstd_fs_open_flags(mode: *const StrObj, out: *mut i64) -> u8
 msstd_fs_file_read_at( h: *mut FileHandle, offset: i64, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msstd_fs_file_read_file( h: *mut FileHandle, has_max: u8, max: i64, out: *mut VecVal, ) -> u8

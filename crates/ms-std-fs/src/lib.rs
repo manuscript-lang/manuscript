@@ -389,6 +389,39 @@ pub unsafe extern "C" fn msstd_fs_file_open(
     finish(r, |s| unsafe { *out = new_handle(s) })
 }
 
+/// `FileSystem.open`: a mode string such as `"r+"` plus permission bits; an unknown mode is invalid.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_fs_open(
+    path: *const StrObj,
+    flags: *const StrObj,
+    mode: i64,
+    out: *mut *mut FileHandle,
+) -> u8 {
+    // SAFETY: arguments follow the ABI contract.
+    let (path, flags) = unsafe { (str_bytes(path), str_bytes(flags)) };
+    let r = file::flags_of_mode(flags)
+        .ok_or_else(Fail::invalid)
+        .and_then(|f| file::open(path, f as i64, mode));
+    // SAFETY: handles and output pointers follow the ABI contract.
+    finish(r, |s| unsafe { *out = new_handle(s) })
+}
+
+/// The stream view of a file handle: the same handle, retained for the caller.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_fs_file_reader(h: *mut FileHandle) -> *mut Handle<stream::Stream> {
+    // SAFETY: `h` is a live handle; the caller receives its own reference.
+    unsafe { ms_std_rt::retain(h.cast()) };
+    h
+}
+
+/// The write-stream view of a file handle: the same handle, retained for the caller.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_fs_file_writer(h: *mut FileHandle) -> *mut Handle<stream::Stream> {
+    // SAFETY: `h` is a live handle; the caller receives its own reference.
+    unsafe { ms_std_rt::retain(h.cast()) };
+    h
+}
+
 /// `flags_of_mode` for `"r"`, `"r+"`, `"w"`, ... ; `STATUS_INVALID_INPUT` for an unknown mode.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn msstd_fs_open_flags(mode: *const StrObj, out: *mut i64) -> u8 {
