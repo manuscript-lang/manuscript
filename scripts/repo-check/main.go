@@ -232,6 +232,11 @@ func check() error {
 	if err := checkExtensionVersion(); err != nil {
 		issues = append(issues, err.Error())
 	}
+	unsafeIssues, err := checkUnsafeBoundary(".")
+	if err != nil {
+		return err
+	}
+	issues = append(issues, unsafeIssues...)
 
 	sort.Strings(issues)
 	if len(issues) > 0 {
