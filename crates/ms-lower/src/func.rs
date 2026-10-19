@@ -182,9 +182,7 @@ pub(crate) fn lower_program(program: &Program, options: &Options) -> Result<Modu
         .cloned()
         .ok_or_else(|| Error::new("no main function"))?;
     let main_id = cx.function_for(&mut m, &main, &Subst::new())?;
-    while let Some(job) = cx.queue.pop() {
-        lower_job(&mut cx, &mut m, job)?;
-    }
+    drain(&mut cx, &mut m)?;
     let f = &mut m.funcs[main_id.index()];
     f.linkage = Linkage::Export;
     m.entry = Some(main_id);
@@ -214,11 +212,25 @@ pub(crate) fn lower_tests(
         }
         ids.push(cx.function_for(&mut m, c, &Subst::new())?);
     }
-    while let Some(job) = cx.queue.pop() {
-        lower_job(&mut cx, &mut m, job)?;
-    }
+    drain(&mut cx, &mut m)?;
     m.entry = Some(crate::runner::build_runner(&mut m, &ids)?);
     Ok((m, names))
+}
+
+/// Lowers queued jobs until none remain. The text of an interface value tests every table of
+/// the interface, so it waits until no other job can still add one.
+fn drain(cx: &mut Cx, m: &mut Module) -> Result<(), Error> {
+    let deferred = |m: &Module, j: &Job| matches!(&j.kind, JobKind::Format(t, _) if matches!(m.types.kind(*t), ms_mir::types::TyKind::Iface(_)));
+    loop {
+        let next = match cx.queue.iter().rposition(|j| !deferred(m, j)) {
+            Some(i) => cx.queue.remove(i),
+            None => match cx.queue.pop() {
+                Some(j) => j,
+                None => return Ok(()),
+            },
+        };
+        lower_job(cx, m, next)?;
+    }
 }
 
 fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {

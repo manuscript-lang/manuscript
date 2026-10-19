@@ -5,7 +5,7 @@ use crate::cx::{Cx, Job, JobKind};
 use crate::func::{FnLower, Val};
 use ms_check::types::Kind;
 use ms_mir::builder::{FuncBuilder, Var};
-use ms_mir::ir::{Cc, ExternDef, FuncId, Imm, Mode, Module, Op, Param, Value};
+use ms_mir::ir::{Cc, ExternDef, FuncId, Imm, Mode, Module, Op, Param, Value, VtableId};
 use ms_mir::print::ty_str;
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
@@ -435,6 +435,41 @@ pub(crate) fn build_format(
             let r = b
                 .emit(Op::Copy, &[lit], Imm::None, Some(MTy::STR))
                 .expect("copy");
+            b.ret(Some(r));
+        }
+        TyKind::Iface(iface) => {
+            // The text of the dynamic value: test each implementation table, in creation order.
+            let tables: Vec<_> =
+                b.m.vtables
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, v)| v.iface == iface)
+                    .map(|(i, v)| (VtableId(i as u32), v.data_ty))
+                    .collect();
+            for (vt, data_ty) in tables {
+                let hit = b
+                    .emit(Op::IfaceIs, &[x], Imm::Vtable(vt), Some(MTy::BOOL))
+                    .expect("test");
+                let (yes, next) = (b.new_block(), b.new_block());
+                b.br_if(hit, yes, &[], next, &[]);
+                b.seal_block(yes);
+                b.seal_block(next);
+                b.switch_to(yes);
+                let data = b
+                    .emit(Op::IfaceData, &[x], Imm::None, Some(MTy::PTR))
+                    .expect("data");
+                let v = b
+                    .emit(Op::Load, &[data], Imm::Ty(data_ty), Some(data_ty))
+                    .expect("load");
+                let acc = start(&mut b, "");
+                let (txt, owned) = element_text(cx, &mut b, data_ty, v, repr);
+                append(&mut b, acc, txt, owned);
+                let r = b.use_var(acc);
+                b.ret(Some(r));
+                b.switch_to(next);
+            }
+            let acc = start(&mut b, "");
+            let r = b.use_var(acc);
             b.ret(Some(r));
         }
         _ => {

@@ -95,6 +95,8 @@ pub struct Cx {
     pub contracts: HashMap<ms_mir::types::IfaceId, ct::Ty>,
     /// Every implementation method of the program.
     pub methods: Vec<ct::MethodRef>,
+    /// The checker type behind each lowered record or alternative.
+    pub source_tys: HashMap<MTy, ct::Ty>,
     /// Types whose descriptor glue is registered.
     pub glue_seen: std::collections::HashSet<MTy>,
     /// Parameters (receiver first) that functions hand back changed.
@@ -119,6 +121,7 @@ impl Cx {
             mods,
             callables,
             mutated,
+            source_tys: HashMap::new(),
             glue_seen: Default::default(),
             tycache: HashMap::new(),
             insts: HashMap::new(),
@@ -165,6 +168,12 @@ impl Cx {
             return Ok(*found);
         }
         let out = self.lower_ty_uncached(m, t, &key)?;
+        if matches!(
+            m.types.kind(out),
+            ms_mir::types::TyKind::Rec(_) | ms_mir::types::TyKind::Alt(_)
+        ) {
+            self.source_tys.entry(out).or_insert_with(|| t.clone());
+        }
         self.tycache.insert(key, out);
         Ok(out)
     }

@@ -98,6 +98,32 @@ pub(crate) fn build_eq(cx: &mut Cx, m: &mut Module, func: FuncId, t: MTy) -> Res
         ty: t,
         mode: Mode::Borrow,
     };
+    if let Some(concrete) = cx.source_tys.get(&t).cloned()
+        && let Some((callee, iface)) = cx.user_equals(m, &concrete)?
+    {
+        {
+            let vt = cx.vtable_id(m, &concrete, iface)?;
+            let other_mode = m.funcs[callee.index()].params[1].mode;
+            let iface_ty = m.funcs[callee.index()].params[1].ty;
+            let mut b = FuncBuilder::new(m, "equal", vec![p, p], MTy::BOOL);
+            let (x, y) = (b.params()[0], b.params()[1]);
+            let copy = if b.m.needs_drop(t) {
+                b.emit(Op::Copy, &[y], Imm::None, Some(t)).expect("copy")
+            } else {
+                y
+            };
+            let boxed = b
+                .emit(Op::IfaceNew, &[copy], Imm::Vtable(vt), Some(iface_ty))
+                .expect("iface");
+            let r = b.call(callee, &[x, boxed]);
+            if other_mode == Mode::Borrow {
+                b.emit(Op::Drop, &[boxed], Imm::None, None);
+            }
+            b.ret(Some(r));
+            m.funcs[func.index()] = b.into_func();
+            return Ok(());
+        }
+    }
     let mut b = FuncBuilder::new(m, "equal", vec![p, p], MTy::BOOL);
     let (x, y) = (b.params()[0], b.params()[1]);
     let no = b.new_block();

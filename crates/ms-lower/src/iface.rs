@@ -129,6 +129,49 @@ impl Cx {
     }
 }
 
+impl Cx {
+    /// The source-declared `equals` of `concrete` (an `impl Equal`) and the interface of its argument.
+    pub(crate) fn user_equals(
+        &mut self,
+        m: &mut Module,
+        concrete: &ct::Ty,
+    ) -> Result<Option<(ms_mir::ir::FuncId, IfaceId)>, Error> {
+        let mut found = None;
+        for mm in &self.methods {
+            let Some(decl) = &mm.decl else { continue };
+            if mm.id.as_str().is_empty() || !mm.native.as_str().is_empty() {
+                continue;
+            }
+            if mm.name().map(|n| n.to_string()).as_deref() != Some("equals") {
+                continue;
+            }
+            let mut subst = ct::Subst::new();
+            let vars = ct::variable_set(&mm.variables);
+            if ct::unify(&mm.receiver, concrete, &vars, &mut subst) {
+                found = Some((mm.module, decl.id(), subst));
+                break;
+            }
+        }
+        let Some((module, id, subst)) = found else {
+            return Ok(None);
+        };
+        let c = self
+            .callables
+            .get(&(module, id))
+            .cloned()
+            .ok_or_else(|| Error::new("equals callee not found"))?;
+        let f = self.function_for(m, &c, &subst)?;
+        let params = &m.funcs[f.index()].params;
+        let [_, other] = params.as_slice() else {
+            return Ok(None);
+        };
+        let TyKind::Iface(iface) = m.types.kind(other.ty).clone() else {
+            return Ok(None);
+        };
+        Ok(Some((f, iface)))
+    }
+}
+
 impl FnLower<'_> {
     /// Converts a value of checker type `concrete` to the interface type `want`.
     pub fn fit_ty(&mut self, x: Val, concrete: &ct::Ty, want: MTy) -> Result<Val, Error> {

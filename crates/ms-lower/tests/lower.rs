@@ -122,3 +122,13 @@ fn native_values_and_time() {
     assert!(mir.contains("closure.new"));
     assert!(mir.contains("msstd_time_parse_timestamp"));
 }
+
+#[test]
+fn error_values_print_their_dynamic_text_and_equal_uses_impls() {
+    let mir = lower(
+        "dyntext",
+        "import stdout from \"@std/io.ms\"\nimport {TextError} from \"@std/errors.ms\"\n\ntype Key:\n    id: Int\n    label: String\n\nimpl Equal for Key:\n    fn equals(other: Equal) Bool:\n        match other:\n            Key(value): return self.id == value.id\n            _: return false\n\nexport fn main() Int:\n    let e: Error = TextError(\"bad\")\n    let a = Key(id: 1, label: \"a\")\n    let b = Key(id: 1, label: \"b\")\n    let r = stdout().write(\"{e} {a == b}\\n\")\n    return 0\n",
+    );
+    assert!(mir.contains("iface.is"));
+    assert!(mir.contains("iface.new"));
+}
