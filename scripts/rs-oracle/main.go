@@ -106,6 +106,7 @@ func main() {
 		"encoding": genEncoding,
 		"csv":      genCsv,
 		"url":      genURL,
+		"path":     genPath,
 	}
 	names := flag.Args()
 	if len(names) == 0 {
@@ -292,4 +293,74 @@ func genURL(dir string) {
 		}
 	}
 	r.write(dir, "url.tsv")
+}
+
+// ---- path ----
+
+func partsText(p *rt.PathParts) string {
+	return strings.Join([]string{h(p.Root), h(p.Directory), h(p.Base), h(p.Extension), h(p.Name)}, " ")
+}
+
+func listText(items []string) string {
+	hs := make([]string, len(items))
+	for i, it := range items {
+		hs[i] = h(it)
+	}
+	return "[" + strings.Join(hs, ",") + "]"
+}
+
+func genPath(dir string) {
+	r := &recorder{}
+	alpha := []string{"a", "b", "c", ".", "..", ".", "/", "/", "\\", "C:", "c:", "//", "srv", "share", ".txt", ".tar", ".gz", " ", "é", "x"}
+	inputs := append([]string{"", ".", "..", "/", "//", "a", "a/", "/a", "a/b/c", "/a/b/c/", "a//b", "./a", "../a", "a/..", "a/../..", "/..", "C:", "C:\\", "C:\\a\\b", "C:a", "c:/a/../b", "\\\\srv\\share\\a", "\\\\srv", "\\\\srv\\", "//srv/share", "//srv/share/x", ".bashrc", "a.b.c", "a/.b", "file.", "x/y.tar.gz", "./C:", "a/b.txt/"},
+		randomStrings(10, 120, 8, alpha)...)
+	suffixes := []string{"", ".txt", "c", "b/c", "x", ".gz", "a"}
+	for _, win := range []bool{false, true} {
+		ops := rt.Path_Posix(nil)
+		if win {
+			ops = rt.Path_Win32(nil)
+		}
+		w := b2s(win)
+		for _, in := range inputs {
+			r.row("basename", w, h(in), "=>", h(ops.Basename(nil, in)))
+			for _, sfx := range suffixes {
+				r.row("basename_without", w, h(in), h(sfx), "=>", h(ops.BasenameWithout(nil, in, sfx)))
+			}
+			r.row("dirname", w, h(in), "=>", h(ops.Dirname(nil, in)))
+			r.row("extension", w, h(in), "=>", h(ops.Extension(nil, in)))
+			r.row("is_absolute", w, h(in), "=>", b2s(ops.IsAbsolute(nil, in)))
+			r.row("normalize", w, h(in), "=>", h(ops.Normalize(nil, in)))
+			r.row("namespaced", w, h(in), "=>", h(ops.ToNamespacedPath(nil, in)))
+			parts := ops.Parse(nil, in)
+			r.row("parse", w, h(in), "=>", partsText(parts))
+			r.row("format", w, partsText(parts), "=>", h(ops.Format(nil, parts)))
+			r.row("resolve", w, h(in), "[]", "=>", strings.Join(okOrErr(ops.Resolve(nil, in, rt.NewList[string]()), func(s string) []string { return []string{h(s)} }), " "))
+		}
+		rng := rand.New(rand.NewSource(11))
+		pick := func() string { return inputs[rng.Intn(len(inputs))] }
+		for i := 0; i < 150; i++ {
+			var items []string
+			for j, n := 0, rng.Intn(4); j < n; j++ {
+				items = append(items, pick())
+			}
+			r.row("join", w, listText(items), "=>", h(ops.Join(nil, rt.NewList(items...))))
+			base := pick()
+			r.row("resolve", w, h(base), listText(items), "=>", strings.Join(okOrErr(ops.Resolve(nil, base, rt.NewList(items...)), func(s string) []string { return []string{h(s)} }), " "))
+			a, b := pick(), pick()
+			r.row("relative", w, h(a), h(b), "=>", strings.Join(okOrErr(ops.Relative(nil, a, b), func(s string) []string { return []string{h(s)} }), " "))
+			p := &rt.PathParts{Root: pick(), Directory: pick(), Base: []string{"", "f.txt", "g"}[rng.Intn(3)], Extension: []string{"", ".md", "md"}[rng.Intn(3)], Name: pick()}
+			r.row("format", w, partsText(p), "=>", h(ops.Format(nil, p)))
+		}
+		globAlpha := []string{"*", "**", "?", "[a-c]", "[!a]", "[", "]", "{a,b}", "{1..3}", "{", "}", "@(a|b)", "+(a)", "!(b)", "?(a)", "*(a)", "a", "b", "c", "/", ".", "\\", "-", "(", ")", "|", "é", ".txt"}
+		valAlpha := []string{"a", "b", "c", "/", ".", "1", "2", "é", ".txt", "ab"}
+		gp := append([]string{"*.txt", "**/*.txt", "a/**/b", "[a-c]*", "{a,b}/c", "f{01..03}", "!(a)*", "*(ab)", "[]", "{x", "@(a", "\\", "a/[b"}, randomStrings(12, 70, 6, globAlpha)...)
+		gv := append([]string{"a.txt", "a/b.txt", "a/b/c", ".hidden", "a/.h/b", "f02", "ab", ""}, randomStrings(13, 14, 7, valAlpha)...)
+		for _, pat := range gp {
+			for _, v := range gv {
+				res := ops.MatchesGlob(nil, v, pat)
+				r.row("glob", w, h(v), h(pat), "=>", strings.Join(okOrErr(res, func(b bool) []string { return []string{b2s(b)} }), " "))
+			}
+		}
+	}
+	r.write(dir, "path.tsv")
 }
