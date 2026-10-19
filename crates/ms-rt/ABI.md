@@ -30,7 +30,7 @@ recorded here before it is committed.)_
   the arguments, input bytes, optional limit and optional timeout and returns `CommandOut` (exit code, stdout, stderr); `command_spawn` returns a
   refcounted child handle whose three pipes are `@std/io` stream handles (`subprocess_stream`, each call adds a reference). Children start in their
   own process group and every wait polls in short slices so a pending cancellation kills the tree before unwinding. `ms-rt` adds `msrt_start_nanos`
-  (origin of `uptime`) and `msrt_argv` (whole argv). `watch_signals` and `memory_usage` are not provided yet (they need runtime hooks).
+  (origin of `uptime`) and `msrt_argv` (whole argv). `watch_signals` is `msstd_process_watch_signals`/`signal_next`/`signal_close`: each observer owns a pipe fed by a chained signal handler (the runtime's SIGINT/SIGTERM cancellation still runs). `memory_usage` fills `MemoryOut`; `heap_used` and `heap_total` come from the new `msrt_heap_stats` (small-block heap only), `resident` from `/proc/self/statm`.
 - **v2.4 (`ms-std-fs`, `ms-std-io`).** `msstd_fs_*` are the path-based `@std/fs` operations and `msstd_io_*` the host streams of `@std/io`.
   Paths are strings; fallible calls return `STATUS_*` (`NOT_FOUND`, `ALREADY_EXISTS`, `NOT_EMPTY`, `PERMISSION_DENIED`, `UNSUPPORTED`,
   `CLOSED`, `FAILED`, `UNAVAILABLE`, `NONE` join the status table) and write `out` only on success. `FAILED` carries Go's `*PathError`

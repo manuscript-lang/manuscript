@@ -71,6 +71,7 @@ msrt_float_to_fixed( v: f64, digits: i64, out: *mut *mut StrObj, ) -> u8
 msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8
 msrt_float_compare(a: f64, b: f64) -> i64
 msrt_int_compare(a: i64, b: i64) -> i64
+msrt_heap_stats(out: *mut i64)
 msrt_alloc(size: usize) -> *mut u8
 msrt_alloc_zeroed(size: usize) -> *mut u8
 msrt_realloc(p: *mut u8, size: usize) -> *mut u8
@@ -328,6 +329,10 @@ msstd_process_set_title(title: *const StrObj) -> u8
 msstd_process_constrained_memory(out: *mut i64) -> u8
 msstd_process_available_memory(out: *mut i64) -> u8
 msstd_process_resource_usage(out: *mut ResourceOut) -> u8
+msstd_process_watch_signals( signals: *const VecVal, has_capacity: u8, capacity: i64, out: *mut *mut SignalHandle, ) -> u8
+msstd_process_signal_next(h: *mut SignalHandle, out: *mut i64) -> u8
+msstd_process_signal_close(h: *mut SignalHandle)
+msstd_process_memory_usage(out: *mut MemoryOut) -> u8
 msstd_process_info(out: *mut InfoOut) -> u8
 msstd_process_replace( program: *const StrObj, arguments: *const VecVal, env_names: *const VecVal, env_values: *const VecVal, ) -> u8
 msstd_process_command_run( program: *const StrObj, arguments: *const VecVal, input: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout_ns: i64, out: *mut CommandOut, ) -> u8
@@ -340,6 +345,7 @@ msstd_process_subprocess_close(h: *mut ChildHandle)
 msrt_cancel_flag (data)
 msrt_cancelled() -> !
 msrt_io_flush()
+msrt_heap_stats(out: *mut i64)
 msrt_start_nanos() -> i64
 msrt_argv(_: *mut ms_rt_abi::VecVal)
 msstd_time_duration_add(left: i64, other: i64) -> i64

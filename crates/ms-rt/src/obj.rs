@@ -88,6 +88,20 @@ pub unsafe fn drop_slow(o: *mut Obj) {
     }
 }
 
+/// Writes small-block heap bytes (`used`, `in_use`) to `out[0..2]`, for `@std/process` `memory_usage`.
+///
+/// # Safety
+/// `out` must point to two writable `i64`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_heap_stats(out: *mut i64) {
+    let [used, in_use] = crate::alloc::heap_stats();
+    // SAFETY: the caller passes two writable words.
+    unsafe {
+        out.write(used);
+        out.add(1).write(in_use);
+    }
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_alloc(size: usize) -> *mut u8 {
     alloc::alloc(size)

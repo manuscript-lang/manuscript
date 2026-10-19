@@ -380,6 +380,55 @@ mod process {
     }
 
     #[test]
+    fn memory_usage_reports_heap_and_resident() {
+        let _g = lock();
+        let blocks: std::vec::Vec<*mut u8> = (0..1000).map(|_| crate::alloc::alloc(64)).collect();
+        let mut out = std::mem::MaybeUninit::<MemoryOut>::uninit();
+        // SAFETY: `out` is writable.
+        let (status, m) = unsafe {
+            let s = msstd_process_memory_usage(out.as_mut_ptr());
+            (s, out.assume_init_read())
+        };
+        for b in blocks {
+            // SAFETY: allocated above.
+            unsafe { crate::alloc::free(b) };
+        }
+        assert_eq!(status, STATUS_OK);
+        assert!(m.heap_used >= 64_000 && m.heap_total >= m.heap_used);
+        assert!(m.resident > 0 && m.external >= 0);
+    }
+
+    unsafe extern "C" {
+        fn raise(sig: i32) -> i32;
+    }
+
+    #[test]
+    fn watch_signals_through_the_abi() {
+        let _g = lock();
+        let list = {
+            let mut v = empty();
+            // SAFETY: `v` is writable.
+            unsafe { ms_std_rt::write_list(&[10i64], &mut v) };
+            v
+        };
+        let mut h: *mut ms_std_rt::Handle<ms_std_process::signals::Watcher> = core::ptr::null_mut();
+        let mut n = 0i64;
+        // SAFETY: valid list, writable outputs and a live handle throughout.
+        unsafe {
+            assert_eq!(msstd_process_watch_signals(&list, 0, 0, &mut h), STATUS_OK);
+            assert_eq!(raise(10), 0);
+            assert_eq!(msstd_process_signal_next(h, &mut n), STATUS_OK);
+            assert_eq!(n, 10);
+            msstd_process_signal_close(h);
+            assert_eq!(
+                msstd_process_signal_next(h, &mut n),
+                ms_rt_abi::STATUS_CLOSED
+            );
+            ms_std_rt::release(h.cast());
+        }
+    }
+
+    #[test]
     fn run_and_spawn_through_the_abi() {
         let _g = lock();
         let mut out = std::mem::MaybeUninit::<CommandOut>::uninit();
