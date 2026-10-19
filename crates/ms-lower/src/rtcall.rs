@@ -898,12 +898,13 @@ impl FnLower<'_> {
                     let text = s.call_runtime(sym, &[], MTy::STR)?;
                     Ok(s.b.alt_new(ea, idx as u32, &[text]))
                 }
-                // The module reports no failure text (a status this operation never returns).
-                None if carries_text => {
-                    let lit = s.b.str_lit("");
-                    let text =
-                        s.b.emit(Op::Copy, &[lit], Imm::None, Some(MTy::STR))
-                            .expect("copy");
+                // A `Failed(message)` of a module without a failure text.
+                _ if carries_text => {
+                    let text = s.lit("").v;
+                    let text = s.owned(Val {
+                        v: text,
+                        own: false,
+                    });
                     Ok(s.b.alt_new(ea, idx as u32, &[text]))
                 }
                 _ => Ok(s.b.alt_new(ea, idx as u32, &[])),
