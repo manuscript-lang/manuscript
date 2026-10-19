@@ -26,7 +26,7 @@ pub mod watch;
 
 use alloc::vec::Vec;
 use err::{Fail, Res};
-use ms_rt_abi::{STATUS_OK, StrObj, VecVal};
+use ms_rt_abi::{Closure, STATUS_OK, StrObj, VecVal};
 use ms_std_rt::{Handle, new_handle, new_string, str_bytes, write_bytes, write_string_list};
 
 fn finish<T>(r: Res<T>, ok: impl FnOnce(T)) -> u8 {
@@ -710,13 +710,26 @@ pub unsafe extern "C" fn msstd_fs_glob(
     })
 }
 
-/// A caller predicate over `(source, destination)`: `env` is the closure's captured block, the
-/// strings are borrowed for the call, and a zero result skips the entry.
-pub type CopyFilter = unsafe extern "C-unwind" fn(*mut u8, *const StrObj, *const StrObj) -> u8;
+/// The `code` of a closure the compiler built for a caller predicate: it is called as
+/// `code(closure, source, destination)` with borrowed strings, and zero skips the entry.
+type CopyFilter = unsafe extern "C-unwind" fn(*mut Closure, *const StrObj, *const StrObj) -> u8;
 
-/// A caller predicate over one glob entry `(path, name, directory, symlink)`; non-zero excludes it.
-pub type EntryFilter =
-    unsafe extern "C-unwind" fn(*mut u8, *const StrObj, *const StrObj, u8, u8) -> u8;
+/// The `code` of a glob exclusion predicate over `(path, name, directory, symlink)`; non-zero
+/// excludes the entry.
+type EntryFilter =
+    unsafe extern "C-unwind" fn(*mut Closure, *const StrObj, *const StrObj, u8, u8) -> u8;
+
+/// The code pointer of a nullable closure.
+///
+/// # Safety
+/// `filter` is null or a live closure whose code has the signature `F`.
+unsafe fn closure_code<F: Copy>(filter: *mut Closure) -> Option<F> {
+    if filter.is_null() {
+        return None;
+    }
+    // SAFETY: per the contract, the code pointer has the signature `F`.
+    Some(unsafe { core::mem::transmute_copy::<*const u8, F>(&(*filter).code) })
+}
 
 fn borrowed(bytes: &[u8]) -> *mut StrObj {
     new_string(bytes)
@@ -736,22 +749,27 @@ pub unsafe extern "C" fn msstd_fs_copy_tree(
     finish(walk::copy_tree(s, d, replace != 0, entries, bytes), |()| ())
 }
 
-/// `copy`. `clone` is `"none"`, `"try"` or `"force"`; `filter` may be null.
+/// `copy`. `clone` is `"none"`, `"try"` or `"force"`; `filter` is null or a closure.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn msstd_fs_copy(
     source: *const StrObj,
     destination: *const StrObj,
-    flags: u32,
+    flags: i64,
     clone: *const StrObj,
+    has_entries: u8,
     entries: i64,
+    has_bytes: u8,
     bytes: i64,
-    filter: Option<CopyFilter>,
-    env: *mut u8,
+    filter: *mut Closure,
 ) -> u8 {
     // SAFETY: handles and output pointers follow the ABI contract.
     let Some(clone) = walk::Clone::parse(unsafe { str_bytes(clone) }) else {
         ms_std_rt::record_failure(Vec::new());
         return ms_rt_abi::STATUS_INVALID_INPUT;
+    };
+    let (entries, bytes) = match (lim(has_entries, entries), lim(has_bytes, bytes)) {
+        (Ok(e), Ok(b)) => (e, b),
+        (Err(f), _) | (_, Err(f)) => return finish(Err::<(), _>(f), |()| ()),
     };
     let options = walk::CopyOptions {
         recursive: flags & 1 != 0,
@@ -764,11 +782,13 @@ pub unsafe extern "C" fn msstd_fs_copy(
         entries,
         bytes,
     };
+    // SAFETY: the compiler passes a closure with this signature or null.
+    let code = unsafe { closure_code::<CopyFilter>(filter) };
     let mut call = |s: &[u8], d: &[u8]| -> bool {
-        let f = filter.expect("filter present");
+        let f = code.expect("filter present");
         let (a, b) = (borrowed(s), borrowed(d));
         // SAFETY: the thunk takes borrowed strings; they are released after the call.
-        let keep = unsafe { f(env, a, b) } != 0;
+        let keep = unsafe { f(filter, a, b) } != 0;
         // SAFETY: handles and output pointers follow the ABI contract.
         unsafe {
             ms_std_rt::release(a.cast());
@@ -776,7 +796,7 @@ pub unsafe extern "C" fn msstd_fs_copy(
         }
         keep
     };
-    let f: Option<walk::Filter<'_>> = if filter.is_some() {
+    let f: Option<walk::Filter<'_>> = if code.is_some() {
         Some(&mut call)
     } else {
         None
@@ -786,21 +806,31 @@ pub unsafe extern "C" fn msstd_fs_copy(
     finish(r, |()| ())
 }
 
-/// `glob_entries`: `patterns` and `exclude` are `List[String]`; matches come back as parallel
-/// `paths`, `names` string lists and a `flags` byte list (bit 0 directory, bit 1 symlink).
+/// One `PathEntry` as compiled code lays the record out: the path, the nested
+/// `DirectoryEntry`'s name, then its two flag bytes.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct PathEntryOut {
+    pub path: *mut StrObj,
+    pub name: *mut StrObj,
+    pub directory: u8,
+    pub symlink: u8,
+}
+
+/// `glob_entries`: `patterns` and `exclude` are `List[String]`; matches come back as a
+/// `List[PathEntry]`. `filter` is null or a closure over `(path, name, directory, symlink)`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn msstd_fs_glob_entries(
     path: *const StrObj,
     patterns: *const VecVal,
     exclude: *const VecVal,
     follow_links: u8,
+    has_max_entries: u8,
     max_entries: i64,
+    has_max_results: u8,
     max_results: i64,
-    callback: Option<EntryFilter>,
-    env: *mut u8,
-    paths: *mut VecVal,
-    names: *mut VecVal,
-    flags: *mut VecVal,
+    filter: *mut Closure,
+    out: *mut VecVal,
 ) -> u8 {
     // SAFETY: the lists hold live strings for the duration of the call.
     let (patterns, exclude): (Vec<&[u8]>, Vec<&[u8]>) = unsafe {
@@ -812,6 +842,13 @@ pub unsafe extern "C" fn msstd_fs_glob_entries(
         };
         (each(patterns), each(exclude))
     };
+    let (max_entries, max_results) = match (
+        lim(has_max_entries, max_entries),
+        lim(has_max_results, max_results),
+    ) {
+        (Ok(e), Ok(r)) => (e, r),
+        (Err(f), _) | (_, Err(f)) => return finish(Err::<(), _>(f), |()| ()),
+    };
     let options = walk::GlobOptions {
         patterns: &patterns,
         exclude: &exclude,
@@ -819,11 +856,13 @@ pub unsafe extern "C" fn msstd_fs_glob_entries(
         max_entries,
         max_results,
     };
+    // SAFETY: the compiler passes a closure with this signature or null.
+    let code = unsafe { closure_code::<EntryFilter>(filter) };
     let mut call = |e: &walk::PathEntry| -> bool {
-        let f = callback.expect("callback present");
+        let f = code.expect("callback present");
         let (p, n) = (borrowed(&e.path), borrowed(&e.name));
         // SAFETY: the thunk takes borrowed strings; they are released after the call.
-        let skip = unsafe { f(env, p, n, e.directory as u8, e.symlink as u8) } != 0;
+        let skip = unsafe { f(filter, p, n, e.directory as u8, e.symlink as u8) } != 0;
         // SAFETY: handles and output pointers follow the ABI contract.
         unsafe {
             ms_std_rt::release(p.cast());
@@ -831,7 +870,7 @@ pub unsafe extern "C" fn msstd_fs_glob_entries(
         }
         skip
     };
-    let cb: Option<&mut dyn FnMut(&walk::PathEntry) -> bool> = if callback.is_some() {
+    let cb: Option<&mut dyn FnMut(&walk::PathEntry) -> bool> = if code.is_some() {
         Some(&mut call)
     } else {
         None
@@ -839,18 +878,17 @@ pub unsafe extern "C" fn msstd_fs_glob_entries(
     // SAFETY: arguments follow the ABI contract.
     let r = walk::glob_entries(unsafe { str_bytes(path) }, &options, cb);
     finish(r, |items| {
-        let p: Vec<*mut StrObj> = items.iter().map(|e| new_string(&e.path)).collect();
-        let n: Vec<*mut StrObj> = items.iter().map(|e| new_string(&e.name)).collect();
-        let f: Vec<u8> = items
+        let rows: Vec<PathEntryOut> = items
             .iter()
-            .map(|e| e.directory as u8 | (e.symlink as u8) << 1)
+            .map(|e| PathEntryOut {
+                path: new_string(&e.path),
+                name: new_string(&e.name),
+                directory: e.directory as u8,
+                symlink: e.symlink as u8,
+            })
             .collect();
-        // SAFETY: handles and output pointers follow the ABI contract.
-        unsafe {
-            write_string_list(&p, paths);
-            write_string_list(&n, names);
-            write_bytes(&f, flags);
-        }
+        // SAFETY: `out` is writable.
+        unsafe { ms_std_rt::write_list(&rows, out) }
     })
 }
 

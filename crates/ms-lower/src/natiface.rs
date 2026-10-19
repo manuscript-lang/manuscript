@@ -235,6 +235,14 @@ const METHODS: &[MethodRow] = &[
     ("fs", "FileHandle", "chown", "msstd_fs_file_chown", &[]),
     ("fs", "FileSystem", "stat", "msstd_fs_stat", &[]),
     ("fs", "FileHandle", "stat", "msstd_fs_file_stat", &[]),
+    (
+        "fs",
+        "FileSystem",
+        "glob_entries",
+        "msstd_fs_glob_entries",
+        &[],
+    ),
+    ("fs", "FileSystem", "copy", "msstd_fs_copy", &[]),
     ("fs", "FileSystem", "list", "msstd_fs_list", &[]),
     ("fs", "Directory", "read", "msstd_fs_directory_read", &[]),
     ("fs", "Directory", "path", "msstd_fs_directory_path", &[]),
@@ -513,6 +521,11 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
             val: Val { v, own: false },
             wrapped: false,
         });
+    }
+    if matches!(sym.as_str(), "msstd_fs_glob_entries" | "msstd_fs_copy") {
+        let r = fl.fs_walk(sym, &decl, &nargs, job.ret)?;
+        fl.emit_return(Some(r));
+        return Ok(());
     }
     let r = match recv {
         Some(recv) => fl.rt_method(sym, recv, &decl, &nargs, job.ret)?,

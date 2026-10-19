@@ -13,6 +13,7 @@ mod eq;
 mod expr;
 mod fixture;
 mod fsinfo;
+mod fswalk;
 mod func;
 mod iface;
 mod iterate;

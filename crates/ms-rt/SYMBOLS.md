@@ -344,8 +344,8 @@ msstd_fs_temporary_path(h: *mut TempHandle) -> *mut StrObj
 msstd_fs_temporary_close(h: *mut TempHandle) -> u8
 msstd_fs_glob( path: *const StrObj, pattern: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msstd_fs_copy_tree( source: *const StrObj, destination: *const StrObj, replace: u8, entries: i64, bytes: i64, ) -> u8
-msstd_fs_copy( source: *const StrObj, destination: *const StrObj, flags: u32, clone: *const StrObj, entries: i64, bytes: i64, filter: Option<CopyFilter>, env: *mut u8, ) -> u8
-msstd_fs_glob_entries( path: *const StrObj, patterns: *const VecVal, exclude: *const VecVal, follow_links: u8, max_entries: i64, max_results: i64, callback: Option<EntryFilter>, env: *mut u8, paths: *mut VecVal, names: *mut VecVal, flags: *mut VecVal, ) -> u8
+msstd_fs_copy( source: *const StrObj, destination: *const StrObj, flags: i64, clone: *const StrObj, has_entries: u8, entries: i64, has_bytes: u8, bytes: i64, filter: *mut Closure, ) -> u8
+msstd_fs_glob_entries( path: *const StrObj, patterns: *const VecVal, exclude: *const VecVal, follow_links: u8, has_max_entries: u8, max_entries: i64, has_max_results: u8, max_results: i64, filter: *mut Closure, out: *mut VecVal, ) -> u8
 msstd_fs_constants(names: *mut VecVal, values: *mut VecVal)
 msstd_fs_watch( path: *const StrObj, recursive: u8, interval_ns: i64, has_max: u8, max: i64, out: *mut *mut WatchHandle, ) -> u8
 msstd_fs_watch_native( path: *const StrObj, recursive: u8, has_max: u8, max: i64, has_events: u8, events: i64, overflow: *const StrObj, out: *mut *mut WatchHandle, ) -> u8
