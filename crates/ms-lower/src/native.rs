@@ -158,11 +158,20 @@ impl<'a> FnLower<'a> {
                 let func = sym.decl.as_ref().and_then(|d| d.func());
                 self.fill_native_defaults(sym.module, func, params, &mut args)?;
                 self.at(e.pos);
-                if native == "json/parse" {
-                    self.json_parse(e, &args)
-                } else {
-                    self.json_stringify(e, view, &args)
+                // The runtime answers with the declared error type; the use may expect a wider one.
+                let mut subst = ct::Subst::new();
+                if let (Some(v), Some(a)) = (sym.variables().first(), self.ety(e).args.first()) {
+                    subst.insert(v.id, a.clone());
                 }
+                let declared = ct::sub(&sym.ty().result_ty(), &subst);
+                let have = self.mty(&declared)?;
+                let r = if native == "json/parse" {
+                    self.json_parse(e, have, &args)?
+                } else {
+                    self.json_stringify(e, have, view, &args)?
+                };
+                let want = self.emty(e)?;
+                self.fit_ty(r, &declared, want)
             }
             "io/stdout" => self.std_stream(e, false),
             "io/stderr" => self.std_stream(e, true),
