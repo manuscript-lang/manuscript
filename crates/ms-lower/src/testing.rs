@@ -76,7 +76,7 @@ impl FnLower<'_> {
         acc.ok_or_else(|| Error::new("empty message"))
     }
 
-    fn lit(&mut self, text: &str) -> Val {
+    pub(crate) fn lit(&mut self, text: &str) -> Val {
         let v = self.b.str_lit(text);
         Val { v, own: false }
     }

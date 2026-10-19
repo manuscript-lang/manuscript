@@ -87,6 +87,7 @@ impl<'a> FnLower<'a> {
         view: &CallView<'_>,
         native: &str,
         params: &[ct::Param],
+        sym: &ct::SymRef,
     ) -> Result<Val, Error> {
         match native {
             "collections/range" => {
@@ -130,10 +131,12 @@ impl<'a> FnLower<'a> {
                 if !self.has_native_call(other) {
                     return Err(Error::new(format!("unsupported native function {other}")));
                 }
-                let args = self.native_args(view)?;
+                let mut args = self.native_args(view)?;
                 if self.dead {
                     return Ok(self.dummy(MTy::UNIT));
                 }
+                let func = sym.decl.as_ref().and_then(|d| d.func());
+                self.fill_native_defaults(sym.module, func, params, &mut args)?;
                 let result = self.emty(e)?;
                 self.at(e.pos);
                 self.native_call(other, params, &args, result)
@@ -373,10 +376,12 @@ impl<'a> FnLower<'a> {
         recv: Val,
     ) -> Result<Val, Error> {
         let native = m.native.as_str();
-        let args = self.native_args(view)?;
+        let mut args = self.native_args(view)?;
         if self.dead {
             return Ok(recv);
         }
+        let func = m.decl.as_ref().and_then(|d| d.func());
+        self.fill_native_defaults(m.module, func, &m.ty.params, &mut args)?;
         self.at(e.pos);
         if let Some((_, sym)) = STRING_TO_STRING.iter().find(|(n, _)| *n == native) {
             let r = self.borrow(recv);
@@ -1668,6 +1673,83 @@ impl<'a> FnLower<'a> {
     }
 
     /// The written arguments of a native call in order; `wrapped` marks values meant for an `Optional` parameter.
+    /// Appends the declared default of every omitted parameter that has one (`none` aside),
+    /// evaluated in the declaring module.
+    pub(crate) fn fill_native_defaults(
+        &mut self,
+        module: ct::Name,
+        func: Option<&ms_syntax::ast::Func>,
+        params: &[ct::Param],
+        args: &mut Vec<NArg>,
+    ) -> Result<(), Error> {
+        let Some(f) = func else {
+            return Ok(());
+        };
+        for (i, p) in params.iter().enumerate() {
+            if args.iter().any(|a| a.name == p.name) {
+                continue;
+            }
+            let Some(d) = f.params.get(i).and_then(|q| q.default.as_ref()) else {
+                continue;
+            };
+            if matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none") {
+                continue;
+            }
+            // Bundled declarations carry no checked facts: literal defaults are built directly,
+            // anything else through the declaring module when it was checked.
+            let r = match &d.kind {
+                ExprKind::Bool(b) => Ok(Val {
+                    v: self.b.bconst(*b),
+                    own: false,
+                }),
+                ExprKind::Number(t) if p.ty.id.as_str() == "Int" => match t.as_str().parse::<i64>()
+                {
+                    Ok(n) => Ok(Val {
+                        v: self.b.iconst(n),
+                        own: false,
+                    }),
+                    Err(_) => continue,
+                },
+                ExprKind::Text(parts) if parts.iter().all(|t| matches!(t, TextPart::Lit(_))) => {
+                    let text: String = parts
+                        .iter()
+                        .map(|t| match t {
+                            TextPart::Lit(s) => s.as_ref(),
+                            TextPart::Interp(_) => "",
+                        })
+                        .collect();
+                    Ok(self.lit(&text))
+                }
+                _ => {
+                    let Ok(hir) = self.cx.module(module) else {
+                        continue;
+                    };
+                    let saved_hir = std::mem::replace(&mut self.hir, hir);
+                    let saved_file = self.file;
+                    self.file = self.b.m.add_file(module.as_str());
+                    let r = self.expr(d);
+                    self.hir = saved_hir;
+                    self.file = saved_file;
+                    r
+                }
+            };
+            let mut val = r?;
+            if p.ty.is_std("Optional") {
+                let o = self.owned(val);
+                val = Val {
+                    v: self.b.opt_some(o),
+                    own: true,
+                };
+            }
+            args.push(NArg {
+                name: p.name,
+                val,
+                wrapped: false,
+            });
+        }
+        Ok(())
+    }
+
     pub(crate) fn native_args(&mut self, view: &CallView<'_>) -> Result<Vec<NArg>, Error> {
         let mut out = Vec::new();
         for a in &view.arguments {

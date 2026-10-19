@@ -49,7 +49,7 @@ impl<'a> FnLower<'a> {
                     .as_ref()
                     .map(|t| t.params.clone())
                     .unwrap_or_default();
-                self.native_function(e, &view, sym.native.as_str(), &params)?
+                self.native_function(e, &view, sym.native.as_str(), &params, sym)?
             }
             Resolution::Method(m) => self.method_call(e, &view, m)?,
             Resolution::Constructor { ty, case } => self.construct(e, &view, ty, *case)?,
