@@ -1,18 +1,17 @@
-//! Differential tests against the Go `ms` oracle (`make build`). The Go
-//! inspection supplies the entity and call rows (the inspector is ported
-//! separately); everything downstream of them (facts, flow, views, diagrams,
-//! reports, diffs) is Rust and must print the same bytes as Go.
+//! Differential tests against the Go `ms` oracle (`make build`). The Rust
+//! inspector and everything downstream of it (facts, flow, views, diagrams,
+//! reports, diffs) must print the same bytes as Go.
 //!
 //! Set `MS_GO_ORACLE` to the Go binary (default `../../ms`); the tests skip
 //! when it is absent. `MS_TOOLING_CORPUS` bounds the repository files used
 //! (default 60).
 
 use ms_check::{CheckOptions, ImportMap, Program};
-use ms_cli::json::{Json, parse};
-use ms_tooling::collect::{CallRow, EntityRow, InspectionRows, collect_facts};
+use ms_tooling::collect::{InspectionRows, collect_facts};
 use ms_tooling::diagram::diagram_ascii;
 use ms_tooling::diff::{parse_diff, reverse_apply};
 use ms_tooling::facts::Facts;
+use ms_tooling::inspect::inspect;
 use ms_tooling::mark::{explain, mark_changes};
 use ms_tooling::report::{ReviewOptions, diff_report, project_report};
 use ms_tooling::review::{DiffInput, compare_facts};
@@ -47,61 +46,6 @@ fn go(oracle: &Path, dir: &Path, args: &[&str]) -> Output {
     }
 }
 
-fn field<'a>(json: &'a Json, key: &str) -> &'a Json {
-    json.get(key)
-        .unwrap_or_else(|| panic!("inspection lacks {key}"))
-}
-
-fn text(json: &Json, key: &str) -> String {
-    json.get(key)
-        .and_then(Json::as_str)
-        .unwrap_or("")
-        .to_string()
-}
-
-fn number(json: &Json, key: &str) -> usize {
-    match json.get(key) {
-        Some(Json::Num(n)) => n.parse().unwrap_or(0),
-        _ => 0,
-    }
-}
-
-/// Entity and call rows from the Go `ms inspect` document.
-fn rows(document: &str) -> InspectionRows {
-    let json = parse(document).expect("inspection is JSON");
-    let mut rows = InspectionRows::default();
-    for e in field(&json, "entities").as_array().unwrap_or(&[]) {
-        let span = field(e, "span");
-        rows.entities.push(EntityRow {
-            id: text(e, "id"),
-            kind: text(e, "kind"),
-            name: text(e, "name"),
-            ty: text(e, "type"),
-            file: text(span, "file"),
-            line: number(span, "line"),
-            exported: matches!(e.get("exported"), Some(Json::Bool(true))),
-            effects: e
-                .get("effects")
-                .and_then(Json::as_array)
-                .map(|list| {
-                    list.iter()
-                        .filter_map(|s| s.as_str().map(str::to_string))
-                        .collect()
-                })
-                .unwrap_or_default(),
-        });
-    }
-    for c in field(&json, "calls").as_array().unwrap_or(&[]) {
-        rows.calls.push(CallRow {
-            id: text(c, "id"),
-            owner: text(c, "owner"),
-            target: text(c, "target"),
-            kind: text(c, "kind"),
-        });
-    }
-    rows
-}
-
 /// Checks one standalone module that imports only the standard library.
 fn check_source(source: &str) -> Option<Program> {
     let file: Arc<str> = Arc::from("r.ms");
@@ -123,16 +67,12 @@ struct Case {
     facts: Facts,
 }
 
-fn prepare(oracle: &Path, root: &Path, name: &str, source: &str) -> Option<Case> {
+fn prepare(root: &Path, name: &str, source: &str) -> Option<Case> {
     let program = check_source(source)?;
     let dir = root.join(name);
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("r.ms"), source).unwrap();
-    let inspect = go(oracle, &dir, &["inspect", "r.ms"]);
-    if inspect.status != 0 {
-        return None;
-    }
-    let inspection = rows(&inspect.stdout);
+    let inspection = inspect(&program).rows();
     let facts = collect_facts(&inspection, &program);
     Some(Case {
         dir,
@@ -315,8 +255,7 @@ fn inline_programs_match_go() {
     };
     let root = workdir("inline");
     for (name, source) in [("base", BASE), ("flow", FLOW), ("more", MORE)] {
-        let case =
-            prepare(&oracle, &root, name, source).unwrap_or_else(|| panic!("{name} must check"));
+        let case = prepare(&root, name, source).unwrap_or_else(|| panic!("{name} must check"));
         compare_case(&oracle, name, &case);
     }
     let _ = std::fs::remove_dir_all(&root);
@@ -364,7 +303,7 @@ fn repository_corpus_matches_go() {
         let Ok(source) = std::fs::read_to_string(path) else {
             continue;
         };
-        let Some(case) = prepare(&oracle, &root, &format!("c{i}"), &source) else {
+        let Some(case) = prepare(&root, &format!("c{i}"), &source) else {
             continue;
         };
         compare_case(&oracle, &path.display().to_string(), &case);
@@ -446,8 +385,8 @@ fn diff_reviews_match_go() {
         let base = BASE.replacen(from, to, 1);
         let head = BASE;
         // `base` here is the edited text; the head is the original, so the diff goes edited -> original.
-        let head_case = prepare(&oracle, &root, &format!("{name}-head"), head);
-        let base_case = prepare(&oracle, &root, &format!("{name}-base"), &base);
+        let head_case = prepare(&root, &format!("{name}-head"), head);
+        let base_case = prepare(&root, &format!("{name}-base"), &base);
         let (Some(head_case), base_case) = (head_case, base_case) else {
             panic!("{name}: head must check")
         };
