@@ -317,6 +317,52 @@ impl FnLower<'_> {
             self.jfinish(r);
             return Ok(());
         }
+        // Standard value types read from their JSON text.
+        let parsed = if t.is_std("Duration") {
+            Some((KIND_NUMBER, "msrt_json_dec_int", false))
+        } else if t.is_std("Timestamp") {
+            Some((KIND_STRING, "msstd_time_parse_timestamp", false))
+        } else if t.is_std("Bytes") {
+            Some((KIND_STRING, "msrt_encoding_base64_decode", true))
+        } else if t.is_std("Url") {
+            Some((KIND_STRING, "msrt_url_parse", false))
+        } else if t.is_std("Decimal") {
+            Some((KIND_NUMBER, "msstd_decimal_literal", false))
+        } else if t.is_std("BigInt") {
+            Some((KIND_NUMBER, "msstd_bigint_parse", false))
+        } else {
+            None
+        };
+        if let Some((kind, sym, base64)) = parsed {
+            self.jexpect_kind(doc, id, kind)?;
+            let text = self.jtext(doc, id)?;
+            let slot = self.jslot(mt);
+            let st = if base64 {
+                // Standard alphabet, no output budget.
+                let plain = self.b.bconst(false);
+                let none = self.b.bconst(false);
+                let zero = self.b.iconst(0);
+                self.status_code(sym, &[text, plain, none, zero, slot])?
+            } else if sym == "msstd_bigint_parse" {
+                // Decimal digits, at most 10000 of them.
+                let radix = self.b.iconst(10);
+                let has_max = self.b.bconst(true);
+                let max = self.b.iconst(10_000);
+                self.status_code(sym, &[text, radix, has_max, max, slot])?
+            } else if sym == "msstd_decimal_literal" {
+                self.call_runtime(sym, &[text, slot], MTy::UNIT)?;
+                self.b.iconst(0)
+            } else {
+                self.status_code(sym, &[text, slot])?
+            };
+            self.drop_value(text);
+            let zero = self.b.iconst(0);
+            let ok = self.b.icmp(Cc::Eq, st, zero);
+            self.jrequire(ok, &[], &[]);
+            let v = self.take_slot(slot, mt);
+            self.jfinish(v);
+            return Ok(());
+        }
         if t.is_std("List") {
             self.jexpect_kind(doc, id, KIND_ARRAY)?;
             let l = self.jdecode_items(&t.args[0], mt, doc, id, strict)?;
@@ -329,8 +375,10 @@ impl FnLower<'_> {
                 .cx
                 .lower_ty(self.b.m, &ct::standard("List", vec![t.args[0].clone()]))?;
             let l = self.jdecode_items(&t.args[0], lt, doc, id, strict)?;
+            let mark = self.temps.len();
             let set = self.set_from_list(Val { v: l, own: true }, mt)?;
             let set = self.owned(set);
+            self.flush_temps(mark);
             self.jfinish(set);
             return Ok(());
         }
@@ -338,7 +386,7 @@ impl FnLower<'_> {
             let key = &t.args[0];
             let readable = matches!(key.id.as_str(), "String" | "Int" | "Bool")
                 || key.is_std("Duration")
-                || jplain_alt(key);
+                || jkey_alt(key);
             if !readable {
                 // Other key types are never readable.
                 self.jfail();
@@ -513,18 +561,45 @@ impl FnLower<'_> {
             return Err(Error::new("an alternative key lowers to an alternative"));
         };
         let cases = ct::cases(key);
-        let mut out = self.b.alt_new(a, 0, &[]);
-        let mut any = self.b.bconst(false);
-        for (i, c) in cases.iter().enumerate() {
+        // The index of the payload-free case the name selects, or -1.
+        let mut idx = self.b.iconst(-1);
+        for (i, c) in cases
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| c.fields.is_empty())
+        {
             let lit = self.b.str_lit(c.name.as_str());
             let hit = self.call_runtime("msrt_string_eq", &[name, lit], MTy::BOOL)?;
-            let v = self.b.alt_new(a, i as u32, &[]);
-            out = self.b.select(hit, v, out);
-            any = self.b.binop(Op::Or, any, hit);
+            let k = self.b.iconst(i as i64);
+            idx = self.b.select(hit, k, idx);
         }
         self.drop_value(name);
+        let zero = self.b.iconst(0);
+        let any = self.b.icmp(Cc::Ge, idx, zero);
         self.jrequire(any, &[], &[acc]);
-        Ok(out)
+        let out = self.jvar(key_mt);
+        let join = self.b.new_block();
+        let arms: Vec<(i64, _)> = cases
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| c.fields.is_empty())
+            .map(|(i, _)| (i as i64, self.b.new_block()))
+            .collect();
+        let none = self.b.new_block();
+        self.b.switch(idx, &arms, none);
+        for (i, blk) in &arms {
+            self.b.seal_block(*blk);
+            self.b.switch_to(*blk);
+            let v = self.b.alt_new(a, *i as u32, &[]);
+            self.b.def_var(out, v);
+            self.b.br(join, &[]);
+        }
+        self.b.seal_block(none);
+        self.b.switch_to(none);
+        self.b.unreachable();
+        self.b.seal_block(join);
+        self.b.switch_to(join);
+        Ok(self.b.use_var(out))
     }
 
     /// The owned field values of the object node `id`, in declaration order. `owner` is the record
@@ -623,7 +698,11 @@ impl FnLower<'_> {
             .and_then(|d| d.record_fields().get(i).map(|f| f.default.is_some()))
             .unwrap_or(false);
         if has_default || ty.is_std("Optional") {
-            return Ok(Some(self.field_default(owner, None, i, earlier)?));
+            // Temporaries of the default end with it: this value joins other paths.
+            let mark = self.temps.len();
+            let v = self.field_default(owner, None, i, earlier)?;
+            self.flush_temps(mark);
+            return Ok(Some(v));
         }
         Ok(None)
     }
@@ -836,13 +915,38 @@ impl FnLower<'_> {
                 v: value,
                 own: false,
             })?;
-            let text = self.borrow(text);
             let sym = if t.is_std("Decimal") {
                 "msrt_json_add_number"
             } else {
                 "msrt_json_add_string"
             };
-            return self.jadd(sym, &[doc, text]);
+            let id = self.jadd(sym, &[doc, text.v])?;
+            if text.own {
+                self.drop_value(text.v);
+            }
+            return Ok(id);
+        }
+        // Bytes are standard base64 text.
+        if mt == MTy::BYTES && t.is_std("Bytes") {
+            let no_url = self.b.bconst(false);
+            let text =
+                self.call_runtime("msrt_encoding_base64_encode", &[value, no_url], MTy::STR)?;
+            let id = self.jadd("msrt_json_add_string", &[doc, text])?;
+            self.drop_value(text);
+            return Ok(id);
+        }
+        // A BigInt is its digits.
+        if t.is_std("BigInt") {
+            let radix = self.b.iconst(10);
+            let text =
+                self.call_runtime("msstd_bigint_to_string_radix", &[value, radix], MTy::STR)?;
+            let id = self.jadd("msrt_json_add_number", &[doc, text])?;
+            self.drop_value(text);
+            return Ok(id);
+        }
+        // A URL is its formatted text.
+        if t.is_std("Url") {
+            return self.jencode_url(doc, value);
         }
         match t.kind {
             ct::Kind::Record => {
@@ -910,6 +1014,38 @@ impl FnLower<'_> {
         self.callable_of_decl(m.module, Some(decl.id())).ok()
     }
 
+    /// `Url` as the string `url.format` makes; a URL that cannot be formatted has no JSON form.
+    fn jencode_url(&mut self, doc: Value, value: Value) -> Result<Value, Error> {
+        let slot = self
+            .b
+            .emit(Op::Slot, &[], Imm::Ty(MTy::STR), Some(MTy::PTR))
+            .expect("slot");
+        let code = self.status_code("msrt_url_format", &[value, slot])?;
+        let zero = self.b.iconst(0);
+        let good = self.b.icmp(Cc::Eq, code, zero);
+        let out = self.b.declare_var(MTy::INT, Mode::Borrow);
+        let (yes, no, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        self.b.br_if(good, yes, &[], no, &[]);
+        self.b.seal_block(yes);
+        self.b.seal_block(no);
+        self.b.switch_to(yes);
+        let text = self
+            .b
+            .emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
+            .expect("take");
+        let id = self.jadd("msrt_json_add_string", &[doc, text])?;
+        self.drop_value(text);
+        self.b.def_var(out, id);
+        self.b.br(join, &[]);
+        self.b.switch_to(no);
+        let none = self.b.iconst(-1);
+        self.b.def_var(out, none);
+        self.b.br(join, &[]);
+        self.b.seal_block(join);
+        self.b.switch_to(join);
+        Ok(self.b.use_var(out))
+    }
+
     fn jencode_number_text(&mut self, doc: Value, value: Value) -> Result<Value, Error> {
         let text = self.call_runtime("msrt_int_to_string", &[value], MTy::STR)?;
         let id = self.jadd("msrt_json_add_number", &[doc, text])?;
@@ -967,8 +1103,10 @@ impl FnLower<'_> {
             } else {
                 s.format_value(Val { v: k, own: false })?
             };
-            let name = s.borrow(name);
-            s.call_runtime("msrt_json_object_put", &[doc, obj, name, id], MTy::UNIT)?;
+            s.call_runtime("msrt_json_object_put", &[doc, obj, name.v, id], MTy::UNIT)?;
+            if name.own {
+                s.drop_value(name.v);
+            }
             s.b.br(after, &[]);
             s.b.seal_block(after);
             s.b.switch_to(after);
@@ -1136,9 +1274,9 @@ impl FnLower<'_> {
     pub(crate) fn json_parse(
         &mut self,
         e: &ms_syntax::ast::Expr,
+        rty: MTy,
         args: &[NArg],
     ) -> Result<Val, Error> {
-        let rty = self.emty(e)?;
         let res = self.ety(e);
         let t = res
             .args
@@ -1294,10 +1432,11 @@ impl FnLower<'_> {
     pub(crate) fn json_stringify(
         &mut self,
         e: &ms_syntax::ast::Expr,
+        rty: MTy,
         view: &ms_check::hir::CallView<'_>,
         args: &[NArg],
     ) -> Result<Val, Error> {
-        let rty = self.emty(e)?;
+        let _ = e;
         let value_expr = view
             .arguments
             .iter()
@@ -1378,6 +1517,13 @@ fn jfields(params: &[ct::Param]) -> Vec<JField> {
 }
 
 /// An alternative whose cases all lack payload.
+/// An alternative a member name can select: some case has no payload.
+fn jkey_alt(t: &ct::Ty) -> bool {
+    t.kind == ct::Kind::Alternative
+        && !t.is_std("Optional")
+        && ct::cases(t).iter().any(|c| c.fields.is_empty())
+}
+
 fn jplain_alt(t: &ct::Ty) -> bool {
     t.kind == ct::Kind::Alternative
         && !t.is_std("Optional")
