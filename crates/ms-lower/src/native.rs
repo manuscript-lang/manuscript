@@ -178,10 +178,12 @@ impl<'a> FnLower<'a> {
         recv: Val,
     ) -> Result<Val, Error> {
         let native = m.native.as_str();
+        let at = self.b.current();
         let args = self.native_args(view)?;
         if self.dead {
             return Ok(recv);
         }
+        let recv = self.refresh(recv_expr, recv, at)?;
         self.at(e.pos);
         if let Some((_, sym)) = STRING_TO_STRING.iter().find(|(n, _)| *n == native) {
             let r = self.borrow(recv);
@@ -295,9 +297,18 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v: out, own: true })
             }
             (TyKind::List(elem), "get") => {
-                let mut it = args.into_iter();
-                let index = it.next().ok_or_else(|| Error::new("get without index"))?;
-                self.list_get_or(recv, elem, index, it.next())
+                // Arguments arrive in written order; the names say which is which.
+                let mut index = None;
+                let mut default = None;
+                for a in args {
+                    if a.name.as_str() == "default" {
+                        default = Some(a);
+                    } else {
+                        index = Some(a);
+                    }
+                }
+                let index = index.ok_or_else(|| Error::new("get without index"))?;
+                self.list_get_or(recv, elem, index, default)
             }
             (TyKind::Int, "to_float") => {
                 let x = self.borrow(recv);
@@ -1036,6 +1047,12 @@ impl<'a> FnLower<'a> {
         Ok((new, r))
     }
 
+    /// An owned element for a collection, wrapped when the checker converted it to an optional.
+    fn element_value(&mut self, a: &NArg) -> Value {
+        let v = self.owned(a.val);
+        if a.wrapped { self.b.opt_some(v) } else { v }
+    }
+
     /// `(new list, result)` of a list mutator applied to the owned `old` list.
     fn mutate_list(
         &mut self,
@@ -1051,7 +1068,7 @@ impl<'a> FnLower<'a> {
         let d = self.type_desc(elem);
         match name {
             "append" => {
-                let v = self.owned(args[0].val);
+                let v = self.element_value(&args[0]);
                 Ok((self.b.list_push(old, v), None))
             }
             "set" => {
@@ -1062,14 +1079,14 @@ impl<'a> FnLower<'a> {
                 let shifted = self.b.binop(Op::IAdd, i, n);
                 let r = self.b.select(neg, shifted, i);
                 self.check_index(2, i, r, n, false);
-                let v = self.owned(args[1].val);
+                let v = self.element_value(&args[1]);
                 Ok((self.b.list_set(old, i, v), None))
             }
             "prepend" | "insert" | "remove" => {
                 let n = self.b.list_len(old);
                 let (idx, item) = match name {
-                    "prepend" => (self.b.iconst(0), Some(args[0].val)),
-                    "insert" => (self.borrow(args[0].val), Some(args[1].val)),
+                    "prepend" => (self.b.iconst(0), Some(&args[0])),
+                    "insert" => (self.borrow(args[0].val), Some(&args[1])),
                     _ => (self.borrow(args[0].val), None),
                 };
                 let zero = self.b.iconst(0);
@@ -1095,7 +1112,7 @@ impl<'a> FnLower<'a> {
                 let tail = self.call_runtime("msrt_list_drop_n", &[old, d, skip], lt)?;
                 let mut mid = head;
                 if let Some(x) = item {
-                    let xo = self.owned(x);
+                    let xo = self.element_value(x);
                     let lit = self.b.list_lit(elem, &[xo]);
                     mid = self.call_runtime("msrt_list_concat", &[head, lit, d], lt)?;
                     self.drop_value(head);
@@ -1354,16 +1371,26 @@ impl<'a> FnLower<'a> {
     /// The written arguments of a native call in order; `wrapped` marks values meant for an `Optional` parameter.
     pub(crate) fn native_args(&mut self, view: &CallView<'_>) -> Result<Vec<NArg>, Error> {
         let mut out = Vec::new();
-        for a in &view.arguments {
+        let mut read_at = Vec::new();
+        for (n, a) in view.arguments.iter().enumerate() {
+            let at = self.b.current();
             let val = self.expr(a.expr)?;
             if self.dead {
                 break;
             }
+            read_at.push((a.expr, at));
+            let later_try = view.arguments[n + 1..]
+                .iter()
+                .any(|l| crate::mutation::has_try(l.expr));
+            let val = if later_try { self.hold_temp(val) } else { val };
             out.push(NArg {
                 name: a.slot.name,
                 val,
                 wrapped: a.wrap_optional.is_some(),
             });
+        }
+        for (arg, (expr, at)) in out.iter_mut().zip(read_at) {
+            arg.val = self.refresh(expr, arg.val, at)?;
         }
         Ok(out)
     }
