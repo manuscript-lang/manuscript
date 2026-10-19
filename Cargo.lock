@@ -328,6 +328,7 @@ dependencies = [
  "cranelift-native",
  "cranelift-object",
  "ms-mir",
+ "ms-rt-abi",
  "target-lexicon",
 ]
 
