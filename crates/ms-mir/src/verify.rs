@@ -147,6 +147,7 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
         Op::RecNew | Op::AltNew | Op::ListLit | Op::ClosureNew => all(Mode::Own),
         Op::RecSet | Op::ListPush | Op::ListSet | Op::ListSetNn | Op::ListSetU => all(Mode::Own),
         Op::OptSome | Op::IfaceNew | Op::Drop | Op::GlobalSet | Op::SharedNew => one(0),
+        Op::Put => one(1),
         Op::DropIf => one(1),
         Op::Call => match inst.imm {
             Imm::Func(g) => m.funcs[g.index()].params.iter().map(|p| p.mode).collect(),
@@ -677,8 +678,8 @@ impl Verifier<'_> {
             Op::ListLen => {
                 arity(1)?;
                 want(
-                    m.list_elem(t(0)).is_some() && res == Some(Ty::INT),
-                    "list.len takes a list and yields int",
+                    (m.list_elem(t(0)).is_some() || t(0) == Ty::BYTES) && res == Some(Ty::INT),
+                    "list.len takes a list (or bytes) and yields int",
                 )
             }
             Op::ListGet | Op::ListGetNn | Op::ListGetU => {
@@ -967,8 +968,25 @@ impl Verifier<'_> {
                     return Err("missing type".into());
                 };
                 want(
-                    t(0) == Ty::PTR && res == Some(ty) && !m.needs_drop(ty),
-                    "load reads a non-droppable value through a ptr",
+                    t(0) == Ty::PTR && res == Some(ty),
+                    "load reads a value through a ptr; a droppable result is a borrow",
+                )
+            }
+            Op::Take => {
+                arity(1)?;
+                let Imm::Ty(ty) = inst.imm else {
+                    return Err("missing type".into());
+                };
+                want(
+                    t(0) == Ty::PTR && res == Some(ty),
+                    "take moves a value out of memory through a ptr; the result is owned",
+                )
+            }
+            Op::Put => {
+                arity(2)?;
+                want(
+                    t(0) == Ty::PTR,
+                    "put moves an owned value into memory through a ptr",
                 )
             }
             Op::Store => {
