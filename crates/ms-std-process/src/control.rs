@@ -563,3 +563,23 @@ mod tests {
         );
     }
 }
+
+unsafe extern "C-unwind" {
+    /// Small-block heap bytes `[used, in_use]` from the runtime allocator.
+    fn msrt_heap_stats(out: *mut i64);
+}
+
+/// Heap and resident bytes: `(heap_used, heap_total, heap_system, external, resident)`.
+pub fn memory_usage() -> Res<[i64; 5]> {
+    let mut heap = [0i64; 2];
+    // SAFETY: `heap` holds the two words the runtime writes.
+    unsafe { msrt_heap_stats(heap.as_mut_ptr()) };
+    let resident = resident_bytes()?;
+    Ok([
+        heap[0],
+        heap[1],
+        heap[1],
+        (resident - heap[1]).max(0),
+        resident,
+    ])
+}

@@ -16,6 +16,11 @@ recorded here before it is committed.)_
   `exp`-derived functions may differ in the last bits, because Go's amd64 and arm64 `Exp` is CPU-specific assembly). `ms-rt` gains
   `msrt_numbers_parse_int/parse_float/error_message`, `msrt_float_to_precision/to_exponential/to_fixed` (`status` + string `out`),
   `msrt_float_truncate_to_int` (present flag + `out`) and `msrt_float_compare`/`msrt_int_compare`.
+- **v2.7 (`ms-std-fs` watchers).** `msstd_fs_watch` (polling, snapshot comparison every interval) and `msstd_fs_watch_native` (inotify,
+  Linux; other hosts return `UNSUPPORTED`) return a refcounted watcher handle; `msstd_fs_watch_next` waits in 50 ms slices (cancellable)
+  and returns `paths` plus one kind byte per event (1 `rename`, 0 `change`); a native watcher returns one event per call, a polling watcher
+  every difference sorted by path. `STATUS_CLOSED` after `msstd_fs_watch_close`, `STATUS_LIMIT_EXCEEDED` on overflow with policy `error`.
+  No worker thread: events are read from the kernel inside `next`, so the queue is bounded by the kernel buffer plus `max_events`.
 - **v2.6 (`ms-std-fs`, `ms-std-glob`).** File handles are the `@std/io` stream handle (`msstd_fs_file_open`; `reader()`/`writer()` reuse
   `msstd_io_*`), directory cursors and scoped temporary directories are their own refcounted handles (`msstd_fs_directory_*`,
   `msstd_fs_temporary_*`; `close` is idempotent and a temporary's `close` reports removal failures). `msstd_fs_open_flags` maps a mode string
@@ -30,7 +35,7 @@ recorded here before it is committed.)_
   the arguments, input bytes, optional limit and optional timeout and returns `CommandOut` (exit code, stdout, stderr); `command_spawn` returns a
   refcounted child handle whose three pipes are `@std/io` stream handles (`subprocess_stream`, each call adds a reference). Children start in their
   own process group and every wait polls in short slices so a pending cancellation kills the tree before unwinding. `ms-rt` adds `msrt_start_nanos`
-  (origin of `uptime`) and `msrt_argv` (whole argv). `watch_signals` and `memory_usage` are not provided yet (they need runtime hooks).
+  (origin of `uptime`) and `msrt_argv` (whole argv). `watch_signals` is `msstd_process_watch_signals`/`signal_next`/`signal_close`: each observer owns a pipe fed by a chained signal handler (the runtime's SIGINT/SIGTERM cancellation still runs). `memory_usage` fills `MemoryOut`; `heap_used` and `heap_total` come from the new `msrt_heap_stats` (small-block heap only), `resident` from `/proc/self/statm`.
 - **v2.4 (`ms-std-fs`, `ms-std-io`).** `msstd_fs_*` are the path-based `@std/fs` operations and `msstd_io_*` the host streams of `@std/io`.
   Paths are strings; fallible calls return `STATUS_*` (`NOT_FOUND`, `ALREADY_EXISTS`, `NOT_EMPTY`, `PERMISSION_DENIED`, `UNSUPPORTED`,
   `CLOSED`, `FAILED`, `UNAVAILABLE`, `NONE` join the status table) and write `out` only on success. `FAILED` carries Go's `*PathError`

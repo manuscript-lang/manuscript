@@ -6,7 +6,6 @@
 //! `AlreadyExists`, `PermissionDenied`, `Unsupported`, `Closed`, `Failed`) and `CommandError` to
 //! `InvalidInput`, `Unavailable`, `Timeout` (13), `OutputLimit` (14) and `Failed`. Optional values
 //! are a present flag plus the value. A `Map[String, String]` crosses as two parallel string lists.
-//! Signal observation (`watch_signals`) and `memory_usage` are not provided here yet.
 #![no_std]
 // The exports below are the C ABI compiled code links against.
 #![allow(unsafe_code)]
@@ -17,6 +16,7 @@ extern crate alloc;
 pub mod command;
 pub mod control;
 pub mod envfile;
+pub mod signals;
 
 use alloc::vec::Vec;
 use command::Subprocess;
@@ -246,6 +246,63 @@ pub unsafe extern "C" fn msstd_process_resource_usage(out: *mut ResourceOut) -> 
             filesystem_writes: u.writes,
             voluntary_switches: u.voluntary,
             involuntary_switches: u.involuntary,
+        })
+    })
+}
+
+type SignalHandle = Handle<signals::Watcher>;
+
+/// `watch_signals`: `signals` is a `List[Int]`; the capacity is a present flag plus the value.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_process_watch_signals(
+    signals: *const VecVal,
+    has_capacity: u8,
+    capacity: i64,
+    out: *mut *mut SignalHandle,
+) -> u8 {
+    // SAFETY: `signals` is an Int list and `out` writable.
+    let r = signals::Watcher::new(
+        unsafe { list_slice::<i64>(signals) },
+        (has_capacity != 0).then_some(capacity),
+    );
+    // SAFETY: `out` is writable.
+    finish(r, |w| unsafe { *out = new_handle(w) })
+}
+
+/// Waits for the next signal; `STATUS_CLOSED` after `msstd_process_signal_close`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_process_signal_next(h: *mut SignalHandle, out: *mut i64) -> u8 {
+    // SAFETY: `h` is a live signal handle and `out` writable.
+    finish(unsafe { (*h).value.wait() }, |n| unsafe { *out = n })
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_process_signal_close(h: *mut SignalHandle) {
+    // SAFETY: `h` is a live signal handle.
+    unsafe { (*h).value.close() }
+}
+
+/// `memory_usage`: `heap_used`, `heap_total`, `heap_system`, `external`, `resident` in bytes.
+/// Linux only; other hosts report `STATUS_UNSUPPORTED`.
+#[repr(C)]
+pub struct MemoryOut {
+    pub heap_used: i64,
+    pub heap_total: i64,
+    pub heap_system: i64,
+    pub external: i64,
+    pub resident: i64,
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_process_memory_usage(out: *mut MemoryOut) -> u8 {
+    // SAFETY: `out` is writable.
+    finish(control::memory_usage(), |m| unsafe {
+        out.write(MemoryOut {
+            heap_used: m[0],
+            heap_total: m[1],
+            heap_system: m[2],
+            external: m[3],
+            resident: m[4],
         })
     })
 }
@@ -557,6 +614,15 @@ mod runtime_stubs {
 
     #[unsafe(no_mangle)]
     pub extern "C-unwind" fn msrt_io_flush() {}
+
+    #[unsafe(no_mangle)]
+    pub extern "C-unwind" fn msrt_heap_stats(out: *mut i64) {
+        // SAFETY: tests pass two writable words.
+        unsafe {
+            out.write(1);
+            out.add(1).write(2);
+        }
+    }
 
     #[unsafe(no_mangle)]
     pub extern "C-unwind" fn msrt_start_nanos() -> i64 {
