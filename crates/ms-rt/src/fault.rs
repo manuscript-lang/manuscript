@@ -25,6 +25,93 @@ pub static PENDING_SIGNAL: core::sync::atomic::AtomicU8 = core::sync::atomic::At
 static FAULTING: Global<bool> = Global::new(false);
 static SECONDARY: Global<RawVec<(usize, usize)>> = Global::new(RawVec::new());
 
+/// Stop request aimed at the running task (see `task`); 0 when none.
+static TASK_CANCEL: Global<u8> = Global::new(0);
+
+/// Value of `msrt_cancel_flag` when cancellation is not shielded.
+pub(crate) fn unshielded_cancel_flag() -> u8 {
+    // SAFETY: single threaded access.
+    let task = unsafe { *TASK_CANCEL.ptr() };
+    PENDING_SIGNAL
+        .load(core::sync::atomic::Ordering::Relaxed)
+        .max(task)
+}
+
+/// Records a stop request aimed at the running task.
+pub(crate) fn set_live_task_cancel(v: u8) {
+    // SAFETY: single threaded access.
+    unsafe {
+        *TASK_CANCEL.ptr() = v;
+        if *SHIELD.ptr() == 0 {
+            msrt_cancel_flag = unshielded_cancel_flag();
+        }
+    }
+}
+
+/// The per-task slice of runtime state; `task` swaps it on every context switch.
+pub(crate) struct Ctx {
+    cleanups: RawVec<(usize, usize)>,
+    guards: RawVec<GuardFrame>,
+    secondary: RawVec<(usize, usize)>,
+    eq_pairs: RawVec<(usize, usize)>,
+    primary: Option<ByteBuf>,
+    shield: u32,
+    faulting: bool,
+    depth: i64,
+    cancel: u8,
+    stack_lo: usize,
+    stack_hi: usize,
+}
+
+impl Ctx {
+    /// State of a task that has not run yet, with the given stack bounds.
+    pub(crate) const fn new(stack_lo: usize, stack_hi: usize) -> Ctx {
+        Ctx {
+            cleanups: RawVec::new(),
+            guards: RawVec::new(),
+            secondary: RawVec::new(),
+            eq_pairs: RawVec::new(),
+            primary: None,
+            shield: 0,
+            faulting: false,
+            depth: 0,
+            cancel: 0,
+            stack_lo,
+            stack_hi,
+        }
+    }
+
+    pub(crate) fn set_cancel(&mut self, v: u8) {
+        self.cancel = v;
+    }
+}
+
+/// Exchanges `c` with the live per-task state.
+///
+/// # Safety
+/// Single threaded; callers pair two swaps per context switch.
+pub(crate) unsafe fn swap_ctx(c: &mut Ctx) {
+    // SAFETY: single threaded access to the runtime globals.
+    unsafe {
+        core::ptr::swap(CLEANUPS.ptr(), &mut c.cleanups);
+        core::ptr::swap(GUARDS.ptr(), &mut c.guards);
+        core::ptr::swap(SECONDARY.ptr(), &mut c.secondary);
+        crate::desc::swap_eq_pairs(&mut c.eq_pairs);
+        core::ptr::swap(PRIMARY.ptr(), &mut c.primary);
+        core::ptr::swap(SHIELD.ptr(), &mut c.shield);
+        core::ptr::swap(FAULTING.ptr(), &mut c.faulting);
+        core::ptr::swap(core::ptr::addr_of_mut!(msrt_call_depth), &mut c.depth);
+        core::ptr::swap(TASK_CANCEL.ptr(), &mut c.cancel);
+        core::ptr::swap(STACK_LO.ptr(), &mut c.stack_lo);
+        core::ptr::swap(STACK_HI.ptr(), &mut c.stack_hi);
+        msrt_cancel_flag = if *SHIELD.ptr() == 0 {
+            unshielded_cancel_flag()
+        } else {
+            0
+        };
+    }
+}
+
 /// Fault reported while no frames or cleanup are meaningful (allocator exhaustion).
 #[cold]
 pub fn fatal(msg: &[u8]) -> ! {
@@ -198,7 +285,7 @@ fn run_shielded(f: CleanupFn, arg: *mut u8) {
         f(arg);
         *SHIELD.ptr() -= 1;
         if *SHIELD.ptr() == 0 {
-            msrt_cancel_flag = PENDING_SIGNAL.load(core::sync::atomic::Ordering::Relaxed);
+            msrt_cancel_flag = unshielded_cancel_flag();
         }
     }
 }
@@ -495,7 +582,7 @@ fn guard_exit(status: u8, message: &[u8]) -> ! {
         msrt_call_depth = f.depth;
         *SHIELD.ptr() = f.shield;
         msrt_cancel_flag = if f.shield == 0 {
-            PENDING_SIGNAL.load(core::sync::atomic::Ordering::Relaxed)
+            unshielded_cancel_flag()
         } else {
             0
         };
@@ -523,31 +610,6 @@ unsafe extern "C" {
     ) -> usize;
     #[link_name = "msrt_guard_jump"]
     fn guard_jump(jmp: *mut usize, status: usize) -> !;
-}
-
-#[cfg(all(not(test), target_arch = "x86_64"))]
-macro_rules! sym {
-    ($n:literal) => {
-        concat!(sym_prefix!(), $n)
-    };
-}
-#[cfg(all(not(test), target_vendor = "apple"))]
-macro_rules! sym_prefix {
-    () => {
-        "_"
-    };
-}
-#[cfg(all(not(test), not(target_vendor = "apple")))]
-macro_rules! sym_prefix {
-    () => {
-        ""
-    };
-}
-#[cfg(all(not(test), target_arch = "aarch64"))]
-macro_rules! sym {
-    ($n:literal) => {
-        concat!(sym_prefix!(), $n)
-    };
 }
 
 #[cfg(all(not(test), target_arch = "x86_64"))]
