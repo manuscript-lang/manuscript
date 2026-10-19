@@ -1,0 +1,390 @@
+//! Statement lowering.
+
+use crate::Error;
+use crate::func::{FnLower, LoopCtx, Val};
+use ms_mir::ir::{Cc, Imm, Op};
+use ms_mir::types::{Ty as MTy, TyKind};
+use ms_syntax::ast::*;
+
+impl<'a> FnLower<'a> {
+    /// Lowers statements until the position becomes unreachable.
+    pub fn stmts(&mut self, body: &[Stmt]) -> Result<(), Error> {
+        for s in body {
+            if self.dead {
+                break;
+            }
+            self.stmt(s)?;
+        }
+        Ok(())
+    }
+
+    /// A statement list in its own lexical scope.
+    pub fn block(&mut self, body: &[Stmt]) -> Result<(), Error> {
+        self.push_scope();
+        let r = self.stmts(body);
+        self.pop_scope();
+        r
+    }
+
+    pub fn stmt(&mut self, s: &Stmt) -> Result<(), Error> {
+        self.at(s.pos);
+        let mark = self.temps.len();
+        match &s.kind {
+            StmtKind::Bind { pattern, value, .. } => self.bind(pattern, value)?,
+            StmtKind::Assign { target, value, .. } => self.assign(target, value)?,
+            StmtKind::Call(e) => {
+                let x = self.expr(e)?;
+                if x.own {
+                    self.drop_value(x.v);
+                }
+            }
+            StmtKind::Return(e) => {
+                let x = match e {
+                    Some(e) => self.expr(e)?,
+                    None => Val {
+                        v: self.b.unit(),
+                        own: false,
+                    },
+                };
+                self.emit_return(Some(x));
+                return Ok(());
+            }
+            StmtKind::Break => {
+                let ctx = self
+                    .loops
+                    .last()
+                    .ok_or_else(|| Error::new("break outside loop"))?;
+                let (brk, depth) = (ctx.brk, ctx.depth);
+                self.flush_temps(mark);
+                self.unwind_to(depth);
+                self.b.br(brk, &[]);
+                self.terminated();
+                return Ok(());
+            }
+            StmtKind::Continue => {
+                let ctx = self
+                    .loops
+                    .last_mut()
+                    .ok_or_else(|| Error::new("continue outside loop"))?;
+                ctx.cont_used = true;
+                let (cont, depth) = (ctx.cont, ctx.depth);
+                self.flush_temps(mark);
+                self.unwind_to(depth);
+                self.b.br(cont, &[]);
+                self.terminated();
+                return Ok(());
+            }
+            StmtKind::If {
+                binding,
+                cond,
+                body,
+                else_body,
+            } => {
+                self.if_stmt(binding.as_ref(), cond, body, else_body)?;
+                self.flush_temps(mark);
+                return Ok(());
+            }
+            StmtKind::While { cond, body } => self.while_stmt(cond, body)?,
+            StmtKind::For { iter, body, .. } => self.for_stmt(s, iter, body)?,
+            StmtKind::With { value, body, .. } => {
+                let _ = (value, body);
+                return Err(Error::new("with is not supported yet"));
+            }
+        }
+        self.flush_temps(mark);
+        Ok(())
+    }
+
+    fn bind(&mut self, pattern: &Pattern, value: &Expr) -> Result<(), Error> {
+        match &pattern.kind {
+            PatternKind::Name(_) => {
+                let x = self.expr(value)?;
+                if self.dead {
+                    return Ok(());
+                }
+                let b = self
+                    .hir
+                    .pattern_binding(pattern)
+                    .ok_or_else(|| Error::new("pattern without binding"))?;
+                self.bind_local(&b, x);
+                Ok(())
+            }
+            _ => Err(Error::new("destructuring is not supported yet")),
+        }
+    }
+
+    fn assign(&mut self, target: &AssignTarget, value: &Expr) -> Result<(), Error> {
+        let x = self.expr(value)?;
+        if self.dead {
+            return Ok(());
+        }
+        match target {
+            AssignTarget::Name(_) => {
+                let b = self
+                    .hir
+                    .assigned(value)
+                    .ok_or_else(|| Error::new("assignment without target binding"))?;
+                let l = self.local(&b)?;
+                let new = self.owned(x);
+                let old = self.b.use_var(l.var);
+                self.b.def_var(l.var, new);
+                if self.cx_needs_drop_ty(l.ty) {
+                    self.drop_value(old);
+                }
+                Ok(())
+            }
+            AssignTarget::Member(t) => self.assign_member(t, value, x),
+        }
+    }
+
+    fn cx_needs_drop_ty(&self, t: MTy) -> bool {
+        self.b.m.needs_drop(t)
+    }
+
+    /// `a.b.c = v`: rebuilds the record chain with `rec.set`.
+    fn assign_member(&mut self, target: &Expr, value: &Expr, x: Val) -> Result<(), Error> {
+        let mut path: Vec<&Expr> = Vec::new();
+        let mut cur = target;
+        while let ExprKind::Member { left, .. } = &cur.kind {
+            path.push(cur);
+            cur = left;
+        }
+        path.reverse();
+        let ExprKind::Name(_) = &cur.kind else {
+            return Err(Error::new("assignment target must start at a variable"));
+        };
+        let ms_check::hir::Resolution::Local(binding) = self.hir.resolution(cur) else {
+            return Err(Error::new("assignment target is not a local variable"));
+        };
+        let _ = value;
+        let l = self.local(&binding)?;
+        let root = self.b.use_var(l.var);
+        let new = self.owned(x);
+        let updated = self.set_path(root, true, &path, new)?;
+        self.b.def_var(l.var, updated);
+        Ok(())
+    }
+
+    /// Returns `obj` with the field chain replaced by `new`. `obj_own` says whether `obj` is
+    /// owned by the caller (consumed here) or borrowed (copied first).
+    fn set_path(
+        &mut self,
+        obj: ms_mir::ir::Value,
+        obj_own: bool,
+        path: &[&Expr],
+        new: ms_mir::ir::Value,
+    ) -> Result<ms_mir::ir::Value, Error> {
+        let (first, rest) = path.split_first().expect("non-empty path");
+        let ExprKind::Member { name, .. } = &first.kind else {
+            unreachable!()
+        };
+        let oty = self.ty_of(obj);
+        let TyKind::Rec(rid) = self.b.m.types.kind(oty).clone() else {
+            return Err(Error::new("field assignment on a non-record"));
+        };
+        let idx = self.b.m.records[rid.index()]
+            .fields
+            .iter()
+            .position(|f| f.0 == name.as_str())
+            .ok_or_else(|| Error::new(format!("no field {name}")))? as u32;
+        let inner = if rest.is_empty() {
+            new
+        } else {
+            let cur = self.b.rec_get(rid, idx, obj);
+            let cur_own = if self.needs_drop(self.ty_of(cur)) {
+                self.owned(Val { v: cur, own: false })
+            } else {
+                cur
+            };
+            self.set_path(cur_own, true, rest, new)?
+        };
+        let base = if obj_own {
+            obj
+        } else {
+            self.owned(Val { v: obj, own: false })
+        };
+        Ok(self.b.rec_set(rid, idx, base, inner))
+    }
+
+    fn if_stmt(
+        &mut self,
+        binding: Option<&Pattern>,
+        cond: &Expr,
+        body: &[Stmt],
+        else_body: &[Stmt],
+    ) -> Result<(), Error> {
+        let mark = self.temps.len();
+        let (then_b, else_b, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        let mut scrutinee: Option<Val> = None;
+        let c = if binding.is_some() {
+            let o = self.expr(cond)?;
+            if self.dead {
+                return Ok(());
+            }
+            scrutinee = Some(o);
+            self.b.opt_is_some(o.v)
+        } else {
+            let x = self.expr(cond)?;
+            if self.dead {
+                return Ok(());
+            }
+            self.truthy(x)
+        };
+        if binding.is_none() {
+            self.flush_temps(mark);
+        }
+        self.b.br_if(c, then_b, &[], else_b, &[]);
+        self.b.seal_block(then_b);
+        self.b.seal_block(else_b);
+
+        self.enter(then_b);
+        self.push_scope();
+        if let (Some(p), Some(o)) = (binding, scrutinee) {
+            let payload = self.b.opt_get(o.v);
+            let bnd = self
+                .hir
+                .pattern_binding(p)
+                .ok_or_else(|| Error::new("if let without binding"))?;
+            self.bind_local(
+                &bnd,
+                Val {
+                    v: payload,
+                    own: false,
+                },
+            );
+            if o.own {
+                self.drop_value(o.v);
+            }
+        }
+        self.stmts(body)?;
+        self.pop_scope();
+        let then_live = !self.dead;
+        if then_live {
+            self.b.br(join, &[]);
+        }
+
+        self.enter(else_b);
+        if let Some(o) = scrutinee.filter(|o| o.own) {
+            self.drop_value(o.v);
+        }
+        self.block(else_body)?;
+        let else_live = !self.dead;
+        if else_live {
+            self.b.br(join, &[]);
+        }
+        self.b.seal_block(join);
+        self.b.switch_to(join);
+        self.dead = !(then_live || else_live);
+        Ok(())
+    }
+
+    /// A Bool operand as an SSA value (dropping nothing: Bool is a scalar).
+    pub fn truthy(&mut self, x: Val) -> ms_mir::ir::Value {
+        x.v
+    }
+
+    fn while_stmt(&mut self, cond: &Expr, body: &[Stmt]) -> Result<(), Error> {
+        let (header, body_b, exit) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        self.b.br(header, &[]);
+        self.enter(header);
+        let mark = self.temps.len();
+        let x = self.expr(cond)?;
+        let c = self.truthy(x);
+        self.flush_temps(mark);
+        self.b.br_if(c, body_b, &[], exit, &[]);
+        self.b.seal_block(body_b);
+        self.enter(body_b);
+        let depth = self.scopes.len();
+        self.loops.push(LoopCtx {
+            brk: exit,
+            cont: header,
+            depth,
+            cont_used: false,
+        });
+        self.b.poll();
+        self.block(body)?;
+        self.loops.pop();
+        if !self.dead {
+            self.b.br(header, &[]);
+        }
+        self.b.seal_block(header);
+        self.b.seal_block(exit);
+        self.enter(exit);
+        Ok(())
+    }
+
+    fn for_stmt(&mut self, s: &Stmt, iter: &Expr, body: &[Stmt]) -> Result<(), Error> {
+        let loop_var = self
+            .hir
+            .stmt(s)
+            .loop_binding
+            .ok_or_else(|| Error::new("for without loop binding"))?;
+        self.push_scope();
+        let it = self.expr(iter)?;
+        if self.dead {
+            self.scopes.pop();
+            return Ok(());
+        }
+        let ity = self.ty_of(it.v);
+        let TyKind::List(_) = self.b.m.types.kind(ity).clone() else {
+            return Err(Error::new("for over this type is not supported yet"));
+        };
+        let list_var = self.bind_hidden(it);
+        let list = self.b.use_var(list_var);
+        let zero = self.b.iconst(0);
+        let one = self.b.iconst(1);
+        let len = self.b.list_len(list);
+        let idx = self.b.declare_var(MTy::INT, ms_mir::ir::Mode::Borrow);
+        self.b.def_var(idx, zero);
+        let (header, body_b, step, exit) = (
+            self.b.new_block(),
+            self.b.new_block(),
+            self.b.new_block(),
+            self.b.new_block(),
+        );
+        self.b.br(header, &[]);
+        self.enter(header);
+        let i = self.b.use_var(idx);
+        let c = self.b.icmp(Cc::Lt, i, len);
+        self.b.br_if(c, body_b, &[], exit, &[]);
+        self.b.seal_block(body_b);
+        self.enter(body_b);
+        self.b.poll();
+        let depth = self.scopes.len();
+        self.loops.push(LoopCtx {
+            brk: exit,
+            cont: step,
+            depth,
+            cont_used: false,
+        });
+        self.push_scope();
+        let i = self.b.use_var(idx);
+        let list = self.b.use_var(list_var);
+        let e = self.b.list_get(list, i);
+        self.bind_local(&loop_var, Val { v: e, own: false });
+        self.stmts(body)?;
+        self.pop_scope();
+        let ctx = self.loops.pop().expect("loop");
+        let body_live = !self.dead;
+        if body_live {
+            self.b.br(step, &[]);
+        }
+        let step_reached = ctx.cont_used || body_live;
+        self.b.seal_block(step);
+        if step_reached {
+            self.enter(step);
+            let i = self.b.use_var(idx);
+            let n = self
+                .b
+                .emit(Op::IAdd, &[i, one], Imm::None, Some(MTy::INT))
+                .expect("add");
+            self.b.def_var(idx, n);
+            self.b.br(header, &[]);
+        }
+        self.b.seal_block(header);
+        self.b.seal_block(exit);
+        self.enter(exit);
+        self.pop_scope();
+        Ok(())
+    }
+}

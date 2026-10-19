@@ -352,6 +352,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ms-lower"
+version = "0.0.0"
+dependencies = [
+ "ms-check",
+ "ms-clif",
+ "ms-mir",
+ "ms-syntax",
+]
+
+[[package]]
 name = "ms-lsp"
 version = "0.0.0"
 dependencies = [
@@ -380,6 +390,14 @@ dependencies = [
 [[package]]
 name = "ms-rt-abi"
 version = "0.1.0"
+
+[[package]]
+name = "ms-std-core"
+version = "0.1.0"
+dependencies = [
+ "ms-rt",
+ "ms-rt-abi",
+]
 
 [[package]]
 name = "ms-syntax"

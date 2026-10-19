@@ -333,3 +333,259 @@ b0:
     assert!(err.contains("inner") && err.contains("t.ms:12"), "{err}");
     assert!(err.contains("main") && err.contains("t.ms:21"), "{err}");
 }
+
+// ---- random-program differential fuzzer -----------------------------------
+
+struct Rng(u64);
+
+impl Rng {
+    fn next(&mut self) -> u64 {
+        self.0 ^= self.0 << 13;
+        self.0 ^= self.0 >> 7;
+        self.0 ^= self.0 << 17;
+        self.0
+    }
+    fn below(&mut self, n: usize) -> usize {
+        (self.next() % n as u64) as usize
+    }
+    fn chance(&mut self, pct: usize) -> bool {
+        self.below(100) < pct
+    }
+}
+
+/// Emits one random function body as MIR text. Values are SSA names; `scope` holds
+/// the names visible at the current point (everything defined on the dominating path).
+struct Gen {
+    rng: Rng,
+    out: String,
+    n: usize,
+    blocks: usize,
+}
+
+impl Gen {
+    fn fresh(&mut self) -> String {
+        self.n += 1;
+        format!("%v{}", self.n)
+    }
+
+    fn block(&mut self) -> String {
+        self.blocks += 1;
+        format!("k{}", self.blocks)
+    }
+
+    fn pick(&mut self, scope: &[String]) -> String {
+        scope[self.rng.below(scope.len())].clone()
+    }
+
+    fn konst(&mut self, scope: &mut Vec<String>) {
+        const EDGE: [i64; 10] = [0, 1, -1, 2, 3, 7, 100, i64::MAX, i64::MIN, 1 << 32];
+        let v = if self.rng.chance(60) {
+            EDGE[self.rng.below(EDGE.len())]
+        } else {
+            self.rng.below(2001) as i64 - 1000
+        };
+        let n = self.fresh();
+        self.out.push_str(&format!("  {n}: int = iconst {v}\n"));
+        scope.push(n);
+    }
+
+    fn stmt(&mut self, scope: &mut Vec<String>, list: Option<&str>) {
+        const BIN: [&str; 13] = [
+            "iadd", "isub", "imul", "iadd.chk", "isub.chk", "imul.chk", "sdiv.chk", "srem.chk",
+            "and", "or", "xor", "iadd", "isub",
+        ];
+        match self.rng.below(10) {
+            0 => self.konst(scope),
+            1 => {
+                let (a, b) = (self.pick(scope), self.pick(scope));
+                let cc = ["lt", "le", "gt", "ge", "eq", "ne"][self.rng.below(6)];
+                let c = self.fresh();
+                self.out
+                    .push_str(&format!("  {c}: bool = icmp.{cc} {a}, {b}\n"));
+                let (x, y) = (self.pick(scope), self.pick(scope));
+                let r = self.fresh();
+                self.out
+                    .push_str(&format!("  {r}: int = select {c}, {x}, {y}\n"));
+                scope.push(r);
+            }
+            2 => {
+                let a = self.pick(scope);
+                let r = self.fresh();
+                let sh = self.rng.below(60);
+                let k = self.fresh();
+                self.out.push_str(&format!("  {k}: int = iconst {sh}\n"));
+                let op = ["shl", "sshr"][self.rng.below(2)];
+                self.out.push_str(&format!("  {r}: int = {op} {a}, {k}\n"));
+                scope.push(r);
+            }
+            3 if list.is_some() => {
+                let l = list.unwrap();
+                let i = if self.rng.chance(85) {
+                    let a = self.pick(scope);
+                    let m = self.fresh();
+                    self.out.push_str(&format!("  {m}: int = iconst 3\n"));
+                    let r = self.fresh();
+                    self.out.push_str(&format!("  {r}: int = and {a}, {m}\n"));
+                    r
+                } else {
+                    self.pick(scope)
+                };
+                let r = self.fresh();
+                self.out
+                    .push_str(&format!("  {r}: int = list.get {l}, {i}\n"));
+                scope.push(r);
+            }
+            4 => {
+                // Constant operand forms the optimizer likes to rewrite.
+                let a = self.pick(scope);
+                let k = self.fresh();
+                let kv = [2, 3, 4, 8, 16, 7, 10][self.rng.below(7)];
+                self.out.push_str(&format!("  {k}: int = iconst {kv}\n"));
+                let op =
+                    ["imul", "sdiv.chk", "srem.chk", "imul.chk", "srem", "sdiv"][self.rng.below(6)];
+                let r = self.fresh();
+                self.out.push_str(&format!("  {r}: int = {op} {a}, {k}\n"));
+                scope.push(r);
+            }
+            _ => {
+                let (a, b) = (self.pick(scope), self.pick(scope));
+                let op = BIN[self.rng.below(BIN.len())];
+                let r = self.fresh();
+                self.out.push_str(&format!("  {r}: int = {op} {a}, {b}\n"));
+                scope.push(r);
+            }
+        }
+    }
+
+    /// Emits random code into the current block; returns the block label of the open
+    /// block (where the caller continues) and leaves `scope` extended.
+    fn region(&mut self, scope: &mut Vec<String>, list: Option<&str>, depth: usize, budget: usize) {
+        for _ in 0..budget {
+            match self.rng.below(12) {
+                0 if depth < 2 => self.diamond(scope, list, depth),
+                1 if depth < 2 => self.counted_loop(scope, list, depth),
+                _ => self.stmt(scope, list),
+            }
+        }
+    }
+
+    fn diamond(&mut self, scope: &mut Vec<String>, list: Option<&str>, depth: usize) {
+        let (a, b) = (self.pick(scope), self.pick(scope));
+        let c = self.fresh();
+        self.out
+            .push_str(&format!("  {c}: bool = icmp.lt {a}, {b}\n"));
+        let (t, e, j) = (self.block(), self.block(), self.block());
+        self.out
+            .push_str(&format!("  br_if {c}, {t}(), {e}()\n{t}:\n"));
+        let mut ts = scope.clone();
+        self.region(&mut ts, list, depth + 1, 3);
+        let tv = self.pick(&ts);
+        let (tm, em) = (self.block(), self.block());
+        self.out
+            .push_str(&format!("  br {tm}()\n{tm}:\n  br {j}({tv})\n{e}:\n"));
+        let mut es = scope.clone();
+        self.region(&mut es, list, depth + 1, 3);
+        let ev = self.pick(&es);
+        self.out
+            .push_str(&format!("  br {em}()\n{em}:\n  br {j}({ev})\n"));
+        let r = self.fresh();
+        self.out.push_str(&format!("{j}({r}: int):\n"));
+        scope.push(r);
+    }
+
+    fn counted_loop(&mut self, scope: &mut Vec<String>, list: Option<&str>, depth: usize) {
+        let n = 1 + self.rng.below(6);
+        let (zero, lim, init) = (self.fresh(), self.fresh(), self.pick(scope));
+        self.out.push_str(&format!(
+            "  {zero}: int = iconst 0\n  {lim}: int = iconst {n}\n"
+        ));
+        let (h, body, done, latch) = (self.block(), self.block(), self.block(), self.block());
+        let (i, acc, ni) = (self.fresh(), self.fresh(), self.fresh());
+        self.out.push_str(&format!(
+            "  br {h}({zero}, {init})\n{h}({i}: int, {acc}: int):\n  poll\n"
+        ));
+        let c = self.fresh();
+        self.out.push_str(&format!(
+            "  {c}: bool = icmp.lt {i}, {lim}\n  br_if {c}, {body}(), {done}()\n{body}:\n"
+        ));
+        let mut bs = scope.clone();
+        bs.push(i.clone());
+        bs.push(acc.clone());
+        self.region(&mut bs, list, depth + 1, 3);
+        let nv = self.pick(&bs);
+        let one = self.fresh();
+        self.out.push_str(&format!(
+            "  br {latch}()\n{latch}:\n  {one}: int = iconst 1\n  {ni}: int = iadd {i}, {one}\n"
+        ));
+        let mix = self.fresh();
+        self.out.push_str(&format!(
+            "  {mix}: int = iadd {acc}, {nv}\n  br {h}({ni}, {mix})\n{done}:\n"
+        ));
+        scope.push(acc);
+    }
+}
+
+fn random_program(seed: u64) -> String {
+    let mut g = Gen {
+        rng: Rng(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1),
+        out: String::new(),
+        n: 0,
+        blocks: 0,
+    };
+    let mut src = String::from("module \"fz\"\nentry @main\nextern @msrt_print_int(int)\n");
+    // f(a, b): random body over two params and a 4-element list.
+    g.out.push_str("fn @f(%a: int, %b: int) -> int {\nb0:\n");
+    let mut scope = vec!["%a".to_string(), "%b".to_string()];
+    g.konst(&mut scope);
+    let items: Vec<String> = (0..4).map(|_| g.pick(&scope)).collect();
+    g.out.push_str(&format!(
+        "  %lst: list<int> = list.lit {}\n",
+        items.join(", ")
+    ));
+    g.region(&mut scope, Some("%lst"), 0, 14);
+    let r = g.pick(&scope);
+    g.out.push_str(&format!("  drop %lst\n  ret {r}\n}}\n"));
+    src.push_str(&g.out);
+    let (x, y) = (
+        g.rng.below(2001) as i64 - 1000,
+        g.rng.below(2001) as i64 - 1000,
+    );
+    src.push_str(&format!(
+        "fn @main() -> int {{\nb0:\n  %x: int = iconst {x}\n  %y: int = iconst {y}\n  %r: int = call @f(%x, %y)\n  %u: unit = call.rt @msrt_print_int (%r)\n  %z: int = iconst 0\n  ret %z\n}}\n"
+    ));
+    src
+}
+
+#[test]
+fn random_programs_agree() {
+    let n: u64 = std::env::var("FUZZ_N")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(40);
+    let first: u64 = std::env::var("FUZZ_SEED")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1);
+    let mut bad = Vec::new();
+    for seed in first..first + n {
+        let src = random_program(seed);
+        let r = std::panic::catch_unwind(|| {
+            let a = run_interp(&src);
+            let b = run_native(&src, &format!("fz{seed}"));
+            let c = run_native(&src, &format!("fz{seed}.opt"));
+            if std::env::var("FUZZ_VERBOSE").is_ok() {
+                eprintln!("seed {seed}: exit {} out {:?}", a.code, a.stdout.trim());
+            }
+            assert_eq!((&a.stdout, a.code), (&b.stdout, b.code), "native");
+            assert_eq!((&a.stdout, a.code), (&c.stdout, c.code), "optimized");
+        });
+        if r.is_err() {
+            std::fs::write(std::env::temp_dir().join(format!("fz{seed}.mir")), &src).ok();
+            bad.push(seed);
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "disagreeing seeds (sources in the temp dir): {bad:?}"
+    );
+}
