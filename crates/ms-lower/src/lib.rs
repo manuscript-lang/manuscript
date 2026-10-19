@@ -25,6 +25,7 @@ mod native;
 mod rtcall;
 mod runner;
 mod stmt;
+mod streamloop;
 mod testing;
 mod text;
 mod with;

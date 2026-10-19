@@ -361,6 +361,12 @@ msrt_html_first_child(t: *const TreeObj, id: u32) -> u32
 msrt_html_next_sibling(t: *const TreeObj, id: u32) -> u32
 msrt_html_attr_count(t: *const TreeObj, id: u32) -> i64
 msrt_html_attr( t: *const TreeObj, id: u32, i: i64, which: u8, ) -> *mut StrObj
+msstd_io_acc_new(kind: i64, has_max: u8, max: i64) -> *mut Acc
+msstd_io_acc_want(a: *const Acc) -> i64
+msstd_io_acc_push(a: *mut Acc, data: *const VecVal) -> u8
+msstd_io_acc_finish_bytes(a: *mut Acc, out: *mut VecVal) -> u8
+msstd_io_acc_finish_count(a: *mut Acc, out: *mut i64) -> u8
+msstd_io_acc_finish_line(a: *mut Acc, out: *mut *mut StrObj) -> u8
 msstd_io_failure_message() -> *mut StrObj
 msstd_io_standard(which: i64) -> *mut Host
 msstd_io_open(path: *const StrObj, out: *mut *mut Host) -> u8
