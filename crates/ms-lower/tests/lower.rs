@@ -132,3 +132,14 @@ fn error_values_print_their_dynamic_text_and_equal_uses_impls() {
     assert!(mir.contains("iface.is"));
     assert!(mir.contains("iface.new"));
 }
+
+#[test]
+fn loop_variables_survive_a_removed_trivial_join() {
+    // `count` is untouched by the inner loop; reading it through the loop header while the
+    // condition's join was being resolved once left a stale edge argument.
+    let mir = lower(
+        "joinloop",
+        "type Reader:\n    pos: Int\n\nfn peek(reader: Reader) String:\n    return \"a\"\n\nfn advance(var reader: Reader) String:\n    reader.pos += 1\n    return \"a\"\n\nfn run(var reader: Reader) Int:\n    var count = 0\n    while true:\n        var key = \"\"\n        while reader.pos < 3 and \"abc\".contains(peek(reader)):\n            key = key.concat(advance(reader))\n        if key == \"\": return 9\n        count += 1\n        if count > 2: return count\n    return 0\n\nexport fn main() Int:\n    return run(Reader(pos: 0))\n",
+    );
+    assert!(mir.contains("fn @run"));
+}
