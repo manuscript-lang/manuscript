@@ -1,0 +1,13 @@
+[package]
+name = "msc"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+cranelift-codegen = "=0.136.0"
+cranelift-frontend = "=0.136.0"
+cranelift-module = "=0.136.0"
+cranelift-object = "=0.136.0"
+cranelift-native = "=0.136.0"
+target-lexicon = "0.13"
