@@ -40,6 +40,8 @@ pub enum Glue {
     ClosureDrop(u32),
     /// Heap block destructor of an interface payload `fn(block)`.
     BlockDrop,
+    /// Deep copy of an interface payload block `fn(block) -> block`.
+    BlockCopy,
     /// `fn(arg: *mut u8)` thunk used by cleanup.push; key carries the closer function.
     CleanupThunk(u32),
     /// Destructor of a `Shared[T]` box `fn(obj)`; the `Ty` is `T`. Drops the payload, frees the box.
@@ -224,6 +226,7 @@ impl<'m> Gen<'m> {
         let sig = match kind {
             Glue::Drop => self.sig(&leaves, &[]),
             Glue::Copy => self.sig(&leaves, &leaves),
+            Glue::BlockCopy => self.sig(&[Leaf::I64], &[Leaf::I64]),
             Glue::ClosureDrop(_)
             | Glue::BlockDrop
             | Glue::CleanupThunk(_)
@@ -239,6 +242,7 @@ impl<'m> Gen<'m> {
                 Glue::Copy => "copy",
                 Glue::ClosureDrop(_) => "closure_drop",
                 Glue::BlockDrop => "block_drop",
+                Glue::BlockCopy => "block_copy",
                 Glue::CleanupThunk(_) => "cleanup_thunk",
                 Glue::SlotDrop => "slot_drop",
                 Glue::SharedDrop => "shared_drop",
@@ -445,7 +449,8 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
         g.module.define_data(id, &d).map_err(|e| e.to_string())?;
         g.globals.push(id);
     }
-    // Vtables are defined after functions are declared: slot 0 is the payload block destructor.
+    // Vtables are defined after functions are declared: slot 0 is the payload block destructor,
+    // the methods follow, then the payload block copier.
     for (i, vt) in m.vtables.iter().enumerate() {
         let id = g
             .module
@@ -458,11 +463,15 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
             .map_err(|e| e.to_string())?;
         g.vtables.push(id);
         let drop = g.glue(Glue::BlockDrop, vt.data_ty);
+        let copy = g.glue(Glue::BlockCopy, vt.data_ty);
         let mut d = DataDescription::new();
-        d.define(vec![0u8; 8 * (1 + vt.methods.len())].into_boxed_slice());
+        d.define(vec![0u8; 8 * (2 + vt.methods.len())].into_boxed_slice());
         d.set_align(8);
         let r = g.module.declare_func_in_data(drop, &mut d);
         d.write_function_addr(0, r);
+        // The payload copier follows the methods.
+        let r = g.module.declare_func_in_data(copy, &mut d);
+        d.write_function_addr(8 * (1 + vt.methods.len()) as u32, r);
         for (k, mf) in vt.methods.iter().enumerate() {
             let r = g.module.declare_func_in_data(g.funcs[mf.index()], &mut d);
             d.write_function_addr(8 * (1 + k as u32), r);
@@ -493,6 +502,7 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
         ctx.func.signature = match kind {
             Glue::Drop => g.sig(&leaves, &[]),
             Glue::Copy => g.sig(&leaves, &leaves),
+            Glue::BlockCopy => g.sig(&[Leaf::I64], &[Leaf::I64]),
             Glue::SlotCopy => g.sig(&[Leaf::I64, Leaf::I64], &[]),
             _ => g.sig(&[Leaf::I64], &[]),
         };

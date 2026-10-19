@@ -1,0 +1,12 @@
+[package]
+name = "ms-std-glob"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Manuscript glob patterns (extglobs, braces, **) shared by @std/path and @std/fs, matching the Go runtime"
+
+[lib]
+crate-type = ["rlib"]
+
+[lints]
+workspace = true

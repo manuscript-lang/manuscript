@@ -32,6 +32,13 @@ grep -q 'main exit code must be between 0 and 125' "$work/err" || fail "badexit:
 [ "$st" = 70 ] || fail "toodeep: exit $st"
 grep -q 'call depth limit exceeded (200000 nested calls)' "$work/err" || fail "toodeep: message"
 
+"$work/h" guard >"$work/gout" 2>"$work/gerr" && st=0 || st=$?
+[ "$st" = 0 ] || fail "guard: exit $st: $(cat "$work/gerr")"
+grep -q 'guards ok' "$work/gout" || fail "guard: output"
+[ "$(grep -c '^cleanup b' "$work/gerr")" = 4 ] || fail "guard: inner cleanups must run once per fault"
+[ "$(grep -c '^cleanup a' "$work/gerr")" = 5 ] || fail "guard: cleanups below the guard must wait for the final run"
+grep -q 'outer boom' "$work/gout" || fail "guard: outer fault message"
+
 [ "$("$work/h" args a b c)" = 3 ] || fail "args"
 
 MS_PROFILE="$work/prof" MS_PERF_MAP=1 "$work/h" busy >/dev/null 2>&1 || true

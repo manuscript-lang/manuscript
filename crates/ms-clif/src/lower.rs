@@ -294,6 +294,15 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.free(blk);
                 self.b.ins().return_(&[]);
             }
+            Glue::BlockCopy => {
+                // Interface payload block holding a `ty` value.
+                let leaves = self.g.lay.leaves(ty);
+                let vs = self.load_leaves(params[0], 0, &leaves);
+                let copied = self.copy_value(ty, &vs);
+                let blk = self.alloc(mem_layout(&leaves).size as i64);
+                self.store_leaves(blk, 0, &leaves, &copied);
+                self.b.ins().return_(&[blk]);
+            }
             Glue::SharedDrop => {
                 let obj = params[0];
                 if self.g.m.needs_drop(ty) {
@@ -539,9 +548,17 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.rt_call("msrt_slot_copy", &[d, src, dst]);
                 self.load_leaves(dst, 0, &leaves)
             }
-            TyKind::Iface(_) => {
-                // Interface payloads are not copyable (checked by the front end).
-                vs.to_vec()
+            TyKind::Iface(i) => {
+                // The payload copier sits after the methods in the vtable.
+                let (data, vt) = (vs[0], vs[1]);
+                let slot = 8 * (1 + self.g.m.ifaces[i.index()].methods.len()) as i32;
+                let f = self.b.ins().load(types::I64, flags(), vt, slot);
+                let mut sig = self.g.module.make_signature();
+                sig.params.push(ir::AbiParam::new(types::I64));
+                sig.returns.push(ir::AbiParam::new(types::I64));
+                let sr = self.b.import_signature(sig);
+                let c = self.b.ins().call_indirect(sr, f, &[data]);
+                vec![self.b.inst_results(c)[0], vt]
             }
             _ => vs.to_vec(),
         }
@@ -781,16 +798,15 @@ impl<'a, 'm> Lower<'a, 'm> {
             } => {
                 let v = self.vals[value.index()][0];
                 let mut sw = Switch::new();
+                // Targets that pass arguments go through a trampoline block, filled after the switch.
+                let mut trampolines = Vec::new();
                 for (k, tg) in cases {
                     let (blk, args) = self.target(tg);
                     let entry = if args.is_empty() {
                         blk
                     } else {
                         let tramp = self.b.create_block();
-                        let here = self.b.current_block().expect("in block");
-                        self.b.switch_to_block(tramp);
-                        self.b.ins().jump(blk, &args);
-                        self.b.switch_to_block(here);
+                        trampolines.push((tramp, blk, args));
                         tramp
                     };
                     sw.set_entry(*k as u64 as u128, entry);
@@ -800,13 +816,14 @@ impl<'a, 'm> Lower<'a, 'm> {
                     db
                 } else {
                     let tramp = self.b.create_block();
-                    let here = self.b.current_block().expect("in block");
-                    self.b.switch_to_block(tramp);
-                    self.b.ins().jump(db, &da);
-                    self.b.switch_to_block(here);
+                    trampolines.push((tramp, db, da));
                     tramp
                 };
                 sw.emit(&mut self.b, v, dblock);
+                for (tramp, blk, args) in trampolines {
+                    self.b.switch_to_block(tramp);
+                    self.b.ins().jump(blk, &args);
+                }
             }
             Term::Ret(v) => {
                 let vs = v.map(|v| self.vals[v.index()].clone()).unwrap_or_default();
@@ -1319,7 +1336,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let p = self.a(inst, 0)[0];
                 vec![self.add_imm(p, off)]
             }
-            Op::Load => {
+            Op::Load | Op::Take => {
                 let Imm::Ty(ty) = inst.imm else {
                     unreachable!()
                 };
@@ -1327,7 +1344,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let p = self.a(inst, 0)[0];
                 self.load_leaves(p, 0, &leaves)
             }
-            Op::Store => {
+            Op::Store | Op::Put => {
                 let ty = f.ty(inst.args[1]);
                 let leaves = self.g.lay.leaves(ty);
                 let (p, v) = (self.a(inst, 0)[0], self.a(inst, 1));

@@ -11,12 +11,12 @@ BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 export PATH := $(dir $(GO)):$(PATH)
 export STATICCHECK_CACHE ?= $(CURDIR)/.artifacts/staticcheck
 
-.PHONY: conformance conform-oracle stdgen agent-bench-check toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test stdlib-bench repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check docs-coverage book book-check vendor-refresh
+.PHONY: conformance conform-oracle stdgen agent-bench-check toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test stdlib-bench repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check docs-coverage docs-rs docs-check-rs docs-parity book book-check vendor-refresh
 
 toolchain:
 	sh scripts/bootstrap-go.sh
 
-check lint repo-check unit stdlib-check stdlib-test examples-check licenses licenses-check test e2e race coverage fuzz fmt docs docs-check docs-coverage: | payload
+check lint repo-check unit stdlib-check stdlib-test examples-check licenses licenses-check test e2e race coverage fuzz fmt docs docs-check docs-coverage docs-parity: | payload
 
 setup: payload tools
 
@@ -137,6 +137,22 @@ docs-check:
 
 docs-coverage:
 	"$(GO)" run ./scripts/docgen -check -coverage .artifacts/stdlib-doc-coverage.json
+
+# The Rust docgen (crates/ms-guide). docs-parity proves it writes exactly the files the Go
+# docgen writes, byte for byte, for the book tree and the API downloads.
+docs-rs:
+	cargo run -q -p ms-guide --bin ms-docgen
+
+docs-check-rs:
+	cargo run -q -p ms-guide --bin ms-docgen -- -check
+
+docs-parity:
+	"$(GO)" run ./scripts/docgen
+	rm -rf .artifacts/docs-rs .artifacts/docs-rs-static
+	cargo run -q -p ms-guide --bin ms-docgen -- -artifacts .artifacts/docs-rs -static .artifacts/docs-rs-static
+	diff -r .artifacts/docs .artifacts/docs-rs
+	diff website/static/stdlib.md .artifacts/docs-rs-static/stdlib.md
+	diff website/static/stdlib.json .artifacts/docs-rs-static/stdlib.json
 
 book: docs
 	"$(HUGO)" --source website --minify --panicOnWarning --cleanDestinationDir
