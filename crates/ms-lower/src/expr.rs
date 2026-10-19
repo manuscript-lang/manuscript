@@ -125,11 +125,17 @@ impl<'a> FnLower<'a> {
             return Err(Error::new("list literal of a non-list type"));
         };
         let mut vals = Vec::new();
-        for it in items {
+        for (n, it) in items.iter().enumerate() {
             let x = self.expr(it)?;
             if self.dead {
                 return Ok(self.dummy(lt));
             }
+            // A later element may return early (`try`): hold this one as a temporary until then.
+            let x = if items[n + 1..].iter().any(crate::mutation::has_try) {
+                self.hold_temp(x)
+            } else {
+                x
+            };
             let o = self.owned(x);
             vals.push(o);
         }
@@ -295,11 +301,18 @@ impl<'a> FnLower<'a> {
             BinaryOp::And | BinaryOp::Or => return self.short_circuit(op, left, right),
             _ => {}
         }
+        let at = self.b.current();
         let l = self.expr(left)?;
+        let l = if crate::mutation::has_try(right) {
+            self.hold_temp(l)
+        } else {
+            l
+        };
         let r = self.expr(right)?;
         if self.dead {
             return Ok(l);
         }
+        let l = self.refresh(left, l, at)?;
         let t = self.ty_of(l.v);
         self.at(e.pos);
         let out = match op {

@@ -167,8 +167,9 @@ impl<'a> FnLower<'a> {
             .is_some_and(|l| !self.needs_drop(l.ty) || self.b.var_mode(l.var) == Mode::Own)
     }
 
-    /// Reads a borrowed place again when evaluating something after it started a new block: a
-    /// variable's value is passed along the branches, so the earlier read no longer stands.
+    /// Reads a borrowed place again after evaluating a sibling: a branch passes the variable's
+    /// value along, and a call that took the variable (moved it into a slot) replaced it, so the
+    /// earlier read no longer stands.
     pub(crate) fn refresh(
         &mut self,
         e: &Expr,
@@ -176,12 +177,8 @@ impl<'a> FnLower<'a> {
         at: ms_mir::ir::Block,
     ) -> Result<Val, Error> {
         // A value that needs no drop stays valid, and keeps the value of its written position.
-        if x.own
-            || self.dead
-            || self.b.current() == at
-            || !self.needs_drop(self.ty_of(x.v))
-            || !self.is_place(e)
-        {
+        let _ = at;
+        if x.own || self.dead || !self.needs_drop(self.ty_of(x.v)) || !self.is_place(e) {
             return Ok(x);
         }
         self.expr(e)
@@ -562,12 +559,15 @@ impl<'a> FnLower<'a> {
                 .ok_or_else(|| Error::new("unknown case"))?,
             None => ct::fields(&t),
         };
-        let mut slots: Vec<Option<Value>> = vec![None; params.len()];
-        for a in &view.arguments {
+        let mut slots: Vec<Option<Val>> = vec![None; params.len()];
+        for (n, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
                 return Ok(x);
             }
+            let later_try = view.arguments[n + 1..]
+                .iter()
+                .any(|l| crate::mutation::has_try(l.expr));
             let x = match &a.wrap_optional {
                 Some(_) => {
                     let o = self.owned(x);
@@ -576,16 +576,29 @@ impl<'a> FnLower<'a> {
                 }
                 None => x,
             };
+            // A later field may return early (`try`): hold this one as a temporary until then.
+            let x = if later_try {
+                self.hold_temp(x)
+            } else {
+                let v = self.owned(x);
+                Val {
+                    v,
+                    own: self.needs_drop(self.ty_of(v)),
+                }
+            };
             let idx = params
                 .iter()
                 .position(|p| p.name == a.slot.name)
                 .ok_or_else(|| Error::new(format!("no field {}", a.slot.name)))?;
-            slots[idx] = Some(self.owned(x));
+            slots[idx] = Some(x);
         }
         let mut vals = Vec::new();
         for (i, s) in slots.into_iter().enumerate() {
             match s {
-                Some(v) => vals.push(v),
+                Some(x) => {
+                    let v = self.owned(x);
+                    vals.push(v);
+                }
                 None => {
                     let v = self.field_default(&t, case, i, &vals)?;
                     vals.push(v);

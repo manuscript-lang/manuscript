@@ -57,12 +57,11 @@ fn close_call(b: &mut FuncBuilder<'_>, kind: &CloseKind, v: Value, ty: MTy) {
                 Imm::None,
                 None,
             );
-            let r = b.call(*fid, &[slot]);
+            b.call(*fid, &[slot]);
             let take = if droppable { Op::Take } else { Op::Load };
             let after = b.emit(take, &[slot], Imm::Ty(ty), Some(ty)).expect("take");
             if droppable {
                 b.emit(Op::Drop, &[after], Imm::None, None);
-                b.emit(Op::Drop, &[r], Imm::None, None);
             }
         }
     }
