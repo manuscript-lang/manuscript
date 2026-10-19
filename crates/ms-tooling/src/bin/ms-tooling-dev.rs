@@ -114,9 +114,7 @@ fn inspect(files: &[String]) -> i32 {
     };
     println!(
         "{}",
-        ms_tooling::inspect::inspect(&program)
-            .to_json(true)
-            .encode()
+        ms_tooling::inspect::inspect(&program).to_json().encode()
     );
     0
 }

@@ -3,6 +3,7 @@
 //! to a per-version cache entry that later builds reuse.
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 static ARCHIVE: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/libms_native.a"));
 
@@ -23,8 +24,14 @@ pub fn embedded() -> Result<PathBuf, String> {
         )
     };
     std::fs::create_dir_all(&directory).map_err(|e| failed("create the cache for", e))?;
-    // Staged beside the destination so concurrent builds never see a partial archive.
-    let staged = directory.join(format!(".libms_native-{}.a", std::process::id()));
+    // Staged beside the destination so concurrent builds never see a partial archive; the counter
+    // keeps threads of one process (the engine tests) from sharing a staged file.
+    static STAGED: AtomicUsize = AtomicUsize::new(0);
+    let staged = directory.join(format!(
+        ".libms_native-{}-{}.a",
+        std::process::id(),
+        STAGED.fetch_add(1, Ordering::Relaxed)
+    ));
     let written = std::fs::write(&staged, ARCHIVE).and_then(|()| std::fs::rename(&staged, &path));
     written.map_err(|e| {
         let _ = std::fs::remove_file(&staged);

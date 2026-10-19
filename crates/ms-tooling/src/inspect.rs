@@ -241,7 +241,7 @@ pub fn inspect(program: &Program) -> Inspection {
     gosort::slice(&mut result.sources, |a, b| a.file < b.file);
     gosort::slice(&mut result.entities, |a, b| a.id < b.id);
     gosort::slice(&mut result.calls, |a, b| a.id < b.id);
-    result.build_id = sha256::hex(result.to_json(false).encode_compact().as_bytes());
+    result.build_id = sha256::hex(result.to_json().encode_compact().as_bytes());
     result
 }
 
@@ -530,9 +530,8 @@ impl Span {
 }
 
 impl Inspection {
-    /// The `ms inspect` document. `go_locals` carries the Go lowering's local
-    /// names; the Rust pipeline has none, so the field is an empty list.
-    pub fn to_json(&self, go_locals: bool) -> Json {
+    /// The `ms inspect` document.
+    pub fn to_json(&self) -> Json {
         let locals = self.locals.iter().map(|l| {
             Json::Obj(vec![
                 ("go_id".into(), Json::str(&l.go_id)),
@@ -573,7 +572,7 @@ impl Inspection {
                 ("span".into(), c.span.to_json()),
             ])
         });
-        let mut fields = vec![
+        Json::Obj(vec![
             ("locals".to_string(), Json::Arr(locals.collect())),
             ("format".into(), Json::int(1)),
             ("build_id".into(), Json::str(&self.build_id)),
@@ -584,11 +583,7 @@ impl Inspection {
                 "statements".into(),
                 Json::Arr(self.statements.iter().map(Span::to_json).collect()),
             ),
-        ];
-        if go_locals {
-            fields.push(("go_locals".into(), Json::Arr(Vec::new())));
-        }
-        Json::Obj(fields)
+        ])
     }
 
     /// The entity and call rows that facts, views and diagrams are built from.

@@ -24,9 +24,9 @@ use ms_driver::{
 };
 
 use crate::backend::{
-    AnalysisCommand, AnalysisRequest, Backend, BackendError, BackendResult, BuildRequest,
-    BuildType, DiagramRequest, FormatFailure, FormatFile, Io, OutputRequest, ReviewRequest,
-    RunRequest, TestRequest, not_implemented,
+    AnalysisRequest, Backend, BackendError, BackendResult, BuildRequest, BuildType, DiagramRequest,
+    FormatFailure, FormatFile, Io, OutputRequest, ReviewRequest, RunRequest, TestRequest,
+    not_implemented,
 };
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::util::plural;
@@ -92,9 +92,12 @@ impl<L: Lower> Backend for RustBackend<L> {
         testing::test(self, request, io)
     }
 
+    fn check(&self, request: &AnalysisRequest, io: &mut Io) -> BackendResult {
+        tooling::analysis(request, io)
+    }
+
     fn lint(&self, request: &AnalysisRequest, io: &mut Io) -> BackendResult {
-        debug_assert_eq!(request.command, AnalysisCommand::Lint);
-        tooling::lint(request, io)
+        tooling::analysis(request, io)
     }
 
     fn inspect(&self, request: &OutputRequest, io: &mut Io) -> BackendResult {

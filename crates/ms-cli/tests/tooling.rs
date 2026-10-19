@@ -3,8 +3,10 @@
 //! (default `../../ms` from the workspace root); the tests skip when it is
 //! absent.
 
+use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 
 use ms_cli::json::{Json, parse};
 
@@ -84,6 +86,12 @@ fn source_tools_match_go() {
     let rust = PathBuf::from(env!("CARGO_BIN_EXE_ms"));
     let dir = project("tools");
     let cases: &[&[&str]] = &[
+        &["check", "ms.toml"],
+        &["check", "ms.toml", "--json"],
+        &["check", "src"],
+        &["check", "src/lib.ms"],
+        &["check", "src/main.ms", "src/lib.ms", "--json"],
+        &["check", "missing.ms"],
         &["lint", "ms.toml"],
         &["lint", "ms.toml", "--json"],
         &["lint", "src"],
@@ -151,4 +159,97 @@ fn inspect_matches_go_apart_from_go_locals() {
         );
     }
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Run `<command> main.ms --watch`, save `edits` in turn (each waits for the
+/// previous rerun), then interrupt it.
+fn watched(program: &Path, command: &str, dir: &Path, edits: &[&str]) -> (i32, String, String) {
+    let mut child = Command::new(program)
+        .args([command, "main.ms", "--watch"])
+        .current_dir(dir)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let (stdout, stderr) = (child.stdout.take().unwrap(), child.stderr.take().unwrap());
+    let (sender, receiver) = std::sync::mpsc::channel();
+    let readers: Vec<_> = [
+        (0, Box::new(stdout) as Box<dyn Read + Send>),
+        (1, Box::new(stderr)),
+    ]
+    .into_iter()
+    .map(|(stream, mut pipe)| {
+        let sender = sender.clone();
+        std::thread::spawn(move || {
+            let mut buffer = [0u8; 4096];
+            let mut all = String::new();
+            while let Ok(n) = pipe.read(&mut buffer) {
+                if n == 0 {
+                    break;
+                }
+                all.push_str(&String::from_utf8_lossy(&buffer[..n]));
+                let _ = sender.send((stream, all.clone()));
+            }
+            all
+        })
+    })
+    .collect();
+    drop(sender);
+    let mut seen = [String::new(), String::new()];
+    let wait_for_runs = |runs: usize, seen: &mut [String; 2]| {
+        let deadline = Instant::now() + Duration::from_secs(20);
+        while seen[1].matches("ms: waiting for changes").count() < runs {
+            let left = deadline.saturating_duration_since(Instant::now());
+            let (stream, all) = receiver.recv_timeout(left).expect("watch output");
+            seen[stream] = all;
+        }
+    };
+    wait_for_runs(1, &mut seen);
+    for (index, edit) in edits.iter().enumerate() {
+        // The poll compares size and time; a longer file always differs.
+        std::thread::sleep(Duration::from_millis(30));
+        write(dir, "main.ms", edit);
+        wait_for_runs(index + 2, &mut seen);
+    }
+    let kill = Command::new("kill")
+        .args(["-INT", &child.id().to_string()])
+        .status()
+        .unwrap();
+    assert!(kill.success());
+    let status = child.wait().unwrap().code().unwrap_or(-1);
+    let outputs: Vec<String> = readers.into_iter().map(|r| r.join().unwrap()).collect();
+    (status, outputs[0].clone(), outputs[1].clone())
+}
+
+#[test]
+fn watch_reruns_after_edits_like_go() {
+    let Some(go) = oracle() else {
+        eprintln!("skipping: no Go oracle");
+        return;
+    };
+    let rust = PathBuf::from(env!("CARGO_BIN_EXE_ms"));
+    let good = "export fn main() Int:\n    return 0\n";
+    let bad = "export fn main() Int:\n    return \"text\"\n";
+    let lint_bad = "export fn main() Int:\n    let unused = 1\n    return 0\n";
+    for (command, edits) in [("check", vec![bad, good]), ("lint", vec![lint_bad, good])] {
+        let mut results = Vec::new();
+        for (name, program) in [("go", &go), ("rust", &rust)] {
+            let dir = std::env::temp_dir().join(format!(
+                "ms-cli-watch-{command}-{name}-{}",
+                std::process::id()
+            ));
+            let _ = std::fs::remove_dir_all(&dir);
+            write(&dir, "main.ms", good);
+            let (status, out, err) = watched(program, command, &dir, &edits);
+            let shown = dir.to_string_lossy().into_owned();
+            results.push((
+                status,
+                out.replace(&shown, "DIR"),
+                err.replace(&shown, "DIR"),
+            ));
+            let _ = std::fs::remove_dir_all(&dir);
+        }
+        assert_eq!(results[0].0, 130, "{command} status");
+        assert_eq!(results[0], results[1], "{command} --watch differs");
+    }
 }
