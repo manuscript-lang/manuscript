@@ -1107,6 +1107,12 @@ impl FnLower<'_> {
                     let text = s.call_runtime(sym, &[], MTy::STR)?;
                     Ok(s.b.alt_new(ea, idx as u32, &[text]))
                 }
+                _ if carries_text => {
+                    // No runtime text for this status: an empty message.
+                    let text = s.lit("");
+                    let text = s.owned(text);
+                    Ok(s.b.alt_new(ea, idx as u32, &[text]))
+                }
                 _ => Ok(s.b.alt_new(ea, idx as u32, &[])),
             }
         };

@@ -179,7 +179,14 @@ impl FnLower<'_> {
         let sym = kind.finish();
         let sig = crate::rtcall::rt_sig(sym)
             .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
-        let out = self.finish_rt_call(sym, &sig, crate::rtcall::Tail::Out, false, vec![acc], result)?;
+        let out = self.finish_rt_call(
+            sym,
+            &sig,
+            crate::rtcall::Tail::Out,
+            false,
+            vec![acc],
+            result,
+        )?;
         let out = self.owned(out);
         self.b.def_var(res, out);
         self.b.br(join, &[]);

@@ -122,7 +122,9 @@ impl FnLower<'_> {
         let TyKind::Iface(iface) = self.b.m.types.kind(iface_ty).clone() else {
             return Err(Error::new("a handle needs an interface type"));
         };
-        let vt = self.cx.net_handle_vtable(self.b.m, &self.hir.clone(), iface)?;
+        let vt = self
+            .cx
+            .net_handle_vtable(self.b.m, &self.hir.clone(), iface)?;
         let v = self
             .b
             .emit(Op::IfaceNew, &[handle], Imm::Vtable(vt), Some(iface_ty))
