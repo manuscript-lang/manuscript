@@ -65,6 +65,8 @@ pub struct Cx {
     pub vtables: HashMap<String, ms_mir::ir::VtableId>,
     /// Every implementation method of the program.
     pub methods: Vec<ct::MethodRef>,
+    /// Types whose descriptor glue is registered.
+    pub glue_seen: std::collections::HashSet<MTy>,
     /// Parameters (receiver first) that functions hand back changed.
     pub mutated: std::collections::HashSet<crate::mutation::ParamKey>,
 }
@@ -85,6 +87,7 @@ impl Cx {
             mods,
             callables,
             mutated,
+            glue_seen: Default::default(),
             tycache: HashMap::new(),
             insts: HashMap::new(),
             queue: Vec::new(),

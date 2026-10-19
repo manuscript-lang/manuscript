@@ -1366,14 +1366,18 @@ impl<'a> FnLower<'a> {
         match arg {
             None => Ok((self.b.bconst(false), self.b.iconst(0))),
             Some(a) if a.wrapped => Ok((self.b.bconst(true), self.borrow(a.val))),
-            Some(_) => Err(Error::new(
-                "optional argument passed through is not supported yet",
-            )),
+            Some(a) => {
+                let v = self.borrow(a.val);
+                let has = self.b.opt_is_some(v);
+                let value = self.b.opt_get(v);
+                Ok((has, value))
+            }
         }
     }
 
     /// The runtime descriptor of a type.
     pub fn type_desc(&mut self, t: MTy) -> Value {
+        self.cx.ensure_glue(self.b.m, t);
         self.b
             .emit(
                 ms_mir::ir::Op::TypeDesc,

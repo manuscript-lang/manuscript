@@ -183,3 +183,109 @@ pub(crate) fn build_eq(cx: &mut Cx, m: &mut Module, func: FuncId, t: MTy) -> Res
     m.funcs[func.index()] = f;
     Ok(())
 }
+
+impl Cx {
+    /// Registers the equality and hash functions the runtime reaches through the descriptor of
+    /// `t`, and of the aggregates inside it.
+    pub(crate) fn ensure_glue(&mut self, m: &mut Module, t: MTy) {
+        if !self.glue_seen.insert(t) {
+            return;
+        }
+        let inner: Vec<MTy> = match m.types.kind(t).clone() {
+            TyKind::Rec(r) => m.records[r.index()].fields.iter().map(|f| f.1).collect(),
+            TyKind::Alt(a) => m.alts[a.index()]
+                .cases
+                .iter()
+                .flat_map(|c| c.fields.iter().map(|f| f.1))
+                .collect(),
+            TyKind::List(e) | TyKind::Opt(e) => vec![e],
+            TyKind::Obj(_, args) => args,
+            _ => return,
+        };
+        for i in inner {
+            self.ensure_glue(m, i);
+        }
+        if !matches!(m.types.kind(t), TyKind::Rec(_) | TyKind::Alt(_)) {
+            return;
+        }
+        let eq = self.eq_fn(m, t);
+        let (eq, hash) = (self.eq_adapter(m, t, eq), hash_adapter(m, t));
+        m.desc_glue.push((t, eq, hash));
+    }
+
+    /// `fn(ptr, ptr) -> bool` over the equality helper.
+    fn eq_adapter(&mut self, m: &mut Module, t: MTy, eq: FuncId) -> FuncId {
+        let p = Param {
+            ty: MTy::PTR,
+            mode: Mode::Borrow,
+        };
+        let mut b = FuncBuilder::new(m, "desc.eq", vec![p, p], MTy::BOOL);
+        b.func_mut().linkage = ms_mir::ir::Linkage::Internal;
+        let args = b.params();
+        let load = |b: &mut FuncBuilder<'_>, a: Value| {
+            b.emit(Op::Load, &[a], Imm::Ty(t), Some(t)).expect("load")
+        };
+        let (x, y) = (load(&mut b, args[0]), load(&mut b, args[1]));
+        let r = b.call(eq, &[x, y]);
+        b.ret(Some(r));
+        let f = b.into_func();
+        m.add_func(f)
+    }
+}
+
+/// `fn(ptr) -> int`: equal values hash equally. Only the leaves that are cheap to reach
+/// contribute (integers, booleans, strings, enum tags and nested records).
+fn hash_adapter(m: &mut Module, t: MTy) -> FuncId {
+    let p = Param {
+        ty: MTy::PTR,
+        mode: Mode::Borrow,
+    };
+    let mut b = FuncBuilder::new(m, "desc.hash", vec![p], MTy::INT);
+    b.func_mut().linkage = ms_mir::ir::Linkage::Internal;
+    let arg = b.params()[0];
+    let v = b.emit(Op::Load, &[arg], Imm::Ty(t), Some(t)).expect("load");
+    let seed = b.iconst(17);
+    let h = hash_into(&mut b, t, v, seed);
+    b.ret(Some(h));
+    let f = b.into_func();
+    m.add_func(f)
+}
+
+fn hash_into(b: &mut FuncBuilder<'_>, t: MTy, v: Value, acc: Value) -> Value {
+    let combine = |b: &mut FuncBuilder<'_>, acc: Value, leaf: Value| {
+        let ext = runtime_fn(b.m, "msrt_hash_combine", &[MTy::INT, MTy::INT], MTy::INT);
+        b.call_rt(ext, &[acc, leaf])
+    };
+    if t == MTy::INT {
+        let ext = runtime_fn(b.m, "msrt_hash_int", &[MTy::INT], MTy::INT);
+        let leaf = b.call_rt(ext, &[v]);
+        return combine(b, acc, leaf);
+    }
+    if t == MTy::BOOL {
+        let leaf = b
+            .emit(Op::B2I, &[v], Imm::None, Some(MTy::INT))
+            .expect("b2i");
+        return combine(b, acc, leaf);
+    }
+    if t == MTy::STR {
+        let ext = runtime_fn(b.m, "msrt_string_hash", &[MTy::STR], MTy::INT);
+        let leaf = b.call_rt(ext, &[v]);
+        return combine(b, acc, leaf);
+    }
+    match b.m.types.kind(t).clone() {
+        TyKind::Rec(r) => {
+            let fields: Vec<MTy> = b.m.records[r.index()].fields.iter().map(|f| f.1).collect();
+            let mut acc = acc;
+            for (i, ft) in fields.into_iter().enumerate() {
+                let f = b.rec_get(r, i as u32, v);
+                acc = hash_into(b, ft, f, acc);
+            }
+            acc
+        }
+        TyKind::Alt(_) => {
+            let tag = b.alt_tag(v);
+            combine(b, acc, tag)
+        }
+        _ => acc,
+    }
+}
