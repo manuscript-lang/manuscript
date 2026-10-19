@@ -1,18 +1,16 @@
 # Proposal: a Rust and Cranelift implementation without garbage collection
 
-Status: proposed. Direction from the project owner on 2026-10-19: move Manuscript off Go entirely (compiler, runtime, and generated code), adopt the value-semantics memory model below, and use Cranelift as the code generator. This document is the plan; nothing in it is implemented outside `experiments/`.
+Status: proposed, revised after an independent skeptical review (summarized at the end). Direction from the project owner on 2026-10-19: move Manuscript off Go entirely (compiler, runtime, standard library, tools, and generated code), adopt a value-semantics memory model without a tracing collector, and use Cranelift as the code generator. Nothing here is implemented outside `experiments/`.
 
 ## Summary
 
-Manuscript today lowers to Go source and links a Go runtime. Measurements show the Go backend, not the language's rules, is what keeps Manuscript slower than hand-written Go, and a garbage collector forecloses C-ABI libraries, small WASM output, and predictable latency. The plan replaces the implementation with a Rust compiler and a `no_std`-first Rust runtime, lowering through a Manuscript mid-level IR (MIR) to Cranelift, under a memory model with one owner per value, implicit moves, explicit copies, borrowed parameters, `mut` instead of `var`, and explicit types for shared identity. Work is organized as thirteen workstreams behind five checked-in contracts so that most of it runs in parallel from the first week.
+The plan runs in two shapes. **P0 is serial and small**: a few sessions settle the memory model, the standard-library changes it forces, unwinding, and the agent experience, each with a measured gate. Only when those gates pass are the contracts frozen and the work **fanned out to fourteen parallel workstreams** that build a Rust compiler (MIR, Cranelift), a Rust runtime, the standard library, and every tool against six checked-in contracts. The review showed the model is not yet sound or complete; fanning out before it is would churn every session.
 
-## Evidence
+## Evidence and its limits
 
-All numbers: Linux amd64, Xeon 2.1 GHz, four vCPUs, 2026-10-19. Sources: `bench/perf/kernels/README.md` (C baselines) and `experiments/cranelift-spike/README.md` (spike).
+Numbers are from one shared four-vCPU Linux amd64 VM on 2026-10-19 ([C baselines](../bench/perf/kernels/README.md#c-baselines-for-a-no-gc-backend), [spike](../experiments/cranelift-spike/README.md)). Run time of seven CPU kernels as a ratio to hand-written Go:
 
-Run time of the seven whole-program kernels, ratio to hand-written Go (lower is faster):
-
-| kernel | Manuscript today | C, Manuscript semantics, clang -O2 | spike compiler, Cranelift |
+| kernel | Manuscript today | C, Manuscript checks, clang -O2 | spike, Cranelift |
 |---|---:|---:|---:|
 | sieve | 1.66x | 0.50x | 0.57x |
 | nbody | 1.03x | 0.93x | 1.18x |
@@ -21,162 +19,191 @@ Run time of the seven whole-program kernels, ratio to hand-written Go (lower is 
 | trees | 1.73x | 0.79x | 0.95x |
 | collatz | 1.47x | 0.92x | 1.85x |
 | map_count | 1.37x | 0.63x | 1.39x |
+| geometric mean | 1.48x | 0.68x | 1.06x |
 
-- The same rules (checked Int, bounds checks, cancellation polls) compiled as C are 1.1x–3.5x faster than today's output: the headroom is in representation (inline records, list headers in registers, no pointer-chasing sum types, no GC), which Go lowering cannot reach.
-- Deterministic frees cost nothing measurable (`trees` matches hand-written C).
-- The remaining cost is checks: overflow checks cost life 3.8x and collatz 1.6x, bounds checks cost matmul 1.3x. Most are removable by range analysis and hoisting, which belong in our MIR.
-- A 2.6k-line Rust spike implements the ownership rules in ~600 lines of checking with direct diagnostics, compiles all seven kernels correctly, passes valgrind on a drop-heavy program, and builds in ~50 ms against ~200 ms for `go build` of the equivalent Go and 640 ms for `ms build` after an edit.
-- Cranelift output is 1.15x–2.4x slower than clang on the same semantics; the gaps are missing strength reduction, overflow-flag materialization, no loop rotation, and unhoisted bounds checks.
-- Two traps found: Cranelift's LICM hoists a non-atomic cancellation load (the poll must be atomic), and Cranelift 0.136's inliner copies symbol global values without remapping their names (inline in our MIR instead, and report upstream).
+What this supports:
+- The memory model has real headroom: C with the same checks is about 2.2x faster than today's output (geometric mean), and the spike is about 1.4x faster than today without any mid-level optimization.
+- A small compiler can implement the model and produce correct results for well-formed programs; deterministic frees were not a measured cost.
+- Cranelift dev builds are fast to produce: ~50 ms for the spike against 184–211 ms for `go build` of the equivalent Go and 480–640 ms for `ms build` after an edit.
+
+What it does not support, and P0 must measure:
+- **The spike is slower than hand-written Go on four of seven kernels**, and slower than today's backend on nbody and collatz.
+- **Both baselines omit contract costs**: the 200,000-frame recursion limit with a catchable fault, cancellation polling in recursive calls, per-task (not global) cancellation flags, unwinding landing pads, and seeded hashing for maps. `trees` matching C partly reflects the missing recursion polls.
+- **Part of the gap is the rules, not Go**: life is 6x slower than plain C with the checks on, and some of the representation wins (inline lists of records, compact ordered maps, cached list headers) are expressible in Go once the semantics change. Only removing the collector is not.
+- **The workloads are narrow**: CPU kernels only. `bench/perf/programs` shows string and I/O workloads already within ~9% of Go (string_append 0.71x), exactly where atomically counted strings could regress. There is no server benchmark, no latency or memory measurement, and same-suite runs vary by up to 38%.
+- **The build comparison is not like for like**: the spike compiles no standard library, has no module graph, emits no debug info, and links a 228-line runtime.
+- **The spike's checker is unsound**: it accepts reassigning a `match` scrutinee while payload borrows are live, which frees the tree under the borrow (segfault, valgrind invalid reads). Copy-in/copy-out `mut` parameters are also unsound with unwinding (below). The spike's faults exit the process, so neither path was exercised.
 
 ## Goals and non-goals
 
-Goals:
-- No Go anywhere: compiler, runtime, standard library, tools, and generated code. One self-contained `ms` binary for the six release targets.
-- The memory model below, with no tracing collector.
-- Dev builds at least as fast as `go build` of equivalent Go; run time at or below hand-written Go on `bench/perf` after MIR optimizations, and within 25% of the C baselines where a release backend is later justified.
-- Parity of every user-facing tool: check, lint, format, test, build, inspect, review, diagram, search_symbol, guide, LSP, debugger, profiler, VS Code.
+Goals: no Go anywhere and one self-contained `ms` binary for the six release targets; the memory model without a tracing collector, proven sound by a rejection corpus and sanitizer runs; dev builds no slower than `go build` of equivalent Go on the repository's own corpus; run time and memory no worse than today on CPU, string, I/O, and server benchmarks, with the CPU geometric mean below hand-written Go; parity of every user-facing tool.
 
-Non-goals for this plan: an LLVM backend (gated, below), self-hosting, WASM, user-level `unsafe` or C FFI, and standard-library API changes beyond what the memory model requires.
+Non-goals for this plan: an LLVM release backend (gated), self-hosting, WASM, user-level `unsafe` or C FFI. Standard-library API changes are in scope only as the P0 standard-library delta decides.
 
-## Language model (the contract every workstream builds against)
+## Memory model (draft; P0 makes it a contract)
 
-The canonical rules move into `documentation/core-language/` in workstream W1; this section is the agreed summary.
+Settled direction:
+1. **Values with one owner.** Records, lists, maps, sets, strings, bytes, and alternatives are values. Plain values (scalars and records of plain values) copy implicitly; others move at their last use into a consuming position. Duplicates are explicit with `.copy()`. P0 measures this against copy-on-write (see Alternatives) before it is frozen.
+2. **`mut` replaces `var`.** `let` is immutable including contents; `mut` bindings and `mut` parameters (marked at the declaration and the call) may change; a `mut` argument may not overlap another argument.
+3. **Explicit identity.** `Shared[T]` (immutable, sendable), `Weak[T]`, `Arena[T]` with generation-checked `Id[T]`, and `Synchronized[T]`.
+4. **Checks and faults keep today's contract**: checked Int, bounds-checked indexing (including negative indexes from the end), cancellation in loops and recursive calls, the recursion limit, and faults that propagate to the task boundary while running cleanup.
 
-1. **Values.** Records, lists, maps, sets, strings, bytes, and alternatives are values with one owner. A plain value (scalars and records of plain values) copies implicitly. Any other value moves at its last use into a consuming position (binding, assignment, construction, `append`, `return`); using it afterwards is a compile error whose fix is `.copy()`.
-2. **`mut` replaces `var`.** `let` is fully immutable, including contents. `mut x = ...` declares a changeable value. Parameters borrow read-only; `mut` parameters are marked at the declaration and at the call (`push(mut items)`), and a `mut` argument may not overlap another argument. Methods that change their receiver declare it; receivers carry no call-site marker.
-3. **Projections borrow.** `xs[i]` and `r.field` are places: readable, assignable when rooted at a `mut` binding, and copyable into a binding only when plain. Moving out of an element or field requires `.copy()` or a removing method.
-4. **Identity is explicit.** `Shared[T]` (immutable, atomically reference counted, sendable), `Weak[T]`, `Arena[T]` with generation-checked `Id[T]` for graphs, and the existing `Synchronized[T]` for shared mutable state.
-5. **Resources are unique.** `Closeable` types cannot be copied; a record holding one is unique too; `with` is unchanged.
-6. **Strings and bytes** are immutable reference-counted buffers; slices share the buffer; builders construct them.
-7. **Closures** capture by copy or move. A closure that captures a `mut` binding cannot escape (it cannot be stored, returned, or sent), inferred without syntax.
-8. **Concurrency** keeps one function kind and API-only concurrency. Values cross tasks by move or copy; only `Shared` and `Synchronized` are shared.
-9. **Checks and faults keep their current contract**: overflow-checked Int, bounds-checked indexing, cancellation observed in loops, and faults that propagate to the task boundary while running cleanup ([cleanup faults](../documentation/core-language/cleanup/cleanup-faults.md)). The new runtime therefore needs unwinding that runs drops and close actions; aborting the process is not acceptable.
-
-Observable changes for existing programs: aliasing through assignment ends (`tests/e2e/testdata/stdlib/mutation-aliases.ms` inverts), `var` becomes `mut`, mutated parameters need `mut`, and bound methods capture a copy of their receiver. The repository holds 357 `.ms` files (31k lines, 445 `var` bindings) and 165 Manuscript code fences in `documentation/`, all migrated in W1.
+Open in the model, each a P0 deliverable:
+- **Exclusivity for every borrow.** Every construct that creates a borrow living across statements (`match` and `if let` payloads, loop variables, `with` bindings, guard payloads, interface views, accessor results) must forbid mutating or reassigning the borrowed root while the borrow is live. The rule is lexical (Swift access enforcement, Hylo projections), not lifetime inference, and every case gets rejection fixtures.
+- **Projections and accessors.** `get`, `first`, `last`, and Optional payloads return `T` today. Decide between returning projections (borrows usable within an expression or a scoped binding) or copies, and whether user code can declare projections. Indexed assignment (`xs[i].f -= 1`) is a new syntax change; today indexing is read-only.
+- **Mutator results.** List, Map, and Set mutators return the same collection for chaining; under the model they return `Unit` or a new value.
+- **Handle types.** `Synchronized`, `BlockingQueue`, `TaskGroup`, schedulers, servers, clients, and loggers have identity and synchronize internally. Name them as a third category beside values and unique resources: copying a handle shares the service. Decide which native types (`HttpHeaders` today is "shared mutable") become values.
+- **Resources and drops.** Whether dropping a unique `Closeable` closes it, the order of drops and `close`, moving a resource out of `with`, and how concurrent handlers share a database or client (through handles).
+- **Unwinding state.** What a `mut` argument holds when the callee faults or is cancelled after reallocating it: copy-out in landing pads, or pass by reference whenever the value needs dropping. Same question for temporaries and partially built values.
+- **Closures.** Mutating a captured `mut` binding must act on the binding, so such a closure is a borrow. Escape must be a signature-level property (inferred within a module, declared on exported, interface, and native function parameters), not whole-program inference.
+- **Generics.** Duplicating a `T` needs a copyability bound; decide whether it is implicit (plain types) or a new compiler bound.
+- **Equality and hashing** of `Shared`, `Weak`, and `Id`.
+- **Concurrency.** Per-task cancellation without thread-local caching bugs under coroutine migration; coroutine stack sizing against the recursion limit; atomic or non-atomic string counts.
 
 ## Architecture
 
-A Cargo workspace at the repository root with crates under `crates/`, each owned by one workstream:
+A Cargo workspace at the repository root, crates under `crates/`:
 
 ```text
-.ms ─▶ ms-syntax ─▶ ms-check ─▶ ms-mir ─▶ ms-opt ─▶ ms-clif ─▶ object ─▶ ms-link ─▶ executable
-        (parse,      (types,     (IR, verifier,  (ranges,   (Cranelift,           (bundled linker,
-         format)      ownership,  interpreter)    checks,     DWARF, frames)        runtime archives)
-                      diagnostics)                 inlining)
-runtime: ms-rt-core (no_std: alloc, strings, collections, faults, unwinding)
-         ms-rt-exec (scheduler, coroutines, event loop, timers) ─ ms-std-* (standard library modules)
-tools:   ms-tooling (lint, inspect, review, diagram, docgen, guide) · ms-lsp · ms-dap · ms-cli (`ms`)
+.ms ─▶ ms-syntax ─▶ ms-check ─▶ ms-hir ─▶ ms-mir ─▶ ms-opt ─▶ ms-clif ─▶ object ─▶ ms-link ─▶ executable
+runtime: ms-rt-core (no_std: alloc, strings, collections, faults, unwinding, frames)
+         ms-rt-io (std + Tokio: coroutines as futures, scheduler, timers, sockets, files, processes)
+         ms-std-* (standard library; Rust crates such as hyper, rustls, regex, flate2 behind the ABI)
+tools:   ms-tooling (lint, inspect, review, diagram, docgen, guide) · ms-lsp · ms-debug · ms-cli (`ms`)
 ```
 
-Technical decisions carried from the spike, revisited only with measurements:
-- Values flatten into scalar SSA variables; `mut` parameters lower as copy-in/copy-out below a size threshold and by pointer above it.
-- Drop flags for owned locals; temporaries die at the end of their statement; the cancellation poll is an atomic load.
-- Inlining, range analysis, check elimination, and simple strength reduction happen in MIR, not Cranelift.
-- Frame pointers stay on; a compact PC-to-source table gives fault frames and profiling without per-call bookkeeping (preserving the decision recorded in `.experts/compiler.md`).
-- The MIR interpreter is the reference oracle: every conformance test runs on it and on native code, and results must agree.
-- Each module compiles to its own cached object keyed by its content and its dependencies' interface hashes.
-- Generics monomorphize first; dictionary passing in dev builds is adopted only if build time demands it.
+Decisions carried from the spike and the review, revisited only with measurements:
+- Values flatten into scalar SSA variables; drop flags for owned locals; temporaries die at the end of their statement; the cancellation poll is an atomic load of a per-task flag.
+- Inlining, range analysis, check elimination, strength reduction, and loop rotation happen in MIR. The spike showed Cranelift alone does not do them, and Cranelift 0.136's inliner mis-maps symbol global values.
+- Frame pointers stay on; a PC-to-source table gives fault frames and profiles without per-call bookkeeping.
+- The MIR interpreter is an oracle for the compiler, not the runtime: it runs every conformance test and must agree with native code. Runtime bugs are caught by the runtime's own tests, sanitizers, and `loom`.
+- **I/O runs on Tokio.** Each Manuscript task is a stackful coroutine wrapped as a Tokio future; an I/O call registers the coroutine's waker and yields. The Rust networking crates (hyper, rustls, h2, tungstenite) assume Tokio, so a custom reactor buys adapters, not capability. The core stays `no_std`; dev builds link the std/Tokio runtime as a prebuilt shared library to keep links fast, and release builds link statically.
+- Each module compiles to an object cached by content and dependency interface hashes; generics monomorphize first.
 
-## Contracts (week one, then change only by contract PR)
+## P0: foundations (serial, small team, time-boxed to six weeks)
 
-Five artifacts let every workstream start at once and build against stubs:
+Two to four sessions, each owning one item. P0 ends when every gate passes or the owner changes direction.
 
-| Contract | Artifact | Lets these start |
+| Deliverable | Gate |
+|---|---|
+| Sound exclusivity and ownership rules (C1 draft) with a soundness corpus of rejection cases | every corpus case rejected; a program fuzzer finds no accepted program that fails under ASan or valgrind in 24 hours of runs |
+| Standard-library delta: every one of the ~939 declarations in `pkg/stdlib` classified as unchanged, `mut` receiver, handle, or redesigned | owner sign-off on the redesign list |
+| Unwinding prototype: Cranelift exception tables (`try_call`) and explicit fault returns, on all six targets, including callbacks through runtime frames | chosen design measured on the kernels and a cleanup-heavy program; overhead stated |
+| Copy-on-write versus unique ownership, measured on the spike for kernels, strings, and agent ergonomics | decision recorded with numbers |
+| A check-only frontend for the model (Rust, reusable as W3's start) | runs over the repository's 31k lines of `.ms` after a migration dry run |
+| Agent pilot | at least 20 `agent-bench` tasks on at least 2 models: pass rate within 5 points of current Manuscript and correction cycles at most 1.15x |
+| Re-measured baselines | kernels with recursion polls, per-task flags, landing pads, seeded maps, and inlined-by-compiler closures; plus a server benchmark (throughput, p99 latency, RSS) and string/I/O programs; on a dedicated runner, reported as geometric means with confidence intervals |
+
+## Contracts (frozen at the end of P0; changed only by contract PR)
+
+| Contract | Artifact | Unblocks |
 |---|---|---|
-| C1 Semantics | `documentation/core-language` rules plus `tests/conformance/` acceptance and rejection cases tagged by feature | W1, W2, W3, W11 |
-| C2 MIR | `crates/ms-mir`: types, builder, verifier, text format, and interpreter skeleton | W3 (target), W4, W5 (hand-written MIR inputs) |
-| C3 Runtime ABI | `crates/ms-rt-abi`: symbol list, value layouts, calling convention, unwinding and fault protocol, generated header | W5, W6, W7, W8 |
-| C4 Checker queries | a `Program` query trait (definitions, types, references, diagnostics as JSON) | W10 against fakes before W3 lands |
-| C5 Build and CI | workspace skeleton, per-crate CI jobs, conformance runner, results dashboard | everyone |
+| C1 Semantics | canonical rules in `documentation/core-language` plus the tagged conformance and soundness corpus | W1, W2, W3, W11 |
+| C2 HIR | `crates/ms-hir`: the typed, resolved tree with ownership facts that lowering, lint, and tools consume | W4, W10 |
+| C3 MIR | `crates/ms-mir`: types, builder, verifier, text format, interpreter | W4, W5 |
+| C4 Runtime ABI | `crates/ms-rt-abi`: symbols, layouts, calling convention, unwinding and fault protocol, `mut` argument state during unwinding, per-task context, handle protocol | W5, W6, W7, W8 |
+| C5 Checker queries | a `Program` query trait (definitions, types, references, diagnostics as JSON) | W10, W13 against fakes |
+| C6 Build and CI | workspace skeleton, per-crate CI, conformance runner, dashboard, Cargo vendoring and license policy | everyone |
 
-Contract changes go in a separate PR labeled `contract`, are challenged by an independent reviewer subagent, and list the affected workstreams in the body.
+A named contract owner merges contract PRs, each challenged by an independent reviewer subagent and versioned, with the affected workstreams listed.
 
-## Workstreams
+## Workstreams (fan-out after P0)
 
-| ID | Scope | Needs | First deliverable |
-|---|---|---|---|
-| W0 | Contracts C1–C5 | this proposal | skeleton workspace, contracts merged |
-| W1 | Semantics docs, diagnostics catalog, `ms migrate`, migration of every `.ms` file and doc example | C1, W2 parser for the tool | rewritten binding, record, and collection pages |
-| W2 | Lexer, parser, AST, module graph, manifest, formatter | C1 | parses every repository `.ms` file |
-| W3 | Types, generics, interfaces, contracts, effects, ownership and exclusivity, diagnostics parity | C1, C2, W2 | core conformance tags pass on the interpreter |
-| W4 | Checked AST to MIR, drop elaboration, MIR interpreter, range analysis, check elimination, inlining | C2 | kernels run on the interpreter |
-| W5 | MIR to Cranelift, layouts and ABI, unwinding tables, DWARF line tables, frame table, object caching | C2, C3 | hand-written MIR kernels match the C baselines' checksums |
-| W6 | Runtime core: allocator, String/Bytes, List/Map/Set, Shared/Weak/Arena, Int and Float helpers, faults and unwinding | C3 | layout-compatible collections with Rust tests |
-| W7 | Execution runtime: stackful coroutines, scheduler, cancellation, timers, event loop, TaskGroup, Synchronized, BlockingQueue, signals, shutdown | C3, W6 allocator | cancellation and join semantics under test |
-| W8 | Standard library: the 48 modules in `pkg/stdlib`, in parallel batches | C3, W6, W7 for I/O | pure modules first (json, csv, toml, yaml, url, semver, path, html, encoding, math, bits, binary, random, decimal, bigint, regex) |
-| W9 | `ms` CLI, build cache, linker and libc payload, six-target packaging, distcheck | C3, C5 | `ms build` links a W5 object on all targets |
-| W10 | LSP, lint, inspect, review, diagram, docgen, guide and search_symbol, debugger (DAP), VS Code | C4, then W3 | syntax-level LSP on W2 |
-| W11 | Conformance runner, differential testing (interpreter versus native), program fuzzing, `bench/perf` and `agent-bench` runners, performance CI | C5 | runner with per-feature pass rates |
-| W12 | Cutover: delete Go sources, vendor, payload scripts; update AGENTS.md, skills, experts, taste, architecture pages, book | all | release candidate without Go |
-
-Dependencies are on contracts, not on finished workstreams, except where the table says otherwise:
+| ID | Scope | Needs |
+|---|---|---|
+| W1 | Canonical docs, diagnostics catalog, `ms migrate`, migration of all `.ms` sources and doc examples | C1, W2 |
+| W2 | Lexer, parser, AST, module graph, manifest, formatter | C1 |
+| W3 | Types, generics, interfaces, contracts, effects, ownership and exclusivity, HIR, diagnostics parity | C1, C2, W2 |
+| W4 | HIR to MIR, drop elaboration, interpreter, range analysis, check elimination, inlining, strength reduction | C2, C3 |
+| W5 | MIR to Cranelift, layouts, unwinding tables, DWARF line tables, frame table, object cache | C3, C4 |
+| W6 | Runtime core: allocator, strings, bytes, collections with seeded hashing, Shared/Weak/Arena, faults, unwinding, iterative drop for long chains | C4 |
+| W7 | I/O runtime: coroutines on Tokio, scheduler, per-task cancellation, timers, files, sockets, processes, signals, shutdown, TaskGroup, Synchronized, BlockingQueue | C4, W6 |
+| W8 | Standard library in batches. Rust-backed modules test against the ABI first; modules written in Manuscript (yaml, toml, and others) need W3–W5. Behavior differences from Go libraries (Unicode classes in regex, HTTP and x509 details) are decided per module | C4, W6, W7 |
+| W9 | `ms` CLI (build, run, test, init, emit, verify), build cache, linker and libc payload, six-target release on per-OS runners, distcheck, port of `scripts/repo-check` | C6 |
+| W10 | LSP, lint, inspect, review, diagram, docgen, guide and search_symbol, VS Code | C2, C5 |
+| W11 | Conformance and soundness runners, differential testing, program fuzzing, performance CI, server benchmark, `agent-bench` | C6 |
+| W12 | Cutover: delete Go, vendor, payload scripts; update every file in the supersedes list | all |
+| W13 | Debugger and profiler: DAP over a native debugger or bundled lldb (size measured against the LLVM objection), sampling profiler replacing `runtime/pprof` and `trace` | C5, W5 |
+| W14 | Behavior extraction: the 1,043 Go test functions (58 files embed `.ms` source) become `.ms` conformance or soundness fixtures before Go is frozen | C1, C6 |
 
 ```mermaid
 flowchart LR
-  W0[W0 contracts] --> W1 & W2 & W4 & W5 & W6 & W9 & W10 & W11
-  W2 --> W3 --> W4
-  W4 --> W5
+  P0[P0 foundations] --> C[contracts C1-C6]
+  C --> W1 & W2 & W4 & W5 & W6 & W9 & W10 & W11 & W14
+  W2 --> W3 --> W4 --> W5
   W6 --> W7 --> W8
-  W6 --> W8
   W3 --> W10
-  W5 & W8 & W9 & W10 & W11 --> W12
+  W5 --> W13
+  W5 & W8 & W9 & W10 & W11 & W13 & W14 --> W12
 ```
 
 ### How the parallel work runs
 
-- One agent session per workstream, and one per standard-library batch in W8 (about eight batches of six modules). Sessions own directories; a change outside a session's directory goes through the owning session or a contract PR.
-- Branches are `rust/<workstream>/<topic>`; PRs touch one crate where possible and stay small enough that per-crate CI is meaningful.
-- Stubs land with every contract, so no session waits on another to compile. Codegen is developed against hand-written MIR text; the checker against the interpreter; tools against a fake checker; standard-library modules against the ABI with Rust unit tests.
-- The conformance corpus is the shared definition of done: the ~270 `.ms` fixtures in `tests/e2e/testdata` (145 accept, 71 standard library, 49 project, 2 reject) plus the Go-side rejection tests are migrated, tagged by feature, and run on both the interpreter and native code. The dashboard reports pass rates per tag and per workstream.
-- The Go implementation stays buildable and is feature-frozen from the start of P1; it receives only fixes until cutover.
-- A weekly integration build runs every conformance test, `bench/perf`, and a sample of `agent-bench` against the head of every workstream.
+- One agent session per workstream and one per standard-library batch (about eight). Sessions own directories; changes elsewhere go through the owner or a contract PR.
+- Branches `rust/<workstream>/<topic>`; small single-crate PRs; per-crate CI on changed crates and their dependents.
+- Contracts ship with compiling stubs: codegen develops against hand-written MIR, the checker against the interpreter, tools against a fake checker, Rust-backed standard-library modules against the ABI.
+- The conformance corpus is the shared definition of done, tagged by feature and run on the interpreter and native code; a generated dashboard reports pass rates per tag and workstream. The P1 slice uses fixtures that need only the core language; fixtures that import `@std/testing`, use interpolation, or call I/O join in P2.
+- Go is feature-frozen when P1 starts, after W14 has extracted the behaviors its tests encode.
+- A weekly integration build runs conformance, soundness, `bench/perf`, the server benchmark, and an `agent-bench` sample against every workstream's head.
 
 ## Phases and gates
 
-| Phase | Exit criteria | Kill or rethink if |
+| Phase | Exit | Rethink if |
 |---|---|---|
-| P0 Contracts | C1–C5 merged; skeptical review of this plan addressed; agent pilot: agents write the kernels and two server-style programs under the new rules on the spike or interpreter | the pilot needs clearly more correction cycles than the same tasks in current Manuscript |
-| P1 Vertical slice | the real kernel sources compile through the new pipeline; core conformance tags pass on interpreter and native; dev-build run time at or below hand-written Go on at least five of seven kernels; `ms build` after an edit at or below `go build` of the equivalent Go | after MIR optimizations, run time is still worse than today's Go backend on most kernels |
-| P2 Breadth | generics, interfaces, closures, strings, concurrency, 90% of conformance, every example runs, standard library batches merged, LSP and lint usable | concurrency or unwinding forces a model change not covered by C1 |
-| P3 Cutover | 100% of migrated conformance, six-target distribution checks, debugger, book, `agent-bench` pass rate at or above today's; W12 removes Go | any gap above |
-| P4 Release backend (optional) | measured gap on real programs justifies LLVM or C emission from the same MIR as a release-only backend | — |
+| P0 Foundations | every P0 gate above | any gate fails at the time box |
+| P1 Vertical slice | core-language conformance and the full soundness corpus pass on interpreter and native; kernels (written without closures or I/O) at a CPU geometric mean at or below hand-written Go with 95% confidence, including contract costs; `ms build` after an edit at or below `go build` across the repository's `.ms` corpus | the geometric mean stays above today's Go backend after MIR optimizations |
+| P2 Breadth | generics, interfaces, closures, strings, concurrency, 90% of conformance, every example runs, LSP and lint usable; server benchmark throughput and p99 at or better than today, RSS reported; hello-world binary size and link time with TLS reported against Go | unwinding, concurrency, or the standard-library delta force a model change |
+| P3 Cutover | 100% of migrated conformance; six-target distribution checks; debugger and profiler; `agent-bench` at or above today's pass rate | any gap above |
+| P4 Release backend (optional) | a measured gap on real programs justifies LLVM or C emission from the same MIR | — |
+
+## Migration
+
+`let` becomes immutable including contents, so migration reaches far more than `var`: about 445 `var` bindings, 883 mutator calls, 238 field assignments, 701 closures, and 67 `.clone()` calls in the repository's 357 `.ms` files, plus 165 Manuscript code fences in `documentation/`. Some programs change meaning silently: `mut a = bodies.get(i)` followed by `a.vx -= 1` compiles but no longer updates the list. `ms migrate` applies mechanical edits and flags every mutation of a binding that came from an accessor, projection, or parameter for review. The release that ships the model is a new minor version with migration notes.
 
 ## Risks
 
 | Risk | Mitigation |
 |---|---|
-| Rewrite scale: 65k lines of Go and 39k lines of Go tests | contracts and stubs for parallel work; reuse of the `.ms` conformance corpus and standard-library declarations; Rust crates for TLS, compression, regex, and parsing |
-| Unwinding without Go: faults and cancellation must run drops and cleanup | decide in C3 between Cranelift exception tables (`try_call`) and explicit fault returns; prototype both on the kernels and a cleanup-heavy program before P1 |
-| Cranelift miscompiles or rarely used paths (inliner, multi-value returns) | pinned version, differential testing against the interpreter, fuzzing, avoiding rarely used features, upstream reports |
-| Migration breaks users and examples | `ms migrate` for mechanical edits, a report for alias-dependent sites, a minor-version release with migration notes |
-| Concurrency bugs without Go's race detector | the model allows no shared mutation outside `Synchronized`; runtime tested under `loom` and ThreadSanitizer builds |
-| Runtime size and link time (a Rust `std` runtime made linking take 110 ms) | `no_std` core, prebuilt per-target archives, section garbage collection |
-| Cross-target linking and libc | one pinned linker and sysroot payload per target, validated by distcheck; candidate: `zig cc` as linker driver |
-| Performance cliffs (atomic string counts, copies of large values) | `bench/perf` and the standard-library benchmarks in CI with thresholds |
+| Unsound ownership checking (already demonstrated in the spike) | lexical exclusivity per construct, soundness corpus, fuzzing with sanitizers as a P0 gate and in CI |
+| Mutable value semantics at scale (Hylo is still a research language) | P0 pilot and copy-on-write comparison before freezing |
+| Rewrite scale: 65k lines of Go and 39k lines of Go tests | P0 bounds the design first; contracts and stubs; W14 preserves tested behavior |
+| Unwinding across Cranelift code, Rust runtime frames, and six targets | prototype on all targets in P0 |
+| Cranelift bugs in rarely used paths | pinned version, differential testing, fuzzing, our own inliner, upstream reports |
+| Runtime size and link time with Tokio, hyper, rustls | shared runtime library in dev builds, static in release, measured in P2 |
+| Standard-library behavior drift from Go libraries | per-module decisions in W8, conformance fixtures from W14 |
+| Concurrency bugs without Go's race detector | no shared mutation outside handles and `Synchronized`; `loom` and ThreadSanitizer for the runtime |
+| Benchmark noise | dedicated runner, geometric means with confidence intervals |
 
 ## Alternatives considered
 
-- **Do nothing and keep optimizing Go lowering.** Recent work closed much of the gap, but today's output is still 1.03x–1.88x hand-written Go, and the C baselines show the remaining 2x–3x needs inline layouts, register-resident list headers, and control over check codegen that Go source cannot express. It also keeps the GC.
-- **Keep the Go frontend and emit MIR for a Rust backend.** Lower first-step risk, but the checker must learn ownership rules either way, so they would be written twice, and the owner's direction is to remove Go entirely.
-- **LLVM only.** Better code, but dev builds near `clang -O0` (179 ms for the C kernels against ~50 ms for the spike) and a large dependency in every install. Kept as the optional P4 release backend.
-- **C emission through a bundled C compiler.** Readable output and easy debugging, with build times similar to LLVM. A fallback release path from the same MIR.
-- **Reference semantics with reference counting** (keeps today's programs valid). Retains aliasing bugs, needs a cycle collector, and makes data races memory-unsafe without a sharing rule.
-- **A Rust-style borrow checker.** Rejected for readability: lifetimes and stored borrows are the complexity this design avoids.
-
-## Open questions
-
-Each has an owner workstream and should be settled by measurement or a small prototype before the phase that needs it.
-
-- Updating two elements of one list at once (`nbody`): a `swap`/`pair` API or an exclusivity exception for provably distinct indices (W1, P1).
-- Receiver mutation syntax for methods (W1, P0).
-- Unwinding mechanism (W5 with W6, P0).
-- Atomic or non-atomic string reference counts, given values move across tasks (W6, P1).
-- Read-only borrowing by scoped TaskGroup work (W7, P2).
-- Linker and libc payload: `zig cc` or curated `lld` with sysroots (W9, P1).
-- Debugger: lldb-dap or a DAP over our own DWARF (W10, P2).
-- Monomorphization versus dictionary passing in dev builds (W4, P2, by build-time measurement).
+- **Do nothing and keep optimizing Go lowering.** Today's output is 1.48x hand-written Go (geometric mean). Some representation wins are reachable in Go once the semantics change, but the collector stays, and the owner's direction is to remove Go.
+- **Value semantics on the Go backend first** (check-only mode in Go, or the Rust frontend emitting Go). Validates the model before the backend rewrite. Its intent is kept as P0's check-only frontend and agent pilot, written in Rust so it is not discarded.
+- **Copy-on-write value semantics** (Swift-style): no use-after-move errors, no `.copy()`, cheap accessors, a smaller checker and migration, at the cost of uniqueness checks and hidden copies. Measured in P0 rather than dismissed.
+- **LLVM only.** Better code, but dev builds near `clang -O0` and a large install. Kept as the optional P4 release backend.
+- **C emission through a bundled compiler.** A fallback release path from the same MIR.
+- **Reference semantics with reference counting.** Keeps programs valid but keeps aliasing bugs, needs cycle collection, and makes races memory-unsafe without a sharing rule.
+- **A Rust-style borrow checker with lifetimes.** Rejected for readability; the model instead limits borrows to lexical scopes so no lifetimes appear in source.
 
 ## What this supersedes on delivery
 
-Until W12 lands, the current decisions remain in force for the Go implementation. At cutover they are replaced: `.experts/compiler.md` "Lowering is typed Go" and "Fault frames come from the Go stack" (the no-bookkeeping principle carries over); `.experts/language.md` "Mutable data uses explicit shallow cloning" and the aliasing parts of "Recursive data uses references"; `.experts/runtime.md` "Sharing, resource lifetime, and work lifetime are separate" where it allows sharing every value; `skills/language-design-taste/SKILL.md` on garbage-collected references and Go lowering; and the Go-specific parts of `AGENTS.md` and `documentation/contributing/`.
+Until W12 lands, current decisions stay in force for the Go implementation. At cutover W12 updates every file that encodes aliasing, garbage collection, or Go lowering. Found by searching for those terms, the list is: `AGENTS.md`; `.experts/compiler.md`, `language.md` (including "Mutable data uses explicit shallow cloning", "Equality and hashing are source interfaces", and the aliasing parts of "Recursive data uses references"), and `runtime.md` (including "Sharing, resource lifetime, and work lifetime are separate", "Prepared queries must preserve callback-visible list mutations", and "List traversal follows the captured Go slice header"); the skills `compiler`, `language-design`, `language-design-taste`, `manuscript-change`, `runtime`, and `tooling`; `documentation/glossary.md`, `learn/getting-started.md`, and under `core-language/`: `cleanup/exit-order.md`, `cleanup/resource-release.md`, `cleanup/scopes.md`, `functions/function-values-and-closures.md`, `modules/declarations.md`, `types/collections.md`, `types/equality-and-hashing.md`, `types/references.md`, `basics/bindings.md`, `basics/expressions.md`, `errors/faults.md`; under `contributing/`: `concurrent-runtime.md`, `go-lowering-representation.md`, `go-lowering-units.md`, `architecture.md`, and the compiler pages; under `developer-tooling/`: `implementation.md` and the build pages; and the standard-library declarations `collections.ms`, `http.ms`, `io.ms`, `fs.ms`, `json.ms`, `sync.ms`, and `yaml.ms`.
+
+## Review record
+
+An independent reviewer subagent challenged the first draft and recommended reworking P0 before fanning out. Accepted and applied:
+- the use-after-free it found (reproduced: segfault, valgrind invalid reads);
+- copy-in/copy-out unsoundness under unwinding;
+- the standard library's reliance on aliasing, accessors, and mutator results;
+- handle types and the resource and drop rules;
+- contract costs missing from both baselines;
+- overstated evidence (now geometric means, with the four kernels slower than Go stated);
+- a copy-on-write comparison;
+- the missing HIR contract;
+- unowned work: debugger, profiler, Go-test extraction, release cross-builds, repo checks, Cargo policy;
+- unreachable or unfirable gates, replaced with numeric ones;
+- the migration scope;
+- closure escape as a signature property;
+- generic copyability;
+- the full supersedes list.
+
+Kept against the review: Tokio is chosen for I/O, with the `no_std` constraint limited to the runtime core.

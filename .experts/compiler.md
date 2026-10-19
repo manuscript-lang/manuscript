@@ -6,6 +6,8 @@ Decision: on 2026-10-19 the owner directed moving the compiler, runtime, standar
 
 Verified (experiments, not the shipped toolchain): the same checked semantics in C run 1.1x–3.5x faster than today's Go output, and a Cranelift spike compiles the kernels correctly in ~50 ms ([C baselines](../bench/perf/kernels/README.md#c-baselines-for-a-no-gc-backend), [spike](../experiments/cranelift-spike/README.md)). A non-atomic cancellation load is hoisted out of loops by Cranelift, and Cranelift 0.136's inliner mis-maps symbol global values.
 
+Verified: the spike's checker is unsound, so passing well-formed programs and valgrind-clean runs do not show the model is safe. Reassigning a `match` scrutinee inside an arm frees what the payload bindings borrow (segfault). Copy-in/copy-out `mut` parameters double-free under unwinding once a callee reallocates and then faults. The proposal makes lexical exclusivity per borrowing construct, a soundness corpus, and sanitizer fuzzing a P0 gate.
+
 Apply when: starting work on either implementation, or deciding whether a Go-side change is worth making during the transition.
 Verify: `sh bench/perf/kernels/run.sh` with `ABLATE=1` and `sh experiments/cranelift-spike/bench.sh` reproduce the numbers on one machine.
 

@@ -51,6 +51,12 @@ Build time for the same 240-line program, wall clock:
   - Cranelift 0.136's inliner (`create_global_values` in `inline.rs`) copies symbol global values without remapping their external-name reference, so an inlined callee's symbol resolves to whatever the caller's table holds at that index (here `msrt_now_us` instead of `msrt_cancelled`). Worked around by declaring the poll symbol first in every function and not inlining callees with other symbols. Worth reporting upstream.
 - A Rust `std` runtime made the static library 22 MB and linking 110 ms; `no_std` over libc brought linking to 30 ms. Runtime crates for TLS, HTTP, and compression will need the same care (prebuilt, trimmed, or dynamically linked in dev builds).
 
+## Known unsoundness
+
+An independent review found two holes, so do not treat the checker as a model of the final rules:
+- `match` payloads borrow from the scrutinee, but nothing stops the scrutinee from being reassigned inside the arm. Reassigning it frees the tree under the borrow: the program compiles, segfaults, and valgrind reports invalid reads. Every borrow that outlives a statement needs a lexical exclusivity rule.
+- `mut` parameters are copy-in/copy-out. If the callee reallocates a list and then faults, copy-out never happens and the caller's drop frees the stale buffer. Faults here exit the process, so this path never runs, but any unwinding design must define the argument's state.
+
 ## Not covered
 
 DWARF debug info (Cranelift emits none itself; line tables need `gimli`), strings beyond literals, closures, generics in user functions, interfaces, concurrency, I/O, `.copy()`, and a release backend. The C numbers stand in for an LLVM release build; nothing here measures one.
