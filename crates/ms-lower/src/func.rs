@@ -56,6 +56,8 @@ pub(crate) struct FnLower<'a> {
     pub locals: HashMap<usize, Local>,
     /// Locals needing a drop, per lexical scope.
     pub scopes: Vec<Vec<usize>>,
+    /// `with` bindings and how each is closed when its scope is left.
+    pub closers: HashMap<usize, crate::with::Closer>,
     /// Owned temporaries borrowed by the current statement.
     pub temps: Vec<Value>,
     pub loops: Vec<LoopCtx>,
@@ -256,6 +258,7 @@ impl<'a> FnLower<'a> {
             file,
             locals: HashMap::new(),
             scopes: vec![Vec::new()],
+            closers: HashMap::new(),
             temps: Vec::new(),
             loops: Vec::new(),
             dead: false,
@@ -442,9 +445,14 @@ impl<'a> FnLower<'a> {
         for i in (depth..self.scopes.len()).rev() {
             let uids = self.scopes[i].clone();
             for uid in uids.iter().rev() {
+                if let Some(closer) = self.closers.get(uid).cloned() {
+                    self.emit_close(*uid, &closer);
+                }
                 let l = self.locals[uid];
-                let v = self.b.use_var(l.var);
-                self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
+                if self.needs_drop(l.ty) {
+                    let v = self.b.use_var(l.var);
+                    self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
+                }
             }
         }
     }

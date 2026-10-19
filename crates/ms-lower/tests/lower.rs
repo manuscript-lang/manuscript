@@ -102,3 +102,12 @@ fn try_after_an_owned_argument_releases_it() {
         "import {TextError} from \"@std/errors.ms\"\n\nfn make(n: Int) Result[String, TextError]:\n    if n > 0:\n        return ok(\"x\")\n    return error(TextError(text: \"no\"))\n\nfn join(a: String, b: String) String:\n    return a + b\n\nfn both(n: Int) Result[String, TextError]:\n    return ok(join(a: try make(n), b: try make(n - 1)))\n\nexport fn main() Int:\n    return 0\n",
     );
 }
+
+#[test]
+fn with_closes_on_every_exit_and_generic_bounds_dispatch_statically() {
+    let mir = lower(
+        "with",
+        "import Closeable from \"@std/cleanup.ms\"\n\ntype Res:\n    n: Int\n\nimpl Closeable for Res:\n    fn close() Unit:\n        let x = self.n\n\nfn run[T: Closeable](r: T, early: Bool) Int:\n    with it = r:\n        if early:\n            return 1\n    return 2\n\nexport fn main() Int:\n    var i = 0\n    while i < 3:\n        with c = Res(i):\n            i += 1\n            if i == 1:\n                continue\n            break\n    return run(r: Res(1), early: true) + i\n",
+    );
+    assert!(mir.matches("call @close").count() >= 4);
+}

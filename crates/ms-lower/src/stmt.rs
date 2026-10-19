@@ -99,8 +99,7 @@ impl<'a> FnLower<'a> {
             StmtKind::While { cond, body } => self.while_stmt(cond, body)?,
             StmtKind::For { iter, body, .. } => self.for_stmt(s, iter, body)?,
             StmtKind::With { value, body, .. } => {
-                let _ = (value, body);
-                return Err(Error::new("with is not supported yet"));
+                self.with_stmt(s, value, body)?;
             }
         }
         self.flush_temps(mark);

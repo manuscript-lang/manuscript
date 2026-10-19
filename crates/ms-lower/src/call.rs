@@ -372,6 +372,27 @@ impl<'a> FnLower<'a> {
         self.call_callable(&c, &subst, Args { slots: all, places }, e)
     }
 
+    /// The implementation of a contract operation for a concrete receiver type.
+    pub(crate) fn contract_impl(&self, m: &ct::MethodRef, recv: &ct::Ty) -> Option<ct::MethodRef> {
+        let name = m.name()?;
+        let contract = m.contract.as_ref()?;
+        self.cx
+            .methods
+            .iter()
+            .find(|mm| {
+                mm.name() == Some(name)
+                    && !mm.id.as_str().is_empty()
+                    && mm.contract.as_ref().is_some_and(|c| c.id == contract.id)
+                    && ct::unify(
+                        &mm.receiver,
+                        recv,
+                        &ct::variable_set(&mm.variables),
+                        &mut ct::Subst::new(),
+                    )
+            })
+            .cloned()
+    }
+
     fn contract_call(
         &mut self,
         e: &Expr,
@@ -379,15 +400,25 @@ impl<'a> FnLower<'a> {
         m: &ct::MethodRef,
         recv_expr: &Expr,
     ) -> Result<Val, Error> {
+        let static_ty = self.ety(recv_expr);
+        let want = self.mty(&static_ty)?;
+        if !matches!(self.b.m.types.kind(want), TyKind::Iface(_)) {
+            // A concrete receiver (a generic instance): call its implementation directly.
+            let im = self.contract_impl(m, &static_ty).ok_or_else(|| {
+                Error::new(format!(
+                    "{static_ty} has no implementation of {}",
+                    m.name().map(|n| n.to_string()).unwrap_or_default()
+                ))
+            })?;
+            return self.method_call(e, view, &im);
+        }
         let recv = self.expr(recv_expr)?;
         if self.dead {
             return Ok(recv);
         }
         let rty = self.ty_of(recv.v);
         let TyKind::Iface(iface) = self.b.m.types.kind(rty).clone() else {
-            return Err(Error::new(
-                "static dispatch through a contract is not supported yet",
-            ));
+            return Err(Error::new("contract receiver is not an interface value"));
         };
         let name = m.name().map(|n| n.to_string()).unwrap_or_default();
         let k = self.b.m.ifaces[iface.index()]

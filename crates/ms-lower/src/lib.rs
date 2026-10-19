@@ -24,6 +24,7 @@ mod runner;
 mod stmt;
 mod testing;
 mod text;
+mod with;
 
 pub mod dump;
 pub mod load;
