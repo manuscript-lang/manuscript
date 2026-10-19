@@ -453,6 +453,19 @@ impl<'a> FnLower<'a> {
         if t == MTy::STR {
             return Ok(x);
         }
+        if let TyKind::Rec(rid) = self.b.m.types.kind(t).clone()
+            && self.b.m.records[rid.index()].name == "Timestamp"
+        {
+            // RFC 3339 text from the runtime, which takes the two words by address.
+            let slot = self
+                .b
+                .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
+                .expect("slot");
+            let a = self.borrow(x);
+            self.b.emit(Op::Store, &[slot, a], Imm::None, None);
+            let v = self.call_runtime("msstd_time_timestamp_to_string", &[slot], MTy::STR)?;
+            return Ok(Val { v, own: true });
+        }
         let v = match scalar_text(&mut self.b, t, x.v, false) {
             Some((v, owned)) => return Ok(Val { v, own: owned }),
             None => {

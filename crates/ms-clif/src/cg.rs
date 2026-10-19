@@ -6,6 +6,13 @@ use crate::lower::Lower;
 use crate::{Error, Options};
 use cranelift_codegen::Context;
 use cranelift_codegen::ir::{self, AbiParam, Signature, UserFuncName, types};
+
+/// A parameter or return of type `ty`. Bytes are zero-extended to a full register: the
+/// runtime is compiled by rustc, which assumes `u8` and `bool` arguments arrive extended.
+fn abi_param(ty: ir::Type) -> AbiParam {
+    let p = AbiParam::new(ty);
+    if ty == types::I8 { p.uext() } else { p }
+}
 use cranelift_codegen::settings::{self, Configurable};
 use cranelift_frontend::FunctionBuilderContext;
 use cranelift_module::{
@@ -167,9 +174,9 @@ impl<'m> Gen<'m> {
     pub fn sig(&self, params: &[Leaf], rets: &[Leaf]) -> Signature {
         let mut sig = self.module.make_signature();
         sig.params
-            .extend(params.iter().map(|l| AbiParam::new(leaf_type(*l))));
+            .extend(params.iter().map(|l| abi_param(leaf_type(*l))));
         sig.returns
-            .extend(rets.iter().map(|l| AbiParam::new(leaf_type(*l))));
+            .extend(rets.iter().map(|l| abi_param(leaf_type(*l))));
         sig
     }
 
@@ -197,9 +204,9 @@ impl<'m> Gen<'m> {
             .unwrap_or_else(|| panic!("unknown runtime function {name}"));
         let mut sig = self.module.make_signature();
         sig.params
-            .extend(p.chars().map(|c| AbiParam::new(clif_type(c))));
+            .extend(p.chars().map(|c| abi_param(clif_type(c))));
         sig.returns
-            .extend(r.chars().map(|c| AbiParam::new(clif_type(c))));
+            .extend(r.chars().map(|c| abi_param(clif_type(c))));
         let id = self
             .module
             .declare_function(name, Linkage::Import, &sig)

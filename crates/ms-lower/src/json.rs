@@ -1215,7 +1215,7 @@ impl FnLower<'_> {
                     return Err(Error::new("a runtime status needs an error alternative"));
                 };
                 let cases = s.status_cases(ea);
-                let e = s.status_error(ea, code, &cases)?;
+                let e = s.status_error(ea, code, &cases, None)?;
                 Ok(Some(s.b.alt_new(ra, err as u32, &[e])))
             },
         )

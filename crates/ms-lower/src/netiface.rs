@@ -51,8 +51,8 @@ fn handle_prefix(t: &ct::Ty) -> Option<&'static str> {
 impl Cx {
     /// Whether `iface` is backed by a runtime handle.
     pub(crate) fn is_handle_iface(&self, iface: IfaceId) -> bool {
-        self.iface_cts
-            .get(&iface.0)
+        self.contracts
+            .get(&iface)
             .is_some_and(|t| handle_prefix(t).is_some())
     }
 
@@ -63,7 +63,7 @@ impl Cx {
     }
 
     /// The implementation table of a handle-backed interface; method bodies are queued.
-    fn handle_vtable(
+    fn net_handle_vtable(
         &mut self,
         m: &mut Module,
         hir: &Rc<ModuleHir>,
@@ -73,7 +73,7 @@ impl Cx {
         if let Some(v) = self.vtables.get(&key) {
             return Ok(*v);
         }
-        let ct_iface = self.iface_cts[&iface.0].clone();
+        let ct_iface = self.contracts[&iface].clone();
         let prefix =
             handle_prefix(&ct_iface).ok_or_else(|| Error::new("not a handle-backed interface"))?;
         let data_ty = self.handle_ty(m, iface);
@@ -122,7 +122,7 @@ impl FnLower<'_> {
         let TyKind::Iface(iface) = self.b.m.types.kind(iface_ty).clone() else {
             return Err(Error::new("a handle needs an interface type"));
         };
-        let vt = self.cx.handle_vtable(self.b.m, &self.hir.clone(), iface)?;
+        let vt = self.cx.net_handle_vtable(self.b.m, &self.hir.clone(), iface)?;
         let v = self
             .b
             .emit(Op::IfaceNew, &[handle], Imm::Vtable(vt), Some(iface_ty))

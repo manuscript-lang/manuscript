@@ -1047,6 +1047,7 @@ version = "0.1.0"
 dependencies = [
  "ms-rt",
  "ms-std-archive",
+ "ms-std-bigint",
  "ms-std-compress",
  "ms-std-core",
  "ms-std-crypto",
@@ -1100,6 +1101,17 @@ dependencies = [
  "ms-rt-abi",
  "ms-std-compress",
  "ms-std-core",
+]
+
+[[package]]
+name = "ms-std-bigint"
+version = "0.1.0"
+dependencies = [
+ "ms-rt",
+ "ms-rt-abi",
+ "ms-std-rt",
+ "num-bigint",
+ "num-traits",
 ]
 
 [[package]]
