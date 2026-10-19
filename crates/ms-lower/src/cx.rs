@@ -241,6 +241,24 @@ impl Cx {
         if t.is_std("Bytes") || t.is_std("StringBuilder") || t.is_std("BytesBuilder") {
             return Ok(MTy::BYTES);
         }
+        // A duration is its nanosecond count.
+        if t.is_std("Duration") {
+            return Ok(MTy::INT);
+        }
+        // Arbitrary-precision integers have no runtime yet; the type exists so interfaces
+        // that mention one (`FileInfo.exact`) can be declared.
+        if t.is_std("BigInt") {
+            return Ok(m.types.obj("BigInt", Vec::new()));
+        }
+        // Clock values are two-word C structs in the runtime (`Timestamp`, `Instant`), so a
+        // record of two `Int`s shares their memory layout.
+        if t.is_std("Timestamp") || t.is_std("Instant") {
+            let name = if t.is_std("Timestamp") { "Timestamp" } else { "Instant" };
+            let words = if name == "Timestamp" { ["seconds", "nanoseconds"] } else { ["domain", "tick"] };
+            let fields = words.iter().map(|w| (w.to_string(), MTy::INT)).collect();
+            let (_, ty) = m.add_record(name, fields);
+            return Ok(ty);
+        }
         Err(Error::new(format!("unsupported native type {t}")))
     }
 }

@@ -22,22 +22,69 @@ pub(crate) const HANDLE_FUNCTIONS: &[(&str, &str, &str, i64)] = &[
     ("io/stdin", "io", "msstd_io_standard", 0),
     // No handle: the interface value carries nothing and its operations open handles.
     ("io/files", "io", "", 0),
+    ("fs/filesystem", "fs", "", 0),
 ];
 
 /// Interfaces whose values carry no data.
-const UNIT_DATA: &[(&str, &str)] = &[("io", "Files")];
+const UNIT_DATA: &[(&str, &str)] = &[("io", "Files"), ("fs", "FileSystem")];
 
-/// Runtime symbol of an operation of a handle-backed interface (`module`, `interface`, `operation`).
-const METHODS: &[(&str, &str, &str, &str)] = &[
-    ("io", "Files", "open", "msstd_io_open"),
-    ("io", "File", "read", "msstd_io_read"),
-    ("io", "File", "close", "msstd_io_close"),
-    ("io", "ReadStream", "read", "msstd_io_read"),
-    ("io", "ReadStream", "close", "msstd_io_close"),
-    ("io", "WriteStream", "write", "msstd_io_write"),
-    ("io", "WriteStream", "write_bytes", "msstd_io_write_bytes"),
-    ("io", "WriteStream", "flush", "msstd_io_flush"),
-    ("io", "WriteStream", "close", "msstd_io_close"),
+/// Runtime symbol of an operation of a handle-backed interface (`module`, `interface`,
+/// `operation`), and the constant `Bool` arguments it takes after the operation's own.
+const METHODS: &[(&str, &str, &str, &str, &[(&str, bool)])] = &[
+    ("io", "Files", "open", "msstd_io_open", &[]),
+    ("io", "File", "read", "msstd_io_read", &[]),
+    ("io", "File", "close", "msstd_io_close", &[]),
+    ("io", "ReadStream", "read", "msstd_io_read", &[]),
+    ("io", "ReadStream", "close", "msstd_io_close", &[]),
+    ("io", "WriteStream", "write", "msstd_io_write", &[]),
+    ("io", "WriteStream", "write_bytes", "msstd_io_write_bytes", &[]),
+    ("io", "WriteStream", "flush", "msstd_io_flush", &[]),
+    ("io", "WriteStream", "close", "msstd_io_close", &[]),
+    ("fs", "FileSystem", "open_flags", "msstd_fs_file_open", &[]),
+    ("fs", "FileSystem", "canonicalize", "msstd_fs_canonicalize", &[]),
+    ("fs", "FileSystem", "copy_file", "msstd_fs_copy_file", &[]),
+    ("fs", "FileSystem", "create_directory", "msstd_fs_create_directory", &[]),
+    ("fs", "FileSystem", "create_link", "msstd_fs_create_link", &[]),
+    ("fs", "FileSystem", "read_file", "msstd_fs_read_file", &[]),
+    ("fs", "FileSystem", "read_link", "msstd_fs_read_link", &[]),
+    ("fs", "FileSystem", "remove", "msstd_fs_remove", &[]),
+    ("fs", "FileSystem", "rename", "msstd_fs_rename", &[]),
+    ("fs", "FileSystem", "temporary_root", "msstd_fs_temporary_root", &[]),
+    ("fs", "FileSystem", "temporary_directory", "msstd_fs_temporary_directory", &[]),
+    ("fs", "FileSystem", "write_file", "msstd_fs_write_file", &[]),
+    ("fs", "FileSystem", "write_file_bytes", "msstd_fs_write_file", &[]),
+    ("fs", "FileSystem", "access", "msstd_fs_access", &[]),
+    ("fs", "FileSystem", "append_file", "msstd_fs_append_file", &[]),
+    ("fs", "FileSystem", "append_file_bytes", "msstd_fs_append_file", &[]),
+    ("fs", "FileSystem", "chmod", "msstd_fs_chmod", &[("follow", true)]),
+    ("fs", "FileSystem", "chmod_link", "msstd_fs_chmod", &[("follow", false)]),
+    ("fs", "FileSystem", "chown", "msstd_fs_chown", &[]),
+    ("fs", "FileSystem", "truncate", "msstd_fs_truncate", &[]),
+    ("fs", "FileSystem", "hard_link", "msstd_fs_hard_link", &[]),
+    ("fs", "FileSystem", "copy_tree", "msstd_fs_copy_tree", &[]),
+    ("fs", "FileSystem", "glob", "msstd_fs_glob", &[]),
+    ("fs", "FileSystem", "open_directory", "msstd_fs_directory_open", &[]),
+    ("fs", "FileSystem", "temporary", "msstd_fs_temporary_open", &[]),
+    ("fs", "FileHandle", "close", "msstd_io_close", &[]),
+    ("fs", "FileHandle", "read", "msstd_io_read", &[]),
+    ("fs", "FileHandle", "write", "msstd_io_write", &[]),
+    ("fs", "FileHandle", "write_bytes", "msstd_io_write_bytes", &[]),
+    ("fs", "FileHandle", "read_at", "msstd_fs_file_read_at", &[]),
+    ("fs", "FileHandle", "write_at", "msstd_fs_file_write_at", &[]),
+    ("fs", "FileHandle", "write_at_bytes", "msstd_fs_file_write_at", &[]),
+    ("fs", "FileHandle", "read_file", "msstd_fs_file_read_file", &[]),
+    ("fs", "FileHandle", "read_vectors", "msstd_fs_file_read_vectors", &[]),
+    ("fs", "FileHandle", "write_vectors", "msstd_fs_file_write_vectors", &[]),
+    ("fs", "FileHandle", "seek", "msstd_fs_file_seek", &[]),
+    ("fs", "FileHandle", "truncate", "msstd_fs_file_truncate", &[]),
+    ("fs", "FileHandle", "sync", "msstd_fs_file_sync", &[]),
+    ("fs", "FileHandle", "data_sync", "msstd_fs_file_data_sync", &[]),
+    ("fs", "FileHandle", "chmod", "msstd_fs_file_chmod", &[]),
+    ("fs", "FileHandle", "chown", "msstd_fs_file_chown", &[]),
+    ("fs", "Directory", "path", "msstd_fs_directory_path", &[]),
+    ("fs", "Directory", "close", "msstd_fs_directory_close", &[]),
+    ("fs", "TemporaryDirectory", "path", "msstd_fs_temporary_path", &[]),
+    ("fs", "TemporaryDirectory", "close", "msstd_fs_temporary_close", &[]),
 ];
 
 /// The MIR type of a runtime handle object.
@@ -52,6 +99,8 @@ pub(crate) struct MethodJob {
     /// The runtime symbol, or none when the operation is not implemented yet.
     sym: Option<String>,
     decl: Vec<ct::Param>,
+    /// Constant `Bool` arguments after the operation's own.
+    extras: Vec<(&'static str, bool)>,
     params: Vec<MTy>,
     ret: MTy,
     data_ty: MTy,
@@ -111,10 +160,11 @@ impl Cx {
                 .find(|op| op.name.as_str() == s.name)
                 .map(|op| ct::sub(&op.ty, &subst).params.clone())
                 .unwrap_or_default();
-            let sym = METHODS
+            let row = METHODS
                 .iter()
-                .find(|(md, i, op, _)| *md == module && *i == iface_name && *op == s.name)
-                .map(|(_, _, _, sym)| (*sym).to_string());
+                .find(|(md, i, op, ..)| *md == module && *i == iface_name && *op == s.name);
+            let sym = row.map(|r| r.3.to_string());
+            let extras = row.map(|r| r.4.to_vec()).unwrap_or_default();
             let mut ps = vec![Param {
                 ty: MTy::PTR,
                 mode: Mode::Borrow,
@@ -134,6 +184,7 @@ impl Cx {
                     name: format!("{iface_name}.{}", s.name),
                     sym,
                     decl,
+                    extras,
                     params: s.params.clone(),
                     ret: s.ret,
                     data_ty,
@@ -201,7 +252,7 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
             own: false,
         }
     });
-    let nargs: Vec<NArg> = job
+    let mut nargs: Vec<NArg> = job
         .decl
         .iter()
         .zip(&args[1..])
@@ -212,9 +263,23 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         })
         .collect();
     debug_assert_eq!(job.params.len(), nargs.len());
+    let mut decl = job.decl.clone();
+    for (name, value) in &job.extras {
+        let name = ct::n(name);
+        let ty = decl.first().map(|p| p.ty.clone());
+        if let Some(ty) = ty {
+            decl.push(ct::Param { name, ty });
+            let v = fl.b.bconst(*value);
+            nargs.push(NArg {
+                name,
+                val: Val { v, own: false },
+                wrapped: false,
+            });
+        }
+    }
     let r = match recv {
-        Some(recv) => fl.rt_method(sym, recv, &job.decl, &nargs, job.ret)?,
-        None => fl.rt_function(sym, &job.decl, &nargs, job.ret)?,
+        Some(recv) => fl.rt_method(sym, recv, &decl, &nargs, job.ret)?,
+        None => fl.rt_function(sym, &decl, &nargs, job.ret)?,
     };
     fl.emit_return(Some(r));
     Ok(())

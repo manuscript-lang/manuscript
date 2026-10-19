@@ -276,6 +276,17 @@ impl FnLower<'_> {
                         }
                         return Err(Error::new(format!("{sym}: missing argument {}", p.name)));
                     };
+                    // A `String` for a byte-vector parameter is encoded first.
+                    let x = if p.ty.ends_with("VecVal") && self.ty_of(x.v) == MTy::STR {
+                        let s = self.borrow(x);
+                        let bytes = self.call_runtime("msrt_string_to_bytes", &[s], MTy::BYTES)?;
+                        Val {
+                            v: bytes,
+                            own: true,
+                        }
+                    } else {
+                        x
+                    };
                     let consumed_aggregate = p.ty == "*mut VecVal" || p.ty == "*mut MapVal";
                     if p.ty == "*const u8" || p.ty == "*mut u8" || consumed_aggregate {
                         // A generic element slot: pass the address of the value in memory.
@@ -362,6 +373,24 @@ impl FnLower<'_> {
                 // A bare status: `Result[Unit, E]`.
                 let status = self.call_runtime(sym, &vals, MTy::BOOL)?;
                 return self.status_result(sym, status, None, None, result);
+            }
+            if ret == MTy::STR && matches!(self.b.m.types.kind(result), TyKind::Alt(_)) {
+                // A string that cannot fail: `Result[String, E]`.
+                let text = self.call_runtime(sym, &vals, MTy::STR)?;
+                let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
+                    unreachable!()
+                };
+                let ok = self.ok_case_index(a)?;
+                let v = self.b.alt_new(a, ok as u32, &[text]);
+                return Ok(Val { v, own: true });
+            }
+            if ret == MTy::BOOL && result == MTy::UNIT {
+                // A status the interface ignores: `Unit`.
+                self.call_runtime(sym, &vals, MTy::BOOL)?;
+                return Ok(Val {
+                    v: self.b.unit(),
+                    own: false,
+                });
             }
             // A null string pointer is the absent `Optional[String]`.
             let ret = match self.b.m.types.kind(result) {
