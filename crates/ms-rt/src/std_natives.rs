@@ -194,18 +194,13 @@ mod fs_io {
             assert_eq!(msstd_fs_stat(file, 1, info.as_mut_ptr()), STATUS_OK);
             let i = info.assume_init();
             assert_eq!((i.size, text(i.name).as_str()), (10, "a.txt"));
-            let mut names = VecVal {
+            let mut listed = VecVal {
                 ptr: core::ptr::null_mut(),
                 len: 0,
                 cap: 0,
             };
-            let mut flags = VecVal {
-                ptr: core::ptr::null_mut(),
-                len: 0,
-                cap: 0,
-            };
-            assert_eq!(msstd_fs_list(dir, 0, 0, &mut names, &mut flags), STATUS_OK);
-            assert_eq!((names.len, contents(&flags)), (1, vec![0]));
+            assert_eq!(msstd_fs_list(dir, 0, 0, &mut listed), STATUS_OK);
+            assert_eq!(listed.len, 1);
             let missing = st("/tmp/msrt-fs-missing/none");
             assert_eq!(
                 msstd_fs_read_file(missing, 0, 0, &mut out),
@@ -226,13 +221,20 @@ mod fs_io {
         }
     }
 
+    /// A closure object that counts the entries its predicate sees.
+    #[repr(C)]
+    struct Counting {
+        hdr: ms_rt_abi::Closure,
+        count: u8,
+    }
+
     unsafe extern "C-unwind" fn skip_deep(
-        env: *mut u8,
+        env: *mut ms_rt_abi::Closure,
         source: *const StrObj,
         _destination: *const StrObj,
     ) -> u8 {
-        // SAFETY: `env` is the counter the test passed; `source` is a live string.
-        unsafe { *env += 1 };
+        // SAFETY: `env` is the `Counting` the test passed; `source` is a live string.
+        unsafe { (*env.cast::<Counting>()).count += 1 };
         (!text(source as *mut StrObj).ends_with("deep")) as u8
     }
 
@@ -274,10 +276,14 @@ mod fs_io {
             let mut cursor: *mut ms_std_rt::Handle<ms_std_fs::dir::Directory> =
                 core::ptr::null_mut();
             assert_eq!(msstd_fs_directory_open(r, &mut cursor), STATUS_OK);
-            let (mut name, mut d, mut l) = (core::ptr::null_mut(), 0u8, 0u8);
+            let mut entry = ms_std_fs::EntryOut {
+                name: core::ptr::null_mut(),
+                directory: 0,
+                symlink: 0,
+            };
             let mut seen = Vec::new();
-            while msstd_fs_directory_read(cursor, &mut name, &mut d, &mut l) == STATUS_OK {
-                seen.push((text(name), d));
+            while msstd_fs_directory_read(cursor, &mut entry) == STATUS_OK {
+                seen.push((text(entry.name), entry.directory));
             }
             seen.sort();
             assert_eq!(seen, [("a.txt".into(), 0), ("sub".into(), 1)]);
@@ -288,7 +294,13 @@ mod fs_io {
             assert_eq!(msstd_fs_glob(r, pattern, 0, 0, &mut out), STATUS_OK);
             assert_eq!(out.len, 1);
 
-            let mut counter = 0u8;
+            let mut filter = Counting {
+                hdr: ms_rt_abi::Closure {
+                    hdr: ms_rt_abi::Obj { rc: 1, drop: None },
+                    code: skip_deep as *const u8,
+                },
+                count: 0,
+            };
             let clone = st("none");
             assert_eq!(
                 msstd_fs_copy(
@@ -296,14 +308,15 @@ mod fs_io {
                     dest,
                     1 | 16,
                     clone,
-                    i64::MAX,
-                    i64::MAX,
-                    Some(skip_deep),
-                    &mut counter
+                    0,
+                    0,
+                    0,
+                    0,
+                    core::ptr::addr_of_mut!(filter).cast()
                 ),
                 STATUS_OK
             );
-            assert_eq!(counter, 4);
+            assert_eq!(filter.count, 4);
             let copied = st(&std::format!("{root}-out/a.txt"));
             assert_eq!(msstd_fs_read_file(copied, 0, 0, &mut out), STATUS_OK);
             assert_eq!(contents(&out), b"aXYd");

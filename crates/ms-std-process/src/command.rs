@@ -47,7 +47,7 @@ impl Drop for Fd {
 fn pipe() -> Result<(Fd, Fd), i32> {
     let mut fds = [0i32; 2];
     // SAFETY: `fds` has room for two descriptors.
-    if unsafe { libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC) } != 0 {
+    if unsafe { sys::pipe_cloexec(&mut fds, false) } != 0 {
         return Err(sys::errno());
     }
     Ok((Fd(fds[0]), Fd(fds[1])))

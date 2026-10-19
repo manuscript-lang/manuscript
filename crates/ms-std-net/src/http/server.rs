@@ -1,6 +1,6 @@
 //! The HTTP server: an event loop that runs on the ms thread.
 //!
-//! Listeners and connections are nonblocking descriptors in one epoll set.
+//! Listeners and connections are nonblocking descriptors in one readiness set.
 //! A reactor task serves that set (see [`Reactor::spawn_task`]) and each request runs in its own task,
 //! so accepting, reading and parsing happen while the program waits, and a
 //! complete request runs its handler right there on the ms thread: no thread
@@ -17,12 +17,12 @@ use super::target;
 use crate::conn::{Io, Plain, Step};
 use crate::error::{HttpErr, NetErr};
 use crate::net::{Network, Resource};
+use crate::poller::{Poller, Readiness};
 use crate::rt;
 use crate::tls::{Handshake, TlsIo};
-use rustix::event::epoll;
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, VecDeque};
-use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd};
+use std::os::fd::{AsFd, BorrowedFd};
 use std::rc::{Rc, Weak};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -135,7 +135,7 @@ pub(super) struct ConnSt {
     pub flush_pending: bool,
     pub eof: bool,
     pub deadline: Option<Instant>,
-    pub interest: epoll::EventFlags,
+    pub interest: Readiness,
     pub registered: bool,
     pub h2: Option<Box<h2serve::H2Conn>>,
 }
@@ -179,7 +179,7 @@ enum Target {
 }
 
 pub struct Reactor {
-    epoll: OwnedFd,
+    poller: Poller,
     next: Cell<u64>,
     targets: RefCell<HashMap<u64, Target>>,
     ready: RefCell<VecDeque<Rc<Conn>>>,
@@ -206,7 +206,7 @@ impl Reactor {
                 return r.clone();
             }
             let reactor = Rc::new(Reactor {
-                epoll: epoll::create(epoll::CreateFlags::CLOEXEC).expect("epoll"),
+                poller: Poller::new().expect("poller"),
                 next: Cell::new(1),
                 targets: RefCell::new(HashMap::new()),
                 ready: RefCell::new(VecDeque::new()),
@@ -228,16 +228,16 @@ impl Reactor {
         t
     }
 
-    fn add(&self, fd: BorrowedFd<'_>, token: u64, flags: epoll::EventFlags) -> bool {
-        epoll::add(&self.epoll, fd, epoll::EventData::new_u64(token), flags).is_ok()
+    fn add(&self, fd: BorrowedFd<'_>, token: u64, flags: Readiness) -> bool {
+        self.poller.add(fd, token, flags)
     }
 
-    fn modify(&self, fd: BorrowedFd<'_>, token: u64, flags: epoll::EventFlags) {
-        let _ = epoll::modify(&self.epoll, fd, epoll::EventData::new_u64(token), flags);
+    fn modify(&self, fd: BorrowedFd<'_>, token: u64, flags: Readiness) {
+        self.poller.modify(fd, token, flags);
     }
 
     fn delete(&self, fd: BorrowedFd<'_>) {
-        let _ = epoll::delete(&self.epoll, fd);
+        self.poller.delete(fd);
     }
 
     /// The value of the `Date` header, refreshed once per second.
@@ -304,7 +304,7 @@ impl Reactor {
         }
     }
 
-    fn handle_event(&self, token: u64, flags: epoll::EventFlags) {
+    fn handle_event(&self, token: u64, flags: Readiness) {
         let target = match self.targets.borrow().get(&token) {
             Some(Target::Listener(s)) => Target::Listener(s.clone()),
             Some(Target::Conn(c)) => Target::Conn(c.clone()),
@@ -353,7 +353,7 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
     let me = rt::current_task();
     reactor.role.set(me);
     loop {
-        let got = rt::wait_fd(reactor.epoll.as_raw_fd(), 1, 50_000_000);
+        let got = rt::wait_fd(reactor.poller.raw(), 1, 50_000_000);
         if got & 16 != 0 {
             return;
         }
@@ -386,18 +386,13 @@ pub(crate) fn give_up_reactor_role() {
 impl Reactor {
     /// Handles whatever is ready without blocking.
     fn service(&self) {
-        let mut buf = [epoll::Event {
-            flags: epoll::EventFlags::empty(),
-            data: epoll::EventData::new_u64(0),
-        }; 64];
+        let mut buf = Vec::with_capacity(64);
         loop {
-            let timeout = rustix::time::Timespec {
-                tv_sec: 0,
-                tv_nsec: 0,
-            };
-            let n = epoll::wait(&self.epoll, &mut buf, Some(&timeout)).unwrap_or_default();
-            for ev in &buf[..n] {
-                self.handle_event(ev.data.u64(), ev.flags);
+            buf.clear();
+            self.poller.poll(&mut buf, 64);
+            let n = buf.len();
+            for ev in &buf {
+                self.handle_event(ev.token, ev.flags);
             }
             loop {
                 let retry: Vec<Rc<Conn>> = self.retry.borrow_mut().drain(..).collect();
@@ -406,12 +401,12 @@ impl Reactor {
                 }
                 for conn in retry {
                     if let Some(server) = conn.server.upgrade() {
-                        server.on_ready(&conn, epoll::EventFlags::IN, self);
+                        server.on_ready(&conn, Readiness::IN, self);
                     }
                 }
             }
             self.run_handlers();
-            if n < buf.len() {
+            if n < 64 {
                 break;
             }
         }
@@ -550,7 +545,7 @@ impl Server {
             .targets
             .borrow_mut()
             .insert(token, Target::Listener(Rc::downgrade(&server)));
-        if !reactor.add(server.listener.as_fd(), token, epoll::EventFlags::IN) {
+        if !reactor.add(server.listener.as_fd(), token, Readiness::IN) {
             reactor.targets.borrow_mut().remove(&token);
             return Err(NetErr::failed("cannot watch listener"));
         }
@@ -589,14 +584,10 @@ impl Server {
 
     /// Blocks until the server is closed, serving requests meanwhile.
     pub fn wait(&self) {
-        let idle = rustix::event::eventfd(
-            0,
-            rustix::event::EventfdFlags::CLOEXEC | rustix::event::EventfdFlags::NONBLOCK,
-        )
-        .ok();
+        let idle = crate::wait::wake_pair();
         while !self.is_closed() {
             match &idle {
-                Some(fd) => {
+                Some((fd, _keep)) => {
                     let deadline = crate::wait::Deadline::after(Duration::from_millis(50));
                     crate::wait::wait_fd(fd.as_fd(), crate::wait::Interest::Read, deadline);
                 }
@@ -723,7 +714,7 @@ impl Server {
                 flush_pending: false,
                 eof: false,
                 deadline: self.limits.timeout.map(|t| Instant::now() + t),
-                interest: epoll::EventFlags::IN,
+                interest: Readiness::IN,
                 registered: false,
                 h2: None,
             }),
@@ -735,7 +726,7 @@ impl Server {
             if self.tls.is_none() {
                 st.deadline = None;
             }
-            if !reactor.add(st.fd(), token, epoll::EventFlags::IN) {
+            if !reactor.add(st.fd(), token, Readiness::IN) {
                 return;
             }
             st.registered = true;
@@ -777,30 +768,25 @@ impl Server {
                 }
                 drop(st);
                 if h2 {
-                    self.set_interest(conn, reactor, epoll::EventFlags::IN);
+                    self.set_interest(conn, reactor, Readiness::IN);
                     self.h2_serve(conn, reactor);
                 } else {
                     // The client's first request may have arrived with its final
                     // handshake flight; rustls already holds it, so no further
                     // readiness event will announce it. Read it now.
-                    self.set_interest(conn, reactor, epoll::EventFlags::IN);
+                    self.set_interest(conn, reactor, Readiness::IN);
                     self.read_in(conn, reactor);
                 }
             }
-            Handshake::WantRead => self.set_interest(conn, reactor, epoll::EventFlags::IN),
-            Handshake::WantWrite => self.set_interest(conn, reactor, epoll::EventFlags::OUT),
+            Handshake::WantRead => self.set_interest(conn, reactor, Readiness::IN),
+            Handshake::WantWrite => self.set_interest(conn, reactor, Readiness::OUT),
             Handshake::Failed(_) => self.close_conn(conn, reactor),
         }
     }
 
     // ------------------------------------------------------------ connection
 
-    pub(super) fn set_interest(
-        &self,
-        conn: &Rc<Conn>,
-        reactor: &Reactor,
-        flags: epoll::EventFlags,
-    ) {
+    pub(super) fn set_interest(&self, conn: &Rc<Conn>, reactor: &Reactor, flags: Readiness) {
         let mut st = conn.st.borrow_mut();
         if st.registered && st.interest == flags {
             return;
@@ -876,7 +862,7 @@ impl Server {
         self.st.borrow_mut().conns.remove(&conn.token);
     }
 
-    fn on_ready(&self, conn: &Rc<Conn>, flags: epoll::EventFlags, reactor: &Reactor) {
+    fn on_ready(&self, conn: &Rc<Conn>, flags: Readiness, reactor: &Reactor) {
         if matches!(conn.st.borrow().phase, Phase::Handshake) {
             self.drive_handshake(conn, reactor);
             return;
@@ -887,18 +873,13 @@ impl Server {
             }
             return;
         }
-        if flags.contains(epoll::EventFlags::OUT) {
+        if flags.contains(Readiness::OUT) {
             self.write_out(conn, reactor);
         }
         if matches!(conn.st.borrow().phase, Phase::Closed) {
             return;
         }
-        if flags.intersects(
-            epoll::EventFlags::IN
-                | epoll::EventFlags::HUP
-                | epoll::EventFlags::ERR
-                | epoll::EventFlags::RDHUP,
-        ) {
+        if flags.intersects(Readiness::IN | Readiness::HUP | Readiness::ERR) {
             self.read_in(conn, reactor);
         }
     }
@@ -1197,7 +1178,7 @@ impl Server {
             st.phase = Phase::Queued(pending);
         }
         // Stop reading while the request waits; the handler owns the stream next.
-        self.set_interest(conn, reactor, epoll::EventFlags::empty());
+        self.set_interest(conn, reactor, Readiness::empty());
         reactor.ready.borrow_mut().push_back(conn.clone());
         false
     }
@@ -1294,7 +1275,7 @@ impl Server {
             Next::Failed => self.close_conn(conn, reactor),
             Next::Blocked => {
                 if !matches!(conn.st.borrow().phase, Phase::Busy) {
-                    self.set_interest(conn, reactor, epoll::EventFlags::OUT);
+                    self.set_interest(conn, reactor, Readiness::OUT);
                 }
             }
             Next::Finished(close) => {
@@ -1312,7 +1293,7 @@ impl Server {
                         st.phase = Phase::Head;
                     }
                 }
-                self.set_interest(conn, reactor, epoll::EventFlags::IN);
+                self.set_interest(conn, reactor, Readiness::IN);
                 // Pipelined requests may already be buffered.
                 self.after_read(conn, reactor);
             }

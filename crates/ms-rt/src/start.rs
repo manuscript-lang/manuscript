@@ -74,12 +74,7 @@ extern "C" fn on_alarm(_: i32) {
 }
 
 fn install(sig: i32, handler: extern "C" fn(i32)) {
-    let act = sys::sigaction_t {
-        handler: handler as *const () as usize,
-        mask: [0; 16],
-        flags: 0,
-        restorer: 0,
-    };
+    let act = sys::sigaction_t::new(handler as *const () as usize, 0);
     // SAFETY: installs a handler that only touches atomics and async-signal-safe calls.
     unsafe { sys::sigaction(sig, &act, core::ptr::null_mut()) };
 }
