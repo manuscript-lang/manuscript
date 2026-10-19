@@ -95,8 +95,8 @@ impl Watcher {
             mask |= 1 << (s - 1);
         }
         let mut fds = [0i32; 2];
-        // SAFETY: `fds` holds the two descriptors `pipe2` writes.
-        if unsafe { libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC | libc::O_NONBLOCK) } != 0 {
+        // SAFETY: `fds` holds the two descriptors `pipe_cloexec` writes.
+        if unsafe { sys::pipe_cloexec(&mut fds, true) } != 0 {
             return Err(Fail::raw(sys::errno()));
         }
         let slot = (0..SLOTS).find(|&i| {
