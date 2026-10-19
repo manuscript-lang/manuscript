@@ -24,6 +24,8 @@ extern int64_t msrt_string_length(void *s);
 extern int64_t msrt_call_depth;
 extern void msrt_fault_depth(void) __attribute__((noreturn));
 extern void msrt_args(VecVal *out);
+extern uint8_t msrt_guard_call(void (*code)(void *), void *data, void **msg_out);
+extern void msrt_cleanup_run(size_t handle);
 
 static const char *mode;
 
@@ -50,7 +52,48 @@ static int64_t deep(int64_t n) {
     return r;
 }
 
+static void faulting_request(void *data) {
+    int *n = data;
+    msrt_cleanup_push(cleanup_a, 0);
+    msrt_cleanup_push(cleanup_b, 0);
+    (*n)++;
+    outer();
+    (*n) += 100;
+}
+static void fine_request(void *data) { *(int *)data += 1; }
+static void nested_request(void *data) {
+    void *msg = 0;
+    int inner_n = 0;
+    uint8_t r = msrt_guard_call(faulting_request, &inner_n, &msg);
+    *(int *)data = r == 1 && inner_n == 1 && msg ? 7 : -1;
+    // a fault after the inner guard returned reaches the outer guard
+    msrt_fault("outer boom", 10);
+}
+
+static int64_t guard_mode(void) {
+    size_t base = msrt_cleanup_push(cleanup_a, 0);
+    for (int round = 0; round < 3; round++) {
+        int n = 0;
+        void *msg = 0;
+        uint8_t r = msrt_guard_call(faulting_request, &n, &msg);
+        if (r != 1 || n != 1 || !msg) return 10;
+        if (msrt_string_length(msg) < 4) return 11;
+        msrt_io_write_stdout(msg);
+        n = 0;
+        if (msrt_guard_call(fine_request, &n, &msg) != 0 || n != 1 || msg) return 12;
+    }
+    int n = 0;
+    void *msg = 0;
+    if (msrt_guard_call(nested_request, &n, &msg) != 1 || n != 7 || !msg) return 13;
+    msrt_io_write_stdout(msg);
+    if (msrt_call_depth != 0) return 14;
+    msrt_cleanup_run(base);
+    puts("guards ok");
+    return 0;
+}
+
 static int64_t entry(void) {
+    if (!strcmp(mode, "guard")) return guard_mode();
     if (!strcmp(mode, "ok")) {
         void *s = msrt_string_from_bytes("héllo\n", 7);
         msrt_io_write_stdout(s);

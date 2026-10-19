@@ -154,6 +154,23 @@ pub unsafe extern "C-unwind" fn msrt_eq_leave(_a: *const u8, _b: *const u8) {
     }
 }
 
+/// Number of object pairs currently registered by `msrt_eq_enter`.
+pub fn eq_len() -> usize {
+    // SAFETY: single threaded access.
+    unsafe { (*EQ.ptr()).pairs.len() }
+}
+
+/// Drops pairs registered after the stack was `len` long (a fault left them behind).
+pub fn eq_truncate(len: usize) {
+    // SAFETY: single threaded access.
+    unsafe {
+        let st = &mut *EQ.ptr();
+        while st.pairs.len() > len {
+            st.pairs.pop();
+        }
+    }
+}
+
 /// Equality of two slots.
 ///
 /// # Safety
