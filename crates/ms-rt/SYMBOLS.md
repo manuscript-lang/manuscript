@@ -170,6 +170,8 @@ msrt_task_join(handle: u64, msg_out: *mut *mut StrObj) -> u8
 msrt_trap_begin() -> u8
 msrt_trap_end() -> !
 msrt_trap_wait(out: *mut *mut StrObj) -> u8
+msrt_trap_end() -> !
+msrt_trap_wait(out: *mut *mut StrObj) -> u8
 msrt_list_new(out: *mut VecVal)
 msrt_list_with_capacity( d: *const TypeDesc, cap: i64, out: *mut VecVal, )
 msrt_list_drop(v: *mut VecVal, d: *const TypeDesc)
@@ -544,18 +546,18 @@ msrt_net_network_resolve( net: *const Obj, name: *const StrObj, kind: u8, has_ma
 msrt_net_connection_close(c: *const Obj)
 msrt_net_connection_local_address(c: *const Obj) -> *mut StrObj
 msrt_net_connection_peer_address(c: *const Obj) -> *mut StrObj
-msrt_net_connection_read( c: *const Obj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut VecVal, present: *mut u8, err: *mut *mut StrObj, ) -> u8
+msrt_net_connection_read( c: *const Obj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut VecVal, err: *mut *mut StrObj, ) -> u8
 msrt_net_connection_write( c: *const Obj, data: *const StrObj, has_timeout: u8, timeout: i64, err: *mut *mut StrObj, ) -> u8
 msrt_net_connection_write_bytes( c: *const Obj, data: *const VecVal, has_timeout: u8, timeout: i64, err: *mut *mut StrObj, ) -> u8
 msrt_net_connection_shutdown_write( c: *const Obj, err: *mut *mut StrObj, ) -> u8
 msrt_net_listener_accept( l: *const Obj, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
 msrt_net_listener_address(l: *const Obj) -> *mut StrObj
 msrt_net_listener_close(l: *const Obj)
-msrt_net_datagram_address(d: *const Obj) -> *mut StrObj
-msrt_net_datagram_close(d: *const Obj)
-msrt_net_datagram_receive( d: *const Obj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, data: *mut VecVal, sender: *mut *mut StrObj, err: *mut *mut StrObj, ) -> u8
-msrt_net_datagram_send( d: *const Obj, data: *const StrObj, address: *const StrObj, has_timeout: u8, timeout: i64, err: *mut *mut StrObj, ) -> u8
-msrt_net_datagram_send_bytes( d: *const Obj, data: *const VecVal, address: *const StrObj, has_timeout: u8, timeout: i64, err: *mut *mut StrObj, ) -> u8
+msrt_net_datagram_address(sock: *const Obj) -> *mut StrObj
+msrt_net_datagram_close(sock: *const Obj)
+msrt_net_datagram_receive( sock: *const Obj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut DatagramWire, err: *mut *mut StrObj, ) -> u8
+msrt_net_datagram_send( sock: *const Obj, data: *const StrObj, address: *const StrObj, has_timeout: u8, timeout: i64, err: *mut *mut StrObj, ) -> u8
+msrt_net_datagram_send_bytes( sock: *const Obj, data: *const VecVal, address: *const StrObj, has_timeout: u8, timeout: i64, err: *mut *mut StrObj, ) -> u8
 msrt_net_network_connect_tls( net: *const Obj, address: *const StrObj, server_name: *const StrObj, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
 msrt_net_network_connect_tls_config( net: *const Obj, address: *const StrObj, opts: *const TlsOptionsWire, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
 msrt_net_network_listen_tls( net: *const Obj, address: *const StrObj, opts: *const TlsOptionsWire, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8

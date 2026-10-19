@@ -316,8 +316,10 @@ impl Cx {
             return Ok(m.types.obj("BigInt", Vec::new()));
         }
         // Runtime handles are reference-counted objects.
-        if t.is_std("Regex") {
-            return Ok(m.types.obj("Regex", Vec::new()));
+        for name in ["Regex", "IpAddress", "Cidr", "HttpHeaders"] {
+            if t.is_std(name) {
+                return Ok(m.types.obj(name, Vec::new()));
+            }
         }
         Err(Error::new(format!("unsupported native type {t}")))
     }

@@ -17,7 +17,6 @@ e2e/stdlib/host
 e2e/stdlib/host-contracts
 e2e/stdlib/html
 e2e/stdlib/math-functions
-e2e/stdlib/net
 e2e/stdlib/path
 e2e/stdlib/random
 e2e/stdlib/sse-http

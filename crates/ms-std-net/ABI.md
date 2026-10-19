@@ -77,14 +77,14 @@ msrt_net_network_lookup(net, name, has_max, max, has_timeout, timeout, out: *mut
 msrt_net_network_resolve(net, name, kind: u8, has_max, max, has_timeout, timeout,
                          records: *mut *mut DnsRecordWire, count: *mut usize, err) -> u8
 msrt_net_connection_{close, local_address, peer_address, shutdown_write(err) -> u8}
-msrt_net_connection_read(c, has_max, max, has_timeout, timeout, out: *mut VecVal, present: *mut u8, err) -> u8
+msrt_net_connection_read(c, has_max, max, has_timeout, timeout, out: *mut VecVal, err) -> u8   # STATUS_NONE (16) at end of stream
 msrt_net_connection_write(c, data: String, has_timeout, timeout, err) -> u8
 msrt_net_connection_write_bytes(c, data: *const VecVal, has_timeout, timeout, err) -> u8
 msrt_net_listener_{accept(l, has_timeout, timeout, out, err) -> u8, address, close}
-msrt_net_datagram_{address, close}
-msrt_net_datagram_receive(d, has_max, max, has_timeout, timeout, data: *mut VecVal, sender: *mut *mut StrObj, err) -> u8
-msrt_net_datagram_send(d, data: String, address, has_timeout, timeout, err) -> u8
-msrt_net_datagram_send_bytes(d, data: *const VecVal, address, has_timeout, timeout, err) -> u8
+msrt_net_datagram_{address, close}  # receiver `sock`
+msrt_net_datagram_receive(sock, has_max, max, has_timeout, timeout, out: *mut DatagramWire { data: VecVal, sender: *mut StrObj }, err) -> u8
+msrt_net_datagram_send(sock, data: String, address, has_timeout, timeout, err) -> u8
+msrt_net_datagram_send_bytes(sock, data: *const VecVal, address, has_timeout, timeout, err) -> u8
 ```
 
 `DnsRecordWire { kind: u8, value: *mut StrObj, priority: i64, weight: i64, port: i64 }`

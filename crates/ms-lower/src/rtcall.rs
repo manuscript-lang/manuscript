@@ -27,7 +27,9 @@ pub(crate) struct RtSig {
     pub ret: String,
 }
 
-const RENAMED: [(&str, &str); 2] = [
+const RENAMED: [(&str, &str); 4] = [
+    ("net/ip_text", "msrt_net_ip_address_text"),
+    ("net/ip_family", "msrt_net_ip_address_family"),
     ("process/arguments", "msrt_args"),
     ("collections/filled", "msrt_list_filled"),
 ];
@@ -96,6 +98,11 @@ pub(crate) struct Input {
 
 /// The runtime symbol implementing a native method of a receiver type.
 pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> Option<String> {
+    // Handle-backed values name their operations in the native identity.
+    if matches!(m.types.kind(recv), TyKind::Obj(n, _) if matches!(n.as_str(), "IpAddress" | "Cidr" | "HttpHeaders"))
+    {
+        return function_symbol(native);
+    }
     let name = native.rsplit('/').next().unwrap_or(native);
     let name = match name {
         "format_int" => "to_string_radix",
@@ -389,8 +396,11 @@ impl FnLower<'_> {
             });
         }
         let recv_ty = recv.map(|r| self.ty_of(r.v));
-        let has_out = sig.params.last().is_some_and(|p| p.name == "out");
-        let end = sig.params.len() - usize::from(has_out);
+        // A trailing `err` receives the text of a `Failed` status, after any `out`.
+        let body =
+            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.name == "err"));
+        let has_out = sig.params[..body].last().is_some_and(|p| p.name == "out");
+        let end = body - usize::from(has_out);
         let mut vals: Vec<Value> = Vec::new();
         // Slots of borrowed owned values, taken back and dropped after the call.
         let mut lent: Vec<(Value, MTy)> = Vec::new();
@@ -702,6 +712,31 @@ impl FnLower<'_> {
         sym: &str,
         sig: &RtSig,
         has_out: bool,
+        vals: Vec<Value>,
+        result: MTy,
+    ) -> Result<Val, Error> {
+        let r = self.finish_rt_call_inner(sym, sig, has_out, vals, result);
+        self.err_slot = None;
+        r
+    }
+
+    /// Passes the slot a trailing `err` parameter writes the `Failed` text to.
+    fn push_err_slot(&mut self, sig: &RtSig, vals: &mut Vec<Value>) {
+        if sig.params.last().is_some_and(|p| p.name == "err") {
+            let slot = self
+                .b
+                .emit(Op::Slot, &[], Imm::Ty(MTy::STR), Some(MTy::PTR))
+                .expect("slot");
+            vals.push(slot);
+            self.err_slot = Some(slot);
+        }
+    }
+
+    fn finish_rt_call_inner(
+        &mut self,
+        sym: &str,
+        sig: &RtSig,
+        has_out: bool,
         mut vals: Vec<Value>,
         result: MTy,
     ) -> Result<Val, Error> {
@@ -724,8 +759,19 @@ impl FnLower<'_> {
             .or(object.then_some(result))
             .ok_or_else(|| Error::new(format!("{sym}: unsupported return {}", sig.ret)))?;
         if !has_out {
+            if let (MTy::BOOL, TyKind::Alt(a)) = (ret, self.b.m.types.kind(result).clone())
+                && self.ok_case_index(a).is_err()
+            {
+                // A payload-free enum returned as its case index.
+                let raw = self.call_runtime(sym, &vals, MTy::INT)?;
+                let mask = self.b.iconst(0xff);
+                let code = self.b.binop(Op::And, raw, mask);
+                let v = self.enum_from_index(a, code, 0)?;
+                return Ok(Val { v, own: true });
+            }
             if ret == MTy::BOOL && matches!(self.b.m.types.kind(result), TyKind::Alt(_)) {
                 // A bare status: `Result[Unit, E]`.
+                self.push_err_slot(sig, &mut vals);
                 let code = self.status_code(sym, &vals)?;
                 return self.status_result(sym, code, None, None, result);
             }
@@ -821,6 +867,7 @@ impl FnLower<'_> {
             .emit(Op::Slot, &[], Imm::Ty(slot_ty), Some(MTy::PTR))
             .expect("slot");
         vals.push(slot);
+        self.push_err_slot(sig, &mut vals);
         // Statuses are read as `Int` (a `Bool` would make the optimizer assume 0 or 1).
         let is_result = matches!(self.b.m.types.kind(result), TyKind::Alt(_));
         let code = if is_result {
@@ -894,6 +941,13 @@ impl FnLower<'_> {
         let build = |s: &mut Self| -> Result<Value, Error> {
             let carries_text = s.b.m.alts[ea.index()].cases[idx].fields.len() == 1;
             match failure {
+                _ if carries_text && s.err_slot.is_some() => {
+                    let slot = s.err_slot.expect("checked");
+                    let text =
+                        s.b.emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
+                            .expect("take");
+                    Ok(s.b.alt_new(ea, idx as u32, &[text]))
+                }
                 Some(sym) if n == 11 && carries_text => {
                     let text = s.call_runtime(sym, &[], MTy::STR)?;
                     Ok(s.b.alt_new(ea, idx as u32, &[text]))
@@ -919,6 +973,29 @@ impl FnLower<'_> {
         let r = self.two_ways(hit, ty, &mut |s| build(s).map(Some), &mut |s| {
             s.status_error(ea, code, rest, failure).map(Some)
         })?;
+        Ok(r.v)
+    }
+
+    /// The payload-free case of `a` whose index is `code`, trying cases from `from`.
+    fn enum_from_index(
+        &mut self,
+        a: ms_mir::types::AltId,
+        code: Value,
+        from: usize,
+    ) -> Result<Value, Error> {
+        let last = self.b.m.alts[a.index()].cases.len() - 1;
+        if from >= last {
+            return Ok(self.b.alt_new(a, last as u32, &[]));
+        }
+        let k = self.b.iconst(from as i64);
+        let hit = self.b.icmp(Cc::Eq, code, k);
+        let ty = self.b.m.types.alt(a);
+        let r = self.two_ways(
+            hit,
+            ty,
+            &mut |s| Ok(Some(s.b.alt_new(a, from as u32, &[]))),
+            &mut |s| s.enum_from_index(a, code, from + 1).map(Some),
+        )?;
         Ok(r.v)
     }
 
@@ -949,16 +1026,24 @@ impl FnLower<'_> {
         let TyKind::Alt(ea) = self.b.m.types.kind(et).clone() else {
             return Err(Error::new("a runtime status needs an error alternative"));
         };
-        let cases: Vec<(i64, usize)> = STATUS_CASES
-            .iter()
-            .filter_map(|(n, name)| {
-                let idx = self.b.m.alts[ea.index()]
-                    .cases
-                    .iter()
-                    .position(|c| c.name == *name)?;
-                Some((*n, idx))
-            })
-            .collect();
+        // A runtime that reports `Failed` text through `err` numbers the cases 1 + declaration
+        // index (`ms-std-net/ABI.md`); the others share the `STATUS_CASES` codes.
+        let cases: Vec<(i64, usize)> = if self.err_slot.is_some() {
+            (0..self.b.m.alts[ea.index()].cases.len())
+                .map(|i| (i as i64 + 1, i))
+                .collect()
+        } else {
+            STATUS_CASES
+                .iter()
+                .filter_map(|(n, name)| {
+                    let idx = self.b.m.alts[ea.index()]
+                        .cases
+                        .iter()
+                        .position(|c| c.name == *name)?;
+                    Some((*n, idx))
+                })
+                .collect()
+        };
         let failure = failure_symbol(sym);
         let e = self.status_error(ea, code, &cases, failure.as_deref())?;
         Ok(self.b.alt_new(a, err as u32, &[e]))
