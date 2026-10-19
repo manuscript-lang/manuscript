@@ -58,7 +58,18 @@ pub fn needs_no_drop(d: &TypeDesc) -> bool {
 ///
 /// # Safety
 /// `slot` holds a live value described by `d`.
+#[inline(always)]
 pub unsafe fn slot_drop(d: &TypeDesc, slot: *mut u8) {
+    // Plain scalars and PODs own nothing: skip the out-of-line call.
+    if matches!(d.kind, KIND_INT | KIND_FLOAT | KIND_BOOL | KIND_POD) {
+        return;
+    }
+    // SAFETY: per the contract of each kind.
+    unsafe { slot_drop_owned(d, slot) }
+}
+
+#[inline(never)]
+unsafe fn slot_drop_owned(d: &TypeDesc, slot: *mut u8) {
     // SAFETY: per the contract of each kind.
     unsafe {
         match d.kind {
@@ -87,7 +98,20 @@ pub unsafe fn slot_drop(d: &TypeDesc, slot: *mut u8) {
 ///
 /// # Safety
 /// `src` holds a live value described by `d`; `dst` has room for `d.size` bytes.
+#[inline(always)]
 pub unsafe fn slot_copy(d: &TypeDesc, src: *const u8, dst: *mut u8) {
+    // SAFETY: per the contract of each kind.
+    unsafe {
+        if d.kind <= KIND_BOOL && d.size == 8 {
+            *(dst as *mut u64) = *(src as *const u64);
+            return;
+        }
+        slot_copy_slow(d, src, dst)
+    }
+}
+
+#[inline(never)]
+unsafe fn slot_copy_slow(d: &TypeDesc, src: *const u8, dst: *mut u8) {
     // SAFETY: per the contract of each kind.
     unsafe {
         match d.kind {
