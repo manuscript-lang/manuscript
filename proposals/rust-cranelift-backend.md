@@ -43,22 +43,24 @@ Non-goals for this plan: an LLVM release backend (gated), self-hosting, WASM, us
 ## Memory model (draft; P0 makes it a contract)
 
 Settled direction:
-1. **Values with one owner.** Records, lists, maps, sets, strings, bytes, and alternatives are values. Plain values (scalars and records of plain values) copy implicitly; others move at their last use into a consuming position. Duplicates are explicit with `.copy()`. P0 measures this against copy-on-write (see Alternatives) before it is frozen.
+1. **Values, no implicit aliasing.** Records, lists, maps, sets, strings, bytes, and alternatives are values: `let b = a` gives `b` an independent value, and changing one never changes the other. Heap-backed values use copy-on-write buffers, so a copy shares storage until one side writes. The compiler removes most copies: a last use becomes a move, a copy that neither side changes becomes a borrow, and `x = f(x)` reuses `x`'s storage when it is unique. Tooling reports the copies that remain, especially inside loops.
 2. **`mut` replaces `var`.** `let` is immutable including contents; `mut` bindings and `mut` parameters (marked at the declaration and the call) may change; a `mut` argument may not overlap another argument.
-3. **Explicit identity.** `Shared[T]` (immutable, sendable), `Weak[T]`, `Arena[T]` with generation-checked `Id[T]`, and `Synchronized[T]`.
+3. **Sharing is explicit.** `Ref[T]` is a shared mutable reference within a task (reference counted, with a runtime borrow flag that faults on conflicting access); `Shared[T]` is immutable and sendable; `Weak[T]` breaks cycles; `Arena[T]` with generation-checked `Id[T]` holds graphs; `Synchronized[T]` guards state shared across tasks. Code that relies on aliasing today moves to `Ref`, found by `ms migrate`.
 4. **Checks and faults keep today's contract**: checked Int, bounds-checked indexing (including negative indexes from the end), cancellation in loops and recursive calls, the recursion limit, and faults that propagate to the task boundary while running cleanup.
+5. **C speed is the target.** The model itself is close to free: with checks compiled out, the C baselines run within about 15% of plain C (geometric mean 0.45x against 0.39x of hand-written Go). The remaining gap is the checks (0.68x with them on), so MIR range analysis and check hoisting are required work, not tuning.
 
 Open in the model, each a P0 deliverable:
-- **Exclusivity for every borrow.** Every construct that creates a borrow living across statements (`match` and `if let` payloads, loop variables, `with` bindings, guard payloads, interface views, accessor results) must forbid mutating or reassigning the borrowed root while the borrow is live. The rule is lexical (Swift access enforcement, Hylo projections), not lifetime inference, and every case gets rejection fixtures.
-- **Projections and accessors.** `get`, `first`, `last`, and Optional payloads return `T` today. Decide between returning projections (borrows usable within an expression or a scoped binding) or copies, and whether user code can declare projections. Indexed assignment (`xs[i].f -= 1`) is a new syntax change; today indexing is read-only.
+- **Soundness by construction.** Bindings that read part of a value (`match` and `if let` payloads, loop variables, accessor results such as `get` and `first`) are copies in the semantics, which copy-on-write makes cheap. The compiler turns them into borrows only where it proves the source is not changed while the binding lives, so safety rests on the semantics and an optimization proof, not on the checker catching every case. The spike's `match` use-after-free cannot be written under this rule. Exclusivity checking remains for `mut` arguments and in-place updates, and every case gets rejection fixtures.
+- **Indexed assignment.** `xs[i].f -= 1` updates an element in place; today indexing is read-only, so this is a syntax change.
 - **Mutator results.** List, Map, and Set mutators return the same collection for chaining; under the model they return `Unit` or a new value.
 - **Handle types.** `Synchronized`, `BlockingQueue`, `TaskGroup`, schedulers, servers, clients, and loggers have identity and synchronize internally. Name them as a third category beside values and unique resources: copying a handle shares the service. Decide which native types (`HttpHeaders` today is "shared mutable") become values.
 - **Resources and drops.** Whether dropping a unique `Closeable` closes it, the order of drops and `close`, moving a resource out of `with`, and how concurrent handlers share a database or client (through handles).
 - **Unwinding state.** What a `mut` argument holds when the callee faults or is cancelled after reallocating it: copy-out in landing pads, or pass by reference whenever the value needs dropping. Same question for temporaries and partially built values.
-- **Closures.** Mutating a captured `mut` binding must act on the binding, so such a closure is a borrow. Escape must be a signature-level property (inferred within a module, declared on exported, interface, and native function parameters), not whole-program inference.
-- **Generics.** Duplicating a `T` needs a copyability bound; decide whether it is implicit (plain types) or a new compiler bound.
+- **Closures.** Captures are copies. A closure that mutates state it shares with its creator captures a `Ref`. Whether a closure that mutates a captured `mut` binding directly is allowed (as a non-escaping borrow) is open; escape would then be a signature-level property.
+- **Generics.** Every value except unique resources is copyable, so only resources need a bound; decide how that bound is spelled.
+- **Opting out of checks in hot code.** Range analysis removes most overflow and bounds checks; for the rest, decide whether to offer visible opt-outs such as wrapping operators (`+%`) and an unchecked index method, so code can match C exactly where it chooses to.
 - **Equality and hashing** of `Shared`, `Weak`, and `Id`.
-- **Concurrency.** Per-task cancellation without thread-local caching bugs under coroutine migration; coroutine stack sizing against the recursion limit; atomic or non-atomic string counts.
+- **Concurrency.** Per-task cancellation without thread-local caching bugs under coroutine migration; coroutine stack sizing against the recursion limit; atomic or non-atomic buffer counts (or copying at the send point) for copy-on-write values that cross tasks.
 
 ## Architecture
 
@@ -89,7 +91,7 @@ Two to four sessions, each owning one item. P0 ends when every gate passes or th
 | Sound exclusivity and ownership rules (C1 draft) with a soundness corpus of rejection cases | every corpus case rejected; a program fuzzer finds no accepted program that fails under ASan or valgrind across one million generated programs |
 | Standard-library delta: every one of the ~939 declarations in `pkg/stdlib` classified as unchanged, `mut` receiver, handle, or redesigned | owner sign-off on the redesign list |
 | Unwinding prototype: Cranelift exception tables (`try_call`) and explicit fault returns, on all six targets, including callbacks through runtime frames | chosen design measured on the kernels and a cleanup-heavy program; overhead stated |
-| Copy-on-write versus unique ownership, measured on the spike for kernels, strings, and agent ergonomics | decision recorded with numbers |
+| Copy costs: copy-on-write in the spike, with move, borrow, and reuse elimination | count of copies surviving elimination in the kernels and the repository's `.ms` corpus; uniqueness-check and count overhead measured; the cost of atomic counts across tasks decided |
 | A check-only frontend for the model (Rust, reusable as W3's start) | runs over the repository's 31k lines of `.ms` after a migration dry run |
 | Agent pilot | at least 20 `agent-bench` tasks on at least 2 models: pass rate within 5 points of current Manuscript and correction cycles at most 1.15x |
 | Re-measured baselines | kernels with recursion polls, per-task flags, landing pads, seeded maps, and inlined-by-compiler closures; plus a server benchmark (throughput, p99 latency, RSS) and string/I/O programs; on a dedicated runner, reported as geometric means with confidence intervals |
@@ -165,7 +167,7 @@ flowchart LR
 | Risk | Mitigation |
 |---|---|
 | Unsound ownership checking (already demonstrated in the spike) | lexical exclusivity per construct, soundness corpus, fuzzing with sanitizers as a P0 gate and in CI |
-| Mutable value semantics at scale (Hylo is still a research language) | P0 pilot and copy-on-write comparison before freezing |
+| Hidden copies (a shared buffer written inside a loop copies every iteration) | compiler elimination measured in P0; lint and `ms inspect` report copies in loops; uniqueness checks hoisted out of loops |
 | Rewrite scale: 65k lines of Go and 39k lines of Go tests | P0 bounds the design first; contracts and stubs; W14 preserves tested behavior |
 | Unwinding across Cranelift code, Rust runtime frames, and six targets | prototype on all targets in P0 |
 | Cranelift bugs in rarely used paths | pinned version, differential testing, fuzzing, our own inliner, upstream reports |
@@ -178,7 +180,8 @@ flowchart LR
 
 - **Do nothing and keep optimizing Go lowering.** Today's output is 1.48x hand-written Go (geometric mean). Some representation wins are reachable in Go once the semantics change, but the collector stays, and the owner's direction is to remove Go.
 - **Value semantics on the Go backend first** (check-only mode in Go, or the Rust frontend emitting Go). Validates the model before the backend rewrite. Its intent is kept as P0's check-only frontend and agent pilot, written in Rust so it is not discarded.
-- **Copy-on-write value semantics** (Swift-style): no use-after-move errors, no `.copy()`, cheap accessors, a smaller checker and migration, at the cost of uniqueness checks and hidden copies. Measured in P0 rather than dismissed.
+- **Unique ownership with explicit `.copy()`** (moves at last use, use-after-move errors). Never copies silently, but every accessor needs a projection or a copy written in source, the checker must catch every borrow hazard, and agents hit move errors. Rejected for copy-on-write, whose remaining copies tooling reports.
+- **Keeping implicit aliasing, local only** (`=` names the same storage within a function). Memory-safe with alias-set tracking, but the same line would share inside a function and stop sharing once stored in a field or list, and aliasing bugs remain. Rejected for one rule everywhere plus explicit `Ref`.
 - **LLVM only.** Better code, but dev builds near `clang -O0` and a large install. Kept as the optional P4 release backend.
 - **C emission through a bundled compiler.** A fallback release path from the same MIR.
 - **Reference semantics with reference counting.** Keeps programs valid but keeps aliasing bugs, needs cycle collection, and makes races memory-unsafe without a sharing rule.
@@ -207,3 +210,7 @@ An independent reviewer subagent challenged the first draft and recommended rewo
 - the full supersedes list.
 
 Kept against the review: Tokio is chosen for I/O, with the `no_std` constraint limited to the runtime core.
+
+## Decisions after review
+
+The owner decided on 2026-10-19, after the review: no implicit aliasing; values use copy-on-write with compiler copy elimination; `Ref[T]` carries explicit sharing; I/O runs on Tokio; C speed is the target, with checks the main remaining cost. Whether to offer opt-outs from checks in hot code is still open.
