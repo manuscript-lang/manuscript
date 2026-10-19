@@ -21,7 +21,7 @@ recorded here before it is committed.)_
   and returns `paths` plus one kind byte per event (1 `rename`, 0 `change`); a native watcher returns one event per call, a polling watcher
   every difference sorted by path. `STATUS_CLOSED` after `msstd_fs_watch_close`, `STATUS_LIMIT_EXCEEDED` on overflow with policy `error`.
   No worker thread: events are read from the kernel inside `next`, so the queue is bounded by the kernel buffer plus `max_events`.
-- **v2.6 (`ms-std-fs`, `ms-std-glob`).** File handles are the `@std/io` stream handle (`msstd_fs_file_open`; `reader()`/`writer()` reuse
+- **v2.6 (`ms-std-fs`).** File handles are the `@std/io` stream handle (`msstd_fs_file_open`; `reader()`/`writer()` reuse
   `msstd_io_*`), directory cursors and scoped temporary directories are their own refcounted handles (`msstd_fs_directory_*`,
   `msstd_fs_temporary_*`; `close` is idempotent and a temporary's `close` reports removal failures). `msstd_fs_open_flags` maps a mode string
   to host flags. `msstd_fs_glob` returns a `List[String]`; `msstd_fs_glob_entries` returns parallel `paths`/`names` string lists plus a flag
@@ -29,7 +29,7 @@ recorded here before it is committed.)_
   clone mode string and entry/byte budgets (`i64::MAX` = unlimited). Callbacks are `extern "C-unwind"` thunks with a captured `env`: strings
   passed to them are borrowed for the call (the runtime releases its copies afterwards), `copy`'s returns non-zero to keep an entry and
   `glob_entries`' returns non-zero to exclude it. `msstd_fs_constants` returns the open-flag and mode constants as parallel name/value lists.
-  Glob matching lives in the no_std `ms-std-glob` crate (Go `pkg/runtime` semantics: braces, extglobs, `**`, dotfile rules).
+  Glob matching lives in `ms-std-path::glob` (shared with `@std/path`) (Go `pkg/runtime` semantics: braces, extglobs, `**`, dotfile rules).
 - **v2.5 (`ms-std-process`).** `msstd_process_*` covers process control and child processes. `STATUS_TIMEOUT` (13) and `STATUS_OUTPUT_LIMIT` (14)
   join the table for `CommandError`. `Map[String, String]` crosses as two parallel string lists (`environment`, `replace`). `command_run` takes
   the arguments, input bytes, optional limit and optional timeout and returns `CommandOut` (exit code, stdout, stderr); `command_spawn` returns a
@@ -279,6 +279,67 @@ and exits 70.
 returns a handle; `msrt_cleanup_run(handle)` runs and removes that action (and any
 newer pending ones first, innermost to outermost). On a fault the remaining actions
 run LIFO shielded from cancellation.
+
+**Guarded calls.** `msrt_guard_call(code: extern "C-unwind" fn(*mut u8), data: *mut u8,
+msg_out: *mut *mut StrObj) -> u8` runs `code(data)` as an isolated request and returns
+0 when it returns normally. A fault inside it (user fault, call-depth limit, runtime
+fault) runs the cleanups pushed since entry LIFO, shielded, restores the call depth,
+cancel shield and equality-cycle state, and returns 1 with the fault report (message
+plus `at file:line in fn` frames, no trailing newline) as a new String in `*msg_out`
+(owned by the caller; may be null to discard). A stop request that reaches
+`msrt_cancelled` inside the guard runs the same cleanups and returns 2 with
+`*msg_out = null`; `msrt_cancel_flag` stays set so the caller should stop soon after.
+Guards nest: a fault leaves only the innermost one. Cleanups registered before entry
+are untouched. Not unwound: values owned by the abandoned frames are only released
+through cleanup actions, so a fault leaks anything not under `with`. Faults still exit
+70 outside any guard. Implementation: `msrt_guard_enter` saves callee-saved registers
+and the stack pointer and calls `code`; a fault jumps back to it (x86_64 and aarch64;
+generated code needs no landing pads). Single threaded like the rest of the runtime.
+
+**Tasks.** Cooperative stackful coroutines on the runtime thread (`task.rs`). There is no
+parallelism and no preemption, so the allocator, reference counts and every other runtime
+global stay non-atomic; a task runs until it parks or yields. This is a runtime facility for
+natives (an HTTP server running handlers concurrently); the language has no concurrency
+surface. Each task has its own stack (default 256 MiB of address space, committed lazily, 64 KiB
+guard), cleanup stack, guard stack, call depth, equality-cycle state and cancellation request;
+the runtime swaps them on every switch, so faults, `with` cleanups and `msrt_guard_call`
+behave per task.
+
+```text
+msrt_task_spawn(entry: extern "C-unwind" fn(*mut u8), arg, flags: u32, stack_bytes: usize) -> u64
+msrt_task_yield()
+msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32
+msrt_task_sleep(ns: i64) -> u32
+msrt_task_join(handle: u64, msg_out: *mut *mut StrObj) -> u8
+msrt_task_cancel(handle: u64)
+msrt_task_current() -> u64
+msrt_task_count() -> usize
+```
+
+`spawn` queues the task; it first runs when the caller parks or yields. `flags & 1` makes it
+detached: nobody joins it and a fault in it ends the process (exit 70, like any unguarded
+fault); wrap handler bodies in `msrt_guard_call` for per-request isolation. A joinable task runs
+under a guard, and `join` returns 0 (returned), 1 (fault, report in `*msg_out`) or 2
+(cancelled). Each joinable task is joined once, which also frees it. `stack_bytes` 0 means the
+default.
+
+`wait_fd` parks the task until `fd` is ready for `events` (`1` read, `2` write), the timeout
+(negative: none) expires, or the task is cancelled. It returns the ready bits (`1`, `2`, plus `4`
+for error/hangup), `8` for timeout or `16` for cancelled. A cancelled wait means the caller
+should unwind with `msrt_cancelled()` (or return an error). Rules for natives:
+- Use non-blocking descriptors and retry after `EAGAIN`; a blocking syscall stalls every task.
+- One task may wait on a given descriptor at a time (a second waiter faults).
+- Regular files cannot be polled and report ready at once.
+- `sleep` is `wait_fd` with no descriptor.
+
+Cancellation: `SIGINT`/`SIGTERM` wake every parked task with `16`, the main task first, so its
+`msrt_cancelled()` runs its cleanups and exits 130/143. `msrt_task_cancel(h)` wakes one task
+and sets its cancellation request (`msrt_cancel_flag` is per task). When every task is parked
+with no descriptor or timer that can wake them, the runtime faults with "deadlock".
+
+Cost (release, x86_64): a yield-switch is about 40 ns between two tasks and about 90 ns across
+100; with 10,000 tasks it grows to about 650 ns because each task touches its own stack pages.
+Spawn is an `mmap` plus guard `mprotect` unless a pooled stack (32 kept) is available.
 
 ## 8. Naming and catalogue
 

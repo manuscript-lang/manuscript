@@ -182,6 +182,12 @@ impl<T: Copy> RawVec<T> {
         unsafe { self.ptr.add(i).read() }
     }
 
+    pub fn set(&mut self, i: usize, v: T) {
+        assert!(i < self.len);
+        // SAFETY: bounds checked.
+        unsafe { self.ptr.add(i).write(v) }
+    }
+
     pub fn clear(&mut self) {
         self.len = 0;
     }
