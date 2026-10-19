@@ -1262,6 +1262,7 @@ dependencies = [
  "rustls-native-certs",
  "rustls-pki-types",
  "socket2",
+ "windows-sys 0.61.2",
  "x509-parser",
 ]
 

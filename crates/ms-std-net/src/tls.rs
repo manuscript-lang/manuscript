@@ -6,6 +6,7 @@
 
 use crate::conn::{Io, Step, TlsDetails};
 use crate::error::{NetErr, TlsErr, describe_io_error};
+use crate::sys::{AsSock, Borrowed};
 use crate::wait::{Deadline, Interest, Wait, wait_fd};
 use base64::Engine as _;
 use base64::alphabet::STANDARD;
@@ -21,7 +22,6 @@ use rustls::{
 };
 use std::cell::RefCell;
 use std::io::{self, Read, Write};
-use std::os::fd::{AsFd, BorrowedFd};
 use std::sync::{Arc, OnceLock};
 use x509_parser::prelude::*;
 
@@ -845,12 +845,12 @@ impl TlsIo {
                 Handshake::Done => return Ok(io),
                 Handshake::Failed(e) => return Err(e),
                 Handshake::WantWrite => {
-                    if wait_fd(io.sock.as_fd(), Interest::Write, deadline) == Wait::TimedOut {
+                    if wait_fd(io.sock.as_sock(), Interest::Write, deadline) == Wait::TimedOut {
                         return Err(NetErr::Timeout);
                     }
                 }
                 Handshake::WantRead => {
-                    if wait_fd(io.sock.as_fd(), Interest::Read, deadline) == Wait::TimedOut {
+                    if wait_fd(io.sock.as_sock(), Interest::Read, deadline) == Wait::TimedOut {
                         return Err(NetErr::Timeout);
                     }
                 }
@@ -897,8 +897,8 @@ enum HandshakeFail {
 }
 
 impl Io for TlsIo {
-    fn fd(&self) -> BorrowedFd<'_> {
-        self.sock.as_fd()
+    fn fd(&self) -> Borrowed<'_> {
+        self.sock.as_sock()
     }
 
     fn read(&self, buf: &mut [u8]) -> Step {
@@ -1149,7 +1149,6 @@ mod tests {
         String,
         std::thread::JoinHandle<Result<Option<TlsDetails>, NetErr>>,
     ) {
-        use std::os::fd::OwnedFd;
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let address = listener.local_addr().unwrap().to_string();
         let config = server_config(&opts).unwrap();
@@ -1157,7 +1156,7 @@ mod tests {
         let handle = std::thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
             stream.set_nonblocking(true).unwrap();
-            let sock = socket2::Socket::from(OwnedFd::from(stream));
+            let sock = socket2::Socket::from(stream);
             let io = accept(
                 sock,
                 config,

@@ -15,6 +15,7 @@ use super::*;
 use crate::error::{IoErr, WsErr};
 use crate::h2::{self, Event, Header, error_code};
 use crate::http::exchange::ExSt;
+use crate::sys::Ev;
 use crate::wait::{Deadline, Interest, Wait, wait_fd};
 use crate::ws::handshake;
 
@@ -358,13 +359,9 @@ impl Server {
         match drain(conn) {
             Drain::Gone => {}
             Drain::Failed => self.close_conn(conn, reactor),
-            Drain::Blocked => self.set_interest(
-                conn,
-                reactor,
-                epoll::EventFlags::IN | epoll::EventFlags::OUT,
-            ),
+            Drain::Blocked => self.set_interest(conn, reactor, Ev::IN | Ev::OUT),
             Drain::Empty => {
-                self.set_interest(conn, reactor, epoll::EventFlags::IN);
+                self.set_interest(conn, reactor, Ev::IN);
                 self.h2_settle(conn, reactor);
             }
         }

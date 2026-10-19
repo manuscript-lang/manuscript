@@ -5,10 +5,10 @@
 use crate::error::{NetErr, cannot_resolve};
 use crate::ip::ip_text;
 use crate::rt;
+use crate::sys::AsSock;
 use crate::wait::{Deadline, Interest, Wait, wait_fd};
 use std::io::{Read, Write};
 use std::net::{IpAddr, SocketAddr, TcpStream, UdpSocket};
-use std::os::fd::AsFd;
 use std::time::Duration;
 
 pub const TYPE_A: u16 = 1;
@@ -224,6 +224,7 @@ fn query_udp(
     .expect("bind address");
     let sock = UdpSocket::bind(bind).map_err(io_failed)?;
     sock.set_nonblocking(true).map_err(io_failed)?;
+    crate::sys::prepare_udp(&sock).map_err(io_failed)?;
     sock.send_to(query, server).map_err(io_failed)?;
     let mut buf = vec![0u8; 4096];
     loop {
@@ -236,7 +237,7 @@ fn query_udp(
                 }
             }
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                if wait_fd(sock.as_fd(), Interest::Read, deadline) == Wait::TimedOut {
+                if wait_fd(sock.as_sock(), Interest::Read, deadline) == Wait::TimedOut {
                     return Err(NetErr::Timeout);
                 }
             }
@@ -297,7 +298,8 @@ pub fn query(
     Ok(Reply::Records(wanted))
 }
 
-/// The resolver configuration of the host (`/etc/resolv.conf`).
+/// The resolver configuration of the host: `/etc/resolv.conf` on Unix, the DNS servers
+/// and suffixes of the operational network adapters on Windows.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HostConfig {
     pub servers: Vec<SocketAddr>,
@@ -344,10 +346,7 @@ impl HostConfig {
             }
         }
         if servers.is_empty() {
-            servers = vec![
-                "127.0.0.1:53".parse().expect("addr"),
-                "[::1]:53".parse().expect("addr"),
-            ];
+            servers = HostConfig::default_servers();
         }
         HostConfig {
             servers,
@@ -356,8 +355,33 @@ impl HostConfig {
         }
     }
 
+    #[cfg(unix)]
     pub fn load() -> HostConfig {
         HostConfig::parse(&std::fs::read_to_string("/etc/resolv.conf").unwrap_or_default())
+    }
+
+    #[cfg(windows)]
+    pub fn load() -> HostConfig {
+        let (servers, search) = crate::sys::adapter_dns();
+        let mut servers: Vec<SocketAddr> = servers
+            .into_iter()
+            .map(|ip| SocketAddr::new(ip, 53))
+            .collect();
+        if servers.is_empty() {
+            servers = HostConfig::default_servers();
+        }
+        HostConfig {
+            servers,
+            search,
+            ndots: 1,
+        }
+    }
+
+    fn default_servers() -> Vec<SocketAddr> {
+        vec![
+            "127.0.0.1:53".parse().expect("addr"),
+            "[::1]:53".parse().expect("addr"),
+        ]
     }
 
     /// Names to try for `name`: absolute names are exact; others follow the search list.
