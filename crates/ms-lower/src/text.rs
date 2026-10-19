@@ -389,6 +389,24 @@ pub(crate) fn build_format(
             let r = b.use_var(acc);
             b.ret(Some(r));
         }
+        TyKind::Obj(name, _) if name == "BigInt" => {
+            let ext = runtime_fn(
+                b.m,
+                "msstd_bigint_to_string_radix",
+                &[t, MTy::INT],
+                MTy::STR,
+            );
+            let ten = b.iconst(10);
+            let r = b.call_rt(ext, &[x, ten]);
+            b.ret(Some(r));
+        }
+        TyKind::Iface(_) => {
+            // Only failure messages reach this; the dynamic value has no static text form.
+            let name = ty_str(b.m, t);
+            let acc = start(&mut b, &format!("<{}>", name.trim_start_matches("dyn ")));
+            let r = b.use_var(acc);
+            b.ret(Some(r));
+        }
         _ => {
             return Err(Error::new(format!(
                 "no text form for {} yet",
