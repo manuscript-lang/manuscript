@@ -9,6 +9,7 @@ pub mod flow;
 pub mod gosort;
 pub mod inspect;
 pub mod json;
+pub mod labels;
 pub mod lint;
 pub mod mark;
 pub mod report;
