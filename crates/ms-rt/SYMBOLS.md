@@ -405,6 +405,91 @@ msstd_math_log2e() -> f64
 msstd_math_log10e() -> f64
 msstd_math_sqrt2() -> f64
 msstd_math_sqrt_half() -> f64
+msrt_http_error_message(status: u8, failed: *const StrObj) -> *mut StrObj
+msrt_http_headers_new() -> *mut Obj
+msrt_http_headers_append( h: *const Obj, name: *const StrObj, value: *const VecVal, ) -> u8
+msrt_http_headers_values( h: *const Obj, name: *const StrObj, out: *mut VecVal, present: *mut u8, )
+msrt_http_headers_text( h: *const Obj, name: *const StrObj, out: *mut VecVal, present: *mut u8, ) -> u8
+msrt_http_headers_names(h: *const Obj, out: *mut VecVal)
+msrt_http_headers_remove(h: *const Obj, name: *const StrObj) -> u8
+msrt_http_headers_clone(h: *const Obj) -> *mut Obj
+msrt_net_network_http_client( net: *const Obj, opts: *const HttpClientOptionsWire, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_http_client_close(c: *const Obj)
+msrt_http_client_request( c: *const Obj, method: *const StrObj, address: *const StrObj, headers: *const Obj, body: *const StrObj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_http_client_request_bytes( c: *const Obj, method: *const StrObj, address: *const StrObj, headers: *const Obj, body: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_http_client_request_stream( c: *const Obj, method: *const StrObj, address: *const StrObj, headers: *const Obj, body: *const StreamWire, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_http_body_close(b: *const Obj)
+msrt_http_body_metadata(b: *const Obj, out: *mut MetadataWire)
+msrt_http_body_read( b: *const Obj, has_max: u8, max: i64, out: *mut VecVal, present: *mut u8, err: *mut *mut StrObj, ) -> u8
+msrt_net_network_request( net: *const Obj, method: *const StrObj, address: *const StrObj, headers: *const Obj, body: *const StrObj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut ClientResponseWire, err: *mut *mut StrObj, ) -> u8
+msrt_net_network_request_bytes( net: *const Obj, method: *const StrObj, address: *const StrObj, headers: *const Obj, body: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut ClientResponseWire, err: *mut *mut StrObj, ) -> u8
+msrt_net_network_serve( net: *const Obj, address: *const StrObj, env: *mut Obj, thunk: BufferedThunk, has_max_requests: u8, max_requests: i64, has_max_body: u8, max_body: i64, has_max_response: u8, max_response: i64, has_timeout: u8, timeout: i64, has_grace: u8, grace: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_net_network_serve_stream( net: *const Obj, address: *const StrObj, env: *mut Obj, thunk: StreamThunk, opts: *const HttpServerOptionsWire, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_http_server_address(s: *const Obj) -> *mut StrObj
+msrt_http_server_close(s: *const Obj)
+msrt_http_server_wait(s: *const Obj) -> u8
+msrt_http_exchange_close(x: *const Obj)
+msrt_http_exchange_headers(x: *const Obj) -> *mut Obj
+msrt_http_exchange_method(x: *const Obj) -> *mut StrObj
+msrt_http_exchange_path(x: *const Obj) -> *mut StrObj
+msrt_http_exchange_protocol(x: *const Obj) -> *mut StrObj
+msrt_http_exchange_query(x: *const Obj) -> *mut StrObj
+msrt_http_exchange_read( x: *const Obj, has_max: u8, max: i64, out: *mut VecVal, present: *mut u8, err: *mut *mut StrObj, ) -> u8
+msrt_http_exchange_send_headers( x: *const Obj, status: i64, headers: *const Obj, err: *mut *mut StrObj, ) -> u8
+msrt_http_exchange_write( x: *const Obj, data: *const StrObj, err: *mut *mut StrObj, ) -> u8
+msrt_http_exchange_write_bytes( x: *const Obj, data: *const VecVal, err: *mut *mut StrObj, ) -> u8
+msrt_net_parse_ip( text: *const StrObj, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_net_parse_cidr( text: *const StrObj, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_net_contains_ip( cidr: *const Obj, ip: *const Obj, out: *mut u8, ) -> u8
+msrt_net_ip_address_text(ip: *const Obj) -> *mut StrObj
+msrt_net_ip_address_family(ip: *const Obj) -> u8
+msrt_net_cidr_text(cidr: *const Obj) -> *mut StrObj
+msrt_net_ip_family_text(family: u8) -> *mut StrObj
+msrt_net_dns_kind_text(kind: u8) -> *mut StrObj
+msrt_net_error_message(status: u8, failed: *const StrObj) -> *mut StrObj
+msrt_net_network() -> *mut Obj
+msrt_net_network_close(net: *const Obj)
+msrt_net_network_connect( net: *const Obj, address: *const StrObj, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_net_network_connect_unix( net: *const Obj, path: *const StrObj, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_net_network_listen( net: *const Obj, address: *const StrObj, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_net_network_listen_unix( net: *const Obj, path: *const StrObj, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_net_network_bind_datagram( net: *const Obj, address: *const StrObj, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_net_network_restrict( net: *const Obj, hosts: *const VecVal, cidrs: *const VecVal, allow_listen: u8, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_net_network_with_resolver( net: *const Obj, address: *const StrObj, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_net_network_lookup( net: *const Obj, name: *const StrObj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut VecVal, err: *mut *mut StrObj, ) -> u8
+msrt_net_network_resolve( net: *const Obj, name: *const StrObj, kind: u8, has_max: u8, max: i64, has_timeout: u8, timeout: i64, records: *mut *mut DnsRecordWire, count: *mut usize, err: *mut *mut StrObj, ) -> u8
+msrt_net_connection_close(c: *const Obj)
+msrt_net_connection_local_address(c: *const Obj) -> *mut StrObj
+msrt_net_connection_peer_address(c: *const Obj) -> *mut StrObj
+msrt_net_connection_read( c: *const Obj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut VecVal, present: *mut u8, err: *mut *mut StrObj, ) -> u8
+msrt_net_connection_write( c: *const Obj, data: *const StrObj, has_timeout: u8, timeout: i64, err: *mut *mut StrObj, ) -> u8
+msrt_net_connection_write_bytes( c: *const Obj, data: *const VecVal, has_timeout: u8, timeout: i64, err: *mut *mut StrObj, ) -> u8
+msrt_net_connection_shutdown_write( c: *const Obj, err: *mut *mut StrObj, ) -> u8
+msrt_net_listener_accept( l: *const Obj, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_net_listener_address(l: *const Obj) -> *mut StrObj
+msrt_net_listener_close(l: *const Obj)
+msrt_net_datagram_address(d: *const Obj) -> *mut StrObj
+msrt_net_datagram_close(d: *const Obj)
+msrt_net_datagram_receive( d: *const Obj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, data: *mut VecVal, sender: *mut *mut StrObj, err: *mut *mut StrObj, ) -> u8
+msrt_net_datagram_send( d: *const Obj, data: *const StrObj, address: *const StrObj, has_timeout: u8, timeout: i64, err: *mut *mut StrObj, ) -> u8
+msrt_net_datagram_send_bytes( d: *const Obj, data: *const VecVal, address: *const StrObj, has_timeout: u8, timeout: i64, err: *mut *mut StrObj, ) -> u8
+msrt_net_network_connect_tls( net: *const Obj, address: *const StrObj, server_name: *const StrObj, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_net_network_connect_tls_config( net: *const Obj, address: *const StrObj, opts: *const TlsOptionsWire, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_net_network_listen_tls( net: *const Obj, address: *const StrObj, opts: *const TlsOptionsWire, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_net_connection_tls_info(c: *const Obj, out: *mut TlsInfoWire) -> u8
+msrt_tls_parse_certificates( pem: *const StrObj, has_max: u8, max: i64, certs: *mut *mut CertificateInfoWire, count: *mut usize, ) -> u8
+msrt_tls_verify_certificates( chain: *const StrObj, roots: *const StrObj, server_name: *const StrObj, now_seconds: i64, _now_nanos: i32, ) -> u8
+msrt_tls_error_message(status: u8) -> *mut StrObj
+msrt_websocket_error_message( status: u8, failed: *const StrObj, ) -> *mut StrObj
+msrt_net_network_web_socket( net: *const Obj, address: *const StrObj, headers: *const Obj, subprotocols: *const VecVal, opts: *const WebSocketOptionsWire, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_http_exchange_upgrade( x: *const Obj, origins: *const VecVal, subprotocols: *const VecVal, has_max: u8, max: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_websocket_close(s: *const Obj)
+msrt_websocket_subprotocol(s: *const Obj) -> *mut StrObj
+msrt_websocket_ping( s: *const Obj, data: *const StrObj, err: *mut *mut StrObj, ) -> u8
+msrt_websocket_ping_bytes( s: *const Obj, data: *const VecVal, err: *mut *mut StrObj, ) -> u8
+msrt_websocket_send( s: *const Obj, data: *const StrObj, err: *mut *mut StrObj, ) -> u8
+msrt_websocket_send_bytes( s: *const Obj, data: *const VecVal, text: u8, err: *mut *mut StrObj, ) -> u8
+msrt_websocket_receive( s: *const Obj, data: *mut VecVal, text: *mut u8, present: *mut u8, err: *mut *mut StrObj, ) -> u8
 msrt_path_basename(windows: u8, path: *const StrObj) -> *mut StrObj
 msrt_path_basename_without( windows: u8, path: *const StrObj, suffix: *const StrObj, ) -> *mut StrObj
 msrt_path_dirname(windows: u8, path: *const StrObj) -> *mut StrObj

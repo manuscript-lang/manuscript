@@ -60,8 +60,25 @@ mod std_natives;
 
 #[cfg(not(any(test, feature = "std", panic = "unwind")))]
 #[panic_handler]
-fn panic(_: &core::panic::PanicInfo) -> ! {
-    crate::fault::fatal(b"internal runtime panic")
+fn panic(info: &core::panic::PanicInfo) -> ! {
+    use core::fmt::Write;
+    // Fixed buffer: the panic may come from the allocator, so nothing here allocates.
+    struct Buf([u8; 512], usize);
+    impl Write for Buf {
+        fn write_str(&mut self, s: &str) -> core::fmt::Result {
+            let n = s.len().min(self.0.len() - self.1);
+            self.0[self.1..self.1 + n].copy_from_slice(&s.as_bytes()[..n]);
+            self.1 += n;
+            Ok(())
+        }
+    }
+    let mut b = Buf([0; 512], 0);
+    let _ = b.write_str("internal runtime panic");
+    if let Some(l) = info.location() {
+        let _ = write!(b, " at {}:{}", l.file(), l.line());
+    }
+    let _ = write!(b, ": {}", info.message());
+    crate::fault::fatal(&b.0[..b.1])
 }
 
 /// Rust allocations inside the runtime (only used by dependencies such as

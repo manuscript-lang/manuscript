@@ -35,29 +35,20 @@ impl Profile {
     }
 }
 
-/// Where the runtime static library is found, in order: `MS_RT_LIB`, next to
-/// the running executable (and one level up, for cargo's `deps` directory).
-pub fn locate_runtime() -> Result<PathBuf, String> {
-    if let Some(path) = std::env::var_os("MS_RT_LIB") {
-        let path = PathBuf::from(path);
-        return if path.is_file() {
-            Ok(path)
-        } else {
-            Err(format!(
-                "MS_RT_LIB={} does not name a file; point it at libms_rt.a",
-                path.display()
-            ))
-        };
+/// The runtime archive named by `MS_RT_LIB`, which replaces the one embedded in `ms`.
+pub fn runtime_override() -> Result<Option<PathBuf>, String> {
+    let Some(path) = std::env::var_os("MS_RT_LIB") else {
+        return Ok(None);
+    };
+    let path = PathBuf::from(path);
+    if path.is_file() {
+        Ok(Some(path))
+    } else {
+        Err(format!(
+            "MS_RT_LIB={} does not name a file; point it at a libms_native.a",
+            path.display()
+        ))
     }
-    if let Ok(exe) = std::env::current_exe() {
-        for directory in exe.ancestors().skip(1).take(2) {
-            let candidate = directory.join("libms_rt.a");
-            if candidate.is_file() {
-                return Ok(candidate);
-            }
-        }
-    }
-    Err("cannot find the Manuscript runtime library libms_rt.a next to ms; build it with 'cargo build -p ms-rt' or set MS_RT_LIB".to_string())
 }
 
 /// Optimize `module`, generate code and link the executable at `output`. The
