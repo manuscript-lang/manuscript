@@ -6,12 +6,11 @@
 //! cancellation path.
 
 use crate::rt;
-use rustix::event::{self, EventfdFlags, PollFd, PollFlags};
+use rustix::event::{self, PollFd, PollFlags};
 use rustix::io;
 use rustix::time::Timespec;
 use std::cell::Cell;
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd};
-use std::sync::Arc;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
@@ -141,35 +140,56 @@ fn wait_poll(fd: BorrowedFd<'_>, interest: Interest, deadline: Deadline) -> Wait
 /// Sleeps for `d` while serving handlers; faults on cancellation.
 pub fn sleep(d: Duration) {
     let deadline = Deadline::after(d);
-    let pipe = match event::eventfd(0, EventfdFlags::CLOEXEC | EventfdFlags::NONBLOCK) {
-        Ok(fd) => fd,
-        Err(_) => {
-            std::thread::sleep(d);
-            return;
-        }
+    let Some((idle, _keep)) = wake_pair() else {
+        std::thread::sleep(d);
+        return;
     };
-    let _ = wait_fd(pipe.as_fd(), Interest::Read, deadline);
+    let _ = wait_fd(idle.as_fd(), Interest::Read, deadline);
+}
+
+/// A descriptor pair: the first becomes readable once a byte is written to the second
+/// (both nonblocking, close-on-exec). Dropping the second also makes the first
+/// readable, so the owner keeps both while it waits.
+pub fn wake_pair() -> Option<(OwnedFd, OwnedFd)> {
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    {
+        let fd = event::eventfd(
+            0,
+            event::EventfdFlags::CLOEXEC | event::EventfdFlags::NONBLOCK,
+        )
+        .ok()?;
+        let signal = fd.try_clone().ok()?;
+        Some((fd, signal))
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
+    {
+        let (read, write) = rustix::pipe::pipe().ok()?;
+        for fd in [&read, &write] {
+            rustix::io::fcntl_setfd(fd, rustix::io::FdFlags::CLOEXEC).ok()?;
+            rustix::fs::fcntl_setfl(fd, rustix::fs::OFlags::NONBLOCK).ok()?;
+        }
+        Some((read, write))
+    }
 }
 
 /// A background computation whose completion wakes the ms thread.
 pub struct Task<T> {
     rx: mpsc::Receiver<T>,
-    wake: Arc<OwnedFd>,
+    wake: OwnedFd,
 }
 
 /// Runs `f` on a helper thread. `f` must not call into the runtime.
 pub fn spawn_blocking<T: Send + 'static>(
     f: impl FnOnce() -> T + Send + 'static,
 ) -> Option<Task<T>> {
-    let wake = Arc::new(event::eventfd(0, EventfdFlags::CLOEXEC | EventfdFlags::NONBLOCK).ok()?);
+    let (wake, signal) = wake_pair()?;
     let (tx, rx) = mpsc::channel();
-    let signal = wake.clone();
     std::thread::Builder::new()
         .name("ms-net-blocking".into())
         .spawn(move || {
             let value = f();
             let _ = tx.send(value);
-            let _ = io::write(&*signal, &1u64.to_ne_bytes());
+            let _ = io::write(&signal, &1u64.to_ne_bytes());
         })
         .ok()?;
     Some(Task { rx, wake })

@@ -358,13 +358,9 @@ impl Server {
         match drain(conn) {
             Drain::Gone => {}
             Drain::Failed => self.close_conn(conn, reactor),
-            Drain::Blocked => self.set_interest(
-                conn,
-                reactor,
-                epoll::EventFlags::IN | epoll::EventFlags::OUT,
-            ),
+            Drain::Blocked => self.set_interest(conn, reactor, Readiness::IN | Readiness::OUT),
             Drain::Empty => {
-                self.set_interest(conn, reactor, epoll::EventFlags::IN);
+                self.set_interest(conn, reactor, Readiness::IN);
                 self.h2_settle(conn, reactor);
             }
         }
