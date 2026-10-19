@@ -130,6 +130,14 @@ msrt_float_to_string(v: f64) -> *mut StrObj
 msrt_bool_to_string(v: u8) -> *mut StrObj
 msrt_int_to_string_radix(v: i64, radix: i64) -> *mut StrObj
 msrt_string_quote(s: *const StrObj) -> *mut StrObj
+msrt_task_spawn( entry: Entry, arg: *mut u8, flags: u32, stack_bytes: usize, ) -> u64
+msrt_task_yield()
+msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32
+msrt_task_sleep(ns: i64) -> u32
+msrt_task_current() -> u64
+msrt_task_count() -> usize
+msrt_task_cancel(handle: u64)
+msrt_task_join(handle: u64, msg_out: *mut *mut StrObj) -> u8
 msrt_list_new(out: *mut VecVal)
 msrt_list_with_capacity( d: *const TypeDesc, cap: i64, out: *mut VecVal, )
 msrt_list_drop(v: *mut VecVal, d: *const TypeDesc)

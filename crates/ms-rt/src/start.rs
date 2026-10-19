@@ -61,6 +61,7 @@ extern "C" fn on_stop(sig: i32) {
         }
         sys::alarm(CLEANUP_GRACE_SECS);
     }
+    crate::task::kick();
 }
 
 extern "C" fn on_alarm(_: i32) {

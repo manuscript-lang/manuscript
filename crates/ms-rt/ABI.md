@@ -296,6 +296,51 @@ through cleanup actions, so a fault leaks anything not under `with`. Faults stil
 and the stack pointer and calls `code`; a fault jumps back to it (x86_64 and aarch64;
 generated code needs no landing pads). Single threaded like the rest of the runtime.
 
+**Tasks.** Cooperative stackful coroutines on the runtime thread (`task.rs`). There is no
+parallelism and no preemption, so the allocator, reference counts and every other runtime
+global stay non-atomic; a task runs until it parks or yields. This is a runtime facility for
+natives (an HTTP server running handlers concurrently); the language has no concurrency
+surface. Each task has its own stack (default 256 MiB of address space, committed lazily, 64 KiB
+guard), cleanup stack, guard stack, call depth, equality-cycle state and cancellation request;
+the runtime swaps them on every switch, so faults, `with` cleanups and `msrt_guard_call`
+behave per task.
+
+```text
+msrt_task_spawn(entry: extern "C-unwind" fn(*mut u8), arg, flags: u32, stack_bytes: usize) -> u64
+msrt_task_yield()
+msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32
+msrt_task_sleep(ns: i64) -> u32
+msrt_task_join(handle: u64, msg_out: *mut *mut StrObj) -> u8
+msrt_task_cancel(handle: u64)
+msrt_task_current() -> u64
+msrt_task_count() -> usize
+```
+
+`spawn` queues the task; it first runs when the caller parks or yields. `flags & 1` makes it
+detached: nobody joins it and a fault in it ends the process (exit 70, like any unguarded
+fault); wrap handler bodies in `msrt_guard_call` for per-request isolation. A joinable task runs
+under a guard, and `join` returns 0 (returned), 1 (fault, report in `*msg_out`) or 2
+(cancelled). Each joinable task is joined once, which also frees it. `stack_bytes` 0 means the
+default.
+
+`wait_fd` parks the task until `fd` is ready for `events` (`1` read, `2` write), the timeout
+(negative: none) expires, or the task is cancelled. It returns the ready bits (`1`, `2`, plus `4`
+for error/hangup), `8` for timeout or `16` for cancelled. A cancelled wait means the caller
+should unwind with `msrt_cancelled()` (or return an error). Rules for natives:
+- Use non-blocking descriptors and retry after `EAGAIN`; a blocking syscall stalls every task.
+- One task may wait on a given descriptor at a time (a second waiter faults).
+- Regular files cannot be polled and report ready at once.
+- `sleep` is `wait_fd` with no descriptor.
+
+Cancellation: `SIGINT`/`SIGTERM` wake every parked task with `16`, the main task first, so its
+`msrt_cancelled()` runs its cleanups and exits 130/143. `msrt_task_cancel(h)` wakes one task
+and sets its cancellation request (`msrt_cancel_flag` is per task). When every task is parked
+with no descriptor or timer that can wake them, the runtime faults with "deadlock".
+
+Cost (release, x86_64): a yield-switch is about 40 ns between two tasks and about 90 ns across
+100; with 10,000 tasks it grows to about 650 ns because each task touches its own stack pages.
+Spawn is an `mmap` plus guard `mprotect` unless a pooled stack (32 kept) is available.
+
 ## 8. Naming and catalogue
 
 `msrt_<module>_<name>`; modules: `mem`, `rc`, `fault`, `cleanup`, `int`, `float`,
