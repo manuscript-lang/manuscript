@@ -7,7 +7,7 @@ use crate::sys::{self, CPath};
 use alloc::string::String;
 use alloc::vec::Vec;
 use ms_rt_abi::{STATUS_ALREADY_EXISTS, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
-use ms_std_glob::Glob;
+use ms_std_path::glob::Glob;
 use ms_std_rt::poll_cancel;
 
 pub const UNLIMITED: i64 = i64::MAX;
@@ -83,7 +83,7 @@ fn utf8(b: &[u8]) -> Res<&str> {
 pub fn glob(root: &[u8], pattern: &[u8], max: i64) -> Res<Vec<Vec<u8>>> {
     let compiled = core::str::from_utf8(pattern)
         .ok()
-        .and_then(Glob::parse)
+        .and_then(Glob::new)
         .ok_or_else(Fail::invalid)?;
     let mut items: Vec<Vec<u8>> = Vec::new();
     walk_dir(root, &mut |_, rel, _| {
@@ -614,7 +614,7 @@ fn compile(patterns: &[&[u8]]) -> Option<Vec<Compiled>> {
         .map(|p| {
             let text = core::str::from_utf8(p).ok()?;
             Some(Compiled {
-                glob: Glob::parse(text)?,
+                glob: Glob::new(text)?,
                 absolute: text.starts_with('/'),
             })
         })
