@@ -105,6 +105,8 @@ struct Gen {
     helpers: Vec<String>,
     tags: Vec<&'static str>,
     uses_range: bool,
+    /// Line counts of `out` at statement boundaries (safe places to splice).
+    bounds: Vec<usize>,
 }
 
 fn int_literal(rng: &mut Rng) -> i64 {
@@ -281,7 +283,7 @@ impl Gen {
             7 => {
                 let (n, nv) = self.safe_int(1);
                 let _ = nv;
-                (format!("\"{{{n}}}:\" + {a}"), None)
+                (format!("(\"{{{n}}}:\" + {a})"), None)
             }
             _ => {
                 let (b, _) = self.str_expr(0);
@@ -432,6 +434,11 @@ impl Gen {
     }
 
     fn statement(&mut self) {
+        self.statement_body();
+        self.bounds.push(self.out.len());
+    }
+
+    fn statement_body(&mut self) {
         match self.rng.below(16) {
             0..=3 => {
                 let (code, v) = self.safe_int(3);
@@ -694,6 +701,7 @@ fn new_gen(seed: u64) -> Gen {
         helpers: Vec::new(),
         tags: vec!["fuzz"],
         uses_range: false,
+        bounds: Vec::new(),
     }
 }
 
@@ -741,7 +749,12 @@ pub fn type_error(seed: u64) -> Generated {
     for _ in 0..count {
         g.statement();
     }
-    let at = g.rng.below(g.out.len() as u64 + 1) as usize;
+    let at = if g.bounds.is_empty() {
+        0
+    } else {
+        let i = g.rng.below(g.bounds.len() as u64) as usize;
+        g.bounds[i]
+    };
     let error = *g.rng.pick(TYPE_ERRORS);
     g.out.insert(at, error.to_string());
     g.tags.push("diagnostics");
