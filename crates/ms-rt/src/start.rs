@@ -74,8 +74,17 @@ extern "C" fn on_alarm(_: i32) {
 }
 
 fn install(sig: i32, handler: extern "C" fn(i32)) {
+    install_raw(sig, handler as *const () as usize);
+}
+
+/// `SIG_IGN`: a write to a closed socket or pipe reports `EPIPE` instead of killing the process.
+const SIG_IGN: usize = 1;
+/// `SIGPIPE` is 13 on Linux and macOS.
+const SIGPIPE: i32 = 13;
+
+fn install_raw(sig: i32, handler: usize) {
     let act = sys::sigaction_t {
-        handler: handler as *const () as usize,
+        handler,
         mask: [0; 16],
         flags: 0,
         restorer: 0,
@@ -123,6 +132,7 @@ pub unsafe extern "C-unwind" fn msrt_start(
         install(sys::SIGINT, on_stop);
         install(sys::SIGTERM, on_stop);
         install(sys::SIGALRM, on_alarm);
+        install_raw(SIGPIPE, SIG_IGN);
         crate::profile::start();
 
         let stack = sys::mmap(

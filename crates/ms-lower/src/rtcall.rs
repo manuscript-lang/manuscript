@@ -153,8 +153,9 @@ enum Tail {
     Out,
     /// `out, present`: an `Optional` payload.
     OutPresent,
-    /// One output per field of a record payload, named after the fields.
-    Fields(Vec<String>),
+    /// One output per field of a record payload, named after the fields; with `present`, the
+    /// payload is an `Optional` record and a presence flag follows.
+    Fields(Vec<String>, bool),
 }
 
 impl Tail {
@@ -163,7 +164,7 @@ impl Tail {
             Tail::None => 0,
             Tail::Out => 1,
             Tail::OutPresent => 2,
-            Tail::Fields(n) => n.len(),
+            Tail::Fields(n, p) => n.len() + usize::from(*p),
         }
     }
 }
@@ -181,6 +182,8 @@ pub(crate) enum OutKind {
     Record {
         slots: Vec<(Value, MTy)>,
         rec: ms_mir::types::RecId,
+        /// The presence flag and the `Optional` type when the record is optional.
+        present: Option<(Value, MTy)>,
     },
 }
 
@@ -588,8 +591,12 @@ impl FnLower<'_> {
                     opt: payload,
                 }
             }
-            Tail::Fields(names) => {
-                let TyKind::Rec(rid) = self.b.m.types.kind(payload).clone() else {
+            Tail::Fields(names, with_present) => {
+                let (record, opt) = match self.b.m.types.kind(payload).clone() {
+                    TyKind::Opt(inner) if *with_present => (inner, Some(payload)),
+                    _ => (payload, None),
+                };
+                let TyKind::Rec(rid) = self.b.m.types.kind(record).clone() else {
                     return Err(Error::new(format!("{sym}: fields without a record")));
                 };
                 let fields = self.b.m.records[rid.index()].fields.clone();
@@ -607,7 +614,16 @@ impl FnLower<'_> {
                     .into_iter()
                     .collect::<Option<Vec<_>>>()
                     .ok_or_else(|| Error::new(format!("{sym}: a record field has no output")))?;
-                OutKind::Record { slots, rec: rid }
+                let present = opt.map(|opt| {
+                    let flag = self.slot(MTy::BOOL);
+                    vals.push(flag);
+                    (flag, opt)
+                });
+                OutKind::Record {
+                    slots,
+                    rec: rid,
+                    present,
+                }
             }
         };
         if matches!(self.b.m.types.kind(result), TyKind::Alt(_)) {
@@ -684,7 +700,10 @@ impl FnLower<'_> {
         if body >= 1 && name(body - 1) == "out" {
             return Tail::Out;
         }
-        // A record result whose fields are filled one by one: `data`, `sender`.
+        // A record result whose fields are filled one by one: `data`, `sender`, then optionally
+        // a `present` flag.
+        let with_present = body >= 2 && name(body - 1) == "present";
+        let body = body - usize::from(with_present);
         let payload = match self.b.m.types.kind(result) {
             TyKind::Alt(a) => self.b.m.alts[a.index()]
                 .cases
@@ -694,6 +713,10 @@ impl FnLower<'_> {
                 .map(|f| f.1),
             _ => None,
         };
+        let payload = payload.map(|p| match (with_present, self.b.m.types.kind(p)) {
+            (true, TyKind::Opt(inner)) => *inner,
+            _ => p,
+        });
         if let Some(TyKind::Rec(rid)) = payload.map(|p| self.b.m.types.kind(p).clone()) {
             let fields = &self.b.m.records[rid.index()].fields;
             let n = (0..body)
@@ -705,6 +728,7 @@ impl FnLower<'_> {
                     (body - n..body)
                         .map(|i| sig.params[i].name.clone())
                         .collect(),
+                    with_present,
                 );
             }
         }
@@ -798,16 +822,35 @@ impl FnLower<'_> {
                 )?;
                 Ok(r.v)
             }
-            OutKind::Record { slots, rec } => {
-                let mut fields = Vec::new();
-                for (slot, t) in slots {
-                    fields.push(
-                        self.b
-                            .emit(Op::Take, &[*slot], Imm::Ty(*t), Some(*t))
-                            .expect("take"),
-                    );
-                }
-                Ok(self.b.rec_new(*rec, &fields))
+            OutKind::Record { slots, rec, present } => {
+                let (slots, rec) = (slots.clone(), *rec);
+                let mut build = |s: &mut Self| {
+                    let mut fields = Vec::new();
+                    for (slot, t) in &slots {
+                        fields.push(
+                            s.b.emit(Op::Take, &[*slot], Imm::Ty(*t), Some(*t))
+                                .expect("take"),
+                        );
+                    }
+                    s.b.rec_new(rec, &fields)
+                };
+                let Some((flag, opt)) = *present else {
+                    return Ok(build(self));
+                };
+                let flag = self
+                    .b
+                    .emit(Op::Load, &[flag], Imm::Ty(MTy::BOOL), Some(MTy::BOOL))
+                    .expect("load");
+                let r = self.two_ways(
+                    flag,
+                    opt,
+                    &mut |s| {
+                        let v = build(s);
+                        Ok(Some(s.b.opt_some(v)))
+                    },
+                    &mut |s| Ok(Some(s.none_owned(opt))),
+                )?;
+                Ok(r.v)
             }
         }
     }
