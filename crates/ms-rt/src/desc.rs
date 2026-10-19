@@ -154,6 +154,12 @@ pub unsafe extern "C-unwind" fn msrt_eq_leave(_a: *const u8, _b: *const u8) {
     }
 }
 
+/// Exchanges the pairs registered by `msrt_eq_enter` with `other` (task switches).
+pub(crate) fn swap_eq_pairs(other: &mut RawVec<(usize, usize)>) {
+    // SAFETY: single threaded access.
+    unsafe { core::mem::swap(&mut (*EQ.ptr()).pairs, other) }
+}
+
 /// Number of object pairs currently registered by `msrt_eq_enter`.
 pub fn eq_len() -> usize {
     // SAFETY: single threaded access.
