@@ -822,9 +822,13 @@ impl FnLower<'_> {
                 )?;
                 Ok(r.v)
             }
-            OutKind::Record { slots, rec, present } => {
+            OutKind::Record {
+                slots,
+                rec,
+                present,
+            } => {
                 let (slots, rec) = (slots.clone(), *rec);
-                let mut build = |s: &mut Self| {
+                let build = |s: &mut Self| {
                     let mut fields = Vec::new();
                     for (slot, t) in &slots {
                         fields.push(
@@ -964,7 +968,7 @@ impl FnLower<'_> {
                     let e = s.indexed_error(ea, code, err_slot, 0)?;
                     return Ok(Some(s.b.alt_new(a, err as u32, &[e])));
                 }
-                                let cases = s.status_cases(ea);
+                let cases = s.status_cases(ea);
                 let e = s.status_error(ea, code, &cases)?;
                 Ok(Some(s.b.alt_new(a, err as u32, &[e])))
             },

@@ -38,6 +38,27 @@ release, cancellation) and never the other way around.
 - **Names.** `msrt_net_<type>_<method>` (`msrt_net_connection_read`); free functions are
   `msrt_net_<name>`.
 
+## Lowering conventions
+
+The compiler lowers these natives from the signatures in `crates/ms-rt/SYMBOLS.md`; where this
+file's older prose differs, the signature and this section win.
+
+- A `*const …Wire` parameter points at the MIR record image of the Manuscript record (leaves
+  in declaration order, natural alignment) and is only lent for the call. A list field is an
+  inline `VecVal` (`alpn`), a `String` is a `*mut StrObj`, an `Optional[T]` is `present: u8`
+  followed by `T`, a `Timestamp` is `TimestampWire` (nanoseconds).
+- Outputs trail the parameters: `out`; `out, present` for an `Optional` payload; or one pointer
+  per field of a record result (`data, sender`), followed by `present` when the record is
+  optional (`WebSocket.receive`). A list of records takes `d: *const TypeDesc, out: *mut VecVal`
+  and appends record images with `write_record_list`.
+- The status is `1 + the index of the error case`; `err` carries the `Failed(message)` text.
+- `serve` and `serve_stream` receive the handler adapter closure as `env`. The runtime reads
+  its code pointer at `CLOSURE_CODE_OFFSET` (16) and calls it as `BufferedThunk(env, req, resp)`
+  or `StreamThunk(env, exchange, err) -> u8`. The exchange handle is borrowed by the thunk and
+  released by the native after the call.
+- `HttpMethod` crosses as its token text (`msrt_http_method_token`, `_index`, `_text`).
+- Parameters named `d` are reserved for descriptors, so socket handles are named `sock`.
+
 ## Status tables
 
 | Type | Cases (status 1, 2, ...) |

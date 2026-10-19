@@ -1344,14 +1344,16 @@ impl FnLower<'_> {
                 let slot = s.jslot(MTy::STR);
                 let code =
                     s.status_code("msrt_json_stringify", &[doc, id, hm, vm, hi, vi, slot])?;
-                Ok(Some(s.status_result(
-                    "msrt_json_stringify",
-                    code,
-                    crate::rtcall::OutKind::One(slot, MTy::STR),
-                    None,
-                    rty,
-                )?
-                .v))
+                Ok(Some(
+                    s.status_result(
+                        "msrt_json_stringify",
+                        code,
+                        crate::rtcall::OutKind::One(slot, MTy::STR),
+                        None,
+                        rty,
+                    )?
+                    .v,
+                ))
             },
             &mut |s| Ok(Some(s.json_error(ra, err, "InvalidData")?)),
         )?;

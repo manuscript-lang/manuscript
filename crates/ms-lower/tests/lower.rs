@@ -122,3 +122,14 @@ fn native_values_and_time() {
     assert!(mir.contains("closure.new"));
     assert!(mir.contains("msstd_time_parse_timestamp"));
 }
+
+#[test]
+fn network_handles_and_http_handlers() {
+    let mir = lower(
+        "network-http",
+        "import {headers, HttpMethod, HttpRequest, HttpResponse} from \"@std/http.ms\"\nimport network from \"@std/net.ms\"\n\nfn handle(request: HttpRequest) HttpResponse:\n    return HttpResponse(status: 200, headers: headers(), body: request.path.to_bytes())\n\nfn run() Result[Int, Error]:\n    let net = network()\n    let server = try net.serve(address: \"127.0.0.1:0\", handler: handle, max_requests: 1)\n    let response = try net.request(method: HttpMethod.Get, url: \"http://{server.address()}/\", headers: headers(), body: \"\")\n    server.close()\n    return ok(response.metadata().status)\n\nexport fn main() Int:\n    let code = run().get(1)\n    return code\n",
+    );
+    assert!(mir.contains("msrt_net_network_serve"));
+    assert!(mir.contains("msrt_net_network_request"));
+    assert!(mir.contains("msrt_http_server_address"));
+}

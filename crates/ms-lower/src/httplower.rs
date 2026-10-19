@@ -49,7 +49,13 @@ impl FnLower<'_> {
                         .expect("copy"),
                 ))
             },
-            &mut |s| Ok(Some(s.call_runtime("msrt_http_method_token", &[tag], MTy::STR)?)),
+            &mut |s| {
+                Ok(Some(s.call_runtime(
+                    "msrt_http_method_token",
+                    &[tag],
+                    MTy::STR,
+                )?))
+            },
         )?;
         Ok(r.v)
     }
@@ -217,10 +223,9 @@ pub(crate) fn build_http_adapter(
 
 /// A value moved out of field `i` of the record image at `base`.
 fn take_field(fl: &mut FnLower<'_>, base: Value, rid: RecId, i: u32, ty: MTy) -> Value {
-    let p = fl
-        .b
-        .emit(Op::PtrField, &[base], Imm::Field(rid, i), Some(MTy::PTR))
-        .expect("field");
+    let p =
+        fl.b.emit(Op::PtrField, &[base], Imm::Field(rid, i), Some(MTy::PTR))
+            .expect("field");
     fl.b.emit(Op::Take, &[p], Imm::Ty(ty), Some(ty))
         .expect("take")
 }
@@ -237,7 +242,17 @@ fn lower_buffered_adapter(fl: &mut FnLower<'_>, job: &HttpAdapterJob) -> Result<
     };
     let fields = fl.b.m.records[request.index()].fields.clone();
     let headers_ty = fields[3].1;
-    let image = fields_image(fl, &[MTy::STR, MTy::STR, MTy::STR, MTy::STR, headers_ty, MTy::BYTES]);
+    let image = fields_image(
+        fl,
+        &[
+            MTy::STR,
+            MTy::STR,
+            MTy::STR,
+            MTy::STR,
+            headers_ty,
+            MTy::BYTES,
+        ],
+    );
     let w = params[1];
     let method_text = take_field(fl, w, image, 0, MTy::STR);
     let path = take_field(fl, w, image, 1, MTy::STR);
@@ -246,18 +261,11 @@ fn lower_buffered_adapter(fl: &mut FnLower<'_>, job: &HttpAdapterJob) -> Result<
     let headers = take_field(fl, w, image, 4, headers_ty);
     let body = take_field(fl, w, image, 5, MTy::BYTES);
     let method = fl.method_from_text(method_text, fields[0].1)?;
-    let request_value = fl
-        .b
-        .rec_new(request, &[method, path, query, headers, body, protocol]);
-    let handler = fl
-        .b
-        .emit(
-            Op::ClosureCap,
-            &[params[0]],
-            Imm::Idx(0),
-            Some(job.handler),
-        )
-        .expect("capture");
+    let request_value =
+        fl.b.rec_new(request, &[method, path, query, headers, body, protocol]);
+    let handler =
+        fl.b.emit(Op::ClosureCap, &[params[0]], Imm::Idx(0), Some(job.handler))
+            .expect("capture");
     let response = fl.b.call_ind(handler, &[request_value]);
     fl.b.emit(Op::Drop, &[request_value], Imm::None, None);
     // An `HttpResponse` is laid out like the runtime's `ResponseWire`.
@@ -283,20 +291,13 @@ fn lower_stream_adapter(fl: &mut FnLower<'_>, job: &HttpAdapterJob) -> Result<()
         return Err(Error::new("a handler must be a function"));
     };
     // The runtime lends the exchange handle: the handler gets a reference of its own.
-    let handle = fl
-        .b
-        .emit(Op::Copy, &[params[1]], Imm::None, Some(fl.ty_of(params[1])))
-        .expect("copy");
+    let handle =
+        fl.b.emit(Op::Copy, &[params[1]], Imm::None, Some(fl.ty_of(params[1])))
+            .expect("copy");
     let exchange = fl.wrap_handle(handle, ptys[0])?;
-    let handler = fl
-        .b
-        .emit(
-            Op::ClosureCap,
-            &[params[0]],
-            Imm::Idx(0),
-            Some(job.handler),
-        )
-        .expect("capture");
+    let handler =
+        fl.b.emit(Op::ClosureCap, &[params[0]], Imm::Idx(0), Some(job.handler))
+            .expect("capture");
     let result = fl.b.call_ind(handler, &[exchange.v]);
     fl.b.emit(Op::Drop, &[exchange.v], Imm::None, None);
     let code = status_of(fl, result, ret, params[2])?;
@@ -350,10 +351,9 @@ fn status_of(
                     MTy::UNIT,
                     &mut |s| {
                         let text = s.b.alt_get(ea, f as u32, 0, e);
-                        let copy = s
-                            .b
-                            .emit(Op::Copy, &[text], Imm::None, Some(MTy::STR))
-                            .expect("copy");
+                        let copy =
+                            s.b.emit(Op::Copy, &[text], Imm::None, Some(MTy::STR))
+                                .expect("copy");
                         s.b.emit(Op::Put, &[err, copy], Imm::None, None);
                         Ok(Some(s.b.unit()))
                     },

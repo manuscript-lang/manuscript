@@ -470,7 +470,11 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(recv);
         }
-        let recv = if view.arguments.iter().any(|a| crate::mutation::has_try(a.expr)) {
+        let recv = if view
+            .arguments
+            .iter()
+            .any(|a| crate::mutation::has_try(a.expr))
+        {
             self.hold_temp(recv)
         } else {
             recv
