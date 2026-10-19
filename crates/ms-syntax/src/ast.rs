@@ -147,7 +147,8 @@ pub struct Func {
 pub struct ConstDecl {
     /// Constant name.
     pub name: Symbol,
-    /// Annotation, if written.
+    /// Annotation, if written. Go uses a placeholder type at the initializer's
+    /// position when absent; the checker infers the type from `value`.
     pub ty: Option<TypeRef>,
     /// Initializer.
     pub value: Expr,
@@ -305,18 +306,14 @@ pub enum TypeKind {
         /// Result type.
         result: Box<TypeRef>,
     },
-    /// Placeholder for a constant without an annotation (Go: a `Type` with an
-    /// empty name at the initializer's position); the checker infers it.
-    Inferred,
 }
 
 impl TypeRef {
-    /// The type name; `"fn"` for function types and `""` for [`TypeKind::Inferred`].
+    /// The type name; `"fn"` for function types.
     pub fn name(&self) -> &str {
         match &self.kind {
             TypeKind::Named { name, .. } => name.as_str(),
             TypeKind::Fn { .. } => "fn",
-            TypeKind::Inferred => "",
         }
     }
 }
