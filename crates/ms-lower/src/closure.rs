@@ -413,6 +413,18 @@ impl FnLower<'_> {
         if self.dead {
             return Ok(f);
         }
+        // The callee is fixed before the arguments run, which may reassign its variable.
+        let f = if !f.own
+            && matches!(
+                self.hir.resolution(callee),
+                ms_check::hir::Resolution::Local(_)
+            ) {
+            let v = self.owned(f);
+            Val { v, own: true }
+        } else {
+            f
+        };
+        let fv = self.borrow(f);
         let declared = self.ety(callee).params.clone();
         let ftype = self.ty_of(f.v);
         let TyKind::Fn(ptys, _) = self.b.m.types.kind(ftype).clone() else {
@@ -449,7 +461,6 @@ impl FnLower<'_> {
                 None => return Err(Error::new("missing argument in a call of a function value")),
             });
         }
-        let fv = self.borrow(f);
         self.at(e.pos);
         let v = self.b.call_ind(fv, &args);
         Ok(self.val(v, true))
@@ -594,7 +605,12 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
     }
     let bindings = fl.hir.lambda_parameters(&job.expr);
     for (b, v) in bindings.iter().zip(params.iter().skip(1)) {
-        fl.bind_borrowed(b, *v);
+        if mutated.contains(&b.uid) && fl.needs_drop(fl.ty_of(*v)) {
+            // A parameter the body changes is the lambda's own copy.
+            fl.bind_local(b, Val { v: *v, own: false });
+        } else {
+            fl.bind_borrowed(b, *v);
+        }
     }
     fl.stmts(&lam.body)?;
     if !fl.dead {

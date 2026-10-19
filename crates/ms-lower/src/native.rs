@@ -98,6 +98,7 @@ fn is_higher_order(name: &str) -> bool {
             | "for_each"
             | "find"
             | "find_index"
+            | "find_last_index"
     )
 }
 
@@ -780,7 +781,7 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             (TyKind::List(elem), "reversed") => {
-                let (lv, hidden) = self.list_source(recv_expr, recv)?;
+                let (lv, hidden) = self.list_source(Some(recv_expr), recv)?;
                 let r = self.list_reversed(lv, elem);
                 self.release_source(lv, hidden);
                 r
@@ -929,30 +930,19 @@ impl<'a> FnLower<'a> {
                 let fvar = self.fresh_var(ft);
                 let fo = self.owned(f.val);
                 self.b.def_var(fvar, fo);
-                let (lv, hidden) = self.list_source(recv_expr, recv)?;
+                let (lv, hidden) = self.list_source(Some(recv_expr), recv)?;
                 let r = self.list_sorted(lv, fvar, elem);
                 self.release_source(lv, hidden);
                 self.release_source(fvar, true);
                 r
             }
             _ if crate::iterate::handles(self.b.m, rty, name) => {
-                self.iterate_method(e, name, recv_expr, recv, args)
-            }
-            (TyKind::List(elem), _) if is_higher_order(name) => {
-                let f = args
-                    .into_iter()
-                    .find(|a| self.is_fn(a.val.v))
-                    .ok_or_else(|| Error::new("missing function argument"))?;
-                let ft = self.ty_of(f.val.v);
-                let fvar = self.fresh_var(ft);
-                let fo = self.owned(f.val);
-                self.b.def_var(fvar, fo);
                 let out = self.emty(e)?;
-                let (lv, hidden) = self.list_source(recv_expr, recv)?;
-                let r = self.list_higher_order(name, lv, elem, fvar, out);
-                self.release_source(lv, hidden);
-                self.release_source(fvar, true);
-                r
+                self.iterate_method(out, name, Some(recv_expr), recv, args)
+            }
+            (TyKind::List(_), _) if is_higher_order(name) => {
+                let out = self.emty(e)?;
+                self.list_higher(name, out, Some(recv_expr), recv, args)
             }
             _ => {
                 let Some(sym) = crate::rtcall::method_symbol(self.b.m, rty, native) else {
@@ -965,6 +955,33 @@ impl<'a> FnLower<'a> {
                 self.rt_method(&sym, recv, &m.ty.params, &args, result)
             }
         }
+    }
+
+    /// A list method taking a function (`map`, `count`, `for_each`, ...).
+    fn list_higher(
+        &mut self,
+        name: &str,
+        out: MTy,
+        recv_expr: Option<&Expr>,
+        recv: Val,
+        args: Vec<NArg>,
+    ) -> Result<Val, Error> {
+        let TyKind::List(elem) = self.b.m.types.kind(self.ty_of(recv.v)).clone() else {
+            return Err(Error::new("higher-order method on a non-list"));
+        };
+        let f = args
+            .into_iter()
+            .find(|a| self.is_fn(a.val.v))
+            .ok_or_else(|| Error::new("missing function argument"))?;
+        let ft = self.ty_of(f.val.v);
+        let fvar = self.fresh_var(ft);
+        let fo = self.owned(f.val);
+        self.b.def_var(fvar, fo);
+        let (lv, hidden) = self.list_source(recv_expr, recv)?;
+        let r = self.list_higher_order(name, lv, elem, fvar, out);
+        self.release_source(lv, hidden);
+        self.release_source(fvar, true);
+        r
     }
 
     /// A native method applied to evaluated arguments, for method values.
@@ -1009,6 +1026,35 @@ impl<'a> FnLower<'a> {
                 None => Val { v: new, own: true },
             });
         }
+        if name == "clone" {
+            let v = self.owned(Val {
+                v: recv.v,
+                own: false,
+            });
+            return Ok(Val { v, own: true });
+        }
+        if m.native.as_str() == "errors/message" {
+            let data = self.ty_of(recv.v);
+            let f = self
+                .cx
+                .native_method_fn(self.b.m, m.native.as_str(), &m.receiver, data)?;
+            let r = self.borrow(recv);
+            let text = self.b.call(f, &[r]);
+            return Ok(Val { v: text, own: true });
+        }
+        if let (TyKind::List(elem), "get") = (self.b.m.types.kind(rty).clone(), name.as_str()) {
+            let find = |want: bool| args.iter().find(|a| (a.name.as_str() == "default") == want);
+            let index = find(false)
+                .copied()
+                .ok_or_else(|| Error::new("get without index"))?;
+            return self.list_get_or(recv, elem, index, find(true).copied());
+        }
+        if crate::iterate::handles(self.b.m, rty, &name) {
+            return self.iterate_method(result, &name, None, recv, args.to_vec());
+        }
+        if matches!(self.b.m.types.kind(rty), TyKind::List(_)) && is_higher_order(&name) {
+            return self.list_higher(&name, result, None, recv, args.to_vec());
+        }
         let sym = crate::rtcall::typed_method_symbol(&m.receiver, &name)
             .or_else(|| crate::rtcall::method_symbol(self.b.m, rty, m.native.as_str()))
             .ok_or_else(|| {
@@ -1050,10 +1096,10 @@ impl<'a> FnLower<'a> {
     /// The flag says the variable is a hidden copy to drop afterwards.
     pub(crate) fn list_source(
         &mut self,
-        recv_expr: &Expr,
+        recv_expr: Option<&Expr>,
         recv: Val,
     ) -> Result<(ms_mir::builder::Var, bool), Error> {
-        if let Resolution::Local(b) = self.hir.resolution(recv_expr) {
+        if let Some(Resolution::Local(b)) = recv_expr.map(|r| self.hir.resolution(r)) {
             return Ok((self.local(&b)?.var, false));
         }
         let t = self.ty_of(recv.v);
@@ -2064,8 +2110,9 @@ impl<'a> FnLower<'a> {
                 let u = self.b.unit();
                 Ok(Val { v: u, own: false })
             }
-            "find" | "find_index" => {
-                let by_index = name == "find_index";
+            "find" | "find_index" | "find_last_index" => {
+                let by_index = name != "find";
+                let last = name == "find_last_index";
                 let acc = self.fresh_var(out);
                 let none = self.none_owned(out);
                 self.b.def_var(acc, none);
@@ -2088,7 +2135,8 @@ impl<'a> FnLower<'a> {
                     s.b.def_var(acc, some);
                     s.b.br(miss, &[]);
                     s.b.switch_to(miss);
-                    Ok(Some(r))
+                    // The last hit wins, so `find_last_index` visits every element.
+                    Ok((!last).then_some(r))
                 })?;
                 Ok(Val {
                     v: self.b.use_var(acc),
@@ -2268,18 +2316,31 @@ impl<'a> FnLower<'a> {
         self.b.def_var(out, xo);
         self.b.br(join, &[]);
         self.b.switch_to(miss);
-        let dv = if default.wrapped {
-            default.val
+        if default.wrapped {
+            let d = self.owned(default.val);
+            self.b.def_var(out, d);
+            self.b.br(join, &[]);
         } else {
+            // An omitted `Optional` default faults like a plain read.
+            let has = self.b.opt_is_some(default.val.v);
+            let (give, fault) = (self.b.new_block(), self.b.new_block());
+            self.b.br_if(has, give, &[], fault, &[]);
+            self.b.seal_block(give);
+            self.b.seal_block(fault);
+            self.b.switch_to(give);
             let inner = self.b.opt_unwrap(default.val.v);
-            Val {
+            let d = self.owned(Val {
                 v: inner,
                 own: false,
-            }
-        };
-        let d = self.owned(dv);
-        self.b.def_var(out, d);
-        self.b.br(join, &[]);
+            });
+            self.b.def_var(out, d);
+            self.b.br(join, &[]);
+            self.b.switch_to(fault);
+            let x = self.b.list_get(l, idx);
+            let xo = self.owned(Val { v: x, own: false });
+            self.b.def_var(out, xo);
+            self.b.br(join, &[]);
+        }
         self.b.seal_block(join);
         self.b.switch_to(join);
         let r = self.b.use_var(out);

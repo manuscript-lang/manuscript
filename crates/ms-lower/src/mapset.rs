@@ -168,9 +168,23 @@ impl<'a> FnLower<'a> {
             _ => crate::rtcall::method_symbol(self.b.m, mt, name)
                 .ok_or_else(|| Error::new(format!("unsupported mutator {name}")))?,
         };
+        // An argument that is the receiver itself is copied before the receiver moves out.
+        let args: Vec<NArg> = args
+            .iter()
+            .map(|a| {
+                if a.val.v != old {
+                    return *a;
+                }
+                let v = self.owned(a.val);
+                NArg {
+                    val: Val { v, own: true },
+                    ..*a
+                }
+            })
+            .collect();
         let slot = self.put_slot(old);
         let recv = Val { v: old, own: false };
-        self.rt_method_at(&sym, recv, Some(slot), decl, args, MTy::UNIT)?;
+        self.rt_method_at(&sym, recv, Some(slot), decl, &args, MTy::UNIT)?;
         let new = self.take_slot(slot, mt);
         let result = copy_result.then(|| {
             let v = self.owned(Val { v: new, own: false });
@@ -244,7 +258,7 @@ impl<'a> FnLower<'a> {
             return Err(Error::new("not a map"));
         };
         let (kt, vt) = (a[0], a[1]);
-        let (mv, hidden) = self.list_source(recv_expr, recv)?;
+        let (mv, hidden) = self.list_source(Some(recv_expr), recv)?;
         let acc: Var = self.fresh_var(result);
         let empty = self.b.list_lit(entry, &[]);
         self.b.def_var(acc, empty);

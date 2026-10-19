@@ -143,3 +143,12 @@ fn loop_variables_survive_a_removed_trivial_join() {
     );
     assert!(mir.contains("fn @run"));
 }
+
+#[test]
+fn method_values_type_applications_and_callee_capture() {
+    let mir = lower(
+        "values",
+        "import stdout from \"@std/io.ms\"\n\nfn identity[T](value: T) T: value\n\nfn run(f: fn(value: Int) Int) Int: f(value: 1)\n\nexport fn main() Int:\n    let items = [4, 5]\n    let count = items.count\n    let lookup = items.get\n    let same = identity[Int]\n    var selected = same\n    let n = selected(match some(0):\n        some(_):\n            selected = fn(value: Int): value + 1\n            3\n        none: 3\n    )\n    let r = stdout().write(\"{lookup(1)} {n} {run(same)} {count(fn(x: Int): x > 4)}\\n\")\n    return 0\n",
+    );
+    assert!(mir.contains("closure.new"));
+}

@@ -188,15 +188,14 @@ impl FnLower<'_> {
     /// `fold`, `fold_right`, `find`, `find_last`, `filter`, `map` and `map_keys` over the receiver.
     pub(crate) fn iterate_method(
         &mut self,
-        e: &Expr,
+        out: MTy,
         name: &str,
-        recv_expr: &Expr,
+        recv_expr: Option<&Expr>,
         recv: Val,
         args: Vec<NArg>,
     ) -> Result<Val, Error> {
         let name = method(name);
         let rty = self.ty_of(recv.v);
-        let out = self.emty(e)?;
         let callback = |want: &str| args.iter().find(|a| a.name.as_str() == want).copied();
         let f = match name {
             "fold" | "fold_right" => callback("step"),
