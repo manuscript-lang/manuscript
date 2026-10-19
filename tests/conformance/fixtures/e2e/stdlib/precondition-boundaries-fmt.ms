@@ -17,7 +17,7 @@ test "byte updates retain relative bounds and immutable storage":
     try expect_equal(bytes.get(-3, default: -1), -1)
     try expect_equal(bytes.get(2, default: -1), -1)
     try expect_equal(bytes.slice(2, 2).get(), Bytes([]))
-    let builder = BytesBuilder()
+    var builder = BytesBuilder()
     builder.append(0)
     builder.append(255)
     try expect_equal(builder.freeze(), bytes)

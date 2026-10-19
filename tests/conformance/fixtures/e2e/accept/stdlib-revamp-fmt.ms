@@ -65,7 +65,7 @@ type EmptyReader:
     requested: Int
 
 impl ReadStream for EmptyReader:
-    fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
         self.requested = max_bytes.get(0)
         return ok(none)
 

@@ -12,10 +12,10 @@ type Resource:
     counter: Counter
 
 impl Closeable for Resource:
-    fn close() Unit:
+    var fn close() Unit:
         self.counter.value += 1
 
-fn mark(counter: Counter, digit: Int) Int:
+fn mark(var counter: Counter, digit: Int) Int:
     counter.value = counter.value * 10 + digit
     return digit
 
@@ -27,8 +27,8 @@ fn returning_match() Bool:
         none: false
 
 test "primitive equality captures operands once in order":
-    let counter = Counter()
-    try expect_not_equal(mark(counter, 1), mark(counter, 2))
+    var counter = Counter()
+    try expect_not_equal(mark(var counter, 1), mark(var counter, 2))
     try expect_equal(counter.value, 12)
     var original = 1
     let captured = original == match some(1):
@@ -37,8 +37,8 @@ test "primitive equality captures operands once in order":
             value
         none: 0
     try expect_false(not captured or original != 2)
-    let skipped = false and mark(counter, 3) == 3
-    let skipped_again = true or mark(counter, 4) == 4
+    let skipped = false and mark(var counter, 3) == 3
+    let skipped_again = true or mark(var counter, 4) == 4
     try expect_false((skipped or not skipped_again or counter.value != 12))
     try expect_false("é" == "e\u{0301}" or "λ🙂" != "λ🙂")
     try expect_false(not generic(left: true, right: true))

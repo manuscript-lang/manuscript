@@ -10,7 +10,7 @@ type Acc:
     total: Int
 
 impl Counter for Acc:
-    fn bump(by: Int) Int:
+    var fn bump(by: Int) Int:
         self.total += by
         return self.total
 
@@ -62,7 +62,7 @@ fn area(s: Shape) Int:
 
 fn bench_string() Int:
     let t = clock().now()
-    let sb = StringBuilder()
+    var sb = StringBuilder()
     var i = 0
 
     while i < 50000:
@@ -133,7 +133,7 @@ fn bench_generic() Int:
 
 fn bench_method() Int:
     let t = clock().now()
-    let acc = Acc(0)
+    var acc = Acc(0)
     var i = 0
 
     while i < 1000000:

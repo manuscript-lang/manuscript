@@ -98,7 +98,7 @@ type Node:
     case ArrayNode(values: List[Node])
     case TableArray(ids: List[Int])
 
-fn new_table(reader: Reader, explicit: Bool, dotted: Bool) Int:
+fn new_table(var reader: Reader, explicit: Bool, dotted: Bool) Int:
     reader.tables.append(Table(explicit: explicit, dotted: dotted, sealed: false))
     reader.entries.append(Map[String, Node]())
     return reader.tables.length() - 1
@@ -106,7 +106,7 @@ fn new_table(reader: Reader, explicit: Bool, dotted: Bool) Int:
 fn flags(reader: Reader, id: Int) Table:
     return reader.tables.get(id)
 
-fn store_flags(reader: Reader, id: Int, flags: Table) Unit:
+fn store_flags(var reader: Reader, id: Int, flags: Table) Unit:
     reader.tables.set(id, flags)
 
 fn lookup(reader: Reader, id: Int, key: String) Optional[Node]:
@@ -116,14 +116,14 @@ fn contains_key(reader: Reader, id: Int, key: String) Bool:
     return reader.entries.get(id).contains(key)
 
 # Adds an entry by taking the map out of its slot, so the update is in place.
-fn put(reader: Reader, id: Int, key: String, node: Node) Unit:
+fn put(var reader: Reader, id: Int, key: String, node: Node) Unit:
     var current = reader.entries.get(id)
     reader.entries.set(id, Map[String, Node]())
     current.add(key, node)
     reader.entries.set(id, current)
 
-fn put_array(reader: Reader, id: Int, key: String, ids: List[Int]) Unit:
-    put(reader, id, key, Node.TableArray(ids))
+fn put_array(var reader: Reader, id: Int, key: String, ids: List[Int]) Unit:
+    put(var reader, id, key, Node.TableArray(ids))
 
 fn peek(reader: Reader) String:
     return reader.chars.get(reader.pos, default: "")
@@ -131,7 +131,7 @@ fn peek(reader: Reader) String:
 fn ahead(reader: Reader, offset: Int) String:
     return reader.chars.get(reader.pos + offset, default: "")
 
-fn advance(reader: Reader) String:
+fn advance(var reader: Reader) String:
     let c = peek(reader)
     if c == "": return c
 
@@ -152,14 +152,14 @@ fn invalid(reader: Reader, reason: String) TomlError:
         reason: reason
     )
 
-fn space(reader: Reader, multiline: Bool) Unit:
+fn space(var reader: Reader, multiline: Bool) Unit:
     while true:
         let c = peek(reader)
 
         if (c == " " or c == "\t" or (multiline and c == "\n")):
-            advance(reader)
+            advance(var reader)
         else if multiline and c == "#":
-            while peek(reader) != "" and peek(reader) != "\n": advance(reader)
+            while peek(reader) != "" and peek(reader) != "\n": advance(var reader)
         else:
             break
 
@@ -169,7 +169,7 @@ fn within(value: Int, limit: Optional[Int]) Bool:
 
     return true
 
-fn allocate(reader: Reader) Result[Unit, TomlError]:
+fn allocate(var reader: Reader) Result[Unit, TomlError]:
     reader.values += 1
     if not within(reader.values, reader.limits.max_values): return error(
         TomlError.LimitExceeded
@@ -183,33 +183,33 @@ fn budget(reader: Reader, depth: Int) Result[Unit, TomlError]:
     return ok(unit)
 
 # Basic and literal strings, including multiline delimiters and escaped newline folding.
-fn string_value(reader: Reader, key: Bool) Result[String, TomlError]:
-    let quote = advance(reader)
+fn string_value(var reader: Reader, key: Bool) Result[String, TomlError]:
+    let quote = advance(var reader)
     var multiline = false
 
     if (not key and peek(reader) == quote and ahead(reader, 1) == quote):
-        advance(reader)
-        advance(reader)
+        advance(var reader)
+        advance(var reader)
         multiline = true
-        if peek(reader) == "\n": advance(reader)
+        if peek(reader) == "\n": advance(var reader)
 
     # Append through a builder: per-character concatenation is quadratic on long strings.
-    let result = StringBuilder()
+    var result = StringBuilder()
 
     while true:
-        let c = advance(reader)
+        let c = advance(var reader)
         if c == "": return error(invalid(reader, "unterminated string"))
 
         if c == quote:
             if not multiline: return ok(result.freeze())
 
             if peek(reader) == quote and ahead(reader, 1) == quote:
-                advance(reader)
-                advance(reader)
+                advance(var reader)
+                advance(var reader)
                 var extra = 0
 
                 while peek(reader) == quote and extra < 2:
-                    result.append(advance(reader))
+                    result.append(advance(var reader))
                     extra += 1
 
                 return ok(result.freeze())
@@ -233,17 +233,17 @@ fn string_value(reader: Reader, key: Bool) Result[String, TomlError]:
                 or peek(reader) == "\n"
             )
         ):
-            while peek(reader) == " " or peek(reader) == "\t": advance(reader)
-            if advance(reader) != "\n": return error(
+            while peek(reader) == " " or peek(reader) == "\t": advance(var reader)
+            if advance(var reader) != "\n": return error(
                 invalid(reader, "expected escaped newline")
             )
 
             while (peek(reader) == " " or peek(reader) == "\t" or peek(reader) == "\n"): advance(
-                reader
+                var reader
             )
             continue
 
-        let escaped = advance(reader)
+        let escaped = advance(var reader)
 
         if escaped == "b": result.append("\u{8}")
         else if escaped == "t": result.append("\t")
@@ -257,7 +257,7 @@ fn string_value(reader: Reader, key: Bool) Result[String, TomlError]:
             var hex = ""
 
             while count > 0:
-                let digit = advance(reader)
+                let digit = advance(var reader)
                 if digit == "" or not "0123456789abcdefABCDEF".contains(digit):
                     return error(invalid(reader, "invalid Unicode escape"))
 
@@ -276,15 +276,15 @@ fn string_value(reader: Reader, key: Bool) Result[String, TomlError]:
         else:
             return error(invalid(reader, "invalid string escape"))
 
-fn key_path(reader: Reader) Result[List[String], TomlError]:
+fn key_path(var reader: Reader) Result[List[String], TomlError]:
     var keys: List[String] = []
 
     while true:
-        space(reader, multiline: false)
+        space(var reader, multiline: false)
         var key = ""
 
         if peek(reader) == "\"" or peek(reader) == "'":
-            key = try string_value(reader, key: true)
+            key = try string_value(var reader, key: true)
         else:
             while (
                 peek(reader) != ""
@@ -292,16 +292,19 @@ fn key_path(reader: Reader) Result[List[String], TomlError]:
                     peek(reader)
                 )
             ):
-                key = key.concat(advance(reader))
+                key = key.concat(advance(var reader))
             if key == "": return error(invalid(reader, "expected key"))
 
         keys.append(key)
-        space(reader, multiline: false)
+        space(var reader, multiline: false)
         if peek(reader) != ".": return ok(keys)
 
-        advance(reader)
+        advance(var reader)
 
-fn child(reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int, TomlError]:
+fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[
+    Int,
+    TomlError
+]:
     if flags(reader, parent).sealed: return error(
         invalid(reader, "inline table is closed")
     )
@@ -309,9 +312,9 @@ fn child(reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int, Tom
     let existing = lookup(reader, parent, key)
 
     if existing.is_none():
-        try allocate(reader)
-        let created = new_table(reader, explicit: false, dotted)
-        put(reader, parent, key, Node.TableNode(created))
+        try allocate(var reader)
+        let created = new_table(var reader, explicit: false, dotted)
+        put(var reader, parent, key, Node.TableNode(created))
         return ok(created)
 
     let node = existing.get()
@@ -331,17 +334,15 @@ fn child(reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int, Tom
             return ok(ids.last().get())
         _: return error(invalid(reader, "key is already a value"))
 
-fn append_table(
-    reader: Reader,
-    parent: Int,
-    key: String,
-    next: Int
-) Result[Unit, TomlError]:
+fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
+    Unit,
+    TomlError
+]:
     let existing = lookup(reader, parent, key)
 
     if existing.is_none():
-        try allocate(reader)
-        put_array(reader, parent, key, [next])
+        try allocate(var reader)
+        put_array(var reader, parent, key, [next])
         return ok(unit)
 
     let node = existing.get()
@@ -350,22 +351,20 @@ fn append_table(
         TableArray(ids):
             var grown = ids.clone()
             grown.append(next)
-            put_array(reader, parent, key, grown)
+            put_array(var reader, parent, key, grown)
             return ok(unit)
         _: return error(invalid(reader, "table array conflicts with value"))
 
-fn assign(
-    reader: Reader,
-    parent: Int,
-    keys: List[String],
-    value: Node
-) Result[Unit, TomlError]:
+fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Result[
+    Unit,
+    TomlError
+]:
     var current = parent
     var index = 0
 
     while index < keys.length() - 1:
         current = try child(
-            reader: reader,
+            reader: var reader,
             parent: current,
             key: (keys.get(index)),
             dotted: true
@@ -377,18 +376,18 @@ fn assign(
         invalid(reader, "duplicate or closed key")
     )
 
-    put(reader, current, key, value)
+    put(var reader, current, key, value)
     return ok(unit)
 
-fn seal(reader: Reader, value: Node) Unit:
+fn seal(var reader: Reader, value: Node) Unit:
     match value:
         TableNode(id):
             var state = flags(reader, id)
             state.sealed = true
-            store_flags(reader, id, state)
-            for entry in reader.entries.get(id): seal(reader, entry.value)
+            store_flags(var reader, id, state)
+            for entry in reader.entries.get(id): seal(var reader, entry.value)
         ArrayNode(values):
-            for item in values: seal(reader, item)
+            for item in values: seal(var reader, item)
         _: return unit
 
 fn digits(text: String, alphabet: String) Bool:
@@ -594,56 +593,58 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
 
     return error(invalid(reader, "integer out of range"))
 
-fn read_value(reader: Reader, depth: Int) Result[Node, TomlError]:
-    try allocate(reader)
+fn read_value(var reader: Reader, depth: Int) Result[Node, TomlError]:
+    try allocate(var reader)
     try budget(reader, depth)
-    space(reader, multiline: false)
+    space(var reader, multiline: false)
     let c = peek(reader)
     if c == "\"" or c == "'": return ok(
-        Node.Leaf(TomlValue.StringValue(try string_value(reader, key: false)))
+        Node.Leaf(
+            TomlValue.StringValue(try string_value(var reader, key: false))
+        )
     )
 
     if c == "[":
-        advance(reader)
+        advance(var reader)
         var values: List[Node] = []
-        space(reader, multiline: true)
+        space(var reader, multiline: true)
 
         while peek(reader) != "]":
-            values.append(try read_value(reader, depth + 1))
-            space(reader, multiline: true)
+            values.append(try read_value(var reader, depth + 1))
+            space(var reader, multiline: true)
             if peek(reader) == "]": break
-            if advance(reader) != ",": return error(
+            if advance(var reader) != ",": return error(
                 invalid(reader, "expected array comma")
             )
 
-            space(reader, multiline: true)
+            space(var reader, multiline: true)
 
-        advance(reader)
+        advance(var reader)
         return ok(Node.ArrayNode(values))
 
     if c == "\{":
-        advance(reader)
-        let result = new_table(reader, explicit: true, dotted: false)
-        space(reader, multiline: false)
+        advance(var reader)
+        let result = new_table(var reader, explicit: true, dotted: false)
+        space(var reader, multiline: false)
 
         if peek(reader) != "\}":
             while true:
-                let keys = try key_path(reader)
-                if advance(reader) != "=": return error(
+                let keys = try key_path(var reader)
+                if advance(var reader) != "=": return error(
                     invalid(reader, "expected equals")
                 )
 
-                let value = try read_value(reader, depth + keys.length())
-                try assign(reader: reader, parent: result, keys: keys, value: value)
-                space(reader, multiline: false)
+                let value = try read_value(var reader, depth + keys.length())
+                try assign(reader: var reader, parent: result, keys: keys, value: value)
+                space(var reader, multiline: false)
                 if peek(reader) == "\}": break
-                if advance(reader) != ",": return error(
+                if advance(var reader) != ",": return error(
                     invalid(reader, "expected inline table comma")
                 )
 
-        advance(reader)
+        advance(var reader)
         let node = Node.TableNode(result)
-        seal(reader, node)
+        seal(var reader, node)
         return ok(node)
 
     var text = ""
@@ -659,11 +660,11 @@ fn read_value(reader: Reader, depth: Int) Result[Node, TomlError]:
         and peek(reader) != "\}"
         and peek(reader) != " "
     ):
-        text = text.concat(advance(reader))
+        text = text.concat(advance(var reader))
 
     # A space may separate date and time, but otherwise ends the token.
     if (date_valid(text) and peek(reader) == " " and ahead(reader, 3) == ":"):
-        text = text.concat(advance(reader))
+        text = text.concat(advance(var reader))
         while (
             peek(reader) != ""
             and peek(reader) != "\n"
@@ -674,7 +675,7 @@ fn read_value(reader: Reader, depth: Int) Result[Node, TomlError]:
             and peek(reader) != "]"
             and peek(reader) != "\}"
         ):
-            text = text.concat(advance(reader))
+            text = text.concat(advance(var reader))
 
     # Report token errors where the token starts, not where it ended.
     let end_line = reader.line
@@ -686,7 +687,7 @@ fn read_value(reader: Reader, depth: Int) Result[Node, TomlError]:
     reader.column = end_column
     return result
 
-fn materialize(reader: Reader, node: Node, depth: Int) Result[TomlValue, TomlError]:
+fn materialize(var reader: Reader, node: Node, depth: Int) Result[TomlValue, TomlError]:
     try budget(reader, depth)
     reader.values += 1
     if not within(reader.values, reader.limits.max_values): return error(
@@ -701,7 +702,7 @@ fn materialize(reader: Reader, node: Node, depth: Int) Result[TomlValue, TomlErr
                 entries.add(
                     entry.key,
                     try materialize(
-                        reader,
+                        var reader,
                         entry.value,
                         (depth + 1)
                     )
@@ -710,13 +711,17 @@ fn materialize(reader: Reader, node: Node, depth: Int) Result[TomlValue, TomlErr
         ArrayNode(values):
             var result: List[TomlValue] = []
             for value in values: result.append(
-                try materialize(reader, value, (depth + 1))
+                try materialize(var reader, value, (depth + 1))
             )
             return ok(TomlValue.ArrayValue(result))
         TableArray(ids):
             var result: List[TomlValue] = []
             for id in ids: result.append(
-                try materialize(reader, Node.TableNode(id), (depth + 1))
+                try materialize(
+                    var reader,
+                    Node.TableNode(id),
+                    (depth + 1)
+                )
             )
             return ok(TomlValue.ArrayValue(result))
 
@@ -772,25 +777,25 @@ export fn parse(
         tables: [],
         entries: []
     )
-    try allocate(reader)
-    let root = new_table(reader, explicit: true, dotted: false)
+    try allocate(var reader)
+    let root = new_table(var reader, explicit: true, dotted: false)
     var current = root
     var current_depth = 1
 
     while true:
-        space(reader, multiline: true)
+        space(var reader, multiline: true)
         if peek(reader) == "": break
 
         if peek(reader) == "[":
-            advance(reader)
+            advance(var reader)
             var array = false
 
             if peek(reader) == "[":
-                advance(reader)
+                advance(var reader)
                 array = true
 
-            let keys = try key_path(reader)
-            if advance(reader) != "]" or (array and advance(reader) != "]"): return error(
+            let keys = try key_path(var reader)
+            if advance(var reader) != "]" or (array and advance(var reader) != "]"): return error(
                 invalid(reader, "expected closing table bracket")
             )
 
@@ -799,7 +804,7 @@ export fn parse(
 
             while index < keys.length() - 1:
                 parent = try child(
-                    reader: reader,
+                    reader: var reader,
                     parent: parent,
                     key: (keys.get(index)),
                     dotted: false
@@ -812,13 +817,18 @@ export fn parse(
             )
 
             if array:
-                try allocate(reader)
-                let next = new_table(reader, explicit: true, dotted: false)
-                try append_table(reader: reader, parent: parent, key: key, next: next)
+                try allocate(var reader)
+                let next = new_table(var reader, explicit: true, dotted: false)
+                try append_table(
+                    reader: var reader,
+                    parent: parent,
+                    key: key,
+                    next: next
+                )
                 current = next
             else:
                 current = try child(
-                    reader: reader,
+                    reader: var reader,
                     parent: parent,
                     key: key,
                     dotted: false
@@ -829,27 +839,29 @@ export fn parse(
                 )
 
                 state.explicit = true
-                store_flags(reader, current, state)
+                store_flags(var reader, current, state)
 
             current_depth = keys.length() + 1
             if array: current_depth += 1
             try budget(reader, current_depth)
         else:
-            let keys = try key_path(reader)
-            if advance(reader) != "=": return error(invalid(reader, "expected equals"))
+            let keys = try key_path(var reader)
+            if advance(var reader) != "=": return error(
+                invalid(reader, "expected equals")
+            )
 
-            let value = try read_value(reader, (current_depth + keys.length()))
-            try assign(reader: reader, parent: current, keys: keys, value: value)
+            let value = try read_value(var reader, (current_depth + keys.length()))
+            try assign(reader: var reader, parent: current, keys: keys, value: value)
 
-        space(reader, multiline: false)
+        space(var reader, multiline: false)
         if peek(reader) == "#":
-            while peek(reader) != "" and peek(reader) != "\n": advance(reader)
-        if peek(reader) != "" and advance(reader) != "\n": return error(
+            while peek(reader) != "" and peek(reader) != "\n": advance(var reader)
+        if peek(reader) != "" and advance(var reader) != "\n": return error(
             invalid(reader, "unexpected trailing text")
         )
 
     reader.values = 0
-    return materialize(reader, Node.TableNode(root), 1)
+    return materialize(var reader, Node.TableNode(root), 1)
 
 type Writer:
     out: StringBuilder
@@ -861,7 +873,7 @@ fn hex4(code: Int) String:
     return digits
 
 fn quote_text(text: String) String:
-    let result = StringBuilder()
+    var result = StringBuilder()
     result.append("\"")
 
     for c in text.chars():
@@ -942,7 +954,7 @@ fn dotted(path: List[String]) String:
     for key in path: parts.append(format_key(key))
     return parts.join(".")
 
-fn emit_header(writer: Writer, header: String) Unit:
+fn emit_header(var writer: Writer, header: String) Unit:
     if writer.started: writer.out.append("\n")
     writer.out.append(header)
     writer.out.append("\n")
@@ -961,17 +973,17 @@ fn section_kind(value: TomlValue) Int:
         _: return 0
 
 fn emit_one(
-    writer: Writer,
+    var writer: Writer,
     path: List[String],
     brackets: String,
     table: Map[String, TomlValue]
 ) Unit:
-    if brackets == "[[": emit_header(writer, "[[".concat(dotted(path)).concat("]]"))
-    else: emit_header(writer, "[".concat(dotted(path)).concat("]"))
+    if brackets == "[[": emit_header(var writer, "[[".concat(dotted(path)).concat("]]"))
+    else: emit_header(var writer, "[".concat(dotted(path)).concat("]"))
 
-    emit_table(writer, path, table)
+    emit_table(var writer, path, table)
 
-fn emit_table(writer: Writer, path: List[String], values: Map[String, TomlValue]) Unit:
+fn emit_table(var writer: Writer, path: List[String], values: Map[String, TomlValue]) Unit:
     for entry in values.entries():
         if section_kind(entry.value) == 0: (
             writer
@@ -992,7 +1004,7 @@ fn emit_table(writer: Writer, path: List[String], values: Map[String, TomlValue]
 
         match entry.value:
             TableValue(table): emit_one(
-                writer: writer,
+                writer: var writer,
                 path: child,
                 brackets: "[",
                 table: table
@@ -1000,7 +1012,7 @@ fn emit_table(writer: Writer, path: List[String], values: Map[String, TomlValue]
             ArrayValue(elements):
                 if section_kind(entry.value) == 2:
                     for table in table_items(elements): emit_one(
-                        writer: writer,
+                        writer: var writer,
                         path: child,
                         brackets: "[[",
                         table: table
@@ -1034,8 +1046,8 @@ export fn stringify(
 
     if not datetimes_valid(value): return error(TomlError.InvalidInput)
 
-    let writer = Writer(StringBuilder(), started: false)
-    emit_table(writer, [], root)
+    var writer = Writer(StringBuilder(), started: false)
+    emit_table(var writer, [], root)
     let text = writer.out.freeze()
     if not within(text.byte_length(), max_bytes): return error(TomlError.LimitExceeded)
 

@@ -8,21 +8,21 @@ type Val:
     val: Int
 
 impl Counter for Val:
-    fn increment() Unit:
+    var fn increment() Unit:
         self.val += 1
 
 type Box[T]:
     value: T
     child: Val
 
-fn replace[T](box: Box[T], value: T) Unit:
+fn replace[T](var box: Box[T], value: T) Unit:
     box.value = value
 
-fn receiver(log: List[Int], value: Val) Val:
+fn receiver(var log: List[Int], value: Val) Val:
     log.append(1)
     return value
 
-fn replacement(log: List[Int]) Int:
+fn replacement(var log: List[Int]) Int:
     log.append(2)
     return 7
 
@@ -39,9 +39,9 @@ test "record fields mutate through aliases methods views and captures":
         counter.val += 1
     callback()
     try expect_false(not (alias.val == 4 and copy.val == 0))
-    let box = Box("old", counter)
+    var box = Box("old", counter)
     var copied = box.clone()
-    replace(box, "new")
+    replace(var box, "new")
     copied.child.val = 9
     try expect_false(
         not (
@@ -50,8 +50,8 @@ test "record fields mutate through aliases methods views and captures":
             and box.child.val == 9
         )
     )
-    let log: List[Int] = []
-    receiver(log, counter).val = replacement(log)
+    var log: List[Int] = []
+    receiver(log, counter).val = replacement(var log)
     try expect_false(not (log == [1, 2] and counter.val == 7))
 
 test "collection updates retain identity and clone separates storage":

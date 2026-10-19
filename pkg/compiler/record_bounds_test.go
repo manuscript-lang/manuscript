@@ -40,7 +40,7 @@ func TestClosedRecordIntBounds(t *testing.T) {
 		{"capture", "let cell = Cell(0)\n    let read = fn() Int: cell.total", "cell.bump(1)\n        i += 1", false},
 		{"bound method", "let cell = Cell(0)\n    let bump = cell.bump", "cell.bump(1)\n        i += 1", false},
 		{"field reset", "let cell = Cell(0)", "cell.total = value\n        cell.bump(1)\n        i += 1", false},
-		{"mutable binding", "var cell = Cell(0)", "cell.bump(1)\n        i += 1", false},
+		{"reassigned binding", "var cell = Cell(0)", "cell.bump(1)\n        cell = Cell(0)\n        i += 1", false},
 		{"result observed", "let cell = Cell(0)", "let result = cell.bump(1)\n        i += 1", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

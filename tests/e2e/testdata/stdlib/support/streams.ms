@@ -7,7 +7,7 @@ export type MemoryStream:
     closed: Bool
 
 impl ReadStream for MemoryStream:
-    fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
         if self.closed: return error(IoError.Closed)
         if self.offset == self.data.length(): return ok(none)
 
@@ -23,10 +23,10 @@ impl ReadStream for MemoryStream:
     fn close() Unit: self.closed = true
 
 impl WriteStream for MemoryStream:
-    fn write(data: String) Result[Unit, IoError]:
+    var fn write(data: String) Result[Unit, IoError]:
         return self.write_bytes(data.to_bytes())
 
-    fn write_bytes(data: Bytes) Result[Unit, IoError]:
+    var fn write_bytes(data: Bytes) Result[Unit, IoError]:
         if self.closed: return error(IoError.Closed)
 
         self.data = self.data.concat(data)

@@ -17,7 +17,7 @@ type Pending:
 impl Error for Pending:
     fn message() String: "pending"
 
-fn bump(counter: Counter) Int:
+fn bump(var counter: Counter) Int:
     counter.calls += 1
     return 9
 
@@ -102,10 +102,10 @@ test "Result preserves unconstrained payloads and success-only composition":
     try expect_false(bool_result.get(true))
 
 test "Result fallbacks are eager or lazy and bound methods keep receivers":
-    let counter = Counter(0)
+    var counter = Counter(0)
     let success: Result[Int, Counter] = ok(0)
     let failure: Result[Int, Counter] = error(counter)
-    try expect_false(success.get(bump(counter)) != 0 or counter.calls != 1)
+    try expect_false(success.get(bump(var counter)) != 0 or counter.calls != 1)
     let create = fn(cause: Counter) Int:
         cause.calls += 1
         return 12
@@ -157,7 +157,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
     try expect_false(not (bound_chain(fn(unused): some("unexpected")).is_none()))
 
 test "Map filter copies ordered membership and get_or never inserts":
-    let counter = Counter(0)
+    var counter = Counter(0)
     let values: Map[String, Counter] = {"b": counter, "a": Counter(2), "c": Counter(3)}
     var selected = values.filter(fn(k, v): k != "a" and v.calls >= 0)
     try expect_false(selected.keys() != ["b", "c"] or values.length() != 3)
@@ -172,7 +172,7 @@ test "Map filter copies ordered membership and get_or never inserts":
     try expect_false(fallback.calls != 9 or values.contains("absent"))
     try expect_false(
         (
-            Map[String, Int]().get_or("absent", bump(counter)) != 9
+            Map[String, Int]().get_or("absent", bump(var counter)) != 9
             or counter.calls != 8
         )
     )

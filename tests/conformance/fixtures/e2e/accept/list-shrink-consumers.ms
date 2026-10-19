@@ -6,7 +6,7 @@ import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
 type Visits:
     count: Int
 
-fn mutate[T](values: List[T], mode: String, replacement: T) Unit:
+fn mutate[T](var values: List[T], mode: String, replacement: T) Unit:
     if mode == "remove":
         values.remove(0)
     if mode == "splice":
@@ -18,18 +18,16 @@ fn mutate[T](values: List[T], mode: String, replacement: T) Unit:
         values.append(replacement)
         values.append(replacement)
 
-fn observe[T](
-    values: List[T],
-    mode: String,
-    replacement: T,
-    callback: Bool
-) Result[List[T], Error]:
-    let seen: List[T] = []
-    let visits = Visits(0)
+fn observe[T](var values: List[T], mode: String, replacement: T, callback: Bool) Result[
+    List[T],
+    Error
+]:
+    var seen: List[T] = []
+    var visits = Visits(0)
     let visit = fn(value: T) Unit:
         seen.append(value)
         if visits.count == 0:
-            mutate(values: values, mode: mode, replacement: replacement)
+            mutate(values: var values, mode: mode, replacement: replacement)
         visits.count = visits.count + 1
 
     if callback:
@@ -59,10 +57,10 @@ fn remaining[T](mode: String, first: T, second: T, last: T, replacement: T) List
 test "Int consumers see valid shifted and retained tail values":
     for callback in [false, true]:
         for mode in ["remove", "splice", "clear", "clear_append"]:
-            let values = [1, 2, 3]
+            var values = [1, 2, 3]
             let alias = values
             let clone = values.clone()
-            let seen = (try observe(values, mode, 9, callback))
+            let seen = (try observe(var values, mode, 9, callback))
             let want = expected(mode, 1, 2, 3, 9)
             var total = 0
             var wanted = 0
@@ -80,9 +78,9 @@ test "Int consumers see valid shifted and retained tail values":
 test "Float consumers see valid shifted and retained tail values":
     for callback in [false, true]:
         for mode in ["remove", "splice", "clear", "clear_append"]:
-            let values = [1.5, 2.5, 3.5]
+            var values = [1.5, 2.5, 3.5]
             let clone = values.clone()
-            let seen = (try observe(values, mode, 9.5, callback))
+            let seen = (try observe(var values, mode, 9.5, callback))
             let want = expected(mode, 1.5, 2.5, 3.5, 9.5)
             var total = 0.0
             var wanted = 0.0
@@ -106,9 +104,9 @@ test "Float consumers see valid shifted and retained tail values":
 test "String consumers see valid shifted and retained tail values":
     for callback in [false, true]:
         for mode in ["remove", "splice", "clear", "clear_append"]:
-            let values = ["a", "bb", "ccc"]
+            var values = ["a", "bb", "ccc"]
             let clone = values.clone()
-            let seen = (try observe(values, mode, "replacement", callback))
+            let seen = (try observe(var values, mode, "replacement", callback))
             let want = expected(mode, "a", "bb", "ccc", "replacement")
             var text = ""
             for value in seen: text = text + value
@@ -135,11 +133,11 @@ test "record consumers retain shallow references after shrink":
         for mode in ["remove", "splice", "clear", "clear_append"]:
             let first = Payload(1)
             let second = Payload(2)
-            let last = Payload(3)
+            var last = Payload(3)
             let replacement = Payload(9)
-            let values = [first, second, last]
+            var values = [first, second, last]
             let clone = values.clone()
-            let seen = (try observe(values, mode, replacement, callback))
+            let seen = (try observe(var values, mode, replacement, callback))
             let want = expected(mode, first, second, last, replacement)
             var total = 0
             var wanted = 0
@@ -177,8 +175,8 @@ test "alternative consumers retain tags and payloads after shrink":
             let second: Choice = label("bb")
             let last: Choice = number(3)
             let replacement: Choice = label("replacement")
-            let values = [first, second, last]
-            let seen = (try observe(values, mode, replacement, callback))
+            var values = [first, second, last]
+            let seen = (try observe(var values, mode, replacement, callback))
             let want = expected(mode, first, second, last, replacement)
             var total = 0
             var wanted = 0
@@ -203,11 +201,11 @@ test "nested list consumers retain inner handles after shrink":
         for mode in ["remove", "splice", "clear", "clear_append"]:
             let first = [1]
             let second = [2]
-            let last = [3]
+            var last = [3]
             let replacement = [9]
-            let values = [first, second, last]
+            var values = [first, second, last]
             let clone = values.clone()
-            let seen = (try observe(values, mode, replacement, callback))
+            let seen = (try observe(var values, mode, replacement, callback))
             let want = expected(mode, first, second, last, replacement)
             var total = 0
             var wanted = 0
@@ -235,8 +233,8 @@ test "nested list consumers retain inner handles after shrink":
             )
 
 test "map and folds consume valid retained cells":
-    let mapped = [1, 2, 3]
-    let visits = Visits(0)
+    var mapped = [1, 2, 3]
+    var visits = Visits(0)
     let output = mapped.map(
         fn(value):
             if visits.count == 0: mapped.remove(0)
@@ -244,7 +242,7 @@ test "map and folds consume valid retained cells":
             return value + 10
     )
     (output == [11, 13, 13] and mapped == [2, 3]) | try expect_true
-    let folded = [1, 2, 3]
+    var folded = [1, 2, 3]
     visits.count = 0
     let total = folded.fold(
         0,
@@ -258,7 +256,7 @@ test "map and folds consume valid retained cells":
             return accumulator + value
     )
     (total == 6 and folded.is_empty() and visits.count == 3) | try expect_true
-    let reversed = [1, 2, 3]
+    var reversed = [1, 2, 3]
     visits.count = 0
     let backwards = reversed.fold_right(
         0,
@@ -278,14 +276,14 @@ impl ReadValue for Payload:
 test "interface view consumers dispatch after shrink":
     for callback in [false, true]:
         for mode in ["remove", "splice", "clear", "clear_append"]:
-            let last_record = Payload(3)
+            var last_record = Payload(3)
             let first = ReadValue(Payload(1))
             let second = ReadValue(Payload(2))
             let last = ReadValue(last_record)
             let replacement = ReadValue(Payload(9))
-            let values = [first, second, last]
+            var values = [first, second, last]
             let clone = values.clone()
-            let seen = (try observe(values, mode, replacement, callback))
+            let seen = (try observe(var values, mode, replacement, callback))
             let want = expected(mode, first, second, last, replacement)
             var total = 0
             var wanted = 0
@@ -307,41 +305,41 @@ test "interface view consumers dispatch after shrink":
             (not (seen.last().get().read() == 11 and clone.last().get().read() == 11)) | try expect_false
 
 test "find returns the value passed to a mutating predicate":
-    let forward = [1, 2, 3]
+    var forward = [1, 2, 3]
     let found = forward.find(
         fn(value):
             forward.remove(0)
             return value == 1
     )
     (found.get() == 1 and forward == [2, 3]) | try expect_true
-    let replaced = [1, 2, 3]
+    var replaced = [1, 2, 3]
     let original = replaced.find(
         fn(value):
             replaced.set(0, 9)
             return value == 1
     )
     (original.get() == 1 and replaced == [9, 2, 3]) | try expect_true
-    let reverse = [1, 2, 3]
+    var reverse = [1, 2, 3]
     let last = reverse.find_last(
         fn(value):
             if value == 2: reverse.remove(1)
             return value == 2
     )
     (last.get() == 2 and reverse == [1, 3]) | try expect_true
-    let last_replaced = [1, 2, 3]
+    var last_replaced = [1, 2, 3]
     let before = last_replaced.find_last(
         fn(value):
             last_replaced.set(2, 9)
             return value == 3
     )
     (before.get() == 3 and last_replaced == [1, 2, 9]) | try expect_true
-    let indexes = [1, 2, 3]
+    var indexes = [1, 2, 3]
     let index = indexes.find_index(
         fn(value):
             indexes.remove(0)
             return value == 1
     )
-    let reverse_indexes = [1, 2, 3]
+    var reverse_indexes = [1, 2, 3]
     let last_index = reverse_indexes.find_last_index(
         fn(value):
             if value == 2: reverse_indexes.remove(1)
@@ -349,7 +347,7 @@ test "find returns the value passed to a mutating predicate":
     )
     (index.get() == 0 and last_index.get() == 1) | try expect_true
     let record = Payload(1)
-    let records = [record, Payload(2)]
+    var records = [record, Payload(2)]
     let retained = (
         records
         .find(
@@ -370,12 +368,12 @@ test "find returns the value passed to a mutating predicate":
     ) | try expect_false
 
 test "preferred List mutators and explicit reversed copy preserve aliases":
-    let values = [1, 2, 3]
+    var values = [1, 2, 3]
     let alias = values
     let clone = values.clone()
     let set = values.set
     let remove = values.remove
-    let seen: List[Int] = []
+    var seen: List[Int] = []
 
     for value in values:
         seen.append(value)
@@ -393,8 +391,8 @@ test "preferred List mutators and explicit reversed copy preserve aliases":
     let separate = reversed()
     values.set(1, 5)
     (separate == [4, 9, 3] and values == [3, 5, 4]) | try expect_true
-    let child = Payload(1)
-    let children = [child, Payload(2)]
+    var child = Payload(1)
+    var children = [child, Payload(2)]
     let shallow = children.reversed()
     child.value = 7
     children.remove(0)

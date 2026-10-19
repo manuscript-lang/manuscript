@@ -10,11 +10,11 @@ type BytesSource:
     chunk: Int
 
 impl ReadStream for BytesSource:
-    fn close() Unit:
+    var fn close() Unit:
         self.offset = self.data.length()
         return unit
 
-    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
         let remaining = self.data.length() - self.offset
         if remaining <= 0: return ok(none)
 
@@ -66,7 +66,7 @@ impl ReadStream for LimitedStream:
     fn close() Unit:
         return self.input.close()
 
-    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
         if self.remaining <= 0: return ok(none)
 
         let wanted = max_bytes.get(self.remaining)
@@ -92,7 +92,7 @@ type ConcatStream:
     index: Int
 
 impl ReadStream for ConcatStream:
-    fn close() Unit:
+    var fn close() Unit:
         var i = self.index
 
         while i < self.inputs.length():
@@ -102,7 +102,7 @@ impl ReadStream for ConcatStream:
         self.index = self.inputs.length()
         return unit
 
-    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
         while self.index < self.inputs.length():
             let current = self.inputs[self.index]
             let chunk = try current.read(max_bytes)

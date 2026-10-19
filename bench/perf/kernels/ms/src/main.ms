@@ -46,7 +46,7 @@ fn sieve(n: Int) Int:
 
     return count
 
-fn advance(bodies: List[Body], steps: Int) Float:
+fn advance(var bodies: List[Body], steps: Int) Float:
     let n = bodies.length()
     var s = 0
 
@@ -70,8 +70,10 @@ fn advance(bodies: List[Body], steps: Int) Float:
                 b.vx += dx * a.mass * mag
                 b.vy += dy * a.mass * mag
                 b.vz += dz * a.mass * mag
+                bodies.set(j, b)
                 j += 1
 
+            bodies.set(i, a)
             i += 1
 
         i = 0
@@ -81,6 +83,7 @@ fn advance(bodies: List[Body], steps: Int) Float:
             a.x += 0.01 * a.vx
             a.y += 0.01 * a.vy
             a.z += 0.01 * a.vz
+            bodies.set(i, a)
             i += 1
 
         s += 1
@@ -273,14 +276,14 @@ export fn main() Int:
     timed(
         "nbody_200k",
         fn() Int:
-            let bodies = [
+            var bodies = [
                 Body(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 10.0),
                 Body(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0),
                 Body(0.0, 2.0, 0.0, 1.0, 0.0, 0.0, 1.0),
                 Body(0.0, 0.0, 3.0, 0.0, 0.0, 1.0, 1.0),
                 Body(4.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.5)
             ]
-            return (advance(bodies, 200000) * 1000.0).truncate_to_int().get(0)
+            return (advance(var bodies, 200000) * 1000.0).truncate_to_int().get(0)
     )
     timed(
         "life_128x128_50",

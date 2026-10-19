@@ -13,7 +13,7 @@ type Pending:
 impl Error for Pending:
     fn message() String: "pending"
 
-fn counted(counter: Counter) Counter:
+fn counted(var counter: Counter) Counter:
     counter.calls = counter.calls + 1
     return counter
 
@@ -68,14 +68,14 @@ test "conversions and collection queries are callable":
     try expect_true((values.every(fn(n): n > 0)))
 
 test "conversions retain unconstrained payloads nesting and lazy counts":
-    let counter = Counter(0)
+    var counter = Counter(0)
     let present: Optional[Int] = some(0)
     let missing: Optional[Int] = none
-    (require_value(present, counted(counter)).get() != 0 or counter.calls != 1) | try expect_false
+    (require_value(present, counted(var counter)).get() != 0 or counter.calls != 1) | try expect_false
     var cause = require_value(missing, counter).err()
     cause.calls = 2
     counter.calls | try expect_equal(expected: 2)
-    let create = fn() Counter: counted(counter)
+    let create = fn() Counter: counted(var counter)
     (require_lazy(present, create).get() != 0 or counter.calls != 2) | try expect_false
     let error_result = require_lazy(missing, create)
     counter.calls | try expect_equal(expected: 3)

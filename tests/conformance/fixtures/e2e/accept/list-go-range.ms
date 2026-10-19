@@ -3,7 +3,7 @@
 # conform: origin=tests/e2e/testdata/accept/list-go-range.ms
 import {expect_false} from "@std/testing.ms"
 
-fn replace[T](values: List[T], value: T) Unit:
+fn replace[T](var values: List[T], value: T) Unit:
     values.set(1, value)
 
 test "range observes backing writes and keeps initial length":
@@ -31,7 +31,7 @@ test "range observes backing writes and keeps initial length":
 
 test "append growth preserves captured array and current alias":
     let values = [1, 2, 3]
-    let alias = values
+    var alias = values
     let append = values.append
     var seen: List[Int] = []
     var index = 0
@@ -41,7 +41,7 @@ test "append growth preserves captured array and current alias":
 
         if index == 0:
             append(4)
-            replace(alias, 9)
+            replace(var alias, 9)
 
         index += 1
 

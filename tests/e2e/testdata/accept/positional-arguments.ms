@@ -12,12 +12,12 @@ fn pick[T](items: List[T], keep: fn(value: T) Bool) Optional[T]:
 type Counter:
     value: Int = 0
 
-fn mark(counter: Counter, value: Int) Int:
+fn mark(var counter: Counter, value: Int) Int:
     counter.value = counter.value * 10 + value
     return value
 
 fn ordered(
-    counter: Counter,
+    var counter: Counter,
     first: Int = mark(counter, 3),
     second: Int = mark(counter, 4),
     third: Int = 0
@@ -135,13 +135,13 @@ test "methods native APIs function values and contextual labels":
 
 test "written order before omitted defaults and body":
     var counter = Counter()
-    let total = ordered(counter, third: mark(counter, 1), mark(counter, 2))
+    let total = ordered(var counter, third: mark(var counter, 1), mark(var counter, 2))
     try expect_false(total != 7 or counter.value != 1245)
     counter.value = 0
-    let reordered = first(right: mark(counter, 2), mark(counter, 1))
+    let reordered = first(right: mark(var counter, 2), mark(var counter, 1))
     try expect_false(reordered != 1 or counter.value != 21)
     counter.value = 0
-    let record = Record(second: mark(counter, 2), mark(counter, 1))
+    let record = Record(second: mark(var counter, 2), mark(var counter, 1))
     try expect_false((record.first != 1 or record.second != 2 or counter.value != 21))
     var early = 7
     let selected = first(
@@ -164,11 +164,11 @@ test "written order before omitted defaults and body":
     try expect_equal(result, 7)
 
 test "callable expression precedes positional arguments":
-    let counter = Counter()
+    var counter = Counter()
     let factory = fn() fn(amount: Int, deduction: Int) Int:
-        mark(counter, 1)
+        mark(var counter, 1)
         return subtract
-    let result = factory()(mark(counter, 2), mark(counter, 3))
+    let result = factory()(mark(var counter, 2), mark(var counter, 3))
     try expect_false(result != -1 or counter.value != 123)
 
 test "mutable callable value is captured before arguments":

@@ -26,7 +26,7 @@ type Resource:
     id: Int
 
 impl Closeable for Resource:
-    fn close() Unit:
+    var fn close() Unit:
         self.order.append(self.id)
 
 fn leave(order: List[Int]) Int:

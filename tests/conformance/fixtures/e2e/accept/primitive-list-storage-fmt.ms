@@ -4,7 +4,7 @@
 import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import range from "@std/collections.ms"
 
-fn append_value[T](values: List[T], value: T) List[T]:
+fn append_value[T](var values: List[T], value: T) List[T]:
     values.append(value)
     return values
 
@@ -16,11 +16,11 @@ type Lists:
 
 test "primitive storage retains generic record Optional and saved aliases":
     var values = [9223372036854775807, -9223372036854775808]
-    let record = Lists(values)
+    var record = Lists(values)
     let wrapped: Optional[List[Int]] = some(values)
     let append = forwarded(values).append
     for i in range(0, 4096):
-        append_value(record.values, i)
+        append_value(var record.values, i)
     append(17)
     wrapped.get().set(0, 41)
     try expect_false(

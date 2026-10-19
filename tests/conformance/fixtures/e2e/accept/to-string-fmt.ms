@@ -42,7 +42,7 @@ fn answer() Int:
 type Counter:
     value: Int
 
-fn next(state: Counter) Person:
+fn next(var state: Counter) Person:
     let value = state.value
     state.value = value + 1
     return Person(name: "Ada", age: value)
@@ -118,14 +118,14 @@ test "generics views bound methods functions and resources":
     (try check(value: "{queue}", expected: "[object]"))
 
 test "interpolation and bound conversion evaluate each receiver once":
-    let state = Counter(value: 1)
+    var state = Counter(value: 1)
     (
         try check(
-            value: "{next(state)}|{next(state)}",
+            value: "{next(var state)}|{next(var state)}",
             expected: "Person(age: 1, name: Ada)|Person(age: 2, name: Ada)"
         )
     )
-    let convert = next(state).to_string
+    let convert = next(var state).to_string
     (try check(value: convert(), expected: "Person(age: 3, name: Ada)"))
     (try check(value: convert(), expected: "Person(age: 3, name: Ada)"))
     (try check(value: state.value.to_string(), expected: "4"))

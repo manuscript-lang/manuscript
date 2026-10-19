@@ -7,7 +7,7 @@ import range from "@std/collections.ms"
 export type Rng:
     state: Int
 
-export fn next(rng: Rng, bound: Int) Int:
+export fn next(var rng: Rng, bound: Int) Int:
     rng.state = (rng.state * 1103515245 + 12345) % 2147483648
     return (rng.state / 65536) % bound
 
@@ -17,17 +17,17 @@ let pieces = [
     "*a", "!", "|", ">", "%", "---", "...", "@", "`", "?", "="
 ]
 
-export fn text(rng: Rng) String:
+export fn text(var rng: Rng) String:
     var out = ""
-    for piece in range(0, next(rng, 4)):
-        out += pieces[next(rng, pieces.length())]
+    for piece in range(0, next(var rng, 4)):
+        out += pieces[next(var rng, pieces.length())]
     return out
 
 # Deletes, inserts or replaces one character-sized piece of source text.
-export fn mutate(rng: Rng, source: String) String:
+export fn mutate(var rng: Rng, source: String) String:
     var chars = source.chars()
-    let at = next(rng, chars.length() + 1)
-    let kind = next(rng, 3)
+    let at = next(var rng, chars.length() + 1)
+    let kind = next(var rng, 3)
     if kind != 1 and at < chars.length(): chars.remove(at)
-    if kind != 0: chars.insert(at, pieces[next(rng, pieces.length())])
+    if kind != 0: chars.insert(at, pieces[next(var rng, pieces.length())])
     return chars.join("")

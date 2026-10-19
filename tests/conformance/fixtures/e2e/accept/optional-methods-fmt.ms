@@ -7,7 +7,7 @@ import JsonLimits from "@std/json.ms"
 type Counter:
     calls: Int
 
-fn fallback(counter: Counter) Int:
+fn fallback(var counter: Counter) Int:
     counter.calls += 1
     return 42
 
@@ -33,10 +33,10 @@ test "Optional presence and extraction preserve false and zero":
 test "Optional fallbacks distinguish eager and lazy evaluation":
     let present: Optional[Int] = some(0)
     let missing: Optional[Int] = none
-    let counter = Counter(0)
-    try expect_equal(present.get(fallback(counter)), 0)
+    var counter = Counter(0)
+    try expect_equal(present.get(fallback(var counter)), 0)
     try expect_equal(counter.calls, 1)
-    let create = fn(): some(fallback(counter))
+    let create = fn(): some(fallback(var counter))
     try expect_equal(present.or_else(create).get(), 0)
     try expect_equal(counter.calls, 1)
     try expect_equal(missing.or_else(create).get(), 42)

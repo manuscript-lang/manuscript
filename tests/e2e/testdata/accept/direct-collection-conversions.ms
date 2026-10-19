@@ -1,6 +1,6 @@
 import {expect_equal, expect_false} from "@std/testing.ms"
 
-fn append_generic[T](values: List[Optional[T]], value: T) Unit:
+fn append_generic[T](var values: List[Optional[T]], value: T) Unit:
     values.append(value)
 
 type Failure:
@@ -12,7 +12,7 @@ impl Error for Failure:
 test "direct append preserves checked argument conversions":
     var values: List[Optional[Int]] = []
     values.append(7)
-    append_generic(values, 8)
+    append_generic(var values, 8)
     values.append(none)
     try expect_false(values.get(0).get() != 7 or values.get(1).get() != 8)
     try expect_false(not values.get(2).is_none())

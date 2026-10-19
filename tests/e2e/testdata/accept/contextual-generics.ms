@@ -30,11 +30,11 @@ fn consume(value: Optional[Int]) Int: value.get(0)
 type Events:
     values: List[Int]
 
-fn record[T](events: Events, value: Int) Optional[T]:
+fn record[T](var events: Events, value: Int) Optional[T]:
     events.values.append(value)
     return none
 
-fn combine[T](events: Events, first: Optional[T], second: Optional[T]) Optional[T]:
+fn combine[T](var events: Events, first: Optional[T], second: Optional[T]) Optional[T]:
     events.values.append(3)
     return first
 
@@ -57,11 +57,11 @@ test "expected generic results preserve behavior and call order":
     )
     try expect_equal(defaulted(8), 9)
     try expect_equal(consume(identity(5)), 5)
-    let events = Events([])
+    var events = Events([])
     let combined: Optional[Int] = combine(
-        events,
-        second: record(events, 2),
-        first: record(events, 1)
+        var events,
+        second: record(var events, 2),
+        first: record(var events, 1)
     )
     try expect_false(not combined.is_none())
     try expect_equal(events.values, [2, 1, 3])
