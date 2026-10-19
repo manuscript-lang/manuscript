@@ -379,8 +379,8 @@ pub fn aes_cbc_encrypt(key: &[u8], iv: &[u8], plaintext: &[u8]) -> Result<Vec<u8
     buf.resize(plaintext.len() + pad, pad as u8);
     with_aes!(key, A => {
         let mut c = cbc::Encryptor::<A>::new_from_slices(key, iv).map_err(|_| CryptoFail::InvalidInput)?;
-        for block in buf.chunks_exact_mut(16) {
-            c.encrypt_block(<&mut [u8; 16]>::try_from(block).expect("16-byte block").into());
+        for block in buf.as_chunks_mut::<16>().0 {
+            c.encrypt_block(block.into());
         }
     });
     Ok(buf)
@@ -397,8 +397,8 @@ pub fn aes_cbc_decrypt(key: &[u8], iv: &[u8], ciphertext: &[u8]) -> Result<Vec<u
     let mut buf = ciphertext.to_vec();
     with_aes!(key, A => {
         let mut c = cbc::Decryptor::<A>::new_from_slices(key, iv).map_err(|_| CryptoFail::InvalidInput)?;
-        for block in buf.chunks_exact_mut(16) {
-            c.decrypt_block(<&mut [u8; 16]>::try_from(block).expect("16-byte block").into());
+        for block in buf.as_chunks_mut::<16>().0 {
+            c.decrypt_block(block.into());
         }
     });
     let pad = usize::from(*buf.last().unwrap_or(&0));

@@ -359,6 +359,11 @@ verify_shim!(msrt_crypto_rsa_verify_pss, crate::asym::rsa_verify_pss);
 mod tests {
     use super::*;
     use ms_rt as _; // links the msrt_* runtime symbols
+    extern crate std;
+    use std::sync::Mutex;
+
+    /// The runtime allocator is not thread safe: tests take turns.
+    static SERIAL: Mutex<()> = Mutex::new(());
 
     fn bytes(b: &[u8]) -> VecVal {
         let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
@@ -376,6 +381,7 @@ mod tests {
 
     #[test]
     fn hasher_roundtrip() {
+        let _turn = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
         let key = bytes(b"k");
         let a = bytes(b"hello ");
         let b = bytes(b"world");
@@ -395,6 +401,7 @@ mod tests {
     }
     #[test]
     fn asym_roundtrip() {
+        let _turn = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
         let (data, other) = (bytes(b"m"), bytes(b"n"));
         let mut sk = core::mem::MaybeUninit::<VecVal>::uninit();
         let mut pk = core::mem::MaybeUninit::<VecVal>::uninit();

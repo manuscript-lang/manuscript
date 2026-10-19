@@ -737,7 +737,7 @@ mod tests {
 case "$1" in
 0) echo "hello from pass"; echo "note" >&2; exit 0;;
 1) printf '\001FAIL\001boom\n  at src/a.ms:3:4 in m::fail\n' >&2; exit 1;;
-2) kill -SEGV $$;;
+2) ulimit -c 0; kill -SEGV $$;;
 3) sleep 30;;
 esac
 "#;
