@@ -129,6 +129,9 @@ msrt_float_to_string(v: f64) -> *mut StrObj
 msrt_bool_to_string(v: u8) -> *mut StrObj
 msrt_int_to_string_radix(v: i64, radix: i64) -> *mut StrObj
 msrt_string_quote(s: *const StrObj) -> *mut StrObj
+msrt_trap_begin() -> u8
+msrt_trap_end() -> !
+msrt_trap_wait(out: *mut *mut StrObj) -> u8
 msrt_list_new(out: *mut VecVal)
 msrt_list_with_capacity( d: *const TypeDesc, cap: i64, out: *mut VecVal, )
 msrt_list_drop(v: *mut VecVal, d: *const TypeDesc)

@@ -28,6 +28,7 @@ pub mod profile;
 pub mod start;
 pub mod string;
 pub mod sys;
+pub mod trap;
 pub mod utf8;
 pub mod vec;
 
