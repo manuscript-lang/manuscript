@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = -7458852240\ns2 = [日本語]\ns3 = [-30484:Tab\there]\nquote\"d\nl4 = [19, -11] len 2\ni5 = 3\nl6 = [-11, 19] len 2\ncollatz(1262) = 39\n",
+    "stderr": ""
+  }
+}

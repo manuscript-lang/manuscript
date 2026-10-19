@@ -1,0 +1,3 @@
+# conform: tags=aliasing,alternatives,closures,control-flow,diagnostics,faults,interpolation,lists,maps,match,modules,mutation,numbers,projects,records,stdlib-io,stdlib-time,strings,tier-io,try-result
+# conform: phase=check
+# conform: origin=bench/perf/kernels/ms

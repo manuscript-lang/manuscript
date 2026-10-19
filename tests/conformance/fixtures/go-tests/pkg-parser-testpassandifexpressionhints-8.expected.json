@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1001",
+        "phase": "parse",
+        "message": "an unmatched closing brace must be escaped; write \\} for a literal brace (and \\{ for the opening brace), or open an interpolation with {expression}",
+        "position": {
+          "file": "pkg-parser-testpassandifexpressionhints-8.ms",
+          "line": 5,
+          "column": 15,
+          "offset": 168
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

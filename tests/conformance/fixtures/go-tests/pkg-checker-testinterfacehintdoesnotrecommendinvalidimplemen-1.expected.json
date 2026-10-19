@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Shape, found Int; use a concrete value implementing Shape and create its explicit interface view with Shape(value: ...)",
+        "position": {
+          "file": "pkg-checker-testinterfacehintdoesnotrecommendinvalidimplemen-1.ms",
+          "line": 6,
+          "column": 15,
+          "offset": 242
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-checker-testinterfacehintdoesnotrecommendinvalidimplemen-1.ms:6:15: type: expected Shape, found Int; use a concrete value implementing Shape and create its explicit interface view with Shape(value: ...)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

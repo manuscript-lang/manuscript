@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = 796.916\ni2 = -54291\nl3 = [-13, 18, 27] len 3\nbetaMiXeD CaSe\ni4 = -108582\ns5 = [emoji 😀d\"etouq]\nb6 = false\nfact(11) = 39916800\nf7 = 0.5\nl8 = [-13, 18, 27] len 3\nl9 = [20] len 1\nl10 = [20, 20] len 2\nf11 = 0.5\nemoji 😀d\"etouqemoji 😀\n0 908316124405 true sum 908316124405\ni12 = 20\ncollatz(2820) = 35\ns13 = [QUOTE\"DALPHA]\n",
+    "stderr": ""
+  }
+}

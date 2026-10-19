@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "let price = discount(price: 20d, percent: 10d).get(0d)\nlet text = discount(price: 20d, percent: 10d).map(fn(value): value.to_string())\n"
+  }
+}

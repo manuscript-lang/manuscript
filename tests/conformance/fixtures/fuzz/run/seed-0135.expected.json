@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "acc1 = 58\nb2 = false\nacc3 = 54\ni4 = 13\ni5 = -15\ni6 = 4\ns7 = [  padded  ]\nbrace{s}\nb8 = true\nb9 = false\nacc10 = 147\ni11 = -365957007900\ni12 = 10\n508489 17 false sum 508506\n",
+    "stderr": ""
+  }
+}

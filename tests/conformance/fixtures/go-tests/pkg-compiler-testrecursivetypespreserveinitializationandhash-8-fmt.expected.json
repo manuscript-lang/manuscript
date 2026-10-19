@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn hash[T: Hashable](value: T) Int: return value.hash()\n\nfn f(node: Node) Int: return hash(node)\n"
+  }
+}

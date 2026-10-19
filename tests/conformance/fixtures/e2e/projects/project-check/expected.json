@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "file not found: src/main.ms; check the path, pass a .ms file or a project ms.toml, and run from the directory that contains it",
+        "position": {
+          "file": "ms.toml",
+          "line": 4,
+          "column": 9,
+          "offset": 56
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/ms.toml:4:9: resolution: file not found: src/main.ms; check the path, pass a .ms file or a project ms.toml, and run from the directory that contains it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

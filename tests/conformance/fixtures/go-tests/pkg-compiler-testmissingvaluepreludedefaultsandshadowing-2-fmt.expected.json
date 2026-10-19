@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type Other:\n    case Missing(value: Int)\n\nfn other() Other: Other.Missing(1)\n\nfn standard() MissingValue: MissingValue.Missing(\"location\")\n\nfn read(value: Other) Int:\n    match value:\n        Missing(found): return found\n"
+  }
+}

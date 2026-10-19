@@ -1,0 +1,100 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "list-shrink-consumers.ms::Int consumers see valid shifted and retained tail values",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "list-shrink-consumers.ms::Float consumers see valid shifted and retained tail values",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "list-shrink-consumers.ms::String consumers see valid shifted and retained tail values",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "list-shrink-consumers.ms::record consumers retain shallow references after shrink",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "list-shrink-consumers.ms::alternative consumers retain tags and payloads after shrink",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "list-shrink-consumers.ms::nested list consumers retain inner handles after shrink",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "list-shrink-consumers.ms::map and folds consume valid retained cells",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "list-shrink-consumers.ms::interface view consumers dispatch after shrink",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "list-shrink-consumers.ms::find returns the value passed to a mutating predicate",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "list-shrink-consumers.ms::preferred List mutators and explicit reversed copy preserve aliases",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 10,
+        "selected": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN list-shrink-consumers.ms::Int consumers see valid shifted and retained tail values\nPASS list-shrink-consumers.ms::Int consumers see valid shifted and retained tail values\nRUN list-shrink-consumers.ms::Float consumers see valid shifted and retained tail values\nPASS list-shrink-consumers.ms::Float consumers see valid shifted and retained tail values\nRUN list-shrink-consumers.ms::String consumers see valid shifted and retained tail values\nPASS list-shrink-consumers.ms::String consumers see valid shifted and retained tail values\nRUN list-shrink-consumers.ms::record consumers retain shallow references after shrink\nPASS list-shrink-consumers.ms::record consumers retain shallow references after shrink\nRUN list-shrink-consumers.ms::alternative consumers retain tags and payloads after shrink\nPASS list-shrink-consumers.ms::alternative consumers retain tags and payloads after shrink\nRUN list-shrink-consumers.ms::nested list consumers retain inner handles after shrink\nPASS list-shrink-consumers.ms::nested list consumers retain inner handles after shrink\nRUN list-shrink-consumers.ms::map and folds consume valid retained cells\nPASS list-shrink-consumers.ms::map and folds consume valid retained cells\nRUN list-shrink-consumers.ms::interface view consumers dispatch after shrink\nPASS list-shrink-consumers.ms::interface view consumers dispatch after shrink\nRUN list-shrink-consumers.ms::find returns the value passed to a mutating predicate\nPASS list-shrink-consumers.ms::find returns the value passed to a mutating predicate\nRUN list-shrink-consumers.ms::preferred List mutators and explicit reversed copy preserve aliases\nPASS list-shrink-consumers.ms::preferred List mutators and explicit reversed copy preserve aliases\n10 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

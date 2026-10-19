@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
+        "position": {
+          "file": "learn-tour-6.ms",
+          "line": 10,
+          "column": 15,
+          "offset": 295
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
+        "position": {
+          "file": "learn-tour-6.ms",
+          "line": 11,
+          "column": 23,
+          "offset": 333
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
+        "position": {
+          "file": "learn-tour-6.ms",
+          "line": 12,
+          "column": 16,
+          "offset": 378
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/learn-tour-6.ms:10:15: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/learn-tour-6.ms:11:23: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/learn-tour-6.ms:12:16: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

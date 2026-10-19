@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected ')', found '|'; close the parenthesis, separating items with commas",
+        "position": {
+          "file": "pkg-tooling-lsp-testpreludetypecompletionrespectsshadowing-5.ms",
+          "line": 4,
+          "column": 31,
+          "offset": 191
+        },
+        "end": {
+          "file": "pkg-tooling-lsp-testpreludetypecompletionrespectsshadowing-5.ms",
+          "line": 4,
+          "column": 32,
+          "offset": 192
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

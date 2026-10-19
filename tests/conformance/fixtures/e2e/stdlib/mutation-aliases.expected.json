@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "mutation-aliases.ms::Map remove direct and bound preserve aliases order and no-op absence",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "mutation-aliases.ms::Map remove captures its receiver before the key and keeps conversions",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "mutation-aliases.ms::Map explicit and bound interface views preserve field shadowing",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "mutation-aliases.ms::List splice direct and bound retain self staging and receiver returns",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "mutation-aliases.ms::List splice preserves shallow replacement references and Optional elements",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "mutation-aliases.ms::List explicit and bound interface views preserve field shadowing",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "mutation-aliases.ms::List splice through a dispatched view follows reviewed Go range shrink semantics",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN mutation-aliases.ms::Map remove direct and bound preserve aliases order and no-op absence\nPASS mutation-aliases.ms::Map remove direct and bound preserve aliases order and no-op absence\nRUN mutation-aliases.ms::Map remove captures its receiver before the key and keeps conversions\nPASS mutation-aliases.ms::Map remove captures its receiver before the key and keeps conversions\nRUN mutation-aliases.ms::Map explicit and bound interface views preserve field shadowing\nPASS mutation-aliases.ms::Map explicit and bound interface views preserve field shadowing\nRUN mutation-aliases.ms::List splice direct and bound retain self staging and receiver returns\nPASS mutation-aliases.ms::List splice direct and bound retain self staging and receiver returns\nRUN mutation-aliases.ms::List splice preserves shallow replacement references and Optional elements\nPASS mutation-aliases.ms::List splice preserves shallow replacement references and Optional elements\nRUN mutation-aliases.ms::List explicit and bound interface views preserve field shadowing\nPASS mutation-aliases.ms::List explicit and bound interface views preserve field shadowing\nRUN mutation-aliases.ms::List splice through a dispatched view follows reviewed Go range shrink semantics\nPASS mutation-aliases.ms::List splice through a dispatched view follows reviewed Go range shrink semantics\n7 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

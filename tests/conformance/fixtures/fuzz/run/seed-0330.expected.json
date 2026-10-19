@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "fact(18) = 6402373705728000\ni1 = -33848\nf2 = 200000\n-33890 0 true sum -33890\ni3 = -33848\ns4 = [NAÏVE]\ni5 = 235356\nfib(16) = 987\nfib(10) = 55\n",
+    "stderr": ""
+  }
+}

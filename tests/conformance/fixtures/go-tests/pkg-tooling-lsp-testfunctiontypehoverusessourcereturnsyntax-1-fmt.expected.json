@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn double(value: Int) Int: value * 2\n\nfn run() Int: double(2)\n"
+  }
+}

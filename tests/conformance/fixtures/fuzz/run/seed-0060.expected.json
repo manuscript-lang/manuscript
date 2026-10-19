@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "l1 = [] len 0\ni2 = 21\ngcd(4844, 2932) = 4\ni3 = 21\ngcd(2487, 4064) = 1\ns4 = [beta]\ni5 = -968522\n-399 392495376222 true sum 392495375823\nf6 = 1051.5007051518483\nb7 = false\ni8 = 5\ni9 = 0\ns10 = [hello world]\nbetabeta\n",
+    "stderr": ""
+  }
+}

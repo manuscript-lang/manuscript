@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected '=', found '=='",
+        "position": {
+          "file": "seed-0006.ms",
+          "line": 20,
+          "column": 12,
+          "offset": 648
+        },
+        "end": {
+          "file": "seed-0006.ms",
+          "line": 20,
+          "column": 14,
+          "offset": 650
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 0\ni2 = -42\ns3 = [0:0:deltamsline\nbreak]\n-13 -42 false sum -55\n0:0:deltamsline\nbreak\n日本語\ni4 = -42\ni5 = 49\ni6 = -13\ns7 = [brace{s}]\n-4294818 0 true sum -4294818\n0 374894 true sum 374894\nb8 = true\n",
+    "stderr": ""
+  }
+}

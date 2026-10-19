@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type Choice[T]:\n    case Found(value: T)\n    case Missing\n\nfn f(c: Choice[Int], o: Optional[Int]) Int:\n    match o:\n        Optional.some(n): return n\n        Optional.none: return 0\n\n    match c:\n        Choice.Found(v): return v\n        Choice.Missing: return 0\n"
+  }
+}

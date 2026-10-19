@@ -1,0 +1,9 @@
+# conform: tags=diagnostics,modules,stdlib-compress,stdlib-crypto,tier-stdlib
+# conform: phase=check
+# conform: origin=pkg/compiler/codec_selectors_test.go:38 TestTypedCodecSelectorsRejectInvalidCasesAndTypes
+import HashAlgorithm from "@std/crypto.ms"
+import CompressionFormat from "@std/compress.ms"
+fn choose(algorithm: HashAlgorithm) Unit:
+    return unit
+fn wrong() Unit:
+    choose(CompressionFormat.Gzip)

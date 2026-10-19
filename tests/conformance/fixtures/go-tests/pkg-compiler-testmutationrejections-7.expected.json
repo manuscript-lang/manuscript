@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "pkg-compiler-testmutationrejections-7.ms",
+          "line": 4,
+          "column": 13,
+          "offset": 147
+        }
+      },
+      {
+        "code": "MS3060",
+        "phase": "type",
+        "message": "cannot assign immutable binding value; declare it with 'var value = ...' instead of 'let'",
+        "position": {
+          "file": "pkg-compiler-testmutationrejections-7.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 162
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Val; declare it with 'let Val = ...' before use, define 'fn Val(...)', or import it from a module",
+        "position": {
+          "file": "pkg-compiler-testmutationrejections-7.ms",
+          "line": 5,
+          "column": 13,
+          "offset": 170
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-compiler-testmutationrejections-7.ms:4:13: resolution: unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it\n<DIR>/pkg-compiler-testmutationrejections-7.ms:5:5: type: cannot assign immutable binding value; declare it with 'var value = ...' instead of 'let'\n<DIR>/pkg-compiler-testmutationrejections-7.ms:5:13: resolution: unknown binding Val; declare it with 'let Val = ...' before use, define 'fn Val(...)', or import it from a module\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

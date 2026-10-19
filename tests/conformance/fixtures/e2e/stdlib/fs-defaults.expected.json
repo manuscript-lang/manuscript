@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "fs-defaults.ms::filesystem writes default to exclusive creation through aliases and bounds",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "fs-defaults.ms::filesystem file copies default to no replacement and retain byte limits",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "fs-defaults.ms::filesystem tree copies default to no replacement with distinct budgets",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "fs-defaults.ms::filesystem directory creation defaults to requiring an existing parent",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "fs-defaults.ms::filesystem removal defaults to retaining nonempty trees",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "fs-defaults.ms::filesystem default preparation retains written argument order",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN fs-defaults.ms::filesystem writes default to exclusive creation through aliases and bounds\nPASS fs-defaults.ms::filesystem writes default to exclusive creation through aliases and bounds\nRUN fs-defaults.ms::filesystem file copies default to no replacement and retain byte limits\nPASS fs-defaults.ms::filesystem file copies default to no replacement and retain byte limits\nRUN fs-defaults.ms::filesystem tree copies default to no replacement with distinct budgets\nPASS fs-defaults.ms::filesystem tree copies default to no replacement with distinct budgets\nRUN fs-defaults.ms::filesystem directory creation defaults to requiring an existing parent\nPASS fs-defaults.ms::filesystem directory creation defaults to requiring an existing parent\nRUN fs-defaults.ms::filesystem removal defaults to retaining nonempty trees\nPASS fs-defaults.ms::filesystem removal defaults to retaining nonempty trees\nRUN fs-defaults.ms::filesystem default preparation retains written argument order\nPASS fs-defaults.ms::filesystem default preparation retains written argument order\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

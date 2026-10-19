@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn identity(value: Int) Int:\n    return value\n\nlet exact: fn(value: Int) Int = identity\n# Rejected: amount differs from value.\nlet relabeled: fn(amount: Int) Int = identity\n"
+  }
+}

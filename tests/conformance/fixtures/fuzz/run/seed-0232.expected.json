@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [MIXED CASE日本語]\ni2 = 0\ns3 = [-20:MIXED CASE日本語]\ns4 = [0:brace{s}naïve-20:日本語]\nb5 = false\nf6 = 2.442\ni7 = 13\nb8 = true\nl9 = [] len 0\ns10 = [X]\ni11 = -36811410622\n",
+    "stderr": ""
+  }
+}

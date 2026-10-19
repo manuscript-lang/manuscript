@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "impl Error for Result:\n    fn message() String:\n        return \"x\"\n\nfn general(value: Result) Error:\n    return value\n"
+  }
+}

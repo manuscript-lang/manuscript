@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn work() Unit:\n    try expect_false(\n        try parse(\"\\\"line\\r\\n\\r\\nbreak\\\"\\r\\n\\\"\\\"\\r\\n\", options) != [\n            [\"line\\n\\nbreak\"],\n            [\"\"]\n        ]\n    )\n"
+  }
+}

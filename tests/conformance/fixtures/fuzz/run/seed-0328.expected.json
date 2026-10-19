@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "brace{s}delta\nolléh\nf1 = 7.5\nf2 = 189.91889016452876\nacc3 = 7\ni4 = -29\nf5 = 7.5\nl6 = [23, 19] len 2\nf7 = -4359.677416254554\ni8 = 789253184914\ni9 = -29\n",
+    "stderr": ""
+  }
+}

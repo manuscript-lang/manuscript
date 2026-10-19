@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {expect_equal} from \"@std/testing.ms\"\n\nfn echo(value: String) String:\n    return value\n\ntest \"text source forms\":\n    try expect_equal(echo(\"\\{literal\\}\"), \"\\{literal\\}\")\n    try expect_equal(\"\\u{1F600}\", \"😀\")\n    try expect_equal(\"value: {3}\", \"value: 3\")\n    let _no_value: Unit = unit\n"
+  }
+}

@@ -12,6 +12,7 @@ pub mod compare;
 pub mod exec;
 pub mod fixture;
 pub mod fuzz;
+pub mod harvest;
 pub mod json;
 pub mod observe;
 pub mod record;

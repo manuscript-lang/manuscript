@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [x]\nl2 = [] len 0\ns3 = [emoji 😀]\ns4 = [ms]\ngcd(1471, 4071) = 1\nf5 = NaN\nb6 = false\ni7 = 266185931116\nx\ni8 = -18\nb9 = false\ni10 = -266185931116\nl11 = [] len 0\n0 -266185931980 false sum -266185931980\nfact(4) = 24\n",
+    "stderr": ""
+  }
+}

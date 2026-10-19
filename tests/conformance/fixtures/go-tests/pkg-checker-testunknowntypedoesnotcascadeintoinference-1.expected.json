@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms",
+          "line": 4,
+          "column": 69,
+          "offset": 271
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms",
+          "line": 4,
+          "column": 100,
+          "offset": 302
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms",
+          "line": 7,
+          "column": 80,
+          "offset": 443
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Int, found String",
+        "position": {
+          "file": "pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms",
+          "line": 8,
+          "column": 26,
+          "offset": 496
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:4:69: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:4:100: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:7:80: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:8:26: type: expected Int, found String\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

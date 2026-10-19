@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn copy[T](value: T) T: return value\n\nexport type Box[T]:\n    value: T\n    copied: T = copy(value)\n    items: List[T] = [value]\n"
+  }
+}

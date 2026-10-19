@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "l1 = [10] len 1\ni2 = -5088138\nMiXeD CaSedelta\nl3 = [] len 0\nb4 = true\ns5 = [line\nbreak]\nb6 = true\nline\nbreakline\nbreak\ns7 = [line\nbreak]\nl8 = [] len 0\nl9 = [-1, 15, -19] len 3\ns10 = [beta]\nb11 = false\nb12 = false\n",
+    "stderr": ""
+  }
+}

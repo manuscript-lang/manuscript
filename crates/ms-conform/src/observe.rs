@@ -66,6 +66,13 @@ pub fn normalize_text(text: &str, work: &Path) -> String {
     for s in spellings {
         out = out.replace(&s, "<DIR>");
     }
+    // Imports such as `../a.ms` name the scratch root, whose name carries a process id.
+    if let Some(root) = work.parent() {
+        out = out.replace(root.to_string_lossy().as_ref(), "<SCRATCH>");
+        if let Ok(real) = fs::canonicalize(root) {
+            out = out.replace(real.to_string_lossy().as_ref(), "<SCRATCH>");
+        }
+    }
     out
 }
 
@@ -193,7 +200,13 @@ fn parse_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
     let fmt_out = ctx.invoke(fx, &["fmt", entry], work, b"");
     if fmt_out.code == 0 {
         let formatted = fs::read_to_string(work.join(entry)).unwrap_or_default();
-        o.set("fmt", Json::str(formatted));
+        // The metadata header is a comment block at the top; retagging must not move expectations.
+        let skip: usize = formatted
+            .lines()
+            .take(crate::fixture::header_len(&formatted))
+            .map(|l| l.len() + 1)
+            .sum();
+        o.set("fmt", Json::str(&formatted[skip.min(formatted.len())..]));
     } else {
         o.set("fmt", Json::Null);
         o.set("fmt_exit_code", Json::int(fmt_out.code as i64));
@@ -272,6 +285,10 @@ mod tests {
         assert_eq!(
             normalize_text("at /tmp/ms-conform-x/w1/a.ms:3", work),
             "at <DIR>/a.ms:3"
+        );
+        assert_eq!(
+            normalize_text("looked for /tmp/ms-conform-x/a.ms", work),
+            "looked for <SCRATCH>/a.ms"
         );
     }
 

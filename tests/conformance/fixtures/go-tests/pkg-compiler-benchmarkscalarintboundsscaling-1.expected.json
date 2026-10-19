@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)",
+        "position": {
+          "file": "pkg-compiler-benchmarkscalarintboundsscaling-1.ms",
+          "line": 4,
+          "column": 1,
+          "offset": 155
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-compiler-benchmarkscalarintboundsscaling-1.ms:4:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

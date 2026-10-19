@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "emoji 😀\nb1 = false\ns2 = [-865459:gamma]\nf3 = 553065.0943583993\nfib(39) = 63245986\nb4 = false\nacc5 = 6\nf6 = Infinity\nb7 = true\nl8 = [] len 0\nf9 = 226.76\n",
+    "stderr": ""
+  }
+}

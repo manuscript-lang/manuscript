@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "acc1 = 70\ni2 = -306376668\ni3 = 29\n26 17769848426 true sum 17769848452\ni4 = 25\ncollatz(781) = 121\ni5 = -140\ni6 = -7353036096\nl7 = [29] len 1\nacc8 = -30\ni9 = -293698179\nf10 = 0\ni11 = -27412\ns12 = [atled]\ns13 = [héllo]\ni14 = -10\nb15 = true\n",
+    "stderr": ""
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {expect_equal, expect_error} from \"@std/testing.ms\"\nimport {parse, JsonError} from \"@std/json.ms\"\n\ntype Config:\n    port: Int = 8080\n\nfn port_of(text: String) Result[Int, Error]:\n    return ok(try parse[Config](text) | .port)\n\ntest \"configuration defaults\":\n    try expect_equal(try port_of(\"\\{\\}\"), 8080)\n    try expect_equal(try port_of(\"\\{\\\"port\\\": 9000\\}\"), 9000)\n\ntest \"configuration rejects a wrong type\":\n    try expect_error(parse[Config](\"\\{\\\"port\\\": true\\}\")) | try expect_equal(\n        JsonError.InvalidData\n    )\n"
+  }
+}

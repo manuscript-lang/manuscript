@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [DLROW OLLEH]\nl2 = [16, -10, 16, 7, -17] len 5\nl3 = [-17, 7, 16, -10, 16] len 5\nl4 = [-17, -10, 7, 16, 16] len 5\ni5 = -12920\ni6 = 16\ni7 = -17\ni8 = 4\nf9 = 630382954.8731403\nacc10 = 18\ni11 = -17\ni12 = 163549\ni13 = 10825745520\n",
+    "stderr": ""
+  }
+}

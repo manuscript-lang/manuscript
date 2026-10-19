@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import DomainFailure from \"./domain.ms\"\n\nimpl Error for DomainFailure:\n    fn message() String:\n        return \"second {self.code}\"\n\nexport fn second_error(cause: DomainFailure) Error:\n    return cause\n\nexport fn relay(cause: Error) Result[Unit, Error]:\n    return error(cause)\n"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = -264899694745120032\nb2 = false\nb3 = false\nf4 = 6e+23\nb5 = false\ni6 = 18\nMiXeD CaSe\nl7 = [] len 0\nb8 = false\ns9 = [naïveEMOJI 😀24]\ni10 = 530\nb11 = false\nbrace{s}\nacc12 = -45\nfact(0) = 1\nb13 = true\nf14 = 6e+23\nb15 = false\ns16 = [42😀 ijomeevïan24]\n",
+    "stderr": ""
+  }
+}

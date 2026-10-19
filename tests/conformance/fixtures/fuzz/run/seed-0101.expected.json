@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [MiXeD CaSegamma]\nf2 = -1.459016393442623\ni3 = -9\n15 -43 false sum -28\ni4 = -9\ns5 = [MiXeD CaSegamma]\ngcd(4638, 1505) = 1\ni6 = -746264\n",
+    "stderr": ""
+  }
+}

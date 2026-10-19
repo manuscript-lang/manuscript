@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "extra operation compare; Equal declares: equals (remove it or add it to the interface)",
+        "position": {
+          "file": "pkg-build-testgenericrecursionandnamespacerules-5.ms",
+          "line": 7,
+          "column": 8,
+          "offset": 234
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "missing implementation operation equals; add fn equals(other: Equal) Bool to this impl",
+        "position": {
+          "file": "pkg-build-testgenericrecursionandnamespacerules-5.ms",
+          "line": 6,
+          "column": 1,
+          "offset": 206
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-build-testgenericrecursionandnamespacerules-5.ms:7:8: type: extra operation compare; Equal declares: equals (remove it or add it to the interface)\n<DIR>/pkg-build-testgenericrecursionandnamespacerules-5.ms:6:1: type: missing implementation operation equals; add fn equals(other: Equal) Bool to this impl\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

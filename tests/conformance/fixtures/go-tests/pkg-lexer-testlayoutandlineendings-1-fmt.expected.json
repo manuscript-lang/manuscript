@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "# module\nfn value() Int:\n    # comment\n    if true:\n        return 3\n    else:\n        return 4\n"
+  }
+}

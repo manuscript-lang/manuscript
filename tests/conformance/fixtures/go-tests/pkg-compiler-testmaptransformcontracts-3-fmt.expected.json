@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn transform(value: Int, key: String) Int: value\n\nfn wrong(values: Map[String, Int]) Map[String, Int]: values.map(transform)\n"
+  }
+}

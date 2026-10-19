@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "a type cannot mix fields and cases; use either fields (a record) or 'case' lines (an alternative), and wrap shared data in a case payload",
+        "position": {
+          "file": "pkg-parser-testrejectsyntax-9.ms",
+          "line": 6,
+          "column": 5,
+          "offset": 172
+        },
+        "end": {
+          "file": "pkg-parser-testrejectsyntax-9.ms",
+          "line": 6,
+          "column": 9,
+          "offset": 176
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

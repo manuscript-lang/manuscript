@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [msmsnaïve]\nb2 = false\ni3 = 752689326628\ni5 = 752689326628\ni6 = -40\ns7 = [  deddap  ]\ns8 = [betatab\there]\ns9 = [msmsnaïve]\n752688754923 520 false sum 752688755443\nb10 = false\ni11 = 21827990472257\ngcd(880, 1930) = 10\nf12 = 173.693\nl13 = [12, -20, -18] len 3\ngcd(2793, 2645) = 1\n170920605817 3 false sum 170920605820\nfib(23) = 28657\nacc14 = 70\n",
+    "stderr": ""
+  }
+}

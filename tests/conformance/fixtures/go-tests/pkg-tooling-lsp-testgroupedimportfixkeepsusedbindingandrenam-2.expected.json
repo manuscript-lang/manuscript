@@ -1,0 +1,15 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "format": 1,
+    "diagnostics": [],
+    "text": {
+      "exit_code": 0,
+      "stdout": "Checked pkg-tooling-lsp-testgroupedimportfixkeepsusedbindingandrenam-2.ms\n",
+      "stderr": ""
+    }
+  }
+}

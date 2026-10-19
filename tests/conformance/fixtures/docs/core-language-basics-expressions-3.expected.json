@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "comparison operators cannot chain; combine two comparisons with 'and', e.g. a < b and b < c",
+        "position": {
+          "file": "core-language-basics-expressions-3.ms",
+          "line": 6,
+          "column": 22,
+          "offset": 282
+        },
+        "end": {
+          "file": "core-language-basics-expressions-3.ms",
+          "line": 6,
+          "column": 23,
+          "offset": 283
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

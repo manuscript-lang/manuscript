@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [msgammagamma]\nf2 = 2.1909561526947013e+28\nl3 = [28, -7] len 2\nf4 = Infinity\nf5 = 2.1909561526947013e+28\ns6 = [msgammagammamsgammagammadelta]\n",
+    "stderr": ""
+  }
+}

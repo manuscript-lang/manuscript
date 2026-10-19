@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding box; declare it with 'let box = ...' before use, define 'fn box(...)', or import it from a module",
+        "position": {
+          "file": "pkg-tooling-format-testformatexpressionlayouts-35.ms",
+          "line": 8,
+          "column": 5,
+          "offset": 230
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'",
+        "position": {
+          "file": "pkg-tooling-format-testformatexpressionlayouts-35.ms",
+          "line": 8,
+          "column": 9,
+          "offset": 234
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-35.ms:8:5: resolution: unknown binding box; declare it with 'let box = ...' before use, define 'fn box(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-35.ms:8:9: type: assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

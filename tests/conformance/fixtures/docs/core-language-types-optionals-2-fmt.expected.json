@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "let inferred = some(1)  # Optional[Int]\nlet explicit = Optional[String].none\n# Rejected: no type determines the absent payload.\nlet unknown = none\n# Rejected: bindings still require explicit wrapping.\nlet wrong: Optional[String] = \"Ada\"\n"
+  }
+}

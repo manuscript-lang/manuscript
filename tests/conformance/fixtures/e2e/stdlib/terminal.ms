@@ -1,0 +1,19 @@
+# conform: tags=control-flow,modules,stdlib-terminal,stdlib-testing,testing,tier-io,try-result
+# conform: phase=test
+# conform: origin=tests/e2e/testdata/stdlib/terminal.ms
+import {expect_equal, expect_false, fail} from "@std/testing.ms"
+import {terminal, TerminalError} from "@std/terminal.ms"
+
+test "redirected streams report no terminal and refuse raw mode":
+    let capabilities = terminal().capabilities()
+    if capabilities.raw_mode: return
+
+    try expect_false(capabilities.colors != 0 and not capabilities.output_is_terminal)
+    try expect_false(capabilities.resize_events)
+    let raw = terminal().raw_mode(alternate_screen: false)
+
+    if let active = raw:
+        active.close()
+        return fail("raw mode on redirected input")
+
+    try expect_equal(raw.err(), TerminalError.NotTerminal)

@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "a type has only fields or cases; an interface has only operation signatures; declare fields as 'name: Type' in a type, and put method bodies in an 'impl' block",
+        "position": {
+          "file": "pkg-parser-testrejectinterfacesyntax-2.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 161
+        },
+        "end": {
+          "file": "pkg-parser-testrejectinterfacesyntax-2.ms",
+          "line": 5,
+          "column": 10,
+          "offset": 166
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

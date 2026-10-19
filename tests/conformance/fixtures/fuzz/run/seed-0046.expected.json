@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 70,
+    "stdout": "i1 = 470836\nb2 = false\ni3 = 470836\nb4 = true\ni5 = -10320\nl6 = [25, -19, -21, 27] len 4\ncollatz(2401) = 164\nolléh\nf7 = 360.5282698802154\ns8 = [語本日]\ni9 = 0\nf10 = 247.6504959739805\n",
+    "stderr": "Int.%: remainder by zero; right must be nonzero, found 0\n  at seed-0046.ms:49 in main\n"
+  }
+}

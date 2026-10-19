@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "# Fixed self-signed test identity, valid 2020–2100. This key is public fixture data.\nexport fn certificate() String:\n    return \"-----BEGIN CERTIFICATE-----\\nMIIBUjCCAQSgAwIBAgIBATAFBgMrZXAwFjEUMBIGA1UEAxMLc3RkbGliLnRlc3Qw\\nIBcNMjAwMTAxMDAwMDAwWhgPMjEwMDAxMDEwMDAwMDBaMBYxFDASBgNVBAMTC3N0\\nZGxpYi50ZXN0MCowBQYDK2VwAyEAe8MHlRjtEdoDNghb9pYpIP+H+zxNYwqbWMth\\nU2dPXdajdTBzMA4GA1UdDwEB/wQEAwIChDATBgNVHSUEDDAKBggrBgEFBQcDATAP\\nBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBSXj3k9f25C8HSLlIZ2z/wi62CYtDAc\\nBgNVHREEFTATggtzdGRsaWIudGVzdIcEfwAAATAFBgMrZXADQQCy10RiI9QU8YqP\\nfHjTXEQP3dcOGFmJe/XvuCKA7zvgv1bryG9K95Hh1ci9ZlIuTYmx/LyutoNFvr82\\nncADBsAL\\n-----END CERTIFICATE-----\\n\"\n\nexport fn private_key() String:\n    return \"-----BEGIN PRIVATE KEY-----\\nMC4CAQAwBQYDK2VwBCIEIDAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAx\\n-----END PRIVATE KEY-----\\n\"\n"
+  }
+}

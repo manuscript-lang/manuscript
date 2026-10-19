@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "invalid numeric suffix; the only suffix is d for Decimal (1.5d), so put a space or operator after the number",
+        "position": {
+          "file": "pkg-lexer-testlexicalboundaries-9.ms",
+          "line": 5,
+          "column": 13,
+          "offset": 151
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

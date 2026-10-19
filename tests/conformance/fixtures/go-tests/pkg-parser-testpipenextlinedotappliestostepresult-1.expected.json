@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding x; declare it with 'let x = ...' before use, define 'fn x(...)', or import it from a module",
+        "position": {
+          "file": "pkg-parser-testpipenextlinedotappliestostepresult-1.ms",
+          "line": 5,
+          "column": 13,
+          "offset": 169
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)",
+        "position": {
+          "file": "pkg-parser-testpipenextlinedotappliestostepresult-1.ms",
+          "line": 4,
+          "column": 1,
+          "offset": 145
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-parser-testpipenextlinedotappliestostepresult-1.ms:5:13: resolution: unknown binding x; declare it with 'let x = ...' before use, define 'fn x(...)', or import it from a module\n<DIR>/pkg-parser-testpipenextlinedotappliestostepresult-1.ms:4:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 6\ni2 = 6\ni3 = 132948\ni4 = -120\ns5 = [650609:LINE\nBREAK]\ni6 = 48\nb7 = false\nl8 = [] len 0\nf9 = 995.238\n650609:LINE\nBREAK\nb10 = false\nl11 = [] len 0\ns12 = [ALPHA650609:LINE\nBREAK]\nALPHA650609:LINE\nBREAKALPHA650609:LINE\nBREAK\n",
+    "stderr": ""
+  }
+}

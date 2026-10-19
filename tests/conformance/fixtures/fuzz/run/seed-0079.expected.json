@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [naïve]\nevïan\nl2 = [-14, 21, 23, 17, 18] len 5\n-6 -235 false sum -241\ns3 = [back\\slash]\nf4 = 0\ni5 = 43\nf6 = 0\ngcd(3895, 1156) = 1\ni7 = 79505\ni8 = -43\ni9 = 10\ni10 = -130013837993\nb11 = false\ns12 = [beta]\nf13 = 873.502\n",
+    "stderr": ""
+  }
+}

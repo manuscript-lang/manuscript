@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn example() Int:\n    return apply(\n        transform: fn(value: Int) Int:\n            return value - 1\n        ,\n        value: 3\n    )\n"
+  }
+}

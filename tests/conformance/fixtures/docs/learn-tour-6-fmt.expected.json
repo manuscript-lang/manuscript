@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn greeting(name: String = \"world\") String:\n    return \"Hello, {name}!\"\n\nfn line_total(price: Int, quantity: Int) Int:\n    return price * quantity\n\nlet welcome = greeting(\"Sam\")\nlet default_welcome = greeting()  # \"Hello, world!\"\nlet subtotal = line_total(12, 3)\n"
+  }
+}

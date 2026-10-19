@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = 8.5\ngcd(1893, 4201) = 1\n-7 -1 true sum -8\nl2 = [9, -19] len 2\nb3 = false\n26 43 true sum 69\ni4 = 916130\n916130 0 false sum 916130\nfact(11) = 39916800\nb5 = false\n",
+    "stderr": ""
+  }
+}

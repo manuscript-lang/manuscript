@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = NaN\ni2 = 43\ns3 = [74:quote\"d]\ni4 = 991511\ni5 = 991466\ni6 = 955725274668\n-26 991466 true sum 991440\nf7 = 600.258\n74:quote\"d\n576587 -22 false sum 576565\nf8 = 600.258\ni9 = -201636570102836489\nl10 = [26] len 1\nfib(18) = 2584\ni11 = 50\nacc12 = 26\nf13 = NaN\ns14 = [NAÏVE74:QUOTE\"D]\nb15 = false\n",
+    "stderr": ""
+  }
+}

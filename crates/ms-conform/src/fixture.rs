@@ -78,6 +78,10 @@ pub const TAGS: &[&str] = &[
     "stdlib",
     "cli",
     "testing",
+    "aliasing",
+    "tier-core",
+    "tier-stdlib",
+    "tier-io",
 ];
 
 pub fn tag_allowed(tag: &str) -> bool {

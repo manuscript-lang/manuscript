@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f3 = NaN\ns4 = [ammag42héllo]\nb5 = false\nb6 = false\nb7 = true\ni8 = 802116697613\nl9 = [18] len 1\nfact(16) = 20922789888000\nb10 = true\nb11 = false\nl12 = [18] len 1\ni13 = -296604\n",
+    "stderr": ""
+  }
+}

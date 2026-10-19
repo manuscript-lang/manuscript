@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn tag_count() Int:\n    let tags = [\"docs\"]\n    let count = fn():\n        return tags.length()\n    tags.append(\"release\")\n    return count()\n# tag_count() returns 2.\n"
+  }
+}

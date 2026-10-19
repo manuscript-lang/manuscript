@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "b1 = true\nl2 = [-7, -18, -7, 7] len 4\nfib(55) = 139583862445\n-549348:hello world\nf3 = 0\ni4 = 879408\nacc5 = 0\nacc6 = 22\nb7 = false\nl8 = [-28, -72, -28, 28] len 4\ncollatz(1533) = 47\ni9 = 47\ns10 = [ahpladelta]\n47 879408 true sum 879455\ni11 = 47\nacc12 = 252\nl13 = [-7, -18, -7, 7, -28, -72, -28, 28] len 8\ni14 = 0\nf15 = 500000000\n",
+    "stderr": ""
+  }
+}

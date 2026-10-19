@@ -1,0 +1,82 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding missing; declare it with 'let missing = ...' before use, define 'fn missing(...)', or import it from a module",
+        "position": {
+          "file": "pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms",
+          "line": 5,
+          "column": 38,
+          "offset": 238
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding other_missing; declare it with 'let other_missing = ...' before use, define 'fn other_missing(...)', or import it from a module",
+        "position": {
+          "file": "pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms",
+          "line": 5,
+          "column": 52,
+          "offset": 252
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding apply; declare it with 'let apply = ...' before use, define 'fn apply(...)', or import it from a module",
+        "position": {
+          "file": "pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms",
+          "line": 6,
+          "column": 20,
+          "offset": 286
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Int, found String",
+        "position": {
+          "file": "pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms",
+          "line": 7,
+          "column": 22,
+          "offset": 368
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "callback parameter count does not match its context; the callback takes exactly the parameters its context declares",
+        "position": {
+          "file": "pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms",
+          "line": 8,
+          "column": 40,
+          "offset": 414
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding missing_too; declare it with 'let missing_too = ...' before use, define 'fn missing_too(...)', or import it from a module",
+        "position": {
+          "file": "pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms",
+          "line": 8,
+          "column": 46,
+          "offset": 420
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms:5:38: resolution: unknown binding missing; declare it with 'let missing = ...' before use, define 'fn missing(...)', or import it from a module\n<DIR>/pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms:5:52: resolution: unknown binding other_missing; declare it with 'let other_missing = ...' before use, define 'fn other_missing(...)', or import it from a module\n<DIR>/pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms:6:20: resolution: unknown binding apply; declare it with 'let apply = ...' before use, define 'fn apply(...)', or import it from a module\n<DIR>/pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms:7:22: type: expected Int, found String\n<DIR>/pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms:8:40: type: callback parameter count does not match its context; the callback takes exactly the parameters its context declares\n<DIR>/pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms:8:46: resolution: unknown binding missing_too; declare it with 'let missing_too = ...' before use, define 'fn missing_too(...)', or import it from a module\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

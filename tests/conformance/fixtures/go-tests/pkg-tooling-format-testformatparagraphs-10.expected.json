@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Choice; declare it with 'type Choice:' / 'interface Choice:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "pkg-tooling-format-testformatparagraphs-10.ms",
+          "line": 4,
+          "column": 18,
+          "offset": 172
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-tooling-format-testformatparagraphs-10.ms:4:18: resolution: unknown type Choice; declare it with 'type Choice:' / 'interface Choice:', declare it as a type parameter, or import it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

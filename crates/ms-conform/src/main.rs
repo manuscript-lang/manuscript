@@ -5,7 +5,7 @@ use ms_conform::observe::Ctx;
 use ms_conform::record::{self, RecordOpts};
 use ms_conform::report;
 use ms_conform::runner::{self, ExpectFail};
-use ms_conform::{bench, fuzz};
+use ms_conform::{bench, fuzz, harvest};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -23,6 +23,8 @@ commands:
   list      list fixtures (id, phase, tags)
   stats     count fixtures per phase and tag
   lint      validate fixture metadata and expectation files
+  harvest   turn repository sources, doc fences and Go-test snippets into fixtures
+  retag     recompute tier-* tags on every fixture from its imports
   fuzz-gen  write deterministic generated fixtures into the corpus
   fuzz      differential fuzzing: generate programs, run --oracle and --ms, compare
   bench     build and time the bench/perf kernels and programs against Go baselines
@@ -51,6 +53,8 @@ record options:
   --prune             delete fixtures that are unstable or cannot be recorded
   --only-missing      keep existing expectations
 
+harvest options:    --ms PATH --repo DIR [--sources FILE.jsonl] [--no-docs] [--no-tree] [--no-twins]
+                    (then run `record --prune` to write expectations and drop unstable fixtures)
 fuzz-gen options:   --kind run|type|syntax  --seeds A..B  [--corpus DIR]
 fuzz options:       --oracle PATH --ms PATH --kind K --seeds A..B [--save DIR]
 bench options:      --ms PATH [--oracle PATH] [--go PATH] [--repeats N] [--suite kernels|programs|all]
@@ -82,6 +86,8 @@ fn main() -> ExitCode {
         "list" => cmd_list(&parsed),
         "stats" => cmd_stats(&parsed),
         "lint" => cmd_lint(&parsed),
+        "harvest" => cmd_harvest(&parsed),
+        "retag" => cmd_retag(&parsed),
         "fuzz-gen" => cmd_fuzz_gen(&parsed),
         "fuzz" => cmd_fuzz(&parsed),
         "bench" => cmd_bench(&parsed),
@@ -558,5 +564,51 @@ fn cmd_bench(args: &Args) -> Result<u8, String> {
         Some(p) => write_file(p, &markdown)?,
         None => print!("{markdown}"),
     }
+    Ok(0)
+}
+
+fn cmd_harvest(args: &Args) -> Result<u8, String> {
+    let repo = PathBuf::from(args.one("repo").unwrap_or("."));
+    let corpus = args
+        .corpus()
+        .unwrap_or_else(|_| repo.join("tests/conformance/fixtures"));
+    let ms = args.ms("ms");
+    let mut candidates = Vec::new();
+    if !args.has("no-tree") {
+        candidates.extend(harvest::scan_tree(&repo));
+    }
+    if !args.has("no-docs") {
+        candidates.extend(harvest::scan_docs(&repo));
+    }
+    if let Some(path) = args.one("sources") {
+        let text = fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+        candidates.extend(harvest::scan_go_sources(&text));
+    }
+    eprintln!("{} candidates", candidates.len());
+    let scratch = std::env::temp_dir().join(format!("ms-conform-harvest-{}", std::process::id()));
+    let opts = harvest::HarvestOpts {
+        jobs: args.jobs()?,
+        formatter_twins: !args.has("no-twins"),
+    };
+    let summary = harvest::harvest(&ms, &scratch, &corpus, candidates, &opts);
+    let _ = fs::remove_dir_all(&scratch);
+    println!(
+        "{} fixtures written, {} duplicates dropped, {} unusable",
+        summary.written,
+        summary.duplicates,
+        summary.unusable.len()
+    );
+    for (phase, n) in &summary.by_phase {
+        println!("  {phase:<6} {n}");
+    }
+    for (origin, reason) in &summary.unusable {
+        println!("UNUSABLE {origin}: {reason}");
+    }
+    Ok(0)
+}
+
+fn cmd_retag(args: &Args) -> Result<u8, String> {
+    let n = harvest::retag_tiers(&args.corpus()?);
+    println!("{n} fixtures retagged");
     Ok(0)
 }
