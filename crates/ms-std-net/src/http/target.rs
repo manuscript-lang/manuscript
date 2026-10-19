@@ -74,6 +74,12 @@ pub fn clean(path: &str) -> String {
     out
 }
 
+/// `clean` for a request path that must stay encoded: dot segments are
+/// removed but the text is not decoded.
+pub fn clean_keep(path: &str) -> String {
+    clean(path)
+}
+
 /// Splits and normalizes the target of a request line.
 pub fn parse(target: &str) -> Result<Target, BadTarget> {
     if target.bytes().any(|b| b < 0x20 || b == 0x7f || b == b' ') {
