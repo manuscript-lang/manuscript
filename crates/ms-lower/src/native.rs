@@ -88,7 +88,16 @@ fn opt_method(name: &str) -> bool {
 fn is_higher_order(name: &str) -> bool {
     matches!(
         name,
-        "map" | "filter" | "count" | "some" | "every" | "for_each" | "find" | "find_index"
+        "map"
+            | "filter"
+            | "flat_map"
+            | "group_by"
+            | "count"
+            | "some"
+            | "every"
+            | "for_each"
+            | "find"
+            | "find_index"
     )
 }
 
@@ -1899,6 +1908,102 @@ impl<'a> FnLower<'a> {
                 })?;
                 let r = self.b.use_var(acc);
                 Ok(Val { v: r, own: true })
+            }
+            "flat_map" => {
+                let TyKind::List(res_elem) = self.b.m.types.kind(out).clone() else {
+                    return Err(Error::new("flat_map without list result"));
+                };
+                let zero = self.b.iconst(0);
+                let first = self.b.list_new(res_elem, zero);
+                let acc = self.fresh_var(out);
+                self.b.def_var(acc, first);
+                self.each_element(lv, &mut |s, _, x| {
+                    let r = {
+                        let f = s.b.use_var(fvar);
+                        s.b.call_ind(f, &[x])
+                    };
+                    let rt = s.ty_of(r);
+                    let rv = s.fresh_var(rt);
+                    s.b.def_var(rv, r);
+                    s.each_element(rv, &mut |s, _, y| {
+                        let yo = s.owned(Val { v: y, own: false });
+                        let cur = s.b.use_var(acc);
+                        let next = s.b.list_push(cur, yo);
+                        s.b.def_var(acc, next);
+                        Ok(None)
+                    })?;
+                    let done = s.b.use_var(rv);
+                    s.drop_value(done);
+                    Ok(None)
+                })?;
+                Ok(Val {
+                    v: self.b.use_var(acc),
+                    own: true,
+                })
+            }
+            "group_by" => {
+                let TyKind::Obj(_, parts) = self.b.m.types.kind(out).clone() else {
+                    return Err(Error::new("group_by without a map result"));
+                };
+                let (key_ty, group_ty) = (parts[0], parts[1]);
+                let first = self.map_new(out)?;
+                let acc = self.fresh_var(out);
+                self.b.def_var(acc, first);
+                self.each_element(lv, &mut |s, _, x| {
+                    let k = {
+                        let f = s.b.use_var(fvar);
+                        s.b.call_ind(f, &[x])
+                    };
+                    let (kd, vd) = s.map_descs(out)?;
+                    let vd = vd.ok_or_else(|| Error::new("group_by without a value type"))?;
+                    // The lookup lends a copy of the key, taken back afterwards.
+                    let probe = s.owned(Val { v: k, own: false });
+                    let kslot = s.put_slot(probe);
+                    let m = s.b.use_var(acc);
+                    let found =
+                        s.call_runtime("msrt_map_get_ptr", &[m, kd, vd, kslot], MTy::PTR)?;
+                    if s.needs_drop(key_ty) {
+                        let back = s.take_slot(kslot, key_ty);
+                        s.drop_value(back);
+                    }
+                    let missing =
+                        s.b.emit(
+                            ms_mir::ir::Op::PtrIsNull,
+                            &[found],
+                            ms_mir::ir::Imm::None,
+                            Some(MTy::BOOL),
+                        )
+                        .expect("is_null");
+                    let TyKind::List(group_elem) = s.b.m.types.kind(group_ty).clone() else {
+                        return Err(Error::new("group_by without list groups"));
+                    };
+                    let group = s.two_ways(
+                        missing,
+                        group_ty,
+                        &mut |s| Ok(Some(s.b.list_lit(group_elem, &[]))),
+                        &mut |s| {
+                            let at =
+                                s.b.emit(
+                                    ms_mir::ir::Op::Load,
+                                    &[found],
+                                    ms_mir::ir::Imm::Ty(group_ty),
+                                    Some(group_ty),
+                                )
+                                .expect("load");
+                            Ok(Some(s.owned(Val { v: at, own: false })))
+                        },
+                    )?;
+                    let xo = s.owned(Val { v: x, own: false });
+                    let grown = s.b.list_push(group.v, xo);
+                    let cur = s.b.use_var(acc);
+                    let next = s.map_insert(cur, k, grown)?;
+                    s.b.def_var(acc, next);
+                    Ok(None)
+                })?;
+                Ok(Val {
+                    v: self.b.use_var(acc),
+                    own: true,
+                })
             }
             "count" => {
                 let acc = self.b.declare_var(MTy::INT, Mode::Borrow);
