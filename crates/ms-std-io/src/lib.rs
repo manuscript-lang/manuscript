@@ -145,4 +145,7 @@ mod runtime_stubs {
     pub extern "C" fn msrt_cancelled() -> ! {
         panic!("cancelled")
     }
+
+    #[unsafe(no_mangle)]
+    pub extern "C-unwind" fn msrt_io_flush() {}
 }

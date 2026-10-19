@@ -44,8 +44,15 @@ impl IoFail {
     }
 }
 
+unsafe extern "C-unwind" {
+    /// Writes out the runtime's buffered standard output (`print`), so streams keep program order.
+    fn msrt_io_flush();
+}
+
 pub struct Stream {
     fd: i32,
+    /// Standard output and error share the descriptor with the runtime's buffered `print`.
+    shares_output: bool,
     owned: bool,
     closed: bool,
     /// Whether reads may block indefinitely (anything that is not a regular file).
@@ -62,8 +69,10 @@ impl Stream {
         let pollable = sys::fstat(fd)
             .map(|st| st.st_mode & libc::S_IFMT != libc::S_IFREG)
             .unwrap_or(true);
+        let shares_output = !owned && (fd == 1 || fd == 2);
         Stream {
             fd,
+            shares_output,
             owned,
             closed: false,
             pollable,
@@ -162,6 +171,10 @@ impl Stream {
             return Err(IoFail::status(STATUS_CLOSED));
         }
         poll_cancel();
+        if self.shares_output {
+            // SAFETY: provided by `ms-rt`.
+            unsafe { msrt_io_flush() };
+        }
         while !data.is_empty() {
             self.wait_write();
             let end = data.len().min(1 << 20);

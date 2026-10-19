@@ -556,6 +556,9 @@ mod runtime_stubs {
     }
 
     #[unsafe(no_mangle)]
+    pub extern "C-unwind" fn msrt_io_flush() {}
+
+    #[unsafe(no_mangle)]
     pub extern "C-unwind" fn msrt_start_nanos() -> i64 {
         0
     }
