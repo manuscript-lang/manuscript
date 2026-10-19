@@ -44,6 +44,9 @@ use windows_sys::Win32::System::Threading::{Sleep, WaitForSingleObject};
 /// A file handle.
 pub type Fd = isize;
 
+/// The value of a handle that is not open (`INVALID_HANDLE_VALUE`).
+pub const INVALID_FD: Fd = -1;
+
 const APPLICATION_ERROR: i32 = 1 << 29;
 
 /// Go's invented `syscall.Errno` values, the ones its Windows file code returns itself.

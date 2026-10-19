@@ -9,6 +9,9 @@ use core::fmt::Write;
 /// Host file descriptors.
 pub type Fd = c_int;
 
+/// The value of a descriptor that is not open.
+pub const INVALID_FD: Fd = -1;
+
 pub use libc::{
     EAGAIN, EEXIST, EINVAL, EIO, ELOOP, ENOENT, ENOTDIR, O_APPEND, O_CREAT, O_EXCL, O_RDONLY,
     O_RDWR, O_TRUNC, O_WRONLY,
