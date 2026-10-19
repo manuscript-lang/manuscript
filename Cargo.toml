@@ -1,0 +1,18 @@
+[workspace]
+members = ["crates/*"]
+exclude = ["experiments"]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+publish = false
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "warn"
+
+[profile.release]
+debug = 1
+panic = "abort"
+
+[profile.dev]
+panic = "abort"
