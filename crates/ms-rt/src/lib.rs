@@ -1,6 +1,10 @@
 //! Manuscript native runtime.
 #![cfg_attr(not(any(test, feature = "std", panic = "unwind")), no_std)]
 #![allow(clippy::missing_safety_doc)]
+// The runtime is the one place that owns raw memory for compiled code.
+#![allow(unsafe_code)]
+// Unit tests drive the C ABI directly; the lint guards the runtime itself.
+#![cfg_attr(test, allow(clippy::undocumented_unsafe_blocks))]
 
 extern crate alloc as stdalloc;
 

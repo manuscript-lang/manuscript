@@ -159,6 +159,7 @@ fn write_perf_map() {
     }
     let mut path = ByteBuf::new();
     path.extend(b"/tmp/perf-");
+    // SAFETY: `getpid` has no preconditions.
     path.push_i64(unsafe { sys::getpid() } as i64);
     path.extend(b".map\0");
     write_file(path.as_slice(), out.as_slice());
@@ -193,6 +194,7 @@ pub fn finish() {
     let n = COUNT.load(Ordering::Relaxed).min(MAX_SAMPLES);
     // SAFETY: table and buffer were installed at start.
     let (t, base) = unsafe { (*TABLES.ptr(), *BUFFER.ptr()) };
+    // SAFETY: the tables pointer, when set, outlives the process (static data).
     let t = unsafe { t.as_ref() };
     let mut folded: BTreeMap<Vec<u8>, u64> = BTreeMap::new();
     for s in 0..n {

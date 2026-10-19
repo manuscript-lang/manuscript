@@ -7,6 +7,8 @@
 //!
 //! Pointers named `*mut Obj` always point at an object *header*.
 #![no_std]
+// `unsafe extern "C" fn` pointer types and `Sync` impls for the C-layout statics.
+#![allow(unsafe_code)]
 
 /// Bump when any layout or symbol here changes incompatibly.
 pub const ABI_VERSION: u32 = 2;
@@ -178,7 +180,7 @@ pub const DESC_EQ_OFFSET: usize = 48;
 pub const DESC_HASH_OFFSET: usize = 56;
 pub const DESC_SIZE: usize = 64;
 
-// SAFETY-free marker: descriptors contain only pointers to other immutable
+// SAFETY: descriptors contain only pointers to other immutable
 // statics, function pointers and integers, so sharing them is sound.
 unsafe impl Sync for TypeDesc {}
 
@@ -303,7 +305,7 @@ pub struct Tables {
     pub strings_len: usize,
 }
 
-// SAFETY-free marker: the table is plain read-only data emitted by the compiler.
+// SAFETY: the table is plain read-only data emitted by the compiler.
 unsafe impl Sync for Tables {}
 
 /// Names of the data symbols generated code reads or writes directly.

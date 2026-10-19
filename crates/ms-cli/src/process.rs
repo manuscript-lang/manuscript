@@ -4,6 +4,9 @@
 //! its own cancellation and cleanup: SIGINT and SIGTERM sent to `ms` are
 //! forwarded to the child instead of killing the launcher.
 
+// The only FFI in the CLI: std has no signal API, so `signal`/`kill` come from libc.
+#![allow(unsafe_code)]
+
 use std::process::{Child, ExitStatus};
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::time::Duration;
