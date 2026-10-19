@@ -125,6 +125,11 @@ impl Network {
         self.closed.get()
     }
 
+    /// Whether this network's policy lets requests name `host`.
+    pub fn host_allowed(&self, host: &str) -> bool {
+        host_ok(&self.policy, host)
+    }
+
     /// Registers a resource; `false` when the network is already closed.
     pub fn own(&self, r: &Rc<dyn Resource>) -> bool {
         if self.closed.get() {

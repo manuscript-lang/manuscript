@@ -11,6 +11,7 @@ use std::io::{self, Read, Write};
 use std::net::{SocketAddr, UdpSocket};
 use std::os::fd::{AsFd, BorrowedFd};
 use std::rc::Rc;
+use std::sync::Arc;
 
 /// Result of one nonblocking transfer attempt.
 pub enum Step {
@@ -247,23 +248,23 @@ impl Connection {
         }
         let n = max.min(READ_CHUNK as u128) as usize;
         let mut buf = vec![0u8; n];
-        let r = drive(
-            &*self.io,
-            deadline,
-            || self.io.read(&mut buf),
-            Some,
-            || None,
-        );
-        match r {
-            Ok(Some(count)) => {
+        match self.read_into(&mut buf, deadline)? {
+            0 => Ok(None),
+            count => {
                 buf.truncate(count);
                 Ok(Some(buf))
             }
-            Ok(None) => Ok(None),
-            Err(DriveError::Timeout) => {
-                rt::check_cancel();
-                Err(self.failure(DriveError::Timeout))
-            }
+        }
+    }
+
+    /// Reads into `buf` (nonempty); `0` is end of stream.
+    pub fn read_into(&self, buf: &mut [u8], deadline: Deadline) -> Result<usize, IoErr> {
+        if self.closed.get() {
+            return Err(IoErr::Closed);
+        }
+        let r = drive(&*self.io, deadline, || self.io.read(buf), |n| n, || 0);
+        match r {
+            Ok(count) => Ok(count),
             Err(e) => {
                 rt::check_cancel();
                 Err(self.failure(e))
@@ -271,9 +272,24 @@ impl Connection {
         }
     }
 
+    /// Whether an idle connection can no longer carry a new exchange: the peer
+    /// closed it, sent unexpected bytes, or it was closed here.
+    pub fn is_stale(&self) -> bool {
+        if self.closed.get() {
+            return true;
+        }
+        let mut probe = [0u8; 1];
+        !matches!(self.io.read(&mut probe), Step::WantRead)
+    }
+
     /// Writes all of `data`; a failure can leave a prefix written.
     pub fn write(&self, data: &[u8], timeout: Option<i64>) -> Result<(), IoErr> {
         let deadline = Deadline::from_nanos(timeout).map_err(|_| IoErr::InvalidInput)?;
+        self.write_until(data, deadline)
+    }
+
+    /// Like [`Connection::write`] with an absolute deadline.
+    pub fn write_until(&self, data: &[u8], deadline: Deadline) -> Result<(), IoErr> {
         if self.closed.get() {
             return Err(IoErr::Closed);
         }
@@ -631,6 +647,28 @@ impl Network {
             sock,
             Box::new(|s: Socket| Ok(Box::new(Plain::new(s)) as Box<dyn Io>)),
         )
+    }
+
+    /// Opens a TCP connection, with a TLS handshake against `server_name` when
+    /// `tls` carries a prepared client configuration.
+    pub fn dial_stream(
+        self: &Rc<Self>,
+        address: &str,
+        tls: Option<(&Arc<rustls::ClientConfig>, &str)>,
+        deadline: Deadline,
+    ) -> Result<Rc<Connection>, NetErr> {
+        if self.is_closed() {
+            return Err(NetErr::Closed);
+        }
+        let sock = self.dial_tcp(address, deadline)?;
+        let wrap: Wrap = match tls {
+            None => Box::new(|s: Socket| Ok(Box::new(Plain::new(s)) as Box<dyn Io>)),
+            Some((config, name)) => {
+                let (config, name) = (config.clone(), name.to_string());
+                Box::new(move |s: Socket| tls::connect(s, config, &name, deadline))
+            }
+        };
+        self.adopt(sock, wrap)
     }
 
     /// Opens a Unix domain socket connection.
