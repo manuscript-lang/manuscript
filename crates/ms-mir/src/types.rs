@@ -104,8 +104,19 @@ impl Default for TyTable {
 impl TyTable {
     /// A table holding only the builtin types.
     pub fn new() -> Self {
-        let mut t = TyTable { kinds: Vec::new(), index: HashMap::new() };
-        for k in [TyKind::Unit, TyKind::Bool, TyKind::Int, TyKind::Float, TyKind::Str, TyKind::Bytes, TyKind::Ptr] {
+        let mut t = TyTable {
+            kinds: Vec::new(),
+            index: HashMap::new(),
+        };
+        for k in [
+            TyKind::Unit,
+            TyKind::Bool,
+            TyKind::Int,
+            TyKind::Float,
+            TyKind::Str,
+            TyKind::Bytes,
+            TyKind::Ptr,
+        ] {
             t.intern(k);
         }
         t
@@ -190,7 +201,13 @@ impl TyTable {
     pub fn is_ref(&self, ty: Ty) -> bool {
         matches!(
             self.kind(ty),
-            TyKind::Str | TyKind::Bytes | TyKind::Rec(_) | TyKind::Alt(_) | TyKind::List(_) | TyKind::Obj(..) | TyKind::Fn(..)
+            TyKind::Str
+                | TyKind::Bytes
+                | TyKind::Rec(_)
+                | TyKind::Alt(_)
+                | TyKind::List(_)
+                | TyKind::Obj(..)
+                | TyKind::Fn(..)
         )
     }
 }

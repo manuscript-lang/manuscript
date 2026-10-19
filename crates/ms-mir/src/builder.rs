@@ -92,7 +92,9 @@ impl<'m> FuncBuilder<'m> {
     /// Adds a parameter to `b` and returns its value.
     pub fn add_block_param(&mut self, b: Block, ty: Ty, mode: Mode) -> Value {
         let v = self.f.new_value(ty);
-        self.f.blocks[b.index()].params.push(BlockParam { value: v, mode });
+        self.f.blocks[b.index()]
+            .params
+            .push(BlockParam { value: v, mode });
         v
     }
 
@@ -104,7 +106,13 @@ impl<'m> FuncBuilder<'m> {
     /// Emits an instruction with an explicit result type.
     pub fn emit(&mut self, op: Op, args: &[Value], imm: Imm, res_ty: Option<Ty>) -> Option<Value> {
         let res = res_ty.map(|t| self.f.new_value(t));
-        let inst = Inst { op, args: args.to_vec(), imm, res, loc: self.loc };
+        let inst = Inst {
+            op,
+            args: args.to_vec(),
+            imm,
+            res,
+            loc: self.loc,
+        };
         self.f.blocks[self.cur.index()].insts.push(inst);
         res
     }
@@ -276,13 +284,21 @@ impl<'m> FuncBuilder<'m> {
     }
     /// `call.ind` through a closure value.
     pub fn call_ind(&mut self, closure: Value, args: &[Value]) -> Value {
-        let TyKind::Fn(_, r) = self.m.types.kind(self.ty(closure)).clone() else { panic!("call_ind needs a closure") };
+        let TyKind::Fn(_, r) = self.m.types.kind(self.ty(closure)).clone() else {
+            panic!("call_ind needs a closure")
+        };
         let mut all = vec![closure];
         all.extend_from_slice(args);
         self.val(Op::CallInd, &all, Imm::None, r)
     }
     /// `call.method` through an interface value.
-    pub fn call_method(&mut self, iface: IfaceId, method: u32, recv: Value, args: &[Value]) -> Value {
+    pub fn call_method(
+        &mut self,
+        iface: IfaceId,
+        method: u32,
+        recv: Value,
+        args: &[Value],
+    ) -> Value {
         let ret = self.m.ifaces[iface.index()].methods[method as usize].ret;
         let mut all = vec![recv];
         all.extend_from_slice(args);
@@ -309,11 +325,31 @@ impl<'m> FuncBuilder<'m> {
 
     /// `br`.
     pub fn br(&mut self, b: Block, args: &[Value]) {
-        self.set_term(Term::Br(Target { block: b, args: args.to_vec() }));
+        self.set_term(Term::Br(Target {
+            block: b,
+            args: args.to_vec(),
+        }));
     }
     /// `br_if`.
-    pub fn br_if(&mut self, cond: Value, then: Block, then_args: &[Value], els: Block, els_args: &[Value]) {
-        self.set_term(Term::CondBr { cond, then: Target { block: then, args: then_args.to_vec() }, els: Target { block: els, args: els_args.to_vec() } });
+    pub fn br_if(
+        &mut self,
+        cond: Value,
+        then: Block,
+        then_args: &[Value],
+        els: Block,
+        els_args: &[Value],
+    ) {
+        self.set_term(Term::CondBr {
+            cond,
+            then: Target {
+                block: then,
+                args: then_args.to_vec(),
+            },
+            els: Target {
+                block: els,
+                args: els_args.to_vec(),
+            },
+        });
     }
     /// `switch`.
     pub fn switch(&mut self, value: Value, cases: &[(i64, Block)], default: Block) {
@@ -380,7 +416,10 @@ impl<'m> FuncBuilder<'m> {
             let p = self.preds[b.index()][0];
             self.read_var(v, p)
         } else if self.preds[b.index()].is_empty() {
-            panic!("variable {v:?} used before it is defined on every path to b{}", b.0);
+            panic!(
+                "variable {v:?} used before it is defined on every path to b{}",
+                b.0
+            );
         } else {
             let p = self.add_block_param(b, ty, mode);
             self.defs.insert((v, b), p);
@@ -392,7 +431,11 @@ impl<'m> FuncBuilder<'m> {
     }
 
     fn add_phi_operands(&mut self, v: Var, b: Block, param: Value) {
-        let idx = self.f.blocks[b.index()].params.iter().position(|p| p.value == param).expect("param exists");
+        let idx = self.f.blocks[b.index()]
+            .params
+            .iter()
+            .position(|p| p.value == param)
+            .expect("param exists");
         let mut preds = self.preds[b.index()].clone();
         preds.dedup();
         let mut seen = Vec::new();

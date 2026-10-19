@@ -35,11 +35,13 @@ use crate::ir::*;
 use crate::types::{Ty, TyKind};
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Maximum nesting enforced by `depth.enter`.
 pub const MAX_CALL_DEPTH: i64 = 200_000;
+/// 2^63 as a float: `Int` values are the floats in `[-2^63, 2^63)`.
+const I64_RANGE: f64 = 9_223_372_036_854_775_808.0;
 /// Hard cap on live interpreter frames (independent of `depth.enter`).
 const MAX_FRAMES: usize = 2_000_000;
 
@@ -152,10 +154,17 @@ struct Raw {
 
 impl Raw {
     fn new(kind: FaultKind, message: impl Into<String>) -> Raw {
-        Raw { kind, message: message.into(), fuel: false }
+        Raw {
+            kind,
+            message: message.into(),
+            fuel: false,
+        }
     }
     fn internal(message: impl Into<String>) -> Raw {
-        Raw::new(FaultKind::Unreachable, format!("interpreter: {}", message.into()))
+        Raw::new(
+            FaultKind::Unreachable,
+            format!("interpreter: {}", message.into()),
+        )
     }
 }
 
@@ -210,16 +219,22 @@ impl<'m> Interp<'m> {
             unwinding: false,
         };
         it.globals = m.globals.iter().map(|g| it.default_val(g.ty)).collect();
-        it.register("msrt_fault", |_, a| Err(a.first().map(show).unwrap_or_default()));
-        it.register("msrt_print_int", |o, a| print(o, a));
-        it.register("msrt_print_float", |o, a| print(o, a));
-        it.register("msrt_print_bool", |o, a| print(o, a));
-        it.register("msrt_print_str", |o, a| print(o, a));
+        it.register("msrt_fault", |_, a| {
+            Err(a.first().map(show).unwrap_or_default())
+        });
+        it.register("msrt_print_int", print);
+        it.register("msrt_print_float", print);
+        it.register("msrt_print_bool", print);
+        it.register("msrt_print_str", print);
         it
     }
 
     /// Registers (or replaces) a host implementation of a runtime function.
-    pub fn register(&mut self, name: &str, f: impl Fn(&mut String, &[Val]) -> Result<Val, String> + 'static) {
+    pub fn register(
+        &mut self,
+        name: &str,
+        f: impl Fn(&mut String, &[Val]) -> Result<Val, String> + 'static,
+    ) {
         self.hosts.insert(name.to_string(), Rc::new(f));
     }
 
@@ -266,7 +281,13 @@ impl<'m> Interp<'m> {
     }
 
     fn plain_fault(&self, msg: &str) -> Fault {
-        Fault { kind: FaultKind::Unreachable, message: msg.into(), stack: Vec::new(), cleanup_faults: Vec::new(), fuel_exhausted: false }
+        Fault {
+            kind: FaultKind::Unreachable,
+            message: msg.into(),
+            stack: Vec::new(),
+            cleanup_faults: Vec::new(),
+            fuel_exhausted: false,
+        }
     }
 
     /// The zero value of a type (used for globals and stack slots).
@@ -279,7 +300,13 @@ impl<'m> Interp<'m> {
             TyKind::Ptr => Val::Ptr(0),
             TyKind::List(_) => Val::List(Rc::new(Vec::new())),
             TyKind::Opt(_) => Val::Opt(None),
-            TyKind::Rec(r) => Val::Rec(Rc::new(self.m.records[r.index()].fields.iter().map(|f| self.default_val(f.1)).collect())),
+            TyKind::Rec(r) => Val::Rec(Rc::new(
+                self.m.records[r.index()]
+                    .fields
+                    .iter()
+                    .map(|f| self.default_val(f.1))
+                    .collect(),
+            )),
             _ => Val::Unit,
         }
     }
@@ -287,13 +314,24 @@ impl<'m> Interp<'m> {
     fn enter(&self, func: FuncId, args: Vec<Val>, ret_dst: Option<Value>) -> R<Frame> {
         let f = &self.m.funcs[func.index()];
         if args.len() != f.params.len() {
-            return Err(Raw::internal(format!("{} takes {} arguments, found {}", f.name, f.params.len(), args.len())));
+            return Err(Raw::internal(format!(
+                "{} takes {} arguments, found {}",
+                f.name,
+                f.params.len(),
+                args.len()
+            )));
         }
         let mut regs = vec![Val::Unit; f.values.len()];
         for (bp, a) in f.blocks[0].params.iter().zip(args) {
             regs[bp.value.index()] = a;
         }
-        Ok(Frame { func, regs, block: 0, ip: 0, ret_dst })
+        Ok(Frame {
+            func,
+            regs,
+            block: 0,
+            ip: 0,
+            ret_dst,
+        })
     }
 
     fn exec(&mut self, entry: FuncId, args: Vec<Val>) -> Result<Val, Fault> {
@@ -304,12 +342,10 @@ impl<'m> Interp<'m> {
         }
         let m = self.m;
         loop {
-            if let Some(fuel) = self.fuel {
-                if self.steps >= fuel {
-                    let mut raw = Raw::new(FaultKind::Cancelled, "instruction budget exhausted");
-                    raw.fuel = true;
-                    return Err(self.finish(raw, &frames));
-                }
+            if self.fuel.is_some_and(|fuel| self.steps >= fuel) {
+                let mut raw = Raw::new(FaultKind::Cancelled, "instruction budget exhausted");
+                raw.fuel = true;
+                return Err(self.finish(raw, &frames));
             }
             self.steps += 1;
             let top = frames.len() - 1;
@@ -366,9 +402,17 @@ impl<'m> Interp<'m> {
                     let c = matches!(frames[top].regs[cond.index()], Val::Bool(true));
                     jump(m, f, &mut frames[top], if c { then } else { els });
                 }
-                Term::Switch { value, cases, default } => {
+                Term::Switch {
+                    value,
+                    cases,
+                    default,
+                } => {
                     let v = frames[top].regs[value.index()].as_int();
-                    let t = cases.iter().find(|(k, _)| Some(*k) == v).map(|(_, t)| t).unwrap_or(default);
+                    let t = cases
+                        .iter()
+                        .find(|(k, _)| Some(*k) == v)
+                        .map(|(_, t)| t)
+                        .unwrap_or(default);
                     jump(m, f, &mut frames[top], t);
                 }
             }
@@ -384,11 +428,19 @@ impl<'m> Interp<'m> {
             .map(|fr| {
                 let f = &m.funcs[fr.func.index()];
                 let blk = &f.blocks[fr.block];
-                let loc = if fr.ip > 0 && fr.ip <= blk.insts.len() { blk.insts[fr.ip - 1].loc } else { blk.term_loc };
+                let loc = if fr.ip > 0 && fr.ip <= blk.insts.len() {
+                    blk.insts[fr.ip - 1].loc
+                } else {
+                    blk.term_loc
+                };
                 if loc.is_none() {
                     f.name.clone()
                 } else {
-                    let file = m.files.get(loc.file as usize).map(String::as_str).unwrap_or("?");
+                    let file = m
+                        .files
+                        .get(loc.file as usize)
+                        .map(String::as_str)
+                        .unwrap_or("?");
                     format!("{} ({}:{})", f.name, file, loc.line)
                 }
             })
@@ -404,7 +456,13 @@ impl<'m> Interp<'m> {
             self.unwinding = false;
         }
         self.depth = 0;
-        Fault { kind: raw.kind, message: raw.message, stack, cleanup_faults, fuel_exhausted: raw.fuel }
+        Fault {
+            kind: raw.kind,
+            message: raw.message,
+            stack,
+            cleanup_faults,
+            fuel_exhausted: raw.fuel,
+        }
     }
 
     #[allow(clippy::too_many_lines)]
@@ -415,7 +473,12 @@ impl<'m> Interp<'m> {
             ($i:expr) => {
                 match &regs[a[$i].index()] {
                     Val::Int(x) => *x,
-                    v => return Err(Raw::internal(format!("{}: expected int, found {v:?}", inst.op.info().name))),
+                    v => {
+                        return Err(Raw::internal(format!(
+                            "{}: expected int, found {v:?}",
+                            inst.op.info().name
+                        )))
+                    }
                 }
             };
         }
@@ -423,7 +486,12 @@ impl<'m> Interp<'m> {
             ($i:expr) => {
                 match &regs[a[$i].index()] {
                     Val::Float(x) => *x,
-                    v => return Err(Raw::internal(format!("{}: expected float, found {v:?}", inst.op.info().name))),
+                    v => {
+                        return Err(Raw::internal(format!(
+                            "{}: expected float, found {v:?}",
+                            inst.op.info().name
+                        )))
+                    }
                 }
             };
         }
@@ -431,7 +499,12 @@ impl<'m> Interp<'m> {
             ($i:expr) => {
                 match &regs[a[$i].index()] {
                     Val::Bool(x) => *x,
-                    v => return Err(Raw::internal(format!("{}: expected bool, found {v:?}", inst.op.info().name))),
+                    v => {
+                        return Err(Raw::internal(format!(
+                            "{}: expected bool, found {v:?}",
+                            inst.op.info().name
+                        )))
+                    }
                 }
             };
         }
@@ -451,7 +524,9 @@ impl<'m> Interp<'m> {
             Op::BConst => set!(Val::Bool(matches!(inst.imm, Imm::Bool(true)))),
             Op::UnitConst => set!(Val::Unit),
             Op::StrLit => {
-                let Imm::Str(s) = inst.imm else { return Err(Raw::internal("str without literal")) };
+                let Imm::Str(s) = inst.imm else {
+                    return Err(Raw::internal("str without literal"));
+                };
                 set!(Val::Str(self.strings[s.index()].clone()));
             }
             Op::IAdd => set!(Val::Int(int!(0).wrapping_add(int!(1)))),
@@ -481,7 +556,11 @@ impl<'m> Interp<'m> {
                 if y == 0 {
                     return Err(div0());
                 }
-                set!(Val::Int(if inst.op == Op::SDiv { x.wrapping_div(y) } else { x.wrapping_rem(y) }));
+                set!(Val::Int(if inst.op == Op::SDiv {
+                    x.wrapping_div(y)
+                } else {
+                    x.wrapping_rem(y)
+                }));
             }
             Op::And | Op::Or | Op::Xor => {
                 let r = match (&regs[a[0].index()], &regs[a[1].index()]) {
@@ -495,7 +574,11 @@ impl<'m> Interp<'m> {
                         Op::Or => x | y,
                         _ => x ^ y,
                     }),
-                    _ => return Err(Raw::internal("bitwise operands must be both int or both bool")),
+                    _ => {
+                        return Err(Raw::internal(
+                            "bitwise operands must be both int or both bool",
+                        ));
+                    }
                 };
                 set!(r);
             }
@@ -503,19 +586,24 @@ impl<'m> Interp<'m> {
             Op::Sshr => set!(Val::Int(int!(0).wrapping_shr(int!(1) as u32))),
             Op::Not => set!(Val::Bool(!boolean!(0))),
             Op::ICmp => {
-                let Imm::Cc(cc) = inst.imm else { return Err(Raw::internal("icmp without condition")) };
+                let Imm::Cc(cc) = inst.imm else {
+                    return Err(Raw::internal("icmp without condition"));
+                };
                 let word = |v: &Val| match v {
                     Val::Int(i) => Some(*i),
                     Val::Bool(b) => Some(*b as i64),
                     _ => None,
                 };
-                let (Some(x), Some(y)) = (word(&regs[a[0].index()]), word(&regs[a[1].index()])) else {
+                let (Some(x), Some(y)) = (word(&regs[a[0].index()]), word(&regs[a[1].index()]))
+                else {
                     return Err(Raw::internal("icmp operands must be int or bool"));
                 };
                 set!(Val::Bool(cc.eval_int(x, y)));
             }
             Op::FCmp => {
-                let Imm::Cc(cc) = inst.imm else { return Err(Raw::internal("fcmp without condition")) };
+                let Imm::Cc(cc) = inst.imm else {
+                    return Err(Raw::internal("fcmp without condition"));
+                };
                 set!(Val::Bool(cc.eval_float(flt!(0), flt!(1))));
             }
             Op::FAdd => set!(Val::Float(flt!(0) + flt!(1))),
@@ -528,7 +616,7 @@ impl<'m> Interp<'m> {
             Op::I2F => set!(Val::Float(int!(0) as f64)),
             Op::F2IOpt => {
                 let x = flt!(0);
-                let ok = x.is_finite() && x >= -9.223_372_036_854_775_808e18 && x < 9.223_372_036_854_775_808e18;
+                let ok = x.is_finite() && (-I64_RANGE..I64_RANGE).contains(&x);
                 set!(Val::Opt(ok.then(|| Rc::new(Val::Int(x as i64)))));
             }
             Op::B2I => set!(Val::Int(boolean!(0) as i64)),
@@ -538,28 +626,44 @@ impl<'m> Interp<'m> {
             }
             Op::RecNew => set!(Val::Rec(Rc::new(self.take_args(f, regs, a)))),
             Op::RecGet => {
-                let Imm::Field(_, i) = inst.imm else { return Err(Raw::internal("rec.get without field")) };
-                let Val::Rec(r) = &regs[a[0].index()] else { return Err(Raw::internal("rec.get on a non-record")) };
+                let Imm::Field(_, i) = inst.imm else {
+                    return Err(Raw::internal("rec.get without field"));
+                };
+                let Val::Rec(r) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("rec.get on a non-record"));
+                };
                 set!(r[i as usize].clone());
             }
             Op::RecSet => {
-                let Imm::Field(_, i) = inst.imm else { return Err(Raw::internal("rec.set without field")) };
-                let v = take(regs, a[1]);
-                let Val::Rec(mut r) = take(regs, a[0]) else { return Err(Raw::internal("rec.set on a non-record")) };
+                let Imm::Field(_, i) = inst.imm else {
+                    return Err(Raw::internal("rec.set without field"));
+                };
+                let v = arg(f, regs, a[1], true, m);
+                let Val::Rec(mut r) = arg(f, regs, a[0], true, m) else {
+                    return Err(Raw::internal("rec.set on a non-record"));
+                };
                 Rc::make_mut(&mut r)[i as usize] = v;
                 set!(Val::Rec(r));
             }
             Op::AltNew => {
-                let Imm::Case(_, c) = inst.imm else { return Err(Raw::internal("alt.new without case")) };
+                let Imm::Case(_, c) = inst.imm else {
+                    return Err(Raw::internal("alt.new without case"));
+                };
                 set!(Val::Alt(c, Rc::new(self.take_args(f, regs, a))));
             }
             Op::AltTag => {
-                let Val::Alt(t, _) = &regs[a[0].index()] else { return Err(Raw::internal("alt.tag on a non-alternative")) };
+                let Val::Alt(t, _) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("alt.tag on a non-alternative"));
+                };
                 set!(Val::Int(*t as i64));
             }
             Op::AltGet => {
-                let Imm::AltField(_, c, i) = inst.imm else { return Err(Raw::internal("alt.get without field")) };
-                let Val::Alt(t, p) = &regs[a[0].index()] else { return Err(Raw::internal("alt.get on a non-alternative")) };
+                let Imm::AltField(_, c, i) = inst.imm else {
+                    return Err(Raw::internal("alt.get without field"));
+                };
+                let Val::Alt(t, p) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("alt.get on a non-alternative"));
+                };
                 if *t != c {
                     return Err(Raw::internal(format!("alt.get of case {c} on case {t}")));
                 }
@@ -571,126 +675,189 @@ impl<'m> Interp<'m> {
             }
             Op::ListLit => set!(Val::List(Rc::new(self.take_args(f, regs, a)))),
             Op::ListLen => {
-                let Val::List(l) = &regs[a[0].index()] else { return Err(Raw::internal("list.len on a non-list")) };
+                let Val::List(l) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("list.len on a non-list"));
+                };
                 set!(Val::Int(l.len() as i64));
             }
             Op::ListGet | Op::ListGetNn | Op::ListGetU => {
                 let i = int!(1);
-                let Val::List(l) = &regs[a[0].index()] else { return Err(Raw::internal("list.get on a non-list")) };
+                let Val::List(l) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("list.get on a non-list"));
+                };
                 let k = list_index(l.len(), i, inst.op == Op::ListGet)?;
                 set!(l[k].clone());
             }
             Op::ListSet | Op::ListSetNn | Op::ListSetU => {
                 let i = int!(1);
-                let v = take(regs, a[2]);
-                let Val::List(mut l) = take(regs, a[0]) else { return Err(Raw::internal("list.set on a non-list")) };
+                let v = arg(f, regs, a[2], true, m);
+                let Val::List(mut l) = arg(f, regs, a[0], true, m) else {
+                    return Err(Raw::internal("list.set on a non-list"));
+                };
                 let k = list_index(l.len(), i, inst.op == Op::ListSet)?;
                 Rc::make_mut(&mut l)[k] = v;
                 set!(Val::List(l));
             }
             Op::ListPush => {
-                let v = take(regs, a[1]);
-                let Val::List(mut l) = take(regs, a[0]) else { return Err(Raw::internal("list.push on a non-list")) };
+                let v = arg(f, regs, a[1], true, m);
+                let Val::List(mut l) = arg(f, regs, a[0], true, m) else {
+                    return Err(Raw::internal("list.push on a non-list"));
+                };
                 Rc::make_mut(&mut l).push(v);
                 set!(Val::List(l));
             }
-            Op::OptSome => set!(Val::Opt(Some(Rc::new(take(regs, a[0]))))),
+            Op::OptSome => set!(Val::Opt(Some(Rc::new(arg(f, regs, a[0], true, m))))),
             Op::OptNone => set!(Val::Opt(None)),
             Op::OptIsSome => {
-                let Val::Opt(o) = &regs[a[0].index()] else { return Err(Raw::internal("opt.is_some on a non-optional")) };
+                let Val::Opt(o) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("opt.is_some on a non-optional"));
+                };
                 set!(Val::Bool(o.is_some()));
             }
             Op::OptGet | Op::OptUnwrap => {
-                let Val::Opt(o) = &regs[a[0].index()] else { return Err(Raw::internal("opt.get on a non-optional")) };
+                let Val::Opt(o) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("opt.get on a non-optional"));
+                };
                 match o {
                     Some(v) => set!((**v).clone()),
-                    None if inst.op == Op::OptUnwrap => return Err(Raw::new(FaultKind::NoneUnwrap, "unwrap of none")),
+                    None if inst.op == Op::OptUnwrap => {
+                        return Err(Raw::new(FaultKind::NoneUnwrap, "unwrap of none"));
+                    }
                     None => return Err(Raw::internal("opt.get on none")),
                 }
             }
             Op::StrLen => {
-                let Val::Str(s) = &regs[a[0].index()] else { return Err(Raw::internal("str.len on a non-string")) };
+                let Val::Str(s) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("str.len on a non-string"));
+                };
                 set!(Val::Int(s.chars().count() as i64));
             }
-            Op::SharedNew => set!(Val::Shared(Rc::new(take(regs, a[0])))),
+            Op::SharedNew => set!(Val::Shared(Rc::new(arg(f, regs, a[0], true, m)))),
             Op::SharedGet => {
-                let Val::Shared(s) = &regs[a[0].index()] else { return Err(Raw::internal("shared.get on a non-shared")) };
+                let Val::Shared(s) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("shared.get on a non-shared"));
+                };
                 set!((**s).clone());
             }
             Op::ClosureNew => {
-                let Imm::Func(g) = inst.imm else { return Err(Raw::internal("closure.new without function")) };
+                let Imm::Func(g) = inst.imm else {
+                    return Err(Raw::internal("closure.new without function"));
+                };
                 set!(Val::Closure(g, Rc::new(self.take_args(f, regs, a))));
             }
             Op::ClosureCap => {
-                let Imm::Idx(i) = inst.imm else { return Err(Raw::internal("closure.cap without index")) };
-                let Val::Closure(_, c) = &regs[a[0].index()] else { return Err(Raw::internal("closure.cap on a non-closure")) };
+                let Imm::Idx(i) = inst.imm else {
+                    return Err(Raw::internal("closure.cap without index"));
+                };
+                let Val::Closure(_, c) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("closure.cap on a non-closure"));
+                };
                 set!(c[i as usize].clone());
             }
             Op::IfaceNew => {
-                let Imm::Vtable(v) = inst.imm else { return Err(Raw::internal("iface.new without vtable")) };
-                set!(Val::Iface(v, Rc::new(take(regs, a[0]))));
+                let Imm::Vtable(v) = inst.imm else {
+                    return Err(Raw::internal("iface.new without vtable"));
+                };
+                set!(Val::Iface(v, Rc::new(arg(f, regs, a[0], true, m))));
             }
             Op::IfaceData => {
-                let Val::Iface(_, d) = &regs[a[0].index()] else { return Err(Raw::internal("iface.data on a non-interface")) };
+                let Val::Iface(_, d) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("iface.data on a non-interface"));
+                };
                 set!((**d).clone());
             }
             Op::Copy => set!(regs[a[0].index()].clone()),
             Op::Drop => {
                 self.drops += 1;
-                take(regs, a[0]);
+                arg(f, regs, a[0], true, m);
             }
             Op::DropIf => {
                 if boolean!(0) {
                     self.drops += 1;
-                    take(regs, a[1]);
+                    arg(f, regs, a[1], true, m);
                 }
             }
             Op::Slot => {
-                let Imm::Ty(t) = inst.imm else { return Err(Raw::internal("slot without type")) };
+                let Imm::Ty(t) = inst.imm else {
+                    return Err(Raw::internal("slot without type"));
+                };
                 self.mem.push(self.default_val(t));
                 set!(Val::Ptr(self.mem.len() as u64));
             }
             Op::Load => {
-                let Val::Ptr(p) = &regs[a[0].index()] else { return Err(Raw::internal("load through a non-pointer")) };
-                let cell = self.mem.get((*p as usize).wrapping_sub(1)).ok_or_else(|| Raw::internal("load from an invalid address"))?;
+                let Val::Ptr(p) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("load through a non-pointer"));
+                };
+                let cell = self
+                    .mem
+                    .get((*p as usize).wrapping_sub(1))
+                    .ok_or_else(|| Raw::internal("load from an invalid address"))?;
                 set!(cell.clone());
             }
             Op::Store => {
-                let Val::Ptr(p) = &regs[a[0].index()] else { return Err(Raw::internal("store through a non-pointer")) };
+                let Val::Ptr(p) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("store through a non-pointer"));
+                };
                 let k = (*p as usize).wrapping_sub(1);
                 let v = regs[a[1].index()].clone();
-                *self.mem.get_mut(k).ok_or_else(|| Raw::internal("store to an invalid address"))? = v;
+                *self
+                    .mem
+                    .get_mut(k)
+                    .ok_or_else(|| Raw::internal("store to an invalid address"))? = v;
             }
             Op::Call => {
-                let Imm::Func(g) = inst.imm else { return Err(Raw::internal("call without callee")) };
+                let Imm::Func(g) = inst.imm else {
+                    return Err(Raw::internal("call without callee"));
+                };
                 let params = &m.funcs[g.index()].params;
-                let args = a.iter().zip(params).map(|(v, p)| arg(f, regs, *v, p.mode != Mode::Borrow, m)).collect();
+                let args = a
+                    .iter()
+                    .zip(params)
+                    .map(|(v, p)| arg(f, regs, *v, p.mode != Mode::Borrow, m))
+                    .collect();
                 return Ok(Flow::Call { callee: g, args });
             }
             Op::CallInd => {
-                let Val::Closure(g, _) = regs[a[0].index()].clone() else { return Err(Raw::internal("call.ind on a non-closure")) };
+                let Val::Closure(g, _) = regs[a[0].index()].clone() else {
+                    return Err(Raw::internal("call.ind on a non-closure"));
+                };
                 let mut args = vec![regs[a[0].index()].clone()];
                 args.extend(a[1..].iter().map(|v| arg(f, regs, *v, false, m)));
                 return Ok(Flow::Call { callee: g, args });
             }
             Op::CallMethod => {
-                let Imm::Method(_, k) = inst.imm else { return Err(Raw::internal("call.method without method")) };
-                let Val::Iface(vt, data) = regs[a[0].index()].clone() else { return Err(Raw::internal("call.method on a non-interface")) };
+                let Imm::Method(_, k) = inst.imm else {
+                    return Err(Raw::internal("call.method without method"));
+                };
+                let Val::Iface(vt, data) = regs[a[0].index()].clone() else {
+                    return Err(Raw::internal("call.method on a non-interface"));
+                };
                 let g = m.vtables[vt.index()].methods[k as usize];
                 let mut args = vec![(*data).clone()];
                 args.extend(a[1..].iter().map(|v| arg(f, regs, *v, false, m)));
                 return Ok(Flow::Call { callee: g, args });
             }
             Op::CallRt => {
-                let Imm::Ext(e) = inst.imm else { return Err(Raw::internal("call.rt without extern")) };
+                let Imm::Ext(e) = inst.imm else {
+                    return Err(Raw::internal("call.rt without extern"));
+                };
                 let ext = &m.externs[e.index()];
-                let args: Vec<Val> = a.iter().zip(&ext.params).map(|(v, p)| arg(f, regs, *v, p.mode != Mode::Borrow, m)).collect();
-                let host = self.hosts.get(&ext.name).cloned().ok_or_else(|| Raw::internal(format!("unregistered runtime function {}", ext.name)))?;
-                let r = host(&mut self.stdout, &args).map_err(|msg| Raw::new(FaultKind::Unreachable, msg))?;
+                let args: Vec<Val> = a
+                    .iter()
+                    .zip(&ext.params)
+                    .map(|(v, p)| arg(f, regs, *v, p.mode != Mode::Borrow, m))
+                    .collect();
+                let host = self.hosts.get(&ext.name).cloned().ok_or_else(|| {
+                    Raw::internal(format!("unregistered runtime function {}", ext.name))
+                })?;
+                let r = host(&mut self.stdout, &args)
+                    .map_err(|msg| Raw::new(FaultKind::Unreachable, msg))?;
                 set!(r);
             }
             Op::TypeDesc => {
-                let Imm::Ty(t) = inst.imm else { return Err(Raw::internal("typedesc without type")) };
+                let Imm::Ty(t) = inst.imm else {
+                    return Err(Raw::internal("typedesc without type"));
+                };
                 set!(Val::Ptr(t.0 as u64));
             }
             Op::Poll => {
@@ -706,22 +873,29 @@ impl<'m> Interp<'m> {
             }
             Op::DepthLeave => self.depth -= 1,
             Op::CleanupPush => {
-                let Imm::Func(g) = inst.imm else { return Err(Raw::internal("cleanup.push without closer")) };
+                let Imm::Func(g) = inst.imm else {
+                    return Err(Raw::internal("cleanup.push without closer"));
+                };
                 self.cleanup.push((g, regs[a[0].index()].clone()));
                 set!(Val::Int(self.cleanup.len() as i64));
             }
             Op::CleanupRun => {
                 if let Some((closer, v)) = self.cleanup.pop() {
-                    self.exec(closer, vec![v]).map_err(|e| Raw::new(e.kind, e.message))?;
+                    self.exec(closer, vec![v])
+                        .map_err(|e| Raw::new(e.kind, e.message))?;
                 }
             }
             Op::GlobalGet => {
-                let Imm::Global(g) = inst.imm else { return Err(Raw::internal("global.get without global")) };
+                let Imm::Global(g) = inst.imm else {
+                    return Err(Raw::internal("global.get without global"));
+                };
                 set!(self.globals[g.index()].clone());
             }
             Op::GlobalSet => {
-                let Imm::Global(g) = inst.imm else { return Err(Raw::internal("global.set without global")) };
-                self.globals[g.index()] = take(regs, a[0]);
+                let Imm::Global(g) = inst.imm else {
+                    return Err(Raw::internal("global.set without global"));
+                };
+                self.globals[g.index()] = arg(f, regs, a[0], true, m);
             }
         }
         Ok(Flow::Next)
@@ -729,7 +903,9 @@ impl<'m> Interp<'m> {
 
     /// Reads operands for an op that consumes all of them.
     fn take_args(&self, f: &Func, regs: &mut [Val], args: &[Value]) -> Vec<Val> {
-        args.iter().map(|v| arg(f, regs, *v, true, self.m)).collect()
+        args.iter()
+            .map(|v| arg(f, regs, *v, true, self.m))
+            .collect()
     }
 }
 
@@ -741,12 +917,21 @@ fn take(regs: &mut [Val], v: Value) -> Val {
 /// Reads an operand: moves it out when the position consumes a droppable
 /// value, so that unique owners keep mutating in place; clones otherwise.
 fn arg(f: &Func, regs: &mut [Val], v: Value, own: bool, m: &Module) -> Val {
-    if own && m.types.is_rc(f.ty(v)) { take(regs, v) } else { regs[v.index()].clone() }
+    if own && m.needs_drop(f.ty(v)) {
+        take(regs, v)
+    } else {
+        regs[v.index()].clone()
+    }
 }
 
 fn jump(m: &Module, f: &Func, fr: &mut Frame, t: &Target) {
     let dest = &f.blocks[t.block.index()];
-    let vals: Vec<Val> = t.args.iter().zip(&dest.params).map(|(a, p)| arg(f, &mut fr.regs, *a, p.mode == Mode::Own, m)).collect();
+    let vals: Vec<Val> = t
+        .args
+        .iter()
+        .zip(&dest.params)
+        .map(|(a, p)| arg(f, &mut fr.regs, *a, p.mode == Mode::Own, m))
+        .collect();
     for (p, v) in dest.params.iter().zip(vals) {
         fr.regs[p.value.index()] = v;
     }
@@ -764,7 +949,10 @@ fn imm_int(i: Imm) -> i64 {
 fn list_index(len: usize, i: i64, from_end: bool) -> R<usize> {
     let k = if i < 0 && from_end { i + len as i64 } else { i };
     if k < 0 || k as usize >= len {
-        return Err(Raw::new(FaultKind::IndexOutOfRange, format!("index {i} out of range for length {len}")));
+        return Err(Raw::new(
+            FaultKind::IndexOutOfRange,
+            format!("index {i} out of range for length {len}"),
+        ));
     }
     Ok(k as usize)
 }
