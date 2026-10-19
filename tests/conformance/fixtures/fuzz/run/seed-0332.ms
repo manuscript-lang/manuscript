@@ -50,7 +50,8 @@ export fn main() Int:
     say("i17 = {i17}")
     let s18 = "x"
     say("s18 = [{s18}]")
-    let l19 = l2.clone().append(95)
+    var l19 = l2.clone()
+    l19.append(95)
     say("l19 = {l19} len {l19.length()}")
     let big20 = 9223372036854775807
     say("{big20 + 5}")

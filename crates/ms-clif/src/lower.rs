@@ -723,6 +723,15 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     pub fn lower_func(&mut self, f: &Func, _index: usize) {
         let rpo = f.rpo();
+        self.g.scope_base = self.g.scopes.len() as u32;
+        let base = self.g.scope_base;
+        for sc in &f.scopes {
+            let mut sc = sc.clone();
+            if sc.parent != 0 {
+                sc.parent += base;
+            }
+            self.g.scopes.push(sc);
+        }
         self.blocks = vec![None; f.blocks.len()];
         self.vals = vec![Vec::new(); f.values.len()];
         for b in &rpo {
@@ -1284,6 +1293,15 @@ impl<'a, 'm> Lower<'a, 'm> {
                 vec![blk, addr]
             }
             Op::IfaceData => vec![self.a(inst, 0)[0]],
+            Op::IfaceIs => {
+                let Imm::Vtable(vt) = inst.imm else {
+                    unreachable!()
+                };
+                let have = self.a(inst, 0)[1];
+                let id = self.g.vtables[vt.index()];
+                let want = self.data_addr(id);
+                vec![self.b.ins().icmp(IntCC::Equal, have, want)]
+            }
             Op::Copy => {
                 let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);

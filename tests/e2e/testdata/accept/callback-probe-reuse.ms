@@ -23,7 +23,7 @@ impl Error for Failure[T]:
     fn message() String: self.detail.to_string()
 
 fn record(events: Events, value: Int) Int:
-    events.values = events.values.append(value)
+    events.values.append(value)
     return value
 
 test "callback inference retains captures and contextual metadata":

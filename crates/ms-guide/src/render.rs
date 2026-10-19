@@ -42,7 +42,8 @@ pub fn parameters(parameters: &[Param], source: Option<&Source>) -> String {
         .iter()
         .map(|p| {
             let mut value = format!(
-                "{}: {}",
+                "{}{}: {}",
+                if p.mutable { "var " } else { "" },
                 p.name,
                 p.ty.as_ref().map_or(String::new(), type_text)
             );

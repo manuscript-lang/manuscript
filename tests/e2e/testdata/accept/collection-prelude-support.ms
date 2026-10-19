@@ -25,7 +25,8 @@ test "public collection support types retain their standard runtime identities":
     let entries: List[ListEntry[Int]] = list_entries(values)
     let entry: ListEntry[Int] = ListEntry(0, 3)
     try expect_equal(entries[0], entry)
-    let map = Map[String, Int]().add("a", 3)
+    var map = Map[String, Int]()
+    map.add("a", 3)
     let pairs: List[MapEntry[String, Int]] = map_entries(map)
     let pair: MapEntry[String, Int] = MapEntry("a", 3)
     let found: Optional[MapEntry[String, Int]] = map.find(

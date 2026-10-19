@@ -3,7 +3,7 @@ import {bench} from "./harness.ms"
 import {parse, stringify} from "@std/csv.ms"
 
 export fn bench_csv() Unit:
-    let rows: List[List[String]] = []
+    var rows: List[List[String]] = []
     for i in range(0, 5000):
         rows.append(["{i}", "name {i}", "a,b", "quote\"d"])
     let csv_text = stringify(rows).get("")

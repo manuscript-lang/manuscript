@@ -62,7 +62,7 @@ test "Optional methods retain generic payload and receiver identity":
 test "Optional fallbacks preserve standard option records":
     let limits = JsonLimits(-1)
     let missing: Optional[JsonLimits] = none
-    let extracted = missing.get(limits)
+    var extracted = missing.get(limits)
     try expect_equal(extracted.max_bytes.get(), -1)
     try expect_false(not (extracted.max_depth.is_none()))
     extracted.max_values = some(7)

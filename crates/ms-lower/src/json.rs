@@ -1280,6 +1280,7 @@ impl FnLower<'_> {
             let (h, v) = self.flatten_optional(
                 Input {
                     val: Some(Val { v: f, own: false }),
+                    wrapped: false,
                 },
                 "i64",
             )?;
@@ -1310,6 +1311,7 @@ impl FnLower<'_> {
             s.flatten_optional(
                 Input {
                     val: a.map(|a| a.val),
+                    wrapped: false,
                 },
                 "i64",
             )

@@ -13,7 +13,7 @@ fn generated(rng: Rng, depth: Int) TomlValue:
     if kind == 3: return TomlValue.StringValue(text(rng))
 
     if kind == 4:
-        let items: List[TomlValue] = []
+        var items: List[TomlValue] = []
         for item in range(0, next(rng, 4)):
             items.append(generated(rng, depth + 1))
         return TomlValue.ArrayValue(items)
@@ -21,7 +21,7 @@ fn generated(rng: Rng, depth: Int) TomlValue:
     return table(rng, depth + 1)
 
 fn table(rng: Rng, depth: Int) TomlValue:
-    let entries: Map[String, TomlValue] = {}
+    var entries: Map[String, TomlValue] = {}
     for item in range(0, next(rng, 4)):
         entries.add(text(rng), generated(rng, depth))
     return TomlValue.TableValue(entries)

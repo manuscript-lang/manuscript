@@ -4,7 +4,7 @@ fn grow(values: List[Int]) Unit:
     values.append(values.length())
 
 test "indexed loops over a list read and write through the shared storage":
-    let flags = [true, true, true, true, true, true]
+    var flags = [true, true, true, true, true, true]
     var i = 2
 
     while i < flags.length():
@@ -39,7 +39,7 @@ test "a list that grows inside the loop is read through its current storage":
     try expect_equal(seen, 1 + 2 + 3 + 3 + 4 + 5)
 
 test "appending directly inside the loop is visible to later reads":
-    let values = [1]
+    var values = [1]
     var i = 0
     var total = 0
 

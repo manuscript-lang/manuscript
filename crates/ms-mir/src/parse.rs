@@ -130,6 +130,7 @@ fn tokenize(line: &str, lineno: usize) -> Result<Vec<Tok>, ParseError> {
                 file: n(p[0])?,
                 line: n(p[1])?,
                 col: n(p[2])?,
+                scope: 0,
             }));
         } else if c == '-' && cs.get(i + 1) == Some(&'>') {
             out.push(Tok::Arrow);

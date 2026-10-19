@@ -22,7 +22,7 @@ export fn text(rng: Rng) String:
 
 # Deletes, inserts or replaces one character-sized piece of source text.
 export fn mutate(rng: Rng, source: String) String:
-    let chars = source.chars()
+    var chars = source.chars()
     let at = next(rng, chars.length() + 1)
     let kind = next(rng, 3)
     if kind != 1 and at < chars.length(): chars.remove(at)

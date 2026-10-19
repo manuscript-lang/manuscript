@@ -46,22 +46,23 @@ test "list search callbacks empty identities and folding":
 
 test "list mutation and clone keep separate storage":
     let original = [1, 2, 3]
-    let copy = original.clone()
+    var copy = original.clone()
     copy.splice(1, 1, [8, 9])
     try expect_false(copy != [1, 8, 9, 3] or original != [1, 2, 3])
     copy.fill(0, 1, 3)
     try expect_equal(copy, [1, 0, 0, 3])
-    let overlapping = [1, 2, 3, 4]
+    var overlapping = [1, 2, 3, 4]
     overlapping.copy_within(1, 0, 3)
     try expect_equal(overlapping, [1, 1, 2, 3])
 
 test "maps preserve insertion order and overwrite duplicate keys":
     let entries = [MapEntry("a", 1), MapEntry("b", 2), MapEntry("a", 3)]
-    let map = map_from_entries(entries)
+    var map = map_from_entries(entries)
     try expect_false(map.keys() != ["a", "b"] or map.values() != [3, 2])
     map.add_default("a", 99)
     try expect_equal(map.get("a"), some(3))
-    let copy = map.clone().remove("a")
+    var copy = map.clone()
+    copy.remove("a")
     try expect_false(copy.keys() != ["b"] or map.keys() != ["a", "b"])
     try expect_false(not map.get("missing").is_none())
 
@@ -139,7 +140,7 @@ test "for over range counts without a list":
         skipped += index
 
     try expect_equal(skipped, 16)
-    let callbacks: List[fn() Int] = []
+    var callbacks: List[fn() Int] = []
     for index in range(0, 3):
         callbacks.append(fn(): index)
     try expect_equal(callbacks.map(fn(call): call()), [0, 1, 2])
@@ -167,8 +168,10 @@ test "collection builders freeze all accumulated values":
     try expect_equal(set.freeze().values(), [1])
 
 test "imported map add interoperates with with_entry":
-    let values = Map[String, Int]().add("a", 1)
-    values.add("b", 2).add(value: 3, "a")
+    var values = Map[String, Int]()
+    values.add("a", 1)
+    values.add("b", 2)
+    values.add(value: 3, "a")
     let add = values.add
     add("c", 4)
     try expect_false(values.keys() != ["a", "b", "c"] or values.values() != [3, 2, 4])

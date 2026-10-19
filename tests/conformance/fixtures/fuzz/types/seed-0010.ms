@@ -14,7 +14,8 @@ export fn main() Int:
     say("{((470528 - (-19)) - (-786852))} {l1.length()} {(((470528 - (-19)) - (-786852)) < l1.length())} sum {((470528 - (-19)) - (-786852)) + l1.length()}")
     let f2 = (((885.625 / 561.961) * 0.0) + ((0.0 + 270.012) - (8.0e-7 + 133.25)))
     say("f2 = {f2}")
-    let l3 = l1.clone().append(24)
+    var l3 = l1.clone()
+    l3.append(24)
     say("l3 = {l3} len {l3.length()}")
     let bad = missing_function(3)
     let s4 = "日本語"

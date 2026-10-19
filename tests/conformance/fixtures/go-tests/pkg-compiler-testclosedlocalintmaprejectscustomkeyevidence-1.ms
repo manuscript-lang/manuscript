@@ -8,7 +8,7 @@ impl Equal for Key:
 impl Hashable for Key:
     fn hash() Int: 0
 fn probe() Int:
-    let values = Map[Key, Int]()
+    var values = Map[Key, Int]()
     values.add(Key(1), 10)
     values.add(Key(2), 20)
     return values.length()

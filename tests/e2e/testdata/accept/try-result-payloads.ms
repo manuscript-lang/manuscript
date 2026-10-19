@@ -38,7 +38,7 @@ test "try can change the success type":
 
 test "try retains aliases and error views":
     let visits: List[Int] = []
-    let original = Failure("before")
+    var original = Failure("before")
     let exact = relay(Result[Int, Failure].error(original), visits)
     let abstract = widened(Result[Int, Failure].error(original))
     original.detail = "after"
@@ -75,7 +75,7 @@ fn function_tail(result: Result[fn() Int, TextError]) Result[fn() Int, TextError
 
 test "tail Results evaluate once and retain payload identity":
     let visits: List[Int] = []
-    let original = Failure("before")
+    var original = Failure("before")
     let exact = tail(Result[Int, Failure].error(original), visits)
     original.detail = "after"
     exact.err().detail | try expect_equal(expected: "after")

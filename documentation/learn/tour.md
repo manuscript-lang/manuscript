@@ -47,15 +47,15 @@ test "unread message count":
 ## Lists, maps, and sets
 
 ```manuscript
-let tags = ["docs", "release"]
+var tags = ["docs", "release"]
 tags.append("featured")
 let original = tags.clone()
 tags.append("news")
 # original still has three tags.
 
-let visits = {"/help": 12}
+var visits = {"/help": 12}
 visits.add("/tour", 4)
-let subscribers = Set[String]()
+var subscribers = Set[String]()
 subscribers.add("sam@example.com")
 
 if let count = visits.get("/help"):
@@ -220,7 +220,7 @@ let headline = fn() String:
 subject = "Launch announcement"
 # headline() returns "Weekly update".
 
-let tags = ["docs"]
+var tags = ["docs"]
 let tag_count = fn() Int:
     return tags.length()
 tags.append("release")

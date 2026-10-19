@@ -39,7 +39,7 @@ fn canonical_cleanup[T: Closeable](resource: T) Unit:
         let completed = unit
 
 test "cleanup uses the selected contract":
-    let closed = Flag(value: false)
+    var closed = Flag(value: false)
     let unexpected: List[Int] = []
     with resource = Resource(closed, unexpected):
         (not closed.value) | try expect_true

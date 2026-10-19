@@ -90,8 +90,12 @@ test "optional labels on methods and native functions":
     native(-4) | try expect_equal(expected: 4)
     sum([]) | try expect_equal(expected: 0)
     sum([1, 2, 3]) | try expect_equal(expected: 6)
-    ([1, 2, 3]).reverse_in_place() | try expect_equal(expected: [3, 2, 1])
-    [1, 2].append(3) | try expect_equal(expected: [1, 2, 3])
+    var chain_1 = ([1, 2, 3])
+    chain_1.reverse_in_place()
+    chain_1 | try expect_equal(expected: [3, 2, 1])
+    var chain_2 = [1, 2]
+    chain_2.append(3)
+    chain_2 | try expect_equal(expected: [1, 2, 3])
     let lookup = [4, 5].get
     lookup(1) | try expect_equal(expected: 5)
     [4, 5].get(0) | try expect_equal(expected: 4)

@@ -3,7 +3,7 @@
 use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_check::hir::Resolution;
-use ms_mir::ir::{Block, Cc, Mode};
+use ms_mir::ir::{Block, Cc, Mode, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
@@ -65,6 +65,7 @@ impl FnLower<'_> {
                 let (one, zero) = (self.b.iconst(1), self.b.iconst(0));
                 self.b.select(p, one, zero)
             }
+            TyKind::Iface(_) => self.b.iconst(0),
             _ => return Err(Error::new("match on this type is not supported yet")),
         };
         let join = self.b.new_block();
@@ -72,9 +73,20 @@ impl FnLower<'_> {
         let mut cases: Vec<(i64, Block)> = Vec::new();
         let mut default: Option<Block> = None;
         let mut arm_cases: Vec<Option<usize>> = Vec::new();
+        let by_type = matches!(kind, TyKind::Iface(_));
         for arm in arms {
             let blk = self.b.new_block();
             let case = match arm_case(&arm.path) {
+                _ if by_type => {
+                    // A concrete type pattern on a contract value; `_` is the fallback.
+                    match self.hir.arm(arm).contract {
+                        Some(_) => Some(0),
+                        None => {
+                            default.get_or_insert(blk);
+                            None
+                        }
+                    }
+                }
                 None => {
                     default.get_or_insert(blk);
                     None
@@ -103,7 +115,11 @@ impl FnLower<'_> {
             blocks.push(blk);
         }
         let fallback = default.unwrap_or_else(|| self.b.new_block());
-        self.b.switch(tag, &cases, fallback);
+        if by_type {
+            self.type_tests(s, arms, &blocks, fallback)?;
+        } else {
+            self.b.switch(tag, &cases, fallback);
+        }
         for b in &blocks {
             self.b.seal_block(*b);
         }
@@ -121,6 +137,27 @@ impl FnLower<'_> {
                 let Some(b) = b else { continue };
                 let cur = self.b.use_var(sv);
                 let payload = match (&kind, case) {
+                    (TyKind::Iface(_), Some(_)) => {
+                        let concrete = facts
+                            .contract
+                            .clone()
+                            .ok_or_else(|| Error::new("type pattern without a type"))?;
+                        let data_ty = self.mty(&concrete)?;
+                        let data = self.b.emit(
+                            Op::IfaceData,
+                            &[cur],
+                            ms_mir::ir::Imm::None,
+                            Some(MTy::PTR),
+                        );
+                        self.b
+                            .emit(
+                                Op::Load,
+                                &[data.expect("data")],
+                                ms_mir::ir::Imm::Ty(data_ty),
+                                Some(data_ty),
+                            )
+                            .expect("load")
+                    }
                     (TyKind::Alt(a), Some(k)) => self.b.alt_get(*a, *k as u32, i as u32, cur),
                     (TyKind::Opt(_), Some(_)) => self.b.opt_get(cur),
                     _ => return Err(Error::new("payload binding on a wildcard arm")),
@@ -164,6 +201,42 @@ impl FnLower<'_> {
         }
         let v = self.b.use_var(res);
         Ok(Val { v, own: owned })
+    }
+
+    /// Branches to the first arm whose concrete type the interface value holds.
+    fn type_tests(
+        &mut self,
+        s: Value,
+        arms: &[Arm],
+        blocks: &[Block],
+        fallback: Block,
+    ) -> Result<(), Error> {
+        let TyKind::Iface(iface) = self.b.m.types.kind(self.ty_of(s)).clone() else {
+            return Err(Error::new("type patterns need an interface value"));
+        };
+        for (arm, blk) in arms.iter().zip(blocks) {
+            let Some(concrete) = self.hir.arm(arm).contract else {
+                self.b.br(*blk, &[]);
+                return Ok(());
+            };
+            let concrete = ms_check::types::sub(&concrete, &self.subst);
+            let vt = self.cx.vtable_id(self.b.m, &concrete, iface)?;
+            let hit = self
+                .b
+                .emit(
+                    Op::IfaceIs,
+                    &[s],
+                    ms_mir::ir::Imm::Vtable(vt),
+                    Some(MTy::BOOL),
+                )
+                .expect("test");
+            let next = self.b.new_block();
+            self.b.br_if(hit, *blk, &[], next, &[]);
+            self.b.seal_block(next);
+            self.b.switch_to(next);
+        }
+        self.b.br(fallback, &[]);
+        Ok(())
     }
 
     /// `try x`: the `ok` payload, or an early return of the `error` payload.

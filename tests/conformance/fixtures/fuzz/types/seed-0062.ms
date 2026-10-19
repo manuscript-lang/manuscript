@@ -20,6 +20,7 @@ export fn main() Int:
     say("b3 = {b3}")
     let l4 = [1, 2, 3].take(0)
     say("l4 = {l4} len {l4.length()}")
-    let l5 = l4.clone().append(53)
+    var l5 = l4.clone()
+    l5.append(53)
     say("l5 = {l5} len {l5.length()}")
     return 0

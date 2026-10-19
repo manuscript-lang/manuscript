@@ -4,7 +4,7 @@ use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_check::hir::{CallView, Callable, Resolution};
 use ms_check::types::{self as ct, Subst};
-use ms_mir::ir::Value;
+use ms_mir::ir::{Mode, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 use std::rc::Rc;
@@ -27,7 +27,7 @@ impl<'a> FnLower<'a> {
                 let vars = sym.variables();
                 let subst = self.callee_subst(&vars, &view.type_args)?;
                 let names = self.param_names(&c);
-                let args = self.eval_args(&view, &names, &c, &subst)?;
+                let args = self.eval_args(&view, &names, &c, &subst, None)?;
                 self.call_callable(&c, &subst, args, e)?
             }
             Resolution::Constant(sym) => {
@@ -50,6 +50,10 @@ impl<'a> FnLower<'a> {
                     .map(|t| t.params.clone())
                     .unwrap_or_default();
                 self.native_function(e, &view, sym.native.as_str(), &params, sym)?
+            }
+            // `x.get()(7)`: the callee is itself a call, so this one calls its function value.
+            Resolution::Method(_) if self.receiver_expr(e).is_none() => {
+                self.call_value(e, &view)?
             }
             Resolution::Method(m) => self.method_call(e, &view, m)?,
             Resolution::Constructor { ty, case } => self.construct(e, &view, ty, *case)?,
@@ -103,16 +107,22 @@ impl<'a> FnLower<'a> {
         names: &[ct::Name],
         callee: &Callable,
         subst: &Subst,
+        recv: Option<Val>,
     ) -> Result<Args, Error> {
         let mut slots: Vec<Option<Val>> = vec![None; names.len()];
         let mut places: Vec<Option<Expr>> = vec![None; names.len()];
         let vars = self.cx.var_positions(callee);
         let offset = usize::from(callee.self_binding.is_some());
-        for a in &view.arguments {
+        let mut read_at = Vec::new();
+        for (n, a) in view.arguments.iter().enumerate() {
+            let at = self.b.current();
             let x = self.expr(a.expr)?;
             if self.dead {
                 return Ok(Args { slots, places });
             }
+            let later_try = view.arguments[n + 1..]
+                .iter()
+                .any(|l| crate::mutation::has_try(l.expr));
             let x = match &a.wrap_optional {
                 Some(opt) => {
                     let o = self.owned(x);
@@ -122,6 +132,7 @@ impl<'a> FnLower<'a> {
                 }
                 None => x,
             };
+            let x = if later_try { self.hold_temp(x) } else { x };
             let idx = names
                 .iter()
                 .position(|n| *n == a.slot.name)
@@ -130,13 +141,56 @@ impl<'a> FnLower<'a> {
                 places[idx] = Some(a.expr.clone());
             }
             slots[idx] = Some(x);
+            read_at.push((idx, a.expr, at));
+        }
+        for (idx, expr, at) in read_at {
+            if let Some(x) = slots[idx] {
+                slots[idx] = Some(self.refresh(expr, x, at)?);
+            }
         }
         for i in 0..slots.len() {
             if slots[i].is_none() {
-                slots[i] = Some(self.default_argument(callee, i, subst, &slots)?);
+                slots[i] = Some(self.default_argument(callee, i, subst, &slots, recv)?);
             }
         }
         Ok(Args { slots, places })
+    }
+
+    /// Whether the variable at the root of the place holds its value by ownership: a borrowed
+    /// one (a parameter of a default frame) takes no update.
+    fn place_is_owned(&mut self, place: &Expr) -> bool {
+        let Some(uid) = crate::mutation::place_root(&self.hir, place) else {
+            return false;
+        };
+        self.locals
+            .get(&uid)
+            .is_some_and(|l| !self.needs_drop(l.ty) || self.b.var_mode(l.var) == Mode::Own)
+    }
+
+    /// Reads a borrowed place again after evaluating a sibling: a branch passes the variable's
+    /// value along, and a call that took the variable (moved it into a slot) replaced it, so the
+    /// earlier read no longer stands.
+    pub(crate) fn refresh(
+        &mut self,
+        e: &Expr,
+        x: Val,
+        at: ms_mir::ir::Block,
+    ) -> Result<Val, Error> {
+        // A value that needs no drop stays valid, and keeps the value of its written position.
+        let _ = at;
+        if x.own || self.dead || !self.needs_drop(self.ty_of(x.v)) || !self.is_place(e) {
+            return Ok(x);
+        }
+        self.expr(e)
+    }
+
+    /// Registers an owned value as a temporary and views it as a borrow, so a `try` evaluated
+    /// later in the same call that returns early still releases it.
+    pub(crate) fn hold_temp(&mut self, x: Val) -> Val {
+        Val {
+            v: self.borrow(x),
+            own: false,
+        }
     }
 
     /// The default of an omitted parameter, written in the callee's scope.
@@ -146,6 +200,7 @@ impl<'a> FnLower<'a> {
         i: usize,
         subst: &Subst,
         earlier: &[Option<Val>],
+        recv: Option<Val>,
     ) -> Result<Val, Error> {
         let params = callee
             .func
@@ -173,6 +228,9 @@ impl<'a> FnLower<'a> {
         let saved_file = self.file;
         self.hir = self.cx.module(callee.module.file)?;
         self.file = self.b.m.add_file(callee.module.file.as_str());
+        if let (Some(b), Some(r)) = (&callee.self_binding, recv) {
+            self.bind_borrowed(b, r.v);
+        }
         for (j, v) in earlier.iter().enumerate().take(i) {
             if let Some(v) = v {
                 self.bind_borrowed(&callee.parameters[j].clone(), v.v);
@@ -197,45 +255,66 @@ impl<'a> FnLower<'a> {
             return Ok(self.dummy(MTy::UNIT));
         }
         let fid = self.cx.function_for(self.b.m, c, subst)?;
+        let vars = self.cx.var_positions(c);
+        // A changed parameter is moved into a slot the callee takes from and puts back into.
+        let mut slots_out: Vec<(usize, Value, MTy, bool)> = Vec::new();
         let mut vals: Vec<Value> = Vec::new();
-        for a in args.slots.into_iter().flatten() {
-            vals.push(self.borrow(a));
+        for (i, a) in args.slots.into_iter().flatten().enumerate() {
+            if !vars.contains(&i) {
+                vals.push(self.borrow(a));
+                continue;
+            }
+            let ty = self.ty_of(a.v);
+            let moved = !a.own
+                && args
+                    .places
+                    .get(i)
+                    .cloned()
+                    .flatten()
+                    .and_then(|p| match self.hir.resolution(&p) {
+                        ms_check::hir::Resolution::Local(b)
+                            if matches!(p.kind, ExprKind::Name(_)) =>
+                        {
+                            Some(b.uid)
+                        }
+                        _ => None,
+                    })
+                    .is_some_and(|uid| {
+                        let owned = self
+                            .locals
+                            .get(&uid)
+                            .is_some_and(|l| self.b.var_mode(l.var) == Mode::Own);
+                        owned && crate::mutation::uses_of(&self.hir, e, uid) == 1
+                    });
+            let x = if moved { a.v } else { self.owned(a) };
+            let slot = self
+                .b
+                .emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(ty), Some(MTy::PTR))
+                .expect("slot");
+            self.move_into(slot, x);
+            slots_out.push((i, slot, ty, moved));
+            vals.push(slot);
         }
         self.at(e.pos);
         let v = self.b.call(fid, &vals);
-        let vars = self.cx.var_positions(c);
-        if vars.is_empty() {
-            return Ok(self.val(v, true));
-        }
-        // The callee returns `{result, updated var parameters...}`.
-        let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(v)).clone() else {
-            return Err(Error::new(
-                "callee with var parameters must return a record",
-            ));
-        };
-        let res = self.b.rec_get(rid, 0, v);
-        let result = self.owned(Val { v: res, own: false });
-        let mut updates = Vec::new();
-        for (j, p) in vars.iter().enumerate() {
-            let f = self.b.rec_get(rid, j as u32 + 1, v);
-            let fo = self.owned(Val { v: f, own: false });
-            updates.push((*p, fo));
-        }
-        self.drop_value(v);
-        for (p, new) in updates {
+        for (p, slot, ty, moved) in slots_out {
+            let new = self.move_out(slot, ty);
             let target = args.places.get(p).cloned().flatten();
             match target {
-                Some(place) if self.is_place(&place) => {
+                Some(place) if self.is_place(&place) && self.place_is_owned(&place) => {
                     let mut new = Some(new);
                     self.place_update(&place, &mut |s, old| {
-                        s.drop_value(old);
+                        // A moved value has already left the variable.
+                        if !moved {
+                            s.drop_value(old);
+                        }
                         Ok(new.take().expect("single use"))
                     })?;
                 }
                 _ => self.drop_value(new),
             }
         }
-        Ok(self.val(result, true))
+        Ok(self.val(v, true))
     }
 
     // ------------------------------------------------------------- methods
@@ -299,8 +378,15 @@ impl<'a> FnLower<'a> {
         let c = self.callable_of_decl(m.module, Some(decl.id()))?;
         let rt = self.ety(recv_expr);
         let mut subst = Subst::new();
-        let vars = ct::variable_set(&m.variables);
-        if !ct::unify(&m.receiver, &rt, &vars, &mut subst) {
+        // The checked reference fixes an implementation's variables; its declaration keeps them.
+        let declared = self
+            .cx
+            .methods
+            .iter()
+            .find(|d| d.module == m.module && d.decl.as_ref().map(|x| x.id()) == Some(decl.id()))
+            .unwrap_or(m);
+        let vars = ct::variable_set(&declared.variables);
+        if !ct::unify(&declared.receiver, &rt, &vars, &mut subst) {
             return Err(Error::new("cannot bind method receiver type"));
         }
         for (i, v) in m.variables.iter().enumerate() {
@@ -312,11 +398,22 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(recv);
         }
+        let recv = if view
+            .arguments
+            .iter()
+            .any(|a| crate::mutation::has_try(a.expr))
+        {
+            self.hold_temp(recv)
+        } else {
+            recv
+        };
         let names = self.param_names(&c);
-        let args = self.eval_args(view, &names, &c, &subst)?;
+        let at = self.b.current();
+        let args = self.eval_args(view, &names, &c, &subst, Some(recv))?;
         if self.dead {
             return Ok(recv);
         }
+        let recv = self.refresh(recv_expr, recv, at)?;
         let mut all = vec![Some(recv)];
         all.extend(args.slots);
         let mut places = vec![
@@ -329,6 +426,27 @@ impl<'a> FnLower<'a> {
         self.call_callable(&c, &subst, Args { slots: all, places }, e)
     }
 
+    /// The implementation of a contract operation for a concrete receiver type.
+    pub(crate) fn contract_impl(&self, m: &ct::MethodRef, recv: &ct::Ty) -> Option<ct::MethodRef> {
+        let name = m.name()?;
+        let contract = m.contract.as_ref()?;
+        self.cx
+            .methods
+            .iter()
+            .find(|mm| {
+                mm.name() == Some(name)
+                    && !mm.id.as_str().is_empty()
+                    && mm.contract.as_ref().is_some_and(|c| c.id == contract.id)
+                    && ct::unify(
+                        &mm.receiver,
+                        recv,
+                        &ct::variable_set(&mm.variables),
+                        &mut ct::Subst::new(),
+                    )
+            })
+            .cloned()
+    }
+
     fn contract_call(
         &mut self,
         e: &Expr,
@@ -336,15 +454,25 @@ impl<'a> FnLower<'a> {
         m: &ct::MethodRef,
         recv_expr: &Expr,
     ) -> Result<Val, Error> {
+        let static_ty = self.ety(recv_expr);
+        let want = self.mty(&static_ty)?;
+        if !matches!(self.b.m.types.kind(want), TyKind::Iface(_)) {
+            // A concrete receiver (a generic instance): call its implementation directly.
+            let im = self.contract_impl(m, &static_ty).ok_or_else(|| {
+                Error::new(format!(
+                    "{static_ty} has no implementation of {}",
+                    m.name().map(|n| n.to_string()).unwrap_or_default()
+                ))
+            })?;
+            return self.method_call(e, view, &im);
+        }
         let recv = self.expr(recv_expr)?;
         if self.dead {
             return Ok(recv);
         }
         let rty = self.ty_of(recv.v);
         let TyKind::Iface(iface) = self.b.m.types.kind(rty).clone() else {
-            return Err(Error::new(
-                "static dispatch through a contract is not supported yet",
-            ));
+            return Err(Error::new("contract receiver is not an interface value"));
         };
         let name = m.name().map(|n| n.to_string()).unwrap_or_default();
         let k = self.b.m.ifaces[iface.index()]
@@ -431,12 +559,15 @@ impl<'a> FnLower<'a> {
                 .ok_or_else(|| Error::new("unknown case"))?,
             None => ct::fields(&t),
         };
-        let mut slots: Vec<Option<Value>> = vec![None; params.len()];
-        for a in &view.arguments {
+        let mut slots: Vec<Option<Val>> = vec![None; params.len()];
+        for (n, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
                 return Ok(x);
             }
+            let later_try = view.arguments[n + 1..]
+                .iter()
+                .any(|l| crate::mutation::has_try(l.expr));
             let x = match &a.wrap_optional {
                 Some(_) => {
                     let o = self.owned(x);
@@ -445,23 +576,37 @@ impl<'a> FnLower<'a> {
                 }
                 None => x,
             };
+            // A later field may return early (`try`): hold this one as a temporary until then.
+            let x = if later_try {
+                self.hold_temp(x)
+            } else {
+                let v = self.owned(x);
+                Val {
+                    v,
+                    own: self.needs_drop(self.ty_of(v)),
+                }
+            };
             let idx = params
                 .iter()
                 .position(|p| p.name == a.slot.name)
                 .ok_or_else(|| Error::new(format!("no field {}", a.slot.name)))?;
-            slots[idx] = Some(self.owned(x));
+            slots[idx] = Some(x);
         }
         let mut vals = Vec::new();
         for (i, s) in slots.into_iter().enumerate() {
             match s {
-                Some(v) => vals.push(v),
+                Some(x) => {
+                    let v = self.owned(x);
+                    vals.push(v);
+                }
                 None => {
                     let earlier: Vec<(ct::Name, Value)> = params
                         .iter()
                         .zip(&vals)
                         .map(|(p, v)| (p.name, *v))
                         .collect();
-                    vals.push(self.field_default(&t, case, i, &earlier)?)
+                    let v = self.field_default(&t, case, i, &earlier)?;
+                    vals.push(v);
                 }
             }
         }

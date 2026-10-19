@@ -35,7 +35,7 @@ fn nil(value: Int) Int:
 test "field names that differ only in underscores stay distinct":
     let value = Spelled(1, 2, 3, 4)
     try expect_false(value.x_ != 1 or value.x != 2 or value.a_b != 3 or value.aB != 4)
-    let clone = value.clone()
+    var clone = value.clone()
     clone.x_ = 9
     try expect_false(value.x_ != 1 or clone.x_ != 9)
     try expect_equal(value, Spelled(1, 2, 3, 4))

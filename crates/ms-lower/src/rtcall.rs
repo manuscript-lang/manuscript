@@ -78,6 +78,8 @@ fn rt_sig(sym: &str) -> Option<RtSig> {
 #[derive(Clone, Copy)]
 pub(crate) struct Input {
     pub(crate) val: Option<Val>,
+    /// The checker converted the argument to an optional element.
+    pub(crate) wrapped: bool,
 }
 
 /// The runtime symbol implementing a native method of a receiver type.
@@ -223,12 +225,16 @@ impl FnLower<'_> {
         let sig = rt_sig(sym).ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
         let mut inputs = Vec::new();
         if let Some(r) = recv {
-            inputs.push(Input { val: Some(r) });
+            inputs.push(Input {
+                val: Some(r),
+                wrapped: false,
+            });
         }
         for p in decl {
             let a = args.iter().find(|a| a.name == p.name);
             inputs.push(Input {
                 val: a.map(|a| a.val),
+                wrapped: a.is_some_and(|a| a.wrapped),
             });
         }
         let recv_ty = recv.map(|r| self.ty_of(r.v));
@@ -307,6 +313,14 @@ impl FnLower<'_> {
                     if p.ty == "*const u8" || p.ty == "*mut u8" || consumed_aggregate {
                         // A generic element slot: pass the address of the value in memory.
                         // `*mut` hands the value over; `*const` is lent and taken back.
+                        let x = if input.wrapped {
+                            // The checker converted the argument to an optional element.
+                            let o = self.owned(x);
+                            let v = self.b.opt_some(o);
+                            Val { v, own: true }
+                        } else {
+                            x
+                        };
                         let t = self.ty_of(x.v);
                         let slot = self
                             .b

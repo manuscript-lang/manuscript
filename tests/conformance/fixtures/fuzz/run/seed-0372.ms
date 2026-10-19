@@ -32,7 +32,8 @@ export fn main() Int:
     let l7 = [0, (-12), (-21), 7, 2]
     say("l7 = {l7} len {l7.length()}")
     say("{(l1.get(2) + (39 + i4))} {i4} {((l1.get(2) + (39 + i4)) < i4)} sum {(l1.get(2) + (39 + i4)) + i4}")
-    let l8 = l7.clone().append(83)
+    var l8 = l7.clone()
+    l8.append(83)
     say("l8 = {l8} len {l8.length()}")
     let l9 = l8.concat(l8)
     say("l9 = {l9} len {l9.length()}")

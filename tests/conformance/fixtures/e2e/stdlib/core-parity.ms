@@ -62,7 +62,7 @@ test "core parity operations are callable":
     try expect_equal(members.map(fn(n): n.to_string()).values(), ["2", "3"])
 
 test "Result preserves unconstrained payloads and success-only composition":
-    let counter = Counter(0)
+    var counter = Counter(0)
     let failure: Result[Int, Counter] = error(counter)
     let success: Result[Int, Counter] = ok(0)
     let transform = fn(value: Int) String:
@@ -121,7 +121,7 @@ test "Result fallbacks are eager or lazy and bound methods keep receivers":
     try expect_equal(bound_chain(fn(n): ok(n.to_string())).get(), "0")
 
 test "Optional composition keeps nesting identity and lazy callback counts":
-    let counter = Counter(0)
+    var counter = Counter(0)
     let present: Optional[Counter] = some(counter)
     let missing: Optional[Counter] = none
     let transform = fn(value: Counter) Counter:
@@ -159,11 +159,12 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 test "Map filter copies ordered membership and get_or never inserts":
     let counter = Counter(0)
     let values: Map[String, Counter] = {"b": counter, "a": Counter(2), "c": Counter(3)}
-    let selected = values.filter(fn(k, v): k != "a" and v.calls >= 0)
+    var selected = values.filter(fn(k, v): k != "a" and v.calls >= 0)
     try expect_false(selected.keys() != ["b", "c"] or values.length() != 3)
     selected.get_or("b", Counter(9)).calls = 7
     try expect_equal(counter.calls, 7)
-    selected.remove("b").add("d", Counter(4))
+    selected.remove("b")
+    selected.add("d", Counter(4))
     try expect_equal(values.keys(), ["b", "a", "c"])
     let fallback = Counter(8)
     let lookup = values.get_or
@@ -175,18 +176,19 @@ test "Map filter copies ordered membership and get_or never inserts":
             or counter.calls != 8
         )
     )
-    let empty = values.filter(fn(unused_key, unused_value): false)
+    var empty = values.filter(fn(unused_key, unused_value): false)
     try expect_false(not (empty.is_empty()))
     empty.add("new", counter)
     try expect_false(values.contains("new"))
     let bound_filter = values.filter
     try expect_equal(bound_filter(fn(k, v): k == "a").keys(), ["a"])
-    let snapshot: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
-    let visits: List[String] = []
+    var snapshot: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
+    var visits: List[String] = []
     let copied = snapshot.filter(
         fn(k, v):
             visits.append(k)
-            snapshot.clear().add("new", 9)
+            snapshot.clear()
+            snapshot.add("new", 9)
             return v != 1
     )
     try expect_false(
@@ -211,20 +213,22 @@ impl Hashable for Key:
     fn hash() Int: 0
 
 test "Set filter and map copy snapshots and deduplicate in first-result order":
-    let values = Set[Int]([3, 1, 2])
-    let visits: List[Int] = []
-    let copied = values.filter(
+    var values = Set[Int]([3, 1, 2])
+    var visits: List[Int] = []
+    var copied = values.filter(
         fn(n):
             visits.append(n)
-            values.clear().add(9)
+            values.clear()
+            values.add(9)
             return n != 1
     )
     try expect_false(visits != [3, 1, 2] or copied.values() != [3, 2])
-    copied.remove(3).add(8)
+    copied.remove(3)
+    copied.add(8)
     try expect_equal(values.values(), [9])
     let bound_filter = copied.filter
     try expect_equal(bound_filter(fn(n): n == 8).values(), [8])
-    let input = Set[Int]([2, 3, 4])
+    var input = Set[Int]([2, 3, 4])
     let mapped = map_set(input, fn(n): Key(n % 2, n.to_string()))
     try expect_false(
         (
@@ -234,9 +238,10 @@ test "Set filter and map copy snapshots and deduplicate in first-result order":
         )
     )
     let bound = input.map[String]
-    let mapped_snapshot = bound(
+    var mapped_snapshot = bound(
         fn(n):
-            input.remove(n).add(7)
+            input.remove(n)
+            input.add(7)
             return n.to_string()
     )
     try expect_false(

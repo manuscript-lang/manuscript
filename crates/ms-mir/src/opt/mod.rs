@@ -16,6 +16,7 @@
 
 use crate::ir::Module;
 
+pub mod copyelim;
 pub mod inline;
 pub mod range;
 pub mod simplify;
@@ -53,11 +54,15 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
     };
     simplify::run(m);
     check(m, "simplify");
+    copyelim::run(m);
+    check(m, "copyelim");
     inline::run(m);
     check(m, "inline");
     for round in 0..3 {
         let mut changed = simplify::run(m);
         check(m, "simplify");
+        changed |= copyelim::run(m);
+        check(m, "copyelim");
         changed |= range::run(m);
         check(m, "range");
         if !changed && round > 0 {

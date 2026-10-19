@@ -23,9 +23,11 @@ test "byte updates retain relative bounds and immutable storage":
     try expect_equal(builder.freeze(), bytes)
 
 test "list boundaries retain mutation truncation and empty ranges":
-    let list = [1, 2]
-    try expect_equal(list.set(-2, 0), [0, 2])
-    try expect_false(list.remove(-1) != [0] or list != [0])
+    var list = [1, 2]
+    list.set(-2, 0)
+    try expect_equal(list, [0, 2])
+    list.remove(-1)
+    try expect_false(list != [0] or list != [0])
     list.splice(1, 0, [1, 2])
     list.fill(9, 3, 3)
     list.copy_within(3, 0, 3)
