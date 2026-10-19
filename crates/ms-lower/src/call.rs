@@ -400,6 +400,8 @@ impl<'a> FnLower<'a> {
         let mt = self.cx.lower_ty(self.b.m, &t)?;
         if crate::mapset::is_map_or_set(self.b.m, mt)
             || matches!(self.b.m.types.kind(mt), TyKind::List(_))
+            || t.is_std("StringBuilder")
+            || t.is_std("BytesBuilder")
         {
             return self.construct_collection(view, mt);
         }

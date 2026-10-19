@@ -54,6 +54,11 @@ impl FnLower<'_> {
                 Ok(Val { v, own: true })
             }
             (TyKind::List(_), Some(x)) => Ok(x),
+            // A builder is an empty byte buffer.
+            (TyKind::Bytes, None) => Ok(Val {
+                v: self.call_runtime("msrt_list_new", &[], ty)?,
+                own: true,
+            }),
             (_, None) => Ok(Val {
                 v: self.map_new(ty)?,
                 own: true,
@@ -128,22 +133,28 @@ impl FnLower<'_> {
             .expect("take")
     }
 
-    /// `(new map, result)` of a map or set mutator applied to the owned `old`. With
-    /// `copy_result` the result is a copy of the new map (the methods return their receiver).
-    pub(crate) fn mutate_map(
+    /// `(new collection, result)` of a mutator the runtime implements, applied to the owned `old`.
+    /// With `copy_result` the result is a copy of the new value (the methods return their receiver).
+    pub(crate) fn mutate_rt(
         &mut self,
         name: &str,
         old: Value,
         decl: &[ct::Param],
         args: &[NArg],
         copy_result: bool,
+        result_ty: MTy,
     ) -> Result<(Value, Option<Val>), Error> {
         let mt = self.ty_of(old);
+        if name == "freeze" {
+            return self.freeze_builder(old, result_ty);
+        }
         let set = matches!(self.b.m.types.kind(mt), TyKind::Obj(n, _) if n == "Set");
+        let text = decl.first().is_some_and(|p| p.ty.to_string() == "String");
         let sym = match (set, name) {
             (true, "add") => "msrt_set_add_copy".to_string(),
+            (_, "append") if mt == MTy::BYTES && text => "msrt_strbuilder_append".to_string(),
             _ => crate::rtcall::method_symbol(self.b.m, mt, name)
-                .ok_or_else(|| Error::new(format!("unsupported map mutator {name}")))?,
+                .ok_or_else(|| Error::new(format!("unsupported mutator {name}")))?,
         };
         let slot = self.put_slot(old);
         let recv = Val { v: old, own: false };
@@ -154,6 +165,22 @@ impl FnLower<'_> {
             Val { v, own: true }
         });
         Ok((new, result))
+    }
+
+    /// `builder.freeze()`: the buffer becomes the result and the builder starts over empty.
+    fn freeze_builder(
+        &mut self,
+        old: Value,
+        result_ty: MTy,
+    ) -> Result<(Value, Option<Val>), Error> {
+        let bt = self.ty_of(old);
+        let fresh = self.call_runtime("msrt_list_new", &[], bt)?;
+        if result_ty == MTy::STR {
+            let slot = self.put_slot(old);
+            let text = self.call_runtime("msrt_strbuilder_freeze", &[slot], MTy::STR)?;
+            return Ok((fresh, Some(Val { v: text, own: true })));
+        }
+        Ok((fresh, Some(Val { v: old, own: true })))
     }
 
     /// `map.get_or(key, fallback)`.

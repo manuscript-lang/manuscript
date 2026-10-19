@@ -501,6 +501,7 @@ impl<'a> FnLower<'a> {
         // A map or set mutator returns its receiver; copy it only when something reads it.
         let discarded = self.discard == Some(e as *const Expr as usize);
         let result_ty = self.ety(e);
+        let result_mty = self.emty(e)?;
         let hands_back = !discarded
             && (result_ty.is_std("List") || result_ty.is_std("Map") || result_ty.is_std("Set"));
         let args = self.native_args(view)?;
@@ -513,7 +514,7 @@ impl<'a> FnLower<'a> {
                 return Ok(x);
             }
             let old = self.owned(x);
-            let (new, r) = self.mutate_any(name, old, &m.ty.params, &args, false)?;
+            let (new, r) = self.mutate_any(name, old, &m.ty.params, &args, false, result_mty)?;
             return Ok(match r {
                 Some(r) => {
                     self.drop_value(new);
@@ -524,7 +525,7 @@ impl<'a> FnLower<'a> {
         }
         let mut result: Option<Val> = None;
         self.place_update(recv_expr, &mut |s, old| {
-            let (new, r) = s.mutate_any(name, old, &m.ty.params, &args, hands_back)?;
+            let (new, r) = s.mutate_any(name, old, &m.ty.params, &args, hands_back, result_mty)?;
             result = r;
             Ok(new)
         })?;
@@ -893,9 +894,15 @@ impl<'a> FnLower<'a> {
         decl: &[ct::Param],
         args: &[NArg],
         copy_result: bool,
+        result_ty: MTy,
     ) -> Result<(Value, Option<Val>), Error> {
-        if crate::mapset::is_map_or_set(self.b.m, self.ty_of(old)) {
-            return self.mutate_map(name, old, decl, args, copy_result);
+        let runtime_only = !matches!(
+            name,
+            "append" | "set" | "prepend" | "insert" | "remove" | "pop" | "reverse_in_place"
+        );
+        let is_list = matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(_));
+        if !is_list || runtime_only {
+            return self.mutate_rt(name, old, decl, args, copy_result, result_ty);
         }
         let (new, r) = self.mutate_list(name, old, args)?;
         if r.is_none() && copy_result {

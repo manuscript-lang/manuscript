@@ -224,7 +224,8 @@ impl Cx {
             let name = if t.is_std("Map") { "Map" } else { "Set" };
             return Ok(m.types.obj(name, args));
         }
-        if t.is_std("Bytes") {
+        // Builders are growable byte buffers.
+        if t.is_std("Bytes") || t.is_std("StringBuilder") || t.is_std("BytesBuilder") {
             return Ok(MTy::BYTES);
         }
         Err(Error::new(format!("unsupported native type {t}")))

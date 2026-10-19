@@ -201,7 +201,8 @@ impl FnLower<'_> {
                         }
                         return Err(Error::new(format!("{sym}: missing argument {}", p.name)));
                     };
-                    if p.ty == "*const u8" || p.ty == "*mut u8" {
+                    let consumed_aggregate = p.ty == "*mut VecVal" || p.ty == "*mut MapVal";
+                    if p.ty == "*const u8" || p.ty == "*mut u8" || consumed_aggregate {
                         // A generic element slot: pass the address of the value in memory.
                         // `*mut` hands the value over; `*const` is lent and taken back.
                         let t = self.ty_of(x.v);
