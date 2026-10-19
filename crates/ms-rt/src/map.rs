@@ -43,6 +43,19 @@ struct Layout {
     vsize: usize,
 }
 
+/// `copy_nonoverlapping` with the 8-byte case (Int/Float/pointer slots) inline.
+#[inline(always)]
+unsafe fn copy_slot(src: *const u8, dst: *mut u8, n: usize) {
+    // SAFETY: caller contract of `copy_nonoverlapping`.
+    unsafe {
+        if n == 8 {
+            *(dst as *mut u64) = *(src as *const u64);
+        } else {
+            core::ptr::copy_nonoverlapping(src, dst, n);
+        }
+    }
+}
+
 fn align_up(n: usize, a: usize) -> usize {
     (n + a - 1) & !(a - 1)
 }
@@ -75,25 +88,36 @@ unsafe fn slot_hash_of(p: *mut u8) -> u64 {
     unsafe { *(p as *const u64) }
 }
 
+#[inline(always)]
 fn hash_key(kd: &TypeDesc, key: *const u8) -> u64 {
     // SAFETY: the key slot is live.
-    unsafe { slot_hash(kd, key) | LIVE }
+    unsafe {
+        if kd.kind == KIND_INT {
+            return crate::string::mix(*(key as *const u64) ^ 0x9e37_79b9) | LIVE;
+        }
+        slot_hash(kd, key) | LIVE
+    }
+}
+
+/// Key equality with `Int` keys (the common case) compared inline.
+#[inline(always)]
+unsafe fn keys_eq(kd: &TypeDesc, a: *const u8, b: *const u8) -> bool {
+    // SAFETY: both are live key slots of `kd`.
+    unsafe {
+        if kd.kind == KIND_INT {
+            return *(a as *const i64) == *(b as *const i64);
+        }
+        slot_eq(kd, a, b)
+    }
 }
 
 /// Finds the slot index of `key`.
-unsafe fn find(
-    m: &MapVal,
-    kd: &TypeDesc,
-    vd: Option<&TypeDesc>,
-    key: *const u8,
-    h: u64,
-) -> Option<usize> {
+unsafe fn find(m: &MapVal, kd: &TypeDesc, l: &Layout, key: *const u8, h: u64) -> Option<usize> {
     if m.len == 0 {
         return None;
     }
     // SAFETY: index and slots are consistent for a non-empty map.
     unsafe {
-        let l = layout(kd, vd);
         let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
         loop {
             let e = *index_of(m).add(pos);
@@ -102,8 +126,8 @@ unsafe fn find(
             }
             if (e ^ h) >> 32 == 0 {
                 let i = (e as u32 - 1) as usize;
-                let p = slot(m, &l, i);
-                if slot_hash_of(p) == h && slot_eq(kd, p.add(l.koff), key) {
+                let p = slot(m, l, i);
+                if slot_hash_of(p) == h && keys_eq(kd, p.add(l.koff), key) {
                     return Some(i);
                 }
             }
@@ -189,7 +213,7 @@ pub unsafe fn contains_key(
     key: *const u8,
 ) -> bool {
     // SAFETY: key slot live.
-    unsafe { find(m, kd, vd, key, hash_key(kd, key)).is_some() }
+    unsafe { find(m, kd, &layout(kd, vd), key, hash_key(kd, key)).is_some() }
 }
 
 /// Inserts a new entry, consuming `key` and `val` (both slots are moved bitwise). If the key
@@ -209,12 +233,12 @@ pub unsafe fn insert(
     unsafe {
         let l = layout(kd, vd);
         let h = hash_key(kd, key);
-        if let Some(i) = find(m, kd, vd, key, h) {
+        if let Some(i) = find(m, kd, &l, key, h) {
             let p = slot(m, &l, i);
             slot_drop(kd, key);
             if let Some(vd) = vd {
                 slot_drop(vd, p.add(l.voff));
-                core::ptr::copy_nonoverlapping(val, p.add(l.voff), l.vsize);
+                copy_slot(val, p.add(l.voff), l.vsize);
             }
             return false;
         }
@@ -223,9 +247,9 @@ pub unsafe fn insert(
         }
         let p = slot(m, &l, m.used);
         *(p as *mut u64) = h;
-        core::ptr::copy_nonoverlapping(key, p.add(l.koff), l.ksize);
+        copy_slot(key, p.add(l.koff), l.ksize);
         if vd.is_some() {
-            core::ptr::copy_nonoverlapping(val, p.add(l.voff), l.vsize);
+            copy_slot(val, p.add(l.voff), l.vsize);
         }
         let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
         loop {
@@ -269,7 +293,7 @@ pub unsafe fn remove(m: &mut MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, key: 
     unsafe {
         let l = layout(kd, vd);
         let h = hash_key(kd, key);
-        let Some(i) = find(m, kd, vd, key, h) else {
+        let Some(i) = find(m, kd, &l, key, h) else {
             return false;
         };
         let p = slot(m, &l, i);
@@ -301,7 +325,7 @@ unsafe fn lookup(
     // SAFETY: caller contract.
     unsafe {
         let l = layout(kd, vd);
-        let i = find(m, kd, vd, key, hash_key(kd, key))?;
+        let i = find(m, kd, &l, key, hash_key(kd, key))?;
         Some(slot(m, &l, i))
     }
 }
@@ -508,9 +532,10 @@ pub unsafe extern "C-unwind" fn msrt_map_get_ptr(
 ) -> *const u8 {
     // SAFETY: caller contract.
     unsafe {
-        let (kd, vdo) = (&*kd, opt(vd));
-        match lookup(&*m, kd, vdo, key) {
-            Some(p) => p.add(layout(kd, vdo).voff),
+        let (kd, m) = (&*kd, &*m);
+        let l = layout(kd, opt(vd));
+        match find(m, kd, &l, key, hash_key(kd, key)) {
+            Some(i) => slot(m, &l, i).add(l.voff),
             None => core::ptr::null(),
         }
     }
