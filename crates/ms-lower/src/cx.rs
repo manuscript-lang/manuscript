@@ -27,6 +27,16 @@ pub enum JobKind {
     Equal(MTy),
     /// A native function used as a value.
     NativeThunk(Rc<NativeThunkJob>),
+    /// A native method bound to its receiver.
+    BoundNative(Rc<BoundNativeJob>),
+}
+
+/// A bound native method waiting to be lowered; the closure holds the receiver.
+pub struct BoundNativeJob {
+    /// The method.
+    pub method: ct::MethodRef,
+    /// Module the use is written in.
+    pub hir: Rc<ModuleHir>,
 }
 
 /// A native function value waiting to be lowered.
@@ -246,6 +256,27 @@ impl Cx {
         // Builders are growable byte buffers.
         if t.is_std("Bytes") || t.is_std("StringBuilder") || t.is_std("BytesBuilder") {
             return Ok(MTy::BYTES);
+        }
+        // Plain-data natives share the runtime's `repr(C)` layout.
+        let pod: &[(&str, &[&str])] = &[
+            ("Timestamp", &["seconds", "nanos"]),
+            ("Instant", &["domain", "tick"]),
+        ];
+        for (name, fields) in pod {
+            if t.is_std(name) {
+                let (id, ty) = m.add_record(name, Vec::new());
+                m.records[id.index()].fields =
+                    fields.iter().map(|f| (f.to_string(), MTy::INT)).collect();
+                return Ok(ty);
+            }
+        }
+        // Durations are signed nanoseconds.
+        if t.is_std("Duration") {
+            return Ok(MTy::INT);
+        }
+        // Runtime handles are reference-counted objects.
+        if t.is_std("Regex") {
+            return Ok(m.types.obj("Regex", Vec::new()));
         }
         Err(Error::new(format!("unsupported native type {t}")))
     }

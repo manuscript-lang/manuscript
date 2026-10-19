@@ -195,9 +195,21 @@ impl<'a> FnLower<'a> {
         if let Resolution::Constructor { ty, case } = self.hir.resolution(e) {
             return self.construct_unit(e, &ty, case);
         }
+        if let Resolution::Native(unit) = self.hir.resolution(e) {
+            if matches!(unit.as_str(), "seconds" | "milliseconds" | "minutes") {
+                let n = self.expr(left)?;
+                if self.dead {
+                    return Ok(n);
+                }
+                return self.duration_unit(unit.as_str(), n);
+            }
+        }
         if let Resolution::Method(m) = self.hir.resolution(e) {
             if m.native.as_str() == "to_string" && m.ty.params.is_empty() {
                 return self.bound_to_string(left);
+            }
+            if !m.native.as_str().is_empty() && m.native.as_str() != "contract" {
+                return self.bound_native_method(e, left, &m);
             }
         }
         let lt = self.ety(left);
@@ -376,6 +388,20 @@ impl<'a> FnLower<'a> {
             let c = self.call_runtime("msrt_string_compare", &[a, b], MTy::INT)?;
             let zero = self.b.iconst(0);
             return Ok(self.b.icmp(cc, c, zero));
+        }
+        if let TyKind::Rec(rid) = self.b.m.types.kind(t).clone() {
+            let sym = match self.b.m.records[rid.index()].name.as_str() {
+                "Timestamp" => Some("msstd_time_timestamp_compare"),
+                "Instant" => Some("msstd_time_instant_compare"),
+                _ => None,
+            };
+            if let Some(sym) = sym {
+                let a = self.borrow(l);
+                let b = self.borrow(r);
+                let c = self.call_runtime(sym, &[a, b], MTy::INT)?;
+                let zero = self.b.iconst(0);
+                return Ok(self.b.icmp(cc, c, zero));
+            }
         }
         Err(Error::new("ordering this type is not supported yet"))
     }

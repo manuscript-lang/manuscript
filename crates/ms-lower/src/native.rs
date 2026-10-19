@@ -59,6 +59,14 @@ fn is_higher_order(name: &str) -> bool {
     )
 }
 
+/// The `module/name` of natives that bindings override with a bare name.
+fn native_alias(native: &str) -> &str {
+    match native {
+        "sleep" => "time/sleep",
+        other => other,
+    }
+}
+
 /// An evaluated argument of a native call.
 #[derive(Clone, Copy)]
 pub(crate) struct NArg {
@@ -108,6 +116,8 @@ impl<'a> FnLower<'a> {
             }
             "io/stdout" => self.std_stream(e, false),
             "io/stderr" => self.std_stream(e, true),
+            "time/clock" => self.time_clock(e, false),
+            "time/wall_clock" => self.time_clock(e, true),
             other if other.starts_with("testing/") => {
                 self.testing_native(e, view, &other["testing/".len()..])
             }
@@ -128,7 +138,8 @@ impl<'a> FnLower<'a> {
 
     /// Whether `native_call` lowers the native function `native`.
     fn has_native_call(&self, native: &str) -> bool {
-        matches!(native, "math/min" | "math/max") || crate::rtcall::function_symbol(native).is_some()
+        matches!(native, "math/min" | "math/max" | "time/duration")
+            || crate::rtcall::function_symbol(native_alias(native)).is_some()
     }
 
     /// A native function applied to evaluated arguments (borrowed by the callee).
@@ -142,7 +153,13 @@ impl<'a> FnLower<'a> {
         if matches!(native, "math/min" | "math/max") {
             return self.min_max(native == "math/max", args);
         }
-        let sym = crate::rtcall::function_symbol(native)
+        if native == "time/duration" {
+            return Ok(Val {
+                v: self.borrow(args[0].val),
+                own: false,
+            });
+        }
+        let sym = crate::rtcall::function_symbol(native_alias(native))
             .ok_or_else(|| Error::new(format!("unsupported native function {native}")))?;
         self.rt_function(&sym, params, args, result)
     }
@@ -187,23 +204,39 @@ impl<'a> FnLower<'a> {
 
     /// `stdout()` / `stderr()`: an interface value over a MIR-built vtable.
     fn std_stream(&mut self, e: &Expr, stderr: bool) -> Result<Val, Error> {
+        let name = if stderr { "stderr" } else { "stdout" };
+        self.native_iface(e, name, &mut |m, method, params, ret| {
+            build_stream_method(m, method, params, ret, stderr)
+        })
+    }
+
+    /// `clock()` / `wall_clock()`: an interface whose `now` reads the runtime clock.
+    fn time_clock(&mut self, e: &Expr, wall: bool) -> Result<Val, Error> {
+        let name = if wall { "wall_clock" } else { "clock" };
+        self.native_iface(e, name, &mut |m, method, params, ret| {
+            build_clock_method(m, method, params, ret, wall)
+        })
+    }
+
+    /// An interface value of the expression's type over a vtable of MIR-built methods.
+    fn native_iface(
+        &mut self,
+        e: &Expr,
+        name: &str,
+        build: &mut dyn FnMut(&mut ms_mir::ir::Module, &str, &[MTy], MTy) -> FuncId,
+    ) -> Result<Val, Error> {
         let it = self.emty(e)?;
         let TyKind::Iface(iface) = self.b.m.types.kind(it).clone() else {
-            return Err(Error::new("stdout() is not an interface"));
+            return Err(Error::new(format!("{name}() is not an interface")));
         };
-        let key = format!(
-            "vtable:{}:{}",
-            if stderr { "stderr" } else { "stdout" },
-            iface.0
-        );
+        let key = format!("vtable:{name}:{}", iface.0);
         let vt = match self.cx.vtables.get(&key) {
             Some(v) => *v,
             None => {
                 let sigs = self.b.m.ifaces[iface.index()].methods.clone();
                 let mut methods = Vec::new();
                 for s in &sigs {
-                    let f = build_stream_method(self.b.m, &s.name, &s.params, s.ret, stderr);
-                    methods.push(f);
+                    methods.push(build(self.b.m, &s.name, &s.params, s.ret));
                 }
                 self.b.m.vtables.push(VtableDef {
                     name: key.clone(),
@@ -265,6 +298,16 @@ impl<'a> FnLower<'a> {
             let r = self.borrow(recv);
             let text = self.b.call(f, &[r]);
             return Ok(Val { v: text, own: true });
+        }
+        if let Some(v) = self.time_field(m, recv)? {
+            return Ok(v);
+        }
+        if let Some(sym) = m
+            .name()
+            .and_then(|n| crate::rtcall::typed_method_symbol(&m.receiver, n.as_str()))
+        {
+            let result = self.emty(e)?;
+            return self.rt_method(&sym, recv, &m.ty.params, &args, result);
         }
         let name = native.rsplit('/').next().unwrap_or(native);
         let rty = self.ty_of(recv.v);
@@ -500,6 +543,56 @@ impl<'a> FnLower<'a> {
         }
     }
 
+    /// A native method applied to evaluated arguments, for method values.
+    pub(crate) fn bound_native_call(
+        &mut self,
+        m: &ct::MethodRef,
+        recv: Val,
+        args: &[NArg],
+        result: MTy,
+    ) -> Result<Val, Error> {
+        if let Some(v) = self.time_field(m, recv)? {
+            return Ok(v);
+        }
+        let rty = self.ty_of(recv.v);
+        let name = m.name().map(|n| n.to_string()).unwrap_or_default();
+        let sym = crate::rtcall::typed_method_symbol(&m.receiver, &name)
+            .or_else(|| crate::rtcall::method_symbol(self.b.m, rty, m.native.as_str()))
+            .ok_or_else(|| {
+                Error::new(format!(
+                    "unsupported native method value {} on {}",
+                    m.native,
+                    ms_mir::print::ty_str(self.b.m, rty)
+                ))
+            })?;
+        self.rt_method(&sym, recv, &m.ty.params, args, result)
+    }
+
+    /// `Timestamp` and `Duration` accessors that read the representation directly.
+    fn time_field(&mut self, m: &ct::MethodRef, recv: Val) -> Result<Option<Val>, Error> {
+        let name = m.name().map(|n| n.to_string()).unwrap_or_default();
+        if m.receiver.is_std("Duration") && name == "to_nanoseconds" {
+            return Ok(Some(Val {
+                v: self.borrow(recv),
+                own: false,
+            }));
+        }
+        let field = match name.as_str() {
+            "unix_seconds" => 0,
+            "nanoseconds" => 1,
+            _ => return Ok(None),
+        };
+        if !m.receiver.is_std("Timestamp") {
+            return Ok(None);
+        }
+        let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(recv.v)).clone() else {
+            return Err(Error::new("Timestamp is not a record"));
+        };
+        let r = self.borrow(recv);
+        let v = self.b.rec_get(rid, field, r);
+        Ok(Some(Val { v, own: false }))
+    }
+
     /// A variable that always holds the receiver list, for use across loop headers.
     /// The flag says the variable is a hidden copy to drop afterwards.
     pub(crate) fn list_source(
@@ -728,6 +821,48 @@ impl<'a> FnLower<'a> {
         self.b.call_rt(ext, &[opv, original, len]);
         self.b.unreachable();
         self.b.switch_to(good);
+    }
+
+    /// `n.seconds`, `n.milliseconds`, `n.minutes`: nanoseconds, faulting beyond the range.
+    pub(crate) fn duration_unit(&mut self, unit: &str, n: Val) -> Result<Val, Error> {
+        use ms_mir::ir::{Cc, Op};
+        let scale: i64 = match unit {
+            "seconds" => 1_000_000_000,
+            "milliseconds" => 1_000_000,
+            _ => 60_000_000_000,
+        };
+        let v = self.borrow(n);
+        let (lo, hi) = (i64::MIN / scale, i64::MAX / scale);
+        let (lov, hiv) = (self.b.iconst(lo), self.b.iconst(hi));
+        let ge = self.b.icmp(Cc::Ge, v, lov);
+        let le = self.b.icmp(Cc::Le, v, hiv);
+        let ok = self.b.binop(Op::And, ge, le);
+        let (good, bad) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(ok, good, &[], bad, &[]);
+        self.b.seal_block(good);
+        self.b.seal_block(bad);
+        self.b.switch_to(bad);
+        let head = self.b.str_lit(&format!(
+            "Int.{unit}: value must be between {lo} and {hi}, found "
+        ));
+        let found = self.call_runtime("msrt_int_to_string", &[v], MTy::STR)?;
+        let msg = self.call_runtime("msrt_string_concat", &[head, found], MTy::STR)?;
+        let ext = self.b.m.add_extern(ms_mir::ir::ExternDef {
+            name: "msrt_fault_string".to_string(),
+            params: vec![Param {
+                ty: MTy::STR,
+                mode: Mode::Borrow,
+            }],
+            ret: MTy::UNIT,
+            noreturn: true,
+            pure_: false,
+        });
+        self.b.call_rt(ext, &[msg]);
+        self.b.unreachable();
+        self.b.switch_to(good);
+        let k = self.b.iconst(scale);
+        let out = self.b.binop(Op::IMul, v, k);
+        Ok(Val { v: out, own: false })
     }
 
     /// A fault with no operands (the runtime formats the message).
@@ -1591,6 +1726,37 @@ fn build_stream_method(
             b.ret(Some(u));
         }
     }
+    let f = b.into_func();
+    m.add_func(f)
+}
+
+/// A method of the clock vtable: `now` writes the reading through the runtime's out pointer.
+fn build_clock_method(
+    m: &mut ms_mir::ir::Module,
+    name: &str,
+    params: &[MTy],
+    ret: MTy,
+    wall: bool,
+) -> FuncId {
+    let mut ps = vec![Param {
+        ty: MTy::PTR,
+        mode: Mode::Borrow,
+    }];
+    ps.extend(params.iter().map(|t| Param {
+        ty: *t,
+        mode: Mode::Borrow,
+    }));
+    let mut b = FuncBuilder::new(m, &format!("clock.{name}"), ps, ret);
+    b.func_mut().kind = FuncKind::Method;
+    b.func_mut().linkage = Linkage::Internal;
+    let sym = if wall {
+        "msstd_time_wall_clock_now"
+    } else {
+        "msstd_time_clock_now"
+    };
+    let ext = runtime_fn(b.m, sym, &[], ret);
+    let reading = b.call_rt(ext, &[]);
+    b.ret(Some(reading));
     let f = b.into_func();
     m.add_func(f)
 }

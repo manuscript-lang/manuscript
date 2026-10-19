@@ -222,6 +222,7 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
         }
         JobKind::Equal(t) => return crate::eq::build_eq(cx, m, job.func, *t),
         JobKind::Lambda(l) => return crate::closure::build_lambda(cx, m, job.func, l),
+        JobKind::BoundNative(n) => return crate::closure::build_bound_native(cx, m, job.func, n),
         JobKind::NativeThunk(n) => return crate::closure::build_native_thunk(cx, m, job.func, n),
     };
     let hir = cx.module(c.module.file)?;

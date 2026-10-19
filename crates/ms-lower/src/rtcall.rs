@@ -114,12 +114,48 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         .flatten()
 }
 
+/// Native types whose methods are runtime symbols named after the type, and the module
+/// they live in: `msstd_time_timestamp_shift`, `msrt_regex_matches`.
+const TYPED_NATIVES: &[(&str, &str)] = &[
+    ("Timestamp", "time"),
+    ("Instant", "time"),
+    ("Duration", "time"),
+    ("Regex", "regex"),
+    ("Decimal", "decimal"),
+    ("IpAddress", "net"),
+    ("Cidr", "net"),
+    ("HttpHeaders", "http"),
+];
+
+/// The runtime symbol of `method` on a native type from [`TYPED_NATIVES`].
+pub(crate) fn typed_method_symbol(recv: &ct::Ty, method: &str) -> Option<String> {
+    let (ty, module) = TYPED_NATIVES.iter().find(|(t, _)| recv.is_std(t))?;
+    let ty = ty.to_lowercase();
+    ["msstd", "msrt"].iter().find_map(|prefix| {
+        [
+            format!("{prefix}_{module}_{ty}_{method}"),
+            format!("{prefix}_{module}_{method}"),
+        ]
+        .into_iter()
+        .find(|sym| rt_sig(sym).is_some())
+    })
+}
+
 /// Status codes of `ms-rt-abi` and the error cases they name.
-const STATUS_CASES: [(i64, &str); 4] = [
+const STATUS_CASES: [(i64, &str); 13] = [
     (1, "InvalidInput"),
     (2, "OutOfRange"),
     (3, "LimitExceeded"),
     (4, "InvalidData"),
+    (5, "NotFound"),
+    (6, "AlreadyExists"),
+    (7, "NotEmpty"),
+    (8, "PermissionDenied"),
+    (9, "Unsupported"),
+    (10, "Closed"),
+    (12, "Unavailable"),
+    (13, "Timeout"),
+    (14, "OutputLimit"),
 ];
 
 impl FnLower<'_> {
@@ -338,8 +374,8 @@ impl FnLower<'_> {
         if !has_out {
             if ret == MTy::BOOL && matches!(self.b.m.types.kind(result), TyKind::Alt(_)) {
                 // A bare status: `Result[Unit, E]`.
-                let status = self.call_runtime(sym, &vals, MTy::BOOL)?;
-                return self.status_result(status, None, result);
+                let code = self.status_code(sym, &vals)?;
+                return self.status_result(code, None, result);
             }
             // A null string pointer is the absent `Optional[String]`.
             let ret = match self.b.m.types.kind(result) {
@@ -383,21 +419,31 @@ impl FnLower<'_> {
             .emit(Op::Slot, &[], Imm::Ty(payload), Some(MTy::PTR))
             .expect("slot");
         vals.push(slot);
-        let status = self.call_runtime(sym, &vals, MTy::BOOL)?;
-        if matches!(self.b.m.types.kind(result), TyKind::Opt(_)) {
-            return self.two_ways(
-                status,
-                result,
-                &mut |s| {
-                    let v =
-                        s.b.emit(Op::Take, &[slot], Imm::Ty(payload), Some(payload))
-                            .expect("take");
-                    Ok(Some(s.b.opt_some(v)))
-                },
-                &mut |s| Ok(Some(s.none_owned(result))),
-            );
+        if matches!(self.b.m.types.kind(result), TyKind::Alt(_)) {
+            let code = self.status_code(sym, &vals)?;
+            return self.status_result(code, Some((slot, payload)), result);
         }
-        self.status_result(status, Some((slot, payload)), result)
+        // A presence flag.
+        let status = self.call_runtime(sym, &vals, MTy::BOOL)?;
+        self.two_ways(
+            status,
+            result,
+            &mut |s| {
+                let v =
+                    s.b.emit(Op::Take, &[slot], Imm::Ty(payload), Some(payload))
+                        .expect("take");
+                Ok(Some(s.b.opt_some(v)))
+            },
+            &mut |s| Ok(Some(s.none_owned(result))),
+        )
+    }
+
+    /// The `u8` status a runtime function returns, as an `Int` (a `Bool` would make the
+    /// optimizer assume 0 or 1). Only the low byte of the return register is defined.
+    fn status_code(&mut self, sym: &str, vals: &[Value]) -> Result<Value, Error> {
+        let raw = self.call_runtime(sym, vals, MTy::INT)?;
+        let mask = self.b.iconst(0xff);
+        Ok(self.b.binop(Op::And, raw, mask))
     }
 
     /// The error case of `ea` that the status `code` names; the last listed case otherwise.
@@ -436,7 +482,7 @@ impl FnLower<'_> {
     /// `ok(value)` when the status is zero, else the error case the status names.
     fn status_result(
         &mut self,
-        status: Value,
+        code: Value,
         out: Option<(Value, MTy)>,
         result: MTy,
     ) -> Result<Val, Error> {
@@ -449,10 +495,6 @@ impl FnLower<'_> {
             .iter()
             .position(|c| c.name == "error")
             .ok_or_else(|| Error::new("not a Result"))?;
-        let code = self
-            .b
-            .emit(Op::B2I, &[status], Imm::None, Some(MTy::INT))
-            .expect("b2i");
         let zero = self.b.iconst(0);
         let good = self.b.icmp(Cc::Eq, code, zero);
         self.two_ways(
@@ -479,7 +521,7 @@ impl FnLower<'_> {
                         let idx = s.b.m.alts[ea.index()]
                             .cases
                             .iter()
-                            .position(|c| c.name == *name)?;
+                            .position(|c| c.name == *name && c.fields.is_empty())?;
                         Some((*n, idx))
                     })
                     .collect();

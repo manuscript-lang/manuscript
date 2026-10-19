@@ -1,7 +1,7 @@
 //! Lambdas and calls through function values.
 
 use crate::Error;
-use crate::cx::{Cx, Job, JobKind, LambdaJob, NativeThunkJob};
+use crate::cx::{BoundNativeJob, Cx, Job, JobKind, LambdaJob, NativeThunkJob};
 use crate::func::{FnLower, Val};
 use ms_check::hir::CallView;
 use ms_check::types as ct;
@@ -161,6 +161,58 @@ impl FnLower<'_> {
         Ok(Val { v, own: true })
     }
 
+    /// `value.method` of a native method without a call: a closure holding the receiver.
+    pub fn bound_native_method(
+        &mut self,
+        e: &Expr,
+        left: &Expr,
+        m: &ct::MethodRef,
+    ) -> Result<Val, Error> {
+        let recv = self.expr(left)?;
+        if self.dead {
+            return Ok(recv);
+        }
+        let rty = self.ty_of(recv.v);
+        let fty = self.emty(e)?;
+        let TyKind::Fn(ptys, ret) = self.b.m.types.kind(fty).clone() else {
+            return Err(Error::new("method value without function type"));
+        };
+        let key = format!("bound-native:{}:{}:{}", m.native, rty.0, fty.0);
+        let thunk = match self.cx.helpers.get(&key) {
+            Some(f) => *f,
+            None => {
+                let mut ps = vec![Param {
+                    ty: MTy::PTR,
+                    mode: Mode::Borrow,
+                }];
+                ps.extend(ptys.iter().map(|t| Param {
+                    ty: *t,
+                    mode: Mode::Borrow,
+                }));
+                let mut f = ms_mir::ir::Func::new(m.native.as_str(), ps, ret);
+                f.kind = FuncKind::Closure {
+                    captures: vec![rty],
+                };
+                let id = self.b.m.add_func(f);
+                self.cx.queue.push(Job {
+                    func: id,
+                    kind: JobKind::BoundNative(Rc::new(BoundNativeJob {
+                        method: m.clone(),
+                        hir: self.hir.clone(),
+                    })),
+                });
+                self.cx.helpers.insert(key, id);
+                id
+            }
+        };
+        let captured = self.owned(recv);
+        let v = self
+            .b
+            .emit(Op::ClosureNew, &[captured], Imm::Func(thunk), Some(fty))
+            .expect("closure");
+        Ok(Val { v, own: true })
+    }
+
     /// `value.to_string` without a call: a closure holding the receiver that renders it.
     pub fn bound_to_string(&mut self, left: &Expr) -> Result<Val, Error> {
         let recv = self.expr(left)?;
@@ -281,6 +333,66 @@ fn lower_native_thunk(fl: &mut FnLower<'_>, job: &NativeThunkJob) -> Result<(), 
         .collect();
     let ret = fl.ret_ty;
     let out = fl.native_call(&job.native, &job.params, &args, ret)?;
+    fl.emit_return(Some(out));
+    Ok(())
+}
+
+/// Lowers the body of a queued bound native method.
+pub(crate) fn build_bound_native(
+    cx: &mut Cx,
+    m: &mut Module,
+    func: FuncId,
+    job: &BoundNativeJob,
+) -> Result<(), Error> {
+    let proto = m.funcs[func.index()].clone();
+    let FuncKind::Closure { captures } = proto.kind.clone() else {
+        return Err(Error::new("bound method without closure kind"));
+    };
+    let file = m.add_file(job.hir.data.file.as_str());
+    let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
+    b.func_mut().kind = proto.kind.clone();
+    let mut fl = FnLower::new(
+        cx,
+        b,
+        job.hir.clone(),
+        ct::Subst::new(),
+        file,
+        proto.ret,
+    );
+    let result = lower_bound_native(&mut fl, job, captures[0]);
+    let mut f = fl.b.into_func();
+    result?;
+    f.compact_blocks();
+    m.funcs[func.index()] = f;
+    Ok(())
+}
+
+fn lower_bound_native(
+    fl: &mut FnLower<'_>,
+    job: &BoundNativeJob,
+    recv_ty: MTy,
+) -> Result<(), Error> {
+    let params = fl.b.params();
+    let env = params[0];
+    let cap = fl
+        .b
+        .emit(Op::ClosureCap, &[env], Imm::Idx(0), Some(recv_ty))
+        .expect("capture");
+    let recv = Val { v: cap, own: false };
+    let args: Vec<crate::native::NArg> = job
+        .method
+        .ty
+        .params
+        .iter()
+        .zip(params.iter().skip(1))
+        .map(|(p, v)| crate::native::NArg {
+            name: p.name,
+            val: Val { v: *v, own: false },
+            wrapped: false,
+        })
+        .collect();
+    let ret = fl.ret_ty;
+    let out = fl.bound_native_call(&job.method, recv, &args, ret)?;
     fl.emit_return(Some(out));
     Ok(())
 }
