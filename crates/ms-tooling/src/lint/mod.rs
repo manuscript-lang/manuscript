@@ -86,8 +86,8 @@ pub fn lint_program(program: &Program) -> Vec<Finding> {
         patterns::lint(module, &mut findings);
         matches::lint(module, &mut findings);
     }
-    findings.sort_by(|a, b| {
-        (a.file.as_ref(), a.pos.offset, a.code).cmp(&(b.file.as_ref(), b.pos.offset, b.code))
+    crate::gosort::slice(&mut findings, |a, b| {
+        (a.file.as_ref(), a.pos.offset, a.code) < (b.file.as_ref(), b.pos.offset, b.code)
     });
     findings
 }
@@ -106,7 +106,11 @@ pub fn lint_modules(program: &Program) -> Vec<Finding> {
             .filter(|f| !f.file.starts_with("@std/")),
     );
     findings.sort_by(|a, b| {
-        (a.file.as_ref(), a.pos.line, a.pos.column).cmp(&(b.file.as_ref(), b.pos.line, b.pos.column))
+        (a.file.as_ref(), a.pos.line, a.pos.column).cmp(&(
+            b.file.as_ref(),
+            b.pos.line,
+            b.pos.column,
+        ))
     });
     findings
 }

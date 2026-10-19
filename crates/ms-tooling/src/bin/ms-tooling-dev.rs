@@ -3,6 +3,7 @@
 //!
 //! ```text
 //! ms-tooling-dev lint FILE...
+//! ms-tooling-dev inspect FILE
 //! ```
 //!
 //! Only files without local imports are supported; projects and aliases belong
@@ -28,6 +29,7 @@ fn run() -> i32 {
     };
     match command.as_str() {
         "lint" => lint(files),
+        "inspect" => inspect(files),
         other => {
             eprintln!("unknown command {other}");
             2
@@ -66,9 +68,55 @@ fn lint(files: &[String]) -> i32 {
             continue;
         }
         for f in ms_tooling::lint::lint_modules(&program) {
-            println!("{}:{}:{}: {} {}", f.file, f.pos.line, f.pos.column, f.code, f.message);
+            println!(
+                "{}:{}:{}: {} {}",
+                f.file, f.pos.line, f.pos.column, f.code, f.message
+            );
             status = 1;
         }
     }
     status
+}
+
+/// Parses and checks one standalone file, printing diagnostics on failure.
+fn checked(path: &str) -> Option<ms_check::Program> {
+    let text = std::fs::read_to_string(path).expect("read source");
+    let file: Arc<str> = Arc::from(
+        Path::new(path)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or(path),
+    );
+    let module = match ms_syntax::parser::parse(&file, &text) {
+        Ok(m) => m,
+        Err(d) => {
+            println!("{d}");
+            return None;
+        }
+    };
+    let program = ms_check::check(
+        vec![ms_check::load_module(&module)],
+        ImportMap::default(),
+        CheckOptions::default(),
+    );
+    if program.diagnostics.is_empty() {
+        return Some(program);
+    }
+    for d in &program.diagnostics {
+        println!("{d}");
+    }
+    None
+}
+
+fn inspect(files: &[String]) -> i32 {
+    let Some(program) = files.first().and_then(|f| checked(f)) else {
+        return 1;
+    };
+    println!(
+        "{}",
+        ms_tooling::inspect::inspect(&program)
+            .to_json(true)
+            .encode()
+    );
+    0
 }

@@ -13,7 +13,8 @@ pub(super) fn lint(program: &Program, module: &ModuleData, findings: &mut Vec<Fi
     let file = module_file(module);
     let reads = binding_reads(module);
     let unread = |binding: &BindingRef| {
-        reads.get(&binding.uid).copied().unwrap_or(0) == 0 && !binding.name.as_str().starts_with('_')
+        reads.get(&binding.uid).copied().unwrap_or(0) == 0
+            && !binding.name.as_str().starts_with('_')
     };
 
     let mut scan = Scan {
@@ -33,9 +34,8 @@ pub(super) fn lint(program: &Program, module: &ModuleData, findings: &mut Vec<Fi
     }
     // Collection literals require canonical imports even without written types.
     let symbols = program.symbols.get(&module.file);
-    let symbol_of = |name: &str| {
-        symbols.and_then(|names| names.borrow().get(&n(name)).map(|s| s.key()))
-    };
+    let symbol_of =
+        |name: &str| symbols.and_then(|names| names.borrow().get(&n(name)).map(|s| s.key()));
     let mut literals = Literals::default();
     walk_module(module, &mut literals);
     if literals.list {
@@ -191,8 +191,12 @@ impl Visitor for Scan<'_> {
         let mut reachable = true;
         for s in body {
             if !reachable {
-                self.findings
-                    .push(finding("MSL103", "Statement is unreachable", self.file, s.pos));
+                self.findings.push(finding(
+                    "MSL103",
+                    "Statement is unreachable",
+                    self.file,
+                    s.pos,
+                ));
             }
             let falls_through = self
                 .module

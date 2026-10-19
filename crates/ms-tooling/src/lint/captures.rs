@@ -184,7 +184,11 @@ impl Visitor for Report<'_, '_> {
             facts
                 .info(e.id)
                 .and_then(|i| i.method.as_ref())
-                .and_then(|m| m.decl.as_ref().map(|d| collection_mutation(&m.receiver, d.name().as_str())))
+                .and_then(|m| {
+                    m.decl
+                        .as_ref()
+                        .map(|d| collection_mutation(&m.receiver, d.name().as_str()))
+                })
                 .unwrap_or(false)
         };
         if mutates {
