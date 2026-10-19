@@ -16,6 +16,12 @@ recorded here before it is committed.)_
   `exp`-derived functions may differ in the last bits, because Go's amd64 and arm64 `Exp` is CPU-specific assembly). `ms-rt` gains
   `msrt_numbers_parse_int/parse_float/error_message`, `msrt_float_to_precision/to_exponential/to_fixed` (`status` + string `out`),
   `msrt_float_truncate_to_int` (present flag + `out`) and `msrt_float_compare`/`msrt_int_compare`.
+- **v2.5 (`ms-std-process`).** `msstd_process_*` covers process control and child processes. `STATUS_TIMEOUT` (13) and `STATUS_OUTPUT_LIMIT` (14)
+  join the table for `CommandError`. `Map[String, String]` crosses as two parallel string lists (`environment`, `replace`). `command_run` takes
+  the arguments, input bytes, optional limit and optional timeout and returns `CommandOut` (exit code, stdout, stderr); `command_spawn` returns a
+  refcounted child handle whose three pipes are `@std/io` stream handles (`subprocess_stream`, each call adds a reference). Children start in their
+  own process group and every wait polls in short slices so a pending cancellation kills the tree before unwinding. `ms-rt` adds `msrt_start_nanos`
+  (origin of `uptime`) and `msrt_argv` (whole argv). `watch_signals` and `memory_usage` are not provided yet (they need runtime hooks).
 - **v2.4 (`ms-std-fs`, `ms-std-io`).** `msstd_fs_*` are the path-based `@std/fs` operations and `msstd_io_*` the host streams of `@std/io`.
   Paths are strings; fallible calls return `STATUS_*` (`NOT_FOUND`, `ALREADY_EXISTS`, `NOT_EMPTY`, `PERMISSION_DENIED`, `UNSUPPORTED`,
   `CLOSED`, `FAILED`, `UNAVAILABLE`, `NONE` join the status table) and write `out` only on success. `FAILED` carries Go's `*PathError`

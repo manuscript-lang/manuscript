@@ -13,6 +13,8 @@ use ms_rt_abi::{STR_DATA_OFFSET, StrObj};
 
 unsafe extern "C-unwind" {
     fn msrt_string_from_bytes(ptr: *const u8, len: usize) -> *mut StrObj;
+    fn msrt_retain(o: *mut ms_rt_abi::Obj);
+    fn msrt_release(o: *mut ms_rt_abi::Obj);
     fn msrt_fault(msg: *const u8, len: usize) -> !;
     fn msrt_cancelled() -> !;
     static msrt_cancel_flag: u8;
@@ -204,4 +206,63 @@ pub fn record_failure(message: Vec<u8>) {
 pub fn failure_message() -> *mut StrObj {
     // SAFETY: single-threaded runtime.
     new_string(unsafe { &*FAILURE.0.get() })
+}
+
+/// Adds a reference to a runtime object.
+///
+/// # Safety
+/// `o` must point to a live object.
+pub unsafe fn retain(o: *mut ms_rt_abi::Obj) {
+    // SAFETY: provided by `ms-rt`.
+    unsafe { msrt_retain(o) }
+}
+
+/// Drops a reference to a runtime object.
+///
+/// # Safety
+/// `o` must point to a live object the caller holds a reference to.
+pub unsafe fn release(o: *mut ms_rt_abi::Obj) {
+    // SAFETY: provided by `ms-rt`.
+    unsafe { msrt_release(o) }
+}
+
+/// The elements of a list of plain values (`Int`, `Float`, pointers).
+///
+/// # Safety
+/// `v` must point to a live `VecVal` whose elements are `T`.
+pub unsafe fn list_slice<'a, T>(v: *const ms_rt_abi::VecVal) -> &'a [T] {
+    // SAFETY: a list is `len` initialised elements at `ptr` (null when empty).
+    unsafe {
+        let v = &*v;
+        if v.len == 0 {
+            &[]
+        } else {
+            core::slice::from_raw_parts(v.ptr as *const T, v.len)
+        }
+    }
+}
+
+/// Initialises `*out` with a fresh list holding a copy of `items`.
+///
+/// # Safety
+/// `out` must be writable.
+pub unsafe fn write_list<T: Copy>(items: &[T], out: *mut ms_rt_abi::VecVal) {
+    // SAFETY: the allocation holds `items.len()` elements.
+    unsafe {
+        if items.is_empty() {
+            *out = ms_rt_abi::VecVal {
+                ptr: core::ptr::null_mut(),
+                len: 0,
+                cap: 0,
+            };
+            return;
+        }
+        let ptr = msrt_alloc(core::mem::size_of_val(items));
+        core::ptr::copy_nonoverlapping(items.as_ptr(), ptr as *mut T, items.len());
+        *out = ms_rt_abi::VecVal {
+            ptr,
+            len: items.len(),
+            cap: items.len(),
+        };
+    }
 }

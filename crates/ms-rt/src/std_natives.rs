@@ -249,3 +249,143 @@ mod fs_io {
         }
     }
 }
+
+mod process {
+    use super::*;
+    use ms_rt_abi::{STATUS_OUTPUT_LIMIT, STATUS_TIMEOUT, STATUS_UNAVAILABLE, VecVal};
+    use ms_std_io::*;
+    use ms_std_process::*;
+
+    fn list_of(items: &[&str]) -> VecVal {
+        let strs: std::vec::Vec<*mut StrObj> = items.iter().map(|s| st(s)).collect();
+        let mut v = VecVal {
+            ptr: core::ptr::null_mut(),
+            len: 0,
+            cap: 0,
+        };
+        // SAFETY: `v` is writable.
+        unsafe { ms_std_rt::write_string_list(&strs, &mut v) };
+        v
+    }
+
+    fn empty() -> VecVal {
+        VecVal {
+            ptr: core::ptr::null_mut(),
+            len: 0,
+            cap: 0,
+        }
+    }
+
+    #[test]
+    fn run_and_spawn_through_the_abi() {
+        let _g = lock();
+        let mut out = std::mem::MaybeUninit::<CommandOut>::uninit();
+        let args = list_of(&["-c", "echo hi; exit 2"]);
+        let mut input = empty();
+        // SAFETY: valid runtime values and out pointers throughout.
+        unsafe {
+            ms_std_rt::write_bytes(b"", &mut input);
+            assert_eq!(
+                msstd_process_command_run(st("sh"), &args, &input, 0, 0, 0, 0, out.as_mut_ptr()),
+                STATUS_OK
+            );
+            let o = out.assume_init_read();
+            assert_eq!(
+                (o.exit_code, ms_std_rt::vec_bytes(&o.stdout)),
+                (2, b"hi\n".as_slice())
+            );
+            assert_eq!(
+                msstd_process_command_run(
+                    st("nope-nope"),
+                    &args,
+                    &input,
+                    0,
+                    0,
+                    0,
+                    0,
+                    out.as_mut_ptr()
+                ),
+                STATUS_UNAVAILABLE
+            );
+            let spin = list_of(&["-c", "sleep 30"]);
+            assert_eq!(
+                msstd_process_command_run(
+                    st("sh"),
+                    &spin,
+                    &input,
+                    0,
+                    0,
+                    1,
+                    50_000_000,
+                    out.as_mut_ptr()
+                ),
+                STATUS_TIMEOUT
+            );
+            let flood = list_of(&["-c", "yes | head -c 100000"]);
+            assert_eq!(
+                msstd_process_command_run(st("sh"), &flood, &input, 1, 10, 0, 0, out.as_mut_ptr()),
+                STATUS_OUTPUT_LIMIT
+            );
+            assert_eq!(
+                msstd_process_command_run(st("sh"), &args, &input, 1, -1, 0, 0, out.as_mut_ptr()),
+                STATUS_INVALID_INPUT
+            );
+
+            let mut child = core::ptr::null_mut();
+            assert_eq!(
+                msstd_process_command_spawn(st("cat"), &empty(), &mut child),
+                STATUS_OK
+            );
+            let stdin = msstd_process_subprocess_stream(child, 0);
+            let stdout = msstd_process_subprocess_stream(child, 1);
+            let mut data = empty();
+            ms_std_rt::write_bytes(b"ping", &mut data);
+            assert_eq!(msstd_io_write_bytes(stdin, &data), STATUS_OK);
+            msstd_io_close(stdin);
+            let mut chunk = empty();
+            assert_eq!(msstd_io_read(stdout, 0, 0, &mut chunk), STATUS_OK);
+            assert_eq!(ms_std_rt::vec_bytes(&chunk), b"ping");
+            let mut code = -9;
+            assert_eq!(
+                msstd_process_subprocess_wait(child, 1, 5_000_000_000, &mut code),
+                STATUS_OK
+            );
+            assert_eq!(code, 0);
+            msstd_process_subprocess_close(child);
+            ms_std_rt::release(stdin.cast());
+            ms_std_rt::release(stdout.cast());
+            ms_std_rt::release(child.cast());
+        }
+    }
+
+    #[test]
+    fn control_through_the_abi() {
+        let _g = lock();
+        // SAFETY: valid runtime values and out pointers throughout.
+        unsafe {
+            let a = msstd_process_monotonic_time();
+            assert!(msstd_process_uptime() >= a && a >= 0);
+            let mut cwd: *mut StrObj = core::ptr::null_mut();
+            assert_eq!(msstd_process_working_directory(&mut cwd), STATUS_OK);
+            assert!(text(cwd).starts_with('/'));
+            assert_eq!(
+                msstd_process_set_environment(st("MS_ABI_VAR"), 1, st("x")),
+                STATUS_OK
+            );
+            let (mut names, mut values) = (empty(), empty());
+            assert_eq!(
+                msstd_process_environment(&mut names, &mut values),
+                STATUS_OK
+            );
+            assert_eq!(names.len, values.len);
+            assert_eq!(
+                msstd_process_set_environment(st("A=B"), 0, st("")),
+                STATUS_INVALID_INPUT
+            );
+            let mut info = std::mem::MaybeUninit::<InfoOut>::uninit();
+            assert_eq!(msstd_process_info(info.as_mut_ptr()), STATUS_OK);
+            let i = info.assume_init();
+            assert_eq!((text(i.os).as_str(), i.pid > 0), ("linux", true));
+        }
+    }
+}

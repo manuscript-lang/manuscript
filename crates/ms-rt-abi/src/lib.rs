@@ -259,6 +259,10 @@ pub const STATUS_CLOSED: u8 = 10;
 pub const STATUS_FAILED: u8 = 11;
 /// `IoError.Unavailable`.
 pub const STATUS_UNAVAILABLE: u8 = 12;
+/// `CommandError.Timeout`.
+pub const STATUS_TIMEOUT: u8 = 13;
+/// `CommandError.OutputLimit`.
+pub const STATUS_OUTPUT_LIMIT: u8 = 14;
 /// Success with no value (`Ok(none)`): end of stream or an absent optional result.
 pub const STATUS_NONE: u8 = 16;
 

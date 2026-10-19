@@ -77,7 +77,9 @@ msrt_retain(o: *mut Obj)
 msrt_release(o: *mut Obj)
 msrt_drop_slow(o: *mut Obj)
 msrt_process_exit(code: i64) -> !
+msrt_start_nanos() -> i64
 msrt_start( main_fn: extern "C-unwind" fn() -> i64, tables: *const Tables, argc: i32, argv: *const *const u8, ) -> i32
+msrt_argv(out: *mut VecVal)
 msrt_args(out: *mut VecVal)
 msrt_string_empty() -> *mut StrObj
 msrt_string_from_bytes(ptr: *const u8, len: usize) -> *mut StrObj
@@ -273,6 +275,38 @@ msstd_math_log2e() -> f64
 msstd_math_log10e() -> f64
 msstd_math_sqrt2() -> f64
 msstd_math_sqrt_half() -> f64
+msstd_process_failure_message() -> *mut StrObj
+msstd_process_monotonic_time() -> i64
+msstd_process_uptime() -> i64
+msstd_process_environment(names: *mut VecVal, values: *mut VecVal) -> u8
+msstd_process_set_environment( name: *const StrObj, has_value: u8, value: *const StrObj, ) -> u8
+msstd_process_load_environment( path: *const StrObj, has_max: u8, max: i64, ) -> u8
+msstd_process_working_directory(out: *mut *mut StrObj) -> u8
+msstd_process_change_directory(path: *const StrObj) -> u8
+msstd_process_send_signal(pid: i64, signal: i64) -> u8
+msstd_process_groups(out: *mut VecVal) -> u8
+msstd_process_set_groups(groups: *const VecVal) -> u8
+msstd_process_initialize_groups(username: *const StrObj, gid: i64) -> u8
+msstd_process_umask(mask: i64, out: *mut i64) -> u8
+msstd_process_set_identity(kind: *const StrObj, id: i64) -> u8
+msstd_process_title(out: *mut *mut StrObj) -> u8
+msstd_process_set_title(title: *const StrObj) -> u8
+msstd_process_constrained_memory(out: *mut i64) -> u8
+msstd_process_available_memory(out: *mut i64) -> u8
+msstd_process_resource_usage(out: *mut ResourceOut) -> u8
+msstd_process_info(out: *mut InfoOut) -> u8
+msstd_process_replace( program: *const StrObj, arguments: *const VecVal, env_names: *const VecVal, env_values: *const VecVal, ) -> u8
+msstd_process_command_run( program: *const StrObj, arguments: *const VecVal, input: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout_ns: i64, out: *mut CommandOut, ) -> u8
+msstd_process_command_spawn( program: *const StrObj, arguments: *const VecVal, out: *mut *mut ChildHandle, ) -> u8
+msstd_process_subprocess_stream( h: *mut ChildHandle, which: i64, ) -> *mut Handle<Stream>
+msstd_process_subprocess_wait( h: *mut ChildHandle, has_timeout: u8, timeout_ns: i64, out: *mut i64, ) -> u8
+msstd_process_subprocess_terminate(h: *mut ChildHandle)
+msstd_process_subprocess_kill(h: *mut ChildHandle)
+msstd_process_subprocess_close(h: *mut ChildHandle)
+msrt_cancel_flag (data)
+msrt_cancelled() -> !
+msrt_start_nanos() -> i64
+msrt_argv(_: *mut ms_rt_abi::VecVal)
 msstd_time_duration_add(left: i64, other: i64) -> i64
 msstd_time_duration_plus(left: i64, right: i64) -> i64
 msstd_time_duration_minus(left: i64, right: i64) -> i64

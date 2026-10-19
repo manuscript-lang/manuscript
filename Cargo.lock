@@ -442,6 +442,7 @@ dependencies = [
  "ms-std-fs",
  "ms-std-io",
  "ms-std-math",
+ "ms-std-process",
  "ms-std-rt",
  "ms-std-time",
  "unicode-normalization",
@@ -473,6 +474,17 @@ dependencies = [
 [[package]]
 name = "ms-std-math"
 version = "0.1.0"
+
+[[package]]
+name = "ms-std-process"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "ms-rt-abi",
+ "ms-std-fs",
+ "ms-std-io",
+ "ms-std-rt",
+]
 
 [[package]]
 name = "ms-std-rt"

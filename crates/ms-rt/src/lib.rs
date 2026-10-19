@@ -11,6 +11,7 @@ extern crate alloc as stdalloc;
 extern crate ms_std_fs;
 extern crate ms_std_io;
 extern crate ms_std_math;
+extern crate ms_std_process;
 extern crate ms_std_time;
 
 pub mod alloc;

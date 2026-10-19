@@ -39,6 +39,18 @@ impl Fail {
         }
     }
 
+    /// A bare system-call failure (`syscall.Errno` text, no operation or path prefix).
+    pub fn raw(e: Errno) -> Fail {
+        let status = classify(e);
+        if status != STATUS_FAILED {
+            return Fail::status(status);
+        }
+        Fail {
+            status,
+            message: Some(describe(e).into_bytes()),
+        }
+    }
+
     /// An operating-system failure of `op` on one path (`open /x: permission denied`).
     pub fn errno(e: Errno, op: &str, path: &[u8]) -> Fail {
         Fail::errno_paths(e, op, &[path])
