@@ -226,7 +226,9 @@ fn parse_settings(flags: u8, id: u32, payload: &[u8]) -> Result<Frame, H2Error> 
         return Err(size_err("SETTINGS length not a multiple of 6"));
     }
     let params = payload
-        .chunks_exact(6)
+        .as_chunks::<6>()
+        .0
+        .iter()
         .map(|c| {
             (
                 u16::from_be_bytes([c[0], c[1]]),

@@ -1041,6 +1041,34 @@ name = "ms-mir"
 version = "0.0.0"
 
 [[package]]
+name = "ms-native"
+version = "0.1.0"
+dependencies = [
+ "ms-rt",
+ "ms-std-archive",
+ "ms-std-compress",
+ "ms-std-core",
+ "ms-std-crypto",
+ "ms-std-csv",
+ "ms-std-encoding",
+ "ms-std-fs",
+ "ms-std-html",
+ "ms-std-io",
+ "ms-std-json",
+ "ms-std-log",
+ "ms-std-math",
+ "ms-std-net",
+ "ms-std-path",
+ "ms-std-process",
+ "ms-std-random",
+ "ms-std-regex",
+ "ms-std-rt",
+ "ms-std-semver",
+ "ms-std-time",
+ "ms-std-url",
+]
+
+[[package]]
 name = "ms-project"
 version = "0.1.0"
 

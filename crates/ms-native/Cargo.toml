@@ -1,0 +1,40 @@
+[package]
+name = "ms-native"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "The static library compiled Manuscript programs link: ms-rt plus every ms-std-* native crate in one archive"
+
+[lib]
+crate-type = ["staticlib"]
+# Its panic handler is the runtime's, which a test harness would duplicate.
+test = false
+doctest = false
+
+[dependencies]
+# `std`: ms-std-net needs the standard library, which then supplies the panic handler.
+ms-rt = { path = "../ms-rt", features = ["std"] }
+ms-std-archive = { path = "../ms-std-archive" }
+ms-std-compress = { path = "../ms-std-compress" }
+ms-std-core = { path = "../ms-std-core" }
+ms-std-crypto = { path = "../ms-std-crypto" }
+ms-std-csv = { path = "../ms-std-csv" }
+ms-std-encoding = { path = "../ms-std-encoding" }
+ms-std-fs = { path = "../ms-std-fs" }
+ms-std-html = { path = "../ms-std-html" }
+ms-std-io = { path = "../ms-std-io" }
+ms-std-json = { path = "../ms-std-json" }
+ms-std-log = { path = "../ms-std-log" }
+ms-std-math = { path = "../ms-std-math" }
+ms-std-net = { path = "../ms-std-net" }
+ms-std-path = { path = "../ms-std-path" }
+ms-std-process = { path = "../ms-std-process" }
+ms-std-random = { path = "../ms-std-random" }
+ms-std-regex = { path = "../ms-std-regex" }
+ms-std-rt = { path = "../ms-std-rt" }
+ms-std-semver = { path = "../ms-std-semver" }
+ms-std-time = { path = "../ms-std-time" }
+ms-std-url = { path = "../ms-std-url" }
+
+[lints]
+workspace = true
