@@ -1,0 +1,21 @@
+//! Native implementations of `@std/net.ms`, `@std/tls.ms`, `@std/http.ms` and
+//! `@std/websocket.ms` behind the `ms-rt` C ABI (see `ABI.md`).
+//!
+//! The logic is ordinary Rust over `&str`/`&[u8]`; the `ffi` module holds the
+//! `extern "C"` shims. The Go implementation in `pkg/runtime` is the oracle.
+#![allow(unsafe_code)]
+
+pub mod addr;
+pub mod conn;
+pub mod dns;
+pub mod error;
+pub mod ffi;
+pub mod ip;
+pub mod net;
+pub mod policy;
+pub mod pump;
+pub mod rt;
+pub mod wait;
+
+#[cfg(test)]
+extern crate ms_rt;

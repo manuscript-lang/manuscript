@@ -1,0 +1,107 @@
+# ms-std-net ABI
+
+Native implementations of `@std/net.ms`, `@std/tls.ms`, `@std/http.ms` and
+`@std/websocket.ms` for the Rust pipeline. The general rules are those of
+[`crates/ms-rt/ABI.md`](../ms-rt/ABI.md); this file adds what is specific to these
+modules. The Go implementation (`pkg/runtime/net*.go`, `http*.go`, `tls.go`,
+`websocket.go`) is the behavioral oracle. `@std/sse.ms` is written in Manuscript and
+has no natives.
+
+Linking: `libms_std_net.a` is linked next to `libms_rt.a` when a program imports one
+of these modules. The crate calls `msrt_*` symbols (allocation, strings, retain and
+release, cancellation) and never the other way around.
+
+## Conventions
+
+- **Status.** A fallible native returns `u8`: `0` is success; otherwise `1 + the
+  declaration index` of the error case in the `.ms` error type. Tables below.
+  `Failed(message)` stores its text through the trailing `err: *mut *mut StrObj`
+  (owned string; the pointer may be null when the caller does not need it).
+- **Results.** An ok value is written through `out` (before `err`). `Optional[T]`
+  results add `present: *mut u8` after `out`. Native handles are `*mut Obj`.
+- **Optional parameters** flatten to `has: u8, value: i64` (`Optional[Int]`,
+  `Optional[Duration]`; a `Duration` is nanoseconds). A negative limit or timeout is
+  `InvalidInput`, as in Go.
+- **Handles.** `Network`, `Connection`, `Listener`, `DatagramSocket`, `IpAddress`,
+  `Cidr` (and later `HttpHeaders`, clients, servers, sockets) are runtime objects: an
+  `Obj` header (`rc`, `drop`) followed by the Rust value. The caller owns the count it
+  received (`out` handles are +1) and releases it with `msrt_release`; the drop entry
+  closes the resource. `Network.close()` and `close()` on a resource are explicit and
+  idempotent; dropping a handle does not run the Go-visible close order.
+- **Interfaces.** `Network`, `Connection`, `Listener`, `DatagramSocket` are interfaces
+  in `.ms`: the compiler builds the vtable whose methods call the `msrt_net_*` symbols
+  below with the handle as data pointer.
+- **Blocking.** Calls block the ms thread. While waiting they poll the cancel flag
+  (`msrt_cancel_flag`, 50 ms granularity) and call `msrt_cancelled()` when it is set,
+  and they run queued HTTP server handlers on the same thread (see HTTP). Nothing else in
+  this crate calls `msrt_*` from a helper thread.
+- **Names.** `msrt_net_<type>_<method>` (`msrt_net_connection_read`); free functions are
+  `msrt_net_<name>`.
+
+## Status tables
+
+| Type | Cases (status 1, 2, ...) |
+| --- | --- |
+| `NetworkError` | InvalidInput, InvalidData, LimitExceeded, PermissionDenied, Unsupported, Closed, Timeout, Failed |
+| `IoError` | Closed, InvalidInput, Unavailable, InvalidData, LimitExceeded, Failed |
+| `HttpError` | InvalidInput, InvalidData, LimitExceeded, PermissionDenied, Closed, Timeout, Failed |
+| `WebSocketError` | InvalidInput, InvalidData, LimitExceeded, PermissionDenied, Closed, Timeout, Failed |
+| `TlsError` | InvalidInput, InvalidData, LimitExceeded, AuthenticationFailed |
+
+`Error.message()` is `msrt_net_error_message(status, failed_or_null)` for `NetworkError`
+(and `msrt_http_`, `msrt_websocket_`, `msrt_tls_` forms for the other types). Messages
+carry no input values except `Failed` text, which is verbatim.
+
+## net
+
+`DnsKind` case indices: `A`=0, `AAAA`=1, `CNAME`=2, `MX`=3, `NS`=4, `TXT`=5, `PTR`=6, `SRV`=7.
+`IpFamily`: `IPv4`=0, `IPv6`=1.
+
+```text
+msrt_net_parse_ip(text, out: *mut *mut Obj, err) -> u8
+msrt_net_parse_cidr(text, out, err) -> u8
+msrt_net_contains_ip(cidr, ip, out: *mut u8) -> u8
+msrt_net_ip_address_text(ip) -> *mut StrObj          msrt_net_ip_address_family(ip) -> u8
+msrt_net_cidr_text(cidr) -> *mut StrObj              msrt_net_ip_family_text(u8) / msrt_net_dns_kind_text(u8) -> *mut StrObj
+msrt_net_error_message(status, failed: *const StrObj|null) -> *mut StrObj
+msrt_net_network() -> *mut Obj                       the host's root network (+1)
+msrt_net_network_close(net)
+msrt_net_network_connect(net, address, has_timeout, timeout, out, err) -> u8
+msrt_net_network_connect_unix(net, path, has_timeout, timeout, out, err) -> u8
+msrt_net_network_listen(net, address, out, err) -> u8
+msrt_net_network_listen_unix(net, path, out, err) -> u8
+msrt_net_network_bind_datagram(net, address, out, err) -> u8
+msrt_net_network_restrict(net, hosts: *const VecVal, cidrs: *const VecVal, allow_listen: u8, out, err) -> u8
+msrt_net_network_with_resolver(net, address, out, err) -> u8
+msrt_net_network_lookup(net, name, has_max, max, has_timeout, timeout, out: *mut VecVal /* List[String] */, err) -> u8
+msrt_net_network_resolve(net, name, kind: u8, has_max, max, has_timeout, timeout,
+                         records: *mut *mut DnsRecordWire, count: *mut usize, err) -> u8
+msrt_net_connection_{close, local_address, peer_address, shutdown_write(err) -> u8}
+msrt_net_connection_read(c, has_max, max, has_timeout, timeout, out: *mut VecVal, present: *mut u8, err) -> u8
+msrt_net_connection_write(c, data: String, has_timeout, timeout, err) -> u8
+msrt_net_connection_write_bytes(c, data: *const VecVal, has_timeout, timeout, err) -> u8
+msrt_net_listener_{accept(l, has_timeout, timeout, out, err) -> u8, address, close}
+msrt_net_datagram_{address, close}
+msrt_net_datagram_receive(d, has_max, max, has_timeout, timeout, data: *mut VecVal, sender: *mut *mut StrObj, err) -> u8
+msrt_net_datagram_send(d, data: String, address, has_timeout, timeout, err) -> u8
+msrt_net_datagram_send_bytes(d, data: *const VecVal, address, has_timeout, timeout, err) -> u8
+```
+
+`DnsRecordWire { kind: u8, value: *mut StrObj, priority: i64, weight: i64, port: i64 }`
+(40 bytes): `msrt_net_network_resolve` allocates `count` of them with `msrt_alloc`; the
+compiler moves each string into a `DnsRecord` and frees the array with `msrt_free`.
+
+Behavior notes (same as Go unless stated):
+
+- Addresses are `host:port` with IPv6 hosts in brackets; Unix sockets use their path.
+  A Unix listener removes its socket file on close.
+- `Connection.read` caps a chunk at 65536 bytes, returns `present = 0` at EOF, and a
+  local timeout is `IoError.Failed("operation timed out")`.
+- `lookup`/`resolve` of A and AAAA on the default network use the system resolver
+  (`getaddrinfo`) on a helper thread so a timeout or stop request is honored; other
+  record kinds and networks made with `with_resolver` speak DNS (UDP, TCP fallback)
+  using `/etc/resolv.conf` for the server, search list and `ndots`.
+- A restricted network checks the host name and every resolved address; Unix sockets
+  and listening need an unrestricted network or `allow_listen`.
+- Closing a network closes the resources it opened, newest first, then its derived
+  networks' resources.
