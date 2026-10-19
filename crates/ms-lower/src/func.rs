@@ -61,6 +61,8 @@ pub(crate) struct FnLower<'a> {
     pub var_ret: Option<(ms_mir::types::RecId, Vec<usize>)>,
     /// The expression statement being lowered, whose value nothing reads (by address).
     pub discard: Option<usize>,
+    /// The fixture hooks a test runs after its body, on every exit.
+    pub fixture: Option<crate::fixture::Hooks>,
 }
 
 impl Cx {
@@ -262,6 +264,7 @@ impl<'a> FnLower<'a> {
             counts_depth: false,
             var_ret: None,
             discard: None,
+            fixture: None,
         }
     }
 
@@ -476,6 +479,7 @@ impl<'a> FnLower<'a> {
         for t in self.temps.clone().into_iter().rev() {
             self.b.emit(Op::Drop, &[t], ms_mir::ir::Imm::None, None);
         }
+        self.end_fixture();
         self.unwind_to(0);
         if self.counts_depth {
             self.b
@@ -539,10 +543,7 @@ impl<'a> FnLower<'a> {
         self.b
             .emit(Op::DepthEnter, &[], ms_mir::ir::Imm::None, None);
         if let Some(f) = &c.fixture {
-            return Err(Error::new(format!(
-                "fixtures are not supported ({})",
-                f.name
-            )));
+            self.begin_fixture(c, f)?;
         }
         match c.body() {
             ms_check::hir::Body::Block(stmts) => {

@@ -91,6 +91,8 @@ pub struct Cx {
     pub glue_seen: std::collections::HashSet<MTy>,
     /// Parameters (receiver first) that functions hand back changed.
     pub mutated: std::collections::HashSet<crate::mutation::ParamKey>,
+    /// The `make_fixture` factory and hooks type of each module with tests.
+    pub fixtures: HashMap<Name, ms_check::TestFixture>,
 }
 
 impl Cx {
@@ -116,6 +118,7 @@ impl Cx {
             helpers: HashMap::new(),
             vtables: HashMap::new(),
             methods: program.methods.clone(),
+            fixtures: program.test_fixtures.clone(),
         }
     }
 

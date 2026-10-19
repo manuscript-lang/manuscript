@@ -56,6 +56,20 @@ impl Cx {
                 mode: Mode::Borrow,
             }));
             let mut writes_back = false;
+            // A hook a `TestHooks` implementation leaves out has no body: it does nothing.
+            let missing = native.as_str().is_empty()
+                && s.ret == MTy::UNIT
+                && !self.callables.contains_key(&(module, id));
+            if missing {
+                let mut b = FuncBuilder::new(m, &format!("vt.{}", s.name), ps, s.ret);
+                b.func_mut().kind = FuncKind::Method;
+                b.func_mut().linkage = Linkage::Internal;
+                let u = b.unit();
+                b.ret(Some(u));
+                let f = b.into_func();
+                methods.push(m.add_func(f));
+                continue;
+            }
             let callee = if !native.as_str().is_empty() {
                 self.native_method_fn(m, native.as_str(), concrete, data_ty)?
             } else {

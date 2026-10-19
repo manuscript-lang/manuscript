@@ -9,6 +9,9 @@ use ms_mir::types::{Ty as MTy, TyKind};
 /// Marks a failure message on stderr, ahead of the message.
 pub const FAILURE_MARKER: &str = "\u{1}FAIL\u{1}";
 
+/// Marks a skip: the fault message of `skip(reason)`, which the report turns into a skipped test.
+pub const SKIP_MARKER: &str = "\u{1}SKIP\u{1}";
+
 /// Builds `main`: argument `i` selects test `i`, which must return `Result[Unit, Error]`.
 /// A failed test writes `FAILURE_MARKER` and its message to stderr and exits with 1.
 pub(crate) fn build_runner(m: &mut Module, tests: &[FuncId]) -> Result<FuncId, Error> {
