@@ -78,7 +78,6 @@ fn rt_sig(sym: &str) -> Option<RtSig> {
 #[derive(Clone, Copy)]
 struct Input {
     val: Option<Val>,
-    wrapped: bool,
 }
 
 /// The runtime symbol implementing a native method of a receiver type.
@@ -208,16 +207,12 @@ impl FnLower<'_> {
         let sig = rt_sig(sym).ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
         let mut inputs = Vec::new();
         if let Some(r) = recv {
-            inputs.push(Input {
-                val: Some(r),
-                wrapped: false,
-            });
+            inputs.push(Input { val: Some(r) });
         }
         for p in decl {
             let a = args.iter().find(|a| a.name == p.name);
             inputs.push(Input {
                 val: a.map(|a| a.val),
-                wrapped: a.is_some_and(|a| a.wrapped),
             });
         }
         let recv_ty = recv.map(|r| self.ty_of(r.v));
@@ -339,18 +334,32 @@ impl FnLower<'_> {
             let (h, z) = (self.b.bconst(false), zero(self));
             return Ok((h, z));
         };
-        if input.wrapped {
-            let v = self.borrow(x);
-            return Ok((self.b.bconst(true), v));
-        }
         let v = self.borrow(x);
-        if matches!(self.b.m.types.kind(self.ty_of(v)), TyKind::Opt(_)) {
+        let ty = self.ty_of(v);
+        if let TyKind::Opt(inner) = self.b.m.types.kind(ty).clone() {
             let has = self.b.opt_is_some(v);
+            if matches!(self.b.m.types.kind(inner), TyKind::Alt(_)) {
+                // An enum crosses as its case index.
+                let tag = self.two_ways(
+                    has,
+                    MTy::INT,
+                    &mut |s| {
+                        let p = s.b.opt_get(v);
+                        Ok(Some(s.b.alt_tag(p)))
+                    },
+                    &mut |s| Ok(Some(s.b.iconst(0))),
+                )?;
+                return Ok((has, tag.v));
+            }
             let value = self.b.opt_get(v);
-            Ok((has, value))
-        } else {
-            Ok((self.b.bconst(true), v))
+            return Ok((has, value));
         }
+        let value = if matches!(self.b.m.types.kind(ty), TyKind::Alt(_)) {
+            self.b.alt_tag(v)
+        } else {
+            v
+        };
+        Ok((self.b.bconst(true), value))
     }
 
     fn finish_rt_call(

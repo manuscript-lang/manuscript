@@ -113,6 +113,18 @@ impl<'a> FnLower<'a> {
                 let v = self.b.fconst(if negate { -f } else { f });
                 Ok(Val { v, own: false })
             }
+            "@std/Decimal" => {
+                let dec = ms_std_decimal::Dec::parse(text)
+                    .ok_or_else(|| Error::new(format!("invalid Decimal literal {text}")))?;
+                let dec = if negate { dec.negate() } else { dec };
+                let ty = self.emty(e)?;
+                let TyKind::Rec(rid) = self.b.m.types.kind(ty).clone() else {
+                    return Err(Error::new("Decimal is not a record"));
+                };
+                let fields = [dec.lo as i64, dec.hi, dec.exp].map(|n| self.b.iconst(n));
+                let v = self.b.rec_new(rid, &fields);
+                Ok(Val { v, own: false })
+            }
             other => Err(Error::new(format!(
                 "unsupported numeric literal type {other}"
             ))),
@@ -289,6 +301,11 @@ impl<'a> FnLower<'a> {
                     return Ok(x);
                 }
                 let t = self.ty_of(x.v);
+                if self.is_decimal(t) {
+                    let a = self.borrow(x);
+                    let v = self.call_runtime("msstd_decimal_negate", &[a], t)?;
+                    return Ok(Val { v, own: false });
+                }
                 let v = if t == MTy::FLOAT {
                     self.b.unop(Op::FNeg, x.v)
                 } else {
@@ -369,6 +386,17 @@ impl<'a> FnLower<'a> {
         if matches!(self.b.m.types.kind(t), TyKind::List(_)) && op == BinaryOp::Add {
             return Err(Error::new("list concatenation is not supported yet"));
         }
+        if self.is_decimal(t) {
+            let sym = match op {
+                BinaryOp::Add => "msstd_decimal_add",
+                BinaryOp::Sub => "msstd_decimal_subtract",
+                BinaryOp::Mul => "msstd_decimal_multiply",
+                BinaryOp::Div => "msstd_decimal_divide",
+                _ => return Err(Error::new("% on Decimal")),
+            };
+            let (a, b) = (self.borrow(l), self.borrow(r));
+            return self.call_runtime(sym, &[a, b], t);
+        }
         Err(Error::new(format!(
             "arithmetic on {} is not supported yet",
             crate::text::ty_name(self.b.m, t)
@@ -389,21 +417,32 @@ impl<'a> FnLower<'a> {
             let zero = self.b.iconst(0);
             return Ok(self.b.icmp(cc, c, zero));
         }
-        if let TyKind::Rec(rid) = self.b.m.types.kind(t).clone() {
-            let sym = match self.b.m.records[rid.index()].name.as_str() {
-                "Timestamp" => Some("msstd_time_timestamp_compare"),
-                "Instant" => Some("msstd_time_instant_compare"),
-                _ => None,
-            };
-            if let Some(sym) = sym {
-                let a = self.borrow(l);
-                let b = self.borrow(r);
-                let c = self.call_runtime(sym, &[a, b], MTy::INT)?;
-                let zero = self.b.iconst(0);
-                return Ok(self.b.icmp(cc, c, zero));
-            }
+        if let Some(sym) = self.ordering_symbol(t) {
+            let a = self.borrow(l);
+            let b = self.borrow(r);
+            let c = self.call_runtime(sym, &[a, b], MTy::INT)?;
+            let zero = self.b.iconst(0);
+            return Ok(self.b.icmp(cc, c, zero));
         }
         Err(Error::new("ordering this type is not supported yet"))
+    }
+
+    /// The runtime function ordering two values of a native record type (`-1`, `0` or `1`).
+    pub(crate) fn ordering_symbol(&self, t: MTy) -> Option<&'static str> {
+        let TyKind::Rec(rid) = self.b.m.types.kind(t) else {
+            return None;
+        };
+        match self.b.m.records[rid.index()].name.as_str() {
+            "Timestamp" => Some("msstd_time_timestamp_compare"),
+            "Instant" => Some("msstd_time_instant_compare"),
+            "Decimal" => Some("msstd_decimal_compare"),
+            _ => None,
+        }
+    }
+
+    /// Whether `t` is the `Decimal` record.
+    pub(crate) fn is_decimal(&self, t: MTy) -> bool {
+        matches!(self.b.m.types.kind(t), TyKind::Rec(rid) if self.b.m.records[rid.index()].name == "Decimal")
     }
 
     /// Structural equality of two operands of the same type.

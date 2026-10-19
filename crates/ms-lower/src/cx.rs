@@ -264,6 +264,7 @@ impl Cx {
         let pod: &[(&str, &[&str])] = &[
             ("Timestamp", &["seconds", "nanos"]),
             ("Instant", &["domain", "tick"]),
+            ("Decimal", &["lo", "hi", "exp"]),
         ];
         for (name, fields) in pod {
             if t.is_std(name) {

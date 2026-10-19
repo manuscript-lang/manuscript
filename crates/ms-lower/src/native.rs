@@ -187,6 +187,10 @@ impl<'a> FnLower<'a> {
             let c = self.call_runtime("msrt_string_compare", &[a, b], MTy::INT)?;
             let zero = self.b.iconst(0);
             self.b.icmp(Cc::Gt, c, zero)
+        } else if let Some(sym) = self.ordering_symbol(t) {
+            let c = self.call_runtime(sym, &[a, b], MTy::INT)?;
+            let zero = self.b.iconst(0);
+            self.b.icmp(Cc::Gt, c, zero)
         } else {
             return Err(Error::new(format!(
                 "unsupported min/max on {}",
@@ -414,6 +418,12 @@ impl<'a> FnLower<'a> {
                 let mut it = args.into_iter();
                 let index = it.next().ok_or_else(|| Error::new("get without index"))?;
                 self.list_get_or(recv, elem, index, it.next())
+            }
+            (TyKind::Int, "to_decimal") => {
+                let n = self.borrow(recv);
+                let result = self.emty(e)?;
+                let v = self.call_runtime("msstd_decimal_from_int", &[n], result)?;
+                Ok(Val { v, own: false })
             }
             (TyKind::Int, "to_float") => {
                 let x = self.borrow(recv);

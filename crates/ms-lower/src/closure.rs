@@ -6,7 +6,7 @@ use crate::func::{FnLower, Val};
 use ms_check::hir::CallView;
 use ms_check::types as ct;
 use ms_mir::builder::FuncBuilder;
-use ms_mir::ir::{FuncId, FuncKind, Imm, Mode, Module, Op, Param};
+use ms_mir::ir::{FuncId, FuncKind, Imm, Mode, Module, Op, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 use std::rc::Rc;
@@ -269,8 +269,13 @@ impl FnLower<'_> {
         if self.dead {
             return Ok(f);
         }
-        let mut args = Vec::new();
-        for a in &view.arguments {
+        let declared = self.ety(callee).params.clone();
+        let ftype = self.ty_of(f.v);
+        let TyKind::Fn(ptys, _) = self.b.m.types.kind(ftype).clone() else {
+            return Err(Error::new("call of a non-function value"));
+        };
+        let mut slots: Vec<Option<Value>> = vec![None; ptys.len()];
+        for (i, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
                 return Ok(x);
@@ -283,7 +288,22 @@ impl FnLower<'_> {
                 }
                 None => x,
             };
-            args.push(self.borrow(x));
+            let at = declared
+                .iter()
+                .position(|p| p.name == a.slot.name)
+                .unwrap_or(i);
+            slots[at] = Some(self.borrow(x));
+        }
+        // An omitted parameter of a function type is an optional one: it is `none`.
+        let mut args = Vec::new();
+        for (i, s) in slots.into_iter().enumerate() {
+            args.push(match s {
+                Some(v) => v,
+                None if matches!(self.b.m.types.kind(ptys[i]), TyKind::Opt(_)) => {
+                    self.b.opt_none(ptys[i])
+                }
+                None => return Err(Error::new("missing argument in a call of a function value")),
+            });
         }
         let fv = self.borrow(f);
         self.at(e.pos);

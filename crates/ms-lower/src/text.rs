@@ -32,6 +32,18 @@ pub(crate) fn runtime_fn(m: &mut Module, sym: &str, params: &[MTy], ret: MTy) ->
     })
 }
 
+/// The runtime formatter of a native record type whose text is not its fields.
+fn native_record_text(b: &FuncBuilder<'_>, t: MTy) -> Option<&'static str> {
+    let TyKind::Rec(rid) = b.m.types.kind(t) else {
+        return None;
+    };
+    match b.m.records[rid.index()].name.as_str() {
+        "Decimal" => Some("msstd_decimal_to_string"),
+        "Timestamp" => Some("msstd_time_timestamp_to_string"),
+        _ => None,
+    }
+}
+
 /// Calls a leaf formatter for scalar/string types; `None` for compound types.
 /// The quoted form (`repr`) wraps strings in quotes.
 pub(crate) fn scalar_text(
@@ -56,7 +68,7 @@ pub(crate) fn scalar_text(
         let s = b.str_lit("unit");
         return Some((s, false));
     } else {
-        return None;
+        native_record_text(b, t)?
     };
     let ext = runtime_fn(b.m, sym, &[t], MTy::STR);
     Some((b.call_rt(ext, &[v]), true))

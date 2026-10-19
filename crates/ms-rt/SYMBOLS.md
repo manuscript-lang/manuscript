@@ -236,6 +236,16 @@ msrt_crypto_ecdh_shared_secret( private_key: *const VecVal, peer: *const VecVal,
 msrt_crypto_rsa_generate(bits: i64, out: *mut VecVal) -> u8
 msrt_csv_parse( text: *const StrObj, delimiter: *const StrObj, line_ending: *const StrObj, has_max_rows: u8, max_rows: i64, has_max_cells: u8, max_cells: i64, out: *mut VecVal, ) -> u8
 msrt_csv_stringify( rows: *const VecVal, delimiter: *const StrObj, line_ending: *const StrObj, has_max_bytes: u8, max_bytes: i64, out: *mut *mut StrObj, ) -> u8
+msstd_decimal_literal(text: *const StrObj, out: *mut Dec)
+msstd_decimal_from_int(n: i64, out: *mut Dec)
+msstd_decimal_divide(a: *const Dec, b: *const Dec, out: *mut Dec)
+msstd_decimal_negate(a: *const Dec, out: *mut Dec)
+msstd_decimal_compare(a: *const Dec, b: *const Dec) -> i64
+msstd_decimal_to_string(a: *const Dec) -> *mut StrObj
+msstd_decimal_to_float(a: *const Dec) -> f64
+msstd_decimal_truncate_to_int(a: *const Dec, out: *mut i64) -> u8
+msstd_decimal_round( value: *const Dec, places: i64, has_mode: u8, mode: i64, out: *mut Dec, ) -> u8
+msstd_decimal_to_fixed( value: *const Dec, digits: i64, has_mode: u8, mode: i64, out: *mut *mut StrObj, ) -> u8
 msrt_encoding_hex_encode(data: *const VecVal) -> *mut StrObj
 msrt_encoding_hex_decode( text: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msrt_encoding_base64_encode( data: *const VecVal, url_safe: u8, ) -> *mut StrObj
