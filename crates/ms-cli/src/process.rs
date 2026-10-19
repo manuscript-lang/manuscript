@@ -9,7 +9,7 @@
 
 use std::process::{Child, ExitStatus};
 use std::sync::atomic::{AtomicI32, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const SIGINT: i32 = 2;
 const SIGTERM: i32 = 15;
@@ -26,8 +26,27 @@ extern "C" fn record(signum: i32) {
     PENDING.store(signum, Ordering::SeqCst);
 }
 
+/// How a supervised child ended.
+pub struct Waited {
+    pub status: ExitStatus,
+    /// The deadline passed and the child was killed.
+    pub timed_out: bool,
+    /// SIGINT or SIGTERM arrived while waiting (the child received it too).
+    pub interrupted: bool,
+}
+
 /// Wait for `child`, forwarding SIGINT and SIGTERM received meanwhile.
 pub fn wait_with_signals(child: &mut Child) -> std::io::Result<ExitStatus> {
+    wait_supervised(child, None, &mut || {}).map(|waited| waited.status)
+}
+
+/// Wait for `child`, forwarding SIGINT and SIGTERM, killing it once `timeout`
+/// has elapsed, and calling `poll` about every 10 milliseconds (to drain pipes).
+pub fn wait_supervised(
+    child: &mut Child,
+    timeout: Option<Duration>,
+    poll: &mut dyn FnMut(),
+) -> std::io::Result<Waited> {
     PENDING.store(0, Ordering::SeqCst);
     // SAFETY: `record` is async-signal-safe (one atomic store) and has the C ABI
     // `signal` expects; the previous disposition is restored below.
@@ -37,17 +56,31 @@ pub fn wait_with_signals(child: &mut Child) -> std::io::Result<ExitStatus> {
             signal(SIGTERM, record as *const () as usize),
         )
     };
+    let started = Instant::now();
+    let (mut timed_out, mut interrupted) = (false, false);
     let result = loop {
         match child.try_wait() {
-            Ok(Some(status)) => break Ok(status),
+            Ok(Some(status)) => {
+                break Ok(Waited {
+                    status,
+                    timed_out,
+                    interrupted,
+                });
+            }
             Ok(None) => {}
             Err(error) => break Err(error),
         }
         let pending = PENDING.swap(0, Ordering::SeqCst);
         if pending != 0 {
+            interrupted = true;
             // SAFETY: the pid belongs to a child of this process that has not been reaped.
             unsafe { kill(child.id() as i32, pending) };
         }
+        if !timed_out && timeout.is_some_and(|limit| started.elapsed() >= limit) {
+            timed_out = true;
+            let _ = child.kill();
+        }
+        poll();
         std::thread::sleep(Duration::from_millis(10));
     };
     // SAFETY: restoring the dispositions returned by the earlier calls.

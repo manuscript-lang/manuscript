@@ -1,0 +1,259 @@
+//! The Rust engine end to end: load, check, an injected lowering, Cranelift,
+//! link, run. Lowering from the typed HIR is a separate workstream, so the
+//! tests supply the MIR the lowering would produce.
+
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::sync::OnceLock;
+
+use ms_cli::backend::Io;
+use ms_cli::engine::RustBackend;
+use ms_driver::{Lower, LowerOptions, Module, Native};
+
+/// A lowering that ignores the program and returns fixed MIR.
+struct Fixed(&'static str);
+
+impl Lower for Fixed {
+    fn lower(&self, _: &ms_check::Program, _: &str, _: &LowerOptions) -> Result<Module, String> {
+        ms_mir::parse::parse_module(self.0).map_err(|e| e.to_string())
+    }
+}
+
+const EXIT_SEVEN: &str =
+    "module \"t\"\nentry @main\nfn @main() -> int {\nb0:\n  %c: int = iconst 7\n  ret %c\n}\n";
+
+/// `libms_rt.a`, built once with cargo.
+fn runtime() -> &'static PathBuf {
+    static RUNTIME: OnceLock<PathBuf> = OnceLock::new();
+    RUNTIME.get_or_init(|| {
+        let output = Command::new(env!("CARGO"))
+            .args(["build", "-p", "ms-rt", "--message-format=json"])
+            .output()
+            .expect("cargo");
+        assert!(output.status.success(), "cargo build -p ms-rt failed");
+        String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .filter_map(|line| line.split("\"filenames\":[").nth(1))
+            .flat_map(|rest| rest.split(']').next().unwrap_or("").split(','))
+            .map(|name| name.trim_matches('"'))
+            .find(|name| name.ends_with("/libms_rt.a"))
+            .map(PathBuf::from)
+            .expect("libms_rt.a in cargo output")
+    })
+}
+
+fn scratch(name: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("ms-engine-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+fn ms<L: Lower>(backend: &RustBackend<L>, args: &[&str]) -> (i32, String, String) {
+    let args: Vec<String> = args.iter().map(|a| a.to_string()).collect();
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    let status = {
+        let mut input: &[u8] = &[];
+        let mut io = Io {
+            stdin: &mut input,
+            stdout: &mut out,
+            stderr: &mut err,
+        };
+        ms_cli::run(&args, backend, &mut io)
+    };
+    (
+        status,
+        String::from_utf8_lossy(&out).into_owned(),
+        String::from_utf8_lossy(&err).into_owned(),
+    )
+}
+
+fn write(dir: &Path, name: &str, text: &str) -> String {
+    let path = dir.join(name);
+    std::fs::write(&path, text).unwrap();
+    path.to_string_lossy().into_owned()
+}
+
+const MAIN: &str = "export fn main() Int:\n    return 0\n";
+
+#[test]
+fn run_returns_the_program_status() {
+    let dir = scratch("run");
+    let source = write(&dir, "main.ms", MAIN);
+    let backend = RustBackend::new(Fixed(EXIT_SEVEN)).with_runtime(runtime());
+    let (status, _, err) = ms(&backend, &["run", &source]);
+    assert_eq!((status, err.as_str()), (7, ""));
+}
+
+#[test]
+fn build_writes_an_executable_and_reports_it() {
+    let dir = scratch("build");
+    let source = write(&dir, "main.ms", MAIN);
+    let out = dir.join("prog");
+    let backend = RustBackend::new(Fixed(EXIT_SEVEN)).with_runtime(runtime());
+    let (status, stdout, err) = ms(&backend, &["build", &source, "-o", out.to_str().unwrap()]);
+    assert_eq!(status, 0, "{err}");
+    assert!(stdout.starts_with("Built "), "{stdout}");
+    assert_eq!(Command::new(&out).status().unwrap().code(), Some(7));
+    assert!(dir.join("prog.ms-build.json").is_file());
+
+    let (status, json, err) = ms(
+        &backend,
+        &["build", &source, "-o", out.to_str().unwrap(), "--json"],
+    );
+    assert_eq!(status, 0, "{err}");
+    for needle in [
+        "\"command\": \"build\"",
+        "\"completed\": true",
+        "\"kind\": \"executable\"",
+        "\"state\": \"verified\"",
+    ] {
+        assert!(json.contains(needle), "{needle} missing in {json}");
+    }
+}
+
+#[test]
+fn checker_diagnostics_stop_before_lowering() {
+    let dir = scratch("diagnostics");
+    let source = write(&dir, "main.ms", "export fn main() Int:\n    return \"x\"\n");
+    let backend = RustBackend::new(Fixed(EXIT_SEVEN)).with_runtime(runtime());
+    let (status, _, err) = ms(&backend, &["run", &source]);
+    assert_eq!(status, 1);
+    assert!(err.contains(": type: "), "{err}");
+    assert!(err.contains("1 error; fix them and re-run"), "{err}");
+
+    let (status, json, _) = ms(&backend, &["build", &source, "--json"]);
+    assert_eq!(status, 1);
+    assert!(json.contains("\"reason\": \"compile_error\""), "{json}");
+    assert!(json.contains("\"phase\": \"type\""), "{json}");
+}
+
+#[test]
+fn entry_must_be_an_exported_main() {
+    let dir = scratch("entry");
+    let backend = RustBackend::new(Fixed(EXIT_SEVEN)).with_runtime(runtime());
+    for (text, expected) in [
+        ("fn main() Int:\n    return 0\n", "main is not exported"),
+        (
+            "export fn other() Int:\n    return 0\n",
+            "no main function is declared",
+        ),
+        (
+            "export fn main(x: Int) Int:\n    return x\n",
+            "main takes no parameters",
+        ),
+    ] {
+        let source = write(&dir, "main.ms", text);
+        let (status, _, err) = ms(&backend, &["run", &source]);
+        assert_eq!(status, 1, "{text}");
+        assert!(err.contains("entry must export fn main() Int; "), "{err}");
+        assert!(err.contains(expected), "{expected} missing in {err}");
+    }
+}
+
+#[test]
+fn imports_load_in_dependency_order() {
+    let dir = scratch("imports");
+    write(&dir, "lib.ms", "export fn one() Int:\n    return 1\n");
+    let source = write(
+        &dir,
+        "main.ms",
+        "import { one } from \"./lib.ms\"\n\nexport fn main() Int:\n    return one()\n",
+    );
+    let backend = RustBackend::new(Fixed(EXIT_SEVEN)).with_runtime(runtime());
+    assert_eq!(ms(&backend, &["run", &source]).0, 7);
+
+    let missing = write(
+        &dir,
+        "main.ms",
+        "import { one } from \"./nope.ms\"\n\nexport fn main() Int:\n    return 0\n",
+    );
+    let (status, _, err) = ms(&backend, &["run", &missing]);
+    assert_eq!(status, 1);
+    assert!(err.contains("cannot find module ./nope.ms"), "{err}");
+}
+
+#[test]
+fn unavailable_lowering_is_a_lowering_diagnostic() {
+    let dir = scratch("unavailable");
+    let source = write(&dir, "main.ms", MAIN);
+    let backend = RustBackend::new(ms_driver::Unavailable);
+    let (status, _, err) = ms(&backend, &["build", &source]);
+    assert_eq!(status, 1);
+    assert!(
+        err.contains(": lowering: lowering is not available"),
+        "{err}"
+    );
+}
+
+#[test]
+fn build_refuses_to_overwrite_source_and_directories() {
+    let dir = scratch("protected");
+    let source = write(&dir, "main.ms", MAIN);
+    let backend = RustBackend::new(Fixed(EXIT_SEVEN)).with_runtime(runtime());
+    let (status, _, err) = ms(&backend, &["build", &source, "-o", &source]);
+    assert_eq!(status, 2);
+    assert!(err.contains("would overwrite main.ms"), "{err}");
+    let (status, _, err) = ms(&backend, &["build", &source, "-o", dir.to_str().unwrap()]);
+    assert_eq!(status, 2);
+    assert!(err.contains("is a directory"), "{err}");
+}
+
+#[test]
+fn library_projects_have_no_executable_entry() {
+    let dir = scratch("library");
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    write(
+        &dir,
+        "ms.toml",
+        "[project]\nname = \"lib\"\nsource = \"src\"\n",
+    );
+    write(
+        &dir.join("src"),
+        "lib.ms",
+        "export fn one() Int:\n    return 1\n",
+    );
+    let backend = RustBackend::new(Fixed(EXIT_SEVEN)).with_runtime(runtime());
+    let manifest = dir.join("ms.toml");
+    let (status, _, err) = ms(&backend, &["build", manifest.to_str().unwrap()]);
+    assert_eq!(status, 1);
+    assert!(
+        err.contains("library project has no executable entry"),
+        "{err}"
+    );
+}
+
+const TESTS: &str = "import {expect_equal} from \"@std/testing.ms\"\n\ntest \"adds\":\n    try expect_equal(1 + 1, 2)\n\ntest \"fails\":\n    try expect_equal(1 + 1, 3)\n\ntest \"passes too\":\n    try expect_equal(2 * 2, 4)\n";
+
+#[test]
+fn native_lowering_runs_real_programs() {
+    let dir = scratch("native-run");
+    let source = write(
+        &dir,
+        "main.ms",
+        "export fn main() Int:\n    return 6 * 7 - 40\n",
+    );
+    let backend = RustBackend::new(Native).with_runtime(runtime());
+    let (status, _, err) = ms(&backend, &["run", &source]);
+    assert_eq!((status, err.as_str()), (2, ""));
+}
+
+#[test]
+fn native_tests_run_one_process_each() {
+    let dir = scratch("native-test");
+    let source = write(&dir, "sample_test.ms", TESTS);
+    let backend = RustBackend::new(Native).with_runtime(runtime());
+    let (status, stdout, err) = ms(&backend, &["test", &source]);
+    assert_eq!(status, 1, "{err}");
+    for line in [
+        "PASS sample_test.ms::adds",
+        "PASS sample_test.ms::passes too",
+        "FAIL sample_test.ms::fails: ",
+        "3 tests, 1 failed",
+    ] {
+        assert!(stdout.contains(line), "{line} missing in {stdout}");
+    }
+    let (status, json, _) = ms(&backend, &["test", &source, "--json", "--match", "passes"]);
+    assert_eq!(status, 0, "{json}");
+    assert!(json.contains("\"passed\": 1"), "{json}");
+}
