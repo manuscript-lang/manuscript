@@ -14,3 +14,7 @@ ms-check = { path = "../ms-check" }
 
 [dev-dependencies]
 ms-cli = { path = "../ms-cli" }
+
+[[bin]]
+name = "ms-tooling-dev"
+path = "src/bin/ms-tooling-dev.rs"
