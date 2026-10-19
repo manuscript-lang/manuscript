@@ -101,13 +101,12 @@ pub fn mask_bytes(key: [u8; 4], pos: usize, data: &mut [u8]) -> usize {
     for (i, k) in rotated.iter_mut().enumerate() {
         *k = key[(pos + i) & 3];
     }
-    let mut chunks = data.chunks_exact_mut(4);
-    for chunk in &mut chunks {
+    let (chunks, tail) = data.as_chunks_mut::<4>();
+    for chunk in chunks {
         for (b, k) in chunk.iter_mut().zip(rotated) {
             *b ^= k;
         }
     }
-    let tail = chunks.into_remainder();
     for (b, k) in tail.iter_mut().zip(rotated) {
         *b ^= k;
     }
