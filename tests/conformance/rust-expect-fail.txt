@@ -1,8 +1,71 @@
-# Run-phase fixtures the Rust `ms` still differs on (make conform-rust). Remove entries as they are fixed.
-# -19: a statement spanning lines reports the last line, Go reports the first.
+# Fixtures the Rust `ms` still differs on (make conform-rust). Remove entries as they are fixed.
+# run: -19: a statement spanning lines reports the last line, Go reports the first.
 go-tests/tests-e2e-testfaultsourcelocations-19
 # -20: a callee inlined into main loses its fault frame and the caller line.
 go-tests/tests-e2e-testfaultsourcelocations-20
 # -23, -4: method frames print `run`/`bump`, Go prints `Item.run`/`Cell.bump`.
 go-tests/tests-e2e-testfaultsourcelocations-23
 go-tests/tests-e2e-testfaultsourcelocations-4
+# check: redundant-prelude-import lint and prelude shadowing diagnostics are not ported to ms-check yet.
+go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-10
+go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-11
+go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12
+go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-2
+go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-3
+go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-4
+go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-5
+go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-6
+go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-7
+go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-8
+go-tests/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-9
+go-tests/pkg-compiler-testcollectionpreludeandshadowing-12
+go-tests/pkg-compiler-testcollectionpreludeandshadowing-13
+go-tests/pkg-compiler-testcollectionpreludeandshadowing-18
+go-tests/pkg-compiler-testcollectionpreludeandshadowing-19
+go-tests/pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2
+go-tests/pkg-tooling-lsp-testredundantpreludeimporteditorfix-1
+go-tests/pkg-tooling-lsp-testredundantpreludeimporteditorfix-2
+go-tests/pkg-tooling-lsp-testredundantpreludeimporteditorfix-3
+go-tests/pkg-tooling-lsp-testredundantpreludeimporteditorfix-4
+# check/lsp/examples fixtures that depend on lint, inspect or LSP output of the Go tools.
+examples/hello
+examples/tooling-demo
+go-tests/internal-cli-testanalysiscollectionrangesandsymlinkconfineme-1
+go-tests/pkg-tooling-lsp-testnativegenericmethodnavigation-1
+# test: modules owned by the standard-library threads (fs, net, html, random, terminal, host, math ordering, test CLI shape).
+docs/learn-testing-3
+e2e/stdlib/fs
+e2e/stdlib/host
+e2e/stdlib/host-contracts
+e2e/stdlib/html
+e2e/stdlib/math-functions
+e2e/stdlib/net
+e2e/stdlib/path
+e2e/stdlib/random
+e2e/stdlib/sse-http
+e2e/stdlib/terminal
+e2e/stdlib/testing-fixture
+go-tests/tests-e2e-testclitestfilefixturelistanddefaulthooks-1
+go-tests/tests-e2e-testclitestjsonpreservesbinarystdout-1
+go-tests/tests-e2e-testclitestsharedrestserver-1
+# test: language/runtime differences: value-semantics changes (closures copy captured vars, receivers are read at call time), unsupported ordering of some types, fault-frame text, and others to triage.
+e2e/accept/collection-call-order
+e2e/accept/comparable
+e2e/accept/compound-assignment
+e2e/accept/field-defaults
+e2e/accept/host-accessors
+e2e/accept/interface-view-callables
+e2e/accept/map-set-and-sort-callbacks-keep-semantics
+e2e/accept/read-line-presence-tail
+e2e/accept/result-argument-inference
+e2e/accept/services
+e2e/accept/standalone-try
+e2e/accept/stdlib-revamp
+e2e/accept/try-result-payloads
+go-tests/tests-e2e-testdirectmethodfaultframe-1
+go-tests/tests-e2e-testdurationunitpropertysourceframes-1
+go-tests/tests-e2e-testinherentimplfaultframe-1
+go-tests/tests-e2e-testmutationaliasesretainsplicefaults-1
+go-tests/tests-e2e-testpreferrednamesretainfaults-1
+go-tests/tests-e2e-testreplacenretainsnegativefaultsandframes-1
+repo/pkg-lower-testdata-operand-captures

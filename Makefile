@@ -64,11 +64,11 @@ conform-oracle: build
 	cargo run -q -p ms-conform -- lint
 	cargo run -q -p ms-conform -- run --ms "$(CURDIR)/ms" --shard "$(CONFORM_SHARD)" --quiet --markdown .artifacts/conform-oracle.md
 
-# The run-phase corpus against the Rust `ms` (cargo build -p ms-cli), excluding fixtures whose
+# The run, check and test phases of the corpus against the Rust `ms` (cargo build -p ms-cli), excluding fixtures whose
 # answer depends on aliasing; known differences are listed in tests/conformance/rust-expect-fail.txt.
 conform-rust:
 	cargo build -q -p ms-cli -p ms-conform
-	target/debug/ms-conform run --ms target/debug/ms --phase run --exclude-tag aliasing --expect-fail tests/conformance/rust-expect-fail.txt --quiet --markdown .artifacts/conform-rust.md
+	target/debug/ms-conform run --ms target/debug/ms --phase run,check,test --exclude-tag aliasing --expect-fail tests/conformance/rust-expect-fail.txt --quiet --markdown .artifacts/conform-rust.md
 
 examples-check:
 	"$(GO)" test ./tests/examples
