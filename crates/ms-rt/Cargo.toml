@@ -20,6 +20,7 @@ stats = []
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-std-math = { path = "../ms-std-math" }
 ms-std-time = { path = "../ms-std-time" }
+ms-std-fs = { path = "../ms-std-fs" }
 unicode-normalization = { version = "0.1.24", default-features = false }
 
 [lints]

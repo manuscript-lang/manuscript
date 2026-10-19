@@ -243,6 +243,24 @@ pub const STATUS_OUT_OF_RANGE: u8 = 2;
 pub const STATUS_LIMIT_EXCEEDED: u8 = 3;
 /// `NumberError.InvalidData`.
 pub const STATUS_INVALID_DATA: u8 = 4;
+/// `FileSystemError.NotFound`.
+pub const STATUS_NOT_FOUND: u8 = 5;
+/// `FileSystemError.AlreadyExists`.
+pub const STATUS_ALREADY_EXISTS: u8 = 6;
+/// `FileSystemError.NotEmpty`.
+pub const STATUS_NOT_EMPTY: u8 = 7;
+/// `FileSystemError.PermissionDenied`.
+pub const STATUS_PERMISSION_DENIED: u8 = 8;
+/// `FileSystemError.Unsupported`, `ProcessError.Unsupported`.
+pub const STATUS_UNSUPPORTED: u8 = 9;
+/// `IoError.Closed`, `FileSystemError.Closed`.
+pub const STATUS_CLOSED: u8 = 10;
+/// `IoError.Failed`, `FileSystemError.Failed`: the diagnostic text comes back through the call's `message` out-pointer.
+pub const STATUS_FAILED: u8 = 11;
+/// `IoError.Unavailable`.
+pub const STATUS_UNAVAILABLE: u8 = 12;
+/// Success with no value (`Ok(none)`): end of stream or an absent optional result.
+pub const STATUS_NONE: u8 = 16;
 
 // ---------------------------------------------------------------------------
 // Faults, call depth, tables

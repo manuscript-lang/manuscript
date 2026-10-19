@@ -185,6 +185,30 @@ msrt_strbuilder_append(b: *mut VecVal, s: *const StrObj)
 msrt_strbuilder_freeze(b: *mut VecVal) -> *mut StrObj
 msrt_strbuilder_drop(b: *mut VecVal)
 msrt_hash_list(v: *const VecVal, d: *const TypeDesc) -> i64
+msstd_fs_failure_message() -> *mut StrObj
+msstd_fs_read_file( path: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
+msstd_fs_write_file( path: *const StrObj, data: *const VecVal, replace: u8, ) -> u8
+msstd_fs_append_file(path: *const StrObj, data: *const VecVal) -> u8
+msstd_fs_copy_file( source: *const StrObj, destination: *const StrObj, replace: u8, has_max: u8, max: i64, ) -> u8
+msstd_fs_stat(path: *const StrObj, follow: u8, out: *mut InfoOut) -> u8
+msstd_fs_list( path: *const StrObj, has_limit: u8, limit: i64, names: *mut VecVal, flags: *mut VecVal, ) -> u8
+msstd_fs_create_directory(path: *const StrObj, recursive: u8) -> u8
+msstd_fs_remove(path: *const StrObj, recursive: u8) -> u8
+msstd_fs_rename(source: *const StrObj, destination: *const StrObj) -> u8
+msstd_fs_read_link(path: *const StrObj, out: *mut *mut StrObj) -> u8
+msstd_fs_create_link(path: *const StrObj, target: *const StrObj) -> u8
+msstd_fs_hard_link( source: *const StrObj, destination: *const StrObj, ) -> u8
+msstd_fs_canonicalize(path: *const StrObj, out: *mut *mut StrObj) -> u8
+msstd_fs_temporary_root() -> *mut StrObj
+msstd_fs_temporary_directory( pattern: *const StrObj, out: *mut *mut StrObj, ) -> u8
+msstd_fs_stat_filesystem(path: *const StrObj, out: *mut FsOut) -> u8
+msstd_fs_chmod(path: *const StrObj, mode: i64, follow: u8) -> u8
+msstd_fs_access(path: *const StrObj, mode: i64) -> u8
+msstd_fs_chown(path: *const StrObj, uid: i64, gid: i64, follow: u8) -> u8
+msstd_fs_truncate(path: *const StrObj, size: i64) -> u8
+msstd_fs_set_times( path: *const StrObj, accessed_seconds: i64, accessed_nanos: i64, modified_seconds: i64, modified_nanos: i64, follow: u8, ) -> u8
+msrt_cancel_flag (data)
+msrt_cancelled() -> !
 msstd_math_atan2(y: f64, x: f64) -> f64
 msstd_math_hypot(left: f64, right: f64) -> f64
 msstd_math_pow(base: f64, exponent: f64) -> f64
