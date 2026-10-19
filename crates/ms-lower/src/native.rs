@@ -66,6 +66,8 @@ fn is_higher_order(name: &str) -> bool {
 fn native_alias(native: &str) -> &str {
     match native {
         "sleep" => "time/sleep",
+        "collections/filled" => "list/filled",
+        "collections/range_by" => "list/range_by",
         other => other,
     }
 }
@@ -141,8 +143,10 @@ impl<'a> FnLower<'a> {
 
     /// Whether `native_call` lowers the native function `native`.
     fn has_native_call(&self, native: &str) -> bool {
-        matches!(native, "math/min" | "math/max" | "time/duration")
-            || crate::rtcall::function_symbol(native_alias(native)).is_some()
+        matches!(
+            native,
+            "math/min" | "math/max" | "math/max_of" | "math/min_of" | "time/duration"
+        ) || crate::rtcall::function_symbol(native_alias(native)).is_some()
     }
 
     /// A native function applied to evaluated arguments (borrowed by the callee).
@@ -156,6 +160,9 @@ impl<'a> FnLower<'a> {
         if matches!(native, "math/min" | "math/max") {
             return self.min_max(native == "math/max", args);
         }
+        if matches!(native, "math/max_of" | "math/min_of") {
+            return self.extreme_of(native == "math/max_of", args, result);
+        }
         if native == "time/duration" {
             return Ok(Val {
                 v: self.borrow(args[0].val),
@@ -167,14 +174,10 @@ impl<'a> FnLower<'a> {
         self.rt_function(&sym, params, args, result)
     }
 
-    /// `max(left, right)` / `min(left, right)`: `left` unless `right` is strictly greater
-    /// (lesser). Floats order NaN above every other value.
-    fn min_max(&mut self, max: bool, args: &[NArg]) -> Result<Val, Error> {
+    /// Whether `a` orders strictly above `b`; Float orders NaN above every other value.
+    fn strictly_above(&mut self, a: Value, b: Value) -> Result<Value, Error> {
         use ms_mir::ir::{Cc, Op};
-        let (left, right) = (self.borrow(args[0].val), self.borrow(args[1].val));
-        let t = self.ty_of(left);
-        // `a` ordered strictly above `b`.
-        let (a, b) = if max { (right, left) } else { (left, right) };
+        let t = self.ty_of(a);
         let above = if t == MTy::INT {
             self.b.icmp(Cc::Gt, a, b)
         } else if t == MTy::FLOAT {
@@ -197,6 +200,17 @@ impl<'a> FnLower<'a> {
                 ms_mir::print::ty_str(self.b.m, t)
             )));
         };
+        Ok(above)
+    }
+
+    /// `max(left, right)` / `min(left, right)`: `left` unless `right` is strictly greater
+    /// (lesser). Floats order NaN above every other value.
+    fn min_max(&mut self, max: bool, args: &[NArg]) -> Result<Val, Error> {
+        let (left, right) = (self.borrow(args[0].val), self.borrow(args[1].val));
+        let t = self.ty_of(left);
+        // `a` ordered strictly above `b`.
+        let (a, b) = if max { (right, left) } else { (left, right) };
+        let above = self.strictly_above(a, b)?;
         if !self.needs_drop(t) {
             let v = self.b.select(above, right, left);
             return Ok(Val { v, own: false });
@@ -217,6 +231,77 @@ impl<'a> FnLower<'a> {
                 })))
             },
         )
+    }
+
+    /// `max_of(values)` / `min_of(values)`: the first greatest (least) element, or `none`.
+    fn extreme_of(&mut self, max: bool, args: &[NArg], result: MTy) -> Result<Val, Error> {
+        use ms_mir::ir::{Cc, Op};
+        // The list lives in a variable so the loop and the branches may read it.
+        let list = self.borrow(args[0].val);
+        let lt = self.ty_of(list);
+        let lvar = self.fresh_var(lt);
+        let held_list = self.owned(Val {
+            v: list,
+            own: false,
+        });
+        self.b.def_var(lvar, held_list);
+        let n = self.b.list_len(list);
+        let (zero, one) = (self.b.iconst(0), self.b.iconst(1));
+        let best = self.b.declare_var(MTy::INT, Mode::Borrow);
+        let i = self.b.declare_var(MTy::INT, Mode::Borrow);
+        self.b.def_var(best, zero);
+        self.b.def_var(i, one);
+        let (head, body, exit) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        self.b.br(head, &[]);
+        self.b.switch_to(head);
+        let iv = self.b.use_var(i);
+        let more = self.b.icmp(Cc::Lt, iv, n);
+        self.b.br_if(more, body, &[], exit, &[]);
+        self.b.seal_block(body);
+        self.b.switch_to(body);
+        let iv = self.b.use_var(i);
+        let bv = self.b.use_var(best);
+        let l = self.b.use_var(lvar);
+        let cur = self.b.list_get(l, iv);
+        let held = self.b.list_get(l, bv);
+        let above = if max {
+            self.strictly_above(cur, held)?
+        } else {
+            self.strictly_above(held, cur)?
+        };
+        let pick = self.b.select(above, iv, bv);
+        self.b.def_var(best, pick);
+        let next = self.b.binop(Op::IAdd, iv, one);
+        self.b.def_var(i, next);
+        self.b.br(head, &[]);
+        self.b.seal_block(head);
+        self.b.seal_block(exit);
+        self.b.switch_to(exit);
+        let empty = self.b.icmp(Cc::Eq, n, zero);
+        let TyKind::Opt(elem) = self.b.m.types.kind(result).clone() else {
+            return Err(Error::new("max_of and min_of return an Optional"));
+        };
+        let out = self.two_ways(
+            empty,
+            result,
+            &mut |s| {
+                let v = s.b.opt_none(result);
+                Ok(Some(s.owned(Val { v, own: false })))
+            },
+            &mut |s| {
+                let bv = s.b.use_var(best);
+                let l = s.b.use_var(lvar);
+                let item = s.b.list_get(l, bv);
+                let o = s.owned(Val {
+                    v: item,
+                    own: false,
+                });
+                let _ = elem;
+                Ok(Some(s.b.opt_some(o)))
+            },
+        )?;
+        self.release_source(lvar, true);
+        Ok(out)
     }
 
     /// `stdout()` / `stderr()`: an interface value over a MIR-built vtable.

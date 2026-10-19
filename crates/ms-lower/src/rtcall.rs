@@ -158,6 +158,22 @@ const STATUS_CASES: [(i64, &str); 13] = [
 ];
 
 impl FnLower<'_> {
+    /// The list type of a call result: the result itself, or the `ok` payload of a `Result`.
+    fn result_list(&self, result: MTy) -> Option<MTy> {
+        let t = &*self.b.m;
+        match t.types.kind(result) {
+            TyKind::List(_) => Some(result),
+            TyKind::Alt(a) => t.alts[a.index()]
+                .cases
+                .iter()
+                .find(|c| c.name == "ok")
+                .and_then(|c| c.fields.first())
+                .map(|f| f.1)
+                .filter(|f| matches!(t.types.kind(*f), TyKind::List(_))),
+            _ => None,
+        }
+    }
+
     /// Calls the runtime function `sym` for a method call.
     pub(crate) fn rt_method(
         &mut self,
@@ -227,7 +243,9 @@ impl FnLower<'_> {
             let p = &sig.params[i];
             match p.name.as_str() {
                 "d" => {
+                    // A function has no receiver: the descriptor is that of its list result.
                     let recv_ty = recv_ty
+                        .or_else(|| self.result_list(result))
                         .ok_or_else(|| Error::new(format!("{sym}: descriptor without receiver")))?;
                     let e = match self.b.m.types.kind(recv_ty).clone() {
                         TyKind::List(e) => e,
