@@ -108,6 +108,18 @@ impl<'a> FnLower<'a> {
             }
             "io/stdout" => self.std_stream(e, false),
             "io/stderr" => self.std_stream(e, true),
+            "io/read_line" => self.read_line_native(e, view, params),
+            other
+                if crate::natiface::HANDLE_FUNCTIONS
+                    .iter()
+                    .any(|f| f.0 == other) =>
+            {
+                let &(_, module, make, constant) = crate::natiface::HANDLE_FUNCTIONS
+                    .iter()
+                    .find(|f| f.0 == other)
+                    .expect("listed");
+                self.handle_interface(e, module, make, constant)
+            }
             other if other.starts_with("testing/") => {
                 self.testing_native(e, view, &other["testing/".len()..])
             }

@@ -25,6 +25,8 @@ pub enum JobKind {
     Lambda(Rc<LambdaJob>),
     /// Structural equality of two values of the MIR type.
     Equal(MTy),
+    /// A forwarder of an interface operation to a runtime handle function.
+    HandleMethod(Rc<crate::natiface::MethodJob>),
 }
 
 /// A lambda waiting to be lowered.

@@ -123,13 +123,26 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         .flatten()
 }
 
-/// Status codes of `ms-rt-abi` and the error cases they name.
-const STATUS_CASES: [(i64, &str); 4] = [
+/// Status codes of `ms-rt-abi` and the error cases they name. Status 11 (`Failed`) carries the
+/// module's `failure_message` text when the error case has a `String` field.
+const STATUS_CASES: [(i64, &str); 13] = [
     (1, "InvalidInput"),
     (2, "OutOfRange"),
     (3, "LimitExceeded"),
     (4, "InvalidData"),
+    (5, "NotFound"),
+    (6, "AlreadyExists"),
+    (7, "NotEmpty"),
+    (8, "PermissionDenied"),
+    (9, "Unsupported"),
+    (10, "Closed"),
+    (11, "Failed"),
+    (12, "Unavailable"),
+    (13, "Timeout"),
 ];
+
+/// `STATUS_NONE`: end of stream or an absent optional.
+const STATUS_NONE: i64 = 16;
 
 impl FnLower<'_> {
     /// Calls the runtime function `sym` for a method call.
@@ -348,7 +361,7 @@ impl FnLower<'_> {
             if ret == MTy::BOOL && matches!(self.b.m.types.kind(result), TyKind::Alt(_)) {
                 // A bare status: `Result[Unit, E]`.
                 let status = self.call_runtime(sym, &vals, MTy::BOOL)?;
-                return self.status_result(status, None, result);
+                return self.status_result(sym, status, None, result);
             }
             // A null string pointer is the absent `Optional[String]`.
             let ret = match self.b.m.types.kind(result) {
@@ -387,12 +400,25 @@ impl FnLower<'_> {
             TyKind::Opt(t) => t,
             _ => return Err(Error::new(format!("{sym}: unexpected result type"))),
         };
+        // `Result[Optional[T], E]`: the runtime writes a `T` and answers `STATUS_NONE` for none.
+        let eof = match (self.b.m.types.kind(result), self.b.m.types.kind(payload)) {
+            (TyKind::Alt(_), TyKind::Opt(inner)) => Some(*inner),
+            _ => None,
+        };
         let slot = self
             .b
-            .emit(Op::Slot, &[], Imm::Ty(payload), Some(MTy::PTR))
+            .emit(
+                Op::Slot,
+                &[],
+                Imm::Ty(eof.unwrap_or(payload)),
+                Some(MTy::PTR),
+            )
             .expect("slot");
         vals.push(slot);
         let status = self.call_runtime(sym, &vals, MTy::BOOL)?;
+        if let Some(inner) = eof {
+            return self.status_optional_result(sym, status, slot, inner, result);
+        }
         if matches!(self.b.m.types.kind(result), TyKind::Opt(_)) {
             return self.two_ways(
                 status,
@@ -406,31 +432,40 @@ impl FnLower<'_> {
                 &mut |s| Ok(Some(s.none_owned(result))),
             );
         }
-        self.status_result(status, Some((slot, payload)), result)
+        self.status_result(sym, status, Some((slot, payload)), result)
     }
 
     /// The error case of `ea` that the status `code` names; the last listed case otherwise.
+    /// `failure` is the symbol returning the text of a `Failed` status.
     fn status_error(
         &mut self,
         ea: ms_mir::types::AltId,
         code: Value,
         cases: &[(i64, usize)],
+        failure: Option<&str>,
     ) -> Result<Value, Error> {
         let (&(n, idx), rest) = cases
             .split_first()
             .ok_or_else(|| Error::new("no error case for a runtime status"))?;
+        let build = |s: &mut Self| -> Result<Value, Error> {
+            let carries_text = s.b.m.alts[ea.index()].cases[idx].fields.len() == 1;
+            match failure {
+                Some(sym) if n == 11 && carries_text => {
+                    let text = s.call_runtime(sym, &[], MTy::STR)?;
+                    Ok(s.b.alt_new(ea, idx as u32, &[text]))
+                }
+                _ => Ok(s.b.alt_new(ea, idx as u32, &[])),
+            }
+        };
         if rest.is_empty() {
-            return Ok(self.b.alt_new(ea, idx as u32, &[]));
+            return build(self);
         }
         let k = self.b.iconst(n);
         let hit = self.b.icmp(Cc::Eq, code, k);
         let ty = self.b.m.types.alt(ea);
-        let r = self.two_ways(
-            hit,
-            ty,
-            &mut |s| Ok(Some(s.b.alt_new(ea, idx as u32, &[]))),
-            &mut |s| s.status_error(ea, code, rest).map(Some),
-        )?;
+        let r = self.two_ways(hit, ty, &mut |s| build(s).map(Some), &mut |s| {
+            s.status_error(ea, code, rest, failure).map(Some)
+        })?;
         Ok(r.v)
     }
 
@@ -442,9 +477,39 @@ impl FnLower<'_> {
             .ok_or_else(|| Error::new("not a Result"))
     }
 
+    /// The `error(..)` value of `result` for a nonzero runtime status `code`.
+    fn status_failure(&mut self, result: MTy, code: Value, sym: &str) -> Result<Value, Error> {
+        let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
+            return Err(Error::new("a status needs a Result"));
+        };
+        let err = self.b.m.alts[a.index()]
+            .cases
+            .iter()
+            .position(|c| c.name == "error")
+            .ok_or_else(|| Error::new("not a Result"))?;
+        let et = self.b.m.alts[a.index()].cases[err].fields[0].1;
+        let TyKind::Alt(ea) = self.b.m.types.kind(et).clone() else {
+            return Err(Error::new("a runtime status needs an error alternative"));
+        };
+        let cases: Vec<(i64, usize)> = STATUS_CASES
+            .iter()
+            .filter_map(|(n, name)| {
+                let idx = self.b.m.alts[ea.index()]
+                    .cases
+                    .iter()
+                    .position(|c| c.name == *name)?;
+                Some((*n, idx))
+            })
+            .collect();
+        let failure = failure_symbol(sym);
+        let e = self.status_error(ea, code, &cases, failure.as_deref())?;
+        Ok(self.b.alt_new(a, err as u32, &[e]))
+    }
+
     /// `ok(value)` when the status is zero, else the error case the status names.
     fn status_result(
         &mut self,
+        sym: &str,
         status: Value,
         out: Option<(Value, MTy)>,
         result: MTy,
@@ -453,11 +518,6 @@ impl FnLower<'_> {
             return Err(Error::new("a status needs a Result"));
         };
         let ok = self.ok_case_index(a)?;
-        let err = self.b.m.alts[a.index()]
-            .cases
-            .iter()
-            .position(|c| c.name == "error")
-            .ok_or_else(|| Error::new("not a Result"))?;
         let code = self
             .b
             .emit(Op::B2I, &[status], Imm::None, Some(MTy::INT))
@@ -477,24 +537,61 @@ impl FnLower<'_> {
                 };
                 Ok(Some(s.b.alt_new(a, ok as u32, &[payload])))
             },
+            &mut |s| s.status_failure(result, code, sym).map(Some),
+        )
+    }
+
+    /// `ok(some(value))` for status zero, `ok(none)` for `STATUS_NONE`, else the error the status names.
+    fn status_optional_result(
+        &mut self,
+        sym: &str,
+        status: Value,
+        slot: Value,
+        inner: MTy,
+        result: MTy,
+    ) -> Result<Val, Error> {
+        let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
+            return Err(Error::new("a status needs a Result"));
+        };
+        let ok = self.ok_case_index(a)?;
+        let opt = self.b.m.alts[a.index()].cases[ok].fields[0].1;
+        let code = self
+            .b
+            .emit(Op::B2I, &[status], Imm::None, Some(MTy::INT))
+            .expect("b2i");
+        let zero = self.b.iconst(0);
+        let none = self.b.iconst(STATUS_NONE);
+        let good = self.b.icmp(Cc::Eq, code, zero);
+        let end = self.b.icmp(Cc::Eq, code, none);
+        self.two_ways(
+            good,
+            result,
             &mut |s| {
-                let et = s.b.m.alts[a.index()].cases[err].fields[0].1;
-                let TyKind::Alt(ea) = s.b.m.types.kind(et).clone() else {
-                    return Err(Error::new("a runtime status needs an error alternative"));
-                };
-                let cases: Vec<(i64, usize)> = STATUS_CASES
-                    .iter()
-                    .filter_map(|(n, name)| {
-                        let idx = s.b.m.alts[ea.index()]
-                            .cases
-                            .iter()
-                            .position(|c| c.name == *name)?;
-                        Some((*n, idx))
-                    })
-                    .collect();
-                let e = s.status_error(ea, code, &cases)?;
-                Ok(Some(s.b.alt_new(a, err as u32, &[e])))
+                let v =
+                    s.b.emit(Op::Take, &[slot], Imm::Ty(inner), Some(inner))
+                        .expect("take");
+                let some = s.b.opt_some(v);
+                Ok(Some(s.b.alt_new(a, ok as u32, &[some])))
+            },
+            &mut |s| {
+                let r = s.two_ways(
+                    end,
+                    result,
+                    &mut |s| {
+                        let n = s.none_owned(opt);
+                        Ok(Some(s.b.alt_new(a, ok as u32, &[n])))
+                    },
+                    &mut |s| s.status_failure(result, code, sym).map(Some),
+                )?;
+                Ok(Some(r.v))
             },
         )
     }
+}
+
+/// The symbol returning the text of a `Failed` status of `sym`'s module, when it has one.
+fn failure_symbol(sym: &str) -> Option<String> {
+    let module = sym.strip_prefix("msstd_")?.split('_').next()?;
+    let failure = format!("msstd_{module}_failure_message");
+    rt_sig(&failure).map(|_| failure)
 }

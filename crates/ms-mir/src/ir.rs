@@ -257,7 +257,7 @@ pub enum Op {
     // Shared[T].
     SharedNew, SharedGet,
     // Closures and interface views.
-    ClosureNew, ClosureCap, IfaceNew, IfaceData,
+    ClosureNew, ClosureCap, IfaceNew, IfaceData, IfaceIs,
     // Ownership.
     Copy, Drop, DropIf,
     // Raw memory: stack slots, interior pointers into lists and records.
@@ -370,7 +370,7 @@ impl Op {
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListPush,
         Op::OptSome, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap,
         Op::StrLen, Op::SharedNew, Op::SharedGet,
-        Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceData,
+        Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceData, Op::IfaceIs,
         Op::Copy, Op::Drop, Op::DropIf, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::PtrField, Op::PtrIsNull,
         Op::Call, Op::CallInd, Op::CallRt, Op::CallMethod,
         Op::TypeDesc, Op::Poll, Op::DepthEnter, Op::DepthLeave, Op::CleanupPush, Op::CleanupRun,
@@ -447,6 +447,7 @@ impl Op {
             Op::ClosureCap => ("closure.cap", K::Idx, true, effects!(reads)),
             Op::IfaceNew => ("iface.new", K::Vtable, true, effects!()),
             Op::IfaceData => ("iface.data", K::None, true, effects!()),
+            Op::IfaceIs => ("iface.is", K::Vtable, true, effects!()),
             Op::Copy => ("copy", K::None, true, effects!(reads, alloc, rc)),
             Op::Drop => ("drop", K::None, false, effects!(writes, rc)),
             Op::DropIf => ("drop.if", K::None, false, effects!(writes, rc)),

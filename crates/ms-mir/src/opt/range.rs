@@ -721,7 +721,8 @@ impl<'a> Fa<'a> {
                     None => Itv::BOOL,
                 }
             }
-            Op::B2I => Itv::BOOL,
+            // A runtime status is a `u8` typed `bool`: the widened value is not limited to 0 or 1.
+            Op::B2I => Itv { lo: 0, hi: 255 },
             Op::Select => {
                 let (c, x, y) = (arg(0)?, arg(1)?, arg(2)?);
                 if c.is_point() {

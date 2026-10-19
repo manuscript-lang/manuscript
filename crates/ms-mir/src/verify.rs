@@ -797,6 +797,13 @@ impl Verifier<'_> {
                     "iface.new wraps the vtable's data type",
                 )
             }
+            Op::IfaceIs => {
+                arity(1)?;
+                want(
+                    matches!(m.types.kind(t(0)), TyKind::Iface(_)) && res == Some(Ty::BOOL),
+                    "iface.is takes an interface and yields bool",
+                )
+            }
             Op::IfaceData => {
                 arity(1)?;
                 want(

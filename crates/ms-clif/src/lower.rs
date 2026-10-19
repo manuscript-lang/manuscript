@@ -1284,6 +1284,15 @@ impl<'a, 'm> Lower<'a, 'm> {
                 vec![blk, addr]
             }
             Op::IfaceData => vec![self.a(inst, 0)[0]],
+            Op::IfaceIs => {
+                let Imm::Vtable(vt) = inst.imm else {
+                    unreachable!()
+                };
+                let have = self.a(inst, 0)[1];
+                let id = self.g.vtables[vt.index()];
+                let want = self.data_addr(id);
+                vec![self.b.ins().icmp(IntCC::Equal, have, want)]
+            }
             Op::Copy => {
                 let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);
