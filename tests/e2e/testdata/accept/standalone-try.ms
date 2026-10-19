@@ -12,42 +12,42 @@ impl Error for Failure:
     fn message() String: "failed"
 
 impl Closeable for State:
-    fn close() Unit:
+    var fn close() Unit:
         self.closed += 1
 
-fn operation(state: State, fail: Bool) Result[Unit, Failure]:
+fn operation(var state: State, fail: Bool) Result[Unit, Failure]:
     state.calls += 1
     if fail: return error(Failure(42))
 
     return ok(unit)
 
-fn exact(state: State, fail: Bool) Result[String, Failure]:
+fn exact(var state: State, fail: Bool) Result[String, Failure]:
     with resource = state:
-        try operation(state, fail)
+        try operation(var state, fail)
         state.calls += 10
 
     return ok("done")
 
-fn widened(state: State) Result[Int, Error]:
-    try operation(state, fail: true)
+fn widened(var state: State) Result[Int, Error]:
+    try operation(var state, fail: true)
     return ok(0)
 
 test "standalone try evaluates once and continues on Unit success":
-    let state = State(0, 0)
-    let value = try exact(state, fail: false)
+    var state = State(0, 0)
+    let value = try exact(var state, fail: false)
     try expect_equal(value, "done")
     try expect_false(state.calls != 11 or state.closed != 1)
 
 test "standalone try propagates and cleans up before returning":
-    let state = State(0, 0)
-    let failed = exact(state, fail: true)
+    var state = State(0, 0)
+    let failed = exact(var state, fail: true)
     try expect_false(failed.is_ok())
     try expect_equal(failed.err().code, 42)
     try expect_false(state.calls != 1 or state.closed != 1)
 
 test "standalone try preserves concrete errors at Error boundaries":
-    let state = State(0, 0)
-    let outcome = widened(state)
+    var state = State(0, 0)
+    let outcome = widened(var state)
     try expect_false(outcome.is_ok())
     let cause = outcome.err()
 
@@ -59,9 +59,9 @@ test "standalone try preserves concrete errors at Error boundaries":
     try expect_equal(state.calls, 1)
 
 test "standalone try in closure returns from that closure":
-    let state = State(0, 0)
+    var state = State(0, 0)
     let callback = fn() Result[Unit, Failure]:
-        if true: try operation(state, fail: true)
+        if true: try operation(var state, fail: true)
         return ok(unit)
     let outcome = callback()
     try expect_false(outcome.is_ok())

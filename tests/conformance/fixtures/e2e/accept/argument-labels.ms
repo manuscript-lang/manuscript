@@ -38,17 +38,17 @@ impl Increment for Offset:
 type Counter:
     value: Int
 
-fn next(state: Counter) Int:
+fn next(var state: Counter) Int:
     let value = state.value
     state.value = value + 1
     return value
 
-fn prepare_receiver(state: Counter) Result[Offset, Error]:
-    next(state) | try expect_equal(expected: 0)
+fn prepare_receiver(var state: Counter) Result[Offset, Error]:
+    next(var state) | try expect_equal(expected: 0)
     return ok(Offset(2))
 
-fn prepare_function(state: Counter) Result[fn(value: Int) Int, Error]:
-    next(state) | try expect_equal(expected: 4)
+fn prepare_function(var state: Counter) Result[fn(value: Int) Int, Error]:
+    next(var state) | try expect_equal(expected: 4)
     return ok(increment)
 
 fn absent(value: Optional[Int]) Bool:
@@ -104,14 +104,14 @@ test "optional labels on methods and native functions":
     [4, 5].get(0) | try expect_equal(expected: 4)
 
 test "omitted labels preserve evaluation order":
-    let state = Counter(value: 0)
-    (try prepare_receiver(state)).apply(next(state)) | try expect_equal(expected: 3)
+    var state = Counter(value: 0)
+    (try prepare_receiver(var state)).apply(next(var state)) | try expect_equal(expected: 3)
     state.value | try expect_equal(expected: 2)
-    subtract(deduction: next(state), amount: next(state)) | try expect_equal(
+    subtract(deduction: next(var state), amount: next(var state)) | try expect_equal(
         expected: 1
     )
     state.value | try expect_equal(expected: 4)
-    (try prepare_function(state))(next(state)) | try expect_equal(expected: 6)
+    (try prepare_function(var state))(next(var state)) | try expect_equal(expected: 6)
     state.value | try expect_equal(expected: 6)
-    sum([next(state), next(state)]) | try expect_equal(expected: 13)
+    sum([next(var state), next(var state)]) | try expect_equal(expected: 13)
     state.value | try expect_equal(expected: 8)

@@ -9,7 +9,7 @@ type Resource:
     counter: Counter
 
 impl Closeable for Resource:
-    fn close() Unit:
+    var fn close() Unit:
         self.counter.count = self.counter.count + 1
 
 fn identity[T](value: T) T: return value
@@ -36,12 +36,12 @@ fn all_return(value: Optional[Int]) Int:
         some(number): return number
         none: return 9
 
-fn tick(counter: Counter) Result[Int, Error]:
+fn tick(var counter: Counter) Result[Int, Error]:
     counter.count | try expect_equal(expected: 1)
     counter.count = counter.count + 1
     return ok(0)
 
-fn values(counter: Counter) List[Int]:
+fn values(var counter: Counter) List[Int]:
     counter.count = counter.count + 1
     return [7, 8]
 
@@ -49,11 +49,11 @@ test "indexing and generic applications coexist":
     let items = [10, 20]
     let index = 1
     let indices = [0, 1]
-    let counter = Counter(count: 0)
+    var counter = Counter(count: 0)
     ((items[0] != 10 or items[index] != 20 or items[-1] != 20)) | try expect_false
     (items[indices[index]] != 20 or items[index - 1] != 10) | try expect_false
     (items[counter.count] != 10 or [items][0][1] != 20) | try expect_false
-    (values(counter) [(try tick(counter))] != 7 or counter.count != 2) | try expect_false
+    (values(var counter) [(try tick(var counter))] != 7 or counter.count != 2) | try expect_false
     identity[Int](items[0]) | try expect_equal(expected: 10)
     let callbacks: List[fn(value: Int) Int] = [identity[Int]]
     (callbacks[0](2) != 2 or callbacks[indices[0]](3) != 3) | try expect_false
@@ -176,7 +176,7 @@ test "contextual values infer from later arms":
 
     list[0] | try expect_equal(expected: 5)
 
-fn returned_argument(counter: Counter) Result[Int, Error]:
+fn returned_argument(var counter: Counter) Result[Int, Error]:
     let absent: Optional[Int] = none
     return ok(
         combine(
@@ -184,7 +184,7 @@ fn returned_argument(counter: Counter) Result[Int, Error]:
                 some(value): value
                 none: return ok(17)
             ,
-            second: (try tick(counter))
+            second: (try tick(var counter))
         )
     )
 
@@ -214,8 +214,8 @@ fn returned_loop(value: Optional[Int]) Int:
     return 24
 
 test "expression exits preserve caller boundaries and evaluation order":
-    let counter = Counter(count: 0)
-    ((try returned_argument(counter)) != 17 or counter.count != 0) | try expect_false
+    var counter = Counter(count: 0)
+    ((try returned_argument(var counter)) != 17 or counter.count != 0) | try expect_false
     propagated("3") | try expect_equal(expected: Result[Int, TextError].ok(value: 3))
     propagated("no") | try expect_equal(
         expected: Result[Int, TextError].error(cause: TextError("missing"))
@@ -260,14 +260,14 @@ test "indexing preserves zero and nested optionals":
     let nested: List[Optional[Int]] = [none, some(value: 0)]
     (nested[0].is_some() or nested[1].get() != 0) | try expect_false
 
-fn observed_optional(counter: Counter) Optional[Int]:
+fn observed_optional(var counter: Counter) Optional[Int]:
     counter.count = counter.count + 1
     return some(value: 5)
 
 test "match evaluates its input once and only the selected arm":
     var counter = Counter(count: 0)
 
-    let result = match observed_optional(counter):
+    let result = match observed_optional(var counter):
         some(value):
             counter.count = counter.count + 10
             value + 1

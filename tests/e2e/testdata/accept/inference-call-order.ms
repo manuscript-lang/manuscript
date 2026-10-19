@@ -23,19 +23,19 @@ type GenericFailure[T]:
 impl Error for GenericFailure[T]:
     fn message() String: self.detail.to_string()
 
-fn record(events: Events, value: Int) Int:
+fn record(var events: Events, value: Int) Int:
     events.values.append(value)
     return value
 
 test "reused inference preserves evaluation and argument conversions":
-    let events = Events([])
+    var events = Events([])
     let selected = first(
-        right: identity(identity(record(events, value: 2))),
-        left: identity(identity(record(events, value: 1)))
+        right: identity(identity(record(var events, value: 2))),
+        left: identity(identity(record(var events, value: 1)))
     )
     try expect_equal(selected, 1)
     try expect_equal(events.values, [2, 1])
-    let wrapped = optional(value: identity(record(events, value: 3)), fallback: 0)
+    let wrapped = optional(value: identity(record(var events, value: 3)), fallback: 0)
     try expect_equal(wrapped, 3)
     try expect_equal(events.values, [2, 1, 3])
     let message = describe(value: 1, cause: identity(Failure("cached")))

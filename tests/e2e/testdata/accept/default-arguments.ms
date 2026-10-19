@@ -13,12 +13,12 @@ fn combine(first: Int = 2, second: Int, third: Int = first + second) Int:
 fn identity[T](value: T, fallback: T = value) T:
     return fallback
 
-fn mark(state: Cell, value: Int) Int:
+fn mark(var state: Cell, value: Int) Int:
     state.value = state.value * 10 + value
     return value
 
 fn ordered(
-    state: Cell,
+    var state: Cell,
     first: Int = mark(state: state, value: 3),
     second: Int = mark(state: state, value: 4),
     third: Int = 0
@@ -26,7 +26,7 @@ fn ordered(
     state.value = state.value * 10 + 5
     return first + second + third
 
-fn unit_default(calls: List[Int]) Unit:
+fn unit_default(var calls: List[Int]) Unit:
     calls.append(1)
 
 fn unit_value(calls: List[Int], value: Unit = unit_default(calls)) Unit:
@@ -81,16 +81,16 @@ test "omitted and explicit defaults":
 test "default evaluation order and repeated calls":
     var state = Cell(value: 0)
     let total = ordered(
-        state: state,
-        third: mark(state: state, value: 1),
-        second: mark(state: state, value: 2)
+        state: var state,
+        third: mark(state: var state, value: 1),
+        second: mark(state: var state, value: 2)
     )
     (total != 6 or state.value != 1235) | try expect_false
     state.value = 0
-    let ignored = ordered(state: state)
+    let ignored = ordered(state: var state)
     state.value | try expect_equal(expected: 345)
     state.value = 0
-    let again = ordered(state: state)
+    let again = ordered(state: var state)
     state.value | try expect_equal(expected: 345)
 
 test "function values and captures":

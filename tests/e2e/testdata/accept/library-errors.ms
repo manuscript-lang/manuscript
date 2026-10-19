@@ -336,14 +336,14 @@ fn match_label(view: Label[String]) String:
 type Count:
     value: Int
 
-fn counted_view(count: Count) Label[String]:
+fn counted_view(var count: Count) Label[String]:
     count.value = count.value + 1
     return Label[String](Labelled("label diagnostic"))
 
 test "contract matches evaluate once and preserve ordinary contract semantics":
-    let count = Count(value: 0)
+    var count = Count(value: 0)
 
-    match counted_view(count):
+    match counted_view(var count):
         Labelled[String](receiver):
             try expect_equal(receiver.value, "label diagnostic")
         _:

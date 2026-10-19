@@ -1,6 +1,6 @@
 import {expect_equal, expect_true} from "@std/testing.ms"
 
-fn touch(log: List[Int], value: Int) Int:
+fn touch(var log: List[Int], value: Int) Int:
     log.append(value)
     return value
 
@@ -17,14 +17,14 @@ test "identities keep boundaries":
         ((x % 1 == 0)) | try expect_true
 
 test "identities keep operand effects":
-    let log: List[Int] = []
-    ((touch(log, 1) * 0 == 0)) | try expect_true
-    ((0 * touch(log, 2) == 0)) | try expect_true
-    ((touch(log, 3) * 1 == 3)) | try expect_true
-    ((1 * touch(log, 4) == 4)) | try expect_true
-    ((touch(log, 5) + 0 == 5)) | try expect_true
-    ((0 + touch(log, 6) == 6)) | try expect_true
-    ((touch(log, 7) - 0 == 7)) | try expect_true
-    ((touch(log, 8) / 1 == 8)) | try expect_true
-    ((touch(log, 9) % 1 == 0)) | try expect_true
+    var log: List[Int] = []
+    ((touch(var log, 1) * 0 == 0)) | try expect_true
+    ((0 * touch(var log, 2) == 0)) | try expect_true
+    ((touch(var log, 3) * 1 == 3)) | try expect_true
+    ((1 * touch(var log, 4) == 4)) | try expect_true
+    ((touch(var log, 5) + 0 == 5)) | try expect_true
+    ((0 + touch(var log, 6) == 6)) | try expect_true
+    ((touch(var log, 7) - 0 == 7)) | try expect_true
+    ((touch(var log, 8) / 1 == 8)) | try expect_true
+    ((touch(var log, 9) % 1 == 0)) | try expect_true
     log | try expect_equal(expected: [1, 2, 3, 4, 5, 6, 7, 8, 9])

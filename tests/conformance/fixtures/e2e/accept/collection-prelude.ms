@@ -16,7 +16,7 @@ fn roll(i: Int) Result[Int, TextError]: ok(i)
 
 fn count(values: List[String]) Int: values.length()
 
-fn update[K: Hashable, V](values: Map[K, V], key: K, value: V) Map[K, V]:
+fn update[K: Hashable, V](var values: Map[K, V], key: K, value: V) Map[K, V]:
     values.add(key, value)
     return values
 
@@ -70,7 +70,7 @@ test "map add retains optional wrapping and generic bound calls":
     bound(4, 5)
     try expect_equal(values.get(1).get().get(), 3)
     try expect_equal(values.get(4).get().get(), 5)
-    var generic = update[Optional[Int], Optional[Int]](values, some(6), some(7))
+    var generic = update[Optional[Int], Optional[Int]](var values, some(6), some(7))
     generic.add(8, 9)
     try expect_false(values.get(6).get().get() != 7 or values.get(8).get().get() != 9)
 

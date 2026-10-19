@@ -83,7 +83,7 @@ type Ranked:
     unexpected: List[Int] = []
 
 impl Comparable for Ranked:
-    fn compare(other: Comparable) Int:
+    var fn compare(other: Comparable) Int:
         match other:
             Ranked(value):
                 if self.rank < value.rank: return -9223372036854775808

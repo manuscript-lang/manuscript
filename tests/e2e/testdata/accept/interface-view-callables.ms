@@ -13,14 +13,14 @@ impl Read[T] for Reader[T]:
 type Log:
     events: String
 
-fn mark(log: Log, event: String, value: Int) Int:
+fn mark(var log: Log, event: String, value: Int) Int:
     log.events += event
     return value
 
-fn prepare(log: Log, value: Int) fn() Int:
-    mark(log, "prepare;", 0)
+fn prepare(var log: Log, value: Int) fn() Int:
+    mark(var log, "prepare;", 0)
     return fn() Int:
-        return mark(log, "call;", value)
+        return mark(var log, "call;", value)
 
 fn wrap[T](operation: fn() T) Read[T]:
     return Read[T](Reader[T](operation))
@@ -46,27 +46,27 @@ impl Read[Int] for DefaultReader:
         return self.operation()
 
 test "nested view receiver prepares once and calls later":
-    let log = Log("")
-    let view = Read[Int](Reader(prepare(log, 7)))
+    var log = Log("")
+    let view = Read[Int](Reader(prepare(var log, 7)))
     try expect_equal(log.events, "prepare;")
     try expect_equal(view.read(), 7)
     try expect_equal(log.events, "prepare;call;")
 
 test "constructor arguments retain written order and capture snapshots":
-    let log = Log("")
+    var log = Log("")
     var value = 4
     let view = Read[Int](
         OrderedReader(
-            last: mark(log, "last;", 3),
+            last: mark(var log, "last;", 3),
             operation: (
                 fn() Int:
                     let nested = fn() Int: value
-                    return mark(log, "call;", nested())
+                    return mark(var log, "call;", nested())
             ),
             match some(2):
                 some(number):
                     value = 70
-                    mark(log, "first;", number)
+                    mark(var log, "first;", number)
                 none: 0
         )
     )
@@ -91,21 +91,21 @@ test "explicit nested views and bound methods retain generic dispatch":
     try expect_equal(wrap(fn() String: "text").read(), "text")
 
 test "source constructors with callable defaults prepare once":
-    let log = Log("")
-    let view = Read[Int](DefaultReader(mark(log, "base;", 12)))
+    var log = Log("")
+    let view = Read[Int](DefaultReader(mark(var log, "base;", 12)))
     try expect_equal(log.events, "base;")
     try expect_equal(view.read(), 12)
     try expect_equal(log.events, "base;")
 
 test "match receiver side effects and callable body remain ordered":
-    let log = Log("")
+    var log = Log("")
     let view = Read[Int](
-        match some(mark(log, "select;", 1)):
+        match some(mark(var log, "select;", 1)):
             some(_):
-                mark(log, "chosen;", 0)
-                Reader(fn() Int: mark(log, "call;", 9))
+                mark(var log, "chosen;", 0)
+                Reader(fn() Int: mark(var log, "call;", 9))
             none:
-                mark(log, "wrong;", 0)
+                mark(var log, "wrong;", 0)
                 Reader(fn() Int: 0)
     )
     try expect_equal(log.events, "select;chosen;")

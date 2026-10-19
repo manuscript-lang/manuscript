@@ -6,27 +6,27 @@ import range from "@std/collections.ms"
 import {parse, stringify, TomlValue} from "@std/toml.ms"
 import {Rng, next, text, mutate} from "./support/generator.ms"
 
-fn generated(rng: Rng, depth: Int) TomlValue:
+fn generated(var rng: Rng, depth: Int) TomlValue:
     var choices = 7
     if depth > 2: choices = 4
-    let kind = next(rng, choices)
-    if kind == 0: return TomlValue.BoolValue(next(rng, 2) == 0)
-    if kind == 1: return TomlValue.IntValue(next(rng, 200000) - 100000)
-    if kind == 2: return TomlValue.FloatValue((next(rng, 2000) - 1000).to_float() / 8.0)
-    if kind == 3: return TomlValue.StringValue(text(rng))
+    let kind = next(var rng, choices)
+    if kind == 0: return TomlValue.BoolValue(next(var rng, 2) == 0)
+    if kind == 1: return TomlValue.IntValue(next(var rng, 200000) - 100000)
+    if kind == 2: return TomlValue.FloatValue((next(var rng, 2000) - 1000).to_float() / 8.0)
+    if kind == 3: return TomlValue.StringValue(text(var rng))
 
     if kind == 4:
         var items: List[TomlValue] = []
-        for item in range(0, next(rng, 4)):
-            items.append(generated(rng, depth + 1))
+        for item in range(0, next(var rng, 4)):
+            items.append(generated(var rng, depth + 1))
         return TomlValue.ArrayValue(items)
 
-    return table(rng, depth + 1)
+    return table(var rng, depth + 1)
 
-fn table(rng: Rng, depth: Int) TomlValue:
+fn table(var rng: Rng, depth: Int) TomlValue:
     var entries: Map[String, TomlValue] = {}
-    for item in range(0, next(rng, 4)):
-        entries.add(text(rng), generated(rng, depth))
+    for item in range(0, next(var rng, 4)):
+        entries.add(text(var rng), generated(var rng, depth))
     return TomlValue.TableValue(entries)
 
 fn check_round_trip(seed: Int, original: TomlValue) Result[Unit, Error]:
@@ -47,17 +47,17 @@ fn check_stable(seed: Int, mutated: String, first: TomlValue) Result[Unit, Error
 
 test "TOML stringify then parse preserves generated documents":
     for seed in range(1, 301):
-        try check_round_trip(seed, table(Rng(seed), 0))
+        try check_round_trip(seed, table(var Rng(seed), 0))
 
 test "TOML parse never faults on mutated documents and accepted input is stable":
     var accepted = 0
 
     for seed in range(1, 301):
-        let rng = Rng(seed)
-        let rendered = table(rng, 0) | stringify | try
+        var rng = Rng(seed)
+        let rendered = table(var rng, 0) | stringify | try
 
         for round in range(0, 4):
-            let mutated = mutate(rng, rendered)
+            let mutated = mutate(var rng, rendered)
 
             if let first = parse(mutated):
                 accepted += 1

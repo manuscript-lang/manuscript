@@ -11,16 +11,16 @@ type Cell:
     total: Int
 
 impl Counter for Cell:
-    fn bump(by: Int) Int:
+    var fn bump(by: Int) Int:
         self.total += by
         return self.total
 
-    fn lower(by: Int) Int:
+    var fn lower(by: Int) Int:
         self.total -= by
         return self.total
 
 fn sum() Int:
-    let cell = Cell(0)
+    var cell = Cell(0)
     var i = 0
 
     while i < 1000:
@@ -31,7 +31,7 @@ fn sum() Int:
     return cell.total
 
 fn prefix() Int:
-    let cell = Cell(9223372036854775807)
+    var cell = Cell(9223372036854775807)
     var i = 0
 
     while i < 2:
@@ -42,8 +42,8 @@ fn prefix() Int:
     return cell.total
 
 fn peer() Int:
-    let cell = Cell(9223372036854775807)
-    let other = Cell(0)
+    var cell = Cell(9223372036854775807)
+    var other = Cell(0)
     var i = 0
 
     while i < 2:
@@ -54,7 +54,7 @@ fn peer() Int:
     return cell.total
 
 fn scalar_peer() Int:
-    let cell = Cell(9223372036854775807)
+    var cell = Cell(9223372036854775807)
     var sum = 0
     var i = 0
 
@@ -66,7 +66,7 @@ fn scalar_peer() Int:
     return cell.total
 
 fn alias() Int:
-    let cell = Cell(0)
+    var cell = Cell(0)
     var other = cell
     var i = 0
 
@@ -77,13 +77,13 @@ fn alias() Int:
 
     return cell.total
 
-fn effect(visits: List[Int]) Int:
+fn effect(var visits: List[Int]) Int:
     visits.append(7)
     return 1
 
-fn eager(visits: List[Int]) Int:
-    let cell = Cell(0)
-    cell.bump(effect(visits))
+fn eager(var visits: List[Int]) Int:
+    var cell = Cell(0)
+    cell.bump(effect(var visits))
     return cell.total
 
 test "closed cell updates preserve each operation":
@@ -108,6 +108,6 @@ test "record aliases keep ordinary shared mutation":
     )
 
 test "record arguments execute exactly once before the update":
-    let visits: List[Int] = []
-    eager(visits) | try expect_equal(expected: 1)
+    var visits: List[Int] = []
+    eager(var visits) | try expect_equal(expected: 1)
     visits | try expect_equal(expected: [7])

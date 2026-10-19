@@ -3,7 +3,7 @@ import {expect_equal, expect_false} from "@std/testing.ms"
 type Counter:
     value: Int
 
-fn step(counter: Counter, value: Int) Int:
+fn step(var counter: Counter, value: Int) Int:
     counter.value = counter.value * 10 + value
     return value
 
@@ -11,8 +11,8 @@ fn identity[T](value: T) T:
     return value
 
 test "typed operands retain evaluation order and generic boundaries":
-    let counter = Counter(0)
-    let total = (step(counter, 1) + step(counter, 2) * step(counter, 3))
+    var counter = Counter(0)
+    let total = (step(var counter, 1) + step(var counter, 2) * step(var counter, 3))
     try expect_false(total != 7 or counter.value != 123)
     var value = identity(9)
     value += 1

@@ -43,7 +43,7 @@ fn compare(left: Int, right: Int) Int:
 
 export fn main() Int: return 0
 
-fn callback_write(values: List[Int]) Int:
+fn callback_write(var values: List[Int]) Int:
     var total = Total(0)
     values.for_each(
         fn(value):

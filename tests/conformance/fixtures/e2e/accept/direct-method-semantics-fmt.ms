@@ -59,11 +59,11 @@ fn tried(rect: Rect, limit: Int) Result[Int, TextError]:
     let first = try rect.checked(limit: limit)
     return ok(value: first + (try rect.checked(limit: limit + 100)))
 
-fn order(rect: Rect, log: List[String]) Int:
+fn order(rect: Rect, var log: List[String]) Int:
     log.append(value: "receiver")
-    return rect.scaled(by: id(log: log))
+    return rect.scaled(by: id(log: var log))
 
-fn id(log: List[String]) Int:
+fn id(var log: List[String]) Int:
     log.append(value: "argument")
     return 1
 
@@ -84,6 +84,6 @@ test "direct methods":
         ok(value): return fail("expected failure")
         error(cause): (cause.message() == "too big") | try expect_true
 
-    let log = List[String]()
-    (order(rect: rect, log: log) == 12) | try expect_true
+    var log = List[String]()
+    (order(rect: rect, log: var log) == 12) | try expect_true
     (log.join(separator: ",") == "receiver,argument") | try expect_true

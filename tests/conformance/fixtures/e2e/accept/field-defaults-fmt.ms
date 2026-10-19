@@ -6,7 +6,7 @@ import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
 type Counter:
     value: Int = 0
 
-fn mark(counter: Counter, value: Int) Int:
+fn mark(var counter: Counter, value: Int) Int:
     counter.value = counter.value * 10 + value
     return value
 
@@ -28,7 +28,7 @@ type Box[T]:
     value: T
     copy: T = value
 
-fn unit_default(calls: List[Int]) Unit:
+fn unit_default(var calls: List[Int]) Unit:
     calls.append(1)
 
 type Explicit:
@@ -54,8 +54,8 @@ test "supplied fields precede defaults in field order":
     var counter = Counter()
     let ordered = Ordered(
         counter: counter,
-        third: mark(counter: counter, value: 1),
-        second: mark(counter: counter, value: 2)
+        third: mark(counter: var counter, value: 1),
+        second: mark(counter: var counter, value: 2)
     )
     (
         (

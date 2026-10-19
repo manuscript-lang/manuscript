@@ -142,7 +142,7 @@ fn product_sum() Int:
 
     return sum
 
-fn zero_effect(visits: List[Int]) Int:
+fn zero_effect(var visits: List[Int]) Int:
     visits.append(1)
     return 9223372036854775807
 
@@ -150,6 +150,6 @@ test "bounded multiplication keeps its operator and operand effects":
     let left = -12
     (left * -7) | try expect_equal(expected: 84)
     product_sum() | try expect_equal(expected: 0)
-    let visits: List[Int] = []
-    (zero_effect(visits) * 0) | try expect_equal(expected: 0)
+    var visits: List[Int] = []
+    (zero_effect(var visits) * 0) | try expect_equal(expected: 0)
     visits | try expect_equal(expected: [1])

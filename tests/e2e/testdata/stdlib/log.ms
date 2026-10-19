@@ -207,10 +207,10 @@ type CaptureTransport:
     output: MemoryStream
 
 impl Transport for CaptureTransport:
-    fn write(data: String) Result[Unit, LogError]:
+    var fn write(data: String) Result[Unit, LogError]:
         return self.write_bytes(data.to_bytes())
 
-    fn write_bytes(data: Bytes) Result[Unit, LogError]:
+    var fn write_bytes(data: Bytes) Result[Unit, LogError]:
         if self.output.closed: return error(LogError.Closed)
 
         self.output.data = self.output.data.concat(data)

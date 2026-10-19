@@ -14,7 +14,7 @@ impl Hashable for Folded:
     fn hash() Int:
         return 1
 
-fn replace_first[T](xs: List[T], value: T) List[T]:
+fn replace_first[T](var xs: List[T], value: T) List[T]:
     xs.set(index: 0, value: value)
     return xs
 
@@ -26,7 +26,7 @@ test "list members":
     var xs = [1, 2, 3]
     xs.set(index: -1, value: 9)
     (xs.get(index: 2) == 9) | try expect_true
-    (replace_first(xs: xs, value: 5).get(index: 0) == 5) | try expect_true
+    (replace_first(xs: var xs, value: 5).get(index: 0) == 5) | try expect_true
     (xs.contains(value: 9)) | try expect_true
 
 test "custom equality is kept for bound members":
@@ -39,7 +39,7 @@ test "custom equality is kept for bound members":
 
 test "builder":
     let sb = StringBuilder()
-    let alias = sb
+    var alias = sb
     let append = alias.append
     let freeze = sb.freeze
     append("a")
@@ -48,7 +48,7 @@ test "builder":
     (alias.freeze() == "aé") | try expect_true
 
 test "sealed builder":
-    let sb = StringBuilder()
+    var sb = StringBuilder()
     let append = sb.append
     sb.freeze()
     let message = try expect_fault(fn(): append(""))

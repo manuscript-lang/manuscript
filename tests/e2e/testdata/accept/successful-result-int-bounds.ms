@@ -83,23 +83,23 @@ type BoundedResultCleanup:
     visits: List[Int]
 
 impl Closeable for BoundedResultCleanup:
-    fn close() Unit:
+    var fn close() Unit:
         self.visits.append(7)
 
 fn cleanup(visits: List[Int]) Int:
     with resource = BoundedResultCleanup(visits):
         return total(true)
 
-fn argument(value: Int, visits: List[Int]) Int:
+fn argument(value: Int, var visits: List[Int]) Int:
     visits.append(value)
     return value
 
-fn ordered(visits: List[Int]) Int:
+fn ordered(var visits: List[Int]) Int:
     var sum = 0
     var i = -1
 
     while i < 2:
-        if let found = wrapped(argument(i, visits)):
+        if let found = wrapped(argument(i, var visits)):
             sum += found
         i += 1
 
@@ -128,8 +128,8 @@ test "hidden successful returns in error construction keep checks":
     )
 
 test "Result bounds preserve argument effects and cleanup":
-    let visits: List[Int] = []
-    ordered(visits) | try expect_equal(expected: 3)
+    var visits: List[Int] = []
+    ordered(var visits) | try expect_equal(expected: 3)
     visits | try expect_equal(expected: [-1, 0, 1])
     cleanup(visits) | try expect_equal(expected: 500498)
     visits | try expect_equal(expected: [-1, 0, 1, 7])

@@ -50,7 +50,7 @@ impl Read for Reader:
 type Counter:
     calls: Int
 
-fn next(counter: Counter) Int:
+fn next(var counter: Counter) Int:
     counter.calls += 1
     return counter.calls
 
@@ -116,8 +116,8 @@ test "constructor fields and methods use optional arguments":
     try expect_equal(notice.failure.get().message(), "detail")
 
 test "wrapping evaluates arguments once in written order":
-    let counter = Counter(0)
-    try expect_equal(ordered(second: next(counter), first: next(counter)), 21)
+    var counter = Counter(0)
+    try expect_equal(ordered(second: next(var counter), first: next(var counter)), 21)
     try expect_equal(counter.calls, 2)
 
 test "queue capacity accepts a plain value or omission":

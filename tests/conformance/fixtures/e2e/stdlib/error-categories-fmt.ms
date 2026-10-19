@@ -31,7 +31,7 @@ impl Error for PathError:
         return "path: invalid input"
 
 impl Error for CustomError:
-    fn message() String:
+    var fn message() String:
         self.calls = self.calls + 1
         return self.message
 

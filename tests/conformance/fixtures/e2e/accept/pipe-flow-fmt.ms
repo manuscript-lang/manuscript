@@ -39,10 +39,10 @@ fn describe(text: String) Result[String, TextError]:
         .to_string_radix(10)
     return ok(label)
 
-fn order(log: List[String]) Int:
-    return trace(log, "a") | add(trace(log, "b")) | double
+fn order(var log: List[String]) Int:
+    return trace(var log, "a") | add(trace(var log, "b")) | double
 
-fn trace(log: List[String], name: String) Int:
+fn trace(var log: List[String], name: String) Int:
     log.append(name)
     return 1
 
@@ -69,8 +69,8 @@ test "leading dot after a step applies to its result":
     try expect_equal(describe("xy").get(), "3")
 
 test "head is evaluated before step arguments":
-    let log: List[String] = []
-    try expect_equal(order(log), 4)
+    var log: List[String] = []
+    try expect_equal(order(var log), 4)
     try expect_false(log.get(0) != "a" or log.get(1) != "b")
 
 test "dot steps call methods on the value":

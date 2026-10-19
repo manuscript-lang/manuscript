@@ -40,11 +40,11 @@ fn rejected(result: Result[Unit, FileSystemError]) Result[Unit, Error]:
 fn text(fs: FileSystem, path: String) Result[String, Error]:
     return ok((fs.read_file(path) | try expect_ok).decode_utf8().get())
 
-fn argument(log: List[String], mark: String, path: String) String:
+fn argument(var log: List[String], mark: String, path: String) String:
     log.append(mark)
     return path
 
-fn data_argument(log: List[String]) Bytes:
+fn data_argument(var log: List[String]) Bytes:
     log.append("data")
     return "new".to_bytes()
 
@@ -206,12 +206,12 @@ test "filesystem default preparation retains written argument order":
     let fs = filesystem()
 
     with temporary = (fs.temporary("manuscript-default-order-") | try expect_ok):
-        let log: List[String] = []
+        var log: List[String] = []
         (
             fs.write_file_bytes(
-                data: data_argument(log),
+                data: data_argument(var log),
                 path: argument(
-                    log,
+                    var log,
                     "path",
                     "{temporary.path()}/ordered"
                 )
@@ -222,12 +222,12 @@ test "filesystem default preparation retains written argument order":
         (
             copy(
                 destination: argument(
-                    log,
+                    var log,
                     "destination",
                     "{temporary.path()}/copy"
                 ),
                 source: argument(
-                    log,
+                    var log,
                     "source",
                     "{temporary.path()}/ordered"
                 )

@@ -5,7 +5,7 @@ import {expect_true} from "@std/testing.ms"
 
 fn byLength(left: String, right: String) Int: left.length() - right.length()
 
-fn record(into: List[Int], value: Int) Unit:
+fn record(var into: List[Int], value: Int) Unit:
     into.append(value: value)
     return unit
 
@@ -38,8 +38,8 @@ test "map callbacks":
             ) == 321
         )
     )
-    let visited = List[Int]()
-    m.for_each(fn(key: String, value: Int) Unit: record(into: visited, value: value))
+    var visited = List[Int]()
+    m.for_each(fn(key: String, value: Int) Unit: record(into: var visited, value: value))
     try expect_true((visited.length() == 3))
 
 test "set callbacks":

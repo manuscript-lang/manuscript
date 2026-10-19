@@ -88,11 +88,11 @@ test "String slice uses Unicode scalars with relative bounds and OutOfRange erro
     try expect_equal((try text.slice_scalars(4, 4)), "")
 
 test "string and bytes builders freeze idempotently":
-    let text = StringBuilder()
+    var text = StringBuilder()
     text.append("é")
     text.append("🙂")
     try expect_false(text.freeze() != "é🙂" or text.freeze() != "é🙂")
-    let bytes = BytesBuilder()
+    var bytes = BytesBuilder()
     bytes.append(0)
     bytes.concat(Bytes([255, 1]))
     try expect_false(

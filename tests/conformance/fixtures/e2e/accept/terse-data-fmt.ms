@@ -11,7 +11,7 @@ fn size(values: Map[String, Int]) Int: values.length()
 
 fn optional_size(values: Optional[Map[String, Int]]) Int: (values.get().length())
 
-fn mark(log: List[Int], value: Int) Int:
+fn mark(var log: List[Int], value: Int) Int:
     log.append(value)
     return value
 
@@ -40,8 +40,8 @@ test "map literals and positional identifier arguments":
     let value = 5
     values.add(key, value)
     try expect_equal(values.get(key).get(), value)
-    let log: List[Int] = []
-    let ordered = {mark(log, 1): mark(log, 2), mark(log, 1): mark(log, 3)}
+    var log: List[Int] = []
+    let ordered = {mark(var log, 1): mark(var log, 2), mark(var log, 1): mark(var log, 3)}
     try expect_false(log != [1, 2, 1, 3] or ordered.get(1).get() != 3)
     let shared = {"x": values}
     values.add("d", 6)
