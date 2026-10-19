@@ -11,7 +11,7 @@ BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 export PATH := $(dir $(GO)):$(PATH)
 export STATICCHECK_CACHE ?= $(CURDIR)/.artifacts/staticcheck
 
-.PHONY: conformance conform-oracle stdgen agent-bench-check toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test stdlib-bench repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check docs-coverage docs-rs docs-check-rs docs-parity book book-check vendor-refresh
+.PHONY: conformance conform-oracle conform-rust stdgen agent-bench-check toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test stdlib-bench repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check docs-coverage docs-rs docs-check-rs docs-parity book book-check vendor-refresh
 
 toolchain:
 	sh scripts/bootstrap-go.sh
@@ -63,6 +63,12 @@ CONFORM_SHARD ?= 0/1
 conform-oracle: build
 	cargo run -q -p ms-conform -- lint
 	cargo run -q -p ms-conform -- run --ms "$(CURDIR)/ms" --shard "$(CONFORM_SHARD)" --quiet --markdown .artifacts/conform-oracle.md
+
+# The run-phase corpus against the Rust `ms` (cargo build -p ms-cli), excluding fixtures whose
+# answer depends on aliasing; known differences are listed in tests/conformance/rust-expect-fail.txt.
+conform-rust:
+	cargo build -q -p ms-cli -p ms-conform
+	target/debug/ms-conform run --ms target/debug/ms --phase run --exclude-tag aliasing --expect-fail tests/conformance/rust-expect-fail.txt --quiet --markdown .artifacts/conform-rust.md
 
 examples-check:
 	"$(GO)" test ./tests/examples

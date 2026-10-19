@@ -1,0 +1,8 @@
+# Run-phase fixtures the Rust `ms` still differs on (make conform-rust). Remove entries as they are fixed.
+# -19: a statement spanning lines reports the last line, Go reports the first.
+go-tests/tests-e2e-testfaultsourcelocations-19
+# -20: a callee inlined into main loses its fault frame and the caller line.
+go-tests/tests-e2e-testfaultsourcelocations-20
+# -23, -4: method frames print `run`/`bump`, Go prints `Item.run`/`Cell.bump`.
+go-tests/tests-e2e-testfaultsourcelocations-23
+go-tests/tests-e2e-testfaultsourcelocations-4
