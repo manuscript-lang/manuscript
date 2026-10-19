@@ -1,6 +1,4 @@
 import {expect_equal, expect_false, expect_not_equal, fail} from "@std/testing.ms"
-import Synchronized from "@std/sync.ms"
-import TaskGroup from "@std/tasks.ms"
 import range from "@std/collections.ms"
 
 interface Counter:
@@ -88,22 +86,6 @@ test "for loop captures length and observes backing writes":
         values.fill(9, 0, 3)
 
     try expect_false(not (seen == [1, 9, 9] and values == [9, 9, 9]))
-
-test "Synchronized protects record mutation without replacement":
-    let counter = Synchronized(Val(0))
-    let operation = fn():
-        for round in range(0, 100):
-            with guard = counter.lock():
-                guard.get().increment()
-
-    with group = TaskGroup():
-        group.start(operation)
-        group.start(operation)
-        group.start(operation)
-        group.start(operation)
-        try group.join()
-        with guard = counter.lock():
-            try expect_equal(guard.get().val, 400)
 
 test "callbacks capture length while mutating their source":
     let values = [1, 2, 3]

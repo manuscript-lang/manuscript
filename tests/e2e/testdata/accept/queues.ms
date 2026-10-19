@@ -1,7 +1,5 @@
-import {expect_equal, expect_false, expect_ok, expect_true, fail} from "@std/testing.ms"
+import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
 import Queue from "@std/queues.ms"
-import Synchronized from "@std/sync.ms"
-import TaskGroup from "@std/tasks.ms"
 
 test "omitted capacity creates an unbounded queue":
     let queue = Queue[Int]()
@@ -51,27 +49,3 @@ test "queue elements include ordinary functions":
             try expect_equal(callback(), 7)
         none:
             return fail("callback missing")
-
-test "shared queue uses explicit lock scopes":
-    let shared = Synchronized(Queue[Int]())
-    let operation = fn(item: Int) Result[Unit, Error]:
-        for unused in [1, 2, 3, 4, 5]:
-            with locked = shared.lock():
-                let queue = locked.get()
-                queue.enqueue(item) | try expect_true
-                queue.dequeue() | try expect_equal(expected: some(item))
-
-        return ok(unit)
-
-    with group = TaskGroup():
-        let tasks = [
-            group.start(fn(): operation(1)),
-            group.start(fn(): operation(2)),
-            group.start(fn(): operation(3)),
-            group.start(fn(): operation(4))
-        ]
-        let joined = try group.join()
-        for task in tasks:
-            (try task.join()) | try expect_ok
-        with locked = shared.lock():
-            locked.get().is_empty() | try expect_true

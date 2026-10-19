@@ -20,7 +20,6 @@ Accept source per the [normative grammar](../../../core-language/basics/grammar.
 | Return completeness | Allow Unit fallthrough and bare returns; reject reachable non-Unit fallthrough; track Never and loop/return boundaries |
 | Argument labels | Bind labels and positional arguments left to right to unfilled parameters, never by spelling; same rule for constructors, methods, function values; reject unknown labels, duplicates, excess positional, missing required |
 | List literals | Canonical prelude List; homogeneous elements; annotations or expected type for empty lists |
-| Typed tasks | Infer `Task[T]` from the generic start signature; check joins against `Result[T, ExecutionError]` |
 | Destructuring bindings | Check arity, fields, renaming, nesting, duplicates; infer each local; see [destructuring bindings](../../../core-language/types/destructuring.md) |
 | Nominal records and tagged alternatives | Preserve identity; check declared fields and cases |
 | Expected types | Propagate context through literals, fields, parentheses, generic calls; reject ambiguous or conflicting inference |

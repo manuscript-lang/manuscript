@@ -1,5 +1,7 @@
 package msruntime
 
+import "fmt"
+
 // CleanupAction is one registered `with` close operation.
 type CleanupAction struct {
 	ctx   *Execution
@@ -92,4 +94,17 @@ func (s *CleanupStack) Unwind() {
 		pending = addSecondary(pending, failure)
 	}
 	panic(pending)
+}
+
+// addSecondary records failure as a secondary cleanup fault of pending, or
+// makes it the primary fault when nothing is pending.
+func addSecondary(pending, failure any) any {
+	if primary, ok := pending.(Fault); ok {
+		primary.Secondary = append(primary.Secondary, fmt.Sprint(failure))
+		return primary
+	}
+	if fault, ok := failure.(Fault); ok {
+		return fault
+	}
+	return Fault{Message: fmt.Sprint(failure)}
 }

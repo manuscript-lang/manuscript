@@ -20,7 +20,7 @@ Read in order with **Next**. Local statements in examples belong inside a functi
 
 ## Ready to build?
 
-[Task recipes](common-tasks.md) are complete programs: arguments, files, JSON, HTTP, concurrency. [Developer tools](../developer-tooling/_index.md) cover editor setup, builds, and debugging.
+[Task recipes](common-tasks.md) are complete programs: arguments, files, JSON, and HTTP. [Developer tools](../developer-tooling/_index.md) cover editor setup, builds, and debugging.
 
 ## Need an exact answer?
 

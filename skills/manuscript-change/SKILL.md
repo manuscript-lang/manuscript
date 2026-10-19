@@ -25,7 +25,7 @@ Keep each rule in its canonical design page and each standard signature in Manus
 
 ## Establish evidence
 
-Choose checks from the repository's current build files and CI. Language behavior needs source-level acceptance/rejection and native execution where runtime semantics change. Lifetime or concurrency work needs observable cancellation, close, and join behavior, plus relevant race coverage. Documentation examples need their displayed commands exercised; generated references need freshness checks and the book needs link/build validation. Run the checks applicable to the change and report any that could not run.
+Choose checks from the repository's current build files and CI. Language behavior needs source-level acceptance/rejection and native execution where runtime semantics change. Lifetime work needs observable cancellation and close behavior. Documentation examples need their displayed commands exercised; generated references need freshness checks and the book needs link/build validation. Run the checks applicable to the change and report any that could not run.
 
 A review follows the same contract trace: passing tests do not establish that every requested surface changed. Report concrete gaps with the source rule and affected behavior. Distinguish implemented behavior, design decisions, and remaining work in the result.
 

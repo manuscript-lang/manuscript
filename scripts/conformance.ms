@@ -76,7 +76,6 @@ fn inventory(suite: String) Result[List[String], Error]:
         for file in projects: files.append("tests/e2e/testdata/projects/{file}")
         for file in [
             "examples/hello/test.ms", "examples/tooling-demo/src/math.ms",
-            "examples/async-log/src/main.ms",
             "pkg/tooling/format/testdata/compact.input.ms",
             "pkg/tooling/format/testdata/compact.golden.ms"
         ]:

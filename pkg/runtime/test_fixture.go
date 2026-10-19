@@ -110,7 +110,6 @@ func (s *fixtureState) shutdown(timeout time.Duration) fixtureOutcome {
 		if hostShutdown != nil {
 			defer Cleanup(ctx, hostShutdown)
 		}
-		defer FinishExecution(ctx)
 		if s.created {
 			s.hooks.AfterAll(ctx)
 		}
@@ -154,16 +153,6 @@ func (s *fixtureState) test(test Test) Test {
 	test.Run = func(ctx *Execution) (value Result[Unit, Error]) {
 		defer func() {
 			failure := recover()
-			if s.poisoned.Load() {
-				if failure != nil {
-					panic(failure)
-				}
-				return
-			}
-			// Body-owned child work must stop before teardown mutates shared state.
-			var joined any
-			func() { defer func() { joined = recover() }(); FinishExecution(ctx) }()
-			failure = testCleanupFailure(failure, joined)
 			if s.poisoned.Load() {
 				if failure != nil {
 					panic(failure)

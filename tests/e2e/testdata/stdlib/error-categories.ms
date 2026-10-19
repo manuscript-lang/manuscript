@@ -4,7 +4,6 @@ import {category, ErrorCategory} from "@std/errors.ms"
 import {FileSystemError} from "@std/fs.ms"
 import {SystemError} from "@std/system.ms"
 import {ProcessError, CommandError} from "@std/process.ms"
-import {ExecutionError, StartError} from "@std/tasks.ms"
 import {NetworkError} from "@std/net.ms"
 import {HttpError} from "@std/http.ms"
 import {IoError} from "@std/io.ms"
@@ -110,8 +109,7 @@ test "timeout classification keeps timeout spelling out of generic handling":
     let causes: List[Error] = [
         NetworkError.Timeout,
         HttpError.Timeout,
-        CommandError.Timeout,
-        ExecutionError.Timeout
+        CommandError.Timeout
     ]
     let query = category
     for cause in causes:
@@ -127,10 +125,8 @@ test "classification does not parse messages invoke user code or guess domain-sp
     let causes: List[Error] = [
         IoError.Failed("not found; operation timed out"),
         NumberError.OutOfRange,
-        StartError.Full,
         CommandError.OutputLimit,
         CryptoError.AuthenticationFailed,
-        ExecutionError.Cancelled,
         YamlError.UnsupportedFeature(line: 7, reason: "detail"),
         LogError.Io(IoError.Closed)
     ]

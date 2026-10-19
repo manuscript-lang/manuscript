@@ -690,8 +690,6 @@ func TestHostErrorMessages(t *testing.T) {
 		{Errors_Message_TextError(ctx, &TextError{Text: "verbatim"}), "verbatim"},
 		{Errors_Message_MissingValue(ctx, MissingValue_Missing{Location: "a.ms:3"}), "missing value at a.ms:3"},
 		{Errors_Message_JsonError(ctx, JsonError_InvalidData{}), "JSON: invalid data"},
-		{Errors_Message_ExecutionError(ctx, ExecutionError_Crashed{Message: "boom"}), "boom"},
-		{Errors_Message_ExecutionError(ctx, ExecutionError_Cancelled{}), "task execution: operation cancelled"},
 	}
 	for _, c := range cases {
 		if c.got != c.want {
@@ -736,7 +734,6 @@ func TestErrorCategory(t *testing.T) {
 		{ProcessError_NotFound{}, ErrorCategory_NotFound{}},
 		{SystemError_AlreadyExists{}, ErrorCategory_AlreadyExists{}},
 		{JsonError_InvalidData{}, ErrorCategory_InvalidData{}},
-		{ExecutionError_Timeout{}, ErrorCategory_Timeout{}},
 	}
 	for _, d := range direct {
 		if d.e.Category() != d.want {

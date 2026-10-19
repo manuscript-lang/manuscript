@@ -18,6 +18,6 @@ The compiler checks which names closures capture and which cleanup each scope ru
 - Capturing a scoped resource is not an error even if it outlives the scope; methods report closed state at runtime.
 - Storing or returning a reference transfers no cleanup action.
 - There are no moved-binding states, borrow lifetimes, partial-move rules, or task-ownership checks.
-- All values may be captured and shared. `TaskGroup.start`, `Task.join`, `Scheduler.start`, and HTTP `serve` methods are ordinary callable values; constructors are not.
+- All values may be captured and shared. HTTP `serve` methods are ordinary callable values; constructors are not.
 
 See [using with](../../../core-language/cleanup/scopes.md), [closures](../../../core-language/functions/function-values-and-closures.md), and [typed IR](typed-ir.md).

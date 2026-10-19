@@ -1,5 +1,4 @@
-import {expect_equal, expect_false, fail} from "@std/testing.ms"
-import TaskGroup from "@std/tasks.ms"
+import {expect_equal} from "@std/testing.ms"
 
 type Transform:
     operation: fn(value: Int) Int
@@ -19,15 +18,3 @@ test "inline callbacks survive contextual rechecking":
             return value + 2
     )
     try expect_equal(transform.operation(3), 5)
-
-    with group = TaskGroup():
-        let first_task = group.start(
-            fn():
-                return 4
-        )
-        try expect_false(group.join().is_error())
-
-        if let value = first_task.join():
-            try expect_equal(value, 4)
-        else:
-            return fail("task result unavailable")

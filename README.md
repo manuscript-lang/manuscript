@@ -18,7 +18,7 @@ Most languages were shaped for human authors and then adapted to agents. Manuscr
 
 See the [tooling guide](documentation/developer-tooling/implementation.md), [how it works](documentation/developer-tooling/how-it-works.md), and [VS Code integration](extensions/vscode/README.md).
 
-Manuscript is statically typed. Write `.ms` files and build native executables with `ms`; the standard library covers files, processes, networking, HTTP, JSON, text, time, and concurrency.
+Manuscript is statically typed. Write `.ms` files and build native executables with `ms`; the standard library covers files, processes, networking, HTTP, JSON, text, and time.
 
 [Why Manuscript](documentation/learn/why-manuscript.md) · [Read the book](https://manuscript-lang.github.io/manuscript/) · [Take the tour](documentation/learn/tour.md) · [Download Manuscript](https://github.com/manuscript-lang/manuscript/releases)
 
@@ -91,7 +91,7 @@ Start a project with `./ms init my-app`, or keep an executable and run the test:
 | --- | --- |
 | Learn the language | [Language tour](documentation/learn/tour.md) and [core language](documentation/core-language/_index.md) |
 | Find a standard type or function | `ms search_symbol <name or words>` and the [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/) |
-| Understand cleanup and concurrent work | [Resource lifetimes](documentation/core-language/cleanup/_index.md) and [runtime concurrency semantics](documentation/contributing/concurrent-runtime.md) |
+| Understand cleanup | [Resource lifetimes](documentation/core-language/cleanup/_index.md) and [runtime conventions](documentation/contributing/runtime-conventions.md) |
 | Set up your editor or use source tools | [VS Code extension](extensions/vscode/README.md) and [tooling guide](documentation/developer-tooling/implementation.md) |
 | Understand what `ms` bundles | [How it works](documentation/developer-tooling/how-it-works.md) |
 | Choose optimization and debugging settings | [Build levels](documentation/developer-tooling/builds/build-levels.md) |

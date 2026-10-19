@@ -187,29 +187,6 @@ test('dead native stack slots cannot masquerade as source containers', () => {
   assert.equal(value.variablesReference, 0);
 });
 
-test('task handles and groups expose work state without native bookkeeping', async () => {
-  const adapter = new ManuscriptAdapter(new PassThrough());
-  const task = adapter.render({ name: 'task', type: '*runtime.Task[int]', value: '{committed: true}', variablesReference: 3 }, 'task', 'Task[Int]');
-  assert.equal(task.type, 'Task[Int]');
-  adapter.children = async () => [
-    { name: 'id', type: '*runtime.OperationId', value: '{number: 7}', variablesReference: 0 },
-    { name: 'value', type: 'int', value: '7', variablesReference: 0 },
-    { name: 'committed', type: 'bool', value: 'true', variablesReference: 0 },
-    { name: 'done', type: 'chan struct {}', value: 'channel', variablesReference: 0 },
-  ];
-  const fields = await adapter.valueChildren(adapter.handles.get(task.variablesReference), {});
-  assert.deepEqual(fields.map(field => field.name), ['Operation', 'Result', 'Completed']);
-  assert.equal(fields[1].value, '7'); assert.equal(fields[1].type, 'Int');
-  const group = adapter.render({ name: 'group', type: '*runtime.TaskGroup', value: 'group', variablesReference: 5 }, 'group', 'TaskGroup');
-  adapter.children = async () => [
-    { name: 'active', type: 'int', value: '2', variablesReference: 0 },
-    { name: 'sealed', type: 'bool', value: 'false', variablesReference: 0 },
-    { name: 'mu', type: 'sync.Mutex', value: 'mutex', variablesReference: 0 },
-  ];
-  const state = await adapter.valueChildren(adapter.handles.get(group.variablesReference), {});
-  assert.deepEqual(state.map(field => field.name), ['Active tasks', 'Joined']);
-});
-
 test('requests after the target ends get clear answers instead of pipe errors', async () => {
   const output = new PassThrough(); const messages = [];
   const parser = new Framing(message => messages.push(message));

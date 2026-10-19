@@ -19,8 +19,7 @@ func TestSafetyAdvisoriesPublishAsWarnings(t *testing.T) {
 		{"pattern binding", "import filesystem from \"@std/fs.ms\"\nfn use(path: String) Int:\n    match filesystem().stat(path: path, follow_links: true):\n        error(NotFound): return 1\n        ok(_): return 0\n", "MSL106", 3},
 		{"pattern binding CRLF and Unicode", "# café 🦀\r\nimport filesystem from \"@std/fs.ms\"\r\nfn use(path: String) Int:\r\n    match filesystem().stat(path: path, follow_links: true):\r\n        error(NotFound): return 1\r\n        ok(_): return 0\r\n", "MSL106", 4},
 		{"discarded result", "import {TextError} from \"@std/errors.ms\"\nfn fail() Result[Int, TextError]:\n    return error(TextError(\"boom\"))\nfn use() Unit:\n    fail()\n", "MSL104", 4},
-		{"concurrent capture", "import TaskGroup from \"@std/tasks.ms\"\nfn use() Unit:\n    let shared = Map[Int, Int]()\n    with tasks = TaskGroup():\n        let _task = tasks.start(fn() Unit:\n            shared.add(key: 1, value: 2)\n        )\n", "MSL105", 5},
-		{"prelude Map add concurrent capture", "import TaskGroup from \"@std/tasks.ms\"\nfn use() Unit:\n    let shared = Map[Int, Int]()\n    with tasks = TaskGroup():\n        let _task = tasks.start(fn() Unit:\n            shared.add(key: 1, value: 2)\n        )\n", "MSL105", 5},
+		{"concurrent capture", "import network from \"@std/net.ms\"\nimport { HttpResponse } from \"@std/http.ms\"\nimport panic from \"@std/faults.ms\"\nfn use() Unit:\n    let shared = Map[Int, Int]()\n    let _server = network().serve(address: \"127.0.0.1:0\", handler: fn(request) HttpResponse:\n        shared.add(key: 1, value: 2)\n        return panic(\"unreached\")\n    )\n", "MSL105", 6},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			d := document{"file:///tmp/advisory.ms", tc.source, 1}

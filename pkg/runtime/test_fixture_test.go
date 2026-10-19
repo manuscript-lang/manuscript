@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -132,55 +131,5 @@ func TestFileFixtureTimeoutRetainsCleanupFault(t *testing.T) {
 	failure := runTest(state.test(Test{Name: "timeout", Run: unitRun(body)}), 10*time.Millisecond, nil)
 	if !strings.Contains(fmt.Sprint(failure), "timed out") || !strings.Contains(fmt.Sprint(failure), "cleanup failed") {
 		t.Fatalf("lost cleanup fault: %v", failure)
-	}
-}
-
-func TestFileFixtureJoinsTestWorkBeforeAfterEach(t *testing.T) {
-	var joined atomic.Bool
-	fixture, _ := fixtureForTest(t, map[string]func(*Execution){"after_each": func(*Execution) {
-		if !joined.Load() {
-			t.Error("after_each ran before test workers joined")
-		}
-	}})
-	body := func(ctx *Execution) Unit {
-		group := NewTaskGroup(None[Duration]())
-		started := make(chan struct{})
-		TaskGroup_Start(ctx, group, func(child *Execution) Unit {
-			close(started)
-			<-child.Context.Done()
-			joined.Store(true)
-			return Unit{}
-		})
-		<-started
-		return Unit{}
-	}
-	if status := RunTestsWith([]Test{{Name: "joins", Run: unitRun(body), Fixture: fixture}}, TestOptions{Timeout: time.Second}); status != 0 {
-		t.Fatal(status)
-	}
-}
-
-func TestFileFixtureAbandonedJoinDoesNotRunAfterEach(t *testing.T) {
-	var afterEach atomic.Bool
-	state := &fixtureState{hooks: testFixtureValue{map[string]func(*Execution){"after_each": func(*Execution) { afterEach.Store(true) }}}}
-	release, started, finished := make(chan struct{}), make(chan struct{}), make(chan struct{})
-	body := func(ctx *Execution) Unit {
-		group := NewTaskGroup(None[Duration]())
-		TaskGroup_Start(ctx, group, func(*Execution) Unit { close(started); <-release; return Unit{} })
-		<-started
-		return Unit{}
-	}
-	wrapped := state.test(Test{Name: "join", Run: unitRun(body)})
-	test := Test{Name: "join", Run: func(ctx *Execution) Result[Unit, Error] { defer close(finished); return wrapped.Run(ctx) }}
-	failure := runTest(test, 10*time.Millisecond, nil)
-	state.poisoned.Store(true)
-	close(release)
-	select {
-	case <-finished:
-	case <-time.After(time.Second):
-		t.Fatal("test did not finish after worker release")
-	}
-	timeout, ok := failure.(testTimeout)
-	if !ok || !timeout.abandoned || afterEach.Load() {
-		t.Fatalf("failure %v after_each %v", failure, afterEach.Load())
 	}
 }

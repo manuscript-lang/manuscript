@@ -22,11 +22,10 @@ experts:
       - "documentation/contributing/compiler/**"
   - id: runtime
     file: runtime.md
-    topics: [concurrency, cancellation, cleanup, resources, networking, native APIs, standard library]
+    topics: [cancellation, cleanup, resources, networking, native APIs, standard library]
     paths:
       - "pkg/runtime/**"
       - "pkg/stdlib/**"
-      - "documentation/concurrency/**"
       - "documentation/core-language/cleanup/**"
       - "documentation/core-language/types/references.md"
       - "documentation/standard-library/**"

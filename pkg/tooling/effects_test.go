@@ -11,15 +11,14 @@ import (
 
 func TestEffectsIncludeTransitiveCallsAndImplicitCleanup(t *testing.T) {
 	source := `import Closeable from "@std/cleanup.ms"
-import Synchronized from "@std/sync.ms"
+import Queue from "@std/queues.ms"
 
 type Resource:
-    state: Synchronized[Bool]
+    state: Queue[Int]
 
 impl Closeable for Resource:
     fn close() Unit:
-        with locked = self.state.lock():
-            locked.set(value: true)
+        self.state.dequeue()
 
 fn pure() Int:
     return 1
@@ -60,12 +59,12 @@ fn indirect(callback: fn() Unit) Unit:
 	for _, site := range inspection.Calls {
 		if site.Kind == "cleanup" {
 			cleanupCalls++
-			if !strings.Contains(site.Target, "#method#") && !strings.Contains(site.Target, "SynchronizedGuard") {
+			if !strings.Contains(site.Target, "#method#") {
 				t.Fatal("unresolved concrete cleanup target", site)
 			}
 		}
 	}
-	if cleanupCalls != 3 {
+	if cleanupCalls != 2 {
 		t.Fatal("missing implicit cleanup sites", cleanupCalls)
 	}
 }

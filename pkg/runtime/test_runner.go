@@ -115,7 +115,6 @@ func runTestsWith(tests []Test, options TestOptions, args []string, reporter *te
 }
 
 func runTestsContext(tests []Test, options TestOptions, args []string, reporter *testReporter, runContext context.Context) int {
-	defer FlushDiagnostics()
 	total := len(tests)
 	match, err := regexp.Compile(options.Match)
 	if err != nil {
@@ -313,7 +312,6 @@ func runTestContext(test Test, timeout time.Duration, parent context.Context, ar
 		if hostShutdown != nil {
 			defer Cleanup(execution, hostShutdown)
 		}
-		defer FinishExecution(execution)
 		if outcome := test.Run(execution); outcome.Failed {
 			failure = testReturnedError(execution, outcome.Err)
 		}

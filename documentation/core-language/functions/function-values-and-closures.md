@@ -74,7 +74,7 @@ fn tag_count() Int:
 # tag_count() returns 2.
 ```
 
-Use `.clone()` before capturing for independent storage; nested references stay shared. Coordinate concurrent access with Synchronized. A bound method keeps its receiver by the same rules.
+Use `.clone()` before capturing for independent storage; nested references stay shared. A bound method keeps its receiver by the same rules.
 
 ## Resource captures
 
@@ -93,12 +93,6 @@ fn notes_reader(path: String) fn() Result[Bytes, FileSystemError]:
 `notes_reader("notes.txt")` returns a callback; each call opens, reads, and closes its own file.
 
 Capturing an already-open file keeps the same handle and does not delay its `with` cleanup: `FileHandle.read_file` after the block returns `FileSystemError.Closed`. Parameters and record fields follow the same lifetime rule.
-
-## Concurrent invocation
-
-Concurrency APIs accept ordinary functions, with the same rules for parameters, results, fields, and generic forwarding. A shared resource can still be closed before invocation.
-
-Capture request-data snapshots and services, then acquire job resources inside the operation. Keep a TaskGroup scope inside the resources its tasks use: the group cancels and joins at scope exit before enclosing resources close.
 
 ## Contextual callback inference
 

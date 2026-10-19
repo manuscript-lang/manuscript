@@ -1,7 +1,5 @@
 import {TextError} from "@std/errors.ms"
 import {expect_equal, expect_true, fail} from "@std/testing.ms"
-import ExecutionError from "@std/tasks.ms"
-import TaskGroup from "@std/tasks.ms"
 
 fn identity[T](value: T) T:
     return value
@@ -11,23 +9,19 @@ fn probe() Result[Unit, Error]:
         return ok(3)
     let second = fn():
         return true
+    let number = identity(first)()
+    let flag = second()
+    (flag) | try expect_true
 
-    with group = TaskGroup():
-        let number_task = identity(group.start(first))
-        let flag_task = group.start(second)
-        let number = try number_task.join()
-        let flag = try flag_task.join()
-        (flag) | try expect_true
+    match number:
+        ok(value):
+            try expect_equal(value, 3)
+        error(_):
+            return fail(message: "Unexpected case")
 
-        match number:
-            ok(value):
-                try expect_equal(value, 3)
-            error(_):
-                return fail(message: "Unexpected case")
+    return ok(unit)
 
-        return ok(unit)
-
-test "typed task helper":
+test "typed callback helper":
     match probe():
         ok(_):
             let completed = unit

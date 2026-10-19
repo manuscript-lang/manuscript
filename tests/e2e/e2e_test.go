@@ -180,7 +180,7 @@ func TestEvaluationOrderAndEveryCleanupExit(t *testing.T) {
 	}
 }
 
-func TestSignalCancelsJoinsAndCleansUp(t *testing.T) {
+func TestSignalCancelsAndCleansUp(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX signal shutdown")
 	}
@@ -444,30 +444,12 @@ export fn close_output() Unit:
 	main := `import { now, close_output } from "./helper.ms"
 import stdout from "@std/io.ms"
 import clock from "@std/time.ms"
-import Scheduler from "@std/tasks.ms"
-import sleep from "@std/time.ms"
 
 export fn main() Int:
     let before = now()
     if clock().now() - before < 0.milliseconds:
         return 1
-    with service = Scheduler(limit: 1):
-        let task = fn() Result[Unit, Error]:
-            close_output()
-            return ok(value: unit)
-        let id = match service.start(task):
-            ok(id): id
-            error(_):
-                return 2
-
-        while true:
-            match service.status(id):
-                Running:
-                    sleep(1.milliseconds)
-                Succeeded:
-                    break
-                _:
-                    return 5
+    close_output()
 
     let cause = match stdout().write(""):
         ok(_):

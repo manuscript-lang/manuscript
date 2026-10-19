@@ -107,8 +107,4 @@ fn decode(text: String) Result[Bytes, Error]:
 
 An `Error` implementer can be passed, assigned, or returned where `Error` is expected, and `Result[T, SpecificError]` can be returned as `Result[T, Error]` with payloads preserved. See [error compatibility](propagation.md#error-compatibility).
 
-## Results and concurrent execution
-
-Returning `error(cause: cause)` is normal completion. In a TaskGroup the Result is the operation's value and does not cancel siblings; Task.join separately reports ExecutionError. A Scheduler reports completion-only domain errors to its failure observer.
-
 Use [Optional](../types/optionals.md) for absence and [faults](faults.md) for broken invariants.

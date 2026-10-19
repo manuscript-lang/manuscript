@@ -301,7 +301,6 @@ test "standard error diagnostics work directly":
 import FileSystemError from "@std/fs.ms"
 import {LogError} from "@std/log.ms"
 import {CommandError} from "@std/process.ms"
-import {ExecutionError, StartError} from "@std/tasks.ms"
 
 test "standard diagnostics preserve messages and wrapped causes":
     let sink = LogError.Io(IoError.Failed("sink diagnostic"))
@@ -315,10 +314,6 @@ test "standard diagnostics preserve messages and wrapped causes":
             ).message() != "command diagnostic"
         )
     ) | try expect_false
-    (Error(ExecutionError.Timeout).message() != "task execution: operation timed out") | try expect_false
-    Error(StartError.Full).message() | try expect_equal(
-        expected: "scheduler: capacity exhausted"
-    )
 
 # The type-pattern rule also works for unrelated operation contracts.
 interface Label[T]:
@@ -338,15 +333,15 @@ fn match_label(view: Label[String]) String:
         _:
             return view.label()
 
-import Synchronized from "@std/sync.ms"
+type Count:
+    value: Int
 
-fn counted_view(count: Synchronized[Int]) Label[String]:
-    with locked = count.lock():
-        locked.set(value: locked.get() + 1)
+fn counted_view(count: Count) Label[String]:
+    count.value = count.value + 1
     return Label[String](Labelled("label diagnostic"))
 
 test "contract matches evaluate once and preserve ordinary contract semantics":
-    let count = Synchronized(0)
+    let count = Count(value: 0)
 
     match counted_view(count):
         Labelled[String](receiver):
@@ -354,8 +349,7 @@ test "contract matches evaluate once and preserve ordinary contract semantics":
         _:
             return fail(message: "unrelated contract pattern did not run")
 
-    with locked = count.lock():
-        locked.get() | try expect_equal(expected: 1)
+    count.value | try expect_equal(expected: 1)
     let view = Label[String](Labelled("separate handler"))
     match_label(view) | try expect_equal(expected: "separate handler")
 

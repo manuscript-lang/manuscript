@@ -10,11 +10,11 @@ Manuscript is a statically typed language built for the loop an agent runs: writ
 ## A language with little to get wrong
 
 - **No hidden control flow.** Failure is a value: `Optional` and `Result`, propagated with `try`. There are no exceptions, no implicit conversions, and no truthiness.
-- **No async syntax.** Concurrency, files, networking, HTTP, and JSON are `@std` functions called like any other.
+- **No async syntax.** Files, networking, HTTP, and JSON are `@std` functions called like any other.
 - **Flat, readable code.** Four-space blocks, exhaustive `match` over alternatives, and `|` pipe flows that replace nested calls and `Result` matches.
 - **Less ceremony.** `+=` and friends, `range(a, b)` as a counter loop, string interpolation, defaults and labels, and `[]` indexing that the checker accepts when bounds are proven.
 - **Typed data.** `json.parse[T]` reads JSON straight into your records; nominal types, generics, and interfaces with explicit `impl` blocks keep boundaries clear.
-- **Cleanup that stays correct.** `with` closes files, connections, and task groups at block end, on errors and cancellation too.
+- **Cleanup that stays correct.** `with` closes files and connections at block end, on errors and cancellation too.
 
 ## Tools that give evidence, not prose
 

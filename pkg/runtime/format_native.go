@@ -23,9 +23,6 @@ func (b *Bytes) String() string {
 	return "Bytes(" + strings.Join(parts, ", ") + ")"
 }
 
-// String renders an OperationId as OperationId(n).
-func (o *OperationId) String() string { return "OperationId(" + strconv.FormatUint(o.number, 10) + ")" }
-
 // Describe prints a contract value as its receiver: generated views implement
 // Describe(depth); any other value prints as FormatNative does.
 func Describe(v any, depth int) string {

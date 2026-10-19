@@ -8,13 +8,8 @@ import wall_clock from "@std/time.ms"
 import uuid_v4 from "@std/random.ms"
 import secure_int from "@std/random.ms"
 import parse_timestamp from "@std/time.ms"
-import Scheduler from "@std/tasks.ms"
-import sleep from "@std/time.ms"
 import posix from "@std/path.ms"
 import win32 from "@std/path.ms"
-
-fn timer_callback() Result[Unit, Error]:
-    return ok(unit)
 
 fn common_result[T, E: Error](result: Result[T, E]) Result[T, Error]:
     match result:
@@ -86,23 +81,6 @@ fn exercise(path: String) Result[Unit, Error]:
         )
         let events = try common_result(result: watcher.next())
         (events.length() > 0) | try expect_true
-
-    with scheduler = Scheduler():
-        let id = try common_result(
-            result: scheduler.after(
-                duration: 0.milliseconds,
-                operation: timer_callback
-            )
-        )
-        sleep(duration: 10.milliseconds)
-
-        match scheduler.status(id):
-            Succeeded:
-                let restarted = try common_result(result: scheduler.restart(id))
-            Running:
-                let restarted = try common_result(result: scheduler.restart(id))
-            _:
-                return fail(message: "scheduled work failed")
 
     let paths = posix()
     try expect_false(

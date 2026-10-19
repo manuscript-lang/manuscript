@@ -63,8 +63,6 @@ func (n *effectNode) scanStatement(statement *syntax.Statement) {
 	method := cleanupOf(statement)
 	if method != nil && method.ID != "" {
 		n.edges[method.ID] = true
-	} else if method != nil && std(method.Receiver, "SynchronizedGuard") {
-		n.add("write")
 	} else {
 		n.add("unknown")
 	}
@@ -113,7 +111,7 @@ func (n *effectNode) scanCall(expression *syntax.Expression, nodes map[string]*e
 			return
 		}
 		switch info.Symbol.Native {
-		case "panic", "check_cancelled":
+		case "panic":
 		case "sleep":
 			n.add("read")
 		default:
@@ -152,16 +150,6 @@ func (n *effectNode) scanMethodCall(expression *syntax.Expression, method *Metho
 		n.add("external-call", "write")
 	case "@std/Network", "@std/HttpServer", "@std/Commands", "@std/Subprocess":
 		n.add("external-call", "read", "write")
-	case "@std/SynchronizedGuard":
-		if name == "get" {
-			n.add("read")
-		} else {
-			n.add("write")
-		}
-	case "@std/Synchronized":
-		n.add("write")
-	case "@std/BlockingQueue":
-		n.add("read", "write")
 	case "@std/Queue":
 		if name != "enqueue" {
 			n.add("read")
@@ -179,8 +167,6 @@ func (n *effectNode) scanMethodCall(expression *syntax.Expression, method *Metho
 				n.add("unknown")
 			}
 		}
-	case "@std/Scheduler", "@std/TaskGroup", "@std/Task":
-		n.add("write", "unknown")
 	default:
 		if strings.HasSuffix(receiver.Name, "Builder") {
 			n.add("write")

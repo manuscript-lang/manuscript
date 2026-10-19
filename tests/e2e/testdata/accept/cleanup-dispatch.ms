@@ -1,6 +1,8 @@
 import {expect_true} from "@std/testing.ms"
 import Closeable from "@std/cleanup.ms"
-import Synchronized from "@std/sync.ms"
+
+type Flag:
+    value: Bool
 
 interface OtherClose:
     fn close(flag: Bool) Int
@@ -9,7 +11,7 @@ interface Disposable:
     fn close() Unit
 
 type Resource:
-    closed: Synchronized[Bool]
+    closed: Flag
     unexpected: List[Int]
 
 impl OtherClose for Resource:
@@ -19,13 +21,11 @@ impl OtherClose for Resource:
 
 impl Closeable for Resource:
     fn close() Unit:
-        with locked = self.closed.lock():
-            locked.set(value: true)
+        self.closed.value = true
 
 impl Disposable for Resource:
     fn close() Unit:
-        with locked = self.closed.lock():
-            locked.set(value: true)
+        self.closed.value = true
 
 fn bound_cleanup[T: Disposable](resource: T) Unit:
     with item = resource:
@@ -36,21 +36,15 @@ fn canonical_cleanup[T: Closeable](resource: T) Unit:
         let completed = unit
 
 test "cleanup uses the selected contract":
-    let closed = Synchronized(false)
+    let closed = Flag(value: false)
     let unexpected: List[Int] = []
     with resource = Resource(closed, unexpected):
-        with locked = closed.lock():
-            (not locked.get()) | try expect_true
-    with locked = closed.lock():
-        (locked.get()) | try expect_true
-    with locked = closed.lock():
-        locked.set(value: false)
+        (not closed.value) | try expect_true
+    closed.value | try expect_true
+    closed.value = false
     bound_cleanup(resource: Resource(closed, unexpected))
-    with locked = closed.lock():
-        (locked.get()) | try expect_true
-    with locked = closed.lock():
-        locked.set(value: false)
+    closed.value | try expect_true
+    closed.value = false
     canonical_cleanup(resource: Resource(closed, unexpected))
-    with locked = closed.lock():
-        (locked.get()) | try expect_true
+    closed.value | try expect_true
     unexpected.is_empty() | try expect_true

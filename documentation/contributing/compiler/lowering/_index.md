@@ -5,7 +5,7 @@ weight = 2
 
 # Go lowering
 
-Lowering translates checked Manuscript into Go while preserving evaluation order, closure captures, concurrency, and block-level cleanup.
+Lowering translates checked Manuscript into Go while preserving evaluation order, closure captures, and block-level cleanup.
 
 ## Typed Go
 
@@ -49,7 +49,7 @@ toolchain/go/bin/go run ./bench/lowering -count=5
 
 Compare against handwritten Go with the same checked arithmetic, fault positions, cancellation, and cleanup. Report allocations and time on a quiet machine, alternating unprofiled samples. Claim no speedup you did not reproduce.
 
-- [Function and concurrency API lowering](function-and-task-calls.md)
+- [Function lowering](function-calls.md)
 - [Source guarantees and Go representations](value-representations.md)
 - [Evaluation order and call preparation](evaluation-order.md)
 - [Cleanup and fault lowering](cleanup-and-faults.md)
@@ -157,4 +157,4 @@ address, or contain any other call, closure, `go` or `defer`; a call is the only
 way generated code replaces `Items`. Out-of-range and negative indexes still run
 the ordinary helper on the list, keeping the same results and fault text. A set
 whose result is used keeps the ordinary helper. Debug retains the ordinary
-calls. Lists shared with another task without `Synchronized` were already racy.
+calls.

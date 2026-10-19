@@ -258,18 +258,6 @@ func TestBundledRuntimeImportAliasesAgree(t *testing.T) {
 	}
 }
 
-func TestTimeSchedulingAcceptsOrdinaryCallbackValues(t *testing.T) {
-	source := `import Scheduler from "@std/tasks.ms"
-fn start_timer(operation: fn() Result[Unit, Error]) Unit:
-    with scheduler = Scheduler():
-        let schedule = scheduler.after
-        let id = schedule(duration: 0.milliseconds, operation: operation)
-`
-	if result := compiler.CompileSource("timer-values.ms", source, compiler.Options{}); !result.Success() {
-		t.Fatal(result.Diagnostics)
-	}
-}
-
 func TestNativeBuildInSymlinkedTemporaryDirectory(t *testing.T) {
 	root := t.TempDir()
 	actual, alias := filepath.Join(root, "actual"), filepath.Join(root, "alias")

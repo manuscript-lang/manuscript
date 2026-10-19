@@ -51,14 +51,14 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			return i
 		}
 		fields := ConstructorSignature(typ).Params
-		if std(typ, "Task") || std(typ, "BigInt") || std(typ, "Regex") || std(typ, "Timestamp") || std(typ, "SynchronizedGuard") || std(typ, "Instant") || std(typ, "Duration") || std(typ, "Decimal") || std(typ, "OperationId") || std(typ, "HttpHeaders") || std(typ, "IpAddress") || std(typ, "Cidr") {
+		if std(typ, "BigInt") || std(typ, "Regex") || std(typ, "Timestamp") || std(typ, "Instant") || std(typ, "Duration") || std(typ, "Decimal") || std(typ, "HttpHeaders") || std(typ, "IpAddress") || std(typ, "Cidr") {
 			c.error(e.Pos, "type", "standard type has no source constructor: "+typ.String()+"; create it with a literal or the standard function documented for it (ms doc)")
 			return i
 		}
 		i.Arguments = constructorArguments(e.Args, fields)
 		typ = c.instantiate(typ, fields, i.Arguments, expected, e.Pos)
 		fields = ConstructorSignature(typ).Params
-		if (std(typ, "Queue") || std(typ, "BlockingQueue") || std(typ, "Set")) && len(e.Args) == 0 {
+		if (std(typ, "Queue") || std(typ, "Set")) && len(e.Args) == 0 {
 			fields = nil
 		}
 		i.NoReturn = c.argumentsFor(typ.Name, e.Pos, i.Arguments, fields, ConstructorSignature(typ).Defaults)

@@ -47,6 +47,5 @@ See the [testing guide](testing.md) for more.
 
 ## Keep ownership visible
 
-- `with` keeps a file, connection, or task group open for its block; cleanup runs on early returns and errors. Acquire resources inside the operation that needs them. See [managing resources](../core-language/cleanup/_index.md).
+- `with` keeps a file or connection open for its block; cleanup runs on early returns and errors. Acquire resources inside the operation that needs them. See [managing resources](../core-language/cleanup/_index.md).
 - Assignment shares records and collections. `.clone()` copies the outer storage only; nested values stay shared.
-- Concurrent readers and writers must use the same synchronization object through every alias. See [mutation and references](../core-language/types/references.md).

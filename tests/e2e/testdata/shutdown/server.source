@@ -2,7 +2,6 @@ import Closeable from "@std/cleanup.ms"
 import stdout from "@std/io.ms"
 import {network, Listener, Connection} from "@std/net.ms"
 import control from "@std/process.ms"
-import {TaskGroup, check_cancelled} from "@std/tasks.ms"
 import sleep from "@std/time.ms"
 
 fn say(text: String) Unit:
@@ -18,7 +17,6 @@ impl Closeable for WorkerCleanup:
 type Server:
     listener: Listener
     client: Connection
-    workers: TaskGroup
     closed: Bool = false
 
 impl Closeable for Server:
@@ -28,8 +26,6 @@ impl Closeable for Server:
 
         self.closed = true
         self.listener.close()
-        self.workers.close()
-        check_cancelled()
         sleep(10.milliseconds)
         let farewell = self.client.write("farewell\n", timeout: 1.seconds)
 
@@ -46,22 +42,9 @@ fn serve() Result[Unit, Error]:
             say("{listener.address()}\n")
 
             with client = try listener.accept():
-                with workers = TaskGroup():
-                    with server = Server(
-                        listener: listener,
-                        client: client,
-                        workers: workers
-                    ):
-                        let _started = workers.start(
-                            fn():
-                                with cleanup = WorkerCleanup(label: "worker"):
-                                    say("ready\n")
-                                    sleep(3600.seconds)
-                                    let _sent = client.write(
-                                        data: "worker farewell\n"
-                                    )
-                                    return unit
-                        )
+                with server = Server(listener: listener, client: client):
+                    with cleanup = WorkerCleanup(label: "worker"):
+                        say("ready\n")
                         let _observed = signals.next()
                         return ok(unit)
 

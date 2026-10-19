@@ -68,7 +68,7 @@ Decision: the user requested "please remove nested match from everywhere, note i
 Verified: [MSL107](../pkg/tooling/nested_match_lint.go) warns at each structurally inner match; the [repository guard](../scripts/repo-check/nested_match.go) inspects source, fences, and Go strings. Test allowances are scoped and require a reason. [CLI/editor regressions](../internal/cli/advisory_lint_test.go) preserve checking success and advisory status. The earlier local completion report did not establish publication; the reconciliation used current main and the actual code registry, where MSL104/105 are already allocated and MSL106 belongs to the payload-binding rule.
 
 Apply when: adding Result adapters or rewriting examples that combine execution and domain errors.
-Evidence: [flat flow and grammar compatibility](../documentation/core-language/control-flow/pattern-matching.md#keep-match-flow-flat); [error compatibility](../documentation/core-language/errors/propagation.md#error-compatibility); [task group example](../pkg/stdlib/tasks.ms).
+Evidence: [flat flow and grammar compatibility](../documentation/core-language/control-flow/pattern-matching.md#keep-match-flow-flat); [error compatibility](../documentation/core-language/errors/propagation.md#error-compatibility).
 Verify: examples compile with compatible `try` calls and introduce only the concepts they teach. Result's success-only `map` and same-error `and_then` retain the original error payload; they do not add an error-translation helper. The standard Result module exports only its type, and regenerated API references agree with its declarations. [Called composition tests](../tests/e2e/testdata/stdlib/core-parity.ms) distinguish success transformation from error translation.
 
 ### Equality and hashing are source interfaces
@@ -79,8 +79,7 @@ Apply when: changing equality operators, generic bounds, contract views, key loo
 Evidence: [equality rules](../documentation/core-language/types/equality-and-hashing.md), [source interfaces](../pkg/stdlib/equality.ms), and [compiled domain-key fixture](../tests/e2e/testdata/accept/stdlib-revamp.ms).
 Verify: two keys with equal IDs and different labels compare equal and occupy one map entry; an equality override without a hash is rejected as a map key. Keep local implementation selection when forwarding generic arguments.
 
-Decision: all values may be passed freely; shared mutable state uses Synchronized, and closures have ordinary captures. This remains independent of equality, hashing, cleanup, and work lifetime.
-Evidence: [sharing rules](../pkg/stdlib/sync.ms).
+Decision: all values may be passed freely, and closures have ordinary captures. Concurrency and shared-state guards were removed pending a ground-up redesign.
 
 ### Compound assignment, counting ranges, and redundant labels
 Decision: the user asked to add `+= -= *= /= %=`, a step-1 `range(start, end)`, and removal of redundant argument labels (October 2026 proposal `structural-syntax`), reversing the earlier MS1000 rejection of compound assignment. A compound statement parses to the equivalent assignment `target = target op (value)` with `Statement.Compound` recording the written operator for formatting; the receiver of a field target must be names only so it is read once. `range(start, end)` returns `List[Int]` and `for x in range(a, b)` lowers to a counter loop with bounds evaluated once; the stepped, fallible form is `range_by`. The formatter cannot know parameter order, so label removal is the checked `ms fmt --drop-labels`, never part of plain `ms fmt`. Provable-bounds `[]` narrowing was already merged in #555.
@@ -121,9 +120,9 @@ Verify: replace a defaulted function with a required-argument function through a
 
 Decision: ordinary record fields and collections are mutable. The user rejected immutable replacement APIs and instance freezing in favor of `.clone()`. Preserve `let`/`var` binding rules independently of object mutation. Clone data storage shallowly; do not manufacture copies of sockets, files, locks, or other native service handles. A cloned record may retain the same handle reference.
 
-Apply when: changing fields, collection updates, aliases, copies, equality, or concurrency guidance.
+Apply when: changing fields, collection updates, aliases, copies, or equality.
 Evidence: [record contract](../documentation/core-language/types/records.md#mutation-and-cloning); [collection contract](../documentation/core-language/types/collections.md#mutation-and-copies); [native conformance](../tests/e2e/testdata/accept/mutation.ms); [resource clone rejection](../pkg/compiler/mutation_test.go); [CLI rejection and shared file lifetime](../tests/e2e/mutation_test.go).
-Verify: the counter's Unit-returning method updates `self.val`; aliases observe mutation; a clone's outer storage stays separate while its nested references remain shared. Native resource clone calls are rejected. Protect concurrent mutation with existing Synchronized guards; do not restore removed sharing bounds.
+Verify: the counter's Unit-returning method updates `self.val`; aliases observe mutation; a clone's outer storage stays separate while its nested references remain shared. Native resource clone calls are rejected. Do not restore removed sharing bounds.
 
 ### Source-backed data types belong in the prelude
 

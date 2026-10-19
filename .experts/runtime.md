@@ -97,40 +97,22 @@ Apply when: changing generated cleanup setup or adding lowering scopes.
 Evidence: callable lowering,
 ownership tests,
 native cancellation/fault checks,
-and [runtime unwind](../pkg/runtime/tasks.go).
+and [runtime unwind](../pkg/runtime/program.go).
 Verify: conditional/default/match registrations retain stacks; a nested source
 closure does not force an unused parent stack; return, propagation, fault and
 cancellation retain cleanup and frame behavior.
 
-### Synchronized uses cancellable cross-task blocking
+### Concurrency is removed pending a ground-up redesign
 
-Decision: the user approved ordinary cross-task blocking for issue 148 after reviewing the automatic cycle detector's measured task overhead. Same-operation reentry faults using execution/work-lifetime identity, including helper and shielded views. Different executions, including descendants, wait. The reviewed graph draft and measurements remain in [superseded PR 256](https://github.com/manuscript-lang/manuscript/pull/256); that proposal was not merged and must not be silently restored.
+Decision: the user removed the concurrency features (TaskGroup, Task, Scheduler, Synchronized, BlockingQueue, `check_cancelled`, `yield_now`, and their lowering, runtime, tooling, tests, examples, and documentation) because concurrency should be rebuilt correctly from the ground up. Do not restore the old APIs or add channels, locks, or tasks without a new user direction. Host-level cancellation (SIGINT/SIGTERM), `with` cleanup, and the hidden execution context remain. Queue stays a single-threaded FIFO.
 
-Verified: cancellation stops ordinary lock waits, but it neither forcibly releases an executing holder nor abandons joined cleanup. Shielded cleanup ignores initiating cancellation and expired deadlines, so a cross-task cleanup cycle may remain blocked. Native RunMain and the test runner escalate only on stop requests: a second SIGINT/SIGTERM, or the 30 second grace after the first, prints `incomplete cleanup: ...` and exits 70 (`run.go`, `watchStops`); ordinary timeouts never start it. Do not claim universal deadlock detection or guaranteed timeout escape. Preserve task/group/service self-join guards and release held guards before joining dependent work.
-
-Verified: another operation can close a guard alias while its owner is blocked joining. Access/release remains atomic, stale aliases cannot reach a later acquisition, and close stays idempotent. Work lifetime, resource lifetime and sharing remain separate.
-
-Verified: acquisition delivery uses one final cancellation observation for both disposal and unwind. Two checks can discard an acquired guard without disposing it. Keep PR 230's disposal fix; later cancellation after successful delivery belongs to caller cleanup.
-
-Apply when: changing lock admission, cancellation, alias release, task/service joining or acquisition delivery.
-Evidence: [issue 148](https://github.com/manuscript-lang/manuscript/issues/148), [contract](../pkg/stdlib/sync.ms), bounded blocking regressions, and acquisition delivery.
-Verify: ordinary ancestor overlap returns 7; both lock/join orders block until cooperative cancellation or release. Exercise deadlines, same-operation helper/shield reentry, cancellation/delivery/release races, alias close and use after close. Shielded-cycle tests run in bounded disposable subprocesses and release aliases explicitly; no test relies on cleanup timeout escape.
-
-### Synchronized guard wait is cancellable and never reacquires on cancel
-
-Decision: the user chose a blocking queue built from plain Manuscript, with no channels and no new type: `SynchronizedGuard.wait()` releases the lock, sleeps until `notify_all()`, then reacquires; one wait set per `Synchronized`. A single `notify()`, a separate `Condition` type, semaphores, awaitable events and `wait(timeout:)` were considered and deferred; `condition()` and a timeout can be added later without breaking this. A skeptical review shaped the cancellation and owner rules below.
-
-Decision: the user also asked for a standard `BlockingQueue[T]` in `@std/queues.ms` (native, self-synchronized; `put`/`take`/`close`/`length`/`is_closed`; omitted or none capacity is unbounded). It is separate from local `Queue`, which stays non-blocking. Waits hold no lock and stop at cancellation; the runtime file must be listed in `pkg/runtime/bundle.go` for emitted programs.
-
-Verified: a cancelled `wait` must not reacquire the lock. A shielded reacquire hangs when a parent holds the lock while closing a group of waiters, which adds an uncancellable wait that ordinary `lock()` does not have. Instead the waiter is removed, the guard stays released, the cancellation fault unwinds and the scope close is a no-op. Only the acquiring operation (execution or work lifetime) may wait/notify; a child using a captured alias would otherwise release the parent's critical section. An alias close during wait must set a flag so wake-up does not reinstall a closed guard.
-
-Apply when: changing wait/notify, lock admission, guard aliasing or cancellation delivery.
-Evidence: runtime, wait regressions, [called guard wait](../tests/e2e/testdata/accept/synchronized-wait.ms), [standard queue](../tests/e2e/testdata/accept/stdlib-blocking-queue.ms), BlockingQueue, [contract](../pkg/stdlib/sync.ms).
-Verify: lost-wakeup, cancel-while-waiting with another holder, non-owner wait/notify, alias close during wait, wait on a closed guard, group close with blocked consumers, under `-race`.
+Apply when: a task proposes concurrent work, locks, task handles, or revives the removed APIs.
+Evidence: the user's removal request in the "Manuscript agent feedback and experience" project thread; [runtime conventions](../documentation/contributing/runtime-conventions.md).
+Verify: no `@std/tasks.ms` or `@std/sync.ms`; `BlockingQueue` is absent from `queues.ms`.
 
 ### Attribute profiling at execution boundaries
 
-Verified: allocating pprof labels, derived executions, and trace regions for every source call can dominate a call-heavy program and create enormous traces. Source boundaries follow immutable context inheritance; task/scheduler work explicitly starts a new boundary. Nested calls keep source mapping in CPU sample stacks while reusing the boundary context. CPU labels and trace tasks/regions must follow their independently requested collectors; heap-only capture needs neither.
+Verified: allocating pprof labels, derived executions, and trace regions for every source call can dominate a call-heavy program and create enormous traces. Source boundaries follow immutable context inheritance. Nested calls keep source mapping in CPU sample stacks while reusing the boundary context. CPU labels and trace tasks/regions must follow their independently requested collectors; heap-only capture needs neither.
 
 Verified: attribution runs on the same execution and goroutine. Preserve the full execution state when changing its context; the work-inheritance helper can intentionally start new call accounting. Resetting that state for source labels changes admission at the depth limit and fault-frame bookkeeping. The profiling depth-limit regression distinguishes these cases.
 
@@ -146,19 +128,7 @@ Verified: canonical declarations, runtime dispatch, checker rules, conformance, 
 
 Apply when: changing library signatures, bounds/interfaces, queue APIs, scheduling, grouping, examples, or documentation.
 Evidence: [current declarations](../pkg/stdlib/intrinsics.ms); [stdlib contract](../pkg/stdlib/intrinsics.ms); runtime regressions; [compiled Optional methods](../tests/e2e/testdata/accept/optional-methods.ms).
-Verify: inspect current declarations and called behavior against the latest direction. Preserve omitted/none/explicit-limit behavior, custom equality/hash coherence, and joined Scheduler shutdown. Do not restore removed APIs from older documentation or another branch.
-
-### Sharing, resource lifetime, and work lifetime are separate
-
-Decision: the canonical design separates safe concurrent access from keeping a resource open and from joining work. A captured reference does not extend a `with` lifetime. All values may be shared without callable proofs. Native services synchronize their internals. The user subsequently chose a single-threaded Queue with an optional capacity parameter; shared queue access uses Synchronized guards, including reads. Blocking hand-off between workers is not a channel: the decided design is a `BlockingQueue[T]` in `@std/queues.ms` a native type whose `put`/`take` are methods (do not duplicate them as source functions in tests), with `SynchronizedGuard.wait()`/`notify_all()` for other waiting structures (shipped in #453). Passing references is permitted without implying internal thread safety. A safe capture is not a declaration of intended authority.
-
-Apply when: changing closures, task-group work, schedulers, resource wrappers, or owned resources.
-Evidence: [sharing](../pkg/stdlib/sync.ms); [joined groups](../pkg/stdlib/tasks.ms); [scope-exit ordering](../documentation/core-language/cleanup/exit-order.md). These establish the design contract, not a claim that every runtime path has been tested.
-Verify: exercise use after close and shutdown with work still running. Confirm started work completes cleanup before joining returns and stale resource aliases cannot reach a reused handle.
-
-Verified: SIGINT/SIGTERM observation does not claim the signal; native host cancellation races independently with `SignalStream.next()`. Registered cleanup is shielded, but shielding a close call does not revive workers derived from the cancelled construction parent. Join workers before draining application-owned pending data directly in close while its dependencies remain open. See the [shutdown cookbook](../pkg/stdlib/process.ms), [disposable-child signal tests](../tests/e2e/shutdown_cookbook_test.go), and already-cancelled worker test. Escalation exists only as the stop-request watchdog in `run.go`; it reports one line, not per-operation diagnostics.
-
-Verified: a queued transport operation can acquire a ready gate even when its lifetime cancellation is also ready. An asynchronous cancellation callback does not guarantee the operation's derived context is cancelled before stream dispatch. Recheck the closed state after acquiring the gate; otherwise queued writes can reach the stream after shutdown starts. See transport admission and `TestLogCloseInterruptsActiveAndQueuedWrites` in logging regressions. Repeat the close/caller-cancellation cases under the race detector when changing this path.
+Verify: inspect current declarations and called behavior against the latest direction. Preserve omitted/none/explicit-limit behavior, custom equality/hash coherence. Do not restore removed APIs from older documentation or another branch.
 
 ### Networking completeness includes interruption and shutdown
 
@@ -194,22 +164,6 @@ Apply when: describing native schemas or replacing bogus native fields with oper
 Evidence: [constructor signatures](../pkg/checker/types.go), [constructor checking](../pkg/checker/calls.go), [byte declarations](../pkg/stdlib/bytes.ms), [native receiver identities](../internal/nativeabi/receivers.go), [editor signature regressions](../pkg/tooling/lsp/features_test.go), and [called extraction and constructor regressions](../tests/e2e/testdata/stdlib/string-bytes.ms).
 Verify: named and positional Bytes construction and direct, stored, and free extraction calls execute; mutating the input or extracted list leaves Bytes unchanged. Editor signature help retains the required values List; generated metadata must list `values` as an operation, with no data field.
 
-### Keep concurrency collection helpers removed
-
-Decision: the dedicated concurrent collection-mapping API was removed because the user considers it redundant. Do not restore that helper under another name without a new user direction. Scoped TaskGroup work and Scheduler retain separate lifecycle contracts.
-
-Apply when: adding concurrent collection utilities or revising the task API.
-Evidence: [task declarations](../pkg/stdlib/tasks.ms); [concurrency guide](../pkg/stdlib/tasks.ms); the user's removal request in this chat.
-Verify: inspect source declarations, native bindings, compiler handling, examples, and generated references together; removing an export alone leaves an incomplete removal.
-
-### Local queues compose with explicit synchronization
-
-Decision: keep Queue a local FIFO, unbounded when capacity is omitted and bounded when a positive capacity is supplied; use Synchronized when sharing it between concurrent operations. Full and empty results return immediately. Queue has no mutex, waiting, close, or cleanup lifecycle. Wrapping it does not add channel wakeups by itself; blocking comes from the guard's `wait()`/`notify_all()` (see the Synchronized wait entry), and every alias must use the same wrapper's lock.
-
-Apply when: changing queue APIs, examples, sharing claims, or native collection implementations.
-Evidence: [queue contract](../pkg/stdlib/queues.ms); FIFO and synchronized-sharing tests; [source conformance](../tests/e2e/testdata/accept/queues.ms); the user's Queue simplification and capacity correction.
-Verify: construction without capacity grows as needed; explicit zero or negative capacity faults. Bounded full enqueue returns false without changing contents, empty reads return none, draining permits reuse, and shared access under one wrapper passes race checks. Do not restore implicit synchronization, and do not add channels; blocking waits belong to guards and `BlockingQueue`.
-
 ### Borrowing file descriptors must preserve pollable I/O
 
 Verified: `os.File.Fd()` can switch a pollable descriptor into blocking mode. Native metadata and sync helpers that use it can make later cancellation fail even though ordinary file tests pass. The host bridge borrows descriptors with `SyscallConn.Control` instead, preserving the runtime's deadline/cancellation behavior.
@@ -217,14 +171,6 @@ Verified: `os.File.Fd()` can switch a pollable descriptor into blocking mode. Na
 Apply when: implementing native descriptor operations alongside cancellable file or stream adapters.
 Evidence: [native descriptor bridge](../internal/hostos/hostos.go), metadata and file operations, and pipe cancellation regression.
 Verify: `TestExpandedHandleCancellationAndStreamAdapters` and runtime race checks, including cancellation after descriptor metadata access and closure through a shared adapter.
-
-### One scheduler owns immediate and timed work
-
-Decision: the stdlib revamp merges the work service and scheduled timers into `Scheduler`, with one ID/status/cancel/restart/report/close lifecycle. Time retains sequential sleep and clock values. Admission/history caps are optional, as are native operation budgets/deadlines. Explicit zero must not be confused with omission.
-
-Apply when: changing scheduling, native adapters, optional limits, or native adapter mappings.
-Evidence: [task declarations](../pkg/stdlib/tasks.ms), [limit contract](../pkg/stdlib/intrinsics.ms), runtime cases, and [native host mappings](../pkg/stdlib/fs.ms).
-Verify: omit a cap and admit more work; supplied caps still reject excess. Restart returns a fresh ID after joining the old operation, and parent shutdown joins callback cleanup. Check native optional arguments in legacy host adapters as well as LibraryMethods.
 
 ### Validate compression completion before publishing tools
 
@@ -268,14 +214,6 @@ Verified: a generic native receiver's type name does not carry lexical Equal/Has
 Apply when: adding native transformations with output bounds or changing receiver specialization.
 Evidence: receiver lowering, [native dispatch](../pkg/runtime/collections.go), [cross-module output evidence](../tests/e2e/testdata/projects/core_parity/main.ms), and [callback mutation conformance](../tests/e2e/testdata/stdlib/core-parity.ms).
 Verify: a generic input forwarded from another module still maps to a set deduplicated by the defining output module's equality; two modules can select different implementations for the same type. A bound specialized method retains its defining module, and callback removals or clearing do not alter the traversal's original membership.
-
-### Typed task handles replace heterogeneous aggregation
-
-Decision: the user chose TaskGroup and Task[T] over the compiler-only heterogeneous aggregation binding because ordinary generic declarations are simpler to reason about and expose usable source signatures to tooling. Group join returns Result[Unit, ExecutionError]; each task join preserves its own T. Remove the old binding and its pack machinery rather than adding a compatibility alias.
-
-Apply when: changing joined work, standard task declarations, result inference, or editor signatures.
-Evidence: the user's direction in this implementation chat; [task declarations](../pkg/stdlib/tasks.ms); [task group contract](../pkg/stdlib/tasks.ms); [joining](../pkg/stdlib/tasks.ms).
-Verify: native heterogeneous-handle and cached-result fixtures, cancellation/close races, self-join rejection, ordinary source navigation/signatures, and generated reference freshness.
 
 ### YAML folding must retain physical blank lines until decoding
 

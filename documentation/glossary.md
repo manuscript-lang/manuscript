@@ -30,13 +30,12 @@ Unfamiliar term? Follow its link for exact rules.
 | Sharing | Values may be passed between operations. |
 | Capability / authority | A service object that permits external operations, obtained through a host accessor or passed to a helper. |
 | [Effect](developer-tooling/source/effects.md) | External behavior reachable from an operation, such as reading, writing, or calling a service. |
-| Operation / group | One invocation started by a concurrency API / the invocations started by one task group. |
 | Join | Wait until every started operation has finished, including its cleanup. |
 | Execution context | Runtime state carrying an operation's cancellation signal and deadline. |
 | Cancellation checkpoint | A point where work checks whether it should stop and unwind. |
 | [Unwind](core-language/cleanup/exit-order.md) | Leave active scopes and run their registered cleanup. |
 | [Shielded cleanup](core-language/cleanup/cleanup-faults.md) | Cleanup that can run despite the cancellation or deadline that ended ordinary work. |
-| [Host](contributing/concurrent-runtime.md) | The runtime entry point that runs a CLI application or handles HTTP requests. |
+| [Host](contributing/runtime-conventions.md#host-escalation) | The runtime entry point that runs a CLI application or handles HTTP requests. |
 | [Typed IR](contributing/compiler/frontend/typed-ir.md) | The compiler's internal program representation after names and types have been checked. |
 | [Lowering](contributing/compiler/lowering/_index.md) | Translating checked Manuscript operations into generated Go while preserving their behavior. |
 | [Conformance](contributing/compiler/conformance/_index.md) | Tests and evidence that the implementation follows the language's rules. |

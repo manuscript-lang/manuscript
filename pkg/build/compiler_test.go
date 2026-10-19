@@ -30,9 +30,7 @@ func fixture(t *testing.T, name string) string {
 }
 
 func TestCallArgumentLabelRejections(t *testing.T) {
-	const declarations = `import Scheduler from "@std/tasks.ms"
-import TaskGroup from "@std/tasks.ms"
-fn one(value: Int) Int:
+	const declarations = `fn one(value: Int) Int:
     return value
 fn two(left: Int, right: Int) Int:
     return left - right
@@ -63,7 +61,7 @@ impl Read for Box:
 		{"record unknown label", "let box = Box(wrong: 1)"},
 		{"alternative unknown label", "let choice = Choice.Payload(wrong: 1)"},
 		{"contract unknown label", "let view = Read(wrong: Box(1))"},
-		{"task start requires a callback", "let group = TaskGroup()\n    group.start(1)"},
+		{"callback required", "apply(1)"},
 		{"function type labels", "let transform = fn(item: Int) Int:\n        return item\n    apply(transform)"},
 	} {
 		t.Run(variant.name, func(t *testing.T) {
@@ -79,8 +77,8 @@ impl Read for Box:
 			}
 		})
 	}
-	result := compiler.CompileSource("sharing.ms", declarations+`fn start(service: Scheduler, operation: fn() Result[Unit, Error]) Unit:
-    service.start(operation)
+	result := compiler.CompileSource("sharing.ms", declarations+`fn call(operation: fn() Int) Int:
+    return operation()
 `, compiler.Options{})
 	if !result.Success() {
 		t.Fatal("ordinary callback with omitted label rejected", result.Diagnostics)
@@ -650,19 +648,15 @@ func TestNativeProfilesAndDebugSources(t *testing.T) {
 	}
 }
 
-func TestSynchronizedBoundaries(t *testing.T) {
+func TestTypeBoundaries(t *testing.T) {
 	for name, source := range map[string]string{
 		"unknown bound":       "fn old[T: MissingBound](value: T) T:\n    return value\n",
 		"removed view syntax": "interface Read:\n    fn get() Int\nfn old(value: Read & Equal) Unit:\n    return\n",
-		"guard constructor":   "import SynchronizedGuard from \"@std/sync.ms\"\nfn invalid() Unit:\n    let guard = SynchronizedGuard[Int]()\n",
-		"unguarded access":    "import Synchronized from \"@std/sync.ms\"\nfn invalid() Unit:\n    let cell = Synchronized(value: 0)\n    cell.set(value: 1)\n",
-		"cell equality":       "import Synchronized from \"@std/sync.ms\"\nfn invalid() Bool:\n    let cell = Synchronized(value: 0)\n    return cell == cell\n",
-		"guard equality":      "import Synchronized from \"@std/sync.ms\"\nfn invalid() Bool:\n    let cell = Synchronized(value: 0)\n    with locked = cell.lock():\n        return locked == locked\n",
 		"function equality":   "fn invalid(value: fn() Int) Bool:\n    return value == value\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if result := compiler.CompileSource(name+".ms", source, compiler.Options{}); result.Success() {
-				t.Fatal("accepted invalid synchronization boundary")
+				t.Fatal("accepted invalid type boundary")
 			}
 		})
 	}

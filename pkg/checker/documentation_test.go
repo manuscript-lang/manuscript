@@ -33,7 +33,7 @@ func TestStandardLibrarySnapshot(t *testing.T) {
 	if count != expected {
 		t.Fatalf("captured %d exports, want %d", count, expected)
 	}
-	for _, key := range []string{"@std/collections.ms#List", "@std/tasks.ms#Scheduler", "@std/process.ms#arguments", "prelude#String", "prelude#Optional", "prelude#Result", "prelude#Error", "prelude#Set"} {
+	for _, key := range []string{"@std/collections.ms#List", "@std/queues.ms#Queue", "@std/process.ms#arguments", "prelude#String", "prelude#Optional", "prelude#Result", "prelude#Error", "prelude#Set"} {
 		d, ok := exports[key]
 		if !ok {
 			t.Fatalf("missing %s", key)

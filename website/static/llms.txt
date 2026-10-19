@@ -1,6 +1,6 @@
 # Manuscript
 
-> Manuscript is a statically typed language for native programs, with named arguments, mutable data, explicit errors, scoped resources, and concurrent work through library APIs.
+> Manuscript is a statically typed language for native programs, with named arguments, mutable data, explicit errors and scoped resources.
 
 Links are relative to this file so GitHub Pages project paths and custom domains work alike.
 
