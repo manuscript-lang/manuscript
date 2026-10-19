@@ -11,6 +11,36 @@ use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
 /// String operations `fn(String) -> String` and their runtime symbols.
+/// Methods of format enums: native, runtime symbol, the runtime's format parameter, and whether
+/// the runtime wants the case index (else the lowercase case name).
+const FORMAT_METHODS: &[(&str, &str, &str, bool)] = &[
+    (
+        "string/form_normalize",
+        "msrt_string_normalize_kind",
+        "kind",
+        true,
+    ),
+    ("archive/format_pack", "msrt_archive_pack", "format", false),
+    (
+        "archive/format_unpack",
+        "msrt_archive_unpack",
+        "format",
+        false,
+    ),
+    (
+        "compress/format_compress",
+        "msrt_compress_compress",
+        "format",
+        false,
+    ),
+    (
+        "compress/format_decompress",
+        "msrt_compress_decompress",
+        "format",
+        false,
+    ),
+];
+
 const STRING_TO_STRING: &[(&str, &str)] = &[
     ("string/reverse", "msrt_string_reverse"),
     ("string/lower", "msrt_string_lower"),
@@ -381,6 +411,51 @@ impl<'a> FnLower<'a> {
         Ok(Val { v, own: true })
     }
 
+    /// A method of a format enum (`ArchiveFormat.pack`): the runtime takes the format as a
+    /// parameter after the first declared one, spelled as the lowercase case name or as its index.
+    fn format_method(
+        &mut self,
+        result: MTy,
+        m: &ct::MethodRef,
+        recv: Val,
+        mut args: Vec<NArg>,
+        (sym, param, as_text): (&str, &str, bool),
+    ) -> Result<Val, Error> {
+        let tag_src = self.borrow(recv);
+        let tag = self.b.alt_tag(tag_src);
+        let val = if as_text {
+            tag
+        } else {
+            let names: Vec<String> = ct::cases(&m.receiver)
+                .iter()
+                .map(|c| c.name.as_str().to_lowercase())
+                .collect();
+            let mut out = self.lit(names.last().map_or("", String::as_str)).v;
+            for (k, name) in names.iter().enumerate().rev().skip(1) {
+                let idx = self.b.iconst(k as i64);
+                let hit = self.b.icmp(ms_mir::ir::Cc::Eq, tag, idx);
+                let text = self.lit(name).v;
+                out = self.b.select(hit, text, out);
+            }
+            out
+        };
+        let name = ct::Name::from(param);
+        args.push(NArg {
+            name,
+            val: Val { v: val, own: false },
+            wrapped: false,
+        });
+        let first =
+            m.ty.params
+                .first()
+                .ok_or_else(|| Error::new("format method without arguments"))?
+                .clone();
+        let mut decl = vec![first.clone()];
+        decl.push(ct::Param { name, ty: first.ty });
+        decl.extend(m.ty.params.iter().skip(1).cloned());
+        self.rt_function(sym, &decl, &args, result)
+    }
+
     pub fn native_method(
         &mut self,
         e: &Expr,
@@ -399,6 +474,11 @@ impl<'a> FnLower<'a> {
         let func = m.decl.as_ref().and_then(|d| d.func());
         self.fill_native_defaults(m.module, func, &m.ty.params, &mut args)?;
         self.at(e.pos);
+        if let Some(&(_, sym, param, as_text)) = FORMAT_METHODS.iter().find(|(n, ..)| *n == native)
+        {
+            let result = self.emty(e)?;
+            return self.format_method(result, m, recv, args, (sym, param, as_text));
+        }
         if let Some((_, sym)) = STRING_TO_STRING.iter().find(|(n, _)| *n == native) {
             let r = self.borrow(recv);
             let out = self.call_runtime(sym, &[r], MTy::STR)?;
@@ -694,6 +774,12 @@ impl<'a> FnLower<'a> {
         }
         let rty = self.ty_of(recv.v);
         let name = m.name().map(|n| n.to_string()).unwrap_or_default();
+        if let Some(&(_, sym, param, as_text)) = FORMAT_METHODS
+            .iter()
+            .find(|(n, ..)| *n == m.native.as_str())
+        {
+            return self.format_method(result, m, recv, args.to_vec(), (sym, param, as_text));
+        }
         if ms_check::effects::collection_mutation(&m.receiver, &name) {
             // The bound receiver is a copy: the mutated collection is the result.
             let b = self.borrow(recv);

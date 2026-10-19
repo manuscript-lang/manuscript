@@ -277,6 +277,23 @@ impl FnLower<'_> {
                         None => return Err(Error::new(format!("{sym}: no key type"))),
                     }
                 }
+                n if n.starts_with("has_")
+                    && i + 1 < end
+                    && sig.params[i + 1].name.starts_with("has_")
+                    && sig.params[i + 1].ty == "u8" =>
+                {
+                    // An optional record: its presence, then each field in turn.
+                    let input = *inputs
+                        .get(cursor)
+                        .ok_or_else(|| Error::new(format!("{sym}: missing argument")))?;
+                    cursor += 1;
+                    i += 1 + self.flatten_optional_record(
+                        input,
+                        &sig.params[i + 1..end],
+                        &mut vals,
+                    )?;
+                    continue;
+                }
                 n if n.starts_with("has_") && i + 1 < end => {
                     let input = *inputs
                         .get(cursor)
@@ -309,6 +326,19 @@ impl FnLower<'_> {
                         }
                         return Err(Error::new(format!("{sym}: missing argument {}", p.name)));
                     };
+                    if let Some(fields) = self.record_fields_named(x, &p.name) {
+                        // A record argument crosses as its fields.
+                        let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(x.v)).clone() else {
+                            unreachable!("record_fields_named found a record");
+                        };
+                        let rec = self.borrow(x);
+                        for k in 0..fields {
+                            let f = self.b.rec_get(rid, k as u32, rec);
+                            vals.push(f);
+                        }
+                        i += fields;
+                        continue;
+                    }
                     let consumed_aggregate = p.ty == "*mut VecVal" || p.ty == "*mut MapVal";
                     if p.ty == "*const u8" || p.ty == "*mut u8" || consumed_aggregate {
                         // A generic element slot: pass the address of the value in memory.
@@ -353,6 +383,112 @@ impl FnLower<'_> {
             self.drop_value(v);
         }
         Ok(r)
+    }
+
+    /// The field count of a record argument whose first field is the runtime parameter `name`.
+    fn record_fields_named(&self, x: Val, name: &str) -> Option<usize> {
+        let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(x.v)) else {
+            return None;
+        };
+        let fields = &self.b.m.records[rid.index()].fields;
+        (fields.first()?.0 == name).then_some(fields.len())
+    }
+
+    /// Pushes `has_record` and the `(has, value)` pairs of the optional fields of an optional
+    /// record argument, reading fields only when the record is present. Returns the number of
+    /// runtime parameters used after the presence flag.
+    fn flatten_optional_record(
+        &mut self,
+        input: Input,
+        params: &[RtParam],
+        vals: &mut Vec<Value>,
+    ) -> Result<usize, Error> {
+        let x = input.val;
+        let held = x.map(|x| self.ty_of(x.v));
+        // The checker may already have converted the argument to an optional element.
+        let wrapped =
+            input.wrapped || held.is_some_and(|t| matches!(self.b.m.types.kind(t), TyKind::Rec(_)));
+        let rec_ty = held.and_then(|t| match self.b.m.types.kind(t).clone() {
+            TyKind::Opt(t) if !wrapped => Some(t),
+            TyKind::Rec(_) => Some(t),
+            _ => None,
+        });
+        let fields = match rec_ty.map(|t| self.b.m.types.kind(t).clone()) {
+            Some(TyKind::Rec(rid)) => self.b.m.records[rid.index()].fields.clone(),
+            _ => Vec::new(),
+        };
+        let has = match x {
+            Some(x) if wrapped => {
+                let _ = x;
+                self.b.bconst(true)
+            }
+            Some(x) => {
+                let v = self.borrow(x);
+                self.b.opt_is_some(v)
+            }
+            None => self.b.bconst(false),
+        };
+        vals.push(has);
+        // A record to read fields from: the argument itself, or the empty record when the
+        // optional is none (the fields are then ignored by the runtime).
+        let mut blank_val = None;
+        let view = match (x, rec_ty) {
+            (Some(x), Some(rt)) => {
+                let held = self.borrow(x);
+                if wrapped {
+                    Some(held)
+                } else {
+                    let TyKind::Rec(rid) = self.b.m.types.kind(rt).clone() else {
+                        unreachable!("fields come from a record");
+                    };
+                    let mut empty = Vec::new();
+                    for (_, ft) in &fields {
+                        empty.push(self.none_owned(*ft));
+                    }
+                    let blank = self.b.rec_new(rid, &empty);
+                    let some = self.b.opt_get(held);
+                    blank_val = Some(blank);
+                    Some(self.b.select(has, some, blank))
+                }
+            }
+            _ => None,
+        };
+        let mut used = 0;
+        let mut k = 0;
+        // `params` begins at the first field's presence flag; pairs follow in field order.
+        while used + 1 < params.len() && params[used].name.starts_with("has_") {
+            let payload = params[used + 1].ty.as_str();
+            let zero = |s: &mut Self| match payload {
+                "i64" => s.b.iconst(0),
+                "f64" => s.b.fconst(0.0),
+                _ => s.b.bconst(false),
+            };
+            let (fh, fv) = match (view, fields.get(k)) {
+                (Some(rec), Some(_)) => {
+                    let TyKind::Rec(rid) = self
+                        .b
+                        .m
+                        .types
+                        .kind(rec_ty.expect("view has a type"))
+                        .clone()
+                    else {
+                        unreachable!("fields come from a record");
+                    };
+                    let f = self.b.rec_get(rid, k as u32, rec);
+                    (self.b.opt_is_some(f), self.b.opt_get(f))
+                }
+                _ => (self.b.bconst(false), zero(self)),
+            };
+            vals.push(fh);
+            vals.push(fv);
+            used += 2;
+            k += 1;
+        }
+        // The runtime reads scalars only, so the empty record can go once they are out.
+        if let Some(b) = blank_val {
+            self.drop_value(b);
+        }
+        Ok(used)
     }
 
     /// `(has, value)` runtime operands of an optional scalar argument.
