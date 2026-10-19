@@ -10,9 +10,9 @@ pub mod diag;
 pub mod dump;
 pub mod lexer;
 pub mod parser;
-pub mod token;
 pub mod pos;
 pub mod symbol;
+pub mod token;
 pub mod visit;
 
 pub use ast::*;

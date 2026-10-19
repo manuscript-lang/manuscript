@@ -11,7 +11,10 @@ use std::sync::Arc;
 
 fn main() {
     // Deeply nested sources need more stack than the default main thread has.
-    let handle = std::thread::Builder::new().stack_size(256 << 20).spawn(run).expect("spawn");
+    let handle = std::thread::Builder::new()
+        .stack_size(256 << 20)
+        .spawn(run)
+        .expect("spawn");
     let code = handle.join().unwrap_or(2);
     std::process::exit(code);
 }
@@ -63,7 +66,13 @@ fn run() -> i32 {
                 }
             }
             let per = start.elapsed() / rounds;
-            println!("{} files, {} bytes: {:?} per pass ({:.1} MB/s)", sources.len(), bytes, per, bytes as f64 / per.as_secs_f64() / 1e6);
+            println!(
+                "{} files, {} bytes: {:?} per pass ({:.1} MB/s)",
+                sources.len(),
+                bytes,
+                per,
+                bytes as f64 / per.as_secs_f64() / 1e6
+            );
             0
         }
         Some("compare") => compare(&args[1..]),
@@ -81,11 +90,19 @@ fn report(name: &str, bytes: &[u8], sections: &[&str]) -> String {
     let text = match std::str::from_utf8(bytes) {
         Ok(t) => t,
         Err(_) => {
-            let d = ms_syntax::Diagnostic::parse(&file, ms_syntax::Pos::new(0, 1, 1), "source must be valid UTF-8; re-save the file with UTF-8 encoding");
+            let d = ms_syntax::Diagnostic::parse(
+                &file,
+                ms_syntax::Pos::new(0, 1, 1),
+                "source must be valid UTF-8; re-save the file with UTF-8 encoding",
+            );
             for sec in sections {
                 match *sec {
                     "parse" => out.push_str(&format!("error {}\n", d.to_json())),
-                    "partial" => out.push_str(&format!("--partial\ndiag {}\n{}", d.to_json(), ms_syntax::dump::dump_module(&ms_syntax::Module::default()))),
+                    "partial" => out.push_str(&format!(
+                        "--partial\ndiag {}\n{}",
+                        d.to_json(),
+                        ms_syntax::dump::dump_module(&ms_syntax::Module::default())
+                    )),
                     _ => out.push_str(&format!("--format\nerror {}\n", d.to_json())),
                 }
             }
@@ -107,20 +124,33 @@ fn report(name: &str, bytes: &[u8], sections: &[&str]) -> String {
 fn compare(args: &[String]) -> i32 {
     let dir = &args[0];
     let only = args.get(1).map(String::as_str).unwrap_or("parse");
-    let mut names: Vec<_> = std::fs::read_dir(dir).expect("dir").filter_map(|e| e.ok()).map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "ms")).collect();
+    let mut names: Vec<_> = std::fs::read_dir(dir)
+        .expect("dir")
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|x| x == "ms"))
+        .collect();
     names.sort();
     let (mut total, mut bad) = (0, 0);
     for path in names {
         let expected = std::fs::read_to_string(path.with_extension("expected")).unwrap_or_default();
         let bytes = std::fs::read(&path).expect("read");
         let base = path.file_name().unwrap().to_string_lossy().to_string();
-        let want = expected.split("--partial\n").next().unwrap_or("").to_string();
+        let want = expected
+            .split("--partial\n")
+            .next()
+            .unwrap_or("")
+            .to_string();
         let got = report(&base, &bytes, &[only]);
         total += 1;
         if want != got {
             bad += 1;
             if bad <= 10 {
-                println!("MISMATCH {base}\n--- want\n{}\n--- got\n{}", &want[..want.len().min(1500)], &got[..got.len().min(1500)]);
+                println!(
+                    "MISMATCH {base}\n--- want\n{}\n--- got\n{}",
+                    &want[..want.len().min(1500)],
+                    &got[..got.len().min(1500)]
+                );
             } else if bad <= 60 {
                 println!("MISMATCH {base}");
             }
