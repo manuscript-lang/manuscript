@@ -1,20 +1,24 @@
-"""Print per-kernel minimum microseconds for Go and Manuscript, and their ratio.
+"""Print per-kernel minimum microseconds for each version and its ratio to Go.
 
-Input lines are `<lang> <kernel> <microseconds> <checksum>`. Every sample of a
-kernel must report the same checksum in both languages.
+Input lines are `<version> <kernel> <microseconds> <checksum>`. Every sample of a
+kernel must report the same checksum in every version.
 """
 import sys
 
-best, checks = {}, {}
+best, checks, versions = {}, {}, []
 for line in open(sys.argv[1]):
-    lang, name, micros, check = line.split()
+    version, name, micros, check = line.split()
+    if version not in versions:
+        versions.append(version)
     best.setdefault(name, {})
-    best[name][lang] = min(best[name].get(lang, float("inf")), int(micros))
+    best[name][version] = min(best[name].get(version, float("inf")), int(micros))
     checks.setdefault(name, set()).add(check)
 
-print("| kernel | Go us | Manuscript us | Manuscript / Go |")
-print("|---|---:|---:|---:|")
-for name, langs in best.items():
+others = [v for v in versions if v != "go"]
+print("| kernel | go us | " + " | ".join(f"{v} us | {v} / go" for v in others) + " |")
+print("|---|---:|" + "---:|---:|" * len(others))
+for name, times in best.items():
     if len(checks[name]) != 1:
-        sys.exit(f"{name}: checksums differ between runs or languages: {sorted(checks[name])}")
-    print(f"| {name} | {langs['go']} | {langs['ms']} | {langs['ms'] / langs['go']:.2f}x |")
+        sys.exit(f"{name}: checksums differ between runs or versions: {sorted(checks[name])}")
+    cells = [f"{times[v]} | {times[v] / times['go']:.2f}x" for v in others]
+    print(f"| {name} | {times['go']} | " + " | ".join(cells) + " |")
