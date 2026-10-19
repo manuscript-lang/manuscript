@@ -66,6 +66,23 @@ pub struct Loc {
     pub line: u32,
     /// 1-based column, 0 when unknown.
     pub col: u32,
+    /// Inlining scope: 0 when the position belongs to the function itself, else
+    /// one plus an index into [`Func::scopes`].
+    pub scope: u32,
+}
+
+/// A callee body inlined into a function: fault traces and profiles show it as its
+/// own frame, called from `call_line` of the enclosing scope.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Scope {
+    /// Display name of the inlined function.
+    pub name: String,
+    /// Index into [`Module::files`] of the inlined function's file, `u32::MAX` when unknown.
+    pub file: u32,
+    /// Enclosing scope (0 = the function itself).
+    pub parent: u32,
+    /// Line of the inlined call in the enclosing scope.
+    pub call_line: u32,
 }
 
 impl Loc {
@@ -74,11 +91,17 @@ impl Loc {
         file: u32::MAX,
         line: 0,
         col: 0,
+        scope: 0,
     };
 
     /// A known location.
     pub fn new(file: u32, line: u32, col: u32) -> Loc {
-        Loc { file, line, col }
+        Loc {
+            file,
+            line,
+            col,
+            scope: 0,
+        }
     }
 
     /// Whether the location is unknown.
@@ -764,6 +787,8 @@ pub struct Func {
     pub values: Vec<Ty>,
     /// Blocks, indexed by [`Block`]; block 0 is the entry.
     pub blocks: Vec<BlockData>,
+    /// Inlined-callee scopes referenced by [`Loc::scope`].
+    pub scopes: Vec<Scope>,
 }
 
 impl Func {
@@ -779,6 +804,7 @@ impl Func {
             loc: Loc::NONE,
             values: Vec::new(),
             blocks: vec![BlockData::new()],
+            scopes: Vec::new(),
         };
         for p in params {
             let v = f.new_value(p.ty);
