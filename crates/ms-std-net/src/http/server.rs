@@ -7,6 +7,8 @@
 //! hop, no locks. One handler runs at a time. While it blocks, other
 //! connections keep being read and parsed, and their requests queue up.
 
+mod h2serve;
+
 use super::exchange::Exchange;
 use super::h1::{self, BodyDecoder, Decoded, Framing, Parsed, RequestHead};
 use super::headers::{self, Headers};
@@ -105,6 +107,8 @@ pub(super) enum Phase {
     Queued(Box<Pending>),
     Busy,
     Writing,
+    /// An HTTP/2 connection: streams are tracked in [`ConnSt::h2`].
+    H2,
     Closed,
 }
 
@@ -133,6 +137,7 @@ pub(super) struct ConnSt {
     pub deadline: Option<Instant>,
     pub interest: epoll::EventFlags,
     pub registered: bool,
+    pub h2: Option<Box<h2serve::H2Conn>>,
 }
 
 pub struct Conn {
@@ -356,6 +361,21 @@ impl Reactor {
                 server.close_conn(&conn, self);
             }
         }
+        let h2_conns: Vec<Rc<Conn>> = self
+            .targets
+            .borrow()
+            .values()
+            .filter_map(|t| match t {
+                Target::Conn(c) => c.upgrade(),
+                Target::Listener(_) => None,
+            })
+            .filter(|c| matches!(c.st.borrow().phase, Phase::H2))
+            .collect();
+        for conn in h2_conns {
+            if let Some(server) = conn.server.upgrade() {
+                server.h2_sweep(&conn, self, now);
+            }
+        }
     }
 }
 
@@ -529,15 +549,18 @@ impl Server {
         // Idle connections close now; the others after their current response.
         let conns: Vec<Rc<Conn>> = self.st.borrow().conns.values().cloned().collect();
         for conn in &conns {
-            let idle = {
+            let (idle, h2) = {
                 let mut st = conn.st.borrow_mut();
                 let idle =
                     matches!(st.phase, Phase::Head | Phase::Handshake) && st.unread().is_empty();
                 st.close_after = true;
-                idle
+                (idle, matches!(st.phase, Phase::H2))
             };
             if idle {
                 self.close_conn(conn, &reactor);
+            } else if h2 {
+                // GOAWAY now; the connection closes once its streams finish.
+                self.h2_begin_close(conn, &reactor);
             }
         }
         let deadline =
@@ -552,6 +575,8 @@ impl Server {
                 crate::wait::Interest::Read,
                 crate::wait::Deadline::after(Duration::from_millis(5)),
             );
+            // The wait above only reports readiness; run the work itself.
+            pump::Service::service(&*reactor);
             if self
                 .st
                 .borrow()
@@ -626,6 +651,7 @@ impl Server {
                 deadline: self.limits.timeout.map(|t| Instant::now() + t),
                 interest: epoll::EventFlags::IN,
                 registered: false,
+                h2: None,
             }),
         });
         {
@@ -661,15 +687,27 @@ impl Server {
         match result {
             Handshake::Done => {
                 let mut st = conn.st.borrow_mut();
+                let mut h2 = false;
                 if let Some(mut tls) = st.tls_pending.take() {
                     let verified = tls.has_peer_certificates();
                     tls.set_verified(verified);
+                    h2 = tls.tls_details().is_some_and(|d| d.alpn == "h2");
                     st.io = Some(Rc::new(tls));
                 }
-                st.phase = Phase::Head;
                 st.deadline = None;
+                if h2 {
+                    st.phase = Phase::H2;
+                    st.h2 = Some(Box::new(h2serve::H2Conn::new(&self.limits)));
+                } else {
+                    st.phase = Phase::Head;
+                }
                 drop(st);
-                self.after_read(conn, reactor);
+                if h2 {
+                    self.set_interest(conn, reactor, epoll::EventFlags::IN);
+                    self.h2_serve(conn, reactor);
+                } else {
+                    self.after_read(conn, reactor);
+                }
             }
             Handshake::WantRead => self.set_interest(conn, reactor, epoll::EventFlags::IN),
             Handshake::WantWrite => self.set_interest(conn, reactor, epoll::EventFlags::OUT),
@@ -736,7 +774,8 @@ impl Server {
             if matches!(st.phase, Phase::Closed) {
                 return;
             }
-            let queued = matches!(st.phase, Phase::Queued(_));
+            let queued = usize::from(matches!(st.phase, Phase::Queued(_)))
+                + st.h2.as_ref().map_or(0, |h| h.queued());
             if st.registered {
                 reactor.delete(st.fd());
                 st.registered = false;
@@ -747,11 +786,12 @@ impl Server {
             st.phase = Phase::Closed;
             st.inbuf = Vec::new();
             st.outbuf = Vec::new();
+            st.h2 = None;
             queued
         };
-        if queued {
+        if queued > 0 {
             let mut s = self.st.borrow_mut();
-            s.admitted = s.admitted.saturating_sub(1);
+            s.admitted = s.admitted.saturating_sub(queued);
         }
         reactor.targets.borrow_mut().remove(&conn.token);
         reactor.ready.borrow_mut().retain(|c| !Rc::ptr_eq(c, conn));
@@ -761,6 +801,12 @@ impl Server {
     fn on_ready(&self, conn: &Rc<Conn>, flags: epoll::EventFlags, reactor: &Reactor) {
         if matches!(conn.st.borrow().phase, Phase::Handshake) {
             self.drive_handshake(conn, reactor);
+            return;
+        }
+        if matches!(conn.st.borrow().phase, Phase::H2) {
+            if self.h2_serve(conn, reactor) {
+                reactor.retry.borrow_mut().push(conn.clone());
+            }
             return;
         }
         if flags.contains(epoll::EventFlags::OUT) {
@@ -1198,6 +1244,10 @@ impl Server {
     // ---------------------------------------------------------------- dispatch
 
     fn dispatch_conn(&self, conn: &Rc<Conn>, reactor: &Reactor) {
+        if matches!(conn.st.borrow().phase, Phase::H2) {
+            self.h2_dispatch(conn, reactor);
+            return;
+        }
         let pending = {
             let mut st = conn.st.borrow_mut();
             match std::mem::replace(&mut st.phase, Phase::Busy) {

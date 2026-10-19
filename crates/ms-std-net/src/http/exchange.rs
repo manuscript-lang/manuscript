@@ -43,6 +43,8 @@ pub(super) struct ExSt {
     pub rejected: bool,
     pub websocket: Option<Rc<Socket>>,
     pub deadline: Option<Instant>,
+    /// The HTTP/2 stream this exchange answers; `None` on HTTP/1.
+    pub h2: Option<u32>,
 }
 
 /// One request being handled.
@@ -105,6 +107,7 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, reactor: &Reactor, pending: 
             rejected: false,
             websocket: None,
             deadline: timeout.map(|t| started + t),
+            h2: None,
         }),
     });
     server.enter_handler(reactor);
@@ -115,7 +118,7 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, reactor: &Reactor, pending: 
 }
 
 impl Exchange {
-    fn deadline(&self) -> Deadline {
+    pub(super) fn deadline(&self) -> Deadline {
         match self.st.borrow().deadline {
             Some(at) => Deadline::after(at.saturating_duration_since(Instant::now())),
             None => Deadline::none(),
@@ -228,6 +231,9 @@ impl Exchange {
             return Err(IoErr::Closed);
         }
         let deadline = self.deadline();
+        if let Some(id) = self.h2_id() {
+            return self.read_h2(id, max, deadline);
+        }
         if std::mem::take(&mut self.st.borrow_mut().expect_continue)
             && !self.st.borrow().decoder.is_done()
         {
@@ -379,7 +385,9 @@ impl Exchange {
             return Err(IoErr::InvalidInput);
         }
         let deadline = self.deadline();
-        let result = if !self.st.borrow().head_written {
+        let result = if let Some(id) = self.h2_id() {
+            self.write_h2(id, data, deadline)
+        } else if !self.st.borrow().head_written {
             self.write_head(data, None, deadline)
         } else {
             let mut out = Vec::with_capacity(data.len() + 16);
@@ -458,6 +466,9 @@ impl Exchange {
             subprotocols,
             compression: false,
         };
+        if self.h2_id().is_some() {
+            return Err(self.upgrade_h2(&request, &options));
+        }
         let deadline = self.deadline();
         match handshake::accept(&request, &options) {
             Err(rejected) => Err(self.reject(rejected, deadline)),
@@ -495,7 +506,7 @@ impl Exchange {
     }
 
     /// Completes the request after the handler returned.
-    fn finish(&self, outcome: Outcome<Result<(), HttpErr>>, late: bool) {
+    pub(super) fn finish(&self, outcome: Outcome<Result<(), HttpErr>>, late: bool) {
         let server = &self.server;
         let reactor = &self.reactor;
         let conn = &self.conn;
@@ -507,6 +518,10 @@ impl Exchange {
         };
         if let Some(m) = &fault {
             eprintln!("HTTP stream handler fault: {m}");
+        }
+        if let Some(id) = self.h2_id() {
+            self.finish_h2(id, failed, cancelled, late);
+            return;
         }
         let (sent, upgraded, rejected, head_written, chunked, status, is_head, minor) = {
             let st = self.st.borrow();
