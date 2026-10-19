@@ -12,6 +12,8 @@ pub const MAX_SMALL: usize = 2048;
 const PAGE_SHIFT: usize = 16;
 const PAGE_SIZE: usize = 1 << PAGE_SHIFT;
 const ARENA_SIZE: usize = 16 << 30;
+/// Arena growth step where memory is committed explicitly.
+const COMMIT_STEP: usize = 4 << 20;
 const NUM_CLASSES: usize = 24;
 
 const CLASS_SIZES: [u32; NUM_CLASSES] = [
@@ -40,6 +42,8 @@ struct State {
     base: usize,
     end: usize,
     next_page: usize,
+    /// Bytes of the arena made usable so far (everything on Unix, grown in steps on Windows).
+    committed: usize,
     /// One byte per page: class index.
     page_class: *mut u8,
     free: [*mut u8; NUM_CLASSES],
@@ -54,6 +58,7 @@ static STATE: Global<State> = Global::new(State {
     base: 0,
     end: 0,
     next_page: 0,
+    committed: 0,
     page_class: null_mut(),
     free: [null_mut(); NUM_CLASSES],
     bump: [null_mut(); NUM_CLASSES],
@@ -66,19 +71,16 @@ static STATE: Global<State> = Global::new(State {
 #[cold]
 fn init(s: &mut State) {
     s.initialized = true;
-    let flags = sys::MAP_PRIVATE | sys::MAP_ANONYMOUS | sys::MAP_NORESERVE;
-    let prot = sys::PROT_READ | sys::PROT_WRITE;
-    // SAFETY: anonymous private mapping; failure is detected via MAP_FAILED.
-    let arena = unsafe { sys::mmap(null_mut(), ARENA_SIZE, prot, flags, -1, 0) };
-    // SAFETY: as above, for the page-class side table.
-    let table = unsafe { sys::mmap(null_mut(), ARENA_SIZE >> PAGE_SHIFT, prot, flags, -1, 0) };
-    if arena as isize == -1 || table as isize == -1 {
+    let arena = sys::map_anon(ARENA_SIZE);
+    let table = sys::map_anon(ARENA_SIZE >> PAGE_SHIFT);
+    if arena.is_null() || table.is_null() || !sys::commit(table, ARENA_SIZE >> PAGE_SHIFT) {
         // Everything falls back to the system allocator.
         return;
     }
     s.base = arena as usize;
     s.end = s.base + ARENA_SIZE;
-    s.page_class = table.cast();
+    s.committed = 0;
+    s.page_class = table;
 }
 
 #[cold]
@@ -86,6 +88,16 @@ fn refill(s: &mut State, class: usize) -> *mut u8 {
     let page = s.next_page;
     if s.base == 0 || s.base + (page + 1) * PAGE_SIZE > s.end {
         return null_mut();
+    }
+    let used = (page + 1) * PAGE_SIZE;
+    if used > s.committed {
+        let chunk = COMMIT_STEP
+            .max(used - s.committed)
+            .min(ARENA_SIZE - s.committed);
+        if !sys::commit((s.base + s.committed) as *mut u8, chunk) {
+            return null_mut();
+        }
+        s.committed += chunk;
     }
     s.next_page += 1;
     // SAFETY: `page` indexes the side table, which has ARENA_SIZE/PAGE_SIZE entries.

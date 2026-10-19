@@ -209,3 +209,73 @@ pub fn env_var(name: &[u8]) -> Option<&'static [u8]> {
         Some(core::slice::from_raw_parts(p.cast(), n))
     }
 }
+
+/// Reserves `len` bytes of zeroed address space; [`commit`] makes ranges of it usable. Null on failure.
+pub fn map_anon(len: usize) -> *mut u8 {
+    // SAFETY: anonymous private mapping; failure is reported as MAP_FAILED.
+    let p = unsafe {
+        mmap(
+            core::ptr::null_mut(),
+            len,
+            PROT_READ | PROT_WRITE,
+            MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE,
+            -1,
+            0,
+        )
+    };
+    if p as isize == -1 {
+        core::ptr::null_mut()
+    } else {
+        p.cast()
+    }
+}
+
+/// Makes `len` bytes at `p` (inside a [`map_anon`] mapping) usable. Unix maps everything readable
+/// and writable up front and the kernel commits pages on first touch.
+pub fn commit(_p: *mut u8, _len: usize) -> bool {
+    true
+}
+
+/// Makes `len` bytes at `p` inaccessible (a stack guard).
+///
+/// # Safety
+/// The range lies inside a live mapping that nothing is using.
+pub unsafe fn guard(p: *mut u8, len: usize) {
+    // SAFETY: forwarded; the caller guarantees the range.
+    unsafe { mprotect(p.cast(), len, 0) };
+}
+
+/// Returns a [`map_anon`] mapping to the system.
+///
+/// # Safety
+/// The mapping is live and unused.
+pub unsafe fn unmap(p: *mut u8, len: usize) {
+    unsafe extern "C" {
+        fn munmap(addr: *mut c_void, len: size_t) -> c_int;
+    }
+    // SAFETY: forwarded; the caller guarantees the range.
+    unsafe { munmap(p.cast(), len) };
+}
+
+#[repr(C)]
+struct Timespec {
+    sec: i64,
+    nsec: i64,
+}
+
+unsafe extern "C" {
+    fn clock_gettime(clock: c_int, ts: *mut Timespec) -> c_int;
+}
+
+#[cfg(target_os = "macos")]
+const CLOCK_MONOTONIC: c_int = 6;
+#[cfg(not(target_os = "macos"))]
+const CLOCK_MONOTONIC: c_int = 1;
+
+/// Monotonic clock in nanoseconds.
+pub fn monotonic_ns() -> i64 {
+    let mut t = Timespec { sec: 0, nsec: 0 };
+    // SAFETY: valid out pointer.
+    unsafe { clock_gettime(CLOCK_MONOTONIC, &mut t) };
+    t.sec * 1_000_000_000 + t.nsec
+}

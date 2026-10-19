@@ -26,6 +26,7 @@ pub const SPAWN_DETACHED: u32 = 1;
 
 const DEFAULT_STACK: usize = 256 << 20;
 const MIN_STACK: usize = 128 << 10;
+#[cfg(unix)]
 const GUARD: usize = 64 << 10;
 const STACK_POOL: usize = 32;
 const NO_DEADLINE: i64 = i64::MAX;
@@ -149,128 +150,193 @@ fn sched() -> &'static mut Sched {
 
 // ---- context switch ----
 
-unsafe extern "C" {
-    /// Saves callee-saved registers on the current stack, stores its pointer in `*save`,
-    /// then resumes the stack `next` was saved from.
-    fn msrt_ctx_switch(save: *mut usize, next: usize);
-    fn msrt_task_tramp();
+/// How stacks are created and switched. Unix switches raw stacks with assembly; Windows uses
+/// fibers so the thread environment block follows the stack (guard-page growth, stack bounds).
+#[cfg(not(windows))]
+mod stack {
+    use super::*;
+
+    pub const POOLED: bool = true;
+
+    unsafe extern "C" {
+        /// Saves callee-saved registers on the current stack, stores its pointer in `*save`,
+        /// then resumes the stack `next` was saved from.
+        fn msrt_ctx_switch(save: *mut usize, next: usize);
+        fn msrt_task_tramp();
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    core::arch::global_asm!(
+        ".text",
+        concat!(".globl ", sym!("msrt_ctx_switch")),
+        concat!(".globl ", sym!("msrt_task_tramp")),
+        concat!(sym!("msrt_ctx_switch"), ":"),
+        "push rbp",
+        "push rbx",
+        "push r12",
+        "push r13",
+        "push r14",
+        "push r15",
+        "mov [rdi], rsp",
+        "mov rsp, rsi",
+        "pop r15",
+        "pop r14",
+        "pop r13",
+        "pop r12",
+        "pop rbx",
+        "pop rbp",
+        "ret",
+        concat!(sym!("msrt_task_tramp"), ":"),
+        "xor ebp, ebp",
+        "call {main}",
+        "ud2",
+        main = sym super::task_main,
+    );
+
+    #[cfg(target_arch = "aarch64")]
+    core::arch::global_asm!(
+        ".text",
+        concat!(".globl ", sym!("msrt_ctx_switch")),
+        concat!(".globl ", sym!("msrt_task_tramp")),
+        concat!(sym!("msrt_ctx_switch"), ":"),
+        "sub sp, sp, #160",
+        "stp x29, x30, [sp, #0]",
+        "stp x19, x20, [sp, #16]",
+        "stp x21, x22, [sp, #32]",
+        "stp x23, x24, [sp, #48]",
+        "stp x25, x26, [sp, #64]",
+        "stp x27, x28, [sp, #80]",
+        "stp d8, d9, [sp, #96]",
+        "stp d10, d11, [sp, #112]",
+        "stp d12, d13, [sp, #128]",
+        "stp d14, d15, [sp, #144]",
+        "mov x3, sp",
+        "str x3, [x0]",
+        "mov sp, x1",
+        "ldp x29, x30, [sp, #0]",
+        "ldp x19, x20, [sp, #16]",
+        "ldp x21, x22, [sp, #32]",
+        "ldp x23, x24, [sp, #48]",
+        "ldp x25, x26, [sp, #64]",
+        "ldp x27, x28, [sp, #80]",
+        "ldp d8, d9, [sp, #96]",
+        "ldp d10, d11, [sp, #112]",
+        "ldp d12, d13, [sp, #128]",
+        "ldp d14, d15, [sp, #144]",
+        "add sp, sp, #160",
+        "ret",
+        concat!(sym!("msrt_task_tramp"), ":"),
+        "mov x29, #0",
+        "bl {main}",
+        "brk #0",
+        main = sym super::task_main,
+    );
+
+    /// Builds the first frame of a new stack so that switching to it enters `msrt_task_tramp`.
+    unsafe fn initial_sp(top: usize) -> usize {
+        // SAFETY: `top` is the 16-byte aligned end of a writable stack with room for the frame.
+        unsafe {
+            #[cfg(target_arch = "x86_64")]
+            {
+                // Six saved registers, then the return address; after `ret` the stack pointer is
+                // `top`, so the trampoline's `call` sees the ABI alignment.
+                let sp = top - 7 * 8;
+                let words = sp as *mut usize;
+                for i in 0..6 {
+                    *words.add(i) = 0;
+                }
+                *words.add(6) = msrt_task_tramp as *const () as usize;
+                sp
+            }
+            #[cfg(target_arch = "aarch64")]
+            {
+                let sp = top - 160;
+                let words = sp as *mut usize;
+                for i in 0..20 {
+                    *words.add(i) = 0;
+                }
+                *words.add(1) = msrt_task_tramp as *const () as usize;
+                sp
+            }
+        }
+    }
+
+    /// Maps a stack of `len` bytes with a guard at the bottom; null on failure.
+    pub unsafe fn create(len: usize) -> *mut u8 {
+        let p = sys::map_anon(len);
+        if !p.is_null() {
+            // SAFETY: the lowest pages of the fresh mapping.
+            unsafe { sys::guard(p, GUARD) };
+        }
+        p
+    }
+
+    pub unsafe fn destroy(base: *mut u8, len: usize) {
+        // SAFETY: the caller guarantees the mapping is unused.
+        unsafe { sys::unmap(base, len) };
+    }
+
+    /// Stack bounds and initial context of a stack from [`create`].
+    pub unsafe fn prepare(base: *mut u8, len: usize) -> (usize, usize, usize) {
+        let top = (base as usize + len) & !15;
+        // SAFETY: `top` ends a writable stack.
+        (base as usize + GUARD, top, unsafe { initial_sp(top) })
+    }
+
+    /// The first task record of the thread needs no stack of its own.
+    pub unsafe fn adopt_thread() -> usize {
+        0
+    }
+
+    pub unsafe fn switch(cur: *mut Task, next: *mut Task) {
+        // SAFETY: both records are live; `next` was prepared or saved by a previous switch.
+        unsafe { msrt_ctx_switch(&mut (*cur).sp, (*next).sp) };
+    }
 }
 
-#[cfg(target_arch = "x86_64")]
-core::arch::global_asm!(
-    ".text",
-    concat!(".globl ", sym!("msrt_ctx_switch")),
-    concat!(".globl ", sym!("msrt_task_tramp")),
-    concat!(sym!("msrt_ctx_switch"), ":"),
-    "push rbp",
-    "push rbx",
-    "push r12",
-    "push r13",
-    "push r14",
-    "push r15",
-    "mov [rdi], rsp",
-    "mov rsp, rsi",
-    "pop r15",
-    "pop r14",
-    "pop r13",
-    "pop r12",
-    "pop rbx",
-    "pop rbp",
-    "ret",
-    concat!(sym!("msrt_task_tramp"), ":"),
-    "xor ebp, ebp",
-    "call {main}",
-    "ud2",
-    main = sym task_main,
-);
+#[cfg(windows)]
+mod stack {
+    use super::*;
+    use core::ffi::c_void;
 
-#[cfg(target_arch = "aarch64")]
-core::arch::global_asm!(
-    ".text",
-    concat!(".globl ", sym!("msrt_ctx_switch")),
-    concat!(".globl ", sym!("msrt_task_tramp")),
-    concat!(sym!("msrt_ctx_switch"), ":"),
-    "sub sp, sp, #160",
-    "stp x29, x30, [sp, #0]",
-    "stp x19, x20, [sp, #16]",
-    "stp x21, x22, [sp, #32]",
-    "stp x23, x24, [sp, #48]",
-    "stp x25, x26, [sp, #64]",
-    "stp x27, x28, [sp, #80]",
-    "stp d8, d9, [sp, #96]",
-    "stp d10, d11, [sp, #112]",
-    "stp d12, d13, [sp, #128]",
-    "stp d14, d15, [sp, #144]",
-    "mov x3, sp",
-    "str x3, [x0]",
-    "mov sp, x1",
-    "ldp x29, x30, [sp, #0]",
-    "ldp x19, x20, [sp, #16]",
-    "ldp x21, x22, [sp, #32]",
-    "ldp x23, x24, [sp, #48]",
-    "ldp x25, x26, [sp, #64]",
-    "ldp x27, x28, [sp, #80]",
-    "ldp d8, d9, [sp, #96]",
-    "ldp d10, d11, [sp, #112]",
-    "ldp d12, d13, [sp, #128]",
-    "ldp d14, d15, [sp, #144]",
-    "add sp, sp, #160",
-    "ret",
-    concat!(sym!("msrt_task_tramp"), ":"),
-    "mov x29, #0",
-    "bl {main}",
-    "brk #0",
-    main = sym task_main,
-);
+    pub const POOLED: bool = false;
 
-/// Builds the first frame of a new stack so that switching to it enters `msrt_task_tramp`.
-unsafe fn initial_sp(top: usize) -> usize {
-    // SAFETY: `top` is the 16-byte aligned end of a writable stack with room for the frame.
-    unsafe {
-        #[cfg(target_arch = "x86_64")]
-        {
-            // Six saved registers, then the return address; after `ret` the stack pointer is
-            // `top`, so the trampoline's `call` sees the ABI alignment.
-            let sp = top - 7 * 8;
-            let words = sp as *mut usize;
-            for i in 0..6 {
-                *words.add(i) = 0;
-            }
-            *words.add(6) = msrt_task_tramp as *const () as usize;
-            sp
-        }
-        #[cfg(target_arch = "aarch64")]
-        {
-            let sp = top - 160;
-            let words = sp as *mut usize;
-            for i in 0..20 {
-                *words.add(i) = 0;
-            }
-            *words.add(1) = msrt_task_tramp as *const () as usize;
-            sp
-        }
+    unsafe extern "system" fn entry(_: *mut c_void) {
+        task_main()
+    }
+
+    /// A fiber with `len` bytes of reserved stack, committed as it grows.
+    pub unsafe fn create(len: usize) -> *mut u8 {
+        // SAFETY: plain Win32 call.
+        unsafe { sys::fiber_create(len, entry) }
+    }
+
+    pub unsafe fn destroy(base: *mut u8, _len: usize) {
+        // SAFETY: the fiber is not running (the caller runs on another one).
+        unsafe { sys::fiber_delete(base) };
+    }
+
+    /// Fibers carry their own bounds, which `task_main` records when it starts.
+    pub unsafe fn prepare(base: *mut u8, _len: usize) -> (usize, usize, usize) {
+        (0, 0, base as usize)
+    }
+
+    /// Turns the calling thread into a fiber so it can be switched away from.
+    pub unsafe fn adopt_thread() -> usize {
+        // SAFETY: called once on the runtime thread.
+        unsafe { sys::fiber_adopt() as usize }
+    }
+
+    pub unsafe fn switch(_cur: *mut Task, next: *mut Task) {
+        // SAFETY: `sp` holds the fiber handle of a live task.
+        unsafe { sys::fiber_switch((*next).sp as *mut u8) };
     }
 }
 
 // ---- records and handles ----
 
 fn clock_ns() -> i64 {
-    #[repr(C)]
-    struct Timespec {
-        sec: i64,
-        nsec: i64,
-    }
-    unsafe extern "C" {
-        fn clock_gettime(clock: i32, ts: *mut Timespec) -> i32;
-    }
-    let mut t = Timespec { sec: 0, nsec: 0 };
-    #[cfg(target_os = "macos")]
-    const CLOCK_MONOTONIC: i32 = 6;
-    #[cfg(not(target_os = "macos"))]
-    const CLOCK_MONOTONIC: i32 = 1;
-    // SAFETY: valid out pointer.
-    unsafe { clock_gettime(CLOCK_MONOTONIC, &mut t) };
-    t.sec * 1_000_000_000 + t.nsec
+    sys::monotonic_ns()
 }
 
 unsafe fn lookup(h: u64) -> *mut Task {
@@ -350,6 +416,7 @@ unsafe fn ensure_init() -> *mut Task {
         // SAFETY: first use; the live globals belong to this flow, so its saved context starts empty.
         unsafe {
             let t = new_task(Ctx::new(0, 0));
+            (*t).sp = stack::adopt_thread();
             (*t).state = State::Running;
             s.cur = t;
             s.main = t;
@@ -367,35 +434,24 @@ unsafe fn alloc_stack(len: usize) -> *mut u8 {
     {
         return base as *mut u8;
     }
-    // SAFETY: anonymous private mapping; the lowest pages become the guard.
+    // SAFETY: the lowest pages of the fresh mapping become the guard.
     unsafe {
-        let p = sys::mmap(
-            null_mut(),
-            len,
-            sys::PROT_READ | sys::PROT_WRITE,
-            sys::MAP_PRIVATE | sys::MAP_ANONYMOUS | sys::MAP_NORESERVE,
-            -1,
-            0,
-        );
-        if p as isize == -1 {
+        let p = stack::create(len);
+        if p.is_null() {
             fault::fault(b"cannot allocate a task stack");
         }
-        sys::mprotect(p, GUARD, 0);
-        p as *mut u8
+        p
     }
 }
 
 unsafe fn release_stack(base: usize, len: usize) {
     let s = sched();
-    if len == DEFAULT_STACK && s.pool.len() < STACK_POOL {
+    if stack::POOLED && len == DEFAULT_STACK && s.pool.len() < STACK_POOL {
         s.pool.push(base);
         return;
     }
-    unsafe extern "C" {
-        fn munmap(addr: *mut core::ffi::c_void, len: usize) -> i32;
-    }
-    // SAFETY: the mapping came from `alloc_stack` and no task runs on it.
-    unsafe { munmap(base as *mut core::ffi::c_void, len) };
+    // SAFETY: the stack came from `alloc_stack` and no task runs on it.
+    unsafe { stack::destroy(base as *mut u8, len) };
 }
 
 /// Frees what finished tasks left behind; runs on the stack of a task that is still alive.
@@ -606,7 +662,7 @@ unsafe fn switch_away() {
                 fault::swap_ctx(&mut (*cur).ctx);
                 fault::swap_ctx(&mut (*next).ctx);
                 s.cur = next;
-                msrt_ctx_switch(&mut (*cur).sp, (*next).sp);
+                stack::switch(cur, next);
                 after_switch();
                 return;
             }
@@ -619,6 +675,12 @@ unsafe fn switch_away() {
 extern "C" fn task_main() -> ! {
     // SAFETY: the scheduler set `cur` to this task before switching to it.
     unsafe {
+        #[cfg(windows)]
+        {
+            let (lo, hi) = sys::stack_limits();
+            *fault::STACK_LO.ptr() = lo;
+            *fault::STACK_HI.ptr() = hi;
+        }
         after_switch();
         let s = sched();
         let t = s.cur;
@@ -671,14 +733,14 @@ pub unsafe extern "C-unwind" fn msrt_task_spawn(
             stack_bytes.max(MIN_STACK).next_multiple_of(4096)
         };
         let base = alloc_stack(len);
-        let top = (base as usize + len) & !15;
-        let t = new_task(Ctx::new(base as usize + GUARD, top));
+        let (lo, hi, sp) = stack::prepare(base, len);
+        let t = new_task(Ctx::new(lo, hi));
         (*t).stack = base;
         (*t).stack_len = len;
         (*t).entry = Some(entry);
         (*t).arg = arg;
         (*t).detached = flags & SPAWN_DETACHED != 0;
-        (*t).sp = initial_sp(top);
+        (*t).sp = sp;
         sched().ready.push((*t).handle);
         (*t).handle
     }
