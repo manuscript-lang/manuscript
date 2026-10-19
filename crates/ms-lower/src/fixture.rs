@@ -76,28 +76,28 @@ impl FnLower<'_> {
         self.callable_of_decl(m.module, Some(decl.id())).ok()
     }
 
-    /// Calls a hook on the fixture local, storing the receiver it hands back.
+    /// Calls a hook on the fixture local; a hook that changes `self` works on the local's value
+    /// through a slot, which is stored back.
     fn run_hook(&mut self, hook: &Rc<Callable>, binding: &BindingRef) -> Result<(), Error> {
         let fid = self.cx.function_for(self.b.m, hook, &Subst::new())?;
-        let recv = self.read_local(binding)?;
-        let v = self.b.call(fid, &[recv.v]);
         let vars = self.cx.var_positions(hook);
         if vars.is_empty() {
+            let recv = self.read_local(binding)?;
+            let v = self.b.call(fid, &[recv.v]);
             self.drop_if_owned(v);
             return Ok(());
         }
-        let ms_mir::types::TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(v)).clone() else {
-            return Err(Error::new("a hook that changes self must return a record"));
+        let (var, ty) = {
+            let l = self.local(binding)?;
+            (l.var, l.ty)
         };
-        let updated = self.b.rec_get(rid, 1, v);
-        let updated = self.owned(crate::func::Val {
-            v: updated,
-            own: false,
-        });
-        self.drop_value(v);
-        let var = self.local(binding)?.var;
         let old = self.b.use_var(var);
-        self.drop_value(old);
+        let copy = self.owned(crate::func::Val { v: old, own: false });
+        let slot = self.put_slot(copy);
+        let v = self.b.call(fid, &[slot]);
+        self.drop_if_owned(v);
+        let updated = self.take_slot(slot, ty);
+        self.drop_if_owned(old);
         self.b.def_var(var, updated);
         Ok(())
     }
