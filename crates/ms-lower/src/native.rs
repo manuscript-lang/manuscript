@@ -15,18 +15,6 @@ use ms_syntax::ast::*;
 /// the runtime wants the case index (else the lowercase case name).
 const FORMAT_METHODS: &[(&str, &str, &str, bool)] = &[
     (
-        "crypto/hash_algorithm_digest",
-        "msrt_crypto_digest",
-        "alg",
-        true,
-    ),
-    (
-        "crypto/hash_algorithm_hmac",
-        "msrt_crypto_hmac",
-        "alg",
-        true,
-    ),
-    (
         "string/form_normalize",
         "msrt_string_normalize_kind",
         "kind",
@@ -192,33 +180,6 @@ impl<'a> FnLower<'a> {
                 };
                 let want = self.emty(e)?;
                 self.fit_ty(r, &declared, want)
-            }
-            // The SHA-2 shorthands are `HashAlgorithm.digest` with a fixed case index.
-            "crypto/sha256" | "crypto/sha384" | "crypto/sha512" => {
-                let mut args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let index = match native {
-                    "crypto/sha256" => 3,
-                    "crypto/sha384" => 4,
-                    _ => 5,
-                };
-                let alg = self.b.iconst(index);
-                let name = ct::Name::from("alg");
-                args.push(NArg {
-                    name,
-                    val: Val { v: alg, own: false },
-                    wrapped: false,
-                });
-                let mut decl = vec![ct::Param {
-                    name,
-                    ty: ct::primitive("Int"),
-                }];
-                decl.extend(params.iter().cloned());
-                let result = self.emty(e)?;
-                self.at(e.pos);
-                self.rt_function("msrt_crypto_digest", &decl, &args, result)
             }
             "collections/map_from_entries" => {
                 let args = self.native_args(view)?;
@@ -690,16 +651,8 @@ impl<'a> FnLower<'a> {
                 .first()
                 .ok_or_else(|| Error::new("format method without arguments"))?
                 .clone();
-        let selector = ct::Param {
-            name,
-            ty: first.ty.clone(),
-        };
-        // The selector leads the runtime's parameters of the hash functions, follows the data elsewhere.
-        let mut decl = if param == "alg" {
-            vec![selector, first]
-        } else {
-            vec![first, selector]
-        };
+        let mut decl = vec![first.clone()];
+        decl.push(ct::Param { name, ty: first.ty });
         decl.extend(m.ty.params.iter().skip(1).cloned());
         self.rt_function(sym, &decl, &args, result)
     }
