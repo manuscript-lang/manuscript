@@ -152,3 +152,12 @@ fn method_values_type_applications_and_callee_capture() {
     );
     assert!(mir.contains("closure.new"));
 }
+
+#[test]
+fn comparable_impls_order_extremes_and_result_methods_are_values() {
+    let mir = lower(
+        "ordering",
+        "import stdout from \"@std/io.ms\"\nimport {max} from \"@std/math.ms\"\n\ntype Version:\n    major: Int\n\nimpl Comparable for Version:\n    fn compare(other: Comparable) Int:\n        match other:\n            Version(value): return self.major - value.major\n            _: return 0\n\nexport fn main() Int:\n    let a = Version(1)\n    let b = Version(2)\n    let c: Result[Int, Error] = ok(1)\n    let e = c.is_ok\n    let r = stdout().write(\"{max(a, b).major} {e()}\\n\")\n    return 0\n",
+    );
+    assert!(mir.contains("call.method"));
+}

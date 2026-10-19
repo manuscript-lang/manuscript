@@ -51,6 +51,13 @@ impl Cx {
                     break;
                 }
             }
+            if found.is_none()
+                && s.name == "compare"
+                && matches!(data_ty, MTy::INT | MTy::FLOAT | MTy::STR)
+            {
+                methods.push(self.scalar_compare(m, iface, data_ty, key.as_str()));
+                continue;
+            }
             let (module, id, subst, native) = found.ok_or_else(|| {
                 Error::new(format!(
                     "{concrete} has no method {} for {}",
@@ -130,6 +137,76 @@ impl Cx {
 }
 
 impl Cx {
+    /// `compare` of a built-in scalar: the sign of the order against another value of the same
+    /// type, and `0` against any other type.
+    fn scalar_compare(
+        &mut self,
+        m: &mut Module,
+        iface: IfaceId,
+        data_ty: MTy,
+        key: &str,
+    ) -> ms_mir::ir::FuncId {
+        // The table being built gets the next id.
+        let vt = VtableId(m.vtables.len() as u32);
+        let other_ty = m.ifaces[iface.index()].methods[0].params[0];
+        let ps = vec![
+            Param {
+                ty: MTy::PTR,
+                mode: Mode::Borrow,
+            },
+            Param {
+                ty: other_ty,
+                mode: Mode::Borrow,
+            },
+        ];
+        let mut b = FuncBuilder::new(m, &format!("vt.compare.{key}"), ps, MTy::INT);
+        b.func_mut().kind = FuncKind::Method;
+        b.func_mut().linkage = Linkage::Internal;
+        let (this, other) = (b.params()[0], b.params()[1]);
+        let hit = b
+            .emit(Op::IfaceIs, &[other], Imm::Vtable(vt), Some(MTy::BOOL))
+            .expect("test");
+        let (same, differ) = (b.new_block(), b.new_block());
+        b.br_if(hit, same, &[], differ, &[]);
+        b.seal_block(same);
+        b.seal_block(differ);
+        b.switch_to(differ);
+        let zero = b.iconst(0);
+        b.ret(Some(zero));
+        b.switch_to(same);
+        let a = b
+            .emit(Op::Load, &[this], Imm::Ty(data_ty), Some(data_ty))
+            .expect("load");
+        let data = b
+            .emit(Op::IfaceData, &[other], Imm::None, Some(MTy::PTR))
+            .expect("data");
+        let c = b
+            .emit(Op::Load, &[data], Imm::Ty(data_ty), Some(data_ty))
+            .expect("load");
+        let r = if data_ty == MTy::INT {
+            let (lt, gt) = (
+                b.icmp(ms_mir::ir::Cc::Lt, a, c),
+                b.icmp(ms_mir::ir::Cc::Gt, a, c),
+            );
+            let (one, zero, minus) = (b.iconst(1), b.iconst(0), b.iconst(-1));
+            let upper = b.select(gt, one, zero);
+            b.select(lt, minus, upper)
+        } else {
+            let sym = if data_ty == MTy::FLOAT {
+                "msrt_float_compare"
+            } else {
+                "msrt_string_compare"
+            };
+            let ext = crate::text::runtime_fn(b.m, sym, &[data_ty, data_ty], MTy::INT);
+            b.call_rt(ext, &[a, c])
+        };
+        b.ret(Some(r));
+        let f = b.into_func();
+        m.add_func(f)
+    }
+}
+
+impl Cx {
     /// The source-declared method `name` of `concrete` (an `impl` of a standard interface).
     fn user_method(
         &mut self,
@@ -181,6 +258,65 @@ impl Cx {
             return Ok(None);
         };
         Ok(Some((f, iface)))
+    }
+
+    /// A function `compare(x, y) -> Int` of a source type with an `impl Comparable`.
+    pub(crate) fn user_compare(
+        &mut self,
+        m: &mut Module,
+        t: MTy,
+    ) -> Result<Option<ms_mir::ir::FuncId>, Error> {
+        let key = format!("compare:{}", t.0);
+        if let Some(f) = self.helpers.get(&key) {
+            return Ok(Some(*f));
+        }
+        let Some(concrete) = self.source_tys.get(&t).cloned() else {
+            return Ok(None);
+        };
+        let Some(callee) = self.user_method(m, &concrete, "compare")? else {
+            return Ok(None);
+        };
+        let Some(other) = m.funcs[callee.index()].params.get(1).copied() else {
+            return Ok(None);
+        };
+        let TyKind::Iface(iface) = m.types.kind(other.ty).clone() else {
+            return Ok(None);
+        };
+        let vt = self.vtable_id(m, &concrete, iface)?;
+        let k = m.ifaces[iface.index()]
+            .methods
+            .iter()
+            .position(|s| s.name == "compare")
+            .ok_or_else(|| Error::new("interface without compare"))? as u32;
+        let p = Param {
+            ty: t,
+            mode: Mode::Borrow,
+        };
+        let mut b = FuncBuilder::new(m, "compare", vec![p, p], MTy::INT);
+        b.func_mut().linkage = Linkage::Internal;
+        let (x, y) = (b.params()[0], b.params()[1]);
+        // Both operands are boxed, so a `compare` that changes `self` writes back to its copy.
+        let mut boxed = Vec::new();
+        for v in [x, y] {
+            let copy = if b.m.needs_drop(t) {
+                b.emit(Op::Copy, &[v], Imm::None, Some(t)).expect("copy")
+            } else {
+                v
+            };
+            boxed.push(
+                b.emit(Op::IfaceNew, &[copy], Imm::Vtable(vt), Some(other.ty))
+                    .expect("iface"),
+            );
+        }
+        let r = b.call_method(iface, k, boxed[0], &boxed[1..]);
+        for v in boxed {
+            b.emit(Op::Drop, &[v], Imm::None, None);
+        }
+        b.ret(Some(r));
+        let f = b.into_func();
+        let id = m.add_func(f);
+        self.helpers.insert(key, id);
+        Ok(Some(id))
     }
 
     /// The source-declared `hash` of `concrete` (an `impl Hashable`).

@@ -22,7 +22,14 @@ impl FnLower<'_> {
             TyKind::Float => "msrt_float_compare",
             TyKind::Str => "msrt_string_compare",
             TyKind::Obj(n, _) if n == "BigInt" => "msstd_bigint_compare",
-            _ => return Err(Error::new("ordering this type is not supported yet")),
+            _ => {
+                if let Some(sym) = self.ordering_symbol(t) {
+                    return self.call_runtime(sym, &[a, b], MTy::INT);
+                }
+                let f = self.cx.user_compare(self.b.m, t)?;
+                let f = f.ok_or_else(|| Error::new("ordering this type is not supported yet"))?;
+                return Ok(self.b.call(f, &[a, b]));
+            }
         };
         self.call_runtime(sym, &[a, b], MTy::INT)
     }

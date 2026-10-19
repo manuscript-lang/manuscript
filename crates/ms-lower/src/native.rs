@@ -880,7 +880,8 @@ impl<'a> FnLower<'a> {
                 self.optional_method(e, name, recv, inner, args)
             }
             (TyKind::Alt(a), "get" | "err" | "or_else" | "map" | "and_then" | "to_optional") => {
-                self.result_method(e, name, recv, a, args)
+                let out = self.emty(e)?;
+                self.result_method(out, name, recv, a, args)
             }
             (TyKind::Alt(a), "is_ok" | "is_error") => {
                 let want = if name == "is_ok" { "ok" } else { "error" };
@@ -1041,6 +1042,11 @@ impl<'a> FnLower<'a> {
             let r = self.borrow(recv);
             let text = self.b.call(f, &[r]);
             return Ok(Val { v: text, own: true });
+        }
+        if let (TyKind::Alt(a), "get" | "err" | "or_else" | "map" | "and_then" | "to_optional") =
+            (self.b.m.types.kind(rty).clone(), name.as_str())
+        {
+            return self.result_method(result, &name, recv, a, args.to_vec());
         }
         if let (TyKind::List(elem), "get") = (self.b.m.types.kind(rty).clone(), name.as_str()) {
             let find = |want: bool| args.iter().find(|a| (a.name.as_str() == "default") == want);
@@ -1544,7 +1550,7 @@ impl<'a> FnLower<'a> {
 
     fn result_method(
         &mut self,
-        e: &Expr,
+        out: MTy,
         name: &str,
         recv: Val,
         alt: ms_mir::types::AltId,
@@ -1559,7 +1565,6 @@ impl<'a> FnLower<'a> {
         let tag = self.b.alt_tag(r);
         let k = self.b.iconst(ok as i64);
         let is_ok = self.b.icmp(ms_mir::ir::Cc::Eq, tag, k);
-        let out = self.emty(e)?;
         let f = args.first().copied();
         match name {
             "get" => {
