@@ -108,11 +108,14 @@ impl<'a> FnLower<'a> {
         let mut places: Vec<Option<Expr>> = vec![None; names.len()];
         let vars = self.cx.var_positions(callee);
         let offset = usize::from(callee.self_binding.is_some());
-        for a in &view.arguments {
+        for (n, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
                 return Ok(Args { slots, places });
             }
+            let later_try = view.arguments[n + 1..]
+                .iter()
+                .any(|l| crate::mutation::has_try(l.expr));
             let x = match &a.wrap_optional {
                 Some(opt) => {
                     let o = self.owned(x);
@@ -122,6 +125,7 @@ impl<'a> FnLower<'a> {
                 }
                 None => x,
             };
+            let x = if later_try { self.hold_temp(x) } else { x };
             let idx = names
                 .iter()
                 .position(|n| *n == a.slot.name)
@@ -137,6 +141,15 @@ impl<'a> FnLower<'a> {
             }
         }
         Ok(Args { slots, places })
+    }
+
+    /// Registers an owned value as a temporary and views it as a borrow, so a `try` evaluated
+    /// later in the same call that returns early still releases it.
+    pub(crate) fn hold_temp(&mut self, x: Val) -> Val {
+        Val {
+            v: self.borrow(x),
+            own: false,
+        }
     }
 
     /// The default of an omitted parameter, written in the callee's scope.
@@ -214,7 +227,9 @@ impl<'a> FnLower<'a> {
                     .cloned()
                     .flatten()
                     .and_then(|p| match self.hir.resolution(&p) {
-                        ms_check::hir::Resolution::Local(b) if matches!(p.kind, ExprKind::Name(_)) => {
+                        ms_check::hir::Resolution::Local(b)
+                            if matches!(p.kind, ExprKind::Name(_)) =>
+                        {
                             Some(b.uid)
                         }
                         _ => None,
@@ -331,6 +346,15 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(recv);
         }
+        let recv = if view
+            .arguments
+            .iter()
+            .any(|a| crate::mutation::has_try(a.expr))
+        {
+            self.hold_temp(recv)
+        } else {
+            recv
+        };
         let names = self.param_names(&c);
         let args = self.eval_args(view, &names, &c, &subst)?;
         if self.dead {

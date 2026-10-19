@@ -1354,11 +1354,15 @@ impl<'a> FnLower<'a> {
     /// The written arguments of a native call in order; `wrapped` marks values meant for an `Optional` parameter.
     pub(crate) fn native_args(&mut self, view: &CallView<'_>) -> Result<Vec<NArg>, Error> {
         let mut out = Vec::new();
-        for a in &view.arguments {
+        for (n, a) in view.arguments.iter().enumerate() {
             let val = self.expr(a.expr)?;
             if self.dead {
                 break;
             }
+            let later_try = view.arguments[n + 1..]
+                .iter()
+                .any(|l| crate::mutation::has_try(l.expr));
+            let val = if later_try { self.hold_temp(val) } else { val };
             out.push(NArg {
                 name: a.slot.name,
                 val,

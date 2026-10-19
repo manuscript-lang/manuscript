@@ -346,7 +346,11 @@ impl<'a> FnLower<'a> {
 
     /// Moves the value of type `t` out of the slot at `ptr`.
     pub fn move_out(&mut self, ptr: Value, t: MTy) -> Value {
-        let op = if self.needs_drop(t) { Op::Take } else { Op::Load };
+        let op = if self.needs_drop(t) {
+            Op::Take
+        } else {
+            Op::Load
+        };
         self.b
             .emit(op, &[ptr], ms_mir::ir::Imm::Ty(t), Some(t))
             .expect("slot value")

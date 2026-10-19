@@ -43,6 +43,25 @@ pub(crate) fn place_root(hir: &ModuleHir, e: &Expr) -> Option<usize> {
     }
 }
 
+/// Whether evaluating `e` can return early through `try`.
+pub(crate) fn has_try(e: &Expr) -> bool {
+    struct Tries(bool);
+    impl Visitor for Tries {
+        fn expr(&mut self, e: &Expr) {
+            self.0 |= matches!(
+                &e.kind,
+                ExprKind::Unary {
+                    op: UnaryOp::Try,
+                    ..
+                }
+            );
+        }
+    }
+    let mut v = Tries(false);
+    ms_syntax::visit::walk_expr(&mut v, e);
+    v.0
+}
+
 /// How many times `e` reads or names the local `uid`.
 pub(crate) fn uses_of(hir: &ModuleHir, e: &Expr, uid: usize) -> usize {
     struct Uses<'h> {

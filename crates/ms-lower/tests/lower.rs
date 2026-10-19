@@ -94,3 +94,11 @@ fn methods_that_change_self_hand_it_back() {
     assert!(mir.contains("call.method"));
     assert!(mir.contains("store "));
 }
+
+#[test]
+fn try_after_an_owned_argument_releases_it() {
+    lower(
+        "tryargs",
+        "import {TextError} from \"@std/errors.ms\"\n\nfn make(n: Int) Result[String, TextError]:\n    if n > 0:\n        return ok(\"x\")\n    return error(TextError(text: \"no\"))\n\nfn join(a: String, b: String) String:\n    return a + b\n\nfn both(n: Int) Result[String, TextError]:\n    return ok(join(a: try make(n), b: try make(n - 1)))\n\nexport fn main() Int:\n    return 0\n",
+    );
+}
