@@ -196,6 +196,11 @@ impl Visitor for Scan<'_> {
         if self.info(e).is_some_and(|i| i.native_str() == "index") {
             self.effects.insert("read");
         }
+        // A constant is a nullary function in Go: each use is a call to it.
+        if self.module.facts().const_use.contains(&e.id) {
+            self.scan_call(e, e);
+            return;
+        }
         match &e.kind {
             ExprKind::Member { left, .. } => {
                 let receiver_record = self
@@ -243,7 +248,10 @@ impl Checker {
                 continue;
             };
             for d in &module.decls {
-                if !matches!(d.decl().kind, DeclKind::Fn(_) | DeclKind::Record(_)) {
+                if !matches!(
+                    d.decl().kind,
+                    DeclKind::Fn(_) | DeclKind::Record(_) | DeclKind::Const(_)
+                ) {
                     continue;
                 }
                 if let Some(symbol) = names.borrow().get(&d.name()) {

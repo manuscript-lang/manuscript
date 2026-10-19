@@ -6,6 +6,7 @@ use std::fmt::Write;
 #[derive(Clone, Debug, PartialEq)]
 pub enum Json {
     Null,
+    Bool(bool),
     Num(String),
     Str(String),
     Arr(Vec<Json>),
@@ -36,13 +37,21 @@ impl Json {
 
     pub fn encode(&self) -> String {
         let mut out = String::new();
-        self.write(&mut out, 0);
+        self.write(&mut out, 0, false);
         out
     }
 
-    fn write(&self, out: &mut String, depth: usize) {
+    /// Go `json.Marshal`: no whitespace.
+    pub fn encode_compact(&self) -> String {
+        let mut out = String::new();
+        self.write(&mut out, 0, true);
+        out
+    }
+
+    fn write(&self, out: &mut String, depth: usize, compact: bool) {
         match self {
             Json::Null => out.push_str("null"),
+            Json::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
             Json::Num(n) => out.push_str(n),
             Json::Str(s) => write_string(out, s),
             Json::Arr(items) if items.is_empty() => out.push_str("[]"),
@@ -53,10 +62,10 @@ impl Json {
                     if i > 0 {
                         out.push(',');
                     }
-                    newline(out, depth + 1);
-                    item.write(out, depth + 1);
+                    newline(out, depth + 1, compact);
+                    item.write(out, depth + 1, compact);
                 }
-                newline(out, depth);
+                newline(out, depth, compact);
                 out.push(']');
             }
             Json::Obj(fields) => {
@@ -65,19 +74,22 @@ impl Json {
                     if i > 0 {
                         out.push(',');
                     }
-                    newline(out, depth + 1);
+                    newline(out, depth + 1, compact);
                     write_string(out, key);
-                    out.push_str(": ");
-                    value.write(out, depth + 1);
+                    out.push_str(if compact { ":" } else { ": " });
+                    value.write(out, depth + 1, compact);
                 }
-                newline(out, depth);
+                newline(out, depth, compact);
                 out.push('}');
             }
         }
     }
 }
 
-fn newline(out: &mut String, depth: usize) {
+fn newline(out: &mut String, depth: usize, compact: bool) {
+    if compact {
+        return;
+    }
     out.push('\n');
     for _ in 0..depth {
         out.push_str("  ");
