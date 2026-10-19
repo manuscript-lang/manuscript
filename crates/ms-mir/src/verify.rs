@@ -957,7 +957,11 @@ impl Verifier<'_> {
                     "typedesc yields ptr",
                 )
             }
-            Op::Poll | Op::DepthEnter | Op::DepthLeave | Op::CleanupRun => arity(0),
+            Op::Poll | Op::DepthEnter | Op::DepthLeave => arity(0),
+            Op::CleanupRun => {
+                arity(1)?;
+                want(t(0) == Ty::INT, "cleanup.run takes the handle returned by cleanup.push")
+            }
             Op::CleanupPush => {
                 arity(1)?;
                 let Imm::Func(g) = inst.imm else {

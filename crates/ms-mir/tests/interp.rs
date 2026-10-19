@@ -343,7 +343,7 @@ fn @main() -> int {
 b0:
   %a: int = iconst 7
   %h: int = cleanup.push @c1 %a
-  cleanup.run
+  cleanup.run %h
   %z: int = iconst 0
   ret %z
 }

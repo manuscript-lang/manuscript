@@ -880,7 +880,11 @@ impl<'m> Interp<'m> {
                 set!(Val::Int(self.cleanup.len() as i64));
             }
             Op::CleanupRun => {
-                if let Some((closer, v)) = self.cleanup.pop() {
+                let Val::Int(h) = regs[a[0].index()].clone() else {
+                    return Err(Raw::internal("cleanup.run needs a handle"));
+                };
+                while self.cleanup.len() as i64 >= h && h > 0 {
+                    let Some((closer, v)) = self.cleanup.pop() else { break };
                     self.exec(closer, vec![v])
                         .map_err(|e| Raw::new(e.kind, e.message))?;
                 }
