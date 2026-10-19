@@ -80,7 +80,7 @@ fn malformed_hunks_are_reported_with_lines() {
         "diff line 3: malformed hunk header"
     );
     assert_eq!(
-        parse_diff("--- a\n+++ a\n@@ -1,2 +1,2 @@\n x\n").unwrap_err(),
+        parse_diff("--- a\n+++ a\n@@ -1,2 +1,2 @@\n x").unwrap_err(),
         "diff line 3: hunk is shorter than its header declares"
     );
     assert_eq!(
