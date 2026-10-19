@@ -31,11 +31,11 @@ type Events:
     values: List[Int]
 
 fn record(events: Events, value: Int) Result[Int, Failure]:
-    events.values = events.values.append(value)
+    events.values.append(value)
     return ok(value)
 
 fn default_value(events: Events) Int:
-    events.values = events.values.append(3)
+    events.values.append(3)
     return 3
 
 fn ordered[T](
@@ -44,11 +44,11 @@ fn ordered[T](
     events: Events,
     last: Int = default_value(events)
 ) Result[T, Error]:
-    events.values = events.values.append(4)
+    events.values.append(4)
     return first
 
 test "infer success and preserve concrete error identity":
-    let cause = Failure(11)
+    var cause = Failure(11)
     let r: Result[Int, Failure] = error(cause)
     let inferred = erase(r)
     let explicit = erase[Int](r)

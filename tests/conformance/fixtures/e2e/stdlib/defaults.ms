@@ -78,7 +78,7 @@ test "concrete implementation defaults and interface defaults stay distinct":
 
 test "CSV defaults are fresh and explicit options retain their meaning":
     let first = CsvOptions()
-    let alias = first
+    var alias = first
     alias.delimiter = ";"
     alias.line_ending = "\r\n"
     let second = CsvOptions()

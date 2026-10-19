@@ -162,9 +162,13 @@ fn match_length() Int:
 
     return values.length()
 
+fn singleton(var values: List[Int]) List[Int]:
+    values.append(1)
+    return values
+
 fn default_length() Int:
-    let values: List[Int] = []
-    let callback = fn(value: List[Int] = values.append(1)) Int: value.length()
+    var values: List[Int] = []
+    let callback = fn(value: List[Int] = singleton(var values)) Int: value.length()
     let ignored = callback()
     return values.length()
 

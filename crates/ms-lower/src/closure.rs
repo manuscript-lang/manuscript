@@ -102,6 +102,150 @@ impl FnLower<'_> {
         Ok(Val { v, own: true })
     }
 
+    /// A method used as a value (`view.read`): a closure holding a copy of the receiver.
+    pub fn bound_method(&mut self, e: &Expr, left: &Expr, m: &ct::MethodRef) -> Result<Val, Error> {
+        let fty = self.emty(e)?;
+        let TyKind::Fn(params, ret) = self.b.m.types.kind(fty).clone() else {
+            return Err(Error::new("method value without function type"));
+        };
+        let recv_ty = self.ety(left);
+        let recv_mty = self.mty(&recv_ty)?;
+        let name = m.name().map(|n| n.to_string()).unwrap_or_default();
+        // How the thunk reaches the method.
+        let (key, callee) = if let TyKind::Iface(iface) = self.b.m.types.kind(recv_mty).clone() {
+            let k = self.b.m.ifaces[iface.index()]
+                .methods
+                .iter()
+                .position(|s| s.name == name)
+                .ok_or_else(|| Error::new(format!("no interface method {name}")))?;
+            (
+                format!("bound:iface{}:{k}", iface.0),
+                Err((iface, k as u32)),
+            )
+        } else {
+            let im = if m.native.as_str() == "contract" {
+                self.contract_impl(m, &recv_ty)
+                    .ok_or_else(|| Error::new(format!("{recv_ty} has no method {name}")))?
+            } else {
+                m.clone()
+            };
+            if !im.native.is_empty() {
+                return Err(Error::new(format!("unsupported member access .{name}")));
+            }
+            let decl = im
+                .decl
+                .as_ref()
+                .ok_or_else(|| Error::new("method without declaration"))?;
+            let c = self.callable_of_decl(im.module, Some(decl.id()))?;
+            let declared = self
+                .cx
+                .methods
+                .iter()
+                .find(|d| {
+                    d.module == im.module && d.decl.as_ref().map(|x| x.id()) == Some(decl.id())
+                })
+                .cloned()
+                .unwrap_or_else(|| im.clone());
+            let mut subst = ct::Subst::new();
+            if !ct::unify(
+                &declared.receiver,
+                &recv_ty,
+                &ct::variable_set(&declared.variables),
+                &mut subst,
+            ) {
+                return Err(Error::new("cannot bind method receiver type"));
+            }
+            let vars = self.cx.var_positions(&c);
+            if vars.iter().any(|v| *v != 0) {
+                return Err(Error::new("method value with changed parameters"));
+            }
+            let fid = self.cx.function_for(self.b.m, &c, &subst)?;
+            (
+                format!("bound:{}", fid.index()),
+                Ok((fid, !vars.is_empty())),
+            )
+        };
+        let recv = self.expr(left)?;
+        if self.dead {
+            return Ok(recv);
+        }
+        let held = self.owned(recv);
+        let key = format!("{key}:{}", fty.0);
+        let thunk = match self.cx.helpers.get(&key) {
+            Some(t) => *t,
+            None => {
+                let mut ps = vec![Param {
+                    ty: MTy::PTR,
+                    mode: Mode::Borrow,
+                }];
+                ps.extend(params.iter().map(|t| Param {
+                    ty: *t,
+                    mode: Mode::Borrow,
+                }));
+                let mut b = FuncBuilder::new(self.b.m, &format!("<{name}>"), ps, ret);
+                b.func_mut().kind = FuncKind::Closure {
+                    captures: vec![recv_mty],
+                };
+                let args = b.params();
+                let this = b
+                    .emit(Op::ClosureCap, &[args[0]], Imm::Idx(0), Some(recv_mty))
+                    .expect("capture");
+                let rest = &args[1..];
+                let r = match callee {
+                    Err((iface, k)) => b.call_method(iface, k, this, rest),
+                    Ok((fid, false)) => {
+                        let mut all = vec![this];
+                        all.extend_from_slice(rest);
+                        b.call(fid, &all)
+                    }
+                    Ok((fid, true)) => {
+                        // The method changes its receiver; the closure's copy takes the change.
+                        let own = if b.m.needs_drop(recv_mty) {
+                            b.emit(Op::Copy, &[this], Imm::None, Some(recv_mty))
+                                .expect("copy")
+                        } else {
+                            this
+                        };
+                        let slot = b
+                            .emit(Op::Slot, &[], Imm::Ty(recv_mty), Some(MTy::PTR))
+                            .expect("slot");
+                        let put = if b.m.needs_drop(recv_mty) {
+                            Op::Put
+                        } else {
+                            Op::Store
+                        };
+                        b.emit(put, &[slot, own], Imm::None, None);
+                        let mut all = vec![slot];
+                        all.extend_from_slice(rest);
+                        let r = b.call(fid, &all);
+                        let take = if b.m.needs_drop(recv_mty) {
+                            Op::Take
+                        } else {
+                            Op::Load
+                        };
+                        let after = b
+                            .emit(take, &[slot], Imm::Ty(recv_mty), Some(recv_mty))
+                            .expect("take");
+                        if b.m.needs_drop(recv_mty) {
+                            b.emit(Op::Drop, &[after], Imm::None, None);
+                        }
+                        r
+                    }
+                };
+                b.ret(Some(r));
+                let f = b.into_func();
+                let id = self.b.m.add_func(f);
+                self.cx.helpers.insert(key, id);
+                id
+            }
+        };
+        let v = self
+            .b
+            .emit(Op::ClosureNew, &[held], Imm::Func(thunk), Some(fty))
+            .expect("closure");
+        Ok(Val { v, own: true })
+    }
+
     /// A native function used as a value: a closure forwarding to the native.
     pub fn native_function_value(&mut self, e: &Expr, sym: &ct::SymRef) -> Result<Val, Error> {
         let want = self.ety(e);

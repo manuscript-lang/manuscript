@@ -8,7 +8,7 @@ impl Starter for Sequential:
     fn start(operation: fn() Unit) Unit:
         operation()
 fn run() Unit:
-    let values = [0]
+    var values = [0]
     Sequential().start(fn():
         values.append(1)
     )

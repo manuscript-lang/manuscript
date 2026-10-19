@@ -8,7 +8,7 @@ fn positives(values: List[Int]) List[Int]:
     var result: List[Int] = []
     for value in values:
         if value > 0:
-            result = result.append(value)
+            result.append(value)
     return result
 
 test "dynamic mutable data and explicit copies":
@@ -16,8 +16,11 @@ test "dynamic mutable data and explicit copies":
         return panic("check failed")
     if [1].get(5, default: -1) != -1:
         return panic("check failed")
-    let original = Map[String, Int]().add("a", 1)
-    let updated = original.clone().add("b", 2).add("a", 3)
+    var original = Map[String, Int]()
+    original.add("a", 1)
+    var updated = original.clone()
+    updated.add("b", 2)
+    updated.add("a", 3)
     if not (original.get("a") == some(1)):
         return panic("check failed")
     if not (updated.get("a") == some(3)):

@@ -406,7 +406,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) Result[YamlValue, YamlError]:
         )
 
         advance(flow)
-        let values: List[YamlValue] = []
+        var values: List[YamlValue] = []
         flow_space(flow)
 
         while peek(flow) != "]":
@@ -436,8 +436,8 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) Result[YamlValue, YamlError]:
         )
 
         advance(flow)
-        let values = Map[String, YamlValue]()
-        let explicit = Set[String]()
+        var values = Map[String, YamlValue]()
+        var explicit = Set[String]()
         flow_space(flow)
 
         while peek(flow) != "\}":
@@ -764,7 +764,7 @@ fn block_string(
         )
         if content_indent <= base: content_indent = blank_indent
 
-    let parts: List[String] = []
+    var parts: List[String] = []
 
     while context.index < context.lines.length():
         let line = context.lines.get(context.index)
@@ -944,7 +944,7 @@ fn pad(width: Int) String:
 # Columns of the nested sequence levels opened by consecutive compact `- ` indicators.
 fn nested_columns(line: String, base: Int) List[Int]:
     let chars = line.split("")
-    let columns: List[Int] = []
+    var columns: List[Int] = []
     var marker = base
 
     while chars.get(marker, default: "") == "-":
@@ -988,7 +988,7 @@ fn sequence_items(
             # A run of compact sequence indicators (`- - x`) opens one level per
             # indicator. Scan the line once and rewrite it once instead of per level.
             let innermost = chain.get(chain.length() - 1)
-            let frames: List[List[YamlValue]] = []
+            var frames: List[List[YamlValue]] = []
             var level = 1
 
             while level <= chain.length():
@@ -1083,8 +1083,8 @@ fn block(context: Context, base: Int, depth: Int) Result[YamlValue, YamlError]:
 
     if boundary(first, colon: true) >= 0:
         try count(context, depth)
-        let values = Map[String, YamlValue]()
-        let explicit = Set[String]()
+        var values = Map[String, YamlValue]()
+        var explicit = Set[String]()
 
         while context.index < context.lines.length():
             skip(context)
@@ -1220,7 +1220,7 @@ export fn parse(
                     reason: "invalid control character"
                 )
             )
-    let context = Context(
+    var context = Context(
         lines: normalized.split("\n"),
         final_break: normalized.ends_with("\n"),
         index: 0,

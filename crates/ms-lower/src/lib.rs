@@ -16,6 +16,7 @@ mod func;
 mod httplower;
 mod iface;
 mod iterate;
+mod json;
 mod mapset;
 mod matching;
 mod messages;
@@ -27,6 +28,7 @@ mod runner;
 mod stmt;
 mod testing;
 mod text;
+mod with;
 
 pub mod dump;
 pub mod load;

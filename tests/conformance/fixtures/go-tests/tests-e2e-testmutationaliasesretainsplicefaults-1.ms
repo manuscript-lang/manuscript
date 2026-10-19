@@ -12,5 +12,6 @@ test "bound count":
     let splice = [1].splice
     splice(0, -1, [])
 test "continues":
-    let values = [1].splice(0, 1, [])
+    var values = [1]
+    values.splice(0, 1, [])
     values.append(2)

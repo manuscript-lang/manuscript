@@ -81,13 +81,14 @@ test "Bytes split bound methods and generic forwarding retain contracts":
 
 test "Bytes split returns independent List storage and immutable views":
     let data = Bytes([1, 0, 2])
-    let first = data.split(Bytes([0]))
+    var first = data.split(Bytes([0]))
     let second = data.split(Bytes([0]))
     let payload = first.get(0)
     let edited = payload.with_value(0, 99)
-    let extracted = payload.values()
+    var extracted = payload.values()
     extracted.set(0, 88)
-    first.set(0, Bytes([77])).append(Bytes([66]))
+    first.set(0, Bytes([77]))
+    first.append(Bytes([66]))
     try expect_false(
         (
             edited != Bytes([99])
@@ -97,9 +98,9 @@ test "Bytes split returns independent List storage and immutable views":
     )
     try expect_equal(second, [Bytes([1]), Bytes([2])])
     let empty = Bytes([])
-    let zero_parts = data.split(Bytes([0]), 0)
+    var zero_parts = data.split(Bytes([0]), 0)
     zero_parts.append(empty)
     try expect_false(not (data.split(Bytes([0]), 0).is_empty()))
-    let no_parts = empty.split(empty)
+    var no_parts = empty.split(empty)
     no_parts.append(Bytes([1]))
     try expect_false(not (empty.split(empty).is_empty()))

@@ -318,6 +318,16 @@ impl ModuleHir {
             .unwrap_or_default()
     }
 
+    /// The variables a declaration binds for its parameters (a record's fields, in order).
+    pub fn declaration_parameters(&self, id: NodeId) -> Vec<BindingRef> {
+        self.data
+            .facts()
+            .decls
+            .get(&id)
+            .map(|d| d.parameters.clone())
+            .unwrap_or_default()
+    }
+
     /// Payload bindings and contract pattern of a match arm.
     pub fn arm(&self, a: &Arm) -> ArmFacts {
         self.data

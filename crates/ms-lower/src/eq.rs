@@ -29,6 +29,29 @@ impl Cx {
     }
 }
 
+/// Whether values of `t` can be compared structurally.
+fn comparable(m: &Module, t: MTy, visiting: &mut Vec<MTy>) -> bool {
+    if visiting.contains(&t) {
+        return true;
+    }
+    visiting.push(t);
+    let ok = match m.types.kind(t).clone() {
+        TyKind::Rec(r) => m.records[r.index()]
+            .fields
+            .iter()
+            .all(|f| comparable(m, f.1, visiting)),
+        TyKind::Alt(a) => m.alts[a.index()]
+            .cases
+            .iter()
+            .all(|c| c.fields.iter().all(|f| comparable(m, f.1, visiting))),
+        TyKind::List(e) | TyKind::Opt(e) => comparable(m, e, visiting),
+        TyKind::Iface(_) | TyKind::Fn(..) => false,
+        _ => true,
+    };
+    visiting.pop();
+    ok
+}
+
 /// Compares two borrowed operands of type `t`.
 pub(crate) fn element_eq(
     cx: &mut Cx,
@@ -205,7 +228,13 @@ impl Cx {
         for i in inner {
             self.ensure_glue(m, i);
         }
-        if !matches!(m.types.kind(t), TyKind::Rec(_) | TyKind::Alt(_)) {
+        // An optional scalar is a flag and a value with padding between: it compares through glue.
+        let scalar_opt = matches!(m.types.kind(t), TyKind::Opt(i) if matches!(*i, MTy::INT | MTy::FLOAT | MTy::BOOL));
+        if !scalar_opt && !matches!(m.types.kind(t), TyKind::Rec(_) | TyKind::Alt(_)) {
+            return;
+        }
+        // Types holding interface or function values never compare, so they need no glue.
+        if !comparable(m, t, &mut Vec::new()) {
             return;
         }
         let eq = self.eq_fn(m, t);
@@ -285,6 +314,19 @@ fn hash_into(b: &mut FuncBuilder<'_>, t: MTy, v: Value, acc: Value) -> Value {
         TyKind::Alt(_) => {
             let tag = b.alt_tag(v);
             combine(b, acc, tag)
+        }
+        TyKind::Opt(inner) => {
+            let some = b.opt_is_some(v);
+            let flag = b
+                .emit(Op::B2I, &[some], Imm::None, Some(MTy::INT))
+                .expect("b2i");
+            let acc = combine(b, acc, flag);
+            if inner != MTy::INT && inner != MTy::BOOL {
+                return acc;
+            }
+            let x = b.opt_get(v);
+            let with_value = hash_into(b, inner, x, acc);
+            b.select(some, with_value, acc)
         }
         _ => acc,
     }

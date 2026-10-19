@@ -19,7 +19,7 @@ test "bound and forwarded calls keep the equality of the collection creator":
     )
     # A collection keeps the equality of the module that created it, so
     # bound operations from another module do not change how it matches.
-    let items = Set[Key]()
+    var items = Set[Key]()
     let add = first_add(items)
     let remove = first_remove(items)
     add(Key(1, "original"))

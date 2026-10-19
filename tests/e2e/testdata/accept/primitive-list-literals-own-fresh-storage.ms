@@ -4,13 +4,13 @@ fn fresh() List[Int]:
     return [1, 2, 3]
 
 test "literals":
-    let a = fresh()
+    var a = fresh()
     let b = fresh()
     a.append(value: 4)
     try expect_true((a.length() == 4 and b.length() == 3))
-    let floats = [1.5, 2.5]
+    var floats = [1.5, 2.5]
     let flags = [true, false, true]
-    let words = ["a", "b"]
+    var words = ["a", "b"]
     let empty = List[Int]()
     try expect_true(
         (

@@ -19,7 +19,7 @@ test "stream compositions invoke source implementations and preserve EOF":
     try expect_equal(output.data, "é🙂".to_bytes())
 
 test "streams enforce byte limits and preserve original errors":
-    let reader = MemoryStream("abc".to_bytes(), 0, closed: false)
+    var reader = MemoryStream("abc".to_bytes(), 0, closed: false)
     let limited: Result[Bytes, IoError] = error(IoError.LimitExceeded)
     try expect_equal(read_all(ReadStream(reader), 2), limited)
     reader.closed = true

@@ -74,7 +74,7 @@ fn encoded[T](item: T) Result[String, Error]:
     return stringify(item)
 
 test "JSON stringify encodes records in declaration order and omits none fields":
-    let request = Request("m", stream: true, none, 0.5, ["a", "b"])
+    var request = Request("m", stream: true, none, 0.5, ["a", "b"])
     let expected = "\{\"model\":\"m\",\"stream\":true,\"temperature\":0.5,\"tags\":[\"a\",\"b\"]\}"
     try expect_equal((try encoded(request)), expected)
     request.user = some("u")
@@ -96,7 +96,9 @@ test "JSON stringify encodes alternatives and nested optionals":
     try expect_equal((try encoded(missing)), "null")
 
 test "JSON stringify keeps map insertion order and encodes scalars exactly":
-    let ordered = Map[String, Int]().add("b", 2).add("a", 1)
+    var ordered = Map[String, Int]()
+    ordered.add("b", 2)
+    ordered.add("a", 1)
     try expect_equal((try encoded(ordered)), "\{\"b\":2,\"a\":1\}")
     try expect_equal((try encoded(9007199254740993)), "9007199254740993")
     try expect_equal((try encoded(1.0)), "1")
@@ -109,7 +111,7 @@ test "JSON stringify keeps map insertion order and encodes scalars exactly":
 
 test "JSON stringify reports cycles non-finite numbers and budgets as errors":
     let invalid: Result[String, JsonError] = error(JsonError.InvalidData)
-    let node = Node("a", none)
+    var node = Node("a", none)
     node.next = some(node)
     try expect_equal(stringify(node), invalid)
     try expect_equal((try encoded(1e308 * 10.0)), "null")
@@ -120,7 +122,7 @@ test "JSON stringify reports cycles non-finite numbers and budgets as errors":
     try expect_equal(stringify(1, -1), negative)
 
 test "JSON stringify repeats shared acyclic values and reads current field values":
-    let shared = Node("s", none)
+    var shared = Node("s", none)
     let pair = [shared, shared]
     let before = try encoded(pair)
     shared.label = "changed"
@@ -158,7 +160,7 @@ type Tagged:
     case Plain
 
 test "JSON stringify omits values without a JSON form and writes null for list elements":
-    let handler = Handler("h", one, none, none)
+    var handler = Handler("h", one, none, none)
     try expect_equal((try encoded(handler)), "\{\"name\":\"h\"\}")
     handler.retries = some(none)
     try expect_equal((try encoded(handler)), "\{\"name\":\"h\",\"retries\":null\}")
@@ -166,7 +168,8 @@ test "JSON stringify omits values without a JSON form and writes null for list e
     try expect_equal((try encoded(handler)), "\{\"name\":\"h\",\"retries\":3\}")
     let callbacks = [one, one]
     try expect_equal((try encoded(callbacks)), "[null,null]")
-    let named = Map[String, Int]().add("a", 1)
+    var named = Map[String, Int]()
+    named.add("a", 1)
     try expect_equal((try encoded(named)), "\{\"a\":1\}")
     let invalid: Result[String, JsonError] = error(JsonError.InvalidData)
     try expect_equal(stringify(one), invalid)
@@ -188,14 +191,19 @@ test "JSON stringify encodes standard-library values":
     try expect_equal((try encoded(Tagged.Plain)), "\"Plain\"")
 
 test "JSON stringify encodes scalar map keys and rejects the rest":
-    let ints = Map[Int, String]().add(2, "b").add(1, "a")
+    var ints = Map[Int, String]()
+    ints.add(2, "b")
+    ints.add(1, "a")
     try expect_equal((try encoded(ints)), "\{\"2\":\"b\",\"1\":\"a\"\}")
-    let flags = Map[Bool, Int]().add(true, 1)
+    var flags = Map[Bool, Int]()
+    flags.add(true, 1)
     try expect_equal((try encoded(flags)), "\{\"true\":1\}")
-    let decimals = Map[Decimal, Int]().add(1.50d, 1)
+    var decimals = Map[Decimal, Int]()
+    decimals.add(1.50d, 1)
     try expect_equal((try encoded(decimals)), "\{\"1.5\":1\}")
     let invalid: Result[String, JsonError] = error(JsonError.InvalidData)
-    let records = Map[Money, Int]().add(Money(1), 1)
+    var records = Map[Money, Int]()
+    records.add(Money(1), 1)
     try expect_equal(stringify(records), invalid)
 
 test "JSON stringify honors JsonEncode wherever the value appears":
@@ -256,8 +264,10 @@ impl JsonEncode for Event:
             Deleted(id): return tagged("deleted", id)
 
 fn tagged(kind: String, id: Int) JsonValue:
-    let fields = Map[String, JsonValue]().add("type", JsonValue.StringValue(kind))
-    let all = fields.add("id", JsonValue.NumberValue("{id}"))
+    var fields = Map[String, JsonValue]()
+    fields.add("type", JsonValue.StringValue(kind))
+    fields.add("id", JsonValue.NumberValue("{id}"))
+    let all = fields
     return JsonValue.ObjectValue(all)
 
 type Feed:
@@ -394,14 +404,9 @@ test "JSON parse decodes recursive types exact numbers and passthrough values":
     try expect_false(list.get(1).is_some())
 
 test "JSON parse inverts stringify and works in generic code":
-    let profile = Profile(
-        "Ada",
-        20,
-        some("a"),
-        [0.5],
-        Map[String, Int]().add("k", 1),
-        Set[Int]([2])
-    )
+    var chain_1 = Map[String, Int]()
+    chain_1.add("k", 1)
+    let profile = Profile("Ada", 20, some("a"), [0.5], chain_1, Set[Int]([2]))
     let text = try stringify(profile)
     let again: Profile = try decoded[Profile](text)
     try expect_equal((try stringify(again)), text)
@@ -513,10 +518,12 @@ test "JSON round trips fields named like Go keywords":
     try expect_equal(back.range, 3)
 
 test "JSON round trips generic records alternatives and Duration keys":
+    var chain_2 = Map[Duration, String]()
+    chain_2.add(duration(5), "five")
     let w = Wrap(
         [Op.Add(1, 2), Op.Neg(none), Op.Neg(some(3)), Op.Nop],
         [Pair(1, Op.Nop)],
-        Map[Duration, String]().add(duration(5), "five")
+        chain_2
     )
     let t = try stringify(w)
     let back = try parse[Wrap](t)

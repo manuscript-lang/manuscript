@@ -3,12 +3,14 @@
 # conform: origin=tests/e2e/testdata/accept/set-prelude.ms
 import {expect_equal, expect_false} from "@std/testing.ms"
 
-fn insert[T: Hashable](values: Set[T], value: T) Set[T]: values.add(value)
+fn insert[T: Hashable](var values: Set[T], value: T) Unit: values.add(value)
 
 test "set construction and methods need no import":
-    let values: Set[Int] = Set()
+    var values: Set[Int] = Set()
     try expect_false(not values.is_empty())
-    insert(values, 3).add(1).add(3)
+    insert(var values, 3)
+    values.add(1)
+    values.add(3)
     let add = values.add
     add(2)
     try expect_false(values.length() != 3 or not values.contains(2))

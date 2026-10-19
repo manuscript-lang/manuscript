@@ -163,7 +163,7 @@ impl JsonDecoder for Decoder:
         if self.finished: return error(JsonError.InvalidInput)
         if let failure = self.failure: return error(failure)
 
-        let values: List[JsonValue] = []
+        var values: List[JsonValue] = []
 
         for byte in chunk.values():
             let stepped = step(self, byte)
@@ -178,7 +178,7 @@ impl JsonDecoder for Decoder:
         if let failure = self.failure: return error(failure)
 
         self.finished = true
-        let values: List[JsonValue] = []
+        var values: List[JsonValue] = []
         if self.mode == 0: return ok(values)
         if self.mode != 3: return fail(self, JsonError.InvalidData)
 

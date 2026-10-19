@@ -760,6 +760,13 @@ impl<'m> Interp<'m> {
                 };
                 set!(Val::Iface(v, Rc::new(arg(f, regs, a[0], true, m))));
             }
+            Op::IfaceIs => {
+                let (Imm::Vtable(want), Val::Iface(have, _)) = (inst.imm, &regs[a[0].index()])
+                else {
+                    return Err(Raw::internal("iface.is on a non-interface"));
+                };
+                set!(Val::Bool(*have == want));
+            }
             Op::IfaceData => {
                 let Val::Iface(_, d) = &regs[a[0].index()] else {
                     return Err(Raw::internal("iface.data on a non-interface"));

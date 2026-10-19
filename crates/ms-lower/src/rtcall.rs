@@ -80,8 +80,10 @@ fn rt_sig(sym: &str) -> Option<RtSig> {
 
 /// A language-level argument of the call being marshalled.
 #[derive(Clone, Copy)]
-struct Input {
-    val: Option<Val>,
+pub(crate) struct Input {
+    pub(crate) val: Option<Val>,
+    /// The checker converted the argument to an optional element.
+    pub(crate) wrapped: bool,
 }
 
 /// The runtime symbol implementing a native method of a receiver type.
@@ -167,7 +169,7 @@ impl Tail {
 }
 
 /// Where the runtime put the payload of a successful call.
-enum OutKind {
+pub(crate) enum OutKind {
     Unit,
     One(Value, MTy),
     Optional {
@@ -265,12 +267,16 @@ impl FnLower<'_> {
         let sig = rt_sig(sym).ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
         let mut inputs = Vec::new();
         if let Some(r) = recv {
-            inputs.push(Input { val: Some(r) });
+            inputs.push(Input {
+                val: Some(r),
+                wrapped: false,
+            });
         }
         for p in decl {
             let a = args.iter().find(|a| a.name == p.name);
             inputs.push(Input {
                 val: a.map(|a| a.val),
+                wrapped: a.is_some_and(|a| a.wrapped),
             });
         }
         let recv_ty = recv.map(|r| self.ty_of(r.v));
@@ -354,6 +360,14 @@ impl FnLower<'_> {
                     if p.ty == "*const u8" || p.ty == "*mut u8" || consumed_aggregate || wire {
                         // A generic element slot: pass the address of the value in memory.
                         // `*mut` hands the value over; `*const` is lent and taken back.
+                        let x = if input.wrapped {
+                            // The checker converted the argument to an optional element.
+                            let o = self.owned(x);
+                            let v = self.b.opt_some(o);
+                            Val { v, own: true }
+                        } else {
+                            x
+                        };
                         let t = self.ty_of(x.v);
                         let slot = self
                             .b
@@ -403,7 +417,11 @@ impl FnLower<'_> {
     }
 
     /// `(has, value)` runtime operands of an optional scalar argument.
-    fn flatten_optional(&mut self, input: Input, payload: &str) -> Result<(Value, Value), Error> {
+    pub(crate) fn flatten_optional(
+        &mut self,
+        input: Input,
+        payload: &str,
+    ) -> Result<(Value, Value), Error> {
         let zero = |s: &mut Self| match payload {
             "i64" => s.b.iconst(0),
             "f64" => s.b.fconst(0.0),
@@ -678,14 +696,28 @@ impl FnLower<'_> {
 
     /// The `u8` status a runtime function returns, as an `Int` (a `Bool` would make the
     /// optimizer assume 0 or 1). Only the low byte of the return register is defined.
-    fn status_code(&mut self, sym: &str, vals: &[Value]) -> Result<Value, Error> {
+    pub(crate) fn status_code(&mut self, sym: &str, vals: &[Value]) -> Result<Value, Error> {
         let raw = self.call_runtime(sym, vals, MTy::INT)?;
         let mask = self.b.iconst(0xff);
         Ok(self.b.binop(Op::And, raw, mask))
     }
 
+    /// The payload-free cases of `ea` that runtime statuses name, as `(status, case index)`.
+    pub(crate) fn status_cases(&self, ea: ms_mir::types::AltId) -> Vec<(i64, usize)> {
+        STATUS_CASES
+            .iter()
+            .filter_map(|(n, name)| {
+                let idx = self.b.m.alts[ea.index()]
+                    .cases
+                    .iter()
+                    .position(|c| c.name == *name && c.fields.is_empty())?;
+                Some((*n, idx))
+            })
+            .collect()
+    }
+
     /// The error case of `ea` that the status `code` names; the last listed case otherwise.
-    fn status_error(
+    pub(crate) fn status_error(
         &mut self,
         ea: ms_mir::types::AltId,
         code: Value,
@@ -828,7 +860,7 @@ impl FnLower<'_> {
         Ok(r.v)
     }
 
-    fn ok_case_index(&self, a: ms_mir::types::AltId) -> Result<usize, Error> {
+    pub(crate) fn ok_case_index(&self, a: ms_mir::types::AltId) -> Result<usize, Error> {
         self.b.m.alts[a.index()]
             .cases
             .iter()
@@ -837,7 +869,7 @@ impl FnLower<'_> {
     }
 
     /// `ok(value)` when the status is zero, else the error case the status names.
-    fn status_result(
+    pub(crate) fn status_result(
         &mut self,
         sym: &str,
         code: Value,
@@ -872,16 +904,7 @@ impl FnLower<'_> {
                     let e = s.indexed_error(ea, code, err_slot, 0)?;
                     return Ok(Some(s.b.alt_new(a, err as u32, &[e])));
                 }
-                let cases: Vec<(i64, usize)> = STATUS_CASES
-                    .iter()
-                    .filter_map(|(n, name)| {
-                        let idx = s.b.m.alts[ea.index()]
-                            .cases
-                            .iter()
-                            .position(|c| c.name == *name && c.fields.is_empty())?;
-                        Some((*n, idx))
-                    })
-                    .collect();
+                                let cases = s.status_cases(ea);
                 let e = s.status_error(ea, code, &cases)?;
                 Ok(Some(s.b.alt_new(a, err as u32, &[e])))
             },

@@ -21,7 +21,8 @@ export fn main() Int:
     say("s3 = [{s3}]")
     let s4 = (s3.replace("back\\slash", "emoji 😀") + "MiXeD CaSe".reverse())
     say("s4 = [{s4}]")
-    let l5 = l1.clone().append(91)
+    var l5 = l1.clone()
+    l5.append(91)
     say("l5 = {l5} len {l5.length()}")
     let i6 = 159876752502
     say("i6 = {i6}")

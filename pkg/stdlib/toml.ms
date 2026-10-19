@@ -277,7 +277,7 @@ fn string_value(reader: Reader, key: Bool) Result[String, TomlError]:
             return error(invalid(reader, "invalid string escape"))
 
 fn key_path(reader: Reader) Result[List[String], TomlError]:
-    let keys: List[String] = []
+    var keys: List[String] = []
 
     while true:
         space(reader, multiline: false)
@@ -605,7 +605,7 @@ fn read_value(reader: Reader, depth: Int) Result[Node, TomlError]:
 
     if c == "[":
         advance(reader)
-        let values: List[Node] = []
+        var values: List[Node] = []
         space(reader, multiline: true)
 
         while peek(reader) != "]":
@@ -696,7 +696,7 @@ fn materialize(reader: Reader, node: Node, depth: Int) Result[TomlValue, TomlErr
     match node:
         Leaf(value): return ok(value)
         TableNode(id):
-            let entries = Map[String, TomlValue]()
+            var entries = Map[String, TomlValue]()
             for entry in reader.entries.get(id):
                 entries.add(
                     entry.key,
@@ -708,13 +708,13 @@ fn materialize(reader: Reader, node: Node, depth: Int) Result[TomlValue, TomlErr
                 )
             return ok(TomlValue.TableValue(entries))
         ArrayNode(values):
-            let result: List[TomlValue] = []
+            var result: List[TomlValue] = []
             for value in values: result.append(
                 try materialize(reader, value, (depth + 1))
             )
             return ok(TomlValue.ArrayValue(result))
         TableArray(ids):
-            let result: List[TomlValue] = []
+            var result: List[TomlValue] = []
             for id in ids: result.append(
                 try materialize(reader, Node.TableNode(id), (depth + 1))
             )
@@ -762,7 +762,7 @@ export fn parse(
             scan_column = 1
         else: scan_column += 1
 
-    let reader = Reader(
+    var reader = Reader(
         chars: normalized.split(""),
         pos: 0,
         line: 1,
@@ -913,11 +913,11 @@ fn inline_value(value: TomlValue) String:
         BoolValue(flag): return flag.to_string()
         DateTimeValue(text): return text
         ArrayValue(values):
-            let parts: List[String] = []
+            var parts: List[String] = []
             for item in values: parts.append(inline_value(item))
             return "[".concat(parts.join(", ")).concat("]")
         TableValue(values):
-            let parts: List[String] = []
+            var parts: List[String] = []
             for entry in values.entries(): parts.append(
                 format_key(entry.key).concat(" = ").concat(
                     inline_value(entry.value)
@@ -928,7 +928,7 @@ fn inline_value(value: TomlValue) String:
             return "\{ ".concat(parts.join(", ")).concat(" \}")
 
 fn table_items(values: List[TomlValue]) List[Map[String, TomlValue]]:
-    let tables: List[Map[String, TomlValue]] = []
+    var tables: List[Map[String, TomlValue]] = []
 
     for item in values:
         match item:
@@ -938,7 +938,7 @@ fn table_items(values: List[TomlValue]) List[Map[String, TomlValue]]:
     return tables
 
 fn dotted(path: List[String]) String:
-    let parts: List[String] = []
+    var parts: List[String] = []
     for key in path: parts.append(format_key(key))
     return parts.join(".")
 
@@ -987,7 +987,7 @@ fn emit_table(writer: Writer, path: List[String], values: Map[String, TomlValue]
         )
 
     for entry in values.entries():
-        let child = path.clone()
+        var child = path.clone()
         child.append(entry.key)
 
         match entry.value:

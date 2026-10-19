@@ -58,7 +58,9 @@ fn var_parameters_return_updated_values() {
         "vars",
         "type Counter:\n    total: Int\n\nimpl Counter:\n    var fn bump(by: Int) Int:\n        self.total += by\n        return self.total\n\nfn add(var xs: List[Int], v: Int) Unit:\n    xs.append(v)\n\nexport fn main() Int:\n    var c = Counter(total: 1)\n    let a = c.bump(4)\n    var l = [1]\n    add(var l, a)\n    return l.length()\n",
     );
-    assert!(mir.contains(".vars"));
+    // The changed argument travels through a slot the callee takes from and puts back into.
+    assert!(mir.contains("slot "));
+    assert!(mir.contains("take "));
 }
 
 #[test]
@@ -89,7 +91,26 @@ fn methods_that_change_self_hand_it_back() {
         "selfmut",
         "interface Counter:\n    fn next() Int\ntype C:\n    n: Int\nimpl Counter for C:\n    fn next() Int:\n        self.n += 1\n        return self.n\nexport fn main() Int:\n    let c = Counter(C(0))\n    let a = c.next()\n    return a + c.next()\n",
     );
-    assert!(mir.contains("next.vars"));
+    assert!(mir.contains("call.method"));
+    assert!(mir.contains("store "));
+}
+
+#[test]
+fn try_after_an_owned_argument_releases_it() {
+    lower(
+        "tryargs",
+        "import {TextError} from \"@std/errors.ms\"\n\nfn make(n: Int) Result[String, TextError]:\n    if n > 0:\n        return ok(\"x\")\n    return error(TextError(text: \"no\"))\n\nfn join(a: String, b: String) String:\n    return a + b\n\nfn both(n: Int) Result[String, TextError]:\n    return ok(join(a: try make(n), b: try make(n - 1)))\n\nexport fn main() Int:\n    return 0\n",
+    );
+}
+
+#[test]
+fn with_closes_on_every_exit_and_generic_bounds_dispatch_statically() {
+    let mir = lower(
+        "with",
+        "import Closeable from \"@std/cleanup.ms\"\n\ntype Res:\n    n: Int\n\nimpl Closeable for Res:\n    fn close() Unit:\n        let x = self.n\n\nfn run[T: Closeable](r: T, early: Bool) Int:\n    with it = r:\n        if early:\n            return 1\n    return 2\n\nexport fn main() Int:\n    var i = 0\n    while i < 3:\n        with c = Res(i):\n            i += 1\n            if i == 1:\n                continue\n            break\n    return run(r: Res(1), early: true) + i\n",
+    );
+    assert!(mir.matches("call @close").count() >= 4);
+    assert!(mir.contains("cleanup.push"));
 }
 
 #[test]

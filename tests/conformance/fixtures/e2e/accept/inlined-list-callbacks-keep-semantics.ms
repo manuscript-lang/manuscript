@@ -7,7 +7,7 @@ type Point:
     x: Int
 
 test "inlined callbacks":
-    let items = List[Int]()
+    var items = List[Int]()
     var i = 0
 
     while i < 5:
@@ -40,7 +40,7 @@ test "inlined callbacks":
     try expect_true((not items.some(predicate: fn(v: Int) Bool: v == 9)))
     try expect_true((items.every(predicate: fn(v: Int) Bool: v < 5)))
     try expect_true((not items.every(predicate: fn(v: Int) Bool: v < 4)))
-    let seen = List[Int]()
+    var seen = List[Int]()
     items.for_each(
         operation: fn(v: Int) Unit:
             items.append(value: 100)

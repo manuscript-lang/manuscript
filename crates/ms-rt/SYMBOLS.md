@@ -33,6 +33,7 @@ msrt_fault_rem_zero() -> !
 msrt_fault_div_overflow(a: i64, b: i64) -> !
 msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize
 msrt_cleanup_run(handle: usize)
+msrt_cleanup_discard(handle: usize)
 msrt_cancelled() -> !
 msrt_guard_call( code: unsafe extern "C-unwind" fn(*mut u8), data: *mut u8, msg_out: *mut *mut ms_rt_abi::StrObj, ) -> u8
 msrt_io_write_stdout(s: *mut StrObj)
@@ -355,6 +356,14 @@ msrt_json_add_object( d: *mut DocObj, keys: *const *const StrObj, ids: *const u3
 msrt_json_stringify( d: *const DocObj, root: u32, has_max_bytes: u8, max_bytes: i64, has_indent: u8, indent: i64, out: *mut *mut StrObj, ) -> u8
 msrt_json_dec_int(text: *const StrObj, out: *mut i64) -> u8
 msrt_json_dec_float(text: *const StrObj, out: *mut f64) -> u8
+msrt_json_add_float(d: *mut DocObj, v: f64) -> u32
+msrt_json_add_empty_array(d: *mut DocObj) -> u32
+msrt_json_array_push(d: *mut DocObj, arr: u32, item: u32)
+msrt_json_add_empty_object(d: *mut DocObj) -> u32
+msrt_json_object_put( d: *mut DocObj, obj: u32, key: *const StrObj, item: u32, )
+msrt_json_find(d: *const DocObj, id: u32, key: *const StrObj) -> i64
+msrt_json_has_unknown( d: *const DocObj, id: u32, names: *const VecVal, ) -> u8
+msrt_json_variant( d: *const DocObj, id: u32, names: *const VecVal, payload: *mut i64, ) -> i64
 msrt_json_enc_float(v: f64) -> *mut StrObj
 msrt_log_logger_new( has_level: u8, level: i64, has_timestamp: u8, timestamp: u8, has_max: u8, max: i64, out: *mut *mut LoggerObj, ) -> u8
 msrt_log_logger_child( l: *const LoggerObj, fields: *const StrObj, out: *mut *mut LoggerObj, ) -> u8

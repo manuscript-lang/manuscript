@@ -325,7 +325,29 @@ pub struct Tables {
     /// String blob that `*_off` fields index into.
     pub strings: *const u8,
     pub strings_len: usize,
+    /// Only read when `abi_version >= 3`: one `u32` per line entry, the inlining scope
+    /// of that range (0 = the function itself, else one plus an index into `scopes`).
+    pub line_scopes: *const u32,
+    pub scopes: *const ScopeEntry,
+    pub scope_count: usize,
 }
+
+/// One inlined callee, shown as its own fault-trace frame (`abi_version >= 3`).
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ScopeEntry {
+    pub name_off: u32,
+    /// Offset of the callee's file path, or `u32::MAX` when unknown.
+    pub file_off: u32,
+    /// Enclosing scope (0 = the physical function).
+    pub parent: u32,
+    /// Line of the inlined call inside the enclosing scope.
+    pub call_line: u32,
+}
+pub const SCOPE_ENTRY_SIZE: usize = 16;
+
+/// First `Tables::abi_version` that carries `line_scopes` and `scopes`.
+pub const TABLES_WITH_SCOPES: u32 = 3;
 
 // SAFETY: the table is plain read-only data emitted by the compiler.
 unsafe impl Sync for Tables {}
@@ -380,6 +402,8 @@ mod tests {
         assert_eq!(offset_of!(TypeDesc, hash), DESC_HASH_OFFSET);
         assert_eq!(size_of::<FuncEntry>(), FUNC_ENTRY_SIZE);
         assert_eq!(size_of::<LineEntry>(), LINE_ENTRY_SIZE);
+        assert_eq!(size_of::<ScopeEntry>(), SCOPE_ENTRY_SIZE);
+        assert_eq!(size_of::<Tables>(), 80);
         assert_eq!(size_of::<usize>(), 8, "64-bit targets only");
     }
 }

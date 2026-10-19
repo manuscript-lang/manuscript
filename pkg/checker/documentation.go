@@ -249,7 +249,7 @@ func leadingComment(source string, offset int) string {
 	// Names of cases and operations follow their keyword; inline payload fields
 	// do not begin a declaration line and must not inherit a case description.
 	switch strings.TrimSpace(ownLine) {
-	case "", "export", "fn", "case":
+	case "", "export", "fn", "var fn", "case":
 	default:
 		return ""
 	}

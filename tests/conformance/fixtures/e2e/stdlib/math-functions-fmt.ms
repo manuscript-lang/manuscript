@@ -107,8 +107,8 @@ test "extrema use comparator signs without negating Int minimum":
     let second_low = Ranked(1)
     let second_high = Ranked(2)
     let values = [high, low, second_low, second_high]
-    let minimum = min_of(values).get()
-    let maximum = max_of(values).get()
+    var minimum = min_of(values).get()
+    var maximum = max_of(values).get()
     minimum.rank = 0
     maximum.rank = 3
     try expect_false(low.rank != 0 or second_low.rank != 1)

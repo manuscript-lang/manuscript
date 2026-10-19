@@ -33,6 +33,8 @@ pub enum JobKind {
     NativeIface(Rc<crate::netiface::NativeIfaceJob>),
     /// A handler closure the runtime calls.
     HttpAdapter(Rc<crate::httplower::HttpAdapterJob>),
+    /// A JSON decoder or encoder of a type.
+    Json(Rc<crate::json::JsonJob>),
 }
 
 /// A bound native method waiting to be lowered; the closure holds the receiver.
@@ -132,10 +134,7 @@ impl Cx {
     /// The module queries for `file`.
     pub fn module(&self, file: Name) -> Result<Rc<ModuleHir>, Error> {
         self.mods.get(&file).cloned().ok_or_else(|| {
-            Error::new(format!(
-                "unknown module {file}",
-                self.mods.keys().map(|k| k.to_string()).collect::<Vec<_>>()
-            ))
+            Error::new(format!("unknown module {file}"))
         })
     }
 

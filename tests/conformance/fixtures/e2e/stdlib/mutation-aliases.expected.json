@@ -11,51 +11,46 @@
       "tests": [
         {
           "index": 0,
-          "name": "mutation-aliases.ms::Map remove direct and bound preserve aliases order and no-op absence",
+          "name": "mutation-aliases.ms::Map remove direct and bound preserve order and no-op absence",
           "status": "passed"
         },
         {
           "index": 1,
-          "name": "mutation-aliases.ms::Map remove captures its receiver before the key and keeps conversions",
+          "name": "mutation-aliases.ms::Map remove evaluates its key after choosing the receiver and keeps conversions",
           "status": "passed"
         },
         {
           "index": 2,
-          "name": "mutation-aliases.ms::Map explicit and bound interface views preserve field shadowing",
+          "name": "mutation-aliases.ms::Map explicit and bound interface views remove through the adapter",
           "status": "passed"
         },
         {
           "index": 3,
-          "name": "mutation-aliases.ms::List splice direct and bound retain self staging and receiver returns",
+          "name": "mutation-aliases.ms::List splice direct and bound stage a copy of the receiver as replacement",
           "status": "passed"
         },
         {
           "index": 4,
-          "name": "mutation-aliases.ms::List splice preserves shallow replacement references and Optional elements",
+          "name": "mutation-aliases.ms::List splice moves replacement elements and handles Optional elements",
           "status": "passed"
         },
         {
           "index": 5,
-          "name": "mutation-aliases.ms::List explicit and bound interface views preserve field shadowing",
-          "status": "passed"
-        },
-        {
-          "index": 6,
-          "name": "mutation-aliases.ms::List splice through a dispatched view follows reviewed Go range shrink semantics",
+          "name": "mutation-aliases.ms::List explicit and bound interface views splice through the adapter",
           "status": "passed"
         }
       ],
       "summary": {
-        "available": 7,
-        "selected": 7,
-        "passed": 7,
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN mutation-aliases.ms::Map remove direct and bound preserve aliases order and no-op absence\nPASS mutation-aliases.ms::Map remove direct and bound preserve aliases order and no-op absence\nRUN mutation-aliases.ms::Map remove captures its receiver before the key and keeps conversions\nPASS mutation-aliases.ms::Map remove captures its receiver before the key and keeps conversions\nRUN mutation-aliases.ms::Map explicit and bound interface views preserve field shadowing\nPASS mutation-aliases.ms::Map explicit and bound interface views preserve field shadowing\nRUN mutation-aliases.ms::List splice direct and bound retain self staging and receiver returns\nPASS mutation-aliases.ms::List splice direct and bound retain self staging and receiver returns\nRUN mutation-aliases.ms::List splice preserves shallow replacement references and Optional elements\nPASS mutation-aliases.ms::List splice preserves shallow replacement references and Optional elements\nRUN mutation-aliases.ms::List explicit and bound interface views preserve field shadowing\nPASS mutation-aliases.ms::List explicit and bound interface views preserve field shadowing\nRUN mutation-aliases.ms::List splice through a dispatched view follows reviewed Go range shrink semantics\nPASS mutation-aliases.ms::List splice through a dispatched view follows reviewed Go range shrink semantics\n7 tests, 0 failed\n",
+      "stdout": "RUN mutation-aliases.ms::Map remove direct and bound preserve order and no-op absence\nPASS mutation-aliases.ms::Map remove direct and bound preserve order and no-op absence\nRUN mutation-aliases.ms::Map remove evaluates its key after choosing the receiver and keeps conversions\nPASS mutation-aliases.ms::Map remove evaluates its key after choosing the receiver and keeps conversions\nRUN mutation-aliases.ms::Map explicit and bound interface views remove through the adapter\nPASS mutation-aliases.ms::Map explicit and bound interface views remove through the adapter\nRUN mutation-aliases.ms::List splice direct and bound stage a copy of the receiver as replacement\nPASS mutation-aliases.ms::List splice direct and bound stage a copy of the receiver as replacement\nRUN mutation-aliases.ms::List splice moves replacement elements and handles Optional elements\nPASS mutation-aliases.ms::List splice moves replacement elements and handles Optional elements\nRUN mutation-aliases.ms::List explicit and bound interface views splice through the adapter\nPASS mutation-aliases.ms::List explicit and bound interface views splice through the adapter\n6 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

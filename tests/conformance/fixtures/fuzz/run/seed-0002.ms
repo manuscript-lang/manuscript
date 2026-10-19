@@ -33,7 +33,8 @@ export fn main() Int:
     say("i2 = {i2}")
     let l3 = [21, 17, 7, (-21), 22]
     say("l3 = {l3} len {l3.length()}")
-    let l4 = l3.clone().append(31)
+    var l4 = l3.clone()
+    l4.append(31)
     say("l4 = {l4} len {l4.length()}")
     let s5 = (("日本語" + "line\nbreak").reverse() + "日本語")
     say("s5 = [{s5}]")

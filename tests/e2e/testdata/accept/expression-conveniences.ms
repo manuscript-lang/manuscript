@@ -59,7 +59,7 @@ test "indexing and generic applications coexist":
     (callbacks[0](2) != 2 or callbacks[indices[0]](3) != 3) | try expect_false
 
 test "empty list constructors have fresh typed storage":
-    let empty = List[String]()
+    var empty = List[String]()
     let contextual: List[Int] = List()
     let other = List[String]()
     empty.append("a")
@@ -265,7 +265,7 @@ fn observed_optional(counter: Counter) Optional[Int]:
     return some(value: 5)
 
 test "match evaluates its input once and only the selected arm":
-    let counter = Counter(count: 0)
+    var counter = Counter(count: 0)
 
     let result = match observed_optional(counter):
         some(value):
