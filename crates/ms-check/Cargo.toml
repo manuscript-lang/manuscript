@@ -1,0 +1,16 @@
+[package]
+name = "ms-check"
+version = "0.0.0"
+edition.workspace = true
+publish.workspace = true
+description = "Manuscript module graph, type checker and typed HIR"
+
+[dependencies]
+ms-syntax = { path = "../ms-syntax" }
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "ms-check-dev"
+path = "src/bin/ms-check-dev.rs"
