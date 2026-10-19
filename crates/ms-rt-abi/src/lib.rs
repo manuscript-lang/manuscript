@@ -9,7 +9,7 @@
 #![no_std]
 
 /// Bump when any layout or symbol here changes incompatibly.
-pub const ABI_VERSION: u32 = 1;
+pub const ABI_VERSION: u32 = 2;
 
 // ---------------------------------------------------------------------------
 // Object header and reference counting

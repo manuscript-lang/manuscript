@@ -1,4 +1,4 @@
-# ms-rt ABI (version 1)
+# ms-rt ABI (version 2)
 
 Contract between generated code (`ms-clif`) and the native runtime (`ms-rt`).
 Machine-checked constants live in `crates/ms-rt-abi/src/lib.rs`; read offsets
@@ -23,6 +23,29 @@ recorded here before it is committed.)_
   themselves; `freeze` is a move; there is no "builder is sealed" fault).
   Clone becomes explicit `msrt_list_copy` / `msrt_slot_copy`. The sections below
   describe v2 only.
+- **v2.1 (implemented runtime, `ABI_VERSION` 2).** Everything below is implemented and tested in `ms-rt`;
+  `SYMBOLS.md` lists every exported symbol with its Rust signature (regenerate with `python3 crates/ms-rt/gen-symbols.py`).
+  - Strings: refcounted, immutable, **substrings are copies** (no sharing of buffers); empty and one-ASCII-byte results are
+    shared statics (`rc = STATIC_RC`). `scalars == len` means ASCII and enables O(1) indexing; non-ASCII long strings keep a one-entry
+    position hint. Retain/release are valid on statics.
+  - Optional/fallible conventions as in section 1: `Optional[Int]` result = `u8` present + `out: *mut i64`; `Optional[String]` = nullable owned pointer
+    (`bytes_decode_utf8`); `Result` = `status: u8` with `out` last; optional **parameters** flatten to `has_x: u8, x`
+    (borrowed `Optional[String]` parameters are nullable pointers, e.g. `msrt_string_get(s, index, default_or_null)`).
+  - Lists: `msrt_list_*` take `(receiver*, desc*, ...)`. Language `drop(count)` is `msrt_list_drop_n` (`msrt_list_drop` releases the value);
+    `append` is `msrt_list_push`; `prepend/insert/set` consume the element slot; `fill` borrows and copies its value; `splice` and `extend`
+    consume the replacement list; `concat`, `slice`, `take`, `drop_n`, `reversed`, `sorted`, `distinct`, `flatten`, `to_set`, `filled`,
+    `range`, `range_by`, `keys`, `join` build fresh owned results through `out`. Sorting is stable merge sort with the comparator thunk
+    `extern "C-unwind" fn(env: *mut u8, a: *const u8, b: *const u8) -> i64` (negative = before); `env` is the closure the compiler passes.
+    `msrt_list_shift` (Collections.shift) is O(n) (memmove) because a list has no head offset; queue-heavy programs should use `Queue`.
+  - Bytes/BytesBuilder/StringBuilder share `VecVal`; `msrt_bytes_append/extend`, `msrt_strbuilder_append`; `msrt_strbuilder_freeze` **consumes** the builder.
+  - Maps/Sets (`msrt_map_*`, `msrt_set_*`): insertion ordered like Go; `msrt_map_add` consumes key and value (replacing keeps the original position),
+    `msrt_map_get_ptr` returns a borrowed value pointer or null, `msrt_map_get` copies; set algebra builds fresh sets in left-operand order.
+    A set is a map with a null value descriptor and null value slot pointers.
+  - `msrt_start(main_fn, tables, argc, argv)`: `main_fn` is `extern "C-unwind" fn() -> i64` (same machine ABI as `"C"`); runs on a 1 GiB mmap stack with a
+    guard page; SIGINT/SIGTERM set the cancel flag; second request or 30 s later prints `incomplete cleanup: ...` and exits 70.
+  - Profiler as in section 9 (`MS_PROFILE`, `MS_PROFILE_HZ`, `MS_PERF_MAP`); function tables resolve names, frames outside the table collapse to `[runtime]`.
+  - `msrt_fault_destructure(names, elements)` raises the destructuring length mismatch fault.
+  - The static library is built with `panic = "abort"`; it still exports a stub `rust_eh_personality` so `C-unwind` symbols link.
 - v1 initial publication (reference-counted collections; superseded).
 
 ## 1. Conventions

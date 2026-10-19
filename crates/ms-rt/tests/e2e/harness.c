@@ -84,6 +84,6 @@ int main(int argc, char **argv) {
     // Sort by address.
     for (int i = 0; i < 3; i++) for (int j = i + 1; j < 3; j++)
         if (funcs[j].addr < funcs[i].addr) { FuncEntry t = funcs[i]; funcs[i] = funcs[j]; funcs[j] = t; }
-    Tables t = { 1, 0, funcs, 3, 0, 0, names, sizeof names };
+    Tables t = { 2, 0, funcs, 3, 0, 0, names, sizeof names };
     return msrt_start(entry, &t, argc - 1, argv + 1);
 }
