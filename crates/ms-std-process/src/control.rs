@@ -497,6 +497,7 @@ mod tests {
 
     #[test]
     fn environment_round_trip() {
+        let _guard = crate::environment_guard();
         set_environment(b"MS_PROC_TEST", Some(b"v1")).unwrap();
         assert!(
             environment()
@@ -516,6 +517,7 @@ mod tests {
 
     #[test]
     fn load_environment_keeps_existing_values() {
+        let _guard = crate::environment_guard();
         let path = alloc::format!("/tmp/msproc-env-{}", info().unwrap().pid);
         ms_std_fs::ops::write_file(path.as_bytes(), b"MS_LOAD_A=1\nMS_LOAD_B='two'\n", true)
             .unwrap();
