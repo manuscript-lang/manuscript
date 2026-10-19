@@ -177,6 +177,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore = "too slow under Miri")]
     fn deep_chain_does_not_overflow() {
         let _g = lock();
         // SAFETY: nodes created and linked per the contract.

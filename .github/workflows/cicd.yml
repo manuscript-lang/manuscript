@@ -62,6 +62,24 @@ jobs:
           name: conform-oracle-${{ matrix.shard }}
           path: .artifacts/conform-oracle.md
 
+  miri:
+    name: Miri runtime memory-safety check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - name: Install pinned nightly with Miri
+        run: rustup toolchain install nightly-2026-10-18 --profile minimal -c miri,rust-src
+      # Permissive provenance: compiled code hands the runtime function and data addresses as
+      # integers. Leaks are ignored because unit tests never free their strings. The tests that
+      # raise Manuscript faults (inline-asm unwinding) are `#[cfg_attr(miri, ignore)]`.
+      - name: Run ms-rt unit tests under Miri
+        env:
+          MIRIFLAGS: -Zmiri-permissive-provenance -Zmiri-ignore-leaks
+        run: cargo +nightly-2026-10-18 miri test -p ms-rt --lib
+
   build:
     name: Build design book
     runs-on: ubuntu-24.04
