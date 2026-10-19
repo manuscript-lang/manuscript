@@ -579,6 +579,19 @@ impl<'a> FnLower<'a> {
         }
         let rty = self.ty_of(recv.v);
         let name = m.name().map(|n| n.to_string()).unwrap_or_default();
+        if ms_check::effects::collection_mutation(&m.receiver, &name) {
+            // The bound receiver is a copy: the mutated collection is the result.
+            let b = self.borrow(recv);
+            let old = self.owned(Val { v: b, own: false });
+            let (new, r) = self.mutate_any(&name, old, &m.ty.params, args, true, result)?;
+            return Ok(match r {
+                Some(r) => {
+                    self.drop_value(new);
+                    r
+                }
+                None => Val { v: new, own: true },
+            });
+        }
         let sym = crate::rtcall::typed_method_symbol(&m.receiver, &name)
             .or_else(|| crate::rtcall::method_symbol(self.b.m, rty, m.native.as_str()))
             .ok_or_else(|| {
