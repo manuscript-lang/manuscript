@@ -2,7 +2,7 @@
 //! `ms profile`): source to Cranelift-compiled native executable.
 //!
 //! ```text
-//! ms_driver::load_file -> check_graph -> Lower -> optimize -> ms-clif -> link with ms-rt
+//! ms_driver::load_file -> check_graph -> Lower -> optimize -> ms-clif -> link with ms-native
 //! ```
 //!
 //! [`RustBackend`] is generic over the [`Lower`] stage so the CLI does not
@@ -12,6 +12,7 @@
 
 mod build;
 mod run;
+mod runtime;
 pub mod testing;
 
 use std::path::{Path, PathBuf};
@@ -31,8 +32,8 @@ use crate::util::plural;
 /// The `ms` engine for native builds. `L` turns a checked program into MIR.
 pub struct RustBackend<L: Lower> {
     pub lowering: L,
-    /// The runtime static library to link; found with
-    /// [`ms_driver::locate_runtime`] when unset.
+    /// The native static library to link; `MS_RT_LIB`, then the archive
+    /// embedded in `ms` (see [`runtime`]), when unset.
     pub runtime: Option<PathBuf>,
 }
 
@@ -59,7 +60,10 @@ impl<L: Lower> RustBackend<L> {
     ) -> Result<(), String> {
         let runtime = match &self.runtime {
             Some(runtime) => runtime.clone(),
-            None => ms_driver::locate_runtime()?,
+            None => match ms_driver::runtime_override()? {
+                Some(runtime) => runtime,
+                None => runtime::embedded()?,
+            },
         };
         ms_driver::build_executable(&mut compiled.module, output, profile(kind), &runtime)?;
         write_metadata(output, kind);

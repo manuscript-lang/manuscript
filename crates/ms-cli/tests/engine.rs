@@ -22,26 +22,6 @@ impl Lower for Fixed {
 const EXIT_SEVEN: &str =
     "module \"t\"\nentry @main\nfn @main() -> int {\nb0:\n  %c: int = iconst 7\n  ret %c\n}\n";
 
-/// `libms_rt.a`, built once with cargo.
-fn runtime() -> &'static PathBuf {
-    static RUNTIME: OnceLock<PathBuf> = OnceLock::new();
-    RUNTIME.get_or_init(|| {
-        let output = Command::new(env!("CARGO"))
-            .args(["build", "-p", "ms-rt", "--message-format=json"])
-            .output()
-            .expect("cargo");
-        assert!(output.status.success(), "cargo build -p ms-rt failed");
-        String::from_utf8_lossy(&output.stdout)
-            .lines()
-            .filter_map(|line| line.split("\"filenames\":[").nth(1))
-            .flat_map(|rest| rest.split(']').next().unwrap_or("").split(','))
-            .map(|name| name.trim_matches('"'))
-            .find(|name| name.ends_with("/libms_rt.a"))
-            .map(PathBuf::from)
-            .expect("libms_rt.a in cargo output")
-    })
-}
-
 fn scratch(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("ms-engine-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
@@ -80,7 +60,7 @@ const MAIN: &str = "export fn main() Int:\n    return 0\n";
 fn run_returns_the_program_status() {
     let dir = scratch("run");
     let source = write(&dir, "main.ms", MAIN);
-    let backend = RustBackend::new(Fixed(EXIT_SEVEN)).with_runtime(runtime());
+    let backend = RustBackend::new(Fixed(EXIT_SEVEN));
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!((status, err.as_str()), (7, ""));
 }
@@ -90,7 +70,7 @@ fn build_writes_an_executable_and_reports_it() {
     let dir = scratch("build");
     let source = write(&dir, "main.ms", MAIN);
     let out = dir.join("prog");
-    let backend = RustBackend::new(Fixed(EXIT_SEVEN)).with_runtime(runtime());
+    let backend = RustBackend::new(Fixed(EXIT_SEVEN));
     let (status, stdout, err) = ms(&backend, &["build", &source, "-o", out.to_str().unwrap()]);
     assert_eq!(status, 0, "{err}");
     assert!(stdout.starts_with("Built "), "{stdout}");
@@ -116,7 +96,7 @@ fn build_writes_an_executable_and_reports_it() {
 fn checker_diagnostics_stop_before_lowering() {
     let dir = scratch("diagnostics");
     let source = write(&dir, "main.ms", "export fn main() Int:\n    return \"x\"\n");
-    let backend = RustBackend::new(Fixed(EXIT_SEVEN)).with_runtime(runtime());
+    let backend = RustBackend::new(Fixed(EXIT_SEVEN));
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!(status, 1);
     assert!(err.contains(": type: "), "{err}");
@@ -131,7 +111,7 @@ fn checker_diagnostics_stop_before_lowering() {
 #[test]
 fn entry_must_be_an_exported_main() {
     let dir = scratch("entry");
-    let backend = RustBackend::new(Fixed(EXIT_SEVEN)).with_runtime(runtime());
+    let backend = RustBackend::new(Fixed(EXIT_SEVEN));
     for (text, expected) in [
         ("fn main() Int:\n    return 0\n", "main is not exported"),
         (
@@ -160,7 +140,7 @@ fn imports_load_in_dependency_order() {
         "main.ms",
         "import { one } from \"./lib.ms\"\n\nexport fn main() Int:\n    return one()\n",
     );
-    let backend = RustBackend::new(Fixed(EXIT_SEVEN)).with_runtime(runtime());
+    let backend = RustBackend::new(Fixed(EXIT_SEVEN));
     assert_eq!(ms(&backend, &["run", &source]).0, 7);
 
     let missing = write(
@@ -190,7 +170,7 @@ fn unavailable_lowering_is_a_lowering_diagnostic() {
 fn build_refuses_to_overwrite_source_and_directories() {
     let dir = scratch("protected");
     let source = write(&dir, "main.ms", MAIN);
-    let backend = RustBackend::new(Fixed(EXIT_SEVEN)).with_runtime(runtime());
+    let backend = RustBackend::new(Fixed(EXIT_SEVEN));
     let (status, _, err) = ms(&backend, &["build", &source, "-o", &source]);
     assert_eq!(status, 2);
     assert!(err.contains("would overwrite main.ms"), "{err}");
@@ -213,7 +193,7 @@ fn library_projects_have_no_executable_entry() {
         "lib.ms",
         "export fn one() Int:\n    return 1\n",
     );
-    let backend = RustBackend::new(Fixed(EXIT_SEVEN)).with_runtime(runtime());
+    let backend = RustBackend::new(Fixed(EXIT_SEVEN));
     let manifest = dir.join("ms.toml");
     let (status, _, err) = ms(&backend, &["build", manifest.to_str().unwrap()]);
     assert_eq!(status, 1);
@@ -233,16 +213,30 @@ fn native_lowering_runs_real_programs() {
         "main.ms",
         "export fn main() Int:\n    return 6 * 7 - 40\n",
     );
-    let backend = RustBackend::new(Native).with_runtime(runtime());
+    let backend = RustBackend::new(Native);
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!((status, err.as_str()), (2, ""));
+}
+
+/// A standard-library native outside `ms-rt` links through the embedded `ms-native` archive.
+#[test]
+fn native_programs_link_every_standard_library_crate() {
+    let dir = scratch("native-std");
+    let source = write(
+        &dir,
+        "main.ms",
+        "import {parse, format} from \"@std/semver.ms\"\n\nexport fn main() Int:\n    let v = parse(\"1.2.3\").get()\n    if format(v) == \"1.2.3\":\n        return 0\n    return 1\n",
+    );
+    let backend = RustBackend::new(Native);
+    let (status, _, err) = ms(&backend, &["run", &source]);
+    assert_eq!((status, err.as_str()), (0, ""));
 }
 
 #[test]
 fn native_tests_run_one_process_each() {
     let dir = scratch("native-test");
     let source = write(&dir, "sample_test.ms", TESTS);
-    let backend = RustBackend::new(Native).with_runtime(runtime());
+    let backend = RustBackend::new(Native);
     let (status, stdout, err) = ms(&backend, &["test", &source]);
     assert_eq!(status, 1, "{err}");
     for line in [

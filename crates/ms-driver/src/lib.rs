@@ -17,7 +17,7 @@ pub use compile::{CheckRequest, Checked, check_graph, check_graph_at};
 pub use load::{EditorOptions, Graph, LoadOptions, load_editor_file, load_file};
 pub use lower::{Lower, LowerOptions, Native, Unavailable};
 pub use ms_mir::ir::Module;
-pub use native::{Profile, build_executable, locate_runtime};
+pub use native::{Profile, build_executable, runtime_override};
 
 /// The syntax types diagnostics are made of.
 pub use ms_syntax::{Diagnostic, Phase, Pos};
