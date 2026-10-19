@@ -87,6 +87,7 @@ pub fn wait_supervised(
     let stops = Stops::catch();
     let started = Instant::now();
     let (mut timed_out, mut interrupted) = (false, false);
+    let mut last = None;
     let result = loop {
         match child.try_wait() {
             Ok(Some(status)) => {
@@ -101,6 +102,7 @@ pub fn wait_supervised(
         }
         if let Some(pending) = stops.take() {
             interrupted = true;
+            last = Some(pending);
             // SAFETY: the pid belongs to a child of this process that has not been reaped.
             unsafe { kill(child.id() as i32, pending) };
         }
@@ -112,7 +114,17 @@ pub fn wait_supervised(
         std::thread::sleep(Duration::from_millis(10));
     };
     drop(stops);
+    // Hand the signal back to a surrounding `Stops` (the watch loops), which stops watching.
+    if let Some(pending) = last {
+        PENDING.store(pending, Ordering::SeqCst);
+    }
     result
+}
+
+/// Ask `child` to stop the way Ctrl-C does, so it can cancel and clean up.
+pub fn interrupt(child: &Child) {
+    // SAFETY: the pid belongs to a child of this process that has not been reaped.
+    unsafe { kill(child.id() as i32, SIGINT) };
 }
 
 /// The exit status as a process status: the code, or 255 when killed by a signal.
