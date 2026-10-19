@@ -375,6 +375,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "ms-std-csv"
+version = "0.1.0"
+dependencies = [
+ "ms-rt",
+ "ms-rt-abi",
+ "ms-std-core",
+]
+
+[[package]]
+name = "ms-std-encoding"
+version = "0.1.0"
+dependencies = [
+ "ms-rt",
+ "ms-rt-abi",
+ "ms-std-core",
+]
+
+[[package]]
+name = "ms-std-url"
+version = "0.1.0"
+dependencies = [
+ "ms-rt",
+ "ms-rt-abi",
+ "ms-std-core",
+]
+
+[[package]]
 name = "ms-syntax"
 version = "0.0.0"
 

@@ -167,9 +167,9 @@ pub unsafe fn write_string_list<S: AsRef<str>>(
 ///
 /// # Safety
 /// `out` is writable memory for a `VecVal`.
-pub unsafe fn write_string_matrix<S: AsRef<str>>(
+pub unsafe fn write_string_matrix<S: AsRef<str>, R: IntoIterator<Item = S>>(
     out: *mut VecVal,
-    rows: impl IntoIterator<Item = Vec<S>>,
+    rows: impl IntoIterator<Item = R>,
 ) {
     // SAFETY: as `write_string_list`; each row slot is consumed by the push.
     unsafe {
