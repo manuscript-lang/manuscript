@@ -41,7 +41,10 @@ test "map literals and positional identifier arguments":
     values.add(key, value)
     try expect_equal(values.get(key).get(), value)
     var log: List[Int] = []
-    let ordered = {mark(var log, 1): mark(var log, 2), mark(var log, 1): mark(var log, 3)}
+    let ordered = {
+        mark(var log, 1): mark(var log, 2),
+        mark(var log, 1): mark(var log, 3)
+    }
     try expect_false(log != [1, 2, 1, 3] or ordered.get(1).get() != 3)
     let shared = {"x": values}
     values.add("d", 6)

@@ -44,7 +44,9 @@ test "list callbacks":
     )
     try expect_true((items.count(predicate: fn(value: Int) Bool: value > 1) == 3))
     var retained = List[fn() Int]()
-    items.for_each(operation: fn(value: Int) Unit: keep(list: var retained, value: value))
+    items.for_each(
+        operation: fn(value: Int) Unit: keep(list: var retained, value: value)
+    )
     let called = retained.map(fn(value: fn() Int) Int: value())
     try expect_true(
         (

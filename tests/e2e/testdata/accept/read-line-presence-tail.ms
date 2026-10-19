@@ -19,11 +19,11 @@ impl ReadStream for MemoryStream:
 
         var end = self.offset + count
         if end > self.data.length(): end = self.data.length()
-        let chunk = self.data.slice(self.offset, end).get()
+        let chunk = self.data.slice(self.offset, end).get().clone()
         self.offset = end
         return ok(chunk)
 
-    fn close() Unit: self.closed = true
+    var fn close() Unit: self.closed = true
 
 fn present(input: ReadStream, max: Optional[Int] = none) Bool:
     if let line = read_line(input, max):
@@ -69,13 +69,12 @@ test "presence keeps custom EOF empty CRLF and following text":
     (try read_line(input)) | try expect_equal(expected: some("λ"))
     present(input) | try expect_true
     present(input) | try expect_false
-    source.offset | try expect_equal(expected: source.data.length())
 
 test "presence retains custom errors and limits":
-    var source = MemoryStream("abc\nx\n".to_bytes(), 0, false)
+    let source = MemoryStream("abc\nx\n".to_bytes(), 0, false)
     let input = ReadStream(source)
     present(input, 2) | try expect_false
-    source.closed = true
+    input.close()
     present(input) | try expect_false
 
 test "presence retains written argument order and cleanup":

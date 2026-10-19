@@ -12,7 +12,9 @@ fn generated(var rng: Rng, depth: Int) TomlValue:
     let kind = next(var rng, choices)
     if kind == 0: return TomlValue.BoolValue(next(var rng, 2) == 0)
     if kind == 1: return TomlValue.IntValue(next(var rng, 200000) - 100000)
-    if kind == 2: return TomlValue.FloatValue((next(var rng, 2000) - 1000).to_float() / 8.0)
+    if kind == 2: return TomlValue.FloatValue(
+        (next(var rng, 2000) - 1000).to_float() / 8.0
+    )
     if kind == 3: return TomlValue.StringValue(text(var rng))
 
     if kind == 4:

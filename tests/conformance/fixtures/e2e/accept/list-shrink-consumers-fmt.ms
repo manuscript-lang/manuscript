@@ -18,12 +18,10 @@ fn mutate[T](var values: List[T], mode: String, replacement: T) Unit:
         values.append(replacement)
         values.append(replacement)
 
-fn observe[T](
-    var values: List[T],
-    mode: String,
-    replacement: T,
-    callback: Bool
-) Result[List[T], Error]:
+fn observe[T](var values: List[T], mode: String, replacement: T, callback: Bool) Result[
+    List[T],
+    Error
+]:
     var seen: List[T] = []
     var visits = Visits(0)
     let visit = fn(value: T) Unit:

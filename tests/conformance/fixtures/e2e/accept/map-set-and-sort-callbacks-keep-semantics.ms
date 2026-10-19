@@ -39,7 +39,12 @@ test "map callbacks":
         )
     )
     var visited = List[Int]()
-    m.for_each(fn(key: String, value: Int) Unit: record(into: var visited, value: value))
+    m.for_each(
+        fn(key: String, value: Int) Unit: record(
+            into: var visited,
+            value: value
+        )
+    )
     try expect_true((visited.length() == 3))
 
 test "set callbacks":

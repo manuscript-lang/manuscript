@@ -105,7 +105,9 @@ test "optional labels on methods and native functions":
 
 test "omitted labels preserve evaluation order":
     var state = Counter(value: 0)
-    (try prepare_receiver(var state)).apply(next(var state)) | try expect_equal(expected: 3)
+    (try prepare_receiver(var state)).apply(next(var state)) | try expect_equal(
+        expected: 3
+    )
     state.value | try expect_equal(expected: 2)
     subtract(deduction: next(var state), amount: next(var state)) | try expect_equal(
         expected: 1

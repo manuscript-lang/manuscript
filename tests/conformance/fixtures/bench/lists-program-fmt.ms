@@ -45,10 +45,12 @@ export fn main() Int: return 0
 
 fn callback_write(var values: List[Int]) Int:
     var total = Total(0)
-    values.for_each(
-        fn(value):
-            total.value += value
-            if value == 0:
-                values.set(0, 7)
+    (
+        values.clone().for_each(
+            fn(value):
+                total.value += value
+                if value == 0:
+                    values.set(0, 7)
+        )
     )
     return total.value
