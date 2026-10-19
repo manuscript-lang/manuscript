@@ -278,6 +278,37 @@ impl<'a> FnLower<'a> {
             "time/clock" => self.time_clock(e, false),
             "time/wall_clock" => self.time_clock(e, true),
             "io/read_line" => self.read_line_native(e, view, params),
+            "time/duration" => {
+                // A `Duration` is its count of nanoseconds.
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::INT));
+                }
+                let n = args
+                    .first()
+                    .ok_or_else(|| Error::new("duration without nanoseconds"))?;
+                Ok(Val {
+                    v: self.borrow(n.val),
+                    own: false,
+                })
+            }
+            "sleep" => {
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let d = args
+                    .first()
+                    .ok_or_else(|| Error::new("sleep without a duration"))?;
+                let d = self.borrow(d.val);
+                self.at(e.pos);
+                self.call_runtime("msstd_time_sleep", &[d], MTy::UNIT)?;
+                Ok(self.dummy(MTy::UNIT))
+            }
+            "math/min" => self.math_extreme(e, view, false),
+            "math/max" => self.math_extreme(e, view, true),
+            "math/min_of" => self.math_extreme_of(e, view, false),
+            "math/max_of" => self.math_extreme_of(e, view, true),
             "io/read_all" => self.stream_native(e, view, crate::streamloop::Loop::ReadAll),
             "io/copy" => self.stream_native(e, view, crate::streamloop::Loop::Copy),
             other
@@ -293,23 +324,6 @@ impl<'a> FnLower<'a> {
             }
             other if other.starts_with("testing/") => {
                 self.testing_native(e, view, &other["testing/".len()..])
-            }
-            "math/min" | "math/max" | "math/min_of" | "math/max_of" => {
-                let mut args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let func = sym.decl.as_ref().and_then(|d| d.func());
-                self.fill_native_defaults(sym.module, func, params, &mut args)?;
-                self.at(e.pos);
-                let ty = self.ety(e);
-                if native.ends_with("_of") {
-                    let result = self.emty(e)?;
-                    let elem = ty.args.first().cloned().unwrap_or_else(|| ty.clone());
-                    self.extreme_of(native == "math/max_of", &args, result, Some((&elem, e)))
-                } else {
-                    self.min_max(native == "math/max", &args, Some((&ty, e)))
-                }
             }
             other => {
                 if !self.has_native_call(other) {
@@ -345,10 +359,10 @@ impl<'a> FnLower<'a> {
         result: MTy,
     ) -> Result<Val, Error> {
         if matches!(native, "math/min" | "math/max") {
-            return self.min_max(native == "math/max", args, None);
+            return self.min_max(native == "math/max", args);
         }
         if matches!(native, "math/max_of" | "math/min_of") {
-            return self.extreme_of(native == "math/max_of", args, result, None);
+            return self.extreme_of(native == "math/max_of", args, result);
         }
         if native == "time/duration" {
             return Ok(Val {
@@ -362,12 +376,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// Whether `a` orders strictly above `b`; Float orders NaN above every other value.
-    fn strictly_above(
-        &mut self,
-        a: Value,
-        b: Value,
-        user: Option<(&ct::Ty, &Expr)>,
-    ) -> Result<Value, Error> {
+    fn strictly_above(&mut self, a: Value, b: Value) -> Result<Value, Error> {
         use ms_mir::ir::{Cc, Op};
         let t = self.ty_of(a);
         let above = if t == MTy::INT {
@@ -386,10 +395,6 @@ impl<'a> FnLower<'a> {
             let c = self.call_runtime(sym, &[a, b], MTy::INT)?;
             let zero = self.b.iconst(0);
             self.b.icmp(Cc::Gt, c, zero)
-        } else if let Some((concrete, e)) = user {
-            let c = self.user_compare(concrete, a, b, e)?;
-            let zero = self.b.iconst(0);
-            self.b.icmp(Cc::Gt, c, zero)
         } else {
             return Err(Error::new(format!(
                 "unsupported min/max on {}",
@@ -399,69 +404,14 @@ impl<'a> FnLower<'a> {
         Ok(above)
     }
 
-    /// The `Int` a user `Comparable` implementation of `concrete` answers for `a.compare(b)`.
-    fn user_compare(
-        &mut self,
-        concrete: &ct::Ty,
-        a: Value,
-        b: Value,
-        e: &Expr,
-    ) -> Result<Value, Error> {
-        let im = self
-            .cx
-            .methods
-            .iter()
-            .find(|m| {
-                m.name().is_some_and(|n| n.as_str() == "compare")
-                    && !m.id.as_str().is_empty()
-                    && m.contract.is_some()
-                    && ct::unify(
-                        &m.receiver,
-                        concrete,
-                        &ct::variable_set(&m.variables),
-                        &mut ct::Subst::new(),
-                    )
-            })
-            .cloned()
-            .ok_or_else(|| Error::new(format!("{concrete} has no Comparable implementation")))?;
-        let decl = im
-            .decl
-            .as_ref()
-            .ok_or_else(|| Error::new("compare without declaration"))?;
-        let c = self.callable_of_decl(im.module, Some(decl.id()))?;
-        let mut subst = ct::Subst::new();
-        ct::unify(
-            &im.receiver,
-            concrete,
-            &ct::variable_set(&im.variables),
-            &mut subst,
-        );
-        let iface = self.mty(&ct::sub(&im.ty.params[0].ty, &subst))?;
-        let mark = self.temps.len();
-        let other = self.fit_ty(Val { v: b, own: false }, concrete, iface)?;
-        let args = crate::call::Args {
-            slots: vec![Some(Val { v: a, own: false }), Some(other)],
-            places: vec![None, None],
-        };
-        let r = self.call_callable(&c, &subst, args, e)?;
-        let v = self.borrow(r);
-        self.flush_temps(mark);
-        Ok(v)
-    }
-
     /// `max(left, right)` / `min(left, right)`: `left` unless `right` is strictly greater
     /// (lesser). Floats order NaN above every other value.
-    fn min_max(
-        &mut self,
-        max: bool,
-        args: &[NArg],
-        user: Option<(&ct::Ty, &Expr)>,
-    ) -> Result<Val, Error> {
+    fn min_max(&mut self, max: bool, args: &[NArg]) -> Result<Val, Error> {
         let (left, right) = (self.borrow(args[0].val), self.borrow(args[1].val));
         let t = self.ty_of(left);
         // `a` ordered strictly above `b`.
         let (a, b) = if max { (right, left) } else { (left, right) };
-        let above = self.strictly_above(a, b, user)?;
+        let above = self.strictly_above(a, b)?;
         if !self.needs_drop(t) {
             let v = self.b.select(above, right, left);
             return Ok(Val { v, own: false });
@@ -485,13 +435,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// `max_of(values)` / `min_of(values)`: the first greatest (least) element, or `none`.
-    fn extreme_of(
-        &mut self,
-        max: bool,
-        args: &[NArg],
-        result: MTy,
-        user: Option<(&ct::Ty, &Expr)>,
-    ) -> Result<Val, Error> {
+    fn extreme_of(&mut self, max: bool, args: &[NArg], result: MTy) -> Result<Val, Error> {
         use ms_mir::ir::{Cc, Op};
         // The list lives in a variable so the loop and the branches may read it.
         let list = self.borrow(args[0].val);
@@ -522,9 +466,9 @@ impl<'a> FnLower<'a> {
         let cur = self.b.list_get(l, iv);
         let held = self.b.list_get(l, bv);
         let above = if max {
-            self.strictly_above(cur, held, user)?
+            self.strictly_above(cur, held)?
         } else {
-            self.strictly_above(held, cur, user)?
+            self.strictly_above(held, cur)?
         };
         let pick = self.b.select(above, iv, bv);
         self.b.def_var(best, pick);
@@ -808,6 +752,27 @@ impl<'a> FnLower<'a> {
             let r = self.borrow(recv);
             let text = self.b.call(f, &[r]);
             return Ok(Val { v: text, own: true });
+        }
+        if native == "string/form_normalize" {
+            // The form is a payload-free alternative: its case index selects the algorithm.
+            let result = self.emty(e)?;
+            let find = |n: &str| args.iter().find(|a| a.name.as_str() == n).copied();
+            let text = find("text").ok_or_else(|| Error::new("normalize without text"))?;
+            let text = self.borrow(text.val);
+            let form = self.borrow(recv);
+            let kind = self.b.alt_tag(form);
+            let (has, max) = self.optional_int(find("max_bytes"))?;
+            let sym = "msrt_string_normalize_kind";
+            let sig = crate::rtcall::rt_sig(sym)
+                .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
+            return self.finish_rt_call(sym, &sig, true, vec![text, kind, has, max], result);
+        }
+        if native == "time/duration_nanoseconds" {
+            // A `Duration` is its count of nanoseconds.
+            return Ok(Val {
+                v: self.borrow(recv),
+                own: false,
+            });
         }
         if let Some(v) = self.time_field(m, recv)? {
             return Ok(v);
@@ -1936,7 +1901,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// Visits each element with `body(index, element)`; a returned condition leaves the loop when true.
-    fn each_element(
+    pub(crate) fn each_element(
         &mut self,
         lv: ms_mir::builder::Var,
         body: &mut ElementBody<'_, Self>,

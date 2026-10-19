@@ -40,9 +40,12 @@ pub(crate) fn function_symbol(native: &str) -> Option<String> {
         return Some((*sym).to_string());
     }
     let (module, name) = native.split_once('/')?;
+    // The list functions of `collections` share the runtime's `list` entry points.
+    let alias = (module == "collections").then(|| format!("msrt_list_{name}"));
     ["msrt", "msstd"]
         .iter()
         .map(|prefix| format!("{prefix}_{module}_{name}"))
+        .chain(alias)
         .find(|sym| rt_sig(sym).is_some())
 }
 
@@ -100,6 +103,8 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         "format_precision" => "to_precision",
         "format_exponential" => "to_exponential",
         "format_fixed" => "to_fixed",
+        "format_float" => "to_string",
+        "compare_int" | "compare_float" => "compare",
         other => other,
     };
     let name = name
@@ -486,6 +491,17 @@ impl FnLower<'_> {
                         i += fields;
                         continue;
                     }
+                    // A `String` for a byte-vector parameter is encoded first.
+                    let x = if p.ty.ends_with("VecVal") && self.ty_of(x.v) == MTy::STR {
+                        let s = self.borrow(x);
+                        let bytes = self.call_runtime("msrt_string_to_bytes", &[s], MTy::BYTES)?;
+                        Val {
+                            v: bytes,
+                            own: true,
+                        }
+                    } else {
+                        x
+                    };
                     let consumed_aggregate = p.ty == "*mut VecVal" || p.ty == "*mut MapVal";
                     let clock = p.ty == "*const Timestamp" || p.ty == "*const Instant";
                     if p.ty == "*const u8" || p.ty == "*mut u8" || consumed_aggregate || clock {
@@ -714,6 +730,38 @@ impl FnLower<'_> {
                 let code = self.status_code(sym, &vals)?;
                 return self.status_result(sym, code, None, None, result);
             }
+            if ret == MTy::STR && matches!(self.b.m.types.kind(result), TyKind::Alt(_)) {
+                // A string that cannot fail: `Result[String, E]`.
+                let text = self.call_runtime(sym, &vals, MTy::STR)?;
+                let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
+                    unreachable!()
+                };
+                let ok = self.ok_case_index(a)?;
+                let v = self.b.alt_new(a, ok as u32, &[text]);
+                return Ok(Val { v, own: true });
+            }
+            if ret == MTy::BOOL && result == MTy::UNIT {
+                // A status the interface ignores: `Unit`.
+                self.call_runtime(sym, &vals, MTy::BOOL)?;
+                return Ok(Val {
+                    v: self.b.unit(),
+                    own: false,
+                });
+            }
+            // A handle for a stream interface: `Subprocess.stdout()`.
+            if sig.ret.starts_with("*mut Handle<")
+                && let TyKind::Iface(i) = self.b.m.types.kind(result).clone()
+            {
+                let hir = self.hir.clone();
+                let vt = self.cx.handle_vtable_of(self.b.m, &hir, sym, i)?;
+                let ht = crate::natiface::handle_ty(self.b.m);
+                let h = self.call_runtime(sym, &vals, ht)?;
+                let v = self
+                    .b
+                    .emit(Op::IfaceNew, &[h], Imm::Vtable(vt), Some(result))
+                    .expect("iface");
+                return Ok(Val { v, own: true });
+            }
             // A null string pointer is the absent `Optional[String]`.
             let ret = match self.b.m.types.kind(result) {
                 TyKind::Opt(inner) if ret == MTy::STR && *inner == MTy::STR => result,
@@ -741,6 +789,10 @@ impl FnLower<'_> {
             // The constructed value returns through the trailing out pointer.
             let out = self.call_runtime(sym, &vals, result)?;
             return Ok(Val { v: out, own: true });
+        }
+        // `InfoOut` is flat words that become a `FileInfo` record.
+        if sig.params.last().is_some_and(|p| p.ty == "*mut InfoOut") {
+            return self.finish_stat(sym, vals, result);
         }
         // A status (or presence flag) plus a value through `out`.
         let payload = match self.b.m.types.kind(result).clone() {
