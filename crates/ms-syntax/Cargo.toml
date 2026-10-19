@@ -1,0 +1,13 @@
+[package]
+name = "ms-syntax"
+version = "0.0.0"
+edition.workspace = true
+publish.workspace = true
+description = "Manuscript lexer, parser, syntax tree, diagnostics and formatter"
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "ms-syntax"
+path = "src/bin/ms-syntax.rs"
