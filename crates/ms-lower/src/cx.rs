@@ -29,6 +29,8 @@ pub enum JobKind {
     NativeThunk(Rc<NativeThunkJob>),
     /// A native method bound to its receiver.
     BoundNative(Rc<BoundNativeJob>),
+    /// A source callable used as a value whose omittable parameters are optionals.
+    DefaultThunk(Rc<DefaultThunkJob>),
     /// A JSON decoder or encoder of a type.
     Json(Rc<crate::json::JsonJob>),
     /// A forwarder of an interface operation to a runtime handle function.
@@ -51,6 +53,8 @@ pub struct NativeThunkJob {
     pub native: String,
     /// Declared parameters under the use site's substitution.
     pub params: Vec<ct::Param>,
+    /// The declaration, for the defaults of omitted parameters.
+    pub sym: ct::SymRef,
     /// Module the use is written in.
     pub hir: Rc<ModuleHir>,
 }
@@ -65,6 +69,16 @@ pub struct LambdaJob {
     pub subst: Subst,
     /// Captured variables in closure-object order.
     pub captures: Vec<ct::BindingRef>,
+}
+
+/// A source callable behind a function value that fills omitted defaults.
+pub struct DefaultThunkJob {
+    /// The callable.
+    pub callable: Rc<Callable>,
+    /// Type variables of the instance.
+    pub subst: Subst,
+    /// The captured receiver type of a bound method.
+    pub recv: Option<MTy>,
 }
 
 /// A function body waiting to be lowered.
@@ -183,7 +197,10 @@ impl Cx {
             Kind::Function => {
                 let mut params = Vec::new();
                 for p in &t.params {
-                    params.push(self.lower_ty(m, &p.ty)?);
+                    let pt = self.lower_ty(m, &p.ty)?;
+                    // A parameter that may be omitted crosses a function value as an optional.
+                    let lifted = t.is_default(p.name) && !p.ty.is_std("Optional");
+                    params.push(if lifted { m.types.opt(pt) } else { pt });
                 }
                 let ret = self.lower_ty(m, &t.result_ty())?;
                 Ok(m.types.func(params, ret))

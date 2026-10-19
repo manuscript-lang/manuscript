@@ -161,3 +161,12 @@ fn comparable_impls_order_extremes_and_result_methods_are_values() {
     );
     assert!(mir.contains("call.method"));
 }
+
+#[test]
+fn lambdas_and_function_values_fill_omitted_defaults() {
+    let mir = lower(
+        "defaults",
+        "import stdout from \"@std/io.ms\"\n\nfn scale(value: Int, by: Int = 2) Int: value * by\n\nexport fn main() Int:\n    let f = scale\n    let g = fn(value: Int = 4): value\n    let r = stdout().write(\"{f(3)} {f(3, 3)} {g()}\\n\")\n    return 0\n",
+    );
+    assert!(mir.contains("opt.is_some"));
+}

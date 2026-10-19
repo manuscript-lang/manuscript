@@ -194,7 +194,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// The default of an omitted parameter, written in the callee's scope.
-    fn default_argument(
+    pub(crate) fn default_argument(
         &mut self,
         callee: &Callable,
         i: usize,
