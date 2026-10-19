@@ -406,6 +406,13 @@ pub(crate) fn build_format(
             let r = b.use_var(acc);
             b.ret(Some(r));
         }
+        TyKind::Iface(i) if cx.is_handle_iface(i) => {
+            let lit = b.str_lit("[object]");
+            let r = b
+                .emit(Op::Copy, &[lit], Imm::None, Some(MTy::STR))
+                .expect("copy");
+            b.ret(Some(r));
+        }
         TyKind::Fn(..) | TyKind::Obj(..) => {
             // Functions and native objects print as a fixed marker.
             let text = if matches!(b.m.types.kind(t), TyKind::Fn(..)) {

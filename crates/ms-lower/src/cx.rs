@@ -29,6 +29,8 @@ pub enum JobKind {
     NativeThunk(Rc<NativeThunkJob>),
     /// A native method bound to its receiver.
     BoundNative(Rc<BoundNativeJob>),
+    /// A method of a handle-backed interface.
+    NativeIface(Rc<crate::netiface::NativeIfaceJob>),
 }
 
 /// A bound native method waiting to be lowered; the closure holds the receiver.
@@ -93,6 +95,8 @@ pub struct Cx {
     pub mutated: std::collections::HashSet<crate::mutation::ParamKey>,
     /// The `make_fixture` factory and hooks type of each module with tests.
     pub fixtures: HashMap<Name, ms_check::TestFixture>,
+    /// The checked contract behind each lowered interface.
+    pub iface_cts: HashMap<u32, ct::Ty>,
 }
 
 impl Cx {
@@ -119,6 +123,7 @@ impl Cx {
             vtables: HashMap::new(),
             methods: program.methods.clone(),
             fixtures: program.test_fixtures.clone(),
+            iface_cts: HashMap::new(),
         }
     }
 
@@ -214,6 +219,7 @@ impl Cx {
                 });
                 let ty = m.types.iface(id);
                 self.tycache.insert(key.to_string(), ty);
+                self.iface_cts.insert(id.0, t.clone());
                 let subst = ct::substitution(t);
                 let mut methods = Vec::new();
                 if let Some(def) = &t.def {
@@ -279,8 +285,10 @@ impl Cx {
             return Ok(MTy::INT);
         }
         // Runtime handles are reference-counted objects.
-        if t.is_std("Regex") {
-            return Ok(m.types.obj("Regex", Vec::new()));
+        for name in ["Regex", "IpAddress", "Cidr", "HttpHeaders"] {
+            if t.is_std(name) {
+                return Ok(m.types.obj(name, Vec::new()));
+            }
         }
         Err(Error::new(format!("unsupported native type {t}")))
     }

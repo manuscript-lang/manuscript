@@ -20,6 +20,7 @@ mod matching;
 mod messages;
 mod mutation;
 mod native;
+mod netiface;
 mod rtcall;
 mod runner;
 mod stmt;

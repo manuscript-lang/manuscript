@@ -575,19 +575,19 @@ unsafe fn datagrams<'a>(o: *const Obj) -> &'a Rc<Datagrams> {
 /// # Safety
 /// `d` is a DatagramSocket handle.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_net_datagram_address(d: *const Obj) -> *mut StrObj {
+pub unsafe extern "C" fn msrt_net_datagram_address(sock: *const Obj) -> *mut StrObj {
     // SAFETY: caller contract.
-    new_string(unsafe { datagrams(d) }.address())
+    new_string(unsafe { datagrams(sock) }.address())
 }
 
 /// `DatagramSocket.close()`.
 ///
 /// # Safety
-/// `d` is a DatagramSocket handle.
+/// `sock` is a DatagramSocket handle.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_net_datagram_close(d: *const Obj) {
+pub unsafe extern "C" fn msrt_net_datagram_close(sock: *const Obj) {
     // SAFETY: caller contract.
-    unsafe { datagrams(d) }.close();
+    unsafe { datagrams(sock) }.close();
 }
 
 /// `DatagramSocket.receive(max_bytes, timeout)`: the datagram's `data` and `sender`.
@@ -596,7 +596,7 @@ pub unsafe extern "C" fn msrt_net_datagram_close(d: *const Obj) {
 /// `data` is writable memory for a `VecVal`; `sender` is writable.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn msrt_net_datagram_receive(
-    d: *const Obj,
+    sock: *const Obj,
     has_max: u8,
     max: i64,
     has_timeout: u8,
@@ -607,7 +607,7 @@ pub unsafe extern "C" fn msrt_net_datagram_receive(
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let r = datagrams(d).receive(opt(has_max, max), opt(has_timeout, timeout));
+        let r = datagrams(sock).receive(opt(has_max, max), opt(has_timeout, timeout));
         finish(r, err, |dg| {
             write_bytes(data, &dg.data);
             *sender = new_string(&dg.sender);
@@ -621,7 +621,7 @@ pub unsafe extern "C" fn msrt_net_datagram_receive(
 /// `data` and `address` are live strings.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn msrt_net_datagram_send(
-    d: *const Obj,
+    sock: *const Obj,
     data: *const StrObj,
     address: *const StrObj,
     has_timeout: u8,
@@ -630,7 +630,7 @@ pub unsafe extern "C" fn msrt_net_datagram_send(
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let r = datagrams(d).send(
+        let r = datagrams(sock).send(
             str_ref(data).as_bytes(),
             str_ref(address),
             opt(has_timeout, timeout),
@@ -645,7 +645,7 @@ pub unsafe extern "C" fn msrt_net_datagram_send(
 /// `data` is a live `Bytes` value; `address` a live string.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn msrt_net_datagram_send_bytes(
-    d: *const Obj,
+    sock: *const Obj,
     data: *const VecVal,
     address: *const StrObj,
     has_timeout: u8,
@@ -654,7 +654,7 @@ pub unsafe extern "C" fn msrt_net_datagram_send_bytes(
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let r = datagrams(d).send(bytes_ref(data), str_ref(address), opt(has_timeout, timeout));
+        let r = datagrams(sock).send(bytes_ref(data), str_ref(address), opt(has_timeout, timeout));
         finish(r, err, |()| {})
     }
 }
