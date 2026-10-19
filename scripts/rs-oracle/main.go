@@ -108,6 +108,7 @@ func main() {
 		"url":      genURL,
 		"path":     genPath,
 		"compress": genCompress,
+		"crypto":   genCrypto,
 	}
 	names := flag.Args()
 	if len(names) == 0 {
@@ -413,4 +414,123 @@ func genCompress(dir string) {
 		r.row("decompress", f, "x", "-", "=>", strings.Join(okOrErr(d, func(b *rt.Bytes) []string { return []string{hb(b)} }), " "))
 	}
 	r.write(dir, "compress.tsv")
+}
+
+// ---- crypto ----
+
+var cryptoAlgs = []rt.HashAlgorithm{
+	rt.HashAlgorithm_Md5{}, rt.HashAlgorithm_Sha1{}, rt.HashAlgorithm_Sha224{}, rt.HashAlgorithm_Sha256{},
+	rt.HashAlgorithm_Sha384{}, rt.HashAlgorithm_Sha512{}, rt.HashAlgorithm_Sha3_256{}, rt.HashAlgorithm_Sha3_384{}, rt.HashAlgorithm_Sha3_512{},
+}
+
+func bytesRes(r rt.Result[*rt.Bytes, rt.CryptoError]) string {
+	return strings.Join(okOrErr(r, func(b *rt.Bytes) []string { return []string{hb(b)} }), " ")
+}
+
+func genCrypto(dir string) {
+	r := &recorder{}
+	rng := rand.New(rand.NewSource(21))
+	rnd := func(n int) *rt.Bytes {
+		b := make([]byte, n)
+		rng.Read(b)
+		return rt.NewBytes(b)
+	}
+	lens := []int{0, 1, 3, 15, 16, 17, 55, 56, 63, 64, 65, 111, 112, 127, 128, 129, 135, 136, 137, 200, 1000}
+	for ai, alg := range cryptoAlgs {
+		a := strconv.Itoa(ai)
+		for _, n := range lens {
+			data := rnd(n)
+			r.row("digest", a, hb(data), "=>", hb(rt.HashAlgorithm_Digest(nil, alg, data)))
+			for _, kn := range []int{0, 1, 20, 64, 65, 136, 137, 300} {
+				key := rnd(kn)
+				r.row("hmac", a, hb(key), hb(data), "=>", bytesRes(rt.HashAlgorithm_Hmac(nil, alg, key, data)))
+			}
+		}
+		for _, c := range []struct{ pw, salt, it, n int }{{0, 0, 1, 1}, {5, 8, 1, 20}, {5, 8, 3, 65}, {70, 16, 10, 100}, {10, 4, 0, 10}, {10, 4, -1, 10}, {10, 4, 2, 0}, {10, 4, 2, -5}, {10, 4, 2, 1048577}, {3, 3, 2, 1048576}} {
+			if c.n > 100000 {
+				c.it = 1
+			}
+			pw, salt := rnd(c.pw), rnd(c.salt)
+			r.row("pbkdf2", a, hb(pw), hb(salt), strconv.Itoa(c.it), strconv.Itoa(c.n), "=>", bytesRes(rt.HashAlgorithm_DeriveKey(nil, alg, pw, salt, c.it, c.n)))
+		}
+		size := map[int]int{0: 16, 1: 20, 2: 28, 3: 32, 4: 48, 5: 64, 6: 32, 7: 48, 8: 64}[ai]
+		for _, c := range []struct{ sec, salt, info, n int }{{0, 0, 0, 1}, {22, 0, 0, 42}, {22, 13, 10, 42}, {5, 5, 5, size}, {5, 5, 5, size + 1}, {5, 5, 5, 255 * size}, {5, 5, 5, 255*size + 1}, {5, 5, 5, 0}, {5, 5, 5, -1}} {
+			sec, salt, info := rnd(c.sec), rnd(c.salt), rnd(c.info)
+			r.row("hkdf", a, hb(sec), hb(salt), hb(info), strconv.Itoa(c.n), "=>", bytesRes(rt.HashAlgorithm_Hkdf(nil, alg, sec, salt, info, c.n)))
+		}
+		for _, kn := range []int{0, 5, 70} {
+			key := rnd(kn)
+			c1, c2 := rnd(7), rnd(130)
+			for _, withKey := range []bool{false, true} {
+				var hs rt.Hasher
+				ks := "-"
+				if withKey {
+					hs, ks = rt.HashAlgorithm_HmacHasher(nil, alg, key), hb(key)
+				} else {
+					hs = rt.HashAlgorithm_Hasher(nil, alg)
+				}
+				hs.Update(nil, c1)
+				hs.Update(nil, c2)
+				d1 := hs.Finish(nil)
+				d2 := hs.Finish(nil)
+				r.row("hasher", a, ks, hb(c1), hb(c2), "=>", hb(d1), hb(d2))
+			}
+		}
+	}
+	for _, x := range [][2]*rt.Bytes{{rnd(0), rnd(0)}, {rnd(5), rnd(5)}} {
+		r.row("cteq", hb(x[0]), hb(x[1]), "=>", b2s(rt.Crypto_ConstantTimeEqual(nil, x[0], x[1])))
+	}
+	same := rnd(8)
+	r.row("cteq", hb(same), hb(same), "=>", b2s(rt.Crypto_ConstantTimeEqual(nil, same, same)))
+	for _, kn := range []int{0, 15, 16, 23, 24, 31, 32, 33} {
+		for _, nn := range []int{11, 12, 16} {
+			for _, pn := range []int{0, 1, 15, 16, 17, 100} {
+				key, nonce, pt, aad := rnd(kn), rnd(nn), rnd(pn), rnd(pn%5)
+				sealed := rt.Crypto_Seal(nil, key, nonce, pt, aad)
+				r.row("seal", hb(key), hb(nonce), hb(pt), hb(aad), "=>", bytesRes(sealed))
+				if !sealed.Failed {
+					ct := sealed.Val
+					r.row("open", hb(key), hb(nonce), hb(ct), hb(aad), "=>", bytesRes(rt.Crypto_Open(nil, key, nonce, ct, aad)))
+					bad := append([]byte{}, ct.Data...)
+					if len(bad) > 0 {
+						bad[len(bad)/2] ^= 1
+					}
+					r.row("open", hb(key), hb(nonce), hb(rt.NewBytes(bad)), hb(aad), "=>", bytesRes(rt.Crypto_Open(nil, key, nonce, rt.NewBytes(bad), aad)))
+					r.row("open", hb(key), hb(nonce), hb(ct), hb(rnd(3)), "=>", bytesRes(rt.Crypto_Open(nil, key, nonce, ct, rnd(3))))
+					r.row("open", hb(key), hb(nonce), hb(rnd(3)), hb(aad), "=>", bytesRes(rt.Crypto_Open(nil, key, nonce, rnd(3), aad)))
+				}
+			}
+		}
+		for _, ivn := range []int{15, 16, 17} {
+			for _, dn := range []int{0, 1, 15, 16, 17, 47, 48, 100} {
+				key, iv, data := rnd(kn), rnd(ivn), rnd(dn)
+				r.row("ctr", hb(key), hb(iv), hb(data), "=>", bytesRes(rt.Crypto_AesCtr(nil, key, iv, data)))
+				enc := rt.Crypto_AesCbcEncrypt(nil, key, iv, data)
+				r.row("cbcenc", hb(key), hb(iv), hb(data), "=>", bytesRes(enc))
+				r.row("cbcdec", hb(key), hb(iv), hb(data), "=>", bytesRes(rt.Crypto_AesCbcDecrypt(nil, key, iv, data)))
+				if !enc.Failed {
+					r.row("cbcdec", hb(key), hb(iv), hb(enc.Val), "=>", bytesRes(rt.Crypto_AesCbcDecrypt(nil, key, iv, enc.Val)))
+					tampered := append([]byte{}, enc.Val.Data...)
+					tampered[len(tampered)-1] ^= 0x55
+					r.row("cbcdec", hb(key), hb(iv), hb(rt.NewBytes(tampered)), "=>", bytesRes(rt.Crypto_AesCbcDecrypt(nil, key, iv, rt.NewBytes(tampered))))
+				}
+			}
+		}
+	}
+	for _, sn := range []int{0, 31, 32, 33, 32, 32, 32} {
+		seed, msg := rnd(sn), rnd(sn*3)
+		pub := rt.Crypto_PublicKey(nil, seed)
+		r.row("pubkey", hb(seed), "=>", bytesRes(pub))
+		sig := rt.Crypto_Sign(nil, seed, msg)
+		r.row("sign", hb(seed), hb(msg), "=>", bytesRes(sig))
+		if !sig.Failed {
+			r.row("verify", hb(pub.Val), hb(msg), hb(sig.Val), "=>", b2s(rt.Crypto_Verify(nil, pub.Val, msg, sig.Val)))
+			r.row("verify", hb(pub.Val), hb(rnd(4)), hb(sig.Val), "=>", b2s(rt.Crypto_Verify(nil, pub.Val, rnd(4), sig.Val)))
+			bad := append([]byte{}, sig.Val.Data...)
+			bad[3] ^= 1
+			r.row("verify", hb(pub.Val), hb(msg), hb(rt.NewBytes(bad)), "=>", b2s(rt.Crypto_Verify(nil, pub.Val, msg, rt.NewBytes(bad))))
+			r.row("verify", hb(rnd(32)), hb(msg), hb(sig.Val), "=>", b2s(rt.Crypto_Verify(nil, rnd(32), msg, sig.Val)))
+		}
+	}
+	r.write(dir, "crypto.tsv")
 }

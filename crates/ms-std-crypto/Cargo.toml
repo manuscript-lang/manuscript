@@ -1,0 +1,28 @@
+[package]
+name = "ms-std-crypto"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Native implementation of @std/crypto.ms (RustCrypto primitives)"
+
+[dependencies]
+aes = { version = "0.9", default-features = false }
+aes-gcm = { version = "0.11", default-features = false, features = ["aes", "alloc"] }
+cbc = { version = "0.2", default-features = false, features = ["alloc"] }
+cipher = { version = "0.5", default-features = false, features = ["alloc"] }
+ctr = { version = "0.10", default-features = false }
+ed25519-dalek = { version = "3", default-features = false, features = ["alloc"] }
+digest = { version = "0.11", default-features = false }
+md-5 = { version = "0.11", default-features = false }
+sha1 = { version = "0.11", default-features = false }
+sha2 = { version = "0.11", default-features = false }
+sha3 = { version = "0.12", default-features = false }
+subtle = { version = "2", default-features = false }
+ms-rt-abi = { path = "../ms-rt-abi" }
+ms-std-core = { path = "../ms-std-core" }
+
+[dev-dependencies]
+ms-rt = { path = "../ms-rt", features = ["std"] }
+
+[lints]
+workspace = true
