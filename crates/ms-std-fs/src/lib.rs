@@ -22,6 +22,7 @@ pub mod path;
 pub mod stream;
 pub mod sys;
 pub mod walk;
+pub mod watch;
 
 use alloc::vec::Vec;
 use err::{Fail, Res};
@@ -828,6 +829,82 @@ pub unsafe extern "C" fn msstd_fs_constants(names: *mut VecVal, values: *mut Vec
         write_string_list(&n, names);
         ms_std_rt::write_list(&v, values);
     }
+}
+
+type WatchHandle = Handle<watch::Watcher>;
+
+/// A polling watcher (`interval_ns` > 0); `max` bounds tracked paths.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_fs_watch(
+    path: *const StrObj,
+    recursive: u8,
+    interval_ns: i64,
+    has_max: u8,
+    max: i64,
+    out: *mut *mut WatchHandle,
+) -> u8 {
+    // SAFETY: arguments follow the ABI contract.
+    let r = lim(has_max, max)
+        .and_then(|m| watch::Poll::new(unsafe { str_bytes(path) }, recursive != 0, interval_ns, m));
+    // SAFETY: `out` is writable.
+    finish(r, |p| unsafe { *out = new_handle(watch::Watcher::poll(p)) })
+}
+
+/// A native (inotify) watcher; `overflow` is `error` or `ignore`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_fs_watch_native(
+    path: *const StrObj,
+    recursive: u8,
+    has_max: u8,
+    max: i64,
+    has_events: u8,
+    events: i64,
+    overflow: *const StrObj,
+    out: *mut *mut WatchHandle,
+) -> u8 {
+    // SAFETY: arguments follow the ABI contract.
+    let (path, overflow) = unsafe { (str_bytes(path), str_bytes(overflow)) };
+    let r = lim(has_max, max).and_then(|m| {
+        let e = if has_events != 0 { events } else { 128 };
+        watch::Native::new(
+            path,
+            recursive != 0,
+            if has_max != 0 { m } else { i64::MAX },
+            e,
+            overflow,
+        )
+    });
+    // SAFETY: `out` is writable.
+    finish(r, |n| unsafe {
+        *out = new_handle(watch::Watcher::native(n))
+    })
+}
+
+/// Waits for activity. `paths` receives a `List[String]` and `kinds` one byte per event
+/// (1 `rename`, 0 `change`). `STATUS_CLOSED` after close, `STATUS_LIMIT_EXCEEDED` on overflow.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_fs_watch_next(
+    h: *mut WatchHandle,
+    paths: *mut VecVal,
+    kinds: *mut VecVal,
+) -> u8 {
+    // SAFETY: `h` is a live watcher handle.
+    let r = unsafe { (*h).value.wait() };
+    finish(r, |events| {
+        let strs: Vec<*mut StrObj> = events.iter().map(|e| new_string(&e.path)).collect();
+        let bits: Vec<u8> = events.iter().map(|e| e.rename as u8).collect();
+        // SAFETY: `paths` and `kinds` are writable.
+        unsafe {
+            write_string_list(&strs, paths);
+            write_bytes(&bits, kinds);
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_fs_watch_close(h: *mut WatchHandle) {
+    // SAFETY: `h` is a live watcher handle.
+    unsafe { (*h).value.close() }
 }
 
 /// Stand-ins for the runtime symbols `ms-std-rt` links against, so the crate's unit tests link alone.

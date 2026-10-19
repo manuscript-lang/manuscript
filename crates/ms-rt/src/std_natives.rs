@@ -322,6 +322,39 @@ mod fs_io {
     }
 
     #[test]
+    fn file_watchers_through_the_abi() {
+        let _g = lock();
+        let root = std::format!("/tmp/msrt-watch-{}", std::process::id());
+        let r = st(&root);
+        let overflow = st("error");
+        let mut h: *mut ms_std_rt::Handle<ms_std_fs::watch::Watcher> = core::ptr::null_mut();
+        let (mut paths, mut kinds) = (empty(), empty());
+        // SAFETY: valid runtime strings, live handles and writable outputs throughout.
+        unsafe {
+            assert_eq!(msstd_fs_create_directory(r, 1), STATUS_OK);
+            assert_eq!(
+                msstd_fs_watch_native(r, 1, 0, 0, 0, 0, st("bogus"), &mut h),
+                ms_rt_abi::STATUS_INVALID_INPUT
+            );
+            assert_eq!(
+                msstd_fs_watch_native(r, 1, 0, 0, 0, 0, overflow, &mut h),
+                STATUS_OK
+            );
+            let file = st(&std::format!("{root}/x"));
+            assert_eq!(msstd_fs_write_file(file, &vec_of(b"1"), 0), STATUS_OK);
+            assert_eq!(msstd_fs_watch_next(h, &mut paths, &mut kinds), STATUS_OK);
+            assert_eq!((paths.len, contents(&kinds)), (1, vec![1]));
+            msstd_fs_watch_close(h);
+            assert_eq!(
+                msstd_fs_watch_next(h, &mut paths, &mut kinds),
+                ms_rt_abi::STATUS_CLOSED
+            );
+            ms_std_rt::release(h.cast());
+            assert_eq!(msstd_fs_remove(r, 1), STATUS_OK);
+        }
+    }
+
+    #[test]
     fn io_streams_through_the_abi() {
         let _g = lock();
         let path = st("/proc/self/stat");
