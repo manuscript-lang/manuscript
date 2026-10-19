@@ -119,6 +119,7 @@ func main() {
 		"regex":    genRegex,
 		"archive":  genArchive,
 		"json":     genJSON,
+		"html":     genHTML,
 	}
 	names := flag.Args()
 	if len(names) == 0 {
@@ -995,4 +996,101 @@ func genJSON(dir string) {
 		r.row("scalar", h(t), "=>", b2s(iok)+" "+strconv.Itoa(iv)+" "+b2s(fok)+" "+strconv.FormatUint(math.Float64bits(fv), 16))
 	}
 	r.write(dir, "json.tsv")
+}
+
+// ---- html ----
+
+// htmlDump renders a tree: D[..], E<tag>,<ns>{<name>,<ns>,<value>;..}[..], T<text>;, C<text>;, Y<name>,<public>,<system>;
+// with every string hex-encoded.
+func htmlDump(n rt.HtmlNode) string {
+	switch n := n.(type) {
+	case rt.HtmlNode_Document:
+		var b strings.Builder
+		b.WriteString("D[")
+		for _, c := range n.Children.Items {
+			b.WriteString(htmlDump(c))
+		}
+		return b.String() + "]"
+	case rt.HtmlNode_Element:
+		var b strings.Builder
+		b.WriteString("E" + hex.EncodeToString([]byte(n.Tag)) + "," + hex.EncodeToString([]byte(n.Namespace)) + "{")
+		for _, a := range n.Attributes.Items {
+			b.WriteString(hex.EncodeToString([]byte(a.Name)) + "," + hex.EncodeToString([]byte(a.Namespace)) + "," + hex.EncodeToString([]byte(a.Value)) + ";")
+		}
+		b.WriteString("}[")
+		for _, c := range n.Children.Items {
+			b.WriteString(htmlDump(c))
+		}
+		return b.String() + "]"
+	case rt.HtmlNode_Text:
+		return "T" + hex.EncodeToString([]byte(n.Text)) + ";"
+	case rt.HtmlNode_Comment:
+		return "C" + hex.EncodeToString([]byte(n.Text)) + ";"
+	case rt.HtmlNode_Doctype:
+		return "Y" + hex.EncodeToString([]byte(n.Name)) + "," + hex.EncodeToString([]byte(n.PublicId)) + "," + hex.EncodeToString([]byte(n.SystemId)) + ";"
+	}
+	return "?"
+}
+
+func genHTML(dir string) {
+	r := &recorder{}
+	frags := []string{
+		"<p>", "</p>", "<b>", "</b>", "<i>", "</i>", "<a href=x>", "<a href='y' id=z>", "</a>", "<div>", "</div>", "<span class=\"c d\">", "</span>",
+		"<table>", "</table>", "<tr>", "</tr>", "<td>", "</td>", "<th>", "<tbody>", "<thead>", "<caption>", "<col>", "<colgroup>", "</colgroup>",
+		"<ul>", "<li>", "</li>", "<ol>", "<dl>", "<dt>", "<dd>", "<h1>", "</h1>", "<h2>", "<pre>", "\n", "</pre>", "<br>", "<br/>", "<hr>", "<img src=a>",
+		"<svg>", "</svg>", "<math>", "</math>", "<svg:rect>", "<foreignObject>", "</foreignObject>", "<clipPath>", "<mi>", "<mglyph>", "<annotation-xml encoding=text/html>",
+		"<select>", "</select>", "<option>", "<optgroup>", "<textarea>", "</textarea>", "<input type=hidden>", "<input>", "<button>", "</button>",
+		"<script>", "</script>", "<script><!--<script>", "<style>", "</style>", "<title>", "</title>", "<noscript>", "</noscript>", "<noembed>", "<iframe>", "<xmp>", "<plaintext>",
+		"<template>", "</template>", "<form>", "</form>", "<frameset>", "<frame>", "<noframes>", "<body>", "</body>", "<html lang=en>", "</html>", "<head>", "</head>",
+		"<!-- c -->", "<!-->", "<!--->", "<!--x--!>", "<!--", "-->", "<!x>", "<?pi?>", "</>", "</ x>", "<![CDATA[x]]>", "<![CDATA[", "]]>",
+		"<!DOCTYPE html>", "<!doctype HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">", "<!DOCTYPE>", "<!DOCTYPE foo SYSTEM 'x'>",
+		"&amp;", "&lt;", "&gt;", "&quot;", "&#65;", "&#x41;", "&#x;", "&#;", "&notit;", "&copy", "&copyx", "&ampx", "&nbsp;", "&#0;", "&#128;", "&#xD800;", "&", "a=b&c=d",
+		"text", " ", "  \t", "\r\n", "\r", "\x00", "é☃😀", "<", "<<", "< p>", "<p", "<p a", "<p a=", "<p a='", "<p a=b/", "<p/>", "<div/>", "<a a a=b a>",
+		"<b><i></b></i>", "<nobr>", "<font color=red>", "<font>", "<center>", "<marquee>", "<object>", "<applet>", "<ruby>", "<rt>", "<rb>", "<rtc>", "<rp>",
+		"<details>", "<summary>", "<dialog>", "<main>", "<search>", "<image>", "<keygen>", "<menuitem>", "<custom-el>", "</custom-el>", "<x-y z=1>",
+	}
+	rng := rand.New(rand.NewSource(21))
+	docs := []string{
+		"", "plain", "<p>one<p>two", "<!DOCTYPE html><html><head><title>t</title></head><body><p>hi</p></body></html>",
+		"<table><tr><td>a<td>b</table>", "<table><b><tr><td>x</b>y</table>", "<b>1<p>2</b>3</p>", "<a><table><a>", "<svg><title><b></b></title></svg>",
+		"<math><mi><b>x</b></mi><mo>&amp;</mo></math>", "<select><option>a<option>b</select>", "<template><td>a</template>",
+		"<script>if(a<b){document.write('</scr'+'ipt>')}</script>after", "<textarea>\n<b>&amp;</textarea>", "<title>a&lt;b</title>",
+		"<ul><li>a<li>b<ul><li>c</ul></ul>", "<frameset><frame></frameset>", "<p><svg><p>", "<svg><desc><p>x</p></desc><circle/></svg>",
+		"<html><body><p>x</body></html>trailing", "<table><td>x</table><p>y", "<div><p><div></p>", "<form><form>", "<button><button>",
+	}
+	for i := 0; i < 1200; i++ {
+		var b strings.Builder
+		for j, n := 0, 1+rng.Intn(24); j < n; j++ {
+			b.WriteString(frags[rng.Intn(len(frags))])
+		}
+		docs = append(docs, b.String())
+	}
+	for _, d := range docs {
+		res := rt.Html_Parse(nil, d, rt.Option[*rt.HtmlLimits]{})
+		r.row("parse", h(d), "-", "-", "-", "=>", strings.Join(okOrErr(res, func(n rt.HtmlNode) []string { return []string{htmlDump(n)} }), " "))
+	}
+	// Limits on a subset.
+	for i, d := range docs {
+		if i%12 != 0 {
+			continue
+		}
+		for _, l := range [][3]rt.Option[int]{{rt.Some(20), {}, {}}, {{}, rt.Some(2), {}}, {{}, rt.Some(4), {}}, {{}, {}, rt.Some(5)}, {{}, {}, rt.Some(12)}, {rt.Some(-1), {}, {}}, {{}, rt.Some(-1), {}}, {{}, {}, rt.Some(-1)}, {{}, rt.Some(0), {}}, {{}, {}, rt.Some(0)}, {{}, {}, rt.Some(1)}} {
+			lim := rt.Some(&rt.HtmlLimits{MaxBytes: l[0], MaxDepth: l[1], MaxNodes: l[2]})
+			res := rt.Html_Parse(nil, d, lim)
+			r.row("parse", h(d), opt(l[0]), opt(l[1]), opt(l[2]), "=>", strings.Join(okOrErr(res, func(n rt.HtmlNode) []string { return []string{htmlDump(n)} }), " "))
+		}
+	}
+	// Large and deep documents.
+	for _, d := range []string{strings.Repeat("<div>", 3000), strings.Repeat("<b>", 500) + "x", strings.Repeat("<table><tr><td>", 300), strings.Repeat("<p>a<b>b", 800)} {
+		res := rt.Html_Parse(nil, d, rt.Option[*rt.HtmlLimits]{})
+		r.row("parsehash", h(d), "=>", strings.Join(okOrErr(res, func(n rt.HtmlNode) []string { return []string{strconv.Itoa(len(htmlDump(n))), strconv.FormatUint(uint64(crc32.ChecksumIEEE([]byte(htmlDump(n)))), 16)} }), " "))
+	}
+	// Escaping and unescaping.
+	alpha := []string{"&", "#", "x", "X", ";", "a", "m", "p", "l", "t", "g", "0", "1", "9", "F", "f", "D", "8", "amp", "lt", "gt", "quot", "nbsp", "copy", "notit", "not", "#x", "&#x;", "&#X;", "<", ">", "\"", "'", " ", "é", "😀", "\r", "=", "AElig", "NotEqualTilde", "fjlig", "nLt", "nLtv", "bne"}
+	words := append(randomStrings(31, 1500, 10, alpha), "", "&", "&&", "&amp", "&amp;amp;", "&#x;", "&#x;&#x;", "&#X;a", "&#xg;", "&#x110000;", "&#1114112;", "&#99999999999;", "&#xFFFFFFFFF;", "&#x80;", "&#x9F;", "&#13;", "&#10;", "&AMP;", "&Amp;", "&notin;", "&notit;", "&noti", "&nbsp", "&nbspx", "&lt", "&ltx", "&bne;", "&nLt;", "&nLtv;", "&NotEqualTilde;", "&fjlig;", "&NotGreaterFullEqual;", "&#65", "&#65x", "&#xe9;", "&eacute", "&eacute;", "&Eacute", "a&b", "&&amp;", "&amp&amp;", "&ampamp;", "&#;", "&#", "&#x", "&#xX;")
+	for _, w := range words {
+		r.row("unescape", h(w), "=>", h(rt.Html_Unescape(nil, w)))
+		r.row("escape", h(w), "=>", h(rt.Html_Escape(nil, w)))
+	}
+	r.write(dir, "html.tsv")
 }
