@@ -226,7 +226,7 @@ pub fn float_to_string(v: f64) -> ByteBuf {
         out.extend(if v > 0.0 { b"Infinity".as_slice() } else { b"-Infinity".as_slice() });
     } else if v == 0.0 {
         out.extend(if v.is_sign_negative() { b"-0".as_slice() } else { b"0".as_slice() });
-    } else if v.abs() < 9.007_199_254_740_992e15 && v == v.trunc() {
+    } else if v.abs() < 9.007_199_254_740_992e15 && v == (v as i64) as f64 {
         // Integral values below 2^53: the digits are the integer itself.
         let mut tmp = [0u8; 20];
         let digits = format_i64(v.abs() as i64, &mut tmp);

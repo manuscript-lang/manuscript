@@ -1,6 +1,7 @@
 //! Faults, the cleanup stack, call depth, cancellation and process exit.
 use crate::buf::{ByteBuf, RawVec};
 use crate::global::Global;
+#[allow(unused_imports)]
 use crate::sys;
 use core::fmt::{self, Write};
 use ms_rt_abi::{FuncEntry, LineEntry, Tables, MAX_FAULT_FRAMES};
@@ -17,7 +18,7 @@ pub static TABLES: Global<*const Tables> = Global::new(core::ptr::null());
 pub static STACK_LO: Global<usize> = Global::new(0);
 pub static STACK_HI: Global<usize> = Global::new(0);
 
-type CleanupFn = unsafe extern "C" fn(*mut u8);
+type CleanupFn = unsafe extern "C-unwind" fn(*mut u8);
 static CLEANUPS: Global<RawVec<(usize, usize)>> = Global::new(RawVec::new());
 static SHIELD: Global<u32> = Global::new(0);
 pub static PENDING_SIGNAL: core::sync::atomic::AtomicU8 = core::sync::atomic::AtomicU8::new(0);
@@ -221,8 +222,10 @@ pub fn fault(msg: &[u8]) -> ! {
     let mut report = ByteBuf::with_capacity(msg.len() + 256);
     report.extend(msg);
     describe_frames(&mut report, frame_pointer());
+    // SAFETY: single threaded; a fault inside a cleanup action finishes this report.
+    unsafe { *PRIMARY.ptr() = Some(report) };
     while run_one_cleanup() {}
-    finish_report(Some(report))
+    finish_report(None)
 }
 
 static PRIMARY: Global<Option<ByteBuf>> = Global::new(None);
@@ -397,7 +400,7 @@ mod tests {
     static LOG: Global<[u8; 8]> = Global::new([0; 8]);
     static LOG_N: Global<usize> = Global::new(0);
 
-    unsafe extern "C" fn log_action(arg: *mut u8) {
+    unsafe extern "C-unwind" fn log_action(arg: *mut u8) {
         // SAFETY: tests hold the lock; LOG has room for 8 entries.
         unsafe {
             let n = *LOG_N.ptr();
@@ -406,7 +409,7 @@ mod tests {
         }
     }
 
-    unsafe extern "C" fn faulting_action(_arg: *mut u8) {
+    unsafe extern "C-unwind" fn faulting_action(_arg: *mut u8) {
         fault(b"close failed");
     }
 
@@ -426,7 +429,7 @@ mod tests {
         assert_eq!(text, "boom\ncleanup fault: close failed");
         // SAFETY: test-only access.
         unsafe {
-            assert_eq!(&(*LOG.ptr())[..*LOG_N.ptr()], &[3, 1]);
+            assert_eq!(&(&*LOG.ptr())[..*LOG_N.ptr()], &[3, 1]);
         }
     }
 
@@ -440,7 +443,7 @@ mod tests {
             let h1 = msrt_cleanup_push(log_action, 1 as *mut u8);
             let _h2 = msrt_cleanup_push(log_action, 2 as *mut u8);
             msrt_cleanup_run(h1);
-            assert_eq!(&(*LOG.ptr())[..*LOG_N.ptr()], &[2, 1]);
+            assert_eq!(&(&*LOG.ptr())[..*LOG_N.ptr()], &[2, 1]);
             msrt_cleanup_run(h1);
             assert_eq!(*LOG_N.ptr(), 2);
         }
@@ -451,10 +454,9 @@ mod tests {
         let _g = lock();
         reset_for_tests();
         // Fake frame chain: three frames with return addresses 0x1010, 0x2010, 0x9999.
-        let chain: [[usize; 2]; 3] = [[0, 0x9999], [0, 0x2010], [0, 0x1010]];
-        let mut chain = chain;
-        chain[2][0] = &chain[1] as *const _ as usize;
-        chain[1][0] = &chain[0] as *const _ as usize;
+        let mut chain: [[usize; 2]; 3] = [[0, 0x1010], [0, 0x2010], [0, 0x9999]];
+        chain[0][0] = &chain[1] as *const _ as usize;
+        chain[1][0] = &chain[2] as *const _ as usize;
         let strings = b"\0outer\0inner\0a.ms\0";
         let funcs = [
             FuncEntry { addr: 0x1000, size: 0x100, name_off: 7, file_off: 13, line: 3 },
@@ -474,7 +476,7 @@ mod tests {
         // SAFETY: test-only access to globals; `t` outlives the use.
         unsafe { *TABLES.ptr() = &t };
         let mut out = ByteBuf::new();
-        describe_frames(&mut out, &chain[2] as *const _ as usize);
+        describe_frames(&mut out, &chain[0] as *const _ as usize);
         // SAFETY: restore.
         unsafe { *TABLES.ptr() = core::ptr::null() };
         assert_eq!(
