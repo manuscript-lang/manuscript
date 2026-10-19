@@ -537,6 +537,23 @@ impl FnLower<'_> {
                     .expect("take");
                 return Ok(Val { v, own: true });
             }
+            if let (Tail::OutPresent, TyKind::Opt(inner)) =
+                (&tail, self.b.m.types.kind(result).clone())
+            {
+                // An `Optional` result: the payload and its presence flag through two slots.
+                let slot = self.slot(inner);
+                let present = self.slot(MTy::BOOL);
+                vals.extend([slot, present]);
+                self.call_runtime(sym, &vals, MTy::UNIT)?;
+                let opt = OutKind::Optional {
+                    slot,
+                    inner,
+                    present,
+                    opt: result,
+                };
+                let v = self.take_out(&opt)?;
+                return Ok(Val { v, own: true });
+            }
             // The constructed value returns through the trailing out pointer.
             let out = self.call_runtime(sym, &vals, result)?;
             return Ok(Val { v: out, own: true });

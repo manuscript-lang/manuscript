@@ -470,6 +470,11 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(recv);
         }
+        let recv = if view.arguments.iter().any(|a| crate::mutation::has_try(a.expr)) {
+            self.hold_temp(recv)
+        } else {
+            recv
+        };
         let rty = self.ty_of(recv.v);
         let TyKind::Iface(iface) = self.b.m.types.kind(rty).clone() else {
             return Err(Error::new("contract receiver is not an interface value"));
@@ -483,11 +488,14 @@ impl<'a> FnLower<'a> {
         let sig = self.b.m.ifaces[iface.index()].methods[k].clone();
         let params = m.ty.params.clone();
         let mut slots: Vec<Option<Val>> = vec![None; params.len()];
-        for a in &view.arguments {
+        for (n, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
                 return Ok(x);
             }
+            let later_try = view.arguments[n + 1..]
+                .iter()
+                .any(|l| crate::mutation::has_try(l.expr));
             let x = match &a.wrap_optional {
                 Some(_) => {
                     let o = self.owned(x);
@@ -496,6 +504,7 @@ impl<'a> FnLower<'a> {
                 }
                 None => x,
             };
+            let x = if later_try { self.hold_temp(x) } else { x };
             let idx = params
                 .iter()
                 .position(|p| p.name == a.slot.name)
@@ -508,9 +517,18 @@ impl<'a> FnLower<'a> {
                 Some(x) => x,
                 None => {
                     let t = sig.params[i];
+                    let default = m
+                        .decl
+                        .as_ref()
+                        .and_then(|d| d.func())
+                        .and_then(|f| f.params.get(i))
+                        .and_then(|p| p.default.as_ref());
                     if matches!(self.b.m.types.kind(t), TyKind::Opt(_)) {
                         let v = self.b.opt_none(t);
                         Val { v, own: false }
+                    } else if let Some(d) = default {
+                        let v = self.literal_default(d, &params[i].ty)?;
+                        Val { v, own: true }
                     } else {
                         return Err(Error::new("missing argument"));
                     }
@@ -732,6 +750,18 @@ impl FnLower<'_> {
             }
             ExprKind::Name(n) if n.as_str() == "none" && t.is_std("Optional") => {
                 Ok(self.b.opt_none(mt))
+            }
+            ExprKind::Call { callee, .. }
+                if t.is_std("Bytes")
+                    && matches!(&callee.kind, ExprKind::Member { left, name }
+                        if name.as_str() == "to_bytes"
+                            && matches!(&left.kind, ExprKind::Text(p)
+                                if p.iter().all(|p| matches!(p, TextPart::Lit(s) if s.is_empty())))) =>
+            {
+                let TyKind::List(elem) = self.b.m.types.kind(mt).clone() else {
+                    return Err(Error::new("a bytes default needs a list type"));
+                };
+                Ok(self.b.list_lit(elem, &[]))
             }
             ExprKind::Call { args, .. } => {
                 let TyKind::Rec(rid) = self.b.m.types.kind(mt).clone() else {
