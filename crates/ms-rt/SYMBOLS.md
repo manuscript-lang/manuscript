@@ -206,6 +206,28 @@ msrt_strbuilder_drop(b: *mut VecVal)
 msrt_hash_list(v: *const VecVal, d: *const TypeDesc) -> i64
 msrt_archive_pack( entries: *const VecVal, format: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msrt_archive_unpack( data: *const VecVal, format: *const StrObj, has_limits: u8, has_entries: u8, max_entries: i64, has_entry_bytes: u8, max_entry_bytes: i64, has_total: u8, max_total_bytes: i64, out: *mut VecVal, ) -> u8
+msstd_bigint_from_int(value: i64) -> *mut BigObj
+msstd_bigint_parse( text: *const StrObj, radix: i64, has_max: u8, max: i64, out: *mut *mut BigObj, ) -> u8
+msstd_bigint_add(a: *const BigObj, other: *const BigObj) -> *mut BigObj
+msstd_bigint_subtract( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
+msstd_bigint_multiply( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
+msstd_bigint_bit_and( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
+msstd_bigint_bit_or( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
+msstd_bigint_bit_xor( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
+msstd_bigint_divide( a: *const BigObj, other: *const BigObj, out: *mut *mut BigObj, ) -> u8
+msstd_bigint_remainder( a: *const BigObj, other: *const BigObj, out: *mut *mut BigObj, ) -> u8
+msstd_bigint_compare(a: *const BigObj, other: *const BigObj) -> i64
+msstd_bigint_bit_not(a: *const BigObj) -> *mut BigObj
+msstd_bigint_negate(a: *const BigObj) -> *mut BigObj
+msstd_bigint_abs(a: *const BigObj) -> *mut BigObj
+msstd_bigint_sign(a: *const BigObj) -> i64
+msstd_bigint_pow( a: *const BigObj, exponent: i64, out: *mut *mut BigObj, ) -> u8
+msstd_bigint_shift_left( a: *const BigObj, count: i64, out: *mut *mut BigObj, ) -> u8
+msstd_bigint_shift_right( a: *const BigObj, count: i64, out: *mut *mut BigObj, ) -> u8
+msstd_bigint_to_float(a: *const BigObj) -> f64
+msstd_bigint_to_int(a: *const BigObj, out: *mut i64) -> u8
+msstd_bigint_to_string_radix(a: *const BigObj, radix: i64) -> *mut StrObj
+msstd_bigint_equal(a: *const BigObj, other: *const BigObj) -> u8
 msrt_compress_compress( data: *const VecVal, format: *const StrObj, level: i64, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msrt_compress_decompress( data: *const VecVal, format: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msrt_compress_decoder_new( format: *const StrObj, has_max: u8, max: i64, out: *mut *mut DecoderObj, ) -> u8

@@ -101,6 +101,15 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         .strip_prefix("map_")
         .or_else(|| name.strip_prefix("set_"))
         .unwrap_or(name);
+    if matches!(m.types.kind(recv), TyKind::Obj(n, _) if n == "BigInt") {
+        let name = if name == "format" {
+            "to_string_radix"
+        } else {
+            name
+        };
+        let sym = format!("msstd_bigint_{name}");
+        return rt_sig(&sym).map(|_| sym);
+    }
     let prefix = match m.types.kind(recv) {
         TyKind::Str => "string",
         TyKind::List(_) => "list",
@@ -366,7 +375,11 @@ impl FnLower<'_> {
             "" | "()" => Some(MTy::UNIT),
             _ => None,
         };
+        // A new runtime object (`BigInt`) is returned as its pointer.
+        let object = sig.ret.starts_with("*mut ")
+            && matches!(self.b.m.types.kind(result), TyKind::Obj(n, _) if n == "BigInt");
         let ret = direct(&sig.ret)
+            .or(object.then_some(result))
             .ok_or_else(|| Error::new(format!("{sym}: unsupported return {}", sig.ret)))?;
         if !has_out {
             if ret == MTy::BOOL && matches!(self.b.m.types.kind(result), TyKind::Alt(_)) {
