@@ -27,7 +27,11 @@ pub fn diagram_ascii(inspection: &InspectionRows) -> String {
     for entity in &inspection.entities {
         let _ = writeln!(out, "{} [{}]", label(&entity.id), entity.kind);
         for ((target, kind), n) in edges.get(entity.id.as_str()).into_iter().flatten() {
-            let count = if *n > 1 { format!(" x{n}") } else { String::new() };
+            let count = if *n > 1 {
+                format!(" x{n}")
+            } else {
+                String::new()
+            };
             let _ = writeln!(out, "  -> {target} ({kind}){count}");
         }
     }

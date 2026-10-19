@@ -6,8 +6,8 @@
 use crate::facts::key_name;
 use crate::tree::Node;
 use ms_syntax::visit::{Visitor, walk_expr};
-use ms_syntax::{Arm, Expr, ExprKind, Pos, Stmt, StmtKind, UnaryOp};
-use std::collections::HashMap;
+use ms_syntax::{Arm, Expr, ExprKind, NodeId, Pos, Stmt, StmtKind, UnaryOp};
+use std::collections::{HashMap, HashSet};
 
 /// A call site of the inspection, as the flow needs it.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -23,6 +23,8 @@ pub struct FlowBuilder<'a> {
     pub sites: &'a HashMap<String, Site>,
     /// Entity id to fact key.
     pub keys: &'a HashMap<String, String>,
+    /// Name expressions that stand for a module-level constant's initializer call.
+    pub const_use: &'a HashSet<NodeId>,
 }
 
 /// What `statement` needs of a statement; a module-level constant's initializer
@@ -69,7 +71,12 @@ impl<'a> StmtView<'a> {
                 view.value = e.as_ref();
             }
             StmtKind::Break | StmtKind::Continue => view.shape = Shape::Exit,
-            StmtKind::If { cond, body, else_body, .. } => {
+            StmtKind::If {
+                cond,
+                body,
+                else_body,
+                ..
+            } => {
                 view.shape = Shape::Branch;
                 (view.value, view.body, view.else_body) = (Some(cond), body, else_body);
             }
@@ -91,7 +98,14 @@ impl<'a> StmtView<'a> {
 
     /// The synthetic `return value` of a module-level constant.
     pub fn constant(init_pos: Pos, value: &'a Expr) -> StmtView<'a> {
-        StmtView { pos: init_pos, shape: Shape::Return, target: None, value: Some(value), body: &[], else_body: &[] }
+        StmtView {
+            pos: init_pos,
+            shape: Shape::Return,
+            target: None,
+            value: Some(value),
+            body: &[],
+            else_body: &[],
+        }
     }
 }
 
@@ -120,11 +134,21 @@ impl FlowBuilder<'_> {
     }
 
     fn node(&self, kind: &str, label: String, pos: Pos) -> Node {
-        self.at(Node { kind: kind.into(), label, ..Node::default() }, pos)
+        self.at(
+            Node {
+                kind: kind.into(),
+                label,
+                ..Node::default()
+            },
+            pos,
+        )
     }
 
     pub fn body(&self, statements: &[Stmt]) -> Vec<Node> {
-        statements.iter().flat_map(|s| self.statement(&StmtView::of(s), Some(s))).collect()
+        statements
+            .iter()
+            .flat_map(|s| self.statement(&StmtView::of(s), Some(s)))
+            .collect()
     }
 
     pub fn statement(&self, s: &StmtView, original: Option<&Stmt>) -> Vec<Node> {
@@ -144,7 +168,11 @@ impl FlowBuilder<'_> {
                 return vec![node];
             }
             Shape::With => {
-                let mut node = self.node("with", format!("{}  [closed on exit]", self.source(s.pos)), s.pos);
+                let mut node = self.node(
+                    "with",
+                    format!("{}  [closed on exit]", self.source(s.pos)),
+                    s.pos,
+                );
                 node.children = self.events(s.value);
                 node.children.extend(self.body(s.body));
                 return vec![node];
@@ -157,7 +185,10 @@ impl FlowBuilder<'_> {
         }
         let mut out;
         match s.value {
-            Some(Expr { kind: ExprKind::Match { scrutinee, arms }, .. }) => {
+            Some(Expr {
+                kind: ExprKind::Match { scrutinee, arms },
+                ..
+            }) => {
                 out = self.events(s.target);
                 out.extend(self.events(Some(scrutinee)));
                 out.push(self.match_node(s.pos, arms));
@@ -193,7 +224,11 @@ impl FlowBuilder<'_> {
     /// Lists the calls and try markers inside one expression, outermost first.
     fn events(&self, e: Option<&Expr>) -> Vec<Node> {
         let Some(e) = e else { return Vec::new() };
-        let mut collector = Events { builder: self, out: Vec::new(), pending_try: false };
+        let mut collector = Events {
+            builder: self,
+            out: Vec::new(),
+            pending_try: false,
+        };
         walk_expr(&mut collector, e);
         let mut out = collector.out;
         if collector.pending_try {
@@ -203,7 +238,9 @@ impl FlowBuilder<'_> {
     }
 
     fn call(&self, e: &Expr) -> Option<Node> {
-        let site = self.sites.get(&format!("{}#call#{}", self.file, e.pos.offset))?;
+        let site = self
+            .sites
+            .get(&format!("{}#call#{}", self.file, e.pos.offset))?;
         if site.kind == "construct" {
             return None;
         }
@@ -215,7 +252,11 @@ impl FlowBuilder<'_> {
                 ..Node::default()
             });
         }
-        Some(Node { kind: "native".into(), label: format!("native {}", site.target), ..Node::default() })
+        Some(Node {
+            kind: "native".into(),
+            label: format!("native {}", site.target),
+            ..Node::default()
+        })
     }
 }
 
@@ -227,14 +268,24 @@ struct Events<'a, 'b> {
 
 impl Visitor for Events<'_, '_> {
     fn expr(&mut self, x: &Expr) {
-        if matches!(x.kind, ExprKind::Unary { op: UnaryOp::Try, .. }) {
+        if matches!(
+            x.kind,
+            ExprKind::Unary {
+                op: UnaryOp::Try,
+                ..
+            }
+        ) {
             self.pending_try = true;
             return;
         }
-        if !matches!(x.kind, ExprKind::Call { .. }) {
+        let constant =
+            matches!(x.kind, ExprKind::Name(_)) && self.builder.const_use.contains(&x.id);
+        if !constant && !matches!(x.kind, ExprKind::Call { .. }) {
             return;
         }
-        let Some(node) = self.builder.call(x) else { return };
+        let Some(node) = self.builder.call(x) else {
+            return;
+        };
         let mut node = self.builder.at(node, x.pos);
         if self.pending_try {
             node.label = format!("try {}", node.label);

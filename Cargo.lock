@@ -375,6 +375,7 @@ name = "ms-tooling"
 version = "0.0.0"
 dependencies = [
  "ms-check",
+ "ms-cli",
  "ms-syntax",
 ]
 

@@ -66,7 +66,10 @@ pub fn collect_facts(inspection: &InspectionRows, program: &Program) -> Facts {
         .map(|e| (e.id.as_str(), fact_key(&e.file, &e.kind, &e.name)))
         .collect();
     for call in &inspection.calls {
-        let Some(owner) = owners.get(call.owner.as_str()).and_then(|k| facts.entities.get_mut(k)) else {
+        let Some(owner) = owners
+            .get(call.owner.as_str())
+            .and_then(|k| facts.entities.get_mut(k))
+        else {
             continue;
         };
         match id_to_key.get(&call.target) {
@@ -77,14 +80,35 @@ pub fn collect_facts(inspection: &InspectionRows, program: &Program) -> Facts {
     let sites: HashMap<String, Site> = inspection
         .calls
         .iter()
-        .map(|c| (c.id.clone(), Site { target: c.target.clone(), kind: c.kind.clone() }))
+        .map(|c| {
+            (
+                c.id.clone(),
+                Site {
+                    target: c.target.clone(),
+                    kind: c.kind.clone(),
+                },
+            )
+        })
         .collect();
     for module in &program.modules {
         for import in &module.imports {
-            append_unique(facts.imports.entry(module.file.as_str().to_string()).or_default(), &import.path);
+            append_unique(
+                facts
+                    .imports
+                    .entry(module.file.as_str().to_string())
+                    .or_default(),
+                &import.path,
+            );
         }
         let source: &str = &module.source;
-        let flow = FlowBuilder { file: module.file.as_str(), lines: source.split('\n').collect(), sites: &sites, keys: &id_to_key };
+        let module_facts = module.facts();
+        let flow = FlowBuilder {
+            file: module.file.as_str(),
+            lines: source.split('\n').collect(),
+            sites: &sites,
+            keys: &id_to_key,
+            const_use: &module_facts.const_use,
+        };
         collect_bodies(&mut facts, module, &flow);
     }
     for fact in facts.entities.values_mut() {
@@ -130,15 +154,23 @@ fn collect_bodies(facts: &mut Facts, module: &ModRef, flow: &FlowBuilder) {
             let steps = match &decl.decl().kind {
                 DeclKind::Fn(f) => flow.body(&f.body),
                 DeclKind::Test(t) => flow.body(&t.body),
-                DeclKind::Const(c) => flow.statement(&StmtView::constant(c.init_pos, &c.value), None),
+                DeclKind::Const(c) => {
+                    flow.statement(&StmtView::constant(c.init_pos, &c.value), None)
+                }
                 _ => Vec::new(),
             };
             facts.flows.insert(key, steps);
         }
         let methods = decl.methods();
         for (i, method) in methods.iter().enumerate() {
-            let end = methods.get(i + 1).map_or(last, |next| next.pos.line as usize - 1);
-            let key = fact_key(module.file.as_str(), "method", &format!("{name}.{}", method.func.name.as_str()));
+            let end = methods
+                .get(i + 1)
+                .map_or(last, |next| next.pos.line as usize - 1);
+            let key = fact_key(
+                module.file.as_str(),
+                "method",
+                &format!("{name}.{}", method.func.name.as_str()),
+            );
             if let Some(fact) = facts.entities.get_mut(&key) {
                 fact.first = method.pos.line as usize;
                 fact.last = end;
@@ -163,7 +195,13 @@ impl Visitor for Sites {
     }
 
     fn expr(&mut self, e: &Expr) {
-        if matches!(e.kind, ExprKind::Unary { op: UnaryOp::Try, .. }) {
+        if matches!(
+            e.kind,
+            ExprKind::Unary {
+                op: UnaryOp::Try,
+                ..
+            }
+        ) {
             self.tries += 1;
         }
     }

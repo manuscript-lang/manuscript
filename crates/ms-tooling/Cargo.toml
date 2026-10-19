@@ -11,3 +11,6 @@ workspace = true
 [dependencies]
 ms-syntax = { path = "../ms-syntax" }
 ms-check = { path = "../ms-check" }
+
+[dev-dependencies]
+ms-cli = { path = "../ms-cli" }
