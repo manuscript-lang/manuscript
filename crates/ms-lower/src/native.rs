@@ -408,6 +408,9 @@ impl<'a> FnLower<'a> {
                 self.release_source(fvar, true);
                 r
             }
+            _ if crate::iterate::handles(self.b.m, rty, name) => {
+                self.iterate_method(e, name, recv_expr, recv, args)
+            }
             (TyKind::List(elem), _) if is_higher_order(name) => {
                 let f = args
                     .into_iter()
@@ -1146,6 +1149,10 @@ impl<'a> FnLower<'a> {
             }
             _ => Err(Error::new(format!("unsupported list mutator {name}"))),
         }
+    }
+
+    pub(crate) fn is_fn_value(&self, v: Value) -> bool {
+        self.is_fn(v)
     }
 
     fn is_fn(&self, v: Value) -> bool {

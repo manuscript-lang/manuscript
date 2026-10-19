@@ -13,6 +13,7 @@ mod eq;
 mod expr;
 mod func;
 mod iface;
+mod iterate;
 mod mapset;
 mod matching;
 mod messages;

@@ -95,7 +95,12 @@ impl FnLower<'_> {
     }
 
     /// The owned map `old` with `key` bound to `value`; both are consumed.
-    fn map_insert(&mut self, old: Value, key: Value, value: Value) -> Result<Value, Error> {
+    pub(crate) fn map_insert(
+        &mut self,
+        old: Value,
+        key: Value,
+        value: Value,
+    ) -> Result<Value, Error> {
         let mt = self.ty_of(old);
         let slot = self.put_slot(old);
         let (kd, vd) = self.map_descs(mt)?;
