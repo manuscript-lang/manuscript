@@ -19,12 +19,10 @@ e2e/stdlib/html
 e2e/stdlib/math-functions
 e2e/stdlib/path
 e2e/stdlib/random
-e2e/stdlib/sse-http
 e2e/stdlib/terminal
 e2e/stdlib/testing-fixture
 go-tests/tests-e2e-testclitestfilefixturelistanddefaulthooks-1
 go-tests/tests-e2e-testclitestjsonpreservesbinarystdout-1
-go-tests/tests-e2e-testclitestsharedrestserver-1
 # test: language/runtime differences: value-semantics changes (closures copy captured vars, receivers are read at call time), unsupported ordering of some types, fault-frame text, and others to triage.
 e2e/accept/collection-call-order
 e2e/accept/comparable

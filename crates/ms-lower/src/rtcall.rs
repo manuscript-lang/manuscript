@@ -27,7 +27,8 @@ pub(crate) struct RtSig {
     pub ret: String,
 }
 
-const RENAMED: [(&str, &str); 4] = [
+const RENAMED: [(&str, &str); 5] = [
+    ("http/headers", "msrt_http_headers_new"),
     ("net/ip_text", "msrt_net_ip_address_text"),
     ("net/ip_family", "msrt_net_ip_address_family"),
     ("process/arguments", "msrt_args"),
@@ -466,6 +467,18 @@ impl FnLower<'_> {
                     vals.push(value);
                     i += 1;
                 }
+                "env" => {
+                    // The handler of a server: the closure the runtime calls per request.
+                    let input = *inputs
+                        .get(cursor)
+                        .ok_or_else(|| Error::new(format!("{sym}: missing handler")))?;
+                    cursor += 1;
+                    let handler = input
+                        .val
+                        .ok_or_else(|| Error::new(format!("{sym}: missing handler")))?;
+                    let env = self.handler_env(sym.contains("serve_stream"), handler)?;
+                    vals.push(env);
+                }
                 _ => {
                     let input = *inputs
                         .get(cursor)
@@ -486,6 +499,14 @@ impl FnLower<'_> {
                             continue;
                         }
                         return Err(Error::new(format!("{sym}: missing argument {}", p.name)));
+                    };
+                    // An `HttpMethod` crosses as its token text.
+                    let x = if p.name == "method"
+                        && matches!(self.b.m.types.kind(self.ty_of(x.v)), TyKind::Alt(_))
+                    {
+                        self.method_text(x)?
+                    } else {
+                        x
                     };
                     if let Some(fields) = self.record_fields_named(x, &p.name) {
                         // A record argument crosses as its fields.
@@ -513,7 +534,14 @@ impl FnLower<'_> {
                     };
                     let consumed_aggregate = p.ty == "*mut VecVal" || p.ty == "*mut MapVal";
                     let clock = p.ty == "*const Timestamp" || p.ty == "*const Instant";
-                    if p.ty == "*const u8" || p.ty == "*mut u8" || consumed_aggregate || clock {
+                    // A record the runtime reads as a `repr(C)` struct of the same leaves.
+                    let wire = p.ty.starts_with("*const ") && p.ty.ends_with("Wire");
+                    if p.ty == "*const u8"
+                        || p.ty == "*mut u8"
+                        || consumed_aggregate
+                        || clock
+                        || wire
+                    {
                         // A generic element slot: pass the address of the value in memory.
                         // `*mut` hands the value over; `*const` is lent and taken back.
                         let x = if input.wrapped {
@@ -532,7 +560,7 @@ impl FnLower<'_> {
                         if self.needs_drop(t) {
                             let o = self.owned(x);
                             self.b.emit(Op::Put, &[slot, o], Imm::None, None);
-                            if p.ty == "*const u8" {
+                            if p.ty.starts_with("*const ") {
                                 lent.push((slot, t));
                             }
                         } else {
@@ -751,7 +779,9 @@ impl FnLower<'_> {
         // A new runtime object (`BigInt`) is returned as its pointer.
         let object = sig.ret.starts_with("*mut ")
             && match self.b.m.types.kind(result) {
-                TyKind::Obj(n, _) => n == "BigInt",
+                TyKind::Obj(n, _) => {
+                    matches!(n.as_str(), "BigInt" | "HttpHeaders" | "IpAddress" | "Cidr")
+                }
                 TyKind::Iface(_) => is_handle_return(&sig.ret),
                 _ => false,
             };
@@ -774,6 +804,15 @@ impl FnLower<'_> {
                 self.push_err_slot(sig, &mut vals);
                 let code = self.status_code(sym, &vals)?;
                 return self.status_result(sym, code, None, None, result);
+            }
+            if let (MTy::STR, TyKind::Alt(a)) = (ret, self.b.m.types.kind(result).clone())
+                && self.ok_case_index(a).is_err()
+            {
+                // An `HttpMethod` returned as its token text.
+                let text = self.call_runtime(sym, &vals, MTy::STR)?;
+                let v = self.method_from_text(a, text, 0)?;
+                self.drop_value(text);
+                return Ok(Val { v, own: true });
             }
             if ret == MTy::STR && matches!(self.b.m.types.kind(result), TyKind::Alt(_)) {
                 // A string that cannot fail: `Result[String, E]`.
@@ -1028,7 +1067,7 @@ impl FnLower<'_> {
         };
         // A runtime that reports `Failed` text through `err` numbers the cases 1 + declaration
         // index (`ms-std-net/ABI.md`); the others share the `STATUS_CASES` codes.
-        let cases: Vec<(i64, usize)> = if self.err_slot.is_some() {
+        let cases: Vec<(i64, usize)> = if ordinal_status(sym) {
             (0..self.b.m.alts[ea.index()].cases.len())
                 .map(|i| (i as i64 + 1, i))
                 .collect()
@@ -1130,6 +1169,14 @@ impl FnLower<'_> {
             },
         )
     }
+}
+
+/// Whether the statuses of `sym` number the error cases 1 + declaration index
+/// (`ms-std-net/ABI.md`) instead of sharing the `STATUS_CASES` codes.
+fn ordinal_status(sym: &str) -> bool {
+    ["msrt_net_", "msrt_http_", "msrt_websocket_", "msrt_tls_"]
+        .iter()
+        .any(|p| sym.starts_with(p))
 }
 
 /// The symbol returning the text of a `Failed` status of `sym`'s module, when it has one.

@@ -133,10 +133,12 @@ impl Cx {
 
     /// The module queries for `file`.
     pub fn module(&self, file: Name) -> Result<Rc<ModuleHir>, Error> {
-        self.mods
-            .get(&file)
-            .cloned()
-            .ok_or_else(|| Error::new(format!("unknown module {file}")))
+        self.mods.get(&file).cloned().ok_or_else(|| {
+            Error::new(format!(
+                "unknown module {file} (have {:?})",
+                self.mods.keys().map(|k| k.to_string()).collect::<Vec<_>>()
+            ))
+        })
     }
 
     /// Maps a concrete checker type to a MIR type.

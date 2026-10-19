@@ -17,8 +17,10 @@ release, cancellation) and never the other way around.
   declaration index` of the error case in the `.ms` error type. Tables below.
   `Failed(message)` stores its text through the trailing `err: *mut *mut StrObj`
   (owned string; the pointer may be null when the caller does not need it).
-- **Results.** An ok value is written through `out` (before `err`). `Optional[T]`
-  results add `present: *mut u8` after `out`. Native handles are `*mut Obj`.
+- **Results.** An ok value is written through `out` (before `err`). An `Optional[T]` in a
+  `Result` answers `STATUS_NONE` (16) for none; a bare `Optional[T]` answers whether it is
+  present. Native handles are `*mut Obj`. Wire structs are passed by address and have the
+  leaves of the language record (lists inline as `VecVal`).
 - **Optional parameters** flatten to `has: u8, value: i64` (`Optional[Int]`,
   `Optional[Duration]`; a `Duration` is nanoseconds). A negative limit or timeout is
   `InvalidInput`, as in Go.
@@ -95,7 +97,7 @@ Behavior notes (same as Go unless stated):
 
 - Addresses are `host:port` with IPv6 hosts in brackets; Unix sockets use their path.
   A Unix listener removes its socket file on close.
-- `Connection.read` caps a chunk at 65536 bytes, returns `present = 0` at EOF, and a
+- `Connection.read` caps a chunk at 65536 bytes, answers `STATUS_NONE` at EOF, and a
   local timeout is `IoError.Failed("operation timed out")`.
 - `lookup`/`resolve` of A and AAAA on the default network use the system resolver
   (`getaddrinfo`) on a helper thread so a timeout or stop request is honored; other
@@ -158,16 +160,17 @@ msrt_net_network_http_client(net, opts, out, err) -> u8
 msrt_http_client_request[_bytes|_stream](c, method, address, headers, body, has_max, max, has_timeout, timeout, out, err) -> u8
 msrt_net_network_request[_bytes](net, method, address, headers, body, has_max, max, has_timeout, timeout, out: *mut ClientResponseWire, err) -> u8
 msrt_http_body_{read,metadata,close}
-msrt_net_network_serve(net, address, env, thunk: BufferedThunk, limits..., out, err) -> u8
-msrt_net_network_serve_stream(net, address, env, thunk: StreamThunk, opts, out, err) -> u8
+msrt_net_network_serve(net, address, env, limits..., out, err) -> u8
+msrt_net_network_serve_stream(net, address, env, opts, out, err) -> u8
 msrt_http_server_{address,close,wait}
 msrt_http_exchange_{headers,method,path,protocol,query,read,send_headers,write,write_bytes,close,upgrade}
 ```
 
-Handler thunks are compiler generated and run on the ms thread, each request in its own
-`ms-rt` task (see Concurrency). `BufferedThunk(env, req, resp)` fills
-`resp`; `StreamThunk(env, exchange, err) -> u8` returns an `HttpError` status. `env` is
-the retained closure; the server releases it on drop. Behavior: one handler runs at a
+Handlers are compiler generated closures that run on the ms thread, each request in its
+own `ms-rt` task (see Concurrency). The server calls the closure's code word:
+`BufferedThunk(env, req, resp)` fills `resp`; `StreamThunk(env, exchange, err) -> u8`
+returns an `HttpError` status (the exchange handle is borrowed). `env` is the retained
+closure; the server releases it on drop. Behavior: one handler runs at a
 time; closing
 a server (or its network) from its own handler faults.
 
