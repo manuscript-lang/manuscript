@@ -4,9 +4,11 @@
 
 pub mod alloc;
 pub mod buf;
+pub mod desc;
 pub mod fault;
 pub mod global;
 pub mod io;
+pub mod map;
 pub mod num;
 pub mod obj;
 pub mod process;
@@ -14,6 +16,7 @@ pub mod profile;
 pub mod string;
 pub mod sys;
 pub mod utf8;
+pub mod vec;
 
 #[cfg(test)]
 mod testutil;
