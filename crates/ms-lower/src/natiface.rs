@@ -261,6 +261,20 @@ const METHODS: &[MethodRow] = &[
         "msstd_fs_temporary_close",
         &[],
     ),
+    (
+        "crypto",
+        "Hasher",
+        "update",
+        "msrt_crypto_hasher_update",
+        &[],
+    ),
+    (
+        "crypto",
+        "Hasher",
+        "finish",
+        "msrt_crypto_hasher_finish",
+        &[],
+    ),
     ("time", "Clock", "now", "msstd_time_clock_now", &[]),
     ("time", "WallClock", "now", "msstd_time_wall_clock_now", &[]),
     (
@@ -358,6 +372,7 @@ impl Cx {
     ) -> Result<VtableId, Error> {
         let mut module = sym
             .strip_prefix("msstd_")
+            .or_else(|| sym.strip_prefix("msrt_"))
             .and_then(|r| r.split('_').next())
             .ok_or_else(|| Error::new(format!("{sym} returns an interface")))?;
         let ity = self

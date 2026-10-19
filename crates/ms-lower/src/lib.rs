@@ -8,6 +8,7 @@
 
 mod call;
 mod closure;
+mod codecstream;
 mod cx;
 mod eq;
 mod expr;
