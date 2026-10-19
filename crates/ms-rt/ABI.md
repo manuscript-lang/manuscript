@@ -284,7 +284,7 @@ LineEntry { pc: usize, line: u32, file_off: u32 }                               
 ```
 
 Offsets index NUL-terminated strings in `strings`. `addr`/`pc` are link-time
-(relocated) addresses; `pc` is a return address; `file_off == u32::MAX` means the
+(relocated) addresses; `pc` is the start of a code range (extends to the next entry; a frame's line is the last entry with `pc <= return_addr - 1` inside the function); `file_off == u32::MAX` means the
 function's file. Names are those shown in fault traces (`inner`, `Point.norm`,
 `main.lambda2`); only source functions belong in `FuncTable`.
 

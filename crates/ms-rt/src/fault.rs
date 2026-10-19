@@ -129,10 +129,12 @@ pub fn find_line(t: &Tables, func: &FuncEntry, pc: usize) -> (u32, u32) {
     if !t.lines.is_null() && t.line_count > 0 {
         // SAFETY: sorted `line_count` read-only entries.
         let lines = unsafe { core::slice::from_raw_parts(t.lines, t.line_count) };
-        let idx = lines.partition_point(|e: &LineEntry| e.pc <= pc);
+        // `pc` is a return address; the call instruction lies in the range ending just before it.
+        let probe = pc.wrapping_sub(1);
+        let idx = lines.partition_point(|e: &LineEntry| e.pc <= probe);
         if idx > 0 {
             let e = &lines[idx - 1];
-            if e.pc > func.addr {
+            if e.pc >= func.addr {
                 let file = if e.file_off == u32::MAX {
                     func.file_off
                 } else {
@@ -492,7 +494,7 @@ mod tests {
             },
         ];
         let lines = [LineEntry {
-            pc: 0x1010,
+            pc: 0x1008,
             line: 4,
             file_off: u32::MAX,
         }];
