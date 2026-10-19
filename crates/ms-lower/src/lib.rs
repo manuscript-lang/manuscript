@@ -20,6 +20,7 @@ mod mapset;
 mod matching;
 mod messages;
 mod mutation;
+mod natiface;
 mod native;
 mod rtcall;
 mod runner;

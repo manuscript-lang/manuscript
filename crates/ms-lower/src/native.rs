@@ -168,6 +168,18 @@ impl<'a> FnLower<'a> {
             "io/stderr" => self.std_stream(e, true),
             "time/clock" => self.time_clock(e, false),
             "time/wall_clock" => self.time_clock(e, true),
+            "io/read_line" => self.read_line_native(e, view, params),
+            other
+                if crate::natiface::HANDLE_FUNCTIONS
+                    .iter()
+                    .any(|f| f.0 == other) =>
+            {
+                let &(_, module, make, constant) = crate::natiface::HANDLE_FUNCTIONS
+                    .iter()
+                    .find(|f| f.0 == other)
+                    .expect("listed");
+                self.handle_interface(e, module, make, constant)
+            }
             other if other.starts_with("testing/") => {
                 self.testing_native(e, view, &other["testing/".len()..])
             }
@@ -631,6 +643,15 @@ impl<'a> FnLower<'a> {
                         Some(MTy::FLOAT),
                     )
                     .expect("i2f");
+                Ok(Val { v, own: false })
+            }
+            (TyKind::Rec(rid), "unix_seconds" | "nanoseconds")
+                if self.b.m.records[rid.index()].name == "Timestamp" =>
+            {
+                // A timestamp is its two words; these read them.
+                let x = self.borrow(recv);
+                let field = u32::from(name == "nanoseconds");
+                let v = self.b.rec_get(rid, field, x);
                 Ok(Val { v, own: false })
             }
             (TyKind::Float, "is_nan" | "is_finite") => {

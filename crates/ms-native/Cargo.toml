@@ -15,6 +15,7 @@ doctest = false
 # `std`: ms-std-net needs the standard library, which then supplies the panic handler.
 ms-rt = { path = "../ms-rt", features = ["std"] }
 ms-std-archive = { path = "../ms-std-archive" }
+ms-std-bigint = { path = "../ms-std-bigint" }
 ms-std-compress = { path = "../ms-std-compress" }
 ms-std-core = { path = "../ms-std-core" }
 ms-std-crypto = { path = "../ms-std-crypto" }

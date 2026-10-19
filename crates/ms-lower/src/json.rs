@@ -1215,7 +1215,7 @@ impl FnLower<'_> {
                     return Err(Error::new("a runtime status needs an error alternative"));
                 };
                 let cases = s.status_cases(ea);
-                let e = s.status_error(ea, code, &cases)?;
+                let e = s.status_error(ea, code, &cases, None)?;
                 Ok(Some(s.b.alt_new(ra, err as u32, &[e])))
             },
         )
@@ -1344,7 +1344,16 @@ impl FnLower<'_> {
                 let slot = s.jslot(MTy::STR);
                 let code =
                     s.status_code("msrt_json_stringify", &[doc, id, hm, vm, hi, vi, slot])?;
-                Ok(Some(s.status_result(code, Some((slot, MTy::STR)), rty)?.v))
+                Ok(Some(
+                    s.status_result(
+                        "msrt_json_stringify",
+                        code,
+                        Some((slot, MTy::STR)),
+                        None,
+                        rty,
+                    )?
+                    .v,
+                ))
             },
             &mut |s| Ok(Some(s.json_error(ra, err, "InvalidData")?)),
         )?;

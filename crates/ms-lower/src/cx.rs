@@ -31,6 +31,8 @@ pub enum JobKind {
     BoundNative(Rc<BoundNativeJob>),
     /// A JSON decoder or encoder of a type.
     Json(Rc<crate::json::JsonJob>),
+    /// A forwarder of an interface operation to a runtime handle function.
+    HandleMethod(Rc<crate::natiface::MethodJob>),
 }
 
 /// A bound native method waiting to be lowered; the closure holds the receiver.
@@ -87,6 +89,8 @@ pub struct Cx {
     pub helpers: HashMap<String, FuncId>,
     /// Interface implementation tables built by lowering.
     pub vtables: HashMap<String, ms_mir::ir::VtableId>,
+    /// The checker type of every lowered interface.
+    pub contracts: HashMap<ms_mir::types::IfaceId, ct::Ty>,
     /// Every implementation method of the program.
     pub methods: Vec<ct::MethodRef>,
     /// Types whose descriptor glue is registered.
@@ -119,6 +123,7 @@ impl Cx {
             queue: Vec::new(),
             helpers: HashMap::new(),
             vtables: HashMap::new(),
+            contracts: HashMap::new(),
             methods: program.methods.clone(),
             fixtures: program.test_fixtures.clone(),
         }
@@ -216,6 +221,7 @@ impl Cx {
                 });
                 let ty = m.types.iface(id);
                 self.tycache.insert(key.to_string(), ty);
+                self.contracts.insert(id, t.clone());
                 let subst = ct::substitution(t);
                 let mut methods = Vec::new();
                 if let Some(def) = &t.def {
@@ -262,12 +268,34 @@ impl Cx {
         if t.is_std("Bytes") || t.is_std("StringBuilder") || t.is_std("BytesBuilder") {
             return Ok(MTy::BYTES);
         }
+        // A queue is a refcounted runtime object shared by its copies.
+        if t.is_std("Queue") {
+            let elem = self.lower_ty(m, &t.args[0])?;
+            return Ok(m.types.obj("Queue", vec![elem]));
+        }
+        if t.is_std("PriorityQueue") {
+            let elem = self.lower_ty(m, &t.args[0])?;
+            return Ok(m.types.obj("PriorityQueue", vec![elem]));
+        }
+        // Clock values are two-word C structs in the runtime (`Timestamp`, `Instant`), so a
+        // record of two `Int`s shares their memory layout.
+        if t.is_std("Timestamp") || t.is_std("Instant") {
+            let name = if t.is_std("Timestamp") {
+                "Timestamp"
+            } else {
+                "Instant"
+            };
+            let words = if name == "Timestamp" {
+                ["seconds", "nanoseconds"]
+            } else {
+                ["domain", "tick"]
+            };
+            let fields = words.iter().map(|w| (w.to_string(), MTy::INT)).collect();
+            let (_, ty) = m.add_record(name, fields);
+            return Ok(ty);
+        }
         // Plain-data natives share the runtime's `repr(C)` layout.
-        let pod: &[(&str, &[&str])] = &[
-            ("Timestamp", &["seconds", "nanos"]),
-            ("Instant", &["domain", "tick"]),
-            ("Decimal", &["lo", "hi", "exp"]),
-        ];
+        let pod: &[(&str, &[&str])] = &[("Decimal", &["lo", "hi", "exp"])];
         for (name, fields) in pod {
             if t.is_std(name) {
                 let (id, ty) = m.add_record(name, Vec::new());
@@ -276,9 +304,14 @@ impl Cx {
                 return Ok(ty);
             }
         }
-        // Durations are signed nanoseconds.
+        // A duration is its nanosecond count.
         if t.is_std("Duration") {
             return Ok(MTy::INT);
+        }
+        // Arbitrary-precision integers have no runtime yet; the type exists so interfaces
+        // that mention one (`FileInfo.exact`) can be declared.
+        if t.is_std("BigInt") {
+            return Ok(m.types.obj("BigInt", Vec::new()));
         }
         // Runtime handles are reference-counted objects.
         if t.is_std("Regex") {
