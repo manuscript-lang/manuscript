@@ -64,5 +64,10 @@ pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) ->
     let mut checker = checker::Checker::new(&options);
     checker.imports = imports;
     let bundled = options.bundled;
-    checker.check_modules(modules, bundled)
+    let mut program = checker.check_modules(modules, bundled);
+    if options.ownership && program.diagnostics.is_empty() {
+        let found = program.hir().ownership().diagnostics;
+        program.diagnostics.extend(found);
+    }
+    program
 }

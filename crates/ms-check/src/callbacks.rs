@@ -98,7 +98,7 @@ impl Checker {
             let b = self.bind_reporting(
                 param.name,
                 &param.ty,
-                false,
+                l.params[index].mutable,
                 l.params[index].pos,
                 !bound.contains(&param.name),
             );

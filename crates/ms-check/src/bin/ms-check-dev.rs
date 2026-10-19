@@ -26,10 +26,11 @@ fn main() {
 fn run() -> i32 {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let json = args.iter().any(|a| a == "--json");
+    let ownership = args.iter().any(|a| a == "--ownership");
     let files: Vec<&String> = args.iter().filter(|a| !a.starts_with("--")).collect();
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
     for file in files {
-        diagnostics.extend(check_file(Path::new(file)));
+        diagnostics.extend(check_file(Path::new(file), ownership));
     }
     if json {
         let items: Vec<String> = diagnostics.iter().map(Diagnostic::to_json).collect();
@@ -204,7 +205,7 @@ fn missing_component(target: &Path) -> String {
     }
 }
 
-fn check_file(path: &Path) -> Vec<Diagnostic> {
+fn check_file(path: &Path, ownership: bool) -> Vec<Diagnostic> {
     let canonical = match std::fs::canonicalize(path) {
         Ok(p) => p,
         Err(_) => {
@@ -232,7 +233,11 @@ fn check_file(path: &Path) -> Vec<Diagnostic> {
     if let Err(d) = loader.visit(&canonical) {
         return vec![d];
     }
-    let program = ms_check::check(loader.modules, loader.imports, CheckOptions::default());
+    let options = CheckOptions {
+        ownership,
+        ..CheckOptions::default()
+    };
+    let program = ms_check::check(loader.modules, loader.imports, options);
     let mut diagnostics = loader.diagnostics;
     diagnostics.extend(program.diagnostics);
     diagnostics

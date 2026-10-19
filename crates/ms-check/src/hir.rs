@@ -86,6 +86,11 @@ impl Callable {
 }
 
 impl Hir<'_> {
+    /// The checked program.
+    pub fn program(&self) -> &Program {
+        self.program
+    }
+
     /// Modules in dependency order.
     pub fn modules(&self) -> impl Iterator<Item = ModuleHir> + '_ {
         self.program
