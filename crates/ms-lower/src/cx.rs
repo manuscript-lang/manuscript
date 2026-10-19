@@ -246,6 +246,10 @@ impl Cx {
             let elem = self.lower_ty(m, &t.args[0])?;
             return Ok(m.types.obj("Queue", vec![elem]));
         }
+        if t.is_std("PriorityQueue") {
+            let elem = self.lower_ty(m, &t.args[0])?;
+            return Ok(m.types.obj("PriorityQueue", vec![elem]));
+        }
         // A duration is its nanosecond count.
         if t.is_std("Duration") {
             return Ok(MTy::INT);

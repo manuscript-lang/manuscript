@@ -429,10 +429,52 @@ impl<'m> FuncBuilder<'m> {
             let p = self.add_block_param(b, ty, mode);
             self.defs.insert((v, b), p);
             self.add_phi_operands(v, b, p);
-            p
+            self.without_trivial_param(v, b, p)
         };
         self.defs.insert((v, b), val);
         val
+    }
+
+    /// Removes the block parameter `param` of the sealed block `b` when every predecessor
+    /// passes the same value, so that value stays live across the join instead of being
+    /// handed through an edge (which would consume it for code that still holds it).
+    fn without_trivial_param(&mut self, v: Var, b: Block, param: Value) -> Value {
+        let idx = self.f.blocks[b.index()]
+            .params
+            .iter()
+            .position(|p| p.value == param)
+            .expect("param exists");
+        let mut same: Option<Value> = None;
+        let mut edges = 0;
+        for p in self.preds[b.index()].clone() {
+            let mut ok = true;
+            self.f.blocks[p.index()].term.for_each_target_mut(|t| {
+                if t.block == b {
+                    edges += 1;
+                    match (t.args.get(idx), same) {
+                        (Some(a), None) if *a != param => same = Some(*a),
+                        (Some(a), Some(s)) if *a == s => {}
+                        _ => ok = false,
+                    }
+                }
+            });
+            if !ok {
+                return param;
+            }
+        }
+        let Some(x) = same.filter(|_| edges > 0) else {
+            return param;
+        };
+        for p in self.preds[b.index()].clone() {
+            self.f.blocks[p.index()].term.for_each_target_mut(|t| {
+                if t.block == b && t.args.len() > idx {
+                    t.args.remove(idx);
+                }
+            });
+        }
+        self.f.blocks[b.index()].params.remove(idx);
+        self.defs.insert((v, b), x);
+        x
     }
 
     fn add_phi_operands(&mut self, v: Var, b: Block, param: Value) {

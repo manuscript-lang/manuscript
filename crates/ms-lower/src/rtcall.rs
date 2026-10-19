@@ -133,6 +133,7 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
     }
     let prefix = match m.types.kind(recv) {
         TyKind::Obj(n, _) if n == "Queue" => "queue",
+        TyKind::Obj(n, _) if n == "PriorityQueue" => "priority_queue",
         TyKind::Str => "string",
         TyKind::List(_) => "list",
         TyKind::Bytes => "bytes",
@@ -177,35 +178,101 @@ const STATUS_NONE: i64 = 16;
 
 impl FnLower<'_> {
     /// Calls the runtime function `sym` for a method call.
-    /// `Queue[T]()` or `Queue[T](capacity: n)`: a runtime queue of elements of `T`.
+    /// `Queue[T]()`, `Queue[T](capacity: n)` or `PriorityQueue[T](compare: f, capacity: n)`:
+    /// a runtime queue of elements of `T`.
     pub(crate) fn construct_queue(
         &mut self,
         view: &ms_check::hir::CallView<'_>,
         ty: MTy,
     ) -> Result<Val, Error> {
-        let TyKind::Obj(_, args) = self.b.m.types.kind(ty).clone() else {
+        let TyKind::Obj(name, args) = self.b.m.types.kind(ty).clone() else {
             return Err(Error::new("queue without an element type"));
         };
+        let prioritized = name == "PriorityQueue";
         let desc = self.type_desc(args[0]);
-        let (has, cap) = match view.arguments.as_slice() {
-            [] => (self.b.bconst(false), self.b.iconst(0)),
-            [a] => {
-                let x = self.expr(a.expr)?;
-                if self.dead {
-                    return Ok(self.dummy(ty));
-                }
-                self.flatten_optional(
-                    Input {
-                        val: Some(x),
-                        wrapped: a.wrap_optional.is_some(),
-                    },
-                    "i64",
-                )?
+        let mut compare = None;
+        let mut capacity = None;
+        for a in &view.arguments {
+            let x = self.expr(a.expr)?;
+            if self.dead {
+                return Ok(self.dummy(ty));
             }
-            _ => return Err(Error::new("unsupported queue constructor")),
+            if a.slot.name.as_str() == "compare" {
+                compare = Some(x);
+            } else {
+                capacity = Some(Input {
+                    val: Some(x),
+                    wrapped: a.wrap_optional.is_some(),
+                });
+            }
+        }
+        let (has, cap) = match capacity {
+            None => (self.b.bconst(false), self.b.iconst(0)),
+            Some(input) => self.flatten_optional(input, "i64")?,
         };
-        let q = self.call_runtime("msrt_queue_new", &[desc, has, cap], ty)?;
+        if !prioritized {
+            let q = self.call_runtime("msrt_queue_new", &[desc, has, cap], ty)?;
+            return Ok(Val { v: q, own: true });
+        }
+        let user = compare.ok_or_else(|| Error::new("PriorityQueue without a comparator"))?;
+        let user = self.owned(user);
+        let thunk = self.compare_closure(args[0], user);
+        // The queue keeps its own reference to the comparator.
+        let q = self.call_runtime("msrt_priority_queue_new", &[desc, thunk, has, cap], ty)?;
+        self.drop_value(thunk);
         Ok(Val { v: q, own: true })
+    }
+
+    /// A closure the runtime calls as `code(closure, a, b)` with element slots, which loads
+    /// both elements and calls the user comparator `user` (captured, consumed).
+    fn compare_closure(&mut self, elem: MTy, user: Value) -> Value {
+        use ms_mir::builder::FuncBuilder;
+        use ms_mir::ir::{FuncKind, Mode, Param};
+        let user_ty = self.ty_of(user);
+        let key = format!("compare-thunk:{}", elem.0);
+        let fty = self.b.m.types.func(vec![MTy::PTR, MTy::PTR], MTy::INT);
+        let thunk = match self.cx.helpers.get(&key) {
+            Some(t) => *t,
+            None => {
+                let ps = vec![
+                    Param {
+                        ty: MTy::PTR,
+                        mode: Mode::Borrow,
+                    },
+                    Param {
+                        ty: MTy::PTR,
+                        mode: Mode::Borrow,
+                    },
+                    Param {
+                        ty: MTy::PTR,
+                        mode: Mode::Borrow,
+                    },
+                ];
+                let mut b = FuncBuilder::new(self.b.m, "priority_queue.compare", ps, MTy::INT);
+                b.func_mut().kind = FuncKind::Closure {
+                    captures: vec![user_ty],
+                };
+                let p = b.params();
+                let f = b
+                    .emit(Op::ClosureCap, &[p[0]], Imm::Idx(0), Some(user_ty))
+                    .expect("capture");
+                let a = b
+                    .emit(Op::Load, &[p[1]], Imm::Ty(elem), Some(elem))
+                    .expect("load");
+                let c = b
+                    .emit(Op::Load, &[p[2]], Imm::Ty(elem), Some(elem))
+                    .expect("load");
+                let r = b.call_ind(f, &[a, c]);
+                b.ret(Some(r));
+                let func = b.into_func();
+                let id = self.b.m.add_func(func);
+                self.cx.helpers.insert(key, id);
+                id
+            }
+        };
+        self.b
+            .emit(Op::ClosureNew, &[user], Imm::Func(thunk), Some(fty))
+            .expect("closure")
     }
 
     pub(crate) fn rt_method(
