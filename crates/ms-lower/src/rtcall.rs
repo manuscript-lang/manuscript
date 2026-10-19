@@ -16,15 +16,15 @@ use ms_mir::types::{Ty as MTy, TyKind};
 const CATALOGUE: &str = include_str!("../../ms-rt/SYMBOLS.md");
 
 /// One declared runtime parameter.
-struct RtParam {
-    name: String,
-    ty: String,
+pub(crate) struct RtParam {
+    pub name: String,
+    pub ty: String,
 }
 
 /// A runtime function's parameters and return type (empty for none).
-struct RtSig {
-    params: Vec<RtParam>,
-    ret: String,
+pub(crate) struct RtSig {
+    pub params: Vec<RtParam>,
+    pub ret: String,
 }
 
 const RENAMED: [(&str, &str); 2] = [
@@ -45,7 +45,7 @@ pub(crate) fn function_symbol(native: &str) -> Option<String> {
         .find(|sym| rt_sig(sym).is_some())
 }
 
-fn rt_sig(sym: &str) -> Option<RtSig> {
+pub(crate) fn rt_sig(sym: &str) -> Option<RtSig> {
     for line in CATALOGUE.lines() {
         // `msstd_math_sin (unary f64 -> f64)`: one `f64` in, one out.
         if line.strip_prefix(sym) == Some(" (unary f64 -> f64)") {
@@ -361,7 +361,7 @@ impl FnLower<'_> {
             if ret == MTy::BOOL && matches!(self.b.m.types.kind(result), TyKind::Alt(_)) {
                 // A bare status: `Result[Unit, E]`.
                 let status = self.call_runtime(sym, &vals, MTy::BOOL)?;
-                return self.status_result(sym, status, None, result);
+                return self.status_result(sym, status, None, None, result);
             }
             // A null string pointer is the absent `Optional[String]`.
             let ret = match self.b.m.types.kind(result) {
@@ -405,20 +405,32 @@ impl FnLower<'_> {
             (TyKind::Alt(_), TyKind::Opt(inner)) => Some(*inner),
             _ => None,
         };
+        // `Result[Interface, E]`: the runtime writes a handle, which the interface value wraps.
+        let wrap = match (self.b.m.types.kind(result), self.b.m.types.kind(payload)) {
+            (TyKind::Alt(_), TyKind::Iface(i)) => Some(*i),
+            _ => None,
+        };
+        let slot_ty = match wrap {
+            Some(_) => crate::natiface::handle_ty(self.b.m),
+            None => eof.unwrap_or(payload),
+        };
         let slot = self
             .b
-            .emit(
-                Op::Slot,
-                &[],
-                Imm::Ty(eof.unwrap_or(payload)),
-                Some(MTy::PTR),
-            )
+            .emit(Op::Slot, &[], Imm::Ty(slot_ty), Some(MTy::PTR))
             .expect("slot");
         vals.push(slot);
         let status = self.call_runtime(sym, &vals, MTy::BOOL)?;
         if let Some(inner) = eof {
             return self.status_optional_result(sym, status, slot, inner, result);
         }
+        let wrap = match wrap {
+            Some(i) => {
+                let hir = self.hir.clone();
+                let vt = self.cx.handle_vtable_of(self.b.m, &hir, sym, i)?;
+                Some((vt, payload))
+            }
+            None => None,
+        };
         if matches!(self.b.m.types.kind(result), TyKind::Opt(_)) {
             return self.two_ways(
                 status,
@@ -432,7 +444,7 @@ impl FnLower<'_> {
                 &mut |s| Ok(Some(s.none_owned(result))),
             );
         }
-        self.status_result(sym, status, Some((slot, payload)), result)
+        self.status_result(sym, status, Some((slot, slot_ty)), wrap, result)
     }
 
     /// The error case of `ea` that the status `code` names; the last listed case otherwise.
@@ -512,6 +524,7 @@ impl FnLower<'_> {
         sym: &str,
         status: Value,
         out: Option<(Value, MTy)>,
+        wrap: Option<(ms_mir::ir::VtableId, MTy)>,
         result: MTy,
     ) -> Result<Val, Error> {
         let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
@@ -534,6 +547,13 @@ impl FnLower<'_> {
                             .expect("take")
                     }
                     None => s.b.unit(),
+                };
+                let payload = match wrap {
+                    Some((vt, it)) => {
+                        s.b.emit(Op::IfaceNew, &[payload], Imm::Vtable(vt), Some(it))
+                            .expect("iface")
+                    }
+                    None => payload,
                 };
                 Ok(Some(s.b.alt_new(a, ok as u32, &[payload])))
             },

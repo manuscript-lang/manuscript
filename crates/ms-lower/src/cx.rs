@@ -65,6 +65,8 @@ pub struct Cx {
     pub helpers: HashMap<String, FuncId>,
     /// Interface implementation tables built by lowering.
     pub vtables: HashMap<String, ms_mir::ir::VtableId>,
+    /// The checker type of every lowered interface.
+    pub contracts: HashMap<ms_mir::types::IfaceId, ct::Ty>,
     /// Every implementation method of the program.
     pub methods: Vec<ct::MethodRef>,
     /// Types whose descriptor glue is registered.
@@ -95,6 +97,7 @@ impl Cx {
             queue: Vec::new(),
             helpers: HashMap::new(),
             vtables: HashMap::new(),
+            contracts: HashMap::new(),
             methods: program.methods.clone(),
         }
     }
@@ -191,6 +194,7 @@ impl Cx {
                 });
                 let ty = m.types.iface(id);
                 self.tycache.insert(key.to_string(), ty);
+                self.contracts.insert(id, t.clone());
                 let subst = ct::substitution(t);
                 let mut methods = Vec::new();
                 if let Some(def) = &t.def {

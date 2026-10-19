@@ -18,11 +18,20 @@ use std::rc::Rc;
 
 /// Native functions that return an interface over a runtime handle: the function, the
 /// interface module, and the runtime call that makes the handle with its constant argument.
-pub(crate) const HANDLE_FUNCTIONS: &[(&str, &str, &str, i64)] =
-    &[("io/stdin", "io", "msstd_io_standard", 0)];
+pub(crate) const HANDLE_FUNCTIONS: &[(&str, &str, &str, i64)] = &[
+    ("io/stdin", "io", "msstd_io_standard", 0),
+    // No handle: the interface value carries nothing and its operations open handles.
+    ("io/files", "io", "", 0),
+];
+
+/// Interfaces whose values carry no data.
+const UNIT_DATA: &[(&str, &str)] = &[("io", "Files")];
 
 /// Runtime symbol of an operation of a handle-backed interface (`module`, `interface`, `operation`).
 const METHODS: &[(&str, &str, &str, &str)] = &[
+    ("io", "Files", "open", "msstd_io_open"),
+    ("io", "File", "read", "msstd_io_read"),
+    ("io", "File", "close", "msstd_io_close"),
     ("io", "ReadStream", "read", "msstd_io_read"),
     ("io", "ReadStream", "close", "msstd_io_close"),
     ("io", "WriteStream", "write", "msstd_io_write"),
@@ -49,6 +58,26 @@ pub(crate) struct MethodJob {
 }
 
 impl Cx {
+    /// The table for `iface` as returned by the runtime symbol `sym` (named `msstd_<module>_...`).
+    pub(crate) fn handle_vtable_of(
+        &mut self,
+        m: &mut Module,
+        hir: &Rc<ModuleHir>,
+        sym: &str,
+        iface: IfaceId,
+    ) -> Result<VtableId, Error> {
+        let module = sym
+            .strip_prefix("msstd_")
+            .and_then(|r| r.split('_').next())
+            .ok_or_else(|| Error::new(format!("{sym} returns an interface")))?;
+        let ity = self
+            .contracts
+            .get(&iface)
+            .cloned()
+            .ok_or_else(|| Error::new("unknown interface"))?;
+        self.handle_vtable(m, hir, module, &ity, iface)
+    }
+
     /// The table of `iface` over runtime handles of `module`, one forwarder per operation.
     pub(crate) fn handle_vtable(
         &mut self,
@@ -62,7 +91,12 @@ impl Cx {
         if let Some(v) = self.vtables.get(&key) {
             return Ok(*v);
         }
-        let data_ty = handle_ty(m);
+        let iface_name = ity.name.to_string();
+        let data_ty = if UNIT_DATA.contains(&(module, iface_name.as_str())) {
+            MTy::UNIT
+        } else {
+            handle_ty(m)
+        };
         let sigs = m.ifaces[iface.index()].methods.clone();
         let subst = ct::substitution(ity);
         let ops = ity
@@ -70,7 +104,6 @@ impl Cx {
             .as_ref()
             .map(|d| d.operations.borrow().clone())
             .unwrap_or_default();
-        let iface_name = ity.name.to_string();
         let mut methods = Vec::new();
         for s in &sigs {
             let decl = ops
@@ -151,18 +184,23 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         fl.b.unreachable();
         return Ok(());
     };
-    let handle =
-        fl.b.emit(
-            Op::Load,
-            &[args[0]],
-            Imm::Ty(job.data_ty),
-            Some(job.data_ty),
-        )
-        .expect("load");
-    let recv = Val {
-        v: handle,
-        own: false,
-    };
+    let takes_handle = crate::rtcall::rt_sig(sym)
+        .and_then(|s| s.params.first().map(|p| p.name == "h"))
+        .unwrap_or(false);
+    let recv = takes_handle.then(|| {
+        let handle =
+            fl.b.emit(
+                Op::Load,
+                &[args[0]],
+                Imm::Ty(job.data_ty),
+                Some(job.data_ty),
+            )
+            .expect("load");
+        Val {
+            v: handle,
+            own: false,
+        }
+    });
     let nargs: Vec<NArg> = job
         .decl
         .iter()
@@ -174,7 +212,10 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         })
         .collect();
     debug_assert_eq!(job.params.len(), nargs.len());
-    let r = fl.rt_method(sym, recv, &job.decl, &nargs, job.ret)?;
+    let r = match recv {
+        Some(recv) => fl.rt_method(sym, recv, &job.decl, &nargs, job.ret)?,
+        None => fl.rt_function(sym, &job.decl, &nargs, job.ret)?,
+    };
     fl.emit_return(Some(r));
     Ok(())
 }
@@ -195,9 +236,13 @@ impl FnLower<'_> {
         };
         let hir = self.hir.clone();
         let vt = self.cx.handle_vtable(self.b.m, &hir, module, &ity, iface)?;
-        let ht = handle_ty(self.b.m);
-        let k = self.b.iconst(constant);
-        let h = self.call_runtime(make, &[k], ht)?;
+        let h = if make.is_empty() {
+            self.b.unit()
+        } else {
+            let ht = handle_ty(self.b.m);
+            let k = self.b.iconst(constant);
+            self.call_runtime(make, &[k], ht)?
+        };
         let v = self
             .b
             .emit(Op::IfaceNew, &[h], Imm::Vtable(vt), Some(want))
