@@ -1,0 +1,61 @@
+module "sieve"
+extern @msrt_print_int(int)
+entry @main
+fn @sieve(%n: int) -> int {
+b0:
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  %two: int = iconst 2
+  %t: bool = bconst true
+  %f: bool = bconst false
+  %cap: int = iadd %n, %one
+  %fl0: list<bool> = list.new %cap
+  br fill(%zero, %fl0)
+fill(%i: int, %fl: own list<bool>):
+  %c: bool = icmp.le %i, %n
+  br_if %c, fb(), fd()
+fb:
+  poll
+  %fl2: list<bool> = list.push %fl, %t
+  %i1: int = iadd.chk %i, %one
+  br fill(%i1, %fl2)
+fd:
+  br loop1(%two, %zero, %fl)
+loop1(%p: int, %count: int, %flags: own list<bool>):
+  %c1: bool = icmp.le %p, %n
+  br_if %c1, l1b(), l1d()
+l1b:
+  poll
+  %fv: bool = list.get %flags, %p
+  br_if %fv, mark(), skip()
+mark:
+  %cnt1: int = iadd.chk %count, %one
+  %sq: int = imul.chk %p, %p
+  br inner(%sq, %flags)
+inner(%j: int, %g: own list<bool>):
+  %cj: bool = icmp.le %j, %n
+  br_if %cj, ib(), id()
+ib:
+  poll
+  %g2: list<bool> = list.set %g, %j, %f
+  %j2: int = iadd.chk %j, %p
+  br inner(%j2, %g2)
+id:
+  br joined(%cnt1, %g)
+skip:
+  br joined(%count, %flags)
+joined(%cnt: int, %h: own list<bool>):
+  %p2: int = iadd.chk %p, %one
+  br loop1(%p2, %cnt, %h)
+l1d:
+  drop %flags
+  ret %count
+}
+fn @main() -> int {
+b0:
+  %n: int = iconst 5000000
+  %r: int = call @sieve (%n)
+  %u: unit = call.rt @msrt_print_int (%r)
+  %z: int = iconst 0
+  ret %z
+}

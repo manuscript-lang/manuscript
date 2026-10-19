@@ -717,10 +717,12 @@ fn define(cx: &mut BodyCx, f: &mut Func, c: &Cur, name: &str, ty: Ty) -> Result<
 }
 
 fn parse_body(m: &mut Module, id: FuncId, h: &FnHeader) -> Result<(), ParseError> {
-    let mut f = std::mem::replace(
-        &mut m.funcs[id.index()],
-        Func::new("", Vec::new(), Ty::UNIT),
-    );
+    // The placeholder keeps the signature so a function can call itself.
+    let sig = &m.funcs[id.index()];
+    let mut placeholder = Func::new(&sig.name, sig.params.clone(), sig.ret);
+    placeholder.kind = sig.kind.clone();
+    placeholder.linkage = sig.linkage;
+    let mut f = std::mem::replace(&mut m.funcs[id.index()], placeholder);
     let mut cx = BodyCx {
         vals: HashMap::new(),
         defined: Vec::new(),

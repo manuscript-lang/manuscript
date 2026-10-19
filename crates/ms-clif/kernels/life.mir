@@ -1,0 +1,152 @@
+module "life"
+record Grid { width: int, height: int, cells: list<int> }
+extern @msrt_print_int(int)
+entry @main
+fn @cell(%g: Grid, %x: int, %y: int) -> int {
+b0:
+  %w: int = rec.get Grid.width %g
+  %h: int = rec.get Grid.height %g
+  %xw: int = iadd.chk %x, %w
+  %wx: int = srem.chk %xw, %w
+  %yh: int = iadd.chk %y, %h
+  %wy: int = srem.chk %yh, %h
+  %row: int = imul.chk %wy, %w
+  %idx: int = iadd.chk %row, %wx
+  %cells: list<int> = rec.get Grid.cells %g
+  %v: int = list.get %cells, %idx
+  ret %v
+}
+fn @neighbors(%g: Grid, %x: int, %y: int) -> int {
+b0:
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  %m1: int = iconst -1
+  br ly(%m1, %zero)
+ly(%dy: int, %n: int):
+  %cy: bool = icmp.le %dy, %one
+  br_if %cy, lyb(), lyd()
+lyb:
+  br lx(%m1, %n)
+lx(%dx: int, %n2: int):
+  %cx: bool = icmp.le %dx, %one
+  br_if %cx, lxb(), lxd()
+lxb:
+  %dxz: bool = icmp.eq %dx, %zero
+  %dyz: bool = icmp.eq %dy, %zero
+  %both: bool = and %dxz, %dyz
+  br_if %both, lxskip(), lxadd()
+lxadd:
+  %nx: int = iadd.chk %x, %dx
+  %ny: int = iadd.chk %y, %dy
+  %c: int = call @cell (%g, %nx, %ny)
+  %n3: int = iadd.chk %n2, %c
+  br lxnext(%n3)
+lxskip:
+  br lxnext(%n2)
+lxnext(%n4: int):
+  %dx1: int = iadd.chk %dx, %one
+  br lx(%dx1, %n4)
+lxd:
+  %dy1: int = iadd.chk %dy, %one
+  br ly(%dy1, %n2)
+lyd:
+  ret %n
+}
+fn @step(%g: Grid) -> Grid {
+b0:
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  %two: int = iconst 2
+  %three: int = iconst 3
+  %w: int = rec.get Grid.width %g
+  %h: int = rec.get Grid.height %g
+  %total: int = imul %w, %h
+  %next0: list<int> = list.new %total
+  br ly(%zero, %next0)
+ly(%y: int, %next: own list<int>):
+  %cy: bool = icmp.lt %y, %h
+  br_if %cy, lyb(), lyd()
+lyb:
+  br lx(%zero, %next)
+lx(%x: int, %nx: own list<int>):
+  poll
+  %cx: bool = icmp.lt %x, %w
+  br_if %cx, lxb(), lxd()
+lxb:
+  %n: int = call @neighbors (%g, %x, %y)
+  %cur: int = call @cell (%g, %x, %y)
+  %alive: bool = icmp.eq %cur, %one
+  %n3: bool = icmp.eq %n, %three
+  %n2: bool = icmp.eq %n, %two
+  %a2: bool = and %alive, %n2
+  %live: bool = or %n3, %a2
+  %v: int = select %live, %one, %zero
+  %nx2: list<int> = list.push %nx, %v
+  %x1: int = iadd.chk %x, %one
+  br lx(%x1, %nx2)
+lxd:
+  %y1: int = iadd.chk %y, %one
+  br ly(%y1, %nx)
+lyd:
+  %out: Grid = rec.new Grid %w, %h, %next
+  ret %out
+}
+fn @life(%gens: int) -> int {
+b0:
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  %size: int = iconst 128
+  %total: int = iconst 16384
+  %c0: list<int> = list.new %total
+  %seven: int = iconst 7
+  %eleven: int = iconst 11
+  br init(%zero, %c0)
+init(%i: int, %cells: own list<int>):
+  %ci: bool = icmp.lt %i, %total
+  br_if %ci, ib(), id()
+ib:
+  %r7: int = srem.chk %i, %seven
+  %r11: int = srem.chk %i, %eleven
+  %z7: bool = icmp.eq %r7, %zero
+  %z11: bool = icmp.eq %r11, %zero
+  %any: bool = or %z7, %z11
+  %v: int = select %any, %one, %zero
+  %cells2: list<int> = list.push %cells, %v
+  %i1: int = iadd.chk %i, %one
+  br init(%i1, %cells2)
+id:
+  %g0: Grid = rec.new Grid %size, %size, %cells
+  br gen(%zero, %g0)
+gen(%n: int, %g: own Grid):
+  %cn: bool = icmp.lt %n, %gens
+  br_if %cn, gb(), gd()
+gb:
+  poll
+  %g2: Grid = call @step (%g)
+  drop %g
+  %n1: int = iadd.chk %n, %one
+  br gen(%n1, %g2)
+gd:
+  %cells3: list<int> = rec.get Grid.cells %g
+  %len: int = list.len %cells3
+  br sum(%zero, %zero)
+sum(%k: int, %s: int):
+  %ck: bool = icmp.lt %k, %len
+  br_if %ck, sb(), sd()
+sb:
+  %v2: int = list.get %cells3, %k
+  %s1: int = iadd.chk %s, %v2
+  %k1: int = iadd.chk %k, %one
+  br sum(%k1, %s1)
+sd:
+  drop %g
+  ret %s
+}
+fn @main() -> int {
+b0:
+  %n: int = iconst 50
+  %r: int = call @life (%n)
+  %u: unit = call.rt @msrt_print_int (%r)
+  %z: int = iconst 0
+  ret %z
+}

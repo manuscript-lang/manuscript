@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 typedef struct Obj { uint64_t rc; void (*drop)(struct Obj *); } Obj;
 
@@ -82,8 +83,15 @@ int64_t msrt_live(void) { return msrt_live_allocs; }
 
 int msrt_start(int64_t (*main_fn)(void), const void *tables, int argc, char **argv) {
   (void)tables; (void)argc; (void)argv;
+  struct timespec t0, t1;
+  clock_gettime(CLOCK_MONOTONIC, &t0);
   int64_t r = main_fn();
+  clock_gettime(CLOCK_MONOTONIC, &t1);
   fflush(stdout);
+  if (getenv("MSRT_TIME")) {
+    long long us = (long long)(t1.tv_sec - t0.tv_sec) * 1000000LL + (t1.tv_nsec - t0.tv_nsec) / 1000;
+    fprintf(stderr, "time_us %lld\n", us);
+  }
   if (getenv("MSRT_LEAKCHECK") && msrt_live_allocs != 0) {
     fprintf(stderr, "leak: %lld live allocations\n", (long long)msrt_live_allocs);
     return 99;

@@ -117,6 +117,8 @@ impl<'m> Layouts<'m> {
         if let Some(b) = self.boxed.borrow().get(&a) {
             return *b;
         }
+        // Provisional answer for cycles through other alternatives.
+        self.boxed.borrow_mut().insert(a, false);
         let target = self.m.types.find(&TyKind::Alt(a));
         let b = target.is_some_and(|t| self.reaches_by_value(t, t, &mut Vec::new()));
         self.boxed.borrow_mut().insert(a, b);
@@ -155,6 +157,12 @@ impl<'m> Layouts<'m> {
     pub fn shape(&self, ty: Ty) -> Shape {
         if let Some(s) = self.cache.borrow().get(&ty) {
             return s.clone();
+        }
+        if let TyKind::Alt(a) = self.m.types.kind(ty) {
+            if self.is_boxed(*a) {
+                // A boxed alternative is one pointer; this also ends the recursion through its own fields.
+                self.cache.borrow_mut().insert(ty, Shape { leaves: vec![Leaf::I64], alt: None });
+            }
         }
         let s = self.compute(ty);
         self.cache.borrow_mut().insert(ty, s.clone());

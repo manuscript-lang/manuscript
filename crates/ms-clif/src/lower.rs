@@ -1087,6 +1087,22 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let slot = self.b.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, lay.size.max(8), 3));
                 vec![self.b.ins().stack_addr(types::I64, slot, 0)]
             }
+            Op::ListAddr => {
+                let lt = f.ty(inst.args[0]);
+                let (_, _, size) = self.elem_info(lt);
+                let l = self.a(inst, 0);
+                let i = self.a(inst, 1)[0];
+                vec![self.elem_addr(l[0], l[1], i, size, Op::ListGet)]
+            }
+            Op::PtrField => {
+                let Imm::Field(r, i) = inst.imm else { unreachable!() };
+                let rty = m.types.find(&TyKind::Rec(r)).expect("record type interned");
+                let (_, at, _) = self.fields_of(rty)[i as usize];
+                let lay = self.g.lay.mem(rty);
+                let off = lay.offsets.get(at).copied().unwrap_or(0) as i64;
+                let p = self.a(inst, 0)[0];
+                vec![self.add_imm(p, off)]
+            }
             Op::Load => {
                 let Imm::Ty(ty) = inst.imm else { unreachable!() };
                 let leaves = self.g.lay.leaves(ty);

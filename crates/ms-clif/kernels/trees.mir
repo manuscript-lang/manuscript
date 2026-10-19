@@ -1,0 +1,71 @@
+module "trees"
+alt Tree { Leaf, Node(left: Tree, right: Tree) }
+extern @msrt_print_int(int)
+entry @main
+fn @make(%depth: int) -> Tree {
+b0:
+  depth.enter
+  %zero: int = iconst 0
+  %z: bool = icmp.eq %depth, %zero
+  br_if %z, leaf(), node()
+leaf:
+  %l: Tree = alt.new Tree.Leaf
+  depth.leave
+  ret %l
+node:
+  %one: int = iconst 1
+  %d: int = isub.chk %depth, %one
+  %a: Tree = call @make (%d)
+  %b: Tree = call @make (%d)
+  %n: Tree = alt.new Tree.Node %a, %b
+  depth.leave
+  ret %n
+}
+fn @check(%t: Tree) -> int {
+b0:
+  depth.enter
+  %tag: int = alt.tag %t
+  switch %tag [0: leaf()] default node()
+leaf:
+  %one: int = iconst 1
+  depth.leave
+  ret %one
+node:
+  %l: Tree = alt.get Tree.Node.left %t
+  %r: Tree = alt.get Tree.Node.right %t
+  %cl: int = call @check (%l)
+  %cr: int = call @check (%r)
+  %one2: int = iconst 1
+  %s: int = iadd.chk %one2, %cl
+  %s2: int = iadd.chk %s, %cr
+  depth.leave
+  ret %s2
+}
+fn @trees(%rounds: int) -> int {
+b0:
+  %zero: int = iconst 0
+  br loop(%zero, %zero)
+loop(%r: int, %total: int):
+  %c: bool = icmp.lt %r, %rounds
+  br_if %c, body(), done()
+body:
+  poll
+  %depth: int = iconst 16
+  %t: Tree = call @make (%depth)
+  %n: int = call @check (%t)
+  drop %t
+  %tot: int = iadd.chk %total, %n
+  %one: int = iconst 1
+  %r1: int = iadd.chk %r, %one
+  br loop(%r1, %tot)
+done:
+  ret %total
+}
+fn @main() -> int {
+b0:
+  %n: int = iconst 20
+  %r: int = call @trees (%n)
+  %u: unit = call.rt @msrt_print_int (%r)
+  %z: int = iconst 0
+  ret %z
+}

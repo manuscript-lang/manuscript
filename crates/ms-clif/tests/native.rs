@@ -123,3 +123,33 @@ fn shared_fixtures() {
     }
     assert!(failures.is_empty(), "fixtures failed: {failures:?}");
 }
+
+fn kernel_src(name: &str) -> String {
+    std::fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("kernels").join(format!("{name}.mir"))).unwrap()
+}
+
+fn check_kernel(name: &str, expect: &str) {
+    let o = run_native(&kernel_src(name), name);
+    assert_eq!(o.code, 0, "{name} exit code");
+    assert_eq!(o.stdout.trim(), expect, "{name} checksum");
+}
+
+macro_rules! kernel_test {
+    ($($name:ident => $expect:expr),* $(,)?) => {
+        $(
+            #[test]
+            fn $name() {
+                check_kernel(stringify!($name), $expect);
+            }
+        )*
+    };
+}
+
+kernel_test! {
+    collatz => "524",
+    sieve => "348513",
+    trees => "2621420",
+    matmul => "26666000000",
+    life => "204",
+    nbody => "1199426",
+}

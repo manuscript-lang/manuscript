@@ -260,8 +260,8 @@ pub enum Op {
     ClosureNew, ClosureCap, IfaceNew, IfaceData,
     // Ownership.
     Copy, Drop, DropIf,
-    // Stack memory.
-    Slot, Load, Store,
+    // Raw memory: stack slots, interior pointers into lists and records.
+    Slot, Load, Store, ListAddr, PtrField,
     // Calls.
     Call, CallInd, CallRt, CallMethod,
     // Runtime services.
@@ -371,7 +371,7 @@ impl Op {
         Op::OptSome, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap,
         Op::StrLen, Op::SharedNew, Op::SharedGet,
         Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceData,
-        Op::Copy, Op::Drop, Op::DropIf, Op::Slot, Op::Load, Op::Store,
+        Op::Copy, Op::Drop, Op::DropIf, Op::Slot, Op::Load, Op::Store, Op::ListAddr, Op::PtrField,
         Op::Call, Op::CallInd, Op::CallRt, Op::CallMethod,
         Op::TypeDesc, Op::Poll, Op::DepthEnter, Op::DepthLeave, Op::CleanupPush, Op::CleanupRun,
         Op::GlobalGet, Op::GlobalSet,
@@ -453,6 +453,8 @@ impl Op {
             Op::Slot => ("slot", K::Ty, true, effects!()),
             Op::Load => ("load", K::Ty, true, effects!(reads)),
             Op::Store => ("store", K::None, false, effects!(writes)),
+            Op::ListAddr => ("list.addr", K::None, true, effects!(faults)),
+            Op::PtrField => ("ptr.field", K::Field, true, effects!()),
             Op::Call => ("call", K::Func, true, effects!(reads, writes, faults, rc, alloc, io)),
             Op::CallInd => ("call.ind", K::None, true, effects!(reads, writes, faults, rc, alloc, io)),
             Op::CallRt => ("call.rt", K::Ext, true, effects!(reads, writes, faults, rc, alloc, io)),
@@ -1164,6 +1166,7 @@ impl Module {
             | Op::OptGet
             | Op::ClosureCap
             | Op::GlobalGet
+            | Op::Load
             | Op::StrLit
             | Op::OptNone => Mode::Borrow,
             _ => Mode::Own,
