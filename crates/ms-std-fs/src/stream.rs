@@ -3,7 +3,7 @@
 //! Reads and writes block in `poll(2)` slices so a pending cancellation interrupts them; bytes a
 //! line reader took beyond the current line wait in `pending` for the next read.
 use crate::err::describe;
-use crate::sys::{self, CPath};
+use crate::sys::{self, CPath, Interest};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::Write;
@@ -50,7 +50,7 @@ unsafe extern "C-unwind" {
 }
 
 pub struct Stream {
-    pub(crate) fd: i32,
+    pub(crate) fd: sys::Fd,
     /// Standard output and error share the descriptor with the runtime's buffered `print`.
     shares_output: bool,
     owned: bool,
@@ -70,11 +70,11 @@ const DEFAULT_CHUNK: i64 = 64 * 1024;
 const POLL_SLICE_MS: i32 = 50;
 
 impl Stream {
-    pub fn new(fd: i32, owned: bool, name: &[u8]) -> Stream {
+    pub fn new(fd: sys::Fd, owned: bool, name: &[u8]) -> Stream {
         let pollable = sys::fstat(fd)
-            .map(|st| st.st_mode & libc::S_IFMT != libc::S_IFREG)
+            .map(|st| sys::is_pollable(&st))
             .unwrap_or(true);
-        let shares_output = !owned && (fd == 1 || fd == 2);
+        let shares_output = !owned && sys::is_output(fd);
         Stream {
             fd,
             shares_output,
@@ -89,6 +89,16 @@ impl Stream {
         }
     }
 
+    /// Standard input (0), output (1) or error (2); the descriptor stays open.
+    pub fn standard(which: i64) -> Stream {
+        let name: &[u8] = match which {
+            0 => b"/dev/stdin",
+            1 => b"/dev/stdout",
+            _ => b"/dev/stderr",
+        };
+        Stream::new(sys::standard(which), false, name)
+    }
+
     /// Opens a file read-only; every failure is `Unavailable` except an embedded NUL.
     pub fn open(path: &[u8]) -> IoRes<Stream> {
         if path.contains(&0) {
@@ -98,18 +108,17 @@ impl Stream {
             return Err(IoFail::status(STATUS_UNAVAILABLE));
         }
         let c = CPath::new(path).ok_or(IoFail::status(STATUS_INVALID_INPUT))?;
-        match sys::open(&c, libc::O_RDONLY, 0) {
+        match sys::open(&c, sys::O_RDONLY, 0) {
             Ok(fd) => Ok(Stream::new(fd, true, path)),
             Err(_) => Err(IoFail::status(STATUS_UNAVAILABLE)),
         }
     }
 
     /// A stream over an `@std/fs` file handle opened with the given access mode.
-    pub fn file_handle(fd: i32, flags: i32, name: &[u8]) -> Stream {
+    pub fn file_handle(fd: sys::Fd, flags: i32, name: &[u8]) -> Stream {
         let mut s = Stream::new(fd, true, name);
-        let access = flags & libc::O_ACCMODE;
-        s.no_read = access == libc::O_WRONLY;
-        s.no_write = access == libc::O_RDONLY;
+        s.no_read = sys::write_only(flags);
+        s.no_write = sys::read_only(flags);
         s.file = true;
         s
     }
@@ -131,21 +140,14 @@ impl Stream {
     }
 
     /// Blocks until the descriptor is ready, checking for cancellation between slices.
-    fn wait(&self, events: i16) {
+    fn wait(&self, interest: Interest) {
         if !self.pollable {
             poll_cancel();
             return;
         }
         loop {
             poll_cancel();
-            let mut p = libc::pollfd {
-                fd: self.fd,
-                events,
-                revents: 0,
-            };
-            // SAFETY: one valid `pollfd`.
-            let r = unsafe { libc::poll(&mut p, 1, POLL_SLICE_MS) };
-            if r != 0 {
+            if sys::wait_ready(self.fd, interest, POLL_SLICE_MS) {
                 // Ready, hung up, or failed: the next read or write reports the details.
                 return;
             }
@@ -153,7 +155,7 @@ impl Stream {
     }
 
     fn read_fd(&mut self, buf: &mut [u8]) -> Result<usize, i32> {
-        self.wait(libc::POLLIN);
+        self.wait(Interest::Read);
         sys::read(self.fd, buf)
     }
 
@@ -211,7 +213,7 @@ impl Stream {
                     });
                 }
                 Ok(k) => data = &data[k..],
-                Err(libc::EAGAIN) => continue,
+                Err(sys::EAGAIN) => continue,
                 Err(e) => return Err(IoFail::os("write", &self.name, e)),
             }
         }
@@ -220,7 +222,7 @@ impl Stream {
 
     fn wait_write(&self) {
         if self.pollable {
-            self.wait(libc::POLLOUT);
+            self.wait(Interest::Write);
         } else {
             poll_cancel();
         }
@@ -232,10 +234,7 @@ impl Stream {
         }
         poll_cancel();
         if self.file {
-            // SAFETY: plain system call on an open descriptor.
-            if unsafe { libc::fsync(self.fd) } != 0 {
-                return Err(IoFail::os("sync", &self.name, sys::errno()));
-            }
+            sys::fsync(self.fd).map_err(|e| IoFail::os("sync", &self.name, e))?;
         }
         Ok(())
     }
@@ -243,14 +242,7 @@ impl Stream {
     /// Returns read-ahead bytes to the file so position-based operations see them.
     pub(crate) fn rewind(&mut self) {
         if self.file && !self.pending.is_empty() {
-            // SAFETY: plain system call on an open descriptor.
-            unsafe {
-                libc::lseek(
-                    self.fd,
-                    -(self.pending.len() as libc::off_t),
-                    libc::SEEK_CUR,
-                )
-            };
+            sys::rewind_by(self.fd, self.pending.len());
             self.pending.clear();
         }
     }
@@ -339,11 +331,8 @@ impl From<IoFail> for crate::err::Fail {
 mod tests {
     use super::*;
 
-    fn pipe() -> (i32, i32) {
-        let mut fds = [0i32; 2];
-        // SAFETY: `fds` has room for two descriptors.
-        assert_eq!(unsafe { libc::pipe(fds.as_mut_ptr()) }, 0);
-        (fds[0], fds[1])
+    fn pipe() -> (sys::Fd, sys::Fd) {
+        sys::pipe()
     }
 
     #[test]
@@ -398,7 +387,10 @@ mod tests {
             STATUS_INVALID_INPUT
         );
         assert_eq!(Stream::open(b"").err().unwrap().status, STATUS_UNAVAILABLE);
-        let mut f = Stream::open(b"/proc/self/status").unwrap();
-        assert!(f.read(None).unwrap().is_some());
+        #[cfg(target_os = "linux")]
+        {
+            let mut f = Stream::open(b"/proc/self/status").unwrap();
+            assert!(f.read(None).unwrap().is_some());
+        }
     }
 }

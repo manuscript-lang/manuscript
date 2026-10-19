@@ -50,12 +50,7 @@ pub extern "C" fn msstd_io_failure_message() -> *mut StrObj {
 /// `which`: 0 standard input, 1 standard output, 2 standard error. The descriptor stays open.
 #[unsafe(no_mangle)]
 pub extern "C" fn msstd_io_standard(which: i64) -> *mut Host {
-    let (fd, name): (i32, &[u8]) = match which {
-        0 => (0, b"/dev/stdin"),
-        1 => (1, b"/dev/stdout"),
-        _ => (2, b"/dev/stderr"),
-    };
-    new_handle(Stream::new(fd, false, name))
+    new_handle(Stream::standard(which))
 }
 
 #[unsafe(no_mangle)]

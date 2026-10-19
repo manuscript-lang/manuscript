@@ -17,7 +17,7 @@ use ms_std_rt::poll_cancel;
 
 /// `os.OpenFile` flag combinations for the mode strings of `open`.
 pub fn flags_of_mode(mode: &[u8]) -> Option<i32> {
-    use libc::{O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY};
+    use sys::{O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY};
     Some(match mode {
         b"r" => O_RDONLY,
         b"r+" => O_RDWR,
@@ -150,13 +150,7 @@ impl Stream {
         if !(0..=2).contains(&origin) || (offset < 0 && origin == 0) {
             return Err(Fail::invalid());
         }
-        let whence = [libc::SEEK_SET, libc::SEEK_CUR, libc::SEEK_END][origin as usize];
-        // SAFETY: plain system call on an open descriptor.
-        let at = unsafe { libc::lseek(self.fd, offset as libc::off_t, whence) };
-        if at < 0 {
-            return Err(self.fail("seek", sys::errno()));
-        }
-        Ok(at as i64)
+        sys::seek(self.fd, offset, origin).map_err(|e| self.fail("seek", e))
     }
 
     pub fn stat(&mut self) -> Res<Info> {
@@ -174,34 +168,17 @@ impl Stream {
         if size < 0 {
             return Err(Fail::invalid());
         }
-        // SAFETY: plain system call on an open descriptor.
-        if unsafe { libc::ftruncate(self.fd, size as libc::off_t) } != 0 {
-            return Err(self.fail("truncate", sys::errno()));
-        }
-        Ok(())
+        sys::ftruncate(self.fd, size).map_err(|e| self.fail("truncate", e))
     }
 
     pub fn sync(&mut self) -> Res<()> {
         self.admit(Access::Any)?;
-        // SAFETY: plain system call on an open descriptor.
-        if unsafe { libc::fsync(self.fd) } != 0 {
-            return Err(self.fail("sync", sys::errno()));
-        }
-        Ok(())
+        sys::fsync(self.fd).map_err(|e| self.fail("sync", e))
     }
 
     pub fn data_sync(&mut self) -> Res<()> {
         self.admit(Access::Any)?;
-        // SAFETY: plain system call on an open descriptor.
-        #[cfg(target_os = "linux")]
-        let r = unsafe { libc::fdatasync(self.fd) };
-        // SAFETY: plain system call on an open descriptor.
-        #[cfg(not(target_os = "linux"))]
-        let r = unsafe { libc::fsync(self.fd) };
-        if r != 0 {
-            return Err(self.fail("sync", sys::errno()));
-        }
-        Ok(())
+        sys::fdatasync(self.fd).map_err(|e| self.fail("sync", e))
     }
 
     pub fn chmod(&mut self, mode: i64) -> Res<()> {
@@ -209,11 +186,7 @@ impl Stream {
         if !(0..=0o7777).contains(&mode) {
             return Err(Fail::invalid());
         }
-        // SAFETY: plain system call on an open descriptor.
-        if unsafe { libc::fchmod(self.fd, mode as libc::mode_t) } != 0 {
-            return Err(self.fail("chmod", sys::errno()));
-        }
-        Ok(())
+        sys::fchmod(self.fd, mode as u32).map_err(|e| self.fail("chmod", e))
     }
 
     pub fn chown(&mut self, uid: i64, gid: i64) -> Res<()> {
@@ -221,30 +194,12 @@ impl Stream {
         if uid < -1 || gid < -1 || uid > 2_147_483_647 || gid > 2_147_483_647 {
             return Err(Fail::invalid());
         }
-        // SAFETY: plain system call on an open descriptor; -1 leaves an id unchanged.
-        if unsafe { libc::fchown(self.fd, uid as libc::uid_t, gid as libc::gid_t) } != 0 {
-            return Err(self.fail("chown", sys::errno()));
-        }
-        Ok(())
+        sys::fchown(self.fd, uid, gid).map_err(|e| self.fail("chown", e))
     }
 
     pub fn set_times(&mut self, accessed: (i64, i64), modified: (i64, i64)) -> Res<()> {
         self.admit(Access::Any)?;
-        let times = [
-            libc::timespec {
-                tv_sec: accessed.0 as _,
-                tv_nsec: accessed.1 as _,
-            },
-            libc::timespec {
-                tv_sec: modified.0 as _,
-                tv_nsec: modified.1 as _,
-            },
-        ];
-        // SAFETY: `times` holds two timespecs.
-        if unsafe { libc::futimens(self.fd, times.as_ptr()) } != 0 {
-            return Err(self.fail("chtimes", sys::errno()));
-        }
-        Ok(())
+        sys::futimens(self.fd, accessed, modified).map_err(|e| self.fail("chtimes", e))
     }
 
     /// `read_lines`: the remaining text split on `\n`, a trailing `\r` removed from each line.
@@ -287,40 +242,24 @@ fn chunk_size(max: Option<i64>) -> Res<usize> {
 }
 
 /// `pread` until the buffer is full or the file ends.
-fn pread_full(fd: i32, buf: &mut [u8], offset: i64) -> Result<usize, i32> {
+fn pread_full(fd: sys::Fd, buf: &mut [u8], offset: i64) -> Result<usize, i32> {
     let mut done = 0;
     while done < buf.len() {
         poll_cancel();
-        // SAFETY: the slice is writable for the requested length.
-        let r = unsafe {
-            libc::pread(
-                fd,
-                buf[done..].as_mut_ptr() as *mut _,
-                buf.len() - done,
-                (offset + done as i64) as libc::off_t,
-            )
-        };
-        if r < 0 {
-            let e = sys::errno();
-            if e == libc::EINTR {
-                continue;
-            }
-            return Err(e);
+        match sys::pread(fd, &mut buf[done..], offset + done as i64)? {
+            0 => break,
+            n => done += n,
         }
-        if r == 0 {
-            break;
-        }
-        done += r as usize;
     }
     Ok(done)
 }
 
-fn write_all_fd(fd: i32, mut data: &[u8]) -> Result<(), i32> {
+fn write_all_fd(fd: sys::Fd, mut data: &[u8]) -> Result<(), i32> {
     while !data.is_empty() {
         poll_cancel();
         let end = data.len().min(65536);
         match sys::write(fd, &data[..end]) {
-            Ok(0) => return Err(libc::EIO),
+            Ok(0) => return Err(sys::EIO),
             Ok(n) => data = &data[n..],
             Err(e) => return Err(e),
         }
@@ -328,43 +267,28 @@ fn write_all_fd(fd: i32, mut data: &[u8]) -> Result<(), i32> {
     Ok(())
 }
 
-fn pwrite_all(fd: i32, data: &[u8], offset: i64) -> Result<(), i32> {
+fn pwrite_all(fd: sys::Fd, data: &[u8], offset: i64) -> Result<(), i32> {
     let mut done = 0;
     while done < data.len() {
         poll_cancel();
         let end = (done + 65536).min(data.len());
-        // SAFETY: the slice is readable for the requested length.
-        let r = unsafe {
-            libc::pwrite(
-                fd,
-                data[done..end].as_ptr() as *const _,
-                end - done,
-                (offset + done as i64) as libc::off_t,
-            )
-        };
-        if r < 0 {
-            let e = sys::errno();
-            if e == libc::EINTR {
-                continue;
-            }
-            return Err(e);
+        match sys::pwrite(fd, &data[done..end], offset + done as i64)? {
+            0 => return Err(sys::EIO),
+            n => done += n,
         }
-        if r == 0 {
-            return Err(libc::EIO);
-        }
-        done += r as usize;
     }
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
     use ms_rt_abi::STATUS_NONE;
 
     fn scratch() -> Vec<u8> {
         let mut dir = ops::temporary_directory(b"msfs-file-").unwrap();
-        dir.extend_from_slice(b"/f");
+        dir.push(crate::path::SEP);
+        dir.push(b'f');
         dir
     }
 
@@ -401,7 +325,7 @@ mod tests {
         h.close().unwrap();
         assert_eq!(h.sync().unwrap_err().status, STATUS_CLOSED);
 
-        let mut r = open(&f, libc::O_RDONLY as i64, 0).unwrap();
+        let mut r = open(&f, sys::O_RDONLY as i64, 0).unwrap();
         assert_eq!(
             r.write(b"x").map_err(|e| e.status),
             Err(STATUS_INVALID_INPUT)

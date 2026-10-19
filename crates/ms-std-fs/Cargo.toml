@@ -12,7 +12,23 @@ crate-type = ["rlib"]
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-std-rt = { path = "../ms-std-rt" }
 ms-std-path = { path = "../ms-std-path" }
+
+[target.'cfg(unix)'.dependencies]
 libc = { version = "0.2", default-features = false }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Security_Cryptography",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Console",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_Environment",
+    "Win32_System_IO",
+    "Win32_System_Ioctl",
+    "Win32_System_Pipes",
+    "Win32_System_Threading",
+] }
 
 [lints]
 workspace = true

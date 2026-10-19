@@ -13,5 +13,9 @@ ms-rt-abi = { path = "../ms-rt-abi" }
 ms-std-rt = { path = "../ms-std-rt" }
 jiff = { version = "0.2", default-features = false, features = ["alloc", "tzdb-bundle-always"] }
 
+# The Windows local zone comes from the system setting, which jiff reads through the registry.
+[target.'cfg(windows)'.dependencies]
+jiff = { version = "0.2", default-features = false, features = ["std", "tz-system"] }
+
 [lints]
 workspace = true

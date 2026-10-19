@@ -1,6 +1,9 @@
 //! `fs.constants()`: host file constants, sorted by name (`hostos.FileConstants` in the Go runtime).
+#[cfg(windows)]
+use crate::sys;
 use alloc::vec::Vec;
 
+#[cfg(unix)]
 pub fn file_constants() -> Vec<(&'static str, i64)> {
     let mut v: Vec<(&'static str, i64)> = alloc::vec![
         ("COPYFILE_EXCL", 1),
@@ -67,6 +70,28 @@ pub fn file_constants() -> Vec<(&'static str, i64)> {
     v
 }
 
+/// The Windows set is what Go's `os` package defines there; the flag values are Go's own.
+#[cfg(windows)]
+pub fn file_constants() -> Vec<(&'static str, i64)> {
+    alloc::vec![
+        ("COPYFILE_EXCL", 1),
+        ("COPYFILE_FICLONE", 2),
+        ("COPYFILE_FICLONE_FORCE", 4),
+        ("F_OK", 0),
+        ("O_APPEND", sys::O_APPEND as i64),
+        ("O_CREAT", sys::O_CREAT as i64),
+        ("O_EXCL", sys::O_EXCL as i64),
+        ("O_RDONLY", sys::O_RDONLY as i64),
+        ("O_RDWR", sys::O_RDWR as i64),
+        ("O_SYNC", sys::O_SYNC as i64),
+        ("O_TRUNC", sys::O_TRUNC as i64),
+        ("O_WRONLY", sys::O_WRONLY as i64),
+        ("R_OK", 4),
+        ("W_OK", 2),
+        ("X_OK", 1),
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -81,6 +106,9 @@ mod tests {
         // The values in this table were dumped from the Go runtime on linux/amd64.
         if cfg!(all(target_os = "linux", target_arch = "x86_64")) {
             assert_eq!(ours.join(";"), go);
+        } else if cfg!(windows) {
+            let windows = "COPYFILE_EXCL 1;COPYFILE_FICLONE 2;COPYFILE_FICLONE_FORCE 4;F_OK 0;O_APPEND 1024;O_CREAT 64;O_EXCL 128;O_RDONLY 0;O_RDWR 2;O_SYNC 4096;O_TRUNC 512;O_WRONLY 1;R_OK 4;W_OK 2;X_OK 1";
+            assert_eq!(ours.join(";"), windows);
         } else {
             assert_eq!(ours.len(), go.split(';').count());
         }

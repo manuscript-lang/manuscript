@@ -15,7 +15,7 @@ pub struct Item {
 }
 
 pub struct Directory {
-    dir: *mut libc::DIR,
+    dir: sys::Dir,
     path: Vec<u8>,
     closed: bool,
 }
@@ -24,26 +24,11 @@ impl Directory {
     /// Opens `path`; anything but a directory is `Failed("not a directory")`, as in the Go runtime.
     pub fn open(path: &[u8]) -> Res<Directory> {
         let p = CPath::new(path).ok_or_else(Fail::invalid)?;
-        let fd = sys::open(&p, libc::O_RDONLY, 0).map_err(|e| Fail::errno(e, "open", path))?;
-        let is_dir = sys::fstat(fd).map(|st| sys::is_dir(&st));
-        match is_dir {
-            Ok(true) => {}
-            Ok(false) => {
-                let _ = sys::close(fd);
-                return Err(Fail::failed("not a directory"));
-            }
-            Err(e) => {
-                let _ = sys::close(fd);
-                return Err(Fail::errno(e, "stat", path));
-            }
+        let st = sys::stat(&p, true).map_err(|e| Fail::errno(e, "open", path))?;
+        if !sys::is_dir(&st) {
+            return Err(Fail::failed("not a directory"));
         }
-        // SAFETY: `fd` is an open directory descriptor; `fdopendir` takes ownership on success.
-        let dir = unsafe { libc::fdopendir(fd) };
-        if dir.is_null() {
-            let e = sys::errno();
-            let _ = sys::close(fd);
-            return Err(Fail::errno(e, "fdopendir", path));
-        }
+        let dir = sys::Dir::open(&p).map_err(|e| Fail::errno(e, "fdopendir", path))?;
         Ok(Directory {
             dir,
             path: path.to_vec(),
@@ -58,8 +43,7 @@ impl Directory {
     pub fn close(&mut self) {
         if !self.closed {
             self.closed = true;
-            // SAFETY: the stream is open and closed exactly once.
-            unsafe { libc::closedir(self.dir) };
+            self.dir.close();
         }
     }
 
@@ -69,38 +53,20 @@ impl Directory {
             return Err(Fail::status(STATUS_CLOSED));
         }
         poll_cancel();
-        loop {
-            sys::set_errno(0);
-            // SAFETY: the stream is open.
-            let ent = unsafe { libc::readdir(self.dir) };
-            if ent.is_null() {
-                return match sys::errno() {
-                    0 => Ok(None),
-                    e => Err(Fail::errno(e, "readdirent", &self.path)),
-                };
-            }
-            // SAFETY: `d_name` is NUL-terminated within the entry, which is valid until the next call.
-            let (name, kind) = unsafe {
-                (
-                    core::ffi::CStr::from_ptr((*ent).d_name.as_ptr())
-                        .to_bytes()
-                        .to_vec(),
-                    (*ent).d_type,
-                )
-            };
-            if name == b"." || name == b".." {
-                continue;
-            }
-            if core::str::from_utf8(&name).is_err() {
-                return Err(Fail::status(STATUS_UNSUPPORTED));
-            }
-            let (directory, symlink) = ops::entry_kind(&self.path, &name, kind);
-            return Ok(Some(Item {
-                name,
-                directory,
-                symlink,
-            }));
+        let (name, kind) = match self.dir.read_entry() {
+            Ok(Some(entry)) => entry,
+            Ok(None) => return Ok(None),
+            Err(e) => return Err(Fail::errno(e, "readdirent", &self.path)),
+        };
+        if core::str::from_utf8(&name).is_err() {
+            return Err(Fail::status(STATUS_UNSUPPORTED));
         }
+        let (directory, symlink) = ops::entry_kind(&self.path, &name, kind);
+        Ok(Some(Item {
+            name,
+            directory,
+            symlink,
+        }))
     }
 }
 

@@ -6,7 +6,6 @@ use crate::err::{Fail, Res, read_failure};
 use crate::path;
 use crate::sys::{self, CPath, Errno};
 use alloc::vec::Vec;
-use core::ffi::CStr;
 use ms_rt_abi::{STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
 use ms_std_rt::poll_cancel;
 
@@ -34,7 +33,7 @@ fn valid_utf8(bytes: &[u8]) -> bool {
 // ---------------------------------------------------------------------------
 
 /// `readBounded`: reads to end of file, failing when more than `max` bytes arrive.
-pub fn read_bounded(fd: i32, max: i64) -> Result<Vec<u8>, Fail> {
+pub fn read_bounded(fd: sys::Fd, max: i64) -> Result<Vec<u8>, Fail> {
     const CHUNK: usize = 32 * 1024;
     let mut out: Vec<u8> = Vec::new();
     let mut buf = alloc::vec![0u8; (max.min(CHUNK as i64 - 1) as usize) + 1];
@@ -62,7 +61,7 @@ pub fn read_bounded(fd: i32, max: i64) -> Result<Vec<u8>, Fail> {
 
 pub fn read_file(path: &[u8], max: i64) -> Res<Vec<u8>> {
     let p = cpath(path)?;
-    let fd = sys::open(&p, libc::O_RDONLY, 0).map_err(|e| Fail::errno(e, "open", path))?;
+    let fd = sys::open(&p, sys::O_RDONLY, 0).map_err(|e| Fail::errno(e, "open", path))?;
     let result = (|| {
         if let Ok(st) = sys::fstat(fd)
             && sys::is_dir(&st)
@@ -75,7 +74,7 @@ pub fn read_file(path: &[u8], max: i64) -> Res<Vec<u8>> {
     result
 }
 
-fn write_all(fd: i32, mut data: &[u8], path: &[u8]) -> Res<()> {
+fn write_all(fd: sys::Fd, mut data: &[u8], path: &[u8]) -> Res<()> {
     while !data.is_empty() {
         poll_cancel();
         let end = data.len().min(65536);
@@ -90,7 +89,7 @@ fn write_all(fd: i32, mut data: &[u8], path: &[u8]) -> Res<()> {
 
 fn write_with(path: &[u8], flags: i32, data: &[u8]) -> Res<()> {
     let p = cpath(path)?;
-    let fd = sys::open(&p, libc::O_WRONLY | libc::O_CREAT | flags, 0o600)
+    let fd = sys::open(&p, sys::O_WRONLY | sys::O_CREAT | flags, 0o600)
         .map_err(|e| Fail::errno(e, "open", path))?;
     let written = write_all(fd, data, path);
     let closed = sys::close(fd).map_err(|e| Fail::errno(e, "close", path));
@@ -98,21 +97,17 @@ fn write_with(path: &[u8], flags: i32, data: &[u8]) -> Res<()> {
 }
 
 pub fn write_file(path: &[u8], data: &[u8], replace: bool) -> Res<()> {
-    write_with(
-        path,
-        if replace { libc::O_TRUNC } else { libc::O_EXCL },
-        data,
-    )
+    write_with(path, if replace { sys::O_TRUNC } else { sys::O_EXCL }, data)
 }
 
 pub fn append_file(path: &[u8], data: &[u8]) -> Res<()> {
-    write_with(path, libc::O_APPEND, data)
+    write_with(path, sys::O_APPEND, data)
 }
 
 pub fn copy_file(source: &[u8], destination: &[u8], replace: bool, max: i64) -> Res<()> {
     let s = cpath(source)?;
     cpath(destination)?;
-    let fd = sys::open(&s, libc::O_RDONLY, 0).map_err(|e| Fail::errno(e, "open", source))?;
+    let fd = sys::open(&s, sys::O_RDONLY, 0).map_err(|e| Fail::errno(e, "open", source))?;
     let data = read_bounded(fd, max);
     let _ = sys::close(fd);
     write_file(destination, &data?, replace)
@@ -170,24 +165,24 @@ fn nanos((s, n): (i64, i64)) -> (i64, i64) {
     (s + n.div_euclid(1_000_000_000), n.rem_euclid(1_000_000_000))
 }
 
-pub fn info_of(st: &libc::stat, name: &[u8], birth: Option<(i64, i64)>) -> Info {
+pub fn info_of(st: &sys::Stat, name: &[u8], birth: Option<(i64, i64)>) -> Info {
     Info {
         name: name.to_vec(),
-        size: st.st_size as i64,
-        mode: (st.st_mode & 0o177777) as i64,
-        permissions: (st.st_mode & 0o7777) as i64,
-        modified: nanos((st.st_mtime as i64, st.st_mtime_nsec as i64)),
-        accessed: nanos((st.st_atime as i64, st.st_atime_nsec as i64)),
-        changed: nanos((st.st_ctime as i64, st.st_ctime_nsec as i64)),
+        size: st.size,
+        mode: (st.mode & 0o177777) as i64,
+        permissions: (st.mode & 0o7777) as i64,
+        modified: nanos(st.modified),
+        accessed: nanos(st.accessed),
+        changed: nanos(st.changed),
         created: birth.map(nanos),
-        block_size: st.st_blksize as u64,
-        blocks: st.st_blocks as u64,
-        rdev: st.st_rdev as u64,
-        device: st.st_dev as u64,
-        inode: st.st_ino as u64,
-        links: st.st_nlink as u64,
-        uid: st.st_uid as u64,
-        gid: st.st_gid as u64,
+        block_size: st.block_size,
+        blocks: st.blocks,
+        rdev: st.rdev,
+        device: st.device,
+        inode: st.inode,
+        links: st.links,
+        uid: st.uid,
+        gid: st.gid,
     }
 }
 
@@ -216,10 +211,7 @@ pub fn entry_kind(dir: &[u8], name: &[u8], kind: u8) -> (bool, bool) {
     }
     let full = path::join(dir, name);
     match CPath::new(&full).and_then(|c| sys::stat(&c, false).ok()) {
-        Some(st) => (
-            st.st_mode & libc::S_IFMT == libc::S_IFDIR,
-            st.st_mode & libc::S_IFMT == libc::S_IFLNK,
-        ),
+        Some(st) => (st.is_dir(), st.is_link()),
         None => (false, false),
     }
 }
@@ -256,18 +248,18 @@ pub fn list(path: &[u8], max: i64) -> Res<Vec<Entry>> {
 // ---------------------------------------------------------------------------
 
 fn mkdir_all(path: &[u8]) -> Result<(), (Errno, Vec<u8>)> {
-    let p = CPath::new(path).ok_or((libc::EINVAL, path.to_vec()))?;
+    let p = CPath::new(path).ok_or((sys::EINVAL, path.to_vec()))?;
     match sys::stat(&p, true) {
         Ok(st) if sys::is_dir(&st) => return Ok(()),
-        Ok(_) => return Err((libc::ENOTDIR, path.to_vec())),
+        Ok(_) => return Err((sys::ENOTDIR, path.to_vec())),
         Err(_) => {}
     }
     let mut i = path.len();
-    while i > 0 && path[i - 1] == b'/' {
+    while i > 0 && path::is_sep(path[i - 1]) {
         i -= 1;
     }
     let mut j = i;
-    while j > 0 && path[j - 1] != b'/' {
+    while j > 0 && !path::is_sep(path[j - 1]) {
         j -= 1;
     }
     if j > 1 {
@@ -290,26 +282,6 @@ pub fn create_directory(path: &[u8], recursive: bool) -> Res<()> {
     sys::mkdir(&p, 0o700).map_err(|e| Fail::errno(e, "mkdir", path))
 }
 
-/// `os.Remove`: `unlink`, then `rmdir`.
-fn remove_one(p: &CPath) -> Result<(), Errno> {
-    let e = match sys::unlink(p) {
-        Ok(()) => return Ok(()),
-        Err(e) => e,
-    };
-    match sys::rmdir(p) {
-        Ok(()) => Ok(()),
-        Err(e1) => Err(if e1 != libc::ENOTDIR { e1 } else { e }),
-    }
-}
-
-fn same_file(a: &libc::stat, b: &libc::stat) -> bool {
-    a.st_dev == b.st_dev && a.st_ino == b.st_ino
-}
-
-fn eval_symlinks_or(p: &[u8]) -> Result<Vec<u8>, Errno> {
-    eval_symlinks(p)
-}
-
 /// `removalPath`: refuses the working directory, its ancestors and the root, before touching anything.
 fn removal_path(s: &[u8]) -> Result<Vec<u8>, Fail> {
     let b = path::base(s);
@@ -326,13 +298,13 @@ fn removal_path(s: &[u8]) -> Result<Vec<u8>, Fail> {
     if path::dir(&clean) == clean {
         return Err(Fail::invalid());
     }
-    while p.last() == Some(&b'/') {
+    while p.len() > path::volume_len(&p) + 1 && p.last().is_some_and(|&c| path::is_sep(c)) {
         p.pop();
     }
-    let mut base = eval_symlinks_or(&cwd).map_err(|e| Fail::errno(e, "lstat", &cwd))?;
+    let mut base = eval_symlinks(&cwd).map_err(|e| Fail::errno(e, "lstat", &cwd))?;
     let pc = CPath::new(&p).ok_or_else(Fail::invalid)?;
     let info = match sys::stat(&pc, false) {
-        Err(libc::ENOENT) => return Ok(p),
+        Err(e) if sys::is_not_found(e) => return Ok(p),
         Err(e) => return Err(Fail::errno(e, "lstat", &p)),
         Ok(st) => st,
     };
@@ -342,7 +314,7 @@ fn removal_path(s: &[u8]) -> Result<Vec<u8>, Fail> {
     loop {
         let bc = CPath::new(&base).ok_or_else(Fail::invalid)?;
         let ancestor = sys::stat(&bc, true).map_err(|e| Fail::errno(e, "stat", &base))?;
-        if same_file(&info, &ancestor) {
+        if info.same_file(&ancestor) {
             return Err(Fail::invalid());
         }
         let parent = path::dir(&base);
@@ -354,92 +326,18 @@ fn removal_path(s: &[u8]) -> Result<Vec<u8>, Fail> {
     Ok(p)
 }
 
-fn remove_tree_at(dirfd: i32, name: &CStr, display: &[u8]) -> Res<()> {
-    poll_cancel();
-    // SAFETY: `name` is NUL-terminated; the directory is opened without following symlinks.
-    let fd = unsafe {
-        libc::openat(
-            dirfd,
-            name.as_ptr(),
-            libc::O_RDONLY | libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC,
-        )
-    };
-    if fd < 0 {
-        return Err(Fail::errno(sys::errno(), "openat", display));
-    }
-    // SAFETY: `fd` is an open directory descriptor and is handed to `fdopendir`.
-    let dir = unsafe { libc::fdopendir(fd) };
-    if dir.is_null() {
-        let e = sys::errno();
-        let _ = sys::close(fd);
-        return Err(Fail::errno(e, "fdopendir", display));
-    }
-    let mut names: Vec<(Vec<u8>, bool)> = Vec::new();
-    loop {
-        // SAFETY: `dir` is an open stream.
-        let ent = unsafe { libc::readdir(dir) };
-        if ent.is_null() {
-            break;
-        }
-        // SAFETY: `d_name` is NUL-terminated within the entry.
-        let n = unsafe { CStr::from_ptr((*ent).d_name.as_ptr()) }.to_bytes();
-        if n == b"." || n == b".." {
-            continue;
-        }
-        // SAFETY: `ent` is valid until the next `readdir`.
-        names.push((n.to_vec(), unsafe { (*ent).d_type } == sys::DT_DIR));
-    }
-    let mut result = Ok(());
-    for (n, is_dir) in names {
-        let mut child = display.to_vec();
-        child.push(b'/');
-        child.extend_from_slice(&n);
-        let mut cname = n.clone();
-        cname.push(0);
-        let c = CStr::from_bytes_with_nul(&cname).expect("names contain no NUL");
-        // `d_type` can be unknown; the unlink attempt below falls back to a directory removal.
-        let r = if is_dir {
-            remove_tree_at(fd, c, &child)
-        } else {
-            // SAFETY: `c` is NUL-terminated and `fd` is the open directory.
-            if unsafe { libc::unlinkat(fd, c.as_ptr(), 0) } == 0 {
-                Ok(())
-            } else if matches!(sys::errno(), libc::EISDIR | libc::EPERM) {
-                remove_tree_at(fd, c, &child)
-            } else {
-                Err(Fail::errno(sys::errno(), "unlinkat", &child))
-            }
-        };
-        if r.is_err() {
-            result = r;
-            break;
-        }
-    }
-    // SAFETY: closes the stream and its descriptor once.
-    unsafe { libc::closedir(dir) };
-    result?;
-    // SAFETY: `name` is NUL-terminated.
-    if unsafe { libc::unlinkat(dirfd, name.as_ptr(), libc::AT_REMOVEDIR) } != 0 {
-        return Err(Fail::errno(sys::errno(), "unlinkat", display));
-    }
-    Ok(())
-}
-
 pub fn remove_tree(path: &[u8]) -> Res<()> {
     poll_cancel();
     let p = cpath(path)?;
     let st = match sys::stat(&p, false) {
-        Err(libc::ENOENT) => return Ok(()),
+        Err(e) if sys::is_not_found(e) => return Ok(()),
         Err(e) => return Err(Fail::errno(e, "lstat", path)),
         Ok(st) => st,
     };
-    if !sys::is_dir(&st) {
+    if !st.is_dir() {
         return sys::unlink(&p).map_err(|e| Fail::errno(e, "remove", path));
     }
-    let mut full = path.to_vec();
-    full.push(0);
-    let c = CStr::from_bytes_with_nul(&full).map_err(|_| Fail::invalid())?;
-    remove_tree_at(libc::AT_FDCWD, c, path)
+    sys::remove_tree(path).map_err(|(e, op, at)| Fail::errno(e, op, &at))
 }
 
 pub fn remove(path: &[u8], recursive: bool) -> Res<()> {
@@ -449,7 +347,7 @@ pub fn remove(path: &[u8], recursive: bool) -> Res<()> {
         return remove_tree(&p);
     }
     let c = cpath(&p)?;
-    remove_one(&c).map_err(|e| Fail::errno(e, "remove", &p))
+    sys::remove(&c).map_err(|e| Fail::errno(e, "remove", &p))
 }
 
 pub fn rename(source: &[u8], destination: &[u8]) -> Res<()> {
@@ -477,86 +375,94 @@ pub fn hard_link(source: &[u8], destination: &[u8]) -> Res<()> {
     sys::link(&a, &b).map_err(|e| Fail::errno_paths(e, "link", &[source, destination]))
 }
 
+/// The index of the last separator in `dest` at or after `vol_len`, if any.
+fn last_sep(dest: &[u8], vol_len: usize) -> Option<usize> {
+    dest.iter()
+        .rposition(|&c| path::is_sep(c))
+        .filter(|&r| r >= vol_len)
+}
+
 /// `filepath.EvalSymlinks` (Go's `walkSymlinks`).
 pub fn eval_symlinks(original: &[u8]) -> Result<Vec<u8>, Errno> {
     let mut path: Vec<u8> = original.to_vec();
-    let mut vol_len = 0;
-    if !path.is_empty() && path[0] == b'/' {
-        vol_len = 1;
+    let mut vol_len = path::volume_len(&path);
+    if vol_len < path.len() && path::is_sep(path[vol_len]) {
+        vol_len += 1;
     }
-    let mut dest: Vec<u8> = path[..vol_len].to_vec();
+    let mut vol = path[..vol_len].to_vec();
+    let mut dest: Vec<u8> = vol.clone();
     let mut links = 0;
     let (mut start, mut end) = (vol_len, vol_len);
     while start < path.len() {
         start = end;
-        while start < path.len() && path[start] == b'/' {
+        while start < path.len() && path::is_sep(path[start]) {
             start += 1;
         }
         end = start;
-        while end < path.len() && path[end] != b'/' {
+        while end < path.len() && !path::is_sep(path[end]) {
             end += 1;
         }
         if end == start {
             break;
         }
         let part = path[start..end].to_vec();
-        if part == b"." {
+        // A lone `.` can be a symbolic link on Windows; Unix skips it.
+        if part == b"." && cfg!(unix) {
             continue;
         }
         if part == b".." {
-            let mut r = dest.len() as isize - 1;
-            while r >= vol_len as isize {
-                if dest[r as usize] == b'/' {
-                    break;
+            match last_sep(&dest, vol_len) {
+                Some(r) if dest[r + 1..] != *b".." => dest.truncate(r),
+                _ => {
+                    if dest.len() > vol_len {
+                        dest.push(path::SEP);
+                    }
+                    dest.extend_from_slice(b"..");
                 }
-                r -= 1;
-            }
-            if r < vol_len as isize || dest[(r + 1) as usize..] == *b".." {
-                if dest.len() > vol_len {
-                    dest.push(b'/');
-                }
-                dest.extend_from_slice(b"..");
-            } else {
-                dest.truncate(r as usize);
             }
             continue;
         }
-        if !dest.is_empty() && dest.last() != Some(&b'/') {
-            dest.push(b'/');
+        if dest.len() > path::volume_len(&dest) && !dest.last().is_some_and(|&c| path::is_sep(c)) {
+            dest.push(path::SEP);
         }
         dest.extend_from_slice(&part);
-        let c = CPath::new(&dest).ok_or(libc::ENOENT)?;
+        let c = CPath::new(&dest).ok_or(sys::ENOENT)?;
         let st = sys::stat(&c, false)?;
-        if st.st_mode & libc::S_IFMT != libc::S_IFLNK {
-            if !sys::is_dir(&st) && end < path.len() {
-                return Err(libc::ENOTDIR);
+        if !st.is_link() {
+            if !st.is_dir() && end < path.len() {
+                return Err(sys::ENOTDIR);
             }
             continue;
         }
         links += 1;
         if links > 255 {
-            return Err(libc::ELOOP);
+            return Err(sys::ELOOP);
         }
         let link = sys::readlink(&c)?;
         let mut next = link.clone();
         next.extend_from_slice(&path[end..]);
         path = next;
-        if link.first() == Some(&b'/') {
-            dest = alloc::vec![b'/'];
+        let v = path::volume_len(&link);
+        if v > 0 {
+            // A link to a drive or share names an absolute path.
+            let v = if v < link.len() && path::is_sep(link[v]) {
+                v + 1
+            } else {
+                v
+            };
+            vol = link[..v].to_vec();
+            dest = vol.clone();
+            end = vol.len();
+            vol_len = v;
+        } else if link.first().is_some_and(|&c| path::is_sep(c)) {
+            vol = link[..1].to_vec();
+            dest = vol.clone();
             end = 1;
             vol_len = 1;
         } else {
-            let mut r = dest.len() as isize - 1;
-            while r >= vol_len as isize {
-                if dest[r as usize] == b'/' {
-                    break;
-                }
-                r -= 1;
-            }
-            if r < vol_len as isize {
-                dest.truncate(vol_len);
-            } else {
-                dest.truncate(r as usize);
+            match last_sep(&dest, vol_len) {
+                None => dest = vol.clone(),
+                Some(r) => dest.truncate(r),
             }
             end = 0;
         }
@@ -579,10 +485,7 @@ pub fn canonicalize(path: &[u8]) -> Res<Vec<u8>> {
 // ---------------------------------------------------------------------------
 
 pub fn temporary_root() -> Vec<u8> {
-    match sys::env(c"TMPDIR") {
-        Some(d) if !d.is_empty() => d,
-        _ => b"/tmp".to_vec(),
-    }
+    sys::temp_dir()
 }
 
 pub fn valid_prefix(prefix: &[u8]) -> bool {
@@ -599,8 +502,8 @@ pub fn temporary_directory(pattern: &[u8]) -> Res<Vec<u8>> {
         None => (pattern, &pattern[..0]),
     };
     let mut dir = temporary_root();
-    if dir.last() != Some(&b'/') {
-        dir.push(b'/');
+    if !dir.last().is_some_and(|&c| path::is_sep(c)) {
+        dir.push(path::SEP);
     }
     let mut tries = 0;
     loop {
@@ -611,12 +514,12 @@ pub fn temporary_directory(pattern: &[u8]) -> Res<Vec<u8>> {
         let c = cpath(&name)?;
         match sys::mkdir(&c, 0o700) {
             Ok(()) => return Ok(name),
-            Err(libc::EEXIST) => {
+            Err(e) if sys::is_exists(e) => {
                 tries += 1;
                 if tries < 10000 {
                     continue;
                 }
-                return Err(Fail::errno(libc::EEXIST, "mkdirtemp", &name));
+                return Err(Fail::errno(sys::EEXIST, "mkdirtemp", &name));
             }
             Err(e) => return Err(Fail::errno(e, "mkdir", &name)),
         }
@@ -633,29 +536,11 @@ pub fn stat_filesystem(path: &[u8]) -> Res<sys::FsStat> {
 }
 
 pub fn chmod_link(path: &[u8], mode: i64) -> Res<()> {
-    cpath(path)?;
+    let c = cpath(path)?;
     if !(0..=0o7777).contains(&mode) {
         return Err(Fail::invalid());
     }
-    #[cfg(target_os = "macos")]
-    {
-        let c = cpath(path)?;
-        // SAFETY: `c` is NUL-terminated.
-        if unsafe {
-            libc::fchmodat(
-                libc::AT_FDCWD,
-                c.as_ptr(),
-                mode as libc::mode_t,
-                libc::AT_SYMLINK_NOFOLLOW,
-            )
-        } != 0
-        {
-            return Err(Fail::errno(sys::errno(), "chmod", path));
-        }
-        return Ok(());
-    }
-    #[cfg(not(target_os = "macos"))]
-    Err(Fail::status(STATUS_UNSUPPORTED))
+    sys::chmod_link(&c, mode as u32).map_err(|e| Fail::errno(e, "chmod", path))
 }
 
 pub fn access(path: &[u8], mode: i64) -> Res<()> {
@@ -700,6 +585,7 @@ pub fn set_times(path: &[u8], accessed: (i64, i64), modified: (i64, i64), follow
 mod tests {
     use super::*;
     use alloc::string::String;
+    #[cfg_attr(windows, allow(unused_imports))]
     use ms_rt_abi::{
         STATUS_ALREADY_EXISTS, STATUS_INVALID_INPUT, STATUS_NOT_EMPTY, STATUS_NOT_FOUND,
     };
@@ -715,6 +601,7 @@ mod tests {
         path::join(dir, name.as_bytes())
     }
 
+    #[cfg(unix)]
     #[test]
     fn files_round_trip_and_fail_like_go() {
         let root = scratch("a");
@@ -768,6 +655,7 @@ mod tests {
         let _ = remove(&path::dir(&root), true);
     }
 
+    #[cfg(unix)]
     #[test]
     fn canonicalize_resolves_links() {
         let root = scratch("c");
@@ -783,6 +671,7 @@ mod tests {
         remove(&path::dir(&root), true).unwrap();
     }
 
+    #[cfg(unix)]
     #[test]
     fn removal_protects_the_working_directory() {
         assert_eq!(remove(b".", true).unwrap_err().status, STATUS_INVALID_INPUT);
@@ -795,6 +684,7 @@ mod tests {
         assert_eq!(remove(&cwd, true).unwrap_err().status, STATUS_INVALID_INPUT);
     }
 
+    #[cfg(unix)]
     #[test]
     fn attributes() {
         let root = scratch("t");
@@ -819,5 +709,51 @@ mod tests {
         );
         assert!(stat_filesystem(&root).unwrap().block_size > 0);
         remove(&path::dir(&root), true).unwrap();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn files_round_trip_on_windows() {
+        let root = scratch("w");
+        create_directory(&root, true).unwrap();
+        let f = sub(&root, "f.txt");
+        write_file(&f, b"hello", false).unwrap();
+        assert_eq!(
+            write_file(&f, b"x", false).unwrap_err().status,
+            STATUS_ALREADY_EXISTS
+        );
+        append_file(&f, b"!").unwrap();
+        assert_eq!(read_file(&f, UNLIMITED).unwrap(), b"hello!");
+        assert_eq!(read_file(&f, 2).unwrap_err().status, STATUS_LIMIT_EXCEEDED);
+        assert_eq!(
+            read_file(&sub(&root, "none"), UNLIMITED)
+                .unwrap_err()
+                .status,
+            STATUS_NOT_FOUND
+        );
+        let info = stat(&f, true).unwrap();
+        assert_eq!(
+            (info.size, info.kinds(), info.permissions),
+            (6, KIND_REGULAR, 0o666)
+        );
+        chmod(&f, 0o444).unwrap();
+        assert_eq!(stat(&f, true).unwrap().permissions, 0o444);
+        assert_eq!(
+            chown(&f, 1, 1, true).unwrap_err().status,
+            STATUS_UNSUPPORTED
+        );
+        copy_file(&f, &sub(&root, "g"), false, UNLIMITED).unwrap();
+        rename(&sub(&root, "g"), &sub(&root, "h")).unwrap();
+        let names: Vec<String> = list(&root, UNLIMITED)
+            .unwrap()
+            .iter()
+            .map(|e| String::from_utf8(e.name.clone()).unwrap())
+            .collect();
+        assert_eq!(names, ["f.txt", "h"]);
+        assert_eq!(remove(&root, false).unwrap_err().status, STATUS_NOT_EMPTY);
+        // Read-only files are removed too.
+        remove(&root, true).unwrap();
+        assert_eq!(stat(&root, true).unwrap_err().status, STATUS_NOT_FOUND);
+        let _ = remove(&path::dir(&root), true);
     }
 }
