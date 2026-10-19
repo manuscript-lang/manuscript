@@ -1,6 +1,5 @@
 //! Helpers shared by the command implementations.
 
-
 use ms_project::{ProjectError, gopath};
 
 use crate::backend::Io;
@@ -24,7 +23,9 @@ pub fn distance(a: &str, b: &str) -> usize {
         let mut current = vec![i; b.len() + 1];
         for j in 1..=b.len() {
             let cost = usize::from(a[i - 1] != b[j - 1]);
-            current[j] = (previous[j] + 1).min(current[j - 1] + 1).min(previous[j - 1] + cost);
+            current[j] = (previous[j] + 1)
+                .min(current[j - 1] + 1)
+                .min(previous[j - 1] + cost);
         }
         previous = current;
     }
@@ -35,7 +36,10 @@ pub fn distance(a: &str, b: &str) -> usize {
 pub fn file_error(error: &ProjectError) -> String {
     match error {
         ProjectError::Path(path) if error.is_not_exist() => {
-            format!("file not found: {}; check the path and run from the directory that contains it", path.path)
+            format!(
+                "file not found: {}; check the path and run from the directory that contains it",
+                path.path
+            )
         }
         ProjectError::Manifest(manifest) => file_error(&manifest.cause),
         other => other.to_string(),
@@ -55,7 +59,11 @@ pub fn emit_json(io: &mut Io, value: &Json, status: i32) -> i32 {
 
 /// Write to a file, or to stdout when `filename` is empty.
 pub fn write_output(io: &mut Io, filename: &str, data: &[u8]) -> i32 {
-    let result = if filename.is_empty() { io.stdout.write_all(data) } else { std::fs::write(filename, data) };
+    let result = if filename.is_empty() {
+        io.stdout.write_all(data)
+    } else {
+        std::fs::write(filename, data)
+    };
     match result {
         Ok(()) => 0,
         Err(error) => {
@@ -122,7 +130,12 @@ pub fn split_value_option<'a>(arg: &'a str, options: &[&str]) -> (&'a str, &'a s
 }
 
 /// Consume a split value or use its inline spelling; empty values are rejected.
-pub fn required_value<'a>(args: &'a [String], index: &mut usize, value: &'a str, inline: bool) -> Option<&'a str> {
+pub fn required_value<'a>(
+    args: &'a [String],
+    index: &mut usize,
+    value: &'a str,
+    inline: bool,
+) -> Option<&'a str> {
     let value = if inline {
         value
     } else {

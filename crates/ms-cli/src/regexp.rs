@@ -17,10 +17,16 @@ fn go_error(pattern: &str, error: &regex::Error) -> String {
     } else if detail.contains("unopened group") {
         Some(("unexpected )", pattern.to_string()))
     } else if detail.contains("unclosed character class") {
-        Some(("missing closing ]", pattern[pattern.rfind('[').unwrap_or(0)..].to_string()))
+        Some((
+            "missing closing ]",
+            pattern[pattern.rfind('[').unwrap_or(0)..].to_string(),
+        ))
     } else if detail.contains("repetition operator missing expression") {
         let at = pattern.find(['*', '+', '?']).unwrap_or(0);
-        Some(("missing argument to repetition operator", pattern[at..=at].to_string()))
+        Some((
+            "missing argument to repetition operator",
+            pattern[at..=at].to_string(),
+        ))
     } else if detail.contains("incomplete escape sequence") {
         Some(("trailing backslash at end of expression", String::new()))
     } else {
@@ -39,9 +45,21 @@ mod tests {
     #[test]
     fn go_style_errors() {
         assert!(validate("a.*b|c").is_ok());
-        assert_eq!(validate("(a").unwrap_err(), "error parsing regexp: missing closing ): `(a`");
-        assert_eq!(validate("a)").unwrap_err(), "error parsing regexp: unexpected ): `a)`");
-        assert_eq!(validate("*a").unwrap_err(), "error parsing regexp: missing argument to repetition operator: `*`");
-        assert_eq!(validate("[a").unwrap_err(), "error parsing regexp: missing closing ]: `[a`");
+        assert_eq!(
+            validate("(a").unwrap_err(),
+            "error parsing regexp: missing closing ): `(a`"
+        );
+        assert_eq!(
+            validate("a)").unwrap_err(),
+            "error parsing regexp: unexpected ): `a)`"
+        );
+        assert_eq!(
+            validate("*a").unwrap_err(),
+            "error parsing regexp: missing argument to repetition operator: `*`"
+        );
+        assert_eq!(
+            validate("[a").unwrap_err(),
+            "error parsing regexp: missing closing ]: `[a`"
+        );
     }
 }

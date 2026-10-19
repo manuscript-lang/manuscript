@@ -1,7 +1,6 @@
 //! `ms init [directory]`: create a runnable project. Fully implemented here;
 //! it needs no engine.
 
-
 use ms_project::gopath;
 
 use crate::backend::Io;
@@ -15,7 +14,10 @@ pub fn run_init(args: &[String], io: &mut Io) -> i32 {
     let mut given = false;
     for arg in args {
         if arg.starts_with('-') || given {
-            let _ = writeln!(io.stderr, "unexpected init argument: {arg} ; ms init takes at most one directory, e.g. ms init hello");
+            let _ = writeln!(
+                io.stderr,
+                "unexpected init argument: {arg} ; ms init takes at most one directory, e.g. ms init hello"
+            );
             return 2;
         }
         if arg.is_empty() {
@@ -32,8 +34,15 @@ pub fn run_init(args: &[String], io: &mut Io) -> i32 {
         Ok(path) => path,
         Err(error) => return fail_plain(io, &error.to_string()),
     };
-    let manifest = format!("[project]\nname = {}\nsource = \"./src\"\nentry = \"./src/main.ms\"\n", ms_project::strconv::quote(&project_name(&absolute)));
-    let files = [("ms.toml".to_string(), manifest), (gopath::join(&["src", "main.ms"]), MAIN.to_string()), ("test.ms".to_string(), TEST.to_string())];
+    let manifest = format!(
+        "[project]\nname = {}\nsource = \"./src\"\nentry = \"./src/main.ms\"\n",
+        ms_project::strconv::quote(&project_name(&absolute))
+    );
+    let files = [
+        ("ms.toml".to_string(), manifest),
+        (gopath::join(&["src", "main.ms"]), MAIN.to_string()),
+        ("test.ms".to_string(), TEST.to_string()),
+    ];
     for (name, _) in &files {
         if std::fs::symlink_metadata(gopath::join(&[&absolute, name])).is_ok() {
             let _ = writeln!(
@@ -53,11 +62,18 @@ pub fn run_init(args: &[String], io: &mut Io) -> i32 {
     };
     if let Err(error) = create() {
         let message = ms_project::error::errno_message(error.raw_os_error().unwrap_or(0));
-        let _ = writeln!(io.stderr, "ms init: cannot create project in {directory}: {message}");
+        let _ = writeln!(
+            io.stderr,
+            "ms init: cannot create project in {directory}: {message}"
+        );
         return 1;
     }
     let _ = writeln!(io.stdout, "Created project in {directory}");
-    let _ = writeln!(io.stdout, "Next: ms run {} -- first second", shell_quote(&gopath::join(&[&directory, "ms.toml"])));
+    let _ = writeln!(
+        io.stdout,
+        "Next: ms run {} -- first second",
+        shell_quote(&gopath::join(&[&directory, "ms.toml"]))
+    );
     0
 }
 
@@ -74,7 +90,12 @@ fn ignore_build_cache(path: &str) -> std::io::Result<()> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
         Err(error) => return Err(error),
     };
-    if existing.split('\n').any(|line| matches!(line.trim(), ".ms-cache" | ".ms-cache/" | "/.ms-cache" | "/.ms-cache/")) {
+    if existing.split('\n').any(|line| {
+        matches!(
+            line.trim(),
+            ".ms-cache" | ".ms-cache/" | "/.ms-cache" | "/.ms-cache/"
+        )
+    }) {
         return Ok(());
     }
     let mut content = existing;
@@ -96,7 +117,11 @@ fn project_name(directory: &str) -> String {
         }
     }
     let trimmed = name.trim_matches(['-', '_']);
-    if trimmed.is_empty() { "app".to_string() } else { trimmed.to_string() }
+    if trimmed.is_empty() {
+        "app".to_string()
+    } else {
+        trimmed.to_string()
+    }
 }
 
 /// Quote a path for display in a command the user can paste.

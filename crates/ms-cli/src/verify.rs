@@ -23,7 +23,15 @@ struct Step {
 
 impl Step {
     fn new(name: &'static str, status: &'static str) -> Step {
-        Step { name, status, exit_code: 0, duration_ns: 0, reason: String::new(), error: String::new(), result: None }
+        Step {
+            name,
+            status,
+            exit_code: 0,
+            duration_ns: 0,
+            reason: String::new(),
+            error: String::new(),
+            result: None,
+        }
     }
 
     fn to_json(&self) -> Json {
@@ -54,19 +62,28 @@ pub fn run_verify(args: &[String], backend: &dyn Backend, io: &mut Io) -> i32 {
             "--json" if !positional => structured = true,
             "--no-test" if !positional => skip_test = true,
             _ if !positional && arg.starts_with('-') => {
-                let _ = writeln!(io.stderr, "unknown option {arg} for ms verify; run 'ms help verify' for its options");
+                let _ = writeln!(
+                    io.stderr,
+                    "unknown option {arg} for ms verify; run 'ms help verify' for its options"
+                );
                 return 2;
             }
             _ => targets.push(arg),
         }
     }
     if targets.len() > 1 {
-        let _ = writeln!(io.stderr, "ms verify takes one target; pass a .ms file, directory, or ms.toml");
+        let _ = writeln!(
+            io.stderr,
+            "ms verify takes one target; pass a .ms file, directory, or ms.toml"
+        );
         return 2;
     }
     let target = targets.first().map_or("ms.toml", |t| t.as_str());
     if target.is_empty() {
-        let _ = writeln!(io.stderr, "ms verify: the target is empty; pass a .ms file, directory, or ms.toml");
+        let _ = writeln!(
+            io.stderr,
+            "ms verify: the target is empty; pass a .ms file, directory, or ms.toml"
+        );
         return 2;
     }
     let target = match resolve_input("verify", target) {
@@ -117,12 +134,19 @@ pub fn run_verify(args: &[String], backend: &dyn Backend, io: &mut Io) -> i32 {
             .with("format", Json::int(1))
             .with("target", Json::str(&target))
             .with("ok", Json::Bool(ok))
-            .with("steps", Json::Arr(steps.iter().map(Step::to_json).collect()));
+            .with(
+                "steps",
+                Json::Arr(steps.iter().map(Step::to_json).collect()),
+            );
         return emit_json(io, &document, status);
     }
     for step in steps.iter().filter(|step| step.status == "failed") {
         print_findings(step, io);
-        let _ = writeln!(io.stderr, "{0} failed; run ms {0} {target} for details (or ms verify {target} --json for every step)", step.name);
+        let _ = writeln!(
+            io.stderr,
+            "{0} failed; run ms {0} {target} for details (or ms verify {target} --json for every step)",
+            step.name
+        );
     }
     status
 }
@@ -133,7 +157,11 @@ fn run_step(name: &'static str, args: &[&str], backend: &dyn Backend, io: &mut I
     let (mut out, mut err): (Vec<u8>, Vec<u8>) = (Vec::new(), Vec::new());
     let start = Instant::now();
     let code = {
-        let mut step_io = Io { stdin: &mut *io.stdin, stdout: &mut out, stderr: &mut err };
+        let mut step_io = Io {
+            stdin: &mut *io.stdin,
+            stdout: &mut out,
+            stderr: &mut err,
+        };
         crate::run(&args, backend, &mut step_io)
     };
     let mut step = Step::new(name, "failed");
@@ -166,9 +194,16 @@ fn print_findings(step: &Step, io: &mut Io) {
                     Some(Json::Num(n)) => n.clone(),
                     _ => "0".to_string(),
                 };
-                let file = position.and_then(|p| p.get("file")).and_then(Json::as_str).unwrap_or("");
+                let file = position
+                    .and_then(|p| p.get("file"))
+                    .and_then(Json::as_str)
+                    .unwrap_or("");
                 let message = d.get("message").and_then(Json::as_str).unwrap_or("");
-                findings.push(format!("{file}:{}:{}: {message}", number("line"), number("column")));
+                findings.push(format!(
+                    "{file}:{}:{}: {message}",
+                    number("line"),
+                    number("column")
+                ));
             }
         }
         if let Some(tests) = result.get("tests").and_then(Json::as_array) {
@@ -176,7 +211,10 @@ fn print_findings(step: &Step, io: &mut Io) {
                 if t.get("status").and_then(Json::as_str) == Some("failed") {
                     let name = t.get("name").and_then(Json::as_str).unwrap_or("");
                     let failure = t.get("failure").and_then(Json::as_str).unwrap_or("");
-                    findings.push(format!("{name}: {}", failure.split('\n').next().unwrap_or("")));
+                    findings.push(format!(
+                        "{name}: {}",
+                        failure.split('\n').next().unwrap_or("")
+                    ));
                 }
             }
         }

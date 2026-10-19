@@ -243,13 +243,21 @@ pub trait Backend {
         Err(FormatFailure::Message(not_implemented_message("fmt")))
     }
     /// Apply `--drop-labels` to source that checks, before formatting.
-    fn drop_redundant_labels(&self, _file: &FormatFile, _source: &str) -> Result<String, FormatFailure> {
-        Err(FormatFailure::Message(not_implemented_message("fmt --drop-labels")))
+    fn drop_redundant_labels(
+        &self,
+        _file: &FormatFile,
+        _source: &str,
+    ) -> Result<String, FormatFailure> {
+        Err(FormatFailure::Message(not_implemented_message(
+            "fmt --drop-labels",
+        )))
     }
 }
 
 pub fn not_implemented_message(what: &str) -> String {
-    format!("ms {what}: not yet implemented in the Rust implementation; use the Go ms until its engine lands")
+    format!(
+        "ms {what}: not yet implemented in the Rust implementation; use the Go ms until its engine lands"
+    )
 }
 
 pub fn not_implemented(what: &'static str) -> BackendResult {

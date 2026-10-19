@@ -27,16 +27,27 @@ pub struct AnalysisSelection {
 
 pub fn select_analysis_inputs(targets: &[String]) -> Result<AnalysisSelection, ProjectError> {
     let cwd = format_cwd()?;
-    let mut selection = AnalysisSelection { cwd: cwd.clone(), collection: targets.len() > 1, ..Default::default() };
+    let mut selection = AnalysisSelection {
+        cwd: cwd.clone(),
+        collection: targets.len() > 1,
+        ..Default::default()
+    };
     let mut seen: BTreeSet<String> = BTreeSet::new();
 
     fn report(selection: &mut AnalysisSelection, cwd: &str, path: &str, error: &ProjectError) {
-        selection.diagnostics.push(CommandDiagnostic::source("resolution", &file_error(error), Position::new(format_display(cwd, path), 1, 1)));
+        selection.diagnostics.push(CommandDiagnostic::source(
+            "resolution",
+            &file_error(error),
+            Position::new(format_display(cwd, path), 1, 1),
+        ));
     }
 
     fn add(selection: &mut AnalysisSelection, seen: &mut BTreeSet<String>, cwd: &str, path: &str) {
         if !selection.collection {
-            selection.inputs.push(AnalysisInput { path: path.to_string(), display: path.to_string() });
+            selection.inputs.push(AnalysisInput {
+                path: path.to_string(),
+                display: path.to_string(),
+            });
             return;
         }
         let resolve = || -> Result<String, ProjectError> {
@@ -55,7 +66,10 @@ pub fn select_analysis_inputs(targets: &[String]) -> Result<AnalysisSelection, P
             Ok(canonical) => {
                 if seen.insert(canonical.clone()) {
                     let display = format_display(cwd, &canonical);
-                    selection.inputs.push(AnalysisInput { path: canonical, display });
+                    selection.inputs.push(AnalysisInput {
+                        path: canonical,
+                        display,
+                    });
                 }
             }
         }
@@ -68,7 +82,8 @@ pub fn select_analysis_inputs(targets: &[String]) -> Result<AnalysisSelection, P
             continue;
         }
         let manifest = gopath::join(&[target, "ms.toml"]);
-        if !matches!(std::fs::metadata(&manifest), Err(e) if e.kind() == std::io::ErrorKind::NotFound) {
+        if !matches!(std::fs::metadata(&manifest), Err(e) if e.kind() == std::io::ErrorKind::NotFound)
+        {
             add(&mut selection, &mut seen, &cwd, &manifest);
             continue;
         }
@@ -104,12 +119,18 @@ fn standalone_analysis_files(root: &str) -> (Vec<String>, Option<ProjectError>) 
 }
 
 fn walk(directory: &str, files: &mut Vec<String>) -> Result<(), ProjectError> {
-    let read = std::fs::read_dir(directory).map_err(|e| ProjectError::path("open", directory, &e))?;
+    let read =
+        std::fs::read_dir(directory).map_err(|e| ProjectError::path("open", directory, &e))?;
     let mut entries = Vec::new();
     for entry in read {
         let entry = entry.map_err(|e| ProjectError::path("readdirent", directory, &e))?;
-        let file_type = entry.file_type().map_err(|e| ProjectError::path("lstat", directory, &e))?;
-        entries.push((entry.file_name().to_string_lossy().into_owned(), file_type.is_dir()));
+        let file_type = entry
+            .file_type()
+            .map_err(|e| ProjectError::path("lstat", directory, &e))?;
+        entries.push((
+            entry.file_name().to_string_lossy().into_owned(),
+            file_type.is_dir(),
+        ));
     }
     entries.sort();
     for (name, is_dir) in entries {
@@ -121,7 +142,13 @@ fn walk(directory: &str, files: &mut Vec<String>) -> Result<(), ProjectError> {
             match std::fs::metadata(gopath::join(&[&path, "ms.toml"])) {
                 Ok(_) => continue,
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-                Err(e) => return Err(ProjectError::path("stat", &gopath::join(&[&path, "ms.toml"]), &e)),
+                Err(e) => {
+                    return Err(ProjectError::path(
+                        "stat",
+                        &gopath::join(&[&path, "ms.toml"]),
+                        &e,
+                    ));
+                }
             }
             walk(&path, files)?;
         } else if gopath::ext(&name) == ".ms" {

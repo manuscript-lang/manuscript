@@ -7,11 +7,10 @@
 //! `debug`, `dap`, `pprof`, `trace` commands. Those flags are now ordinary
 //! unknown options. `ms profile` is redefined; see [`crate::profile`].
 
-
 use crate::backend::{BuildType, Io};
 use crate::regexp;
-use ms_project::strconv::quote;
 use crate::util::{required_value, resolve_input, split_value_option, usage_error};
+use ms_project::strconv::quote;
 
 /// Long options that take a value (also accepted as `--flag=value`).
 pub const VALUE_OPTIONS: &[&str] = &[
@@ -38,7 +37,19 @@ pub const VALUE_OPTIONS: &[&str] = &[
 pub const VIEWS: &[&str] = &["calls", "effects", "errors", "modules", "flow", "scope"];
 
 /// Commands that accept `--json`.
-pub const JSON_COMMANDS: &[&str] = &["check", "lint", "test", "build", "profile", "inspect", "diagram", "emit", "fmt", "verify", "search_symbol"];
+pub const JSON_COMMANDS: &[&str] = &[
+    "check",
+    "lint",
+    "test",
+    "build",
+    "profile",
+    "inspect",
+    "diagram",
+    "emit",
+    "fmt",
+    "verify",
+    "search_symbol",
+];
 
 #[derive(Debug, Default)]
 pub struct Invocation {
@@ -77,18 +88,31 @@ impl Invocation {
 /// Read the command, its input file and options. `Err` carries the exit
 /// status for a problem already reported.
 pub fn parse_invocation(args: &[String], io: &mut Io) -> Result<Invocation, i32> {
-    let mut inv = Invocation { command: args[0].clone(), filename: args[1].clone(), ..Default::default() };
+    let mut inv = Invocation {
+        command: args[0].clone(),
+        filename: args[1].clone(),
+        ..Default::default()
+    };
     if inv.filename.is_empty() {
         return Err(usage_error(
             io,
-            format!("ms {}: the file argument is empty; pass a .ms file, directory, or ms.toml", inv.command),
+            format!(
+                "ms {}: the file argument is empty; pass a .ms file, directory, or ms.toml",
+                inv.command
+            ),
         ));
     }
     inv.analysis = inv.is_one_of(&["check", "lint"]);
     let (mut first, mut positional) = (1, false);
     if inv.analysis && inv.filename == "--" {
         if args.len() == 2 {
-            return Err(usage_error(io, format!("ms {}: missing a target; pass .ms files, directories, or ms.toml", inv.command)));
+            return Err(usage_error(
+                io,
+                format!(
+                    "ms {}: missing a target; pass .ms files, directories, or ms.toml",
+                    inv.command
+                ),
+            ));
         }
         first = 2;
         inv.filename = args[2].clone();
@@ -117,7 +141,13 @@ pub fn parse_invocation(args: &[String], io: &mut Io) -> Result<Invocation, i32>
     Ok(inv)
 }
 
-fn parse_options(inv: &mut Invocation, args: &[String], first: usize, positional: bool, io: &mut Io) -> Result<(), i32> {
+fn parse_options(
+    inv: &mut Invocation,
+    args: &[String],
+    first: usize,
+    positional: bool,
+    io: &mut Io,
+) -> Result<(), i32> {
     let mut i = first + 1;
     while i < args.len() {
         if positional {
@@ -141,10 +171,16 @@ fn parse_options(inv: &mut Invocation, args: &[String], first: usize, positional
             "--json" => inv.structured = true,
             "--build-type" => {
                 let Some(value) = required_value(args, &mut i, value, inline) else {
-                    return Err(usage_error(io, "--build-type requires a build type; use Debug, Release, RelWithDebInfo, or MinSizeRel"));
+                    return Err(usage_error(
+                        io,
+                        "--build-type requires a build type; use Debug, Release, RelWithDebInfo, or MinSizeRel",
+                    ));
                 };
                 if inv.build_type_set {
-                    return Err(usage_error(io, "--build-type may only be specified once; remove the duplicate flag"));
+                    return Err(usage_error(
+                        io,
+                        "--build-type may only be specified once; remove the duplicate flag",
+                    ));
                 }
                 inv.build_type_name = value.to_string();
                 inv.build_type_set = true;
@@ -152,12 +188,18 @@ fn parse_options(inv: &mut Invocation, args: &[String], first: usize, positional
             "--list" | "--fail-fast" => inv.test_options.push(flag.to_string()),
             "--test" | "--match" | "--exclude" | "--repeat" | "--shuffle" => {
                 let Some(value) = required_value(args, &mut i, value, inline) else {
-                    return Err(usage_error(io, format!("{flag} requires a value; run 'ms help test' for examples")));
+                    return Err(usage_error(
+                        io,
+                        format!("{flag} requires a value; run 'ms help test' for examples"),
+                    ));
                 };
                 if (flag == "--match" || flag == "--exclude")
                     && let Err(error) = regexp::validate(value)
                 {
-                    return Err(usage_error(io, format!("invalid {flag}: {error}; supply a valid regular expression")));
+                    return Err(usage_error(
+                        io,
+                        format!("invalid {flag}: {error}; supply a valid regular expression"),
+                    ));
                 }
                 if flag == "--repeat" && !value.parse::<i64>().is_ok_and(|n| n > 0) {
                     return Err(usage_error(io, "invalid --repeat; use a positive integer"));
@@ -169,8 +211,15 @@ fn parse_options(inv: &mut Invocation, args: &[String], first: usize, positional
             }
             "--timeout" | "--filter" => {
                 let Some(value) = required_value(args, &mut i, value, inline) else {
-                    let example = if flag == "--timeout" { "--timeout 30s" } else { "--filter \"test name\"" };
-                    return Err(usage_error(io, format!("{flag} requires a value, e.g. {example}")));
+                    let example = if flag == "--timeout" {
+                        "--timeout 30s"
+                    } else {
+                        "--filter \"test name\""
+                    };
+                    return Err(usage_error(
+                        io,
+                        format!("{flag} requires a value, e.g. {example}"),
+                    ));
                 };
                 if flag == "--filter" {
                     inv.test_filter = value.to_string();
@@ -178,20 +227,35 @@ fn parse_options(inv: &mut Invocation, args: &[String], first: usize, positional
                     continue;
                 }
                 if !crate::duration::parse(value).is_some_and(|nanos| nanos >= 0) {
-                    return Err(usage_error(io, format!("invalid --timeout {value:?}; use a duration such as 30s or 2m, or 0 to disable")));
+                    return Err(usage_error(
+                        io,
+                        format!(
+                            "invalid --timeout {value:?}; use a duration such as 30s or 2m, or 0 to disable"
+                        ),
+                    ));
                 }
                 inv.test_timeout = value.to_string();
             }
             "--format" => {
                 let Some(value) = required_value(args, &mut i, value, inline) else {
-                    return Err(usage_error(io, "--format requires a name, e.g. --format mermaid"));
+                    return Err(usage_error(
+                        io,
+                        "--format requires a name, e.g. --format mermaid",
+                    ));
                 };
                 inv.format = value.to_string();
             }
             "--view" | "--entity" | "--depth" | "--diff" | "--top" => {
                 let Some(value) = required_value(args, &mut i, value, inline) else {
-                    let help = if flag == "--top" { "profile" } else { "diagram" };
-                    return Err(usage_error(io, format!("{flag} requires a value; run 'ms help {help}' for examples")));
+                    let help = if flag == "--top" {
+                        "profile"
+                    } else {
+                        "diagram"
+                    };
+                    return Err(usage_error(
+                        io,
+                        format!("{flag} requires a value; run 'ms help {help}' for examples"),
+                    ));
                 };
                 match flag {
                     "--view" => inv.view = value.to_string(),
@@ -205,7 +269,12 @@ fn parse_options(inv: &mut Invocation, args: &[String], first: usize, positional
                                 inv.top = n as usize;
                             }
                         }
-                        _ => return Err(usage_error(io, format!("invalid {flag}; use a positive integer"))),
+                        _ => {
+                            return Err(usage_error(
+                                io,
+                                format!("invalid {flag}; use a positive integer"),
+                            ));
+                        }
                     },
                 }
             }
@@ -221,7 +290,10 @@ fn parse_options(inv: &mut Invocation, args: &[String], first: usize, positional
                         if args[i].is_empty() {
                             return Err(usage_error(
                                 io,
-                                format!("ms {}: an input argument is empty; pass a .ms file, directory, or ms.toml", inv.command),
+                                format!(
+                                    "ms {}: an input argument is empty; pass a .ms file, directory, or ms.toml",
+                                    inv.command
+                                ),
                             ));
                         }
                         inv.targets.push(args[i].clone());
@@ -262,11 +334,17 @@ fn set_path(inv: &mut Invocation, flag: &str, value: &str, io: &mut Io) -> Resul
     if flag == "--out-dir" && inv.command != "profile" {
         return Err(usage_error(
             io,
-            format!("--out-dir is valid only for ms profile, not ms {}; use -o for commands that write a file", inv.command),
+            format!(
+                "--out-dir is valid only for ms profile, not ms {}; use -o for commands that write a file",
+                inv.command
+            ),
         ));
     }
     if flag != "--out-dir" && inv.command == "profile" {
-        return Err(usage_error(io, format!("{flag} is not valid for ms profile; use --out-dir for the bundle directory")));
+        return Err(usage_error(
+            io,
+            format!("{flag} is not valid for ms profile; use --out-dir for the bundle directory"),
+        ));
     }
     inv.output = value.to_string();
     Ok(())
@@ -282,7 +360,10 @@ fn invalid_flag(command: &str, format_check: bool, structured: bool, debug: bool
     if format_check && command != "fmt" {
         format!("--check is valid only for ms fmt, not ms {command}")
     } else if structured {
-        format!("--json is valid only for ms {}, not ms {command}", JSON_COMMANDS.join(", "))
+        format!(
+            "--json is valid only for ms {}, not ms {command}",
+            JSON_COMMANDS.join(", ")
+        )
     } else if debug {
         format!("--debug is valid only for ms build, run, and test, not ms {command}")
     } else {
@@ -295,27 +376,45 @@ fn invalid_flag(command: &str, format_check: bool, structured: bool, debug: bool
 pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
     let command = inv.command.clone();
     let help_hint = format!("run 'ms help {command}' for its options");
-    if !inv.is_one_of(&["check", "lint", "inspect", "diagram", "emit", "build", "run", "profile", "test"]) {
+    if !inv.is_one_of(&[
+        "check", "lint", "inspect", "diagram", "emit", "build", "run", "profile", "test",
+    ]) {
         crate::unknown_command(io, &command);
         return Err(2);
     }
     if !inv.format.is_empty() && command != "diagram" {
         return Err(usage_error(
             io,
-            format!("--format is valid only for ms diagram and ms review, not ms {command}; run 'ms help {command}' for its options"),
+            format!(
+                "--format is valid only for ms diagram and ms review, not ms {command}; run 'ms help {command}' for its options"
+            ),
         ));
     }
-    if (!inv.view.is_empty() || !inv.entity.is_empty() || inv.depth != 0 || !inv.diff.is_empty()) && command != "diagram" {
+    if (!inv.view.is_empty() || !inv.entity.is_empty() || inv.depth != 0 || !inv.diff.is_empty())
+        && command != "diagram"
+    {
         return Err(usage_error(
             io,
-            format!("--view, --entity, --depth, and --diff are valid only for ms diagram, not ms {command}; run 'ms help {command}' for its options"),
+            format!(
+                "--view, --entity, --depth, and --diff are valid only for ms diagram, not ms {command}; run 'ms help {command}' for its options"
+            ),
         ));
     }
     if inv.top != 0 && command != "profile" {
-        return Err(usage_error(io, format!("--top is valid only for ms profile, not ms {command}; {help_hint}")));
+        return Err(usage_error(
+            io,
+            format!("--top is valid only for ms profile, not ms {command}; {help_hint}"),
+        ));
     }
     if !inv.view.is_empty() && !VIEWS.contains(&inv.view.as_str()) {
-        return Err(usage_error(io, format!("unknown --view {} for ms diagram; use {}", quote(&inv.view), VIEWS.join(", "))));
+        return Err(usage_error(
+            io,
+            format!(
+                "unknown --view {} for ms diagram; use {}",
+                quote(&inv.view),
+                VIEWS.join(", ")
+            ),
+        ));
     }
     if !inv.diff.is_empty() && inv.view.is_empty() && inv.entity.is_empty() {
         return Err(usage_error(
@@ -324,21 +423,41 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
         ));
     }
     if inv.depth != 0 && inv.view.is_empty() && inv.entity.is_empty() {
-        return Err(usage_error(io, "--depth needs --view or --entity; run 'ms help diagram' for examples"));
-    }
-    if command == "diagram" && !inv.format.is_empty() && inv.format != "ascii" && inv.format != "mermaid" {
-        return Err(usage_error(io, format!("unknown --format {} for ms diagram; use ascii or mermaid", quote(&inv.format))));
-    }
-    if !inv.output.is_empty() && !inv.is_one_of(&["build", "emit", "inspect", "diagram", "profile"]) {
         return Err(usage_error(
             io,
-            format!("-o and --output are valid only for ms build, emit, inspect, diagram, or profile, not ms {command}; run 'ms help {command}' for its options"),
+            "--depth needs --view or --entity; run 'ms help diagram' for examples",
         ));
     }
-    if (!inv.test_timeout.is_empty() || !inv.test_filter.is_empty() || !inv.test_options.is_empty()) && command != "test" {
+    if command == "diagram"
+        && !inv.format.is_empty()
+        && inv.format != "ascii"
+        && inv.format != "mermaid"
+    {
         return Err(usage_error(
             io,
-            format!("test selection options are valid only for ms test, not ms {command}; run 'ms help {command}' for the options this command accepts"),
+            format!(
+                "unknown --format {} for ms diagram; use ascii or mermaid",
+                quote(&inv.format)
+            ),
+        ));
+    }
+    if !inv.output.is_empty() && !inv.is_one_of(&["build", "emit", "inspect", "diagram", "profile"])
+    {
+        return Err(usage_error(
+            io,
+            format!(
+                "-o and --output are valid only for ms build, emit, inspect, diagram, or profile, not ms {command}; run 'ms help {command}' for its options"
+            ),
+        ));
+    }
+    if (!inv.test_timeout.is_empty() || !inv.test_filter.is_empty() || !inv.test_options.is_empty())
+        && command != "test"
+    {
+        return Err(usage_error(
+            io,
+            format!(
+                "test selection options are valid only for ms test, not ms {command}; run 'ms help {command}' for the options this command accepts"
+            ),
         ));
     }
     if command == "test" {
@@ -353,12 +472,17 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
         inv.arguments = test_args;
     }
     if inv.watch && inv.structured {
-        return Err(usage_error(io, "--json cannot be combined with --watch; remove --watch for one versioned result"));
+        return Err(usage_error(
+            io,
+            "--json cannot be combined with --watch; remove --watch for one versioned result",
+        ));
     }
     if inv.watch && !inv.is_one_of(&["check", "lint", "run", "test"]) {
         return Err(usage_error(
             io,
-            format!("--watch requires check, lint, run, or test, not {command}; use ms check <file> --watch or ms run <file> --watch"),
+            format!(
+                "--watch requires check, lint, run, or test, not {command}; use ms check <file> --watch or ms run <file> --watch"
+            ),
         ));
     }
     if (inv.format_check && command != "fmt")
@@ -381,11 +505,19 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
         }
     };
     if inv.build_type_set && !inv.is_one_of(&["build", "run", "test", "profile"]) {
-        return Err(usage_error(io, format!("--build-type requires build, run, test, or profile, not {command}; remove the flag")));
+        return Err(usage_error(
+            io,
+            format!(
+                "--build-type requires build, run, test, or profile, not {command}; remove the flag"
+            ),
+        ));
     }
     if inv.debug {
         if inv.build_type_set && kind != BuildType::Debug {
-            return Err(usage_error(io, "--debug requires build type Debug; remove --build-type or pass --build-type Debug"));
+            return Err(usage_error(
+                io,
+                "--debug requires build type Debug; remove --build-type or pass --build-type Debug",
+            ));
         }
         kind = BuildType::Debug;
     } else if command == "profile" && !inv.build_type_set {
@@ -396,8 +528,21 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
 
 /// `--help` scanning: a flag value is not a help request, even if spelled `--help`.
 pub fn requests_help(args: &[String]) -> bool {
-    const VALUE_FLAGS: &[&str] =
-        &["-o", "--output", "--out-dir", "--build-type", "--limit", "--timeout", "--filter", "--test", "--match", "--exclude", "--repeat", "--shuffle", "--top"];
+    const VALUE_FLAGS: &[&str] = &[
+        "-o",
+        "--output",
+        "--out-dir",
+        "--build-type",
+        "--limit",
+        "--timeout",
+        "--filter",
+        "--test",
+        "--match",
+        "--exclude",
+        "--repeat",
+        "--shuffle",
+        "--top",
+    ];
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {

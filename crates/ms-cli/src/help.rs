@@ -2,8 +2,8 @@
 //! `ms help` output and edited only where the Rust implementation differs
 //! (no Go toolchain, no debugger, redefined `ms profile`).
 
-pub use crate::help_text::HELP;
 use crate::help_text as t;
+pub use crate::help_text::HELP;
 
 /// Every dispatched command, in help order. A test keeps it equal to the help text.
 pub const COMMAND_NAMES: &[&str] = &[

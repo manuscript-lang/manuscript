@@ -136,7 +136,10 @@ fn write_string(out: &mut String, text: &str) {
 
 /// Parse one JSON document; `None` when it is not valid JSON (`json.Valid`).
 pub fn parse(text: &str) -> Option<Json> {
-    let mut parser = Parser { bytes: text.as_bytes(), pos: 0 };
+    let mut parser = Parser {
+        bytes: text.as_bytes(),
+        pos: 0,
+    };
     parser.skip_space();
     let value = parser.value(0)?;
     parser.skip_space();
@@ -252,7 +255,9 @@ impl Parser<'_> {
                 return None;
             }
         }
-        Some(Json::Num(String::from_utf8_lossy(&self.bytes[start..self.pos]).into_owned()))
+        Some(Json::Num(
+            String::from_utf8_lossy(&self.bytes[start..self.pos]).into_owned(),
+        ))
     }
 
     fn digits(&mut self) {
@@ -283,7 +288,9 @@ impl Parser<'_> {
                         b't' => out.push(b'\t'),
                         b'u' => {
                             let mut code = self.hex4()?;
-                            if (0xd800..0xdc00).contains(&code) && self.bytes[self.pos..].starts_with(b"\\u") {
+                            if (0xd800..0xdc00).contains(&code)
+                                && self.bytes[self.pos..].starts_with(b"\\u")
+                            {
                                 let save = self.pos;
                                 self.pos += 2;
                                 match self.hex4() {

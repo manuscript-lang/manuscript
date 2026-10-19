@@ -25,10 +25,12 @@ mod regexp;
 pub mod util;
 pub mod verify;
 
-
 pub use ms_project::strconv::quote;
 
-use backend::{AnalysisCommand, AnalysisRequest, Backend, BuildRequest, DiagramRequest, Io, OutputRequest, RunRequest, TestRequest, finish};
+use backend::{
+    AnalysisCommand, AnalysisRequest, Backend, BuildRequest, DiagramRequest, Io, OutputRequest,
+    RunRequest, TestRequest, finish,
+};
 use invocation::{parse_invocation, requests_help, validate};
 
 /// The release version, shared with the Go implementation (`.msversion`).
@@ -79,14 +81,22 @@ pub fn unknown_command(io: &mut Io, name: &str) {
     if let Some(best) = best {
         let _ = writeln!(io.stderr, "Did you mean 'ms {best}'?");
     }
-    let _ = writeln!(io.stderr, "Commands: {}. Run 'ms --help' for details.", help::COMMAND_NAMES.join(", "));
+    let _ = writeln!(
+        io.stderr,
+        "Commands: {}. Run 'ms --help' for details.",
+        help::COMMAND_NAMES.join(", ")
+    );
 }
 
 /// A command that takes a source file or project: parse and validate its
 /// options, then hand the request to the backend.
 fn run_source_command(args: &[String], usage: &str, backend: &dyn Backend, io: &mut Io) -> i32 {
     if args.len() < 2 {
-        let _ = writeln!(io.stderr, "ms {0}: missing the file argument; pass a .ms file or a project ms.toml, e.g. ms {0} ms.toml\n", args[0]);
+        let _ = writeln!(
+            io.stderr,
+            "ms {0}: missing the file argument; pass a .ms file or a project ms.toml, e.g. ms {0} ms.toml\n",
+            args[0]
+        );
         let _ = write!(io.stderr, "{usage}");
         return 2;
     }
@@ -100,22 +110,67 @@ fn run_source_command(args: &[String], usage: &str, backend: &dyn Backend, io: &
     };
     let result = match inv.command.as_str() {
         "check" | "lint" => {
-            let command = if inv.command == "check" { AnalysisCommand::Check } else { AnalysisCommand::Lint };
-            let request = AnalysisRequest { command, targets: inv.targets.clone(), json: inv.structured, watch: inv.watch };
+            let command = if inv.command == "check" {
+                AnalysisCommand::Check
+            } else {
+                AnalysisCommand::Lint
+            };
+            let request = AnalysisRequest {
+                command,
+                targets: inv.targets.clone(),
+                json: inv.structured,
+                watch: inv.watch,
+            };
             match command {
                 AnalysisCommand::Check => backend.check(&request, io),
                 AnalysisCommand::Lint => backend.lint(&request, io),
             }
         }
         "profile" => return profile::run_profile(&inv, plan.build_type, backend, io),
-        "build" => backend.build(&BuildRequest { filename: inv.filename.clone(), output: inv.output.clone(), build_type: plan.build_type, json: inv.structured }, io),
-        "run" => backend.run(&RunRequest { filename: inv.filename.clone(), build_type: plan.build_type, watch: inv.watch, arguments: inv.arguments.clone() }, io),
-        "test" => backend.test(
-            &TestRequest { filename: inv.filename.clone(), build_type: plan.build_type, json: inv.structured, watch: inv.watch, arguments: inv.arguments.clone() },
+        "build" => backend.build(
+            &BuildRequest {
+                filename: inv.filename.clone(),
+                output: inv.output.clone(),
+                build_type: plan.build_type,
+                json: inv.structured,
+            },
             io,
         ),
-        "emit" => backend.emit(&OutputRequest { filename: inv.filename.clone(), output: inv.output.clone(), json: inv.structured }, io),
-        "inspect" => backend.inspect(&OutputRequest { filename: inv.filename.clone(), output: inv.output.clone(), json: inv.structured }, io),
+        "run" => backend.run(
+            &RunRequest {
+                filename: inv.filename.clone(),
+                build_type: plan.build_type,
+                watch: inv.watch,
+                arguments: inv.arguments.clone(),
+            },
+            io,
+        ),
+        "test" => backend.test(
+            &TestRequest {
+                filename: inv.filename.clone(),
+                build_type: plan.build_type,
+                json: inv.structured,
+                watch: inv.watch,
+                arguments: inv.arguments.clone(),
+            },
+            io,
+        ),
+        "emit" => backend.emit(
+            &OutputRequest {
+                filename: inv.filename.clone(),
+                output: inv.output.clone(),
+                json: inv.structured,
+            },
+            io,
+        ),
+        "inspect" => backend.inspect(
+            &OutputRequest {
+                filename: inv.filename.clone(),
+                output: inv.output.clone(),
+                json: inv.structured,
+            },
+            io,
+        ),
         _ => backend.diagram(
             &DiagramRequest {
                 filename: inv.filename.clone(),

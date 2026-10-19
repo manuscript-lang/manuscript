@@ -28,7 +28,12 @@ pub fn wait_with_signals(child: &mut Child) -> std::io::Result<ExitStatus> {
     PENDING.store(0, Ordering::SeqCst);
     // SAFETY: `record` is async-signal-safe (one atomic store) and has the C ABI
     // `signal` expects; the previous disposition is restored below.
-    let (old_int, old_term) = unsafe { (signal(SIGINT, record as *const () as usize), signal(SIGTERM, record as *const () as usize)) };
+    let (old_int, old_term) = unsafe {
+        (
+            signal(SIGINT, record as *const () as usize),
+            signal(SIGTERM, record as *const () as usize),
+        )
+    };
     let result = loop {
         match child.try_wait() {
             Ok(Some(status)) => break Ok(status),
@@ -44,8 +49,22 @@ pub fn wait_with_signals(child: &mut Child) -> std::io::Result<ExitStatus> {
     };
     // SAFETY: restoring the dispositions returned by the earlier calls.
     unsafe {
-        signal(SIGINT, if old_int == usize::MAX { SIG_DFL } else { old_int });
-        signal(SIGTERM, if old_term == usize::MAX { SIG_DFL } else { old_term });
+        signal(
+            SIGINT,
+            if old_int == usize::MAX {
+                SIG_DFL
+            } else {
+                old_int
+            },
+        );
+        signal(
+            SIGTERM,
+            if old_term == usize::MAX {
+                SIG_DFL
+            } else {
+                old_term
+            },
+        );
     }
     result
 }

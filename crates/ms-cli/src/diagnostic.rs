@@ -14,7 +14,12 @@ pub struct Position {
 
 impl Position {
     pub fn new(file: impl Into<String>, line: usize, column: usize) -> Position {
-        Position { file: file.into(), line, column, offset: 0 }
+        Position {
+            file: file.into(),
+            line,
+            column,
+            offset: 0,
+        }
     }
 
     pub fn to_json(&self) -> Json {
@@ -47,7 +52,14 @@ pub struct CommandDiagnostic {
 impl CommandDiagnostic {
     /// A source diagnostic whose code is derived from phase and message.
     pub fn source(phase: &str, message: &str, position: Position) -> CommandDiagnostic {
-        CommandDiagnostic { code: code_for(phase, message), phase: phase.into(), message: message.into(), position, end: None, fix: None }
+        CommandDiagnostic {
+            code: code_for(phase, message),
+            phase: phase.into(),
+            message: message.into(),
+            position,
+            end: None,
+            fix: None,
+        }
     }
 
     pub fn to_json(&self) -> Json {
@@ -55,7 +67,9 @@ impl CommandDiagnostic {
         if !self.phase.is_empty() {
             object = object.with("phase", Json::str(&self.phase));
         }
-        object = object.with("message", Json::str(&self.message)).with("position", self.position.to_json());
+        object = object
+            .with("message", Json::str(&self.message))
+            .with("position", self.position.to_json());
         if let Some(end) = &self.end {
             object = object.with("end", end.to_json());
         }
@@ -74,7 +88,10 @@ impl CommandDiagnostic {
 /// `{format: 1, diagnostics: [...]}`, the document check, lint and every
 /// failing source command share.
 pub fn diagnostics_document(diagnostics: &[CommandDiagnostic]) -> Json {
-    Json::object().with("format", Json::int(1)).with("diagnostics", Json::Arr(diagnostics.iter().map(CommandDiagnostic::to_json).collect()))
+    Json::object().with("format", Json::int(1)).with(
+        "diagnostics",
+        Json::Arr(diagnostics.iter().map(CommandDiagnostic::to_json).collect()),
+    )
 }
 
 /// The stable rule family for a source diagnostic (`Diagnostic.Code` in Go).
@@ -122,7 +139,10 @@ pub fn code_for(phase: &str, message: &str) -> String {
                 ("expected ", "MS3001"),
                 ("same independently known type", "MS3001"),
             ];
-            RULES.iter().find(|(needle, _)| has(needle)).map_or("MS3000", |(_, code)| code)
+            RULES
+                .iter()
+                .find(|(needle, _)| has(needle))
+                .map_or("MS3000", |(_, code)| code)
         }
         "lowering" => "MS4000",
         _ => "MS0000",
@@ -136,7 +156,10 @@ mod tests {
 
     #[test]
     fn codes() {
-        assert_eq!(code_for("resolution", "unknown import alias @x; fix"), "MS2002");
+        assert_eq!(
+            code_for("resolution", "unknown import alias @x; fix"),
+            "MS2002"
+        );
         assert_eq!(code_for("resolution", "line too long; keep"), "MS2001");
         assert_eq!(code_for("type", "expected Int"), "MS3001");
         assert_eq!(code_for("parse", "bad indent"), "MS1002");

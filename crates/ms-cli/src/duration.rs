@@ -26,7 +26,9 @@ pub fn parse(text: &str) -> Option<i128> {
         s = &s[digits_end..];
         let mut fraction = "";
         if let Some(rest) = s.strip_prefix('.') {
-            let end = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len());
+            let end = rest
+                .find(|c: char| !c.is_ascii_digit())
+                .unwrap_or(rest.len());
             fraction = &rest[..end];
             s = &rest[end..];
             if whole.is_empty() && fraction.is_empty() {
@@ -35,7 +37,9 @@ pub fn parse(text: &str) -> Option<i128> {
         } else if whole.is_empty() {
             return None;
         }
-        let unit_end = s.find(|c: char| c == '.' || c.is_ascii_digit()).unwrap_or(s.len());
+        let unit_end = s
+            .find(|c: char| c == '.' || c.is_ascii_digit())
+            .unwrap_or(s.len());
         let unit = &s[..unit_end];
         s = &s[unit_end..];
         let scale: i128 = match unit {
@@ -47,7 +51,11 @@ pub fn parse(text: &str) -> Option<i128> {
             "h" => 3600 * 1_000_000_000,
             _ => return None,
         };
-        let whole_value: i128 = if whole.is_empty() { 0 } else { whole.parse().ok()? };
+        let whole_value: i128 = if whole.is_empty() {
+            0
+        } else {
+            whole.parse().ok()?
+        };
         exact = exact.checked_add(whole_value.checked_mul(scale)?)?;
         if !fraction.is_empty() {
             integral = false;
@@ -58,7 +66,11 @@ pub fn parse(text: &str) -> Option<i128> {
             return None;
         }
     }
-    let nanos = if integral { exact } else { exact + total as i128 };
+    let nanos = if integral {
+        exact
+    } else {
+        exact + total as i128
+    };
     if nanos > i64::MAX as i128 {
         return None;
     }

@@ -90,7 +90,11 @@ fn discovery_reports_traversal_errors() {
     );
     let blocked = join(&root, "blocked");
     std::fs::create_dir(&blocked).unwrap();
-    std::fs::set_permissions(&blocked, std::os::unix::fs::PermissionsExt::from_mode(0o000)).unwrap();
+    std::fs::set_permissions(
+        &blocked,
+        std::os::unix::fs::PermissionsExt::from_mode(0o000),
+    )
+    .unwrap();
     if std::fs::read_dir(&blocked).is_ok() {
         std::fs::set_permissions(
             &blocked,
