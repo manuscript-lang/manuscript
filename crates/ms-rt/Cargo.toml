@@ -1,0 +1,20 @@
+[package]
+name = "ms-rt"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Manuscript native runtime: allocator, reference counting, strings, collections, faults, profiler"
+
+[lib]
+crate-type = ["staticlib", "rlib"]
+
+[features]
+# Defines the `#[panic_handler]` for the freestanding staticlib build:
+# `cargo rustc -p ms-rt --release --features standalone --crate-type staticlib`.
+standalone = []
+
+[dependencies]
+ms-rt-abi = { path = "../ms-rt-abi" }
+
+[lints]
+workspace = true

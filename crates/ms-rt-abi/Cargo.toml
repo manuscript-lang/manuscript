@@ -1,0 +1,9 @@
+[package]
+name = "ms-rt-abi"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Layouts, descriptors and symbol names shared by the Manuscript runtime and the code generator"
+
+[lints]
+workspace = true
