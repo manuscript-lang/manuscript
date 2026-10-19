@@ -518,7 +518,7 @@ impl<'a> Fa<'a> {
                 continue;
             }
             match self.step_of(a, p) {
-                Some(s) if s != 0 && s.abs() <= COUNTER_STEP_MAX => {
+                Some(s) if s != 0 && s.unsigned_abs() <= COUNTER_STEP_MAX as u64 => {
                     if s > 0 {
                         ups += 1;
                     } else {
