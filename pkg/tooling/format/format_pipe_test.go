@@ -29,3 +29,12 @@ func TestFormatPipeDotStep(t *testing.T) {
 		t.Fatalf("got:\n%s\nwant:\n%s", got, want)
 	}
 }
+
+func TestFormatVarMarkers(t *testing.T) {
+	source := "impl Box:\n    var fn push(var items:List[Int]) Unit:\n        self.items.append(1)\n\nfn run(var xs: List[Int]) Unit:\n    run(var   xs)\n"
+	want := "impl Box:\n    var fn push(var items: List[Int]) Unit:\n        self.items.append(1)\n\nfn run(var xs: List[Int]) Unit:\n    run(var xs)\n"
+	got, err := Format("var.ms", source)
+	if err != nil || got != want {
+		t.Fatalf("err %v\ngot:\n%s\nwant:\n%s", err, got, want)
+	}
+}

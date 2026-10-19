@@ -23,6 +23,32 @@ fn run(args: Vec<String>) -> i32 {
             }
             0
         }
+        Some("test") => {
+            let mut opts = ms_lower::pipeline::BuildOptions::default();
+            let mut file = None;
+            let mut json = false;
+            for a in &args[1..] {
+                match a.as_str() {
+                    "--json" => json = true,
+                    "--no-opt" => opts.no_opt = true,
+                    "--dump-mir" => opts.dump_mir = true,
+                    _ if file.is_none() => file = Some(a.clone()),
+                    _ => {}
+                }
+            }
+            let Some(file) = file else {
+                eprintln!("usage: msl test FILE [--json]");
+                return 2;
+            };
+            match ms_lower::pipeline::test(Path::new(&file), json, &opts) {
+                Ok(code) => code,
+                Err(ms_lower::pipeline::BuildError::Diagnostics) => 1,
+                Err(ms_lower::pipeline::BuildError::Failed(m)) => {
+                    eprintln!("msl: {m}");
+                    70
+                }
+            }
+        }
         Some("run") | Some("build") => {
             let mut opts = ms_lower::pipeline::BuildOptions::default();
             let mut file = None;
@@ -33,6 +59,7 @@ fn run(args: Vec<String>) -> i32 {
                 match a.as_str() {
                     "--no-opt" => opts.no_opt = true,
                     "--dump-mir" => opts.dump_mir = true,
+                    "--inline" => opts.inline = true,
                     "-o" => out = it.next().cloned(),
                     "--" => {
                         rest.extend(it.by_ref().cloned());

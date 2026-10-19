@@ -10,6 +10,46 @@ runtime in `pkg/runtime` remains the behavioral oracle.
 _(Newest first. Anything that alters a layout, signature or ownership rule is
 recorded here before it is committed.)_
 
+- **v2.2 (stdlib natives, ABI_VERSION unchanged).** Standard-library natives that need no runtime state live in `ms-std-<module>`
+  crates (`no_std` rlibs linked into `libms_rt.a`) and are named `msstd_<module>_<name>`; the argument and ownership rules above apply.
+  `ms-std-math` exports `@std/math` (`f64`/`i64` by value; `Bool` as `u8`; results are bit-identical to Go's portable `math` except that
+  `exp`-derived functions may differ in the last bits, because Go's amd64 and arm64 `Exp` is CPU-specific assembly). `ms-rt` gains
+  `msrt_numbers_parse_int/parse_float/error_message`, `msrt_float_to_precision/to_exponential/to_fixed` (`status` + string `out`),
+  `msrt_float_truncate_to_int` (present flag + `out`) and `msrt_float_compare`/`msrt_int_compare`.
+- **v2.7 (`ms-std-fs` watchers).** `msstd_fs_watch` (polling, snapshot comparison every interval) and `msstd_fs_watch_native` (inotify,
+  Linux; other hosts return `UNSUPPORTED`) return a refcounted watcher handle; `msstd_fs_watch_next` waits in 50 ms slices (cancellable)
+  and returns `paths` plus one kind byte per event (1 `rename`, 0 `change`); a native watcher returns one event per call, a polling watcher
+  every difference sorted by path. `STATUS_CLOSED` after `msstd_fs_watch_close`, `STATUS_LIMIT_EXCEEDED` on overflow with policy `error`.
+  No worker thread: events are read from the kernel inside `next`, so the queue is bounded by the kernel buffer plus `max_events`.
+- **v2.6 (`ms-std-fs`, `ms-std-glob`).** File handles are the `@std/io` stream handle (`msstd_fs_file_open`; `reader()`/`writer()` reuse
+  `msstd_io_*`), directory cursors and scoped temporary directories are their own refcounted handles (`msstd_fs_directory_*`,
+  `msstd_fs_temporary_*`; `close` is idempotent and a temporary's `close` reports removal failures). `msstd_fs_open_flags` maps a mode string
+  to host flags. `msstd_fs_glob` returns a `List[String]`; `msstd_fs_glob_entries` returns parallel `paths`/`names` string lists plus a flag
+  byte per entry. `msstd_fs_copy` takes option bits (1 recursive, 2 replace, 4 error_on_exists, 8 dereference, 16 preserve, 32 verbatim), a
+  clone mode string and entry/byte budgets (`i64::MAX` = unlimited). Callbacks are `extern "C-unwind"` thunks with a captured `env`: strings
+  passed to them are borrowed for the call (the runtime releases its copies afterwards), `copy`'s returns non-zero to keep an entry and
+  `glob_entries`' returns non-zero to exclude it. `msstd_fs_constants` returns the open-flag and mode constants as parallel name/value lists.
+  Glob matching lives in the no_std `ms-std-glob` crate (Go `pkg/runtime` semantics: braces, extglobs, `**`, dotfile rules).
+- **v2.5 (`ms-std-process`).** `msstd_process_*` covers process control and child processes. `STATUS_TIMEOUT` (13) and `STATUS_OUTPUT_LIMIT` (14)
+  join the table for `CommandError`. `Map[String, String]` crosses as two parallel string lists (`environment`, `replace`). `command_run` takes
+  the arguments, input bytes, optional limit and optional timeout and returns `CommandOut` (exit code, stdout, stderr); `command_spawn` returns a
+  refcounted child handle whose three pipes are `@std/io` stream handles (`subprocess_stream`, each call adds a reference). Children start in their
+  own process group and every wait polls in short slices so a pending cancellation kills the tree before unwinding. `ms-rt` adds `msrt_start_nanos`
+  (origin of `uptime`) and `msrt_argv` (whole argv). `watch_signals` is `msstd_process_watch_signals`/`signal_next`/`signal_close`: each observer owns a pipe fed by a chained signal handler (the runtime's SIGINT/SIGTERM cancellation still runs). `memory_usage` fills `MemoryOut`; `heap_used` and `heap_total` come from the new `msrt_heap_stats` (small-block heap only), `resident` from `/proc/self/statm`.
+- **v2.4 (`ms-std-fs`, `ms-std-io`).** `msstd_fs_*` are the path-based `@std/fs` operations and `msstd_io_*` the host streams of `@std/io`.
+  Paths are strings; fallible calls return `STATUS_*` (`NOT_FOUND`, `ALREADY_EXISTS`, `NOT_EMPTY`, `PERMISSION_DENIED`, `UNSUPPORTED`,
+  `CLOSED`, `FAILED`, `UNAVAILABLE`, `NONE` join the status table) and write `out` only on success. `FAILED` carries Go's `*PathError`
+  text, read with `msstd_fs_failure_message` / `msstd_io_failure_message` until the next fallible call. Optional limits are a present
+  flag plus an `i64`. `FileInfo` is flattened to `InfoOut`, filesystem status to `FsOut`; `list` returns names plus one flag byte per
+  entry (bit 0 directory, bit 1 symlink). Streams are refcounted `Handle<Stream>` objects (`Obj` header, then the value); reads and writes
+  poll in 50 ms slices so cancellation interrupts them. `STATUS_NONE` from `read`/`read_line` means end of stream. Generic `io.copy`,
+  `read_all` and `read_line` over user-defined `ReadStream`s stay compiler-lowered.
+- **v2.3 (`ms-std-time`, `ms-std-rt`).** `msstd_time_*` covers `@std/time`. `Duration` is an `i64` of nanoseconds by value.
+  `Timestamp` is `repr(C) { seconds: i64, nanos: i64 }` and `Instant` is `repr(C) { domain: u64, tick: i64 }`; both are passed by pointer
+  and returned through a trailing `out`. `msstd_time_clock_now` uses domain 1 (the process monotonic clock); `Calendar` is returned as
+  `CalendarOut` (ten `i64` fields in declaration order, then an owned zone-name string). Fallible calls return `STATUS_*` codes (`TimeError`
+  maps `InvalidInput`/`OutOfRange`/`InvalidData` to the numbers codes; `Closed` is never produced natively). Zones come from the bundled
+  IANA data (`jiff-tzdb`), `Local` follows `TZ` then `/etc/localtime`. `ms-std-rt` is the shared glue (read/build strings, faults, cancellation).
 - **v2 (value semantics).** The owner adopted value semantics (DESIGN.md decisions 1-2).
   Only `String` and `Shared[T]`-style objects keep an `Obj` header and a count.
   `List`, `Bytes`, `Map`, `Set`, `StringBuilder` are **owned header-less values**

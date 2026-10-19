@@ -137,6 +137,8 @@ pub(crate) fn command_diagnostic(issue: &Diagnostic) -> CommandDiagnostic {
 /// A checked and lowered program.
 pub(crate) struct Compiled {
     pub module: ms_driver::Module,
+    /// Full `module::name` identities in index order (test executables only).
+    pub tests: Vec<String>,
     pub source_root: String,
     pub project_root: String,
 }
@@ -175,12 +177,26 @@ pub(crate) fn compile<L: Lower>(
         return Err(failure(checked.diagnostics, &checked.source_root));
     };
     let options = LowerOptions {
-        tests,
         debug: kind == BuildType::Debug,
     };
-    match backend.lowering.lower(program, &entry, &options) {
-        Ok(module) => Ok(Compiled {
+    let lowered = if tests {
+        backend
+            .lowering
+            .lower_tests(program, &entry, &options)
+            .map(|(module, names)| {
+                let names = names.into_iter().map(|n| format!("{entry}::{n}")).collect();
+                (module, names)
+            })
+    } else {
+        backend
+            .lowering
+            .lower(program, &entry, &options)
+            .map(|module| (module, Vec::new()))
+    };
+    match lowered {
+        Ok((module, names)) => Ok(Compiled {
             module,
+            tests: names,
             source_root: checked.source_root.clone(),
             project_root: checked.project_root.clone(),
         }),

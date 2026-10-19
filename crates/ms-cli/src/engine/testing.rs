@@ -3,26 +3,20 @@
 //!
 //! # The test executable protocol
 //!
-//! The lowering builds one executable per `ms test` (`LowerOptions::tests`),
-//! whose `main` serves two invocations, both run in the project root:
-//!
-//! * `exe --list` prints each test's full `module::name` identity on its own
-//!   line, in declaration order, and exits 0.
-//! * `exe --run-test=<index> [program arguments]` runs the fixture setup, test
-//!   number `index` of that list and the fixture teardown, then exits. Status 0
-//!   means passed; any other status (including a fault, abort or signal) means
-//!   failed. Optionally, when `_MANUSCRIPT_TEST_EVENTS` names a file, the
-//!   process writes one JSON line there before exiting, the Go runner's
-//!   `{"event": "passed"|"failed"|"skipped", "index": N, "failure": "..."}`; a
-//!   `failed` or `skipped` event supplies the message shown after `FAIL` or
-//!   `SKIP`, and `skipped` is the only way to report a skip.
+//! The lowering builds one executable per `ms test` ([`ms_driver::Lower::lower_tests`])
+//! and returns the test names in index order. `exe <index> [program arguments]`
+//! runs test number `index` and exits: status 0 means passed; status 1 with
+//! the failure marker (`ms_lower::FAILURE_MARKER`) on standard error means
+//! the test returned an error, and the text after the marker is the message;
+//! any other status (a fault, abort or signal) is a failure described by how
+//! the process ended, with its standard error text after the marker-free part.
 //!
 //! The test's standard output goes to the command's standard output between
 //! its `RUN` and result lines; standard error passes through. Selection
 //! (`--test=`, `--match=`, `--exclude=`, `--filter=`), `--repeat=`,
-//! `--shuffle=`, `--fail-fast` and `--timeout=` are applied here, from the
-//! listing. Fixtures therefore run once per test, not once per module as in
-//! the Go implementation.
+//! `--shuffle=`, `--fail-fast` and `--timeout=` are applied here. Fixtures
+//! therefore run once per test, not once per module as in the Go
+//! implementation, and there is no way to report a skip.
 
 use std::io::Read;
 use std::os::unix::process::ExitStatusExt;
@@ -33,16 +27,15 @@ use std::time::{Duration, Instant};
 use ms_driver::Lower;
 use ms_project::gopath;
 
+use ms_lower::FAILURE_MARKER;
+
 use super::{RustBackend, TempDir, compile};
 use crate::backend::{BackendResult, Io, TestRequest};
 use crate::diagnostic::{CommandDiagnostic, Position};
-use crate::json::{self, Json};
+use crate::json::Json;
 use crate::process::wait_supervised;
 use crate::profile::base64;
 use crate::util::emit_json;
-
-/// The file a test process may write its result event to.
-pub const EVENTS_ENV: &str = "_MANUSCRIPT_TEST_EVENTS";
 
 /// Each test gets this long unless `--timeout` says otherwise.
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
@@ -128,7 +121,6 @@ enum Status {
     NotRun,
     Passed,
     Failed,
-    Skipped,
 }
 
 impl Status {
@@ -137,7 +129,6 @@ impl Status {
             Status::NotRun => "not_run",
             Status::Passed => "passed",
             Status::Failed => "failed",
-            Status::Skipped => "skipped",
         }
     }
 }
@@ -239,16 +230,10 @@ pub(super) fn test<L: Lower>(
 
     let mut runner = Runner {
         executable: &executable,
-        scratch: &directory.0,
         working: &working,
         options: &options,
     };
-    let available = match runner.list() {
-        Ok(names) => names,
-        Err(message) => {
-            return Ok(failed_early(io, &mut document, "execution", &message));
-        }
-    };
+    let available = compiled.tests.clone();
     let mut out = Out {
         io,
         captured: structured.then(Vec::new),
@@ -270,33 +255,11 @@ pub(super) fn test<L: Lower>(
 
 struct Runner<'a> {
     executable: &'a std::path::Path,
-    scratch: &'a std::path::Path,
     working: &'a str,
     options: &'a Options,
 }
 
 impl Runner<'_> {
-    /// The executable's test identities in declaration order.
-    fn list(&self) -> Result<Vec<String>, String> {
-        let output = Command::new(self.executable)
-            .arg("--list")
-            .current_dir(self.working)
-            .stdin(Stdio::null())
-            .stderr(Stdio::inherit())
-            .output()
-            .map_err(|error| error.to_string())?;
-        if !output.status.success() {
-            return Err(format!(
-                "cannot list tests: the test program {}; this is a Manuscript bug, so report it with the source that triggers it",
-                describe_exit(&output.status)
-            ));
-        }
-        Ok(String::from_utf8_lossy(&output.stdout)
-            .lines()
-            .map(str::to_string)
-            .collect())
-    }
-
     fn run_all(&mut self, available: &[String], document: &mut Document, out: &mut Out) -> i32 {
         let options = self.options;
         let total = available.len();
@@ -369,7 +332,7 @@ impl Runner<'_> {
         }
 
         let started = Instant::now();
-        let (mut failed, mut skipped) = (0, 0);
+        let mut failed = 0;
         let mut reason = String::new();
         for (position, (index, name)) in plan.iter().enumerate() {
             out.line(format!("RUN {name}"));
@@ -382,12 +345,6 @@ impl Runner<'_> {
                     // The interrupted test is not a result; it stays not run.
                     reason = "cancelled".into();
                     break;
-                }
-                Ran::Skipped(why) => {
-                    skipped += 1;
-                    out.line(format!("SKIP {name}: {why}"));
-                    case.status = Status::Skipped;
-                    case.failure = why;
                 }
                 Ran::Passed => {
                     out.line(format!("PASS {name}"));
@@ -409,14 +366,7 @@ impl Runner<'_> {
             out.line("no test blocks found: add test blocks to test.ms or *_test.ms files in the project, or pass a .ms file");
             reason = "no_tests".into();
         }
-        if skipped == 0 {
-            out.line(format!("{} tests, {failed} failed", plan.len()));
-        } else {
-            out.line(format!(
-                "{} tests, {failed} failed, {skipped} skipped",
-                plan.len()
-            ));
-        }
+        out.line(format!("{} tests, {failed} failed", plan.len()));
         document.finish(&reason, started.elapsed());
         if reason == "cancelled" && failed == 0 {
             1
@@ -427,40 +377,35 @@ impl Runner<'_> {
 
     /// Run test `index` in its own process.
     fn run_one(&self, index: usize, out: &mut Out) -> Ran {
-        let events = self.scratch.join(format!("events-{index}.jsonl"));
-        let _ = std::fs::remove_file(&events);
         let spawned = Command::new(self.executable)
-            .arg(format!("--run-test={index}"))
+            .arg(index.to_string())
             .args(&self.options.program)
             .current_dir(self.working)
-            .env(EVENTS_ENV, &events)
             .stdin(Stdio::inherit())
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
+            .stderr(Stdio::piped())
             .spawn();
         let mut child = match spawned {
             Ok(child) => child,
             Err(error) => return Ran::Failed(error.to_string()),
         };
-        let (sender, receiver) = mpsc::channel::<Vec<u8>>();
-        let mut pipe = child.stdout.take().expect("piped stdout");
-        // Detached: a grandchild that inherits the pipe must not hold the run up.
-        std::thread::spawn(move || {
-            let mut buffer = [0u8; 8192];
-            while let Ok(n) = pipe.read(&mut buffer) {
-                if n == 0 || sender.send(buffer[..n].to_vec()).is_err() {
-                    break;
-                }
-            }
-        });
+        let stdout = pipe_reader(child.stdout.take().expect("piped stdout"));
+        let stderr = pipe_reader(child.stderr.take().expect("piped stderr"));
+        let mut errors: Vec<u8> = Vec::new();
         let waited = wait_supervised(&mut child, self.options.timeout, &mut || {
-            while let Ok(chunk) = receiver.try_recv() {
+            while let Ok(chunk) = stdout.try_recv() {
                 out.write(&chunk);
+            }
+            while let Ok(chunk) = stderr.try_recv() {
+                errors.extend_from_slice(&chunk);
             }
         });
         // Output written just before exit; a silent pipe held open elsewhere ends the wait.
-        while let Ok(chunk) = receiver.recv_timeout(Duration::from_millis(100)) {
+        while let Ok(chunk) = stdout.recv_timeout(Duration::from_millis(100)) {
             out.write(&chunk);
+        }
+        while let Ok(chunk) = stderr.recv_timeout(Duration::from_millis(100)) {
+            errors.extend_from_slice(&chunk);
         }
         let waited = match waited {
             Ok(waited) => waited,
@@ -476,37 +421,43 @@ impl Runner<'_> {
         if waited.interrupted {
             return Ran::Cancelled;
         }
-        match read_event(&events) {
-            Some((event, failure)) if event == "skipped" => Ran::Skipped(failure),
-            Some((event, failure)) if event == "failed" => Ran::Failed(failure),
-            _ if waited.status.success() => Ran::Passed,
-            _ => Ran::Failed(format!("test process {}", describe_exit(&waited.status))),
+        let errors = String::from_utf8_lossy(&errors).into_owned();
+        if let Some((before, message)) = errors.split_once(FAILURE_MARKER) {
+            let _ = out.io.stderr.write_all(before.as_bytes());
+            return Ran::Failed(message.trim_end_matches('\n').to_string());
+        }
+        if waited.status.success() {
+            let _ = out.io.stderr.write_all(errors.as_bytes());
+            return Ran::Passed;
+        }
+        let text = errors.trim_end_matches('\n');
+        if text.is_empty() {
+            Ran::Failed(format!("test process {}", describe_exit(&waited.status)))
+        } else {
+            Ran::Failed(text.to_string())
         }
     }
+}
+
+/// Streams a child's pipe through a channel. The thread is detached: a
+/// grandchild that inherits the pipe must not hold the run up.
+fn pipe_reader(mut pipe: impl Read + Send + 'static) -> mpsc::Receiver<Vec<u8>> {
+    let (sender, receiver) = mpsc::channel::<Vec<u8>>();
+    std::thread::spawn(move || {
+        let mut buffer = [0u8; 8192];
+        while let Ok(n) = pipe.read(&mut buffer) {
+            if n == 0 || sender.send(buffer[..n].to_vec()).is_err() {
+                break;
+            }
+        }
+    });
+    receiver
 }
 
 enum Ran {
     Passed,
     Failed(String),
-    Skipped(String),
     Cancelled,
-}
-
-/// The last result event a test process wrote: `(event, failure)`.
-fn read_event(path: &std::path::Path) -> Option<(String, String)> {
-    let text = std::fs::read_to_string(path).ok()?;
-    text.lines().rev().find_map(|line| {
-        let event = json::parse(line)?;
-        let name = event.get("event")?.as_str()?;
-        matches!(name, "passed" | "failed" | "skipped").then(|| {
-            let failure = event
-                .get("failure")
-                .and_then(Json::as_str)
-                .unwrap_or("")
-                .to_string();
-            (name.to_string(), failure)
-        })
-    })
 }
 
 fn describe_exit(status: &std::process::ExitStatus) -> String {
@@ -668,8 +619,7 @@ impl Document {
                 item
             })
             .collect();
-        let finished =
-            self.count(Status::Passed) + self.count(Status::Failed) + self.count(Status::Skipped);
+        let finished = self.count(Status::Passed) + self.count(Status::Failed);
         let not_run = if self.completed {
             self.tests.len() as i64 - finished
         } else {
@@ -686,7 +636,7 @@ impl Document {
                     .with("selected", Json::int(self.tests.len() as i64))
                     .with("passed", Json::int(self.count(Status::Passed)))
                     .with("failed", Json::int(self.count(Status::Failed)))
-                    .with("skipped", Json::int(self.count(Status::Skipped)))
+                    .with("skipped", Json::int(0))
                     .with("not_run", Json::int(not_run))
                     .with("duration_ns", Json::int(self.duration.as_nanos() as i64)),
             )
@@ -777,18 +727,18 @@ mod tests {
         assert!(failure_position("no location").is_none());
     }
 
+    const NAMES: [&str; 4] = ["m::pass", "m::fail", "m::crash", "m::hang"];
+
     /// A shell script that speaks the test executable protocol.
     fn script(dir: &std::path::Path) -> std::path::PathBuf {
         use std::os::unix::fs::PermissionsExt;
         let path = dir.join("program");
         let text = r#"#!/bin/sh
 case "$1" in
---list) printf 'm::pass\nm::fail\nm::skip\nm::crash\nm::hang\n'; exit 0;;
---run-test=0) echo "hello from pass"; exit 0;;
---run-test=1) printf '{"event":"failed","index":1,"failure":"boom\\n  at src/a.ms:3:4 in m::fail"}\n' > "$_MANUSCRIPT_TEST_EVENTS"; exit 1;;
---run-test=2) printf '{"event":"skipped","index":2,"failure":"no network"}\n' > "$_MANUSCRIPT_TEST_EVENTS"; exit 0;;
---run-test=3) kill -SEGV $$;;
---run-test=4) sleep 30;;
+0) echo "hello from pass"; echo "note" >&2; exit 0;;
+1) printf '\001FAIL\001boom\n  at src/a.ms:3:4 in m::fail\n' >&2; exit 1;;
+2) kill -SEGV $$;;
+3) sleep 30;;
 esac
 "#;
         std::fs::write(&path, text).unwrap();
@@ -802,11 +752,10 @@ esac
         let options = parse_options(&args(arguments)).unwrap();
         let mut runner = Runner {
             executable: &executable,
-            scratch: &directory.0,
             working: "/",
             options: &options,
         };
-        let available = runner.list().unwrap();
+        let available: Vec<String> = NAMES.iter().map(|n| n.to_string()).collect();
         let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
         let mut input: &[u8] = &[];
         let mut io = Io {
@@ -831,32 +780,27 @@ esac
         let expected = [
             "RUN m::pass\nhello from pass\nPASS m::pass\n",
             "RUN m::fail\nFAIL m::fail: boom\n  at src/a.ms:3:4 in m::fail\n",
-            "RUN m::skip\nSKIP m::skip: no network\n",
             "RUN m::crash\nFAIL m::crash: test process was terminated by signal 11\n",
             "RUN m::hang\nFAIL m::hang: timed out after 400ms; the test was cancelled (use --timeout to change the limit, 0 disables it)\n",
-            "5 tests, 3 failed, 1 skipped\n",
+            "4 tests, 3 failed\n",
         ];
         assert_eq!(text, expected.concat());
         let statuses: Vec<_> = document.tests.iter().map(|t| t.status.as_str()).collect();
-        assert_eq!(
-            statuses,
-            ["passed", "failed", "skipped", "failed", "failed"]
-        );
+        assert_eq!(statuses, ["passed", "failed", "failed", "failed"]);
         let json = document.to_json().encode();
         assert!(json.contains("\"position\""), "{json}");
-        assert!(json.contains("\"reason\"") || document.reason.is_none());
     }
 
     #[test]
     fn selection_listing_and_fail_fast() {
-        let (status, text, _) = run_script(&["--list", "--match=pass|skip"]);
-        assert_eq!((status, text.as_str()), (0, "m::pass\nm::skip\n"));
+        let (status, text, _) = run_script(&["--list", "--match=pass|fail"]);
+        assert_eq!((status, text.as_str()), (0, "m::pass\nm::fail\n"));
 
         let (status, text, document) = run_script(&["--fail-fast", "--timeout=400ms"]);
         assert_eq!(status, 1);
-        assert!(text.ends_with("5 tests, 1 failed\n"), "{text}");
+        assert!(text.ends_with("4 tests, 1 failed\n"), "{text}");
         assert_eq!(document.reason.as_deref(), Some("fail_fast"));
-        assert_eq!(document.tests.len(), 5);
+        assert_eq!(document.tests.len(), 4);
         assert_eq!(document.tests[2].status, Status::NotRun);
 
         let (status, text, _) = run_script(&["--test=m::missing"]);
@@ -865,7 +809,7 @@ esac
         let (status, text, _) = run_script(&["--filter=zzz"]);
         assert_eq!(status, 1);
         assert!(
-            text.starts_with("no tests match selection (5 tests available)"),
+            text.starts_with("no tests match selection (4 tests available)"),
             "{text}"
         );
 

@@ -8,7 +8,7 @@ use std::sync::OnceLock;
 
 use ms_cli::backend::Io;
 use ms_cli::engine::RustBackend;
-use ms_driver::{Lower, LowerOptions, Module};
+use ms_driver::{Lower, LowerOptions, Module, Native};
 
 /// A lowering that ignores the program and returns fixed MIR.
 struct Fixed(&'static str);
@@ -181,7 +181,7 @@ fn unavailable_lowering_is_a_lowering_diagnostic() {
     let (status, _, err) = ms(&backend, &["build", &source]);
     assert_eq!(status, 1);
     assert!(
-        err.contains(": lowering: lowering from the typed HIR"),
+        err.contains(": lowering: lowering is not available"),
         "{err}"
     );
 }
@@ -221,4 +221,39 @@ fn library_projects_have_no_executable_entry() {
         err.contains("library project has no executable entry"),
         "{err}"
     );
+}
+
+const TESTS: &str = "import {expect_equal} from \"@std/testing.ms\"\n\ntest \"adds\":\n    try expect_equal(1 + 1, 2)\n\ntest \"fails\":\n    try expect_equal(1 + 1, 3)\n\ntest \"passes too\":\n    try expect_equal(2 * 2, 4)\n";
+
+#[test]
+fn native_lowering_runs_real_programs() {
+    let dir = scratch("native-run");
+    let source = write(
+        &dir,
+        "main.ms",
+        "export fn main() Int:\n    return 6 * 7 - 40\n",
+    );
+    let backend = RustBackend::new(Native).with_runtime(runtime());
+    let (status, _, err) = ms(&backend, &["run", &source]);
+    assert_eq!((status, err.as_str()), (2, ""));
+}
+
+#[test]
+fn native_tests_run_one_process_each() {
+    let dir = scratch("native-test");
+    let source = write(&dir, "sample_test.ms", TESTS);
+    let backend = RustBackend::new(Native).with_runtime(runtime());
+    let (status, stdout, err) = ms(&backend, &["test", &source]);
+    assert_eq!(status, 1, "{err}");
+    for line in [
+        "PASS sample_test.ms::adds",
+        "PASS sample_test.ms::passes too",
+        "FAIL sample_test.ms::fails: ",
+        "3 tests, 1 failed",
+    ] {
+        assert!(stdout.contains(line), "{line} missing in {stdout}");
+    }
+    let (status, json, _) = ms(&backend, &["test", &source, "--json", "--match", "passes"]);
+    assert_eq!(status, 0, "{json}");
+    assert!(json.contains("\"passed\": 1"), "{json}");
 }

@@ -14,3 +14,4 @@ ms-syntax = { path = "../ms-syntax" }
 ms-check = { path = "../ms-check" }
 ms-mir = { path = "../ms-mir" }
 ms-clif = { path = "../ms-clif" }
+ms-lower = { path = "../ms-lower" }

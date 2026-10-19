@@ -45,6 +45,8 @@ type Parameter struct {
 	Name    string
 	Type    *Type
 	Default *Expression
+	// Var marks a parameter declared `var`: the callee may change the argument.
+	Var bool
 }
 type TypeParameter struct {
 	Pos    Position
@@ -91,7 +93,9 @@ type Declaration struct {
 	// declaration, so groups change only layout.
 	Group Position
 	// Synthetic marks a declaration the checker generated for `impl Type:`; editors skip it.
-	Synthetic                  bool
+	Synthetic bool
+	// Mutating marks a method declared `var fn`: it may change its receiver.
+	Mutating                   bool
 	TypeParams                 []TypeParameter
 	Fields                     []Parameter
 	Cases                      []Case
@@ -111,6 +115,8 @@ type Argument struct {
 	Pos   Position
 	Name  string
 	Value *Expression
+	// Var marks an argument written `var value`: the callee may change the place passed.
+	Var bool
 }
 type TextPart struct {
 	Text  string

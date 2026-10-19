@@ -41,3 +41,44 @@ fn caller_evaluated_defaults() {
     );
     assert!(mir.contains("fn @pad"));
 }
+
+#[test]
+fn match_closures_and_try() {
+    let mir = lower(
+        "match",
+        "import {TextError} from \"@std/errors.ms\"\n\ntype Shape:\n    case Circle(radius: Int)\n    case Dot\n\nfn area(s: Shape) Int:\n    return match s:\n        Shape.Circle(r): r * r\n        _: 0\n\nfn first(xs: List[Int]) Result[Int, TextError]:\n    let n = try parse(xs.length())\n    return ok(n)\n\nfn parse(n: Int) Result[Int, TextError]:\n    if n > 0:\n        return ok(n)\n    return error(TextError(text: \"empty\"))\n\nexport fn main() Int:\n    let doubled = [1, 2, 3].map(fn(x) Int: x * 2)\n    return area(Shape.Circle(doubled.length()))\n",
+    );
+    assert!(mir.contains("switch"));
+    assert!(mir.contains("closure.new"));
+}
+
+#[test]
+fn var_parameters_return_updated_values() {
+    let mir = lower(
+        "vars",
+        "type Counter:\n    total: Int\n\nimpl Counter:\n    var fn bump(by: Int) Int:\n        self.total += by\n        return self.total\n\nfn add(var xs: List[Int], v: Int) Unit:\n    xs.append(v)\n\nexport fn main() Int:\n    var c = Counter(total: 1)\n    let a = c.bump(4)\n    var l = [1]\n    add(var l, a)\n    return l.length()\n",
+    );
+    assert!(mir.contains(".vars"));
+}
+
+#[test]
+fn interface_views_and_error_conversion() {
+    let source = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/interfaces.ms"),
+    )
+    .expect("fixture");
+    let mir = lower("interfaces", &source);
+    assert!(mir.contains("iface.new"));
+    assert!(mir.contains("call.method"));
+}
+
+#[test]
+fn maps_and_sets() {
+    let mir = lower(
+        "maps",
+        "export fn main() Int:\n    var m = {\"a\": 1}\n    m.add(\"b\", 2)\n    let s = Set[Int]([1, 2])\n    var total = 0\n    for e in m:\n        total += e.value\n    return total + s.length() + m.get_or(\"z\", 0)\n",
+    );
+    assert!(mir.contains("msrt_map_add"));
+    assert!(mir.contains("msrt_list_to_set"));
+    assert!(mir.contains("put "));
+}
