@@ -32,9 +32,26 @@ pub(crate) fn runtime_fn(m: &mut Module, sym: &str, params: &[MTy], ret: MTy) ->
     })
 }
 
+/// The runtime formatter of a native record type whose text is not its fields.
+fn native_record_text(b: &FuncBuilder<'_>, t: MTy) -> Option<&'static str> {
+    let TyKind::Rec(rid) = b.m.types.kind(t) else {
+        return None;
+    };
+    match b.m.records[rid.index()].name.as_str() {
+        "Decimal" => Some("msstd_decimal_to_string"),
+        "Timestamp" => Some("msstd_time_timestamp_to_string"),
+        _ => None,
+    }
+}
+
 /// Calls a leaf formatter for scalar/string types; `None` for compound types.
 /// The quoted form (`repr`) wraps strings in quotes.
-fn scalar_text(b: &mut FuncBuilder<'_>, t: MTy, v: Value, repr: bool) -> Option<(Value, bool)> {
+pub(crate) fn scalar_text(
+    b: &mut FuncBuilder<'_>,
+    t: MTy,
+    v: Value,
+    repr: bool,
+) -> Option<(Value, bool)> {
     let sym = if t == MTy::INT {
         "msrt_int_to_string"
     } else if t == MTy::FLOAT {
@@ -51,7 +68,7 @@ fn scalar_text(b: &mut FuncBuilder<'_>, t: MTy, v: Value, repr: bool) -> Option<
         let s = b.str_lit("unit");
         return Some((s, false));
     } else {
-        return None;
+        native_record_text(b, t)?
     };
     let ext = runtime_fn(b.m, sym, &[t], MTy::STR);
     Some((b.call_rt(ext, &[v]), true))
@@ -389,6 +406,37 @@ pub(crate) fn build_format(
             let r = b.use_var(acc);
             b.ret(Some(r));
         }
+        TyKind::Obj(name, _) if name == "BigInt" => {
+            let ext = runtime_fn(
+                b.m,
+                "msstd_bigint_to_string_radix",
+                &[t, MTy::INT],
+                MTy::STR,
+            );
+            let ten = b.iconst(10);
+            let r = b.call_rt(ext, &[x, ten]);
+            b.ret(Some(r));
+        }
+        TyKind::Iface(_) => {
+            // Only failure messages reach this; the dynamic value has no static text form.
+            let name = ty_str(b.m, t);
+            let acc = start(&mut b, &format!("<{}>", name.trim_start_matches("dyn ")));
+            let r = b.use_var(acc);
+            b.ret(Some(r));
+        }
+        TyKind::Fn(..) | TyKind::Obj(..) => {
+            // Functions and native objects print as a fixed marker.
+            let text = if matches!(b.m.types.kind(t), TyKind::Fn(..)) {
+                "[function]"
+            } else {
+                "[object]"
+            };
+            let lit = b.str_lit(text);
+            let r = b
+                .emit(Op::Copy, &[lit], Imm::None, Some(MTy::STR))
+                .expect("copy");
+            b.ret(Some(r));
+        }
         _ => {
             return Err(Error::new(format!(
                 "no text form for {} yet",
@@ -416,6 +464,19 @@ impl<'a> FnLower<'a> {
         if t == MTy::STR {
             return Ok(x);
         }
+        if let TyKind::Rec(rid) = self.b.m.types.kind(t).clone()
+            && self.b.m.records[rid.index()].name == "Timestamp"
+        {
+            // RFC 3339 text from the runtime, which takes the two words by address.
+            let slot = self
+                .b
+                .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
+                .expect("slot");
+            let a = self.borrow(x);
+            self.b.emit(Op::Store, &[slot, a], Imm::None, None);
+            let v = self.call_runtime("msstd_time_timestamp_to_string", &[slot], MTy::STR)?;
+            return Ok(Val { v, own: true });
+        }
         let v = match scalar_text(&mut self.b, t, x.v, false) {
             Some((v, owned)) => return Ok(Val { v, own: owned }),
             None => {
@@ -430,7 +491,7 @@ impl<'a> FnLower<'a> {
     /// A text literal with interpolations.
     pub fn text(&mut self, parts: &[TextPart]) -> Result<Val, Error> {
         let mut acc: Option<Val> = None;
-        for p in parts {
+        for (n, p) in parts.iter().enumerate() {
             let piece = match p {
                 TextPart::Lit(s) => {
                     let v = self.b.str_lit(s);
@@ -454,6 +515,13 @@ impl<'a> FnLower<'a> {
                     Val { v: r, own: true }
                 }
             });
+            // A later part may return early (`try`): the text built so far is a temporary.
+            let later_try = parts[n + 1..]
+                .iter()
+                .any(|l| matches!(l, TextPart::Interp(e) if crate::mutation::has_try(e)));
+            if later_try && let Some(a) = acc {
+                acc = Some(self.hold_temp(a));
+            }
         }
         match acc {
             Some(a) => Ok(a),

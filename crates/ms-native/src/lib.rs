@@ -5,10 +5,12 @@
 //! own symbols. A new `ms-std-*` crate joins the archive by being listed in `Cargo.toml` and below.
 extern crate ms_rt;
 extern crate ms_std_archive;
+extern crate ms_std_bigint;
 extern crate ms_std_compress;
 extern crate ms_std_core;
 extern crate ms_std_crypto;
 extern crate ms_std_csv;
+extern crate ms_std_decimal;
 extern crate ms_std_encoding;
 extern crate ms_std_fs;
 extern crate ms_std_html;

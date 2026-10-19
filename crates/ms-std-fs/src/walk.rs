@@ -358,6 +358,12 @@ fn chtimes(dest: &[u8], info: &libc::stat) -> Res<()> {
     .map_err(|e| Fail::errno(e, "chtimes", dest))
 }
 
+/// `st_mode` as `u32` (it is `u16` on macOS).
+#[allow(clippy::useless_conversion)]
+fn mode_bits(mode: libc::mode_t) -> u32 {
+    mode.into()
+}
+
 fn chmod_path(dest: &[u8], mode: u32) -> Res<()> {
     sys::chmod(&cpath(dest)?, mode & 0o7777).map_err(|e| Fail::errno(e, "chmod", dest))
 }
@@ -484,7 +490,7 @@ impl Copier<'_, '_> {
             self.copy(&path::join(source, &name), &path::join(dest, &name))?;
         }
         if !exists {
-            chmod_path(dest, info.st_mode)?;
+            chmod_path(dest, mode_bits(info.st_mode))?;
         }
         if self.o.preserve {
             return chtimes(dest, info);
@@ -530,7 +536,7 @@ impl Copier<'_, '_> {
                         return Err(limit_exceeded());
                     }
                     self.o.bytes -= cloned.st_size as i64;
-                    chmod_path(dest, info.st_mode)?;
+                    chmod_path(dest, mode_bits(info.st_mode))?;
                     return if self.o.preserve {
                         chtimes(dest, info)
                     } else {
@@ -545,7 +551,7 @@ impl Copier<'_, '_> {
                 }
             }
         }
-        let output = open_out(dest, info.st_mode & 0o7777)?;
+        let output = open_out(dest, mode_bits(info.st_mode) & 0o7777)?;
         let copied = copy_stream(input, output, dest, &mut self.o.bytes);
         let chmoded = copied.and_then(|()| {
             // SAFETY: plain system call on the open output descriptor.

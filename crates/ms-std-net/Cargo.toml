@@ -11,7 +11,7 @@ crate-type = ["staticlib", "rlib"]
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-std-core = { path = "../ms-std-core" }
-rustix = { version = "1", default-features = false, features = ["std", "event", "net", "fs", "time"] }
+rustix = { version = "1", default-features = false, features = ["std", "event", "net", "fs", "time", "pipe"] }
 socket2 = { version = "0.6", features = ["all"] }
 
 rustls = { version = "0.23", default-features = false, features = ["std", "ring", "tls12"] }

@@ -11,7 +11,8 @@ use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 use ms_rt_abi::Obj;
-use ms_std_core::{StrObj, new_string, opt, status_of, str_ref};
+use ms_rt_abi::VecVal;
+use ms_std_core::{StrObj, new_string, opt, read_string_list, status_of, str_ref};
 
 unsafe extern "C" {
     fn msrt_alloc(size: usize) -> *mut u8;
@@ -268,6 +269,123 @@ pub unsafe extern "C" fn msrt_json_dec_float(text: *const StrObj, out: *mut f64)
                 0
             }
             None => 1,
+        }
+    }
+}
+
+/// Adds a number from `v`, or `null` when `v` is NaN or infinite.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msrt_json_add_float(d: *mut DocObj, v: f64) -> u32 {
+    // SAFETY: `d` is a live builder handle.
+    unsafe {
+        match crate::float_text(v) {
+            Some(text) => doc_mut(d).add(Node::Number(text)),
+            None => doc_mut(d).add(Node::Null),
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msrt_json_add_empty_array(d: *mut DocObj) -> u32 {
+    // SAFETY: `d` is a live builder handle.
+    unsafe { doc_mut(d).add(Node::Array(Vec::new())) }
+}
+
+/// Appends node `item` to the array node `arr`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msrt_json_array_push(d: *mut DocObj, arr: u32, item: u32) {
+    // SAFETY: `d` is a live builder handle; `arr` is an array node of it.
+    unsafe {
+        if let Node::Array(v) = &mut doc_mut(d).nodes[arr as usize] {
+            v.push(item);
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msrt_json_add_empty_object(d: *mut DocObj) -> u32 {
+    // SAFETY: `d` is a live builder handle.
+    unsafe { doc_mut(d).add(Node::Object(Vec::new())) }
+}
+
+/// Sets member `key` of the object node `obj`; a repeated key replaces the earlier value in place.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msrt_json_object_put(
+    d: *mut DocObj,
+    obj: u32,
+    key: *const StrObj,
+    item: u32,
+) {
+    // SAFETY: `d` is a live builder handle; `obj` is an object node of it; `key` is live.
+    unsafe {
+        let k = str_ref(key);
+        if let Node::Object(v) = &mut doc_mut(d).nodes[obj as usize] {
+            match v.iter_mut().find(|e| e.0 == k) {
+                Some(e) => e.1 = item,
+                None => v.push((String::from(k), item)),
+            }
+        }
+    }
+}
+
+/// Index of member `key` of an object node, or -1.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msrt_json_find(d: *const DocObj, id: u32, key: *const StrObj) -> i64 {
+    // SAFETY: as `msrt_json_item`; `key` is live.
+    unsafe {
+        let k = str_ref(key);
+        match &doc(d).nodes[id as usize] {
+            Node::Object(v) => v.iter().position(|e| e.0 == k).map_or(-1, |i| i as i64),
+            _ => -1,
+        }
+    }
+}
+
+/// Whether the object node has a member whose key is not in `names` (a list of strings).
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msrt_json_has_unknown(
+    d: *const DocObj,
+    id: u32,
+    names: *const VecVal,
+) -> u8 {
+    // SAFETY: as `msrt_json_item`; `names` is a live string list.
+    unsafe {
+        let known = read_string_list(names);
+        match &doc(d).nodes[id as usize] {
+            Node::Object(v) => u8::from(v.iter().any(|e| !known.contains(&e.0.as_str()))),
+            _ => 0,
+        }
+    }
+}
+
+/// The case of an alternative the node names: a string is a payload-free case, an object with one
+/// member is the case of that key and `payload` receives the member's node. -1 when none matches.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msrt_json_variant(
+    d: *const DocObj,
+    id: u32,
+    names: *const VecVal,
+    payload: *mut i64,
+) -> i64 {
+    // SAFETY: as `msrt_json_item`; `names` is a live string list; `payload` is writable.
+    unsafe {
+        let known = read_string_list(names);
+        let index = |name: &str| {
+            known
+                .iter()
+                .position(|k| *k == name)
+                .map_or(-1, |i| i as i64)
+        };
+        match &doc(d).nodes[id as usize] {
+            Node::Str(s) => {
+                payload.write(-1);
+                index(s)
+            }
+            Node::Object(v) if v.len() == 1 => {
+                payload.write(i64::from(v[0].1));
+                index(&v[0].0)
+            }
+            _ => -1,
         }
     }
 }

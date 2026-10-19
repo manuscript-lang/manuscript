@@ -79,7 +79,7 @@ test "omitted and explicit defaults":
     ) | try expect_false
 
 test "default evaluation order and repeated calls":
-    let state = Cell(value: 0)
+    var state = Cell(value: 0)
     let total = ordered(
         state: state,
         third: mark(state: state, value: 1),

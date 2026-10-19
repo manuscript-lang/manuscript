@@ -9,6 +9,17 @@ use ms_mir::ir::{FuncKind, Imm, Linkage, Mode, Module, Op, Param, VtableDef, Vta
 use ms_mir::types::{IfaceId, Ty as MTy, TyKind};
 
 impl Cx {
+    /// The table of `concrete`'s methods for the interface, created on first use.
+    pub(crate) fn vtable_id(
+        &mut self,
+        m: &mut Module,
+        concrete: &ct::Ty,
+        iface: IfaceId,
+    ) -> Result<VtableId, Error> {
+        let data_ty = self.lower_ty(m, concrete)?;
+        self.vtable_for(m, concrete, data_ty, iface)
+    }
+
     /// The table of `concrete`'s methods for the interface, one wrapper per operation.
     fn vtable_for(
         &mut self,
@@ -56,6 +67,20 @@ impl Cx {
                 mode: Mode::Borrow,
             }));
             let mut writes_back = false;
+            // A hook a `TestHooks` implementation leaves out has no body: it does nothing.
+            let missing = native.as_str().is_empty()
+                && s.ret == MTy::UNIT
+                && !self.callables.contains_key(&(module, id));
+            if missing {
+                let mut b = FuncBuilder::new(m, &format!("vt.{}", s.name), ps, s.ret);
+                b.func_mut().kind = FuncKind::Method;
+                b.func_mut().linkage = Linkage::Internal;
+                let u = b.unit();
+                b.ret(Some(u));
+                let f = b.into_func();
+                methods.push(m.add_func(f));
+                continue;
+            }
             let callee = if !native.as_str().is_empty() {
                 self.native_method_fn(m, native.as_str(), concrete, data_ty)?
             } else {
@@ -77,38 +102,18 @@ impl Cx {
             b.func_mut().kind = FuncKind::Method;
             b.func_mut().linkage = Linkage::Internal;
             let args = b.params();
-            let recv = b
-                .emit(Op::Load, &[args[0]], Imm::Ty(data_ty), Some(data_ty))
-                .expect("load");
+            // A method that changes `self` takes the box itself: it moves the data out and
+            // puts the new value back.
+            let recv = if writes_back {
+                args[0]
+            } else {
+                b.emit(Op::Load, &[args[0]], Imm::Ty(data_ty), Some(data_ty))
+                    .expect("load")
+            };
             let mut call_args = vec![recv];
             call_args.extend_from_slice(&args[1..]);
             let r = b.call(callee, &call_args);
-            if writes_back {
-                // The method hands back `{result, self}`: the interface's data takes the new self.
-                let rty = b.ty(r);
-                let TyKind::Rec(rid) = b.m.types.kind(rty).clone() else {
-                    return Err(Error::new("mutating method must return a record"));
-                };
-                let res = b.rec_get(rid, 0, r);
-                let res = owned_value(&mut b, res);
-                let new = b.rec_get(rid, 1, r);
-                let new = owned_value(&mut b, new);
-                if b.m.needs_drop(data_ty) {
-                    let old = b
-                        .emit(Op::Take, &[args[0]], Imm::Ty(data_ty), Some(data_ty))
-                        .expect("take");
-                    b.emit(Op::Drop, &[old], Imm::None, None);
-                    b.emit(Op::Put, &[args[0], new], Imm::None, None);
-                } else {
-                    b.emit(Op::Store, &[args[0], new], Imm::None, None);
-                }
-                if b.m.needs_drop(rty) {
-                    b.emit(Op::Drop, &[r], Imm::None, None);
-                }
-                b.ret(Some(res));
-            } else {
-                b.ret(Some(r));
-            }
+            b.ret(Some(r));
             let f = b.into_func();
             methods.push(m.add_func(f));
         }
@@ -346,13 +351,4 @@ impl Cx {
         self.vtables.insert(key, id);
         id
     }
-}
-
-/// An owned copy of a borrowed value (a no-op copy for plain data).
-fn owned_value(b: &mut FuncBuilder<'_>, v: ms_mir::ir::Value) -> ms_mir::ir::Value {
-    let ty = b.ty(v);
-    if !b.m.needs_drop(ty) {
-        return v;
-    }
-    b.emit(Op::Copy, &[v], Imm::None, Some(ty)).expect("copy")
 }

@@ -1,8 +1,9 @@
 //! `Map[K, V]` and `Set[T]`: insertion-ordered hash tables stored as `MapVal`.
 //!
 //! `slots` is an append-only array of entries `{ hash: u64 (top bit set = live), key, value }`
-//! spaced `stride` bytes apart; `index` is an open-addressing table of slot numbers
-//! (`0` empty, `u32::MAX` removed, otherwise slot + 1). Removal leaves a hole that scans
+//! spaced `stride` bytes apart; `index` is an open-addressing table of `u64` entries: the
+//! high word is the hash's high word (a tag, so probes skip non-matching slots without touching
+//! them) and the low word is the slot number (`0` empty, `u32::MAX` removed, otherwise slot + 1). Removal leaves a hole that scans
 //! skip and compaction reclaims once more than half the slots are holes.
 use crate::alloc;
 use crate::desc::{slot_copy, slot_drop, slot_eq, slot_hash};
@@ -10,7 +11,17 @@ use crate::fault;
 use ms_rt_abi::*;
 
 const LIVE: u64 = 1 << 63;
-const REMOVED: u32 = u32::MAX;
+const REMOVED: u64 = u32::MAX as u64;
+
+#[inline(always)]
+fn entry(h: u64, slot: usize) -> u64 {
+    (h & !0xFFFF_FFFF) | (slot as u64 + 1)
+}
+
+#[inline(always)]
+fn index_of(m: &MapVal) -> *mut u64 {
+    m.index as *mut u64
+}
 
 pub fn empty() -> MapVal {
     MapVal {
@@ -30,6 +41,19 @@ struct Layout {
     stride: usize,
     ksize: usize,
     vsize: usize,
+}
+
+/// `copy_nonoverlapping` with the 8-byte case (Int/Float/pointer slots) inline.
+#[inline(always)]
+unsafe fn copy_slot(src: *const u8, dst: *mut u8, n: usize) {
+    // SAFETY: caller contract of `copy_nonoverlapping`.
+    unsafe {
+        if n == 8 {
+            *(dst as *mut u64) = *(src as *const u64);
+        } else {
+            core::ptr::copy_nonoverlapping(src, dst, n);
+        }
+    }
 }
 
 fn align_up(n: usize, a: usize) -> usize {
@@ -64,35 +88,47 @@ unsafe fn slot_hash_of(p: *mut u8) -> u64 {
     unsafe { *(p as *const u64) }
 }
 
+#[inline(always)]
 fn hash_key(kd: &TypeDesc, key: *const u8) -> u64 {
     // SAFETY: the key slot is live.
-    unsafe { slot_hash(kd, key) | LIVE }
+    unsafe {
+        if kd.kind == KIND_INT {
+            return crate::string::mix(*(key as *const u64) ^ 0x9e37_79b9) | LIVE;
+        }
+        slot_hash(kd, key) | LIVE
+    }
+}
+
+/// Key equality with `Int` keys (the common case) compared inline.
+#[inline(always)]
+unsafe fn keys_eq(kd: &TypeDesc, a: *const u8, b: *const u8) -> bool {
+    // SAFETY: both are live key slots of `kd`.
+    unsafe {
+        if kd.kind == KIND_INT {
+            return *(a as *const i64) == *(b as *const i64);
+        }
+        slot_eq(kd, a, b)
+    }
 }
 
 /// Finds the slot index of `key`.
-unsafe fn find(
-    m: &MapVal,
-    kd: &TypeDesc,
-    vd: Option<&TypeDesc>,
-    key: *const u8,
-    h: u64,
-) -> Option<usize> {
+unsafe fn find(m: &MapVal, kd: &TypeDesc, l: &Layout, key: *const u8, h: u64) -> Option<usize> {
     if m.len == 0 {
         return None;
     }
     // SAFETY: index and slots are consistent for a non-empty map.
     unsafe {
-        let l = layout(kd, vd);
         let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
         loop {
-            let e = *m.index.add(pos);
+            let e = *index_of(m).add(pos);
             if e == 0 {
                 return None;
             }
-            if e != REMOVED {
-                let p = slot(m, &l, (e - 1) as usize);
-                if slot_hash_of(p) == h && slot_eq(kd, p.add(l.koff), key) {
-                    return Some((e - 1) as usize);
+            if (e ^ h) >> 32 == 0 {
+                let i = (e as u32 - 1) as usize;
+                let p = slot(m, l, i);
+                if slot_hash_of(p) == h && keys_eq(kd, p.add(l.koff), key) {
+                    return Some(i);
                 }
             }
             pos = (pos + 1) & m.mask;
@@ -106,7 +142,7 @@ unsafe fn rebuild_index(m: &mut MapVal, l: &Layout, index_size: usize) {
         if !m.index.is_null() {
             alloc::free(m.index as *mut u8);
         }
-        m.index = alloc::alloc_zeroed(index_size * 4) as *mut u32;
+        m.index = alloc::alloc_zeroed(index_size * 8) as *mut u32;
         m.mask = index_size - 1;
         for i in 0..m.used {
             let p = slot(m, l, i);
@@ -115,10 +151,10 @@ unsafe fn rebuild_index(m: &mut MapVal, l: &Layout, index_size: usize) {
                 continue;
             }
             let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
-            while *m.index.add(pos) != 0 {
+            while *index_of(m).add(pos) != 0 {
                 pos = (pos + 1) & m.mask;
             }
-            *m.index.add(pos) = (i + 1) as u32;
+            *index_of(m).add(pos) = entry(h, i);
         }
     }
 }
@@ -177,7 +213,7 @@ pub unsafe fn contains_key(
     key: *const u8,
 ) -> bool {
     // SAFETY: key slot live.
-    unsafe { find(m, kd, vd, key, hash_key(kd, key)).is_some() }
+    unsafe { find(m, kd, &layout(kd, vd), key, hash_key(kd, key)).is_some() }
 }
 
 /// Inserts a new entry, consuming `key` and `val` (both slots are moved bitwise). If the key
@@ -197,12 +233,12 @@ pub unsafe fn insert(
     unsafe {
         let l = layout(kd, vd);
         let h = hash_key(kd, key);
-        if let Some(i) = find(m, kd, vd, key, h) {
+        if let Some(i) = find(m, kd, &l, key, h) {
             let p = slot(m, &l, i);
             slot_drop(kd, key);
             if let Some(vd) = vd {
                 slot_drop(vd, p.add(l.voff));
-                core::ptr::copy_nonoverlapping(val, p.add(l.voff), l.vsize);
+                copy_slot(val, p.add(l.voff), l.vsize);
             }
             return false;
         }
@@ -211,19 +247,19 @@ pub unsafe fn insert(
         }
         let p = slot(m, &l, m.used);
         *(p as *mut u64) = h;
-        core::ptr::copy_nonoverlapping(key, p.add(l.koff), l.ksize);
+        copy_slot(key, p.add(l.koff), l.ksize);
         if vd.is_some() {
-            core::ptr::copy_nonoverlapping(val, p.add(l.voff), l.vsize);
+            copy_slot(val, p.add(l.voff), l.vsize);
         }
         let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
         loop {
-            let e = *m.index.add(pos);
+            let e = *index_of(m).add(pos);
             if e == 0 || e == REMOVED {
                 break;
             }
             pos = (pos + 1) & m.mask;
         }
-        *m.index.add(pos) = (m.used + 1) as u32;
+        *index_of(m).add(pos) = entry(h, m.used);
         m.used += 1;
         m.len += 1;
         true
@@ -257,16 +293,16 @@ pub unsafe fn remove(m: &mut MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, key: 
     unsafe {
         let l = layout(kd, vd);
         let h = hash_key(kd, key);
-        let Some(i) = find(m, kd, vd, key, h) else {
+        let Some(i) = find(m, kd, &l, key, h) else {
             return false;
         };
         let p = slot(m, &l, i);
         // Mark the index entry removed.
         let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
-        while *m.index.add(pos) != (i + 1) as u32 {
+        while *index_of(m).add(pos) != entry(h, i) {
             pos = (pos + 1) & m.mask;
         }
-        *m.index.add(pos) = REMOVED;
+        *index_of(m).add(pos) = REMOVED;
         slot_drop(kd, p.add(l.koff));
         if let Some(vd) = vd {
             slot_drop(vd, p.add(l.voff));
@@ -289,7 +325,7 @@ unsafe fn lookup(
     // SAFETY: caller contract.
     unsafe {
         let l = layout(kd, vd);
-        let i = find(m, kd, vd, key, hash_key(kd, key))?;
+        let i = find(m, kd, &l, key, hash_key(kd, key))?;
         Some(slot(m, &l, i))
     }
 }
@@ -496,9 +532,10 @@ pub unsafe extern "C-unwind" fn msrt_map_get_ptr(
 ) -> *const u8 {
     // SAFETY: caller contract.
     unsafe {
-        let (kd, vdo) = (&*kd, opt(vd));
-        match lookup(&*m, kd, vdo, key) {
-            Some(p) => p.add(layout(kd, vdo).voff),
+        let (kd, m) = (&*kd, &*m);
+        let l = layout(kd, opt(vd));
+        match find(m, kd, &l, key, hash_key(kd, key)) {
+            Some(i) => slot(m, &l, i).add(l.voff),
             None => core::ptr::null(),
         }
     }

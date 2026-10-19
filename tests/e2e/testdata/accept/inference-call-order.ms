@@ -24,7 +24,7 @@ impl Error for GenericFailure[T]:
     fn message() String: self.detail.to_string()
 
 fn record(events: Events, value: Int) Int:
-    events.values = events.values.append(value)
+    events.values.append(value)
     return value
 
 test "reused inference preserves evaluation and argument conversions":

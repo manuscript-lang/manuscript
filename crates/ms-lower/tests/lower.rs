@@ -58,7 +58,9 @@ fn var_parameters_return_updated_values() {
         "vars",
         "type Counter:\n    total: Int\n\nimpl Counter:\n    var fn bump(by: Int) Int:\n        self.total += by\n        return self.total\n\nfn add(var xs: List[Int], v: Int) Unit:\n    xs.append(v)\n\nexport fn main() Int:\n    var c = Counter(total: 1)\n    let a = c.bump(4)\n    var l = [1]\n    add(var l, a)\n    return l.length()\n",
     );
-    assert!(mir.contains(".vars"));
+    // The changed argument travels through a slot the callee takes from and puts back into.
+    assert!(mir.contains("slot "));
+    assert!(mir.contains("take "));
 }
 
 #[test]
@@ -89,5 +91,34 @@ fn methods_that_change_self_hand_it_back() {
         "selfmut",
         "interface Counter:\n    fn next() Int\ntype C:\n    n: Int\nimpl Counter for C:\n    fn next() Int:\n        self.n += 1\n        return self.n\nexport fn main() Int:\n    let c = Counter(C(0))\n    let a = c.next()\n    return a + c.next()\n",
     );
-    assert!(mir.contains("next.vars"));
+    assert!(mir.contains("call.method"));
+    assert!(mir.contains("store "));
+}
+
+#[test]
+fn try_after_an_owned_argument_releases_it() {
+    lower(
+        "tryargs",
+        "import {TextError} from \"@std/errors.ms\"\n\nfn make(n: Int) Result[String, TextError]:\n    if n > 0:\n        return ok(\"x\")\n    return error(TextError(text: \"no\"))\n\nfn join(a: String, b: String) String:\n    return a + b\n\nfn both(n: Int) Result[String, TextError]:\n    return ok(join(a: try make(n), b: try make(n - 1)))\n\nexport fn main() Int:\n    return 0\n",
+    );
+}
+
+#[test]
+fn with_closes_on_every_exit_and_generic_bounds_dispatch_statically() {
+    let mir = lower(
+        "with",
+        "import Closeable from \"@std/cleanup.ms\"\n\ntype Res:\n    n: Int\n\nimpl Closeable for Res:\n    fn close() Unit:\n        let x = self.n\n\nfn run[T: Closeable](r: T, early: Bool) Int:\n    with it = r:\n        if early:\n            return 1\n    return 2\n\nexport fn main() Int:\n    var i = 0\n    while i < 3:\n        with c = Res(i):\n            i += 1\n            if i == 1:\n                continue\n            break\n    return run(r: Res(1), early: true) + i\n",
+    );
+    assert!(mir.matches("call @close").count() >= 4);
+    assert!(mir.contains("cleanup.push"));
+}
+
+#[test]
+fn native_values_and_time() {
+    let mir = lower(
+        "native-values",
+        "import stdout from \"@std/io.ms\"\nimport {sqrt, max} from \"@std/math.ms\"\nimport {Duration, parse_timestamp} from \"@std/time.ms\"\n\nfn via(f: fn(value: Float) Float, x: Float) Float: f(value: x)\n\nexport fn main() Int:\n    let to_text: fn() String = 7.to_string\n    let d: Duration = 2.seconds\n    let t = parse_timestamp(\"2020-01-02T03:04:05Z\")\n    let r = stdout().write(\"{to_text()} {via(f: sqrt, x: 4.0)} {max(left: 1, right: 2)} {d.to_milliseconds()}\\n\")\n    return 0\n",
+    );
+    assert!(mir.contains("closure.new"));
+    assert!(mir.contains("msstd_time_parse_timestamp"));
 }

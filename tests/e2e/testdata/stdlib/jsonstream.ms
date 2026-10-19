@@ -5,7 +5,7 @@ import Bytes from "@std/bytes.ms"
 import range from "@std/collections.ms"
 
 fn texts(values: List[JsonValue]) Result[List[String], Error]:
-    let result: List[String] = []
+    var result: List[String] = []
     for item in values:
         result.append(try stringify(item))
     return ok(result)
@@ -13,7 +13,7 @@ fn texts(values: List[JsonValue]) Result[List[String], Error]:
 # Feeds the input in chunks of `size` bytes and returns every decoded value as text.
 fn decode(input: Bytes, size: Int) Result[List[String], Error]:
     let reader = try decoder()
-    let result: List[String] = []
+    var result: List[String] = []
     var offset = 0
 
     while offset < input.length():

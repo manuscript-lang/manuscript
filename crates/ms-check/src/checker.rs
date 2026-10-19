@@ -871,7 +871,11 @@ impl Checker {
             return invalid();
         };
         match &t.kind {
-            TypeKind::Fn { params, result } => self.signature(params, Some(result)),
+            TypeKind::Fn { params, result } => {
+                let r = self.signature(params, Some(result));
+                self.m().facts_mut().type_refs.insert(t.id, r.clone());
+                r
+            }
             TypeKind::Named { name, args } => {
                 let name = *name;
                 if self.scope.binding(name).is_some() {

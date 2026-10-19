@@ -17,7 +17,7 @@ test "optional members":
         )
     )
     try expect_true((present.map(fn(value: Int) Int: value + 1).get() == 4))
-    let items = List[Int]()
+    var items = List[Int]()
     try expect_equal(items.get(index: 0, default: -1), -1)
     items.append(value: 5)
     try expect_true(

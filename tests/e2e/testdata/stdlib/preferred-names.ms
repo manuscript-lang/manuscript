@@ -3,41 +3,44 @@ import Bytes from "@std/bytes.ms"
 import {compile, Regex, RegexError} from "@std/regex.ms"
 
 interface ListMutation:
-    fn reverse_in_place() List[Int]
+    var fn reverse_in_place() Unit
     fn reversed() List[Int]
-    fn set(index: Int, value: Int) List[Int]
-    fn remove(index: Int) List[Int]
+    var fn set(index: Int, value: Int) Unit
+    var fn remove(index: Int) Unit
+    var fn append(value: Int) Unit
 
 type ListAdapter:
     items: List[Int]
-    set: fn(index: Int, value: Int) List[Int]
 
 impl ListMutation for ListAdapter:
-    fn reverse_in_place() List[Int]:
-        return self.items.reverse_in_place()
+    var fn reverse_in_place() Unit:
+        self.items.reverse_in_place()
 
     fn reversed() List[Int]:
         return self.items.reversed()
 
-    fn set(index: Int, value: Int) List[Int]:
-        return self.items.set(index, value)
+    var fn set(index: Int, value: Int) Unit:
+        self.items.set(index, value)
 
-    fn remove(index: Int) List[Int]:
-        return self.items.remove(index)
+    var fn remove(index: Int) Unit:
+        self.items.remove(index)
+
+    var fn append(value: Int) Unit:
+        self.items.append(value)
 
 interface SetMutation:
-    fn add(value: Int) Set[Int]
-    fn remove(value: Int) Set[Int]
+    var fn add(value: Int) Unit
+    var fn remove(value: Int) Unit
 
 type SetAdapter:
     items: Set[Int]
 
 impl SetMutation for SetAdapter:
-    fn add(value: Int) Set[Int]:
-        return self.items.add(value)
+    var fn add(value: Int) Unit:
+        self.items.add(value)
 
-    fn remove(value: Int) Set[Int]:
-        return self.items.remove(value)
+    var fn remove(value: Int) Unit:
+        self.items.remove(value)
 
 interface RegexReplacement:
     fn replace_all(
@@ -57,47 +60,52 @@ impl RegexReplacement for RegexAdapter:
     ) Result[String, RegexError]:
         return self.pattern.replace_all(text, replacement, max_bytes)
 
-fn add_generic[T: Hashable](items: Set[T], value: T) Set[T]:
-    return items.add(value)
+fn add_generic[T: Hashable](var items: Set[T], value: T) Unit:
+    items.add(value)
 
-fn remove_generic[T: Hashable](items: Set[T], value: T) Set[T]:
-    return items.remove(value)
+fn remove_generic[T: Hashable](var items: Set[T], value: T) Unit:
+    items.remove(value)
 
-test "list names mutate aliases and retain shallow copies":
-    let items = [1, 2, 3]
-    let alias = items
+test "list names mutate in place and retain shallow copies":
+    var items = [1, 2, 3]
     let copied = items.clone()
-    let returned = items.set(-1, 4)
-    returned.remove(0)
-    try expect_false((items != [2, 4] or alias != [2, 4] or copied != [1, 2, 3]))
+    items.set(-1, 4)
+    items.remove(0)
+    try expect_false((items != [2, 4] or copied != [1, 2, 3]))
     let set = items.set
     let remove = items.remove
-    set(value: 8, 0).remove(-1)
-    remove(0).append(9)
+    set(value: 8, 0)
+    items.remove(-1)
+    remove(0)
+    items.append(9)
     try expect_equal(items, [9])
-    let optional: List[Optional[Int]] = [some(1)]
+    var optional: List[Optional[Int]] = [some(1)]
     optional.set(0, 7)
     try expect_equal(optional.get(0), some(7))
-    let nested = [[1]]
+    var nested = [[1]]
     let outer_copy = nested.clone()
     nested.set(0, [2])
-    outer_copy.get(0).append(3)
-    try expect_false(nested != [[2]] or outer_copy != [[1, 3]])
+    try expect_false(nested != [[2]] or outer_copy != [[1]])
 
-test "set names preserve receiver identity order and no-op membership":
-    let items = Set[Int]([3, 1, 2])
-    let alias = items
+test "set names mutate in place keep order and no-op membership":
+    var items = Set[Int]([3, 1, 2])
     let copied = items.clone()
     let add = items.add
     let remove = items.remove
-    add(1).remove(99)
+    add(1)
+    items.remove(99)
     try expect_equal(items.values(), [3, 1, 2])
-    remove(1).add(1).remove(3)
-    try expect_false(alias.values() != [2, 1] or copied.values() != [3, 1, 2])
-    add_generic(items, 4).remove(2)
-    remove_generic(items, 1).add(5)
+    remove(1)
+    items.add(1)
+    items.remove(3)
+    try expect_false(items.values() != [2, 1] or copied.values() != [3, 1, 2])
+    add_generic(var items, 4)
+    items.remove(2)
+    remove_generic(var items, 1)
+    items.add(5)
     try expect_equal(items.values(), [4, 5])
-    let optional = Set[Optional[Int]]().add(7)
+    var optional = Set[Optional[Int]]()
+    optional.add(7)
     let optional_add = optional.add
     optional_add(9)
     optional.remove(7)
@@ -113,26 +121,30 @@ impl FirstReplacement for TextAdapter:
     fn replace_first(old: String, new: String, max_replacements: Optional[Int]) String:
         return self.text.replace_first(old, new, max_replacements)
 
-test "explicit views and bound views preserve native mutation and field shadowing":
-    let items = [1, 2, 3]
-    let adapter = ListAdapter(items, fn(index: Int, value: Int) List[Int]: [99])
-    try expect_false(adapter.set(0, 8) != [99] or items != [1, 2, 3])
-    let view = ListMutation(adapter)
+test "explicit views and bound views preserve native mutation":
+    var items = [1, 2, 3]
+    var adapter = ListAdapter(items)
+    adapter.set(0, 8)
+    try expect_equal(adapter.items, [8, 2, 3])
+    var view = ListMutation(adapter)
     let view_set = view.set
     let view_remove = view.remove
-    view.set(0, 8).append(4)
+    view.set(0, 7)
+    view.append(4)
     view_set(1, 9)
     view.remove(-1)
-    view_remove(0).append(5)
-    try expect_equal(items, [9, 3, 5])
-    let set = Set[Int]([1, 2])
-    let set_view = SetMutation(SetAdapter(set))
+    view_remove(0)
+    view.append(5)
+    try expect_equal(adapter.items, [9, 3, 5])
+    var set = Set[Int]([1, 2])
+    var set_view = SetMutation(SetAdapter(set))
     let view_add = set_view.add
     let set_view_remove = set_view.remove
     set_view.add(3)
     view_add(4)
     set_view.remove(1)
-    set_view_remove(2).add(5)
+    set_view_remove(2)
+    set_view.add(5)
     try expect_equal(set.values(), [3, 4, 5])
     let text_view = FirstReplacement(TextAdapter("aaaa"))
     let view_first = text_view.replace_first
@@ -184,31 +196,20 @@ test "regex replace_all preserves literal text and exact output budgets":
         )
     )
 
-test "new direct keyed calls capture receivers before arguments":
+test "new direct keyed calls evaluate arguments after the receiver is chosen":
     var items = Set[Int]([1])
-    let original = items
-    let result = items.add(
+    items.add(
         match some(0):
-            some(_):
-                items = Set[Int]([8])
-                2
+            some(_): 2
             none: 3
     )
-    try expect_false(
-        (
-            result.values() != [1, 2]
-            or original.values() != [1, 2]
-            or items.values() != [8]
-        )
-    )
-    result.remove(
+    try expect_equal(items.values(), [1, 2])
+    items.remove(
         match some(0):
-            some(_):
-                items = Set[Int]([9])
-                1
+            some(_): 1
             none: 2
     )
-    try expect_false(result.values() != [2] or items.values() != [9])
+    try expect_equal(items.values(), [2])
 
 type Cell:
     value: Int
@@ -224,42 +225,45 @@ impl ByteCopy for ByteAdapter:
         return self.data.reversed()
 
 test "list reversal names distinguish receiver mutation and shallow copies":
-    let items = [1, 2, 3]
-    let alias = items
+    var items = [1, 2, 3]
     let copied = items.reversed()
     let reverse = items.reverse_in_place
-    reverse().append(4)
-    try expect_false(
-        (items != [3, 2, 1, 4] or alias != [3, 2, 1, 4] or copied != [3, 2, 1])
-    )
-    copied.set(0, 8)
+    reverse()
+    items.append(4)
+    try expect_false((items != [3, 2, 1, 4] or copied != [3, 2, 1]))
+    var changed = copied.clone()
+    changed.set(0, 8)
     let reversed = items.reversed
-    reversed().remove(0)
+    var detached = reversed()
+    detached.remove(0)
     try expect_equal(items, [3, 2, 1, 4])
-    items.reverse_in_place().reverse_in_place()
+    items.reverse_in_place()
+    items.reverse_in_place()
     try expect_equal(items, [3, 2, 1, 4])
-    let empty: List[Int] = []
-    empty.reverse_in_place().reversed().append(1)
+    var empty: List[Int] = []
+    empty.reverse_in_place()
+    var flipped = empty.reversed()
+    flipped.append(1)
     try expect_false(not empty.is_empty())
     let one = [1]
-    one.reversed().set(0, 2)
+    var one_flipped = one.reversed()
+    one_flipped.set(0, 2)
     try expect_equal(one, [1])
     let nested = [Cell(1), Cell(2)]
-    let shallow = nested.reversed()
-    let shared = shallow.get(0)
-    shared.value = 9
+    var shallow = nested.reversed()
     shallow.set(1, Cell(7))
-    try expect_false(nested.get(0).value != 1 or nested.get(1).value != 9)
-    let viewed = [4, 5]
-    let adapter = ListAdapter(viewed, fn(index: Int, value: Int) List[Int]: [99])
-    let view = ListMutation(adapter)
+    try expect_false(nested.get(0).value != 1 or nested.get(1).value != 2)
+    var viewed = ListAdapter([4, 5])
+    var view = ListMutation(viewed)
     let view_reverse = view.reverse_in_place
     let view_reversed = view.reversed
-    view.reversed().append(6)
+    var other = view.reversed()
+    other.append(6)
     view.reverse_in_place()
-    view_reversed().set(0, 7)
+    var view_copy = view_reversed()
+    view_copy.set(0, 7)
     view_reverse()
-    try expect_equal(viewed, [4, 5])
+    try expect_equal(viewed.items, [4, 5])
 
 test "byte reversal names copy across direct bound and view calls":
     let data = Bytes([0, 1, 255])
@@ -275,7 +279,7 @@ test "byte reversal names copy across direct bound and view calls":
             or view_reversed() != data.reversed()
         )
     )
-    let extracted = reversed().values()
+    var extracted = reversed().values()
     extracted.set(0, 7)
     try expect_false(data != Bytes([0, 1, 255]) or reversed() != Bytes([255, 1, 0]))
     try expect_false(

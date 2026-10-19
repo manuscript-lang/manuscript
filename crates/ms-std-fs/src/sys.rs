@@ -315,9 +315,48 @@ pub const DT_DIR: u8 = libc::DT_DIR;
 pub const DT_LNK: u8 = libc::DT_LNK;
 pub const DT_UNKNOWN: u8 = libc::DT_UNKNOWN;
 
+/// A pipe whose descriptors close on exec (and do not block when `nonblocking`), made
+/// atomically where `pipe2` exists.
+///
+/// # Safety
+/// Plain system calls on `fds`.
+pub unsafe fn pipe_cloexec(fds: &mut [i32; 2], nonblocking: bool) -> i32 {
+    #[cfg(target_os = "linux")]
+    {
+        let flags = libc::O_CLOEXEC | if nonblocking { libc::O_NONBLOCK } else { 0 };
+        // SAFETY: `fds` has room for the two descriptors.
+        unsafe { libc::pipe2(fds.as_mut_ptr(), flags) }
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        // SAFETY: `fds` has room for the two descriptors; fcntl calls are on fresh descriptors.
+        unsafe {
+            if libc::pipe(fds.as_mut_ptr()) != 0 {
+                return -1;
+            }
+            for &fd in fds.iter() {
+                libc::fcntl(fd, libc::F_SETFD, libc::FD_CLOEXEC);
+                if nonblocking {
+                    let flags = libc::fcntl(fd, libc::F_GETFL);
+                    libc::fcntl(fd, libc::F_SETFL, flags | libc::O_NONBLOCK);
+                }
+            }
+        }
+        0
+    }
+}
+
 pub fn random_u32() -> u32 {
     let mut v = [0u8; 4];
     // SAFETY: `v` is writable for 4 bytes.
+    #[cfg(target_os = "macos")]
+    let n = if unsafe { libc::getentropy(v.as_mut_ptr() as *mut _, 4) } == 0 {
+        4
+    } else {
+        -1
+    };
+    // SAFETY: `v` is writable for 4 bytes.
+    #[cfg(not(target_os = "macos"))]
     let n = unsafe { libc::getrandom(v.as_mut_ptr() as *mut _, 4, 0) };
     if n == 4 {
         u32::from_ne_bytes(v)

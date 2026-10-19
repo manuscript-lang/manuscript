@@ -303,6 +303,11 @@ impl Server {
     /// Reads and handles what is available, then writes. Returns whether more
     /// input is left for another turn.
     pub(super) fn h2_serve(&self, conn: &Rc<Conn>, reactor: &Reactor) -> bool {
+        self.h2_serve_counted(conn, reactor).0
+    }
+
+    /// [`Self::h2_serve`], also reporting whether any bytes were consumed.
+    fn h2_serve_counted(&self, conn: &Rc<Conn>, reactor: &Reactor) -> (bool, bool) {
         let mut total = 0usize;
         let mut more = false;
         loop {
@@ -318,18 +323,18 @@ impl Server {
                 Pull::Blocked => break,
                 Pull::Eof => {
                     self.close_conn(conn, reactor);
-                    return false;
+                    return (false, total > 0);
                 }
                 Pull::Failed => {
                     // The GOAWAY with the error code goes out before closing.
                     let _ = drain(conn);
                     self.close_conn(conn, reactor);
-                    return false;
+                    return (false, total > 0);
                 }
             }
         }
         self.h2_pump_out(conn, reactor);
-        more
+        (more, total > 0)
     }
 
     fn h2_pull(&self, conn: &Conn, reactor: &Reactor) -> Pull {
@@ -353,13 +358,9 @@ impl Server {
         match drain(conn) {
             Drain::Gone => {}
             Drain::Failed => self.close_conn(conn, reactor),
-            Drain::Blocked => self.set_interest(
-                conn,
-                reactor,
-                epoll::EventFlags::IN | epoll::EventFlags::OUT,
-            ),
+            Drain::Blocked => self.set_interest(conn, reactor, Readiness::IN | Readiness::OUT),
             Drain::Empty => {
-                self.set_interest(conn, reactor, epoll::EventFlags::IN);
+                self.set_interest(conn, reactor, Readiness::IN);
                 self.h2_settle(conn, reactor);
             }
         }
@@ -405,6 +406,13 @@ impl Server {
             )
         };
         let Some(io) = io else { return false };
+        // The TLS layer may already hold frames that no readiness event will
+        // announce; consume them before blocking.
+        let (more, progressed) = self.h2_serve_counted(conn, reactor);
+        if more || progressed {
+            while self.h2_serve(conn, reactor) {}
+            return true;
+        }
         let interest = if write {
             Interest::Write
         } else {

@@ -47,8 +47,9 @@ impl<'a> FnLower<'a> {
                         own: false,
                     },
                 };
-                // A bare `return` in a test ends it successfully.
-                let x = if e.is_none() && self.result_ty() != MTy::UNIT {
+                // A bare `return` (or `return unit`) in a test ends it successfully.
+                let in_test = matches!(self.b.m.types.kind(self.result_ty()), TyKind::Alt(_));
+                let x = if in_test && self.ty_of(x.v) == MTy::UNIT {
                     let u = self.b.unit();
                     let ok = self.testing_ok(self.result_ty(), u)?;
                     Val { v: ok, own: true }
@@ -99,8 +100,7 @@ impl<'a> FnLower<'a> {
             StmtKind::While { cond, body } => self.while_stmt(cond, body)?,
             StmtKind::For { iter, body, .. } => self.for_stmt(s, iter, body)?,
             StmtKind::With { value, body, .. } => {
-                let _ = (value, body);
-                return Err(Error::new("with is not supported yet"));
+                self.with_stmt(s, value, body)?;
             }
         }
         self.flush_temps(mark);

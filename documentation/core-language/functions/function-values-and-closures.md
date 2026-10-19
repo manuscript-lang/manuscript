@@ -66,7 +66,7 @@ A captured record or collection is the same object, so changes stay visible:
 ```manuscript
 
 fn tag_count() Int:
-    let tags = ["docs"]
+    var tags = ["docs"]
     let count = fn():
         return tags.length()
     tags.append("release")

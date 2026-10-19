@@ -4,5 +4,6 @@
 fn crash(value: Int) Int:
     return 1 / value
 export fn main() Int:
-    let value = Set[Int]().add(0)
+    var value = Set[Int]()
+    value.add(0)
     return value.map(crash).length()

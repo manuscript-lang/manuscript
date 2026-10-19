@@ -100,17 +100,17 @@ func List_LastIndexOf[T any](ctx *Execution, eq Eq[T], l *List[T], value T) Opti
 
 // List_Prepend inserts value at the front in place. Like the old runtime it
 // appends then shifts, so a running loop's captured array sees the shift.
-func List_Prepend[T any](_ *Execution, l *List[T], value T) *List[T] {
+func List_Prepend[T any](_ *Execution, l *List[T], value T) Unit {
 	n := len(l.Items)
 	l.Items = append(l.Items, value)
 	copy(l.Items[1:], l.Items[:n])
 	l.Items[0] = value
-	return l
+	return Unit{}
 }
 
 // List_Insert inserts value before index (negative counts from the end;
 // index == length appends).
-func List_Insert[T any](_ *Execution, l *List[T], index int, value T) *List[T] {
+func List_Insert[T any](_ *Execution, l *List[T], index int, value T) Unit {
 	n := len(l.Items)
 	i := relativeIndex(n, index)
 	if i < 0 || i > int(n) {
@@ -119,7 +119,7 @@ func List_Insert[T any](_ *Execution, l *List[T], index int, value T) *List[T] {
 	l.Items = append(l.Items, value)
 	copy(l.Items[i+1:], l.Items[i:n])
 	l.Items[i] = value
-	return l
+	return Unit{}
 }
 
 // List_Pop removes and returns the last element. The tail is not cleared: a
@@ -135,17 +135,17 @@ func List_Pop[T any](_ *Execution, l *List[T]) Option[T] {
 }
 
 // List_Set replaces the element at a possibly negative index.
-func List_Set[T any](_ *Execution, l *List[T], index int, value T) *List[T] {
+func List_Set[T any](_ *Execution, l *List[T], index int, value T) Unit {
 	i := relativeIndex(len(l.Items), index)
 	if i < 0 || i >= len(l.Items) {
 		indexFault("List.set", len(l.Items), index)
 	}
 	l.Items[i] = value
-	return l
+	return Unit{}
 }
 
 // List_Remove deletes the element at a possibly negative index.
-func List_Remove[T any](_ *Execution, l *List[T], index int) *List[T] {
+func List_Remove[T any](_ *Execution, l *List[T], index int) Unit {
 	n := len(l.Items)
 	i := relativeIndex(n, index)
 	if i < 0 || i >= int(n) {
@@ -153,7 +153,7 @@ func List_Remove[T any](_ *Execution, l *List[T], index int) *List[T] {
 	}
 	copy(l.Items[i:], l.Items[i+1:])
 	l.Items = l.Items[:n-1]
-	return l
+	return Unit{}
 }
 
 // List_Slice copies [start, end); negative bounds count from the end.
@@ -190,17 +190,19 @@ func takeCount(name string, count int, length int) int {
 }
 
 // List_ReverseInPlace reverses in place and returns the same list.
-func List_ReverseInPlace[T any](_ *Execution, l *List[T]) *List[T] {
+func List_ReverseInPlace[T any](_ *Execution, l *List[T]) Unit {
 	items := l.Items
 	for i, j := 0, len(items)-1; i < j; i, j = i+1, j-1 {
 		items[i], items[j] = items[j], items[i]
 	}
-	return l
+	return Unit{}
 }
 
 // List_Reversed returns a reversed shallow copy.
 func List_Reversed[T any](ctx *Execution, l *List[T]) *List[T] {
-	return List_ReverseInPlace(ctx, List_Clone(ctx, l))
+	out := List_Clone(ctx, l)
+	List_ReverseInPlace(ctx, out)
+	return out
 }
 
 // List_Filter keeps the elements the predicate accepts.
@@ -422,7 +424,7 @@ func List_FoldRight[T, A any](ctx *Execution, l *List[T], initial A, step func(*
 
 // List_Splice replaces count elements at start with the replacement's
 // elements, in place.
-func List_Splice[T any](_ *Execution, l *List[T], start, count int, replacement *List[T]) *List[T] {
+func List_Splice[T any](_ *Execution, l *List[T], start, count int, replacement *List[T]) Unit {
 	n := len(l.Items)
 	if start < 0 || start > n {
 		rangeFault("List.splice", "start", start, 0, n)
@@ -447,32 +449,32 @@ func List_Splice[T any](_ *Execution, l *List[T], start, count int, replacement 
 	copy(items[s:], repl)
 	// Non-clearing reslice preserves valid values in captured traversal tails.
 	l.Items = items[:newLength]
-	return l
+	return Unit{}
 }
 
 // List_Fill sets [start, end) to value.
-func List_Fill[T any](ctx *Execution, l *List[T], value T, start, end int) *List[T] {
+func List_Fill[T any](ctx *Execution, l *List[T], value T, start, end int) Unit {
 	checkSlice("List.fill", len(l.Items), start, end)
 	items, tick := l.Items, uint32(0)
 	for i := start; i < end; i++ {
 		Poll(ctx, &tick)
 		items[i] = value
 	}
-	return l
+	return Unit{}
 }
 
 // List_CopyWithin copies [start, end) to target within the list.
-func List_CopyWithin[T any](_ *Execution, l *List[T], target, start, end int) *List[T] {
+func List_CopyWithin[T any](_ *Execution, l *List[T], target, start, end int) Unit {
 	n := len(l.Items)
 	checkSlice("List.copy_within", n, start, end)
 	if target < 0 || target > int(n) {
 		rangeFault("List.copy_within", "target", target, 0, int(n))
 	}
 	if start == end || target == int(n) {
-		return l
+		return Unit{}
 	}
 	copy(l.Items[target:], l.Items[start:end])
-	return l
+	return Unit{}
 }
 
 // List_ToSet collects the distinct elements. Hashable elements are Go
@@ -518,9 +520,9 @@ func List_Join[T any](_ *Execution, l *List[T], separator string) string {
 }
 
 // List_Append adds value at the end in place.
-func List_Append[T any](_ *Execution, l *List[T], value T) *List[T] {
+func List_Append[T any](_ *Execution, l *List[T], value T) Unit {
 	l.Items = append(l.Items, value)
-	return l
+	return Unit{}
 }
 
 // List_Concat returns a new list of l's elements followed by other's.

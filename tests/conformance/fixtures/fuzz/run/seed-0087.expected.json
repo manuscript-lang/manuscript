@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 70,
     "stdout": "collatz(1330) = 52\nl1 = [16, -30, 16] len 3\ni2 = -35\n-35 -35 false sum -70\ns3 = [a]\nb4 = true\naa\ns5 = [emoji 😀]\naemoji 😀\ni6 = 2198\nl7 = [16, -30, 16, 23] len 4\nl8 = [16] len 1\ns9 = [emoji 😀]\n19 95 true sum 114\ns10 = [-76930:delta]\nl11 = [] len 0\ni12 = 16\n",
-    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0087.ms:59 in main\n"
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0087.ms:60 in main\n"
   }
 }

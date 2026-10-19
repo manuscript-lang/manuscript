@@ -333,7 +333,7 @@ func TestCollectionPreludeEditorContracts(t *testing.T) {
 	}
 	signature := signatureSource(t, "fn use(entries: Map[String, Int]) Unit:\n    entries.add(key: \"a\", value: |\n")
 	label := signature["signatures"].([]any)[0].(map[string]any)["label"].(string)
-	if label != "entries.add(key: String, value: Int) Map[String, Int]" || signature["activeParameter"] != 1 {
+	if label != "entries.add(key: String, value: Int) Unit" || signature["activeParameter"] != 1 {
 		t.Fatal(signature)
 	}
 }

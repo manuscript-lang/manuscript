@@ -3,6 +3,21 @@
 Generated from the `#[unsafe(no_mangle)]` items in `crates/ms-rt/src` and `crates/ms-std-*/src` by `crates/ms-rt/gen-symbols.py`; do not edit.
 
 ```text
+msrt_bits_bit_and(left: i64, right: i64) -> i64
+msrt_bits_bit_or(left: i64, right: i64) -> i64
+msrt_bits_bit_xor(left: i64, right: i64) -> i64
+msrt_bits_bit_not(value: i64) -> i64
+msrt_bits_shift_left(value: i64, count: i64) -> i64
+msrt_bits_shift_right(value: i64, count: i64) -> i64
+msrt_bits_shift_right_unsigned(value: i64, count: i64) -> i64
+msrt_bits_rotate_left(value: i64, count: i64) -> i64
+msrt_bits_rotate_right(value: i64, count: i64) -> i64
+msrt_bits_count_ones(value: i64) -> i64
+msrt_bits_leading_zeros(value: i64) -> i64
+msrt_bits_trailing_zeros(value: i64) -> i64
+msrt_bits_wrapping_add(left: i64, right: i64) -> i64
+msrt_bits_wrapping_subtract(left: i64, right: i64) -> i64
+msrt_bits_wrapping_multiply(left: i64, right: i64) -> i64
 msrt_desc_int (data)
 msrt_desc_float (data)
 msrt_desc_bool (data)
@@ -33,6 +48,7 @@ msrt_fault_rem_zero() -> !
 msrt_fault_div_overflow(a: i64, b: i64) -> !
 msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize
 msrt_cleanup_run(handle: usize)
+msrt_cleanup_discard(handle: usize)
 msrt_cancelled() -> !
 msrt_guard_call( code: unsafe extern "C-unwind" fn(*mut u8), data: *mut u8, msg_out: *mut *mut ms_rt_abi::StrObj, ) -> u8
 msrt_io_write_stdout(s: *mut StrObj)
@@ -81,6 +97,18 @@ msrt_retain(o: *mut Obj)
 msrt_release(o: *mut Obj)
 msrt_drop_slow(o: *mut Obj)
 msrt_process_exit(code: i64) -> !
+msrt_queue_new( d: *const TypeDesc, has_capacity: u8, capacity: i64, ) -> *mut QueueObj
+msrt_queue_enqueue(q: *mut QueueObj, value: *mut u8) -> u8
+msrt_queue_dequeue(q: *mut QueueObj, out: *mut u8) -> u8
+msrt_queue_peek(q: *const QueueObj, out: *mut u8) -> u8
+msrt_queue_length(q: *const QueueObj) -> i64
+msrt_queue_is_empty(q: *const QueueObj) -> u8
+msrt_priority_queue_new( d: *const TypeDesc, compare: *mut Closure, has_capacity: u8, capacity: i64, ) -> *mut PriorityQueueObj
+msrt_priority_queue_enqueue( q: *mut PriorityQueueObj, value: *mut u8, ) -> u8
+msrt_priority_queue_dequeue( q: *mut PriorityQueueObj, out: *mut u8, ) -> u8
+msrt_priority_queue_peek( q: *const PriorityQueueObj, out: *mut u8, ) -> u8
+msrt_priority_queue_length(q: *const PriorityQueueObj) -> i64
+msrt_priority_queue_is_empty(q: *const PriorityQueueObj) -> u8
 msrt_start_nanos() -> i64
 msrt_start( main_fn: extern "C-unwind" fn() -> i64, tables: *const Tables, argc: i32, argv: *const *const u8, ) -> i32
 msrt_argv(out: *mut VecVal)
@@ -206,6 +234,30 @@ msrt_strbuilder_drop(b: *mut VecVal)
 msrt_hash_list(v: *const VecVal, d: *const TypeDesc) -> i64
 msrt_archive_pack( entries: *const VecVal, format: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msrt_archive_unpack( data: *const VecVal, format: *const StrObj, has_limits: u8, has_entries: u8, max_entries: i64, has_entry_bytes: u8, max_entry_bytes: i64, has_total: u8, max_total_bytes: i64, out: *mut VecVal, ) -> u8
+msstd_bigint_from_int(value: i64) -> *mut BigObj
+msstd_bigint_from_u64(value: i64) -> *mut BigObj
+msstd_bigint_from_seconds_nanos(seconds: i64, nanoseconds: i64) -> *mut BigObj
+msstd_bigint_parse( text: *const StrObj, radix: i64, has_max: u8, max: i64, out: *mut *mut BigObj, ) -> u8
+msstd_bigint_add(a: *const BigObj, other: *const BigObj) -> *mut BigObj
+msstd_bigint_subtract( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
+msstd_bigint_multiply( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
+msstd_bigint_bit_and( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
+msstd_bigint_bit_or( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
+msstd_bigint_bit_xor( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
+msstd_bigint_divide( a: *const BigObj, other: *const BigObj, out: *mut *mut BigObj, ) -> u8
+msstd_bigint_remainder( a: *const BigObj, other: *const BigObj, out: *mut *mut BigObj, ) -> u8
+msstd_bigint_compare(a: *const BigObj, other: *const BigObj) -> i64
+msstd_bigint_bit_not(a: *const BigObj) -> *mut BigObj
+msstd_bigint_negate(a: *const BigObj) -> *mut BigObj
+msstd_bigint_abs(a: *const BigObj) -> *mut BigObj
+msstd_bigint_sign(a: *const BigObj) -> i64
+msstd_bigint_pow( a: *const BigObj, exponent: i64, out: *mut *mut BigObj, ) -> u8
+msstd_bigint_shift_left( a: *const BigObj, count: i64, out: *mut *mut BigObj, ) -> u8
+msstd_bigint_shift_right( a: *const BigObj, count: i64, out: *mut *mut BigObj, ) -> u8
+msstd_bigint_to_float(a: *const BigObj) -> f64
+msstd_bigint_to_int(a: *const BigObj, out: *mut i64) -> u8
+msstd_bigint_to_string_radix(a: *const BigObj, radix: i64) -> *mut StrObj
+msstd_bigint_equal(a: *const BigObj, other: *const BigObj) -> u8
 msrt_compress_compress( data: *const VecVal, format: *const StrObj, level: i64, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msrt_compress_decompress( data: *const VecVal, format: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msrt_compress_decoder_new( format: *const StrObj, has_max: u8, max: i64, out: *mut *mut DecoderObj, ) -> u8
@@ -236,6 +288,20 @@ msrt_crypto_ecdh_shared_secret( private_key: *const VecVal, peer: *const VecVal,
 msrt_crypto_rsa_generate(bits: i64, out: *mut VecVal) -> u8
 msrt_csv_parse( text: *const StrObj, delimiter: *const StrObj, line_ending: *const StrObj, has_max_rows: u8, max_rows: i64, has_max_cells: u8, max_cells: i64, out: *mut VecVal, ) -> u8
 msrt_csv_stringify( rows: *const VecVal, delimiter: *const StrObj, line_ending: *const StrObj, has_max_bytes: u8, max_bytes: i64, out: *mut *mut StrObj, ) -> u8
+msstd_decimal_literal(text: *const StrObj, out: *mut Dec)
+msstd_decimal_from_int(n: i64, out: *mut Dec)
+msstd_decimal_divide(a: *const Dec, b: *const Dec, out: *mut Dec)
+msstd_decimal_negate(a: *const Dec, out: *mut Dec)
+msstd_decimal_compare(a: *const Dec, b: *const Dec) -> i64
+msstd_decimal_to_string(a: *const Dec) -> *mut StrObj
+msstd_decimal_to_float(a: *const Dec) -> f64
+msstd_decimal_truncate_to_int(a: *const Dec, out: *mut i64) -> u8
+msstd_decimal_round( value: *const Dec, places: i64, has_mode: u8, mode: i64, out: *mut Dec, ) -> u8
+msstd_decimal_to_fixed( value: *const Dec, digits: i64, has_mode: u8, mode: i64, out: *mut *mut StrObj, ) -> u8
+msrt_binary_read_integer( data: *const VecVal, offset: i64, width: i64, signed: u8, little: u8, out: *mut i64, ) -> u8
+msrt_binary_read_float( data: *const VecVal, offset: i64, little: u8, out: *mut f64, ) -> u8
+msrt_binary_write_integer( value: i64, width: i64, signed: u8, little: u8, out: *mut VecVal, ) -> u8
+msrt_binary_write_float(value: f64, little: u8, out: *mut VecVal)
 msrt_encoding_hex_encode(data: *const VecVal) -> *mut StrObj
 msrt_encoding_hex_decode( text: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msrt_encoding_base64_encode( data: *const VecVal, url_safe: u8, ) -> *mut StrObj
@@ -252,7 +318,7 @@ msstd_fs_write_file( path: *const StrObj, data: *const VecVal, replace: u8, ) ->
 msstd_fs_append_file(path: *const StrObj, data: *const VecVal) -> u8
 msstd_fs_copy_file( source: *const StrObj, destination: *const StrObj, replace: u8, has_max: u8, max: i64, ) -> u8
 msstd_fs_stat(path: *const StrObj, follow: u8, out: *mut InfoOut) -> u8
-msstd_fs_list( path: *const StrObj, has_limit: u8, limit: i64, names: *mut VecVal, flags: *mut VecVal, ) -> u8
+msstd_fs_list( path: *const StrObj, has_limit: u8, limit: i64, out: *mut VecVal, ) -> u8
 msstd_fs_create_directory(path: *const StrObj, recursive: u8) -> u8
 msstd_fs_remove(path: *const StrObj, recursive: u8) -> u8
 msstd_fs_rename(source: *const StrObj, destination: *const StrObj) -> u8
@@ -269,6 +335,9 @@ msstd_fs_chown(path: *const StrObj, uid: i64, gid: i64, follow: u8) -> u8
 msstd_fs_truncate(path: *const StrObj, size: i64) -> u8
 msstd_fs_set_times( path: *const StrObj, accessed_seconds: i64, accessed_nanos: i64, modified_seconds: i64, modified_nanos: i64, follow: u8, ) -> u8
 msstd_fs_file_open( path: *const StrObj, flags: i64, mode: i64, out: *mut *mut FileHandle, ) -> u8
+msstd_fs_open( path: *const StrObj, flags: *const StrObj, mode: i64, out: *mut *mut FileHandle, ) -> u8
+msstd_fs_file_reader(h: *mut FileHandle) -> *mut Handle<stream::Stream>
+msstd_fs_file_writer(h: *mut FileHandle) -> *mut Handle<stream::Stream>
 msstd_fs_open_flags(mode: *const StrObj, out: *mut i64) -> u8
 msstd_fs_file_read_at( h: *mut FileHandle, offset: i64, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msstd_fs_file_read_file( h: *mut FileHandle, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
@@ -286,7 +355,7 @@ msstd_fs_file_set_times( h: *mut FileHandle, accessed_seconds: i64, accessed_nan
 msstd_fs_file_read_lines( h: *mut FileHandle, max_bytes: i64, max_lines: i64, out: *mut VecVal, ) -> u8
 msstd_fs_file_path(h: *mut FileHandle) -> *mut StrObj
 msstd_fs_directory_open( path: *const StrObj, out: *mut *mut DirHandle, ) -> u8
-msstd_fs_directory_read( h: *mut DirHandle, name: *mut *mut StrObj, directory: *mut u8, symlink: *mut u8, ) -> u8
+msstd_fs_directory_read(h: *mut DirHandle, out: *mut EntryOut) -> u8
 msstd_fs_directory_close(h: *mut DirHandle)
 msstd_fs_directory_path(h: *mut DirHandle) -> *mut StrObj
 msstd_fs_temporary_open( prefix: *const StrObj, out: *mut *mut TempHandle, ) -> u8
@@ -294,8 +363,8 @@ msstd_fs_temporary_path(h: *mut TempHandle) -> *mut StrObj
 msstd_fs_temporary_close(h: *mut TempHandle) -> u8
 msstd_fs_glob( path: *const StrObj, pattern: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msstd_fs_copy_tree( source: *const StrObj, destination: *const StrObj, replace: u8, entries: i64, bytes: i64, ) -> u8
-msstd_fs_copy( source: *const StrObj, destination: *const StrObj, flags: u32, clone: *const StrObj, entries: i64, bytes: i64, filter: Option<CopyFilter>, env: *mut u8, ) -> u8
-msstd_fs_glob_entries( path: *const StrObj, patterns: *const VecVal, exclude: *const VecVal, follow_links: u8, max_entries: i64, max_results: i64, callback: Option<EntryFilter>, env: *mut u8, paths: *mut VecVal, names: *mut VecVal, flags: *mut VecVal, ) -> u8
+msstd_fs_copy( source: *const StrObj, destination: *const StrObj, flags: i64, clone: *const StrObj, has_entries: u8, entries: i64, has_bytes: u8, bytes: i64, filter: *mut Closure, ) -> u8
+msstd_fs_glob_entries( path: *const StrObj, patterns: *const VecVal, exclude: *const VecVal, follow_links: u8, has_max_entries: u8, max_entries: i64, has_max_results: u8, max_results: i64, filter: *mut Closure, out: *mut VecVal, ) -> u8
 msstd_fs_constants(names: *mut VecVal, values: *mut VecVal)
 msstd_fs_watch( path: *const StrObj, recursive: u8, interval_ns: i64, has_max: u8, max: i64, out: *mut *mut WatchHandle, ) -> u8
 msstd_fs_watch_native( path: *const StrObj, recursive: u8, has_max: u8, max: i64, has_events: u8, events: i64, overflow: *const StrObj, out: *mut *mut WatchHandle, ) -> u8
@@ -316,6 +385,12 @@ msrt_html_first_child(t: *const TreeObj, id: u32) -> u32
 msrt_html_next_sibling(t: *const TreeObj, id: u32) -> u32
 msrt_html_attr_count(t: *const TreeObj, id: u32) -> i64
 msrt_html_attr( t: *const TreeObj, id: u32, i: i64, which: u8, ) -> *mut StrObj
+msstd_io_acc_new(kind: i64, has_max: u8, max: i64) -> *mut Acc
+msstd_io_acc_want(a: *const Acc) -> i64
+msstd_io_acc_push(a: *mut Acc, data: *const VecVal) -> u8
+msstd_io_acc_finish_bytes(a: *mut Acc, out: *mut VecVal) -> u8
+msstd_io_acc_finish_count(a: *mut Acc, out: *mut i64) -> u8
+msstd_io_acc_finish_line(a: *mut Acc, out: *mut *mut StrObj) -> u8
 msstd_io_failure_message() -> *mut StrObj
 msstd_io_standard(which: i64) -> *mut Host
 msstd_io_open(path: *const StrObj, out: *mut *mut Host) -> u8
@@ -345,6 +420,14 @@ msrt_json_add_object( d: *mut DocObj, keys: *const *const StrObj, ids: *const u3
 msrt_json_stringify( d: *const DocObj, root: u32, has_max_bytes: u8, max_bytes: i64, has_indent: u8, indent: i64, out: *mut *mut StrObj, ) -> u8
 msrt_json_dec_int(text: *const StrObj, out: *mut i64) -> u8
 msrt_json_dec_float(text: *const StrObj, out: *mut f64) -> u8
+msrt_json_add_float(d: *mut DocObj, v: f64) -> u32
+msrt_json_add_empty_array(d: *mut DocObj) -> u32
+msrt_json_array_push(d: *mut DocObj, arr: u32, item: u32)
+msrt_json_add_empty_object(d: *mut DocObj) -> u32
+msrt_json_object_put( d: *mut DocObj, obj: u32, key: *const StrObj, item: u32, )
+msrt_json_find(d: *const DocObj, id: u32, key: *const StrObj) -> i64
+msrt_json_has_unknown( d: *const DocObj, id: u32, names: *const VecVal, ) -> u8
+msrt_json_variant( d: *const DocObj, id: u32, names: *const VecVal, payload: *mut i64, ) -> i64
 msrt_json_enc_float(v: f64) -> *mut StrObj
 msrt_log_logger_new( has_level: u8, level: i64, has_timestamp: u8, timestamp: u8, has_max: u8, max: i64, out: *mut *mut LoggerObj, ) -> u8
 msrt_log_logger_child( l: *const LoggerObj, fields: *const StrObj, out: *mut *mut LoggerObj, ) -> u8
@@ -555,6 +638,9 @@ msstd_time_duration_add(left: i64, other: i64) -> i64
 msstd_time_duration_plus(left: i64, right: i64) -> i64
 msstd_time_duration_minus(left: i64, right: i64) -> i64
 msstd_time_duration_subtract(left: i64, other: i64) -> i64
+msstd_time_int_milliseconds(n: i64) -> i64
+msstd_time_int_seconds(n: i64) -> i64
+msstd_time_int_minutes(n: i64) -> i64
 msstd_time_duration_multiply(value: i64, factor: i64) -> i64
 msstd_time_duration_divide(value: i64, divisor: i64) -> i64
 msstd_time_duration_negate(value: i64) -> i64

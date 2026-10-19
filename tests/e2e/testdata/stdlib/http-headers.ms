@@ -136,7 +136,7 @@ test "streaming proxy uses the same byte-valued header type":
 
 test "lookup shares mutable membership and clone separates it":
     let fields = (try repeated_headers())
-    let values = fields.values("X-DUP").get()
+    var values = fields.values("X-DUP").get()
     let appended = (fields.append("x-dup", "third".to_bytes()) | try expect_ok)
     values.length() | try expect_equal(expected: 3)
     let changed = values.set(0, "changed".to_bytes())
@@ -146,7 +146,7 @@ test "lookup shares mutable membership and clone separates it":
         )
     )
     let copy = fields.clone()
-    let copied_values = copy.values("x-dup").get()
+    var copied_values = copy.values("x-dup").get()
     let copied_changed = copied_values.set(0, "copy".to_bytes())
     (
         fields.values("x-dup").get().get(0) | try expect_equal(

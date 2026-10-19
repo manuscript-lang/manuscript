@@ -36,11 +36,11 @@ test "right side groups as one operand":
     try expect_equal(number, 14)
 
 test "compound assignment on fields":
-    let counter = Counter(1, "x")
+    var counter = Counter(1, "x")
     counter.count += 4
     counter.count *= counter.count
     counter.label += "y"
-    let outer = Outer(counter)
+    var outer = Outer(counter)
     outer.inner.count -= 5
     try expect_false(
         (counter.count != 20 or counter.label != "xy" or tally([1, 2, 3]) != 6)

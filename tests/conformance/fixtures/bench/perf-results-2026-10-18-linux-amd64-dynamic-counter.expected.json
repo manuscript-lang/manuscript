@@ -12,16 +12,16 @@
         "message": "expected String, found Bytes",
         "position": {
           "file": "perf-results-2026-10-18-linux-amd64-dynamic-counter.ms",
-          "line": 16,
+          "line": 18,
           "column": 39,
-          "offset": 576
+          "offset": 578
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/perf-results-2026-10-18-linux-amd64-dynamic-counter.ms:16:39: type: expected String, found Bytes\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/perf-results-2026-10-18-linux-amd64-dynamic-counter.ms:18:39: type: expected String, found Bytes\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

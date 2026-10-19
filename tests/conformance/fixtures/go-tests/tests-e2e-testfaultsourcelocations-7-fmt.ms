@@ -4,6 +4,7 @@
 fn crash() Int:
     return 1 / 0
 export fn main() Int:
-    let values = Map[Int, Int]()
+    var values = Map[Int, Int]()
     let add = values.add
-    return add(value: crash(), key: 1).length()
+    add(value: crash(), key: 1)
+    return values.length()

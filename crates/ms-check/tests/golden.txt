@@ -1120,7 +1120,7 @@ resolution	4	13	84	unknown binding Queue; add: import Queue from "@std/queues.ms
             xs.set(index: 0, value: v)
         none:
             xs.length()
-type	6	16	150	expected List[Int], found Int# A described record.
+type	6	16	150	expected Unit, found Int# A described record.
 export type Counter:
     # Current count in items.
     # May start at zero.
@@ -2564,17 +2564,17 @@ fn f() Optional[Int]:
     let nested: List[List[Int]] = [[], [1]]
     let empty: Map[String, Int] = {}
     return Map[String, Int]().add("a", nested[1][0]).get("a").get()
-type Selection:
+resolution	4	54	148	unknown or ambiguous member get on Unit; this type has no fields or operationstype Selection:
     values: Set[Int]
 fn keep[T: Hashable](values: Set[T], value: T) Set[T]: values.add(value)
 fn use() Set[Int]:
     let values: Set[Int] = Set[Int]()
     let nested: List[Set[Int]] = [values]
     return keep(nested[0], 1)
-fn use() Set[Int]:
+type	3	63	99	expected Set[T], found Unitfn use() Set[Int]:
     let values: Set[Int] = Set()
     return values.add(1)
-fn f() Int:
+type	3	19	70	expected Set[Int], found Unitfn f() Int:
     let List = fn(value: Int) Int: value
     let Map = fn(value: Int) Int: value
     let Set = fn(value: Int) Int: value
@@ -6081,13 +6081,13 @@ export fn main() Int:
 export fn main() Int:
     let values = Map[Int, Int]()
     return values.add(crash(), 1).length()
-fn crash() Int:
+resolution	5	35	122	unknown or ambiguous member length on Unit; this type has no fields or operationsfn crash() Int:
     return 1 / 0
 export fn main() Int:
     let values = Map[Int, Int]()
     let add = values.add
     return add(value: crash(), key: 1).length()
-fn pick(values: List[Int], index: Int) Int:
+resolution	6	40	152	unknown or ambiguous member length on Unit; this type has no fields or operationsfn pick(values: List[Int], index: Int) Int:
     return values.get(index)
 export fn main() Int:
     return pick([1, 2, 3], 3)
@@ -6123,7 +6123,7 @@ export fn main() Int:
 export fn main() Int:
     let value = Set[Int]().add(0)
     return value.map(crash).length()
-fn crash(value: Int) Optional[Int]:
+resolution	5	18	120	unknown or ambiguous member map on Unit; this type has no fields or operationsfn crash(value: Int) Optional[Int]:
     return some(1 / value)
 export fn main() Int:
     let value: Optional[Int] = some(0)
@@ -6462,7 +6462,7 @@ test "bound count":
 test "continues":
     let values = [1].splice(0, 1, [])
     values.append(2)
-import File from "@std/io.ms"
+resolution	13	12	293	unknown or ambiguous member append on Unit; this type has no fields or operationsimport File from "@std/io.ms"
 import Connection from "@std/net.ms"
 type Val:
     val: Int
@@ -6564,7 +6564,7 @@ test "bound replace":
     first("a", "b", -1)
 test "continues":
     let result = [1].set(0, 2).remove(0)
-import panic from "@std/faults.ms"
+resolution	25	32	564	unknown or ambiguous member remove on Unit; this type has no fields or operationsimport panic from "@std/faults.ms"
 
 export fn main() Int:
     return panic("check must not execute main")

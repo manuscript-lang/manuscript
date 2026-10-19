@@ -7,7 +7,7 @@ import {first_error, first_result, first_propagated, first_generic, first_box} f
 import {second_error, relay} from "./second.ms"
 
 test "Error boundaries retain selected local and generic implementations":
-    let original = DomainFailure(7)
+    var original = DomainFailure(7)
     let first = first_error(original)
     let second = second_error(original)
     (first.message() != "first 7" or second.message() != "second 7") | try expect_false

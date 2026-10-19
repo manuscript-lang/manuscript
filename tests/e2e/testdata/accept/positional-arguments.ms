@@ -126,7 +126,7 @@ test "methods native APIs function values and contextual labels":
             or apply(fn(x, y): x - y, 10) != 8
         )
     )
-    let memo = Map[Int, Int]()
+    var memo = Map[Int, Int]()
     memo.add(1, 7)
     let add = memo.add
     add(value: 8, 2)
@@ -134,7 +134,7 @@ test "methods native APIs function values and contextual labels":
     try expect_equal("abcd".slice(1, 3).get(), "bc")
 
 test "written order before omitted defaults and body":
-    let counter = Counter()
+    var counter = Counter()
     let total = ordered(counter, third: mark(counter, 1), mark(counter, 2))
     try expect_false(total != 7 or counter.value != 1245)
     counter.value = 0

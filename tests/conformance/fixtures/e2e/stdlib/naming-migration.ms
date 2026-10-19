@@ -20,55 +20,59 @@ impl EntryBuilder for EntryAdapter:
         self.builder.add(key, value)
 
 interface Defaults:
-    fn add_default(key: String, value: Int) Map[String, Int]
-    fn add_default_from(key: String, create: fn(key: String) Int) Map[String, Int]
+    var fn add_default(key: String, value: Int) Unit
+    var fn add_default_from(key: String, create: fn(key: String) Int) Unit
 
 type DefaultAdapter:
     values: Map[String, Int]
 
 impl Defaults for DefaultAdapter:
-    fn add_default(key: String, value: Int) Map[String, Int]:
-        return self.values.add_default(key, value)
+    var fn add_default(key: String, value: Int) Unit:
+        self.values.add_default(key, value)
 
-    fn add_default_from(key: String, create: fn(key: String) Int) Map[String, Int]:
-        return self.values.add_default_from(key, create)
+    var fn add_default_from(key: String, create: fn(key: String) Int) Unit:
+        self.values.add_default_from(key, create)
 
 fn eager(counter: Counter) Int:
     counter.calls += 1
     return 99
 
 test "default insertion keeps eager and lazy calls and receiver identity":
-    let values = Map[String, Int]().add("a", 1)
-    let counter = Counter(0)
-    let alias = values.add_default("a", eager(counter))
+    var values = Map[String, Int]()
+    values.add("a", 1)
+    var counter = Counter(0)
+    values.add_default("a", eager(counter))
     try expect_false(counter.calls != 1 or values.get("a") != some(1))
-    alias.add("b", 2)
+    values.add("b", 2)
     try expect_equal(values.keys(), ["a", "b"])
     let create = fn(key: String) Int:
         counter.calls += 1
         return key.length()
-    let lazy: fn(key: String, create: fn(key: String) Int) Map[String, Int] = values.add_default_from
+    let lazy: fn(key: String, create: fn(key: String) Int) Unit = values.add_default_from
     lazy("a", create)
     try expect_equal(counter.calls, 1)
-    lazy("ccc", create).add_default("d", 4)
+    lazy("ccc", create)
+    values.add_default("d", 4)
     try expect_false(counter.calls != 2 or values.values() != [1, 2, 3, 4])
-    let view = Defaults(DefaultAdapter(values))
+    var view = Defaults(DefaultAdapter(values))
     view.add_default("a", 88)
     view.add_default_from("ee", create)
-    let copy = values.clone().add_default("copy", 6)
+    var copy = values.clone()
+    copy.add_default("copy", 6)
     try expect_false(values.contains("copy") or not copy.contains("copy"))
     try expect_false(
         counter.calls != 3 or values.keys() != ["a", "b", "ccc", "d", "ee"]
     )
-    let legacy: fn(key: String, value: Int) Map[String, Int] = values.add_default
-    legacy("a", 100).add_default_from("ff", create)
+    let legacy: fn(key: String, value: Int) Unit = values.add_default
+    legacy("a", 100)
+    values.add_default_from("ff", create)
     try expect_false(counter.calls != 4 or values.get("a") != some(1))
 
 test "all builders keep Unit mutation function types":
     let list = ListBuilder[Int]()
     let append_list: fn(value: Int) Unit = list.append
     append_list(1)
-    let list_result = list.freeze()
+    var list_result = list.freeze()
     list_result.append(2)
     try expect_equal(list.freeze(), [1, 2])
     let map = MapBuilder[String, Int]()
@@ -81,7 +85,7 @@ test "all builders keep Unit mutation function types":
     let add_view: fn(key: String, value: Int) Unit = adapter.add
     add_view("b", 2)
     legacy_map("a", 3)
-    let map_result = map.freeze()
+    var map_result = map.freeze()
     try expect_false(map_result.keys() != ["a", "b"] or map_result.values() != [3, 2])
     map_result.add("c", 4)
     try expect_equal(map_alias.freeze().keys(), ["a", "b", "c"])
@@ -91,7 +95,7 @@ test "all builders keep Unit mutation function types":
     add_set(2)
     set.add(1)
     legacy_set(2)
-    let set_result = set.freeze()
+    var set_result = set.freeze()
     try expect_equal(set_result.values(), [2, 1])
     set_result.add(3)
     try expect_equal(set.freeze().values(), [2, 1, 3])
@@ -113,7 +117,7 @@ test "copy names preserve Bytes and collection storage":
     let copied = bytes.with_value(0, 9)
     try expect_false(bytes != Bytes([1, 2, 3]) or copied != Bytes([9, 2, 3]))
     let values = [1, 2, 3]
-    let reversed = values.reversed()
+    var reversed = values.reversed()
     reversed.set(0, 9)
     try expect_false(values != [1, 2, 3] or reversed != [9, 2, 1])
     let set = Set[Int]([1])

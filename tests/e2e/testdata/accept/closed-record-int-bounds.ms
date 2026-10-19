@@ -64,7 +64,7 @@ fn scalar_peer() Int:
 
 fn alias() Int:
     let cell = Cell(0)
-    let other = cell
+    var other = cell
     var i = 0
 
     while i < 2:

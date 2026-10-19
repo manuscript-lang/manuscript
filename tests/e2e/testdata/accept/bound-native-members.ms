@@ -15,21 +15,22 @@ impl Hashable for Folded:
         return 1
 
 fn replace_first[T](xs: List[T], value: T) List[T]:
-    return xs.set(index: 0, value: value)
+    xs.set(index: 0, value: value)
+    return xs
 
 test "string members":
     ("  a,b ".trim().split(separator: ",").length() == 2) | try expect_true
     ("abc".upper() == "ABC") | try expect_true
 
 test "list members":
-    let xs = [1, 2, 3]
+    var xs = [1, 2, 3]
     xs.set(index: -1, value: 9)
     (xs.get(index: 2) == 9) | try expect_true
     (replace_first(xs: xs, value: 5).get(index: 0) == 5) | try expect_true
     (xs.contains(value: 9)) | try expect_true
 
 test "custom equality is kept for bound members":
-    let a = Set[Folded]()
+    var a = Set[Folded]()
     a.add(value: Folded(name: "x"))
     a.add(value: Folded(name: "y"))
     (a.length() == 1) | try expect_true

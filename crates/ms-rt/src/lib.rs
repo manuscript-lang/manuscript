@@ -34,6 +34,7 @@ extern crate ms_std_process;
 extern crate ms_std_time;
 
 pub mod alloc;
+pub mod bits;
 pub mod buf;
 pub mod desc;
 pub mod fault;
@@ -44,6 +45,7 @@ pub mod num;
 pub mod obj;
 pub mod process;
 pub mod profile;
+pub mod queue;
 pub mod start;
 pub mod string;
 pub mod sys;

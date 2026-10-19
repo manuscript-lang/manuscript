@@ -7,7 +7,7 @@ import {parse_timestamp} from "@std/time.ms"
 import {uuid_v4, entropy} from "@std/random.ms"
 
 fn entries(count: Int) List[ArchiveEntry]:
-    let out: List[ArchiveEntry] = []
+    var out: List[ArchiveEntry] = []
     for i in range(0, count):
         out.append(
             ArchiveEntry(
@@ -19,7 +19,7 @@ fn entries(count: Int) List[ArchiveEntry]:
     return out
 
 fn sse_stream(count: Int) Bytes:
-    let parts: List[String] = []
+    var parts: List[String] = []
     for i in range(0, count):
         parts.append("event: tick\nid: {i}\ndata: payload {i}\ndata: second line\n\n")
     return parts.join("").to_bytes()

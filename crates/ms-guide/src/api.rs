@@ -220,9 +220,10 @@ fn document_operation_name(receiver: &Ty, name: &str) -> String {
     format!("{name}[{}]", params.join(", "))
 }
 
-fn fn_declaration(name: &str, f: &Func, source: Option<&Source>) -> String {
+fn fn_declaration(name: &str, f: &Func, mutating: bool, source: Option<&Source>) -> String {
     format!(
-        "fn {name}{}{} {}:\n",
+        "{}{name}{}{} {}:\n",
+        if mutating { "var fn " } else { "fn " },
         render::type_parameters(&f.type_params),
         render::parameters(&f.params, source),
         render::type_text(&f.result)
@@ -237,7 +238,7 @@ fn document_declaration(
     source: Option<&Source>,
 ) -> String {
     if let Some(f) = decl.func() {
-        return fn_declaration(name, f, source);
+        return fn_declaration(name, f, false, source);
     }
     let mut b = format!(
         "{keyword} {name}{}:\n",
@@ -269,7 +270,12 @@ fn document_declaration(
         );
     }
     for method in decl.methods() {
-        let mut header = fn_declaration(method.func.name.as_str(), &method.func, source);
+        let mut header = fn_declaration(
+            method.func.name.as_str(),
+            &method.func,
+            method.mutating,
+            source,
+        );
         if keyword == "interface" {
             header = header.strip_suffix(":\n").unwrap_or(&header).to_string() + "\n";
         }
@@ -341,9 +347,14 @@ fn document_members(decl: &DeclRef, source: Option<&Source>, receiver: &Ty) -> V
     }
     for method in decl.methods() {
         let name = document_operation_name(receiver, method.func.name.as_str());
-        let mut signature = fn_declaration(method.func.name.as_str(), &method.func, source)
-            .trim()
-            .to_string();
+        let mut signature = fn_declaration(
+            method.func.name.as_str(),
+            &method.func,
+            method.mutating,
+            source,
+        )
+        .trim()
+        .to_string();
         if is_interface(decl) {
             signature = signature
                 .strip_suffix(':')
@@ -482,14 +493,16 @@ fn document_implementations(
         d.implementation_declarations.push(format!(
             "impl {contract} for {}:\n    {}",
             method.receiver,
-            fn_declaration(name, f, None)
+            fn_declaration(name, f, decl.method().is_some_and(|m| m.mutating), None)
         ));
         let operation = format!("{name}: {}", method.ty);
         let source = sources.of(method.module);
         d.members.push(ApiMember {
             name: name.to_string(),
             kind: "operation".into(),
-            signature: fn_declaration(name, f, source).trim().to_string(),
+            signature: fn_declaration(name, f, decl.method().is_some_and(|m| m.mutating), source)
+                .trim()
+                .to_string(),
             doc: leading_comment(
                 source.map_or("", Source::text),
                 method_offset(decl) as usize,

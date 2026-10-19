@@ -139,6 +139,32 @@ pub extern "C-unwind" fn msstd_time_duration_subtract(left: i64, other: i64) -> 
     checked_sub("Duration.subtract", "value", "other", left, other)
 }
 
+/// `n` units of `scale` nanoseconds as a `Duration`; a value outside the representable range faults.
+fn duration_of(operation: &str, n: i64, scale: i64) -> i64 {
+    let (low, high) = (i64::MIN / scale, i64::MAX / scale);
+    if n < low || n > high {
+        fault_fmt(format_args!(
+            "{operation}: value must be between {low} and {high}, found {n}"
+        ));
+    }
+    n * scale
+}
+
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msstd_time_int_milliseconds(n: i64) -> i64 {
+    duration_of("Int.milliseconds", n, 1_000_000)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msstd_time_int_seconds(n: i64) -> i64 {
+    duration_of("Int.seconds", n, 1_000_000_000)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msstd_time_int_minutes(n: i64) -> i64 {
+    duration_of("Int.minutes", n, 60_000_000_000)
+}
+
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msstd_time_duration_multiply(value: i64, factor: i64) -> i64 {
     value

@@ -38,6 +38,11 @@ pub struct FuncBuilder<'m> {
     preds: Vec<Vec<Block>>,
     sealed: Vec<bool>,
     incomplete: HashMap<Block, Vec<(Var, Value)>>,
+    /// Definitions cached and predecessor edges filled while a block parameter is being
+    /// resolved, so a parameter found trivial can be replaced where it was already used.
+    cached: Vec<(Var, Block)>,
+    filled: Vec<Block>,
+    resolving: usize,
 }
 
 impl<'m> FuncBuilder<'m> {
@@ -54,6 +59,9 @@ impl<'m> FuncBuilder<'m> {
             preds: vec![Vec::new()],
             sealed: vec![true],
             incomplete: HashMap::new(),
+            cached: Vec::new(),
+            filled: Vec::new(),
+            resolving: 0,
         }
     }
 
@@ -385,6 +393,11 @@ impl<'m> FuncBuilder<'m> {
         self.vars[v.0 as usize].ty
     }
 
+    /// The ownership a variable's block parameters carry.
+    pub fn var_mode(&self, v: Var) -> Mode {
+        self.vars[v.0 as usize].mode
+    }
+
     /// Defines the variable's value at the end of the current block.
     pub fn def_var(&mut self, v: Var, val: Value) {
         self.defs.insert((v, self.cur), val);
@@ -426,13 +439,91 @@ impl<'m> FuncBuilder<'m> {
                 b.0
             );
         } else {
+            let (cached, filled) = (self.cached.len(), self.filled.len());
+            self.resolving += 1;
             let p = self.add_block_param(b, ty, mode);
             self.defs.insert((v, b), p);
             self.add_phi_operands(v, b, p);
-            p
+            let val = self.without_trivial_param(v, b, p, (cached, filled));
+            self.resolving -= 1;
+            if self.resolving == 0 {
+                self.cached.clear();
+                self.filled.clear();
+            }
+            val
         };
         self.defs.insert((v, b), val);
+        if self.resolving > 0 {
+            self.cached.push((v, b));
+        }
         val
+    }
+
+    /// Removes the block parameter `param` of the sealed block `b` when every predecessor
+    /// passes the same value, so that value stays live across the join instead of being
+    /// handed through an edge (which would consume it for code that still holds it).
+    fn without_trivial_param(
+        &mut self,
+        v: Var,
+        b: Block,
+        param: Value,
+        since: (usize, usize),
+    ) -> Value {
+        let idx = self.f.blocks[b.index()]
+            .params
+            .iter()
+            .position(|p| p.value == param)
+            .expect("param exists");
+        let mut same: Option<Value> = None;
+        let mut edges = 0;
+        for p in self.preds[b.index()].clone() {
+            let mut ok = true;
+            self.f.blocks[p.index()].term.for_each_target_mut(|t| {
+                if t.block == b {
+                    edges += 1;
+                    match (t.args.get(idx), same) {
+                        // A loop passing the parameter around changes nothing.
+                        (Some(a), _) if *a == param => {}
+                        (Some(a), None) => same = Some(*a),
+                        (Some(a), Some(s)) if *a == s => {}
+                        _ => ok = false,
+                    }
+                }
+            });
+            if !ok {
+                return param;
+            }
+        }
+        let Some(x) = same.filter(|_| edges > 0) else {
+            return param;
+        };
+        for p in self.preds[b.index()].clone() {
+            self.f.blocks[p.index()].term.for_each_target_mut(|t| {
+                if t.block == b && t.args.len() > idx {
+                    t.args.remove(idx);
+                }
+            });
+        }
+        self.f.blocks[b.index()].params.remove(idx);
+        self.defs.insert((v, b), x);
+        // Whatever resolved to the parameter while its operands were read now names `x`.
+        for i in since.0..self.cached.len() {
+            let (cv, cb) = self.cached[i];
+            if self.defs.get(&(cv, cb)) == Some(&param) {
+                self.defs.insert((cv, cb), x);
+            }
+        }
+        for i in since.1..self.filled.len() {
+            let blk = self.filled[i];
+            self.f.blocks[blk.index()].term.for_each_target_mut(|t| {
+                for a in &mut t.args {
+                    if *a == param {
+                        *a = x;
+                    }
+                }
+            });
+        }
+        x
     }
 
     fn add_phi_operands(&mut self, v: Var, b: Block, param: Value) {
@@ -450,6 +541,9 @@ impl<'m> FuncBuilder<'m> {
             }
             seen.push(p);
             let val = self.read_var(v, p);
+            if self.resolving > 0 {
+                self.filled.push(p);
+            }
             self.f.blocks[p.index()].term.for_each_target_mut(|t| {
                 if t.block == b {
                     while t.args.len() < idx {

@@ -54,19 +54,19 @@ func check_List_IsEmpty[T any]() {
 	var _ func(*Execution, *List[T]) bool = List_IsEmpty[T]
 }
 func check_List_Prepend[T any]() {
-	var _ func(*Execution, *List[T], T) *List[T] = List_Prepend[T]
+	var _ func(*Execution, *List[T], T) Unit = List_Prepend[T]
 }
 func check_List_Insert[T any]() {
-	var _ func(*Execution, *List[T], int, T) *List[T] = List_Insert[T]
+	var _ func(*Execution, *List[T], int, T) Unit = List_Insert[T]
 }
 func check_List_Pop[T any]() {
 	var _ func(*Execution, *List[T]) Option[T] = List_Pop[T]
 }
 func check_List_Set[T any]() {
-	var _ func(*Execution, *List[T], int, T) *List[T] = List_Set[T]
+	var _ func(*Execution, *List[T], int, T) Unit = List_Set[T]
 }
 func check_List_Remove[T any]() {
-	var _ func(*Execution, *List[T], int) *List[T] = List_Remove[T]
+	var _ func(*Execution, *List[T], int) Unit = List_Remove[T]
 }
 func check_List_Slice[T any]() {
 	var _ func(*Execution, *List[T], int, int) Result[*List[T], CollectionError] = List_Slice[T]
@@ -78,7 +78,7 @@ func check_List_Drop[T any]() {
 	var _ func(*Execution, *List[T], int) *List[T] = List_Drop[T]
 }
 func check_List_ReverseInPlace[T any]() {
-	var _ func(*Execution, *List[T]) *List[T] = List_ReverseInPlace[T]
+	var _ func(*Execution, *List[T]) Unit = List_ReverseInPlace[T]
 }
 func check_List_Reversed[T any]() {
 	var _ func(*Execution, *List[T]) *List[T] = List_Reversed[T]
@@ -132,13 +132,13 @@ func check_List_FoldRight[T any, A any]() {
 	var _ func(*Execution, *List[T], A, func(ctx *Execution, a0 A, a1 T) A) A = List_FoldRight[T, A]
 }
 func check_List_Splice[T any]() {
-	var _ func(*Execution, *List[T], int, int, *List[T]) *List[T] = List_Splice[T]
+	var _ func(*Execution, *List[T], int, int, *List[T]) Unit = List_Splice[T]
 }
 func check_List_Fill[T any]() {
-	var _ func(*Execution, *List[T], T, int, int) *List[T] = List_Fill[T]
+	var _ func(*Execution, *List[T], T, int, int) Unit = List_Fill[T]
 }
 func check_List_CopyWithin[T any]() {
-	var _ func(*Execution, *List[T], int, int, int) *List[T] = List_CopyWithin[T]
+	var _ func(*Execution, *List[T], int, int, int) Unit = List_CopyWithin[T]
 }
 func check_List_ToSet[T comparable]() {
 	var _ func(*Execution, *Keys[T], *List[T]) *Set[T] = List_ToSet[T]
@@ -153,7 +153,7 @@ func check_List_Join[T any]() {
 	var _ func(*Execution, *List[T], string) string = List_Join[T]
 }
 func check_List_Append[T any]() {
-	var _ func(*Execution, *List[T], T) *List[T] = List_Append[T]
+	var _ func(*Execution, *List[T], T) Unit = List_Append[T]
 }
 func check_List_Concat[T any]() {
 	var _ func(*Execution, *List[T], *List[T]) *List[T] = List_Concat[T]
@@ -198,13 +198,13 @@ func check_Map_Every[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], func(ctx *Execution, a0 T, a1 U) bool) bool = Map_Every[T, U]
 }
 func check_Map_AddDefault[T comparable, U any]() {
-	var _ func(*Execution, *Map[T, U], T, U) *Map[T, U] = Map_AddDefault[T, U]
+	var _ func(*Execution, *Map[T, U], T, U) Unit = Map_AddDefault[T, U]
 }
 func check_Map_AddDefaultFrom[T comparable, U any]() {
-	var _ func(*Execution, *Map[T, U], T, func(ctx *Execution, a0 T) U) *Map[T, U] = Map_AddDefaultFrom[T, U]
+	var _ func(*Execution, *Map[T, U], T, func(ctx *Execution, a0 T) U) Unit = Map_AddDefaultFrom[T, U]
 }
 func check_Map_Clear[T comparable, U any]() {
-	var _ func(*Execution, *Map[T, U]) *Map[T, U] = Map_Clear[T, U]
+	var _ func(*Execution, *Map[T, U]) Unit = Map_Clear[T, U]
 }
 func check_Map_Keys[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U]) *List[T] = Map_Keys[T, U]
@@ -216,7 +216,7 @@ func check_Map_Entries[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U]) *List[*MapEntry[T, U]] = Map_Entries[T, U]
 }
 func check_Map_Merge[T comparable, U any]() {
-	var _ func(*Execution, *Map[T, U], *Map[T, U]) *Map[T, U] = Map_Merge[T, U]
+	var _ func(*Execution, *Map[T, U], *Map[T, U]) Unit = Map_Merge[T, U]
 }
 func check_Map_ForEach[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], func(ctx *Execution, a0 T, a1 U) Unit) Unit = Map_ForEach[T, U]
@@ -231,10 +231,10 @@ func check_Map_Length[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U]) int = Map_Length[T, U]
 }
 func check_Map_Add[T comparable, U any]() {
-	var _ func(*Execution, *Map[T, U], T, U) *Map[T, U] = Map_Add[T, U]
+	var _ func(*Execution, *Map[T, U], T, U) Unit = Map_Add[T, U]
 }
 func check_Map_Remove[T comparable, U any]() {
-	var _ func(*Execution, *Map[T, U], T) *Map[T, U] = Map_Remove[T, U]
+	var _ func(*Execution, *Map[T, U], T) Unit = Map_Remove[T, U]
 }
 func check_Set_Clone[T comparable]() {
 	var _ func(*Execution, *Set[T]) *Set[T] = Set_Clone[T]
@@ -288,7 +288,7 @@ func check_Set_IsDisjointFrom[T comparable]() {
 	var _ func(*Execution, *Set[T], *Set[T]) bool = Set_IsDisjointFrom[T]
 }
 func check_Set_Clear[T comparable]() {
-	var _ func(*Execution, *Set[T]) *Set[T] = Set_Clear[T]
+	var _ func(*Execution, *Set[T]) Unit = Set_Clear[T]
 }
 func check_Set_Values[T comparable]() {
 	var _ func(*Execution, *Set[T]) *List[T] = Set_Values[T]
@@ -306,10 +306,10 @@ func check_Set_Length[T comparable]() {
 	var _ func(*Execution, *Set[T]) int = Set_Length[T]
 }
 func check_Set_Add[T comparable]() {
-	var _ func(*Execution, *Set[T], T) *Set[T] = Set_Add[T]
+	var _ func(*Execution, *Set[T], T) Unit = Set_Add[T]
 }
 func check_Set_Remove[T comparable]() {
-	var _ func(*Execution, *Set[T], T) *Set[T] = Set_Remove[T]
+	var _ func(*Execution, *Set[T], T) Unit = Set_Remove[T]
 }
 func check_ListBuilder_Append[T any]() {
 	var _ func(*Execution, *ListBuilder[T], T) Unit = ListBuilder_Append[T]

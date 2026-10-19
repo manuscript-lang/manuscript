@@ -11,19 +11,27 @@ mod closure;
 mod cx;
 mod eq;
 mod expr;
+mod fixture;
+mod fsinfo;
+mod fswalk;
 mod func;
 mod iface;
 mod iterate;
+mod json;
 mod mapset;
 mod matching;
+mod mathops;
 mod messages;
 mod mutation;
+mod natiface;
 mod native;
 mod rtcall;
 mod runner;
 mod stmt;
+mod streamloop;
 mod testing;
 mod text;
+mod with;
 
 pub mod dump;
 pub mod load;
@@ -65,7 +73,7 @@ pub fn lower_tests(program: &Program, options: &Options) -> Result<(Module, Vec<
 }
 
 /// The marker a failed test writes to stderr ahead of its message.
-pub use runner::FAILURE_MARKER;
+pub use runner::{FAILURE_MARKER, SKIP_MARKER};
 
 /// Lowers a checked program (no diagnostics) to a MIR module with `main` as the entry.
 pub fn lower_program(program: &Program, options: &Options) -> Result<Module, Error> {

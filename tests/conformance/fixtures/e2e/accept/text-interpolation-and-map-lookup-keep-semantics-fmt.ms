@@ -31,13 +31,13 @@ test "text interpolation":
     try expect_true(("".length() == 0))
     try expect_true(("héllo {n}".length() == 8))
     try expect_true(("{halve(n: 8)}" == "{halve(n: 8)}"))
-    let items = List[Int]()
+    var items = List[Int]()
     items.append(value: 1)
     try expect_true(("{items}" == "[1]"))
     try expect_true(("{Point(x: 1, y: 2)}".length() > 0))
 
 test "map lookup":
-    let m = Map[Int, Int]()
+    var m = Map[Int, Int]()
     m.add(key: 1, value: 10)
 
     match m.get(key: 1):
@@ -52,7 +52,7 @@ test "map lookup":
         none:
             unit
 
-    let points = Map[Point, String]()
+    var points = Map[Point, String]()
     points.add(key: Point(x: 1, y: 2), value: "a")
     try expect_true((describe(key: Point(x: 1, y: 2), m: points) == "found a"))
     try expect_true((describe(key: Point(x: 2, y: 1), m: points) == "missing"))
