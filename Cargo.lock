@@ -1057,6 +1057,7 @@ dependencies = [
  "ms-std-json",
  "ms-std-log",
  "ms-std-math",
+ "ms-std-net",
  "ms-std-path",
  "ms-std-process",
  "ms-std-random",
