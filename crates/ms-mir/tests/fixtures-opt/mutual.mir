@@ -1,0 +1,43 @@
+module "mutual"
+entry @main
+fn @even(%n: int) -> bool {
+b0:
+  depth.enter
+  %z: int = iconst 0
+  %c: bool = icmp.eq %n, %z
+  br_if %c, yes(), more()
+yes:
+  %t: bool = bconst true
+  depth.leave
+  ret %t
+more:
+  %one: int = iconst 1
+  %m: int = isub %n, %one
+  %r: bool = call @odd (%m)
+  depth.leave
+  ret %r
+}
+fn @odd(%n: int) -> bool {
+b0:
+  depth.enter
+  %z: int = iconst 0
+  %c: bool = icmp.eq %n, %z
+  br_if %c, no(), more()
+no:
+  %f: bool = bconst false
+  depth.leave
+  ret %f
+more:
+  %one: int = iconst 1
+  %m: int = isub %n, %one
+  %r: bool = call @even (%m)
+  depth.leave
+  ret %r
+}
+fn @main() -> int {
+b0:
+  %n: int = iconst 10
+  %e: bool = call @even (%n)
+  %i: int = b2i %e
+  ret %i
+}

@@ -1,0 +1,22 @@
+module "multi"
+entry @main
+fn @abs(%x: int) -> int {
+b0:
+  %z: int = iconst 0
+  %c: bool = icmp.lt %x, %z
+  br_if %c, neg(), pos()
+neg:
+  %n: int = ineg %x
+  ret %n
+pos:
+  ret %x
+}
+fn @main() -> int {
+b0:
+  %a: int = iconst -7
+  %b: int = call @abs (%a)
+  %c: int = iconst 5
+  %d: int = call @abs (%c)
+  %r: int = iadd %b, %d
+  ret %r
+}
