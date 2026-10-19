@@ -1,0 +1,44 @@
+module "dead"
+iface Area { area() -> int }
+vtable @v_int: Area for int { @area_int }
+entry @main
+fn @unused(%x: int) -> int {
+b0:
+  ret %x
+}
+fn @helper(%x: int) -> int {
+b0:
+  %two: int = iconst 2
+  %r: int = imul %x, %two
+  ret %r
+}
+fn @area_int(%self: ptr) -> int method {
+b0:
+  %r: int = iconst 12
+  ret %r
+}
+fn @kept_exported(%x: int) -> int export {
+b0:
+  ret %x
+}
+fn @add(%env: ptr, %x: int) -> int closure(int) {
+b0:
+  %k: int = closure.cap 0 %env
+  %r: int = iadd %x, %k
+  ret %r
+}
+fn @main() -> int {
+b0:
+  %k: int = iconst 10
+  %f: fn(int) -> int = closure.new @add %k
+  %x: int = iconst 5
+  %r: int = call.ind (%f, %x)
+  drop %f
+  %h: int = call @helper (%r)
+  %i: int = iconst 1
+  %s: dyn Area = iface.new @v_int %i
+  %a: int = call.method Area.area (%s)
+  drop %s
+  %t: int = iadd %h, %a
+  ret %t
+}

@@ -1,0 +1,27 @@
+module "rec"
+entry @main
+fn @fib(%n: int) -> int {
+b0:
+  depth.enter
+  %two: int = iconst 2
+  %c: bool = icmp.lt %n, %two
+  br_if %c, base(), step()
+base:
+  depth.leave
+  ret %n
+step:
+  %one: int = iconst 1
+  %a: int = isub %n, %one
+  %b: int = isub %n, %two
+  %x: int = call @fib (%a)
+  %y: int = call @fib (%b)
+  %r: int = iadd %x, %y
+  depth.leave
+  ret %r
+}
+fn @main() -> int {
+b0:
+  %n: int = iconst 15
+  %r: int = call @fib (%n)
+  ret %r
+}
