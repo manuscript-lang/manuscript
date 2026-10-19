@@ -138,6 +138,17 @@ impl Network {
         true
     }
 
+    /// Whether this network is `other` or derived from it.
+    pub fn is_within(&self, other: &Network) -> bool {
+        if std::ptr::eq(self, other) {
+            return true;
+        }
+        self.parent
+            .as_ref()
+            .and_then(Weak::upgrade)
+            .is_some_and(|p| p.is_within(other))
+    }
+
     /// Registers a server (closed before other resources).
     pub fn own_server(&self, r: &Rc<dyn Resource>) -> bool {
         if self.closed.get() {

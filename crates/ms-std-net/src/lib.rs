@@ -11,6 +11,7 @@ pub mod dn;
 pub mod dns;
 pub mod error;
 pub mod ffi;
+pub mod http;
 pub mod ip;
 pub mod net;
 pub mod policy;

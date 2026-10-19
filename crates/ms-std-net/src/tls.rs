@@ -770,54 +770,88 @@ fn alert_text(a: &rustls::AlertDescription) -> String {
     }
 }
 
+/// Progress of a handshake step.
+pub enum Handshake {
+    Done,
+    WantRead,
+    WantWrite,
+    Failed(NetErr),
+}
+
 impl TlsIo {
-    /// Completes the handshake within `deadline`.
+    /// Wraps a connected nonblocking socket; call `drive_handshake` until done.
+    pub fn new(sock: socket2::Socket, conn: rustls::Connection, verified: bool) -> TlsIo {
+        TlsIo {
+            sock,
+            state: RefCell::new(conn),
+            verified,
+        }
+    }
+
+    pub fn socket(&self) -> &socket2::Socket {
+        &self.sock
+    }
+
+    /// Whether a server session received a client certificate.
+    pub fn has_peer_certificates(&self) -> bool {
+        self.state.borrow().peer_certificates().is_some()
+    }
+
+    pub fn set_verified(&mut self, verified: bool) {
+        self.verified = verified;
+    }
+
+    /// Advances the handshake as far as the socket allows.
+    pub fn drive_handshake(&self) -> Handshake {
+        loop {
+            let (handshaking, wants_write) = {
+                let c = self.state.borrow();
+                (c.is_handshaking(), c.wants_write())
+            };
+            if wants_write {
+                match self.write_pending() {
+                    Ok(true) => continue,
+                    Ok(false) => return Handshake::WantWrite,
+                    Err(e) => return Handshake::Failed(NetErr::Failed(describe_io_error(&e))),
+                }
+            }
+            if !handshaking {
+                return Handshake::Done;
+            }
+            match self.read_records() {
+                Ok(true) => {}
+                Ok(false) => return Handshake::WantRead,
+                Err(HandshakeFail::Tls(e)) => {
+                    let _ = self.write_pending();
+                    return Handshake::Failed(NetErr::Failed(go_handshake_error(&e)));
+                }
+                Err(HandshakeFail::Io(e)) => {
+                    return Handshake::Failed(NetErr::Failed(describe_io_error(&e)));
+                }
+            }
+        }
+    }
+
+    /// Completes the handshake within `deadline`, blocking.
     pub fn handshake(
         sock: socket2::Socket,
         conn: rustls::Connection,
         deadline: Deadline,
         verified_hint: bool,
     ) -> Result<TlsIo, NetErr> {
-        let io = TlsIo {
-            sock,
-            state: RefCell::new(conn),
-            verified: verified_hint,
-        };
+        let io = TlsIo::new(sock, conn, verified_hint);
         loop {
-            let (handshaking, wants_write, wants_read) = {
-                let c = io.state.borrow();
-                (c.is_handshaking(), c.wants_write(), c.wants_read())
-            };
-            if !handshaking && !wants_write {
-                return Ok(io);
-            }
-            if wants_write {
-                match io.write_pending() {
-                    Ok(true) => continue,
-                    Ok(false) => {
-                        if wait_fd(io.sock.as_fd(), Interest::Write, deadline) == Wait::TimedOut {
-                            return Err(NetErr::Timeout);
-                        }
-                        continue;
+            match io.drive_handshake() {
+                Handshake::Done => return Ok(io),
+                Handshake::Failed(e) => return Err(e),
+                Handshake::WantWrite => {
+                    if wait_fd(io.sock.as_fd(), Interest::Write, deadline) == Wait::TimedOut {
+                        return Err(NetErr::Timeout);
                     }
-                    Err(e) => return Err(NetErr::Failed(describe_io_error(&e))),
                 }
-            }
-            if wants_read {
-                match io.read_records() {
-                    Ok(true) => {}
-                    Ok(false) => {
-                        if wait_fd(io.sock.as_fd(), Interest::Read, deadline) == Wait::TimedOut {
-                            return Err(NetErr::Timeout);
-                        }
-                    }
-                    Err(HandshakeFail::Tls(e)) => {
-                        // Flush the alert, best effort.
-                        let _ = io.write_pending();
-                        return Err(NetErr::Failed(go_handshake_error(&e)));
-                    }
-                    Err(HandshakeFail::Io(e)) => {
-                        return Err(NetErr::Failed(describe_io_error(&e)));
+                Handshake::WantRead => {
+                    if wait_fd(io.sock.as_fd(), Interest::Read, deadline) == Wait::TimedOut {
+                        return Err(NetErr::Timeout);
                     }
                 }
             }

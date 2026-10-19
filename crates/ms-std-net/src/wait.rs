@@ -91,23 +91,24 @@ pub fn wait_fd(fd: BorrowedFd<'_>, interest: Interest, deadline: Deadline) -> Wa
         Interest::Read => PollFlags::IN,
         Interest::Write => PollFlags::OUT,
     };
+    let service = pump::current();
     loop {
         rt::check_cancel();
-        pump::service();
         let timeout = poll_timeout(slice_for(deadline));
-        let wake = pump::wake_fd();
         let mut fds = [
             PollFd::new(&fd, flags),
-            PollFd::from_borrowed_fd(wake.unwrap_or(fd), PollFlags::IN),
+            PollFd::from_borrowed_fd(service.as_ref().map_or(fd, |s| s.fd()), PollFlags::IN),
         ];
-        let n = if wake.is_some() { 2 } else { 1 };
+        let n = if service.is_some() { 2 } else { 1 };
         match event::poll(&mut fds[..n], Some(&timeout)) {
             Ok(_) => {
                 if !fds[0].revents().is_empty() {
                     return Wait::Ready;
                 }
                 if n == 2 && !fds[1].revents().is_empty() {
-                    pump::acknowledge();
+                    if let Some(s) = &service {
+                        s.service();
+                    }
                     continue;
                 }
             }
