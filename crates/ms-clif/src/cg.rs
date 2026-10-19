@@ -12,8 +12,8 @@ use cranelift_module::{
     DataDescription, DataId, FuncId, Linkage, Module as _, default_libcall_names,
 };
 use cranelift_object::{ObjectBuilder, ObjectModule};
-use ms_mir::ir::{ExtId, Func, FuncKind, Module};
-use ms_mir::types::{Ty, TyKind};
+use ms_mir::ir::{ExtId, Func, Module};
+use ms_mir::types::Ty;
 use std::collections::HashMap;
 
 /// `rc` of static objects (`ms_rt_abi::STATIC_RC`).
@@ -96,7 +96,6 @@ pub struct Gen<'m> {
     pub queue: Vec<(Glue, Ty)>,
     pub vtables: Vec<DataId>,
     pub globals: Vec<DataId>,
-    pub descs: HashMap<Ty, DataId>,
     /// Interned `(file, line)` pairs referenced by Cranelift source locations (id = index).
     pub locs: Vec<(u32, u32)>,
     loc_ids: HashMap<(u32, u32), u32>,
@@ -289,7 +288,6 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
         queue: Vec::new(),
         vtables: Vec::new(),
         globals: Vec::new(),
-        descs: HashMap::new(),
         locs: Vec::new(),
         loc_ids: HashMap::new(),
         dbg: Vec::new(),
@@ -594,14 +592,4 @@ fn emit_main(
         l.finish();
     }
     define(g, ctx, id, "main")
-}
-
-/// Whether `ty` is a function-kind type (used by callers to pick calling conventions).
-pub fn is_closure(m: &Module, ty: Ty) -> bool {
-    matches!(m.types.kind(ty), TyKind::Fn(..))
-}
-
-/// Whether `f` is the code of a closure.
-pub fn is_closure_code(f: &Func) -> bool {
-    matches!(f.kind, FuncKind::Closure { .. })
 }

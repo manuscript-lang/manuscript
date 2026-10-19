@@ -785,7 +785,9 @@ impl<'m> Interp<'m> {
                 set!(Val::Ptr(self.mem.len() as u64));
             }
             Op::ListAddr | Op::PtrField => {
-                return Err(Raw::internal("interior pointers are not supported by the interpreter"));
+                return Err(Raw::internal(
+                    "interior pointers are not supported by the interpreter",
+                ));
             }
             Op::Load => {
                 let Val::Ptr(p) = &regs[a[0].index()] else {
@@ -887,7 +889,9 @@ impl<'m> Interp<'m> {
                     return Err(Raw::internal("cleanup.run needs a handle"));
                 };
                 while self.cleanup.len() as i64 >= h && h > 0 {
-                    let Some((closer, v)) = self.cleanup.pop() else { break };
+                    let Some((closer, v)) = self.cleanup.pop() else {
+                        break;
+                    };
                     self.exec(closer, vec![v])
                         .map_err(|e| Raw::new(e.kind, e.message))?;
                 }

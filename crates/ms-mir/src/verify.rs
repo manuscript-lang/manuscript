@@ -935,16 +935,24 @@ impl Verifier<'_> {
             }
             Op::ListAddr => {
                 arity(2)?;
-                want(m.list_elem(t(0)).is_some() && t(1) == Ty::INT && res == Some(Ty::PTR), "list.addr takes a list and an index and yields a ptr to the element")
+                want(
+                    m.list_elem(t(0)).is_some() && t(1) == Ty::INT && res == Some(Ty::PTR),
+                    "list.addr takes a list and an index and yields a ptr to the element",
+                )
             }
             Op::PtrField => {
                 arity(1)?;
-                let Imm::Field(r, i) = inst.imm else { return Err("missing field".into()) };
+                let Imm::Field(r, i) = inst.imm else {
+                    return Err("missing field".into());
+                };
                 let rec = m.records.get(r.index()).ok_or("bad record")?;
                 if rec.fields.get(i as usize).is_none() {
                     return Err("bad field index".into());
                 }
-                want(t(0) == Ty::PTR && res == Some(Ty::PTR), "ptr.field takes a ptr and yields a ptr")
+                want(
+                    t(0) == Ty::PTR && res == Some(Ty::PTR),
+                    "ptr.field takes a ptr and yields a ptr",
+                )
             }
             Op::Load => {
                 arity(1)?;
@@ -973,7 +981,10 @@ impl Verifier<'_> {
             Op::Poll | Op::DepthEnter | Op::DepthLeave => arity(0),
             Op::CleanupRun => {
                 arity(1)?;
-                want(t(0) == Ty::INT, "cleanup.run takes the handle returned by cleanup.push")
+                want(
+                    t(0) == Ty::INT,
+                    "cleanup.run takes the handle returned by cleanup.push",
+                )
             }
             Op::CleanupPush => {
                 arity(1)?;

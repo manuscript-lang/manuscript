@@ -664,11 +664,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.blocks = vec![None; f.blocks.len()];
         self.vals = vec![Vec::new(); f.values.len()];
         for b in &rpo {
-            let cb = if b.index() == 0 {
-                self.b.create_block()
-            } else {
-                self.b.create_block()
-            };
+            let cb = self.b.create_block();
             self.blocks[b.index()] = Some(cb);
             if b.index() == 0 {
                 self.b.append_block_params_for_function_params(cb);
@@ -1142,11 +1138,8 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let v = self.a(inst, 0);
                 let nullable = self.opt_nullable(ty);
                 if inst.op == Op::OptUnwrap && checks {
-                    let none = if nullable {
-                        self.b.ins().icmp_imm_s(IntCC::Equal, v[0], 0)
-                    } else {
-                        self.b.ins().icmp_imm_s(IntCC::Equal, v[0], 0)
-                    };
+                    // Both layouts keep the presence word (null pointer or tag) first.
+                    let none = self.b.ins().icmp_imm_s(IntCC::Equal, v[0], 0);
                     self.fault_if(none, "msrt_fault_unwrap_none", vec![]);
                 }
                 if nullable { v } else { v[1..].to_vec() }

@@ -157,10 +157,10 @@ impl<'m> Layouts<'m> {
             }
             seen.push(c);
             // Stop at other boxed alternatives: they are one pointer.
-            if let TyKind::Alt(a) = self.m.types.kind(c) {
-                if self.is_boxed(*a) {
-                    continue;
-                }
+            if let TyKind::Alt(a) = self.m.types.kind(c)
+                && self.is_boxed(*a)
+            {
+                continue;
             }
             if self.reaches_by_value(c, target, seen) {
                 return true;
@@ -174,17 +174,17 @@ impl<'m> Layouts<'m> {
         if let Some(s) = self.cache.borrow().get(&ty) {
             return s.clone();
         }
-        if let TyKind::Alt(a) = self.m.types.kind(ty) {
-            if self.is_boxed(*a) {
-                // A boxed alternative is one pointer; this also ends the recursion through its own fields.
-                self.cache.borrow_mut().insert(
-                    ty,
-                    Shape {
-                        leaves: vec![Leaf::I64],
-                        alt: None,
-                    },
-                );
-            }
+        if let TyKind::Alt(a) = self.m.types.kind(ty)
+            && self.is_boxed(*a)
+        {
+            // A boxed alternative is one pointer; this also ends the recursion through its own fields.
+            self.cache.borrow_mut().insert(
+                ty,
+                Shape {
+                    leaves: vec![Leaf::I64],
+                    alt: None,
+                },
+            );
         }
         let s = self.compute(ty);
         self.cache.borrow_mut().insert(ty, s.clone());

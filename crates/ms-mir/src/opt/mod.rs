@@ -36,11 +36,19 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
         return;
     }
     let check = |m: &Module, pass: &str| {
-        if verify {
-            if let Err(errs) = crate::verify::verify_module(m) {
-                let text = errs.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n");
-                panic!("module does not verify after {pass}:\n{text}\n{}", crate::print::print_module(m));
-            }
+        if !verify {
+            return;
+        }
+        if let Err(errs) = crate::verify::verify_module(m) {
+            let text = errs
+                .iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<_>>()
+                .join("\n");
+            panic!(
+                "module does not verify after {pass}:\n{text}\n{}",
+                crate::print::print_module(m)
+            );
         }
     };
     simplify::run(m);
