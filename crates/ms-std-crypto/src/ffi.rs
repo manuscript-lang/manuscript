@@ -264,6 +264,97 @@ pub unsafe extern "C" fn msrt_crypto_hasher_finish(h: *mut HasherObj, out: *mut 
     unsafe { write_bytes(out, &(*(*h).state).finish()) };
 }
 
+// ---- asymmetric ----
+
+/// `ecdsa_generate(curve: Curve)`; `Curve` is passed as its case index.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msrt_crypto_ecdsa_generate(curve: i64, out: *mut VecVal) -> u8 {
+    let Some(curve) = crate::asym::Curve::from_index(curve) else {
+        return CryptoFail::InvalidInput.status();
+    };
+    // SAFETY: `out` is writable.
+    unsafe { crypto_result(crate::asym::ecdsa_generate(curve), out) }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msrt_crypto_public_key_der(key: *const VecVal, out: *mut VecVal) -> u8 {
+    // SAFETY: `key` is live; `out` is writable.
+    unsafe { crypto_result(crate::asym::public_key_der(bytes_ref(key)), out) }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msrt_crypto_ecdh_shared_secret(
+    private_key: *const VecVal,
+    peer: *const VecVal,
+    out: *mut VecVal,
+) -> u8 {
+    // SAFETY: arguments are live; `out` is writable.
+    unsafe {
+        crypto_result(
+            crate::asym::ecdh_shared_secret(bytes_ref(private_key), bytes_ref(peer)),
+            out,
+        )
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msrt_crypto_rsa_generate(bits: i64, out: *mut VecVal) -> u8 {
+    // SAFETY: `out` is writable.
+    unsafe { crypto_result(crate::asym::rsa_generate(bits), out) }
+}
+
+macro_rules! sign_shim {
+    ($name:ident, $f:path) => {
+        #[unsafe(no_mangle)]
+        pub unsafe extern "C" fn $name(
+            private_key: *const VecVal,
+            alg: i64,
+            data: *const VecVal,
+            out: *mut VecVal,
+        ) -> u8 {
+            let Some(alg) = Alg::from_index(alg) else {
+                return CryptoFail::Unsupported.status();
+            };
+            // SAFETY: arguments are live; `out` is writable.
+            unsafe { crypto_result($f(bytes_ref(private_key), alg, bytes_ref(data)), out) }
+        }
+    };
+}
+
+macro_rules! verify_shim {
+    ($name:ident, $f:path) => {
+        #[unsafe(no_mangle)]
+        pub unsafe extern "C" fn $name(
+            public_key: *const VecVal,
+            alg: i64,
+            data: *const VecVal,
+            signature: *const VecVal,
+        ) -> u8 {
+            let Some(alg) = Alg::from_index(alg) else {
+                return 0;
+            };
+            // SAFETY: arguments are live.
+            u8::from(unsafe {
+                $f(
+                    bytes_ref(public_key),
+                    alg,
+                    bytes_ref(data),
+                    bytes_ref(signature),
+                )
+            })
+        }
+    };
+}
+
+sign_shim!(msrt_crypto_ecdsa_sign, crate::asym::ecdsa_sign);
+sign_shim!(msrt_crypto_rsa_sign, crate::asym::rsa_sign);
+sign_shim!(msrt_crypto_rsa_sign_pss, crate::asym::rsa_sign_pss);
+sign_shim!(msrt_crypto_rsa_encrypt, crate::asym::rsa_encrypt);
+sign_shim!(msrt_crypto_rsa_decrypt, crate::asym::rsa_decrypt);
+verify_shim!(msrt_crypto_ecdsa_verify, crate::asym::ecdsa_verify);
+verify_shim!(msrt_crypto_rsa_verify, crate::asym::rsa_verify);
+verify_shim!(msrt_crypto_rsa_verify_pss, crate::asym::rsa_verify_pss);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -300,6 +391,35 @@ mod tests {
             assert_eq!(msrt_crypto_hmac(3, &key, &whole, want.as_mut_ptr()), 0);
             assert_eq!(read(&got.assume_init()), read(&want.assume_init()));
             hasher_drop(h.cast());
+        }
+    }
+    #[test]
+    fn asym_roundtrip() {
+        let (data, other) = (bytes(b"m"), bytes(b"n"));
+        let mut sk = core::mem::MaybeUninit::<VecVal>::uninit();
+        let mut pk = core::mem::MaybeUninit::<VecVal>::uninit();
+        let mut sig = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: buffers are live and initialised by the calls that fill them.
+        unsafe {
+            assert_ne!(msrt_crypto_ecdsa_generate(9, sk.as_mut_ptr()), 0);
+            assert_eq!(msrt_crypto_ecdsa_generate(0, sk.as_mut_ptr()), 0);
+            assert_eq!(msrt_crypto_public_key_der(sk.as_ptr(), pk.as_mut_ptr()), 0);
+            assert_eq!(
+                msrt_crypto_ecdsa_sign(sk.as_ptr(), 3, &data, sig.as_mut_ptr()),
+                0
+            );
+            assert_eq!(
+                msrt_crypto_ecdsa_verify(pk.as_ptr(), 3, &data, sig.as_ptr()),
+                1
+            );
+            assert_eq!(
+                msrt_crypto_ecdsa_verify(pk.as_ptr(), 3, &other, sig.as_ptr()),
+                0
+            );
+            assert_eq!(
+                msrt_crypto_ecdsa_verify(pk.as_ptr(), 99, &data, sig.as_ptr()),
+                0
+            );
         }
     }
 }

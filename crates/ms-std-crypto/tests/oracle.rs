@@ -18,16 +18,25 @@ fn hex(b: &[u8]) -> String {
     out
 }
 
+/// Results over 1 KiB are recorded as their length and SHA-256.
+fn compact(b: &[u8]) -> String {
+    if b.len() > 1024 {
+        let d = digest(Alg::Sha256, b);
+        return format!("x#{}:{}", b.len(), &hex(&d)[1..]);
+    }
+    hex(b)
+}
+
 fn crypto(r: Result<Vec<u8>, CryptoFail>) -> String {
     match r {
-        Ok(b) => format!("ok {}", hex(&b)),
+        Ok(b) => format!("ok {}", compact(&b)),
         Err(e) => format!("err {e:?}"),
     }
 }
 
 fn fail(r: Result<Vec<u8>, Fail>) -> String {
     match r {
-        Ok(b) => format!("ok {}", hex(&b)),
+        Ok(b) => format!("ok {}", compact(&b)),
         Err(e) => format!("err {e:?}"),
     }
 }

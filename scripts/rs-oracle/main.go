@@ -11,6 +11,7 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"bytes"
+	"crypto/sha256"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -434,8 +435,16 @@ var cryptoAlgs = []rt.HashAlgorithm{
 	rt.HashAlgorithm_Sha384{}, rt.HashAlgorithm_Sha512{}, rt.HashAlgorithm_Sha3_256{}, rt.HashAlgorithm_Sha3_384{}, rt.HashAlgorithm_Sha3_512{},
 }
 
+// hbCompact is hb, except that results over 1 KiB are recorded as their length and SHA-256.
+func hbCompact(b *rt.Bytes) string {
+	if b != nil && len(b.Data) > 1024 {
+		return fmt.Sprintf("x#%d:%x", len(b.Data), sha256.Sum256(b.Data))
+	}
+	return hb(b)
+}
+
 func bytesRes(r rt.Result[*rt.Bytes, rt.CryptoError]) string {
-	return strings.Join(okOrErr(r, func(b *rt.Bytes) []string { return []string{hb(b)} }), " ")
+	return strings.Join(okOrErr(r, func(b *rt.Bytes) []string { return []string{hbCompact(b)} }), " ")
 }
 
 func genCrypto(dir string) {
@@ -544,6 +553,7 @@ func genCrypto(dir string) {
 		}
 	}
 	r.write(dir, "crypto.tsv")
+	genCryptoAsym(dir)
 }
 
 // ---- regex ----

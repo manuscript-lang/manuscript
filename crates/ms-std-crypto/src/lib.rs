@@ -136,6 +136,8 @@ macro_rules! with_digest {
     };
 }
 
+pub mod asym;
+
 pub fn digest(alg: Alg, data: &[u8]) -> Vec<u8> {
     with_digest!(alg, D => D::digest(data).to_vec())
 }
