@@ -20,7 +20,23 @@ pub enum JobKind {
         subst: Subst,
     },
     /// The text form of a value of the MIR type.
-    Format(MTy),
+    Format(MTy, bool),
+    /// A lambda body under the instance substitution.
+    Lambda(Rc<LambdaJob>),
+    /// Structural equality of two values of the MIR type.
+    Equal(MTy),
+}
+
+/// A lambda waiting to be lowered.
+pub struct LambdaJob {
+    /// The lambda expression.
+    pub expr: ms_syntax::ast::Expr,
+    /// Module the lambda is written in.
+    pub hir: Rc<ModuleHir>,
+    /// Type variables of the enclosing instance.
+    pub subst: Subst,
+    /// Captured variables in closure-object order.
+    pub captures: Vec<ct::BindingRef>,
 }
 
 /// A function body waiting to be lowered.
@@ -47,6 +63,8 @@ pub struct Cx {
     pub helpers: HashMap<String, FuncId>,
     /// Interface implementation tables built by lowering.
     pub vtables: HashMap<String, ms_mir::ir::VtableId>,
+    /// Every implementation method of the program.
+    pub methods: Vec<ct::MethodRef>,
 }
 
 impl Cx {
@@ -68,6 +86,7 @@ impl Cx {
             queue: Vec::new(),
             helpers: HashMap::new(),
             vtables: HashMap::new(),
+            methods: program.methods.clone(),
         }
     }
 

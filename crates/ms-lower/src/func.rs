@@ -7,7 +7,7 @@ use ms_check::hir::{Callable, CallableKind, ModuleHir};
 use ms_check::types::{self as ct, BindingRef, Subst};
 use ms_mir::builder::{FuncBuilder, Var};
 use ms_mir::ir::{Block, FuncId, Linkage, Loc, Mode, Module, Op, Param, Value};
-use ms_mir::types::Ty as MTy;
+use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::Pos;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -53,6 +53,30 @@ pub(crate) struct FnLower<'a> {
     /// The current position is unreachable.
     pub dead: bool,
     pub ret_ty: MTy,
+    /// The body is bracketed by `depth.enter` / `depth.leave` (the optimizer removes it for non-recursive functions).
+    pub counts_depth: bool,
+    /// Record to build on return and the binding uids of the `var` parameters it carries.
+    pub var_ret: Option<(ms_mir::types::RecId, Vec<usize>)>,
+}
+
+/// Positions (receiver first) of the `var` parameters a callable may change.
+pub(crate) fn var_positions(c: &Callable) -> Vec<usize> {
+    let mut out = Vec::new();
+    let mut base = 0;
+    if c.self_binding.is_some() {
+        if c.func.method().is_some_and(|m| m.mutating) {
+            out.push(0);
+        }
+        base = 1;
+    }
+    if let Some(func) = c.func.func() {
+        for (i, p) in func.params.iter().enumerate() {
+            if p.mutable {
+                out.push(base + i);
+            }
+        }
+    }
+    out
 }
 
 /// The reserved instance key of a callable under a substitution.
@@ -110,8 +134,18 @@ impl Cx {
             });
         }
         let result = ct::sub(&self.callable_result(c)?, subst);
-        let ret = self.lower_ty(m, &result)?;
-        let name = if c.name.as_str().is_empty() {
+        let mut ret = self.lower_ty(m, &result)?;
+        let vars = var_positions(c);
+        if !vars.is_empty() {
+            let mut fields = vec![("result".to_string(), ret)];
+            for (n, p) in vars.iter().enumerate() {
+                fields.push((format!("var{n}"), params[*p].ty));
+            }
+            ret = m.add_record(&format!("{}.vars", c.name), fields).1;
+        }
+        let name = if let ms_syntax::ast::DeclKind::Test(t) = &c.func.decl.decl().kind {
+            format!("test {}", t.name)
+        } else if c.name.as_str().is_empty() {
             "test".to_string()
         } else {
             c.name.to_string()
@@ -155,28 +189,50 @@ pub(crate) fn lower_program(program: &Program, options: &Options) -> Result<Modu
     Ok(m)
 }
 
+/// Lowers the tests of `options.entry` with a runner as the entry; returns the test names.
+pub(crate) fn lower_tests(
+    program: &Program,
+    options: &Options,
+) -> Result<(Module, Vec<String>), Error> {
+    let mut cx = Cx::new(program);
+    let mut m = Module::new("main");
+    let entry_file = ct::n(&options.entry);
+    let tests: Vec<Rc<Callable>> = cx
+        .module(entry_file)?
+        .callables()
+        .into_iter()
+        .filter(|c| c.kind == CallableKind::Test)
+        .map(|c| cx.callables[&(entry_file, c.id())].clone())
+        .collect();
+    let mut ids = Vec::new();
+    let mut names = Vec::new();
+    for c in &tests {
+        if let ms_syntax::ast::DeclKind::Test(t) = &c.func.decl.decl().kind {
+            names.push(t.name.to_string());
+        }
+        ids.push(cx.function_for(&mut m, c, &Subst::new())?);
+    }
+    while let Some(job) = cx.queue.pop() {
+        lower_job(&mut cx, &mut m, job)?;
+    }
+    m.entry = Some(crate::runner::build_runner(&mut m, &ids)?);
+    Ok((m, names))
+}
+
 fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
     let (c, jsubst) = match &job.kind {
         JobKind::Source { callable, subst } => (callable.clone(), subst.clone()),
-        JobKind::Format(t) => return crate::text::build_format(cx, m, job.func, *t),
+        JobKind::Format(t, repr) => {
+            return crate::text::build_format(cx, m, job.func, *t, *repr);
+        }
+        JobKind::Equal(t) => return crate::eq::build_eq(cx, m, job.func, *t),
+        JobKind::Lambda(l) => return crate::closure::build_lambda(cx, m, job.func, l),
     };
     let hir = cx.module(c.module.file)?;
     let file = m.add_file(c.module.file.as_str());
     let proto = m.funcs[job.func.index()].clone();
     let b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
-    let mut fl = FnLower {
-        cx,
-        b,
-        hir,
-        subst: jsubst,
-        file,
-        locals: HashMap::new(),
-        scopes: vec![Vec::new()],
-        temps: Vec::new(),
-        loops: Vec::new(),
-        dead: false,
-        ret_ty: proto.ret,
-    };
+    let mut fl = FnLower::new(cx, b, hir, jsubst, file, proto.ret);
     let result = fl.lower_callable(&c);
     let mut func = fl.b.into_func();
     result?;
@@ -186,6 +242,31 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
 }
 
 impl<'a> FnLower<'a> {
+    pub(crate) fn new(
+        cx: &'a mut Cx,
+        b: FuncBuilder<'a>,
+        hir: Rc<ModuleHir>,
+        subst: Subst,
+        file: u32,
+        ret_ty: MTy,
+    ) -> FnLower<'a> {
+        FnLower {
+            cx,
+            b,
+            hir,
+            subst,
+            file,
+            locals: HashMap::new(),
+            scopes: vec![Vec::new()],
+            temps: Vec::new(),
+            loops: Vec::new(),
+            dead: false,
+            ret_ty,
+            counts_depth: false,
+            var_ret: None,
+        }
+    }
+
     /// The source position as a MIR location.
     pub fn loc(&self, pos: Pos) -> Loc {
         Loc::new(self.file, pos.line, pos.column)
@@ -365,10 +446,24 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return;
         }
-        let v = value.map(|x| self.owned(x));
-        let mark = 0;
-        self.flush_temps(mark);
+        let mut v = value.map(|x| self.owned(x));
+        if let (Some((rid, uids)), Some(r)) = (self.var_ret.clone(), v) {
+            let mut fields = vec![r];
+            for u in uids {
+                let var = self.locals[&u].var;
+                fields.push(self.b.use_var(var));
+            }
+            v = Some(self.b.rec_new(rid, &fields));
+        }
+        // The temporaries stay registered: a conditional return leaves the others running.
+        for t in self.temps.clone().into_iter().rev() {
+            self.b.emit(Op::Drop, &[t], ms_mir::ir::Imm::None, None);
+        }
         self.unwind_to(0);
+        if self.counts_depth {
+            self.b
+                .emit(Op::DepthLeave, &[], ms_mir::ir::Imm::None, None);
+        }
         self.b.ret(v);
         self.terminated();
     }
@@ -383,9 +478,33 @@ impl<'a> FnLower<'a> {
             .chain(c.parameters.iter())
             .cloned()
             .collect();
-        for (b, v) in bindings.iter().zip(params) {
-            self.bind_borrowed(b, v);
+        let vars = var_positions(c);
+        let mut var_uids = Vec::new();
+        for (i, (b, v)) in bindings.iter().zip(params).enumerate() {
+            if vars.contains(&i) {
+                // A `var` parameter is a local the callee owns and hands back on return.
+                let ty = self.ty_of(v);
+                let owned = self.needs_drop(ty);
+                let var = self
+                    .b
+                    .declare_var(ty, if owned { Mode::Own } else { Mode::Borrow });
+                let o = self.owned(Val { v, own: false });
+                self.b.def_var(var, o);
+                self.locals.insert(b.uid, Local { var, ty });
+                var_uids.push(b.uid);
+            } else {
+                self.bind_borrowed(b, v);
+            }
         }
+        if !var_uids.is_empty() {
+            let TyKind::Rec(rid) = self.b.m.types.kind(self.ret_ty).clone() else {
+                return Err(Error::new("var parameters without a result record"));
+            };
+            self.var_ret = Some((rid, var_uids));
+        }
+        self.counts_depth = true;
+        self.b
+            .emit(Op::DepthEnter, &[], ms_mir::ir::Imm::None, None);
         if let Some(f) = &c.fixture {
             return Err(Error::new(format!(
                 "fixtures are not supported ({})",
@@ -401,7 +520,24 @@ impl<'a> FnLower<'a> {
                 if !self.dead {
                     // Falling off the end returns Unit.
                     let u = self.b.unit();
-                    let ret = self.ret_ty;
+                    let ret = match &self.var_ret {
+                        Some((rid, _)) => self.b.m.records[rid.index()].fields[0].1,
+                        None => self.ret_ty,
+                    };
+                    if c.kind == CallableKind::Test {
+                        // A test that finishes passes.
+                        let TyKind::Alt(a) = self.b.m.types.kind(ret).clone() else {
+                            return Err(Error::new("a test must return a Result"));
+                        };
+                        let ok = self.b.m.alts[a.index()]
+                            .cases
+                            .iter()
+                            .position(|k| k.name == "ok")
+                            .ok_or_else(|| Error::new("a test must return a Result"))?;
+                        let v = self.b.alt_new(a, ok as u32, &[u]);
+                        self.emit_return(Some(Val { v, own: true }));
+                        return Ok(());
+                    }
                     if ret != MTy::UNIT {
                         return Err(Error::new(format!(
                             "function {} can fall off its end",

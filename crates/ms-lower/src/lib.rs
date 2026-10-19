@@ -7,11 +7,18 @@
 //! calls (`ms-rt`) or small MIR sequences.
 
 mod call;
+mod closure;
 mod cx;
+mod eq;
 mod expr;
 mod func;
+mod iface;
+mod matching;
 mod native;
+mod rtcall;
+mod runner;
 mod stmt;
+mod testing;
 mod text;
 
 pub mod dump;
@@ -47,6 +54,14 @@ pub struct Options {
     /// Module file whose `main` is the program entry.
     pub entry: String,
 }
+
+/// Lowers the tests of the entry module under a runner entry; returns the module and test names.
+pub fn lower_tests(program: &Program, options: &Options) -> Result<(Module, Vec<String>), Error> {
+    func::lower_tests(program, options)
+}
+
+/// The marker a failed test writes to stderr ahead of its message.
+pub use runner::FAILURE_MARKER;
 
 /// Lowers a checked program (no diagnostics) to a MIR module with `main` as the entry.
 pub fn lower_program(program: &Program, options: &Options) -> Result<Module, Error> {

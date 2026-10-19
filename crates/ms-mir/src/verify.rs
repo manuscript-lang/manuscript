@@ -967,8 +967,18 @@ impl Verifier<'_> {
                     return Err("missing type".into());
                 };
                 want(
-                    t(0) == Ty::PTR && res == Some(ty) && !m.needs_drop(ty),
-                    "load reads a non-droppable value through a ptr",
+                    t(0) == Ty::PTR && res == Some(ty),
+                    "load reads a value through a ptr; a droppable result is a borrow",
+                )
+            }
+            Op::Take => {
+                arity(1)?;
+                let Imm::Ty(ty) = inst.imm else {
+                    return Err("missing type".into());
+                };
+                want(
+                    t(0) == Ty::PTR && res == Some(ty),
+                    "take moves a value out of memory through a ptr; the result is owned",
                 )
             }
             Op::Store => {

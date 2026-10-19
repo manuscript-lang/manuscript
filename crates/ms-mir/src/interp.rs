@@ -795,7 +795,7 @@ impl<'m> Interp<'m> {
                     "interior pointers are not supported by the interpreter",
                 ));
             }
-            Op::Load => {
+            Op::Load | Op::Take => {
                 let Val::Ptr(p) = &regs[a[0].index()] else {
                     return Err(Raw::internal("load through a non-pointer"));
                 };
