@@ -108,7 +108,9 @@ impl<'a> FnLower<'a> {
         let mut places: Vec<Option<Expr>> = vec![None; names.len()];
         let vars = self.cx.var_positions(callee);
         let offset = usize::from(callee.self_binding.is_some());
+        let mut read_at = Vec::new();
         for (n, a) in view.arguments.iter().enumerate() {
+            let at = self.b.current();
             let x = self.expr(a.expr)?;
             if self.dead {
                 return Ok(Args { slots, places });
@@ -134,6 +136,12 @@ impl<'a> FnLower<'a> {
                 places[idx] = Some(a.expr.clone());
             }
             slots[idx] = Some(x);
+            read_at.push((idx, a.expr, at));
+        }
+        for (idx, expr, at) in read_at {
+            if let Some(x) = slots[idx] {
+                slots[idx] = Some(self.refresh(expr, x, at)?);
+            }
         }
         for i in 0..slots.len() {
             if slots[i].is_none() {
@@ -141,6 +149,31 @@ impl<'a> FnLower<'a> {
             }
         }
         Ok(Args { slots, places })
+    }
+
+    /// Whether the variable at the root of the place holds its value by ownership: a borrowed
+    /// one (a parameter of a default frame) takes no update.
+    fn place_is_owned(&mut self, place: &Expr) -> bool {
+        let Some(uid) = crate::mutation::place_root(&self.hir, place) else {
+            return false;
+        };
+        self.locals
+            .get(&uid)
+            .is_some_and(|l| !self.needs_drop(l.ty) || self.b.var_mode(l.var) == Mode::Own)
+    }
+
+    /// Reads a borrowed place again when evaluating something after it started a new block: a
+    /// variable's value is passed along the branches, so the earlier read no longer stands.
+    pub(crate) fn refresh(
+        &mut self,
+        e: &Expr,
+        x: Val,
+        at: ms_mir::ir::Block,
+    ) -> Result<Val, Error> {
+        if x.own || self.dead || self.b.current() == at || !self.is_place(e) {
+            return Ok(x);
+        }
+        self.expr(e)
     }
 
     /// Registers an owned value as a temporary and views it as a borrow, so a `try` evaluated
@@ -256,7 +289,7 @@ impl<'a> FnLower<'a> {
             let new = self.move_out(slot, ty);
             let target = args.places.get(p).cloned().flatten();
             match target {
-                Some(place) if self.is_place(&place) => {
+                Some(place) if self.is_place(&place) && self.place_is_owned(&place) => {
                     let mut new = Some(new);
                     self.place_update(&place, &mut |s, old| {
                         // A moved value has already left the variable.
@@ -333,8 +366,15 @@ impl<'a> FnLower<'a> {
         let c = self.callable_of_decl(m.module, Some(decl.id()))?;
         let rt = self.ety(recv_expr);
         let mut subst = Subst::new();
-        let vars = ct::variable_set(&m.variables);
-        if !ct::unify(&m.receiver, &rt, &vars, &mut subst) {
+        // The checked reference fixes an implementation's variables; its declaration keeps them.
+        let declared = self
+            .cx
+            .methods
+            .iter()
+            .find(|d| d.module == m.module && d.decl.as_ref().map(|x| x.id()) == Some(decl.id()))
+            .unwrap_or(m);
+        let vars = ct::variable_set(&declared.variables);
+        if !ct::unify(&declared.receiver, &rt, &vars, &mut subst) {
             return Err(Error::new("cannot bind method receiver type"));
         }
         for (i, v) in m.variables.iter().enumerate() {
@@ -356,10 +396,12 @@ impl<'a> FnLower<'a> {
             recv
         };
         let names = self.param_names(&c);
+        let at = self.b.current();
         let args = self.eval_args(view, &names, &c, &subst)?;
         if self.dead {
             return Ok(recv);
         }
+        let recv = self.refresh(recv_expr, recv, at)?;
         let mut all = vec![Some(recv)];
         all.extend(args.slots);
         let mut places = vec![

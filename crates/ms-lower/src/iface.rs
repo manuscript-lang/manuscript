@@ -9,6 +9,17 @@ use ms_mir::ir::{FuncKind, Imm, Linkage, Mode, Module, Op, Param, VtableDef, Vta
 use ms_mir::types::{IfaceId, Ty as MTy, TyKind};
 
 impl Cx {
+    /// The table of `concrete`'s methods for the interface, created on first use.
+    pub(crate) fn vtable_id(
+        &mut self,
+        m: &mut Module,
+        concrete: &ct::Ty,
+        iface: IfaceId,
+    ) -> Result<VtableId, Error> {
+        let data_ty = self.lower_ty(m, concrete)?;
+        self.vtable_for(m, concrete, data_ty, iface)
+    }
+
     /// The table of `concrete`'s methods for the interface, one wrapper per operation.
     fn vtable_for(
         &mut self,

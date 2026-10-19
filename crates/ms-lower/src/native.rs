@@ -178,10 +178,12 @@ impl<'a> FnLower<'a> {
         recv: Val,
     ) -> Result<Val, Error> {
         let native = m.native.as_str();
+        let at = self.b.current();
         let args = self.native_args(view)?;
         if self.dead {
             return Ok(recv);
         }
+        let recv = self.refresh(recv_expr, recv, at)?;
         self.at(e.pos);
         if let Some((_, sym)) = STRING_TO_STRING.iter().find(|(n, _)| *n == native) {
             let r = self.borrow(recv);
@@ -1354,11 +1356,14 @@ impl<'a> FnLower<'a> {
     /// The written arguments of a native call in order; `wrapped` marks values meant for an `Optional` parameter.
     pub(crate) fn native_args(&mut self, view: &CallView<'_>) -> Result<Vec<NArg>, Error> {
         let mut out = Vec::new();
+        let mut read_at = Vec::new();
         for (n, a) in view.arguments.iter().enumerate() {
+            let at = self.b.current();
             let val = self.expr(a.expr)?;
             if self.dead {
                 break;
             }
+            read_at.push((a.expr, at));
             let later_try = view.arguments[n + 1..]
                 .iter()
                 .any(|l| crate::mutation::has_try(l.expr));
@@ -1368,6 +1373,9 @@ impl<'a> FnLower<'a> {
                 val,
                 wrapped: a.wrap_optional.is_some(),
             });
+        }
+        for (arg, (expr, at)) in out.iter_mut().zip(read_at) {
+            arg.val = self.refresh(expr, arg.val, at)?;
         }
         Ok(out)
     }

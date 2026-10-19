@@ -797,6 +797,18 @@ impl Verifier<'_> {
                     "iface.new wraps the vtable's data type",
                 )
             }
+            Op::IfaceIs => {
+                arity(1)?;
+                let Imm::Vtable(v) = inst.imm else {
+                    return Err("missing vtable".into());
+                };
+                let vt = m.vtables.get(v.index()).ok_or("bad vtable")?;
+                want(
+                    matches!(m.types.kind(t(0)), TyKind::Iface(i) if *i == vt.iface)
+                        && res == Some(Ty::BOOL),
+                    "iface.is tests an interface value of the vtable's interface and yields bool",
+                )
+            }
             Op::IfaceData => {
                 arity(1)?;
                 want(
