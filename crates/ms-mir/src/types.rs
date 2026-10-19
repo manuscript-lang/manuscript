@@ -122,6 +122,11 @@ impl TyTable {
         t
     }
 
+    /// The type with this shape, if it was interned.
+    pub fn find(&self, kind: &TyKind) -> Option<Ty> {
+        self.index.get(kind).copied()
+    }
+
     /// The shape of `ty`.
     pub fn kind(&self, ty: Ty) -> &TyKind {
         &self.kinds[ty.index()]

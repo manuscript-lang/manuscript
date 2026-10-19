@@ -1,0 +1,18 @@
+[package]
+name = "ms-clif"
+version = "0.0.0"
+edition.workspace = true
+publish.workspace = true
+description = "Manuscript native backend: lowers MIR to Cranelift, emits an object file, links with the system toolchain"
+
+[dependencies]
+ms-mir = { path = "../ms-mir" }
+cranelift-codegen = "=0.136.0"
+cranelift-frontend = "=0.136.0"
+cranelift-module = "=0.136.0"
+cranelift-object = "=0.136.0"
+cranelift-native = "=0.136.0"
+target-lexicon = "0.13"
+
+[lints]
+workspace = true

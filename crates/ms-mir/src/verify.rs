@@ -118,8 +118,14 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
     };
     match inst.op {
         Op::RecNew | Op::AltNew | Op::ListLit | Op::ClosureNew => all(Mode::Own),
-        Op::RecSet | Op::ListPush => one(1),
-        Op::ListSet | Op::ListSetNn | Op::ListSetU => one(2),
+        Op::RecSet | Op::ListPush => all(Mode::Own),
+        Op::ListSet | Op::ListSetNn | Op::ListSetU => {
+            let mut v = vec![Mode::Own; n];
+            if n > 1 {
+                v[1] = Mode::Borrow;
+            }
+            v
+        }
         Op::OptSome | Op::IfaceNew | Op::Drop | Op::GlobalSet | Op::SharedNew => one(0),
         Op::DropIf => one(1),
         Op::Call => match inst.imm {
@@ -422,7 +428,7 @@ impl Verifier<'_> {
                     want(res == Some(fty), "rec.get yields the field type")
                 } else {
                     arity(2)?;
-                    want(t(1) == fty, "stored value must have the field type")
+                    want(t(1) == fty && res == Some(t(0)), "stored value must have the field type; yields the updated record")
                 }
             }
             Op::AltNew => {
@@ -474,12 +480,12 @@ impl Verifier<'_> {
             Op::ListSet | Op::ListSetNn | Op::ListSetU => {
                 arity(3)?;
                 let elem = m.list_elem(t(0)).ok_or("operand 0 must be a list")?;
-                want(t(1) == Ty::INT && t(2) == elem, "index must be int; value must be the element type")
+                want(t(1) == Ty::INT && t(2) == elem && res == Some(t(0)), "index must be int; value must be the element type; yields the updated list")
             }
             Op::ListPush => {
                 arity(2)?;
                 let elem = m.list_elem(t(0)).ok_or("operand 0 must be a list")?;
-                want(t(1) == elem, "value must be the element type")
+                want(t(1) == elem && res == Some(t(0)), "value must be the element type; yields the updated list")
             }
             Op::OptSome => {
                 arity(1)?;
