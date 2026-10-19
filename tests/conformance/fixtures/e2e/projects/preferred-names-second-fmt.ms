@@ -14,11 +14,11 @@ impl Hashable for Key:
     fn hash() Int: self.label.scalar_length()
 
 export fn second_run() Set[Key]:
-    let items = Set[Key]([Key(1, "original")])
+    var items = Set[Key]([Key(1, "original")])
     let add = items.add
     let remove = items.remove
     add(Key(1, "duplicate"))
-    add_generic(items, Key(2, "original"))
+    add_generic(var items, Key(2, "original"))
     remove(Key(99, "duplicate"))
-    remove_generic(items, Key(1, "absent"))
+    remove_generic(var items, Key(1, "absent"))
     return items
