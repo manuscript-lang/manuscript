@@ -46,7 +46,10 @@ fn is_ident_char(c: char) -> bool {
 }
 
 fn tokenize(line: &str, lineno: usize) -> Result<Vec<Tok>, ParseError> {
-    let err = |m: &str| ParseError { line: lineno, message: m.to_string() };
+    let err = |m: &str| ParseError {
+        line: lineno,
+        message: m.to_string(),
+    };
     let cs: Vec<char> = line.chars().collect();
     let mut i = 0;
     let mut out = Vec::new();
@@ -60,12 +63,16 @@ fn tokenize(line: &str, lineno: usize) -> Result<Vec<Tok>, ParseError> {
             i += 1;
             let mut s = String::new();
             loop {
-                let Some(&c) = cs.get(i) else { return Err(err("unterminated string")) };
+                let Some(&c) = cs.get(i) else {
+                    return Err(err("unterminated string"));
+                };
                 i += 1;
                 match c {
                     '"' => break,
                     '\\' => {
-                        let Some(&e) = cs.get(i) else { return Err(err("bad escape")) };
+                        let Some(&e) = cs.get(i) else {
+                            return Err(err("bad escape"));
+                        };
                         i += 1;
                         match e {
                             'n' => s.push('\n'),
@@ -74,9 +81,16 @@ fn tokenize(line: &str, lineno: usize) -> Result<Vec<Tok>, ParseError> {
                             '"' => s.push('"'),
                             '\\' => s.push('\\'),
                             'x' => {
-                                let h: String = cs.get(i..i + 2).ok_or_else(|| err("bad \\x escape"))?.iter().collect();
+                                let h: String = cs
+                                    .get(i..i + 2)
+                                    .ok_or_else(|| err("bad \\x escape"))?
+                                    .iter()
+                                    .collect();
                                 i += 2;
-                                s.push(u8::from_str_radix(&h, 16).map_err(|_| err("bad \\x escape"))? as char);
+                                s.push(
+                                    u8::from_str_radix(&h, 16).map_err(|_| err("bad \\x escape"))?
+                                        as char,
+                                );
                             }
                             _ => return Err(err("unknown escape")),
                         }
@@ -95,7 +109,11 @@ fn tokenize(line: &str, lineno: usize) -> Result<Vec<Tok>, ParseError> {
             if name.is_empty() {
                 return Err(err("empty name"));
             }
-            out.push(if c == '%' { Tok::Val(name) } else { Tok::At(name) });
+            out.push(if c == '%' {
+                Tok::Val(name)
+            } else {
+                Tok::At(name)
+            });
         } else if c == '!' {
             i += 1;
             let start = i;
@@ -108,11 +126,17 @@ fn tokenize(line: &str, lineno: usize) -> Result<Vec<Tok>, ParseError> {
                 return Err(err("location must be !file:line:col"));
             }
             let n = |s: &str| s.parse::<u32>().map_err(|_| err("bad location"));
-            out.push(Tok::Loc(Loc { file: n(p[0])?, line: n(p[1])?, col: n(p[2])? }));
+            out.push(Tok::Loc(Loc {
+                file: n(p[0])?,
+                line: n(p[1])?,
+                col: n(p[2])?,
+            }));
         } else if c == '-' && cs.get(i + 1) == Some(&'>') {
             out.push(Tok::Arrow);
             i += 2;
-        } else if c.is_ascii_digit() || (c == '-' && cs.get(i + 1).is_some_and(|d| d.is_ascii_digit())) {
+        } else if c.is_ascii_digit()
+            || (c == '-' && cs.get(i + 1).is_some_and(|d| d.is_ascii_digit()))
+        {
             let start = i;
             i += 1;
             if c == '0' && cs.get(i) == Some(&'x') {
@@ -156,7 +180,10 @@ struct Cur<'a> {
 
 impl Cur<'_> {
     fn err<T>(&self, msg: impl Into<String>) -> Result<T, ParseError> {
-        Err(ParseError { line: self.line, message: msg.into() })
+        Err(ParseError {
+            line: self.line,
+            message: msg.into(),
+        })
     }
     fn peek(&self) -> Option<&Tok> {
         self.toks.get(self.pos)
@@ -175,7 +202,11 @@ impl Cur<'_> {
         }
     }
     fn expect_p(&mut self, c: char) -> Result<(), ParseError> {
-        if self.eat_p(c) { Ok(()) } else { self.err(format!("expected '{c}', found {:?}", self.peek())) }
+        if self.eat_p(c) {
+            Ok(())
+        } else {
+            self.err(format!("expected '{c}', found {:?}", self.peek()))
+        }
     }
     fn ident(&mut self) -> Result<String, ParseError> {
         match self.next() {
@@ -230,6 +261,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
     let mut m = Module::new("module");
     // Group lines into items.
     let mut items: Vec<(usize, String)> = Vec::new();
+    #[allow(clippy::type_complexity)]
     let mut fns: Vec<(usize, String, Vec<(usize, String)>)> = Vec::new();
     let mut lines = src.lines().enumerate();
     while let Some((n, raw)) = lines.next() {
@@ -248,36 +280,59 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                 body.push((bn + 1, braw.to_string()));
             }
             if !closed {
-                return Err(ParseError { line: n + 1, message: "function body is not closed with '}'".into() });
+                return Err(ParseError {
+                    line: n + 1,
+                    message: "function body is not closed with '}'".into(),
+                });
             }
             fns.push((n + 1, line.to_string(), body));
         } else {
             items.push((n + 1, line.to_string()));
         }
     }
-    let toks: Vec<(usize, Vec<Tok>)> = items.iter().map(|(n, l)| tokenize(l, *n).map(|t| (*n, t))).collect::<Result<_, _>>()?;
+    let toks: Vec<(usize, Vec<Tok>)> = items
+        .iter()
+        .map(|(n, l)| tokenize(l, *n).map(|t| (*n, t)))
+        .collect::<Result<_, _>>()?;
     // Pass A: names of records, alternatives and interfaces.
     for (n, t) in &toks {
-        let mut c = Cur { toks: t, pos: 0, line: *n };
+        let mut c = Cur {
+            toks: t,
+            pos: 0,
+            line: *n,
+        };
         match c.ident()?.as_str() {
             "record" => {
                 let name = c.ident()?;
-                m.records.push(RecordDef { name, fields: Vec::new() });
+                m.records.push(RecordDef {
+                    name,
+                    fields: Vec::new(),
+                });
             }
             "alt" => {
                 let name = c.ident()?;
-                m.alts.push(AltDef { name, cases: Vec::new() });
+                m.alts.push(AltDef {
+                    name,
+                    cases: Vec::new(),
+                });
             }
             "iface" => {
                 let name = c.ident()?;
-                m.ifaces.push(IfaceDef { name, methods: Vec::new() });
+                m.ifaces.push(IfaceDef {
+                    name,
+                    methods: Vec::new(),
+                });
             }
             _ => {}
         }
     }
     // Pass B: bodies of type declarations.
     for (n, t) in &toks {
-        let mut c = Cur { toks: t, pos: 0, line: *n };
+        let mut c = Cur {
+            toks: t,
+            pos: 0,
+            line: *n,
+        };
         let kw = c.ident()?;
         match kw.as_str() {
             "record" => {
@@ -311,14 +366,21 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                             c.eat_p(',');
                         }
                     }
-                    cases.push(CaseDef { name: cname, fields });
+                    cases.push(CaseDef {
+                        name: cname,
+                        fields,
+                    });
                     c.eat_p(',');
                 }
                 m.alts[id.index()].cases = cases;
             }
             "iface" => {
                 let name = c.ident()?;
-                let id = m.ifaces.iter().position(|i| i.name == name).expect("registered");
+                let id = m
+                    .ifaces
+                    .iter()
+                    .position(|i| i.name == name)
+                    .expect("registered");
                 c.expect_p('{')?;
                 let mut methods = Vec::new();
                 while !c.eat_p('}') {
@@ -335,7 +397,11 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     } else {
                         Ty::UNIT
                     };
-                    methods.push(MethodSig { name: mname, params, ret });
+                    methods.push(MethodSig {
+                        name: mname,
+                        params,
+                        ret,
+                    });
                     c.eat_p(',');
                 }
                 m.ifaces[id].methods = methods;
@@ -347,7 +413,11 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
     let mut entry_name = None;
     let mut vtable_items = Vec::new();
     for (n, t) in &toks {
-        let mut c = Cur { toks: t, pos: 0, line: *n };
+        let mut c = Cur {
+            toks: t,
+            pos: 0,
+            line: *n,
+        };
         let kw = c.ident()?;
         match kw.as_str() {
             "module" => {
@@ -357,7 +427,10 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                 };
             }
             "file" => {
-                let idx: usize = c.num()?.parse().map_err(|_| ParseError { line: *n, message: "bad file index".into() })?;
+                let idx: usize = c.num()?.parse().map_err(|_| ParseError {
+                    line: *n,
+                    message: "bad file index".into(),
+                })?;
                 let path = c.string()?;
                 if idx != m.files.len() {
                     return c.err("files must be numbered consecutively from 0");
@@ -371,7 +444,10 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                 while !c.eat_p(')') {
                     let own = c.eat_ident("own");
                     let ty = parse_ty(&mut c, &mut m)?;
-                    params.push(Param { ty, mode: if own { Mode::Own } else { Mode::Borrow } });
+                    params.push(Param {
+                        ty,
+                        mode: if own { Mode::Own } else { Mode::Borrow },
+                    });
                     c.eat_p(',');
                 }
                 let ret = if c.peek() == Some(&Tok::Arrow) {
@@ -388,7 +464,13 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                         o => return c.err(format!("unknown extern attribute {o}")),
                     }
                 }
-                m.externs.push(ExternDef { name, params, ret, noreturn, pure_ });
+                m.externs.push(ExternDef {
+                    name,
+                    params,
+                    ret,
+                    noreturn,
+                    pure_,
+                });
             }
             "global" => {
                 let name = c.at()?;
@@ -405,7 +487,11 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
     let mut headers = Vec::new();
     for (n, line, body) in &fns {
         let toks = tokenize(line, *n)?;
-        let mut c = Cur { toks: &toks, pos: 0, line: *n };
+        let mut c = Cur {
+            toks: &toks,
+            pos: 0,
+            line: *n,
+        };
         c.ident()?; // fn
         let name = c.at()?;
         c.expect_p('(')?;
@@ -416,7 +502,10 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
             c.expect_p(':')?;
             let own = c.eat_ident("own");
             let ty = parse_ty(&mut c, &mut m)?;
-            params.push(Param { ty, mode: if own { Mode::Own } else { Mode::Borrow } });
+            params.push(Param {
+                ty,
+                mode: if own { Mode::Own } else { Mode::Borrow },
+            });
             c.eat_p(',');
         }
         let ret = if c.peek() == Some(&Tok::Arrow) {
@@ -471,16 +560,30 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
             return c.err(format!("function @{name} defined twice"));
         }
         m.add_func(f);
-        headers.push(FnHeader { names, body: body.clone() });
+        headers.push(FnHeader {
+            names,
+            body: body.clone(),
+        });
     }
     // Vtables and entry need function ids.
     for (n, t) in vtable_items {
-        let mut c = Cur { toks: &t, pos: 0, line: n };
+        let mut c = Cur {
+            toks: &t,
+            pos: 0,
+            line: n,
+        };
         c.ident()?;
         let name = c.at()?;
         c.expect_p(':')?;
         let iname = c.ident()?;
-        let iface = m.ifaces.iter().position(|i| i.name == iname).ok_or_else(|| ParseError { line: n, message: format!("unknown interface {iname}") })?;
+        let iface = m
+            .ifaces
+            .iter()
+            .position(|i| i.name == iname)
+            .ok_or_else(|| ParseError {
+                line: n,
+                message: format!("unknown interface {iname}"),
+            })?;
         if !c.eat_ident("for") {
             return c.err("expected 'for'");
         }
@@ -489,13 +592,24 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
         let mut methods = Vec::new();
         while !c.eat_p('}') {
             let f = c.at()?;
-            methods.push(m.func_by_name(&f).ok_or_else(|| ParseError { line: n, message: format!("unknown function @{f}") })?);
+            methods.push(m.func_by_name(&f).ok_or_else(|| ParseError {
+                line: n,
+                message: format!("unknown function @{f}"),
+            })?);
             c.eat_p(',');
         }
-        m.vtables.push(VtableDef { name, iface: IfaceId(iface as u32), methods, data_ty });
+        m.vtables.push(VtableDef {
+            name,
+            iface: IfaceId(iface as u32),
+            methods,
+            data_ty,
+        });
     }
     if let Some((e, n)) = entry_name {
-        m.entry = Some(m.func_by_name(&e).ok_or_else(|| ParseError { line: n, message: format!("unknown entry function @{e}") })?);
+        m.entry = Some(m.func_by_name(&e).ok_or_else(|| ParseError {
+            line: n,
+            message: format!("unknown entry function @{e}"),
+        })?);
     }
     // Pass E: bodies.
     for (i, h) in headers.iter().enumerate() {
@@ -518,7 +632,11 @@ fn parse_ty(c: &mut Cur, m: &mut Module) -> Result<Ty, ParseError> {
             c.expect_p('<')?;
             let inner = parse_ty(c, m)?;
             c.expect_p('>')?;
-            if name == "list" { m.types.list(inner) } else { m.types.opt(inner) }
+            if name == "list" {
+                m.types.list(inner)
+            } else {
+                m.types.opt(inner)
+            }
         }
         "fn" => {
             c.expect_p('(')?;
@@ -536,7 +654,14 @@ fn parse_ty(c: &mut Cur, m: &mut Module) -> Result<Ty, ParseError> {
         }
         "dyn" => {
             let n = c.ident()?;
-            let id = m.ifaces.iter().position(|i| i.name == n).ok_or_else(|| ParseError { line: c.line, message: format!("unknown interface {n}") })?;
+            let id = m
+                .ifaces
+                .iter()
+                .position(|i| i.name == n)
+                .ok_or_else(|| ParseError {
+                    line: c.line,
+                    message: format!("unknown interface {n}"),
+                })?;
             m.types.iface(IfaceId(id as u32))
         }
         "obj" => {
@@ -592,14 +717,25 @@ fn define(cx: &mut BodyCx, f: &mut Func, c: &Cur, name: &str, ty: Ty) -> Result<
 }
 
 fn parse_body(m: &mut Module, id: FuncId, h: &FnHeader) -> Result<(), ParseError> {
-    let mut f = std::mem::replace(&mut m.funcs[id.index()], Func::new("", Vec::new(), Ty::UNIT));
-    let mut cx = BodyCx { vals: HashMap::new(), defined: Vec::new(), blocks: HashMap::new(), terminated: Vec::new() };
+    let mut f = std::mem::replace(
+        &mut m.funcs[id.index()],
+        Func::new("", Vec::new(), Ty::UNIT),
+    );
+    let mut cx = BodyCx {
+        vals: HashMap::new(),
+        defined: Vec::new(),
+        blocks: HashMap::new(),
+        terminated: Vec::new(),
+    };
     cx.defined.resize(f.values.len(), false);
     let line0 = h.body.first().map(|b| b.0).unwrap_or(0);
     for (i, name) in h.names.iter().enumerate() {
         let v = f.blocks[0].params[i].value;
         if cx.vals.insert(name.clone(), v).is_some() {
-            return Err(ParseError { line: line0, message: format!("parameter %{name} defined twice") });
+            return Err(ParseError {
+                line: line0,
+                message: format!("parameter %{name} defined twice"),
+            });
         }
         cx.defined[v.index()] = true;
     }
@@ -611,29 +747,45 @@ fn parse_body(m: &mut Module, id: FuncId, h: &FnHeader) -> Result<(), ParseError
             lines.push((*n, t));
         }
     }
-    let is_label = |t: &[Tok]| matches!(t.first(), Some(Tok::Ident(_))) && t.last() == Some(&Tok::P(':')) && !matches!(t.first(), Some(Tok::Ident(s)) if s == "switch");
+    let is_label = |t: &[Tok]| {
+        matches!(t.first(), Some(Tok::Ident(_)))
+            && t.last() == Some(&Tok::P(':'))
+            && !matches!(t.first(), Some(Tok::Ident(s)) if s == "switch")
+    };
     let mut first = true;
     for (n, t) in &lines {
         if is_label(t) {
-            let Tok::Ident(name) = &t[0] else { unreachable!() };
+            let Tok::Ident(name) = &t[0] else {
+                unreachable!()
+            };
             if first {
                 cx.blocks.insert(name.clone(), Block(0));
                 first = false;
             } else {
                 if cx.blocks.contains_key(name) {
-                    return Err(ParseError { line: *n, message: format!("block {name} defined twice") });
+                    return Err(ParseError {
+                        line: *n,
+                        message: format!("block {name} defined twice"),
+                    });
                 }
                 let b = f.new_block();
                 cx.blocks.insert(name.clone(), b);
             }
         } else if first {
-            return Err(ParseError { line: *n, message: "function body must start with a block label".into() });
+            return Err(ParseError {
+                line: *n,
+                message: "function body must start with a block label".into(),
+            });
         }
     }
     cx.terminated = vec![false; f.blocks.len()];
     let mut cur: Option<Block> = None;
     for (n, t) in &lines {
-        let mut c = Cur { toks: t, pos: 0, line: *n };
+        let mut c = Cur {
+            toks: t,
+            pos: 0,
+            line: *n,
+        };
         if is_label(t) {
             let name = c.ident()?;
             let b = cx.blocks[&name];
@@ -644,7 +796,10 @@ fn parse_body(m: &mut Module, id: FuncId, h: &FnHeader) -> Result<(), ParseError
                     let own = c.eat_ident("own");
                     let ty = parse_ty(&mut c, m)?;
                     let v = define(&mut cx, &mut f, &c, &vn, ty)?;
-                    f.blocks[b.index()].params.push(BlockParam { value: v, mode: if own { Mode::Own } else { Mode::Borrow } });
+                    f.blocks[b.index()].params.push(BlockParam {
+                        value: v,
+                        mode: if own { Mode::Own } else { Mode::Borrow },
+                    });
                     c.eat_p(',');
                 }
             } else if b.index() == 0 && c.eat_p('(') {
@@ -660,12 +815,18 @@ fn parse_body(m: &mut Module, id: FuncId, h: &FnHeader) -> Result<(), ParseError
         parse_line(m, &mut f, &mut cx, &mut c, b)?;
     }
     if let Some(i) = cx.terminated.iter().position(|t| !t) {
-        return Err(ParseError { line: line0, message: format!("block b{i} of @{} has no terminator", f.name) });
+        return Err(ParseError {
+            line: line0,
+            message: format!("block b{i} of @{} has no terminator", f.name),
+        });
     }
     // Every referenced value must be defined.
     for (name, v) in &cx.vals {
         if !cx.defined.get(v.index()).copied().unwrap_or(false) {
-            return Err(ParseError { line: line0, message: format!("%{name} is used but never defined in @{}", f.name) });
+            return Err(ParseError {
+                line: line0,
+                message: format!("%{name} is used but never defined in @{}", f.name),
+            });
         }
     }
     m.funcs[id.index()] = f;
@@ -674,7 +835,9 @@ fn parse_body(m: &mut Module, id: FuncId, h: &FnHeader) -> Result<(), ParseError
 
 fn parse_target(c: &mut Cur, f: &mut Func, cx: &mut BodyCx) -> Result<Target, ParseError> {
     let name = c.ident()?;
-    let Some(&block) = cx.blocks.get(&name) else { return c.err(format!("unknown block {name}")) };
+    let Some(&block) = cx.blocks.get(&name) else {
+        return c.err(format!("unknown block {name}"));
+    };
     let mut args = Vec::new();
     c.expect_p('(')?;
     while !c.eat_p(')') {
@@ -685,7 +848,13 @@ fn parse_target(c: &mut Cur, f: &mut Func, cx: &mut BodyCx) -> Result<Target, Pa
     Ok(Target { block, args })
 }
 
-fn parse_line(m: &mut Module, f: &mut Func, cx: &mut BodyCx, c: &mut Cur, b: Block) -> Result<(), ParseError> {
+fn parse_line(
+    m: &mut Module,
+    f: &mut Func,
+    cx: &mut BodyCx,
+    c: &mut Cur,
+    b: Block,
+) -> Result<(), ParseError> {
     let mut res_name = None;
     let mut res_ty = None;
     if matches!(c.peek(), Some(Tok::Val(_))) {
@@ -714,7 +883,10 @@ fn parse_line(m: &mut Module, f: &mut Func, cx: &mut BodyCx, c: &mut Cur, b: Blo
             c.expect_p('[')?;
             let mut cases = Vec::new();
             while !c.eat_p(']') {
-                let k: i64 = c.num()?.parse().map_err(|_| ParseError { line: c.line, message: "bad switch constant".into() })?;
+                let k: i64 = c.num()?.parse().map_err(|_| ParseError {
+                    line: c.line,
+                    message: "bad switch constant".into(),
+                })?;
                 c.expect_p(':')?;
                 cases.push((k, parse_target(c, f, cx)?));
                 c.eat_p(',');
@@ -723,7 +895,11 @@ fn parse_line(m: &mut Module, f: &mut Func, cx: &mut BodyCx, c: &mut Cur, b: Blo
                 return c.err("expected 'default'");
             }
             let default = parse_target(c, f, cx)?;
-            Some(Term::Switch { value: value_, cases, default })
+            Some(Term::Switch {
+                value: value_,
+                cases,
+                default,
+            })
         }
         "ret" => {
             if let Some(Tok::Val(_)) = c.peek() {
@@ -757,7 +933,11 @@ fn parse_line(m: &mut Module, f: &mut Func, cx: &mut BodyCx, c: &mut Cur, b: Blo
         if res_name.is_some() {
             return c.err("terminators have no result");
         }
-        let loc = if let Some(Tok::Loc(l)) = c.peek() { *l } else { Loc::NONE };
+        let loc = if let Some(Tok::Loc(l)) = c.peek() {
+            *l
+        } else {
+            Loc::NONE
+        };
         if matches!(c.peek(), Some(Tok::Loc(_))) {
             c.next();
         }
@@ -783,7 +963,11 @@ fn parse_line(m: &mut Module, f: &mut Func, cx: &mut BodyCx, c: &mut Cur, b: Blo
     };
     let info = op.info();
     if info.has_result != res_name.is_some() {
-        return c.err(if info.has_result { format!("{mn} needs a result: %v: type = {mn} ...") } else { format!("{mn} has no result") });
+        return c.err(if info.has_result {
+            format!("{mn} needs a result: %v: type = {mn} ...")
+        } else {
+            format!("{mn} has no result")
+        });
     }
     let imm = match info.imm {
         ImmKind::None => Imm::None,
@@ -793,14 +977,27 @@ fn parse_line(m: &mut Module, f: &mut Func, cx: &mut BodyCx, c: &mut Cur, b: Blo
         },
         ImmKind::Int => {
             let s = c.num()?;
-            Imm::Int(s.parse().map_err(|_| ParseError { line: c.line, message: format!("bad integer {s}") })?)
+            Imm::Int(s.parse().map_err(|_| ParseError {
+                line: c.line,
+                message: format!("bad integer {s}"),
+            })?)
         }
         ImmKind::Float => {
             let s = c.num()?;
             if let Some(h) = s.strip_prefix("0x") {
-                Imm::Float(u64::from_str_radix(h, 16).map_err(|_| ParseError { line: c.line, message: format!("bad float bits {s}") })?)
+                Imm::Float(u64::from_str_radix(h, 16).map_err(|_| ParseError {
+                    line: c.line,
+                    message: format!("bad float bits {s}"),
+                })?)
             } else {
-                Imm::Float(s.parse::<f64>().map_err(|_| ParseError { line: c.line, message: format!("bad float {s}") })?.to_bits())
+                Imm::Float(
+                    s.parse::<f64>()
+                        .map_err(|_| ParseError {
+                            line: c.line,
+                            message: format!("bad float {s}"),
+                        })?
+                        .to_bits(),
+                )
             }
         }
         ImmKind::Bool => match c.ident()?.as_str() {
@@ -814,38 +1011,97 @@ fn parse_line(m: &mut Module, f: &mut Func, cx: &mut BodyCx, c: &mut Cur, b: Blo
         }
         ImmKind::Func => {
             let n = c.at()?;
-            Imm::Func(m.func_by_name(&n).ok_or_else(|| ParseError { line: c.line, message: format!("unknown function @{n}") })?)
+            Imm::Func(m.func_by_name(&n).ok_or_else(|| ParseError {
+                line: c.line,
+                message: format!("unknown function @{n}"),
+            })?)
         }
         ImmKind::Ext => {
             let n = c.at()?;
-            Imm::Ext(ExtId(m.externs.iter().position(|e| e.name == n).ok_or_else(|| ParseError { line: c.line, message: format!("unknown extern @{n}") })? as u32))
+            Imm::Ext(ExtId(
+                m.externs
+                    .iter()
+                    .position(|e| e.name == n)
+                    .ok_or_else(|| ParseError {
+                        line: c.line,
+                        message: format!("unknown extern @{n}"),
+                    })? as u32,
+            ))
         }
         ImmKind::Vtable => {
             let n = c.at()?;
-            Imm::Vtable(VtableId(m.vtables.iter().position(|e| e.name == n).ok_or_else(|| ParseError { line: c.line, message: format!("unknown vtable @{n}") })? as u32))
+            Imm::Vtable(VtableId(
+                m.vtables
+                    .iter()
+                    .position(|e| e.name == n)
+                    .ok_or_else(|| ParseError {
+                        line: c.line,
+                        message: format!("unknown vtable @{n}"),
+                    })? as u32,
+            ))
         }
         ImmKind::Global => {
             let n = c.at()?;
-            Imm::Global(GlobalId(m.globals.iter().position(|e| e.name == n).ok_or_else(|| ParseError { line: c.line, message: format!("unknown global @{n}") })? as u32))
+            Imm::Global(GlobalId(
+                m.globals
+                    .iter()
+                    .position(|e| e.name == n)
+                    .ok_or_else(|| ParseError {
+                        line: c.line,
+                        message: format!("unknown global @{n}"),
+                    })? as u32,
+            ))
         }
         ImmKind::Ty => Imm::Ty(parse_ty(c, m)?),
-        ImmKind::Idx => Imm::Idx(c.num()?.parse().map_err(|_| ParseError { line: c.line, message: "bad index".into() })?),
+        ImmKind::Idx => Imm::Idx(c.num()?.parse().map_err(|_| ParseError {
+            line: c.line,
+            message: "bad index".into(),
+        })?),
         ImmKind::Rec => {
             let n = c.ident()?;
-            Imm::Rec(m.record_by_name(&n).ok_or_else(|| ParseError { line: c.line, message: format!("unknown record {n}") })?)
+            Imm::Rec(m.record_by_name(&n).ok_or_else(|| ParseError {
+                line: c.line,
+                message: format!("unknown record {n}"),
+            })?)
         }
         ImmKind::Field => {
             let n = c.ident()?;
-            let (r, fld) = n.split_once('.').ok_or_else(|| ParseError { line: c.line, message: "expected Record.field".into() })?;
-            let rid = m.record_by_name(r).ok_or_else(|| ParseError { line: c.line, message: format!("unknown record {r}") })?;
-            let fi = m.records[rid.index()].fields.iter().position(|x| x.0 == fld).ok_or_else(|| ParseError { line: c.line, message: format!("unknown field {n}") })?;
+            let (r, fld) = n.split_once('.').ok_or_else(|| ParseError {
+                line: c.line,
+                message: "expected Record.field".into(),
+            })?;
+            let rid = m.record_by_name(r).ok_or_else(|| ParseError {
+                line: c.line,
+                message: format!("unknown record {r}"),
+            })?;
+            let fi = m.records[rid.index()]
+                .fields
+                .iter()
+                .position(|x| x.0 == fld)
+                .ok_or_else(|| ParseError {
+                    line: c.line,
+                    message: format!("unknown field {n}"),
+                })?;
             Imm::Field(rid, fi as u32)
         }
         ImmKind::Case => {
             let n = c.ident()?;
-            let (a, cs) = n.split_once('.').ok_or_else(|| ParseError { line: c.line, message: "expected Alt.Case".into() })?;
-            let aid = m.alt_by_name(a).ok_or_else(|| ParseError { line: c.line, message: format!("unknown alternative {a}") })?;
-            let ci = m.alts[aid.index()].cases.iter().position(|x| x.name == cs).ok_or_else(|| ParseError { line: c.line, message: format!("unknown case {n}") })?;
+            let (a, cs) = n.split_once('.').ok_or_else(|| ParseError {
+                line: c.line,
+                message: "expected Alt.Case".into(),
+            })?;
+            let aid = m.alt_by_name(a).ok_or_else(|| ParseError {
+                line: c.line,
+                message: format!("unknown alternative {a}"),
+            })?;
+            let ci = m.alts[aid.index()]
+                .cases
+                .iter()
+                .position(|x| x.name == cs)
+                .ok_or_else(|| ParseError {
+                    line: c.line,
+                    message: format!("unknown case {n}"),
+                })?;
             Imm::Case(aid, ci as u32)
         }
         ImmKind::AltField => {
@@ -854,16 +1110,50 @@ fn parse_line(m: &mut Module, f: &mut Func, cx: &mut BodyCx, c: &mut Cur, b: Blo
             if parts.len() != 3 {
                 return c.err("expected Alt.Case.field");
             }
-            let aid = m.alt_by_name(parts[0]).ok_or_else(|| ParseError { line: c.line, message: format!("unknown alternative {}", parts[0]) })?;
-            let ci = m.alts[aid.index()].cases.iter().position(|x| x.name == parts[1]).ok_or_else(|| ParseError { line: c.line, message: format!("unknown case {n}") })?;
-            let fi = m.alts[aid.index()].cases[ci].fields.iter().position(|x| x.0 == parts[2]).ok_or_else(|| ParseError { line: c.line, message: format!("unknown field {n}") })?;
+            let aid = m.alt_by_name(parts[0]).ok_or_else(|| ParseError {
+                line: c.line,
+                message: format!("unknown alternative {}", parts[0]),
+            })?;
+            let ci = m.alts[aid.index()]
+                .cases
+                .iter()
+                .position(|x| x.name == parts[1])
+                .ok_or_else(|| ParseError {
+                    line: c.line,
+                    message: format!("unknown case {n}"),
+                })?;
+            let fi = m.alts[aid.index()].cases[ci]
+                .fields
+                .iter()
+                .position(|x| x.0 == parts[2])
+                .ok_or_else(|| ParseError {
+                    line: c.line,
+                    message: format!("unknown field {n}"),
+                })?;
             Imm::AltField(aid, ci as u32, fi as u32)
         }
         ImmKind::Method => {
             let n = c.ident()?;
-            let (i, mt) = n.split_once('.').ok_or_else(|| ParseError { line: c.line, message: "expected Interface.method".into() })?;
-            let iid = m.ifaces.iter().position(|x| x.name == i).ok_or_else(|| ParseError { line: c.line, message: format!("unknown interface {i}") })?;
-            let mi = m.ifaces[iid].methods.iter().position(|x| x.name == mt).ok_or_else(|| ParseError { line: c.line, message: format!("unknown method {n}") })?;
+            let (i, mt) = n.split_once('.').ok_or_else(|| ParseError {
+                line: c.line,
+                message: "expected Interface.method".into(),
+            })?;
+            let iid = m
+                .ifaces
+                .iter()
+                .position(|x| x.name == i)
+                .ok_or_else(|| ParseError {
+                    line: c.line,
+                    message: format!("unknown interface {i}"),
+                })?;
+            let mi = m.ifaces[iid]
+                .methods
+                .iter()
+                .position(|x| x.name == mt)
+                .ok_or_else(|| ParseError {
+                    line: c.line,
+                    message: format!("unknown method {n}"),
+                })?;
             Imm::Method(IfaceId(iid as u32), mi as u32)
         }
     };
@@ -894,6 +1184,12 @@ fn parse_line(m: &mut Module, f: &mut Func, cx: &mut BodyCx, c: &mut Cur, b: Blo
         (Some(n), Some(t)) => Some(define(cx, f, c, &n, t)?),
         _ => None,
     };
-    f.blocks[b.index()].insts.push(Inst { op, args, imm, res, loc });
+    f.blocks[b.index()].insts.push(Inst {
+        op,
+        args,
+        imm,
+        res,
+        loc,
+    });
     Ok(())
 }

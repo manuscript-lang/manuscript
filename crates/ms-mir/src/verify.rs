@@ -67,21 +67,39 @@ pub fn verify_module_with(m: &Module, opts: VerifyOptions) -> Result<(), Vec<Ver
 }
 
 fn verify_decls(m: &Module, errs: &mut Vec<VerifyError>) {
-    let mut bad = |msg: String| errs.push(VerifyError { func: "<module>".into(), block: None, message: msg });
+    let mut bad = |msg: String| {
+        errs.push(VerifyError {
+            func: "<module>".into(),
+            block: None,
+            message: msg,
+        })
+    };
     for (i, vt) in m.vtables.iter().enumerate() {
         let iface = &m.ifaces[vt.iface.index()];
         if vt.methods.len() != iface.methods.len() {
-            bad(format!("vtable {} has {} methods, interface {} has {}", vt.name, vt.methods.len(), iface.name, iface.methods.len()));
+            bad(format!(
+                "vtable {} has {} methods, interface {} has {}",
+                vt.name,
+                vt.methods.len(),
+                iface.name,
+                iface.methods.len()
+            ));
             continue;
         }
         for (mf, ms) in vt.methods.iter().zip(&iface.methods) {
             let f = &m.funcs[mf.index()];
             let ok = f.kind == FuncKind::Method
                 && f.params.len() == ms.params.len() + 1
-                && f.params[1..].iter().zip(&ms.params).all(|(p, t)| p.ty == *t)
+                && f.params[1..]
+                    .iter()
+                    .zip(&ms.params)
+                    .all(|(p, t)| p.ty == *t)
                 && f.ret == ms.ret;
             if !ok {
-                bad(format!("vtable {} (#{i}): function {} does not implement method {}", vt.name, f.name, ms.name));
+                bad(format!(
+                    "vtable {} (#{i}): function {} does not implement method {}",
+                    vt.name, f.name, ms.name
+                ));
             }
         }
     }
@@ -100,9 +118,18 @@ pub fn verify_func(m: &Module, f: &Func) -> Result<(), Vec<VerifyError>> {
 
 /// Verifies one function.
 pub fn verify_func_with(m: &Module, f: &Func, opts: VerifyOptions) -> Result<(), Vec<VerifyError>> {
-    let mut v = Verifier { m, f, opts, errs: Vec::new() };
+    let mut v = Verifier {
+        m,
+        f,
+        opts,
+        errs: Vec::new(),
+    };
     v.run();
-    if v.errs.is_empty() { Ok(()) } else { Err(v.errs) }
+    if v.errs.is_empty() {
+        Ok(())
+    } else {
+        Err(v.errs)
+    }
 }
 
 /// For each argument of `inst`, whether the position consumes a reference count.
@@ -118,14 +145,7 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
     };
     match inst.op {
         Op::RecNew | Op::AltNew | Op::ListLit | Op::ClosureNew => all(Mode::Own),
-        Op::RecSet | Op::ListPush => all(Mode::Own),
-        Op::ListSet | Op::ListSetNn | Op::ListSetU => {
-            let mut v = vec![Mode::Own; n];
-            if n > 1 {
-                v[1] = Mode::Borrow;
-            }
-            v
-        }
+        Op::RecSet | Op::ListPush | Op::ListSet | Op::ListSetNn | Op::ListSetU => all(Mode::Own),
         Op::OptSome | Op::IfaceNew | Op::Drop | Op::GlobalSet | Op::SharedNew => one(0),
         Op::DropIf => one(1),
         Op::Call => match inst.imm {
@@ -149,7 +169,11 @@ struct Verifier<'a> {
 
 impl Verifier<'_> {
     fn err(&mut self, block: Option<usize>, msg: impl Into<String>) {
-        self.errs.push(VerifyError { func: self.f.name.clone(), block: block.map(|b| b as u32), message: msg.into() });
+        self.errs.push(VerifyError {
+            func: self.f.name.clone(),
+            block: block.map(|b| b as u32),
+            message: msg.into(),
+        });
     }
 
     fn tn(&self, t: Ty) -> String {
@@ -165,11 +189,17 @@ impl Verifier<'_> {
         // Entry parameters mirror the signature.
         let entry = &f.blocks[0];
         if entry.params.len() != f.params.len() {
-            self.err(Some(0), "entry block parameters do not match the function signature");
+            self.err(
+                Some(0),
+                "entry block parameters do not match the function signature",
+            );
             return;
         }
         for (bp, p) in entry.params.iter().zip(&f.params) {
-            if bp.value.index() >= f.values.len() || f.ty(bp.value) != p.ty || (self.m.needs_drop(p.ty) && bp.mode != p.mode) {
+            if bp.value.index() >= f.values.len()
+                || f.ty(bp.value) != p.ty
+                || (self.m.needs_drop(p.ty) && bp.mode != p.mode)
+            {
                 self.err(Some(0), "entry block parameter differs from the signature");
                 return;
             }
@@ -180,8 +210,14 @@ impl Verifier<'_> {
                 if f.params.first().map(|p| p.ty) != Some(Ty::PTR) {
                     self.err(None, "closure and method functions take the erased environment/receiver as parameter 0 (ptr)");
                 }
-                if f.params.iter().any(|p| p.mode == Mode::Own && self.m.needs_drop(p.ty)) {
-                    self.err(None, "closure and method functions take all parameters borrowed");
+                if f.params
+                    .iter()
+                    .any(|p| p.mode == Mode::Own && self.m.needs_drop(p.ty))
+                {
+                    self.err(
+                        None,
+                        "closure and method functions take all parameters borrowed",
+                    );
                 }
             }
         }
@@ -244,14 +280,31 @@ impl Verifier<'_> {
         }
     }
 
-    fn use_ok(&mut self, v: Value, at: (usize, i64), def: &[Option<(usize, i64)>], idom: &[usize], what: &str) -> bool {
+    fn use_ok(
+        &mut self,
+        v: Value,
+        at: (usize, i64),
+        def: &[Option<(usize, i64)>],
+        idom: &[usize],
+        what: &str,
+    ) -> bool {
         let Some(Some((db, di))) = def.get(v.index()) else {
-            self.err(Some(at.0), format!("{what}: use of undefined value %{}", v.0));
+            self.err(
+                Some(at.0),
+                format!("{what}: use of undefined value %{}", v.0),
+            );
             return false;
         };
-        let ok = if *db == at.0 { *di < at.1 } else { self.dominates(idom, *db, at.0) };
+        let ok = if *db == at.0 {
+            *di < at.1
+        } else {
+            self.dominates(idom, *db, at.0)
+        };
         if !ok {
-            self.err(Some(at.0), format!("{what}: %{} does not dominate its use", v.0));
+            self.err(
+                Some(at.0),
+                format!("{what}: %{} does not dominate its use", v.0),
+            );
         }
         ok
     }
@@ -269,13 +322,14 @@ impl Verifier<'_> {
                 ok &= self.use_ok(*a, (bi, ii as i64), def, idom, name);
             }
             if inst.op.info().has_result != inst.res.is_some() {
-                self.err(Some(bi), format!("{name}: result presence does not match the opcode"));
+                self.err(
+                    Some(bi),
+                    format!("{name}: result presence does not match the opcode"),
+                );
                 continue;
             }
-            if ok {
-                if let Err(msg) = self.check_types(inst) {
-                    self.err(Some(bi), format!("{name}: {msg}"));
-                }
+            if let (true, Err(msg)) = (ok, self.check_types(inst)) {
+                self.err(Some(bi), format!("{name}: {msg}"));
             }
         }
         let at = (bi, b.insts.len() as i64);
@@ -297,25 +351,55 @@ impl Verifier<'_> {
                 continue;
             };
             if t.args.len() != dest.params.len() {
-                self.err(Some(bi), format!("branch to b{} passes {} arguments for {} parameters", t.block.0, t.args.len(), dest.params.len()));
+                self.err(
+                    Some(bi),
+                    format!(
+                        "branch to b{} passes {} arguments for {} parameters",
+                        t.block.0,
+                        t.args.len(),
+                        dest.params.len()
+                    ),
+                );
                 continue;
             }
             for (a, p) in t.args.iter().zip(&dest.params) {
                 if f.ty(*a) != f.ty(p.value) {
-                    self.err(Some(bi), format!("branch to b{}: argument %{} has type {} but the parameter has {}", t.block.0, a.0, self.tn(f.ty(*a)), self.tn(f.ty(p.value))));
+                    self.err(
+                        Some(bi),
+                        format!(
+                            "branch to b{}: argument %{} has type {} but the parameter has {}",
+                            t.block.0,
+                            a.0,
+                            self.tn(f.ty(*a)),
+                            self.tn(f.ty(p.value))
+                        ),
+                    );
                 }
             }
         }
         match &b.term {
-            Term::CondBr { cond, .. } if f.ty(*cond) != Ty::BOOL => self.err(Some(bi), "condition must be bool"),
-            Term::Switch { value, .. } if f.ty(*value) != Ty::INT => self.err(Some(bi), "switch value must be int"),
+            Term::CondBr { cond, .. } if f.ty(*cond) != Ty::BOOL => {
+                self.err(Some(bi), "condition must be bool")
+            }
+            Term::Switch { value, .. } if f.ty(*value) != Ty::INT => {
+                self.err(Some(bi), "switch value must be int")
+            }
             Term::Ret(v) => {
                 let ty = v.map(|v| f.ty(v)).unwrap_or(Ty::UNIT);
                 if ty != f.ret {
-                    self.err(Some(bi), format!("returns {} but the function returns {}", self.tn(ty), self.tn(f.ret)));
+                    self.err(
+                        Some(bi),
+                        format!(
+                            "returns {} but the function returns {}",
+                            self.tn(ty),
+                            self.tn(f.ret)
+                        ),
+                    );
                 }
             }
-            Term::Fault(FaultKind::Message(s)) if s.index() >= self.m.strings.len() => self.err(Some(bi), "fault message literal out of range"),
+            Term::Fault(FaultKind::Message(s)) if s.index() >= self.m.strings.len() => {
+                self.err(Some(bi), "fault message literal out of range")
+            }
             _ => {}
         }
     }
@@ -326,20 +410,41 @@ impl Verifier<'_> {
         let res = inst.res.map(|r| f.ty(r));
         let n = inst.args.len();
         let want = |cond: bool, msg: &str| if cond { Ok(()) } else { Err(msg.to_string()) };
-        let arity = |k: usize| if n == k { Ok(()) } else { Err(format!("expected {k} operands, found {n}")) };
-        let mismatch = |what: &str, got: Ty, exp: Ty| format!("{what} has type {} but {} is expected", self.tn(got), self.tn(exp));
+        let arity = |k: usize| {
+            if n == k {
+                Ok(())
+            } else {
+                Err(format!("expected {k} operands, found {n}"))
+            }
+        };
+        let mismatch = |what: &str, got: Ty, exp: Ty| {
+            format!(
+                "{what} has type {} but {} is expected",
+                self.tn(got),
+                self.tn(exp)
+            )
+        };
         match inst.op {
             Op::IConst => {
                 arity(0)?;
-                want(matches!(inst.imm, Imm::Int(_)) && res == Some(Ty::INT), "iconst yields int")
+                want(
+                    matches!(inst.imm, Imm::Int(_)) && res == Some(Ty::INT),
+                    "iconst yields int",
+                )
             }
             Op::FConst => {
                 arity(0)?;
-                want(matches!(inst.imm, Imm::Float(_)) && res == Some(Ty::FLOAT), "fconst yields float")
+                want(
+                    matches!(inst.imm, Imm::Float(_)) && res == Some(Ty::FLOAT),
+                    "fconst yields float",
+                )
             }
             Op::BConst => {
                 arity(0)?;
-                want(matches!(inst.imm, Imm::Bool(_)) && res == Some(Ty::BOOL), "bconst yields bool")
+                want(
+                    matches!(inst.imm, Imm::Bool(_)) && res == Some(Ty::BOOL),
+                    "bconst yields bool",
+                )
             }
             Op::UnitConst => {
                 arity(0)?;
@@ -348,76 +453,147 @@ impl Verifier<'_> {
             Op::StrLit => {
                 arity(0)?;
                 match inst.imm {
-                    Imm::Str(s) if s.index() < m.strings.len() => want(res == Some(Ty::STR), "str yields string"),
+                    Imm::Str(s) if s.index() < m.strings.len() => {
+                        want(res == Some(Ty::STR), "str yields string")
+                    }
                     _ => Err("bad string literal".into()),
                 }
             }
-            Op::IAdd | Op::ISub | Op::IMul | Op::IAddChk | Op::ISubChk | Op::IMulChk | Op::SDivChk | Op::SRemChk | Op::SDiv | Op::SRem | Op::Shl | Op::Sshr => {
+            Op::IAdd
+            | Op::ISub
+            | Op::IMul
+            | Op::IAddChk
+            | Op::ISubChk
+            | Op::IMulChk
+            | Op::SDivChk
+            | Op::SRemChk
+            | Op::SDiv
+            | Op::SRem
+            | Op::Shl
+            | Op::Sshr => {
                 arity(2)?;
-                want(t(0) == Ty::INT && t(1) == Ty::INT && res == Some(Ty::INT), "operands and result must be int")
+                want(
+                    t(0) == Ty::INT && t(1) == Ty::INT && res == Some(Ty::INT),
+                    "operands and result must be int",
+                )
             }
             Op::INeg | Op::INegChk => {
                 arity(1)?;
-                want(t(0) == Ty::INT && res == Some(Ty::INT), "operand and result must be int")
+                want(
+                    t(0) == Ty::INT && res == Some(Ty::INT),
+                    "operand and result must be int",
+                )
             }
             Op::And | Op::Or | Op::Xor => {
                 arity(2)?;
-                want((t(0) == Ty::INT || t(0) == Ty::BOOL) && t(0) == t(1) && res == Some(t(0)), "operands and result must be both int or both bool")
+                want(
+                    (t(0) == Ty::INT || t(0) == Ty::BOOL) && t(0) == t(1) && res == Some(t(0)),
+                    "operands and result must be both int or both bool",
+                )
             }
             Op::Not => {
                 arity(1)?;
-                want(t(0) == Ty::BOOL && res == Some(Ty::BOOL), "operand and result must be bool")
+                want(
+                    t(0) == Ty::BOOL && res == Some(Ty::BOOL),
+                    "operand and result must be bool",
+                )
             }
             Op::ICmp => {
                 arity(2)?;
-                let Imm::Cc(cc) = inst.imm else { return Err("missing condition".into()) };
-                let ok = t(0) == t(1) && (t(0) == Ty::INT || (t(0) == Ty::BOOL && matches!(cc, Cc::Eq | Cc::Ne)));
-                want(ok && res == Some(Ty::BOOL), "icmp compares two ints (or bools for eq/ne) and yields bool")
+                let Imm::Cc(cc) = inst.imm else {
+                    return Err("missing condition".into());
+                };
+                let ok = t(0) == t(1)
+                    && (t(0) == Ty::INT || (t(0) == Ty::BOOL && matches!(cc, Cc::Eq | Cc::Ne)));
+                want(
+                    ok && res == Some(Ty::BOOL),
+                    "icmp compares two ints (or bools for eq/ne) and yields bool",
+                )
             }
             Op::FCmp => {
                 arity(2)?;
-                want(matches!(inst.imm, Imm::Cc(_)) && t(0) == Ty::FLOAT && t(1) == Ty::FLOAT && res == Some(Ty::BOOL), "fcmp compares two floats and yields bool")
+                want(
+                    matches!(inst.imm, Imm::Cc(_))
+                        && t(0) == Ty::FLOAT
+                        && t(1) == Ty::FLOAT
+                        && res == Some(Ty::BOOL),
+                    "fcmp compares two floats and yields bool",
+                )
             }
             Op::FAdd | Op::FSub | Op::FMul | Op::FDiv => {
                 arity(2)?;
-                want(t(0) == Ty::FLOAT && t(1) == Ty::FLOAT && res == Some(Ty::FLOAT), "operands and result must be float")
+                want(
+                    t(0) == Ty::FLOAT && t(1) == Ty::FLOAT && res == Some(Ty::FLOAT),
+                    "operands and result must be float",
+                )
             }
             Op::FNeg | Op::FSqrt | Op::FAbs => {
                 arity(1)?;
-                want(t(0) == Ty::FLOAT && res == Some(Ty::FLOAT), "operand and result must be float")
+                want(
+                    t(0) == Ty::FLOAT && res == Some(Ty::FLOAT),
+                    "operand and result must be float",
+                )
             }
             Op::I2F => {
                 arity(1)?;
-                want(t(0) == Ty::INT && res == Some(Ty::FLOAT), "i2f converts int to float")
+                want(
+                    t(0) == Ty::INT && res == Some(Ty::FLOAT),
+                    "i2f converts int to float",
+                )
             }
             Op::F2IOpt => {
                 arity(1)?;
                 let opt = res.and_then(|r| m.opt_inner(r));
-                want(t(0) == Ty::FLOAT && opt == Some(Ty::INT), "f2i.opt converts float to opt<int>")
+                want(
+                    t(0) == Ty::FLOAT && opt == Some(Ty::INT),
+                    "f2i.opt converts float to opt<int>",
+                )
             }
             Op::B2I => {
                 arity(1)?;
-                want(t(0) == Ty::BOOL && res == Some(Ty::INT), "b2i converts bool to int")
+                want(
+                    t(0) == Ty::BOOL && res == Some(Ty::INT),
+                    "b2i converts bool to int",
+                )
             }
             Op::Select => {
                 arity(3)?;
-                want(t(0) == Ty::BOOL && t(1) == t(2) && res == Some(t(1)) && !m.needs_drop(t(1)), "select takes bool, two equal non-reference values")
+                want(
+                    t(0) == Ty::BOOL && t(1) == t(2) && res == Some(t(1)) && !m.needs_drop(t(1)),
+                    "select takes bool, two equal non-reference values",
+                )
             }
             Op::RecNew => {
-                let Imm::Rec(r) = inst.imm else { return Err("missing record".into()) };
+                let Imm::Rec(r) = inst.imm else {
+                    return Err("missing record".into());
+                };
                 let fields = m.field_types(inst.imm).ok_or("bad record")?;
                 if n != fields.len() {
-                    return Err(format!("record {} has {} fields, found {n} operands", m.records[r.index()].name, fields.len()));
+                    return Err(format!(
+                        "record {} has {} fields, found {n} operands",
+                        m.records[r.index()].name,
+                        fields.len()
+                    ));
                 }
                 for (i, ft) in fields.iter().enumerate() {
                     if t(i) != *ft {
-                        return Err(mismatch(&format!("field {}", m.records[r.index()].fields[i].0), t(i), *ft));
+                        return Err(mismatch(
+                            &format!("field {}", m.records[r.index()].fields[i].0),
+                            t(i),
+                            *ft,
+                        ));
                     }
                 }
-                want(res.map(|r| matches!(m.types.kind(r), TyKind::Rec(x) if *x == r_id(inst))).unwrap_or(false), "rec.new yields the record type")
+                want(
+                    res.map(|r| matches!(m.types.kind(r), TyKind::Rec(x) if *x == r_id(inst)))
+                        .unwrap_or(false),
+                    "rec.new yields the record type",
+                )
             }
             Op::RecGet | Op::RecSet => {
-                let Imm::Field(r, i) = inst.imm else { return Err("missing field".into()) };
+                let Imm::Field(r, i) = inst.imm else {
+                    return Err("missing field".into());
+                };
                 let rec = m.records.get(r.index()).ok_or("bad record")?;
                 let fty = rec.fields.get(i as usize).ok_or("bad field index")?.1;
                 if !matches!(m.types.kind(t(0)), TyKind::Rec(x) if *x == r) {
@@ -428,39 +604,69 @@ impl Verifier<'_> {
                     want(res == Some(fty), "rec.get yields the field type")
                 } else {
                     arity(2)?;
-                    want(t(1) == fty && res == Some(t(0)), "stored value must have the field type; yields the updated record")
+                    want(
+                        t(1) == fty && res == Some(t(0)),
+                        "stored value must have the field type; yields the updated record",
+                    )
                 }
             }
             Op::AltNew => {
-                let Imm::Case(a, c) = inst.imm else { return Err("missing case".into()) };
+                let Imm::Case(a, c) = inst.imm else {
+                    return Err("missing case".into());
+                };
                 let fields = m.field_types(inst.imm).ok_or("bad case")?;
                 if n != fields.len() {
-                    return Err(format!("case {} has {} fields, found {n} operands", m.alts[a.index()].cases[c as usize].name, fields.len()));
+                    return Err(format!(
+                        "case {} has {} fields, found {n} operands",
+                        m.alts[a.index()].cases[c as usize].name,
+                        fields.len()
+                    ));
                 }
                 for (i, ft) in fields.iter().enumerate() {
                     if t(i) != *ft {
                         return Err(mismatch(&format!("field {i}"), t(i), *ft));
                     }
                 }
-                want(res.map(|r| matches!(m.types.kind(r), TyKind::Alt(x) if *x == a)).unwrap_or(false), "alt.new yields the alternative type")
+                want(
+                    res.map(|r| matches!(m.types.kind(r), TyKind::Alt(x) if *x == a))
+                        .unwrap_or(false),
+                    "alt.new yields the alternative type",
+                )
             }
             Op::AltTag => {
                 arity(1)?;
-                want(matches!(m.types.kind(t(0)), TyKind::Alt(_)) && res == Some(Ty::INT), "alt.tag takes an alternative and yields int")
+                want(
+                    matches!(m.types.kind(t(0)), TyKind::Alt(_)) && res == Some(Ty::INT),
+                    "alt.tag takes an alternative and yields int",
+                )
             }
             Op::AltGet => {
                 arity(1)?;
-                let Imm::AltField(a, c, i) = inst.imm else { return Err("missing case field".into()) };
-                let case = m.alts.get(a.index()).and_then(|x| x.cases.get(c as usize)).ok_or("bad case")?;
+                let Imm::AltField(a, c, i) = inst.imm else {
+                    return Err("missing case field".into());
+                };
+                let case = m
+                    .alts
+                    .get(a.index())
+                    .and_then(|x| x.cases.get(c as usize))
+                    .ok_or("bad case")?;
                 let fty = case.fields.get(i as usize).ok_or("bad field index")?.1;
-                want(matches!(m.types.kind(t(0)), TyKind::Alt(x) if *x == a) && res == Some(fty), "alt.get yields the payload field type")
+                want(
+                    matches!(m.types.kind(t(0)), TyKind::Alt(x) if *x == a) && res == Some(fty),
+                    "alt.get yields the payload field type",
+                )
             }
             Op::ListNew => {
                 arity(1)?;
-                want(t(0) == Ty::INT && res.and_then(|r| m.list_elem(r)).is_some(), "list.new takes a capacity and yields a list")
+                want(
+                    t(0) == Ty::INT && res.and_then(|r| m.list_elem(r)).is_some(),
+                    "list.new takes a capacity and yields a list",
+                )
             }
             Op::ListLit => {
-                let elem = res.and_then(|r| m.list_elem(r)).ok_or("list.lit yields a list")?;
+                let elem = res
+                    .and_then(|r| m.list_elem(r))
+                    .ok_or("list.lit yields a list")?;
                 for i in 0..n {
                     if t(i) != elem {
                         return Err(mismatch("element", t(i), elem));
@@ -470,49 +676,84 @@ impl Verifier<'_> {
             }
             Op::ListLen => {
                 arity(1)?;
-                want(m.list_elem(t(0)).is_some() && res == Some(Ty::INT), "list.len takes a list and yields int")
+                want(
+                    m.list_elem(t(0)).is_some() && res == Some(Ty::INT),
+                    "list.len takes a list and yields int",
+                )
             }
             Op::ListGet | Op::ListGetNn | Op::ListGetU => {
                 arity(2)?;
                 let elem = m.list_elem(t(0)).ok_or("operand 0 must be a list")?;
-                want(t(1) == Ty::INT && res == Some(elem), "index must be int; result is the element type")
+                want(
+                    t(1) == Ty::INT && res == Some(elem),
+                    "index must be int; result is the element type",
+                )
             }
             Op::ListSet | Op::ListSetNn | Op::ListSetU => {
                 arity(3)?;
                 let elem = m.list_elem(t(0)).ok_or("operand 0 must be a list")?;
-                want(t(1) == Ty::INT && t(2) == elem && res == Some(t(0)), "index must be int; value must be the element type; yields the updated list")
+                want(
+                    t(1) == Ty::INT && t(2) == elem && res == Some(t(0)),
+                    "index must be int; value must be the element type; yields the updated list",
+                )
             }
             Op::ListPush => {
                 arity(2)?;
                 let elem = m.list_elem(t(0)).ok_or("operand 0 must be a list")?;
-                want(t(1) == elem && res == Some(t(0)), "value must be the element type; yields the updated list")
+                want(
+                    t(1) == elem && res == Some(t(0)),
+                    "value must be the element type; yields the updated list",
+                )
             }
             Op::OptSome => {
                 arity(1)?;
-                want(res.and_then(|r| m.opt_inner(r)) == Some(t(0)), "opt.some wraps its operand")
+                want(
+                    res.and_then(|r| m.opt_inner(r)) == Some(t(0)),
+                    "opt.some wraps its operand",
+                )
             }
             Op::OptNone => {
                 arity(0)?;
-                want(res.and_then(|r| m.opt_inner(r)).is_some(), "opt.none yields an optional")
+                want(
+                    res.and_then(|r| m.opt_inner(r)).is_some(),
+                    "opt.none yields an optional",
+                )
             }
             Op::OptIsSome => {
                 arity(1)?;
-                want(m.opt_inner(t(0)).is_some() && res == Some(Ty::BOOL), "opt.is_some takes an optional and yields bool")
+                want(
+                    m.opt_inner(t(0)).is_some() && res == Some(Ty::BOOL),
+                    "opt.is_some takes an optional and yields bool",
+                )
             }
             Op::OptGet | Op::OptUnwrap => {
                 arity(1)?;
-                want(m.opt_inner(t(0)).is_some() && res == m.opt_inner(t(0)), "yields the payload type")
+                want(
+                    m.opt_inner(t(0)).is_some() && res == m.opt_inner(t(0)),
+                    "yields the payload type",
+                )
             }
             Op::StrLen => {
                 arity(1)?;
-                want(t(0) == Ty::STR && res == Some(Ty::INT), "str.len takes a string and yields int")
+                want(
+                    t(0) == Ty::STR && res == Some(Ty::INT),
+                    "str.len takes a string and yields int",
+                )
             }
             Op::ClosureNew => {
-                let Imm::Func(g) = inst.imm else { return Err("missing function".into()) };
+                let Imm::Func(g) = inst.imm else {
+                    return Err("missing function".into());
+                };
                 let callee = m.funcs.get(g.index()).ok_or("bad function")?;
-                let FuncKind::Closure { captures } = &callee.kind else { return Err(format!("{} is not a closure function", callee.name)) };
+                let FuncKind::Closure { captures } = &callee.kind else {
+                    return Err(format!("{} is not a closure function", callee.name));
+                };
                 if n != captures.len() {
-                    return Err(format!("{} captures {} values, found {n}", callee.name, captures.len()));
+                    return Err(format!(
+                        "{} captures {} values, found {n}",
+                        callee.name,
+                        captures.len()
+                    ));
                 }
                 for (i, c) in captures.iter().enumerate() {
                     if t(i) != *c {
@@ -527,41 +768,76 @@ impl Verifier<'_> {
             }
             Op::ClosureCap => {
                 arity(1)?;
-                let Imm::Idx(i) = inst.imm else { return Err("missing index".into()) };
-                let FuncKind::Closure { captures } = &f.kind else { return Err("closure.cap outside a closure function".into()) };
-                let c = captures.get(i as usize).ok_or("capture index out of range")?;
-                want(t(0) == Ty::PTR && res == Some(*c), "closure.cap reads the environment (ptr) and yields the capture type")
+                let Imm::Idx(i) = inst.imm else {
+                    return Err("missing index".into());
+                };
+                let FuncKind::Closure { captures } = &f.kind else {
+                    return Err("closure.cap outside a closure function".into());
+                };
+                let c = captures
+                    .get(i as usize)
+                    .ok_or("capture index out of range")?;
+                want(
+                    t(0) == Ty::PTR && res == Some(*c),
+                    "closure.cap reads the environment (ptr) and yields the capture type",
+                )
             }
             Op::IfaceNew => {
                 arity(1)?;
-                let Imm::Vtable(v) = inst.imm else { return Err("missing vtable".into()) };
+                let Imm::Vtable(v) = inst.imm else {
+                    return Err("missing vtable".into());
+                };
                 let vt = m.vtables.get(v.index()).ok_or("bad vtable")?;
-                want(t(0) == vt.data_ty && res.map(|r| matches!(m.types.kind(r), TyKind::Iface(i) if *i == vt.iface)).unwrap_or(false), "iface.new wraps the vtable's data type")
+                want(
+                    t(0) == vt.data_ty
+                        && res
+                            .map(|r| matches!(m.types.kind(r), TyKind::Iface(i) if *i == vt.iface))
+                            .unwrap_or(false),
+                    "iface.new wraps the vtable's data type",
+                )
             }
             Op::IfaceData => {
                 arity(1)?;
-                want(matches!(m.types.kind(t(0)), TyKind::Iface(_)) && res == Some(Ty::PTR), "iface.data takes an interface and yields ptr")
+                want(
+                    matches!(m.types.kind(t(0)), TyKind::Iface(_)) && res == Some(Ty::PTR),
+                    "iface.data takes an interface and yields ptr",
+                )
             }
             Op::Call => {
-                let Imm::Func(g) = inst.imm else { return Err("missing callee".into()) };
+                let Imm::Func(g) = inst.imm else {
+                    return Err("missing callee".into());
+                };
                 let callee = m.funcs.get(g.index()).ok_or("bad callee")?;
                 if n != callee.params.len() {
-                    return Err(format!("{} takes {} arguments, found {n}", callee.name, callee.params.len()));
+                    return Err(format!(
+                        "{} takes {} arguments, found {n}",
+                        callee.name,
+                        callee.params.len()
+                    ));
                 }
                 for (i, p) in callee.params.iter().enumerate() {
                     if t(i) != p.ty {
                         return Err(mismatch(&format!("argument {i}"), t(i), p.ty));
                     }
                 }
-                want(res == Some(callee.ret), "call yields the callee's result type")
+                want(
+                    res == Some(callee.ret),
+                    "call yields the callee's result type",
+                )
             }
             Op::CallInd => {
                 if n == 0 {
                     return Err("call.ind needs a closure".into());
                 }
-                let TyKind::Fn(ps, r) = m.types.kind(t(0)) else { return Err("operand 0 must be a closure".into()) };
+                let TyKind::Fn(ps, r) = m.types.kind(t(0)) else {
+                    return Err("operand 0 must be a closure".into());
+                };
                 if n - 1 != ps.len() {
-                    return Err(format!("closure takes {} arguments, found {}", ps.len(), n - 1));
+                    return Err(format!(
+                        "closure takes {} arguments, found {}",
+                        ps.len(),
+                        n - 1
+                    ));
                 }
                 for (i, p) in ps.iter().enumerate() {
                     if t(i + 1) != *p {
@@ -571,33 +847,56 @@ impl Verifier<'_> {
                 want(res == Some(*r), "call.ind yields the closure's result type")
             }
             Op::CallRt => {
-                let Imm::Ext(e) = inst.imm else { return Err("missing runtime function".into()) };
+                let Imm::Ext(e) = inst.imm else {
+                    return Err("missing runtime function".into());
+                };
                 let ext = m.externs.get(e.index()).ok_or("bad runtime function")?;
                 if n != ext.params.len() {
-                    return Err(format!("{} takes {} arguments, found {n}", ext.name, ext.params.len()));
+                    return Err(format!(
+                        "{} takes {} arguments, found {n}",
+                        ext.name,
+                        ext.params.len()
+                    ));
                 }
                 for (i, p) in ext.params.iter().enumerate() {
                     if t(i) != p.ty {
                         return Err(mismatch(&format!("argument {i}"), t(i), p.ty));
                     }
                 }
-                want(res == Some(ext.ret), "call.rt yields the declared result type")
+                want(
+                    res == Some(ext.ret),
+                    "call.rt yields the declared result type",
+                )
             }
             Op::CallMethod => {
-                let Imm::Method(i, k) = inst.imm else { return Err("missing method".into()) };
-                let sig = m.ifaces.get(i.index()).and_then(|x| x.methods.get(k as usize)).ok_or("bad method")?;
+                let Imm::Method(i, k) = inst.imm else {
+                    return Err("missing method".into());
+                };
+                let sig = m
+                    .ifaces
+                    .get(i.index())
+                    .and_then(|x| x.methods.get(k as usize))
+                    .ok_or("bad method")?;
                 if n == 0 || !matches!(m.types.kind(t(0)), TyKind::Iface(x) if *x == i) {
                     return Err("operand 0 must be the interface value".into());
                 }
                 if n - 1 != sig.params.len() {
-                    return Err(format!("{} takes {} arguments, found {}", sig.name, sig.params.len(), n - 1));
+                    return Err(format!(
+                        "{} takes {} arguments, found {}",
+                        sig.name,
+                        sig.params.len(),
+                        n - 1
+                    ));
                 }
                 for (j, p) in sig.params.iter().enumerate() {
                     if t(j + 1) != *p {
                         return Err(mismatch(&format!("argument {j}"), t(j + 1), *p));
                     }
                 }
-                want(res == Some(sig.ret), "call.method yields the method's result type")
+                want(
+                    res == Some(sig.ret),
+                    "call.method yields the method's result type",
+                )
             }
             Op::SharedNew => {
                 arity(1)?;
@@ -611,7 +910,10 @@ impl Verifier<'_> {
             }
             Op::Copy => {
                 arity(1)?;
-                want(res == Some(t(0)) && m.needs_drop(t(0)), "copy duplicates a droppable value")
+                want(
+                    res == Some(t(0)) && m.needs_drop(t(0)),
+                    "copy duplicates a droppable value",
+                )
             }
             Op::Drop => {
                 arity(1)?;
@@ -619,34 +921,58 @@ impl Verifier<'_> {
             }
             Op::DropIf => {
                 arity(2)?;
-                want(t(0) == Ty::BOOL && m.needs_drop(t(1)), "drop.if takes a flag and a droppable value")
+                want(
+                    t(0) == Ty::BOOL && m.needs_drop(t(1)),
+                    "drop.if takes a flag and a droppable value",
+                )
             }
             Op::Slot => {
                 arity(0)?;
-                want(matches!(inst.imm, Imm::Ty(_)) && res == Some(Ty::PTR), "slot yields ptr")
+                want(
+                    matches!(inst.imm, Imm::Ty(_)) && res == Some(Ty::PTR),
+                    "slot yields ptr",
+                )
             }
             Op::Load => {
                 arity(1)?;
-                let Imm::Ty(ty) = inst.imm else { return Err("missing type".into()) };
-                want(t(0) == Ty::PTR && res == Some(ty) && !m.needs_drop(ty), "load reads a non-droppable value through a ptr")
+                let Imm::Ty(ty) = inst.imm else {
+                    return Err("missing type".into());
+                };
+                want(
+                    t(0) == Ty::PTR && res == Some(ty) && !m.needs_drop(ty),
+                    "load reads a non-droppable value through a ptr",
+                )
             }
             Op::Store => {
                 arity(2)?;
-                want(t(0) == Ty::PTR && !m.needs_drop(t(1)), "store writes a non-droppable value through a ptr")
+                want(
+                    t(0) == Ty::PTR && !m.needs_drop(t(1)),
+                    "store writes a non-droppable value through a ptr",
+                )
             }
             Op::TypeDesc => {
                 arity(0)?;
-                want(matches!(inst.imm, Imm::Ty(_)) && res == Some(Ty::PTR), "typedesc yields ptr")
+                want(
+                    matches!(inst.imm, Imm::Ty(_)) && res == Some(Ty::PTR),
+                    "typedesc yields ptr",
+                )
             }
             Op::Poll | Op::DepthEnter | Op::DepthLeave | Op::CleanupRun => arity(0),
             Op::CleanupPush => {
                 arity(1)?;
-                let Imm::Func(g) = inst.imm else { return Err("missing closer".into()) };
+                let Imm::Func(g) = inst.imm else {
+                    return Err("missing closer".into());
+                };
                 let callee = m.funcs.get(g.index()).ok_or("bad closer")?;
-                want(callee.params.len() == 1 && callee.params[0].ty == t(0), "closer takes the registered value")
+                want(
+                    callee.params.len() == 1 && callee.params[0].ty == t(0) && res == Some(Ty::INT),
+                    "closer takes the registered value; cleanup.push yields an int handle",
+                )
             }
             Op::GlobalGet | Op::GlobalSet => {
-                let Imm::Global(g) = inst.imm else { return Err("missing global".into()) };
+                let Imm::Global(g) = inst.imm else {
+                    return Err("missing global".into());
+                };
                 let gd = m.globals.get(g.index()).ok_or("bad global")?;
                 if inst.op == Op::GlobalGet {
                     arity(0)?;
@@ -696,14 +1022,24 @@ impl Verifier<'_> {
                         continue;
                     }
                     if owned_def[a.index()] && !live.contains(&a.0) {
-                        self.err(Some(bi), format!("{}: %{} used after it was consumed", inst.op.info().name, a.0));
+                        self.err(
+                            Some(bi),
+                            format!(
+                                "{}: %{} used after it was consumed",
+                                inst.op.info().name,
+                                a.0
+                            ),
+                        );
                         continue;
                     }
                     if *mode == Mode::Own {
                         if !owned_def[a.index()] {
                             self.err(Some(bi), format!("{}: consuming position needs an owned value, %{} is borrowed (retain it first)", inst.op.info().name, a.0));
                         } else if consumed_here.contains(a) {
-                            self.err(Some(bi), format!("{}: %{} consumed twice", inst.op.info().name, a.0));
+                            self.err(
+                                Some(bi),
+                                format!("{}: %{} consumed twice", inst.op.info().name, a.0),
+                            );
                         } else {
                             consumed_here.push(*a);
                         }
@@ -711,16 +1047,21 @@ impl Verifier<'_> {
                 }
                 for (a, mode) in inst.args.iter().zip(&modes) {
                     if *mode == Mode::Borrow && consumed_here.contains(a) {
-                        self.err(Some(bi), format!("{}: %{} is consumed and borrowed by the same instruction", inst.op.info().name, a.0));
+                        self.err(
+                            Some(bi),
+                            format!(
+                                "{}: %{} is consumed and borrowed by the same instruction",
+                                inst.op.info().name,
+                                a.0
+                            ),
+                        );
                     }
                 }
                 for a in consumed_here {
                     live.remove(&a.0);
                 }
-                if let Some(r) = inst.res {
-                    if owned_def[r.index()] {
-                        live.insert(r.0);
-                    }
+                if let Some(r) = inst.res.filter(|r| owned_def[r.index()]) {
+                    live.insert(r.0);
                 }
             }
             // Terminator.
@@ -729,13 +1070,25 @@ impl Verifier<'_> {
             if let Term::Ret(v) = &blk.term {
                 if let Some(v) = v.filter(|v| rc(*v)) {
                     if !owned_def[v.index()] {
-                        self.err(Some(bi), format!("ret: %{} is borrowed; return an owned value (retain it first)", v.0));
+                        self.err(
+                            Some(bi),
+                            format!(
+                                "ret: %{} is borrowed; return an owned value (retain it first)",
+                                v.0
+                            ),
+                        );
                     } else if !live.remove(&v.0) {
-                        self.err(Some(bi), format!("ret: %{} used after it was consumed", v.0));
+                        self.err(
+                            Some(bi),
+                            format!("ret: %{} used after it was consumed", v.0),
+                        );
                     }
                 }
                 if let Some(leak) = live.iter().next() {
-                    self.err(Some(bi), format!("ret: owned value %{leak} is never released"));
+                    self.err(
+                        Some(bi),
+                        format!("ret: owned value %{leak} is never released"),
+                    );
                 }
             }
             for t in edges {
@@ -747,14 +1100,23 @@ impl Verifier<'_> {
                         continue;
                     }
                     if owned_def[a.index()] && !live.contains(&a.0) {
-                        self.err(Some(bi), format!("branch: %{} used after it was consumed", a.0));
+                        self.err(
+                            Some(bi),
+                            format!("branch: %{} used after it was consumed", a.0),
+                        );
                         continue;
                     }
                     if p.mode == Mode::Own {
                         if !owned_def[a.index()] {
                             self.err(Some(bi), format!("branch to b{}: parameter %{} takes ownership but %{} is borrowed", t.block.0, p.value.0, a.0));
                         } else if seen.contains(a) {
-                            self.err(Some(bi), format!("branch to b{}: %{} passed to two owning parameters", t.block.0, a.0));
+                            self.err(
+                                Some(bi),
+                                format!(
+                                    "branch to b{}: %{} passed to two owning parameters",
+                                    t.block.0, a.0
+                                ),
+                            );
                         } else {
                             seen.push(*a);
                             after.remove(&a.0);
@@ -766,8 +1128,18 @@ impl Verifier<'_> {
                     None => entry_state[t.block.index()] = Some(after),
                     Some(prev) if *prev == after => {}
                     Some(prev) => {
-                        let diff: Vec<String> = prev.symmetric_difference(&after).map(|v| format!("%{v}")).collect();
-                        self.err(Some(bi), format!("branch to b{}: owned values differ between incoming edges ({})", t.block.0, diff.join(", ")));
+                        let diff: Vec<String> = prev
+                            .symmetric_difference(&after)
+                            .map(|v| format!("%{v}"))
+                            .collect();
+                        self.err(
+                            Some(bi),
+                            format!(
+                                "branch to b{}: owned values differ between incoming edges ({})",
+                                t.block.0,
+                                diff.join(", ")
+                            ),
+                        );
                     }
                 }
             }

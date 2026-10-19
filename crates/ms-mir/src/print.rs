@@ -101,7 +101,11 @@ pub fn quote(s: &str) -> String {
 }
 
 fn mode_prefix(m: &Module, ty: Ty, mode: Mode) -> &'static str {
-    if mode == Mode::Own && m.needs_drop(ty) { "own " } else { "" }
+    if mode == Mode::Own && m.needs_drop(ty) {
+        "own "
+    } else {
+        ""
+    }
 }
 
 /// Renders a module as canonical text.
@@ -112,7 +116,11 @@ pub fn print_module(m: &Module) -> String {
         let _ = writeln!(o, "file {i} {}", quote(f));
     }
     for r in &m.records {
-        let fields: Vec<String> = r.fields.iter().map(|(n, t)| format!("{n}: {}", ty_str(m, *t))).collect();
+        let fields: Vec<String> = r
+            .fields
+            .iter()
+            .map(|(n, t)| format!("{n}: {}", ty_str(m, *t)))
+            .collect();
         let _ = writeln!(o, "record {} {{ {} }}", r.name, fields.join(", "));
     }
     for a in &m.alts {
@@ -123,7 +131,11 @@ pub fn print_module(m: &Module) -> String {
                 if c.fields.is_empty() {
                     c.name.clone()
                 } else {
-                    let fs: Vec<String> = c.fields.iter().map(|(n, t)| format!("{n}: {}", ty_str(m, *t))).collect();
+                    let fs: Vec<String> = c
+                        .fields
+                        .iter()
+                        .map(|(n, t)| format!("{n}: {}", ty_str(m, *t)))
+                        .collect();
                     format!("{}({})", c.name, fs.join(", "))
                 }
             })
@@ -142,8 +154,17 @@ pub fn print_module(m: &Module) -> String {
         let _ = writeln!(o, "iface {} {{ {} }}", i.name, ms.join(", "));
     }
     for e in &m.externs {
-        let ps: Vec<String> = e.params.iter().map(|p| format!("{}{}", mode_prefix(m, p.ty, p.mode), ty_str(m, p.ty))).collect();
-        let mut line = format!("extern @{}({}) -> {}", e.name, ps.join(", "), ty_str(m, e.ret));
+        let ps: Vec<String> = e
+            .params
+            .iter()
+            .map(|p| format!("{}{}", mode_prefix(m, p.ty, p.mode), ty_str(m, p.ty)))
+            .collect();
+        let mut line = format!(
+            "extern @{}({}) -> {}",
+            e.name,
+            ps.join(", "),
+            ty_str(m, e.ret)
+        );
         if e.pure_ {
             line.push_str(" pure");
         }
@@ -157,8 +178,19 @@ pub fn print_module(m: &Module) -> String {
         let _ = writeln!(o, "global @{}: {}", g.name, ty_str(m, g.ty));
     }
     for v in &m.vtables {
-        let ms: Vec<String> = v.methods.iter().map(|f| format!("@{}", m.funcs[f.index()].name)).collect();
-        let _ = writeln!(o, "vtable @{}: {} for {} {{ {} }}", v.name, m.ifaces[v.iface.index()].name, ty_str(m, v.data_ty), ms.join(", "));
+        let ms: Vec<String> = v
+            .methods
+            .iter()
+            .map(|f| format!("@{}", m.funcs[f.index()].name))
+            .collect();
+        let _ = writeln!(
+            o,
+            "vtable @{}: {} for {} {{ {} }}",
+            v.name,
+            m.ifaces[v.iface.index()].name,
+            ty_str(m, v.data_ty),
+            ms.join(", ")
+        );
     }
     if let Some(e) = m.entry {
         let _ = writeln!(o, "entry @{}", m.funcs[e.index()].name);
@@ -196,9 +228,22 @@ pub fn print_func(m: &Module, f: &Func) -> String {
         .params
         .iter()
         .zip(&f.params)
-        .map(|(bp, p)| format!("{}: {}{}", n(bp.value), mode_prefix(m, p.ty, p.mode), ty_str(m, p.ty)))
+        .map(|(bp, p)| {
+            format!(
+                "{}: {}{}",
+                n(bp.value),
+                mode_prefix(m, p.ty, p.mode),
+                ty_str(m, p.ty)
+            )
+        })
         .collect();
-    let _ = write!(o, "fn @{}({}) -> {}", f.name, ps.join(", "), ty_str(m, f.ret));
+    let _ = write!(
+        o,
+        "fn @{}({}) -> {}",
+        f.name,
+        ps.join(", "),
+        ty_str(m, f.ret)
+    );
     if f.linkage == Linkage::Export {
         o.push_str(" export");
     }
@@ -226,7 +271,14 @@ pub fn print_func(m: &Module, f: &Func) -> String {
             let ps: Vec<String> = b
                 .params
                 .iter()
-                .map(|p| format!("{}: {}{}", n(p.value), mode_prefix(m, f.ty(p.value), p.mode), ty_str(m, f.ty(p.value))))
+                .map(|p| {
+                    format!(
+                        "{}: {}{}",
+                        n(p.value),
+                        mode_prefix(m, f.ty(p.value), p.mode),
+                        ty_str(m, f.ty(p.value))
+                    )
+                })
                 .collect();
             let _ = writeln!(o, "b{bi}({}):", ps.join(", "));
         }
@@ -260,7 +312,11 @@ fn print_inst(m: &Module, i: &Inst, n: &dyn Fn(Value) -> String) -> String {
         Imm::Int(v) => v.to_string(),
         Imm::Float(b) => {
             let v = f64::from_bits(b);
-            if v.is_finite() { format!("{v:?}") } else { format!("0x{b:016x}") }
+            if v.is_finite() {
+                format!("{v:?}")
+            } else {
+                format!("0x{b:016x}")
+            }
         }
         Imm::Bool(b) => b.to_string(),
         Imm::Str(id) => quote(&m.strings[id.index()]),
@@ -268,15 +324,32 @@ fn print_inst(m: &Module, i: &Inst, n: &dyn Fn(Value) -> String) -> String {
         Imm::Ext(e) => format!("@{}", m.externs[e.index()].name),
         Imm::Ty(t) => ty_str(m, t),
         Imm::Rec(r) => m.records[r.index()].name.clone(),
-        Imm::Field(r, f) => format!("{}.{}", m.records[r.index()].name, m.records[r.index()].fields[f as usize].0),
-        Imm::Case(a, c) => format!("{}.{}", m.alts[a.index()].name, m.alts[a.index()].cases[c as usize].name),
+        Imm::Field(r, f) => format!(
+            "{}.{}",
+            m.records[r.index()].name,
+            m.records[r.index()].fields[f as usize].0
+        ),
+        Imm::Case(a, c) => format!(
+            "{}.{}",
+            m.alts[a.index()].name,
+            m.alts[a.index()].cases[c as usize].name
+        ),
         Imm::AltField(a, c, f) => {
             let case = &m.alts[a.index()].cases[c as usize];
-            format!("{}.{}.{}", m.alts[a.index()].name, case.name, case.fields[f as usize].0)
+            format!(
+                "{}.{}.{}",
+                m.alts[a.index()].name,
+                case.name,
+                case.fields[f as usize].0
+            )
         }
         Imm::Vtable(v) => format!("@{}", m.vtables[v.index()].name),
         Imm::Global(g) => format!("@{}", m.globals[g.index()].name),
-        Imm::Method(ifc, k) => format!("{}.{}", m.ifaces[ifc.index()].name, m.ifaces[ifc.index()].methods[k as usize].name),
+        Imm::Method(ifc, k) => format!(
+            "{}.{}",
+            m.ifaces[ifc.index()].name,
+            m.ifaces[ifc.index()].methods[k as usize].name
+        ),
         Imm::Cc(cc) => {
             s.push('.');
             s.push_str(cc.name());
@@ -306,10 +379,27 @@ fn target_str(t: &Target, n: &dyn Fn(Value) -> String) -> String {
 fn print_term(m: &Module, t: &Term, n: &dyn Fn(Value) -> String) -> String {
     match t {
         Term::Br(t) => format!("br {}", target_str(t, n)),
-        Term::CondBr { cond, then, els } => format!("br_if {}, {}, {}", n(*cond), target_str(then, n), target_str(els, n)),
-        Term::Switch { value, cases, default } => {
-            let cs: Vec<String> = cases.iter().map(|(k, t)| format!("{k}: {}", target_str(t, n))).collect();
-            format!("switch {} [{}] default {}", n(*value), cs.join(", "), target_str(default, n))
+        Term::CondBr { cond, then, els } => format!(
+            "br_if {}, {}, {}",
+            n(*cond),
+            target_str(then, n),
+            target_str(els, n)
+        ),
+        Term::Switch {
+            value,
+            cases,
+            default,
+        } => {
+            let cs: Vec<String> = cases
+                .iter()
+                .map(|(k, t)| format!("{k}: {}", target_str(t, n)))
+                .collect();
+            format!(
+                "switch {} [{}] default {}",
+                n(*value),
+                cs.join(", "),
+                target_str(default, n)
+            )
         }
         Term::Ret(None) => "ret".to_string(),
         Term::Ret(Some(v)) => format!("ret {}", n(*v)),

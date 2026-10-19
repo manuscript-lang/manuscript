@@ -23,7 +23,9 @@
 //! `rec.set`), and a `var` parameter is copy-in/copy-out: the callee returns
 //! its final value after its result.
 
-use crate::types::{id_type, AltDef, AltId, IfaceDef, IfaceId, RecId, RecordDef, Ty, TyKind, TyTable};
+use crate::types::{
+    AltDef, AltId, IfaceDef, IfaceId, RecId, RecordDef, Ty, TyKind, TyTable, id_type,
+};
 use std::fmt;
 
 id_type!(
@@ -68,7 +70,11 @@ pub struct Loc {
 
 impl Loc {
     /// The unknown location.
-    pub const NONE: Loc = Loc { file: u32::MAX, line: 0, col: 0 };
+    pub const NONE: Loc = Loc {
+        file: u32::MAX,
+        line: 0,
+        col: 0,
+    };
 
     /// A known location.
     pub fn new(file: u32, line: u32, col: u32) -> Loc {
@@ -373,6 +379,7 @@ impl Op {
 
     /// The static description of this opcode.
     #[rustfmt::skip]
+    #[allow(clippy::needless_update)]
     pub fn info(self) -> OpInfo {
         use ImmKind as K;
         let (name, imm, has_result, effects) = match self {
@@ -561,7 +568,10 @@ pub struct Target {
 impl Target {
     /// A target without arguments.
     pub fn to(block: Block) -> Target {
-        Target { block, args: Vec::new() }
+        Target {
+            block,
+            args: Vec::new(),
+        }
     }
 }
 
@@ -675,7 +685,12 @@ pub struct BlockData {
 impl BlockData {
     /// An empty block ending in `unreachable`.
     pub fn new() -> BlockData {
-        BlockData { params: Vec::new(), insts: Vec::new(), term: Term::Unreachable, term_loc: Loc::NONE }
+        BlockData {
+            params: Vec::new(),
+            insts: Vec::new(),
+            term: Term::Unreachable,
+            term_loc: Loc::NONE,
+        }
     }
 }
 
@@ -762,7 +777,10 @@ impl Func {
         };
         for p in params {
             let v = f.new_value(p.ty);
-            f.blocks[0].params.push(BlockParam { value: v, mode: p.mode });
+            f.blocks[0].params.push(BlockParam {
+                value: v,
+                mode: p.mode,
+            });
         }
         f
     }
@@ -837,10 +855,14 @@ impl Func {
         for (new, old) in order.iter().enumerate() {
             map[old.index()] = new as u32;
         }
-        let mut old_blocks: Vec<Option<BlockData>> = std::mem::take(&mut self.blocks).into_iter().map(Some).collect();
+        let mut old_blocks: Vec<Option<BlockData>> = std::mem::take(&mut self.blocks)
+            .into_iter()
+            .map(Some)
+            .collect();
         for old in &order {
             let mut b = old_blocks[old.index()].take().expect("block visited once");
-            b.term.for_each_target_mut(|t| t.block = Block(map[t.block.index()]));
+            b.term
+                .for_each_target_mut(|t| t.block = Block(map[t.block.index()]));
             self.blocks.push(b);
         }
     }
@@ -990,14 +1012,20 @@ impl Module {
 
     /// Declares a record and returns its id and type.
     pub fn add_record(&mut self, name: &str, fields: Vec<(String, Ty)>) -> (RecId, Ty) {
-        self.records.push(RecordDef { name: name.to_string(), fields });
+        self.records.push(RecordDef {
+            name: name.to_string(),
+            fields,
+        });
         let id = RecId(self.records.len() as u32 - 1);
         (id, self.types.rec(id))
     }
 
     /// Declares an alternative and returns its id and type.
     pub fn add_alt(&mut self, name: &str, cases: Vec<crate::types::CaseDef>) -> (AltId, Ty) {
-        self.alts.push(AltDef { name: name.to_string(), cases });
+        self.alts.push(AltDef {
+            name: name.to_string(),
+            cases,
+        });
         let id = AltId(self.alts.len() as u32 - 1);
         (id, self.types.alt(id))
     }
@@ -1019,17 +1047,26 @@ impl Module {
 
     /// Finds a function by name.
     pub fn func_by_name(&self, name: &str) -> Option<FuncId> {
-        self.funcs.iter().position(|f| f.name == name).map(|i| FuncId(i as u32))
+        self.funcs
+            .iter()
+            .position(|f| f.name == name)
+            .map(|i| FuncId(i as u32))
     }
 
     /// Finds a record by name.
     pub fn record_by_name(&self, name: &str) -> Option<RecId> {
-        self.records.iter().position(|r| r.name == name).map(|i| RecId(i as u32))
+        self.records
+            .iter()
+            .position(|r| r.name == name)
+            .map(|i| RecId(i as u32))
     }
 
     /// Finds an alternative by name.
     pub fn alt_by_name(&self, name: &str) -> Option<AltId> {
-        self.alts.iter().position(|r| r.name == name).map(|i| AltId(i as u32))
+        self.alts
+            .iter()
+            .position(|r| r.name == name)
+            .map(|i| AltId(i as u32))
     }
 
     /// The element type of a list type.
@@ -1051,8 +1088,24 @@ impl Module {
     /// The field types of a record or alternative case, for `rec.new`/`alt.new`.
     pub fn field_types(&self, imm: Imm) -> Option<Vec<Ty>> {
         match imm {
-            Imm::Rec(r) => Some(self.records.get(r.index())?.fields.iter().map(|f| f.1).collect()),
-            Imm::Case(a, c) => Some(self.alts.get(a.index())?.cases.get(c as usize)?.fields.iter().map(|f| f.1).collect()),
+            Imm::Rec(r) => Some(
+                self.records
+                    .get(r.index())?
+                    .fields
+                    .iter()
+                    .map(|f| f.1)
+                    .collect(),
+            ),
+            Imm::Case(a, c) => Some(
+                self.alts
+                    .get(a.index())?
+                    .cases
+                    .get(c as usize)?
+                    .fields
+                    .iter()
+                    .map(|f| f.1)
+                    .collect(),
+            ),
             _ => None,
         }
     }
@@ -1073,7 +1126,10 @@ impl Module {
                     return true;
                 }
                 seen.push(ty);
-                let out = self.records[r.index()].fields.iter().any(|f| self.needs_drop_in(f.1, seen));
+                let out = self.records[r.index()]
+                    .fields
+                    .iter()
+                    .any(|f| self.needs_drop_in(f.1, seen));
                 seen.pop();
                 out
             }
@@ -1082,7 +1138,10 @@ impl Module {
                     return true;
                 }
                 seen.push(ty);
-                let out = self.alts[a.index()].cases.iter().any(|c| c.fields.iter().any(|f| self.needs_drop_in(f.1, seen)));
+                let out = self.alts[a.index()]
+                    .cases
+                    .iter()
+                    .any(|c| c.fields.iter().any(|f| self.needs_drop_in(f.1, seen)));
                 seen.pop();
                 out
             }

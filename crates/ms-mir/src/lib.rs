@@ -2,6 +2,7 @@
 //! typed program and the native backend.
 
 pub mod builder;
+pub mod interp;
 pub mod ir;
 pub mod parse;
 pub mod print;
