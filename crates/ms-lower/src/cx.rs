@@ -253,8 +253,16 @@ impl Cx {
         // Clock values are two-word C structs in the runtime (`Timestamp`, `Instant`), so a
         // record of two `Int`s shares their memory layout.
         if t.is_std("Timestamp") || t.is_std("Instant") {
-            let name = if t.is_std("Timestamp") { "Timestamp" } else { "Instant" };
-            let words = if name == "Timestamp" { ["seconds", "nanoseconds"] } else { ["domain", "tick"] };
+            let name = if t.is_std("Timestamp") {
+                "Timestamp"
+            } else {
+                "Instant"
+            };
+            let words = if name == "Timestamp" {
+                ["seconds", "nanoseconds"]
+            } else {
+                ["domain", "tick"]
+            };
             let fields = words.iter().map(|w| (w.to_string(), MTy::INT)).collect();
             let (_, ty) = m.add_record(name, fields);
             return Ok(ty);
