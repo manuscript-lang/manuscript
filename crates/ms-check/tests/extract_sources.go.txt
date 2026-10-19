@@ -1,0 +1,78 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+)
+
+// folds constant string expressions (literals joined with +).
+func fold(e ast.Expr) (string, bool) {
+	switch x := e.(type) {
+	case *ast.BasicLit:
+		if x.Kind == token.STRING {
+			s, err := strconv.Unquote(x.Value)
+			return s, err == nil
+		}
+	case *ast.BinaryExpr:
+		if x.Op == token.ADD {
+			a, ok1 := fold(x.X)
+			b, ok2 := fold(x.Y)
+			return a + b, ok1 && ok2
+		}
+	case *ast.ParenExpr:
+		return fold(x.X)
+	}
+	return "", false
+}
+
+func main() {
+	root := os.Args[1]
+	seen := map[string]bool{}
+	var out []string
+	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() && (info.Name() == "vendor" || info.Name() == "toolchain" || info.Name() == ".git" || info.Name() == "node_modules") {
+			return filepath.SkipDir
+		}
+		if !strings.HasSuffix(path, ".go") {
+			return nil
+		}
+		fset := token.NewFileSet()
+		f, err := parser.ParseFile(fset, path, nil, 0)
+		if err != nil {
+			return nil
+		}
+		ast.Inspect(f, func(n ast.Node) bool {
+			e, ok := n.(ast.Expr)
+			if !ok {
+				return true
+			}
+			switch e.(type) {
+			case *ast.BasicLit, *ast.BinaryExpr:
+			default:
+				return true
+			}
+			s, ok := fold(e)
+			if !ok {
+				return true
+			}
+			if strings.Contains(s, "\n") && (strings.Contains(s, "fn ") || strings.Contains(s, "type ") || strings.Contains(s, "impl ") || strings.Contains(s, "interface ") || strings.Contains(s, "let ") || strings.Contains(s, "test \"")) && !seen[s] {
+				seen[s] = true
+				out = append(out, s)
+			}
+			return true
+		})
+		return nil
+	})
+	b, _ := json.Marshal(out)
+	fmt.Println(string(b))
+}
