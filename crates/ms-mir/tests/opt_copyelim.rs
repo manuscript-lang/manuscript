@@ -110,3 +110,50 @@ fn copies_that_only_feed_borrows_are_removed() {
     let after = Interp::new(&m).run_entry().map_err(|f| f.message);
     assert_eq!(before, after);
 }
+
+const CHAIN: &str = r#"module "t"
+alt List { Nil, More(next: List) }
+entry @main
+
+fn @build(%n: int) -> List inline(never) {
+b0:
+  %z: int = iconst 0
+  %nil: List = alt.new List.Nil
+  br b1(%nil, %z)
+b1(%l: own List, %i: int):
+  %lt: bool = icmp.lt %i, %n
+  br_if %lt, b2(), b3()
+b2():
+  %c: List = copy %l
+  %m: List = alt.new List.More %c
+  drop %l
+  %one: int = iconst 1
+  %i2: int = iadd.chk %i, %one
+  br b1(%m, %i2)
+b3():
+  ret %l
+}
+
+fn @main() -> int export {
+b0:
+  %n: int = iconst 50
+  %l: List = call @build (%n)
+  %t: int = alt.tag %l
+  drop %l
+  ret %t
+}
+"#;
+
+#[test]
+fn a_copy_whose_source_dies_right_after_becomes_a_move() {
+    let mut m = parse_module(CHAIN).unwrap_or_else(|e| panic!("{e}"));
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+    let before = Interp::new(&m).run_entry().map_err(|f| f.message);
+    assert!(opt::copyelim::run(&mut m));
+    if let Err(e) = verify_module(&m) {
+        panic!("{e:?}\n{}", print_module(&m));
+    }
+    assert_eq!(count(&m, "build", Op::Copy), 0);
+    assert_eq!(count(&m, "build", Op::Drop), 0);
+    assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
+}
