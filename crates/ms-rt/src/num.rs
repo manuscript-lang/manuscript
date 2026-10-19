@@ -332,7 +332,7 @@ pub extern "C-unwind" fn msrt_numbers_error_message(status: u8) -> *mut StrObj {
     crate::string::from_bytes(match status {
         STATUS_INVALID_INPUT => b"number: invalid input",
         STATUS_INVALID_DATA => b"number: invalid data",
-        STATUS_OUT_OF_RANGE => b"number: out of range",
+        STATUS_OUT_OF_RANGE => b"number: value out of range",
         _ => b"number: operation failed",
     })
 }
@@ -530,6 +530,12 @@ mod tests {
         assert_eq!(msrt_float_compare(-0.0, 0.0), 0);
         assert_eq!(msrt_float_compare(2.0, 1.0), 1);
         assert_eq!(msrt_int_compare(1, 2), -1);
+        let m = msrt_numbers_error_message(STATUS_OUT_OF_RANGE);
+        // SAFETY: live string.
+        assert_eq!(
+            unsafe { crate::string::bytes(m) },
+            b"number: value out of range"
+        );
     }
 
     #[test]
