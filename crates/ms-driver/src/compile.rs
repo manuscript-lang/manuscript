@@ -37,6 +37,12 @@ pub struct CheckRequest {
 
 /// Check the graph and, for executables, validate the entry point.
 pub fn check_graph(graph: Graph, request: CheckRequest) -> Checked {
+    check_graph_at(graph, request, None)
+}
+
+/// [`check_graph`] that also captures the lexical scope at every name
+/// expression spelled `scope_marker` (editor completion queries).
+pub fn check_graph_at(graph: Graph, request: CheckRequest, scope_marker: Option<&str>) -> Checked {
     let mut checked = Checked {
         source_root: graph.source_root.clone(),
         project_root: graph.project_root.clone(),
@@ -53,6 +59,7 @@ pub fn check_graph(graph: Graph, request: CheckRequest) -> Checked {
         graph.imports,
         CheckOptions {
             ownership: request.ownership,
+            scope_marker: scope_marker.map(str::to_string),
             ..CheckOptions::default()
         },
     );

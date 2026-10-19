@@ -793,6 +793,7 @@ dependencies = [
  "ms-check",
  "ms-driver",
  "ms-lower",
+ "ms-lsp",
  "ms-mir",
  "ms-project",
  "ms-syntax",
@@ -845,6 +846,17 @@ dependencies = [
  "ms-clif",
  "ms-mir",
  "ms-syntax",
+]
+
+[[package]]
+name = "ms-lsp"
+version = "0.0.0"
+dependencies = [
+ "ms-check",
+ "ms-driver",
+ "ms-project",
+ "ms-syntax",
+ "ms-tooling",
 ]
 
 [[package]]

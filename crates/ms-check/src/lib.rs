@@ -11,6 +11,7 @@ pub mod calls;
 pub mod checker;
 pub mod constants;
 pub mod contracts;
+pub mod editor;
 pub mod effects;
 pub mod exprs;
 pub mod hints;
