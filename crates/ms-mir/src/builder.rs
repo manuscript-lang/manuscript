@@ -505,22 +505,6 @@ impl<'m> FuncBuilder<'m> {
             });
         }
         self.f.blocks[b.index()].params.remove(idx);
-        // Reads made while the operands were being collected (through a loop) may already
-        // have recorded the removed parameter as an edge argument or a cached definition.
-        for blk in &mut self.f.blocks {
-            blk.term.for_each_target_mut(|t| {
-                for a in &mut t.args {
-                    if *a == param {
-                        *a = x;
-                    }
-                }
-            });
-        }
-        for d in self.defs.values_mut() {
-            if *d == param {
-                *d = x;
-            }
-        }
         self.defs.insert((v, b), x);
         // Whatever resolved to the parameter while its operands were read now names `x`.
         for i in since.0..self.cached.len() {
