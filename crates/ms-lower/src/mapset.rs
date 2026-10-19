@@ -163,6 +163,8 @@ impl FnLower<'_> {
         let sym = match (set, name) {
             (true, "add") => "msrt_set_add_copy".to_string(),
             (_, "append") if mt == MTy::BYTES && text => "msrt_strbuilder_append".to_string(),
+            // `BytesBuilder.concat` mutates in place; `msrt_bytes_concat` is the pure `Bytes.concat`.
+            (_, "concat") if mt == MTy::BYTES => "msrt_bytes_extend".to_string(),
             _ => crate::rtcall::method_symbol(self.b.m, mt, name)
                 .ok_or_else(|| Error::new(format!("unsupported mutator {name}")))?,
         };
