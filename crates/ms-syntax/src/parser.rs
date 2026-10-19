@@ -25,7 +25,12 @@ pub fn parse(file: &Arc<str>, source: &str) -> PResult<Module> {
 
 /// Parses a slice of a larger file whose first byte is at original offset
 /// `base_offset` on line `base_line + 1`. Used by editor recovery.
-pub(crate) fn parse_chunk(file: &Arc<str>, source: &str, base_offset: u32, base_line: u32) -> PResult<Module> {
+pub(crate) fn parse_chunk(
+    file: &Arc<str>,
+    source: &str,
+    base_offset: u32,
+    base_line: u32,
+) -> PResult<Module> {
     let lexed = crate::lexer::lex_at(file, source, base_offset, base_line)?;
     let mut p = Parser::new(file, &lexed.source, lexed.tokens, 0, 0);
     let mut module = Module::default();
@@ -133,7 +138,13 @@ fn arith_op(kind: Tok) -> Option<BinaryOp> {
 }
 
 impl<'a> Parser<'a> {
-    fn new(file: &'a Arc<str>, src: &'a str, tokens: Vec<Token>, depth: usize, next_id: u32) -> Parser<'a> {
+    fn new(
+        file: &'a Arc<str>,
+        src: &'a str,
+        tokens: Vec<Token>,
+        depth: usize,
+        next_id: u32,
+    ) -> Parser<'a> {
         Parser {
             file,
             src,
@@ -213,7 +224,11 @@ impl<'a> Parser<'a> {
             self.at += 1;
             return Ok(());
         }
-        let msg = format!("expected 'from', found {}{}", describe(self.src, t), need_hint("from", t.kind, self.text(t)));
+        let msg = format!(
+            "expected 'from', found {}{}",
+            describe(self.src, t),
+            need_hint("from", t.kind, self.text(t))
+        );
         self.fail(t, msg)
     }
     fn fail<T>(&self, t: Token, message: impl Into<String>) -> PResult<T> {
@@ -230,7 +245,13 @@ impl<'a> Parser<'a> {
         *links += 1;
         if *links > MAX_CHAIN {
             let t = self.peek();
-            return self.fail(t, format!("expression chain exceeds {} operators or accesses; split it into named parts", MAX_CHAIN));
+            return self.fail(
+                t,
+                format!(
+                    "expression chain exceeds {} operators or accesses; split it into named parts",
+                    MAX_CHAIN
+                ),
+            );
         }
         Ok(())
     }
@@ -250,11 +271,16 @@ impl<'a> Parser<'a> {
     fn end(&mut self) -> PResult<()> {
         if self.inline_statement {
             match self.kind() {
-                Tok::Newline | Tok::Comma | Tok::RParen | Tok::RBracket | Tok::RBrace => return Ok(()),
+                Tok::Newline | Tok::Comma | Tok::RParen | Tok::RBracket | Tok::RBrace => {
+                    return Ok(());
+                }
                 _ => {}
             }
             let t = self.peek();
-            let msg = format!("expected end of inline statement, found {}; an inline body holds one simple statement, so move more statements to an indented block", describe(self.src, t));
+            let msg = format!(
+                "expected end of inline statement, found {}; an inline body holds one simple statement, so move more statements to an indented block",
+                describe(self.src, t)
+            );
             return self.fail(t, msg);
         }
         if self.take(Tok::Newline) {
@@ -271,7 +297,10 @@ impl<'a> Parser<'a> {
         if t.kind == Tok::Amp {
             return self.fail(t, "'&&' is not an operator; write 'and' for logical and");
         }
-        let msg = format!("expected end of statement, found {}; put one statement per line, and join operands with an operator or a comma inside brackets", describe(self.src, t));
+        let msg = format!(
+            "expected end of statement, found {}; put one statement per line, and join operands with an operator or a comma inside brackets",
+            describe(self.src, t)
+        );
         self.fail(t, msg)
     }
 
@@ -325,11 +354,22 @@ impl<'a> Parser<'a> {
         let mut parts = self.text_parts_of(token)?;
         let path = match (parts.len(), parts.pop()) {
             (1, Some(TextPart::Lit(text))) => text,
-            _ => return self.fail(token, "import paths cannot interpolate; write the path as plain text without {…}"),
+            _ => {
+                return self.fail(
+                    token,
+                    "import paths cannot interpolate; write the path as plain text without {…}",
+                );
+            }
         };
         for name in names {
             let id = self.id();
-            module.imports.push(Import { id, pos, name_pos: name.pos, name: self.sym(name), path: path.clone() });
+            module.imports.push(Import {
+                id,
+                pos,
+                name_pos: name.pos,
+                name: self.sym(name),
+                path: path.clone(),
+            });
         }
         self.end()
     }
@@ -355,7 +395,13 @@ impl<'a> Parser<'a> {
                 default = Some(self.typ()?);
             }
             let id = self.id();
-            result.push(TypeParam { id, pos: name.pos, name: self.sym(name), bounds, default });
+            result.push(TypeParam {
+                id,
+                pos: name.pos,
+                name: self.sym(name),
+                bounds,
+                default,
+            });
             if !self.take(Tok::Comma) {
                 break;
             }
@@ -388,7 +434,13 @@ impl<'a> Parser<'a> {
                     default = Some(self.expression(0)?);
                 }
                 let id = self.id();
-                params.push(Param { id, pos: name.pos, name: self.sym(name), ty, default });
+                params.push(Param {
+                    id,
+                    pos: name.pos,
+                    name: self.sym(name),
+                    ty,
+                    default,
+                });
                 if !self.take(Tok::Comma) {
                     break;
                 }
@@ -418,7 +470,11 @@ impl<'a> Parser<'a> {
             args = self.type_args()?;
         }
         let id = self.id();
-        Ok(TypeRef { id, pos: name.pos, kind: TypeKind::Named { name: full, args } })
+        Ok(TypeRef {
+            id,
+            pos: name.pos,
+            kind: TypeKind::Named { name: full, args },
+        })
     }
 
     fn type_args(&mut self) -> PResult<Vec<TypeRef>> {
@@ -442,7 +498,10 @@ impl<'a> Parser<'a> {
         self.no_arrow()?;
         let t = self.peek();
         if t.kind == Tok::Colon || t.kind == Tok::Newline {
-            return self.fail(t, "every fn declares its result type after the parameter list, e.g. fn f() Unit:");
+            return self.fail(
+                t,
+                "every fn declares its result type after the parameter list, e.g. fn f() Unit:",
+            );
         }
         self.typ()
     }
@@ -468,7 +527,11 @@ impl<'a> Parser<'a> {
             let params = self.parameters(false, false)?;
             let result = Box::new(self.result_type()?);
             let id = self.id();
-            return Ok(TypeRef { id, pos, kind: TypeKind::Fn { params, result } });
+            return Ok(TypeRef {
+                id,
+                pos,
+                kind: TypeKind::Fn { params, result },
+            });
         }
         if self.take(Tok::LParen) {
             let t = self.typ()?;
@@ -491,7 +554,13 @@ impl<'a> Parser<'a> {
             let pos = p.peek().pos;
             let c = p.constant(Some(keyword.pos))?;
             let id = p.id();
-            result.push(Decl { id, pos, export: false, synthetic: false, kind: DeclKind::Const(c) });
+            result.push(Decl {
+                id,
+                pos,
+                export: false,
+                synthetic: false,
+                kind: DeclKind::Const(c),
+            });
             Ok(())
         })?;
         Ok(result)
@@ -510,16 +579,30 @@ impl<'a> Parser<'a> {
         let init_pos = self.peek().pos;
         let value = self.expression(0)?;
         let return_id = self.id();
-        Ok(ConstDecl { name: self.sym(name), ty, value, init_pos, return_id, group })
+        Ok(ConstDecl {
+            name: self.sym(name),
+            ty,
+            value,
+            init_pos,
+            return_id,
+            group,
+        })
     }
 
     /// Parses the `( ... )` after a consumed `let` or `var`. The lexer ends
     /// each line of the group with a newline; `entry` parses one binding at the
     /// start of its line.
-    fn binding_group(&mut self, keyword: Token, entry: &mut dyn FnMut(&mut Parser<'a>) -> PResult<()>) -> PResult<()> {
+    fn binding_group(
+        &mut self,
+        keyword: Token,
+        entry: &mut dyn FnMut(&mut Parser<'a>) -> PResult<()>,
+    ) -> PResult<()> {
         let mut indent = keyword.pos.column;
         let mut i = self.at as isize - 2;
-        while i >= 0 && self.tokens[i as usize].pos.line == keyword.pos.line && self.tokens[i as usize].kind != Tok::Newline {
+        while i >= 0
+            && self.tokens[i as usize].pos.line == keyword.pos.line
+            && self.tokens[i as usize].kind != Tok::Newline
+        {
             indent = self.tokens[i as usize].pos.column;
             i -= 1;
         }
@@ -561,19 +644,40 @@ impl<'a> Parser<'a> {
         }
         if count == 0 {
             let t = self.peek();
-            return self.fail(t, "a binding group cannot be empty; add 'name = value' lines or remove the group");
+            return self.fail(
+                t,
+                "a binding group cannot be empty; add 'name = value' lines or remove the group",
+            );
         }
         self.need(Tok::RParen)?;
         self.end()
     }
 
     fn method_signature(&mut self, name: Token, generics: bool, body: bool) -> PResult<Method> {
-        let type_params = if generics { self.type_params()? } else { Vec::new() };
+        let type_params = if generics {
+            self.type_params()?
+        } else {
+            Vec::new()
+        };
         let params = self.parameters(true, false)?;
         let result = self.result_type()?;
-        let body = if body { self.statement_suite(false, true)? } else { Vec::new() };
+        let body = if body {
+            self.statement_suite(false, true)?
+        } else {
+            Vec::new()
+        };
         let id = self.id();
-        Ok(Method { id, pos: name.pos, func: Func { name: self.sym(name), type_params, params, result, body } })
+        Ok(Method {
+            id,
+            pos: name.pos,
+            func: Func {
+                name: self.sym(name),
+                type_params,
+                params,
+                result,
+                body,
+            },
+        })
     }
 
     fn declaration(&mut self) -> PResult<Decl> {
@@ -588,7 +692,13 @@ impl<'a> Parser<'a> {
                 let params = self.parameters(true, false)?;
                 let result = self.result_type()?;
                 let body = self.statement_suite(false, true)?;
-                DeclKind::Fn(Func { name: self.sym(name), type_params, params, result, body })
+                DeclKind::Fn(Func {
+                    name: self.sym(name),
+                    type_params,
+                    params,
+                    result,
+                    body,
+                })
             }
             Tok::Let => {
                 self.at += 1;
@@ -612,7 +722,11 @@ impl<'a> Parser<'a> {
                 // `impl Contract for Type:` implements a contract; `impl Type:`
                 // declares the type's own methods.
                 let first = self.named_type()?;
-                let (contract, receiver) = if self.take(Tok::For) { (Some(first), self.named_type()?) } else { (None, first) };
+                let (contract, receiver) = if self.take(Tok::For) {
+                    (Some(first), self.named_type()?)
+                } else {
+                    (None, first)
+                };
                 self.need(Tok::Colon)?;
                 self.need(Tok::Newline)?;
                 self.newlines();
@@ -629,16 +743,29 @@ impl<'a> Parser<'a> {
                     }
                     self.need(Tok::Dedent)?;
                 }
-                DeclKind::Impl(ImplDecl { contract, receiver, methods })
+                DeclKind::Impl(ImplDecl {
+                    contract,
+                    receiver,
+                    methods,
+                })
             }
             Tok::Type | Tok::Interface => return self.type_declaration(token),
             _ => {
-                let msg = format!("expected a module declaration or import, found {}; top level holds only import, let constants, fn, type, interface, impl, and test (optionally prefixed by export), so put statements inside a fn", describe(self.src, token));
+                let msg = format!(
+                    "expected a module declaration or import, found {}; top level holds only import, let constants, fn, type, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+                    describe(self.src, token)
+                );
                 return self.fail(token, msg);
             }
         };
         let id = self.id();
-        Ok(Decl { id, pos: token.pos, export: false, synthetic: false, kind })
+        Ok(Decl {
+            id,
+            pos: token.pos,
+            export: false,
+            synthetic: false,
+            kind,
+        })
     }
 
     fn type_declaration(&mut self, token: Token) -> PResult<Decl> {
@@ -656,7 +783,11 @@ impl<'a> Parser<'a> {
             Alternative,
             Interface,
         }
-        let mut form = if token.kind == Tok::Interface { Form::Interface } else { Form::None };
+        let mut form = if token.kind == Tok::Interface {
+            Form::Interface
+        } else {
+            Form::None
+        };
         let mut fields: Vec<Param> = Vec::new();
         let mut cases: Vec<Case> = Vec::new();
         let mut methods: Vec<Method> = Vec::new();
@@ -692,7 +823,12 @@ impl<'a> Parser<'a> {
                     }
                 }
                 let id = self.id();
-                cases.push(Case { id, pos: name.pos, name: self.sym(name), fields: payload });
+                cases.push(Case {
+                    id,
+                    pos: name.pos,
+                    name: self.sym(name),
+                    fields: payload,
+                });
                 self.end()?;
             } else if self.take(Tok::Fn) {
                 if token.kind == Tok::Type {
@@ -713,7 +849,13 @@ impl<'a> Parser<'a> {
                     default = Some(self.expression(0)?);
                 }
                 let id = self.id();
-                fields.push(Param { id, pos: fname.pos, name: self.sym(fname), ty: Some(ty), default });
+                fields.push(Param {
+                    id,
+                    pos: fname.pos,
+                    name: self.sym(fname),
+                    ty: Some(ty),
+                    default,
+                });
                 self.end()?;
             }
         }
@@ -722,12 +864,30 @@ impl<'a> Parser<'a> {
             return self.fail(token, "declaration body cannot be empty; an interface needs at least one 'fn name(...) Type' operation");
         }
         let kind = match form {
-            Form::Interface => DeclKind::Interface(InterfaceDecl { name, type_params, methods }),
-            Form::Alternative => DeclKind::Alternative(AlternativeDecl { name, type_params, cases }),
-            Form::Record | Form::None => DeclKind::Record(RecordDecl { name, type_params, fields }),
+            Form::Interface => DeclKind::Interface(InterfaceDecl {
+                name,
+                type_params,
+                methods,
+            }),
+            Form::Alternative => DeclKind::Alternative(AlternativeDecl {
+                name,
+                type_params,
+                cases,
+            }),
+            Form::Record | Form::None => DeclKind::Record(RecordDecl {
+                name,
+                type_params,
+                fields,
+            }),
         };
         let id = self.id();
-        Ok(Decl { id, pos: token.pos, export: false, synthetic: false, kind })
+        Ok(Decl {
+            id,
+            pos: token.pos,
+            export: false,
+            synthetic: false,
+            kind,
+        })
     }
 
     // ---- statements ----
@@ -740,7 +900,8 @@ impl<'a> Parser<'a> {
     /// value); `fn_body` marks a function or method body (inline returns, may be empty).
     fn statement_suite(&mut self, expression: bool, fn_body: bool) -> PResult<Vec<Stmt>> {
         self.enter()?;
-        let (outer, outer_return, outer_lambda) = (self.inline_statement, self.inline_return, self.block_lambda);
+        let (outer, outer_return, outer_lambda) =
+            (self.inline_statement, self.inline_return, self.block_lambda);
         let r = self.statement_suite_inner(expression, fn_body, outer, outer_lambda);
         self.inline_statement = outer;
         self.inline_return = outer_return;
@@ -749,7 +910,13 @@ impl<'a> Parser<'a> {
         r
     }
 
-    fn statement_suite_inner(&mut self, expression: bool, fn_body: bool, outer: bool, outer_lambda: bool) -> PResult<Vec<Stmt>> {
+    fn statement_suite_inner(
+        &mut self,
+        expression: bool,
+        fn_body: bool,
+        outer: bool,
+        outer_lambda: bool,
+    ) -> PResult<Vec<Stmt>> {
         self.need(Tok::Colon)?;
         if self.kind() != Tok::Newline {
             if matches!(self.kind(), Tok::If | Tok::While | Tok::For | Tok::With) {
@@ -796,7 +963,17 @@ impl<'a> Parser<'a> {
         self.need(Tok::Assign)?;
         let value = self.expression(0)?;
         let id = self.id();
-        Ok(Stmt { id, pos, kind: StmtKind::Bind { mutable, pattern, ty, value, group } })
+        Ok(Stmt {
+            id,
+            pos,
+            kind: StmtKind::Bind {
+                mutable,
+                pattern,
+                ty,
+                value,
+                group,
+            },
+        })
     }
 
     /// Parses one statement, plus the rest of its bindings for a group.
@@ -835,7 +1012,10 @@ impl<'a> Parser<'a> {
                 self.at += 1;
                 let mut value = None;
                 let k = self.kind();
-                if k != Tok::Newline && !(self.inline_statement && matches!(k, Tok::Comma | Tok::RParen | Tok::RBracket | Tok::RBrace)) {
+                if k != Tok::Newline
+                    && !(self.inline_statement
+                        && matches!(k, Tok::Comma | Tok::RParen | Tok::RBracket | Tok::RBrace))
+                {
                     value = Some(self.expression(0)?);
                 }
                 self.end()?;
@@ -844,7 +1024,11 @@ impl<'a> Parser<'a> {
             Tok::Break | Tok::Continue => {
                 self.at += 1;
                 self.end()?;
-                if t.kind == Tok::Break { StmtKind::Break } else { StmtKind::Continue }
+                if t.kind == Tok::Break {
+                    StmtKind::Break
+                } else {
+                    StmtKind::Continue
+                }
             }
             Tok::If => {
                 self.at += 1;
@@ -868,7 +1052,12 @@ impl<'a> Parser<'a> {
                         else_body = self.suite()?;
                     }
                 }
-                StmtKind::If { binding, cond, body, else_body }
+                StmtKind::If {
+                    binding,
+                    cond,
+                    body,
+                    else_body,
+                }
             }
             Tok::While => {
                 self.at += 1;
@@ -886,7 +1075,11 @@ impl<'a> Parser<'a> {
                 self.need(Tok::In)?;
                 let iter = self.expression(0)?;
                 let body = self.suite()?;
-                StmtKind::For { name: self.sym(name), iter, body }
+                StmtKind::For {
+                    name: self.sym(name),
+                    iter,
+                    body,
+                }
             }
             Tok::With => {
                 self.at += 1;
@@ -894,7 +1087,11 @@ impl<'a> Parser<'a> {
                 self.need(Tok::Assign)?;
                 let value = self.expression(0)?;
                 let body = self.suite()?;
-                StmtKind::With { name: self.sym(name), value, body }
+                StmtKind::With {
+                    name: self.sym(name),
+                    value,
+                    body,
+                }
             }
             _ => self.expression_statement(t, allow_value)?,
         };
@@ -910,7 +1107,11 @@ impl<'a> Parser<'a> {
         } else if self.take(Tok::Assign) {
             let target = self.assign_target(t, e)?;
             let value = self.expression(0)?;
-            kind = StmtKind::Assign { target, compound: None, value };
+            kind = StmtKind::Assign {
+                target,
+                compound: None,
+                value,
+            };
         } else {
             let try_call = matches!(&e.kind, ExprKind::Unary { op: UnaryOp::Try, operand } if matches!(operand.kind, ExprKind::Call { .. }));
             let is_call = matches!(e.kind, ExprKind::Call { .. } | ExprKind::Match { .. });
@@ -930,7 +1131,11 @@ impl<'a> Parser<'a> {
                 }
                 return self.fail(t, "only a call, try call, or match can be a standalone expression statement; use 'let name = ...' to keep the value, 'return' to return it, or call a function");
             }
-            kind = if self.inline_return { StmtKind::Return(Some(e)) } else { StmtKind::Call(e) };
+            kind = if self.inline_return {
+                StmtKind::Return(Some(e))
+            } else {
+                StmtKind::Call(e)
+            };
         }
         self.end()?;
         Ok(kind)
@@ -949,11 +1154,21 @@ impl<'a> Parser<'a> {
         let op = self.peek();
         let equal = self.ahead(1);
         let plain = plain_chain(&e);
-        let copy = if plain { Some(self.clone_chain(&e)) } else { None };
+        let copy = if plain {
+            Some(self.clone_chain(&e))
+        } else {
+            None
+        };
         let target = self.assign_target(start, e)?;
         let Some(left) = copy else {
             let text = op.kind.as_str();
-            let mut d = Diagnostic::parse(self.file, op.pos, format!("compound assignment '{text}=' needs a name or a.field target whose receiver is names only; bind the receiver to a name first, or write the assignment out"));
+            let mut d = Diagnostic::parse(
+                self.file,
+                op.pos,
+                format!(
+                    "compound assignment '{text}=' needs a name or a.field target whose receiver is names only; bind the receiver to a name first, or write the assignment out"
+                ),
+            );
             d.end = Some(equal.end);
             d.phase = Phase::Parse;
             return Err(Box::new(d));
@@ -962,17 +1177,36 @@ impl<'a> Parser<'a> {
         let bop = arith_op(op.kind).expect("compound operator");
         let right = self.expression(0)?;
         let id = self.id();
-        let value = Expr { id, pos: op.pos, kind: ExprKind::Binary { op: bop, left: Box::new(left), right: Box::new(right) } };
-        Ok(StmtKind::Assign { target, compound: Some(bop), value })
+        let value = Expr {
+            id,
+            pos: op.pos,
+            kind: ExprKind::Binary {
+                op: bop,
+                left: Box::new(left),
+                right: Box::new(right),
+            },
+        };
+        Ok(StmtKind::Assign {
+            target,
+            compound: Some(bop),
+            value,
+        })
     }
 
     fn clone_chain(&mut self, e: &Expr) -> Expr {
         let id = self.id();
         let kind = match &e.kind {
-            ExprKind::Member { left, name } => ExprKind::Member { left: Box::new(self.clone_chain(left)), name: *name },
+            ExprKind::Member { left, name } => ExprKind::Member {
+                left: Box::new(self.clone_chain(left)),
+                name: *name,
+            },
             other => other.clone(),
         };
-        Expr { id, pos: e.pos, kind }
+        Expr {
+            id,
+            pos: e.pos,
+            kind,
+        }
     }
 
     fn compound_assignment(&self) -> bool {
@@ -999,7 +1233,11 @@ impl<'a> Parser<'a> {
         }
         if self.take(Tok::Name) {
             let id = self.id();
-            return Ok(Pattern { id, pos: t.pos, kind: PatternKind::Name(self.sym(t)) });
+            return Ok(Pattern {
+                id,
+                pos: t.pos,
+                kind: PatternKind::Name(self.sym(t)),
+            });
         }
         if self.take(Tok::LBracket) {
             let mut elements = Vec::new();
@@ -1016,7 +1254,11 @@ impl<'a> Parser<'a> {
                 self.need(Tok::RBracket)?;
             }
             let id = self.id();
-            return Ok(Pattern { id, pos: t.pos, kind: PatternKind::List(elements) });
+            return Ok(Pattern {
+                id,
+                pos: t.pos,
+                kind: PatternKind::List(elements),
+            });
         }
         if self.take(Tok::LBrace) {
             let mut fields = Vec::new();
@@ -1026,9 +1268,17 @@ impl<'a> Parser<'a> {
                     self.pattern()?
                 } else {
                     let id = self.id();
-                    Pattern { id, pos: name.pos, kind: PatternKind::Name(self.sym(name)) }
+                    Pattern {
+                        id,
+                        pos: name.pos,
+                        kind: PatternKind::Name(self.sym(name)),
+                    }
                 };
-                fields.push(PatternField { pos: name.pos, name: self.sym(name), pattern: child });
+                fields.push(PatternField {
+                    pos: name.pos,
+                    name: self.sym(name),
+                    pattern: child,
+                });
                 if !self.take(Tok::Comma) {
                     break;
                 }
@@ -1038,9 +1288,16 @@ impl<'a> Parser<'a> {
             }
             self.need(Tok::RBrace)?;
             let id = self.id();
-            return Ok(Pattern { id, pos: t.pos, kind: PatternKind::Record(fields) });
+            return Ok(Pattern {
+                id,
+                pos: t.pos,
+                kind: PatternKind::Record(fields),
+            });
         }
-        let msg = format!("expected a binding name, list pattern, or record pattern, found {}; write a name, [a, b], or {{x, y}}", describe(self.src, t));
+        let msg = format!(
+            "expected a binding name, list pattern, or record pattern, found {}; write a name, [a, b], or {{x, y}}",
+            describe(self.src, t)
+        );
         self.fail(t, msg)
     }
 
@@ -1066,7 +1323,13 @@ impl<'a> Parser<'a> {
         let mut e;
         if self.take(Tok::Not) {
             let operand = self.expression(3)?;
-            e = self.mk(t.pos, ExprKind::Unary { op: UnaryOp::Not, operand: Box::new(operand) });
+            e = self.mk(
+                t.pos,
+                ExprKind::Unary {
+                    op: UnaryOp::Not,
+                    operand: Box::new(operand),
+                },
+            );
         } else if matches!(t.kind, Tok::Plus | Tok::Minus | Tok::Try) {
             self.at += 1;
             let op = match t.kind {
@@ -1075,7 +1338,13 @@ impl<'a> Parser<'a> {
                 _ => UnaryOp::Try,
             };
             let operand = self.expression(7)?;
-            e = self.mk(t.pos, ExprKind::Unary { op, operand: Box::new(operand) });
+            e = self.mk(
+                t.pos,
+                ExprKind::Unary {
+                    op,
+                    operand: Box::new(operand),
+                },
+            );
         } else {
             e = self.primary()?;
         }
@@ -1118,7 +1387,10 @@ impl<'a> Parser<'a> {
                     _ => unreachable!(),
                 };
                 let o = op.kind.as_str();
-                return self.fail(op, format!("Manuscript has no '{o}{o}' operator; write '{n} = {n} {o} 1'"));
+                return self.fail(
+                    op,
+                    format!("Manuscript has no '{o}{o}' operator; write '{n} = {n} {o} 1'"),
+                );
             }
             if level == 4 && compared {
                 return self.fail(op, "comparison operators cannot chain; combine two comparisons with 'and', e.g. a < b and b < c");
@@ -1126,7 +1398,14 @@ impl<'a> Parser<'a> {
             self.at += 1;
             self.link(&mut links)?;
             let right = self.expression(level + 1)?;
-            e = self.mk(op.pos, ExprKind::Binary { op: bop, left: Box::new(e), right: Box::new(right) });
+            e = self.mk(
+                op.pos,
+                ExprKind::Binary {
+                    op: bop,
+                    left: Box::new(e),
+                    right: Box::new(right),
+                },
+            );
             if level == 4 {
                 compared = true;
             }
@@ -1148,7 +1427,13 @@ impl<'a> Parser<'a> {
         if self.kind() == Tok::Dot && !(tried && self.peek().pos.line != try_tok.pos.line) {
             step = self.postfix(lhs)?;
         } else if tried && self.kind() != Tok::Name {
-            return Ok(self.mk(try_tok.pos, ExprKind::Unary { op: UnaryOp::Try, operand: Box::new(lhs) }));
+            return Ok(self.mk(
+                try_tok.pos,
+                ExprKind::Unary {
+                    op: UnaryOp::Try,
+                    operand: Box::new(lhs),
+                },
+            ));
         } else {
             let name = self.peek();
             if name.kind != Tok::Name {
@@ -1156,30 +1441,58 @@ impl<'a> Parser<'a> {
                 if name.kind == Tok::Newline {
                     hint = "; to continue a flow on the next line, end this line before '|' and start the next line with '|'";
                 }
-                let msg = format!("a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found {}{}", describe(self.src, name), hint);
+                let msg = format!(
+                    "a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found {}{}",
+                    describe(self.src, name),
+                    hint
+                );
                 return self.fail(name, msg);
             }
             self.at += 1;
             let mut callee = self.mk(name.pos, ExprKind::Name(self.sym(name)));
             // A '.' on a later line continues the flow and applies to the step's
             // result, so it never extends the step's name path.
-            while self.kind() == Tok::Dot && self.peek().pos.line == self.tokens[self.at - 1].pos.line {
+            while self.kind() == Tok::Dot
+                && self.peek().pos.line == self.tokens[self.at - 1].pos.line
+            {
                 self.at += 1;
                 let member = self.need(Tok::Name)?;
-                callee = self.mk(member.pos, ExprKind::Member { left: Box::new(callee), name: self.sym(member) });
+                callee = self.mk(
+                    member.pos,
+                    ExprKind::Member {
+                        left: Box::new(callee),
+                        name: self.sym(member),
+                    },
+                );
             }
             if self.kind() == Tok::LBracket {
                 let t = self.peek();
                 return self.fail(t, format!("a pipe step cannot take type arguments; bind the instance to a name first, e.g. let step = {}[Int], then write x | step", self.text(name)));
             }
-            let mut args = vec![Argument { pos: lhs.pos, name: None, value: lhs }];
+            let mut args = vec![Argument {
+                pos: lhs.pos,
+                name: None,
+                value: lhs,
+            }];
             if self.take(Tok::LParen) {
                 args.extend(self.call_arguments()?);
             }
-            step = self.mk(name.pos, ExprKind::Call { callee: Box::new(callee), args });
+            step = self.mk(
+                name.pos,
+                ExprKind::Call {
+                    callee: Box::new(callee),
+                    args,
+                },
+            );
         }
         if tried {
-            step = self.mk(try_tok.pos, ExprKind::Unary { op: UnaryOp::Try, operand: Box::new(step) });
+            step = self.mk(
+                try_tok.pos,
+                ExprKind::Unary {
+                    op: UnaryOp::Try,
+                    operand: Box::new(step),
+                },
+            );
         }
         Ok(step)
     }
@@ -1189,11 +1502,24 @@ impl<'a> Parser<'a> {
         let mut e = self.mk(t.pos, ExprKind::Name(self.sym(t)));
         if self.take(Tok::LBracket) {
             let types = self.type_args()?;
-            e = self.mk(t.pos, ExprKind::Apply { left: Box::new(e), types, value: None });
+            e = self.mk(
+                t.pos,
+                ExprKind::Apply {
+                    left: Box::new(e),
+                    types,
+                    value: None,
+                },
+            );
         }
         while self.take(Tok::Dot) {
             let name = self.need(Tok::Name)?;
-            e = self.mk(name.pos, ExprKind::Member { left: Box::new(e), name: self.sym(name) });
+            e = self.mk(
+                name.pos,
+                ExprKind::Member {
+                    left: Box::new(e),
+                    name: self.sym(name),
+                },
+            );
         }
         Ok(e)
     }
@@ -1239,7 +1565,13 @@ impl<'a> Parser<'a> {
             Tok::Match => {
                 let scrutinee = self.expression(0)?;
                 let arms = self.match_arms(t)?;
-                self.mk(t.pos, ExprKind::Match { scrutinee: Box::new(scrutinee), arms })
+                self.mk(
+                    t.pos,
+                    ExprKind::Match {
+                        scrutinee: Box::new(scrutinee),
+                        arms,
+                    },
+                )
             }
             Tok::LBrace => {
                 let mut entries = Vec::new();
@@ -1269,13 +1601,23 @@ impl<'a> Parser<'a> {
                     return self.fail(a, "there is no '=>' arrow function; write the result type and a colon, e.g. fn(x: Int) Int: x + 1");
                 }
                 let body = self.statement_suite(true, false)?;
-                self.mk(t.pos, ExprKind::Lambda(Lambda { params, result, body }))
+                self.mk(
+                    t.pos,
+                    ExprKind::Lambda(Lambda {
+                        params,
+                        result,
+                        body,
+                    }),
+                )
             }
             _ => {
                 if t.kind == Tok::If {
                     return self.fail(t, "'if' is a statement, not an expression; declare 'var name = ...' and assign it in each branch, or use 'match'");
                 }
-                let msg = format!("expected an expression, found {}; write a value, name, call, or literal here", describe(self.src, t));
+                let msg = format!(
+                    "expected an expression, found {}; write a value, name, call, or literal here",
+                    describe(self.src, t)
+                );
                 return self.fail(t, msg);
             }
         };
@@ -1293,7 +1635,13 @@ impl<'a> Parser<'a> {
                     return self.fail(t, "Manuscript has no '..' range; to count, use a while loop, or import range from \"@std/collections.ms\" and loop over range(start: 0, end: 10, step: 1), which returns a Result");
                 }
                 let name = self.need(Tok::Name)?;
-                e = self.mk(name.pos, ExprKind::Member { left: Box::new(e), name: self.sym(name) });
+                e = self.mk(
+                    name.pos,
+                    ExprKind::Member {
+                        left: Box::new(e),
+                        name: self.sym(name),
+                    },
+                );
             } else if self.take(Tok::LBracket) {
                 self.link(&mut links)?;
                 e = self.bracket(e)?;
@@ -1301,7 +1649,13 @@ impl<'a> Parser<'a> {
                 self.link(&mut links)?;
                 let pos = e.pos;
                 let args = self.call_arguments()?;
-                e = self.mk(pos, ExprKind::Call { callee: Box::new(e), args });
+                e = self.mk(
+                    pos,
+                    ExprKind::Call {
+                        callee: Box::new(e),
+                        args,
+                    },
+                );
             } else {
                 break;
             }
@@ -1326,11 +1680,11 @@ impl<'a> Parser<'a> {
                     return self.fail(eq, format!("argument labels use a colon; write {n}: value"));
                 }
                 let value = self.expression(0)?;
-                if let ExprKind::Name(n) = &value.kind {
-                    if self.kind() == Tok::Arrow {
-                        let a = self.peek();
-                        return self.fail(a, format!("lambdas are written fn(name: Type) Result: expression, e.g. fn({n}: Int) Int: {n} + 1"));
-                    }
+                if let ExprKind::Name(n) = &value.kind
+                    && self.kind() == Tok::Arrow
+                {
+                    let a = self.peek();
+                    return self.fail(a, format!("lambdas are written fn(name: Type) Result: expression, e.g. fn({n}: Int) Int: {n} + 1"));
                 }
                 args.push(Argument { pos, name, value });
                 if !self.take(Tok::Comma) {
@@ -1435,11 +1789,18 @@ impl<'a> Parser<'a> {
     /// Lexes and parses the expression inside one `{...}` of a text literal.
     /// Failures also state the escape for a literal brace.
     fn interpolation(&mut self, token: Token, start: usize, source: &str) -> PResult<Expr> {
-        let suffix = format!(" ('{{' at column {} starts an interpolation; write \\{{ and \\}} for literal braces)", token.pos.column as usize + start);
+        let suffix = format!(
+            " ('{{' at column {} starts an interpolation; write \\{{ and \\}} for literal braces)",
+            token.pos.column as usize + start
+        );
         let wrapped = format!("({source})");
         let shift = |p: Pos| -> Pos {
             let offset = (p.offset as usize).min(source.len() + 1);
-            Pos { line: token.pos.line, column: (token.pos.column as usize + start + offset) as u32, offset: (token.pos.offset as usize + start + offset) as u32 }
+            Pos {
+                line: token.pos.line,
+                column: (token.pos.column as usize + start + offset) as u32,
+                offset: (token.pos.offset as usize + start + offset) as u32,
+            }
         };
         let mut lexed = match lex(self.file, &wrapped) {
             Ok(l) => l,
@@ -1457,7 +1818,13 @@ impl<'a> Parser<'a> {
             t.pos = shift(t.pos);
             t.end = shift(t.end);
         }
-        let mut nested = Parser::new(self.file, &lexed.source, lexed.tokens, self.depth, self.next_id);
+        let mut nested = Parser::new(
+            self.file,
+            &lexed.source,
+            lexed.tokens,
+            self.depth,
+            self.next_id,
+        );
         let result: PResult<Expr> = (|| {
             let value = nested.expression(0)?;
             nested.newlines();
@@ -1509,7 +1876,10 @@ impl<'a> Parser<'a> {
                         if !self.take(Tok::Underscore) {
                             self.need(Tok::Name)?;
                         }
-                        bindings.push(ArmBinding { name: self.sym(tok), pos: tok.pos });
+                        bindings.push(ArmBinding {
+                            name: self.sym(tok),
+                            pos: tok.pos,
+                        });
                         if self.kind() == Tok::LParen {
                             let t = self.peek();
                             return self.fail(t, "patterns cannot be nested; bind the outer payload, then handle it in a separate match or helper function");
@@ -1525,7 +1895,14 @@ impl<'a> Parser<'a> {
                 }
             }
             let id = self.id();
-            let mut arm = Arm { id, pos: start.pos, path, bindings, body: Vec::new(), value: None };
+            let mut arm = Arm {
+                id,
+                pos: start.pos,
+                path,
+                bindings,
+                body: Vec::new(),
+                value: None,
+            };
             self.value_arm(&mut arm)?;
             arms.push(arm);
         }
@@ -1560,16 +1937,29 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        if matches!(a.body.last().map(|s| &s.kind), Some(StmtKind::Call(_))) {
-            if let Some(Stmt { kind: StmtKind::Call(e), .. }) = a.body.pop() {
-                a.value = Some(e);
-            }
+        if matches!(a.body.last().map(|s| &s.kind), Some(StmtKind::Call(_)))
+            && let Some(Stmt {
+                kind: StmtKind::Call(e),
+                ..
+            }) = a.body.pop()
+        {
+            a.value = Some(e);
         }
         for s in &a.body {
             if let StmtKind::Call(e) = &s.kind {
-                let is_try = matches!(e.kind, ExprKind::Unary { op: UnaryOp::Try, .. });
+                let is_try = matches!(
+                    e.kind,
+                    ExprKind::Unary {
+                        op: UnaryOp::Try,
+                        ..
+                    }
+                );
                 if !matches!(e.kind, ExprKind::Call { .. } | ExprKind::Match { .. }) && !is_try {
-                    return Err(Box::new(Diagnostic::parse(self.file, s.pos, "an arm value must be its final expression")));
+                    return Err(Box::new(Diagnostic::parse(
+                        self.file,
+                        s.pos,
+                        "an arm value must be its final expression",
+                    )));
                 }
             }
         }
@@ -1607,35 +1997,78 @@ impl<'a> Parser<'a> {
         }
         if let Some(types) = types {
             let pos = left.pos;
-            let value = if types.len() == 1 { self.type_value(&types[0]).map(Box::new) } else { None };
-            let types = if value.is_some() { self.copy_types(&types) } else { types };
-            return Ok(self.mk(pos, ExprKind::Apply { left: Box::new(left), types, value }));
+            let value = if types.len() == 1 {
+                self.type_value(&types[0]).map(Box::new)
+            } else {
+                None
+            };
+            let types = if value.is_some() {
+                self.copy_types(&types)
+            } else {
+                types
+            };
+            return Ok(self.mk(
+                pos,
+                ExprKind::Apply {
+                    left: Box::new(left),
+                    types,
+                    value,
+                },
+            ));
         }
         let index = self.expression(0)?;
         if self.kind() == Tok::Colon {
             let t = self.peek();
-            return self.fail(t, "there is no slice syntax; call slice(start: 0, end: 2) on a List or String");
+            return self.fail(
+                t,
+                "there is no slice syntax; call slice(start: 0, end: 2) on a List or String",
+            );
         }
         self.need(Tok::RBracket)?;
         let pos = left.pos;
-        Ok(self.mk(pos, ExprKind::Index { left: Box::new(left), index: Box::new(index) }))
+        Ok(self.mk(
+            pos,
+            ExprKind::Index {
+                left: Box::new(left),
+                index: Box::new(index),
+            },
+        ))
     }
 
     /// Reinterprets a type as the value expression that spells it.
     fn type_value(&mut self, t: &TypeRef) -> Option<Expr> {
-        let TypeKind::Named { name, args } = &t.kind else { return None };
+        let TypeKind::Named { name, args } = &t.kind else {
+            return None;
+        };
         let mut names = name.as_str().split('.');
         let first = names.next().unwrap_or("");
         let mut e = self.mk(t.pos, ExprKind::Name(Symbol::intern(first)));
         let token = self.tokens.partition_point(|k| k.pos.offset < t.pos.offset);
         for (index, part) in names.enumerate() {
             let pos = self.tokens[token + 2 * (index + 1)].pos;
-            e = self.mk(pos, ExprKind::Member { left: Box::new(e), name: Symbol::intern(part) });
+            e = self.mk(
+                pos,
+                ExprKind::Member {
+                    left: Box::new(e),
+                    name: Symbol::intern(part),
+                },
+            );
         }
         if !args.is_empty() {
             let types = self.copy_types(args);
-            let value = if args.len() == 1 { self.type_value(&args[0]).map(Box::new) } else { None };
-            e = self.mk(t.pos, ExprKind::Apply { left: Box::new(e), types, value });
+            let value = if args.len() == 1 {
+                self.type_value(&args[0]).map(Box::new)
+            } else {
+                None
+            };
+            e = self.mk(
+                t.pos,
+                ExprKind::Apply {
+                    left: Box::new(e),
+                    types,
+                    value,
+                },
+            );
         }
         Some(e)
     }
@@ -1648,19 +2081,32 @@ impl<'a> Parser<'a> {
     fn copy_type(&mut self, t: &TypeRef) -> TypeRef {
         let id = self.id();
         let kind = match &t.kind {
-            TypeKind::Named { name, args } => TypeKind::Named { name: *name, args: self.copy_types(args) },
+            TypeKind::Named { name, args } => TypeKind::Named {
+                name: *name,
+                args: self.copy_types(args),
+            },
             TypeKind::Fn { params, result } => TypeKind::Fn {
                 params: params
                     .iter()
                     .map(|p| {
                         let id = self.id();
-                        Param { id, pos: p.pos, name: p.name, ty: p.ty.as_ref().map(|t| self.copy_type(t)), default: p.default.clone() }
+                        Param {
+                            id,
+                            pos: p.pos,
+                            name: p.name,
+                            ty: p.ty.as_ref().map(|t| self.copy_type(t)),
+                            default: p.default.clone(),
+                        }
                     })
                     .collect(),
                 result: Box::new(self.copy_type(result)),
             },
         };
-        TypeRef { id, pos: t.pos, kind }
+        TypeRef {
+            id,
+            pos: t.pos,
+            kind,
+        }
     }
 }
 

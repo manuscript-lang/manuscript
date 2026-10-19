@@ -299,6 +299,7 @@ mod tests {
 
     #[test]
     fn int_formatting_and_parsing() {
+        let _g = crate::testutil::lock();
         let mut tmp = [0u8; 20];
         assert_eq!(format_i64(i64::MIN, &mut tmp), b"-9223372036854775808");
         assert_eq!(format_i64(0, &mut tmp), b"0");
@@ -326,6 +327,7 @@ mod tests {
 
     #[test]
     fn float_strings_follow_go_rules() {
+        let _g = crate::testutil::lock();
         let cases: [(f64, &str); 14] = [
             (0.0, "0"),
             (-0.0, "-0"),
@@ -351,6 +353,7 @@ mod tests {
 
     #[test]
     fn float_precision_forms() {
+        let _g = crate::testutil::lock();
         let f = |v, k, d, m| float_precision(v, k, d, m).map(s);
         assert_eq!(f(3.14158, b'f', 2, 0).as_deref(), Some("3.14"));
         assert_eq!(f(2.5, b'f', 0, 0).as_deref(), Some("2"));
@@ -365,6 +368,7 @@ mod tests {
 
     #[test]
     fn float_parsing() {
+        let _g = crate::testutil::lock();
         assert_eq!(parse_float(b"1.5e3"), Ok(1500.0));
         assert_eq!(parse_float(b"-0"), Ok(-0.0));
         assert_eq!(parse_float(b"1e400"), Err(STATUS_OUT_OF_RANGE));
