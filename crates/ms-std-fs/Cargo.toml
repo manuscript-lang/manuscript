@@ -11,7 +11,7 @@ crate-type = ["rlib"]
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-std-rt = { path = "../ms-std-rt" }
-ms-std-glob = { path = "../ms-std-glob" }
+ms-std-path = { path = "../ms-std-path" }
 libc = { version = "0.2", default-features = false }
 
 [lints]
