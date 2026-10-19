@@ -1478,7 +1478,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "faults use inline asm, which Miri cannot run")]
     fn mutators_and_reads() {
         let _g = testutil::lock();
         unsafe {

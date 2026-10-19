@@ -435,7 +435,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "faults use inline asm, which Miri cannot run")]
     fn cleanups_run_lifo_on_fault_with_secondary() {
         let _g = lock();
         reset_for_tests();
@@ -472,7 +471,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "faults use inline asm, which Miri cannot run")]
     fn frames_resolve_through_tables() {
         let _g = lock();
         reset_for_tests();
@@ -525,7 +523,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "faults use inline asm, which Miri cannot run")]
     fn named_faults_use_go_messages() {
         let _g = lock();
         reset_for_tests();

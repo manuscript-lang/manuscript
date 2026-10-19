@@ -66,11 +66,6 @@ static STATE: Global<State> = Global::new(State {
 #[cold]
 fn init(s: &mut State) {
     s.initialized = true;
-    // Miri cannot model the NORESERVE arena. Skipping it routes every block through the
-    // system allocator, which also gives Miri per-block bounds and use-after-free checks.
-    if cfg!(miri) {
-        return;
-    }
     let flags = sys::MAP_PRIVATE | sys::MAP_ANONYMOUS | sys::MAP_NORESERVE;
     let prot = sys::PROT_READ | sys::PROT_WRITE;
     // SAFETY: anonymous private mapping; failure is detected via MAP_FAILED.
