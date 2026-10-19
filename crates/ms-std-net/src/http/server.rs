@@ -780,7 +780,11 @@ impl Server {
                     self.set_interest(conn, reactor, epoll::EventFlags::IN);
                     self.h2_serve(conn, reactor);
                 } else {
-                    self.after_read(conn, reactor);
+                    // The client's first request may have arrived with its final
+                    // handshake flight; rustls already holds it, so no further
+                    // readiness event will announce it. Read it now.
+                    self.set_interest(conn, reactor, epoll::EventFlags::IN);
+                    self.read_in(conn, reactor);
                 }
             }
             Handshake::WantRead => self.set_interest(conn, reactor, epoll::EventFlags::IN),

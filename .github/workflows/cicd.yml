@@ -20,10 +20,84 @@ jobs:
     name: Language checks
     uses: ./.github/workflows/test-language.yml
 
-  # The Rust workspace, and the conformance corpus replayed against the Go oracle
-  # that recorded it (a drifting oracle or a stale expectation fails here).
-  rust:
-    name: Rust crates and corpus (shard ${{ matrix.shard }})
+  # Docs-only changes skip the Rust jobs. The conformance corpus replays the Go
+  # oracle, so Go, corpus, and workflow changes all count as Rust-relevant.
+  changes:
+    name: Detect Rust-relevant changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      rust: ${{ steps.diff.outputs.rust }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          rust=true
+          if [ "$EVENT" = pull_request ]; then
+            if ! git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qvE '^(documentation/|website/|blog/|proposals/|skills/|extensions/|.*\.md$)'; then
+              rust=false
+            fi
+          fi
+          echo "rust=$rust" >> "$GITHUB_OUTPUT"
+
+  # Format and lint once; clippy also type-checks every target for the test jobs.
+  rust-lint:
+    name: Rust format and clippy
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  # nextest runs each test in its own process, so tests that share process-global
+  # state (the runtime allocator, the environment) cannot interfere.
+  rust-test:
+    name: Rust tests (partition ${{ matrix.partition }})
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: [1, 2]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+      - run: cargo nextest run --workspace --partition hash:${{ matrix.partition }}/2
+      - name: Doc tests
+        if: matrix.partition == 1
+        run: cargo test --workspace --doc
+
+  # The conformance corpus replayed against the Go oracle that recorded it (a
+  # drifting oracle or a stale expectation fails here).
+  rust-conform:
+    name: Rust corpus (shard ${{ matrix.shard }})
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -42,18 +116,10 @@ jobs:
         with:
           path: toolchain/
           key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
-      - uses: actions/cache@v6
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            target/
-          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
-      - name: Format, lint, and test the Rust workspace
-        if: matrix.shard == 0
-        run: |
-          cargo fmt --all --check
-          cargo clippy --workspace --all-targets -- -D warnings
-          cargo test --workspace
+          shared-key: rust-conform
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Oracle replays the corpus
         run: make conform-oracle CONFORM_SHARD=${{ matrix.shard }}/4
       - uses: actions/upload-artifact@v7
@@ -61,6 +127,26 @@ jobs:
         with:
           name: conform-oracle-${{ matrix.shard }}
           path: .artifacts/conform-oracle.md
+
+  # Keep one stable required check; every Rust job must pass before merging.
+  rust-ok:
+    name: Rust checks
+    needs: [changes, rust-lint, rust-test, rust-conform]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all Rust checks
+        env:
+          RESULTS: ${{ join(needs.*.result, ',') }}
+          RELEVANT: ${{ needs.changes.outputs.rust }}
+        run: |
+          case ",$RESULTS," in
+            *,failure,*|*,cancelled,*) exit 1 ;;
+          esac
+          # Skipped is acceptable only when the change detector found nothing Rust-relevant.
+          if [ "$RELEVANT" = true ]; then
+            case ",$RESULTS," in *,skipped,*) exit 1 ;; esac
+          fi
 
   build:
     name: Build design book
