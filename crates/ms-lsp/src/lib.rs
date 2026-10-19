@@ -18,6 +18,7 @@ pub mod nav;
 pub mod rename;
 pub mod semantic;
 pub mod server;
+pub mod supervise;
 pub mod symbols;
 pub mod text;
 pub mod transport;
@@ -25,3 +26,4 @@ pub mod uri;
 pub mod workspace;
 
 pub use server::{serve, serve_with};
+pub use supervise::supervise;
