@@ -35,6 +35,43 @@ pub struct Waited {
     pub interrupted: bool,
 }
 
+/// SIGINT and SIGTERM are recorded instead of killing `ms` while this lives;
+/// the previous dispositions return on drop.
+pub struct Stops {
+    old_int: usize,
+    old_term: usize,
+}
+
+impl Stops {
+    pub fn catch() -> Stops {
+        PENDING.store(0, Ordering::SeqCst);
+        // SAFETY: `record` is async-signal-safe (one atomic store) and has the C ABI
+        // `signal` expects; the previous disposition is restored on drop.
+        unsafe {
+            Stops {
+                old_int: signal(SIGINT, record as *const () as usize),
+                old_term: signal(SIGTERM, record as *const () as usize),
+            }
+        }
+    }
+
+    /// The signal that arrived since the last call, if any.
+    pub fn take(&self) -> Option<i32> {
+        Some(PENDING.swap(0, Ordering::SeqCst)).filter(|&signum| signum != 0)
+    }
+}
+
+impl Drop for Stops {
+    fn drop(&mut self) {
+        let restore = |old: usize| if old == usize::MAX { SIG_DFL } else { old };
+        // SAFETY: restoring the dispositions returned by the earlier calls.
+        unsafe {
+            signal(SIGINT, restore(self.old_int));
+            signal(SIGTERM, restore(self.old_term));
+        }
+    }
+}
+
 /// Wait for `child`, forwarding SIGINT and SIGTERM received meanwhile.
 pub fn wait_with_signals(child: &mut Child) -> std::io::Result<ExitStatus> {
     wait_supervised(child, None, &mut || {}).map(|waited| waited.status)
@@ -47,15 +84,7 @@ pub fn wait_supervised(
     timeout: Option<Duration>,
     poll: &mut dyn FnMut(),
 ) -> std::io::Result<Waited> {
-    PENDING.store(0, Ordering::SeqCst);
-    // SAFETY: `record` is async-signal-safe (one atomic store) and has the C ABI
-    // `signal` expects; the previous disposition is restored below.
-    let (old_int, old_term) = unsafe {
-        (
-            signal(SIGINT, record as *const () as usize),
-            signal(SIGTERM, record as *const () as usize),
-        )
-    };
+    let stops = Stops::catch();
     let started = Instant::now();
     let (mut timed_out, mut interrupted) = (false, false);
     let result = loop {
@@ -70,8 +99,7 @@ pub fn wait_supervised(
             Ok(None) => {}
             Err(error) => break Err(error),
         }
-        let pending = PENDING.swap(0, Ordering::SeqCst);
-        if pending != 0 {
+        if let Some(pending) = stops.take() {
             interrupted = true;
             // SAFETY: the pid belongs to a child of this process that has not been reaped.
             unsafe { kill(child.id() as i32, pending) };
@@ -83,25 +111,7 @@ pub fn wait_supervised(
         poll();
         std::thread::sleep(Duration::from_millis(10));
     };
-    // SAFETY: restoring the dispositions returned by the earlier calls.
-    unsafe {
-        signal(
-            SIGINT,
-            if old_int == usize::MAX {
-                SIG_DFL
-            } else {
-                old_int
-            },
-        );
-        signal(
-            SIGTERM,
-            if old_term == usize::MAX {
-                SIG_DFL
-            } else {
-                old_term
-            },
-        );
-    }
+    drop(stops);
     result
 }
 

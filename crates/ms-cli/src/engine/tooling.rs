@@ -1,8 +1,9 @@
 //! `ms lint`, `ms inspect`, `ms diagram`, `ms review` and `ms fmt --drop-labels`:
 //! the source tools, over a program the checker has accepted.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::Read;
+use std::time::{Duration, Instant, SystemTime};
 
 use ms_driver::{CheckRequest, Checked, EditorOptions, LoadOptions, check_graph, load_editor_file};
 use ms_project::{Overlay, ProjectError, gopath};
@@ -18,23 +19,31 @@ use ms_tooling::views::build_view;
 
 use super::build::protected_output;
 use super::{Failure, command_diagnostic};
-use crate::analysis::{AnalysisSelection, select_analysis_inputs};
+use crate::analysis::{AnalysisInput, AnalysisSelection, select_analysis_inputs};
 use crate::backend::{
-    AnalysisRequest, BackendResult, DiagramRequest, FormatFailure, FormatFile, Io, OutputRequest,
-    ReviewRequest, not_implemented,
+    AnalysisCommand, AnalysisRequest, BackendResult, DiagramRequest, FormatFailure, FormatFile, Io,
+    OutputRequest, ReviewRequest,
 };
 use crate::diagnostic::{CommandDiagnostic, Position, diagnostics_document};
+use crate::process::Stops;
 use crate::util::{emit_json, file_error, plural, write_output};
 
-/// Load and check `filename` the way the analysis commands do: no lowering,
-/// and `main` is required only for a project manifest that has an entry.
+/// Load and check `filename` the way the source tools do: no lowering, and
+/// `main` is required only for a project manifest that has an entry.
 fn analyze(filename: &str, overlay: &Overlay) -> Checked {
+    analyze_with(filename, overlay, false, true)
+}
+
+/// `project_sources` also checks every source file of a manifest's project
+/// (`ms check`); `entry` allows the entry requirement (never for `ms lint`).
+fn analyze_with(filename: &str, overlay: &Overlay, project_sources: bool, entry: bool) -> Checked {
     let editor = EditorOptions {
         overlay: overlay.clone(),
+        project_sources,
         ..EditorOptions::default()
     };
     let graph = load_editor_file(filename, LoadOptions::default(), &editor);
-    let entry = !graph.library && gopath::base(filename) == "ms.toml";
+    let entry = entry && !graph.library && gopath::base(filename) == "ms.toml";
     check_graph(
         graph,
         CheckRequest {
@@ -68,31 +77,72 @@ fn facts_of(checked: &Checked) -> Facts {
     collect_facts(&inspect(program).rows(), program)
 }
 
-pub(super) fn lint(request: &AnalysisRequest, io: &mut Io) -> BackendResult {
-    if request.watch {
-        return not_implemented("lint --watch");
+/// `ms check` and `ms lint`; `--watch` repeats the run after each saved change.
+pub(super) fn analysis(request: &AnalysisRequest, io: &mut Io) -> BackendResult {
+    if !request.watch {
+        return Ok(analysis_once(request, io).0);
     }
+    let stops = Stops::catch();
+    let mut watched = BTreeMap::new();
+    let mut due = Some(Instant::now());
+    loop {
+        if due.is_some_and(|at| Instant::now() >= at) {
+            due = None;
+            let (_, files) = analysis_once(request, io);
+            watched = files
+                .into_iter()
+                .chain(request.targets.iter().filter_map(|t| absolute(t)))
+                .map(|path| (path.clone(), file_state(&path)))
+                .collect();
+            let _ = writeln!(io.stderr, "ms: waiting for changes");
+            let _ = io.stdout.flush();
+        }
+        std::thread::sleep(WATCH_INTERVAL);
+        if stops.take().is_some() {
+            return Ok(130);
+        }
+        for (path, previous) in &mut watched {
+            let current = file_state(path);
+            if current != *previous {
+                *previous = current;
+                due = Some(Instant::now() + WATCH_SETTLE);
+            }
+        }
+    }
+}
+
+/// One run of the command, and the files that decide its result.
+fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
+    let check = request.command == AnalysisCommand::Check;
     let selection = match select_analysis_inputs(&request.targets) {
         Ok(selection) => selection,
         Err(error) => {
             let _ = writeln!(io.stderr, "{error}");
-            return Ok(1);
+            return (1, Vec::new());
         }
     };
     let mut analyzed = Vec::new();
+    let mut files = Vec::new();
     let mut issues = selection.diagnostics.clone();
     for input in &selection.inputs {
-        let checked = analyze(&input.path, &Overlay::new());
+        let checked = analyze_with(&input.path, &Overlay::new(), check, check);
+        files.extend(watched_files(&input.path, &checked));
         for issue in &checked.diagnostics {
             issues.push(placed(&selection, &checked.source_root, issue));
         }
         analyzed.push(checked);
     }
     let mut diagnostics = issues.clone();
-    for checked in &analyzed {
+    for (input, checked) in selection.inputs.iter().zip(&analyzed) {
         let Some(program) = checked.program.as_ref().filter(|_| checked.success()) else {
             continue;
         };
+        if check {
+            if !request.json {
+                let _ = writeln!(io.stdout, "{}", checked_line(input, checked));
+            }
+            continue;
+        }
         for finding in ms_tooling::lint::lint_modules(program) {
             let at = Position {
                 file: finding.file.to_string(),
@@ -113,7 +163,10 @@ pub(super) fn lint(request: &AnalysisRequest, io: &mut Io) -> BackendResult {
     }
     let status = i32::from(!diagnostics.is_empty());
     if request.json {
-        return Ok(emit_json(io, &diagnostics_document(&diagnostics), status));
+        return (
+            emit_json(io, &diagnostics_document(&diagnostics), status),
+            files,
+        );
     }
     let root = match analyzed.as_slice() {
         [only] if !selection.collection => only.source_root.as_str(),
@@ -139,7 +192,70 @@ pub(super) fn lint(request: &AnalysisRequest, io: &mut Io) -> BackendResult {
             plural(count, "error", "errors")
         );
     }
-    Ok(status)
+    (status, files)
+}
+
+/// The check summary for one input that passed.
+fn checked_line(input: &AnalysisInput, checked: &Checked) -> String {
+    let Some(program) = checked
+        .program
+        .as_ref()
+        .filter(|_| !checked.project_root.is_empty())
+    else {
+        return format!("Checked {}", input.display);
+    };
+    let count = program.modules.iter().filter(|m| !m.is_standard()).count();
+    format!(
+        "Checked {} ({count} {})",
+        input.display,
+        plural(count, "module", "modules")
+    )
+}
+
+/// How often watched files are polled, and how long a change settles before
+/// the rerun (editors often save in several steps).
+const WATCH_INTERVAL: Duration = Duration::from_millis(10);
+const WATCH_SETTLE: Duration = Duration::from_millis(10);
+
+/// The input, its manifest, and every local module the analysis loaded.
+fn watched_files(input: &str, checked: &Checked) -> Vec<String> {
+    let mut files = Vec::new();
+    files.extend(absolute(input));
+    if !checked.project_root.is_empty() {
+        files.push(gopath::join(&[&checked.project_root, "ms.toml"]));
+    }
+    let Some(program) = &checked.program else {
+        return files;
+    };
+    for module in program.modules.iter().filter(|m| !m.is_standard()) {
+        let file = module.file.as_str();
+        if gopath::is_abs(file) || checked.source_root.is_empty() {
+            files.extend(absolute(file));
+        } else {
+            files.extend(absolute(&gopath::join(&[&checked.source_root, file])));
+        }
+    }
+    files
+}
+
+fn absolute(path: &str) -> Option<String> {
+    let path = std::path::absolute(path).ok()?;
+    Some(path.to_string_lossy().into_owned())
+}
+
+#[derive(PartialEq)]
+struct FileState {
+    size: u64,
+    modified: Option<SystemTime>,
+}
+
+/// `None` for a file that does not exist.
+fn file_state(path: &str) -> Option<FileState> {
+    let meta = std::fs::metadata(path).ok()?;
+    Some(FileState {
+        size: meta.len(),
+        modified: meta.modified().ok(),
+    })
 }
 
 /// A compiler diagnostic with its positions in the display form of a collection.
@@ -205,7 +321,7 @@ pub(super) fn inspect_command(request: &OutputRequest, io: &mut Io) -> BackendRe
         Err(done) => return done,
     };
     let program = checked.program.as_ref().expect("accepted program");
-    let mut text = inspect(program).to_json(true).encode();
+    let mut text = inspect(program).to_json().encode();
     text.push('\n');
     Ok(write_output(io, &request.output, text.as_bytes()))
 }
