@@ -209,6 +209,18 @@ msstd_fs_truncate(path: *const StrObj, size: i64) -> u8
 msstd_fs_set_times( path: *const StrObj, accessed_seconds: i64, accessed_nanos: i64, modified_seconds: i64, modified_nanos: i64, follow: u8, ) -> u8
 msrt_cancel_flag (data)
 msrt_cancelled() -> !
+msstd_io_failure_message() -> *mut StrObj
+msstd_io_standard(which: i64) -> *mut Host
+msstd_io_open(path: *const StrObj, out: *mut *mut Host) -> u8
+msstd_io_read( h: *mut Host, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
+msstd_io_read_line( h: *mut Host, has_max: u8, max: i64, out: *mut *mut StrObj, ) -> u8
+msstd_io_write_bytes(h: *mut Host, data: *const VecVal) -> u8
+msstd_io_write(h: *mut Host, data: *const StrObj) -> u8
+msstd_io_flush(h: *mut Host) -> u8
+msstd_io_close(h: *mut Host)
+msstd_io_is_closed(h: *const Host) -> u8
+msrt_cancel_flag (data)
+msrt_cancelled() -> !
 msstd_math_atan2(y: f64, x: f64) -> f64
 msstd_math_hypot(left: f64, right: f64) -> f64
 msstd_math_pow(base: f64, exponent: f64) -> f64

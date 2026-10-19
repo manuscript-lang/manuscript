@@ -16,6 +16,14 @@ recorded here before it is committed.)_
   `exp`-derived functions may differ in the last bits, because Go's amd64 and arm64 `Exp` is CPU-specific assembly). `ms-rt` gains
   `msrt_numbers_parse_int/parse_float/error_message`, `msrt_float_to_precision/to_exponential/to_fixed` (`status` + string `out`),
   `msrt_float_truncate_to_int` (present flag + `out`) and `msrt_float_compare`/`msrt_int_compare`.
+- **v2.4 (`ms-std-fs`, `ms-std-io`).** `msstd_fs_*` are the path-based `@std/fs` operations and `msstd_io_*` the host streams of `@std/io`.
+  Paths are strings; fallible calls return `STATUS_*` (`NOT_FOUND`, `ALREADY_EXISTS`, `NOT_EMPTY`, `PERMISSION_DENIED`, `UNSUPPORTED`,
+  `CLOSED`, `FAILED`, `UNAVAILABLE`, `NONE` join the status table) and write `out` only on success. `FAILED` carries Go's `*PathError`
+  text, read with `msstd_fs_failure_message` / `msstd_io_failure_message` until the next fallible call. Optional limits are a present
+  flag plus an `i64`. `FileInfo` is flattened to `InfoOut`, filesystem status to `FsOut`; `list` returns names plus one flag byte per
+  entry (bit 0 directory, bit 1 symlink). Streams are refcounted `Handle<Stream>` objects (`Obj` header, then the value); reads and writes
+  poll in 50 ms slices so cancellation interrupts them. `STATUS_NONE` from `read`/`read_line` means end of stream. Generic `io.copy`,
+  `read_all` and `read_line` over user-defined `ReadStream`s stay compiler-lowered.
 - **v2.3 (`ms-std-time`, `ms-std-rt`).** `msstd_time_*` covers `@std/time`. `Duration` is an `i64` of nanoseconds by value.
   `Timestamp` is `repr(C) { seconds: i64, nanos: i64 }` and `Instant` is `repr(C) { domain: u64, tick: i64 }`; both are passed by pointer
   and returned through a trailing `out`. `msstd_time_clock_now` uses domain 1 (the process monotonic clock); `Calendar` is returned as

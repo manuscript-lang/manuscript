@@ -1,0 +1,18 @@
+[package]
+name = "ms-std-io"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Manuscript standard-library natives for @std/io (host streams over libc descriptors)"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+ms-rt-abi = { path = "../ms-rt-abi" }
+ms-std-rt = { path = "../ms-std-rt" }
+ms-std-fs = { path = "../ms-std-fs" }
+libc = { version = "0.2", default-features = false }
+
+[lints]
+workspace = true

@@ -147,3 +147,105 @@ fn timestamps_round_trip_through_strings() {
         );
     }
 }
+
+mod fs_io {
+    use super::*;
+    use ms_rt_abi::{STATUS_ALREADY_EXISTS, STATUS_NONE, STATUS_NOT_FOUND, VecVal};
+    use ms_std_fs::*;
+    use ms_std_io::*;
+    use std::vec::Vec;
+
+    fn vec_of(b: &[u8]) -> VecVal {
+        let mut v = VecVal {
+            ptr: core::ptr::null_mut(),
+            len: 0,
+            cap: 0,
+        };
+        // SAFETY: `v` is writable.
+        unsafe { ms_std_rt::write_bytes(b, &mut v) };
+        v
+    }
+
+    fn contents(v: &VecVal) -> Vec<u8> {
+        // SAFETY: `v` is a live byte vector.
+        unsafe { ms_std_rt::vec_bytes(v) }.to_vec()
+    }
+
+    #[test]
+    fn fs_round_trip_through_the_abi() {
+        let _g = lock();
+        let dir = st(&std::format!("/tmp/msrt-fs-{}", std::process::id()));
+        let file = st(&std::format!("/tmp/msrt-fs-{}/a.txt", std::process::id()));
+        let data = vec_of(b"hello");
+        let mut out = VecVal {
+            ptr: core::ptr::null_mut(),
+            len: 0,
+            cap: 0,
+        };
+        let mut info = std::mem::MaybeUninit::<InfoOut>::uninit();
+        // SAFETY: valid runtime strings and out pointers throughout.
+        unsafe {
+            assert_eq!(msstd_fs_create_directory(dir, 1), STATUS_OK);
+            assert_eq!(msstd_fs_write_file(file, &data, 0), STATUS_OK);
+            assert_eq!(msstd_fs_write_file(file, &data, 0), STATUS_ALREADY_EXISTS);
+            assert_eq!(msstd_fs_append_file(file, &data), STATUS_OK);
+            assert_eq!(msstd_fs_read_file(file, 0, 0, &mut out), STATUS_OK);
+            assert_eq!(contents(&out), b"hellohello");
+            assert_eq!(msstd_fs_stat(file, 1, info.as_mut_ptr()), STATUS_OK);
+            let i = info.assume_init();
+            assert_eq!((i.size, text(i.name).as_str()), (10, "a.txt"));
+            let mut names = VecVal {
+                ptr: core::ptr::null_mut(),
+                len: 0,
+                cap: 0,
+            };
+            let mut flags = VecVal {
+                ptr: core::ptr::null_mut(),
+                len: 0,
+                cap: 0,
+            };
+            assert_eq!(msstd_fs_list(dir, 0, 0, &mut names, &mut flags), STATUS_OK);
+            assert_eq!((names.len, contents(&flags)), (1, vec![0]));
+            let missing = st("/tmp/msrt-fs-missing/none");
+            assert_eq!(
+                msstd_fs_read_file(missing, 0, 0, &mut out),
+                STATUS_NOT_FOUND
+            );
+            assert_eq!(msstd_fs_remove(dir, 1), STATUS_OK);
+            assert_eq!(msstd_fs_remove(dir, 1), STATUS_OK);
+            let mut s: *mut StrObj = core::ptr::null_mut();
+            assert_eq!(msstd_fs_read_link(file, &mut s), STATUS_NOT_FOUND);
+        }
+    }
+
+    #[test]
+    fn io_streams_through_the_abi() {
+        let _g = lock();
+        let path = st("/proc/self/stat");
+        let mut h: *mut _ = core::ptr::null_mut();
+        let mut chunk = VecVal {
+            ptr: core::ptr::null_mut(),
+            len: 0,
+            cap: 0,
+        };
+        let mut line: *mut StrObj = core::ptr::null_mut();
+        // SAFETY: valid handles and out pointers throughout.
+        unsafe {
+            assert_eq!(
+                msstd_io_open(st("/definitely/missing"), &mut h),
+                ms_rt_abi::STATUS_UNAVAILABLE
+            );
+            assert_eq!(msstd_io_open(path, &mut h), STATUS_OK);
+            assert_eq!(msstd_io_read_line(h, 1, 0, &mut line), STATUS_INVALID_INPUT);
+            assert_eq!(msstd_io_read_line(h, 0, 0, &mut line), STATUS_OK);
+            assert!(!text(line).is_empty());
+            assert_eq!(msstd_io_read(h, 0, 0, &mut chunk), STATUS_NONE);
+            assert_eq!(msstd_io_is_closed(h), 0);
+            msstd_io_close(h);
+            assert_eq!(msstd_io_is_closed(h), 1);
+            assert_eq!(msstd_io_read(h, 0, 0, &mut chunk), ms_rt_abi::STATUS_CLOSED);
+            let err = msstd_io_standard(2);
+            assert_eq!(msstd_io_flush(err), STATUS_OK);
+        }
+    }
+}

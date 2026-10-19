@@ -4,6 +4,10 @@
 // This crate is the C ABI boundary of the standard-library natives.
 #![allow(unsafe_code)]
 
+extern crate alloc;
+
+use alloc::vec::Vec;
+use core::cell::UnsafeCell;
 use core::fmt::{self, Write};
 use ms_rt_abi::{STR_DATA_OFFSET, StrObj};
 
@@ -182,4 +186,22 @@ pub fn new_handle<T>(value: T) -> *mut Handle<T> {
         );
         ptr
     }
+}
+
+/// Diagnostic text of the most recent `STATUS_FAILED` result (the runtime is single-threaded).
+struct Failure(UnsafeCell<Vec<u8>>);
+// SAFETY: the runtime runs Manuscript code on one thread.
+unsafe impl Sync for Failure {}
+static FAILURE: Failure = Failure(UnsafeCell::new(Vec::new()));
+
+/// Records the text a later `failure_message` returns.
+pub fn record_failure(message: Vec<u8>) {
+    // SAFETY: single-threaded runtime; no reference into FAILURE outlives a call.
+    unsafe { *FAILURE.0.get() = message };
+}
+
+/// A fresh string holding the most recently recorded failure text.
+pub fn failure_message() -> *mut StrObj {
+    // SAFETY: single-threaded runtime.
+    new_string(unsafe { &*FAILURE.0.get() })
 }

@@ -9,6 +9,7 @@
 extern crate alloc as stdalloc;
 // Linked so its `msstd_math_*` exports ship in the runtime library.
 extern crate ms_std_fs;
+extern crate ms_std_io;
 extern crate ms_std_math;
 extern crate ms_std_time;
 

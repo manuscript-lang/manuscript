@@ -23,12 +23,6 @@ use err::{Fail, Res};
 use ms_rt_abi::{STATUS_OK, StrObj, VecVal};
 use ms_std_rt::{new_string, str_bytes, write_bytes, write_string_list};
 
-/// Diagnostic text of the most recent `STATUS_FAILED` (the runtime is single-threaded).
-struct Last(core::cell::UnsafeCell<Vec<u8>>);
-// SAFETY: the runtime runs Manuscript code on one thread.
-unsafe impl Sync for Last {}
-static LAST: Last = Last(core::cell::UnsafeCell::new(Vec::new()));
-
 fn finish<T>(r: Res<T>, ok: impl FnOnce(T)) -> u8 {
     match r {
         Ok(v) => {
@@ -36,8 +30,7 @@ fn finish<T>(r: Res<T>, ok: impl FnOnce(T)) -> u8 {
             STATUS_OK
         }
         Err(Fail { status, message }) => {
-            // SAFETY: single-threaded runtime; no reference to LAST outlives this call.
-            unsafe { *LAST.0.get() = message.unwrap_or_default() };
+            ms_std_rt::record_failure(message.unwrap_or_default());
             status
         }
     }
@@ -46,8 +39,7 @@ fn finish<T>(r: Res<T>, ok: impl FnOnce(T)) -> u8 {
 /// The text describing the last `STATUS_FAILED` result (a fresh string).
 #[unsafe(no_mangle)]
 pub extern "C" fn msstd_fs_failure_message() -> *mut StrObj {
-    // SAFETY: single-threaded runtime.
-    new_string(unsafe { &*LAST.0.get() })
+    ms_std_rt::failure_message()
 }
 
 /// A decoded optional size limit (`has` is non-zero when present).
@@ -162,14 +154,8 @@ pub unsafe extern "C" fn msstd_fs_copy_file(
     max: i64,
 ) -> u8 {
     // SAFETY: arguments follow the ABI contract.
-    let r = lim(has_max, max).and_then(|m| {
-        ops::copy_file(
-            unsafe { str_bytes(source) },
-            unsafe { str_bytes(destination) },
-            replace != 0,
-            m,
-        )
-    });
+    let (source, destination) = unsafe { (str_bytes(source), str_bytes(destination)) };
+    let r = lim(has_max, max).and_then(|m| ops::copy_file(source, destination, replace != 0, m));
     finish(r, |()| ())
 }
 
