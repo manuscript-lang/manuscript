@@ -4,7 +4,7 @@ use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_check::hir::{CallView, Callable, Resolution};
 use ms_check::types::{self as ct, Subst};
-use ms_mir::ir::Value;
+use ms_mir::ir::{Mode, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 use std::rc::Rc;
@@ -197,45 +197,64 @@ impl<'a> FnLower<'a> {
             return Ok(self.dummy(MTy::UNIT));
         }
         let fid = self.cx.function_for(self.b.m, c, subst)?;
+        let vars = self.cx.var_positions(c);
+        // A changed parameter is moved into a slot the callee takes from and puts back into.
+        let mut slots_out: Vec<(usize, Value, MTy, bool)> = Vec::new();
         let mut vals: Vec<Value> = Vec::new();
-        for a in args.slots.into_iter().flatten() {
-            vals.push(self.borrow(a));
+        for (i, a) in args.slots.into_iter().flatten().enumerate() {
+            if !vars.contains(&i) {
+                vals.push(self.borrow(a));
+                continue;
+            }
+            let ty = self.ty_of(a.v);
+            let moved = !a.own
+                && args
+                    .places
+                    .get(i)
+                    .cloned()
+                    .flatten()
+                    .and_then(|p| match self.hir.resolution(&p) {
+                        ms_check::hir::Resolution::Local(b) if matches!(p.kind, ExprKind::Name(_)) => {
+                            Some(b.uid)
+                        }
+                        _ => None,
+                    })
+                    .is_some_and(|uid| {
+                        let owned = self
+                            .locals
+                            .get(&uid)
+                            .is_some_and(|l| self.b.var_mode(l.var) == Mode::Own);
+                        owned && crate::mutation::uses_of(&self.hir, e, uid) == 1
+                    });
+            let x = if moved { a.v } else { self.owned(a) };
+            let slot = self
+                .b
+                .emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(ty), Some(MTy::PTR))
+                .expect("slot");
+            self.move_into(slot, x);
+            slots_out.push((i, slot, ty, moved));
+            vals.push(slot);
         }
         self.at(e.pos);
         let v = self.b.call(fid, &vals);
-        let vars = self.cx.var_positions(c);
-        if vars.is_empty() {
-            return Ok(self.val(v, true));
-        }
-        // The callee returns `{result, updated var parameters...}`.
-        let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(v)).clone() else {
-            return Err(Error::new(
-                "callee with var parameters must return a record",
-            ));
-        };
-        let res = self.b.rec_get(rid, 0, v);
-        let result = self.owned(Val { v: res, own: false });
-        let mut updates = Vec::new();
-        for (j, p) in vars.iter().enumerate() {
-            let f = self.b.rec_get(rid, j as u32 + 1, v);
-            let fo = self.owned(Val { v: f, own: false });
-            updates.push((*p, fo));
-        }
-        self.drop_value(v);
-        for (p, new) in updates {
+        for (p, slot, ty, moved) in slots_out {
+            let new = self.move_out(slot, ty);
             let target = args.places.get(p).cloned().flatten();
             match target {
                 Some(place) if self.is_place(&place) => {
                     let mut new = Some(new);
                     self.place_update(&place, &mut |s, old| {
-                        s.drop_value(old);
+                        // A moved value has already left the variable.
+                        if !moved {
+                            s.drop_value(old);
+                        }
                         Ok(new.take().expect("single use"))
                     })?;
                 }
                 _ => self.drop_value(new),
             }
         }
-        Ok(self.val(result, true))
+        Ok(self.val(v, true))
     }
 
     // ------------------------------------------------------------- methods

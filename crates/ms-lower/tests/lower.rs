@@ -58,7 +58,9 @@ fn var_parameters_return_updated_values() {
         "vars",
         "type Counter:\n    total: Int\n\nimpl Counter:\n    var fn bump(by: Int) Int:\n        self.total += by\n        return self.total\n\nfn add(var xs: List[Int], v: Int) Unit:\n    xs.append(v)\n\nexport fn main() Int:\n    var c = Counter(total: 1)\n    let a = c.bump(4)\n    var l = [1]\n    add(var l, a)\n    return l.length()\n",
     );
-    assert!(mir.contains(".vars"));
+    // The changed argument travels through a slot the callee takes from and puts back into.
+    assert!(mir.contains("slot "));
+    assert!(mir.contains("take "));
 }
 
 #[test]
@@ -89,5 +91,6 @@ fn methods_that_change_self_hand_it_back() {
         "selfmut",
         "interface Counter:\n    fn next() Int\ntype C:\n    n: Int\nimpl Counter for C:\n    fn next() Int:\n        self.n += 1\n        return self.n\nexport fn main() Int:\n    let c = Counter(C(0))\n    let a = c.next()\n    return a + c.next()\n",
     );
-    assert!(mir.contains("next.vars"));
+    assert!(mir.contains("call.method"));
+    assert!(mir.contains("store "));
 }
