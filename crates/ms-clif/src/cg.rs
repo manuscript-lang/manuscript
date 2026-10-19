@@ -579,6 +579,7 @@ fn emit_tables(g: &mut Gen) -> Result<Tables, Error> {
         .map_err(|e| e.to_string())?;
     let mut desc = DataDescription::new();
     desc.define(blob.into_boxed_slice());
+    desc.set_align(8);
     g.module.define_data(id, &desc).map_err(|e| e.to_string())?;
     g.tables = Some(id);
     Ok(Tables {
@@ -597,9 +598,12 @@ fn relocate_tables(product: &mut cranelift_object::ObjectProduct, dbg: &[FuncDbg
         write::{Relocation, SymbolSection},
     };
     let own = product.data_symbol(t.id);
-    let SymbolSection::Section(section) = product.object.symbol(own).section else {
+    let own_sym = product.object.symbol(own);
+    let SymbolSection::Section(section) = own_sym.section else {
         return;
     };
+    // Relocation offsets are section-relative; the blob sits at `base` inside its section.
+    let base = own_sym.value as usize;
     let flags = RelocationFlags::Generic {
         kind: RelocationKind::Absolute,
         encoding: RelocationEncoding::Generic,
@@ -613,7 +617,7 @@ fn relocate_tables(product: &mut cranelift_object::ObjectProduct, dbg: &[FuncDbg
     let obj = &mut product.object;
     let mut add = |offset: usize, symbol, addend: i64| {
         let r = Relocation {
-            offset: offset as u64,
+            offset: (base + offset) as u64,
             symbol,
             addend,
             flags,
