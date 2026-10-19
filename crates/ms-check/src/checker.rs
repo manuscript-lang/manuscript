@@ -1,0 +1,1208 @@
+//! The checker state and the module-level passes (`pkg/checker/checker.go`).
+
+use crate::stdlib::{self, StdResult};
+use crate::syntax::*;
+use crate::types::*;
+use ms_syntax::ast::*;
+use ms_syntax::{Diagnostic, Phase, Pos};
+use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
+
+/// Lexical scope of local bindings and type variables.
+pub struct Scope {
+    /// Enclosing scope.
+    pub parent: Option<Rc<Scope>>,
+    /// Local bindings.
+    pub bindings: RefCell<HashMap<Name, BindingRef>>,
+    /// Type variables.
+    pub types: RefCell<HashMap<Name, Ty>>,
+}
+
+impl Scope {
+    /// A new scope.
+    pub fn new(parent: Option<Rc<Scope>>) -> Rc<Scope> {
+        Rc::new(Scope {
+            parent,
+            bindings: RefCell::new(HashMap::new()),
+            types: RefCell::new(HashMap::new()),
+        })
+    }
+
+    /// Looks a binding up through enclosing scopes.
+    pub fn binding(&self, name: Name) -> Option<BindingRef> {
+        if let Some(b) = self.bindings.borrow().get(&name) {
+            return Some(b.clone());
+        }
+        let mut s = self.parent.clone();
+        while let Some(sc) = s {
+            if let Some(b) = sc.bindings.borrow().get(&name) {
+                return Some(b.clone());
+            }
+            s = sc.parent.clone();
+        }
+        None
+    }
+
+    /// Looks a type variable up; a binding of the same name hides it.
+    pub fn typ(&self, name: Name) -> Option<Ty> {
+        if self.bindings.borrow().contains_key(&name) {
+            return None;
+        }
+        if let Some(t) = self.types.borrow().get(&name) {
+            return Some(t.clone());
+        }
+        let mut s = self.parent.clone();
+        while let Some(sc) = s {
+            if sc.bindings.borrow().contains_key(&name) {
+                return None;
+            }
+            if let Some(t) = sc.types.borrow().get(&name) {
+                return Some(t.clone());
+            }
+            s = sc.parent.clone();
+        }
+        None
+    }
+}
+
+/// The module-level symbol table of one module.
+pub type Names = Rc<RefCell<HashMap<Name, SymRef>>>;
+
+/// Options for one check.
+#[derive(Default, Clone)]
+pub struct CheckOptions {
+    /// Capture the scope at name expressions with this text (editor queries).
+    pub scope_marker: Option<String>,
+    /// The bundled standard source module being checked for the shared cache.
+    pub bundled: Option<Name>,
+}
+
+/// The concrete fixture injected into tests of a module.
+#[derive(Clone)]
+pub struct TestFixture {
+    /// The `make_fixture` factory.
+    pub factory: SymRef,
+    /// Concrete fixture type.
+    pub ty: Ty,
+    /// The standard `TestHooks` contract.
+    pub hooks: Ty,
+}
+
+/// The result of checking: modules with facts, symbols, methods, diagnostics.
+#[derive(Default)]
+pub struct Program {
+    /// Fixtures per module file.
+    pub test_fixtures: HashMap<Name, TestFixture>,
+    /// Conservative potential effects by callable id.
+    pub effects: HashMap<Name, Vec<&'static str>>,
+    /// Modules in dependency order (reachable bundled source modules first).
+    pub modules: Vec<ModRef>,
+    /// Module-level symbols per module file.
+    pub symbols: HashMap<Name, Names>,
+    /// All implementation methods.
+    pub methods: Vec<MethodRef>,
+    /// Diagnostics in report order.
+    pub diagnostics: Vec<Diagnostic>,
+    /// Identities handed out while checking.
+    pub serial: usize,
+}
+
+/// A body-check result retained from an inference probe.
+#[derive(Clone)]
+pub struct CheckedArgument {
+    /// The probed fact.
+    pub info: Option<Info>,
+    /// Diagnostics the probe produced.
+    pub diagnostics: Vec<Diagnostic>,
+}
+
+/// Collected callback returns (`callbackReturns`).
+#[derive(Default)]
+pub struct CallbackReturns {
+    /// The one exact return type.
+    pub ty: Option<Ty>,
+    /// Expected result context.
+    pub context: Option<Ty>,
+    /// A return whose type is not yet known.
+    pub unresolved: bool,
+    /// The result depends on later context.
+    pub context_dependent: bool,
+}
+
+/// A default-bound check deferred until implementations are bound.
+pub struct DeferredBound {
+    /// Default type.
+    pub resolved: Ty,
+    /// Bound it must satisfy.
+    pub bound: Ty,
+    /// Where to report.
+    pub pos: Pos,
+    /// File of the declaring module.
+    pub module: ModRef,
+}
+
+/// Resolves local imports to canonical module keys: `(importing file, import
+/// node id) -> target module file`.
+#[derive(Default, Clone)]
+pub struct ImportMap(pub HashMap<(Name, NodeId), Name>);
+
+impl ImportMap {
+    /// Records an import resolution.
+    pub fn insert(&mut self, file: Name, id: NodeId, target: Name) {
+        self.0.insert((file, id), target);
+    }
+    /// Looks an import up.
+    pub fn get(&self, file: Name, id: NodeId) -> Option<Name> {
+        self.0.get(&(file, id)).copied()
+    }
+}
+
+/// The checker.
+pub struct Checker {
+    pub(crate) scope_marker: Option<String>,
+    pub(crate) standard_declarations: bool,
+    pub(crate) deferred_default_bounds: Vec<DeferredBound>,
+    pub(crate) id_scope: String,
+    pub(crate) p: Program,
+    pub(crate) module: Option<ModRef>,
+    pub(crate) names: Names,
+    pub(crate) scope: Rc<Scope>,
+    pub(crate) result: Option<Ty>,
+    pub(crate) return_inference: Option<CallbackReturns>,
+    pub(crate) inference_variables: VarSet,
+    pub(crate) checked_arguments: Option<HashMap<NodeId, CheckedArgument>>,
+    pub(crate) function: usize,
+    pub(crate) serial: usize,
+    pub(crate) loops: usize,
+    pub(crate) test_function: usize,
+    pub(crate) rejected_names: HashSet<Name>,
+    pub(crate) unknown_type: bool,
+    pub(crate) unresolved_constructors: HashSet<Pos>,
+    pub(crate) label_mismatch: bool,
+    pub(crate) call_name: String,
+    pub(crate) call_pos: Option<Pos>,
+    pub(crate) captures: HashMap<usize, HashMap<usize, BindingRef>>,
+    pub(crate) constants_visiting: HashSet<usize>,
+    pub(crate) cycle_reported: HashSet<usize>,
+    pub(crate) imports: ImportMap,
+    pub(crate) binding_serial: usize,
+}
+
+/// Maximum identity serial reservation per standard module check.
+const PRIMITIVE_NAMES: [&str; 6] = ["Bool", "Int", "Float", "String", "Unit", "Never"];
+
+impl Checker {
+    /// A fresh checker.
+    pub fn new(options: &CheckOptions) -> Checker {
+        Checker {
+            scope_marker: options.scope_marker.clone(),
+            standard_declarations: false,
+            deferred_default_bounds: Vec::new(),
+            id_scope: String::new(),
+            p: Program::default(),
+            module: None,
+            names: Rc::new(RefCell::new(HashMap::new())),
+            scope: Scope::new(None),
+            result: None,
+            return_inference: None,
+            inference_variables: VarSet::new(),
+            checked_arguments: None,
+            function: 0,
+            serial: 0,
+            loops: 0,
+            test_function: 0,
+            rejected_names: HashSet::new(),
+            unknown_type: false,
+            unresolved_constructors: HashSet::new(),
+            label_mismatch: false,
+            call_name: String::new(),
+            call_pos: None,
+            captures: HashMap::new(),
+            constants_visiting: HashSet::new(),
+            cycle_reported: HashSet::new(),
+            imports: ImportMap::default(),
+            binding_serial: 0,
+        }
+    }
+
+    /// The current module (panics outside a module check).
+    pub(crate) fn m(&self) -> ModRef {
+        self.module.clone().expect("module")
+    }
+
+    /// The current module file, or empty.
+    pub(crate) fn current_file(&self) -> Name {
+        self.module.as_ref().map(|m| m.file).unwrap_or_else(|| n(""))
+    }
+
+    /// Hands out a unique identity.
+    pub(crate) fn unique(&mut self, prefix: &str) -> Name {
+        self.serial += 1;
+        let mut s = String::new();
+        s.push_str(&self.id_scope);
+        if self.standard_declarations {
+            s.push_str("standard_");
+        }
+        s.push_str(prefix);
+        s.push_str(&self.serial.to_string());
+        n(&s)
+    }
+
+    // ------------------------------------------------------------ diagnostics
+
+    fn import_reported(&self, name: &str, pos: Pos) -> bool {
+        let marker = format!("; add: import {name} from ");
+        let file = self.current_file();
+        let _ = pos;
+        self.p
+            .diagnostics
+            .iter()
+            .any(|d| d.file.as_ref() == file.as_str() && d.message.contains(&marker))
+    }
+
+    /// Reports a diagnostic, applying the checker's suppression rules.
+    pub(crate) fn error(&mut self, pos: Pos, phase: Phase, message: impl Into<String>) {
+        let message: String = message.into();
+        let file = self.current_file();
+        self.error_in(file, pos, phase, message);
+    }
+
+    /// Reports a diagnostic in an explicit file.
+    pub(crate) fn error_in(&mut self, file: Name, pos: Pos, phase: Phase, message: String) {
+        if phase == Phase::Resolution {
+            if let Some((_, rest)) = message.split_once("; add: import ") {
+                let name = rest.split(" from ").next().unwrap_or("");
+                if self.import_reported(name, pos) {
+                    return;
+                }
+            }
+        }
+        if let Some(m) = &self.module {
+            for span in &m.recovered {
+                if in_span(pos.offset, span) {
+                    return;
+                }
+            }
+            if phase == Phase::Resolution {
+                for name in &m.omitted {
+                    if message == format!("unknown binding {name}")
+                        || message.starts_with(&format!("unknown binding {name};"))
+                        || message.starts_with(&format!("unknown type {name};"))
+                        || message == format!("unknown type {name}")
+                    {
+                        return;
+                    }
+                }
+            }
+        }
+        if self.unknown_type && phase != Phase::Resolution && message.contains("<invalid>") {
+            return;
+        }
+        self.p.diagnostics.push(Diagnostic {
+            file: file.as_str().into(),
+            pos,
+            phase,
+            message,
+            end: None,
+            fix: None,
+        });
+    }
+
+    /// A type-phase diagnostic.
+    pub(crate) fn type_error(&mut self, pos: Pos, message: impl Into<String>) {
+        self.error(pos, Phase::Type, message);
+    }
+
+    /// A resolution-phase diagnostic.
+    pub(crate) fn res_error(&mut self, pos: Pos, message: impl Into<String>) {
+        self.error(pos, Phase::Resolution, message);
+    }
+
+    pub(crate) fn module_position(&self) -> Pos {
+        Pos::new(0, 1, 1)
+    }
+
+    // ---------------------------------------------------------------- symbols
+
+    pub(crate) fn sym(&self, name: Name) -> Option<SymRef> {
+        self.names.borrow().get(&name).cloned()
+    }
+
+    /// A name that resolves to neither a binding nor a symbol.
+    pub(crate) fn unbound(&self, name: Name) -> bool {
+        self.scope.binding(name).is_none() && self.names.borrow().get(&name).is_none()
+    }
+
+    pub(crate) fn add_symbol(&mut self, name: Name, s: SymRef, pos: Pos) {
+        let existing = self.sym(name);
+        if let Some(e) = &existing {
+            if stdlib::is_prelude_symbol(e)
+                && !stdlib::is_prelude_symbol(&s)
+                && e.module != self.current_file()
+            {
+                self.res_error(
+                    pos,
+                    format!(
+                        "declaration {name} reuses a prelude name; rename it, because {name} always refers to the standard declaration"
+                    ),
+                );
+                self.rejected_names.insert(name);
+                return;
+            }
+        }
+        if existing.is_some() {
+            self.res_error(
+                pos,
+                format!(
+                    "duplicate or intrinsic name {name}; this name is already declared, imported, or built in, so rename one of them"
+                ),
+            );
+            self.rejected_names.insert(name);
+            return;
+        }
+        self.names.borrow_mut().insert(name, s);
+    }
+
+    pub(crate) fn variable_scope(&self, vars: &[Ty]) -> Rc<Scope> {
+        let s = Scope::new(None);
+        for v in vars {
+            s.types.borrow_mut().insert(v.name, v.clone());
+        }
+        s
+    }
+
+    // ----------------------------------------------------------------- driver
+
+    /// Runs the full check over modules in dependency order.
+    pub(crate) fn run(&mut self, modules: Vec<ModRef>, bundled: Option<Name>) {
+        self.p.methods.extend(stdlib::standard_implementations());
+        let mut checked: Vec<ModRef> = Vec::new();
+        for module in &modules {
+            if stdlib::is_source_module(module) && Some(module.file) != bundled {
+                self.adopt_checked(module, bundled.is_some());
+                continue;
+            }
+            self.check_module(module);
+            checked.push(module.clone());
+        }
+        self.p.modules = modules;
+        crate::passes::finish_modules(&checked, &self.p);
+        self.finite_type_applications();
+        self.finite_applications();
+        self.p.diagnostics = unique_diagnostics(std::mem::take(&mut self.p.diagnostics));
+        if self.p.diagnostics.is_empty() {
+            self.effect_summaries();
+        }
+        self.p.serial = self.serial;
+    }
+
+    fn adopt_checked(&mut self, module: &ModRef, held: bool) {
+        let r: Rc<StdResult> = if held {
+            stdlib::done(module.file).expect("dependency checked")
+        } else {
+            stdlib::ensure_source(module)
+        };
+        self.p.symbols.insert(module.file, r.symbols.clone());
+        self.p.methods.extend(r.methods.iter().cloned());
+    }
+
+    /// Declaration passes for one module, in order.
+    pub(crate) fn check_module(&mut self, module: &ModRef) {
+        self.module = Some(module.clone());
+        self.names = Rc::new(RefCell::new(HashMap::new()));
+        self.p.symbols.insert(module.file, self.names.clone());
+        self.scope = Scope::new(None);
+        for name in PRIMITIVE_NAMES {
+            let nm = n(name);
+            let s = Rc::new(Sym {
+                name: nm,
+                id: nm,
+                kind: SymKind::Type,
+                module: n(""),
+                native: n(""),
+                export: true,
+                ty: RefCell::new(Some(primitive(name))),
+                variables: RefCell::new(Vec::new()),
+                decl: None,
+            });
+            self.names.borrow_mut().insert(nm, s);
+        }
+        self.add_standard_prelude();
+        self.import_symbols(module);
+        self.declare_symbols(module);
+        self.declare_type_variables(module);
+        self.resolve_signatures(module);
+        self.check_constant_cycles(module);
+        for d in &module.decls {
+            if matches!(d.decl().kind, DeclKind::Impl(_)) {
+                self.implementation(d);
+            }
+        }
+        self.check_test_fixture(module);
+        self.check_defaults(module);
+        self.check_bodies(module);
+        self.declaration_checks(module);
+    }
+
+    fn import_symbols(&mut self, module: &ModRef) {
+        for item in &module.imports {
+            let path = item.path.as_ref();
+            let found: Option<SymRef> = if path.starts_with("@std/") {
+                let pn = n(path);
+                if stdlib::standard_source_module(pn).is_some() {
+                    let f = self
+                        .p
+                        .symbols
+                        .get(&pn)
+                        .and_then(|names| names.borrow().get(&item.name).cloned());
+                    f.filter(|f| f.module == pn)
+                } else {
+                    stdlib::standard_module_symbol(pn, item.name)
+                }
+            } else {
+                self.imports
+                    .get(module.file, item.id)
+                    .and_then(|target| self.p.symbols.get(&target).cloned())
+                    .and_then(|names| names.borrow().get(&item.name).cloned())
+            };
+            let usable = found.as_ref().filter(|f| f.export).cloned();
+            let Some(found) = usable else {
+                let end = Pos::new(
+                    item.name_pos.offset + item.name.len() as u32,
+                    item.name_pos.line,
+                    item.name_pos.column + item.name.len() as u32,
+                );
+                let message = self.export_message(item);
+                self.p.diagnostics.push(Diagnostic {
+                    file: module.file.as_str().into(),
+                    pos: item.name_pos,
+                    phase: Phase::Resolution,
+                    message,
+                    end: Some(end),
+                    fix: None,
+                });
+                continue;
+            };
+            if stdlib::is_prelude_symbol(&found) {
+                self.redundant_prelude_import(module, item);
+            }
+            self.add_symbol(item.name, found, item.name_pos);
+        }
+    }
+
+    fn declare_symbols(&mut self, module: &ModRef) {
+        for d in &module.decls {
+            if matches!(d.decl().kind, DeclKind::Impl(_) | DeclKind::Test(_)) {
+                continue;
+            }
+            let name = d.name();
+            let id = self.unique("symbol");
+            let kind = match &d.decl().kind {
+                DeclKind::Fn(_) | DeclKind::Const(_) => None,
+                DeclKind::Record(_) => Some(Kind::Record),
+                DeclKind::Alternative(_) => Some(Kind::Alternative),
+                DeclKind::Interface(_) => Some(Kind::Contract),
+                _ => None,
+            };
+            let s = Rc::new(Sym {
+                name,
+                id,
+                kind: if kind.is_some() {
+                    SymKind::Type
+                } else {
+                    SymKind::Fn
+                },
+                module: module.file,
+                native: n(""),
+                export: d.decl().export,
+                ty: RefCell::new(None),
+                variables: RefCell::new(Vec::new()),
+                decl: Some(d.clone()),
+            });
+            if let Some(kind) = kind {
+                let def = Definition::new(&s, kind);
+                let mut t = Type::new(
+                    name,
+                    n(&format!("module/{}#{}", hex(module.file.as_str()), name)),
+                    kind,
+                );
+                t.def = Some(def);
+                *s.ty.borrow_mut() = Some(Rc::new(t));
+            }
+            self.add_symbol(name, s, d.pos());
+        }
+    }
+
+    /// The symbol declared by `d` in this module (not shadowed by a duplicate).
+    pub(crate) fn own_symbol(&self, d: &DeclRef) -> Option<SymRef> {
+        let s = self.sym(d.name())?;
+        match &s.decl {
+            Some(sd) if sd.same(d) => Some(s),
+            _ => None,
+        }
+    }
+
+    fn declare_type_variables(&mut self, module: &ModRef) {
+        for d in &module.decls {
+            if matches!(d.decl().kind, DeclKind::Impl(_) | DeclKind::Test(_)) {
+                continue;
+            }
+            let Some(s) = self.own_symbol(d) else {
+                continue;
+            };
+            let old = std::mem::replace(&mut self.scope, Scope::new(None));
+            let vars = self.type_variables(d.type_params());
+            *s.variables.borrow_mut() = vars.clone();
+            if s.kind == SymKind::Type {
+                let t = s.ty();
+                *t.def.as_ref().expect("def").variables.borrow_mut() = vars.clone();
+                // The declaration's own type carries its variables as arguments.
+                let with = with_args(&t, vars);
+                *s.ty.borrow_mut() = Some(with);
+                // Keep Definition::symbol's type consistent: the definition is shared.
+            }
+            self.scope = old;
+        }
+        for d in &module.decls {
+            if matches!(d.decl().kind, DeclKind::Impl(_) | DeclKind::Test(_)) {
+                continue;
+            }
+            if let Some(s) = self.own_symbol(d) {
+                let vars = s.variables();
+                self.type_defaults(d.type_params(), &vars);
+            }
+        }
+    }
+
+    /// Resolves default type arguments.
+    pub(crate) fn type_defaults(&mut self, params: &[TypeParam], vars: &[Ty]) {
+        let mut defaulted = false;
+        let old = self.scope.clone();
+        for (index, p) in params.iter().enumerate() {
+            let Some(default) = &p.default else {
+                if defaulted {
+                    self.type_error(
+                        p.pos,
+                        format!(
+                            "type parameter {} needs a default because an earlier parameter has one; give {} a default or move it before the defaulted parameters",
+                            p.name, p.name
+                        ),
+                    );
+                }
+                continue;
+            };
+            defaulted = true;
+            self.scope = self.variable_scope(&vars[..index]);
+            let resolved = self.resolve(Some(default), false);
+            if invalid_ty(&resolved) {
+                continue;
+            }
+            for bound in vars[index].bounds() {
+                if self.standard_declarations {
+                    self.deferred_default_bounds.push(DeferredBound {
+                        resolved: resolved.clone(),
+                        bound: bound.clone(),
+                        pos: default.pos,
+                        module: self.m(),
+                    });
+                } else if !self.satisfies(&resolved, &bound) {
+                    let msg = self.unsatisfied_message(
+                        &resolved,
+                        &bound,
+                        "choose a default that already implements it",
+                    );
+                    self.type_error(default.pos, msg);
+                }
+            }
+            *vars[index].default.borrow_mut() = Some(resolved);
+        }
+        self.scope = old;
+    }
+
+    fn resolve_signatures(&mut self, module: &ModRef) {
+        for pass in 0..2 {
+            self.resolve_signature_pass(module, pass == 1);
+        }
+    }
+
+    fn resolve_signature_pass(&mut self, module: &ModRef, constants: bool) {
+        for d in &module.decls {
+            if matches!(d.decl().kind, DeclKind::Impl(_) | DeclKind::Test(_)) {
+                continue;
+            }
+            if d.is_constant() != constants {
+                continue;
+            }
+            let Some(s) = self.own_symbol(d) else {
+                continue;
+            };
+            let old = self.scope.clone();
+            self.scope = self.variable_scope(&s.variables());
+            if d.is_constant() {
+                self.constant_type(&s);
+            } else if s.kind == SymKind::Fn {
+                let f = d.func().expect("fn");
+                let t = self.signature(&f.params, Some(&f.result));
+                *s.ty.borrow_mut() = Some(t);
+            } else {
+                let def = s.ty().def.clone().expect("def");
+                let fields = self.params(d.record_fields());
+                *def.fields.borrow_mut() = fields;
+                let mut seen: HashSet<Name> = HashSet::new();
+                for cs in d.cases() {
+                    if !seen.insert(cs.name) {
+                        self.type_error(
+                            cs.pos,
+                            format!("duplicate case {}; rename or remove one of them", cs.name),
+                        );
+                    }
+                    let fields = self.params(&cs.fields);
+                    def.cases.borrow_mut().push(Case {
+                        name: cs.name,
+                        fields,
+                    });
+                }
+                let mut seen: HashSet<Name> = HashSet::new();
+                for (mi, m) in d.methods().iter().enumerate() {
+                    if !seen.insert(m.func.name) {
+                        self.type_error(
+                            m.pos,
+                            format!(
+                                "duplicate operation {}; rename or remove one of them",
+                                m.func.name
+                            ),
+                        );
+                    }
+                    let ty = self.signature(&m.func.params, Some(&m.func.result));
+                    def.operations.borrow_mut().push(Operation {
+                        name: m.func.name,
+                        ty,
+                        decl: Some(FuncRef {
+                            decl: d.clone(),
+                            index: Some(mi),
+                        }),
+                    });
+                }
+            }
+            self.scope = old;
+        }
+    }
+
+    fn check_defaults(&mut self, module: &ModRef) {
+        for d in &module.decls {
+            if matches!(d.decl().kind, DeclKind::Record(_)) {
+                if let Some(s) = self.own_symbol(d) {
+                    self.check_field_defaults(d, &s);
+                }
+            }
+            if let DeclKind::Interface(i) = &d.decl().kind {
+                for method in &i.methods {
+                    for param in &method.func.params {
+                        let Some(default) = &param.default else {
+                            continue;
+                        };
+                        let old = self.scope.clone();
+                        let vars = self.sym(i.name).map(|s| s.variables()).unwrap_or_default();
+                        self.scope = self.variable_scope(&vars);
+                        let typ = self.resolve(param.ty.as_ref(), false);
+                        self.expression(default, Some(&typ));
+                        let is_none =
+                            matches!(&default.kind, ExprKind::Name(nm) if nm.as_str() == "none");
+                        if typ.id != "@std/Optional" || !is_none {
+                            self.type_error(
+                                param.pos,
+                                "interface defaults must be Optional.none; write '= none' or remove the default",
+                            );
+                        }
+                        self.scope = old;
+                    }
+                }
+            }
+        }
+    }
+
+    fn check_bodies(&mut self, module: &ModRef) {
+        for d in &module.decls {
+            match &d.decl().kind {
+                DeclKind::Fn(_) | DeclKind::Const(_) => {
+                    if let Some(s) = self.own_symbol(d) {
+                        let t = s.ty();
+                        if d.is_constant() && t.result_ty().id == "<invalid>" {
+                            continue;
+                        }
+                        self.check_function(&FuncRef::of_decl(d.clone()), &t, &s.variables(), None);
+                    }
+                }
+                DeclKind::Test(_) => {
+                    self.check_function(
+                        &FuncRef::of_decl(d.clone()),
+                        &function(Vec::new(), test_outcome()),
+                        &[],
+                        None,
+                    );
+                }
+                _ => {}
+            }
+        }
+        let methods: Vec<MethodRef> = self.p.methods.clone();
+        for m in methods {
+            if let Some(decl) = &m.decl {
+                if m.module == module.file {
+                    self.check_function(decl, &m.ty, &m.variables, Some(&m.receiver));
+                }
+            }
+        }
+    }
+
+    // --------------------------------------------------------------- bindings
+
+    pub(crate) fn bind(&mut self, name: Name, t: &Ty, mutable: bool, pos: Pos) -> BindingRef {
+        self.bind_reporting(name, t, mutable, pos, true)
+    }
+
+    /// Binds a name; `report` suppresses the duplicate error for callers that
+    /// already diagnosed it.
+    pub(crate) fn bind_reporting(
+        &mut self,
+        name: Name,
+        t: &Ty,
+        mutable: bool,
+        pos: Pos,
+        report: bool,
+    ) -> BindingRef {
+        if report
+            && (self.scope.bindings.borrow().contains_key(&name)
+                || self.scope.types.borrow().contains_key(&name))
+        {
+            self.type_error(
+                pos,
+                format!(
+                    "duplicate local binding {name}; this scope already has that name, so choose another name or assign to the existing 'var'"
+                ),
+            );
+        }
+        let t = if mutable {
+            required_type(t)
+        } else {
+            t.clone()
+        };
+        let id = self.unique("local");
+        self.binding_serial += 1;
+        let b = Rc::new(Binding {
+            name,
+            id: n(&format!("{id}_{name}")),
+            uid: self.binding_serial,
+            ty: t,
+            mutable,
+            function: self.function,
+        });
+        self.scope.bindings.borrow_mut().insert(name, b.clone());
+        b
+    }
+
+    pub(crate) fn type_variables(&mut self, params: &[TypeParam]) -> Vec<Ty> {
+        let mut vars: Vec<Ty> = Vec::new();
+        for p in params {
+            let intrinsic = self.sym(p.name).is_some_and(|s| s.module.as_str().is_empty())
+                || self.scope.types.borrow().contains_key(&p.name)
+                || matches!(p.name.as_str(), "Equal" | "Comparable" | "Hashable");
+            if intrinsic {
+                self.res_error(
+                    p.pos,
+                    format!(
+                        "duplicate or intrinsic type parameter {}; choose a different type parameter name",
+                        p.name
+                    ),
+                );
+            }
+            let id = self.unique("typevar");
+            let v: Ty = Rc::new(Type::new(p.name, id, Kind::Variable));
+            vars.push(v.clone());
+            self.scope.types.borrow_mut().insert(p.name, v);
+        }
+        for (i, p) in params.iter().enumerate() {
+            for b in &p.bounds {
+                let t = self.resolve(Some(b), true);
+                if t.kind != Kind::Contract {
+                    if t.kind == Kind::Variable {
+                        self.type_error(
+                            b.pos,
+                            format!(
+                                "a bound must be an interface, but {} resolves to a type parameter; rename the type parameter or name an interface",
+                                b.name()
+                            ),
+                        );
+                    } else if t.id != "<invalid>" {
+                        self.type_error(
+                            b.pos,
+                            "a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'",
+                        );
+                    }
+                    continue;
+                }
+                vars[i].bounds.borrow_mut().push(t);
+            }
+        }
+        vars
+    }
+
+    /// Resolves a written type.
+    pub(crate) fn resolve(&mut self, t: Option<&TypeRef>, _bound: bool) -> Ty {
+        let Some(t) = t else {
+            return invalid();
+        };
+        match &t.kind {
+            TypeKind::Fn { params, result } => self.signature(params, Some(result)),
+            TypeKind::Inferred => {
+                let msg = self.unknown_type_message(n(""));
+                self.res_error(t.pos, msg);
+                self.unknown_type = true;
+                invalid()
+            }
+            TypeKind::Named { name, args } => {
+                let name = *name;
+                if self.scope.binding(name).is_some() {
+                    self.res_error(
+                        t.pos,
+                        format!(
+                            "a value shadows type {name}; rename the local binding so the type name is usable here"
+                        ),
+                    );
+                    return invalid();
+                }
+                let base: Ty = if let Some(v) = self.scope.typ(name) {
+                    v
+                } else if let Some(s) = self.sym(name).filter(|s| s.kind == SymKind::Type) {
+                    s.ty()
+                } else {
+                    let msg = self.unknown_type_message(name);
+                    self.res_error(t.pos, msg);
+                    self.unknown_type = true;
+                    return invalid();
+                };
+                let mut r = (*base).clone();
+                r.args = args.iter().map(|a| self.resolve(Some(a), false)).collect();
+                let (arity, required) = match &base.def {
+                    Some(def) => {
+                        let vars = def.variables();
+                        (vars.len(), required_type_arguments(&vars))
+                    }
+                    None => (0, 0),
+                };
+                if r.args.len() < arity && r.args.len() >= required {
+                    let vars = base.def.as_ref().expect("def").variables();
+                    r.args = with_default_arguments(&vars, &r.args);
+                }
+                if r.args.len() != arity {
+                    if required < arity {
+                        self.type_error(
+                            t.pos,
+                            format!(
+                                "{} takes {} to {} type arguments, found {}; write {}",
+                                base.name,
+                                required,
+                                arity,
+                                r.args.len(),
+                                crate::hints::type_sketch(base.name.as_str(), arity)
+                            ),
+                        );
+                    } else {
+                        let hint = self.prelude_shadow_hint(base.name);
+                        self.type_error(
+                            t.pos,
+                            format!(
+                                "{} requires {} type arguments, found {}; write {}{}",
+                                base.name,
+                                arity,
+                                r.args.len(),
+                                crate::hints::type_sketch(base.name.as_str(), arity),
+                                hint
+                            ),
+                        );
+                    }
+                }
+                let r = Rc::new(r);
+                self.m().facts_mut().type_refs.insert(t.id, r.clone());
+                r
+            }
+        }
+    }
+
+    pub(crate) fn params(&mut self, params: &[ms_syntax::ast::Param]) -> Vec<Param> {
+        let mut result = Vec::new();
+        let mut seen: HashSet<Name> = HashSet::new();
+        for p in params {
+            if !seen.insert(p.name) {
+                self.type_error(
+                    p.pos,
+                    format!(
+                        "duplicate parameter or field {}; each name may appear once, so rename one",
+                        p.name
+                    ),
+                );
+            }
+            let ty = self.resolve(p.ty.as_ref(), false);
+            result.push(Param { name: p.name, ty });
+        }
+        result
+    }
+
+    pub(crate) fn signature(
+        &mut self,
+        params: &[ms_syntax::ast::Param],
+        result: Option<&TypeRef>,
+    ) -> Ty {
+        let ps = self.params(params);
+        let r = self.resolve(result, false);
+        let mut defaults: HashSet<Name> = HashSet::new();
+        for p in params {
+            if p.default.is_some() {
+                defaults.insert(p.name);
+            }
+        }
+        let defaults = if defaults.is_empty() {
+            None
+        } else {
+            Some(Rc::new(defaults))
+        };
+        function_with(ps, r, defaults)
+    }
+
+    // ----------------------------------------------------------- function body
+
+    pub(crate) fn check_function(
+        &mut self,
+        d: &FuncRef,
+        t: &Ty,
+        vars: &[Ty],
+        receiver: Option<&Ty>,
+    ) {
+        let old_scope = self.scope.clone();
+        let old_result = self.result.clone();
+        let old_function = self.function;
+        let old_loops = self.loops;
+        let old_test = self.test_function;
+        self.scope = self.variable_scope(vars);
+        self.result = t.result.clone();
+        self.function = self.serial + 1;
+        self.serial += 1;
+        self.loops = 0;
+        self.test_function = 0;
+        let is_test = matches!(d.decl.decl().kind, DeclKind::Test(_)) && d.index.is_none();
+        if is_test {
+            self.test_function = self.function;
+            let fixture = self.p.test_fixtures.get(&self.current_file()).cloned();
+            if let Some(fixture) = fixture {
+                let b = self.bind(n("fixture"), &fixture.ty, false, d.pos());
+                self.m().facts_mut().decls.entry(d.id()).or_default().fixture = Some(b);
+            }
+        }
+        if let Some(receiver) = receiver {
+            let b = self.bind(n("self"), receiver, false, d.pos());
+            self.m().facts_mut().decls.entry(d.id()).or_default().self_binding = Some(b);
+        }
+        let result_ty = t.result_ty();
+        let fall;
+        if let Some(c) = d.decl.constant().filter(|_| d.index.is_none()) {
+            self.check_parameters(d, &[], &t.params);
+            // The synthetic `return value` of a constant.
+            let i = self.expression(&c.value, self.result.clone().as_ref());
+            let _ = i;
+            self.set_flow(c.return_id, false);
+            fall = false;
+        } else {
+            let params: &[ms_syntax::ast::Param] = match d.func() {
+                Some(f) => &f.params,
+                None => &[],
+            };
+            self.check_parameters(d, params, &t.params);
+            let body: &[Stmt] = match (d.func(), &d.decl.decl().kind) {
+                (Some(f), _) => &f.body,
+                (None, DeclKind::Test(tt)) => &tt.body,
+                _ => &[],
+            };
+            fall = self.block(body, false).0;
+        }
+        if fall && !is_test && result_ty.id != "Unit" && result_ty.id != "<invalid>" {
+            self.type_error(
+                d.pos(),
+                format!(
+                    "reachable fallthrough in function returning {rt}; end every path with 'return <{rt}>' (or make the last branch return)",
+                    rt = result_ty
+                ),
+            );
+        }
+        self.scope = old_scope;
+        self.result = old_result;
+        self.function = old_function;
+        self.loops = old_loops;
+        self.test_function = old_test;
+    }
+
+    fn check_field_defaults(&mut self, d: &DeclRef, s: &SymRef) {
+        let fields = d.record_fields();
+        if !fields.iter().any(|f| f.default.is_some()) {
+            return;
+        }
+        let old_scope = self.scope.clone();
+        let old_result = self.result.clone();
+        let old_function = self.function;
+        let old_loops = self.loops;
+        self.scope = self.variable_scope(&s.variables());
+        self.result = Some(s.ty());
+        self.serial += 1;
+        self.function = self.serial;
+        self.loops = 0;
+        let def_fields = s.ty().def.as_ref().expect("def").fields.borrow().clone();
+        self.check_parameters(&FuncRef::of_decl(d.clone()), fields, &def_fields);
+        self.scope = old_scope;
+        self.result = old_result;
+        self.function = old_function;
+        self.loops = old_loops;
+    }
+
+    pub(crate) fn check_parameters(
+        &mut self,
+        d: &FuncRef,
+        params: &[ms_syntax::ast::Param],
+        types: &[Param],
+    ) {
+        let mut seen: HashSet<Name> = HashSet::new();
+        for (i, p) in types.iter().enumerate() {
+            let repeated = !seen.insert(p.name);
+            let pos = if i < params.len() {
+                params[i].pos
+            } else {
+                d.pos()
+            };
+            if i < params.len() {
+                if let Some(default) = &params[i].default {
+                    self.expression(default, Some(&p.ty));
+                }
+            }
+            let b = self.bind_reporting(p.name, &p.ty, false, pos, !repeated);
+            self.m()
+                .facts_mut()
+                .decls
+                .entry(d.id())
+                .or_default()
+                .parameters
+                .push(b);
+        }
+    }
+
+    pub(crate) fn set_flow(&mut self, id: NodeId, falls: bool) {
+        self.m().facts_mut().stmts.entry(id).or_default().falls_through = Some(falls);
+    }
+
+    // ---------------------------------------------------------- test fixtures
+
+    fn check_test_fixture(&mut self, module: &ModRef) {
+        if !module
+            .decls
+            .iter()
+            .any(|d| matches!(d.decl().kind, DeclKind::Test(_)))
+        {
+            return;
+        }
+        let Some(factory) = self.sym(n("make_fixture")) else {
+            return;
+        };
+        if factory.module != module.file {
+            return;
+        }
+        let decl = factory.decl.clone().expect("decl");
+        let t = factory.ty();
+        if factory.kind != SymKind::Fn
+            || decl.is_constant()
+            || !factory.variables().is_empty()
+            || !t.params.is_empty()
+        {
+            self.type_error(
+                decl.pos(),
+                "make_fixture must be a nongeneric zero-argument function; declare fn make_fixture() ConcreteFixture",
+            );
+            return;
+        }
+        let result = t.result_ty();
+        let hooks = standard("TestHooks", vec![]);
+        if !matches!(result.kind, Kind::Record | Kind::Alternative)
+            || !self.implements(&result, &hooks)
+        {
+            self.type_error(
+                decl.pos(),
+                "make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it",
+            );
+            return;
+        }
+        self.p.test_fixtures.insert(
+            module.file,
+            TestFixture {
+                factory,
+                ty: result,
+                hooks,
+            },
+        );
+    }
+
+    // --------------------------------------------------------------- prelude
+
+    fn add_standard_prelude(&mut self) {
+        let m = self.m();
+        if !m.is_standard() {
+            for d in &m.decls {
+                if matches!(d.decl().kind, DeclKind::Impl(_) | DeclKind::Test(_)) {
+                    continue;
+                }
+                let name = d.name();
+                if matches!(name.as_str(), "some" | "none" | "ok" | "error") {
+                    self.res_error(
+                        d.pos(),
+                        format!(
+                            "declaration {name} reuses a prelude constructor name; rename it, because {name} always refers to the prelude case"
+                        ),
+                    );
+                }
+            }
+        }
+        for name in stdlib::STANDARD_PRELUDE_NAMES {
+            let nm = n(name);
+            let Some(symbol) = stdlib::standard_symbol(name) else {
+                continue;
+            };
+            if symbol.module == m.file {
+                continue;
+            }
+            let explicit = m
+                .imports
+                .iter()
+                .any(|i| i.name == nm && i.path.starts_with("@std/"));
+            if !explicit {
+                self.names.borrow_mut().insert(nm, symbol);
+            }
+        }
+    }
+}
+
+fn hex(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() * 2);
+    for b in s.bytes() {
+        out.push_str(&format!("{b:02x}"));
+    }
+    out
+}
+
+/// Drops repeats of one message at one position.
+pub fn unique_diagnostics(diagnostics: Vec<Diagnostic>) -> Vec<Diagnostic> {
+    let mut seen: HashSet<(String, Pos, String)> = HashSet::new();
+    let mut result = Vec::with_capacity(diagnostics.len());
+    for d in diagnostics {
+        // The position includes the file in Go; carry the file here as well.
+        let key = (d.file.to_string(), d.pos, d.message.clone());
+        if seen.insert(key) {
+            result.push(d);
+        }
+    }
+    result
+}
