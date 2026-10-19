@@ -19,7 +19,6 @@
 //! implementation, and there is no way to report a skip.
 
 use std::io::Read;
-use std::os::unix::process::ExitStatusExt;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
@@ -461,11 +460,17 @@ enum Ran {
 }
 
 fn describe_exit(status: &std::process::ExitStatus) -> String {
-    match (status.code(), status.signal()) {
-        (Some(code), _) => format!("exited with status {code}"),
-        (None, Some(signal)) => format!("was terminated by signal {signal}"),
-        _ => "ended abnormally".to_string(),
+    if let Some(code) = status.code() {
+        return format!("exited with status {code}");
     }
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        if let Some(signal) = status.signal() {
+            return format!("was terminated by signal {signal}");
+        }
+    }
+    "ended abnormally".to_string()
 }
 
 /// Go's `time.Duration.String` for the whole-second limits `--timeout` takes.
@@ -727,9 +732,11 @@ mod tests {
         assert!(failure_position("no location").is_none());
     }
 
+    #[cfg(unix)]
     const NAMES: [&str; 4] = ["m::pass", "m::fail", "m::crash", "m::hang"];
 
     /// A shell script that speaks the test executable protocol.
+    #[cfg(unix)]
     fn script(dir: &std::path::Path) -> std::path::PathBuf {
         use std::os::unix::fs::PermissionsExt;
         let path = dir.join("program");
@@ -746,6 +753,7 @@ esac
         path
     }
 
+    #[cfg(unix)]
     fn run_script(arguments: &[&str]) -> (i32, String, Document) {
         let directory = TempDir::create("ms-tests-unit-").unwrap();
         let executable = script(&directory.0);
@@ -773,6 +781,7 @@ esac
         (status, text, document)
     }
 
+    #[cfg(unix)]
     #[test]
     fn each_test_runs_in_its_own_process() {
         let (status, text, document) = run_script(&["--timeout=400ms"]);
@@ -791,6 +800,7 @@ esac
         assert!(json.contains("\"position\""), "{json}");
     }
 
+    #[cfg(unix)]
     #[test]
     fn selection_listing_and_fail_fast() {
         let (status, text, _) = run_script(&["--list", "--match=pass|fail"]);
