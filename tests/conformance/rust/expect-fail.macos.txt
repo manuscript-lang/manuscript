@@ -1,0 +1,2 @@
+# Fixtures that pass on Linux but fail on macOS, each with the reason. Seeded empty; the
+# macOS CI leg reports new failures as the unexpected list.

@@ -128,10 +128,45 @@ jobs:
           name: conform-oracle-${{ matrix.shard }}
           path: .artifacts/conform-oracle.md
 
+  # The corpus against the Rust ms on the platforms it ships for beyond Linux. Failures that
+  # also occur on Linux are listed in tests/conformance/rust/expect-fail.txt; failures specific
+  # to one platform go in expect-fail.<os>.txt with a reason.
+  rust-conform-os:
+    name: Rust corpus (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows, runner: windows-2025 }
+          - { os: macos, runner: macos-15 }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-conform-${{ matrix.os }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Corpus against the Rust ms
+        run: sh scripts/conform-rust.sh
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: conform-rust-${{ matrix.os }}
+          path: .artifacts/conform-rust.md
+          if-no-files-found: ignore
+
   # Keep one stable required check; every Rust job must pass before merging.
   rust-ok:
     name: Rust checks
-    needs: [changes, rust-lint, rust-test, rust-conform]
+    needs: [changes, rust-lint, rust-test, rust-conform, rust-conform-os]
     if: always()
     runs-on: ubuntu-latest
     steps:
