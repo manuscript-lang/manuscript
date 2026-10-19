@@ -1083,7 +1083,9 @@ func genHTML(dir string) {
 	// Large and deep documents.
 	for _, d := range []string{strings.Repeat("<div>", 3000), strings.Repeat("<b>", 500) + "x", strings.Repeat("<table><tr><td>", 300), strings.Repeat("<p>a<b>b", 800)} {
 		res := rt.Html_Parse(nil, d, rt.Option[*rt.HtmlLimits]{})
-		r.row("parsehash", h(d), "=>", strings.Join(okOrErr(res, func(n rt.HtmlNode) []string { return []string{strconv.Itoa(len(htmlDump(n))), strconv.FormatUint(uint64(crc32.ChecksumIEEE([]byte(htmlDump(n)))), 16)} }), " "))
+		r.row("parsehash", h(d), "=>", strings.Join(okOrErr(res, func(n rt.HtmlNode) []string {
+			return []string{strconv.Itoa(len(htmlDump(n))), strconv.FormatUint(uint64(crc32.ChecksumIEEE([]byte(htmlDump(n)))), 16)}
+		}), " "))
 	}
 	// Escaping and unescaping.
 	alpha := []string{"&", "#", "x", "X", ";", "a", "m", "p", "l", "t", "g", "0", "1", "9", "F", "f", "D", "8", "amp", "lt", "gt", "quot", "nbsp", "copy", "notit", "not", "#x", "&#x;", "&#X;", "<", ">", "\"", "'", " ", "é", "😀", "\r", "=", "AElig", "NotEqualTilde", "fjlig", "nLt", "nLtv", "bne"}
