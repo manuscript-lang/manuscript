@@ -504,6 +504,11 @@ impl<'a> FnLower<'a> {
         if matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none") && ft.is_std("Optional") {
             return Ok(self.b.opt_none(fm));
         }
+        if self.cx.module(sym.module).is_err() {
+            // A bundled declaration has no checked facts: build literal defaults directly.
+            let v = self.literal_default(d, &ft)?;
+            return Ok(v);
+        }
         let saved_hir = self.hir.clone();
         let saved_subst = std::mem::replace(&mut self.subst, ct::substitution(t));
         let saved_file = self.file;
@@ -515,5 +520,63 @@ impl<'a> FnLower<'a> {
         self.file = saved_file;
         let x = r?;
         Ok(self.owned(x))
+    }
+}
+
+impl FnLower<'_> {
+    /// An owned value for the default expression `d` of a bundled declaration, which carries
+    /// no checked facts: literals, `[]` and record constructors of literals.
+    pub(crate) fn literal_default(&mut self, d: &Expr, t: &ct::Ty) -> Result<Value, Error> {
+        let mt = self.cx.lower_ty(self.b.m, t)?;
+        match &d.kind {
+            ExprKind::Bool(b) => Ok(self.b.bconst(*b)),
+            ExprKind::Number(n) if t.is_std("Int") => n
+                .as_str()
+                .parse::<i64>()
+                .map(|n| self.b.iconst(n))
+                .map_err(|_| Error::new("unsupported numeric default")),
+            ExprKind::Text(parts) if parts.iter().all(|p| matches!(p, TextPart::Lit(_))) => {
+                let text: String = parts
+                    .iter()
+                    .filter_map(|p| match p {
+                        TextPart::Lit(s) => Some(s.as_ref()),
+                        TextPart::Interp(_) => None,
+                    })
+                    .collect();
+                let lit = self.lit(&text);
+                Ok(self.owned(lit))
+            }
+            ExprKind::List(items) if items.is_empty() => {
+                let TyKind::List(elem) = self.b.m.types.kind(mt).clone() else {
+                    return Err(Error::new("a list default needs a list type"));
+                };
+                Ok(self.b.list_lit(elem, &[]))
+            }
+            ExprKind::Name(n) if n.as_str() == "none" && t.is_std("Optional") => {
+                Ok(self.b.opt_none(mt))
+            }
+            ExprKind::Call { args, .. } => {
+                let TyKind::Rec(rid) = self.b.m.types.kind(mt).clone() else {
+                    return Err(Error::new("unsupported constructor default"));
+                };
+                let decl_fields: Vec<_> = t
+                    .symbol()
+                    .and_then(|s| s.decl.as_ref().map(|d| d.record_fields().to_vec()))
+                    .unwrap_or_default();
+                let mut values = Vec::new();
+                for (i, f) in ct::fields(t).iter().enumerate() {
+                    let written = args
+                        .iter()
+                        .find(|a| a.name.is_some_and(|n| n.as_str() == f.name.as_str()));
+                    let expr = written
+                        .map(|a| &a.value)
+                        .or_else(|| decl_fields.get(i).and_then(|p| p.default.as_ref()))
+                        .ok_or_else(|| Error::new(format!("no default for field {}", f.name)))?;
+                    values.push(self.literal_default(expr, &f.ty)?);
+                }
+                Ok(self.b.rec_new(rid, &values))
+            }
+            _ => Err(Error::new("unsupported default of a bundled declaration")),
+        }
     }
 }

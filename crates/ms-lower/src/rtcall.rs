@@ -30,6 +30,10 @@ struct RtSig {
 /// The runtime symbol implementing the native function `native` (`module/name`).
 pub(crate) fn function_symbol(native: &str) -> Option<String> {
     let (module, name) = native.split_once('/')?;
+    let name = match (module, name) {
+        ("http", "headers") => "headers_new",
+        _ => name,
+    };
     ["msrt", "msstd"]
         .iter()
         .map(|prefix| format!("{prefix}_{module}_{name}"))
@@ -115,21 +119,20 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
 
 /// Native types whose methods are runtime symbols named after the type, and the module
 /// they live in: `msstd_time_timestamp_shift`, `msrt_regex_matches`.
-const TYPED_NATIVES: &[(&str, &str)] = &[
-    ("Timestamp", "time"),
-    ("Instant", "time"),
-    ("Duration", "time"),
-    ("Regex", "regex"),
-    ("Decimal", "decimal"),
-    ("IpAddress", "net"),
-    ("Cidr", "net"),
-    ("HttpHeaders", "http"),
+const TYPED_NATIVES: &[(&str, &str, &str)] = &[
+    ("Timestamp", "time", "timestamp"),
+    ("Instant", "time", "instant"),
+    ("Duration", "time", "duration"),
+    ("Regex", "regex", "regex"),
+    ("Decimal", "decimal", "decimal"),
+    ("IpAddress", "net", "ip_address"),
+    ("Cidr", "net", "cidr"),
+    ("HttpHeaders", "http", "headers"),
 ];
 
 /// The runtime symbol of `method` on a native type from [`TYPED_NATIVES`].
 pub(crate) fn typed_method_symbol(recv: &ct::Ty, method: &str) -> Option<String> {
-    let (ty, module) = TYPED_NATIVES.iter().find(|(t, _)| recv.is_std(t))?;
-    let ty = snake_case(ty);
+    let (_, module, ty) = TYPED_NATIVES.iter().find(|(t, ..)| recv.is_std(t))?;
     ["msstd", "msrt"].iter().find_map(|prefix| {
         [
             format!("{prefix}_{module}_{ty}_{method}"),
@@ -870,16 +873,4 @@ fn indexed_status(sym: &str) -> bool {
     ["msrt_net_", "msrt_tls_", "msrt_http_", "msrt_websocket_"]
         .iter()
         .any(|p| sym.starts_with(p))
-}
-
-/// `IpAddress` as `ip_address`, the spelling of runtime symbols.
-fn snake_case(name: &str) -> String {
-    let mut out = String::new();
-    for (i, c) in name.chars().enumerate() {
-        if c.is_uppercase() && i > 0 {
-            out.push('_');
-        }
-        out.extend(c.to_lowercase());
-    }
-    out
 }
