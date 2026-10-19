@@ -17,6 +17,7 @@
 use crate::ir::Module;
 
 pub mod copyelim;
+pub mod ifconv;
 pub mod inline;
 pub mod range;
 pub mod simplify;
@@ -65,6 +66,8 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
         check(m, "copyelim");
         changed |= range::run(m);
         check(m, "range");
+        changed |= ifconv::run(m);
+        check(m, "ifconv");
         if !changed && round > 0 {
             break;
         }
