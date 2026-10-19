@@ -400,6 +400,7 @@ dependencies = [
  "ms-mir",
  "ms-project",
  "ms-syntax",
+ "ms-tooling",
  "regex",
 ]
 

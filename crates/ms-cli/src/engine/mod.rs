@@ -13,6 +13,7 @@
 mod build;
 mod run;
 pub mod testing;
+mod tooling;
 
 use std::path::{Path, PathBuf};
 
@@ -22,7 +23,9 @@ use ms_driver::{
 };
 
 use crate::backend::{
-    Backend, BackendResult, BuildRequest, BuildType, Io, RunRequest, TestRequest, not_implemented,
+    AnalysisCommand, AnalysisRequest, Backend, BackendResult, BuildRequest, BuildType,
+    DiagramRequest, FormatFailure, FormatFile, Io, OutputRequest, ReviewRequest, RunRequest,
+    TestRequest, not_implemented,
 };
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::util::plural;
@@ -83,6 +86,31 @@ impl<L: Lower> Backend for RustBackend<L> {
             return not_implemented("test --watch");
         }
         testing::test(self, request, io)
+    }
+
+    fn lint(&self, request: &AnalysisRequest, io: &mut Io) -> BackendResult {
+        debug_assert_eq!(request.command, AnalysisCommand::Lint);
+        tooling::lint(request, io)
+    }
+
+    fn inspect(&self, request: &OutputRequest, io: &mut Io) -> BackendResult {
+        tooling::inspect_command(request, io)
+    }
+
+    fn diagram(&self, request: &DiagramRequest, io: &mut Io) -> BackendResult {
+        tooling::diagram(request, io)
+    }
+
+    fn review(&self, request: &ReviewRequest, io: &mut Io) -> BackendResult {
+        tooling::review(request, io)
+    }
+
+    fn drop_redundant_labels(
+        &self,
+        file: &FormatFile,
+        source: &str,
+    ) -> Result<String, FormatFailure> {
+        tooling::drop_redundant_labels(file, source)
     }
 }
 

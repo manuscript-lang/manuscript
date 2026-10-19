@@ -73,6 +73,12 @@ fn start() -> Pos {
 
 /// Resolve a module or manifest, then load each reachable local module.
 pub fn load_file(filename: &str, options: LoadOptions) -> Graph {
+    load_file_with_overlay(filename, options, &Overlay::new())
+}
+
+/// [`load_file`] with unsaved contents (absolute path to source) taking
+/// precedence over the files on disk.
+pub fn load_file_with_overlay(filename: &str, options: LoadOptions, overlay: &Overlay) -> Graph {
     let (config, manifest) = match source_project(filename) {
         Ok(found) => found,
         Err((root, error)) => {
@@ -95,7 +101,14 @@ pub fn load_file(filename: &str, options: LoadOptions) -> Graph {
         graph.manifest_position = Some((config.location.file.clone(), manifest_pos(&config)));
     }
     let library = graph.library;
-    let overlay = Overlay::new();
+    let file: Arc<str> = Arc::from(filename);
+    let overlay = match ms_project::canonical_overlay(&config.root, overlay) {
+        Ok(overlay) => overlay,
+        Err(error) => {
+            graph.diagnostics = vec![from_error(&file, &error)];
+            return graph;
+        }
+    };
     let mut loader = Loader {
         config: &config,
         overlay: &overlay,
@@ -103,7 +116,6 @@ pub fn load_file(filename: &str, options: LoadOptions) -> Graph {
         active: HashSet::new(),
         loaded: HashMap::new(),
     };
-    let file: Arc<str> = Arc::from(filename);
     if !config.entry.is_empty() {
         let entry = match ms_project::source_path(&config.root, &config.entry, &overlay) {
             Ok(entry) => entry,
