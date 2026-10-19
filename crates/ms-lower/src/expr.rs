@@ -1,0 +1,452 @@
+//! Expression lowering.
+
+use crate::Error;
+use crate::func::{FnLower, Val};
+use ms_check::hir::Resolution;
+use ms_check::types::{self as ct, Kind};
+use ms_mir::ir::{Cc, Op, Value};
+use ms_mir::types::{Ty as MTy, TyKind};
+use ms_syntax::ast::*;
+
+impl<'a> FnLower<'a> {
+    /// A placeholder for the value of code that cannot run.
+    pub fn dummy(&mut self, ty: MTy) -> Val {
+        let v = self.b.func_mut().new_value(ty);
+        Val { v, own: false }
+    }
+
+    /// The checked type of an expression under the instance substitution.
+    pub fn ety(&self, e: &Expr) -> ct::Ty {
+        ct::sub(&self.hir.ty(e), &self.subst)
+    }
+
+    /// The MIR type of an expression.
+    pub fn emty(&mut self, e: &Expr) -> Result<MTy, Error> {
+        let t = self.hir.ty(e);
+        self.mty(&t)
+    }
+
+    /// Lowers an expression.
+    pub fn expr(&mut self, e: &Expr) -> Result<Val, Error> {
+        if self.dead {
+            return Ok(self.dummy(MTy::UNIT));
+        }
+        self.at(e.pos);
+        match &e.kind {
+            ExprKind::Number(text) => self.number(e, text.as_str(), false),
+            ExprKind::Bool(b) => {
+                let v = self.b.bconst(*b);
+                Ok(Val { v, own: false })
+            }
+            ExprKind::Unit => {
+                let v = self.b.unit();
+                Ok(Val { v, own: false })
+            }
+            ExprKind::Text(parts) => self.text(parts),
+            ExprKind::Name(_) => self.name(e),
+            ExprKind::Member { left, name } => self.member(e, left, name.as_str()),
+            ExprKind::Index { left, index } => self.index(e, left, index),
+            ExprKind::Apply { value, .. } => match value {
+                Some(v) if self.is_index_apply(e) => {
+                    let ExprKind::Apply { left, .. } = &e.kind else {
+                        unreachable!()
+                    };
+                    self.index(e, left, v)
+                }
+                _ => self.type_application(e),
+            },
+            ExprKind::List(items) => self.list_literal(e, items),
+            ExprKind::Map(_) => Err(Error::new("map literals are not supported yet")),
+            ExprKind::Unary { op, operand } => self.unary(e, *op, operand),
+            ExprKind::Binary { op, left, right } => self.binary(e, *op, left, right),
+            ExprKind::Lambda(_) => Err(Error::new("closures are not supported yet")),
+            ExprKind::Call { .. } => self.call_expr(e),
+            ExprKind::Match { .. } => Err(Error::new("match is not supported yet")),
+        }
+    }
+
+    /// Whether an `Apply` node is really an index read (`xs[i]`).
+    fn is_index_apply(&self, e: &Expr) -> bool {
+        self.hir.info(e).native_str() == "index"
+            || matches!(self.hir.resolution(e), Resolution::Native(n) if n.as_str() == "index")
+    }
+
+    fn type_application(&mut self, e: &Expr) -> Result<Val, Error> {
+        let _ = e;
+        Err(Error::new(
+            "type application as a value is not supported yet",
+        ))
+    }
+
+    // --------------------------------------------------------------- literals
+
+    fn number(&mut self, e: &Expr, text: &str, negate: bool) -> Result<Val, Error> {
+        let t = self.ety(e);
+        match t.id.as_str() {
+            "Int" => {
+                let n: i128 = parse_int(text)
+                    .ok_or_else(|| Error::new(format!("bad integer literal {text}")))?;
+                let n = if negate { -n } else { n };
+                let v = self.b.iconst(
+                    i64::try_from(n).map_err(|_| Error::new("integer literal out of range"))?,
+                );
+                Ok(Val { v, own: false })
+            }
+            "Float" => {
+                let f: f64 = text
+                    .parse()
+                    .map_err(|_| Error::new(format!("bad float literal {text}")))?;
+                let v = self.b.fconst(if negate { -f } else { f });
+                Ok(Val { v, own: false })
+            }
+            other => Err(Error::new(format!(
+                "unsupported numeric literal type {other}"
+            ))),
+        }
+    }
+
+    fn list_literal(&mut self, e: &Expr, items: &[Expr]) -> Result<Val, Error> {
+        let lt = self.emty(e)?;
+        let TyKind::List(elem) = self.b.m.types.kind(lt).clone() else {
+            return Err(Error::new("list literal of a non-list type"));
+        };
+        let mut vals = Vec::new();
+        for it in items {
+            let x = self.expr(it)?;
+            if self.dead {
+                return Ok(self.dummy(lt));
+            }
+            let o = self.owned(x);
+            vals.push(o);
+        }
+        let v = self.b.list_lit(elem, &vals);
+        Ok(Val { v, own: true })
+    }
+
+    // ----------------------------------------------------------------- names
+
+    fn name(&mut self, e: &Expr) -> Result<Val, Error> {
+        match self.hir.resolution(e) {
+            Resolution::Local(b) => self.read_local(&b),
+            Resolution::Constant(_) => self.call_expr(e),
+            Resolution::Constructor { ty, case } => self.construct_unit(e, &ty, case),
+            Resolution::Function(_) => Err(Error::new("function values are not supported yet")),
+            other => Err(Error::new(format!(
+                "unsupported name {}",
+                match other {
+                    Resolution::Type(_) => "type",
+                    Resolution::Method(_) => "method",
+                    Resolution::Native(_) => "native",
+                    _ => "value",
+                }
+            ))),
+        }
+    }
+
+    /// A case without payload (`none`, `Color.red`).
+    pub fn construct_unit(
+        &mut self,
+        e: &Expr,
+        ty: &ct::Ty,
+        case: Option<ct::Name>,
+    ) -> Result<Val, Error> {
+        let _ = e;
+        let t = ct::sub(ty, &self.subst);
+        let mt = self.cx.lower_ty(self.b.m, &t)?;
+        let Some(case) = case else {
+            return Err(Error::new("type used as a value"));
+        };
+        if t.is_std("Optional") {
+            let v = self.b.opt_none(mt);
+            return Ok(Val { v, own: false });
+        }
+        let TyKind::Alt(a) = self.b.m.types.kind(mt).clone() else {
+            return Err(Error::new("case of a non-alternative"));
+        };
+        let idx = self.b.m.alts[a.index()]
+            .cases
+            .iter()
+            .position(|c| c.name == case.as_str())
+            .ok_or_else(|| Error::new(format!("no case {case}")))?;
+        let v = self.b.alt_new(a, idx as u32, &[]);
+        Ok(Val { v, own: true })
+    }
+
+    // --------------------------------------------------------------- members
+
+    fn member(&mut self, e: &Expr, left: &Expr, name: &str) -> Result<Val, Error> {
+        if let Resolution::Constructor { ty, case } = self.hir.resolution(e) {
+            return self.construct_unit(e, &ty, case);
+        }
+        let lt = self.ety(left);
+        if lt.kind != Kind::Record {
+            return Err(Error::new(format!("unsupported member access .{name}")));
+        }
+        let obj = self.expr(left)?;
+        if self.dead {
+            return Ok(obj);
+        }
+        let oty = self.ty_of(obj.v);
+        let TyKind::Rec(rid) = self.b.m.types.kind(oty).clone() else {
+            return Err(Error::new("member access on a non-record"));
+        };
+        let idx = self.b.m.records[rid.index()]
+            .fields
+            .iter()
+            .position(|f| f.0 == name)
+            .ok_or_else(|| Error::new(format!("no field {name}")))? as u32;
+        let f = self.b.rec_get(rid, idx, obj.v);
+        if obj.own {
+            // Take a copy out of the temporary, then release the temporary.
+            let o = self.owned(Val { v: f, own: false });
+            self.drop_value(obj.v);
+            return Ok(Val {
+                v: o,
+                own: self.needs_drop(self.ty_of(o)),
+            });
+        }
+        Ok(Val { v: f, own: false })
+    }
+
+    fn index(&mut self, e: &Expr, left: &Expr, index: &Expr) -> Result<Val, Error> {
+        let _ = e;
+        let l = self.expr(left)?;
+        let i = self.expr(index)?;
+        if self.dead {
+            return Ok(l);
+        }
+        let lt = self.ty_of(l.v);
+        match self.b.m.types.kind(lt).clone() {
+            TyKind::List(_) => {
+                let got = self.b.list_get(l.v, i.v);
+                if l.own {
+                    let o = self.owned(Val { v: got, own: false });
+                    self.drop_value(l.v);
+                    return Ok(Val {
+                        v: o,
+                        own: self.needs_drop(self.ty_of(o)),
+                    });
+                }
+                Ok(Val { v: got, own: false })
+            }
+            _ => Err(Error::new("indexing this type is not supported yet")),
+        }
+    }
+
+    // ----------------------------------------------------------------- unary
+
+    fn unary(&mut self, e: &Expr, op: UnaryOp, operand: &Expr) -> Result<Val, Error> {
+        match op {
+            UnaryOp::Plus => self.expr(operand),
+            UnaryOp::Not => {
+                let x = self.expr(operand)?;
+                if self.dead {
+                    return Ok(x);
+                }
+                let v = self.b.unop(Op::Not, x.v);
+                Ok(Val { v, own: false })
+            }
+            UnaryOp::Neg => {
+                if let ExprKind::Number(text) = &operand.kind {
+                    return self.number(operand, text.as_str(), true);
+                }
+                let x = self.expr(operand)?;
+                if self.dead {
+                    return Ok(x);
+                }
+                let t = self.ty_of(x.v);
+                let v = if t == MTy::FLOAT {
+                    self.b.unop(Op::FNeg, x.v)
+                } else {
+                    self.b.unop(Op::INegChk, x.v)
+                };
+                Ok(Val { v, own: false })
+            }
+            UnaryOp::Try => self.try_expr(e, operand),
+        }
+    }
+
+    fn try_expr(&mut self, _e: &Expr, _operand: &Expr) -> Result<Val, Error> {
+        Err(Error::new("try is not supported yet"))
+    }
+
+    // ---------------------------------------------------------------- binary
+
+    fn binary(&mut self, e: &Expr, op: BinaryOp, left: &Expr, right: &Expr) -> Result<Val, Error> {
+        match op {
+            BinaryOp::And | BinaryOp::Or => return self.short_circuit(op, left, right),
+            _ => {}
+        }
+        let l = self.expr(left)?;
+        let r = self.expr(right)?;
+        if self.dead {
+            return Ok(l);
+        }
+        let t = self.ty_of(l.v);
+        let _ = e;
+        let out = match op {
+            BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem => {
+                self.arithmetic(op, t, l, r)?
+            }
+            BinaryOp::Eq | BinaryOp::Ne => {
+                let eq = self.equal(t, l, r)?;
+                if op == BinaryOp::Ne {
+                    self.b.unop(Op::Not, eq)
+                } else {
+                    eq
+                }
+            }
+            BinaryOp::Lt | BinaryOp::Gt | BinaryOp::Le | BinaryOp::Ge => {
+                let cc = match op {
+                    BinaryOp::Lt => Cc::Lt,
+                    BinaryOp::Gt => Cc::Gt,
+                    BinaryOp::Le => Cc::Le,
+                    _ => Cc::Ge,
+                };
+                self.compare(cc, t, l, r)?
+            }
+            BinaryOp::And | BinaryOp::Or => unreachable!(),
+        };
+        Ok(self.val(out, true))
+    }
+
+    fn arithmetic(&mut self, op: BinaryOp, t: MTy, l: Val, r: Val) -> Result<Value, Error> {
+        if t == MTy::INT {
+            let o = match op {
+                BinaryOp::Add => Op::IAddChk,
+                BinaryOp::Sub => Op::ISubChk,
+                BinaryOp::Mul => Op::IMulChk,
+                BinaryOp::Div => Op::SDivChk,
+                _ => Op::SRemChk,
+            };
+            return Ok(self.b.binop(o, l.v, r.v));
+        }
+        if t == MTy::FLOAT {
+            let o = match op {
+                BinaryOp::Add => Op::FAdd,
+                BinaryOp::Sub => Op::FSub,
+                BinaryOp::Mul => Op::FMul,
+                BinaryOp::Div => Op::FDiv,
+                _ => return Err(Error::new("% on Float")),
+            };
+            return Ok(self.b.binop(o, l.v, r.v));
+        }
+        if t == MTy::STR && op == BinaryOp::Add {
+            let a = self.borrow(l);
+            let b = self.borrow(r);
+            return self.call_runtime("msrt_string_concat", &[a, b], MTy::STR);
+        }
+        if matches!(self.b.m.types.kind(t), TyKind::List(_)) && op == BinaryOp::Add {
+            return Err(Error::new("list concatenation is not supported yet"));
+        }
+        Err(Error::new(format!(
+            "arithmetic on {} is not supported yet",
+            crate::text::ty_name(self.b.m, t)
+        )))
+    }
+
+    fn compare(&mut self, cc: Cc, t: MTy, l: Val, r: Val) -> Result<Value, Error> {
+        if t == MTy::INT {
+            return Ok(self.b.icmp(cc, l.v, r.v));
+        }
+        if t == MTy::FLOAT {
+            return Ok(self.b.fcmp(cc, l.v, r.v));
+        }
+        if t == MTy::STR {
+            let a = self.borrow(l);
+            let b = self.borrow(r);
+            let c = self.call_runtime("msrt_string_compare", &[a, b], MTy::INT)?;
+            let zero = self.b.iconst(0);
+            return Ok(self.b.icmp(cc, c, zero));
+        }
+        Err(Error::new("ordering this type is not supported yet"))
+    }
+
+    /// Structural equality of two operands of the same type.
+    pub fn equal(&mut self, t: MTy, l: Val, r: Val) -> Result<Value, Error> {
+        if t == MTy::INT {
+            return Ok(self.b.icmp(Cc::Eq, l.v, r.v));
+        }
+        if t == MTy::BOOL {
+            return Ok(self.b.icmp(Cc::Eq, l.v, r.v));
+        }
+        if t == MTy::FLOAT {
+            return Ok(self.b.fcmp(Cc::Eq, l.v, r.v));
+        }
+        if t == MTy::STR {
+            let a = self.borrow(l);
+            let b = self.borrow(r);
+            return self.call_runtime("msrt_string_eq", &[a, b], MTy::BOOL);
+        }
+        Err(Error::new(format!(
+            "equality on {} is not supported yet",
+            crate::text::ty_name(self.b.m, t)
+        )))
+    }
+
+    fn short_circuit(&mut self, op: BinaryOp, left: &Expr, right: &Expr) -> Result<Val, Error> {
+        let l = self.expr(left)?;
+        if self.dead {
+            return Ok(l);
+        }
+        let rhs = self.b.new_block();
+        let join = self.b.new_block();
+        let jp = self
+            .b
+            .add_block_param(join, MTy::BOOL, ms_mir::ir::Mode::Borrow);
+        let short = self.b.bconst(op == BinaryOp::Or);
+        if op == BinaryOp::And {
+            self.b.br_if(l.v, rhs, &[], join, &[short]);
+        } else {
+            self.b.br_if(l.v, join, &[short], rhs, &[]);
+        }
+        self.b.seal_block(rhs);
+        self.enter(rhs);
+        let mark = self.temps.len();
+        let r = self.expr(right)?;
+        let rv = r.v;
+        self.flush_temps(mark);
+        let live = !self.dead;
+        if live {
+            self.b.br(join, &[rv]);
+        }
+        self.b.seal_block(join);
+        self.b.switch_to(join);
+        self.dead = false;
+        Ok(Val { v: jp, own: false })
+    }
+
+    /// Calls a runtime function by symbol, declaring it from the operand types
+    /// (all operands borrowed, result owned).
+    pub fn call_runtime(&mut self, sym: &str, args: &[Value], ret: MTy) -> Result<Value, Error> {
+        let params = args
+            .iter()
+            .map(|a| ms_mir::ir::Param {
+                ty: self.ty_of(*a),
+                mode: ms_mir::ir::Mode::Borrow,
+            })
+            .collect();
+        let ext = self.b.m.add_extern(ms_mir::ir::ExternDef {
+            name: sym.to_string(),
+            params,
+            ret,
+            noreturn: false,
+            pure_: false,
+        });
+        Ok(self.b.call_rt(ext, args))
+    }
+}
+
+/// Parses an integer literal spelling.
+fn parse_int(text: &str) -> Option<i128> {
+    if let Some(h) = text.strip_prefix("0x").or_else(|| text.strip_prefix("0X")) {
+        return i128::from_str_radix(h, 16).ok();
+    }
+    if let Some(b) = text.strip_prefix("0b").or_else(|| text.strip_prefix("0B")) {
+        return i128::from_str_radix(b, 2).ok();
+    }
+    if let Some(o) = text.strip_prefix("0o").or_else(|| text.strip_prefix("0O")) {
+        return i128::from_str_radix(o, 8).ok();
+    }
+    text.parse().ok()
+}

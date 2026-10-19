@@ -328,12 +328,23 @@ dependencies = [
  "cranelift-native",
  "cranelift-object",
  "ms-mir",
+ "ms-rt-abi",
  "target-lexicon",
 ]
 
 [[package]]
 name = "ms-conform"
 version = "0.1.0"
+
+[[package]]
+name = "ms-lower"
+version = "0.0.0"
+dependencies = [
+ "ms-check",
+ "ms-clif",
+ "ms-mir",
+ "ms-syntax",
+]
 
 [[package]]
 name = "ms-mir"
