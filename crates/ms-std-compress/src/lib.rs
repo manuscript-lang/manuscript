@@ -135,15 +135,8 @@ pub fn encode(data: &[u8], format: Format, level: u8) -> Vec<u8> {
 /// Returns the output and the number of input bytes the stream occupied.
 fn inflate(input: &[u8], room: usize) -> Result<(Vec<u8>, usize), Fail> {
     let limit = room.saturating_add(1);
-    let mut out: Vec<u8> = Vec::new();
-    out.resize(
-        input
-            .len()
-            .saturating_mul(4)
-            .clamp(1024, 1 << 20)
-            .min(limit),
-        0,
-    );
+    let mut out: Vec<u8> =
+        alloc::vec![0; input.len().saturating_mul(4).clamp(1024, 1 << 20).min(limit)];
     let mut state = DecompressorOxide::new();
     let (mut in_pos, mut out_pos) = (0usize, 0usize);
     loop {
@@ -243,7 +236,11 @@ pub fn decompress_bytes(
                 return Err(Fail::InvalidData);
             }
             let h = u16::from_be_bytes([data[0], data[1]]);
-            if data[0] & 0x0f != 8 || data[0] >> 4 > 7 || h % 31 != 0 || data[1] & 0x20 != 0 {
+            if data[0] & 0x0f != 8
+                || data[0] >> 4 > 7
+                || !h.is_multiple_of(31)
+                || data[1] & 0x20 != 0
+            {
                 return Err(Fail::InvalidData);
             }
             let (out, used) = inflate(&data[2..], max)?;
