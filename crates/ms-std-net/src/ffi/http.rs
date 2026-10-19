@@ -376,7 +376,7 @@ unsafe fn tls_options(w: &TlsOptionsWire) -> TlsOptions {
             roots_pem: str_ref(w.roots_pem).to_string(),
             certificate_pem: str_ref(w.certificate_pem).to_string(),
             private_key_pem: str_ref(w.private_key_pem).to_string(),
-            alpn: read_string_list(w.alpn)
+            alpn: read_string_list(&raw const w.alpn)
                 .into_iter()
                 .map(str::to_string)
                 .collect(),

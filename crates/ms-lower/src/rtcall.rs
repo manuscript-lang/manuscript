@@ -348,7 +348,9 @@ impl FnLower<'_> {
                         return Err(Error::new(format!("{sym}: missing argument {}", p.name)));
                     };
                     let consumed_aggregate = p.ty == "*mut VecVal" || p.ty == "*mut MapVal";
-                    if p.ty == "*const u8" || p.ty == "*mut u8" || consumed_aggregate {
+                    // A record the runtime reads through its `repr(C)` twin (`TlsOptionsWire`).
+                    let wire = p.ty.starts_with("*const ") && p.ty.ends_with("Wire");
+                    if p.ty == "*const u8" || p.ty == "*mut u8" || consumed_aggregate || wire {
                         // A generic element slot: pass the address of the value in memory.
                         // `*mut` hands the value over; `*const` is lent and taken back.
                         let t = self.ty_of(x.v);
@@ -359,7 +361,7 @@ impl FnLower<'_> {
                         if self.needs_drop(t) {
                             let o = self.owned(x);
                             self.b.emit(Op::Put, &[slot, o], Imm::None, None);
-                            if p.ty == "*const u8" {
+                            if p.ty == "*const u8" || wire {
                                 lent.push((slot, t));
                             }
                         } else {
@@ -588,7 +590,10 @@ impl FnLower<'_> {
             return false;
         };
         let cases = &self.b.m.alts[a.index()].cases;
-        !cases.is_empty() && cases.iter().all(|c| c.fields.is_empty() && c.name != "none")
+        !cases.is_empty()
+            && cases
+                .iter()
+                .all(|c| c.fields.is_empty() && c.name != "none")
     }
 
     /// The case of the enum `a` whose index is `tag`.
@@ -700,7 +705,11 @@ impl FnLower<'_> {
                     .b
                     .emit(Op::Take, &[*slot], Imm::Ty(ht), Some(ht))
                     .expect("take");
-                Ok(if ht == *t { v } else { self.wrap_handle(v, *t)?.v })
+                Ok(if ht == *t {
+                    v
+                } else {
+                    self.wrap_handle(v, *t)?.v
+                })
             }
             OutKind::Optional {
                 slot,
@@ -717,10 +726,9 @@ impl FnLower<'_> {
                     flag,
                     opt,
                     &mut |s| {
-                        let v = s
-                            .b
-                            .emit(Op::Take, &[slot], Imm::Ty(inner), Some(inner))
-                            .expect("take");
+                        let v =
+                            s.b.emit(Op::Take, &[slot], Imm::Ty(inner), Some(inner))
+                                .expect("take");
                         Ok(Some(s.b.opt_some(v)))
                     },
                     &mut |s| Ok(Some(s.none_owned(opt))),
@@ -780,10 +788,10 @@ impl FnLower<'_> {
                     return Err(Error::new("an error case field must be text"));
                 }
                 payload.push(match err_slot {
-                    Some(slot) => s
-                        .b
-                        .emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
-                        .expect("take"),
+                    Some(slot) => {
+                        s.b.emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
+                            .expect("take")
+                    }
                     // The symbol never reports this case without a message slot.
                     None => {
                         let lit = s.b.str_lit("");

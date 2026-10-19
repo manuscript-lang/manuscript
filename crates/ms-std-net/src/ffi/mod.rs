@@ -94,6 +94,52 @@ pub unsafe fn finish<T, E: Status>(
     }
 }
 
+/// Starts the list `out` and pushes `records` onto it. `d` describes the element record, whose
+/// `repr(C)` image `T` shares with the compiler's layout.
+///
+/// # Safety
+/// `out` is writable memory for a `VecVal`; `d` describes `T`; `T` owns what it points at.
+pub unsafe fn write_record_list<T>(
+    out: *mut ms_rt_abi::VecVal,
+    d: *const ms_rt_abi::TypeDesc,
+    records: impl IntoIterator<Item = T>,
+) {
+    unsafe extern "C" {
+        fn msrt_list_new(out: *mut ms_rt_abi::VecVal);
+        fn msrt_list_push(v: *mut ms_rt_abi::VecVal, d: *const ms_rt_abi::TypeDesc, e: *const u8);
+    }
+    // SAFETY: caller contract; each record is moved into the list by the push.
+    unsafe {
+        msrt_list_new(out);
+        for r in records {
+            let r = std::mem::ManuallyDrop::new(r);
+            msrt_list_push(out, d, (&raw const *r).cast());
+        }
+    }
+}
+
+/// Writes a `List[Bytes]` of fresh buffers into uninitialised `out`.
+///
+/// # Safety
+/// `out` is writable memory for a `VecVal`.
+pub unsafe fn write_bytes_list<B: AsRef<[u8]>>(out: *mut ms_rt_abi::VecVal, items: &[B]) {
+    unsafe extern "C" {
+        static msrt_desc_bytes: ms_rt_abi::TypeDesc;
+    }
+    // SAFETY: caller contract; each pushed slot is consumed by the list.
+    unsafe {
+        write_record_list(
+            out,
+            &raw const msrt_desc_bytes,
+            items.iter().map(|b| {
+                let mut v = std::mem::MaybeUninit::<ms_rt_abi::VecVal>::uninit();
+                ms_std_core::write_bytes(v.as_mut_ptr(), b.as_ref());
+                v.assume_init()
+            }),
+        );
+    }
+}
+
 /// Flattened `Optional[Int]`/`Optional[Duration]` parameter.
 pub fn opt(has: u8, v: i64) -> Option<i64> {
     ms_std_core::opt(has, v)

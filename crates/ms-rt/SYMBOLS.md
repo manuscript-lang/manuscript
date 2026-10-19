@@ -467,7 +467,7 @@ msrt_net_network_bind_datagram( net: *const Obj, address: *const StrObj, out: *m
 msrt_net_network_restrict( net: *const Obj, hosts: *const VecVal, cidrs: *const VecVal, allow_listen: u8, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
 msrt_net_network_with_resolver( net: *const Obj, address: *const StrObj, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
 msrt_net_network_lookup( net: *const Obj, name: *const StrObj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut VecVal, err: *mut *mut StrObj, ) -> u8
-msrt_net_network_resolve( net: *const Obj, name: *const StrObj, kind: u8, has_max: u8, max: i64, has_timeout: u8, timeout: i64, records: *mut *mut DnsRecordWire, count: *mut usize, err: *mut *mut StrObj, ) -> u8
+msrt_net_network_resolve( net: *const Obj, name: *const StrObj, kind: u8, has_max: u8, max: i64, has_timeout: u8, timeout: i64, d: *const TypeDesc, out: *mut VecVal, err: *mut *mut StrObj, ) -> u8
 msrt_net_connection_close(c: *const Obj)
 msrt_net_connection_local_address(c: *const Obj) -> *mut StrObj
 msrt_net_connection_peer_address(c: *const Obj) -> *mut StrObj
@@ -487,8 +487,8 @@ msrt_net_network_connect_tls( net: *const Obj, address: *const StrObj, server_na
 msrt_net_network_connect_tls_config( net: *const Obj, address: *const StrObj, opts: *const TlsOptionsWire, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
 msrt_net_network_listen_tls( net: *const Obj, address: *const StrObj, opts: *const TlsOptionsWire, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
 msrt_net_connection_tls_info(c: *const Obj, out: *mut TlsInfoWire) -> u8
-msrt_tls_parse_certificates( pem: *const StrObj, has_max: u8, max: i64, certs: *mut *mut CertificateInfoWire, count: *mut usize, ) -> u8
-msrt_tls_verify_certificates( chain: *const StrObj, roots: *const StrObj, server_name: *const StrObj, now_seconds: i64, _now_nanos: i32, ) -> u8
+msrt_tls_parse_certificates( pem: *const StrObj, has_max: u8, max: i64, d: *const TypeDesc, out: *mut VecVal, ) -> u8
+msrt_tls_verify_certificates( chain: *const StrObj, roots: *const StrObj, server_name: *const StrObj, now: *const TimestampWire, ) -> u8
 msrt_tls_error_message(status: u8) -> *mut StrObj
 msrt_websocket_error_message( status: u8, failed: *const StrObj, ) -> *mut StrObj
 msrt_net_network_web_socket( net: *const Obj, address: *const StrObj, headers: *const Obj, subprotocols: *const VecVal, opts: *const WebSocketOptionsWire, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8

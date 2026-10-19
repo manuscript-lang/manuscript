@@ -108,7 +108,7 @@ pub unsafe extern "C" fn msrt_net_network_web_socket(
             roots_pem: str_ref(w.tls.roots_pem).to_string(),
             certificate_pem: str_ref(w.tls.certificate_pem).to_string(),
             private_key_pem: str_ref(w.tls.private_key_pem).to_string(),
-            alpn: read_string_list(w.tls.alpn)
+            alpn: read_string_list(&raw const w.tls.alpn)
                 .into_iter()
                 .map(str::to_string)
                 .collect(),

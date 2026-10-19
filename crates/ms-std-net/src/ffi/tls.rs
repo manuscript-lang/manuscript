@@ -2,16 +2,14 @@
 
 use super::net::network;
 use super::{finish, handle_ref, new_handle, opt};
+use super::{write_bytes_list, write_record_list};
 use crate::conn::Connection;
 use crate::error::{Status, TlsErr};
 use crate::tls::{self, TlsOptions};
-use ms_rt_abi::{Obj, StrObj, VecVal};
+use ms_rt_abi::{Obj, StrObj, TypeDesc, VecVal};
 use ms_std_core::{new_string, read_string_list, str_ref, write_bytes, write_string_list};
+use std::mem::MaybeUninit;
 use std::rc::Rc;
-
-unsafe extern "C" {
-    fn msrt_alloc(size: usize) -> *mut u8;
-}
 
 /// `TlsOptions` as the compiler lays it out for natives.
 #[repr(C)]
@@ -20,8 +18,8 @@ pub struct TlsOptionsWire {
     pub roots_pem: *const StrObj,
     pub certificate_pem: *const StrObj,
     pub private_key_pem: *const StrObj,
-    /// `List[String]`.
-    pub alpn: *const VecVal,
+    /// `List[String]`, inline like every list in a record.
+    pub alpn: VecVal,
     pub require_client_certificate: u8,
 }
 
@@ -36,7 +34,7 @@ unsafe fn options(w: *const TlsOptionsWire) -> TlsOptions {
             roots_pem: str_ref(w.roots_pem).to_string(),
             certificate_pem: str_ref(w.certificate_pem).to_string(),
             private_key_pem: str_ref(w.private_key_pem).to_string(),
-            alpn: read_string_list(w.alpn)
+            alpn: read_string_list(&raw const w.alpn)
                 .into_iter()
                 .map(str::to_string)
                 .collect(),
@@ -125,19 +123,18 @@ pub unsafe extern "C" fn msrt_net_network_listen_tls(
     }
 }
 
-/// `TlsInfo` as written for the compiler to copy into the record.
+/// `TlsInfo` as the compiler lays the record out; the caller takes the string and the list.
 #[repr(C)]
 pub struct TlsInfoWire {
     pub version: i64,
     pub cipher_suite: i64,
     pub alpn: *mut StrObj,
+    /// `List[Bytes]`, inline.
+    pub peer_certificates: VecVal,
     pub verified: u8,
-    /// Array of `Bytes` values allocated with `msrt_alloc`; null when empty.
-    pub peer_certificates: *mut VecVal,
-    pub peer_certificate_count: usize,
 }
 
-/// `Connection.tls_info()`: the caller takes the strings and frees the array.
+/// `Connection.tls_info()`: writes a `TlsInfo` record image.
 ///
 /// # Safety
 /// `c` is a Connection handle; `out` is writable.
@@ -148,23 +145,11 @@ pub unsafe extern "C" fn msrt_net_connection_tls_info(c: *const Obj, out: *mut T
         let conn = handle_ref::<Rc<Connection>>(c);
         match conn.tls_info() {
             Ok(d) => {
-                let count = d.peer_certificates.len();
-                let certs = if count == 0 {
-                    std::ptr::null_mut()
-                } else {
-                    msrt_alloc(count * std::mem::size_of::<VecVal>()).cast::<VecVal>()
-                };
-                for (i, der) in d.peer_certificates.iter().enumerate() {
-                    write_bytes(certs.add(i), der);
-                }
-                out.write(TlsInfoWire {
-                    version: d.version,
-                    cipher_suite: d.cipher_suite,
-                    alpn: new_string(&d.alpn),
-                    verified: u8::from(d.verified),
-                    peer_certificates: certs,
-                    peer_certificate_count: count,
-                });
+                (&raw mut (*out).version).write(d.version);
+                (&raw mut (*out).cipher_suite).write(d.cipher_suite);
+                (&raw mut (*out).alpn).write(new_string(&d.alpn));
+                write_bytes_list(&raw mut (*out).peer_certificates, &d.peer_certificates);
+                (&raw mut (*out).verified).write(u8::from(d.verified));
                 0
             }
             Err(e) => e.code(),
@@ -172,62 +157,70 @@ pub unsafe extern "C" fn msrt_net_connection_tls_info(c: *const Obj, out: *mut T
     }
 }
 
-/// `CertificateInfo` as written for the compiler to copy into the record.
+/// `CertificateInfo` as the compiler lays the record out; a `Timestamp` is two words.
 #[repr(C)]
 pub struct CertificateInfoWire {
     pub subject: *mut StrObj,
     pub issuer: *mut StrObj,
-    /// `List[String]`.
+    /// `List[String]`, inline.
     pub dns_names: VecVal,
     pub not_before_seconds: i64,
-    pub not_before_nanos: i32,
+    pub not_before_nanos: i64,
     pub not_after_seconds: i64,
-    pub not_after_nanos: i32,
-    /// `Bytes`.
+    pub not_after_nanos: i64,
+    /// `Bytes`, inline.
     pub der: VecVal,
 }
 
-/// `parse_certificates(pem, max_certificates)`: on success `*certs` points at `*count` wire
-/// records allocated with `msrt_alloc` (null when empty); the caller takes ownership.
+/// `parse_certificates(pem, max_certificates)`: on success `out` is a `List[CertificateInfo]`
+/// whose elements are `CertificateInfoWire` images; `d` describes `CertificateInfo`.
 ///
 /// # Safety
-/// `certs` and `count` are writable.
+/// `out` is writable; `d` describes `CertificateInfo`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn msrt_tls_parse_certificates(
     pem: *const StrObj,
     has_max: u8,
     max: i64,
-    certs: *mut *mut CertificateInfoWire,
-    count: *mut usize,
+    d: *const TypeDesc,
+    out: *mut VecVal,
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let r = tls::parse_certificates(str_ref(pem), opt(has_max, max));
-        match r {
+        match tls::parse_certificates(str_ref(pem), opt(has_max, max)) {
             Ok(list) => {
-                *count = list.len();
-                *certs = std::ptr::null_mut();
-                if !list.is_empty() {
-                    let p = msrt_alloc(list.len() * std::mem::size_of::<CertificateInfoWire>())
-                        .cast::<CertificateInfoWire>();
-                    for (i, c) in list.iter().enumerate() {
-                        let slot = p.add(i);
-                        (&raw mut (*slot).subject).write(new_string(&c.subject));
-                        (&raw mut (*slot).issuer).write(new_string(&c.issuer));
-                        write_string_list(&raw mut (*slot).dns_names, c.dns_names.iter());
-                        (&raw mut (*slot).not_before_seconds).write(c.not_before.0);
-                        (&raw mut (*slot).not_before_nanos).write(c.not_before.1);
-                        (&raw mut (*slot).not_after_seconds).write(c.not_after.0);
-                        (&raw mut (*slot).not_after_nanos).write(c.not_after.1);
-                        write_bytes(&raw mut (*slot).der, &c.der);
-                    }
-                    *certs = p;
-                }
+                write_record_list(
+                    out,
+                    d,
+                    list.iter().map(|c| {
+                        let mut dns = MaybeUninit::<VecVal>::uninit();
+                        write_string_list(dns.as_mut_ptr(), c.dns_names.iter());
+                        let mut der = MaybeUninit::<VecVal>::uninit();
+                        write_bytes(der.as_mut_ptr(), &c.der);
+                        CertificateInfoWire {
+                            subject: new_string(&c.subject),
+                            issuer: new_string(&c.issuer),
+                            dns_names: dns.assume_init(),
+                            not_before_seconds: c.not_before.0,
+                            not_before_nanos: i64::from(c.not_before.1),
+                            not_after_seconds: c.not_after.0,
+                            not_after_nanos: i64::from(c.not_after.1),
+                            der: der.assume_init(),
+                        }
+                    }),
+                );
                 0
             }
             Err(e) => e.code(),
         }
     }
+}
+
+/// A `Timestamp` record image: seconds and nanoseconds.
+#[repr(C)]
+pub struct TimestampWire {
+    pub seconds: i64,
+    pub nanoseconds: i64,
 }
 
 /// `verify_certificates(chain_pem, roots_pem, server_name, now)`.
@@ -239,8 +232,7 @@ pub unsafe extern "C" fn msrt_tls_verify_certificates(
     chain: *const StrObj,
     roots: *const StrObj,
     server_name: *const StrObj,
-    now_seconds: i64,
-    _now_nanos: i32,
+    now: *const TimestampWire,
 ) -> u8 {
     // SAFETY: caller contract.
     let r = unsafe {
@@ -248,7 +240,7 @@ pub unsafe extern "C" fn msrt_tls_verify_certificates(
             str_ref(chain),
             str_ref(roots),
             str_ref(server_name),
-            now_seconds,
+            (*now).seconds,
         )
     };
     r.err().map_or(0, |e| e.code())
@@ -269,7 +261,6 @@ pub extern "C" fn msrt_tls_error_message(status: u8) -> *mut StrObj {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::ptr::null_mut;
 
     fn s(text: &str) -> *const StrObj {
         new_string(text)
@@ -280,23 +271,43 @@ mod tests {
         let pem = include_str!("../../testdata/stdlib.test.crt.pem");
         // SAFETY: every pointer is a live runtime object created in this test.
         unsafe {
-            let (mut certs, mut count) = (null_mut(), 0usize);
+            // A plain-data descriptor of the `CertificateInfoWire` image.
+            let desc = ms_rt_abi::TypeDesc {
+                size: std::mem::size_of::<CertificateInfoWire>() as u32,
+                align: 8,
+                kind: ms_rt_abi::KIND_POD,
+                reserved: 0,
+                inner0: std::ptr::null(),
+                inner1: std::ptr::null(),
+                drop: None,
+                copy: None,
+                eq: None,
+                hash: None,
+            };
+            let mut certs = MaybeUninit::<VecVal>::uninit();
             assert_eq!(
-                msrt_tls_parse_certificates(s(pem), 0, 0, &mut certs, &mut count),
+                msrt_tls_parse_certificates(s(pem), 0, 0, &raw const desc, certs.as_mut_ptr()),
                 0
             );
-            assert_eq!(count, 1);
-            assert_eq!((*certs).not_after_seconds, 4_102_444_800);
+            let certs = certs.assume_init();
+            assert_eq!(certs.len, 1);
+            let first = certs.ptr.cast::<CertificateInfoWire>();
+            assert_eq!((*first).not_after_seconds, 4_102_444_800);
+            let mut limited = MaybeUninit::<VecVal>::uninit();
             assert_eq!(
-                msrt_tls_parse_certificates(s(pem), 1, 0, &mut certs, &mut count),
+                msrt_tls_parse_certificates(s(pem), 1, 0, &raw const desc, limited.as_mut_ptr()),
                 3
             );
+            let now = TimestampWire {
+                seconds: 1_700_000_000,
+                nanoseconds: 0,
+            };
             assert_eq!(
-                msrt_tls_verify_certificates(s(pem), s(pem), s("stdlib.test"), 1_700_000_000, 0),
+                msrt_tls_verify_certificates(s(pem), s(pem), s("stdlib.test"), &now),
                 0
             );
             assert_eq!(
-                msrt_tls_verify_certificates(s(pem), s(pem), s("nope.test"), 1_700_000_000, 0),
+                msrt_tls_verify_certificates(s(pem), s(pem), s("nope.test"), &now),
                 4
             );
             let m = msrt_tls_error_message(4);

@@ -69,8 +69,8 @@ impl Cx {
             return Ok(*v);
         }
         let ct_iface = self.iface_cts[&iface.0].clone();
-        let prefix = handle_prefix(&ct_iface)
-            .ok_or_else(|| Error::new("not a handle-backed interface"))?;
+        let prefix =
+            handle_prefix(&ct_iface).ok_or_else(|| Error::new("not a handle-backed interface"))?;
         let data_ty = self.handle_ty(m, iface);
         let sigs = m.ifaces[iface.index()].methods.clone();
         let mut methods = Vec::new();
@@ -172,9 +172,8 @@ pub(crate) fn build_native_iface(
 
 fn lower_native_iface_method(fl: &mut FnLower<'_>, job: &NativeIfaceJob) -> Result<(), Error> {
     let params = fl.b.params();
-    let data = fl
-        .b
-        .emit(
+    let data =
+        fl.b.emit(
             Op::Load,
             &[params[0]],
             Imm::Ty(job.data_ty),

@@ -1,11 +1,12 @@
 //! Shims for `@std/net.ms`.
 
+use super::write_record_list;
 use super::{finish, handle_ref, new_handle, opt};
 use crate::conn::{Connection, Datagrams, Listener};
 use crate::error::{NetErr, Status};
 use crate::ip::{Cidr, ip_text, normalize, parse_ip};
 use crate::net::{DnsKind, Network, root};
-use ms_rt_abi::{Obj, StrObj, VecVal};
+use ms_rt_abi::{Obj, StrObj, TypeDesc, VecVal};
 use ms_std_core::{
     bytes_ref, new_string, read_string_list, str_ref, write_bytes, write_string_list,
 };
@@ -13,7 +14,6 @@ use std::net::IpAddr;
 use std::rc::Rc;
 
 unsafe extern "C" {
-    fn msrt_alloc(size: usize) -> *mut u8;
     fn msrt_retain(o: *mut Obj);
 }
 
@@ -341,20 +341,19 @@ pub unsafe extern "C" fn msrt_net_network_lookup(
 /// One answer of `Network.resolve`; the strings are owned by the caller.
 #[repr(C)]
 pub struct DnsRecordWire {
-    /// `DnsKind` case index.
-    pub kind: u8,
+    /// `DnsKind` case index (an enum is its tag word).
+    pub kind: i64,
     pub value: *mut StrObj,
     pub priority: i64,
     pub weight: i64,
     pub port: i64,
 }
 
-/// `Network.resolve(name, kind, max_records, timeout)`: on success `*records` points to `*count`
-/// wire records allocated with `msrt_alloc` (null when empty). The caller takes the strings and frees
-/// the array with `msrt_free`.
+/// `Network.resolve(name, kind, max_records, timeout)`: on success `out` is a `List[DnsRecord]`
+/// whose elements are `DnsRecordWire` images; `d` describes `DnsRecord`.
 ///
 /// # Safety
-/// `records` and `count` are writable.
+/// `out` is writable; `d` describes `DnsRecord`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn msrt_net_network_resolve(
     net: *const Obj,
@@ -364,8 +363,8 @@ pub unsafe extern "C" fn msrt_net_network_resolve(
     max: i64,
     has_timeout: u8,
     timeout: i64,
-    records: *mut *mut DnsRecordWire,
-    count: *mut usize,
+    d: *const TypeDesc,
+    out: *mut VecVal,
     err: *mut *mut StrObj,
 ) -> u8 {
     let Some(kind) = DnsKind::from_index(kind) else {
@@ -380,22 +379,17 @@ pub unsafe extern "C" fn msrt_net_network_resolve(
             opt(has_timeout, timeout),
         );
         finish(r, err, |list| {
-            *count = list.len();
-            *records = std::ptr::null_mut();
-            if !list.is_empty() {
-                let p = msrt_alloc(list.len() * std::mem::size_of::<DnsRecordWire>())
-                    .cast::<DnsRecordWire>();
-                for (i, rec) in list.iter().enumerate() {
-                    p.add(i).write(DnsRecordWire {
-                        kind: DnsKind::index(rec.kind),
-                        value: new_string(&rec.value),
-                        priority: rec.priority,
-                        weight: rec.weight,
-                        port: rec.port,
-                    });
-                }
-                *records = p;
-            }
+            write_record_list(
+                out,
+                d,
+                list.iter().map(|rec| DnsRecordWire {
+                    kind: i64::from(DnsKind::index(rec.kind)),
+                    value: new_string(&rec.value),
+                    priority: rec.priority,
+                    weight: rec.weight,
+                    port: rec.port,
+                }),
+            );
         })
     }
 }
@@ -837,7 +831,20 @@ mod tests {
                 0
             );
             assert_eq!(read_string_list(out.as_ptr()), vec!["127.0.0.1"]);
-            let (mut records, mut count) = (null_mut(), 0usize);
+            // A plain-data descriptor of the 40-byte `DnsRecordWire`.
+            let desc = ms_rt_abi::TypeDesc {
+                size: 40,
+                align: 8,
+                kind: ms_rt_abi::KIND_POD,
+                reserved: 0,
+                inner0: std::ptr::null(),
+                inner1: std::ptr::null(),
+                drop: None,
+                copy: None,
+                eq: None,
+                hash: None,
+            };
+            let mut records = MaybeUninit::<VecVal>::uninit();
             assert_eq!(
                 msrt_net_network_resolve(
                     net,
@@ -847,14 +854,18 @@ mod tests {
                     0,
                     0,
                     0,
-                    &mut records,
-                    &mut count,
+                    &raw const desc,
+                    records.as_mut_ptr(),
                     &mut err
                 ),
                 0
             );
-            assert_eq!(count, 1);
-            assert_eq!(take((*records).value), "127.0.0.1");
+            let records = records.assume_init();
+            assert_eq!(records.len, 1);
+            assert_eq!(
+                take((*records.ptr.cast::<DnsRecordWire>()).value),
+                "127.0.0.1"
+            );
             ms_rt::obj::msrt_release(child);
             ms_rt::obj::msrt_release(net);
         }
