@@ -1,7 +1,7 @@
 //! Differential tests: MIR text is run by the reference interpreter and, compiled
 //! natively with the test runtime, must produce the same output and exit status.
 
-use ms_clif::{compile, link::link, Options};
+use ms_clif::{Options, compile, link::link};
 use ms_mir::interp::Interp;
 use ms_mir::parse::parse_module;
 use ms_mir::verify::verify_module;
@@ -21,7 +21,12 @@ fn runtime() -> &'static PathBuf {
     RT.get_or_init(|| {
         let out = dir().join("testrt.o");
         let src = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/rt/testrt.c");
-        let st = Command::new("cc").args(["-O1", "-c", "-fno-omit-frame-pointer", "-o"]).arg(&out).arg(src).status().expect("cc");
+        let st = Command::new("cc")
+            .args(["-O1", "-c", "-fno-omit-frame-pointer", "-o"])
+            .arg(&out)
+            .arg(src)
+            .status()
+            .expect("cc");
         assert!(st.success());
         out
     })
@@ -47,10 +52,18 @@ pub fn run_interp(src: &str) -> Outcome {
         Ok(_) => 70,
         Err(_) => 70,
     };
-    Outcome { stdout: it.stdout().to_string(), code }
+    Outcome {
+        stdout: it.stdout().to_string(),
+        code,
+    }
 }
 
 pub fn run_native_with(src: &str, opts: &Options, tag: &str) -> Outcome {
+    run_native_full(src, opts, tag).0
+}
+
+/// Like [`run_native_with`], also returning stderr.
+pub fn run_native_full(src: &str, opts: &Options, tag: &str) -> (Outcome, String) {
     let mut m = module(src);
     if tag.ends_with(".opt") {
         ms_mir::opt::optimize(&mut m, ms_mir::opt::Level::Speed, true);
@@ -61,8 +74,15 @@ pub fn run_native_with(src: &str, opts: &Options, tag: &str) -> Outcome {
     std::fs::write(&objp, obj).unwrap();
     let exe = d.join(tag);
     link(&objp, runtime(), &exe).unwrap_or_else(|e| panic!("{e}"));
-    let out = Command::new(&exe).env("MSRT_LEAKCHECK", "1").output().expect("run");
-    Outcome { stdout: String::from_utf8_lossy(&out.stdout).into_owned(), code: out.status.code().unwrap_or(-1) }
+    let out = Command::new(&exe)
+        .env("MSRT_LEAKCHECK", "1")
+        .output()
+        .expect("run");
+    let o = Outcome {
+        stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
+        code: out.status.code().unwrap_or(-1),
+    };
+    (o, String::from_utf8_lossy(&out.stderr).into_owned())
 }
 
 pub fn run_native(src: &str, tag: &str) -> Outcome {
@@ -75,8 +95,14 @@ pub fn same(src: &str, tag: &str) -> Outcome {
     assert_eq!(a.stdout, b.stdout, "stdout differs ({tag})");
     assert_eq!(a.code, b.code, "exit code differs ({tag})");
     let c = run_native(src, &format!("{tag}.opt"));
-    assert_eq!(a.stdout, c.stdout, "stdout differs after optimization ({tag})");
-    assert_eq!(a.code, c.code, "exit code differs after optimization ({tag})");
+    assert_eq!(
+        a.stdout, c.stdout,
+        "stdout differs after optimization ({tag})"
+    );
+    assert_eq!(
+        a.code, c.code,
+        "exit code differs after optimization ({tag})"
+    );
     b
 }
 
@@ -116,7 +142,11 @@ b0:
 #[test]
 fn shared_fixtures() {
     let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../ms-mir/tests/fixtures");
-    let mut names: Vec<_> = std::fs::read_dir(&dir).unwrap().map(|e| e.unwrap().path()).filter(|p| p.extension().is_some_and(|e| e == "mir")).collect();
+    let mut names: Vec<_> = std::fs::read_dir(&dir)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|e| e == "mir"))
+        .collect();
     names.sort();
     let mut failures = Vec::new();
     for p in names {
@@ -131,7 +161,12 @@ fn shared_fixtures() {
 }
 
 fn kernel_src(name: &str) -> String {
-    std::fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("kernels").join(format!("{name}.mir"))).unwrap()
+    std::fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("kernels")
+            .join(format!("{name}.mir")),
+    )
+    .unwrap()
 }
 
 fn check_kernel(name: &str, expect: &str) {
@@ -160,4 +195,30 @@ kernel_test! {
     matmul => "26666000000",
     life => "204",
     nbody => "1199426",
+}
+
+#[test]
+fn fault_trace_names_functions_and_lines() {
+    let src = r#"module "trace"
+entry @main
+file 0 "t.ms"
+fn @inner(%i: int) -> int !0:10:1 {
+b0:
+  %a: int = iconst 1
+  %l: list<int> = list.lit %a !0:11:3
+  %x: int = list.get %l, %i !0:12:5
+  drop %l
+  ret %x
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %i: int = iconst 5
+  %r: int = call @inner(%i) !0:21:7
+  ret %r
+}
+"#;
+    let (o, err) = run_native_full(src, &Options::default(), "trace");
+    assert_eq!(o.code, 70);
+    assert!(err.contains("at inner t.ms:12"), "{err}");
+    assert!(err.contains("at main t.ms:21"), "{err}");
 }

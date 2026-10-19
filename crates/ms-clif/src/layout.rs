@@ -95,7 +95,11 @@ pub fn mem_layout(leaves: &[Leaf]) -> MemLayout {
         offsets.push(off);
         off += a;
     }
-    MemLayout { offsets, size: off.div_ceil(align) * align, align }
+    MemLayout {
+        offsets,
+        size: off.div_ceil(align) * align,
+        align,
+    }
 }
 
 /// Layout oracle for one module.
@@ -109,7 +113,11 @@ pub struct Layouts<'m> {
 impl<'m> Layouts<'m> {
     /// A fresh oracle.
     pub fn new(m: &'m Module) -> Self {
-        Layouts { m, cache: RefCell::new(HashMap::new()), boxed: RefCell::new(HashMap::new()) }
+        Layouts {
+            m,
+            cache: RefCell::new(HashMap::new()),
+            boxed: RefCell::new(HashMap::new()),
+        }
     }
 
     /// Whether the alternative contains itself by value and therefore lives behind a pointer.
@@ -127,8 +135,16 @@ impl<'m> Layouts<'m> {
 
     fn reaches_by_value(&self, from: Ty, target: Ty, seen: &mut Vec<Ty>) -> bool {
         let children: Vec<Ty> = match self.m.types.kind(from) {
-            TyKind::Rec(r) => self.m.records[r.index()].fields.iter().map(|f| f.1).collect(),
-            TyKind::Alt(a) => self.m.alts[a.index()].cases.iter().flat_map(|c| c.fields.iter().map(|f| f.1)).collect(),
+            TyKind::Rec(r) => self.m.records[r.index()]
+                .fields
+                .iter()
+                .map(|f| f.1)
+                .collect(),
+            TyKind::Alt(a) => self.m.alts[a.index()]
+                .cases
+                .iter()
+                .flat_map(|c| c.fields.iter().map(|f| f.1))
+                .collect(),
             TyKind::Opt(t) => vec![*t],
             _ => return false,
         };
@@ -161,7 +177,13 @@ impl<'m> Layouts<'m> {
         if let TyKind::Alt(a) = self.m.types.kind(ty) {
             if self.is_boxed(*a) {
                 // A boxed alternative is one pointer; this also ends the recursion through its own fields.
-                self.cache.borrow_mut().insert(ty, Shape { leaves: vec![Leaf::I64], alt: None });
+                self.cache.borrow_mut().insert(
+                    ty,
+                    Shape {
+                        leaves: vec![Leaf::I64],
+                        alt: None,
+                    },
+                );
             }
         }
         let s = self.compute(ty);
@@ -186,7 +208,8 @@ impl<'m> Layouts<'m> {
 
     /// Whether `Optional[inner]` is a nullable pointer.
     pub fn opt_is_nullable(&self, inner: Ty) -> bool {
-        matches!(self.m.types.kind(inner), TyKind::Str | TyKind::Fn(..)) || matches!(self.m.types.kind(inner), TyKind::Obj(n, _) if n != "Map" && n != "Set")
+        matches!(self.m.types.kind(inner), TyKind::Str | TyKind::Fn(..))
+            || matches!(self.m.types.kind(inner), TyKind::Obj(n, _) if n != "Map" && n != "Set")
     }
 
     fn compute(&self, ty: Ty) -> Shape {
@@ -201,7 +224,13 @@ impl<'m> Layouts<'m> {
             TyKind::Obj(n, _) if n == "Map" || n == "Set" => plain(vec![I64; 6]),
             TyKind::Obj(..) => plain(vec![I64]),
             TyKind::Iface(_) => plain(vec![I64, I64]),
-            TyKind::Rec(r) => plain(self.m.records[r.index()].fields.iter().flat_map(|f| self.leaves(f.1)).collect()),
+            TyKind::Rec(r) => plain(
+                self.m.records[r.index()]
+                    .fields
+                    .iter()
+                    .flat_map(|f| self.leaves(f.1))
+                    .collect(),
+            ),
             TyKind::Opt(inner) => {
                 if self.opt_is_nullable(*inner) {
                     plain(vec![I64])
@@ -218,8 +247,18 @@ impl<'m> Layouts<'m> {
     fn alt_shape(&self, a: AltId) -> Shape {
         use Leaf::*;
         let def = &self.m.alts[a.index()];
-        let cases: Vec<Vec<Leaf>> = def.cases.iter().map(|c| c.fields.iter().flat_map(|f| self.leaves(f.1)).collect()).collect();
-        let count = |l: Leaf| cases.iter().map(|c| c.iter().filter(|x| **x == l).count()).max().unwrap_or(0);
+        let cases: Vec<Vec<Leaf>> = def
+            .cases
+            .iter()
+            .map(|c| c.fields.iter().flat_map(|f| self.leaves(f.1)).collect())
+            .collect();
+        let count = |l: Leaf| {
+            cases
+                .iter()
+                .map(|c| c.iter().filter(|x| **x == l).count())
+                .max()
+                .unwrap_or(0)
+        };
         let (n64, nf, n8) = (count(I64), count(F64), count(I8));
         let mut block = vec![I64];
         block.extend(std::iter::repeat_n(I64, n64));
@@ -244,9 +283,15 @@ impl<'m> Layouts<'m> {
             })
             .collect();
         if self.is_boxed(a) {
-            Shape { leaves: vec![I64], alt: Some(AltRepr::Boxed { slots, block }) }
+            Shape {
+                leaves: vec![I64],
+                alt: Some(AltRepr::Boxed { slots, block }),
+            }
         } else {
-            Shape { leaves: block, alt: Some(AltRepr::Inline { slots }) }
+            Shape {
+                leaves: block,
+                alt: Some(AltRepr::Inline { slots }),
+            }
         }
     }
 }

@@ -37,9 +37,37 @@ static void run_cleanups(void) {
     cleanups[ncleanups].f(cleanups[ncleanups].arg);
   }
 }
+typedef struct { uint32_t abi, reserved; const void *funcs; size_t nfuncs; const void *lines; size_t nlines; const char *strings; size_t slen; } Tables;
+typedef struct { uintptr_t addr; uint32_t size, name, file, line; } FuncEntry;
+typedef struct { uintptr_t pc; uint32_t line, file; } LineEntry;
+static const Tables *tables;
+
+/* Walks the frame-pointer chain and prints "  at name file:line" per frame. */
+static void trace(void) {
+  if (!tables) return;
+  uintptr_t *fp = __builtin_frame_address(0);
+  for (int depth = 0; fp && depth < 64; depth++) {
+    uintptr_t pc = fp[1];
+    const FuncEntry *fe = tables->funcs;
+    for (size_t i = 0; i < tables->nfuncs; i++) {
+      if (pc > fe[i].addr && pc <= fe[i].addr + fe[i].size) {
+        const LineEntry *le = tables->lines;
+        const LineEntry *best = 0;
+        for (size_t k = 0; k < tables->nlines; k++) if (le[k].pc <= pc - 1 && (!best || le[k].pc >= best->pc)) best = &le[k];
+        const char *file = fe[i].file == UINT32_MAX ? "?" : tables->strings + fe[i].file;
+        fprintf(stderr, "  at %s %s:%u\n", tables->strings + fe[i].name, file, best ? best->line : fe[i].line);
+        break;
+      }
+    }
+    uintptr_t *next = (uintptr_t *)fp[0];
+    if (next <= fp) break;
+    fp = next;
+  }
+}
 static void die(const char *msg, size_t len) {
   fflush(stdout);
   fprintf(stderr, "%.*s\n", (int)len, msg);
+  trace();
   run_cleanups();
   fflush(stdout);
   exit(70);
@@ -81,8 +109,8 @@ void msrt_print_str(const Obj *s) {
 }
 int64_t msrt_live(void) { return msrt_live_allocs; }
 
-int msrt_start(int64_t (*main_fn)(void), const void *tables, int argc, char **argv) {
-  (void)tables; (void)argc; (void)argv;
+int msrt_start(int64_t (*main_fn)(void), const void *t, int argc, char **argv) {
+  tables = t; (void)argc; (void)argv;
   struct timespec t0, t1;
   clock_gettime(CLOCK_MONOTONIC, &t0);
   int64_t r = main_fn();

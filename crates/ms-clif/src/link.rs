@@ -17,6 +17,9 @@ pub fn link(object: &Path, runtime: &Path, out: &Path) -> Result<(), Error> {
     if o.status.success() {
         Ok(())
     } else {
-        Err(Error(format!("link failed: {}", String::from_utf8_lossy(&o.stderr))))
+        Err(Error(format!(
+            "link failed: {}",
+            String::from_utf8_lossy(&o.stderr)
+        )))
     }
 }

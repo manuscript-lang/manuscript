@@ -31,7 +31,12 @@ pub struct Options {
 
 impl Default for Options {
     fn default() -> Self {
-        Options { checks: true, poll: true, opt_level: "speed", dump_clif: false }
+        Options {
+            checks: true,
+            poll: true,
+            opt_level: "speed",
+            dump_clif: false,
+        }
     }
 }
 

@@ -1,9 +1,12 @@
 //! Lowering of one MIR function (or glue function) to Cranelift IR.
 
-use crate::cg::{leaf_type, Gen, Glue, CLOSURE_CAPTURES, CLOSURE_CODE, OBJ_HEADER};
-use crate::layout::{mem_layout, AltRepr, Leaf};
+use crate::cg::{CLOSURE_CAPTURES, CLOSURE_CODE, Gen, Glue, OBJ_HEADER, leaf_type};
+use crate::layout::{AltRepr, Leaf, mem_layout};
 use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
-use cranelift_codegen::ir::{self, types, BlockArg, FuncRef, GlobalValue, InstBuilder, MemFlagsData, StackSlotData, StackSlotKind, TrapCode, Value};
+use cranelift_codegen::ir::{
+    self, BlockArg, FuncRef, GlobalValue, InstBuilder, MemFlagsData, StackSlotData, StackSlotKind,
+    TrapCode, Value, types,
+};
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
 use ms_mir::ir::{Cc, FaultKind, Func, Imm, Inst, Op, Target, Term};
@@ -32,8 +35,20 @@ fn bargs(vs: &[Value]) -> Vec<BlockArg> {
 }
 
 impl<'a, 'm> Lower<'a, 'm> {
-    pub fn new(g: &'a mut Gen<'m>, func: &'a mut ir::Function, fctx: &'a mut FunctionBuilderContext) -> Self {
-        Lower { g, b: FunctionBuilder::new(func, fctx), frefs: HashMap::new(), grefs: HashMap::new(), vals: Vec::new(), blocks: Vec::new(), unsupported: None }
+    pub fn new(
+        g: &'a mut Gen<'m>,
+        func: &'a mut ir::Function,
+        fctx: &'a mut FunctionBuilderContext,
+    ) -> Self {
+        Lower {
+            g,
+            b: FunctionBuilder::new(func, fctx),
+            frefs: HashMap::new(),
+            grefs: HashMap::new(),
+            vals: Vec::new(),
+            blocks: Vec::new(),
+            unsupported: None,
+        }
     }
 
     pub fn finish(mut self) {
@@ -43,6 +58,11 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     // ---- small helpers ---------------------------------------------------
+
+    fn set_loc(&mut self, loc: ms_mir::ir::Loc) {
+        let bits = self.g.loc_bits(loc);
+        self.b.set_srcloc(ir::SourceLoc::new(bits));
+    }
 
     fn unsupported(&mut self, what: &str) {
         if self.unsupported.is_none() {
@@ -63,7 +83,12 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     fn zeros(&mut self, ty: Ty) -> Vs {
-        self.g.lay.leaves(ty).into_iter().map(|l| self.zero(l)).collect()
+        self.g
+            .lay
+            .leaves(ty)
+            .into_iter()
+            .map(|l| self.zero(l))
+            .collect()
     }
 
     fn fref(&mut self, id: FuncId) -> FuncRef {
@@ -108,13 +133,23 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     fn load_leaves(&mut self, ptr: Value, base: i64, leaves: &[Leaf]) -> Vs {
         let lay = mem_layout(leaves);
-        leaves.iter().zip(&lay.offsets).map(|(l, o)| self.b.ins().load(leaf_type(*l), flags(), ptr, (base + *o as i64) as i32)).collect()
+        leaves
+            .iter()
+            .zip(&lay.offsets)
+            .map(|(l, o)| {
+                self.b
+                    .ins()
+                    .load(leaf_type(*l), flags(), ptr, (base + *o as i64) as i32)
+            })
+            .collect()
     }
 
     fn store_leaves(&mut self, ptr: Value, base: i64, leaves: &[Leaf], vs: &[Value]) {
         let lay = mem_layout(leaves);
         for (v, o) in vs.iter().zip(&lay.offsets) {
-            self.b.ins().store(flags(), *v, ptr, (base + *o as i64) as i32);
+            self.b
+                .ins()
+                .store(flags(), *v, ptr, (base + *o as i64) as i32);
         }
     }
 
@@ -274,7 +309,9 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// Splits `vs` into per-field slices for a record type.
     fn fields_of(&self, ty: Ty) -> Vec<(Ty, usize, usize)> {
         let m = self.g.m;
-        let TyKind::Rec(r) = m.types.kind(ty) else { return Vec::new() };
+        let TyKind::Rec(r) = m.types.kind(ty) else {
+            return Vec::new();
+        };
         let mut out = Vec::new();
         let mut at = 0;
         for f in &m.records[r.index()].fields {
@@ -399,7 +436,16 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let fv: Vs = match base {
                     Some(p) => {
                         let lay = mem_layout(&leaves);
-                        idx.iter().map(|i| self.b.ins().load(leaf_type(leaves[*i]), flags(), p, lay.offsets[*i] as i32)).collect()
+                        idx.iter()
+                            .map(|i| {
+                                self.b.ins().load(
+                                    leaf_type(leaves[*i]),
+                                    flags(),
+                                    p,
+                                    lay.offsets[*i] as i32,
+                                )
+                            })
+                            .collect()
                     }
                     None => idx.iter().map(|i| vs[*i]).collect(),
                 };
@@ -472,13 +518,16 @@ impl<'a, 'm> Lower<'a, 'm> {
         let some = self.b.create_block();
         let empty_ptr = self.iconst(0);
         let nonempty = self.b.ins().icmp_imm_s(IntCC::NotEqual, len, 0);
-        self.b.ins().brif(nonempty, some, &[], join, &[BlockArg::Value(empty_ptr)]);
+        self.b
+            .ins()
+            .brif(nonempty, some, &[], join, &[BlockArg::Value(empty_ptr)]);
         self.b.switch_to_block(some);
         let bytes = self.b.ins().imul_imm_s(len, size);
         let np = self.rt_call("msrt_alloc", &[bytes])[0];
         match elem.filter(|e| m.needs_drop(*e)) {
             None => {
-                self.b.call_memcpy(self.g.module.target_config(), np, ptr, bytes);
+                self.b
+                    .call_memcpy(self.g.module.target_config(), np, ptr, bytes);
             }
             Some(e) => {
                 let leaves = self.g.lay.leaves(e);
@@ -511,7 +560,9 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     fn alt_copy(&mut self, ty: Ty, vs: &[Value]) -> Vs {
-        let TyKind::Alt(a) = self.g.m.types.kind(ty).clone() else { return vs.to_vec() };
+        let TyKind::Alt(a) = self.g.m.types.kind(ty).clone() else {
+            return vs.to_vec();
+        };
         let fields = self.alt_fields(a);
         let shape = self.g.lay.shape(ty);
         let boxed = matches!(shape.alt, Some(AltRepr::Boxed { .. }));
@@ -520,7 +571,11 @@ impl<'a, 'm> Lower<'a, 'm> {
             _ => (shape.leaves.clone(), shape.leaves.len()),
         };
         // Source leaves: boxed values are loaded from the block.
-        let src: Vs = if boxed { self.load_leaves(vs[0], 0, &leaves) } else { vs.to_vec() };
+        let src: Vs = if boxed {
+            self.load_leaves(vs[0], 0, &leaves)
+        } else {
+            vs.to_vec()
+        };
         let join = self.b.create_block();
         for l in &leaves {
             self.b.append_block_param(join, leaf_type(*l));
@@ -568,7 +623,11 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// Spills `vs` into a fresh stack slot laid out per `leaves` and returns its address.
     fn spill(&mut self, vs: &[Value], leaves: &[Leaf]) -> Value {
         let lay = mem_layout(leaves);
-        let slot = self.b.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, lay.size.max(8), 3));
+        let slot = self.b.create_sized_stack_slot(StackSlotData::new(
+            StackSlotKind::ExplicitSlot,
+            lay.size.max(8),
+            3,
+        ));
         let addr = self.b.ins().stack_addr(types::I64, slot, 0);
         self.store_leaves(addr, 0, leaves, vs);
         addr
@@ -589,8 +648,15 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     fn target(&mut self, t: &Target) -> (ir::Block, Vec<BlockArg>) {
-        let args: Vs = t.args.iter().flat_map(|a| self.vals[a.index()].clone()).collect();
-        (self.blocks[t.block.index()].expect("reachable block"), bargs(&args))
+        let args: Vs = t
+            .args
+            .iter()
+            .flat_map(|a| self.vals[a.index()].clone())
+            .collect();
+        (
+            self.blocks[t.block.index()].expect("reachable block"),
+            bargs(&args),
+        )
     }
 
     pub fn lower_func(&mut self, f: &Func, _index: usize) {
@@ -598,7 +664,11 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.blocks = vec![None; f.blocks.len()];
         self.vals = vec![Vec::new(); f.values.len()];
         for b in &rpo {
-            let cb = if b.index() == 0 { self.b.create_block() } else { self.b.create_block() };
+            let cb = if b.index() == 0 {
+                self.b.create_block()
+            } else {
+                self.b.create_block()
+            };
             self.blocks[b.index()] = Some(cb);
             if b.index() == 0 {
                 self.b.append_block_params_for_function_params(cb);
@@ -622,8 +692,10 @@ impl<'a, 'm> Lower<'a, 'm> {
                 at += w;
             }
             for inst in &f.blocks[b.index()].insts {
+                self.set_loc(inst.loc);
                 self.lower_inst(f, inst);
             }
+            self.set_loc(f.blocks[b.index()].term_loc);
             self.lower_term(f, &f.blocks[b.index()].term);
         }
     }
@@ -637,7 +709,13 @@ impl<'a, 'm> Lower<'a, 'm> {
         let fid = self.g.funcs[entry];
         let fref = self.fref(fid);
         let faddr = self.b.ins().func_addr(types::I64, fref);
-        let tables = self.iconst(0);
+        let tables = match self.g.tables {
+            Some(id) => {
+                let gv = self.g.module.declare_data_in_func(id, self.b.func);
+                self.b.ins().symbol_value(types::I64, gv)
+            }
+            None => self.iconst(0),
+        };
         let r = self.rt_call("msrt_start", &[faddr, tables, argc, argv])[0];
         let r32 = self.b.ins().ireduce(types::I32, r);
         self.b.ins().return_(&[r32]);
@@ -655,7 +733,11 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let (eb, ea) = self.target(els);
                 self.b.ins().brif(c, tb, &ta, eb, &ea);
             }
-            Term::Switch { value, cases, default } => {
+            Term::Switch {
+                value,
+                cases,
+                default,
+            } => {
                 let v = self.vals[value.index()][0];
                 let mut sw = Switch::new();
                 for (k, tg) in cases {
@@ -721,14 +803,21 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.rt_call("msrt_fault_depth", &[]);
             }
             FaultKind::Unreachable => {
-                let id = self.g.module.declare_anonymous_data(false, false).expect("data");
+                let id = self
+                    .g
+                    .module
+                    .declare_anonymous_data(false, false)
+                    .expect("data");
                 let _ = id;
                 self.unsupported("fault unreachable_code message");
             }
             FaultKind::Message(s) => {
                 let d = self.g.str_lit(s.0);
                 let base = self.data_addr(d);
-                let p = self.b.ins().iadd_imm_s(base, crate::cg::STR_DATA_OFFSET as i64);
+                let p = self
+                    .b
+                    .ins()
+                    .iadd_imm_s(base, crate::cg::STR_DATA_OFFSET as i64);
                 let n = self.iconst(self.g.m.strings[s.index()].len() as i64);
                 self.rt_call("msrt_fault", &[p, n]);
             }
@@ -764,17 +853,23 @@ impl<'a, 'm> Lower<'a, 'm> {
         let res_ty = inst.res.map(|r| f.ty(r));
         let out: Vs = match inst.op {
             Op::IConst => {
-                let Imm::Int(v) = inst.imm else { unreachable!() };
+                let Imm::Int(v) = inst.imm else {
+                    unreachable!()
+                };
                 vec![self.iconst(v)]
             }
             Op::FConst => vec![self.b.ins().f64const(inst.imm.float())],
             Op::BConst => {
-                let Imm::Bool(v) = inst.imm else { unreachable!() };
+                let Imm::Bool(v) = inst.imm else {
+                    unreachable!()
+                };
                 vec![self.b.ins().iconst(types::I8, v as i64)]
             }
             Op::UnitConst => vec![],
             Op::StrLit => {
-                let Imm::Str(s) = inst.imm else { unreachable!() };
+                let Imm::Str(s) = inst.imm else {
+                    unreachable!()
+                };
                 let d = self.g.str_lit(s.0);
                 vec![self.data_addr(d)]
             }
@@ -881,12 +976,16 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.b.ins().bxor_imm_s(x, 1)
             }],
             Op::ICmp => {
-                let Imm::Cc(cc) = inst.imm else { unreachable!() };
+                let Imm::Cc(cc) = inst.imm else {
+                    unreachable!()
+                };
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
                 vec![self.b.ins().icmp(Self::icc(cc), x, y)]
             }
             Op::FCmp => {
-                let Imm::Cc(cc) = inst.imm else { unreachable!() };
+                let Imm::Cc(cc) = inst.imm else {
+                    unreachable!()
+                };
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
                 vec![self.b.ins().fcmp(Self::fcc(cc), x, y)]
             }
@@ -938,18 +1037,25 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::Select => {
                 let c = self.a(inst, 0)[0];
                 let (t, e) = (self.a(inst, 1), self.a(inst, 2));
-                t.iter().zip(&e).map(|(x, y)| self.b.ins().select(c, *x, *y)).collect()
+                t.iter()
+                    .zip(&e)
+                    .map(|(x, y)| self.b.ins().select(c, *x, *y))
+                    .collect()
             }
             Op::RecNew => (0..inst.args.len()).flat_map(|i| self.a(inst, i)).collect(),
             Op::RecGet => {
-                let Imm::Field(r, i) = inst.imm else { unreachable!() };
+                let Imm::Field(r, i) = inst.imm else {
+                    unreachable!()
+                };
                 let ty = f.ty(inst.args[0]);
                 let _ = r;
                 let (_, at, w) = self.fields_of(ty)[i as usize];
                 self.a(inst, 0)[at..at + w].to_vec()
             }
             Op::RecSet => {
-                let Imm::Field(_, i) = inst.imm else { unreachable!() };
+                let Imm::Field(_, i) = inst.imm else {
+                    unreachable!()
+                };
                 let ty = f.ty(inst.args[0]);
                 let (fty, at, w) = self.fields_of(ty)[i as usize];
                 let mut obj = self.a(inst, 0);
@@ -966,26 +1072,46 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);
                 match self.g.lay.shape(ty).alt {
-                    Some(AltRepr::Boxed { .. }) => vec![self.b.ins().load(types::I64, flags(), v[0], 0)],
+                    Some(AltRepr::Boxed { .. }) => {
+                        vec![self.b.ins().load(types::I64, flags(), v[0], 0)]
+                    }
                     _ => vec![v[0]],
                 }
             }
             Op::AltGet => {
-                let Imm::AltField(a, c, i) = inst.imm else { unreachable!() };
+                let Imm::AltField(a, c, i) = inst.imm else {
+                    unreachable!()
+                };
                 let ty = f.ty(inst.args[0]);
                 let (_, idx) = self.alt_fields(a)[c as usize][i as usize].clone();
                 let v = self.a(inst, 0);
                 match self.g.lay.shape(ty).alt {
                     Some(AltRepr::Boxed { block, .. }) => {
                         let lay = mem_layout(&block);
-                        idx.iter().map(|k| self.b.ins().load(leaf_type(block[*k]), flags(), v[0], lay.offsets[*k] as i32)).collect()
+                        idx.iter()
+                            .map(|k| {
+                                self.b.ins().load(
+                                    leaf_type(block[*k]),
+                                    flags(),
+                                    v[0],
+                                    lay.offsets[*k] as i32,
+                                )
+                            })
+                            .collect()
                     }
                     _ => idx.iter().map(|k| v[*k]).collect(),
                 }
             }
-            Op::ListNew | Op::ListLit | Op::ListLen | Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListPush => {
-                self.lower_list(f, inst)
-            }
+            Op::ListNew
+            | Op::ListLit
+            | Op::ListLen
+            | Op::ListGet
+            | Op::ListGetNn
+            | Op::ListGetU
+            | Op::ListSet
+            | Op::ListSetNn
+            | Op::ListSetU
+            | Op::ListPush => self.lower_list(f, inst),
             Op::OptSome => {
                 let ty = res_ty.expect("opt.some result");
                 let v = self.a(inst, 0);
@@ -1016,7 +1142,11 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let v = self.a(inst, 0);
                 let nullable = self.opt_nullable(ty);
                 if inst.op == Op::OptUnwrap && checks {
-                    let none = if nullable { self.b.ins().icmp_imm_s(IntCC::Equal, v[0], 0) } else { self.b.ins().icmp_imm_s(IntCC::Equal, v[0], 0) };
+                    let none = if nullable {
+                        self.b.ins().icmp_imm_s(IntCC::Equal, v[0], 0)
+                    } else {
+                        self.b.ins().icmp_imm_s(IntCC::Equal, v[0], 0)
+                    };
                     self.fault_if(none, "msrt_fault_unwrap_none", vec![]);
                 }
                 if nullable { v } else { v[1..].to_vec() }
@@ -1034,8 +1164,12 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::ClosureNew => self.closure_new(inst, res_ty.expect("closure result")),
             Op::ClosureCap => {
-                let Imm::Idx(i) = inst.imm else { unreachable!() };
-                let ms_mir::ir::FuncKind::Closure { captures } = &f.kind else { unreachable!() };
+                let Imm::Idx(i) = inst.imm else {
+                    unreachable!()
+                };
+                let ms_mir::ir::FuncKind::Closure { captures } = &f.kind else {
+                    unreachable!()
+                };
                 let mut off = CLOSURE_CAPTURES as i64;
                 let mut found = (0, Vec::new());
                 for (k, c) in captures.iter().enumerate() {
@@ -1051,7 +1185,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.load_leaves(env, found.0, &found.1)
             }
             Op::IfaceNew => {
-                let Imm::Vtable(vt) = inst.imm else { unreachable!() };
+                let Imm::Vtable(vt) = inst.imm else {
+                    unreachable!()
+                };
                 let ty = f.ty(inst.args[0]);
                 let leaves = self.g.lay.leaves(ty);
                 let size = mem_layout(&leaves).size as i64;
@@ -1082,9 +1218,15 @@ impl<'a, 'm> Lower<'a, 'm> {
                 vec![]
             }
             Op::Slot => {
-                let Imm::Ty(ty) = inst.imm else { unreachable!() };
+                let Imm::Ty(ty) = inst.imm else {
+                    unreachable!()
+                };
                 let lay = self.g.lay.mem(ty);
-                let slot = self.b.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, lay.size.max(8), 3));
+                let slot = self.b.create_sized_stack_slot(StackSlotData::new(
+                    StackSlotKind::ExplicitSlot,
+                    lay.size.max(8),
+                    3,
+                ));
                 vec![self.b.ins().stack_addr(types::I64, slot, 0)]
             }
             Op::ListAddr => {
@@ -1095,7 +1237,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 vec![self.elem_addr(l[0], l[1], i, size, Op::ListGet)]
             }
             Op::PtrField => {
-                let Imm::Field(r, i) = inst.imm else { unreachable!() };
+                let Imm::Field(r, i) = inst.imm else {
+                    unreachable!()
+                };
                 let rty = m.types.find(&TyKind::Rec(r)).expect("record type interned");
                 let (_, at, _) = self.fields_of(rty)[i as usize];
                 let lay = self.g.lay.mem(rty);
@@ -1104,7 +1248,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 vec![self.add_imm(p, off)]
             }
             Op::Load => {
-                let Imm::Ty(ty) = inst.imm else { unreachable!() };
+                let Imm::Ty(ty) = inst.imm else {
+                    unreachable!()
+                };
                 let leaves = self.g.lay.leaves(ty);
                 let p = self.a(inst, 0)[0];
                 self.load_leaves(p, 0, &leaves)
@@ -1117,7 +1263,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 vec![]
             }
             Op::Call => {
-                let Imm::Func(c) = inst.imm else { unreachable!() };
+                let Imm::Func(c) = inst.imm else {
+                    unreachable!()
+                };
                 let args: Vs = (0..inst.args.len()).flat_map(|i| self.a(inst, i)).collect();
                 let id = self.g.funcs[c.index()];
                 self.call_id(id, &args)
@@ -1144,7 +1292,10 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let n = self.b.ins().load(types::I64, flags(), addr, 0);
                 let n1 = self.b.ins().iadd_imm_s(n, 1);
                 self.b.ins().store(flags(), n1, addr, 0);
-                let over = self.b.ins().icmp_imm_s(IntCC::SignedGreaterThan, n1, 200_000);
+                let over = self
+                    .b
+                    .ins()
+                    .icmp_imm_s(IntCC::SignedGreaterThan, n1, 200_000);
                 self.fault_if(over, "msrt_fault_depth", vec![]);
                 vec![]
             }
@@ -1157,7 +1308,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 vec![]
             }
             Op::CleanupPush => {
-                let Imm::Func(c) = inst.imm else { unreachable!() };
+                let Imm::Func(c) = inst.imm else {
+                    unreachable!()
+                };
                 let ty = f.ty(inst.args[0]);
                 let leaves = self.g.lay.leaves(ty);
                 let v = self.a(inst, 0);
@@ -1173,7 +1326,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 vec![]
             }
             Op::GlobalGet | Op::GlobalSet => {
-                let Imm::Global(gi) = inst.imm else { unreachable!() };
+                let Imm::Global(gi) = inst.imm else {
+                    unreachable!()
+                };
                 let ty = m.globals[gi.index()].ty;
                 let leaves = self.g.lay.leaves(ty);
                 let addr = self.data_addr(self.g.globals[gi.index()]);
@@ -1205,7 +1360,9 @@ impl<'a, 'm> Lower<'a, 'm> {
 
 impl<'a, 'm> Lower<'a, 'm> {
     fn alt_new(&mut self, inst: &Inst, ty: Ty) -> Vs {
-        let Imm::Case(a, c) = inst.imm else { unreachable!() };
+        let Imm::Case(a, c) = inst.imm else {
+            unreachable!()
+        };
         let shape = self.g.lay.shape(ty);
         let fields = self.alt_fields(a);
         let (leaves, boxed) = match &shape.alt {
@@ -1248,7 +1405,10 @@ impl<'a, 'm> Lower<'a, 'm> {
             _ => i,
         };
         if self.g.opts.checks && !matches!(mode, Op::ListGetU | Op::ListSetU) {
-            let oob = self.b.ins().icmp(IntCC::UnsignedGreaterThanOrEqual, idx, len);
+            let oob = self
+                .b
+                .ins()
+                .icmp(IntCC::UnsignedGreaterThanOrEqual, idx, len);
             self.fault_if(oob, "msrt_index_fault", vec![i, len]);
         }
         let off = self.b.ins().imul_imm_s(idx, size);
@@ -1265,7 +1425,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.b.append_block_param(join, types::I64);
                 let some = self.b.create_block();
                 let null = self.iconst(0);
-                self.b.ins().brif(cap, some, &[], join, &[BlockArg::Value(null)]);
+                self.b
+                    .ins()
+                    .brif(cap, some, &[], join, &[BlockArg::Value(null)]);
                 self.b.switch_to_block(some);
                 let bytes = self.b.ins().imul_imm_s(cap, size.max(1));
                 let p = self.rt_call("msrt_alloc", &[bytes])[0];
@@ -1325,7 +1487,13 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.b.append_block_param(ready, types::I64);
                 let grow = self.b.create_block();
                 self.b.set_cold_block(grow);
-                self.b.ins().brif(full, grow, &[], ready, &[BlockArg::Value(ptr), BlockArg::Value(cap)]);
+                self.b.ins().brif(
+                    full,
+                    grow,
+                    &[],
+                    ready,
+                    &[BlockArg::Value(ptr), BlockArg::Value(cap)],
+                );
                 self.b.switch_to_block(grow);
                 let empty = self.b.ins().icmp_imm_s(IntCC::Equal, cap, 0);
                 let four = self.iconst(4);
@@ -1345,7 +1513,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.b.ins().jump(joined, &[BlockArg::Value(rp)]);
                 self.b.switch_to_block(joined);
                 let np = self.b.block_params(joined)[0];
-                self.b.ins().jump(ready, &[BlockArg::Value(np), BlockArg::Value(ncap)]);
+                self.b
+                    .ins()
+                    .jump(ready, &[BlockArg::Value(np), BlockArg::Value(ncap)]);
                 self.b.switch_to_block(ready);
                 let (p, c) = (self.b.block_params(ready)[0], self.b.block_params(ready)[1]);
                 let off = self.b.ins().imul_imm_s(len, size);
@@ -1359,7 +1529,9 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     fn closure_new(&mut self, inst: &Inst, _ty: Ty) -> Vs {
-        let Imm::Func(c) = inst.imm else { unreachable!() };
+        let Imm::Func(c) = inst.imm else {
+            unreachable!()
+        };
         let caps = match &self.g.m.funcs[c.index()].kind {
             ms_mir::ir::FuncKind::Closure { captures } => captures.clone(),
             _ => Vec::new(),
@@ -1395,7 +1567,9 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     fn call_closure(&mut self, f: &Func, inst: &Inst) -> Vs {
         let clo = self.a(inst, 0)[0];
-        let TyKind::Fn(ps, r) = self.g.m.types.kind(f.ty(inst.args[0])).clone() else { unreachable!() };
+        let TyKind::Fn(ps, r) = self.g.m.types.kind(f.ty(inst.args[0])).clone() else {
+            unreachable!()
+        };
         let mut params = vec![Leaf::I64];
         for p in &ps {
             params.extend(self.g.lay.leaves(*p));
@@ -1413,7 +1587,9 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     fn call_method(&mut self, _f: &Func, inst: &Inst) -> Vs {
-        let Imm::Method(iface, k) = inst.imm else { unreachable!() };
+        let Imm::Method(iface, k) = inst.imm else {
+            unreachable!()
+        };
         let recv = self.a(inst, 0);
         let sig = self.g.m.ifaces[iface.index()].methods[k as usize].clone();
         let mut params = vec![Leaf::I64];
@@ -1423,7 +1599,10 @@ impl<'a, 'm> Lower<'a, 'm> {
         let rets = self.g.lay.leaves(sig.ret);
         let csig = self.g.sig(&params, &rets);
         let sr = self.b.import_signature(csig);
-        let code = self.b.ins().load(types::I64, flags(), recv[1], 8 * (1 + k as i32));
+        let code = self
+            .b
+            .ins()
+            .load(types::I64, flags(), recv[1], 8 * (1 + k as i32));
         let mut args = vec![recv[0]];
         for i in 1..inst.args.len() {
             args.extend(self.a(inst, i));
@@ -1435,12 +1614,15 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// Calls a runtime function with the ABI mapping of `ms-rt`: aggregates by pointer
     /// to a spilled copy, aggregate results through a trailing out pointer.
     fn call_extern(&mut self, f: &Func, inst: &Inst) -> Vs {
-        let Imm::Ext(e) = inst.imm else { unreachable!() };
+        let Imm::Ext(e) = inst.imm else {
+            unreachable!()
+        };
         let def = self.g.m.externs[e.index()].clone();
         let id = match self.g.ext.get(&e) {
             Some(id) => *id,
             None => {
-                let direct = |lay: &crate::layout::Layouts, t: Ty| -> bool { Self::passes_directly(lay, t) };
+                let direct =
+                    |lay: &crate::layout::Layouts, t: Ty| -> bool { Self::passes_directly(lay, t) };
                 let mut params: Vec<Leaf> = Vec::new();
                 for p in &def.params {
                     if direct(&self.g.lay, p.ty) {
@@ -1456,7 +1638,11 @@ impl<'a, 'm> Lower<'a, 'm> {
                     Vec::new()
                 };
                 let sig = self.g.sig(&params, &rets);
-                let id = self.g.module.declare_function(&def.name, cranelift_module::Linkage::Import, &sig).expect("declare extern");
+                let id = self
+                    .g
+                    .module
+                    .declare_function(&def.name, cranelift_module::Linkage::Import, &sig)
+                    .expect("declare extern");
                 self.g.ext.insert(e, id);
                 id
             }
@@ -1478,7 +1664,11 @@ impl<'a, 'm> Lower<'a, 'm> {
         } else {
             let leaves = self.g.lay.leaves(ret_ty);
             let lay = mem_layout(&leaves);
-            let slot = self.b.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, lay.size.max(8), 3));
+            let slot = self.b.create_sized_stack_slot(StackSlotData::new(
+                StackSlotKind::ExplicitSlot,
+                lay.size.max(8),
+                3,
+            ));
             let out = self.b.ins().stack_addr(types::I64, slot, 0);
             args.push(out);
             self.call_id(id, &args);
@@ -1488,7 +1678,14 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     fn passes_directly(lay: &crate::layout::Layouts, t: Ty) -> bool {
         match lay.m.types.kind(t) {
-            TyKind::Unit | TyKind::Bool | TyKind::Int | TyKind::Float | TyKind::Ptr | TyKind::Str | TyKind::Fn(..) | TyKind::Iface(_) => true,
+            TyKind::Unit
+            | TyKind::Bool
+            | TyKind::Int
+            | TyKind::Float
+            | TyKind::Ptr
+            | TyKind::Str
+            | TyKind::Fn(..)
+            | TyKind::Iface(_) => true,
             TyKind::Obj(n, _) => n != "Map" && n != "Set",
             TyKind::Opt(inner) => lay.opt_is_nullable(*inner) || lay.m.types.is_scalar(*inner),
             _ => false,
