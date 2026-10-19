@@ -48,7 +48,9 @@ impl<'a> FnLower<'a> {
                     },
                 };
                 // `return` or `return unit` in a test ends it successfully.
-                let x = if self.result_ty() != MTy::UNIT && self.ty_of(x.v) == MTy::UNIT {
+                let x = if self.ty_of(x.v) == MTy::UNIT
+                    && matches!(self.b.m.types.kind(self.result_ty()), TyKind::Alt(_))
+                {
                     let u = self.b.unit();
                     let ok = self.testing_ok(self.result_ty(), u)?;
                     Val { v: ok, own: true }
