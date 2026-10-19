@@ -1,0 +1,11 @@
+import {expect_true} from "@std/testing.ms"
+
+type Box[T]:
+    v: T
+    n: Int
+
+type Pair[A, B]:
+    first: A
+    second: B
+
+fn wrap[T](value: T) B

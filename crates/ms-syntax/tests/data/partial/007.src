@@ -1,0 +1,30 @@
+import {expect_equal, expect_false} from "@std/testing.ms"
+import {Item, Box, Holder, Choice} from "./domain.ms"
+import {Read, invoke, relay, as_view} from "./contracts.ms"
+import Closeable from "@std/cleanup.ms"
+import ListBuilder from "@std/collections.ms"
+
+impl Read[Int] for Item:
+    fn get() Int:
+        return self.original() + delta()
+
+fn delta() Int:
+    return 20
+
+impl Read[T] for Box[T]:
+    fn get() T:
+        return self.value
+
+impl Read[Int] for Choice:
+    fn get() Int:
+        match self:
+            Some(value):
+                return value + delta()
+            Empty:
+                return delta()
+
+# A local interface can use the receiver's inherited bound.
+interface Extract:
+    fn extract() Int
+
+impl E

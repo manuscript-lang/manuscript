@@ -75,6 +75,111 @@ fn run() -> i32 {
             );
             0
         }
+        Some("dump-strict") | Some("dump-partial") => {
+            // Prints the tree in the shape of the Go oracle used by the differential tests.
+            let strict = args[0] == "dump-strict";
+            for path in &args[1..] {
+                let text = std::fs::read_to_string(path).expect("read");
+                let file: Arc<str> = Arc::from("f.ms");
+                println!("file {path}");
+                if strict {
+                    match parse(&file, &text) {
+                        Ok(m) => print!("ok\n{}", ms_syntax::dump::dump_module(&m)),
+                        Err(d) => println!(
+                            "error parse {}:{}:{} {}",
+                            d.pos.line,
+                            d.pos.column,
+                            d.pos.offset,
+                            ms_syntax::dump::quote(&d.message)
+                        ),
+                    }
+                    continue;
+                }
+                let (m, diags) = ms_syntax::parse_partial(&file, &text);
+                for d in &diags {
+                    let end = d.end.map_or("-".to_string(), |e| {
+                        format!("{}:{}:{}", e.line, e.column, e.offset)
+                    });
+                    let fix = d.fix.as_ref().map_or("-".to_string(), |f| {
+                        format!(
+                            "{}:{}:{}>{}:{}:{}={}",
+                            f.pos.line,
+                            f.pos.column,
+                            f.pos.offset,
+                            f.end.line,
+                            f.end.column,
+                            f.end.offset,
+                            ms_syntax::dump::quote(&f.replacement)
+                        )
+                    });
+                    println!(
+                        "diag {} {}:{}:{} end={end} fix={fix} {}",
+                        d.phase.as_str(),
+                        d.pos.line,
+                        d.pos.column,
+                        d.pos.offset,
+                        ms_syntax::dump::quote(&d.message)
+                    );
+                }
+                print!("{}", ms_syntax::dump::dump_module(&m));
+            }
+            0
+        }
+        Some("fmt") => {
+            let mut failed = 0;
+            for path in &args[1..] {
+                let text = std::fs::read_to_string(path).expect("read");
+                let file: Arc<str> = Arc::from(path.as_str());
+                match ms_syntax::format(&file, &text) {
+                    Ok(out) => print!("{out}"),
+                    Err(d) => {
+                        failed += 1;
+                        eprintln!("{d}");
+                    }
+                }
+            }
+            i32::from(failed > 0)
+        }
+        Some("fmt-check") => {
+            let mut bad = 0;
+            for path in &args[1..] {
+                let text = std::fs::read_to_string(path).expect("read");
+                let file: Arc<str> = Arc::from(path.as_str());
+                match ms_syntax::format(&file, &text) {
+                    Ok(out) if out == text => {}
+                    Ok(_) => {
+                        bad += 1;
+                        println!("{path}: differs");
+                    }
+                    Err(d) => {
+                        bad += 1;
+                        println!("{path}: {d}");
+                    }
+                }
+            }
+            println!("{} files, {bad} not formatted", args.len() - 1);
+            i32::from(bad > 0)
+        }
+        Some("batch") => {
+            // For each file: its parse diagnostic JSON (or "ok"), then the formatted source with its byte length.
+            use std::io::Write;
+            let mut out = std::io::stdout().lock();
+            for path in &args[1..] {
+                let text = std::fs::read_to_string(path).expect("read");
+                let file: Arc<str> = Arc::from(path.as_str());
+                let diag = match parse(&file, &text) {
+                    Ok(_) => "ok".to_string(),
+                    Err(d) => d.to_json(),
+                };
+                let (status, formatted) = match ms_syntax::format(&file, &text) {
+                    Ok(f) => ("fmt", f),
+                    Err(d) => ("err", d.to_json()),
+                };
+                let _ = writeln!(out, "{path}\t{diag}\t{status}\t{}", formatted.len());
+                let _ = out.write_all(formatted.as_bytes());
+            }
+            0
+        }
         Some("compare") => compare(&args[1..]),
         _ => {
             eprintln!("usage: ms-syntax parse [--json] FILE... | fmt FILE | bench FILE...");

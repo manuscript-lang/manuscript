@@ -18,6 +18,7 @@ macro_rules! tokens {
 }
 
 tokens! {
+    Comment => "#comment",
     Newline => "NEWLINE", Indent => "INDENT", Dedent => "DEDENT", Eof => "EOF",
     Name => "NAME", Number => "NUMBER", String => "STRING",
     And => "and", Break => "break", Case => "case", Continue => "continue", Else => "else",

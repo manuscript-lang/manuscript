@@ -9,6 +9,13 @@ use crate::ast::*;
 use crate::pos::Pos;
 use std::fmt::Write;
 
+/// Quotes `s` in the dump's string syntax (printable ASCII, other bytes as `\xNN`).
+pub fn quote(s: &str) -> String {
+    let mut out = String::new();
+    q(&mut out, s);
+    out
+}
+
 fn q(out: &mut String, s: &str) {
     out.push('"');
     for &c in s.as_bytes() {

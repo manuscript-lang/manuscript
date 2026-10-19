@@ -1,0 +1,9 @@
+import {expect_equal} from "@std/testing.ms"
+
+interface Increment:
+    fn apply(value: Int) Int
+
+type Offset:
+    delta: Int
+
+impl Inc

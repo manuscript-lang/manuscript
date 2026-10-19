@@ -1,0 +1,5 @@
+diag parse 6:10:121 end=- fix=- "unexpected source character '$'; this character is not part of Manuscript's syntax outside text"
+import 1:1:0 1:8:7 "expect_equal" "@std/testing.ms"
+(decl 17:1:288 test "operands retain evaluation order" false false 0:0:0 false [] [] [] [] [] (type 17:1:288 "Unit" [] [] nil) nil nil [(stmt 18:5:333 call "" "" false 0:0:0 nil nil nil (expr 18:14:342 unary "try" nil (expr 18:18:346 call "" (expr 18:18:346 name "expect_equal" nil nil [] [] [] [] [] nil [] []) nil [(arg 18:5:333 "" (expr 18:5:333 call "" (expr 18:5:333 name "main" nil nil [] [] [] [] [] nil [] []) nil [] [] [] [] [] nil [] [])) (arg 18:31:359 "expected" (expr 18:41:369 number "0" nil nil [] [] [] [] [] nil [] [])) ] [] [] [] [] nil [] []) [] [] [] [] [] nil [] []) [] []) ])
+omitted ["main" ]
+recovered []

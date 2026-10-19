@@ -1,0 +1,11 @@
+diag parse 30:8:915 end=- fix=- "unterminated delimiter '(' opened at line 29:72; add the matching ')' before the end of the file"
+import 1:1:0 1:9:8 "expect_equal" "@std/testing.ms"
+import 1:1:0 1:23:22 "expect_false" "@std/testing.ms"
+import 2:1:59 2:9:67 "duration" "@std/time.ms"
+import 2:1:59 2:19:77 "clock" "@std/time.ms"
+import 2:1:59 2:26:84 "wall_clock" "@std/time.ms"
+import 2:1:59 2:38:96 "timestamp" "@std/time.ms"
+import 2:1:59 2:49:107 "parse_timestamp" "@std/time.ms"
+import 2:1:59 2:66:124 "TimeError" "@std/time.ms"
+omitted []
+recovered []

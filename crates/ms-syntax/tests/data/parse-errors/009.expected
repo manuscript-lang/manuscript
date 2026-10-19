@@ -1,0 +1,1 @@
+error parse 2:8:86 "declaration body cannot be empty; an interface needs at least one 'fn name(...) Type' operation"

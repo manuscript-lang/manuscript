@@ -1,0 +1,5 @@
+import {expect_true} from "@std/testing.ms"
+
+test "primitive list loops":
+    let ints = List[Int]()
+    let floats =

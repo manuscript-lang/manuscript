@@ -1,0 +1,1 @@
+error parse 9:10:378 "nullary cases omit parentheses; write 'case error' instead of 'case error()'"

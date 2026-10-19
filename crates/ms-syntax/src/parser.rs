@@ -17,7 +17,7 @@ pub const MAX_CHAIN: usize = 10000;
 
 /// Parses `source` strictly. The first error aborts the parse.
 pub fn parse(file: &Arc<str>, source: &str) -> PResult<Module> {
-    let mut module = parse_chunk(file, source, 0, 0)?;
+    let mut module = parse_chunk(file, source, 0, 0, 0)?;
     module.file = file.clone();
     module.source = Arc::from(source);
     Ok(module)
@@ -30,9 +30,10 @@ pub(crate) fn parse_chunk(
     source: &str,
     base_offset: u32,
     base_line: u32,
+    first_id: u32,
 ) -> PResult<Module> {
     let lexed = crate::lexer::lex_at(file, source, base_offset, base_line)?;
-    let mut p = Parser::new(file, &lexed.source, lexed.tokens, 0, 0);
+    let mut p = Parser::new(file, &lexed.source, lexed.tokens, 0, first_id);
     let mut module = Module::default();
     p.module(&mut module)?;
     module.node_count = p.next_id;

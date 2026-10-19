@@ -1,0 +1,29 @@
+import Bytes from "@std/bytes.ms"
+import Connection from "@std/net.ms"
+import DatagramSocket from "@std/net.ms"
+import DnsRecord from "@std/net.ms"
+import Duration from "@std/time.ms"
+import IoError from "@std/io.ms"
+import Listener from "@std/net.ms"
+import NetworkError from "@std/net.ms"
+import ReadStream from "@std/io.ms"
+import TlsOptions from "@std/tls.ms"
+import WebSocket from "@std/websocket.ms"
+import WebSocketError from "@std/websocket.ms"
+import WebSocketOptions from "@std/websocket.ms"
+
+# Errors returned for invalid requests, transport failures, timeouts, and limits.
+export type HttpError:
+    # The URL is not an `http` or `https` URL with a host, valid port, and no user info; a method, header name, or value is malformed or host-managed; or a limit or timeout is negative.
+    case InvalidInput
+    # The response headers are not valid UTF-8, so they cannot become Strings.
+    case InvalidData
+    # A buffered response body is larger than `max_response_bytes`.
+    case LimitExceeded
+    # The network's restrictions disallow the host, a resolved address, or a redirect destination.
+    case PermissionDenied
+    # The client or network was closed before or during the request.
+    case Closed
+    # The request timeout elapsed before the response completed.
+    case Timeout
+    # Transport, TLS,

@@ -1,0 +1,4 @@
+import {expect_equal} from "@std/testing.ms"
+
+type Failure:
+    code: 

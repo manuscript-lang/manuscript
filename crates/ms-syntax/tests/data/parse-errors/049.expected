@@ -1,0 +1,1 @@
+error parse 3:6:34 "unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon"

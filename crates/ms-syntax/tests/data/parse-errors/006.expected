@@ -1,0 +1,1 @@
+error parse 4:5:46 "a type has only fields or cases; an interface has only operation signatures; declare fields as 'name: Type' in a type, and put method bodies in an 'impl' block"
