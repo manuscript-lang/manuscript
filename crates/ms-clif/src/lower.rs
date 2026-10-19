@@ -451,6 +451,10 @@ impl<'a, 'm> Lower<'a, 'm> {
     fn glue_drop_alt(&mut self, ty: Ty, a: ms_mir::types::AltId, vs: &[Value]) {
         let fields = self.alt_fields(a);
         let boxed = matches!(self.g.lay.shape(ty).alt, Some(AltRepr::Boxed { .. }));
+        if boxed && self.has_tail(ty, &fields) {
+            self.drop_boxed_iter(ty, &fields, vs[0]);
+            return;
+        }
         let (leaves, base) = match self.g.lay.shape(ty).alt {
             Some(AltRepr::Boxed { block, .. }) => (block, Some(vs[0])),
             _ => (self.g.lay.leaves(ty), None),
@@ -499,6 +503,185 @@ impl<'a, 'm> Lower<'a, 'm> {
         if boxed {
             self.free(vs[0]);
         }
+    }
+
+    /// The field of `case` that holds the same boxed alternative again (the "tail" of a chain
+    /// such as `Cons(head, tail)`), as `(field index, leaf indices, optional)`. Drop and copy of a
+    /// boxed alternative loop over this field instead of recursing, so a long chain does not
+    /// overflow the stack. Other recursive fields (the left child of a tree) still recurse.
+    fn tail_field(&self, ty: Ty, case: &[(Ty, Vec<usize>)]) -> Option<(usize, Vec<usize>, bool)> {
+        let m = self.g.m;
+        case.iter().enumerate().rev().find_map(|(i, (fty, idx))| {
+            if *fty == ty && idx.len() == 1 {
+                return Some((i, idx.clone(), false));
+            }
+            match m.types.kind(*fty) {
+                TyKind::Opt(inner) if *inner == ty && idx.len() == 2 => {
+                    Some((i, idx.clone(), true))
+                }
+                _ => None,
+            }
+        })
+    }
+
+    fn has_tail(&self, ty: Ty, fields: &[Vec<(Ty, Vec<usize>)>]) -> bool {
+        fields.iter().any(|c| self.tail_field(ty, c).is_some())
+    }
+
+    /// Frees a chain of boxed blocks: each iteration drops the non-tail fields of the block,
+    /// reads its tail pointer, frees it and moves on to the tail.
+    fn drop_boxed_iter(&mut self, ty: Ty, fields: &[Vec<(Ty, Vec<usize>)>], first: Value) {
+        let Some(AltRepr::Boxed { block, .. }) = self.g.lay.shape(ty).alt else {
+            return;
+        };
+        let lay = mem_layout(&block);
+        let head = self.b.create_block();
+        let exit = self.b.create_block();
+        self.b.append_block_param(head, types::I64);
+        self.b.ins().jump(head, &[BlockArg::Value(first)]);
+        self.b.switch_to_block(head);
+        let cur = self.b.block_params(head)[0];
+        let tag = self.b.ins().load(types::I64, flags(), cur, 0);
+        for (c, case) in fields.iter().enumerate() {
+            let tail = self.tail_field(ty, case);
+            let droppable = case.iter().any(|(t, _)| self.g.m.needs_drop(*t));
+            if !droppable {
+                continue;
+            }
+            let this = self.b.create_block();
+            let next = self.b.create_block();
+            let is = self.b.ins().icmp_imm_s(IntCC::Equal, tag, c as i64);
+            self.b.ins().brif(is, this, &[], next, &[]);
+            self.b.switch_to_block(this);
+            for (i, (fty, idx)) in case.iter().enumerate() {
+                if !self.g.m.needs_drop(*fty) || tail.as_ref().is_some_and(|t| t.0 == i) {
+                    continue;
+                }
+                let fv: Vs = idx
+                    .iter()
+                    .map(|k| {
+                        self.b.ins().load(
+                            leaf_type(block[*k]),
+                            flags(),
+                            cur,
+                            lay.offsets[*k] as i32,
+                        )
+                    })
+                    .collect();
+                self.drop_value(*fty, &fv);
+            }
+            match tail {
+                Some((_, idx, optional)) => {
+                    let k = *idx.last().expect("tail leaf");
+                    let child = self
+                        .b
+                        .ins()
+                        .load(types::I64, flags(), cur, lay.offsets[k] as i32);
+                    let present = if optional {
+                        Some(self.b.ins().load(
+                            leaf_type(block[idx[0]]),
+                            flags(),
+                            cur,
+                            lay.offsets[idx[0]] as i32,
+                        ))
+                    } else {
+                        None
+                    };
+                    self.free(cur);
+                    match present {
+                        Some(p) => self
+                            .b
+                            .ins()
+                            .brif(p, head, &[BlockArg::Value(child)], exit, &[]),
+                        None => self.b.ins().jump(head, &[BlockArg::Value(child)]),
+                    };
+                }
+                None => {
+                    self.free(cur);
+                    self.b.ins().jump(exit, &[]);
+                }
+            }
+            self.b.switch_to_block(next);
+        }
+        // A case with nothing to drop: only the block is freed.
+        self.free(cur);
+        self.b.ins().jump(exit, &[]);
+        self.b.switch_to_block(exit);
+    }
+
+    /// Copies a chain of boxed blocks front to back: each iteration allocates the new block,
+    /// stores its address where the previous block's tail pointer lives, copies the non-tail
+    /// fields, and continues with the source's tail.
+    fn copy_boxed_iter(&mut self, ty: Ty, fields: &[Vec<(Ty, Vec<usize>)>], first: Value) -> Value {
+        let Some(AltRepr::Boxed { block, .. }) = self.g.lay.shape(ty).alt else {
+            return first;
+        };
+        let lay = mem_layout(&block);
+        let result =
+            self.b
+                .create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, 8, 3));
+        let result_addr = self.b.ins().stack_addr(types::I64, result, 0);
+        let head = self.b.create_block();
+        let exit = self.b.create_block();
+        self.b.append_block_param(head, types::I64);
+        self.b.append_block_param(head, types::I64);
+        self.b.ins().jump(
+            head,
+            &[BlockArg::Value(first), BlockArg::Value(result_addr)],
+        );
+        self.b.switch_to_block(head);
+        let (src, dst) = {
+            let ps = self.b.block_params(head);
+            (ps[0], ps[1])
+        };
+        let sv = self.load_leaves(src, 0, &block);
+        let tag = sv[0];
+        let blk = self.alloc(lay.size as i64);
+        self.b.ins().store(flags(), blk, dst, 0);
+        for (c, case) in fields.iter().enumerate() {
+            let tail = self.tail_field(ty, case);
+            let droppable = case.iter().any(|(t, _)| self.g.m.needs_drop(*t));
+            if !droppable {
+                continue;
+            }
+            let this = self.b.create_block();
+            let next = self.b.create_block();
+            let is = self.b.ins().icmp_imm_s(IntCC::Equal, tag, c as i64);
+            self.b.ins().brif(is, this, &[], next, &[]);
+            self.b.switch_to_block(this);
+            let mut out = sv.clone();
+            for (i, (fty, idx)) in case.iter().enumerate() {
+                if !self.g.m.needs_drop(*fty) || tail.as_ref().is_some_and(|t| t.0 == i) {
+                    continue;
+                }
+                let fv: Vs = idx.iter().map(|k| sv[*k]).collect();
+                let cv = self.copy_value(*fty, &fv);
+                for (k, v) in idx.iter().zip(cv) {
+                    out[*k] = v;
+                }
+            }
+            self.store_leaves(blk, 0, &block, &out);
+            match tail {
+                Some((_, idx, optional)) => {
+                    let k = *idx.last().expect("tail leaf");
+                    let next_dst = self.b.ins().iadd_imm_s(blk, lay.offsets[k] as i64);
+                    let args = [BlockArg::Value(sv[k]), BlockArg::Value(next_dst)];
+                    if optional {
+                        self.b.ins().brif(sv[idx[0]], head, &args, exit, &[]);
+                    } else {
+                        self.b.ins().jump(head, &args);
+                    }
+                }
+                None => {
+                    self.b.ins().jump(exit, &[]);
+                }
+            }
+            self.b.switch_to_block(next);
+        }
+        self.store_leaves(blk, 0, &block, &sv);
+        self.b.ins().jump(exit, &[]);
+        self.b.switch_to_block(exit);
+        self.b.ins().load(types::I64, flags(), result_addr, 0)
     }
 
     fn glue_copy(&mut self, ty: Ty, vs: &[Value]) -> Vs {
@@ -622,6 +805,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         let fields = self.alt_fields(a);
         let shape = self.g.lay.shape(ty);
         let boxed = matches!(shape.alt, Some(AltRepr::Boxed { .. }));
+        if boxed && self.has_tail(ty, &fields) {
+            return vec![self.copy_boxed_iter(ty, &fields, vs[0])];
+        }
         let (leaves, slots_total) = match &shape.alt {
             Some(AltRepr::Boxed { block, .. }) => (block.clone(), block.len()),
             _ => (shape.leaves.clone(), shape.leaves.len()),
