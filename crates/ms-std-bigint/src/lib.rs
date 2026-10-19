@@ -86,6 +86,18 @@ pub extern "C" fn msstd_bigint_from_int(value: i64) -> *mut BigObj {
     make(BigInt::from(value))
 }
 
+/// The unsigned integer with the bits of `value`.
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_bigint_from_u64(value: i64) -> *mut BigObj {
+    make(BigInt::from(value as u64))
+}
+
+/// Nanoseconds since the Unix epoch for a seconds-and-nanoseconds pair.
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_bigint_from_seconds_nanos(seconds: i64, nanoseconds: i64) -> *mut BigObj {
+    make(BigInt::from(seconds) * BigInt::from(1_000_000_000_i64) + BigInt::from(nanoseconds))
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn msstd_bigint_parse(
     text: *const StrObj,
