@@ -1,0 +1,9 @@
+[package]
+name = "ms-tooling"
+version = "0.0.0"
+edition.workspace = true
+publish.workspace = true
+description = "Manuscript developer tooling over checked programs: review, diagrams, inspection"
+
+[lints]
+workspace = true
