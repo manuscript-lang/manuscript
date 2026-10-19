@@ -4,7 +4,7 @@ use crate::pos::Pos;
 
 macro_rules! tokens {
     ($($variant:ident => $text:expr),* $(,)?) => {
-        /// Token kind. Layout tokens (`Newline`, `Indent`, `Dedent`, `Eof`)
+        /// Token kind. `Comment` exists only for the formatter, which recovers comments the lexer drops. Layout tokens (`Newline`, `Indent`, `Dedent`, `Eof`)
         /// have empty text; keywords and punctuation are their own spelling.
         #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
         pub enum Tok { $($variant),* }
@@ -18,7 +18,7 @@ macro_rules! tokens {
 }
 
 tokens! {
-    Newline => "NEWLINE", Indent => "INDENT", Dedent => "DEDENT", Eof => "EOF",
+    Comment => "#comment", Newline => "NEWLINE", Indent => "INDENT", Dedent => "DEDENT", Eof => "EOF",
     Name => "NAME", Number => "NUMBER", String => "STRING",
     And => "and", Break => "break", Case => "case", Continue => "continue", Else => "else",
     Export => "export", False => "false", Fixture => "fixture", Fn => "fn", For => "for",
@@ -79,8 +79,34 @@ impl Tok {
 /// The reserved words, sorted (Go `lexer.Keywords`). `_` is lexed as its own
 /// kind but is not in this list.
 pub const KEYWORDS: &[&str] = &[
-    "and", "break", "case", "continue", "else", "export", "false", "fixture", "fn", "for", "if", "impl", "import", "in",
-    "interface", "let", "match", "not", "or", "return", "self", "test", "true", "try", "type", "unit", "var", "while",
+    "and",
+    "break",
+    "case",
+    "continue",
+    "else",
+    "export",
+    "false",
+    "fixture",
+    "fn",
+    "for",
+    "if",
+    "impl",
+    "import",
+    "in",
+    "interface",
+    "let",
+    "match",
+    "not",
+    "or",
+    "return",
+    "self",
+    "test",
+    "true",
+    "try",
+    "type",
+    "unit",
+    "var",
+    "while",
     "with",
 ];
 

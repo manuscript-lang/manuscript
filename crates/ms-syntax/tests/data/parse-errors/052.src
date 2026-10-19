@@ -1,0 +1,4 @@
+export type Cause[T]:
+    value: T
+
+exp$ort fn make() Cause[Int]: Cause(7)

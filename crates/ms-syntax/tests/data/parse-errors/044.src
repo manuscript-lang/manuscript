@@ -1,0 +1,4 @@
+import {expect_true} from "@std/testing.ms"
+
+test "literal divisors":
+    

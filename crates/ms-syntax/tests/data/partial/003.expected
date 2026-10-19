@@ -1,0 +1,5 @@
+diag parse 5:8:135 end=- fix=- "indentation must be a multiple of four spaces, found 7; use 4 or 8"
+import 1:1:0 1:9:8 "expect_equal" "@std/testing.ms"
+import 1:1:0 1:23:22 "expect_false" "@std/testing.ms"
+omitted []
+recovered []

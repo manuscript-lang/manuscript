@@ -1,0 +1,1 @@
+error parse 1:1:0 "expected a module declaration or import, found name 'e'; top level holds only import, let constants, fn, type, interface, impl, and test (optionally prefixed by export), so put statements inside a fn"

@@ -1,0 +1,1 @@
+error parse 6:8:113 "expected a binding name, list pattern, or record pattern, found end of line; write a name, [a, b], or {x, y}"

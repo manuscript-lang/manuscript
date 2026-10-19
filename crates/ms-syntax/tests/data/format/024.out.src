@@ -1,0 +1,14 @@
+import {TextError} from "@std/errors.ms"
+import {stdout, stdin, read_line, ReadStream} from "@std/io.ms"
+import {clock, Instant} from "@std/time.ms"
+import {StringBuilder} from "@std/string.ms"
+
+interface Counter:
+    fn bump(by: Int) Int
+
+type Acc:
+    total: Int
+
+impl Counter for Acc:
+    fn bump(by: Int) Int:
+        self.total += by

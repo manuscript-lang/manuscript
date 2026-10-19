@@ -60,7 +60,12 @@ pub fn lex<'a>(file: &'a Arc<str>, source: &'a str) -> PResult<Lexed<'a>> {
 
 /// Lexes a slice of a larger file: its first byte is at original offset
 /// `base_offset` and it starts on line `base_line + 1`.
-pub(crate) fn lex_at<'a>(file: &'a Arc<str>, source: &'a str, base_offset: u32, base_line: u32) -> PResult<Lexed<'a>> {
+pub(crate) fn lex_at<'a>(
+    file: &'a Arc<str>,
+    source: &'a str,
+    base_offset: u32,
+    base_line: u32,
+) -> PResult<Lexed<'a>> {
     if source.starts_with('\u{feff}') {
         return Err(Box::new(Diagnostic::parse(
             file,
@@ -80,7 +85,10 @@ pub(crate) fn lex_at<'a>(file: &'a Arc<str>, source: &'a str, base_offset: u32, 
             base_offset,
             column: 1,
             tokens: Vec::with_capacity(source.len() / 4 + 16),
-            levels: vec![Layout { indent: 0, depth: 0 }],
+            levels: vec![Layout {
+                indent: 0,
+                depth: 0,
+            }],
             delimiters: Vec::new(),
             groups: Vec::new(),
             opened: Vec::new(),
@@ -91,7 +99,10 @@ pub(crate) fn lex_at<'a>(file: &'a Arc<str>, source: &'a str, base_offset: u32, 
         s.run()?;
         s.tokens
     };
-    Ok(Lexed { source: normalized, tokens })
+    Ok(Lexed {
+        source: normalized,
+        tokens,
+    })
 }
 
 /// Lexes raw bytes, reporting invalid UTF-8 like the Go lexer.
@@ -171,7 +182,11 @@ impl Scanner<'_> {
         if !self.line_offsets.is_empty() {
             offset += self.line_offsets[(self.line - self.base_line) as usize - 1];
         }
-        Pos { offset, line: self.line, column: self.column }
+        Pos {
+            offset,
+            line: self.line,
+            column: self.column,
+        }
     }
     fn err(&self, pos: Pos, message: impl Into<String>) -> Box<Diagnostic> {
         Box::new(Diagnostic::parse(self.file, pos, message))
@@ -184,12 +199,24 @@ impl Scanner<'_> {
     }
     fn emit(&mut self, kind: Tok, lo: usize, hi: usize, pos: Pos) {
         let end = self.pos();
-        self.tokens.push(Token { kind, pos, end, lo: lo as u32, hi: hi as u32 });
+        self.tokens.push(Token {
+            kind,
+            pos,
+            end,
+            lo: lo as u32,
+            hi: hi as u32,
+        });
     }
     fn emit_layout(&mut self, kind: Tok) {
         let p = self.pos();
         let at = self.offset as u32;
-        self.tokens.push(Token { kind, pos: p, end: p, lo: at, hi: at });
+        self.tokens.push(Token {
+            kind,
+            pos: p,
+            end: p,
+            lo: at,
+            hi: at,
+        });
     }
     fn advance(&mut self) -> u8 {
         let b = self.src[self.offset];
@@ -261,7 +288,10 @@ impl Scanner<'_> {
                 let mut started_suite = false;
                 if pending {
                     if leading == header_indent + 4 {
-                        self.levels.push(Layout { indent: leading, depth: pending_depth });
+                        self.levels.push(Layout {
+                            indent: leading,
+                            depth: pending_depth,
+                        });
                         self.emit_layout(Tok::Indent);
                         started_suite = true;
                     } else if leading <= header_indent {
@@ -314,9 +344,11 @@ impl Scanner<'_> {
                 (t.indent, t.depth)
             };
             if let Some(last) = self.tokens.last()
-                && last.kind == Tok::Dedent && self.delimiters.len() == top_depth {
-                    self.emit_layout(Tok::Newline);
-                }
+                && last.kind == Tok::Dedent
+                && self.delimiters.len() == top_depth
+            {
+                self.emit_layout(Tok::Newline);
+            }
             let line_start = self.tokens.len();
             while self.offset < n && self.src[self.offset] != b'\n' {
                 let b = self.src[self.offset];
@@ -414,9 +446,10 @@ impl Scanner<'_> {
                     self.opened.push(p);
                     if b == b'('
                         && let Some(last) = self.tokens.last()
-                            && (last.kind == Tok::Let || last.kind == Tok::Var) {
-                                self.groups.push(self.delimiters.len());
-                            }
+                        && (last.kind == Tok::Let || last.kind == Tok::Var)
+                    {
+                        self.groups.push(self.delimiters.len());
+                    }
                 }
                 if matches!(b, b')' | b']' | b'}') {
                     if self.delimiters.is_empty() {
@@ -425,7 +458,10 @@ impl Scanner<'_> {
                             b as char
                         ));
                     }
-                    if self.levels.len() > 1 && self.delimiters.len() <= top_depth && leading >= top_indent {
+                    if self.levels.len() > 1
+                        && self.delimiters.len() <= top_depth
+                        && leading >= top_indent
+                    {
                         return self.fail("an outer delimiter cannot close inside a function suite; close the bracket on the line where the function body ends, or dedent the body");
                     }
                     let open = *self.delimiters.last().unwrap();
@@ -563,7 +599,8 @@ impl Scanner<'_> {
         while self.offset < n && digit(self.src[self.offset]) {
             self.advance();
         }
-        if self.offset + 1 < n && self.src[self.offset] == b'.' && digit(self.src[self.offset + 1]) {
+        if self.offset + 1 < n && self.src[self.offset] == b'.' && digit(self.src[self.offset + 1])
+        {
             self.advance();
             while self.offset < n && digit(self.src[self.offset]) {
                 self.advance();
@@ -634,7 +671,11 @@ impl Scanner<'_> {
                         value = value.saturating_mul(16).saturating_add(d);
                     }
                     let digits = self.offset - start;
-                    if self.offset == n || !(1..=6).contains(&digits) || value > 0x10ffff || (0xd800..=0xdfff).contains(&value) {
+                    if self.offset == n
+                        || !(1..=6).contains(&digits)
+                        || value > 0x10ffff
+                        || (0xd800..=0xdfff).contains(&value)
+                    {
                         return self.fail("invalid Unicode scalar escape; use 1 to 6 hexadecimal digits for a value up to 10FFFF that is not a surrogate (D800-DFFF)");
                     }
                     self.advance();
@@ -673,7 +714,13 @@ impl Scanner<'_> {
                 return self.fail_at(open, format!("newlines and comments are not allowed inside interpolation; keep the expression on one line, or bind it to a name first and interpolate the name ({})", BRACE_HINT));
             }
             if b == b'\\' {
-                return self.fail_at(open, format!("{}; a backslash cannot appear in the interpolated expression", BRACE_HINT));
+                return self.fail_at(
+                    open,
+                    format!(
+                        "{}; a backslash cannot appear in the interpolated expression",
+                        BRACE_HINT
+                    ),
+                );
             }
             if b == b'"' {
                 self.scan_string()?;
@@ -686,14 +733,23 @@ impl Scanner<'_> {
             if b == b'}' {
                 depth -= 1;
                 if depth == 0 {
-                    if self.text[start..self.offset - 1].trim_matches(go_space).is_empty() {
+                    if self.text[start..self.offset - 1]
+                        .trim_matches(go_space)
+                        .is_empty()
+                    {
                         return self.fail("empty interpolation; put an expression between the braces, or write \\{ for a literal brace");
                     }
                     return Ok(());
                 }
             }
         }
-        self.fail_at(open, format!("unterminated interpolation; add the closing }} before the closing quote ({})", BRACE_HINT))
+        self.fail_at(
+            open,
+            format!(
+                "unterminated interpolation; add the closing }} before the closing quote ({})",
+                BRACE_HINT
+            ),
+        )
     }
 
     /// Explains the usual cause of an over-indented line that starts with a
@@ -721,7 +777,11 @@ impl Scanner<'_> {
 
 /// Go's `unicode.IsSpace` for `strings.TrimSpace`.
 pub fn go_space(c: char) -> bool {
-    matches!(c, '\t' | '\n' | '\u{b}' | '\u{c}' | '\r' | ' ' | '\u{85}' | '\u{a0}' | '\u{1680}' | '\u{2000}'..='\u{200a}' | '\u{2028}' | '\u{2029}' | '\u{202f}' | '\u{205f}' | '\u{3000}')
+    matches!(
+        c,
+        '\t' | '\n' | '\u{b}' | '\u{c}' | '\r' | ' ' | '\u{85}' | '\u{a0}' | '\u{1680}' | '\u{2000}'
+            ..='\u{200a}' | '\u{2028}' | '\u{2029}' | '\u{202f}' | '\u{205f}' | '\u{3000}'
+    )
 }
 
 /// Explains the common foreign-syntax characters.
@@ -730,9 +790,13 @@ fn character_hint(b: u8) -> &'static str {
         b';' => "; Manuscript ends a statement at the end of the line, so remove the semicolon",
         b'\'' => "; text uses double quotes, e.g. \"text\"",
         b'!' => "; write 'not x' for negation and '!=' for inequality",
-        b'?' => "; Manuscript has no ? operator, so use 'if let' for Optional values, or 'try' for Result",
+        b'?' => {
+            "; Manuscript has no ? operator, so use 'if let' for Optional values, or 'try' for Result"
+        }
         b'`' => "; text uses double quotes with {expression} interpolation",
-        b'$' | b'@' | b'\\' | b'^' | b'~' => "; this character is not part of Manuscript's syntax outside text",
+        b'$' | b'@' | b'\\' | b'^' | b'~' => {
+            "; this character is not part of Manuscript's syntax outside text"
+        }
         _ => "; this character is not part of Manuscript's syntax",
     }
 }

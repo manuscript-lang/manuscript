@@ -1,0 +1,6 @@
+import {expect_equal, expect_true} from "@std/testing.ms"
+
+fn fallback() Int: 9
+
+test "optional members":
+    let

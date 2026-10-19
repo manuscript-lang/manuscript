@@ -1,0 +1,6 @@
+export type Key:
+    id: Int
+    l;abel: String
+
+export type Cause:
+    count: Int
