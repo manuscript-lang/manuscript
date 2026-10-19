@@ -15,6 +15,7 @@ mod fixture;
 mod func;
 mod iface;
 mod iterate;
+mod json;
 mod mapset;
 mod matching;
 mod messages;

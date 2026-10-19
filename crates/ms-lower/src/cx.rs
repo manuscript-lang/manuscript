@@ -29,6 +29,8 @@ pub enum JobKind {
     NativeThunk(Rc<NativeThunkJob>),
     /// A native method bound to its receiver.
     BoundNative(Rc<BoundNativeJob>),
+    /// A JSON decoder or encoder of a type.
+    Json(Rc<crate::json::JsonJob>),
 }
 
 /// A bound native method waiting to be lowered; the closure holds the receiver.

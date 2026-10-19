@@ -120,6 +120,20 @@ impl<'a> FnLower<'a> {
                 self.b.call_rt(ext, &[m]);
                 Ok(self.dummy(MTy::UNIT))
             }
+            "json/parse" | "json/stringify" => {
+                let mut args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let func = sym.decl.as_ref().and_then(|d| d.func());
+                self.fill_native_defaults(sym.module, func, params, &mut args)?;
+                self.at(e.pos);
+                if native == "json/parse" {
+                    self.json_parse(e, &args)
+                } else {
+                    self.json_stringify(e, view, &args)
+                }
+            }
             "io/stdout" => self.std_stream(e, false),
             "io/stderr" => self.std_stream(e, true),
             "time/clock" => self.time_clock(e, false),
