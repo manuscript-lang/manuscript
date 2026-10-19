@@ -66,10 +66,10 @@ impl FnLower<'_> {
     /// The record the runtime writes `InfoOut` as: the name and one `Int` per word.
     fn info_raw(&mut self) -> (RecId, MTy) {
         let key = "native:FsInfoRaw";
-        if let Some(t) = self.cx.tycache.get(key).copied() {
-            if let TyKind::Rec(r) = self.b.m.types.kind(t) {
-                return (*r, t);
-            }
+        if let Some(t) = self.cx.tycache.get(key).copied()
+            && let TyKind::Rec(r) = self.b.m.types.kind(t)
+        {
+            return (*r, t);
         }
         let mut fields = vec![("name".to_string(), MTy::STR)];
         fields.extend(WORDS.iter().map(|w| (w.to_string(), MTy::INT)));
