@@ -13,6 +13,7 @@ mod eq;
 mod expr;
 mod fixture;
 mod func;
+mod html;
 mod iface;
 mod iterate;
 mod json;

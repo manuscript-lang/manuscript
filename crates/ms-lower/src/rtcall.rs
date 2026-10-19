@@ -545,7 +545,7 @@ impl FnLower<'_> {
     /// Pushes `has_record` and the `(has, value)` pairs of the optional fields of an optional
     /// record argument, reading fields only when the record is present. Returns the number of
     /// runtime parameters used after the presence flag.
-    fn flatten_optional_record(
+    pub(crate) fn flatten_optional_record(
         &mut self,
         input: Input,
         params: &[RtParam],
@@ -880,7 +880,12 @@ impl FnLower<'_> {
     }
 
     /// The `error(..)` value of `result` for a nonzero runtime status `code`.
-    fn status_failure(&mut self, result: MTy, code: Value, sym: &str) -> Result<Value, Error> {
+    pub(crate) fn status_failure(
+        &mut self,
+        result: MTy,
+        code: Value,
+        sym: &str,
+    ) -> Result<Value, Error> {
         let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
             return Err(Error::new("a status needs a Result"));
         };

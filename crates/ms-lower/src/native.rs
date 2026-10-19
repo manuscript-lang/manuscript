@@ -229,6 +229,23 @@ impl<'a> FnLower<'a> {
                 self.at(e.pos);
                 self.map_from_entries(args[0].val, result)
             }
+            "html/parse" => {
+                let mut args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let func = sym.decl.as_ref().and_then(|d| d.func());
+                self.fill_native_defaults(sym.module, func, params, &mut args)?;
+                let result = self.emty(e)?;
+                let node = self
+                    .ety(e)
+                    .args
+                    .first()
+                    .cloned()
+                    .ok_or_else(|| Error::new("parse returns a Result"))?;
+                self.at(e.pos);
+                self.html_parse(&node, &args, result)
+            }
             // `shift(values)` removes the first item of the caller's list.
             "collections/shift" => {
                 let arg = view
