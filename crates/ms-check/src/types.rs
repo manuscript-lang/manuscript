@@ -8,7 +8,7 @@
 //! like a Go pointer.
 
 use crate::syntax::{DeclRef, FuncRef};
-use ms_syntax::Symbol as Name;
+pub use ms_syntax::Symbol as Name;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Write as _};
@@ -338,10 +338,10 @@ impl Sym {
     /// The type a name of the symbol has as an expression.
     pub fn value_type(&self) -> Option<Ty> {
         let t = self.ty_opt()?;
-        if self.is_constant() {
-            if let Some(r) = &t.result {
-                return Some(r.clone());
-            }
+        if self.is_constant()
+            && let Some(r) = &t.result
+        {
+            return Some(r.clone());
         }
         Some(t)
     }
@@ -524,7 +524,8 @@ pub fn with_args(t: &Ty, args: Vec<Ty>) -> Ty {
 
 /// Standard declaration lookup is provided by the loaded standard world.
 pub fn standard(name: &str, args: Vec<Ty>) -> Ty {
-    let sym = crate::stdlib::standard_symbol(name).unwrap_or_else(|| panic!("standard type {name}"));
+    let sym =
+        crate::stdlib::standard_symbol(name).unwrap_or_else(|| panic!("standard type {name}"));
     with_args(&sym.ty(), args)
 }
 
@@ -673,10 +674,10 @@ pub fn required_type(t: &Ty) -> Ty {
         }
     }
     let result = t.result.as_ref().map(required_type);
-    if let (Some(r), Some(o)) = (&result, &t.result) {
-        if !Rc::ptr_eq(r, o) {
-            changed = true;
-        }
+    if let (Some(r), Some(o)) = (&result, &t.result)
+        && !Rc::ptr_eq(r, o)
+    {
+        changed = true;
     }
     if !changed {
         return t.clone();
@@ -788,12 +789,12 @@ pub fn constructor_signature(t: &Ty) -> Ty {
         }];
     }
     let mut defaults: HashSet<Name> = HashSet::new();
-    if let Some(sym) = t.symbol() {
-        if let Some(decl) = &sym.decl {
-            for f in decl.record_fields() {
-                if f.default.is_some() {
-                    defaults.insert(f.name);
-                }
+    if let Some(sym) = t.symbol()
+        && let Some(decl) = &sym.decl
+    {
+        for f in decl.record_fields() {
+            if f.default.is_some() {
+                defaults.insert(f.name);
             }
         }
     }
@@ -906,10 +907,10 @@ pub fn complete_type_arguments(vars: &[Ty], args: &[Option<Ty>]) -> Vec<Option<T
         if index >= result.len() {
             result.push(None);
         }
-        if result[index].is_none() {
-            if let Some(d) = v.default_ty() {
-                result[index] = Some(sub(&d, &bindings));
-            }
+        if result[index].is_none()
+            && let Some(d) = v.default_ty()
+        {
+            result[index] = Some(sub(&d, &bindings));
         }
         if let Some(r) = &result[index] {
             bindings.insert(v.id, r.clone());

@@ -3,6 +3,7 @@
 use crate::stdlib::{self, StdResult};
 use crate::syntax::*;
 use crate::types::*;
+use crate::types::{Case, Param};
 use ms_syntax::ast::*;
 use ms_syntax::{Diagnostic, Phase, Pos};
 use std::cell::RefCell;
@@ -233,7 +234,10 @@ impl Checker {
 
     /// The current module file, or empty.
     pub(crate) fn current_file(&self) -> Name {
-        self.module.as_ref().map(|m| m.file).unwrap_or_else(|| n(""))
+        self.module
+            .as_ref()
+            .map(|m| m.file)
+            .unwrap_or_else(|| n(""))
     }
 
     /// Hands out a unique identity.
@@ -270,12 +274,12 @@ impl Checker {
 
     /// Reports a diagnostic in an explicit file.
     pub(crate) fn error_in(&mut self, file: Name, pos: Pos, phase: Phase, message: String) {
-        if phase == Phase::Resolution {
-            if let Some((_, rest)) = message.split_once("; add: import ") {
-                let name = rest.split(" from ").next().unwrap_or("");
-                if self.import_reported(name, pos) {
-                    return;
-                }
+        if phase == Phase::Resolution
+            && let Some((_, rest)) = message.split_once("; add: import ")
+        {
+            let name = rest.split(" from ").next().unwrap_or("");
+            if self.import_reported(name, pos) {
+                return;
             }
         }
         if let Some(m) = &self.module {
@@ -336,20 +340,19 @@ impl Checker {
 
     pub(crate) fn add_symbol(&mut self, name: Name, s: SymRef, pos: Pos) {
         let existing = self.sym(name);
-        if let Some(e) = &existing {
-            if stdlib::is_prelude_symbol(e)
-                && !stdlib::is_prelude_symbol(&s)
-                && e.module != self.current_file()
-            {
-                self.res_error(
+        if let Some(e) = &existing
+            && stdlib::is_prelude_symbol(e)
+            && !stdlib::is_prelude_symbol(&s)
+            && e.module != self.current_file()
+        {
+            self.res_error(
                     pos,
                     format!(
                         "declaration {name} reuses a prelude name; rename it, because {name} always refers to the standard declaration"
                     ),
                 );
-                self.rejected_names.insert(name);
-                return;
-            }
+            self.rejected_names.insert(name);
+            return;
         }
         if existing.is_some() {
             self.res_error(
@@ -374,8 +377,20 @@ impl Checker {
 
     // ----------------------------------------------------------------- driver
 
-    /// Runs the full check over modules in dependency order.
-    pub(crate) fn run(&mut self, modules: Vec<ModRef>, bundled: Option<Name>) {
+    /// Runs the full check over modules in dependency order. Bundled source
+    /// modules the input reaches are added first.
+    pub(crate) fn check_modules(mut self, modules: Vec<ModRef>, bundled: Option<Name>) -> Program {
+        let (modules, dependency_diagnostics) = stdlib::source_standard_dependencies(modules);
+        self.p.diagnostics = dependency_diagnostics;
+        for module in &modules {
+            for d in &module.inherent {
+                self.p.diagnostics.push(d.clone());
+            }
+        }
+        if !self.p.diagnostics.is_empty() {
+            self.p.modules = modules;
+            return self.p;
+        }
         self.p.methods.extend(stdlib::standard_implementations());
         let mut checked: Vec<ModRef> = Vec::new();
         for module in &modules {
@@ -387,7 +402,7 @@ impl Checker {
             checked.push(module.clone());
         }
         self.p.modules = modules;
-        crate::passes::finish_modules(&checked, &self.p);
+        crate::passes::finish_modules(&checked);
         self.finite_type_applications();
         self.finite_applications();
         self.p.diagnostics = unique_diagnostics(std::mem::take(&mut self.p.diagnostics));
@@ -395,6 +410,7 @@ impl Checker {
             self.effect_summaries();
         }
         self.p.serial = self.serial;
+        self.p
     }
 
     fn adopt_checked(&mut self, module: &ModRef, held: bool) {
@@ -691,10 +707,10 @@ impl Checker {
 
     fn check_defaults(&mut self, module: &ModRef) {
         for d in &module.decls {
-            if matches!(d.decl().kind, DeclKind::Record(_)) {
-                if let Some(s) = self.own_symbol(d) {
-                    self.check_field_defaults(d, &s);
-                }
+            if matches!(d.decl().kind, DeclKind::Record(_))
+                && let Some(s) = self.own_symbol(d)
+            {
+                self.check_field_defaults(d, &s);
             }
             if let DeclKind::Interface(i) = &d.decl().kind {
                 for method in &i.methods {
@@ -747,10 +763,10 @@ impl Checker {
         }
         let methods: Vec<MethodRef> = self.p.methods.clone();
         for m in methods {
-            if let Some(decl) = &m.decl {
-                if m.module == module.file {
-                    self.check_function(decl, &m.ty, &m.variables, Some(&m.receiver));
-                }
+            if let Some(decl) = &m.decl
+                && m.module == module.file
+            {
+                self.check_function(decl, &m.ty, &m.variables, Some(&m.receiver));
             }
         }
     }
@@ -782,11 +798,7 @@ impl Checker {
                 ),
             );
         }
-        let t = if mutable {
-            required_type(t)
-        } else {
-            t.clone()
-        };
+        let t = if mutable { required_type(t) } else { t.clone() };
         let id = self.unique("local");
         self.binding_serial += 1;
         let b = Rc::new(Binding {
@@ -804,7 +816,9 @@ impl Checker {
     pub(crate) fn type_variables(&mut self, params: &[TypeParam]) -> Vec<Ty> {
         let mut vars: Vec<Ty> = Vec::new();
         for p in params {
-            let intrinsic = self.sym(p.name).is_some_and(|s| s.module.as_str().is_empty())
+            let intrinsic = self
+                .sym(p.name)
+                .is_some_and(|s| s.module.as_str().is_empty())
                 || self.scope.types.borrow().contains_key(&p.name)
                 || matches!(p.name.as_str(), "Equal" | "Comparable" | "Hashable");
             if intrinsic {
@@ -854,12 +868,6 @@ impl Checker {
         };
         match &t.kind {
             TypeKind::Fn { params, result } => self.signature(params, Some(result)),
-            TypeKind::Inferred => {
-                let msg = self.unknown_type_message(n(""));
-                self.res_error(t.pos, msg);
-                self.unknown_type = true;
-                invalid()
-            }
             TypeKind::Named { name, args } => {
                 let name = *name;
                 if self.scope.binding(name).is_some() {
@@ -995,12 +1003,22 @@ impl Checker {
             let fixture = self.p.test_fixtures.get(&self.current_file()).cloned();
             if let Some(fixture) = fixture {
                 let b = self.bind(n("fixture"), &fixture.ty, false, d.pos());
-                self.m().facts_mut().decls.entry(d.id()).or_default().fixture = Some(b);
+                self.m()
+                    .facts_mut()
+                    .decls
+                    .entry(d.id())
+                    .or_default()
+                    .fixture = Some(b);
             }
         }
         if let Some(receiver) = receiver {
             let b = self.bind(n("self"), receiver, false, d.pos());
-            self.m().facts_mut().decls.entry(d.id()).or_default().self_binding = Some(b);
+            self.m()
+                .facts_mut()
+                .decls
+                .entry(d.id())
+                .or_default()
+                .self_binding = Some(b);
         }
         let result_ty = t.result_ty();
         let fall;
@@ -1076,10 +1094,10 @@ impl Checker {
             } else {
                 d.pos()
             };
-            if i < params.len() {
-                if let Some(default) = &params[i].default {
-                    self.expression(default, Some(&p.ty));
-                }
+            if i < params.len()
+                && let Some(default) = &params[i].default
+            {
+                self.expression(default, Some(&p.ty));
             }
             let b = self.bind_reporting(p.name, &p.ty, false, pos, !repeated);
             self.m()
@@ -1093,7 +1111,12 @@ impl Checker {
     }
 
     pub(crate) fn set_flow(&mut self, id: NodeId, falls: bool) {
-        self.m().facts_mut().stmts.entry(id).or_default().falls_through = Some(falls);
+        self.m()
+            .facts_mut()
+            .stmts
+            .entry(id)
+            .or_default()
+            .falls_through = Some(falls);
     }
 
     // ---------------------------------------------------------- test fixtures
@@ -1148,7 +1171,7 @@ impl Checker {
 
     // --------------------------------------------------------------- prelude
 
-    fn add_standard_prelude(&mut self) {
+    pub(crate) fn add_standard_prelude(&mut self) {
         let m = self.m();
         if !m.is_standard() {
             for d in &m.decls {

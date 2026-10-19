@@ -3,6 +3,7 @@
 
 use crate::types::*;
 use ms_syntax::ast::*;
+use ms_syntax::ast::{Case, Method, Param};
 use ms_syntax::{Pos, Span};
 use std::cell::{Ref, RefCell, RefMut};
 use std::collections::{HashMap, HashSet};
@@ -386,6 +387,8 @@ pub struct ModuleData {
     pub recovered: Vec<Span>,
     /// Node ids allocated.
     pub node_count: u32,
+    /// Misused inherent `impl` blocks found while desugaring.
+    pub inherent: Vec<ms_syntax::Diagnostic>,
     facts: RefCell<Facts>,
 }
 
@@ -402,6 +405,7 @@ impl ModuleData {
             omitted: m.omitted.clone(),
             recovered: m.recovered.clone(),
             node_count,
+            inherent: Vec::new(),
             facts: RefCell::new(facts),
         }
     }
