@@ -264,7 +264,11 @@ impl Cx {
             return;
         }
         let eq = self.eq_fn(m, t);
-        let (eq, hash) = (self.eq_adapter(m, t, eq), hash_adapter(m, t));
+        let user_hash = match self.source_tys.get(&t).cloned() {
+            Some(concrete) => self.user_hash(m, &concrete).ok().flatten(),
+            None => None,
+        };
+        let (eq, hash) = (self.eq_adapter(m, t, eq), hash_adapter(m, t, user_hash));
         m.desc_glue.push((t, eq, hash));
     }
 
@@ -290,7 +294,7 @@ impl Cx {
 
 /// `fn(ptr) -> int`: equal values hash equally. Only the leaves that are cheap to reach
 /// contribute (integers, booleans, strings, enum tags and nested records).
-fn hash_adapter(m: &mut Module, t: MTy) -> FuncId {
+fn hash_adapter(m: &mut Module, t: MTy, user: Option<FuncId>) -> FuncId {
     let p = Param {
         ty: MTy::PTR,
         mode: Mode::Borrow,
@@ -299,8 +303,14 @@ fn hash_adapter(m: &mut Module, t: MTy) -> FuncId {
     b.func_mut().linkage = ms_mir::ir::Linkage::Internal;
     let arg = b.params()[0];
     let v = b.emit(Op::Load, &[arg], Imm::Ty(t), Some(t)).expect("load");
-    let seed = b.iconst(17);
-    let h = hash_into(&mut b, t, v, seed);
+    let h = match user {
+        // An `impl Hashable` decides: equal keys under the source `equals` hash the same.
+        Some(f) => b.call(f, &[v]),
+        None => {
+            let seed = b.iconst(17);
+            hash_into(&mut b, t, v, seed)
+        }
+    };
     b.ret(Some(h));
     let f = b.into_func();
     m.add_func(f)

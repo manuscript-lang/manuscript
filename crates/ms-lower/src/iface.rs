@@ -130,19 +130,20 @@ impl Cx {
 }
 
 impl Cx {
-    /// The source-declared `equals` of `concrete` (an `impl Equal`) and the interface of its argument.
-    pub(crate) fn user_equals(
+    /// The source-declared method `name` of `concrete` (an `impl` of a standard interface).
+    fn user_method(
         &mut self,
         m: &mut Module,
         concrete: &ct::Ty,
-    ) -> Result<Option<(ms_mir::ir::FuncId, IfaceId)>, Error> {
+        name: &str,
+    ) -> Result<Option<ms_mir::ir::FuncId>, Error> {
         let mut found = None;
         for mm in &self.methods {
             let Some(decl) = &mm.decl else { continue };
             if mm.id.as_str().is_empty() || !mm.native.as_str().is_empty() {
                 continue;
             }
-            if mm.name().map(|n| n.to_string()).as_deref() != Some("equals") {
+            if mm.name().map(|n| n.to_string()).as_deref() != Some(name) {
                 continue;
             }
             let mut subst = ct::Subst::new();
@@ -159,8 +160,19 @@ impl Cx {
             .callables
             .get(&(module, id))
             .cloned()
-            .ok_or_else(|| Error::new("equals callee not found"))?;
-        let f = self.function_for(m, &c, &subst)?;
+            .ok_or_else(|| Error::new(format!("{name} callee not found")))?;
+        Ok(Some(self.function_for(m, &c, &subst)?))
+    }
+
+    /// The source-declared `equals` of `concrete` (an `impl Equal`) and the interface of its argument.
+    pub(crate) fn user_equals(
+        &mut self,
+        m: &mut Module,
+        concrete: &ct::Ty,
+    ) -> Result<Option<(ms_mir::ir::FuncId, IfaceId)>, Error> {
+        let Some(f) = self.user_method(m, concrete, "equals")? else {
+            return Ok(None);
+        };
         let params = &m.funcs[f.index()].params;
         let [_, other] = params.as_slice() else {
             return Ok(None);
@@ -169,6 +181,22 @@ impl Cx {
             return Ok(None);
         };
         Ok(Some((f, iface)))
+    }
+
+    /// The source-declared `hash` of `concrete` (an `impl Hashable`).
+    pub(crate) fn user_hash(
+        &mut self,
+        m: &mut Module,
+        concrete: &ct::Ty,
+    ) -> Result<Option<ms_mir::ir::FuncId>, Error> {
+        let Some(f) = self.user_method(m, concrete, "hash")? else {
+            return Ok(None);
+        };
+        let ok = {
+            let func = &m.funcs[f.index()];
+            func.params.len() == 1 && func.ret == MTy::INT
+        };
+        Ok(ok.then_some(f))
     }
 }
 
