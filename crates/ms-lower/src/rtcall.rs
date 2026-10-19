@@ -27,8 +27,17 @@ struct RtSig {
     ret: String,
 }
 
+const RENAMED: [(&str, &str); 2] = [
+    ("process/arguments", "msrt_args"),
+    ("collections/filled", "msrt_list_filled"),
+];
+
 /// The runtime symbol implementing the native function `native` (`module/name`).
 pub(crate) fn function_symbol(native: &str) -> Option<String> {
+    // Exports whose runtime name predates the `<module>_<name>` scheme.
+    if let Some((_, sym)) = RENAMED.iter().find(|(n, _)| *n == native) {
+        return Some((*sym).to_string());
+    }
     let (module, name) = native.split_once('/')?;
     ["msrt", "msstd"]
         .iter()

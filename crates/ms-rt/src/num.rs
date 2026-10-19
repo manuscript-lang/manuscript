@@ -178,7 +178,41 @@ fn shortest(v: f64) -> (ByteBuf, i32) {
         }
     }
     let exp = parse_int_decimal(&text[(epos + 1).min(text.len())..]).unwrap_or(0) as i32;
+    even_tie(v, &mut digits);
     (digits, exp)
+}
+
+/// Rust's shortest digits resolve an exact tie between two candidates upward; Go's resolve it to
+/// the even digit. When `v` lies exactly halfway between `digits` and `digits` minus one in the
+/// last place, and the lower candidate ends even, the lower one is the Go answer.
+fn even_tie(v: f64, digits: &mut ByteBuf) {
+    let n = digits.len();
+    let last = digits.as_slice()[n - 1];
+    if n < 2 || last & 1 == 0 {
+        return;
+    }
+    let mut exact = ByteBuf::new();
+    let _ = write!(exact, "{:.*e}", n + 30, v);
+    let text = exact.as_slice();
+    let epos = text.iter().position(|&c| c == b'e').unwrap_or(text.len());
+    let mantissa: ByteBuf = {
+        let mut m = ByteBuf::new();
+        for &c in &text[..epos] {
+            if c != b'.' {
+                m.push(c);
+            }
+        }
+        m
+    };
+    let m = mantissa.as_slice();
+    // Digit n+1 is a 5 followed only by zeros: an exact tie, and `digits` rounded it up.
+    let tie = m.len() > n && m[n] == b'5' && m[n + 1..].iter().all(|&c| c == b'0');
+    if tie && m[..n - 1] == digits.as_slice()[..n - 1] && m[n - 1] == last - 1 {
+        let mut lower = ByteBuf::new();
+        lower.extend(&m[..n]);
+        digits.clear();
+        digits.extend(lower.as_slice());
+    }
 }
 
 /// Go-style rendering of decimal digits (see `renderDecimal` in numeric.go).
@@ -454,7 +488,7 @@ mod tests {
     #[test]
     fn float_strings_follow_go_rules() {
         let _g = crate::testutil::lock();
-        let cases: [(f64, &str); 14] = [
+        let cases: [(f64, &str); 16] = [
             (0.0, "0"),
             (-0.0, "-0"),
             (1.0, "1"),
@@ -469,6 +503,9 @@ mod tests {
             (f64::MAX, "1.7976931348623157e+308"),
             (5e-324, "5e-324"),
             (1.0 / 3.0, "0.3333333333333333"),
+            // Exact ties between two shortest candidates go to the even digit, as in Go.
+            (1_312_898_019_840_000.2, "1312898019840000.2"),
+            (1_312_898_019_840_000.8, "1312898019840000.8"),
         ];
         for (v, want) in cases {
             assert_eq!(s(float_to_string(v)), want, "{v:e}");
