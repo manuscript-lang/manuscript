@@ -1,0 +1,104 @@
+name: Rust distributions
+
+# Builds the Rust `ms` (with the ms-native runtime embedded) natively on a runner of each of
+# the six release targets, packages it, and runs the packaged binary on a hello project. The
+# Go distributions in release.yml stay the shipped ones until lowering reaches parity.
+
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - 'crates/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.cargo/**'
+      - 'scripts/package-rust.sh'
+      - 'examples/hello/**'
+      - '.github/workflows/rust-dist.yml'
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rust-dist-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  package:
+    name: ${{ matrix.os }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    # The runtime has no Windows port yet (ms-rt's start-up and ms-clif's linker driver are
+    # POSIX), so those legs report but do not gate until it lands.
+    continue-on-error: ${{ matrix.os == 'windows' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: linux, arch: amd64, runner: ubuntu-24.04 }
+          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm }
+          - { os: darwin, arch: amd64, runner: macos-15-intel }
+          - { os: darwin, arch: arm64, runner: macos-15 }
+          - { os: windows, arch: amd64, runner: windows-2025 }
+          - { os: windows, arch: arm64, runner: windows-11-arm }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - name: Check release tag version
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: test "${RELEASE_TAG#v}" = "$(cat .msversion)"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-dist-${{ matrix.os }}-${{ matrix.arch }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Build and package
+        run: sh scripts/package-rust.sh "${{ matrix.os }}" "${{ matrix.arch }}"
+      - name: Run the packaged binary on a hello project
+        run: |
+          set -eu
+          name="manuscript-rust-${{ matrix.os }}-${{ matrix.arch }}"
+          mkdir -p "extracted distribution"
+          if [ '${{ matrix.os }}' = windows ]; then
+            7z x -bso0 -o"extracted distribution" "dist/$name.zip"
+            ms="extracted distribution/$name/ms.exe"
+          else
+            tar -xzf "dist/$name.tar.gz" -C "extracted distribution"
+            ms="extracted distribution/$name/ms"
+          fi
+          "$ms" --version
+          cd "extracted distribution/$name/examples/hello"
+          "../../$(basename "$ms")" run ms.toml
+      - uses: actions/upload-artifact@v7
+        with:
+          name: manuscript-rust-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.sha256
+          if-no-files-found: error
+
+  ok:
+    name: Rust distributions
+    needs: package
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every gating target
+        env:
+          RESULT: ${{ needs.package.result }}
+        run: |
+          case "$RESULT" in
+            success|skipped) ;;
+            *) exit 1 ;;
+          esac
