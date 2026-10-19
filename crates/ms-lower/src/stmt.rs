@@ -26,8 +26,20 @@ impl<'a> FnLower<'a> {
         r
     }
 
+    /// Lowers a statement; every instruction in it reports the statement's first line, as
+    /// fault traces do for multi-line statements.
     pub fn stmt(&mut self, s: &Stmt) -> Result<(), Error> {
+        let outer = self.stmt_pos.replace(s.pos);
         self.at(s.pos);
+        let r = self.stmt_inner(s);
+        self.stmt_pos = outer;
+        if let Some(p) = outer {
+            self.at(p);
+        }
+        r
+    }
+
+    fn stmt_inner(&mut self, s: &Stmt) -> Result<(), Error> {
         let mark = self.temps.len();
         match &s.kind {
             StmtKind::Bind { pattern, value, .. } => self.bind(pattern, value)?,

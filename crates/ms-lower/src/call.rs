@@ -236,7 +236,10 @@ impl<'a> FnLower<'a> {
                 self.bind_borrowed(&callee.parameters[j].clone(), v.v);
             }
         }
+        // A default reports its own position, not the caller statement\'s.
+        let saved_stmt = self.stmt_pos.take();
         let r = self.expr(d);
+        self.stmt_pos = saved_stmt;
         self.hir = saved_hir;
         self.subst = saved_subst;
         self.file = saved_file;
@@ -721,7 +724,10 @@ impl<'a> FnLower<'a> {
         self.hir = self.cx.module(sym.module)?;
         self.file = self.b.m.add_file(sym.module.as_str());
         self.bind_field_reads(d, earlier);
+        // A default reports its own position, not the caller statement\'s.
+        let saved_stmt = self.stmt_pos.take();
         let r = self.expr(d);
+        self.stmt_pos = saved_stmt;
         self.hir = saved_hir;
         self.subst = saved_subst;
         self.file = saved_file;

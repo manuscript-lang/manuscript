@@ -70,6 +70,8 @@ pub(crate) struct FnLower<'a> {
     pub var_slots: Vec<VarSlot>,
     /// The expression statement being lowered, whose value nothing reads (by address).
     pub discard: Option<usize>,
+    /// The start of the statement being lowered.
+    pub stmt_pos: Option<Pos>,
     /// The fixture hooks a test runs after its body, on every exit.
     pub fixture: Option<crate::fixture::Hooks>,
 }
@@ -149,6 +151,9 @@ impl Cx {
             format!("test {}", t.name)
         } else if c.name.as_str().is_empty() {
             "test".to_string()
+        } else if let ms_syntax::ast::DeclKind::Impl(i) = &c.func.decl.decl().kind {
+            // Fault traces name a method after its receiver type.
+            format!("{}.{}", i.receiver.name(), c.name)
         } else {
             c.name.to_string()
         };
@@ -289,6 +294,7 @@ impl<'a> FnLower<'a> {
             counts_depth: false,
             var_slots: Vec::new(),
             discard: None,
+            stmt_pos: None,
             fixture: None,
         }
     }
@@ -300,6 +306,7 @@ impl<'a> FnLower<'a> {
 
     /// Sets the location of subsequent instructions.
     pub fn at(&mut self, pos: Pos) {
+        let pos = self.stmt_pos.unwrap_or(pos);
         let l = self.loc(pos);
         self.b.set_loc(l);
     }

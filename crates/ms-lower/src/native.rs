@@ -2203,7 +2203,10 @@ impl<'a> FnLower<'a> {
                     let saved_hir = std::mem::replace(&mut self.hir, hir);
                     let saved_file = self.file;
                     self.file = self.b.m.add_file(module.as_str());
+                    // A default reports its own position, not the caller statement\'s.
+                    let saved_stmt = self.stmt_pos.take();
                     let r = self.expr(d);
+                    self.stmt_pos = saved_stmt;
                     self.hir = saved_hir;
                     self.file = saved_file;
                     r

@@ -109,7 +109,7 @@ fn with_closes_on_every_exit_and_generic_bounds_dispatch_statically() {
         "with",
         "import Closeable from \"@std/cleanup.ms\"\n\ntype Res:\n    n: Int\n\nimpl Closeable for Res:\n    fn close() Unit:\n        let x = self.n\n\nfn run[T: Closeable](r: T, early: Bool) Int:\n    with it = r:\n        if early:\n            return 1\n    return 2\n\nexport fn main() Int:\n    var i = 0\n    while i < 3:\n        with c = Res(i):\n            i += 1\n            if i == 1:\n                continue\n            break\n    return run(r: Res(1), early: true) + i\n",
     );
-    assert!(mir.matches("call @close").count() >= 4);
+    assert!(mir.matches("call @Res.close").count() >= 4);
     assert!(mir.contains("cleanup.push"));
 }
 
