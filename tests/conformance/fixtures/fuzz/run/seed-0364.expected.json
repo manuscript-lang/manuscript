@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 70,
+    "stdout": "i1 = -135409\ns2 = [日本語0:line\nbreakemoji 😀]\ns3 = [日本語0:line\nbreakemoji 😀]\nacc4 = 1\n日本語0:日本語0:line\nbreakemoji 😀emoji 😀\ni5 = -62600\ns6 = [日本語0:LINE\nBREAKEMOJI 😀]\ns7 = [900:62627:日本語0:line\nbreakemoji 😀日本語0:LINE\nBREAKEMOJI 😀]\nb8 = true\ni9 = -35\n-62600 -62600 false sum -125200\n",
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0364.ms:40 in main\n"
+  }
+}

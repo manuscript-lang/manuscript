@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import expect_equal from \"@std/testing.ms\"\n\nfn apply(value: Int, transform: fn(value: Int) Int) Int: transform(value)\n\ntype Choice:\n    case Zero\n    case One\n    case Other(value: Int)\n\nfn choose(value: Choice) String:\n    match value:\n        Zero:\n            return \"zero # unchanged\"\n        # Keep this comment with the arm.\n        One:\n            return \"one\"\n        Other(number):\n            return \"value {number}\"\n\nfn count() Int:\n    return apply(\n        value: 2,\n        transform: fn(value: Int) Int: return (value + 10 + 20 + 30 + 40)\n    )\n\ntest \"compact formatting preserves behavior\":\n    let values = [1, 2, 2, 4, 3, 6]  # Keep this list compact.\n    let nested = [[1, 2], [3, 4]]\n    let invalid = [\"\", \"[1,\", \"\\{\\\"a\\\" 1\\}\", \"tru\", \"[1] x\", \"\\\"abc\"]\n    let mapped = [1, 2, 3, 4, 5, 6].map(\n        transform: fn(value: Int) Int:\n            return value + 1\n    )\n    values | try expect_equal(expected: [1, 2, 2, 4, 3, 6])\n    nested | try expect_equal(expected: [[1, 2], [3, 4]])\n    invalid.length() | try expect_equal(expected: 6)\n    mapped | try expect_equal(expected: [2, 3, 4, 5, 6, 7])\n    count() | try expect_equal(expected: 102)\n    choose(Choice.Zero) | try expect_equal(expected: \"zero # unchanged\")\n    choose(Choice.Other(3)) | try expect_equal(expected: \"value 3\")\n"
+  }
+}

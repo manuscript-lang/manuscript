@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn optional(value: Int = 1) Int: return value\n\nfn required(value: Int) Int: return value\n\nfn call(x: Optional[Int]) Int:\n    let chosen = match x:\n        some(n): optional\n        none: required\n\n    return chosen()\n"
+  }
+}

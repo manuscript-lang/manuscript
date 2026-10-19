@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "gcd(934, 3786) = 2\ns1 = [quote\"d]\ni2 = 415123\nfact(1) = 1\ni4 = -998216\nl5 = [6, 28, -7] len 3\nf6 = 309.598\ni7 = 3\ni8 = 19\nf9 = 9187399172.336155\n",
+    "stderr": ""
+  }
+}

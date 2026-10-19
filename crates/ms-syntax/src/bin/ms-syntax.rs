@@ -160,6 +160,26 @@ fn run() -> i32 {
             println!("{} files, {bad} not formatted", args.len() - 1);
             i32::from(bad > 0)
         }
+        Some("batch") => {
+            // For each file: its parse diagnostic JSON (or "ok"), then the formatted source with its byte length.
+            use std::io::Write;
+            let mut out = std::io::stdout().lock();
+            for path in &args[1..] {
+                let text = std::fs::read_to_string(path).expect("read");
+                let file: Arc<str> = Arc::from(path.as_str());
+                let diag = match parse(&file, &text) {
+                    Ok(_) => "ok".to_string(),
+                    Err(d) => d.to_json(),
+                };
+                let (status, formatted) = match ms_syntax::format(&file, &text) {
+                    Ok(f) => ("fmt", f),
+                    Err(d) => ("err", d.to_json()),
+                };
+                let _ = writeln!(out, "{path}\t{diag}\t{status}\t{}", formatted.len());
+                let _ = out.write_all(formatted.as_bytes());
+            }
+            0
+        }
         Some("compare") => compare(&args[1..]),
         _ => {
             eprintln!("usage: ms-syntax parse [--json] FILE... | fmt FILE | bench FILE...");

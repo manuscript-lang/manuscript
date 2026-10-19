@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding parse; add: import parse from \"@std/bigint.ms\"",
+        "position": {
+          "file": "pkg-tooling-format-testformatparagraphs-6.ms",
+          "line": 5,
+          "column": 19,
+          "offset": 224
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding summarize; declare it with 'let summarize = ...' before use, define 'fn summarize(...)', or import it from a module",
+        "position": {
+          "file": "pkg-tooling-format-testformatparagraphs-6.ms",
+          "line": 9,
+          "column": 18,
+          "offset": 334
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding encode; declare it with 'let encode = ...' before use, define 'fn encode(...)', or import it from a module",
+        "position": {
+          "file": "pkg-tooling-format-testformatparagraphs-6.ms",
+          "line": 10,
+          "column": 19,
+          "offset": 371
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding save; declare it with 'let save = ...' before use, define 'fn save(...)', or import it from a module",
+        "position": {
+          "file": "pkg-tooling-format-testformatparagraphs-6.ms",
+          "line": 12,
+          "column": 11,
+          "offset": 397
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-tooling-format-testformatparagraphs-6.ms:5:19: resolution: unknown binding parse; add: import parse from \"@std/bigint.ms\"\n<DIR>/pkg-tooling-format-testformatparagraphs-6.ms:9:18: resolution: unknown binding summarize; declare it with 'let summarize = ...' before use, define 'fn summarize(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatparagraphs-6.ms:10:19: resolution: unknown binding encode; declare it with 'let encode = ...' before use, define 'fn encode(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatparagraphs-6.ms:12:11: resolution: unknown binding save; declare it with 'let save = ...' before use, define 'fn save(...)', or import it from a module\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

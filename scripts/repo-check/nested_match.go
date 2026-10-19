@@ -30,7 +30,7 @@ func checkNestedMatches() error {
 	}
 	var issues []string
 	for _, path := range strings.Split(string(paths), "\x00") {
-		if path == "" || strings.HasPrefix(path, "vendor/") || strings.HasPrefix(path, "website/themes/") {
+		if path == "" || strings.HasPrefix(path, "vendor/") || strings.HasPrefix(path, "website/themes/") || strings.HasPrefix(path, "tests/conformance/fixtures/") {
 			continue
 		}
 		switch filepath.Ext(path) {

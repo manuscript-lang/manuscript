@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 70,
+    "stdout": "acc1 = 0\ni2 = -20\nb3 = false\ns4 = [日本語]\ns5 = [MS]\nacc6 = 18\nb7 = true\n143 -40 false sum 103\n",
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0212.ms:35 in main\n"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = -33\nb2 = false\ns3 = [brace{s}]\n18527048720928 330 false sum 18527048721258\ns4 = [Tab\there]\ncollatz(1715) = 29\ni5 = -259469\nemoji 😀brace{s}\nl6 = [2, 25] len 2\ni7 = -11416636\ns8 = [Tab\thereTab\there399582260:Tab\there日本語]\n  deddap  \nf9 = -6.235579155106149e-27\n",
+    "stderr": ""
+  }
+}

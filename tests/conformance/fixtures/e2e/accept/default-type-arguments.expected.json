@@ -1,0 +1,65 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "default-type-arguments.ms::omitted trailing type arguments use their defaults",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "default-type-arguments.ms::constructors fall back to defaults",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "default-type-arguments.ms::calls infer first and only then use the default",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 3,
+        "selected": 3,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN default-type-arguments.ms::omitted trailing type arguments use their defaults\nPASS default-type-arguments.ms::omitted trailing type arguments use their defaults\nRUN default-type-arguments.ms::constructors fall back to defaults\nPASS default-type-arguments.ms::constructors fall back to defaults\nRUN default-type-arguments.ms::calls infer first and only then use the default\nPASS default-type-arguments.ms::calls infer first and only then use the default\n3 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

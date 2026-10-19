@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding active; declare it with 'let active = ...' before use, define 'fn active(...)', or import it from a module",
+        "position": {
+          "file": "pkg-tooling-format-testformatexpressionlayouts-37.ms",
+          "line": 5,
+          "column": 12,
+          "offset": 179
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding allowed; declare it with 'let allowed = ...' before use, define 'fn allowed(...)', or import it from a module",
+        "position": {
+          "file": "pkg-tooling-format-testformatexpressionlayouts-37.ms",
+          "line": 5,
+          "column": 22,
+          "offset": 189
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding remaining; declare it with 'let remaining = ...' before use, define 'fn remaining(...)', or import it from a module",
+        "position": {
+          "file": "pkg-tooling-format-testformatexpressionlayouts-37.ms",
+          "line": 5,
+          "column": 34,
+          "offset": 201
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding fallback; declare it with 'let fallback = ...' before use, define 'fn fallback(...)', or import it from a module",
+        "position": {
+          "file": "pkg-tooling-format-testformatexpressionlayouts-37.ms",
+          "line": 5,
+          "column": 51,
+          "offset": 218
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-37.ms:5:12: resolution: unknown binding active; declare it with 'let active = ...' before use, define 'fn active(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-37.ms:5:22: resolution: unknown binding allowed; declare it with 'let allowed = ...' before use, define 'fn allowed(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-37.ms:5:34: resolution: unknown binding remaining; declare it with 'let remaining = ...' before use, define 'fn remaining(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-37.ms:5:51: resolution: unknown binding fallback; declare it with 'let fallback = ...' before use, define 'fn fallback(...)', or import it from a module\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

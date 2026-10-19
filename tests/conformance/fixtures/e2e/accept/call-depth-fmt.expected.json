@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {expect_contains, expect_equal, expect_fault} from \"@std/testing.ms\"\n\ntype Walker:\n    step: Int\n    limit: Int\n\ninterface Walk:\n    fn walk(n: Int) Int\n\nimpl Walk for Walker:\n    fn walk(n: Int) Int:\n        if n == self.limit:\n            return 0\n\n        return 1 + self.walk(n: n + self.step)\n\nfn runaway(n: Int) Int:\n    return 1 + runaway(n + 1)\n\nfn bounded(n: Int, limit: Int) Int:\n    if n == limit:\n        return 0\n\n    return 1 + bounded(n: n + 1, limit: limit)\n\ntest \"runaway recursion is a fault\":\n    let message = try expect_fault(\n        fn():\n            let ignored = runaway(0)\n    )\n    message | try expect_contains(expected: \"call depth limit exceeded\")\n\ntest \"runaway method recursion faults like function recursion\":\n    let walker = Walker(step: 1, limit: -1)\n    let message = try expect_fault(\n        fn():\n            let ignored = walker.walk(n: 0)\n    )\n    message | try expect_contains(expected: \"call depth limit exceeded\")\n\ntest \"recursion below the limit runs normally\":\n    (bounded(n: 0, limit: 100000) - 100000) | try expect_equal(expected: 0)\n\ntest \"method recursion below the limit runs normally\":\n    (Walker(step: 1, limit: 100000).walk(n: 0) - 100000) | try expect_equal(expected: 0)\n"
+  }
+}

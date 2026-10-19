@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {stdout, stderr} from \"@std/io.ms\"\nimport fail from \"@std/testing.ms\"\n\ntest \"first=pass\":\n    let _out = stdout().write(data: \"PASS fake test\\nuser stdout\\n\")\n    let _err = stderr().write(data: \"user stderr\\n\")\n\ntest \"second=fails\":\n    return fail(\"expected failure\")\n\ntest \"third=after\":\n    return unit\n"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 70,
+    "stdout": "-9223372036854775797 61447447359 true sum -9223371975407328438\nl1 = [-30, 30, -20, 22, 21] len 5\n47 181705 true sum 181752\n日本語\n530601064884 429612298815 false sum 960213363699\nf2 = 626.779\n",
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0264.ms:24 in main\n"
+  }
+}

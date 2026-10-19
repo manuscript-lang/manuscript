@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "b1 = false\ns2 = [-187:BACK\\SLASH]\nb3 = false\ni4 = 1538399737\ni5 = -10\nf6 = 0.0001744520004003806\ns7 = [-187:BACK\\SLASH]\nf8 = -81.19617445200038\nl9 = [-9, -7] len 2\ns10 = [HSALS\\KCAB:781-HSALS\\KCAB:781-]\ns11 = [-187:BACK\\SLASH]\n-153839973 1538399737 true sum 1384559764\ni12 = -22724203774191\nl13 = [22, 26, 19, 7] len 4\n36 1538399737 true sum 1538399773\n",
+    "stderr": ""
+  }
+}

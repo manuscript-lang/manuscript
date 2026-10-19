@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "interface Shape:\n    fn area() Int\n\ntype Rect:\n    w: Int\n    h: Int\n\nimpl Shape for Rect:\n    fn area() Int:\n        return self.w * self.h\n\ntest \"method fault frame\":\n    let rect = Rect(w: 9223372036854775807, h: 2)\n    rect.area()\n"
+  }
+}

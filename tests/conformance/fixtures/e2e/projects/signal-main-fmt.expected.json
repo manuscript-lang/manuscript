@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import stdout from \"@std/io.ms\"\nimport WriteStream from \"@std/io.ms\"\nimport Closeable from \"@std/cleanup.ms\"\n\ntype Resource:\n    label: String\n    output: WriteStream\n\nimpl Closeable for Resource:\n    fn close() Unit:\n        let _ignored = self.output.write(\"close {self.label}\\n\")\n\nexport fn main() Int:\n    let output = stdout()\n\n    with resource = Resource(\"parent\", output):\n        with child = Resource(\"child\", output):\n            let _ignored = output.write(\"ready\\n\")\n            while true:\n                continue\n\n    return 0\n"
+  }
+}

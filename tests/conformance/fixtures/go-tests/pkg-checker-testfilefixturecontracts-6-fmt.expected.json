@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "impl TestHooks for State:\n\nfn make_fixture[T]() State:\n    return State(1)\n\ntest \"test\":\n    return\n"
+  }
+}

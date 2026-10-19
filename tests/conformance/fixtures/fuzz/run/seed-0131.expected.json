@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [beta日本語]\nf2 = 694.25\ni3 = 23\nl4 = [-8, -15, -24, -19] len 4\nacc5 = 276\nl6 = [-8, -30] len 2\nf7 = 694.25\n",
+    "stderr": ""
+  }
+}

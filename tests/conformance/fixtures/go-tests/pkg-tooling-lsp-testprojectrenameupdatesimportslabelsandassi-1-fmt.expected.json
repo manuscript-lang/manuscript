@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "export fn add(value: Int) Int:\n    var current = value\n    current = current + 1\n    return current\n"
+  }
+}

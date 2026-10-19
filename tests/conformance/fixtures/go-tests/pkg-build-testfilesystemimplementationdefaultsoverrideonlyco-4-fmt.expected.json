@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "test \"filesystem concrete overrides and interface defaults\":\n    let item = Override(false)\n    let view = FileSystem(item)\n"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import range from \"@std/collections.ms\"\nimport expect_equal from \"@std/testing.ms\"\n\ntest \"count five iterations\":\n    var total = 0\n    for index in range(0, 5):\n        total += index\n    try expect_equal(total, 10)\n"
+  }
+}

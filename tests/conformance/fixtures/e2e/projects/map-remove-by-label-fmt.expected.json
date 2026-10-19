@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import Key from \"./key.ms\"\nimport remove_generic from \"./generic.ms\"\n\nimpl Equal for Key:\n    fn equals(other: Equal) Bool:\n        match other:\n            Key(value): return self.label == value.label\n            _: return false\n\nimpl Hashable for Key:\n    fn hash() Int: self.label.scalar_length()\n\nexport fn label_map() Map[Key, Int]:\n    return (\n        Map[Key, Int]()\n        .add(Key(1, \"one\"), 10)\n        .add(Key(2, \"two\"), 20)\n        .add(Key(3, \"three\"), 30)\n    )\n\nexport fn label_direct(values: Map[Key, Int], key: Key) Map[Key, Int]:\n    return values.remove(key)\n\nexport fn label_bound(values: Map[Key, Int], key: Key) Map[Key, Int]:\n    let remove = values.remove\n    return remove(key)\n\nexport fn label_generic(values: Map[Key, Int], key: Key) Map[Key, Int]:\n    return remove_generic(values, key)\n"
+  }
+}

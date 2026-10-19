@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {expect_equal} from \"@std/testing.ms\"\n\nfn subtract(amount: Int, deduction: Int) Int:\n    return amount - deduction\n\ntest \"named multiline call\":\n    let remaining = subtract(deduction: 2, amount: 9)\n    try expect_equal(remaining, 7)\n"
+  }
+}

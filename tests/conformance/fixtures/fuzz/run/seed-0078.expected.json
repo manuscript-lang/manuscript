@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "l1 = [-15, -28, 9] len 3\nl2 = [-28, 9] len 2\nl3 = [-28, 9, 78] len 3\nacc4 = 164\nf5 = 0\ni6 = -771576\nacc7 = -29\n1 962629 true sum 962630\ns8 = [  padded  ]\ns9 = [x]\ni10 = 10\ns11 = [MiXeD CaSe]\nb12 = false\nl13 = [-15, -28, 9, -15, -28, 9] len 6\ni14 = 13\ni15 = -3086310\n",
+    "stderr": ""
+  }
+}

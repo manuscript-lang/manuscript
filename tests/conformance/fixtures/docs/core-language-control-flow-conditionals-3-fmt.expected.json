@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn classify(value: Int) String:\n    if value < 0:\n        return \"negative\"\n    else if value == 0:\n        return \"zero\"\n    else:\n        return \"positive\"\n"
+  }
+}

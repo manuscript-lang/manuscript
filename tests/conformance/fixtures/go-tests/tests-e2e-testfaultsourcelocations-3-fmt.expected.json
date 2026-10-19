@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import TextError from \"@std/errors.ms\"\n\nfn checked(n: Int) Result[Int, TextError]:\n    if n < 0:\n        return error(TextError(\"negative\"))\n\n    return ok(n + 1)\n\nfn chain(n: Int) Result[Int, TextError]:\n    let value = try checked(n)\n    return ok(value)\n\nexport fn main() Int:\n    return chain(9223372036854775807).get()\n"
+  }
+}

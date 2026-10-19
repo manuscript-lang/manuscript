@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = 364896.55875\nb2 = true\n日本語x\ni3 = -824044\ni4 = -824044\ni5 = 22\ni6 = 1358097027872\nf7 = 1094997.3932500002\n33696864 -477647 false sum 33219217\n",
+    "stderr": ""
+  }
+}

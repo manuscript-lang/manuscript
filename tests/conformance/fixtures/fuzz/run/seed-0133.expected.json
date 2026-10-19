@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = 8.5\ni2 = -1315732358301\nf3 = 133.507\nl4 = [] len 0\ni5 = -29\ni6 = -1315732358301\nb7 = true\ndeltahéllo\ni8 = 379685214271\nb9 = true\ni10 = 37220191246670\ns11 = [MIXED CASE]\nf12 = 20.539538461538463\ni13 = -1315732358301\ns14 = [ESAC DEXIM]\ns15 = [MIXED CASE]\nemoji 😀\nl16 = [] len 0\ns17 = [alpha]\n",
+    "stderr": ""
+  }
+}

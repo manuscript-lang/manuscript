@@ -1,0 +1,75 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "scripts-conformance.ms::reports require complete nonempty executions and count explicit skips",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "scripts-conformance.ms::shards cover every inventory entry exactly once",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "scripts-conformance.ms::invalid suite and shard arguments fail before running children",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "scripts-conformance.ms::child launch failures are returned to the fixture dispatcher",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "scripts-conformance.ms::fixture lifecycle errors invalidate an otherwise successful report",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN scripts-conformance.ms::reports require complete nonempty executions and count explicit skips\nPASS scripts-conformance.ms::reports require complete nonempty executions and count explicit skips\nRUN scripts-conformance.ms::shards cover every inventory entry exactly once\nPASS scripts-conformance.ms::shards cover every inventory entry exactly once\nRUN scripts-conformance.ms::invalid suite and shard arguments fail before running children\nPASS scripts-conformance.ms::invalid suite and shard arguments fail before running children\nRUN scripts-conformance.ms::child launch failures are returned to the fixture dispatcher\nPASS scripts-conformance.ms::child launch failures are returned to the fixture dispatcher\nRUN scripts-conformance.ms::fixture lifecycle errors invalidate an otherwise successful report\nPASS scripts-conformance.ms::fixture lifecycle errors invalidate an otherwise successful report\n5 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

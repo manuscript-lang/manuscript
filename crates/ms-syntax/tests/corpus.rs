@@ -49,6 +49,7 @@ fn repository_sources() -> Vec<PathBuf> {
                             | "experiments"
                             | "crates"
                             | "bench"
+                            | "conformance"
                     );
                 if !skip {
                     walk(&path, out);

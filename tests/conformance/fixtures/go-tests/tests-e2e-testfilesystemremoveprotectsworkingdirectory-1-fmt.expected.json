@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {filesystem, FileSystemError} from \"@std/fs.ms\"\n\nexport fn main() Int:\n    let fs = filesystem()\n    let invalid: Result[Unit, FileSystemError] = error(FileSystemError.InvalidInput)\n    if fs.remove(path: \"\", recursive: true) != invalid: return 1\n    if fs.remove(path: \".\", recursive: true) != invalid: return 2\n    if fs.remove(path: \"child/..\", recursive: true) != invalid: return 3\n\n    if let base = fs.canonicalize(\".\"):\n        if fs.remove(path: base, recursive: true) != invalid: return 4\n    else:\n        return 8\n\n    if fs.rename(source: \"\", destination: \"moved\") != invalid: return 5\n    if fs.rename(source: \"sentinel\", destination: \"\") != invalid: return 6\n    if fs.remove(path: \"child\", recursive: true).is_error(): return 7\n\n    return 0\n"
+  }
+}

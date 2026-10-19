@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "BACK\\SLASH\ni1 = -43\ns2 = [emoji 😀alphaalpha]\ns3 = [Tab\thereemoji 😀alphaalpha]\nquote\"d\n31508723 -55 false sum 31508668\nb4 = false\ni5 = -118\n",
+    "stderr": ""
+  }
+}

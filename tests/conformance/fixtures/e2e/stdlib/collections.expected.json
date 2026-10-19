@@ -1,0 +1,110 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "collections.ms::list search callbacks empty identities and folding",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "collections.ms::list mutation and clone keep separate storage",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "collections.ms::maps preserve insertion order and overwrite duplicate keys",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "collections.ms::set algebra removes duplicates and preserves values",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "collections.ms::collection constructors validate bounds and exact limits",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "collections.ms::stepped ranges handle full-width spans and minimum negative steps",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "collections.ms::range counts up by one",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "collections.ms::for over range counts without a list",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "collections.ms::huge sizes return LimitExceeded instead of exhausting memory",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "collections.ms::collection builders freeze all accumulated values",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "collections.ms::imported map add interoperates with with_entry",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "collections.ms::flatten concatenates and shift removes the first item",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 12,
+        "selected": 12,
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN collections.ms::list search callbacks empty identities and folding\nPASS collections.ms::list search callbacks empty identities and folding\nRUN collections.ms::list mutation and clone keep separate storage\nPASS collections.ms::list mutation and clone keep separate storage\nRUN collections.ms::maps preserve insertion order and overwrite duplicate keys\nPASS collections.ms::maps preserve insertion order and overwrite duplicate keys\nRUN collections.ms::set algebra removes duplicates and preserves values\nPASS collections.ms::set algebra removes duplicates and preserves values\nRUN collections.ms::collection constructors validate bounds and exact limits\nPASS collections.ms::collection constructors validate bounds and exact limits\nRUN collections.ms::stepped ranges handle full-width spans and minimum negative steps\nPASS collections.ms::stepped ranges handle full-width spans and minimum negative steps\nRUN collections.ms::range counts up by one\nPASS collections.ms::range counts up by one\nRUN collections.ms::for over range counts without a list\nPASS collections.ms::for over range counts without a list\nRUN collections.ms::huge sizes return LimitExceeded instead of exhausting memory\nPASS collections.ms::huge sizes return LimitExceeded instead of exhausting memory\nRUN collections.ms::collection builders freeze all accumulated values\nPASS collections.ms::collection builders freeze all accumulated values\nRUN collections.ms::imported map add interoperates with with_entry\nPASS collections.ms::imported map add interoperates with with_entry\nRUN collections.ms::flatten concatenates and shift removes the first item\nPASS collections.ms::flatten concatenates and shift removes the first item\n12 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

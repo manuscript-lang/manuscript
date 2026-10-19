@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 31\ni2 = 0\ni3 = 31\ni4 = 0\ns5 = [  padded  ]\ni6 = 977560937864\nfib(19) = 4181\ni7 = 10\nfib(43) = 433494437\nf8 = 0\n31 977560937864 true sum 977560937895\n  PADDED  \ns9 = [  padded  ]\nb10 = true\ni11 = 977560937842\ns12 = [back\\slash]\n",
+    "stderr": ""
+  }
+}

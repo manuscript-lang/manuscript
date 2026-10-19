@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "argument labels use a colon; write x: value",
+        "position": {
+          "file": "pkg-parser-testsyntaxerrorsstatethefix-22.ms",
+          "line": 7,
+          "column": 16,
+          "offset": 188
+        },
+        "end": {
+          "file": "pkg-parser-testsyntaxerrorsstatethefix-22.ms",
+          "line": 7,
+          "column": 17,
+          "offset": 189
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

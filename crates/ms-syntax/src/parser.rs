@@ -419,6 +419,7 @@ impl<'a> Parser<'a> {
         let mut params = Vec::new();
         if !self.take(Tok::RParen) {
             loop {
+                let mutable = self.take(Tok::Var);
                 let name = self.need(Tok::Name)?;
                 let mut ty = None;
                 let mut default = None;
@@ -441,6 +442,7 @@ impl<'a> Parser<'a> {
                     name: self.sym(name),
                     ty,
                     default,
+                    mutable,
                 });
                 if !self.take(Tok::Comma) {
                     break;
@@ -654,7 +656,13 @@ impl<'a> Parser<'a> {
         self.end()
     }
 
-    fn method_signature(&mut self, name: Token, generics: bool, body: bool) -> PResult<Method> {
+    fn method_signature(
+        &mut self,
+        name: Token,
+        generics: bool,
+        body: bool,
+        mutating: bool,
+    ) -> PResult<Method> {
         let type_params = if generics {
             self.type_params()?
         } else {
@@ -678,6 +686,7 @@ impl<'a> Parser<'a> {
                 result,
                 body,
             },
+            mutating,
         })
     }
 
@@ -738,9 +747,15 @@ impl<'a> Parser<'a> {
                         if self.kind() == Tok::Dedent {
                             break;
                         }
+                        let mutating = self.take(Tok::Var);
                         self.need(Tok::Fn)?;
                         let name = self.need(Tok::Name)?;
-                        methods.push(self.method_signature(name, contract.is_none(), true)?);
+                        methods.push(self.method_signature(
+                            name,
+                            contract.is_none(),
+                            true,
+                            mutating,
+                        )?);
                     }
                     self.need(Tok::Dedent)?;
                 }
@@ -800,6 +815,7 @@ impl<'a> Parser<'a> {
             let next = match self.kind() {
                 Tok::Case => Form::Alternative,
                 Tok::Fn => Form::Interface,
+                Tok::Var if self.ahead(1).kind == Tok::Fn => Form::Interface,
                 _ => Form::Record,
             };
             if token.kind == Tok::Interface && next != Form::Interface {
@@ -818,6 +834,10 @@ impl<'a> Parser<'a> {
                 let mut payload = Vec::new();
                 if self.kind() == Tok::LParen {
                     payload = self.parameters(false, false)?;
+                    if payload.iter().any(|p| p.mutable) {
+                        let t = self.previous();
+                        return self.fail(t, "case payload fields cannot be 'var'; mutability belongs to the binding that holds the value");
+                    }
                     if payload.is_empty() {
                         let n = self.text(name);
                         return self.fail(name, format!("nullary cases omit parentheses; write 'case {n}' instead of 'case {n}()'"));
@@ -831,14 +851,18 @@ impl<'a> Parser<'a> {
                     fields: payload,
                 });
                 self.end()?;
-            } else if self.take(Tok::Fn) {
+            } else if self.kind() == Tok::Fn
+                || (self.kind() == Tok::Var && self.ahead(1).kind == Tok::Fn)
+            {
+                let mutating = self.take(Tok::Var);
+                self.need(Tok::Fn)?;
                 if token.kind == Tok::Type {
                     let t = self.previous();
                     let names = type_param_names(&type_params);
                     return self.fail(t, format!("a type declares only fields or cases; write its methods in an 'impl {name}{names}:' block, or implement an interface with 'impl <Interface> for {name}{names}:'"));
                 }
                 let mname = self.need(Tok::Name)?;
-                let m = self.method_signature(mname, false, false)?;
+                let m = self.method_signature(mname, false, false, mutating)?;
                 self.end()?;
                 methods.push(m);
             } else {
@@ -856,6 +880,7 @@ impl<'a> Parser<'a> {
                     name: self.sym(fname),
                     ty: Some(ty),
                     default,
+                    mutable: false,
                 });
                 self.end()?;
             }
@@ -1474,6 +1499,7 @@ impl<'a> Parser<'a> {
                 pos: lhs.pos,
                 name: None,
                 value: lhs,
+                mutable: false,
             }];
             if self.take(Tok::LParen) {
                 args.extend(self.call_arguments()?);
@@ -1680,6 +1706,7 @@ impl<'a> Parser<'a> {
                     let n = self.text(self.peek());
                     return self.fail(eq, format!("argument labels use a colon; write {n}: value"));
                 }
+                let mutable = self.take(Tok::Var);
                 let value = self.expression(0)?;
                 if let ExprKind::Name(n) = &value.kind
                     && self.kind() == Tok::Arrow
@@ -1687,7 +1714,12 @@ impl<'a> Parser<'a> {
                     let a = self.peek();
                     return self.fail(a, format!("lambdas are written fn(name: Type) Result: expression, e.g. fn({n}: Int) Int: {n} + 1"));
                 }
-                args.push(Argument { pos, name, value });
+                args.push(Argument {
+                    pos,
+                    name,
+                    value,
+                    mutable,
+                });
                 if !self.take(Tok::Comma) {
                     break;
                 }
@@ -2097,6 +2129,7 @@ impl<'a> Parser<'a> {
                             name: p.name,
                             ty: p.ty.as_ref().map(|t| self.copy_type(t)),
                             default: p.default.clone(),
+                            mutable: p.mutable,
                         }
                     })
                     .collect(),

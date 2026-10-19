@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type PrivateToken:\n    value: String\n\n# Rejected: callers cannot name the internal result type.\nexport fn issue() PrivateToken:\n    return PrivateToken(\"token\")\n"
+  }
+}

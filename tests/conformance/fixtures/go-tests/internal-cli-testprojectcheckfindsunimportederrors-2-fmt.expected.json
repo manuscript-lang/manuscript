@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn number() Int:\n    return \"wrong\"\n\nfn text() String:\n    return 1\n"
+  }
+}

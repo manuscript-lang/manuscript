@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [gamma]\nl2 = [15] len 1\nb3 = true\ns4 = [naïve]\ngcd(836, 3458) = 38\ni5 = -38\nacc6 = 168\nb7 = true\ni8 = -154\nb9 = false\ni10 = 38\nl11 = [] len 0\ni12 = 43\ns13 = [  padded  ]\n",
+    "stderr": ""
+  }
+}

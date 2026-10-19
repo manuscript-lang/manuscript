@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [brace{s}]\ngcd(480, 2739) = 3\n810710137948 -318891032747 false sum 491819105201\ni2 = -1133487\ns3 = [Tab\therenaïve]\ni4 = -21379134\n",
+    "stderr": ""
+  }
+}

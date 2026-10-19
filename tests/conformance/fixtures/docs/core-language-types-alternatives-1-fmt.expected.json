@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type Payment:\n    case Paid(receipt: String)\n    case Declined(reason: String)\n    case Pending(reference: String)\n"
+  }
+}

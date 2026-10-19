@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "let nested: List[List[Int]] = [[], [1, 2]]\n# Rejected: incompatible Int and Float elements.\nlet mixed = [1, 2.0]\n# Rejected: no element type can be inferred.\nlet unknown = []\n"
+  }
+}

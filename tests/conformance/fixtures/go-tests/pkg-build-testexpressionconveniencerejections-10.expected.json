@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Int, found String",
+        "position": {
+          "file": "pkg-build-testexpressionconveniencerejections-10.ms",
+          "line": 7,
+          "column": 15,
+          "offset": 258
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-10.ms:7:15: type: expected Int, found String\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

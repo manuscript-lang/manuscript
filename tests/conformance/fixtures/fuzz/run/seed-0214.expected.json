@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = -1107914\nl2 = [] len 0\ns3 = [Tab\there]\ni4 = 0\n0:日本語\ns5 = [tab\there-1288576:tab\there]\nl6 = [-4, 19, 11, -6, -15] len 5\nl7 = [16, -14, -3] len 3\nf8 = 0\ni9 = 1227434654406\n803091 15 false sum 803106\nf10 = 0.10045098979369779\ni11 = 0\ns12 = [GAMMA]\ni13 = 0\nl14 = [16] len 1\nf15 = NaN\ncollatz(679) = 64\nl16 = [-3, -14, 16] len 3\n",
+    "stderr": ""
+  }
+}

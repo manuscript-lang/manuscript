@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "b1 = false\nb2 = false\nl3 = [20, -25, 28, 28] len 4\ni4 = 4120704\nf5 = 3.5\ns6 = [emoji 😀gamma]\ni7 = 1007\nf8 = 0.004122244573948386\ni9 = 1007\nl10 = [20, 28, 28] len 3\nemoji 😀gamma\nb11 = false\nl12 = [-10, 5, -13] len 3\ns13 = [0:line\nbreakemoji 😀gamma]\ns14 = [ammag😀 ijomekaerb\nenil:0:9640233:1]\ni15 = 0\n",
+    "stderr": ""
+  }
+}

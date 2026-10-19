@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type CustomerKey:\n    id: Int\n    label: String\n\nimpl Equal for CustomerKey:\n    fn equals(other: Equal) Bool:\n        match other:\n            CustomerKey(value): return self.id == value.id\n            _: return false\n\nimpl Hashable for CustomerKey:\n    fn hash() Int: self.id\n"
+  }
+}

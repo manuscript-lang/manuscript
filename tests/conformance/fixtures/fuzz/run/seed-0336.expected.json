@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "l1 = [13, 10, -14, -4, 22] len 5\ns2 = [brace{s}back\\slashline\nbreakgammahsals\\kcab]\ni3 = -4\n-317867366551 -702120 true sum -317868068671\ns4 = [hélloback\\slashammagkaerb\nenilhsals\\kcab}s{ecarbdelta  padded  hello world]\n-4:MiXeD CaSe\ni5 = 5\nfib(29) = 514229\ni6 = 5\nf7 = 213241.54162099998\nl8 = [-24, -23, 25, 18] len 4\ns9 = [brace{s}back\\slashline\nbreakgammahsals\\kcab]\nnaïve\ni10 = 40\nf11 = -65106054.52155723\nf12 = 213416.92962099996\nl13 = [18] len 1\nb14 = false\nfact(14) = 87178291200\n",
+    "stderr": ""
+  }
+}

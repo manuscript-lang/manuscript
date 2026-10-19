@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import Sq from \"data.ms\"\n\nexport interface Shape:\n    fn area() Int\n\nimpl Shape for Sq:\n    fn area() Int: self.s * self.s\n"
+  }
+}

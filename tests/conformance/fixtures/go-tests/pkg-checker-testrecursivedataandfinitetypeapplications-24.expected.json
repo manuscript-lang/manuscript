@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3040",
+        "phase": "type",
+        "message": "recursive generic applications must preserve their parameters in Flip.next; keep the same type arguments in the same positions along a recursive cycle",
+        "position": {
+          "file": "pkg-checker-testrecursivedataandfinitetypeapplications-24.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 193
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-checker-testrecursivedataandfinitetypeapplications-24.ms:5:5: type: recursive generic applications must preserve their parameters in Flip.next; keep the same type arguments in the same positions along a recursive cycle\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

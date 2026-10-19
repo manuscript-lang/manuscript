@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 70,
+    "stdout": "-500721300 -83354 true sum -500804654\ni1 = -585\ncollatz(752) = 108\ns2 = [-24:HELLO WORLD]\nb3 = false\nacc4 = 212\nb5 = false\nf6 = 519446230.36768043\nf7 = -0.013288798170017671\nfact(9) = 362880\nl8 = [-7, -11] len 2\nl9 = [] len 0\nl10 = [] len 0\nb11 = false\ngcd(1061, 3561) = 1\ni12 = 10\ns13 = [-24:HELLO WORLD-24:HELLO WORLDDLROW OLLEH:42-]\n",
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0338.ms:68 in main\n"
+  }
+}

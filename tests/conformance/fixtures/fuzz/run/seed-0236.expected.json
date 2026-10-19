@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "collatz(1528) = 47\nf1 = 95819999.9879475\ngcd(4116, 2069) = 1\nb2 = false\ngcd(3212, 2317) = 1\ngcd(4823, 4386) = 1\nf3 = 2698.999\nms\ni4 = 14\nf5 = 2874599999635726\nMiXeD CaSe\ni6 = -651\n",
+    "stderr": ""
+  }
+}

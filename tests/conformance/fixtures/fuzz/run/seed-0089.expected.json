@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = -18\nf2 = 915.619\ns3 = [  padded  ]\ncollatz(2256) = 19\nf4 = -2746.095\n  padded  \n  padded  \ni5 = -630\nb6 = false\n  padded  \n-10 10 true sum 0\nf7 = 858488661955.6362\nb8 = false\ncollatz(2335) = 89\n",
+    "stderr": ""
+  }
+}

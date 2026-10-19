@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 1080\nl2 = [] len 0\nf3 = Infinity\ns4 = [delta]\ndeltadelta\ni5 = 1166400\nl6 = [] len 0\nacc7 = 0\nb8 = true\nl9 = [20] len 1\nacc10 = 182\ns11 = [beta]\nb12 = false\nb13 = true\n",
+    "stderr": ""
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "a type declares only fields or cases; write its methods in an 'impl List[T]:' block, or implement an interface with 'impl <Interface> for List[T]:'",
+        "position": {
+          "file": "pkg-parser-testemptyfunctiondeclarations-11.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 186
+        },
+        "end": {
+          "file": "pkg-parser-testemptyfunctiondeclarations-11.ms",
+          "line": 5,
+          "column": 7,
+          "offset": 188
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

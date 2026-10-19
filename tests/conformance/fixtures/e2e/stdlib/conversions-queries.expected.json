@@ -1,0 +1,95 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "conversions-queries.ms::conversions and collection queries are callable",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "conversions-queries.ms::conversions retain unconstrained payloads nesting and lazy counts",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "conversions-queries.ms::Map fold uses ordered snapshots and returns accumulator aliases",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "conversions-queries.ms::Map find returns fresh entry shells with original payload references",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "conversions-queries.ms::Map predicates short circuit over snapshots including empty receivers",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "conversions-queries.ms::Set fold and find preserve ordered snapshots and reference identity",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "conversions-queries.ms::Set predicates short circuit over snapshots and keep empty identities",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "conversions-queries.ms::nonmatching queries and all-true predicates visit the complete snapshot",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "conversions-queries.ms::ok_or without a cause records the calling file and line",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 9,
+        "selected": 9,
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN conversions-queries.ms::conversions and collection queries are callable\nPASS conversions-queries.ms::conversions and collection queries are callable\nRUN conversions-queries.ms::conversions retain unconstrained payloads nesting and lazy counts\nPASS conversions-queries.ms::conversions retain unconstrained payloads nesting and lazy counts\nRUN conversions-queries.ms::Map fold uses ordered snapshots and returns accumulator aliases\nPASS conversions-queries.ms::Map fold uses ordered snapshots and returns accumulator aliases\nRUN conversions-queries.ms::Map find returns fresh entry shells with original payload references\nPASS conversions-queries.ms::Map find returns fresh entry shells with original payload references\nRUN conversions-queries.ms::Map predicates short circuit over snapshots including empty receivers\nPASS conversions-queries.ms::Map predicates short circuit over snapshots including empty receivers\nRUN conversions-queries.ms::Set fold and find preserve ordered snapshots and reference identity\nPASS conversions-queries.ms::Set fold and find preserve ordered snapshots and reference identity\nRUN conversions-queries.ms::Set predicates short circuit over snapshots and keep empty identities\nPASS conversions-queries.ms::Set predicates short circuit over snapshots and keep empty identities\nRUN conversions-queries.ms::nonmatching queries and all-true predicates visit the complete snapshot\nPASS conversions-queries.ms::nonmatching queries and all-true predicates visit the complete snapshot\nRUN conversions-queries.ms::ok_or without a cause records the calling file and line\nPASS conversions-queries.ms::ok_or without a cause records the calling file and line\n9 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

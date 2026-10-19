@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import HashAlgorithm from \"@std/crypto.ms\"\n\nfn wrong() Unit:\n    let algorithm = HashAlgorithm.Sha257\n"
+  }
+}

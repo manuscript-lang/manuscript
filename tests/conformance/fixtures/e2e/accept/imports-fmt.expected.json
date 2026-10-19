@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {expect_equal} from \"@std/testing.ms\"\n\ntest \"grouped imports\":\n    let values: List[Int] = [1, 2]\n    let entries = Map[String, Int]().add(\"count\", values.length())\n    try expect_equal(entries.length(), 1)\n"
+  }
+}

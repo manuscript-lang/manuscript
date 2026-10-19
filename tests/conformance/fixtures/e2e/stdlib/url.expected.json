@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "url.ms::URL canonicalization and relative references",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "url.ms::URL query retains duplicate keys empty values and spaces",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "url.ms::URL query skips empty segments",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "url.ms::URL format rejects queries that would not round trip",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "url.ms::URL parse rejects malformed hosts and queries and keeps an empty authority",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "url.ms::URL format and resolve reject invalid schemes and hostless relative paths",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN url.ms::URL canonicalization and relative references\nPASS url.ms::URL canonicalization and relative references\nRUN url.ms::URL query retains duplicate keys empty values and spaces\nPASS url.ms::URL query retains duplicate keys empty values and spaces\nRUN url.ms::URL query skips empty segments\nPASS url.ms::URL query skips empty segments\nRUN url.ms::URL format rejects queries that would not round trip\nPASS url.ms::URL format rejects queries that would not round trip\nRUN url.ms::URL parse rejects malformed hosts and queries and keeps an empty authority\nPASS url.ms::URL parse rejects malformed hosts and queries and keeps an empty authority\nRUN url.ms::URL format and resolve reject invalid schemes and hostless relative paths\nPASS url.ms::URL format and resolve reject invalid schemes and hostless relative paths\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

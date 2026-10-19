@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 34\nl2 = [15, 16, 12, 20] len 4\ns3 = [ms]\nf4 = 0\n34 -14853 false sum -14819\nl5 = [4, -24] len 2\ni6 = 74\ns7 = [MSmsquote\"dx]\nb8 = true\nacc9 = -20\ngamma\ni10 = 29\nMSmsquote\"dxMSmsquote\"dx\nl11 = [] len 0\n7834067785564 0 false sum 7834067785564\nb12 = false\n",
+    "stderr": ""
+  }
+}

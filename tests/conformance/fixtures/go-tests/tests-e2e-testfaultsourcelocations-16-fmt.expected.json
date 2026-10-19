@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn deep(l: List[Int], i: Int) Int:\n    return l.get(i)\n\nexport fn main() Int:\n    return deep(l: [1], i: 5)\n"
+  }
+}

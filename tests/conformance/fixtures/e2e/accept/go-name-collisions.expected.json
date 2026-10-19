@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "go-name-collisions.ms::field names that differ only in underscores stay distinct",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "go-name-collisions.ms::operation names that differ only in underscores stay distinct",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "go-name-collisions.ms::functions named like Go predeclared identifiers still lower",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "go-name-collisions.ms::declared names stay apart from instantiation and case names",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "go-name-collisions.ms::view and helper names stay apart from declared names",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "go-name-collisions.ms::operations named like generated view methods stay callable",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN go-name-collisions.ms::field names that differ only in underscores stay distinct\nPASS go-name-collisions.ms::field names that differ only in underscores stay distinct\nRUN go-name-collisions.ms::operation names that differ only in underscores stay distinct\nPASS go-name-collisions.ms::operation names that differ only in underscores stay distinct\nRUN go-name-collisions.ms::functions named like Go predeclared identifiers still lower\nPASS go-name-collisions.ms::functions named like Go predeclared identifiers still lower\nRUN go-name-collisions.ms::declared names stay apart from instantiation and case names\nPASS go-name-collisions.ms::declared names stay apart from instantiation and case names\nRUN go-name-collisions.ms::view and helper names stay apart from declared names\nPASS go-name-collisions.ms::view and helper names stay apart from declared names\nRUN go-name-collisions.ms::operations named like generated view methods stay callable\nPASS go-name-collisions.ms::operations named like generated view methods stay callable\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

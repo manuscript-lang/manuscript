@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "wildcard must appear once and be last; keep a single '_' arm at the end",
+        "position": {
+          "file": "pkg-build-testcommonerrorrejectsinvalidcontractpatterns-14.ms",
+          "line": 6,
+          "column": 9,
+          "offset": 225
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'",
+        "position": {
+          "file": "pkg-build-testcommonerrorrejectsinvalidcontractpatterns-14.ms",
+          "line": 8,
+          "column": 9,
+          "offset": 271
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding value; declare it with 'let value = ...' before use, define 'fn value(...)', or import it from a module",
+        "position": {
+          "file": "pkg-build-testcommonerrorrejectsinvalidcontractpatterns-14.ms",
+          "line": 9,
+          "column": 20,
+          "offset": 308
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-14.ms:6:9: type: wildcard must appear once and be last; keep a single '_' arm at the end\n<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-14.ms:8:9: type: contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'\n<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-14.ms:9:20: resolution: unknown binding value; declare it with 'let value = ...' before use, define 'fn value(...)', or import it from a module\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
