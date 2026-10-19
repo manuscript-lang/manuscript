@@ -2,7 +2,6 @@
 //! The formatter itself is the backend's [`Backend::format_source`].
 
 use std::collections::BTreeMap;
-use std::os::unix::fs::PermissionsExt;
 
 use ms_project::{Project, ProjectError, discover_modules, gopath, read_project, source_path};
 
@@ -266,10 +265,7 @@ fn write_formatted(path: &str, formatted: &str) -> Result<(), ProjectError> {
     ]);
     let result = (|| -> std::io::Result<()> {
         std::fs::write(&temp, formatted)?;
-        std::fs::set_permissions(
-            &temp,
-            std::fs::Permissions::from_mode(info.permissions().mode() & 0o777),
-        )?;
+        std::fs::set_permissions(&temp, kept_permissions(&info))?;
         std::fs::rename(&temp, path)
     })();
     if let Err(error) = result {
@@ -340,4 +336,15 @@ fn format_error(cwd: &str, target: &str, error: FmtError) -> (CommandDiagnostic,
         fix: None,
     };
     (diagnostic, message)
+}
+
+/// The permissions a rewritten file keeps: the mode bits on Unix, the read-only flag elsewhere.
+fn kept_permissions(info: &std::fs::Metadata) -> std::fs::Permissions {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::Permissions::from_mode(info.permissions().mode() & 0o777)
+    }
+    #[cfg(not(unix))]
+    info.permissions()
 }

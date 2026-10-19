@@ -1,3 +1,4 @@
+#![cfg(unix)]
 //! `ms profile` end to end with a fake build engine: the "executable" is a
 //! shell script that writes folded stacks to `$MS_PROFILE`.
 

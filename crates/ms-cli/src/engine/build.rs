@@ -1,6 +1,5 @@
 //! `ms build`.
 
-use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 
 use ms_driver::Lower;
@@ -156,7 +155,7 @@ pub(super) fn protected_output(output: &str, input: &str, project_root: &str) ->
     if let Ok(info) = std::fs::metadata(output) {
         for candidate in &candidates {
             if let Ok(other) = std::fs::metadata(candidate)
-                && (info.dev(), info.ino()) == (other.dev(), other.ino())
+                && same_file(&info, &other, output, candidate)
             {
                 return Some(gopath::base(candidate));
             }
@@ -164,4 +163,22 @@ pub(super) fn protected_output(output: &str, input: &str, project_root: &str) ->
     }
     let base = gopath::base(output);
     (base.ends_with(".ms") || base == "ms.toml").then_some(base)
+}
+
+/// Whether two paths with the given metadata name one file.
+fn same_file(a: &std::fs::Metadata, b: &std::fs::Metadata, a_path: &str, b_path: &str) -> bool {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let _ = (a_path, b_path);
+        (a.dev(), a.ino()) == (b.dev(), b.ino())
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = (a, b);
+        matches!(
+            (std::fs::canonicalize(a_path), std::fs::canonicalize(b_path)),
+            (Ok(x), Ok(y)) if x == y
+        )
+    }
 }
