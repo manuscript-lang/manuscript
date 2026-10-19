@@ -507,12 +507,14 @@ impl<'m> FuncBuilder<'m> {
         self.f.blocks[b.index()].params.remove(idx);
         self.defs.insert((v, b), x);
         // Whatever resolved to the parameter while its operands were read now names `x`.
-        for (cv, cb) in self.cached[since.0..].to_vec() {
+        for i in since.0..self.cached.len() {
+            let (cv, cb) = self.cached[i];
             if self.defs.get(&(cv, cb)) == Some(&param) {
                 self.defs.insert((cv, cb), x);
             }
         }
-        for blk in self.filled[since.1..].to_vec() {
+        for i in since.1..self.filled.len() {
+            let blk = self.filled[i];
             self.f.blocks[blk.index()].term.for_each_target_mut(|t| {
                 for a in &mut t.args {
                     if *a == param {
