@@ -264,7 +264,7 @@ impl Scanner<'_> {
                 self.advance();
                 continue;
             }
-            if leading % 4 != 0 {
+            if !leading.is_multiple_of(4) {
                 return self.fail(format!(
                     "indentation must be a multiple of four spaces, found {}; use {} or {}",
                     leading,
@@ -343,10 +343,11 @@ impl Scanner<'_> {
                 let t = self.levels.last().unwrap();
                 (t.indent, t.depth)
             };
-            if let Some(last) = self.tokens.last() {
-                if last.kind == Tok::Dedent && self.delimiters.len() == top_depth {
-                    self.emit_layout(Tok::Newline);
-                }
+            if let Some(last) = self.tokens.last()
+                && last.kind == Tok::Dedent
+                && self.delimiters.len() == top_depth
+            {
+                self.emit_layout(Tok::Newline);
             }
             let line_start = self.tokens.len();
             while self.offset < n && self.src[self.offset] != b'\n' {
@@ -443,12 +444,11 @@ impl Scanner<'_> {
                 if matches!(b, b'(' | b'[' | b'{') {
                     self.delimiters.push(b);
                     self.opened.push(p);
-                    if b == b'(' {
-                        if let Some(last) = self.tokens.last() {
-                            if last.kind == Tok::Let || last.kind == Tok::Var {
-                                self.groups.push(self.delimiters.len());
-                            }
-                        }
+                    if b == b'('
+                        && let Some(last) = self.tokens.last()
+                        && (last.kind == Tok::Let || last.kind == Tok::Var)
+                    {
+                        self.groups.push(self.delimiters.len());
                     }
                 }
                 if matches!(b, b')' | b']' | b'}') {
@@ -496,10 +496,7 @@ impl Scanner<'_> {
             }
             if self.tokens.len() > line_start {
                 let last_kind = self.tokens.last().unwrap().kind;
-                let has_function = self
-                    .function_depths
-                    .iter()
-                    .any(|&d| d == self.delimiters.len());
+                let has_function = self.function_depths.contains(&self.delimiters.len());
                 if last_kind == Tok::Colon && (self.delimiters.len() == top_depth || has_function) {
                     pending = true;
                     header_indent = leading;
