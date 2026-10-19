@@ -15,6 +15,7 @@ mod func;
 mod iface;
 mod mapset;
 mod matching;
+mod messages;
 mod native;
 mod rtcall;
 mod runner;

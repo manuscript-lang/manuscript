@@ -122,26 +122,10 @@ impl FnLower<'_> {
 }
 
 /// How a case of a standard error type reads in `message()`.
-enum Message {
+pub(crate) enum Message {
     Text(&'static str),
     /// The case's first field.
     Payload,
-}
-
-/// Message tables of standard errors with native `Error` implementations.
-fn message_table(name: &str) -> Option<&'static [(&'static str, Message)]> {
-    use Message::*;
-    Some(match name {
-        "IoError" => &[
-            ("Closed", Text("I/O: resource is closed")),
-            ("InvalidInput", Text("I/O: invalid input")),
-            ("Unavailable", Text("I/O: service unavailable")),
-            ("InvalidData", Text("I/O: invalid data")),
-            ("LimitExceeded", Text("I/O: limit exceeded")),
-            ("Failed", Payload),
-        ],
-        _ => return None,
-    })
 }
 
 impl Cx {
@@ -191,7 +175,7 @@ impl Cx {
                 b.ret(Some(t));
             }
             (n, TyKind::Alt(a)) => {
-                let table = message_table(n)
+                let table = crate::messages::table(n)
                     .ok_or_else(|| Error::new(format!("unsupported native message of {n}")))?;
                 let cases = b.m.alts[a.index()].cases.clone();
                 let tag = b.alt_tag(recv);

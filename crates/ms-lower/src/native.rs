@@ -47,7 +47,7 @@ type BranchBody<'b, S> = dyn FnMut(&mut S) -> Result<Option<Value>, Error> + 'b;
 fn opt_method(name: &str) -> bool {
     matches!(
         name,
-        "is_some" | "is_none" | "get" | "map" | "and_then" | "or_else"
+        "is_some" | "is_none" | "get" | "map" | "and_then" | "or_else" | "ok_or" | "ok_or_else"
     )
 }
 
@@ -185,6 +185,16 @@ impl<'a> FnLower<'a> {
             let out = self.call_runtime(sym, &vals, *ret)?;
             return Ok(self.val(out, *ret == MTy::STR));
         }
+        if native == "errors/message" {
+            let concrete = self.ety(recv_expr);
+            let data = self.ty_of(recv.v);
+            let f = self
+                .cx
+                .native_method_fn(self.b.m, native, &concrete, data)?;
+            let r = self.borrow(recv);
+            let text = self.b.call(f, &[r]);
+            return Ok(Val { v: text, own: true });
+        }
         let name = native.rsplit('/').next().unwrap_or(native);
         let rty = self.ty_of(recv.v);
         // `map_add`, `set_values`: the receiver type already says which.
@@ -243,12 +253,12 @@ impl<'a> FnLower<'a> {
                 let result = self.emty(e)?;
                 self.map_entries(recv_expr, recv, result)
             }
-            (TyKind::List(_), "length") => {
+            (TyKind::List(_) | TyKind::Bytes, "length") => {
                 let r = self.borrow(recv);
                 let v = self.b.list_len(r);
                 Ok(Val { v, own: false })
             }
-            (TyKind::List(_), "is_empty") => {
+            (TyKind::List(_) | TyKind::Bytes, "is_empty") => {
                 let r = self.borrow(recv);
                 let n = self.b.list_len(r);
                 let z = self.b.iconst(0);
@@ -376,7 +386,8 @@ impl<'a> FnLower<'a> {
             _ => {
                 let Some(sym) = crate::rtcall::method_symbol(self.b.m, rty, native) else {
                     return Err(Error::new(format!(
-                        "unsupported native method {native} ({name})"
+                        "unsupported native method {native} ({name}) on {}",
+                        ms_mir::print::ty_str(self.b.m, rty)
                     )));
                 };
                 let result = self.emty(e)?;
@@ -720,8 +731,78 @@ impl<'a> FnLower<'a> {
                     },
                 )
             }
+            "ok_or" | "ok_or_else" => self.optional_ok_or(e, name, recv, args),
             _ => Err(Error::new(format!("unsupported Optional method {name}"))),
         }
+    }
+
+    /// `opt.ok_or(cause)` and `opt.ok_or_else(create)`.
+    fn optional_ok_or(
+        &mut self,
+        e: &Expr,
+        name: &str,
+        recv: Val,
+        args: Vec<NArg>,
+    ) -> Result<Val, Error> {
+        let r = recv.v;
+        let some = self.b.opt_is_some(r);
+        let out = self.emty(e)?;
+        let TyKind::Alt(res) = self.b.m.types.kind(out).clone() else {
+            return Err(Error::new("ok_or without a Result type"));
+        };
+        let index = |m: &ms_mir::ir::Module, n: &str| {
+            m.alts[res.index()].cases.iter().position(|c| c.name == n)
+        };
+        let (ok, err) = (
+            index(self.b.m, "ok").ok_or_else(|| Error::new("not a Result"))?,
+            index(self.b.m, "error").ok_or_else(|| Error::new("not a Result"))?,
+        );
+        let cause = args.first().copied();
+        let line = e.pos.line;
+        let file = self.b.m.files[self.file as usize].clone();
+        self.two_ways(
+            some,
+            out,
+            &mut |s| {
+                let p = s.b.opt_get(r);
+                let o = s.owned(Val { v: p, own: false });
+                s.finish(recv);
+                if let Some(c) = cause {
+                    s.finish(c.val);
+                }
+                Ok(Some(s.b.alt_new(res, ok as u32, &[o])))
+            },
+            &mut |s| {
+                let failure = if name == "ok_or_else" {
+                    let f = cause.ok_or_else(|| Error::new("ok_or_else without a function"))?;
+                    let v = s.b.call_ind(f.val.v, &[]);
+                    s.finish(f.val);
+                    v
+                } else if let Some(c) = cause {
+                    let v = if c.wrapped {
+                        s.owned(c.val)
+                    } else {
+                        let p = s.b.opt_unwrap(c.val.v);
+                        let o = s.owned(Val { v: p, own: false });
+                        s.finish(c.val);
+                        o
+                    };
+                    v
+                } else {
+                    // `MissingValue` names the source line of the call.
+                    let et = s.b.m.alts[res.index()].cases[err].fields[0].1;
+                    let TyKind::Alt(missing) = s.b.m.types.kind(et).clone() else {
+                        return Err(Error::new("ok_or without a cause needs MissingValue"));
+                    };
+                    let base = file.rsplit('/').next().unwrap_or(&file);
+                    let at = s.b.str_lit(&format!("{base}:{line}"));
+                    let at = s.owned(Val { v: at, own: false });
+                    s.b.alt_new(missing, 0, &[at])
+                };
+                s.finish(recv);
+                Ok(Some(s.b.alt_new(res, err as u32, &[failure])))
+            },
+        )
     }
 
     fn result_method(

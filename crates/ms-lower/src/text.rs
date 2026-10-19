@@ -257,7 +257,7 @@ pub(crate) fn build_format(
                 let v = b.rec_get(r, i as u32, x);
                 vals.push((Some(def.fields[i].0.clone()), def.fields[i].1, v));
             }
-            let acc = start(&mut b, &def.name);
+            let acc = start(&mut b, def.name.split('[').next().unwrap_or(&def.name));
             append_fields(cx, &mut b, acc, &vals, repr);
             let out = b.use_var(acc);
             b.ret(Some(out));
@@ -278,7 +278,12 @@ pub(crate) fn build_format(
                 let head = if repr {
                     c.name.clone()
                 } else {
-                    format!("{}.{}", def.name, c.name)
+                    // Generic arguments are not part of the printed name.
+                    format!(
+                        "{}.{}",
+                        def.name.split('[').next().unwrap_or(&def.name),
+                        c.name
+                    )
                 };
                 let acc = start(&mut b, &head);
                 if !c.fields.is_empty() {

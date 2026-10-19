@@ -35,6 +35,8 @@ pub(crate) struct LoopCtx {
     pub depth: usize,
     /// A `continue` branches to `cont`.
     pub cont_used: bool,
+    /// A `break` branches to `brk`.
+    pub brk_used: bool,
 }
 
 /// Per-function lowering state.

@@ -63,8 +63,9 @@ impl<'a> FnLower<'a> {
             StmtKind::Break => {
                 let ctx = self
                     .loops
-                    .last()
+                    .last_mut()
                     .ok_or_else(|| Error::new("break outside loop"))?;
+                ctx.brk_used = true;
                 let (brk, depth) = (ctx.brk, ctx.depth);
                 self.flush_temps(mark);
                 self.unwind_to(depth);
@@ -107,20 +108,67 @@ impl<'a> FnLower<'a> {
     }
 
     fn bind(&mut self, pattern: &Pattern, value: &Expr) -> Result<(), Error> {
+        let x = self.expr(value)?;
+        if self.dead {
+            return Ok(());
+        }
+        self.bind_pattern(pattern, x)
+    }
+
+    /// Binds the names of `pattern` to the parts of `x`: lists by position (the length is
+    /// checked), records by field.
+    fn bind_pattern(&mut self, pattern: &Pattern, x: Val) -> Result<(), Error> {
         match &pattern.kind {
             PatternKind::Name(_) => {
-                let x = self.expr(value)?;
-                if self.dead {
-                    return Ok(());
+                // `_` introduces no binding.
+                if let Some(b) = self.hir.pattern_binding(pattern) {
+                    self.bind_local(&b, x);
                 }
-                let b = self
-                    .hir
-                    .pattern_binding(pattern)
-                    .ok_or_else(|| Error::new("pattern without binding"))?;
-                self.bind_local(&b, x);
                 Ok(())
             }
-            _ => Err(Error::new("destructuring is not supported yet")),
+            PatternKind::List(items) => {
+                let list = self.borrow(x);
+                let len = self.b.list_len(list);
+                let want = self.b.iconst(items.len() as i64);
+                let same = self.b.icmp(Cc::Eq, len, want);
+                let (good, bad) = (self.b.new_block(), self.b.new_block());
+                self.b.br_if(same, good, &[], bad, &[]);
+                self.b.seal_block(good);
+                self.b.seal_block(bad);
+                self.b.switch_to(bad);
+                let ext = crate::text::runtime_fn(
+                    self.b.m,
+                    "msrt_fault_destructure",
+                    &[MTy::INT, MTy::INT],
+                    MTy::UNIT,
+                );
+                self.b.m.externs[ext.index()].noreturn = true;
+                self.b.call_rt(ext, &[want, len]);
+                self.b.unreachable();
+                self.b.switch_to(good);
+                for (i, p) in items.iter().enumerate() {
+                    let at = self.b.iconst(i as i64);
+                    let e = self.b.list_get(list, at);
+                    self.bind_pattern(p, Val { v: e, own: false })?;
+                }
+                Ok(())
+            }
+            PatternKind::Record(fields) => {
+                let rec = self.borrow(x);
+                let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(rec)).clone() else {
+                    return Err(Error::new("a record pattern needs a record"));
+                };
+                for f in fields {
+                    let idx = self.b.m.records[rid.index()]
+                        .fields
+                        .iter()
+                        .position(|d| d.0 == f.name.as_str())
+                        .ok_or_else(|| Error::new(format!("no field {}", f.name)))?;
+                    let fv = self.b.rec_get(rid, idx as u32, rec);
+                    self.bind_pattern(&f.pattern, Val { v: fv, own: false })?;
+                }
+                Ok(())
+            }
         }
     }
 
@@ -381,11 +429,17 @@ impl<'a> FnLower<'a> {
         let (header, body_b, exit) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
         self.b.br(header, &[]);
         self.enter(header);
-        let mark = self.temps.len();
-        let x = self.expr(cond)?;
-        let c = self.truthy(x);
-        self.flush_temps(mark);
-        self.b.br_if(c, body_b, &[], exit, &[]);
+        // `while true` leaves only through `break`, `return` or a fault.
+        let forever = matches!(cond.kind, ExprKind::Bool(true));
+        if forever {
+            self.b.br(body_b, &[]);
+        } else {
+            let mark = self.temps.len();
+            let x = self.expr(cond)?;
+            let c = self.truthy(x);
+            self.flush_temps(mark);
+            self.b.br_if(c, body_b, &[], exit, &[]);
+        }
         self.b.seal_block(body_b);
         self.enter(body_b);
         let depth = self.scopes.len();
@@ -394,16 +448,21 @@ impl<'a> FnLower<'a> {
             cont: header,
             depth,
             cont_used: false,
+            brk_used: false,
         });
         self.b.poll();
         self.block(body)?;
-        self.loops.pop();
+        let ctx = self.loops.pop().expect("loop");
         if !self.dead {
             self.b.br(header, &[]);
         }
         self.b.seal_block(header);
         self.b.seal_block(exit);
         self.enter(exit);
+        if forever && !ctx.brk_used {
+            self.b.unreachable();
+            self.terminated();
+        }
         Ok(())
     }
 
@@ -494,6 +553,7 @@ impl<'a> FnLower<'a> {
             cont: step,
             depth,
             cont_used: false,
+            brk_used: false,
         });
         self.push_scope();
         let i = self.b.use_var(idx);

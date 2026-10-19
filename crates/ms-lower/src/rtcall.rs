@@ -288,6 +288,11 @@ impl FnLower<'_> {
                 let status = self.call_runtime(sym, &vals, MTy::BOOL)?;
                 return self.status_result(status, None, result);
             }
+            // A null string pointer is the absent `Optional[String]`.
+            let ret = match self.b.m.types.kind(result) {
+                TyKind::Opt(inner) if ret == MTy::STR && *inner == MTy::STR => result,
+                _ => ret,
+            };
             let out = self.call_runtime(sym, &vals, ret)?;
             let owned = self.needs_drop(ret);
             return Ok(Val { v: out, own: owned });

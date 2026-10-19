@@ -678,8 +678,8 @@ impl Verifier<'_> {
             Op::ListLen => {
                 arity(1)?;
                 want(
-                    m.list_elem(t(0)).is_some() && res == Some(Ty::INT),
-                    "list.len takes a list and yields int",
+                    (m.list_elem(t(0)).is_some() || t(0) == Ty::BYTES) && res == Some(Ty::INT),
+                    "list.len takes a list (or bytes) and yields int",
                 )
             }
             Op::ListGet | Op::ListGetNn | Op::ListGetU => {

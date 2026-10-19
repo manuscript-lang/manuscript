@@ -54,6 +54,11 @@ impl FnLower<'_> {
                 Ok(Val { v, own: true })
             }
             (TyKind::List(_), Some(x)) => Ok(x),
+            (TyKind::Bytes, Some(values)) if self.ty_of(values.v) != MTy::BYTES => {
+                let v = self.borrow(values);
+                let out = self.call_runtime("msrt_bytes_from_values", &[v], ty)?;
+                Ok(Val { v: out, own: true })
+            }
             // A builder is an empty byte buffer.
             (TyKind::Bytes, None) => Ok(Val {
                 v: self.call_runtime("msrt_list_new", &[], ty)?,
