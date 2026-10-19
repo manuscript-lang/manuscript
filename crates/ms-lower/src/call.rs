@@ -27,7 +27,7 @@ impl<'a> FnLower<'a> {
                 let vars = sym.variables();
                 let subst = self.callee_subst(&vars, &view.type_args)?;
                 let names = self.param_names(&c);
-                let args = self.eval_args(&view, &names, &c, &subst)?;
+                let args = self.eval_args(&view, &names, &c, &subst, None)?;
                 self.call_callable(&c, &subst, args, e)?
             }
             Resolution::Constant(sym) => {
@@ -103,6 +103,7 @@ impl<'a> FnLower<'a> {
         names: &[ct::Name],
         callee: &Callable,
         subst: &Subst,
+        recv: Option<Val>,
     ) -> Result<Args, Error> {
         let mut slots: Vec<Option<Val>> = vec![None; names.len()];
         let mut places: Vec<Option<Expr>> = vec![None; names.len()];
@@ -145,7 +146,7 @@ impl<'a> FnLower<'a> {
         }
         for i in 0..slots.len() {
             if slots[i].is_none() {
-                slots[i] = Some(self.default_argument(callee, i, subst, &slots)?);
+                slots[i] = Some(self.default_argument(callee, i, subst, &slots, recv)?);
             }
         }
         Ok(Args { slots, places })
@@ -192,6 +193,7 @@ impl<'a> FnLower<'a> {
         i: usize,
         subst: &Subst,
         earlier: &[Option<Val>],
+        recv: Option<Val>,
     ) -> Result<Val, Error> {
         let params = callee
             .func
@@ -219,6 +221,9 @@ impl<'a> FnLower<'a> {
         let saved_file = self.file;
         self.hir = self.cx.module(callee.module.file)?;
         self.file = self.b.m.add_file(callee.module.file.as_str());
+        if let (Some(b), Some(r)) = (&callee.self_binding, recv) {
+            self.bind_borrowed(b, r.v);
+        }
         for (j, v) in earlier.iter().enumerate().take(i) {
             if let Some(v) = v {
                 self.bind_borrowed(&callee.parameters[j].clone(), v.v);
@@ -397,7 +402,7 @@ impl<'a> FnLower<'a> {
         };
         let names = self.param_names(&c);
         let at = self.b.current();
-        let args = self.eval_args(view, &names, &c, &subst)?;
+        let args = self.eval_args(view, &names, &c, &subst, Some(recv))?;
         if self.dead {
             return Ok(recv);
         }
@@ -571,7 +576,10 @@ impl<'a> FnLower<'a> {
         for (i, s) in slots.into_iter().enumerate() {
             match s {
                 Some(v) => vals.push(v),
-                None => vals.push(self.field_default(&t, case, i)?),
+                None => {
+                    let v = self.field_default(&t, case, i, &vals)?;
+                    vals.push(v);
+                }
             }
         }
         let v = match (self.b.m.types.kind(mt).clone(), case) {
@@ -596,6 +604,7 @@ impl<'a> FnLower<'a> {
         t: &ct::Ty,
         case: Option<ct::Name>,
         i: usize,
+        earlier: &[Value],
     ) -> Result<Value, Error> {
         let _ = case;
         let sym = t
@@ -625,6 +634,11 @@ impl<'a> FnLower<'a> {
         let saved_file = self.file;
         self.hir = self.cx.module(sym.module)?;
         self.file = self.b.m.add_file(sym.module.as_str());
+        // Earlier fields are in scope of a default.
+        let bindings = self.hir.declaration_parameters(decl.id());
+        for (b, v) in bindings.iter().zip(earlier) {
+            self.bind_borrowed(b, *v);
+        }
         let r = self.expr(d);
         self.hir = saved_hir;
         self.subst = saved_subst;

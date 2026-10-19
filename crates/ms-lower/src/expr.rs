@@ -197,6 +197,9 @@ impl<'a> FnLower<'a> {
         if let Resolution::Constructor { ty, case } = self.hir.resolution(e) {
             return self.construct_unit(e, &ty, case);
         }
+        if let Resolution::Method(m) = self.hir.resolution(e) {
+            return self.bound_method(e, left, &m);
+        }
         let lt = self.ety(left);
         if lt.kind != Kind::Record {
             return Err(Error::new(format!("unsupported member access .{name}")));
