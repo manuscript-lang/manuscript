@@ -1,7 +1,7 @@
 //! The HTTP server: an event loop that runs on the ms thread.
 //!
 //! Listeners and connections are nonblocking descriptors in one epoll set.
-//! Every blocking wait of the ms thread polls that set (see [`crate::pump`]),
+//! A reactor task serves that set (see [`Reactor::spawn_task`]) and each request runs in its own task,
 //! so accepting, reading and parsing happen while the program waits, and a
 //! complete request runs its handler right there on the ms thread: no thread
 //! hop, no locks. One handler runs at a time. While it blocks, other
@@ -17,12 +17,12 @@ use super::target;
 use crate::conn::{Io, Plain, Step};
 use crate::error::{HttpErr, NetErr};
 use crate::net::{Network, Resource};
-use crate::pump::{self, Service};
+use crate::rt;
 use crate::tls::{Handshake, TlsIo};
 use rustix::event::epoll;
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, VecDeque};
-use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
+use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd};
 use std::rc::{Rc, Weak};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -184,8 +184,11 @@ pub struct Reactor {
     targets: RefCell<HashMap<u64, Target>>,
     ready: RefCell<VecDeque<Rc<Conn>>>,
     retry: RefCell<Vec<Rc<Conn>>>,
-    /// Servers whose handlers are on the stack, innermost last.
-    handlers: RefCell<Vec<usize>>,
+    /// `(task, server)` of every handler running.
+    handlers: RefCell<Vec<(u64, usize)>>,
+    task_started: Cell<bool>,
+    /// Task currently running the reactor loop (`0`: none).
+    role: Cell<u64>,
     scratch: RefCell<Vec<u8>>,
     date: RefCell<(i64, String)>,
 }
@@ -209,10 +212,11 @@ impl Reactor {
                 ready: RefCell::new(VecDeque::new()),
                 retry: RefCell::new(Vec::new()),
                 handlers: RefCell::new(Vec::new()),
+                task_started: Cell::new(false),
+                role: Cell::new(0),
                 scratch: RefCell::new(vec![0; 64 * 1024]),
                 date: RefCell::new((0, String::new())),
             });
-            pump::install(reactor.clone());
             *slot = Some(reactor.clone());
             reactor
         })
@@ -250,30 +254,53 @@ impl Reactor {
 
     /// Whether a handler of `server` is running on the stack.
     pub fn in_handler_of(&self, server: &Server) -> bool {
-        self.handlers.borrow().contains(&server.id())
+        let task = rt::current_task();
+        self.handlers
+            .borrow()
+            .iter()
+            .any(|&(t, id)| t == task && id == server.id())
+    }
+
+    /// Whether the running task is inside any handler.
+    fn in_handler(&self) -> bool {
+        let task = rt::current_task();
+        self.handlers.borrow().iter().any(|&(t, _)| t == task)
     }
 
     /// Whether any handler of a server owned by `network` is running.
     pub fn in_handler_of_network(&self, network: &Network) -> bool {
-        self.handlers.borrow().iter().any(|id| {
-            SERVERS
-                .with(|s| s.borrow().get(id).and_then(Weak::upgrade))
-                .is_some_and(|s| s.owner.is_within(network))
+        let task = rt::current_task();
+        self.handlers.borrow().iter().any(|&(t, id)| {
+            t == task
+                && SERVERS
+                    .with(|s| s.borrow().get(&id).and_then(Weak::upgrade))
+                    .is_some_and(|s| s.owner.is_within(network))
         })
     }
 
+    /// Runs the requests that became ready, inline on the reactor task. A handler
+    /// that blocks hands the reactor role to a fresh task first (see
+    /// [`give_up_reactor_role`]), so the rest keep being served.
     fn run_handlers(&self) {
-        // One handler at a time: a handler that blocks still lets I/O proceed, but
-        // further requests wait until it returns.
-        if !self.handlers.borrow().is_empty() {
-            return;
-        }
         loop {
             let next = self.ready.borrow_mut().pop_front();
             let Some(conn) = next else { break };
             if let Some(server) = conn.server.upgrade() {
                 server.dispatch_conn(&conn, self);
             }
+        }
+    }
+
+    /// Starts the task that serves I/O events and timeouts. Called once, by the
+    /// first server.
+    fn spawn_task(&self) {
+        crate::wait::use_tasks();
+        #[cfg(test)]
+        serialize_tests();
+        if !self.task_started.replace(true) {
+            let arg = Box::into_raw(Box::new(Reactor::get())).cast::<u8>();
+            // SAFETY: `reactor_task` takes back the boxed reactor leaked above.
+            unsafe { rt::spawn_detached(reactor_task, arg) };
         }
     }
 
@@ -300,11 +327,64 @@ impl Reactor {
     }
 }
 
-impl Service for Reactor {
-    fn fd(&self) -> BorrowedFd<'_> {
-        self.epoll.as_fd()
+/// The scheduler is process-global while test threads are many: servers of
+/// different tests take turns, each holding the lock until its thread ends.
+#[cfg(test)]
+fn serialize_tests() {
+    use std::sync::{Mutex, MutexGuard};
+    static LOCK: Mutex<()> = Mutex::new(());
+    thread_local! {
+        static HELD: RefCell<Option<MutexGuard<'static, ()>>> = const { RefCell::new(None) };
     }
+    HELD.with(|held| {
+        let mut held = held.borrow_mut();
+        if held.is_none() {
+            *held = Some(LOCK.lock().unwrap_or_else(|e| e.into_inner()));
+        }
+    });
+}
 
+/// Body of the reactor task: serve events until the program is cancelled. Handlers
+/// run inline; one that parks passes the role on, and this loop then ends once the
+/// handler returns.
+unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
+    // SAFETY: `arg` is the `Box<Rc<Reactor>>` leaked by `spawn_task` for this task.
+    let reactor = unsafe { *Box::from_raw(arg.cast::<Rc<Reactor>>()) };
+    let me = rt::current_task();
+    reactor.role.set(me);
+    loop {
+        let got = rt::wait_fd(reactor.epoll.as_raw_fd(), 1, 50_000_000);
+        if got & 16 != 0 {
+            return;
+        }
+        reactor.service();
+        if reactor.role.get() != me {
+            return;
+        }
+        // No servers left: end; the next server starts a new reactor task.
+        if reactor.targets.borrow().is_empty() {
+            reactor.role.set(0);
+            reactor.task_started.set(false);
+            return;
+        }
+    }
+}
+
+/// Called before a task parks: if it is running the reactor loop (inline in a
+/// handler), a new reactor task takes over so other requests are not stalled.
+pub(crate) fn give_up_reactor_role() {
+    let reactor = REACTOR.with(|r| r.borrow().clone());
+    let Some(reactor) = reactor else { return };
+    if reactor.role.get() != rt::current_task() {
+        return;
+    }
+    reactor.role.set(0);
+    reactor.task_started.set(false);
+    reactor.spawn_task();
+}
+
+impl Reactor {
+    /// Handles whatever is ready without blocking.
     fn service(&self) {
         let mut buf = [epoll::Event {
             flags: epoll::EventFlags::empty(),
@@ -441,6 +521,7 @@ impl Server {
             .map(|a| crate::conn::socket_addr_text(&a))
             .unwrap_or_default();
         let reactor = Reactor::get();
+        reactor.spawn_task();
         let id = NEXT_ID.with(|n| {
             let id = n.get();
             n.set(id + 1);
@@ -566,17 +647,10 @@ impl Server {
         let deadline =
             crate::wait::Deadline::from_nanos(self.limits.grace.map(|g| g.as_nanos() as i64))
                 .unwrap_or(crate::wait::Deadline::none());
-        let in_handler = !reactor.handlers.borrow().is_empty();
+        let in_handler = reactor.in_handler();
         while !in_handler && !self.st.borrow().conns.is_empty() && !deadline.expired() {
-            // Let responses finish; remaining work is served by the shared wait.
-            let fd = reactor.epoll.as_fd();
-            crate::wait::wait_fd(
-                fd,
-                crate::wait::Interest::Read,
-                crate::wait::Deadline::after(Duration::from_millis(5)),
-            );
-            // The wait above only reports readiness; run the work itself.
-            pump::Service::service(&*reactor);
+            // Let responses finish: the reactor and request tasks run while this parks.
+            crate::wait::sleep(Duration::from_millis(2));
             if self
                 .st
                 .borrow()
@@ -1271,11 +1345,21 @@ impl Server {
     }
 
     pub(super) fn enter_handler(&self, reactor: &Reactor) {
-        reactor.handlers.borrow_mut().push(self.id);
+        reactor
+            .handlers
+            .borrow_mut()
+            .push((rt::current_task(), self.id));
     }
 
     pub(super) fn leave_handler(&self, reactor: &Reactor) {
-        reactor.handlers.borrow_mut().pop();
+        let task = rt::current_task();
+        let mut handlers = reactor.handlers.borrow_mut();
+        if let Some(at) = handlers
+            .iter()
+            .rposition(|&(t, id)| t == task && id == self.id)
+        {
+            handlers.remove(at);
+        }
     }
 
     fn run_buffered(&self, conn: &Rc<Conn>, reactor: &Reactor, pending: Pending) {
@@ -1512,6 +1596,7 @@ pub(crate) mod tests {
             match r.path.as_str() {
                 "/fault" => return Outcome::Fault("boom".into()),
                 "/cancel" => return Outcome::Cancelled,
+                "/slow" => crate::wait::sleep(Duration::from_millis(300)),
                 "/cookies" => {
                     headers.append("Set-Cookie", b"a=1").unwrap();
                     headers.append("set-cookie", b"b=2").unwrap();
@@ -1574,6 +1659,32 @@ pub(crate) mod tests {
         assert!(text.contains("Connection: close\r\n"));
         assert!(text.contains("Date: "));
         assert!(text.ends_with("\r\n\r\nGET|/hello|x=1|HTTP/1.1"), "{text}");
+    }
+
+    #[test]
+    fn handlers_run_concurrently() {
+        let (_net, server) = start(opts(Limits::default()));
+        let addr = server.address().to_string();
+        let started = Instant::now();
+        let texts = with_client(move || {
+            let clients: Vec<_> = (0..4)
+                .map(|_| {
+                    let addr = addr.clone();
+                    std::thread::spawn(move || exchange(&addr, &get("/slow")))
+                })
+                .collect();
+            clients
+                .into_iter()
+                .map(|c| c.join().unwrap())
+                .collect::<Vec<_>>()
+        });
+        assert!(texts.iter().all(|t| t.starts_with("HTTP/1.1 200 OK")));
+        // Four 300 ms handlers overlap instead of queueing behind each other.
+        assert!(
+            started.elapsed() < Duration::from_millis(900),
+            "{:?}",
+            started.elapsed()
+        );
     }
 
     #[test]

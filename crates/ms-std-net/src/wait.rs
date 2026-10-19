@@ -1,21 +1,19 @@
 //! Deadlines and blocking waits for the ms thread.
 //!
-//! Every blocking operation waits through [`wait_fd`] or [`Task::wait`]. The
-//! wait polls the descriptor in short slices so a stop request (the cancel
-//! flag) is noticed, and runs queued server handlers while the ms thread would
-//! otherwise sit idle (see [`crate::pump`]).
+//! Every blocking operation waits through [`wait_fd`] or [`Task::wait`], which park
+//! the running `ms-rt` task so the server reactor and request handlers (other tasks)
+//! run while it waits. A stop request wakes the wait and takes the runtime's
+//! cancellation path.
 
-use crate::{pump, rt};
+use crate::rt;
 use rustix::event::{self, EventfdFlags, PollFd, PollFlags};
 use rustix::io;
 use rustix::time::Timespec;
-use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
+use std::cell::Cell;
+use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd};
 use std::sync::Arc;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
-
-/// Longest a wait sleeps before it re-checks the cancel flag.
-const SLICE: Duration = Duration::from_millis(50);
 
 /// A supplied timeout below zero.
 #[derive(Clone, Copy, Debug)]
@@ -69,50 +67,69 @@ pub enum Wait {
     TimedOut,
 }
 
-fn slice_for(deadline: Deadline) -> Duration {
-    match deadline.remaining() {
-        Some(left) => left.min(SLICE),
-        None => SLICE,
-    }
+thread_local! {
+    static TASKS: Cell<bool> = const { Cell::new(false) };
 }
 
-fn poll_timeout(d: Duration) -> Timespec {
-    Timespec {
-        tv_sec: d.as_secs() as _,
-        tv_nsec: d.subsec_nanos() as _,
-    }
+/// Makes this thread's waits park the running `ms-rt` task. Done by the first
+/// server, whose reactor and request tasks need the scheduler; a thread without
+/// one (a helper thread, a program that only dials out) waits by polling.
+pub fn use_tasks() {
+    TASKS.with(|t| t.set(true));
 }
 
 /// Waits until `fd` is ready for `interest` (hang-up and error count as ready, so
-/// the next read or write reports them) or the deadline passes. Faults with the
-/// runtime's cancellation when a stop was requested.
+/// the next read or write reports them) or the deadline passes. With tasks enabled
+/// the task parks, so the server reactor and request handlers run meanwhile.
+/// Faults with the runtime's cancellation when a stop was requested.
 pub fn wait_fd(fd: BorrowedFd<'_>, interest: Interest, deadline: Deadline) -> Wait {
+    if TASKS.with(Cell::get) {
+        wait_task(fd, interest, deadline)
+    } else {
+        wait_poll(fd, interest, deadline)
+    }
+}
+
+fn wait_task(fd: BorrowedFd<'_>, interest: Interest, deadline: Deadline) -> Wait {
+    rt::check_cancel();
+    crate::http::server::give_up_reactor_role();
+    let events = match interest {
+        Interest::Read => 1,
+        Interest::Write => 2,
+    };
+    let timeout = deadline
+        .remaining()
+        .map_or(-1, |d| d.as_nanos().min(i64::MAX as u128) as i64);
+    let got = rt::wait_fd(fd.as_raw_fd(), events, timeout);
+    if got & 16 != 0 {
+        rt::cancelled();
+    }
+    if got & 8 != 0 && got & 7 == 0 {
+        Wait::TimedOut
+    } else {
+        Wait::Ready
+    }
+}
+
+/// Longest a polling wait sleeps before it re-checks the cancel flag.
+const SLICE: Duration = Duration::from_millis(50);
+
+fn wait_poll(fd: BorrowedFd<'_>, interest: Interest, deadline: Deadline) -> Wait {
     let flags = match interest {
         Interest::Read => PollFlags::IN,
         Interest::Write => PollFlags::OUT,
     };
-    let service = pump::current();
     loop {
         rt::check_cancel();
-        let timeout = poll_timeout(slice_for(deadline));
-        let mut fds = [
-            PollFd::new(&fd, flags),
-            PollFd::from_borrowed_fd(service.as_ref().map_or(fd, |s| s.fd()), PollFlags::IN),
-        ];
-        let n = if service.is_some() { 2 } else { 1 };
-        match event::poll(&mut fds[..n], Some(&timeout)) {
-            Ok(_) => {
-                if !fds[0].revents().is_empty() {
-                    return Wait::Ready;
-                }
-                if n == 2 && !fds[1].revents().is_empty() {
-                    if let Some(s) = &service {
-                        s.service();
-                    }
-                    continue;
-                }
-            }
-            Err(io::Errno::INTR) => {}
+        let slice = deadline.remaining().map_or(SLICE, |left| left.min(SLICE));
+        let timeout = Timespec {
+            tv_sec: slice.as_secs() as _,
+            tv_nsec: slice.subsec_nanos() as _,
+        };
+        let mut fds = [PollFd::new(&fd, flags)];
+        match event::poll(&mut fds, Some(&timeout)) {
+            Ok(_) if !fds[0].revents().is_empty() => return Wait::Ready,
+            Err(io::Errno::INTR) | Ok(_) => {}
             Err(_) => return Wait::Ready,
         }
         if deadline.expired() {

@@ -8,6 +8,14 @@ use std::sync::atomic::{AtomicU8, Ordering};
 unsafe extern "C" {
     static msrt_cancel_flag: AtomicU8;
     fn msrt_cancelled() -> !;
+    fn msrt_task_current() -> u64;
+    fn msrt_task_spawn(
+        entry: unsafe extern "C-unwind" fn(*mut u8),
+        arg: *mut u8,
+        flags: u32,
+        stack_bytes: usize,
+    ) -> u64;
+    fn msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32;
 }
 
 /// Whether SIGINT/SIGTERM asked the program to stop.
@@ -23,4 +31,32 @@ pub fn check_cancel() {
         // SAFETY: runs cleanups and exits; never returns.
         unsafe { msrt_cancelled() }
     }
+}
+
+/// Runs the runtime's cancellation path (cleanups, then exit).
+pub fn cancelled() -> ! {
+    // SAFETY: runs cleanups and exits; never returns.
+    unsafe { msrt_cancelled() }
+}
+
+/// Id of the running task.
+pub fn current_task() -> u64 {
+    // SAFETY: plain query of the runtime thread's scheduler.
+    unsafe { msrt_task_current() }
+}
+
+/// Starts a detached task running `entry(arg)`; it first runs when the caller parks.
+///
+/// # Safety
+/// `arg` must be valid for `entry`, which owns it.
+pub unsafe fn spawn_detached(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8) {
+    // SAFETY: `entry` and `arg` follow the task ABI; ownership of `arg` moves to the task.
+    unsafe { msrt_task_spawn(entry, arg, 1, 0) };
+}
+
+/// Parks the running task until `fd` is ready for `events` (1 read, 2 write) or the
+/// timeout (negative: none) passes. Returns the runtime's ready bits.
+pub fn wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32 {
+    // SAFETY: parks the current task; no Rust borrow is held across the call by contract.
+    unsafe { msrt_task_wait_fd(fd, events, timeout_ns) }
 }

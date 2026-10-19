@@ -4,7 +4,7 @@
 //! [`h2::Connection`] in [`ConnSt::h2`] and stays registered in the reactor for
 //! its whole life: frames for every stream arrive on it, also while a handler
 //! blocks. Requests are assembled per stream, admitted like HTTP/1 requests and
-//! queued for the handler, which still runs one at a time on the ms thread.
+//! queued for the handler, which runs in its own task on the ms thread.
 //!
 //! Buffered responses are handed to the stream state and flushed by the reactor
 //! as the peer's windows open. Streaming exchanges write response bodies

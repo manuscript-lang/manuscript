@@ -164,11 +164,11 @@ msrt_http_server_{address,close,wait}
 msrt_http_exchange_{headers,method,path,protocol,query,read,send_headers,write,write_bytes,close,upgrade}
 ```
 
-Handler thunks are compiler generated and run **inline on the ms thread** inside any
-blocking wait of the thread (reactor dispatch). `BufferedThunk(env, req, resp)` fills
+Handler thunks are compiler generated and run on the ms thread, each request in its own
+`ms-rt` task (see Concurrency). `BufferedThunk(env, req, resp)` fills
 `resp`; `StreamThunk(env, exchange, err) -> u8` returns an `HttpError` status. `env` is
 the retained closure; the server releases it on drop. Behavior: one handler runs at a
-time, so a client and a server on the same thread cannot interact interactively; closing
+time; closing
 a server (or its network) from its own handler faults.
 
 Client behavior follows Go's `net/http` (redirect policy, header order, cookie jar,
@@ -186,11 +186,20 @@ msrt_websocket_receive(s, data: *mut VecVal, text: *mut u8, present: *mut u8, er
 A server socket lives until its handler returns, at which point it is closed with
 code 1000. `receive` returns `present = 0` after a clean close.
 
-## Fault isolation
+## Concurrency and fault isolation
 
-Each handler thunk runs under `msrt_guard_call` (`ms-rt` ABI §7; `code` is
-`extern "C-unwind"`). A fault inside a handler becomes a 500 response (`Outcome::Fault`)
-and a stop request becomes 504 (`Outcome::Cancelled`); the server keeps running. Values
-owned by the abandoned frames leak, per the guard contract. Handlers still run one at a
-time on the ms thread: a handler that blocks lets I/O proceed, but further requests wait
-until it returns (the nested-handler alternative would make completion order non-LIFO).
+Servers use the `ms-rt` cooperative tasks (ABI §7). The first server on the thread
+spawns a reactor task (epoll over listeners and connections, timeouts). Ready requests
+run inline on it; a handler that is about to park (`wait_fd`, `sleep`, a client call, a
+slow `read`) first hands the reactor role to a fresh task, so blocked handlers overlap
+and a handler that never blocks costs no task switch. Switches happen only when a task
+parks. Every
+blocking wait in the crate parks the running task once a server exists
+(`wait::use_tasks`); on a thread without one it polls. Each handler thunk runs under
+`msrt_guard_call` (`code` is `extern "C-unwind"`): a fault inside becomes a 500
+(`Outcome::Fault`), a stop request a 504 (`Outcome::Cancelled`), and the server keeps
+running. Values owned by the abandoned frames leak, per the guard contract.
+
+`Network.close()` or `HttpServer.close()` from a handler of the same network/server faults
+(it would wait for itself); from any other task it waits for in-flight requests within the
+grace period.
