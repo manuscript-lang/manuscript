@@ -65,6 +65,10 @@ struct Input {
 /// The runtime symbol implementing a native method of a receiver type.
 pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> Option<String> {
     let name = native.rsplit('/').next().unwrap_or(native);
+    let name = name
+        .strip_prefix("map_")
+        .or_else(|| name.strip_prefix("set_"))
+        .unwrap_or(name);
     let prefix = match m.types.kind(recv) {
         TyKind::Str => "string",
         TyKind::List(_) => "list",
@@ -76,7 +80,15 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         _ => return None,
     };
     let sym = format!("msrt_{prefix}_{name}");
-    rt_sig(&sym).map(|_| sym)
+    if rt_sig(&sym).is_some() {
+        return Some(sym);
+    }
+    // A set is a map without values: it shares the map entry points.
+    let name = if name == "values" { "keys" } else { name };
+    let shared = format!("msrt_map_{name}");
+    (prefix == "set")
+        .then(|| rt_sig(&shared).map(|_| shared))
+        .flatten()
 }
 
 /// Status codes of `ms-rt-abi` and the error cases they name.
@@ -97,6 +109,20 @@ impl FnLower<'_> {
         args: &[NArg],
         result: MTy,
     ) -> Result<Val, Error> {
+        self.rt_method_at(sym, recv, None, decl, args, result)
+    }
+
+    /// Like [`Self::rt_method`]; with `recv_ptr` the receiver parameter is that address, so
+    /// the runtime changes the receiver in place.
+    pub(crate) fn rt_method_at(
+        &mut self,
+        sym: &str,
+        recv: Val,
+        recv_ptr: Option<Value>,
+        decl: &[ct::Param],
+        args: &[NArg],
+        result: MTy,
+    ) -> Result<Val, Error> {
         let sig = rt_sig(sym).ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
         let mut inputs = vec![Input {
             val: Some(recv),
@@ -113,6 +139,8 @@ impl FnLower<'_> {
         let has_out = sig.params.last().is_some_and(|p| p.name == "out");
         let end = sig.params.len() - usize::from(has_out);
         let mut vals: Vec<Value> = Vec::new();
+        // Slots of borrowed owned values, taken back and dropped after the call.
+        let mut lent: Vec<(Value, MTy)> = Vec::new();
         let mut cursor = 0;
         let mut i = 0;
         while i < end {
@@ -131,10 +159,15 @@ impl FnLower<'_> {
                         return Err(Error::new(format!("{sym}: not a map or set")));
                     };
                     let k = usize::from(p.name == "vd");
-                    let t = *a
-                        .get(k)
-                        .ok_or_else(|| Error::new(format!("{sym}: no key/value type")))?;
-                    vals.push(self.type_desc(t));
+                    match a.get(k) {
+                        Some(t) => vals.push(self.type_desc(*t)),
+                        // A set is a map without a value descriptor.
+                        None if k == 1 => {
+                            let ot = self.b.m.types.opt(MTy::STR);
+                            vals.push(self.b.opt_none(ot));
+                        }
+                        None => return Err(Error::new(format!("{sym}: no key type"))),
+                    }
                 }
                 n if n.starts_with("has_") && i + 1 < end => {
                     let input = *inputs
@@ -151,6 +184,12 @@ impl FnLower<'_> {
                     let input = *inputs
                         .get(cursor)
                         .ok_or_else(|| Error::new(format!("{sym}: missing argument {}", p.name)))?;
+                    if let (0, Some(ptr)) = (cursor, recv_ptr) {
+                        cursor += 1;
+                        vals.push(ptr);
+                        i += 1;
+                        continue;
+                    }
                     cursor += 1;
                     let Some(x) = input.val else {
                         if p.ty.ends_with("StrObj") {
@@ -162,24 +201,41 @@ impl FnLower<'_> {
                         }
                         return Err(Error::new(format!("{sym}: missing argument {}", p.name)));
                     };
-                    let v = self.borrow(x);
                     if p.ty == "*const u8" || p.ty == "*mut u8" {
-                        // A generic element slot: pass the address of a copy in memory.
-                        let t = self.ty_of(v);
+                        // A generic element slot: pass the address of the value in memory.
+                        // `*mut` hands the value over; `*const` is lent and taken back.
+                        let t = self.ty_of(x.v);
                         let slot = self
                             .b
                             .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
                             .expect("slot");
-                        self.b.emit(Op::Store, &[slot, v], Imm::None, None);
+                        if self.needs_drop(t) {
+                            let o = self.owned(x);
+                            self.b.emit(Op::Put, &[slot, o], Imm::None, None);
+                            if p.ty == "*const u8" {
+                                lent.push((slot, t));
+                            }
+                        } else {
+                            self.b.emit(Op::Store, &[slot, x.v], Imm::None, None);
+                        }
                         vals.push(slot);
                     } else {
+                        let v = self.borrow(x);
                         vals.push(v);
                     }
                 }
             }
             i += 1;
         }
-        self.finish_rt_call(sym, &sig, has_out, vals, result)
+        let r = self.finish_rt_call(sym, &sig, has_out, vals, result)?;
+        for (slot, t) in lent {
+            let v = self
+                .b
+                .emit(Op::Take, &[slot], Imm::Ty(t), Some(t))
+                .expect("take");
+            self.drop_value(v);
+        }
+        Ok(r)
     }
 
     /// `(has, value)` runtime operands of an optional scalar argument.
@@ -265,10 +321,35 @@ impl FnLower<'_> {
                             .expect("take");
                     Ok(Some(s.b.opt_some(v)))
                 },
-                &mut |s| Ok(Some(s.b.opt_none(result))),
+                &mut |s| Ok(Some(s.none_owned(result))),
             );
         }
         self.status_result(status, Some((slot, payload)), result)
+    }
+
+    /// The error case of `ea` that the status `code` names; the last listed case otherwise.
+    fn status_error(
+        &mut self,
+        ea: ms_mir::types::AltId,
+        code: Value,
+        cases: &[(i64, usize)],
+    ) -> Result<Value, Error> {
+        let (&(n, idx), rest) = cases
+            .split_first()
+            .ok_or_else(|| Error::new("no error case for a runtime status"))?;
+        if rest.is_empty() {
+            return Ok(self.b.alt_new(ea, idx as u32, &[]));
+        }
+        let k = self.b.iconst(n);
+        let hit = self.b.icmp(Cc::Eq, code, k);
+        let ty = self.b.m.types.alt(ea);
+        let r = self.two_ways(
+            hit,
+            ty,
+            &mut |s| Ok(Some(s.b.alt_new(ea, idx as u32, &[]))),
+            &mut |s| s.status_error(ea, code, rest).map(Some),
+        )?;
+        Ok(r.v)
     }
 
     fn ok_case_index(&self, a: ms_mir::types::AltId) -> Result<usize, Error> {
@@ -295,7 +376,10 @@ impl FnLower<'_> {
             .iter()
             .position(|c| c.name == "error")
             .ok_or_else(|| Error::new("not a Result"))?;
-        let code = self.b.unop(Op::B2I, status);
+        let code = self
+            .b
+            .emit(Op::B2I, &[status], Imm::None, Some(MTy::INT))
+            .expect("b2i");
         let zero = self.b.iconst(0);
         let good = self.b.icmp(Cc::Eq, code, zero);
         self.two_ways(
@@ -316,26 +400,17 @@ impl FnLower<'_> {
                 let TyKind::Alt(ea) = s.b.m.types.kind(et).clone() else {
                     return Err(Error::new("a runtime status needs an error alternative"));
                 };
-                let mut acc: Option<Value> = None;
-                for (n, name) in STATUS_CASES {
-                    let Some(idx) = s.b.m.alts[ea.index()]
-                        .cases
-                        .iter()
-                        .position(|c| c.name == name)
-                    else {
-                        continue;
-                    };
-                    let cand = s.b.alt_new(ea, idx as u32, &[]);
-                    acc = Some(match acc {
-                        None => cand,
-                        Some(prev) => {
-                            let k = s.b.iconst(n);
-                            let hit = s.b.icmp(Cc::Eq, code, k);
-                            s.b.select(hit, cand, prev)
-                        }
-                    });
-                }
-                let e = acc.ok_or_else(|| Error::new("no error case for a runtime status"))?;
+                let cases: Vec<(i64, usize)> = STATUS_CASES
+                    .iter()
+                    .filter_map(|(n, name)| {
+                        let idx = s.b.m.alts[ea.index()]
+                            .cases
+                            .iter()
+                            .position(|c| c.name == *name)?;
+                        Some((*n, idx))
+                    })
+                    .collect();
+                let e = s.status_error(ea, code, &cases)?;
                 Ok(Some(s.b.alt_new(a, err as u32, &[e])))
             },
         )

@@ -13,6 +13,7 @@ mod eq;
 mod expr;
 mod func;
 mod iface;
+mod mapset;
 mod matching;
 mod native;
 mod rtcall;

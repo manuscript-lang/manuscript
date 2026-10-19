@@ -67,7 +67,10 @@ impl<'a> FnLower<'a> {
                 _ => self.type_application(e),
             },
             ExprKind::List(items) => self.list_literal(e, items),
-            ExprKind::Map(_) => Err(Error::new("map literals are not supported yet")),
+            ExprKind::Map(entries) => {
+                let t = self.emty(e)?;
+                self.map_literal(t, entries)
+            }
             ExprKind::Unary { op, operand } => self.unary(e, *op, operand),
             ExprKind::Binary { op, left, right } => self.binary(e, *op, left, right),
             ExprKind::Lambda(_) => self.lambda(e),

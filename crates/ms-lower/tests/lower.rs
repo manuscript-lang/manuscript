@@ -71,3 +71,14 @@ fn interface_views_and_error_conversion() {
     assert!(mir.contains("iface.new"));
     assert!(mir.contains("call.method"));
 }
+
+#[test]
+fn maps_and_sets() {
+    let mir = lower(
+        "maps",
+        "export fn main() Int:\n    var m = {\"a\": 1}\n    m.add(\"b\", 2)\n    let s = Set[Int]([1, 2])\n    var total = 0\n    for e in m:\n        total += e.value\n    return total + s.length() + m.get_or(\"z\", 0)\n",
+    );
+    assert!(mir.contains("msrt_map_add"));
+    assert!(mir.contains("msrt_list_to_set"));
+    assert!(mir.contains("put "));
+}

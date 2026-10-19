@@ -27,7 +27,7 @@ impl FnLower<'_> {
     }
 
     /// `ok(payload)` of the Result type (payload owned).
-    fn testing_ok(&mut self, rty: MTy, payload: Value) -> Result<Value, Error> {
+    pub(crate) fn testing_ok(&mut self, rty: MTy, payload: Value) -> Result<Value, Error> {
         let (a, ok, _) = self.result_cases(rty)?;
         Ok(self.b.alt_new(a, ok, &[payload]))
     }
@@ -116,6 +116,12 @@ impl FnLower<'_> {
         let rty = self.emty(e)?;
         self.at(e.pos);
         let name = name.replacen("assert_", "expect_", 1);
+        if name == "fail" {
+            // The message is consumed, not borrowed.
+            let m = self.cat(&[args[0].val])?;
+            let v = self.testing_fail(rty, m.v)?;
+            return Ok(Val { v, own: true });
+        }
         let vals: Vec<Value> = args.iter().map(|a| self.borrow(a.val)).collect();
         match name.as_str() {
             "expect_true" | "expect_false" => {
@@ -134,11 +140,6 @@ impl FnLower<'_> {
                     let l = s.lit(text);
                     s.cat(&[l])
                 })
-            }
-            "fail" => {
-                let m = self.cat(&[args[0].val])?;
-                let v = self.testing_fail(rty, m.v)?;
-                Ok(Val { v, own: true })
             }
             "expect_equal" | "expect_not_equal" => {
                 let t = self.ty_of(vals[0]);

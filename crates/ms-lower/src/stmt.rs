@@ -33,6 +33,7 @@ impl<'a> FnLower<'a> {
             StmtKind::Bind { pattern, value, .. } => self.bind(pattern, value)?,
             StmtKind::Assign { target, value, .. } => self.assign(target, value)?,
             StmtKind::Call(e) => {
+                self.discard = Some(e as *const Expr as usize);
                 let x = self.expr(e)?;
                 if x.own {
                     self.drop_value(x.v);
@@ -46,7 +47,17 @@ impl<'a> FnLower<'a> {
                         own: false,
                     },
                 };
+                // A bare `return` in a test ends it successfully.
+                let x = if e.is_none() && self.ret_ty != MTy::UNIT {
+                    let u = self.b.unit();
+                    let ok = self.testing_ok(self.ret_ty, u)?;
+                    Val { v: ok, own: true }
+                } else {
+                    x
+                };
                 self.emit_return(Some(x));
+                // The return released this statement's temporaries.
+                self.temps.truncate(mark);
                 return Ok(());
             }
             StmtKind::Break => {
@@ -431,7 +442,22 @@ impl<'a> FnLower<'a> {
                     self.scopes.pop();
                     return Ok(());
                 }
-                let ity = self.ty_of(it.v);
+                let mut it = it;
+                let mut ity = self.ty_of(it.v);
+                if crate::mapset::is_map_or_set(self.b.m, ity) {
+                    // A map yields its entries and a set its values, as a list snapshot.
+                    let elem = self.mty(&loop_var.ty)?;
+                    let list = self.b.m.types.list(elem);
+                    it = match self.b.m.types.kind(ity).clone() {
+                        TyKind::Obj(n, _) if n == "Map" => self.map_entries(iter, it, list)?,
+                        _ => {
+                            let sym = crate::rtcall::method_symbol(self.b.m, ity, "values")
+                                .ok_or_else(|| Error::new("no values for a set"))?;
+                            self.rt_method(&sym, it, &[], &[], list)?
+                        }
+                    };
+                    ity = list;
+                }
                 let TyKind::List(_) = self.b.m.types.kind(ity).clone() else {
                     return Err(Error::new("for over this type is not supported yet"));
                 };

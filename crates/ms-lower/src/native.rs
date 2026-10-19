@@ -187,6 +187,14 @@ impl<'a> FnLower<'a> {
         }
         let name = native.rsplit('/').next().unwrap_or(native);
         let rty = self.ty_of(recv.v);
+        // `map_add`, `set_values`: the receiver type already says which.
+        let name = if crate::mapset::is_map_or_set(self.b.m, rty) {
+            name.strip_prefix("map_")
+                .or_else(|| name.strip_prefix("set_"))
+                .unwrap_or(name)
+        } else {
+            name
+        };
         match (self.b.m.types.kind(rty).clone(), name) {
             (TyKind::Str, "replace" | "replace_first") => {
                 let sym = if name == "replace" {
@@ -216,6 +224,24 @@ impl<'a> FnLower<'a> {
                 }
                 let out = self.call_runtime("msrt_string_replace_n", &vals, MTy::STR)?;
                 Ok(Val { v: out, own: true })
+            }
+            (TyKind::Obj(n, _), "length" | "is_empty") if n == "Map" || n == "Set" => {
+                let r = self.borrow(recv);
+                let len = self.call_runtime("msrt_map_length", &[r], MTy::INT)?;
+                if name == "length" {
+                    return Ok(Val { v: len, own: false });
+                }
+                let z = self.b.iconst(0);
+                let v = self.b.icmp(ms_mir::ir::Cc::Eq, len, z);
+                Ok(Val { v, own: false })
+            }
+            (TyKind::Obj(n, _), "get_or") if n == "Map" => {
+                let result = self.emty(e)?;
+                self.map_get_or(recv, &m.ty.params, &args, result)
+            }
+            (TyKind::Obj(n, _), "entries") if n == "Map" => {
+                let result = self.emty(e)?;
+                self.map_entries(recv_expr, recv, result)
             }
             (TyKind::List(_), "length") => {
                 let r = self.borrow(recv);
@@ -361,7 +387,7 @@ impl<'a> FnLower<'a> {
 
     /// A variable that always holds the receiver list, for use across loop headers.
     /// The flag says the variable is a hidden copy to drop afterwards.
-    fn list_source(
+    pub(crate) fn list_source(
         &mut self,
         recv_expr: &Expr,
         recv: Val,
@@ -376,7 +402,7 @@ impl<'a> FnLower<'a> {
         Ok((var, true))
     }
 
-    fn release_source(&mut self, var: ms_mir::builder::Var, hidden: bool) {
+    pub(crate) fn release_source(&mut self, var: ms_mir::builder::Var, hidden: bool) {
         if hidden {
             let v = self.b.use_var(var);
             self.drop_value(v);
@@ -466,10 +492,17 @@ impl<'a> FnLower<'a> {
     /// A collection method that changes its receiver place: the place receives the new value.
     pub fn mutator_call(
         &mut self,
+        e: &Expr,
         view: &CallView<'_>,
+        m: &ct::MethodRef,
         recv_expr: &Expr,
         name: &str,
     ) -> Result<Val, Error> {
+        // A map or set mutator returns its receiver; copy it only when something reads it.
+        let discarded = self.discard == Some(e as *const Expr as usize);
+        let result_ty = self.ety(e);
+        let hands_back = !discarded
+            && (result_ty.is_std("List") || result_ty.is_std("Map") || result_ty.is_std("Set"));
         let args = self.native_args(view)?;
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
@@ -480,7 +513,7 @@ impl<'a> FnLower<'a> {
                 return Ok(x);
             }
             let old = self.owned(x);
-            let (new, r) = self.mutate_list(name, old, &args)?;
+            let (new, r) = self.mutate_any(name, old, &m.ty.params, &args, false)?;
             return Ok(match r {
                 Some(r) => {
                     self.drop_value(new);
@@ -491,7 +524,7 @@ impl<'a> FnLower<'a> {
         }
         let mut result: Option<Val> = None;
         self.place_update(recv_expr, &mut |s, old| {
-            let (new, r) = s.mutate_list(name, old, &args)?;
+            let (new, r) = s.mutate_any(name, old, &m.ty.params, &args, hands_back)?;
             result = r;
             Ok(new)
         })?;
@@ -678,7 +711,7 @@ impl<'a> FnLower<'a> {
                         let v = if keep {
                             s.b.call_ind(f.val.v, &[])
                         } else {
-                            s.b.opt_none(out)
+                            s.none_owned(out)
                         };
                         s.finish(recv);
                         s.finish(f.val);
@@ -833,7 +866,7 @@ impl<'a> FnLower<'a> {
                         Ok(Some(v))
                     },
                     &mut |s| {
-                        let v = s.b.opt_none(out);
+                        let v = s.none_owned(out);
                         s.finish(recv);
                         Ok(Some(v))
                     },
@@ -851,6 +884,25 @@ impl<'a> FnLower<'a> {
         }
         matches!(&cur.kind, ExprKind::Name(_))
             && matches!(self.hir.resolution(cur), Resolution::Local(_))
+    }
+
+    fn mutate_any(
+        &mut self,
+        name: &str,
+        old: Value,
+        decl: &[ct::Param],
+        args: &[NArg],
+        copy_result: bool,
+    ) -> Result<(Value, Option<Val>), Error> {
+        if crate::mapset::is_map_or_set(self.b.m, self.ty_of(old)) {
+            return self.mutate_map(name, old, decl, args, copy_result);
+        }
+        let (new, r) = self.mutate_list(name, old, args)?;
+        if r.is_none() && copy_result {
+            let v = self.owned(Val { v: new, own: false });
+            return Ok((new, Some(Val { v, own: true })));
+        }
+        Ok((new, r))
     }
 
     /// `(new list, result)` of a list mutator applied to the owned `old` list.
@@ -932,7 +984,7 @@ impl<'a> FnLower<'a> {
                 let res = self.fresh_var(optty);
                 let acc = self.fresh_var(lt);
                 self.b.def_var(acc, old);
-                let none = self.b.opt_none(optty);
+                let none = self.none_owned(optty);
                 self.b.def_var(res, none);
                 let (take, join) = (self.b.new_block(), self.b.new_block());
                 self.b.br_if(empty, join, &[], take, &[]);
@@ -973,7 +1025,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// A fresh SSA variable owning or borrowing per the type.
-    fn fresh_var(&mut self, t: MTy) -> ms_mir::builder::Var {
+    pub(crate) fn fresh_var(&mut self, t: MTy) -> ms_mir::builder::Var {
         let owned = self.needs_drop(t);
         self.b
             .declare_var(t, if owned { Mode::Own } else { Mode::Borrow })
@@ -1130,7 +1182,7 @@ impl<'a> FnLower<'a> {
             "find" | "find_index" => {
                 let by_index = name == "find_index";
                 let acc = self.fresh_var(out);
-                let none = self.b.opt_none(out);
+                let none = self.none_owned(out);
                 self.b.def_var(acc, none);
                 self.each_element(lv, &mut |s, i, x| {
                     let r = {

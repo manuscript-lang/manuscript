@@ -241,7 +241,7 @@ impl ms_syntax::visit::Visitor for Mutations<'_> {
 }
 
 /// Locals of the enclosing function that the lambda body changes (their closure copy is mutable).
-fn mutated_captures(
+pub(crate) fn mutated_captures(
     hir: &ms_check::hir::ModuleHir,
     body: &[Stmt],
 ) -> std::collections::HashSet<usize> {

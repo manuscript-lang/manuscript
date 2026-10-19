@@ -261,7 +261,7 @@ pub enum Op {
     // Ownership.
     Copy, Drop, DropIf,
     // Raw memory: stack slots, interior pointers into lists and records.
-    Slot, Load, Take, Store, ListAddr, PtrField, PtrIsNull,
+    Slot, Load, Take, Store, Put, ListAddr, PtrField, PtrIsNull,
     // Calls.
     Call, CallInd, CallRt, CallMethod,
     // Runtime services.
@@ -371,7 +371,7 @@ impl Op {
         Op::OptSome, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap,
         Op::StrLen, Op::SharedNew, Op::SharedGet,
         Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceData,
-        Op::Copy, Op::Drop, Op::DropIf, Op::Slot, Op::Load, Op::Take, Op::Store, Op::ListAddr, Op::PtrField, Op::PtrIsNull,
+        Op::Copy, Op::Drop, Op::DropIf, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::PtrField, Op::PtrIsNull,
         Op::Call, Op::CallInd, Op::CallRt, Op::CallMethod,
         Op::TypeDesc, Op::Poll, Op::DepthEnter, Op::DepthLeave, Op::CleanupPush, Op::CleanupRun,
         Op::GlobalGet, Op::GlobalSet,
@@ -454,6 +454,7 @@ impl Op {
             Op::Load => ("load", K::Ty, true, effects!(reads)),
             Op::Take => ("take", K::Ty, true, effects!(reads, writes)),
             Op::Store => ("store", K::None, false, effects!(writes)),
+            Op::Put => ("put", K::None, false, effects!(writes)),
             Op::ListAddr => ("list.addr", K::None, true, effects!(faults)),
             Op::PtrField => ("ptr.field", K::Field, true, effects!()),
             Op::PtrIsNull => ("ptr.is_null", K::None, true, effects!()),

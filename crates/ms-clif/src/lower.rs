@@ -1344,7 +1344,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let p = self.a(inst, 0)[0];
                 self.load_leaves(p, 0, &leaves)
             }
-            Op::Store => {
+            Op::Store | Op::Put => {
                 let ty = f.ty(inst.args[1]);
                 let leaves = self.g.lay.leaves(ty);
                 let (p, v) = (self.a(inst, 0)[0], self.a(inst, 1));

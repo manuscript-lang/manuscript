@@ -263,9 +263,12 @@ impl<'a> FnLower<'a> {
         if native == "contract" {
             return self.contract_call(e, view, m, recv_expr);
         }
-        let method = native.rsplit('/').next().unwrap_or(native);
-        if ms_check::effects::collection_mutation(&self.ety(recv_expr), method) {
-            return self.mutator_call(view, recv_expr, method);
+        let method = m
+            .name()
+            .map(|n| n.to_string())
+            .unwrap_or_else(|| native.rsplit('/').next().unwrap_or(native).to_string());
+        if ms_check::effects::collection_mutation(&self.ety(recv_expr), &method) {
+            return self.mutator_call(e, view, m, recv_expr, &method);
         }
         let recv = self.expr(recv_expr)?;
         if self.dead {
@@ -395,6 +398,11 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         let t = ct::sub(ty, &self.subst);
         let mt = self.cx.lower_ty(self.b.m, &t)?;
+        if crate::mapset::is_map_or_set(self.b.m, mt)
+            || matches!(self.b.m.types.kind(mt), TyKind::List(_))
+        {
+            return self.construct_collection(view, mt);
+        }
         if matches!(self.b.m.types.kind(mt), TyKind::Iface(_)) {
             // `Shape(value: x)`: an explicit interface view.
             let [a] = view.arguments.as_slice() else {

@@ -57,6 +57,8 @@ pub(crate) struct FnLower<'a> {
     pub counts_depth: bool,
     /// Record to build on return and the binding uids of the `var` parameters it carries.
     pub var_ret: Option<(ms_mir::types::RecId, Vec<usize>)>,
+    /// The expression statement being lowered, whose value nothing reads (by address).
+    pub discard: Option<usize>,
 }
 
 /// Positions (receiver first) of the `var` parameters a callable may change.
@@ -264,6 +266,7 @@ impl<'a> FnLower<'a> {
             ret_ty,
             counts_depth: false,
             var_ret: None,
+            discard: None,
         }
     }
 
@@ -304,6 +307,12 @@ impl<'a> FnLower<'a> {
         self.b
             .emit(Op::Copy, &[x.v], ms_mir::ir::Imm::None, Some(t))
             .expect("copy result")
+    }
+
+    /// An owned `none` of optional type `t` (a bare `opt.none` is a borrow).
+    pub fn none_owned(&mut self, t: MTy) -> Value {
+        let n = self.b.opt_none(t);
+        self.owned(Val { v: n, own: false })
     }
 
     /// The operand for a borrowing use; owned temporaries are dropped by `flush_temps`.
@@ -480,8 +489,15 @@ impl<'a> FnLower<'a> {
             .collect();
         let vars = var_positions(c);
         let mut var_uids = Vec::new();
+        // Parameters the body changes are the callee's own copies.
+        let mutated = match c.body() {
+            ms_check::hir::Body::Block(stmts) => crate::closure::mutated_captures(&self.hir, stmts),
+            ms_check::hir::Body::Expr(_) => Default::default(),
+        };
         for (i, (b, v)) in bindings.iter().zip(params).enumerate() {
-            if vars.contains(&i) {
+            let own_copy =
+                vars.contains(&i) || (mutated.contains(&b.uid) && self.needs_drop(self.ty_of(v)));
+            if own_copy {
                 // A `var` parameter is a local the callee owns and hands back on return.
                 let ty = self.ty_of(v);
                 let owned = self.needs_drop(ty);
@@ -491,7 +507,11 @@ impl<'a> FnLower<'a> {
                 let o = self.owned(Val { v, own: false });
                 self.b.def_var(var, o);
                 self.locals.insert(b.uid, Local { var, ty });
-                var_uids.push(b.uid);
+                if vars.contains(&i) {
+                    var_uids.push(b.uid);
+                } else if owned {
+                    self.scopes.last_mut().expect("scope").push(b.uid);
+                }
             } else {
                 self.bind_borrowed(b, v);
             }
