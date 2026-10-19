@@ -1,0 +1,33 @@
+module "list_negative"
+entry @main
+fn @get_at(%l: list<int>, %i: int) -> int {
+b0:
+  %x: int = list.get %l, %i
+  ret %x
+}
+fn @main() -> int {
+b0:
+  %a: int = iconst 1
+  %b: int = iconst 2
+  %l0: list<int> = list.lit %a, %b
+  %i: int = iconst 1
+  %r: int = call @get_at (%l0, %i)
+  %n: int = list.len %l0
+  %c: bool = icmp.lt %i, %n
+  br_if %c, ok(), bad()
+ok:
+  %u0: int = list.get %l0, %i
+  %v: int = iconst 9
+  %l1: list<int> = list.push %l0, %v
+  %w: int = list.get %l1, %n
+  drop %l1
+  %s: int = iadd %w, %u0
+  br fin(%s)
+bad:
+  drop %l0
+  %m: int = iconst -1
+  br fin(%m)
+fin(%res: int):
+  %t: int = iadd %res, %r
+  ret %t
+}

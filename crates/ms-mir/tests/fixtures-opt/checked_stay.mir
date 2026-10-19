@@ -1,0 +1,25 @@
+module "checked_stay"
+entry @main
+fn @keep(%x: int) -> int {
+b0:
+  %c: int = iconst 5
+  %a: int = iadd.chk %x, %c
+  %b: int = imul.chk %a, %c
+  %d: int = isub.chk %b, %c
+  ret %d
+}
+fn @by_minus_one(%x: int) -> int {
+b0:
+  %m: int = iconst -1
+  %q: int = sdiv.chk %x, %m
+  ret %q
+}
+fn @main() -> int {
+b0:
+  %x: int = iconst 4
+  %r: int = call @keep (%x)
+  %m: int = iconst -9223372036854775808
+  %q: int = call @by_minus_one (%m)
+  %s: int = iadd %r, %q
+  ret %s
+}

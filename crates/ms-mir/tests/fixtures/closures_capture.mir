@@ -1,0 +1,17 @@
+module "clo"
+entry @main
+fn @add(%env: ptr, %x: int) -> int closure(int) {
+b0:
+  %k: int = closure.cap 0 %env
+  %r: int = iadd %x, %k
+  ret %r
+}
+fn @main() -> int {
+b0:
+  %k: int = iconst 10
+  %f: fn(int) -> int = closure.new @add %k
+  %x: int = iconst 5
+  %r: int = call.ind (%f, %x)
+  drop %f
+  ret %r
+}

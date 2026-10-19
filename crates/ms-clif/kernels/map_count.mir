@@ -1,0 +1,60 @@
+module "map_count"
+extern @msrt_map_new(ptr)
+extern @msrt_map_get_ptr(ptr, ptr, ptr, ptr) -> ptr
+extern @msrt_map_add(ptr, ptr, ptr, ptr, ptr)
+extern @msrt_slot_drop(ptr, ptr)
+extern @msrt_print_int(int)
+record MapRaw { slots: int, index: int, len: int, used: int, cap: int, mask: int }
+entry @main
+fn @count(%n: int) -> int {
+b0:
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  %mul: int = iconst 7919
+  %md: int = iconst 5003
+  %m: ptr = slot Map<int, int>
+  %kd: ptr = typedesc int
+  %vd: ptr = typedesc int
+  %mt: ptr = typedesc Map<int, int>
+  %raw: ptr = slot MapRaw
+  %k: ptr = slot int
+  %v: ptr = slot int
+  %u0: unit = call.rt @msrt_map_new (%m)
+  br loop(%zero)
+loop(%i: int):
+  poll
+  %c: bool = icmp.lt %i, %n
+  br_if %c, body(), done()
+body:
+  %t: int = imul %i, %mul
+  %key: int = srem %t, %md
+  store %k, %key
+  %p: ptr = call.rt @msrt_map_get_ptr (%m, %kd, %vd, %k)
+  %isn: bool = ptr.is_null %p
+  br_if %isn, add(), bump()
+add:
+  store %v, %one
+  %u1: unit = call.rt @msrt_map_add (%m, %kd, %vd, %k, %v)
+  br next()
+bump:
+  %old: int = load int %p
+  %nw: int = iadd %old, %one
+  store %p, %nw
+  br next()
+next:
+  %j: int = iadd %i, %one
+  br loop(%j)
+done:
+  %lp: ptr = ptr.field MapRaw.len %m
+  %len: int = load int %lp
+  %u2: unit = call.rt @msrt_slot_drop (%mt, %m)
+  ret %len
+}
+fn @main() -> int {
+b0:
+  %n: int = iconst 2000000
+  %r: int = call @count (%n)
+  %u: unit = call.rt @msrt_print_int (%r)
+  %z: int = iconst 0
+  ret %z
+}

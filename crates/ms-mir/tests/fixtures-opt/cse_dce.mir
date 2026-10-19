@@ -1,0 +1,48 @@
+module "cse_dce"
+entry @main
+fn @dup(%x: int, %y: int, %l: list<int>) -> int {
+b0:
+  %a: int = iadd %x, %y
+  %b: int = iadd %y, %x
+  %n1: int = list.len %l
+  %n2: int = list.len %l
+  %c: int = iadd %a, %b
+  %d: int = iadd %n1, %n2
+  %dead: int = imul %x, %y
+  %dead2: int = iadd %dead, %dead
+  %lt: bool = icmp.lt %x, %y
+  br_if %lt, yes(), no()
+yes:
+  %again: int = iadd %x, %y
+  %e: int = iadd %again, %c
+  ret %e
+no:
+  %f: int = iadd %c, %d
+  ret %f
+}
+fn @owned_unused() -> int {
+b0:
+  %cap: int = iconst 0
+  %l: list<int> = list.new %cap
+  %one: int = iconst 1
+  %l2: list<int> = list.push %l, %one
+  %unused: list<int> = list.new %cap
+  drop %unused
+  %n: int = list.len %l2
+  drop %l2
+  ret %n
+}
+fn @main() -> int {
+b0:
+  %cap: int = iconst 0
+  %l: list<int> = list.new %cap
+  %one: int = iconst 1
+  %l2: list<int> = list.push %l, %one
+  %x: int = iconst 3
+  %y: int = iconst 4
+  %r: int = call @dup (%x, %y, %l2)
+  drop %l2
+  %o: int = call @owned_unused ()
+  %s: int = iadd %r, %o
+  ret %s
+}

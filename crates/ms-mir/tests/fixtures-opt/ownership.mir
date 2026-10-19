@@ -1,0 +1,26 @@
+module "own"
+entry @main
+fn @push2(%l: own list<int>, %v: int) -> list<int> {
+b0:
+  %a: list<int> = list.push %l, %v
+  %b: list<int> = list.push %a, %v
+  ret %b
+}
+fn @total(%l: list<int>) -> int {
+b0:
+  %n: int = list.len %l
+  ret %n
+}
+fn @main() -> int {
+b0:
+  %cap: int = iconst 0
+  %l0: list<int> = list.new %cap
+  %v: int = iconst 3
+  %l1: list<int> = call @push2 (%l0, %v)
+  %n: int = call @total (%l1)
+  %l2: list<int> = call @push2 (%l1, %n)
+  %m: int = call @total (%l2)
+  drop %l2
+  %r: int = iadd %n, %m
+  ret %r
+}

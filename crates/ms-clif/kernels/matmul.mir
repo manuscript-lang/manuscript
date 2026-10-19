@@ -1,0 +1,90 @@
+module "matmul"
+extern @msrt_print_int(int)
+entry @main
+fn @build(%n: int, %sign: int) -> list<list<float>> {
+b0:
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  %outer0: list<list<float>> = list.new %n
+  br rows(%zero, %outer0)
+rows(%i: int, %rows: own list<list<float>>):
+  %c: bool = icmp.lt %i, %n
+  br_if %c, rb(), rd()
+rb:
+  poll
+  %row0: list<float> = list.new %n
+  br cols(%zero, %row0)
+cols(%j: int, %row: own list<float>):
+  %cj: bool = icmp.lt %j, %n
+  br_if %cj, cb(), cd()
+cb:
+  poll
+  %sj: int = imul.chk %sign, %j
+  %v: int = iadd.chk %i, %sj
+  %f: float = i2f %v
+  %row2: list<float> = list.push %row, %f
+  %j1: int = iadd.chk %j, %one
+  br cols(%j1, %row2)
+cd:
+  %rows2: list<list<float>> = list.push %rows, %row
+  %i1: int = iadd.chk %i, %one
+  br rows(%i1, %rows2)
+rd:
+  ret %rows
+}
+fn @matmul(%n: int) -> float {
+b0:
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  %m1: int = iconst -1
+  %a: list<list<float>> = call @build (%n, %one)
+  %b: list<list<float>> = call @build (%n, %m1)
+  %fz: float = fconst 0.0
+  br li(%zero, %fz)
+li(%i: int, %total: float):
+  %ci: bool = icmp.lt %i, %n
+  br_if %ci, lib(), ldone()
+lib:
+  %arow: list<float> = list.get %a, %i
+  br lj(%zero, %total)
+lj(%j: int, %t2: float):
+  %cj: bool = icmp.lt %j, %n
+  br_if %cj, ljb(), lji()
+ljb:
+  br lk(%zero, %fz)
+lk(%k: int, %s: float):
+  poll
+  %ck: bool = icmp.lt %k, %n
+  br_if %ck, lkb(), lkd()
+lkb:
+  %x: float = list.get %arow, %k
+  %brow: list<float> = list.get %b, %k
+  %y: float = list.get %brow, %j
+  %xy: float = fmul %x, %y
+  %s2: float = fadd %s, %xy
+  %k1: int = iadd.chk %k, %one
+  br lk(%k1, %s2)
+lkd:
+  %t3: float = fadd %t2, %s
+  %j1: int = iadd.chk %j, %one
+  br lj(%j1, %t3)
+lji:
+  %i1: int = iadd.chk %i, %one
+  br li(%i1, %t2)
+ldone:
+  drop %a
+  drop %b
+  ret %total
+}
+fn @main() -> int {
+b0:
+  %n: int = iconst 200
+  %r: float = call @matmul (%n)
+  %o: opt<int> = f2i.opt %r
+  %p: bool = opt.is_some %o
+  %v: int = opt.get %o
+  %zero: int = iconst 0
+  %res: int = select %p, %v, %zero
+  %u: unit = call.rt @msrt_print_int (%res)
+  ret %zero
+}

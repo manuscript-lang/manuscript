@@ -1,0 +1,15 @@
+module "div"
+entry @main
+fn @main() -> int {
+b0:
+  %a: int = iconst -7
+  %b: int = iconst 2
+  %q: int = sdiv.chk %a, %b
+  %r: int = srem.chk %a, %b
+  %s: int = iconst 65
+  %one: int = iconst 1
+  %sh: int = shl %one, %s
+  %t1: int = iadd %q, %r
+  %t2: int = iadd %t1, %sh
+  ret %t2
+}

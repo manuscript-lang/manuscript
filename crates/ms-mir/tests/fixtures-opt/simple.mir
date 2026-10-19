@@ -1,0 +1,22 @@
+module "simple"
+extern @msrt_print_int(int)
+entry @main
+fn @add1(%x: int) -> int {
+b0:
+  %one: int = iconst 1
+  %r: int = iadd.chk %x, %one
+  ret %r
+}
+fn @show(%x: int) {
+b0:
+  %u: unit = call.rt @msrt_print_int (%x)
+  ret
+}
+fn @main() -> int {
+b0:
+  %a: int = iconst 41
+  %b: int = call @add1 (%a)
+  %u: unit = call @show (%b)
+  %c: int = call @add1 (%b)
+  ret %c
+}

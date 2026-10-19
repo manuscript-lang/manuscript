@@ -1,0 +1,186 @@
+module "nbody"
+record Body { x: float, y: float, z: float, vx: float, vy: float, vz: float, mass: float }
+record Adv { e: float, bodies: list<Body> }
+extern @msrt_print_int(int)
+entry @main
+fn @advance(%bodies: own list<Body>, %steps: int) -> Adv {
+b0:
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  %n: int = list.len %bodies
+  %dt: float = fconst 0.01
+  %eps: float = fconst 0.01
+  br sloop(%zero)
+sloop(%s: int):
+  %cs: bool = icmp.lt %s, %steps
+  br_if %cs, sb(), energy()
+sb:
+  poll
+  br iloop(%zero)
+iloop(%i: int):
+  %ci: bool = icmp.lt %i, %n
+  br_if %ci, ib(), pinit()
+ib:
+  %a: Body = list.get %bodies, %i
+  %ax: float = rec.get Body.x %a
+  %ay: float = rec.get Body.y %a
+  %az: float = rec.get Body.z %a
+  %am: float = rec.get Body.mass %a
+  %j0: int = iadd.chk %i, %one
+  br jloop(%j0)
+jloop(%j: int):
+  %cj: bool = icmp.lt %j, %n
+  br_if %cj, jb(), jd()
+jb:
+  %b: Body = list.get %bodies, %j
+  %bx: float = rec.get Body.x %b
+  %by: float = rec.get Body.y %b
+  %bz: float = rec.get Body.z %b
+  %bm: float = rec.get Body.mass %b
+  %dx: float = fsub %ax, %bx
+  %dy: float = fsub %ay, %by
+  %dz: float = fsub %az, %bz
+  %dx2: float = fmul %dx, %dx
+  %dy2: float = fmul %dy, %dy
+  %dz2: float = fmul %dz, %dz
+  %s1: float = fadd %dx2, %dy2
+  %s2: float = fadd %s1, %dz2
+  %d2: float = fadd %s2, %eps
+  %dd: float = fmul %d2, %d2
+  %mag: float = fdiv %dt, %dd
+  %tx: float = fmul %dx, %bm
+  %txm: float = fmul %tx, %mag
+  %ty: float = fmul %dy, %bm
+  %tym: float = fmul %ty, %mag
+  %tz: float = fmul %dz, %bm
+  %tzm: float = fmul %tz, %mag
+  %ux: float = fmul %dx, %am
+  %uxm: float = fmul %ux, %mag
+  %uy: float = fmul %dy, %am
+  %uym: float = fmul %uy, %mag
+  %uz: float = fmul %dz, %am
+  %uzm: float = fmul %uz, %mag
+  %pi: ptr = list.addr %bodies, %i
+  %pivx: ptr = ptr.field Body.vx %pi
+  %pivy: ptr = ptr.field Body.vy %pi
+  %pivz: ptr = ptr.field Body.vz %pi
+  %ovx: float = load float %pivx
+  %ovy: float = load float %pivy
+  %ovz: float = load float %pivz
+  %nvx: float = fsub %ovx, %txm
+  %nvy: float = fsub %ovy, %tym
+  %nvz: float = fsub %ovz, %tzm
+  store %pivx, %nvx
+  store %pivy, %nvy
+  store %pivz, %nvz
+  %pj: ptr = list.addr %bodies, %j
+  %pjvx: ptr = ptr.field Body.vx %pj
+  %pjvy: ptr = ptr.field Body.vy %pj
+  %pjvz: ptr = ptr.field Body.vz %pj
+  %qvx: float = load float %pjvx
+  %qvy: float = load float %pjvy
+  %qvz: float = load float %pjvz
+  %mvx: float = fadd %qvx, %uxm
+  %mvy: float = fadd %qvy, %uym
+  %mvz: float = fadd %qvz, %uzm
+  store %pjvx, %mvx
+  store %pjvy, %mvy
+  store %pjvz, %mvz
+  %j1: int = iadd.chk %j, %one
+  br jloop(%j1)
+jd:
+  %i1: int = iadd.chk %i, %one
+  br iloop(%i1)
+pinit:
+  br ploop(%zero)
+ploop(%k: int):
+  %ck: bool = icmp.lt %k, %n
+  br_if %ck, pb(), pd()
+pb:
+  %pk: ptr = list.addr %bodies, %k
+  %px: ptr = ptr.field Body.x %pk
+  %py: ptr = ptr.field Body.y %pk
+  %pz: ptr = ptr.field Body.z %pk
+  %pvx: ptr = ptr.field Body.vx %pk
+  %pvy: ptr = ptr.field Body.vy %pk
+  %pvz: ptr = ptr.field Body.vz %pk
+  %x0: float = load float %px
+  %y0: float = load float %py
+  %z0: float = load float %pz
+  %vx0: float = load float %pvx
+  %vy0: float = load float %pvy
+  %vz0: float = load float %pvz
+  %dxv: float = fmul %dt, %vx0
+  %dyv: float = fmul %dt, %vy0
+  %dzv: float = fmul %dt, %vz0
+  %x1: float = fadd %x0, %dxv
+  %y1: float = fadd %y0, %dyv
+  %z1: float = fadd %z0, %dzv
+  store %px, %x1
+  store %py, %y1
+  store %pz, %z1
+  %k1: int = iadd.chk %k, %one
+  br ploop(%k1)
+pd:
+  %s3: int = iadd.chk %s, %one
+  br sloop(%s3)
+energy:
+  %e0: float = fconst 0.0
+  br eloop(%zero, %e0)
+eloop(%q: int, %e: float):
+  %cq: bool = icmp.lt %q, %n
+  br_if %cq, eb(), ed()
+eb:
+  %eb0: Body = list.get %bodies, %q
+  %ex: float = rec.get Body.vx %eb0
+  %ey: float = rec.get Body.vy %eb0
+  %ez: float = rec.get Body.vz %eb0
+  %em: float = rec.get Body.mass %eb0
+  %ex2: float = fmul %ex, %ex
+  %ey2: float = fmul %ey, %ey
+  %ez2: float = fmul %ez, %ez
+  %es1: float = fadd %ex2, %ey2
+  %es2: float = fadd %es1, %ez2
+  %et: float = fmul %em, %es2
+  %e1: float = fadd %e, %et
+  %q1: int = iadd.chk %q, %one
+  br eloop(%q1, %e1)
+ed:
+  %out: Adv = rec.new Adv %e, %bodies
+  ret %out
+}
+fn @main() -> int {
+b0:
+  %c: int = iconst 5
+  %l0: list<Body> = list.new %c
+  %z: float = fconst 0.0
+  %f1: float = fconst 1.0
+  %f2: float = fconst 2.0
+  %f3: float = fconst 3.0
+  %f4: float = fconst 4.0
+  %f10: float = fconst 10.0
+  %fh: float = fconst 0.5
+  %b0: Body = rec.new Body %z, %z, %z, %z, %z, %z, %f10
+  %b1: Body = rec.new Body %f1, %z, %z, %z, %f1, %z, %f1
+  %b2: Body = rec.new Body %z, %f2, %z, %f1, %z, %z, %f1
+  %b3: Body = rec.new Body %z, %z, %f3, %z, %z, %f1, %f1
+  %b4: Body = rec.new Body %f4, %f4, %z, %z, %z, %z, %fh
+  %l1: list<Body> = list.push %l0, %b0
+  %l2: list<Body> = list.push %l1, %b1
+  %l3: list<Body> = list.push %l2, %b2
+  %l4: list<Body> = list.push %l3, %b3
+  %l5: list<Body> = list.push %l4, %b4
+  %steps: int = iconst 200000
+  %r: Adv = call @advance (%l5, %steps)
+  %e: float = rec.get Adv.e %r
+  %k: float = fconst 1000.0
+  %ek: float = fmul %e, %k
+  %o: opt<int> = f2i.opt %ek
+  %p: bool = opt.is_some %o
+  %v: int = opt.get %o
+  %zero: int = iconst 0
+  %res: int = select %p, %v, %zero
+  drop %r
+  %u: unit = call.rt @msrt_print_int (%res)
+  ret %zero
+}

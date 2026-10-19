@@ -1,0 +1,60 @@
+module "cfg"
+entry @main
+fn @route(%x: int) -> int {
+b0:
+  %t: bool = bconst true
+  br_if %t, a(), b()
+a:
+  br hop(%x, %x)
+b:
+  %k: int = iconst 99
+  ret %k
+hop(%p: int, %q: int):
+  br join(%p)
+join(%v: int):
+  %one: int = iconst 1
+  %r: int = iadd %v, %one
+  br fin()
+fin:
+  ret %r
+}
+fn @loop_sum(%n: int) -> int {
+b0:
+  %z: int = iconst 0
+  br head(%z, %z, %n)
+head(%i: int, %acc: int, %lim: int):
+  %c: bool = icmp.lt %i, %lim
+  br_if %c, body(), done()
+body:
+  %a: int = iadd.chk %acc, %i
+  %one: int = iconst 1
+  %j: int = iadd %i, %one
+  br head(%j, %a, %lim)
+done:
+  ret %acc
+}
+fn @sw() -> int {
+b0:
+  %v: int = iconst 2
+  switch %v [1: one(), 2: two()] default other()
+one:
+  %a: int = iconst 10
+  ret %a
+two:
+  %b: int = iconst 20
+  ret %b
+other:
+  %c: int = iconst 30
+  ret %c
+}
+fn @main() -> int {
+b0:
+  %x: int = iconst 6
+  %a: int = call @route (%x)
+  %n: int = iconst 10
+  %b: int = call @loop_sum (%n)
+  %c: int = call @sw ()
+  %s: int = iadd %a, %b
+  %r: int = iadd %s, %c
+  ret %r
+}

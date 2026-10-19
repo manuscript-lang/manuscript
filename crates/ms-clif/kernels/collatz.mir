@@ -1,0 +1,49 @@
+module "collatz"
+extern @msrt_print_int(int)
+entry @main
+fn @collatz(%limit: int) -> int {
+b0:
+  %one: int = iconst 1
+  %zero: int = iconst 0
+  br outer(%one, %zero)
+outer(%n: int, %best: int):
+  %c: bool = icmp.lt %n, %limit
+  br_if %c, init(), done()
+init:
+  br inner(%n, %zero)
+inner(%x: int, %steps: int):
+  poll
+  %ne: bool = icmp.ne %x, %one
+  br_if %ne, body(), after()
+body:
+  %two: int = iconst 2
+  %r: int = srem.chk %x, %two
+  %even: bool = icmp.eq %r, %zero
+  br_if %even, ev(), od()
+ev:
+  %h: int = sdiv.chk %x, %two
+  br next(%h)
+od:
+  %three: int = iconst 3
+  %t: int = imul.chk %three, %x
+  %t1: int = iadd.chk %t, %one
+  br next(%t1)
+next(%nx: int):
+  %s1: int = iadd.chk %steps, %one
+  br inner(%nx, %s1)
+after:
+  %gt: bool = icmp.gt %steps, %best
+  %nb: int = select %gt, %steps, %best
+  %n1: int = iadd.chk %n, %one
+  br outer(%n1, %nb)
+done:
+  ret %best
+}
+fn @main() -> int {
+b0:
+  %lim: int = iconst 1000000
+  %r: int = call @collatz (%lim)
+  %u: unit = call.rt @msrt_print_int (%r)
+  %z: int = iconst 0
+  ret %z
+}

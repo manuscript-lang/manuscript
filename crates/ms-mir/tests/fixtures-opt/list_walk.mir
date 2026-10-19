@@ -1,0 +1,27 @@
+module "list_walk"
+entry @main
+fn @main() -> int {
+b0:
+  %a: int = iconst 5
+  %b: int = iconst 6
+  %c: int = iconst 7
+  %l0: list<int> = list.lit %a, %b, %c
+  %z: int = iconst 0
+  br loop(%z, %z, %l0)
+loop(%i: int, %acc: int, %l: own list<int>):
+  %n: int = list.len %l
+  %cond: bool = icmp.lt %i, %n
+  br_if %cond, body(), done()
+body:
+  %x: int = list.get %l, %i
+  %one: int = iconst 1
+  %ten: int = iconst 10
+  %y: int = imul %x, %ten
+  %l2: list<int> = list.set %l, %i, %y
+  %i1: int = iadd.chk %i, %one
+  %acc2: int = iadd.chk %acc, %x
+  br loop(%i1, %acc2, %l2)
+done:
+  drop %l
+  ret %acc
+}

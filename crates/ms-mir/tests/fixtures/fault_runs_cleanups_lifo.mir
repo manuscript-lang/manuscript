@@ -1,0 +1,23 @@
+module "cleanup"
+extern @msrt_print_int(int)
+entry @main
+fn @c1(%x: int) {
+b0:
+  %u: unit = call.rt @msrt_print_int (%x)
+  ret
+}
+fn @c2(%x: int) {
+b0:
+  %u: unit = call.rt @msrt_print_int (%x)
+  ret
+}
+fn @main() -> int {
+b0:
+  %a: int = iconst 1
+  %b: int = iconst 2
+  %h1: int = cleanup.push @c1 %a
+  %h2: int = cleanup.push @c2 %b
+  %max: int = iconst 9223372036854775807
+  %r: int = iadd.chk %max, %a
+  ret %r
+}

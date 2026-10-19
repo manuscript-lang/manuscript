@@ -1,0 +1,69 @@
+//! MIR optimizer: a fixed pipeline of independent passes over a verified module.
+//!
+//! Every pass takes `&mut Module`, keeps the module verifying, and returns whether it
+//! changed anything. Passes must preserve observable behavior: output, exit status,
+//! the first fault and its message, and cleanup order. Concretely:
+//!
+//! * An instruction with [`Effects::faults`](crate::ir::Effects) may only be removed
+//!   or weakened (for example `iadd.chk` to `iadd`) when the pass has proven it cannot
+//!   fault, and may not be moved across an instruction with `writes` or `io` effects or
+//!   past another faulting instruction (the first fault decides the message).
+//! * Pure instructions (no effects) can be moved, merged and duplicated freely.
+//! * Ownership stays linear: a pass may delete a `drop` only together with the
+//!   allocation it pairs with, and must never duplicate a consumed owned value.
+//! * `poll` instructions stay on every loop back edge (a pass may merge two polls on
+//!   one path, but not remove the only poll of a loop).
+
+use crate::ir::Module;
+
+pub mod inline;
+pub mod range;
+pub mod simplify;
+
+/// Optimization level.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Level {
+    /// No optimization.
+    None,
+    /// The full pipeline.
+    Speed,
+}
+
+/// Runs the pipeline. With `verify`, the module is re-verified after every pass and
+/// the first failure panics with the pass name (used by tests and debug builds).
+pub fn optimize(m: &mut Module, level: Level, verify: bool) {
+    if level == Level::None {
+        return;
+    }
+    let check = |m: &Module, pass: &str| {
+        if !verify {
+            return;
+        }
+        if let Err(errs) = crate::verify::verify_module(m) {
+            let text = errs
+                .iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<_>>()
+                .join("\n");
+            panic!(
+                "module does not verify after {pass}:\n{text}\n{}",
+                crate::print::print_module(m)
+            );
+        }
+    };
+    simplify::run(m);
+    check(m, "simplify");
+    inline::run(m);
+    check(m, "inline");
+    for round in 0..3 {
+        let mut changed = simplify::run(m);
+        check(m, "simplify");
+        changed |= range::run(m);
+        check(m, "range");
+        if !changed && round > 0 {
+            break;
+        }
+    }
+    simplify::run(m);
+    check(m, "simplify");
+}

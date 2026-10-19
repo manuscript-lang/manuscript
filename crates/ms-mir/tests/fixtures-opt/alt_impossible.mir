@@ -1,0 +1,34 @@
+module "alt_impossible"
+alt Shape { Circle(r: int), Rect(w: int, h: int), Empty }
+entry @main
+fn @area(%s: Shape) -> int {
+b0:
+  %t: int = alt.tag %s
+  switch %t [0: circ(), 1: rect(), 2: empty(), 7: never()] default empty()
+circ:
+  %r: int = alt.get Shape.Circle.r %s
+  %a: int = imul %r, %r
+  ret %a
+rect:
+  %w: int = alt.get Shape.Rect.w %s
+  %h: int = alt.get Shape.Rect.h %s
+  %b: int = imul %w, %h
+  ret %b
+empty:
+  %z: int = iconst 0
+  ret %z
+never:
+  %k: int = iconst 99
+  ret %k
+}
+fn @main() -> int {
+b0:
+  %two: int = iconst 2
+  %five: int = iconst 5
+  %c: Shape = alt.new Shape.Circle %five
+  %r: Shape = alt.new Shape.Rect %two, %five
+  %x: int = call @area (%c)
+  %y: int = call @area (%r)
+  %s: int = iadd %x, %y
+  ret %s
+}

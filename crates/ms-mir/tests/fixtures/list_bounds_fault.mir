@@ -1,0 +1,11 @@
+module "list"
+entry @main
+fn @main() -> int {
+b0:
+  %a: int = iconst 1
+  %l: list<int> = list.lit %a
+  %i: int = iconst 5
+  %x: int = list.get %l, %i
+  drop %l
+  ret %x
+}

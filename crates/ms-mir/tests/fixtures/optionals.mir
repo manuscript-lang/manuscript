@@ -1,0 +1,32 @@
+module "opt"
+entry @main
+fn @pick(%flag: bool) -> opt<int> {
+b0:
+  br_if %flag, yes(), no()
+yes:
+  %v: int = iconst 41
+  %s: opt<int> = opt.some %v
+  ret %s
+no:
+  %n: opt<int> = opt.none
+  ret %n
+}
+fn @main() -> int {
+b0:
+  %t: bool = bconst true
+  %o: opt<int> = call @pick (%t)
+  %p: bool = opt.is_some %o
+  %v: int = opt.unwrap %o
+  %one: int = iconst 1
+  %w: int = iadd %v, %one
+  %zero: int = iconst 0
+  %r: int = select %p, %w, %zero
+  ret %r
+}
+fn @bad() -> int {
+b0:
+  %f: bool = bconst false
+  %o: opt<int> = call @pick (%f)
+  %v: int = opt.unwrap %o
+  ret %v
+}

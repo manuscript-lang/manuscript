@@ -1,0 +1,9 @@
+module "overflow_fault"
+entry @main
+fn @main() -> int {
+b0:
+  %a: int = iconst 9223372036854775807
+  %b: int = iconst 1
+  %s: int = iadd.chk %a, %b
+  ret %s
+}
