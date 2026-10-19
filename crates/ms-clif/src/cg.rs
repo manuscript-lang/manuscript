@@ -443,7 +443,7 @@ fn emit_tables(g: &mut Gen) -> Result<Tables, Error> {
     let lines_at = funcs_at + g.dbg.len() * FUNC_ENTRY;
     let strings_at = lines_at + nlines * LINE_ENTRY;
     let mut blob = vec![0u8; strings_at + strings.len()];
-    blob[0..4].copy_from_slice(&1u32.to_le_bytes());
+    blob[0..4].copy_from_slice(&2u32.to_le_bytes()); // ms-rt ABI_VERSION
     blob[16..24].copy_from_slice(&(g.dbg.len() as u64).to_le_bytes());
     blob[32..40].copy_from_slice(&(nlines as u64).to_le_bytes());
     blob[48..56].copy_from_slice(&(strings.len() as u64).to_le_bytes());
