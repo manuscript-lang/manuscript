@@ -64,24 +64,13 @@ pub(crate) struct FnLower<'a> {
 }
 
 impl Cx {
-    /// Positions (receiver first) of the `var` parameters a callable may change.
+    /// Positions (receiver first) of the parameters a callable hands back changed.
     pub(crate) fn var_positions(&self, c: &Callable) -> Vec<usize> {
-        let mut out = Vec::new();
-        let mut base = 0;
-        if c.self_binding.is_some() {
-            if self.mutating.contains(&(c.module.file, c.id())) {
-                out.push(0);
-            }
-            base = 1;
-        }
-        if let Some(func) = c.func.func() {
-            for (i, p) in func.params.iter().enumerate() {
-                if p.mutable {
-                    out.push(base + i);
-                }
-            }
-        }
-        out
+        let key = (c.module.file, c.id());
+        let count = c.self_binding.iter().len() + c.parameters.len();
+        (0..count)
+            .filter(|i| self.mutated.contains(&(key, *i)))
+            .collect()
     }
 }
 
@@ -296,6 +285,14 @@ impl<'a> FnLower<'a> {
         self.b.m.needs_drop(t)
     }
 
+    /// The declared result type (without the `var` parameters a function hands back).
+    pub fn result_ty(&self) -> MTy {
+        match &self.var_ret {
+            Some((rid, _)) => self.b.m.records[rid.index()].fields[0].1,
+            None => self.ret_ty,
+        }
+    }
+
     pub fn ty_of(&self, v: Value) -> MTy {
         self.b.ty(v)
     }
@@ -378,12 +375,17 @@ impl<'a> FnLower<'a> {
             .declare_var(ty, if owned { Mode::Own } else { Mode::Borrow });
         let v = self.owned(x);
         self.b.def_var(var, v);
+        self.adopt_hidden(var, ty);
+        var
+    }
+
+    /// Makes the innermost scope drop `var`, so a `return` or `break` leaving it releases it too.
+    pub fn adopt_hidden(&mut self, var: ms_mir::builder::Var, ty: MTy) {
         let uid = usize::MAX - self.locals.len();
         self.locals.insert(uid, Local { var, ty });
-        if owned {
+        if self.needs_drop(ty) {
             self.scopes.last_mut().expect("scope").push(uid);
         }
-        var
     }
 
     /// Declares a borrowed local (a parameter or a borrowing binding): no drop at scope end.
@@ -495,9 +497,12 @@ impl<'a> FnLower<'a> {
         let mut var_uids = Vec::new();
         // Parameters the body changes are the callee's own copies.
         let mutated = match c.body() {
-            ms_check::hir::Body::Block(stmts) => {
-                crate::closure::mutated_captures(&self.hir, stmts, &self.cx.mutating)
-            }
+            ms_check::hir::Body::Block(stmts) => crate::mutation::mutated_locals(
+                &self.hir,
+                ms_check::hir::Body::Block(stmts),
+                &self.cx.callables,
+                &self.cx.mutated,
+            ),
             ms_check::hir::Body::Expr(_) => Default::default(),
         };
         for (i, (b, v)) in bindings.iter().zip(params).enumerate() {

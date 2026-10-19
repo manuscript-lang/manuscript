@@ -73,6 +73,7 @@ impl<'a> FnLower<'a> {
         e: &Expr,
         view: &CallView<'_>,
         native: &str,
+        params: &[ct::Param],
     ) -> Result<Val, Error> {
         match native {
             "collections/range" => {
@@ -110,7 +111,17 @@ impl<'a> FnLower<'a> {
             other if other.starts_with("testing/") => {
                 self.testing_native(e, view, &other["testing/".len()..])
             }
-            other => Err(Error::new(format!("unsupported native function {other}"))),
+            other => {
+                let Some(sym) = crate::rtcall::function_symbol(other) else {
+                    return Err(Error::new(format!("unsupported native function {other}")));
+                };
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let result = self.emty(e)?;
+                self.rt_function(&sym, params, &args, result)
+            }
         }
     }
 
@@ -287,6 +298,36 @@ impl<'a> FnLower<'a> {
                 let mut it = args.into_iter();
                 let index = it.next().ok_or_else(|| Error::new("get without index"))?;
                 self.list_get_or(recv, elem, index, it.next())
+            }
+            (TyKind::Int, "to_float") => {
+                let x = self.borrow(recv);
+                let v = self
+                    .b
+                    .emit(
+                        ms_mir::ir::Op::I2F,
+                        &[x],
+                        ms_mir::ir::Imm::None,
+                        Some(MTy::FLOAT),
+                    )
+                    .expect("i2f");
+                Ok(Val { v, own: false })
+            }
+            (TyKind::Float, "is_nan" | "is_finite") => {
+                let x = self.borrow(recv);
+                if name == "is_nan" {
+                    let v = self.b.fcmp(ms_mir::ir::Cc::Ne, x, x);
+                    return Ok(Val { v, own: false });
+                }
+                // `x - x` is zero for finite x and NaN for NaN and the infinities.
+                let d = self.b.emit(
+                    ms_mir::ir::Op::FSub,
+                    &[x, x],
+                    ms_mir::ir::Imm::None,
+                    Some(MTy::FLOAT),
+                );
+                let zero = self.b.fconst(0.0);
+                let v = self.b.fcmp(ms_mir::ir::Cc::Eq, d.expect("fsub"), zero);
+                Ok(Val { v, own: false })
             }
             (_, "compare_int" | "compare_float") => {
                 let a = self.borrow(recv);

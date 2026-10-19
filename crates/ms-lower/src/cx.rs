@@ -65,8 +65,8 @@ pub struct Cx {
     pub vtables: HashMap<String, ms_mir::ir::VtableId>,
     /// Every implementation method of the program.
     pub methods: Vec<ct::MethodRef>,
-    /// Methods that change their receiver: declared `var fn`, or whose body does.
-    pub mutating: std::collections::HashSet<crate::closure::MethodKey>,
+    /// Parameters (receiver first) that functions hand back changed.
+    pub mutated: std::collections::HashSet<crate::mutation::ParamKey>,
 }
 
 impl Cx {
@@ -80,11 +80,11 @@ impl Cx {
             }
             mods.insert(m.data.file, Rc::new(m));
         }
-        let mutating = crate::closure::infer_mutating(&mods, &callables);
+        let mutated = crate::mutation::infer_mutated(&mods, &callables);
         Cx {
             mods,
             callables,
-            mutating,
+            mutated,
             tycache: HashMap::new(),
             insts: HashMap::new(),
             queue: Vec::new(),
