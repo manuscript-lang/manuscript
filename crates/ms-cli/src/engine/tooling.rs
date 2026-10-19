@@ -4,7 +4,7 @@
 use std::collections::BTreeSet;
 use std::io::Read;
 
-use ms_driver::{CheckRequest, Checked, LoadOptions, check_graph, load_file_with_overlay};
+use ms_driver::{CheckRequest, Checked, EditorOptions, LoadOptions, check_graph, load_editor_file};
 use ms_project::{Overlay, ProjectError, gopath};
 use ms_tooling::collect::collect_facts;
 use ms_tooling::diagram::diagram_ascii;
@@ -29,7 +29,11 @@ use crate::util::{emit_json, file_error, plural, write_output};
 /// Load and check `filename` the way the analysis commands do: no lowering,
 /// and `main` is required only for a project manifest that has an entry.
 fn analyze(filename: &str, overlay: &Overlay) -> Checked {
-    let graph = load_file_with_overlay(filename, LoadOptions::default(), overlay);
+    let editor = EditorOptions {
+        overlay: overlay.clone(),
+        ..EditorOptions::default()
+    };
+    let graph = load_editor_file(filename, LoadOptions::default(), &editor);
     let entry = !graph.library && gopath::base(filename) == "ms.toml";
     check_graph(
         graph,

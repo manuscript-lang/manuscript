@@ -19,6 +19,21 @@ pub struct LoadOptions {
     pub tests: bool,
 }
 
+/// Editor loading: unsaved sources, syntax recovery and module selection
+/// (`Recover`, `Module`, `Overlay` and `ProjectSources` of Go `frontend.Options`).
+#[derive(Clone, Debug, Default)]
+pub struct EditorOptions {
+    /// Keep the declarations that parse in unfinished source, and keep going
+    /// after an import fails. The graph then carries every diagnostic.
+    pub recover: bool,
+    /// Select this module of a project as the entry (an editor's current file).
+    pub module: Option<String>,
+    /// Add every source and test module of the project, imported or not.
+    pub project_sources: bool,
+    /// Unsaved contents by absolute path.
+    pub overlay: Overlay,
+}
+
 /// The parsed, dependency-ordered module graph of one command.
 #[derive(Default)]
 pub struct Graph {
@@ -73,13 +88,12 @@ fn start() -> Pos {
 
 /// Resolve a module or manifest, then load each reachable local module.
 pub fn load_file(filename: &str, options: LoadOptions) -> Graph {
-    load_file_with_overlay(filename, options, &Overlay::new())
+    load_editor_file(filename, options, &EditorOptions::default())
 }
 
-/// [`load_file`] with unsaved contents (absolute path to source) taking
-/// precedence over the files on disk.
-pub fn load_file_with_overlay(filename: &str, options: LoadOptions, overlay: &Overlay) -> Graph {
-    let (config, manifest) = match source_project(filename) {
+/// [`load_file`] over an editor's unsaved sources, with optional recovery.
+pub fn load_editor_file(filename: &str, options: LoadOptions, editor: &EditorOptions) -> Graph {
+    let (mut config, manifest) = match source_project(filename) {
         Ok(found) => found,
         Err((root, error)) => {
             let file: Arc<str> = Arc::from(filename);
@@ -100,22 +114,26 @@ pub fn load_file_with_overlay(filename: &str, options: LoadOptions, overlay: &Ov
         graph.library = config.entry.is_empty();
         graph.manifest_position = Some((config.location.file.clone(), manifest_pos(&config)));
     }
-    let library = graph.library;
-    let file: Arc<str> = Arc::from(filename);
-    let overlay = match ms_project::canonical_overlay(&config.root, overlay) {
+    if let Some(module) = &editor.module {
+        config.entry = module.clone();
+    }
+    let overlay = match ms_project::canonical_overlay(&config.root, &editor.overlay) {
         Ok(overlay) => overlay,
         Err(error) => {
-            graph.diagnostics = vec![from_error(&file, &error)];
+            graph.diagnostics = vec![from_error(&Arc::from(filename), &error)];
             return graph;
         }
     };
+    let library = graph.library;
     let mut loader = Loader {
         config: &config,
         overlay: &overlay,
+        recover: editor.recover,
         graph: &mut graph,
         active: HashSet::new(),
         loaded: HashMap::new(),
     };
+    let file: Arc<str> = Arc::from(filename);
     if !config.entry.is_empty() {
         let entry = match ms_project::source_path(&config.root, &config.entry, &overlay) {
             Ok(entry) => entry,
@@ -139,8 +157,12 @@ pub fn load_file_with_overlay(filename: &str, options: LoadOptions, overlay: &Ov
             }
         }
     }
-    if manifest && options.tests {
-        match ms_project::discover_modules_with_overlay(&config, library, &overlay) {
+    if manifest && (library || options.tests || editor.project_sources) {
+        match ms_project::discover_modules_with_overlay(
+            &config,
+            library || editor.project_sources,
+            &overlay,
+        ) {
             Ok(files) => loader.add_discovered(&files),
             Err(error) => {
                 loader.graph.diagnostics.push(from_error(&file, &error));
@@ -226,6 +248,7 @@ pub fn explain_path_error(error: &ProjectError, import_path: &str) -> String {
 struct Loader<'a> {
     config: &'a Project,
     overlay: &'a Overlay,
+    recover: bool,
     graph: &'a mut Graph,
     active: HashSet<String>,
     loaded: HashMap<String, Name>,
@@ -281,15 +304,31 @@ impl Loader<'_> {
                 "source must be valid UTF-8; re-save the file with UTF-8 encoding",
             )))
         })?;
-        let module = ms_syntax::parser::parse(file, &text).map_err(Failure::Diagnostic)?;
+        let module = if self.recover {
+            let (module, issues) = ms_syntax::parse_partial(file, &text);
+            self.graph.diagnostics.extend(issues);
+            module
+        } else {
+            ms_syntax::parser::parse(file, &text).map_err(Failure::Diagnostic)?
+        };
         let key = n(file);
         let mut resolved: Vec<(ms_syntax::NodeId, Name)> = Vec::new();
         for item in &module.imports {
             if item.path.starts_with("@std/") {
                 continue;
             }
-            let target = self.import_module(canonical, file, item)?;
-            resolved.push((item.id, target));
+            match self.import_module(canonical, file, item) {
+                Ok(target) => resolved.push((item.id, target)),
+                Err(failure) if self.recover => {
+                    let d = match failure {
+                        Failure::Diagnostic(d) => *d,
+                        Failure::Error(e) => from_error(file, &e),
+                        Failure::Cycle(m) => resolution(file, item.pos, m),
+                    };
+                    self.graph.diagnostics.push(d);
+                }
+                Err(failure) => return Err(failure),
+            }
         }
         for (id, target) in resolved {
             self.graph.imports.insert(key, id, target);

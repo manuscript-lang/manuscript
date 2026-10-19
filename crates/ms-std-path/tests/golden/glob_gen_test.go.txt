@@ -1,0 +1,64 @@
+package msruntime
+
+// Generates crates/ms-std-path/tests/golden/glob_golden.txt from the Go glob matcher.
+// To regenerate: copy this file to pkg/runtime/glob_golden_test.go, run
+//   MS_GLOB_GOLDEN_OUT=$PWD/crates/ms-std-path/tests/golden/glob_golden.txt go test ./pkg/runtime -run TestGlobGolden
+// and delete the copy. Each line is `hex(pattern) hex(value) result`, result 0/1, or `E` for a
+// pattern that does not parse (value `-`).
+
+import (
+	"encoding/hex"
+	"fmt"
+	"math/rand"
+	"os"
+	"strings"
+	"testing"
+)
+
+func TestGlobGolden(t *testing.T) {
+	out := os.Getenv("MS_GLOB_GOLDEN_OUT")
+	if out == "" {
+		t.Skip("set MS_GLOB_GOLDEN_OUT")
+	}
+	tokens := []string{"a", "b", "c", "ab", ".", ".a", "*", "**", "?", "/", "**/", "[a-b]", "[!a]", "[^b]", "[abc]", "[a-c]", "{x,y}", "{a,b}", "{1..3}", "{01..03}", "{a..c}", "{1..5..2}", "@(a|b)", "+(a)", "*(a|b)", "?(a)", "!(b)", "\\*", "\\a", "x", "é", "[", "]", "(", ")", "{", "}", "|", "@(", "[]", "[a-", "{1..", ",", "-"}
+	rng := rand.New(rand.NewSource(7))
+	var patterns []string
+	fixed := []string{"*", "**", "*.ms", "**/*.ms", "a/**/b", "a/**", "**/a", ".*", "[!a-c]x", "a\\*b", "@(foo|bar).ms", "+(ab)c", "?(x)y", "*(ab)c", "!(a)b", "{a,b}/c", "f{1..3}", "f{01..03}", "{a..c}", "f{1..5..2}", "[", "[]", "[a-", "a\\", "@(a", "{a", "{1..x}", "{1..2..0}", "[a-]", "", "/", "a//b"}
+	patterns = append(patterns, fixed...)
+	for len(patterns) < 300 {
+		n := 1 + rng.Intn(5)
+		var b strings.Builder
+		for i := 0; i < n; i++ {
+			b.WriteString(tokens[rng.Intn(len(tokens))])
+		}
+		patterns = append(patterns, b.String())
+	}
+	chars := []string{"a", "b", "c", ".", "x", "y", "1", "2", "3", "é", "*", "/", "ab", "foo", "bar", ".ms", "01", "02", "03", "a.ms"}
+	values := []string{"", "a", "b", "a.ms", "dir/a.ms", "dir/sub/a.ms", ".hidden", ".d/a", "foo.ms", "bar.ms", "ababc", "c", "y", "xb", "ab", "b/c", "f2", "f4", "f02", "a/b", "a/x/b", "a/x/y/b", "a*b", "axb", "é", "a/", "/a"}
+	for len(values) < 60 {
+		n := 1 + rng.Intn(5)
+		var b strings.Builder
+		for i := 0; i < n; i++ {
+			b.WriteString(chars[rng.Intn(len(chars))])
+		}
+		values = append(values, b.String())
+	}
+	var sb strings.Builder
+	for _, p := range patterns {
+		compiled, ok := parseGlob(p)
+		if !ok {
+			fmt.Fprintf(&sb, "%s - E\n", hex.EncodeToString([]byte(p)))
+			continue
+		}
+		for _, v := range values {
+			r := 0
+			if compiled.match(v) {
+				r = 1
+			}
+			fmt.Fprintf(&sb, "%s %s %d\n", hex.EncodeToString([]byte(p)), hex.EncodeToString([]byte(v)), r)
+		}
+	}
+	if err := os.WriteFile(out, []byte(sb.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}

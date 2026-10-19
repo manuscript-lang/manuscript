@@ -410,6 +410,22 @@ impl ModuleData {
         }
     }
 
+    /// A module with no declarations, standing in for the asking module in
+    /// visibility queries.
+    pub fn empty(file: Name) -> ModuleData {
+        ModuleData {
+            file,
+            source: Arc::from(""),
+            imports: Vec::new(),
+            decls: Vec::new(),
+            omitted: Vec::new(),
+            recovered: Vec::new(),
+            node_count: 0,
+            inherent: Vec::new(),
+            facts: RefCell::new(Facts::default()),
+        }
+    }
+
     /// Shared fact access.
     pub fn facts(&self) -> Ref<'_, Facts> {
         self.facts.borrow()

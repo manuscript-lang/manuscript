@@ -51,33 +51,6 @@ async function activate(context) {
     if (!await editor.document.save()) return;
     return editor;
   }
-  context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('manuscript', {
-    createDebugAdapterDescriptor() {
-      return new vscode.DebugAdapterExecutable(process.execPath,
-        [path.join(context.extensionPath, 'dist/debug-adapter.js'), command],
-        { env: { ELECTRON_RUN_AS_NODE: '1' } });
-    },
-  }));
-  context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('manuscript', {
-    async resolveDebugConfiguration(folder, config) {
-      if (!vscode.workspace.isTrusted) { vscode.window.showErrorMessage('Trust this workspace before running Manuscript code.'); return; }
-      if (!await vscode.workspace.saveAll()) return;
-      const editor = vscode.window.activeTextEditor;
-      return { type: 'manuscript', name: 'Manuscript', request: 'launch',
-        program: editor?.document.uri.fsPath, ...config };
-    },
-  }));
-  context.subscriptions.push(vscode.commands.registerCommand('manuscript.debug', async () => {
-    const editor = await savedEditor();
-    if (!editor) return;
-    try {
-      const target = await targetFor(editor.document.uri.fsPath);
-      await vscode.debug.startDebugging(vscode.workspace.getWorkspaceFolder(editor.document.uri), {
-        type: 'manuscript', name: 'Manuscript', request: 'launch', program: target,
-        compilerPath: command, cwd: path.dirname(target),
-      });
-    } catch (error) { vscode.window.showErrorMessage(`Manuscript debug failed: ${error.message}`); }
-  }));
   const restartServer = () => {
     if (shuttingDown) return Promise.resolve();
     if (restarting) return restarting;

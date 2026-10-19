@@ -1,7 +1,7 @@
 {
   "name": "manuscript",
   "displayName": "Manuscript",
-  "description": "Manuscript diagnostics, formatting, symbols and native debugging",
+  "description": "Manuscript diagnostics, formatting, symbols and language intelligence",
   "version": "0.1.0",
   "publisher": "manuscript-lang",
   "license": "UNLICENSED",
@@ -10,13 +10,10 @@
   },
   "main": "./dist/extension.js",
   "categories": [
-    "Programming Languages",
-    "Debuggers"
+    "Programming Languages"
   ],
   "activationEvents": [
-    "onLanguage:manuscript",
-    "onDebugResolve:manuscript",
-    "onDebugInitialConfigurations:manuscript"
+    "onLanguage:manuscript"
   ],
   "contributes": {
     "languages": [
@@ -50,77 +47,12 @@
     },
     "commands": [
       {
-        "command": "manuscript.debug",
-        "title": "Manuscript: Debug current file"
-      },
-      {
         "command": "manuscript.profile",
         "title": "Manuscript: Capture profile or trace"
       },
       {
         "command": "manuscript.restartServer",
         "title": "Manuscript: Restart language server"
-      }
-    ],
-    "debuggers": [
-      {
-        "type": "manuscript",
-        "label": "Manuscript",
-        "languages": [
-          "manuscript"
-        ],
-        "configurationAttributes": {
-          "launch": {
-            "required": [
-              "program"
-            ],
-            "properties": {
-              "program": {
-                "type": "string",
-                "description": "Manuscript module, project manifest, or verified debug executable."
-              },
-              "args": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "default": []
-              },
-              "cwd": {
-                "type": "string"
-              },
-              "stopOnEntry": {
-                "type": "boolean",
-                "default": false
-              },
-              "inspection": {
-                "type": "string",
-                "description": "Inspection JSON for a prebuilt executable."
-              }
-            }
-          }
-        },
-        "initialConfigurations": [
-          {
-            "type": "manuscript",
-            "request": "launch",
-            "name": "Debug Manuscript",
-            "program": "${file}",
-            "stopOnEntry": false
-          }
-        ],
-        "configurationSnippets": [
-          {
-            "label": "Manuscript: Launch",
-            "body": {
-              "type": "manuscript",
-              "request": "launch",
-              "name": "Debug Manuscript",
-              "program": "${file}",
-              "args": []
-            }
-          }
-        ]
       }
     ],
     "taskDefinitions": [
@@ -164,17 +96,12 @@
         "editor.inlayHints.enabled": "off",
         "editor.defaultFormatter": "manuscript-lang.manuscript"
       }
-    },
-    "breakpoints": [
-      {
-        "language": "manuscript"
-      }
-    ]
+    }
   },
   "scripts": {
-    "check": "node --check extension.js && node --check debug-adapter.js && npm test",
+    "check": "node --check extension.js && npm test",
     "package": "vsce package --no-dependencies",
-    "bundle": "esbuild extension.js debug-adapter.js --bundle --platform=node --external:vscode --outdir=dist --minify",
+    "bundle": "esbuild extension.js --bundle --platform=node --external:vscode --outdir=dist --minify",
     "vscode:prepublish": "npm run check && npm run bundle",
     "test": "node --test tests/*.test.js"
   },

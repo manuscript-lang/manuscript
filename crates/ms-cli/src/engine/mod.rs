@@ -23,9 +23,9 @@ use ms_driver::{
 };
 
 use crate::backend::{
-    AnalysisCommand, AnalysisRequest, Backend, BackendResult, BuildRequest, BuildType,
-    DiagramRequest, FormatFailure, FormatFile, Io, OutputRequest, ReviewRequest, RunRequest,
-    TestRequest, not_implemented,
+    AnalysisCommand, AnalysisRequest, Backend, BackendError, BackendResult, BuildRequest,
+    BuildType, DiagramRequest, FormatFailure, FormatFile, Io, OutputRequest, ReviewRequest,
+    RunRequest, TestRequest, not_implemented,
 };
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::util::plural;
@@ -112,7 +112,29 @@ impl<L: Lower> Backend for RustBackend<L> {
     ) -> Result<String, FormatFailure> {
         tooling::drop_redundant_labels(file, source)
     }
+
+    /// The server reads the process stdin itself: the supervisor's reader runs
+    /// on its own thread and needs a `'static` stream.
+    fn lsp(&self, io: &mut Io) -> BackendResult {
+        let served = if std::env::var_os(LSP_WORKER).is_some() {
+            ms_lsp::serve(std::io::stdin(), &mut *io.stdout)
+        } else {
+            ms_lsp::supervise(std::io::stdin(), &mut *io.stdout, || {
+                let exe = std::env::current_exe().unwrap_or_else(|_| "ms".into());
+                let mut command = std::process::Command::new(exe);
+                command.arg("lsp").env(LSP_WORKER, "1");
+                command
+            })
+        };
+        match served {
+            Ok(()) => Ok(0),
+            Err(message) => Err(BackendError::Failed(format!("ms lsp: {message}"))),
+        }
+    }
 }
+
+/// Set in the environment of the server process the supervisor restarts.
+const LSP_WORKER: &str = "MS_LSP_WORKER";
 
 /// A command's source failed to load, check or lower.
 pub(crate) struct Failure {
