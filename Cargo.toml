@@ -16,3 +16,9 @@ panic = "abort"
 
 [profile.dev]
 panic = "abort"
+
+# Cranelift is slow to build unoptimized; keep it lightly optimized in dev builds.
+[profile.dev.package."cranelift*"]
+opt-level = 1
+[profile.dev.package.regalloc2]
+opt-level = 1

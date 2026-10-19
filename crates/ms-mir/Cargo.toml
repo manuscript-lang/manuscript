@@ -1,0 +1,11 @@
+[package]
+name = "ms-mir"
+version = "0.0.0"
+edition.workspace = true
+publish.workspace = true
+description = "Mid-level IR for the Manuscript compiler: types, builder, verifier, text format, optimizer and reference interpreter"
+
+[lints]
+workspace = true
+
+[dependencies]
