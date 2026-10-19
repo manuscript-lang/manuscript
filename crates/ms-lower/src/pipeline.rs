@@ -32,13 +32,15 @@ fn runtime_library() -> Result<PathBuf, String> {
     }
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
     let dir = exe.parent().ok_or("no executable directory")?;
-    for d in [dir, dir.parent().unwrap_or(dir)] {
-        let p = d.join("libms_rt.a");
-        if p.exists() {
-            return Ok(p);
+    for name in ["libms_native.a", "libms_rt.a"] {
+        for d in [dir, dir.parent().unwrap_or(dir)] {
+            let p = d.join(name);
+            if p.exists() {
+                return Ok(p);
+            }
         }
     }
-    Err("libms_rt.a not found; build `cargo build -p ms-rt` or set MSRT_LIB".to_string())
+    Err("libms_native.a not found; build `cargo build -p ms-native` or set MSRT_LIB".to_string())
 }
 
 /// Which entry the executable gets.

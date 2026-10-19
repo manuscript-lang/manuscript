@@ -3,7 +3,7 @@
 `ms-lower` turns a checked program (`ms-check`'s HIR query view) into monomorphic MIR for `ms-mir`, which `ms-clif` compiles. The gate is `ms-conform` running tier-core fixtures through a native build, compared with the Go `ms` as oracle.
 
 ```
-make build && cargo build -p ms-lower -p ms-rt -p ms-conform
+make build && cargo build -p ms-lower -p ms-native -p ms-conform
 target/debug/ms-conform run --ms target/debug/msl --tag tier-core --phase run
 target/debug/msl run FILE        # also: build FILE -o OUT, --dump-mir, --no-opt
 target/debug/msl test FILE --json # one process per test; the report matches `ms test --json`

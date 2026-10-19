@@ -303,14 +303,7 @@ pub(crate) fn build_native_thunk(
     let file = m.add_file(job.hir.data.file.as_str());
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
-    let mut fl = FnLower::new(
-        cx,
-        b,
-        job.hir.clone(),
-        ct::Subst::new(),
-        file,
-        proto.ret,
-    );
+    let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
     let result = lower_native_thunk(&mut fl, job);
     let mut f = fl.b.into_func();
     result?;
@@ -351,14 +344,7 @@ pub(crate) fn build_bound_native(
     let file = m.add_file(job.hir.data.file.as_str());
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
-    let mut fl = FnLower::new(
-        cx,
-        b,
-        job.hir.clone(),
-        ct::Subst::new(),
-        file,
-        proto.ret,
-    );
+    let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
     let result = lower_bound_native(&mut fl, job, captures[0]);
     let mut f = fl.b.into_func();
     result?;
@@ -374,10 +360,9 @@ fn lower_bound_native(
 ) -> Result<(), Error> {
     let params = fl.b.params();
     let env = params[0];
-    let cap = fl
-        .b
-        .emit(Op::ClosureCap, &[env], Imm::Idx(0), Some(recv_ty))
-        .expect("capture");
+    let cap =
+        fl.b.emit(Op::ClosureCap, &[env], Imm::Idx(0), Some(recv_ty))
+            .expect("capture");
     let recv = Val { v: cap, own: false };
     let args: Vec<crate::native::NArg> = job
         .method

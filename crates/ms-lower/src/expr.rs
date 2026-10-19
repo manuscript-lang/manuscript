@@ -195,14 +195,14 @@ impl<'a> FnLower<'a> {
         if let Resolution::Constructor { ty, case } = self.hir.resolution(e) {
             return self.construct_unit(e, &ty, case);
         }
-        if let Resolution::Native(unit) = self.hir.resolution(e) {
-            if matches!(unit.as_str(), "seconds" | "milliseconds" | "minutes") {
-                let n = self.expr(left)?;
-                if self.dead {
-                    return Ok(n);
-                }
-                return self.duration_unit(unit.as_str(), n);
+        if let Resolution::Native(unit) = self.hir.resolution(e)
+            && matches!(unit.as_str(), "seconds" | "milliseconds" | "minutes")
+        {
+            let n = self.expr(left)?;
+            if self.dead {
+                return Ok(n);
             }
+            return self.duration_unit(unit.as_str(), n);
         }
         if let Resolution::Method(m) = self.hir.resolution(e) {
             if m.native.as_str() == "to_string" && m.ty.params.is_empty() {

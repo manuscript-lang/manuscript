@@ -43,6 +43,9 @@ type ElementBody<'b, S> = dyn FnMut(&mut S, Value, Value) -> Result<Option<Value
 /// A branch body producing an owned value, or `None` when it diverges.
 type BranchBody<'b, S> = dyn FnMut(&mut S) -> Result<Option<Value>, Error> + 'b;
 
+/// Builds one method of a native interface value from its name, parameters and result.
+type MethodBuilder<'b> = dyn FnMut(&mut ms_mir::ir::Module, &str, &[MTy], MTy) -> FuncId + 'b;
+
 /// Whether `name` is an `Optional` method lowered inline.
 fn opt_method(name: &str) -> bool {
     matches!(
@@ -197,8 +200,18 @@ impl<'a> FnLower<'a> {
         self.two_ways(
             above,
             t,
-            &mut |s| Ok(Some(s.owned(Val { v: right, own: false }))),
-            &mut |s| Ok(Some(s.owned(Val { v: left, own: false }))),
+            &mut |s| {
+                Ok(Some(s.owned(Val {
+                    v: right,
+                    own: false,
+                })))
+            },
+            &mut |s| {
+                Ok(Some(s.owned(Val {
+                    v: left,
+                    own: false,
+                })))
+            },
         )
     }
 
@@ -223,7 +236,7 @@ impl<'a> FnLower<'a> {
         &mut self,
         e: &Expr,
         name: &str,
-        build: &mut dyn FnMut(&mut ms_mir::ir::Module, &str, &[MTy], MTy) -> FuncId,
+        build: &mut MethodBuilder<'_>,
     ) -> Result<Val, Error> {
         let it = self.emty(e)?;
         let TyKind::Iface(iface) = self.b.m.types.kind(it).clone() else {

@@ -34,7 +34,12 @@ pub(crate) fn runtime_fn(m: &mut Module, sym: &str, params: &[MTy], ret: MTy) ->
 
 /// Calls a leaf formatter for scalar/string types; `None` for compound types.
 /// The quoted form (`repr`) wraps strings in quotes.
-pub(crate) fn scalar_text(b: &mut FuncBuilder<'_>, t: MTy, v: Value, repr: bool) -> Option<(Value, bool)> {
+pub(crate) fn scalar_text(
+    b: &mut FuncBuilder<'_>,
+    t: MTy,
+    v: Value,
+    repr: bool,
+) -> Option<(Value, bool)> {
     let sym = if t == MTy::INT {
         "msrt_int_to_string"
     } else if t == MTy::FLOAT {
