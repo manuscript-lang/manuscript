@@ -1,5 +1,14 @@
 # Compiler and build lessons
 
+### The implementation is moving to Rust and Cranelift without a GC
+
+Decision: on 2026-10-19 the owner directed moving the compiler, runtime, standard library, tools, and generated code off Go to Rust with Cranelift, under a value-semantics memory model (`mut` instead of `var`, one owner per value, borrowed parameters, explicit `Shared`/`Arena`/`Synchronized` identity). The [proposal](../proposals/rust-cranelift-backend.md) holds the plan, contracts, workstreams, and gates. Until its cutover workstream lands, the Go implementation and the decisions below stay in force for it; the proposal lists which entries it replaces.
+
+Verified (experiments, not the shipped toolchain): the same checked semantics in C run 1.1x–3.5x faster than today's Go output, and a Cranelift spike compiles the kernels correctly in ~50 ms ([C baselines](../bench/perf/kernels/README.md#c-baselines-for-a-no-gc-backend), [spike](../experiments/cranelift-spike/README.md)). A non-atomic cancellation load is hoisted out of loops by Cranelift, and Cranelift 0.136's inliner mis-maps symbol global values.
+
+Apply when: starting work on either implementation, or deciding whether a Go-side change is worth making during the transition.
+Verify: `sh bench/perf/kernels/run.sh` with `ABLATE=1` and `sh experiments/cranelift-spike/bench.sh` reproduce the numbers on one machine.
+
 ### Lowering is typed Go; do not reintroduce a universal value
 
 Decision: the user directed one large refactor that removed `Value`, `any`, and boxing from generated Go and preferred Go idioms: every type lowers to exactly one Go type, records are `*Name`, alternatives are a sealed interface of case structs, functions are `func(*rt.Execution, A...) R`, and `rt.Option`/`rt.Result` are values. Earlier entries below that mention boxed locals, `Function.Body`, `CallMethod`, or lean runtimes describe the retired lowering.
