@@ -1284,6 +1284,7 @@ dependencies = [
  "ms-std-fs",
  "ms-std-io",
  "ms-std-rt",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

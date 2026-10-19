@@ -1,8 +1,10 @@
-//! Unix: descriptors, `poll(2)`, `eventfd` and `epoll`.
+//! Unix: descriptors, `poll(2)`, `eventfd` (a pipe off Linux) and `epoll` (`kqueue` off Linux).
 
 use super::Ev;
 use crate::rt;
-use rustix::event::{self, EventfdFlags, PollFd, PollFlags, epoll};
+use rustix::event::{self, PollFd, PollFlags};
+#[cfg(any(target_os = "linux", target_os = "android"))]
+use rustix::event::{EventfdFlags, epoll};
 use rustix::io;
 use rustix::time::Timespec;
 use std::cell::RefCell;
@@ -45,8 +47,10 @@ pub fn poll_one(sock: Borrowed<'_>, write: bool, slice: Duration) -> bool {
 }
 
 /// A handle another thread can signal to make a socket readable.
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub struct Wake(OwnedFd);
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
 impl Wake {
     pub fn new() -> Option<Wake> {
         event::eventfd(0, EventfdFlags::CLOEXEC | EventfdFlags::NONBLOCK)
@@ -64,12 +68,49 @@ impl Wake {
     }
 }
 
+/// A handle another thread can signal to make a socket readable: a pipe, as there is no
+/// `eventfd` here.
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
+pub struct Wake {
+    read: OwnedFd,
+    write: OwnedFd,
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
+impl Wake {
+    pub fn new() -> Option<Wake> {
+        let (read, write) = rustix::pipe::pipe().ok()?;
+        for fd in [&read, &write] {
+            rustix::io::fcntl_setfd(fd, rustix::io::FdFlags::CLOEXEC).ok()?;
+            rustix::fs::fcntl_setfl(fd, rustix::fs::OFlags::NONBLOCK).ok()?;
+        }
+        Some(Wake { read, write })
+    }
+
+    /// Makes [`Wake::sock`] readable (and keeps it so).
+    pub fn notify(&self) {
+        let _ = io::write(&self.write, &[1u8]);
+    }
+
+    pub fn sock(&self) -> Borrowed<'_> {
+        self.read.as_fd()
+    }
+}
+
+impl Default for Poller {
+    fn default() -> Poller {
+        Poller::new()
+    }
+}
+
 /// The server's set of watched sockets.
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub struct Poller {
     epoll: OwnedFd,
     buf: RefCell<Vec<epoll::Event>>,
 }
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
 fn to_flags(ev: Ev) -> epoll::EventFlags {
     let mut flags = epoll::EventFlags::empty();
     if ev.contains(Ev::IN) {
@@ -81,6 +122,7 @@ fn to_flags(ev: Ev) -> epoll::EventFlags {
     flags
 }
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
 fn from_flags(flags: epoll::EventFlags) -> Ev {
     let mut ev = Ev::NONE;
     if flags.contains(epoll::EventFlags::IN) {
@@ -96,12 +138,7 @@ fn from_flags(flags: epoll::EventFlags) -> Ev {
     ev
 }
 
-impl Default for Poller {
-    fn default() -> Poller {
-        Poller::new()
-    }
-}
-
+#[cfg(any(target_os = "linux", target_os = "android"))]
 impl Poller {
     pub fn new() -> Poller {
         Poller {
@@ -156,6 +193,97 @@ impl Poller {
     /// the runtime's ready bits.
     pub fn park(&self) -> u32 {
         rt::wait_fd(self.epoll.as_fd(), 1, 50_000_000)
+    }
+}
+
+/// The server's set of watched sockets.
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
+pub struct Poller {
+    queue: OwnedFd,
+    events: RefCell<Vec<rustix::event::kqueue::Event>>,
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
+impl Poller {
+    pub fn new() -> Poller {
+        Poller {
+            queue: rustix::event::kqueue::kqueue().expect("kqueue"),
+            events: RefCell::new(Vec::new()),
+        }
+    }
+
+    /// Applies the changes for one descriptor: each direction is enabled when wanted and
+    /// removed otherwise.
+    fn apply(&self, sock: Borrowed<'_>, token: u64, ev: Ev) -> bool {
+        use rustix::event::kqueue::{self, Event, EventFilter};
+        let raw = sock.as_raw_fd();
+        let udata = token as usize as *mut std::ffi::c_void;
+        let mut ok = true;
+        for (filter, wanted) in [
+            (EventFilter::Read(raw), ev.contains(Ev::IN)),
+            (EventFilter::Write(raw), ev.contains(Ev::OUT)),
+        ] {
+            let flags = if wanted {
+                kqueue::EventFlags::ADD | kqueue::EventFlags::ENABLE
+            } else {
+                kqueue::EventFlags::DELETE
+            };
+            let change = [Event::new(filter, flags, udata)];
+            // SAFETY: `sock` stays open while it is registered; callers delete it before
+            // closing it (closing also drops the registration).
+            let sent =
+                unsafe { kqueue::kevent(&self.queue, &change, &mut Vec::<Event>::new(), None) };
+            // Deleting a direction that was never added is not a failure.
+            if sent.is_err() && wanted {
+                ok = false;
+            }
+        }
+        ok
+    }
+
+    pub fn add(&self, sock: Borrowed<'_>, token: u64, ev: Ev) -> bool {
+        self.apply(sock, token, ev)
+    }
+
+    pub fn modify(&self, sock: Borrowed<'_>, token: u64, ev: Ev) {
+        self.apply(sock, token, ev);
+    }
+
+    pub fn delete(&self, sock: Borrowed<'_>) {
+        self.apply(sock, 0, Ev::NONE);
+    }
+
+    /// Collects up to `max` ready `(token, events)` pairs into `out` without blocking.
+    pub fn poll(&self, out: &mut Vec<(u64, Ev)>, max: usize) {
+        use rustix::event::kqueue::{self, EventFilter};
+        out.clear();
+        let mut events = self.events.borrow_mut();
+        events.clear();
+        events.reserve(max);
+        // SAFETY: no change list is passed, so no descriptor is referenced.
+        let got = unsafe { kqueue::kevent(&self.queue, &[], &mut *events, Some(Duration::ZERO)) };
+        if got.is_err() {
+            return;
+        }
+        for e in events.iter() {
+            let mut ev = match e.filter() {
+                EventFilter::Read(_) => Ev::IN,
+                EventFilter::Write(_) => Ev::OUT,
+                _ => Ev::NONE,
+            };
+            if e.flags()
+                .intersects(kqueue::EventFlags::EOF | kqueue::EventFlags::ERROR)
+            {
+                ev = ev | Ev::HUP;
+            }
+            out.push((e.udata() as usize as u64, ev));
+        }
+    }
+
+    /// Parks the running task until something may be ready (or 50 ms pass); returns
+    /// the runtime's ready bits.
+    pub fn park(&self) -> u32 {
+        rt::wait_fd(self.queue.as_fd(), 1, 50_000_000)
     }
 }
 

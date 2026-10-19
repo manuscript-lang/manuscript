@@ -146,8 +146,8 @@ pub fn spawn_blocking<T: Send + 'static>(
     f: impl FnOnce() -> T + Send + 'static,
 ) -> Option<Task<T>> {
     let wake = Arc::new(Wake::new()?);
-    let (tx, rx) = mpsc::channel();
     let signal = wake.clone();
+    let (tx, rx) = mpsc::channel();
     std::thread::Builder::new()
         .name("ms-net-blocking".into())
         .spawn(move || {

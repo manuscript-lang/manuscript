@@ -24,7 +24,7 @@ psl = "2"
 ring = "0.17"
 
 [target.'cfg(unix)'.dependencies]
-rustix = { version = "1", default-features = false, features = ["std", "event", "net", "fs", "time"] }
+rustix = { version = "1", default-features = false, features = ["std", "event", "net", "fs", "time", "pipe"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = [
