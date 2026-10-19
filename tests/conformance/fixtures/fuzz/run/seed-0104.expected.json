@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "b1 = false\nl2 = [-14, 26] len 2\nl3 = [-10, 30] len 2\nl4 = [0, 5, -24, 6] len 4\ni5 = -722209\nl6 = [] len 0\nacc7 = 7\nacc8 = -19\ncollatz(1618) = 47\ni9 = -722209\ns10 = [  padded  ]\ni11 = -1355175\ni12 = -722209\nfib(38) = 39088169\n  padded  \nl13 = [0, 5, -24, 6, 13] len 5\n日本語\nl14 = [2, -22, 8] len 3\n",
+    "stderr": ""
+  }
+}

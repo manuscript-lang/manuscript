@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "an arm value must be its final expression",
+        "position": {
+          "file": "pkg-build-testexpressionconveniencerejections-16.ms",
+          "line": 7,
+          "column": 13,
+          "offset": 247
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

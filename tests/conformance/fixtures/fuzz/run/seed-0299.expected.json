@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = 4000900000000248.5\ni2 = -25\ncollatz(2759) = 159\ni3 = -43\nb4 = true\nb6 = false\nmixed case\nb7 = false\nb8 = false\nf9 = -1.4631284261917088e-31\nl10 = [2] len 1\n",
+    "stderr": ""
+  }
+}

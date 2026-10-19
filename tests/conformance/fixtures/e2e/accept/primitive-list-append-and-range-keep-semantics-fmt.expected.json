@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {expect_true} from \"@std/testing.ms\"\n\ntest \"primitive list loops\":\n    let ints = List[Int]()\n    let floats = List[Float]()\n    let bools = List[Bool]()\n    let words = List[String]()\n    var i = 0\n\n    while i < 5:\n        ints.append(value: i)\n        floats.append(value: 0.5)\n        bools.append(value: i % 2 == 0)\n        words.append(value: \"w{i}\")\n        i = i + 1\n\n    var sum = 0\n\n    for v in ints:\n        sum = sum + v\n        if v == 2:\n            ints.append(value: 100)\n\n    try expect_true((sum == 10))\n    try expect_true((ints.length() == 6))\n    var total = 0.0\n    for f in floats:\n        total = total + f\n    try expect_true((total == 2.5))\n    var trues = 0\n    for b in bools:\n        if b:\n            trues = trues + 1\n    try expect_true((trues == 3))\n    var joined = \"\"\n    for w in words:\n        joined = joined + w\n    try expect_true((joined == \"w0w1w2w3w4\"))\n    let unique = Set[Int]()\n    unique.add(value: 4)\n    unique.add(value: 7)\n    var seen = 0\n    for n in unique:\n        seen = seen + n\n    try expect_true((seen == 11))\n"
+  }
+}

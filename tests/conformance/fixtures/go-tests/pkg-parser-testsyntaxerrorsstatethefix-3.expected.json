@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1002",
+        "phase": "parse",
+        "message": "indentation must be a multiple of four spaces, found 2; use 0 or 4",
+        "position": {
+          "file": "pkg-parser-testsyntaxerrorsstatethefix-3.ms",
+          "line": 5,
+          "column": 3,
+          "offset": 144
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

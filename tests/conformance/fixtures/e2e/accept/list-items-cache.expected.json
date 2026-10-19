@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "list-items-cache.ms::indexed loops over a list read and write through the shared storage",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "list-items-cache.ms::negative indexes inside a cached loop count from the end",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "list-items-cache.ms::a list that grows inside the loop is read through its current storage",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "list-items-cache.ms::appending directly inside the loop is visible to later reads",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "list-items-cache.ms::rebinding the list inside the loop selects the new storage",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "list-items-cache.ms::nested loops share one cached list",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "list-items-cache.ms::an out of range read or write inside a cached loop faults",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN list-items-cache.ms::indexed loops over a list read and write through the shared storage\nPASS list-items-cache.ms::indexed loops over a list read and write through the shared storage\nRUN list-items-cache.ms::negative indexes inside a cached loop count from the end\nPASS list-items-cache.ms::negative indexes inside a cached loop count from the end\nRUN list-items-cache.ms::a list that grows inside the loop is read through its current storage\nPASS list-items-cache.ms::a list that grows inside the loop is read through its current storage\nRUN list-items-cache.ms::appending directly inside the loop is visible to later reads\nPASS list-items-cache.ms::appending directly inside the loop is visible to later reads\nRUN list-items-cache.ms::rebinding the list inside the loop selects the new storage\nPASS list-items-cache.ms::rebinding the list inside the loop selects the new storage\nRUN list-items-cache.ms::nested loops share one cached list\nPASS list-items-cache.ms::nested loops share one cached list\nRUN list-items-cache.ms::an out of range read or write inside a cached loop faults\nPASS list-items-cache.ms::an out of range read or write inside a cached loop faults\n7 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

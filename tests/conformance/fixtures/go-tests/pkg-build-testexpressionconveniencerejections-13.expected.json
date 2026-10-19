@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "standalone try requires a Unit success value, found Int; use 'let name = try ...' to keep the value or 'return try ...' to return it",
+        "position": {
+          "file": "pkg-build-testexpressionconveniencerejections-13.ms",
+          "line": 9,
+          "column": 13,
+          "offset": 316
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-13.ms:9:13: type: standalone try requires a Unit success value, found Int; use 'let name = try ...' to keep the value or 'return try ...' to return it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

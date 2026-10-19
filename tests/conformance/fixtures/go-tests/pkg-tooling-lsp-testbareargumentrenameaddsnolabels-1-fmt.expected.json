@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn subtract(amount: Int, deduction: Int) Int: return amount - deduction\n\nfn call() Int:\n    let amount = 10\n    let deduction = 3\n    return subtract(deduction, amount)\n"
+  }
+}

@@ -1,0 +1,7 @@
+# conform: tags=formatter,modules,parser,stdlib-testing,testing,tier-core
+# conform: phase=parse
+# conform: origin=tests/e2e/library_project_test.go:64 TestLibraryProjectCommandsAndCache
+import fail from "@std/testing.ms"
+export fn other() Int: return 4
+test "unimported":
+    return fail("changed unimported test")

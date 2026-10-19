@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = 222.25\ngcd(3105, 807) = 3\nf2 = 222.25\nl3 = [-30, -6, -9, 22] len 4\n-93 -553487 false sum -553580\ni4 = 12\nf5 = -0.005652938447922974\ni6 = 9\ni7 = 14559\nb8 = false\nb9 = true\nl10 = [] len 0\ni11 = -611586\ns12 = [naïve]\nl13 = [] len 0\nfib(33) = 3524578\n",
+    "stderr": ""
+  }
+}

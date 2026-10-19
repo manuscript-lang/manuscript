@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "there is no '=>' arrow function; write the result type and a colon, e.g. fn(x: Int) Int: x + 1",
+        "position": {
+          "file": "pkg-parser-testsyntaxerrorsstatethefix-20.ms",
+          "line": 5,
+          "column": 27,
+          "offset": 177
+        },
+        "end": {
+          "file": "pkg-parser-testsyntaxerrorsstatethefix-20.ms",
+          "line": 5,
+          "column": 28,
+          "offset": 178
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

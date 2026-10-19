@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = 774.888\nl2 = [] len 0\nf3 = 774.888\nms\nf4 = 358.44021929032795\nf5 = 1063.126\nl6 = [] len 0\nl7 = [13, -2, -18, 29, -20] len 5\nfib(40) = 102334155\ni8 = 22\nd\"etouq\ni9 = -22\ncollatz(2162) = 138\n  padded  \nacc10 = 0\n",
+    "stderr": ""
+  }
+}

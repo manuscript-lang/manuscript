@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "quote\"d\nf1 = 1588225930149.252\nl2 = [2, -6, 5, -14] len 4\ns3 = [7:line\nbreakMiXeD CaSe]\ni4 = -2580570973385689851\nacc5 = 0\n",
+    "stderr": ""
+  }
+}

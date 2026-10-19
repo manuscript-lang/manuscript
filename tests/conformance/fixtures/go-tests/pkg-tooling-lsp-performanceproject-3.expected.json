@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding f_0_0; declare it with 'let f_0_0 = ...' before use, define 'fn f_0_0(...)', or import it from a module",
+        "position": {
+          "file": "pkg-tooling-lsp-performanceproject-3.ms",
+          "line": 6,
+          "column": 18,
+          "offset": 177
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-tooling-lsp-performanceproject-3.ms:6:18: resolution: unknown binding f_0_0; declare it with 'let f_0_0 = ...' before use, define 'fn f_0_0(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

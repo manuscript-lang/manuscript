@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = 656.722\ni2 = -644929\ncollatz(1577) = 91\nl3 = [17] len 1\ngcd(965, 2836) = 1\nfact(17) = 355687428096000\nl4 = [17, 17] len 2\nacc5 = -2\ncollatz(470) = 128\nacc6 = 139\ns7 = [Tab\there-34:naïve644959:Tab\there]\ntab\there-34:naïve644959:tab\there\ni8 = 388815\ni9 = 2\nl10 = [15, -10] len 2\ns11 = [2:Tab\thereTab\there-34:naïve644959:Tab\there]\ni12 = -1289858\nf13 = -26.288332273248127\ni14 = -644931\n",
+    "stderr": ""
+  }
+}

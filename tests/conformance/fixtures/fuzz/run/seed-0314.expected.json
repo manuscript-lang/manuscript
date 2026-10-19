@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = -12141752\nf2 = Infinity\ns3 = [naïve]\nl4 = [] len 0\nf5 = -20.206860035756435\nb6 = true\n476 -12141753 false sum -12141277\nl7 = [] len 0\ni8 = -12141752\nfact(16) = 20922789888000\nl9 = [] len 0\ni10 = 0\nb11 = true\nf12 = -Infinity\nl13 = [22, 29, -3, -24] len 4\nb14 = true\nf15 = -Infinity\ns16 = [0:  padded  ]\n",
+    "stderr": ""
+  }
+}

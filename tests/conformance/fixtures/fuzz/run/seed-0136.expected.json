@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "fact(7) = 5040\ni1 = -580538792287\ns2 = [back\\slash]\ncollatz(402) = 19\ns3 = [aback\\slashback\\slash]\ncollatz(2715) = 97\n0 -9 false sum -9\nline\nbreakbeta\ns4 = [quote\"d]\ni5 = -32\nb6 = true\ni7 = 580538792227\ns8 = [d\"etouq]\ni9 = -668780688768761\nf10 = 348958.885379133\n",
+    "stderr": ""
+  }
+}

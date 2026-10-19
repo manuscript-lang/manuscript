@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "l1 = [-26, 15] len 2\nl2 = [23, -7, 25, 7] len 4\nf3 = 597.725\ni4 = 6\nl5 = [7, 25, -7, 23] len 4\nl6 = [18, 20, 10, -15, -30] len 5\ni7 = -11318838\ns8 = [  padded  -11318845:hello world}s{ecarb]\nfib(60) = 1548008755920\ni9 = -330\ni10 = 65918492\ns11 = [a]\nf12 = -45.48144627546117\nf13 = -45.48144627546117\nf14 = 1655.7104462754612\nl15 = [18, 20, 10, -15, -30] len 5\nb16 = true\nf17 = 0\n",
+    "stderr": ""
+  }
+}

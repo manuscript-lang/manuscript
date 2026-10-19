@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "unexpected source character '@'; this character is not part of Manuscript's syntax outside text ('{' at column 19 starts an interpolation; write \\{ and \\} for literal braces)",
+        "position": {
+          "file": "pkg-parser-testinterpolationspacesandphysicalpositions-2.ms",
+          "line": 5,
+          "column": 21,
+          "offset": 210
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

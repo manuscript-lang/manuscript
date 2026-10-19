@@ -1,0 +1,75 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "csv.ms::CSV retains single empty fields and distinguishes empty rows",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "csv.ms::CSV quoted empty fields respect exact row cell and byte budgets",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "csv.ms::CSV preserves whitespace and normalizes quoted CRLF",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "csv.ms::CSV quotes delimiters multiline cells and line endings",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "csv.ms::CSV rejects malformed records invalid options and limits",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN csv.ms::CSV retains single empty fields and distinguishes empty rows\nPASS csv.ms::CSV retains single empty fields and distinguishes empty rows\nRUN csv.ms::CSV quoted empty fields respect exact row cell and byte budgets\nPASS csv.ms::CSV quoted empty fields respect exact row cell and byte budgets\nRUN csv.ms::CSV preserves whitespace and normalizes quoted CRLF\nPASS csv.ms::CSV preserves whitespace and normalizes quoted CRLF\nRUN csv.ms::CSV quotes delimiters multiline cells and line endings\nPASS csv.ms::CSV quotes delimiters multiline cells and line endings\nRUN csv.ms::CSV rejects malformed records invalid options and limits\nPASS csv.ms::CSV rejects malformed records invalid options and limits\n5 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = -10\nb2 = true\nfib(32) = 2178309\nhéllo\nTab\therems\ns4 = [Tab\therealpha]\ns5 = [Tab\therealphaquote\"dhello worldbrace{s}]\nl6 = [] len 0\nb7 = false\ns8 = [TAB\tHEREALPHAQUOTE\"DHELLO WORLDBRACE{S}]\ni9 = 17\ngcd(4050, 1856) = 2\nb10 = false\nb11 = false\n",
+    "stderr": ""
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected an expression, found end of line; write a value, name, call, or literal here",
+        "position": {
+          "file": "seed-0094.ms",
+          "line": 16,
+          "column": 80,
+          "offset": 495
+        },
+        "end": {
+          "file": "seed-0094.ms",
+          "line": 16,
+          "column": 80,
+          "offset": 495
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

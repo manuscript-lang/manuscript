@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "let values = [1, 2, 3]\nlet empty: List[Int] = []\nlet also_empty = List[Int]()\n"
+  }
+}

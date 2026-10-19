@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "let prices = [12, 8, 25]\nlet discounted = prices.map(\n    fn(value: Int) Int:\n        return value - 2\n)\nlet affordable = discounted.filter(\n    fn(value: Int) Bool:\n        return value <= 10\n)\n# affordable contains [10, 6]; prices is unchanged.\n"
+  }
+}

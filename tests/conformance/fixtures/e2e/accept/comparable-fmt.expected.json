@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {expect_true} from \"@std/testing.ms\"\nimport {max, max_of, min, min_of} from \"@std/math.ms\"\nimport Decimal from \"@std/decimal.ms\"\n\ntype Version:\n    major: Int\n\nimpl Comparable for Version:\n    fn compare(other: Comparable) Int:\n        match other:\n            Version(value): return self.major - value.major\n            _: return 0\n\nfn larger[T: Comparable](left: T, right: T) T:\n    return max(left, right)\n\ntest \"max and min over built-in types\":\n    try expect_true((max(1, 2) == 2 and min(1, 2) == 1))\n    try expect_true((max(1.5, 0.5) == 1.5 and min(1.5, 0.5) == 0.5))\n    try expect_true((max(\"a\", \"b\") == \"b\" and min(\"a\", \"b\") == \"a\"))\n    try expect_true((max(1.5d, 2.5d) == 2.5d))\n\ntest \"float order puts NaN above every value\":\n    let nan = 0.0 / 0.0\n    try expect_true((max(nan, 1.0).is_nan() and max(1.0, nan).is_nan()))\n    try expect_true((min(nan, 1.0) == 1.0))\n\ntest \"a source impl drives max, min, and generic bounds\":\n    try expect_true((max(Version(1), Version(3)).major == 3))\n    try expect_true((min(Version(1), Version(3)).major == 1))\n    try expect_true((larger(Version(5), Version(2)).major == 5))\n\ntest \"compare through an explicit view\":\n    let left = Comparable(1)\n    try expect_true((left.compare(Comparable(2)) < 0))\n    try expect_true(((Comparable(Version(3)).compare(Comparable(Version(3))) == 0)))\n\ntest \"max_of and min_of over a list\":\n    let numbers = [3, 9, 2]\n    let empty: List[Int] = []\n    try expect_true((max_of(numbers) == some(9) and min_of(numbers) == some(2)))\n    try expect_true((max_of(empty).is_none() and min_of(empty).is_none()))\n    try expect_true((max_of([Version(4), Version(8)]) == some(Version(8))))\n"
+  }
+}

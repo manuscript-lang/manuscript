@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "encoding.ms::encoding known vectors and exact output limits",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "encoding.ms::encoding rejects malformed data and invalid budgets",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "encoding.ms::UTF-16 encodes surrogate pairs in either byte order",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "encoding.ms::Latin-1 and ASCII are strict single-byte encodings",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN encoding.ms::encoding known vectors and exact output limits\nPASS encoding.ms::encoding known vectors and exact output limits\nRUN encoding.ms::encoding rejects malformed data and invalid budgets\nPASS encoding.ms::encoding rejects malformed data and invalid budgets\nRUN encoding.ms::UTF-16 encodes surrogate pairs in either byte order\nPASS encoding.ms::UTF-16 encodes surrogate pairs in either byte order\nRUN encoding.ms::Latin-1 and ASCII are strict single-byte encodings\nPASS encoding.ms::Latin-1 and ASCII are strict single-byte encodings\n4 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "export fn add_generic[T: Hashable](items: Set[T], value: T) Set[T]:\n    return items.add(value)\n\nexport fn remove_generic[T: Hashable](items: Set[T], value: T) Set[T]:\n    return items.remove(value)\n"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 70,
+    "stdout": "b1 = false\n24 165947 true sum 165971\ni2 = -456\ni3 = -456\na\n-16872 -456 true sum -17328\ni4 = 176\n",
+    "stderr": "index 4 out of range for length 3; pass a default: get(index:, default: ...)\n  at seed-0392.ms:27 in main\n"
+  }
+}

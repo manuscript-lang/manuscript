@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "collection-prelude-support.ms::public collection support types retain their standard runtime identities",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "collection-prelude-support.ms::new ambient error cases retain scrutinee directed patterns",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 2,
+        "selected": 2,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN collection-prelude-support.ms::public collection support types retain their standard runtime identities\nPASS collection-prelude-support.ms::public collection support types retain their standard runtime identities\nRUN collection-prelude-support.ms::new ambient error cases retain scrutinee directed patterns\nPASS collection-prelude-support.ms::new ambient error cases retain scrutinee directed patterns\n2 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

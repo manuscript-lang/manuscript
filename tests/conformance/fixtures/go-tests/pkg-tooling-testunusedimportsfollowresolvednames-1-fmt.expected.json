@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import parse from \"@std/json.ms\"\n\nfn answer(parse: Int) Int:\n    return parse\n"
+  }
+}

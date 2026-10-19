@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "acc1 = 7\ni2 = -207771518\ns3 = [HÉLLO  padded  ]\nb4 = false\ns5 = [HÉLLO  padded  betaHÉLLO  PADDED  ]\nb6 = false\ni7 = -254195\nb8 = false\nacc9 = 45\n",
+    "stderr": ""
+  }
+}

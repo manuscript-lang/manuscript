@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type Value:\n    children: Map[String, Value]\n\ntype Wrapper:\n    entries: Map[String, Node]\n\ntype Node:\n    case Leaf(value: Value)\n    case Children(values: List[Wrapper])\n"
+  }
+}

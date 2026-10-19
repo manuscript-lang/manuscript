@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [EMOJI 😀]\nacc2 = 0\ni3 = -1\ni4 = 211567\nb5 = true\nb6 = true\nf7 = 70000000000056.11\ns8 = [quote\"d]\nf9 = 70000000000056.11\nf10 = 60000\n",
+    "stderr": ""
+  }
+}

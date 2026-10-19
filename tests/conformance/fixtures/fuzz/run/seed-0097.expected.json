@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "l1 = [3, -14] len 2\ni2 = 2\n0 2 true sum 2\nb3 = false\ns4 = [ms-13:42hello world]\nf5 = 0.000003971013909755979\nfact(17) = 355687428096000\nb6 = true\ns7 = [44:MS-13:42HELLO WORLDhello world]\nl8 = [4] len 1\nb9 = false\nf10 = 7294919277.995572\ni11 = 2\nf12 = 999739506135.692\ns13 = [ams-13:42hello world42:44:MS-13:42HELLO WORLDhello worldTab\there]\nl14 = [-16, 18] len 2\nl15 = [] len 0\nl16 = [3, -14, 3, -14] len 4\ni17 = 318616\n",
+    "stderr": ""
+  }
+}

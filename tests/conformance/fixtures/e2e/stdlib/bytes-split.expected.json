@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "bytes-split.ms::Bytes split is binary safe",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "bytes-split.ms::Bytes split handles exact and nonoverlapping separators",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "bytes-split.ms::Bytes empty separator splits bytes without decoding",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "bytes-split.ms::Bytes split optional limits truncate parts",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "bytes-split.ms::Bytes split bound methods and generic forwarding retain contracts",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "bytes-split.ms::Bytes split returns independent List storage and immutable views",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN bytes-split.ms::Bytes split is binary safe\nPASS bytes-split.ms::Bytes split is binary safe\nRUN bytes-split.ms::Bytes split handles exact and nonoverlapping separators\nPASS bytes-split.ms::Bytes split handles exact and nonoverlapping separators\nRUN bytes-split.ms::Bytes empty separator splits bytes without decoding\nPASS bytes-split.ms::Bytes empty separator splits bytes without decoding\nRUN bytes-split.ms::Bytes split optional limits truncate parts\nPASS bytes-split.ms::Bytes split optional limits truncate parts\nRUN bytes-split.ms::Bytes split bound methods and generic forwarding retain contracts\nPASS bytes-split.ms::Bytes split bound methods and generic forwarding retain contracts\nRUN bytes-split.ms::Bytes split returns independent List storage and immutable views\nPASS bytes-split.ms::Bytes split returns independent List storage and immutable views\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

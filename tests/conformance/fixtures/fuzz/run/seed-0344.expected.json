@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 22\nf2 = 1424254411234.7793\ni3 = 57\ni4 = 0\ns5 = [日本語MiXeD CaSeline\nbreakESAC DEXIM]\nl6 = [] len 0\ni7 = -1\n42\n33:日本語MiXeD CaSeline\nbreakESAC DEXIM\nb8 = true\ns9 = [25:MiXeD CaSe]\nb10 = false\nf11 = 20000000000000000000\nb12 = true\nl13 = [] len 0\n",
+    "stderr": ""
+  }
+}

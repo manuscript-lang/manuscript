@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a name, found '|'; '|' is a reserved word and cannot be used as a name",
+        "position": {
+          "file": "pkg-tooling-lsp-testgenericboundmembers-1.ms",
+          "line": 7,
+          "column": 19,
+          "offset": 262
+        },
+        "end": {
+          "file": "pkg-tooling-lsp-testgenericboundmembers-1.ms",
+          "line": 7,
+          "column": 20,
+          "offset": 263
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [-44:BRACE{S}a]\nb2 = false\ni3 = -862553538726\nacc4 = 0\ns5 = [héllo日本語]\nf6 = 1239836.313366\n",
+    "stderr": ""
+  }
+}

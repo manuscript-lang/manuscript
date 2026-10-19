@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "<DIR>/pkg-build-testparameterlessentrysignature-2.ms:4:8: type: entry must export fn main() Int; main takes no parameters, so remove them (read program arguments through the standard cli module)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+  }
+}

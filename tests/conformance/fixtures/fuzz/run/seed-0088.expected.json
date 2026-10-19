@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = -57306334201335999\ns2 = [-57307221816312909:MS]\nb3 = false\nl4 = [-22, -18] len 2\ngamma\nf5 = 30000000\ni6 = -57306334201335999\n-57307221816312909:MS  padded  \ns7 = [-57307221816312909:MS]\ni8 = -18\nf9 = Infinity\nl10 = [] len 0\nf11 = Infinity\n",
+    "stderr": ""
+  }
+}

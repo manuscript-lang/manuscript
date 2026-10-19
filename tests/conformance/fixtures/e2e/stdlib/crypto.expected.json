@@ -1,0 +1,100 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "crypto.ms::crypto known SHA256 HMAC and PBKDF2 vectors",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "crypto.ms::authenticated encryption detects wrong associated data",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "crypto.ms::Ed25519 signatures verify only the signed data",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "crypto.ms::additional hash algorithms match published vectors",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "crypto.ms::key derivation supports PBKDF2 and HKDF across hashes",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "crypto.ms::AES-GCM accepts 128 and 192 bit keys",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "crypto.ms::incremental hashers match one-shot digests",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "crypto.ms::AES CTR and CBC round trip",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "crypto.ms::ECDSA signs and ECDH agrees",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "crypto.ms::RSA signs and encrypts",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 10,
+        "selected": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN crypto.ms::crypto known SHA256 HMAC and PBKDF2 vectors\nPASS crypto.ms::crypto known SHA256 HMAC and PBKDF2 vectors\nRUN crypto.ms::authenticated encryption detects wrong associated data\nPASS crypto.ms::authenticated encryption detects wrong associated data\nRUN crypto.ms::Ed25519 signatures verify only the signed data\nPASS crypto.ms::Ed25519 signatures verify only the signed data\nRUN crypto.ms::additional hash algorithms match published vectors\nPASS crypto.ms::additional hash algorithms match published vectors\nRUN crypto.ms::key derivation supports PBKDF2 and HKDF across hashes\nPASS crypto.ms::key derivation supports PBKDF2 and HKDF across hashes\nRUN crypto.ms::AES-GCM accepts 128 and 192 bit keys\nPASS crypto.ms::AES-GCM accepts 128 and 192 bit keys\nRUN crypto.ms::incremental hashers match one-shot digests\nPASS crypto.ms::incremental hashers match one-shot digests\nRUN crypto.ms::AES CTR and CBC round trip\nPASS crypto.ms::AES CTR and CBC round trip\nRUN crypto.ms::ECDSA signs and ECDH agrees\nPASS crypto.ms::ECDSA signs and ECDH agrees\nRUN crypto.ms::RSA signs and encrypts\nPASS crypto.ms::RSA signs and encrypts\n10 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

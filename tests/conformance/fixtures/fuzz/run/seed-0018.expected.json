@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = 8.5\ns2 = [aline\nbreak]\nf3 = 40127.799750000006\nf4 = 465089486.4136691\nfib(51) = 20365011074\naline\nbreak\nb5 = false\n",
+    "stderr": ""
+  }
+}

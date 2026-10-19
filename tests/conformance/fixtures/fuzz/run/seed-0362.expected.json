@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "  padded  \nl1 = [3, 10, 21] len 3\nALPHA\ns2 = [-69:  padded  ]\n8 66907 true sum 66915\ni3 = -71\n",
+    "stderr": ""
+  }
+}

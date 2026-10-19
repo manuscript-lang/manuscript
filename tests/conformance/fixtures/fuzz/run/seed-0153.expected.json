@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "acc1 = 189\ni2 = -586695510165\nGAMMA\nf3 = 931.0048916020925\ncollatz(2944) = 22\nl4 = [-28] len 1\nacc5 = -84\nacc6 = -28\nf7 = 7368723.966462663\ni8 = -11\nnaïvequote\"d\nf9 = 39.536\ns10 = [gamma]\ni11 = 1\nacc12 = -6\nNAÏVE\nacc13 = -60\n",
+    "stderr": ""
+  }
+}

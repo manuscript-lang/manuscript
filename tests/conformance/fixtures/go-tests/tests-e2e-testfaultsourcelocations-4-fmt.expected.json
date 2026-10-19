@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "interface Counter:\n    fn bump(by: Int) Int\n\ntype Cell:\n    total: Int\n\nimpl Counter for Cell:\n    fn bump(by: Int) Int:\n        self.total += by\n        return self.total\n\nfn probe(value: Int) Int:\n    let cell = Cell(0)\n    cell.bump(value)\n    cell.bump(1)\n    return cell.total\n\nexport fn main() Int:\n    return probe(9223372036854775807)\n"
+  }
+}

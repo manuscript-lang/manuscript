@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [brace{s}brace{s}NAÏVE]\ni2 = -7\nb3 = true\nfact(0) = 1\ni4 = -48\nl5 = [10, -28] len 2\ni6 = 29008966489\n",
+    "stderr": ""
+  }
+}

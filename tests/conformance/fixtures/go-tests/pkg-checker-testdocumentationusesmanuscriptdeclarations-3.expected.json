@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "method map declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument",
+        "position": {
+          "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-3.ms",
+          "line": 12,
+          "column": 8,
+          "offset": 401
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "method and_then declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument",
+        "position": {
+          "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-3.ms",
+          "line": 13,
+          "column": 8,
+          "offset": 455
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "method ok_or declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument",
+        "position": {
+          "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-3.ms",
+          "line": 15,
+          "column": 8,
+          "offset": 578
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "method ok_or_else declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument",
+        "position": {
+          "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-3.ms",
+          "line": 16,
+          "column": 8,
+          "offset": 657
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-3.ms:12:8: type: method map declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-3.ms:13:8: type: method and_then declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-3.ms:15:8: type: method ok_or declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-3.ms:16:8: type: method ok_or_else declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

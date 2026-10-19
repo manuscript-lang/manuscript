@@ -1,0 +1,3 @@
+# conform: tags=control-flow,interpolation,modules,projects,stdlib-io,stdlib-process,stdlib-testing,testing,tier-io,try-result
+# conform: phase=test
+# conform: origin=examples/hello

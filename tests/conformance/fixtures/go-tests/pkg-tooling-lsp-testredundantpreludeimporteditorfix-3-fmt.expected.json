@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {ListBuilder, List} from \"@std/collections.ms\"\n\nfn count() Int: ListBuilder[Int]().freeze().length() + List[Int]().length()\n"
+  }
+}

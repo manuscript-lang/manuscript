@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type Tree[T]:\n    case Leaf(value: T)\n    case Pair(left: Tree[Int], right: Tree[String])\n"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn example() Unit:\n    let names = [1, 2].map(fn(item): missing).join(other_missing)\n    let conflict = apply(value: 1, transform: fn(item: String): missing_result)\n    let wrong: Int = \"text\"\n    let callback: fn(value: Int) Int = fn(): missing_too\n"
+  }
+}

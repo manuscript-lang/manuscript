@@ -1,0 +1,19 @@
+[package]
+name = "ms-conform"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Conformance corpus runner, recorder, differential fuzzer and benchmark harness for any `ms` binary"
+
+[lib]
+name = "ms_conform"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ms-conform"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]

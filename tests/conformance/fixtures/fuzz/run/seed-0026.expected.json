@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "collatz(1597) = 122\ns1 = [hélloalphagamma]\nf2 = 6.059114642832439e+21\nacc3 = 12\ngcd(1432, 1558) = 2\nl4 = [] len 0\nl5 = [] len 0\nacc6 = -3\n",
+    "stderr": ""
+  }
+}

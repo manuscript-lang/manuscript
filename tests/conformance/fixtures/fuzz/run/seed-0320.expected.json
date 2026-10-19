@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "line\nbreak\ni1 = -362661\nf2 = 71.19502255447384\ni3 = 362661\ncollatz(1031) = 36\nb4 = false\ns5 = [ALPHAdeltahello world]\nl6 = [-17, 14, 12, 0, -15] len 5\nl7 = [14, 12] len 2\nquote\"dline\nbreak\ni8 = 0\nl9 = [-24, -1, 9, -13] len 4\nb10 = false\n",
+    "stderr": ""
+  }
+}

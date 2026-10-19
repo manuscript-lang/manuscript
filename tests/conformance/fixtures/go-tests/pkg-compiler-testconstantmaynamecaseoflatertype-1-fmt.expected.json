@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "let initial = Mode.Idle\n\ntype Mode:\n    case Idle\n    case Busy\n\nexport fn main() Int:\n    match initial:\n        Idle:\n            return 0\n        Busy:\n            return 1\n"
+  }
+}

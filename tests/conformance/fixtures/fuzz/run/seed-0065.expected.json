@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 70,
+    "stdout": "f1 = 521.25\ni2 = -150310905319368\nb3 = false\ni4 = -150310905319368\ns5 = [日本語]\nb6 = false\nl7 = [] len 0\nf8 = -735676.06104\nline\nbreak\nl9 = [] len 0\ni10 = -150310905319368\nf11 = 380409.97375\ni12 = 854935\ns13 = [x日本語]\ni14 = 14730468721298064\nb15 = false\n",
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0065.ms:47 in main\n"
+  }
+}

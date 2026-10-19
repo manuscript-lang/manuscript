@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding println; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")",
+        "position": {
+          "file": "pkg-checker-testdiagnosticsstatecauseandfix-26.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 157
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-26.ms:5:5: resolution: unknown binding println; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

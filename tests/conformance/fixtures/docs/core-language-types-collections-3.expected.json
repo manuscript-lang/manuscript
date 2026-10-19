@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Int, found Float; Float does not convert to Int implicitly; truncate_to_int() returns Optional[Int], so unwrap it, e.g. value.truncate_to_int().get(0)",
+        "position": {
+          "file": "core-language-types-collections-3.ms",
+          "line": 6,
+          "column": 17,
+          "offset": 261
+        }
+      },
+      {
+        "code": "MS3080",
+        "phase": "type",
+        "message": "cannot infer list element type; add an annotation, e.g. let xs: List[Int] = []",
+        "position": {
+          "file": "core-language-types-collections-3.ms",
+          "line": 8,
+          "column": 15,
+          "offset": 325
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/core-language-types-collections-3.ms:6:17: type: expected Int, found Float; Float does not convert to Int implicitly; truncate_to_int() returns Optional[Int], so unwrap it, e.g. value.truncate_to_int().get(0)\n<DIR>/core-language-types-collections-3.ms:8:15: type: cannot infer list element type; add an annotation, e.g. let xs: List[Int] = []\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

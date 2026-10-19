@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "l1 = [-26] len 1\nb2 = false\ngcd(1287, 4784) = 13\ni3 = 1\ns4 = [Tab\there]\nf5 = 10402722.56433898\ns6 = [BETALINE\nBREAK]\ni7 = 1\nf8 = 10402722.56433898\nf9 = 919823351953451\nsm\ni10 = 14\nb11 = false\n37:BETALINE\nBREAK\ni12 = -26\n",
+    "stderr": ""
+  }
+}

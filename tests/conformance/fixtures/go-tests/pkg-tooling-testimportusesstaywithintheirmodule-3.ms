@@ -1,0 +1,7 @@
+# conform: tags=diagnostics,modules,tier-core
+# conform: phase=check
+# conform: origin=pkg/tooling/lint_program_test.go:52 TestImportUsesStayWithinTheirModule
+import value from "./value.ms"
+import helper from "./helper.ms"
+fn answer() Int:
+    return value() + helper()

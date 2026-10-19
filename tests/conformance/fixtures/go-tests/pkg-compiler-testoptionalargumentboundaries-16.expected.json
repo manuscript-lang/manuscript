@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3002",
+        "phase": "type",
+        "message": "duplicate argument value; pass each argument once",
+        "position": {
+          "file": "pkg-compiler-testoptionalargumentboundaries-16.ms",
+          "line": 5,
+          "column": 22,
+          "offset": 213
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-16.ms:5:22: type: duplicate argument value; pass each argument once\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

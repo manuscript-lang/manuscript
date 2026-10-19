@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {expect_true} from \"@std/testing.ms\"\n\ntest \"literal divisors\":\n    let n = -7\n    try expect_true((n / 2 == -3))\n    try expect_true((n % 3 == -1))\n    try expect_true((9 % 2 == 1))\n    var i = 0\n    var hits = 0\n\n    while i < 100:\n        if i % 3 == 0:\n            hits = hits + 1\n        i = i + 1\n\n    try expect_true((hits == 34))\n"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [emoji 😀]\ncollatz(1275) = 83\ni2 = -21906955626159\ni3 = -10\ns4 = [naïve]\ni5 = -21906955626159\ns6 = [naïveemoji 😀]\nb7 = false\nl8 = [2, 12] len 2\nacc9 = 14\nb10 = false\ni11 = 12\nl12 = [9] len 1\n9223372036854775806 -903656 false sum 9223372036853872150\n",
+    "stderr": ""
+  }
+}

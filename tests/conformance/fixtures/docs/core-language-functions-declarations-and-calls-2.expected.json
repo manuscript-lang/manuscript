@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
+        "position": {
+          "file": "core-language-functions-declarations-and-calls-2.ms",
+          "line": 7,
+          "column": 17,
+          "offset": 237
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
+        "position": {
+          "file": "core-language-functions-declarations-and-calls-2.ms",
+          "line": 8,
+          "column": 26,
+          "offset": 276
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
+        "position": {
+          "file": "core-language-functions-declarations-and-calls-2.ms",
+          "line": 9,
+          "column": 13,
+          "offset": 321
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
+        "position": {
+          "file": "core-language-functions-declarations-and-calls-2.ms",
+          "line": 12,
+          "column": 15,
+          "offset": 394
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/core-language-functions-declarations-and-calls-2.ms:7:17: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-functions-declarations-and-calls-2.ms:8:26: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-functions-declarations-and-calls-2.ms:9:13: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-functions-declarations-and-calls-2.ms:12:15: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

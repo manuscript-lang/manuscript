@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "# File introduction.\nfn example() Int:\n    let first = 1\n    # A deliberate new step.\n    let second = first + 1\n    if second > 2:\n        run(second)\n        # A comment inside the branch.\n    # A comment on the next step.\n    return second\n"
+  }
+}

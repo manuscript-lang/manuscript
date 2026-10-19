@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type Wrapped[T]:\n    case value(r: Result[T, Error])\n\nfn first() Wrapped[Int]: Wrapped.value(f())\n"
+  }
+}

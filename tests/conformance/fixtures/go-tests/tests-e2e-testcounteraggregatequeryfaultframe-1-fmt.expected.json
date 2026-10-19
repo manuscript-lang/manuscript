@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn probe() Int:\n    var sum = 0\n    var i = 0\n\n    while i < 321:\n        sum += i\n        i += 1\n\n    return sum\n"
+  }
+}

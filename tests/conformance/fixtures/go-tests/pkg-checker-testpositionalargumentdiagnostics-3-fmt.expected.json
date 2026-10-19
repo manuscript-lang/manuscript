@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn f(n: Int) Int: n\n\nfn apply(callback: fn(value: Int) Int, input: Int) Int: callback(input)\n"
+  }
+}

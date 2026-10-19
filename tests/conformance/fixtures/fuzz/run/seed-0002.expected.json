@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = -318754\ncollatz(813) = 41\ni2 = 39\nl3 = [21, 17, 7, -21, 22] len 5\nl4 = [21, 17, 7, -21, 22, 31] len 6\ns5 = [kaerb\nenil語本日日本語]\ni6 = -318754\ni7 = 318754\ns8 = [kaerb\nenil語本日日本語]\n4:ms\nb9 = true\ni10 = -25\n318754 -318779 false sum -25\ni11 = 0\nacc12 = -3\ns13 = [kaerb\nenil語本日日本語]\ngcd(1036, 1576) = 4\nf14 = 866.604\n",
+    "stderr": ""
+  }
+}

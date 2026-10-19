@@ -1,0 +1,90 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "map-transforms.ms::Map transformations and directional queries are callable",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "map-transforms.ms::Map value transformation copies ordered snapshots and retains aliases",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "map-transforms.ms::Map key transformation retains first equal keys and last values",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "map-transforms.ms::Map key transformation snapshots callbacks and keeps generic nesting",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "map-transforms.ms::empty transformations skip callbacks and allocate independent storage",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "map-transforms.ms::Map reverse fold and last match retain ordered shallow snapshots",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "map-transforms.ms::Set reverse fold and last match preserve references and callbacks",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "map-transforms.ms::empty and nonmatching reverse queries keep fold and predicate contracts",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 8,
+        "selected": 8,
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN map-transforms.ms::Map transformations and directional queries are callable\nPASS map-transforms.ms::Map transformations and directional queries are callable\nRUN map-transforms.ms::Map value transformation copies ordered snapshots and retains aliases\nPASS map-transforms.ms::Map value transformation copies ordered snapshots and retains aliases\nRUN map-transforms.ms::Map key transformation retains first equal keys and last values\nPASS map-transforms.ms::Map key transformation retains first equal keys and last values\nRUN map-transforms.ms::Map key transformation snapshots callbacks and keeps generic nesting\nPASS map-transforms.ms::Map key transformation snapshots callbacks and keeps generic nesting\nRUN map-transforms.ms::empty transformations skip callbacks and allocate independent storage\nPASS map-transforms.ms::empty transformations skip callbacks and allocate independent storage\nRUN map-transforms.ms::Map reverse fold and last match retain ordered shallow snapshots\nPASS map-transforms.ms::Map reverse fold and last match retain ordered shallow snapshots\nRUN map-transforms.ms::Set reverse fold and last match preserve references and callbacks\nPASS map-transforms.ms::Set reverse fold and last match preserve references and callbacks\nRUN map-transforms.ms::empty and nonmatching reverse queries keep fold and predicate contracts\nPASS map-transforms.ms::empty and nonmatching reverse queries keep fold and predicate contracts\n8 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

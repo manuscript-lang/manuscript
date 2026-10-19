@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 70,
+    "stdout": "l1 = [-17, 2, -29] len 3\nb2 = false\ni3 = 44\nl4 = [2, -29] len 2\nl5 = [2, -29, 83] len 3\ni6 = -3432\ns7 = [x]\ns8 = [x]\nf9 = 257403.28264324504\ni10 = -31\nhello world\ns11 = [deltaxnaïve]\nb12 = true\nfact(6) = 720\nline\nbreak\n",
+    "stderr": "index 4 out of range for length 2; pass a default: get(index:, default: ...)\n  at seed-0162.ms:50 in main\n"
+  }
+}

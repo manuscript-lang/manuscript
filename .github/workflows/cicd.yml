@@ -20,6 +20,48 @@ jobs:
     name: Language checks
     uses: ./.github/workflows/test-language.yml
 
+  # The Rust workspace, and the conformance corpus replayed against the Go oracle
+  # that recorded it (a drifting oracle or a stale expectation fails here).
+  rust:
+    name: Rust crates and corpus (shard ${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: .go-version
+          cache: true
+      - uses: actions/cache@v6
+        with:
+          path: toolchain/
+          key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            target/
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+      - name: Format, lint, and test the Rust workspace
+        if: matrix.shard == 0
+        run: |
+          cargo fmt --all --check
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo test --workspace
+      - name: Oracle replays the corpus
+        run: make conform-oracle CONFORM_SHARD=${{ matrix.shard }}/4
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: conform-oracle-${{ matrix.shard }}
+          path: .artifacts/conform-oracle.md
+
   build:
     name: Build design book
     runs-on: ubuntu-24.04

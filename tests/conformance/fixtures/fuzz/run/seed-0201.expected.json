@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [delta]\ni2 = -32\nfib(54) = 86267571272\nl3 = [1, -29, 11] len 3\nf4 = 634.249\ni5 = 354168\ni6 = 0\ns7 = [naïvedelta]\nf8 = 0.6958603006009529\ni9 = 1\nl10 = [-13] len 1\ni11 = 354168\n",
+    "stderr": ""
+  }
+}

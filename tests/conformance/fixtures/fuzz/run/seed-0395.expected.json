@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "0 15320111398207 true sum 15320111398207\nb1 = false\ni2 = -917376592294\nb3 = false\ns4 = [emoji 😀]\ni5 = -50\ns6 = [日本語日本語]\nl7 = [-19, -24, 17, -8] len 4\ni8 = -1886\nf9 = 0.3\nfib(31) = 1346269\nb10 = false\ngcd(925, 2241) = 1\nl11 = [8] len 1\nl12 = [8] len 1\n",
+    "stderr": ""
+  }
+}

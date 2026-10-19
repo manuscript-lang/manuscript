@@ -11,7 +11,7 @@ BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 export PATH := $(dir $(GO)):$(PATH)
 export STATICCHECK_CACHE ?= $(CURDIR)/.artifacts/staticcheck
 
-.PHONY: conformance stdgen agent-bench-check toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test stdlib-bench repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check docs-coverage book book-check vendor-refresh
+.PHONY: conformance conform-oracle stdgen agent-bench-check toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test stdlib-bench repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check docs-coverage book book-check vendor-refresh
 
 toolchain:
 	sh scripts/bootstrap-go.sh
@@ -56,6 +56,13 @@ stdlib-test: build stdlib-check
 conformance: build
 	./ms test scripts/conformance.ms
 	./ms run scripts/conformance.ms -- "$(CURDIR)/ms" "$(CONFORMANCE_SUITE)" "$(CONFORMANCE_SHARD)" "$(CONFORMANCE_SHARDS)"
+
+# The Rust corpus runner against the Go oracle itself: every recorded fixture must pass.
+# CONFORM_SHARD=i/n splits the run; see tests/conformance/README.md.
+CONFORM_SHARD ?= 0/1
+conform-oracle: build
+	cargo run -q -p ms-conform -- lint
+	cargo run -q -p ms-conform -- run --ms "$(CURDIR)/ms" --shard "$(CONFORM_SHARD)" --quiet --markdown .artifacts/conform-oracle.md
 
 examples-check:
 	"$(GO)" test ./tests/examples

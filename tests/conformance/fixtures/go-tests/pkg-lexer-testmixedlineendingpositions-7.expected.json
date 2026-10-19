@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1001",
+        "phase": "parse",
+        "message": "unterminated text literal; text must close with '\"' on the same line, so add the quote or write \\n for a line break",
+        "position": {
+          "file": "pkg-lexer-testmixedlineendingpositions-7.ms",
+          "line": 6,
+          "column": 12,
+          "offset": 181
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

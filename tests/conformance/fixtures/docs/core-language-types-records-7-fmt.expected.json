@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "let customer_id = CustomerId(\"42\")\n# Rejected: equal field shapes do not make nominal types interchangeable.\nlet order_id: OrderId = customer_id\n"
+  }
+}

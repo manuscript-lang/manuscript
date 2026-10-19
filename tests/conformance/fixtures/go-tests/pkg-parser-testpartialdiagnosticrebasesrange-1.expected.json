@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'&&' is not an operator; write 'and' for logical and",
+        "position": {
+          "file": "pkg-parser-testpartialdiagnosticrebasesrange-1.ms",
+          "line": 6,
+          "column": 10,
+          "offset": 218
+        },
+        "end": {
+          "file": "pkg-parser-testpartialdiagnosticrebasesrange-1.ms",
+          "line": 6,
+          "column": 11,
+          "offset": 219
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

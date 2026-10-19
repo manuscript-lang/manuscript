@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "Other does not implement Error",
+        "position": {
+          "file": "pkg-build-testcommonerrorrejectsinvalidcontractpatterns-12.ms",
+          "line": 8,
+          "column": 9,
+          "offset": 264
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-12.ms:8:9: type: Other does not implement Error\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import arguments from \"@std/process.ms\"\nimport stdout from \"@std/io.ms\"\n\nexport fn main() Int:\n    let message = \"Arguments: {arguments().length()}\\n\"\n    if stdout().write(message).is_error():\n        return 1\n\n    return 0\n"
+  }
+}

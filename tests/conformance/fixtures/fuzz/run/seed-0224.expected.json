@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = -19\nacc2 = 3\ns3 = [ALPHAA]\nl5 = [0, -26, -19, -1, -24] len 5\nALPHAA\nb6 = false\ns7 = [line\nbreak]\nb8 = false\ni9 = 0\ni10 = 14084111\ni11 = 33\ni12 = 23\nf13 = 0.0000015511799999999972\nl14 = [12, -15, 15] len 3\ni15 = 23\nALPHAATab\there\ni16 = -28\nfact(0) = 1\n",
+    "stderr": ""
+  }
+}
