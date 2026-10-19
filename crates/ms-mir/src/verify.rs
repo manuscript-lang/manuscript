@@ -127,7 +127,8 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
         Op::RecNew | Op::AltNew | Op::ListLit | Op::ClosureNew => all(Mode::Own),
         Op::RecSet | Op::ListPush => one(1),
         Op::ListSet | Op::ListSetNn | Op::ListSetU => one(2),
-        Op::OptSome | Op::IfaceNew | Op::Release | Op::GlobalSet | Op::ListUniq => one(0),
+        Op::OptSome | Op::IfaceNew | Op::Drop | Op::GlobalSet | Op::SharedNew => one(0),
+        Op::DropIf => one(1),
         Op::Call => match inst.imm {
             Imm::Func(g) => m.funcs[g.index()].params.iter().map(|p| p.mode).collect(),
             _ => all(Mode::Borrow),
@@ -487,10 +488,6 @@ impl Verifier<'_> {
                 let elem = m.list_elem(t(0)).ok_or("operand 0 must be a list")?;
                 want(t(1) == elem, "value must be the element type")
             }
-            Op::ListClone | Op::ListUniq => {
-                arity(1)?;
-                want(m.list_elem(t(0)).is_some() && res == Some(t(0)), "takes a list and yields the same list type")
-            }
             Op::OptSome => {
                 arity(1)?;
                 want(res.and_then(|r| m.opt_inner(r)) == Some(t(0)), "opt.some wraps its operand")
@@ -545,22 +542,6 @@ impl Verifier<'_> {
             Op::IfaceData => {
                 arity(1)?;
                 want(matches!(m.types.kind(t(0)), TyKind::Iface(_)) && res == Some(Ty::PTR), "iface.data takes an interface and yields ptr")
-            }
-            Op::Cast => {
-                arity(1)?;
-                want(res.is_some_and(|r| r != Ty::UNIT), "cast needs a result type")
-            }
-            Op::Retain => {
-                arity(1)?;
-                want(m.types.is_rc(t(0)) && res == Some(t(0)), "retain takes a reference-counted value and yields the same type")
-            }
-            Op::Release => {
-                arity(1)?;
-                want(m.types.is_rc(t(0)), "release takes a reference-counted value")
-            }
-            Op::IsUnique => {
-                arity(1)?;
-                want(m.types.is_ref(t(0)) && res == Some(Ty::BOOL), "is_unique takes a heap reference and yields bool")
             }
             Op::Call => {
                 let Imm::Func(g) = inst.imm else { return Err("missing callee".into()) };
@@ -619,11 +600,46 @@ impl Verifier<'_> {
                 }
                 want(res == Some(sig.ret), "call.method yields the method's result type")
             }
+            Op::SharedNew => {
+                arity(1)?;
+                let ok = matches!(res.map(|r| m.types.kind(r)), Some(TyKind::Obj(n, a)) if n == "Shared" && a.as_slice() == [t(0)]);
+                want(ok, "shared.new wraps a value into Shared[T]")
+            }
+            Op::SharedGet => {
+                arity(1)?;
+                let ok = matches!(m.types.kind(t(0)), TyKind::Obj(n, a) if n == "Shared" && a.as_slice() == [res.unwrap_or(Ty::UNIT)]);
+                want(ok, "shared.get reads the payload of a Shared[T]")
+            }
+            Op::Copy => {
+                arity(1)?;
+                want(res == Some(t(0)) && m.types.is_rc(t(0)), "copy duplicates a droppable value")
+            }
+            Op::Drop => {
+                arity(1)?;
+                want(m.types.is_rc(t(0)), "drop takes a droppable value")
+            }
+            Op::DropIf => {
+                arity(2)?;
+                want(t(0) == Ty::BOOL && m.types.is_rc(t(1)), "drop.if takes a flag and a droppable value")
+            }
+            Op::Slot => {
+                arity(0)?;
+                want(matches!(inst.imm, Imm::Ty(_)) && res == Some(Ty::PTR), "slot yields ptr")
+            }
+            Op::Load => {
+                arity(1)?;
+                let Imm::Ty(ty) = inst.imm else { return Err("missing type".into()) };
+                want(t(0) == Ty::PTR && res == Some(ty) && !m.types.is_rc(ty), "load reads a non-droppable value through a ptr")
+            }
+            Op::Store => {
+                arity(2)?;
+                want(t(0) == Ty::PTR && !m.types.is_rc(t(1)), "store writes a non-droppable value through a ptr")
+            }
             Op::TypeDesc => {
                 arity(0)?;
                 want(matches!(inst.imm, Imm::Ty(_)) && res == Some(Ty::PTR), "typedesc yields ptr")
             }
-            Op::Poll | Op::DepthEnter | Op::DepthLeave | Op::CleanupPop => arity(0),
+            Op::Poll | Op::DepthEnter | Op::DepthLeave | Op::CleanupRun => arity(0),
             Op::CleanupPush => {
                 arity(1)?;
                 let Imm::Func(g) = inst.imm else { return Err("missing closer".into()) };

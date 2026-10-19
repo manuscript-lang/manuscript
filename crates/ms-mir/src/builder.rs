@@ -15,6 +15,12 @@ use std::collections::HashMap;
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Var(pub u32);
 
+impl Var {
+    fn index(self) -> usize {
+        self.0 as usize
+    }
+}
+
 struct VarInfo {
     ty: Ty,
     mode: Mode,
@@ -251,18 +257,6 @@ impl<'m> FuncBuilder<'m> {
     pub fn opt_unwrap(&mut self, o: Value) -> Value {
         let t = self.m.opt_inner(self.ty(o)).expect("optional operand");
         self.val(Op::OptUnwrap, &[o], Imm::None, t)
-    }
-
-    // Reference counts.
-
-    /// `retain`: a new owned alias of `v`.
-    pub fn retain(&mut self, v: Value) -> Value {
-        let t = self.ty(v);
-        self.val(Op::Retain, &[v], Imm::None, t)
-    }
-    /// `release`.
-    pub fn release(&mut self, v: Value) {
-        self.emit(Op::Release, &[v], Imm::None, None);
     }
 
     // Calls.

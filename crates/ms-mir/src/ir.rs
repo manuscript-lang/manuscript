@@ -113,7 +113,7 @@ pub struct BlockParam {
 
 /// Comparison condition. Integer comparisons are signed; float comparisons are
 /// ordered (any comparison with NaN is false except `Ne`).
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Cc {
     /// Equal.
     Eq,
@@ -1073,7 +1073,6 @@ impl Module {
             | Op::ClosureCap
             | Op::GlobalGet
             | Op::StrLit
-            | Op::Cast
             | Op::OptNone => Mode::Borrow,
             _ => Mode::Own,
         })
