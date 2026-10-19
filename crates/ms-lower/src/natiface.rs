@@ -548,7 +548,7 @@ impl FnLower<'_> {
 
 impl FnLower<'_> {
     /// `io.read_line(input, max_bytes)`: a runtime call over the handle behind a native
-    /// `ReadStream`; other implementations are not supported yet and fault when called.
+    /// `ReadStream`; other implementations are read byte by byte through their `read`.
     pub(crate) fn read_line_native(
         &mut self,
         e: &ms_syntax::ast::Expr,
@@ -595,24 +595,21 @@ impl FnLower<'_> {
             is_handle,
             result,
             &mut |s| {
-                let data = s
-                    .b
-                    .emit(Op::IfaceData, &[stream_v], Imm::None, Some(MTy::PTR))
-                    .expect("iface.data");
-                let h = s
-                    .b
-                    .emit(Op::Load, &[data], Imm::Ty(ht), Some(ht))
-                    .expect("load");
+                let data =
+                    s.b.emit(Op::IfaceData, &[stream_v], Imm::None, Some(MTy::PTR))
+                        .expect("iface.data");
+                let h =
+                    s.b.emit(Op::Load, &[data], Imm::Ty(ht), Some(ht))
+                        .expect("load");
                 let recv = Val { v: h, own: false };
                 s.rt_method("msstd_io_read_line", recv, &decl, &max, result)
                     .map(|r| Some(s.owned(r)))
             },
             &mut |s| {
-                let msg = s.b.str_lit("io.read_line over a user-defined ReadStream is not available in this build yet");
-                let ext = runtime_fn(s.b.m, "msrt_fault_string", &[MTy::STR], MTy::UNIT);
-                s.b.call_rt(ext, &[msg]);
-                s.b.unreachable();
-                Ok(None)
+                let (has, n) = s.optional_int(max.first().copied())?;
+                let line = crate::streamloop::Loop::ReadLine;
+                s.stream_loop(line, stream_v, None, has, n, result)
+                    .map(|r| Some(s.owned(r)))
             },
         )
     }

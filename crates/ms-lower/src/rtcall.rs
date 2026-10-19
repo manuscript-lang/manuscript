@@ -492,7 +492,7 @@ impl FnLower<'_> {
         }
     }
 
-    fn finish_rt_call(
+    pub(crate) fn finish_rt_call(
         &mut self,
         sym: &str,
         sig: &RtSig,

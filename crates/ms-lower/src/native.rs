@@ -109,6 +109,8 @@ impl<'a> FnLower<'a> {
             "io/stdout" => self.std_stream(e, false),
             "io/stderr" => self.std_stream(e, true),
             "io/read_line" => self.read_line_native(e, view, params),
+            "io/read_all" => self.stream_native(e, view, crate::streamloop::Loop::ReadAll),
+            "io/copy" => self.stream_native(e, view, crate::streamloop::Loop::Copy),
             other
                 if crate::natiface::HANDLE_FUNCTIONS
                     .iter()
@@ -1417,7 +1419,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// `(present, value)` operands of an optional `Int` argument for runtime calls.
-    fn optional_int(&mut self, arg: Option<NArg>) -> Result<(Value, Value), Error> {
+    pub(crate) fn optional_int(&mut self, arg: Option<NArg>) -> Result<(Value, Value), Error> {
         match arg {
             None => Ok((self.b.bconst(false), self.b.iconst(0))),
             Some(a) if a.wrapped => Ok((self.b.bconst(true), self.borrow(a.val))),
