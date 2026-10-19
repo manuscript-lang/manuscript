@@ -1,40 +1,77 @@
-# Ownership facts
+# Ownership (value semantics)
 
-`ownership.rs` computes the facts `ms-mir` needs to elide reference-count updates. It **rejects nothing**: `crates/DESIGN.md` keeps today's reference semantics (aliasing, shallow `.clone()`, mutator chaining, closure snapshots), so there is no exclusivity or move rule to enforce, and the proposal's value-semantics checker is not built. A rejection corpus therefore does not exist; the corpus is `tests/ownership.rs`, which pins the facts. If the value-semantics decision flips, rejections would be added as a new pass over these same facts.
+`Hir::ownership()` enforces the value-semantics memory model of `crates/DESIGN.md` (decision 1) and exposes the moves, drops and borrows lowering needs. It is opt-in for diagnostics (`CheckOptions.ownership`, `ms-check-dev --ownership`) so Go-parity checking is unchanged; it runs only on programs the parity checker accepts.
 
 ```rust
-let ownership = program.hir().ownership();
-let facts = ownership.of(&callable).unwrap();
-facts.use_at(name_expr.id, &binding)   // Use { kind, last }
-facts.bindings[&binding.uid]           // BindingFacts { role, retained, captured, fresh, .. }
-facts.parameter_escapes                // per parameter
+let own = program.hir().ownership();
+own.diagnostics                       // rejections
+let f = own.of(&callable).unwrap();   // CallableOwnership
+f.use_at(name_expr.id, &binding)      // Use { access: Copy|Borrow|Mutate|Move|Write, last }
+f.bindings[&binding.uid]              // BindingFacts { role, class, owned, borrows }
+f.calls[&call.id]                     // CallModes { receiver, arguments, returns_receiver, .. }
+f.lambdas[&lambda.id]                 // LambdaFacts { escaping, captures: [(binding, Move|Borrow|Mutate)] }
+f.temporaries                         // owned values dropped at the end of their statement
+f.consumed_scrutinees                 // match/if-let whose payloads own their parts
+f.drops_old                           // assignments storing over a binding (drop flag; cleared by a Move)
+f.parameters, f.receiver              // inferred ParamMode: Borrow | Mutate (var) | Consume
 ```
 
-## What is computed
+## Model
 
-- **Use kind** per occurrence of a local: `Borrow` (read transiently: operands, member/index bases, interpolation, conditions, scrutinee, loop iterable), `Retain` (stored in a record/list/map, bound, returned, or passed to a parameter the callee lets escape), `Capture` (lambda snapshot at creation, a use at the lambda), `Write` (reassignment; keyed by the assignment statement).
-- **Last use**: no later use of the same value on any path. Computed by backward liveness over structured control flow with loop fixpoints; `break`/`continue`/`return` use the right live sets. A read that precedes a reassignment with no read in between is last for the old value. `last` means "the value is dead", not "release here": MIR still owns scope-exit release for paths that skip the use.
-- **Callee summaries**: per callable, which parameters and the receiver escape (a `Retain` or `Capture` of the parameter anywhere in the body, lambdas included). Solved to a fixpoint over the program, so recursion and mutual recursion are conservative-correct (starts optimistic, only grows).
-- **Binding facts**: `role`, `uses`, `retained`, `captured`, `reassigned`, `fresh` (initialized by a literal, constructor or lambda). `local_only()` = fresh and never retained, captured or reassigned: the allocation can be scalar-replaced or stack allocated.
+- **Classes.** `Copy` (scalars, and records/alternatives/tuples of Copy), `Move` (everything else owned), `Resource` (types with cleanup; move-only, never `.copy()`). `Shared[T]` is the only refcounted type and is `Copy`-class sharing. Type variables are `Move` (conservative); handle types are `Copy`-class handles, their `with` resources `Resource`.
+- **One owner.** A `Move`-class value passed to a consuming position (consuming parameter, record/list/map element, `return`, `let`/`var` initializer from a non-place, closure capture of an escaping closure) is moved. A move is legal only at the value's last use (backward liveness; loops use a head fixpoint; reassignment kills the old value). Use after move is an error.
+- **Modes.** Parameter modes are inferred by a program-wide fixpoint: `Borrow` (read), `Mutate` (declared `var`), `Consume` (moved/stored/returned). `var` is declared in the signature (`var xs: T`, `var fn` receivers) and written at the call (`f(var xs)`); the marker is required exactly where the callee takes `var`. There is no `mut`.
+- **Mutability.** `let` is immutable including contents; only `var` bindings, `var` parameters and `var fn` receivers change. Fields/elements of a `var` binding are changed through it.
+- **Overlap.** Operands that a call keeps hold of (a `var` argument, a `Move`-class borrow, a closure capture) must not overlap: `f(var a, a)` and `f(var r, r.items)` are rejected. A `Copy` value computed before the call (`f(var xs, xs.length())`) is fine.
+- **Borrows are lexical.** Payload bindings, loop variables, `with` bindings, accessor results and `let x = a.b` / `a[i]` / `let y = x` hold a borrow of their origin until the holder's last use (payload and loop borrows last the whole arm/body). While held, the origin cannot be changed, reassigned or moved; closures that mutate a capture hold it exclusively (reads are also rejected). Moving out of a borrow is rejected (`.copy()` first).
+- **Match / destructuring** consumes an owned last-use scrutinee (payloads own their parts, `consumed_scrutinees`); otherwise payloads are borrows. `var` in a case payload is rejected.
+- **Closures.** A closure that is returned, stored or passed to a consuming parameter *escapes*: it owns its captures (moved at creation, so the captured variable is dead afterwards) and may not change them or move them out when called (it can run many times: return `x.copy()`). A non-escaping closure borrows its captures lexically. Escape is inferred per module by fixpoint; native callbacks on collections are non-escaping.
+- **Mutators** (`append`, `set`, ...) take their receiver `var` and return `Unit`-like unusable results: chaining and using the result are errors.
+- **`.clone()`** is the temporary spelling of `.copy()` (deep value copy); diagnostics say `.clone()` until the rename (`COPY` constant in `walk.rs`).
 
-## Conventions and conservative choices
+## Open decisions: resolved here
 
-- Native functions and methods **borrow** all arguments (`DESIGN.md`: arguments are borrowed unless documented as consuming). A native that stores an argument takes its own count.
-- Constructors retain their arguments. Dynamic dispatch (`contract`), local closures and unresolved calls retain (unknown callee).
-- Closures run any number of times: inside a lambda body, captured variables are live-out and never have a last use.
-- A `with` resource is live until scope exit (cleanup is the final use) and on every `return`/`break` inside the block.
-- `and`/`or` right operands run on some paths only; reads in them do not hide later reads.
-
-## Open decisions (recorded, resolved for this model)
-
-| Decision | Resolution under reference counting |
+| Decision | Resolution |
 | --- | --- |
-| Projections vs copies | Projections (`a.b`, `a[i]`, payload bindings) alias; reading one is a borrow of the base and the result is retained by whoever stores it. |
-| Mutator results | A mutator returns the same object (chaining); the receiver is borrowed unless the callee's summary says `self` escapes. |
-| Closure escape | Captures snapshot at creation; a captured value is retained for the closure's lifetime. |
-| Generic copyability | No copy rule: every value is a scalar or a counted pointer; monomorphization picks the representation. |
-| Handle types | Ordinary counted objects; `with` runs cleanup at scope exit and on faults (runtime cleanup stack). |
+| Projections vs copies | Projections (`a.b`, `a[i]`, accessors, payloads) **borrow**; they cannot be moved out of or changed through a `let`; `.copy()` produces an owned value. |
+| Mutator results | Unusable (statement position only); no chaining. |
+| Closure escape | Escaping closures own captures (move at creation, no mutation/move-out of captures in the body); others borrow. Inferred per module. |
+| Generic copyability | Type variables are `Move`; no `Copy` bound. Monomorphization may copy when the instance is `Copy`-class. |
+| Handle types | `Copy`-class handles; `with` resources are `Resource` (move-only, no `.copy()`). |
 
-## Known limits
+## Rejection corpus
 
-Field and element places are not tracked (only locals); aliasing through a second reference is not detected, so MIR must check the runtime count for in-place updates. Native storing behavior is not modeled per function.
+`tests/ownership/reject/*.ms` mark each expected diagnostic with `# error: <substring>`; `tests/ownership/accept/*.ms` must be clean (`cargo test -p ms-check --test ownership`). Index by rule:
+
+| Rule | Programs |
+| --- | --- |
+| Use after move | `move_then_use`, `move_into_call_then_use`, `move_into_list_literal`, `move_into_record`, `move_in_loop`, `move_in_branch_then_join`, `use_param_after_move`, `moved_value_in_closure_after` |
+| Immutability | `mutate_let`, `mutate_field_of_let`, `mutate_param`, `assign_field_of_borrow` |
+| `var` markers | `missing_var_marker`, `extra_var_marker`, `var_argument_of_let`, `var_argument_not_a_place`, `var_from_projection`, `receiver_without_var_fn`, `receiver_var_method_from_plain_method` |
+| Overlap | `overlapping_var_arguments`, `holder_passed_with_var_root` |
+| Borrow exclusivity | `borrow_held_across_mutation`, `borrow_held_across_loop`, `borrow_held_across_branch`, `loop_mutates_iterable`, `match_payload_reassign`, `reborrow_chain` |
+| Move out of borrow/var | `consume_borrowed_binding`, `projection_move_out`, `match_payload_move_out`, `loop_variable_moved_out`, `return_borrowed_binding`, `var_parameter_moved_out` |
+| Closures | `closure_exclusive_borrow`, `closure_borrow_then_mutation`, `closure_reads_changed_variable`, `escaping_closure_changes_capture`, `escaping_closure_takes_capture` |
+| Mutators | `mutator_chaining`, `mutator_result_used` |
+
+## Behavior changes for the migration tool
+
+Programs written for reference semantics change as follows:
+
+1. **Aliasing is gone.** `let b = a` of a `Move`-class value borrows (if `a` stays used, `b` is a read-only view that blocks changes to `a`) or moves (last use). Code relying on two names changing one object must pass `var` explicitly or restructure.
+2. **`.clone()` is deep** and renamed `.copy()`; `.clone()` for a cheap shallow share becomes a borrow or a `Shared[T]`.
+3. **Mutator chaining/results** (`xs.append(1).append(2)`, `values.prepend(0).set(1, 9)`) become separate statements; results of mutators are not values.
+4. **Implicit parameter mutation.** A function that changes a parameter declares it `var` and every caller writes `var` at the argument.
+5. **`let` is deeply immutable.** `let xs = []; xs.append(1)` becomes `var xs`.
+6. **Closure capture is by borrow or move,** not by snapshot of a shared reference; a closure that mutates its capture exclusively borrows it, an escaping one owns it.
+7. **Iteration while mutating** the iterable (`for v in xs: xs.fill(..)`) is rejected.
+8. **Accessor-then-mutate** (`let first = xs[0]; xs.append(..); use(first)`) is rejected; `.copy()` the part or finish using it first.
+9. **Field assignment through calls/borrows** (`receiver(log, v).val = ...`, `let alias = rec; alias.f = 1`) is rejected; assign through the owning `var`.
+
+## Limits
+
+- Indexed assignment `xs[i] = v` has no syntax yet (`set` is the mutator).
+- `var` parameters, `var` call arguments and `var fn` are syntax additions (`ms-syntax`: `Param.mutable`, `Argument.mutable`, `Method.mutating`).
+- Native modes come from `collection_mutation` plus type-shape heuristics; a native that consumes an argument without a collection signature is treated as `Borrow`.
+- Moved-on-every-path is not tracked forward: `drops_old` is a may-drop fact paired with a drop flag cleared at `Move` uses.
+- Impl-vs-interface mode agreement is not checked yet.

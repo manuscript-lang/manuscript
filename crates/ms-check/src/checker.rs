@@ -77,6 +77,10 @@ pub struct CheckOptions {
     pub scope_marker: Option<String>,
     /// The bundled standard source module being checked for the shared cache.
     pub bundled: Option<Name>,
+    /// Also enforce the value-semantics ownership rules (`ownership` module)
+    /// once the program type checks. Off by default: the Go checker has no
+    /// such rules, and parity comes first.
+    pub ownership: bool,
 }
 
 /// The concrete fixture injected into tests of a module.
@@ -1099,7 +1103,8 @@ impl Checker {
             {
                 self.expression(default, Some(&p.ty));
             }
-            let b = self.bind_reporting(p.name, &p.ty, false, pos, !repeated);
+            let mutable = params.get(i).is_some_and(|a| a.mutable);
+            let b = self.bind_reporting(p.name, &p.ty, mutable, pos, !repeated);
             self.m()
                 .facts_mut()
                 .decls
