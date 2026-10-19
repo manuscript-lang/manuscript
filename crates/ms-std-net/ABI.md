@@ -186,17 +186,11 @@ msrt_websocket_receive(s, data: *mut VecVal, text: *mut u8, present: *mut u8, er
 A server socket lives until its handler returns, at which point it is closed with
 code 1000. `receive` returns `present = 0` after a clean close.
 
-## Requested from ms-rt: per-request fault isolation
+## Fault isolation
 
-A faulting handler must answer 500 and leave the server running, and handlers should
-run concurrently. Neither is possible today: faults exit 70 and there is no task
-runtime. This crate needs, from ms-rt:
-
-```text
-msrt_guard_call(code: extern "C" fn(*mut u8), data: *mut u8, msg_out: *mut *mut StrObj) -> u8
-```
-
-Runs `code(data)`; a fault inside it unwinds to the guard, runs pending cleanups
-registered since entry, and returns nonzero with the fault message. The server maps that
-to `Outcome::Fault` (500). The 500 and 504 paths are implemented and tested against
-`Outcome::Fault` and `Outcome::Cancelled`; only the thunk call is unguarded.
+Each handler thunk runs under `msrt_guard_call` (`ms-rt` ABI §7; `code` is
+`extern "C-unwind"`). A fault inside a handler becomes a 500 response (`Outcome::Fault`)
+and a stop request becomes 504 (`Outcome::Cancelled`); the server keeps running. Values
+owned by the abandoned frames leak, per the guard contract. Handlers still run one at a
+time on the ms thread: a handler that blocks lets I/O proceed, but further requests wait
+until it returns (the nested-handler alternative would make completion order non-LIFO).

@@ -27,6 +27,11 @@ use std::time::Duration;
 use super::tls::TlsOptionsWire;
 
 unsafe extern "C" {
+    fn msrt_guard_call(
+        code: unsafe extern "C-unwind" fn(*mut u8),
+        data: *mut u8,
+        msg_out: *mut *mut StrObj,
+    ) -> u8;
     fn msrt_free(p: *mut u8);
     fn msrt_release(o: *mut Obj);
     fn msrt_list_new(out: *mut VecVal);
@@ -854,6 +859,36 @@ impl Drop for Program {
     }
 }
 
+/// Runs one request under `msrt_guard_call`. `None` means it returned normally;
+/// otherwise the outcome that ends the request (a fault becomes a 500 for the caller).
+/// Values owned by the abandoned frames leak, per the ms-rt contract.
+fn guarded<T>(mut call: impl FnMut()) -> Option<Outcome<T>> {
+    unsafe extern "C-unwind" fn run(data: *mut u8) {
+        // SAFETY: `data` is the `&mut dyn FnMut()` below, live for the guard call.
+        unsafe { (*data.cast::<&mut dyn FnMut()>())() };
+    }
+    let mut dynamic: &mut dyn FnMut() = &mut call;
+    let mut message: *mut StrObj = std::ptr::null_mut();
+    // SAFETY: `run` and its data outlive the call; `message` is written only on a fault.
+    let status = unsafe { msrt_guard_call(run, (&raw mut dynamic).cast(), &mut message) };
+    match status {
+        0 => None,
+        2 => Some(Outcome::Cancelled),
+        _ => {
+            let text = if message.is_null() {
+                "fault".to_string()
+            } else {
+                // SAFETY: the guard hands over an owned string, released once here.
+                let text = unsafe { str_ref(message) }.to_string();
+                // SAFETY: as above.
+                unsafe { msrt_release(message.cast()) };
+                text
+            };
+            Some(Outcome::Fault(text))
+        }
+    }
+}
+
 impl Dispatch for Program {
     fn buffered(&self, request: ServerRequest) -> Outcome<Reply> {
         let Some(thunk) = self.buffered else {
@@ -881,7 +916,9 @@ impl Dispatch for Program {
                     cap: 0,
                 },
             };
-            thunk(self.env, &mut req, &mut resp);
+            if let Some(stop) = guarded(|| thunk(self.env, &mut req, &mut resp)) {
+                return stop;
+            }
             let headers = if resp.headers.is_null() {
                 Headers::new()
             } else {
@@ -904,7 +941,13 @@ impl Dispatch for Program {
         let mut message: *mut StrObj = std::ptr::null_mut();
         // SAFETY: the exchange handle moves to the thunk; the status and optional
         // message string come back owned.
-        let status = unsafe { thunk(self.env, new_handle::<ExchangeRef>(exchange), &mut message) };
+        let mut status = 0;
+        let handle = new_handle::<ExchangeRef>(exchange);
+        // SAFETY: the thunk contract; the handle moves to it.
+        let call = || status = unsafe { thunk(self.env, handle, &mut message) };
+        if let Some(stop) = guarded(call) {
+            return stop;
+        }
         let text = if message.is_null() {
             String::new()
         } else {
@@ -1263,4 +1306,49 @@ pub unsafe extern "C" fn msrt_http_exchange_write_bytes(
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe { finish(exchange(x).write(bytes_ref(data)), err, |()| {}) }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    unsafe extern "C" {
+        fn msrt_fault(msg: *const u8, len: usize) -> !;
+    }
+
+    unsafe extern "C" fn thunk(_env: *mut Obj, req: *mut RequestWire, resp: *mut ResponseWire) {
+        // SAFETY: the dispatcher passes live wires; the path string is owned by us.
+        unsafe {
+            if str_ref((*req).path) == "/boom" {
+                msrt_fault(b"boom".as_ptr(), 4);
+            }
+            (*resp).status = 204;
+        }
+    }
+
+    fn request(path: &str) -> ServerRequest {
+        ServerRequest {
+            method: "GET".into(),
+            path: path.into(),
+            query: String::new(),
+            headers: Headers::new(),
+            body: Vec::new(),
+            protocol: "HTTP/1.1",
+        }
+    }
+
+    #[test]
+    fn a_faulting_handler_is_isolated() {
+        let program = Program {
+            env: std::ptr::null_mut(),
+            buffered: Some(thunk),
+            streaming: None,
+        };
+        let faulted = program.buffered(request("/boom"));
+        assert!(matches!(faulted, Outcome::Fault(m) if m.contains("boom")));
+        // The guard is reusable and later requests still run.
+        let ok = program.buffered(request("/ok"));
+        assert!(matches!(ok, Outcome::Done(r) if r.status == 204));
+        std::mem::forget(program);
+    }
 }
