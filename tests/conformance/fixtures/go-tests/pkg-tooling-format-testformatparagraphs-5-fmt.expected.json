@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn process(input: String) Int:\n    let records = parse(input)\n    if records.length() == 0: return 0\n    if records.length() > 100: return 1\n\n    let report = summarize(records)\n    let payload = encode(report)\n\n    match save(payload):\n        ok(_):\n            return 0\n        error(_):\n            return 1\n"
+  }
+}

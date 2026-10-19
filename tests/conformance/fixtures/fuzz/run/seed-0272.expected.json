@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "gamma\nb1 = false\nfib(43) = 433494437\nf2 = 325.916\ns3 = [10:x]\nl4 = [-28, 5, 2, 4] len 4\ncollatz(739) = 20\ni5 = -1488\nf6 = 325.916\ni7 = 0\nb8 = false\ns9 = [4:10:x0:brace{s}]\nf10 = 325.916\ns11 = [TAB\tHERE4:10:X0:BRACE{S}]\n",
+    "stderr": ""
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn absent[T]() Optional[T]: none\n\nfn transform[T, U](callback: fn(value: T) U) fn(value: T) U: callback\n\nfn answer() Unit:\n    let empty: Optional[Int] = absent()\n    let callback: fn(value: Int) String = transform(fn(item): item.to_string())\n"
+  }
+}

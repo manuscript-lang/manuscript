@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "pkg-checker-testfilefixturecontracts-5.ms",
+          "line": 5,
+          "column": 29,
+          "offset": 226
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "pkg-checker-testfilefixturecontracts-5.ms",
+          "line": 4,
+          "column": 20,
+          "offset": 191
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "make_fixture must be a nongeneric zero-argument function; declare fn make_fixture() ConcreteFixture",
+        "position": {
+          "file": "pkg-checker-testfilefixturecontracts-5.ms",
+          "line": 5,
+          "column": 1,
+          "offset": 198
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...)', or import it from a module",
+        "position": {
+          "file": "pkg-checker-testfilefixturecontracts-5.ms",
+          "line": 6,
+          "column": 12,
+          "offset": 244
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-checker-testfilefixturecontracts-5.ms:5:29: resolution: unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testfilefixturecontracts-5.ms:4:20: resolution: unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testfilefixturecontracts-5.ms:5:1: type: make_fixture must be a nongeneric zero-argument function; declare fn make_fixture() ConcreteFixture\n<DIR>/pkg-checker-testfilefixturecontracts-5.ms:6:12: resolution: unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...)', or import it from a module\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

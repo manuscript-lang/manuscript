@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "unterminated delimiter '(' opened at line 5:12; add the matching ')' before the end of the file",
+        "position": {
+          "file": "pkg-parser-testsyntaxerrorsstatethefix-4.ms",
+          "line": 6,
+          "column": 1,
+          "offset": 156
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

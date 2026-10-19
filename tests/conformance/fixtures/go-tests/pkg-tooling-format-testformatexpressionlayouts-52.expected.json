@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type ApplicationError; declare it with 'type ApplicationError:' / 'interface ApplicationError:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "pkg-tooling-format-testformatexpressionlayouts-52.ms",
+          "line": 7,
+          "column": 41,
+          "offset": 269
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding cause; declare it with 'let cause = ...' before use, define 'fn cause(...)', or import it from a module",
+        "position": {
+          "file": "pkg-tooling-format-testformatexpressionlayouts-52.ms",
+          "line": 8,
+          "column": 18,
+          "offset": 305
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-52.ms:7:41: resolution: unknown type ApplicationError; declare it with 'type ApplicationError:' / 'interface ApplicationError:', declare it as a type parameter, or import it\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-52.ms:8:18: resolution: unknown binding cause; declare it with 'let cause = ...' before use, define 'fn cause(...)', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

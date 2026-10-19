@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = 680708.129436\nf2 = -680391.2554360001\ns3 = [héllobeta-78120:MiXeD CaSeback\\slashquote\"d]\nf4 = 894.618\nacc5 = 23\nl6 = [] len 0\nacc7 = 6\ni8 = -175257091772\nfib(5) = 5\ns9 = [ammaghéllobeta-78120:MiXeD CaSeback\\slashquote\"d]\n0 -175257091772 false sum -175257091772\n26:hello world\nfib(10) = 55\nl10 = [17, -12, 6, -5, -20] len 5\nb11 = true\n",
+    "stderr": ""
+  }
+}

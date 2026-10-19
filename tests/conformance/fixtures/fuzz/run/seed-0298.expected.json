@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [line\nbreak]\ni2 = -5082744028726442550\ns3 = [line\nbreak]\ni4 = -5082744028726442550\n5082744028726442550 0 false sum 5082744028726442550\nf5 = 3041.383\nl6 = [-15, -2] len 2\ns7 = [LINE\nBREAKQUOTE\"Dline\nbreak]\nb8 = false\n",
+    "stderr": ""
+  }
+}

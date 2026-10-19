@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = 0\nf2 = -Infinity\n-21 -532275 false sum -532296\ni3 = 4\ni4 = 4\ni6 = 4\nl7 = [-26, -19, 24, 3] len 4\nf8 = -Infinity\nf9 = NaN\ngcd(200, 1713) = 1\ni10 = -1636567\nf11 = 0\nacc12 = 17\nb13 = true\nf14 = 0\ni15 = 0\n",
+    "stderr": ""
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type A[T]:\n    b: B[List[T]]\n\ntype B[U]:\n    a: A[U]\n"
+  }
+}

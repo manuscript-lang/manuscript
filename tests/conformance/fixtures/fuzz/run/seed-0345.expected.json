@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "s1 = [gamma]\ncollatz(2449) = 133\nl2 = [26, -17, -26, 11, 4] len 5\ni3 = -24\nb4 = false\ngamma\ni5 = -24\nf6 = 300000000000791.1\ns7 = [BETA]\ni8 = 39\ns9 = [line\nbreak]\ngammaline\nbreak\ni10 = -48\nf11 = 600000000002142.4\nb12 = false\ni13 = -48\ns14 = [line\nbreak]\nf15 = 600000000002142.4\n",
+    "stderr": ""
+  }
+}

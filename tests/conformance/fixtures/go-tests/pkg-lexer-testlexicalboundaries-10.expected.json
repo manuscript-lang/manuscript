@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "an exponent requires digits; write e.g. 1e3 or 2.5e-4",
+        "position": {
+          "file": "pkg-lexer-testlexicalboundaries-10.ms",
+          "line": 5,
+          "column": 15,
+          "offset": 163
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

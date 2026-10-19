@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn text[T](value: T) String:\n    return value.to_string()\n\ntest \"string conversion\":\n    let count = 3\n    let convert: fn() String = count.to_string\n    let direct = count.to_string()\n    let bound = convert()\n    let embedded = \"{count}\"\n"
+  }
+}

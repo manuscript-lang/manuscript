@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 70,
+    "stdout": "i1 = 22\nb2 = false\nl3 = [2, -19, 11, -6, -11] len 5\nf4 = 10000000000000000\ni5 = 21\ns6 = [5:back\\slashgamma]\nacc7 = -7\ns8 = [5:back\\slashgamma]\ns9 = [-791857:kaerb\nenil]\n45 11 false sum 56\ni10 = -3166160\nl11 = [-11, -6, 11, -19, 2] len 5\ns12 = [mixed case]\ni13 = -473\ni14 = -3166160\nfact(9) = 362880\nb15 = true\nf16 = 10000000000000000\n",
+    "stderr": "Int.%: remainder by zero; right must be nonzero, found 0\n  at seed-0270.ms:57 in main\n"
+  }
+}

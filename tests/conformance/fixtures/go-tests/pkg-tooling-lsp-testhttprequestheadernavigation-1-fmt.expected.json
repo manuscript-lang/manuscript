@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import HttpRequest from \"@std/http.ms\"\nimport Bytes from \"@std/bytes.ms\"\n\nfn content_type(request: HttpRequest) Optional[List[Bytes]]:\n    return request.headers.values(\"content-type\")\n"
+  }
+}

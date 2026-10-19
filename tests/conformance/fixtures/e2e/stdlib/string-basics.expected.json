@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "string-basics.ms::String basic counterparts are callable",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "string-basics.ms::length and chars use scalars and preserve text boundaries",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "string-basics.ms::reverse operates on scalars without normalization",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "string-basics.ms::compare is normalized sign and scalar lexical order",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "string-basics.ms::lines preserve interior empties and recognize LF and CRLF only",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "string-basics.ms::String basic bound methods capture immutable receiver values",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN string-basics.ms::String basic counterparts are callable\nPASS string-basics.ms::String basic counterparts are callable\nRUN string-basics.ms::length and chars use scalars and preserve text boundaries\nPASS string-basics.ms::length and chars use scalars and preserve text boundaries\nRUN string-basics.ms::reverse operates on scalars without normalization\nPASS string-basics.ms::reverse operates on scalars without normalization\nRUN string-basics.ms::compare is normalized sign and scalar lexical order\nPASS string-basics.ms::compare is normalized sign and scalar lexical order\nRUN string-basics.ms::lines preserve interior empties and recognize LF and CRLF only\nPASS string-basics.ms::lines preserve interior empties and recognize LF and CRLF only\nRUN string-basics.ms::String basic bound methods capture immutable receiver values\nPASS string-basics.ms::String basic bound methods capture immutable receiver values\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

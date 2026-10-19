@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import panic from \"@std/faults.ms\"\nimport range from \"@std/collections.ms\"\n\nexport fn main() Int:\n    var sum = 0\n    for i in range(0, 5000000):\n        if i % 100 >= 48: sum += 1\n    if sum != 2600000: return panic(\"numeric checksum\")\n\n    return 0\n"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3040",
+        "phase": "type",
+        "message": "recursive generic applications must preserve their parameters in Tree.Pair.left; keep the same type arguments in the same positions along a recursive cycle",
+        "position": {
+          "file": "pkg-checker-testrecursivegenericdiagnosticnameseachfieldonce-1.ms",
+          "line": 6,
+          "column": 15,
+          "offset": 251
+        }
+      },
+      {
+        "code": "MS3040",
+        "phase": "type",
+        "message": "recursive generic applications must preserve their parameters in Tree.Pair.right; keep the same type arguments in the same positions along a recursive cycle",
+        "position": {
+          "file": "pkg-checker-testrecursivegenericdiagnosticnameseachfieldonce-1.ms",
+          "line": 6,
+          "column": 32,
+          "offset": 268
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-checker-testrecursivegenericdiagnosticnameseachfieldonce-1.ms:6:15: type: recursive generic applications must preserve their parameters in Tree.Pair.left; keep the same type arguments in the same positions along a recursive cycle\n<DIR>/pkg-checker-testrecursivegenericdiagnosticnameseachfieldonce-1.ms:6:32: type: recursive generic applications must preserve their parameters in Tree.Pair.right; keep the same type arguments in the same positions along a recursive cycle\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

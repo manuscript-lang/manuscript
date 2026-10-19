@@ -1,0 +1,105 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "numeric-faults.ms::add high overflows",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "numeric-faults.ms::add low overflows",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "numeric-faults.ms::subtract high overflows",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "numeric-faults.ms::subtract low overflows",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "numeric-faults.ms::multiply high overflows",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "numeric-faults.ms::multiply minimum overflows",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "numeric-faults.ms::divide minimum overflows",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "numeric-faults.ms::divide by zero faults",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "numeric-faults.ms::remainder by zero faults",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "numeric-faults.ms::negation",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "numeric-faults.ms::negating the minimum overflows",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 11,
+        "selected": 11,
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN numeric-faults.ms::add high overflows\nPASS numeric-faults.ms::add high overflows\nRUN numeric-faults.ms::add low overflows\nPASS numeric-faults.ms::add low overflows\nRUN numeric-faults.ms::subtract high overflows\nPASS numeric-faults.ms::subtract high overflows\nRUN numeric-faults.ms::subtract low overflows\nPASS numeric-faults.ms::subtract low overflows\nRUN numeric-faults.ms::multiply high overflows\nPASS numeric-faults.ms::multiply high overflows\nRUN numeric-faults.ms::multiply minimum overflows\nPASS numeric-faults.ms::multiply minimum overflows\nRUN numeric-faults.ms::divide minimum overflows\nPASS numeric-faults.ms::divide minimum overflows\nRUN numeric-faults.ms::divide by zero faults\nPASS numeric-faults.ms::divide by zero faults\nRUN numeric-faults.ms::remainder by zero faults\nPASS numeric-faults.ms::remainder by zero faults\nRUN numeric-faults.ms::negation\nPASS numeric-faults.ms::negation\nRUN numeric-faults.ms::negating the minimum overflows\nPASS numeric-faults.ms::negating the minimum overflows\n11 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

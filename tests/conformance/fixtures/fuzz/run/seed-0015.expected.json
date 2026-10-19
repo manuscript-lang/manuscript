@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 490\nbeta\nfact(4) = 24\nb2 = true\nf3 = 629.25\ni4 = 490\ni5 = -534406\ns6 = [459388945342180:gamma]\ncollatz(1420) = 34\nb7 = true\nl8 = [-24] len 1\n-6 -5 true sum -11\n",
+    "stderr": ""
+  }
+}

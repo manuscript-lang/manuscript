@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import TomlValue from \"@std/toml.ms\"\n\nexport fn main() Int:\n    let v: Optional[TomlValue] = none\n    if v.is_some():\n        return 1\n\n    return 0\n"
+  }
+}

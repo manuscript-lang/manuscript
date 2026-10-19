@@ -1,0 +1,75 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "interface-view-callables.ms::nested view receiver prepares once and calls later",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "interface-view-callables.ms::constructor arguments retain written order and capture snapshots",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "interface-view-callables.ms::explicit nested views and bound methods retain generic dispatch",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "interface-view-callables.ms::source constructors with callable defaults prepare once",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "interface-view-callables.ms::match receiver side effects and callable body remain ordered",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN interface-view-callables.ms::nested view receiver prepares once and calls later\nPASS interface-view-callables.ms::nested view receiver prepares once and calls later\nRUN interface-view-callables.ms::constructor arguments retain written order and capture snapshots\nPASS interface-view-callables.ms::constructor arguments retain written order and capture snapshots\nRUN interface-view-callables.ms::explicit nested views and bound methods retain generic dispatch\nPASS interface-view-callables.ms::explicit nested views and bound methods retain generic dispatch\nRUN interface-view-callables.ms::source constructors with callable defaults prepare once\nPASS interface-view-callables.ms::source constructors with callable defaults prepare once\nRUN interface-view-callables.ms::match receiver side effects and callable body remain ordered\nPASS interface-view-callables.ms::match receiver side effects and callable body remain ordered\n5 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

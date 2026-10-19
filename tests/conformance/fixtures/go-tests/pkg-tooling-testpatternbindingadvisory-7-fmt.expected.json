@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "interface Describe:\n    fn describe() String\n\ntype State:\n    case Ready\n    case Waiting\n\nimpl Describe for State:\n    fn describe() String: \"state\"\n\nfn use(value: Describe) Int:\n    match value:\n        State(Ready): return 1\n        _: return 0\n"
+  }
+}

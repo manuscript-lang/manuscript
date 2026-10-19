@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type LeftState:\n    case Ready\n\ntype RightState:\n    case Ready\n\nlet left: LeftState = LeftState.Ready\n# Rejected: two visible Ready cases, even with an annotation.\nlet annotated: LeftState = Ready\n# Rejected: two visible Ready cases.\nlet ambiguous = Ready\n# Rejected: a different nominal alternative.\nlet wrong: LeftState = RightState.Ready\n"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type Failure:\n    code: Int\n\nimpl Error for Failure:\n    fn message() String: \"failure\"\n\nfn failing() Result[Int, Failure]: error(Failure(code: 1))\n\nfn count[T](r: Result[T, Error]) Int: 1\n\nfn use() Int: count(r: failing())\n"
+  }
+}

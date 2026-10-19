@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = 0\nhélloTab\there\nf3 = 692.25\nb4 = false\ni5 = 0\ns6 = [héllo]\ns7 = [x]\nl8 = [] len 0\ni9 = 0\n0 8 true sum 8\nb10 = false\nnaïve\ni11 = 0\nf12 = 0\nf13 = NaN\nf14 = NaN\n",
+    "stderr": ""
+  }
+}

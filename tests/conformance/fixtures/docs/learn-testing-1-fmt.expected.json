@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import {expect_equal} from \"@std/testing.ms\"\n\nfn add(a: Int, b: Int) Int:\n    return a + b\n\ntest \"addition\":\n    try expect_equal(add(1, 2), 3)\n\ntest \"zero is unchanged\":\n    try expect_equal(add(0, 7), 7)\n"
+  }
+}

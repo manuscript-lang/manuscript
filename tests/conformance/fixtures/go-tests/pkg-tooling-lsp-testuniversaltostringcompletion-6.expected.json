@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a name, found '|'; '|' is a reserved word and cannot be used as a name",
+        "position": {
+          "file": "pkg-tooling-lsp-testuniversaltostringcompletion-6.ms",
+          "line": 6,
+          "column": 18,
+          "offset": 264
+        },
+        "end": {
+          "file": "pkg-tooling-lsp-testuniversaltostringcompletion-6.ms",
+          "line": 6,
+          "column": 19,
+          "offset": 265
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = -115351.15581\ns2 = [emoji 😀]\ni3 = -9\nb4 = false\nf5 = -152256604.5998514\nl6 = [-7, -15, 20, 18, -12] len 5\ni7 = 7\nf8 = 0.00001091103078807241\nl9 = [-7, -15, 20, 18, -12, 27] len 6\ni10 = 25\ni11 = 7\nf12 = 613976.8752020535\nb13 = false\ni14 = 49\n",
+    "stderr": ""
+  }
+}

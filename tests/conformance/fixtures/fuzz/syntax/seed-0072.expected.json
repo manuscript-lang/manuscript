@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected end of statement, found ':'; put one statement per line, and join operands with an operator or a comma inside brackets",
+        "position": {
+          "file": "seed-0072.ms",
+          "line": 15,
+          "column": 21,
+          "offset": 510
+        },
+        "end": {
+          "file": "seed-0072.ms",
+          "line": 15,
+          "column": 22,
+          "offset": 511
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

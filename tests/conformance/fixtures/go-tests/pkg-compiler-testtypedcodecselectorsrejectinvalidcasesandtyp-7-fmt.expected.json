@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import HashAlgorithm from \"@std/crypto.ms\"\nimport CompressionFormat from \"@std/compress.ms\"\n\nfn choose(algorithm: HashAlgorithm) Unit:\n    return unit\n\nfn wrong() Unit:\n    choose(CompressionFormat.Gzip)\n"
+  }
+}

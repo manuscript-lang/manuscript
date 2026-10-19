@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "225607259820 422275328712654344 true sum 422275554319914164\ns1 = [Tab\there-155827490194:naïve]\ni2 = -114560470025\ns3 = [héllo]\nacc4 = 2\ni5 = 229120939951\nemoji 😀\n3479430 -631104 false sum 2848326\n",
+    "stderr": ""
+  }
+}

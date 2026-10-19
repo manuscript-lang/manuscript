@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = 1316.246\nf2 = -5235519518001.462\ns3 = [D\"ETOUQ]\ns4 = [ad\"etouqd\"etouq]\nb5 = true\ns6 = [evïanad\"etouqd\"etouq]\ni7 = 44\ni8 = 1958\nline\nbreak\nf9 = 3465007.0650320007\nf10 = -7.5217586123354e+25\ni11 = -24\ns12 = [Tab\there]\n",
+    "stderr": ""
+  }
+}

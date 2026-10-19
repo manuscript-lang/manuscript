@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 70,
+    "stdout": "i1 = -213694209677550\nb2 = false\nf3 = 587593.9920979999\ns4 = [ms]\n-10471016274198137 -427388419127513 true sum -10898404693325650\ni6 = -17\nl7 = [-14, -13] len 2\nl8 = [-12] len 1\nfib(48) = 4807526976\ni9 = 2564330516130559\ns10 = [brace{s}ms]\ni11 = 2\ns12 = [alpha]\n",
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0025.ms:48 in main\n"
+  }
+}

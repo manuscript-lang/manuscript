@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 1292878541640\nb2 = true\n-115243 2 true sum -115241\nf3 = -Infinity\nf4 = NaN\nb5 = false\nf6 = 194.675\nacc7 = 139\nl8 = [] len 0\nf9 = NaN\n0 611606 true sum 611606\n-80 1292879228088 true sum 1292879228008\ni10 = 2585757083280\nacc11 = 63\nf12 = NaN\nfib(21) = 10946\nacc13 = 0\ni14 = 1292878541640\ni15 = -2585757083280\n",
+    "stderr": ""
+  }
+}

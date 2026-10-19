@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
+        "position": {
+          "file": "core-language-basics-numbers-and-booleans-2.ms",
+          "line": 7,
+          "column": 18,
+          "offset": 269
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Float, found Int; Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value",
+        "position": {
+          "file": "core-language-basics-numbers-and-booleans-2.ms",
+          "line": 9,
+          "column": 27,
+          "offset": 375
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/core-language-basics-numbers-and-booleans-2.ms:7:18: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n<DIR>/core-language-basics-numbers-and-booleans-2.ms:9:27: type: expected Float, found Int; Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

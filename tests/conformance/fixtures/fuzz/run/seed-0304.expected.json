@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "-417976608 -501595 true sum -418478203\nl1 = [30, -28, -17] len 3\n-36547700 0 true sum -36547700\nb2 = false\nb3 = false\ni4 = 0\ns5 = [GAMMA]\nhéllo\ns6 = [  deddap  a]\ns7 = [D\"ETOUQ]\nacc8 = -6\nb9 = false\nl10 = [30] len 1\nf11 = -Infinity\ni12 = 45\n",
+    "stderr": ""
+  }
+}

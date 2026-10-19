@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import CsvOptions from \"@std/csv.ms\"\n\nfn example(CsvOptions: fn() Unit) Unit:\n    CsvOptions()\n"
+  }
+}

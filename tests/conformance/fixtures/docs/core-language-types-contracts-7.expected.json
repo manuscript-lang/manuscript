@@ -1,0 +1,71 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Increment; declare it with 'type Increment:' / 'interface Increment:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "core-language-types-contracts-7.ms",
+          "line": 4,
+          "column": 29,
+          "offset": 158
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
+        "position": {
+          "file": "core-language-types-contracts-7.ms",
+          "line": 7,
+          "column": 14,
+          "offset": 218
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
+        "position": {
+          "file": "core-language-types-contracts-7.ms",
+          "line": 8,
+          "column": 12,
+          "offset": 239
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
+        "position": {
+          "file": "core-language-types-contracts-7.ms",
+          "line": 9,
+          "column": 14,
+          "offset": 270
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
+        "position": {
+          "file": "core-language-types-contracts-7.ms",
+          "line": 11,
+          "column": 13,
+          "offset": 361
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/core-language-types-contracts-7.ms:4:29: resolution: unknown type Increment; declare it with 'type Increment:' / 'interface Increment:', declare it as a type parameter, or import it\n<DIR>/core-language-types-contracts-7.ms:7:14: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-contracts-7.ms:8:12: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-contracts-7.ms:9:14: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-contracts-7.ms:11:13: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

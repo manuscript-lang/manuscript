@@ -1,0 +1,110 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "toml.ms::TOML scalars quoted keys comments exact integers and dates",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "toml.ms::TOML multiline strings Unicode escapes arrays and inline tables",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "toml.ms::TOML implicit parents dotted keys and arrays of tables",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "toml.ms::TOML rejects malformed data redefinitions and closed inline tables",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "toml.ms::TOML optional limits include implicit tables and zero",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "toml.ms::TOML nonfinite floats CRLF and repeated separators",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "toml.ms::TOML errors report the offending line and column",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "toml.ms::TOML limits fields default to none",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "toml.ms::TOML stringify round trips scalars tables and arrays of tables",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "toml.ms::TOML stringify requires a table root and honors max_bytes",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "toml.ms::TOML long strings parse and stringify in linear time",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "toml.ms::TOML stringify rejects invalid date-time text",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 12,
+        "selected": 12,
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN toml.ms::TOML scalars quoted keys comments exact integers and dates\nPASS toml.ms::TOML scalars quoted keys comments exact integers and dates\nRUN toml.ms::TOML multiline strings Unicode escapes arrays and inline tables\nPASS toml.ms::TOML multiline strings Unicode escapes arrays and inline tables\nRUN toml.ms::TOML implicit parents dotted keys and arrays of tables\nPASS toml.ms::TOML implicit parents dotted keys and arrays of tables\nRUN toml.ms::TOML rejects malformed data redefinitions and closed inline tables\nPASS toml.ms::TOML rejects malformed data redefinitions and closed inline tables\nRUN toml.ms::TOML optional limits include implicit tables and zero\nPASS toml.ms::TOML optional limits include implicit tables and zero\nRUN toml.ms::TOML nonfinite floats CRLF and repeated separators\nPASS toml.ms::TOML nonfinite floats CRLF and repeated separators\nRUN toml.ms::TOML errors report the offending line and column\nPASS toml.ms::TOML errors report the offending line and column\nRUN toml.ms::TOML limits fields default to none\nPASS toml.ms::TOML limits fields default to none\nRUN toml.ms::TOML stringify round trips scalars tables and arrays of tables\nPASS toml.ms::TOML stringify round trips scalars tables and arrays of tables\nRUN toml.ms::TOML stringify requires a table root and honors max_bytes\nPASS toml.ms::TOML stringify requires a table root and honors max_bytes\nRUN toml.ms::TOML long strings parse and stringify in linear time\nPASS toml.ms::TOML long strings parse and stringify in linear time\nRUN toml.ms::TOML stringify rejects invalid date-time text\nPASS toml.ms::TOML stringify rejects invalid date-time text\n12 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

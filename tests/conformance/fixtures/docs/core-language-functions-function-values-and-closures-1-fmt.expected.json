@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn apply(value: Int, transform: fn(value: Int) Int) Int:\n    return transform(value: value)\n\nlet offset = 1\nlet decrement = fn(value: Int) Int:\n    return value - offset\nlet result = apply(value: 3, transform: decrement)\n"
+  }
+}

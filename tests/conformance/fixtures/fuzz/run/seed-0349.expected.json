@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "b1 = false\ns2 = [  padded  MiXeD CaSe]\ns3 = [  padded  MiXeD CaSe  padded  MiXeD CaSe]\nfib(48) = 4807526976\n  padded  MiXeD CaSe  padded  MiXeD CaSe  padded  MiXeD CaSe\nf4 = 305.87\n39 27216 true sum 27255\n-34 -325 false sum -359\nf7 = -499996496.9026259\nf8 = 237556208605656320000\nl9 = [27, -7, -19] len 3\nl10 = [27, -7, -19] len 3\n-42 5 true sum -37\n318 0 false sum 318\nms\ni11 = -433505866090\nl12 = [27] len 1\n",
+    "stderr": ""
+  }
+}

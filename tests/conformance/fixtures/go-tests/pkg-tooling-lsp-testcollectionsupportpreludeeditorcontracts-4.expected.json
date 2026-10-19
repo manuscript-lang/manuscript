@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a name, found '|'; '|' is a reserved word and cannot be used as a name",
+        "position": {
+          "file": "pkg-tooling-lsp-testcollectionsupportpreludeeditorcontracts-4.ms",
+          "line": 4,
+          "column": 9,
+          "offset": 193
+        },
+        "end": {
+          "file": "pkg-tooling-lsp-testcollectionsupportpreludeeditorcontracts-4.ms",
+          "line": 4,
+          "column": 10,
+          "offset": 194
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

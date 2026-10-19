@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected fn(value: Int) Bool, found fn(n: Int) Bool; the function's parameter is named n but this position expects value; rename the parameter to value, or wrap the function in a lambda: fn(value: ...) ...: f(n: value)",
+        "position": {
+          "file": "pkg-checker-testdiagnosticsstatecauseandfix-42.ms",
+          "line": 7,
+          "column": 23,
+          "offset": 217
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-42.ms:7:23: type: expected fn(value: Int) Bool, found fn(n: Int) Bool; the function's parameter is named n but this position expects value; rename the parameter to value, or wrap the function in a lambda: fn(value: ...) ...: f(n: value)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

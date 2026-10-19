@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "compound-assignment.ms::compound assignment on bindings",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "compound-assignment.ms::right side groups as one operand",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "compound-assignment.ms::compound assignment on fields",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "compound-assignment.ms::compound assignment in loops",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN compound-assignment.ms::compound assignment on bindings\nPASS compound-assignment.ms::compound assignment on bindings\nRUN compound-assignment.ms::right side groups as one operand\nPASS compound-assignment.ms::right side groups as one operand\nRUN compound-assignment.ms::compound assignment on fields\nPASS compound-assignment.ms::compound assignment on fields\nRUN compound-assignment.ms::compound assignment in loops\nPASS compound-assignment.ms::compound assignment in loops\n4 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

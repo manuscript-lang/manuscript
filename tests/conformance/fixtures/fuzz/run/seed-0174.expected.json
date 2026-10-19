@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "9223372036854775758:a\nl1 = [] len 0\ni2 = 2\n\nl3 = [] len 0\n42\nf4 = 6708484530.697124\nb5 = true\nl6 = [] len 0\nfib(47) = 2971215073\nl7 = [] len 0\nl8 = [] len 0\nfib(36) = 14930352\nf9 = 2.400001110723054e+32\ni10 = 0\ns11 = [ABRACE{S}A]\nb12 = true\nf13 = 6708484530.697124\n",
+    "stderr": ""
+  }
+}

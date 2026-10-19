@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown or ambiguous member len on String; did you mean 'length' or 'byte_length' or 'scalar_length'?",
+        "position": {
+          "file": "pkg-checker-testdiagnosticsstatecauseandfix-38.ms",
+          "line": 5,
+          "column": 19,
+          "offset": 170
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-38.ms:5:19: resolution: unknown or ambiguous member len on String; did you mean 'length' or 'byte_length' or 'scalar_length'?\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

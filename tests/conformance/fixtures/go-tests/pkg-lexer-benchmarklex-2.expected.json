@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "mismatched closing delimiter ')'; the '[' opened at line 5:12 needs ']'",
+        "position": {
+          "file": "pkg-lexer-benchmarklex-2.ms",
+          "line": 5,
+          "column": 17,
+          "offset": 154
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

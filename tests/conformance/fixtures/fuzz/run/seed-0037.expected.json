@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "l1 = [-6, -11, -23, -19] len 4\nb2 = true\ni3 = 0\ns4 = [MiXeD CaSeaback\\slash]\nfib(7) = 13\nb5 = true\ni6 = -78\nMiXeD CaSeaback\\slashMiXeD CaSeaback\\slash\ni7 = -115\nf8 = 7.485683995280001e+26\n-73 -34 true sum -107\nacc9 = 189\ns10 = [MiXeD CaSeaback\\slash]\nb11 = false\nf12 = 7.485683995280001e+26\nl13 = [] len 0\nb14 = true\n",
+    "stderr": ""
+  }
+}

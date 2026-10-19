@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "i1 = 28188\nb2 = true\nl3 = [27, -3, -21] len 3\ns4 = [XMS1:DELTA]\nacc5 = 252\n28188 32 false sum 28220\nl6 = [8, -12, -19] len 3\nb7 = false\ns8 = [XMS1:DELTA]\ni9 = 8\ni10 = 37\n28188 713641 true sum 741829\nacc11 = -3\ngcd(1507, 2920) = 1\nATLED:1SMX\n",
+    "stderr": ""
+  }
+}

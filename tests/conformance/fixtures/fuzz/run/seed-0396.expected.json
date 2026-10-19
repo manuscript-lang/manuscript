@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "f1 = 0.00047419672473669516\nb2 = true\nacc3 = 0\nf4 = 936.537\ns6 = [34:42]\ni7 = 75344299468\ni8 = 50574559640697128\nl10 = [17, -27] len 2\nacc11 = -140\ni12 = 75344299468\n",
+    "stderr": ""
+  }
+}

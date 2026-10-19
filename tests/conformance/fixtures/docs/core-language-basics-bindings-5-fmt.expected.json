@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn example() Unit:\n    var remaining = 3\n    remaining = 2\n    remaining = 2.0  # Rejected: Float cannot replace Int.\n"
+  }
+}

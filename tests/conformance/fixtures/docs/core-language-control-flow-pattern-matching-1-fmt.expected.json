@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn describe(payment: Payment) String:\n    match payment:\n        Paid(receipt):\n            return \"Paid: {receipt}\"\n        Declined(reason):\n            return \"Declined: {reason}\"\n        Pending(reference):\n            return \"Pending: {reference}\"\n"
+  }
+}

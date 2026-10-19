@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding n; declare it with 'let n = ...' before use, define 'fn n(...)', or import it from a module",
+        "position": {
+          "file": "pkg-build-testexpressionconveniencerejections-12.ms",
+          "line": 8,
+          "column": 12,
+          "offset": 270
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-12.ms:8:12: resolution: unknown binding n; declare it with 'let n = ...' before use, define 'fn n(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "42  padded  \nf1 = 119.25\nb2 = false\ni3 = -7046\ns4 = [0:ms]\ns5 = [0:ms]\nb6 = false\ns7 = [ms]\ni8 = 323076\nb9 = false\n",
+    "stderr": ""
+  }
+}

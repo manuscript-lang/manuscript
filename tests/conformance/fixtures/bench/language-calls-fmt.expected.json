@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import panic from \"@std/faults.ms\"\nimport range from \"@std/collections.ms\"\n\nfn add(a: Int, b: Int) Int: a + b\n\nexport fn main() Int:\n    var sum = 0\n    for i in range(0, 5000000):\n        sum = add(sum, i)\n    if sum != 12499997500000: return panic(\"calls checksum\")\n\n    return 0\n"
+  }
+}

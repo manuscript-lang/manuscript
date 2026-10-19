@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "interface Diagnostic:\n    fn message() String\n\ntype LocalError:\n    detail: String\n\nimpl Diagnostic for LocalError:\n    fn message() String:\n        return self.detail\n\nfn wrong(value: LocalError) Diagnostic:\n    return value\n"
+  }
+}
