@@ -1,8 +1,8 @@
 package msruntime
 
-// Generates crates/ms-std-glob/tests/golden/golden.txt from the Go glob matcher.
+// Generates crates/ms-std-path/tests/golden/glob_golden.txt from the Go glob matcher.
 // To regenerate: copy this file to pkg/runtime/glob_golden_test.go, run
-//   MS_GLOB_GOLDEN_OUT=$PWD/crates/ms-std-glob/tests/golden/golden.txt go test ./pkg/runtime -run TestGlobGolden
+//   MS_GLOB_GOLDEN_OUT=$PWD/crates/ms-std-path/tests/golden/glob_golden.txt go test ./pkg/runtime -run TestGlobGolden
 // and delete the copy. Each line is `hex(pattern) hex(value) result`, result 0/1, or `E` for a
 // pattern that does not parse (value `-`).
 

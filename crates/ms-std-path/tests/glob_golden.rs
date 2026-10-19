@@ -1,5 +1,5 @@
-//! Differential test against vectors produced by the Go matcher (see `golden/gen_test.go.txt`).
-use ms_std_glob::Glob;
+//! Differential test against vectors produced by the Go matcher (see `golden/glob_gen_test.go.txt`).
+use ms_std_path::glob::Glob;
 
 fn unhex(s: &str) -> String {
     let bytes: Vec<u8> = (0..s.len() / 2)
@@ -10,7 +10,7 @@ fn unhex(s: &str) -> String {
 
 #[test]
 fn matches_go() {
-    let text = include_str!("golden/golden.txt");
+    let text = include_str!("golden/glob_golden.txt");
     let mut checked = 0;
     let mut current: Option<(String, Option<Glob>)> = None;
     for line in text.lines() {
@@ -21,7 +21,7 @@ fn matches_go() {
             f.next().unwrap(),
         );
         if current.as_ref().is_none_or(|(p, _)| *p != pattern) {
-            current = Some((pattern.clone(), Glob::parse(&pattern)));
+            current = Some((pattern.clone(), Glob::new(&pattern)));
         }
         let glob = &current.as_ref().unwrap().1;
         if result == "E" {

@@ -21,7 +21,7 @@ recorded here before it is committed.)_
   and returns `paths` plus one kind byte per event (1 `rename`, 0 `change`); a native watcher returns one event per call, a polling watcher
   every difference sorted by path. `STATUS_CLOSED` after `msstd_fs_watch_close`, `STATUS_LIMIT_EXCEEDED` on overflow with policy `error`.
   No worker thread: events are read from the kernel inside `next`, so the queue is bounded by the kernel buffer plus `max_events`.
-- **v2.6 (`ms-std-fs`, `ms-std-glob`).** File handles are the `@std/io` stream handle (`msstd_fs_file_open`; `reader()`/`writer()` reuse
+- **v2.6 (`ms-std-fs`).** File handles are the `@std/io` stream handle (`msstd_fs_file_open`; `reader()`/`writer()` reuse
   `msstd_io_*`), directory cursors and scoped temporary directories are their own refcounted handles (`msstd_fs_directory_*`,
   `msstd_fs_temporary_*`; `close` is idempotent and a temporary's `close` reports removal failures). `msstd_fs_open_flags` maps a mode string
   to host flags. `msstd_fs_glob` returns a `List[String]`; `msstd_fs_glob_entries` returns parallel `paths`/`names` string lists plus a flag
@@ -29,7 +29,7 @@ recorded here before it is committed.)_
   clone mode string and entry/byte budgets (`i64::MAX` = unlimited). Callbacks are `extern "C-unwind"` thunks with a captured `env`: strings
   passed to them are borrowed for the call (the runtime releases its copies afterwards), `copy`'s returns non-zero to keep an entry and
   `glob_entries`' returns non-zero to exclude it. `msstd_fs_constants` returns the open-flag and mode constants as parallel name/value lists.
-  Glob matching lives in the no_std `ms-std-glob` crate (Go `pkg/runtime` semantics: braces, extglobs, `**`, dotfile rules).
+  Glob matching lives in `ms-std-path::glob` (shared with `@std/path`) (Go `pkg/runtime` semantics: braces, extglobs, `**`, dotfile rules).
 - **v2.5 (`ms-std-process`).** `msstd_process_*` covers process control and child processes. `STATUS_TIMEOUT` (13) and `STATUS_OUTPUT_LIMIT` (14)
   join the table for `CommandError`. `Map[String, String]` crosses as two parallel string lists (`environment`, `replace`). `command_run` takes
   the arguments, input bytes, optional limit and optional timeout and returns `CommandOut` (exit code, stdout, stderr); `command_spawn` returns a
