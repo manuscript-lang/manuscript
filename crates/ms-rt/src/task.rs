@@ -264,8 +264,12 @@ fn clock_ns() -> i64 {
         fn clock_gettime(clock: i32, ts: *mut Timespec) -> i32;
     }
     let mut t = Timespec { sec: 0, nsec: 0 };
-    // SAFETY: valid out pointer; CLOCK_MONOTONIC is 1 on Linux.
-    unsafe { clock_gettime(1, &mut t) };
+    #[cfg(target_os = "macos")]
+    const CLOCK_MONOTONIC: i32 = 6;
+    #[cfg(not(target_os = "macos"))]
+    const CLOCK_MONOTONIC: i32 = 1;
+    // SAFETY: valid out pointer.
+    unsafe { clock_gettime(CLOCK_MONOTONIC, &mut t) };
     t.sec * 1_000_000_000 + t.nsec
 }
 
@@ -462,66 +466,13 @@ fn timer_pop() -> Option<(i64, u64)> {
 
 // ---- reactor ----
 
-const EPOLL_CTL_ADD: i32 = 1;
-const EPOLL_CTL_MOD: i32 = 3;
-const EPOLLIN: u32 = 1;
-const EPOLLOUT: u32 = 4;
-const EPOLLERR: u32 = 8;
-const EPOLLHUP: u32 = 0x10;
-const EPOLLONESHOT: u32 = 1 << 30;
-const EPOLL_CLOEXEC: i32 = 0x80000;
-const EPERM: i32 = 1;
-const ENOENT: i32 = 2;
-const EINTR: i32 = 4;
-const EEXIST: i32 = 17;
+pub use crate::poller::kick;
 
-#[repr(C)]
-#[cfg_attr(target_arch = "x86_64", repr(packed))]
-#[derive(Clone, Copy)]
-struct EpollEvent {
-    events: u32,
-    data: u64,
-}
-
-unsafe extern "C" {
-    fn eventfd(init: u32, flags: i32) -> i32;
-    fn epoll_create1(flags: i32) -> i32;
-    fn epoll_ctl(epfd: i32, op: i32, fd: i32, ev: *mut EpollEvent) -> i32;
-    fn epoll_wait(epfd: i32, events: *mut EpollEvent, max: i32, timeout_ms: i32) -> i32;
-}
-
-/// Descriptor that interrupts the reactor's wait; written by signal handlers.
-static WAKE_FD: core::sync::atomic::AtomicI32 = core::sync::atomic::AtomicI32::new(-1);
-const WAKE_TAG: u64 = u64::MAX;
-
-/// Interrupts a reactor wait (async-signal-safe). Needed because a stop signal may be
-/// delivered to a thread other than the one parked in `epoll_wait`.
-pub fn kick() {
-    let fd = WAKE_FD.load(core::sync::atomic::Ordering::Relaxed);
-    if fd >= 0 {
-        let one: u64 = 1;
-        // SAFETY: writes eight bytes from a live local.
-        unsafe { sys::write(fd, core::ptr::addr_of!(one).cast(), 8) };
-    }
-}
-
-unsafe fn epoll_fd() -> i32 {
+unsafe fn poller_fd() -> i32 {
     let s = sched();
     if s.epfd < 0 {
-        // SAFETY: plain syscall wrappers.
-        unsafe {
-            s.epfd = epoll_create1(EPOLL_CLOEXEC);
-            let wake = eventfd(0, 0o4000 | 0o2000000);
-            if s.epfd < 0 || wake < 0 {
-                fault::fault(b"cannot create the I/O poller");
-            }
-            let mut ev = EpollEvent {
-                events: EPOLLIN,
-                data: WAKE_TAG,
-            };
-            epoll_ctl(s.epfd, EPOLL_CTL_ADD, wake, &mut ev);
-            WAKE_FD.store(wake, core::sync::atomic::Ordering::Relaxed);
-        }
+        // SAFETY: creates the poller descriptors.
+        s.epfd = unsafe { crate::poller::create() };
     }
     s.epfd
 }
@@ -608,26 +559,12 @@ unsafe fn reactor_wait() {
             if timeout_ms < 0 && s.fd_waiting == 0 {
                 fault::fault(b"deadlock: every task is waiting and nothing can wake them");
             }
-            let mut events = [EpollEvent { events: 0, data: 0 }; 64];
-            let n = epoll_wait(epoll_fd(), events.as_mut_ptr(), 64, timeout_ms);
-            if n < 0 {
-                if sys::last_errno() == EINTR {
-                    continue;
-                }
-                fault::fault(b"I/O poller failed");
-            }
-            for ev in events.iter().take(n as usize) {
-                let (bits, tag) = (ev.events, ev.data);
-                if tag == WAKE_TAG {
-                    let mut drain = 0u64;
-                    sys::read(
-                        WAKE_FD.load(core::sync::atomic::Ordering::Relaxed),
-                        core::ptr::addr_of_mut!(drain).cast(),
-                        8,
-                    );
-                    continue;
-                }
-                let fd = tag as usize;
+            let mut ready = [crate::poller::Ready { fd: 0, bits: 0 }; 64];
+            let Some(n) = crate::poller::wait(poller_fd(), timeout_ms, &mut ready) else {
+                continue;
+            };
+            for ev in ready.iter().take(n) {
+                let fd = ev.fd;
                 if fd >= s.fd_waiters.len() {
                     continue;
                 }
@@ -635,17 +572,7 @@ unsafe fn reactor_wait() {
                 if t.is_null() {
                     continue;
                 }
-                let mut r = 0;
-                if bits & (EPOLLIN | EPOLLERR | EPOLLHUP) != 0 {
-                    r |= WAIT_READ;
-                }
-                if bits & (EPOLLOUT | EPOLLERR | EPOLLHUP) != 0 {
-                    r |= WAIT_WRITE;
-                }
-                if bits & (EPOLLERR | EPOLLHUP) != 0 {
-                    r |= WAIT_HUP;
-                }
-                wake(t, r & ((*t).wait_events | WAIT_HUP));
+                wake(t, ev.bits & ((*t).wait_events | WAIT_HUP));
             }
         }
     }
@@ -790,30 +717,12 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
             if s.fd_waiters.get(fd_idx) != 0 {
                 fault::fault(b"another task is already waiting on this file descriptor");
             }
-            let mut mask = EPOLLONESHOT;
-            if events & WAIT_READ != 0 {
-                mask |= EPOLLIN;
-            }
-            if events & WAIT_WRITE != 0 {
-                mask |= EPOLLOUT;
-            }
-            let mut ev = EpollEvent {
-                events: mask,
-                data: fd as u64,
-            };
-            let ep = epoll_fd();
-            let mut r = epoll_ctl(ep, EPOLL_CTL_MOD, fd, &mut ev);
-            if r < 0 && sys::last_errno() == ENOENT {
-                r = epoll_ctl(ep, EPOLL_CTL_ADD, fd, &mut ev);
-                if r < 0 && sys::last_errno() == EEXIST {
-                    r = epoll_ctl(ep, EPOLL_CTL_MOD, fd, &mut ev);
+            match crate::poller::watch(poller_fd(), fd, events) {
+                crate::poller::Watch::Armed => {}
+                crate::poller::Watch::Always => return events & (WAIT_READ | WAIT_WRITE),
+                crate::poller::Watch::Failed => {
+                    fault::fault(b"cannot wait on this file descriptor");
                 }
-            }
-            if r < 0 {
-                if sys::last_errno() == EPERM {
-                    return events & (WAIT_READ | WAIT_WRITE);
-                }
-                fault::fault(b"cannot wait on this file descriptor");
             }
             s.fd_waiters.set(fd_idx, (*cur).handle);
             s.fd_waiting += 1;
@@ -946,8 +855,7 @@ pub fn reset_for_tests() {
             }
         }
         if s.epfd >= 0 {
-            sys::close(s.epfd);
-            sys::close(WAKE_FD.swap(-1, core::sync::atomic::Ordering::Relaxed));
+            crate::poller::close(s.epfd);
         }
         s.cur = null_mut();
         s.main = null_mut();
