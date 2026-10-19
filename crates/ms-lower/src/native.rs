@@ -699,6 +699,16 @@ impl<'a> FnLower<'a> {
             let b = self.borrow(recv);
             let old = self.owned(Val { v: b, own: false });
             let (new, r) = self.mutate_any(&name, old, &m.ty.params, args, true, result)?;
+            if result == MTy::UNIT {
+                self.drop_value(new);
+                if let Some(r) = r.filter(|r| r.own) {
+                    self.drop_value(r.v);
+                }
+                return Ok(Val {
+                    v: self.b.unit(),
+                    own: false,
+                });
+            }
             return Ok(match r {
                 Some(r) => {
                     self.drop_value(new);
