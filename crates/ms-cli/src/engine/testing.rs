@@ -433,8 +433,8 @@ impl Runner<'_> {
         if waited.timed_out {
             let limit = self.options.timeout.unwrap_or_default();
             return Ran::Failed(format!(
-                "timed out after {}; the test was cancelled (use --timeout to change the limit, 0 disables it)",
-                go_duration(limit)
+                "timed out after {:?}; the test was cancelled (use --timeout to change the limit, 0 disables it)",
+                limit
             ));
         }
         if waited.interrupted {
@@ -496,34 +496,6 @@ fn describe_exit(status: &std::process::ExitStatus) -> String {
         }
     }
     "ended abnormally".to_string()
-}
-
-/// Go's `time.Duration.String` for the whole-second limits `--timeout` takes.
-fn go_duration(limit: Duration) -> String {
-    let nanos = limit.as_nanos();
-    if nanos >= 1_000_000_000 {
-        let seconds = limit.as_secs();
-        let fraction = limit.subsec_nanos();
-        let (hours, minutes, seconds) = (seconds / 3600, seconds / 60 % 60, seconds % 60);
-        let mut text = String::new();
-        if hours > 0 {
-            text.push_str(&format!("{hours}h"));
-        }
-        if hours > 0 || minutes > 0 {
-            text.push_str(&format!("{minutes}m"));
-        }
-        if fraction == 0 {
-            text.push_str(&format!("{seconds}s"));
-        } else {
-            let digits = format!("{fraction:09}");
-            text.push_str(&format!("{seconds}.{}s", digits.trim_end_matches('0')));
-        }
-        text
-    } else if nanos >= 1_000_000 {
-        format!("{}ms", nanos as f64 / 1e6)
-    } else {
-        format!("{nanos}ns")
-    }
 }
 
 /// Seeded Fisher-Yates. The permutation for a seed differs from Go's.
@@ -726,14 +698,6 @@ mod tests {
         );
         assert!(parse_options(&args(&["--repeat=0"])).is_err());
         assert!(parse_options(&args(&["--match=("])).is_err());
-    }
-
-    #[test]
-    fn go_duration_text() {
-        assert_eq!(go_duration(Duration::from_secs(60)), "1m0s");
-        assert_eq!(go_duration(Duration::from_secs(30)), "30s");
-        assert_eq!(go_duration(Duration::from_millis(1500)), "1.5s");
-        assert_eq!(go_duration(Duration::from_secs(3661)), "1h1m1s");
     }
 
     #[test]
