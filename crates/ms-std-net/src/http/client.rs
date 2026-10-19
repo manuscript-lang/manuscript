@@ -4,10 +4,12 @@
 
 use super::cookies::Jar;
 use super::h1::{self, BodyDecoder, Decoded, Framing, Parsed, ResponseHead};
+use super::h2client::{self, H2Stream, OpenErr, Poll, PumpErr, Session};
 use super::headers::{self, Headers, Shared};
 use super::url::Url;
 use crate::conn::Connection;
 use crate::error::{HttpErr, IoErr};
+use crate::h2::Header;
 use crate::net::{Network, Resource};
 use crate::rt;
 use crate::tls::{self, TlsOptions};
@@ -23,6 +25,8 @@ use std::time::{Duration, Instant};
 
 /// `User-Agent` of requests that name none, as Go's transport sends.
 pub const USER_AGENT: &str = "Go-http-client/1.1";
+/// `User-Agent` over HTTP/2.
+const USER_AGENT_H2: &str = "Go-http-client/2.0";
 
 /// Largest read from a connection and from a request-body source.
 const READ_BUF: usize = 64 * 1024;
@@ -106,6 +110,8 @@ struct Wire {
     rbuf: Vec<u8>,
     rpos: usize,
     reused: bool,
+    /// The HTTP/2 stream this wire stands for; `conn` is then the session's.
+    h2: Option<H2Stream>,
 }
 
 thread_local! {
@@ -119,6 +125,21 @@ impl Wire {
             rbuf: Vec::new(),
             rpos: 0,
             reused: false,
+            h2: None,
+        }
+    }
+
+    fn for_stream(stream: H2Stream) -> Wire {
+        let mut wire = Wire::new(stream.session().conn().clone());
+        wire.h2 = Some(stream);
+        wire
+    }
+
+    /// Gives up the wire: an HTTP/1 connection is closed, an HTTP/2 stream is
+    /// cancelled by dropping it while the session lives on.
+    fn discard(self) {
+        if self.h2.is_none() {
+            self.conn.close();
         }
     }
 
@@ -172,6 +193,94 @@ enum Fail {
     Err(HttpErr),
     /// A reused connection died before any response byte.
     Stale,
+    /// The server declined the stream without processing it.
+    Refused,
+}
+
+/// A response head with the wire that carries its body, and whether the
+/// request added `Accept-Encoding: gzip`.
+type Exchanged = (ResponseHead, Wire, bool);
+
+fn pump_fail(e: PumpErr) -> Fail {
+    Fail::Err(match e {
+        PumpErr::Timeout => HttpErr::Timeout,
+        PumpErr::Closed => HttpErr::Closed,
+        PumpErr::Failed(m) => HttpErr::Failed(m),
+    })
+}
+
+/// Request names HTTP/2 forbids or the transport sets itself.
+const H2_SKIPPED: [&str; 8] = [
+    "host",
+    "user-agent",
+    "content-length",
+    "connection",
+    "proxy-connection",
+    "keep-alive",
+    "transfer-encoding",
+    "upgrade",
+];
+
+/// The pseudo-headers and lowercase regular headers of an HTTP/2 request.
+fn h2_request_headers(hop: &Hop<'_>, length: Option<usize>, gzip: bool) -> Vec<Header> {
+    let mut out: Vec<Header> = vec![
+        (b":method".to_vec(), hop.method.as_bytes().to_vec()),
+        (b":scheme".to_vec(), hop.url.scheme.as_bytes().to_vec()),
+        (
+            b":authority".to_vec(),
+            hop.url.authority.as_bytes().to_vec(),
+        ),
+        (b":path".to_vec(), hop.url.request_uri().into_bytes()),
+    ];
+    let agent = hop
+        .headers
+        .iter()
+        .find(|(n, _)| n == "User-Agent")
+        .map_or(USER_AGENT_H2.as_bytes(), |(_, v)| v.as_slice());
+    out.push((b"user-agent".to_vec(), trim_value(agent).to_vec()));
+    if let Some(n) = length
+        && (n > 0 || matches!(hop.method, "POST" | "PUT" | "PATCH"))
+    {
+        out.push((b"content-length".to_vec(), n.to_string().into_bytes()));
+    }
+    let mut rest: Vec<(String, &[u8])> = hop
+        .headers
+        .iter()
+        .map(|(n, v)| (n.to_ascii_lowercase(), trim_value(v)))
+        .filter(|(n, v)| !H2_SKIPPED.contains(&n.as_str()) && (n != "te" || *v == b"trailers"))
+        .collect();
+    rest.sort_by(|a, b| a.0.cmp(&b.0));
+    out.extend(rest.into_iter().map(|(n, v)| (n.into_bytes(), v.to_vec())));
+    if gzip {
+        out.push((b"accept-encoding".to_vec(), b"gzip".to_vec()));
+    }
+    out
+}
+
+/// The response head of an HTTP/2 header block.
+fn h2_head(fields: Vec<Header>) -> Result<ResponseHead, Fail> {
+    let mut status = None;
+    let mut out = Vec::new();
+    for (name, value) in fields {
+        if name == b":status" {
+            status = std::str::from_utf8(&value)
+                .ok()
+                .and_then(|t| t.parse::<u16>().ok());
+        } else if !name.starts_with(b":") {
+            out.push((String::from_utf8_lossy(&name).into_owned(), value));
+        }
+    }
+    let Some(status) = status else {
+        return Err(Fail::Err(HttpErr::Failed(
+            "malformed HTTP status code".into(),
+        )));
+    };
+    Ok(ResponseHead {
+        status,
+        minor: 0,
+        fields: out,
+        length: 0,
+    })
 }
 
 impl From<HttpErr> for Fail {
@@ -187,6 +296,11 @@ pub struct Client {
     tls: Option<Arc<ClientConfig>>,
     jar: RefCell<Option<Jar>>,
     pool: RefCell<Pool>,
+    /// HTTP/2 sessions by origin; they multiplex and are never idle-pooled.
+    sessions: RefCell<HashMap<String, Rc<Session>>>,
+    /// Test only: speak HTTP/2 on cleartext connections, with these settings.
+    #[cfg(test)]
+    h2_prior: RefCell<Option<crate::h2::Settings>>,
     closed: Cell<bool>,
     bodies: RefCell<Vec<Weak<ResponseBody>>>,
     /// One-shot clients send `Connection: close` and never pool.
@@ -206,7 +320,12 @@ impl Client {
             return Err(HttpErr::InvalidInput);
         }
         let mut tls_options = opts.tls.clone();
-        tls_options.alpn = vec!["http/1.1".to_string()];
+        let h2 = tls_options.alpn.iter().any(|p| p == "h2");
+        tls_options.alpn = if h2 {
+            vec!["h2".to_string(), "http/1.1".to_string()]
+        } else {
+            vec!["http/1.1".to_string()]
+        };
         let config = tls::client_config(&tls_options, false).map_err(|_| HttpErr::InvalidInput)?;
         let client = Rc::new(Client {
             owner: owner.clone(),
@@ -214,6 +333,9 @@ impl Client {
             opts,
             tls: Some(config),
             pool: RefCell::new(Pool::default()),
+            sessions: RefCell::new(HashMap::new()),
+            #[cfg(test)]
+            h2_prior: RefCell::new(None),
             closed: Cell::new(false),
             bodies: RefCell::new(Vec::new()),
             single_use: false,
@@ -242,6 +364,9 @@ impl Client {
             tls: Some(config),
             jar: RefCell::new(None),
             pool: RefCell::new(Pool::default()),
+            sessions: RefCell::new(HashMap::new()),
+            #[cfg(test)]
+            h2_prior: RefCell::new(None),
             closed: Cell::new(false),
             bodies: RefCell::new(Vec::new()),
             single_use: true,
@@ -266,6 +391,10 @@ impl Client {
             body.close();
         }
         self.drop_idle();
+        let sessions: Vec<_> = self.sessions.borrow_mut().drain().collect();
+        for (_, session) in sessions {
+            session.close();
+        }
     }
 
     fn drop_idle(&self) {
@@ -551,7 +680,11 @@ impl Client {
         added_gzip: bool,
     ) -> Result<Rc<ResponseBody>, HttpErr> {
         let status = head.status;
-        let protocol = format!("HTTP/1.{}", head.minor);
+        let protocol = if wire.h2.is_some() {
+            "HTTP/2.0".to_string()
+        } else {
+            format!("HTTP/1.{}", head.minor)
+        };
         let gzip = added_gzip
             && head
                 .fields
@@ -621,27 +754,58 @@ impl Client {
             if deadline.expired() {
                 return Err(HttpErr::Timeout);
             }
-            let mut wire = match self.take_idle(&key) {
-                Some(wire) => wire,
-                None => self.dial(hop.url, deadline)?,
-            };
-            let reused = wire.reused;
-            match self.exchange(&mut wire, hop, deadline) {
-                Ok((head, added_gzip)) => return Ok((head, wire, key, added_gzip)),
-                Err(Fail::Stale) if reused && !retried && replayable => {
-                    wire.conn.close();
+            let (outcome, reused) = self.attempt(&key, hop, deadline)?;
+            match outcome {
+                Ok((head, wire, added_gzip)) => return Ok((head, wire, key, added_gzip)),
+                Err(Fail::Stale) if reused && !retried && replayable => retried = true,
+                // The server did not process a refused stream: any request
+                // whose body can be sent again may follow.
+                Err(Fail::Refused) if !retried && matches!(hop.body, Body::Bytes(_)) => {
                     retried = true;
                 }
-                Err(Fail::Stale) => {
-                    wire.conn.close();
+                Err(Fail::Stale | Fail::Refused) => {
                     return Err(HttpErr::Failed(
                         "connection closed before the exchange completed".into(),
                     ));
                 }
-                Err(Fail::Err(e)) => {
-                    wire.conn.close();
-                    return Err(e);
-                }
+                Err(Fail::Err(e)) => return Err(e),
+            }
+        }
+    }
+
+    /// One try on a live session, a pooled connection or a new one; whether
+    /// the connection had served before comes second.
+    fn attempt(
+        &self,
+        key: &str,
+        hop: &mut Hop<'_>,
+        deadline: Deadline,
+    ) -> Result<(Result<Exchanged, Fail>, bool), HttpErr> {
+        if let Some(session) = self.live_session(key) {
+            return Ok((self.exchange_h2(&session, hop, deadline), true));
+        }
+        let wire = match self.take_idle(key) {
+            Some(wire) => wire,
+            None => self.dial(hop.url, deadline)?,
+        };
+        if let Some(session) = self.h2_session(key, &wire, hop.url) {
+            return Ok((self.exchange_h2(&session, hop, deadline), false));
+        }
+        let reused = wire.reused;
+        Ok((self.exchange_h1(wire, hop, deadline), reused))
+    }
+
+    fn exchange_h1(
+        &self,
+        mut wire: Wire,
+        hop: &mut Hop<'_>,
+        deadline: Deadline,
+    ) -> Result<Exchanged, Fail> {
+        match self.exchange(&mut wire, hop, deadline) {
+            Ok((head, added_gzip)) => Ok((head, wire, added_gzip)),
+            Err(fail) => {
+                wire.discard();
+                Err(fail)
             }
         }
     }
@@ -659,16 +823,166 @@ impl Client {
         Ok(Wire::new(conn))
     }
 
+    // ------------------------------------------------------------------- HTTP/2
+
+    /// The session for `key` while it can take new requests.
+    fn live_session(&self, key: &str) -> Option<Rc<Session>> {
+        let mut sessions = self.sessions.borrow_mut();
+        let session = sessions.get(key)?;
+        let expired = self
+            .opts
+            .idle_timeout
+            .is_some_and(|t| !t.is_zero() && session.idle_for().is_some_and(|idle| idle > t));
+        if session.usable() && !expired {
+            return Some(session.clone());
+        }
+        let stale = sessions.remove(key)?;
+        drop(sessions);
+        stale.close();
+        None
+    }
+
+    /// Settings for a session over cleartext (tests) or ALPN-negotiated TLS.
+    fn h2_settings(&self, wire: &Wire, url: &Url) -> Option<crate::h2::Settings> {
+        #[cfg(test)]
+        if !url.is_https() {
+            return self.h2_prior.borrow().clone();
+        }
+        let negotiated = url.is_https() && wire.conn.tls_info().is_ok_and(|info| info.alpn == "h2");
+        negotiated.then(|| h2client::client_settings(self.opts.max_header_bytes))
+    }
+
+    /// Turns a freshly dialed connection into a session when it speaks h2.
+    fn h2_session(&self, key: &str, wire: &Wire, url: &Url) -> Option<Rc<Session>> {
+        let settings = self.h2_settings(wire, url)?;
+        let session = Session::new(wire.conn.clone(), settings);
+        self.sessions
+            .borrow_mut()
+            .insert(key.to_string(), session.clone());
+        Some(session)
+    }
+
+    fn exchange_h2(
+        &self,
+        session: &Rc<Session>,
+        hop: &mut Hop<'_>,
+        deadline: Deadline,
+    ) -> Result<Exchanged, Fail> {
+        let wants_gzip = self.wants_gzip(hop);
+        let length = match &*hop.body {
+            Body::Bytes(bytes) => Some(bytes.len()),
+            Body::Stream(_) => None,
+        };
+        let headers = h2_request_headers(hop, length, wants_gzip);
+        let end = length == Some(0);
+        let stream = loop {
+            if deadline.expired() {
+                return Err(Fail::Err(HttpErr::Timeout));
+            }
+            match session.open(headers.clone(), end) {
+                Ok(stream) => break stream,
+                Err(OpenErr::Unavailable) => return Err(Fail::Stale),
+                Err(OpenErr::Invalid(m)) => return Err(Fail::Err(HttpErr::Failed(m))),
+                Err(OpenErr::Full) => session.pump(deadline).map_err(pump_fail)?,
+            }
+        };
+        stream.session().flush(deadline).map_err(pump_fail)?;
+        if !end {
+            self.upload_h2(&stream, hop.body, deadline)?;
+        }
+        let head = loop {
+            match stream.poll_head() {
+                Poll::Head(fields) => break h2_head(fields)?,
+                Poll::Refused => return Err(Fail::Refused),
+                Poll::Reset(code) => {
+                    let text = h2client::reset_text(stream.id, code);
+                    return Err(Fail::Err(HttpErr::Failed(text)));
+                }
+                Poll::Dead => return Err(Fail::Stale),
+                _ => stream.pump(deadline).map_err(pump_fail)?,
+            }
+        };
+        Ok((head, Wire::for_stream(stream), wants_gzip))
+    }
+
+    fn upload_h2(
+        &self,
+        stream: &H2Stream,
+        body: &mut Body,
+        deadline: Deadline,
+    ) -> Result<(), Fail> {
+        let source = match body {
+            Body::Bytes(bytes) => {
+                self.send_h2(stream, bytes, true, deadline)?;
+                return Ok(());
+            }
+            Body::Stream(source) => source,
+        };
+        loop {
+            rt::check_cancel();
+            let piece = source
+                .next(32 * 1024)
+                .map_err(|m| Fail::Err(HttpErr::Failed(m)))?;
+            let Some(data) = piece else {
+                self.send_h2(stream, &[], true, deadline)?;
+                return Ok(());
+            };
+            if data.is_empty() {
+                return Err(Fail::Err(HttpErr::Failed(
+                    "source stream violated chunk bound".into(),
+                )));
+            }
+            if !self.send_h2(stream, &data, false, deadline)? {
+                return Ok(());
+            }
+        }
+    }
+
+    /// Sends `data` as flow control allows; `false` when the stream went away
+    /// first (the response, or its failure, is then read as usual).
+    fn send_h2(
+        &self,
+        stream: &H2Stream,
+        data: &[u8],
+        end: bool,
+        deadline: Deadline,
+    ) -> Result<bool, Fail> {
+        if data.is_empty() {
+            if end {
+                stream.send(&[], true);
+                stream.session().flush(deadline).map_err(pump_fail)?;
+            }
+            return Ok(true);
+        }
+        let mut sent = 0;
+        while sent < data.len() {
+            if !stream.alive() {
+                return Ok(false);
+            }
+            let n = stream.send(&data[sent..], end);
+            sent += n;
+            stream.session().flush(deadline).map_err(pump_fail)?;
+            if n == 0 {
+                stream.pump(deadline).map_err(pump_fail)?;
+            }
+        }
+        Ok(true)
+    }
+
+    fn wants_gzip(&self, hop: &Hop<'_>) -> bool {
+        self.opts.decompress
+            && hop.method != "HEAD"
+            && !has_header(&hop.headers, "Accept-Encoding")
+            && !has_header(&hop.headers, "Range")
+    }
+
     fn exchange(
         &self,
         wire: &mut Wire,
         hop: &mut Hop<'_>,
         deadline: Deadline,
     ) -> Result<(ResponseHead, bool), Fail> {
-        let wants_gzip = self.opts.decompress
-            && hop.method != "HEAD"
-            && !has_header(&hop.headers, "Accept-Encoding")
-            && !has_header(&hop.headers, "Range");
+        let wants_gzip = self.wants_gzip(hop);
         let mut out = Vec::with_capacity(512);
         let length = match &*hop.body {
             Body::Bytes(bytes) => Some(bytes.len()),
@@ -955,11 +1269,13 @@ impl BodyState {
         gzip: bool,
         remaining: u64,
     ) -> BodyState {
-        let framing = match h1::response_framing(&head, method) {
-            Ok(f) => f,
-            Err(_) => Framing::UntilClose,
+        let framing = match &wire.h2 {
+            Some(stream) => h2_framing(&head, method, stream),
+            None => h1::response_framing(&head, method).unwrap_or(Framing::UntilClose),
         };
-        let keep_alive = h1::keep_alive(head.minor, &head.fields) && framing != Framing::UntilClose;
+        let keep_alive = wire.h2.is_none()
+            && h1::keep_alive(head.minor, &head.fields)
+            && framing != Framing::UntilClose;
         let empty = matches!(framing, Framing::None | Framing::Length(0));
         let gzip = gzip && !empty;
         BodyState {
@@ -984,7 +1300,7 @@ impl BodyState {
 
     fn abandon(&mut self) {
         if let Some(wire) = self.wire.take() {
-            wire.conn.close();
+            wire.discard();
         }
     }
 
@@ -994,7 +1310,7 @@ impl BodyState {
         if self.done && self.keep_alive && wire.pending().is_empty() && !self.wire_eof {
             client.put_idle(self.key.clone(), wire);
         } else {
-            wire.conn.close();
+            wire.discard();
         }
     }
 
@@ -1011,6 +1327,11 @@ impl BodyState {
             let Some(wire) = self.wire.as_mut() else {
                 return Err(IoErr::Closed);
             };
+            if let Some(stream) = &wire.h2 {
+                let (chunk, done) = h2_next(stream, deadline, max)?;
+                self.done = done;
+                return Ok(chunk);
+            }
             if wire.pending().is_empty() {
                 let n = wire.fill(deadline).map_err(|e| match e {
                     IoErr::Failed(m) if m == "operation timed out" => {
@@ -1085,6 +1406,44 @@ impl BodyState {
     fn room(&self) -> usize {
         let pending = self.ready.len() - self.ready_pos.min(self.ready.len());
         (self.remaining.saturating_add(1) as usize).saturating_sub(pending)
+    }
+}
+
+/// Takes body bytes from an HTTP/2 stream, pumping its session as needed; the
+/// flag says the body is complete.
+fn h2_next(
+    stream: &H2Stream,
+    deadline: Deadline,
+    max: usize,
+) -> Result<(Option<Vec<u8>>, bool), IoErr> {
+    loop {
+        match stream.poll_data(max.max(1)) {
+            Poll::Data(chunk) => return Ok((Some(chunk), stream.drained())),
+            Poll::End => return Ok((None, true)),
+            Poll::Reset(code) => {
+                return Err(IoErr::Failed(h2client::reset_text(stream.id, code)));
+            }
+            Poll::Pending => stream.pump(deadline).map_err(|e| match e {
+                PumpErr::Timeout => IoErr::Failed("context deadline exceeded".into()),
+                PumpErr::Closed => IoErr::Closed,
+                PumpErr::Failed(m) => IoErr::Failed(m),
+            })?,
+            _ => {
+                return Err(IoErr::Failed(
+                    "connection closed before the exchange completed".into(),
+                ));
+            }
+        }
+    }
+}
+
+/// Body framing of an HTTP/2 response: it ends with the stream.
+fn h2_framing(head: &ResponseHead, method: &str, stream: &H2Stream) -> Framing {
+    let bodiless = method.eq_ignore_ascii_case("HEAD") || matches!(head.status, 204 | 304);
+    if bodiless || stream.drained() {
+        Framing::None
+    } else {
+        Framing::UntilClose
     }
 }
 
@@ -1623,3 +1982,7 @@ mod tests {
         assert_eq!(body.status, 200);
     }
 }
+
+#[cfg(test)]
+#[path = "client_h2_tests.rs"]
+mod h2_tests;
