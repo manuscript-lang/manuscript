@@ -10,194 +10,173 @@ runtime in `pkg/runtime` remains the behavioral oracle.
 _(Newest first. Anything that alters a layout, signature or ownership rule is
 recorded here before it is committed.)_
 
-- v1 initial publication.
+- **v2 (value semantics).** The owner adopted value semantics (DESIGN.md decisions 1-2).
+  Only `String` and `Shared[T]`-style objects keep an `Obj` header and a count.
+  `List`, `Bytes`, `Map`, `Set`, `StringBuilder` are **owned header-less values**
+  (`VecVal` = `{ptr, len, cap}`, `MapVal` = six words) living in the owner's slot;
+  runtime operations take a **pointer to the value** (borrowed, or `&mut` for `var`
+  receivers, mutators return nothing) and write constructed values through an `out`
+  pointer. Descriptors are no longer stored in the value: every generic operation takes
+  the element descriptor(s) explicitly. `TypeDesc` gained `inner0/inner1`, `copy`
+  (replaces `retain`) and kinds `LIST/MAP/SET/SHARED`; `ListObj`, `MapObj`,
+  `StrBuilderObj`, `FLAG_SEALED` were removed (builders are the collections
+  themselves; `freeze` is a move; there is no "builder is sealed" fault).
+  Clone becomes explicit `msrt_list_copy` / `msrt_slot_copy`. The sections below
+  describe v2 only.
+- v1 initial publication (reference-counted collections; superseded).
 
 ## 1. Conventions
 
 - 64-bit targets only (x86_64 and aarch64 Linux first). All functions are
-  `extern "C"`, named `msrt_<module>_<name>`. Data symbols are `msrt_*` too.
-- Scalar mapping: `Int` = `i64`, `Float` = `f64`, `Bool` = `u8` (0 or 1; callers
-  zero-extend, the runtime treats any non-zero as true on input and returns 0/1),
-  `Unit` is never passed. Every object type (`String`, `Bytes`, `List`, `Map`,
-  `Set`, builders, closures, records, alternatives) is a pointer to its header.
-- Nothing wider than a register is passed or returned by value. There are no
-  struct-by-value parameters or results anywhere in the ABI.
-- **Optional parameters.** `Optional[Int|Float|Bool]` is flattened into two
-  parameters `has: u8, value: i64|f64|u8` (value ignored when `has == 0`).
-  `Optional[<object>]` is a nullable pointer.
-- **Optional results.**
-  - Scalar payloads: the function returns `present: u8` and writes the payload
-    through a trailing `out: *mut i64|f64|u8` only when present.
-  - Object payloads (`String`, `Bytes`, `List`...): nullable owned pointer.
-  - Generic element payloads (list `pop`, `first`, ...): returns `present: u8` and
-    moves the element into the slot `out: *mut u8` (`desc.size` bytes).
-- **Fallible results (`Result[T, XError]`).** The function returns a `status: u8`
-  (`STATUS_OK = 0`, otherwise the error case, see `ms-rt-abi`) and writes the ok
-  value through a trailing `out` pointer only on success. The compiler builds the
-  `Result`/error alternative; the runtime never constructs alternatives.
-  Errors carrying messages (`StringError.Failed`) are not produced by the runtime.
-- **Ownership.** Arguments are **borrowed** unless the signature below is marked
-  _consumes_. Results are **owned (+1)**. Consuming parameters are exactly:
-  element/key/value slots given to *store* operations (`append`, `insert`, `set`,
-  `prepend`, `fill`, `splice` replacement items are copied with retain instead,
-  `map_add`, `set_add`, `listbuilder_append`, ...) and `msrt_cleanup_*` arguments as
-  documented. Search operations (`contains`, `index_of`, `map_get`, `map_remove`,
-  ...) borrow the probe slot. Element values written to an `out` slot are owned.
+  `extern "C"` (declared `C-unwind` in Rust so tests can intercept faults; the ABI
+  is identical), named `msrt_<module>_<name>`. Data symbols are `msrt_*` too.
+- Scalars: `Int` = `i64`, `Float` = `f64`, `Bool` = `u8` (0/1), `Unit` is never passed.
+- **No struct by value, ever.** `String` and other refcounted objects are passed as
+  a pointer to the header. Owned aggregates (`List`, `Bytes`, `Map`, `Set`,
+  `StringBuilder`) are passed as a **pointer to the value** (`*const VecVal` /
+  `*const MapVal` = borrowed read; `*mut` = `var` receiver, mutated in place).
+  Constructed aggregates are returned through a trailing `out: *mut VecVal|MapVal`
+  (uninitialised memory in the caller; the callee initialises it; the caller owns it).
+- **Optional parameters.** `Optional[Int|Float|Bool]` is flattened into
+  `has: u8, value: i64|f64|u8`. `Optional[<refcounted object>]` is a nullable pointer.
+- **Optional results.** Scalar payload: return `present: u8`, payload through a
+  trailing `out` pointer only when present. `String`: nullable owned pointer. Generic
+  elements: return `present: u8`, element moved/copied into `out: *mut u8`.
+- **Fallible results.** Return `status: u8` (`STATUS_OK = 0`, else the error case
+  from `ms-rt-abi`) and write the ok value through the trailing `out` only on
+  success. The compiler builds `Result` and the error alternative.
+- **Ownership.**
+  - Value arguments are **borrowed** (read, not consumed) unless marked _consumes_.
+    Mutators (`push`, `insert`, `set`, `remove`, `map_add`, `sort_in_place`...) take
+    `*mut` to the receiver, return nothing (Unit), and **consume** their element/key/value
+    slot arguments (ownership moves into the collection; the compiler copies first if
+    it still needs the value).
+  - Probe slots of search operations (`contains`, `index_of`, `map_get`, `map_remove`...)
+    are borrowed.
+  - **Reads of elements** come in two forms: `*_at`/`*_ptr` return a *borrowed pointer into
+    the container* (valid until the container is mutated or dropped; the checker's
+    lexical borrow rules guarantee this), `*_get`/`*_copy` duplicate the element with the
+    descriptor's `copy` into `out` (owned).
+  - Constructed results (`out` values, returned strings) are **owned**.
+  - Disjointness: a `*mut` receiver never aliases another argument (checker rule).
+  - Consuming parameters: element/key/value slots of stores, and `drop` of owned values.
 - **Slot pointers.** Generic operations pass an element, key or value as a pointer
-  to a slot of `desc.size` bytes with `desc.align` alignment (a stack slot is
-  fine). For pointer-like types the slot contains the object pointer.
-- **Faults.** Every runtime check failure calls the fault path and never returns.
-  Message text equals the Go runtime's.
-- **Null.** `msrt_retain` and `msrt_release` accept null (Optional `none`).
-  Everything else requires non-null object pointers.
-- Sizes and indices are `i64` (Int), never `usize`, at the boundary.
+  to a slot of `desc.size` bytes, `desc.align` aligned (stack slot is fine).
+- **Descriptors are explicit**: every generic collection operation takes the
+  element descriptor (`desc`) or key/value descriptors (`kdesc`, `vdesc`; sets pass
+  `vdesc = null`) as arguments, right after the receiver pointer(s).
+- **Faults** never return; message text equals the Go runtime's.
+- `msrt_retain`/`msrt_release` accept null. Everything else requires non-null.
+- Sizes and indices are `i64` (Int) at the boundary.
 
-## 2. Objects, reference counting, drop
+## 2. Reference-counted objects (String, Shared) and drop
 
 ```text
-Obj { rc: usize @0, drop: fn(*mut Obj) @8 }          16 bytes, object pointers point here
+Obj { rc: usize @0, drop: fn(*mut Obj) @8 }       16 bytes; pointers point here
 ```
 
-- New objects start with `rc = 1` (the creator's reference).
-- Retain: `rc += 1` (non-atomic). Release: `rc -= 1; if rc == 0 { call drop }`.
-- Static and literal objects (string literals, constant lists) live in writable
-  data with `rc = STATIC_RC` (2^62) and a valid `drop`; count updates are harmless.
-- `drop(obj)` must release every child it owns and then `msrt_free(obj)`. Freed
-  memory must not be touched afterwards. Generated record drops follow the same
-  rule; the runtime exports `msrt_drop_string`, `msrt_drop_list`, `msrt_drop_map`,
-  `msrt_drop_strbuilder` for header initialisation of static objects.
-- Deep structures: `msrt_release` and `msrt_drop_slow` bound recursion. Past a
-  nesting depth of 4096 dropping, further zero-count objects are queued on an
-  intrusive list (reusing `rc` as the link) and dropped iteratively once the outer
-  drop returns. Drop functions therefore must tolerate being deferred and must not
-  assume the child is freed when `msrt_release(child)` returns.
-- Cycles are never collected (documented leak).
-- Non-atomic counts: generated code and runtime run on one thread. The runtime
-  runs `main` on a dedicated big-stack thread (see section 9); user code never
-  runs on another thread.
+Only strings (immutable, shared, non-atomic count), `Shared[T]`/`Weak[T]` boxes,
+closures and runtime handle objects have a header. `rc` starts at 1; retain is
+`rc += 1`; release is `rc -= 1; if rc == 0 { drop(obj) }`. Static and literal objects
+live in writable data with `rc = STATIC_RC` (2^62). `drop(obj)` drops what the
+object owns and then calls `msrt_free(obj)`. Deep ownership chains (linked lists,
+trees) must not overflow the stack: `msrt_drop_slow` bounds drop nesting at 4096 and
+queues further zero-count objects on an intrusive list (reusing `rc` as the link), drained
+iteratively. Owned values (`List`, `Map`, records) are dropped through
+`msrt_slot_drop(desc, slot)`; the runtime applies the same depth bounding there.
+Cycles through `Shared` are never collected (documented leak).
 
 ### Allocator
 
-`msrt_alloc(size: usize) -> *mut u8` returns uninitialised memory, 16-byte
-aligned, never null (out of memory is a fault). `msrt_alloc_zeroed(size)`,
-`msrt_realloc(ptr, new_size)`, `msrt_free(ptr)` (no size argument; the allocator
-finds the size class from the pointer). Sizes up to 2048 bytes use a size-class
-free list (16-byte steps up to 128, then four steps per doubling); larger blocks go to
-the system allocator. Single threaded, no locking.
+`msrt_alloc(size) -> *mut u8` (16-aligned, uninitialised, never null: exhaustion is a
+fault), `msrt_alloc_zeroed`, `msrt_realloc(ptr, new_size)`, `msrt_free(ptr)` (no size
+argument). Blocks up to 2048 bytes come from size-class pages (16-byte steps to 128,
+then four steps per doubling); larger blocks use the system allocator. No locking.
 
-## 3. String and Bytes
+## 3. String
 
 ```text
 StrObj { hdr @0, len: usize @16, scalars: usize @24, data[len] @32, NUL }
 ```
 
-- `len` is the UTF-8 byte length; `scalars` is the Unicode scalar count or
-  `SCALARS_UNKNOWN` (`usize::MAX`), filled lazily by `msrt_string_length`. A literal
-  may be emitted with the exact count (ASCII: `len`) or unknown.
-- Immutable once created, except for the lazy `scalars` cache and `rc`.
-- A NUL byte follows the data for C interop; it is not part of `len`.
-- Indices and lengths at the language level count scalars; `byte_length` is `len`.
-- `Bytes` has the same layout (`scalars` unused, 0) but its own `desc`.
-- Text may in principle contain invalid UTF-8 only if the compiler produced it;
-  the runtime tolerates it (invalid bytes decode as U+FFFD of width 1, like Go).
-- Empty string: allocated like any other; `msrt_string_empty()` returns a static.
+`len` is the UTF-8 byte length; `scalars` is the scalar count or `usize::MAX`
+(unknown), filled lazily by `msrt_string_length` (a literal may carry it). A NUL
+follows the data (not in `len`). Language-level indices and lengths count Unicode
+scalars; `byte_length` is `len`. Invalid UTF-8 (only from a compiler bug) decodes as
+U+FFFD of width 1 like Go. `msrt_string_empty()` returns a static.
 
-## 4. Type and element descriptors
+## 4. Owned aggregates
 
 ```text
-TypeDesc { size: u32 @0, align: u32 @4, kind: u32 @8, reserved: u32 @12,
-           drop @16, retain @24, eq @32, hash @40 }       48 bytes, 8-aligned, read-only
+VecVal { ptr @0, len @8, cap @16 }                          List[T], Bytes, StringBuilder
+MapVal { slots, index, len @16, used, cap, mask }           Map[K,V], Set[T]; 48 bytes
 ```
 
-One static descriptor per distinct slot type. The runtime exports builtins:
-`msrt_desc_int`, `msrt_desc_float`, `msrt_desc_bool`, `msrt_desc_string`,
-`msrt_desc_bytes`. `kind` selects built-in behavior (see `KIND_*`):
-
-| kind | slot | drop / retain | equality | hash |
-| --- | --- | --- | --- | --- |
-| `INT` | i64 | none | `==` | mixed |
-| `FLOAT` | f64 | none | IEEE (`NaN != NaN`, `0.0 == -0.0`) | none (Float is not Hashable) |
-| `BOOL` | u8 | none | `==` | mixed |
-| `STRING` | non-null `StrObj*` | release / retain | content | content |
-| `BYTES` | non-null `StrObj*` | release / retain | content | content |
-| `PTR` | nullable object pointer | release / retain (null safe) | `eq` if present else identity | `hash` if present else address |
-| `POD` | `size` bytes of plain bits | none | `eq` if present else `memcmp` | `hash` if present else byte hash |
-| `CUSTOM` | `size` bytes | `drop` / `retain` fn (None = nothing owned) | `eq` | `hash` |
-
-Function pointer contracts: `drop(slot)`, `retain(slot)` (called after a bitwise
-copy so the copy owns its own references), `eq(a, b) -> u8`, `hash(slot) -> i64`.
-Equal values must hash equally; hashes are deterministic across runs.
-Generated `eq` functions of recursive types call `msrt_eq_enter(a, b)`
-before descending (returns 0 when the pair is already under comparison, which
-means "assume equal", terminating cyclic data) and `msrt_eq_leave(a, b)` after.
-`msrt_hash_int`, `msrt_hash_bytes`, `msrt_hash_combine` build record hashes.
-
-## 5. Collections
-
-### List and ListBuilder
-
-```text
-ListObj { hdr @0, len @16, cap @24, data @32, desc @40, flags @48 }   56 bytes
-```
-
-Elements are stored inline at `data + i * desc.size`; `data` is null when
-`cap == 0`. The element descriptor travels with the object so the generic
-operations need no descriptor argument. `ListBuilder[T]` is the same object;
-`freeze` sets `FLAG_SEALED` on it and returns it (+1) without copying; later
-builder appends fault with `builder is sealed`. Plain `List.append` ignores the flag.
-
+- Empty lists have `ptr == null`, `cap == 0`. Elements are inline at `ptr + i * desc.size`.
+- A value has one owner. Moving it is a bitwise copy of the 3/6 words (the source is dead).
+  Dropping it: `msrt_list_drop(v, desc)` / `msrt_map_drop(v, kdesc, vdesc)`.
+  `.copy()` is `msrt_list_copy` / `msrt_map_copy` (deep, through `desc.copy`).
+- `Bytes` is a `VecVal` of `u8`; `BytesBuilder` is the same value, `freeze` is a move.
+  `StringBuilder` is a `VecVal` of bytes; `msrt_strbuilder_freeze` copies into a String.
+  `ListBuilder`, `MapBuilder`, `SetBuilder` are the collection values; `freeze` is a move.
 - Negative indices count from the end where the Go runtime allows it (`get`, `set`,
   `remove`, `insert`, `slice`); `splice`, `fill`, `copy_within` take exact bounds.
-- Iteration protocol for `for x in list`: capture `n = len` at loop entry; each
-  iteration re-read `data` and `len` and stop when `i >= min(n, len)`. Appends do
-  not extend the loop; element writes are visible. (Differs from Go only when the
-  body removes elements: Go keeps iterating the stale tail, the runtime stops.)
-- Higher-order operations (`map`, `filter`, `fold`, `find`, `some`, `every`,
-  `count`, `for_each`, `group_by`, `flat_map`, `find_*`) are **lowered by the
-  compiler** to loops over `len`/`data`, so closures are inlined and are not a
-  runtime ABI. The runtime provides `msrt_list_sort` (with a comparator thunk) and
-  everything that needs no user code.
+- Iteration: `for x in xs` captures `n = len` at entry, reloads `ptr`/`len` each step
+  and stops at `min(n, len)`. (The loop variable is a lexical borrow, so the body
+  cannot mutate `xs` under value semantics; the rule only matters for `var` loops.)
+- Higher-order methods (`map`, `filter`, `fold`, `find*`, `some`, `every`, `count`,
+  `for_each`, `group_by`, `flat_map`) are lowered by the compiler to loops over
+  `len`/`ptr`. The runtime provides `msrt_list_sort` (comparator thunk) and everything
+  needing no user code.
+- Maps/Sets are insertion ordered (observable via `keys`, `values`, `entries`,
+  iteration, formatting). Replacing a value keeps the original key and position.
+  Removal leaves a hole that scans skip; storage compacts when over half the slots
+  are holes. Iterate allocation-free with `msrt_map_slot_count` and
+  `msrt_map_entry_ptrs(map, kdesc, vdesc, i, key_out, val_out) -> u8` (borrowed
+  pointers into the slot, 0 for holes); do not mutate during a scan (the lexical
+  borrow rule forbids it). `msrt_map_keys`/`values` return fresh copies.
+- Hashing is deterministic (no seed); order never depends on it.
 
-### Map, Set and builders
+## 5. Type and slot descriptors
 
 ```text
-MapObj { hdr, len @16, slots, used, cap, index, mask, kdesc, vdesc, flags, key_off, val_off, stride }
+TypeDesc { size u32 @0, align u32 @4, kind u32 @8, _ @12, inner0 @16, inner1 @24,
+           drop @32, copy @40, eq @48, hash @56 }          64 bytes, read-only
 ```
 
-Insertion ordered (observable: `keys`, `values`, `entries`, iteration, formatting).
-`Set[T]` is a `MapObj` with `vdesc == null`. Only `len @16` is a stable
-generated-code field. Replacement keeps the original key and position. Removal
-leaves a hole that iteration skips; storage compacts when more than half of the
-slots are holes (never during an iteration by index, see below).
+| kind | slot contents | drop / copy | equality | hash |
+| --- | --- | --- | --- | --- |
+| `INT` / `BOOL` | i64 / u8 | none / bitwise | `==` | mixed |
+| `FLOAT` | f64 | none / bitwise | IEEE (`NaN != NaN`, `0.0 == -0.0`) | none |
+| `STRING` | non-null `StrObj*` | release / retain | content | content |
+| `BYTES` | `VecVal` of u8 | free buffer / duplicate buffer | content | content |
+| `SHARED` | nullable `Obj*` | release / retain | `eq` else identity | `hash` else address |
+| `POD` | plain bits | none / `memcpy` | `eq` else `memcmp` | `hash` else bytes |
+| `LIST` | `VecVal`, element `inner0` | recursive | element-wise | unsupported |
+| `MAP` | `MapVal`, `inner0`/`inner1` | recursive | order independent | unsupported |
+| `SET` | `MapVal`, `inner0` | recursive | order independent | unsupported |
+| `CUSTOM` | records, alternatives... | `drop` / `copy` (None = bitwise) | `eq` | `hash` |
 
-- Iteration: `msrt_map_keys`/`msrt_map_values`/`msrt_set_values` return fresh
-  lists (a snapshot, matching Go's "callbacks traverse a snapshot"). For
-  allocation-free scans use `msrt_map_slot_count` and `msrt_map_entry_at(map, i, key_out, val_out)`
-  (returns 0 for holes; call retains the entry). Do not mutate during a slot scan.
-- Float keys are rejected by the language (no `Hashable`); `msrt_desc_float` still supports `eq`.
-
-### StringBuilder / BytesBuilder
-
-`StrBuilderObj { hdr, buf: *mut StrObj, cap, flags }`. `append` grows `buf`
-geometrically; `freeze` seals and returns `buf` (+1, no copy). Repeated `freeze`
-returns the same string. Appending after freeze faults with `builder is sealed`.
-`BytesBuilder` is the same object; its `freeze` result has the Bytes meaning.
+Function contracts: `drop(slot)`, `copy(src, dst)` (dst uninitialised), `eq(a, b) -> u8`,
+`hash(slot) -> i64`. Equal values hash equally. Builtin descriptors the runtime exports:
+`msrt_desc_int`, `msrt_desc_float`, `msrt_desc_bool`, `msrt_desc_string`,
+`msrt_desc_bytes`. Generated `eq` of recursive types calls `msrt_eq_enter(a, b)`
+before descending (0 means the pair is already being compared: assume equal) and
+`msrt_eq_leave(a, b)` after. `msrt_hash_int`, `msrt_hash_bytes`, `msrt_hash_combine`
+build record hashes. Generic helpers: `msrt_slot_drop`, `msrt_slot_copy`,
+`msrt_slot_eq`, `msrt_slot_hash`.
 
 ## 6. Optional, Result, closures, interfaces
 
-- `Optional[T]` with pointer-like `T`: the pointer, null = `none`. `Optional[Int]`:
-  `OptInt { present: u8 @0, value: i64 @8 }` (16 bytes); `Optional[Float]` likewise;
-  `Optional[Bool]` is `{ present: u8 @0, value: u8 @1 }`. Optional of an
-  `Optional` or of a zero-sized value is compiler-defined (not used by the runtime).
-- `Result[T, E]`: compiler-defined layout (tag plus payload). Runtime functions only
-  use the status/out protocol of section 1.
-- Closures: `Closure { hdr, code @16, captured values @24.. }`. `code` has the C
-  signature `fn(closure: *mut Closure, args...) -> ret`. The runtime calls closures
-  only through the sort comparator thunk below.
-- Interface values: `{ data: *mut Obj, vtable }` 16 bytes, passed as two
-  registers by generated code; the runtime never sees one.
+- `Optional[T]` of a refcounted pointer: the pointer, null = none. `Optional[Int]`:
+  `OptInt { present u8 @0, value i64 @8 }` (16 bytes), `Optional[Float]` likewise,
+  `Optional[Bool]` `{ present u8 @0, value u8 @1 }`. Optional of aggregates is compiler-defined.
+- `Result[T, E]`: compiler-defined; the runtime only uses the status/out protocol.
+- Closures: refcounted `Closure { hdr, code @16, captured @24.. }`; `code` is
+  `fn(closure, args...)`. The runtime calls closures only via the sort thunk.
+- Interface values: `{ data, vtable }`, two registers; the runtime never sees them.
 
-## 7. Faults
+## 7. Faults, cleanup, depth, cancellation
 
 ```text
 msrt_fault(msg: *const u8, len: usize) -> !          message bytes are copied
@@ -209,10 +188,10 @@ msrt_fault_int_overflow() -> !  msrt_fault_div_zero() -> !  msrt_fault_rem_zero(
 ```
 
 A fault (1) captures the innermost source frames by walking frame pointers and
-resolving return addresses through the tables (`FuncEntry`/`LineEntry`), at most 32
-frames then `  ... outer frames omitted`; (2) runs the registered cleanup actions
-innermost first (a fault inside a cleanup becomes a `cleanup fault: <message>` line
-and the walk continues); (3) flushes stdout, writes to stderr
+resolving return addresses through the tables (at most 32, then
+`  ... outer frames omitted`); (2) runs registered cleanup actions LIFO (a fault inside
+one becomes a `cleanup fault: <message>` line and the walk continues); (3) flushes
+stdout, writes to stderr
 
 ```text
 <message>
@@ -221,72 +200,59 @@ and the walk continues); (3) flushes stdout, writes to stderr
 cleanup fault: <message>                (one per secondary fault)
 ```
 
-and exits with status 70. Generated code must be compiled with frame pointers
-(rbp / x29 chains) and must not use tail calls that drop frames. Frames whose
-return address is not inside `FuncTable` are skipped (runtime frames).
+and exits 70. Generated code must keep frame pointers (rbp / x29 chains) and must
+not tail-call away frames; the runtime is built with `-C force-frame-pointers=yes`
+(`.cargo/config.toml`). Frames outside `FuncTable` are skipped.
 
-**Call depth.** `msrt_call_depth: i64` (data symbol). Functions in a recursive
-cycle do `depth += 1; if depth > 200000 { msrt_fault_depth() }` on entry and
-`depth -= 1` on every normal return. Non-recursive call graphs skip it.
-**Cancellation.** `msrt_cancel_flag: u8` (data symbol) becomes non-zero (the signal
-number) after SIGINT/SIGTERM unless shielded. Loops and calls poll it with a relaxed
-load and call `msrt_cancelled() -> !` when set, which unwinds cleanups and exits
-130 (SIGINT) or 143 (SIGTERM). A second stop request, or 30 s after the first, prints
-`incomplete cleanup: <reason>` and exits 70 without further cleanup.
+**Call depth.** `msrt_call_depth: i64`. Recursive-cycle functions do
+`depth += 1; if depth > 200000 { msrt_fault_depth() }` on entry and `depth -= 1` on
+every normal return. **Cancellation.** `msrt_cancel_flag: u8` becomes the signal
+number after SIGINT/SIGTERM (unless shielded). Loops and calls poll it (relaxed load)
+and call `msrt_cancelled() -> !`, which runs cleanups and exits 130 (SIGINT) or 143
+(SIGTERM). A second stop request or 30 s later prints `incomplete cleanup: <reason>`
+and exits 70.
 
 **Cleanup stack (`with`).** `msrt_cleanup_push(f: fn(arg: *mut u8), arg: *mut u8) -> usize`
-registers `f(arg)` and returns a handle; the pair is owned by the stack until run.
-`msrt_cleanup_run(handle)` runs and removes that action now (normal scope exit;
-actions registered after it that are still pending run first, innermost to outermost).
-On a fault, remaining actions run LIFO, shielded from cancellation. A fault raised
-while an action runs on the normal path is an ordinary primary fault.
+returns a handle; `msrt_cleanup_run(handle)` runs and removes that action (and any
+newer pending ones first, innermost to outermost). On a fault the remaining actions
+run LIFO shielded from cancellation.
 
-## 8. Naming scheme and catalogue
+## 8. Naming and catalogue
 
-`msrt_<module>_<name>`; modules: `rc`, `mem`, `fault`, `cleanup`, `int`, `float`,
-`bool`, `numbers`, `string`, `bytes`, `list`, `map`, `set`, `listbuilder`,
-`mapbuilder`, `setbuilder`, `strbuilder`, `bytesbuilder`, `io`, `process`, `eq`,
-`hash`, `profile`. Future crates (`ms-std-fs`, `ms-std-json`, ...) use their
-module name as the prefix and are linked only when imported; they depend on
-`ms-rt-abi` for layouts and call `msrt_*` for allocation and faults. The
-authoritative list of exported symbols is the `#[no_mangle]` items in `ms-rt/src`
-(`cargo doc -p ms-rt`); this section lists the groups. Language-level operation
-names match `pkg/stdlib/*.ms` (`String.split` is `msrt_string_split`).
+`msrt_<module>_<name>`; modules: `mem`, `rc`, `fault`, `cleanup`, `int`, `float`,
+`bool`, `numbers`, `string`, `bytes`, `list`, `map`, `set`, `strbuilder`, `slot`,
+`eq`, `hash`, `io`, `process`, `profile`. Future crates (`ms-std-fs`, `ms-std-json`...)
+use their own prefix and link only when imported; they depend on `ms-rt-abi` and call
+`msrt_*` for allocation and faults. The authoritative symbol list is the `#[no_mangle]`
+items in `ms-rt/src` (`cargo doc -p ms-rt`); language names follow `pkg/stdlib/*.ms`
+(`String.split` -> `msrt_string_split`). Argument order: receiver pointer(s), descriptors,
+declared parameters, flattened optionals, `out` last.
 
-Argument order: receiver first, then declared parameters, then flattened
-optionals in declaration order, then the `out` pointer last.
+Inline fast paths the code generator may open-code (part of the ABI):
 
-Inline fast paths generated code may open-code (all are part of the ABI):
-
-1. Retain: `if p != null { p.rc += 1 }` (static objects need no check).
-2. Release: `if p != null { p.rc -= 1; if p.rc == 0 { msrt_drop_slow(p) } }`.
-3. List index load `xs[i]`: `if (i as u64) < len { *(data + i * desc.size) }`, with
-   retain of pointer elements; otherwise call the slow path (negative index,
-   default or `msrt_index_fault`). Same for index store (release old, consume new).
-4. List push: `if len < cap { store at data + len*size; len += 1 } else msrt_list_push*`.
-5. String byte length (`len @16`), Bytes length, List length (`len @16`), Map/Set length (`len @16`).
-6. Call-depth counter and cancel-flag polling (section 7).
-7. `Int` checked arithmetic (use hardware overflow flags, call `msrt_fault_int_overflow`).
-8. `Optional` presence tests and payload loads; `ASCII` single-byte string equality is not inlined.
+1. Retain `if p != null { p.rc += 1 }` / release `rc -= 1; if rc == 0 { msrt_drop_slow(p) }`.
+2. List element address `ptr + i * desc.size` when `(i as u64) < len` (else the slow path:
+   negative index, default, or `msrt_index_fault`).
+3. List push: `if len < cap { store at ptr + len*size; len += 1 } else msrt_list_push*`.
+4. Lengths: `StrObj.len @16`, `VecVal.len @8`, `MapVal.len @16`.
+5. Call-depth counter and cancel-flag polling.
+6. Checked `Int` arithmetic via overflow flags, calling `msrt_fault_int_overflow`.
+7. `Optional` presence tests and payload loads.
 
 ## 9. Process entry, I/O, profiler
 
 `msrt_start(main_fn: extern "C" fn() -> i64, tables: *const Tables, argc: i32, argv: *const *const u8) -> i32`
-is called from the C `main` the compiler emits (`return msrt_start(...)`): it
-installs the tables, signal handlers and the profiler (when requested), runs
-`main_fn` on a dedicated thread with a 1 GiB stack (so the 200,000-call limit is
-reachable), checks the exit code range (`0..=125`, else the Go fault message), flushes
-stdout and returns the process status (also 130/143 after a stop request). `msrt_args() -> *mut ListObj`
-returns a fresh `List[String]` of the program arguments (argv[1..]).
+is called from the C `main` the compiler emits. It installs tables and signal
+handlers, starts the profiler when requested, runs `main_fn` on a dedicated thread
+with a 1 GiB stack (so the 200,000-call limit is reachable), validates the exit
+code (`0..=125`, else the Go fault message), flushes stdout and returns the status.
+`msrt_args(out: *mut VecVal)` fills a `List[String]` (argv[1..]).
 
 `msrt_io_write_stdout(s)`, `msrt_io_write_stderr(s)`, `msrt_io_flush()`: stdout is
-buffered (64 KiB; line buffered on a terminal) and flushed before any stderr
-write, on fault, on exit and by `msrt_io_flush`. `msrt_process_exit(code: i64) -> !`
-flushes and exits immediately (no cleanup).
+buffered (64 KiB) and flushed before any stderr write, on fault, exit and by
+`msrt_io_flush`. `msrt_process_exit(code: i64) -> !` flushes and exits (no cleanup).
 
 ### Symbol table (`Tables`)
-
-The compiler emits read-only data and passes its address to `msrt_start`:
 
 ```text
 Tables { abi_version: u32, reserved: u32, funcs, func_count, lines, line_count, strings, strings_len }
@@ -294,39 +260,28 @@ FuncEntry { addr: usize, size: u32, name_off: u32, file_off: u32, line: u32 }   
 LineEntry { pc: usize, line: u32, file_off: u32 }                                16 bytes, sorted by pc
 ```
 
-`name_off`/`file_off` index NUL-terminated strings in `strings`. `addr` are
-link-time addresses (relocated by the linker; the runtime does not slide them).
-`pc` is a return address; `file_off == u32::MAX` means "the function's file".
-Function names are the names shown in fault traces (`inner`, `Point.norm`,
-`main.lambda2`). Only source functions belong in `FuncTable`.
+Offsets index NUL-terminated strings in `strings`. `addr`/`pc` are link-time
+(relocated) addresses; `pc` is a return address; `file_off == u32::MAX` means the
+function's file. Names are those shown in fault traces (`inner`, `Point.norm`,
+`main.lambda2`); only source functions belong in `FuncTable`.
 
 ### Profiler
 
-`MS_PROFILE=<path>` enables sampling for the whole run. Options:
-`MS_PROFILE_HZ` (default 1000, 1..=10000), `MS_PERF_MAP=1` (also write
-`/tmp/perf-<pid>.map`; `ms profile` symlinks or copies it to the name `perf` wants).
-`ITIMER_PROF` raises SIGPROF; the handler is async-signal-safe: it reads the
-interrupted pc and frame pointer from `ucontext`, walks the frame-pointer chain
-within the stack bounds recorded at start (at most 128 frames) and stores raw pcs
-in a preallocated ring of 65,536 samples (no allocation, overflow drops and counts).
-At exit (normal, fault, or stop) the runtime resolves pcs through `FuncTable` and
-writes **folded stacks**, one line per distinct stack, outermost first:
+`MS_PROFILE=<path>` enables sampling. `MS_PROFILE_HZ` (default 1000, 1..=10000);
+`MS_PERF_MAP=1` also writes `/tmp/perf-<pid>.map`. `ITIMER_PROF` raises SIGPROF;
+the handler is async-signal-safe: it reads pc and frame pointer from `ucontext`,
+walks the frame-pointer chain inside the stack bounds recorded at start (at most
+128 frames) into a preallocated ring of 65,536 samples (no allocation; overflow is
+counted). At exit (normal, fault or stop) the runtime resolves pcs through
+`FuncTable` and writes **folded stacks**, outermost first:
 
 ```text
 main;work;inner 412
 main;work 17
-[runtime];<unknown> 3
+# dropped 0
 ```
 
-(unresolved frames are `0x<hex>`, runtime frames outside the table collapse to `[runtime]`.)
+Unresolved frames are `0x<hex>`; runtime frames collapse to `[runtime]`.
 `ms profile <program> [args]` sets `MS_PROFILE` to a temp file, runs the native
-program, converts the folded file to its pprof output and, with `--perf-map`, sets
-`MS_PERF_MAP=1` so `perf record -g ./program` can symbolize frames; the compiler's
-frame pointers make `perf record --call-graph fp` work with or without the sampler.
-Samples report how many dropped (last line `# dropped <n>`).
-
-## 10. Fast-path summary the code generator should specialise
-
-Per-type specialisations exist for `Int` and pointer elements where a call per element
-would be wasteful: `msrt_list_push_i64`, `msrt_list_push_ptr` (consumes), `msrt_list_get_i64`,
-`msrt_map_get_i64`, `msrt_map_add_i64_*` (planned; see catalogue in `ms-rt/src`).
+program, converts the folded file to pprof output, and with `--perf-map` sets
+`MS_PERF_MAP=1` so `perf record --call-graph fp` can symbolize.

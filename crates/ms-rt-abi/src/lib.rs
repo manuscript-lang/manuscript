@@ -39,15 +39,15 @@ pub const OBJ_DROP_OFFSET: usize = 8;
 pub const OBJ_HEADER_SIZE: usize = 16;
 
 // ---------------------------------------------------------------------------
-// String and Bytes
+// String (the only refcounted value besides Shared)
 // ---------------------------------------------------------------------------
 
 /// `scalars` value meaning "not counted yet".
 pub const SCALARS_UNKNOWN: usize = usize::MAX;
 
 /// `String`: header, UTF-8 byte length, cached Unicode scalar count, bytes, and
-/// one trailing NUL byte (not counted in `len`). Strings are immutable.
-/// `Bytes` uses the same layout with `scalars` unused (always 0).
+/// one trailing NUL byte (not counted in `len`). Strings are immutable and
+/// shared by reference count (non-atomic).
 #[repr(C)]
 pub struct StrObj {
     pub hdr: Obj,
@@ -61,44 +61,89 @@ pub struct StrObj {
 pub const STR_LEN_OFFSET: usize = 16;
 pub const STR_SCALARS_OFFSET: usize = 24;
 pub const STR_DATA_OFFSET: usize = 32;
-/// Bytes shares the String layout.
-pub const BYTES_LEN_OFFSET: usize = STR_LEN_OFFSET;
-pub const BYTES_DATA_OFFSET: usize = STR_DATA_OFFSET;
+
+// ---------------------------------------------------------------------------
+// Owned aggregate values: List, Bytes, Map, Set (no header, no count)
+// ---------------------------------------------------------------------------
+
+/// `List[T]`, `Bytes` (T = u8), `StringBuilder` (bytes): three words stored in
+/// the owner's slot. `ptr` is null while `cap == 0`. Elements are inline,
+/// `desc.size` bytes apart. The value has exactly one owner; the owner's drop
+/// drops the elements and frees `ptr`.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct VecVal {
+    pub ptr: *mut u8,
+    pub len: usize,
+    pub cap: usize,
+}
+pub const VEC_PTR_OFFSET: usize = 0;
+pub const VEC_LEN_OFFSET: usize = 8;
+pub const VEC_CAP_OFFSET: usize = 16;
+pub const VEC_SIZE: usize = 24;
+
+/// `Map[K, V]` and `Set[T]`: six words. Insertion ordered: `slots` is an
+/// append-only array of entries (`hash: u64` with the top bit set for live
+/// entries and 0 for removed ones, then key, then value, `stride` bytes apart)
+/// and `index` an open-addressing hash index of slot numbers. Only `len` is a
+/// stable generated-code field; the rest is internal to the runtime.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct MapVal {
+    pub slots: *mut u8,
+    pub index: *mut u32,
+    /// Number of live entries.
+    pub len: usize,
+    /// Slots used so far, including removed ones.
+    pub used: usize,
+    /// Slot capacity.
+    pub cap: usize,
+    /// Index size minus one (0 when there is no index).
+    pub mask: usize,
+}
+pub const MAP_LEN_OFFSET: usize = 16;
+pub const MAP_SIZE: usize = 48;
 
 // ---------------------------------------------------------------------------
 // Type descriptors
 // ---------------------------------------------------------------------------
 
-/// How a slot of a given type is dropped, copied, compared and hashed.
 pub const KIND_INT: u32 = 0;
 pub const KIND_FLOAT: u32 = 1;
 pub const KIND_BOOL: u32 = 2;
-/// Slot holds a non-null `*mut StrObj`; content equality and hashing.
+/// Slot holds a non-null `*mut StrObj`; copy = retain, drop = release; content equality and hash.
 pub const KIND_STRING: u32 = 3;
-/// Slot holds a non-null `*mut StrObj` used as Bytes; content equality and hashing.
+/// Slot holds a `VecVal` of bytes (24 bytes). Copy duplicates the buffer.
 pub const KIND_BYTES: u32 = 4;
-/// Slot holds one nullable object pointer. Drop and copy are the builtin
-/// release/retain; `eq` and `hash` are called when present, else identity.
-pub const KIND_PTR: u32 = 5;
-/// Slot is plain bits without references (for example an inline `Optional[Int]`).
-/// Equality is `memcmp` and hashing is over the bytes unless `eq`/`hash` is set.
+/// Slot holds a nullable pointer to a reference-counted object with an `Obj`
+/// header (`Shared[T]`, `Optional[String]`...). Copy = retain, drop = release.
+/// `eq`/`hash` are called when present, else identity.
+pub const KIND_SHARED: u32 = 5;
+/// Plain bits without ownership (scalars, records of scalars, inline `Optional[Int]`).
+/// Copy is `memcpy`; equality `memcmp` and hash over the bytes unless `eq`/`hash` is set.
 pub const KIND_POD: u32 = 6;
-/// Everything goes through the function pointers of the descriptor.
-pub const KIND_CUSTOM: u32 = 7;
+/// Slot holds a `VecVal` list whose element descriptor is `inner0`.
+pub const KIND_LIST: u32 = 7;
+/// Slot holds a `MapVal` map: key `inner0`, value `inner1`.
+pub const KIND_MAP: u32 = 8;
+/// Slot holds a `MapVal` set: element `inner0`.
+pub const KIND_SET: u32 = 9;
+/// Records, alternatives and anything else: all behavior through the function pointers.
+pub const KIND_CUSTOM: u32 = 10;
 
-/// Drops the value stored in a slot (releases the references it owns).
+/// Drops the value stored in a slot (frees what it owns; the slot memory itself is the caller's).
 pub type SlotDropFn = unsafe extern "C" fn(slot: *mut u8);
-/// Adds one reference for every reference the slot's value holds. Used after a
-/// bitwise copy of a slot.
-pub type SlotRetainFn = unsafe extern "C" fn(slot: *const u8);
+/// Duplicates the value in `src` into uninitialised `dst` (`.copy()`): owned
+/// parts are deep copied, reference-counted parts retained.
+pub type SlotCopyFn = unsafe extern "C" fn(src: *const u8, dst: *mut u8);
 /// Equality of two slots; returns 0 or 1.
 pub type SlotEqFn = unsafe extern "C" fn(a: *const u8, b: *const u8) -> u8;
 /// Hash of a slot. Equal values must hash equally.
 pub type SlotHashFn = unsafe extern "C" fn(slot: *const u8) -> i64;
 
-/// Element or key/value descriptor. The compiler emits one static, read-only
-/// descriptor per distinct slot type; the runtime provides builtins for `Int`,
-/// `Float`, `Bool`, `String` and `Bytes` (`msrt_desc_*`).
+/// Slot descriptor. The compiler emits one static, read-only descriptor per
+/// distinct slot type; the runtime provides builtins for `Int`, `Float`, `Bool`,
+/// `String` and `Bytes` (`msrt_desc_*`).
 #[repr(C)]
 pub struct TypeDesc {
     /// Slot size in bytes, a multiple of `align`. Zero is allowed (Unit).
@@ -108,93 +153,34 @@ pub struct TypeDesc {
     /// One of the `KIND_*` constants.
     pub kind: u32,
     pub reserved: u32,
-    /// `KIND_CUSTOM`: drop of the slot (`None` when it owns nothing).
+    /// Element/key descriptor for `LIST`, `MAP`, `SET`.
+    pub inner0: *const TypeDesc,
+    /// Value descriptor for `MAP`.
+    pub inner1: *const TypeDesc,
+    /// `CUSTOM`: drop (`None` when it owns nothing).
     pub drop: Option<SlotDropFn>,
-    /// `KIND_CUSTOM`: retain after bitwise copy (`None` when it holds no references).
-    pub retain: Option<SlotRetainFn>,
-    /// `KIND_PTR`/`KIND_CUSTOM`/`KIND_POD`: equality override.
+    /// `CUSTOM`: deep copy (`None` means bitwise).
+    pub copy: Option<SlotCopyFn>,
+    /// `SHARED`/`POD`/`CUSTOM`: equality override.
     pub eq: Option<SlotEqFn>,
-    /// `KIND_PTR`/`KIND_CUSTOM`/`KIND_POD`: hash override.
+    /// `SHARED`/`POD`/`CUSTOM`: hash override.
     pub hash: Option<SlotHashFn>,
 }
 
 pub const DESC_SIZE_OFFSET: usize = 0;
 pub const DESC_ALIGN_OFFSET: usize = 4;
 pub const DESC_KIND_OFFSET: usize = 8;
-pub const DESC_DROP_OFFSET: usize = 16;
-pub const DESC_RETAIN_OFFSET: usize = 24;
-pub const DESC_EQ_OFFSET: usize = 32;
-pub const DESC_HASH_OFFSET: usize = 40;
+pub const DESC_INNER0_OFFSET: usize = 16;
+pub const DESC_INNER1_OFFSET: usize = 24;
+pub const DESC_DROP_OFFSET: usize = 32;
+pub const DESC_COPY_OFFSET: usize = 40;
+pub const DESC_EQ_OFFSET: usize = 48;
+pub const DESC_HASH_OFFSET: usize = 56;
+pub const DESC_SIZE: usize = 64;
 
-// SAFETY-free marker: descriptors contain only function pointers and integers.
-// They are immutable statics, so sharing them between threads is sound.
+// SAFETY-free marker: descriptors contain only pointers to other immutable
+// statics, function pointers and integers, so sharing them is sound.
 unsafe impl Sync for TypeDesc {}
-
-// ---------------------------------------------------------------------------
-// List, Map, Set and builders
-// ---------------------------------------------------------------------------
-
-/// Set on a builder object after `freeze`; mutation faults with "builder is sealed".
-pub const FLAG_SEALED: usize = 1;
-
-/// `List[T]`, `ListBuilder[T]` (same object; `freeze` returns it and seals the
-/// builder flag). Elements are stored inline, `desc.size` bytes apart, starting
-/// at `data`. `data` is null while `cap == 0`.
-#[repr(C)]
-pub struct ListObj {
-    pub hdr: Obj,
-    pub len: usize,
-    pub cap: usize,
-    pub data: *mut u8,
-    pub desc: *const TypeDesc,
-    pub flags: usize,
-}
-
-pub const LIST_LEN_OFFSET: usize = 16;
-pub const LIST_CAP_OFFSET: usize = 24;
-pub const LIST_DATA_OFFSET: usize = 32;
-pub const LIST_DESC_OFFSET: usize = 40;
-pub const LIST_FLAGS_OFFSET: usize = 48;
-pub const LIST_SIZE: usize = 56;
-
-/// `Map[K, V]` and `Set[T]` (a set has no value descriptor), plus their
-/// builders. Insertion ordered: `slots` is an append-only array of entries and
-/// `index` an open-addressing hash index of slot numbers. The fields after
-/// `flags` are internal to the runtime; generated code may only rely on `len`.
-#[repr(C)]
-pub struct MapObj {
-    pub hdr: Obj,
-    /// Number of live entries.
-    pub len: usize,
-    pub slots: *mut u8,
-    /// Slots used so far, including removed ones.
-    pub used: usize,
-    /// Slot capacity.
-    pub cap: usize,
-    pub index: *mut u32,
-    pub mask: usize,
-    pub kdesc: *const TypeDesc,
-    /// Null for sets.
-    pub vdesc: *const TypeDesc,
-    pub flags: usize,
-    pub key_off: u32,
-    pub val_off: u32,
-    pub stride: u32,
-    pub reserved: u32,
-}
-
-pub const MAP_LEN_OFFSET: usize = 16;
-
-/// `StringBuilder`: appends into a String-shaped buffer with spare capacity;
-/// `freeze` returns that buffer (+1) and seals the builder.
-#[repr(C)]
-pub struct StrBuilderObj {
-    pub hdr: Obj,
-    /// `*mut StrObj` with capacity `cap` data bytes (not counting the NUL).
-    pub buf: *mut StrObj,
-    pub cap: usize,
-    pub flags: usize,
-}
 
 // ---------------------------------------------------------------------------
 // Optional, Result, closures, interfaces
@@ -222,7 +208,7 @@ pub const OPT_SCALAR_VALUE_OFFSET_8: usize = 8;
 pub const OPT_BOOL_VALUE_OFFSET: usize = 1;
 pub const OPT_INT_SIZE: usize = 16;
 
-/// Function value: header, code pointer, then captured values chosen by the
+/// Function value (heap object, reference counted): header, code pointer, then captured values chosen by the
 /// compiler. Calling convention of `code` is `extern "C" fn(closure: *mut Closure, args...)`.
 #[repr(C)]
 pub struct Closure {
@@ -348,13 +334,16 @@ mod tests {
         assert_eq!(offset_of!(StrObj, len), STR_LEN_OFFSET);
         assert_eq!(offset_of!(StrObj, scalars), STR_SCALARS_OFFSET);
         assert_eq!(size_of::<StrObj>(), STR_DATA_OFFSET);
-        assert_eq!(offset_of!(ListObj, len), LIST_LEN_OFFSET);
-        assert_eq!(offset_of!(ListObj, cap), LIST_CAP_OFFSET);
-        assert_eq!(offset_of!(ListObj, data), LIST_DATA_OFFSET);
-        assert_eq!(offset_of!(ListObj, desc), LIST_DESC_OFFSET);
-        assert_eq!(offset_of!(ListObj, flags), LIST_FLAGS_OFFSET);
-        assert_eq!(size_of::<ListObj>(), LIST_SIZE);
-        assert_eq!(offset_of!(MapObj, len), MAP_LEN_OFFSET);
+        assert_eq!(offset_of!(VecVal, ptr), VEC_PTR_OFFSET);
+        assert_eq!(offset_of!(VecVal, len), VEC_LEN_OFFSET);
+        assert_eq!(offset_of!(VecVal, cap), VEC_CAP_OFFSET);
+        assert_eq!(size_of::<VecVal>(), VEC_SIZE);
+        assert_eq!(offset_of!(MapVal, len), MAP_LEN_OFFSET);
+        assert_eq!(size_of::<MapVal>(), MAP_SIZE);
+        assert_eq!(size_of::<TypeDesc>(), DESC_SIZE);
+        assert_eq!(offset_of!(TypeDesc, inner0), DESC_INNER0_OFFSET);
+        assert_eq!(offset_of!(TypeDesc, inner1), DESC_INNER1_OFFSET);
+        assert_eq!(offset_of!(TypeDesc, copy), DESC_COPY_OFFSET);
         assert_eq!(offset_of!(Closure, code), CLOSURE_CODE_OFFSET);
         assert_eq!(size_of::<Closure>(), CLOSURE_CAPTURE_OFFSET);
         assert_eq!(size_of::<OptInt>(), OPT_INT_SIZE);
@@ -363,7 +352,6 @@ mod tests {
         assert_eq!(offset_of!(OptBool, value), OPT_BOOL_VALUE_OFFSET);
         assert_eq!(size_of::<FatPtr>(), FATPTR_SIZE);
         assert_eq!(offset_of!(TypeDesc, drop), DESC_DROP_OFFSET);
-        assert_eq!(offset_of!(TypeDesc, retain), DESC_RETAIN_OFFSET);
         assert_eq!(offset_of!(TypeDesc, eq), DESC_EQ_OFFSET);
         assert_eq!(offset_of!(TypeDesc, hash), DESC_HASH_OFFSET);
         assert_eq!(size_of::<FuncEntry>(), FUNC_ENTRY_SIZE);
