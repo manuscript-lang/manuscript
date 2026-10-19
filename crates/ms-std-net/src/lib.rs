@@ -19,6 +19,7 @@ pub mod pump;
 pub mod rt;
 pub mod tls;
 pub mod wait;
+pub mod ws;
 
 #[cfg(test)]
 extern crate ms_rt;
