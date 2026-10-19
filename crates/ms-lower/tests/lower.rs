@@ -112,3 +112,13 @@ fn with_closes_on_every_exit_and_generic_bounds_dispatch_statically() {
     assert!(mir.matches("call @close").count() >= 4);
     assert!(mir.contains("cleanup.push"));
 }
+
+#[test]
+fn native_values_and_time() {
+    let mir = lower(
+        "native-values",
+        "import stdout from \"@std/io.ms\"\nimport {sqrt, max} from \"@std/math.ms\"\nimport {Duration, parse_timestamp} from \"@std/time.ms\"\n\nfn via(f: fn(value: Float) Float, x: Float) Float: f(value: x)\n\nexport fn main() Int:\n    let to_text: fn() String = 7.to_string\n    let d: Duration = 2.seconds\n    let t = parse_timestamp(\"2020-01-02T03:04:05Z\")\n    let r = stdout().write(\"{to_text()} {via(f: sqrt, x: 4.0)} {max(left: 1, right: 2)} {d.to_milliseconds()}\\n\")\n    return 0\n",
+    );
+    assert!(mir.contains("closure.new"));
+    assert!(mir.contains("msstd_time_parse_timestamp"));
+}

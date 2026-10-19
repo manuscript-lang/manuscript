@@ -88,9 +88,10 @@ pub(crate) fn rt_sig(sym: &str) -> Option<RtSig> {
 
 /// A language-level argument of the call being marshalled.
 #[derive(Clone, Copy)]
-struct Input {
-    val: Option<Val>,
-    wrapped: bool,
+pub(crate) struct Input {
+    pub(crate) val: Option<Val>,
+    /// The checker converted the argument to an optional element.
+    pub(crate) wrapped: bool,
 }
 
 /// The runtime symbol implementing a native method of a receiver type.
@@ -163,9 +164,36 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         .flatten()
 }
 
+/// Native types whose methods are runtime symbols named after the type, and the module
+/// they live in: `msstd_time_timestamp_shift`, `msrt_regex_matches`.
+const TYPED_NATIVES: &[(&str, &str)] = &[
+    ("Timestamp", "time"),
+    ("Instant", "time"),
+    ("Duration", "time"),
+    ("Regex", "regex"),
+    ("Decimal", "decimal"),
+    ("IpAddress", "net"),
+    ("Cidr", "net"),
+    ("HttpHeaders", "http"),
+];
+
+/// The runtime symbol of `method` on a native type from [`TYPED_NATIVES`].
+pub(crate) fn typed_method_symbol(recv: &ct::Ty, method: &str) -> Option<String> {
+    let (ty, module) = TYPED_NATIVES.iter().find(|(t, _)| recv.is_std(t))?;
+    let ty = ty.to_lowercase();
+    ["msstd", "msrt"].iter().find_map(|prefix| {
+        [
+            format!("{prefix}_{module}_{ty}_{method}"),
+            format!("{prefix}_{module}_{method}"),
+        ]
+        .into_iter()
+        .find(|sym| rt_sig(sym).is_some())
+    })
+}
+
 /// Status codes of `ms-rt-abi` and the error cases they name. Status 11 (`Failed`) carries the
 /// module's `failure_message` text when the error case has a `String` field.
-const STATUS_CASES: [(i64, &str); 13] = [
+const STATUS_CASES: [(i64, &str); 14] = [
     (1, "InvalidInput"),
     (2, "OutOfRange"),
     (3, "LimitExceeded"),
@@ -179,12 +207,29 @@ const STATUS_CASES: [(i64, &str); 13] = [
     (11, "Failed"),
     (12, "Unavailable"),
     (13, "Timeout"),
+    (14, "OutputLimit"),
 ];
 
 /// `STATUS_NONE`: end of stream or an absent optional.
 const STATUS_NONE: i64 = 16;
 
 impl FnLower<'_> {
+    /// The list type of a call result: the result itself, or the `ok` payload of a `Result`.
+    fn result_list(&self, result: MTy) -> Option<MTy> {
+        let t = &*self.b.m;
+        match t.types.kind(result) {
+            TyKind::List(_) => Some(result),
+            TyKind::Alt(a) => t.alts[a.index()]
+                .cases
+                .iter()
+                .find(|c| c.name == "ok")
+                .and_then(|c| c.fields.first())
+                .map(|f| f.1)
+                .filter(|f| matches!(t.types.kind(*f), TyKind::List(_))),
+            _ => None,
+        }
+    }
+
     /// Calls the runtime function `sym` for a method call.
     /// `Queue[T]()`, `Queue[T](capacity: n)` or `PriorityQueue[T](compare: f, capacity: n)`:
     /// a runtime queue of elements of `T`.
@@ -355,12 +400,10 @@ impl FnLower<'_> {
             let p = &sig.params[i];
             match p.name.as_str() {
                 "d" => {
-                    // A constructor such as `filled` has no receiver: its result names the element.
-                    let mut recv_ty = recv_ty.unwrap_or(result);
-                    if let TyKind::Alt(a) = self.b.m.types.kind(recv_ty).clone() {
-                        let ok = self.ok_case_index(a)?;
-                        recv_ty = self.b.m.alts[a.index()].cases[ok].fields[0].1;
-                    }
+                    // A function has no receiver: the descriptor is that of its list result.
+                    let recv_ty = recv_ty
+                        .or_else(|| self.result_list(result))
+                        .ok_or_else(|| Error::new(format!("{sym}: descriptor without receiver")))?;
                     let e = match self.b.m.types.kind(recv_ty).clone() {
                         TyKind::List(e) => e,
                         TyKind::Obj(_, a) if !a.is_empty() => a[0],
@@ -384,6 +427,23 @@ impl FnLower<'_> {
                         }
                         None => return Err(Error::new(format!("{sym}: no key type"))),
                     }
+                }
+                n if n.starts_with("has_")
+                    && i + 1 < end
+                    && sig.params[i + 1].name.starts_with("has_")
+                    && sig.params[i + 1].ty == "u8" =>
+                {
+                    // An optional record: its presence, then each field in turn.
+                    let input = *inputs
+                        .get(cursor)
+                        .ok_or_else(|| Error::new(format!("{sym}: missing argument")))?;
+                    cursor += 1;
+                    i += 1 + self.flatten_optional_record(
+                        input,
+                        &sig.params[i + 1..end],
+                        &mut vals,
+                    )?;
+                    continue;
                 }
                 n if n.starts_with("has_") && i + 1 < end => {
                     let input = *inputs
@@ -417,17 +477,19 @@ impl FnLower<'_> {
                         }
                         return Err(Error::new(format!("{sym}: missing argument {}", p.name)));
                     };
-                    // A `String` for a byte-vector parameter is encoded first.
-                    let x = if p.ty.ends_with("VecVal") && self.ty_of(x.v) == MTy::STR {
-                        let s = self.borrow(x);
-                        let bytes = self.call_runtime("msrt_string_to_bytes", &[s], MTy::BYTES)?;
-                        Val {
-                            v: bytes,
-                            own: true,
+                    if let Some(fields) = self.record_fields_named(x, &p.name) {
+                        // A record argument crosses as its fields.
+                        let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(x.v)).clone() else {
+                            unreachable!("record_fields_named found a record");
+                        };
+                        let rec = self.borrow(x);
+                        for k in 0..fields {
+                            let f = self.b.rec_get(rid, k as u32, rec);
+                            vals.push(f);
                         }
-                    } else {
-                        x
-                    };
+                        i += fields;
+                        continue;
+                    }
                     let consumed_aggregate = p.ty == "*mut VecVal" || p.ty == "*mut MapVal";
                     let clock = p.ty == "*const Timestamp" || p.ty == "*const Instant";
                     if p.ty == "*const u8" || p.ty == "*mut u8" || consumed_aggregate || clock {
@@ -475,8 +537,118 @@ impl FnLower<'_> {
         Ok(r)
     }
 
+    /// The field count of a record argument whose first field is the runtime parameter `name`.
+    fn record_fields_named(&self, x: Val, name: &str) -> Option<usize> {
+        let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(x.v)) else {
+            return None;
+        };
+        let fields = &self.b.m.records[rid.index()].fields;
+        (fields.first()?.0 == name).then_some(fields.len())
+    }
+
+    /// Pushes `has_record` and the `(has, value)` pairs of the optional fields of an optional
+    /// record argument, reading fields only when the record is present. Returns the number of
+    /// runtime parameters used after the presence flag.
+    fn flatten_optional_record(
+        &mut self,
+        input: Input,
+        params: &[RtParam],
+        vals: &mut Vec<Value>,
+    ) -> Result<usize, Error> {
+        let x = input.val;
+        let held = x.map(|x| self.ty_of(x.v));
+        // The checker may already have converted the argument to an optional element.
+        let wrapped =
+            input.wrapped || held.is_some_and(|t| matches!(self.b.m.types.kind(t), TyKind::Rec(_)));
+        let rec_ty = held.and_then(|t| match self.b.m.types.kind(t).clone() {
+            TyKind::Opt(t) if !wrapped => Some(t),
+            TyKind::Rec(_) => Some(t),
+            _ => None,
+        });
+        let fields = match rec_ty.map(|t| self.b.m.types.kind(t).clone()) {
+            Some(TyKind::Rec(rid)) => self.b.m.records[rid.index()].fields.clone(),
+            _ => Vec::new(),
+        };
+        let has = match x {
+            Some(x) if wrapped => {
+                let _ = x;
+                self.b.bconst(true)
+            }
+            Some(x) => {
+                let v = self.borrow(x);
+                self.b.opt_is_some(v)
+            }
+            None => self.b.bconst(false),
+        };
+        vals.push(has);
+        // A record to read fields from: the argument itself, or the empty record when the
+        // optional is none (the fields are then ignored by the runtime).
+        let mut blank_val = None;
+        let view = match (x, rec_ty) {
+            (Some(x), Some(rt)) => {
+                let held = self.borrow(x);
+                if wrapped {
+                    Some(held)
+                } else {
+                    let TyKind::Rec(rid) = self.b.m.types.kind(rt).clone() else {
+                        unreachable!("fields come from a record");
+                    };
+                    let mut empty = Vec::new();
+                    for (_, ft) in &fields {
+                        empty.push(self.none_owned(*ft));
+                    }
+                    let blank = self.b.rec_new(rid, &empty);
+                    let some = self.b.opt_get(held);
+                    blank_val = Some(blank);
+                    Some(self.b.select(has, some, blank))
+                }
+            }
+            _ => None,
+        };
+        let mut used = 0;
+        let mut k = 0;
+        // `params` begins at the first field's presence flag; pairs follow in field order.
+        while used + 1 < params.len() && params[used].name.starts_with("has_") {
+            let payload = params[used + 1].ty.as_str();
+            let zero = |s: &mut Self| match payload {
+                "i64" => s.b.iconst(0),
+                "f64" => s.b.fconst(0.0),
+                _ => s.b.bconst(false),
+            };
+            let (fh, fv) = match (view, fields.get(k)) {
+                (Some(rec), Some(_)) => {
+                    let TyKind::Rec(rid) = self
+                        .b
+                        .m
+                        .types
+                        .kind(rec_ty.expect("view has a type"))
+                        .clone()
+                    else {
+                        unreachable!("fields come from a record");
+                    };
+                    let f = self.b.rec_get(rid, k as u32, rec);
+                    (self.b.opt_is_some(f), self.b.opt_get(f))
+                }
+                _ => (self.b.bconst(false), zero(self)),
+            };
+            vals.push(fh);
+            vals.push(fv);
+            used += 2;
+            k += 1;
+        }
+        // The runtime reads scalars only, so the empty record can go once they are out.
+        if let Some(b) = blank_val {
+            self.drop_value(b);
+        }
+        Ok(used)
+    }
+
     /// `(has, value)` runtime operands of an optional scalar argument.
-    fn flatten_optional(&mut self, input: Input, payload: &str) -> Result<(Value, Value), Error> {
+    pub(crate) fn flatten_optional(
+        &mut self,
+        input: Input,
+        payload: &str,
+    ) -> Result<(Value, Value), Error> {
         let zero = |s: &mut Self| match payload {
             "i64" => s.b.iconst(0),
             "f64" => s.b.fconst(0.0),
@@ -486,18 +658,32 @@ impl FnLower<'_> {
             let (h, z) = (self.b.bconst(false), zero(self));
             return Ok((h, z));
         };
-        if input.wrapped {
-            let v = self.borrow(x);
-            return Ok((self.b.bconst(true), v));
-        }
         let v = self.borrow(x);
-        if matches!(self.b.m.types.kind(self.ty_of(v)), TyKind::Opt(_)) {
+        let ty = self.ty_of(v);
+        if let TyKind::Opt(inner) = self.b.m.types.kind(ty).clone() {
             let has = self.b.opt_is_some(v);
+            if matches!(self.b.m.types.kind(inner), TyKind::Alt(_)) {
+                // An enum crosses as its case index.
+                let tag = self.two_ways(
+                    has,
+                    MTy::INT,
+                    &mut |s| {
+                        let p = s.b.opt_get(v);
+                        Ok(Some(s.b.alt_tag(p)))
+                    },
+                    &mut |s| Ok(Some(s.b.iconst(0))),
+                )?;
+                return Ok((has, tag.v));
+            }
             let value = self.b.opt_get(v);
-            Ok((has, value))
-        } else {
-            Ok((self.b.bconst(true), v))
+            return Ok((has, value));
         }
+        let value = if matches!(self.b.m.types.kind(ty), TyKind::Alt(_)) {
+            self.b.alt_tag(v)
+        } else {
+            v
+        };
+        Ok((self.b.bconst(true), value))
     }
 
     pub(crate) fn finish_rt_call(
@@ -529,40 +715,8 @@ impl FnLower<'_> {
         if !has_out {
             if ret == MTy::BOOL && matches!(self.b.m.types.kind(result), TyKind::Alt(_)) {
                 // A bare status: `Result[Unit, E]`.
-                let status = self.call_runtime(sym, &vals, MTy::BOOL)?;
-                return self.status_result(sym, status, None, None, result);
-            }
-            if ret == MTy::STR && matches!(self.b.m.types.kind(result), TyKind::Alt(_)) {
-                // A string that cannot fail: `Result[String, E]`.
-                let text = self.call_runtime(sym, &vals, MTy::STR)?;
-                let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
-                    unreachable!()
-                };
-                let ok = self.ok_case_index(a)?;
-                let v = self.b.alt_new(a, ok as u32, &[text]);
-                return Ok(Val { v, own: true });
-            }
-            if ret == MTy::BOOL && result == MTy::UNIT {
-                // A status the interface ignores: `Unit`.
-                self.call_runtime(sym, &vals, MTy::BOOL)?;
-                return Ok(Val {
-                    v: self.b.unit(),
-                    own: false,
-                });
-            }
-            // A handle for a stream interface: `Subprocess.stdout()`.
-            if sig.ret.starts_with("*mut Handle<")
-                && let TyKind::Iface(i) = self.b.m.types.kind(result).clone()
-            {
-                let hir = self.hir.clone();
-                let vt = self.cx.handle_vtable_of(self.b.m, &hir, sym, i)?;
-                let ht = crate::natiface::handle_ty(self.b.m);
-                let h = self.call_runtime(sym, &vals, ht)?;
-                let v = self
-                    .b
-                    .emit(Op::IfaceNew, &[h], Imm::Vtable(vt), Some(result))
-                    .expect("iface");
-                return Ok(Val { v, own: true });
+                let code = self.status_code(sym, &vals)?;
+                return self.status_result(sym, code, None, None, result);
             }
             // A null string pointer is the absent `Optional[String]`.
             let ret = match self.b.m.types.kind(result) {
@@ -624,9 +778,15 @@ impl FnLower<'_> {
             .emit(Op::Slot, &[], Imm::Ty(slot_ty), Some(MTy::PTR))
             .expect("slot");
         vals.push(slot);
-        let status = self.call_runtime(sym, &vals, MTy::BOOL)?;
-        if let Some(inner) = eof {
-            return self.status_optional_result(sym, status, slot, inner, result);
+        // Statuses are read as `Int` (a `Bool` would make the optimizer assume 0 or 1).
+        let is_result = matches!(self.b.m.types.kind(result), TyKind::Alt(_));
+        let code = if is_result {
+            Some(self.status_code(sym, &vals)?)
+        } else {
+            None
+        };
+        if let (Some(inner), Some(code)) = (eof, code) {
+            return self.status_optional_result(sym, code, slot, inner, result);
         }
         let wrap = match wrap {
             Some(i) => {
@@ -636,7 +796,9 @@ impl FnLower<'_> {
             }
             None => None,
         };
-        if matches!(self.b.m.types.kind(result), TyKind::Opt(_)) {
+        let Some(code) = code else {
+            // A presence flag.
+            let status = self.call_runtime(sym, &vals, MTy::BOOL)?;
             return self.two_ways(
                 status,
                 result,
@@ -648,13 +810,35 @@ impl FnLower<'_> {
                 },
                 &mut |s| Ok(Some(s.none_owned(result))),
             );
-        }
-        self.status_result(sym, status, Some((slot, slot_ty)), wrap, result)
+        };
+        self.status_result(sym, code, Some((slot, slot_ty)), wrap, result)
+    }
+
+    /// The `u8` status a runtime function returns, as an `Int` (a `Bool` would make the
+    /// optimizer assume 0 or 1). Only the low byte of the return register is defined.
+    pub(crate) fn status_code(&mut self, sym: &str, vals: &[Value]) -> Result<Value, Error> {
+        let raw = self.call_runtime(sym, vals, MTy::INT)?;
+        let mask = self.b.iconst(0xff);
+        Ok(self.b.binop(Op::And, raw, mask))
+    }
+
+    /// The payload-free cases of `ea` that runtime statuses name, as `(status, case index)`.
+    pub(crate) fn status_cases(&self, ea: ms_mir::types::AltId) -> Vec<(i64, usize)> {
+        STATUS_CASES
+            .iter()
+            .filter_map(|(n, name)| {
+                let idx = self.b.m.alts[ea.index()]
+                    .cases
+                    .iter()
+                    .position(|c| c.name == *name && c.fields.is_empty())?;
+                Some((*n, idx))
+            })
+            .collect()
     }
 
     /// The error case of `ea` that the status `code` names; the last listed case otherwise.
     /// `failure` is the symbol returning the text of a `Failed` status.
-    fn status_error(
+    pub(crate) fn status_error(
         &mut self,
         ea: ms_mir::types::AltId,
         code: Value,
@@ -737,10 +921,10 @@ impl FnLower<'_> {
     }
 
     /// `ok(value)` when the status is zero, else the error case the status names.
-    fn status_result(
+    pub(crate) fn status_result(
         &mut self,
         sym: &str,
-        status: Value,
+        code: Value,
         out: Option<(Value, MTy)>,
         wrap: Option<(ms_mir::ir::VtableId, MTy)>,
         result: MTy,
@@ -749,10 +933,6 @@ impl FnLower<'_> {
             return Err(Error::new("a status needs a Result"));
         };
         let ok = self.ok_case_index(a)?;
-        let code = self
-            .b
-            .emit(Op::B2I, &[status], Imm::None, Some(MTy::INT))
-            .expect("b2i");
         let zero = self.b.iconst(0);
         let good = self.b.icmp(Cc::Eq, code, zero);
         self.two_ways(
@@ -783,7 +963,7 @@ impl FnLower<'_> {
     fn status_optional_result(
         &mut self,
         sym: &str,
-        status: Value,
+        code: Value,
         slot: Value,
         inner: MTy,
         result: MTy,
@@ -793,10 +973,6 @@ impl FnLower<'_> {
         };
         let ok = self.ok_case_index(a)?;
         let opt = self.b.m.alts[a.index()].cases[ok].fields[0].1;
-        let code = self
-            .b
-            .emit(Op::B2I, &[status], Imm::None, Some(MTy::INT))
-            .expect("b2i");
         let zero = self.b.iconst(0);
         let none = self.b.iconst(STATUS_NONE);
         let good = self.b.icmp(Cc::Eq, code, zero);

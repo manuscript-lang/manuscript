@@ -25,8 +25,32 @@ pub enum JobKind {
     Lambda(Rc<LambdaJob>),
     /// Structural equality of two values of the MIR type.
     Equal(MTy),
+    /// A native function used as a value.
+    NativeThunk(Rc<NativeThunkJob>),
+    /// A native method bound to its receiver.
+    BoundNative(Rc<BoundNativeJob>),
+    /// A JSON decoder or encoder of a type.
+    Json(Rc<crate::json::JsonJob>),
     /// A forwarder of an interface operation to a runtime handle function.
     HandleMethod(Rc<crate::natiface::MethodJob>),
+}
+
+/// A bound native method waiting to be lowered; the closure holds the receiver.
+pub struct BoundNativeJob {
+    /// The method.
+    pub method: ct::MethodRef,
+    /// Module the use is written in.
+    pub hir: Rc<ModuleHir>,
+}
+
+/// A native function value waiting to be lowered.
+pub struct NativeThunkJob {
+    /// The native, `module/name`.
+    pub native: String,
+    /// Declared parameters under the use site's substitution.
+    pub params: Vec<ct::Param>,
+    /// Module the use is written in.
+    pub hir: Rc<ModuleHir>,
 }
 
 /// A lambda waiting to be lowered.
@@ -73,6 +97,8 @@ pub struct Cx {
     pub glue_seen: std::collections::HashSet<MTy>,
     /// Parameters (receiver first) that functions hand back changed.
     pub mutated: std::collections::HashSet<crate::mutation::ParamKey>,
+    /// The `make_fixture` factory and hooks type of each module with tests.
+    pub fixtures: HashMap<Name, ms_check::TestFixture>,
 }
 
 impl Cx {
@@ -99,6 +125,7 @@ impl Cx {
             vtables: HashMap::new(),
             contracts: HashMap::new(),
             methods: program.methods.clone(),
+            fixtures: program.test_fixtures.clone(),
         }
     }
 
@@ -250,15 +277,6 @@ impl Cx {
             let elem = self.lower_ty(m, &t.args[0])?;
             return Ok(m.types.obj("PriorityQueue", vec![elem]));
         }
-        // A duration is its nanosecond count.
-        if t.is_std("Duration") {
-            return Ok(MTy::INT);
-        }
-        // Arbitrary-precision integers have no runtime yet; the type exists so interfaces
-        // that mention one (`FileInfo.exact`) can be declared.
-        if t.is_std("BigInt") {
-            return Ok(m.types.obj("BigInt", Vec::new()));
-        }
         // Clock values are two-word C structs in the runtime (`Timestamp`, `Instant`), so a
         // record of two `Int`s shares their memory layout.
         if t.is_std("Timestamp") || t.is_std("Instant") {
@@ -275,6 +293,29 @@ impl Cx {
             let fields = words.iter().map(|w| (w.to_string(), MTy::INT)).collect();
             let (_, ty) = m.add_record(name, fields);
             return Ok(ty);
+        }
+        // Plain-data natives share the runtime's `repr(C)` layout.
+        let pod: &[(&str, &[&str])] = &[("Decimal", &["lo", "hi", "exp"])];
+        for (name, fields) in pod {
+            if t.is_std(name) {
+                let (id, ty) = m.add_record(name, Vec::new());
+                m.records[id.index()].fields =
+                    fields.iter().map(|f| (f.to_string(), MTy::INT)).collect();
+                return Ok(ty);
+            }
+        }
+        // A duration is its nanosecond count.
+        if t.is_std("Duration") {
+            return Ok(MTy::INT);
+        }
+        // Arbitrary-precision integers have no runtime yet; the type exists so interfaces
+        // that mention one (`FileInfo.exact`) can be declared.
+        if t.is_std("BigInt") {
+            return Ok(m.types.obj("BigInt", Vec::new()));
+        }
+        // Runtime handles are reference-counted objects.
+        if t.is_std("Regex") {
+            return Ok(m.types.obj("Regex", Vec::new()));
         }
         Err(Error::new(format!("unsupported native type {t}")))
     }
