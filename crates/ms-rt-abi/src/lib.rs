@@ -275,9 +275,9 @@ pub struct FuncEntry {
 }
 pub const FUNC_ENTRY_SIZE: usize = 24;
 
-/// One call-site line entry (`LineTable`), sorted by `pc`. `pc` is the address of
-/// the instruction after the call (the return address). A fault frame's line is
-/// the entry with the greatest `pc` that is `<=` the frame's return address.
+/// One line-table entry (`LineTable`), sorted by `pc` across the whole table. `pc` is the START of
+/// a code range; the range extends to the next entry. A fault frame's line is the entry with the
+/// greatest `pc` that is `<=` (return address - 1) and `>=` the function's address.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct LineEntry {
