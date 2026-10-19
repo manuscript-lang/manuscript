@@ -103,7 +103,11 @@ pub fn parse_int_radix(text: &[u8], radix: i64) -> Result<i64, u8> {
             return Err(STATUS_OUT_OF_RANGE);
         }
     }
-    Ok(if neg { (acc as i128).wrapping_neg() as i64 } else { acc as i64 })
+    Ok(if neg {
+        (acc as i128).wrapping_neg() as i64
+    } else {
+        acc as i64
+    })
 }
 
 /// `Numbers.parse_float` (Go's accepted syntax only).
@@ -223,9 +227,17 @@ pub fn float_to_string(v: f64) -> ByteBuf {
     if v.is_nan() {
         out.extend(b"NaN");
     } else if v.is_infinite() {
-        out.extend(if v > 0.0 { b"Infinity".as_slice() } else { b"-Infinity".as_slice() });
+        out.extend(if v > 0.0 {
+            b"Infinity".as_slice()
+        } else {
+            b"-Infinity".as_slice()
+        });
     } else if v == 0.0 {
-        out.extend(if v.is_sign_negative() { b"-0".as_slice() } else { b"0".as_slice() });
+        out.extend(if v.is_sign_negative() {
+            b"-0".as_slice()
+        } else {
+            b"0".as_slice()
+        });
     } else if v.abs() < 9.007_199_254_740_992e15 && v == (v as i64) as f64 {
         // Integral values below 2^53: the digits are the integer itself.
         let mut tmp = [0u8; 20];
@@ -293,7 +305,10 @@ mod tests {
         let mut b = ByteBuf::new();
         format_radix(-255, 16, &mut b);
         format_radix(i64::MIN, 2, &mut b);
-        assert_eq!(s(b), "-ff-1000000000000000000000000000000000000000000000000000000000000000");
+        assert_eq!(
+            s(b),
+            "-ff-1000000000000000000000000000000000000000000000000000000000000000"
+        );
         assert_eq!(parse_int_decimal(b"-9223372036854775808"), Some(i64::MIN));
         assert_eq!(parse_int_decimal(b"9223372036854775808"), None);
         assert_eq!(parse_int_decimal(b"+12"), Some(12));
@@ -301,7 +316,10 @@ mod tests {
         assert_eq!(parse_int_decimal(b""), None);
         assert_eq!(parse_int_radix(b"FF", 16), Ok(255));
         assert_eq!(parse_int_radix(b"-8000000000000000", 16), Ok(i64::MIN));
-        assert_eq!(parse_int_radix(b"8000000000000000", 16), Err(STATUS_OUT_OF_RANGE));
+        assert_eq!(
+            parse_int_radix(b"8000000000000000", 16),
+            Err(STATUS_OUT_OF_RANGE)
+        );
         assert_eq!(parse_int_radix(b"12", 2), Err(STATUS_INVALID_DATA));
         assert_eq!(parse_int_radix(b"1", 1), Err(STATUS_INVALID_INPUT));
     }
@@ -334,7 +352,7 @@ mod tests {
     #[test]
     fn float_precision_forms() {
         let f = |v, k, d, m| float_precision(v, k, d, m).map(s);
-        assert_eq!(f(3.14159, b'f', 2, 0).as_deref(), Some("3.14"));
+        assert_eq!(f(3.14158, b'f', 2, 0).as_deref(), Some("3.14"));
         assert_eq!(f(2.5, b'f', 0, 0).as_deref(), Some("2"));
         assert_eq!(f(1234.5678, b'e', 2, 0).as_deref(), Some("1.23e+3"));
         assert_eq!(f(1234.5678, b'g', 6, 1).as_deref(), Some("1234.57"));

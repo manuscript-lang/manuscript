@@ -68,7 +68,9 @@ pub unsafe fn drop_slow(o: *mut Obj) {
             return;
         }
         *depth += 1;
-        let drop = (*o).drop.unwrap_or_else(|| crate::fault::fatal(b"object without drop"));
+        let drop = (*o)
+            .drop
+            .unwrap_or_else(|| crate::fault::fatal(b"object without drop"));
         drop(o);
         *depth -= 1;
         if *depth == 0 {
@@ -76,7 +78,9 @@ pub unsafe fn drop_slow(o: *mut Obj) {
                 let p = *PENDING.ptr();
                 *PENDING.ptr() = (*p).rc as *mut Obj;
                 *depth = 1;
-                let drop = (*p).drop.unwrap_or_else(|| crate::fault::fatal(b"object without drop"));
+                let drop = (*p)
+                    .drop
+                    .unwrap_or_else(|| crate::fault::fatal(b"object without drop"));
                 drop(p);
                 *depth = 0;
             }

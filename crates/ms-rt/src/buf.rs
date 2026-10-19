@@ -12,7 +12,11 @@ pub struct ByteBuf {
 
 impl ByteBuf {
     pub const fn new() -> Self {
-        ByteBuf { ptr: null_mut(), len: 0, cap: 0 }
+        ByteBuf {
+            ptr: null_mut(),
+            len: 0,
+            cap: 0,
+        }
     }
 
     pub fn with_capacity(cap: usize) -> Self {
@@ -30,7 +34,10 @@ impl ByteBuf {
     }
 
     pub fn reserve(&mut self, extra: usize) {
-        let need = self.len.checked_add(extra).unwrap_or_else(|| crate::fault::fatal(b"out of memory"));
+        let need = self
+            .len
+            .checked_add(extra)
+            .unwrap_or_else(|| crate::fault::fatal(b"out of memory"));
         if need <= self.cap {
             return;
         }
@@ -54,7 +61,9 @@ impl ByteBuf {
     pub fn extend(&mut self, data: &[u8]) {
         self.reserve(data.len());
         // SAFETY: capacity reserved; `data` cannot alias our private buffer.
-        unsafe { core::ptr::copy_nonoverlapping(data.as_ptr(), self.ptr.add(self.len), data.len()) };
+        unsafe {
+            core::ptr::copy_nonoverlapping(data.as_ptr(), self.ptr.add(self.len), data.len())
+        };
         self.len += data.len();
     }
 
@@ -123,9 +132,19 @@ pub struct RawVec<T: Copy> {
     cap: usize,
 }
 
+impl<T: Copy> Default for RawVec<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: Copy> RawVec<T> {
     pub const fn new() -> Self {
-        RawVec { ptr: null_mut(), len: 0, cap: 0 }
+        RawVec {
+            ptr: null_mut(),
+            len: 0,
+            cap: 0,
+        }
     }
 
     pub fn len(&self) -> usize {

@@ -2,6 +2,8 @@
 #![cfg_attr(not(any(test, feature = "std", panic = "unwind")), no_std)]
 #![allow(clippy::missing_safety_doc)]
 
+extern crate alloc as stdalloc;
+
 pub mod alloc;
 pub mod buf;
 pub mod desc;
@@ -13,6 +15,7 @@ pub mod num;
 pub mod obj;
 pub mod process;
 pub mod profile;
+pub mod start;
 pub mod string;
 pub mod sys;
 pub mod utf8;
@@ -52,4 +55,12 @@ mod rust_alloc {
 
     #[global_allocator]
     static GLOBAL: RtAlloc = RtAlloc;
+}
+
+/// Exported `extern "C-unwind"` functions reference the personality routine even
+/// though the runtime aborts on panic and never unwinds; satisfy the linker.
+#[cfg(not(any(test, feature = "std", panic = "unwind")))]
+#[unsafe(no_mangle)]
+pub extern "C" fn rust_eh_personality() {
+    crate::fault::fatal(b"unexpected unwind")
 }

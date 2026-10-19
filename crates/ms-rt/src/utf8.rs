@@ -45,9 +45,10 @@ fn decode_multi(s: &[u8]) -> (u32, usize) {
                 _ => (0x80, 0xBF),
             };
             match (cont(1, lo, hi), cont(2, 0x80, 0xBF), cont(3, 0x80, 0xBF)) {
-                (Some(c1), Some(c2), Some(c3)) => {
-                    ((((b0 & 0x07) as u32) << 18) | (c1 << 12) | (c2 << 6) | c3, 4)
-                }
+                (Some(c1), Some(c2), Some(c3)) => (
+                    (((b0 & 0x07) as u32) << 18) | (c1 << 12) | (c2 << 6) | c3,
+                    4,
+                ),
                 _ => err,
             }
         }
@@ -79,7 +80,11 @@ pub fn decode_last(s: &[u8]) -> (u32, usize) {
 
 /// Encodes a scalar; invalid values (surrogates, out of range) encode U+FFFD.
 pub fn encode(c: u32, out: &mut [u8; 4]) -> usize {
-    let c = if c > 0x10FFFF || (0xD800..=0xDFFF).contains(&c) { RUNE_ERROR } else { c };
+    let c = if c > 0x10FFFF || (0xD800..=0xDFFF).contains(&c) {
+        RUNE_ERROR
+    } else {
+        c
+    };
     if c < 0x80 {
         out[0] = c as u8;
         1

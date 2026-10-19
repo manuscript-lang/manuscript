@@ -12,7 +12,11 @@ use ms_rt_abi::*;
 /// Limit on native list sizes (as the Go runtime).
 pub const MAX_ITEMS: usize = 1 << 28;
 
-const EMPTY: VecVal = VecVal { ptr: core::ptr::null_mut(), len: 0, cap: 0 };
+const EMPTY: VecVal = VecVal {
+    ptr: core::ptr::null_mut(),
+    len: 0,
+    cap: 0,
+};
 
 #[inline(always)]
 unsafe fn elem(v: &VecVal, d: &TypeDesc, i: usize) -> *mut u8 {
@@ -22,7 +26,10 @@ unsafe fn elem(v: &VecVal, d: &TypeDesc, i: usize) -> *mut u8 {
 
 /// Ensures room for `extra` more elements.
 unsafe fn reserve(v: &mut VecVal, d: &TypeDesc, extra: usize) {
-    let need = v.len.checked_add(extra).unwrap_or_else(|| fault::fault(b"list size overflow"));
+    let need = v
+        .len
+        .checked_add(extra)
+        .unwrap_or_else(|| fault::fault(b"list size overflow"));
     if need <= v.cap {
         return;
     }
@@ -31,10 +38,16 @@ unsafe fn reserve(v: &mut VecVal, d: &TypeDesc, extra: usize) {
     if cap < need {
         cap = need;
     }
-    let bytes = cap.checked_mul(size.max(1)).unwrap_or_else(|| fault::fault(b"list size overflow"));
+    let bytes = cap
+        .checked_mul(size.max(1))
+        .unwrap_or_else(|| fault::fault(b"list size overflow"));
     // SAFETY: standard growth of an owned buffer.
     unsafe {
-        v.ptr = if v.ptr.is_null() { alloc::alloc(bytes) } else { alloc::realloc(v.ptr, bytes) };
+        v.ptr = if v.ptr.is_null() {
+            alloc::alloc(bytes)
+        } else {
+            alloc::realloc(v.ptr, bytes)
+        };
     }
     v.cap = cap;
 }
@@ -81,7 +94,11 @@ pub unsafe fn copy_list(src: *const VecVal, d: &TypeDesc, out: *mut VecVal) {
                 slot_copy(d, elem(s, d, i), p.add(i * size));
             }
         }
-        *out = VecVal { ptr: p, len: s.len, cap: s.len };
+        *out = VecVal {
+            ptr: p,
+            len: s.len,
+            cap: s.len,
+        };
     }
 }
 
@@ -99,7 +116,11 @@ pub unsafe fn copy_bytes(src: *const VecVal, out: *mut VecVal) {
         }
         let p = alloc::alloc(s.len);
         core::ptr::copy_nonoverlapping(s.ptr, p, s.len);
-        *out = VecVal { ptr: p, len: s.len, cap: s.len };
+        *out = VecVal {
+            ptr: p,
+            len: s.len,
+            cap: s.len,
+        };
     }
 }
 
@@ -148,7 +169,11 @@ pub unsafe extern "C-unwind" fn msrt_list_new(out: *mut VecVal) {
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_with_capacity(d: *const TypeDesc, cap: i64, out: *mut VecVal) {
+pub unsafe extern "C-unwind" fn msrt_list_with_capacity(
+    d: *const TypeDesc,
+    cap: i64,
+    out: *mut VecVal,
+) {
     // SAFETY: caller contract.
     unsafe {
         let mut v = EMPTY;
@@ -166,7 +191,11 @@ pub unsafe extern "C-unwind" fn msrt_list_drop(v: *mut VecVal, d: *const TypeDes
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_copy(v: *const VecVal, d: *const TypeDesc, out: *mut VecVal) {
+pub unsafe extern "C-unwind" fn msrt_list_copy(
+    v: *const VecVal,
+    d: *const TypeDesc,
+    out: *mut VecVal,
+) {
     // SAFETY: caller contract.
     unsafe { copy_list(v, &*d, out) }
 }
@@ -226,7 +255,11 @@ pub unsafe extern "C-unwind" fn msrt_list_get(
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_first(v: *const VecVal, d: *const TypeDesc, out: *mut u8) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_list_first(
+    v: *const VecVal,
+    d: *const TypeDesc,
+    out: *mut u8,
+) -> u8 {
     // SAFETY: caller contract.
     unsafe {
         if (*v).len == 0 {
@@ -238,7 +271,11 @@ pub unsafe extern "C-unwind" fn msrt_list_first(v: *const VecVal, d: *const Type
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_last(v: *const VecVal, d: *const TypeDesc, out: *mut u8) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_list_last(
+    v: *const VecVal,
+    d: *const TypeDesc,
+    out: *mut u8,
+) -> u8 {
     // SAFETY: caller contract.
     unsafe {
         let v = &*v;
@@ -292,7 +329,11 @@ pub unsafe extern "C-unwind" fn msrt_list_last_index_of(
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_contains(v: *const VecVal, d: *const TypeDesc, probe: *const u8) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_list_contains(
+    v: *const VecVal,
+    d: *const TypeDesc,
+    probe: *const u8,
+) -> u8 {
     let mut i = 0i64;
     // SAFETY: caller contract.
     unsafe { msrt_list_index_of(v, d, probe, &mut i) }
@@ -302,13 +343,22 @@ pub unsafe extern "C-unwind" fn msrt_list_contains(v: *const VecVal, d: *const T
 
 /// Inserts `e` (consumed) at the front.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_prepend(v: *mut VecVal, d: *const TypeDesc, e: *const u8) {
+pub unsafe extern "C-unwind" fn msrt_list_prepend(
+    v: *mut VecVal,
+    d: *const TypeDesc,
+    e: *const u8,
+) {
     // SAFETY: caller contract.
     unsafe { msrt_list_insert(v, d, 0, e) }
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_insert(v: *mut VecVal, d: *const TypeDesc, index: i64, e: *const u8) {
+pub unsafe extern "C-unwind" fn msrt_list_insert(
+    v: *mut VecVal,
+    d: *const TypeDesc,
+    index: i64,
+    e: *const u8,
+) {
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&mut *v, &*d);
@@ -333,7 +383,11 @@ pub unsafe extern "C-unwind" fn msrt_list_insert(v: *mut VecVal, d: *const TypeD
 
 /// Removes the last element into `out`; 0 when empty.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_pop(v: *mut VecVal, d: *const TypeDesc, out: *mut u8) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_list_pop(
+    v: *mut VecVal,
+    d: *const TypeDesc,
+    out: *mut u8,
+) -> u8 {
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&mut *v, &*d);
@@ -348,7 +402,11 @@ pub unsafe extern "C-unwind" fn msrt_list_pop(v: *mut VecVal, d: *const TypeDesc
 
 /// Removes the first element into `out` (`Collections.shift`).
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_shift(v: *mut VecVal, d: *const TypeDesc, out: *mut u8) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_list_shift(
+    v: *mut VecVal,
+    d: *const TypeDesc,
+    out: *mut u8,
+) -> u8 {
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&mut *v, &*d);
@@ -365,7 +423,9 @@ pub unsafe extern "C-unwind" fn msrt_list_shift(v: *mut VecVal, d: *const TypeDe
 
 fn index_fault(operation: &str, len: usize, index: i64) -> ! {
     if len == 0 {
-        fault::fault_fmt(format_args!("{operation}: index has no valid value for an empty collection, found {index}"))
+        fault::fault_fmt(format_args!(
+            "{operation}: index has no valid value for an empty collection, found {index}"
+        ))
     }
     fault::fault_fmt(format_args!(
         "{operation}: index must be between {} and {} (negative indexes count from the end), found {index}",
@@ -376,7 +436,12 @@ fn index_fault(operation: &str, len: usize, index: i64) -> ! {
 
 /// Replaces the element at `index` with `e` (consumed); the old element is dropped.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_set(v: *mut VecVal, d: *const TypeDesc, index: i64, e: *const u8) {
+pub unsafe extern "C-unwind" fn msrt_list_set(
+    v: *mut VecVal,
+    d: *const TypeDesc,
+    index: i64,
+    e: *const u8,
+) {
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&mut *v, &*d);
@@ -402,7 +467,11 @@ pub unsafe extern "C-unwind" fn msrt_list_remove(v: *mut VecVal, d: *const TypeD
         let i = i as usize;
         let size = d.size as usize;
         slot_drop(d, elem(v, d, i));
-        core::ptr::copy(elem(v, d, i).add(size), elem(v, d, i), (v.len - i - 1) * size);
+        core::ptr::copy(
+            elem(v, d, i).add(size),
+            elem(v, d, i),
+            (v.len - i - 1) * size,
+        );
         v.len -= 1;
     }
 }
@@ -423,7 +492,11 @@ pub unsafe extern "C-unwind" fn msrt_list_reverse_in_place(v: *mut VecVal, d: *c
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_reversed(v: *const VecVal, d: *const TypeDesc, out: *mut VecVal) {
+pub unsafe extern "C-unwind" fn msrt_list_reversed(
+    v: *const VecVal,
+    d: *const TypeDesc,
+    out: *mut VecVal,
+) {
     // SAFETY: caller contract.
     unsafe {
         copy_list(v, &*d, out);
@@ -445,7 +518,9 @@ pub unsafe extern "C-unwind" fn msrt_list_splice(
         let (v, d) = (&mut *v, &*d);
         let n = v.len;
         let range_fault = |p: &str, val: i64, lo: i64, hi: i64| -> ! {
-            fault::fault_fmt(format_args!("List.splice: {p} must be between {lo} and {hi}, found {val}"))
+            fault::fault_fmt(format_args!(
+                "List.splice: {p} must be between {lo} and {hi}, found {val}"
+            ))
         };
         if start < 0 || start as usize > n {
             range_fault("start", start, 0, n as i64);
@@ -529,12 +604,20 @@ pub unsafe extern "C-unwind" fn msrt_list_copy_within(
         let count = ((end - start) as usize).min(n - target as usize);
         // Overwritten slots are dropped, the sources copied (overlap safe via a temporary).
         let mut tmp = EMPTY;
-        let src = VecVal { ptr: elem(v, d, start as usize), len: count, cap: count };
+        let src = VecVal {
+            ptr: elem(v, d, start as usize),
+            len: count,
+            cap: count,
+        };
         copy_list(&src, d, &mut tmp);
         for k in 0..count {
             slot_drop(d, elem(v, d, target as usize + k));
         }
-        core::ptr::copy_nonoverlapping(tmp.ptr, elem(v, d, target as usize), count * d.size as usize);
+        core::ptr::copy_nonoverlapping(
+            tmp.ptr,
+            elem(v, d, target as usize),
+            count * d.size as usize,
+        );
         if !tmp.ptr.is_null() {
             alloc::free(tmp.ptr);
         }
@@ -559,7 +642,11 @@ pub unsafe extern "C-unwind" fn msrt_list_slice(
         if s < 0 || e < s || e > n as i64 {
             return STATUS_OUT_OF_RANGE;
         }
-        let view = VecVal { ptr: elem(&*v, &*d, s as usize), len: (e - s) as usize, cap: (e - s) as usize };
+        let view = VecVal {
+            ptr: elem(&*v, &*d, s as usize),
+            len: (e - s) as usize,
+            cap: (e - s) as usize,
+        };
         copy_list(&view, &*d, out);
         STATUS_OK
     }
@@ -567,28 +654,52 @@ pub unsafe extern "C-unwind" fn msrt_list_slice(
 
 fn take_count(name: &str, count: i64, len: usize) -> usize {
     if count < 0 {
-        fault::fault_fmt(format_args!("List.{name}: count must be nonnegative, found {count}"));
+        fault::fault_fmt(format_args!(
+            "List.{name}: count must be nonnegative, found {count}"
+        ));
     }
     (count as usize).min(len)
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_take(v: *const VecVal, d: *const TypeDesc, count: i64, out: *mut VecVal) {
+pub unsafe extern "C-unwind" fn msrt_list_take(
+    v: *const VecVal,
+    d: *const TypeDesc,
+    count: i64,
+    out: *mut VecVal,
+) {
     // SAFETY: caller contract.
     unsafe {
         let n = take_count("take", count, (*v).len);
-        let view = VecVal { ptr: (*v).ptr, len: n, cap: n };
+        let view = VecVal {
+            ptr: (*v).ptr,
+            len: n,
+            cap: n,
+        };
         copy_list(&view, &*d, out);
     }
 }
 
 /// `drop(count)` (named `drop_n` because `msrt_list_drop` releases a value).
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_drop_n(v: *const VecVal, d: *const TypeDesc, count: i64, out: *mut VecVal) {
+pub unsafe extern "C-unwind" fn msrt_list_drop_n(
+    v: *const VecVal,
+    d: *const TypeDesc,
+    count: i64,
+    out: *mut VecVal,
+) {
     // SAFETY: caller contract.
     unsafe {
         let n = take_count("drop", count, (*v).len);
-        let view = VecVal { ptr: if (*v).len == n { core::ptr::null_mut() } else { elem(&*v, &*d, n) }, len: (*v).len - n, cap: (*v).len - n };
+        let view = VecVal {
+            ptr: if (*v).len == n {
+                core::ptr::null_mut()
+            } else {
+                elem(&*v, &*d, n)
+            },
+            len: (*v).len - n,
+            cap: (*v).len - n,
+        };
         copy_list(&view, &*d, out);
     }
 }
@@ -621,7 +732,11 @@ unsafe fn extend_copy(v: &mut VecVal, d: &TypeDesc, other: &VecVal) {
 
 /// Appends the elements of `other` (consumed: its buffer is freed, elements moved).
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_extend(v: *mut VecVal, d: *const TypeDesc, other: *mut VecVal) {
+pub unsafe extern "C-unwind" fn msrt_list_extend(
+    v: *mut VecVal,
+    d: *const TypeDesc,
+    other: *mut VecVal,
+) {
     // SAFETY: caller contract.
     unsafe {
         let (v, d, o) = (&mut *v, &*d, &mut *other);
@@ -639,12 +754,18 @@ pub unsafe extern "C-unwind" fn msrt_list_extend(v: *mut VecVal, d: *const TypeD
 
 /// `Collections.flatten`: `lists` is a list of `List[T]`, `d` describes `T`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_flatten(lists: *const VecVal, d: *const TypeDesc, out: *mut VecVal) {
+pub unsafe extern "C-unwind" fn msrt_list_flatten(
+    lists: *const VecVal,
+    d: *const TypeDesc,
+    out: *mut VecVal,
+) {
     // SAFETY: caller contract.
     unsafe {
         let ls = &*lists;
         let mut res = EMPTY;
-        let total: usize = (0..ls.len).map(|i| (*(ls.ptr as *const VecVal).add(i)).len).sum();
+        let total: usize = (0..ls.len)
+            .map(|i| (*(ls.ptr as *const VecVal).add(i)).len)
+            .sum();
         reserve(&mut res, &*d, total);
         for i in 0..ls.len {
             extend_copy(&mut res, &*d, &*(ls.ptr as *const VecVal).add(i));
@@ -655,7 +776,11 @@ pub unsafe extern "C-unwind" fn msrt_list_flatten(lists: *const VecVal, d: *cons
 
 /// `distinct`: keeps the first of equal elements.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_distinct(v: *const VecVal, d: *const TypeDesc, out: *mut VecVal) {
+pub unsafe extern "C-unwind" fn msrt_list_distinct(
+    v: *const VecVal,
+    d: *const TypeDesc,
+    out: *mut VecVal,
+) {
     // SAFETY: caller contract.
     unsafe {
         let (src, d) = (&*v, &*d);
@@ -694,17 +819,29 @@ pub unsafe extern "C-unwind" fn msrt_list_keys(v: *const VecVal, out: *mut VecVa
     // SAFETY: caller contract.
     unsafe {
         let n = (*v).len;
-        let p = if n == 0 { core::ptr::null_mut() } else { alloc::alloc(n * 8) } as *mut i64;
+        let p = if n == 0 {
+            core::ptr::null_mut()
+        } else {
+            alloc::alloc(n * 8)
+        } as *mut i64;
         for i in 0..n {
             *p.add(i) = i as i64;
         }
-        *out = VecVal { ptr: p as *mut u8, len: n, cap: n };
+        *out = VecVal {
+            ptr: p as *mut u8,
+            len: n,
+            cap: n,
+        };
     }
 }
 
 /// `join` on `List[String]`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_join(v: *const VecVal, sep: *const StrObj, out: *mut *mut StrObj) {
+pub unsafe extern "C-unwind" fn msrt_list_join(
+    v: *const VecVal,
+    sep: *const StrObj,
+    out: *mut *mut StrObj,
+) {
     // SAFETY: caller contract.
     unsafe {
         let v = &*v;
@@ -725,7 +862,14 @@ pub unsafe extern "C-unwind" fn msrt_list_join(v: *const VecVal, sep: *const Str
 /// Comparator thunk: `env` is the closure, `a` and `b` point at element slots.
 pub type CmpFn = unsafe extern "C-unwind" fn(env: *mut u8, a: *const u8, b: *const u8) -> i64;
 
-unsafe fn merge_sort(items: *mut u8, buf: *mut u8, n: usize, size: usize, cmp: CmpFn, env: *mut u8) {
+unsafe fn merge_sort(
+    items: *mut u8,
+    buf: *mut u8,
+    n: usize,
+    size: usize,
+    cmp: CmpFn,
+    env: *mut u8,
+) {
     // SAFETY: `items` and `buf` hold `n` slots each.
     unsafe {
         let at = |base: *mut u8, i: usize| base.add(i * size);
@@ -766,7 +910,12 @@ unsafe fn merge_sort(items: *mut u8, buf: *mut u8, n: usize, size: usize, cmp: C
 
 /// Stable sort in place by a three-way comparator thunk (`< 0` means before).
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(v: *mut VecVal, d: *const TypeDesc, cmp: CmpFn, env: *mut u8) {
+pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
+    v: *mut VecVal,
+    d: *const TypeDesc,
+    cmp: CmpFn,
+    env: *mut u8,
+) {
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&mut *v, &*d);
@@ -844,7 +993,11 @@ pub unsafe extern "C-unwind" fn msrt_list_range(start: i64, end: i64, out: *mut 
         for i in 0..n {
             *p.add(i) = start + i as i64;
         }
-        *out = VecVal { ptr: p as *mut u8, len: n, cap: n };
+        *out = VecVal {
+            ptr: p as *mut u8,
+            len: n,
+            cap: n,
+        };
     }
 }
 
@@ -867,7 +1020,10 @@ pub unsafe extern "C-unwind" fn msrt_list_range_by(
         let (span, size) = if step > 0 && start < end {
             ((end as i128 - start as i128) as u128, step as u128)
         } else if step < 0 && start > end {
-            ((start as i128 - end as i128) as u128, (-(step as i128)) as u128)
+            (
+                (start as i128 - end as i128) as u128,
+                (-(step as i128)) as u128,
+            )
         } else {
             (0, 1)
         };
@@ -888,14 +1044,22 @@ pub unsafe extern "C-unwind" fn msrt_list_range_by(
                 n = n.wrapping_add(step);
             }
         }
-        *out = VecVal { ptr: p as *mut u8, len: count, cap: count };
+        *out = VecVal {
+            ptr: p as *mut u8,
+            len: count,
+            cap: count,
+        };
         STATUS_OK
     }
 }
 
 /// `to_set`: builds a set value from a list's elements (copies).
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_to_set(v: *const VecVal, d: *const TypeDesc, out: *mut MapVal) {
+pub unsafe extern "C-unwind" fn msrt_list_to_set(
+    v: *const VecVal,
+    d: *const TypeDesc,
+    out: *mut MapVal,
+) {
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&*v, &*d);
@@ -921,7 +1085,11 @@ unsafe fn bslice<'a>(b: *const VecVal) -> &'a [u8] {
     // SAFETY: caller contract.
     unsafe {
         let b = &*b;
-        if b.len == 0 { &[] } else { core::slice::from_raw_parts(b.ptr, b.len) }
+        if b.len == 0 {
+            &[]
+        } else {
+            core::slice::from_raw_parts(b.ptr, b.len)
+        }
     }
 }
 
@@ -934,7 +1102,11 @@ unsafe fn bytes_from(data: &[u8], out: *mut VecVal) {
         }
         let p = alloc::alloc(data.len());
         core::ptr::copy_nonoverlapping(data.as_ptr(), p, data.len());
-        *out = VecVal { ptr: p, len: data.len(), cap: data.len() };
+        *out = VecVal {
+            ptr: p,
+            len: data.len(),
+            cap: data.len(),
+        };
     }
 }
 
@@ -962,7 +1134,11 @@ pub unsafe extern "C-unwind" fn msrt_bytes_contains(b: *const VecVal, v: *const 
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_bytes_index_of(b: *const VecVal, v: *const VecVal, out: *mut i64) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_bytes_index_of(
+    b: *const VecVal,
+    v: *const VecVal,
+    out: *mut i64,
+) -> u8 {
     // SAFETY: caller contract.
     unsafe {
         match string::find(bslice(b), bslice(v)) {
@@ -976,7 +1152,11 @@ pub unsafe extern "C-unwind" fn msrt_bytes_index_of(b: *const VecVal, v: *const 
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_bytes_last_index_of(b: *const VecVal, v: *const VecVal, out: *mut i64) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_bytes_last_index_of(
+    b: *const VecVal,
+    v: *const VecVal,
+    out: *mut i64,
+) -> u8 {
     // SAFETY: caller contract.
     unsafe {
         match string::rfind(bslice(b), bslice(v)) {
@@ -1002,7 +1182,12 @@ pub unsafe extern "C-unwind" fn msrt_bytes_ends_with(b: *const VecVal, v: *const
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_bytes_get(b: *const VecVal, index: i64, has_default: u8, default: i64) -> i64 {
+pub unsafe extern "C-unwind" fn msrt_bytes_get(
+    b: *const VecVal,
+    index: i64,
+    has_default: u8,
+    default: i64,
+) -> i64 {
     // SAFETY: caller contract.
     unsafe {
         let s = bslice(b);
@@ -1018,7 +1203,12 @@ pub unsafe extern "C-unwind" fn msrt_bytes_get(b: *const VecVal, index: i64, has
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_bytes_slice(b: *const VecVal, start: i64, end: i64, out: *mut VecVal) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_bytes_slice(
+    b: *const VecVal,
+    start: i64,
+    end: i64,
+    out: *mut VecVal,
+) -> u8 {
     // SAFETY: caller contract.
     unsafe {
         let s = bslice(b);
@@ -1043,7 +1233,12 @@ pub unsafe extern "C-unwind" fn msrt_bytes_reversed(b: *const VecVal, out: *mut 
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_bytes_with_value(b: *const VecVal, index: i64, value: i64, out: *mut VecVal) {
+pub unsafe extern "C-unwind" fn msrt_bytes_with_value(
+    b: *const VecVal,
+    index: i64,
+    value: i64,
+    out: *mut VecVal,
+) {
     // SAFETY: caller contract.
     unsafe {
         let n = (*b).len;
@@ -1052,7 +1247,9 @@ pub unsafe extern "C-unwind" fn msrt_bytes_with_value(b: *const VecVal, index: i
             index_fault("Bytes.with_value", n, index);
         }
         if !(0..=255).contains(&value) {
-            fault::fault_fmt(format_args!("Bytes.with_value: value must be between 0 and 255, found {value}"));
+            fault::fault_fmt(format_args!(
+                "Bytes.with_value: value must be between 0 and 255, found {value}"
+            ));
         }
         copy_bytes(b, out);
         *(*out).ptr.add(i as usize) = value as u8;
@@ -1060,7 +1257,11 @@ pub unsafe extern "C-unwind" fn msrt_bytes_with_value(b: *const VecVal, index: i
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_bytes_concat(a: *const VecVal, b: *const VecVal, out: *mut VecVal) {
+pub unsafe extern "C-unwind" fn msrt_bytes_concat(
+    a: *const VecVal,
+    b: *const VecVal,
+    out: *mut VecVal,
+) {
     // SAFETY: caller contract.
     unsafe {
         let (x, y) = (bslice(a), bslice(b));
@@ -1084,7 +1285,9 @@ pub unsafe extern "C-unwind" fn msrt_bytes_split(
         let (data, sepb) = (bslice(b), bslice(sep));
         let limit = if has_max != 0 {
             if max < 0 {
-                fault::fault_fmt(format_args!("split: max_parts must be nonnegative, found {max}"));
+                fault::fault_fmt(format_args!(
+                    "split: max_parts must be nonnegative, found {max}"
+                ));
             }
             max as usize
         } else {
@@ -1127,11 +1330,19 @@ pub unsafe extern "C-unwind" fn msrt_bytes_values(b: *const VecVal, out: *mut Ve
     // SAFETY: caller contract.
     unsafe {
         let s = bslice(b);
-        let p = if s.is_empty() { core::ptr::null_mut() } else { alloc::alloc(s.len() * 8) } as *mut i64;
+        let p = if s.is_empty() {
+            core::ptr::null_mut()
+        } else {
+            alloc::alloc(s.len() * 8)
+        } as *mut i64;
         for (i, &x) in s.iter().enumerate() {
             *p.add(i) = x as i64;
         }
-        *out = VecVal { ptr: p as *mut u8, len: s.len(), cap: s.len() };
+        *out = VecVal {
+            ptr: p as *mut u8,
+            len: s.len(),
+            cap: s.len(),
+        };
     }
 }
 
@@ -1145,7 +1356,9 @@ pub unsafe extern "C-unwind" fn msrt_bytes_from_values(values: *const VecVal, ou
         for i in 0..v.len {
             let x = *(v.ptr as *const i64).add(i);
             if !(0..=255).contains(&x) {
-                fault::fault_fmt(format_args!("Bytes: values[{i}] must be between 0 and 255, found {x}"));
+                fault::fault_fmt(format_args!(
+                    "Bytes: values[{i}] must be between 0 and 255, found {x}"
+                ));
             }
             buf.push(x as u8);
         }
@@ -1172,7 +1385,9 @@ pub unsafe extern "C-unwind" fn msrt_bytes_append(b: *mut VecVal, value: i64) {
     // SAFETY: caller contract.
     unsafe {
         if !(0..=255).contains(&value) {
-            fault::fault_fmt(format_args!("BytesBuilder.append: value must be between 0 and 255, found {value}"));
+            fault::fault_fmt(format_args!(
+                "BytesBuilder.append: value must be between 0 and 255, found {value}"
+            ));
         }
         let byte_desc = &desc::msrt_desc_bool;
         let x = value as u8;
@@ -1277,7 +1492,10 @@ mod tests {
             msrt_list_remove(&mut v, d, 0);
             assert_eq!(ints(&v), [3, 9, 10, 1]);
             let mut i = 0;
-            assert_eq!(msrt_list_index_of(&v, d, &10i64 as *const i64 as *const u8, &mut i), 1);
+            assert_eq!(
+                msrt_list_index_of(&v, d, &10i64 as *const i64 as *const u8, &mut i),
+                1
+            );
             assert_eq!(i, 2);
             msrt_list_sort_in_place(&mut v, d, by_value, core::ptr::null_mut());
             assert_eq!(ints(&v), [1, 3, 9, 10]);
@@ -1285,9 +1503,10 @@ mod tests {
             assert_eq!(msrt_list_slice(&v, d, 1, -1, &mut s), STATUS_OK);
             assert_eq!(ints(&s), [3, 9]);
             assert_eq!(msrt_list_slice(&v, d, 3, 1, &mut s), STATUS_OUT_OF_RANGE);
-            testutil::assert_fault("index 9 out of range for length 4; pass a default: get(index:, default: ...)", || {
-                msrt_list_at(&v, d, 9, core::ptr::null())
-            });
+            testutil::assert_fault(
+                "index 9 out of range for length 4; pass a default: get(index:, default: ...)",
+                || msrt_list_at(&v, d, 9, core::ptr::null()),
+            );
             testutil::assert_fault(
                 "List.remove: index must be between -4 and 3 (negative indexes count from the end), found 7",
                 || msrt_list_remove(&mut v, d, 7),

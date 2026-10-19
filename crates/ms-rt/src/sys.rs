@@ -79,6 +79,13 @@ unsafe extern "C" {
         start: extern "C" fn(*mut c_void) -> *mut c_void,
         arg: *mut c_void,
     ) -> c_int;
+    pub fn pthread_attr_setstack(
+        attr: *mut pthread_attr_buf,
+        addr: *mut c_void,
+        size: size_t,
+    ) -> c_int;
+    pub fn mprotect(addr: *mut c_void, len: size_t, prot: c_int) -> c_int;
+    pub fn alarm(seconds: u32) -> u32;
     pub fn pthread_join(thread: usize, ret: *mut *mut c_void) -> c_int;
     pub fn open(path: *const c_char, flags: c_int, mode: c_int) -> c_int;
     pub fn close(fd: c_int) -> c_int;

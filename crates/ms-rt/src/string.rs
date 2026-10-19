@@ -11,8 +11,8 @@ use crate::obj;
 use crate::utf8;
 use core::ptr::null_mut;
 use ms_rt_abi::{
-    Obj, STATIC_RC, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, STATUS_OUT_OF_RANGE,
-    SCALARS_UNKNOWN, STR_DATA_OFFSET, StrObj, VecVal,
+    Obj, SCALARS_UNKNOWN, STATIC_RC, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK,
+    STATUS_OUT_OF_RANGE, STR_DATA_OFFSET, StrObj, VecVal,
 };
 
 /// Native allocation ceiling for built strings (as the Go runtime).
@@ -69,7 +69,15 @@ struct Lit<const N: usize> {
 }
 
 const fn lit<const N: usize>(bytes: [u8; N], len: usize) -> Lit<N> {
-    Lit { hdr: Obj { rc: STATIC_RC, drop: Some(string_drop) }, len, scalars: len, data: bytes }
+    Lit {
+        hdr: Obj {
+            rc: STATIC_RC,
+            drop: Some(string_drop),
+        },
+        len,
+        scalars: len,
+        data: bytes,
+    }
 }
 
 static mut EMPTY: Lit<1> = lit([0], 0);
@@ -159,7 +167,11 @@ struct Hint {
     scalar: usize,
     offset: usize,
 }
-static HINT: Global<Hint> = Global::new(Hint { s: core::ptr::null(), scalar: 0, offset: 0 });
+static HINT: Global<Hint> = Global::new(Hint {
+    s: core::ptr::null(),
+    scalar: 0,
+    offset: 0,
+});
 const HINT_MIN: usize = 256;
 
 /// Byte offset of scalar `n` (0..=count) with a remembered position for sequential access.
@@ -184,7 +196,11 @@ unsafe fn scalar_offset(s: *const StrObj, n: usize) -> usize {
             off -= utf8::decode_last(&b[..off]).1;
             sc -= 1;
         }
-        *h = Hint { s, scalar: sc, offset: off };
+        *h = Hint {
+            s,
+            scalar: sc,
+            offset: off,
+        };
         off
     }
 }
@@ -233,8 +249,16 @@ pub unsafe extern "C-unwind" fn msrt_string_is_empty(s: *const StrObj) -> u8 {
 
 /// Resolves a possibly negative index against `count`; `None` when out of range.
 fn relative(count: usize, index: i64) -> Option<usize> {
-    let i = if index < 0 { count as i64 + index } else { index };
-    if i < 0 || i as usize >= count { None } else { Some(i as usize) }
+    let i = if index < 0 {
+        count as i64 + index
+    } else {
+        index
+    };
+    if i < 0 || i as usize >= count {
+        None
+    } else {
+        Some(i as usize)
+    }
 }
 
 /// `String.get(index, default)`: a one-scalar string. `default` is borrowed and may be null.
@@ -359,10 +383,7 @@ pub fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
     let last = hay.len() - needle.len();
     let mut i = 0;
     while i <= last {
-        match hay[i..=last].iter().position(|&c| c == first) {
-            None => return None,
-            Some(p) => i += p,
-        }
+        i += hay[i..=last].iter().position(|&c| c == first)?;
         if &hay[i..i + needle.len()] == needle {
             return Some(i);
         }
@@ -378,7 +399,9 @@ pub fn rfind(hay: &[u8], needle: &[u8]) -> Option<usize> {
     if needle.len() > hay.len() {
         return None;
     }
-    (0..=hay.len() - needle.len()).rev().find(|&i| &hay[i..i + needle.len()] == needle)
+    (0..=hay.len() - needle.len())
+        .rev()
+        .find(|&i| &hay[i..i + needle.len()] == needle)
 }
 
 #[unsafe(no_mangle)]
@@ -443,7 +466,10 @@ pub unsafe extern "C-unwind" fn msrt_string_last_index_of(
 // ---------------------------------------------------------------------------
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_string_concat(a: *const StrObj, b: *const StrObj) -> *mut StrObj {
+pub unsafe extern "C-unwind" fn msrt_string_concat(
+    a: *const StrObj,
+    b: *const StrObj,
+) -> *mut StrObj {
     // SAFETY: caller passes live strings.
     unsafe {
         let (la, lb) = ((*a).len, (*b).len);
@@ -509,7 +535,11 @@ unsafe fn trimmed(s: *const StrObj, start: bool, end: bool) -> *mut StrObj {
     unsafe {
         let text = bytes(s);
         let (a, b) = trim_range(text, start, end);
-        if a == 0 && b == text.len() { retained(s as *mut StrObj) } else { from_bytes(&text[a..b]) }
+        if a == 0 && b == text.len() {
+            retained(s as *mut StrObj)
+        } else {
+            from_bytes(&text[a..b])
+        }
     }
 }
 
@@ -539,7 +569,11 @@ fn map_case(text: &[u8], upper: bool) -> ByteBuf {
     let mut out = ByteBuf::with_capacity(text.len());
     if text.is_ascii() {
         for &b in text {
-            out.push(if upper { b.to_ascii_uppercase() } else { b.to_ascii_lowercase() });
+            out.push(if upper {
+                b.to_ascii_uppercase()
+            } else {
+                b.to_ascii_lowercase()
+            });
         }
         return out;
     }
@@ -559,9 +593,23 @@ fn map_case(text: &[u8], upper: bool) -> ByteBuf {
             }
         } else if c == '\u{3A3}' {
             // Final sigma: preceded by a cased letter and not followed by one.
-            let before = cs[..k].iter().rev().find(|&&x| !is_case_ignorable(x)).is_some_and(|&x| is_cased(x));
-            let after = cs[k + 1..].iter().find(|&&x| !is_case_ignorable(x)).is_some_and(|&x| is_cased(x));
-            out.extend(if before && !after { "\u{3C2}" } else { "\u{3C3}" }.as_bytes());
+            let before = cs[..k]
+                .iter()
+                .rev()
+                .find(|&&x| !is_case_ignorable(x))
+                .is_some_and(|&x| is_cased(x));
+            let after = cs[k + 1..]
+                .iter()
+                .find(|&&x| !is_case_ignorable(x))
+                .is_some_and(|&x| is_cased(x));
+            out.extend(
+                if before && !after {
+                    "\u{3C2}"
+                } else {
+                    "\u{3C3}"
+                }
+                .as_bytes(),
+            );
         } else {
             for u in c.to_lowercase() {
                 out.extend(u.encode_utf8(&mut tmp).as_bytes());
@@ -572,8 +620,20 @@ fn map_case(text: &[u8], upper: bool) -> ByteBuf {
 }
 
 fn is_case_ignorable(c: char) -> bool {
-    matches!(c, '\'' | '.' | ':' | '^' | '`' | '\u{A8}' | '\u{AD}' | '\u{AF}' | '\u{B4}' | '\u{B7}' | '\u{B8}' | '\u{2019}')
-        || ('\u{300}'..='\u{36F}').contains(&c)
+    matches!(
+        c,
+        '\'' | '.'
+            | ':'
+            | '^'
+            | '`'
+            | '\u{A8}'
+            | '\u{AD}'
+            | '\u{AF}'
+            | '\u{B4}'
+            | '\u{B7}'
+            | '\u{B8}'
+            | '\u{2019}'
+    ) || ('\u{300}'..='\u{36F}').contains(&c)
 }
 
 #[unsafe(no_mangle)]
@@ -672,14 +732,26 @@ fn replace_n_bytes(text: &[u8], old: &[u8], new: &[u8], n: i64) -> ByteBuf {
     out
 }
 
-unsafe fn replace_limited(s: *const StrObj, old: *const StrObj, new: *const StrObj, n: i64, op: &str) -> *mut StrObj {
+unsafe fn replace_limited(
+    s: *const StrObj,
+    old: *const StrObj,
+    new: *const StrObj,
+    n: i64,
+    op: &str,
+) -> *mut StrObj {
     // SAFETY: caller passes live strings.
     unsafe {
         if n < 0 {
-            fault::fault_fmt(format_args!("{op}: max_replacements must be nonnegative, found {n}"));
+            fault::fault_fmt(format_args!(
+                "{op}: max_replacements must be nonnegative, found {n}"
+            ));
         }
         let (text, o) = (bytes(s), bytes(old));
-        let bound = if o.is_empty() { utf8::count(text) as i64 + 1 } else { text.len() as i64 };
+        let bound = if o.is_empty() {
+            utf8::count(text) as i64 + 1
+        } else {
+            text.len() as i64
+        };
         let out = replace_n_bytes(text, o, bytes(new), n.min(bound));
         from_buf(out)
     }
@@ -737,7 +809,11 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_all(
         }
         let (text, o, n) = (bytes(s), bytes(old), bytes(new));
         // Size check before building (the Go runtime fails as soon as output exceeds the budget).
-        let count = if o.is_empty() { utf8::count(text) + 1 } else { count_matches(text, o) };
+        let count = if o.is_empty() {
+            utf8::count(text) + 1
+        } else {
+            count_matches(text, o)
+        };
         let total = text.len() as i128 + count as i128 * (n.len() as i128 - o.len() as i128);
         if total > limit as i128 || total > MAX_BYTES as i128 {
             return STATUS_LIMIT_EXCEEDED;
@@ -779,7 +855,11 @@ unsafe fn pad(
         }
         let pcount = scalar_count(padding);
         let (cycles, rem) = (needed / pcount, needed % pcount);
-        let prefix_end = if rem > 0 { utf8::offset_of(padb, rem) } else { 0 };
+        let prefix_end = if rem > 0 {
+            utf8::offset_of(padb, rem)
+        } else {
+            0
+        };
         let remaining = limit as i128 - text.len() as i128 - prefix_end as i128;
         if remaining < 0 || cycles as i128 > remaining / padb.len() as i128 {
             return STATUS_LIMIT_EXCEEDED;
@@ -858,7 +938,10 @@ pub unsafe extern "C-unwind" fn msrt_string_slice(
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
         let n = scalar_count(s) as i64;
-        let (a, b) = (if start < 0 { n + start } else { start }, if end < 0 { n + end } else { end });
+        let (a, b) = (
+            if start < 0 { n + start } else { start },
+            if end < 0 { n + end } else { end },
+        );
         if a < 0 || b < a || b > n {
             return STATUS_OUT_OF_RANGE;
         }
@@ -877,7 +960,11 @@ unsafe fn push_ptr(v: &mut VecVal, p: *mut StrObj) {
     unsafe {
         if v.len == v.cap {
             let cap = if v.cap == 0 { 4 } else { v.cap * 2 };
-            v.ptr = if v.ptr.is_null() { alloc::alloc(cap * 8) } else { alloc::realloc(v.ptr, cap * 8) };
+            v.ptr = if v.ptr.is_null() {
+                alloc::alloc(cap * 8)
+            } else {
+                alloc::realloc(v.ptr, cap * 8)
+            };
             v.cap = cap;
         }
         *(v.ptr as *mut *mut StrObj).add(v.len) = p;
@@ -885,7 +972,11 @@ unsafe fn push_ptr(v: &mut VecVal, p: *mut StrObj) {
     }
 }
 
-const EMPTY_VEC: VecVal = VecVal { ptr: null_mut(), len: 0, cap: 0 };
+const EMPTY_VEC: VecVal = VecVal {
+    ptr: null_mut(),
+    len: 0,
+    cap: 0,
+};
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_chars(s: *const StrObj, out: *mut VecVal) {
@@ -896,7 +987,11 @@ pub unsafe extern "C-unwind" fn msrt_string_chars(s: *const StrObj, out: *mut Ve
         let mut i = 0;
         while i < text.len() {
             let (c, w) = utf8::decode(&text[i..]);
-            let p = if c == 0xFFFD && w == 1 { from_bytes("\u{FFFD}".as_bytes()) } else { from_bytes(&text[i..i + w]) };
+            let p = if c == 0xFFFD && w == 1 {
+                from_bytes("\u{FFFD}".as_bytes())
+            } else {
+                from_bytes(&text[i..i + w])
+            };
             push_ptr(&mut v, p);
             i += w;
         }
@@ -940,7 +1035,9 @@ pub unsafe extern "C-unwind" fn msrt_string_split(
         let mut limit = usize::MAX;
         if has_max != 0 {
             if max < 0 {
-                fault::fault_fmt(format_args!("split: max_parts must be nonnegative, found {max}"));
+                fault::fault_fmt(format_args!(
+                    "split: max_parts must be nonnegative, found {max}"
+                ));
             }
             limit = max as usize;
         }
@@ -983,7 +1080,11 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_values(s: *const StrObj, out:
     unsafe {
         let text = bytes(s);
         let n = scalar_count(s);
-        let p = if n == 0 { null_mut() } else { alloc::alloc(n * 8) } as *mut i64;
+        let p = if n == 0 {
+            null_mut()
+        } else {
+            alloc::alloc(n * 8)
+        } as *mut i64;
         let (mut i, mut k) = (0, 0);
         while i < text.len() {
             let (c, w) = utf8::decode(&text[i..]);
@@ -991,13 +1092,20 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_values(s: *const StrObj, out:
             k += 1;
             i += w;
         }
-        *out = VecVal { ptr: p as *mut u8, len: n, cap: n };
+        *out = VecVal {
+            ptr: p as *mut u8,
+            len: n,
+            cap: n,
+        };
     }
 }
 
 /// `String.from_scalars(values: List[Int])`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_string_from_scalars(values: *const VecVal, out: *mut *mut StrObj) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_string_from_scalars(
+    values: *const VecVal,
+    out: *mut *mut StrObj,
+) -> u8 {
     // SAFETY: caller passes a live list of Int and a writable out.
     unsafe {
         let v = &*values;
@@ -1022,11 +1130,19 @@ pub unsafe extern "C-unwind" fn msrt_string_to_bytes(s: *const StrObj, out: *mut
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
         let text = bytes(s);
-        let p = if text.is_empty() { null_mut() } else { alloc::alloc(text.len()) };
+        let p = if text.is_empty() {
+            null_mut()
+        } else {
+            alloc::alloc(text.len())
+        };
         if !text.is_empty() {
             core::ptr::copy_nonoverlapping(text.as_ptr(), p, text.len());
         }
-        *out = VecVal { ptr: p, len: text.len(), cap: text.len() };
+        *out = VecVal {
+            ptr: p,
+            len: text.len(),
+            cap: text.len(),
+        };
     }
 }
 
@@ -1083,11 +1199,21 @@ pub unsafe extern "C-unwind" fn msrt_string_normalize_kind(
     unsafe { normalize_kind(s, kind, has_max, max, out) }
 }
 
-unsafe fn normalize_kind(s: *const StrObj, kind: i64, has_max: u8, max: i64, out: *mut *mut StrObj) -> u8 {
+unsafe fn normalize_kind(
+    s: *const StrObj,
+    kind: i64,
+    has_max: u8,
+    max: i64,
+    out: *mut *mut StrObj,
+) -> u8 {
     use unicode_normalization::UnicodeNormalization;
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
-        let limit = if has_max != 0 { max as usize } else { usize::MAX };
+        let limit = if has_max != 0 {
+            max as usize
+        } else {
+            usize::MAX
+        };
         let text = bytes(s);
         let mut chars: RawVec<char> = RawVec::new();
         let mut i = 0;
@@ -1144,7 +1270,9 @@ pub extern "C-unwind" fn msrt_bool_to_string(v: u8) -> *mut StrObj {
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_int_to_string_radix(v: i64, radix: i64) -> *mut StrObj {
     if !(2..=36).contains(&radix) {
-        fault::fault_fmt(format_args!("to_string_radix: radix must be between 2 and 36, found {radix}"));
+        fault::fault_fmt(format_args!(
+            "to_string_radix: radix must be between 2 and 36, found {radix}"
+        ));
     }
     let mut b = ByteBuf::new();
     crate::num::format_radix(v, radix as u32, &mut b);
@@ -1165,7 +1293,9 @@ mod tests {
         S::from_utf8_lossy(unsafe { bytes(s) }).into_owned()
     }
     fn list(v: VecVal) -> std::vec::Vec<S> {
-        (0..v.len).map(|i| txt(unsafe { *(v.ptr as *const *const StrObj).add(i) })).collect()
+        (0..v.len)
+            .map(|i| txt(unsafe { *(v.ptr as *const *const StrObj).add(i) }))
+            .collect()
     }
 
     #[test]
@@ -1178,9 +1308,10 @@ mod tests {
             assert_eq!(txt(msrt_string_get(s, 1, null_mut())), "é");
             assert_eq!(txt(msrt_string_get(s, -1, null_mut())), "o");
             assert_eq!(msrt_string_scalar_at(s, 1, 0, 0), 0xE9);
-            testutil::assert_fault("index 9 out of range for length 5; pass a default: get(index:, default: ...)", || {
-                msrt_string_get(s, 9, null_mut())
-            });
+            testutil::assert_fault(
+                "index 9 out of range for length 5; pass a default: get(index:, default: ...)",
+                || msrt_string_get(s, 9, null_mut()),
+            );
         }
     }
 
@@ -1193,12 +1324,24 @@ mod tests {
             assert_eq!(list(v), ["a", "b"]);
             msrt_string_split(st("héy"), st(""), 0, 0, &mut v);
             assert_eq!(list(v), ["h", "é", "y"]);
-            assert_eq!(txt(msrt_string_replace_n(st("aaa"), st("a"), st("b"), 2)), "bba");
-            assert_eq!(txt(msrt_string_replace_n(st("ab"), st(""), st("-"), 5)), "-a-b-");
+            assert_eq!(
+                txt(msrt_string_replace_n(st("aaa"), st("a"), st("b"), 2)),
+                "bba"
+            );
+            assert_eq!(
+                txt(msrt_string_replace_n(st("ab"), st(""), st("-"), 5)),
+                "-a-b-"
+            );
             assert_eq!(txt(msrt_string_trim(st("  \t x y \n"))), "x y");
             let mut o = null_mut();
-            assert_eq!(msrt_string_replace_all(st("abc"), st("b"), st("xyz"), 1, 4, &mut o), STATUS_LIMIT_EXCEEDED);
-            assert_eq!(msrt_string_replace_all(st("abc"), st("b"), st("xy"), 1, 4, &mut o), STATUS_OK);
+            assert_eq!(
+                msrt_string_replace_all(st("abc"), st("b"), st("xyz"), 1, 4, &mut o),
+                STATUS_LIMIT_EXCEEDED
+            );
+            assert_eq!(
+                msrt_string_replace_all(st("abc"), st("b"), st("xy"), 1, 4, &mut o),
+                STATUS_OK
+            );
             assert_eq!(txt(o), "axyc");
         }
     }
@@ -1210,11 +1353,17 @@ mod tests {
             assert_eq!(txt(msrt_string_upper(st("straße"))), "STRASSE");
             assert_eq!(txt(msrt_string_lower(st("ΟΔΟΣ"))), "οδος");
             let mut o = null_mut();
-            assert_eq!(msrt_string_pad_start(st("7"), 3, st("ab"), 0, 0, &mut o), STATUS_OK);
+            assert_eq!(
+                msrt_string_pad_start(st("7"), 3, st("ab"), 0, 0, &mut o),
+                STATUS_OK
+            );
             assert_eq!(txt(o), "ab7");
             assert_eq!(msrt_string_slice(st("héllo"), 1, -1, &mut o), STATUS_OK);
             assert_eq!(txt(o), "éll");
-            assert_eq!(msrt_string_slice(st("abc"), 2, 1, &mut o), STATUS_OUT_OF_RANGE);
+            assert_eq!(
+                msrt_string_slice(st("abc"), 2, 1, &mut o),
+                STATUS_OUT_OF_RANGE
+            );
             assert_eq!(txt(msrt_string_reverse(st("aé"))), "éa");
         }
     }
@@ -1224,9 +1373,15 @@ mod tests {
         let _g = testutil::lock();
         unsafe {
             let mut o = null_mut();
-            assert_eq!(msrt_string_normalize(st("é"), st("NFD"), 0, 0, &mut o), STATUS_OK);
+            assert_eq!(
+                msrt_string_normalize(st("é"), st("NFD"), 0, 0, &mut o),
+                STATUS_OK
+            );
             assert_eq!(txt(o), "e\u{301}");
-            assert_eq!(msrt_string_normalize(st("é"), st("NFD"), 1, 2, &mut o), STATUS_LIMIT_EXCEEDED);
+            assert_eq!(
+                msrt_string_normalize(st("é"), st("NFD"), 1, 2, &mut o),
+                STATUS_LIMIT_EXCEEDED
+            );
         }
     }
 }

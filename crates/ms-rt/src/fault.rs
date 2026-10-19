@@ -4,7 +4,7 @@ use crate::global::Global;
 #[allow(unused_imports)]
 use crate::sys;
 use core::fmt::{self, Write};
-use ms_rt_abi::{FuncEntry, LineEntry, Tables, MAX_FAULT_FRAMES};
+use ms_rt_abi::{FuncEntry, LineEntry, MAX_FAULT_FRAMES, Tables};
 
 /// Current depth of recursive calls (generated code updates it inline).
 #[unsafe(no_mangle)]
@@ -20,7 +20,7 @@ pub static STACK_HI: Global<usize> = Global::new(0);
 
 type CleanupFn = unsafe extern "C-unwind" fn(*mut u8);
 static CLEANUPS: Global<RawVec<(usize, usize)>> = Global::new(RawVec::new());
-static SHIELD: Global<u32> = Global::new(0);
+pub(crate) static SHIELD: Global<u32> = Global::new(0);
 pub static PENDING_SIGNAL: core::sync::atomic::AtomicU8 = core::sync::atomic::AtomicU8::new(0);
 static FAULTING: Global<bool> = Global::new(false);
 static SECONDARY: Global<RawVec<(usize, usize)>> = Global::new(RawVec::new());
@@ -70,7 +70,7 @@ pub unsafe fn walk_frames(mut fp: usize, mut f: impl FnMut(usize) -> bool) {
     // SAFETY: reading the global stack bounds, set once at start.
     let (lo, hi) = unsafe { (*STACK_LO.ptr(), *STACK_HI.ptr()) };
     let mut steps = 0usize;
-    while fp != 0 && fp % 8 == 0 && steps < 1_000_000 {
+    while fp != 0 && fp.is_multiple_of(8) && steps < 1_000_000 {
         if hi != 0 && (fp < lo || fp + 16 > hi) {
             break;
         }
@@ -117,7 +117,11 @@ pub fn find_func(t: &Tables, pc: usize) -> Option<&'static FuncEntry> {
         return None;
     }
     let e = &funcs[idx - 1];
-    if probe < e.addr + e.size as usize { Some(e) } else { None }
+    if probe < e.addr + e.size as usize {
+        Some(e)
+    } else {
+        None
+    }
 }
 
 /// Source line of a return address inside `func`.
@@ -129,7 +133,11 @@ pub fn find_line(t: &Tables, func: &FuncEntry, pc: usize) -> (u32, u32) {
         if idx > 0 {
             let e = &lines[idx - 1];
             if e.pc > func.addr {
-                let file = if e.file_off == u32::MAX { func.file_off } else { e.file_off };
+                let file = if e.file_off == u32::MAX {
+                    func.file_off
+                } else {
+                    e.file_off
+                };
                 return (e.line, file);
             }
         }
@@ -151,7 +159,9 @@ fn describe_frames(out: &mut ByteBuf, fp: usize) {
     // SAFETY: `fp` comes from `frame_pointer()` of the faulting thread.
     unsafe {
         walk_frames(fp, |ret| {
-            let Some(func) = find_func(t, ret) else { return true };
+            let Some(func) = find_func(t, ret) else {
+                return true;
+            };
             if shown == MAX_FAULT_FRAMES {
                 truncated = true;
                 return false;
@@ -297,7 +307,10 @@ pub unsafe extern "C-unwind" fn msrt_fault_string(s: *mut ms_rt_abi::StrObj) -> 
 pub extern "C-unwind" fn msrt_fault_depth() -> ! {
     // SAFETY: single threaded counter reset so cleanups can run calls.
     unsafe { msrt_call_depth = 0 };
-    fault_fmt(format_args!("call depth limit exceeded ({} nested calls)", ms_rt_abi::MAX_CALL_DEPTH))
+    fault_fmt(format_args!(
+        "call depth limit exceeded ({} nested calls)",
+        ms_rt_abi::MAX_CALL_DEPTH
+    ))
 }
 
 #[unsafe(no_mangle)]
@@ -309,7 +322,9 @@ pub extern "C-unwind" fn msrt_index_fault(index: i64, length: i64) -> ! {
 
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_fault_unwrap_none() -> ! {
-    fault(b"called Optional.get() on none; check is_some first, or pass a default: get(default: ...)")
+    fault(
+        b"called Optional.get() on none; check is_some first, or pass a default: get(default: ...)",
+    )
 }
 
 #[unsafe(no_mangle)]
@@ -372,7 +387,9 @@ pub extern "C-unwind" fn msrt_cancelled() -> ! {
     while run_one_cleanup() {}
     #[cfg(test)]
     {
-        std::panic::panic_any(crate::testutil::FaultPayload(std::format!("cancelled {sig}")));
+        std::panic::panic_any(crate::testutil::FaultPayload(std::format!(
+            "cancelled {sig}"
+        )));
     }
     #[cfg(not(test))]
     crate::process::exit(if sig == sys::SIGINT as u8 {
@@ -421,7 +438,7 @@ mod tests {
         unsafe { *LOG_N.ptr() = 0 };
         // SAFETY: valid function pointers.
         unsafe {
-            msrt_cleanup_push(log_action, 1 as *mut u8);
+            msrt_cleanup_push(log_action, core::ptr::dangling_mut::<u8>());
             msrt_cleanup_push(faulting_action, core::ptr::null_mut());
             msrt_cleanup_push(log_action, 3 as *mut u8);
         }
@@ -440,7 +457,7 @@ mod tests {
         // SAFETY: test-only access and valid function pointers.
         unsafe {
             *LOG_N.ptr() = 0;
-            let h1 = msrt_cleanup_push(log_action, 1 as *mut u8);
+            let h1 = msrt_cleanup_push(log_action, core::ptr::dangling_mut::<u8>());
             let _h2 = msrt_cleanup_push(log_action, 2 as *mut u8);
             msrt_cleanup_run(h1);
             assert_eq!(&(&*LOG.ptr())[..*LOG_N.ptr()], &[2, 1]);
@@ -459,10 +476,26 @@ mod tests {
         chain[1][0] = &chain[2] as *const _ as usize;
         let strings = b"\0outer\0inner\0a.ms\0";
         let funcs = [
-            FuncEntry { addr: 0x1000, size: 0x100, name_off: 7, file_off: 13, line: 3 },
-            FuncEntry { addr: 0x2000, size: 0x100, name_off: 1, file_off: 13, line: 9 },
+            FuncEntry {
+                addr: 0x1000,
+                size: 0x100,
+                name_off: 7,
+                file_off: 13,
+                line: 3,
+            },
+            FuncEntry {
+                addr: 0x2000,
+                size: 0x100,
+                name_off: 1,
+                file_off: 13,
+                line: 9,
+            },
         ];
-        let lines = [LineEntry { pc: 0x1010, line: 4, file_off: u32::MAX }];
+        let lines = [LineEntry {
+            pc: 0x1010,
+            line: 4,
+            file_off: u32::MAX,
+        }];
         let t = Tables {
             abi_version: 1,
             reserved: 0,

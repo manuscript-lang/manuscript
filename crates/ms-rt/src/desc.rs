@@ -91,15 +91,24 @@ pub unsafe fn slot_copy(d: &TypeDesc, src: *const u8, dst: *mut u8) {
     // SAFETY: per the contract of each kind.
     unsafe {
         match d.kind {
-            KIND_INT | KIND_FLOAT | KIND_BOOL | KIND_POD => core::ptr::copy_nonoverlapping(src, dst, d.size as usize),
+            KIND_INT | KIND_FLOAT | KIND_BOOL | KIND_POD => {
+                core::ptr::copy_nonoverlapping(src, dst, d.size as usize)
+            }
             KIND_STRING | KIND_SHARED => {
                 let p = *(src as *const *mut Obj);
                 obj::retain(p);
                 *(dst as *mut *mut Obj) = p;
             }
             KIND_BYTES => crate::vec::copy_bytes(src as *const VecVal, dst as *mut VecVal),
-            KIND_LIST => crate::vec::copy_list(src as *const VecVal, &*d.inner0, dst as *mut VecVal),
-            KIND_MAP => map::copy_map(src as *const MapVal, &*d.inner0, d.inner1.as_ref(), dst as *mut MapVal),
+            KIND_LIST => {
+                crate::vec::copy_list(src as *const VecVal, &*d.inner0, dst as *mut VecVal)
+            }
+            KIND_MAP => map::copy_map(
+                src as *const MapVal,
+                &*d.inner0,
+                d.inner1.as_ref(),
+                dst as *mut MapVal,
+            ),
             KIND_SET => map::copy_map(src as *const MapVal, &*d.inner0, None, dst as *mut MapVal),
             _ => match d.copy {
                 Some(f) => f(src, dst),
@@ -112,7 +121,9 @@ pub unsafe fn slot_copy(d: &TypeDesc, src: *const u8, dst: *mut u8) {
 struct EqState {
     pairs: RawVec<(usize, usize)>,
 }
-static EQ: Global<EqState> = Global::new(EqState { pairs: RawVec::new() });
+static EQ: Global<EqState> = Global::new(EqState {
+    pairs: RawVec::new(),
+});
 const MAX_EQ_DEPTH: usize = 200_000;
 
 /// Registers a pair of objects being compared; 0 means the pair is already in progress
@@ -154,10 +165,15 @@ pub unsafe fn slot_eq(d: &TypeDesc, a: *const u8, b: *const u8) -> bool {
             KIND_INT => *(a as *const i64) == *(b as *const i64),
             KIND_FLOAT => *(a as *const f64) == *(b as *const f64),
             KIND_BOOL => *a == *b,
-            KIND_STRING => string::equal(*(a as *const *const StrObj), *(b as *const *const StrObj)),
+            KIND_STRING => {
+                string::equal(*(a as *const *const StrObj), *(b as *const *const StrObj))
+            }
             KIND_BYTES => {
                 let (x, y) = (&*(a as *const VecVal), &*(b as *const VecVal));
-                x.len == y.len && (x.len == 0 || core::slice::from_raw_parts(x.ptr, x.len) == core::slice::from_raw_parts(y.ptr, y.len))
+                x.len == y.len
+                    && (x.len == 0
+                        || core::slice::from_raw_parts(x.ptr, x.len)
+                            == core::slice::from_raw_parts(y.ptr, y.len))
             }
             KIND_SHARED => match d.eq {
                 Some(f) if *(a as *const usize) != *(b as *const usize) => {
@@ -171,14 +187,25 @@ pub unsafe fn slot_eq(d: &TypeDesc, a: *const u8, b: *const u8) -> bool {
             },
             KIND_POD => match d.eq {
                 Some(f) => f(a, b) != 0,
-                None => core::slice::from_raw_parts(a, d.size as usize) == core::slice::from_raw_parts(b, d.size as usize),
+                None => {
+                    core::slice::from_raw_parts(a, d.size as usize)
+                        == core::slice::from_raw_parts(b, d.size as usize)
+                }
             },
             KIND_LIST => crate::vec::eq_list(a as *const VecVal, b as *const VecVal, &*d.inner0),
-            KIND_MAP => map::eq_map(a as *const MapVal, b as *const MapVal, &*d.inner0, d.inner1.as_ref()),
+            KIND_MAP => map::eq_map(
+                a as *const MapVal,
+                b as *const MapVal,
+                &*d.inner0,
+                d.inner1.as_ref(),
+            ),
             KIND_SET => map::eq_map(a as *const MapVal, b as *const MapVal, &*d.inner0, None),
             _ => match d.eq {
                 Some(f) => f(a, b) != 0,
-                None => core::slice::from_raw_parts(a, d.size as usize) == core::slice::from_raw_parts(b, d.size as usize),
+                None => {
+                    core::slice::from_raw_parts(a, d.size as usize)
+                        == core::slice::from_raw_parts(b, d.size as usize)
+                }
             },
         }
     }
@@ -206,7 +233,11 @@ pub unsafe fn slot_hash(d: &TypeDesc, slot: *const u8) -> u64 {
             KIND_STRING => string::hash_bytes(string::bytes(*(slot as *const *const StrObj))),
             KIND_BYTES => {
                 let v = &*(slot as *const VecVal);
-                string::hash_bytes(if v.len == 0 { &[] } else { core::slice::from_raw_parts(v.ptr, v.len) })
+                string::hash_bytes(if v.len == 0 {
+                    &[]
+                } else {
+                    core::slice::from_raw_parts(v.ptr, v.len)
+                })
             }
             KIND_SHARED => match d.hash {
                 Some(f) if !(*(slot as *const *const u8)).is_null() => f(slot) as u64,
@@ -214,7 +245,9 @@ pub unsafe fn slot_hash(d: &TypeDesc, slot: *const u8) -> u64 {
             },
             KIND_POD | KIND_CUSTOM => match d.hash {
                 Some(f) => f(slot) as u64,
-                None if d.kind == KIND_POD => string::hash_bytes(core::slice::from_raw_parts(slot, d.size as usize)),
+                None if d.kind == KIND_POD => {
+                    string::hash_bytes(core::slice::from_raw_parts(slot, d.size as usize))
+                }
                 None => fault::fault(b"runtime invariant: type is not hashable"),
             },
             _ => fault::fault(b"runtime invariant: type is not hashable"),

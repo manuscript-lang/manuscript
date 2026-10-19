@@ -24,7 +24,11 @@ pub fn write_stdout(data: &[u8]) {
     let (out, tty) = unsafe { (&mut *OUT.ptr(), &mut *TTY.ptr()) };
     if *tty == 0 {
         // SAFETY: plain libc call.
-        *tty = if unsafe { sys::isatty(sys::STDOUT) } != 0 { 2 } else { 1 };
+        *tty = if unsafe { sys::isatty(sys::STDOUT) } != 0 {
+            2
+        } else {
+            1
+        };
     }
     out.extend(data);
     if out.len() >= BUF_LIMIT || (*tty == 2 && data.contains(&b'\n')) {

@@ -13,7 +13,14 @@ const LIVE: u64 = 1 << 63;
 const REMOVED: u32 = u32::MAX;
 
 pub fn empty() -> MapVal {
-    MapVal { slots: core::ptr::null_mut(), index: core::ptr::null_mut(), len: 0, used: 0, cap: 0, mask: 0 }
+    MapVal {
+        slots: core::ptr::null_mut(),
+        index: core::ptr::null_mut(),
+        len: 0,
+        used: 0,
+        cap: 0,
+        mask: 0,
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -36,7 +43,13 @@ fn layout(kd: &TypeDesc, vd: Option<&TypeDesc>) -> Layout {
     let (va, vsize) = vd.map_or((1, 0), |v| ((v.align as usize).max(1), v.size as usize));
     let voff = align_up(koff + ksize, va);
     let stride = align_up(voff + vsize, ka.max(va).max(8));
-    Layout { koff, voff, stride, ksize, vsize }
+    Layout {
+        koff,
+        voff,
+        stride,
+        ksize,
+        vsize,
+    }
 }
 
 #[inline(always)]
@@ -57,7 +70,13 @@ fn hash_key(kd: &TypeDesc, key: *const u8) -> u64 {
 }
 
 /// Finds the slot index of `key`.
-unsafe fn find(m: &MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, key: *const u8, h: u64) -> Option<usize> {
+unsafe fn find(
+    m: &MapVal,
+    kd: &TypeDesc,
+    vd: Option<&TypeDesc>,
+    key: *const u8,
+    h: u64,
+) -> Option<usize> {
     if m.len == 0 {
         return None;
     }
@@ -135,7 +154,11 @@ unsafe fn grow(m: &mut MapVal, l: &Layout) {
         if cap > u32::MAX as usize / 2 {
             fault::fault(b"map size overflow");
         }
-        m.slots = if m.slots.is_null() { alloc::alloc(cap * l.stride) } else { alloc::realloc(m.slots, cap * l.stride) };
+        m.slots = if m.slots.is_null() {
+            alloc::alloc(cap * l.stride)
+        } else {
+            alloc::realloc(m.slots, cap * l.stride)
+        };
         m.cap = cap;
         rebuild_index(m, l, cap * 2);
     }
@@ -147,7 +170,12 @@ pub fn len(m: &MapVal) -> usize {
 }
 
 /// True if `key` is present (`key` borrowed).
-pub fn contains_key(m: &MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, key: *const u8) -> bool {
+pub unsafe fn contains_key(
+    m: &MapVal,
+    kd: &TypeDesc,
+    vd: Option<&TypeDesc>,
+    key: *const u8,
+) -> bool {
     // SAFETY: key slot live.
     unsafe { find(m, kd, vd, key, hash_key(kd, key)).is_some() }
 }
@@ -158,7 +186,13 @@ pub fn contains_key(m: &MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, key: *cons
 ///
 /// # Safety
 /// Slots are live values of the descriptors; `val` may be null for sets.
-pub unsafe fn insert(m: &mut MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, key: *mut u8, val: *mut u8) -> bool {
+pub unsafe fn insert(
+    m: &mut MapVal,
+    kd: &TypeDesc,
+    vd: Option<&TypeDesc>,
+    key: *mut u8,
+    val: *mut u8,
+) -> bool {
     // SAFETY: caller contract.
     unsafe {
         let l = layout(kd, vd);
@@ -197,7 +231,13 @@ pub unsafe fn insert(m: &mut MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, key: 
 }
 
 /// Inserts only if the key is absent (`key`/`val` consumed either way); returns true when inserted.
-pub unsafe fn insert_unique(m: &mut MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, key: *mut u8, val: *mut u8) -> bool {
+pub unsafe fn insert_unique(
+    m: &mut MapVal,
+    kd: &TypeDesc,
+    vd: Option<&TypeDesc>,
+    key: *mut u8,
+    val: *mut u8,
+) -> bool {
     // SAFETY: caller contract.
     unsafe {
         if contains_key(m, kd, vd, key) {
@@ -217,7 +257,9 @@ pub unsafe fn remove(m: &mut MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, key: 
     unsafe {
         let l = layout(kd, vd);
         let h = hash_key(kd, key);
-        let Some(i) = find(m, kd, vd, key, h) else { return false };
+        let Some(i) = find(m, kd, vd, key, h) else {
+            return false;
+        };
         let p = slot(m, &l, i);
         // Mark the index entry removed.
         let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
@@ -238,7 +280,12 @@ pub unsafe fn remove(m: &mut MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, key: 
     }
 }
 
-unsafe fn lookup(m: &MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, key: *const u8) -> Option<*mut u8> {
+unsafe fn lookup(
+    m: &MapVal,
+    kd: &TypeDesc,
+    vd: Option<&TypeDesc>,
+    key: *const u8,
+) -> Option<*mut u8> {
     // SAFETY: caller contract.
     unsafe {
         let l = layout(kd, vd);
@@ -318,7 +365,12 @@ pub unsafe fn copy_map(src: *const MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>,
 ///
 /// # Safety
 /// Both are live maps of the descriptors.
-pub unsafe fn eq_map(a: *const MapVal, b: *const MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>) -> bool {
+pub unsafe fn eq_map(
+    a: *const MapVal,
+    b: *const MapVal,
+    kd: &TypeDesc,
+    vd: Option<&TypeDesc>,
+) -> bool {
     // SAFETY: caller contract.
     unsafe {
         let (x, y) = (&*a, &*b);
@@ -331,11 +383,13 @@ pub unsafe fn eq_map(a: *const MapVal, b: *const MapVal, kd: &TypeDesc, vd: Opti
             if slot_hash_of(p) & LIVE == 0 {
                 continue;
             }
-            let Some(q) = lookup(y, kd, vd, p.add(l.koff)) else { return false };
-            if let Some(vd) = vd {
-                if !slot_eq(vd, p.add(l.voff), q.add(l.voff)) {
-                    return false;
-                }
+            let Some(q) = lookup(y, kd, vd, p.add(l.koff)) else {
+                return false;
+            };
+            if let Some(vd) = vd
+                && !slot_eq(vd, p.add(l.voff), q.add(l.voff))
+            {
+                return false;
             }
         }
         true
@@ -358,20 +412,35 @@ pub unsafe extern "C-unwind" fn msrt_map_new(out: *mut MapVal) {
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_map_drop(m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc) {
+pub unsafe extern "C-unwind" fn msrt_map_drop(
+    m: *mut MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+) {
     // SAFETY: caller contract.
     unsafe { drop_map(m, &*kd, opt(vd)) }
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_map_copy(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, out: *mut MapVal) {
+pub unsafe extern "C-unwind" fn msrt_map_copy(
+    m: *const MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    out: *mut MapVal,
+) {
     // SAFETY: caller contract.
     unsafe { copy_map(m, &*kd, opt(vd), out) }
 }
 
 /// `add(key, value)` / `Set.add`: `key` and `val` are consumed.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_map_add(m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *mut u8, val: *mut u8) {
+pub unsafe extern "C-unwind" fn msrt_map_add(
+    m: *mut MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    key: *mut u8,
+    val: *mut u8,
+) {
     // SAFETY: caller contract.
     unsafe {
         insert(&mut *m, &*kd, opt(vd), key, val);
@@ -380,7 +449,13 @@ pub unsafe extern "C-unwind" fn msrt_map_add(m: *mut MapVal, kd: *const TypeDesc
 
 /// `add_default(key, value)`: stores only when absent; both consumed.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_map_add_default(m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *mut u8, val: *mut u8) {
+pub unsafe extern "C-unwind" fn msrt_map_add_default(
+    m: *mut MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    key: *mut u8,
+    val: *mut u8,
+) {
     // SAFETY: caller contract.
     unsafe {
         insert_unique(&mut *m, &*kd, opt(vd), key, val);
@@ -388,7 +463,12 @@ pub unsafe extern "C-unwind" fn msrt_map_add_default(m: *mut MapVal, kd: *const 
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_map_remove(m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8) {
+pub unsafe extern "C-unwind" fn msrt_map_remove(
+    m: *mut MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    key: *const u8,
+) {
     // SAFETY: caller contract.
     unsafe {
         remove(&mut *m, &*kd, opt(vd), key);
@@ -396,14 +476,24 @@ pub unsafe extern "C-unwind" fn msrt_map_remove(m: *mut MapVal, kd: *const TypeD
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_map_contains(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_map_contains(
+    m: *const MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    key: *const u8,
+) -> u8 {
     // SAFETY: caller contract.
     unsafe { contains_key(&*m, &*kd, opt(vd), key) as u8 }
 }
 
 /// Borrowed pointer to the value of `key`, or null.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_map_get_ptr(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8) -> *const u8 {
+pub unsafe extern "C-unwind" fn msrt_map_get_ptr(
+    m: *const MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    key: *const u8,
+) -> *const u8 {
     // SAFETY: caller contract.
     unsafe {
         let (kd, vdo) = (&*kd, opt(vd));
@@ -416,7 +506,13 @@ pub unsafe extern "C-unwind" fn msrt_map_get_ptr(m: *const MapVal, kd: *const Ty
 
 /// `get(key)`: copies the value into `out`; 0 when absent.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_map_get(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, out: *mut u8) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_map_get(
+    m: *const MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    key: *const u8,
+    out: *mut u8,
+) -> u8 {
     // SAFETY: caller contract.
     unsafe {
         let p = msrt_map_get_ptr(m, kd, vd, key);
@@ -430,7 +526,11 @@ pub unsafe extern "C-unwind" fn msrt_map_get(m: *const MapVal, kd: *const TypeDe
 
 /// Removes every entry, keeping nothing allocated.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_map_clear(m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc) {
+pub unsafe extern "C-unwind" fn msrt_map_clear(
+    m: *mut MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+) {
     // SAFETY: caller contract.
     unsafe { drop_map(m, &*kd, opt(vd)) }
 }
@@ -470,25 +570,45 @@ pub unsafe extern "C-unwind" fn msrt_map_entry_ptrs(
 
 /// `keys()` / `Set.values()` as a fresh list of copies.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_map_keys(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, out: *mut VecVal) {
+pub unsafe extern "C-unwind" fn msrt_map_keys(
+    m: *const MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    out: *mut VecVal,
+) {
     // SAFETY: caller contract.
     unsafe { collect(m, &*kd, opt(vd), true, out) }
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_map_values(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, out: *mut VecVal) {
+pub unsafe extern "C-unwind" fn msrt_map_values(
+    m: *const MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    out: *mut VecVal,
+) {
     // SAFETY: caller contract.
     unsafe { collect(m, &*kd, opt(vd), false, out) }
 }
 
-unsafe fn collect(m: *const MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, keys: bool, out: *mut VecVal) {
+unsafe fn collect(
+    m: *const MapVal,
+    kd: &TypeDesc,
+    vd: Option<&TypeDesc>,
+    keys: bool,
+    out: *mut VecVal,
+) {
     // SAFETY: caller contract.
     unsafe {
         let m = &*m;
         let l = layout(kd, vd);
         let d = if keys { kd } else { vd.unwrap_or(kd) };
         let size = d.size as usize;
-        let mut v = VecVal { ptr: core::ptr::null_mut(), len: 0, cap: 0 };
+        let mut v = VecVal {
+            ptr: core::ptr::null_mut(),
+            len: 0,
+            cap: 0,
+        };
         if m.len > 0 {
             v.ptr = alloc::alloc(m.len * size.max(1));
             v.cap = m.len;
@@ -498,7 +618,11 @@ unsafe fn collect(m: *const MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, keys: 
             if slot_hash_of(p) & LIVE == 0 {
                 continue;
             }
-            slot_copy(d, p.add(if keys { l.koff } else { l.voff }), v.ptr.add(v.len * size));
+            slot_copy(
+                d,
+                p.add(if keys { l.koff } else { l.voff }),
+                v.ptr.add(v.len * size),
+            );
             v.len += 1;
         }
         *out = v;
@@ -507,7 +631,12 @@ unsafe fn collect(m: *const MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, keys: 
 
 /// `merge(other)`: entries of `other` (borrowed, copied) replace or append.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_map_merge(m: *mut MapVal, other: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc) {
+pub unsafe extern "C-unwind" fn msrt_map_merge(
+    m: *mut MapVal,
+    other: *const MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+) {
     // SAFETY: caller contract.
     unsafe {
         let (kd, vdo) = (&*kd, opt(vd));
@@ -520,8 +649,16 @@ pub unsafe extern "C-unwind" fn msrt_map_merge(m: *mut MapVal, other: *const Map
             }
             let mut kb = [0u64; 8];
             let mut vb = [0u64; 8];
-            let kp = if l.ksize <= 64 { kb.as_mut_ptr() as *mut u8 } else { alloc::alloc(l.ksize) };
-            let vp = if l.vsize <= 64 { vb.as_mut_ptr() as *mut u8 } else { alloc::alloc(l.vsize) };
+            let kp = if l.ksize <= 64 {
+                kb.as_mut_ptr() as *mut u8
+            } else {
+                alloc::alloc(l.ksize)
+            };
+            let vp = if l.vsize <= 64 {
+                vb.as_mut_ptr() as *mut u8
+            } else {
+                alloc::alloc(l.vsize)
+            };
             slot_copy(kd, p.add(l.koff), kp);
             if let Some(v) = vdo {
                 slot_copy(v, p.add(l.voff), vp);
@@ -546,7 +683,11 @@ unsafe fn add_copy(m: &mut MapVal, kd: &TypeDesc, p: *const u8) {
             return;
         }
         let mut buf = [0u64; 8];
-        let k = if kd.size as usize <= 64 { buf.as_mut_ptr() as *mut u8 } else { alloc::alloc(kd.size as usize) };
+        let k = if kd.size as usize <= 64 {
+            buf.as_mut_ptr() as *mut u8
+        } else {
+            alloc::alloc(kd.size as usize)
+        };
         slot_copy(kd, p, k);
         insert(m, kd, None, k, core::ptr::null_mut());
         if kd.size as usize > 64 {
@@ -569,13 +710,22 @@ unsafe fn each_key(m: &MapVal, kd: &TypeDesc, mut f: impl FnMut(*const u8)) {
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_set_add_copy(m: *mut MapVal, kd: *const TypeDesc, key: *const u8) {
+pub unsafe extern "C-unwind" fn msrt_set_add_copy(
+    m: *mut MapVal,
+    kd: *const TypeDesc,
+    key: *const u8,
+) {
     // SAFETY: caller contract.
     unsafe { add_copy(&mut *m, &*kd, key) }
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_set_union(a: *const MapVal, b: *const MapVal, kd: *const TypeDesc, out: *mut MapVal) {
+pub unsafe extern "C-unwind" fn msrt_set_union(
+    a: *const MapVal,
+    b: *const MapVal,
+    kd: *const TypeDesc,
+    out: *mut MapVal,
+) {
     // SAFETY: caller contract.
     unsafe {
         let kd = &*kd;
@@ -584,7 +734,12 @@ pub unsafe extern "C-unwind" fn msrt_set_union(a: *const MapVal, b: *const MapVa
     }
 }
 
-unsafe fn filter_into(a: &MapVal, kd: &TypeDesc, out: *mut MapVal, mut keep: impl FnMut(*const u8) -> bool) {
+unsafe fn filter_into(
+    a: &MapVal,
+    kd: &TypeDesc,
+    out: *mut MapVal,
+    mut keep: impl FnMut(*const u8) -> bool,
+) {
     // SAFETY: caller contract.
     unsafe {
         *out = empty();
@@ -597,7 +752,12 @@ unsafe fn filter_into(a: &MapVal, kd: &TypeDesc, out: *mut MapVal, mut keep: imp
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_set_intersection(a: *const MapVal, b: *const MapVal, kd: *const TypeDesc, out: *mut MapVal) {
+pub unsafe extern "C-unwind" fn msrt_set_intersection(
+    a: *const MapVal,
+    b: *const MapVal,
+    kd: *const TypeDesc,
+    out: *mut MapVal,
+) {
     // SAFETY: caller contract.
     unsafe {
         let kd = &*kd;
@@ -606,7 +766,12 @@ pub unsafe extern "C-unwind" fn msrt_set_intersection(a: *const MapVal, b: *cons
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_set_difference(a: *const MapVal, b: *const MapVal, kd: *const TypeDesc, out: *mut MapVal) {
+pub unsafe extern "C-unwind" fn msrt_set_difference(
+    a: *const MapVal,
+    b: *const MapVal,
+    kd: *const TypeDesc,
+    out: *mut MapVal,
+) {
     // SAFETY: caller contract.
     unsafe {
         let kd = &*kd;
@@ -615,7 +780,12 @@ pub unsafe extern "C-unwind" fn msrt_set_difference(a: *const MapVal, b: *const 
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_set_symmetric_difference(a: *const MapVal, b: *const MapVal, kd: *const TypeDesc, out: *mut MapVal) {
+pub unsafe extern "C-unwind" fn msrt_set_symmetric_difference(
+    a: *const MapVal,
+    b: *const MapVal,
+    kd: *const TypeDesc,
+    out: *mut MapVal,
+) {
     // SAFETY: caller contract.
     unsafe {
         let kd = &*kd;
@@ -629,7 +799,11 @@ pub unsafe extern "C-unwind" fn msrt_set_symmetric_difference(a: *const MapVal, 
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_set_is_subset_of(a: *const MapVal, b: *const MapVal, kd: *const TypeDesc) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_set_is_subset_of(
+    a: *const MapVal,
+    b: *const MapVal,
+    kd: *const TypeDesc,
+) -> u8 {
     // SAFETY: caller contract.
     unsafe {
         let kd = &*kd;
@@ -640,13 +814,21 @@ pub unsafe extern "C-unwind" fn msrt_set_is_subset_of(a: *const MapVal, b: *cons
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_set_is_superset_of(a: *const MapVal, b: *const MapVal, kd: *const TypeDesc) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_set_is_superset_of(
+    a: *const MapVal,
+    b: *const MapVal,
+    kd: *const TypeDesc,
+) -> u8 {
     // SAFETY: caller contract.
     unsafe { msrt_set_is_subset_of(b, a, kd) }
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_set_is_disjoint_from(a: *const MapVal, b: *const MapVal, kd: *const TypeDesc) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_set_is_disjoint_from(
+    a: *const MapVal,
+    b: *const MapVal,
+    kd: *const TypeDesc,
+) -> u8 {
     // SAFETY: caller contract.
     unsafe {
         let kd = &*kd;
@@ -671,19 +853,37 @@ mod tests {
             let mut m = empty();
             for i in 0..100i64 {
                 let (mut k, mut v) = (i, i * 10);
-                insert(&mut m, kd, Some(vd), &mut k as *mut i64 as *mut u8, &mut v as *mut i64 as *mut u8);
+                insert(
+                    &mut m,
+                    kd,
+                    Some(vd),
+                    &mut k as *mut i64 as *mut u8,
+                    &mut v as *mut i64 as *mut u8,
+                );
             }
             // Replacing keeps position.
             let (mut k, mut v) = (5i64, -1i64);
-            assert!(!insert(&mut m, kd, Some(vd), &mut k as *mut i64 as *mut u8, &mut v as *mut i64 as *mut u8));
+            assert!(!insert(
+                &mut m,
+                kd,
+                Some(vd),
+                &mut k as *mut i64 as *mut u8,
+                &mut v as *mut i64 as *mut u8
+            ));
             for i in 0..90i64 {
                 let k = i;
                 assert!(remove(&mut m, kd, Some(vd), &k as *const i64 as *const u8));
             }
             assert_eq!(m.len, 10);
-            let mut keys = VecVal { ptr: core::ptr::null_mut(), len: 0, cap: 0 };
+            let mut keys = VecVal {
+                ptr: core::ptr::null_mut(),
+                len: 0,
+                cap: 0,
+            };
             msrt_map_keys(&m, kd, vd, &mut keys);
-            let ks: std::vec::Vec<i64> = (0..keys.len).map(|i| *(keys.ptr as *const i64).add(i)).collect();
+            let ks: std::vec::Vec<i64> = (0..keys.len)
+                .map(|i| *(keys.ptr as *const i64).add(i))
+                .collect();
             assert_eq!(ks, (90..100).collect::<std::vec::Vec<_>>());
             let k = 95i64;
             let p = msrt_map_get_ptr(&m, kd, vd, &k as *const i64 as *const u8);
@@ -704,15 +904,30 @@ mod tests {
             for (set, items) in [(&mut a, ["x", "y", "z"]), (&mut b, ["y", "w", "z"])] {
                 for it in items {
                     let mut k = from_bytes(it.as_bytes());
-                    insert(set, kd, None, &mut k as *mut _ as *mut u8, core::ptr::null_mut());
+                    insert(
+                        set,
+                        kd,
+                        None,
+                        &mut k as *mut _ as *mut u8,
+                        core::ptr::null_mut(),
+                    );
                 }
             }
             let mut out = empty();
             msrt_set_symmetric_difference(&a, &b, kd, &mut out);
-            let mut vals = VecVal { ptr: core::ptr::null_mut(), len: 0, cap: 0 };
+            let mut vals = VecVal {
+                ptr: core::ptr::null_mut(),
+                len: 0,
+                cap: 0,
+            };
             msrt_map_keys(&out, kd, core::ptr::null(), &mut vals);
             let got: std::vec::Vec<_> = (0..vals.len)
-                .map(|i| std::string::String::from_utf8_lossy(string::bytes(*(vals.ptr as *const *const StrObj).add(i))).into_owned())
+                .map(|i| {
+                    std::string::String::from_utf8_lossy(string::bytes(
+                        *(vals.ptr as *const *const StrObj).add(i),
+                    ))
+                    .into_owned()
+                })
                 .collect();
             assert_eq!(got, ["x", "w"]);
             assert_eq!(msrt_set_is_subset_of(&out, &a, kd), 0);
