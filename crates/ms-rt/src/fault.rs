@@ -276,7 +276,7 @@ fn describe_frames(out: &mut ByteBuf, fp: usize) {
             }
             let (mut line, mut file, mut scope) = find_line(t, func, ret);
             // Compiler-generated glue (function-value thunks) has no source position.
-            if line == 0 && file == u32::MAX {
+            if line == 0 {
                 return true;
             }
             // Frames of inlined callees, innermost first, then the physical function.
@@ -299,6 +299,10 @@ fn describe_frames(out: &mut ByteBuf, fp: usize) {
                 let Some(sc) = next else { break };
                 line = sc.call_line;
                 scope = sc.parent;
+                // A wrapper without a position of its own has no frame once its callee is shown.
+                if line == 0 && scope == 0 {
+                    break;
+                }
                 name = func.name_off;
                 file = func.file_off;
                 if shown == MAX_FAULT_FRAMES {
