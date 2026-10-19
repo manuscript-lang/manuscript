@@ -80,13 +80,13 @@ Decisions carried from the spike and the review, revisited only with measurement
 - **I/O runs on Tokio.** Each Manuscript task is a stackful coroutine wrapped as a Tokio future; an I/O call registers the coroutine's waker and yields. The Rust networking crates (hyper, rustls, h2, tungstenite) assume Tokio, so a custom reactor buys adapters, not capability. The core stays `no_std`; dev builds link the std/Tokio runtime as a prebuilt shared library to keep links fast, and release builds link statically.
 - Each module compiles to an object cached by content and dependency interface hashes; generics monomorphize first.
 
-## P0: foundations (serial, small team, time-boxed to six weeks)
+## P0: foundations (serial, small team)
 
 Two to four sessions, each owning one item. P0 ends when every gate passes or the owner changes direction.
 
 | Deliverable | Gate |
 |---|---|
-| Sound exclusivity and ownership rules (C1 draft) with a soundness corpus of rejection cases | every corpus case rejected; a program fuzzer finds no accepted program that fails under ASan or valgrind in 24 hours of runs |
+| Sound exclusivity and ownership rules (C1 draft) with a soundness corpus of rejection cases | every corpus case rejected; a program fuzzer finds no accepted program that fails under ASan or valgrind across one million generated programs |
 | Standard-library delta: every one of the ~939 declarations in `pkg/stdlib` classified as unchanged, `mut` receiver, handle, or redesigned | owner sign-off on the redesign list |
 | Unwinding prototype: Cranelift exception tables (`try_call`) and explicit fault returns, on all six targets, including callbacks through runtime frames | chosen design measured on the kernels and a cleanup-heavy program; overhead stated |
 | Copy-on-write versus unique ownership, measured on the spike for kernels, strings, and agent ergonomics | decision recorded with numbers |
@@ -144,13 +144,13 @@ flowchart LR
 - Contracts ship with compiling stubs: codegen develops against hand-written MIR, the checker against the interpreter, tools against a fake checker, Rust-backed standard-library modules against the ABI.
 - The conformance corpus is the shared definition of done, tagged by feature and run on the interpreter and native code; a generated dashboard reports pass rates per tag and workstream. The P1 slice uses fixtures that need only the core language; fixtures that import `@std/testing`, use interpolation, or call I/O join in P2.
 - Go is feature-frozen when P1 starts, after W14 has extracted the behaviors its tests encode.
-- A weekly integration build runs conformance, soundness, `bench/perf`, the server benchmark, and an `agent-bench` sample against every workstream's head.
+- An integration build on every merge runs conformance, soundness, `bench/perf`, the server benchmark, and an `agent-bench` sample against every workstream's head.
 
 ## Phases and gates
 
 | Phase | Exit | Rethink if |
 |---|---|---|
-| P0 Foundations | every P0 gate above | any gate fails at the time box |
+| P0 Foundations | every P0 gate above | a gate cannot be met without changing the model |
 | P1 Vertical slice | core-language conformance and the full soundness corpus pass on interpreter and native; kernels (written without closures or I/O) at a CPU geometric mean at or below hand-written Go with 95% confidence, including contract costs; `ms build` after an edit at or below `go build` across the repository's `.ms` corpus | the geometric mean stays above today's Go backend after MIR optimizations |
 | P2 Breadth | generics, interfaces, closures, strings, concurrency, 90% of conformance, every example runs, LSP and lint usable; server benchmark throughput and p99 at or better than today, RSS reported; hello-world binary size and link time with TLS reported against Go | unwinding, concurrency, or the standard-library delta force a model change |
 | P3 Cutover | 100% of migrated conformance; six-target distribution checks; debugger and profiler; `agent-bench` at or above today's pass rate | any gap above |
