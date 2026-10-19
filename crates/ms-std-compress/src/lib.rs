@@ -133,7 +133,7 @@ pub fn encode(data: &[u8], format: Format, level: u8) -> Vec<u8> {
 
 /// Inflates one raw deflate stream from the start of `input`, producing at most `room` bytes.
 /// Returns the output and the number of input bytes the stream occupied.
-fn inflate(input: &[u8], room: usize) -> Result<(Vec<u8>, usize), Fail> {
+pub fn inflate(input: &[u8], room: usize) -> Result<(Vec<u8>, usize), Fail> {
     let limit = room.saturating_add(1);
     let mut out: Vec<u8> =
         alloc::vec![0; input.len().saturating_mul(4).clamp(1024, 1 << 20).min(limit)];

@@ -8,15 +8,21 @@
 package main
 
 import (
+	"archive/tar"
+	"archive/zip"
+	"bytes"
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"hash/crc32"
+	"io/fs"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	rt "github.com/manuscript-lang/manuscript/pkg/runtime"
 )
@@ -110,6 +116,7 @@ func main() {
 		"compress": genCompress,
 		"crypto":   genCrypto,
 		"regex":    genRegex,
+		"archive":  genArchive,
 	}
 	names := flag.Args()
 	if len(names) == 0 {
@@ -592,4 +599,269 @@ func genRegex(dir string) {
 		}
 	}
 	r.write(dir, "regex.tsv")
+}
+
+// ---- archive ----
+
+func archiveEntry(path string, data []byte, dir bool) *rt.ArchiveEntry {
+	return &rt.ArchiveEntry{Path: path, Data: rt.NewBytes(data), Directory: dir}
+}
+
+func archiveRows(r *recorder, id int, format string, input []byte, mutated bool) {
+	limitSets := []rt.Option[*rt.ArchiveLimits]{{}}
+	if !mutated {
+		for _, l := range []rt.ArchiveLimits{
+			{MaxEntries: rt.Some(1)}, {MaxEntries: rt.Some(0)}, {MaxEntryBytes: rt.Some(3)}, {MaxTotalBytes: rt.Some(10)},
+			{MaxEntries: rt.Some(-1)}, {MaxEntryBytes: rt.Some(-1)}, {MaxTotalBytes: rt.Some(-1)}, {MaxTotalBytes: rt.Some(200), MaxEntryBytes: rt.Some(100), MaxEntries: rt.Some(50)},
+		} {
+			l := l
+			limitSets = append(limitSets, rt.Some(&l))
+		}
+	}
+	for _, lim := range limitSets {
+		res := rt.Archive_Unpack(nil, rt.NewBytes(input), format, lim)
+		desc := "-"
+		if lim.Some {
+			desc = opt(lim.Val.MaxEntries) + "," + opt(lim.Val.MaxEntryBytes) + "," + opt(lim.Val.MaxTotalBytes)
+		}
+		out := []string{}
+		if res.Failed {
+			out = []string{"err " + errName(res.Err)}
+		} else {
+			out = append(out, "ok")
+			for _, e := range res.Val.Items {
+				out = append(out, h(e.Path)+":"+b2s(e.Directory)+":"+hb(e.Data))
+			}
+		}
+		r.row("unpack", format, strconv.Itoa(id), desc, "=>", strings.Join(out, " "))
+	}
+}
+
+func genArchive(dir string) {
+	r := &recorder{}
+	rng := rand.New(rand.NewSource(77))
+	long := func(n int, c byte) string { return strings.Repeat(string(c), n) }
+	sets := [][]*rt.ArchiveEntry{
+		{},
+		{archiveEntry("a.txt", []byte("hello"), false)},
+		{archiveEntry("d", nil, true), archiveEntry("d/a.txt", []byte("hello world, hello world, hello world, hello world, hello world, hello world"), false), archiveEntry("d/e/", nil, true)},
+		{archiveEntry("d/", nil, true), archiveEntry("empty", nil, false)},
+		{archiveEntry(long(100, 'a'), []byte("x"), false)},
+		{archiveEntry(long(101, 'a'), []byte("x"), false)},
+		{archiveEntry(strings.Repeat("dir/", 30)+"file.txt", []byte("deep"), false)},
+		{archiveEntry(strings.Repeat("d", 120)+"/"+strings.Repeat("f", 90), []byte("split"), false)},
+		{archiveEntry(strings.Repeat("d", 200)+"/"+strings.Repeat("f", 90), []byte("nosplit"), false)},
+		{archiveEntry(strings.Repeat("e", 150)+"/", nil, true)},
+		{archiveEntry("héllo/wörld.txt", []byte("unicode"), false), archiveEntry("日本語/", nil, true)},
+		{archiveEntry("tilde~and{brace}", []byte("q"), false), archiveEntry("ctl\x01name", []byte("c"), false)},
+		{archiveEntry("big.bin", make([]byte, 5000), false)},
+		{archiveEntry("a", []byte("1"), false), archiveEntry("a", []byte("2"), false)},
+		{archiveEntry("a", []byte("1"), false), archiveEntry("a/b", []byte("2"), false)},
+		{archiveEntry("a/b", []byte("2"), false), archiveEntry("a", []byte("1"), false)},
+		{archiveEntry("a", nil, true), archiveEntry("a", nil, false)},
+		{archiveEntry("../x", nil, false)}, {archiveEntry("/x", nil, false)}, {archiveEntry("a//b", nil, false)}, {archiveEntry("a/./b", nil, false)},
+		{archiveEntry("", nil, false)}, {archiveEntry("a\\b", nil, false)}, {archiveEntry("c:d", nil, false)}, {archiveEntry("a\x00b", nil, false)},
+		{archiveEntry("file/", []byte("x"), false)}, {archiveEntry("dir", []byte("x"), true)},
+		{archiveEntry(string([]byte{0xff, 0xfe}), nil, false)},
+		{archiveEntry(long(70000, 'z'), nil, false)},
+		{archiveEntry(long(300, 'q'), []byte("long single component"), false)},
+	}
+	noise := make([]byte, 700)
+	rng.Read(noise)
+	sets = append(sets, []*rt.ArchiveEntry{archiveEntry("noise", noise, false), archiveEntry("text", []byte(strings.Repeat("abc ", 100)), false)})
+	var tarBases, zipBases [][]byte
+	id := 0
+	for si, set := range sets {
+		for _, format := range []string{"tar", "zip", "rar", ""} {
+			for _, max := range []rt.Option[int]{{}, rt.Some(0), rt.Some(1024), rt.Some(-1)} {
+				res := rt.Archive_Pack(nil, rt.NewList(set...), format, max)
+				if si == 2 || si == 4 || si == 5 || si == 6 || si == 7 || max.Some {
+					// keep rows small: pack rows for only some sets with every limit
+				}
+				switch {
+				case res.Failed:
+					r.row("pack", format, strconv.Itoa(si), opt(max), "=>", "err "+errName(res.Err))
+				case format == "tar":
+					r.row("pack", format, strconv.Itoa(si), opt(max), "=>", "ok "+hb(res.Val))
+				default:
+					r.row("pack", format, strconv.Itoa(si), opt(max), "=>", "ok")
+				}
+				if !res.Failed && !max.Some {
+					if format == "tar" {
+						tarBases = append(tarBases, res.Val.Data)
+					} else if format == "zip" {
+						zipBases = append(zipBases, res.Val.Data)
+					}
+				}
+			}
+		}
+	}
+	// Entry sets are encoded into the fixture so the Rust side can pack the same lists.
+	for si, set := range sets {
+		for _, e := range set {
+			r.row("set", strconv.Itoa(si), h(e.Path), hb(e.Data), b2s(e.Directory))
+		}
+		r.row("setend", strconv.Itoa(si))
+	}
+
+	// Foreign tars written with other formats and typeflags.
+	foreign := func(build func(tw *tar.Writer)) []byte {
+		var buf bytes.Buffer
+		tw := tar.NewWriter(&buf)
+		build(tw)
+		tw.Close()
+		return buf.Bytes()
+	}
+	put := func(tw *tar.Writer, hdr tar.Header, body string) {
+		hdr.Size = int64(len(body))
+		if hdr.Typeflag == tar.TypeSymlink || hdr.Typeflag == tar.TypeLink || hdr.Typeflag == tar.TypeDir {
+			hdr.Size = 0
+			body = ""
+		}
+		if err := tw.WriteHeader(&hdr); err != nil {
+			panic(err)
+		}
+		tw.Write([]byte(body))
+	}
+	tarBases = append(tarBases,
+		foreign(func(tw *tar.Writer) {
+			put(tw, tar.Header{Name: strings.Repeat("g", 150), Mode: 0644, Format: tar.FormatGNU}, "gnu long name")
+			put(tw, tar.Header{Name: "x/", Typeflag: tar.TypeDir, Mode: 0755, Format: tar.FormatGNU}, "")
+		}),
+		foreign(func(tw *tar.Writer) {
+			put(tw, tar.Header{Name: "pax.txt", Mode: 0644, Format: tar.FormatPAX, PAXRecords: map[string]string{"comment": "hi", "mtime": "1.5"}, ModTime: time.Unix(1700000000, 500)}, "pax body")
+			put(tw, tar.Header{Name: "naïve.txt", Mode: 0644, Format: tar.FormatPAX, Uname: "üser"}, "unicode name")
+		}),
+		foreign(func(tw *tar.Writer) {
+			put(tw, tar.Header{Name: "ustar.txt", Mode: 0644, Format: tar.FormatUSTAR}, "ustar")
+			put(tw, tar.Header{Name: "link", Typeflag: tar.TypeSymlink, Linkname: "ustar.txt", Format: tar.FormatUSTAR}, "")
+		}),
+		foreign(func(tw *tar.Writer) {
+			put(tw, tar.Header{Name: "ok.txt", Mode: 0644}, "ok")
+			put(tw, tar.Header{Name: "hard", Typeflag: tar.TypeLink, Linkname: "ok.txt"}, "")
+		}),
+		foreign(func(tw *tar.Writer) {
+			put(tw, tar.Header{Name: "fifo", Typeflag: tar.TypeFifo}, "")
+		}),
+		foreign(func(tw *tar.Writer) {
+			put(tw, tar.Header{Typeflag: tar.TypeXGlobalHeader, Name: "g", PAXRecords: map[string]string{"comment": "global"}}, "")
+			put(tw, tar.Header{Name: "after.txt", Mode: 0644}, "after")
+		}),
+		foreign(func(tw *tar.Writer) {
+			put(tw, tar.Header{Name: "gnu.txt", Mode: 0644, Format: tar.FormatGNU, AccessTime: time.Unix(5, 0), ChangeTime: time.Unix(6, 0)}, "gnu times")
+		}),
+		foreign(func(tw *tar.Writer) {
+			put(tw, tar.Header{Name: "a/b/c.txt", Mode: 0644, Xattrs: map[string]string{"user.k": "v"}}, "xattr")
+		}),
+	)
+
+	// Foreign zips.
+	fzip := func(build func(zw *zip.Writer)) []byte {
+		var buf bytes.Buffer
+		zw := zip.NewWriter(&buf)
+		build(zw)
+		zw.Close()
+		return buf.Bytes()
+	}
+	zput := func(zw *zip.Writer, fh *zip.FileHeader, body string) {
+		w, err := zw.CreateHeader(fh)
+		if err != nil {
+			panic(err)
+		}
+		w.Write([]byte(body))
+	}
+	zipBases = append(zipBases,
+		fzip(func(zw *zip.Writer) {
+			zput(zw, &zip.FileHeader{Name: "stored.txt", Method: zip.Store}, "stored body")
+			zput(zw, &zip.FileHeader{Name: "deflated.txt", Method: zip.Deflate}, strings.Repeat("deflate me ", 20))
+			zw.SetComment("archive comment")
+		}),
+		fzip(func(zw *zip.Writer) {
+			fh := &zip.FileHeader{Name: "link", Method: zip.Store}
+			fh.SetMode(fs.ModeSymlink | 0777)
+			zput(zw, fh, "target")
+		}),
+		fzip(func(zw *zip.Writer) {
+			raw, _ := zw.CreateRaw(&zip.FileHeader{Name: "weird.txt", Method: 99, CRC32: crc32.ChecksumIEEE([]byte("method 99")), CompressedSize64: 9, UncompressedSize64: 9})
+			raw.Write([]byte("method 99"))
+		}),
+		fzip(func(zw *zip.Writer) {
+			zput(zw, &zip.FileHeader{Name: "back\\slash.txt", Method: zip.Store}, "bs")
+		}),
+		fzip(func(zw *zip.Writer) {
+			zput(zw, &zip.FileHeader{Name: "caf\xe9.txt", Method: zip.Store, NonUTF8: true}, "latin1 name")
+		}),
+		fzip(func(zw *zip.Writer) {
+			zput(zw, &zip.FileHeader{Name: "café.txt", Method: zip.Store}, "utf8 name")
+			zput(zw, &zip.FileHeader{Name: "dir/", Method: zip.Store}, "")
+			fh := &zip.FileHeader{Name: "notdir", Method: zip.Store}
+			fh.SetMode(fs.ModeDir | 0755)
+			zput(zw, fh, "")
+		}),
+		fzip(func(zw *zip.Writer) {
+			raw, _ := zw.CreateRaw(&zip.FileHeader{Name: "badcrc.txt", Method: zip.Store, CRC32: 0xdeadbeef, CompressedSize64: 3, UncompressedSize64: 3})
+			raw.Write([]byte("abc"))
+			raw2, _ := zw.CreateRaw(&zip.FileHeader{Name: "lies.txt", Method: zip.Store, CompressedSize64: 3, UncompressedSize64: 9})
+			raw2.Write([]byte("abc"))
+		}),
+		fzip(func(zw *zip.Writer) {}),
+	)
+	// Zip with junk before the archive (shifted offsets) and a trailing comment.
+	if len(zipBases) > 0 {
+		zipBases = append(zipBases, append([]byte("JUNKJUNKJUNK"), zipBases[0]...))
+	}
+
+	emit := func(format string, bases [][]byte) {
+		for _, b := range bases {
+			if len(b) > 12000 {
+				continue
+			}
+			id++
+			r.row("input", strconv.Itoa(id), hb(rt.NewBytes(b)))
+			archiveRows(r, id, format, b, false)
+			for m := 0; m < 14 && len(b) > 0; m++ {
+				v := append([]byte{}, b...)
+				switch m % 7 {
+				case 0:
+					v = v[:rng.Intn(len(v))]
+				case 1:
+					v[rng.Intn(len(v))] ^= byte(1 << uint(rng.Intn(8)))
+				case 2:
+					lo := 0
+					if format == "tar" {
+						lo = 0
+					} else if len(v) > 150 {
+						lo = len(v) - 150
+					}
+					hi := min(len(v), lo+600)
+					v[lo+rng.Intn(hi-lo)] ^= byte(1 + rng.Intn(255))
+				case 3:
+					a := rng.Intn(len(v))
+					for i := a; i < min(len(v), a+1+rng.Intn(40)); i++ {
+						v[i] = 0
+					}
+				case 4:
+					v = append(v, v[len(v)/2:]...)
+				case 5:
+					v = append(v, byte(rng.Intn(256)))
+				case 6:
+					a, c := rng.Intn(len(v)), rng.Intn(len(v))
+					v[a], v[c] = v[c], v[a]
+				}
+				id++
+				r.row("input", strconv.Itoa(id), hb(rt.NewBytes(v)))
+				archiveRows(r, id, format, v, true)
+			}
+		}
+	}
+	emit("tar", tarBases)
+	emit("zip", zipBases)
+	for _, junk := range []string{"", "x", strings.Repeat("\x00", 1024), strings.Repeat("\x00", 1536), strings.Repeat("a", 512), "PK\x05\x06" + strings.Repeat("\x00", 18)} {
+		for _, format := range []string{"tar", "zip", "bogus"} {
+			id++
+			r.row("input", strconv.Itoa(id), hb(rt.NewBytes([]byte(junk))))
+			archiveRows(r, id, format, []byte(junk), true)
+		}
+	}
+	r.write(dir, "archive.tsv")
 }

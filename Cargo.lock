@@ -631,6 +631,16 @@ name = "ms-rt-abi"
 version = "0.1.0"
 
 [[package]]
+name = "ms-std-archive"
+version = "0.1.0"
+dependencies = [
+ "ms-rt",
+ "ms-rt-abi",
+ "ms-std-compress",
+ "ms-std-core",
+]
+
+[[package]]
 name = "ms-std-compress"
 version = "0.1.0"
 dependencies = [
