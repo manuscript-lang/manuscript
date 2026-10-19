@@ -4,7 +4,6 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::OnceLock;
 
 use ms_cli::backend::Io;
 use ms_cli::engine::RustBackend;
