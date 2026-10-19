@@ -198,6 +198,19 @@ impl<'a> FnLower<'a> {
             return self.construct_unit(e, &ty, case);
         }
         let lt = self.ety(left);
+        if lt.id == "Int" && matches!(name, "seconds" | "milliseconds" | "minutes") {
+            // `3.minutes`: a duration of that many units.
+            let n = self.expr(left)?;
+            if self.dead {
+                return Ok(n);
+            }
+            let arg = self.borrow(n);
+            let sym = format!("msstd_time_int_{name}");
+            return Ok(Val {
+                v: self.call_runtime(&sym, &[arg], MTy::INT)?,
+                own: false,
+            });
+        }
         if lt.kind != Kind::Record {
             return Err(Error::new(format!("unsupported member access .{name}")));
         }

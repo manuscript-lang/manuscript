@@ -101,6 +101,27 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         .strip_prefix("map_")
         .or_else(|| name.strip_prefix("set_"))
         .unwrap_or(name);
+    if let TyKind::Rec(rid) = m.types.kind(recv) {
+        let record = m.records[rid.index()].name.as_str();
+        if matches!(record, "Timestamp" | "Instant") {
+            let name = native.rsplit('/').next().unwrap_or(native);
+            let prefixed = format!("msstd_time_{}_{name}", record.to_lowercase());
+            return [format!("msstd_time_{name}"), prefixed]
+                .into_iter()
+                .find(|sym| rt_sig(sym).is_some());
+        }
+    }
+    // `time/duration_seconds` is `Duration.to_seconds`: the runtime spells the conversions out.
+    if let Some(stem) = native.strip_prefix("time/") {
+        let spelled = stem
+            .split_once('_')
+            .map(|(ty, rest)| format!("msstd_time_{ty}_to_{rest}"));
+        let direct = format!("msstd_time_{stem}");
+        return [Some(direct), spelled]
+            .into_iter()
+            .flatten()
+            .find(|sym| rt_sig(sym).is_some());
+    }
     if matches!(m.types.kind(recv), TyKind::Obj(n, _) if n == "BigInt") {
         let name = if name == "format" {
             "to_string_radix"
@@ -111,6 +132,7 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         return rt_sig(&sym).map(|_| sym);
     }
     let prefix = match m.types.kind(recv) {
+        TyKind::Obj(n, _) if n == "Queue" => "queue",
         TyKind::Str => "string",
         TyKind::List(_) => "list",
         TyKind::Bytes => "bytes",
@@ -155,6 +177,37 @@ const STATUS_NONE: i64 = 16;
 
 impl FnLower<'_> {
     /// Calls the runtime function `sym` for a method call.
+    /// `Queue[T]()` or `Queue[T](capacity: n)`: a runtime queue of elements of `T`.
+    pub(crate) fn construct_queue(
+        &mut self,
+        view: &ms_check::hir::CallView<'_>,
+        ty: MTy,
+    ) -> Result<Val, Error> {
+        let TyKind::Obj(_, args) = self.b.m.types.kind(ty).clone() else {
+            return Err(Error::new("queue without an element type"));
+        };
+        let desc = self.type_desc(args[0]);
+        let (has, cap) = match view.arguments.as_slice() {
+            [] => (self.b.bconst(false), self.b.iconst(0)),
+            [a] => {
+                let x = self.expr(a.expr)?;
+                if self.dead {
+                    return Ok(self.dummy(ty));
+                }
+                self.flatten_optional(
+                    Input {
+                        val: Some(x),
+                        wrapped: a.wrap_optional.is_some(),
+                    },
+                    "i64",
+                )?
+            }
+            _ => return Err(Error::new("unsupported queue constructor")),
+        };
+        let q = self.call_runtime("msrt_queue_new", &[desc, has, cap], ty)?;
+        Ok(Val { v: q, own: true })
+    }
+
     pub(crate) fn rt_method(
         &mut self,
         sym: &str,
@@ -227,8 +280,12 @@ impl FnLower<'_> {
             let p = &sig.params[i];
             match p.name.as_str() {
                 "d" => {
-                    let recv_ty = recv_ty
-                        .ok_or_else(|| Error::new(format!("{sym}: descriptor without receiver")))?;
+                    // A constructor such as `filled` has no receiver: its result names the element.
+                    let mut recv_ty = recv_ty.unwrap_or(result);
+                    if let TyKind::Alt(a) = self.b.m.types.kind(recv_ty).clone() {
+                        let ok = self.ok_case_index(a)?;
+                        recv_ty = self.b.m.alts[a.index()].cases[ok].fields[0].1;
+                    }
                     let e = match self.b.m.types.kind(recv_ty).clone() {
                         TyKind::List(e) => e,
                         TyKind::Obj(_, a) if !a.is_empty() => a[0],
@@ -297,7 +354,8 @@ impl FnLower<'_> {
                         x
                     };
                     let consumed_aggregate = p.ty == "*mut VecVal" || p.ty == "*mut MapVal";
-                    if p.ty == "*const u8" || p.ty == "*mut u8" || consumed_aggregate {
+                    let clock = p.ty == "*const Timestamp" || p.ty == "*const Instant";
+                    if p.ty == "*const u8" || p.ty == "*mut u8" || consumed_aggregate || clock {
                         // A generic element slot: pass the address of the value in memory.
                         // `*mut` hands the value over; `*const` is lent and taken back.
                         let t = self.ty_of(x.v);

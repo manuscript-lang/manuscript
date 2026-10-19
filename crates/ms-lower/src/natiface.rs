@@ -24,6 +24,8 @@ pub(crate) const HANDLE_FUNCTIONS: &[(&str, &str, &str, i64)] = &[
     ("io/files", "io", "", 0),
     ("fs/filesystem", "fs", "", 0),
     ("process/commands", "process", "", 0),
+    ("time/clock", "time", "", 0),
+    ("time/wall_clock", "time", "", 0),
 ];
 
 /// Interfaces whose values carry no data.
@@ -31,6 +33,8 @@ const UNIT_DATA: &[(&str, &str)] = &[
     ("io", "Files"),
     ("fs", "FileSystem"),
     ("process", "Commands"),
+    ("time", "Clock"),
+    ("time", "WallClock"),
 ];
 
 /// A constant argument the runtime symbol takes after the operation's own.
@@ -242,6 +246,8 @@ const METHODS: &[MethodRow] = &[
         "msstd_fs_temporary_close",
         &[],
     ),
+    ("time", "Clock", "now", "msstd_time_clock_now", &[]),
+    ("time", "WallClock", "now", "msstd_time_wall_clock_now", &[]),
     (
         "process",
         "Commands",

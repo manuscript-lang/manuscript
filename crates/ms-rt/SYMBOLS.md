@@ -81,6 +81,12 @@ msrt_retain(o: *mut Obj)
 msrt_release(o: *mut Obj)
 msrt_drop_slow(o: *mut Obj)
 msrt_process_exit(code: i64) -> !
+msrt_queue_new( d: *const TypeDesc, has_capacity: u8, capacity: i64, ) -> *mut QueueObj
+msrt_queue_enqueue(q: *mut QueueObj, value: *mut u8) -> u8
+msrt_queue_dequeue(q: *mut QueueObj, out: *mut u8) -> u8
+msrt_queue_peek(q: *const QueueObj, out: *mut u8) -> u8
+msrt_queue_length(q: *const QueueObj) -> i64
+msrt_queue_is_empty(q: *const QueueObj) -> u8
 msrt_start_nanos() -> i64
 msrt_start( main_fn: extern "C-unwind" fn() -> i64, tables: *const Tables, argc: i32, argv: *const *const u8, ) -> i32
 msrt_argv(out: *mut VecVal)
@@ -577,6 +583,9 @@ msstd_time_duration_add(left: i64, other: i64) -> i64
 msstd_time_duration_plus(left: i64, right: i64) -> i64
 msstd_time_duration_minus(left: i64, right: i64) -> i64
 msstd_time_duration_subtract(left: i64, other: i64) -> i64
+msstd_time_int_milliseconds(n: i64) -> i64
+msstd_time_int_seconds(n: i64) -> i64
+msstd_time_int_minutes(n: i64) -> i64
 msstd_time_duration_multiply(value: i64, factor: i64) -> i64
 msstd_time_duration_divide(value: i64, divisor: i64) -> i64
 msstd_time_duration_negate(value: i64) -> i64

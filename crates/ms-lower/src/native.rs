@@ -324,6 +324,15 @@ impl<'a> FnLower<'a> {
                     .expect("i2f");
                 Ok(Val { v, own: false })
             }
+            (TyKind::Rec(rid), "unix_seconds" | "nanoseconds")
+                if self.b.m.records[rid.index()].name == "Timestamp" =>
+            {
+                // A timestamp is its two words; these read them.
+                let x = self.borrow(recv);
+                let field = u32::from(name == "nanoseconds");
+                let v = self.b.rec_get(rid, field, x);
+                Ok(Val { v, own: false })
+            }
             (TyKind::Float, "is_nan" | "is_finite") => {
                 let x = self.borrow(recv);
                 if name == "is_nan" {

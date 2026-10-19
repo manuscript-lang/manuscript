@@ -241,6 +241,11 @@ impl Cx {
         if t.is_std("Bytes") || t.is_std("StringBuilder") || t.is_std("BytesBuilder") {
             return Ok(MTy::BYTES);
         }
+        // A queue is a refcounted runtime object shared by its copies.
+        if t.is_std("Queue") {
+            let elem = self.lower_ty(m, &t.args[0])?;
+            return Ok(m.types.obj("Queue", vec![elem]));
+        }
         // A duration is its nanosecond count.
         if t.is_std("Duration") {
             return Ok(MTy::INT);

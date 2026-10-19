@@ -44,6 +44,7 @@ pub mod num;
 pub mod obj;
 pub mod process;
 pub mod profile;
+pub mod queue;
 pub mod start;
 pub mod string;
 pub mod sys;

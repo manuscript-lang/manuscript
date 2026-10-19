@@ -451,6 +451,9 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         let t = ct::sub(ty, &self.subst);
         let mt = self.cx.lower_ty(self.b.m, &t)?;
+        if matches!(self.b.m.types.kind(mt), TyKind::Obj(n, _) if n == "Queue") {
+            return self.construct_queue(view, mt);
+        }
         if crate::mapset::is_map_or_set(self.b.m, mt)
             || matches!(self.b.m.types.kind(mt), TyKind::List(_))
             || t.is_std("Bytes")
