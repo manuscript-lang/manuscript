@@ -10,8 +10,10 @@
 //!   objects: an `Obj` header followed by the Rust value, dropped by the runtime
 //!   when the count reaches zero.
 
+pub mod http;
 pub mod net;
 pub mod tls;
+pub mod websocket;
 
 use crate::error::Status;
 use ms_rt_abi::{Obj, StrObj};

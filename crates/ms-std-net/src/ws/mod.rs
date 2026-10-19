@@ -2,6 +2,7 @@
 //!
 //! The Go implementation (`pkg/runtime/websocket.go` over gorilla/websocket) is the oracle.
 
+pub mod dial;
 pub mod frame;
 pub mod handshake;
 pub mod socket;

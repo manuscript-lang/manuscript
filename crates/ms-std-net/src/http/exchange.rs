@@ -5,9 +5,12 @@ use super::h1::{self, BodyDecoder, Decoded};
 use super::headers::{self, Headers};
 use super::server::{self, Conn, DRAIN_LIMIT, Outcome, Pending, Reactor, Server};
 use super::sniff;
+use crate::conn::SharedIo;
 use crate::conn::{Io, Step};
-use crate::error::{HttpErr, IoErr};
+use crate::error::{HttpErr, IoErr, WsErr};
 use crate::wait::{Deadline, Interest, Wait, wait_fd};
+use crate::ws::handshake::{self, Rejected};
+use crate::ws::socket::{Config, Role, Socket};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Instant;
@@ -38,6 +41,7 @@ pub(super) struct ExSt {
     pub closed: bool,
     pub upgraded: bool,
     pub rejected: bool,
+    pub websocket: Option<Rc<Socket>>,
     pub deadline: Option<Instant>,
 }
 
@@ -99,6 +103,7 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, reactor: &Reactor, pending: 
             closed: false,
             upgraded: false,
             rejected: false,
+            websocket: None,
             deadline: timeout.map(|t| started + t),
         }),
     });
@@ -144,7 +149,14 @@ impl Exchange {
 
     /// `HttpExchange.close()`: later calls report `Closed`.
     pub fn close(&self) {
-        self.st.borrow_mut().closed = true;
+        let socket = {
+            let mut st = self.st.borrow_mut();
+            st.closed = true;
+            st.websocket.take()
+        };
+        if let Some(socket) = socket {
+            socket.close();
+        }
     }
 
     fn io(&self) -> Result<Rc<dyn Io>, IoErr> {
@@ -394,6 +406,94 @@ impl Exchange {
         }
     }
 
+    /// `HttpExchange.upgrade(allowed_origins, subprotocols, max_message_bytes)`:
+    /// answers the handshake and turns the connection into a WebSocket that
+    /// lives until the handler returns.
+    pub fn upgrade(
+        &self,
+        allowed_origins: &[String],
+        subprotocols: &[String],
+        max_message_bytes: Option<i64>,
+    ) -> Result<Rc<Socket>, WsErr> {
+        let max = match max_message_bytes {
+            Some(n) if n <= 0 => return Err(WsErr::InvalidInput),
+            Some(n) => Some(n as u64),
+            None => None,
+        };
+        if subprotocols.iter().any(|p| !headers::valid_name(p)) {
+            return Err(WsErr::InvalidInput);
+        }
+        {
+            let st = self.st.borrow();
+            if st.closed || st.sent || st.upgraded || st.rejected {
+                return Err(WsErr::InvalidInput);
+            }
+        }
+        let fields: Vec<(String, Vec<u8>)> = {
+            let st = self.st.borrow();
+            let headers = st.headers.borrow();
+            headers
+                .entries()
+                .iter()
+                .flat_map(|e| e.values.iter().map(|v| (e.name.clone(), v.clone())))
+                .collect()
+        };
+        let host = {
+            let st = self.st.borrow();
+            let headers = st.headers.borrow();
+            headers
+                .first("Host")
+                .map(|h| String::from_utf8_lossy(h).into_owned())
+                .unwrap_or_default()
+        };
+        let method = self.method();
+        let request = handshake::Request {
+            method: &method,
+            host: &host,
+            tls: self.server.tls_enabled(),
+            fields: &fields,
+        };
+        let options = handshake::ServerOptions {
+            allowed_origins,
+            subprotocols,
+            compression: false,
+        };
+        let deadline = self.deadline();
+        match handshake::accept(&request, &options) {
+            Err(rejected) => Err(self.reject(rejected, deadline)),
+            Ok(accepted) => {
+                self.send(&accepted.response, deadline)
+                    .map_err(|e| WsErr::Failed(io_text(e)))?;
+                let (io, leftover) = self
+                    .server
+                    .hijack(&self.conn, &self.reactor)
+                    .ok_or(WsErr::Closed)?;
+                let (local, peer) = socket_texts(&*io);
+                let conn = self
+                    .server
+                    .owner
+                    .adopt_io(Box::new(SharedIo(io)), local, peer)
+                    .map_err(WsErr::from)?;
+                let config = Config::new(max, accepted.compress, accepted.subprotocol);
+                let socket = Rc::new(Socket::new(conn, leftover, Role::Server, config));
+                let mut st = self.st.borrow_mut();
+                st.upgraded = true;
+                st.websocket = Some(socket.clone());
+                Ok(socket)
+            }
+        }
+    }
+
+    /// Answers a refused upgrade the way gorilla does and marks the exchange.
+    fn reject(&self, rejected: Rejected, deadline: Deadline) -> WsErr {
+        let response = rejected.response(unix_now(), false);
+        let _ = self.send(&response, deadline);
+        let mut st = self.st.borrow_mut();
+        st.rejected = true;
+        st.close_conn = true;
+        rejected.error()
+    }
+
     /// Completes the request after the handler returned.
     fn finish(&self, outcome: Outcome<Result<(), HttpErr>>, late: bool) {
         let server = &self.server;
@@ -423,6 +523,11 @@ impl Exchange {
         };
         self.st.borrow_mut().closed = true;
         if upgraded {
+            // The WebSocket lives as long as the handler.
+            let socket = self.st.borrow_mut().websocket.take();
+            if let Some(socket) = socket {
+                socket.close();
+            }
             return;
         }
         let mut out = Vec::new();
@@ -495,6 +600,30 @@ impl Exchange {
     }
 }
 
+fn io_text(e: IoErr) -> String {
+    match e {
+        IoErr::Failed(m) => m,
+        _ => "connection closed".to_string(),
+    }
+}
+
+/// Local and peer address text of a stream's socket.
+fn socket_texts(io: &dyn Io) -> (String, String) {
+    let fd = io.fd();
+    let sock = socket2::SockRef::from(&fd);
+    let text = |a: std::io::Result<socket2::SockAddr>| {
+        a.map(|a| crate::conn::socket_addr_text(&a))
+            .unwrap_or_default()
+    };
+    (text(sock.local_addr()), text(sock.peer_addr()))
+}
+
+fn unix_now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64)
+}
+
 #[cfg(test)]
 mod tests {
     use super::server::tests::{exchange as raw, with_client};
@@ -512,6 +641,31 @@ mod tests {
         fn streaming(&self, ex: Rc<Exchange>) -> Outcome<Result<(), HttpErr>> {
             let result = (|| {
                 match ex.path().as_str() {
+                    "/ws" => {
+                        let socket = ex
+                            .upgrade(&[], &["chat".to_string()], Some(1024))
+                            .map_err(|_| HttpErr::Closed)?;
+                        assert_eq!(socket.subprotocol(), "chat");
+                        assert!(ex.is_closed());
+                        let message = socket
+                            .receive(None)
+                            .map_err(|_| HttpErr::Closed)?
+                            .expect("message");
+                        assert!(message.text);
+                        let mut echo = message.data;
+                        echo.push(b'!');
+                        socket
+                            .send(&echo, true, None)
+                            .map_err(|_| HttpErr::Closed)?;
+                        return Ok(());
+                    }
+                    "/wsbad" => {
+                        assert!(matches!(
+                            ex.upgrade(&[], &[], None),
+                            Err(WsErr::Failed(m)) if m == "websocket: the client is not using the websocket protocol: 'upgrade' token not found in 'Connection' header"
+                        ));
+                        return Ok(());
+                    }
                     "/nobody" => return Ok(()),
                     "/err" => return Err(HttpErr::Failed("nope".into())),
                     "/headers" => {
@@ -627,5 +781,60 @@ mod tests {
         assert_eq!(two.matches("HTTP/1.1").count(), 2, "{two}");
         assert!(two.contains("X-Seen: 2"));
         assert!(two.contains("204 No Content"));
+    }
+
+    #[test]
+    fn upgrades_to_a_websocket() {
+        let (_net, server) = start(Limits::default());
+        let addr = server.address().to_string();
+        let a = addr.clone();
+        let (head, frames) = with_client(move || {
+            use std::io::{Read, Write};
+            let mut s = std::net::TcpStream::connect(&a).unwrap();
+            s.set_read_timeout(Some(std::time::Duration::from_secs(5)))
+                .unwrap();
+            s.write_all(b"GET /ws HTTP/1.1\r\nHost: t\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: chat\r\n\r\n").unwrap();
+            // "hi" masked with 01 02 03 04
+            s.write_all(&[0x81, 0x82, 1, 2, 3, 4, b'h' ^ 1, b'i' ^ 2])
+                .unwrap();
+            let mut all = Vec::new();
+            let mut buf = [0u8; 1024];
+            loop {
+                match s.read(&mut buf) {
+                    Ok(0) | Err(_) => break,
+                    Ok(n) => all.extend_from_slice(&buf[..n]),
+                }
+            }
+            let at = all.windows(4).position(|w| w == b"\r\n\r\n").unwrap() + 4;
+            (
+                String::from_utf8_lossy(&all[..at]).into_owned(),
+                all[at..].to_vec(),
+            )
+        });
+        assert!(
+            head.starts_with("HTTP/1.1 101 Switching Protocols\r\n"),
+            "{head}"
+        );
+        assert!(
+            head.contains("Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n"),
+            "{head}"
+        );
+        assert!(head.contains("Sec-WebSocket-Protocol: chat\r\n"), "{head}");
+        // The echo, then the normal-closure frame sent when the handler returned.
+        assert_eq!(&frames[..5], &[0x81, 3, b'h', b'i', b'!']);
+        assert_eq!(&frames[5..], &[0x88, 2, 0x03, 0xe8]);
+    }
+
+    #[test]
+    fn refuses_a_plain_request_to_upgrade() {
+        let (_net, server) = start(Limits::default());
+        let addr = server.address().to_string();
+        let text = with_client(move || {
+            raw(
+                &addr,
+                b"GET /wsbad HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n",
+            )
+        });
+        assert!(text.starts_with("HTTP/1.1 400 Bad Request\r\n"), "{text}");
     }
 }

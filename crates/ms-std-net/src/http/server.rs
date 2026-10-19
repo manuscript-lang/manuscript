@@ -466,6 +466,10 @@ impl Server {
         self.id
     }
 
+    pub(super) fn tls_enabled(&self) -> bool {
+        self.tls.is_some()
+    }
+
     pub(super) fn rc(&self) -> Option<Rc<Server>> {
         self.me.upgrade()
     }
@@ -701,6 +705,29 @@ impl Server {
             reactor.delete(st.fd());
             st.registered = false;
         }
+    }
+
+    /// Takes the stream and unread input of a connection whose handler upgraded
+    /// it; the server forgets the connection without closing the stream.
+    pub(super) fn hijack(
+        &self,
+        conn: &Rc<Conn>,
+        reactor: &Reactor,
+    ) -> Option<(Rc<dyn Io>, Vec<u8>)> {
+        let (io, leftover) = {
+            let mut st = conn.st.borrow_mut();
+            let io = st.io.take()?;
+            let leftover = st.unread().to_vec();
+            st.inbuf = Vec::new();
+            st.pos = 0;
+            st.outbuf = Vec::new();
+            st.phase = Phase::Closed;
+            (io, leftover)
+        };
+        reactor.targets.borrow_mut().remove(&conn.token);
+        reactor.ready.borrow_mut().retain(|c| !Rc::ptr_eq(c, conn));
+        self.st.borrow_mut().conns.remove(&conn.token);
+        Some((io, leftover))
     }
 
     pub(super) fn close_conn(&self, conn: &Rc<Conn>, reactor: &Reactor) {

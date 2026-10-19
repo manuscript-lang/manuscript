@@ -165,6 +165,33 @@ pub enum DriveError {
     Io(io::Error),
 }
 
+/// A stream shared with its previous owner (a hijacked server connection).
+pub struct SharedIo(pub Rc<dyn Io>);
+
+impl Io for SharedIo {
+    fn fd(&self) -> BorrowedFd<'_> {
+        self.0.fd()
+    }
+    fn read(&self, buf: &mut [u8]) -> Step {
+        self.0.read(buf)
+    }
+    fn write(&self, data: &[u8]) -> Step {
+        self.0.write(data)
+    }
+    fn flush(&self) -> Step {
+        self.0.flush()
+    }
+    fn shutdown_write(&self) -> Result<(), NetErr> {
+        self.0.shutdown_write()
+    }
+    fn shutdown_both(&self) {
+        self.0.shutdown_both();
+    }
+    fn tls_details(&self) -> Option<TlsDetails> {
+        self.0.tls_details()
+    }
+}
+
 /// A connected stream socket.
 pub struct Connection {
     owner: Rc<Network>,
@@ -699,6 +726,16 @@ impl Network {
             .map(|a| socket_addr_text(&a))
             .unwrap_or_default();
         let io = wrap(sock)?;
+        self.adopt_io(io, local, peer)
+    }
+
+    /// Registers an established stream as a connection of this network.
+    pub fn adopt_io(
+        self: &Rc<Self>,
+        io: Box<dyn Io>,
+        local: String,
+        peer: String,
+    ) -> Result<Rc<Connection>, NetErr> {
         let conn = Rc::new(Connection::new(self.clone(), io, local, peer));
         let as_resource: Rc<dyn Resource> = conn.clone();
         if !self.own(&as_resource) {
