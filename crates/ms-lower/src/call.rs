@@ -51,6 +51,10 @@ impl<'a> FnLower<'a> {
                     .unwrap_or_default();
                 self.native_function(e, &view, sym.native.as_str(), &params)?
             }
+            // `x.get()(7)`: the callee is itself a call, so this one calls its function value.
+            Resolution::Method(_) if self.receiver_expr(e).is_none() => {
+                self.call_value(e, &view)?
+            }
             Resolution::Method(m) => self.method_call(e, &view, m)?,
             Resolution::Constructor { ty, case } => self.construct(e, &view, ty, *case)?,
             Resolution::Local(_) | Resolution::Value => self.call_value(e, &view)?,
