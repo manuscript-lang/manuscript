@@ -40,9 +40,16 @@ impl FnLower<'_> {
     }
 
     pub fn match_expr(&mut self, e: &Expr, scrutinee: &Expr, arms: &[Arm]) -> Result<Val, Error> {
+        // The scope owns a hidden copy of the scrutinee, so an arm that returns releases it.
+        self.push_scope();
         let Some((sv, hidden)) = self.hold(scrutinee)? else {
+            self.pop_scope();
             return Ok(self.dummy(MTy::UNIT));
         };
+        if hidden {
+            let ty = self.b.var_ty(sv);
+            self.adopt_hidden(sv, ty);
+        }
         let rty = self.emty(e)?;
         let owned = self.needs_drop(rty);
         let res = self
@@ -151,10 +158,7 @@ impl FnLower<'_> {
         self.b.seal_block(join);
         self.enter(join);
         self.dead = !live;
-        if hidden && !self.dead {
-            let v = self.b.use_var(sv);
-            self.drop_value(v);
-        }
+        self.pop_scope();
         if !live {
             return Ok(self.dummy(rty));
         }
@@ -180,7 +184,7 @@ impl FnLower<'_> {
         };
         let ok = case_of(self.b.m, a, "ok").ok_or_else(|| Error::new("try on a non-Result"))?;
         let err = case_of(self.b.m, a, "error").ok_or_else(|| Error::new("try on a non-Result"))?;
-        let TyKind::Alt(ra) = self.b.m.types.kind(self.ret_ty).clone() else {
+        let TyKind::Alt(ra) = self.b.m.types.kind(self.result_ty()).clone() else {
             return Err(Error::new(
                 "try in a function that does not return a Result",
             ));

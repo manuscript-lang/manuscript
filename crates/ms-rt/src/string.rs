@@ -130,6 +130,16 @@ pub fn from_buf(b: ByteBuf) -> *mut StrObj {
     from_bytes(b.as_slice())
 }
 
+/// Hash of a string's bytes (equal strings hash equally).
+///
+/// # Safety
+/// `s` must be live.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_hash(s: *const StrObj) -> i64 {
+    // SAFETY: caller contract.
+    hash_bytes(unsafe { bytes(s) }) as i64
+}
+
 /// New string from raw bytes. Exported for literals built at startup and for the Rust stdlib crates.
 ///
 /// # Safety

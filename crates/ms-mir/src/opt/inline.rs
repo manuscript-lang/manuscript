@@ -386,6 +386,11 @@ fn remove_dead(m: &mut Module) -> bool {
             .iter()
             .flat_map(|v| v.methods.iter().map(|f| f.index())),
     );
+    stack.extend(
+        m.desc_glue
+            .iter()
+            .flat_map(|(_, eq, hash)| [eq.index(), hash.index()]),
+    );
     if stack.is_empty() {
         return false;
     }
@@ -429,6 +434,10 @@ fn remove_dead(m: &mut Module) -> bool {
     }
     for g in m.vtables.iter_mut().flat_map(|v| v.methods.iter_mut()) {
         *g = FuncId(map[g.index()]);
+    }
+    for (_, eq, hash) in &mut m.desc_glue {
+        *eq = FuncId(map[eq.index()]);
+        *hash = FuncId(map[hash.index()]);
     }
     m.entry = m.entry.map(|e| FuncId(map[e.index()]));
     true

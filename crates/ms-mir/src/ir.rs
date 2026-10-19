@@ -970,6 +970,9 @@ pub struct Module {
     pub funcs: Vec<Func>,
     /// The program entry (`fn() -> Int`, the process exit code), if any.
     pub entry: Option<FuncId>,
+    /// Equality and hash functions (`fn(ptr, ptr) -> bool`, `fn(ptr) -> int`) that the
+    /// descriptor of an aggregate type points to.
+    pub desc_glue: Vec<(Ty, FuncId, FuncId)>,
 }
 
 impl Default for Module {
@@ -994,6 +997,7 @@ impl Module {
             globals: Vec::new(),
             funcs: Vec::new(),
             entry: None,
+            desc_glue: Vec::new(),
         }
     }
 

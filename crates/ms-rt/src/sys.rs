@@ -89,6 +89,10 @@ unsafe extern "C" {
     pub fn pthread_join(thread: usize, ret: *mut *mut c_void) -> c_int;
     pub fn open(path: *const c_char, flags: c_int, ...) -> c_int;
     pub fn close(fd: c_int) -> c_int;
+    pub fn fork() -> c_int;
+    pub fn pipe(fds: *mut c_int) -> c_int;
+    pub fn dup2(from: c_int, to: c_int) -> c_int;
+    pub fn waitpid(pid: c_int, status: *mut c_int, options: c_int) -> c_int;
     pub fn memcmp(a: *const c_void, b: *const c_void, n: size_t) -> c_int;
 }
 

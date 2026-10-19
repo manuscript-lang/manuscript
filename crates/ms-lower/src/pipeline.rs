@@ -147,6 +147,67 @@ fn json_string(s: &str) -> String {
     out
 }
 
+/// What one test process produced.
+struct Ran {
+    stdout: Vec<u8>,
+    stderr: Vec<u8>,
+    status: std::process::ExitStatus,
+    timed_out: bool,
+}
+
+/// How long one test may run: `MSL_TEST_TIMEOUT` seconds (default 60, 0 for no limit).
+fn test_timeout() -> Option<std::time::Duration> {
+    let secs = std::env::var("MSL_TEST_TIMEOUT")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .unwrap_or(60);
+    (secs > 0).then(|| std::time::Duration::from_secs(secs))
+}
+
+/// Runs test `index` of `exe`, killing it when it outlives `limit`.
+fn run_with_timeout(
+    exe: &Path,
+    index: usize,
+    limit: Option<std::time::Duration>,
+) -> std::io::Result<Ran> {
+    use std::io::Read;
+    use std::process::Stdio;
+    let mut child = Command::new(exe)
+        .arg(index.to_string())
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    fn drain<R: Read + Send + 'static>(mut r: R) -> std::thread::JoinHandle<Vec<u8>> {
+        std::thread::spawn(move || {
+            let mut buf = Vec::new();
+            let _ = r.read_to_end(&mut buf);
+            buf
+        })
+    }
+    let out = drain(child.stdout.take().expect("piped stdout"));
+    let err = drain(child.stderr.take().expect("piped stderr"));
+    let start = std::time::Instant::now();
+    let mut timed_out = false;
+    let status = loop {
+        if let Some(status) = child.try_wait()? {
+            break status;
+        }
+        if limit.is_some_and(|l| start.elapsed() >= l) {
+            timed_out = true;
+            child.kill()?;
+            break child.wait()?;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    };
+    Ok(Ran {
+        stdout: out.join().unwrap_or_default(),
+        stderr: err.join().unwrap_or_default(),
+        status,
+        timed_out,
+    })
+}
+
 /// The result of one test.
 struct Outcome {
     name: String,
@@ -171,14 +232,17 @@ pub fn test(source: &Path, json: bool, options: &BuildOptions) -> Result<i32, Bu
             let full = format!("{file}::{name}");
             stdout.push_str(&format!("RUN {full}\n"));
             let start = std::time::Instant::now();
-            let out = Command::new(&exe)
-                .arg(i.to_string())
-                .output()
+            let out = run_with_timeout(&exe, i, test_timeout())
                 .map_err(|e| BuildError::Failed(e.to_string()))?;
             let nanos = start.elapsed().as_nanos();
             stdout.push_str(&String::from_utf8_lossy(&out.stdout));
             let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
-            let failure = if let Some(rest) = stderr.split_once(crate::FAILURE_MARKER) {
+            let failure = if out.timed_out {
+                Some(format!(
+                    "timed out after {}s; the test was cancelled (MSL_TEST_TIMEOUT sets the limit in seconds, 0 disables it)",
+                    test_timeout().map_or(0, |t| t.as_secs())
+                ))
+            } else if let Some(rest) = stderr.split_once(crate::FAILURE_MARKER) {
                 Some(rest.1.to_string())
             } else if out.status.success() {
                 None

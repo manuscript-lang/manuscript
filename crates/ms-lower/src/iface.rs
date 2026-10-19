@@ -55,6 +55,7 @@ impl Cx {
                 ty: *t,
                 mode: Mode::Borrow,
             }));
+            let mut writes_back = false;
             let callee = if !native.as_str().is_empty() {
                 self.native_method_fn(m, native.as_str(), concrete, data_ty)?
             } else {
@@ -63,11 +64,13 @@ impl Cx {
                     .get(&(module, id))
                     .cloned()
                     .ok_or_else(|| Error::new("method callee not found"))?;
-                if !crate::func::var_positions(&c).is_empty() {
+                let vars = self.var_positions(&c);
+                if vars.iter().any(|v| *v != 0) {
                     return Err(Error::new(
                         "interface methods with var parameters are not supported",
                     ));
                 }
+                writes_back = !vars.is_empty();
                 self.function_for(m, &c, &subst)?
             };
             let mut b = FuncBuilder::new(m, &format!("vt.{}", s.name), ps, s.ret);
@@ -80,7 +83,32 @@ impl Cx {
             let mut call_args = vec![recv];
             call_args.extend_from_slice(&args[1..]);
             let r = b.call(callee, &call_args);
-            b.ret(Some(r));
+            if writes_back {
+                // The method hands back `{result, self}`: the interface's data takes the new self.
+                let rty = b.ty(r);
+                let TyKind::Rec(rid) = b.m.types.kind(rty).clone() else {
+                    return Err(Error::new("mutating method must return a record"));
+                };
+                let res = b.rec_get(rid, 0, r);
+                let res = owned_value(&mut b, res);
+                let new = b.rec_get(rid, 1, r);
+                let new = owned_value(&mut b, new);
+                if b.m.needs_drop(data_ty) {
+                    let old = b
+                        .emit(Op::Take, &[args[0]], Imm::Ty(data_ty), Some(data_ty))
+                        .expect("take");
+                    b.emit(Op::Drop, &[old], Imm::None, None);
+                    b.emit(Op::Put, &[args[0], new], Imm::None, None);
+                } else {
+                    b.emit(Op::Store, &[args[0], new], Imm::None, None);
+                }
+                if b.m.needs_drop(rty) {
+                    b.emit(Op::Drop, &[r], Imm::None, None);
+                }
+                b.ret(Some(res));
+            } else {
+                b.ret(Some(r));
+            }
             let f = b.into_func();
             methods.push(m.add_func(f));
         }
@@ -318,4 +346,13 @@ impl Cx {
         self.vtables.insert(key, id);
         id
     }
+}
+
+/// An owned copy of a borrowed value (a no-op copy for plain data).
+fn owned_value(b: &mut FuncBuilder<'_>, v: ms_mir::ir::Value) -> ms_mir::ir::Value {
+    let ty = b.ty(v);
+    if !b.m.needs_drop(ty) {
+        return v;
+    }
+    b.emit(Op::Copy, &[v], Imm::None, Some(ty)).expect("copy")
 }

@@ -380,6 +380,11 @@ impl<'m> FuncBuilder<'m> {
         Var(self.vars.len() as u32 - 1)
     }
 
+    /// The type a variable was declared with.
+    pub fn var_ty(&self, v: Var) -> Ty {
+        self.vars[v.0 as usize].ty
+    }
+
     /// Defines the variable's value at the end of the current block.
     pub fn def_var(&mut self, v: Var, val: Value) {
         self.defs.insert((v, self.cur), val);

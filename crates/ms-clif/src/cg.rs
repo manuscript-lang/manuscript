@@ -335,6 +335,17 @@ impl<'m> Gen<'m> {
                 d.write_function_addr(off, fr);
             }
         }
+        if let Some(&(_, eq, hash)) = m.desc_glue.iter().find(|(t, _, _)| *t == ty) {
+            for (off, f) in [
+                (ms_rt_abi::DESC_EQ_OFFSET as u32, eq),
+                (ms_rt_abi::DESC_HASH_OFFSET as u32, hash),
+            ] {
+                let fr = self
+                    .module
+                    .declare_func_in_data(self.funcs[f.index()], &mut d);
+                d.write_function_addr(off, fr);
+            }
+        }
         self.module.define_data(id, &d).expect("define descriptor");
         id
     }

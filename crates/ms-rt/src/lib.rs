@@ -48,6 +48,7 @@ pub mod start;
 pub mod string;
 pub mod sys;
 pub mod task;
+pub mod trap;
 pub mod utf8;
 pub mod vec;
 
