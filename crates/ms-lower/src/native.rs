@@ -779,15 +779,14 @@ impl<'a> FnLower<'a> {
                     s.finish(f.val);
                     v
                 } else if let Some(c) = cause {
-                    let v = if c.wrapped {
+                    if c.wrapped {
                         s.owned(c.val)
                     } else {
                         let p = s.b.opt_unwrap(c.val.v);
                         let o = s.owned(Val { v: p, own: false });
                         s.finish(c.val);
                         o
-                    };
-                    v
+                    }
                 } else {
                     // `MissingValue` names the source line of the call.
                     let et = s.b.m.alts[res.index()].cases[err].fields[0].1;
