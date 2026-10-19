@@ -11,6 +11,7 @@ fn main() {
     let mut args = std::env::args().skip(1);
     let (mut input, mut out, mut rt) = (None, None, None);
     let mut opts = Options::default();
+    let mut optimize = true;
     while let Some(a) = args.next() {
         match a.as_str() {
             "-o" => out = args.next().map(PathBuf::from),
@@ -18,6 +19,7 @@ fn main() {
             "--no-checks" => opts.checks = false,
             "--no-poll" => opts.poll = false,
             "--dump-clif" => opts.dump_clif = true,
+            "--no-opt" => optimize = false,
             "--opt" => opts.opt_level = match args.next().as_deref() {
                 Some("none") => "none",
                 _ => "speed",
@@ -27,12 +29,15 @@ fn main() {
     }
     let (input, out) = (input.expect("input file"), out.expect("-o <exe>"));
     let src = std::fs::read_to_string(&input).expect("read input");
-    let m = ms_mir::parse::parse_module(&src).unwrap_or_else(|e| panic!("{e}"));
+    let mut m = ms_mir::parse::parse_module(&src).unwrap_or_else(|e| panic!("{e}"));
     if let Err(errs) = ms_mir::verify::verify_module(&m) {
         for e in errs {
             eprintln!("{e}");
         }
         std::process::exit(2);
+    }
+    if optimize {
+        ms_mir::opt::optimize(&mut m, ms_mir::opt::Level::Speed, true);
     }
     let obj = compile(&m, &opts).unwrap_or_else(|e| panic!("{e}"));
     let objp = out.with_extension("o");

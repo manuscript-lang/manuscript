@@ -3,6 +3,7 @@
 
 pub mod builder;
 pub mod interp;
+pub mod opt;
 pub mod ir;
 pub mod parse;
 pub mod print;

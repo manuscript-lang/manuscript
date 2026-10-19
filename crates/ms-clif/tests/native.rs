@@ -51,7 +51,10 @@ pub fn run_interp(src: &str) -> Outcome {
 }
 
 pub fn run_native_with(src: &str, opts: &Options, tag: &str) -> Outcome {
-    let m = module(src);
+    let mut m = module(src);
+    if tag.ends_with(".opt") {
+        ms_mir::opt::optimize(&mut m, ms_mir::opt::Level::Speed, true);
+    }
     let obj = compile(&m, opts).unwrap_or_else(|e| panic!("{e}"));
     let d = dir();
     let objp = d.join(format!("{tag}.o"));
@@ -71,6 +74,9 @@ pub fn same(src: &str, tag: &str) -> Outcome {
     let b = run_native(src, tag);
     assert_eq!(a.stdout, b.stdout, "stdout differs ({tag})");
     assert_eq!(a.code, b.code, "exit code differs ({tag})");
+    let c = run_native(src, &format!("{tag}.opt"));
+    assert_eq!(a.stdout, c.stdout, "stdout differs after optimization ({tag})");
+    assert_eq!(a.code, c.code, "exit code differs after optimization ({tag})");
     b
 }
 
@@ -129,9 +135,11 @@ fn kernel_src(name: &str) -> String {
 }
 
 fn check_kernel(name: &str, expect: &str) {
-    let o = run_native(&kernel_src(name), name);
-    assert_eq!(o.code, 0, "{name} exit code");
-    assert_eq!(o.stdout.trim(), expect, "{name} checksum");
+    for tag in [name.to_string(), format!("{name}.opt")] {
+        let o = run_native(&kernel_src(name), &tag);
+        assert_eq!(o.code, 0, "{tag} exit code");
+        assert_eq!(o.stdout.trim(), expect, "{tag} checksum");
+    }
 }
 
 macro_rules! kernel_test {
