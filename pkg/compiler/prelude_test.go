@@ -32,19 +32,24 @@ func TestCollectionPreludeAndShadowing(t *testing.T) {
 		"unimported literals and annotations": `fn use() Int:
     let nested: List[List[Int]] = [[], [1]]
     let empty: Map[String, Int] = {}
-    return Map[String, Int]().add("a", nested[1][0]).get("a").get()
+    var found = Map[String, Int]()
+    found.add("a", nested[1][0])
+    return found.get("a").get()
 `,
 		"unimported set annotations and methods": `type Selection:
     values: Set[Int]
-fn keep[T: Hashable](values: Set[T], value: T) Set[T]: values.add(value)
+fn keep[T: Hashable](var values: Set[T], value: T) Set[T]:
+    values.add(value)
+    return values
 fn use() Set[Int]:
-    let values: Set[Int] = Set[Int]()
+    var values: Set[Int] = Set[Int]()
     let nested: List[Set[Int]] = [values]
     return keep(nested[0], 1)
 `,
 		"contextual set construction": `fn use() Set[Int]:
-    let values: Set[Int] = Set()
-    return values.add(1)
+    var values: Set[Int] = Set()
+    values.add(1)
+    return values
 `,
 		"local callable bindings": `fn f() Int:
     let List = fn(value: Int) Int: value

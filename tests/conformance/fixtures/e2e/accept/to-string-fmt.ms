@@ -86,7 +86,9 @@ test "records alternatives and collections convert":
     (try check(value: [[1], [2, 3]].to_string(), expected: "[[1], [2, 3]]"))
     let empty: List[Int] = []
     (try check(value: empty.to_string(), expected: "[]"))
-    let map = (Map[String, Int]().add(key: "b", value: 2).add(key: "a", value: 1))
+    var map = Map[String, Int]()
+    map.add(key: "b", value: 2)
+    map.add(key: "a", value: 1)
     (try check(value: map.to_string(), expected: "Map(b: 2, a: 1)"))
     let set = Set[Int]([2, 1])
     (try check(value: set.to_string(), expected: "Set(2, 1)"))

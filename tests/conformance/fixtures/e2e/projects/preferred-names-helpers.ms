@@ -2,7 +2,9 @@
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/preferred_names/helpers.ms
 export fn add_generic[T: Hashable](items: Set[T], value: T) Set[T]:
-    return items.add(value)
+    items.add(value)
+    return items
 
 export fn remove_generic[T: Hashable](items: Set[T], value: T) Set[T]:
-    return items.remove(value)
+    items.remove(value)
+    return items

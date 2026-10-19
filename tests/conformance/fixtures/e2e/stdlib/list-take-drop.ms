@@ -23,15 +23,16 @@ test "List take and drop clamp positive counts and preserve empty boundaries":
 
 test "List take and drop allocate independent outer storage":
     let values = [1, 2, 3]
-    let prefix = values.take(3)
-    let remainder = values.drop(0)
-    prefix.set(0, 9).append(4)
+    var prefix = values.take(3)
+    var remainder = values.drop(0)
+    prefix.set(0, 9)
+    prefix.append(4)
     remainder.remove(0)
     try expect_false(
         (values != [1, 2, 3] or prefix != [9, 2, 3, 4] or remainder != [2, 3])
     )
-    let empty_take = values.take(0)
-    let empty_drop = values.drop(3)
+    var empty_take = values.take(0)
+    var empty_drop = values.drop(3)
     empty_take.append(5)
     empty_drop.append(6)
     try expect_false(not (values.take(0).is_empty()) or not (values.drop(3).is_empty()))
@@ -72,6 +73,6 @@ test "List take and drop bound methods read the retained receiver at call time":
     values.append(4)
     values = [9]
     try expect_false(take(7) != [1, 2, 3, 4] or drop(2) != [3, 4])
-    let first = take(2)
+    var first = take(2)
     first.set(0, 8)
     try expect_false(take(2) != [1, 2] or values != [9])

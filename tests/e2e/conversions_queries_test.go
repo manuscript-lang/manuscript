@@ -15,9 +15,13 @@ func TestCollectionQueryCallbackFaultLocations(t *testing.T) {
 				continue
 			}
 			t.Run(kind+"."+method, func(t *testing.T) {
-				parameters, constructor := "value: Int", "Set[Int]().add(0)"
+				parameters, constructor := "value: Int", "Set[Int]()"
 				if kind == "Map" {
-					parameters, constructor = "key: String, value: Int", "Map[String, Int]().add(\"a\", 0)"
+					parameters, constructor = "key: String, value: Int", "Map[String, Int]()"
+				}
+				add := "add(0)"
+				if kind == "Map" {
+					add = "add(\"a\", 0)"
 				}
 				result, expression, arguments := "Bool", "1 / value == 0", "crash"
 				if method == "fold" || method == "fold_right" {
@@ -27,8 +31,8 @@ func TestCollectionQueryCallbackFaultLocations(t *testing.T) {
 				if method == "map" || method == "map_keys" {
 					result, expression = "Int", "1 / value"
 				}
-				source := fmt.Sprintf("fn crash(%s) %s:\n    return %s\nexport fn main() Int:\n    let values = %s\n    let result = values.%s(%s)\n    return 0\n", parameters, result, expression, constructor, method, arguments)
-				assertQueryFaultFrames(t, source, []string{"query-fault.ms:2 in crash", "query-fault.ms:5 in main"})
+				source := fmt.Sprintf("fn crash(%s) %s:\n    return %s\nexport fn main() Int:\n    var values = %s\n    values.%s\n    let result = values.%s(%s)\n    return 0\n", parameters, result, expression, constructor, add, method, arguments)
+				assertQueryFaultFrames(t, source, []string{"query-fault.ms:2 in crash", "query-fault.ms:6 in main"})
 			})
 		}
 	}

@@ -65,7 +65,7 @@ fn validate(report: Report) Result[Unit, Error]:
 
 fn inventory(suite: String) Result[List[String], Error]:
     let fs = filesystem()
-    let files: List[String] = []
+    var files: List[String] = []
 
     if suite == "all" or suite == "core":
         let core = try fs.glob("tests/e2e/testdata/accept", "*.ms")
@@ -159,7 +159,7 @@ export fn main() Int:
             return 1
 
 test "reports require complete nonempty executions and count explicit skips":
-    let report = Report(
+    var report = Report(
         1,
         true,
         0,
@@ -210,7 +210,7 @@ test "child launch failures are returned to the fixture dispatcher":
     run_file(".", "fixture.ms").is_error() | try expect_true
 
 test "fixture lifecycle errors invalidate an otherwise successful report":
-    let report = Report(1, true, 0, [Case("pass", "passed")], Summary(1, 1, 1, 0, 0, 0))
+    var report = Report(1, true, 0, [Case("pass", "passed")], Summary(1, 1, 1, 0, 0, 0))
     (
         report.fixture_errors.append(
             FixtureError("fixture.ms", "after_all", "cleanup failed")

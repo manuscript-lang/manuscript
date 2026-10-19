@@ -35,7 +35,8 @@ export fn first_generic_map[T: Hashable](values: Set[T]) Set[Key]:
     return transform_set(values, fn(n): Key(0, n.to_string()))
 
 export fn first_lookup() String:
-    let values = Map[Key, String]().add(Key(5, "original"), "found")
+    var values = Map[Key, String]()
+    values.add(Key(5, "original"), "found")
     return values.filter(fn(k, v): true) | lookup(Key(5, "different"), "absent")
 
 export fn first_failure(cause: Cause) Result[String, Error]:
@@ -44,7 +45,8 @@ export fn first_failure(cause: Cause) Result[String, Error]:
 
 export fn first_queries() Bool:
     let key = Key(5, "original")
-    let map = Map[Key, String]().add(key, "found")
+    var map = Map[Key, String]()
+    map.add(key, "found")
     let set = Set[Key]([key])
     return (
         locate_map(map, Key(5, "different")).is_some()
@@ -56,16 +58,21 @@ export fn first_converted(cause: Cause) Result[Int, Error]:
     return convert(missing, fn() Error: cause)
 
 export fn first_folded(cause: Cause) Error:
-    let values = Map[String, Int]().add("key", 1)
+    var values = Map[String, Int]()
+    values.add("key", 1)
     return values.fold[Error](cause, fn(acc, key, value): acc)
 
 export fn first_key_transform[T: Hashable](input: Map[T, Int]) Map[Key, Int]:
     return remap_keys(input, fn(key, value): Key(0, key.to_string()))
 
 export fn first_bound_keys() fn(transform: fn(key: Int, value: Int) Key) Map[Key, Int]:
-    return Map[Int, Int]().add(1, 10).add(2, 20).map_keys[Key]
+    var chain_1 = Map[Int, Int]()
+    chain_1.add(1, 10)
+    chain_1.add(2, 20)
+    return chain_1.map_keys[Key]
 
 export fn first_value_transform() Int:
-    let input = Map[Key, Int]().add(Key(5, "original"), 2)
+    var input = Map[Key, Int]()
+    input.add(Key(5, "original"), 2)
     let mapped = remap_values(input, fn(key, value): value + 1)
     return mapped.get(Key(5, "different")).get(0)

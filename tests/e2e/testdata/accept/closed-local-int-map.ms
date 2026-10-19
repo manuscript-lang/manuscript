@@ -9,11 +9,12 @@ fn missing() Int:
     return values.get(0).get()
 
 fn returned_alias() Map[Int, Int]:
-    let values = Map[Int, Int]()
-    return values.add(2, 20)
+    var values = Map[Int, Int]()
+    values.add(2, 20)
+    return values
 
 test "closed maps preserve lookup replacement and absence":
-    let values = Map[Int, Int]()
+    var values = Map[Int, Int]()
     values.length() | try expect_equal(expected: 0)
     values.contains(7) | try expect_false
     values.get(7).is_none() | try expect_true
@@ -28,7 +29,7 @@ test "closed maps preserve lookup replacement and absence":
 
 test "closed map arguments retain written evaluation order":
     let visits: List[Int] = []
-    let values = Map[Int, Int]()
+    var values = Map[Int, Int]()
     values.add(value: effect(visits, 20), key: effect(visits, 2))
     values.add(key: effect(visits, 3), value: effect(visits, 30))
     visits | try expect_equal(expected: [20, 2, 3, 30])
@@ -41,17 +42,18 @@ test "missing local lookups keep Optional faults":
     )
 
 test "escaped map results retain aliases and insertion order":
-    let values = returned_alias()
-    let alias = values.add(1, 10)
+    var values = returned_alias()
+    values.add(1, 10)
+    var alias = values
     alias.add(2, 21)
-    let seen: List[Int] = []
+    var seen: List[Int] = []
     for entry in values:
         seen.append(entry.key)
     seen | try expect_equal(expected: [2, 1])
     values.get(2).get() | try expect_equal(expected: 21)
 
 test "captured maps retain shared reference mutations":
-    let values = Map[Int, Int]()
+    var values = Map[Int, Int]()
     let callback = fn() Int: values.get(1).get()
     values.add(1, 10)
     callback() | try expect_equal(expected: 10)

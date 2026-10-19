@@ -19,6 +19,7 @@ export fn main() Int:
     say("l4 ={l4} len {l4.length()}")
     let l5 = l4.map(fn(x): x * 7)
     say("l5 = {l5} len {l5.length()}")
-    let l6 = l4.clone().append(97)
+    var l6 = l4.clone()
+    l6.append(97)
     say("l6 = {l6} len {l6.length()}")
     return 0

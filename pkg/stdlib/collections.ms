@@ -37,24 +37,24 @@ impl List[T]:
     # Reports whether the list has no elements.
     fn is_empty() Bool:
 
-    # Inserts `value` at index 0 in place, shifting existing elements one position later, and returns this same list.
-    fn prepend(value: T) List[T]:
+    # Inserts `value` at index 0 in place, shifting existing elements one position later.
+    var fn prepend(value: T) Unit:
 
-    # Inserts value before index in place and returns this list; negative indexes count from the end.
+    # Inserts value before index in place; negative indexes count from the end.
     # Requires -length() <= index <= length(); index length() appends, and invalid indexes fault.
-    fn insert(index: Int, value: T) List[T]:
+    var fn insert(index: Int, value: T) Unit:
 
     # Removes and returns the last element in place, or none for an empty list.
-    fn pop() Optional[T]:
+    var fn pop() Optional[T]:
 
-    # Replaces an element in place and returns this list; negative indexes count from the end.
+    # Replaces an element in place; negative indexes count from the end.
     # Invalid indexes fault.
-    fn set(index: Int, value: T) List[T]:
+    var fn set(index: Int, value: T) Unit:
 
-    # Removes an element in place and returns this list; negative indexes count from the end.
+    # Removes an element in place; negative indexes count from the end.
     # Invalid indexes fault.
     # Shifts the suffix without clearing prior values retained in spare backing capacity.
-    fn remove(index: Int) List[T]:
+    var fn remove(index: Int) Unit:
 
     # Returns a new shallow List containing [start, end); outer storage is independent.
     # Negative bounds are relative to the end; bounds outside 0 <= start <= end <= length() return CollectionError.OutOfRange.
@@ -68,8 +68,8 @@ impl List[T]:
     # Leaves the receiver unchanged; negative count is a programming fault.
     fn drop(count: Int) List[T]:
 
-    # Reverses this list in place and returns the same instance.
-    fn reverse_in_place() List[T]:
+    # Reverses this list in place.
+    var fn reverse_in_place() Unit:
 
     # Returns a reversed shallow copy with independent outer storage; nested references remain shared.
     fn reversed() List[T]:
@@ -127,15 +127,15 @@ impl List[T]:
     # Requires 0 <= start <= length and 0 <= delete_count <= length - start; invalid bounds fault without clamping.
     # Replacement references stay shallow; using this same List as replacement stages its prior values.
     # Shrinking retains prior values in spare backing capacity, following captured Go slice traversal.
-    fn splice(start: Int, delete_count: Int, replacement: List[T]) List[T]:
+    var fn splice(start: Int, delete_count: Int, replacement: List[T]) Unit:
 
-    # Sets elements in [start, end) to `value` in place and returns this list.
+    # Sets elements in [start, end) to `value` in place.
     # Bounds must satisfy 0 <= start <= end <= length(); negative or larger bounds fault rather than counting from the end, and an empty range changes nothing.
-    fn fill(value: T, start: Int, end: Int) List[T]:
+    var fn fill(value: T, start: Int, end: Int) Unit:
 
-    # Copies the elements in [start, end) to begin at index `target`, in place, and returns this list.
+    # Copies the elements in [start, end) to begin at index `target`, in place.
     # The list never grows: copying stops at the end of the list. Source bounds must satisfy 0 <= start <= end <= length() and a target must be within 0 through length(); otherwise the call faults.
-    fn copy_within(target: Int, start: Int, end: Int) List[T]:
+    var fn copy_within(target: Int, start: Int, end: Int) Unit:
 
     # Returns a new set of the distinct elements, using Hashable equality; the first of equal elements is kept in insertion order.
     fn to_set() Set[T]:
@@ -150,8 +150,8 @@ impl List[T]:
     # Available only on List[String].
     fn join(separator: String) String:
 
-    # Adds `value` at the end in place and returns this same list.
-    fn append(value: T) List[T]:
+    # Adds `value` at the end in place.
+    var fn append(value: T) Unit:
 
     # Returns a new list holding this list's elements followed by `other`; neither operand is changed.
     fn concat(other: List[T]) List[T]:
@@ -203,16 +203,16 @@ impl Map[T, U]:
     # Stops at the first nonmatching entry; empty maps return true.
     fn every(predicate: fn(key: T, value: U) Bool) Bool:
 
-    # Inserts a default only when the key is absent and returns this map.
+    # Inserts a default only when the key is absent.
     # The supplied value evaluates normally even when the key already exists.
-    fn add_default(key: T, value: U) Map[T, U]:
+    var fn add_default(key: T, value: U) Unit:
 
-    # Creates and inserts a default only when the key is absent, then returns this map.
+    # Creates and inserts a default only when the key is absent.
     # Calls create(key:) once for absence; an existing key leaves its value and position unchanged.
-    fn add_default_from(key: T, create: fn(key: T) U) Map[T, U]:
+    var fn add_default_from(key: T, create: fn(key: T) U) Unit:
 
-    # Removes every entry in place and returns this same map; aliases observe the empty map.
-    fn clear() Map[T, U]:
+    # Removes every entry in place.
+    var fn clear() Unit:
 
     # Returns a new list of the keys in insertion order.
     fn keys() List[T]:
@@ -223,9 +223,9 @@ impl Map[T, U]:
     # Returns a new list of fresh `MapEntry` records in insertion order; keys and values keep their original references.
     fn entries() List[MapEntry[T, U]]:
 
-    # Copies every entry of `other` into this map in place and returns this map.
+    # Copies every entry of `other` into this map in place.
     # Existing keys keep their position and key but take the value from `other`; new keys append in `other` order. `other` is unchanged.
-    fn merge(other: Map[T, U]) Map[T, U]:
+    var fn merge(other: Map[T, U]) Unit:
 
     # Calls operation(key:, value:) sequentially over an insertion-order membership snapshot.
     fn for_each(operation: fn(key: T, value: U) Unit) Unit:
@@ -239,12 +239,12 @@ impl Map[T, U]:
     # Returns the number of entries.
     fn length() Int:
 
-    # Inserts or replaces a value and returns this map; replacement keeps the original key and insertion position.
-    fn add(key: T, value: U) Map[T, U]:
+    # Inserts or replaces a value; replacement keeps the original key and insertion position.
+    var fn add(key: T, value: U) Unit:
 
-    # Removes an equal key and returns this same Map; remaining entries retain insertion order.
+    # Removes an equal key in place; remaining entries retain insertion order.
     # An absent key leaves values and ordering unchanged; lookup uses the selected Equal/Hashable scope.
-    fn remove(key: T) Map[T, U]:
+    var fn remove(key: T) Unit:
 
 # One key-value pair returned by `Map.entries`.
 export type MapEntry[T: Hashable, U]:
@@ -309,8 +309,8 @@ impl Set[T]:
     # Tests whether the operands have no common values.
     fn is_disjoint_from(other: Set[T]) Bool:
 
-    # Removes all values in place and returns this set; aliases observe the empty set.
-    fn clear() Set[T]:
+    # Removes all values in place.
+    var fn clear() Unit:
 
     # Returns a shallow list of values in insertion order.
     fn values() List[T]:
@@ -327,11 +327,11 @@ impl Set[T]:
     # Returns the number of distinct values currently stored.
     fn length() Int:
 
-    # Adds a value in place and returns this set; an equal value retains its original payload and position.
-    fn add(value: T) Set[T]:
+    # Adds a value in place; an equal value retains its original payload and position.
+    var fn add(value: T) Unit:
 
-    # Removes an equal value in place and returns this set; an absent value leaves it unchanged.
-    fn remove(value: T) Set[T]:
+    # Removes an equal value in place; an absent value leaves it unchanged.
+    var fn remove(value: T) Unit:
 
 # One list index and its corresponding value.
 export type ListEntry[T]:

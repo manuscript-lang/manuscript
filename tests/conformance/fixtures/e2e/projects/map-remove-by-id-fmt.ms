@@ -14,22 +14,18 @@ impl Hashable for Key:
     fn hash() Int: self.id
 
 export fn id_map() Map[Key, Int]:
-    return (
-        Map[Key, Int]()
-        .add(Key(1, "one"), 10)
-        .add(Key(2, "two"), 20)
-        .add(Key(3, "three"), 30)
-    )
+    var values = Map[Key, Int]()
+    values.add(Key(1, "one"), 10)
+    values.add(Key(2, "two"), 20)
+    values.add(Key(3, "three"), 30)
+    return values
 
-export fn id_direct(values: Map[Key, Int], key: Key) Map[Key, Int]:
-    return values.remove(key)
+export fn id_direct(var values: Map[Key, Int], key: Key) Unit:
+    values.remove(key)
 
-export fn id_bound(values: Map[Key, Int], key: Key) Map[Key, Int]:
+export fn id_bound(var values: Map[Key, Int], key: Key) Unit:
     let remove = values.remove
-    return remove(key)
+    remove(key)
 
-export fn id_generic(values: Map[Key, Int], key: Key) Map[Key, Int]:
-    return remove_generic(values, key)
-
-export fn id_returned(values: Map[Key, Int]) fn(key: Key) Map[Key, Int]:
-    return values.remove
+export fn id_generic(var values: Map[Key, Int], key: Key) Unit:
+    remove_generic(var values, key)

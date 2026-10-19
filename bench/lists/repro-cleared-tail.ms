@@ -1,7 +1,7 @@
 import panic from "@std/faults.ms"
 
 export fn main() Int:
-    let values = [1, 2, 3]
+    var values = [1, 2, 3]
     var total = 0
     var count = 0
 

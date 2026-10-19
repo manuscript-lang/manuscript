@@ -11,7 +11,8 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
-    let l2 = l1.clone().append(32)
+    var l2 = l1.clone()
+    l2.append(32)
     say("l2 = {l2} len {l2.length()}")
     let b3 = (true and ("" + "MiXeD CaSe").is_empty())
     say("b3 = {b3}")

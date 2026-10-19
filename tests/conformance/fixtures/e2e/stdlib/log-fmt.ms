@@ -152,7 +152,7 @@ test "limits and unencodable values reject before writing":
         try expect_equal(output.data, before)
 
 test "transport closure and stream errors preserve identity":
-    let output = MemoryStream("".to_bytes(), 0, closed: false)
+    var output = MemoryStream("".to_bytes(), 0, closed: false)
     let transport = stream_transport(WriteStream(output))
     let logger = try create(transport)
     output.closed = true

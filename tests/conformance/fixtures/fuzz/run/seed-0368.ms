@@ -51,7 +51,8 @@ export fn main() Int:
     say("b9 = {b9}")
     let f10 = 261.034
     say("f10 = {f10}")
-    let l11 = l6.clone().append(85)
+    var l11 = l6.clone()
+    l11.append(85)
     say("l11 = {l11} len {l11.length()}")
     say("collatz(2321) = {collatz(2321)}")
     let i12 = i2

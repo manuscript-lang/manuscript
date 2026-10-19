@@ -69,7 +69,8 @@ export fn main() Int:
         say(("{(i9 + 945809)}:" + s10))
     else:
         say(s10)
-    let l13 = l4.clone().append(13)
+    var l13 = l4.clone()
+    l13.append(13)
     say("l13 = {l13} len {l13.length()}")
     if (s10 + s10).is_empty():
         say(s10)

@@ -23,7 +23,7 @@ fn say(text: String) Unit:
     let _ignored = stdout().write(text)
 
 fn sieve(n: Int) Int:
-    let flags: List[Bool] = List[Bool]()
+    var flags: List[Bool] = List[Bool]()
     var i = 0
     while i <= n:
         flags.append(true)
@@ -46,10 +46,10 @@ fn advance(bodies: List[Body], steps: Int) Float:
     while s < steps:
         var i = 0
         while i < n:
-            let a = bodies.get(i)
+            var a = bodies.get(i)
             var j = i + 1
             while j < n:
-                let b = bodies.get(j)
+                var b = bodies.get(j)
                 let dx = a.x - b.x
                 let dy = a.y - b.y
                 let dz = a.z - b.z
@@ -65,7 +65,7 @@ fn advance(bodies: List[Body], steps: Int) Float:
             i += 1
         i = 0
         while i < n:
-            let a = bodies.get(i)
+            var a = bodies.get(i)
             a.x += 0.01 * a.vx
             a.y += 0.01 * a.vy
             a.z += 0.01 * a.vz
@@ -97,7 +97,7 @@ fn neighbors(g: Grid, x: Int, y: Int) Int:
     return n
 
 fn step(g: Grid) Grid:
-    let next = List[Int]()
+    var next = List[Int]()
     var y = 0
     while y < g.height:
         var x = 0
@@ -113,7 +113,7 @@ fn step(g: Grid) Grid:
     return Grid(g.width, g.height, next)
 
 fn life(gens: Int) Int:
-    let cells = List[Int]()
+    var cells = List[Int]()
     var i = 0
     while i < 128 * 128:
         if i % 7 == 0 or i % 11 == 0:
@@ -131,12 +131,12 @@ fn life(gens: Int) Int:
     )
 
 fn matmul(n: Int) Float:
-    let a = List[List[Float]]()
-    let b = List[List[Float]]()
+    var a = List[List[Float]]()
+    var b = List[List[Float]]()
     var i = 0
     while i < n:
-        let ra = List[Float]()
-        let rb = List[Float]()
+        var ra = List[Float]()
+        var rb = List[Float]()
         var j = 0
         while j < n:
             ra.append((i + j).to_float())
@@ -198,7 +198,7 @@ fn collatz(limit: Int) Int:
     return best
 
 fn wordfreq(n: Int) Int:
-    let m = Map[Int, Int]()
+    var m = Map[Int, Int]()
     var i = 0
     while i < n:
         let k = (i * 7919) % 5003

@@ -20,7 +20,7 @@ fn nested(items: List[Int]) List[Int]:
     )
 
 test "list callbacks":
-    let items = List[Int]()
+    var items = List[Int]()
     var i = 0
 
     while i < 5:
@@ -57,7 +57,7 @@ test "list callbacks":
             ) == 10
         )
     )
-    let grown = List[Int]()
+    var grown = List[Int]()
     grown.append(value: 1)
     grown.append(value: 2)
     let seen = grown.map(fn(value: Int) Int: grow(list: grown, value: value))

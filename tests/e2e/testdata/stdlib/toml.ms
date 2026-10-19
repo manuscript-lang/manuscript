@@ -311,18 +311,15 @@ test "TOML stringify rejects invalid date-time text":
     let invalid: Result[String, TomlError] = error(TomlError.InvalidInput)
 
     for text in ["bogus", "", "2024-13-01", "1979-05-27T07:32:00 junk"]:
-        let table = Map[String, TomlValue]().add("x", TomlValue.DateTimeValue(text))
+        var table = Map[String, TomlValue]()
+        table.add("x", TomlValue.DateTimeValue(text))
         try expect_equal(stringify(TomlValue.TableValue(table)), invalid)
-        let nested = Map[String, TomlValue]().add(
-            "a",
-            TomlValue.ArrayValue([TomlValue.TableValue(table)])
-        )
+        var nested = Map[String, TomlValue]()
+        nested.add("a", TomlValue.ArrayValue([TomlValue.TableValue(table)]))
         try expect_equal(stringify(TomlValue.TableValue(nested)), invalid)
 
-    let good = Map[String, TomlValue]().add(
-        "x",
-        TomlValue.DateTimeValue("1979-05-27T07:32:00Z")
-    )
+    var good = Map[String, TomlValue]()
+    good.add("x", TomlValue.DateTimeValue("1979-05-27T07:32:00Z"))
     try expect_equal(
         (try stringify(TomlValue.TableValue(good))),
         "x = 1979-05-27T07:32:00Z\n"

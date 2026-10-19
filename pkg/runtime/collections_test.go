@@ -222,7 +222,8 @@ func TestListReverse(t *testing.T) {
 	if !reflect.DeepEqual(r.Items, []int{3, 2, 1}) || !reflect.DeepEqual(l.Items, []int{1, 2, 3}) {
 		t.Fatal(r.Items, l.Items)
 	}
-	if List_ReverseInPlace(ctx, l) != l || l.Items[0] != 3 {
+	List_ReverseInPlace(ctx, l)
+	if l.Items[0] != 3 {
 		t.Fatal("in place")
 	}
 }
@@ -382,7 +383,8 @@ func TestMapOperations(t *testing.T) {
 	if Map_GetOr(ctx, m, "b", -1) != 2 || Map_GetOr(ctx, clone, "b", -1) != 0 || Map_Length(ctx, clone) != 5 {
 		t.Fatal("clone/merge")
 	}
-	if Map_Clear(ctx, clone) != clone || !Map_IsEmpty(ctx, clone) {
+	Map_Clear(ctx, clone)
+	if !Map_IsEmpty(ctx, clone) {
 		t.Fatal("clear")
 	}
 	entries := Map_Entries(ctx, m)
@@ -466,7 +468,8 @@ func TestSetOperations(t *testing.T) {
 	if !Set_Some(ctx, a, func(_ *Execution, v int) bool { return v == 0 }) || Set_Every(ctx, a, func(_ *Execution, v int) bool { return v > 0 }) {
 		t.Fatal("some/every")
 	}
-	if Set_Clear(ctx, a) != a || !Set_IsEmpty(ctx, a) {
+	Set_Clear(ctx, a)
+	if !Set_IsEmpty(ctx, a) {
 		t.Fatal("clear")
 	}
 }

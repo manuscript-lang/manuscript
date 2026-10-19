@@ -4,10 +4,10 @@ fn replace[T](values: List[T], value: T) Unit:
     values.set(1, value)
 
 test "range observes backing writes and keeps initial length":
-    let values = [1, 2, 3]
+    var values = [1, 2, 3]
     let alias = values
     let clone = values.clone()
-    let seen: List[Int] = []
+    var seen: List[Int] = []
     var index = 0
 
     for value in values:
@@ -30,7 +30,7 @@ test "append growth preserves captured array and current alias":
     let values = [1, 2, 3]
     let alias = values
     let append = values.append
-    let seen: List[Int] = []
+    var seen: List[Int] = []
     var index = 0
 
     for value in values:
@@ -45,10 +45,10 @@ test "append growth preserves captured array and current alias":
     try expect_false(not (seen == [1, 2, 3] and alias == [1, 9, 3, 4]))
 
 test "callbacks use current backing and stored methods retain aliases":
-    let values = [1, 2, 3]
+    var values = [1, 2, 3]
     let clone = values.clone()
     let each = values.for_each
-    let seen: List[Int] = []
+    var seen: List[Int] = []
     each(
         fn(value):
             seen.append(value)
@@ -57,7 +57,7 @@ test "callbacks use current backing and stored methods retain aliases":
     try expect_false(
         not (seen == [1, 8, 8] and clone == [1, 2, 3] and values == [8, 8, 8])
     )
-    let mapped = [1, 2, 3]
+    var mapped = [1, 2, 3]
     let output = mapped.map(
         fn(value):
             mapped.fill(9, 0, 3)
@@ -66,9 +66,9 @@ test "callbacks use current backing and stored methods retain aliases":
     try expect_false(not (output == [2, 10, 10] and mapped == [9, 9, 9]))
 
 test "nested reverse copy shrink and self splice follow initial headers":
-    let values = [1, 2, 3]
-    let outer: List[Int] = []
-    let inner: List[Int] = []
+    var values = [1, 2, 3]
+    var outer: List[Int] = []
+    var inner: List[Int] = []
     var index = 0
 
     for value in values:
@@ -82,10 +82,10 @@ test "nested reverse copy shrink and self splice follow initial headers":
         index += 1
 
     try expect_false(not (outer == [1, 2, 1] and inner == [3, 2, 1]))
-    let backward = [1, 2, 3]
-    let truncated = [1, 2, 3]
-    let seen_backward: List[Int] = []
-    let seen_truncated: List[Int] = []
+    var backward = [1, 2, 3]
+    var truncated = [1, 2, 3]
+    var seen_backward: List[Int] = []
+    var seen_truncated: List[Int] = []
     var count = 0
 
     for value in backward:
@@ -103,8 +103,8 @@ test "nested reverse copy shrink and self splice follow initial headers":
         count += 1
 
     try expect_false(not (seen_backward == [1, 3, 3] and seen_truncated == [1, 2, 1]))
-    let shrinking = [1, 2, 3]
-    let seen_shrinking: List[Int] = []
+    var shrinking = [1, 2, 3]
+    var seen_shrinking: List[Int] = []
     count = 0
 
     for value in shrinking:
@@ -120,8 +120,8 @@ test "nested reverse copy shrink and self splice follow initial headers":
             and seen_shrinking == [2, 4, 4]
         )
     )
-    let self_list = [1, 2, 3]
-    let seen_self: List[Int] = []
+    var self_list = [1, 2, 3]
+    var seen_self: List[Int] = []
     count = 0
 
     for value in self_list:
@@ -140,10 +140,10 @@ type Node:
 
 test "clone slice and nested references retain their own contracts":
     let child = Child(1)
-    let values = [child, child]
+    var values = [child, child]
     let clone = values.clone()
     let slice = values.slice(0, 2).get()
-    let seen: List[Int] = []
+    var seen: List[Int] = []
     values.for_each(
         fn(value):
             seen.append(value.value)
@@ -158,7 +158,7 @@ test "clone slice and nested references retain their own contracts":
             and slice.first().get().value == 2
         )
     )
-    let children: List[Node] = []
+    var children: List[Node] = []
     let node = Node(children)
     children.append(node)
     var count = 0
@@ -171,14 +171,14 @@ test "clone slice and nested references retain their own contracts":
     try expect_false(not (count == 2 and node.children.length() == 2))
 
 test "function values can replace later backing elements":
-    let seen: List[Int] = []
+    var seen: List[Int] = []
     let original = fn() Int:
         seen.append(1)
         return 7
     let replacement = fn() Int:
         seen.append(2)
         return 9
-    let functions = [original, original]
+    var functions = [original, original]
     let clone = functions.clone()
     functions.for_each(
         fn(value):
