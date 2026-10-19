@@ -193,7 +193,7 @@ pub(crate) fn typed_method_symbol(recv: &ct::Ty, method: &str) -> Option<String>
 
 /// Status codes of `ms-rt-abi` and the error cases they name. Status 11 (`Failed`) carries the
 /// module's `failure_message` text when the error case has a `String` field.
-const STATUS_CASES: [(i64, &str); 14] = [
+const STATUS_CASES: [(i64, &str); 16] = [
     (1, "InvalidInput"),
     (2, "OutOfRange"),
     (3, "LimitExceeded"),
@@ -208,6 +208,8 @@ const STATUS_CASES: [(i64, &str); 14] = [
     (12, "Unavailable"),
     (13, "Timeout"),
     (14, "OutputLimit"),
+    (15, "NotTerminal"),
+    (17, "Busy"),
 ];
 
 /// `STATUS_NONE`: end of stream or an absent optional.
