@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io/fs"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -117,6 +118,7 @@ func main() {
 		"crypto":   genCrypto,
 		"regex":    genRegex,
 		"archive":  genArchive,
+		"json":     genJSON,
 	}
 	names := flag.Args()
 	if len(names) == 0 {
@@ -864,4 +866,133 @@ func genArchive(dir string) {
 		}
 	}
 	r.write(dir, "archive.tsv")
+}
+
+// ---- json ----
+
+// jsonDump renders a tree as N, T, F, #<number text>;, s<hex>;, [items] or {<hex key>:value...}.
+func jsonDump(v rt.JsonValue) string {
+	switch v := v.(type) {
+	case rt.JsonValue_Null:
+		return "N"
+	case rt.JsonValue_BoolValue:
+		if v.Value {
+			return "T"
+		}
+		return "F"
+	case rt.JsonValue_NumberValue:
+		return "#" + v.Text + ";"
+	case rt.JsonValue_StringValue:
+		return "s" + hex.EncodeToString([]byte(v.Value)) + ";"
+	case rt.JsonValue_ArrayValue:
+		var b strings.Builder
+		b.WriteString("[")
+		for _, x := range v.Values.Items {
+			b.WriteString(jsonDump(x))
+		}
+		return b.String() + "]"
+	case rt.JsonValue_ObjectValue:
+		var b strings.Builder
+		b.WriteString("{")
+		for _, e := range v.Values.Snapshot() {
+			b.WriteString(hex.EncodeToString([]byte(e.Key)) + ":" + jsonDump(e.Value))
+		}
+		return b.String() + "}"
+	}
+	return "?"
+}
+
+// jsonRandom builds a random tree; bad adds invalid number texts.
+func jsonRandom(rng *rand.Rand, depth int, bad bool) rt.JsonValue {
+	kinds := 7
+	if depth <= 0 {
+		kinds = 5
+	}
+	switch rng.Intn(kinds) {
+	case 0:
+		return rt.JsonValue_Null{}
+	case 1:
+		return rt.JsonValue_BoolValue{Value: rng.Intn(2) == 0}
+	case 2:
+		nums := []string{"0", "-1", "12", "1.5", "-0.25e3", "1E+9", "007", "1.", ".5", "+1", "0x1", "-", "1e", "NaN", ""}
+		n := len(nums) - 8
+		if bad {
+			n = len(nums)
+		}
+		return rt.JsonValue_NumberValue{Text: nums[rng.Intn(n)]}
+	case 3, 4:
+		strs := []string{"", "a", "<tag>&amp;", "q\"uo\\te", "tab\tnl\n\x01\x1f", "é☃😀", "\u2028\u2029", "\x7f", "a/b"}
+		return rt.JsonValue_StringValue{Value: strs[rng.Intn(len(strs))]}
+	case 5:
+		var items []rt.JsonValue
+		for i, n := 0, rng.Intn(4); i < n; i++ {
+			items = append(items, jsonRandom(rng, depth-1, bad))
+		}
+		return rt.JsonValue_ArrayValue{Values: rt.NewList(items...)}
+	}
+	m := rt.NewMap[string, rt.JsonValue]()
+	keys := []string{"a", "b", "", "<k>", "é", "k k", "z"}
+	for i, n := 0, rng.Intn(4); i < n; i++ {
+		m.Put(keys[rng.Intn(len(keys))], jsonRandom(rng, depth-1, bad))
+	}
+	return rt.JsonValue_ObjectValue{Values: m}
+}
+
+func genJSON(dir string) {
+	r := &recorder{}
+	texts := append([]string{"", " ", "null", "true", "false", "nul", "truex", "0", "-0", "-", "01", "1.", "1.e3", ".5", "1e", "1e+", "1E5", "-1.5e-3", "123456789012345678901234567890", "\"\"", "\"a\"", "\"a", "\"\\u0041\"", "\"\\ud83d\\ude00\"", "\"\\ud83d\"", "\"\\ude00\"", "\"\\ud83dx\"", "\"\\ud83d\\u0041\"", "\"\\u00\"", "\"\\uzzzz\"", "\"\\x\"", "\"\\/\\b\\f\\n\\r\\t\"", "\"\t\"", "\"\n\"", "\"\x1f\"", "\"\x7f\"", "\"\xff\"", "[]", "[ ]", "{}", "{ }", "[1]", "[1,]", "[,1]", "[1 2]", "[1,2,3]", "[[[]]]", "[[[[[1]]]]]", "{\"a\":1}", "{\"a\":1,}", "{\"a\":1,\"a\":2}", "{\"a\":1,\"b\":2}", "{a:1}", "{\"a\" 1}", "{\"a\":}", "{\"\":[{}]}", "{\"\\u0061\":1,\"a\":2}", " [1 , 2 ] ", "\t\n\r null \t", "null x", "nullnull", "[null,true,false,\"s\",-1.0e+2,{},[]]", "\ufeffnull", "\u00a0null", "[1,2", "{\"a\":[1,{\"b\":[]}]}", "[\"\\ud800\\udc00\"]", "\"\\\\\\ud83d\"", "\"\\\\ud83d\""},
+		randomStrings(11, 220, 16, strings.Split("[]{}\":,0123456789.-+eEtrufalsn \\u\n", ""))...)
+	limits := [][3]rt.Option[int]{
+		{}, {rt.Some(5), {}, {}}, {{}, rt.Some(1), {}}, {{}, rt.Some(2), {}}, {{}, {}, rt.Some(3)},
+		{{}, rt.Some(0), {}}, {rt.Some(-1), {}, {}}, {{}, rt.Some(-1), {}}, {{}, {}, rt.Some(0)}, {rt.Some(0), rt.Some(0), rt.Some(0)},
+	}
+	for _, t := range texts {
+		for _, l := range limits {
+			lim := rt.Some(&rt.JsonLimits{MaxBytes: l[0], MaxDepth: l[1], MaxValues: l[2]})
+			res := rt.Json_Parse(nil, rt.JsonDecValue, t, lim, true)
+			r.row("parse", h(t), opt(l[0]), opt(l[1]), opt(l[2]), "=>", strings.Join(okOrErr(res, func(v rt.JsonValue) []string { return []string{jsonDump(v)} }), " "))
+		}
+	}
+	// Deep nesting around the depth ceiling.
+	for _, n := range []int{99999, 100000, 100001} {
+		t := strings.Repeat("[", n) + strings.Repeat("]", n)
+		res := rt.Json_Parse(nil, rt.JsonDecValue, t, rt.Option[*rt.JsonLimits]{}, true)
+		r.row("deep", strconv.Itoa(n), "=>", strings.Join(okOrErr(res, func(v rt.JsonValue) []string { return []string{"deep"} }), " "))
+	}
+	// Serialization of random trees.
+	rng := rand.New(rand.NewSource(12))
+	for i := 0; i < 260; i++ {
+		tree := jsonRandom(rng, 4, i%3 == 0)
+		for _, o := range [][2]rt.Option[int]{{{}, {}}, {{}, rt.Some(2)}, {{}, rt.Some(0)}, {{}, rt.Some(40)}, {rt.Some(10), {}}, {rt.Some(0), {}}, {rt.Some(-1), {}}, {rt.Some(30), rt.Some(1)}, {{}, rt.Some(-1)}} {
+			res := rt.Json_Stringify(nil, rt.JsonEncValue, tree, o[0], o[1])
+			r.row("stringify", jsonDump(tree), opt(o[0]), opt(o[1]), "=>", strings.Join(okOrErr(res, func(s string) []string { return []string{h(s)} }), " "))
+		}
+	}
+	for _, v := range []float64{0, math.Copysign(0, -1), 1, -1, 0.1, 1.5, 100, 1e20, 1e21, 1.5e21, 1e-6, 1.5e-6, 1e-7, 9.9e-7, 123456789.125, math.MaxFloat64, math.SmallestNonzeroFloat64, 5e-324, 1e22, 1e100, 123e-20, float64(1 << 53), 0.000001234, 3.141592653589793, math.NaN(), math.Inf(1), math.Inf(-1)} {
+		j, _ := rt.JsonEncFloat(nil, v)
+		r.row("float", strconv.FormatUint(math.Float64bits(v), 16), "=>", jsonDump(j))
+	}
+	rng = rand.New(rand.NewSource(13))
+	for i := 0; i < 400; i++ {
+		var v float64
+		switch i % 3 {
+		case 0:
+			v = math.Float64frombits(rng.Uint64())
+		case 1:
+			v = rng.NormFloat64() * math.Pow(10, float64(rng.Intn(50)-25))
+		default:
+			v = float64(rng.Intn(2000000)-1000000) / math.Pow(10, float64(rng.Intn(12)))
+		}
+		j, _ := rt.JsonEncFloat(nil, v)
+		r.row("float", strconv.FormatUint(math.Float64bits(v), 16), "=>", jsonDump(j))
+	}
+	for _, t := range []string{"0", "-0", "1", "-1", "9223372036854775807", "9223372036854775808", "-9223372036854775808", "-9223372036854775809", "1.5", "1e3", "1E400", "-1e400", "1e-400", "0.1", "123456789012345678", "1.7976931348623157e308", "1.7976931348623159e308", "4.9e-324"} {
+		iv, iok := rt.JsonDecInt(nil, rt.JsonValue_NumberValue{Text: t})
+		fv, fok := rt.JsonDecFloat(nil, rt.JsonValue_NumberValue{Text: t})
+		if !iok {
+			iv = 0
+		}
+		r.row("scalar", h(t), "=>", b2s(iok)+" "+strconv.Itoa(iv)+" "+b2s(fok)+" "+strconv.FormatUint(math.Float64bits(fv), 16))
+	}
+	r.write(dir, "json.tsv")
 }

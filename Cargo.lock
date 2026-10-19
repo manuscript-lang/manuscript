@@ -698,6 +698,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ms-std-json"
+version = "0.1.0"
+dependencies = [
+ "ms-rt",
+ "ms-rt-abi",
+ "ms-std-core",
+]
+
+[[package]]
 name = "ms-std-path"
 version = "0.1.0"
 dependencies = [
