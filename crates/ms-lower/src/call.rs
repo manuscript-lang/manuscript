@@ -49,7 +49,7 @@ impl<'a> FnLower<'a> {
                     .as_ref()
                     .map(|t| t.params.clone())
                     .unwrap_or_default();
-                self.native_function(e, &view, sym.native.as_str(), &params)?
+                self.native_function(e, &view, sym.native.as_str(), &params, sym)?
             }
             // `x.get()(7)`: the callee is itself a call, so this one calls its function value.
             Resolution::Method(_) if self.receiver_expr(e).is_none() => {
@@ -648,7 +648,12 @@ impl<'a> FnLower<'a> {
                     vals.push(v);
                 }
                 None => {
-                    let v = self.field_default(&t, case, i, &vals)?;
+                    let earlier: Vec<(ct::Name, Value)> = params
+                        .iter()
+                        .zip(&vals)
+                        .map(|(p, v)| (p.name, *v))
+                        .collect();
+                    let v = self.field_default(&t, case, i, &earlier)?;
                     vals.push(v);
                 }
             }
@@ -670,12 +675,14 @@ impl<'a> FnLower<'a> {
         Ok(Val { v, own: true })
     }
 
-    fn field_default(
+    /// The default of field `i`; `earlier` are the values of the fields before it, which the
+    /// default may read.
+    pub(crate) fn field_default(
         &mut self,
         t: &ct::Ty,
         case: Option<ct::Name>,
         i: usize,
-        earlier: &[Value],
+        earlier: &[(ct::Name, Value)],
     ) -> Result<Value, Error> {
         let _ = case;
         let sym = t
@@ -693,28 +700,46 @@ impl<'a> FnLower<'a> {
         let fm = self.cx.lower_ty(self.b.m, &ft)?;
         let Some(d) = &field.default else {
             if ft.is_std("Optional") {
-                return Ok(self.b.opt_none(fm));
+                return Ok(self.none_owned(fm));
             }
             return Err(Error::new(format!("missing field {}", field.name)));
         };
         if matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none") && ft.is_std("Optional") {
-            return Ok(self.b.opt_none(fm));
+            return Ok(self.none_owned(fm));
         }
         let saved_hir = self.hir.clone();
         let saved_subst = std::mem::replace(&mut self.subst, ct::substitution(t));
         let saved_file = self.file;
         self.hir = self.cx.module(sym.module)?;
         self.file = self.b.m.add_file(sym.module.as_str());
-        // Earlier fields are in scope of a default.
-        let bindings = self.hir.declaration_parameters(decl.id());
-        for (b, v) in bindings.iter().zip(earlier) {
-            self.bind_borrowed(b, *v);
-        }
+        self.bind_field_reads(d, earlier);
         let r = self.expr(d);
         self.hir = saved_hir;
         self.subst = saved_subst;
         self.file = saved_file;
         let x = r?;
         Ok(self.owned(x))
+    }
+
+    /// Binds the fields `earlier` that the default expression `d` reads by name.
+    fn bind_field_reads(&mut self, d: &Expr, earlier: &[(ct::Name, Value)]) {
+        let mut found: Vec<Expr> = Vec::new();
+        struct Collect<'f>(&'f mut Vec<Expr>);
+        impl ms_syntax::visit::Visitor for Collect<'_> {
+            fn expr(&mut self, e: &Expr) {
+                if matches!(e.kind, ExprKind::Name(_)) {
+                    self.0.push(e.clone());
+                }
+            }
+        }
+        ms_syntax::visit::walk_expr(&mut Collect(&mut found), d);
+        for e in &found {
+            let Resolution::Local(b) = self.hir.resolution(e) else {
+                continue;
+            };
+            if let Some((_, v)) = earlier.iter().find(|(n, _)| *n == b.name) {
+                self.bind_borrowed(&b, *v);
+            }
+        }
     }
 }

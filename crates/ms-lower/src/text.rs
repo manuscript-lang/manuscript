@@ -32,9 +32,26 @@ pub(crate) fn runtime_fn(m: &mut Module, sym: &str, params: &[MTy], ret: MTy) ->
     })
 }
 
+/// The runtime formatter of a native record type whose text is not its fields.
+fn native_record_text(b: &FuncBuilder<'_>, t: MTy) -> Option<&'static str> {
+    let TyKind::Rec(rid) = b.m.types.kind(t) else {
+        return None;
+    };
+    match b.m.records[rid.index()].name.as_str() {
+        "Decimal" => Some("msstd_decimal_to_string"),
+        "Timestamp" => Some("msstd_time_timestamp_to_string"),
+        _ => None,
+    }
+}
+
 /// Calls a leaf formatter for scalar/string types; `None` for compound types.
 /// The quoted form (`repr`) wraps strings in quotes.
-fn scalar_text(b: &mut FuncBuilder<'_>, t: MTy, v: Value, repr: bool) -> Option<(Value, bool)> {
+pub(crate) fn scalar_text(
+    b: &mut FuncBuilder<'_>,
+    t: MTy,
+    v: Value,
+    repr: bool,
+) -> Option<(Value, bool)> {
     let sym = if t == MTy::INT {
         "msrt_int_to_string"
     } else if t == MTy::FLOAT {
@@ -51,7 +68,7 @@ fn scalar_text(b: &mut FuncBuilder<'_>, t: MTy, v: Value, repr: bool) -> Option<
         let s = b.str_lit("unit");
         return Some((s, false));
     } else {
-        return None;
+        native_record_text(b, t)?
     };
     let ext = runtime_fn(b.m, sym, &[t], MTy::STR);
     Some((b.call_rt(ext, &[v]), true))
@@ -387,6 +404,19 @@ pub(crate) fn build_format(
             b.switch_to(exit);
             append_lit(&mut b, acc, ")");
             let r = b.use_var(acc);
+            b.ret(Some(r));
+        }
+        TyKind::Fn(..) | TyKind::Obj(..) => {
+            // Functions and native objects print as a fixed marker.
+            let text = if matches!(b.m.types.kind(t), TyKind::Fn(..)) {
+                "[function]"
+            } else {
+                "[object]"
+            };
+            let lit = b.str_lit(text);
+            let r = b
+                .emit(Op::Copy, &[lit], Imm::None, Some(MTy::STR))
+                .expect("copy");
             b.ret(Some(r));
         }
         _ => {

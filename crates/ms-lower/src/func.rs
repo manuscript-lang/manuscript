@@ -70,6 +70,8 @@ pub(crate) struct FnLower<'a> {
     pub var_slots: Vec<VarSlot>,
     /// The expression statement being lowered, whose value nothing reads (by address).
     pub discard: Option<usize>,
+    /// The fixture hooks a test runs after its body, on every exit.
+    pub fixture: Option<crate::fixture::Hooks>,
 }
 
 impl Cx {
@@ -230,6 +232,9 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
             return crate::natiface::build_method(cx, m, job.func, j);
         }
         JobKind::Lambda(l) => return crate::closure::build_lambda(cx, m, job.func, l),
+        JobKind::BoundNative(n) => return crate::closure::build_bound_native(cx, m, job.func, n),
+        JobKind::NativeThunk(n) => return crate::closure::build_native_thunk(cx, m, job.func, n),
+        JobKind::Json(j) => return crate::json::build_json(cx, m, job.func, j),
     };
     let hir = cx.module(c.module.file)?;
     let file = m.add_file(c.module.file.as_str());
@@ -269,6 +274,7 @@ impl<'a> FnLower<'a> {
             counts_depth: false,
             var_slots: Vec::new(),
             discard: None,
+            fixture: None,
         }
     }
 
@@ -504,6 +510,7 @@ impl<'a> FnLower<'a> {
         for t in self.temps.clone().into_iter().rev() {
             self.b.emit(Op::Drop, &[t], ms_mir::ir::Imm::None, None);
         }
+        self.end_fixture();
         self.unwind_to(0);
         if self.counts_depth {
             self.b
@@ -565,10 +572,7 @@ impl<'a> FnLower<'a> {
         self.b
             .emit(Op::DepthEnter, &[], ms_mir::ir::Imm::None, None);
         if let Some(f) = &c.fixture {
-            return Err(Error::new(format!(
-                "fixtures are not supported ({})",
-                f.name
-            )));
+            self.begin_fixture(c, f)?;
         }
         match c.body() {
             ms_check::hir::Body::Block(stmts) => {

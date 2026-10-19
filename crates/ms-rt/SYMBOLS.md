@@ -271,6 +271,16 @@ msrt_crypto_ecdh_shared_secret( private_key: *const VecVal, peer: *const VecVal,
 msrt_crypto_rsa_generate(bits: i64, out: *mut VecVal) -> u8
 msrt_csv_parse( text: *const StrObj, delimiter: *const StrObj, line_ending: *const StrObj, has_max_rows: u8, max_rows: i64, has_max_cells: u8, max_cells: i64, out: *mut VecVal, ) -> u8
 msrt_csv_stringify( rows: *const VecVal, delimiter: *const StrObj, line_ending: *const StrObj, has_max_bytes: u8, max_bytes: i64, out: *mut *mut StrObj, ) -> u8
+msstd_decimal_literal(text: *const StrObj, out: *mut Dec)
+msstd_decimal_from_int(n: i64, out: *mut Dec)
+msstd_decimal_divide(a: *const Dec, b: *const Dec, out: *mut Dec)
+msstd_decimal_negate(a: *const Dec, out: *mut Dec)
+msstd_decimal_compare(a: *const Dec, b: *const Dec) -> i64
+msstd_decimal_to_string(a: *const Dec) -> *mut StrObj
+msstd_decimal_to_float(a: *const Dec) -> f64
+msstd_decimal_truncate_to_int(a: *const Dec, out: *mut i64) -> u8
+msstd_decimal_round( value: *const Dec, places: i64, has_mode: u8, mode: i64, out: *mut Dec, ) -> u8
+msstd_decimal_to_fixed( value: *const Dec, digits: i64, has_mode: u8, mode: i64, out: *mut *mut StrObj, ) -> u8
 msrt_encoding_hex_encode(data: *const VecVal) -> *mut StrObj
 msrt_encoding_hex_decode( text: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msrt_encoding_base64_encode( data: *const VecVal, url_safe: u8, ) -> *mut StrObj
@@ -386,6 +396,14 @@ msrt_json_add_object( d: *mut DocObj, keys: *const *const StrObj, ids: *const u3
 msrt_json_stringify( d: *const DocObj, root: u32, has_max_bytes: u8, max_bytes: i64, has_indent: u8, indent: i64, out: *mut *mut StrObj, ) -> u8
 msrt_json_dec_int(text: *const StrObj, out: *mut i64) -> u8
 msrt_json_dec_float(text: *const StrObj, out: *mut f64) -> u8
+msrt_json_add_float(d: *mut DocObj, v: f64) -> u32
+msrt_json_add_empty_array(d: *mut DocObj) -> u32
+msrt_json_array_push(d: *mut DocObj, arr: u32, item: u32)
+msrt_json_add_empty_object(d: *mut DocObj) -> u32
+msrt_json_object_put( d: *mut DocObj, obj: u32, key: *const StrObj, item: u32, )
+msrt_json_find(d: *const DocObj, id: u32, key: *const StrObj) -> i64
+msrt_json_has_unknown( d: *const DocObj, id: u32, names: *const VecVal, ) -> u8
+msrt_json_variant( d: *const DocObj, id: u32, names: *const VecVal, payload: *mut i64, ) -> i64
 msrt_json_enc_float(v: f64) -> *mut StrObj
 msrt_log_logger_new( has_level: u8, level: i64, has_timestamp: u8, timestamp: u8, has_max: u8, max: i64, out: *mut *mut LoggerObj, ) -> u8
 msrt_log_logger_child( l: *const LoggerObj, fields: *const StrObj, out: *mut *mut LoggerObj, ) -> u8

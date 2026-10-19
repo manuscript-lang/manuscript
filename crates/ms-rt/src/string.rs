@@ -1217,6 +1217,9 @@ unsafe fn normalize_kind(
     out: *mut *mut StrObj,
 ) -> u8 {
     use unicode_normalization::UnicodeNormalization;
+    if has_max != 0 && max < 0 {
+        return STATUS_INVALID_INPUT;
+    }
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
         let limit = if has_max != 0 {

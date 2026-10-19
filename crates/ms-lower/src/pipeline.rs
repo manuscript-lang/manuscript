@@ -32,13 +32,15 @@ fn runtime_library() -> Result<PathBuf, String> {
     }
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
     let dir = exe.parent().ok_or("no executable directory")?;
-    for d in [dir, dir.parent().unwrap_or(dir)] {
-        let p = d.join("libms_rt.a");
-        if p.exists() {
-            return Ok(p);
+    for name in ["libms_native.a", "libms_rt.a"] {
+        for d in [dir, dir.parent().unwrap_or(dir)] {
+            let p = d.join(name);
+            if p.exists() {
+                return Ok(p);
+            }
         }
     }
-    Err("libms_rt.a not found; build `cargo build -p ms-rt` or set MSRT_LIB".to_string())
+    Err("libms_native.a not found; build `cargo build -p ms-native` or set MSRT_LIB".to_string())
 }
 
 /// Which entry the executable gets.
@@ -212,6 +214,7 @@ fn run_with_timeout(
 struct Outcome {
     name: String,
     failure: Option<String>,
+    skipped: bool,
     nanos: u128,
 }
 
@@ -237,11 +240,16 @@ pub fn test(source: &Path, json: bool, options: &BuildOptions) -> Result<i32, Bu
             let nanos = start.elapsed().as_nanos();
             stdout.push_str(&String::from_utf8_lossy(&out.stdout));
             let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
+            let skip = stderr
+                .split_once(crate::SKIP_MARKER)
+                .map(|(_, rest)| rest.lines().next().unwrap_or_default().to_string());
             let failure = if out.timed_out {
                 Some(format!(
                     "timed out after {}s; the test was cancelled (MSL_TEST_TIMEOUT sets the limit in seconds, 0 disables it)",
                     test_timeout().map_or(0, |t| t.as_secs())
                 ))
+            } else if skip.is_some() {
+                skip.clone()
             } else if let Some(rest) = stderr.split_once(crate::FAILURE_MARKER) {
                 Some(rest.1.to_string())
             } else if out.status.success() {
@@ -249,18 +257,30 @@ pub fn test(source: &Path, json: bool, options: &BuildOptions) -> Result<i32, Bu
             } else {
                 Some(stderr.trim_end_matches('\n').to_string())
             };
+            let skipped = skip.is_some() && !out.timed_out;
             match &failure {
                 None => stdout.push_str(&format!("PASS {full}\n")),
+                Some(f) if skipped => stdout.push_str(&format!("SKIP {full}: {f}\n")),
                 Some(f) => stdout.push_str(&format!("FAIL {full}: {f}\n")),
             }
             outcomes.push(Outcome {
                 name: full,
                 failure,
+                skipped,
                 nanos,
             });
         }
-        let failed = outcomes.iter().filter(|o| o.failure.is_some()).count();
-        stdout.push_str(&format!("{} tests, {failed} failed\n", outcomes.len()));
+        let skipped = outcomes.iter().filter(|o| o.skipped).count();
+        let failed = outcomes
+            .iter()
+            .filter(|o| o.failure.is_some() && !o.skipped)
+            .count();
+        let skips = if skipped > 0 {
+            format!(", {skipped} skipped")
+        } else {
+            String::new()
+        };
+        stdout.push_str(&format!("{} tests, {failed} failed{skips}\n", outcomes.len()));
         let code = i32::from(failed > 0);
         if !json {
             print!("{stdout}");
@@ -275,7 +295,11 @@ pub fn test(source: &Path, json: bool, options: &BuildOptions) -> Result<i32, Bu
             .iter()
             .enumerate()
             .map(|(i, o)| {
-                let status = if o.failure.is_some() { "failed" } else { "passed" };
+                let status = match (&o.failure, o.skipped) {
+                    (Some(_), true) => "skipped",
+                    (Some(_), false) => "failed",
+                    _ => "passed",
+                };
                 let failure = o
                     .failure
                     .as_ref()
@@ -290,10 +314,10 @@ pub fn test(source: &Path, json: bool, options: &BuildOptions) -> Result<i32, Bu
             .collect();
         let n = outcomes.len();
         println!(
-            "{{\"repeat\":1,\"format\":1,\"source_root\":{},\"tests\":[{}],\"summary\":{{\"available\":{n},\"selected\":{n},\"passed\":{},\"failed\":{failed},\"skipped\":0,\"not_run\":0,\"duration_ns\":{}}},\"completed\":true,\"exit_code\":{code},\"stdout\":{},\"diagnostics\":[]}}",
+            "{{\"repeat\":1,\"format\":1,\"source_root\":{},\"tests\":[{}],\"summary\":{{\"available\":{n},\"selected\":{n},\"passed\":{},\"failed\":{failed},\"skipped\":{skipped},\"not_run\":0,\"duration_ns\":{}}},\"completed\":true,\"exit_code\":{code},\"stdout\":{},\"diagnostics\":[]}}",
             json_string(&root.to_string_lossy()),
             tests.join(","),
-            n - failed,
+            n - failed - skipped,
             outcomes.iter().map(|o| o.nanos).sum::<u128>(),
             json_string(&stdout)
         );

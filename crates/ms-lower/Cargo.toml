@@ -10,6 +10,7 @@ ms-syntax = { path = "../ms-syntax" }
 ms-check = { path = "../ms-check" }
 ms-mir = { path = "../ms-mir" }
 ms-clif = { path = "../ms-clif" }
+ms-std-decimal = { path = "../ms-std-decimal", default-features = false }
 
 [lints]
 workspace = true

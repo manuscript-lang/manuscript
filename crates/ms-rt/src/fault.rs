@@ -379,6 +379,10 @@ pub fn fault(msg: &[u8]) -> ! {
     finish_report(None)
 }
 
+/// Starts the fault message of `skip(reason)`; ms-lower writes the same marker.
+#[cfg(not(test))]
+const SKIP_MARKER: &[u8] = b"\x01SKIP\x01";
+
 static PRIMARY: Global<Option<ByteBuf>> = Global::new(None);
 
 fn finish_report(primary: Option<ByteBuf>) -> ! {
@@ -411,6 +415,25 @@ fn finish_report(primary: Option<ByteBuf>) -> ! {
     {
         if guard_active() {
             guard_exit(GUARD_FAULT, report.as_slice())
+        }
+        if report.as_slice().starts_with(SKIP_MARKER)
+            && !report
+                .as_slice()
+                .windows(16)
+                .any(|w| w == b"\ncleanup fault: ")
+        {
+            // `skip`: the cleanups ran; report the reason (the first line) and end with success.
+            let line = report
+                .as_slice()
+                .split(|b| *b == b'\n')
+                .next()
+                .unwrap_or_default();
+            let mut out = ByteBuf::new();
+            out.extend(line);
+            out.push(b'\n');
+            crate::io::flush_stdout();
+            sys::write_all(sys::STDERR, out.as_slice());
+            crate::process::exit(0)
         }
         report.push(b'\n');
         crate::io::flush_stdout();

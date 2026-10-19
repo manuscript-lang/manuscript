@@ -19,6 +19,7 @@ ms-std-bigint = { path = "../ms-std-bigint" }
 ms-std-compress = { path = "../ms-std-compress" }
 ms-std-core = { path = "../ms-std-core" }
 ms-std-crypto = { path = "../ms-std-crypto" }
+ms-std-decimal = { path = "../ms-std-decimal" }
 ms-std-csv = { path = "../ms-std-csv" }
 ms-std-encoding = { path = "../ms-std-encoding" }
 ms-std-fs = { path = "../ms-std-fs" }

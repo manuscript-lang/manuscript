@@ -11,6 +11,36 @@ use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
 /// String operations `fn(String) -> String` and their runtime symbols.
+/// Methods of format enums: native, runtime symbol, the runtime's format parameter, and whether
+/// the runtime wants the case index (else the lowercase case name).
+const FORMAT_METHODS: &[(&str, &str, &str, bool)] = &[
+    (
+        "string/form_normalize",
+        "msrt_string_normalize_kind",
+        "kind",
+        true,
+    ),
+    ("archive/format_pack", "msrt_archive_pack", "format", false),
+    (
+        "archive/format_unpack",
+        "msrt_archive_unpack",
+        "format",
+        false,
+    ),
+    (
+        "compress/format_compress",
+        "msrt_compress_compress",
+        "format",
+        false,
+    ),
+    (
+        "compress/format_decompress",
+        "msrt_compress_decompress",
+        "format",
+        false,
+    ),
+];
+
 const STRING_TO_STRING: &[(&str, &str)] = &[
     ("string/reverse", "msrt_string_reverse"),
     ("string/lower", "msrt_string_lower"),
@@ -43,6 +73,9 @@ type ElementBody<'b, S> = dyn FnMut(&mut S, Value, Value) -> Result<Option<Value
 /// A branch body producing an owned value, or `None` when it diverges.
 type BranchBody<'b, S> = dyn FnMut(&mut S) -> Result<Option<Value>, Error> + 'b;
 
+/// Builds one method of a native interface value from its name, parameters and result.
+type MethodBuilder<'b> = dyn FnMut(&mut ms_mir::ir::Module, &str, &[MTy], MTy) -> FuncId + 'b;
+
 /// Whether `name` is an `Optional` method lowered inline.
 fn opt_method(name: &str) -> bool {
     matches!(
@@ -57,6 +90,16 @@ fn is_higher_order(name: &str) -> bool {
         name,
         "map" | "filter" | "count" | "some" | "every" | "for_each" | "find" | "find_index"
     )
+}
+
+/// The `module/name` of natives that bindings override with a bare name.
+fn native_alias(native: &str) -> &str {
+    match native {
+        "sleep" => "time/sleep",
+        "collections/filled" => "list/filled",
+        "collections/range_by" => "list/range_by",
+        other => other,
+    }
 }
 
 /// An evaluated argument of a native call.
@@ -74,6 +117,7 @@ impl<'a> FnLower<'a> {
         view: &CallView<'_>,
         native: &str,
         params: &[ct::Param],
+        sym: &ct::SymRef,
     ) -> Result<Val, Error> {
         match native {
             "collections/range" => {
@@ -106,8 +150,24 @@ impl<'a> FnLower<'a> {
                 self.b.call_rt(ext, &[m]);
                 Ok(self.dummy(MTy::UNIT))
             }
+            "json/parse" | "json/stringify" => {
+                let mut args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let func = sym.decl.as_ref().and_then(|d| d.func());
+                self.fill_native_defaults(sym.module, func, params, &mut args)?;
+                self.at(e.pos);
+                if native == "json/parse" {
+                    self.json_parse(e, &args)
+                } else {
+                    self.json_stringify(e, view, &args)
+                }
+            }
             "io/stdout" => self.std_stream(e, false),
             "io/stderr" => self.std_stream(e, true),
+            "time/clock" => self.time_clock(e, false),
+            "time/wall_clock" => self.time_clock(e, true),
             "io/read_line" => self.read_line_native(e, view, params),
             "io/read_all" => self.stream_native(e, view, crate::streamloop::Loop::ReadAll),
             "io/copy" => self.stream_native(e, view, crate::streamloop::Loop::Copy),
@@ -126,38 +186,220 @@ impl<'a> FnLower<'a> {
                 self.testing_native(e, view, &other["testing/".len()..])
             }
             other => {
-                let Some(sym) = crate::rtcall::function_symbol(other) else {
+                if !self.has_native_call(other) {
                     return Err(Error::new(format!("unsupported native function {other}")));
-                };
-                let args = self.native_args(view)?;
+                }
+                let mut args = self.native_args(view)?;
                 if self.dead {
                     return Ok(self.dummy(MTy::UNIT));
                 }
+                let func = sym.decl.as_ref().and_then(|d| d.func());
+                self.fill_native_defaults(sym.module, func, params, &mut args)?;
                 let result = self.emty(e)?;
-                self.rt_function(&sym, params, &args, result)
+                self.at(e.pos);
+                self.native_call(other, params, &args, result)
             }
         }
     }
 
+    /// Whether `native_call` lowers the native function `native`.
+    fn has_native_call(&self, native: &str) -> bool {
+        matches!(
+            native,
+            "math/min" | "math/max" | "math/max_of" | "math/min_of" | "time/duration"
+        ) || crate::rtcall::function_symbol(native_alias(native)).is_some()
+    }
+
+    /// A native function applied to evaluated arguments (borrowed by the callee).
+    pub(crate) fn native_call(
+        &mut self,
+        native: &str,
+        params: &[ct::Param],
+        args: &[NArg],
+        result: MTy,
+    ) -> Result<Val, Error> {
+        if matches!(native, "math/min" | "math/max") {
+            return self.min_max(native == "math/max", args);
+        }
+        if matches!(native, "math/max_of" | "math/min_of") {
+            return self.extreme_of(native == "math/max_of", args, result);
+        }
+        if native == "time/duration" {
+            return Ok(Val {
+                v: self.borrow(args[0].val),
+                own: false,
+            });
+        }
+        let sym = crate::rtcall::function_symbol(native_alias(native))
+            .ok_or_else(|| Error::new(format!("unsupported native function {native}")))?;
+        self.rt_function(&sym, params, args, result)
+    }
+
+    /// Whether `a` orders strictly above `b`; Float orders NaN above every other value.
+    fn strictly_above(&mut self, a: Value, b: Value) -> Result<Value, Error> {
+        use ms_mir::ir::{Cc, Op};
+        let t = self.ty_of(a);
+        let above = if t == MTy::INT {
+            self.b.icmp(Cc::Gt, a, b)
+        } else if t == MTy::FLOAT {
+            let gt = self.b.fcmp(Cc::Gt, a, b);
+            let a_nan = self.b.fcmp(Cc::Ne, a, a);
+            let b_num = self.b.fcmp(Cc::Eq, b, b);
+            let nan_above = self.b.binop(Op::And, a_nan, b_num);
+            self.b.binop(Op::Or, gt, nan_above)
+        } else if t == MTy::STR {
+            let c = self.call_runtime("msrt_string_compare", &[a, b], MTy::INT)?;
+            let zero = self.b.iconst(0);
+            self.b.icmp(Cc::Gt, c, zero)
+        } else if let Some(sym) = self.ordering_symbol(t) {
+            let c = self.call_runtime(sym, &[a, b], MTy::INT)?;
+            let zero = self.b.iconst(0);
+            self.b.icmp(Cc::Gt, c, zero)
+        } else {
+            return Err(Error::new(format!(
+                "unsupported min/max on {}",
+                ms_mir::print::ty_str(self.b.m, t)
+            )));
+        };
+        Ok(above)
+    }
+
+    /// `max(left, right)` / `min(left, right)`: `left` unless `right` is strictly greater
+    /// (lesser). Floats order NaN above every other value.
+    fn min_max(&mut self, max: bool, args: &[NArg]) -> Result<Val, Error> {
+        let (left, right) = (self.borrow(args[0].val), self.borrow(args[1].val));
+        let t = self.ty_of(left);
+        // `a` ordered strictly above `b`.
+        let (a, b) = if max { (right, left) } else { (left, right) };
+        let above = self.strictly_above(a, b)?;
+        if !self.needs_drop(t) {
+            let v = self.b.select(above, right, left);
+            return Ok(Val { v, own: false });
+        }
+        self.two_ways(
+            above,
+            t,
+            &mut |s| {
+                Ok(Some(s.owned(Val {
+                    v: right,
+                    own: false,
+                })))
+            },
+            &mut |s| {
+                Ok(Some(s.owned(Val {
+                    v: left,
+                    own: false,
+                })))
+            },
+        )
+    }
+
+    /// `max_of(values)` / `min_of(values)`: the first greatest (least) element, or `none`.
+    fn extreme_of(&mut self, max: bool, args: &[NArg], result: MTy) -> Result<Val, Error> {
+        use ms_mir::ir::{Cc, Op};
+        // The list lives in a variable so the loop and the branches may read it.
+        let list = self.borrow(args[0].val);
+        let lt = self.ty_of(list);
+        let lvar = self.fresh_var(lt);
+        let held_list = self.owned(Val {
+            v: list,
+            own: false,
+        });
+        self.b.def_var(lvar, held_list);
+        let n = self.b.list_len(list);
+        let (zero, one) = (self.b.iconst(0), self.b.iconst(1));
+        let best = self.b.declare_var(MTy::INT, Mode::Borrow);
+        let i = self.b.declare_var(MTy::INT, Mode::Borrow);
+        self.b.def_var(best, zero);
+        self.b.def_var(i, one);
+        let (head, body, exit) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        self.b.br(head, &[]);
+        self.b.switch_to(head);
+        let iv = self.b.use_var(i);
+        let more = self.b.icmp(Cc::Lt, iv, n);
+        self.b.br_if(more, body, &[], exit, &[]);
+        self.b.seal_block(body);
+        self.b.switch_to(body);
+        let iv = self.b.use_var(i);
+        let bv = self.b.use_var(best);
+        let l = self.b.use_var(lvar);
+        let cur = self.b.list_get(l, iv);
+        let held = self.b.list_get(l, bv);
+        let above = if max {
+            self.strictly_above(cur, held)?
+        } else {
+            self.strictly_above(held, cur)?
+        };
+        let pick = self.b.select(above, iv, bv);
+        self.b.def_var(best, pick);
+        let next = self.b.binop(Op::IAdd, iv, one);
+        self.b.def_var(i, next);
+        self.b.br(head, &[]);
+        self.b.seal_block(head);
+        self.b.seal_block(exit);
+        self.b.switch_to(exit);
+        let empty = self.b.icmp(Cc::Eq, n, zero);
+        let TyKind::Opt(elem) = self.b.m.types.kind(result).clone() else {
+            return Err(Error::new("max_of and min_of return an Optional"));
+        };
+        let out = self.two_ways(
+            empty,
+            result,
+            &mut |s| {
+                let v = s.b.opt_none(result);
+                Ok(Some(s.owned(Val { v, own: false })))
+            },
+            &mut |s| {
+                let bv = s.b.use_var(best);
+                let l = s.b.use_var(lvar);
+                let item = s.b.list_get(l, bv);
+                let o = s.owned(Val {
+                    v: item,
+                    own: false,
+                });
+                let _ = elem;
+                Ok(Some(s.b.opt_some(o)))
+            },
+        )?;
+        self.release_source(lvar, true);
+        Ok(out)
+    }
+
     /// `stdout()` / `stderr()`: an interface value over a MIR-built vtable.
     fn std_stream(&mut self, e: &Expr, stderr: bool) -> Result<Val, Error> {
+        let name = if stderr { "stderr" } else { "stdout" };
+        self.native_iface(e, name, &mut |m, method, params, ret| {
+            build_stream_method(m, method, params, ret, stderr)
+        })
+    }
+
+    /// `clock()` / `wall_clock()`: an interface whose `now` reads the runtime clock.
+    fn time_clock(&mut self, e: &Expr, wall: bool) -> Result<Val, Error> {
+        let name = if wall { "wall_clock" } else { "clock" };
+        self.native_iface(e, name, &mut |m, method, params, ret| {
+            build_clock_method(m, method, params, ret, wall)
+        })
+    }
+
+    /// An interface value of the expression's type over a vtable of MIR-built methods.
+    fn native_iface(
+        &mut self,
+        e: &Expr,
+        name: &str,
+        build: &mut MethodBuilder<'_>,
+    ) -> Result<Val, Error> {
         let it = self.emty(e)?;
         let TyKind::Iface(iface) = self.b.m.types.kind(it).clone() else {
-            return Err(Error::new("stdout() is not an interface"));
+            return Err(Error::new(format!("{name}() is not an interface")));
         };
-        let key = format!(
-            "vtable:{}:{}",
-            if stderr { "stderr" } else { "stdout" },
-            iface.0
-        );
+        let key = format!("vtable:{name}:{}", iface.0);
         let vt = match self.cx.vtables.get(&key) {
             Some(v) => *v,
             None => {
                 let sigs = self.b.m.ifaces[iface.index()].methods.clone();
                 let mut methods = Vec::new();
                 for s in &sigs {
-                    let f = build_stream_method(self.b.m, &s.name, &s.params, s.ret, stderr);
-                    methods.push(f);
+                    methods.push(build(self.b.m, &s.name, &s.params, s.ret));
                 }
                 self.b.m.vtables.push(VtableDef {
                     name: key.clone(),
@@ -183,6 +425,51 @@ impl<'a> FnLower<'a> {
         Ok(Val { v, own: true })
     }
 
+    /// A method of a format enum (`ArchiveFormat.pack`): the runtime takes the format as a
+    /// parameter after the first declared one, spelled as the lowercase case name or as its index.
+    fn format_method(
+        &mut self,
+        result: MTy,
+        m: &ct::MethodRef,
+        recv: Val,
+        mut args: Vec<NArg>,
+        (sym, param, as_text): (&str, &str, bool),
+    ) -> Result<Val, Error> {
+        let tag_src = self.borrow(recv);
+        let tag = self.b.alt_tag(tag_src);
+        let val = if as_text {
+            tag
+        } else {
+            let names: Vec<String> = ct::cases(&m.receiver)
+                .iter()
+                .map(|c| c.name.as_str().to_lowercase())
+                .collect();
+            let mut out = self.lit(names.last().map_or("", String::as_str)).v;
+            for (k, name) in names.iter().enumerate().rev().skip(1) {
+                let idx = self.b.iconst(k as i64);
+                let hit = self.b.icmp(ms_mir::ir::Cc::Eq, tag, idx);
+                let text = self.lit(name).v;
+                out = self.b.select(hit, text, out);
+            }
+            out
+        };
+        let name = ct::Name::from(param);
+        args.push(NArg {
+            name,
+            val: Val { v: val, own: false },
+            wrapped: false,
+        });
+        let first =
+            m.ty.params
+                .first()
+                .ok_or_else(|| Error::new("format method without arguments"))?
+                .clone();
+        let mut decl = vec![first.clone()];
+        decl.push(ct::Param { name, ty: first.ty });
+        decl.extend(m.ty.params.iter().skip(1).cloned());
+        self.rt_function(sym, &decl, &args, result)
+    }
+
     pub fn native_method(
         &mut self,
         e: &Expr,
@@ -193,12 +480,19 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         let native = m.native.as_str();
         let at = self.b.current();
-        let args = self.native_args(view)?;
+        let mut args = self.native_args(view)?;
         if self.dead {
             return Ok(recv);
         }
         let recv = self.refresh(recv_expr, recv, at)?;
+        let func = m.decl.as_ref().and_then(|d| d.func());
+        self.fill_native_defaults(m.module, func, &m.ty.params, &mut args)?;
         self.at(e.pos);
+        if let Some(&(_, sym, param, as_text)) = FORMAT_METHODS.iter().find(|(n, ..)| *n == native)
+        {
+            let result = self.emty(e)?;
+            return self.format_method(result, m, recv, args, (sym, param, as_text));
+        }
         if let Some((_, sym)) = STRING_TO_STRING.iter().find(|(n, _)| *n == native) {
             let r = self.borrow(recv);
             let out = self.call_runtime(sym, &[r], MTy::STR)?;
@@ -221,6 +515,16 @@ impl<'a> FnLower<'a> {
             let r = self.borrow(recv);
             let text = self.b.call(f, &[r]);
             return Ok(Val { v: text, own: true });
+        }
+        if let Some(v) = self.time_field(m, recv)? {
+            return Ok(v);
+        }
+        if let Some(sym) = m
+            .name()
+            .and_then(|n| crate::rtcall::typed_method_symbol(&m.receiver, n.as_str()))
+        {
+            let result = self.emty(e)?;
+            return self.rt_method(&sym, recv, &m.ty.params, &args, result);
         }
         let name = native.rsplit('/').next().unwrap_or(native);
         let rty = self.ty_of(recv.v);
@@ -323,6 +627,12 @@ impl<'a> FnLower<'a> {
                 }
                 let index = index.ok_or_else(|| Error::new("get without index"))?;
                 self.list_get_or(recv, elem, index, default)
+            }
+            (TyKind::Int, "to_decimal") => {
+                let n = self.borrow(recv);
+                let result = self.emty(e)?;
+                let v = self.call_runtime("msstd_decimal_from_int", &[n], result)?;
+                Ok(Val { v, own: false })
             }
             (TyKind::Int, "to_float") => {
                 let x = self.borrow(recv);
@@ -472,6 +782,85 @@ impl<'a> FnLower<'a> {
                 self.rt_method(&sym, recv, &m.ty.params, &args, result)
             }
         }
+    }
+
+    /// A native method applied to evaluated arguments, for method values.
+    pub(crate) fn bound_native_call(
+        &mut self,
+        m: &ct::MethodRef,
+        recv: Val,
+        args: &[NArg],
+        result: MTy,
+    ) -> Result<Val, Error> {
+        if let Some(v) = self.time_field(m, recv)? {
+            return Ok(v);
+        }
+        let rty = self.ty_of(recv.v);
+        let name = m.name().map(|n| n.to_string()).unwrap_or_default();
+        if let Some(&(_, sym, param, as_text)) = FORMAT_METHODS
+            .iter()
+            .find(|(n, ..)| *n == m.native.as_str())
+        {
+            return self.format_method(result, m, recv, args.to_vec(), (sym, param, as_text));
+        }
+        if ms_check::effects::collection_mutation(&m.receiver, &name) {
+            // The bound receiver is a copy: the mutated collection is the result.
+            let b = self.borrow(recv);
+            let old = self.owned(Val { v: b, own: false });
+            let (new, r) = self.mutate_any(&name, old, &m.ty.params, args, true, result)?;
+            if result == MTy::UNIT {
+                self.drop_value(new);
+                if let Some(r) = r.filter(|r| r.own) {
+                    self.drop_value(r.v);
+                }
+                return Ok(Val {
+                    v: self.b.unit(),
+                    own: false,
+                });
+            }
+            return Ok(match r {
+                Some(r) => {
+                    self.drop_value(new);
+                    r
+                }
+                None => Val { v: new, own: true },
+            });
+        }
+        let sym = crate::rtcall::typed_method_symbol(&m.receiver, &name)
+            .or_else(|| crate::rtcall::method_symbol(self.b.m, rty, m.native.as_str()))
+            .ok_or_else(|| {
+                Error::new(format!(
+                    "unsupported native method value {} on {}",
+                    m.native,
+                    ms_mir::print::ty_str(self.b.m, rty)
+                ))
+            })?;
+        self.rt_method(&sym, recv, &m.ty.params, args, result)
+    }
+
+    /// `Timestamp` and `Duration` accessors that read the representation directly.
+    fn time_field(&mut self, m: &ct::MethodRef, recv: Val) -> Result<Option<Val>, Error> {
+        let name = m.name().map(|n| n.to_string()).unwrap_or_default();
+        if m.receiver.is_std("Duration") && name == "to_nanoseconds" {
+            return Ok(Some(Val {
+                v: self.borrow(recv),
+                own: false,
+            }));
+        }
+        let field = match name.as_str() {
+            "unix_seconds" => 0,
+            "nanoseconds" => 1,
+            _ => return Ok(None),
+        };
+        if !m.receiver.is_std("Timestamp") {
+            return Ok(None);
+        }
+        let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(recv.v)).clone() else {
+            return Err(Error::new("Timestamp is not a record"));
+        };
+        let r = self.borrow(recv);
+        let v = self.b.rec_get(rid, field, r);
+        Ok(Some(Val { v, own: false }))
     }
 
     /// A variable that always holds the receiver list, for use across loop headers.
@@ -702,6 +1091,48 @@ impl<'a> FnLower<'a> {
         self.b.call_rt(ext, &[opv, original, len]);
         self.b.unreachable();
         self.b.switch_to(good);
+    }
+
+    /// `n.seconds`, `n.milliseconds`, `n.minutes`: nanoseconds, faulting beyond the range.
+    pub(crate) fn duration_unit(&mut self, unit: &str, n: Val) -> Result<Val, Error> {
+        use ms_mir::ir::{Cc, Op};
+        let scale: i64 = match unit {
+            "seconds" => 1_000_000_000,
+            "milliseconds" => 1_000_000,
+            _ => 60_000_000_000,
+        };
+        let v = self.borrow(n);
+        let (lo, hi) = (i64::MIN / scale, i64::MAX / scale);
+        let (lov, hiv) = (self.b.iconst(lo), self.b.iconst(hi));
+        let ge = self.b.icmp(Cc::Ge, v, lov);
+        let le = self.b.icmp(Cc::Le, v, hiv);
+        let ok = self.b.binop(Op::And, ge, le);
+        let (good, bad) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(ok, good, &[], bad, &[]);
+        self.b.seal_block(good);
+        self.b.seal_block(bad);
+        self.b.switch_to(bad);
+        let head = self.b.str_lit(&format!(
+            "Int.{unit}: value must be between {lo} and {hi}, found "
+        ));
+        let found = self.call_runtime("msrt_int_to_string", &[v], MTy::STR)?;
+        let msg = self.call_runtime("msrt_string_concat", &[head, found], MTy::STR)?;
+        let ext = self.b.m.add_extern(ms_mir::ir::ExternDef {
+            name: "msrt_fault_string".to_string(),
+            params: vec![Param {
+                ty: MTy::STR,
+                mode: Mode::Borrow,
+            }],
+            ret: MTy::UNIT,
+            noreturn: true,
+            pure_: false,
+        });
+        self.b.call_rt(ext, &[msg]);
+        self.b.unreachable();
+        self.b.switch_to(good);
+        let k = self.b.iconst(scale);
+        let out = self.b.binop(Op::IMul, v, k);
+        Ok(Val { v: out, own: false })
     }
 
     /// A fault with no operands (the runtime formats the message).
@@ -1391,6 +1822,83 @@ impl<'a> FnLower<'a> {
         }
     }
 
+    /// Appends the declared default of every omitted parameter that has one (`none` aside),
+    /// evaluated in the declaring module.
+    pub(crate) fn fill_native_defaults(
+        &mut self,
+        module: ct::Name,
+        func: Option<&ms_syntax::ast::Func>,
+        params: &[ct::Param],
+        args: &mut Vec<NArg>,
+    ) -> Result<(), Error> {
+        let Some(f) = func else {
+            return Ok(());
+        };
+        for (i, p) in params.iter().enumerate() {
+            if args.iter().any(|a| a.name == p.name) {
+                continue;
+            }
+            let Some(d) = f.params.get(i).and_then(|q| q.default.as_ref()) else {
+                continue;
+            };
+            if matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none") {
+                continue;
+            }
+            // Bundled declarations carry no checked facts: literal defaults are built directly,
+            // anything else through the declaring module when it was checked.
+            let r = match &d.kind {
+                ExprKind::Bool(b) => Ok(Val {
+                    v: self.b.bconst(*b),
+                    own: false,
+                }),
+                ExprKind::Number(t) if p.ty.id.as_str() == "Int" => match t.as_str().parse::<i64>()
+                {
+                    Ok(n) => Ok(Val {
+                        v: self.b.iconst(n),
+                        own: false,
+                    }),
+                    Err(_) => continue,
+                },
+                ExprKind::Text(parts) if parts.iter().all(|t| matches!(t, TextPart::Lit(_))) => {
+                    let text: String = parts
+                        .iter()
+                        .map(|t| match t {
+                            TextPart::Lit(s) => s.as_ref(),
+                            TextPart::Interp(_) => "",
+                        })
+                        .collect();
+                    Ok(self.lit(&text))
+                }
+                _ => {
+                    let Ok(hir) = self.cx.module(module) else {
+                        continue;
+                    };
+                    let saved_hir = std::mem::replace(&mut self.hir, hir);
+                    let saved_file = self.file;
+                    self.file = self.b.m.add_file(module.as_str());
+                    let r = self.expr(d);
+                    self.hir = saved_hir;
+                    self.file = saved_file;
+                    r
+                }
+            };
+            let mut val = r?;
+            if p.ty.is_std("Optional") {
+                let o = self.owned(val);
+                val = Val {
+                    v: self.b.opt_some(o),
+                    own: true,
+                };
+            }
+            args.push(NArg {
+                name: p.name,
+                val,
+                wrapped: false,
+            });
+        }
+        Ok(())
+    }
+
     /// The written arguments of a native call in order; `wrapped` marks values meant for an `Optional` parameter.
     pub(crate) fn native_args(&mut self, view: &CallView<'_>) -> Result<Vec<NArg>, Error> {
         let mut out = Vec::new();
@@ -1581,6 +2089,37 @@ fn build_stream_method(
             b.ret(Some(u));
         }
     }
+    let f = b.into_func();
+    m.add_func(f)
+}
+
+/// A method of the clock vtable: `now` writes the reading through the runtime's out pointer.
+fn build_clock_method(
+    m: &mut ms_mir::ir::Module,
+    name: &str,
+    params: &[MTy],
+    ret: MTy,
+    wall: bool,
+) -> FuncId {
+    let mut ps = vec![Param {
+        ty: MTy::PTR,
+        mode: Mode::Borrow,
+    }];
+    ps.extend(params.iter().map(|t| Param {
+        ty: *t,
+        mode: Mode::Borrow,
+    }));
+    let mut b = FuncBuilder::new(m, &format!("clock.{name}"), ps, ret);
+    b.func_mut().kind = FuncKind::Method;
+    b.func_mut().linkage = Linkage::Internal;
+    let sym = if wall {
+        "msstd_time_wall_clock_now"
+    } else {
+        "msstd_time_clock_now"
+    };
+    let ext = runtime_fn(b.m, sym, &[], ret);
+    let reading = b.call_rt(ext, &[]);
+    b.ret(Some(reading));
     let f = b.into_func();
     m.add_func(f)
 }

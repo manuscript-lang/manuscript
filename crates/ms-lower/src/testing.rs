@@ -76,7 +76,7 @@ impl FnLower<'_> {
         acc.ok_or_else(|| Error::new("empty message"))
     }
 
-    fn lit(&mut self, text: &str) -> Val {
+    pub(crate) fn lit(&mut self, text: &str) -> Val {
         let v = self.b.str_lit(text);
         Val { v, own: false }
     }
@@ -116,6 +116,23 @@ impl FnLower<'_> {
         let rty = self.emty(e)?;
         self.at(e.pos);
         let name = name.replacen("assert_", "expect_", 1);
+        if name == "skip" {
+            // A fault whose message names the skip; the report recovers the reason.
+            let marker = self.lit(crate::SKIP_MARKER);
+            let msg = self.cat(&[marker, args[0].val])?;
+            let ext = self.b.m.add_extern(ms_mir::ir::ExternDef {
+                name: "msrt_fault_string".to_string(),
+                params: vec![ms_mir::ir::Param {
+                    ty: MTy::STR,
+                    mode: ms_mir::ir::Mode::Borrow,
+                }],
+                ret: MTy::UNIT,
+                noreturn: true,
+                pure_: false,
+            });
+            self.b.call_rt(ext, &[msg.v]);
+            return Ok(self.dummy(MTy::UNIT));
+        }
         if name == "fail" {
             // The message is consumed, not borrowed.
             let m = self.cat(&[args[0].val])?;

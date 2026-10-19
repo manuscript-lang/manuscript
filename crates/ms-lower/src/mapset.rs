@@ -17,7 +17,7 @@ pub(crate) fn is_map_or_set(m: &ms_mir::ir::Module, t: MTy) -> bool {
     matches!(m.types.kind(t), TyKind::Obj(n, _) if n == "Map" || n == "Set")
 }
 
-impl FnLower<'_> {
+impl<'a> FnLower<'a> {
     /// A fresh empty map or set of type `ty`.
     pub(crate) fn map_new(&mut self, ty: MTy) -> Result<Value, Error> {
         self.call_runtime("msrt_map_new", &[], ty)
@@ -112,7 +112,7 @@ impl FnLower<'_> {
     }
 
     /// Key and value descriptors of a map type (no value descriptor for a set).
-    fn map_descs(&mut self, mt: MTy) -> Result<(Value, Option<Value>), Error> {
+    pub(crate) fn map_descs(&mut self, mt: MTy) -> Result<(Value, Option<Value>), Error> {
         let TyKind::Obj(_, a) = self.b.m.types.kind(mt).clone() else {
             return Err(Error::new("not a map or set"));
         };
@@ -122,7 +122,7 @@ impl FnLower<'_> {
     }
 
     /// A stack slot holding the owned `x`.
-    fn put_slot(&mut self, x: Value) -> Value {
+    pub(crate) fn put_slot(&mut self, x: Value) -> Value {
         let t = self.ty_of(x);
         let slot = self
             .b
@@ -137,7 +137,7 @@ impl FnLower<'_> {
         slot
     }
 
-    fn take_slot(&mut self, slot: Value, t: MTy) -> Value {
+    pub(crate) fn take_slot(&mut self, slot: Value, t: MTy) -> Value {
         self.b
             .emit(Op::Take, &[slot], Imm::Ty(t), Some(t))
             .expect("take")
@@ -315,4 +315,92 @@ impl FnLower<'_> {
         let out = self.b.use_var(acc);
         Ok(Val { v: out, own: true })
     }
+
+    /// Runs `body(key, value)` for each live entry of the borrowed map or set `m` (`value` is
+    /// `None` for a set). Both are borrowed views of the entry.
+    pub(crate) fn each_entry(
+        &mut self,
+        m: Value,
+        body: &mut EntryBody<'_, 'a>,
+    ) -> Result<(), Error> {
+        let mt = self.ty_of(m);
+        let TyKind::Obj(_, a) = self.b.m.types.kind(mt).clone() else {
+            return Err(Error::new("not a map or set"));
+        };
+        let kt = a[0];
+        let vt = a.get(1).copied();
+        let count = self.call_runtime("msrt_map_slot_count", &[m], MTy::INT)?;
+        let idx = self.b.declare_var(MTy::INT, Mode::Borrow);
+        let zero = self.b.iconst(0);
+        self.b.def_var(idx, zero);
+        let (header, step, exit) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        self.b.br(header, &[]);
+        self.b.switch_to(header);
+        let i = self.b.use_var(idx);
+        let more = self.b.icmp(Cc::Lt, i, count);
+        self.b.br_if(more, step, &[], exit, &[]);
+        self.b.seal_block(step);
+        self.b.switch_to(step);
+        let i = self.b.use_var(idx);
+        let (kd, vd) = self.map_descs(mt)?;
+        let vd = match vd {
+            Some(v) => v,
+            None => {
+                let ot = self.b.m.types.opt(MTy::STR);
+                self.b.opt_none(ot)
+            }
+        };
+        let kp = self.ptr_slot();
+        let vp = self.ptr_slot();
+        let live = self.call_runtime("msrt_map_entry_ptrs", &[m, kd, vd, i, kp, vp], MTy::BOOL)?;
+        let (take, skip) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(live, take, &[], skip, &[]);
+        self.b.seal_block(take);
+        self.b.seal_block(skip);
+        self.b.switch_to(take);
+        let kaddr = self
+            .b
+            .emit(Op::Load, &[kp], Imm::Ty(MTy::PTR), Some(MTy::PTR))
+            .expect("load");
+        let key = self
+            .b
+            .emit(Op::Load, &[kaddr], Imm::Ty(kt), Some(kt))
+            .expect("load");
+        let value = match vt {
+            Some(vt) => {
+                let vaddr = self
+                    .b
+                    .emit(Op::Load, &[vp], Imm::Ty(MTy::PTR), Some(MTy::PTR))
+                    .expect("load");
+                Some(
+                    self.b
+                        .emit(Op::Load, &[vaddr], Imm::Ty(vt), Some(vt))
+                        .expect("load"),
+                )
+            }
+            None => None,
+        };
+        body(self, key, value)?;
+        self.b.br(skip, &[]);
+        self.b.switch_to(skip);
+        let one = self.b.iconst(1);
+        let i = self.b.use_var(idx);
+        let n = self.b.binop(Op::IAdd, i, one);
+        self.b.def_var(idx, n);
+        self.b.br(header, &[]);
+        self.b.seal_block(header);
+        self.b.seal_block(exit);
+        self.b.switch_to(exit);
+        Ok(())
+    }
+
+    fn ptr_slot(&mut self) -> Value {
+        self.b
+            .emit(Op::Slot, &[], Imm::Ty(MTy::PTR), Some(MTy::PTR))
+            .expect("slot")
+    }
 }
+
+/// Per-entry callback of `each_entry`: the key and, for maps, the value.
+pub(crate) type EntryBody<'b, 'a> =
+    dyn FnMut(&mut FnLower<'a>, Value, Option<Value>) -> Result<(), Error> + 'b;

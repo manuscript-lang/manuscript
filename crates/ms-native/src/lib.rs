@@ -10,6 +10,7 @@ extern crate ms_std_compress;
 extern crate ms_std_core;
 extern crate ms_std_crypto;
 extern crate ms_std_csv;
+extern crate ms_std_decimal;
 extern crate ms_std_encoding;
 extern crate ms_std_fs;
 extern crate ms_std_html;
