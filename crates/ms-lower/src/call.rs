@@ -384,7 +384,7 @@ impl<'a> FnLower<'a> {
                         let v = self.b.opt_none(t);
                         Val { v, own: false }
                     } else {
-                        return Err(Error::new("missing argument"));
+                        self.contract_default(m, i)?
                     }
                 }
             };
@@ -394,6 +394,50 @@ impl<'a> FnLower<'a> {
         self.at(e.pos);
         let v = self.b.call_method(iface, k as u32, r, &args);
         Ok(self.val(v, true))
+    }
+
+    /// The default written on parameter `i` of a contract operation. Bundled declarations
+    /// carry no checked expressions, so only literal defaults are understood: `false`, a
+    /// number, a text literal, and `"".to_bytes()`.
+    fn contract_default(&mut self, m: &ct::MethodRef, i: usize) -> Result<Val, Error> {
+        let missing = || Error::new("missing argument");
+        let default = m
+            .decl
+            .as_ref()
+            .and_then(|d| d.func())
+            .and_then(|f| f.params.get(i))
+            .and_then(|p| p.default.as_ref())
+            .ok_or_else(missing)?;
+        let param_ty = m.ty.params.get(i).ok_or_else(missing)?.ty.clone();
+        let want = self.cx.lower_ty(self.b.m, &param_ty)?;
+        let text = |parts: &[ms_syntax::ast::TextPart]| match parts {
+            [ms_syntax::ast::TextPart::Lit(t)] => Some(t.to_string()),
+            _ => None,
+        };
+        let v = match (&default.kind, self.b.m.types.kind(want)) {
+            (ExprKind::Bool(b), TyKind::Bool) => self.b.bconst(*b),
+            (ExprKind::Number(n), TyKind::Int) => {
+                let value: i64 = n.as_str().parse().map_err(|_| missing())?;
+                self.b.iconst(value)
+            }
+            (ExprKind::Text(parts), TyKind::Str) => {
+                let t = text(parts).ok_or_else(missing)?;
+                return Ok(Val {
+                    v: self.b.str_lit(&t),
+                    own: true,
+                });
+            }
+            (ExprKind::Call { .. }, TyKind::Bytes) => {
+                let empty = self.b.str_lit("");
+                let bytes = self.call_runtime("msrt_string_to_bytes", &[empty], MTy::BYTES)?;
+                return Ok(Val {
+                    v: bytes,
+                    own: true,
+                });
+            }
+            _ => return Err(missing()),
+        };
+        Ok(Val { v, own: false })
     }
 
     // --------------------------------------------------------- constructors

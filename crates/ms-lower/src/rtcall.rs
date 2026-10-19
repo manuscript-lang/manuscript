@@ -377,7 +377,11 @@ impl FnLower<'_> {
         };
         // A new runtime object (`BigInt`) is returned as its pointer.
         let object = sig.ret.starts_with("*mut ")
-            && matches!(self.b.m.types.kind(result), TyKind::Obj(n, _) if n == "BigInt");
+            && match self.b.m.types.kind(result) {
+                TyKind::Obj(n, _) => n == "BigInt",
+                TyKind::Iface(_) => sig.ret.starts_with("*mut Handle<"),
+                _ => false,
+            };
         let ret = direct(&sig.ret)
             .or(object.then_some(result))
             .ok_or_else(|| Error::new(format!("{sym}: unsupported return {}", sig.ret)))?;
@@ -404,6 +408,20 @@ impl FnLower<'_> {
                     v: self.b.unit(),
                     own: false,
                 });
+            }
+            // A handle for a stream interface: `Subprocess.stdout()`.
+            if sig.ret.starts_with("*mut Handle<")
+                && let TyKind::Iface(i) = self.b.m.types.kind(result).clone()
+            {
+                let hir = self.hir.clone();
+                let vt = self.cx.handle_vtable_of(self.b.m, &hir, sym, i)?;
+                let ht = crate::natiface::handle_ty(self.b.m);
+                let h = self.call_runtime(sym, &vals, ht)?;
+                let v = self
+                    .b
+                    .emit(Op::IfaceNew, &[h], Imm::Vtable(vt), Some(result))
+                    .expect("iface");
+                return Ok(Val { v, own: true });
             }
             // A null string pointer is the absent `Optional[String]`.
             let ret = match self.b.m.types.kind(result) {

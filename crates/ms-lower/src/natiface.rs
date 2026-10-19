@@ -23,20 +23,30 @@ pub(crate) const HANDLE_FUNCTIONS: &[(&str, &str, &str, i64)] = &[
     // No handle: the interface value carries nothing and its operations open handles.
     ("io/files", "io", "", 0),
     ("fs/filesystem", "fs", "", 0),
+    ("process/commands", "process", "", 0),
 ];
 
 /// Interfaces whose values carry no data.
-const UNIT_DATA: &[(&str, &str)] = &[("io", "Files"), ("fs", "FileSystem")];
+const UNIT_DATA: &[(&str, &str)] = &[
+    ("io", "Files"),
+    ("fs", "FileSystem"),
+    ("process", "Commands"),
+];
 
-/// Runtime symbol of an operation of a handle-backed interface (`module`, `interface`,
-/// `operation`), and the constant `Bool` arguments it takes after the operation's own.
+/// A constant argument the runtime symbol takes after the operation's own.
+#[derive(Clone, Copy)]
+enum Extra {
+    Bool(bool),
+    Int(i64),
+}
+
 /// One row of `METHODS`: module, interface, operation, runtime symbol, constant extras.
 type MethodRow = (
     &'static str,
     &'static str,
     &'static str,
     &'static str,
-    &'static [(&'static str, bool)],
+    &'static [(&'static str, Extra)],
 );
 
 const METHODS: &[MethodRow] = &[
@@ -124,14 +134,14 @@ const METHODS: &[MethodRow] = &[
         "FileSystem",
         "chmod",
         "msstd_fs_chmod",
-        &[("follow", true)],
+        &[("follow", Extra::Bool(true))],
     ),
     (
         "fs",
         "FileSystem",
         "chmod_link",
         "msstd_fs_chmod",
-        &[("follow", false)],
+        &[("follow", Extra::Bool(false))],
     ),
     ("fs", "FileSystem", "chown", "msstd_fs_chown", &[]),
     ("fs", "FileSystem", "truncate", "msstd_fs_truncate", &[]),
@@ -232,6 +242,69 @@ const METHODS: &[MethodRow] = &[
         "msstd_fs_temporary_close",
         &[],
     ),
+    (
+        "process",
+        "Commands",
+        "run",
+        "msstd_process_command_run",
+        &[],
+    ),
+    (
+        "process",
+        "Commands",
+        "spawn",
+        "msstd_process_command_spawn",
+        &[],
+    ),
+    (
+        "process",
+        "Subprocess",
+        "stdin",
+        "msstd_process_subprocess_stream",
+        &[("which", Extra::Int(0))],
+    ),
+    (
+        "process",
+        "Subprocess",
+        "stdout",
+        "msstd_process_subprocess_stream",
+        &[("which", Extra::Int(1))],
+    ),
+    (
+        "process",
+        "Subprocess",
+        "stderr",
+        "msstd_process_subprocess_stream",
+        &[("which", Extra::Int(2))],
+    ),
+    (
+        "process",
+        "Subprocess",
+        "wait",
+        "msstd_process_subprocess_wait",
+        &[],
+    ),
+    (
+        "process",
+        "Subprocess",
+        "terminate",
+        "msstd_process_subprocess_terminate",
+        &[],
+    ),
+    (
+        "process",
+        "Subprocess",
+        "kill",
+        "msstd_process_subprocess_kill",
+        &[],
+    ),
+    (
+        "process",
+        "Subprocess",
+        "close",
+        "msstd_process_subprocess_close",
+        &[],
+    ),
 ];
 
 /// The MIR type of a runtime handle object.
@@ -247,7 +320,7 @@ pub(crate) struct MethodJob {
     sym: Option<String>,
     decl: Vec<ct::Param>,
     /// Constant `Bool` arguments after the operation's own.
-    extras: Vec<(&'static str, bool)>,
+    extras: Vec<(&'static str, Extra)>,
     params: Vec<MTy>,
     ret: MTy,
     data_ty: MTy,
@@ -262,7 +335,7 @@ impl Cx {
         sym: &str,
         iface: IfaceId,
     ) -> Result<VtableId, Error> {
-        let module = sym
+        let mut module = sym
             .strip_prefix("msstd_")
             .and_then(|r| r.split('_').next())
             .ok_or_else(|| Error::new(format!("{sym} returns an interface")))?;
@@ -271,6 +344,10 @@ impl Cx {
             .get(&iface)
             .cloned()
             .ok_or_else(|| Error::new("unknown interface"))?;
+        // Streams are `@std/io` handles whichever module hands them out.
+        if matches!(ity.name.to_string().as_str(), "ReadStream" | "WriteStream") {
+            module = "io";
+        }
         self.handle_vtable(m, hir, module, &ity, iface)
     }
 
@@ -411,18 +488,18 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         .collect();
     debug_assert_eq!(job.params.len(), nargs.len());
     let mut decl = job.decl.clone();
-    for (name, value) in &job.extras {
+    for (name, extra) in &job.extras {
         let name = ct::n(name);
-        let ty = decl.first().map(|p| p.ty.clone());
-        if let Some(ty) = ty {
-            decl.push(ct::Param { name, ty });
-            let v = fl.b.bconst(*value);
-            nargs.push(NArg {
-                name,
-                val: Val { v, own: false },
-                wrapped: false,
-            });
-        }
+        let (ty, v) = match *extra {
+            Extra::Bool(b) => (ct::bool_(), fl.b.bconst(b)),
+            Extra::Int(i) => (ct::int(), fl.b.iconst(i)),
+        };
+        decl.push(ct::Param { name, ty });
+        nargs.push(NArg {
+            name,
+            val: Val { v, own: false },
+            wrapped: false,
+        });
     }
     let r = match recv {
         Some(recv) => fl.rt_method(sym, recv, &decl, &nargs, job.ret)?,
