@@ -63,24 +63,26 @@ pub(crate) struct FnLower<'a> {
     pub discard: Option<usize>,
 }
 
-/// Positions (receiver first) of the `var` parameters a callable may change.
-pub(crate) fn var_positions(c: &Callable) -> Vec<usize> {
-    let mut out = Vec::new();
-    let mut base = 0;
-    if c.self_binding.is_some() {
-        if c.func.method().is_some_and(|m| m.mutating) {
-            out.push(0);
+impl Cx {
+    /// Positions (receiver first) of the `var` parameters a callable may change.
+    pub(crate) fn var_positions(&self, c: &Callable) -> Vec<usize> {
+        let mut out = Vec::new();
+        let mut base = 0;
+        if c.self_binding.is_some() {
+            if self.mutating.contains(&(c.module.file, c.id())) {
+                out.push(0);
+            }
+            base = 1;
         }
-        base = 1;
-    }
-    if let Some(func) = c.func.func() {
-        for (i, p) in func.params.iter().enumerate() {
-            if p.mutable {
-                out.push(base + i);
+        if let Some(func) = c.func.func() {
+            for (i, p) in func.params.iter().enumerate() {
+                if p.mutable {
+                    out.push(base + i);
+                }
             }
         }
+        out
     }
-    out
 }
 
 /// The reserved instance key of a callable under a substitution.
@@ -139,7 +141,7 @@ impl Cx {
         }
         let result = ct::sub(&self.callable_result(c)?, subst);
         let mut ret = self.lower_ty(m, &result)?;
-        let vars = var_positions(c);
+        let vars = self.var_positions(c);
         if !vars.is_empty() {
             let mut fields = vec![("result".to_string(), ret)];
             for (n, p) in vars.iter().enumerate() {
@@ -489,11 +491,13 @@ impl<'a> FnLower<'a> {
             .chain(c.parameters.iter())
             .cloned()
             .collect();
-        let vars = var_positions(c);
+        let vars = self.cx.var_positions(c);
         let mut var_uids = Vec::new();
         // Parameters the body changes are the callee's own copies.
         let mutated = match c.body() {
-            ms_check::hir::Body::Block(stmts) => crate::closure::mutated_captures(&self.hir, stmts),
+            ms_check::hir::Body::Block(stmts) => {
+                crate::closure::mutated_captures(&self.hir, stmts, &self.cx.mutating)
+            }
             ms_check::hir::Body::Expr(_) => Default::default(),
         };
         for (i, (b, v)) in bindings.iter().zip(params).enumerate() {

@@ -82,3 +82,12 @@ fn maps_and_sets() {
     assert!(mir.contains("msrt_list_to_set"));
     assert!(mir.contains("put "));
 }
+
+#[test]
+fn methods_that_change_self_hand_it_back() {
+    let mir = lower(
+        "selfmut",
+        "interface Counter:\n    fn next() Int\ntype C:\n    n: Int\nimpl Counter for C:\n    fn next() Int:\n        self.n += 1\n        return self.n\nexport fn main() Int:\n    let c = Counter(C(0))\n    let a = c.next()\n    return a + c.next()\n",
+    );
+    assert!(mir.contains("next.vars"));
+}

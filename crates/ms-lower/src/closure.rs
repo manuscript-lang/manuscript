@@ -163,7 +163,7 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
     };
     let params = fl.b.params();
     let env = params[0];
-    let mutated = mutated_captures(&fl.hir, &lam.body);
+    let mutated = mutated_captures(&fl.hir, &lam.body, &fl.cx.mutating);
     for (i, (b, t)) in job.captures.iter().zip(captures).enumerate() {
         let v =
             fl.b.emit(Op::ClosureCap, &[env], Imm::Idx(i as u32), Some(*t))
@@ -206,7 +206,12 @@ fn place_root(hir: &ms_check::hir::ModuleHir, e: &Expr) -> Option<usize> {
 struct Mutations<'h> {
     hir: &'h ms_check::hir::ModuleHir,
     roots: std::collections::HashSet<usize>,
+    /// Source methods called on a local's place: (root local, module, declaration).
+    calls: Vec<(usize, MethodKey)>,
 }
+
+/// A source method: module file and declaration node.
+pub(crate) type MethodKey = (ms_check::types::Name, ms_syntax::NodeId);
 
 impl ms_syntax::visit::Visitor for Mutations<'_> {
     fn stmt(&mut self, s: &Stmt) {
@@ -230,25 +235,103 @@ impl ms_syntax::visit::Visitor for Mutations<'_> {
         let ExprKind::Member { left, name } = &c.kind else {
             return;
         };
-        let native = matches!(
-            self.hir.resolution(e),
-            ms_check::hir::Resolution::Method(m) if !m.native.as_str().is_empty()
-        );
-        if native && ms_check::effects::collection_mutation(&self.hir.ty(left), name.as_str()) {
-            self.roots.extend(place_root(self.hir, left));
+        let ms_check::hir::Resolution::Method(m) = self.hir.resolution(e) else {
+            return;
+        };
+        if !m.native.as_str().is_empty() {
+            if ms_check::effects::collection_mutation(&self.hir.ty(left), name.as_str()) {
+                self.roots.extend(place_root(self.hir, left));
+            }
+        } else if let (Some(root), Some(decl)) = (place_root(self.hir, left), &m.decl) {
+            self.calls.push((root, (m.module, decl.id())));
         }
     }
+}
+
+/// The locals a body changes directly, and the source methods it calls on them.
+pub(crate) fn body_mutations(
+    hir: &ms_check::hir::ModuleHir,
+    body: crate::closure::BodyRef<'_>,
+) -> (std::collections::HashSet<usize>, Vec<(usize, MethodKey)>) {
+    let mut v = Mutations {
+        hir,
+        roots: std::collections::HashSet::new(),
+        calls: Vec::new(),
+    };
+    match body {
+        BodyRef::Block(b) => ms_syntax::visit::walk_block(&mut v, b),
+        BodyRef::Expr(e) => ms_syntax::visit::walk_expr(&mut v, e),
+    }
+    (v.roots, v.calls)
+}
+
+/// A body to scan for mutations.
+pub(crate) enum BodyRef<'a> {
+    Block(&'a [Stmt]),
+    Expr(&'a Expr),
 }
 
 /// Locals of the enclosing function that the lambda body changes (their closure copy is mutable).
 pub(crate) fn mutated_captures(
     hir: &ms_check::hir::ModuleHir,
     body: &[Stmt],
+    mutating: &std::collections::HashSet<MethodKey>,
 ) -> std::collections::HashSet<usize> {
-    let mut v = Mutations {
-        hir,
-        roots: std::collections::HashSet::new(),
-    };
-    ms_syntax::visit::walk_block(&mut v, body);
-    v.roots
+    let (mut roots, calls) = body_mutations(hir, BodyRef::Block(body));
+    roots.extend(
+        calls
+            .into_iter()
+            .filter(|(_, k)| mutating.contains(k))
+            .map(|(r, _)| r),
+    );
+    roots
+}
+
+/// Methods that change their receiver: declared `var fn`, or assigning through `self`, using a
+/// collection mutator on it, or calling such a method on it.
+pub(crate) fn infer_mutating(
+    mods: &std::collections::HashMap<ms_check::types::Name, std::rc::Rc<ms_check::hir::ModuleHir>>,
+    callables: &std::collections::HashMap<MethodKey, std::rc::Rc<ms_check::hir::Callable>>,
+) -> std::collections::HashSet<MethodKey> {
+    let mut mutating = std::collections::HashSet::new();
+    // Per method: the source methods it calls on `self`.
+    let mut edges: Vec<(MethodKey, Vec<MethodKey>)> = Vec::new();
+    for (key, c) in callables {
+        let Some(me) = &c.self_binding else { continue };
+        if c.func.method().is_some_and(|m| m.mutating) {
+            mutating.insert(*key);
+            continue;
+        }
+        let Some(hir) = mods.get(&c.module.file) else {
+            continue;
+        };
+        let body = match c.body() {
+            ms_check::hir::Body::Block(b) => BodyRef::Block(b),
+            ms_check::hir::Body::Expr(e) => BodyRef::Expr(e),
+        };
+        let (roots, calls) = body_mutations(hir, body);
+        if roots.contains(&me.uid) {
+            mutating.insert(*key);
+            continue;
+        }
+        let on_self: Vec<MethodKey> = calls
+            .into_iter()
+            .filter(|(r, _)| *r == me.uid)
+            .map(|(_, k)| k)
+            .collect();
+        if !on_self.is_empty() {
+            edges.push((*key, on_self));
+        }
+    }
+    loop {
+        let before = mutating.len();
+        for (key, callees) in &edges {
+            if !mutating.contains(key) && callees.iter().any(|k| mutating.contains(k)) {
+                mutating.insert(*key);
+            }
+        }
+        if mutating.len() == before {
+            return mutating;
+        }
+    }
 }
