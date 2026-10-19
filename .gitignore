@@ -59,3 +59,7 @@ __pycache__/
 /dist/
 /.build-payload.tar.gz
 /.build-payload.tar.gz.overlay.json
+
+# Rust workspace build output
+/target/
+/target-rs/
