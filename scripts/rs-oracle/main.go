@@ -121,6 +121,9 @@ func main() {
 		"archive":  genArchive,
 		"json":     genJSON,
 		"html":     genHTML,
+		"semver":   genSemver,
+		"random":   genRandom,
+		"log":      genLog,
 	}
 	names := flag.Args()
 	if len(names) == 0 {
@@ -426,6 +429,7 @@ func genCompress(dir string) {
 		r.row("decompress", f, "x", "-", "=>", strings.Join(okOrErr(d, func(b *rt.Bytes) []string { return []string{hb(b)} }), " "))
 	}
 	r.write(dir, "compress.tsv")
+	genCompressStream(dir)
 }
 
 // ---- crypto ----

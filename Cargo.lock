@@ -856,9 +856,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "ms-std-log"
+version = "0.1.0"
+dependencies = [
+ "ms-rt",
+ "ms-rt-abi",
+ "ms-std-core",
+ "ms-std-json",
+]
+
+[[package]]
 name = "ms-std-path"
 version = "0.1.0"
 dependencies = [
+ "ms-rt",
+ "ms-rt-abi",
+ "ms-std-core",
+]
+
+[[package]]
+name = "ms-std-random"
+version = "0.1.0"
+dependencies = [
+ "getrandom",
  "ms-rt",
  "ms-rt-abi",
  "ms-std-core",
@@ -872,6 +892,15 @@ dependencies = [
  "ms-rt-abi",
  "ms-std-core",
  "regex",
+]
+
+[[package]]
+name = "ms-std-semver"
+version = "0.1.0"
+dependencies = [
+ "ms-rt",
+ "ms-rt-abi",
+ "ms-std-core",
 ]
 
 [[package]]

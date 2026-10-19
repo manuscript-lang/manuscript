@@ -9,6 +9,10 @@ They follow [ABI.md](ABI.md) and have not yet been exercised by lowering; confir
 - **Status codes**: `CryptoError` is its case index (InvalidInput 0 is reported as status 1+, see `CryptoFail::status`); `Fail` maps InvalidInput, InvalidData, LimitExceeded.
 - **Recursive sum types**: `JsonValue` and `HtmlNode` have no flat layout. `ms-std-json` exposes a `DocObj` handle and `ms-std-html` a `TreeObj` handle with node-id accessors and a builder; lowering decides how to materialize them.
 - **Handles** (`Hasher`, `DocObj`, `TreeObj`) are `Obj { rc, drop }` allocated with `msrt_alloc`.
+- **semver**: `Version { major, minor, patch: Int, prerelease, build: List[String] }` is `VersionRec` (24-byte `VecVal` lists, declaration order). `SemverError` statuses: InvalidData 4, OutOfRange 2.
+- **random**: only the OS source is a native symbol (`msrt_random_os_bytes`, `RandomError.Failed` is status 7 with the message through a second out). `secure_int`, `uuid_v4`, `float`, `shuffle` and `choice_index` take an `Entropy` through a fetch closure, because dispatching a user-defined interface is the generated code's job.
+- **log**: `Logger` natives are a `LoggerObj` handle. `msrt_log_logger_encode` returns the JSON line to write (the caller passes the clock and owns the transport, interface dispatch and `record`/`bind` field encoding; `msrt_log_object_text` is the `data` wrapper).
+- **compress streams**: `DecoderObj`/`EncoderObj` handles. The generated code runs the pull loop: `decoder_poll` returns 0 (output), `POLL_NEED_INPUT` (64) or `POLL_DONE` (65); feed chunks with `feed`, signal the end with `finish_input`. The encoder is `feed` / `finish` / `take`. Bytes delivered before a decode error can differ from Go's chunking.
 - **Reuse**: `ms_std_path::glob` is the shared glob matcher (fs should call it).
 
 ## Known differences from the Go runtime

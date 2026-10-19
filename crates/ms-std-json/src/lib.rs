@@ -24,6 +24,7 @@ pub const INDENT_CEILING: usize = 10;
 
 pub type NodeId = u32;
 
+#[derive(Clone)]
 pub enum Node {
     Null,
     Bool(bool),
