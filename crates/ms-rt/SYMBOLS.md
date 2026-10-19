@@ -3,6 +3,21 @@
 Generated from the `#[unsafe(no_mangle)]` items in `crates/ms-rt/src` and `crates/ms-std-*/src` by `crates/ms-rt/gen-symbols.py`; do not edit.
 
 ```text
+msrt_bits_bit_and(left: i64, right: i64) -> i64
+msrt_bits_bit_or(left: i64, right: i64) -> i64
+msrt_bits_bit_xor(left: i64, right: i64) -> i64
+msrt_bits_bit_not(value: i64) -> i64
+msrt_bits_shift_left(value: i64, count: i64) -> i64
+msrt_bits_shift_right(value: i64, count: i64) -> i64
+msrt_bits_shift_right_unsigned(value: i64, count: i64) -> i64
+msrt_bits_rotate_left(value: i64, count: i64) -> i64
+msrt_bits_rotate_right(value: i64, count: i64) -> i64
+msrt_bits_count_ones(value: i64) -> i64
+msrt_bits_leading_zeros(value: i64) -> i64
+msrt_bits_trailing_zeros(value: i64) -> i64
+msrt_bits_wrapping_add(left: i64, right: i64) -> i64
+msrt_bits_wrapping_subtract(left: i64, right: i64) -> i64
+msrt_bits_wrapping_multiply(left: i64, right: i64) -> i64
 msrt_desc_int (data)
 msrt_desc_float (data)
 msrt_desc_bool (data)
@@ -281,6 +296,10 @@ msstd_decimal_to_float(a: *const Dec) -> f64
 msstd_decimal_truncate_to_int(a: *const Dec, out: *mut i64) -> u8
 msstd_decimal_round( value: *const Dec, places: i64, has_mode: u8, mode: i64, out: *mut Dec, ) -> u8
 msstd_decimal_to_fixed( value: *const Dec, digits: i64, has_mode: u8, mode: i64, out: *mut *mut StrObj, ) -> u8
+msrt_binary_read_integer( data: *const VecVal, offset: i64, width: i64, signed: u8, little: u8, out: *mut i64, ) -> u8
+msrt_binary_read_float( data: *const VecVal, offset: i64, little: u8, out: *mut f64, ) -> u8
+msrt_binary_write_integer( value: i64, width: i64, signed: u8, little: u8, out: *mut VecVal, ) -> u8
+msrt_binary_write_float(value: f64, little: u8, out: *mut VecVal)
 msrt_encoding_hex_encode(data: *const VecVal) -> *mut StrObj
 msrt_encoding_hex_decode( text: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msrt_encoding_base64_encode( data: *const VecVal, url_safe: u8, ) -> *mut StrObj
