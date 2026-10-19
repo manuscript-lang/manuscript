@@ -1,0 +1,9 @@
+module "div_zero_fault"
+entry @main
+fn @main() -> int {
+b0:
+  %a: int = iconst 10
+  %z: int = iconst 0
+  %q: int = sdiv.chk %a, %z
+  ret %q
+}

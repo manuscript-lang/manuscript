@@ -1,0 +1,30 @@
+module "strength"
+entry @main
+fn @reduce(%x: int) -> int {
+b0:
+  %eight: int = iconst 8
+  %three: int = iconst 3
+  %q: int = sdiv.chk %x, %eight
+  %r: int = srem.chk %x, %three
+  %m: int = imul %x, %eight
+  %s: int = iadd %q, %r
+  %t: int = iadd %s, %m
+  ret %t
+}
+fn @parity(%x: int) -> bool {
+b0:
+  %two: int = iconst 2
+  %zero: int = iconst 0
+  %r: int = srem.chk %x, %two
+  %c: bool = icmp.eq %r, %zero
+  ret %c
+}
+fn @main() -> int {
+b0:
+  %a: int = iconst -29
+  %v: int = call @reduce (%a)
+  %p: bool = call @parity (%a)
+  %b: int = b2i %p
+  %r: int = iadd %v, %b
+  ret %r
+}
