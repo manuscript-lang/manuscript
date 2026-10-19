@@ -25,14 +25,36 @@ static COUNT: AtomicUsize = AtomicUsize::new(0);
 static DROPPED: AtomicUsize = AtomicUsize::new(0);
 static PATH: Global<&'static [u8]> = Global::new(b"");
 
-#[cfg(target_arch = "x86_64")]
+// Offsets of the program counter and frame pointer from the register block of the signal
+// context: inside `ucontext_t` on Linux, inside the `mcontext` it points to on macOS.
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 const PC_OFFSET: usize = 40 + 16 * 8;
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 const FP_OFFSET: usize = 40 + 10 * 8;
-#[cfg(target_arch = "aarch64")]
+#[cfg(all(target_os = "linux", target_arch = "aarch64"))]
 const PC_OFFSET: usize = 440;
-#[cfg(target_arch = "aarch64")]
+#[cfg(all(target_os = "linux", target_arch = "aarch64"))]
 const FP_OFFSET: usize = 416;
+#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+const PC_OFFSET: usize = 16 + 16 * 8;
+#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+const FP_OFFSET: usize = 16 + 6 * 8;
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+const PC_OFFSET: usize = 16 + 32 * 8;
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+const FP_OFFSET: usize = 16 + 29 * 8;
+
+/// The register block of a signal context.
+///
+/// # Safety
+/// `uctx` is the context pointer a `SA_SIGINFO` handler received.
+unsafe fn registers(uctx: *mut u8) -> *mut u8 {
+    #[cfg(target_os = "macos")]
+    // SAFETY: `uc_mcontext` is the pointer at offset 48 of `ucontext_t`.
+    return unsafe { *(uctx.add(48) as *const *mut u8) };
+    #[cfg(not(target_os = "macos"))]
+    return uctx;
+}
 
 extern "C" fn on_sample(_sig: i32, _info: *mut u8, uctx: *mut u8) {
     let n = COUNT.load(Ordering::Relaxed);
@@ -44,8 +66,9 @@ extern "C" fn on_sample(_sig: i32, _info: *mut u8, uctx: *mut u8) {
     // frame reads stay inside the recorded stack bounds.
     unsafe {
         let base = (*BUFFER.ptr()).add(n * SAMPLE_WORDS);
-        let pc = *(uctx.add(PC_OFFSET) as *const usize);
-        let mut fp = *(uctx.add(FP_OFFSET) as *const usize);
+        let regs = registers(uctx);
+        let pc = *(regs.add(PC_OFFSET) as *const usize);
+        let mut fp = *(regs.add(FP_OFFSET) as *const usize);
         let (lo, hi) = (*STACK_LO.ptr(), *STACK_HI.ptr());
         let mut k = 0;
         *base.add(1) = pc;
@@ -101,12 +124,10 @@ pub fn start() {
         if sys::env_var(b"MS_PERF_MAP\0").is_some_and(|v| v == b"1") {
             write_perf_map();
         }
-        let act = sys::sigaction_t {
-            handler: on_sample as *const () as usize,
-            mask: [0; 16],
-            flags: sys::SA_SIGINFO | sys::SA_RESTART,
-            restorer: 0,
-        };
+        let act = sys::sigaction_t::new(
+            on_sample as *const () as usize,
+            sys::SA_SIGINFO | sys::SA_RESTART,
+        );
         sys::sigaction(sys::SIGPROF, &act, core::ptr::null_mut());
         let usec = 1_000_000 / parse_hz();
         let tv = sys::timeval {
