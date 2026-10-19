@@ -10,7 +10,7 @@
 pub mod layout;
 pub mod link;
 
-mod gen;
+mod cg;
 mod lower;
 
 use ms_mir::ir::Module;
@@ -55,5 +55,5 @@ impl From<String> for Error {
 
 /// Compiles a verified module to a relocatable object file.
 pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
-    gen::compile(m, opts)
+    cg::compile(m, opts)
 }

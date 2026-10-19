@@ -1,6 +1,6 @@
 //! Lowering of one MIR function (or glue function) to Cranelift IR.
 
-use crate::gen::{leaf_type, Gen, Glue, CLOSURE_CAPTURES, CLOSURE_CODE, OBJ_HEADER};
+use crate::cg::{leaf_type, Gen, Glue, CLOSURE_CAPTURES, CLOSURE_CODE, OBJ_HEADER};
 use crate::layout::{mem_layout, AltRepr, Leaf};
 use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
 use cranelift_codegen::ir::{self, types, BlockArg, FuncRef, GlobalValue, InstBuilder, MemFlagsData, StackSlotData, StackSlotKind, TrapCode, Value};
@@ -102,7 +102,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         if off == 0 {
             p
         } else {
-            self.b.ins().iadd_imm(p, off)
+            self.b.ins().iadd_imm_s(p, off)
         }
     }
 
@@ -155,9 +155,9 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// `rc -= 1; if rc == 0 { drop_slow }` on a non-null object pointer.
     fn release(&mut self, p: Value) {
         let rc = self.b.ins().load(types::I64, flags(), p, 0);
-        let n = self.b.ins().iadd_imm(rc, -1);
+        let n = self.b.ins().iadd_imm_s(rc, -1);
         self.b.ins().store(flags(), n, p, 0);
-        let zero = self.b.ins().icmp_imm(IntCC::Equal, n, 0);
+        let zero = self.b.ins().icmp_imm_s(IntCC::Equal, n, 0);
         self.if_then(zero, |s| {
             s.rt_call("msrt_drop_slow", &[p]);
         });
@@ -165,7 +165,7 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     fn retain(&mut self, p: Value) {
         let rc = self.b.ins().load(types::I64, flags(), p, 0);
-        let n = self.b.ins().iadd_imm(rc, 1);
+        let n = self.b.ins().iadd_imm_s(rc, 1);
         self.b.ins().store(flags(), n, p, 0);
     }
 
@@ -180,7 +180,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             TyKind::Obj(n, _) if n != "Map" && n != "Set" => self.release(vs[0]),
             TyKind::Opt(inner) if self.g.lay.opt_is_nullable(*inner) => {
                 let p = vs[0];
-                let nn = self.b.ins().icmp_imm(IntCC::NotEqual, p, 0);
+                let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, p, 0);
                 self.if_then(nn, |s| s.release(p));
             }
             _ => {
@@ -332,15 +332,15 @@ impl<'a, 'm> Lower<'a, 'm> {
                     let more = self.b.ins().icmp(IntCC::SignedLessThan, i, len);
                     self.b.ins().brif(more, body, &[], done, &[]);
                     self.b.switch_to_block(body);
-                    let off = self.b.ins().imul_imm(i, size);
+                    let off = self.b.ins().imul_imm_s(i, size);
                     let at = self.b.ins().iadd(ptr, off);
                     let ev = self.load_leaves(at, 0, &leaves);
                     self.drop_value(e, &ev);
-                    let next = self.b.ins().iadd_imm(i, 1);
+                    let next = self.b.ins().iadd_imm_s(i, 1);
                     self.b.ins().jump(head, &[BlockArg::Value(next)]);
                     self.b.switch_to_block(done);
                 }
-                let nn = self.b.ins().icmp_imm(IntCC::NotEqual, ptr, 0);
+                let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, ptr, 0);
                 self.if_then(nn, |s| s.free(ptr));
             }
             TyKind::Obj(..) => self.unsupported("dropping Map and Set values"),
@@ -389,7 +389,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             let this = self.b.create_block();
             let next = self.b.create_block();
-            let is = self.b.ins().icmp_imm(IntCC::Equal, tag, c as i64);
+            let is = self.b.ins().icmp_imm_s(IntCC::Equal, tag, c as i64);
             self.b.ins().brif(is, this, &[], next, &[]);
             self.b.switch_to_block(this);
             for (fty, idx) in case {
@@ -430,7 +430,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 if self.g.lay.opt_is_nullable(inner) {
                     // Retain through copy_value on a non-null pointer.
                     let p = vs[0];
-                    let nn = self.b.ins().icmp_imm(IntCC::NotEqual, p, 0);
+                    let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, p, 0);
                     self.if_then(nn, |s| s.retain(p));
                     vs.to_vec()
                 } else {
@@ -471,10 +471,10 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.b.append_block_param(join, types::I64);
         let some = self.b.create_block();
         let empty_ptr = self.iconst(0);
-        let nonempty = self.b.ins().icmp_imm(IntCC::NotEqual, len, 0);
+        let nonempty = self.b.ins().icmp_imm_s(IntCC::NotEqual, len, 0);
         self.b.ins().brif(nonempty, some, &[], join, &[BlockArg::Value(empty_ptr)]);
         self.b.switch_to_block(some);
-        let bytes = self.b.ins().imul_imm(len, size);
+        let bytes = self.b.ins().imul_imm_s(len, size);
         let np = self.rt_call("msrt_alloc", &[bytes])[0];
         match elem.filter(|e| m.needs_drop(*e)) {
             None => {
@@ -493,13 +493,13 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let more = self.b.ins().icmp(IntCC::SignedLessThan, i, len);
                 self.b.ins().brif(more, body, &[], done, &[]);
                 self.b.switch_to_block(body);
-                let off = self.b.ins().imul_imm(i, size);
+                let off = self.b.ins().imul_imm_s(i, size);
                 let src = self.b.ins().iadd(ptr, off);
                 let dst = self.b.ins().iadd(np, off);
                 let ev = self.load_leaves(src, 0, &leaves);
                 let cv = self.copy_value(e, &ev);
                 self.store_leaves(dst, 0, &leaves, &cv);
-                let next = self.b.ins().iadd_imm(i, 1);
+                let next = self.b.ins().iadd_imm_s(i, 1);
                 self.b.ins().jump(head, &[BlockArg::Value(next)]);
                 self.b.switch_to_block(done);
             }
@@ -534,7 +534,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             any = true;
             let this = self.b.create_block();
             let next = self.b.create_block();
-            let is = self.b.ins().icmp_imm(IntCC::Equal, tag, c as i64);
+            let is = self.b.ins().icmp_imm_s(IntCC::Equal, tag, c as i64);
             self.b.ins().brif(is, this, &[], next, &[]);
             self.b.switch_to_block(this);
             let mut out = src.clone();
@@ -728,7 +728,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             FaultKind::Message(s) => {
                 let d = self.g.str_lit(s.0);
                 let base = self.data_addr(d);
-                let p = self.b.ins().iadd_imm(base, crate::gen::STR_DATA_OFFSET as i64);
+                let p = self.b.ins().iadd_imm_s(base, crate::cg::STR_DATA_OFFSET as i64);
                 let n = self.iconst(self.g.m.strings[s.index()].len() as i64);
                 self.rt_call("msrt_fault", &[p, n]);
             }
@@ -826,10 +826,10 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::SDivChk => {
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
                 if checks {
-                    let z = self.b.ins().icmp_imm(IntCC::Equal, y, 0);
+                    let z = self.b.ins().icmp_imm_s(IntCC::Equal, y, 0);
                     self.fault_if(z, "msrt_fault_div_zero", vec![]);
-                    let m1 = self.b.ins().icmp_imm(IntCC::Equal, y, -1);
-                    let mn = self.b.ins().icmp_imm(IntCC::Equal, x, i64::MIN);
+                    let m1 = self.b.ins().icmp_imm_s(IntCC::Equal, y, -1);
+                    let mn = self.b.ins().icmp_imm_s(IntCC::Equal, x, i64::MIN);
                     let both = self.b.ins().band(m1, mn);
                     self.fault_if(both, "msrt_fault_div_overflow", vec![x, y]);
                 }
@@ -838,10 +838,10 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::SRemChk => {
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
                 if checks {
-                    let z = self.b.ins().icmp_imm(IntCC::Equal, y, 0);
+                    let z = self.b.ins().icmp_imm_s(IntCC::Equal, y, 0);
                     self.fault_if(z, "msrt_fault_rem_zero", vec![]);
                 }
-                let m1 = self.b.ins().icmp_imm(IntCC::Equal, y, -1);
+                let m1 = self.b.ins().icmp_imm_s(IntCC::Equal, y, -1);
                 let one = self.iconst(1);
                 let safe = self.b.ins().select(m1, one, y);
                 let r = self.b.ins().srem(x, safe);
@@ -878,7 +878,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             }],
             Op::Not => vec![{
                 let x = self.a(inst, 0)[0];
-                self.b.ins().bxor_imm(x, 1)
+                self.b.ins().bxor_imm_s(x, 1)
             }],
             Op::ICmp => {
                 let Imm::Cc(cc) = inst.imm else { unreachable!() };
@@ -1006,7 +1006,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);
                 if self.opt_nullable(ty) {
-                    vec![self.b.ins().icmp_imm(IntCC::NotEqual, v[0], 0)]
+                    vec![self.b.ins().icmp_imm_s(IntCC::NotEqual, v[0], 0)]
                 } else {
                     vec![v[0]]
                 }
@@ -1016,7 +1016,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let v = self.a(inst, 0);
                 let nullable = self.opt_nullable(ty);
                 if inst.op == Op::OptUnwrap && checks {
-                    let none = if nullable { self.b.ins().icmp_imm(IntCC::Equal, v[0], 0) } else { self.b.ins().icmp_imm(IntCC::Equal, v[0], 0) };
+                    let none = if nullable { self.b.ins().icmp_imm_s(IntCC::Equal, v[0], 0) } else { self.b.ins().icmp_imm_s(IntCC::Equal, v[0], 0) };
                     self.fault_if(none, "msrt_fault_unwrap_none", vec![]);
                 }
                 if nullable { v } else { v[1..].to_vec() }
@@ -1126,9 +1126,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let d = self.g.rt_data("msrt_call_depth");
                 let addr = self.data_addr(d);
                 let n = self.b.ins().load(types::I64, flags(), addr, 0);
-                let n1 = self.b.ins().iadd_imm(n, 1);
+                let n1 = self.b.ins().iadd_imm_s(n, 1);
                 self.b.ins().store(flags(), n1, addr, 0);
-                let over = self.b.ins().icmp_imm(IntCC::SignedGreaterThan, n1, 200_000);
+                let over = self.b.ins().icmp_imm_s(IntCC::SignedGreaterThan, n1, 200_000);
                 self.fault_if(over, "msrt_fault_depth", vec![]);
                 vec![]
             }
@@ -1136,7 +1136,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let d = self.g.rt_data("msrt_call_depth");
                 let addr = self.data_addr(d);
                 let n = self.b.ins().load(types::I64, flags(), addr, 0);
-                let n1 = self.b.ins().iadd_imm(n, -1);
+                let n1 = self.b.ins().iadd_imm_s(n, -1);
                 self.b.ins().store(flags(), n1, addr, 0);
                 vec![]
             }
@@ -1180,6 +1180,301 @@ impl<'a, 'm> Lower<'a, 'm> {
     fn opt_nullable(&self, opt: Ty) -> bool {
         match self.g.m.types.kind(opt) {
             TyKind::Opt(inner) => self.g.lay.opt_is_nullable(*inner),
+            _ => false,
+        }
+    }
+}
+
+// ---- aggregates, lists, calls ---------------------------------------------
+
+impl<'a, 'm> Lower<'a, 'm> {
+    fn alt_new(&mut self, inst: &Inst, ty: Ty) -> Vs {
+        let Imm::Case(a, c) = inst.imm else { unreachable!() };
+        let shape = self.g.lay.shape(ty);
+        let fields = self.alt_fields(a);
+        let (leaves, boxed) = match &shape.alt {
+            Some(AltRepr::Boxed { block, .. }) => (block.clone(), true),
+            _ => (shape.leaves.clone(), false),
+        };
+        let mut out: Vs = leaves.iter().map(|l| self.zero(*l)).collect();
+        out[0] = self.iconst(c as i64);
+        for (i, (_, idx)) in fields[c as usize].iter().enumerate() {
+            let v = self.vals[inst.args[i].index()].clone();
+            for (k, x) in idx.iter().zip(v) {
+                out[*k] = x;
+            }
+        }
+        if boxed {
+            let size = mem_layout(&leaves).size as i64;
+            let blk = self.alloc(size);
+            self.store_leaves(blk, 0, &leaves, &out);
+            vec![blk]
+        } else {
+            out
+        }
+    }
+
+    fn elem_info(&self, list_ty: Ty) -> (Ty, Vec<Leaf>, i64) {
+        let e = self.g.m.list_elem(list_ty).unwrap_or(Ty::INT);
+        let leaves = self.g.lay.leaves(e);
+        let size = mem_layout(&leaves).size as i64;
+        (e, leaves, size)
+    }
+
+    /// Normalizes `i` (negative counts from the end) and bounds-checks it; returns the element address.
+    fn elem_addr(&mut self, ptr: Value, len: Value, i: Value, size: i64, mode: Op) -> Value {
+        let idx = match mode {
+            Op::ListGet | Op::ListSet => {
+                let neg = self.b.ins().icmp_imm_s(IntCC::SignedLessThan, i, 0);
+                let wrapped = self.b.ins().iadd(i, len);
+                self.b.ins().select(neg, wrapped, i)
+            }
+            _ => i,
+        };
+        if self.g.opts.checks && !matches!(mode, Op::ListGetU | Op::ListSetU) {
+            let oob = self.b.ins().icmp(IntCC::UnsignedGreaterThanOrEqual, idx, len);
+            self.fault_if(oob, "msrt_index_fault", vec![i, len]);
+        }
+        let off = self.b.ins().imul_imm_s(idx, size);
+        self.b.ins().iadd(ptr, off)
+    }
+
+    fn lower_list(&mut self, f: &Func, inst: &Inst) -> Vs {
+        let res_ty = inst.res.map(|r| f.ty(r)).expect("list op result");
+        match inst.op {
+            Op::ListNew => {
+                let (_, _, size) = self.elem_info(res_ty);
+                let cap = self.a(inst, 0)[0];
+                let join = self.b.create_block();
+                self.b.append_block_param(join, types::I64);
+                let some = self.b.create_block();
+                let null = self.iconst(0);
+                self.b.ins().brif(cap, some, &[], join, &[BlockArg::Value(null)]);
+                self.b.switch_to_block(some);
+                let bytes = self.b.ins().imul_imm_s(cap, size.max(1));
+                let p = self.rt_call("msrt_alloc", &[bytes])[0];
+                self.b.ins().jump(join, &[BlockArg::Value(p)]);
+                self.b.switch_to_block(join);
+                let p = self.b.block_params(join)[0];
+                let zero = self.iconst(0);
+                vec![p, zero, cap]
+            }
+            Op::ListLit => {
+                let (_, leaves, size) = self.elem_info(res_ty);
+                let n = inst.args.len() as i64;
+                if n == 0 {
+                    let z = self.iconst(0);
+                    return vec![z, z, z];
+                }
+                let p = self.alloc(n * size);
+                for i in 0..inst.args.len() {
+                    let v = self.a(inst, i);
+                    self.store_leaves(p, i as i64 * size, &leaves, &v);
+                }
+                let nn = self.iconst(n);
+                vec![p, nn, nn]
+            }
+            Op::ListLen => vec![self.a(inst, 0)[1]],
+            Op::ListGet | Op::ListGetNn | Op::ListGetU => {
+                let lt = f.ty(inst.args[0]);
+                let (_, leaves, size) = self.elem_info(lt);
+                let l = self.a(inst, 0);
+                let i = self.a(inst, 1)[0];
+                let at = self.elem_addr(l[0], l[1], i, size, inst.op);
+                self.load_leaves(at, 0, &leaves)
+            }
+            Op::ListSet | Op::ListSetNn | Op::ListSetU => {
+                let lt = f.ty(inst.args[0]);
+                let (e, leaves, size) = self.elem_info(lt);
+                let l = self.a(inst, 0);
+                let i = self.a(inst, 1)[0];
+                let v = self.a(inst, 2);
+                let at = self.elem_addr(l[0], l[1], i, size, inst.op);
+                if self.g.m.needs_drop(e) {
+                    let old = self.load_leaves(at, 0, &leaves);
+                    self.drop_value(e, &old);
+                }
+                self.store_leaves(at, 0, &leaves, &v);
+                l
+            }
+            Op::ListPush => {
+                let lt = f.ty(inst.args[0]);
+                let (_, leaves, size) = self.elem_info(lt);
+                let l = self.a(inst, 0);
+                let v = self.a(inst, 1);
+                let (ptr, len, cap) = (l[0], l[1], l[2]);
+                let full = self.b.ins().icmp(IntCC::Equal, len, cap);
+                let ready = self.b.create_block();
+                self.b.append_block_param(ready, types::I64);
+                self.b.append_block_param(ready, types::I64);
+                let grow = self.b.create_block();
+                self.b.set_cold_block(grow);
+                self.b.ins().brif(full, grow, &[], ready, &[BlockArg::Value(ptr), BlockArg::Value(cap)]);
+                self.b.switch_to_block(grow);
+                let empty = self.b.ins().icmp_imm_s(IntCC::Equal, cap, 0);
+                let four = self.iconst(4);
+                let doubled = self.b.ins().ishl_imm_s(cap, 1);
+                let ncap = self.b.ins().select(empty, four, doubled);
+                let bytes = self.b.ins().imul_imm_s(ncap, size.max(1));
+                let first = self.b.create_block();
+                let again = self.b.create_block();
+                let joined = self.b.create_block();
+                self.b.append_block_param(joined, types::I64);
+                self.b.ins().brif(empty, first, &[], again, &[]);
+                self.b.switch_to_block(first);
+                let np = self.rt_call("msrt_alloc", &[bytes])[0];
+                self.b.ins().jump(joined, &[BlockArg::Value(np)]);
+                self.b.switch_to_block(again);
+                let rp = self.rt_call("msrt_realloc", &[ptr, bytes])[0];
+                self.b.ins().jump(joined, &[BlockArg::Value(rp)]);
+                self.b.switch_to_block(joined);
+                let np = self.b.block_params(joined)[0];
+                self.b.ins().jump(ready, &[BlockArg::Value(np), BlockArg::Value(ncap)]);
+                self.b.switch_to_block(ready);
+                let (p, c) = (self.b.block_params(ready)[0], self.b.block_params(ready)[1]);
+                let off = self.b.ins().imul_imm_s(len, size);
+                let at = self.b.ins().iadd(p, off);
+                self.store_leaves(at, 0, &leaves, &v);
+                let nl = self.b.ins().iadd_imm_s(len, 1);
+                vec![p, nl, c]
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    fn closure_new(&mut self, inst: &Inst, _ty: Ty) -> Vs {
+        let Imm::Func(c) = inst.imm else { unreachable!() };
+        let caps = match &self.g.m.funcs[c.index()].kind {
+            ms_mir::ir::FuncKind::Closure { captures } => captures.clone(),
+            _ => Vec::new(),
+        };
+        let mut layouts = Vec::new();
+        let mut off = CLOSURE_CAPTURES as i64;
+        for cty in &caps {
+            let leaves = self.g.lay.leaves(*cty);
+            let lay = mem_layout(&leaves);
+            off = (off + lay.align as i64 - 1) / lay.align as i64 * lay.align as i64;
+            layouts.push((off, leaves));
+            off += lay.size as i64;
+        }
+        let total = (off + 7) / 8 * 8;
+        let obj = self.alloc(total);
+        let one = self.iconst(1);
+        self.b.ins().store(flags(), one, obj, 0);
+        let drop = self.g.glue(Glue::ClosureDrop(c.0), Ty::UNIT);
+        let dr = self.fref(drop);
+        let da = self.b.ins().func_addr(types::I64, dr);
+        self.b.ins().store(flags(), da, obj, 8);
+        let code = self.g.funcs[c.index()];
+        let cr = self.fref(code);
+        let ca = self.b.ins().func_addr(types::I64, cr);
+        self.b.ins().store(flags(), ca, obj, CLOSURE_CODE);
+        for (i, (off, leaves)) in layouts.iter().enumerate() {
+            let v = self.a(inst, i);
+            self.store_leaves(obj, *off, leaves, &v);
+        }
+        let _ = OBJ_HEADER;
+        vec![obj]
+    }
+
+    fn call_closure(&mut self, f: &Func, inst: &Inst) -> Vs {
+        let clo = self.a(inst, 0)[0];
+        let TyKind::Fn(ps, r) = self.g.m.types.kind(f.ty(inst.args[0])).clone() else { unreachable!() };
+        let mut params = vec![Leaf::I64];
+        for p in &ps {
+            params.extend(self.g.lay.leaves(*p));
+        }
+        let rets = self.g.lay.leaves(r);
+        let sig = self.g.sig(&params, &rets);
+        let sr = self.b.import_signature(sig);
+        let code = self.b.ins().load(types::I64, flags(), clo, CLOSURE_CODE);
+        let mut args = vec![clo];
+        for i in 1..inst.args.len() {
+            args.extend(self.a(inst, i));
+        }
+        let c = self.b.ins().call_indirect(sr, code, &args);
+        self.b.inst_results(c).to_vec()
+    }
+
+    fn call_method(&mut self, _f: &Func, inst: &Inst) -> Vs {
+        let Imm::Method(iface, k) = inst.imm else { unreachable!() };
+        let recv = self.a(inst, 0);
+        let sig = self.g.m.ifaces[iface.index()].methods[k as usize].clone();
+        let mut params = vec![Leaf::I64];
+        for p in &sig.params {
+            params.extend(self.g.lay.leaves(*p));
+        }
+        let rets = self.g.lay.leaves(sig.ret);
+        let csig = self.g.sig(&params, &rets);
+        let sr = self.b.import_signature(csig);
+        let code = self.b.ins().load(types::I64, flags(), recv[1], 8 * (1 + k as i32));
+        let mut args = vec![recv[0]];
+        for i in 1..inst.args.len() {
+            args.extend(self.a(inst, i));
+        }
+        let c = self.b.ins().call_indirect(sr, code, &args);
+        self.b.inst_results(c).to_vec()
+    }
+
+    /// Calls a runtime function with the ABI mapping of `ms-rt`: aggregates by pointer
+    /// to a spilled copy, aggregate results through a trailing out pointer.
+    fn call_extern(&mut self, f: &Func, inst: &Inst) -> Vs {
+        let Imm::Ext(e) = inst.imm else { unreachable!() };
+        let def = self.g.m.externs[e.index()].clone();
+        let id = match self.g.ext.get(&e) {
+            Some(id) => *id,
+            None => {
+                let direct = |lay: &crate::layout::Layouts, t: Ty| -> bool { Self::passes_directly(lay, t) };
+                let mut params: Vec<Leaf> = Vec::new();
+                for p in &def.params {
+                    if direct(&self.g.lay, p.ty) {
+                        params.extend(self.g.lay.leaves(p.ty));
+                    } else {
+                        params.push(Leaf::I64);
+                    }
+                }
+                let rets: Vec<Leaf> = if direct(&self.g.lay, def.ret) {
+                    self.g.lay.leaves(def.ret)
+                } else {
+                    params.push(Leaf::I64);
+                    Vec::new()
+                };
+                let sig = self.g.sig(&params, &rets);
+                let id = self.g.module.declare_function(&def.name, cranelift_module::Linkage::Import, &sig).expect("declare extern");
+                self.g.ext.insert(e, id);
+                id
+            }
+        };
+        let mut args: Vs = Vec::new();
+        for (i, p) in def.params.iter().enumerate() {
+            let v = self.a(inst, i);
+            if Self::passes_directly(&self.g.lay, p.ty) {
+                args.extend(v);
+            } else {
+                let leaves = self.g.lay.leaves(p.ty);
+                args.push(self.spill(&v, &leaves));
+            }
+        }
+        let ret_ty = def.ret;
+        let _ = f;
+        if Self::passes_directly(&self.g.lay, ret_ty) {
+            self.call_id(id, &args)
+        } else {
+            let leaves = self.g.lay.leaves(ret_ty);
+            let lay = mem_layout(&leaves);
+            let slot = self.b.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, lay.size.max(8), 3));
+            let out = self.b.ins().stack_addr(types::I64, slot, 0);
+            args.push(out);
+            self.call_id(id, &args);
+            self.load_leaves(out, 0, &leaves)
+        }
+    }
+
+    fn passes_directly(lay: &crate::layout::Layouts, t: Ty) -> bool {
+        match lay.m.types.kind(t) {
+            TyKind::Unit | TyKind::Bool | TyKind::Int | TyKind::Float | TyKind::Ptr | TyKind::Str | TyKind::Fn(..) | TyKind::Iface(_) => true,
+            TyKind::Obj(n, _) => n != "Map" && n != "Set",
+            TyKind::Opt(inner) => lay.opt_is_nullable(*inner) || lay.m.types.is_scalar(*inner),
             _ => false,
         }
     }

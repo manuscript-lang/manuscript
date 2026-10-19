@@ -215,7 +215,8 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
     for (i, f) in m.funcs.iter().enumerate() {
         let sig = g.func_sig(f);
         let exported = f.linkage == ms_mir::ir::Linkage::Export || m.entry.is_some_and(|e| e.index() == i);
-        let name = if exported { f.name.clone() } else { format!("{}#{i}", f.name) };
+        let is_entry = m.entry.is_some_and(|e| e.index() == i);
+        let name = if is_entry { "ms_entry".to_string() } else if exported { f.name.clone() } else { format!("{}#{i}", f.name) };
         let id = g.module.declare_function(&name, if exported { Linkage::Export } else { Linkage::Local }, &sig).map_err(|e| e.to_string())?;
         g.funcs.push(id);
     }
@@ -253,9 +254,13 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
         {
             let mut l = Lower::new(&mut g, &mut ctx.func, &mut fctx);
             l.lower_func(f, i);
+            if let Some(u) = l.unsupported.clone() {
+                return Err(Error(format!("{}: unsupported: {u}", f.name)));
+            }
             l.finish();
         }
-        define(&mut g, &mut ctx, g.funcs[i], &f.name)?;
+        let fid = g.funcs[i];
+        define(&mut g, &mut ctx, fid, &f.name)?;
     }
     while let Some((kind, ty)) = g.queue.pop() {
         let id = g.glue[&(kind, ty)];
