@@ -1,0 +1,18 @@
+module "loop_induction"
+entry @main
+fn @main() -> int {
+b0:
+  %z: int = iconst 0
+  %one: int = iconst 1
+  %n: int = iconst 1000
+  br loop(%z, %z)
+loop(%i: int, %acc: int):
+  %c: bool = icmp.lt %i, %n
+  br_if %c, body(), done()
+body:
+  %i1: int = iadd.chk %i, %one
+  %a: int = iadd.chk %acc, %i
+  br loop(%i1, %a)
+done:
+  ret %acc
+}

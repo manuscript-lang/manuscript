@@ -1,0 +1,34 @@
+module "arith_checks"
+entry @main
+fn @inc(%x: int) -> int {
+b0:
+  %one: int = iconst 1
+  %s: int = iadd.chk %x, %one
+  ret %s
+}
+fn @div(%a: int, %b: int) -> int {
+b0:
+  %q: int = sdiv.chk %a, %b
+  %m1: int = iconst -1
+  %p: int = sdiv.chk %a, %m1
+  %r: int = srem.chk %a, %b
+  %s: int = iadd %q, %p
+  %t: int = iadd %s, %r
+  ret %t
+}
+fn @main() -> int {
+b0:
+  %three: int = iconst 3
+  %m: int = imul.chk %three, %three
+  %q: int = sdiv.chk %m, %three
+  %r: int = srem.chk %m, %three
+  %neg1: int = iconst -1
+  %q2: int = sdiv.chk %m, %neg1
+  %n: int = ineg.chk %q
+  %s: int = isub.chk %n, %r
+  %a: int = call @inc (%s)
+  %b: int = call @div (%m, %three)
+  %c: int = iadd %a, %b
+  %d: int = iadd %c, %q2
+  ret %d
+}

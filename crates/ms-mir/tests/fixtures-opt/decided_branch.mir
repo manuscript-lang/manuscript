@@ -1,0 +1,25 @@
+module "decided_branch"
+entry @main
+fn @main() -> int {
+b0:
+  %z: int = iconst 0
+  %one: int = iconst 1
+  %n: int = iconst 10
+  %big: int = iconst 20
+  br loop(%z, %z)
+loop(%i: int, %acc: int):
+  %c: bool = icmp.lt %i, %n
+  br_if %c, body(), done()
+body:
+  %d: bool = icmp.lt %i, %big
+  br_if %d, yes(), no()
+yes:
+  %i1: int = iadd.chk %i, %one
+  %a: int = iadd.chk %acc, %one
+  br loop(%i1, %a)
+no:
+  %m: int = iconst -1
+  ret %m
+done:
+  ret %acc
+}
