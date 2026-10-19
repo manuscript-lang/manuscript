@@ -145,6 +145,13 @@ pub fn ensure_standard() {
     world(|w| w.state = 2);
 }
 
+/// Every bundled module (native and source) in file-name order, with the
+/// original source text, for editors that show standard declarations.
+pub fn standard_modules() -> Vec<ModRef> {
+    ensure_standard();
+    world(|w| w.sources.clone())
+}
+
 /// A standard type declared natively or as source, by name.
 pub fn standard_symbol(name: &str) -> Option<SymRef> {
     ensure_standard();

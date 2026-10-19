@@ -1,0 +1,15 @@
+[package]
+name = "ms-lsp"
+version = "0.0.0"
+edition.workspace = true
+publish.workspace = true
+description = "Manuscript language server: JSON-RPC transport, document analysis, navigation, completion and refactoring over the Rust checker"
+
+[lints]
+workspace = true
+
+[dependencies]
+ms-syntax = { path = "../ms-syntax" }
+ms-check = { path = "../ms-check" }
+ms-project = { path = "../ms-project" }
+ms-driver = { path = "../ms-driver" }

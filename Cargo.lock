@@ -352,6 +352,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ms-lsp"
+version = "0.0.0"
+dependencies = [
+ "ms-check",
+ "ms-driver",
+ "ms-project",
+ "ms-syntax",
+]
+
+[[package]]
 name = "ms-mir"
 version = "0.0.0"
 
