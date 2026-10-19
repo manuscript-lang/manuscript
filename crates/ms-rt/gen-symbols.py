@@ -13,6 +13,6 @@ for f in sorted(glob.glob("crates/ms-rt/src/*.rs") + glob.glob("crates/ms-std-*/
         out.append(f"{m.group(2)}{sig}" if m.group(1) == "fn" else f"{m.group(2)} (data)")
     # Symbols declared through the table macros of the ms-std crates (`name => path` / `name: type = value`).
     for m in re.finditer(r'^\s+(msstd_\w+)\s*(=>[^,\n]*|:\s*(\w+)\s*=)', s, re.M):
-        out.append(f"{m.group(1)} (unary f64 -> f64)" if m.group(3) is None else f"{m.group(1)}() -> {m.group(3)}")
+        out.append(f"{m.group(1)}(value: f64) -> f64" if m.group(3) is None else f"{m.group(1)}() -> {m.group(3)}")
 out.append("```")
 open("crates/ms-rt/SYMBOLS.md", "w").write("\n".join(out) + "\n")
