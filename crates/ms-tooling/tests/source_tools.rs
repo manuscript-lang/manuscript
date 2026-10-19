@@ -170,7 +170,7 @@ fn lint_and_inspect_match_go() {
             continue;
         };
         let want = normalize(parse(&inspection).expect("oracle inspection json"));
-        let got = normalize(parse(&inspect(&program).to_json(true).encode()).expect("own json"));
+        let got = normalize(parse(&inspect(&program).to_json().encode()).expect("own json"));
         assert_eq!(got, want, "{label}: inspection differs");
         compared += 1;
     }
