@@ -231,6 +231,9 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
         JobKind::HandleMethod(j) => {
             return crate::natiface::build_method(cx, m, job.func, j);
         }
+        JobKind::Codec(j) => {
+            return crate::codecstream::build_codec_method(cx, m, job.func, j);
+        }
         JobKind::Lambda(l) => return crate::closure::build_lambda(cx, m, job.func, l),
         JobKind::BoundNative(n) => return crate::closure::build_bound_native(cx, m, job.func, n),
         JobKind::NativeThunk(n) => return crate::closure::build_native_thunk(cx, m, job.func, n),

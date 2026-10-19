@@ -717,7 +717,7 @@ impl FnLower<'_> {
         let object = sig.ret.starts_with("*mut ")
             && match self.b.m.types.kind(result) {
                 TyKind::Obj(n, _) => n == "BigInt",
-                TyKind::Iface(_) => sig.ret.starts_with("*mut Handle<"),
+                TyKind::Iface(_) => is_handle_return(&sig.ret),
                 _ => false,
             };
         let ret = direct(&sig.ret)
@@ -748,7 +748,7 @@ impl FnLower<'_> {
                 });
             }
             // A handle for a stream interface: `Subprocess.stdout()`.
-            if sig.ret.starts_with("*mut Handle<")
+            if is_handle_return(&sig.ret)
                 && let TyKind::Iface(i) = self.b.m.types.kind(result).clone()
             {
                 let hir = self.hir.clone();
@@ -1052,4 +1052,9 @@ fn failure_symbol(sym: &str) -> Option<String> {
     let module = sym.strip_prefix("msstd_")?.split('_').next()?;
     let failure = format!("msstd_{module}_failure_message");
     rt_sig(&failure).map(|_| failure)
+}
+
+/// Whether a runtime function returns a new runtime handle object for an interface value.
+fn is_handle_return(ret: &str) -> bool {
+    ret.starts_with("*mut Handle<") || ret == "*mut HasherObj"
 }

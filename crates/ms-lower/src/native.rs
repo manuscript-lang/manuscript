@@ -173,6 +173,28 @@ impl<'a> FnLower<'a> {
                 let want = self.emty(e)?;
                 self.fit_ty(r, &declared, want)
             }
+            "crypto/sha256" | "crypto/sha384" | "crypto/sha512" => {
+                // The digest of the `HashAlgorithm` case of that name.
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::BYTES));
+                }
+                let data = args
+                    .first()
+                    .ok_or_else(|| Error::new("a digest without data"))?;
+                let data = self.borrow(data.val);
+                let alg = match native {
+                    "crypto/sha256" => 3,
+                    "crypto/sha384" => 4,
+                    _ => 5,
+                };
+                let alg = self.b.iconst(alg);
+                let sym = "msrt_crypto_digest";
+                let sig = crate::rtcall::rt_sig(sym)
+                    .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
+                self.at(e.pos);
+                self.finish_rt_call(sym, &sig, true, vec![alg, data], MTy::BYTES)
+            }
             "io/stdout" => self.std_stream(e, false),
             "io/stderr" => self.std_stream(e, true),
             "time/clock" => self.time_clock(e, false),
@@ -503,6 +525,46 @@ impl<'a> FnLower<'a> {
 
     /// A method of a format enum (`ArchiveFormat.pack`): the runtime takes the format as a
     /// parameter after the first declared one, spelled as the lowercase case name or as its index.
+    /// The runtime's format argument: the case index, or the lowercase case name.
+    fn format_argument(
+        &mut self,
+        m: &ct::MethodRef,
+        recv: Val,
+        as_text: bool,
+    ) -> Result<Val, Error> {
+        let tag_src = self.borrow(recv);
+        let tag = self.b.alt_tag(tag_src);
+        if as_text {
+            return Ok(Val { v: tag, own: false });
+        }
+        let names: Vec<String> = ct::cases(&m.receiver)
+            .iter()
+            .map(|c| c.name.as_str().to_lowercase())
+            .collect();
+        self.case_name(&names, tag, 0)
+    }
+
+    /// The owned name of case `tag`, counting from `names[from]`; the last name is the fallback.
+    fn case_name(&mut self, names: &[String], tag: Value, from: usize) -> Result<Val, Error> {
+        let text = |s: &mut Self, name: &str| {
+            let lit = s.lit(name).v;
+            Some(s.owned(Val { v: lit, own: false }))
+        };
+        if from + 1 >= names.len() {
+            let name = names.last().map_or("", String::as_str);
+            return Ok(Val {
+                v: text(self, name).expect("copy"),
+                own: true,
+            });
+        }
+        let idx = self.b.iconst(from as i64);
+        let hit = self.b.icmp(ms_mir::ir::Cc::Eq, tag, idx);
+        let name = names[from].clone();
+        self.two_ways(hit, MTy::STR, &mut |s| Ok(text(s, &name)), &mut |s| {
+            s.case_name(names, tag, from + 1).map(|v| Some(v.v))
+        })
+    }
+
     fn format_method(
         &mut self,
         result: MTy,
@@ -511,28 +573,11 @@ impl<'a> FnLower<'a> {
         mut args: Vec<NArg>,
         (sym, param, as_text): (&str, &str, bool),
     ) -> Result<Val, Error> {
-        let tag_src = self.borrow(recv);
-        let tag = self.b.alt_tag(tag_src);
-        let val = if as_text {
-            tag
-        } else {
-            let names: Vec<String> = ct::cases(&m.receiver)
-                .iter()
-                .map(|c| c.name.as_str().to_lowercase())
-                .collect();
-            let mut out = self.lit(names.last().map_or("", String::as_str)).v;
-            for (k, name) in names.iter().enumerate().rev().skip(1) {
-                let idx = self.b.iconst(k as i64);
-                let hit = self.b.icmp(ms_mir::ir::Cc::Eq, tag, idx);
-                let text = self.lit(name).v;
-                out = self.b.select(hit, text, out);
-            }
-            out
-        };
+        let val = self.format_argument(m, recv, as_text)?;
         let name = ct::Name::from(param);
         args.push(NArg {
             name,
-            val: Val { v: val, own: false },
+            val,
             wrapped: false,
         });
         let first =
@@ -564,6 +609,35 @@ impl<'a> FnLower<'a> {
         let func = m.decl.as_ref().and_then(|d| d.func());
         self.fill_native_defaults(m.module, func, &m.ty.params, &mut args)?;
         self.at(e.pos);
+        if let Some(sym) = match native {
+            "crypto/hash_algorithm_digest" => Some("msrt_crypto_digest"),
+            "crypto/hash_algorithm_hmac" => Some("msrt_crypto_hmac"),
+            "crypto/hash_algorithm_hasher" => Some("msrt_crypto_hasher_new"),
+            "crypto/hash_algorithm_hmac_hasher" => Some("msrt_crypto_hmac_hasher_new"),
+            _ => None,
+        } {
+            // The algorithm is the receiver's case index, the first runtime argument.
+            let result = self.emty(e)?;
+            let tag = self.borrow(recv);
+            let alg = self.b.alt_tag(tag);
+            let mut vals = vec![alg];
+            for a in &args {
+                vals.push(self.borrow(a.val));
+            }
+            let sig = crate::rtcall::rt_sig(sym)
+                .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
+            let has_out = sig.params.last().is_some_and(|p| p.name == "out");
+            return self.finish_rt_call(sym, &sig, has_out, vals, result);
+        }
+        if let Some(decode) = match native {
+            "compress/format_compress_stream" => Some(false),
+            "compress/format_decompress_stream" => Some(true),
+            _ => None,
+        } {
+            let result = self.emty(e)?;
+            let name = self.format_argument(m, recv, false)?;
+            return self.codec_stream(name, &args, decode, result);
+        }
         if let Some(&(_, sym, param, as_text)) = FORMAT_METHODS.iter().find(|(n, ..)| *n == native)
         {
             let result = self.emty(e)?;
