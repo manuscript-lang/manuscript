@@ -34,9 +34,9 @@
 //! # Bounded counters
 //!
 //! With [`ASSUME_BOUNDED_COUNTERS`] a loop-carried `Int` that starts in a small range
-//! (`|v| <= 2^40`) and otherwise changes only by one constant step of size at most `2^20`
+//! (`|v| <= 2^40`) and otherwise changes only by one constant step of size at most `2^16`
 //! in one direction per iteration is assumed to stay within `i64::MAX/2` (or
-//! `i64::MIN/2`). Reaching that bound takes more than `2^42` iterations, so no
+//! `i64::MIN/2`). Reaching that bound takes more than `2^46` iterations, so no
 //! physically possible run overflows such a counter. This is the one assumption beyond
 //! a pure proof; set the constant to `false` to disable it.
 
@@ -47,7 +47,7 @@ use std::collections::HashMap;
 /// Whether bounded loop counters are assumed not to overflow (see the module docs).
 pub const ASSUME_BOUNDED_COUNTERS: bool = true;
 
-const COUNTER_STEP_MAX: i64 = 1 << 20;
+const COUNTER_STEP_MAX: i64 = 1 << 16;
 const COUNTER_INIT_MAX: i64 = 1 << 40;
 const LEN_MAX: i64 = 1 << 47;
 const WIDEN_AFTER: u32 = 3;
