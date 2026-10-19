@@ -18,6 +18,17 @@ pub mod control;
 pub mod envfile;
 pub mod signals;
 
+#[cfg(test)]
+extern crate std;
+
+/// Serialises tests that spawn children with tests that change the process environment: `setenv`
+/// may reallocate `environ` while `posix_spawnp` reads it, which makes the spawn fail at random.
+#[cfg(test)]
+pub(crate) fn environment_guard() -> std::sync::MutexGuard<'static, ()> {
+    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
 use alloc::vec::Vec;
 use command::Subprocess;
 use ms_rt_abi::{STATUS_INVALID_INPUT, STATUS_OK, StrObj, VecVal};
