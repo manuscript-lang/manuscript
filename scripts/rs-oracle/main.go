@@ -107,6 +107,7 @@ func main() {
 		"csv":      genCsv,
 		"url":      genURL,
 		"path":     genPath,
+		"compress": genCompress,
 	}
 	names := flag.Args()
 	if len(names) == 0 {
@@ -363,4 +364,53 @@ func genPath(dir string) {
 		}
 	}
 	r.write(dir, "path.tsv")
+}
+
+// ---- compress ----
+
+func genCompress(dir string) {
+	r := &recorder{}
+	rng := rand.New(rand.NewSource(14))
+	plains := [][]byte{{}, []byte("a"), []byte("hello hello hello"), make([]byte, 700)}
+	noise := make([]byte, 500)
+	rng.Read(noise)
+	plains = append(plains, noise, []byte(strings.Repeat("the quick brown fox ", 30)))
+	formats := []string{"gzip", "zlib", "deflate", "bz2", ""}
+	for _, f := range formats {
+		for _, p := range plains {
+			for _, level := range []int{-1, 0, 1, 6, 9, 10} {
+				res := rt.Compress_Compress(nil, rt.NewBytes(p), f, level, rt.Option[int]{})
+				status := "ok"
+				if res.Failed {
+					status = "err " + errName(res.Err)
+				}
+				r.row("compress", f, strconv.Itoa(level), "-", "=>", status)
+				if !res.Failed && (level == 0 || level == 6) {
+					packed := res.Val.Data
+					for _, lim := range []rt.Option[int]{{}, rt.Some(len(p)), rt.Some(len(p) - 1), rt.Some(0), rt.Some(-1)} {
+						d := rt.Compress_Decompress(nil, rt.NewBytes(packed), f, lim)
+						r.row("decompress", f, hb(rt.NewBytes(packed)), opt(lim), "=>", strings.Join(okOrErr(d, func(b *rt.Bytes) []string { return []string{hb(b)} }), " "))
+					}
+					// Corrupted variants of the Go-produced stream.
+					variants := [][]byte{packed[:len(packed)/2], append(append([]byte{}, packed...), 0), append(append([]byte{}, packed...), packed...)}
+					for i := 0; i < 4 && len(packed) > 0; i++ {
+						v := append([]byte{}, packed...)
+						v[rng.Intn(len(v))] ^= byte(1 << uint(rng.Intn(8)))
+						variants = append(variants, v)
+					}
+					for _, v := range variants {
+						d := rt.Compress_Decompress(nil, rt.NewBytes(v), f, rt.Option[int]{})
+						r.row("decompress", f, hb(rt.NewBytes(v)), "-", "=>", strings.Join(okOrErr(d, func(b *rt.Bytes) []string { return []string{hb(b)} }), " "))
+					}
+				}
+			}
+		}
+	}
+	for _, f := range []string{"gzip", "zlib", "deflate"} {
+		d := rt.Compress_Decompress(nil, rt.NewBytes([]byte("not compressed")), f, rt.Option[int]{})
+		r.row("decompress", f, h("not compressed"), "-", "=>", strings.Join(okOrErr(d, func(b *rt.Bytes) []string { return []string{hb(b)} }), " "))
+		d = rt.Compress_Decompress(nil, rt.NewBytes(nil), f, rt.Option[int]{})
+		r.row("decompress", f, "x", "-", "=>", strings.Join(okOrErr(d, func(b *rt.Bytes) []string { return []string{hb(b)} }), " "))
+	}
+	r.write(dir, "compress.tsv")
 }

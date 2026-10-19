@@ -38,7 +38,12 @@ pub enum Fail {
     InvalidInput,
     InvalidData,
     LimitExceeded,
+    /// `Unsupported` (compression and archive formats).
+    Unsupported,
 }
+
+/// Status of the `Unsupported` error case, which `ms-rt-abi` has no shared code for.
+pub const STATUS_UNSUPPORTED: u8 = 5;
 
 impl Fail {
     /// The status byte returned across the C ABI.
@@ -47,6 +52,7 @@ impl Fail {
             Fail::InvalidInput => STATUS_INVALID_INPUT,
             Fail::InvalidData => STATUS_INVALID_DATA,
             Fail::LimitExceeded => STATUS_LIMIT_EXCEEDED,
+            Fail::Unsupported => STATUS_UNSUPPORTED,
         }
     }
 }
