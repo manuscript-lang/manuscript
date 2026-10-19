@@ -472,6 +472,7 @@ mod tests {
 
     #[test]
     fn captures_output_and_exit_codes() {
+        let _guard = crate::environment_guard();
         let out = run(
             b"sh",
             &args(&["-c", "cat; echo err >&2; exit 3"]),
@@ -497,6 +498,7 @@ mod tests {
 
     #[test]
     fn limits_and_timeouts_kill_the_group() {
+        let _guard = crate::environment_guard();
         let big = run(
             b"sh",
             &args(&["-c", "yes | head -c 100000"]),
@@ -524,6 +526,7 @@ mod tests {
 
     #[test]
     fn subprocess_pipes_and_close() {
+        let _guard = crate::environment_guard();
         let mut p = spawn(b"cat", &[]).unwrap();
         assert_eq!(p.wait(Some(20_000_000)).unwrap_err().status, STATUS_TIMEOUT);
         sys::write(p.stdin.0, b"ping").unwrap();

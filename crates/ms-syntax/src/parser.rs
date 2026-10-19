@@ -1127,17 +1127,16 @@ impl<'a> Parser<'a> {
 
     fn expression_statement(&mut self, t: Token, allow_value: bool) -> PResult<StmtKind> {
         let e = self.expression(0)?;
-        let kind;
-        if self.compound_assignment() {
-            kind = self.compound(t, e)?;
+        let kind = if self.compound_assignment() {
+            self.compound(t, e)?
         } else if self.take(Tok::Assign) {
             let target = self.assign_target(t, e)?;
             let value = self.expression(0)?;
-            kind = StmtKind::Assign {
+            StmtKind::Assign {
                 target,
                 compound: None,
                 value,
-            };
+            }
         } else {
             let try_call = matches!(&e.kind, ExprKind::Unary { op: UnaryOp::Try, operand } if matches!(operand.kind, ExprKind::Call { .. }));
             let is_call = matches!(e.kind, ExprKind::Call { .. } | ExprKind::Match { .. });
@@ -1157,12 +1156,12 @@ impl<'a> Parser<'a> {
                 }
                 return self.fail(t, "only a call, try call, or match can be a standalone expression statement; use 'let name = ...' to keep the value, 'return' to return it, or call a function");
             }
-            kind = if self.inline_return {
+            if self.inline_return {
                 StmtKind::Return(Some(e))
             } else {
                 StmtKind::Call(e)
-            };
-        }
+            }
+        };
         self.end()?;
         Ok(kind)
     }

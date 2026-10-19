@@ -148,7 +148,7 @@ fn report_failure(failure: &Failure, structured: bool, document: &DocumentFn, io
 
 /// The source or manifest file an `-o` path would replace, or `None` when the
 /// output is safe to write.
-fn protected_output(output: &str, input: &str, project_root: &str) -> Option<String> {
+pub(super) fn protected_output(output: &str, input: &str, project_root: &str) -> Option<String> {
     let mut candidates = vec![input.to_string()];
     if !project_root.is_empty() {
         candidates.push(gopath::join(&[project_root, "ms.toml"]));
