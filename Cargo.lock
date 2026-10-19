@@ -697,6 +697,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ms-std-regex"
+version = "0.1.0"
+dependencies = [
+ "ms-rt",
+ "ms-rt-abi",
+ "ms-std-core",
+ "regex",
+]
+
+[[package]]
 name = "ms-std-url"
 version = "0.1.0"
 dependencies = [

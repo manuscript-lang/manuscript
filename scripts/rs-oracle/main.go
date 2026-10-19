@@ -109,6 +109,7 @@ func main() {
 		"path":     genPath,
 		"compress": genCompress,
 		"crypto":   genCrypto,
+		"regex":    genRegex,
 	}
 	names := flag.Args()
 	if len(names) == 0 {
@@ -533,4 +534,62 @@ func genCrypto(dir string) {
 		}
 	}
 	r.write(dir, "crypto.tsv")
+}
+
+// ---- regex ----
+
+func genRegex(dir string) {
+	r := &recorder{}
+	patterns := []string{
+		``, `a`, `a*`, `a+`, `a?`, `a*?`, `a+?`, `a??`, `a{2}`, `a{2,}`, `a{2,3}`, `a{2,3}?`, `a{,2}`, `a{`, `a{x}`, `a{1,x}`, `{2}`, `a{3,2}`, `a{1001}`, `a{1000}`, `a{0,1001}`,
+		`a**`, `a*+`, `a+*`, `a{2}{3}`, `a|b`, `a|`, `|a`, `(a|b)+`, `(?:a|b)+`, `(a)(b)?`, `(?P<n>a)`, `(?<n>a)`, `(?P<n>a)(?P<n>b)`, `(?P=n)`, `(?=a)`, `(?!a)`, `(?<=a)`, `(?>a)`, `(`, `)`, `(a`, `a)`, `(?`, `(?i`, `(?z)`, `(?x)a b`, `(?u)a`, `(?R)`,
+		`^`, `$`, `^*`, `^+`, `$*`, `\A`, `\z`, `\Z`, `\b`, `\B`, `\bfoo\b`, `\Bo`, `(?m)^a$`, `(?m)^`, `(?m)$`, `(?s).`, `.`, `(?s)a.b`, `(?i)abc`, `(?i)K`, `(?i)ſ`, `(?i)ǅ`, `(?-i)a`, `(?i:a)b`, `(?U)a+`, `(?U)a+?`, `(?is)A.B`,
+		`\d`, `\D`, `\w`, `\W`, `\s`, `\S`, `\d+`, `\w+`, `\s+`, `[\d]`, `[\D]`, `[\w-]`, `[\W]`, `[\s]`, `[^\S]`, `[^\d\s]`, `[\d-z]`, `(?i)\w+`, `\w*\b`,
+		`\pL`, `\p{L}`, `\p{Lu}`, `\p{Greek}`, `\p{^Greek}`, `\PL`, `\P{L}`, `\pN+`, `\p{Han}`, `\p{Foo}`, `\p`, `\p{`, `\p{Alphabetic}`, `\p{Script=Greek}`, `\p{Any}`, `[\pL\d]`,
+		`[a-z]`, `[^a-z]`, `[a-]`, `[-a]`, `[a-a]`, `[z-a]`, `[]a]`, `[^]a]`, `[[]`, `[a[]`, `[[a]`, `[a&&b]`, `[a--b]`, `[a~~b]`, `[[:alpha:]]`, `[[:^alpha:]]`, `[[:foo:]]`, `[[:alpha:]-z]`, `[a-\d]`, `[\d-a]`, `[`, `[a`, `[]`, `[^]`, `[\x41-\x43]`, `[\n\t]`, `[\]]`, `[\[]`, `[\\]`, `[\-]`, `[\^]`, `[^^]`, `[a^]`,
+		`\x41`, `\x{41}`, `\x{1F600}`, `\x{110000}`, `\x4`, `\x`, `\x{`, `\x{zz}`, `\101`, `\0`, `\012`, `\08`, `\1`, `\9`, `\a`, `\f`, `\t`, `\n`, `\r`, `\v`, `\e`, `\u0041`, `\U00000041`, `\h`, `\H`, `\R`, `\X`, `\G`, `\K`, `\c`, `\C`, `\<`, `\>`, `\.`, `\*`, `\{`, `\}`, `\/`, `\-`, `\_`, `\ `, `\`, `a\`,
+		`\Qa.b\E`, `\Qa.b`, `\Q\E`, `\Qa\Eb*`, `\E`, `\Qa*\E+`,
+		`é`, `日本`, `(?i)É`, `.`, `[é]`, `[日-本]`, `\p{Han}+`, `x*`, `(x*)*`, `(a*)+`, `(a|b)*c`, `((a)|(b))+`, `(a+)+b`, `(?:)`, `()`, `(|a)`, `a|b|c|d`, `abc|abd|ab`, `a.*b`, `a.*?b`, `.*`, `.+`, `\s*`, `[^,]*`, `(\w+)@(\w+)\.com`, `\d{3}-\d{4}`, `(?i)hello|world`, `\bcat\b`, `[A-Z][a-z]+`, `^\s*$`, `(?m)^\s*$`,
+		`a{1000}`, `(a{500}){2}`, `(a{1000}){1000}`, `(((a{100}){100}){100})`, `(?:a{2}){3}`, `.{3}`, `[a-c]{2,4}`, `x{0}`, `x{0,0}`, `(?i)[k]`, `(?i)[^k]`, `(?i)[a-z]`, `\w+?\s`, `(?s:.)+`, `(?s).*`, `(?-s).`, `(?m-s)a$`, `(?i-i)a`, `(?--i)a`, `(?i-)a`, `(?-)a`, `(?:(?i)a)b`, `((?i)a)b`,
+	}
+	for _, rx := range randomStrings(31, 120, 6, strings.Split("ab()[]|*+?.\\^$-{},0129dwsDWSbBpP:", "")) {
+		patterns = append(patterns, rx)
+	}
+	texts := []string{"", "a", "baaab", "a b  c", "foo bar foo", "Hello World", "héllo wörld", "日本語 text", "K ſ k", "line1\nline2\n\nline4", "x@y.com, z@w.com", "123-4567 555-1234", "a1_b2 c3", "abcabcabc", "😀 emoji"}
+	limits := []rt.Option[int]{{}, rt.Some(0), rt.Some(1), rt.Some(3), rt.Some(-1)}
+	for _, p := range patterns {
+		comp := rt.Regex_Compile(nil, p)
+		if comp.Failed {
+			r.row("compile", h(p), "=>", "err "+errName(comp.Err))
+			continue
+		}
+		r.row("compile", h(p), "=>", "ok")
+		re := comp.Val
+		for _, t := range texts {
+			r.row("matches", h(p), h(t), "=>", b2s(rt.Regex_Matches(nil, re, t)))
+			for _, l := range limits {
+				fa := rt.Regex_FindAll(nil, re, t, l)
+				out := []string{"ok"}
+				if fa.Failed {
+					out = []string{"err", errName(fa.Err)}
+				} else {
+					for _, m := range fa.Val.Items {
+						out = append(out, h(m))
+					}
+				}
+				r.row("findall", h(p), h(t), opt(l), "=>", strings.Join(out, " "))
+			}
+			for _, rep := range []string{"", "<$1>"} {
+				for _, l := range []rt.Option[int]{{}, rt.Some(len(t)), rt.Some(len(t) + 3), rt.Some(-1)} {
+					ra := rt.Regex_ReplaceAll(nil, re, t, rep, l)
+					res := "ok " + h(ra.Val)
+					if ra.Failed {
+						res = "err " + errName(ra.Err)
+					}
+					r.row("replace", h(p), h(t), h(rep), opt(l), "=>", res)
+				}
+			}
+		}
+	}
+	r.write(dir, "regex.tsv")
 }
