@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "all 26\nline Optional.some(hello world)\nline Optional.some(line two)\nline Optional.some(last)\nline Optional.none\nerr I/O: limit exceeded\ncopied 8\nerr I/O: limit exceeded\n",
+    "stderr": ""
+  }
+}

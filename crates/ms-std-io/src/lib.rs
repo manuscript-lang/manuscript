@@ -14,6 +14,8 @@ extern crate alloc;
 
 pub use ms_std_fs::stream;
 
+mod accumulate;
+
 use ms_rt_abi::{STATUS_NONE, STATUS_OK, StrObj, VecVal};
 use ms_std_rt::{
     Handle, fault, new_handle, new_string, record_failure, str_bytes, vec_bytes, write_bytes,
