@@ -7,6 +7,7 @@
 
 pub mod addr;
 pub mod conn;
+pub mod dn;
 pub mod dns;
 pub mod error;
 pub mod ffi;
@@ -15,6 +16,7 @@ pub mod net;
 pub mod policy;
 pub mod pump;
 pub mod rt;
+pub mod tls;
 pub mod wait;
 
 #[cfg(test)]

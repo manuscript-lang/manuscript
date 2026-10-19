@@ -19,7 +19,7 @@ unsafe extern "C" {
 
 type NetRef = Rc<Network>;
 
-unsafe fn network<'a>(o: *const Obj) -> &'a NetRef {
+pub(super) unsafe fn network<'a>(o: *const Obj) -> &'a NetRef {
     // SAFETY: forwarded caller contract (`o` is a Network handle).
     unsafe { handle_ref::<NetRef>(o) }
 }

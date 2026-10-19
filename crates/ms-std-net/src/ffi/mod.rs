@@ -11,6 +11,7 @@
 //!   when the count reaches zero.
 
 pub mod net;
+pub mod tls;
 
 use crate::error::Status;
 use ms_rt_abi::{Obj, StrObj};

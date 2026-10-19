@@ -3,6 +3,7 @@
 use crate::error::{IoErr, NetErr, TlsErr, describe_io_error};
 use crate::net::{Network, Resource, limit};
 use crate::rt;
+use crate::tls::{self, TlsOptions};
 use crate::wait::{Deadline, Interest, Wait, wait_fd};
 use socket2::Socket;
 use std::cell::{Cell, RefCell};
@@ -309,6 +310,9 @@ impl Connection {
         self.io.tls_details().ok_or(TlsErr::InvalidInput)
     }
 }
+
+/// Turns a connected socket into a stream (plain or TLS).
+pub type Wrap = Box<dyn FnOnce(Socket) -> Result<Box<dyn Io>, NetErr>>;
 
 /// How a listener turns accepted sockets into connections.
 pub type Upgrade = Box<dyn Fn(Socket, Deadline) -> Result<Box<dyn Io>, NetErr>>;
@@ -625,7 +629,7 @@ impl Network {
         let sock = self.dial_tcp(address, deadline)?;
         self.adopt(
             sock,
-            Box::new(|s: Socket| Box::new(Plain::new(s)) as Box<dyn Io>),
+            Box::new(|s: Socket| Ok(Box::new(Plain::new(s)) as Box<dyn Io>)),
         )
     }
 
@@ -642,16 +646,12 @@ impl Network {
         let sock = self.dial_unix(path, deadline)?;
         self.adopt(
             sock,
-            Box::new(|s: Socket| Box::new(Plain::new(s)) as Box<dyn Io>),
+            Box::new(|s: Socket| Ok(Box::new(Plain::new(s)) as Box<dyn Io>)),
         )
     }
 
     /// Wraps a connected socket in a connection owned by this network.
-    pub fn adopt(
-        self: &Rc<Self>,
-        sock: Socket,
-        wrap: Box<dyn FnOnce(Socket) -> Box<dyn Io>>,
-    ) -> Result<Rc<Connection>, NetErr> {
+    pub fn adopt(self: &Rc<Self>, sock: Socket, wrap: Wrap) -> Result<Rc<Connection>, NetErr> {
         let local = sock
             .local_addr()
             .map(|a| socket_addr_text(&a))
@@ -660,7 +660,7 @@ impl Network {
             .peer_addr()
             .map(|a| socket_addr_text(&a))
             .unwrap_or_default();
-        let io = wrap(sock);
+        let io = wrap(sock)?;
         let conn = Rc::new(Connection::new(self.clone(), io, local, peer));
         let as_resource: Rc<dyn Resource> = conn.clone();
         if !self.own(&as_resource) {
@@ -680,6 +680,76 @@ impl Network {
         }
         let sock = self.listen_tcp(address)?;
         self.register_listener(Listener::new(self.clone(), sock, None, None, None))
+    }
+
+    /// Connects over TCP and verifies the server against the system roots.
+    pub fn connect_tls(
+        self: &Rc<Self>,
+        address: &str,
+        server_name: &str,
+        timeout: Option<i64>,
+    ) -> Result<Rc<Connection>, NetErr> {
+        if self.is_closed() {
+            return Err(NetErr::Closed);
+        }
+        if server_name.is_empty() {
+            return Err(NetErr::InvalidInput);
+        }
+        let options = TlsOptions {
+            server_name: server_name.to_string(),
+            ..TlsOptions::default()
+        };
+        self.connect_tls_config(address, &options, timeout)
+    }
+
+    /// Connects over TCP and completes a TLS handshake with `options`.
+    pub fn connect_tls_config(
+        self: &Rc<Self>,
+        address: &str,
+        options: &TlsOptions,
+        timeout: Option<i64>,
+    ) -> Result<Rc<Connection>, NetErr> {
+        if self.is_closed() {
+            return Err(NetErr::Closed);
+        }
+        let deadline = Deadline::from_nanos(timeout).map_err(|_| NetErr::InvalidInput)?;
+        let sock = self.dial_tcp(address, deadline)?;
+        let config = tls::client_config(options, true)?;
+        let name = options.server_name.clone();
+        self.adopt(
+            sock,
+            Box::new(move |s: Socket| tls::connect(s, config, &name, deadline)),
+        )
+    }
+
+    /// Listens for TCP connections and handshakes each accepted one.
+    pub fn listen_tls(
+        self: &Rc<Self>,
+        address: &str,
+        options: &TlsOptions,
+        handshake_timeout: Option<i64>,
+    ) -> Result<Rc<Listener>, NetErr> {
+        if matches!(handshake_timeout, Some(t) if t < 0) {
+            return Err(NetErr::InvalidInput);
+        }
+        if self.is_closed() {
+            return Err(NetErr::Closed);
+        }
+        if !self.listen_allowed(address) {
+            return Err(NetErr::PermissionDenied);
+        }
+        let sock = self.listen_tcp(address)?;
+        let config = tls::server_config(options)?;
+        let clients = !options.roots_pem.is_empty() || options.require_client_certificate;
+        let upgrade: Upgrade =
+            Box::new(move |s, deadline| tls::accept(s, config.clone(), deadline, clients));
+        self.register_listener(Listener::new(
+            self.clone(),
+            sock,
+            None,
+            Some(upgrade),
+            handshake_timeout,
+        ))
     }
 
     /// Listens on a Unix domain socket.

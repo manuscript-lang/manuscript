@@ -105,3 +105,33 @@ Behavior notes (same as Go unless stated):
   and listening need an unrestricted network or `allow_listen`.
 - Closing a network closes the resources it opened, newest first, then its derived
   networks' resources.
+
+## tls
+
+```text
+msrt_net_network_connect_tls(net, address, server_name, has_timeout, timeout, out, err) -> u8
+msrt_net_network_connect_tls_config(net, address, opts: *const TlsOptionsWire, has_timeout, timeout, out, err) -> u8
+msrt_net_network_listen_tls(net, address, opts: *const TlsOptionsWire, has_handshake_timeout, handshake_timeout, out, err) -> u8
+msrt_net_connection_tls_info(c, out: *mut TlsInfoWire) -> u8          // TlsError status
+msrt_tls_parse_certificates(pem, has_max, max, certs: *mut *mut CertificateInfoWire, count: *mut usize) -> u8
+msrt_tls_verify_certificates(chain_pem, roots_pem, server_name, now_seconds: i64, now_nanos: i32) -> u8
+msrt_tls_error_message(status) -> String
+```
+
+`TlsOptionsWire { server_name, roots_pem, certificate_pem, private_key_pem: *const StrObj,
+alpn: *const VecVal (List[String]), require_client_certificate: u8 }`. `TlsInfoWire` and
+`CertificateInfoWire` are filled by the native; the caller takes the strings, lists and
+`Bytes` and frees the arrays with `msrt_free` (see `ffi/tls.rs` for the field order).
+
+Behavior notes:
+
+- Trust decisions follow Go's `crypto/x509`, not webpki: the chain is built from the
+  presented intermediates to the supplied roots (system roots when `roots_pem` is
+  empty); a CA certificate may be a leaf and a leaf that equals a root is trusted;
+  names match DNS SANs (one-label wildcards) or IP SANs; a leaf with an extended key usage
+  needs server-auth (client-auth for client certificates). Minimum TLS 1.2.
+- PEM input for roots and chains is strict (CERTIFICATE blocks only, no headers); keys
+  accept PKCS#8, PKCS#1 and SEC1.
+- Subject and issuer text is `pkix.Name.String()` of Go (reverse RDN order, escaped).
+- Option errors surface after dialing, as in Go (`InvalidInput`); handshake and
+  verification failures are `Failed(<Go-style text>)`.
