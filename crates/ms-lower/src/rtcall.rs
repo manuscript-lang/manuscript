@@ -843,6 +843,15 @@ impl FnLower<'_> {
                     let text = s.call_runtime(sym, &[], MTy::STR)?;
                     Ok(s.b.alt_new(ea, idx as u32, &[text]))
                 }
+                // A `Failed(message)` of a module without a failure text.
+                _ if carries_text => {
+                    let text = s.lit("").v;
+                    let text = s.owned(Val {
+                        v: text,
+                        own: false,
+                    });
+                    Ok(s.b.alt_new(ea, idx as u32, &[text]))
+                }
                 _ => Ok(s.b.alt_new(ea, idx as u32, &[])),
             }
         };

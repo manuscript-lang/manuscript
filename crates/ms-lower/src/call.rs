@@ -458,12 +458,20 @@ impl<'a> FnLower<'a> {
         let want = self.mty(&static_ty)?;
         if !matches!(self.b.m.types.kind(want), TyKind::Iface(_)) {
             // A concrete receiver (a generic instance): call its implementation directly.
-            let im = self.contract_impl(m, &static_ty).ok_or_else(|| {
-                Error::new(format!(
+            let Some(im) = self.contract_impl(m, &static_ty) else {
+                // Hashing is derived for every hashable type.
+                if m.name().is_some_and(|n| n.as_str() == "hash") {
+                    let recv = self.expr(recv_expr)?;
+                    if self.dead {
+                        return Ok(recv);
+                    }
+                    return self.derived_hash(recv);
+                }
+                return Err(Error::new(format!(
                     "{static_ty} has no implementation of {}",
                     m.name().map(|n| n.to_string()).unwrap_or_default()
-                ))
-            })?;
+                )));
+            };
             return self.method_call(e, view, &im);
         }
         let recv = self.expr(recv_expr)?;
