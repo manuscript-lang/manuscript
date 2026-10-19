@@ -28,7 +28,8 @@ export fn main() Int:
     say("l3 = {l3} len {l3.length()}")
     let l4 = [(-3), 4, (-21), 20]
     say("l4 = {l4} len {l4.length()}")
-    let l5 = l1.clone().append(87)
+    var l5 = l1.clone()
+    l5.append(87)
     say("l5 = {l5} len {l5.length()}")
     say("fib(52) = {fib(52)}")
     let i6 = ((((-17) + 50) + 40) + (((-419679) * 50) + 33))

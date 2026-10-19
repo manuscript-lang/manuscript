@@ -30,9 +30,9 @@ test "parametric generics keep each instantiation's values":
 
 test "instances share one identity for non-scalar arguments":
     let point = Point(3)
-    let same = ident(point)
+    var same = ident(point)
     same.x = 4
     try expect_equal(point.x, 4)
-    let alias = pick(first: true, left: point, right: Point(9))
+    var alias = pick(first: true, left: point, right: Point(9))
     alias.x = 5
     try expect_equal(point.x, 5)

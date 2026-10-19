@@ -38,7 +38,8 @@ export fn main() Int:
     say("i13 = {i13}")
     let b14 = (false and b11)
     say("b14 = {b14}")
-    let l15 = l10.clone().append(99)
+    var l15 = l10.clone()
+    l15.append(99)
     say("l15 = {l15} len {l15.length()}")
     say("{(l15.get(0) / (-4))} {33} {((l15.get(0) / (-4)) < 33)} sum {(l15.get(0) / (-4)) + 33}")
     return 0

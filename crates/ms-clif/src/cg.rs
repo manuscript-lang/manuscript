@@ -125,8 +125,12 @@ pub struct Gen<'m> {
     pub vtables: Vec<DataId>,
     pub globals: Vec<DataId>,
     /// Interned `(file, line)` pairs referenced by Cranelift source locations (id = index).
-    pub locs: Vec<(u32, u32)>,
-    loc_ids: HashMap<(u32, u32), u32>,
+    pub locs: Vec<(u32, u32, u32)>,
+    loc_ids: HashMap<(u32, u32, u32), u32>,
+    /// Inlined-callee scopes of every compiled function; [`ms_mir::ir::Loc::scope`] is
+    /// shifted by `scope_base` to index it (1-based, 0 = none).
+    pub scopes: Vec<ms_mir::ir::Scope>,
+    pub scope_base: u32,
     /// Per compiled source function: the data for fault traces and profiles.
     pub dbg: Vec<FuncDbg>,
     /// Static type descriptors by type.
@@ -142,8 +146,8 @@ pub struct FuncDbg {
     pub file: u32,
     pub line: u32,
     pub size: u32,
-    /// `(code offset, file, line)` ranges, sorted by offset.
-    pub ranges: Vec<(u32, u32, u32)>,
+    /// `(code offset, file, line, scope)` ranges, sorted by offset.
+    pub ranges: Vec<(u32, u32, u32, u32)>,
 }
 
 impl<'m> Gen<'m> {
@@ -152,7 +156,12 @@ impl<'m> Gen<'m> {
         if loc.is_none() || loc.line == 0 {
             return !0;
         }
-        let key = (loc.file, loc.line);
+        let scope = if loc.scope == 0 {
+            0
+        } else {
+            self.scope_base + loc.scope
+        };
+        let key = (loc.file, loc.line, scope);
         if let Some(i) = self.loc_ids.get(&key) {
             return *i;
         }
@@ -420,6 +429,8 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
         globals: Vec::new(),
         locs: Vec::new(),
         loc_ids: HashMap::new(),
+        scopes: Vec::new(),
+        scope_base: 0,
         dbg: Vec::new(),
         tables: None,
         desc_ids: HashMap::new(),
@@ -550,12 +561,15 @@ struct Tables {
     id: DataId,
     funcs_at: usize,
     lines_at: usize,
+    line_scopes_at: usize,
+    scopes_at: usize,
     strings_at: usize,
     /// `(entry offset in blob, function index in dbg, code offset)`; the relocation target for each pc.
     pcs: Vec<(usize, usize, u32)>,
 }
 
-const TABLES_HEADER: usize = 56;
+const TABLES_HEADER: usize = 80;
+const SCOPE_ENTRY: usize = 16;
 const FUNC_ENTRY: usize = 24;
 const LINE_ENTRY: usize = 16;
 
@@ -574,15 +588,26 @@ fn emit_tables(g: &mut Gen) -> Result<Tables, Error> {
     let mut order: Vec<usize> = (0..g.dbg.len()).collect();
     order.sort_by_key(|i| g.dbg[*i].id.as_u32());
     let names: Vec<u32> = g.dbg.iter().map(|d| intern(&d.name)).collect();
+    let scope_names: Vec<u32> = g.scopes.iter().map(|sc| intern(&sc.name)).collect();
     let nlines: usize = g.dbg.iter().map(|d| d.ranges.len()).sum();
     let funcs_at = TABLES_HEADER;
     let lines_at = funcs_at + g.dbg.len() * FUNC_ENTRY;
-    let strings_at = lines_at + nlines * LINE_ENTRY;
+    let line_scopes_at = lines_at + nlines * LINE_ENTRY;
+    let scopes_at = (line_scopes_at + nlines * 4).next_multiple_of(8);
+    let strings_at = scopes_at + g.scopes.len() * SCOPE_ENTRY;
     let mut blob = vec![0u8; strings_at + strings.len()];
-    blob[0..4].copy_from_slice(&2u32.to_le_bytes()); // ms-rt ABI_VERSION
+    blob[0..4].copy_from_slice(&3u32.to_le_bytes()); // ms-rt ABI_VERSION
+    blob[72..80].copy_from_slice(&(g.scopes.len() as u64).to_le_bytes());
     blob[16..24].copy_from_slice(&(g.dbg.len() as u64).to_le_bytes());
     blob[32..40].copy_from_slice(&(nlines as u64).to_le_bytes());
     blob[48..56].copy_from_slice(&(strings.len() as u64).to_le_bytes());
+    for (n, sc) in g.scopes.iter().enumerate() {
+        let at = scopes_at + n * SCOPE_ENTRY;
+        blob[at..at + 4].copy_from_slice(&scope_names[n].to_le_bytes());
+        blob[at + 4..at + 8].copy_from_slice(&file_off(sc.file).to_le_bytes());
+        blob[at + 8..at + 12].copy_from_slice(&sc.parent.to_le_bytes());
+        blob[at + 12..at + 16].copy_from_slice(&sc.call_line.to_le_bytes());
+    }
     blob[strings_at..].copy_from_slice(&strings);
     let mut pcs = Vec::new();
     let mut at_line = lines_at;
@@ -593,11 +618,13 @@ fn emit_tables(g: &mut Gen) -> Result<Tables, Error> {
         blob[at + 12..at + 16].copy_from_slice(&names[n].to_le_bytes());
         blob[at + 16..at + 20].copy_from_slice(&file_off(d.file).to_le_bytes());
         blob[at + 20..at + 24].copy_from_slice(&d.line.to_le_bytes());
-        for &(off, file, line) in &d.ranges {
+        for &(off, file, line, scope) in &d.ranges {
             // The runtime resolves a pc to the last entry at or before it.
             pcs.push((at_line, n, off));
             blob[at_line + 8..at_line + 12].copy_from_slice(&line.to_le_bytes());
             blob[at_line + 12..at_line + 16].copy_from_slice(&file_off(file).to_le_bytes());
+            let ls = line_scopes_at + (at_line - lines_at) / LINE_ENTRY * 4;
+            blob[ls..ls + 4].copy_from_slice(&scope.to_le_bytes());
             at_line += LINE_ENTRY;
         }
     }
@@ -614,6 +641,8 @@ fn emit_tables(g: &mut Gen) -> Result<Tables, Error> {
         id,
         funcs_at,
         lines_at,
+        line_scopes_at,
+        scopes_at,
         strings_at,
         pcs,
     })
@@ -655,6 +684,8 @@ fn relocate_tables(product: &mut cranelift_object::ObjectProduct, dbg: &[FuncDbg
     add(8, own, t.funcs_at as i64);
     add(24, own, t.lines_at as i64);
     add(40, own, t.strings_at as i64);
+    add(56, own, t.line_scopes_at as i64);
+    add(64, own, t.scopes_at as i64);
     for (&(at, _, off), sym) in t.pcs.iter().zip(syms) {
         add(at, sym, off as i64);
     }
@@ -680,14 +711,17 @@ fn define_with(
         .map_err(|e| Error(format!("{name}: {e:?}")))?;
     if let Some(f) = source {
         let cc = ctx.compiled_code().expect("function compiled");
-        let mut ranges: Vec<(u32, u32, u32)> = Vec::new();
+        let mut ranges: Vec<(u32, u32, u32, u32)> = Vec::new();
         for r in cc.buffer.get_srclocs_sorted() {
             let bits = r.loc.bits();
-            let Some((file, line)) = g.locs.get(bits as usize).copied() else {
+            let Some((file, line, scope)) = g.locs.get(bits as usize).copied() else {
                 continue;
             };
-            if ranges.last().is_none_or(|l| (l.1, l.2) != (file, line)) {
-                ranges.push((r.start, file, line));
+            if ranges
+                .last()
+                .is_none_or(|l| (l.1, l.2, l.3) != (file, line, scope))
+            {
+                ranges.push((r.start, file, line, scope));
             }
         }
         let (file, line) = if f.loc.is_none() {

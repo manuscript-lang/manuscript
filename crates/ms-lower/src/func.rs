@@ -27,6 +27,13 @@ pub(crate) struct Local {
     pub ty: MTy,
 }
 
+/// A changed parameter: the slot address it arrives in and leaves through.
+#[derive(Clone, Copy)]
+pub(crate) struct VarSlot {
+    pub uid: usize,
+    pub ptr: Value,
+}
+
 /// Targets of `break` and `continue`.
 pub(crate) struct LoopCtx {
     pub brk: Block,
@@ -49,6 +56,8 @@ pub(crate) struct FnLower<'a> {
     pub locals: HashMap<usize, Local>,
     /// Locals needing a drop, per lexical scope.
     pub scopes: Vec<Vec<usize>>,
+    /// `with` bindings and how each is closed when its scope is left.
+    pub closers: HashMap<usize, crate::with::Closer>,
     /// Owned temporaries borrowed by the current statement.
     pub temps: Vec<Value>,
     pub loops: Vec<LoopCtx>,
@@ -58,7 +67,7 @@ pub(crate) struct FnLower<'a> {
     /// The body is bracketed by `depth.enter` / `depth.leave` (the optimizer removes it for non-recursive functions).
     pub counts_depth: bool,
     /// Record to build on return and the binding uids of the `var` parameters it carries.
-    pub var_ret: Option<(ms_mir::types::RecId, Vec<usize>)>,
+    pub var_slots: Vec<VarSlot>,
     /// The expression statement being lowered, whose value nothing reads (by address).
     pub discard: Option<usize>,
 }
@@ -120,24 +129,20 @@ impl Cx {
         }
         let mut params = Vec::new();
         let bindings: Vec<&BindingRef> = c.self_binding.iter().chain(c.parameters.iter()).collect();
-        for b in bindings {
+        let vars = self.var_positions(c);
+        for (i, b) in bindings.into_iter().enumerate() {
             let t = ct::sub(&b.ty, subst);
             let ty = self.lower_ty(m, &t)?;
+            // A changed parameter travels as the address of a slot the callee takes the value
+            // from and puts the final value back into.
+            let ty = if vars.contains(&i) { MTy::PTR } else { ty };
             params.push(Param {
                 ty,
                 mode: Mode::Borrow,
             });
         }
         let result = ct::sub(&self.callable_result(c)?, subst);
-        let mut ret = self.lower_ty(m, &result)?;
-        let vars = self.var_positions(c);
-        if !vars.is_empty() {
-            let mut fields = vec![("result".to_string(), ret)];
-            for (n, p) in vars.iter().enumerate() {
-                fields.push((format!("var{n}"), params[*p].ty));
-            }
-            ret = m.add_record(&format!("{}.vars", c.name), fields).1;
-        }
+        let ret = self.lower_ty(m, &result)?;
         let name = if let ms_syntax::ast::DeclKind::Test(t) = &c.func.decl.decl().kind {
             format!("test {}", t.name)
         } else if c.name.as_str().is_empty() {
@@ -256,12 +261,13 @@ impl<'a> FnLower<'a> {
             file,
             locals: HashMap::new(),
             scopes: vec![Vec::new()],
+            closers: HashMap::new(),
             temps: Vec::new(),
             loops: Vec::new(),
             dead: false,
             ret_ty,
             counts_depth: false,
-            var_ret: None,
+            var_slots: Vec::new(),
             discard: None,
         }
     }
@@ -290,10 +296,7 @@ impl<'a> FnLower<'a> {
 
     /// The declared result type (without the `var` parameters a function hands back).
     pub fn result_ty(&self) -> MTy {
-        match &self.var_ret {
-            Some((rid, _)) => self.b.m.records[rid.index()].fields[0].1,
-            None => self.ret_ty,
-        }
+        self.ret_ty
     }
 
     pub fn ty_of(&self, v: Value) -> MTy {
@@ -335,6 +338,28 @@ impl<'a> FnLower<'a> {
                 self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
             }
         }
+    }
+
+    /// Moves an owned value into the slot at `ptr`.
+    pub fn move_into(&mut self, ptr: Value, x: Value) {
+        let op = if self.needs_drop(self.ty_of(x)) {
+            Op::Put
+        } else {
+            Op::Store
+        };
+        self.b.emit(op, &[ptr, x], ms_mir::ir::Imm::None, None);
+    }
+
+    /// Moves the value of type `t` out of the slot at `ptr`.
+    pub fn move_out(&mut self, ptr: Value, t: MTy) -> Value {
+        let op = if self.needs_drop(t) {
+            Op::Take
+        } else {
+            Op::Load
+        };
+        self.b
+            .emit(op, &[ptr], ms_mir::ir::Imm::Ty(t), Some(t))
+            .expect("slot value")
     }
 
     /// Drops an owned value now.
@@ -423,9 +448,14 @@ impl<'a> FnLower<'a> {
         for i in (depth..self.scopes.len()).rev() {
             let uids = self.scopes[i].clone();
             for uid in uids.iter().rev() {
+                if let Some(closer) = self.closers.get(uid).cloned() {
+                    self.emit_close(*uid, &closer);
+                }
                 let l = self.locals[uid];
-                let v = self.b.use_var(l.var);
-                self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
+                if self.needs_drop(l.ty) {
+                    let v = self.b.use_var(l.var);
+                    self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
+                }
             }
         }
     }
@@ -464,14 +494,11 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return;
         }
-        let mut v = value.map(|x| self.owned(x));
-        if let (Some((rid, uids)), Some(r)) = (self.var_ret.clone(), v) {
-            let mut fields = vec![r];
-            for u in uids {
-                let var = self.locals[&u].var;
-                fields.push(self.b.use_var(var));
-            }
-            v = Some(self.b.rec_new(rid, &fields));
+        let v = value.map(|x| self.owned(x));
+        for slot in self.var_slots.clone() {
+            let var = self.locals[&slot.uid].var;
+            let x = self.b.use_var(var);
+            self.move_into(slot.ptr, x);
         }
         // The temporaries stay registered: a conditional return leaves the others running.
         for t in self.temps.clone().into_iter().rev() {
@@ -497,7 +524,6 @@ impl<'a> FnLower<'a> {
             .cloned()
             .collect();
         let vars = self.cx.var_positions(c);
-        let mut var_uids = Vec::new();
         // Parameters the body changes are the callee's own copies.
         let mutated = match c.body() {
             ms_check::hir::Body::Block(stmts) => crate::mutation::mutated_locals(
@@ -509,32 +535,31 @@ impl<'a> FnLower<'a> {
             ms_check::hir::Body::Expr(_) => Default::default(),
         };
         for (i, (b, v)) in bindings.iter().zip(params).enumerate() {
-            let own_copy =
-                vars.contains(&i) || (mutated.contains(&b.uid) && self.needs_drop(self.ty_of(v)));
-            if own_copy {
-                // A `var` parameter is a local the callee owns and hands back on return.
-                let ty = self.ty_of(v);
+            if vars.contains(&i) {
+                // The callee owns the value it takes from the slot and puts back on return.
+                let ty = self.mty(&b.ty)?;
                 let owned = self.needs_drop(ty);
                 let var = self
                     .b
                     .declare_var(ty, if owned { Mode::Own } else { Mode::Borrow });
+                let x = self.move_out(v, ty);
+                self.b.def_var(var, x);
+                self.locals.insert(b.uid, Local { var, ty });
+                self.var_slots.push(VarSlot { uid: b.uid, ptr: v });
+                continue;
+            }
+            let own_copy = mutated.contains(&b.uid) && self.needs_drop(self.ty_of(v));
+            if own_copy {
+                // A parameter the body changes is the callee's own copy.
+                let ty = self.ty_of(v);
+                let var = self.b.declare_var(ty, Mode::Own);
                 let o = self.owned(Val { v, own: false });
                 self.b.def_var(var, o);
                 self.locals.insert(b.uid, Local { var, ty });
-                if vars.contains(&i) {
-                    var_uids.push(b.uid);
-                } else if owned {
-                    self.scopes.last_mut().expect("scope").push(b.uid);
-                }
+                self.scopes.last_mut().expect("scope").push(b.uid);
             } else {
                 self.bind_borrowed(b, v);
             }
-        }
-        if !var_uids.is_empty() {
-            let TyKind::Rec(rid) = self.b.m.types.kind(self.ret_ty).clone() else {
-                return Err(Error::new("var parameters without a result record"));
-            };
-            self.var_ret = Some((rid, var_uids));
         }
         self.counts_depth = true;
         self.b
@@ -554,10 +579,7 @@ impl<'a> FnLower<'a> {
                 if !self.dead {
                     // Falling off the end returns Unit.
                     let u = self.b.unit();
-                    let ret = match &self.var_ret {
-                        Some((rid, _)) => self.b.m.records[rid.index()].fields[0].1,
-                        None => self.ret_ty,
-                    };
+                    let ret = self.ret_ty;
                     if c.kind == CallableKind::Test {
                         // A test that finishes passes.
                         let TyKind::Alt(a) = self.b.m.types.kind(ret).clone() else {

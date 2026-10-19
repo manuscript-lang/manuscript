@@ -69,7 +69,7 @@ test "presence keeps custom EOF empty CRLF and following text":
     source.offset | try expect_equal(expected: source.data.length())
 
 test "presence retains custom errors and limits":
-    let source = MemoryStream("abc\nx\n".to_bytes(), 0, false)
+    var source = MemoryStream("abc\nx\n".to_bytes(), 0, false)
     let input = ReadStream(source)
     present(input, 2) | try expect_false
     source.closed = true

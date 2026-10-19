@@ -16,12 +16,12 @@ fn generated(rng: Rng, depth: Int) YamlValue:
     if kind == 3: return YamlValue.StringValue(text(rng))
 
     if kind == 4:
-        let items: List[YamlValue] = []
+        var items: List[YamlValue] = []
         for item in range(0, next(rng, 4)):
             items.append(generated(rng, depth + 1))
         return YamlValue.ArrayValue(items)
 
-    let entries: Map[String, YamlValue] = {}
+    var entries: Map[String, YamlValue] = {}
     for item in range(0, next(rng, 4)):
         entries.add(text(rng), generated(rng, depth + 1))
     return YamlValue.ObjectValue(entries)

@@ -26,7 +26,7 @@ export fn main() Int:
             return 6
 
     let original = Holder(file: file, label: "original")
-    let copy = original.clone()
+    var copy = original.clone()
     copy.label = "copy"
     if original.label != "original":
         return 1

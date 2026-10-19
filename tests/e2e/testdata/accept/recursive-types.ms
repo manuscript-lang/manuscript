@@ -65,8 +65,8 @@ test "recursive alternatives construct match compare and clone":
 test "recursive records retain aliases and clone only outer storage":
     let child = Node(value: 2, next: none)
     let root = Node(value: 1, next: child)
-    let alias = root
-    let copy = root.clone()
+    var alias = root
+    var copy = root.clone()
     alias.value = 3
     copy.next.get().value = 4
     (root.value != 3 or copy.value != 1 or child.value != 4) | try expect_false
@@ -74,34 +74,35 @@ test "recursive records retain aliases and clone only outer storage":
     root.next.is_none() | try expect_false
 
 test "recursive structural equality terminates and checks unequal fields":
-    let left = Node(value: 1, next: none)
-    let right = Node(value: 1, next: none)
+    var left = Node(value: 1, next: none)
+    var right = Node(value: 1, next: none)
     left.next = some(left)
     right.next = some(right)
     left | try expect_equal(expected: right)
     let copy = left.clone()
     copy.next.get().value = 2
     (left.value != 2 or copy.value != 1 or left == right) | try expect_false
-    let a = Node(value: 1, next: none)
+    var a = Node(value: 1, next: none)
     let b = Node(value: 1, next: a)
     a.next = some(b)
     right | try expect_equal(expected: a)
 
 test "recursive domain hashing uses explicit implementations":
-    let left = Link(value: 7, next: none)
-    let right = Link(value: 7, next: none)
+    var left = Link(value: 7, next: none)
+    var right = Link(value: 7, next: none)
     left.next = some(left)
     right.next = some(right)
     (left != right or left.hash() != right.hash()) | try expect_false
-    let values = Map[Link, Int]().add(key: left, value: 9)
-    let members = Set[Link]([left])
+    var values = Map[Link, Int]()
+    values.add(key: left, value: 9)
+    var members = Set[Link]([left])
     (values.get(right).get() != 9 or not members.contains(right)) | try expect_false
     values.add(key: right, value: 10)
     members.add(right)
     (values.length() != 1 or members.length() != 1 or values.get(left).get() != 10) | try expect_false
 
 test "recursive defaults construct independent complete objects":
-    let first = DefaultNode(value: 1)
+    var first = DefaultNode(value: 1)
     let second = DefaultNode(value: 2)
     first.next = some(first)
     (second.next.is_some() or first.next.get().value != 1) | try expect_false

@@ -23,8 +23,8 @@ fn noop() Unit:
     return
 
 fn check_equality(side: String, mutation: String) Result[Unit, Error]:
-    let left: List[Element] = []
-    let right: List[Element] = []
+    var left: List[Element] = []
+    var right: List[Element] = []
     let calls = Visits(0)
     let visit = fn():
         calls.count = calls.count + 1

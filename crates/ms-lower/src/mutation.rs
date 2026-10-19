@@ -43,6 +43,46 @@ pub(crate) fn place_root(hir: &ModuleHir, e: &Expr) -> Option<usize> {
     }
 }
 
+/// Whether evaluating `e` can return early through `try`.
+pub(crate) fn has_try(e: &Expr) -> bool {
+    struct Tries(bool);
+    impl Visitor for Tries {
+        fn expr(&mut self, e: &Expr) {
+            self.0 |= matches!(
+                &e.kind,
+                ExprKind::Unary {
+                    op: UnaryOp::Try,
+                    ..
+                }
+            );
+        }
+    }
+    let mut v = Tries(false);
+    ms_syntax::visit::walk_expr(&mut v, e);
+    v.0
+}
+
+/// How many times `e` reads or names the local `uid`.
+pub(crate) fn uses_of(hir: &ModuleHir, e: &Expr, uid: usize) -> usize {
+    struct Uses<'h> {
+        hir: &'h ModuleHir,
+        uid: usize,
+        count: usize,
+    }
+    impl Visitor for Uses<'_> {
+        fn expr(&mut self, e: &Expr) {
+            if let Resolution::Local(b) = self.hir.resolution(e)
+                && b.uid == self.uid
+            {
+                self.count += 1;
+            }
+        }
+    }
+    let mut v = Uses { hir, uid, count: 0 };
+    ms_syntax::visit::walk_expr(&mut v, e);
+    v.count
+}
+
 /// The locals a body assigns to or mutates in place, and the source calls they feed.
 struct Mutations<'h> {
     hir: &'h ModuleHir,

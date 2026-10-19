@@ -53,14 +53,14 @@ test "bytes copy slice search and UTF8 validation":
     try expect_equal("é".to_bytes().decode_utf8(), some("é"))
 
 test "Bytes values direct bound and free calls return independent lists":
-    let input = [0, 1, 255]
+    var input = [0, 1, 255]
     let data = Bytes(input)
     input.set(0, 42)
     let extract: fn() List[Int] = data.values
     try expect_false(data.values() != [0, 1, 255] or extract() != values(data))
-    let direct = data.values()
-    let bound = extract()
-    let free = values(data)
+    var direct = data.values()
+    var bound = extract()
+    var free = values(data)
     direct.set(0, 99)
     bound.append(12)
     free.reverse_in_place()

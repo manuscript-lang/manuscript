@@ -17,7 +17,8 @@ export fn main() Int:
     say("i3 = {i3}")
     let s4 = "delta".reverse().lower().reverse()
     say("s4 = [{s4}]")
-    let l5 = l1.clone().append(18)
+    var l5 = l1.clone()
+    l5.append(18)
     say("l5 = {l5} len {l5.length()}")
     say("{i3} {(899306 + l5.get(2))} {(i3 < (899306 + l5.get(2)))} sum {i3 + (899306 + l5.get(2))}")
     let s6 = "42"

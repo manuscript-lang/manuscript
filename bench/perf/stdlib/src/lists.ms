@@ -7,7 +7,7 @@ export fn bench_list() Unit:
         "list.append",
         200000,
         fn() Int:
-            let xs: List[Int] = []
+            var xs: List[Int] = []
             for i in range(0, 200000):
                 xs.append(i)
             return xs.length()

@@ -75,7 +75,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     let present: Optional[Int] = some(0)
     let missing: Optional[Int] = none
     (require_value(present, counted(counter)).get() != 0 or counter.calls != 1) | try expect_false
-    let cause = require_value(missing, counter).err()
+    var cause = require_value(missing, counter).err()
     cause.calls = 2
     counter.calls | try expect_equal(expected: 2)
     let create = fn() Counter: counted(counter)
@@ -112,16 +112,18 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     )
 
 test "Map fold uses ordered snapshots and returns accumulator aliases":
-    let empty_calls: List[Int] = []
-    let later = Counter(3)
-    let values: Map[String, Counter] = {"b": Counter(2), "a": Counter(1), "c": later}
+    var empty_calls: List[Int] = []
+    var later = Counter(3)
+    var values: Map[String, Counter] = {"b": Counter(2), "a": Counter(1), "c": later}
     let initial: List[String] = []
-    let visits = reduce_map(
+    var visits = reduce_map(
         values,
         initial,
         fn(acc, k, v):
             if k == "b":
-                (values.add("a", Counter(99)).remove("c").add("d", Counter(4)))
+                values.add("a", Counter(99))
+                values.remove("c")
+                values.add("d", Counter(4))
                 later.calls = 7
 
             acc.append(k + v.calls.to_string())
@@ -132,7 +134,7 @@ test "Map fold uses ordered snapshots and returns accumulator aliases":
     initial.length() | try expect_equal(expected: 4)
     let empty = Map[String, Counter]()
     let fold = empty.fold[List[String]]
-    let untouched = fold(
+    var untouched = fold(
         step: (
             fn(acc, k, v):
                 empty_calls.append(1)
@@ -143,30 +145,31 @@ test "Map fold uses ordered snapshots and returns accumulator aliases":
     untouched.append("empty alias")
     initial.length() | try expect_equal(expected: 5)
     let success: Result[Int, Counter] = ok(2)
-    let nested = (
-        Map[String, Int]()
-        .add("a", 3)
-        .fold(success, fn(acc, k, v): acc.map(fn(n): (n + v)))
-    )
+    var chain_1 = Map[String, Int]()
+    chain_1.add("a", 3)
+    let nested = (chain_1.fold(success, fn(acc, k, v): acc.map(fn(n): (n + v))))
     nested.get() | try expect_equal(expected: 5)
     empty_calls.is_empty() | try expect_true
 
 test "Map find returns fresh entry shells with original payload references":
-    let empty_calls: List[Int] = []
+    var empty_calls: List[Int] = []
     let counter = Counter(2)
-    let values: Map[String, Counter] = {"b": counter, "a": Counter(1), "c": Counter(3)}
-    let visits: List[String] = []
+    var values: Map[String, Counter] = {"b": counter, "a": Counter(1), "c": Counter(3)}
+    var visits: List[String] = []
     let found = locate(
         values,
         fn(k, v):
             visits.append(k)
-            (values.remove("a").add("c", Counter(99)).add("new", Counter(9)))
+            values.remove("a")
+            values.add("c", Counter(99))
+            values.add("new", Counter(9))
             return k == "a"
     ).get()
     (visits != ["b", "a"] or found.key != "a" or found.value.calls != 1) | try expect_false
-    let source = Map[String, Counter]().add("b", counter)
+    var source = Map[String, Counter]()
+    source.add("b", counter)
     let find = source.find
-    let original = find(fn(k, v): true).get()
+    var original = find(fn(k, v): true).get()
     original.value.calls = 5
     counter.calls | try expect_equal(expected: 5)
     original.key = "other"
@@ -191,9 +194,9 @@ test "Map find returns fresh entry shells with original payload references":
     empty_calls.is_empty() | try expect_true
 
 test "Map predicates short circuit over snapshots including empty receivers":
-    let empty_calls: List[Int] = []
-    let values: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
-    let seen: List[String] = []
+    var empty_calls: List[Int] = []
+    var values: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
+    var seen: List[String] = []
     let some = values.some
     try expect_false(
         (
@@ -201,14 +204,19 @@ test "Map predicates short circuit over snapshots including empty receivers":
                 some(
                     fn(k, v):
                         seen.append(k)
-                        values.remove("a").add("c", 99).add("new", 4)
+                        values.remove("a")
+                        values.add("c", 99)
+                        values.add("new", 4)
                         return v == 1
                 )
             )
             or seen != ["b", "a"]
         )
     )
-    values.clear().add("b", 2).add("a", 1).add("c", 3)
+    values.clear()
+    values.add("b", 2)
+    values.add("a", 1)
+    values.add("c", 3)
     seen.splice(0, seen.length(), [])
     let every = values.every
     try expect_false(
@@ -216,7 +224,9 @@ test "Map predicates short circuit over snapshots including empty receivers":
             every(
                 predicate: fn(k, v):
                     seen.append(k)
-                    values.remove("a").add("c", 99).add("new", 4)
+                    values.remove("a")
+                    values.add("c", 99)
+                    values.add("new", 4)
                     return v > 1
             )
             or seen != ["b", "a"]
@@ -263,18 +273,20 @@ impl Hashable for Key:
     fn hash() Int: 0
 
 test "Set fold and find preserve ordered snapshots and reference identity":
-    let empty_calls: List[Int] = []
+    var empty_calls: List[Int] = []
     let a = Key(1, "a")
     let b = Key(2, "b")
-    let c = Key(3, "c")
-    let values = Set[Key]([b, a, c])
+    var c = Key(3, "c")
+    var values = Set[Key]([b, a, c])
     let initial: List[String] = []
-    let visits = reduce_set(
+    var visits = reduce_set(
         values,
         initial,
         fn(acc, v):
             if v.id == 2:
-                values.remove(a).remove(c).add(Key(4, "d"))
+                values.remove(a)
+                values.remove(c)
+                values.add(Key(4, "d"))
                 c.label = "shared"
 
             acc.append(v.label)
@@ -293,13 +305,17 @@ test "Set fold and find preserve ordered snapshots and reference identity":
         )
     ).append("empty alias")
     initial.length() | try expect_equal(expected: 5)
-    values.clear().add(b).add(a).add(c)
-    let seen: List[Int] = []
+    values.clear()
+    values.add(b)
+    values.add(a)
+    values.add(c)
+    var seen: List[Int] = []
     let find = values.find
-    let found = find(
+    var found = find(
         fn(v):
             seen.append(v.id)
-            values.remove(a).add(Key(4, "new"))
+            values.remove(a)
+            values.add(Key(4, "new"))
             return v.id == 1
     ).get()
     seen | try expect_equal(expected: [2, 1])
@@ -324,9 +340,9 @@ test "Set fold and find preserve ordered snapshots and reference identity":
     empty_calls.is_empty() | try expect_true
 
 test "Set predicates short circuit over snapshots and keep empty identities":
-    let empty_calls: List[Int] = []
-    let values = Set[Int]([2, 1, 3])
-    let seen: List[Int] = []
+    var empty_calls: List[Int] = []
+    var values = Set[Int]([2, 1, 3])
+    var seen: List[Int] = []
     let some = values.some
     try expect_false(
         (
@@ -334,14 +350,18 @@ test "Set predicates short circuit over snapshots and keep empty identities":
                 some(
                     fn(v):
                         seen.append(v)
-                        values.remove(1).add(4)
+                        values.remove(1)
+                        values.add(4)
                         return v == 1
                 )
             )
             or seen != [2, 1]
         )
     )
-    values.clear().add(2).add(1).add(3)
+    values.clear()
+    values.add(2)
+    values.add(1)
+    values.add(3)
     seen.splice(0, seen.length(), [])
     let every = values.every
     try expect_false(
@@ -349,7 +369,8 @@ test "Set predicates short circuit over snapshots and keep empty identities":
             every(
                 fn(v):
                     seen.append(v)
-                    values.remove(1).add(4)
+                    values.remove(1)
+                    values.add(4)
                     return v > 1
             )
             or seen != [2, 1]
@@ -383,7 +404,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
 
 test "nonmatching queries and all-true predicates visit the complete snapshot":
     let map: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
-    let map_visits: List[String] = []
+    var map_visits: List[String] = []
     try expect_false(
         (
             map.some(
@@ -423,7 +444,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
         )
     )
     let set = Set[Int]([2, 1, 3])
-    let set_visits: List[Int] = []
+    var set_visits: List[Int] = []
     try expect_false(
         (
             set.some(

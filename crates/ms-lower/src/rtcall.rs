@@ -425,6 +425,14 @@ impl FnLower<'_> {
                     if p.ty == "*const u8" || p.ty == "*mut u8" || consumed_aggregate || clock {
                         // A generic element slot: pass the address of the value in memory.
                         // `*mut` hands the value over; `*const` is lent and taken back.
+                        let x = if input.wrapped {
+                            // The checker converted the argument to an optional element.
+                            let o = self.owned(x);
+                            let v = self.b.opt_some(o);
+                            Val { v, own: true }
+                        } else {
+                            x
+                        };
                         let t = self.ty_of(x.v);
                         let slot = self
                             .b

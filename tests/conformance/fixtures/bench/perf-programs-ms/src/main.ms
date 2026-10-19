@@ -89,7 +89,7 @@ fn bench_read_line() Unit:
 
 fn bench_map() Int:
     let t = clock().now()
-    let m = Map[Int, Int]()
+    var m = Map[Int, Int]()
     var i = 0
 
     while i < 8000:
@@ -173,7 +173,7 @@ fn bench_match() Int:
     return ma
 
 fn bench_length() Int:
-    let xs: List[Int] = []
+    var xs: List[Int] = []
     var i = 0
 
     while i < 100:
@@ -192,7 +192,7 @@ fn bench_length() Int:
     return ln
 
 fn bench_for_list() Int:
-    let big: List[Int] = []
+    var big: List[Int] = []
     var i = 0
 
     while i < 1000000:

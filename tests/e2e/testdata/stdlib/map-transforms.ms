@@ -60,23 +60,18 @@ test "Map value transformation copies ordered snapshots and retains aliases":
     let second = Key(1, "a")
     let third = Key(3, "c")
     let counter = Counter(2)
-    let source = (
-        Map[Key, Counter]()
-        .add(first, counter)
-        .add(second, Counter(1))
-        .add(third, Counter(3))
-    )
-    let seen: List[String] = []
-    let mapped = map_values(
+    var source = Map[Key, Counter]()
+    source.add(first, counter)
+    source.add(second, Counter(1))
+    source.add(third, Counter(3))
+    var seen: List[String] = []
+    var mapped = map_values(
         source,
         fn(k, v):
             seen.append(k.label + v.count.to_string())
-            (
-                source.remove(second).add(third, Counter(99)).add(
-                    Key(4, "new"),
-                    Counter(4)
-                )
-            )
+            source.remove(second)
+            source.add(third, Counter(99))
+            source.add(Key(4, "new"), Counter(4))
             return v
     )
     seen | try expect_equal(expected: ["b2", "a1", "c3"])
@@ -85,7 +80,8 @@ test "Map value transformation copies ordered snapshots and retains aliases":
     (counter.count != 7 or source.get(first).get().count != 7) | try expect_false
     mapped.keys().get(0).label = "shared"
     first.label | try expect_equal(expected: "shared")
-    mapped.remove(first).add(Key(5, "other"), Counter(5))
+    mapped.remove(first)
+    mapped.add(Key(5, "other"), Counter(5))
     (not (source.contains(first)) or source.contains(Key(5, "different"))) | try expect_false
 
 test "Map key transformation retains first equal keys and last values":
@@ -94,8 +90,8 @@ test "Map key transformation retains first equal keys and last values":
     let three = Counter(3)
     let four = Counter(4)
     let source: Map[Int, Counter] = {2: one, 1: two, 4: three, 3: four}
-    let created: List[Key] = []
-    let mapped = map_keys(
+    var created: List[Key] = []
+    var mapped = map_keys(
         source,
         fn(k, v):
             let key = Key(k % 2, k.to_string())
@@ -111,18 +107,21 @@ test "Map key transformation retains first equal keys and last values":
     )
     mapped.get(Key(0, "lookup")).get().count = 9
     three.count | try expect_equal(expected: 9)
-    mapped.clear().add(Key(7, "fresh"), Counter(10))
+    mapped.clear()
+    mapped.add(Key(7, "fresh"), Counter(10))
     source.length() | try expect_equal(expected: 4)
 
 test "Map key transformation snapshots callbacks and keeps generic nesting":
-    let later = Counter(3)
-    let source: Map[Int, Counter] = {2: Counter(2), 1: Counter(1), 3: later}
-    let seen: List[Int] = []
+    var later = Counter(3)
+    var source: Map[Int, Counter] = {2: Counter(2), 1: Counter(1), 3: later}
+    var seen: List[Int] = []
     let bound = source.map_keys[String]
     let mapped = bound(
         transform: fn(k, v):
             seen.append(k)
-            source.remove(1).add(3, Counter(99)).add(4, Counter(4))
+            source.remove(1)
+            source.add(3, Counter(99))
+            source.add(4, Counter(4))
             later.count = 7
             return k.to_string()
     )
@@ -135,9 +134,9 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
     nested.get("a").get().err().message() | try expect_equal(expected: "nested")
 
 test "empty transformations skip callbacks and allocate independent storage":
-    let empty_calls: List[Int] = []
+    var empty_calls: List[Int] = []
     let source = Map[String, Int]()
-    let mapped = source.map[Counter](
+    var mapped = source.map[Counter](
         (
             fn(k, v):
                 empty_calls.append(1)
@@ -146,7 +145,7 @@ test "empty transformations skip callbacks and allocate independent storage":
     )
     mapped.add("new", Counter(1))
     (source.is_empty()) | try expect_true
-    let keyed = source.map_keys[Key](
+    var keyed = source.map_keys[Key](
         (
             fn(k, v):
                 empty_calls.append(1)
@@ -158,14 +157,16 @@ test "empty transformations skip callbacks and allocate independent storage":
     empty_calls.is_empty() | try expect_true
 
 test "Map reverse fold and last match retain ordered shallow snapshots":
-    let first = Counter(2)
-    let source: Map[String, Counter] = {"b": first, "a": Counter(1), "c": Counter(3)}
+    var first = Counter(2)
+    var source: Map[String, Counter] = {"b": first, "a": Counter(1), "c": Counter(3)}
     let initial: List[String] = []
-    let folded = reverse_map(
+    var folded = reverse_map(
         source,
         initial,
         fn(acc, k, v):
-            (source.remove("a").add("b", Counter(99)).add("new", Counter(4)))
+            source.remove("a")
+            source.add("b", Counter(99))
+            source.add("new", Counter(4))
             first.count = 7
             acc.append(k + v.count.to_string())
             return acc
@@ -174,13 +175,18 @@ test "Map reverse fold and last match retain ordered shallow snapshots":
     folded.append("alias")
     initial.length() | try expect_equal(expected: 4)
     let original = Counter(1)
-    (source.clear().add("b", Counter(2)).add("a", original).add("c", Counter(3)))
-    let seen: List[String] = []
+    source.clear()
+    source.add("b", Counter(2))
+    source.add("a", original)
+    source.add("c", Counter(3))
+    var seen: List[String] = []
     let find = source.find_last
-    let found = find(
+    var found = find(
         predicate: fn(k, v):
             seen.append(k)
-            (source.remove("a").add("b", Counter(99)).add("new", Counter(4)))
+            source.remove("a")
+            source.add("b", Counter(99))
+            source.add("new", Counter(4))
             return k == "a"
     ).get()
     (seen != ["c", "a"] or found.key != "a") | try expect_false
@@ -190,16 +196,17 @@ test "Map reverse fold and last match retain ordered shallow snapshots":
     source.contains("changed") | try expect_false
 
 test "Set reverse fold and last match preserve references and callbacks":
-    let b = Key(2, "b")
+    var b = Key(2, "b")
     let a = Key(1, "a")
     let c = Key(3, "c")
-    let source = Set[Key]([b, a, c])
+    var source = Set[Key]([b, a, c])
     let initial: List[String] = []
-    let folded = reverse_set(
+    var folded = reverse_set(
         source,
         initial,
         fn(acc, v):
-            source.remove(a).add(Key(4, "new"))
+            source.remove(a)
+            source.add(Key(4, "new"))
             b.label = "shared"
             acc.append(v.label)
             return acc
@@ -207,13 +214,17 @@ test "Set reverse fold and last match preserve references and callbacks":
     folded | try expect_equal(expected: ["c", "a", "shared"])
     folded.append("alias")
     initial.length() | try expect_equal(expected: 4)
-    source.clear().add(b).add(a).add(c)
-    let seen: List[Int] = []
+    source.clear()
+    source.add(b)
+    source.add(a)
+    source.add(c)
+    var seen: List[Int] = []
     let find = source.find_last
-    let found = find(
+    var found = find(
         fn(v):
             seen.append(v.id)
-            source.remove(a).add(Key(4, "new"))
+            source.remove(a)
+            source.add(Key(4, "new"))
             return v.id == 1
     ).get()
     seen | try expect_equal(expected: [3, 1])
@@ -221,7 +232,7 @@ test "Set reverse fold and last match preserve references and callbacks":
     a.label | try expect_equal(expected: "found")
 
 test "empty and nonmatching reverse queries keep fold and predicate contracts":
-    let empty_calls: List[Int] = []
+    var empty_calls: List[Int] = []
     let initial: List[Int] = []
     let empty_map = Map[String, Int]()
     let empty_set = Set[Int]()
@@ -271,7 +282,7 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
         )
     )
     let values: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
-    let seen_map: List[String] = []
+    var seen_map: List[String] = []
     try expect_false(
         (
             not (
@@ -287,7 +298,7 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
         )
     )
     let members = Set[Int]([2, 1, 3])
-    let seen_set: List[Int] = []
+    var seen_set: List[Int] = []
     try expect_false(
         (
             not (

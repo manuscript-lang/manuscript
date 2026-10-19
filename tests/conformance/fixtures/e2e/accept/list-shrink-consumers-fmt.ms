@@ -386,8 +386,8 @@ test "preferred List mutators and explicit reversed copy preserve aliases":
 
     (seen == [1, 3, 3] and alias == [9, 3] and clone == [1, 2, 3]) | try expect_true
     let reverse_in_place = values.reverse_in_place
-    let returned = reverse_in_place()
-    returned.append(4)
+    reverse_in_place()
+    values.append(4)
     values | try expect_equal(expected: [3, 9, 4])
     let reversed = values.reversed
     let separate = reversed()

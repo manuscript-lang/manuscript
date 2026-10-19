@@ -23,7 +23,7 @@ test "map literals and positional identifier arguments":
     try expect_equal(first(left, right), 4)
     let stored: fn(amount: Int, deduction: Int) Int = subtract
     try expect_equal(stored(amount, deduction), 7)
-    let values = {"a": 1, "b": 2, "a": 3}
+    var values = {"a": 1, "b": 2, "a": 3}
     try expect_false(values.length() != 2 or values.get("a").get() != 3)
     let keys = values.keys()
     try expect_false(keys.get(0) != "a" or keys.get(1) != "b")

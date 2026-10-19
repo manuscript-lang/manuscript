@@ -723,6 +723,15 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     pub fn lower_func(&mut self, f: &Func, _index: usize) {
         let rpo = f.rpo();
+        self.g.scope_base = self.g.scopes.len() as u32;
+        let base = self.g.scope_base;
+        for sc in &f.scopes {
+            let mut sc = sc.clone();
+            if sc.parent != 0 {
+                sc.parent += base;
+            }
+            self.g.scopes.push(sc);
+        }
         self.blocks = vec![None; f.blocks.len()];
         self.vals = vec![Vec::new(); f.values.len()];
         for b in &rpo {

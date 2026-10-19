@@ -32,7 +32,9 @@ test "bound replace":
     let first = "a".replace_first
     first("a", "b", -1)
 test "continues":
-    let result = [1].set(0, 2).remove(0)
+    var result = [1]
+    result.set(0, 2)
+    result.remove(0)
 `
 	data, err := execute(t, compiler.CompileSource("preferred-faults.ms", source, compiler.Options{Tests: true}))
 	if err == nil {

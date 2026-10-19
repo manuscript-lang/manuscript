@@ -65,7 +65,7 @@ Maps and sets iterate in insertion order, with a [for loop](../control-flow/loop
 
 ## Mutation and copies
 
-Mutators update the receiver and return the same instance for chaining.
+Mutators update the receiver in place and return Unit; a `let` binding cannot be mutated, so declare the collection with `var`.
 
 - List: `append`, `prepend`, `insert`, `set`, `remove`, `splice`, `fill`, `copy_within`, `reverse_in_place`.
 - Map: `add`, `remove`, `add_default`, `add_default_from`, `merge`, `clear`. Removing an absent key is a no-op.
@@ -80,11 +80,10 @@ List details:
 - Invalid bounds fault; nothing is clamped.
 
 ```manuscript
-let values = [1, 2]
-let alias = values
+var values = [1, 2]
 let copy = values.clone()
 values.append(3)
-# alias now contains [1, 2, 3]; copy still contains [1, 2].
+# values now contains [1, 2, 3]; copy still contains [1, 2].
 ```
 
 Clones copy outer storage and keep nested references. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra return new shallow copies (Bytes `reversed()` too).
@@ -162,7 +161,7 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 
 An empty constructor needs explicit type arguments or a complete expected application, and creates fresh storage. `values[index]` equals `values.get(index)`: the element at an index, where negative indexes count from the end. An index out of range faults. Pass a default to avoid the fault: `values.get(0, default: 0)` needs no length check. Bytes and String `get` work the same way, and a String element is a one-scalar String. A size above the maximum `Int` faults.
 
-`Map.add(key, value)` inserts or replaces and returns the same map. Replacing an equal map key keeps its original key and position; adding an existing set element changes nothing. Remove then add moves the entry to the end. Equality ignores insertion order. Use builders for construction with a sealed result.
+`Map.add(key, value)` inserts or replaces and returns Unit. Replacing an equal map key keeps its original key and position; adding an existing set element changes nothing. Remove then add moves the entry to the end. Equality ignores insertion order. Use builders for construction with a sealed result.
 
 Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (constant time on average). Map and Set `remove` keep order by shifting later entries, costing a fast copy proportional to size. List `contains` and `index_of` scan. A key mutated while stored becomes unreachable; remove it first or store a `.clone()` ([key consistency](equality-and-hashing.md#key-consistency)).
 
@@ -192,7 +191,7 @@ fn positives(values: List[Int]) List[Int]:
     var result: List[Int] = []
     for value in values:
         if value > 0:
-            result = result.append(value)
+            result.append(value)
     return result
 
 test "dynamic mutable data and explicit copies":
@@ -200,8 +199,11 @@ test "dynamic mutable data and explicit copies":
         return panic("check failed")
     if [1].get(5, default: -1) != -1:
         return panic("check failed")
-    let original = Map[String, Int]().add("a", 1)
-    let updated = original.clone().add("b", 2).add("a", 3)
+    var original = Map[String, Int]()
+    original.add("a", 1)
+    var updated = original.clone()
+    updated.add("b", 2)
+    updated.add("a", 3)
     if not (original.get("a") == some(1)):
         return panic("check failed")
     if not (updated.get("a") == some(3)):

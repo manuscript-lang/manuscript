@@ -443,7 +443,7 @@ impl<'a> FnLower<'a> {
     /// A text literal with interpolations.
     pub fn text(&mut self, parts: &[TextPart]) -> Result<Val, Error> {
         let mut acc: Option<Val> = None;
-        for p in parts {
+        for (n, p) in parts.iter().enumerate() {
             let piece = match p {
                 TextPart::Lit(s) => {
                     let v = self.b.str_lit(s);
@@ -467,6 +467,13 @@ impl<'a> FnLower<'a> {
                     Val { v: r, own: true }
                 }
             });
+            // A later part may return early (`try`): the text built so far is a temporary.
+            let later_try = parts[n + 1..]
+                .iter()
+                .any(|l| matches!(l, TextPart::Interp(e) if crate::mutation::has_try(e)));
+            if later_try && let Some(a) = acc {
+                acc = Some(self.hold_temp(a));
+            }
         }
         match acc {
             Some(a) => Ok(a),

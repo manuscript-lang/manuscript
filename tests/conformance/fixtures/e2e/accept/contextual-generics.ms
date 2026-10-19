@@ -34,11 +34,11 @@ type Events:
     values: List[Int]
 
 fn record[T](events: Events, value: Int) Optional[T]:
-    events.values = events.values.append(value)
+    events.values.append(value)
     return none
 
 fn combine[T](events: Events, first: Optional[T], second: Optional[T]) Optional[T]:
-    events.values = events.values.append(3)
+    events.values.append(3)
     return first
 
 test "expected generic results preserve behavior and call order":

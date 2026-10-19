@@ -13,7 +13,8 @@ export fn main() Int:
     say("l1 = {l1} len {l1.length()}")
     let l2 = l1.drop(1)
     say("l2 = {l2} len {l2.length()}")
-    let l3 = l2.clone().append(78)
+    var l3 = l2.clone()
+    l3.append(78)
     say("l3 = {l3} len {l3.length()}")
     var acc4 = 0
     var stepacc4 = 0

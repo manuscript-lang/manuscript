@@ -9,8 +9,8 @@
 //! inlined body of its callee.
 
 use crate::ir::{
-    Block, BlockData, BlockParam, Func, FuncId, FuncKind, Imm, InlineHint, Inst, Linkage, Mode,
-    Module, Op, Target, Term, Value,
+    Block, BlockData, BlockParam, Func, FuncId, FuncKind, Imm, InlineHint, Inst, Linkage, Loc,
+    Mode, Module, Op, Scope, Target, Term, Value,
 };
 use crate::types::Ty;
 use std::collections::HashSet;
@@ -243,6 +243,26 @@ fn inline_at(f: &mut Func, bi: usize, ii: usize, callee: &Func, ret_own: bool) -
         term_loc: old_term_loc,
     };
 
+    // The callee's positions become a scope called from the call's position; scopes the
+    // callee already carries (its own inlined callees) nest beneath it.
+    let base = f.scopes.len() as u32;
+    f.scopes.push(Scope {
+        name: callee.name.clone(),
+        file: callee.loc.file,
+        parent: call.loc.scope,
+        call_line: call.loc.line,
+    });
+    f.scopes.extend(callee.scopes.iter().map(|s| Scope {
+        name: s.name.clone(),
+        file: s.file,
+        parent: base + 1 + s.parent,
+        call_line: s.call_line,
+    }));
+    let ml = |l: Loc| Loc {
+        scope: base + 1 + l.scope,
+        ..l
+    };
+
     let vmap: Vec<Value> = callee.values.iter().map(|t| f.new_value(*t)).collect();
     let bmap: Vec<Block> = callee.blocks.iter().map(|_| f.new_block()).collect();
     let mv = |v: Value| vmap[v.index()];
@@ -267,7 +287,7 @@ fn inline_at(f: &mut Func, bi: usize, ii: usize, callee: &Func, ret_own: bool) -
                 args: i.args.iter().map(|a| mv(*a)).collect(),
                 imm: i.imm,
                 res: i.res.map(mv),
-                loc: i.loc,
+                loc: ml(i.loc),
             })
             .collect();
         let term = match &cb.term {
@@ -296,7 +316,7 @@ fn inline_at(f: &mut Func, bi: usize, ii: usize, callee: &Func, ret_own: bool) -
                             args: Vec::new(),
                             imm: Imm::None,
                             res: Some(u),
-                            loc: cb.term_loc,
+                            loc: ml(cb.term_loc),
                         });
                         u
                     }
@@ -313,7 +333,7 @@ fn inline_at(f: &mut Func, bi: usize, ii: usize, callee: &Func, ret_own: bool) -
             params,
             insts,
             term,
-            term_loc: cb.term_loc,
+            term_loc: ml(cb.term_loc),
         };
     }
     f.blocks[bi].term = Term::Br(Target {

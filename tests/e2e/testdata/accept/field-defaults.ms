@@ -48,7 +48,7 @@ test "record defaults and explicit overrides":
     specified.copy | try expect_equal(expected: 0)
 
 test "supplied fields precede defaults in field order":
-    let counter = Counter()
+    var counter = Counter()
     let ordered = Ordered(
         counter: counter,
         third: mark(counter: counter, value: 1),
@@ -67,7 +67,7 @@ test "supplied fields precede defaults in field order":
     (counter.value != 34 or again.third != 7) | try expect_false
 
 test "mutable defaults have fresh storage":
-    let first = Data()
+    var first = Data()
     let second = Data()
     first.values.append(8)
     (first.values.length() != 2 or second.values.length() != 1) | try expect_false

@@ -4,7 +4,7 @@
 import {expect_equal, fail} from "@std/testing.ms"
 
 test "maps and sets keep distinct keys after removal to empty":
-    let m = Map[String, Int]()
+    var m = Map[String, Int]()
     m.add(key: "cap", value: 1)
     m.remove("cap")
     m.add(key: "pen", value: 2)
@@ -13,7 +13,7 @@ test "maps and sets keep distinct keys after removal to empty":
 
     m.get("pen").get() | try expect_equal(expected: 2)
     m.get("cap").get() | try expect_equal(expected: 3)
-    let n = Map[Int, Int]()
+    var n = Map[Int, Int]()
     n.add(key: 1, value: 10)
     n.remove(key: 1)
     n.add(key: 2, value: 20)
@@ -22,7 +22,7 @@ test "maps and sets keep distinct keys after removal to empty":
 
     n.get(2).get() | try expect_equal(expected: 20)
     n.get(1).get() | try expect_equal(expected: 30)
-    let s = Set[String]()
+    var s = Set[String]()
     s.add("cap")
     s.remove("cap")
     s.add("pen")

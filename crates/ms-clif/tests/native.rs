@@ -334,6 +334,64 @@ b0:
     assert!(err.contains("main") && err.contains("t.ms:21"), "{err}");
 }
 
+/// Frames of functions the optimizer inlined still appear in fault traces.
+#[test]
+fn fault_trace_shows_inlined_frames() {
+    let src = r#"module "trace"
+entry @main
+file 0 "t.ms"
+fn @limit() -> int !0:5:1 {
+b0:
+  %a: int = iconst 1
+  %z: int = iconst 0 !0:6:3
+  %q: int = sdiv.chk %a, %z !0:6:12
+  ret %q
+}
+fn @probe() -> int !0:7:1 {
+b0:
+  %r: int = call @limit() !0:8:10
+  ret %r
+}
+fn @main() -> int !0:11:1 {
+b0:
+  %r: int = call @probe() !0:12:5
+  ret %r
+}
+"#;
+    let mut m = module(src);
+    ms_mir::opt::optimize(&mut m, ms_mir::opt::Level::Speed, true);
+    assert_eq!(m.funcs.len(), 1, "limit and probe inline into main");
+    let obj = compile(&m, &Options::default()).unwrap();
+    let d = dir();
+    let objp = d.join("inl_trace.o");
+    std::fs::write(&objp, obj).unwrap();
+    let shim = d.join("printshim.o");
+    let c = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/rt/printshim.c");
+    assert!(
+        Command::new("cc")
+            .args(["-O1", "-c", "-o"])
+            .arg(&shim)
+            .arg(c)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let exe = d.join("inl_trace");
+    ms_clif::link::link_all(&objp, &[&shim, real_runtime()], &exe).unwrap();
+    let out = Command::new(&exe).output().unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    let at: Vec<&str> = err.lines().filter(|l| l.contains("  at ")).collect();
+    assert_eq!(
+        at,
+        [
+            "  at t.ms:6 in limit",
+            "  at t.ms:8 in probe",
+            "  at t.ms:12 in main"
+        ],
+        "{err}"
+    );
+}
+
 // ---- random-program differential fuzzer -----------------------------------
 
 struct Rng(u64);

@@ -32,3 +32,14 @@ func TestVarParameterRejectedInFunctionTypes(t *testing.T) {
 		t.Fatal("function types cannot declare var parameters")
 	}
 }
+
+func TestVarFnInInterface(t *testing.T) {
+	module, err := parser.Parse("var.ms", "interface Sink:\n    var fn push(value: Int) Unit\n    fn size() Int\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	methods := module.Declarations[0].Methods
+	if len(methods) != 2 || !methods[0].Mutating || methods[1].Mutating {
+		t.Fatalf("interface markers: %+v", methods)
+	}
+}

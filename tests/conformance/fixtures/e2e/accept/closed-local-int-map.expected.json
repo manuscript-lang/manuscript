@@ -26,12 +26,12 @@
         },
         {
           "index": 3,
-          "name": "closed-local-int-map.ms::escaped map results retain aliases and insertion order",
+          "name": "closed-local-int-map.ms::escaped map results keep insertion order",
           "status": "passed"
         },
         {
           "index": 4,
-          "name": "closed-local-int-map.ms::captured maps retain shared reference mutations",
+          "name": "closed-local-int-map.ms::captured maps read the entries present at capture",
           "status": "passed"
         }
       ],
@@ -45,7 +45,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN closed-local-int-map.ms::closed maps preserve lookup replacement and absence\nPASS closed-local-int-map.ms::closed maps preserve lookup replacement and absence\nRUN closed-local-int-map.ms::closed map arguments retain written evaluation order\nPASS closed-local-int-map.ms::closed map arguments retain written evaluation order\nRUN closed-local-int-map.ms::missing local lookups keep Optional faults\nPASS closed-local-int-map.ms::missing local lookups keep Optional faults\nRUN closed-local-int-map.ms::escaped map results retain aliases and insertion order\nPASS closed-local-int-map.ms::escaped map results retain aliases and insertion order\nRUN closed-local-int-map.ms::captured maps retain shared reference mutations\nPASS closed-local-int-map.ms::captured maps retain shared reference mutations\n5 tests, 0 failed\n",
+      "stdout": "RUN closed-local-int-map.ms::closed maps preserve lookup replacement and absence\nPASS closed-local-int-map.ms::closed maps preserve lookup replacement and absence\nRUN closed-local-int-map.ms::closed map arguments retain written evaluation order\nPASS closed-local-int-map.ms::closed map arguments retain written evaluation order\nRUN closed-local-int-map.ms::missing local lookups keep Optional faults\nPASS closed-local-int-map.ms::missing local lookups keep Optional faults\nRUN closed-local-int-map.ms::escaped map results keep insertion order\nPASS closed-local-int-map.ms::escaped map results keep insertion order\nRUN closed-local-int-map.ms::captured maps read the entries present at capture\nPASS closed-local-int-map.ms::captured maps read the entries present at capture\n5 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

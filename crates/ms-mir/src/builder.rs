@@ -385,6 +385,11 @@ impl<'m> FuncBuilder<'m> {
         self.vars[v.0 as usize].ty
     }
 
+    /// The ownership a variable's block parameters carry.
+    pub fn var_mode(&self, v: Var) -> Mode {
+        self.vars[v.0 as usize].mode
+    }
+
     /// Defines the variable's value at the end of the current block.
     pub fn def_var(&mut self, v: Var, val: Value) {
         self.defs.insert((v, self.cur), val);

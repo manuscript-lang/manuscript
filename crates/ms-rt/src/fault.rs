@@ -4,7 +4,7 @@ use crate::global::Global;
 #[allow(unused_imports)]
 use crate::sys;
 use core::fmt::{self, Write};
-use ms_rt_abi::{FuncEntry, LineEntry, MAX_FAULT_FRAMES, Tables};
+use ms_rt_abi::{FuncEntry, LineEntry, MAX_FAULT_FRAMES, ScopeEntry, TABLES_WITH_SCOPES, Tables};
 
 /// Current depth of recursive calls (generated code updates it inline).
 #[unsafe(no_mangle)]
@@ -211,8 +211,8 @@ pub fn find_func(t: &Tables, pc: usize) -> Option<&'static FuncEntry> {
     }
 }
 
-/// Source line of a return address inside `func`.
-pub fn find_line(t: &Tables, func: &FuncEntry, pc: usize) -> (u32, u32) {
+/// Source line of a return address inside `func`, with the inlining scope of that line.
+pub fn find_line(t: &Tables, func: &FuncEntry, pc: usize) -> (u32, u32, u32) {
     if !t.lines.is_null() && t.line_count > 0 {
         // SAFETY: sorted `line_count` read-only entries.
         let lines = unsafe { core::slice::from_raw_parts(t.lines, t.line_count) };
@@ -227,11 +227,30 @@ pub fn find_line(t: &Tables, func: &FuncEntry, pc: usize) -> (u32, u32) {
                 } else {
                     e.file_off
                 };
-                return (e.line, file);
+                let scope = if t.abi_version >= TABLES_WITH_SCOPES && !t.line_scopes.is_null() {
+                    // SAFETY: `line_scopes` parallels `lines`.
+                    unsafe { *t.line_scopes.add(idx - 1) }
+                } else {
+                    0
+                };
+                return (e.line, file, scope);
             }
         }
     }
-    (func.line, func.file_off)
+    (func.line, func.file_off, 0)
+}
+
+/// The inlined-callee scope `id` (1-based), if the table has it.
+fn scope_entry(t: &Tables, id: u32) -> Option<ScopeEntry> {
+    if t.abi_version < TABLES_WITH_SCOPES
+        || t.scopes.is_null()
+        || id == 0
+        || id as usize > t.scope_count
+    {
+        return None;
+    }
+    // SAFETY: `scope_count` read-only entries; `id` is in range.
+    Some(unsafe { *t.scopes.add(id as usize - 1) })
 }
 
 /// Appends `file:line in name` lines for the source frames found from `fp`.
@@ -255,18 +274,38 @@ fn describe_frames(out: &mut ByteBuf, fp: usize) {
                 truncated = true;
                 return false;
             }
-            let (line, file) = find_line(t, func, ret);
+            let (mut line, mut file, mut scope) = find_line(t, func, ret);
             // Compiler-generated glue (function-value thunks) has no source position.
             if line == 0 && file == u32::MAX {
                 return true;
             }
-            out.extend(b"\n  at ");
-            out.extend(cstr(t, file));
-            out.push(b':');
-            out.push_i64(line as i64);
-            out.extend(b" in ");
-            out.extend(cstr(t, func.name_off));
-            shown += 1;
+            // Frames of inlined callees, innermost first, then the physical function.
+            let mut name = func.name_off;
+            loop {
+                let next = scope_entry(t, scope);
+                if let Some(sc) = &next {
+                    name = sc.name_off;
+                    if sc.file_off != u32::MAX {
+                        file = sc.file_off;
+                    }
+                }
+                out.extend(b"\n  at ");
+                out.extend(cstr(t, file));
+                out.push(b':');
+                out.push_i64(line as i64);
+                out.extend(b" in ");
+                out.extend(cstr(t, name));
+                shown += 1;
+                let Some(sc) = next else { break };
+                line = sc.call_line;
+                scope = sc.parent;
+                name = func.name_off;
+                file = func.file_off;
+                if shown == MAX_FAULT_FRAMES {
+                    truncated = true;
+                    return false;
+                }
+            }
             true
         });
     }
@@ -503,6 +542,20 @@ pub extern "C-unwind" fn msrt_cleanup_run(handle: usize) {
     while unsafe { (*CLEANUPS.ptr()).len() } >= handle && handle > 0 {
         if !run_one_cleanup() {
             break;
+        }
+    }
+}
+
+/// Drops the action behind `handle` (and newer pending ones) without running them.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_cleanup_discard(handle: usize) {
+    // SAFETY: single threaded access to the cleanup stack.
+    unsafe {
+        let stack = &mut *CLEANUPS.ptr();
+        while stack.len() >= handle && handle > 0 {
+            if stack.pop().is_none() {
+                break;
+            }
         }
     }
 }
@@ -886,6 +939,9 @@ mod tests {
         let t = Tables {
             abi_version: 1,
             reserved: 0,
+            line_scopes: core::ptr::null(),
+            scopes: core::ptr::null(),
+            scope_count: 0,
             funcs: funcs.as_ptr(),
             func_count: 2,
             lines: lines.as_ptr(),
