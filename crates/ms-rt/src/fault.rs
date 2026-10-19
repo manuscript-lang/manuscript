@@ -169,6 +169,10 @@ fn describe_frames(out: &mut ByteBuf, fp: usize) {
                 return false;
             }
             let (line, file) = find_line(t, func, ret);
+            // Compiler-generated glue (function-value thunks) has no source position.
+            if line == 0 && file == u32::MAX {
+                return true;
+            }
             out.extend(b"\n  at ");
             out.extend(cstr(t, file));
             out.push(b':');
@@ -321,6 +325,26 @@ pub extern "C-unwind" fn msrt_fault_depth() -> ! {
 pub extern "C-unwind" fn msrt_index_fault(index: i64, length: i64) -> ! {
     fault_fmt(format_args!(
         "index {index} out of range for length {length}; pass a default: get(index:, default: ...)"
+    ))
+}
+
+/// Faults for an invalid index of a list mutator over `len` elements; `operation` is 0 for
+/// `insert` (which also accepts `len`), 1 for `remove` and 2 for `set`.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_list_index_fault(operation: i64, index: i64, len: i64) -> ! {
+    let (name, hi) = match operation {
+        0 => ("List.insert", len),
+        1 => ("List.remove", len - 1),
+        _ => ("List.set", len - 1),
+    };
+    if operation != 0 && len == 0 {
+        fault_fmt(format_args!(
+            "{name}: index has no valid value for an empty collection, found {index}"
+        ))
+    }
+    fault_fmt(format_args!(
+        "{name}: index must be between {} and {hi} (negative indexes count from the end), found {index}",
+        -len
     ))
 }
 

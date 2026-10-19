@@ -18,6 +18,12 @@ stats = []
 
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
+ms-std-rt = { path = "../ms-std-rt" }
+ms-std-math = { path = "../ms-std-math" }
+ms-std-time = { path = "../ms-std-time" }
+ms-std-fs = { path = "../ms-std-fs" }
+ms-std-io = { path = "../ms-std-io" }
+ms-std-process = { path = "../ms-std-process" }
 unicode-normalization = { version = "0.1.24", default-features = false }
 
 [lints]

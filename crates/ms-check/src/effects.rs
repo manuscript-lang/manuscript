@@ -32,6 +32,9 @@ pub fn collection_mutation(receiver: &Ty, name: &str) -> bool {
             "add" | "remove" | "add_default" | "add_default_from" | "merge" | "clear"
         );
     }
+    if receiver.is_std("StringBuilder") || receiver.is_std("BytesBuilder") {
+        return matches!(name, "append" | "freeze");
+    }
     receiver.is_std("Set") && matches!(name, "add" | "remove" | "clear")
 }
 
