@@ -1,0 +1,17 @@
+[package]
+name = "ms-std-time"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Manuscript standard-library natives for @std/time"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+ms-rt-abi = { path = "../ms-rt-abi" }
+ms-std-rt = { path = "../ms-std-rt" }
+jiff = { version = "0.2", default-features = false, features = ["alloc", "tzdb-bundle-always"] }
+
+[lints]
+workspace = true

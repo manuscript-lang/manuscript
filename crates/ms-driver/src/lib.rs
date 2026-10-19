@@ -15,7 +15,7 @@ pub mod native;
 
 pub use compile::{CheckRequest, Checked, check_graph};
 pub use load::{Graph, LoadOptions, load_file};
-pub use lower::{Lower, LowerOptions, Unavailable};
+pub use lower::{Lower, LowerOptions, Native, Unavailable};
 pub use ms_mir::ir::Module;
 pub use native::{Profile, build_executable, locate_runtime};
 

@@ -1,11 +1,11 @@
-//! Text forms: interpolation and `to_string`.
+//! Text forms: interpolation, `to_string` and the quoted form test failures print.
 
 use crate::Error;
 use crate::cx::{Cx, Job, JobKind};
 use crate::func::{FnLower, Val};
 use ms_check::types::Kind;
-use ms_mir::builder::FuncBuilder;
-use ms_mir::ir::{Cc, ExternDef, FuncId, Mode, Module, Param, Value};
+use ms_mir::builder::{FuncBuilder, Var};
+use ms_mir::ir::{Cc, ExternDef, FuncId, Imm, Mode, Module, Op, Param, Value};
 use ms_mir::print::ty_str;
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
@@ -33,7 +33,8 @@ pub(crate) fn runtime_fn(m: &mut Module, sym: &str, params: &[MTy], ret: MTy) ->
 }
 
 /// Calls a leaf formatter for scalar/string types; `None` for compound types.
-fn scalar_text(b: &mut FuncBuilder<'_>, t: MTy, v: Value) -> Option<(Value, bool)> {
+/// The quoted form (`repr`) wraps strings in quotes.
+fn scalar_text(b: &mut FuncBuilder<'_>, t: MTy, v: Value, repr: bool) -> Option<(Value, bool)> {
     let sym = if t == MTy::INT {
         "msrt_int_to_string"
     } else if t == MTy::FLOAT {
@@ -41,6 +42,10 @@ fn scalar_text(b: &mut FuncBuilder<'_>, t: MTy, v: Value) -> Option<(Value, bool
     } else if t == MTy::BOOL {
         "msrt_bool_to_string"
     } else if t == MTy::STR {
+        if repr {
+            let ext = runtime_fn(b.m, "msrt_string_quote", &[MTy::STR], MTy::STR);
+            return Some((b.call_rt(ext, &[v]), true));
+        }
         return Some((v, false));
     } else if t == MTy::UNIT {
         let s = b.str_lit("unit");
@@ -53,9 +58,9 @@ fn scalar_text(b: &mut FuncBuilder<'_>, t: MTy, v: Value) -> Option<(Value, bool
 }
 
 impl Cx {
-    /// The function formatting a value of `t` (reserved on first use).
-    pub(crate) fn format_fn(&mut self, m: &mut Module, t: MTy) -> FuncId {
-        let key = format!("fmt:{}", t.0);
+    /// The function formatting a value of `t` (reserved on first use); `repr` is the quoted form.
+    pub(crate) fn format_fn(&mut self, m: &mut Module, t: MTy, repr: bool) -> FuncId {
+        let key = format!("fmt:{}:{repr}", t.0);
         if let Some(f) = self.helpers.get(&key) {
             return *f;
         }
@@ -71,35 +76,130 @@ impl Cx {
         self.helpers.insert(key, id);
         self.queue.push(Job {
             func: id,
-            kind: JobKind::Format(t),
+            kind: JobKind::Format(t, repr),
         });
         id
     }
 }
 
 /// Appends `piece` to the owned accumulator variable.
-fn append(b: &mut FuncBuilder<'_>, acc: ms_mir::builder::Var, piece: Value, piece_owned: bool) {
+fn append(b: &mut FuncBuilder<'_>, acc: Var, piece: Value, piece_owned: bool) {
     let old = b.use_var(acc);
     let ext = runtime_fn(b.m, "msrt_string_concat", &[MTy::STR, MTy::STR], MTy::STR);
     let new = b.call_rt(ext, &[old, piece]);
     b.def_var(acc, new);
-    b.emit(ms_mir::ir::Op::Drop, &[old], ms_mir::ir::Imm::None, None);
+    b.emit(Op::Drop, &[old], Imm::None, None);
     if piece_owned {
-        b.emit(ms_mir::ir::Op::Drop, &[piece], ms_mir::ir::Imm::None, None);
+        b.emit(Op::Drop, &[piece], Imm::None, None);
     }
+}
+
+fn append_lit(b: &mut FuncBuilder<'_>, acc: Var, text: &str) {
+    let l = b.str_lit(text);
+    append(b, acc, l, false);
+}
+
+/// An accumulator variable holding an owned copy of `text`.
+fn start(b: &mut FuncBuilder<'_>, text: &str) -> Var {
+    let l = b.str_lit(text);
+    let first = b
+        .emit(Op::Copy, &[l], Imm::None, Some(MTy::STR))
+        .expect("copy");
+    let acc = b.declare_var(MTy::STR, Mode::Own);
+    b.def_var(acc, first);
+    acc
 }
 
 /// Formats one element: scalars directly, compound types through their helper.
-fn element_text(cx: &mut Cx, b: &mut FuncBuilder<'_>, t: MTy, v: Value) -> (Value, bool) {
-    if let Some(r) = scalar_text(b, t, v) {
+fn element_text(
+    cx: &mut Cx,
+    b: &mut FuncBuilder<'_>,
+    t: MTy,
+    v: Value,
+    repr: bool,
+) -> (Value, bool) {
+    if let Some(r) = scalar_text(b, t, v, repr) {
         return r;
     }
-    let f = cx.format_fn(b.m, t);
+    let f = cx.format_fn(b.m, t, repr);
     (b.call(f, &[v]), true)
 }
 
+/// Appends `label: value` pieces of a field list as `(a: 1, b: 2)`.
+fn append_fields(
+    cx: &mut Cx,
+    b: &mut FuncBuilder<'_>,
+    acc: Var,
+    fields: &[(Option<String>, MTy, Value)],
+    repr: bool,
+) {
+    append_lit(b, acc, "(");
+    for (i, (label, ty, v)) in fields.iter().enumerate() {
+        if i > 0 {
+            append_lit(b, acc, ", ");
+        }
+        if let Some(l) = label {
+            append_lit(b, acc, &format!("{l}: "));
+        }
+        let (txt, owned) = element_text(cx, b, *ty, *v, repr);
+        append(b, acc, txt, owned);
+    }
+    append_lit(b, acc, ")");
+}
+
+/// Appends the elements of `list` separated by commas.
+fn append_items(
+    cx: &mut Cx,
+    b: &mut FuncBuilder<'_>,
+    acc: Var,
+    list: Value,
+    elem: MTy,
+    repr: bool,
+) {
+    let idx = b.declare_var(MTy::INT, Mode::Borrow);
+    let zero = b.iconst(0);
+    b.def_var(idx, zero);
+    let n = b.list_len(list);
+    let (header, body, exit) = (b.new_block(), b.new_block(), b.new_block());
+    b.br(header, &[]);
+    b.switch_to(header);
+    let i = b.use_var(idx);
+    let c = b.icmp(Cc::Lt, i, n);
+    b.br_if(c, body, &[], exit, &[]);
+    b.seal_block(body);
+    b.switch_to(body);
+    let i = b.use_var(idx);
+    let first = b.icmp(Cc::Eq, i, zero);
+    let (sep, nosep) = (b.new_block(), b.new_block());
+    b.br_if(first, nosep, &[], sep, &[]);
+    b.seal_block(sep);
+    b.seal_block(nosep);
+    b.switch_to(sep);
+    append_lit(b, acc, ", ");
+    b.br(nosep, &[]);
+    b.switch_to(nosep);
+    let i = b.use_var(idx);
+    let e = b.list_get(list, i);
+    let (txt, owned) = element_text(cx, b, elem, e, repr);
+    append(b, acc, txt, owned);
+    let i = b.use_var(idx);
+    let one = b.iconst(1);
+    let i1 = b.binop(Op::IAdd, i, one);
+    b.def_var(idx, i1);
+    b.br(header, &[]);
+    b.seal_block(header);
+    b.seal_block(exit);
+    b.switch_to(exit);
+}
+
 /// Builds the body of a formatting helper.
-pub(crate) fn build_format(cx: &mut Cx, m: &mut Module, func: FuncId, t: MTy) -> Result<(), Error> {
+pub(crate) fn build_format(
+    cx: &mut Cx,
+    m: &mut Module,
+    func: FuncId,
+    t: MTy,
+    repr: bool,
+) -> Result<(), Error> {
     let mut b = FuncBuilder::new(
         m,
         "format",
@@ -112,54 +212,20 @@ pub(crate) fn build_format(cx: &mut Cx, m: &mut Module, func: FuncId, t: MTy) ->
     let x = b.params()[0];
     match b.m.types.kind(t).clone() {
         TyKind::List(elem) => {
-            let open = b.str_lit("[");
-            let first = b
-                .emit(
-                    ms_mir::ir::Op::Copy,
-                    &[open],
-                    ms_mir::ir::Imm::None,
-                    Some(MTy::STR),
-                )
-                .expect("copy");
-            let acc = b.declare_var(MTy::STR, Mode::Own);
-            b.def_var(acc, first);
-            let idx = b.declare_var(MTy::INT, Mode::Borrow);
-            let zero = b.iconst(0);
-            b.def_var(idx, zero);
-            let n = b.list_len(x);
-            let (header, body, exit) = (b.new_block(), b.new_block(), b.new_block());
-            b.br(header, &[]);
-            b.switch_to(header);
-            let i = b.use_var(idx);
-            let c = b.icmp(Cc::Lt, i, n);
-            b.br_if(c, body, &[], exit, &[]);
-            b.seal_block(body);
-            b.switch_to(body);
-            let i = b.use_var(idx);
-            let first = b.icmp(Cc::Eq, i, zero);
-            let (sep, nosep) = (b.new_block(), b.new_block());
-            b.br_if(first, nosep, &[], sep, &[]);
-            b.seal_block(sep);
-            b.seal_block(nosep);
-            b.switch_to(sep);
-            let comma = b.str_lit(", ");
-            append(&mut b, acc, comma, false);
-            b.br(nosep, &[]);
-            b.switch_to(nosep);
-            let i = b.use_var(idx);
-            let e = b.list_get(x, i);
-            let (txt, owned) = element_text(cx, &mut b, elem, e);
-            append(&mut b, acc, txt, owned);
-            let i = b.use_var(idx);
-            let one = b.iconst(1);
-            let i1 = b.binop(ms_mir::ir::Op::IAdd, i, one);
-            b.def_var(idx, i1);
-            b.br(header, &[]);
-            b.seal_block(header);
-            b.seal_block(exit);
-            b.switch_to(exit);
-            let close = b.str_lit("]");
-            append(&mut b, acc, close, false);
+            let acc = start(&mut b, "[");
+            append_items(cx, &mut b, acc, x, elem, repr);
+            append_lit(&mut b, acc, "]");
+            let r = b.use_var(acc);
+            b.ret(Some(r));
+        }
+        TyKind::Bytes => {
+            let acc = start(&mut b, "Bytes(");
+            let list_ty = b.m.types.list(MTy::INT);
+            let ext = runtime_fn(b.m, "msrt_bytes_values", &[t], list_ty);
+            let values = b.call_rt(ext, &[x]);
+            append_items(cx, &mut b, acc, values, MTy::INT, repr);
+            b.emit(Op::Drop, &[values], Imm::None, None);
+            append_lit(&mut b, acc, ")");
             let r = b.use_var(acc);
             b.ret(Some(r));
         }
@@ -170,33 +236,156 @@ pub(crate) fn build_format(cx: &mut Cx, m: &mut Module, func: FuncId, t: MTy) ->
             b.seal_block(some);
             b.seal_block(none);
             b.switch_to(none);
-            let s = b.str_lit("Optional.none");
-            let o = b
-                .emit(
-                    ms_mir::ir::Op::Copy,
-                    &[s],
-                    ms_mir::ir::Imm::None,
-                    Some(MTy::STR),
-                )
-                .expect("copy");
-            b.ret(Some(o));
+            let acc = start(&mut b, if repr { "none" } else { "Optional.none" });
+            let r = b.use_var(acc);
+            b.ret(Some(r));
             b.switch_to(some);
             let v = b.opt_get(x);
-            let (txt, owned) = element_text(cx, &mut b, inner, v);
-            let open = b.str_lit("Optional.some(");
-            let first = b
-                .emit(
-                    ms_mir::ir::Op::Copy,
-                    &[open],
-                    ms_mir::ir::Imm::None,
-                    Some(MTy::STR),
-                )
-                .expect("copy");
-            let acc = b.declare_var(MTy::STR, Mode::Own);
-            b.def_var(acc, first);
+            let acc = start(&mut b, if repr { "some" } else { "Optional.some" });
+            append_fields(cx, &mut b, acc, &[(None, inner, v)], repr);
+            let r = b.use_var(acc);
+            b.ret(Some(r));
+        }
+        TyKind::Rec(r) => {
+            let def = b.m.records[r.index()].clone();
+            let mut order: Vec<usize> = (0..def.fields.len()).collect();
+            if !repr {
+                order.sort_by(|a, c| def.fields[*a].0.cmp(&def.fields[*c].0));
+            }
+            let mut vals = Vec::new();
+            for i in order {
+                let v = b.rec_get(r, i as u32, x);
+                vals.push((Some(def.fields[i].0.clone()), def.fields[i].1, v));
+            }
+            let acc = start(&mut b, def.name.split('[').next().unwrap_or(&def.name));
+            append_fields(cx, &mut b, acc, &vals, repr);
+            let out = b.use_var(acc);
+            b.ret(Some(out));
+        }
+        TyKind::Alt(a) => {
+            let def = b.m.alts[a.index()].clone();
+            let tag = b.alt_tag(x);
+            let blocks: Vec<_> = def.cases.iter().map(|_| b.new_block()).collect();
+            let arms: Vec<(i64, _)> = blocks
+                .iter()
+                .enumerate()
+                .map(|(i, k)| (i as i64, *k))
+                .collect();
+            b.switch(tag, &arms, blocks[0]);
+            for (i, c) in def.cases.iter().enumerate() {
+                b.seal_block(blocks[i]);
+                b.switch_to(blocks[i]);
+                let head = if repr {
+                    c.name.clone()
+                } else {
+                    // Generic arguments are not part of the printed name.
+                    format!(
+                        "{}.{}",
+                        def.name.split('[').next().unwrap_or(&def.name),
+                        c.name
+                    )
+                };
+                let acc = start(&mut b, &head);
+                if !c.fields.is_empty() {
+                    let mut vals = Vec::new();
+                    for (j, (name, ft)) in c.fields.iter().enumerate() {
+                        let v = b.alt_get(a, i as u32, j as u32, x);
+                        vals.push((repr.then(|| name.clone()), *ft, v));
+                    }
+                    append_fields(cx, &mut b, acc, &vals, repr);
+                }
+                let out = b.use_var(acc);
+                b.ret(Some(out));
+            }
+        }
+        TyKind::Obj(n, args) if n == "Map" || n == "Set" => {
+            let is_map = n == "Map";
+            let acc = start(&mut b, if is_map { "Map(" } else { "Set(" });
+            let ptr_ty = MTy::PTR;
+            let desc = |b: &mut FuncBuilder<'_>, t: MTy| {
+                b.emit(Op::TypeDesc, &[], Imm::Ty(t), Some(ptr_ty))
+                    .expect("typedesc")
+            };
+            let kd = desc(&mut b, args[0]);
+            let vd = match args.get(1) {
+                Some(v) => desc(&mut b, *v),
+                None => {
+                    let ot = b.m.types.opt(MTy::STR);
+                    b.opt_none(ot)
+                }
+            };
+            let count_ext = runtime_fn(b.m, "msrt_map_slot_count", &[t], MTy::INT);
+            let count = b.call_rt(count_ext, &[x]);
+            let idx = b.declare_var(MTy::INT, Mode::Borrow);
+            let zero = b.iconst(0);
+            b.def_var(idx, zero);
+            let seen = b.declare_var(MTy::BOOL, Mode::Borrow);
+            let no = b.bconst(false);
+            b.def_var(seen, no);
+            let (header, body, exit) = (b.new_block(), b.new_block(), b.new_block());
+            b.br(header, &[]);
+            b.switch_to(header);
+            let i = b.use_var(idx);
+            let more = b.icmp(Cc::Lt, i, count);
+            b.br_if(more, body, &[], exit, &[]);
+            b.seal_block(body);
+            b.switch_to(body);
+            let i = b.use_var(idx);
+            let slot = |b: &mut FuncBuilder<'_>| {
+                b.emit(Op::Slot, &[], Imm::Ty(ptr_ty), Some(ptr_ty))
+                    .expect("slot")
+            };
+            let (kp, vp) = (slot(&mut b), slot(&mut b));
+            let call_args = [x, kd, vd, i, kp, vp];
+            let tys: Vec<MTy> = call_args.iter().map(|v| b.ty(*v)).collect();
+            let entry_ext = runtime_fn(b.m, "msrt_map_entry_ptrs", &tys, MTy::BOOL);
+            let live = b.call_rt(entry_ext, &call_args);
+            let (item, next) = (b.new_block(), b.new_block());
+            b.br_if(live, item, &[], next, &[]);
+            b.seal_block(item);
+            b.switch_to(item);
+            let was = b.use_var(seen);
+            let (sep, nosep) = (b.new_block(), b.new_block());
+            b.br_if(was, sep, &[], nosep, &[]);
+            b.seal_block(sep);
+            b.seal_block(nosep);
+            b.switch_to(sep);
+            append_lit(&mut b, acc, ", ");
+            b.br(nosep, &[]);
+            b.switch_to(nosep);
+            let yes = b.bconst(true);
+            b.def_var(seen, yes);
+            let kaddr = b
+                .emit(Op::Load, &[kp], Imm::Ty(ptr_ty), Some(ptr_ty))
+                .expect("load");
+            let key = b
+                .emit(Op::Load, &[kaddr], Imm::Ty(args[0]), Some(args[0]))
+                .expect("load");
+            let (txt, owned) = element_text(cx, &mut b, args[0], key, repr);
             append(&mut b, acc, txt, owned);
-            let close = b.str_lit(")");
-            append(&mut b, acc, close, false);
+            if let Some(vt) = args.get(1) {
+                append_lit(&mut b, acc, ": ");
+                let vaddr = b
+                    .emit(Op::Load, &[vp], Imm::Ty(ptr_ty), Some(ptr_ty))
+                    .expect("load");
+                let val = b
+                    .emit(Op::Load, &[vaddr], Imm::Ty(*vt), Some(*vt))
+                    .expect("load");
+                let (txt, owned) = element_text(cx, &mut b, *vt, val, repr);
+                append(&mut b, acc, txt, owned);
+            }
+            b.br(next, &[]);
+            b.seal_block(next);
+            b.switch_to(next);
+            let i = b.use_var(idx);
+            let one = b.iconst(1);
+            let i1 = b.binop(Op::IAdd, i, one);
+            b.def_var(idx, i1);
+            b.br(header, &[]);
+            b.seal_block(header);
+            b.seal_block(exit);
+            b.switch_to(exit);
+            append_lit(&mut b, acc, ")");
             let r = b.use_var(acc);
             b.ret(Some(r));
         }
@@ -214,16 +403,23 @@ pub(crate) fn build_format(cx: &mut Cx, m: &mut Module, func: FuncId, t: MTy) ->
 }
 
 impl<'a> FnLower<'a> {
+    /// The quoted text form of a borrowed operand (how test failures show values); owned.
+    pub fn repr_text(&mut self, v: Value) -> Val {
+        let t = self.ty_of(v);
+        let (r, owned) = element_text(self.cx, &mut self.b, t, v, true);
+        Val { v: r, own: owned }
+    }
+
     /// The text form of an operand.
     pub fn format_value(&mut self, x: Val) -> Result<Val, Error> {
         let t = self.ty_of(x.v);
         if t == MTy::STR {
             return Ok(x);
         }
-        let v = match scalar_text(&mut self.b, t, x.v) {
+        let v = match scalar_text(&mut self.b, t, x.v, false) {
             Some((v, owned)) => return Ok(Val { v, own: owned }),
             None => {
-                let f = self.cx.format_fn(self.b.m, t);
+                let f = self.cx.format_fn(self.b.m, t, false);
                 let a = self.borrow(x);
                 self.b.call(f, &[a])
             }

@@ -203,8 +203,12 @@ func (p *Parser) parameters(defaults, inferred bool) []syntax.Parameter {
 	var params []syntax.Parameter
 	if !p.take(")") {
 		for {
+			modifier := p.peek()
+			if p.take("var") && !defaults {
+				p.fail(modifier, "only function and method parameters can be var; write var on a declared parameter, e.g. fn fill(var values: List[Int])")
+			}
 			name := p.need(lexer.Name)
-			param := syntax.Parameter{Pos: name.Pos, Name: name.Text}
+			param := syntax.Parameter{Pos: name.Pos, Name: name.Text, Var: modifier.Kind == "var"}
 			if p.take(":") {
 				param.Type = p.typ()
 			} else if !inferred {
@@ -418,9 +422,10 @@ func (p *Parser) declaration() *syntax.Declaration {
 			if p.peek().Kind == lexer.Dedent {
 				break
 			}
+			mutating := p.take("var")
 			p.need("fn")
 			name := p.need(lexer.Name)
-			m := &syntax.Declaration{Pos: name.Pos, Kind: syntax.KindFn, Name: name.Text}
+			m := &syntax.Declaration{Pos: name.Pos, Kind: syntax.KindFn, Name: name.Text, Mutating: mutating}
 			if d.Contract == nil {
 				m.TypeParams = p.typeParams()
 			}
@@ -472,12 +477,16 @@ func (p *Parser) declaration() *syntax.Declaration {
 				}
 				d.Cases = append(d.Cases, c)
 				p.end()
-			} else if p.take("fn") {
+			} else if mutating := p.peek().Kind == "var" && p.tokens[p.at+1].Kind == "fn"; mutating || p.take("fn") {
+				if mutating {
+					p.next()
+					p.next()
+				}
 				if token.Kind == "type" {
 					p.fail(p.previous(), "a type declares only fields or cases; write its methods in an 'impl "+d.Name+typeParamNames(d.TypeParams)+":' block, or implement an interface with 'impl <Interface> for "+d.Name+typeParamNames(d.TypeParams)+":'")
 				}
 				name := p.need(lexer.Name)
-				m := &syntax.Declaration{Pos: name.Pos, Name: name.Text, Kind: syntax.KindFn}
+				m := &syntax.Declaration{Pos: name.Pos, Name: name.Text, Kind: syntax.KindFn, Mutating: mutating}
 				m.Params = p.parameters(true, false)
 				m.Result = p.resultType()
 				p.end()
@@ -950,6 +959,7 @@ func (p *Parser) callArguments(callee *syntax.Expression) *syntax.Expression {
 			if p.peek().Kind == lexer.Name && p.tokens[p.at+1].Kind == "=" {
 				p.fail(p.tokens[p.at+1], "argument labels use a colon; write "+p.peek().Text+": value")
 			}
+			arg.Var = p.take("var")
 			arg.Value = p.expression(0)
 			if arg.Value.Kind == syntax.KindName && p.peek().Kind == "->" {
 				p.fail(p.peek(), "lambdas are written fn(name: Type) Result: expression, e.g. fn("+arg.Value.Text+": Int) Int: "+arg.Value.Text+" + 1")
