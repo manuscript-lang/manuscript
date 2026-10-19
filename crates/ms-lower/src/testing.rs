@@ -229,8 +229,43 @@ impl FnLower<'_> {
                     },
                 )
             }
+            "expect_fault" => self.expect_fault(rty, vals[0]),
             other => Err(Error::new(format!("unsupported testing function {other}"))),
         }
+    }
+
+    /// Runs `operation` in a forked child and reports the fault message it ends with.
+    fn expect_fault(&mut self, rty: MTy, operation: Value) -> Result<Val, Error> {
+        let parent_side = self.call_runtime("msrt_trap_begin", &[], MTy::BOOL)?;
+        let (child, parent) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(parent_side, parent, &[], child, &[]);
+        self.b.seal_block(child);
+        self.b.seal_block(parent);
+        self.enter(child);
+        self.b.call_ind(operation, &[]);
+        self.call_runtime("msrt_trap_end", &[], MTy::UNIT)?;
+        self.b.unreachable();
+        self.enter(parent);
+        let slot = self
+            .b
+            .emit(Op::Slot, &[], Imm::Ty(MTy::STR), Some(MTy::PTR))
+            .expect("slot");
+        let faulted = self.call_runtime("msrt_trap_wait", &[slot], MTy::BOOL)?;
+        self.two_ways(
+            faulted,
+            rty,
+            &mut |s| {
+                let m =
+                    s.b.emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
+                        .expect("take");
+                Ok(Some(s.testing_ok(rty, m)?))
+            },
+            &mut |s| {
+                let m = s.lit("expected a programming fault, operation returned normally");
+                let m = s.cat(&[m])?;
+                Ok(Some(s.testing_fail(rty, m.v)?))
+            },
+        )
     }
 
     fn expect_close(&mut self, rty: MTy, vals: &[Value]) -> Result<Val, Error> {

@@ -48,9 +48,9 @@ impl<'a> FnLower<'a> {
                     },
                 };
                 // A bare `return` in a test ends it successfully.
-                let x = if e.is_none() && self.ret_ty != MTy::UNIT {
+                let x = if e.is_none() && self.result_ty() != MTy::UNIT {
                     let u = self.b.unit();
-                    let ok = self.testing_ok(self.ret_ty, u)?;
+                    let ok = self.testing_ok(self.result_ty(), u)?;
                     Val { v: ok, own: true }
                 } else {
                     x

@@ -73,6 +73,7 @@ impl<'a> FnLower<'a> {
         e: &Expr,
         view: &CallView<'_>,
         native: &str,
+        params: &[ct::Param],
     ) -> Result<Val, Error> {
         match native {
             "collections/range" => {
@@ -110,7 +111,17 @@ impl<'a> FnLower<'a> {
             other if other.starts_with("testing/") => {
                 self.testing_native(e, view, &other["testing/".len()..])
             }
-            other => Err(Error::new(format!("unsupported native function {other}"))),
+            other => {
+                let Some(sym) = crate::rtcall::function_symbol(other) else {
+                    return Err(Error::new(format!("unsupported native function {other}")));
+                };
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let result = self.emty(e)?;
+                self.rt_function(&sym, params, &args, result)
+            }
         }
     }
 
@@ -288,6 +299,36 @@ impl<'a> FnLower<'a> {
                 let index = it.next().ok_or_else(|| Error::new("get without index"))?;
                 self.list_get_or(recv, elem, index, it.next())
             }
+            (TyKind::Int, "to_float") => {
+                let x = self.borrow(recv);
+                let v = self
+                    .b
+                    .emit(
+                        ms_mir::ir::Op::I2F,
+                        &[x],
+                        ms_mir::ir::Imm::None,
+                        Some(MTy::FLOAT),
+                    )
+                    .expect("i2f");
+                Ok(Val { v, own: false })
+            }
+            (TyKind::Float, "is_nan" | "is_finite") => {
+                let x = self.borrow(recv);
+                if name == "is_nan" {
+                    let v = self.b.fcmp(ms_mir::ir::Cc::Ne, x, x);
+                    return Ok(Val { v, own: false });
+                }
+                // `x - x` is zero for finite x and NaN for NaN and the infinities.
+                let d = self.b.emit(
+                    ms_mir::ir::Op::FSub,
+                    &[x, x],
+                    ms_mir::ir::Imm::None,
+                    Some(MTy::FLOAT),
+                );
+                let zero = self.b.fconst(0.0);
+                let v = self.b.fcmp(ms_mir::ir::Cc::Eq, d.expect("fsub"), zero);
+                Ok(Val { v, own: false })
+            }
             (_, "compare_int" | "compare_float") => {
                 let a = self.borrow(recv);
                 let b = self.borrow(args[0].val);
@@ -366,6 +407,9 @@ impl<'a> FnLower<'a> {
                 self.release_source(lv, hidden);
                 self.release_source(fvar, true);
                 r
+            }
+            _ if crate::iterate::handles(self.b.m, rty, name) => {
+                self.iterate_method(e, name, recv_expr, recv, args)
             }
             (TyKind::List(elem), _) if is_higher_order(name) => {
                 let f = args
@@ -1107,6 +1151,10 @@ impl<'a> FnLower<'a> {
         }
     }
 
+    pub(crate) fn is_fn_value(&self, v: Value) -> bool {
+        self.is_fn(v)
+    }
+
     fn is_fn(&self, v: Value) -> bool {
         matches!(self.b.m.types.kind(self.ty_of(v)), TyKind::Fn(..))
     }
@@ -1325,14 +1373,18 @@ impl<'a> FnLower<'a> {
         match arg {
             None => Ok((self.b.bconst(false), self.b.iconst(0))),
             Some(a) if a.wrapped => Ok((self.b.bconst(true), self.borrow(a.val))),
-            Some(_) => Err(Error::new(
-                "optional argument passed through is not supported yet",
-            )),
+            Some(a) => {
+                let v = self.borrow(a.val);
+                let has = self.b.opt_is_some(v);
+                let value = self.b.opt_get(v);
+                Ok((has, value))
+            }
         }
     }
 
     /// The runtime descriptor of a type.
     pub fn type_desc(&mut self, t: MTy) -> Value {
+        self.cx.ensure_glue(self.b.m, t);
         self.b
             .emit(
                 ms_mir::ir::Op::TypeDesc,

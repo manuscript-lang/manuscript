@@ -163,7 +163,12 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
     };
     let params = fl.b.params();
     let env = params[0];
-    let mutated = mutated_captures(&fl.hir, &lam.body);
+    let mutated = crate::mutation::mutated_locals(
+        &fl.hir,
+        ms_check::hir::Body::Block(&lam.body),
+        &fl.cx.callables,
+        &fl.cx.mutated,
+    );
     for (i, (b, t)) in job.captures.iter().zip(captures).enumerate() {
         let v =
             fl.b.emit(Op::ClosureCap, &[env], Imm::Idx(i as u32), Some(*t))
@@ -188,67 +193,4 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
         fl.emit_return(Some(Val { v: u, own: false }));
     }
     Ok(())
-}
-
-/// Finds the root local of a place expression (`a`, `a.b.c`).
-fn place_root(hir: &ms_check::hir::ModuleHir, e: &Expr) -> Option<usize> {
-    let mut cur = e;
-    while let ExprKind::Member { left, .. } = &cur.kind {
-        cur = left;
-    }
-    match hir.resolution(cur) {
-        ms_check::hir::Resolution::Local(b) => Some(b.uid),
-        _ => None,
-    }
-}
-
-/// Collects the locals a lambda body assigns to or mutates in place.
-struct Mutations<'h> {
-    hir: &'h ms_check::hir::ModuleHir,
-    roots: std::collections::HashSet<usize>,
-}
-
-impl ms_syntax::visit::Visitor for Mutations<'_> {
-    fn stmt(&mut self, s: &Stmt) {
-        if let StmtKind::Assign { target, value, .. } = &s.kind {
-            let root = match target {
-                AssignTarget::Name(_) => self.hir.assigned(value).map(|b| b.uid),
-                AssignTarget::Member(t) => place_root(self.hir, t),
-            };
-            self.roots.extend(root);
-        }
-    }
-
-    fn expr(&mut self, e: &Expr) {
-        let ExprKind::Call { callee, .. } = &e.kind else {
-            return;
-        };
-        let mut c: &Expr = callee;
-        if let ExprKind::Apply { left, .. } = &c.kind {
-            c = left;
-        }
-        let ExprKind::Member { left, name } = &c.kind else {
-            return;
-        };
-        let native = matches!(
-            self.hir.resolution(e),
-            ms_check::hir::Resolution::Method(m) if !m.native.as_str().is_empty()
-        );
-        if native && ms_check::effects::collection_mutation(&self.hir.ty(left), name.as_str()) {
-            self.roots.extend(place_root(self.hir, left));
-        }
-    }
-}
-
-/// Locals of the enclosing function that the lambda body changes (their closure copy is mutable).
-pub(crate) fn mutated_captures(
-    hir: &ms_check::hir::ModuleHir,
-    body: &[Stmt],
-) -> std::collections::HashSet<usize> {
-    let mut v = Mutations {
-        hir,
-        roots: std::collections::HashSet::new(),
-    };
-    ms_syntax::visit::walk_block(&mut v, body);
-    v.roots
 }

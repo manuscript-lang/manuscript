@@ -86,6 +86,7 @@ msrt_start( main_fn: extern "C-unwind" fn() -> i64, tables: *const Tables, argc:
 msrt_argv(out: *mut VecVal)
 msrt_args(out: *mut VecVal)
 msrt_string_empty() -> *mut StrObj
+msrt_string_hash(s: *const StrObj) -> i64
 msrt_string_from_bytes(ptr: *const u8, len: usize) -> *mut StrObj
 msrt_string_length(s: *const StrObj) -> i64
 msrt_string_scalar_length(s: *const StrObj) -> i64
@@ -138,6 +139,9 @@ msrt_task_current() -> u64
 msrt_task_count() -> usize
 msrt_task_cancel(handle: u64)
 msrt_task_join(handle: u64, msg_out: *mut *mut StrObj) -> u8
+msrt_trap_begin() -> u8
+msrt_trap_end() -> !
+msrt_trap_wait(out: *mut *mut StrObj) -> u8
 msrt_list_new(out: *mut VecVal)
 msrt_list_with_capacity( d: *const TypeDesc, cap: i64, out: *mut VecVal, )
 msrt_list_drop(v: *mut VecVal, d: *const TypeDesc)

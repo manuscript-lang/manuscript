@@ -27,8 +27,27 @@ struct RtSig {
     ret: String,
 }
 
+/// The runtime symbol implementing the native function `native` (`module/name`).
+pub(crate) fn function_symbol(native: &str) -> Option<String> {
+    let (module, name) = native.split_once('/')?;
+    ["msrt", "msstd"]
+        .iter()
+        .map(|prefix| format!("{prefix}_{module}_{name}"))
+        .find(|sym| rt_sig(sym).is_some())
+}
+
 fn rt_sig(sym: &str) -> Option<RtSig> {
     for line in CATALOGUE.lines() {
+        // `msstd_math_sin (unary f64 -> f64)`: one `f64` in, one out.
+        if line.strip_prefix(sym) == Some(" (unary f64 -> f64)") {
+            return Some(RtSig {
+                params: vec![RtParam {
+                    name: "x".to_string(),
+                    ty: "f64".to_string(),
+                }],
+                ret: "f64".to_string(),
+            });
+        }
         let Some(rest) = line.strip_prefix(sym).and_then(|r| r.strip_prefix('(')) else {
             continue;
         };
@@ -65,6 +84,10 @@ struct Input {
 /// The runtime symbol implementing a native method of a receiver type.
 pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> Option<String> {
     let name = native.rsplit('/').next().unwrap_or(native);
+    let name = match name {
+        "format_int" => "to_string_radix",
+        other => other,
+    };
     let name = name
         .strip_prefix("map_")
         .or_else(|| name.strip_prefix("set_"))
@@ -123,11 +146,37 @@ impl FnLower<'_> {
         args: &[NArg],
         result: MTy,
     ) -> Result<Val, Error> {
+        self.rt_call(sym, Some(recv), recv_ptr, decl, args, result)
+    }
+
+    /// Calls the runtime function `sym` for a call of a native function.
+    pub(crate) fn rt_function(
+        &mut self,
+        sym: &str,
+        decl: &[ct::Param],
+        args: &[NArg],
+        result: MTy,
+    ) -> Result<Val, Error> {
+        self.rt_call(sym, None, None, decl, args, result)
+    }
+
+    fn rt_call(
+        &mut self,
+        sym: &str,
+        recv: Option<Val>,
+        recv_ptr: Option<Value>,
+        decl: &[ct::Param],
+        args: &[NArg],
+        result: MTy,
+    ) -> Result<Val, Error> {
         let sig = rt_sig(sym).ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
-        let mut inputs = vec![Input {
-            val: Some(recv),
-            wrapped: false,
-        }];
+        let mut inputs = Vec::new();
+        if let Some(r) = recv {
+            inputs.push(Input {
+                val: Some(r),
+                wrapped: false,
+            });
+        }
         for p in decl {
             let a = args.iter().find(|a| a.name == p.name);
             inputs.push(Input {
@@ -135,7 +184,7 @@ impl FnLower<'_> {
                 wrapped: a.is_some_and(|a| a.wrapped),
             });
         }
-        let recv_ty = self.ty_of(recv.v);
+        let recv_ty = recv.map(|r| self.ty_of(r.v));
         let has_out = sig.params.last().is_some_and(|p| p.name == "out");
         let end = sig.params.len() - usize::from(has_out);
         let mut vals: Vec<Value> = Vec::new();
@@ -147,6 +196,8 @@ impl FnLower<'_> {
             let p = &sig.params[i];
             match p.name.as_str() {
                 "d" => {
+                    let recv_ty = recv_ty
+                        .ok_or_else(|| Error::new(format!("{sym}: descriptor without receiver")))?;
                     let e = match self.b.m.types.kind(recv_ty).clone() {
                         TyKind::List(e) => e,
                         TyKind::Obj(_, a) if !a.is_empty() => a[0],
@@ -155,6 +206,8 @@ impl FnLower<'_> {
                     vals.push(self.type_desc(e));
                 }
                 "kd" | "vd" => {
+                    let recv_ty = recv_ty
+                        .ok_or_else(|| Error::new(format!("{sym}: descriptor without receiver")))?;
                     let TyKind::Obj(_, a) = self.b.m.types.kind(recv_ty).clone() else {
                         return Err(Error::new(format!("{sym}: not a map or set")));
                     };
@@ -298,6 +351,20 @@ impl FnLower<'_> {
             return Ok(Val { v: out, own: owned });
         }
         if ret == MTy::UNIT {
+            if matches!(self.b.m.types.kind(result), TyKind::Str) {
+                // A single pointer: the runtime stores it through the out pointer.
+                let slot = self
+                    .b
+                    .emit(Op::Slot, &[], Imm::Ty(result), Some(MTy::PTR))
+                    .expect("slot");
+                vals.push(slot);
+                self.call_runtime(sym, &vals, MTy::UNIT)?;
+                let v = self
+                    .b
+                    .emit(Op::Take, &[slot], Imm::Ty(result), Some(result))
+                    .expect("take");
+                return Ok(Val { v, own: true });
+            }
             // The constructed value returns through the trailing out pointer.
             let out = self.call_runtime(sym, &vals, result)?;
             return Ok(Val { v: out, own: true });

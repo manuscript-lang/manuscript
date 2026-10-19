@@ -42,7 +42,15 @@ impl<'a> FnLower<'a> {
                     e,
                 )?
             }
-            Resolution::Function(sym) => self.native_function(e, &view, sym.native.as_str())?,
+            Resolution::Function(sym) => {
+                let params = sym
+                    .ty
+                    .borrow()
+                    .as_ref()
+                    .map(|t| t.params.clone())
+                    .unwrap_or_default();
+                self.native_function(e, &view, sym.native.as_str(), &params)?
+            }
             Resolution::Method(m) => self.method_call(e, &view, m)?,
             Resolution::Constructor { ty, case } => self.construct(e, &view, ty, *case)?,
             Resolution::Local(_) | Resolution::Value => self.call_value(e, &view)?,
@@ -98,7 +106,7 @@ impl<'a> FnLower<'a> {
     ) -> Result<Args, Error> {
         let mut slots: Vec<Option<Val>> = vec![None; names.len()];
         let mut places: Vec<Option<Expr>> = vec![None; names.len()];
-        let vars = crate::func::var_positions(callee);
+        let vars = self.cx.var_positions(callee);
         let offset = usize::from(callee.self_binding.is_some());
         for a in &view.arguments {
             let x = self.expr(a.expr)?;
@@ -195,7 +203,7 @@ impl<'a> FnLower<'a> {
         }
         self.at(e.pos);
         let v = self.b.call(fid, &vals);
-        let vars = crate::func::var_positions(c);
+        let vars = self.cx.var_positions(c);
         if vars.is_empty() {
             return Ok(self.val(v, true));
         }
@@ -312,7 +320,8 @@ impl<'a> FnLower<'a> {
         let mut all = vec![Some(recv)];
         all.extend(args.slots);
         let mut places = vec![
-            crate::func::var_positions(&c)
+            self.cx
+                .var_positions(&c)
                 .contains(&0)
                 .then(|| recv_expr.clone()),
         ];
