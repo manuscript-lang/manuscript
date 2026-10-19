@@ -1,0 +1,40 @@
+module "arith_fold"
+entry @main
+fn @ident(%x: int, %b: bool) -> int {
+b0:
+  %z: int = iconst 0
+  %one: int = iconst 1
+  %a: int = iadd %x, %z
+  %c: int = imul %one, %a
+  %d: int = isub %c, %z
+  %e: int = isub %d, %d
+  %f: int = iadd %d, %e
+  %t: bool = bconst true
+  %g: bool = and %b, %t
+  %h: bool = or %g, %g
+  %nn: bool = not %h
+  %n2: bool = not %nn
+  %s: int = select %n2, %f, %f
+  ret %s
+}
+fn @main() -> int {
+b0:
+  %a: int = iconst 6
+  %b: int = iconst 7
+  %m: int = imul.chk %a, %b
+  %s: int = iadd.chk %m, %a
+  %c: bool = icmp.lt %s, %m
+  %d: int = iconst 100
+  %e: int = select %c, %d, %s
+  %f: float = fconst 1.5
+  %g: float = fconst 2.5
+  %h: float = fadd %f, %g
+  %i: int = iconst 3
+  %j: int = shl %i, %i
+  %k: int = iadd %e, %j
+  %x: int = iconst 5
+  %t: bool = bconst true
+  %id: int = call @ident (%x, %t)
+  %r: int = iadd %k, %id
+  ret %r
+}
