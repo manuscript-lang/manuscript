@@ -25,6 +25,93 @@ pub static PENDING_SIGNAL: core::sync::atomic::AtomicU8 = core::sync::atomic::At
 static FAULTING: Global<bool> = Global::new(false);
 static SECONDARY: Global<RawVec<(usize, usize)>> = Global::new(RawVec::new());
 
+/// Stop request aimed at the running task (see `task`); 0 when none.
+static TASK_CANCEL: Global<u8> = Global::new(0);
+
+/// Value of `msrt_cancel_flag` when cancellation is not shielded.
+pub(crate) fn unshielded_cancel_flag() -> u8 {
+    // SAFETY: single threaded access.
+    let task = unsafe { *TASK_CANCEL.ptr() };
+    PENDING_SIGNAL
+        .load(core::sync::atomic::Ordering::Relaxed)
+        .max(task)
+}
+
+/// Records a stop request aimed at the running task.
+pub(crate) fn set_live_task_cancel(v: u8) {
+    // SAFETY: single threaded access.
+    unsafe {
+        *TASK_CANCEL.ptr() = v;
+        if *SHIELD.ptr() == 0 {
+            msrt_cancel_flag = unshielded_cancel_flag();
+        }
+    }
+}
+
+/// The per-task slice of runtime state; `task` swaps it on every context switch.
+pub(crate) struct Ctx {
+    cleanups: RawVec<(usize, usize)>,
+    guards: RawVec<GuardFrame>,
+    secondary: RawVec<(usize, usize)>,
+    eq_pairs: RawVec<(usize, usize)>,
+    primary: Option<ByteBuf>,
+    shield: u32,
+    faulting: bool,
+    depth: i64,
+    cancel: u8,
+    stack_lo: usize,
+    stack_hi: usize,
+}
+
+impl Ctx {
+    /// State of a task that has not run yet, with the given stack bounds.
+    pub(crate) const fn new(stack_lo: usize, stack_hi: usize) -> Ctx {
+        Ctx {
+            cleanups: RawVec::new(),
+            guards: RawVec::new(),
+            secondary: RawVec::new(),
+            eq_pairs: RawVec::new(),
+            primary: None,
+            shield: 0,
+            faulting: false,
+            depth: 0,
+            cancel: 0,
+            stack_lo,
+            stack_hi,
+        }
+    }
+
+    pub(crate) fn set_cancel(&mut self, v: u8) {
+        self.cancel = v;
+    }
+}
+
+/// Exchanges `c` with the live per-task state.
+///
+/// # Safety
+/// Single threaded; callers pair two swaps per context switch.
+pub(crate) unsafe fn swap_ctx(c: &mut Ctx) {
+    // SAFETY: single threaded access to the runtime globals.
+    unsafe {
+        core::ptr::swap(CLEANUPS.ptr(), &mut c.cleanups);
+        core::ptr::swap(GUARDS.ptr(), &mut c.guards);
+        core::ptr::swap(SECONDARY.ptr(), &mut c.secondary);
+        crate::desc::swap_eq_pairs(&mut c.eq_pairs);
+        core::ptr::swap(PRIMARY.ptr(), &mut c.primary);
+        core::ptr::swap(SHIELD.ptr(), &mut c.shield);
+        core::ptr::swap(FAULTING.ptr(), &mut c.faulting);
+        core::ptr::swap(core::ptr::addr_of_mut!(msrt_call_depth), &mut c.depth);
+        core::ptr::swap(TASK_CANCEL.ptr(), &mut c.cancel);
+        core::ptr::swap(STACK_LO.ptr(), &mut c.stack_lo);
+        core::ptr::swap(STACK_HI.ptr(), &mut c.stack_hi);
+        msrt_cancel_flag = if *SHIELD.ptr() == 0 {
+            unshielded_cancel_flag()
+        } else {
+            0
+        };
+    }
+}
+
 /// Fault reported while no frames or cleanup are meaningful (allocator exhaustion).
 #[cold]
 pub fn fatal(msg: &[u8]) -> ! {
@@ -169,6 +256,10 @@ fn describe_frames(out: &mut ByteBuf, fp: usize) {
                 return false;
             }
             let (line, file) = find_line(t, func, ret);
+            // Compiler-generated glue (function-value thunks) has no source position.
+            if line == 0 && file == u32::MAX {
+                return true;
+            }
             out.extend(b"\n  at ");
             out.extend(cstr(t, file));
             out.push(b':');
@@ -194,7 +285,7 @@ fn run_shielded(f: CleanupFn, arg: *mut u8) {
         f(arg);
         *SHIELD.ptr() -= 1;
         if *SHIELD.ptr() == 0 {
-            msrt_cancel_flag = PENDING_SIGNAL.load(core::sync::atomic::Ordering::Relaxed);
+            msrt_cancel_flag = unshielded_cancel_flag();
         }
     }
 }
@@ -202,7 +293,14 @@ fn run_shielded(f: CleanupFn, arg: *mut u8) {
 /// Pops and runs the innermost cleanup action; false when none remain.
 fn run_one_cleanup() -> bool {
     // SAFETY: single threaded access to the cleanup stack.
-    let action = unsafe { (*CLEANUPS.ptr()).pop() };
+    let action = unsafe {
+        let stack = &mut *CLEANUPS.ptr();
+        if stack.len() <= guard_base() {
+            None
+        } else {
+            stack.pop()
+        }
+    };
     match action {
         Some((f, arg)) => {
             // SAFETY: `f` was stored from a valid `CleanupFn` whose provenance `as usize` exposed.
@@ -272,6 +370,9 @@ fn finish_report(primary: Option<ByteBuf>) -> ! {
     }
     #[cfg(not(test))]
     {
+        if guard_active() {
+            guard_exit(GUARD_FAULT, report.as_slice())
+        }
         report.push(b'\n');
         crate::io::flush_stdout();
         sys::write_all(sys::STDERR, report.as_slice());
@@ -321,6 +422,26 @@ pub extern "C-unwind" fn msrt_fault_depth() -> ! {
 pub extern "C-unwind" fn msrt_index_fault(index: i64, length: i64) -> ! {
     fault_fmt(format_args!(
         "index {index} out of range for length {length}; pass a default: get(index:, default: ...)"
+    ))
+}
+
+/// Faults for an invalid index of a list mutator over `len` elements; `operation` is 0 for
+/// `insert` (which also accepts `len`), 1 for `remove` and 2 for `set`.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_list_index_fault(operation: i64, index: i64, len: i64) -> ! {
+    let (name, hi) = match operation {
+        0 => ("List.insert", len),
+        1 => ("List.remove", len - 1),
+        _ => ("List.set", len - 1),
+    };
+    if operation != 0 && len == 0 {
+        fault_fmt(format_args!(
+            "{name}: index has no valid value for an empty collection, found {index}"
+        ))
+    }
+    fault_fmt(format_args!(
+        "{name}: index must be between {} and {hi} (negative indexes count from the end), found {index}",
+        -len
     ))
 }
 
@@ -380,7 +501,9 @@ pub unsafe extern "C-unwind" fn msrt_cleanup_push(f: CleanupFn, arg: *mut u8) ->
 pub extern "C-unwind" fn msrt_cleanup_run(handle: usize) {
     // SAFETY: single threaded access to the cleanup stack.
     while unsafe { (*CLEANUPS.ptr()).len() } >= handle && handle > 0 {
-        run_one_cleanup();
+        if !run_one_cleanup() {
+            break;
+        }
     }
 }
 
@@ -396,6 +519,10 @@ pub extern "C-unwind" fn msrt_cancelled() -> ! {
         )));
     }
     #[cfg(not(test))]
+    if guard_active() {
+        guard_exit(GUARD_CANCELLED, b"")
+    }
+    #[cfg(not(test))]
     crate::process::exit(if sig == sys::SIGINT as u8 {
         ms_rt_abi::EXIT_INTERRUPT
     } else {
@@ -403,11 +530,232 @@ pub extern "C-unwind" fn msrt_cancelled() -> ! {
     })
 }
 
+// ---- guarded calls ----
+
+/// Result of `msrt_guard_call`.
+const GUARD_OK: u8 = 0;
+const GUARD_FAULT: u8 = 1;
+const GUARD_CANCELLED: u8 = 2;
+
+/// State captured on entry to a guarded call, restored when a fault leaves it.
+#[derive(Clone, Copy)]
+#[cfg_attr(test, allow(dead_code))]
+struct GuardFrame {
+    /// Address of the register save slot owned by the `msrt_guard_call` frame.
+    jmp: usize,
+    cleanups: usize,
+    depth: i64,
+    shield: u32,
+    eq_pairs: usize,
+}
+
+static GUARDS: Global<RawVec<GuardFrame>> = Global::new(RawVec::new());
+
+/// Length of the cleanup stack below the innermost guard (0 outside guards).
+#[inline]
+fn guard_base() -> usize {
+    // SAFETY: single threaded access to the guard stack.
+    unsafe {
+        let g = &*GUARDS.ptr();
+        match g.as_slice().last() {
+            Some(f) => f.cleanups,
+            None => 0,
+        }
+    }
+}
+
+#[cfg(not(test))]
+fn guard_active() -> bool {
+    // SAFETY: single threaded access to the guard stack.
+    unsafe { !(*GUARDS.ptr()).is_empty() }
+}
+
+/// Leaves the innermost guard with `status`, handing the message to its caller.
+#[cfg(not(test))]
+fn guard_exit(status: u8, message: &[u8]) -> ! {
+    // SAFETY: single threaded access; the frame belongs to a live `msrt_guard_call`.
+    unsafe {
+        let f = (*GUARDS.ptr())
+            .pop()
+            .unwrap_or_else(|| fatal(b"runtime invariant: no guard"));
+        *FAULTING.ptr() = false;
+        msrt_call_depth = f.depth;
+        *SHIELD.ptr() = f.shield;
+        msrt_cancel_flag = if f.shield == 0 {
+            unshielded_cancel_flag()
+        } else {
+            0
+        };
+        crate::desc::eq_truncate(f.eq_pairs);
+        GUARD_MESSAGE = if status == GUARD_FAULT {
+            crate::string::from_bytes(message)
+        } else {
+            core::ptr::null_mut()
+        };
+        guard_jump(f.jmp as *mut usize, status as usize)
+    }
+}
+
+#[cfg(not(test))]
+static mut GUARD_MESSAGE: *mut ms_rt_abi::StrObj = core::ptr::null_mut();
+
+#[cfg(not(test))]
+unsafe extern "C" {
+    /// Saves callee-saved registers and the stack pointer in `*jmp`, calls `code(data)` and
+    /// returns 0, or returns the value given to `guard_jump` when that is called later.
+    fn msrt_guard_enter(
+        jmp: *mut usize,
+        code: unsafe extern "C-unwind" fn(*mut u8),
+        data: *mut u8,
+    ) -> usize;
+    #[link_name = "msrt_guard_jump"]
+    fn guard_jump(jmp: *mut usize, status: usize) -> !;
+}
+
+#[cfg(all(not(test), target_arch = "x86_64"))]
+core::arch::global_asm!(
+    ".text",
+    concat!(".globl ", sym!("msrt_guard_enter")),
+    concat!(".globl ", sym!("msrt_guard_jump")),
+    concat!(sym!("msrt_guard_enter"), ":"),
+    "push rbp",
+    "push rbx",
+    "push r12",
+    "push r13",
+    "push r14",
+    "push r15",
+    "sub rsp, 8",
+    "mov [rdi], rsp",
+    "mov rax, rsi",
+    "mov rdi, rdx",
+    "call rax",
+    "xor eax, eax",
+    "1:",
+    "add rsp, 8",
+    "pop r15",
+    "pop r14",
+    "pop r13",
+    "pop r12",
+    "pop rbx",
+    "pop rbp",
+    "ret",
+    concat!(sym!("msrt_guard_jump"), ":"),
+    "mov rsp, [rdi]",
+    "mov rax, rsi",
+    "jmp 1b",
+);
+
+#[cfg(all(not(test), target_arch = "aarch64"))]
+core::arch::global_asm!(
+    ".text",
+    concat!(".globl ", sym!("msrt_guard_enter")),
+    concat!(".globl ", sym!("msrt_guard_jump")),
+    concat!(sym!("msrt_guard_enter"), ":"),
+    "sub sp, sp, #160",
+    "stp x29, x30, [sp, #0]",
+    "stp x19, x20, [sp, #16]",
+    "stp x21, x22, [sp, #32]",
+    "stp x23, x24, [sp, #48]",
+    "stp x25, x26, [sp, #64]",
+    "stp x27, x28, [sp, #80]",
+    "stp d8, d9, [sp, #96]",
+    "stp d10, d11, [sp, #112]",
+    "stp d12, d13, [sp, #128]",
+    "stp d14, d15, [sp, #144]",
+    "mov x3, sp",
+    "str x3, [x0]",
+    "mov x0, x2",
+    "blr x1",
+    "mov x0, #0",
+    "1:",
+    "ldp x29, x30, [sp, #0]",
+    "ldp x19, x20, [sp, #16]",
+    "ldp x21, x22, [sp, #32]",
+    "ldp x23, x24, [sp, #48]",
+    "ldp x25, x26, [sp, #64]",
+    "ldp x27, x28, [sp, #80]",
+    "ldp d8, d9, [sp, #96]",
+    "ldp d10, d11, [sp, #112]",
+    "ldp d12, d13, [sp, #128]",
+    "ldp d14, d15, [sp, #144]",
+    "add sp, sp, #160",
+    "ret",
+    concat!(sym!("msrt_guard_jump"), ":"),
+    "ldr x3, [x0]",
+    "mov sp, x3",
+    "mov x0, x1",
+    "b 1b",
+);
+
+/// Runs `code(data)` as an isolated request. A fault (or stop request) inside it runs the
+/// cleanups registered since entry and returns 1 (fault, with the report in `*msg_out`) or 2
+/// (cancelled, `*msg_out` null) instead of ending the process. Returns 0 when `code` returns.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_guard_call(
+    code: unsafe extern "C-unwind" fn(*mut u8),
+    data: *mut u8,
+    msg_out: *mut *mut ms_rt_abi::StrObj,
+) -> u8 {
+    // SAFETY: single threaded runtime state; the frame is popped before returning.
+    unsafe {
+        if !msg_out.is_null() {
+            *msg_out = core::ptr::null_mut();
+        }
+        let mut slot: usize = 0;
+        (*GUARDS.ptr()).push(GuardFrame {
+            jmp: core::ptr::addr_of_mut!(slot) as usize,
+            cleanups: (*CLEANUPS.ptr()).len(),
+            depth: msrt_call_depth,
+            shield: *SHIELD.ptr(),
+            eq_pairs: crate::desc::eq_len(),
+        });
+        #[cfg(not(test))]
+        {
+            let r = msrt_guard_enter(core::ptr::addr_of_mut!(slot), code, data);
+            if r == 0 {
+                (*GUARDS.ptr()).pop();
+                return GUARD_OK;
+            }
+            if !msg_out.is_null() {
+                *msg_out = GUARD_MESSAGE;
+            } else if !GUARD_MESSAGE.is_null() {
+                crate::obj::release(GUARD_MESSAGE as *mut ms_rt_abi::Obj);
+            }
+            GUARD_MESSAGE = core::ptr::null_mut();
+            r as u8
+        }
+        #[cfg(test)]
+        {
+            let depth = msrt_call_depth;
+            let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| code(data)));
+            (*GUARDS.ptr()).pop();
+            match r {
+                Ok(()) => GUARD_OK,
+                Err(e) => {
+                    let Ok(p) = e.downcast::<crate::testutil::FaultPayload>() else {
+                        fatal(b"unexpected panic in guard")
+                    };
+                    *FAULTING.ptr() = false;
+                    msrt_call_depth = depth;
+                    if p.0.starts_with("cancelled ") {
+                        return GUARD_CANCELLED;
+                    }
+                    if !msg_out.is_null() {
+                        *msg_out = crate::string::from_bytes(p.0.as_bytes());
+                    }
+                    GUARD_FAULT
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 pub fn reset_for_tests() {
     // SAFETY: tests hold the global lock.
     unsafe {
         (*CLEANUPS.ptr()).clear();
+        (*GUARDS.ptr()).clear();
         *FAULTING.ptr() = false;
         (*SECONDARY.ptr()).clear();
     }
@@ -432,6 +780,41 @@ mod tests {
 
     unsafe extern "C-unwind" fn faulting_action(_arg: *mut u8) {
         fault(b"close failed");
+    }
+
+    unsafe extern "C-unwind" fn request(data: *mut u8) {
+        // SAFETY: tests pass a pointer to a live u8.
+        unsafe {
+            msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(2));
+            if *data == 1 {
+                fault(b"handler failed");
+            }
+            *data += 10;
+        }
+    }
+
+    #[test]
+    fn guard_isolates_a_fault_and_keeps_outer_cleanups() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: tests hold the global lock and pass valid pointers.
+        unsafe {
+            *LOG_N.ptr() = 0;
+            msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(1));
+            let mut msg: *mut ms_rt_abi::StrObj = core::ptr::null_mut();
+            let mut data = 1u8;
+            assert_eq!(msrt_guard_call(request, &mut data, &mut msg), 1);
+            assert!(!msg.is_null());
+            assert!(crate::string::bytes(msg).starts_with(b"handler failed"));
+            assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[2]);
+            assert_eq!((*CLEANUPS.ptr()).len(), 1);
+            let mut ok = 0u8;
+            assert_eq!(msrt_guard_call(request, &mut ok, &mut msg), 0);
+            assert!(msg.is_null());
+            assert_eq!(ok, 10);
+            assert_eq!((*CLEANUPS.ptr()).len(), 2);
+            reset_for_tests();
+        }
     }
 
     #[test]
@@ -462,7 +845,7 @@ mod tests {
         unsafe {
             *LOG_N.ptr() = 0;
             let h1 = msrt_cleanup_push(log_action, core::ptr::dangling_mut::<u8>());
-            let _h2 = msrt_cleanup_push(log_action, 2 as *mut u8);
+            let _h2 = msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(2));
             msrt_cleanup_run(h1);
             assert_eq!(&(&*LOG.ptr())[..*LOG_N.ptr()], &[2, 1]);
             msrt_cleanup_run(h1);

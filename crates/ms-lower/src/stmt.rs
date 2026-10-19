@@ -33,6 +33,7 @@ impl<'a> FnLower<'a> {
             StmtKind::Bind { pattern, value, .. } => self.bind(pattern, value)?,
             StmtKind::Assign { target, value, .. } => self.assign(target, value)?,
             StmtKind::Call(e) => {
+                self.discard = Some(e as *const Expr as usize);
                 let x = self.expr(e)?;
                 if x.own {
                     self.drop_value(x.v);
@@ -46,14 +47,25 @@ impl<'a> FnLower<'a> {
                         own: false,
                     },
                 };
+                // A bare `return` in a test ends it successfully.
+                let x = if e.is_none() && self.result_ty() != MTy::UNIT {
+                    let u = self.b.unit();
+                    let ok = self.testing_ok(self.result_ty(), u)?;
+                    Val { v: ok, own: true }
+                } else {
+                    x
+                };
                 self.emit_return(Some(x));
+                // The return released this statement's temporaries.
+                self.temps.truncate(mark);
                 return Ok(());
             }
             StmtKind::Break => {
                 let ctx = self
                     .loops
-                    .last()
+                    .last_mut()
                     .ok_or_else(|| Error::new("break outside loop"))?;
+                ctx.brk_used = true;
                 let (brk, depth) = (ctx.brk, ctx.depth);
                 self.flush_temps(mark);
                 self.unwind_to(depth);
@@ -96,20 +108,67 @@ impl<'a> FnLower<'a> {
     }
 
     fn bind(&mut self, pattern: &Pattern, value: &Expr) -> Result<(), Error> {
+        let x = self.expr(value)?;
+        if self.dead {
+            return Ok(());
+        }
+        self.bind_pattern(pattern, x)
+    }
+
+    /// Binds the names of `pattern` to the parts of `x`: lists by position (the length is
+    /// checked), records by field.
+    fn bind_pattern(&mut self, pattern: &Pattern, x: Val) -> Result<(), Error> {
         match &pattern.kind {
             PatternKind::Name(_) => {
-                let x = self.expr(value)?;
-                if self.dead {
-                    return Ok(());
+                // `_` introduces no binding.
+                if let Some(b) = self.hir.pattern_binding(pattern) {
+                    self.bind_local(&b, x);
                 }
-                let b = self
-                    .hir
-                    .pattern_binding(pattern)
-                    .ok_or_else(|| Error::new("pattern without binding"))?;
-                self.bind_local(&b, x);
                 Ok(())
             }
-            _ => Err(Error::new("destructuring is not supported yet")),
+            PatternKind::List(items) => {
+                let list = self.borrow(x);
+                let len = self.b.list_len(list);
+                let want = self.b.iconst(items.len() as i64);
+                let same = self.b.icmp(Cc::Eq, len, want);
+                let (good, bad) = (self.b.new_block(), self.b.new_block());
+                self.b.br_if(same, good, &[], bad, &[]);
+                self.b.seal_block(good);
+                self.b.seal_block(bad);
+                self.b.switch_to(bad);
+                let ext = crate::text::runtime_fn(
+                    self.b.m,
+                    "msrt_fault_destructure",
+                    &[MTy::INT, MTy::INT],
+                    MTy::UNIT,
+                );
+                self.b.m.externs[ext.index()].noreturn = true;
+                self.b.call_rt(ext, &[want, len]);
+                self.b.unreachable();
+                self.b.switch_to(good);
+                for (i, p) in items.iter().enumerate() {
+                    let at = self.b.iconst(i as i64);
+                    let e = self.b.list_get(list, at);
+                    self.bind_pattern(p, Val { v: e, own: false })?;
+                }
+                Ok(())
+            }
+            PatternKind::Record(fields) => {
+                let rec = self.borrow(x);
+                let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(rec)).clone() else {
+                    return Err(Error::new("a record pattern needs a record"));
+                };
+                for f in fields {
+                    let idx = self.b.m.records[rid.index()]
+                        .fields
+                        .iter()
+                        .position(|d| d.0 == f.name.as_str())
+                        .ok_or_else(|| Error::new(format!("no field {}", f.name)))?;
+                    let fv = self.b.rec_get(rid, idx as u32, rec);
+                    self.bind_pattern(&f.pattern, Val { v: fv, own: false })?;
+                }
+                Ok(())
+            }
         }
     }
 
@@ -163,6 +222,56 @@ impl<'a> FnLower<'a> {
         let updated = self.set_path(root, true, &path, new)?;
         self.b.def_var(l.var, updated);
         Ok(())
+    }
+
+    /// Replaces the place `target` (a variable or a field chain from one) by `f(current)`.
+    pub fn place_update(
+        &mut self,
+        target: &Expr,
+        f: &mut dyn FnMut(&mut Self, ms_mir::ir::Value) -> Result<ms_mir::ir::Value, Error>,
+    ) -> Result<(), Error> {
+        let mut path: Vec<&Expr> = Vec::new();
+        let mut cur = target;
+        while let ExprKind::Member { left, .. } = &cur.kind {
+            path.push(cur);
+            cur = left;
+        }
+        path.reverse();
+        let ms_check::hir::Resolution::Local(binding) = self.hir.resolution(cur) else {
+            return Err(Error::new("mutation target is not a local variable"));
+        };
+        let l = self.local(&binding)?;
+        let root = self.b.use_var(l.var);
+        let updated = self.update_path(root, &path, f)?;
+        self.b.def_var(l.var, updated);
+        Ok(())
+    }
+
+    fn update_path(
+        &mut self,
+        obj: ms_mir::ir::Value,
+        path: &[&Expr],
+        f: &mut dyn FnMut(&mut Self, ms_mir::ir::Value) -> Result<ms_mir::ir::Value, Error>,
+    ) -> Result<ms_mir::ir::Value, Error> {
+        let Some((first, rest)) = path.split_first() else {
+            return f(self, obj);
+        };
+        let ExprKind::Member { name, .. } = &first.kind else {
+            unreachable!()
+        };
+        let oty = self.ty_of(obj);
+        let TyKind::Rec(rid) = self.b.m.types.kind(oty).clone() else {
+            return Err(Error::new("field mutation on a non-record"));
+        };
+        let idx = self.b.m.records[rid.index()]
+            .fields
+            .iter()
+            .position(|f| f.0 == name.as_str())
+            .ok_or_else(|| Error::new(format!("no field {name}")))? as u32;
+        let cur = self.b.rec_get(rid, idx, obj);
+        let cur_own = self.owned(Val { v: cur, own: false });
+        let inner = self.update_path(cur_own, rest, f)?;
+        Ok(self.b.rec_set(rid, idx, obj, inner))
     }
 
     /// Returns `obj` with the field chain replaced by `new`. `obj_own` says whether `obj` is
@@ -222,7 +331,7 @@ impl<'a> FnLower<'a> {
                 return Ok(());
             }
             scrutinee = Some(o);
-            self.b.opt_is_some(o.v)
+            self.success_test(o.v)?
         } else {
             let x = self.expr(cond)?;
             if self.dead {
@@ -240,7 +349,7 @@ impl<'a> FnLower<'a> {
         self.enter(then_b);
         self.push_scope();
         if let (Some(p), Some(o)) = (binding, scrutinee) {
-            let payload = self.b.opt_get(o.v);
+            let payload = self.success_payload(o.v)?;
             let bnd = self
                 .hir
                 .pattern_binding(p)
@@ -278,6 +387,39 @@ impl<'a> FnLower<'a> {
         Ok(())
     }
 
+    /// Whether an Optional is `some` or a Result is `ok`.
+    fn success_test(&mut self, v: ms_mir::ir::Value) -> Result<ms_mir::ir::Value, Error> {
+        match self.b.m.types.kind(self.ty_of(v)).clone() {
+            TyKind::Opt(_) => Ok(self.b.opt_is_some(v)),
+            TyKind::Alt(a) => {
+                let ok = self.ok_case(a)?;
+                let tag = self.b.alt_tag(v);
+                let k = self.b.iconst(ok as i64);
+                Ok(self.b.icmp(Cc::Eq, tag, k))
+            }
+            _ => Err(Error::new("if let needs an Optional or a Result")),
+        }
+    }
+
+    /// The `some` / `ok` payload (a borrow).
+    fn success_payload(&mut self, v: ms_mir::ir::Value) -> Result<ms_mir::ir::Value, Error> {
+        match self.b.m.types.kind(self.ty_of(v)).clone() {
+            TyKind::Alt(a) => {
+                let ok = self.ok_case(a)?;
+                Ok(self.b.alt_get(a, ok as u32, 0, v))
+            }
+            _ => Ok(self.b.opt_get(v)),
+        }
+    }
+
+    fn ok_case(&self, a: ms_mir::types::AltId) -> Result<usize, Error> {
+        self.b.m.alts[a.index()]
+            .cases
+            .iter()
+            .position(|c| c.name == "ok")
+            .ok_or_else(|| Error::new("if let on an alternative that is not a Result"))
+    }
+
     /// A Bool operand as an SSA value (dropping nothing: Bool is a scalar).
     pub fn truthy(&mut self, x: Val) -> ms_mir::ir::Value {
         x.v
@@ -287,11 +429,17 @@ impl<'a> FnLower<'a> {
         let (header, body_b, exit) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
         self.b.br(header, &[]);
         self.enter(header);
-        let mark = self.temps.len();
-        let x = self.expr(cond)?;
-        let c = self.truthy(x);
-        self.flush_temps(mark);
-        self.b.br_if(c, body_b, &[], exit, &[]);
+        // `while true` leaves only through `break`, `return` or a fault.
+        let forever = matches!(cond.kind, ExprKind::Bool(true));
+        if forever {
+            self.b.br(body_b, &[]);
+        } else {
+            let mark = self.temps.len();
+            let x = self.expr(cond)?;
+            let c = self.truthy(x);
+            self.flush_temps(mark);
+            self.b.br_if(c, body_b, &[], exit, &[]);
+        }
         self.b.seal_block(body_b);
         self.enter(body_b);
         let depth = self.scopes.len();
@@ -300,17 +448,41 @@ impl<'a> FnLower<'a> {
             cont: header,
             depth,
             cont_used: false,
+            brk_used: false,
         });
         self.b.poll();
         self.block(body)?;
-        self.loops.pop();
+        let ctx = self.loops.pop().expect("loop");
         if !self.dead {
             self.b.br(header, &[]);
         }
         self.b.seal_block(header);
         self.b.seal_block(exit);
         self.enter(exit);
+        if forever && !ctx.brk_used {
+            self.b.unreachable();
+            self.terminated();
+        }
         Ok(())
+    }
+
+    /// `(start, end)` of `range(start, end)`, which a `for` runs as a counting loop.
+    fn range_bounds(
+        &mut self,
+        iter: &Expr,
+    ) -> Result<Option<(ms_mir::ir::Value, ms_mir::ir::Value)>, Error> {
+        let Some(view) = self.hir.call(iter) else {
+            return Ok(None);
+        };
+        let ms_check::hir::Resolution::Function(sym) = &view.target else {
+            return Ok(None);
+        };
+        if sym.native.as_str() != "collections/range" || view.arguments.len() != 2 {
+            return Ok(None);
+        }
+        let a = self.expr(view.arguments[0].expr)?;
+        let b = self.expr(view.arguments[1].expr)?;
+        Ok(Some((a.v, b.v)))
     }
 
     fn for_stmt(&mut self, s: &Stmt, iter: &Expr, body: &[Stmt]) -> Result<(), Error> {
@@ -320,22 +492,47 @@ impl<'a> FnLower<'a> {
             .loop_binding
             .ok_or_else(|| Error::new("for without loop binding"))?;
         self.push_scope();
-        let it = self.expr(iter)?;
+        let mut list_var = None;
+        let (start, len) = match self.range_bounds(iter)? {
+            Some(bounds) => bounds,
+            None => {
+                let it = self.expr(iter)?;
+                if self.dead {
+                    self.scopes.pop();
+                    return Ok(());
+                }
+                let mut it = it;
+                let mut ity = self.ty_of(it.v);
+                if crate::mapset::is_map_or_set(self.b.m, ity) {
+                    // A map yields its entries and a set its values, as a list snapshot.
+                    let elem = self.mty(&loop_var.ty)?;
+                    let list = self.b.m.types.list(elem);
+                    it = match self.b.m.types.kind(ity).clone() {
+                        TyKind::Obj(n, _) if n == "Map" => self.map_entries(iter, it, list)?,
+                        _ => {
+                            let sym = crate::rtcall::method_symbol(self.b.m, ity, "values")
+                                .ok_or_else(|| Error::new("no values for a set"))?;
+                            self.rt_method(&sym, it, &[], &[], list)?
+                        }
+                    };
+                    ity = list;
+                }
+                let TyKind::List(_) = self.b.m.types.kind(ity).clone() else {
+                    return Err(Error::new("for over this type is not supported yet"));
+                };
+                let var = self.bind_hidden(it);
+                list_var = Some(var);
+                let list = self.b.use_var(var);
+                (self.b.iconst(0), self.b.list_len(list))
+            }
+        };
         if self.dead {
             self.scopes.pop();
             return Ok(());
         }
-        let ity = self.ty_of(it.v);
-        let TyKind::List(_) = self.b.m.types.kind(ity).clone() else {
-            return Err(Error::new("for over this type is not supported yet"));
-        };
-        let list_var = self.bind_hidden(it);
-        let list = self.b.use_var(list_var);
-        let zero = self.b.iconst(0);
         let one = self.b.iconst(1);
-        let len = self.b.list_len(list);
         let idx = self.b.declare_var(MTy::INT, ms_mir::ir::Mode::Borrow);
-        self.b.def_var(idx, zero);
+        self.b.def_var(idx, start);
         let (header, body_b, step, exit) = (
             self.b.new_block(),
             self.b.new_block(),
@@ -356,11 +553,17 @@ impl<'a> FnLower<'a> {
             cont: step,
             depth,
             cont_used: false,
+            brk_used: false,
         });
         self.push_scope();
         let i = self.b.use_var(idx);
-        let list = self.b.use_var(list_var);
-        let e = self.b.list_get(list, i);
+        let e = match list_var {
+            Some(var) => {
+                let list = self.b.use_var(var);
+                self.b.list_get(list, i)
+            }
+            None => i,
+        };
         self.bind_local(&loop_var, Val { v: e, own: false });
         self.stmts(body)?;
         self.pop_scope();

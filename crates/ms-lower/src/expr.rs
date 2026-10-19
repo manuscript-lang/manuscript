@@ -26,8 +26,19 @@ impl<'a> FnLower<'a> {
         self.mty(&t)
     }
 
-    /// Lowers an expression.
+    /// Lowers an expression, converting at an Error boundary the checker marked.
     pub fn expr(&mut self, e: &Expr) -> Result<Val, Error> {
+        let x = self.expr_value(e)?;
+        match self.hir.info(e).error_source {
+            Some(src) if !self.dead => {
+                let want = self.emty(e)?;
+                self.fit_ty(x, &ct::sub(&src, &self.subst), want)
+            }
+            _ => Ok(x),
+        }
+    }
+
+    fn expr_value(&mut self, e: &Expr) -> Result<Val, Error> {
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
         }
@@ -56,12 +67,15 @@ impl<'a> FnLower<'a> {
                 _ => self.type_application(e),
             },
             ExprKind::List(items) => self.list_literal(e, items),
-            ExprKind::Map(_) => Err(Error::new("map literals are not supported yet")),
+            ExprKind::Map(entries) => {
+                let t = self.emty(e)?;
+                self.map_literal(t, entries)
+            }
             ExprKind::Unary { op, operand } => self.unary(e, *op, operand),
             ExprKind::Binary { op, left, right } => self.binary(e, *op, left, right),
-            ExprKind::Lambda(_) => Err(Error::new("closures are not supported yet")),
+            ExprKind::Lambda(_) => self.lambda(e),
             ExprKind::Call { .. } => self.call_expr(e),
-            ExprKind::Match { .. } => Err(Error::new("match is not supported yet")),
+            ExprKind::Match { scrutinee, arms } => self.match_expr(e, scrutinee, arms),
         }
     }
 
@@ -130,7 +144,12 @@ impl<'a> FnLower<'a> {
             Resolution::Local(b) => self.read_local(&b),
             Resolution::Constant(_) => self.call_expr(e),
             Resolution::Constructor { ty, case } => self.construct_unit(e, &ty, case),
-            Resolution::Function(_) => Err(Error::new("function values are not supported yet")),
+            Resolution::Function(sym) if sym.native.as_str().is_empty() => {
+                self.function_value(e, &sym)
+            }
+            Resolution::Function(_) => Err(Error::new(
+                "native functions as values are not supported yet",
+            )),
             other => Err(Error::new(format!(
                 "unsupported name {}",
                 match other {
@@ -266,10 +285,6 @@ impl<'a> FnLower<'a> {
         }
     }
 
-    fn try_expr(&mut self, _e: &Expr, _operand: &Expr) -> Result<Val, Error> {
-        Err(Error::new("try is not supported yet"))
-    }
-
     // ---------------------------------------------------------------- binary
 
     fn binary(&mut self, e: &Expr, op: BinaryOp, left: &Expr, right: &Expr) -> Result<Val, Error> {
@@ -283,7 +298,7 @@ impl<'a> FnLower<'a> {
             return Ok(l);
         }
         let t = self.ty_of(l.v);
-        let _ = e;
+        self.at(e.pos);
         let out = match op {
             BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem => {
                 self.arithmetic(op, t, l, r)?
@@ -364,24 +379,8 @@ impl<'a> FnLower<'a> {
 
     /// Structural equality of two operands of the same type.
     pub fn equal(&mut self, t: MTy, l: Val, r: Val) -> Result<Value, Error> {
-        if t == MTy::INT {
-            return Ok(self.b.icmp(Cc::Eq, l.v, r.v));
-        }
-        if t == MTy::BOOL {
-            return Ok(self.b.icmp(Cc::Eq, l.v, r.v));
-        }
-        if t == MTy::FLOAT {
-            return Ok(self.b.fcmp(Cc::Eq, l.v, r.v));
-        }
-        if t == MTy::STR {
-            let a = self.borrow(l);
-            let b = self.borrow(r);
-            return self.call_runtime("msrt_string_eq", &[a, b], MTy::BOOL);
-        }
-        Err(Error::new(format!(
-            "equality on {} is not supported yet",
-            crate::text::ty_name(self.b.m, t)
-        )))
+        let (a, b) = (self.borrow(l), self.borrow(r));
+        crate::eq::element_eq(self.cx, &mut self.b, t, a, b)
     }
 
     fn short_circuit(&mut self, op: BinaryOp, left: &Expr, right: &Expr) -> Result<Val, Error> {

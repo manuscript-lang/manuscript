@@ -8,6 +8,31 @@
 
 extern crate alloc as stdalloc;
 
+/// Assembly symbol name for a C-visible function (Mach-O prefixes an underscore).
+macro_rules! sym {
+    ($n:literal) => {
+        concat!(sym_prefix!(), $n)
+    };
+}
+#[cfg(target_vendor = "apple")]
+macro_rules! sym_prefix {
+    () => {
+        "_"
+    };
+}
+#[cfg(not(target_vendor = "apple"))]
+macro_rules! sym_prefix {
+    () => {
+        ""
+    };
+}
+// Linked so its `msstd_math_*` exports ship in the runtime library.
+extern crate ms_std_fs;
+extern crate ms_std_io;
+extern crate ms_std_math;
+extern crate ms_std_process;
+extern crate ms_std_time;
+
 pub mod alloc;
 pub mod buf;
 pub mod desc;
@@ -22,11 +47,16 @@ pub mod profile;
 pub mod start;
 pub mod string;
 pub mod sys;
+pub mod task;
+pub mod trap;
 pub mod utf8;
 pub mod vec;
 
 #[cfg(test)]
 mod testutil;
+
+#[cfg(test)]
+mod std_natives;
 
 #[cfg(not(any(test, feature = "std", panic = "unwind")))]
 #[panic_handler]

@@ -614,7 +614,8 @@ pub fn run_profile(
 
     if structured {
         let mut document = native_document(
-            inv,
+            &inv.command,
+            "",
             build_type,
             &output,
             true,
@@ -658,8 +659,9 @@ pub fn run_profile(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn native_document(
-    inv: &Invocation,
+pub(crate) fn native_document(
+    command: &str,
+    source_root: &str,
     build_type: BuildType,
     output: &str,
     completed: bool,
@@ -671,9 +673,9 @@ fn native_document(
 ) -> Json {
     let mut document = Json::object()
         .with("format", Json::int(1))
-        .with("command", Json::str(&inv.command))
+        .with("command", Json::str(command))
         .with("build_type", Json::str(build_type.as_str()))
-        .with("source_root", Json::str(""))
+        .with("source_root", Json::str(source_root))
         .with("output", Json::str(output))
         .with("completed", Json::Bool(completed))
         .with("exit_code", Json::int(i64::from(exit_code)));
@@ -735,7 +737,8 @@ fn fail(
     };
     let reason = format!("{phase}_error");
     let document = native_document(
-        inv,
+        &inv.command,
+        "",
         build_type,
         output,
         false,
@@ -748,7 +751,7 @@ fn fail(
     emit_json(io, &document, status)
 }
 
-fn base64(data: &[u8]) -> String {
+pub(crate) fn base64(data: &[u8]) -> String {
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::new();
     for chunk in data.chunks(3) {

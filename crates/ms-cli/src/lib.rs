@@ -13,6 +13,7 @@ pub mod backend;
 mod commands;
 pub mod diagnostic;
 mod duration;
+pub mod engine;
 pub mod fmt;
 pub mod help;
 mod help_text;

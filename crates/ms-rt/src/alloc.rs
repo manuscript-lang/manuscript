@@ -256,6 +256,38 @@ pub unsafe fn realloc(p: *mut u8, new_size: usize) -> *mut u8 {
     }
 }
 
+/// Small-block heap figures in bytes: `[used, in_use_pages]`. `used` counts
+/// blocks handed out and not on a free list; large blocks belong to the system allocator and are
+/// not included. Walks the free lists, so it is meant for occasional diagnostics.
+pub fn heap_stats() -> [i64; 2] {
+    // SAFETY: single threaded access to the allocator state.
+    let s = unsafe { &*STATE.ptr() };
+    if !s.initialized || s.page_class.is_null() {
+        return [0; 2];
+    }
+    let mut carved = 0usize;
+    for page in 0..s.next_page {
+        // SAFETY: `page < next_page`, which the side table covers.
+        let class = unsafe { *s.page_class.add(page) } as usize;
+        carved += PAGE_SIZE / CLASS_SIZES[class] as usize * CLASS_SIZES[class] as usize;
+    }
+    let mut spare = 0usize;
+    for (class, &size) in CLASS_SIZES.iter().enumerate() {
+        let size = size as usize;
+        spare += (s.bump_end[class] as usize).saturating_sub(s.bump[class] as usize);
+        let mut p = s.free[class];
+        while !p.is_null() {
+            spare += size;
+            // SAFETY: free blocks store the next pointer in their first word.
+            p = unsafe { *(p as *mut *mut u8) };
+        }
+    }
+    [
+        carved.saturating_sub(spare) as i64,
+        (s.next_page * PAGE_SIZE) as i64,
+    ]
+}
+
 /// Live allocation count (tests and the `stats` feature).
 #[cfg(any(test, feature = "stats"))]
 pub fn live_blocks() -> isize {

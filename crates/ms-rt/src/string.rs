@@ -130,6 +130,16 @@ pub fn from_buf(b: ByteBuf) -> *mut StrObj {
     from_bytes(b.as_slice())
 }
 
+/// Hash of a string's bytes (equal strings hash equally).
+///
+/// # Safety
+/// `s` must be live.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_hash(s: *const StrObj) -> i64 {
+    // SAFETY: caller contract.
+    hash_bytes(unsafe { bytes(s) }) as i64
+}
+
 /// New string from raw bytes. Exported for literals built at startup and for the Rust stdlib crates.
 ///
 /// # Safety
@@ -1277,6 +1287,36 @@ pub extern "C-unwind" fn msrt_int_to_string_radix(v: i64, radix: i64) -> *mut St
     let mut b = ByteBuf::new();
     crate::num::format_radix(v, radix as u32, &mut b);
     from_buf(b)
+}
+
+/// The double-quoted, escaped spelling of a string (as `%q` writes it).
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_quote(s: *const StrObj) -> *mut StrObj {
+    // SAFETY: caller passes a live string.
+    let text = unsafe { bytes(s) };
+    let mut out = ByteBuf::with_capacity(text.len() + 2);
+    out.push(b'"');
+    let mut i = 0;
+    while i < text.len() {
+        let c = text[i];
+        match c {
+            b'"' => out.extend(b"\\\""),
+            b'\\' => out.extend(b"\\\\"),
+            b'\n' => out.extend(b"\\n"),
+            b'\t' => out.extend(b"\\t"),
+            b'\r' => out.extend(b"\\r"),
+            0..=0x1f | 0x7f => {
+                const HEX: &[u8; 16] = b"0123456789abcdef";
+                out.extend(b"\\x");
+                out.push(HEX[(c >> 4) as usize]);
+                out.push(HEX[(c & 15) as usize]);
+            }
+            _ => out.push(c),
+        }
+        i += 1;
+    }
+    out.push(b'"');
+    from_buf(out)
 }
 
 #[cfg(test)]

@@ -18,6 +18,30 @@ static ARGC: Global<i32> = Global::new(0);
 static ARGV: Global<*const *const u8> = Global::new(core::ptr::null());
 static MAIN_FN: Global<Option<extern "C-unwind" fn() -> i64>> = Global::new(None);
 static MAIN_RESULT: Global<i64> = Global::new(0);
+/// `CLOCK_MONOTONIC` nanoseconds when the runtime started; 0 before `msrt_start`.
+static START_NANOS: Global<i64> = Global::new(0);
+
+#[repr(C)]
+struct Timespec {
+    sec: i64,
+    nsec: i64,
+}
+
+unsafe extern "C" {
+    fn clock_gettime(clock: i32, ts: *mut Timespec) -> i32;
+}
+
+#[cfg(target_os = "macos")]
+const CLOCK_MONOTONIC: i32 = 6;
+#[cfg(not(target_os = "macos"))]
+const CLOCK_MONOTONIC: i32 = 1;
+
+/// Monotonic nanoseconds since the runtime started (the origin of `process.uptime()`); 0 when not started.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_start_nanos() -> i64 {
+    // SAFETY: written once by `msrt_start` before any other thread exists.
+    unsafe { *START_NANOS.ptr() }
+}
 
 extern "C" fn on_stop(sig: i32) {
     let prev = PENDING_SIGNAL.swap(sig as u8, Ordering::Relaxed);
@@ -37,6 +61,7 @@ extern "C" fn on_stop(sig: i32) {
         }
         sys::alarm(CLEANUP_GRACE_SECS);
     }
+    crate::task::kick();
 }
 
 extern "C" fn on_alarm(_: i32) {
@@ -92,6 +117,9 @@ pub unsafe extern "C-unwind" fn msrt_start(
         *ARGC.ptr() = argc;
         *ARGV.ptr() = argv;
         *MAIN_FN.ptr() = Some(main_fn);
+        let mut now = Timespec { sec: 0, nsec: 0 };
+        clock_gettime(CLOCK_MONOTONIC, &mut now);
+        *START_NANOS.ptr() = now.sec * 1_000_000_000 + now.nsec;
         install(sys::SIGINT, on_stop);
         install(sys::SIGTERM, on_stop);
         install(sys::SIGALRM, on_alarm);
@@ -122,6 +150,41 @@ pub unsafe extern "C-unwind" fn msrt_start(
         crate::io::flush_stdout();
         crate::profile::finish();
         *MAIN_RESULT.ptr() as i32
+    }
+}
+
+/// `List[String]` of the whole native argv, including `argv[0]` (`process.control().info().arguments`).
+///
+/// # Safety
+/// `out` must be writable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_argv(out: *mut VecVal) {
+    // SAFETY: argv was recorded by `msrt_start` (or is empty).
+    unsafe {
+        let (argc, argv) = (*ARGC.ptr(), *ARGV.ptr());
+        let n = if argc > 0 && !argv.is_null() {
+            argc as usize
+        } else {
+            0
+        };
+        let p = if n == 0 {
+            core::ptr::null_mut()
+        } else {
+            alloc::alloc(n * 8)
+        } as *mut *mut ms_rt_abi::StrObj;
+        for i in 0..n {
+            let a = *argv.add(i);
+            let mut len = 0;
+            while *a.add(len) != 0 {
+                len += 1;
+            }
+            *p.add(i) = string::from_bytes(core::slice::from_raw_parts(a, len));
+        }
+        *out = VecVal {
+            ptr: p as *mut u8,
+            len: n,
+            cap: n,
+        };
     }
 }
 

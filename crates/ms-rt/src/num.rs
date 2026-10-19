@@ -1,7 +1,9 @@
 //! Int and Float formatting and parsing with Go-identical results.
 use crate::buf::ByteBuf;
 use core::fmt::Write;
-use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE};
+use ms_rt_abi::{
+    STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OK, STATUS_OUT_OF_RANGE, StrObj,
+};
 
 /// Formats `v` in decimal into `tmp`, returning the used tail.
 pub fn format_i64(v: i64, tmp: &mut [u8; 20]) -> &[u8] {
@@ -288,6 +290,130 @@ pub fn float_precision(v: f64, format: u8, digits: i64, minimum: i64) -> Option<
     Some(out)
 }
 
+// ---------------------------------------------------------------------------
+// Exported natives: `@std/numbers` and the Int / Float receiver operations
+// ---------------------------------------------------------------------------
+
+/// `Numbers.parse_int(text, radix)`: status, with the value written to `out` only on success.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_numbers_parse_int(
+    text: *const StrObj,
+    radix: i64,
+    out: *mut i64,
+) -> u8 {
+    // SAFETY: the caller passes a live string and a writable out.
+    match parse_int_radix(unsafe { crate::string::bytes(text) }, radix) {
+        Ok(v) => {
+            // SAFETY: as above.
+            unsafe { *out = v };
+            STATUS_OK
+        }
+        Err(status) => status,
+    }
+}
+
+/// `Numbers.parse_float(text)`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_numbers_parse_float(text: *const StrObj, out: *mut f64) -> u8 {
+    // SAFETY: the caller passes a live string and a writable out.
+    match parse_float(unsafe { crate::string::bytes(text) }) {
+        Ok(v) => {
+            // SAFETY: as above.
+            unsafe { *out = v };
+            STATUS_OK
+        }
+        Err(status) => status,
+    }
+}
+
+/// `NumberError.message()` for a status code (`STATUS_INVALID_INPUT`, `_INVALID_DATA`, `_OUT_OF_RANGE`).
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_numbers_error_message(status: u8) -> *mut StrObj {
+    crate::string::from_bytes(match status {
+        STATUS_INVALID_INPUT => b"number: invalid input",
+        STATUS_INVALID_DATA => b"number: invalid data",
+        STATUS_OUT_OF_RANGE => b"number: value out of range",
+        _ => b"number: operation failed",
+    })
+}
+
+unsafe fn precision_out(
+    v: f64,
+    format: u8,
+    digits: i64,
+    minimum: i64,
+    out: *mut *mut StrObj,
+) -> u8 {
+    match float_precision(v, format, digits, minimum) {
+        Some(text) => {
+            // SAFETY: the caller passes a writable out.
+            unsafe { *out = crate::string::from_buf(text) };
+            STATUS_OK
+        }
+        None => STATUS_INVALID_INPUT,
+    }
+}
+
+/// `Float.to_precision(digits)`: `digits` in `1..=100`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_float_to_precision(
+    v: f64,
+    digits: i64,
+    out: *mut *mut StrObj,
+) -> u8 {
+    // SAFETY: forwarded caller contract.
+    unsafe { precision_out(v, b'g', digits, 1, out) }
+}
+
+/// `Float.to_exponential(digits)`: `digits` in `0..=100`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_float_to_exponential(
+    v: f64,
+    digits: i64,
+    out: *mut *mut StrObj,
+) -> u8 {
+    // SAFETY: forwarded caller contract.
+    unsafe { precision_out(v, b'e', digits, 0, out) }
+}
+
+/// `Float.to_fixed(digits)`: `digits` in `0..=100`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_float_to_fixed(
+    v: f64,
+    digits: i64,
+    out: *mut *mut StrObj,
+) -> u8 {
+    // SAFETY: forwarded caller contract.
+    unsafe { precision_out(v, b'f', digits, 0, out) }
+}
+
+/// `Float.truncate_to_int()`: present flag, value through `out` only when present.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8 {
+    const LIMIT: f64 = 9_223_372_036_854_775_808.0;
+    if !(-LIMIT..LIMIT).contains(&v) {
+        return 0;
+    }
+    // SAFETY: the caller passes a writable out.
+    unsafe { *out = v as i64 };
+    1
+}
+
+/// `Float.compare`: a total order in which `-0.0 == 0.0` and NaN is equal to itself and sorts last.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_float_compare(a: f64, b: f64) -> i64 {
+    if a.is_nan() || b.is_nan() {
+        return a.is_nan() as i64 - b.is_nan() as i64;
+    }
+    (a > b) as i64 - (a < b) as i64
+}
+
+/// `Int.compare`.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_int_compare(a: i64, b: i64) -> i64 {
+    (a > b) as i64 - (a < b) as i64
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -364,6 +490,52 @@ mod tests {
         assert_eq!(f(1.0, b'g', 0, 1), None);
         assert_eq!(f(1.0, b'f', 101, 0), None);
         let _ = 1.to_string();
+    }
+
+    #[test]
+    fn exported_numbers_natives() {
+        let _g = crate::testutil::lock();
+        let st = crate::string::from_bytes;
+        let mut n = 0i64;
+        // SAFETY: live strings and writable outs.
+        unsafe {
+            assert_eq!(msrt_numbers_parse_int(st(b"-ff"), 16, &mut n), STATUS_OK);
+            assert_eq!(n, -255);
+            assert_eq!(
+                msrt_numbers_parse_int(st(b"1"), 40, &mut n),
+                STATUS_INVALID_INPUT
+            );
+            let mut f = 0f64;
+            assert_eq!(msrt_numbers_parse_float(st(b"2.5e1"), &mut f), STATUS_OK);
+            assert_eq!(f, 25.0);
+            assert_eq!(
+                msrt_numbers_parse_float(st(b"1e999"), &mut f),
+                STATUS_OUT_OF_RANGE
+            );
+            let mut out: *mut StrObj = core::ptr::null_mut();
+            assert_eq!(msrt_float_to_fixed(1.005, 2, &mut out), STATUS_OK);
+            assert_eq!(crate::string::bytes(out), b"1.00");
+            assert_eq!(
+                msrt_float_to_precision(1.0, 0, &mut out),
+                STATUS_INVALID_INPUT
+            );
+            assert_eq!(msrt_float_truncate_to_int(-2.9, &mut n), 1);
+            assert_eq!(n, -2);
+            assert_eq!(msrt_float_truncate_to_int(9223372036854775808.0, &mut n), 0);
+            assert_eq!(msrt_float_truncate_to_int(f64::NAN, &mut n), 0);
+        }
+        assert_eq!(msrt_float_compare(f64::NAN, 1.0), 1);
+        assert_eq!(msrt_float_compare(1.0, f64::NAN), -1);
+        assert_eq!(msrt_float_compare(f64::NAN, f64::NAN), 0);
+        assert_eq!(msrt_float_compare(-0.0, 0.0), 0);
+        assert_eq!(msrt_float_compare(2.0, 1.0), 1);
+        assert_eq!(msrt_int_compare(1, 2), -1);
+        let m = msrt_numbers_error_message(STATUS_OUT_OF_RANGE);
+        // SAFETY: live string.
+        assert_eq!(
+            unsafe { crate::string::bytes(m) },
+            b"number: value out of range"
+        );
     }
 
     #[test]

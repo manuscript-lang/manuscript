@@ -9,7 +9,7 @@ test('editor commands pass argument arrays, discover projects, and require trust
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'manuscript editor '));
   const commands = new Map(), builds = [], terminals = [], errors = [], clientOptions = [];
   const dispose = { dispose() {} };
-  let started = false, stopped = false, debugConfig, provider, logSubscriptions = 0;
+  let started = false, stopped = false, provider, logSubscriptions = 0;
   const vscode = {
     workspace: {
       registerTextDocumentContentProvider: (scheme, value) => { assert.equal(scheme, "manuscript-stdlib"); provider = value; return dispose; },
@@ -35,11 +35,6 @@ test('editor commands pass argument arrays, discover projects, and require trust
       createTerminal: options => { terminals.push(options); return { show() {} }; },
     },
     commands: { registerCommand: (name, callback) => { commands.set(name, callback); return dispose; } },
-    debug: {
-      onDidTerminateDebugSession: () => dispose,
- registerDebugAdapterDescriptorFactory:()=>dispose,registerDebugConfigurationProvider:()=>dispose,
-      startDebugging: async (_, config) => { debugConfig = config; return false; },
-    },
   };
   const original = Module._load;
   Module._load = function (name, ...args) {
@@ -74,30 +69,13 @@ test('editor commands pass argument arrays, discover projects, and require trust
     assert.deepEqual(clientOptions[1].documentSelector, expectedSelector);
     assert.equal(logSubscriptions, 2);
     assert.equal(clientOptions[1].outputChannel, clientOptions[0].outputChannel);
-    await commands.get('manuscript.debug')();
-    assert.equal(debugConfig.type, 'manuscript');
-    assert.equal(debugConfig.program, path.join(root, 'ms.toml'));
-    assert.equal(debugConfig.compilerPath, '/compiler path/ms');
     await commands.get('manuscript.profile')();
     assert.deepEqual(terminals[0].shellArgs, ['run', path.join(root, 'ms.toml'), '--cpu-profile', path.join(root, 'CPU profile.pprof')]);
     vscode.workspace.isTrusted = false;
-    await commands.get('manuscript.debug')();
     await commands.get('manuscript.profile')();
-    assert.equal(builds.length, 0); assert.equal(terminals.length, 1); assert.equal(errors.length, 2);
+    assert.equal(builds.length, 0); assert.equal(terminals.length, 1); assert.equal(errors.length, 1);
     await extension.deactivate(); assert.equal(stopped, true);
   } finally { await fs.rm(root, { recursive: true, force: true }); }
-});
-
-test('extension declares Manuscript breakpoint support', () => {
-  const manifest = require('../package.json');
-  assert.deepEqual(manifest.contributes.breakpoints, [{ language: 'manuscript' }]);
-});
-
-
-test('debug launch activates the adapter without an open Manuscript editor', () => {
-  const manifest = require('../package.json');
-  assert.ok(manifest.activationEvents.includes('onDebugResolve:manuscript'));
-  assert.ok(manifest.activationEvents.includes('onDebugInitialConfigurations:manuscript'));
 });
 
 test('restart recovers from a client whose start failed', async () => {
@@ -110,7 +88,6 @@ test('restart recovers from a client whose start failed', async () => {
     },
     window: { createOutputChannel: () => ({ ...dispose, appendLine() {}, show() {} }) },
     commands: { registerCommand: (name, callback) => { commands.set(name, callback); return dispose; } },
-    debug: { registerDebugAdapterDescriptorFactory: () => dispose, registerDebugConfigurationProvider: () => dispose },
   };
   const original = Module._load;
   Module._load = function (name, ...args) {
@@ -166,7 +143,6 @@ function lifecycleFixture(options = {}) {
     },
     window: { createOutputChannel: (_, settings) => { assert.equal(settings.log, true); return output; } },
     commands: { registerCommand: (name, callback) => { commands.set(name, callback); return disposable; } },
-    debug: { registerDebugAdapterDescriptorFactory: () => disposable, registerDebugConfigurationProvider: () => disposable },
     tasks: { registerTaskProvider: (_, value) => { taskProvider = value; return disposable; } },
     Task: class { constructor(...args) { this.args = args; tasks.push(this); options.taskCreated?.(this); } },
     ProcessExecution: class { constructor(...args) { this.args = args; } },

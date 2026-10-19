@@ -535,6 +535,13 @@ pub unsafe extern "C-unwind" fn msrt_map_clear(
     unsafe { drop_map(m, &*kd, opt(vd)) }
 }
 
+/// `length()`: the number of live entries.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_length(m: *const MapVal) -> i64 {
+    // SAFETY: caller contract.
+    unsafe { (*m).len as i64 }
+}
+
 /// Number of slots to scan with [`msrt_map_entry_ptrs`] (live entries plus holes).
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_map_slot_count(m: *const MapVal) -> i64 {

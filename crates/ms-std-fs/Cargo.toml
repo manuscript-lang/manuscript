@@ -1,0 +1,18 @@
+[package]
+name = "ms-std-fs"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Manuscript standard-library natives for @std/fs (path-based operations over libc)"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+ms-rt-abi = { path = "../ms-rt-abi" }
+ms-std-rt = { path = "../ms-std-rt" }
+ms-std-path = { path = "../ms-std-path" }
+libc = { version = "0.2", default-features = false }
+
+[lints]
+workspace = true

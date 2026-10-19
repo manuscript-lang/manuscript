@@ -795,7 +795,7 @@ impl<'m> Interp<'m> {
                     "interior pointers are not supported by the interpreter",
                 ));
             }
-            Op::Load => {
+            Op::Load | Op::Take => {
                 let Val::Ptr(p) = &regs[a[0].index()] else {
                     return Err(Raw::internal("load through a non-pointer"));
                 };
@@ -805,7 +805,7 @@ impl<'m> Interp<'m> {
                     .ok_or_else(|| Raw::internal("load from an invalid address"))?;
                 set!(cell.clone());
             }
-            Op::Store => {
+            Op::Store | Op::Put => {
                 let Val::Ptr(p) = &regs[a[0].index()] else {
                     return Err(Raw::internal("store through a non-pointer"));
                 };

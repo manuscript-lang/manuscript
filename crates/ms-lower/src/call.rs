@@ -12,6 +12,8 @@ use std::rc::Rc;
 /// Arguments evaluated in written order and placed by parameter position.
 pub(crate) struct Args {
     pub slots: Vec<Option<Val>>,
+    /// For `var` parameters: the written place that receives the updated value.
+    pub places: Vec<Option<Expr>>,
 }
 
 impl<'a> FnLower<'a> {
@@ -30,11 +32,28 @@ impl<'a> FnLower<'a> {
             }
             Resolution::Constant(sym) => {
                 let c = self.callable_of_decl(sym.module, sym.decl.as_ref().map(|d| d.id()))?;
-                self.call_callable(&c, &Subst::new(), Args { slots: Vec::new() }, e)?
+                self.call_callable(
+                    &c,
+                    &Subst::new(),
+                    Args {
+                        slots: Vec::new(),
+                        places: Vec::new(),
+                    },
+                    e,
+                )?
             }
-            Resolution::Function(sym) => self.native_function(e, &view, sym.native.as_str())?,
+            Resolution::Function(sym) => {
+                let params = sym
+                    .ty
+                    .borrow()
+                    .as_ref()
+                    .map(|t| t.params.clone())
+                    .unwrap_or_default();
+                self.native_function(e, &view, sym.native.as_str(), &params)?
+            }
             Resolution::Method(m) => self.method_call(e, &view, m)?,
             Resolution::Constructor { ty, case } => self.construct(e, &view, ty, *case)?,
+            Resolution::Local(_) | Resolution::Value => self.call_value(e, &view)?,
             _ => return Err(Error::new("unsupported call target")),
         };
         if !self.dead && self.ety(e).id == "Never" {
@@ -86,10 +105,13 @@ impl<'a> FnLower<'a> {
         subst: &Subst,
     ) -> Result<Args, Error> {
         let mut slots: Vec<Option<Val>> = vec![None; names.len()];
+        let mut places: Vec<Option<Expr>> = vec![None; names.len()];
+        let vars = self.cx.var_positions(callee);
+        let offset = usize::from(callee.self_binding.is_some());
         for a in &view.arguments {
             let x = self.expr(a.expr)?;
             if self.dead {
-                return Ok(Args { slots });
+                return Ok(Args { slots, places });
             }
             let x = match &a.wrap_optional {
                 Some(opt) => {
@@ -104,6 +126,9 @@ impl<'a> FnLower<'a> {
                 .iter()
                 .position(|n| *n == a.slot.name)
                 .ok_or_else(|| Error::new(format!("no parameter {}", a.slot.name)))?;
+            if vars.contains(&(idx + offset)) {
+                places[idx] = Some(a.expr.clone());
+            }
             slots[idx] = Some(x);
         }
         for i in 0..slots.len() {
@@ -111,7 +136,7 @@ impl<'a> FnLower<'a> {
                 slots[i] = Some(self.default_argument(callee, i, subst, &slots)?);
             }
         }
-        Ok(Args { slots })
+        Ok(Args { slots, places })
     }
 
     /// The default of an omitted parameter, written in the callee's scope.
@@ -178,7 +203,39 @@ impl<'a> FnLower<'a> {
         }
         self.at(e.pos);
         let v = self.b.call(fid, &vals);
-        Ok(self.val(v, true))
+        let vars = self.cx.var_positions(c);
+        if vars.is_empty() {
+            return Ok(self.val(v, true));
+        }
+        // The callee returns `{result, updated var parameters...}`.
+        let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(v)).clone() else {
+            return Err(Error::new(
+                "callee with var parameters must return a record",
+            ));
+        };
+        let res = self.b.rec_get(rid, 0, v);
+        let result = self.owned(Val { v: res, own: false });
+        let mut updates = Vec::new();
+        for (j, p) in vars.iter().enumerate() {
+            let f = self.b.rec_get(rid, j as u32 + 1, v);
+            let fo = self.owned(Val { v: f, own: false });
+            updates.push((*p, fo));
+        }
+        self.drop_value(v);
+        for (p, new) in updates {
+            let target = args.places.get(p).cloned().flatten();
+            match target {
+                Some(place) if self.is_place(&place) => {
+                    let mut new = Some(new);
+                    self.place_update(&place, &mut |s, old| {
+                        s.drop_value(old);
+                        Ok(new.take().expect("single use"))
+                    })?;
+                }
+                _ => self.drop_value(new),
+            }
+        }
+        Ok(self.val(result, true))
     }
 
     // ------------------------------------------------------------- methods
@@ -213,6 +270,13 @@ impl<'a> FnLower<'a> {
         }
         if native == "contract" {
             return self.contract_call(e, view, m, recv_expr);
+        }
+        let method = m
+            .name()
+            .map(|n| n.to_string())
+            .unwrap_or_else(|| native.rsplit('/').next().unwrap_or(native).to_string());
+        if ms_check::effects::collection_mutation(&self.ety(recv_expr), &method) {
+            return self.mutator_call(e, view, m, recv_expr, &method);
         }
         let recv = self.expr(recv_expr)?;
         if self.dead {
@@ -255,7 +319,14 @@ impl<'a> FnLower<'a> {
         }
         let mut all = vec![Some(recv)];
         all.extend(args.slots);
-        self.call_callable(&c, &subst, Args { slots: all }, e)
+        let mut places = vec![
+            self.cx
+                .var_positions(&c)
+                .contains(&0)
+                .then(|| recv_expr.clone()),
+        ];
+        places.extend(args.places);
+        self.call_callable(&c, &subst, Args { slots: all, places }, e)
     }
 
     fn contract_call(
@@ -336,6 +407,23 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         let t = ct::sub(ty, &self.subst);
         let mt = self.cx.lower_ty(self.b.m, &t)?;
+        if crate::mapset::is_map_or_set(self.b.m, mt)
+            || matches!(self.b.m.types.kind(mt), TyKind::List(_))
+            || t.is_std("Bytes")
+            || t.is_std("StringBuilder")
+            || t.is_std("BytesBuilder")
+        {
+            return self.construct_collection(view, mt);
+        }
+        if matches!(self.b.m.types.kind(mt), TyKind::Iface(_)) {
+            // `Shape(value: x)`: an explicit interface view.
+            let [a] = view.arguments.as_slice() else {
+                return Err(Error::new("an interface view takes one value"));
+            };
+            let x = self.expr(a.expr)?;
+            let from = self.ety(a.expr);
+            return self.fit_ty(x, &from, mt);
+        }
         // Parameter names and types of the constructor.
         let params: Vec<ct::Param> = match case {
             Some(c) => ct::case_of(&t, c)

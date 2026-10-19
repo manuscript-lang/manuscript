@@ -261,7 +261,7 @@ pub enum Op {
     // Ownership.
     Copy, Drop, DropIf,
     // Raw memory: stack slots, interior pointers into lists and records.
-    Slot, Load, Store, ListAddr, PtrField, PtrIsNull,
+    Slot, Load, Take, Store, Put, ListAddr, PtrField, PtrIsNull,
     // Calls.
     Call, CallInd, CallRt, CallMethod,
     // Runtime services.
@@ -371,7 +371,7 @@ impl Op {
         Op::OptSome, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap,
         Op::StrLen, Op::SharedNew, Op::SharedGet,
         Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceData,
-        Op::Copy, Op::Drop, Op::DropIf, Op::Slot, Op::Load, Op::Store, Op::ListAddr, Op::PtrField, Op::PtrIsNull,
+        Op::Copy, Op::Drop, Op::DropIf, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::PtrField, Op::PtrIsNull,
         Op::Call, Op::CallInd, Op::CallRt, Op::CallMethod,
         Op::TypeDesc, Op::Poll, Op::DepthEnter, Op::DepthLeave, Op::CleanupPush, Op::CleanupRun,
         Op::GlobalGet, Op::GlobalSet,
@@ -452,7 +452,9 @@ impl Op {
             Op::DropIf => ("drop.if", K::None, false, effects!(writes, rc)),
             Op::Slot => ("slot", K::Ty, true, effects!()),
             Op::Load => ("load", K::Ty, true, effects!(reads)),
+            Op::Take => ("take", K::Ty, true, effects!(reads, writes)),
             Op::Store => ("store", K::None, false, effects!(writes)),
+            Op::Put => ("put", K::None, false, effects!(writes)),
             Op::ListAddr => ("list.addr", K::None, true, effects!(faults)),
             Op::PtrField => ("ptr.field", K::Field, true, effects!()),
             Op::PtrIsNull => ("ptr.is_null", K::None, true, effects!()),
@@ -968,6 +970,9 @@ pub struct Module {
     pub funcs: Vec<Func>,
     /// The program entry (`fn() -> Int`, the process exit code), if any.
     pub entry: Option<FuncId>,
+    /// Equality and hash functions (`fn(ptr, ptr) -> bool`, `fn(ptr) -> int`) that the
+    /// descriptor of an aggregate type points to.
+    pub desc_glue: Vec<(Ty, FuncId, FuncId)>,
 }
 
 impl Default for Module {
@@ -992,6 +997,7 @@ impl Module {
             globals: Vec::new(),
             funcs: Vec::new(),
             entry: None,
+            desc_glue: Vec::new(),
         }
     }
 
@@ -1033,9 +1039,15 @@ impl Module {
         (id, self.types.alt(id))
     }
 
-    /// Declares a runtime function (or returns the existing one with this symbol).
+    /// Declares a runtime function (or returns the existing one with this symbol and signature).
     pub fn add_extern(&mut self, def: ExternDef) -> ExtId {
-        if let Some(i) = self.externs.iter().position(|e| e.name == def.name) {
+        let same = |e: &ExternDef| {
+            e.name == def.name
+                && e.ret == def.ret
+                && e.params.len() == def.params.len()
+                && e.params.iter().zip(&def.params).all(|(a, b)| a.ty == b.ty)
+        };
+        if let Some(i) = self.externs.iter().position(same) {
             return ExtId(i as u32);
         }
         self.externs.push(def);

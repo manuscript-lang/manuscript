@@ -20,7 +20,23 @@ pub enum JobKind {
         subst: Subst,
     },
     /// The text form of a value of the MIR type.
-    Format(MTy),
+    Format(MTy, bool),
+    /// A lambda body under the instance substitution.
+    Lambda(Rc<LambdaJob>),
+    /// Structural equality of two values of the MIR type.
+    Equal(MTy),
+}
+
+/// A lambda waiting to be lowered.
+pub struct LambdaJob {
+    /// The lambda expression.
+    pub expr: ms_syntax::ast::Expr,
+    /// Module the lambda is written in.
+    pub hir: Rc<ModuleHir>,
+    /// Type variables of the enclosing instance.
+    pub subst: Subst,
+    /// Captured variables in closure-object order.
+    pub captures: Vec<ct::BindingRef>,
 }
 
 /// A function body waiting to be lowered.
@@ -47,6 +63,12 @@ pub struct Cx {
     pub helpers: HashMap<String, FuncId>,
     /// Interface implementation tables built by lowering.
     pub vtables: HashMap<String, ms_mir::ir::VtableId>,
+    /// Every implementation method of the program.
+    pub methods: Vec<ct::MethodRef>,
+    /// Types whose descriptor glue is registered.
+    pub glue_seen: std::collections::HashSet<MTy>,
+    /// Parameters (receiver first) that functions hand back changed.
+    pub mutated: std::collections::HashSet<crate::mutation::ParamKey>,
 }
 
 impl Cx {
@@ -60,14 +82,18 @@ impl Cx {
             }
             mods.insert(m.data.file, Rc::new(m));
         }
+        let mutated = crate::mutation::infer_mutated(&mods, &callables);
         Cx {
             mods,
             callables,
+            mutated,
+            glue_seen: Default::default(),
             tycache: HashMap::new(),
             insts: HashMap::new(),
             queue: Vec::new(),
             helpers: HashMap::new(),
             vtables: HashMap::new(),
+            methods: program.methods.clone(),
         }
     }
 
@@ -205,7 +231,8 @@ impl Cx {
             let name = if t.is_std("Map") { "Map" } else { "Set" };
             return Ok(m.types.obj(name, args));
         }
-        if t.is_std("Bytes") {
+        // Builders are growable byte buffers.
+        if t.is_std("Bytes") || t.is_std("StringBuilder") || t.is_std("BytesBuilder") {
             return Ok(MTy::BYTES);
         }
         Err(Error::new(format!("unsupported native type {t}")))
