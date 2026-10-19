@@ -592,6 +592,10 @@ impl FnLower<'_> {
             let out = self.call_runtime(sym, &vals, result)?;
             return Ok(Val { v: out, own: true });
         }
+        // `InfoOut` is flat words that become a `FileInfo` record.
+        if sig.params.last().is_some_and(|p| p.ty == "*mut InfoOut") {
+            return self.finish_stat(sym, vals, result);
+        }
         // A status (or presence flag) plus a value through `out`.
         let payload = match self.b.m.types.kind(result).clone() {
             TyKind::Alt(a) => {
@@ -690,7 +694,7 @@ impl FnLower<'_> {
         Ok(r.v)
     }
 
-    fn ok_case_index(&self, a: ms_mir::types::AltId) -> Result<usize, Error> {
+    pub(crate) fn ok_case_index(&self, a: ms_mir::types::AltId) -> Result<usize, Error> {
         self.b.m.alts[a.index()]
             .cases
             .iter()
@@ -699,7 +703,12 @@ impl FnLower<'_> {
     }
 
     /// The `error(..)` value of `result` for a nonzero runtime status `code`.
-    fn status_failure(&mut self, result: MTy, code: Value, sym: &str) -> Result<Value, Error> {
+    pub(crate) fn status_failure(
+        &mut self,
+        result: MTy,
+        code: Value,
+        sym: &str,
+    ) -> Result<Value, Error> {
         let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
             return Err(Error::new("a status needs a Result"));
         };

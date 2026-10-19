@@ -220,6 +220,8 @@ msrt_hash_list(v: *const VecVal, d: *const TypeDesc) -> i64
 msrt_archive_pack( entries: *const VecVal, format: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msrt_archive_unpack( data: *const VecVal, format: *const StrObj, has_limits: u8, has_entries: u8, max_entries: i64, has_entry_bytes: u8, max_entry_bytes: i64, has_total: u8, max_total_bytes: i64, out: *mut VecVal, ) -> u8
 msstd_bigint_from_int(value: i64) -> *mut BigObj
+msstd_bigint_from_u64(value: i64) -> *mut BigObj
+msstd_bigint_from_seconds_nanos(seconds: i64, nanoseconds: i64) -> *mut BigObj
 msstd_bigint_parse( text: *const StrObj, radix: i64, has_max: u8, max: i64, out: *mut *mut BigObj, ) -> u8
 msstd_bigint_add(a: *const BigObj, other: *const BigObj) -> *mut BigObj
 msstd_bigint_subtract( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
@@ -287,7 +289,7 @@ msstd_fs_write_file( path: *const StrObj, data: *const VecVal, replace: u8, ) ->
 msstd_fs_append_file(path: *const StrObj, data: *const VecVal) -> u8
 msstd_fs_copy_file( source: *const StrObj, destination: *const StrObj, replace: u8, has_max: u8, max: i64, ) -> u8
 msstd_fs_stat(path: *const StrObj, follow: u8, out: *mut InfoOut) -> u8
-msstd_fs_list( path: *const StrObj, has_limit: u8, limit: i64, names: *mut VecVal, flags: *mut VecVal, ) -> u8
+msstd_fs_list( path: *const StrObj, has_limit: u8, limit: i64, out: *mut VecVal, ) -> u8
 msstd_fs_create_directory(path: *const StrObj, recursive: u8) -> u8
 msstd_fs_remove(path: *const StrObj, recursive: u8) -> u8
 msstd_fs_rename(source: *const StrObj, destination: *const StrObj) -> u8
@@ -324,7 +326,7 @@ msstd_fs_file_set_times( h: *mut FileHandle, accessed_seconds: i64, accessed_nan
 msstd_fs_file_read_lines( h: *mut FileHandle, max_bytes: i64, max_lines: i64, out: *mut VecVal, ) -> u8
 msstd_fs_file_path(h: *mut FileHandle) -> *mut StrObj
 msstd_fs_directory_open( path: *const StrObj, out: *mut *mut DirHandle, ) -> u8
-msstd_fs_directory_read( h: *mut DirHandle, name: *mut *mut StrObj, directory: *mut u8, symlink: *mut u8, ) -> u8
+msstd_fs_directory_read(h: *mut DirHandle, out: *mut EntryOut) -> u8
 msstd_fs_directory_close(h: *mut DirHandle)
 msstd_fs_directory_path(h: *mut DirHandle) -> *mut StrObj
 msstd_fs_temporary_open( prefix: *const StrObj, out: *mut *mut TempHandle, ) -> u8

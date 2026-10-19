@@ -233,6 +233,10 @@ const METHODS: &[MethodRow] = &[
     ),
     ("fs", "FileHandle", "chmod", "msstd_fs_file_chmod", &[]),
     ("fs", "FileHandle", "chown", "msstd_fs_file_chown", &[]),
+    ("fs", "FileSystem", "stat", "msstd_fs_stat", &[]),
+    ("fs", "FileHandle", "stat", "msstd_fs_file_stat", &[]),
+    ("fs", "FileSystem", "list", "msstd_fs_list", &[]),
+    ("fs", "Directory", "read", "msstd_fs_directory_read", &[]),
     ("fs", "Directory", "path", "msstd_fs_directory_path", &[]),
     ("fs", "Directory", "close", "msstd_fs_directory_close", &[]),
     (

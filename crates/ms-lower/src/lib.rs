@@ -11,6 +11,7 @@ mod closure;
 mod cx;
 mod eq;
 mod expr;
+mod fsinfo;
 mod func;
 mod iface;
 mod iterate;

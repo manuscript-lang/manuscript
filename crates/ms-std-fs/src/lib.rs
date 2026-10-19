@@ -53,8 +53,10 @@ fn lim(has: u8, v: i64) -> Res<i64> {
     ops::limit(has != 0, v)
 }
 
-/// Flattened `FileInfo`. Times are `(seconds, nanoseconds)`; `created_present` says whether the
-/// creation time exists on this host. `kinds` is the `KIND_*` bit set from `ops`.
+/// Flattened `FileInfo`: a string followed by `i64` words only, so compiled code reads it as a
+/// record. Times are `(seconds, nanoseconds)`; `created_present` says whether the creation time
+/// exists on this host. `kinds` is the `KIND_*` bit set from `ops`; unsigned host counters carry
+/// their bits (`exact` reads them back as unsigned).
 #[repr(C)]
 pub struct InfoOut {
     pub name: *mut StrObj,
@@ -69,16 +71,16 @@ pub struct InfoOut {
     pub changed_nanos: i64,
     pub created_seconds: i64,
     pub created_nanos: i64,
-    pub created_present: u8,
-    pub kinds: u32,
-    pub block_size: u64,
-    pub blocks: u64,
-    pub rdev: u64,
-    pub device: u64,
-    pub inode: u64,
-    pub links: u64,
-    pub uid: u64,
-    pub gid: u64,
+    pub created_present: i64,
+    pub kinds: i64,
+    pub block_size: i64,
+    pub blocks: i64,
+    pub rdev: i64,
+    pub device: i64,
+    pub inode: i64,
+    pub links: i64,
+    pub uid: i64,
+    pub gid: i64,
 }
 
 fn info_out(i: ops::Info, out: *mut InfoOut) {
@@ -98,16 +100,16 @@ fn info_out(i: ops::Info, out: *mut InfoOut) {
             changed_nanos: i.changed.1,
             created_seconds: cs,
             created_nanos: cn,
-            created_present: i.created.is_some() as u8,
-            kinds: i.kinds(),
-            block_size: i.block_size,
-            blocks: i.blocks,
-            rdev: i.rdev,
-            device: i.device,
-            inode: i.inode,
-            links: i.links,
-            uid: i.uid,
-            gid: i.gid,
+            created_present: i.created.is_some() as i64,
+            kinds: i64::from(i.kinds()),
+            block_size: i.block_size as i64,
+            blocks: i.blocks as i64,
+            rdev: i.rdev as i64,
+            device: i.device as i64,
+            inode: i.inode as i64,
+            links: i.links as i64,
+            uid: i.uid as i64,
+            gid: i.gid as i64,
         })
     }
 }
@@ -173,29 +175,37 @@ pub unsafe extern "C" fn msstd_fs_stat(path: *const StrObj, follow: u8, out: *mu
     finish(r, |i| info_out(i, out))
 }
 
-/// Lists a directory sorted by name: `names` receives a `List[String]`, `flags` one byte per entry
-/// (bit 0 directory, bit 1 symlink).
+/// One `DirectoryEntry` as compiled code lays the record out: the name, then two flag bytes.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct EntryOut {
+    pub name: *mut StrObj,
+    pub directory: u8,
+    pub symlink: u8,
+}
+
+fn entry_out(e: &ops::Entry) -> EntryOut {
+    EntryOut {
+        name: new_string(&e.name),
+        directory: e.directory as u8,
+        symlink: e.symlink as u8,
+    }
+}
+
+/// Lists a directory sorted by name into a `List[DirectoryEntry]`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn msstd_fs_list(
     path: *const StrObj,
     has_limit: u8,
     limit: i64,
-    names: *mut VecVal,
-    flags: *mut VecVal,
+    out: *mut VecVal,
 ) -> u8 {
     // SAFETY: arguments follow the ABI contract.
     let r = lim(has_limit, limit).and_then(|m| ops::list(unsafe { str_bytes(path) }, m));
     finish(r, |entries| {
-        let strs: Vec<*mut StrObj> = entries.iter().map(|e| new_string(&e.name)).collect();
-        let bits: Vec<u8> = entries
-            .iter()
-            .map(|e| e.directory as u8 | (e.symlink as u8) << 1)
-            .collect();
-        // SAFETY: `names` and `flags` are writable.
-        unsafe {
-            write_string_list(&strs, names);
-            write_bytes(&bits, flags);
-        }
+        let items: Vec<EntryOut> = entries.iter().map(entry_out).collect();
+        // SAFETY: `out` is writable.
+        unsafe { ms_std_rt::write_list(&items, out) }
     })
 }
 
@@ -624,22 +634,19 @@ pub unsafe extern "C" fn msstd_fs_directory_open(
 
 /// The next entry in native order; `STATUS_NONE` at the end.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_fs_directory_read(
-    h: *mut DirHandle,
-    name: *mut *mut StrObj,
-    directory: *mut u8,
-    symlink: *mut u8,
-) -> u8 {
-    // SAFETY: `h` is a live directory handle; the outputs are writable.
+pub unsafe extern "C" fn msstd_fs_directory_read(h: *mut DirHandle, out: *mut EntryOut) -> u8 {
+    // SAFETY: `h` is a live directory handle; `out` is writable.
     match unsafe { (*h).value.read() } {
         Ok(None) => ms_rt_abi::STATUS_NONE,
         other => finish(other, |item| {
             let item = item.expect("entry present");
-            // SAFETY: handles and output pointers follow the ABI contract.
+            // SAFETY: `out` is writable.
             unsafe {
-                *name = new_string(&item.name);
-                *directory = item.directory as u8;
-                *symlink = item.symlink as u8;
+                out.write(EntryOut {
+                    name: new_string(&item.name),
+                    directory: item.directory as u8,
+                    symlink: item.symlink as u8,
+                })
             }
         }),
     }
