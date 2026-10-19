@@ -588,12 +588,12 @@ fn branches(f: &mut Func) -> bool {
             }
             let t = t.clone();
             let bd = std::mem::take(&mut f.blocks[b]);
-            for (bp, a) in bd.params.iter().zip(&t.args) {
-                f.replace_uses(bp.value, *a);
-            }
             f.blocks[p].insts.extend(bd.insts);
             f.blocks[p].term = bd.term;
             f.blocks[p].term_loc = bd.term_loc;
+            for (bp, a) in bd.params.iter().zip(&t.args) {
+                f.replace_uses(bp.value, *a);
+            }
             changed = true;
             merged = true;
             break;
