@@ -205,9 +205,11 @@ fn run_one_cleanup() -> bool {
     let action = unsafe { (*CLEANUPS.ptr()).pop() };
     match action {
         Some((f, arg)) => {
-            // SAFETY: `f` was stored from a valid `CleanupFn`.
-            let f: CleanupFn = unsafe { core::mem::transmute::<usize, CleanupFn>(f) };
-            run_shielded(f, arg as *mut u8);
+            // SAFETY: `f` was stored from a valid `CleanupFn` whose provenance `as usize` exposed.
+            let f: CleanupFn = unsafe {
+                core::mem::transmute::<*const (), CleanupFn>(core::ptr::with_exposed_provenance(f))
+            };
+            run_shielded(f, core::ptr::with_exposed_provenance_mut(arg));
             true
         }
         None => false,

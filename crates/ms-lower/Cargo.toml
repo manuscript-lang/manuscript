@@ -1,0 +1,19 @@
+[package]
+name = "ms-lower"
+version = "0.0.0"
+edition.workspace = true
+publish.workspace = true
+description = "Manuscript HIR to MIR lowering: monomorphization, ownership elaboration and the native driver"
+
+[dependencies]
+ms-syntax = { path = "../ms-syntax" }
+ms-check = { path = "../ms-check" }
+ms-mir = { path = "../ms-mir" }
+ms-clif = { path = "../ms-clif" }
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "msl"
+path = "src/bin/msl.rs"
