@@ -136,26 +136,26 @@ func Map_Every[K comparable, V any](ctx *Execution, m *Map[K, V], pred func(*Exe
 }
 
 // Map_AddDefault stores value only when key is absent.
-func Map_AddDefault[K comparable, V any](_ *Execution, m *Map[K, V], key K, value V) *Map[K, V] {
+func Map_AddDefault[K comparable, V any](_ *Execution, m *Map[K, V], key K, value V) Unit {
 	if _, ok := m.Lookup(key); !ok {
 		m.Put(key, value)
 	}
-	return m
+	return Unit{}
 }
 
 // Map_AddDefaultFrom stores create(key) only when key is absent.
-func Map_AddDefaultFrom[K comparable, V any](ctx *Execution, m *Map[K, V], key K, create func(*Execution, K) V) *Map[K, V] {
+func Map_AddDefaultFrom[K comparable, V any](ctx *Execution, m *Map[K, V], key K, create func(*Execution, K) V) Unit {
 	if _, ok := m.Lookup(key); ok {
-		return m
+		return Unit{}
 	}
 	m.Put(key, create(ctx, key))
-	return m
+	return Unit{}
 }
 
 // Map_Clear removes every entry.
-func Map_Clear[K comparable, V any](_ *Execution, m *Map[K, V]) *Map[K, V] {
+func Map_Clear[K comparable, V any](_ *Execution, m *Map[K, V]) Unit {
 	m.Clear()
-	return m
+	return Unit{}
 }
 
 // Map_Keys lists the keys in insertion order.
@@ -189,14 +189,14 @@ func Map_Entries[K comparable, V any](_ *Execution, m *Map[K, V]) *List[*MapEntr
 }
 
 // Map_Merge stores other's entries into m, in place.
-func Map_Merge[K comparable, V any](ctx *Execution, m, other *Map[K, V]) *Map[K, V] {
+func Map_Merge[K comparable, V any](ctx *Execution, m, other *Map[K, V]) Unit {
 	tick := uint32(0)
 	CheckCancelled(ctx)
 	for _, e := range other.Snapshot() {
 		Poll(ctx, &tick)
 		m.Put(e.Key, e.Value)
 	}
-	return m
+	return Unit{}
 }
 
 // Map_ForEach calls operation on each entry in insertion order.
@@ -225,13 +225,13 @@ func Map_Get[K comparable, V any](_ *Execution, m *Map[K, V], key K) Option[V] {
 }
 
 // Map_Add stores value under key, in place.
-func Map_Add[K comparable, V any](_ *Execution, m *Map[K, V], key K, value V) *Map[K, V] {
+func Map_Add[K comparable, V any](_ *Execution, m *Map[K, V], key K, value V) Unit {
 	m.Put(key, value)
-	return m
+	return Unit{}
 }
 
 // Map_Remove deletes key, in place.
-func Map_Remove[K comparable, V any](_ *Execution, m *Map[K, V], key K) *Map[K, V] {
+func Map_Remove[K comparable, V any](_ *Execution, m *Map[K, V], key K) Unit {
 	m.Delete(key)
-	return m
+	return Unit{}
 }

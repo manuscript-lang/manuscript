@@ -36,7 +36,7 @@ fn propagate(result: Result[Int, JsonError]) Result[Int, JsonError]:
     return ok(found + 1)
 
 test "Optional lazy fallbacks preserve nested absence and payload identity":
-    let counter = Counter(0)
+    var counter = Counter(0)
     let create = fn():
         counter.calls += 1
         return some(42)
@@ -65,7 +65,9 @@ test "custom equality and hashing define map key identity":
     let first = Key(1, "first")
     let second = Key(1, "second")
     try expect_false(first != second or first.hash() != second.hash())
-    let map = (Map[Key, String]().add(first, "a").add(second, "b"))
+    var map = Map[Key, String]()
+    map.add(first, "a")
+    map.add(second, "b")
     try expect_false(map.length() != 1 or map.get(first) != some("b"))
 
 test "Closeable cleanup runs in reverse order before return delivery":

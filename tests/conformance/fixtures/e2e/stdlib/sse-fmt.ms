@@ -32,7 +32,7 @@ fn stream(parts: List[Bytes], failure: Optional[IoError]) Chunks:
 
 # Splits at every byte boundary, one boundary at a time, plus one byte per chunk.
 fn splits(source: Bytes) List[List[Bytes]]:
-    let all = List[List[Bytes]]()
+    var all = List[List[Bytes]]()
     let size = source.length()
 
     for cut in range(0, size + 1):
@@ -40,7 +40,7 @@ fn splits(source: Bytes) List[List[Bytes]]:
         let tail = source.slice(cut, size).get()
         all.append([head, tail])
 
-    let single = List[Bytes]()
+    var single = List[Bytes]()
     for index in range(0, size):
         single.append(source.slice(index, index + 1).get())
     all.append(single)
@@ -48,7 +48,7 @@ fn splits(source: Bytes) List[List[Bytes]]:
 
 fn decode(parts: List[Bytes]) Result[List[SseEvent], SseError]:
     let created = try decoder()
-    let events = List[SseEvent]()
+    var events = List[SseEvent]()
 
     for part in parts:
         let batch = try created.feed(part)

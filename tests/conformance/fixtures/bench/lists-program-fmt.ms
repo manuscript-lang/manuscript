@@ -4,7 +4,7 @@
 import range from "@std/collections.ms"
 
 fn build(count: Int) List[Int]:
-    let values: List[Int] = []
+    var values: List[Int] = []
     for i in range(0, count):
         values.append(i * 7919 % 100003)
     return values
@@ -25,7 +25,7 @@ type Total:
     value: Int
 
 fn callbacks(values: List[Int]) Int:
-    let total = Total(0)
+    var total = Total(0)
     values.for_each(
         fn(value):
             total.value += value
@@ -44,7 +44,7 @@ fn compare(left: Int, right: Int) Int:
 export fn main() Int: return 0
 
 fn callback_write(values: List[Int]) Int:
-    let total = Total(0)
+    var total = Total(0)
     values.for_each(
         fn(value):
             total.value += value

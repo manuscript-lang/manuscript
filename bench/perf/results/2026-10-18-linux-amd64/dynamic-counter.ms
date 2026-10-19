@@ -5,9 +5,11 @@ fn measure(start: Int) Int:
     let t = clock().now()
     var i = start
     var hits = 0
+
     while i < 10000000:
         hits += i % 3
         i += 1
+
     let elapsed = clock().now().difference(t).to_nanoseconds()
     let line = "{start} {elapsed} {hits}\n"
     let ignored = stdout().write(line.to_bytes())

@@ -19,7 +19,7 @@ fn status_label(status: Status) String:
             return "Published at {url}"
 
 test "publish a help page":
-    let todo = Todo("Update the help page")
+    var todo = Todo("Update the help page")
     todo.completed = true
     let backup = todo.clone()
     todo.title = "Update the contact page"

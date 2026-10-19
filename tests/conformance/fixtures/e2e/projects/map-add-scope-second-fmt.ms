@@ -15,11 +15,11 @@ impl Hashable for Key:
     fn hash() Int: 0
 
 export fn second() Result[Int, Error]:
-    let m = Map[Key, Int]()
-    let original = Key(1.0)
+    var m = Map[Key, Int]()
+    var original = Key(1.0)
     m.add(original, 1)
-    insert(m, Key(-1.0), 2)
-    insert_bound(m, Key(1.0), 3)
+    insert(var m, Key(-1.0), 2)
+    insert_bound(var m, Key(1.0), 3)
     let add = m.add
     add(value: 4, key: Key(2.0))
     m.get(Key(1.0)).get() | try expect_equal(expected: 3)

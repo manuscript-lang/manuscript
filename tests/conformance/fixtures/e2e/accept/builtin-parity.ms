@@ -150,11 +150,19 @@ test "list methods mutate explicit clones and remain typed":
     original.last_index_of(value: 1) | try expect_equal(expected: some(3))
     original.index_of(value: 8) | try expect_equal(expected: absent)
     original.last_index_of(value: 8) | try expect_equal(expected: absent)
-    original.clone().prepend(value: 0) | try expect_equal(expected: [0, 3, 1, 2, 1])
-    original.clone().set(index: -1, value: 9) | try expect_equal(expected: [3, 1, 2, 9])
-    original.clone().remove(index: 1) | try expect_equal(expected: [3, 2, 1])
+    var chain_1 = original.clone()
+    chain_1.prepend(value: 0)
+    chain_1 | try expect_equal(expected: [0, 3, 1, 2, 1])
+    var chain_2 = original.clone()
+    chain_2.set(index: -1, value: 9)
+    chain_2 | try expect_equal(expected: [3, 1, 2, 9])
+    var chain_3 = original.clone()
+    chain_3.remove(index: 1)
+    chain_3 | try expect_equal(expected: [3, 2, 1])
     original.slice(start: 1, end: 3).get() | try expect_equal(expected: [1, 2])
-    original.clone().reverse_in_place() | try expect_equal(expected: [1, 2, 1, 3])
+    var chain_4 = original.clone()
+    chain_4.reverse_in_place()
+    chain_4 | try expect_equal(expected: [1, 2, 1, 3])
     original.sorted(compare: compare) | try expect_equal(expected: [1, 1, 2, 3])
     [-1, 0, 2, 3].filter(predicate: positive) | try expect_equal(expected: [2, 3])
     [-1, 0, 2, 3].find(predicate: positive) | try expect_equal(expected: some(2))
@@ -173,7 +181,7 @@ test "list methods mutate explicit clones and remain typed":
     (not original.every(predicate: negative)) | try expect_true
     (not empty.some(predicate: positive)) | try expect_true
     (empty.every(predicate: positive)) | try expect_true
-    let observed_original: List[Int] = []
+    var observed_original: List[Int] = []
     original.for_each(
         fn(value) Unit:
             observed_original.append(value)
@@ -200,31 +208,21 @@ test "list methods mutate explicit clones and remain typed":
     original.fold_right(initial: "", step: ordered) | try expect_equal(expected: "1213")
     let convert = original.map[String]
     convert(transform: stringify) | try expect_equal(expected: ["3", "1", "2", "1"])
-    let reverse = original.clone().reverse_in_place
-    reverse() | try expect_equal(expected: [1, 2, 1, 3])
+    var reversing = original.clone()
+    let reverse = reversing.reverse_in_place
+    reverse()
+    reversing | try expect_equal(expected: [1, 2, 1, 3])
     let reduce = original.fold[Int]
     reduce(initial: 0, step: total) | try expect_equal(expected: 7)
-    (
-        not (
-            original.clone().splice(
-                start: 1,
-                delete_count: 2,
-                replacement: [8, 9, 10]
-            ) == [3, 8, 9, 10, 1]
-        )
-    ) | try expect_false
-    (
-        original.clone().fill(value: 0, start: 1, end: 3) | try expect_equal(
-            expected: [3, 0, 0, 1]
-        )
-    )
-    (
-        original.clone().copy_within(
-            target: 1,
-            start: 0,
-            end: 3
-        ) | try expect_equal(expected: [3, 3, 1, 2])
-    )
+    var chain_5 = original.clone()
+    chain_5.splice(start: 1, delete_count: 2, replacement: [8, 9, 10])
+    (not (chain_5 == [3, 8, 9, 10, 1])) | try expect_false
+    var chain_6 = original.clone()
+    chain_6.fill(value: 0, start: 1, end: 3)
+    (chain_6 | try expect_equal(expected: [3, 0, 0, 1]))
+    var chain_7 = original.clone()
+    chain_7.copy_within(target: 1, start: 0, end: 3)
+    (chain_7 | try expect_equal(expected: [3, 3, 1, 2]))
     original.keys() | try expect_equal(expected: [0, 1, 2, 3])
     (
         original.entries().get(index: 0) | try expect_equal(
@@ -236,9 +234,14 @@ test "list methods mutate explicit clones and remain typed":
     alias | try expect_equal(expected: [3, 1, 2, 1])
 
 test "map enumeration, merge, and clear preserve insertion order":
-    let original = (Map[String, Int]().add(key: "a", value: 1).add(key: "b", value: 2))
-    let other = (Map[String, Int]().add(key: "b", value: 3).add(key: "c", value: 4))
-    let merged = original.clone().merge(other: other)
+    var original = Map[String, Int]()
+    original.add(key: "a", value: 1)
+    original.add(key: "b", value: 2)
+    var other = Map[String, Int]()
+    other.add(key: "b", value: 3)
+    other.add(key: "c", value: 4)
+    var merged = original.clone()
+    merged.merge(other: other)
     merged.keys() | try expect_equal(expected: ["a", "b", "c"])
     merged.values() | try expect_equal(expected: [1, 3, 4])
     (
@@ -261,8 +264,8 @@ test "map enumeration, merge, and clear preserve insertion order":
             ).values() == [2]
         )
     ) | try expect_false
-    let observed_keys: List[String] = []
-    let observed_values: List[Int] = []
+    var observed_keys: List[String] = []
+    var observed_values: List[Int] = []
     merged.for_each(
         fn(key, value):
             observed_keys.append(key)
@@ -272,7 +275,9 @@ test "map enumeration, merge, and clear preserve insertion order":
     observed_values | try expect_equal(expected: merged.values())
     let get_keys = merged.keys
     get_keys() | try expect_equal(expected: ["a", "b", "c"])
-    original.clone().clear().length() | try expect_equal(expected: 0)
+    var chain_1 = original.clone()
+    chain_1.clear()
+    chain_1.length() | try expect_equal(expected: 0)
     original.values() | try expect_equal(expected: [1, 2])
     other.values() | try expect_equal(expected: [3, 4])
 
@@ -298,13 +303,15 @@ test "set algebra and enumeration preserve source values":
     (left.is_superset_of(other: empty)) | try expect_true
     (empty.is_disjoint_from(other: left)) | try expect_true
     left.entries() | try expect_equal(expected: [[1, 1], [2, 2], [3, 3]])
-    let observed_left: List[Int] = []
+    var observed_left: List[Int] = []
     left.for_each(
         fn(value) Unit:
             observed_left.append(value)
     )
     observed_left | try expect_equal(expected: left.values())
-    left.clone().clear() | try expect_equal(expected: empty)
+    var chain_8 = left.clone()
+    chain_8.clear()
+    chain_8 | try expect_equal(expected: empty)
     left.values() | try expect_equal(expected: [1, 2, 3])
 
 test "string methods use Unicode scalars":
@@ -426,29 +433,22 @@ test "grouping and lazy map defaults":
     grouped.values() | try expect_equal(expected: [[1, 3], [2, 4]])
     let group = [1, 2, 3, 4].group_by[Int]
     group(key: parity) | try expect_equal(expected: grouped)
-    let original = Map[String, Int]().add(key: "a", value: 1)
-    original.add_default(key: "a", value: 9) | try expect_equal(expected: original)
-    let calls: List[Int] = []
+    var original = Map[String, Int]()
+    original.add(key: "a", value: 1)
+    original.add_default(key: "a", value: 9)
+    original | try expect_equal(expected: original)
+    var calls: List[Int] = []
     let create = fn(key: String):
         calls.append(1)
         return 0
-    original.add_default_from(key: "a", create: create) | try expect_equal(
-        expected: original
-    )
-    (
-        original.clone().add_default(
-            key: "b",
-            value: 2
-        ).values() | try expect_equal(expected: [1, 2])
-    )
-    (
-        not (
-            original.clone().add_default_from(
-                key: "c",
-                create: default_value
-            ).values() == [1, 3]
-        )
-    ) | try expect_false
+    original.add_default_from(key: "a", create: create)
+    original | try expect_equal(expected: original)
+    var chain_9 = original.clone()
+    chain_9.add_default(key: "b", value: 2)
+    (chain_9.values() | try expect_equal(expected: [1, 2]))
+    var chain_10 = original.clone()
+    chain_10.add_default_from(key: "c", create: default_value)
+    (not (chain_10.values() == [1, 3])) | try expect_false
     original.values() | try expect_equal(expected: [1])
     calls.length() | try expect_equal(expected: 0)
 
@@ -570,7 +570,7 @@ test "generic native methods accept omitted single-parameter labels":
     values.group_by(parity).keys() | try expect_equal(expected: [1, 0])
     let convert = values.map[String]
     convert(stringify) | try expect_equal(expected: ["1", "2"])
-    let observed_values: List[Int] = []
+    var observed_values: List[Int] = []
     values.for_each(
         fn(value) Unit:
             observed_values.append(value)

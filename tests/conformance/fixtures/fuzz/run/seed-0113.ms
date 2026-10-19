@@ -19,7 +19,8 @@ export fn main() Int:
         say(("beta" + "a"))
     else:
         say("Tab\there".replace("héllo", "emoji 😀"))
-    let l4 = l1.clone().append(50)
+    var l4 = l1.clone()
+    l4.append(50)
     say("l4 = {l4} len {l4.length()}")
     let i5 = (-9223372036854775808)
     say("i5 = {i5}")

@@ -219,7 +219,7 @@ fn describe_direct(cause: Error) String:
     return cause.message()
 
 test "specific errors pass directly into Error boundaries":
-    let original = ReadError(
+    var original = ReadError(
         diagnostic: "read failed",
         path: "settings.json",
         attempt: 2,

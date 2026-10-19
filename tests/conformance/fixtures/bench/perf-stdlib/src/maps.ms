@@ -6,7 +6,7 @@ export fn bench_map_set() Unit:
         "map.int_put_get",
         200000,
         fn() Int:
-            let m = Map[Int, Int]()
+            var m = Map[Int, Int]()
             for i in range(0, 100000):
                 m.add(i, i * 2)
             var n = 0
@@ -19,7 +19,7 @@ export fn bench_map_set() Unit:
         100000,
         fn() Int:
             let keys = words(50000)
-            let m = Map[String, Int]()
+            var m = Map[String, Int]()
             for k in keys:
                 m.add(k, 1)
             var n = 0
@@ -31,7 +31,7 @@ export fn bench_map_set() Unit:
         "map.iterate_entries",
         100000,
         fn() Int:
-            let m = Map[Int, Int]()
+            var m = Map[Int, Int]()
             for i in range(0, 100000):
                 m.add(i, i)
             var n = 0
@@ -43,7 +43,7 @@ export fn bench_map_set() Unit:
         "set.add_contains",
         200000,
         fn() Int:
-            let s = Set[Int]()
+            var s = Set[Int]()
             for i in range(0, 100000):
                 s.add(i)
             var n = 0

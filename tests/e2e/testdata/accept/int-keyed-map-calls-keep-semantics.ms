@@ -8,7 +8,7 @@ fn lookup(m: Map[Int, String], key: Int) String:
             return "missing"
 
 test "int map":
-    let m = Map[Int, String]()
+    var m = Map[Int, String]()
     m.add(key: 1, value: "a")
     m.add(key: 2, value: "b")
     m.add(key: 1, value: "c")

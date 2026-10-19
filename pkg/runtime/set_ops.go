@@ -174,9 +174,9 @@ func Set_IsDisjointFrom[T comparable](ctx *Execution, left, right *Set[T]) bool 
 }
 
 // Set_Clear removes every element.
-func Set_Clear[T comparable](_ *Execution, s *Set[T]) *Set[T] {
+func Set_Clear[T comparable](_ *Execution, s *Set[T]) Unit {
 	s.Clear()
-	return s
+	return Unit{}
 }
 
 // Set_Values lists the elements in insertion order.
@@ -207,13 +207,13 @@ func Set_ForEach[T comparable](ctx *Execution, s *Set[T], operation func(*Execut
 func Set_Contains[T comparable](_ *Execution, s *Set[T], item T) bool { return s.Has(item) }
 
 // Set_Add inserts item, in place.
-func Set_Add[T comparable](_ *Execution, s *Set[T], item T) *Set[T] {
+func Set_Add[T comparable](_ *Execution, s *Set[T], item T) Unit {
 	s.Add(item)
-	return s
+	return Unit{}
 }
 
 // Set_Remove deletes item, in place.
-func Set_Remove[T comparable](_ *Execution, s *Set[T], item T) *Set[T] {
+func Set_Remove[T comparable](_ *Execution, s *Set[T], item T) Unit {
 	s.Remove(item)
-	return s
+	return Unit{}
 }

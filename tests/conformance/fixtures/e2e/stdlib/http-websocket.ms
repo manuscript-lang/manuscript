@@ -43,14 +43,9 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
 
         return ok(unit)
 
-    let headers = (
-        try list_headers(
-            Map[String, List[String]]().add(
-                key: "X-Test",
-                value: ["manuscript"]
-            )
-        )
-    )
+    var chain_1 = Map[String, List[String]]()
+    chain_1.add(key: "X-Test", value: ["manuscript"])
+    let headers = (try list_headers(chain_1))
     let started = (try exchange.send_headers(status: 201, headers: headers))
     let written = (try http_result(exchange.write("hello")))
     return ok(unit)

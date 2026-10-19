@@ -12,10 +12,10 @@ test "bound remove":
     let remove = [1].remove
     remove(-2)
 test "empty set":
-    let items: List[Int] = []
+    var items: List[Int] = []
     items.set(0, 2)
 test "empty remove":
-    let items: List[Int] = []
+    var items: List[Int] = []
     items.remove(0)
 test "old replace":
     "a".replace("a", "b", -1)
@@ -25,4 +25,6 @@ test "bound replace":
     let first = "a".replace_first
     first("a", "b", -1)
 test "continues":
-    let result = [1].set(0, 2).remove(0)
+    var result = [1]
+    result.set(0, 2)
+    result.remove(0)

@@ -25,8 +25,10 @@ Consuming that cell as source Int instead reproduced
 frame. [Source](repro-cleared-tail.ms) and [raw reproduction](results/go-range/cleared-tail-repro.json)
 are retained as historical failure evidence. Parent approved non-clearing shrinking
 mutations in the current boxed representation, preserving valid prior tail values
-without snapshots, traversal copies or invented zero values. The source now checks
-the Go-equivalent sum 7 (`[1, 3, 3]`) and succeeds. Run it with the candidate's CLI:
+without snapshots, traversal copies or invented zero values. The source originally checked
+the Go-equivalent sum 7 (`[1, 3, 3]`) from a loop that removed from the list it
+iterated; under single-owner semantics that overlap is rejected, so it now iterates
+`values.clone()` (sum 6) and succeeds. Run it with the candidate's CLI:
 
 ```sh
 ./ms run bench/lists/repro-cleared-tail.ms

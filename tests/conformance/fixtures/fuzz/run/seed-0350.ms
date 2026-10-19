@@ -23,7 +23,8 @@ export fn main() Int:
         say("gamma")
     else:
         say("line\nbreak".trim())
-    let l6 = l5.clone().append(17)
+    var l6 = l5.clone()
+    l6.append(17)
     say("l6 = {l6} len {l6.length()}")
     let big7 = -9223372036854775808
     say("{big7 - 4}")

@@ -28,7 +28,8 @@ export fn main() Int:
     say("l7 = {l7} len {l7.length()}")
     let i8 = i6
     say("i8 = {i8}")
-    let l9 = l5.clone().append(22)
+    var l9 = l5.clone()
+    l9.append(22)
     say("l9 = {l9} len {l9.length()}")
     let i10 = (l5.length() * 38)
     say("i10 = {i10}")

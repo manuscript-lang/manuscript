@@ -4,4 +4,6 @@
 fn use() Int:
     let nested: List[List[Int]] = [[], [1]]
     let empty: Map[String, Int] = {}
-    return Map[String, Int]().add("a", nested[1][0]).get("a").get()
+    var chain_1 = Map[String, Int]()
+    chain_1.add("a", nested[1][0])
+    return chain_1.get("a").get()

@@ -195,8 +195,10 @@ test "expanded packages run through compiler":
     ([-1, 3, 0, 2]).filter(predicate: positive) | try expect_equal(expected: [3, 2])
     ([1, 2, 3]).fold(initial: 0, step: sum) | try expect_equal(expected: 6)
     ([3, 1, 2]).sorted(compare: compare) | try expect_equal(expected: [1, 2, 3])
-    let reverse_int = [1, 2].reverse_in_place
-    reverse_int() | try expect_equal(expected: [2, 1])
+    var flipped = [1, 2]
+    let reverse_int = flipped.reverse_in_place
+    reverse_int()
+    flipped | try expect_equal(expected: [2, 1])
 
 test "malformed and bounded inputs return errors":
     let failure1: Result[Bytes, EncodingError] = error(EncodingError.InvalidData)

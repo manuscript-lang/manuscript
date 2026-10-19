@@ -20,13 +20,11 @@ import TlsOptions from "@std/tls.ms"
 import Bytes from "@std/bytes.ms"
 
 fn route(request: HttpRequest) HttpResponse:
-    let fields = match text_headers(
-        (
-            Map[String, String]()
-            .add("Set-Cookie", "a=1")
-            .add("set-cookie", "b=2")
-        )
-    ):
+    var cookies = Map[String, String]()
+    cookies.add("Set-Cookie", "a=1")
+    cookies.add("set-cookie", "b=2")
+
+    let fields = match text_headers(cookies):
         ok(found): found
         error(cause): return HttpResponse(
             status: 500,
@@ -41,16 +39,11 @@ fn route(request: HttpRequest) HttpResponse:
     )
 
 fn stream_route(exchange: HttpExchange) Result[Unit, HttpError]:
+    var chain_1 = Map[String, List[String]]()
+    chain_1.add(key: "Set-Cookie", value: ["a=1", "b=2"])
     let sent = try exchange.send_headers(
         status: 200,
-        headers: (
-            try list_headers(
-                Map[String, List[String]]().add(
-                    key: "Set-Cookie",
-                    value: ["a=1", "b=2"]
-                )
-            )
-        )
+        headers: (try list_headers(chain_1))
     )
     let written = (
         try http_result(exchange.write("{exchange.path()}|{exchange.query()}"))

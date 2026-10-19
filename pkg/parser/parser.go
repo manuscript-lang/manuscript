@@ -454,7 +454,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 			if p.peek().Kind == "case" {
 				next = "alternative"
 			}
-			if p.peek().Kind == syntax.KindFn {
+			if p.peek().Kind == syntax.KindFn || p.peek().Kind == "var" && p.tokens[p.at+1].Kind == syntax.KindFn {
 				next = "interface"
 			}
 			if token.Kind == syntax.KindInterface && next != "interface" {

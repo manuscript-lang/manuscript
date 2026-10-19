@@ -8,7 +8,7 @@ type Node:
     next: Optional[Node]
 
 test "recursive links":
-    let node = Node(value: 1, next: none)
+    var node = Node(value: 1, next: none)
     node.next = some(node)
     let copy = node.clone()
     copy.next.get().value = 2
