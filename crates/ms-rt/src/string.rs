@@ -1299,6 +1299,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore = "faults use inline asm, which Miri cannot run")]
     fn length_and_get_follow_scalars() {
         let _g = testutil::lock();
         unsafe {
