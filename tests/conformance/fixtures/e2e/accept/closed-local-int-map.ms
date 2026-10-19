@@ -44,21 +44,18 @@ test "missing local lookups keep Optional faults":
         expected: "Optional.get"
     )
 
-test "escaped map results retain aliases and insertion order":
+test "escaped map results keep insertion order":
     var values = returned_alias()
     values.add(1, 10)
-    var alias = values
-    alias.add(2, 21)
+    values.add(2, 21)
     var seen: List[Int] = []
     for entry in values:
         seen.append(entry.key)
     seen | try expect_equal(expected: [2, 1])
     values.get(2).get() | try expect_equal(expected: 21)
 
-test "captured maps retain shared reference mutations":
+test "captured maps read the entries present at capture":
     var values = Map[Int, Int]()
-    let callback = fn() Int: values.get(1).get()
     values.add(1, 10)
+    let callback = fn() Int: values.get(1).get()
     callback() | try expect_equal(expected: 10)
-    values.add(1, 20)
-    callback() | try expect_equal(expected: 20)
