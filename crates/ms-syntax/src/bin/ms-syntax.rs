@@ -93,13 +93,10 @@ fn report(name: &str, bytes: &[u8], sections: &[&str]) -> String {
         }
     };
     for sec in sections {
-        match *sec {
-            "parse" => match parse(&file, text) {
-                Ok(m) => out.push_str(&format!("ok\n{}", ms_syntax::dump::dump_module(&m))),
-                Err(d) => out.push_str(&format!("error {}\n", d.to_json())),
-            },
-            _ => {}
-        }
+        if *sec == "parse" { match parse(&file, text) {
+            Ok(m) => out.push_str(&format!("ok\n{}", ms_syntax::dump::dump_module(&m))),
+            Err(d) => out.push_str(&format!("error {}\n", d.to_json())),
+        } }
     }
     out
 }

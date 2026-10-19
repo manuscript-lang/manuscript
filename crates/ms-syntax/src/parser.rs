@@ -1326,12 +1326,11 @@ impl<'a> Parser<'a> {
                     return self.fail(eq, format!("argument labels use a colon; write {n}: value"));
                 }
                 let value = self.expression(0)?;
-                if let ExprKind::Name(n) = &value.kind {
-                    if self.kind() == Tok::Arrow {
+                if let ExprKind::Name(n) = &value.kind
+                    && self.kind() == Tok::Arrow {
                         let a = self.peek();
                         return self.fail(a, format!("lambdas are written fn(name: Type) Result: expression, e.g. fn({n}: Int) Int: {n} + 1"));
                     }
-                }
                 args.push(Argument { pos, name, value });
                 if !self.take(Tok::Comma) {
                     break;
@@ -1560,11 +1559,10 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        if matches!(a.body.last().map(|s| &s.kind), Some(StmtKind::Call(_))) {
-            if let Some(Stmt { kind: StmtKind::Call(e), .. }) = a.body.pop() {
+        if matches!(a.body.last().map(|s| &s.kind), Some(StmtKind::Call(_)))
+            && let Some(Stmt { kind: StmtKind::Call(e), .. }) = a.body.pop() {
                 a.value = Some(e);
             }
-        }
         for s in &a.body {
             if let StmtKind::Call(e) = &s.kind {
                 let is_try = matches!(e.kind, ExprKind::Unary { op: UnaryOp::Try, .. });
