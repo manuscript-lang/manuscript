@@ -19,6 +19,11 @@ const HANDLE_IFACES: &[(&str, &str)] = &[
     ("Connection", "msrt_net_connection"),
     ("Listener", "msrt_net_listener"),
     ("DatagramSocket", "msrt_net_datagram"),
+    ("HttpClient", "msrt_http_client"),
+    ("HttpServer", "msrt_http_server"),
+    ("HttpExchange", "msrt_http_exchange"),
+    ("ResponseBody", "msrt_http_body"),
+    ("WebSocket", "msrt_websocket"),
 ];
 
 /// A method of a handle-backed interface waiting to be lowered.
@@ -192,7 +197,7 @@ fn lower_native_iface_method(fl: &mut FnLower<'_>, job: &NativeIfaceJob) -> Resu
         .find(|o| o.name.as_str() == job.method)
         .ok_or_else(|| Error::new(format!("no method {}", job.method)))?;
     let sig = ct::sub(&op.ty, &subst);
-    let args: Vec<NArg> = sig
+    let mut args: Vec<NArg> = sig
         .params
         .iter()
         .zip(params.iter().skip(1))
@@ -202,6 +207,14 @@ fn lower_native_iface_method(fl: &mut FnLower<'_>, job: &NativeIfaceJob) -> Resu
             wrapped: false,
         })
         .collect();
+    // A handler crosses as a closure the runtime can call.
+    if matches!(job.method.as_str(), "serve" | "serve_stream") {
+        for a in &mut args {
+            if a.name.as_str() == "handler" {
+                a.val = fl.http_adapter(a.val, job.method == "serve_stream")?;
+            }
+        }
+    }
     let sym = format!("{}_{}", job.prefix, job.method);
     let ret = fl.ret_ty;
     let recv = Val {

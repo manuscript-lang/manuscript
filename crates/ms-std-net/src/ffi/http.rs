@@ -135,7 +135,7 @@ pub type BufferedThunk =
     unsafe extern "C" fn(env: *mut Obj, req: *mut RequestWire, resp: *mut ResponseWire);
 
 /// Streaming handler: `fn(exchange: HttpExchange) Result[Unit, HttpError]`. The
-/// exchange handle is +1 for the thunk; the result is an `HttpError` status
+/// exchange handle is borrowed for the call; the result is an `HttpError` status
 /// (`Failed` text through `err`).
 pub type StreamThunk =
     unsafe extern "C" fn(env: *mut Obj, exchange: *mut Obj, err: *mut *mut StrObj) -> u8;
@@ -939,13 +939,16 @@ impl Dispatch for Program {
             return Outcome::Fault("no handler".into());
         };
         let mut message: *mut StrObj = std::ptr::null_mut();
-        // SAFETY: the exchange handle moves to the thunk; the status and optional
-        // message string come back owned.
+        // SAFETY: the thunk borrows the exchange handle (it retains what it keeps); the status
+        // and optional message string come back owned.
         let mut status = 0;
         let handle = new_handle::<ExchangeRef>(exchange);
-        // SAFETY: the thunk contract; the handle moves to it.
+        // SAFETY: the thunk contract; the handle stays ours.
         let call = || status = unsafe { thunk(self.env, handle, &mut message) };
-        if let Some(stop) = guarded(call) {
+        let stopped = guarded(call);
+        // SAFETY: the handle was created above with one reference, now released.
+        unsafe { msrt_release(handle) };
+        if let Some(stop) = stopped {
             return stop;
         }
         let text = if message.is_null() {
@@ -994,7 +997,7 @@ fn server_limits(
 /// `Network.serve(address, handler, ...) -> Result[HttpServer, IoError]`.
 ///
 /// `env` is the handler closure (the native takes a reference; the server
-/// releases it when dropped) and `thunk` calls it.
+/// releases it when dropped); its code is the `BufferedThunk`.
 ///
 /// # Safety
 /// Pointers per `ABI.md`.
@@ -1003,7 +1006,6 @@ pub unsafe extern "C" fn msrt_net_network_serve(
     net: *const Obj,
     address: *const StrObj,
     env: *mut Obj,
-    thunk: BufferedThunk,
     has_max_requests: u8,
     max_requests: i64,
     has_max_body: u8,
@@ -1021,7 +1023,8 @@ pub unsafe extern "C" fn msrt_net_network_serve(
     unsafe {
         let program = Box::new(Program {
             env: retained(env),
-            buffered: Some(thunk),
+            // SAFETY: `env` is a closure the compiler built for `BufferedThunk`.
+            buffered: Some(closure_code::<BufferedThunk>(env)),
             streaming: None,
         });
         let limits = server_limits(
@@ -1053,6 +1056,22 @@ pub unsafe extern "C" fn msrt_net_network_serve(
     }
 }
 
+/// The code pointer of a closure object, as the handler function type `F` (a thunk the
+/// compiler built: `env` is the closure itself, per `ms-rt-abi`).
+///
+/// # Safety
+/// `env` is a live closure object whose code has the signature `F`.
+unsafe fn closure_code<F: Copy>(env: *mut Obj) -> F {
+    // SAFETY: caller contract; the code pointer sits at `CLOSURE_CODE_OFFSET`.
+    unsafe {
+        let code = *env
+            .cast::<u8>()
+            .add(ms_rt_abi::CLOSURE_CODE_OFFSET)
+            .cast::<usize>();
+        std::mem::transmute_copy::<usize, F>(&code)
+    }
+}
+
 /// Takes a reference to `env` for the server.
 ///
 /// # Safety
@@ -1077,7 +1096,6 @@ pub unsafe extern "C" fn msrt_net_network_serve_stream(
     net: *const Obj,
     address: *const StrObj,
     env: *mut Obj,
-    thunk: StreamThunk,
     opts: *const HttpServerOptionsWire,
     out: *mut *mut Obj,
     err: *mut *mut StrObj,
@@ -1088,7 +1106,8 @@ pub unsafe extern "C" fn msrt_net_network_serve_stream(
         let program = Box::new(Program {
             env: retained(env),
             buffered: None,
-            streaming: Some(thunk),
+            // SAFETY: `env` is a closure the compiler built for `StreamThunk`.
+            streaming: Some(closure_code::<StreamThunk>(env)),
         });
         let limits = server_limits(
             w.max_requests.get(),
@@ -1201,6 +1220,41 @@ pub unsafe extern "C" fn msrt_http_exchange_headers(x: *const Obj) -> *mut Obj {
 pub unsafe extern "C" fn msrt_http_exchange_method(x: *const Obj) -> *mut StrObj {
     // SAFETY: caller contract.
     unsafe { new_string(&exchange(x).method()) }
+}
+
+/// The standard methods in `HttpMethod` case order; `Custom` follows them.
+const METHODS: [&str; 9] = [
+    "GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "CONNECT", "OPTIONS", "TRACE",
+];
+
+/// The token of the standard `HttpMethod` case `index`.
+#[unsafe(no_mangle)]
+pub extern "C" fn msrt_http_method_token(index: u8) -> *mut StrObj {
+    new_string(METHODS.get(usize::from(index)).copied().unwrap_or(""))
+}
+
+/// The `HttpMethod` case index of a method token: a standard method, or 9 for `Custom`.
+///
+/// # Safety
+/// `token` is a live string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msrt_http_method_index(token: *const StrObj) -> u8 {
+    // SAFETY: caller contract.
+    let token = unsafe { str_ref(token) };
+    METHODS
+        .iter()
+        .position(|m| *m == token)
+        .map_or(9, |i| i as u8)
+}
+
+/// `HttpMethod.text()`: the method token as an owned string.
+///
+/// # Safety
+/// `method` is a live string (the lowering passes the token of the receiver).
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msrt_http_method_text(method: *const StrObj) -> *mut StrObj {
+    // SAFETY: caller contract.
+    unsafe { new_string(str_ref(method)) }
 }
 
 /// `HttpExchange.path() -> String`.

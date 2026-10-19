@@ -409,6 +409,9 @@ impl<'a> FnLower<'a> {
         if let Some(v) = self.time_field(m, recv)? {
             return Ok(v);
         }
+        if let Some(v) = self.http_inline_method(native, recv)? {
+            return Ok(v);
+        }
         if let Some(sym) = m
             .name()
             .and_then(|n| crate::rtcall::typed_method_symbol(&m.receiver, n.as_str()))

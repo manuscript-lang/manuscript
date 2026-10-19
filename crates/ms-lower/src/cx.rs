@@ -31,6 +31,8 @@ pub enum JobKind {
     BoundNative(Rc<BoundNativeJob>),
     /// A method of a handle-backed interface.
     NativeIface(Rc<crate::netiface::NativeIfaceJob>),
+    /// A handler closure the runtime calls.
+    HttpAdapter(Rc<crate::httplower::HttpAdapterJob>),
 }
 
 /// A bound native method waiting to be lowered; the closure holds the receiver.
@@ -131,7 +133,7 @@ impl Cx {
     pub fn module(&self, file: Name) -> Result<Rc<ModuleHir>, Error> {
         self.mods.get(&file).cloned().ok_or_else(|| {
             Error::new(format!(
-                "unknown module {file} (have {:?})",
+                "unknown module {file}",
                 self.mods.keys().map(|k| k.to_string()).collect::<Vec<_>>()
             ))
         })

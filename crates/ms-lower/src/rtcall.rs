@@ -128,6 +128,7 @@ const TYPED_NATIVES: &[(&str, &str, &str)] = &[
     ("IpAddress", "net", "ip_address"),
     ("Cidr", "net", "cidr"),
     ("HttpHeaders", "http", "headers"),
+    ("HttpMethod", "http", "method"),
 ];
 
 /// The runtime symbol of `method` on a native type from [`TYPED_NATIVES`].
@@ -370,6 +371,14 @@ impl FnLower<'_> {
                         vals.push(slot);
                     } else {
                         let v = self.borrow(x);
+                        // An `HttpMethod` crosses as its token.
+                        if self.is_http_method(self.ty_of(v)) {
+                            let text = self.method_text(v)?;
+                            let text = self.borrow(Val { v: text, own: true });
+                            vals.push(text);
+                            i += 1;
+                            continue;
+                        }
                         // An enum crosses as its case index.
                         let v = if self.is_plain_enum(self.ty_of(v)) {
                             self.b.alt_tag(v)
@@ -480,6 +489,11 @@ impl FnLower<'_> {
                 let err = self.err_slot(has_err, &mut vals);
                 let code = self.status_code(sym, &vals)?;
                 return self.status_result(sym, code, OutKind::Unit, err, result);
+            }
+            if ret == MTy::STR && self.is_http_method(result) {
+                let text = self.call_runtime(sym, &vals, MTy::STR)?;
+                let v = self.method_from_text(text, result)?;
+                return Ok(Val { v, own: true });
             }
             // A null string pointer is the absent `Optional[String]`.
             let ret = match self.b.m.types.kind(result) {

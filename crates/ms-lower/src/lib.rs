@@ -13,6 +13,7 @@ mod eq;
 mod expr;
 mod fixture;
 mod func;
+mod httplower;
 mod iface;
 mod iterate;
 mod mapset;

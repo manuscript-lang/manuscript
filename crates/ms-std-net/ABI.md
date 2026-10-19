@@ -158,8 +158,8 @@ msrt_net_network_http_client(net, opts, out, err) -> u8
 msrt_http_client_request[_bytes|_stream](c, method, address, headers, body, has_max, max, has_timeout, timeout, out, err) -> u8
 msrt_net_network_request[_bytes](net, method, address, headers, body, has_max, max, has_timeout, timeout, out: *mut ClientResponseWire, err) -> u8
 msrt_http_body_{read,metadata,close}
-msrt_net_network_serve(net, address, env, thunk: BufferedThunk, limits..., out, err) -> u8
-msrt_net_network_serve_stream(net, address, env, thunk: StreamThunk, opts, out, err) -> u8
+msrt_net_network_serve(net, address, env, limits..., out, err) -> u8
+msrt_net_network_serve_stream(net, address, env, opts, out, err) -> u8
 msrt_http_server_{address,close,wait}
 msrt_http_exchange_{headers,method,path,protocol,query,read,send_headers,write,write_bytes,close,upgrade}
 ```
