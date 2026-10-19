@@ -384,6 +384,17 @@ FuncEntry { addr: usize, size: u32, name_off: u32, file_off: u32, line: u32 }   
 LineEntry { pc: usize, line: u32, file_off: u32 }                                16 bytes, sorted by pc
 ```
 
+`abi_version >= 3` appends `line_scopes: *const u32` (one per `LineEntry`), `scopes: *const ScopeEntry`
+and `scope_count` (header 80 bytes) so frames of inlined functions appear in fault traces:
+
+```text
+ScopeEntry { name_off: u32, file_off: u32, parent: u32, call_line: u32 }          16 bytes
+```
+
+`line_scopes[i]` is 0 for the function itself, else a 1-based `scopes` index. A frame prints its
+line in the innermost scope's function, then for each enclosing scope the `call_line` in the parent
+(parent 0 = the physical function). Older tables (version < 3) are read without these fields.
+
 Offsets index NUL-terminated strings in `strings`. `addr`/`pc` are link-time
 (relocated) addresses; `pc` is the start of a code range (extends to the next entry; a frame's line is the last entry with `pc <= return_addr - 1` inside the function); `file_off == u32::MAX` means the
 function's file. Names are those shown in fault traces (`inner`, `Point.norm`,
