@@ -81,26 +81,49 @@ type Reader:
     column: Int
     limits: TomlLimits
     values: Int
+    tables: List[Table]
+    entries: List[Map[String, Node]]
 
+# Table flags. A table's entries live at the same index of `Reader.entries`.
 type Table:
-    entries: Map[String, Node]
     explicit: Bool
     dotted: Bool
     sealed: Bool
 
+# Tables are stored in the reader and referenced by index, so a parent can name a child that
+# later keys keep extending without two copies of the same table.
 type Node:
     case Leaf(value: TomlValue)
-    case TableNode(table: Table)
+    case TableNode(id: Int)
     case ArrayNode(values: List[Node])
-    case TableArray(tables: List[Table])
+    case TableArray(ids: List[Int])
 
-fn table(explicit: Bool, dotted: Bool) Table:
-    return Table(
-        entries: Map[String, Node](),
-        explicit: explicit,
-        dotted: dotted,
-        sealed: false
-    )
+fn new_table(reader: Reader, explicit: Bool, dotted: Bool) Int:
+    reader.tables.append(Table(explicit: explicit, dotted: dotted, sealed: false))
+    reader.entries.append(Map[String, Node]())
+    return reader.tables.length() - 1
+
+fn flags(reader: Reader, id: Int) Table:
+    return reader.tables.get(id)
+
+fn store_flags(reader: Reader, id: Int, flags: Table) Unit:
+    reader.tables.set(id, flags)
+
+fn lookup(reader: Reader, id: Int, key: String) Optional[Node]:
+    return reader.entries.get(id).get(key)
+
+fn contains_key(reader: Reader, id: Int, key: String) Bool:
+    return reader.entries.get(id).contains(key)
+
+# Adds an entry by taking the map out of its slot, so the update is in place.
+fn put(reader: Reader, id: Int, key: String, node: Node) Unit:
+    var current = reader.entries.get(id)
+    reader.entries.set(id, Map[String, Node]())
+    current.add(key, node)
+    reader.entries.set(id, current)
+
+fn put_array(reader: Reader, id: Int, key: String, ids: List[Int]) Unit:
+    put(reader, id, key, Node.TableArray(ids))
 
 fn peek(reader: Reader) String:
     return reader.chars.get(reader.pos, default: "")
@@ -278,62 +301,62 @@ fn key_path(reader: Reader) Result[List[String], TomlError]:
 
         advance(reader)
 
-fn child(
-    reader: Reader,
-    parent: Table,
-    key: String,
-    dotted: Bool
-) Result[Table, TomlError]:
-    if parent.sealed: return error(invalid(reader, "inline table is closed"))
+fn child(reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int, TomlError]:
+    if flags(reader, parent).sealed: return error(
+        invalid(reader, "inline table is closed")
+    )
 
-    let existing = parent.entries.get(key)
+    let existing = lookup(reader, parent, key)
 
     if existing.is_none():
         try allocate(reader)
-        let created = table(explicit: false, dotted)
-        parent.entries.add(key, Node.TableNode(created))
+        let created = new_table(reader, explicit: false, dotted)
+        put(reader, parent, key, Node.TableNode(created))
         return ok(created)
 
     let node = existing.get()
 
     match node:
         TableNode(value):
-            if value.sealed: return error(invalid(reader, "inline table is closed"))
-            if dotted and value.explicit: return error(
+            let state = flags(reader, value)
+            if state.sealed: return error(invalid(reader, "inline table is closed"))
+            if dotted and state.explicit: return error(
                 invalid(reader, "dotted key extends an explicit table")
             )
 
             return ok(value)
-        TableArray(tables):
+        TableArray(ids):
             if dotted: return error(invalid(reader, "dotted key extends a table array"))
 
-            return ok(tables.last().get())
+            return ok(ids.last().get())
         _: return error(invalid(reader, "key is already a value"))
 
 fn append_table(
     reader: Reader,
-    parent: Table,
+    parent: Int,
     key: String,
-    next: Table
+    next: Int
 ) Result[Unit, TomlError]:
-    let existing = parent.entries.get(key)
+    let existing = lookup(reader, parent, key)
 
     if existing.is_none():
         try allocate(reader)
-        parent.entries.add(key, Node.TableArray([next]))
+        put_array(reader, parent, key, [next])
         return ok(unit)
 
     let node = existing.get()
 
     match node:
-        TableArray(tables):
-            tables.append(next)
+        TableArray(ids):
+            var grown = ids.clone()
+            grown.append(next)
+            put_array(reader, parent, key, grown)
             return ok(unit)
         _: return error(invalid(reader, "table array conflicts with value"))
 
 fn assign(
     reader: Reader,
-    parent: Table,
+    parent: Int,
     keys: List[String],
     value: Node
 ) Result[Unit, TomlError]:
@@ -350,20 +373,22 @@ fn assign(
         index += 1
 
     let key = keys.last().get()
-    if current.sealed or current.entries.contains(key): return error(
+    if flags(reader, current).sealed or contains_key(reader, current, key): return error(
         invalid(reader, "duplicate or closed key")
     )
 
-    current.entries.add(key, value)
+    put(reader, current, key, value)
     return ok(unit)
 
-fn seal(value: Node) Unit:
+fn seal(reader: Reader, value: Node) Unit:
     match value:
-        TableNode(table):
-            table.sealed = true
-            for entry in table.entries: seal(entry.value)
+        TableNode(id):
+            var state = flags(reader, id)
+            state.sealed = true
+            store_flags(reader, id, state)
+            for entry in reader.entries.get(id): seal(reader, entry.value)
         ArrayNode(values):
-            for item in values: seal(item)
+            for item in values: seal(reader, item)
         _: return unit
 
 fn digits(text: String, alphabet: String) Bool:
@@ -598,7 +623,7 @@ fn read_value(reader: Reader, depth: Int) Result[Node, TomlError]:
 
     if c == "\{":
         advance(reader)
-        let result = table(explicit: true, dotted: false)
+        let result = new_table(reader, explicit: true, dotted: false)
         space(reader, multiline: false)
 
         if peek(reader) != "\}":
@@ -618,7 +643,7 @@ fn read_value(reader: Reader, depth: Int) Result[Node, TomlError]:
 
         advance(reader)
         let node = Node.TableNode(result)
-        seal(node)
+        seal(reader, node)
         return ok(node)
 
     var text = ""
@@ -670,9 +695,9 @@ fn materialize(reader: Reader, node: Node, depth: Int) Result[TomlValue, TomlErr
 
     match node:
         Leaf(value): return ok(value)
-        TableNode(table):
+        TableNode(id):
             let entries = Map[String, TomlValue]()
-            for entry in table.entries:
+            for entry in reader.entries.get(id):
                 entries.add(
                     entry.key,
                     try materialize(
@@ -688,14 +713,10 @@ fn materialize(reader: Reader, node: Node, depth: Int) Result[TomlValue, TomlErr
                 try materialize(reader, value, (depth + 1))
             )
             return ok(TomlValue.ArrayValue(result))
-        TableArray(tables):
+        TableArray(ids):
             let result: List[TomlValue] = []
-            for table in tables: result.append(
-                try materialize(
-                    reader,
-                    Node.TableNode(table),
-                    (depth + 1)
-                )
+            for id in ids: result.append(
+                try materialize(reader, Node.TableNode(id), (depth + 1))
             )
             return ok(TomlValue.ArrayValue(result))
 
@@ -747,10 +768,12 @@ export fn parse(
         line: 1,
         column: 1,
         limits: options,
-        values: 0
+        values: 0,
+        tables: [],
+        entries: []
     )
     try allocate(reader)
-    let root = table(explicit: true, dotted: false)
+    let root = new_table(reader, explicit: true, dotted: false)
     var current = root
     var current_depth = 1
 
@@ -784,11 +807,13 @@ export fn parse(
                 index += 1
 
             let key = keys.last().get()
-            if parent.sealed: return error(invalid(reader, "inline table is closed"))
+            if flags(reader, parent).sealed: return error(
+                invalid(reader, "inline table is closed")
+            )
 
             if array:
                 try allocate(reader)
-                let next = table(explicit: true, dotted: false)
+                let next = new_table(reader, explicit: true, dotted: false)
                 try append_table(reader: reader, parent: parent, key: key, next: next)
                 current = next
             else:
@@ -798,11 +823,13 @@ export fn parse(
                     key: key,
                     dotted: false
                 )
-                if current.explicit or current.dotted: return error(
+                var state = flags(reader, current)
+                if state.explicit or state.dotted: return error(
                     invalid(reader, "table already defined")
                 )
 
-                current.explicit = true
+                state.explicit = true
+                store_flags(reader, current, state)
 
             current_depth = keys.length() + 1
             if array: current_depth += 1
