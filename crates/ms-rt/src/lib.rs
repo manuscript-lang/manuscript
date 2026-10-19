@@ -7,6 +7,8 @@
 #![cfg_attr(test, allow(clippy::undocumented_unsafe_blocks))]
 
 extern crate alloc as stdalloc;
+// Linked so its `msstd_math_*` exports ship in the runtime library.
+extern crate ms_std_math;
 
 pub mod alloc;
 pub mod buf;

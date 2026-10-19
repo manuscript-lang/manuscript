@@ -15,6 +15,7 @@ import (
 var unsafeAllowed = []string{
 	"crates/ms-rt/",                // raw memory behind the C ABI compiled code links against
 	"crates/ms-rt-abi/",            // C-layout types and extern fn pointer types
+	"crates/ms-std-",               // standard-library natives exported over the same C ABI (no_mangle, libc calls)
 	"crates/ms-cli/src/process.rs", // libc signal/kill; std has no signal API
 }
 

@@ -1,6 +1,6 @@
 # ms-rt symbol catalogue
 
-Generated from the `#[unsafe(no_mangle)]` items in `crates/ms-rt/src` by `crates/ms-rt/gen-symbols.py`; do not edit.
+Generated from the `#[unsafe(no_mangle)]` items in `crates/ms-rt/src` and `crates/ms-std-*/src` by `crates/ms-rt/gen-symbols.py`; do not edit.
 
 ```text
 msrt_desc_int (data)
@@ -60,6 +60,15 @@ msrt_set_symmetric_difference( a: *const MapVal, b: *const MapVal, kd: *const Ty
 msrt_set_is_subset_of( a: *const MapVal, b: *const MapVal, kd: *const TypeDesc, ) -> u8
 msrt_set_is_superset_of( a: *const MapVal, b: *const MapVal, kd: *const TypeDesc, ) -> u8
 msrt_set_is_disjoint_from( a: *const MapVal, b: *const MapVal, kd: *const TypeDesc, ) -> u8
+msrt_numbers_parse_int( text: *const StrObj, radix: i64, out: *mut i64, ) -> u8
+msrt_numbers_parse_float(text: *const StrObj, out: *mut f64) -> u8
+msrt_numbers_error_message(status: u8) -> *mut StrObj
+msrt_float_to_precision( v: f64, digits: i64, out: *mut *mut StrObj, ) -> u8
+msrt_float_to_exponential( v: f64, digits: i64, out: *mut *mut StrObj, ) -> u8
+msrt_float_to_fixed( v: f64, digits: i64, out: *mut *mut StrObj, ) -> u8
+msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8
+msrt_float_compare(a: f64, b: f64) -> i64
+msrt_int_compare(a: i64, b: i64) -> i64
 msrt_alloc(size: usize) -> *mut u8
 msrt_alloc_zeroed(size: usize) -> *mut u8
 msrt_realloc(p: *mut u8, size: usize) -> *mut u8
@@ -176,4 +185,56 @@ msrt_strbuilder_append(b: *mut VecVal, s: *const StrObj)
 msrt_strbuilder_freeze(b: *mut VecVal) -> *mut StrObj
 msrt_strbuilder_drop(b: *mut VecVal)
 msrt_hash_list(v: *const VecVal, d: *const TypeDesc) -> i64
+msstd_math_atan2(y: f64, x: f64) -> f64
+msstd_math_hypot(left: f64, right: f64) -> f64
+msstd_math_pow(base: f64, exponent: f64) -> f64
+msstd_math_remainder(left: f64, right: f64) -> f64
+msstd_math_abs_int(n: i64) -> i64
+msstd_math_sign_int(n: i64) -> i64
+msstd_math_is_integer(v: f64) -> u8
+msstd_math_is_safe_integer(v: f64) -> u8
+msstd_math_abs (unary f64 -> f64)
+msstd_math_acos (unary f64 -> f64)
+msstd_math_asin (unary f64 -> f64)
+msstd_math_atan (unary f64 -> f64)
+msstd_math_ceil (unary f64 -> f64)
+msstd_math_cos (unary f64 -> f64)
+msstd_math_cosh (unary f64 -> f64)
+msstd_math_exp (unary f64 -> f64)
+msstd_math_floor (unary f64 -> f64)
+msstd_math_log (unary f64 -> f64)
+msstd_math_log10 (unary f64 -> f64)
+msstd_math_log2 (unary f64 -> f64)
+msstd_math_round (unary f64 -> f64)
+msstd_math_sin (unary f64 -> f64)
+msstd_math_sinh (unary f64 -> f64)
+msstd_math_sqrt (unary f64 -> f64)
+msstd_math_tan (unary f64 -> f64)
+msstd_math_tanh (unary f64 -> f64)
+msstd_math_truncate (unary f64 -> f64)
+msstd_math_acosh (unary f64 -> f64)
+msstd_math_asinh (unary f64 -> f64)
+msstd_math_atanh (unary f64 -> f64)
+msstd_math_cbrt (unary f64 -> f64)
+msstd_math_expm1 (unary f64 -> f64)
+msstd_math_log1p (unary f64 -> f64)
+msstd_math_sign (unary f64 -> f64)
+msstd_math_to_float32 (unary f64 -> f64)
+msstd_math_e() -> f64
+msstd_math_pi() -> f64
+msstd_math_infinity() -> f64
+msstd_math_nan() -> f64
+msstd_math_epsilon() -> f64
+msstd_math_max_float() -> f64
+msstd_math_min_float() -> f64
+msstd_math_max_int() -> i64
+msstd_math_min_int() -> i64
+msstd_math_max_safe_integer() -> i64
+msstd_math_min_safe_integer() -> i64
+msstd_math_ln2() -> f64
+msstd_math_ln10() -> f64
+msstd_math_log2e() -> f64
+msstd_math_log10e() -> f64
+msstd_math_sqrt2() -> f64
+msstd_math_sqrt_half() -> f64
 ```

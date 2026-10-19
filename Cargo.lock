@@ -359,11 +359,16 @@ name = "ms-rt"
 version = "0.1.0"
 dependencies = [
  "ms-rt-abi",
+ "ms-std-math",
  "unicode-normalization",
 ]
 
 [[package]]
 name = "ms-rt-abi"
+version = "0.1.0"
+
+[[package]]
+name = "ms-std-math"
 version = "0.1.0"
 
 [[package]]
