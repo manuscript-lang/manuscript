@@ -754,7 +754,6 @@ impl Pipe for TlsPipe {
 
 #[test]
 fn negotiates_http2_through_alpn() {
-    use std::os::fd::OwnedFd;
     let server_tls = TlsOptions {
         certificate_pem: CERT.into(),
         private_key_pem: KEY.into(),
@@ -775,7 +774,7 @@ fn negotiates_http2_through_alpn() {
     std::thread::spawn(move || {
         let (stream, _) = listener.accept().unwrap();
         stream.set_nonblocking(true).unwrap();
-        let sock = socket2::Socket::from(OwnedFd::from(stream));
+        let sock = socket2::Socket::from(stream);
         let deadline = Deadline::after(Duration::from_secs(10));
         let io = tls::accept(sock, config, deadline, false).unwrap();
         serve_h2(TlsPipe(io), route, 0, log);

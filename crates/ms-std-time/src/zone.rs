@@ -77,70 +77,95 @@ fn named(name: &str) -> Option<Zone> {
     TimeZone::get(name).ok().map(Zone::Named)
 }
 
-unsafe extern "C" {
-    fn getenv(name: *const u8) -> *const u8;
-    fn readlink(path: *const u8, buf: *mut u8, size: usize) -> isize;
-}
+#[cfg(unix)]
+mod host {
+    use super::{Zone, named};
+    use alloc::string::{String, ToString};
 
-fn env_tz() -> Option<String> {
-    // SAFETY: `getenv` takes a NUL-terminated name and returns a NUL-terminated string or null.
-    let p = unsafe { getenv(c"TZ".as_ptr().cast()) };
-    if p.is_null() {
-        return None;
+    unsafe extern "C" {
+        fn getenv(name: *const u8) -> *const u8;
+        fn readlink(path: *const u8, buf: *mut u8, size: usize) -> isize;
     }
-    let mut len = 0;
-    // SAFETY: the string is NUL-terminated.
-    while unsafe { *p.add(len) } != 0 {
-        len += 1;
-    }
-    // SAFETY: `len` bytes were just scanned.
-    let bytes = unsafe { core::slice::from_raw_parts(p, len) };
-    Some(String::from_utf8_lossy(bytes).into_owned())
-}
 
-/// The zone name behind `/etc/localtime`, when it is a symlink into a zoneinfo tree.
-fn localtime_link() -> Option<String> {
-    let mut buf = [0u8; 256];
-    // SAFETY: the path is NUL-terminated and `buf` is writable for its length.
-    let n = unsafe {
-        readlink(
-            c"/etc/localtime".as_ptr().cast(),
-            buf.as_mut_ptr(),
-            buf.len(),
-        )
-    };
-    if n <= 0 {
-        return None;
-    }
-    let target = core::str::from_utf8(&buf[..n as usize]).ok()?;
-    target
-        .rsplit_once("zoneinfo/")
-        .map(|(_, name)| name.to_string())
-}
-
-/// The host's local zone: `TZ`, else `/etc/localtime`, else UTC.
-fn local() -> Zone {
-    let name = match env_tz() {
-        Some(tz) => tz.strip_prefix(':').unwrap_or(&tz).to_string(),
-        None => localtime_link().unwrap_or_default(),
-    };
-    if name.is_empty() || name == "UTC" {
-        return Zone::Utc;
-    }
-    named(&name).unwrap_or(Zone::Utc)
-}
-
-/// `time.local_zone()`: the `TZ` name when it loads, else `UTC`.
-pub fn local_zone_name() -> String {
-    match env_tz() {
-        Some(tz) => {
-            let name = tz.strip_prefix(':').unwrap_or(&tz);
-            if !name.is_empty() && named(name).is_some() {
-                name.to_string()
-            } else {
-                "UTC".to_string()
-            }
+    fn env_tz() -> Option<String> {
+        // SAFETY: `getenv` takes a NUL-terminated name and returns a NUL-terminated string or null.
+        let p = unsafe { getenv(c"TZ".as_ptr().cast()) };
+        if p.is_null() {
+            return None;
         }
-        None => "UTC".to_string(),
+        let mut len = 0;
+        // SAFETY: the string is NUL-terminated.
+        while unsafe { *p.add(len) } != 0 {
+            len += 1;
+        }
+        // SAFETY: `len` bytes were just scanned.
+        let bytes = unsafe { core::slice::from_raw_parts(p, len) };
+        Some(String::from_utf8_lossy(bytes).into_owned())
+    }
+
+    /// The zone name behind `/etc/localtime`, when it is a symlink into a zoneinfo tree.
+    fn localtime_link() -> Option<String> {
+        let mut buf = [0u8; 256];
+        // SAFETY: the path is NUL-terminated and `buf` is writable for its length.
+        let n = unsafe {
+            readlink(
+                c"/etc/localtime".as_ptr().cast(),
+                buf.as_mut_ptr(),
+                buf.len(),
+            )
+        };
+        if n <= 0 {
+            return None;
+        }
+        let target = core::str::from_utf8(&buf[..n as usize]).ok()?;
+        target
+            .rsplit_once("zoneinfo/")
+            .map(|(_, name)| name.to_string())
+    }
+
+    /// The host's local zone: `TZ`, else `/etc/localtime`, else UTC.
+    pub fn local() -> Zone {
+        let name = match env_tz() {
+            Some(tz) => tz.strip_prefix(':').unwrap_or(&tz).to_string(),
+            None => localtime_link().unwrap_or_default(),
+        };
+        if name.is_empty() || name == "UTC" {
+            return Zone::Utc;
+        }
+        named(&name).unwrap_or(Zone::Utc)
+    }
+
+    /// `time.local_zone()`: the `TZ` name when it loads, else `UTC`.
+    pub fn local_zone_name() -> String {
+        match env_tz() {
+            Some(tz) => {
+                let name = tz.strip_prefix(':').unwrap_or(&tz);
+                if !name.is_empty() && named(name).is_some() {
+                    name.to_string()
+                } else {
+                    "UTC".to_string()
+                }
+            }
+            None => "UTC".to_string(),
+        }
     }
 }
+
+/// Windows ignores `TZ`; the local zone is the system setting, mapped to an IANA zone by jiff.
+/// Like Go's `time.Local` there, it has no IANA name, so `local_zone()` stays `UTC`.
+#[cfg(windows)]
+mod host {
+    use super::Zone;
+    use alloc::string::{String, ToString};
+
+    pub fn local() -> Zone {
+        Zone::Named(jiff::tz::TimeZone::system())
+    }
+
+    pub fn local_zone_name() -> String {
+        "UTC".to_string()
+    }
+}
+
+use host::local;
+pub use host::local_zone_name;

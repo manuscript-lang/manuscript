@@ -1,19 +1,24 @@
 //! Process-wide controls, ported from `osProcessControl` in `pkg/runtime/process.go`.
 use crate::envfile;
+#[cfg(unix)]
 use alloc::string::String;
 use alloc::vec::Vec;
+#[cfg(unix)]
 use core::ffi::CStr;
-use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
+#[cfg(unix)]
+use ms_rt_abi::STATUS_UNSUPPORTED;
+use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_LIMIT_EXCEEDED};
 use ms_std_fs::err::{Fail, Res};
 use ms_std_fs::ops::read_bounded;
 use ms_std_fs::sys::{self, CPath};
 
 /// The group id type `getgrouplist` takes: `int` on macOS, `gid_t` elsewhere.
-#[cfg(target_os = "macos")]
+#[cfg(all(unix, target_os = "macos"))]
 type GroupId = libc::c_int;
-#[cfg(not(target_os = "macos"))]
+#[cfg(all(unix, not(target_os = "macos")))]
 type GroupId = libc::gid_t;
 
+#[cfg(unix)]
 fn utf8(bytes: Vec<u8>) -> Res<Vec<u8>> {
     match core::str::from_utf8(&bytes) {
         Ok(_) => Ok(bytes),
@@ -21,15 +26,18 @@ fn utf8(bytes: Vec<u8>) -> Res<Vec<u8>> {
     }
 }
 
+#[cfg(unix)]
 fn nul_free(bytes: &[u8]) -> bool {
     !bytes.contains(&0)
 }
 
+#[cfg(unix)]
 pub fn working_directory() -> Res<Vec<u8>> {
     let cwd = sys::getcwd().map_err(|e| Fail::errno(e, "getwd", b""))?;
     utf8(cwd)
 }
 
+#[cfg(unix)]
 pub fn change_directory(path: &[u8]) -> Res<()> {
     let p = CPath::new(path).ok_or_else(Fail::invalid)?;
     // SAFETY: `p` is NUL-terminated.
@@ -39,6 +47,7 @@ pub fn change_directory(path: &[u8]) -> Res<()> {
     Ok(())
 }
 
+#[cfg(unix)]
 pub fn send_signal(pid: i64, signal: i64) -> Res<()> {
     if !(-2_147_483_648..=2_147_483_647).contains(&pid) || !(0..=64).contains(&signal) {
         return Err(Fail::invalid());
@@ -50,6 +59,7 @@ pub fn send_signal(pid: i64, signal: i64) -> Res<()> {
     Ok(())
 }
 
+#[cfg(unix)]
 pub fn groups() -> Res<Vec<i64>> {
     // SAFETY: a zero-sized query returns the group count.
     let n = unsafe { libc::getgroups(0, core::ptr::null_mut()) };
@@ -65,6 +75,7 @@ pub fn groups() -> Res<Vec<i64>> {
     Ok(list[..got as usize].iter().map(|&g| g as i64).collect())
 }
 
+#[cfg(unix)]
 pub fn umask(mask: i64) -> Res<i64> {
     if !(0..=0o777).contains(&mask) {
         return Err(Fail::invalid());
@@ -73,6 +84,7 @@ pub fn umask(mask: i64) -> Res<i64> {
     Ok(unsafe { libc::umask(mask as libc::mode_t) } as i64)
 }
 
+#[cfg(unix)]
 pub fn set_identity(kind: &[u8], id: i64) -> Res<()> {
     if !(0..=2_147_483_647).contains(&id) {
         return Err(Fail::invalid());
@@ -94,6 +106,7 @@ pub fn set_identity(kind: &[u8], id: i64) -> Res<()> {
     Ok(())
 }
 
+#[cfg(unix)]
 pub fn set_groups(groups: &[i64]) -> Res<()> {
     if groups.iter().any(|g| !(0..=2_147_483_647).contains(g)) {
         return Err(Fail::invalid());
@@ -101,6 +114,7 @@ pub fn set_groups(groups: &[i64]) -> Res<()> {
     apply_groups(groups)
 }
 
+#[cfg(unix)]
 fn apply_groups(groups: &[i64]) -> Res<()> {
     let list: Vec<libc::gid_t> = groups.iter().map(|&g| g as libc::gid_t).collect();
     // SAFETY: `list` is readable for its length.
@@ -111,6 +125,7 @@ fn apply_groups(groups: &[i64]) -> Res<()> {
 }
 
 /// `initialize_groups`: the groups of `username` with `gid` first.
+#[cfg(unix)]
 pub fn initialize_groups(username: &[u8], gid: i64) -> Res<()> {
     if !(0..=2_147_483_647).contains(&gid) || !nul_free(username) {
         return Err(Fail::invalid());
@@ -170,7 +185,7 @@ pub fn title() -> Res<Vec<u8>> {
     utf8(data)
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(all(unix, not(target_os = "linux")))]
 pub fn title() -> Res<Vec<u8>> {
     Err(Fail::status(STATUS_UNSUPPORTED))
 }
@@ -191,7 +206,7 @@ pub fn set_title(title: &[u8]) -> Res<()> {
     r.map(|_| ())
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(all(unix, not(target_os = "linux")))]
 pub fn set_title(title: &[u8]) -> Res<()> {
     if title.contains(&0) || title.contains(&b'\n') {
         return Err(Fail::invalid());
@@ -204,6 +219,7 @@ pub fn set_title(title: &[u8]) -> Res<()> {
 // ---------------------------------------------------------------------------
 
 /// The live environment as `(name, value)` pairs; any non-UTF-8 entry is `Unsupported`.
+#[cfg(unix)]
 pub fn environment() -> Res<Vec<(Vec<u8>, Vec<u8>)>> {
     let mut out = Vec::new();
     // SAFETY: `environ` is a NULL-terminated array of C strings.
@@ -223,10 +239,12 @@ pub fn environment() -> Res<Vec<(Vec<u8>, Vec<u8>)>> {
     Ok(out)
 }
 
+#[cfg(unix)]
 unsafe extern "C" {
     static environ: *const *const libc::c_char;
 }
 
+#[cfg(unix)]
 pub fn set_environment(name: &[u8], value: Option<&[u8]>) -> Res<()> {
     if name.is_empty() || name.contains(&b'=') || name.contains(&0) {
         return Err(Fail::invalid());
@@ -250,9 +268,24 @@ pub fn set_environment(name: &[u8], value: Option<&[u8]>) -> Res<()> {
     Ok(())
 }
 
+/// Whether the environment already has the variable `name`.
+#[cfg(unix)]
+fn has_variable(name: &CPath) -> bool {
+    // SAFETY: `name` is NUL-terminated.
+    !unsafe { libc::getenv(name.as_ptr()) }.is_null()
+}
+
+#[cfg(windows)]
+fn has_variable(name: &CPath) -> bool {
+    alloc::ffi::CString::new(name.bytes())
+        .ok()
+        .and_then(|c| sys::env(&c))
+        .is_some()
+}
+
 pub fn load_environment(path: &[u8], max: i64) -> Res<()> {
     let p = CPath::new(path).ok_or_else(Fail::invalid)?;
-    let fd = sys::open(&p, libc::O_RDONLY, 0).map_err(|e| Fail::errno(e, "open", path))?;
+    let fd = sys::open(&p, sys::O_RDONLY, 0).map_err(|e| Fail::errno(e, "open", path))?;
     let data = read_bounded(fd, max);
     let _ = sys::close(fd);
     let data = match data {
@@ -265,8 +298,7 @@ pub fn load_environment(path: &[u8], max: i64) -> Res<()> {
     let entries = envfile::parse(text).ok_or_else(|| Fail::status(STATUS_INVALID_DATA))?;
     for (key, value) in entries {
         let k = CPath::new(key.as_bytes()).ok_or_else(Fail::invalid)?;
-        // SAFETY: `k` is NUL-terminated.
-        if unsafe { libc::getenv(k.as_ptr()) }.is_null() {
+        if !has_variable(&k) {
             set_environment(key.as_bytes(), Some(value.as_bytes()))?;
         }
     }
@@ -289,6 +321,7 @@ pub struct Usage {
     pub involuntary: i64,
 }
 
+#[cfg(unix)]
 pub fn resource_usage() -> Res<Usage> {
     // SAFETY: zeroed `rusage` is a valid out buffer.
     let mut r: libc::rusage = unsafe { core::mem::zeroed() };
@@ -324,6 +357,7 @@ pub struct Info {
     pub effective_gid: i64,
 }
 
+#[cfg(unix)]
 pub fn info() -> Res<Info> {
     #[cfg(target_os = "linux")]
     let executable = {
@@ -349,6 +383,8 @@ pub fn info() -> Res<Info> {
 
 pub const OS: &str = if cfg!(target_os = "macos") {
     "darwin"
+} else if cfg!(windows) {
+    "windows"
 } else {
     "linux"
 };
@@ -430,7 +466,7 @@ pub fn memory_limit() -> Res<(i64, i64)> {
     Ok((0, 0))
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(all(unix, not(target_os = "linux")))]
 pub fn memory_limit() -> Res<(i64, i64)> {
     Ok((0, 0))
 }
@@ -458,7 +494,7 @@ pub fn host_available_memory() -> Res<i64> {
     Err(Fail::failed("MemAvailable missing from /proc/meminfo"))
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(all(unix, not(target_os = "linux")))]
 pub fn host_available_memory() -> Res<i64> {
     Err(Fail::status(STATUS_UNSUPPORTED))
 }
@@ -492,12 +528,15 @@ pub fn resident_bytes() -> Res<i64> {
     Ok(pages * page)
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(all(unix, not(target_os = "linux")))]
 pub fn resident_bytes() -> Res<i64> {
     Err(Fail::status(STATUS_UNSUPPORTED))
 }
 
-#[cfg(test)]
+#[cfg(windows)]
+pub use crate::control_windows::*;
+
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 

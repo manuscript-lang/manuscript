@@ -15,7 +15,14 @@ extern crate alloc;
 
 pub mod command;
 pub mod control;
+#[cfg(windows)]
+mod control_windows;
 pub mod envfile;
+#[cfg(unix)]
+#[path = "signals_unix.rs"]
+pub mod signals;
+#[cfg(windows)]
+#[path = "signals_windows.rs"]
 pub mod signals;
 
 #[cfg(test)]
@@ -23,7 +30,7 @@ extern crate std;
 
 /// Serialises tests that spawn children with tests that change the process environment: `setenv`
 /// may reallocate `environ` while `posix_spawnp` reads it, which makes the spawn fail at random.
-#[cfg(test)]
+#[cfg(all(test, unix))]
 pub(crate) fn environment_guard() -> std::sync::MutexGuard<'static, ()> {
     static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
     LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -383,6 +390,7 @@ pub unsafe extern "C" fn msstd_process_replace(
     }
 }
 
+#[cfg(unix)]
 fn nul_terminated(items: impl Iterator<Item = Vec<u8>>) -> Vec<Vec<u8>> {
     items
         .map(|mut v| {
@@ -392,6 +400,13 @@ fn nul_terminated(items: impl Iterator<Item = Vec<u8>>) -> Vec<Vec<u8>> {
         .collect()
 }
 
+#[cfg(windows)]
+fn replace(_: &[u8], _: &[&[u8]], _: &[&[u8]], _: &[&[u8]]) -> Res<()> {
+    // Go's syscall.Exec is EWINDOWS there.
+    Err(Fail::status(ms_rt_abi::STATUS_UNSUPPORTED))
+}
+
+#[cfg(unix)]
 fn replace(program: &[u8], args: &[&[u8]], names: &[&[u8]], values: &[&[u8]]) -> Res<()> {
     if program.is_empty()
         || program.contains(&0)

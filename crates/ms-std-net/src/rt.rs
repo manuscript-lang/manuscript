@@ -3,6 +3,7 @@
 //! Only the ms thread may call `msrt_*` (the allocator and counts are not
 //! atomic); background threads of this crate never touch this module.
 
+use crate::sys::{self, Borrowed};
 use std::sync::atomic::{AtomicU8, Ordering};
 
 unsafe extern "C" {
@@ -15,7 +16,11 @@ unsafe extern "C" {
         flags: u32,
         stack_bytes: usize,
     ) -> u64;
-    fn msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32;
+    // The first argument is the raw socket handle (`sys::Raw`: a file descriptor on Unix, the
+    // `SOCKET` as `u64` on Windows).
+    fn msrt_task_wait_fd(fd: sys::Raw, events: u32, timeout_ns: i64) -> u32;
+    #[cfg(windows)]
+    fn msrt_task_sleep(ns: i64) -> u32;
 }
 
 /// Whether SIGINT/SIGTERM asked the program to stop.
@@ -54,9 +59,18 @@ pub unsafe fn spawn_detached(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *
     unsafe { msrt_task_spawn(entry, arg, 1, 0) };
 }
 
-/// Parks the running task until `fd` is ready for `events` (1 read, 2 write) or the
-/// timeout (negative: none) passes. Returns the runtime's ready bits.
-pub fn wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32 {
+/// Parks the running task until `sock` is ready for `events` (1 read, 2 write) or the
+/// timeout (negative: none) passes. Returns the runtime's ready bits. The only caller of
+/// `msrt_task_wait_fd`: a change of its handle type is confined to this function and `sys::Raw`.
+pub fn wait_fd(sock: Borrowed<'_>, events: u32, timeout_ns: i64) -> u32 {
     // SAFETY: parks the current task; no Rust borrow is held across the call by contract.
-    unsafe { msrt_task_wait_fd(fd, events, timeout_ns) }
+    unsafe { msrt_task_wait_fd(sys::raw(sock), events, timeout_ns) }
+}
+
+/// Parks the running task for `ns` nanoseconds without watching a socket. Returns the
+/// runtime's bits (8 timeout, 16 cancelled).
+#[cfg(windows)]
+pub fn sleep(ns: i64) -> u32 {
+    // SAFETY: parks the current task; no Rust borrow is held across the call by contract.
+    unsafe { msrt_task_sleep(ns) }
 }

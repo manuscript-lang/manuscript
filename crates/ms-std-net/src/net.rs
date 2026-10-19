@@ -8,13 +8,13 @@ use crate::error::{NetErr, cannot_resolve, describe_io_error};
 use crate::ip::{Cidr, ip_text, normalize};
 use crate::policy::{Policy, fold_host, host_ok, ip_ok};
 use crate::rt;
+use crate::sys::{self, AsSock};
 use crate::wait::{Deadline, Interest, Wait, spawn_blocking, wait_fd};
 use socket2::{Domain, Protocol, SockAddr, Socket, Type};
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::io;
 use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
-use std::os::fd::AsFd;
 use std::rc::{Rc, Weak};
 
 /// Something a network owns and closes with itself.
@@ -524,8 +524,11 @@ impl Network {
         let addr = SocketAddr::new(ip, port);
         let sock = Socket::new(Domain::for_address(addr), Type::STREAM, Some(Protocol::TCP))
             .map_err(|e| self.io_failure(&e))?;
-        sock.set_reuse_address(true)
-            .map_err(|e| self.io_failure(&e))?;
+        sys::prepare_listener(&sock).map_err(|e| self.io_failure(&e))?;
+        if addr.ip().is_unspecified() && addr.is_ipv6() {
+            // A wildcard listener serves both families, as in Go (Windows defaults to v6 only).
+            sock.set_only_v6(false).map_err(|e| self.io_failure(&e))?;
+        }
         sock.bind(&addr.into()).map_err(|e| self.io_failure(&e))?;
         sock.listen(4096).map_err(|e| self.io_failure(&e))?;
         sock.set_nonblocking(true)
@@ -569,7 +572,7 @@ impl Network {
                 .copied()
                 .ok_or_else(|| NetErr::failed(cannot_resolve(host)))?
         };
-        let sock = std::net::UdpSocket::bind(SocketAddr::new(ip, port)).map_err(|e| {
+        let sock = bind_udp_socket(SocketAddr::new(ip, port)).map_err(|e| {
             rt::check_cancel();
             NetErr::Failed(describe_io_error(&e))
         })?;
@@ -603,6 +606,18 @@ impl Network {
     }
 }
 
+/// A bound UDP socket; a wildcard IPv6 address serves both families, as in Go.
+fn bind_udp_socket(addr: SocketAddr) -> io::Result<std::net::UdpSocket> {
+    let sock = Socket::new(Domain::for_address(addr), Type::DGRAM, Some(Protocol::UDP))?;
+    if addr.ip().is_unspecified() && addr.is_ipv6() {
+        sock.set_only_v6(false)?;
+    }
+    sock.bind(&addr.into())?;
+    let sock = std::net::UdpSocket::from(sock);
+    sys::prepare_udp(&sock)?;
+    Ok(sock)
+}
+
 /// Validates an optional nonnegative limit; none means unlimited.
 pub fn limit(v: Option<i64>) -> Result<u128, NetErr> {
     match v {
@@ -618,12 +633,11 @@ pub enum ConnectError {
 }
 
 fn in_progress(e: &io::Error) -> bool {
-    e.raw_os_error() == Some(rustix::io::Errno::INPROGRESS.raw_os_error())
-        || e.kind() == io::ErrorKind::WouldBlock
+    sys::connect_in_progress(e)
 }
 
 fn finish_connect(sock: &Socket, deadline: Deadline) -> Result<(), ConnectError> {
-    if wait_fd(sock.as_fd(), Interest::Write, deadline) == Wait::TimedOut {
+    if wait_fd(sock.as_sock(), Interest::Write, deadline) == Wait::TimedOut {
         return Err(ConnectError::Timeout);
     }
     match sock.take_error() {
