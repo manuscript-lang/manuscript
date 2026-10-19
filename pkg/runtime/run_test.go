@@ -137,10 +137,6 @@ func TestDeferredCleanup(t *testing.T) {
 }
 
 func TestRunMainExitStatuses(t *testing.T) {
-	var diagnostics []string
-	saved := diagnosticOutput
-	diagnosticOutput = func(m string) { diagnostics = append(diagnostics, m) }
-	defer func() { diagnosticOutput = saved }()
 	if got := RunMain(func(*Execution) int { return 3 }, nil); got != 3 {
 		t.Fatalf("exit = %d", got)
 	}

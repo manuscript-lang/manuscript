@@ -28,10 +28,9 @@ const (
 // RunMain runs the program's main function and returns its exit status. It
 // cancels the root execution on SIGINT/SIGTERM (exit 130/143), reports faults
 // on standard error (exit 70), waits for every joined operation, runs the
-// host shutdown hook, and flushes runtime diagnostics.
+// host shutdown hook.
 func RunMain(main func(*Execution) int, args []string) (exit int) {
 	exit = exitFault
-	defer FlushDiagnostics()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	watch := watchStops(cancel)

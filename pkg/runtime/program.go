@@ -3,8 +3,6 @@ package msruntime
 import (
 	"fmt"
 	"math"
-	"os"
-	"sync"
 )
 
 // ProgramState is what the whole program shares through its Executions.
@@ -29,35 +27,3 @@ var hostShutdown func(*Execution)
 func minRangeFault(operation, parameter string, minimum, value int) {
 	Raise(fmt.Sprintf("%s: %s must be between %d and %d, found %d", operation, parameter, minimum, math.MaxInt, value))
 }
-
-// diagnosticOutput writes one diagnostic line; tests replace it.
-var diagnosticOutput = func(message string) { fmt.Fprintln(os.Stderr, message) }
-
-// diagnostics serializes runtime diagnostics to standard error so scheduler
-// failure reports never interleave. The writer touches only strings.
-var diagnostics = struct {
-	once  sync.Once
-	queue chan string
-	work  sync.WaitGroup
-}{queue: make(chan string, 128)}
-
-func reportDiagnostic(message string) {
-	diagnostics.once.Do(func() {
-		go func() {
-			for m := range diagnostics.queue {
-				diagnosticOutput(m)
-				diagnostics.work.Done()
-			}
-		}()
-	})
-	diagnostics.work.Add(1)
-	select {
-	case diagnostics.queue <- message:
-	default:
-		diagnostics.work.Done()
-		diagnosticOutput("runtime diagnostic buffer overflow")
-	}
-}
-
-// FlushDiagnostics waits until every queued diagnostic has been written.
-func FlushDiagnostics() { diagnostics.work.Wait() }

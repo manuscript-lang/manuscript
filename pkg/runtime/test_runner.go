@@ -115,7 +115,6 @@ func runTestsWith(tests []Test, options TestOptions, args []string, reporter *te
 }
 
 func runTestsContext(tests []Test, options TestOptions, args []string, reporter *testReporter, runContext context.Context) int {
-	defer FlushDiagnostics()
 	total := len(tests)
 	match, err := regexp.Compile(options.Match)
 	if err != nil {

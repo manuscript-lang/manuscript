@@ -113,7 +113,3 @@ func TestCheckCancelled(t *testing.T) {
 	// Shield ignores cancellation.
 	CheckCancelled(Shield(cancelledCtx))
 }
-
-type testError string
-
-func (e testError) Message(*Execution) string { return string(e) }
