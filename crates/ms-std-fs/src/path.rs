@@ -51,8 +51,11 @@ pub fn clean(path: &[u8]) -> Vec<u8> {
 
 /// `filepath.Join` of two elements.
 pub fn join(a: &[u8], b: &[u8]) -> Vec<u8> {
-    if a.is_empty() && b.is_empty() {
-        return Vec::new();
+    if a.is_empty() {
+        return if b.is_empty() { Vec::new() } else { clean(b) };
+    }
+    if b.is_empty() {
+        return clean(a);
     }
     let mut v = Vec::with_capacity(a.len() + b.len() + 1);
     v.extend_from_slice(a);

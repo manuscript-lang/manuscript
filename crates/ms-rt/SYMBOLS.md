@@ -209,8 +209,38 @@ msstd_fs_access(path: *const StrObj, mode: i64) -> u8
 msstd_fs_chown(path: *const StrObj, uid: i64, gid: i64, follow: u8) -> u8
 msstd_fs_truncate(path: *const StrObj, size: i64) -> u8
 msstd_fs_set_times( path: *const StrObj, accessed_seconds: i64, accessed_nanos: i64, modified_seconds: i64, modified_nanos: i64, follow: u8, ) -> u8
+msstd_fs_file_open( path: *const StrObj, flags: i64, mode: i64, out: *mut *mut FileHandle, ) -> u8
+msstd_fs_open_flags(mode: *const StrObj, out: *mut i64) -> u8
+msstd_fs_file_read_at( h: *mut FileHandle, offset: i64, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
+msstd_fs_file_read_file( h: *mut FileHandle, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
+msstd_fs_file_write_at( h: *mut FileHandle, offset: i64, data: *const VecVal, ) -> u8
+msstd_fs_file_read_vectors( h: *mut FileHandle, sizes: *const VecVal, offset: i64, out: *mut VecVal, ) -> u8
+msstd_fs_file_write_vectors( h: *mut FileHandle, buffers: *const VecVal, offset: i64, ) -> u8
+msstd_fs_file_seek( h: *mut FileHandle, offset: i64, origin: i64, out: *mut i64, ) -> u8
+msstd_fs_file_stat(h: *mut FileHandle, out: *mut InfoOut) -> u8
+msstd_fs_file_truncate(h: *mut FileHandle, size: i64) -> u8
+msstd_fs_file_sync(h: *mut FileHandle) -> u8
+msstd_fs_file_data_sync(h: *mut FileHandle) -> u8
+msstd_fs_file_chmod(h: *mut FileHandle, mode: i64) -> u8
+msstd_fs_file_chown(h: *mut FileHandle, uid: i64, gid: i64) -> u8
+msstd_fs_file_set_times( h: *mut FileHandle, accessed_seconds: i64, accessed_nanos: i64, modified_seconds: i64, modified_nanos: i64, ) -> u8
+msstd_fs_file_read_lines( h: *mut FileHandle, max_bytes: i64, max_lines: i64, out: *mut VecVal, ) -> u8
+msstd_fs_file_path(h: *mut FileHandle) -> *mut StrObj
+msstd_fs_directory_open( path: *const StrObj, out: *mut *mut DirHandle, ) -> u8
+msstd_fs_directory_read( h: *mut DirHandle, name: *mut *mut StrObj, directory: *mut u8, symlink: *mut u8, ) -> u8
+msstd_fs_directory_close(h: *mut DirHandle)
+msstd_fs_directory_path(h: *mut DirHandle) -> *mut StrObj
+msstd_fs_temporary_open( prefix: *const StrObj, out: *mut *mut TempHandle, ) -> u8
+msstd_fs_temporary_path(h: *mut TempHandle) -> *mut StrObj
+msstd_fs_temporary_close(h: *mut TempHandle) -> u8
+msstd_fs_glob( path: *const StrObj, pattern: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
+msstd_fs_copy_tree( source: *const StrObj, destination: *const StrObj, replace: u8, entries: i64, bytes: i64, ) -> u8
+msstd_fs_copy( source: *const StrObj, destination: *const StrObj, flags: u32, clone: *const StrObj, entries: i64, bytes: i64, filter: Option<CopyFilter>, env: *mut u8, ) -> u8
+msstd_fs_glob_entries( path: *const StrObj, patterns: *const VecVal, exclude: *const VecVal, follow_links: u8, max_entries: i64, max_results: i64, callback: Option<EntryFilter>, env: *mut u8, paths: *mut VecVal, names: *mut VecVal, flags: *mut VecVal, ) -> u8
+msstd_fs_constants(names: *mut VecVal, values: *mut VecVal)
 msrt_cancel_flag (data)
 msrt_cancelled() -> !
+msrt_io_flush()
 msstd_io_failure_message() -> *mut StrObj
 msstd_io_standard(which: i64) -> *mut Host
 msstd_io_open(path: *const StrObj, out: *mut *mut Host) -> u8
@@ -223,6 +253,7 @@ msstd_io_close(h: *mut Host)
 msstd_io_is_closed(h: *const Host) -> u8
 msrt_cancel_flag (data)
 msrt_cancelled() -> !
+msrt_io_flush()
 msstd_math_atan2(y: f64, x: f64) -> f64
 msstd_math_hypot(left: f64, right: f64) -> f64
 msstd_math_pow(base: f64, exponent: f64) -> f64
@@ -305,6 +336,7 @@ msstd_process_subprocess_kill(h: *mut ChildHandle)
 msstd_process_subprocess_close(h: *mut ChildHandle)
 msrt_cancel_flag (data)
 msrt_cancelled() -> !
+msrt_io_flush()
 msrt_start_nanos() -> i64
 msrt_argv(_: *mut ms_rt_abi::VecVal)
 msstd_time_duration_add(left: i64, other: i64) -> i64

@@ -458,8 +458,13 @@ version = "0.1.0"
 dependencies = [
  "libc",
  "ms-rt-abi",
+ "ms-std-glob",
  "ms-std-rt",
 ]
+
+[[package]]
+name = "ms-std-glob"
+version = "0.1.0"
 
 [[package]]
 name = "ms-std-io"

@@ -14,7 +14,7 @@ pub fn errno() -> Errno {
     return unsafe { *libc::__error() };
 }
 
-fn set_errno(value: Errno) {
+pub fn set_errno(value: Errno) {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     // SAFETY: as in `errno`.
     unsafe {
@@ -334,4 +334,28 @@ pub fn env(name: &CStr) -> Option<Vec<u8>> {
     }
     // SAFETY: `getenv` returns a NUL-terminated string.
     Some(unsafe { CStr::from_ptr(p) }.to_bytes().to_vec())
+}
+
+/// Birth time of an open descriptor when the filesystem reports one (Linux `statx`).
+#[cfg(target_os = "linux")]
+pub fn birth_time_fd(fd: c_int) -> Option<(i64, i64)> {
+    // SAFETY: zeroed `statx` is a valid out buffer.
+    let mut stx: libc::statx = unsafe { core::mem::zeroed() };
+    // SAFETY: an empty path with AT_EMPTY_PATH names the descriptor itself; `stx` is writable.
+    let r = unsafe {
+        libc::statx(
+            fd,
+            c"".as_ptr(),
+            libc::AT_EMPTY_PATH,
+            libc::STATX_BTIME,
+            &mut stx,
+        )
+    };
+    (r == 0 && stx.stx_mask & libc::STATX_BTIME != 0)
+        .then_some((stx.stx_btime.tv_sec, stx.stx_btime.tv_nsec as i64))
+}
+
+#[cfg(not(target_os = "linux"))]
+pub fn birth_time_fd(_: c_int) -> Option<(i64, i64)> {
+    None
 }

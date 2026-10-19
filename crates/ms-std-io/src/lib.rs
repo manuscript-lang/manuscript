@@ -12,7 +12,7 @@
 
 extern crate alloc;
 
-pub mod stream;
+pub use ms_std_fs::stream;
 
 use ms_rt_abi::{STATUS_NONE, STATUS_OK, StrObj, VecVal};
 use ms_std_rt::{

@@ -209,6 +209,21 @@ pub struct Entry {
     pub symlink: bool,
 }
 
+/// `(is directory, is symlink)` of an entry, from `d_type` or an `lstat` when the filesystem reports none.
+pub fn entry_kind(dir: &[u8], name: &[u8], kind: u8) -> (bool, bool) {
+    if kind != sys::DT_UNKNOWN {
+        return (kind == sys::DT_DIR, kind == sys::DT_LNK);
+    }
+    let full = path::join(dir, name);
+    match CPath::new(&full).and_then(|c| sys::stat(&c, false).ok()) {
+        Some(st) => (
+            st.st_mode & libc::S_IFMT == libc::S_IFDIR,
+            st.st_mode & libc::S_IFMT == libc::S_IFLNK,
+        ),
+        None => (false, false),
+    }
+}
+
 pub fn list(path: &[u8], max: i64) -> Res<Vec<Entry>> {
     let p = cpath(path)?;
     let st = sys::stat(&p, true).map_err(|e| Fail::errno(e, "open", path))?;
@@ -225,15 +240,7 @@ pub fn list(path: &[u8], max: i64) -> Res<Vec<Entry>> {
         if !valid_utf8(&name) {
             return Err(Fail::status(STATUS_UNSUPPORTED));
         }
-        let (directory, symlink) = if kind == sys::DT_UNKNOWN {
-            let full = path::join(path, &name);
-            match CPath::new(&full).and_then(|c| sys::stat(&c, false).ok()) {
-                Some(st) => (sys::is_dir(&st), st.st_mode & libc::S_IFMT == libc::S_IFLNK),
-                None => (false, false),
-            }
-        } else {
-            (kind == sys::DT_DIR, kind == sys::DT_LNK)
-        };
+        let (directory, symlink) = entry_kind(path, &name, kind);
         out.push(Entry {
             name,
             directory,
@@ -418,7 +425,7 @@ fn remove_tree_at(dirfd: i32, name: &CStr, display: &[u8]) -> Res<()> {
     Ok(())
 }
 
-fn remove_tree(path: &[u8]) -> Res<()> {
+pub fn remove_tree(path: &[u8]) -> Res<()> {
     poll_cancel();
     let p = cpath(path)?;
     let st = match sys::stat(&p, false) {

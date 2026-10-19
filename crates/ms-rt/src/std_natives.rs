@@ -218,6 +218,109 @@ mod fs_io {
         }
     }
 
+    fn empty() -> VecVal {
+        VecVal {
+            ptr: core::ptr::null_mut(),
+            len: 0,
+            cap: 0,
+        }
+    }
+
+    unsafe extern "C-unwind" fn skip_deep(
+        env: *mut u8,
+        source: *const StrObj,
+        _destination: *const StrObj,
+    ) -> u8 {
+        // SAFETY: `env` is the counter the test passed; `source` is a live string.
+        unsafe { *env += 1 };
+        (!text(source as *mut StrObj).ends_with("deep")) as u8
+    }
+
+    #[test]
+    fn handles_directories_glob_and_copy_through_the_abi() {
+        let _g = lock();
+        let root = std::format!("/tmp/msrt-fs2-{}", std::process::id());
+        let (r, a, deep, dest) = (
+            st(&root),
+            st(&std::format!("{root}/a.txt")),
+            st(&std::format!("{root}/sub/deep")),
+            st(&std::format!("{root}-out")),
+        );
+        let mut handle: *mut ms_std_rt::Handle<ms_std_fs::stream::Stream> = core::ptr::null_mut();
+        let mut out = empty();
+        let mut size = 0i64;
+        let data = vec_of(b"abcdef");
+        // SAFETY: valid runtime strings, live handles and writable out pointers throughout.
+        unsafe {
+            assert_eq!(msstd_fs_create_directory(deep, 1), STATUS_OK);
+            assert_eq!(msstd_fs_write_file(a, &data, 0), STATUS_OK);
+
+            let mode = st("r+");
+            let mut flags = 0i64;
+            assert_eq!(msstd_fs_open_flags(mode, &mut flags), STATUS_OK);
+            assert_eq!(msstd_fs_file_open(a, flags, 0o600, &mut handle), STATUS_OK);
+            assert_eq!(msstd_fs_file_read_at(handle, 2, 1, 2, &mut out), STATUS_OK);
+            assert_eq!(contents(&out), b"cd");
+            let x = vec_of(b"XY");
+            assert_eq!(msstd_fs_file_write_at(handle, 1, &x), STATUS_OK);
+            assert_eq!(msstd_fs_file_truncate(handle, 4), STATUS_OK);
+            assert_eq!(msstd_fs_file_seek(handle, 0, 0, &mut size), STATUS_OK);
+            assert_eq!(msstd_fs_file_read_file(handle, 0, 0, &mut out), STATUS_OK);
+            assert_eq!(contents(&out), b"aXYd");
+            msstd_io_close(handle);
+            assert_eq!(msstd_fs_file_sync(handle), ms_rt_abi::STATUS_CLOSED);
+            ms_std_rt::release(handle.cast());
+
+            let mut cursor: *mut ms_std_rt::Handle<ms_std_fs::dir::Directory> =
+                core::ptr::null_mut();
+            assert_eq!(msstd_fs_directory_open(r, &mut cursor), STATUS_OK);
+            let (mut name, mut d, mut l) = (core::ptr::null_mut(), 0u8, 0u8);
+            let mut seen = Vec::new();
+            while msstd_fs_directory_read(cursor, &mut name, &mut d, &mut l) == STATUS_OK {
+                seen.push((text(name), d));
+            }
+            seen.sort();
+            assert_eq!(seen, [("a.txt".into(), 0), ("sub".into(), 1)]);
+            msstd_fs_directory_close(cursor);
+            ms_std_rt::release(cursor.cast());
+
+            let pattern = st("**/*.txt");
+            assert_eq!(msstd_fs_glob(r, pattern, 0, 0, &mut out), STATUS_OK);
+            assert_eq!(out.len, 1);
+
+            let mut counter = 0u8;
+            let clone = st("none");
+            assert_eq!(
+                msstd_fs_copy(
+                    r,
+                    dest,
+                    1 | 16,
+                    clone,
+                    i64::MAX,
+                    i64::MAX,
+                    Some(skip_deep),
+                    &mut counter
+                ),
+                STATUS_OK
+            );
+            assert_eq!(counter, 4);
+            let copied = st(&std::format!("{root}-out/a.txt"));
+            assert_eq!(msstd_fs_read_file(copied, 0, 0, &mut out), STATUS_OK);
+            assert_eq!(contents(&out), b"aXYd");
+            let skipped = st(&std::format!("{root}-out/sub/deep"));
+            assert_eq!(
+                msstd_fs_read_file(skipped, 0, 0, &mut out),
+                STATUS_NOT_FOUND
+            );
+
+            let (mut names, mut values) = (empty(), empty());
+            msstd_fs_constants(&mut names, &mut values);
+            assert!(names.len > 10 && names.len == values.len);
+            assert_eq!(msstd_fs_remove(r, 1), STATUS_OK);
+            assert_eq!(msstd_fs_remove(dest, 1), STATUS_OK);
+        }
+    }
+
     #[test]
     fn io_streams_through_the_abi() {
         let _g = lock();

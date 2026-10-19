@@ -2,6 +2,8 @@
 //!
 //! Reads and writes block in `poll(2)` slices so a pending cancellation interrupts them; bytes a
 //! line reader took beyond the current line wait in `pending` for the next read.
+use crate::err::describe;
+use crate::sys::{self, CPath};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::Write;
@@ -9,8 +11,6 @@ use ms_rt_abi::{
     STATUS_CLOSED, STATUS_FAILED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED,
     STATUS_NONE, STATUS_UNAVAILABLE,
 };
-use ms_std_fs::err::describe;
-use ms_std_fs::sys::{self, CPath};
 use ms_std_rt::poll_cancel;
 
 /// The `IoError` outcome of an operation: a status and, for `STATUS_FAILED`, its text.
@@ -30,7 +30,7 @@ impl IoFail {
         }
     }
 
-    fn os(op: &str, name: &[u8], errno: i32) -> IoFail {
+    pub(crate) fn os(op: &str, name: &[u8], errno: i32) -> IoFail {
         let mut m = String::new();
         let _ = write!(m, "{} ", op);
         let mut bytes = m.into_bytes();
@@ -50,15 +50,20 @@ unsafe extern "C-unwind" {
 }
 
 pub struct Stream {
-    fd: i32,
+    pub(crate) fd: i32,
     /// Standard output and error share the descriptor with the runtime's buffered `print`.
     shares_output: bool,
     owned: bool,
     closed: bool,
     /// Whether reads may block indefinitely (anything that is not a regular file).
     pollable: bool,
-    name: Vec<u8>,
-    pending: Vec<u8>,
+    /// The open mode forbids reading or writing, which is `InvalidInput` on every host.
+    pub(crate) no_read: bool,
+    pub(crate) no_write: bool,
+    /// An `@std/fs` file handle: flushing synchronizes the file.
+    pub(crate) file: bool,
+    pub(crate) name: Vec<u8>,
+    pub(crate) pending: Vec<u8>,
 }
 
 const DEFAULT_CHUNK: i64 = 64 * 1024;
@@ -76,6 +81,9 @@ impl Stream {
             owned,
             closed: false,
             pollable,
+            no_read: false,
+            no_write: false,
+            file: false,
             name: name.to_vec(),
             pending: Vec::new(),
         }
@@ -94,6 +102,16 @@ impl Stream {
             Ok(fd) => Ok(Stream::new(fd, true, path)),
             Err(_) => Err(IoFail::status(STATUS_UNAVAILABLE)),
         }
+    }
+
+    /// A stream over an `@std/fs` file handle opened with the given access mode.
+    pub fn file_handle(fd: i32, flags: i32, name: &[u8]) -> Stream {
+        let mut s = Stream::new(fd, true, name);
+        let access = flags & libc::O_ACCMODE;
+        s.no_read = access == libc::O_WRONLY;
+        s.no_write = access == libc::O_RDONLY;
+        s.file = true;
+        s
     }
 
     pub fn is_closed(&self) -> bool {
@@ -145,6 +163,9 @@ impl Stream {
             return Err(IoFail::status(STATUS_CLOSED));
         }
         poll_cancel();
+        if self.no_read {
+            return Err(IoFail::status(STATUS_INVALID_INPUT));
+        }
         let n = match max {
             None => DEFAULT_CHUNK,
             Some(v) if v <= 0 => return Err(IoFail::status(STATUS_INVALID_INPUT)),
@@ -171,6 +192,10 @@ impl Stream {
             return Err(IoFail::status(STATUS_CLOSED));
         }
         poll_cancel();
+        if self.no_write {
+            return Err(IoFail::status(STATUS_INVALID_INPUT));
+        }
+        self.rewind();
         if self.shares_output {
             // SAFETY: provided by `ms-rt`.
             unsafe { msrt_io_flush() };
@@ -206,7 +231,28 @@ impl Stream {
             return Err(IoFail::status(STATUS_CLOSED));
         }
         poll_cancel();
+        if self.file {
+            // SAFETY: plain system call on an open descriptor.
+            if unsafe { libc::fsync(self.fd) } != 0 {
+                return Err(IoFail::os("sync", &self.name, sys::errno()));
+            }
+        }
         Ok(())
+    }
+
+    /// Returns read-ahead bytes to the file so position-based operations see them.
+    pub(crate) fn rewind(&mut self) {
+        if self.file && !self.pending.is_empty() {
+            // SAFETY: plain system call on an open descriptor.
+            unsafe {
+                libc::lseek(
+                    self.fd,
+                    -(self.pending.len() as libc::off_t),
+                    libc::SEEK_CUR,
+                )
+            };
+            self.pending.clear();
+        }
     }
 
     /// `ioReadLine`: one line without its ending, `None` at end of stream.
@@ -279,6 +325,15 @@ fn finish_line(mut line: Vec<u8>) -> IoRes<Vec<u8>> {
 }
 
 pub const NONE: u8 = STATUS_NONE;
+
+impl From<IoFail> for crate::err::Fail {
+    fn from(f: IoFail) -> Self {
+        crate::err::Fail {
+            status: f.status,
+            message: (!f.message.is_empty()).then_some(f.message),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
