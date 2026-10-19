@@ -210,6 +210,7 @@ b0:
   drop %l
   ret %x
 }
+
 fn @main() -> int !0:20:1 {
 b0:
   %i: int = iconst 5
@@ -646,5 +647,145 @@ fn random_programs_agree() {
     assert!(
         bad.is_empty(),
         "disagreeing seeds (sources in the temp dir): {bad:?}"
+    );
+}
+
+#[test]
+fn predicated_overflow_keeps_faults_sources_cleanup_and_check_options() {
+    for (n, (x, y, take, line)) in [
+        (i64::MAX, 2, true, 10),
+        (i64::MAX, 1, true, 11),
+        (i64::MIN, -1, true, 10),
+        (i64::MAX, 2, false, 0), // untaken multiply and add both overflow
+        (i64::MIN, 0, true, 0),
+        (-3, 2, true, 0),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let src = format!(
+            r#"module "predicated"
+file 0 "predicated.ms"
+extern @msrt_print_int(int)
+entry @main
+fn @close(%x: int) {{
+b0:
+  %u: unit = call.rt @msrt_print_int(%x)
+  ret
+}}
+fn @choose(%x: int, %y: int, %c: bool) -> int !0:2:1 {{
+b0:
+  br_if %c, yes(), no()
+yes:
+  %p: int = imul.chk %x, %y !0:10:3
+  %a: int = iadd.chk %p, %y !0:11:5
+  br join(%a)
+no:
+  %b: int = iconst 9
+  br join(%b)
+join(%r: int):
+  ret %r
+}}
+fn @main() -> int !0:40:1 {{
+b0:
+  %x: int = iconst {x}
+  %y: int = iconst {y}
+  %c: bool = bconst {take}
+  %one: int = iconst 1
+  %two: int = iconst 2
+  %h1: int = cleanup.push @close %one
+  %h2: int = cleanup.push @close %two
+  %r: int = call @choose(%x, %y, %c) !0:41:1
+  %u: unit = call.rt @msrt_print_int(%r)
+  cleanup.run %h1
+  %z: int = iconst 0
+  ret %z
+}}
+"#
+        );
+        let mut m = module(&src);
+        assert!(ms_mir::opt::ifconv::run(&mut m));
+        ms_mir::verify::verify_module(&m).unwrap();
+        let prepared = ms_mir::print::print_module(&m);
+        for opt_level in ["none", "speed"] {
+            let opts = Options {
+                opt_level,
+                ..Options::default()
+            };
+            let (original, original_err) =
+                run_native_full(&src, &opts, &format!("original-{n}-{opt_level}"));
+            let (actual, err) =
+                run_native_full(&prepared, &opts, &format!("flags-{n}-{opt_level}"));
+            assert_eq!(
+                (actual.code, &actual.stdout),
+                (original.code, &original.stdout)
+            );
+            assert_eq!(err, original_err);
+            if line != 0 {
+                assert_eq!(actual.code, 70);
+                assert_eq!(actual.stdout, "2\n1\n");
+                assert!(
+                    err.contains(&format!("at choose predicated.ms:{line}")),
+                    "{err}"
+                );
+            } else {
+                assert_eq!(actual.code, 0);
+            }
+        }
+        let opts = Options {
+            checks: false,
+            ..Options::default()
+        };
+        let (actual, err) = run_native_full(&prepared, &opts, &format!("flags-unchecked-{n}"));
+        assert_eq!(actual.code, 0, "{err}");
+        assert!(actual.stdout.ends_with("2\n1\n"));
+    }
+}
+
+#[test]
+fn predicated_overflow_retains_inline_frames_on_real_runtime() {
+    let src = r#"module "inline_flags"
+file 0 "inline_flags.ms"
+entry @main
+fn @choose(%x: int, %c: bool) -> int !0:2:1 {
+b0:
+  %two: int = iconst 2
+  br_if %c, yes(), no()
+yes:
+  %a: int = imul.chk %x, %two !0:10:3
+  br join(%a)
+no:
+  %b: int = iconst 0
+  br join(%b)
+join(%r: int):
+  ret %r
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %x: int = iconst 9223372036854775807
+  %c: bool = bconst true
+  %r: int = call @choose(%x, %c) !0:21:5
+  ret %r
+}
+"#;
+    let mut m = module(src);
+    assert!(ms_mir::opt::ifconv::run(&mut m));
+    ms_mir::opt::optimize(&mut m, ms_mir::opt::Level::Speed, true);
+    assert_eq!(m.funcs.len(), 1);
+    let d = dir();
+    let objp = d.join("inline-flags.o");
+    std::fs::write(&objp, compile(&m, &Options::default()).unwrap()).unwrap();
+    let exe = d.join("inline-flags");
+    link(&objp, real_runtime(), &exe).unwrap();
+    let out = Command::new(exe).output().unwrap();
+    assert_eq!(out.status.code(), Some(70));
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("choose") && err.contains("inline_flags.ms:10"),
+        "{err}"
+    );
+    assert!(
+        err.contains("main") && err.contains("inline_flags.ms:21"),
+        "{err}"
     );
 }
