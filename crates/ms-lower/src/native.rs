@@ -883,19 +883,7 @@ impl<'a> FnLower<'a> {
                 let out = self.emty(e)?;
                 self.result_method(out, name, recv, a, args)
             }
-            (TyKind::Alt(a), "is_ok" | "is_error") => {
-                let want = if name == "is_ok" { "ok" } else { "error" };
-                let case = self.b.m.alts[a.index()]
-                    .cases
-                    .iter()
-                    .position(|c| c.name == want)
-                    .ok_or_else(|| Error::new("Result without ok/error cases"))?;
-                let r = self.borrow(recv);
-                let tag = self.b.alt_tag(r);
-                let k = self.b.iconst(case as i64);
-                let v = self.b.icmp(ms_mir::ir::Cc::Eq, tag, k);
-                Ok(Val { v, own: false })
-            }
+            (TyKind::Alt(a), "is_ok" | "is_error") => self.result_state(name, recv, a),
             (TyKind::List(_), "concat") => {
                 let TyKind::List(elem) = self.b.m.types.kind(rty).clone() else {
                     unreachable!()
@@ -985,6 +973,26 @@ impl<'a> FnLower<'a> {
         r
     }
 
+    /// `result.is_ok()` or `result.is_error()`.
+    fn result_state(
+        &mut self,
+        name: &str,
+        recv: Val,
+        alt: ms_mir::types::AltId,
+    ) -> Result<Val, Error> {
+        let want = if name == "is_ok" { "ok" } else { "error" };
+        let case = self.b.m.alts[alt.index()]
+            .cases
+            .iter()
+            .position(|c| c.name == want)
+            .ok_or_else(|| Error::new("Result without ok/error cases"))?;
+        let r = self.borrow(recv);
+        let tag = self.b.alt_tag(r);
+        let k = self.b.iconst(case as i64);
+        let v = self.b.icmp(ms_mir::ir::Cc::Eq, tag, k);
+        Ok(Val { v, own: false })
+    }
+
     /// A native method applied to evaluated arguments, for method values.
     pub(crate) fn bound_native_call(
         &mut self,
@@ -1042,6 +1050,11 @@ impl<'a> FnLower<'a> {
             let r = self.borrow(recv);
             let text = self.b.call(f, &[r]);
             return Ok(Val { v: text, own: true });
+        }
+        if let (TyKind::Alt(a), "is_ok" | "is_error") =
+            (self.b.m.types.kind(rty).clone(), name.as_str())
+        {
+            return self.result_state(&name, recv, a);
         }
         if let (TyKind::Alt(a), "get" | "err" | "or_else" | "map" | "and_then" | "to_optional") =
             (self.b.m.types.kind(rty).clone(), name.as_str())
