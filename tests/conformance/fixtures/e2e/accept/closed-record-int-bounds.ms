@@ -65,13 +65,12 @@ fn scalar_peer() Int:
 
     return cell.total
 
-fn alias() Int:
+fn reset() Int:
     var cell = Cell(0)
-    var other = cell
     var i = 0
 
     while i < 2:
-        other.total = 9223372036854775807
+        cell.total = 9223372036854775807
         cell.bump(1)
         i += 1
 
@@ -102,8 +101,8 @@ test "peer cells and scalar carries are not initial invariants":
         expected: "Int overflow"
     )
 
-test "record aliases keep ordinary shared mutation":
-    (try expect_fault(fn(): let ignored = alias())) | try expect_contains(
+test "field resets keep ordinary overflow checks":
+    (try expect_fault(fn(): let ignored = reset())) | try expect_contains(
         expected: "Int overflow"
     )
 

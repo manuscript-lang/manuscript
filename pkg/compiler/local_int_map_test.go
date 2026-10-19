@@ -12,7 +12,7 @@ func TestClosedLocalIntMapLowering(t *testing.T) {
 		local              bool
 	}{
 		{"direct calls", "let values = Map[Int, Int]()", "values.add(1, 2)\n    let found = values.get(1)\n    let present = values.contains(1)\n    let size = values.length()", true},
-		{"mutable", "var values = Map[Int, Int]()", "values.add(1, 2)", false},
+		{"reassigned", "var values = Map[Int, Int]()", "values.add(1, 2)\n    values = Map[Int, Int]()", false},
 		{"alias", "let values = Map[Int, Int]()", "let alias = values\n    alias.add(1, 2)", false},
 		{"argument", "let values = Map[Int, Int]()", "consume(values)", false},
 		{"capture", "let values = Map[Int, Int]()", "let callback = fn() Int: values.length()\n    let size = callback()", false},
