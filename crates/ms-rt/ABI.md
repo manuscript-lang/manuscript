@@ -280,6 +280,22 @@ returns a handle; `msrt_cleanup_run(handle)` runs and removes that action (and a
 newer pending ones first, innermost to outermost). On a fault the remaining actions
 run LIFO shielded from cancellation.
 
+**Guarded calls.** `msrt_guard_call(code: extern "C-unwind" fn(*mut u8), data: *mut u8,
+msg_out: *mut *mut StrObj) -> u8` runs `code(data)` as an isolated request and returns
+0 when it returns normally. A fault inside it (user fault, call-depth limit, runtime
+fault) runs the cleanups pushed since entry LIFO, shielded, restores the call depth,
+cancel shield and equality-cycle state, and returns 1 with the fault report (message
+plus `at file:line in fn` frames, no trailing newline) as a new String in `*msg_out`
+(owned by the caller; may be null to discard). A stop request that reaches
+`msrt_cancelled` inside the guard runs the same cleanups and returns 2 with
+`*msg_out = null`; `msrt_cancel_flag` stays set so the caller should stop soon after.
+Guards nest: a fault leaves only the innermost one. Cleanups registered before entry
+are untouched. Not unwound: values owned by the abandoned frames are only released
+through cleanup actions, so a fault leaks anything not under `with`. Faults still exit
+70 outside any guard. Implementation: `msrt_guard_enter` saves callee-saved registers
+and the stack pointer and calls `code`; a fault jumps back to it (x86_64 and aarch64;
+generated code needs no landing pads). Single threaded like the rest of the runtime.
+
 ## 8. Naming and catalogue
 
 `msrt_<module>_<name>`; modules: `mem`, `rc`, `fault`, `cleanup`, `int`, `float`,
