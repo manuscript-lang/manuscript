@@ -12,31 +12,81 @@ pub const STDERR: c_int = 2;
 pub const PROT_READ: c_int = 1;
 pub const PROT_WRITE: c_int = 2;
 pub const MAP_PRIVATE: c_int = 0x02;
+#[cfg(not(target_vendor = "apple"))]
 pub const MAP_ANONYMOUS: c_int = 0x20;
+#[cfg(target_vendor = "apple")]
+pub const MAP_ANONYMOUS: c_int = 0x1000;
+#[cfg(not(target_vendor = "apple"))]
 pub const MAP_NORESERVE: c_int = 0x4000;
+#[cfg(target_vendor = "apple")]
+pub const MAP_NORESERVE: c_int = 0x40;
 
 pub const SIGINT: c_int = 2;
 pub const SIGALRM: c_int = 14;
 pub const SIGTERM: c_int = 15;
 pub const SIGPROF: c_int = 27;
+#[cfg(not(target_vendor = "apple"))]
 pub const SA_SIGINFO: c_int = 4;
+#[cfg(target_vendor = "apple")]
+pub const SA_SIGINFO: c_int = 0x40;
+#[cfg(not(target_vendor = "apple"))]
 pub const SA_RESTART: c_int = 0x1000_0000;
+#[cfg(target_vendor = "apple")]
+pub const SA_RESTART: c_int = 0x2;
 pub const ITIMER_REAL: c_int = 0;
 pub const ITIMER_PROF: c_int = 2;
 
+/// `struct sigaction` as the C library lays it out (handler, mask, flags).
+#[cfg(not(target_vendor = "apple"))]
 #[repr(C)]
 pub struct sigaction_t {
-    pub handler: usize,
-    pub mask: [u64; 16],
-    pub flags: c_int,
-    pub restorer: usize,
+    handler: usize,
+    mask: [u64; 16],
+    flags: c_int,
+    restorer: usize,
 }
+
+#[cfg(target_vendor = "apple")]
+#[repr(C)]
+pub struct sigaction_t {
+    handler: usize,
+    mask: u32,
+    flags: c_int,
+}
+
+impl sigaction_t {
+    /// A handler with an empty signal mask and the given `SA_*` flags.
+    pub const fn new(handler: usize, flags: c_int) -> Self {
+        #[cfg(not(target_vendor = "apple"))]
+        {
+            Self {
+                handler,
+                mask: [0; 16],
+                flags,
+                restorer: 0,
+            }
+        }
+        #[cfg(target_vendor = "apple")]
+        {
+            Self {
+                handler,
+                mask: 0,
+                flags,
+            }
+        }
+    }
+}
+
+#[cfg(not(target_vendor = "apple"))]
+pub type suseconds_t = c_long;
+#[cfg(target_vendor = "apple")]
+pub type suseconds_t = i32;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct timeval {
     pub sec: c_long,
-    pub usec: c_long,
+    pub usec: suseconds_t,
 }
 
 #[repr(C)]
@@ -54,7 +104,10 @@ unsafe extern "C" {
     pub fn calloc(n: size_t, size: size_t) -> *mut c_void;
     pub fn realloc(p: *mut c_void, size: size_t) -> *mut c_void;
     pub fn free(p: *mut c_void);
+    #[cfg(not(target_vendor = "apple"))]
     pub fn malloc_usable_size(p: *mut c_void) -> size_t;
+    #[cfg(target_vendor = "apple")]
+    pub fn malloc_size(p: *const c_void) -> size_t;
     pub fn write(fd: c_int, buf: *const c_void, n: size_t) -> isize;
     pub fn read(fd: c_int, buf: *mut c_void, n: size_t) -> isize;
     pub fn _exit(code: c_int) -> !;
@@ -97,8 +150,32 @@ unsafe extern "C" {
 }
 
 pub const O_WRONLY: c_int = 1;
+#[cfg(not(target_vendor = "apple"))]
 pub const O_CREAT: c_int = 0o100;
+#[cfg(target_vendor = "apple")]
+pub const O_CREAT: c_int = 0x200;
+#[cfg(not(target_vendor = "apple"))]
 pub const O_TRUNC: c_int = 0o1000;
+#[cfg(target_vendor = "apple")]
+pub const O_TRUNC: c_int = 0x400;
+
+/// Bytes the system allocator reserved for a live block from `malloc`/`realloc`.
+///
+/// # Safety
+/// `p` is a live block from the system allocator.
+pub unsafe fn usable_size(p: *mut c_void) -> size_t {
+    // SAFETY: forwarded contract.
+    unsafe {
+        #[cfg(not(target_vendor = "apple"))]
+        {
+            malloc_usable_size(p)
+        }
+        #[cfg(target_vendor = "apple")]
+        {
+            malloc_size(p)
+        }
+    }
+}
 
 /// Writes all of `data` to `fd`, retrying on partial writes and EINTR.
 pub fn write_all(fd: c_int, mut data: &[u8]) {
@@ -117,11 +194,15 @@ pub fn write_all(fd: c_int, mut data: &[u8]) {
 }
 
 unsafe extern "C" {
+    #[cfg(not(target_vendor = "apple"))]
+    fn __errno_location() -> *mut c_int;
+    #[cfg(target_vendor = "apple")]
+    #[link_name = "__error"]
     fn __errno_location() -> *mut c_int;
 }
 
 pub fn last_errno() -> c_int {
-    // SAFETY: `__errno_location` returns the calling thread's errno slot.
+    // SAFETY: the C library returns the calling thread's errno slot.
     unsafe { *__errno_location() }
 }
 

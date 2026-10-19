@@ -241,7 +241,7 @@ pub unsafe fn realloc(p: *mut u8, new_size: usize) -> *mut u8 {
         // SAFETY: `q` holds `new_size` bytes; the old large block is at least that
         // large only when shrinking, so copy the smaller of the two via realloc'd size.
         unsafe {
-            let old = sys::malloc_usable_size(p.cast());
+            let old = sys::usable_size(p.cast());
             core::ptr::copy_nonoverlapping(p, q, old.min(new_size));
             free(p);
         }
