@@ -14,6 +14,7 @@ pub fn link_all(object: &Path, inputs: &[&Path], out: &Path) -> Result<(), Error
     let (program, mut command) = driver();
     command.arg("-o").arg(out).arg(object).args(inputs);
     command.args(system_libraries());
+    command.args(driver_options(&program));
     let o = command
         .output()
         .map_err(|e| Error(format!("cannot run {program}: {e}")))?;
@@ -55,6 +56,22 @@ fn on_path(name: &str) -> bool {
     std::env::var_os("PATH").is_some_and(|paths| {
         std::env::split_paths(&paths).any(|dir| dir.join(format!("{name}.exe")).is_file())
     })
+}
+
+/// Rust's runtime library asks for the dynamic C runtime (`msvcrt`); the driver would
+/// otherwise add the static one and the two collide.
+#[cfg(windows)]
+fn driver_options(program: &str) -> &'static [&'static str] {
+    if program.contains("clang") {
+        &["-fms-runtime-lib=dll"]
+    } else {
+        &[]
+    }
+}
+
+#[cfg(not(windows))]
+fn driver_options(_program: &str) -> &'static [&'static str] {
+    &[]
 }
 
 #[cfg(not(windows))]
