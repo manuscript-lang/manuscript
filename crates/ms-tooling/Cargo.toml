@@ -7,3 +7,7 @@ description = "Manuscript developer tooling over checked programs: review, diagr
 
 [lints]
 workspace = true
+
+[dependencies]
+ms-syntax = { path = "../ms-syntax" }
+ms-check = { path = "../ms-check" }

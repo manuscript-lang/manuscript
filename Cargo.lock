@@ -373,6 +373,10 @@ version = "0.0.0"
 [[package]]
 name = "ms-tooling"
 version = "0.0.0"
+dependencies = [
+ "ms-check",
+ "ms-syntax",
+]
 
 [[package]]
 name = "object"
