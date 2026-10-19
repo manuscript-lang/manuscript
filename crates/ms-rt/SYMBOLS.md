@@ -170,6 +170,8 @@ msrt_task_join(handle: u64, msg_out: *mut *mut StrObj) -> u8
 msrt_trap_begin() -> u8
 msrt_trap_end() -> !
 msrt_trap_wait(out: *mut *mut StrObj) -> u8
+msrt_trap_end() -> !
+msrt_trap_wait(out: *mut *mut StrObj) -> u8
 msrt_list_new(out: *mut VecVal)
 msrt_list_with_capacity( d: *const TypeDesc, cap: i64, out: *mut VecVal, )
 msrt_list_drop(v: *mut VecVal, d: *const TypeDesc)
@@ -626,7 +628,17 @@ msrt_io_flush()
 msrt_heap_stats(out: *mut i64)
 msrt_start_nanos() -> i64
 msrt_argv(_: *mut ms_rt_abi::VecVal)
-msrt_random_os_bytes( count: i64, out: *mut VecVal, message: *mut *mut StrObj, ) -> u8
+msstd_random_failure_message() -> *mut StrObj
+msstd_random_os_bytes(count: i64, out: *mut VecVal) -> u8
+msstd_random_draw_new(kind: i64, a: i64, has_b: u8, b: i64) -> *mut Draw
+msstd_random_draw_want(d: *const Draw) -> i64
+msstd_random_draw_push(d: *mut Draw, data: *const VecVal) -> u8
+msstd_random_draw_swap(d: *const Draw, which: i64) -> i64
+msstd_random_draw_status(d: *const Draw) -> u8
+msstd_random_draw_int(d: *const Draw) -> i64
+msstd_random_draw_float(d: *const Draw) -> f64
+msstd_random_draw_text(d: *const Draw) -> *mut StrObj
+msstd_random_draw_free(d: *mut Draw)
 msrt_regex_compile(pattern: *const StrObj, out: *mut *mut RegexObj) -> u8
 msrt_regex_matches(re: *const RegexObj, text: *const StrObj) -> u8
 msrt_regex_find_all( re: *const RegexObj, text: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
