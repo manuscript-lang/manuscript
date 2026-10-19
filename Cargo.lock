@@ -387,6 +387,15 @@ name = "ms-syntax"
 version = "0.0.0"
 
 [[package]]
+name = "ms-tooling"
+version = "0.0.0"
+dependencies = [
+ "ms-check",
+ "ms-cli",
+ "ms-syntax",
+]
+
+[[package]]
 name = "object"
 version = "0.40.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
