@@ -16,6 +16,12 @@ recorded here before it is committed.)_
   `exp`-derived functions may differ in the last bits, because Go's amd64 and arm64 `Exp` is CPU-specific assembly). `ms-rt` gains
   `msrt_numbers_parse_int/parse_float/error_message`, `msrt_float_to_precision/to_exponential/to_fixed` (`status` + string `out`),
   `msrt_float_truncate_to_int` (present flag + `out`) and `msrt_float_compare`/`msrt_int_compare`.
+- **v2.3 (`ms-std-time`, `ms-std-rt`).** `msstd_time_*` covers `@std/time`. `Duration` is an `i64` of nanoseconds by value.
+  `Timestamp` is `repr(C) { seconds: i64, nanos: i64 }` and `Instant` is `repr(C) { domain: u64, tick: i64 }`; both are passed by pointer
+  and returned through a trailing `out`. `msstd_time_clock_now` uses domain 1 (the process monotonic clock); `Calendar` is returned as
+  `CalendarOut` (ten `i64` fields in declaration order, then an owned zone-name string). Fallible calls return `STATUS_*` codes (`TimeError`
+  maps `InvalidInput`/`OutOfRange`/`InvalidData` to the numbers codes; `Closed` is never produced natively). Zones come from the bundled
+  IANA data (`jiff-tzdb`), `Local` follows `TZ` then `/etc/localtime`. `ms-std-rt` is the shared glue (read/build strings, faults, cancellation).
 - **v2 (value semantics).** The owner adopted value semantics (DESIGN.md decisions 1-2).
   Only `String` and `Shared[T]`-style objects keep an `Obj` header and a count.
   `List`, `Bytes`, `Map`, `Set`, `StringBuilder` are **owned header-less values**

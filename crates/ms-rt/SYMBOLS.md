@@ -237,4 +237,37 @@ msstd_math_log2e() -> f64
 msstd_math_log10e() -> f64
 msstd_math_sqrt2() -> f64
 msstd_math_sqrt_half() -> f64
+msstd_time_duration_add(left: i64, other: i64) -> i64
+msstd_time_duration_plus(left: i64, right: i64) -> i64
+msstd_time_duration_minus(left: i64, right: i64) -> i64
+msstd_time_duration_subtract(left: i64, other: i64) -> i64
+msstd_time_duration_multiply(value: i64, factor: i64) -> i64
+msstd_time_duration_divide(value: i64, divisor: i64) -> i64
+msstd_time_duration_negate(value: i64) -> i64
+msstd_time_duration_abs(value: i64) -> i64
+msstd_time_duration_compare(left: i64, other: i64) -> i64
+msstd_time_duration_to_microseconds(value: i64) -> i64
+msstd_time_duration_to_milliseconds(value: i64) -> i64
+msstd_time_duration_to_seconds(value: i64) -> f64
+msstd_time_duration_to_minutes(value: i64) -> f64
+msstd_time_duration_to_hours(value: i64) -> f64
+msstd_time_instant_shift( value: *const Instant, duration: i64, out: *mut Instant, )
+msstd_time_instant_unshift( value: *const Instant, duration: i64, out: *mut Instant, )
+msstd_time_instant_difference( left: *const Instant, other: *const Instant, ) -> i64
+msstd_time_instant_compare( left: *const Instant, other: *const Instant, ) -> i64
+msstd_time_instant_equal( left: *const Instant, other: *const Instant, ) -> u8
+msstd_time_clock_now(out: *mut Instant)
+msstd_time_wall_clock_now(out: *mut Timestamp)
+msstd_time_sleep(duration: i64)
+msstd_time_timestamp( seconds: i64, nanoseconds: i64, out: *mut Timestamp, ) -> u8
+msstd_time_parse_timestamp( text: *const StrObj, out: *mut Timestamp, ) -> u8
+msstd_time_timestamp_to_string( value: *const Timestamp, ) -> *mut StrObj
+msstd_time_timestamp_shift( value: *const Timestamp, duration: i64, out: *mut Timestamp, ) -> u8
+msstd_time_timestamp_difference( left: *const Timestamp, other: *const Timestamp, out: *mut i64, ) -> u8
+msstd_time_timestamp_compare( left: *const Timestamp, other: *const Timestamp, ) -> i64
+msstd_time_timestamp_calendar( value: *const Timestamp, zone: *const StrObj, out: *mut CalendarOut, ) -> u8
+msstd_time_timestamp_format( value: *const Timestamp, pattern: *const StrObj, zone: *const StrObj, out: *mut *mut StrObj, ) -> u8
+msstd_time_from_calendar( year: i64, month: i64, day: i64, hour: i64, minute: i64, second: i64, nanosecond: i64, zone: *const StrObj, out: *mut Timestamp, ) -> u8
+msstd_time_local_zone() -> *mut StrObj
+msstd_time_error_message(status: u8) -> *mut StrObj
 ```
