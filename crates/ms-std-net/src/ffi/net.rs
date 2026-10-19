@@ -156,14 +156,18 @@ pub extern "C" fn msrt_net_network() -> *mut Obj {
     })
 }
 
-/// `Network.close()`.
+/// `Network.close()`; closing from a handler of a server this network owns faults.
 ///
 /// # Safety
 /// `net` is a Network handle.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn msrt_net_network_close(net: *const Obj) {
     // SAFETY: caller contract.
-    unsafe { network(net) }.close();
+    let net = unsafe { network(net) };
+    if crate::http::server::Reactor::get().in_handler_of_network(net) {
+        ms_std_core::fault("network cannot close from its own request");
+    }
+    net.close();
 }
 
 /// `Network.connect(address, timeout)`.

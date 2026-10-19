@@ -135,3 +135,68 @@ Behavior notes:
 - Subject and issuer text is `pkix.Name.String()` of Go (reverse RDN order, escaped).
 - Option errors surface after dialing, as in Go (`InvalidInput`); handshake and
   verification failures are `Failed(<Go-style text>)`.
+
+## http
+
+`HttpHeaders` is a handle. `append(name, values)` validates tokens and values and
+returns `HttpError` status; `values(name)` returns an **owned copy** of the list (lists
+are values in the ownership model; Go shares them) and `present`; `text(name)` joins with
+`, `. Methods arrive as token strings; an invalid method is `InvalidInput`.
+
+Wire structs (`#[repr(C)]`, `ffi/http.rs`): `OptWire { present: u8, value: i64 }`;
+`HttpClientOptionsWire { max_redirects, max_idle_connections, max_header_bytes,
+idle_timeout: OptWire, decompress: u8, cookies: u8, tls: TlsOptionsWire }`;
+`HttpServerOptionsWire { max_requests, max_body_bytes, max_response_bytes,
+max_header_bytes, timeout, grace: OptWire, tls_present: u8, tls }`; `RequestWire
+{ method, path, query, protocol, headers, body }` and `ResponseWire { status, headers,
+body }` (all fields owned, +1); `ClientResponseWire { status, headers, protocol, body }`;
+`MetadataWire { status, headers, protocol }`; `StreamWire { data, read }` borrows a
+`ReadStream` for uploads (`read` follows the `Connection.read` convention).
+
+```text
+msrt_net_network_http_client(net, opts, out, err) -> u8
+msrt_http_client_request[_bytes|_stream](c, method, address, headers, body, has_max, max, has_timeout, timeout, out, err) -> u8
+msrt_net_network_request[_bytes](net, method, address, headers, body, has_max, max, has_timeout, timeout, out: *mut ClientResponseWire, err) -> u8
+msrt_http_body_{read,metadata,close}
+msrt_net_network_serve(net, address, env, thunk: BufferedThunk, limits..., out, err) -> u8
+msrt_net_network_serve_stream(net, address, env, thunk: StreamThunk, opts, out, err) -> u8
+msrt_http_server_{address,close,wait}
+msrt_http_exchange_{headers,method,path,protocol,query,read,send_headers,write,write_bytes,close,upgrade}
+```
+
+Handler thunks are compiler generated and run **inline on the ms thread** inside any
+blocking wait of the thread (reactor dispatch). `BufferedThunk(env, req, resp)` fills
+`resp`; `StreamThunk(env, exchange, err) -> u8` returns an `HttpError` status. `env` is
+the retained closure; the server releases it on drop. Behavior: one handler runs at a
+time, so a client and a server on the same thread cannot interact interactively; closing
+a server (or its network) from its own handler faults.
+
+Client behavior follows Go's `net/http` (redirect policy, header order, cookie jar,
+gzip, idle pool, error texts); see `src/http/client.rs` tests for recorded cases.
+
+## websocket
+
+```text
+msrt_net_network_web_socket(net, address, headers, subprotocols, opts: *const WebSocketOptionsWire, out, err) -> u8
+msrt_http_exchange_upgrade(x, origins, subprotocols, has_max, max, out, err) -> u8
+msrt_websocket_{send,send_bytes,ping,ping_bytes,close,subprotocol}
+msrt_websocket_receive(s, data: *mut VecVal, text: *mut u8, present: *mut u8, err) -> u8
+```
+
+A server socket lives until its handler returns, at which point it is closed with
+code 1000. `receive` returns `present = 0` after a clean close.
+
+## Requested from ms-rt: per-request fault isolation
+
+A faulting handler must answer 500 and leave the server running, and handlers should
+run concurrently. Neither is possible today: faults exit 70 and there is no task
+runtime. This crate needs, from ms-rt:
+
+```text
+msrt_guard_call(code: extern "C" fn(*mut u8), data: *mut u8, msg_out: *mut *mut StrObj) -> u8
+```
+
+Runs `code(data)`; a fault inside it unwinds to the guard, runs pending cleanups
+registered since entry, and returns nonzero with the fault message. The server maps that
+to `Outcome::Fault` (500). The 500 and 504 paths are implemented and tested against
+`Outcome::Fault` and `Outcome::Cancelled`; only the thunk call is unguarded.
