@@ -69,7 +69,7 @@
 //! [{function, flat, flat_percent, cum, cum_percent}], perf: {record, report}}`.
 
 use std::collections::BTreeMap;
-use std::io::{Read, Write};
+use std::io::Read;
 use std::process::{Command, Stdio};
 
 use ms_project::gopath;
@@ -205,7 +205,7 @@ fn perf_help(program: &str, arguments: &[String]) -> String {
 /// `pprof` accept raw protobuf as well as gzip).
 pub fn encode_pprof(profile: &FoldedProfile, time_nanos: u64) -> Vec<u8> {
     let mut strings: Vec<String> = vec![String::new()];
-    let mut index = |text: &str, strings: &mut Vec<String>| -> u64 {
+    let index = |text: &str, strings: &mut Vec<String>| -> u64 {
         match strings.iter().position(|s| s == text) {
             Some(i) => i as u64,
             None => {

@@ -2,7 +2,6 @@
 //! Orchestration only; each step is this CLI run in process with its streams
 //! captured, so verify works with whatever engines the backend provides.
 
-use std::io::Write;
 use std::time::Instant;
 
 use crate::backend::{Backend, Io};

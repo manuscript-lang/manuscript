@@ -186,7 +186,7 @@ pub struct FormatFile {
 pub enum FormatFailure {
     /// The source does not parse. The CLI wraps it with the
     /// "fmt only formats source that parses" hint.
-    Syntax(crate::diagnostic::CommandDiagnostic),
+    Syntax(Box<crate::diagnostic::CommandDiagnostic>),
     /// Any other message (e.g. `--drop-labels` needs source that checks).
     Message(String),
 }

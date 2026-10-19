@@ -1,12 +1,10 @@
 //! `ms init [directory]`: create a runnable project. Fully implemented here;
 //! it needs no engine.
 
-use std::io::Write;
 
 use ms_project::gopath;
 
 use crate::backend::Io;
-use crate::util::usage_error;
 
 const MAIN: &str = "import arguments from \"@std/process.ms\"\nimport stdout from \"@std/io.ms\"\n\nexport fn main() Int:\n    let message = \"Arguments: {arguments().length()}\\n\"\n    if stdout().write(message).is_error():\n        return 1\n\n    return 0\n";
 const TEST: &str = "import panic from \"@std/faults.ms\"\n\ntest \"arithmetic\":\n    if not (2 + 3 == 5):\n        return panic(message: \"arithmetic failed\")\n";

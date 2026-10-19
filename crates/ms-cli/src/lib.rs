@@ -25,7 +25,6 @@ mod regexp;
 pub mod util;
 pub mod verify;
 
-use std::io::Write;
 
 pub use ms_project::strconv::quote;
 

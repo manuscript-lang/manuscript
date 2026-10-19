@@ -2,7 +2,6 @@
 //! The formatter itself is the backend's [`Backend::format_source`].
 
 use std::collections::BTreeMap;
-use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
 
 use ms_project::{Project, ProjectError, discover_modules, gopath, read_project, source_path};
@@ -177,7 +176,7 @@ fn format_file(backend: &dyn Backend, file: &FormatFile, check: bool, drop_label
 
 fn failure_error(failure: FormatFailure, file: &FormatFile) -> FmtError {
     match failure {
-        FormatFailure::Syntax(diagnostic) => FmtError::Syntax { display: file.display.clone(), diagnostic },
+        FormatFailure::Syntax(diagnostic) => FmtError::Syntax { display: file.display.clone(), diagnostic: *diagnostic },
         FormatFailure::Message(message) => FmtError::Plain(message),
     }
 }
@@ -209,7 +208,7 @@ fn unique() -> u64 {
 fn format_error(cwd: &str, target: &str, error: FmtError) -> (CommandDiagnostic, String) {
     let mut display = format_display(cwd, target);
     let mut code = "MSF002";
-    let mut message;
+    let message;
     match error {
         FmtError::Syntax { display: shown, diagnostic } => {
             let message = format!(

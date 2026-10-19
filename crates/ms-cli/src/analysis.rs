@@ -99,11 +99,11 @@ pub fn select_analysis_inputs(targets: &[String]) -> Result<AnalysisSelection, P
 /// directories and nested projects (which require explicit selection) are skipped.
 fn standalone_analysis_files(root: &str) -> (Vec<String>, Option<ProjectError>) {
     let mut files = Vec::new();
-    let error = walk(root, root, &mut files).err();
+    let error = walk(root, &mut files).err();
     (files, error)
 }
 
-fn walk(root: &str, directory: &str, files: &mut Vec<String>) -> Result<(), ProjectError> {
+fn walk(directory: &str, files: &mut Vec<String>) -> Result<(), ProjectError> {
     let read = std::fs::read_dir(directory).map_err(|e| ProjectError::path("open", directory, &e))?;
     let mut entries = Vec::new();
     for entry in read {
@@ -123,7 +123,7 @@ fn walk(root: &str, directory: &str, files: &mut Vec<String>) -> Result<(), Proj
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
                 Err(e) => return Err(ProjectError::path("stat", &gopath::join(&[&path, "ms.toml"]), &e)),
             }
-            walk(root, &path, files)?;
+            walk(&path, files)?;
         } else if gopath::ext(&name) == ".ms" {
             files.push(path);
         }

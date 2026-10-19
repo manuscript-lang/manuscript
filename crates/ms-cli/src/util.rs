@@ -1,6 +1,5 @@
 //! Helpers shared by the command implementations.
 
-use std::io::Write;
 
 use ms_project::{ProjectError, gopath};
 

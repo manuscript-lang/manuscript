@@ -1,7 +1,6 @@
 //! Argument parsing for the standalone commands: `review`, `search_symbol`,
 //! `help`, `version`, `lsp` and `guide`.
 
-use std::io::Write;
 
 use crate::backend::{Backend, Io, ReviewRequest, SearchSymbolRequest, finish};
 use crate::help;

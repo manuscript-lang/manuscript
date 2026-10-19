@@ -7,7 +7,6 @@
 //! `debug`, `dap`, `pprof`, `trace` commands. Those flags are now ordinary
 //! unknown options. `ms profile` is redefined; see [`crate::profile`].
 
-use std::io::Write;
 
 use crate::backend::{BuildType, Io};
 use crate::regexp;

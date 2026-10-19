@@ -46,7 +46,7 @@ impl ProjectError {
         ProjectError::Message(text.into())
     }
 
-    pub(crate) fn path(op: &'static str, path: &str, error: &std::io::Error) -> Self {
+    pub fn path(op: &'static str, path: &str, error: &std::io::Error) -> Self {
         ProjectError::Path(PathError {
             op,
             path: path.to_string(),
