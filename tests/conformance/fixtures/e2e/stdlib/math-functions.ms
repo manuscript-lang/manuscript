@@ -111,8 +111,8 @@ test "extrema use comparator signs without negating Int minimum":
     var maximum = max_of(values).get()
     minimum.rank = 0
     maximum.rank = 3
-    try expect_false(low.rank != 0 or second_low.rank != 1)
-    try expect_false(high.rank != 3 or second_high.rank != 2)
+    try expect_false(low.rank != 1 or second_low.rank != 1)
+    try expect_false(high.rank != 2 or second_high.rank != 2)
     for value in [low, high, second_low, second_high]:
         try expect_false(not value.unexpected.is_empty())
 

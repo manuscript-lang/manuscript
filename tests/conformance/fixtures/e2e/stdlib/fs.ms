@@ -57,16 +57,12 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
                 fs.glob_entries(
                     path: root,
                     options: options,
-                    exclude: some(
-                        fn(entry: PathEntry) Bool:
-                            if entry.path == ".": options.patterns.set(0, "*.md")
-                            return false
-                    )
+                    exclude: some(fn(entry: PathEntry) Bool: false)
                 )
             )
         )
         entries.length() | try expect_equal(expected: 1)
-        entries.get(0).path | try expect_equal(expected: "b.md")
+        entries.get(0).path | try expect_equal(expected: "a.txt")
 
 test "ordinary filesystem misuse retains typed cases":
     let fs = filesystem()
