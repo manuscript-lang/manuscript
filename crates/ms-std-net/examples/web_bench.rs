@@ -63,16 +63,16 @@ impl Dispatch for App {
                 _ => reply(400, "bad n\n".into()),
             };
         }
-        if let Some(id) = r.path.strip_prefix("/user/") {
-            if let Ok(id) = id.parse::<i64>() {
-                if (0..1000).contains(&id) {
-                    let body = format!(
-                        "{{\"id\":{id},\"name\":\"user{id}\",\"score\":{}}}\n",
-                        score(id)
-                    );
-                    return reply(200, body);
-                }
-            }
+        let id = r
+            .path
+            .strip_prefix("/user/")
+            .and_then(|v| v.parse::<i64>().ok());
+        if let Some(id) = id.filter(|id| (0..1000).contains(id)) {
+            let body = format!(
+                "{{\"id\":{id},\"name\":\"user{id}\",\"score\":{}}}\n",
+                score(id)
+            );
+            return reply(200, body);
         }
         reply(404, "not found\n".into())
     }
