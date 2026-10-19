@@ -6,11 +6,16 @@ use std::process::Command;
 
 /// Links `object` and the runtime static library into the executable `out`.
 pub fn link(object: &Path, runtime: &Path, out: &Path) -> Result<(), Error> {
+    link_all(object, &[runtime], out)
+}
+
+/// Like [`link`] with several runtime inputs (objects or static libraries), in order.
+pub fn link_all(object: &Path, inputs: &[&Path], out: &Path) -> Result<(), Error> {
     let o = Command::new("cc")
         .arg("-o")
         .arg(out)
         .arg(object)
-        .arg(runtime)
+        .args(inputs)
         .args(["-lm", "-lpthread", "-ldl"])
         .output()
         .map_err(|e| Error(format!("cannot run cc: {e}")))?;

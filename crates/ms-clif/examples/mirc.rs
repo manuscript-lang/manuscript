@@ -3,7 +3,7 @@
 //! Compiles a MIR text file to a native executable. Without `--rt` the C test
 //! runtime used by the backend tests is built and linked.
 
-use ms_clif::{Options, compile, link::link};
+use ms_clif::{Options, compile};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -44,9 +44,9 @@ fn main() {
     let obj = compile(&m, &opts).unwrap_or_else(|e| panic!("{e}"));
     let objp = out.with_extension("o");
     std::fs::write(&objp, obj).expect("write object");
-    let rt = rt.unwrap_or_else(|| {
-        let p = out.with_file_name("testrt.o");
-        let c = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/rt/testrt.c");
+    let cc_obj = |name: &str| {
+        let p = out.with_file_name(format!("{name}.o"));
+        let c = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!("tests/rt/{name}.c"));
         let st = Command::new("cc")
             .args(["-O2", "-c", "-fno-omit-frame-pointer", "-o"])
             .arg(&p)
@@ -55,6 +55,12 @@ fn main() {
             .expect("cc");
         assert!(st.success());
         p
-    });
-    link(&objp, &rt, &out).unwrap_or_else(|e| panic!("{e}"));
+    };
+    // The real runtime has no msrt_print_* hooks; the shim supplies them for fixtures.
+    let inputs = match rt {
+        Some(rt) => vec![cc_obj("printshim"), rt],
+        None => vec![cc_obj("testrt")],
+    };
+    let refs: Vec<&std::path::Path> = inputs.iter().map(|p| p.as_path()).collect();
+    ms_clif::link::link_all(&objp, &refs, &out).unwrap_or_else(|e| panic!("{e}"));
 }
