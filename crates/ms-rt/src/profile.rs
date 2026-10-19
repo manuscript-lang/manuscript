@@ -25,50 +25,51 @@ static COUNT: AtomicUsize = AtomicUsize::new(0);
 static DROPPED: AtomicUsize = AtomicUsize::new(0);
 static PATH: Global<&'static [u8]> = Global::new(b"");
 
-// Offsets of the program counter and frame pointer from the register block of the signal
-// context: inside `ucontext_t` on Linux, inside the `mcontext` it points to on macOS.
-#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
-const PC_OFFSET: usize = 40 + 16 * 8;
-#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
-const FP_OFFSET: usize = 40 + 10 * 8;
-#[cfg(all(target_os = "linux", target_arch = "aarch64"))]
-const PC_OFFSET: usize = 440;
-#[cfg(all(target_os = "linux", target_arch = "aarch64"))]
-const FP_OFFSET: usize = 416;
-#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-const PC_OFFSET: usize = 16 + 16 * 8;
-#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-const FP_OFFSET: usize = 16 + 6 * 8;
-#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-const PC_OFFSET: usize = 16 + 32 * 8;
-#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-const FP_OFFSET: usize = 16 + 29 * 8;
+#[cfg(unix)]
+mod regs {
+    // Offsets of the program counter and frame pointer from the register block of the signal
+    // context: inside `ucontext_t` on Linux, inside the `mcontext` it points to on macOS.
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    pub const PC_OFFSET: usize = 40 + 16 * 8;
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    pub const FP_OFFSET: usize = 40 + 10 * 8;
+    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+    pub const PC_OFFSET: usize = 440;
+    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+    pub const FP_OFFSET: usize = 416;
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    pub const PC_OFFSET: usize = 16 + 16 * 8;
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    pub const FP_OFFSET: usize = 16 + 6 * 8;
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    pub const PC_OFFSET: usize = 16 + 32 * 8;
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    pub const FP_OFFSET: usize = 16 + 29 * 8;
 
-/// The register block of a signal context.
-///
-/// # Safety
-/// `uctx` is the context pointer a `SA_SIGINFO` handler received.
-unsafe fn registers(uctx: *mut u8) -> *mut u8 {
-    #[cfg(target_os = "macos")]
-    // SAFETY: `uc_mcontext` is the pointer at offset 48 of `ucontext_t`.
-    return unsafe { *(uctx.add(48) as *const *mut u8) };
-    #[cfg(not(target_os = "macos"))]
-    return uctx;
+    /// The register block of a signal context.
+    ///
+    /// # Safety
+    /// `uctx` is the context pointer a `SA_SIGINFO` handler received.
+    pub unsafe fn registers(uctx: *mut u8) -> *mut u8 {
+        #[cfg(target_os = "macos")]
+        // SAFETY: `uc_mcontext` is the pointer at offset 48 of `ucontext_t`.
+        return unsafe { *(uctx.add(48) as *const *mut u8) };
+        #[cfg(not(target_os = "macos"))]
+        return uctx;
+    }
 }
 
-extern "C" fn on_sample(_sig: i32, _info: *mut u8, uctx: *mut u8) {
+/// Stores one sample: the program counter and the frame-pointer chain from `fp`.
+fn record(pc: usize, mut fp: usize) {
     let n = COUNT.load(Ordering::Relaxed);
     if n >= MAX_SAMPLES {
         DROPPED.fetch_add(1, Ordering::Relaxed);
         return;
     }
-    // SAFETY: the buffer holds MAX_SAMPLES slots; the ucontext is provided by the kernel;
-    // frame reads stay inside the recorded stack bounds.
+    // SAFETY: the buffer holds MAX_SAMPLES slots; frame reads stay inside the recorded stack
+    // bounds.
     unsafe {
         let base = (*BUFFER.ptr()).add(n * SAMPLE_WORDS);
-        let regs = registers(uctx);
-        let pc = *(regs.add(PC_OFFSET) as *const usize);
-        let mut fp = *(regs.add(FP_OFFSET) as *const usize);
         let (lo, hi) = (*STACK_LO.ptr(), *STACK_HI.ptr());
         let mut k = 0;
         *base.add(1) = pc;
@@ -90,11 +91,129 @@ extern "C" fn on_sample(_sig: i32, _info: *mut u8, uctx: *mut u8) {
     COUNT.store(n + 1, Ordering::Relaxed);
 }
 
+#[cfg(unix)]
+extern "C" fn on_sample(_sig: i32, _info: *mut u8, uctx: *mut u8) {
+    // SAFETY: the ucontext is provided by the kernel.
+    let (pc, fp) = unsafe {
+        let r = regs::registers(uctx);
+        (
+            *(r.add(regs::PC_OFFSET) as *const usize),
+            *(r.add(regs::FP_OFFSET) as *const usize),
+        )
+    };
+    record(pc, fp);
+}
+
 fn parse_hz() -> i64 {
     sys::env_var(b"MS_PROFILE_HZ\0")
         .and_then(num::parse_int_decimal)
         .filter(|hz| (1..=10_000).contains(hz))
         .unwrap_or(1000)
+}
+
+#[cfg(unix)]
+unsafe fn arm_timer() {
+    let act = sys::sigaction_t::new(
+        on_sample as *const () as usize,
+        sys::SA_SIGINFO | sys::SA_RESTART,
+    );
+    // SAFETY: installs the sampling handler and the profiling timer.
+    unsafe {
+        sys::sigaction(sys::SIGPROF, &act, core::ptr::null_mut());
+        let usec = 1_000_000 / parse_hz();
+        let tv = sys::timeval {
+            sec: usec / 1_000_000,
+            usec: usec % 1_000_000,
+        };
+        let it = sys::itimerval {
+            interval: tv,
+            value: tv,
+        };
+        sys::setitimer(sys::ITIMER_PROF, &it, core::ptr::null_mut());
+    }
+}
+
+#[cfg(unix)]
+unsafe fn disarm_timer() {
+    let off = sys::itimerval {
+        interval: sys::timeval { sec: 0, usec: 0 },
+        value: sys::timeval { sec: 0, usec: 0 },
+    };
+    // SAFETY: disables the timer; sample data is then stable.
+    unsafe { sys::setitimer(sys::ITIMER_PROF, &off, core::ptr::null_mut()) };
+}
+
+/// Windows has no profiling signal: a sampler thread suspends the runtime thread at the
+/// sampling rate and reads its registers. The thread is attached once it exists.
+#[cfg(windows)]
+mod sampler {
+    use super::*;
+    use core::ffi::c_void;
+
+    static TARGET: Global<*mut c_void> = Global::new(core::ptr::null_mut());
+    static SAMPLER: Global<*mut c_void> = Global::new(core::ptr::null_mut());
+
+    unsafe extern "system" fn run(_: *mut c_void) -> u32 {
+        let ms = (1000 / parse_hz()).max(1) as u32;
+        // SAFETY: the target handle outlives the sampler (it is joined before the handle closes).
+        let target = unsafe { *TARGET.ptr() };
+        while ENABLED.load(Ordering::Relaxed) != 0 {
+            sys::sleep_ms(ms);
+            if ENABLED.load(Ordering::Relaxed) == 0 {
+                break;
+            }
+            // SAFETY: `target` is a sampling handle of the runtime thread.
+            if let Some((pc, fp)) = unsafe { sys::sample_thread(target) } {
+                record(pc, fp);
+            }
+        }
+        0
+    }
+
+    pub unsafe fn start_sampling() {
+        // SAFETY: called on the runtime thread when profiling is enabled.
+        unsafe {
+            let target = sys::current_thread_for_sampling();
+            if target.is_null() {
+                return;
+            }
+            *TARGET.ptr() = target;
+            *SAMPLER.ptr() = sys::thread_spawn(0, run);
+        }
+    }
+
+    pub unsafe fn stop_sampling() {
+        // SAFETY: waits for the sampler to see `ENABLED == 0`, then releases both handles.
+        unsafe {
+            let (sampler, target) = (*SAMPLER.ptr(), *TARGET.ptr());
+            if !sampler.is_null() {
+                sys::thread_join(sampler);
+            }
+            if !target.is_null() {
+                sys::close_handle(target);
+            }
+            *SAMPLER.ptr() = core::ptr::null_mut();
+            *TARGET.ptr() = core::ptr::null_mut();
+        }
+    }
+}
+
+/// Called on the runtime thread before `main` runs: starts the sampler, which needs that thread.
+#[cfg(windows)]
+pub fn attach_runtime_thread() {
+    if ENABLED.load(Ordering::Relaxed) != 0 {
+        // SAFETY: runs on the runtime thread.
+        unsafe { sampler::start_sampling() };
+    }
+}
+
+#[cfg(windows)]
+unsafe fn arm_timer() {}
+
+#[cfg(windows)]
+unsafe fn disarm_timer() {
+    // SAFETY: `ENABLED` is already clear, so the sampler exits.
+    unsafe { sampler::stop_sampling() };
 }
 
 /// Starts sampling when `MS_PROFILE` names an output file; also writes the perf map on request.
@@ -109,37 +228,17 @@ pub fn start() {
     unsafe {
         *PATH.ptr() = path;
         let bytes = MAX_SAMPLES * SAMPLE_WORDS * core::mem::size_of::<usize>();
-        let p = sys::mmap(
-            core::ptr::null_mut(),
-            bytes,
-            sys::PROT_READ | sys::PROT_WRITE,
-            sys::MAP_PRIVATE | sys::MAP_ANONYMOUS | sys::MAP_NORESERVE,
-            -1,
-            0,
-        );
-        if p as isize == -1 {
+        let p = sys::map_anon(bytes);
+        if p.is_null() || !sys::commit(p, bytes) {
             return;
         }
         *BUFFER.ptr() = p as *mut usize;
+        #[cfg(unix)]
         if sys::env_var(b"MS_PERF_MAP\0").is_some_and(|v| v == b"1") {
             write_perf_map();
         }
-        let act = sys::sigaction_t::new(
-            on_sample as *const () as usize,
-            sys::SA_SIGINFO | sys::SA_RESTART,
-        );
-        sys::sigaction(sys::SIGPROF, &act, core::ptr::null_mut());
-        let usec = 1_000_000 / parse_hz();
-        let tv = sys::timeval {
-            sec: usec / 1_000_000,
-            usec: usec % 1_000_000,
-        };
-        let it = sys::itimerval {
-            interval: tv,
-            value: tv,
-        };
-        sys::setitimer(sys::ITIMER_PROF, &it, core::ptr::null_mut());
         ENABLED.store(1, Ordering::Relaxed);
+        arm_timer();
     }
 }
 
@@ -159,6 +258,7 @@ fn cstr(t: &Tables, off: u32) -> &'static [u8] {
     }
 }
 
+#[cfg(unix)]
 fn write_perf_map() {
     // SAFETY: the table pointer is installed at start.
     let t = unsafe { *TABLES.ptr() };
@@ -206,12 +306,8 @@ pub fn finish() {
     if ENABLED.swap(0, Ordering::Relaxed) == 0 {
         return;
     }
-    let off = sys::itimerval {
-        interval: sys::timeval { sec: 0, usec: 0 },
-        value: sys::timeval { sec: 0, usec: 0 },
-    };
-    // SAFETY: disables the timer; sample data is then stable.
-    unsafe { sys::setitimer(sys::ITIMER_PROF, &off, core::ptr::null_mut()) };
+    // SAFETY: `ENABLED` was just cleared.
+    unsafe { disarm_timer() };
     let n = COUNT.load(Ordering::Relaxed).min(MAX_SAMPLES);
     // SAFETY: table and buffer were installed at start.
     let (t, base) = unsafe { (*TABLES.ptr(), *BUFFER.ptr()) };

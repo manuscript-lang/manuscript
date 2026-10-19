@@ -10,6 +10,7 @@ use ms_rt_abi::{MAX_MAIN_EXIT, Tables, VecVal};
 
 /// Stack of the thread that runs `main` (the 200,000-call depth limit must be reachable).
 const STACK_SIZE: usize = 1 << 30;
+#[cfg(unix)]
 const GUARD: usize = 1 << 16;
 /// Grace period after the first stop request before cleanup is abandoned.
 const CLEANUP_GRACE_SECS: u32 = 30;
@@ -21,21 +22,6 @@ static MAIN_RESULT: Global<i64> = Global::new(0);
 /// `CLOCK_MONOTONIC` nanoseconds when the runtime started; 0 before `msrt_start`.
 static START_NANOS: Global<i64> = Global::new(0);
 
-#[repr(C)]
-struct Timespec {
-    sec: i64,
-    nsec: i64,
-}
-
-unsafe extern "C" {
-    fn clock_gettime(clock: i32, ts: *mut Timespec) -> i32;
-}
-
-#[cfg(target_os = "macos")]
-const CLOCK_MONOTONIC: i32 = 6;
-#[cfg(not(target_os = "macos"))]
-const CLOCK_MONOTONIC: i32 = 1;
-
 /// Monotonic nanoseconds since the runtime started (the origin of `process.uptime()`); 0 when not started.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_start_nanos() -> i64 {
@@ -43,7 +29,9 @@ pub extern "C-unwind" fn msrt_start_nanos() -> i64 {
     unsafe { *START_NANOS.ptr() }
 }
 
-extern "C" fn on_stop(sig: i32) {
+/// First stop request: ask the running code to unwind. A second one before cleanup finished
+/// ends the process.
+fn stop_requested(sig: i32) {
     let prev = PENDING_SIGNAL.swap(sig as u8, Ordering::Relaxed);
     if prev != 0 {
         PENDING_SIGNAL.store(prev, Ordering::Relaxed);
@@ -59,12 +47,12 @@ extern "C" fn on_stop(sig: i32) {
         if *fault::SHIELD.ptr() == 0 {
             core::ptr::write_volatile(core::ptr::addr_of_mut!(fault::msrt_cancel_flag), sig as u8);
         }
-        sys::alarm(CLEANUP_GRACE_SECS);
     }
+    arm_grace_timer();
     crate::task::kick();
 }
 
-extern "C" fn on_alarm(_: i32) {
+fn grace_expired() -> ! {
     sys::write_all(
         sys::STDERR,
         b"incomplete cleanup: cleanup did not finish within 30s of the stop request\n",
@@ -73,14 +61,12 @@ extern "C" fn on_alarm(_: i32) {
     unsafe { sys::_exit(ms_rt_abi::EXIT_FAULT) }
 }
 
-fn install(sig: i32, handler: extern "C" fn(i32)) {
-    let act = sys::sigaction_t::new(handler as *const () as usize, 0);
-    // SAFETY: installs a handler that only touches atomics and async-signal-safe calls.
-    unsafe { sys::sigaction(sig, &act, core::ptr::null_mut()) };
-}
-
-extern "C" fn thread_main(_: *mut c_void) -> *mut c_void {
-    // SAFETY: single threaded globals set by `msrt_start` before the thread exists.
+/// Runs the program's `main` and records its result; shared by both platforms' thread entries.
+///
+/// # Safety
+/// Single threaded globals set by `msrt_start` before the thread exists.
+unsafe fn run_main() {
+    // SAFETY: as documented.
     unsafe {
         let f = (*MAIN_FN.ptr()).unwrap_or_else(|| fault::fatal(b"missing main"));
         let value = f();
@@ -92,8 +78,124 @@ extern "C" fn thread_main(_: *mut c_void) -> *mut c_void {
         }
         *MAIN_RESULT.ptr() = value;
     }
-    core::ptr::null_mut()
 }
+
+#[cfg(unix)]
+mod os {
+    use super::*;
+
+    extern "C" fn on_stop(sig: i32) {
+        stop_requested(sig);
+    }
+
+    extern "C" fn on_alarm(_: i32) {
+        grace_expired()
+    }
+
+    fn install(sig: i32, handler: extern "C" fn(i32)) {
+        let act = sys::sigaction_t::new(handler as *const () as usize, 0);
+        // SAFETY: installs a handler that only touches atomics and async-signal-safe calls.
+        unsafe { sys::sigaction(sig, &act, core::ptr::null_mut()) };
+    }
+
+    pub fn arm_grace_timer() {
+        // SAFETY: plain syscall.
+        unsafe { sys::alarm(CLEANUP_GRACE_SECS) };
+    }
+
+    pub fn install_stop_handlers() {
+        install(sys::SIGINT, on_stop);
+        install(sys::SIGTERM, on_stop);
+        install(sys::SIGALRM, on_alarm);
+    }
+
+    extern "C" fn thread_main(_: *mut c_void) -> *mut c_void {
+        // SAFETY: see `run_main`.
+        unsafe { run_main() };
+        core::ptr::null_mut()
+    }
+
+    /// Runs `main` on a thread with a large stack and waits for it.
+    pub unsafe fn run_on_big_stack() {
+        // SAFETY: one-time setup; the mapping outlives the thread.
+        unsafe {
+            let stack = sys::map_anon(STACK_SIZE);
+            if stack.is_null() {
+                fault::fatal(b"cannot allocate the main stack");
+            }
+            sys::guard(stack, GUARD);
+            *STACK_LO.ptr() = stack as usize + GUARD;
+            *STACK_HI.ptr() = stack as usize + STACK_SIZE;
+            let mut attr = core::mem::zeroed::<sys::pthread_attr_buf>();
+            sys::pthread_attr_init(&mut attr);
+            sys::pthread_attr_setstack(&mut attr, stack.add(GUARD).cast(), STACK_SIZE - GUARD);
+            let mut tid = 0usize;
+            if sys::pthread_create(&mut tid, &attr, thread_main, core::ptr::null_mut()) != 0 {
+                fault::fatal(b"cannot start the main thread");
+            }
+            sys::pthread_join(tid, core::ptr::null_mut());
+        }
+    }
+}
+
+#[cfg(windows)]
+mod os {
+    use super::*;
+
+    /// Console control events: Ctrl-C and Ctrl-Break stop like SIGINT; close, logoff and
+    /// shutdown like SIGTERM. Windows runs the handler on a thread of its own.
+    unsafe extern "system" fn ctrl_handler(kind: u32) -> i32 {
+        let sig = match kind {
+            0 | 1 => sys::SIGINT,
+            2 | 5 | 6 => sys::SIGTERM,
+            _ => return 0,
+        };
+        stop_requested(sig);
+        1
+    }
+
+    unsafe extern "system" fn grace_thread(_: *mut c_void) -> u32 {
+        sys::sleep_ms(CLEANUP_GRACE_SECS * 1000);
+        grace_expired()
+    }
+
+    pub fn arm_grace_timer() {
+        // SAFETY: the thread only sleeps and then ends the process.
+        unsafe { sys::thread_spawn(0, grace_thread) };
+    }
+
+    pub fn install_stop_handlers() {
+        // SAFETY: registers a handler that only touches atomics and async-safe calls.
+        unsafe { sys::set_ctrl_handler(ctrl_handler) };
+    }
+
+    unsafe extern "system" fn thread_main(_: *mut c_void) -> u32 {
+        // SAFETY: see `run_main`; the bounds are written before any other code reads them.
+        unsafe {
+            let (lo, hi) = sys::stack_limits();
+            *STACK_LO.ptr() = lo;
+            *STACK_HI.ptr() = hi;
+            crate::profile::attach_runtime_thread();
+            run_main();
+        }
+        0
+    }
+
+    /// Runs `main` on a thread whose stack reserves `STACK_SIZE` bytes (committed as it grows)
+    /// and waits for it.
+    pub unsafe fn run_on_big_stack() {
+        // SAFETY: one-time setup before the thread exists.
+        unsafe {
+            let thread = sys::thread_spawn(STACK_SIZE, thread_main);
+            if thread.is_null() {
+                fault::fatal(b"cannot start the main thread");
+            }
+            sys::thread_join(thread);
+        }
+    }
+}
+
+use os::{arm_grace_timer, install_stop_handlers, run_on_big_stack};
 
 /// Runtime entry called from the `main` the compiler emits. Returns the exit status.
 ///
@@ -112,36 +214,10 @@ pub unsafe extern "C-unwind" fn msrt_start(
         *ARGC.ptr() = argc;
         *ARGV.ptr() = argv;
         *MAIN_FN.ptr() = Some(main_fn);
-        let mut now = Timespec { sec: 0, nsec: 0 };
-        clock_gettime(CLOCK_MONOTONIC, &mut now);
-        *START_NANOS.ptr() = now.sec * 1_000_000_000 + now.nsec;
-        install(sys::SIGINT, on_stop);
-        install(sys::SIGTERM, on_stop);
-        install(sys::SIGALRM, on_alarm);
+        *START_NANOS.ptr() = sys::monotonic_ns();
+        install_stop_handlers();
         crate::profile::start();
-
-        let stack = sys::mmap(
-            core::ptr::null_mut(),
-            STACK_SIZE,
-            sys::PROT_READ | sys::PROT_WRITE,
-            sys::MAP_PRIVATE | sys::MAP_ANONYMOUS | sys::MAP_NORESERVE,
-            -1,
-            0,
-        );
-        if stack as isize == -1 {
-            fault::fatal(b"cannot allocate the main stack");
-        }
-        sys::mprotect(stack, GUARD, 0);
-        *STACK_LO.ptr() = stack as usize + GUARD;
-        *STACK_HI.ptr() = stack as usize + STACK_SIZE;
-        let mut attr = core::mem::zeroed::<sys::pthread_attr_buf>();
-        sys::pthread_attr_init(&mut attr);
-        sys::pthread_attr_setstack(&mut attr, stack.add(GUARD), STACK_SIZE - GUARD);
-        let mut tid = 0usize;
-        if sys::pthread_create(&mut tid, &attr, thread_main, core::ptr::null_mut()) != 0 {
-            fault::fatal(b"cannot start the main thread");
-        }
-        sys::pthread_join(tid, core::ptr::null_mut());
+        run_on_big_stack();
         crate::io::flush_stdout();
         crate::profile::finish();
         *MAIN_RESULT.ptr() as i32

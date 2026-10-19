@@ -623,6 +623,9 @@ struct GuardFrame {
     depth: i64,
     shield: u32,
     eq_pairs: usize,
+    /// `jmp` is the register buffer of `expect_fault` (Windows) rather than a guard slot.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    trap: bool,
 }
 
 static GUARDS: Global<RawVec<GuardFrame>> = Global::new(RawVec::new());
@@ -663,12 +666,47 @@ fn guard_exit(status: u8, message: &[u8]) -> ! {
             0
         };
         crate::desc::eq_truncate(f.eq_pairs);
+        #[cfg(windows)]
+        if f.trap {
+            crate::trap::leave(f.jmp as *mut usize, status == GUARD_FAULT, message)
+        }
         GUARD_MESSAGE = if status == GUARD_FAULT {
             crate::string::from_bytes(message)
         } else {
             core::ptr::null_mut()
         };
         guard_jump(f.jmp as *mut usize, status as usize)
+    }
+}
+
+/// Opens a guard frame for `expect_fault`, whose registers are saved in `buf`.
+///
+/// # Safety
+/// Single threaded; paired with [`pop_trap_guard`] or a fault that leaves through it.
+#[cfg(all(windows, not(test)))]
+pub(crate) unsafe fn push_trap_guard(buf: *mut usize) {
+    // SAFETY: single threaded runtime state.
+    unsafe {
+        (*GUARDS.ptr()).push(GuardFrame {
+            jmp: buf as usize,
+            cleanups: (*CLEANUPS.ptr()).len(),
+            depth: msrt_call_depth,
+            shield: *SHIELD.ptr(),
+            eq_pairs: crate::desc::eq_len(),
+            trap: true,
+        });
+    }
+}
+
+/// Drops the frame opened by [`push_trap_guard`] when the operation ended without a fault.
+///
+/// # Safety
+/// Single threaded.
+#[cfg(all(windows, not(test)))]
+pub(crate) unsafe fn pop_trap_guard() {
+    // SAFETY: single threaded runtime state.
+    unsafe {
+        (*GUARDS.ptr()).pop();
     }
 }
 
@@ -688,7 +726,68 @@ unsafe extern "C" {
     fn guard_jump(jmp: *mut usize, status: usize) -> !;
 }
 
-#[cfg(all(not(test), target_arch = "x86_64"))]
+// Windows x64 passes arguments in rcx, rdx and r8, expects 32 bytes of shadow space at calls
+// and treats rdi, rsi and xmm6-xmm15 as callee-saved.
+#[cfg(all(not(test), target_arch = "x86_64", windows))]
+core::arch::global_asm!(
+    ".text",
+    concat!(".globl ", sym!("msrt_guard_enter")),
+    concat!(".globl ", sym!("msrt_guard_jump")),
+    concat!(sym!("msrt_guard_enter"), ":"),
+    "push rbp",
+    "push rbx",
+    "push rdi",
+    "push rsi",
+    "push r12",
+    "push r13",
+    "push r14",
+    "push r15",
+    "sub rsp, 168",
+    "movups [rsp], xmm6",
+    "movups [rsp + 16], xmm7",
+    "movups [rsp + 32], xmm8",
+    "movups [rsp + 48], xmm9",
+    "movups [rsp + 64], xmm10",
+    "movups [rsp + 80], xmm11",
+    "movups [rsp + 96], xmm12",
+    "movups [rsp + 112], xmm13",
+    "movups [rsp + 128], xmm14",
+    "movups [rsp + 144], xmm15",
+    "mov [rcx], rsp",
+    "mov rax, rdx",
+    "mov rcx, r8",
+    "sub rsp, 32",
+    "call rax",
+    "add rsp, 32",
+    "xor eax, eax",
+    "1:",
+    "movups xmm6, [rsp]",
+    "movups xmm7, [rsp + 16]",
+    "movups xmm8, [rsp + 32]",
+    "movups xmm9, [rsp + 48]",
+    "movups xmm10, [rsp + 64]",
+    "movups xmm11, [rsp + 80]",
+    "movups xmm12, [rsp + 96]",
+    "movups xmm13, [rsp + 112]",
+    "movups xmm14, [rsp + 128]",
+    "movups xmm15, [rsp + 144]",
+    "add rsp, 168",
+    "pop r15",
+    "pop r14",
+    "pop r13",
+    "pop r12",
+    "pop rsi",
+    "pop rdi",
+    "pop rbx",
+    "pop rbp",
+    "ret",
+    concat!(sym!("msrt_guard_jump"), ":"),
+    "mov rsp, [rcx]",
+    "mov rax, rdx",
+    "jmp 1b",
+);
+
+#[cfg(all(not(test), target_arch = "x86_64", not(windows)))]
 core::arch::global_asm!(
     ".text",
     concat!(".globl ", sym!("msrt_guard_enter")),
@@ -784,6 +883,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
             depth: msrt_call_depth,
             shield: *SHIELD.ptr(),
             eq_pairs: crate::desc::eq_len(),
+            trap: false,
         });
         #[cfg(not(test))]
         {

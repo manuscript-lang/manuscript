@@ -199,6 +199,24 @@ impl<T: Copy> RawVec<T> {
         // SAFETY: `len` initialised elements.
         unsafe { core::slice::from_raw_parts(self.ptr, self.len) }
     }
+
+    #[cfg_attr(not(windows), allow(dead_code))]
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        if self.ptr.is_null() {
+            return &mut [];
+        }
+        // SAFETY: `len` initialised elements, uniquely borrowed.
+        unsafe { core::slice::from_raw_parts_mut(self.ptr, self.len) }
+    }
+
+    /// Removes element `i` by moving the last one into its place.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    pub fn swap_remove(&mut self, i: usize) {
+        assert!(i < self.len);
+        self.len -= 1;
+        // SAFETY: both indices are below the old length.
+        unsafe { self.ptr.add(i).write(self.ptr.add(self.len).read()) }
+    }
 }
 
 impl<T: Copy> Drop for RawVec<T> {
