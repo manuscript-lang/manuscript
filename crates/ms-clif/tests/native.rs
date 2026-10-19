@@ -222,3 +222,114 @@ b0:
     assert!(err.contains("at inner t.ms:12"), "{err}");
     assert!(err.contains("at main t.ms:21"), "{err}");
 }
+
+/// Builds the real `ms-rt` static library once (in its own target directory).
+fn real_runtime() -> &'static PathBuf {
+    static RT: OnceLock<PathBuf> = OnceLock::new();
+    RT.get_or_init(|| {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let target = root.join("target").join("ms-rt-for-clif");
+        let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
+        let st = Command::new(cargo)
+            .current_dir(&root)
+            .args(["build", "--release", "-p", "ms-rt", "--target-dir"])
+            .arg(&target)
+            .status()
+            .expect("cargo build ms-rt");
+        assert!(st.success(), "building ms-rt failed");
+        target.join("release/libms_rt.a")
+    })
+}
+
+/// Compiles `src` and links it with the real runtime plus the print shim.
+fn run_real(src: &str, opt: bool, tag: &str) -> Outcome {
+    let mut m = module(src);
+    if opt {
+        ms_mir::opt::optimize(&mut m, ms_mir::opt::Level::Speed, true);
+    }
+    let obj = compile(&m, &Options::default()).unwrap_or_else(|e| panic!("{e}"));
+    let d = dir();
+    let objp = d.join(format!("{tag}.o"));
+    std::fs::write(&objp, obj).unwrap();
+    let shim = d.join("printshim.o");
+    let c = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/rt/printshim.c");
+    let st = Command::new("cc")
+        .args(["-O1", "-c", "-o"])
+        .arg(&shim)
+        .arg(c)
+        .status()
+        .expect("cc");
+    assert!(st.success());
+    let exe = d.join(tag);
+    ms_clif::link::link_all(&objp, &[&shim, real_runtime()], &exe)
+        .unwrap_or_else(|e| panic!("{e}"));
+    let out = Command::new(&exe).output().expect("run");
+    Outcome {
+        stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
+        code: out.status.code().unwrap_or(-1),
+    }
+}
+
+#[test]
+fn kernels_on_real_runtime() {
+    for (name, expect) in [
+        ("collatz", "524"),
+        ("sieve", "348513"),
+        ("trees", "2621420"),
+        ("matmul", "26666000000"),
+        ("life", "204"),
+        ("nbody", "1199426"),
+        ("map_count", "5003"),
+    ] {
+        for opt in [false, true] {
+            let o = run_real(&kernel_src(name), opt, &format!("real_{name}_{opt}"));
+            assert_eq!(o.code, 0, "{name} opt={opt} exit code");
+            assert_eq!(o.stdout.trim(), expect, "{name} opt={opt} checksum");
+        }
+    }
+}
+
+#[test]
+fn fault_trace_on_real_runtime() {
+    let src = r#"module "trace"
+entry @main
+file 0 "t.ms"
+fn @inner(%i: int) -> int !0:10:1 {
+b0:
+  %a: int = iconst 1
+  %l: list<int> = list.lit %a !0:11:3
+  %x: int = list.get %l, %i !0:12:5
+  drop %l
+  ret %x
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %i: int = iconst 5
+  %r: int = call @inner(%i) !0:21:7
+  ret %r
+}
+"#;
+    let m = module(src);
+    let obj = compile(&m, &Options::default()).unwrap();
+    let d = dir();
+    let objp = d.join("real_trace.o");
+    std::fs::write(&objp, obj).unwrap();
+    let shim = d.join("printshim.o");
+    let c = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/rt/printshim.c");
+    assert!(
+        Command::new("cc")
+            .args(["-O1", "-c", "-o"])
+            .arg(&shim)
+            .arg(c)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let exe = d.join("real_trace");
+    ms_clif::link::link_all(&objp, &[&shim, real_runtime()], &exe).unwrap();
+    let out = Command::new(&exe).output().unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(err.contains("index"), "{err}");
+    assert!(err.contains("inner") && err.contains("t.ms:12"), "{err}");
+    assert!(err.contains("main") && err.contains("t.ms:21"), "{err}");
+}

@@ -1,6 +1,6 @@
 //! Lowering of one MIR function (or glue function) to Cranelift IR.
 
-use crate::cg::{CLOSURE_CAPTURES, CLOSURE_CODE, Gen, Glue, OBJ_HEADER, leaf_type};
+use crate::cg::{CLOSURE_CAPTURES, CLOSURE_CODE, Gen, Glue, OBJ_HEADER, SHARED_VALUE, leaf_type};
 use crate::layout::{AltRepr, Leaf, mem_layout};
 use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
 use cranelift_codegen::ir::{
@@ -294,6 +294,31 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.free(blk);
                 self.b.ins().return_(&[]);
             }
+            Glue::SharedDrop => {
+                let obj = params[0];
+                if self.g.m.needs_drop(ty) {
+                    let leaves = self.g.lay.leaves(ty);
+                    let vs = self.load_leaves(obj, SHARED_VALUE, &leaves);
+                    self.drop_value(ty, &vs);
+                }
+                self.free(obj);
+                self.b.ins().return_(&[]);
+            }
+            Glue::SlotDrop => {
+                if self.g.m.needs_drop(ty) {
+                    let leaves = self.g.lay.leaves(ty);
+                    let vs = self.load_leaves(params[0], 0, &leaves);
+                    self.drop_value(ty, &vs);
+                }
+                self.b.ins().return_(&[]);
+            }
+            Glue::SlotCopy => {
+                let leaves = self.g.lay.leaves(ty);
+                let vs = self.load_leaves(params[0], 0, &leaves);
+                let out = self.copy_value(ty, &vs);
+                self.store_leaves(params[1], 0, &leaves, &out);
+                self.b.ins().return_(&[]);
+            }
             Glue::CleanupThunk(f) => {
                 // `arg` points at a stack copy of the registered value.
                 let fid = self.g.funcs[f as usize];
@@ -380,7 +405,13 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, ptr, 0);
                 self.if_then(nn, |s| s.free(ptr));
             }
-            TyKind::Obj(..) => self.unsupported("dropping Map and Set values"),
+            TyKind::Obj(..) => {
+                // Map and Set are owned `MapVal`s the runtime knows how to drop.
+                let leaves = self.g.lay.leaves(ty);
+                let slot = self.spill(vs, &leaves);
+                let d = self.typedesc_addr(ty);
+                self.rt_call("msrt_slot_drop", &[d, slot]);
+            }
             TyKind::Rec(_) => {
                 for (fty, at, w) in self.fields_of(ty) {
                     if m.needs_drop(fty) {
@@ -500,6 +531,14 @@ impl<'a, 'm> Lower<'a, 'm> {
                 }
             }
             TyKind::Alt(_) => self.alt_copy(ty, vs),
+            TyKind::Obj(..) => {
+                let leaves = self.g.lay.leaves(ty);
+                let src = self.spill(vs, &leaves);
+                let dst = self.spill(vs, &leaves);
+                let d = self.typedesc_addr(ty);
+                self.rt_call("msrt_slot_copy", &[d, src, dst]);
+                self.load_leaves(dst, 0, &leaves)
+            }
             TyKind::Iface(_) => {
                 // Interface payloads are not copyable (checked by the front end).
                 vs.to_vec()
@@ -618,6 +657,12 @@ impl<'a, 'm> Lower<'a, 'm> {
         } else {
             out
         }
+    }
+
+    /// The address of the static descriptor for slots of type `ty`.
+    fn typedesc_addr(&mut self, ty: Ty) -> Value {
+        let d = self.g.typedesc(ty);
+        self.data_addr(d)
     }
 
     /// Spills `vs` into a fresh stack slot laid out per `leaves` and returns its address.
@@ -1145,15 +1190,45 @@ impl<'a, 'm> Lower<'a, 'm> {
                 if nullable { v } else { v[1..].to_vec() }
             }
             Op::StrLen => {
+                // Scalar count: cached in the object, else computed (and cached) by the runtime.
                 let p = self.a(inst, 0)[0];
-                // Scalar count is lazily computed by the runtime; byte length is a direct load.
-                let _ = p;
-                self.unsupported("str.len");
-                vec![self.iconst(0)]
+                let n = self.b.ins().load(types::I64, flags(), p, 24);
+                let unknown = self.b.ins().icmp_imm_s(IntCC::Equal, n, -1);
+                let join = self.b.create_block();
+                self.b.append_block_param(join, types::I64);
+                let slow = self.b.create_block();
+                self.b.set_cold_block(slow);
+                self.b
+                    .ins()
+                    .brif(unknown, slow, &[], join, &[BlockArg::Value(n)]);
+                self.b.switch_to_block(slow);
+                let c = self.rt_call("msrt_string_length", &[p])[0];
+                self.b.ins().jump(join, &[BlockArg::Value(c)]);
+                self.b.switch_to_block(join);
+                vec![self.b.block_params(join)[0]]
             }
-            Op::SharedNew | Op::SharedGet => {
-                self.unsupported("Shared[T]");
-                self.zeros(res_ty.expect("result"))
+            Op::SharedNew => {
+                let t = self.g.m.types.kind(res_ty.expect("result")).clone();
+                let TyKind::Obj(_, args) = t else {
+                    unreachable!()
+                };
+                let leaves = self.g.lay.leaves(args[0]);
+                let size = SHARED_VALUE + mem_layout(&leaves).size as i64;
+                let obj = self.alloc(size);
+                let one = self.iconst(1);
+                self.b.ins().store(flags(), one, obj, 0);
+                let drop = self.g.glue(Glue::SharedDrop, args[0]);
+                let dr = self.fref(drop);
+                let da = self.b.ins().func_addr(types::I64, dr);
+                self.b.ins().store(flags(), da, obj, 8);
+                let v = self.a(inst, 0);
+                self.store_leaves(obj, SHARED_VALUE, &leaves, &v);
+                vec![obj]
+            }
+            Op::SharedGet => {
+                let obj = self.a(inst, 0)[0];
+                let leaves = self.g.lay.leaves(res_ty.expect("result"));
+                self.load_leaves(obj, SHARED_VALUE, &leaves)
             }
             Op::ClosureNew => self.closure_new(inst, res_ty.expect("closure result")),
             Op::ClosureCap => {
@@ -1229,6 +1304,10 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let i = self.a(inst, 1)[0];
                 vec![self.elem_addr(l[0], l[1], i, size, Op::ListGet)]
             }
+            Op::PtrIsNull => {
+                let p = self.a(inst, 0)[0];
+                vec![self.b.ins().icmp_imm_s(IntCC::Equal, p, 0)]
+            }
             Op::PtrField => {
                 let Imm::Field(r, i) = inst.imm else {
                     unreachable!()
@@ -1267,8 +1346,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::CallMethod => self.call_method(f, inst),
             Op::CallRt => self.call_extern(f, inst),
             Op::TypeDesc => {
-                self.unsupported("typedesc");
-                vec![self.iconst(0)]
+                let Imm::Ty(t) = inst.imm else { unreachable!() };
+                vec![self.typedesc_addr(t)]
             }
             Op::Poll => {
                 if self.g.opts.poll {

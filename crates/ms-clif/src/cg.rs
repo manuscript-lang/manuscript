@@ -13,7 +13,7 @@ use cranelift_module::{
 };
 use cranelift_object::{ObjectBuilder, ObjectModule};
 use ms_mir::ir::{ExtId, Func, Module};
-use ms_mir::types::Ty;
+use ms_mir::types::{Ty, TyKind};
 use std::collections::HashMap;
 
 /// `rc` of static objects (`ms_rt_abi::STATIC_RC`).
@@ -24,6 +24,8 @@ pub const STR_DATA_OFFSET: usize = 32;
 pub const OBJ_HEADER: u32 = 16;
 /// Offset of `code` in a closure object.
 pub const CLOSURE_CODE: i32 = 16;
+/// Offset of the payload in a `Shared[T]` box.
+pub const SHARED_VALUE: i64 = 16;
 /// Offset of the first capture in a closure object.
 pub const CLOSURE_CAPTURES: u32 = 24;
 
@@ -40,6 +42,12 @@ pub enum Glue {
     BlockDrop,
     /// `fn(arg: *mut u8)` thunk used by cleanup.push; key carries the closer function.
     CleanupThunk(u32),
+    /// Destructor of a `Shared[T]` box `fn(obj)`; the `Ty` is `T`. Drops the payload, frees the box.
+    SharedDrop,
+    /// `fn(slot)` that drops the value stored in memory at `slot` (descriptor `drop`).
+    SlotDrop,
+    /// `fn(src, dst)` that copies the value at `src` into uninitialised `dst` (descriptor `copy`).
+    SlotCopy,
 }
 
 /// Runtime functions the generated code may call: `(name, params, returns)` with
@@ -61,10 +69,21 @@ const RT: &[(&str, &str, &str)] = &[
     ("msrt_cleanup_push", "ii", "i"),
     ("msrt_cleanup_run", "i", ""),
     ("msrt_start", "iiii", "i"),
+    ("msrt_string_length", "i", "i"),
+    ("msrt_slot_drop", "ii", ""),
+    ("msrt_slot_copy", "iii", ""),
 ];
 
 /// Runtime data symbols: `(name, is_writable)`.
-const RT_DATA: &[(&str, bool)] = &[("msrt_cancel_flag", false), ("msrt_call_depth", true)];
+const RT_DATA: &[(&str, bool)] = &[
+    ("msrt_cancel_flag", false),
+    ("msrt_call_depth", true),
+    ("msrt_desc_int", false),
+    ("msrt_desc_float", false),
+    ("msrt_desc_bool", false),
+    ("msrt_desc_string", false),
+    ("msrt_desc_bytes", false),
+];
 
 fn clif_type(c: char) -> ir::Type {
     match c {
@@ -101,6 +120,8 @@ pub struct Gen<'m> {
     loc_ids: HashMap<(u32, u32), u32>,
     /// Per compiled source function: the data for fault traces and profiles.
     pub dbg: Vec<FuncDbg>,
+    /// Static type descriptors by type.
+    pub desc_ids: HashMap<Ty, DataId>,
     /// The `ms.tables` blob, once emitted.
     pub tables: Option<DataId>,
 }
@@ -203,9 +224,12 @@ impl<'m> Gen<'m> {
         let sig = match kind {
             Glue::Drop => self.sig(&leaves, &[]),
             Glue::Copy => self.sig(&leaves, &leaves),
-            Glue::ClosureDrop(_) | Glue::BlockDrop | Glue::CleanupThunk(_) => {
-                self.sig(&[Leaf::I64], &[])
-            }
+            Glue::ClosureDrop(_)
+            | Glue::BlockDrop
+            | Glue::CleanupThunk(_)
+            | Glue::SlotDrop
+            | Glue::SharedDrop => self.sig(&[Leaf::I64], &[]),
+            Glue::SlotCopy => self.sig(&[Leaf::I64, Leaf::I64], &[]),
         };
         let name = format!(
             "ms.glue.{}.{}",
@@ -216,6 +240,9 @@ impl<'m> Gen<'m> {
                 Glue::ClosureDrop(_) => "closure_drop",
                 Glue::BlockDrop => "block_drop",
                 Glue::CleanupThunk(_) => "cleanup_thunk",
+                Glue::SlotDrop => "slot_drop",
+                Glue::SharedDrop => "shared_drop",
+                Glue::SlotCopy => "slot_copy",
             }
         );
         let id = self
@@ -224,6 +251,87 @@ impl<'m> Gen<'m> {
             .expect("declare glue");
         self.glue.insert((kind, ty), id);
         self.queue.push((kind, ty));
+        id
+    }
+
+    /// The static `TypeDesc` for slots of type `ty` (`crates/ms-rt/ABI.md`, section 5).
+    pub fn typedesc(&mut self, ty: Ty) -> DataId {
+        use ms_rt_abi::{
+            DESC_DROP_OFFSET, KIND_CUSTOM, KIND_LIST, KIND_MAP, KIND_POD, KIND_SET, KIND_SHARED,
+        };
+        if let Some(id) = self.desc_ids.get(&ty) {
+            return *id;
+        }
+        let m = self.m;
+        let builtin = match m.types.kind(ty) {
+            TyKind::Int => Some("msrt_desc_int"),
+            TyKind::Float => Some("msrt_desc_float"),
+            TyKind::Bool => Some("msrt_desc_bool"),
+            TyKind::Str => Some("msrt_desc_string"),
+            TyKind::Bytes => Some("msrt_desc_bytes"),
+            _ => None,
+        };
+        if let Some(name) = builtin {
+            let id = self.rt_data(name);
+            self.desc_ids.insert(ty, id);
+            return id;
+        }
+        let name = format!("ms.desc.{}", self.desc_ids.len());
+        let id = self
+            .module
+            .declare_data(&name, Linkage::Local, false, false)
+            .expect("declare descriptor");
+        self.desc_ids.insert(ty, id);
+        let mem = self.lay.mem(ty);
+        let mut inner: [Option<Ty>; 2] = [None, None];
+        let mut with_glue = false;
+        let kind = match m.types.kind(ty) {
+            TyKind::List(e) => {
+                inner[0] = Some(*e);
+                KIND_LIST
+            }
+            TyKind::Obj(n, args) if n == "Map" => {
+                inner = [args.first().copied(), args.get(1).copied()];
+                KIND_MAP
+            }
+            TyKind::Obj(n, args) if n == "Set" => {
+                inner[0] = args.first().copied();
+                KIND_SET
+            }
+            TyKind::Obj(..) | TyKind::Fn(..) => KIND_SHARED,
+            TyKind::Opt(i) if self.lay.opt_is_nullable(*i) => KIND_SHARED,
+            _ if !m.needs_drop(ty) => KIND_POD,
+            _ => {
+                with_glue = true;
+                KIND_CUSTOM
+            }
+        };
+        let mut bytes = vec![0u8; ms_rt_abi::DESC_SIZE];
+        bytes[0..4].copy_from_slice(&mem.size.to_le_bytes());
+        bytes[4..8].copy_from_slice(&mem.align.to_le_bytes());
+        bytes[8..12].copy_from_slice(&kind.to_le_bytes());
+        let mut d = DataDescription::new();
+        d.define(bytes.into_boxed_slice());
+        d.set_align(8);
+        for (k, t) in inner.into_iter().enumerate() {
+            if let Some(t) = t {
+                let did = self.typedesc(t);
+                let gv = self.module.declare_data_in_data(did, &mut d);
+                d.write_data_addr(16 + 8 * k as u32, gv, 0);
+            }
+        }
+        if with_glue {
+            let drop = self.glue(Glue::SlotDrop, ty);
+            let copy = self.glue(Glue::SlotCopy, ty);
+            for (off, f) in [
+                (DESC_DROP_OFFSET as u32, drop),
+                (DESC_DROP_OFFSET as u32 + 8, copy),
+            ] {
+                let fr = self.module.declare_func_in_data(f, &mut d);
+                d.write_function_addr(off, fr);
+            }
+        }
+        self.module.define_data(id, &d).expect("define descriptor");
         id
     }
 
@@ -292,6 +400,7 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
         loc_ids: HashMap::new(),
         dbg: Vec::new(),
         tables: None,
+        desc_ids: HashMap::new(),
     };
     for (i, f) in m.funcs.iter().enumerate() {
         let sig = g.func_sig(f);
@@ -384,6 +493,7 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
         ctx.func.signature = match kind {
             Glue::Drop => g.sig(&leaves, &[]),
             Glue::Copy => g.sig(&leaves, &leaves),
+            Glue::SlotCopy => g.sig(&[Leaf::I64, Leaf::I64], &[]),
             _ => g.sig(&[Leaf::I64], &[]),
         };
         ctx.func.name = UserFuncName::user(0, id.as_u32());

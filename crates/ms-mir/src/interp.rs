@@ -784,6 +784,12 @@ impl<'m> Interp<'m> {
                 self.mem.push(self.default_val(t));
                 set!(Val::Ptr(self.mem.len() as u64));
             }
+            Op::PtrIsNull => {
+                let Val::Ptr(p) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("ptr.is_null of a non-pointer"));
+                };
+                set!(Val::Bool(*p == 0));
+            }
             Op::ListAddr | Op::PtrField => {
                 return Err(Raw::internal(
                     "interior pointers are not supported by the interpreter",

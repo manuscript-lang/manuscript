@@ -940,6 +940,13 @@ impl Verifier<'_> {
                     "list.addr takes a list and an index and yields a ptr to the element",
                 )
             }
+            Op::PtrIsNull => {
+                arity(1)?;
+                want(
+                    t(0) == Ty::PTR && res == Some(Ty::BOOL),
+                    "ptr.is_null tests a ptr and yields bool",
+                )
+            }
             Op::PtrField => {
                 arity(1)?;
                 let Imm::Field(r, i) = inst.imm else {
