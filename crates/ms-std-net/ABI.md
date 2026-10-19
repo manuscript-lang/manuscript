@@ -51,6 +51,7 @@ file's older prose differs, the signature and this section win.
   per field of a record result (`data, sender`), followed by `present` when the record is
   optional (`WebSocket.receive`). A list of records takes `d: *const TypeDesc, out: *mut VecVal`
   and appends record images with `write_record_list`.
+- `request_stream` receives its `ReadStream` as an adapter closure (`body: *mut Obj`); its code follows `StreamWire.read` and any nonzero status is an `IoError`.
 - The status is `1 + the index of the error case`; `err` carries the `Failed(message)` text.
 - `serve` and `serve_stream` receive the handler adapter closure as `env`. The runtime reads
   its code pointer at `CLOSURE_CODE_OFFSET` (16) and calls it as `BufferedThunk(env, req, resp)`

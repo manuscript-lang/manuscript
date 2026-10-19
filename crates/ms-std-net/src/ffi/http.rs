@@ -140,8 +140,9 @@ pub type BufferedThunk =
 pub type StreamThunk =
     unsafe extern "C" fn(env: *mut Obj, exchange: *mut Obj, err: *mut *mut StrObj) -> u8;
 
-/// A `ReadStream` borrowed for an upload: `read` follows the `Connection.read`
-/// convention of `ABI.md` (`IoError` status).
+/// A `ReadStream` borrowed for an upload: `data` is the compiler's adapter closure and
+/// `read` its code; it follows the `Connection.read` convention of `ABI.md` (any nonzero
+/// status is an `IoError`).
 #[repr(C)]
 pub struct StreamWire {
     pub data: *mut u8,
@@ -624,14 +625,15 @@ impl Source for Upload {
 /// `HttpClient.request_stream(method, url, headers, body: ReadStream, ...)`.
 ///
 /// # Safety
-/// Pointers per `ABI.md`; `body` is a live `StreamWire` borrowed for the call.
+/// Pointers per `ABI.md`; `body` is a live adapter closure (`env`) borrowed for the call,
+/// whose code follows the `StreamWire.read` convention.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn msrt_http_client_request_stream(
     c: *const Obj,
     method: *const StrObj,
     address: *const StrObj,
     headers: *const Obj,
-    body: *const StreamWire,
+    body: *mut Obj,
     has_max: u8,
     max: i64,
     has_timeout: u8,
@@ -642,8 +644,8 @@ pub unsafe extern "C" fn msrt_http_client_request_stream(
     // SAFETY: caller contract.
     unsafe {
         let stream = StreamWire {
-            data: (*body).data,
-            read: (*body).read,
+            data: body.cast(),
+            read: closure_code(body),
         };
         client_send(
             c,

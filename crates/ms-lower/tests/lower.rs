@@ -133,3 +133,13 @@ fn network_handles_and_http_handlers() {
     assert!(mir.contains("msrt_net_network_request"));
     assert!(mir.contains("msrt_http_server_address"));
 }
+
+#[test]
+fn upload_streams_cross_as_read_closures() {
+    let mir = lower(
+        "upload-stream",
+        "import {expect_equal, expect_ok} from \"@std/testing.ms\"\nimport {Bytes} from \"@std/bytes.ms\"\nimport {headers, HttpMethod, HttpExchange, HttpError, HttpClientOptions, HttpServerOptions} from \"@std/http.ms\"\nimport {ReadStream, IoError} from \"@std/io.ms\"\nimport network from \"@std/net.ms\"\n\ntype Chunks:\n    sent: Bool\n\nimpl ReadStream for Chunks:\n    fn close() Unit:\n        self.sent = self.sent\n    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:\n        if self.sent: return ok(none)\n        self.sent = true\n        return ok(some(\"upload-data\".to_bytes()))\n\nfn echo(exchange: HttpExchange) Result[Unit, HttpError]:\n    let body = match exchange.read():\n        ok(found): found\n        error(_): return error(HttpError.InvalidData)\n    let started = try exchange.send_headers(status: 200, headers: headers())\n    let written = match exchange.write_bytes(body.get(Bytes(values: []))):\n        ok(_): 0\n        error(_): return error(HttpError.InvalidData)\n    return ok(unit)\n\nfn run() Result[Int, Error]:\n    let server = try network().serve_stream(address: \"127.0.0.1:0\", handler: echo, options: HttpServerOptions())\n    let client = try network().http_client(options: HttpClientOptions())\n    let source = Chunks(sent: false)\n    let response = try client.request_stream(method: HttpMethod.Post, url: \"http://{server.address()}/\", headers: headers(), body: ReadStream(value: source))\n    return ok(response.metadata().status)\n\nexport fn main() Int:\n    return run().get(1)\n",
+    );
+    assert!(mir.contains("msrt_http_client_request_stream"));
+    assert!(mir.contains("http.read"));
+}

@@ -18,6 +18,8 @@ const STANDARD_METHODS: i64 = 9;
 pub struct HttpAdapterJob {
     /// A streaming handler (`fn(HttpExchange) Result[Unit, HttpError]`), else buffered.
     pub stream: bool,
+    /// Reads a `ReadStream` for an upload (`handler` is then the interface type).
+    pub read: bool,
     /// The handler's function type.
     pub handler: MTy,
     /// Module the use is written in.
@@ -174,6 +176,7 @@ impl FnLower<'_> {
                     func: id,
                     kind: JobKind::HttpAdapter(Rc::new(HttpAdapterJob {
                         stream,
+                        read: false,
                         handler: hty,
                         hir: self.hir.clone(),
                     })),
@@ -191,6 +194,68 @@ impl FnLower<'_> {
     }
 
     /// The function type of the adapter closure (the closure object excluded).
+    /// A closure over `stream` (a `ReadStream`) that the runtime calls as
+    /// `read(env, has_max, max, out, present, err) -> status` (`StreamWire.read`).
+    pub(crate) fn read_adapter(&mut self, stream: Val) -> Result<Val, Error> {
+        let sty = self.ty_of(stream.v);
+        let key = format!("read-adapter:{}", sty.0);
+        let id = match self.cx.helpers.get(&key) {
+            Some(f) => *f,
+            None => {
+                let ps = vec![
+                    Param {
+                        ty: MTy::PTR,
+                        mode: Mode::Borrow,
+                    },
+                    Param {
+                        ty: MTy::INT,
+                        mode: Mode::Borrow,
+                    },
+                    Param {
+                        ty: MTy::INT,
+                        mode: Mode::Borrow,
+                    },
+                    Param {
+                        ty: MTy::PTR,
+                        mode: Mode::Borrow,
+                    },
+                    Param {
+                        ty: MTy::PTR,
+                        mode: Mode::Borrow,
+                    },
+                    Param {
+                        ty: MTy::PTR,
+                        mode: Mode::Borrow,
+                    },
+                ];
+                let mut f = Func::new("http.read", ps, MTy::INT);
+                f.kind = FuncKind::Closure {
+                    captures: vec![sty],
+                };
+                let id = self.b.m.add_func(f);
+                self.cx.queue.push(Job {
+                    func: id,
+                    kind: JobKind::HttpAdapter(Rc::new(HttpAdapterJob {
+                        stream: false,
+                        read: true,
+                        handler: sty,
+                        hir: self.hir.clone(),
+                    })),
+                });
+                self.cx.helpers.insert(key, id);
+                id
+            }
+        };
+        let ft = self.b.m.funcs[id.index()].clone();
+        let fty = self.adapter_type(&ft, false);
+        let captured = self.owned(stream);
+        let v = self
+            .b
+            .emit(Op::ClosureNew, &[captured], Imm::Func(id), Some(fty))
+            .expect("closure");
+        Ok(Val { v, own: true })
+    }
+
     fn adapter_type(&mut self, f: &Func, _stream: bool) -> MTy {
         let params: Vec<MTy> = f.params.iter().skip(1).map(|p| p.ty).collect();
         self.b.m.types.func(params, f.ret)
@@ -209,7 +274,9 @@ pub(crate) fn build_http_adapter(
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
-    let result = if job.stream {
+    let result = if job.read {
+        lower_read_adapter(&mut fl, job)
+    } else if job.stream {
         lower_stream_adapter(&mut fl, job)
     } else {
         lower_buffered_adapter(&mut fl, job)
@@ -364,4 +431,83 @@ fn status_of(
         },
     )?;
     Ok(r.v)
+}
+
+/// Lowers a `ReadStream` reader: one `read` call whose chunk, end of stream or failure is
+/// reported through `out`, `present` and the status (0, or 1 for any `IoError`).
+fn lower_read_adapter(fl: &mut FnLower<'_>, job: &HttpAdapterJob) -> Result<(), Error> {
+    let params = fl.b.params();
+    let TyKind::Iface(iface) = fl.b.m.types.kind(job.handler).clone() else {
+        return Err(Error::new("an upload body is a ReadStream"));
+    };
+    let k = fl.b.m.ifaces[iface.index()]
+        .methods
+        .iter()
+        .position(|s| s.name == "read")
+        .ok_or_else(|| Error::new("a ReadStream has no read"))?;
+    let max_ty = fl.b.m.ifaces[iface.index()].methods[k].params[0];
+    let stream =
+        fl.b.emit(Op::ClosureCap, &[params[0]], Imm::Idx(0), Some(job.handler))
+            .expect("capture");
+    let mask = fl.b.iconst(0xff);
+    let flag = fl.b.binop(Op::And, params[1], mask);
+    let zero = fl.b.iconst(0);
+    let has = fl.b.icmp(Cc::Ne, flag, zero);
+    let max = fl.two_ways(
+        has,
+        max_ty,
+        &mut |s| {
+            let TyKind::Opt(_) = s.b.m.types.kind(max_ty).clone() else {
+                return Err(Error::new("read takes an optional size"));
+            };
+            Ok(Some(s.b.opt_some(params[2])))
+        },
+        &mut |s| Ok(Some(s.none_owned(max_ty))),
+    )?;
+    let result = fl.b.call_method(iface, k as u32, stream, &[max.v]);
+    let rty = fl.ty_of(result);
+    let TyKind::Alt(ra) = fl.b.m.types.kind(rty).clone() else {
+        return Err(Error::new("read returns a Result"));
+    };
+    let cases = fl.b.m.alts[ra.index()].cases.clone();
+    let ok = cases.iter().position(|c| c.name == "ok").unwrap_or(0);
+    let tag = fl.b.alt_tag(result);
+    let kok = fl.b.iconst(ok as i64);
+    let is_ok = fl.b.icmp(Cc::Eq, tag, kok);
+    let (present, out) = (params[4], params[3]);
+    let code = fl.two_ways(
+        is_ok,
+        MTy::INT,
+        &mut |s| {
+            let chunk = s.b.alt_get(ra, ok as u32, 0, result);
+            let some = s.b.opt_is_some(chunk);
+            let r = s.two_ways(
+                some,
+                MTy::INT,
+                &mut |s| {
+                    let bytes = s.b.opt_get(chunk);
+                    let owned =
+                        s.b.emit(Op::Copy, &[bytes], Imm::None, Some(s.ty_of(bytes)))
+                            .expect("copy");
+                    s.b.emit(Op::Put, &[out, owned], Imm::None, None);
+                    let yes = s.b.bconst(true);
+                    s.b.emit(Op::Store, &[present, yes], Imm::None, None);
+                    Ok(Some(s.b.iconst(0)))
+                },
+                &mut |s| {
+                    let no = s.b.bconst(false);
+                    s.b.emit(Op::Store, &[present, no], Imm::None, None);
+                    Ok(Some(s.b.iconst(0)))
+                },
+            )?;
+            Ok(Some(r.v))
+        },
+        &mut |s| Ok(Some(s.b.iconst(1))),
+    )?;
+    fl.b.emit(Op::Drop, &[result], Imm::None, None);
+    fl.emit_return(Some(Val {
+        v: code.v,
+        own: false,
+    }));
+    Ok(())
 }

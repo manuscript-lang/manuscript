@@ -217,6 +217,14 @@ fn lower_native_iface_method(fl: &mut FnLower<'_>, job: &NativeIfaceJob) -> Resu
             }
         }
     }
+    // An upload body crosses as a closure that reads the stream for the runtime.
+    if job.method == "request_stream" {
+        for a in &mut args {
+            if a.name.as_str() == "body" {
+                a.val = fl.read_adapter(a.val)?;
+            }
+        }
+    }
     let sym = format!("{}_{}", job.prefix, job.method);
     let ret = fl.ret_ty;
     let recv = Val {
