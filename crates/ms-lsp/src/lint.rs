@@ -1,7 +1,7 @@
 //! Advisory lint findings shown next to diagnostics.
 //!
-//! Semantic lints belong to the tooling crate; the server takes them through
-//! [`Lint`] so it needs no dependency on it.
+//! The server takes findings through [`Lint`]; [`Tooling`] is the default and
+//! [`Hygiene`] the whitespace-only subset.
 
 use ms_check::Program;
 
@@ -60,5 +60,27 @@ impl Lint for Hygiene {
 
     fn program(&self, _program: &Program) -> Vec<LintFinding> {
         Vec::new()
+    }
+}
+
+/// Every rule `ms lint` reports: whitespace hygiene plus the semantic
+/// advisories of the tooling crate.
+pub struct Tooling;
+
+impl Lint for Tooling {
+    fn source(&self, filename: &str, source: &str) -> Vec<LintFinding> {
+        Hygiene.source(filename, source)
+    }
+
+    fn program(&self, program: &Program) -> Vec<LintFinding> {
+        ms_tooling::lint::lint_program(program)
+            .into_iter()
+            .map(|finding| LintFinding {
+                code: finding.code.to_string(),
+                message: finding.message,
+                file: finding.file.to_string(),
+                offset: finding.pos.offset as usize,
+            })
+            .collect()
     }
 }

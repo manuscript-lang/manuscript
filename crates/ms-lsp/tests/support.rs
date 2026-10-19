@@ -246,30 +246,6 @@ pub fn canonical(value: &Json) -> String {
     }
 }
 
-/// Drops the semantic lint findings (`MSL1xx`) that belong to the tooling
-/// crate; the server takes them through `ms_lsp::lint::Lint`.
-fn without_semantic_lints(message: &Json) -> Json {
-    let mut message = message.clone();
-    if message.get("method").and_then(|m| m.as_str()) == Some("textDocument/publishDiagnostics")
-        && let Some(Json::Obj(params)) = message.get("params").cloned().as_ref()
-    {
-        let mut params = params.clone();
-        for (key, value) in params.iter_mut() {
-            if key == "diagnostics"
-                && let Json::Arr(items) = value
-            {
-                items.retain(|d| {
-                    let code = d.get("code").and_then(|c| c.as_str()).unwrap_or("");
-                    !(d.get("source").and_then(|s| s.as_str()) == Some("manuscript-lint")
-                        && code.starts_with("MSL1"))
-                });
-            }
-        }
-        message.set("params", Json::Obj(params));
-    }
-    message
-}
-
 /// Runs the script on both servers and compares every message; panics with the
 /// first difference. Returns the Rust messages.
 pub fn compare(name: &str, script: &Script) -> Vec<Json> {
@@ -281,12 +257,8 @@ pub fn compare(name: &str, script: &Script) -> Vec<Json> {
         eprintln!("{name}: skipped (no Go oracle; run `make build`)");
         return script.rust();
     };
-    let expected: Vec<Json> = script
-        .go(&binary)
-        .iter()
-        .map(without_semantic_lints)
-        .collect();
-    let actual: Vec<Json> = script.rust().iter().map(without_semantic_lints).collect();
+    let expected: Vec<Json> = script.go(&binary);
+    let actual: Vec<Json> = script.rust();
     if let Ok(dir) = std::env::var("MS_LSP_DUMP") {
         let write = |side: &str, messages: &[Json]| {
             let text: Vec<String> = messages.iter().map(canonical).collect();

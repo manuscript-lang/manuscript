@@ -10,7 +10,7 @@ use crate::analysis::{
 use crate::completion::{completion_at, signature_help};
 use crate::features::{folding_ranges, inlay_hints};
 use crate::json::{self, Json, obj};
-use crate::lint::{Hygiene, Lint};
+use crate::lint::{Lint, Tooling};
 use crate::nav::{self, Navigate};
 use crate::rename::rename;
 use crate::semantic::{TOKEN_TYPES, semantic_tokens};
@@ -30,7 +30,7 @@ const BATCH_WINDOW: Duration = Duration::from_millis(25);
 
 /// Runs a session until the client exits or input ends.
 pub fn serve(input: impl Read + Send + 'static, output: impl Write) -> Result<(), String> {
-    serve_with(input, output, &Hygiene)
+    serve_with(input, output, &Tooling)
 }
 
 /// Runs a session that takes its lint findings from `lint`.

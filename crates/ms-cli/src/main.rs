@@ -14,8 +14,8 @@ fn main() {
         .skip(1)
         .map(|a| a.to_string_lossy().into_owned())
         .collect();
-    let stdin = std::io::stdin();
-    let mut stdin = stdin.lock();
+    // Unlocked: `ms lsp` reads the process stdin from its own thread.
+    let mut stdin = std::io::stdin();
     let mut stdout = std::io::BufWriter::new(std::io::stdout().lock());
     let mut stderr = std::io::stderr().lock();
     let status = {
