@@ -10,4 +10,4 @@ trap 'rm -rf "$work"' EXIT
 cc -O2 -fno-omit-frame-pointer -o "$work/bench" "$here/bench.c" "$target/release/libms_rt.a" -lpthread -ldl -lm
 echo "== ms-rt (ns/op)"; "$work/bench"
 echo "== Go (ns/op, per element = ns/op / N)"
-(cd "$here" && go test -run xxx -bench . -benchtime 3x bench_test.go 2>&1 | grep Benchmark)
+(cd "$here/go" && go test -run xxx -bench . -benchtime 3x 2>&1 | grep Benchmark)
