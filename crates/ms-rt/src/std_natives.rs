@@ -101,7 +101,7 @@ fn timestamps_round_trip_through_strings() {
             (cal.year, cal.month, cal.day, cal.hour, cal.offset_seconds),
             (2024, 7, 5, 1, 9 * 3600)
         );
-        assert_eq!(text(cal.zone), "JST");
+        assert_eq!(text(cal.zone.as_ptr()), "JST");
         let mut c2 = std::mem::MaybeUninit::<CalendarOut>::uninit();
         assert_eq!(
             msstd_time_timestamp_calendar(&t, st("Mars/Base"), c2.as_mut_ptr()),
