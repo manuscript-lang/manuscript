@@ -323,7 +323,20 @@ impl Loader<'_> {
             self.graph.diagnostics.extend(issues);
             module
         } else {
-            ms_syntax::parser::parse(file, &text).map_err(Failure::Diagnostic)?
+            match ms_syntax::parser::parse(file, &text) {
+                Ok(module) => module,
+                Err(first) => {
+                    // Report every independent syntax error in the file, not
+                    // only the first, so one run shows all that need fixing.
+                    let (_, issues) = ms_syntax::parse_partial(file, &text);
+                    self.graph.diagnostics.extend(
+                        issues
+                            .into_iter()
+                            .filter(|d| d.pos != first.pos && d.pos.line > 0),
+                    );
+                    return Err(Failure::Diagnostic(first));
+                }
+            }
         };
         let key = n(file);
         let mut resolved: Vec<(ms_syntax::NodeId, Name)> = Vec::new();

@@ -181,7 +181,7 @@ pub(crate) struct Failure {
 impl Failure {
     /// The terminal report: `file:line:col: phase: message` per diagnostic, then a count.
     pub fn report(&self, io: &mut Io) -> i32 {
-        for issue in &self.diagnostics {
+        for issue in self.in_source_order() {
             let mut issue = issue.clone();
             if !self.source_root.is_empty() && !issue.file.starts_with('/') {
                 issue.file = format!("{}/{}", self.source_root, issue.file).into();
@@ -198,7 +198,20 @@ impl Failure {
     }
 
     pub fn command_diagnostics(&self) -> Vec<CommandDiagnostic> {
-        self.diagnostics.iter().map(command_diagnostic).collect()
+        self.in_source_order()
+            .into_iter()
+            .map(command_diagnostic)
+            .collect()
+    }
+
+    /// Diagnostics by file, line and column; the sort is stable, so ties keep
+    /// the order the phases produced them in.
+    fn in_source_order(&self) -> Vec<&Diagnostic> {
+        let mut ordered: Vec<&Diagnostic> = self.diagnostics.iter().collect();
+        ordered.sort_by(|a, b| {
+            (&a.file, a.pos.line, a.pos.column).cmp(&(&b.file, b.pos.line, b.pos.column))
+        });
+        ordered
     }
 }
 

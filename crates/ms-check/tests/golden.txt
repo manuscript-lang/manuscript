@@ -3011,9 +3011,9 @@ fn value() Int:
     return 03
 parse	2	13	28	leading zeros are not allowed in numeric literals; write the number without them, e.g. 42 instead of 042fn value() Int:
     return 0xff
-parse	2	13	28	invalid numeric suffix; the only suffix is d for Decimal (1.5d), so put a space or operator after the numberfn value() Int:
+parse	2	12	27	invalid number 0xff; hexadecimal, binary, and octal literals do not exist, so write the value in decimal, e.g. 255 for 0xFFfn value() Int:
     return 1_000
-parse	2	13	28	invalid numeric suffix; the only suffix is d for Decimal (1.5d), so put a space or operator after the numberfn value() Float:
+parse	2	12	27	invalid number 1_000; digit separators are not supported, so write the digits together, e.g. 1000000 for 1_000_000fn value() Float:
     return 1e+
 parse	2	15	32	an exponent requires digits; write e.g. 1e3 or 2.5e-4fn value() Unit:
     other(value: [1)
@@ -3274,7 +3274,7 @@ fn main() Unit:
     )
 parse	2	18	33	a binding group needs its own lines; put 'let (' on a line of its own with one binding per indented line, or write single 'let name = value' bindingsfn f() Int
     return 1
-parse	2	5	15	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfn f() Int:
+parse	1	11	10	the 'fn' block header on line 1 does not end with ':'; add ':' at the end of that line so the indented lines below become its bodyfn f() Int:
 	return 1
 parse	2	1	12	tabs are not allowed in code; indent with four spaces per level (tabs may appear only inside text or comments)fn f() Int:
   return 1
@@ -3378,7 +3378,7 @@ fn broken() Int:
 fn after() Int: 2
 parse	5	29	114	a comma cannot end a statement in an indented function body; to separate enclosing arguments, put the comma on its own line dedented to the fn header, or group the function in parenthesesfn f() Int:
     return 1,
-parse	2	13	24	expected end of statement, found ','; put one statement per line, and join operands with an operator or a comma inside bracketsfn before() Unit: unit
+parse	2	13	24	expected end of statement, found ','; commas separate items only inside (), [] or {}: put each field, case, or statement on its own linefn before() Unit: unit
 fn broken() Unit:
      = read_hex4()
 fn after() Unit: unit
@@ -3387,7 +3387,7 @@ fn after() Unit: unit
     return code_unit
 fn f() Int:
     return type	2	5	16	bare return requires Unit; this function returns Int, so write 'return <value>'let value
-parse	1	10	9	expected '=', found end of linefn f() Bool:
+parse	1	10	9	expected '=', found end of line; every let/var binding needs an initial value, e.g. var count: Int = 0fn f() Bool:
     return 1 < 2 < 3
 parse	2	18	30	comparison operators cannot chain; combine two comparisons with 'and', e.g. a < b and b < cfn f(value: fn(x: Int = 1) Int) Unit:
     return
@@ -3413,7 +3413,7 @@ test "bad":
         return panic(message: "check failed")
 parse	4	21	68	invalid Unicode scalar escape; use 1 to 6 hexadecimal digits for a value up to 10FFFF that is not a surrogate (D800-DFFF)fn f() Int:
     return 1_000
-parse	2	13	24	invalid numeric suffix; the only suffix is d for Decimal (1.5d), so put a space or operator after the numberfn f() Int:
+parse	2	12	23	invalid number 1_000; digit separators are not supported, so write the digits together, e.g. 1000000 for 1_000_000fn f() Int:
     return values[0, 1]
 parse	2	20	31	expected ']', found ','; close the bracket, separating items with commasfn f() Unit:
     for [key, value] in entries:
@@ -3495,14 +3495,14 @@ resolution	4	26	92	unknown binding consume; declare it with 'let consume = ...' 
     if x > 0: return x else: return 0
 parse	2	24	41	expected end of inline statement, found 'else'; an inline body holds one simple statement, so move more statements to an indented blockfn f() Unit:
     if true: return else: return
-parse	2	21	33	expected an expression, found 'else'; write a value, name, call, or literal herefn f() Unit:
+parse	2	21	33	expected an expression, found 'else'; 'else' continues an 'if' block: put it on its own line at the same indentation as that 'if', directly after the if bodyfn f() Unit:
     if true: use() else if false: use()
 parse	2	20	32	expected end of inline statement, found 'else'; an inline body holds one simple statement, so move more statements to an indented blockfn f() Unit: return return
 parse	1	21	20	expected an expression, found 'return'; write a value, name, call, or literal herefn f() Unit: if true: return
 parse	1	14	13	inline bodies require one simple statement; put 'if' on its own line in an indented blockfn f() Unit:
     if true: return
         return
-parse	3	9	41	unexpected indentation, 8 spaces where 4 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfn f() Unit:
+parse	2	20	32	the 'if' block header on line 2 does not end with ':'; add ':' at the end of that line so the indented lines below become its bodyfn f() Unit:
     use(fn(value, other: Int):
         return value + other
     )
@@ -3569,7 +3569,7 @@ value: Int,
 parse	3	1	22	unterminated delimiter '(' opened at line 1:9; add the matching ')' before the end of the fileimpl Box:
     fn value(self) Int:
         return 1
-parse	2	14	23	expected a name, found 'self'; 'self' is a reserved word and cannot be used as a namelet invalid = = 1
+parse	2	14	23	expected a name, found 'self'; 'self' is reserved: a method's receiver is implicit, so leave it out of the parameter list and write self.field in the bodylet invalid = = 1
 parse	1	15	14	expected an expression, found '='; write a value, name, call, or literal herelet value = 1
     let bad = = 1
     return 1
@@ -4649,7 +4649,7 @@ impl T:
 
 export fn main() Int:
     return 0
-parse	5	10	37	expected a name, found 'self'; 'self' is a reserved word and cannot be used as a namelet LIMIT = 10
+parse	5	10	37	expected a name, found 'self'; 'self' is reserved: a method's receiver is implicit, so leave it out of the parameter list and write self.field in the bodylet LIMIT = 10
 fn size() Int:
     return LIMIT
 export interface Read[T]:
@@ -5670,11 +5670,11 @@ impl Data:
     fn read() Int:
 parse	2	5	15	a type declares only fields or cases; write its methods in an 'impl Data:' block, or implement an interface with 'impl <Interface> for Data:'type Data:
     count Int
-parse	2	11	21	expected ':', found name 'Int'; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented bodytype Data:
+parse	2	10	20	expected ':' between 'count' and its type; parameters and fields are written name: Typetype Data:
     count: Int =
 parse	2	17	27	expected an expression, found end of line; write a value, name, call, or literal herefn valid() Unit:
 var invalid = 3
-parse	2	1	17	expected a module declaration or import, found 'var'; top level holds only import, let constants, fn, type, interface, impl, and test (optionally prefixed by export), so put statements inside a fnfn broken() String: return "unterminated
+parse	2	1	17	module level holds only 'let' constants; keep mutable state in a 'var' inside a fn, or in a field of a typefn broken() String: return "unterminated
 parse	1	28	27	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakfn fragment() Unit:
     fn use(value: Optional[Int]) Unit:
 # match match

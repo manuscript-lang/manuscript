@@ -1,0 +1,1 @@
+error parse 1:1:0 "'function' is not a Manuscript declaration keyword; declare a function as 'fn name(a: Int) Int:' with the result type after the parameters"
