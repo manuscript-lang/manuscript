@@ -743,6 +743,9 @@ fn define_with(
             ctx.func.dfg.ext_funcs[func_ref].colocated = false;
         }
     }
+    if g.opts.opt_level != "none" {
+        crate::spill::spill_loop_cold(&mut ctx.func);
+    }
     if g.opts.dump_clif {
         eprintln!("; {name}\n{}", ctx.func.display());
     }
