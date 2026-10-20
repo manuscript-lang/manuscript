@@ -105,6 +105,58 @@ mod os {
         unsafe { sys::alarm(CLEANUP_GRACE_SECS) };
     }
 
+    /// Size of the alternate stack the overflow handler runs on.
+    const ALT_STACK: usize = 64 << 10;
+    /// How far below the stack's lowest usable address a fault still counts as overflow; a
+    /// frame bigger than the guard can skip past it.
+    const OVERFLOW_REACH: usize = 1 << 20;
+
+    extern "C" fn on_fault(sig: i32, info: *const u8, _ctx: *const u8) {
+        // SAFETY: the kernel passes a valid `siginfo_t`; the globals are only written by the
+        // runtime thread, which is the one that faulted.
+        unsafe {
+            let addr = info
+                .add(sys::SI_ADDR_OFFSET)
+                .cast::<usize>()
+                .read_unaligned();
+            let lo = *STACK_LO.ptr();
+            if lo != 0 && addr < lo + 4096 && addr + OVERFLOW_REACH >= lo {
+                fault::fatal(b"stack overflow: recursion too deep or stack frames too large");
+            }
+            // Not ours: restore the default action and return so the access faults again.
+            let dfl = sys::sigaction_t::new(0, 0);
+            sys::sigaction(sig, &dfl, core::ptr::null_mut());
+        }
+    }
+
+    /// Reports a stack overflow by name instead of dying from a bare SIGSEGV. Must run on the
+    /// thread that runs `main`, whose alternate stack the handler needs.
+    fn install_overflow_handler() {
+        // SAFETY: the alternate stack is never freed; the handler only makes async-signal-safe
+        // calls before exiting.
+        unsafe {
+            let stack = sys::map_anon(ALT_STACK);
+            if stack.is_null() {
+                return;
+            }
+            let alt = sys::stack_t {
+                ss_sp: stack.cast(),
+                ss_flags: 0,
+                ss_size: ALT_STACK,
+            };
+            if sys::sigaltstack(&alt, core::ptr::null_mut()) != 0 {
+                return;
+            }
+            let handler: extern "C" fn(i32, *const u8, *const u8) = on_fault;
+            let act = sys::sigaction_t::new(
+                handler as *const () as usize,
+                sys::SA_SIGINFO | sys::SA_ONSTACK,
+            );
+            sys::sigaction(sys::SIGSEGV, &act, core::ptr::null_mut());
+            sys::sigaction(sys::SIGBUS, &act, core::ptr::null_mut());
+        }
+    }
+
     pub fn install_stop_handlers() {
         install(sys::SIGINT, on_stop as *const () as usize);
         install(sys::SIGTERM, on_stop as *const () as usize);
@@ -115,6 +167,7 @@ mod os {
     }
 
     extern "C" fn thread_main(_: *mut c_void) -> *mut c_void {
+        install_overflow_handler();
         // SAFETY: see `run_main`.
         unsafe { run_main() };
         core::ptr::null_mut()
