@@ -19,7 +19,18 @@ fn push_rune(out: &mut Vec<u8>, r: u32) {
     out.extend_from_slice(ch.encode_utf8(&mut buf).as_bytes());
 }
 
+/// The references escaping produces; they skip the table search.
+static COMMON: [(&str, u32); 4] = [
+    ("amp;", 0x26),
+    ("lt;", 0x3C),
+    ("gt;", 0x3E),
+    ("quot;", 0x22),
+];
+
 fn lookup(name: &str) -> Option<&'static (&'static str, u32)> {
+    if let Some(e) = COMMON.iter().find(|e| e.0 == name) {
+        return Some(e);
+    }
     SINGLE
         .binary_search_by(|e| e.0.as_bytes().cmp(name.as_bytes()))
         .ok()
@@ -129,11 +140,15 @@ pub fn unescape(b: &[u8], attribute: bool) -> Vec<u8> {
     let mut out = Vec::with_capacity(b.len());
     let mut i = 0;
     while i < b.len() {
-        if b[i] == b'&' {
+        // Copy the run up to the next reference in one piece.
+        let run = b[i..]
+            .iter()
+            .position(|&c| c == b'&')
+            .unwrap_or(b.len() - i);
+        out.extend_from_slice(&b[i..i + run]);
+        i += run;
+        if i < b.len() {
             i += unescape_entity(&b[i..], &mut out, attribute);
-        } else {
-            out.push(b[i]);
-            i += 1;
         }
     }
     out
@@ -146,16 +161,20 @@ pub fn unescape_string(s: &str) -> String {
     let mut out = Vec::with_capacity(b.len());
     let mut i = 0;
     while i < b.len() {
-        if b[i] == b'&' {
-            if b[i..].starts_with(b"&#x;") || b[i..].starts_with(b"&#X;") {
-                out.extend_from_slice(&b[i..i + 4]);
-                i += 4;
-            } else {
-                i += unescape_entity(&b[i..], &mut out, false);
-            }
+        let run = b[i..]
+            .iter()
+            .position(|&c| c == b'&')
+            .unwrap_or(b.len() - i);
+        out.extend_from_slice(&b[i..i + run]);
+        i += run;
+        if i == b.len() {
+            break;
+        }
+        if b[i..].starts_with(b"&#x;") || b[i..].starts_with(b"&#X;") {
+            out.extend_from_slice(&b[i..i + 4]);
+            i += 4;
         } else {
-            out.push(b[i]);
-            i += 1;
+            i += unescape_entity(&b[i..], &mut out, false);
         }
     }
     String::from_utf8(out).unwrap_or_default()
@@ -164,15 +183,21 @@ pub fn unescape_string(s: &str) -> String {
 /// `html.EscapeString`: escapes `<`, `>`, `&`, `'` and `"`.
 pub fn escape_string(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
-    for c in s.chars() {
-        match c {
-            '&' => out.push_str("&amp;"),
-            '\'' => out.push_str("&#39;"),
-            '<' => out.push_str("&lt;"),
-            '>' => out.push_str("&gt;"),
-            '"' => out.push_str("&#34;"),
-            c => out.push(c),
-        }
+    let mut start = 0;
+    for (i, &c) in s.as_bytes().iter().enumerate() {
+        let replacement = match c {
+            b'&' => "&amp;",
+            b'\'' => "&#39;",
+            b'<' => "&lt;",
+            b'>' => "&gt;",
+            b'"' => "&#34;",
+            _ => continue,
+        };
+        // The special bytes are ASCII, so `start..i` ends on a character boundary.
+        out.push_str(&s[start..i]);
+        out.push_str(replacement);
+        start = i + 1;
     }
+    out.push_str(&s[start..]);
     out
 }
