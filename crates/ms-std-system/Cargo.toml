@@ -18,7 +18,7 @@ libc = { version = "0.2", default-features = false }
 rustix = { version = "1", default-features = false, features = ["std", "process", "system", "thread", "param"] }
 
 [dev-dependencies]
-ms-rt = { path = "../ms-rt", features = ["std"] }
+ms-rt = { path = "../ms-rt" }
 
 [lints]
 workspace = true

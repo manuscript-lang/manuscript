@@ -6,7 +6,6 @@
 //! `AlreadyExists`, `PermissionDenied`, `Unsupported`, `Closed`, `Failed`) and `CommandError` to
 //! `InvalidInput`, `Unavailable`, `Timeout` (13), `OutputLimit` (14) and `Failed`. Optional values
 //! are a present flag plus the value. A `Map[String, String]` crosses as two parallel string lists.
-#![no_std]
 // The exports below are the C ABI compiled code links against.
 #![allow(unsafe_code)]
 #![allow(clippy::missing_safety_doc)]
@@ -24,9 +23,7 @@ pub mod signals;
 #[cfg(windows)]
 #[path = "signals_windows.rs"]
 pub mod signals;
-
-#[cfg(test)]
-extern crate std;
+mod spawn;
 
 /// Serialises tests that spawn children with tests that change the process environment: `setenv`
 /// may reallocate `environ` while `posix_spawnp` reads it, which makes the spawn fail at random.

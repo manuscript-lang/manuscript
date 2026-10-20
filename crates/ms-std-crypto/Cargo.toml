@@ -30,7 +30,7 @@ x25519-dalek = { version = "3", default-features = false }
 sec1 = { version = "0.8", default-features = false, features = ["der", "alloc"] }
 
 [dev-dependencies]
-ms-rt = { path = "../ms-rt", features = ["std"] }
+ms-rt = { path = "../ms-rt" }
 
 [lints]
 workspace = true

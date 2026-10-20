@@ -16,7 +16,7 @@ ms-std-rt = { path = "../ms-std-rt" }
 rustix = { version = "1", default-features = false, features = ["termios", "stdio", "event", "time"] }
 
 [dev-dependencies]
-ms-rt = { path = "../ms-rt", features = ["std"] }
+ms-rt = { path = "../ms-rt" }
 
 [target.'cfg(unix)'.dev-dependencies]
 rustix = { version = "1", default-features = false, features = ["std", "termios", "stdio", "event", "time", "pty", "pipe"] }

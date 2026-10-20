@@ -11,7 +11,7 @@ ms-rt-abi = { path = "../ms-rt-abi" }
 ms-std-core = { path = "../ms-std-core" }
 
 [dev-dependencies]
-ms-rt = { path = "../ms-rt", features = ["std"] }
+ms-rt = { path = "../ms-rt" }
 
 [lints]
 workspace = true
