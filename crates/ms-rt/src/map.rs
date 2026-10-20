@@ -43,13 +43,14 @@ struct Layout {
     vsize: usize,
 }
 
-/// `copy_nonoverlapping` with the 8-byte case (Int/Float/pointer slots) inline.
+/// `copy_nonoverlapping` with the 8-byte case (Int/Float/pointer slots) inline. A byte copy keeps
+/// the provenance of pointer slots, which an integer load and store would drop.
 #[inline(always)]
 unsafe fn copy_slot(src: *const u8, dst: *mut u8, n: usize) {
     // SAFETY: caller contract of `copy_nonoverlapping`.
     unsafe {
         if n == 8 {
-            *(dst as *mut u64) = *(src as *const u64);
+            core::ptr::copy_nonoverlapping(src, dst, 8);
         } else {
             core::ptr::copy_nonoverlapping(src, dst, n);
         }
@@ -535,7 +536,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add(
             // Int keys and scalar values own nothing: overwrite an existing entry in place.
             let p = find_int(m, *(key as *const i64));
             if !p.is_null() {
-                *(p.add(16) as *mut u64) = *(val as *const u64);
+                core::ptr::copy_nonoverlapping(val, p.add(16), 8);
                 return;
             }
         }

@@ -12,6 +12,7 @@ use crate::fault::{self, Ctx, PENDING_SIGNAL, msrt_cancel_flag};
 use crate::global::Global;
 use crate::sys;
 use core::ptr::null_mut;
+use core::sync::atomic::Ordering;
 use ms_rt_abi::StrObj;
 
 /// Results of a park, ORed together.
@@ -591,7 +592,7 @@ unsafe fn reactor_wait() {
     // SAFETY: syscalls with valid buffers; task records are live.
     unsafe {
         loop {
-            if PENDING_SIGNAL.load(core::sync::atomic::Ordering::Relaxed) != 0 {
+            if PENDING_SIGNAL.load(Ordering::Relaxed) != 0 {
                 cancel_all_waiters();
                 return;
             }
@@ -767,7 +768,7 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
     // SAFETY: single threaded scheduler.
     unsafe {
         let cur = ensure_init();
-        if msrt_cancel_flag != 0 {
+        if msrt_cancel_flag.load(Ordering::Relaxed) != 0 {
             return WAIT_CANCELLED;
         }
         let s = sched();
@@ -872,7 +873,7 @@ pub unsafe extern "C-unwind" fn msrt_task_join(handle: u64, msg_out: *mut *mut S
             fault::fault(b"join: the task is already being joined");
         }
         if (*t).state != State::Done {
-            if msrt_cancel_flag != 0 {
+            if msrt_cancel_flag.load(Ordering::Relaxed) != 0 {
                 return 2;
             }
             (*t).joiner = (*cur).handle;
@@ -971,6 +972,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn tasks_interleave_sleep_and_join() {
         let _g = lock();
         reset_for_tests();

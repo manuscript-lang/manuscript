@@ -9,6 +9,7 @@ extern crate alloc;
 use alloc::vec::Vec;
 use core::cell::UnsafeCell;
 use core::fmt::{self, Write};
+use core::sync::atomic::{AtomicU8, Ordering};
 use ms_rt_abi::{STR_DATA_OFFSET, StrObj};
 
 unsafe extern "C-unwind" {
@@ -17,7 +18,7 @@ unsafe extern "C-unwind" {
     fn msrt_release(o: *mut ms_rt_abi::Obj);
     fn msrt_fault(msg: *const u8, len: usize) -> !;
     fn msrt_cancelled() -> !;
-    static msrt_cancel_flag: u8;
+    static msrt_cancel_flag: AtomicU8;
 }
 
 /// The bytes of a live string.
@@ -69,7 +70,7 @@ pub fn fault_fmt(args: fmt::Arguments<'_>) -> ! {
 /// Whether a stop request (SIGINT or SIGTERM) is pending.
 pub fn cancel_pending() -> bool {
     // SAFETY: a plain byte load of the runtime's flag.
-    unsafe { core::ptr::addr_of!(msrt_cancel_flag).read_volatile() != 0 }
+    unsafe { msrt_cancel_flag.load(Ordering::Relaxed) != 0 }
 }
 
 /// Unwinds the program after a stop request; never returns.

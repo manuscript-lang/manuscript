@@ -210,7 +210,16 @@ pub fn env_var(name: &[u8]) -> Option<&'static [u8]> {
     }
 }
 
+#[cfg(miri)]
+pub fn map_anon(len: usize) -> *mut u8 {
+    // Miri has no `mmap`; a zeroed heap block stands in so the allocator can be checked.
+    let layout = core::alloc::Layout::from_size_align(len, 1 << 16).unwrap();
+    // SAFETY: `len` is nonzero.
+    unsafe { stdalloc::alloc::alloc_zeroed(layout) }
+}
+
 /// Reserves `len` bytes of zeroed address space; [`commit`] makes ranges of it usable. Null on failure.
+#[cfg(not(miri))]
 pub fn map_anon(len: usize) -> *mut u8 {
     // SAFETY: anonymous private mapping; failure is reported as MAP_FAILED.
     let p = unsafe {
