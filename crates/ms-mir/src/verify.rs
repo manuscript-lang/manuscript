@@ -981,7 +981,7 @@ impl Verifier<'_> {
                     "slot yields ptr",
                 )
             }
-            Op::ListAddr => {
+            Op::ListAddr | Op::ListAddrU => {
                 arity(2)?;
                 want(
                     m.list_elem(t(0)).is_some() && t(1) == Ty::INT && res == Some(Ty::PTR),

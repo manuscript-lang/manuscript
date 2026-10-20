@@ -1873,12 +1873,17 @@ impl<'a, 'm> Lower<'a, 'm> {
                 }
                 vec![self.b.ins().stack_addr(types::I64, slot, 0)]
             }
-            Op::ListAddr => {
+            Op::ListAddr | Op::ListAddrU => {
                 let lt = f.ty(inst.args[0]);
                 let (_, _, size) = self.elem_info(lt);
                 let l = self.a(inst, 0);
                 let i = self.a(inst, 1)[0];
-                vec![self.elem_addr(l[0], l[1], i, size, Op::ListGet)]
+                let mode = if inst.op == Op::ListAddr {
+                    Op::ListGet
+                } else {
+                    Op::ListGetU
+                };
+                vec![self.elem_addr(l[0], l[1], i, size, mode)]
             }
             Op::PtrIsNull => {
                 let p = self.a(inst, 0)[0];

@@ -5,9 +5,7 @@ weight = 1
 
 # Commands and editor setup
 
-Use a self-contained `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or run `make build` in a source checkout. Compilation, formatting, lint, LSP, profiling, and native debugging (embedded Delve) need no separate Go or `dlv`.
-
-macOS still needs Apple's `debugserver` from the Xcode command line tools; see [debugger integration](debugging/debugger-integration.md).
+Use a self-contained `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or build the Rust `ms` in a source checkout (see the [Rust toolchain guide](../contributing/rust-toolchain.md)). Compilation, formatting, lint, LSP, and profiling need no separate toolchain beyond the system linker. There is no `ms debug` or `ms dap`; see [profiling and native debugging](debugging/debugger-integration.md).
 
 ```sh
 ms lint source.ms --json
@@ -20,18 +18,12 @@ ms lsp
 ms search_symbol read file lines
 ms search_symbol parse_config
 ms search_symbol json
-ms debug source.ms -- arg1
-ms debug source.ms --break source.ms:7 --json
-ms debug ms.toml --script commands.txt
-ms run source.ms --cpu-profile cpu.pprof --heap-profile heap.pprof --trace trace.out -- arg1
-ms pprof -tags cpu.pprof
-ms pprof -http=127.0.0.1:8080 cpu.pprof
-ms trace trace.out
+ms profile ms.toml --out-dir capture --top 10 -- arg1
 ```
 
 - Bare `ms` prints help. `ms version` and `ms --version` print the compiler version.
 - Long options take `--output path` or `--output=path`; only the first `=` splits, so `--output=api=v1.md` writes `api=v1.md`. Required values cannot be empty.
-- Arguments after `--` and options for `ms pprof` and `ms trace` are forwarded unchanged.
+- Arguments after `--` are forwarded to the application unchanged.
 - Commands taking one source input also accept a project directory with `ms.toml`. Native commands select one application entrypoint.
 
 ## Rebuild on save
@@ -56,7 +48,7 @@ ms diagram ms.toml
 ms diagram ms.toml --format mermaid -o calls.mmd
 ```
 
-These need no Go installation or native toolchain. `inspect` keeps symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders the static call graph (not an execution trace): `--format ascii` (default) or `--format mermaid`.
+These need no native toolchain. `inspect` keeps symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders the static call graph (not an execution trace): `--format ascii` (default) or `--format mermaid`.
 
 ```sh
 ms diagram ms.toml --view effects --entity save
@@ -160,8 +152,6 @@ Artifact `state` values:
 
 A failed check preserves prior files and creates no capture directory. Only a completed build establishes a valid executable and metadata pair; a partial result identifies any partial output.
 
-Profile keeps CPU and heap by default; `--trace` adds the trace.
-
 A nonzero application exit keeps its status with `completed: true` and `reason: "program_exit"`. A signal-terminated process has `completed: false` and `reason: "interrupted"`. Arguments after `--` pass unchanged, and profiles still require a new directory.
 
 ## Machine-readable checks and tests
@@ -174,7 +164,7 @@ A nonzero application exit keeps its status with `completed: true` and `reason: 
 - `lint` and `test` are skipped when `check` fails; `fmt` always runs; `--no-test` skips the native test build.
 - Without `--json`, each failed step prints its first eight findings to stderr.
 
-`ms inspect`, `diagram`, and `emit` accept `--json` for failures only: unchecked source writes the `check --json` `diagnostics` document and exits 1.
+`ms inspect` and `diagram` accept `--json` for failures only: unchecked source writes the `check --json` `diagnostics` document and exits 1.
 
 Formatting results contain `files` and `diagnostics`, both arrays even when empty. Each file has `path` and `status`: `clean`, `needs_formatting`, or `error`. Files are deduplicated and ordered by displayed path. Drift is `MSF001`; selection and I/O errors are `MSF002`; parse and manifest diagnostics keep their codes. The command writes no source, returns 1 on any drift or error, and still reports other files. An empty selection succeeds.
 
@@ -252,17 +242,10 @@ Expression layout uses a soft limit of 88 columns:
 
 ## Debugging and profiling
 
-`ms debug` opens Delve's terminal UI. `ms debug --break <location>` and `ms debug --script <file>` are non-interactive; see [scripted debugging](debugging/debugger-integration.md#scripted-debugging-for-agents).
+The Rust `ms` has no debugger. Native builds keep frame pointers and DWARF line tables, so faults report source frames and external tools such as `perf` can attribute samples; see [profiling and native debugging](debugging/debugger-integration.md).
 
-- Profiling is explicit and local: CPU and heap use pprof, traces use Go tracing. New files are created exclusively with mode 0600 and existing files are never overwritten. Setup or heap-write errors exit 70. One capture runs per process.
-- Profiling changes timing and allocation: CPU capture waits for samples to flush, heap capture forces a garbage collection, and tracing can add time and disk use. Use optimized builds, and measure an unprofiled executable when comparing speed.
-- The VS Code debugger shows native runtime frames as subdued entries (scripted `ms debug` omits them), and complex watch expressions keep native Go syntax.
-
-`ms profile module-or-project --out-dir new-directory` captures `cpu.pprof` and `heap.pprof` and keeps the optimized executable, build and source metadata, static inspection, and a bundle manifest for symbolization. `--trace` adds `trace.out` (off by default). Existing directories are rejected. For individual paths use `ms run … --cpu-profile path --heap-profile path --trace path`.
+`ms profile module-or-project --out-dir new-directory` builds the application, runs it with the sampling profiler, and writes `program`, `profile.folded`, `profile.pb` (pprof), `top.txt`, and `manifest.json`. Existing directories are rejected. Profiling adds overhead, so measure an unprofiled executable when comparing speed.
 
 ```sh
-ms profile main.ms --out-dir samples
-ms profile main.ms --out-dir traced-samples --trace
-ms pprof -top samples/cpu.pprof
-ms trace -http=127.0.0.1:8080 traced-samples/trace.out
+ms profile main.ms --out-dir samples --top 10
 ```

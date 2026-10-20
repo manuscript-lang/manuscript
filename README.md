@@ -12,8 +12,8 @@ Most languages were shaped for human authors and then adapted to agents. Manuscr
 | --- | --- |
 | **A language with little to get wrong** | Statically typed, four-space blocks, no implicit conversion or truthiness, no special async syntax, and flat code: `|` pipe flows, `try`, and exhaustive `match`. Failure is a value: `Optional`, `Result`, and `try`. Cleanup is scoped with `with`. Fewer concepts means fewer first-draft errors and less to review. |
 | **Tools that give evidence, not prose** | `--json` from `check`, `lint`, `test`, `build`, and `inspect`; `ms search_symbol` finds exact APIs, `ms guide` prints the cheat sheet, `ms verify` runs check, format, lint, and test in one result, and `ms review` and `ms diagram` show the effect of a change from the checked source, deterministically. |
-| **Native code without a second language to manage** | Source compiles to a native executable with a bundled toolchain. The [performance benchmark](bench/perf/programs/results.md) compares generated code with hand-written Go; checked method calls are the largest gap and the current optimization target. |
-| **One binary, always fresh** | `ms` is the compiler, formatter, linter, test runner, language server, debugger, and profiler. Nothing else to install. Rebuilds reuse a shared compiled-runtime workspace and replayed compile and link commands; no executable cache, so a stale binary never runs. |
+| **Native code without a second language to manage** | Source compiles through Cranelift to a native executable, linked with the host C compiler driver. The [performance benchmark](bench/perf/programs/results.md) compares generated code with hand-written Go; checked method calls are the largest gap and the current optimization target. |
+| **One binary, always fresh** | `ms` is the compiler, formatter, linter, test runner, language server, and profiler. The native runtime is embedded; the only external requirement is a C compiler driver for linking. |
 | **Measured on real agents** | [`agent-bench`](bench/agent/README.md) runs the same challenges in Manuscript, Go, TypeScript, and Rust. Failures there drive diagnostics, docs, and the cheat sheet. The latest Haiku baseline has Manuscript behind the others on pass rate and cost, and closing that gap is the current work. |
 
 See the [tooling guide](documentation/developer-tooling/implementation.md), [how it works](documentation/developer-tooling/how-it-works.md), and [VS Code integration](extensions/vscode/README.md).
@@ -100,9 +100,9 @@ Start a project with `./ms init my-app`, or keep an executable and run the test:
 
 Version 0.1: working compiler, runtime, standard library, test runner, formatter, and editor tooling, still evolving. External adapters, incremental frontend compilation, and some tooling APIs remain design work.
 
-## Rust toolchain
+## Build from source
 
-The Rust and Cranelift `ms` is replacing the Go one. Releases still ship the Go `ms` until the Rust one passes the conformance corpus. To try it from a checkout, install [rustup](https://rustup.rs) and a system `cc`, then:
+Releases ship the Rust and Cranelift `ms`. To build it from a checkout, install [rustup](https://rustup.rs) and a system `cc`, then:
 
 ```sh
 cargo build --release --locked -p ms-cli
@@ -113,6 +113,6 @@ See the [Rust toolchain guide](documentation/contributing/rust-toolchain.md) for
 
 ## Contribute
 
-See the [architecture guide](documentation/contributing/architecture.md), [development and publishing](documentation/contributing/development.md), and [maintenance](documentation/contributing/maintenance.md). Routine checks: `make setup`, `make doctor`, `make verify`; `make verify-full` adds native validation. Rust changes also run `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo nextest run --workspace`.
+See the [architecture guide](documentation/contributing/architecture.md), [development and publishing](documentation/contributing/development.md), and [maintenance](documentation/contributing/maintenance.md). Routine checks: `make setup`, `make doctor`, `make verify`; `make verify-full` adds the conformance corpus, book, and distribution checks. Rust changes also run `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo nextest run --workspace`.
 
-Layout: `pkg/` (Go compiler, runtime), `crates/` (Rust compiler, runtime, tooling), `cmd/` (entrypoints), `internal/` (helpers), `documentation/` (guides), [stdlib/](stdlib/intrinsics.ms) (standard declarations). The website builds into ignored `.artifacts/book/`.
+Layout: `crates/` (compiler, runtime, tooling), `documentation/` (guides), [stdlib/](stdlib/intrinsics.ms) (standard declarations). The website builds into ignored `.artifacts/book/`.

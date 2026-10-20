@@ -222,12 +222,27 @@ pub fn explain_path_error(error: &ProjectError, import_path: &str) -> String {
     let ProjectError::Path(path_error) = error else {
         return error.to_string();
     };
-    let mut name = path_error.path.clone();
-    if let Ok(cwd) = std::env::current_dir()
-        && let Ok(relative) = gopath::rel(&cwd.to_string_lossy(), &name)
-        && !relative.starts_with("..")
-    {
-        name = relative;
+    // `gopath` speaks `/` only; Windows spells the same paths with `\` and a `\\?\` prefix.
+    let slashed = |path: &str| {
+        if cfg!(windows) {
+            path.trim_start_matches(r"\\?\").replace('\\', "/")
+        } else {
+            path.to_string()
+        }
+    };
+    let mut name = slashed(&path_error.path);
+    // The working directory can be spelled differently from the error's path (`/var` and
+    // `/private/var`, a Windows short name), so the canonical spelling is tried as well.
+    if let Ok(cwd) = std::env::current_dir() {
+        let canonical = std::fs::canonicalize(&cwd).ok();
+        for base in std::iter::once(&cwd).chain(canonical.as_ref()) {
+            if let Ok(relative) = gopath::rel(&slashed(&base.to_string_lossy()), &name)
+                && !relative.starts_with("..")
+            {
+                name = relative;
+                break;
+            }
+        }
     }
     if error.is_not_exist() && !import_path.is_empty() {
         return format!(

@@ -5,16 +5,14 @@ weight = 96
 
 # Cleanup and fault lowering
 
-The compiler registers `Closeable.close()` after successful `with` initialization and emits cleanup at each block exit. A function-level Go defer is not enough for resources that end at a nested block or loop iteration.
+The compiler lowers `with` in `ms-lower`: after successful initialization it registers the binding's `close` and emits the close call on every way out of the block, including nested blocks and loop iterations.
 
 The backend implements [scope-exit order](../../../core-language/cleanup/exit-order.md) and [fault selection](../../../core-language/cleanup/cleanup-faults.md):
 
-1. Nonlocal language faults and cancellation are private tagged Go panics.
-2. A function with active registrations gets a local scope stack and one deferred unwind handler. Normal exits drain explicitly; panic paths drain the rest.
-3. Pop an action before invoking it, and recover each close separately so a secondary panic cannot skip later cleanup.
-4. Cleanup runs in a context without the initiating cancellation or expired deadline, keeping authority and cleanup mode.
-5. After draining, rethrow the selected fault or cancellation until its operation or host boundary handles it. Unexpected recoverable adapter panics become programming faults.
+1. Normal exits (fall-through, `return`, `break`, `continue`, `try`) call the registered closes in reverse order.
+2. Each registration is also an entry on a runtime cleanup stack. A fault aborts the process after the runtime runs the remaining entries in reverse order; generated code does no frame unwinding.
+3. Faults call `msrt_fault`, which never returns.
 
-- Values and captures are never recursively disposed.
+- Values and captures are never recursively disposed by `with`; ordinary values are dropped deterministically at scope end by the ownership rules.
 - Out-of-memory and stack exhaustion have no cleanup guarantee.
-- Undelivered resources are the acquisition adapter's responsibility; returning a reference does not cancel a `with` registration.
+- Returning a reference does not cancel a `with` registration.
