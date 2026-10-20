@@ -570,7 +570,7 @@ pub extern "C-unwind" fn msrt_fault_depth() -> ! {
     // SAFETY: single threaded counter reset so cleanups can run calls.
     unsafe { msrt_call_depth = 0 };
     fault_fmt(format_args!(
-        "call depth limit exceeded ({} nested calls)",
+        "call depth limit exceeded ({} nested calls); check the recursion for a missing base case, or iterate instead",
         ms_rt_abi::MAX_CALL_DEPTH
     ))
 }
@@ -1216,7 +1216,7 @@ mod tests {
         );
         assert_eq!(
             fault_of(|| msrt_fault_depth()).unwrap(),
-            "call depth limit exceeded (200000 nested calls)"
+            "call depth limit exceeded (200000 nested calls); check the recursion for a missing base case, or iterate instead"
         );
     }
 }
