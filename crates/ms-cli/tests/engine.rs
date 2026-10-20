@@ -251,6 +251,62 @@ fn native_tests_run_one_process_each() {
     assert!(json.contains("\"passed\": 1"), "{json}");
 }
 
+/// `ms test ms.toml` runs the project's `test.ms` and `*_test.ms`, not only the entry module.
+#[test]
+fn project_test_runs_test_files() {
+    let dir = scratch("project-test");
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    write(
+        &dir,
+        "ms.toml",
+        "[project]\nname = \"p\"\nsource = \"./src\"\nentry = \"./src/main.ms\"\n",
+    );
+    write(&dir, "src/main.ms", MAIN);
+    write(
+        &dir,
+        "test.ms",
+        "test \"top\":\n    if 1 + 1 != 2:\n        return\n",
+    );
+    write(
+        &dir,
+        "extra_test.ms",
+        "test \"more\":\n    if 1 + 1 != 2:\n        return\n",
+    );
+    let backend = RustBackend::new(Native);
+    let manifest = dir.join("ms.toml").to_string_lossy().into_owned();
+    let (status, stdout, err) = ms(&backend, &["test", &manifest]);
+    assert_eq!(status, 0, "{stdout}{err}");
+    for line in ["test.ms::top", "extra_test.ms::more", "2 tests, 0 failed"] {
+        assert!(stdout.contains(line), "{line} missing in {stdout}");
+    }
+}
+
+/// `ms build -o` creates the output's missing parent directories.
+#[test]
+fn build_creates_missing_output_directories() {
+    let dir = scratch("build-parents");
+    let source = write(&dir, "main.ms", MAIN);
+    let output = dir.join("out/nested/app");
+    let backend = RustBackend::new(Native);
+    let (status, _, err) = ms(
+        &backend,
+        &["build", &source, "-o", &output.to_string_lossy()],
+    );
+    assert_eq!((status, err.as_str()), (0, ""));
+    assert!(output.is_file());
+}
+
+/// `ms emit` prints the lowered intermediate code.
+#[test]
+fn emit_prints_the_lowered_program() {
+    let dir = scratch("emit");
+    let source = write(&dir, "main.ms", MAIN);
+    let backend = RustBackend::new(Native);
+    let (status, stdout, err) = ms(&backend, &["emit", &source]);
+    assert_eq!((status, err.as_str()), (0, ""));
+    assert!(stdout.contains("fn @main"), "{stdout}");
+}
+
 /// Drop and copy of a long chain of a recursive alternative loop over its tail; the copy keeps
 /// every payload (`Tag(n, ..)`) and the original stays intact.
 #[test]

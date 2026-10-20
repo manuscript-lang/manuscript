@@ -109,6 +109,12 @@ pub(super) fn build<L: Lower>(
         );
         return Ok(2);
     }
+    if let Some(parent) = Path::new(&output).parent()
+        && let Err(error) = std::fs::create_dir_all(parent)
+    {
+        let message = format!("cannot create {}: {error}", parent.display());
+        return Ok(fail(io, &compiled.source_root, "build", &message));
+    }
     if let Err(message) = backend.link(&mut compiled, Path::new(&output), request.build_type) {
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }
