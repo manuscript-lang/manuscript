@@ -7,49 +7,9 @@ on:
 permissions:
   contents: read
 
-# Each unit of work runs exactly once per run. Jobs are grouped by shared inputs,
-# not by topic: static checks and the editor tests share one setup, the Go suite
-# is sharded, and the editor tests reuse the CLI built for the hello run.
+# Rust format, clippy, tests and the conformance corpus run in cicd.yml. This workflow holds the
+# checks that need the pinned linters and the editor toolchain.
 jobs:
-  # Every Go test runs once: in-process packages under the race detector, the
-  # rest (unit, examples, native process regressions) with coverage.
-  # Manuscript conformance runs through the bundled CLI in the dist job.
-  go:
-    name: Go tests (shard ${{ matrix.shard }})
-    env:
-      MANUSCRIPT_DEBUG_TEST: '1'
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [0, 1, 2]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: .go-version
-          cache: true
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .node-version
-      - uses: actions/cache@v6
-        with:
-          path: toolchain/
-          key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
-      - name: Prepare SDK payload
-        run: make payload
-      - name: Sharded Go tests (race, or coverage)
-        run: sh scripts/ci-test.sh ${{ matrix.shard }} 3
-      - uses: actions/upload-artifact@v7
-        with:
-          name: language-coverage-${{ matrix.shard }}
-          path: .artifacts/coverage/
-
-  # Static checks, then the bundled CLI built once and reused by the editor
-  # tests, sharing one checkout and one SDK/linter setup. Generated docs and the
-  # book are checked once, by "Build design book" in cicd.yml.
   dist:
     name: Static, CLI, fuzz, and editor
     runs-on: ubuntu-latest
@@ -57,39 +17,28 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: .go-version
-          cache: true
       - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: npm
           cache-dependency-path: extensions/vscode/package-lock.json
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: language-static
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: actions/cache@v6
         with:
-          path: |
-            toolchain/
-            .tools/
-          key: devtools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256', 'scripts/devtools.env', 'scripts/devtools.sha256') }}
-      - name: Prepare verified SDK and pinned linters
+          path: .tools/
+          key: devtools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/devtools.env', 'scripts/devtools.sha256') }}
+      - name: Install pinned linters
         run: make setup
-      - name: Format, vet, lint, repo rules, licenses
-        run: make check lint repo-check repo-check-go licenses-check
-      - name: Embedded terminal prompt shutdown
-        run: toolchain/go/bin/go test -race ./vendor/github.com/go-delve/liner -run TestManuscript
-      - name: Build bundled CLI and run hello
+      - name: Workflow and shell lint, repo rules, licenses
+        run: make lint repo-check licenses-check
+      - name: Build CLI and run hello
         run: |
           make build
-          ./ms check examples/hello/ms.toml
-          ./ms run examples/hello/ms.toml -- first second
-      - name: Manuscript core and standard-library conformance
-        run: |
-          ./ms test scripts/conformance.ms
-          ./ms run scripts/conformance.ms -- "$GITHUB_WORKSPACE/ms" all 0 1
-      # Standalone distribution checks run once, per target, in release.yml.
-      - name: Parser and compiler fuzzing
-        run: make fuzz
+          target/release/ms check examples/hello/ms.toml
+          target/release/ms run examples/hello/ms.toml -- first second
       - name: Validate and package VS Code extension
         working-directory: extensions/vscode
         run: |
@@ -100,42 +49,9 @@ jobs:
           name: manuscript-vscode
           path: extensions/vscode/*.vsix
 
-  # Linux host behavior is covered by the Go shards.
-  host-stdlib:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    env:
-      CGO_ENABLED: '0'
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: .go-version
-          cache: true
-      - name: Native host compatibility
-        shell: bash
-        run: |
-          make payload
-          packages='./pkg/runtime ./pkg/compiler ./tests/e2e'
-          if [ -d pkg/build ]; then packages="$packages ./pkg/build"; fi
-          # shellcheck disable=SC2086
-          toolchain/go/bin/go test $packages -run 'TestFileSystem|TestNativeFileWatch|TestTimeScheduling|TestFilesystemCopyOptions|TestFilesystemGlobOptions|TestFileStatMetadata|TestPathFixtures|TestBundledRuntimeImport|TestNativeBuildInSymlinked|TestConstantCatalogs|TestProcessSignalStream|TestShutdownCookbook|TestExpandedSystemAndProcess|TestExpandedLibraryCLI'
-      - name: Native debugger lifecycle and console cleanup
-        shell: bash
-        env:
-          MANUSCRIPT_DEBUG_TEST: '1'
-        run: |
-          toolchain/go/bin/go test ./internal/debugger -run 'TestNativeDebugLifecycle|TestScript|TestOneShot|TestCancelable'
-          if [ "$RUNNER_OS" = macOS ]; then toolchain/go/bin/go test ./vendor/github.com/go-delve/liner -run TestManuscript; fi
-
   # Keep one stable required check; every job must pass before merging.
   test:
-    needs: [go, dist, host-stdlib]
+    needs: [dist]
     if: always()
     runs-on: ubuntu-latest
     steps:

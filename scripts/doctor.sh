@@ -22,14 +22,11 @@ if command -v node >/dev/null 2>&1 && [ "$(node --version)" = "v$expected_node" 
 else
     printf 'MISSING Node %s (install the version in .node-version)\n' "$expected_node"; failed=1
 fi
-go_tool=$repository/toolchain/go/bin/go
-expected=$(cat "$repository/.go-version")
-if [ -x "$go_tool" ] && [ "$("$go_tool" env GOVERSION)" = "go$expected" ]; then
-    printf 'OK      Go %s\n' "$expected"
-else
-    printf 'MISSING pinned Go %s (run make setup)\n' "$expected"; failed=1
-fi
-for command in staticcheck actionlint shellcheck; do
+if command -v cargo >/dev/null 2>&1; then printf 'OK      cargo\n';
+else printf 'MISSING cargo (install rustup; rust-toolchain.toml pins the toolchain)\n'; failed=1; fi
+if command -v cargo-nextest >/dev/null 2>&1 || cargo nextest --version >/dev/null 2>&1; then printf 'OK      cargo-nextest\n';
+else printf 'MISSING cargo-nextest (cargo install cargo-nextest --locked)\n'; failed=1; fi
+for command in actionlint shellcheck; do
     if [ -x "$repository/.tools/$command" ]; then printf 'OK      %s\n' "$command";
     else printf 'MISSING %s (run make setup)\n' "$command"; failed=1; fi
 done
@@ -45,6 +42,6 @@ if printf '%s\n' "$hugo_output" | grep -q 'extended' &&
 else
     printf 'MISSING Hugo Extended 0.146.7 or newer (book checks)\n'; failed=1
 fi
-if command -v cc >/dev/null 2>&1; then printf 'OK      C compiler (race checks)\n';
-else printf 'MISSING C compiler (race checks)\n'; failed=1; fi
+if command -v cc >/dev/null 2>&1; then printf 'OK      C compiler (linking generated programs)\n';
+else printf 'MISSING C compiler (linking generated programs)\n'; failed=1; fi
 exit "$failed"

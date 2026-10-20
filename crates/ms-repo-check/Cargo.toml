@@ -3,13 +3,15 @@ name = "ms-repo-check"
 version = "0.0.0"
 edition.workspace = true
 publish.workspace = true
-description = "Repository invariants: nested matches, formatting, stdlib syntax, release pins, workflow triggers, unsafe boundary"
+description = "Repository invariants: nested matches, formatting, stdlib syntax, release pins, workflow triggers, unsafe boundary, dependency license inventory"
 
 [lints]
 workspace = true
 
 [dependencies]
+ms-json = { path = "../ms-json" }
 ms-syntax = { path = "../ms-syntax" }
+ms-tooling = { path = "../ms-tooling" }
 
 [[bin]]
 name = "repo-check"
