@@ -94,7 +94,7 @@ pub fn diagnostics_document(diagnostics: &[CommandDiagnostic]) -> Json {
     )
 }
 
-/// The stable rule family for a source diagnostic (`Diagnostic.Code` in Go).
+/// The stable rule family for a source diagnostic.
 pub fn code_for(phase: &str, message: &str) -> String {
     // Messages read "<cause>; <fix>". Only the cause identifies the rule.
     let message = message.split("; ").next().unwrap_or("");

@@ -18,12 +18,12 @@ usage: ms-conform <command> [options]
 
 commands:
   run       run the corpus against --ms and compare with the recorded expectations
-  record    regenerate expectations from the oracle (--ms is the Go `ms`)
+  record    regenerate expectations from the binary given by --ms
   diff      run two binaries (--a, --b) on the corpus and compare them directly
   list      list fixtures (id, phase, tags)
   stats     count fixtures per phase and tag
   lint      validate fixture metadata and expectation files
-  harvest   turn repository sources, doc fences and Go-test snippets into fixtures
+  harvest   turn repository sources, and doc fences into fixtures
   retag     recompute tier-* tags on every fixture from its imports
   fuzz-gen  write deterministic generated fixtures into the corpus
   fuzz      differential fuzzing: generate programs, run --oracle and --ms, compare
@@ -52,7 +52,7 @@ record options:
   --prune             delete fixtures that are unstable or cannot be recorded
   --only-missing      keep existing expectations
 
-harvest options:    --ms PATH --repo DIR [--sources FILE.jsonl] [--no-docs] [--no-tree] [--no-twins]
+harvest options:    --ms PATH --repo DIR [--no-docs] [--no-tree] [--no-twins]
                     (then run `record --prune` to write expectations and drop unstable fixtures)
 fuzz-gen options:   --kind run|type|syntax  --seeds A..B  [--corpus DIR]
 fuzz options:       --oracle PATH --ms PATH --kind K --seeds A..B [--save DIR]
@@ -532,10 +532,6 @@ fn cmd_harvest(args: &Args) -> Result<u8, String> {
     }
     if !args.has("no-docs") {
         candidates.extend(harvest::scan_docs(&repo));
-    }
-    if let Some(path) = args.one("sources") {
-        let text = fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
-        candidates.extend(harvest::scan_go_sources(&text));
     }
     eprintln!("{} candidates", candidates.len());
     let scratch = std::env::temp_dir().join(format!("ms-conform-harvest-{}", std::process::id()));

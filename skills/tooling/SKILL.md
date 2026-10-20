@@ -15,5 +15,5 @@ Use for `crates/ms-tooling`, `ms-lsp`, `ms-cli`, `ms-guide`, `extensions/vscode/
 - Diagnostics read `<cause>; <fix>`: name the cause, the location, and a concrete fix (nearest name, import line, valid options). Code classification keys on the text before the first `; `, and recovery matches some messages by prefix. Add a hint test for each new message.
 - Keep CLI modes, checking, status/output, and native build/run/test paths shared. Source-only commands work without lowering; failed checks preserve outputs. Update command help/examples.
 - Native builds emit DWARF line tables and `app.ms-build.json`; `ms profile` provides folded stacks, pprof, and a top report. Check native artifacts rather than only metadata. There is no `ms debug` or `ms emit`.
-- CLI text, JSON shape, and exit codes are pinned by the conformance corpus (`make conform-rust`); update `tests/conformance/` expectations deliberately.
+- CLI text, JSON shape, and exit codes are pinned by the conformance corpus (`make conform`); update `tests/conformance/` expectations deliberately.
 - Run affected crate tests (`cargo nextest run -p ms-tooling` etc.); client changes need extension tests with pinned Node dependencies. Standalone claims need `make dist-check`.

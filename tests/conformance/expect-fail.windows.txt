@@ -1,6 +1,6 @@
-# Fixtures that pass on Linux and fail on Windows (make conform-rust adds this file on Windows hosts).
+# Fixtures that pass on Linux and fail on Windows (make conform adds this file on Windows hosts).
 # check: the "cannot find module ../x.ms" message names an unresolved <DIR>/.. on Windows; Linux collapses it.
-go-tests/pkg-tooling-lsp-testsnapshotlibrarydiscoverstests-3
+snippets/pkg-tooling-lsp-testsnapshotlibrarydiscoverstests-3
 # test: redirected streams report Unsupported instead of NotTerminal (terminal port not done on Windows).
 e2e/stdlib/terminal
 # test: fs.glob returns backslash-separated paths on Windows; the fixture expects "/" (owned by the Windows std-crates port).
@@ -10,6 +10,6 @@ e2e/stdlib/http-paths
 e2e/stdlib/http-websocket
 e2e/stdlib/io
 e2e/stdlib/tls
-go-tests/internal-cli-testprojectcheckdiscoveryandreporting-1
+snippets/internal-cli-testprojectcheckdiscoveryandreporting-1
 docs/core-language-modules-declarations-4
 docs/developer-tooling-builds-project-configuration-1

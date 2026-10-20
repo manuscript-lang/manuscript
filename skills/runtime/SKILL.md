@@ -17,7 +17,7 @@ Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, `st
 - Map and Set are hash-indexed and iterate in insertion order. Key and element types must be `Hashable`; an unhashable key type is a compile error, never a linear-scan fallback. `Equal` and `Hashable` are ordinary source interfaces.
 - Preserve declared error types/cases/causes and checked binding identities.
 - New native sources are embedded through `ms-native`; verify built programs as well as crate tests. See [runtime conventions](../../documentation/contributing/runtime-conventions.md).
-- Run affected crate tests (`cargo nextest run -p <crate>`) and `make conform-rust`; lifetime changes need bounded cancellation/shutdown cases. Report material untested platform limits.
+- Run affected crate tests (`cargo nextest run -p <crate>`) and `make conform`; lifetime changes need bounded cancellation/shutdown cases. Report material untested platform limits.
 
 ## Rust runtime
 

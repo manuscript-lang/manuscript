@@ -1,16 +1,16 @@
 # Conformance corpus
 
-Programs paired with expectations first recorded from the Go `ms`. The expectations are now frozen: they are the contract, and the Go `ms` is no longer needed to check or extend the corpus. The Rust `ms` passes it apart from fixtures tagged `aliasing`, which the value-semantics migration changes on purpose, and the entries in `rust-expect-fail.txt`.
+Programs paired with frozen expectations, which are the contract for `ms`. `ms` passes the corpus apart from fixtures tagged `aliasing`, which the value-semantics migration changes on purpose, and the entries in `expect-fail.txt`.
 
 ```sh
-make conform-rust                            # builds the Rust ms and ms-conform, then gates the corpus
+make conform                            # builds the Rust ms and ms-conform, then gates the corpus
 cargo build -p ms-conform
 ms-conform run --ms path/to/rust-ms --exclude-tag aliasing --markdown report.md
 ```
 
 ## Layout
 
-`fixtures/<category>/<slug>.ms` is a single-file fixture with `<slug>.expected.json` beside it. A project fixture is a directory holding `conform.meta`, `ms.toml`, sources and `expected.json`. Categories: `go-tests/` (snippets embedded in Go tests), `e2e/`, `examples/`, `bench/`, `docs/` (documentation fences), `repo/`, `fuzz/` (generated).
+`fixtures/<category>/<slug>.ms` is a single-file fixture with `<slug>.expected.json` beside it. A project fixture is a directory holding `conform.meta`, `ms.toml`, sources and `expected.json`. Categories: `snippets/` (single-file programs), `e2e/`, `examples/`, `bench/`, `docs/` (documentation fences), `repo/`, `fuzz/` (generated).
 
 Metadata lives in `# conform: key=value` lines at the top of the file (or in `conform.meta`): `tags`, `phase`, `origin`, `args` (JSON array), `timeout` (seconds), `entry`, `deterministic`. The header is part of the source, so diagnostic positions are those of the file as stored.
 
@@ -47,11 +47,11 @@ Tier (what a Rust milestone needs): `tier-core` imports nothing, `tier-stdlib` i
 1. Write the `.ms` file with a header (or run `harvest`), choose tags and phase.
 2. `ms-conform record --ms ./ms --id <slug>` writes the expectation; each fixture runs twice and is refused if the answers differ (`deterministic=true` skips this for time- or random-dependent output you have normalized). `--prune` deletes fixtures that cannot be recorded.
 3. `ms-conform lint` checks metadata, unknown tags, orphaned expectations.
-4. Review the expectation. It records what Go does, bugs included; a fixture that pins a Go bug keeps its expectation and joins the Rust gate's `--expect-fail` file with a reason.
-5. Fixtures whose Go output varies between runs (for example diagnostics emitted in map order) must be deleted, not recorded: one was found this way, `MS3040` ordering for a recursive generic field default, and removed.
+4. Review the expectation. It records what the binary does, bugs included; a fixture that pins a bug keeps its expectation and joins the `--expect-fail` file with a reason.
+5. Fixtures whose output varies between runs (for example diagnostics emitted in map order) must be deleted, not recorded: one was found this way, `MS3040` ordering for a recursive generic field default, and removed.
 
 ## Hostile fixtures
 
 Programs importing `http`, `net`, `tls`, `websocket`, `sse`, `process`, `terminal`, `system`, `random` or `time` are checked but not run by the harvester, since they bind sockets, wait on signals or depend on the clock. Add run fixtures for them by hand with deterministic output.
 
-`make conform-rust CONFORM_SHARD=i/n` replays the corpus against the Rust `ms`; CI runs it in four shards. `make conform-oracle` still re-checks the frozen expectations against the Go `ms` locally until the Go code is removed. Changing a fixture's `# conform:` header shifts byte offsets in its diagnostics, so re-record after editing tags by hand (`ms-conform retag` only touches `tier-*`; run `record` after it).
+`make conform CONFORM_SHARD=i/n` replays the corpus against the Rust `ms`; CI runs it in four shards. Changing a fixture's `# conform:` header shifts byte offsets in its diagnostics, so re-record after editing tags by hand (`ms-conform retag` only touches `tier-*`; run `record` after it).

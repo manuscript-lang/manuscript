@@ -46,7 +46,7 @@ Decision: `Int` arithmetic faults on overflow ([design contract](../crates/DESIG
 
 Apply when: adding overflow-check elimination, bounds narrowing, or constant folding.
 Evidence: [overflow faults](../tests/e2e/testdata/accept/numeric-faults.ms), [bounded arithmetic](../tests/e2e/testdata/accept/bounded-int-arithmetic.ms), [counter step](../tests/e2e/testdata/accept/counter-steps-keep-overflow-faults.ms), [int identities](../tests/e2e/testdata/accept/int-identities.ms).
-Verify: reset and conditional-reset loops still fault with the overflow message; run `make conform-rust`.
+Verify: reset and conditional-reset loops still fault with the overflow message; run `make conform`.
 
 ### Native omissions are declared in the standard declaration
 
@@ -60,11 +60,11 @@ Verify: exercise stored, bound, and generic calls that omit a defaulted argument
 
 Decision: the user rejected per-call bookkeeping in generated code; a fault captures its frames where it is created, and the process runs `with` cleanups in reverse order before aborting ([design contract](../crates/DESIGN.md)). Frames are `file:line in function` with no column, and a call spanning several lines reports the line of its statement's first line. A function's return-type position identifies its declaration, not a failing expression, so the located statement carries the position. Lower operands before the operation that can fault so a successful nested call does not take over the enclosing site. Do not reintroduce columns or per-call recording without a new decision.
 
-Open: two conformance fixtures still differ (a multiline statement reports its last line; a callee inlined into `main` loses its frame). They are listed in `tests/conformance/rust-expect-fail.txt`.
+Open: two conformance fixtures still differ (a multiline statement reports its last line; a callee inlined into `main` loses its frame). They are listed in `tests/conformance/expect-fail.txt`.
 
 Apply when: adding lowered operations, inlining, source fault traces, or call fast paths.
-Evidence: [expected failures](../tests/conformance/rust-expect-fail.txt), [call depth fixture](../tests/e2e/testdata/accept/call-depth.ms), [fault and frame docs](../documentation/contributing/compiler/lowering/cleanup-and-faults.md).
-Verify: `make conform-rust` fault-location cases; preserve frame order, line numbers, and names.
+Evidence: [expected failures](../tests/conformance/expect-fail.txt), [call depth fixture](../tests/e2e/testdata/accept/call-depth.ms), [fault and frame docs](../documentation/contributing/compiler/lowering/cleanup-and-faults.md).
+Verify: `make conform` fault-location cases; preserve frame order, line numbers, and names.
 
 ### Omitted library entries must stay empty through module loading
 

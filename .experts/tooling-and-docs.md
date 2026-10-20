@@ -118,7 +118,7 @@ Verified: agents act on a diagnostic only when it names the cause, the location,
 
 Apply when: adding or rewording any lexer, parser, checker, project, compiler, CLI, or runtime message.
 Evidence: [message-shape rule](../documentation/developer-tooling/source/diagnostics.md), [code classification](../crates/ms-syntax/src/diag.rs), [checker hints](../crates/ms-check/src/hints.rs), [recovery](../crates/ms-syntax/src/partial.rs).
-Verify: run `cargo nextest run -p ms-syntax -p ms-check -p ms-lsp -p ms-cli` and `make conform-rust` (check-phase fixtures compare code, phase, message, and position); extend the hint tests with the new message.
+Verify: run `cargo nextest run -p ms-syntax -p ms-check -p ms-lsp -p ms-cli` and `make conform` (check-phase fixtures compare code, phase, message, and position); extend the hint tests with the new message.
 
 ### Standard-library prose has the same owner as declarations
 

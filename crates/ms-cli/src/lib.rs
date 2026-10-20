@@ -34,7 +34,7 @@ use backend::{
 };
 use invocation::{parse_invocation, requests_help, validate};
 
-/// The release version, shared with the Go implementation (`.msversion`).
+/// The release version, from `.msversion`.
 pub const VERSION: &str = env!("MS_VERSION");
 
 /// Run `ms` with `args` (without the program name) and return the exit status.

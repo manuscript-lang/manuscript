@@ -1,6 +1,6 @@
 //! Child processes under signal forwarding.
 //!
-//! Like the Go launcher, `ms` stays alive until the native program completes
+//! `ms` stays alive until the native program completes
 //! its own cancellation and cleanup: SIGINT and SIGTERM sent to `ms` are
 //! forwarded to the child instead of killing the launcher on Unix. Windows has no POSIX
 //! `kill`: an interrupted child is force-stopped through its handle, without a cleanup guarantee.
