@@ -316,6 +316,15 @@ impl<'a> FnLower<'a> {
                 }
                 let func = sym.decl.as_ref().and_then(|d| d.func());
                 self.fill_native_defaults(sym.module, func, params, &mut args)?;
+                if other.starts_with("crypto/rsa_") {
+                    // The C ABI produces CryptoError even when the source expects Error.
+                    let declared = sym.ty().result_ty();
+                    let have = self.mty(&declared)?;
+                    self.at(e.pos);
+                    let r = self.native_call(other, params, &args, have)?;
+                    let want = self.emty(e)?;
+                    return self.fit_ty(r, &declared, want);
+                }
                 let result = self.emty(e)?;
                 self.at(e.pos);
                 if other.starts_with("path/") {

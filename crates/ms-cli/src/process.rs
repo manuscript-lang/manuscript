@@ -2,7 +2,8 @@
 //!
 //! Like the Go launcher, `ms` stays alive until the native program completes
 //! its own cancellation and cleanup: SIGINT and SIGTERM sent to `ms` are
-//! forwarded to the child instead of killing the launcher.
+//! forwarded to the child instead of killing the launcher on Unix. Windows has no POSIX
+//! `kill`: an interrupted child is force-stopped through its handle, without a cleanup guarantee.
 
 // The only FFI in the CLI: std has no signal API, so `signal`/`kill` come from libc.
 #![allow(unsafe_code)]
@@ -46,7 +47,7 @@ pub struct Waited {
     pub status: ExitStatus,
     /// The deadline passed and the child was killed.
     pub timed_out: bool,
-    /// SIGINT or SIGTERM arrived while waiting (the child received it too).
+    /// SIGINT or SIGTERM arrived while waiting (forwarded on Unix; force-stop on Windows).
     pub interrupted: bool,
 }
 

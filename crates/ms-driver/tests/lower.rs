@@ -38,6 +38,39 @@ fn strings_and_loops() {
 }
 
 #[test]
+fn rsa_source_calls_and_function_values() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/e2e/testdata/stdlib/crypto-rsa.ms");
+    let loaded = check_graph(
+        load_file(&path.to_string_lossy(), Default::default()),
+        CheckRequest::default(),
+    );
+    assert!(loaded.success(), "{:?}", loaded.diagnostics);
+    let (module, tests) = ms_lower::lower_tests(
+        &loaded.program.expect("program"),
+        &Options {
+            entry: loaded.entry,
+        },
+    )
+    .expect("lower RSA fixture");
+    assert_eq!(tests.len(), 4);
+    ms_mir::verify::verify_module(&module).expect("verified RSA MIR");
+    let mir = ms_mir::print::print_module(&module);
+    for name in [
+        "sign",
+        "verify",
+        "sign_pss",
+        "verify_pss",
+        "encrypt",
+        "decrypt",
+    ] {
+        assert!(mir.contains(&format!("msrt_crypto_rsa_{name}")), "{name}");
+    }
+    assert!(mir.contains("alt.tag"));
+    assert!(mir.contains("iface.new"));
+}
+
+#[test]
 fn caller_evaluated_defaults() {
     let mir = lower(
         "defaults",

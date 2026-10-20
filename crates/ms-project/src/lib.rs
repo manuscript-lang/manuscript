@@ -2,9 +2,9 @@
 //!
 //! This crate is a behavior-exact port of the Go package `pkg/project`. It has
 //! no dependency on parsing, checking or code generation. Paths are `String`s
-//! with Unix semantics and the same lexical rules as Go's `path/filepath`
-//! (see [`gopath`]); error values render byte-for-byte like the Go ones, so the
-//! diagnostics a user sees do not change.
+//! using Go's `path/filepath` lexical rules (see [`gopath`]), with native Windows
+//! volumes and separators. Unix error values render byte-for-byte like the Go
+//! ones, so existing diagnostics do not change.
 //!
 //! Entry points:
 //!
