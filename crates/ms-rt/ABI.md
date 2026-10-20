@@ -77,7 +77,7 @@ recorded here before it is committed.)_
     `extern "C-unwind" fn(env: *mut u8, a: *const u8, b: *const u8) -> i64` (negative = before); `env` is the closure the compiler passes.
     `msrt_list_shift` (Collections.shift) is O(n) (memmove) because a list has no head offset; queue-heavy programs should use `Queue`.
   - Bytes/BytesBuilder/StringBuilder share `VecVal`; `msrt_bytes_append/extend`, `msrt_strbuilder_append`; `msrt_strbuilder_freeze` **consumes** the builder.
-  - Maps/Sets (`msrt_map_*`, `msrt_set_*`): insertion ordered like Go; `msrt_map_add` consumes key and value (replacing keeps the original position),
+  - Maps/Sets (`msrt_map_*`, `msrt_set_*`): insertion ordered; `msrt_map_add` consumes key and value (replacing keeps the original position),
     `msrt_map_get_ptr` returns a borrowed value pointer or null, `msrt_map_get` copies; set algebra builds fresh sets in left-operand order.
     A set is a map with a null value descriptor and null value slot pointers.
   - `msrt_start(main_fn, tables, argc, argv)`: `main_fn` is `extern "C-unwind" fn() -> i64` (same machine ABI as `"C"`); runs on a 1 GiB mmap stack with a
@@ -127,7 +127,7 @@ recorded here before it is committed.)_
 - **Descriptors are explicit**: every generic collection operation takes the
   element descriptor (`desc`) or key/value descriptors (`kdesc`, `vdesc`; sets pass
   `vdesc = null`) as arguments, right after the receiver pointer(s).
-- **Faults** never return; message text equals the Go runtime's.
+- **Faults** never return; messages are stable text.
 - `msrt_retain`/`msrt_release` accept null. Everything else requires non-null.
 - Sizes and indices are `i64` (Int) at the boundary.
 
@@ -165,7 +165,7 @@ StrObj { hdr @0, len: usize @16, scalars: usize @24, data[len] @32, NUL }
 (unknown), filled lazily by `msrt_string_length` (a literal may carry it). A NUL
 follows the data (not in `len`). Language-level indices and lengths count Unicode
 scalars; `byte_length` is `len`. Invalid UTF-8 (only from a compiler bug) decodes as
-U+FFFD of width 1 like Go. `msrt_string_empty()` returns a static.
+U+FFFD of width 1. `msrt_string_empty()` returns a static.
 
 ## 4. Owned aggregates
 
