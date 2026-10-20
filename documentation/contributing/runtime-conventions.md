@@ -5,38 +5,28 @@ weight = 22
 
 # Typed runtime conventions
 
-`pkg/runtime` (package `msruntime`, imported as `rt`) is what generated Go links against. Each standard native operation is one Go function with a signature the lowerer calls directly: no `any`, interface-typed values, or boxing.
+`ms-rt` is the native runtime that generated code links against, and each `ms-std-*` crate implements one standard module. Each standard native operation is one C-ABI function with a signature the compiler calls directly, so no value is boxed or type-erased at the boundary.
 
-## The contract is generated
+## The contract comes from declarations
 
-`make stdgen` (`go run ./scripts/stdgen pkg/runtime`) writes two file kinds from `@std` declarations in `stdlib/*.ms`:
-
-- `std_types_gen.go` always builds. It declares standard records, sum types (`Name_Case` structs behind a sealed interface), and contracts (Go interfaces).
-- `std_<module>_gen.go` builds only with `-tags rtcheck`. Each `check_*` function pins a native function, operation, or implementation to the exact signature the lowerer calls. `go build -tags rtcheck -gcflags=-e ./pkg/runtime 2>&1 | grep std_<module>_gen.go` lists what a module lacks; empty means complete.
-
-`TestGeneratedRuntimeIsFresh` in the lowering package fails while checked-in files differ from the generator. Never edit generated files; a wrong-looking signature is a declaration or lowerer issue.
+`stdlib/*.ms` holds the `@std` declarations and `stdlib/bindings.json` the native identities (opaque types, function and contract-method overrides). They are the signature authority and the Rust implementation embeds them unchanged. `ms-lower` reads them to emit native calls; the layouts and symbol catalogue are in `crates/ms-rt/ABI.md`, and the compiler reads layout constants from `ms-rt-abi` so the two cannot drift. A wrong-looking signature is a declaration or lowering issue, not something to patch in the runtime.
 
 ## Naming and shape
 
-- Names are `Module_Function` or `Type_Method`, such as `List_Contains` or `Collections_Range`.
-- Parameter order: `ctx *Execution`, capabilities (`keys *Keys[T]` for `T: Hashable`, `Eq[T]` for `T: Equal`), receiver, declared parameters. Type arguments are Go type parameters in declaration order.
-- Native functions, record constructors, and contracts take plain parameters; callers evaluate defaults. Source functions take `Arg[T]` for defaulted parameters (see [Go representation](go-lowering-representation.md)).
-- Fallible operations return `Result[T, E]` with the generated error sum type. Use `Raise(message)` only for documented programming faults.
-- Standard error cases implement `Categorized`, read by `Errors_Category` or a contract view's `Receiver()`.
-- Long-running operations call `CheckCancelled(ctx)`; blocking calls select on `ctx.Context.Done()`.
-- Constructors are `New<Type>`. Handle types are pointers; `Duration`, `Instant`, and `Timestamp` are values.
-- Contract values (`Files`, `Clock`) are Go interfaces; give concrete types a `var _ Files = (*osFiles)(nil)` assertion.
-- `string` is UTF-8; `Int` is `int`; always-64-bit host values stay `int64` and convert with `FitInt` or `clampInt`. `List[T]` is `*List[T]` with `Items`; `Map` and `Set` keep insertion order and match keys with `*Keys[K]`.
+- Runtime functions are `extern "C"` and named `msrt_<module>_<name>`; standard-library natives live in `ms-std-<module>` crates and are named `msstd_<module>_<name>`.
+- Fallible natives return a status and write their result to an out-pointer only on success; faults call `msrt_fault`, which never returns. Use a fault only for documented programming faults.
+- Reference-count rules at the boundary: arguments are borrowed unless the signature is documented as consuming; returned objects are owned.
+- Native functions, record constructors, and contracts take plain parameters; callers evaluate defaults.
+- Long-running operations check the cancellation flag; blocking calls wait in short slices so a pending stop request interrupts them.
+- Generics are monomorphized. Runtime functions that cannot be monomorphized take an element descriptor `{ size, align, drop, eq, hash, clone }`.
 
-## Representation and build inputs
+## Representation
 
-Reference-versus-value rules are in [Go representation](go-lowering-representation.md): records and collections alias; `Option`, `Result`, alternatives, and contracts are values.
-
-`msruntime.Sources` lists every non-test `.go` file except `bundle.go`. It feeds pin identity, the shared workspace, and `Standalone` bundles. Keep one import alias per path, because bundling folds files together.
+Values have one owner and are dropped deterministically; records, lists, maps, sets, strings, and alternatives are values, not aliased references. The [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md) records the word-level layouts, and the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) state moves, borrows, and `var` parameters.
 
 ## Host escalation
 
-Cleanup waits for work to end. The runtime cannot terminate a goroutine, so work ignoring cancellation can block cleanup forever. Escalation is the host's last resort: it ends the process and never reports stuck work as joined.
+Cleanup waits for work to end. The runtime cannot terminate work that ignores cancellation, so such work can block cleanup forever. Escalation is the host's last resort: it ends the process and never reports stuck work as joined.
 
 Each host runs one watchdog, started when the host begins shutdown or gets a stop request (SIGINT, SIGTERM, server shutdown), not by ordinary timeouts. It covers `with` cleanup and resource close.
 
@@ -51,11 +41,9 @@ On escalation the host:
 2. writes retained primary and secondary fault diagnostics;
 3. terminates without further cleanup.
 
-The CLI exits 70, labeled incomplete cleanup. Native `RunMain` and the test runner implement the grace period and second-request rule but today write one `incomplete cleanup: <reason>` line, and the grace period is not configurable. Conformance treats an escalated exit as program failure. See [cleanup faults](../core-language/cleanup/cleanup-faults.md).
+The CLI exits 70, labeled incomplete cleanup. The native runtime (`crates/ms-rt/src/start.rs`) implements the grace period and second-request rule but today writes one `incomplete cleanup: <reason>` line, and the grace period is not configurable. Conformance treats an escalated exit as program failure. See [cleanup faults](../core-language/cleanup/cleanup-faults.md).
 
 ## Verifying
 
-- `go build ./pkg/runtime && go vet ./pkg/runtime`
-- `go build -tags rtcheck -gcflags=-e ./pkg/runtime` shows no `std_*_gen.go` errors.
-- `go test ./pkg/runtime`.
-- `make stdlib-test` and `make e2e` run fixtures end to end.
+- `cargo clippy -p ms-rt -p ms-rt-abi --all-targets -- -D warnings` and `cargo nextest run -p ms-rt`.
+- `make unit` runs every crate's tests, and `make conform-rust` runs programs end to end.

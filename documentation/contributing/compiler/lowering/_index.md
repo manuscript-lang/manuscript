@@ -1,160 +1,39 @@
 +++
-title = "Go lowering"
+title = "Lowering"
 weight = 2
 +++
 
-# Go lowering
+# Lowering
 
-Lowering translates checked Manuscript into Go while preserving evaluation order, closure captures, and block-level cleanup.
+Lowering translates checked Manuscript into MIR, which `ms-mir` optimizes and verifies and `ms-clif` turns into native code through Cranelift. It preserves evaluation order, closure captures, and block-level cleanup.
 
-## Typed Go
+## Typed values
 
-Every Manuscript type lowers to exactly one Go type, so the Go compiler sees hand-written-style code: `Int` is `int`, a record is a struct pointer, `List[T]` is `*rt.List[T]`, a function is `func(*rt.Execution, A...) R`. There is no universal value type, boxing, or `any` in generated signatures. [Go representation](../../go-lowering-representation.md) states the reference-or-value rule.
+Every Manuscript type has one word-level representation: `Int` is `i64`, `Float` is `f64`, `Bool` is `i8`, records and alternatives are heap objects with a 16-byte header, and `List[T]` stores elements inline in the layout of `T`. There is no universal value type or boxing; generics are monomorphized. The [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md#value-representation-word-level-64-bit-targets) states the layouts, and the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) state when a value moves, borrows, or copies.
 
-- `pkg/lower` consumes checked identities and returns Go `ast` nodes (expressions, statement lists, declarations, a whole `ast.File`). It never parses generated snippets.
-- One printer boundary (`print_go.go`) formats the tree once and materializes source directives.
-- The runtime, `pkg/runtime`, is imported as `rt`; `Standalone` merges it into one file for `ms emit`.
-- Lowering runs in independent [units](../../go-lowering-units.md), one per function instance.
+- `ms-lower` consumes the checked HIR and ownership facts and builds MIR; native standard calls use the `msrt_` and `msstd_` symbols in `crates/ms-rt/ABI.md`.
+- `ms-mir` verifies every module it produces and has a text format and interpreter for tests.
+- `ms-clif` is the only stage that knows the target machine.
 
 ## Source locations and fault frames
 
-- Each located Go statement carries a private label. The printer swaps it for a column-one `//line` directive and checks each marker prints exactly once. Multi-line statements repeat it in `/*line*/` form where a call can sit, and every top-level declaration starts with `//line generated.go:1` so glue never inherits a source line.
-- Source functions carry no per-call bookkeeping. A fault captures frames once, where raised, from the Go stack: `RegisterSource` and `rt.Named` map functions to source names (`test <name>`, `<anonymous>`) and directives supply file and line. Each lambda owns a package-level `rt.Site`.
-- Only functions in a recursive cycle call `Enter`/`Exit`; depth limit and cancellation are sampled every 256th entry.
+- Generated code keeps frame pointers and DWARF line tables, so a fault reports source frames without per-call bookkeeping.
+- The call depth limit is a per-call counter check that is elided for non-recursive call graphs.
 
 ## Defaults belong to the callee
 
-- A defaulted parameter is `rt.Arg[T]{Val, Set}` in source functions, lambdas, methods, and function types. The callee prologue binds the value or evaluates the default in its own scope, so defaults can read earlier parameters and `try` returns from the callee. Calls pass `rt.Given(v)` or `rt.Arg[T]{}`.
-- Native functions, record constructors, and runtime contracts keep plain parameters; call sites evaluate their defaults.
-- A function value with differing defaults is adapted by a wrapper (`convertFunction`). Generic record field defaults lower at the construction site with type arguments substituted.
+- Source functions bind a defaulted parameter in the callee prologue, so defaults can read earlier parameters and `try` returns from the callee.
+- Native functions, record constructors, and runtime contracts take plain parameters; call sites evaluate their defaults.
 
 ## Equality and keys
 
-- Types whose Go equality is Manuscript equality (scalars, strings, `Duration`, `Timestamp`, handles, `Unit`) use `==` and key a `Map` or `Set` directly.
-- Everything else gets generated `equal_T`, `format_T`, and `key_T` (a projection to a comparable `[N]any`). Explicit `Equal` or `Hashable` implementations use `rt.CustomKeys(hash, equal)`, whose closures capture the constructing execution.
-- A `Map` or `Set` keeps the `*rt.Keys[K]` it was built with, so **a collection matches keys with the equality of the module that created it**.
-- Possibly cyclic structural equality is guarded by `rt.EnterEqual`/`LeaveEqual`.
+Types whose machine equality is Manuscript equality (scalars, strings, `Duration`, `Timestamp`, handles, `Unit`) compare directly. Runtime collections of other element types take an element descriptor with `eq`, `hash`, and `clone` entries emitted by the compiler.
 
 ## Implementation scope
 
-Implementations are visible only in their declaring module. A generic instantiated from another module resolves its type variables' contract operations against the instantiating module first (`g.scope`, a comma-separated module chain), then its own. The instance key and generated name include that scope, as do views, `equal_`, and `key_` helpers when any module declares a local implementation (`localImpl`). In that case a `match` on a contract value switches on `rt.ReceiverOf`.
-
-## Measure representation choices
-
-From the checkout root with the pinned SDK:
-
-```sh
-toolchain/go/bin/go run ./bench/lowering -count=5
-```
-
-Compare against handwritten Go with the same checked arithmetic, fault positions, cancellation, and cleanup. Report allocations and time on a quiet machine, alternating unprofiled samples. Claim no speedup you did not reproduce.
+Implementations are visible only in their declaring module. A generic instantiated from another module resolves its type variables' contract operations against the instantiating module first, then its own.
 
 - [Function lowering](function-calls.md)
-- [Source guarantees and Go representations](value-representations.md)
+- [Source guarantees and representations](value-representations.md)
 - [Evaluation order and call preparation](evaluation-order.md)
 - [Cleanup and fault lowering](cleanup-and-faults.md)
-
-
-## Local arithmetic proofs
-
-Release lowering can remove an Int arithmetic check only when exact interval
-arithmetic proves every result fits. Facts belong to checked bindings in one
-callable; unknown control flow discards them. Finite unit-step loops bound every
-prefix of each accumulator using separate positive and negative budgets. All
-modified scalar, list and record facts become unknown before deriving any new
-invariant, so another accumulator's initial value cannot justify a check removal.
-
-An exhaustive use inventory permits bounds for fresh private Int lists and
-one-field Int records. Aliases, captures, unsupported mutations and calls retain
-the checked path. Record specialization also falls back inside generic callers.
-These Int-list accesses retain their ordinary index/default checks;
-only a proved length becomes constant. Debug retains the source bindings and
-checked operations. Closed Int maps use the exclusive helpers described in
-[Go representation](../../go-lowering-representation.md#closed-local-int-maps).
-
-A finite ascending loop with two safe updates, a last counter step, and at least
-256 iterations may group polling control. Queries still precede exactly the same
-64th, 128th, and subsequent bodies, including signed endpoints and partial tails.
-With stronger ownership and capture proofs, at most 63 unobserved updates may be
-combined before the next query. Eligible updates are a constant scalar stride,
-an exact counter (or checked pure identity of it), or a selected private-record
-constant update. Every generated product and sum must fit, independently of the
-original prefix proof. Captured counters, carries or stride inputs reject this
-stronger path. The queried body executes unchanged; other safe loops keep their
-individual assignments. Debug retains ordinary source execution.
-
-A fresh closed StringBuilder can combine literal appends in the same finite-loop
-framework. Its exhaustive inventory rejects aliases, escapes and captures, and
-requires all freezes to be direct top-level uses after every append-containing
-statement. Only direct literals up to 128 decoded UTF-8 bytes qualify. A repeated
-literal supplies the exact byte prefix for up to 63 bodies; the ordinary native
-append, sealed checks, queried body and freeze remain. Allocation capacity and GC
-timing can differ. Grouped append and query retain their separate source lines.
-
-A closed Int-list traversal of proved length at least 256 can group its polling
-when its sole body is an already-proved safe addition/subtraction of the exact
-loop element to an uncaptured accumulator. Items are snapshotted once, matching
-ordinary range. Batches contain at most 63 individual updates, with a fixed
-three-update unroll and tail. Every element is read and every update executes in
-original order; the next element is bound before the original query. Short lists,
-captures, aliases, unknown overflow, other bodies and Debug retain ordinary range.
-The guarded endpoint avoids overflowing index arithmetic near the maximum length.
-
-A fixed pure alternative match may have one private bounded clone. The callee
-must be a nongeneric free function with one immutable alternative parameter and
-Int result: initialize one Int carry, exhaustively match the parameter, then
-return the carry. At most eight explicit cases each bind one immutable Int
-payload and assign a literal, payload, or one native `+`/`-`/`*` operation to the
-same checked carry. Calls, nested control, other bindings and conversions reject
-selection. A clone requires at least one arithmetic operation.
-
-Only approved direct call expressions receive that clone and its returned bounds.
-Their argument must be a canonical `get(index)` of a fresh closed top-level
-literal list of the same concrete alternative, containing explicit Int-literal
-case constructors. Aliases, captures, mutations, supplied defaults, generic
-callers and local implementation scopes fall back. All approved payload ranges
-are unioned before proving each callee once. Any unsafe intermediate rejects its
-whole clone. Immutable plans publish before parallel lowering. The general
-function keeps every check and its ABI; the clone keeps its source name and
-registration. Checked nodes and general-function annotations are never mutated.
-
-For those same approved get identities, the local proof can emit ordinary Go
-`Items[index]` after proving `0 <= index < literal length`. Go's bounds check
-remains. Receiver and index evaluation stay in their original order. A proved
-nonnegative numerator modulo a positive Int literal provides a value interval;
-it does not remove modulo checks or annotate remainder as unchecked arithmetic.
-Unknown, negative, missing or defaulted indices retain ordinary List.get behavior,
-including negative normalization and source faults. Debug retains the general
-functions and runtime access path.
-
-A fixed nongeneric helper can also describe its normally returned successful Int
-payload: one immutable Int parameter, a pure parameter/literal comparison with
-one literal-only early error, then `ok(parameter +/- IntLiteral)`. A literal error
-constructor must have one explicit String field and no default. Arbitrary error
-arguments may hide early successful returns and are excluded. At most one exact
-Result identity wrapper hop is summarized, once per declaration. All original
-calls and checks remain; this proves neither totality nor error impossibility.
-Success bounds apply only inside the if-let success arm. Loop delta collection
-keeps every modified peer unknown and restores success facts before else/joins.
-
-An exact adjacent `let value = try result; return ok(value)` can return the
-original Result when payload and error types agree without conversion. Other
-`try` expressions still evaluate once, test failure and return the error. Function
-payloads retain their calling-convention conversion path.
-
-A Bool tail that only asks whether canonical `read_line` succeeded with a present
-line can omit materializing its unused String. The runtime shares the ordinary
-algorithm and retains validation, limits, locking, consumption, errors and
-cancellation queries. Text-returning reads and other source shapes are unchanged.
-
-## Cached list storage
-
-A loop whose every call is an indexed `List` get or set, a cancellation poll, or
-Int arithmetic or conversion samples the `Items` slice of each list variable it
-reads or writes by index once before the loop, so Go keeps the slice header in
-registers. The loop must not assign the variable, declare the name, take its
-address, or contain any other call, closure, `go` or `defer`; a call is the only
-way generated code replaces `Items`. Out-of-range and negative indexes still run
-the ordinary helper on the list, keeping the same results and fault text. A set
-whose result is used keeps the ordinary helper. Debug retains the ordinary
-calls.
