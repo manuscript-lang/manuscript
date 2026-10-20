@@ -74,6 +74,11 @@ overlapping zero-address Mach-O function ranges with external debug relocations;
 local section relocations plus stored function offsets fix the verifier and let
 LLVM symbolize both functions' distinct source lines. This probe does not link or
 execute on macOS/Windows and does not establish native target coverage.
+Supplemental Linux-hosted lld links also exercise PE sections and a Mach-O debug
+map plus dsymutil. The Mach-O CU explicitly records its original zero base so
+dsymutil relocates its range list together with subprogram addresses; the linked
+dSYM then passes full verification and adjacent source lookup for both functions.
+These are metadata checks with a stub runtime, not native execution coverage.
 
 ## Checks and review
 

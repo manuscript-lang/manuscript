@@ -76,6 +76,14 @@ pub fn emit(
     let mut symbols = Vec::new();
     let mut ranges = Vec::new();
     let root = dwarf.unit.root();
+    if product.object.format() == BinaryFormat::MachO {
+        // dsymutil needs an explicit original CU base to relocate its range
+        // list into the linked image, even when that original base is zero.
+        dwarf.unit.get_mut(root).set(
+            gimli::DW_AT_low_pc,
+            AttributeValue::Address(Address::Constant(0)),
+        );
+    }
     dwarf.unit.get_mut(root).set(
         gimli::DW_AT_name,
         AttributeValue::String(first_file.as_bytes().to_vec()),
