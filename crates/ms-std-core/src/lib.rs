@@ -13,6 +13,9 @@
 
 extern crate alloc;
 
+mod native;
+pub use native::{AbiType, FromAbi, IntoAbi, Status};
+
 use alloc::vec::Vec;
 use ms_rt_abi::KIND_LIST;
 pub use ms_rt_abi::{
