@@ -14,7 +14,7 @@ const MODULE_LINES: usize = 45;
 
 /// The one-page language guide for agents.
 pub fn cheatsheet() -> &'static str {
-    include_str!("../../../pkg/tooling/guide/cheatsheet.md")
+    include_str!("../data/cheatsheet.md")
 }
 
 pub(crate) fn short_name(path: &str) -> &str {

@@ -35,13 +35,12 @@ Tier (what a Rust milestone needs): `tier-core` imports nothing, `tier-stdlib` i
 
 ## Commands
 
-`run`, `record`, `diff`, `list`, `stats`, `lint`, `harvest`, `fuzz-gen`, `fuzz`, `bench`; `ms-conform --help` lists the options. Useful ones:
+`run`, `record`, `diff`, `list`, `stats`, `lint`, `harvest`, `fuzz-gen`, `fuzz`; `ms-conform --help` lists the options. Useful ones:
 
 - Selection: `--tag`, `--exclude-tag`, `--phase`, `--id`, `--shard i/n`, `--jobs`, `--timeout-scale`.
 - `run --expect-fail FILE` allows the listed ids (or `prefix*`); `--write-expect-fail FILE` writes the current failures; `--strict` also fails on entries that now pass; `--json` and `--markdown` write reports with pass rates per tag and phase.
 - `diff --a X --b Y` runs two binaries on the corpus and compares them directly, without recorded expectations.
 - `fuzz` generates programs, runs the oracle and the binary under test, and compares; `--save DIR` keeps disagreements.
-- `bench` times the `bench/perf` kernels and programs against Go baselines.
 
 ## Adding and refreshing fixtures
 
@@ -50,14 +49,6 @@ Tier (what a Rust milestone needs): `tier-core` imports nothing, `tier-stdlib` i
 3. `ms-conform lint` checks metadata, unknown tags, orphaned expectations.
 4. Review the expectation. It records what Go does, bugs included; a fixture that pins a Go bug keeps its expectation and joins the Rust gate's `--expect-fail` file with a reason.
 5. Fixtures whose Go output varies between runs (for example diagnostics emitted in map order) must be deleted, not recorded: one was found this way, `MS3040` ordering for a recursive generic field default, and removed.
-
-Regenerating the harvested set (rarely needed; the corpus is the source of truth afterwards):
-
-```sh
-go run tests/conformance/tools/extract_go_sources.go . > sources.jsonl
-ms-conform harvest --ms ./ms --repo . --sources sources.jsonl
-ms-conform record --ms ./ms --prune
-```
 
 ## Hostile fixtures
 

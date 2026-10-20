@@ -5,7 +5,7 @@ use ms_conform::observe::Ctx;
 use ms_conform::record::{self, RecordOpts};
 use ms_conform::report;
 use ms_conform::runner::{self, ExpectFail};
-use ms_conform::{bench, fuzz, harvest};
+use ms_conform::{fuzz, harvest};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -27,7 +27,6 @@ commands:
   retag     recompute tier-* tags on every fixture from its imports
   fuzz-gen  write deterministic generated fixtures into the corpus
   fuzz      differential fuzzing: generate programs, run --oracle and --ms, compare
-  bench     build and time the bench/perf kernels and programs against Go baselines
 
 selection (run, record, diff, list, stats):
   --corpus DIR        fixtures directory (default: tests/conformance/fixtures above the cwd)
@@ -57,8 +56,6 @@ harvest options:    --ms PATH --repo DIR [--sources FILE.jsonl] [--no-docs] [--n
                     (then run `record --prune` to write expectations and drop unstable fixtures)
 fuzz-gen options:   --kind run|type|syntax  --seeds A..B  [--corpus DIR]
 fuzz options:       --oracle PATH --ms PATH --kind K --seeds A..B [--save DIR]
-bench options:      --ms PATH [--oracle PATH] [--go PATH] [--repeats N] [--suite kernels|programs|all]
-                    [--repo DIR] [--out FILE]
 ";
 
 fn main() -> ExitCode {
@@ -90,7 +87,6 @@ fn main() -> ExitCode {
         "retag" => cmd_retag(&parsed),
         "fuzz-gen" => cmd_fuzz_gen(&parsed),
         "fuzz" => cmd_fuzz(&parsed),
-        "bench" => cmd_bench(&parsed),
         other => Err(format!("unknown command {other}; try --help")),
     };
     match result {
@@ -522,55 +518,6 @@ fn cmd_fuzz(args: &Args) -> Result<u8, String> {
         let _ = fs::remove_dir_all(&temp);
     }
     Ok(code)
-}
-
-fn find_repo(args: &Args) -> Result<PathBuf, String> {
-    if let Some(r) = args.one("repo") {
-        return Ok(PathBuf::from(r));
-    }
-    let mut dir = std::env::current_dir().map_err(|e| e.to_string())?;
-    loop {
-        if dir.join("bench/perf/kernels").is_dir() {
-            return Ok(dir);
-        }
-        if !dir.pop() {
-            return Err("cannot find bench/perf; pass --repo".into());
-        }
-    }
-}
-
-fn cmd_bench(args: &Args) -> Result<u8, String> {
-    let repo = find_repo(args)?;
-    let go = match args.one("go") {
-        Some(g) => PathBuf::from(g),
-        None => {
-            let bundled = repo.join("toolchain/go/bin/go");
-            if bundled.is_file() {
-                bundled
-            } else {
-                PathBuf::from("go")
-            }
-        }
-    };
-    let suite = args.one("suite").unwrap_or("all");
-    let opts = bench::Options {
-        repo,
-        ms: args.ms("ms"),
-        oracle: args
-            .one("oracle")
-            .map(|p| ms_conform::cli::absolute(PathBuf::from(p))),
-        go,
-        repeats: args.number::<usize>("repeats")?.unwrap_or(5).max(1),
-        kernels: matches!(suite, "all" | "kernels"),
-        programs: matches!(suite, "all" | "programs"),
-        scratch: std::env::temp_dir().join(format!("ms-conform-bench-{}", std::process::id())),
-    };
-    let markdown = bench::run(&opts)?;
-    match args.one("out") {
-        Some(p) => write_file(p, &markdown)?,
-        None => print!("{markdown}"),
-    }
-    Ok(0)
 }
 
 fn cmd_harvest(args: &Args) -> Result<u8, String> {
