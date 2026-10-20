@@ -96,9 +96,9 @@ jobs:
             curl --fail --location --retry 3 'https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/clang%2Bllvm-19.1.7-x86_64-pc-windows-msvc.tar.xz' -o "$archive"
             echo "b4557b4f012161f56a2f5d9e877ab9635cafd7a08f7affe14829bd60c9d357f0  $archive" | sha256sum --check
             mkdir -p "$tools"
-            tar -xf "$archive" -C "$tools" --strip-components=2 \
+            tar -xJf - -C "$tools" --strip-components=2 \
               clang+llvm-19.1.7-x86_64-pc-windows-msvc/bin/llvm-dwarfdump.exe \
-              clang+llvm-19.1.7-x86_64-pc-windows-msvc/bin/llvm-symbolizer.exe
+              clang+llvm-19.1.7-x86_64-pc-windows-msvc/bin/llvm-symbolizer.exe < "$archive"
           fi
           echo "$tools" >> "$GITHUB_PATH"
       - name: MIR signed boundaries and fault semantics
