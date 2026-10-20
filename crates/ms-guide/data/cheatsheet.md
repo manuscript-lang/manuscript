@@ -1,6 +1,6 @@
 # Manuscript cheat sheet
 
-Statically typed; compiled to Go. Four-space indentation, `#` comments. No `print`: write bytes via `@std/io.ms`.
+Statically typed; compiled to native code. Four-space indentation, `#` comments. No `print`: write bytes via `@std/io.ms`.
 
 <!-- complete -->
 ```manuscript
