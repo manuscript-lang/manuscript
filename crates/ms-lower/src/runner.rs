@@ -34,6 +34,8 @@ pub(crate) fn build_runner(m: &mut Module, tests: &[FuncId]) -> Result<FuncId, E
         b.seal_block(run);
         b.seal_block(miss);
         b.switch_to(run);
+        let consume = runtime_fn(b.m, "msrt_args_consume", &[], MTy::UNIT);
+        b.call_rt(consume, &[]);
         let r = b.call(*t, &[]);
         let TyKind::Alt(a) = b.m.types.kind(b.ty(r)).clone() else {
             return Err(Error::new("a test must return a Result"));

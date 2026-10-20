@@ -24,6 +24,9 @@ pub(crate) const HANDLE_FUNCTIONS: &[(&str, &str, &str, i64)] = &[
     ("io/files", "io", "", 0),
     ("fs/filesystem", "fs", "", 0),
     ("process/commands", "process", "", 0),
+    ("process/control", "process", "", 0),
+    ("system/system", "system", "", 0),
+    ("terminal/terminal", "terminal", "", 0),
     ("time/clock", "time", "", 0),
     ("time/wall_clock", "time", "", 0),
     ("net/network", "net", "msrt_net_network", 0),
@@ -34,6 +37,9 @@ const UNIT_DATA: &[(&str, &str)] = &[
     ("io", "Files"),
     ("fs", "FileSystem"),
     ("process", "Commands"),
+    ("process", "ProcessControl"),
+    ("system", "System"),
+    ("terminal", "Terminal"),
     ("time", "Clock"),
     ("time", "WallClock"),
 ];
@@ -432,6 +438,14 @@ const METHODS: &[MethodRow] = &[
     ("fs", "FileHandle", "close", "msstd_io_close", &[]),
     ("fs", "FileHandle", "read", "msstd_io_read", &[]),
     ("fs", "FileHandle", "write", "msstd_io_write", &[]),
+    ("fs", "FileHandle", "append_file", "msstd_io_write", &[]),
+    (
+        "fs",
+        "FileHandle",
+        "append_file_bytes",
+        "msstd_io_write_bytes",
+        &[],
+    ),
     (
         "fs",
         "FileHandle",
@@ -584,6 +598,191 @@ const METHODS: &[MethodRow] = &[
         "Subprocess",
         "terminate",
         "msstd_process_subprocess_terminate",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "monotonic_time",
+        "msstd_process_monotonic_time",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "uptime",
+        "msstd_process_elapsed",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "environment",
+        "msstd_process_environment_map",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "set_environment",
+        "msstd_process_set_environment",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "load_environment",
+        "msstd_process_load_environment",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "working_directory",
+        "msstd_process_working_directory",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "change_directory",
+        "msstd_process_change_directory",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "send_signal",
+        "msstd_process_send_signal",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "groups",
+        "msstd_process_groups",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "umask",
+        "msstd_process_umask",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "title",
+        "msstd_process_title",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "set_title",
+        "msstd_process_set_title",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "constrained_memory",
+        "msstd_process_constrained_memory",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "available_memory",
+        "msstd_process_available_memory",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "initialize_groups",
+        "msstd_process_initialize_groups",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "info",
+        "msstd_process_info_record",
+        &[],
+    ),
+    ("system", "System", "info", "msstd_system_info_record", &[]),
+    (
+        "system",
+        "System",
+        "working_directory",
+        "msstd_system_working_directory",
+        &[],
+    ),
+    ("system", "System", "hostname", "msstd_system_hostname", &[]),
+    (
+        "system",
+        "System",
+        "home_directory",
+        "msstd_system_home_directory",
+        &[],
+    ),
+    (
+        "system",
+        "System",
+        "user_info",
+        "msstd_system_user_info_record",
+        &[],
+    ),
+    (
+        "system",
+        "System",
+        "os_release",
+        "msstd_system_os_release",
+        &[],
+    ),
+    (
+        "system",
+        "System",
+        "os_version",
+        "msstd_system_os_version",
+        &[],
+    ),
+    ("system", "System", "machine", "msstd_system_machine", &[]),
+    (
+        "system",
+        "System",
+        "get_priority",
+        "msstd_system_get_priority",
+        &[],
+    ),
+    (
+        "system",
+        "System",
+        "set_priority",
+        "msstd_system_set_priority",
+        &[],
+    ),
+    (
+        "terminal",
+        "Terminal",
+        "capabilities",
+        "msstd_terminal_capabilities_record",
+        &[],
+    ),
+    (
+        "terminal",
+        "Terminal",
+        "size",
+        "msstd_terminal_size_record",
+        &[],
+    ),
+    (
+        "terminal",
+        "Terminal",
+        "raw_mode",
+        "msstd_terminal_raw_mode",
         &[],
     ),
     (
@@ -755,6 +954,11 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         fl.b.unreachable();
         return Ok(());
     };
+    if let Some(base) = sym.strip_suffix("_record") {
+        let r = fl.record_getters(base, job.ret)?;
+        fl.emit_return(Some(r));
+        return Ok(());
+    }
     let takes_handle = crate::rtcall::rt_sig(sym)
         .and_then(|s| {
             s.params
@@ -918,5 +1122,50 @@ impl FnLower<'_> {
     fn mty_kind(&mut self, t: &ct::Ty) -> Result<TyKind, Error> {
         let m = self.mty(t)?;
         Ok(self.b.m.types.kind(m).clone())
+    }
+}
+
+impl FnLower<'_> {
+    /// A record (or `Result` of one) built from one runtime getter per field, `<base>_<field>`.
+    /// An optional `<base>_status` call runs first: a nonzero status is the error case.
+    pub(crate) fn record_getters(&mut self, base: &str, result: MTy) -> Result<Val, Error> {
+        let (alt, rec_ty) = match self.b.m.types.kind(result).clone() {
+            TyKind::Alt(a) => {
+                let ok = self.ok_case_index(a)?;
+                (
+                    Some((a, ok)),
+                    self.b.m.alts[a.index()].cases[ok].fields[0].1,
+                )
+            }
+            _ => (None, result),
+        };
+        let TyKind::Rec(rid) = self.b.m.types.kind(rec_ty).clone() else {
+            return Err(Error::new(format!("{base}: not a record result")));
+        };
+        let fields = self.b.m.records[rid.index()].fields.clone();
+        let build = |s: &mut Self| -> Result<ms_mir::ir::Value, Error> {
+            let mut values = Vec::new();
+            for (name, ty) in &fields {
+                let sym = format!("{base}_{name}");
+                let v = s.rt_function(&sym, &[], &[], *ty)?;
+                values.push(s.owned(v));
+            }
+            let rec = s.b.rec_new(rid, &values);
+            Ok(match alt {
+                Some((a, ok)) => s.b.alt_new(a, ok as u32, &[rec]),
+                None => rec,
+            })
+        };
+        let status = format!("{base}_status");
+        if alt.is_none() || crate::rtcall::rt_sig(&status).is_none() {
+            let v = build(self)?;
+            return Ok(Val { v, own: true });
+        }
+        let code = self.status_code(&status, &[])?;
+        let zero = self.b.iconst(0);
+        let good = self.b.icmp(ms_mir::ir::Cc::Eq, code, zero);
+        self.two_ways(good, result, &mut |s| build(s).map(Some), &mut |s| {
+            s.status_failure(result, code, &status).map(Some)
+        })
     }
 }
