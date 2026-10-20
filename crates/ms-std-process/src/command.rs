@@ -2,14 +2,16 @@
 //!
 //! Children start in their own process group (a job object on Windows) so a kill reaches the
 //! whole tree.
-//! Waiting polls in short slices, which lets a pending cancellation kill the tree and unwind.
+//! Waiting polls in short slices that park the task, so other tasks run and a pending
+//! cancellation kills the tree and unwinds.
 use alloc::vec::Vec;
 use ms_rt_abi::{STATUS_FAILED, STATUS_OUTPUT_LIMIT, STATUS_TIMEOUT};
 use ms_std_fs::err::{Fail, Res, describe};
 use ms_std_fs::sys;
 use ms_std_rt::{cancel_pending, cancelled};
 
-const SLICE_MS: i32 = 50;
+/// How long a waiting task parks between checks of the child and its pipes.
+const POLL_MS: i64 = 2;
 /// How long the pipes may stay open after the child exited (`exec.Cmd.WaitDelay`).
 const WAIT_DELAY_NS: i64 = 1_000_000_000;
 pub const BACKGROUND_OUTPUT: &[u8] = b"the command finished but a background process kept its output open; close or redirect its output, or set a timeout";
@@ -36,9 +38,9 @@ pub fn now_ns() -> i64 {
 }
 use plat::{set_nonblocking, wait_io, would_block};
 
-/// Sleeps `ms` milliseconds.
+/// Parks the task `ms` milliseconds so other tasks run meanwhile.
 fn sleep_ms(ms: i64) {
-    std::thread::sleep(std::time::Duration::from_millis(ms.max(0) as u64));
+    ms_std_rt::task_sleep(ms.max(0) * 1_000_000);
 }
 
 /// A descriptor closed on drop.
@@ -146,17 +148,21 @@ pub fn run(
             kept_open = true;
             break;
         }
-        let mut slice = SLICE_MS as i64;
+        let mut slice = POLL_MS;
         if let Some(d) = deadline {
             slice = slice.min(((d - now) / 1_000_000).max(1));
         }
-        let ready = wait_io([in_w.0, out_r.0, err_r.0], slice);
+        let ready = wait_io([in_w.0, out_r.0, err_r.0], 0);
+        if !ready.contains(&true) {
+            sleep_ms(slice);
+            continue;
+        }
 
         if ready[0] && in_w.is_open() {
             let end = input.len().min(written + 64 * 1024);
             match sys::write(in_w.0, &input[written..end]) {
                 Ok(n) => written += n,
-                Err(e) if would_block(e) => {}
+                Err(e) if would_block(e) => sleep_ms(POLL_MS),
                 // The child closed its input early; the remainder is dropped.
                 Err(_) => written = input.len(),
             }

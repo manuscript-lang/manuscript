@@ -190,7 +190,9 @@ impl Watcher {
                 revents: 0,
             };
             // SAFETY: one valid `pollfd`.
-            unsafe { libc::poll(&mut p, 1, 50) };
+            if unsafe { libc::poll(&mut p, 1, 0) } <= 0 {
+                ms_std_rt::task_sleep(5_000_000);
+            }
         }
     }
 
