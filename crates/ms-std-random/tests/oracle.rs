@@ -60,6 +60,51 @@ fn err(e: RandomFail) -> String {
     }
 }
 
+type Fetch<'a> = &'a mut dyn FnMut(usize) -> Result<Vec<u8>, RandomFail>;
+
+/// Runs `d` to completion over `fetch`, as the generated loop does; `swap` sees shuffle swaps.
+fn drive(mut d: Draw, fetch: Fetch, mut swap: impl FnMut((i64, i64))) -> Result<Draw, RandomFail> {
+    loop {
+        let want = d.want();
+        if want == 0 {
+            break;
+        }
+        let data = fetch(want as usize)?;
+        if d.push(&data) {
+            swap(d.swap());
+        }
+    }
+    match d.status() {
+        ms_rt_abi::STATUS_OK => Ok(d),
+        ms_rt_abi::STATUS_INVALID_INPUT => Err(RandomFail::InvalidInput),
+        _ => Err(RandomFail::Failed(
+            "entropy source returned incorrect length".into(),
+        )),
+    }
+}
+
+fn secure_int(fetch: Fetch, min: i64, max: Option<i64>) -> Result<i64, RandomFail> {
+    drive(Draw::new(Kind::Int, min, max), fetch, drop).map(|d| d.int())
+}
+
+fn uuid_v4(fetch: Fetch) -> Result<String, RandomFail> {
+    drive(Draw::new(Kind::Uuid, 0, None), fetch, drop).map(|d| d.text().to_string())
+}
+
+fn float(fetch: Fetch) -> Result<f64, RandomFail> {
+    drive(Draw::new(Kind::Float, 0, None), fetch, drop).map(|d| d.float())
+}
+
+fn shuffle(fetch: Fetch, values: &mut [i64]) -> Result<(), RandomFail> {
+    let d = Draw::new(Kind::Shuffle, values.len() as i64, None);
+    drive(d, fetch, |(i, j)| values.swap(i as usize, j as usize)).map(drop)
+}
+
+fn choice_index(fetch: Fetch, len: usize) -> Result<Option<usize>, RandomFail> {
+    drive(Draw::new(Kind::Choice, len as i64, None), fetch, drop)
+        .map(|d| usize::try_from(d.int()).ok())
+}
+
 /// Runs `step` up to `n` times, joining `ok ..` results and stopping at the first error.
 fn repeat(n: usize, mut step: impl FnMut() -> Result<String, RandomFail>) -> String {
     let mut vals = Vec::new();

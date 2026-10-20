@@ -253,6 +253,40 @@ fn scope_entry(t: &Tables, id: u32) -> Option<ScopeEntry> {
     Some(unsafe { *t.scopes.add(id as usize - 1) })
 }
 
+/// Windows native frames do not use the generated code's frame layout. Recover
+/// the first source frame with native unwind metadata, then follow only the
+/// contiguous generated caller chain. Stop at native/glue boundaries rather
+/// than reconstructing a partial native register context.
+#[cfg(windows)]
+unsafe fn walk_fault_frames(_fp: usize, t: &Tables, mut f: impl FnMut(usize) -> bool) {
+    let Some((mut pc, mut fp)) = sys::source_frame(|pc| find_func(t, pc).is_some()) else {
+        return;
+    };
+    let (lo, hi) = sys::stack_limits();
+    for _ in 0..256 {
+        if find_func(t, pc).is_none() || !f(pc) {
+            break;
+        }
+        let Some(end) = fp.checked_add(16) else { break };
+        if !fp.is_multiple_of(8) || fp < lo || end > hi {
+            break;
+        }
+        // SAFETY: the first frame came from the native CONTEXT; subsequent
+        // frames belong to registered generated callers and stay in this stack.
+        let (next, ret) = unsafe { (*(fp as *const usize), *((fp + 8) as *const usize)) };
+        if next <= fp {
+            break;
+        }
+        (pc, fp) = (ret, next);
+    }
+}
+
+#[cfg(not(windows))]
+unsafe fn walk_fault_frames(fp: usize, _t: &Tables, f: impl FnMut(usize) -> bool) {
+    // SAFETY: forwarded live frame-pointer chain.
+    unsafe { walk_frames(fp, f) }
+}
+
 /// Appends `file:line in name` lines for the source frames found from `fp`.
 fn describe_frames(out: &mut ByteBuf, fp: usize) {
     // SAFETY: tables pointer is set once at start.
@@ -266,7 +300,7 @@ fn describe_frames(out: &mut ByteBuf, fp: usize) {
     let mut truncated = false;
     // SAFETY: `fp` comes from `frame_pointer()` of the faulting thread.
     unsafe {
-        walk_frames(fp, |ret| {
+        walk_fault_frames(fp, t, |ret| {
             let Some(func) = find_func(t, ret) else {
                 return true;
             };

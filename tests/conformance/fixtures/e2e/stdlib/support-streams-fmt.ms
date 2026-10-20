@@ -19,11 +19,11 @@ impl ReadStream for MemoryStream:
 
         var end = self.offset + count
         if end > self.data.length(): end = self.data.length()
-        let chunk = self.data.slice(self.offset, end).get()
+        let chunk = self.data.slice(self.offset, end).get().clone()
         self.offset = end
         return ok(chunk)
 
-    fn close() Unit: self.closed = true
+    var fn close() Unit: self.closed = true
 
 impl WriteStream for MemoryStream:
     var fn write(data: String) Result[Unit, IoError]:
@@ -40,4 +40,4 @@ impl WriteStream for MemoryStream:
 
         return ok(unit)
 
-    fn close() Unit: self.closed = true
+    var fn close() Unit: self.closed = true

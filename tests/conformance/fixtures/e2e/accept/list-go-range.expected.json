@@ -11,27 +11,27 @@
       "tests": [
         {
           "index": 0,
-          "name": "list-go-range.ms::range observes backing writes and keeps initial length",
+          "name": "list-go-range.ms::range iterates a snapshot while the live list changes",
           "status": "passed"
         },
         {
           "index": 1,
-          "name": "list-go-range.ms::append growth preserves captured array and current alias",
+          "name": "list-go-range.ms::append growth does not change the iterated snapshot",
           "status": "passed"
         },
         {
           "index": 2,
-          "name": "list-go-range.ms::callbacks use current backing and stored methods retain aliases",
+          "name": "list-go-range.ms::callbacks run over snapshots and stored methods keep their receiver copy",
           "status": "passed"
         },
         {
           "index": 3,
-          "name": "list-go-range.ms::nested reverse copy shrink and self splice follow initial headers",
+          "name": "list-go-range.ms::nested reverse copy shrink and self splice iterate snapshots",
           "status": "passed"
         },
         {
           "index": 4,
-          "name": "list-go-range.ms::clone slice and nested references retain their own contracts",
+          "name": "list-go-range.ms::clone slice and nested values keep their own contracts",
           "status": "passed"
         },
         {
@@ -50,7 +50,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN list-go-range.ms::range observes backing writes and keeps initial length\nPASS list-go-range.ms::range observes backing writes and keeps initial length\nRUN list-go-range.ms::append growth preserves captured array and current alias\nPASS list-go-range.ms::append growth preserves captured array and current alias\nRUN list-go-range.ms::callbacks use current backing and stored methods retain aliases\nPASS list-go-range.ms::callbacks use current backing and stored methods retain aliases\nRUN list-go-range.ms::nested reverse copy shrink and self splice follow initial headers\nPASS list-go-range.ms::nested reverse copy shrink and self splice follow initial headers\nRUN list-go-range.ms::clone slice and nested references retain their own contracts\nPASS list-go-range.ms::clone slice and nested references retain their own contracts\nRUN list-go-range.ms::function values can replace later backing elements\nPASS list-go-range.ms::function values can replace later backing elements\n6 tests, 0 failed\n",
+      "stdout": "RUN list-go-range.ms::range iterates a snapshot while the live list changes\nPASS list-go-range.ms::range iterates a snapshot while the live list changes\nRUN list-go-range.ms::append growth does not change the iterated snapshot\nPASS list-go-range.ms::append growth does not change the iterated snapshot\nRUN list-go-range.ms::callbacks run over snapshots and stored methods keep their receiver copy\nPASS list-go-range.ms::callbacks run over snapshots and stored methods keep their receiver copy\nRUN list-go-range.ms::nested reverse copy shrink and self splice iterate snapshots\nPASS list-go-range.ms::nested reverse copy shrink and self splice iterate snapshots\nRUN list-go-range.ms::clone slice and nested values keep their own contracts\nPASS list-go-range.ms::clone slice and nested values keep their own contracts\nRUN list-go-range.ms::function values can replace later backing elements\nPASS list-go-range.ms::function values can replace later backing elements\n6 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

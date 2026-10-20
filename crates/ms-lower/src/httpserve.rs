@@ -235,10 +235,6 @@ impl FnLower<'_> {
         };
         let ok = self.ok_case_index(ra)?;
         let err_case = 1 - ok;
-        let error_ty = self.b.m.alts[ra.index()].cases[err_case].fields[0].1;
-        let TyKind::Alt(ea) = self.b.m.types.kind(error_ty).clone() else {
-            return Err(Error::new("a stream handler error is not an alternative"));
-        };
         let hir = self.hir.clone();
         let vt = self
             .cx
@@ -284,35 +280,45 @@ impl FnLower<'_> {
             &mut |s| Ok(Some(s.b.iconst(0))),
             &mut |s| {
                 let e = s.b.alt_get(ra, err_case as u32, 0, r);
-                let etag = s.b.alt_tag(e);
-                // `Failed(message)` stores its text through `err`.
-                let texts: Vec<usize> = (0..s.b.m.alts[ea.index()].cases.len())
-                    .filter(|i| s.b.m.alts[ea.index()].cases[*i].fields.len() == 1)
-                    .collect();
-                for case in texts {
-                    let k = s.b.iconst(case as i64);
-                    let hit = s.b.icmp(Cc::Eq, etag, k);
-                    s.two_ways(
-                        hit,
-                        MTy::INT,
-                        &mut |s| {
-                            let text = s.b.alt_get(ea, case as u32, 0, e);
-                            let text = s.owned(Val {
-                                v: text,
-                                own: false,
-                            });
-                            s.b.emit(Op::Put, &[p[2], text], Imm::None, None);
-                            Ok(Some(s.b.iconst(0)))
-                        },
-                        &mut |s| Ok(Some(s.b.iconst(0))),
-                    )?;
-                }
-                let one = s.b.iconst(1);
-                Ok(Some(s.b.binop(Op::IAdd, etag, one)))
+                s.error_status(e, p[2]).map(Some)
             },
         )?;
         fl.drop_value(r);
         fl.emit_return(Some(status));
         Ok(fl.b.into_func())
+    }
+
+    /// The status of an error alternative `e` (`1 + the case index`); a case that carries text
+    /// (`Failed(message)`) also stores its text through `err`.
+    pub(crate) fn error_status(
+        &mut self,
+        e: ms_mir::ir::Value,
+        err: ms_mir::ir::Value,
+    ) -> Result<ms_mir::ir::Value, Error> {
+        let ea = self.alt_of(e)?;
+        let etag = self.b.alt_tag(e);
+        let texts: Vec<usize> = (0..self.b.m.alts[ea.index()].cases.len())
+            .filter(|i| self.b.m.alts[ea.index()].cases[*i].fields.len() == 1)
+            .collect();
+        for case in texts {
+            let k = self.b.iconst(case as i64);
+            let hit = self.b.icmp(Cc::Eq, etag, k);
+            self.two_ways(
+                hit,
+                MTy::INT,
+                &mut |s| {
+                    let text = s.b.alt_get(ea, case as u32, 0, e);
+                    let text = s.owned(Val {
+                        v: text,
+                        own: false,
+                    });
+                    s.b.emit(Op::Put, &[err, text], Imm::None, None);
+                    Ok(Some(s.b.iconst(0)))
+                },
+                &mut |s| Ok(Some(s.b.iconst(0))),
+            )?;
+        }
+        let one = self.b.iconst(1);
+        Ok(self.b.binop(Op::IAdd, etag, one))
     }
 }

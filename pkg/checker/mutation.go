@@ -1,18 +1,21 @@
 package checker
 
-// CollectionMutation reports whether a standard collection method mutates its receiver.
-func CollectionMutation(receiver *Type, name string) bool {
-	if std(receiver, "List") {
-		switch name {
-		case "append", "prepend", "insert", "pop", "set", "remove", "splice", "fill", "copy_within", "reverse_in_place":
-			return true
-		}
+// CollectionMutation reports whether a standard collection method mutates its
+// receiver. List, Map and Set methods say so with `var fn` in their @std
+// declaration; the builders are shared handles declared with plain `fn`, so
+// their mutating methods are listed here.
+func CollectionMutation(method *Method) bool {
+	if method == nil || method.Decl == nil {
+		return false
 	}
-	if std(receiver, "Map") {
-		switch name {
-		case "add", "remove", "add_default", "add_default_from", "merge", "clear":
-			return true
-		}
+	receiver, name := method.Receiver, method.Decl.Name
+	switch {
+	case std(receiver, "StringBuilder"):
+		return name == "append" || name == "freeze"
+	case std(receiver, "BytesBuilder"):
+		return name == "append" || name == "concat" || name == "freeze"
+	case std(receiver, "List"), std(receiver, "Map"), std(receiver, "Set"):
+		return method.Decl.Mutating
 	}
-	return std(receiver, "Set") && (name == "add" || name == "remove" || name == "clear")
+	return false
 }

@@ -21,13 +21,13 @@ for f in sorted(glob.glob("crates/ms-rt/src/*.rs") + glob.glob("crates/ms-std-*/
             out.append(f"{call.group(1)}{sig}")
     for m in re.finditer(r'#\[unsafe\(no_mangle\)\]\s*pub (?:unsafe )?(?:extern "[^"]+" )?(fn|static)(?: mut)? (\w+)(.*?)(?:\{|=)', s, re.S):
         sig = " ".join(m.group(3).split())
-        entry = f"{m.group(2)}{sig}" if m.group(1) == "fn" else f"{m.group(2)} (data)"
-        # Platform-specific implementations in ms-rt share one ABI entry.
-        if f.startswith("crates/ms-rt/") and entry in out:
-            continue
-        out.append(entry)
+        out.append(f"{m.group(2)}{sig}" if m.group(1) == "fn" else f"{m.group(2)} (data)")
     # Symbols declared through the table macros of the ms-std crates (`name => path` / `name: type = value`).
     for m in re.finditer(r'^\s+(msstd_\w+)\s*(=>[^,\n]*|:\s*(\w+)\s*=)', s, re.M):
         out.append(f"{m.group(1)}(value: f64) -> f64" if m.group(3) is None else f"{m.group(1)}() -> {m.group(3)}")
+    # Indexed field getters declared through `text_getter!`/`int_getter!` (ms-std-system).
+    for m in re.finditer(r'^(text|int)_getter!\(\s*(msstd_\w+),', s, re.M):
+        out.append(f"{m.group(2)}(i: i64) -> {'*mut StrObj' if m.group(1) == 'text' else 'i64'}")
 out.append("```")
-open("crates/ms-rt/SYMBOLS.md", "w").write("\n".join(out) + "\n")
+# A symbol defined once per target (`msrt_trap_*`) is listed once.
+open("crates/ms-rt/SYMBOLS.md", "w").write("\n".join(l for i, l in enumerate(out) if not l or l.startswith(("#", "Generated", "`")) or l not in out[:i]) + "\n")

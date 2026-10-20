@@ -53,6 +53,8 @@ msrt_cancelled() -> !
 msrt_guard_call( code: unsafe extern "C-unwind" fn(*mut u8), data: *mut u8, msg_out: *mut *mut ms_rt_abi::StrObj, ) -> u8
 msrt_io_write_stdout(s: *mut StrObj)
 msrt_io_write_stderr(s: *mut StrObj)
+msrt_io_write_bytes_stdout(v: *const VecVal)
+msrt_io_write_bytes_stderr(v: *const VecVal)
 msrt_io_flush()
 rust_eh_personality()
 msrt_map_new(out: *mut MapVal)
@@ -96,6 +98,7 @@ msrt_free(p: *mut u8)
 msrt_retain(o: *mut Obj)
 msrt_release(o: *mut Obj)
 msrt_drop_slow(o: *mut Obj)
+msrt_process_on_exit(hook: extern "C" fn())
 msrt_process_exit(code: i64) -> !
 msrt_queue_new( d: *const TypeDesc, has_capacity: u8, capacity: i64, ) -> *mut QueueObj
 msrt_queue_enqueue(q: *mut QueueObj, value: *mut u8) -> u8
@@ -112,6 +115,7 @@ msrt_priority_queue_is_empty(q: *const PriorityQueueObj) -> u8
 msrt_start_nanos() -> i64
 msrt_start( main_fn: extern "C-unwind" fn() -> i64, tables: *const Tables, argc: i32, argv: *const *const u8, ) -> i32
 msrt_argv(out: *mut VecVal)
+msrt_args_consume()
 msrt_args(out: *mut VecVal)
 msrt_string_empty() -> *mut StrObj
 msrt_string_hash(s: *const StrObj) -> i64
@@ -168,8 +172,6 @@ msrt_task_count() -> usize
 msrt_task_cancel(handle: u64)
 msrt_task_join(handle: u64, msg_out: *mut *mut StrObj) -> u8
 msrt_trap_begin() -> u8
-msrt_trap_end() -> !
-msrt_trap_wait(out: *mut *mut StrObj) -> u8
 msrt_trap_end() -> !
 msrt_trap_wait(out: *mut *mut StrObj) -> u8
 msrt_list_new(out: *mut VecVal)
@@ -380,9 +382,6 @@ msstd_fs_watch( path: *const StrObj, recursive: u8, interval_ns: i64, has_max: u
 msstd_fs_watch_native( path: *const StrObj, recursive: u8, has_max: u8, max: i64, has_events: u8, events: i64, overflow: *const StrObj, out: *mut *mut WatchHandle, ) -> u8
 msstd_fs_watch_next( h: *mut WatchHandle, paths: *mut VecVal, kinds: *mut VecVal, ) -> u8
 msstd_fs_watch_close(h: *mut WatchHandle)
-msrt_cancel_flag (data)
-msrt_cancelled() -> !
-msrt_io_flush()
 msrt_html_escape(text: *const StrObj) -> *mut StrObj
 msrt_html_unescape(text: *const StrObj) -> *mut StrObj
 msrt_html_kind(t: *const TreeObj, id: u32) -> u8
@@ -411,9 +410,6 @@ msstd_io_write(h: *mut Host, data: *const StrObj) -> u8
 msstd_io_flush(h: *mut Host) -> u8
 msstd_io_close(h: *mut Host)
 msstd_io_is_closed(h: *const Host) -> u8
-msrt_cancel_flag (data)
-msrt_cancelled() -> !
-msrt_io_flush()
 msrt_json_kind(d: *const DocObj, id: u32) -> u8
 msrt_json_bool(d: *const DocObj, id: u32) -> u8
 msrt_json_text(d: *const DocObj, id: u32) -> *mut StrObj
@@ -510,7 +506,7 @@ msrt_net_network_http_client( net: *const Obj, opts: *const HttpClientOptionsWir
 msrt_http_client_close(c: *const Obj)
 msrt_http_client_request( c: *const Obj, method: *const StrObj, address: *const StrObj, headers: *const Obj, body: *const StrObj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
 msrt_http_client_request_bytes( c: *const Obj, method: *const StrObj, address: *const StrObj, headers: *const Obj, body: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_http_client_request_stream( c: *const Obj, method: *const StrObj, address: *const StrObj, headers: *const Obj, body: *const StreamWire, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_http_client_request_stream( c: *const Obj, method: *const StrObj, address: *const StrObj, headers: *const Obj, src: *mut Obj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
 msrt_http_body_close(b: *const Obj)
 msrt_http_body_metadata(b: *const Obj, out: *mut MetadataWire)
 msrt_http_body_read( b: *const Obj, has_max: u8, max: i64, out: *mut VecVal, err: *mut *mut StrObj, ) -> u8
@@ -630,13 +626,30 @@ msstd_process_subprocess_wait( h: *mut ChildHandle, has_timeout: u8, timeout_ns:
 msstd_process_subprocess_terminate(h: *mut ChildHandle)
 msstd_process_subprocess_kill(h: *mut ChildHandle)
 msstd_process_subprocess_close(h: *mut ChildHandle)
-msrt_cancel_flag (data)
-msrt_cancelled() -> !
-msrt_io_flush()
-msrt_heap_stats(out: *mut i64)
-msrt_start_nanos() -> i64
+msstd_process_elapsed(out: *mut i64) -> u8
+msstd_process_environment_map(out: *mut ms_rt_abi::MapVal) -> u8
+msstd_process_info_pid() -> i64
+msstd_process_info_parent_pid() -> i64
+msstd_process_info_executable() -> *mut StrObj
+msstd_process_info_arguments(out: *mut VecVal)
+msstd_process_info_os() -> *mut StrObj
+msstd_process_info_architecture() -> *mut StrObj
+msstd_process_info_uid() -> i64
+msstd_process_info_gid() -> i64
+msstd_process_info_effective_uid() -> i64
+msstd_process_info_effective_gid() -> i64
 msrt_argv(_: *mut ms_rt_abi::VecVal)
-msrt_random_os_bytes( count: i64, out: *mut VecVal, message: *mut *mut StrObj, ) -> u8
+msstd_random_failure_message() -> *mut StrObj
+msstd_random_os_bytes(count: i64, out: *mut VecVal) -> u8
+msstd_random_draw_new(kind: i64, a: i64, has_b: u8, b: i64) -> *mut Draw
+msstd_random_draw_want(d: *const Draw) -> i64
+msstd_random_draw_push(d: *mut Draw, data: *const VecVal) -> u8
+msstd_random_draw_swap(d: *const Draw, which: i64) -> i64
+msstd_random_draw_status(d: *const Draw) -> u8
+msstd_random_draw_int(d: *const Draw) -> i64
+msstd_random_draw_float(d: *const Draw) -> f64
+msstd_random_draw_text(d: *const Draw) -> *mut StrObj
+msstd_random_draw_free(d: *mut Draw)
 msrt_regex_compile(pattern: *const StrObj, out: *mut *mut RegexObj) -> u8
 msrt_regex_matches(re: *const RegexObj, text: *const StrObj) -> u8
 msrt_regex_find_all( re: *const RegexObj, text: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
@@ -644,6 +657,80 @@ msrt_regex_replace_all( re: *const RegexObj, text: *const StrObj, replacement: *
 msrt_semver_parse(text: *const StrObj, out: *mut VersionRec) -> u8
 msrt_semver_format(v: *const VersionRec) -> *mut StrObj
 msrt_semver_compare(l: *const VersionRec, r: *const VersionRec) -> i64
+msstd_system_failure_message() -> *mut StrObj
+msstd_system_endianness() -> *mut StrObj
+msstd_system_end_of_line() -> *mut StrObj
+msstd_system_dev_null() -> *mut StrObj
+msstd_system_os_type() -> *mut StrObj
+msstd_system_info_os() -> *mut StrObj
+msstd_system_info_architecture() -> *mut StrObj
+msstd_system_info_cpu_count() -> i64
+msstd_system_working_directory() -> *mut StrObj
+msstd_system_hostname(out: *mut *mut StrObj) -> u8
+msstd_system_home_directory(out: *mut *mut StrObj) -> u8
+msstd_system_os_release(out: *mut *mut StrObj) -> u8
+msstd_system_os_version(out: *mut *mut StrObj) -> u8
+msstd_system_machine(out: *mut *mut StrObj) -> u8
+msstd_system_get_priority(pid: i64, out: *mut i64) -> u8
+msstd_system_set_priority(pid: i64, priority: i64) -> u8
+msstd_system_constants(out: *mut MapVal)
+msstd_system_user_info_status() -> u8
+msstd_system_user_info_username() -> *mut StrObj
+msstd_system_user_info_uid() -> i64
+msstd_system_user_info_gid() -> i64
+msstd_system_user_info_home() -> *mut StrObj
+msstd_system_user_info_shell() -> *mut StrObj
+msstd_system_network_interfaces_status() -> u8
+msstd_system_network_interfaces_count() -> i64
+msstd_system_network_interfaces_family(i: i64) -> i64
+msstd_system_network_interfaces_internal(i: i64) -> u8
+msstd_system_cpus_status() -> u8
+msstd_system_cpus_count() -> i64
+msstd_system_metrics_status() -> u8
+msstd_system_metrics_total_memory() -> i64
+msstd_system_metrics_free_memory() -> i64
+msstd_system_metrics_available_memory() -> i64
+msstd_system_metrics_uptime() -> i64
+msstd_system_metrics_available_parallelism() -> i64
+msstd_system_metrics_load_average(window: i64) -> f64
+msstd_system_network_interfaces_name(i: i64) -> *mut StrObj
+msstd_system_network_interfaces_address(i: i64) -> *mut StrObj
+msstd_system_network_interfaces_netmask(i: i64) -> *mut StrObj
+msstd_system_network_interfaces_mac(i: i64) -> *mut StrObj
+msstd_system_network_interfaces_scope_id(i: i64) -> i64
+msstd_system_cpus_model(i: i64) -> *mut StrObj
+msstd_system_cpus_speed_mhz(i: i64) -> i64
+msstd_system_cpus_user(i: i64) -> i64
+msstd_system_cpus_nice(i: i64) -> i64
+msstd_system_cpus_system(i: i64) -> i64
+msstd_system_cpus_idle(i: i64) -> i64
+msstd_system_cpus_irq(i: i64) -> i64
+msstd_terminal_failure_message() -> *mut StrObj
+msstd_terminal_capabilities_input_is_terminal() -> u8
+msstd_terminal_capabilities_output_is_terminal() -> u8
+msstd_terminal_capabilities_error_is_terminal() -> u8
+msstd_terminal_capabilities_raw_mode() -> u8
+msstd_terminal_capabilities_resize_events() -> u8
+msstd_terminal_capabilities_colors() -> i64
+msstd_terminal_size_status() -> u8
+msstd_terminal_size_columns() -> i64
+msstd_terminal_size_rows() -> i64
+msstd_terminal_raw_mode( alternate_screen: u8, out: *mut *mut RawHandle, ) -> u8
+msstd_terminal_raw_terminal_close(h: *mut RawHandle)
+msstd_terminal_raw_terminal_size_status(h: *mut RawHandle) -> u8
+msstd_terminal_raw_terminal_size_columns(h: *mut RawHandle) -> i64
+msstd_terminal_raw_terminal_size_rows(h: *mut RawHandle) -> i64
+msstd_terminal_raw_terminal_move_cursor( h: *mut RawHandle, row: i64, column: i64, ) -> u8
+msstd_terminal_raw_terminal_show_cursor( h: *mut RawHandle, visible: u8, ) -> u8
+msstd_terminal_raw_terminal_erase(h: *mut RawHandle, region: i64) -> u8
+msstd_terminal_raw_terminal_next_event( h: *mut RawHandle, has_timeout: u8, timeout_ns: i64, ) -> u8
+msstd_terminal_event_kind() -> i64
+msstd_terminal_event_text() -> *mut StrObj
+msstd_terminal_event_ctrl() -> u8
+msstd_terminal_event_alt() -> u8
+msstd_terminal_event_shift() -> u8
+msstd_terminal_event_columns() -> i64
+msstd_terminal_event_rows() -> i64
 msstd_time_duration_add(left: i64, other: i64) -> i64
 msstd_time_duration_plus(left: i64, right: i64) -> i64
 msstd_time_duration_minus(left: i64, right: i64) -> i64

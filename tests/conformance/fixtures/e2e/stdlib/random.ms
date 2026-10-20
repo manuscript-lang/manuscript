@@ -14,6 +14,14 @@ impl Entropy for ZeroEntropy:
         self.requested = count
         return ok(Bytes(filled(0, count).get()))
 
+type ExactEntropy:
+    expected: Int
+
+impl Entropy for ExactEntropy:
+    fn bytes(count: Int) Result[Bytes, RandomError]:
+        if count != self.expected: return error(RandomError.Failed("unexpected count"))
+        return ok(Bytes(filled(0, count).get()))
+
 type FailedEntropy:
     message: String
 
@@ -22,20 +30,15 @@ impl Entropy for FailedEntropy:
         return error(RandomError.Failed(self.message))
 
 test "random algorithms call Manuscript entropy implementations":
-    let source = ZeroEntropy(0)
-    try expect_equal((try secure_int(Entropy(source), -2, 3)), -2)
-    try expect_equal(source.requested, 1)
+    try expect_equal((try secure_int(Entropy(ExactEntropy(1)), -2, 3)), -2)
     try expect_equal(
-        (try uuid_v4(Entropy(source))),
+        (try uuid_v4(Entropy(ExactEntropy(16)))),
         "00000000-0000-4000-8000-000000000000"
     )
-    try expect_equal(source.requested, 16)
 
 test "random errors propagate and invalid ranges do not read entropy":
-    let source = ZeroEntropy(0)
     let invalid: Result[Int, RandomError] = error(RandomError.InvalidInput)
-    try expect_equal(secure_int(Entropy(source), 3, 3), invalid)
-    try expect_equal(source.requested, 0)
+    try expect_equal(secure_int(Entropy(FailedEntropy("read")), 3, 3), invalid)
     let failed: Result[String, RandomError] = error(RandomError.Failed("source failed"))
     try expect_equal(uuid_v4(Entropy(FailedEntropy("source failed"))), failed)
     try expect_equal((try entropy().bytes(16)).length(), 16)
