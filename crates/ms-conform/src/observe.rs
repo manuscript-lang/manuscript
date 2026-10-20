@@ -68,9 +68,16 @@ pub fn normalize_text(text: &str, work: &Path) -> String {
     }
     // Imports such as `../a.ms` name the scratch root, whose name carries a process id.
     if let Some(root) = work.parent() {
-        out = out.replace(root.to_string_lossy().as_ref(), "<SCRATCH>");
+        // The canonical spelling can extend the plain one (`/private/var/...` for `/var/...`), so the
+        // longer one goes first.
+        let mut roots = vec![root.to_string_lossy().into_owned()];
         if let Ok(real) = fs::canonicalize(root) {
-            out = out.replace(real.to_string_lossy().as_ref(), "<SCRATCH>");
+            roots.push(real.to_string_lossy().into_owned());
+        }
+        roots.sort_by_key(|s| std::cmp::Reverse(s.len()));
+        roots.dedup();
+        for r in roots {
+            out = out.replace(&r, "<SCRATCH>");
         }
     }
     out

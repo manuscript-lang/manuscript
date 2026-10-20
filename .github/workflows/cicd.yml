@@ -167,7 +167,7 @@ jobs:
       - name: Show why a failing test-phase fixture does not run
         if: failure()
         run: |
-          for f in time fs terminal; do
+          for f in time fs terminal net http-upload sse-http; do
             echo "::group::ms test e2e/stdlib/$f"
             target/debug/ms test "tests/conformance/fixtures/e2e/stdlib/$f.ms" 2>&1 | head -40 || true
             echo "::endgroup::"
