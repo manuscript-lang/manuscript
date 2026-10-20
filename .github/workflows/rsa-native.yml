@@ -75,8 +75,12 @@ jobs:
           if [ '${{ matrix.os }}' = windows ]; then ms="$ms.exe"; fi
           for build_type in Release Debug; do
             report=".artifacts/rsa-native/rsa-$build_type.json"
-            "$ms" test tests/e2e/testdata/stdlib/crypto-rsa.ms --build-type "$build_type" --json > "$report"
+            stderr=".artifacts/rsa-native/rsa-$build_type.stderr"
+            status=0
+            "$ms" test tests/e2e/testdata/stdlib/crypto-rsa.ms --build-type "$build_type" --json > "$report" 2> "$stderr" || status=$?
             cat "$report"
+            cat "$stderr" >&2
+            if [ "$status" -ne 0 ]; then exit "$status"; fi
             node -e '
               const r = require("./" + process.argv[1]);
               if (!r.completed || r.exit_code !== 0 || r.summary.available !== 4 ||
