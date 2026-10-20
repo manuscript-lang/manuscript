@@ -28,6 +28,7 @@ native! {
     /// Writes the tree handle and the root node id through `out` and `root` when it succeeds.
     fn msrt_html_parse(
         text: &str,
+        has_limits: bool,
         has_max_bytes: bool,
         max_bytes: i64,
         has_max_depth: bool,
@@ -37,10 +38,15 @@ native! {
         out: Out<Object<Tree>>,
         root: Out<u32>,
     ) -> Result<(), Fail> {
-        let limits = Limits {
-            max_bytes: has_max_bytes.then_some(max_bytes),
-            max_depth: has_max_depth.then_some(max_depth),
-            max_nodes: has_max_nodes.then_some(max_nodes),
+        // Without a limits record the defaults apply; a record's none fields stay unlimited.
+        let limits = if has_limits {
+            Limits {
+                max_bytes: has_max_bytes.then_some(max_bytes),
+                max_depth: has_max_depth.then_some(max_depth),
+                max_nodes: has_max_nodes.then_some(max_nodes),
+            }
+        } else {
+            Limits::DEFAULT
         };
         let t = crate::parse(text, limits)?;
         root.write(t.root as u32);
@@ -134,7 +140,7 @@ mod tests {
         // SAFETY: all pointers are live; results are released below.
         unsafe {
             assert_eq!(
-                msrt_html_parse(text, 0, 0, 0, 0, 0, 0, t.as_mut_ptr(), &mut root),
+                msrt_html_parse(text, 0, 0, 0, 0, 0, 0, 0, t.as_mut_ptr(), &mut root),
                 STATUS_OK
             );
             let t = t.assume_init();

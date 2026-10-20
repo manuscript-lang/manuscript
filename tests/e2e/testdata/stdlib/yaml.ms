@@ -812,7 +812,7 @@ test "YAML compact nested sequences resume each level and parse deep chains in l
     first.last().get() | try expect_equal(expected: YamlValue.StringValue("z"))
     let depth = 3000
     var source = "{repeated(text: "- ", count: depth)}x\n"
-    var root = (parse(text: source) | try expect_ok)
+    var root = (parse(text: source, limits: some(YamlLimits())) | try expect_ok)
 
     for level in range(1, depth):
         let inner = (try items(root))
@@ -826,3 +826,19 @@ test "YAML stringify escapes C1 control characters so output reparses":
         let text = try from_scalars([97, code, 98])
         let encoded = try stringify(YamlValue.StringValue(text))
         try expect_equal((try parse(encoded)), YamlValue.StringValue(text))
+
+test "YAML parse without limits stops alias bombs and deep nesting":
+    var bomb = "l0: &l0 [x, x, x, x, x, x, x, x, x, x]\n"
+    for i in range(0, 9):
+        bomb = bomb + "l{i+1}: &l{i+1} [" + "*l{i}, ".repeat(9).get() + "*l{i}]\n"
+    let bombed = parse(bomb)
+    if bombed.is_ok(): return fail(
+        "alias expansion over the default value budget was accepted"
+    )
+
+    let deep = "[".repeat(2000).get() + "]".repeat(2000).get()
+    let nested = parse(deep)
+    if nested.is_ok(): return fail("nesting over the default depth was accepted")
+
+    let lifted = parse(deep, some(YamlLimits()))
+    try expect_true(lifted.is_ok())
