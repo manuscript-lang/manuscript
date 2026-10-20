@@ -550,10 +550,11 @@ impl Walker<'_> {
             StmtKind::Break | StmtKind::Continue => {}
             StmtKind::If {
                 binding,
+                mutable,
                 cond,
                 body,
                 else_body,
-            } => self.if_stmt(s, binding.as_ref(), cond, body, else_body),
+            } => self.if_stmt(s, binding.as_ref(), *mutable, cond, body, else_body),
             StmtKind::While { cond, body } => {
                 self.expr(cond, Demand::Read);
                 self.release_pending();
@@ -580,6 +581,7 @@ impl Walker<'_> {
         &mut self,
         s: &Stmt,
         binding: Option<&Pattern>,
+        mutable: bool,
         cond: &Expr,
         body: &[Stmt],
         else_body: &[Stmt],
@@ -589,7 +591,11 @@ impl Walker<'_> {
         match binding {
             Some(p) => {
                 let scrutinee = self.scrutinee(s.id, cond);
-                self.pattern_bindings(p, &scrutinee, Role::Pattern);
+                if mutable {
+                    self.mutable_payload(p, cond, &scrutinee);
+                } else {
+                    self.pattern_bindings(p, &scrutinee, Role::Pattern);
+                }
             }
             None => self.expr(cond, Demand::Read),
         }
@@ -932,6 +938,54 @@ impl Walker<'_> {
         Scrutinee {
             owned: true,
             origins: Vec::new(),
+        }
+    }
+
+    /// `if var name = value`: the payload is an exclusive borrow of the part of
+    /// its origin the value reads in place, or an owned value otherwise.
+    fn mutable_payload(&mut self, p: &Pattern, value: &Expr, source: &Scrutinee) {
+        let Some(b) = self.cx.m.pattern_binding(p) else {
+            return;
+        };
+        let class = self.cx.classes.class(&b.ty);
+        let root = source
+            .origins
+            .first()
+            .and_then(|o| self.meta.get(&o.root))
+            .map(|m| m.binding.clone());
+        let (Some(root), false) = (root, source.owned || class == Class::Copy) else {
+            self.declare(&b, Role::Pattern, Perm::Mutable, None, false);
+            return;
+        };
+        let Some(root_node) = self.root_node(value) else {
+            self.declare(&b, Role::Pattern, Perm::Mutable, None, false);
+            return;
+        };
+        let info = PlaceInfo {
+            text: self.expr_text(value),
+            root,
+            root_node,
+            resolved: source.origins.clone(),
+            projection: true,
+        };
+        let before = self.diags.len();
+        self.mutate(p.pos, &info, "borrow mutably");
+        if self.diags.len() == before {
+            self.declare_mut_borrow(&b, Role::Pattern, source.origins.clone(), p.pos);
+        } else {
+            self.declare(&b, Role::Pattern, Perm::Mutable, None, false);
+        }
+    }
+
+    /// The name expression a place chain or accessor call starts from.
+    fn root_node(&self, e: &Expr) -> Option<NodeId> {
+        match &e.kind {
+            ExprKind::Name(_) => Some(e.id),
+            ExprKind::Member { left, .. }
+            | ExprKind::Index { left, .. }
+            | ExprKind::Apply { left, .. } => self.root_node(left),
+            ExprKind::Call { callee, .. } => self.root_node(callee),
+            _ => None,
         }
     }
 

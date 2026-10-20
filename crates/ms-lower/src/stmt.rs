@@ -101,10 +101,16 @@ impl<'a> FnLower<'a> {
             }
             StmtKind::If {
                 binding,
+                mutable,
                 cond,
                 body,
                 else_body,
             } => {
+                if *mutable {
+                    return Err(Error::new(
+                        "`if var` borrows the payload mutably, which is not lowered yet; use `if let` and change the origin through its path",
+                    ));
+                }
                 self.if_stmt(binding.as_ref(), cond, body, else_body)?;
                 self.flush_temps(mark);
                 return Ok(());

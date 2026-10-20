@@ -637,6 +637,7 @@ impl D {
             ),
             StmtKind::If {
                 binding,
+                mutable,
                 cond,
                 body,
                 else_body,
@@ -645,7 +646,7 @@ impl D {
                 "if",
                 "",
                 "",
-                false,
+                *mutable,
                 None,
                 binding.as_ref(),
                 None,

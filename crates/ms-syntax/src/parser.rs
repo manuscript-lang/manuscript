@@ -1056,7 +1056,10 @@ impl<'a> Parser<'a> {
             Tok::If => {
                 self.at += 1;
                 let mut binding = None;
-                if self.take(Tok::Let) {
+                let mut mutable = false;
+                if self.kind() == Tok::Let || self.kind() == Tok::Var {
+                    mutable = self.kind() == Tok::Var;
+                    self.at += 1;
                     let pat = self.pattern()?;
                     if !matches!(pat.kind, PatternKind::Name(_)) {
                         return self.fail(t, "if let binds one name; write 'if let value = optional:' and destructure the value inside the branch");
@@ -1077,6 +1080,7 @@ impl<'a> Parser<'a> {
                 }
                 StmtKind::If {
                     binding,
+                    mutable,
                     cond,
                     body,
                     else_body,
