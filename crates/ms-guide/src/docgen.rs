@@ -363,7 +363,7 @@ pub struct DescriptionPolicy {
 /// Reads the policy that ships with the compiler.
 pub fn standard_description_policy() -> Result<DescriptionPolicy, String> {
     parse_policy(include_str!(
-        "../../../pkg/tooling/docgen/description_backlog.json"
+        "../data/description_backlog.json"
     ))
 }
 
