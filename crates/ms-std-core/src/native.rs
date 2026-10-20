@@ -212,6 +212,23 @@ impl StringList {
     }
 }
 
+/// A `static` for state only the runtime thread touches. Manuscript code runs on one thread, so
+/// interior-mutable statics (`Global<Cell<_>>`, `Global<RefCell<_>>`) need no lock.
+pub struct Global<T>(T);
+
+impl<T> Global<T> {
+    pub const fn new(value: T) -> Global<T> {
+        Global(value)
+    }
+
+    pub fn get(&self) -> &T {
+        &self.0
+    }
+}
+
+// SAFETY: the runtime runs Manuscript code on one thread, the only one that reaches a `Global`.
+unsafe impl<T> Sync for Global<T> {}
+
 /// A bare `STATUS_*` byte as an error.
 pub struct StatusCode(pub u8);
 
