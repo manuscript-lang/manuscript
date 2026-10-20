@@ -12,13 +12,13 @@
           "file": "learn-tour-3.ms",
           "line": 5,
           "column": 1,
-          "offset": 192
+          "offset": 183
         },
         "end": {
           "file": "learn-tour-3.ms",
           "line": 5,
           "column": 5,
-          "offset": 196
+          "offset": 187
         }
       }
     ],
