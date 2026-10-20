@@ -10,6 +10,7 @@ crate-type = ["rlib"]
 
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
+ms-std-core = { path = "../ms-std-core" }
 ms-std-rt = { path = "../ms-std-rt" }
 ms-std-path = { path = "../ms-std-path" }
 

@@ -10,9 +10,10 @@ use alloc::vec::Vec;
 
 use ms_rt_abi::{
     STATUS_FAILED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_NONE,
-    STATUS_OK, StrObj, VecVal,
+    STATUS_OK,
 };
-use ms_std_rt::{new_string, record_failure, vec_bytes, write_bytes};
+use ms_std_core::{Mut, Own, Ref, StatusCode, Text, abi_handle, native};
+use ms_std_rt::record_failure;
 
 const CHUNK: i64 = 32768;
 
@@ -22,6 +23,8 @@ enum Kind {
     Copy,
     Line,
 }
+
+abi_handle!(Acc);
 
 pub struct Acc {
     kind: Kind,
@@ -116,86 +119,60 @@ impl Acc {
     }
 }
 
-fn start(kind: Kind, has_max: u8, max: i64) -> *mut Acc {
-    Box::into_raw(Box::new(Acc::new(kind, (has_max != 0).then_some(max))))
-}
-
 /// `kind`: 0 `read_all`, 1 `copy`, 2 `read_line`. Freed by the matching `finish`.
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_io_acc_new(kind: i64, has_max: u8, max: i64) -> *mut Acc {
+fn start(kind: i64, has_max: bool, max: i64) -> Own<Acc> {
     let kind = match kind {
         0 => Kind::ReadAll,
         1 => Kind::Copy,
         _ => Kind::Line,
     };
-    start(kind, has_max, max)
+    Own(Box::new(Acc::new(kind, has_max.then_some(max))))
 }
 
-/// The next read size, or `0` when the loop should stop.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_io_acc_want(a: *const Acc) -> i64 {
-    // SAFETY: `a` is a live accumulator.
-    unsafe { (*a).want() }
-}
-
-/// Accepts a chunk; answers whether the loop continues.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_io_acc_push(a: *mut Acc, data: *const VecVal) -> u8 {
-    // SAFETY: `a` is live and `data` a live byte vector.
-    unsafe { (*a).push(vec_bytes(data)) as u8 }
-}
-
-/// Frees the accumulator and answers its status.
-unsafe fn finish<T>(a: *mut Acc, ok: impl FnOnce(Acc) -> T) -> (u8, Option<T>) {
-    // SAFETY: `a` came from `msstd_io_acc_new` and is finished once.
-    let acc = unsafe { Box::from_raw(a) };
-    let status = acc.status;
-    if status == STATUS_OK {
-        (status, Some(ok(*acc)))
-    } else {
-        (status, None)
+/// The accumulator's status once finished; its result is read only when that is `STATUS_OK`.
+fn finish<T>(a: Own<Acc>, ok: impl FnOnce(Acc) -> T) -> Result<T, StatusCode> {
+    let acc = *a.0;
+    match acc.status {
+        STATUS_OK => Ok(ok(acc)),
+        status => Err(StatusCode(status)),
     }
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_io_acc_finish_bytes(a: *mut Acc, out: *mut VecVal) -> u8 {
-    // SAFETY: arguments follow the ABI contract.
-    let (status, bytes) = unsafe { finish(a, |acc| acc.buf) };
-    if let Some(b) = bytes {
-        // SAFETY: `out` is writable.
-        unsafe { write_bytes(&b, out) };
+native! {
+    fn msstd_io_acc_new(kind: i64, has_max: bool, max: i64) -> Own<Acc> {
+        start(kind, has_max, max)
     }
-    status
-}
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_io_acc_finish_count(a: *mut Acc, out: *mut i64) -> u8 {
-    // SAFETY: arguments follow the ABI contract.
-    let (status, total) = unsafe { finish(a, |acc| acc.total) };
-    if let Some(t) = total {
-        // SAFETY: `out` is writable.
-        unsafe { *out = t };
+    /// The next read size, or `0` when the loop should stop.
+    fn msstd_io_acc_want(a: Ref<Acc>) -> i64 {
+        a.want()
     }
-    status
-}
 
-/// `STATUS_NONE` at end of stream before any byte.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_io_acc_finish_line(a: *mut Acc, out: *mut *mut StrObj) -> u8 {
-    // SAFETY: arguments follow the ABI contract.
-    let (status, line) = unsafe { finish(a, |acc| (acc.buf, acc.done)) };
-    let Some((buf, ended)) = line else {
-        return status;
-    };
-    if buf.is_empty() && !ended {
-        return STATUS_NONE;
+    /// Accepts a chunk; answers whether the loop continues.
+    fn msstd_io_acc_push(a: Mut<Acc>, data: &[u8]) -> bool {
+        let mut a = a;
+        a.push(data)
     }
-    if core::str::from_utf8(&buf).is_err() {
-        return STATUS_INVALID_DATA;
+
+    fn msstd_io_acc_finish_bytes(a: Own<Acc>) -> Result<Vec<u8>, StatusCode> {
+        finish(a, |acc| acc.buf)
     }
-    // SAFETY: `out` is writable.
-    unsafe { *out = new_string(&buf) };
-    STATUS_OK
+
+    fn msstd_io_acc_finish_count(a: Own<Acc>) -> Result<i64, StatusCode> {
+        finish(a, |acc| acc.total)
+    }
+
+    /// `STATUS_NONE` at end of stream before any byte.
+    fn msstd_io_acc_finish_line(a: Own<Acc>) -> Result<Text, StatusCode> {
+        let (buf, ended) = finish(a, |acc| (acc.buf, acc.done))?;
+        if buf.is_empty() && !ended {
+            return Err(StatusCode(STATUS_NONE));
+        }
+        if core::str::from_utf8(&buf).is_err() {
+            return Err(StatusCode(STATUS_INVALID_DATA));
+        }
+        Ok(Text(buf))
+    }
 }
 
 #[cfg(test)]
