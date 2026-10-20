@@ -1387,84 +1387,60 @@ impl<'a> FnLower<'a> {
         }
     }
 
-    /// A stable insertion sort of a copy, ordered by the comparator's sign.
+    /// A stable merge sort of a copy (the runtime's), ordered by the comparator's sign.
     fn list_sorted(
         &mut self,
         lv: ms_mir::builder::Var,
         fvar: ms_mir::builder::Var,
         elem: MTy,
     ) -> Result<Val, Error> {
-        use ms_mir::ir::{Cc, Op};
-        let _ = elem;
         let l = self.b.use_var(lv);
-        let n = self.b.list_len(l);
-        let t = self.ty_of(l);
-        let copy = self.owned(Val { v: l, own: false });
-        let acc = self.b.declare_var(t, Mode::Own);
-        self.b.def_var(acc, copy);
-        let one = self.b.iconst(1);
-        let zero = self.b.iconst(0);
-        let i = self.b.declare_var(MTy::INT, Mode::Borrow);
-        let j = self.b.declare_var(MTy::INT, Mode::Borrow);
-        self.b.def_var(i, one);
-        let oh = self.b.new_block();
-        let ob = self.b.new_block();
-        let ih = self.b.new_block();
-        let ic = self.b.new_block();
-        let sw = self.b.new_block();
-        let on = self.b.new_block();
-        let exit = self.b.new_block();
-        self.b.br(oh, &[]);
-        self.b.switch_to(oh);
-        let iv = self.b.use_var(i);
-        let c = self.b.icmp(Cc::Lt, iv, n);
-        self.b.br_if(c, ob, &[], exit, &[]);
-        self.b.seal_block(ob);
-        self.b.switch_to(ob);
-        let iv = self.b.use_var(i);
-        self.b.def_var(j, iv);
-        self.b.br(ih, &[]);
-        self.b.switch_to(ih);
-        let jv = self.b.use_var(j);
-        let c = self.b.icmp(Cc::Gt, jv, zero);
-        self.b.br_if(c, ic, &[], on, &[]);
-        self.b.seal_block(ic);
-        self.b.switch_to(ic);
-        let jv = self.b.use_var(j);
-        let prev = self.b.binop(Op::ISub, jv, one);
-        let cur = self.b.use_var(acc);
-        let a = self.b.list_get(cur, prev);
-        let b = self.b.list_get(cur, jv);
         let f = self.b.use_var(fvar);
-        let r = self.b.call_ind(f, &[a, b]);
-        let gt = self.b.icmp(Cc::Gt, r, zero);
-        self.b.br_if(gt, sw, &[], on, &[]);
-        self.b.seal_block(sw);
-        self.b.seal_block(on);
-        self.b.switch_to(sw);
-        let jv = self.b.use_var(j);
-        let prev = self.b.binop(Op::ISub, jv, one);
-        let cur = self.b.use_var(acc);
-        let a = self.b.list_get(cur, prev);
-        let b = self.b.list_get(cur, jv);
-        let ac = self.owned(Val { v: a, own: false });
-        let bc = self.owned(Val { v: b, own: false });
-        let l1 = self.b.list_set(cur, prev, bc);
-        let l2 = self.b.list_set(l1, jv, ac);
-        self.b.def_var(acc, l2);
-        self.b.def_var(j, prev);
-        self.b.br(ih, &[]);
-        self.b.seal_block(ih);
-        self.b.switch_to(on);
-        let iv = self.b.use_var(i);
-        let next = self.b.binop(Op::IAdd, iv, one);
-        self.b.def_var(i, next);
-        self.b.br(oh, &[]);
-        self.b.seal_block(oh);
-        self.b.seal_block(exit);
-        self.b.switch_to(exit);
-        let r = self.b.use_var(acc);
-        Ok(Val { v: r, own: true })
+        let thunk = self.sort_thunk(elem, self.ty_of(f));
+        let cmp = self
+            .b
+            .emit(
+                ms_mir::ir::Op::FuncAddr,
+                &[],
+                ms_mir::ir::Imm::Func(thunk),
+                Some(MTy::PTR),
+            )
+            .expect("func.addr");
+        let d = self.type_desc(elem);
+        let t = self.ty_of(l);
+        let out = self.call_runtime("msrt_list_sorted", &[l, d, cmp, f], t)?;
+        Ok(Val { v: out, own: true })
+    }
+
+    /// `fn(comparator, ptr, ptr) -> int` for the runtime sort: loads the two element slots and
+    /// calls the source comparator on them.
+    fn sort_thunk(&mut self, elem: MTy, closure: MTy) -> ms_mir::ir::FuncId {
+        let p = |ty| Param {
+            ty,
+            mode: Mode::Borrow,
+        };
+        let mut tb = ms_mir::builder::FuncBuilder::new(
+            self.b.m,
+            "sort.cmp",
+            vec![p(closure), p(MTy::PTR), p(MTy::PTR)],
+            MTy::INT,
+        );
+        tb.func_mut().linkage = ms_mir::ir::Linkage::Internal;
+        let args = tb.params();
+        let mut load = |a| {
+            tb.emit(
+                ms_mir::ir::Op::Load,
+                &[a],
+                ms_mir::ir::Imm::Ty(elem),
+                Some(elem),
+            )
+            .expect("load")
+        };
+        let (x, y) = (load(args[1]), load(args[2]));
+        let r = tb.call_ind(args[0], &[x, y]);
+        tb.ret(Some(r));
+        let thunk = tb.into_func();
+        self.b.m.add_func(thunk)
     }
 
     /// A collection method that changes its receiver place: the place receives the new value.

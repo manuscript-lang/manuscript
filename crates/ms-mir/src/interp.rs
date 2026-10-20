@@ -901,6 +901,12 @@ impl<'m> Interp<'m> {
                     .map_err(|msg| Raw::new(FaultKind::Unreachable, msg))?;
                 set!(r);
             }
+            Op::FuncAddr => {
+                let Imm::Func(g) = inst.imm else {
+                    return Err(Raw::internal("func.addr without function"));
+                };
+                set!(Val::Ptr(g.0 as u64));
+            }
             Op::TypeDesc => {
                 let Imm::Ty(t) = inst.imm else {
                     return Err(Raw::internal("typedesc without type"));

@@ -1970,6 +1970,13 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::CallInd => self.call_closure(f, inst),
             Op::CallMethod => self.call_method(f, inst),
             Op::CallRt => self.call_extern(f, inst),
+            Op::FuncAddr => {
+                let Imm::Func(g) = inst.imm else {
+                    unreachable!()
+                };
+                let r = self.fref(self.g.funcs[g.index()]);
+                vec![self.b.ins().func_addr(types::I64, r)]
+            }
             Op::TypeDesc => {
                 let Imm::Ty(t) = inst.imm else { unreachable!() };
                 vec![self.typedesc_addr(t)]
