@@ -4,26 +4,14 @@
 //! ([`DocObj`]) plus `u32` node ids. A parse yields a document the generated decoders read with the
 //! accessors; an encoder starts a `builder_new` document, adds nodes bottom-up and serializes the
 //! root. Node ids are only valid for the document that issued them.
-#![allow(unsafe_code, clippy::missing_safety_doc)]
-
 use crate::{Doc, Limits, Node, NodeId};
-use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_rt_abi::Obj;
-use ms_rt_abi::VecVal;
-use ms_std_core::{StrObj, new_string, opt, read_string_list, status_of, str_ref};
+use ms_std_core::{
+    Fail, IdArray, ObjMut, ObjRef, Object, Out, Status, StrArray, abi_handle, native,
+};
 
-unsafe extern "C" {
-    fn msrt_alloc(size: usize) -> *mut u8;
-    fn msrt_free(p: *mut u8);
-}
-
-#[repr(C)]
-pub struct DocObj {
-    header: Obj,
-    doc: *mut Doc,
-}
+abi_handle!(Doc);
 
 pub const KIND_NULL: u8 = 0;
 pub const KIND_BOOL: u8 = 1;
@@ -32,351 +20,193 @@ pub const KIND_STRING: u8 = 3;
 pub const KIND_ARRAY: u8 = 4;
 pub const KIND_OBJECT: u8 = 5;
 
-unsafe extern "C" fn doc_drop(o: *mut Obj) {
-    let d = o.cast::<DocObj>();
-    // SAFETY: `o` was built by `new_handle`; `doc` came from `Box::into_raw`.
-    unsafe {
-        drop(Box::from_raw((*d).doc));
-        msrt_free(o.cast());
+/// A decimal text that is not an in-range number: status 1.
+pub struct NotNumber;
+
+impl Status for NotNumber {
+    fn status(self) -> u8 {
+        1
     }
 }
 
-unsafe fn new_handle(doc: Doc) -> *mut DocObj {
-    // SAFETY: allocation sized for `DocObj`, fully initialised before it is returned.
-    unsafe {
-        let p = msrt_alloc(core::mem::size_of::<DocObj>()).cast::<DocObj>();
-        p.write(DocObj {
-            header: Obj {
-                rc: 1,
-                drop: Some(doc_drop),
-            },
-            doc: Box::into_raw(Box::new(doc)),
-        });
-        p
+fn put(entries: &mut Vec<(String, NodeId)>, key: &str, id: NodeId) {
+    match entries.iter_mut().find(|e| e.0 == key) {
+        Some(e) => e.1 = id,
+        None => entries.push((String::from(key), id)),
     }
 }
 
-unsafe fn doc<'a>(d: *const DocObj) -> &'a Doc {
-    // SAFETY: `d` is a live handle.
-    unsafe { &*(*d).doc }
-}
-
-unsafe fn doc_mut<'a>(d: *mut DocObj) -> &'a mut Doc {
-    // SAFETY: `d` is a live handle, uniquely used while building.
-    unsafe { &mut *(*d).doc }
-}
-
-/// Parses `text`; on success `out` receives the document handle (+1) and `root` its root node.
-#[unsafe(no_mangle)]
-#[allow(clippy::too_many_arguments)]
-pub unsafe extern "C" fn msrt_json_parse(
-    text: *const StrObj,
-    has_max_bytes: u8,
-    max_bytes: i64,
-    has_max_depth: u8,
-    max_depth: i64,
-    has_max_values: u8,
-    max_values: i64,
-    out: *mut *mut DocObj,
-    root: *mut u32,
-) -> u8 {
-    let limits = Limits {
-        max_bytes: opt(has_max_bytes, max_bytes),
-        max_depth: opt(has_max_depth, max_depth),
-        max_values: opt(has_max_values, max_values),
-    };
-    // SAFETY: `text` is live; `out` and `root` are writable.
-    unsafe {
-        let r = crate::parse(str_ref(text), limits);
-        let status = status_of(&r.as_ref().map(|_| ()).map_err(|e| *e));
-        if let Ok((d, id)) = r {
-            out.write(new_handle(d));
-            root.write(id);
-        }
-        status
+native! {
+    /// Writes the document handle and the root node id through `out` and `root` on success.
+    fn msrt_json_parse(
+        text: &str,
+        has_max_bytes: bool,
+        max_bytes: i64,
+        has_max_depth: bool,
+        max_depth: i64,
+        has_max_values: bool,
+        max_values: i64,
+        out: Out<Object<Doc>>,
+        root: Out<u32>,
+    ) -> Result<(), Fail> {
+        let limits = Limits {
+            max_bytes: has_max_bytes.then_some(max_bytes),
+            max_depth: has_max_depth.then_some(max_depth),
+            max_values: has_max_values.then_some(max_values),
+        };
+        let (d, id) = crate::parse(text, limits)?;
+        out.write(Object(d));
+        root.write(id);
+        Ok(())
     }
-}
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_kind(d: *const DocObj, id: u32) -> u8 {
-    // SAFETY: `d` is a live handle and `id` one of its nodes.
-    match unsafe { &doc(d).nodes[id as usize] } {
-        Node::Null => KIND_NULL,
-        Node::Bool(_) => KIND_BOOL,
-        Node::Number(_) => KIND_NUMBER,
-        Node::Str(_) => KIND_STRING,
-        Node::Array(_) => KIND_ARRAY,
-        Node::Object(_) => KIND_OBJECT,
-    }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_bool(d: *const DocObj, id: u32) -> u8 {
-    // SAFETY: as `msrt_json_kind`.
-    u8::from(matches!(
-        unsafe { &doc(d).nodes[id as usize] },
-        Node::Bool(true)
-    ))
-}
-
-/// Number text or string content (+1); an empty string for other kinds.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_text(d: *const DocObj, id: u32) -> *mut StrObj {
-    // SAFETY: as `msrt_json_kind`.
-    match unsafe { &doc(d).nodes[id as usize] } {
-        Node::Number(s) | Node::Str(s) => new_string(s),
-        _ => new_string(""),
-    }
-}
-
-/// Element or member count of an array or object; 0 for other kinds.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_len(d: *const DocObj, id: u32) -> i64 {
-    // SAFETY: as `msrt_json_kind`.
-    match unsafe { &doc(d).nodes[id as usize] } {
-        Node::Array(v) => v.len() as i64,
-        Node::Object(v) => v.len() as i64,
-        _ => 0,
-    }
-}
-
-/// Element `i` of an array, or the value of member `i` of an object (insertion order).
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_item(d: *const DocObj, id: u32, i: i64) -> u32 {
-    // SAFETY: as `msrt_json_kind`; `i` is below `msrt_json_len`.
-    match unsafe { &doc(d).nodes[id as usize] } {
-        Node::Array(v) => v[i as usize],
-        Node::Object(v) => v[i as usize].1,
-        _ => 0,
-    }
-}
-
-/// Key of member `i` of an object (+1).
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_key(d: *const DocObj, id: u32, i: i64) -> *mut StrObj {
-    // SAFETY: as `msrt_json_item`.
-    match unsafe { &doc(d).nodes[id as usize] } {
-        Node::Object(v) => new_string(&v[i as usize].0),
-        _ => new_string(""),
-    }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_builder_new() -> *mut DocObj {
-    // SAFETY: a fresh handle.
-    unsafe { new_handle(Doc::default()) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_add_null(d: *mut DocObj) -> u32 {
-    // SAFETY: `d` is a live builder.
-    unsafe { doc_mut(d).add(Node::Null) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_add_bool(d: *mut DocObj, v: u8) -> u32 {
-    // SAFETY: `d` is a live builder.
-    unsafe { doc_mut(d).add(Node::Bool(v != 0)) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_add_number(d: *mut DocObj, text: *const StrObj) -> u32 {
-    // SAFETY: `d` is a live builder and `text` a live string.
-    unsafe { doc_mut(d).add(Node::Number(String::from(str_ref(text)))) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_add_string(d: *mut DocObj, text: *const StrObj) -> u32 {
-    // SAFETY: `d` is a live builder and `text` a live string.
-    unsafe { doc_mut(d).add(Node::Str(String::from(str_ref(text)))) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_add_array(d: *mut DocObj, ids: *const u32, n: i64) -> u32 {
-    // SAFETY: `ids` points at `n` node ids of this builder.
-    unsafe {
-        let items = core::slice::from_raw_parts(ids, n as usize).to_vec();
-        doc_mut(d).add(Node::Array(items))
-    }
-}
-
-/// Adds an object from parallel `keys` / `ids` arrays. Later duplicates of a key replace the
-/// earlier value in place, as a `Map` would.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_add_object(
-    d: *mut DocObj,
-    keys: *const *const StrObj,
-    ids: *const u32,
-    n: i64,
-) -> u32 {
-    // SAFETY: `keys` and `ids` point at `n` live entries.
-    unsafe {
-        let mut entries: Vec<(String, NodeId)> = Vec::new();
-        for i in 0..n as usize {
-            let k = str_ref(*keys.add(i));
-            let id = *ids.add(i);
-            match entries.iter_mut().find(|e| e.0 == k) {
-                Some(e) => e.1 = id,
-                None => entries.push((String::from(k), id)),
-            }
-        }
-        doc_mut(d).add(Node::Object(entries))
-    }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_stringify(
-    d: *const DocObj,
-    root: u32,
-    has_max_bytes: u8,
-    max_bytes: i64,
-    has_indent: u8,
-    indent: i64,
-    out: *mut *mut StrObj,
-) -> u8 {
-    // SAFETY: `d` is a live handle; `out` is writable.
-    unsafe {
-        let r = doc(d).stringify(root, opt(has_max_bytes, max_bytes), opt(has_indent, indent));
-        if let Ok(s) = &r {
-            out.write(new_string(s));
-        }
-        status_of(&r)
-    }
-}
-
-/// `strconv.Itoa`-style decode of number text; status 0 on success.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_dec_int(text: *const StrObj, out: *mut i64) -> u8 {
-    // SAFETY: `text` is live; `out` is writable.
-    unsafe {
-        match crate::parse_int(str_ref(text)) {
-            Some(v) => {
-                out.write(v);
-                0
-            }
-            None => 1,
+    fn msrt_json_kind(d: ObjRef<Doc>, id: u32) -> u8 {
+        match &d.nodes[id as usize] {
+            Node::Null => KIND_NULL,
+            Node::Bool(_) => KIND_BOOL,
+            Node::Number(_) => KIND_NUMBER,
+            Node::Str(_) => KIND_STRING,
+            Node::Array(_) => KIND_ARRAY,
+            Node::Object(_) => KIND_OBJECT,
         }
     }
-}
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_dec_float(text: *const StrObj, out: *mut f64) -> u8 {
-    // SAFETY: `text` is live; `out` is writable.
-    unsafe {
-        match crate::parse_float(str_ref(text)) {
-            Some(v) => {
-                out.write(v);
-                0
-            }
-            None => 1,
+    fn msrt_json_bool(d: ObjRef<Doc>, id: u32) -> bool {
+        matches!(d.nodes[id as usize], Node::Bool(true))
+    }
+
+    fn msrt_json_text(d: ObjRef<Doc>, id: u32) -> String {
+        match &d.nodes[id as usize] {
+            Node::Number(s) | Node::Str(s) => s.clone(),
+            _ => String::new(),
         }
     }
-}
 
-/// Adds a number from `v`, or `null` when `v` is NaN or infinite.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_add_float(d: *mut DocObj, v: f64) -> u32 {
-    // SAFETY: `d` is a live builder handle.
-    unsafe {
-        match crate::float_text(v) {
-            Some(text) => doc_mut(d).add(Node::Number(text)),
-            None => doc_mut(d).add(Node::Null),
-        }
-    }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_add_empty_array(d: *mut DocObj) -> u32 {
-    // SAFETY: `d` is a live builder handle.
-    unsafe { doc_mut(d).add(Node::Array(Vec::new())) }
-}
-
-/// Appends node `item` to the array node `arr`.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_array_push(d: *mut DocObj, arr: u32, item: u32) {
-    // SAFETY: `d` is a live builder handle; `arr` is an array node of it.
-    unsafe {
-        if let Node::Array(v) = &mut doc_mut(d).nodes[arr as usize] {
-            v.push(item);
-        }
-    }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_add_empty_object(d: *mut DocObj) -> u32 {
-    // SAFETY: `d` is a live builder handle.
-    unsafe { doc_mut(d).add(Node::Object(Vec::new())) }
-}
-
-/// Sets member `key` of the object node `obj`; a repeated key replaces the earlier value in place.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_object_put(
-    d: *mut DocObj,
-    obj: u32,
-    key: *const StrObj,
-    item: u32,
-) {
-    // SAFETY: `d` is a live builder handle; `obj` is an object node of it; `key` is live.
-    unsafe {
-        let k = str_ref(key);
-        if let Node::Object(v) = &mut doc_mut(d).nodes[obj as usize] {
-            match v.iter_mut().find(|e| e.0 == k) {
-                Some(e) => e.1 = item,
-                None => v.push((String::from(k), item)),
-            }
-        }
-    }
-}
-
-/// Index of member `key` of an object node, or -1.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_find(d: *const DocObj, id: u32, key: *const StrObj) -> i64 {
-    // SAFETY: as `msrt_json_item`; `key` is live.
-    unsafe {
-        let k = str_ref(key);
-        match &doc(d).nodes[id as usize] {
-            Node::Object(v) => v.iter().position(|e| e.0 == k).map_or(-1, |i| i as i64),
-            _ => -1,
-        }
-    }
-}
-
-/// Whether the object node has a member whose key is not in `names` (a list of strings).
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_has_unknown(
-    d: *const DocObj,
-    id: u32,
-    names: *const VecVal,
-) -> u8 {
-    // SAFETY: as `msrt_json_item`; `names` is a live string list.
-    unsafe {
-        let known = read_string_list(names);
-        match &doc(d).nodes[id as usize] {
-            Node::Object(v) => u8::from(v.iter().any(|e| !known.contains(&e.0.as_str()))),
+    fn msrt_json_len(d: ObjRef<Doc>, id: u32) -> i64 {
+        match &d.nodes[id as usize] {
+            Node::Array(v) => v.len() as i64,
+            Node::Object(v) => v.len() as i64,
             _ => 0,
         }
     }
-}
 
-/// The case of an alternative the node names: a string is a payload-free case, an object with one
-/// member is the case of that key and `payload` receives the member's node. -1 when none matches.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_variant(
-    d: *const DocObj,
-    id: u32,
-    names: *const VecVal,
-    payload: *mut i64,
-) -> i64 {
-    // SAFETY: as `msrt_json_item`; `names` is a live string list; `payload` is writable.
-    unsafe {
-        let known = read_string_list(names);
-        let index = |name: &str| {
-            known
-                .iter()
-                .position(|k| *k == name)
-                .map_or(-1, |i| i as i64)
-        };
-        match &doc(d).nodes[id as usize] {
+    /// `i` is below `msrt_json_len`.
+    fn msrt_json_item(d: ObjRef<Doc>, id: u32, i: i64) -> u32 {
+        match &d.nodes[id as usize] {
+            Node::Array(v) => v[i as usize],
+            Node::Object(v) => v[i as usize].1,
+            _ => 0,
+        }
+    }
+
+    fn msrt_json_key(d: ObjRef<Doc>, id: u32, i: i64) -> String {
+        match &d.nodes[id as usize] {
+            Node::Object(v) => v[i as usize].0.clone(),
+            _ => String::new(),
+        }
+    }
+
+    fn msrt_json_builder_new() -> Object<Doc> {
+        Object(Doc::default())
+    }
+
+    fn msrt_json_add_null(d: ObjMut<Doc>) -> u32 {
+        d.0.add(Node::Null)
+    }
+
+    fn msrt_json_add_bool(d: ObjMut<Doc>, v: bool) -> u32 {
+        d.0.add(Node::Bool(v))
+    }
+
+    fn msrt_json_add_number(d: ObjMut<Doc>, text: &str) -> u32 {
+        d.0.add(Node::Number(String::from(text)))
+    }
+
+    fn msrt_json_add_string(d: ObjMut<Doc>, text: &str) -> u32 {
+        d.0.add(Node::Str(String::from(text)))
+    }
+
+    fn msrt_json_add_array(d: ObjMut<Doc>, ids: IdArray, n: i64) -> u32 {
+        d.0.add(Node::Array(ids.get(n)))
+    }
+
+    fn msrt_json_add_object(d: ObjMut<Doc>, keys: StrArray, ids: IdArray, n: i64) -> u32 {
+        let mut entries = Vec::new();
+        for (k, id) in keys.get(n).into_iter().zip(ids.get(n)) {
+            put(&mut entries, k, id);
+        }
+        d.0.add(Node::Object(entries))
+    }
+
+    fn msrt_json_stringify(
+        d: ObjRef<Doc>,
+        root: u32,
+        has_max_bytes: bool,
+        max_bytes: i64,
+        has_indent: bool,
+        indent: i64,
+    ) -> Result<String, Fail> {
+        d.stringify(
+            root,
+            has_max_bytes.then_some(max_bytes),
+            has_indent.then_some(indent),
+        )
+    }
+
+    fn msrt_json_dec_int(text: &str) -> Result<i64, NotNumber> {
+        crate::parse_int(text).ok_or(NotNumber)
+    }
+
+    fn msrt_json_dec_float(text: &str) -> Result<f64, NotNumber> {
+        crate::parse_float(text).ok_or(NotNumber)
+    }
+
+    fn msrt_json_add_float(d: ObjMut<Doc>, v: f64) -> u32 {
+        match crate::float_text(v) {
+            Some(text) => d.0.add(Node::Number(text)),
+            None => d.0.add(Node::Null),
+        }
+    }
+
+    fn msrt_json_add_empty_array(d: ObjMut<Doc>) -> u32 {
+        d.0.add(Node::Array(Vec::new()))
+    }
+
+    fn msrt_json_array_push(d: ObjMut<Doc>, arr: u32, item: u32) -> () {
+        if let Node::Array(v) = &mut d.0.nodes[arr as usize] {
+            v.push(item);
+        }
+    }
+
+    fn msrt_json_add_empty_object(d: ObjMut<Doc>) -> u32 {
+        d.0.add(Node::Object(Vec::new()))
+    }
+
+    fn msrt_json_object_put(d: ObjMut<Doc>, obj: u32, key: &str, item: u32) -> () {
+        if let Node::Object(v) = &mut d.0.nodes[obj as usize] {
+            put(v, key, item);
+        }
+    }
+
+    fn msrt_json_find(d: ObjRef<Doc>, id: u32, key: &str) -> i64 {
+        match &d.nodes[id as usize] {
+            Node::Object(v) => v.iter().position(|e| e.0 == key).map_or(-1, |i| i as i64),
+            _ => -1,
+        }
+    }
+
+    fn msrt_json_has_unknown(d: ObjRef<Doc>, id: u32, names: Vec<&str>) -> bool {
+        match &d.nodes[id as usize] {
+            Node::Object(v) => v.iter().any(|e| !names.contains(&e.0.as_str())),
+            _ => false,
+        }
+    }
+
+    /// Index of the variant name in `names` (-1 when unknown); `payload` is the payload node
+    /// (-1 for a bare name) and is written only for a string or single-key object.
+    fn msrt_json_variant(d: ObjRef<Doc>, id: u32, names: Vec<&str>, payload: Out<i64>) -> i64 {
+        let index = |name: &str| names.iter().position(|k| *k == name).map_or(-1, |i| i as i64);
+        match &d.nodes[id as usize] {
             Node::Str(s) => {
                 payload.write(-1);
                 index(s)
@@ -388,28 +218,26 @@ pub unsafe extern "C" fn msrt_json_variant(
             _ => -1,
         }
     }
-}
 
-/// Shortest round-trip text of `v` (+1); null when `v` is NaN or infinite (encoded as `null`).
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_json_enc_float(v: f64) -> *mut StrObj {
-    match crate::float_text(v) {
-        Some(s) => new_string(&s),
-        None => core::ptr::null_mut(),
+    /// Null when the float has no JSON form.
+    fn msrt_json_enc_float(v: f64) -> Option<String> {
+        crate::float_text(v)
     }
 }
 
 #[cfg(test)]
+#[allow(unsafe_code)]
 mod tests {
     use super::*;
     use core::mem::MaybeUninit;
     use ms_rt as _;
-    use ms_rt_abi::STATUS_OK;
+    use ms_rt_abi::{STATUS_OK, StrObj};
+    use ms_std_core::{ObjCell, new_string, str_ref};
 
     #[test]
     fn roundtrip() {
         let text = new_string(r#"{"a":[1,"x",null],"b":true}"#);
-        let mut d = MaybeUninit::<*mut DocObj>::uninit();
+        let mut d = MaybeUninit::<*mut ObjCell<Doc>>::uninit();
         let mut root = 0u32;
         let mut s = MaybeUninit::<*mut StrObj>::uninit();
         // SAFETY: all pointers are live; results are released below.

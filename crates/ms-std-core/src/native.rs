@@ -521,6 +521,86 @@ unsafe impl<'a, T: AbiHandle> FromAbi<'a> for ObjRef<'a, T> {
     }
 }
 
+/// An exclusive borrow of the value inside a runtime object, for builders that mutate in place.
+/// The caller must not use the same object elsewhere during the call.
+pub struct ObjMut<'a, T: AbiHandle>(pub &'a mut T);
+
+impl<T: AbiHandle> Deref for ObjMut<'_, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        self.0
+    }
+}
+impl<T: AbiHandle> DerefMut for ObjMut<'_, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        self.0
+    }
+}
+impl<T: AbiHandle> AbiType for ObjMut<'_, T> {
+    type Raw = *mut ObjCell<T>;
+}
+// SAFETY: an object argument is a live runtime object that outlives the call and is not aliased.
+unsafe impl<'a, T: AbiHandle> FromAbi<'a> for ObjMut<'a, T> {
+    unsafe fn from_raw(raw: *mut ObjCell<T>) -> ObjMut<'a, T> {
+        // SAFETY: caller contract.
+        ObjMut(unsafe { &mut *(*raw).state })
+    }
+}
+
+/// A pointer to a caller-owned array whose length is a separate `n` parameter: read it with
+/// [`IdArray::get`] and the `n` the same call received.
+pub struct IdArray<'a>(*const u32, PhantomData<&'a u32>);
+
+impl IdArray<'_> {
+    pub fn get(&self, n: i64) -> Vec<u32> {
+        let n = usize::try_from(n).unwrap_or(0);
+        if n == 0 {
+            return Vec::new();
+        }
+        // SAFETY: the generated code passes a pointer to `n` readable ids.
+        unsafe { core::slice::from_raw_parts(self.0, n) }.to_vec()
+    }
+}
+impl AbiType for IdArray<'_> {
+    type Raw = *const u32;
+}
+// SAFETY: the caller passes a pointer to as many ids as the `n` argument it pairs with.
+unsafe impl<'a> FromAbi<'a> for IdArray<'a> {
+    unsafe fn from_raw(raw: *const u32) -> IdArray<'a> {
+        IdArray(raw, PhantomData)
+    }
+}
+
+/// Like [`IdArray`], for an array of string pointers.
+pub struct StrArray<'a>(*const *const StrObj, PhantomData<&'a StrObj>);
+
+impl<'a> StrArray<'a> {
+    pub fn get(&self, n: i64) -> Vec<&'a str> {
+        let n = usize::try_from(n).unwrap_or(0);
+        (0..n)
+            // SAFETY: the generated code passes `n` live strings.
+            .map(|i| unsafe { str_ref(*self.0.add(i)) })
+            .collect()
+    }
+}
+impl AbiType for StrArray<'_> {
+    type Raw = *const *const StrObj;
+}
+// SAFETY: the caller passes a pointer to as many live strings as the `n` argument it pairs with.
+unsafe impl<'a> FromAbi<'a> for StrArray<'a> {
+    unsafe fn from_raw(raw: *const *const StrObj) -> StrArray<'a> {
+        StrArray(raw, PhantomData)
+    }
+}
+
+/// `None` becomes a null string pointer.
+impl IntoAbi for Option<String> {
+    type Raw = *mut StrObj;
+    fn into_raw(self) -> *mut StrObj {
+        self.map_or(core::ptr::null_mut(), |s| new_string(&s))
+    }
+}
+
 /// A Rust value handed to Manuscript as an opaque pointer (a `handle` type); declare it with
 /// [`abi_handle!`]. Use [`Own`], [`Ref`] and [`Mut`] in native signatures.
 ///
