@@ -84,7 +84,7 @@ fn parse_spki_25519(oid: [u8; 3], der: &[u8]) -> Option<[u8; 32]> {
 // ---- keys ----
 
 macro_rules! ec_curve {
-    ($m:ident, $c:ident, $field:expr) => {
+    ($m:ident, $c:ident, $curve:ident, $field:expr) => {
         mod $m {
             use super::*;
             use $c::ecdsa::{SigningKey, VerifyingKey};
@@ -103,7 +103,11 @@ macro_rules! ec_curve {
                 if let Ok(k) = SecretKey::from_pkcs8_der(der) {
                     return Some(k);
                 }
+                // The identifiers still have to name this curve: only the embedded key is optional.
                 let info = $c::pkcs8::PrivateKeyInfoRef::try_from(der).ok()?;
+                info.algorithm
+                    .assert_oids(sec1::ALGORITHM_OID, <$c::$curve as $c::pkcs8::AssociatedOid>::OID)
+                    .ok()?;
                 let ec = sec1::EcPrivateKey::try_from(info.private_key.as_bytes()).ok()?;
                 SecretKey::from_slice(ec.private_key).ok()
             }
@@ -143,9 +147,9 @@ macro_rules! ec_curve {
     };
 }
 
-ec_curve!(p256m, p256, 32);
-ec_curve!(p384m, p384, 48);
-ec_curve!(p521m, p521, 66);
+ec_curve!(p256m, p256, NistP256, 32);
+ec_curve!(p384m, p384, NistP384, 48);
+ec_curve!(p521m, p521, NistP521, 66);
 
 /// A parsed PKCS#8 private key.
 pub enum Private {

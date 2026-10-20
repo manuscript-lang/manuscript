@@ -179,20 +179,21 @@ impl<'a> FnLower<'a> {
         Ok((new, result))
     }
 
-    /// `builder.freeze()`: the buffer becomes the result and the builder starts over empty.
+    /// `builder.freeze()`: a copy of the accumulated value; freezing again yields the same.
     fn freeze_builder(
         &mut self,
         old: Value,
         result_ty: MTy,
     ) -> Result<(Value, Option<Val>), Error> {
-        let bt = self.ty_of(old);
-        let fresh = self.call_runtime("msrt_list_new", &[], bt)?;
         if result_ty == MTy::STR {
-            let slot = self.put_slot(old);
+            // The runtime consumes the buffer it freezes: freeze a copy.
+            let copy = self.owned(Val { v: old, own: false });
+            let slot = self.put_slot(copy);
             let text = self.call_runtime("msrt_strbuilder_freeze", &[slot], MTy::STR)?;
-            return Ok((fresh, Some(Val { v: text, own: true })));
+            return Ok((old, Some(Val { v: text, own: true })));
         }
-        Ok((fresh, Some(Val { v: old, own: true })))
+        let copy = self.owned(Val { v: old, own: false });
+        Ok((old, Some(Val { v: copy, own: true })))
     }
 
     /// `map.get_or(key, fallback)`.
