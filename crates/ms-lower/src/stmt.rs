@@ -221,7 +221,7 @@ impl<'a> FnLower<'a> {
             cur = left;
         }
         path.reverse();
-        if let ExprKind::Index { left, index } = &cur.kind {
+        if let Some((left, index)) = crate::mutation::index_parts(&self.hir, cur) {
             // A field of a list element (`xs[i].n = 1`): the list receives the updated element.
             let i = self.expr(index)?;
             if self.dead {
@@ -271,7 +271,7 @@ impl<'a> FnLower<'a> {
             cur = left;
         }
         path.reverse();
-        if let ExprKind::Index { left, index } = &cur.kind {
+        if let Some((left, index)) = crate::mutation::index_parts(&self.hir, cur) {
             // A list element changes in place: the list receives the updated element.
             let i = self.expr(index)?;
             if self.dead {
