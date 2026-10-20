@@ -1,13 +1,10 @@
-//! Opening handshake of RFC 6455, following gorilla/websocket (`server.go`, `client.go`,
-//! `util.go`) and the origin policy of `pkg/runtime/websocket.go`.
+//! Opening handshake of RFC 6455 and the origin policy of the server upgrade.
 //!
 //! Everything here is a pure function over parsed heads and header lists; the HTTP server
 //! exchange and the client call these and do the I/O themselves. Texts of the form
-//! `websocket: ...` are gorilla's `HandshakeError` messages, which the Go runtime reports as
-//! `WebSocketError.Failed(message)`.
+//! `websocket: ...` are reported as `WebSocketError.Failed(message)`.
 //!
-//! Facts recorded from the vendored gorilla by running it (a Go program outside the repo that
-//! served raw requests): a rejected upgrade answers `Content-Type`, `Sec-Websocket-Version: 13`,
+//! A rejected upgrade answers `Content-Type`, `Sec-Websocket-Version: 13`,
 //! `X-Content-Type-Options: nosniff`, `Date`, `Content-Length` in that order with the body
 //! `<status text>\n`; the server prefers its own subprotocol order (offered `a, b` against a
 //! server list `[b, a]` selects `b`); and the 101 response is the exact byte string built by
@@ -298,7 +295,7 @@ pub struct Accepted {
 pub struct Rejected {
     pub status: u16,
     /// gorilla's `HandshakeError` text, for example
-    /// `websocket: request origin not allowed by Upgrader.CheckOrigin`.
+    /// `websocket: request origin not allowed`.
     pub message: &'static str,
 }
 
@@ -343,38 +340,32 @@ pub fn accept(req: &Request<'_>, options: &ServerOptions<'_>) -> Result<Accepted
     if !token_list_contains(fields, "Connection", "upgrade") {
         return Err(Rejected::new(
             400,
-            "websocket: the client is not using the websocket protocol: 'upgrade' token not found in 'Connection' header",
+            "websocket: 'Connection' header lacks the 'upgrade' token",
         ));
     }
     if !token_list_contains(fields, "Upgrade", "websocket") {
         return Err(Rejected::new(
             400,
-            "websocket: the client is not using the websocket protocol: 'websocket' token not found in 'Upgrade' header",
+            "websocket: 'Upgrade' header lacks the 'websocket' token",
         ));
     }
     if req.method != "GET" {
-        return Err(Rejected::new(
-            405,
-            "websocket: the client is not using the websocket protocol: request method is not GET",
-        ));
+        return Err(Rejected::new(405, "websocket: upgrade method is not GET"));
     }
     if !token_list_contains(fields, "Sec-WebSocket-Version", "13") {
         return Err(Rejected::new(
             400,
-            "websocket: unsupported version: 13 not found in 'Sec-Websocket-Version' header",
+            "websocket: 'Sec-WebSocket-Version' header must include 13",
         ));
     }
     if !origin_allowed(fields, req.host, req.tls, options.allowed_origins) {
-        return Err(Rejected::new(
-            403,
-            "websocket: request origin not allowed by Upgrader.CheckOrigin",
-        ));
+        return Err(Rejected::new(403, "websocket: request origin not allowed"));
     }
     let key = first_text(fields, "Sec-WebSocket-Key");
     if !valid_challenge_key(&key) {
         return Err(Rejected::new(
             400,
-            "websocket: not a websocket handshake: 'Sec-WebSocket-Key' header must be Base64 encoded value of 16-byte in length",
+            "websocket: 'Sec-WebSocket-Key' header must be the Base64 text of 16 bytes",
         ));
     }
     let subprotocol = select_subprotocol(&offered_subprotocols(fields), options.subprotocols);
@@ -756,30 +747,27 @@ mod tests {
     }
 
     #[test]
-    fn server_rejections_use_gorilla_texts() {
+    fn server_rejections_name_the_failed_check() {
         let f = fields(&[("Host", "x")]);
         let r = reject(&f, "GET");
         assert_eq!(r.status, 400);
-        assert!(
-            r.message
-                .ends_with("'upgrade' token not found in 'Connection' header")
-        );
+        assert!(r.message.ends_with("lacks the 'upgrade' token"));
         let f = fields(&[("Connection", "Upgrade")]);
         assert!(
             reject(&f, "GET")
                 .message
-                .ends_with("'websocket' token not found in 'Upgrade' header")
+                .ends_with("lacks the 'websocket' token")
         );
         let f = upgrade_fields(&[]);
         let r = reject(&f, "POST");
         assert_eq!(r.status, 405);
-        assert!(r.message.ends_with("request method is not GET"));
+        assert!(r.message.ends_with("method is not GET"));
         let mut f = upgrade_fields(&[]);
         f.retain(|(n, _)| n != "Sec-WebSocket-Version");
         let r = reject(&f, "GET");
         assert_eq!(
             r.message,
-            "websocket: unsupported version: 13 not found in 'Sec-Websocket-Version' header"
+            "websocket: 'Sec-WebSocket-Version' header must include 13"
         );
         let f = upgrade_fields(&[("Origin", "http://evil")]);
         let r = reject(&f, "GET");
@@ -789,10 +777,7 @@ mod tests {
         f.retain(|(n, _)| n != "Sec-WebSocket-Key");
         let r = reject(&f, "GET");
         assert_eq!(r.status, 400);
-        assert!(
-            r.message
-                .contains("must be Base64 encoded value of 16-byte in length")
-        );
+        assert!(r.message.contains("must be the Base64 text of 16 bytes"));
         // The checks run in gorilla's order: a bad key hides behind a bad method.
         assert_eq!(reject(&f, "PUT").status, 405);
     }
