@@ -85,11 +85,48 @@ impl<'a> FnLower<'a> {
             || matches!(self.hir.resolution(e), Resolution::Native(n) if n.as_str() == "index")
     }
 
+    /// A method used as a value (`value.name`).
+    fn method_value(&mut self, e: &Expr, left: &Expr, m: &ct::MethodRef) -> Result<Val, Error> {
+        if m.native.as_str() == "to_string" && m.ty.params.is_empty() {
+            return self.bound_to_string(left);
+        }
+        if !m.native.as_str().is_empty() && m.native.as_str() != "contract" {
+            return self.bound_native_method(e, left, m);
+        }
+        self.bound_method(e, left, m)
+    }
+
+    /// `f[T]` or `value.method[T]` used as a value: the function or method specialized by the
+    /// node's own checked type.
     fn type_application(&mut self, e: &Expr) -> Result<Val, Error> {
-        let _ = e;
-        Err(Error::new(
-            "type application as a value is not supported yet",
-        ))
+        let ExprKind::Apply { left, .. } = &e.kind else {
+            return Err(Error::new("malformed type application"));
+        };
+        let res = match self.hir.resolution(left) {
+            Resolution::Value => self.hir.resolution(e),
+            r => r,
+        };
+        match (&left.kind, res) {
+            (_, Resolution::Function(sym)) if sym.native.as_str().is_empty() => {
+                self.function_value(e, &sym)
+            }
+            (_, Resolution::Function(sym)) => self.native_function_value(e, &sym),
+            (ExprKind::Member { left: recv, .. }, Resolution::Method(m)) => {
+                self.method_value(e, recv, &m)
+            }
+            (_, r) => Err(Error::new(format!(
+                "type application as a value is not supported yet ({})",
+                match r {
+                    Resolution::Type(_) => "type",
+                    Resolution::Constructor { .. } => "constructor",
+                    Resolution::Native(_) => "native",
+                    Resolution::Method(_) => "method",
+                    Resolution::Local(_) => "local",
+                    Resolution::Constant(_) => "constant",
+                    _ => "other",
+                }
+            ))),
+        }
     }
 
     // --------------------------------------------------------------- literals
@@ -223,13 +260,7 @@ impl<'a> FnLower<'a> {
             return self.duration_unit(unit.as_str(), n);
         }
         if let Resolution::Method(m) = self.hir.resolution(e) {
-            if m.native.as_str() == "to_string" && m.ty.params.is_empty() {
-                return self.bound_to_string(left);
-            }
-            if !m.native.as_str().is_empty() && m.native.as_str() != "contract" {
-                return self.bound_native_method(e, left, &m);
-            }
-            return self.bound_method(e, left, &m);
+            return self.method_value(e, left, &m);
         }
         let lt = self.ety(left);
         if lt.id == "Int" && matches!(name, "seconds" | "milliseconds" | "minutes") {
@@ -277,7 +308,20 @@ impl<'a> FnLower<'a> {
     fn index(&mut self, e: &Expr, left: &Expr, index: &Expr) -> Result<Val, Error> {
         let _ = e;
         let l = self.expr(left)?;
-        let i = self.expr(index)?;
+        if self.dead {
+            return Ok(l);
+        }
+        // An owned list stays a temporary while the index runs, so a `try` inside it releases it.
+        if l.own {
+            self.temps.push(l.v);
+        }
+        let i = self.expr(index);
+        if l.own
+            && let Some(at) = self.temps.iter().rposition(|t| *t == l.v)
+        {
+            self.temps.remove(at);
+        }
+        let i = i?;
         if self.dead {
             return Ok(l);
         }

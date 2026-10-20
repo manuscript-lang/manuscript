@@ -1106,8 +1106,36 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         Some(recv) => fl.rt_method(sym, recv, &decl, &nargs, job.ret)?,
         None => fl.rt_function(sym, &decl, &nargs, job.ret)?,
     };
+    let r = fit_result(fl, r, job.ret)?;
     fl.emit_return(Some(r));
     Ok(())
+}
+
+/// Adapts a runtime call that cannot fail, or whose status is of no interest, to the declared
+/// return: a plain value becomes `ok(value)`, and any result of a `Unit` operation is dropped.
+fn fit_result(fl: &mut FnLower<'_>, r: Val, ret: MTy) -> Result<Val, Error> {
+    let got = fl.ty_of(r.v);
+    if got == ret {
+        return Ok(r);
+    }
+    if ret == MTy::UNIT {
+        if r.own {
+            fl.drop_value(r.v);
+        }
+        let v = fl.b.unit();
+        return Ok(Val { v, own: false });
+    }
+    let TyKind::Alt(a) = fl.b.m.types.kind(ret).clone() else {
+        return Ok(r);
+    };
+    let ok = fl.b.m.alts[a.index()]
+        .cases
+        .iter()
+        .position(|c| c.name == "ok")
+        .ok_or_else(|| Error::new("result without an ok case"))?;
+    let payload = fl.owned(r);
+    let v = fl.b.alt_new(a, ok as u32, &[payload]);
+    Ok(Val { v, own: true })
 }
 
 /// Whether the runtime function `sym` takes the receiver's handle first.

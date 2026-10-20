@@ -254,6 +254,23 @@ impl<'a> FnLower<'a> {
                 self.at(e.pos);
                 self.finish_rt_call(sym, &sig, true, vec![alg, data], MTy::BYTES)
             }
+            "crypto/derive_key" => {
+                // PBKDF2-HMAC-SHA-256: the `HashAlgorithm.Sha256` case of the algorithm method.
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let mut vals = vec![self.b.iconst(3)];
+                for a in &args {
+                    vals.push(self.borrow(a.val));
+                }
+                let sym = "msrt_crypto_derive_key";
+                let sig = crate::rtcall::rt_sig(sym)
+                    .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
+                let result = self.emty(e)?;
+                self.at(e.pos);
+                self.finish_rt_call(sym, &sig, true, vals, result)
+            }
             "io/stdout" => self.std_stream(e, false),
             "io/stderr" => self.std_stream(e, true),
             "time/clock" => self.time_clock(e, false),
@@ -359,7 +376,12 @@ impl<'a> FnLower<'a> {
     fn has_native_call(&self, native: &str) -> bool {
         matches!(
             native,
-            "math/min" | "math/max" | "math/max_of" | "math/min_of" | "time/duration"
+            "math/min"
+                | "math/max"
+                | "math/max_of"
+                | "math/min_of"
+                | "time/duration"
+                | "errors/category"
         ) || crate::rtcall::function_symbol(native_alias(native)).is_some()
     }
 
@@ -376,6 +398,13 @@ impl<'a> FnLower<'a> {
         }
         if matches!(native, "math/max_of" | "math/min_of") {
             return self.extreme_of(native == "math/max_of", args, result);
+        }
+        if native == "errors/category" {
+            let cause = self.borrow(args[0].val);
+            let cty = self.ty_of(cause);
+            let f = self.cx.category_fn(self.b.m, cty, result);
+            let v = self.b.call(f, &[cause]);
+            return Ok(Val { v, own: true });
         }
         if native == "time/duration" {
             return Ok(Val {
@@ -715,6 +744,25 @@ impl<'a> FnLower<'a> {
         self.rt_function(sym, &decl, &args, result)
     }
 
+    /// Whether an argument of the call assigns the variable at the root of the receiver place.
+    fn argument_reassigns(&self, recv_expr: &Expr, view: &CallView<'_>) -> bool {
+        if !self.is_place(recv_expr) {
+            return false;
+        }
+        let Some(uid) = crate::mutation::place_root(&self.hir, recv_expr) else {
+            return false;
+        };
+        view.arguments.iter().any(|a| {
+            crate::mutation::mutated_locals(
+                &self.hir,
+                ms_check::hir::Body::Expr(a.expr),
+                &self.cx.callables,
+                &self.cx.mutated,
+            )
+            .contains(&uid)
+        })
+    }
+
     pub fn native_method(
         &mut self,
         e: &Expr,
@@ -725,17 +773,40 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         let native = m.native.as_str();
         let at = self.b.current();
+        // Go evaluates the receiver first: an argument that reassigns its variable must not
+        // change what the call reads.
+        let snapshot = self.argument_reassigns(recv_expr, view);
+        let recv = if snapshot {
+            let v = self.owned(recv);
+            self.hold_temp(Val { v, own: true })
+        } else if recv.own
+            && view
+                .arguments
+                .iter()
+                .any(|a| crate::mutation::has_try(a.expr))
+        {
+            // A `try` in an argument may return early: the receiver is released by then.
+            self.hold_temp(recv)
+        } else {
+            recv
+        };
         let mut args = self.native_args(view)?;
         if self.dead {
             return Ok(recv);
         }
-        let recv = self.refresh(recv_expr, recv, at)?;
+        let recv = if snapshot {
+            recv
+        } else {
+            self.refresh(recv_expr, recv, at)?
+        };
         let func = m.decl.as_ref().and_then(|d| d.func());
         self.fill_native_defaults(m.module, func, &m.ty.params, &mut args)?;
         self.at(e.pos);
         if let Some(sym) = match native {
             "crypto/hash_algorithm_digest" => Some("msrt_crypto_digest"),
             "crypto/hash_algorithm_hmac" => Some("msrt_crypto_hmac"),
+            "derive_key" | "crypto/hash_algorithm_derive_key" => Some("msrt_crypto_derive_key"),
+            "hkdf" | "crypto/hash_algorithm_hkdf" => Some("msrt_crypto_hkdf"),
             "crypto/hash_algorithm_hasher" => Some("msrt_crypto_hasher_new"),
             "crypto/hash_algorithm_hmac_hasher" => Some("msrt_crypto_hmac_hasher_new"),
             _ => None,
@@ -882,6 +953,32 @@ impl<'a> FnLower<'a> {
                 let result = self.emty(e)?;
                 self.map_entries(recv_expr, recv, result)
             }
+            (TyKind::Obj(n, _), "entries") if n == "Set" => {
+                let result = self.emty(e)?;
+                self.set_entries(recv, result)
+            }
+            (TyKind::List(_), "list_keys") => {
+                let result = self.emty(e)?;
+                let r = self.borrow(recv);
+                let n = self.b.list_len(r);
+                let acc = self.fresh_var(result);
+                let first = self.b.list_new(MTy::INT, n);
+                self.b.def_var(acc, first);
+                let (lv, hidden) = self.list_source(Some(recv_expr), recv)?;
+                self.each_element(lv, &mut |s, i, _| {
+                    let cur = s.b.use_var(acc);
+                    let next = s.b.list_push(cur, i);
+                    s.b.def_var(acc, next);
+                    Ok(None)
+                })?;
+                self.release_source(lv, hidden);
+                let out = self.b.use_var(acc);
+                Ok(Val { v: out, own: true })
+            }
+            (TyKind::List(_), "list_entries") => {
+                let result = self.emty(e)?;
+                self.list_entries(recv_expr, recv, result)
+            }
             (TyKind::List(_) | TyKind::Bytes, "length") => {
                 let r = self.borrow(recv);
                 let v = self.b.list_len(r);
@@ -895,7 +992,7 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             (TyKind::List(elem), "reversed") => {
-                let (lv, hidden) = self.list_source(recv_expr, recv)?;
+                let (lv, hidden) = self.list_source(Some(recv_expr), recv)?;
                 let r = self.list_reversed(lv, elem);
                 self.release_source(lv, hidden);
                 r
@@ -991,24 +1088,14 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             (TyKind::Opt(inner), _) if opt_method(name) => {
-                self.optional_method(e, name, recv, inner, args)
+                let out = self.emty(e)?;
+                self.optional_method(out, e.pos, name, recv, inner, args)
             }
             (TyKind::Alt(a), "get" | "err" | "or_else" | "map" | "and_then" | "to_optional") => {
-                self.result_method(e, name, recv, a, args)
+                let out = self.emty(e)?;
+                self.result_method(out, name, recv, a, args)
             }
-            (TyKind::Alt(a), "is_ok" | "is_error") => {
-                let want = if name == "is_ok" { "ok" } else { "error" };
-                let case = self.b.m.alts[a.index()]
-                    .cases
-                    .iter()
-                    .position(|c| c.name == want)
-                    .ok_or_else(|| Error::new("Result without ok/error cases"))?;
-                let r = self.borrow(recv);
-                let tag = self.b.alt_tag(r);
-                let k = self.b.iconst(case as i64);
-                let v = self.b.icmp(ms_mir::ir::Cc::Eq, tag, k);
-                Ok(Val { v, own: false })
-            }
+            (TyKind::Alt(a), "is_ok" | "is_error") => self.result_state(name, recv, a),
             (TyKind::List(_), "concat") => {
                 let TyKind::List(elem) = self.b.m.types.kind(rty).clone() else {
                     unreachable!()
@@ -1044,30 +1131,19 @@ impl<'a> FnLower<'a> {
                 let fvar = self.fresh_var(ft);
                 let fo = self.owned(f.val);
                 self.b.def_var(fvar, fo);
-                let (lv, hidden) = self.list_source(recv_expr, recv)?;
+                let (lv, hidden) = self.list_source(Some(recv_expr), recv)?;
                 let r = self.list_sorted(lv, fvar, elem);
                 self.release_source(lv, hidden);
                 self.release_source(fvar, true);
                 r
             }
             _ if crate::iterate::handles(self.b.m, rty, name) => {
-                self.iterate_method(e, name, recv_expr, recv, args)
-            }
-            (TyKind::List(elem), _) if is_higher_order(name) => {
-                let f = args
-                    .into_iter()
-                    .find(|a| self.is_fn(a.val.v))
-                    .ok_or_else(|| Error::new("missing function argument"))?;
-                let ft = self.ty_of(f.val.v);
-                let fvar = self.fresh_var(ft);
-                let fo = self.owned(f.val);
-                self.b.def_var(fvar, fo);
                 let out = self.emty(e)?;
-                let (lv, hidden) = self.list_source(recv_expr, recv)?;
-                let r = self.list_higher_order(name, lv, elem, fvar, out);
-                self.release_source(lv, hidden);
-                self.release_source(fvar, true);
-                r
+                self.iterate_method(out, name, Some(recv_expr), recv, args)
+            }
+            (TyKind::List(_), _) if is_higher_order(name) => {
+                let out = self.emty(e)?;
+                self.list_higher(name, out, Some(recv_expr), recv, args)
             }
             _ => {
                 let Some(sym) = crate::rtcall::method_symbol(self.b.m, rty, native) else {
@@ -1080,6 +1156,53 @@ impl<'a> FnLower<'a> {
                 self.rt_method(&sym, recv, &m.ty.params, &args, result)
             }
         }
+    }
+
+    /// A list method taking a function (`map`, `count`, `for_each`, ...).
+    fn list_higher(
+        &mut self,
+        name: &str,
+        out: MTy,
+        recv_expr: Option<&Expr>,
+        recv: Val,
+        args: Vec<NArg>,
+    ) -> Result<Val, Error> {
+        let TyKind::List(elem) = self.b.m.types.kind(self.ty_of(recv.v)).clone() else {
+            return Err(Error::new("higher-order method on a non-list"));
+        };
+        let f = args
+            .into_iter()
+            .find(|a| self.is_fn(a.val.v))
+            .ok_or_else(|| Error::new("missing function argument"))?;
+        let ft = self.ty_of(f.val.v);
+        let fvar = self.fresh_var(ft);
+        let fo = self.owned(f.val);
+        self.b.def_var(fvar, fo);
+        let (lv, hidden) = self.list_source(recv_expr, recv)?;
+        let r = self.list_higher_order(name, lv, elem, fvar, out);
+        self.release_source(lv, hidden);
+        self.release_source(fvar, true);
+        r
+    }
+
+    /// `result.is_ok()` or `result.is_error()`.
+    fn result_state(
+        &mut self,
+        name: &str,
+        recv: Val,
+        alt: ms_mir::types::AltId,
+    ) -> Result<Val, Error> {
+        let want = if name == "is_ok" { "ok" } else { "error" };
+        let case = self.b.m.alts[alt.index()]
+            .cases
+            .iter()
+            .position(|c| c.name == want)
+            .ok_or_else(|| Error::new("Result without ok/error cases"))?;
+        let r = self.borrow(recv);
+        let tag = self.b.alt_tag(r);
+        let k = self.b.iconst(case as i64);
+        let v = self.b.icmp(ms_mir::ir::Cc::Eq, tag, k);
+        Ok(Val { v, own: false })
     }
 
     /// A native method applied to evaluated arguments, for method values.
@@ -1127,6 +1250,54 @@ impl<'a> FnLower<'a> {
                 }
                 None => Val { v: new, own: true },
             });
+        }
+        if name == "clone" {
+            let v = self.owned(Val {
+                v: recv.v,
+                own: false,
+            });
+            return Ok(Val { v, own: true });
+        }
+        if m.native.as_str() == "errors/message" {
+            let data = self.ty_of(recv.v);
+            let f = self
+                .cx
+                .native_method_fn(self.b.m, m.native.as_str(), &m.receiver, data)?;
+            let r = self.borrow(recv);
+            let text = self.b.call(f, &[r]);
+            return Ok(Val { v: text, own: true });
+        }
+        if let (TyKind::Alt(a), "is_ok" | "is_error") =
+            (self.b.m.types.kind(rty).clone(), name.as_str())
+        {
+            return self.result_state(&name, recv, a);
+        }
+        if let (TyKind::Alt(a), "get" | "err" | "or_else" | "map" | "and_then" | "to_optional") =
+            (self.b.m.types.kind(rty).clone(), name.as_str())
+        {
+            return self.result_method(result, &name, recv, a, args.to_vec());
+        }
+        if let (TyKind::Opt(inner), true) = (self.b.m.types.kind(rty).clone(), opt_method(&name)) {
+            let at = ms_syntax::Pos::default();
+            return self.optional_method(result, at, &name, recv, inner, args.to_vec());
+        }
+        if let (TyKind::Obj(n, _), "get_or") = (self.b.m.types.kind(rty).clone(), name.as_str())
+            && n == "Map"
+        {
+            return self.map_get_or(recv, &m.ty.params, args, result);
+        }
+        if let (TyKind::List(elem), "get") = (self.b.m.types.kind(rty).clone(), name.as_str()) {
+            let find = |want: bool| args.iter().find(|a| (a.name.as_str() == "default") == want);
+            let index = find(false)
+                .copied()
+                .ok_or_else(|| Error::new("get without index"))?;
+            return self.list_get_or(recv, elem, index, find(true).copied());
+        }
+        if crate::iterate::handles(self.b.m, rty, &name) {
+            return self.iterate_method(result, &name, None, recv, args.to_vec());
+        }
+        if matches!(self.b.m.types.kind(rty), TyKind::List(_)) && is_higher_order(&name) {
+            return self.list_higher(&name, result, None, recv, args.to_vec());
         }
         if let (TyKind::List(elem), "take" | "drop") =
             (self.b.m.types.kind(rty).clone(), name.as_str())
@@ -1191,10 +1362,10 @@ impl<'a> FnLower<'a> {
     /// The flag says the variable is a hidden copy to drop afterwards.
     pub(crate) fn list_source(
         &mut self,
-        recv_expr: &Expr,
+        recv_expr: Option<&Expr>,
         recv: Val,
     ) -> Result<(ms_mir::builder::Var, bool), Error> {
-        if let Resolution::Local(b) = self.hir.resolution(recv_expr) {
+        if let Some(Resolution::Local(b)) = recv_expr.map(|r| self.hir.resolution(r)) {
             return Ok((self.local(&b)?.var, false));
         }
         let t = self.ty_of(recv.v);
@@ -1474,7 +1645,8 @@ impl<'a> FnLower<'a> {
 
     fn optional_method(
         &mut self,
-        e: &Expr,
+        out: MTy,
+        at: ms_syntax::Pos,
         name: &str,
         recv: Val,
         inner: MTy,
@@ -1531,7 +1703,6 @@ impl<'a> FnLower<'a> {
                     .first()
                     .copied()
                     .ok_or_else(|| Error::new("missing function"))?;
-                let out = self.emty(e)?;
                 let by_map = name == "map";
                 let keep = name == "or_else";
                 self.two_ways(
@@ -1564,7 +1735,7 @@ impl<'a> FnLower<'a> {
                     },
                 )
             }
-            "ok_or" | "ok_or_else" => self.optional_ok_or(e, name, recv, args),
+            "ok_or" | "ok_or_else" => self.optional_ok_or(out, at, name, recv, args),
             _ => Err(Error::new(format!("unsupported Optional method {name}"))),
         }
     }
@@ -1572,14 +1743,14 @@ impl<'a> FnLower<'a> {
     /// `opt.ok_or(cause)` and `opt.ok_or_else(create)`.
     fn optional_ok_or(
         &mut self,
-        e: &Expr,
+        out: MTy,
+        at: ms_syntax::Pos,
         name: &str,
         recv: Val,
         args: Vec<NArg>,
     ) -> Result<Val, Error> {
         let r = recv.v;
         let some = self.b.opt_is_some(r);
-        let out = self.emty(e)?;
         let TyKind::Alt(res) = self.b.m.types.kind(out).clone() else {
             return Err(Error::new("ok_or without a Result type"));
         };
@@ -1591,7 +1762,7 @@ impl<'a> FnLower<'a> {
             index(self.b.m, "error").ok_or_else(|| Error::new("not a Result"))?,
         );
         let cause = args.first().copied();
-        let line = e.pos.line;
+        let line = at.line;
         let file = self.b.m.files[self.file as usize].clone();
         self.two_ways(
             some,
@@ -1639,7 +1810,7 @@ impl<'a> FnLower<'a> {
 
     fn result_method(
         &mut self,
-        e: &Expr,
+        out: MTy,
         name: &str,
         recv: Val,
         alt: ms_mir::types::AltId,
@@ -1654,7 +1825,6 @@ impl<'a> FnLower<'a> {
         let tag = self.b.alt_tag(r);
         let k = self.b.iconst(ok as i64);
         let is_ok = self.b.icmp(ms_mir::ir::Cc::Eq, tag, k);
-        let out = self.emty(e)?;
         let f = args.first().copied();
         match name {
             "get" => {
@@ -2246,6 +2416,7 @@ impl<'a> FnLower<'a> {
                     s.b.def_var(acc, some);
                     s.b.br(miss, &[]);
                     s.b.switch_to(miss);
+                    // The last hit wins, so `find_last_index` visits every element.
                     Ok((!last).then_some(r))
                 })?;
                 Ok(Val {
@@ -2306,6 +2477,12 @@ impl<'a> FnLower<'a> {
                         .collect();
                     Ok(self.lit(&text))
                 }
+                ExprKind::Call { .. } if self.cx.module(module).is_err() => {
+                    match self.literal_default(d, &p.ty)? {
+                        Some(v) => Ok(v),
+                        None => continue,
+                    }
+                }
                 _ => {
                     let Ok(hir) = self.cx.module(module) else {
                         continue;
@@ -2313,7 +2490,10 @@ impl<'a> FnLower<'a> {
                     let saved_hir = std::mem::replace(&mut self.hir, hir);
                     let saved_file = self.file;
                     self.file = self.b.m.add_file(module.as_str());
+                    // A default reports its own position, not the caller statement\'s.
+                    let saved_stmt = self.stmt_pos.take();
                     let r = self.expr(d);
+                    self.stmt_pos = saved_stmt;
                     self.hir = saved_hir;
                     self.file = saved_file;
                     r
@@ -2444,18 +2624,31 @@ impl<'a> FnLower<'a> {
         self.b.def_var(out, xo);
         self.b.br(join, &[]);
         self.b.switch_to(miss);
-        let dv = if default.wrapped {
-            default.val
+        if default.wrapped {
+            let d = self.owned(default.val);
+            self.b.def_var(out, d);
+            self.b.br(join, &[]);
         } else {
+            // An omitted `Optional` default faults like a plain read.
+            let has = self.b.opt_is_some(default.val.v);
+            let (give, fault) = (self.b.new_block(), self.b.new_block());
+            self.b.br_if(has, give, &[], fault, &[]);
+            self.b.seal_block(give);
+            self.b.seal_block(fault);
+            self.b.switch_to(give);
             let inner = self.b.opt_unwrap(default.val.v);
-            Val {
+            let d = self.owned(Val {
                 v: inner,
                 own: false,
-            }
-        };
-        let d = self.owned(dv);
-        self.b.def_var(out, d);
-        self.b.br(join, &[]);
+            });
+            self.b.def_var(out, d);
+            self.b.br(join, &[]);
+            self.b.switch_to(fault);
+            let x = self.b.list_get(l, idx);
+            let xo = self.owned(Val { v: x, own: false });
+            self.b.def_var(out, xo);
+            self.b.br(join, &[]);
+        }
         self.b.seal_block(join);
         self.b.switch_to(join);
         let r = self.b.use_var(out);

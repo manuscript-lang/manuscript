@@ -66,6 +66,13 @@ impl Cx {
                     break;
                 }
             }
+            if found.is_none()
+                && s.name == "compare"
+                && matches!(data_ty, MTy::INT | MTy::FLOAT | MTy::STR)
+            {
+                methods.push(self.scalar_compare(m, iface, data_ty, key.as_str()));
+                continue;
+            }
             let (module, id, subst, native) = found.ok_or_else(|| {
                 Error::new(format!(
                     "{concrete} has no method {} for {}",
@@ -144,6 +151,147 @@ impl Cx {
     }
 }
 
+impl Cx {
+    /// `compare` of a built-in scalar: the sign of the order against another value of the same
+    /// type, and `0` against any other type.
+    fn scalar_compare(
+        &mut self,
+        m: &mut Module,
+        iface: IfaceId,
+        data_ty: MTy,
+        key: &str,
+    ) -> ms_mir::ir::FuncId {
+        // The table being built gets the next id.
+        let vt = VtableId(m.vtables.len() as u32);
+        let other_ty = m.ifaces[iface.index()].methods[0].params[0];
+        let ps = vec![
+            Param {
+                ty: MTy::PTR,
+                mode: Mode::Borrow,
+            },
+            Param {
+                ty: other_ty,
+                mode: Mode::Borrow,
+            },
+        ];
+        let mut b = FuncBuilder::new(m, &format!("vt.compare.{key}"), ps, MTy::INT);
+        b.func_mut().kind = FuncKind::Method;
+        b.func_mut().linkage = Linkage::Internal;
+        let (this, other) = (b.params()[0], b.params()[1]);
+        let hit = b
+            .emit(Op::IfaceIs, &[other], Imm::Vtable(vt), Some(MTy::BOOL))
+            .expect("test");
+        let (same, differ) = (b.new_block(), b.new_block());
+        b.br_if(hit, same, &[], differ, &[]);
+        b.seal_block(same);
+        b.seal_block(differ);
+        b.switch_to(differ);
+        let zero = b.iconst(0);
+        b.ret(Some(zero));
+        b.switch_to(same);
+        let a = b
+            .emit(Op::Load, &[this], Imm::Ty(data_ty), Some(data_ty))
+            .expect("load");
+        let data = b
+            .emit(Op::IfaceData, &[other], Imm::None, Some(MTy::PTR))
+            .expect("data");
+        let c = b
+            .emit(Op::Load, &[data], Imm::Ty(data_ty), Some(data_ty))
+            .expect("load");
+        let r = if data_ty == MTy::INT {
+            let (lt, gt) = (
+                b.icmp(ms_mir::ir::Cc::Lt, a, c),
+                b.icmp(ms_mir::ir::Cc::Gt, a, c),
+            );
+            let (one, zero, minus) = (b.iconst(1), b.iconst(0), b.iconst(-1));
+            let upper = b.select(gt, one, zero);
+            b.select(lt, minus, upper)
+        } else {
+            let sym = if data_ty == MTy::FLOAT {
+                "msrt_float_compare"
+            } else {
+                "msrt_string_compare"
+            };
+            let ext = crate::text::runtime_fn(b.m, sym, &[data_ty, data_ty], MTy::INT);
+            b.call_rt(ext, &[a, c])
+        };
+        b.ret(Some(r));
+        let f = b.into_func();
+        m.add_func(f)
+    }
+}
+
+impl Cx {
+    /// The source-declared method `name` of `concrete` (an `impl` of a standard interface).
+    fn user_method(
+        &mut self,
+        m: &mut Module,
+        concrete: &ct::Ty,
+        name: &str,
+    ) -> Result<Option<ms_mir::ir::FuncId>, Error> {
+        let mut found = None;
+        for mm in &self.methods {
+            let Some(decl) = &mm.decl else { continue };
+            if mm.id.as_str().is_empty() || !mm.native.as_str().is_empty() {
+                continue;
+            }
+            if mm.name().map(|n| n.to_string()).as_deref() != Some(name) {
+                continue;
+            }
+            let mut subst = ct::Subst::new();
+            let vars = ct::variable_set(&mm.variables);
+            if ct::unify(&mm.receiver, concrete, &vars, &mut subst) {
+                found = Some((mm.module, decl.id(), subst));
+                break;
+            }
+        }
+        let Some((module, id, subst)) = found else {
+            return Ok(None);
+        };
+        let c = self
+            .callables
+            .get(&(module, id))
+            .cloned()
+            .ok_or_else(|| Error::new(format!("{name} callee not found")))?;
+        Ok(Some(self.function_for(m, &c, &subst)?))
+    }
+
+    /// The source-declared `equals` of `concrete` (an `impl Equal`) and the interface of its argument.
+    pub(crate) fn user_equals(
+        &mut self,
+        m: &mut Module,
+        concrete: &ct::Ty,
+    ) -> Result<Option<(ms_mir::ir::FuncId, IfaceId)>, Error> {
+        let Some(f) = self.user_method(m, concrete, "equals")? else {
+            return Ok(None);
+        };
+        let params = &m.funcs[f.index()].params;
+        let [_, other] = params.as_slice() else {
+            return Ok(None);
+        };
+        let TyKind::Iface(iface) = m.types.kind(other.ty).clone() else {
+            return Ok(None);
+        };
+        Ok(Some((f, iface)))
+    }
+
+    /// The source-declared `hash` of `concrete` (an `impl Hashable`).
+    pub(crate) fn user_hash(
+        &mut self,
+        m: &mut Module,
+        concrete: &ct::Ty,
+    ) -> Result<Option<ms_mir::ir::FuncId>, Error> {
+        let Some(f) = self.user_method(m, concrete, "hash")? else {
+            return Ok(None);
+        };
+        let ok = {
+            let func = &m.funcs[f.index()];
+            func.params.len() == 1 && func.ret == MTy::INT
+        };
+        Ok(ok.then_some(f))
+    }
+}
+
 impl FnLower<'_> {
     /// Converts a value of checker type `concrete` to the interface type `want`.
     pub fn fit_ty(&mut self, x: Val, concrete: &ct::Ty, want: MTy) -> Result<Val, Error> {
@@ -174,6 +322,8 @@ pub(crate) enum Message {
     Text(&'static str),
     /// The case's first field.
     Payload,
+    /// The message of the case's first field, itself a standard error of this name.
+    Cause(&'static str),
 }
 
 impl Cx {
@@ -188,10 +338,34 @@ impl Cx {
         if native != "errors/message" {
             return Err(Error::new(format!("unsupported native method {native}")));
         }
-        let name = concrete.to_string();
+        self.message_fn(m, &concrete.to_string(), data_ty)
+    }
+
+    fn message_fn(
+        &mut self,
+        m: &mut Module,
+        name: &str,
+        data_ty: MTy,
+    ) -> Result<ms_mir::ir::FuncId, Error> {
         let key = format!("native.message:{name}");
         if let Some(f) = self.helpers.get(&key) {
             return Ok(*f);
+        }
+        // Wrapped causes are named first: the builder borrows the module.
+        let mut causes = Vec::new();
+        if let (Some(table), TyKind::Alt(a)) =
+            (crate::messages::table(name), m.types.kind(data_ty).clone())
+        {
+            for (i, c) in m.alts[a.index()].cases.clone().iter().enumerate() {
+                if let Some((_, Message::Cause(inner))) = table.iter().find(|(n, _)| *n == c.name) {
+                    let payload = c
+                        .fields
+                        .first()
+                        .map(|f| f.1)
+                        .ok_or_else(|| Error::new("cause without payload"))?;
+                    causes.push((i, self.message_fn(m, inner, payload)?));
+                }
+            }
         }
         let ps = vec![Param {
             ty: data_ty,
@@ -204,7 +378,7 @@ impl Cx {
             b.emit(Op::Copy, &[v], Imm::None, Some(MTy::STR))
                 .expect("copy")
         };
-        match (name.as_str(), b.m.types.kind(data_ty).clone()) {
+        match (name, b.m.types.kind(data_ty).clone()) {
             ("TextError", TyKind::Rec(r)) => {
                 let t = b.rec_get(r, 0, recv);
                 let t = copy(&mut b, t);
@@ -247,6 +421,15 @@ impl Cx {
                         Some((_, Message::Payload)) => {
                             let p = b.alt_get(a, i as u32, 0, recv);
                             copy(&mut b, p)
+                        }
+                        Some((_, Message::Cause(_))) => {
+                            let f = causes
+                                .iter()
+                                .find(|(k, _)| *k == i)
+                                .map(|(_, f)| *f)
+                                .ok_or_else(|| Error::new("cause message missing"))?;
+                            let p = b.alt_get(a, i as u32, 0, recv);
+                            b.call(f, &[p])
                         }
                         None => return Err(Error::new(format!("{n}.{} has no message", c.name))),
                     };

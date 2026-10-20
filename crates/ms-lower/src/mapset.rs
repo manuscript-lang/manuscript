@@ -158,6 +158,9 @@ impl<'a> FnLower<'a> {
         if name == "freeze" {
             return self.freeze_builder(old, result_ty);
         }
+        if name == "add_default_from" {
+            return self.add_default_from(old, decl, args, copy_result);
+        }
         let set = matches!(self.b.m.types.kind(mt), TyKind::Obj(n, _) if n == "Set");
         let text = decl.first().is_some_and(|p| p.ty.to_string() == "String");
         let sym = match (set, name) {
@@ -168,9 +171,98 @@ impl<'a> FnLower<'a> {
             _ => crate::rtcall::method_symbol(self.b.m, mt, name)
                 .ok_or_else(|| Error::new(format!("unsupported mutator {name}")))?,
         };
+        // An argument that is the receiver itself is copied before the receiver moves out.
+        let args: Vec<NArg> = args
+            .iter()
+            .map(|a| {
+                if a.val.v != old {
+                    return *a;
+                }
+                let v = self.owned(a.val);
+                NArg {
+                    val: Val { v, own: true },
+                    ..*a
+                }
+            })
+            .collect();
         let slot = self.put_slot(old);
         let recv = Val { v: old, own: false };
-        self.rt_method_at(&sym, recv, Some(slot), decl, args, MTy::UNIT)?;
+        self.rt_method_at(&sym, recv, Some(slot), decl, &args, MTy::UNIT)?;
+        let new = self.take_slot(slot, mt);
+        let result = copy_result.then(|| {
+            let v = self.owned(Val { v: new, own: false });
+            Val { v, own: true }
+        });
+        Ok((new, result))
+    }
+
+    /// `map.add_default_from(key, create)`: `create(key)` runs once, only when the key is absent.
+    fn add_default_from(
+        &mut self,
+        old: Value,
+        decl: &[ct::Param],
+        args: &[NArg],
+        copy_result: bool,
+    ) -> Result<(Value, Option<Val>), Error> {
+        let mt = self.ty_of(old);
+        let key = args
+            .iter()
+            .find(|a| a.name.as_str() == "key")
+            .copied()
+            .ok_or_else(|| Error::new("add_default_from without a key"))?;
+        let create = args
+            .iter()
+            .find(|a| a.name.as_str() == "create")
+            .copied()
+            .ok_or_else(|| Error::new("add_default_from without create"))?;
+        let value_ty = decl
+            .iter()
+            .find(|p| p.name.as_str() == "create")
+            .and_then(|p| p.ty.result.clone())
+            .ok_or_else(|| Error::new("add_default_from create is not a function"))?;
+        let key_decl = decl[..1].to_vec();
+        let add_decl = vec![
+            decl[0].clone(),
+            ct::Param {
+                name: ct::Name::from("value"),
+                ty: value_ty,
+            },
+        ];
+        let slot = self.put_slot(old);
+        let recv = Val { v: old, own: false };
+        let has = self.rt_method_at(
+            "msrt_map_contains",
+            recv,
+            Some(slot),
+            &key_decl,
+            &[key],
+            MTy::BOOL,
+        )?;
+        let present = self.borrow(has);
+        let (absent, join) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(present, join, &[], absent, &[]);
+        self.b.seal_block(absent);
+        self.b.switch_to(absent);
+        let k = self.borrow(key.val);
+        let f = self.borrow(create.val);
+        let made = self.b.call_ind(f, &[k]);
+        let value = NArg {
+            name: ct::Name::from("value"),
+            val: Val { v: made, own: true },
+            wrapped: false,
+        };
+        let recv = Val { v: old, own: false };
+        self.rt_method_at(
+            "msrt_map_add_default",
+            recv,
+            Some(slot),
+            &add_decl,
+            &[key, value],
+            MTy::UNIT,
+        )?;
+        self.b.br(join, &[]);
+        self.b.seal_block(join);
+        self.enter(join);
         let new = self.take_slot(slot, mt);
         let result = copy_result.then(|| {
             let v = self.owned(Val { v: new, own: false });
@@ -245,7 +337,7 @@ impl<'a> FnLower<'a> {
             return Err(Error::new("not a map"));
         };
         let (kt, vt) = (a[0], a[1]);
-        let (mv, hidden) = self.list_source(recv_expr, recv)?;
+        let (mv, hidden) = self.list_source(Some(recv_expr), recv)?;
         let acc: Var = self.fresh_var(result);
         let empty = self.b.list_lit(entry, &[]);
         self.b.def_var(acc, empty);
@@ -313,6 +405,65 @@ impl<'a> FnLower<'a> {
         self.b.seal_block(exit);
         self.b.switch_to(exit);
         self.release_source(mv, hidden);
+        let out = self.b.use_var(acc);
+        Ok(Val { v: out, own: true })
+    }
+
+    /// `list.entries()`: `ListEntry` records pairing each index with its element.
+    pub(crate) fn list_entries(
+        &mut self,
+        recv_expr: &ms_syntax::ast::Expr,
+        recv: Val,
+        result: MTy,
+    ) -> Result<Val, Error> {
+        let TyKind::List(entry) = self.b.m.types.kind(result).clone() else {
+            return Err(Error::new("entries without a list type"));
+        };
+        let TyKind::Rec(rid) = self.b.m.types.kind(entry).clone() else {
+            return Err(Error::new("entries without a record type"));
+        };
+        let (lv, hidden) = self.list_source(Some(recv_expr), recv)?;
+        let acc = self.fresh_var(result);
+        let n = {
+            let l = self.b.use_var(lv);
+            self.b.list_len(l)
+        };
+        let first = self.b.list_new(entry, n);
+        self.b.def_var(acc, first);
+        self.each_element(lv, &mut |s, i, x| {
+            let xo = s.owned(Val { v: x, own: false });
+            let rec = s.b.rec_new(rid, &[i, xo]);
+            let cur = s.b.use_var(acc);
+            let next = s.b.list_push(cur, rec);
+            s.b.def_var(acc, next);
+            Ok(None)
+        })?;
+        self.release_source(lv, hidden);
+        let out = self.b.use_var(acc);
+        Ok(Val { v: out, own: true })
+    }
+
+    /// `set.entries()`: `[value, value]` lists in insertion order.
+    pub(crate) fn set_entries(&mut self, recv: Val, result: MTy) -> Result<Val, Error> {
+        let TyKind::List(pair) = self.b.m.types.kind(result).clone() else {
+            return Err(Error::new("entries without a list type"));
+        };
+        let TyKind::List(inner) = self.b.m.types.kind(pair).clone() else {
+            return Err(Error::new("entries pair is not a list"));
+        };
+        let acc = self.fresh_var(result);
+        let empty = self.b.list_lit(pair, &[]);
+        self.b.def_var(acc, empty);
+        let m = self.borrow(recv);
+        self.each_entry(m, &mut |s, key, _| {
+            let ko = s.owned(Val { v: key, own: false });
+            let kc = s.owned(Val { v: key, own: false });
+            let p = s.b.list_lit(inner, &[ko, kc]);
+            let cur = s.b.use_var(acc);
+            let next = s.b.list_push(cur, p);
+            s.b.def_var(acc, next);
+            Ok(())
+        })?;
         let out = self.b.use_var(acc);
         Ok(Val { v: out, own: true })
     }

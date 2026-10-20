@@ -537,7 +537,10 @@ impl FnLower<'_> {
                         i += 1;
                         continue;
                     }
-                    if let Some(fields) = self.record_fields_named(x, &p.name) {
+                    // A generic element slot takes the record whole, whatever its field is called.
+                    let element = p.ty == "*const u8" || p.ty == "*mut u8";
+                    if let Some(fields) = self.record_fields_named(x, &p.name).filter(|_| !element)
+                    {
                         // A record argument crosses as its fields.
                         let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(x.v)).clone() else {
                             unreachable!("record_fields_named found a record");
@@ -598,6 +601,21 @@ impl FnLower<'_> {
                         vals.push(slot);
                     } else {
                         let v = self.borrow(x);
+                        let v = match self.b.m.types.kind(self.ty_of(v)).clone() {
+                            // A budget that may be absent crosses as `i64::MAX` when it is.
+                            TyKind::Opt(t) if p.ty == "i64" && t == MTy::INT => {
+                                let has = self.b.opt_is_some(v);
+                                let unlimited = self.b.iconst(i64::MAX);
+                                let given = self.two_ways(
+                                    has,
+                                    MTy::INT,
+                                    &mut |s| Ok(Some(s.b.opt_get(v))),
+                                    &mut |_| Ok(Some(unlimited)),
+                                )?;
+                                given.v
+                            }
+                            _ => v,
+                        };
                         vals.push(v);
                     }
                 }

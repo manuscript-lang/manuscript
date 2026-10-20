@@ -78,7 +78,8 @@ impl FnLower<'_> {
         self.callable_of_decl(m.module, Some(decl.id())).ok()
     }
 
-    /// Calls a hook on the fixture local, storing the receiver it hands back.
+    /// Calls a hook on the fixture local; a hook that changes `self` works on the local's value
+    /// through a slot, which is stored back.
     fn run_hook(&mut self, hook: &Rc<Callable>, binding: &BindingRef) -> Result<(), Error> {
         let fid = self.cx.function_for(self.b.m, hook, &Subst::new())?;
         let recv = self.read_local(binding)?;
