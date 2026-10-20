@@ -66,3 +66,20 @@ fn text_of_deep_and_large_values_is_capped_and_linear() {
     assert!(started.elapsed().as_secs() < 20, "formatting is not linear");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn lower_applies_final_sigma_after_titlecase_letters() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-sigma-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let source = "import stdout from \"@std/io.ms\"\n\
+        export fn main() Int:\n\
+        \x20   let lowered = \"\\u{1C5}\\u{3A3}\".lower()\n\
+        \x20   stdout().write(\"{lowered.scalar_values()}\\n\").get()\n\
+        \x20   return 0\n";
+    std::fs::write(dir.join("sigma.ms"), source).unwrap();
+    let (status, text) = run_ms(&["run", "sigma.ms"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    assert_eq!(text.trim(), "[454, 962]", "{text}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
