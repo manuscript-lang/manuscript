@@ -356,14 +356,45 @@ pub unsafe extern "C-unwind" fn msrt_string_compare(a: *const StrObj, b: *const 
     }
 }
 
-/// Deterministic 64-bit hash of bytes (FNV-1a with a final avalanche).
+/// Deterministic 64-bit hash of bytes: eight bytes per multiply-fold step, with the tail read as
+/// one overlapping word, then a final avalanche. Hashes are lookup aids, not stable identifiers.
 pub fn hash_bytes(b: &[u8]) -> u64 {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    for &c in b {
-        h ^= c as u64;
-        h = h.wrapping_mul(0x0100_0000_01b3);
+    const K0: u64 = 0x9e37_79b9_7f4a_7c15;
+    const K1: u64 = 0xff51_afd7_ed55_8ccd;
+    #[inline(always)]
+    fn fold(a: u64, b: u64) -> u64 {
+        let m = u128::from(a) * u128::from(b);
+        (m as u64) ^ ((m >> 64) as u64)
     }
-    mix(h)
+    #[inline(always)]
+    fn word(b: &[u8], at: usize) -> u64 {
+        let mut w = [0u8; 8];
+        w.copy_from_slice(&b[at..at + 8]);
+        u64::from_le_bytes(w)
+    }
+    #[inline(always)]
+    fn half(b: &[u8], at: usize) -> u64 {
+        let mut w = [0u8; 4];
+        w.copy_from_slice(&b[at..at + 4]);
+        u64::from(u32::from_le_bytes(w))
+    }
+    let n = b.len();
+    let mut h = K0 ^ (n as u64).wrapping_mul(K1);
+    let mut i = 0;
+    while i + 8 <= n {
+        h = fold(h ^ word(b, i), K1);
+        i += 8;
+    }
+    let tail = if n >= 8 {
+        word(b, n - 8)
+    } else if n >= 4 {
+        half(b, 0) << 32 | half(b, n - 4)
+    } else if n > 0 {
+        u64::from(b[0]) << 16 | u64::from(b[n >> 1]) << 8 | u64::from(b[n - 1])
+    } else {
+        0
+    };
+    mix(fold(h ^ tail, K0))
 }
 
 #[inline]
@@ -1372,6 +1403,30 @@ pub unsafe extern "C-unwind" fn msrt_string_quote(s: *const StrObj) -> *mut StrO
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn hash_bytes_separates_lengths_and_contents() {
+        let mut seen = std::collections::HashSet::new();
+        for len in 0..40usize {
+            for fill in [0u8, b'a', 0xff]
+                .into_iter()
+                .take(if len == 0 { 1 } else { 3 })
+            {
+                let v = std::vec![fill; len];
+                assert_eq!(hash_bytes(&v), hash_bytes(&v.clone()));
+                assert!(
+                    seen.insert(hash_bytes(&v)),
+                    "collision at len {len} fill {fill}"
+                );
+            }
+        }
+        for at in 0..24usize {
+            let mut a = std::vec![b'x'; 24];
+            let b = a.clone();
+            a[at] = b'y';
+            assert_ne!(hash_bytes(&a), hash_bytes(&b), "byte {at} ignored");
+        }
+    }
     use crate::testutil;
     use std::string::String as S;
 

@@ -187,6 +187,44 @@ unsafe fn find_int(m: &MapVal, key: i64) -> *mut u8 {
     }
 }
 
+/// True for `String` keys with 8-byte, 8-aligned values: the same 24-byte slots as [`int_pair`].
+#[inline(always)]
+fn str_pair(kd: &TypeDesc, vd: Option<&TypeDesc>) -> bool {
+    kd.kind == KIND_STRING && vd.is_some_and(|v| v.size == 8 && v.align == 8)
+}
+
+/// `find` specialised for [`str_pair`] maps; returns the slot pointer. The probe hits the stored
+/// key's object directly when the caller passes the same string, as lookups of inserted keys do.
+#[inline(always)]
+unsafe fn find_str(m: &MapVal, key: *const StrObj) -> *mut u8 {
+    if m.len == 0 {
+        return core::ptr::null_mut();
+    }
+    // SAFETY: index and slots are consistent for a non-empty map; `key` is a live string.
+    unsafe {
+        let bytes = crate::string::bytes(key);
+        let h = crate::string::hash_bytes(bytes) | LIVE;
+        let index = index_of(m);
+        let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
+        loop {
+            let e = *index.add(pos);
+            if e == 0 {
+                return core::ptr::null_mut();
+            }
+            if (e ^ h) >> 32 == 0 {
+                let p = m.slots.add((e as u32 - 1) as usize * 24);
+                if *(p as *const u64) == h {
+                    let stored = *(p.add(8) as *const *const StrObj);
+                    if stored == key || crate::string::bytes(stored) == bytes {
+                        return p;
+                    }
+                }
+            }
+            pos = (pos + 1) & m.mask;
+        }
+    }
+}
+
 unsafe fn rebuild_index(m: &mut MapVal, l: &Layout, index_size: usize) {
     // SAFETY: allocates and fills a fresh zeroed index.
     unsafe {
@@ -539,6 +577,14 @@ pub unsafe extern "C-unwind" fn msrt_map_add(
                 core::ptr::copy_nonoverlapping(val, p.add(16), 8);
                 return;
             }
+        } else if str_pair(kd, vd) && vd.is_some_and(|v| v.kind <= KIND_BOOL) {
+            // The stored key stays; the supplied one is released.
+            let p = find_str(m, *(key as *const *const StrObj));
+            if !p.is_null() {
+                slot_drop(kd, key);
+                core::ptr::copy_nonoverlapping(val, p.add(16), 8);
+                return;
+            }
         }
         insert(m, kd, vd, key, val);
     }
@@ -584,6 +630,9 @@ pub unsafe extern "C-unwind" fn msrt_map_contains(
         if int_pair(&*kd, opt(vd)) {
             return !find_int(&*m, *(key as *const i64)).is_null() as u8;
         }
+        if str_pair(&*kd, opt(vd)) {
+            return !find_str(&*m, *(key as *const *const StrObj)).is_null() as u8;
+        }
         contains_key(&*m, &*kd, opt(vd), key) as u8
     }
 }
@@ -601,6 +650,10 @@ pub unsafe extern "C-unwind" fn msrt_map_get_ptr(
         let (kd, m) = (&*kd, &*m);
         if int_pair(kd, opt(vd)) {
             let p = find_int(m, *(key as *const i64));
+            return if p.is_null() { p } else { p.add(16) };
+        }
+        if str_pair(kd, opt(vd)) {
+            let p = find_str(m, *(key as *const *const StrObj));
             return if p.is_null() { p } else { p.add(16) };
         }
         get_ptr_general(m, kd, opt(vd), key)
@@ -638,9 +691,15 @@ pub unsafe extern "C-unwind" fn msrt_map_get(
     // SAFETY: caller contract.
     unsafe {
         let (kd, m) = (&*kd, &*m);
-        if int_pair(kd, opt(vd)) && opt(vd).is_some_and(|v| v.kind <= KIND_BOOL) {
+        if (int_pair(kd, opt(vd)) || str_pair(kd, opt(vd)))
+            && opt(vd).is_some_and(|v| v.kind <= KIND_BOOL)
+        {
             // Scalar values are plain 8-byte words: copy without the descriptor dispatch.
-            let p = find_int(m, *(key as *const i64));
+            let p = if kd.kind == KIND_INT {
+                find_int(m, *(key as *const i64))
+            } else {
+                find_str(m, *(key as *const *const StrObj))
+            };
             if p.is_null() {
                 return 0;
             }
@@ -1118,6 +1177,53 @@ mod tests {
             drop_map(&mut out, kd, None);
             drop_map(&mut a, kd, None);
             drop_map(&mut b, kd, None);
+            assert_eq!(crate::alloc::live_blocks(), before);
+        }
+    }
+    #[test]
+    fn string_to_int_fast_paths_overwrite_and_release() {
+        let _g = testutil::lock();
+        unsafe {
+            let (kd, vd) = (&msrt_desc_string, &msrt_desc_int);
+            let before = crate::alloc::live_blocks();
+            let mut m = empty();
+            for round in 0..3i64 {
+                for i in 0..200 {
+                    let mut k = from_bytes(std::format!("key-{i}").as_bytes());
+                    let mut v = round * 1000 + i;
+                    msrt_map_add(
+                        &mut m,
+                        kd,
+                        vd,
+                        &mut k as *mut _ as *mut u8,
+                        &mut v as *mut i64 as *mut u8,
+                    );
+                }
+            }
+            assert_eq!(m.len, 200);
+            for i in [0i64, 77, 199] {
+                // A different object with equal bytes finds the stored key.
+                let k = from_bytes(std::format!("key-{i}").as_bytes());
+                let kp = &k as *const _ as *const u8;
+                assert_eq!(msrt_map_contains(&m, kd, vd, kp), 1);
+                let mut out = 0i64;
+                assert_eq!(
+                    msrt_map_get(&m, kd, vd, kp, &mut out as *mut i64 as *mut u8),
+                    1
+                );
+                assert_eq!(out, 2000 + i);
+                slot_drop(kd, kp as *mut u8);
+            }
+            let missing = from_bytes(b"absent");
+            let mp = &missing as *const _ as *const u8;
+            assert_eq!(msrt_map_contains(&m, kd, vd, mp), 0);
+            let mut out = 0i64;
+            assert_eq!(
+                msrt_map_get(&m, kd, vd, mp, &mut out as *mut i64 as *mut u8),
+                0
+            );
+            slot_drop(kd, mp as *mut u8);
+            drop_map(&mut m, kd, Some(vd));
             assert_eq!(crate::alloc::live_blocks(), before);
         }
     }
