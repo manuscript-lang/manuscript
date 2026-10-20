@@ -594,3 +594,49 @@ fn native_programs_using_tls_and_http_link() {
     assert_eq!((status, err.as_str()), (0, ""));
     assert_eq!(Command::new(&exe).status().unwrap().code(), Some(0));
 }
+
+/// SIGTERM used to cancel in-flight handlers at once (a 504) even when the server had a grace
+/// period; the request now finishes and the program then exits 143.
+#[test]
+#[cfg(unix)]
+fn native_sigterm_lets_in_flight_requests_finish_within_grace() {
+    use std::io::{BufRead, BufReader, Read, Write};
+    use std::net::TcpStream;
+    use std::os::unix::process::ExitStatusExt;
+    use std::process::Stdio;
+    use std::time::Duration;
+
+    let dir = scratch("native-sigterm-grace");
+    let source = write(
+        &dir,
+        "main.ms",
+        "import {headers, HttpRequest, HttpResponse} from \"@std/http.ms\"\nimport network from \"@std/net.ms\"\nimport {stdout} from \"@std/io.ms\"\nimport {sleep, duration} from \"@std/time.ms\"\n\nfn handle(request: HttpRequest) HttpResponse:\n    sleep(duration(600000000))\n    return HttpResponse(200, headers(), \"done\".to_bytes())\n\nexport fn main() Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle, grace: duration(10000000000)):\n        with server = acquired:\n            stdout().write(\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
+    );
+    let exe = dir.join("server");
+    let backend = RustBackend::new(Native);
+    let (status, _, err) = ms(&backend, &["build", &source, "-o", exe.to_str().unwrap()]);
+    assert_eq!(status, 0, "{err}");
+    let mut child = Command::new(&exe).stdout(Stdio::piped()).spawn().unwrap();
+    let mut line = String::new();
+    BufReader::new(child.stdout.take().unwrap())
+        .read_line(&mut line)
+        .unwrap();
+    let mut stream = TcpStream::connect(line.trim()).unwrap();
+    write!(
+        stream,
+        "GET / HTTP/1.1\r\nHost: a\r\nConnection: close\r\n\r\n"
+    )
+    .unwrap();
+    std::thread::sleep(Duration::from_millis(200));
+    let killed = Command::new("kill")
+        .args(["-TERM", &child.id().to_string()])
+        .status()
+        .unwrap();
+    assert!(killed.success());
+    let mut reply = String::new();
+    stream.read_to_string(&mut reply).unwrap();
+    let status = child.wait().unwrap();
+    assert!(reply.starts_with("HTTP/1.1 200"), "{reply}");
+    assert!(reply.ends_with("done"), "{reply}");
+    assert_eq!(status.code(), Some(143), "{status:?} {:?}", status.signal());
+}

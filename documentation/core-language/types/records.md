@@ -5,7 +5,7 @@ weight = 1
 
 # Records and nominal types
 
-A record groups named fields into one value. Fields are mutable, assignment and argument passing share the same instance (use `.clone()` for a copy), and each declaration is a distinct nominal type.
+A record groups named fields into one value. Fields are mutable, assignment copies the value (`.clone()` makes an explicit deep copy), and each declaration is a distinct nominal type.
 
 ```manuscript
 type Customer:
@@ -61,9 +61,9 @@ impl Counter for Val:
         self.val = self.val + 1
 ```
 
-Field writes keep the declared type; the receiver evaluates once, before the new value. Parameters, aliases, nested fields, and closure captures share the same storage.
+Field writes keep the declared type; the receiver evaluates once, before the new value. Assignment and closure capture copy; a function changes its caller's value only through a `var` parameter.
 
-`.clone()` is shallow: it copies field storage and keeps nested records, collections, callbacks, and resource references. Changing a clone's own field leaves the original alone; changing a shared nested object affects both.
+`.clone()` is a deep copy of nested records and collections; changing a clone never affects the original. Resource handles are never copied.
 
 Records, alternatives, `List`, `Map`, `Set`, and `Bytes` have `.clone()`. Files, sockets, queues, synchronization objects, guards, and other service handles do not; a cloned record keeps the same handle.
 

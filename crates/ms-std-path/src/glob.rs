@@ -1,4 +1,4 @@
-//! Glob syntax and matching, a port of `pkg/runtime/glob.go` (shared by path predicates and
+//! Glob syntax and matching. Shared by path predicates and
 //! filesystem queries): `*`, `?`, `[...]` classes, extended `@(..) +(..) ?(..) !(..) *(..)`
 //! groups, `{a,b}` and `{1..3}` brace expansion, and `**` segments.
 

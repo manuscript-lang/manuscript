@@ -35,7 +35,7 @@ export fn main() Int:
     return missing
 resolution	2	12	33	unknown binding missing; declare it with 'let missing = ...' before use, define 'fn missing(...)', or import it from a moduleexport fn main() Int:
     return "wrong"
-type	2	12	33	expected Int, found Stringexport fn main() Int:
+type	2	12	33	expected Int, found String (in the return value)export fn main() Int:
     return 0
 export fn value() Int:
     return 0   
@@ -82,7 +82,7 @@ export fn value() Int:
     return 1
 export fn main() Int:
     return "a"
-type	2	12	33	expected Int, found Stringfn (
+type	2	12	33	expected Int, found String (in the return value)fn (
 parse	2	1	5	unterminated delimiter '(' opened at line 1:4; add the matching ')' before the end of the fileimport TomlValue from "@std/toml.ms"
 
 export fn main() Int:
@@ -194,15 +194,15 @@ test "arithmetic":
 test "value":
     return unit
 export fn other() Int: return "bad"
-type	1	31	30	expected Int, found Stringexport fn main() Int:
+type	1	31	30	expected Int, found String (in the return value)export fn main() Int:
     return unknown_name
 resolution	2	12	33	unknown binding unknown_name; declare it with 'let unknown_name = ...' before use, define 'fn unknown_name(...)', or import it from a modulefn number() Int:
     return "wrong"
 
 fn text() String:
     return 1
-type	2	12	28	expected Int, found String
-type	5	12	66	expected String, found Intexport fn value() Int: return 0
+type	2	12	28	expected Int, found String (in the return value)
+type	5	12	66	expected String, found Int (in the return value); Int does not convert to String implicitly; interpolate it into text, e.g. "{value}"export fn value() Int: return 0
 import panic from "@std/faults.ms"
 test "never execute":
     return panic("check executed code")
@@ -210,7 +210,7 @@ test "never execute":
     let n = 1
 
 fn broken() Int: return "bad"
-type	2	25	25	expected Int, found Stringexport fn main() Int: return 0
+type	2	25	25	expected Int, found String (in the return value)export fn main() Int: return 0
 fn value() Int: return 1
 fn value() Int: return 0
 fn add(a: Int, b: Int) Int:
@@ -508,11 +508,11 @@ fn call(x: Optional[Int]) Int:
 type	1	20	19	indexing requires List[T]; use the receiver's lookup method for other typesfn f() Unit: let xs = List()
 type	1	23	22	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingfn f() Unit: let xs = List[Int](1)
 type	1	33	32	too many positional arguments; every parameter is already supplied, so remove this argumentfn f() String: return "a" + 1
-type	1	27	26	operator operands require the same independently known type, found String + Int; convert one side so both have one type (e.g. to_string() for text, or an Int/Float conversion)fn f() String: return "a" - "b"
+type	1	27	26	operator operands require the same independently known type, found String + Int; convert one side so both have one type (e.g. interpolate into text with "{value}", or convert between Int and Float)fn f() String: return "a" - "b"
 type	1	27	26	arithmetic requires numeric operandsfn f(x: Optional[Int]) Int:
     return match x:
         some(n): n
-type	2	12	39	non-exhaustive match; missing cases: none, or add a final '_' armfn f(x: Optional[Int]) Unit:
+type	2	12	39	non-exhaustive match; missing cases: none, or add a final '_' arm; add the arms 'none:'fn f(x: Optional[Int]) Unit:
     let y = match x:
         some(n): n
         none: "missing"
@@ -520,7 +520,7 @@ fn call(x: Optional[Int]) Int:
     return match x:
         some(n): n
         none: return "missing"
-type	4	22	88	expected Int, found Stringfn f(x: Optional[Int]) Int:
+type	4	22	88	expected Int, found String (in the return value)fn f(x: Optional[Int]) Int:
     let y = match x:
         some(n): n
         none: 0
@@ -537,9 +537,9 @@ fn f(x: Optional[Int]) Result[Unit, Error]:
     return ok(1)
 fn f() Int:
     return p()
-type	4	12	67	expected Int, found Result[Int, Error]; unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'fn f(x: Optional[Int]) Int:
+type	4	12	67	expected Int, found Result[Int, Error] (in the return value); unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'fn f(x: Optional[Int]) Int:
     return x
-type	2	12	39	expected Int, found Optional[Int]; Optional[Int] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn f(x: Optional[Int]) Int:
+type	2	12	39	expected Int, found Optional[Int] (in the return value); Optional[Int] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn f(x: Optional[Int]) Int:
     return match x:
         some(n):
             n
@@ -583,7 +583,7 @@ fn wrong() Result[Unit, JsonError]:
     detail: String
 fn wrong(value: Impostor) Error:
     return value
-type	4	12	78	expected Error, found Impostor; no applicable 'impl Error for Impostor' is visible; declare an implementation before creating an interface viewfn wrong() Result[String, Error]:
+type	4	12	78	expected Error, found Impostor (in the return value); no applicable 'impl Error for Impostor' is visible; declare an implementation before creating an interface viewfn wrong() Result[String, Error]:
     return Result[Int, JsonError].ok(value: 1)
 resolution	2	24	57	unknown type JsonError; add: import JsonError from "@std/json.ms"fn wrong(value: Error) JsonError:
     return value
@@ -600,7 +600,7 @@ impl Diagnostic for LocalError:
         return self.detail
 fn wrong(value: LocalError) Diagnostic:
     return value
-type	9	12	217	expected Diagnostic, found LocalError; LocalError implements Diagnostic; write Diagnostic(value: ...) to create an explicit interface viewtype Impostor:
+type	9	12	217	expected Diagnostic, found LocalError (in the return value); LocalError implements Diagnostic; write Diagnostic(value: ...) to create an explicit interface viewtype Impostor:
     detail: String
 fn wrong(value: Impostor) Error:
     return Error(value: value)
@@ -989,7 +989,7 @@ fn f(value: Int = 1) Int:
 fn call() Int:
     return run(f)
 type	6	16	128	callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a lambda that supplies the rest
-type	6	16	128	expected fn() Int, found fn(value: Int = ...) Intfn f() Unit:
+type	6	16	128	expected fn() Int, found fn(value: Int = ...) Int (in argument 'operation' of run)fn f() Unit:
     var outer = 1
     let callback = fn(value: Int = (fn() Int:
         outer = 2
@@ -1032,7 +1032,7 @@ fn general(value: Result) Error:
 type	4	19	85	Result requires 2 type arguments, found 0; write Result[T1, T2]
 type	1	16	15	Result requires 2 type arguments, found 0; write Result[T1, T2]
 type	1	1	0	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types
-type	5	12	111	expected Error, found Result; use a concrete value implementing Error and create its explicit interface view with Error(value: ...)impl Error for Result[Int]:
+type	5	12	111	expected Error, found Result (in the return value); use a concrete value implementing Error and create its explicit interface view with Error(value: ...)impl Error for Result[Int]:
     fn message() String:
         return "x"
 fn f(x: Result[Int]) Result[Int, Error]:
@@ -1040,7 +1040,7 @@ fn f(x: Result[Int]) Result[Int, Error]:
 type	4	9	80	Result requires 2 type arguments, found 1; write Result[T1, T2]
 type	1	16	15	Result requires 2 type arguments, found 1; write Result[T1, T2]
 type	1	1	0	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types
-type	5	18	130	expected Error, found Result[Int]; use a concrete value implementing Error and create its explicit interface view with Error(value: ...)fn f[Equal](a: Equal) Unit:
+type	5	18	130	expected Error, found Result[Int] (in argument 'cause' of error); use a concrete value implementing Error and create its explicit interface view with Error(value: ...)fn f[Equal](a: Equal) Unit:
     return
 resolution	1	6	5	duplicate or intrinsic type parameter Equal; choose a different type parameter nametype Box[Hashable]:
     v: Hashable
@@ -1285,9 +1285,9 @@ fn f(s: S) Int:
         A:
             return 1
     return 0
-type	6	5	61	non-exhaustive match; missing cases: B, C, or add a final '_' armfn f() Int:
+type	6	5	61	non-exhaustive match; missing cases: B, C, or add a final '_' arm; add the arms 'B:', 'C:'fn f() Int:
     return "a" + 1
-type	2	16	27	operator operands require the same independently known type, found String + Int; convert one side so both have one type (e.g. to_string() for text, or an Int/Float conversion)fn f(o: Optional[Int]) Int:
+type	2	16	27	operator operands require the same independently known type, found String + Int; convert one side so both have one type (e.g. interpolate into text with "{value}", or convert between Int and Float)fn f(o: Optional[Int]) Int:
     match o:
         Some(v):
             return v
@@ -1306,14 +1306,14 @@ fn f() Int:
     return p() + 1
 type	4	16	71	operator operands require the same independently known type, found Result[Int, Error] + Int; unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'fn f(n: Optional[Int]) Int:
     return n
-type	2	12	39	expected Int, found Optional[Int]; Optional[Int] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn f() Float:
+type	2	12	39	expected Int, found Optional[Int] (in the return value); Optional[Int] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn f() Float:
     let x: Float = 3
     return x
-type	2	20	33	expected Float, found Int; Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int valuefn f() Int:
+type	2	20	33	expected Float, found Int (in the initializer of 'x'); Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int valuefn f() Int:
     return 3.5
-type	2	12	23	expected Int, found Float; Float does not convert to Int implicitly; truncate_to_int() returns Optional[Int], so unwrap it, e.g. value.truncate_to_int().get(0)fn f() Int:
+type	2	12	23	expected Int, found Float (in the return value); Float does not convert to Int implicitly; truncate_to_int() returns Optional[Int], so unwrap it, e.g. value.truncate_to_int().get(0)fn f() Int:
     return [1, 2].length
-type	2	19	30	expected Int, found fn() Int; this is a function; call it with parentheses to get its Int resultfn f() Unit:
+type	2	19	30	expected Int, found fn() Int (in the return value); this is a function; call it with parentheses to get its Int resultfn f() Unit:
     println("hi")
 resolution	2	5	17	unknown binding println; there is no built-in print: import stdout from "@std/io.ms" and call stdout().write("text\\n")fn f() Int:
     let s = null
@@ -1328,7 +1328,7 @@ fn f() Unit:
     let x: Int = 3.5
     let y = x + 1
     return y
-type	2	18	29	expected Int, found Float; Float does not convert to Int implicitly; truncate_to_int() returns Optional[Int], so unwrap it, e.g. value.truncate_to_int().get(0)import PriorityQueue from "@std/queues.ms"
+type	2	18	29	expected Int, found Float (in the initializer of 'x'); Float does not convert to Int implicitly; truncate_to_int() returns Optional[Int], so unwrap it, e.g. value.truncate_to_int().get(0)import PriorityQueue from "@std/queues.ms"
 fn f() Int:
     let q = PriorityQueue(compare: fn(left: HttpMethod, right: HttpMethod) Int: return 0)
     return 0
@@ -1380,7 +1380,7 @@ fn f() Int:
     return n > 0
 fn f() Int:
     return [1].filter(positive).length()
-type	4	23	77	expected fn(value: Int) Bool, found fn(n: Int) Bool; the function's parameter is named n but this position expects value; rename the parameter to value, or wrap the function in a lambda: fn(value: ...) ...: f(n: value)type S:
+type	4	23	77	expected fn(value: Int) Bool, found fn(n: Int) Bool (in argument 'predicate' of filter); the function's parameter is named n but this position expects value; rename the parameter to value, or wrap the function in a lambda: fn(value: ...) ...: f(n: value)type S:
     case A
     case B
 fn f(s: S) Int:
@@ -1428,7 +1428,7 @@ fn first() Unit:
 resolution	1	69	68	unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it
 resolution	1	100	99	unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it
 resolution	4	80	240	unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it
-type	5	26	293	expected Int, found Stringimport {TextError} from "@std/errors.ms"
+type	5	26	293	expected Int, found String (in the initializer of 'unrelated')import {TextError} from "@std/errors.ms"
 fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 fn first() Result[Int, TextError]: fail[Int]("empty")
 fn convert[T, U](value: T) Optional[U]: none
@@ -1459,7 +1459,7 @@ type Box[T]:
 impl Read[T] for Box[T]:
     fn get() T: self.item
 fn read() Read[Int]: Box(1)
-type	7	22	131	expected Read[Int], found Box[Int]; Box[Int] implements Read[Int]; write Read[Int](value: ...) to create an explicit interface viewtype E:
+type	7	22	131	expected Read[Int], found Box[Int] (in the return value); Box[Int] implements Read[Int]; write Read[Int](value: ...) to create an explicit interface viewtype E:
     text: String
 impl Error for E:
     fn message() String: this.text
@@ -1488,18 +1488,18 @@ fn error_value() Error: E("bad input")
 interface Shape:
     fn area() Int
 fn f() Shape: 1
-type	3	15	49	expected Shape, found Int; use a concrete value implementing Shape and create its explicit interface view with Shape(value: ...)interface A:
+type	3	15	49	expected Shape, found Int (in the return value); use a concrete value implementing Shape and create its explicit interface view with Shape(value: ...)interface A:
     fn a() Int
 interface B:
     fn b() Int
 fn f(value: A) B: value
-type	5	19	74	expected B, found A; use a concrete value implementing B and create its explicit interface view with B(value: ...)interface Shape:
+type	5	19	74	expected B, found A (in the return value); use a concrete value implementing B and create its explicit interface view with B(value: ...)interface Shape:
     fn area() Int
 fn f[T](value: T) Shape: value
-type	3	26	60	expected Shape, found T; use a concrete value implementing Shape and create its explicit interface view with Shape(value: ...)interface Shape:
+type	3	26	60	expected Shape, found T (in the return value); use a concrete value implementing Shape and create its explicit interface view with Shape(value: ...)interface Shape:
     fn area() Int
 fn f(value: fn() Int) Shape: value
-type	3	30	64	expected Shape, found fn() Int; use a concrete value implementing Shape and create its explicit interface view with Shape(value: ...)fn f() Int:
+type	3	30	64	expected Shape, found fn() Int (in the return value); use a concrete value implementing Shape and create its explicit interface view with Shape(value: ...)fn f() Int:
     let x = nope
     return x + x
 resolution	2	13	24	unknown binding nope; declare it with 'let nope = ...' before use, define 'fn nope(...)', or import it from a modulelet X = nope
@@ -1899,7 +1899,7 @@ impl Read for Box[Int]:
 resolution	2	38	56	unknown binding missing; declare it with 'let missing = ...' before use, define 'fn missing(...)', or import it from a module
 resolution	2	52	70	unknown binding other_missing; declare it with 'let other_missing = ...' before use, define 'fn other_missing(...)', or import it from a module
 resolution	3	20	104	unknown binding apply; declare it with 'let apply = ...' before use, define 'fn apply(...)', or import it from a module
-type	4	22	186	expected Int, found String
+type	4	22	186	expected Int, found String (in the initializer of 'wrong')
 type	5	40	232	callback parameter count does not match its context; the callback takes exactly the parameters its context declares
 resolution	5	46	238	unknown binding missing_too; declare it with 'let missing_too = ...' before use, define 'fn missing_too(...)', or import it from a modulefn example() Unit:
     choose(first: fn(): "a", second: fn(): "b", other: fn(): missing)
@@ -1911,7 +1911,7 @@ fn choose(form: NormalizationForm) Unit:
     return unit
 fn wrong() Unit:
     choose("NFC")
-type	5	12	132	expected NormalizationForm, found Stringimport HashAlgorithm from "@std/crypto.ms"
+type	5	12	132	expected NormalizationForm, found String (in argument 'form' of choose)import HashAlgorithm from "@std/crypto.ms"
 fn wrong() Unit:
     let algorithm = HashAlgorithm.Sha257
 resolution	3	35	94	unknown or non-nullary alternative case Sha257 of HashAlgorithm; cases: Md5, Sha1, Sha224, Sha256, Sha384, Sha3_256, Sha3_384, Sha3_512, Sha512 (cases with payloads need call syntax)import CompressionFormat from "@std/compress.ms"
@@ -1925,13 +1925,13 @@ fn choose(algorithm: HashAlgorithm) Unit:
     return unit
 fn wrong() Unit:
     choose("sha256")
-type	5	12	129	expected HashAlgorithm, found Stringimport HashAlgorithm from "@std/crypto.ms"
+type	5	12	129	expected HashAlgorithm, found String (in argument 'algorithm' of choose)import HashAlgorithm from "@std/crypto.ms"
 import CompressionFormat from "@std/compress.ms"
 fn choose(algorithm: HashAlgorithm) Unit:
     return unit
 fn wrong() Unit:
     choose(CompressionFormat.Gzip)
-type	6	30	196	expected HashAlgorithm, found CompressionFormattype Other:
+type	6	30	196	expected HashAlgorithm, found CompressionFormat (in argument 'algorithm' of choose)type Other:
     case OutOfRange
 fn other() Other: Other.OutOfRange
 fn standard() CollectionError: CollectionError.OutOfRange
@@ -2064,9 +2064,9 @@ type	5	5	166	missing argument value: Int in call to callback; add 'value: <Int>'
 resolution	2	61	77	unknown binding fail; add: import fail from "@std/testing.ms"fn cause(value: Int) String: "cause"
 fn wrong(value: Optional[Int]) Result[Int, String]: value.ok_or_else(cause)type	2	70	106	callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a lambda that supplies the rest
 type	2	59	95	String does not satisfy Error; pass a type that already implements it
-type	2	70	106	expected fn() String, found fn(value: Int) String
+type	2	70	106	expected fn() String, found fn(value: Int) String (in argument 'create' of value.ok_or_else)
 type	2	1	37	String does not satisfy Error; use a type that implements itfn check(value: Int, key: String) Bool: true
-fn wrong(value: Map[String, Int]) Bool: value.every(check)type	2	53	97	expected fn(key: String, value: Int) Bool, found fn(value: Int, key: String) Bool; the function's parameter is named value but this position expects key; rename the parameter to key, or wrap the function in a lambda: fn(key: ...) ...: f(value: key)type Optional[T]:
+fn wrong(value: Map[String, Int]) Bool: value.every(check)type	2	53	97	expected fn(key: String, value: Int) Bool, found fn(value: Int, key: String) Bool (in argument 'predicate' of value.every); the function's parameter is named value but this position expects key; rename the parameter to key, or wrap the function in a lambda: fn(key: ...) ...: f(value: key)type Optional[T]:
     case some(value: T)
     case none
 fn wrong(value: Optional[Int]) Result[Int, String]: value.ok_or("missing")resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration
@@ -2082,7 +2082,7 @@ type	4	1	66	String does not satisfy Error; use a type that implements itfn f() 
 type	3	10	40	try requires Result, found Int; apply try only to a call returning Result[T, E]fn wrong(value: Set[Int]) Unit:
     let output = value.map(fn(n): n.to_float())type	2	24	55	Float does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a record with an Int or String key, or use Decimalfn wrong[U](value: Set[Int], transform: fn(value: Int) U) Unit:
     let output = value.map(transform)type	2	24	87	U does not satisfy Hashable; pass a type that already implements itfn wrong(value: Map[String, Int]) Unit:
-    let output = value.filter(fn(k, n): n)type	2	41	80	expected Bool, found Inttype Result[T, E]:
+    let output = value.filter(fn(k, n): n)type	2	41	80	expected Bool, found Int (in the return value)type Result[T, E]:
     case ok(value: T)
     case error(cause: E)
 fn wrong(value: Result[Int, String]) Int: value.get()resolution	1	1	0	declaration Result reuses a prelude name; rename it, because Result always refers to the standard declaration
@@ -2204,7 +2204,7 @@ fn effect(value: Int) Int: return value + 1
     var sum = 0
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)fn probe() Int:
     let value = parse	2	17	32	expected an expression, found end of line; write a value, name, call, or literal herefn broken() Int: return "bad"
-type	1	25	24	expected Int, found Stringlet values = [1, 2, 3]
+type	1	25	24	expected Int, found String (in the return value)let values = [1, 2, 3]
     let alias = valuesparse	2	5	27	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet values = [1, 2, 3]
     let alias = values.append(4)parse	2	5	27	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet values = [1, 2, 3]
     let read = values.getparse	2	5	27	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet values = [1, 2, 3]
@@ -2379,8 +2379,8 @@ fn count(items: List[Int], data: Bytes) Int:
     let mapped = values.map_keys(fn(k, v): v.to_float())type	2	25	65	Float does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a record with an Int or String key, or use Decimalfn wrong[W](values: Map[String, Int], transform: fn(key: String, value: Int) W) Unit:
     let mapped = values.map_keys(transform)type	2	25	110	W does not satisfy Hashable; pass a type that already implements itfn transform(value: Int, key: String) Int: value
 fn wrong(values: Map[String, Int]) Map[String, Int]: values.map(transform)type	2	65	113	callback mismatch: the function's parameter is named value but this position expects key; rename the parameter to key, or wrap the function in a lambda: fn(key: ...) ...: f(value: key)
-type	2	65	113	expected fn(key: String, value: Int) Int, found fn(value: Int, key: String) Int; the function's parameter is named value but this position expects key; rename the parameter to key, or wrap the function in a lambda: fn(key: ...) ...: f(value: key)fn wrong(values: Map[String, Int]) Unit:
-    let found = values.find_last(fn(k, v): v)type	2	44	84	expected Bool, found Intfn allowed(values: Map[String, Int]) Map[String, Float]:
+type	2	65	113	expected fn(key: String, value: Int) Int, found fn(value: Int, key: String) Int (in argument 'transform' of values.map); the function's parameter is named value but this position expects key; rename the parameter to key, or wrap the function in a lambda: fn(key: ...) ...: f(value: key)fn wrong(values: Map[String, Int]) Unit:
+    let found = values.find_last(fn(k, v): v)type	2	44	84	expected Bool, found Int (in the return value)fn allowed(values: Map[String, Int]) Map[String, Float]:
     return values.map(fn(key, value): value.to_float())
 type Shape:
     case Circle(r: Int)
@@ -2469,7 +2469,7 @@ resolution	2	13	35	unknown binding Val; declare it with 'let Val = ...' before u
 type	3	11	43	arithmetic requires numeric operandsfn f() Unit:
     var value = 1
     value += 1.5
-type	3	11	41	operator operands require the same independently known type, found Int + Float; convert one side so both have one type (e.g. to_string() for text, or an Int/Float conversion)fn f(value: Val) Unit:
+type	3	11	41	operator operands require the same independently known type, found Int + Float; convert one side so both have one type (e.g. interpolate into text with "{value}", or convert between Int and Float)fn f(value: Val) Unit:
     value.val += true
 resolution	1	13	12	unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it
 type	2	11	33	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'fn f() Unit:
@@ -2479,7 +2479,7 @@ type	2	11	33	assignment requires a record field; only fields of a record value c
 resolution	1	12	11	unknown type File; add: import File from "@std/io.ms"import Connection from "@std/net.ms"
 fn f(socket: Connection) Unit:
     socket.clone()
-resolution	3	12	79	unknown or ambiguous member clone on Connection; did you mean 'close'?fn f(queue: Queue[Int]) Unit:
+resolution	3	12	79	unknown or ambiguous member clone on Connection; did you mean 'close'?; available: close, local_address, peer_address, read, shutdown_write, tls_info, write, write_bytesfn f(queue: Queue[Int]) Unit:
     queue.clone()
 resolution	1	13	12	unknown type Queue; add: import Queue from "@std/queues.ms"fn f(queue: Queue[Int]) Unit:
     queue.capacity = 1
@@ -2487,33 +2487,33 @@ fn f(socket: Connection) Unit:
 type	2	11	40	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'fn number(value: Optional[Int]) Int: return value.get()
 fn call() Int: return type	2	16	71	bare return requires Unit; this function returns Int, so write 'return <value>'fn f(value: Optional[Int]) Unit: return
 fn call() Unit: f("wrong")
-type	2	19	58	expected Optional[Int], found Stringfn f(value: Optional[Float]) Unit: return
+type	2	19	58	expected Optional[Int], found String (in argument 'value' of f)fn f(value: Optional[Float]) Unit: return
 fn call() Unit: f(4)
-type	2	19	60	expected Optional[Float], found Intfn f(value: Optional[Int]) Unit: return
+type	2	19	60	expected Optional[Float], found Int (in argument 'value' of f)fn f(value: Optional[Int]) Unit: return
 fn call() Unit: f()
 type	2	17	56	missing argument value: Optional[Int] in call to f; add 'value: <Optional[Int]>'fn call() Unit:
     let value: Optional[Int] = 4
-type	2	32	47	expected Optional[Int], found Intfn f() Optional[Int]: return 4
-type	1	30	29	expected Optional[Int], found Intfn f(value: Optional[Int] = 4) Unit: return
+type	2	32	47	expected Optional[Int], found Int (in the initializer of 'value')fn f() Optional[Int]: return 4
+type	1	30	29	expected Optional[Int], found Int (in the return value)fn f(value: Optional[Int] = 4) Unit: return
 type	1	29	28	expected Optional[Int], found Intfn f(value: Optional[Optional[Int]]) Unit: return
 fn call() Unit: f(4)
-type	2	19	68	expected Optional[Optional[Int]], found Intfn f(value: Int) Unit: return
+type	2	19	68	expected Optional[Optional[Int]], found Int (in argument 'value' of f)fn f(value: Int) Unit: return
 fn call() Unit: f(some(value: 4))
-type	2	19	48	expected Int, found Optional[Int]; Optional[Int] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn f(value: Optional[Float]) Unit: return
+type	2	19	48	expected Int, found Optional[Int] (in argument 'value' of f); Optional[Int] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn f(value: Optional[Float]) Unit: return
 fn call(value: Optional[Int]) Unit: f(value)
-type	2	39	80	expected Optional[Float], found Optional[Int]fn f[T](first: Optional[T], second: T) Unit: return
+type	2	39	80	expected Optional[Float], found Optional[Int] (in argument 'value' of f)fn f[T](first: Optional[T], second: T) Unit: return
 fn call() Unit: f(first: 4, second: "wrong")
 type	2	29	80	conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)
-type	2	37	88	expected Int, found Stringfn f[T](value: Optional[T] = none) Unit: return
+type	2	37	88	expected Int, found String (in argument 'second' of f)fn f[T](value: Optional[T] = none) Unit: return
 fn call() Unit: f()
 type	2	17	64	cannot infer type argument T for f; write f[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameterfn f[T](value: Optional[T]) T: return value.get()
 fn call() Unit: let value = f(none)
 type	2	29	78	cannot infer type argument T for f; write f[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameterfn f(values: List[Optional[Int]]) Unit: return
 fn call() Unit: f([4])
-type	2	20	66	expected Optional[Int], found Intfn f(value: Int) Int: return value
+type	2	20	66	expected Optional[Int], found Int (in entry 1 of the literal, whose entries share one type)fn f(value: Int) Int: return value
 fn call() Unit:
     let callback: fn(value: Optional[Int]) Int = f
-type	3	50	100	expected fn(value: Optional[Int]) Int, found fn(value: Int) Intfn f(value: Optional[Int]) Unit: return
+type	3	50	100	expected fn(value: Optional[Int]) Int, found fn(value: Int) Int (in the initializer of 'callback')fn f(value: Optional[Int]) Unit: return
 fn call() Unit: f(other: 4)
 type	2	19	58	unknown argument other; parameters of f: value
 type	2	17	56	missing argument value: Optional[Int] in call to f; add 'value: <Optional[Int]>'fn f(value: Optional[Int]) Unit: return
@@ -2525,11 +2525,11 @@ fn f(value: Optional[Int]) Unit: return
 fn call() Unit: f(4)
 resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declarationfn wrong(value: Optional[Int]) Int:
     return value.get("missing")
-type	2	22	57	expected Optional[Int], found Stringfn wrong(value: Optional[Optional[Int]]) Int:
+type	2	22	57	expected Optional[Int], found String (in argument 'default' of value.get)fn wrong(value: Optional[Optional[Int]]) Int:
     return value.get()
-type	2	18	63	expected Int, found Optional[Int]; Optional[Int] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn wrong(value: Result[Int, String]) Bool:
+type	2	18	63	expected Int, found Optional[Int] (in the return value); Optional[Int] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn wrong(value: Result[Int, String]) Bool:
     return value.is_some()
-resolution	2	18	60	unknown or ambiguous member is_some on Result[Int, String]; did you mean 'is_ok'?
+resolution	2	18	60	unknown or ambiguous member is_some on Result[Int, String]; did you mean 'is_ok'?; available: and_then, err, get, is_error, is_ok, map, or_else, to_optional
 type	1	1	0	String does not satisfy Error; use a type that implements ittype Optional[T]:
     case some(value: T)
     case none
@@ -2556,7 +2556,7 @@ type	2	18	30	<invalid> does not satisfy Error; use a type that implements itfn 
 type	2	18	30	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding
 type	2	18	30	String does not satisfy Error; use a type that implements itfn f() Error:
     return "failed"
-type	2	12	25	expected Error, found String; use a concrete value implementing Error and create its explicit interface view with Error(value: ...)type Other:
+type	2	12	25	expected Error, found String (in the return value); use a concrete value implementing Error and create its explicit interface view with Error(value: ...)type Other:
     case some(value: Int)
 fn f() Optional[Int]:
     return some(value: 1)
@@ -2571,10 +2571,10 @@ fn use() Set[Int]:
     let values: Set[Int] = Set[Int]()
     let nested: List[Set[Int]] = [values]
     return keep(nested[0], 1)
-type	3	63	99	expected Set[T], found Unitfn use() Set[Int]:
+type	3	63	99	expected Set[T], found Unit (in the return value)fn use() Set[Int]:
     let values: Set[Int] = Set()
     return values.add(1)
-type	3	19	70	expected Set[Int], found Unitfn f() Int:
+type	3	19	70	expected Set[Int], found Unit (in the return value)fn f() Int:
     let List = fn(value: Int) Int: value
     let Map = fn(value: Int) Int: value
     let Set = fn(value: Int) Int: value
@@ -2592,7 +2592,7 @@ fn f() Unit:
     let xs = {1: 2}
 resolution	1	1	0	declaration Map reuses a prelude name; rename it, because Map always refers to the standard declarationfn f(m: Map[String, Int]) Unit:
     m.add("a", true)
-type	2	16	47	expected Int, found Boolfn f(m: Map[List[Int], Int]) Unit:
+type	2	16	47	expected Int, found Bool (in argument 'value' of m.add)fn f(m: Map[List[Int], Int]) Unit:
     return
 type	1	1	0	List[Int] does not satisfy Hashable; collections have no Hashable implementation, so use a record key or join the elements into a Stringtype Map[K,V]:
     value: V
@@ -2606,7 +2606,7 @@ type Map[K,V]:
 resolution	1	8	7	redundant prelude import Map; remove Map from this import and use its prelude declaration directly
 resolution	2	1	38	declaration Map reuses a prelude name; rename it, because Map always refers to the standard declarationfn f(values: Set[Int]) Unit:
     values.add(true)
-type	2	16	44	expected Int, found Boolfn f(values: Set[List[Int]]) Unit:
+type	2	16	44	expected Int, found Bool (in argument 'value' of values.add)fn f(values: Set[List[Int]]) Unit:
     return
 type	1	1	0	List[Int] does not satisfy Hashable; collections have no Hashable implementation, so use a record key or join the elements into a Stringtype Set[T]:
     value: T
@@ -2762,7 +2762,7 @@ export fn main() Int:
 fn value(expr: Expr) Int:
     match expr:
         Num(value): return value
-type	5	5	104	non-exhaustive match; missing cases: Add, or add a final '_' armfn compare(left: Node, right: Node) Bool: return left == right
+type	5	5	104	non-exhaustive match; missing cases: Add, or add a final '_' arm; add the arms 'Add(left, right):'fn compare(left: Node, right: Node) Bool: return left == right
 resolution	1	18	17	unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import it
 resolution	1	31	30	unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import ittype Pair:
     left: Int
@@ -3484,7 +3484,7 @@ fn g() Unit: return
     use(fn(x: Int) Int: return x, other: 1)
     let gs = [fn() Unit: return, fn() Int: return 2]
 resolution	3	5	54	unknown binding use; declare it with 'let use = ...' before use, define 'fn use(...)', or import it from a module
-type	4	34	127	expected fn() Unit, found fn() Intfn f() Unit:
+type	4	34	127	expected fn() Unit, found fn() Int (in entry 2 of the literal, whose entries share one type)fn f() Unit:
     while true: break
     for x in values: consume(x)
     with x = resource(): consume(x)
@@ -4612,7 +4612,7 @@ fn f(x: Int) Int:
 fn f() Unit:
     let values={"a":1,"b":{1:2},}
     consume(values,other: {})
-type	2	27	39	expected Int, found Map[Int, Int]
+type	2	27	39	expected Int, found Map[Int, Int] (in entry 4 of the literal, whose entries share one type)
 resolution	3	5	51	unknown binding consume; declare it with 'let consume = ...' before use, define 'fn consume(...)', or import it from a moduleimport ListBuilder from "@std/collections.ms"
 let A = 1
 let B = 2
@@ -4936,7 +4936,7 @@ fn answer() Unit:
 fn identity[T](value: T) T: value
 fn first() String: identity(1)
 fn second() Int: identity(2)
-type	2	20	53	expected String, found Intfn answer(value: Int = (fn() Int:
+type	2	20	53	expected String, found Int (in the return value); Int does not convert to String implicitly; interpolate it into text, e.g. "{value}"fn answer(value: Int = (fn() Int:
     var current = 0
     current = current + 1
     return current
@@ -5062,7 +5062,7 @@ fn content_type(request: HttpRequest) Optional[List[Bytes]]:
     value: String
 fn lookup(fields: HttpHeaders) Unit:
     fields.values("content-type")
-resolution	4	12	84	unknown or ambiguous member values on HttpHeaders; did you mean 'value'?fn read(values: List[Int]) Int:
+resolution	4	12	84	unknown or ambiguous member values on HttpHeaders; did you mean 'value'?; available: valuefn read(values: List[Int]) Int:
     if let first = values.first():
         return first + 1
     return 0
@@ -5202,14 +5202,14 @@ fn read(node: Node) Int:
 fn answer() Int: missing
 resolution	1	18	17	unknown binding missing; declare it with 'let missing = ...' before use, define 'fn missing(...)', or import it from a modulefn answer() Int:
     return 42fn answer() Int: "wrong"
-type	1	18	17	expected Int, found Stringexport fn value() Int:
+type	1	18	17	expected Int, found String (in the return value)export fn value() Int:
     let unused = 1
     return 2
 export fn value() Int: "wrong"
-type	1	24	23	expected Int, found Stringexport fn value() Int: "private error"
-type	1	24	23	expected Int, found Stringexport fn value() Int: 1
+type	1	24	23	expected Int, found String (in the return value)export fn value() Int: "private error"
+type	1	24	23	expected Int, found String (in the return value)export fn value() Int: 1
 export fn bad() Int: "wrong"
-type	1	22	21	expected Int, found Stringexport fn alone() Int: 3
+type	1	22	21	expected Int, found String (in the return value)export fn alone() Int: 3
 export fn other() Int: 1
 export fn value() Int: 2
 export fn value() Int: 7

@@ -1,4 +1,4 @@
-//! Replays `tests/oracle/url.tsv`, recorded from the Go runtime by `go run ./scripts/rs-oracle`.
+//! Replays `tests/oracle/url.tsv`, a recorded corpus.
 use ms_std_core::Fail;
 use ms_std_url::*;
 

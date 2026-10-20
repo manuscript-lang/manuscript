@@ -1047,6 +1047,16 @@ impl Verifier<'_> {
                     "store writes a non-droppable value through a ptr",
                 )
             }
+            Op::FuncAddr => {
+                arity(0)?;
+                let Imm::Func(g) = inst.imm else {
+                    return Err("missing function".into());
+                };
+                want(
+                    g.index() < m.funcs.len() && res == Some(Ty::PTR),
+                    "func.addr yields the ptr of a function",
+                )
+            }
             Op::TypeDesc => {
                 arity(0)?;
                 want(

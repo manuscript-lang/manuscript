@@ -18,6 +18,7 @@ For the HIR→MIR lowering thread. Source of truth is `src/ir.rs` (ops), `src/ve
 - Scalars are `int`(i64), `float`(f64), `bool`(i8). Records and alternatives are flattened to scalar leaves in SSA and laid out at natural alignment in memory.
 - Directly recursive types are boxed (heap pointer); others inline. `Optional[T]` of a pointer-like `T` is a nullable pointer; interface values are `{data, vtable}` with vtable slot 0 = drop glue.
 - Lists are `{ptr,len,cap}`; `list.addr` and `ptr.field` expose element and field addresses for scalar-replaced loops.
+- `func.addr` yields the address of a function as a `ptr`, for runtime entry points that take a callback (the comparator thunk of `List.sorted`).
 
 ## Checked arithmetic and faults
 - `*.chk` ops fault on overflow/zero; plain ops wrap. Index and unwrap faults are cold blocks calling `msrt_*fault*`.

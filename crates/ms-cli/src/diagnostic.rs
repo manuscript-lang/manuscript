@@ -96,8 +96,13 @@ pub fn diagnostics_document(diagnostics: &[CommandDiagnostic]) -> Json {
 
 /// The stable rule family for a source diagnostic (`Diagnostic.Code` in Go).
 pub fn code_for(phase: &str, message: &str) -> String {
-    // Messages read "<cause>; <fix>". Only the cause identifies the rule.
-    let message = message.split("; ").next().unwrap_or("");
+    // Messages read "<cause>; <fix>". Only the cause identifies the rule, not a
+    // trailing " (in <use site>)" context.
+    let message = message
+        .split("; ")
+        .next()
+        .and_then(|cause| cause.split(" (in ").next())
+        .unwrap_or("");
     let has = |needle: &str| message.contains(needle);
     let code = match phase {
         "parse" => {

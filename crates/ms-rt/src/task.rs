@@ -108,9 +108,29 @@ static SCHED: Global<Sched> = Global::new(Sched {
     live: 0,
 });
 
-fn sched() -> &'static mut Sched {
-    // SAFETY: single threaded runtime state.
-    unsafe { &mut *SCHED.ptr() }
+/// The scheduler state. Each access derives a fresh short-lived reference from the raw pointer,
+/// so a binding held across calls that also reach the scheduler never aliases a live `&mut`.
+#[derive(Clone, Copy)]
+struct SchedRef(*mut Sched);
+
+impl core::ops::Deref for SchedRef {
+    type Target = Sched;
+
+    fn deref(&self) -> &Sched {
+        // SAFETY: single threaded runtime state; the reference lasts one expression.
+        unsafe { &*self.0 }
+    }
+}
+
+impl core::ops::DerefMut for SchedRef {
+    fn deref_mut(&mut self) -> &mut Sched {
+        // SAFETY: as above.
+        unsafe { &mut *self.0 }
+    }
+}
+
+fn sched() -> SchedRef {
+    SchedRef(SCHED.ptr())
 }
 
 // ---- context switch ----
@@ -317,7 +337,7 @@ fn lookup(h: u64) -> *mut Task {
 }
 
 unsafe fn new_task(ctx: Ctx) -> *mut Task {
-    let s = sched();
+    let mut s = sched();
     let t = alloc::alloc(size_of::<Task>()) as *mut Task;
     let (idx, gen_) = match s.free_slots.pop() {
         Some(i) => {
@@ -357,7 +377,7 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
 }
 
 unsafe fn free_task(t: *mut Task) {
-    let s = sched();
+    let mut s = sched();
     // SAFETY: `t` is a live record from `new_task`; its slot is cleared before release.
     unsafe {
         let idx = ((*t).handle & 0xffff_ffff) as usize - 1;
@@ -371,7 +391,7 @@ unsafe fn free_task(t: *mut Task) {
 
 /// Creates the record of the thread's current flow of control on first use.
 unsafe fn ensure_init() -> *mut Task {
-    let s = sched();
+    let mut s = sched();
     if s.cur.is_null() {
         // SAFETY: first use; the live globals belong to this flow, so its saved context starts empty.
         unsafe {
@@ -388,7 +408,7 @@ unsafe fn ensure_init() -> *mut Task {
 // ---- stacks ----
 
 unsafe fn alloc_stack(len: usize) -> *mut u8 {
-    let s = sched();
+    let mut s = sched();
     if len == DEFAULT_STACK
         && let Some(base) = s.pool.pop()
     {
@@ -405,7 +425,7 @@ unsafe fn alloc_stack(len: usize) -> *mut u8 {
 }
 
 unsafe fn release_stack(base: usize, len: usize) {
-    let s = sched();
+    let mut s = sched();
     if stack::POOLED && len == DEFAULT_STACK && s.pool.len() < STACK_POOL {
         s.pool.push(base);
         return;
@@ -416,7 +436,7 @@ unsafe fn release_stack(base: usize, len: usize) {
 
 /// Frees what finished tasks left behind; runs on the stack of a task that is still alive.
 unsafe fn reap() {
-    let s = sched();
+    let mut s = sched();
     // SAFETY: the zombie's stack is no longer in use; its record is unreachable.
     unsafe {
         if s.zombie_stack.0 != 0 {
@@ -437,7 +457,7 @@ unsafe fn reap() {
 pub use crate::poller::kick;
 
 unsafe fn poller_fd() -> i32 {
-    let s = sched();
+    let mut s = sched();
     if s.epfd < 0 {
         // SAFETY: creates the poller descriptors.
         s.epfd = unsafe { crate::poller::create() };
@@ -447,7 +467,7 @@ unsafe fn poller_fd() -> i32 {
 
 /// Marks `t` runnable with the given park result.
 unsafe fn wake(t: *mut Task, result: u32) {
-    let s = sched();
+    let mut s = sched();
     // SAFETY: `t` is a live waiting task.
     unsafe {
         if (*t).state != State::Waiting {
@@ -468,7 +488,7 @@ unsafe fn wake(t: *mut Task, result: u32) {
 
 /// Wakes timers that have expired.
 unsafe fn expire_timers(now: i64) {
-    let s = sched();
+    let mut s = sched();
     while let Some(&Reverse((deadline, h))) = s.timers.peek()
         && deadline <= now
     {
@@ -519,7 +539,7 @@ unsafe fn cancel_all_waiters() -> bool {
 
 /// Blocks until at least one task is runnable.
 unsafe fn reactor_wait() {
-    let s = sched();
+    let mut s = sched();
     // SAFETY: syscalls with valid buffers; task records are live.
     unsafe {
         loop {
@@ -575,7 +595,7 @@ unsafe fn after_switch() {
 /// Runs the next runnable task; returns when the calling task is scheduled again.
 /// The caller has already set its state (Ready and queued, Waiting, or Done).
 unsafe fn switch_away() {
-    let s = sched();
+    let mut s = sched();
     // SAFETY: single threaded scheduler; stacks and records outlive the switch.
     unsafe {
         let cur = s.cur;
@@ -613,7 +633,7 @@ extern "C" fn task_main() -> ! {
             *fault::STACK_HI.ptr() = hi;
         }
         after_switch();
-        let s = sched();
+        let mut s = sched();
         let t = s.cur;
         let entry = (*t)
             .entry
@@ -719,7 +739,7 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
             let hook: unsafe extern "C-unwind" fn() = core::mem::transmute(hook);
             hook();
         }
-        let s = sched();
+        let mut s = sched();
         if fd >= 0 {
             let fd_idx = fd as usize;
             while s.fd_waiters.len() <= fd_idx {
@@ -748,8 +768,9 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
             if s.timers.len() > s.timer_limit {
                 // A task woken by its descriptor leaves its entry behind until the deadline;
                 // a loop of short waits with long timeouts must not grow the heap without bound.
-                let slots = &s.slots;
-                s.timers.retain(|&Reverse((deadline, h))| {
+                let sched = &mut *s;
+                let slots = &sched.slots;
+                sched.timers.retain(|&Reverse((deadline, h))| {
                     let t = lookup_in(slots, h);
                     !t.is_null() && (*t).state == State::Waiting && (*t).deadline == deadline
                 });
@@ -865,7 +886,7 @@ pub unsafe extern "C-unwind" fn msrt_task_join(handle: u64, msg_out: *mut *mut S
 pub fn reset_for_tests() {
     // SAFETY: tests hold the global lock and no task is mid-switch.
     unsafe {
-        let s = sched();
+        let mut s = sched();
         for i in 0..s.slots.len() {
             let t = s.slots[i].task;
             if !t.is_null() {
@@ -903,6 +924,19 @@ mod tests {
 
     static LOG: Global<[u8; 16]> = Global::new([0; 16]);
     static LOG_N: Global<usize> = Global::new(0);
+
+    /// A binding held across another `sched()` access must stay valid; Miri's Stacked Borrows
+    /// rejected the previous `&'static mut` return here.
+    #[test]
+    fn scheduler_handles_do_not_alias() {
+        let _g = lock();
+        let mut held = sched();
+        let before = held.live;
+        sched().live += 1;
+        held.live += 1;
+        assert_eq!(held.live, before + 2);
+        sched().live -= 2;
+    }
 
     fn note(v: u8) {
         // SAFETY: tests hold the lock; the log has room for 16 entries.

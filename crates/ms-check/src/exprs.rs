@@ -73,6 +73,14 @@ const TIME_ARITHMETIC: [(BinaryOp, &str, &str, &str); 5] = [
     (BinaryOp::Sub, "Instant", "Instant", "Duration"),
 ];
 
+/// Names the use after the "expected X, found Y" head: "... (in <context>); hint".
+fn with_mismatch_context(message: String, context: &str) -> String {
+    match message.split_once("; ") {
+        Some((head, rest)) => format!("{head} (in {context}); {rest}"),
+        None => format!("{message} (in {context})"),
+    }
+}
+
 fn unknown_expected(expected: Option<&Ty>) -> bool {
     expected.is_some_and(|t| t.kind == Kind::Primitive && t.id == "<invalid>")
 }
@@ -87,8 +95,21 @@ fn finish_info(mut i: Info) -> Info {
 impl Checker {
     /// Checks an expression against an expected type.
     pub(crate) fn expression(&mut self, e: &Expr, expected: Option<&Ty>) -> Info {
+        let context = self.mismatch_context.take();
         let i = self.infer(e, expected);
+        self.mismatch_context = context;
         self.check_expression(e, i, expected)
+    }
+
+    /// Checks an expression whose use is named in a mismatch diagnostic.
+    pub(crate) fn expression_in(
+        &mut self,
+        e: &Expr,
+        expected: Option<&Ty>,
+        context: String,
+    ) -> Info {
+        self.mismatch_context = Some(context);
+        self.expression(e, expected)
     }
 
     pub(crate) fn check_expression(
@@ -97,6 +118,7 @@ impl Checker {
         mut i: Info,
         expected: Option<&Ty>,
     ) -> Info {
+        let context = self.mismatch_context.take();
         if i.ty.is_none() {
             i.ty = Some(invalid());
         }
@@ -118,7 +140,10 @@ impl Checker {
                     i.scoped_error = self.error_needs_scope(&cause);
                     i.ty = Some(exp.clone());
                 } else {
-                    let msg = self.assignment_mismatch(&actual, exp);
+                    let mut msg = self.assignment_mismatch(&actual, exp);
+                    if let Some(context) = context {
+                        msg = with_mismatch_context(msg, &context);
+                    }
                     self.type_error(e.pos, msg);
                 }
             }
@@ -631,7 +656,14 @@ impl Checker {
             let typ = &types[at % types.len()];
             let v = match &checked[at] {
                 Some(v) if v.ty.as_ref().is_some_and(|t| Rc::ptr_eq(t, typ)) => v.clone(),
-                _ => self.expression(item, Some(typ)),
+                _ => self.expression_in(
+                    item,
+                    Some(typ),
+                    format!(
+                        "entry {} of the literal, whose entries share one type",
+                        at + 1
+                    ),
+                ),
             };
             i.no_return = i.no_return || v.no_return;
         }
@@ -809,7 +841,7 @@ impl Checker {
                 hint = result_use_hint(&bt, &at);
             }
             if hint.is_empty() {
-                hint = "convert one side so both have one type (e.g. to_string() for text, or an Int/Float conversion)".to_string();
+                hint = "convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)".to_string();
             }
             self.type_error(
                 e.pos,

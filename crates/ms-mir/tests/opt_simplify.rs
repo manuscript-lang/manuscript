@@ -166,3 +166,19 @@ fn ownership_is_never_dropped() {
     assert_eq!(count(&t, "drop "), 2, "{t}");
     assert_eq!(count(&t, "list.new"), 2, "{t}");
 }
+
+#[test]
+fn folds_operations_on_a_known_plain_case() {
+    // Deleting the construction deletes its paired drop, so only result and output are compared.
+    let before =
+        load(&std::fs::read_to_string(root().join("fixtures-opt-nocheck/alt_known.mir")).unwrap());
+    let mut m = before.clone();
+    simplify::run(&mut m);
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+    assert_eq!(observe(&m).0, observe(&before).0);
+    assert_eq!(observe(&m).1, observe(&before).1);
+    let main = func_text(&m, "main");
+    for op in ["alt.new", "alt.tag", "alt.get", "drop"] {
+        assert_eq!(count(&main, op), 0, "{op} left in:\n{main}");
+    }
+}

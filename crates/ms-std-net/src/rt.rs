@@ -9,6 +9,8 @@ use std::sync::atomic::{AtomicU8, Ordering};
 unsafe extern "C" {
     static msrt_cancel_flag: AtomicU8;
     fn msrt_cancelled() -> !;
+    fn msrt_shield_enter();
+    fn msrt_shield_exit();
     fn msrt_task_current() -> u64;
     fn msrt_task_set_prepark(hook: Option<unsafe extern "C-unwind" fn()>);
     fn msrt_task_spawn(
@@ -43,6 +45,18 @@ pub fn check_cancel() {
 pub fn cancelled() -> ! {
     // SAFETY: runs cleanups and exits; never returns.
     unsafe { msrt_cancelled() }
+}
+
+/// Shields the running task from SIGINT/SIGTERM cancellation until `unshield`.
+pub fn shield() {
+    // SAFETY: plain counter update on the runtime thread.
+    unsafe { msrt_shield_enter() }
+}
+
+/// Ends one `shield`.
+pub fn unshield() {
+    // SAFETY: plain counter update on the runtime thread.
+    unsafe { msrt_shield_exit() }
 }
 
 /// Id of the running task.

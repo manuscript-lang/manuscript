@@ -42,7 +42,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Int, found String",
+        "message": "expected Int, found String (in the initializer of 'unrelated')",
         "position": {
           "file": "pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms",
           "line": 8,
@@ -54,7 +54,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:4:69: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:4:100: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:7:80: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:8:26: type: expected Int, found String\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:4:69: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:4:100: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:7:80: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:8:26: type: expected Int, found String (in the initializer of 'unrelated')\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

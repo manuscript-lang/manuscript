@@ -384,6 +384,29 @@ fn run_shielded(f: CleanupFn, arg: *mut u8) {
     }
 }
 
+/// Shields the running task from stop requests until the matching `msrt_shield_exit`, for
+/// work that must drain after SIGINT/SIGTERM (a server finishing in-flight requests).
+#[unsafe(no_mangle)]
+pub extern "C" fn msrt_shield_enter() {
+    // SAFETY: single threaded access to the shield counter.
+    unsafe {
+        *SHIELD.ptr() += 1;
+        msrt_cancel_flag.store(0, Ordering::Relaxed);
+    }
+}
+
+/// Ends one `msrt_shield_enter`; a stop request that arrived meanwhile applies again.
+#[unsafe(no_mangle)]
+pub extern "C" fn msrt_shield_exit() {
+    // SAFETY: single threaded access to the shield counter.
+    unsafe {
+        *SHIELD.ptr() = (*SHIELD.ptr()).saturating_sub(1);
+        if *SHIELD.ptr() == 0 {
+            msrt_cancel_flag.store(unshielded_cancel_flag(), Ordering::Relaxed);
+        }
+    }
+}
+
 /// Pops and runs the innermost cleanup action; false when none remain.
 fn run_one_cleanup() -> bool {
     // SAFETY: single threaded access to the cleanup stack.

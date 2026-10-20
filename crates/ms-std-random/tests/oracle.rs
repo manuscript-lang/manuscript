@@ -1,4 +1,4 @@
-//! Replays `tests/oracle/random.tsv`, recorded from the Go runtime by `go run ./scripts/rs-oracle`.
+//! Replays `tests/oracle/random.tsv`, a recorded corpus.
 //! The entropy is a deterministic LCG stream (see `testEntropy` in `scripts/rs-oracle/random.go`).
 use ms_std_random::*;
 

@@ -2,8 +2,7 @@
 //!
 //! The generated code owns the input `ReadStream`: it pulls chunks and calls [`Decoder::feed`] /
 //! [`Decoder::finish_input`] (or [`Encoder::feed`] / [`Encoder::finish`]) and drains the codec
-//! with `poll` / `take`. Framing, checks and error mapping follow `compressedStream` in
-//! `pkg/runtime/compress.go`: malformed data is `InvalidData`, exceeding `max_bytes` is
+//! with `poll` / `take`. Framing, checks and error mapping are: malformed data is `InvalidData`, exceeding `max_bytes` is
 //! `LimitExceeded`, and an out-of-range level is `InvalidInput`.
 use crate::{Format, adler32_update, crc32};
 use alloc::boxed::Box;

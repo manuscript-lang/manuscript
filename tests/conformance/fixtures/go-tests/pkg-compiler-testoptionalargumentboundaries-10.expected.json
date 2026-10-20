@@ -20,7 +20,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Int, found String",
+        "message": "expected Int, found String (in argument 'second' of f)",
         "position": {
           "file": "pkg-compiler-testoptionalargumentboundaries-10.ms",
           "line": 5,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-10.ms:5:29: type: conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)\n<DIR>/pkg-compiler-testoptionalargumentboundaries-10.ms:5:37: type: expected Int, found String\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-10.ms:5:29: type: conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)\n<DIR>/pkg-compiler-testoptionalargumentboundaries-10.ms:5:37: type: expected Int, found String (in argument 'second' of f)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

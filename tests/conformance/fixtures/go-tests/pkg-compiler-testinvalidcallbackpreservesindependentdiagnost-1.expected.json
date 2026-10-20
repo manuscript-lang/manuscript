@@ -42,7 +42,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Int, found String",
+        "message": "expected Int, found String (in the initializer of 'wrong')",
         "position": {
           "file": "pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms",
           "line": 7,
@@ -76,7 +76,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms:5:38: resolution: unknown binding missing; declare it with 'let missing = ...' before use, define 'fn missing(...)', or import it from a module\n<DIR>/pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms:5:52: resolution: unknown binding other_missing; declare it with 'let other_missing = ...' before use, define 'fn other_missing(...)', or import it from a module\n<DIR>/pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms:6:20: resolution: unknown binding apply; declare it with 'let apply = ...' before use, define 'fn apply(...)', or import it from a module\n<DIR>/pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms:7:22: type: expected Int, found String\n<DIR>/pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms:8:40: type: callback parameter count does not match its context; the callback takes exactly the parameters its context declares\n<DIR>/pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms:8:46: resolution: unknown binding missing_too; declare it with 'let missing_too = ...' before use, define 'fn missing_too(...)', or import it from a module\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms:5:38: resolution: unknown binding missing; declare it with 'let missing = ...' before use, define 'fn missing(...)', or import it from a module\n<DIR>/pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms:5:52: resolution: unknown binding other_missing; declare it with 'let other_missing = ...' before use, define 'fn other_missing(...)', or import it from a module\n<DIR>/pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms:6:20: resolution: unknown binding apply; declare it with 'let apply = ...' before use, define 'fn apply(...)', or import it from a module\n<DIR>/pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms:7:22: type: expected Int, found String (in the initializer of 'wrong')\n<DIR>/pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms:8:40: type: callback parameter count does not match its context; the callback takes exactly the parameters its context declares\n<DIR>/pkg-compiler-testinvalidcallbackpreservesindependentdiagnost-1.ms:8:46: resolution: unknown binding missing_too; declare it with 'let missing_too = ...' before use, define 'fn missing_too(...)', or import it from a module\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

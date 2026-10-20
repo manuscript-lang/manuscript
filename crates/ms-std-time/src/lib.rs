@@ -4,7 +4,7 @@
 //! `repr(C) { seconds: i64, nanos: i64 }` and `Instant` is `repr(C) { domain: u64, tick: i64 }`;
 //! both are passed by pointer and returned through a trailing `out`. Fallible functions return a
 //! status (`0` ok, else an `ms-rt-abi` `STATUS_*` code) and write the result only on success.
-//! Arithmetic faults carry the Go runtime's message text.
+//! Arithmetic faults carry a message text.
 #![no_std]
 
 extern crate alloc;

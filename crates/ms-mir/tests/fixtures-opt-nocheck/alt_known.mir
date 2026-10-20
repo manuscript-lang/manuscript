@@ -1,0 +1,13 @@
+module "alt_known"
+alt Res { ok(v: int), err(s: str) }
+entry @main
+fn @main() -> int {
+b0:
+  %five: int = iconst 5
+  %r: Res = alt.new Res.ok %five
+  %t: int = alt.tag %r
+  %v: int = alt.get Res.ok.v %r
+  drop %r
+  %s: int = iadd %v, %t
+  ret %s
+}

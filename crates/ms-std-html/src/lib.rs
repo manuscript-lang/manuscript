@@ -1,5 +1,4 @@
-//! `@std/html.ms` natives: HTML5 parsing (a port of `golang.org/x/net/html`) and Go's `html`
-//! escaping, with the resource limits of `pkg/runtime/html.go`.
+//! `@std/html.ms` natives: HTML5 parsing and HTML escaping, with resource limits.
 #![no_std]
 
 extern crate alloc;

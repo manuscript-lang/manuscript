@@ -81,6 +81,11 @@ pub fn unknown_command(io: &mut Io, name: &str) {
     }
     if let Some(best) = best {
         let _ = writeln!(io.stderr, "Did you mean 'ms {best}'?");
+    } else if name.ends_with(".ms") || name.ends_with(".toml") || name.contains('/') {
+        let _ = writeln!(
+            io.stderr,
+            "'{name}' looks like a path; commands come first, e.g. 'ms run {name}' or 'ms check {name}'."
+        );
     }
     let _ = writeln!(
         io.stderr,

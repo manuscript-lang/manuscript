@@ -9,7 +9,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Optional[Int], found Int",
+        "message": "expected Optional[Int], found Int (in entry 1 of the literal, whose entries share one type)",
         "position": {
           "file": "pkg-compiler-testoptionalargumentboundaries-13.ms",
           "line": 5,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-13.ms:5:20: type: expected Optional[Int], found Int\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-13.ms:5:20: type: expected Optional[Int], found Int (in entry 1 of the literal, whose entries share one type)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

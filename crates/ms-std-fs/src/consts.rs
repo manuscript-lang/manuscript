@@ -1,4 +1,4 @@
-//! `fs.constants()`: host file constants, sorted by name (`hostos.FileConstants` in the Go runtime).
+//! `fs.constants()`: host file constants, sorted by name.
 #[cfg(windows)]
 use crate::sys;
 use alloc::vec::Vec;
@@ -103,7 +103,7 @@ mod tests {
             .iter()
             .map(|(k, v)| alloc::format!("{k} {v}"))
             .collect();
-        // The values in this table were dumped from the Go runtime on linux/amd64.
+        // The values in this table were recorded on linux/amd64.
         if cfg!(all(target_os = "linux", target_arch = "x86_64")) {
             assert_eq!(ours.join(";"), go);
         } else if cfg!(windows) {

@@ -608,7 +608,16 @@ pub unsafe extern "C-unwind" fn msrt_string_trim_end(s: *const StrObj) -> *mut S
 }
 
 fn is_cased(c: char) -> bool {
-    c.is_lowercase() || c.is_uppercase()
+    // Titlecase letters (Lt) are neither `is_lowercase` nor `is_uppercase` in Rust.
+    c.is_lowercase()
+        || c.is_uppercase()
+        || matches!(
+            c,
+            '\u{1C5}' | '\u{1C8}' | '\u{1CB}' | '\u{1F2}' | '\u{1FBC}' | '\u{1FCC}' | '\u{1FFC}'
+        )
+        || ('\u{1F88}'..='\u{1F8F}').contains(&c)
+        || ('\u{1F98}'..='\u{1F9F}').contains(&c)
+        || ('\u{1FA8}'..='\u{1FAF}').contains(&c)
 }
 
 fn map_case(text: &[u8], upper: bool) -> Vec<u8> {
@@ -680,6 +689,8 @@ fn is_case_ignorable(c: char) -> bool {
             | '\u{B8}'
             | '\u{2019}'
     ) || ('\u{300}'..='\u{36F}').contains(&c)
+        || ('\u{2B0}'..='\u{2FF}').contains(&c)
+        || ('\u{200B}'..='\u{200F}').contains(&c)
 }
 
 #[unsafe(no_mangle)]
