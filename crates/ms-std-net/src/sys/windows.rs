@@ -267,7 +267,7 @@ pub fn connect_in_progress(e: &std::io::Error) -> bool {
 }
 
 /// Options for a listening TCP socket before `bind`. Unlike Unix, `SO_REUSEADDR` here
-/// lets another process take over the port, so (like Go) the port is claimed exclusively.
+/// lets another process take over the port, so the port is claimed exclusively.
 pub fn prepare_listener(sock: &socket2::Socket) -> std::io::Result<()> {
     let on: i32 = 1;
     // SAFETY: `on` outlives the call and the length is that of the `i32` it points to.
@@ -287,7 +287,7 @@ pub fn prepare_listener(sock: &socket2::Socket) -> std::io::Result<()> {
 }
 
 /// Options for a freshly bound datagram socket: an ICMP "port unreachable" must not
-/// surface as a connection reset on a later receive (Go clears this too).
+/// surface as a connection reset on a later receive.
 pub fn prepare_udp(sock: &UdpSocket) -> std::io::Result<()> {
     let off: u32 = 0;
     let mut returned: u32 = 0;

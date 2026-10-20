@@ -140,7 +140,7 @@ impl Headers {
         }
     }
 
-    /// Received headers the way net/http hands them over: canonical names, sorted
+    /// Received headers as handlers see them: canonical names, sorted
     /// by name, values in arrival order.
     pub fn from_received(fields: impl IntoIterator<Item = (String, Vec<u8>)>) -> Headers {
         let mut sorted: Vec<(String, Vec<Vec<u8>>)> = Vec::new();

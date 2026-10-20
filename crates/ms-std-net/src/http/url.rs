@@ -1,4 +1,4 @@
-//! URLs of HTTP and WebSocket requests, following Go's `net/url`.
+//! URLs of HTTP and WebSocket requests, over byte strings.
 
 /// A parsed absolute URL with a host and no user info.
 #[derive(Clone, Debug, PartialEq, Eq)]

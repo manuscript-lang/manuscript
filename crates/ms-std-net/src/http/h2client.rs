@@ -21,7 +21,7 @@ const READ_BUF: usize = 64 * 1024;
 /// Longest the best-effort flush of a cancellation may block.
 const CANCEL_FLUSH: Duration = Duration::from_millis(200);
 
-/// Local settings, sized like Go's transport so a slow reader of one stream
+/// Local settings, sized so a slow reader of one stream
 /// does not starve the others.
 pub(crate) fn client_settings(max_header_bytes: Option<u64>) -> Settings {
     Settings {
@@ -32,7 +32,7 @@ pub(crate) fn client_settings(max_header_bytes: Option<u64>) -> Settings {
     }
 }
 
-/// Go's name of an HTTP/2 error code.
+/// The name of an HTTP/2 error code.
 pub(crate) fn code_name(code: u32) -> String {
     let name = match code {
         error_code::NO_ERROR => "NO_ERROR",

@@ -495,7 +495,7 @@ impl Exchange {
         }
     }
 
-    /// Answers a refused upgrade the way gorilla does and marks the exchange.
+    /// Answers a refused upgrade and marks the exchange.
     fn reject(&self, rejected: Rejected, deadline: Deadline) -> WsErr {
         let response = rejected.response(unix_now(), false);
         let _ = self.send(&response, deadline);

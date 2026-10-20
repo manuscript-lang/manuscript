@@ -25,7 +25,7 @@ use std::rc::Rc;
 /// `io.ErrUnexpectedEOF`).
 pub const TRUNCATED: &str = "connection closed before the exchange completed";
 
-/// gorilla's `writeWait`, used for pongs and close replies.
+/// Write deadline, used for pongs and close replies.
 const CONTROL_WRITE_NANOS: i64 = 1_000_000_000;
 /// The deadline of `ping` in `websocket.ms`.
 const PING_WRITE_NANOS: i64 = 1_000_000_000;
@@ -86,7 +86,7 @@ pub struct Socket {
     reading: Cell<bool>,
     queue: RefCell<VecDeque<Vec<u8>>>,
     flushing: Cell<bool>,
-    /// gorilla's sticky `writeErr`: a failed write or a sent close frame.
+    /// Sticky write error: a failed write or a sent close frame.
     write_error: RefCell<Option<WsErr>>,
     /// `close()` ran.
     closed: Cell<bool>,
@@ -196,7 +196,7 @@ impl Socket {
         }
     }
 
-    /// Writes one encoded frame (or message). A failure is sticky, as in gorilla; a nested
+    /// Writes one encoded frame (or message). A failure is sticky; a nested
     /// call while a write is running only queues its bytes behind it.
     fn write(&self, bytes: Vec<u8>, timeout: Option<i64>, on_timeout: WsErr) -> Result<(), WsErr> {
         if let Some(e) = self.write_error.borrow().clone() {
@@ -376,7 +376,7 @@ impl Socket {
         Ok(Some(Message { data, text }))
     }
 
-    /// gorilla's default ping handler: a pong with the same payload. A sent close frame and
+    /// Default ping handler: a pong with the same payload. A sent close frame and
     /// a timeout are ignored; any other write failure ends the session.
     fn answer_ping(&self, payload: &[u8]) -> Result<(), WsErr> {
         let timed_out = WsErr::Timeout;
@@ -396,7 +396,7 @@ impl Socket {
         Err(self.finish(Self::failed_text(text, body)))
     }
 
-    /// gorilla's default close handler echoes the code; the receive then ends with the close
+    /// Default close handler: echoes the code; the receive then ends with the close
     /// error, which is a normal end for 1000 and 1001.
     fn peer_closed(&self, status: u16, reason: &str) -> Result<Option<Message>, WsErr> {
         let echo = frame::format_close(status, "");
