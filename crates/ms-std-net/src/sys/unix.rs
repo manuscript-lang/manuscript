@@ -1,6 +1,6 @@
 //! Unix: descriptors, `poll(2)`, `eventfd` (a pipe off Linux) and a mio readiness set.
 
-use super::Ev;
+use super::{Ev, Raised, Sockets, mio_interest};
 use crate::rt;
 use mio::unix::SourceFd;
 #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -9,7 +9,6 @@ use rustix::event::{self, PollFd, PollFlags};
 use rustix::io;
 use rustix::time::Timespec;
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd};
 use std::time::Duration;
 
@@ -105,49 +104,16 @@ impl Default for Poller {
     }
 }
 
-/// The server's set of watched sockets, on mio.
-///
-/// mio reports edges, the server reads and writes as if readiness were level-triggered, so
-/// a socket is re-registered each time it is reported: the kernel then reports it again
-/// while it is still ready. A socket with no interest is kept registered, for hang-up and
-/// error only; its reads and writes are dropped without re-arming.
+/// The server's set of watched sockets, on mio (see [`Sockets::report`] for how its edge
+/// events serve the server's level-triggered reads and writes).
 pub struct Poller {
     poll: RefCell<mio::Poll>,
     registry: mio::Registry,
     events: RefCell<mio::Events>,
-    sockets: RefCell<Sockets>,
-}
-
-/// The registered sockets, found by descriptor (to update or delete) and by token (to
-/// resolve an event).
-#[derive(Default)]
-struct Sockets {
-    by_fd: HashMap<Raw, (u64, Ev)>,
-    by_token: HashMap<u64, Raw>,
-}
-
-impl Sockets {
-    fn set(&mut self, fd: Raw, token: u64, ev: Ev) {
-        self.by_fd.insert(fd, (token, ev));
-        self.by_token.insert(token, fd);
-    }
-
-    fn remove(&mut self, fd: Raw) {
-        if let Some((token, _)) = self.by_fd.remove(&fd) {
-            self.by_token.remove(&token);
-        }
-    }
+    sockets: RefCell<Sockets<Raw>>,
 }
 
 const MAX_EVENTS: usize = 64;
-
-fn interest(ev: Ev) -> mio::Interest {
-    match (ev.contains(Ev::IN), ev.contains(Ev::OUT)) {
-        (_, false) => mio::Interest::READABLE,
-        (false, true) => mio::Interest::WRITABLE,
-        (true, true) => mio::Interest::READABLE | mio::Interest::WRITABLE,
-    }
-}
 
 impl Poller {
     pub fn new() -> Poller {
@@ -164,9 +130,12 @@ impl Poller {
     /// Registers `fd` for `ev`, or updates an earlier registration.
     fn arm(&self, fd: Raw, token: u64, ev: Ev) -> std::io::Result<()> {
         let (mut source, token) = (SourceFd(&fd), mio::Token(token as usize));
-        match self.registry.reregister(&mut source, token, interest(ev)) {
+        match self
+            .registry
+            .reregister(&mut source, token, mio_interest(ev))
+        {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                self.registry.register(&mut source, token, interest(ev))
+                self.registry.register(&mut source, token, mio_interest(ev))
             }
             r => r,
         }
@@ -198,42 +167,19 @@ impl Poller {
     pub fn poll(&self, out: &mut Vec<(u64, Ev)>, max: usize) {
         out.clear();
         let mut events = self.events.borrow_mut();
-        if self
+        let polled = self
             .poll
             .borrow_mut()
-            .poll(&mut events, Some(Duration::ZERO))
-            .is_err()
-        {
-            return;
-        }
-        let sockets = self.sockets.borrow();
-        for e in events.iter().take(max) {
-            let token = e.token().0 as u64;
-            let Some(&fd) = sockets.by_token.get(&token) else {
-                continue;
-            };
-            let Some(&(_, interest)) = sockets.by_fd.get(&fd) else {
-                continue;
-            };
-            let mut ev = Ev::NONE;
-            if e.is_readable() && interest.contains(Ev::IN) {
-                ev = ev | Ev::IN;
-            }
-            if e.is_writable() && interest.contains(Ev::OUT) {
-                ev = ev | Ev::OUT;
-            }
-            let reads_and_writes = ev;
-            if e.is_error() || e.is_read_closed() || e.is_write_closed() {
-                ev = ev | Ev::HUP;
-            }
-            if ev == Ev::NONE {
-                continue;
-            }
-            if reads_and_writes != Ev::NONE {
-                // Report it again next time while it stays ready.
-                let _ = self.arm(fd, token, interest);
-            }
-            out.push((token, ev));
+            .poll(&mut events, Some(Duration::ZERO));
+        if polled.is_ok() {
+            self.sockets.borrow().report(
+                events.iter().map(Raised::from),
+                max,
+                out,
+                |fd, token, ev| {
+                    let _ = self.arm(fd, token, ev);
+                },
+            );
         }
     }
 

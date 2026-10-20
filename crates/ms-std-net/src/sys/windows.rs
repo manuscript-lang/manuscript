@@ -1,11 +1,14 @@
 //! Windows: `SOCKET`s, `WSAPoll`, a loopback datagram socket as the wake-up.
 
-use super::Ev;
+use super::{Ev, Raised, Sockets, mio_interest};
 use crate::rt;
+use mio::net::TcpStream;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, UdpSocket};
-use std::os::windows::io::{AsRawSocket, AsSocket, BorrowedSocket};
+use std::os::windows::io::{AsRawSocket, AsSocket, BorrowedSocket, FromRawSocket, IntoRawSocket};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use windows_sys::Win32::Foundation::{ERROR_BUFFER_OVERFLOW, NO_ERROR};
 use windows_sys::Win32::NetworkManagement::IpHelper::{
@@ -14,9 +17,8 @@ use windows_sys::Win32::NetworkManagement::IpHelper::{
 };
 use windows_sys::Win32::NetworkManagement::Ndis::IfOperStatusUp;
 use windows_sys::Win32::Networking::WinSock::{
-    AF_INET, AF_INET6, AF_UNSPEC, POLLERR, POLLHUP, POLLNVAL, POLLRDNORM, POLLWRNORM,
-    SIO_UDP_CONNRESET, SO_EXCLUSIVEADDRUSE, SOCKET_ERROR, SOL_SOCKET, WSAIoctl, WSAPOLLFD, WSAPoll,
-    setsockopt,
+    AF_INET, AF_INET6, AF_UNSPEC, POLLRDNORM, POLLWRNORM, SIO_UDP_CONNRESET, SO_EXCLUSIVEADDRUSE,
+    SOCKET_ERROR, SOL_SOCKET, WSAIoctl, WSAPOLLFD, WSAPoll, setsockopt,
 };
 
 /// A borrowed socket handle.
@@ -53,20 +55,6 @@ fn poll_flags(ev: Ev) -> i16 {
         events |= POLLWRNORM;
     }
     events
-}
-
-fn report(revents: i16) -> Ev {
-    let mut ev = Ev::NONE;
-    if revents & POLLRDNORM != 0 {
-        ev = ev | Ev::IN;
-    }
-    if revents & POLLWRNORM != 0 {
-        ev = ev | Ev::OUT;
-    }
-    if revents & (POLLERR | POLLHUP | POLLNVAL) != 0 {
-        ev = ev | Ev::HUP;
-    }
-    ev
 }
 
 /// `WSAPoll` over `fds`; the count of ready entries, or `None` on failure.
@@ -110,18 +98,34 @@ impl Wake {
     pub fn sock(&self) -> Borrowed<'_> {
         self.0.as_socket()
     }
+
+    /// Reads out the pending signals so that [`Wake::sock`] is quiet again.
+    pub fn drain(&self) {
+        let mut buf = [0u8; 64];
+        while self.0.recv(&mut buf).is_ok() {}
+    }
 }
 
-/// The server's set of watched sockets. Winsock offers no kernel-side set that is
-/// itself pollable, so the set lives here and each poll hands it to `WSAPoll`.
+/// The server's set of watched sockets, on mio (see [`Sockets::report`] for how its edge
+/// events serve the server's level-triggered reads and writes).
+///
+/// mio only watches its own socket types, so each watched socket is lent to a [`TcpStream`]
+/// view that never closes it. An IOCP port cannot be waited on by a task, so a helper
+/// thread blocks in `mio::Poll::poll`, queues what it sees and signals a [`Wake`] socket
+/// the reactor task parks on. The helper never touches the runtime.
 pub struct Poller {
-    watched: RefCell<HashMap<Raw, (u64, Ev)>>,
-    /// Reused buffer for the `WSAPoll` array.
-    scratch: RefCell<Vec<WSAPOLLFD>>,
+    registry: mio::Registry,
+    sockets: RefCell<Sockets<Raw>>,
+    views: RefCell<HashMap<Raw, TcpStream>>,
+    wake: Arc<Wake>,
+    shared: Arc<Shared>,
+    waker: mio::Waker,
 }
 
-/// How long the reactor task sleeps between looks at an idle set.
-const IDLE_SLICE_NS: i64 = 2_000_000;
+struct Shared {
+    raised: Mutex<Vec<Raised>>,
+    stop: AtomicBool,
+}
 
 impl Default for Poller {
     fn default() -> Poller {
@@ -129,65 +133,130 @@ impl Default for Poller {
     }
 }
 
+/// Longest the reactor task parks before it looks again (timeouts are swept then).
+const PARK_NS: i64 = 50_000_000;
+const STOP_TOKEN: mio::Token = mio::Token(usize::MAX);
+
 impl Poller {
     pub fn new() -> Poller {
+        let mut poll = mio::Poll::new().expect("poller");
+        let registry = poll.registry().try_clone().expect("poller registry");
+        let waker = mio::Waker::new(poll.registry(), STOP_TOKEN).expect("poller waker");
+        let wake = Arc::new(Wake::new().expect("poller wake socket"));
+        let shared = Arc::new(Shared {
+            raised: Mutex::new(Vec::new()),
+            stop: AtomicBool::new(false),
+        });
+        let (helper_wake, helper_shared) = (wake.clone(), shared.clone());
+        std::thread::Builder::new()
+            .name("ms-net-poll".into())
+            .spawn(move || {
+                let mut events = mio::Events::with_capacity(64);
+                while !helper_shared.stop.load(Ordering::Acquire) {
+                    if poll.poll(&mut events, None).is_err() {
+                        break;
+                    }
+                    let raised = events
+                        .iter()
+                        .filter(|e| e.token() != STOP_TOKEN)
+                        .map(Raised::from);
+                    let mut queue = helper_shared
+                        .raised
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner());
+                    let before = queue.len();
+                    queue.extend(raised);
+                    let any = queue.len() > before;
+                    drop(queue);
+                    if any {
+                        helper_wake.notify();
+                    }
+                }
+            })
+            .expect("poller thread");
         Poller {
-            watched: RefCell::new(HashMap::new()),
-            scratch: RefCell::new(Vec::new()),
+            registry,
+            sockets: RefCell::new(Sockets::default()),
+            views: RefCell::new(HashMap::new()),
+            wake,
+            shared,
+            waker,
+        }
+    }
+
+    /// Registers `sock` for `ev`, or updates an earlier registration.
+    fn arm(&self, sock: Raw, token: u64, ev: Ev) -> std::io::Result<()> {
+        let token = mio::Token(token as usize);
+        let mut views = self.views.borrow_mut();
+        if let Some(view) = views.get_mut(&sock) {
+            return self.registry.reregister(view, token, mio_interest(ev));
+        }
+        // SAFETY: the view never closes the socket: it ends in `into_raw_socket`.
+        let stream = unsafe { std::net::TcpStream::from_raw_socket(sock) };
+        let mut view = TcpStream::from_std(stream);
+        match self.registry.register(&mut view, token, mio_interest(ev)) {
+            Ok(()) => {
+                views.insert(sock, view);
+                Ok(())
+            }
+            Err(e) => {
+                let _ = view.into_raw_socket();
+                Err(e)
+            }
         }
     }
 
     pub fn add(&self, sock: Borrowed<'_>, token: u64, ev: Ev) -> bool {
-        self.watched
-            .borrow_mut()
-            .insert(raw(sock), (token, ev))
-            .is_none()
+        let sock = raw(sock);
+        let armed = self.arm(sock, token, ev).is_ok();
+        if armed {
+            self.sockets.borrow_mut().set(sock, token, ev);
+        }
+        armed
     }
 
     pub fn modify(&self, sock: Borrowed<'_>, token: u64, ev: Ev) {
-        if let Some(entry) = self.watched.borrow_mut().get_mut(&raw(sock)) {
-            *entry = (token, ev);
+        let sock = raw(sock);
+        if self.arm(sock, token, ev).is_ok() {
+            self.sockets.borrow_mut().set(sock, token, ev);
         }
     }
 
     pub fn delete(&self, sock: Borrowed<'_>) {
-        self.watched.borrow_mut().remove(&raw(sock));
+        let sock = raw(sock);
+        if let Some(mut view) = self.views.borrow_mut().remove(&sock) {
+            let _ = self.registry.deregister(&mut view);
+            let _ = view.into_raw_socket();
+        }
+        self.sockets.borrow_mut().remove(sock);
     }
 
     /// Collects up to `max` ready `(token, events)` pairs into `out` without blocking.
     pub fn poll(&self, out: &mut Vec<(u64, Ev)>, max: usize) {
         out.clear();
-        let watched = self.watched.borrow();
-        if watched.is_empty() {
-            return;
-        }
-        let mut fds = self.scratch.borrow_mut();
-        fds.clear();
-        fds.extend(watched.iter().map(|(sock, (_, ev))| WSAPOLLFD {
-            fd: *sock as usize,
-            events: poll_flags(*ev),
-            revents: 0,
-        }));
-        if wsa_poll(&mut fds, 0).is_none() {
-            return;
-        }
-        out.extend(
-            fds.iter()
-                .filter(|f| f.revents != 0)
-                .filter_map(|f| {
-                    let (token, _) = watched.get(&(f.fd as Raw))?;
-                    Some((*token, report(f.revents)))
-                })
-                .take(max),
-        );
+        // Empty the wake socket before taking the queue: a signal that lands in between
+        // leaves the socket readable for the next park.
+        self.wake.drain();
+        let raised =
+            std::mem::take(&mut *self.shared.raised.lock().unwrap_or_else(|e| e.into_inner()));
+        self.sockets
+            .borrow()
+            .report(raised.into_iter(), max, out, |sock, token, ev| {
+                let _ = self.arm(sock, token, ev);
+            });
     }
 
-    /// Parks the running task for a short slice (none when something is already
-    /// ready); returns the runtime's ready bits.
+    /// Parks the running task until something may be ready (or 50 ms pass); returns
+    /// the runtime's ready bits.
     pub fn park(&self) -> u32 {
-        let mut ready = Vec::new();
-        self.poll(&mut ready, 1);
-        rt::sleep(if ready.is_empty() { IDLE_SLICE_NS } else { 0 })
+        rt::wait_fd(self.wake.sock(), 1, PARK_NS)
+    }
+}
+
+impl Drop for Poller {
+    fn drop(&mut self) {
+        self.shared.stop.store(true, Ordering::Release);
+        let _ = self.waker.wake();
     }
 }
 
