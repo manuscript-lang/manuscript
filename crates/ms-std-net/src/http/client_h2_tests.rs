@@ -311,7 +311,7 @@ fn gets_with_http2_headers() {
         ":scheme: http\n",
         &format!(":authority: {address}\n"),
         ":path: /p?x=1\n",
-        "user-agent: Go-http-client/2.0\n",
+        "user-agent: ms-http\n",
         "x-zed: 1\n",
         "accept: */*\n",
     ] {

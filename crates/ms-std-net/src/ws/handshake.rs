@@ -448,7 +448,7 @@ pub fn client_request(req: &ClientRequest<'_>) -> Vec<u8> {
             DEFLATE_RESPONSE.as_bytes().to_vec(),
         ));
     }
-    let mut agent = b"Go-http-client/1.1".to_vec();
+    let mut agent = b"ms-http".to_vec();
     for (name, value) in req.headers {
         if name.eq_ignore_ascii_case("User-Agent") {
             agent = clean_value(value);
