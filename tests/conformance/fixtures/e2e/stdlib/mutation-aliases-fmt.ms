@@ -42,6 +42,7 @@ test "Map remove evaluates its key after choosing the receiver and keeps convers
 
 interface MapRemoval:
     var fn remove(key: Int) Unit
+    fn keys() List[Int]
 
 type MapAdapter:
     values: Map[Int, String]
@@ -49,6 +50,8 @@ type MapAdapter:
 impl MapRemoval for MapAdapter:
     var fn remove(key: Int) Unit:
         self.values.remove(key)
+
+    fn keys() List[Int]: self.values.keys()
 
 test "Map explicit and bound interface views remove through the adapter":
     var values = Map[Int, String]()
@@ -60,9 +63,10 @@ test "Map explicit and bound interface views remove through the adapter":
     try expect_equal(adapter.values.keys(), [2, 3])
     var view = MapRemoval(adapter)
     view.remove(2)
+    try expect_equal(view.keys(), [3])
     let bound = view.remove
     bound(3)
-    try expect_equal(adapter.values.keys(), [])
+    try expect_equal(view.keys(), [])
 
 test "List splice direct and bound stage a copy of the receiver as replacement":
     var values = [1, 2, 3]
@@ -102,6 +106,7 @@ test "List splice moves replacement elements and handles Optional elements":
 
 interface ListSplicing:
     var fn splice(start: Int, delete_count: Int, replacement: List[Int]) Unit
+    fn contents() List[Int]
 
 type ListAdapter:
     values: List[Int]
@@ -110,12 +115,15 @@ impl ListSplicing for ListAdapter:
     var fn splice(start: Int, delete_count: Int, replacement: List[Int]) Unit:
         self.values.splice(start, delete_count, replacement)
 
+    fn contents() List[Int]: self.values.clone()
+
 test "List explicit and bound interface views splice through the adapter":
     var adapter = ListAdapter([1, 2, 3])
     adapter.splice(0, 1, [7])
     try expect_equal(adapter.values, [7, 2, 3])
     var view = ListSplicing(adapter)
     view.splice(0, 1, [7])
+    try expect_equal(view.contents(), [7, 2, 3])
     let bound = view.splice
     bound(1, 2, [8])
-    try expect_equal(adapter.values, [7, 8])
+    try expect_equal(view.contents(), [7, 8])

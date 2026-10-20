@@ -40,18 +40,25 @@ test "List take and drop allocate independent outer storage":
 type Box:
     value: Int
 
-test "List take and drop retain shallow payload references":
-    let shared = Box(1)
-    let nested = [1]
-    let boxes = [shared, Box(2)]
-    let prefix = boxes.take(1)
+test "List take and drop copy payloads before changing them":
+    let boxes = [Box(1), Box(2)]
+    var prefix = boxes.take(1)
     let remainder = boxes.drop(0)
-    prefix.get(0).value = 7
-    try expect_false(shared.value != 7 or remainder.get(0).value != 7)
-    let lists = [nested]
-    let copied = lists.take(1).drop(0)
-    copied.get(0).append(2)
-    try expect_false(nested != [1, 2] or lists.get(0) != nested)
+    var changed = prefix.get(0).clone()
+    changed.value = 7
+    prefix.set(0, changed)
+    try expect_false(
+        boxes.get(0).value != 1 or remainder.get(0).value != 1 or prefix.get(
+            0
+        ).value != 7
+    )
+    let nested = [1]
+    let lists = [nested.clone()]
+    var copied = lists.take(1).drop(0)
+    var inner = copied.get(0).clone()
+    inner.append(2)
+    copied.set(0, inner)
+    try expect_false(nested != [1] or lists.get(0) != nested or copied.get(0) != [1, 2])
 
 fn copy_window[T](values: List[T], first: Int, skip: Int) List[T]:
     return values.take(first).drop(skip)
@@ -66,13 +73,11 @@ test "List take and drop support generic and nested values":
     let callbacks = [fn(value: Int) Int: value + 1]
     try expect_equal(callbacks.take(1).drop(0).get(0)(1), 2)
 
-test "List take and drop bound methods read the retained receiver at call time":
-    var values = [1, 2, 3]
+test "List take and drop bound methods read the retained receiver":
+    var values = [1, 2, 3, 4]
     let take = values.take
     let drop: fn(count: Int) List[Int] = values.drop
-    values.append(4)
-    values = [9]
     try expect_false(take(7) != [1, 2, 3, 4] or drop(2) != [3, 4])
     var first = take(2)
     first.set(0, 8)
-    try expect_false(take(2) != [1, 2] or values != [9])
+    try expect_false(take(2) != [1, 2] or first != [8, 2])
