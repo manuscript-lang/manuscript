@@ -17,7 +17,22 @@ const SIG_DFL: usize = 0;
 
 unsafe extern "C" {
     fn signal(signum: i32, handler: usize) -> usize;
+    #[cfg(unix)]
     fn kill(pid: i32, signum: i32) -> i32;
+}
+
+/// Forwards `signum` to `child`. Windows has no `kill`, so the child is terminated instead.
+fn send_signal(child: &mut Child, signum: i32) {
+    #[cfg(unix)]
+    {
+        // SAFETY: the pid belongs to a child of this process that has not been reaped.
+        unsafe { kill(child.id() as i32, signum) };
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = signum;
+        let _ = child.kill();
+    }
 }
 
 static PENDING: AtomicI32 = AtomicI32::new(0);
@@ -103,8 +118,7 @@ pub fn wait_supervised(
         if let Some(pending) = stops.take() {
             interrupted = true;
             last = Some(pending);
-            // SAFETY: the pid belongs to a child of this process that has not been reaped.
-            unsafe { kill(child.id() as i32, pending) };
+            send_signal(child, pending);
         }
         if !timed_out && timeout.is_some_and(|limit| started.elapsed() >= limit) {
             timed_out = true;
@@ -122,9 +136,8 @@ pub fn wait_supervised(
 }
 
 /// Ask `child` to stop the way Ctrl-C does, so it can cancel and clean up.
-pub fn interrupt(child: &Child) {
-    // SAFETY: the pid belongs to a child of this process that has not been reaped.
-    unsafe { kill(child.id() as i32, SIGINT) };
+pub fn interrupt(child: &mut Child) {
+    send_signal(child, SIGINT);
 }
 
 /// The exit status as a process status: the code, or 128 + signal (the shell convention).
