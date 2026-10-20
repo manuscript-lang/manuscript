@@ -1,4 +1,4 @@
-//! Error values whose `Display` output matches the Go implementation.
+//! Error values whose `Display` output is stable.
 
 use std::fmt;
 

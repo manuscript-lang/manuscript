@@ -1,7 +1,5 @@
-//! Agent guide, standard-library search and API documentation: a port of
-//! `pkg/tooling/guide`, `pkg/tooling/docgen`, `scripts/docgen` and the
-//! documentation snapshot in `pkg/checker`. The Go implementation is the
-//! oracle; output is byte-identical.
+//! Agent guide, standard-library search and API documentation, including the
+//! documentation snapshot behind them.
 //!
 //! The documentation snapshot ([`api`]) reads the bundled standard library
 //! through `ms-check`, or the exports of a checked [`ms_check::Program`]; the
