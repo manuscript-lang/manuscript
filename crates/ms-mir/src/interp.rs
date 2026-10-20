@@ -1017,7 +1017,9 @@ fn list_index(len: usize, i: i64, from_end: bool) -> R<usize> {
 }
 
 fn depth_msg() -> String {
-    format!("call depth limit exceeded ({MAX_CALL_DEPTH} nested calls)")
+    format!(
+        "call depth limit exceeded ({MAX_CALL_DEPTH} nested calls); check the recursion for a missing base case, or iterate instead"
+    )
 }
 
 fn fault_message(m: &Module, k: FaultKind) -> String {

@@ -137,7 +137,7 @@ void msrt_index_fault(int64_t i, int64_t n) {
   die(buf, (size_t)k);
 }
 void msrt_fault_unwrap_none(void) { die("unwrap of none", 14); }
-void msrt_fault_depth(void) { die("call depth limit exceeded (200000 nested calls)", 47); }
+void msrt_fault_depth(void) { die("call depth limit exceeded (200000 nested calls); check the recursion for a missing base case, or iterate instead", 47); }
 void msrt_cancelled(void) { fflush(stdout); run_cleanups(); exit(130); }
 
 size_t msrt_cleanup_push(void (*f)(uint8_t *), uint8_t *arg) {
