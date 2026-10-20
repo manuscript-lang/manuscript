@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 typedef struct Obj { uint64_t rc; void (*drop)(struct Obj *); } Obj;
 
@@ -46,7 +49,14 @@ static const Tables *tables;
 static void trace(void) {
   if (!tables) return;
   uintptr_t *fp = __builtin_frame_address(0);
+#ifdef _WIN32
+  ULONG_PTR lo, hi;
+  GetCurrentThreadStackLimits(&lo, &hi);
+#endif
   for (int depth = 0; fp && depth < 64; depth++) {
+#ifdef _WIN32
+    if ((uintptr_t)fp < lo || (uintptr_t)fp + 2 * sizeof(uintptr_t) > hi) break;
+#endif
     uintptr_t pc = fp[1];
     const FuncEntry *fe = tables->funcs;
     for (size_t i = 0; i < tables->nfuncs; i++) {
@@ -112,9 +122,17 @@ int64_t msrt_live(void) { return msrt_live_allocs; }
 int msrt_start(int64_t (*main_fn)(void), const void *t, int argc, char **argv) {
   tables = t; (void)argc; (void)argv;
   struct timespec t0, t1;
+#ifdef _WIN32
+  timespec_get(&t0, TIME_UTC);
+#else
   clock_gettime(CLOCK_MONOTONIC, &t0);
+#endif
   int64_t r = main_fn();
+#ifdef _WIN32
+  timespec_get(&t1, TIME_UTC);
+#else
   clock_gettime(CLOCK_MONOTONIC, &t1);
+#endif
   fflush(stdout);
   if (getenv("MSRT_TIME")) {
     long long us = (long long)(t1.tv_sec - t0.tv_sec) * 1000000LL + (t1.tv_nsec - t0.tv_nsec) / 1000;

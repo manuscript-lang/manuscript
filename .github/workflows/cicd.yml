@@ -128,10 +128,16 @@ jobs:
           name: conform-oracle-${{ matrix.shard }}
           path: .artifacts/conform-oracle.md
 
+  rust-native:
+    name: Native codegen
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    uses: ./.github/workflows/codegen-platforms.yml
+
   # Keep one stable required check; every Rust job must pass before merging.
   rust-ok:
     name: Rust checks
-    needs: [changes, rust-lint, rust-test, rust-conform]
+    needs: [changes, rust-lint, rust-test, rust-conform, rust-native]
     if: always()
     runs-on: ubuntu-latest
     steps:

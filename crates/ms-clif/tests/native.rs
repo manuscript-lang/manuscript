@@ -9,6 +9,9 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::sync::OnceLock;
 
+mod support;
+use support::cc;
+
 fn dir() -> PathBuf {
     let d = std::env::temp_dir().join(format!("ms-clif-tests-{}", std::process::id()));
     std::fs::create_dir_all(&d).unwrap();
@@ -21,7 +24,7 @@ fn runtime() -> &'static PathBuf {
     RT.get_or_init(|| {
         let out = dir().join("testrt.o");
         let src = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/rt/testrt.c");
-        let st = Command::new("cc")
+        let st = cc()
             .args(["-O1", "-c", "-fno-omit-frame-pointer", "-o"])
             .arg(&out)
             .arg(src)
@@ -238,7 +241,11 @@ fn real_runtime() -> &'static PathBuf {
             .status()
             .expect("cargo build ms-rt");
         assert!(st.success(), "building ms-rt failed");
-        target.join("release/libms_rt.a")
+        target.join(if cfg!(windows) {
+            "release/ms_rt.lib"
+        } else {
+            "release/libms_rt.a"
+        })
     })
 }
 
@@ -254,7 +261,7 @@ fn run_real(src: &str, opt: bool, tag: &str) -> Outcome {
     std::fs::write(&objp, obj).unwrap();
     let shim = d.join("printshim.o");
     let c = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/rt/printshim.c");
-    let st = Command::new("cc")
+    let st = cc()
         .args(["-O1", "-c", "-o"])
         .arg(&shim)
         .arg(c)
@@ -319,8 +326,7 @@ b0:
     let shim = d.join("printshim.o");
     let c = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/rt/printshim.c");
     assert!(
-        Command::new("cc")
-            .args(["-O1", "-c", "-o"])
+        cc().args(["-O1", "-c", "-o"])
             .arg(&shim)
             .arg(c)
             .status()
@@ -370,8 +376,7 @@ b0:
     let shim = d.join("printshim.o");
     let c = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/rt/printshim.c");
     assert!(
-        Command::new("cc")
-            .args(["-O1", "-c", "-o"])
+        cc().args(["-O1", "-c", "-o"])
             .arg(&shim)
             .arg(c)
             .status()
@@ -654,6 +659,13 @@ fn random_programs_agree() {
 fn predicated_overflow_keeps_faults_sources_cleanup_and_check_options() {
     for (n, (x, y, take, line)) in [
         (i64::MAX, 2, true, 10),
+        (i64::MAX, i64::MAX, true, 10),
+        (i64::MIN, 2, true, 10),
+        (i64::MIN, i64::MIN, true, 10),
+        (i64::MIN, 1, true, 0),
+        (i64::MAX, -1, true, 0),
+        (i64::MAX, 0, true, 0),
+        (-1, i64::MIN, true, 10),
         (i64::MAX, 1, true, 11),
         (i64::MIN, -1, true, 10),
         (i64::MAX, 2, false, 0), // untaken multiply and add both overflow

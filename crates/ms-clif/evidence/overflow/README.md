@@ -76,3 +76,19 @@ rejected; the retained implementation requires and extends #781's conversion.
   Its conditional acceptance requirements above were exercised successfully.
 
 This commit is independent of the subsequent DWARF line-table commit.
+
+## Native platform delivery gate
+
+The delivery branch integrates main `a664e0d1`, including Map/Set memory homes;
+its new `overflow_result` is retained alongside the new home state. The six native
+runner jobs in `codegen-platforms.yml` run MIR boundary tests and the compiled
+fault/cleanup/inline-frame regressions on Linux, macOS, and Windows, each x64 and
+arm64. They are dependencies of the required Rust aggregate, without allowed
+failures. Pending CI results are not evidence of platform support. The older
+rust-dist non-Linux experimental outcomes remain separate and must be inspected.
+
+Fixture compiler selection, runtime library names, CRT selection, line endings,
+and the test clock/print shim now support Windows. Clang's Windows target is
+explicit so a host-installed x64 compiler cannot silently compile arm64 fixtures
+for the wrong architecture. These are validation/link-driver portability changes;
+the measured Linux benchmark above has not been generalized or rerun for them.
