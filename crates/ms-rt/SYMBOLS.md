@@ -56,7 +56,6 @@ msrt_io_write_stderr(s: *mut StrObj)
 msrt_io_write_bytes_stdout(v: *const VecVal)
 msrt_io_write_bytes_stderr(v: *const VecVal)
 msrt_io_flush()
-rust_eh_personality()
 msrt_map_new(out: *mut MapVal)
 msrt_map_drop( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, )
 msrt_map_copy( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, out: *mut MapVal, )
@@ -376,6 +375,7 @@ msstd_fs_watch_next( h: *mut WatchHandle, paths: *mut VecVal, kinds: *mut VecVal
 msstd_fs_watch_close(h: *mut WatchHandle)
 msrt_html_escape(text: *const StrObj) -> *mut StrObj
 msrt_html_unescape(text: *const StrObj) -> *mut StrObj
+msrt_html_parse( text: *const StrObj, has_max_bytes: u8, max_bytes: i64, has_max_depth: u8, max_depth: i64, has_max_nodes: u8, max_nodes: i64, out: *mut *mut TreeObj, root: *mut u32, ) -> u8
 msrt_html_kind(t: *const TreeObj, id: u32) -> u8
 msrt_html_data(t: *const TreeObj, id: u32) -> *mut StrObj
 msrt_html_namespace(t: *const TreeObj, id: u32) -> *mut StrObj
@@ -402,6 +402,7 @@ msstd_io_write(h: *mut Host, data: *const StrObj) -> u8
 msstd_io_flush(h: *mut Host) -> u8
 msstd_io_close(h: *mut Host)
 msstd_io_is_closed(h: *const Host) -> u8
+msrt_json_parse( text: *const StrObj, has_max_bytes: u8, max_bytes: i64, has_max_depth: u8, max_depth: i64, has_max_values: u8, max_values: i64, out: *mut *mut DocObj, root: *mut u32, ) -> u8
 msrt_json_kind(d: *const DocObj, id: u32) -> u8
 msrt_json_bool(d: *const DocObj, id: u32) -> u8
 msrt_json_text(d: *const DocObj, id: u32) -> *mut StrObj

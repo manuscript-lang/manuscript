@@ -83,6 +83,17 @@ impl Ctx {
     pub(crate) fn set_cancel(&mut self, v: u8) {
         self.cancel = v;
     }
+
+    /// Whether the task is inside a cleanup action that shields it from cancellation.
+    pub(crate) fn shielded(&self) -> bool {
+        self.shield > 0
+    }
+}
+
+/// Whether the running task is inside a shielded cleanup action.
+pub(crate) fn live_shielded() -> bool {
+    // SAFETY: single threaded access.
+    unsafe { *SHIELD.ptr() > 0 }
 }
 
 /// Exchanges `c` with the live per-task state.
@@ -164,7 +175,7 @@ pub unsafe fn walk_frames(mut fp: usize, mut f: impl FnMut(usize) -> bool) {
     let (lo, hi) = unsafe { (*STACK_LO.ptr(), *STACK_HI.ptr()) };
     let mut steps = 0usize;
     while fp != 0 && fp.is_multiple_of(8) && steps < 1_000_000 {
-        if hi != 0 && (fp < lo || fp + 16 > hi) {
+        if hi != 0 && (fp < lo || fp.checked_add(16).is_none_or(|end| end > hi)) {
             break;
         }
         // SAFETY: `fp` is inside the stack bounds (or bounds are unknown and the
@@ -980,6 +991,7 @@ pub fn reset_for_tests() {
         (*CLEANUPS.ptr()).clear();
         (*GUARDS.ptr()).clear();
         *FAULTING.ptr() = false;
+        *SHIELD.ptr() = 0;
         (*SECONDARY.ptr()).clear();
     }
 }
@@ -1073,6 +1085,21 @@ mod tests {
             assert_eq!(&(&*LOG.ptr())[..*LOG_N.ptr()], &[2, 1]);
             msrt_cleanup_run(h1);
             assert_eq!(*LOG_N.ptr(), 2);
+        }
+    }
+
+    #[test]
+    fn walk_frames_rejects_frame_pointers_that_wrap_the_address_space() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: test-only access to the stack bounds, restored below.
+        unsafe {
+            *STACK_LO.ptr() = 0x1000;
+            *STACK_HI.ptr() = 0x2000;
+            // `fp + 16` wraps to 8, which a plain add would accept as below `hi`.
+            walk_frames(usize::MAX - 7, |_| panic!("read a frame outside the stack"));
+            *STACK_LO.ptr() = 0;
+            *STACK_HI.ptr() = 0;
         }
     }
 

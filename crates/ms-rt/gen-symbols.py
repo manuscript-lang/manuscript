@@ -8,7 +8,7 @@ out = ["# ms-rt symbol catalogue", "",
        "", "```text"]
 for f in sorted(glob.glob("crates/ms-rt/src/*.rs") + glob.glob("crates/ms-std-*/src/**/*.rs", recursive=True)):
     s = open(f).read()
-    for m in re.finditer(r'#\[unsafe\(no_mangle\)\]\s*pub (?:unsafe )?(?:extern "[^"]+" )?(fn|static)(?: mut)? (\w+)(.*?)(?:\{|=)', s, re.S):
+    for m in re.finditer(r'#\[unsafe\(no_mangle\)\]\s*(?:#\[[^\]]*\]\s*)*pub (?:unsafe )?(?:extern "[^"]+" )?(fn|static)(?: mut)? (\w+)(.*?)(?:\{|=)', s, re.S):
         sig = " ".join(m.group(3).split())
         out.append(f"{m.group(2)}{sig}" if m.group(1) == "fn" else f"{m.group(2)} (data)")
     # Symbols declared through the table macros of the ms-std crates (`name => path` / `name: type = value`).

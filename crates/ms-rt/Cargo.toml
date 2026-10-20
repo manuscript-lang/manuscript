@@ -22,5 +22,8 @@ ms-std-io = { path = "../ms-std-io" }
 ms-std-process = { path = "../ms-std-process" }
 unicode-normalization = { version = "0.1.24", default-features = false }
 
+[target.'cfg(unix)'.dependencies]
+mio = { version = "1", default-features = false, features = ["os-poll", "os-ext"] }
+
 [lints]
 workspace = true
