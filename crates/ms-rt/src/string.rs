@@ -386,14 +386,72 @@ pub fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
         return None;
     }
     if needle.len() == 1 {
-        return hay.iter().position(|&c| c == needle[0]);
+        return memchr(needle[0], hay);
     }
-    let first = needle[0];
-    let last = hay.len() - needle.len();
-    let mut i = 0;
+    find_from(hay, needle, 0)
+}
+
+/// First index of `c` in `hay`, 16 bytes at a time where SSE2 is available.
+fn memchr(c: u8, hay: &[u8]) -> Option<usize> {
+    #[cfg(target_arch = "x86_64")]
+    {
+        use core::arch::x86_64::*;
+        let mut i = 0;
+        // SAFETY: SSE2 is part of the x86_64 baseline; every load stays inside `hay`.
+        unsafe {
+            let needle = _mm_set1_epi8(c as i8);
+            while i + 16 <= hay.len() {
+                let chunk = _mm_loadu_si128(hay.as_ptr().add(i) as *const __m128i);
+                let mask = _mm_movemask_epi8(_mm_cmpeq_epi8(chunk, needle)) as u32;
+                if mask != 0 {
+                    return Some(i + mask.trailing_zeros() as usize);
+                }
+                i += 16;
+            }
+        }
+        hay[i..].iter().position(|&b| b == c).map(|j| i + j)
+    }
+    #[cfg(not(target_arch = "x86_64"))]
+    {
+        hay.iter().position(|&b| b == c)
+    }
+}
+
+/// First occurrence of `needle` (two bytes or more, no longer than `hay`) at or after `start`.
+fn find_from(hay: &[u8], needle: &[u8], start: usize) -> Option<usize> {
+    let n = needle.len();
+    let last = hay.len() - n;
+    let mut i = start;
+    #[cfg(target_arch = "x86_64")]
+    {
+        use core::arch::x86_64::*;
+        // Compare the first and last needle byte of 16 candidate positions at once, then verify
+        // the middle of each survivor.
+        // SAFETY: SSE2 is part of the x86_64 baseline; both loads end at or before `hay.len()`.
+        unsafe {
+            let (first, tail) = (
+                _mm_set1_epi8(needle[0] as i8),
+                _mm_set1_epi8(needle[n - 1] as i8),
+            );
+            while i + 15 <= last {
+                let a = _mm_loadu_si128(hay.as_ptr().add(i) as *const __m128i);
+                let b = _mm_loadu_si128(hay.as_ptr().add(i + n - 1) as *const __m128i);
+                let hits = _mm_and_si128(_mm_cmpeq_epi8(a, first), _mm_cmpeq_epi8(b, tail));
+                let mut mask = _mm_movemask_epi8(hits) as u32;
+                while mask != 0 {
+                    let at = i + mask.trailing_zeros() as usize;
+                    if hay[at + 1..at + n - 1] == needle[1..n - 1] {
+                        return Some(at);
+                    }
+                    mask &= mask - 1;
+                }
+                i += 16;
+            }
+        }
+    }
     while i <= last {
-        i += hay[i..=last].iter().position(|&c| c == first)?;
-        if &hay[i..i + needle.len()] == needle {
+        i += hay[i..=last].iter().position(|&c| c == needle[0])?;
+        if &hay[i..i + n] == needle {
             return Some(i);
         }
         i += 1;
@@ -1371,6 +1429,29 @@ pub unsafe extern "C-unwind" fn msrt_string_quote(s: *const StrObj) -> *mut StrO
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn find_matches_naive_search() {
+        let mut seed = 0x2545_f491_4f6c_dd1du64;
+        let mut next = || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed
+        };
+        for _ in 0..4000 {
+            let hay_len = (next() % 90) as usize;
+            let needle_len = (next() % 6) as usize;
+            let hay: Vec<u8> = (0..hay_len).map(|_| b'a' + (next() % 3) as u8).collect();
+            let needle: Vec<u8> = (0..needle_len).map(|_| b'a' + (next() % 3) as u8).collect();
+            let naive = if needle.is_empty() {
+                Some(0)
+            } else {
+                hay.windows(needle.len()).position(|w| w == &needle[..])
+            };
+            assert_eq!(find(&hay, &needle), naive, "{hay:?} {needle:?}");
+        }
+    }
     use crate::testutil;
     use std::string::String as S;
 
