@@ -12,6 +12,7 @@ Start with the [repository architecture](architecture.md), then use the [develop
 - [Go lowering units](go-lowering-units.md) explain how lowering splits into independent, parallel units.
 - [Typed runtime conventions](runtime-conventions.md) describe the generated runtime contract and how native operations are written.
 - [Compiler conformance](compiler/conformance/_index.md) explains the semantic test plan.
+- [Rust toolchain](rust-toolchain.md) covers building the Rust `ms`, its checks and crates, and how it differs from the Go `ms` before cutover.
 - [Maintenance and compatibility](maintenance.md) cover pins, licenses, releases, and public contract changes.
 
 Read the repository's [AGENTS.md](https://github.com/manuscript-lang/manuscript/blob/main/AGENTS.md) before changing language semantics or tooling. It routes to current rules and remembered failure modes.

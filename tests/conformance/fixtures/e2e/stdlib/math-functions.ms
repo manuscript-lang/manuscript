@@ -97,19 +97,21 @@ impl Comparable for Ranked:
 test "extrema use comparator signs without negating Int minimum":
     let low = Ranked(1)
     let high = Ranked(2)
-    try expect_equal(min(high, low).rank, 1)
-    try expect_equal(max(low, high).rank, 2)
+    try expect_equal(min(high.clone(), low.clone()).rank, 1)
+    try expect_equal(max(low.clone(), high.clone()).rank, 2)
 
-    for values in [[high, low], [low, high]]:
-        try expect_equal(min_of(values).get().rank, 1)
-        try expect_equal(max_of(values).get().rank, 2)
+    for values in [[high.clone(), low.clone()], [low.clone(), high.clone()]]:
+        try expect_equal(min_of(values.clone()).get().rank, 1)
+        try expect_equal(max_of(values.clone()).get().rank, 2)
 
-    let second_low = Ranked(1)
-    let second_high = Ranked(2)
-    let values = [high, low, second_low, second_high]
-    try expect_equal(min_of(values).get().rank, 1)
-    try expect_equal(max_of(values).get().rank, 2)
-    for value in [low, high, second_low, second_high]:
+    let values = [high.clone(), low.clone(), Ranked(1), Ranked(2)]
+    var minimum = min_of(values.clone()).get().clone()
+    var maximum = max_of(values.clone()).get().clone()
+    minimum.rank = 0
+    maximum.rank = 3
+    try expect_false(values[1].rank != 1 or values[2].rank != 1)
+    try expect_false(values[0].rank != 2 or values[3].rank != 2)
+    for value in values:
         try expect_false(not value.unexpected.is_empty())
 
 test "inverse hyperbolic cube root and precision helpers":

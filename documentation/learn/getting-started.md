@@ -23,7 +23,7 @@ On Windows PowerShell, use `.\ms.exe`. The first run prepares the build tools, t
 Arguments: 2
 ```
 
-Values after `--` are the program's arguments. From a source checkout, run `make build` first ([development setup](../contributing/development.md)).
+Values after `--` are the program's arguments. From a source checkout, run `make build` first ([development setup](../contributing/development.md)), or build the Rust `ms` with `cargo build --release --locked -p ms-cli` and use `target/release/ms` ([Rust toolchain](../contributing/rust-toolchain.md)).
 
 ## 2. Read the code {#read-the-program}
 

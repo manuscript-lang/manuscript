@@ -56,13 +56,16 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
             try expect_ok(
                 fs.glob_entries(
                     path: root,
-                    options: options,
-                    exclude: some(fn(entry: PathEntry) Bool: false)
+                    options: options.clone(),
+                    exclude: some(
+                        fn(entry: PathEntry) Bool: entry.path == "missing.txt"
+                    )
                 )
             )
         )
         entries.length() | try expect_equal(expected: 1)
         entries.get(0).path | try expect_equal(expected: "a.txt")
+        options.patterns | try expect_equal(expected: ["*.txt"])
 
 test "ordinary filesystem misuse retains typed cases":
     let fs = filesystem()
@@ -195,19 +198,17 @@ test "file handles positional I/O stream adapters and closed errors":
             ) | try expect_ok
         )
         let handle = (fs.open(path: path, flags: "r+", mode: 384) | try expect_ok)
-
-        with scoped = handle:
-            handle.read_at(offset: 2, max_bytes: 2) | try expect_ok | try expect_equal(
-                expected: "cd".to_bytes()
-            )
-            (handle.write_at(offset: 1, data: "XY") | try expect_ok)
-            let resized = (handle.truncate(4) | try expect_ok)
-            (handle.stat() | try expect_ok).size | try expect_equal(expected: 4)
-            let sought = (handle.seek(offset: 0, origin: 0) | try expect_ok)
-            read_all(input: handle.reader()) | try expect_ok | try expect_equal(
-                expected: "aXYd".to_bytes()
-            )
-
+        handle.read_at(offset: 2, max_bytes: 2) | try expect_ok | try expect_equal(
+            expected: "cd".to_bytes()
+        )
+        (handle.write_at(offset: 1, data: "XY") | try expect_ok)
+        let resized = (handle.truncate(4) | try expect_ok)
+        (handle.stat() | try expect_ok).size | try expect_equal(expected: 4)
+        let sought = (handle.seek(offset: 0, origin: 0) | try expect_ok)
+        read_all(input: handle.reader()) | try expect_ok | try expect_equal(
+            expected: "aXYd".to_bytes()
+        )
+        handle.close()
         let closed: Result[Bytes, FileSystemError] = error(FileSystemError.Closed)
         handle.read_at(offset: 0, max_bytes: 1) | try expect_equal(expected: closed)
         handle.close()

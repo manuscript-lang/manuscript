@@ -72,6 +72,8 @@ pub(crate) struct FnLower<'a> {
     pub discard: Option<usize>,
     /// The fixture hooks a test runs after its body, on every exit.
     pub fixture: Option<crate::fixture::Hooks>,
+    /// The `err` slot of the runtime call whose `Failed` text the next status error reads.
+    pub err_slot: Option<Value>,
 }
 
 impl Cx {
@@ -278,6 +280,7 @@ impl<'a> FnLower<'a> {
             var_slots: Vec::new(),
             discard: None,
             fixture: None,
+            err_slot: None,
         }
     }
 

@@ -20,6 +20,10 @@ Use for `pkg/runtime/`, `internal/hostos/`, `pkg/stdlib/*.ms`, `bindings.json`, 
 - The standard declarations in `pkg/runtime/std_*_gen.go` come from `make stdgen`; change the `.ms` declaration, regenerate, and implement the signature the `rtcheck` build reports. See [runtime conventions](../../documentation/contributing/runtime-conventions.md).
 - Run affected runtime tests and called native conformance; lifetime changes need bounded cancellation/shutdown cases. Report material untested platform limits.
 
+## Rust runtime
+
+The Rust runtime is `crates/ms-rt`, `ms-rt-abi`, and one `crates/ms-std-*` crate per native module, embedded through `ms-native`; `unsafe` is confined to `ms-rt`, `ms-rt-abi`, and `ms-cli/src/process.rs`. Values are owned and moved, not shared, so aliasing and shallow `clone()` assumptions in the Go runtime do not carry over ([differences](../../documentation/contributing/rust-toolchain.md#differences-users-can-see)). Native standard identities still come from `pkg/stdlib/*.ms` and `bindings.json`; a signature change reaches `pkg/runtime` and the Rust crate.
+
 ## Standard library
 
 For standard APIs (intrinsic/native members, design), read [declaration ownership](../../pkg/stdlib/intrinsics.ms), [contracts](../../pkg/stdlib/intrinsics.ms), [runtime lessons](../../.experts/runtime.md), and [taste](../language-design-taste/SKILL.md).

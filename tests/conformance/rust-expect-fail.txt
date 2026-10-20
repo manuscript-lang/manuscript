@@ -14,13 +14,9 @@ go-tests/pkg-tooling-lsp-testnativegenericmethodnavigation-1
 e2e/stdlib/host
 e2e/stdlib/host-contracts
 e2e/stdlib/html
-e2e/stdlib/net
 e2e/stdlib/path
 e2e/stdlib/random
-e2e/stdlib/sse-http
 e2e/stdlib/terminal
-go-tests/tests-e2e-testclitestsharedrestserver-1
-# each Rust test runs in its own process, so the factory's output follows the RUN line.
 go-tests/tests-e2e-testclitestfilefixturelistanddefaulthooks-1
 # test: language/runtime differences: value-semantics changes (closures copy captured vars, receivers are read at call time), unsupported ordering of some types, fault-frame text, and others to triage.
 e2e/accept/collection-call-order
