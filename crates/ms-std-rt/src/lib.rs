@@ -264,6 +264,21 @@ pub fn failure_message() -> *mut StrObj {
     new_string(unsafe { &*FAILURE.0.get() })
 }
 
+/// Standard-input bytes a dropped `stdin()` handle had read ahead (the runtime is single-threaded).
+static STDIN_PENDING: Failure = Failure(UnsafeCell::new(Vec::new()));
+
+/// Keeps read-ahead standard input for the next `stdin()` handle.
+pub fn stash_stdin_pending(bytes: Vec<u8>) {
+    // SAFETY: single-threaded runtime; no reference into STDIN_PENDING outlives a call.
+    unsafe { (*STDIN_PENDING.0.get()).extend_from_slice(&bytes) };
+}
+
+/// Takes the read-ahead standard input a previous handle left.
+pub fn take_stdin_pending() -> Vec<u8> {
+    // SAFETY: single-threaded runtime.
+    unsafe { core::mem::take(&mut *STDIN_PENDING.0.get()) }
+}
+
 /// Adds a reference to a runtime object.
 ///
 /// # Safety
