@@ -82,10 +82,13 @@ pub fn run_native_full(src: &str, opts: &Options, tag: &str) -> (Outcome, String
         .output()
         .expect("run");
     let o = Outcome {
-        stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
+        stdout: String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n"),
         code: out.status.code().unwrap_or(-1),
     };
-    (o, String::from_utf8_lossy(&out.stderr).into_owned())
+    (
+        o,
+        String::from_utf8_lossy(&out.stderr).replace("\r\n", "\n"),
+    )
 }
 
 pub fn run_native(src: &str, tag: &str) -> Outcome {
@@ -273,7 +276,7 @@ fn run_real(src: &str, opt: bool, tag: &str) -> Outcome {
         .unwrap_or_else(|e| panic!("{e}"));
     let out = Command::new(&exe).output().expect("run");
     Outcome {
-        stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
+        stdout: String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n"),
         code: out.status.code().unwrap_or(-1),
     }
 }

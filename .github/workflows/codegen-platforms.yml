@@ -40,10 +40,22 @@ jobs:
         with:
           shared-key: native-codegen-${{ matrix.os }}-${{ matrix.arch }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Select native Windows Rust host
+        if: runner.os == 'Windows'
+        run: |
+          if [ '${{ matrix.arch }}' = arm64 ]; then
+            rustup set default-host aarch64-pc-windows-msvc
+          else
+            rustup set default-host x86_64-pc-windows-msvc
+          fi
       - name: Record native host and compiler
         run: |
           rustc -Vv
           cargo -V
+          host=$(rustc -vV | sed -n 's/^host: //p')
+          expected=x86_64
+          if [ '${{ matrix.arch }}' = arm64 ]; then expected=aarch64; fi
+          case "$host" in "$expected"-*) ;; *) echo "Wrong native Rust host: $host"; exit 1 ;; esac
           if [ "$RUNNER_OS" = Windows ]; then
             clang --version
             echo 'CC=clang' >> "$GITHUB_ENV"
