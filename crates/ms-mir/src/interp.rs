@@ -747,6 +747,14 @@ impl<'m> Interp<'m> {
                     None => return Err(Raw::internal("opt.get on none")),
                 }
             }
+            Op::OptUnbox => {
+                let Val::Opt(Some(v)) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("opt.unbox of none"));
+                };
+                let payload = (**v).clone();
+                arg(f, regs, a[0], true, m);
+                set!(payload);
+            }
             Op::StrLen => {
                 let Val::Str(s) = &regs[a[0].index()] else {
                     return Err(Raw::internal("str.len on a non-string"));

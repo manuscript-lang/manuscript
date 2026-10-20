@@ -47,7 +47,8 @@ pub enum Parsed<T> {
     Bad(BadMessage),
 }
 
-const MAX_FIELDS: usize = 256;
+/// Most header fields a message may carry before it is refused.
+pub const MAX_FIELDS: usize = 256;
 
 fn collect(headers: &[httparse::Header<'_>]) -> Vec<(String, Vec<u8>)> {
     headers
@@ -114,7 +115,7 @@ pub fn parse_response(buf: &[u8], limit: usize) -> Parsed<ResponseHead> {
             }
         }
         Err(httparse::Error::TooManyHeaders) => {
-            Parsed::Bad(BadMessage::new(0, "response headers too large"))
+            Parsed::Bad(BadMessage::new(0, "too many response header fields"))
         }
         Err(_) => Parsed::Bad(BadMessage::new(0, "malformed HTTP response")),
     }

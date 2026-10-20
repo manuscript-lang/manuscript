@@ -146,7 +146,7 @@ impl Watcher {
                 return Ok(sig);
             }
             poll_cancel();
-            sys::sleep_ms(SLICE_MS);
+            ms_std_rt::task_sleep(i64::from(SLICE_MS) * 1_000_000);
         }
     }
 

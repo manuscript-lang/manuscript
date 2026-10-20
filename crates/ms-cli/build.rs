@@ -102,7 +102,15 @@ fn strip_debug(out: &Path, archive: PathBuf) -> PathBuf {
     } else {
         "--strip-debug"
     };
-    for tool in ["strip", "llvm-strip"] {
+    // GNU `strip` first on Linux: `llvm-strip --strip-debug` rewrites the GCC-built objects of `ring`
+    // (`.group` sections) into files GNU ld refuses ("file format not recognized"), so every program
+    // that linked TLS or crypto failed wherever LLVM binutils were installed.
+    let tools = if cfg!(target_os = "linux") {
+        ["strip", "llvm-strip"]
+    } else {
+        ["llvm-strip", "strip"]
+    };
+    for tool in tools {
         if Command::new(tool)
             .arg(flag)
             .arg(&stripped)

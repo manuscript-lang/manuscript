@@ -546,6 +546,12 @@ mod runtime_stubs {
     pub extern "C-unwind" fn msrt_io_flush() {}
 
     #[unsafe(no_mangle)]
+    pub extern "C-unwind" fn msrt_task_sleep(ns: i64) -> u32 {
+        std::thread::sleep(std::time::Duration::from_nanos(ns.max(0) as u64));
+        0
+    }
+
+    #[unsafe(no_mangle)]
     pub extern "C-unwind" fn msrt_heap_stats(out: *mut i64) {
         // SAFETY: tests pass two writable words.
         unsafe {

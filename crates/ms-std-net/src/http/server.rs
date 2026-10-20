@@ -294,6 +294,7 @@ impl Reactor {
     /// first server.
     fn spawn_task(&self) {
         crate::wait::use_tasks();
+        rt::install_prepark_hook();
         #[cfg(test)]
         serialize_tests();
         if !self.task_started.replace(true) {
@@ -343,6 +344,12 @@ fn serialize_tests() {
     });
 }
 
+thread_local! {
+    /// Set just before the reactor task waits for events and consumed by the park hook: that
+    /// park is the reactor's job, not a handler waiting, so it must not hand the role on.
+    static PARKING: Cell<bool> = const { Cell::new(false) };
+}
+
 /// Body of the reactor task: serve events until the program is cancelled. Handlers
 /// run inline; one that parks passes the role on, and this loop then ends once the
 /// handler returns.
@@ -352,7 +359,9 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
     let me = rt::current_task();
     reactor.role.set(me);
     loop {
+        PARKING.with(|p| p.set(true));
         let got = reactor.poller.park();
+        PARKING.with(|p| p.set(false));
         if got & 16 != 0 {
             return;
         }
@@ -372,6 +381,9 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
 /// Called before a task parks: if it is running the reactor loop (inline in a
 /// handler), a new reactor task takes over so other requests are not stalled.
 pub(crate) fn give_up_reactor_role() {
+    if PARKING.with(|p| p.replace(false)) {
+        return;
+    }
     let reactor = REACTOR.with(|r| r.borrow().clone());
     let Some(reactor) = reactor else { return };
     if reactor.role.get() != rt::current_task() {

@@ -1,4 +1,4 @@
-//! Portable clocks and sleep behind the native time wrappers.
+//! Portable clocks behind the native time wrappers.
 
 /// Seconds and nanoseconds since the Unix epoch; the nanoseconds stay in `0..1e9` before it too.
 pub fn realtime() -> (i64, i64) {
@@ -24,10 +24,4 @@ pub fn monotonic_since_start() -> i64 {
         .get_or_init(std::time::Instant::now)
         .elapsed()
         .as_nanos() as i64
-}
-
-/// Sleeps for `nanos` and returns the completed duration.
-pub fn sleep(nanos: i64) -> i64 {
-    std::thread::sleep(core::time::Duration::from_nanos(nanos as u64));
-    nanos
 }

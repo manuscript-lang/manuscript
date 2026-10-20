@@ -28,7 +28,7 @@ pub fn set_nonblocking(fd: sys::Fd, write_end: bool) {
 
 /// Waits up to `slice_ms` for the parent ends of the pipes: which of `[stdin writable, stdout
 /// readable, stderr readable]` are ready. An invalid handle is skipped. A Windows pipe cannot be
-/// waited on for writability, so an open stdin counts as ready after a short pause and the
+/// waited on for writability, so an open stdin always counts as ready and the
 /// non-blocking write reports how much fit.
 pub fn wait_io(fds: [sys::Fd; 3], slice_ms: i64) -> [bool; 3] {
     let open = |fd: sys::Fd| fd != sys::INVALID_FD;
@@ -41,7 +41,7 @@ pub fn wait_io(fds: [sys::Fd; 3], slice_ms: i64) -> [bool; 3] {
     let mut waited = 0;
     loop {
         let ready = [
-            open(fds[0]) && waited > 0,
+            open(fds[0]),
             open(fds[1]) && sys::wait_ready(fds[1], sys::Interest::Read, 0),
             open(fds[2]) && sys::wait_ready(fds[2], sys::Interest::Read, 0),
         ];
