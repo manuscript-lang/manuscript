@@ -1,11 +1,10 @@
 //! Buffered standard output and unbuffered standard error.
-use crate::buf::ByteBuf;
 use crate::global::Global;
 use crate::sys;
 use ms_rt_abi::{StrObj, VecVal};
 
 const BUF_LIMIT: usize = 64 * 1024;
-static OUT: Global<ByteBuf> = Global::new(ByteBuf::new());
+static OUT: Global<Vec<u8>> = Global::new(Vec::new());
 /// 0 unknown, 1 pipe/file, 2 terminal.
 static TTY: Global<u8> = Global::new(0);
 
@@ -30,7 +29,7 @@ pub fn write_stdout(data: &[u8]) {
             1
         };
     }
-    out.extend(data);
+    out.extend_from_slice(data);
     if out.len() >= BUF_LIMIT || (*tty == 2 && data.contains(&b'\n')) {
         flush_stdout();
     }

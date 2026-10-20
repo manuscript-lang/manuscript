@@ -209,9 +209,24 @@ impl<'a> FnLower<'a> {
             cur = left;
         }
         path.reverse();
+        if let ExprKind::Index { left, index } = &cur.kind {
+            // A field of a list element (`xs[i].n = 1`): the list receives the updated element.
+            let i = self.expr(index)?;
+            if self.dead {
+                return Ok(());
+            }
+            let at = self.borrow(i);
+            let mut new = Some(self.owned(x));
+            return self.place_update(left, &mut |s, list| {
+                let elem = s.list_elem_at(list, at)?;
+                let new = new.take().expect("one update");
+                let updated = s.set_path(elem, true, &path, new)?;
+                Ok(s.b.list_set(list, at, updated))
+            });
+        }
         let ExprKind::Name(_) = &cur.kind else {
-            // A field of a computed value (`xs.get(0).n = 1`): values do not alias, so the
-            // update lands on a copy that is dropped.
+            // A field of a computed value (`f().n = 1`): values do not alias, so the update
+            // lands on a copy that is dropped.
             let base = self.expr(cur)?;
             let root = self.owned(base);
             let new = self.owned(x);
@@ -244,6 +259,19 @@ impl<'a> FnLower<'a> {
             cur = left;
         }
         path.reverse();
+        if let ExprKind::Index { left, index } = &cur.kind {
+            // A list element changes in place: the list receives the updated element.
+            let i = self.expr(index)?;
+            if self.dead {
+                return Ok(());
+            }
+            let at = self.borrow(i);
+            return self.place_update(left, &mut |s, list| {
+                let elem = s.list_elem_at(list, at)?;
+                let updated = s.update_path(elem, &path, f)?;
+                Ok(s.b.list_set(list, at, updated))
+            });
+        }
         if !matches!(cur.kind, ExprKind::Name(_)) {
             // Mutating a computed value (`xs.get(0).append(1)`) changes a copy that is dropped.
             let base = self.expr(cur)?;
@@ -260,6 +288,22 @@ impl<'a> FnLower<'a> {
         let updated = self.update_path(root, &path, f)?;
         self.b.def_var(l.var, updated);
         Ok(())
+    }
+
+    /// An owned copy of element `at` of the list `list`.
+    fn list_elem_at(
+        &mut self,
+        list: ms_mir::ir::Value,
+        at: ms_mir::ir::Value,
+    ) -> Result<ms_mir::ir::Value, Error> {
+        if !matches!(self.b.m.types.kind(self.ty_of(list)), TyKind::List(_)) {
+            return Err(Error::new("element update on a non-list"));
+        }
+        let elem = self.b.list_get(list, at);
+        Ok(self.owned(Val {
+            v: elem,
+            own: false,
+        }))
     }
 
     fn update_path(

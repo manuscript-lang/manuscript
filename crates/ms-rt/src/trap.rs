@@ -58,14 +58,14 @@ pub unsafe extern "C" fn msrt_trap_wait(out: *mut *mut StrObj) -> u8 {
     // SAFETY: single threaded access to the trap state; `out` is writable.
     unsafe {
         let (fd, pid) = *TRAP.ptr();
-        let mut report = crate::buf::ByteBuf::new();
+        let mut report = Vec::new();
         let mut chunk = [0u8; 4096];
         loop {
             let n = sys::read(fd, chunk.as_mut_ptr().cast(), chunk.len());
             if n <= 0 {
                 break;
             }
-            report.extend(&chunk[..n as usize]);
+            report.extend_from_slice(&chunk[..n as usize]);
         }
         sys::close(fd);
         let mut status = 0;
