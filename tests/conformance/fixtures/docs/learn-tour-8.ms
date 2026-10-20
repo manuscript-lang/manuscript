@@ -1,4 +1,4 @@
-# conform: tags=aliasing,alternatives,interpolation,match,modules,records,stdlib-testing,strings,testing,tier-core,try-result
+# conform: tags=alternatives,interpolation,match,modules,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=documentation/learn/tour.md:137
 import expect_equal from "@std/testing.ms"

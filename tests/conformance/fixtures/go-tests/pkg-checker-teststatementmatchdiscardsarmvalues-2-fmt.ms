@@ -1,4 +1,4 @@
-# conform: tags=aliasing,formatter,lists,match,mutation,optional,parser,tier-core
+# conform: tags=formatter,lists,match,mutation,optional,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/checker/diagnostic_fixes_test.go:76 TestStatementMatchDiscardsArmValues
 fn f(xs: List[Int], o: Optional[Int]) Unit:

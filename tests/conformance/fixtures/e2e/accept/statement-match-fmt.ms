@@ -1,4 +1,4 @@
-# conform: tags=aliasing,alternatives,control-flow,faults,formatter,lists,match,modules,mutation,optional,parser,records,stdlib-testing,testing,tier-core,try-result
+# conform: tags=alternatives,control-flow,faults,formatter,lists,match,modules,mutation,optional,parser,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/statement-match.ms
 import {expect_equal} from "@std/testing.ms"

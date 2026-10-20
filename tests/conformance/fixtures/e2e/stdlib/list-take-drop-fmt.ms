@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,faults,formatter,generics,lists,modules,mutation,optional,parser,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
+# conform: tags=closures,faults,formatter,generics,lists,modules,mutation,optional,parser,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/list-take-drop.ms
 import {TextError} from "@std/errors.ms"

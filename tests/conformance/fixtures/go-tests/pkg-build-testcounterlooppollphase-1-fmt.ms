@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,formatter,lists,mutation,parser,tier-core
+# conform: tags=control-flow,formatter,lists,mutation,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/build/loop_poll_test.go:17 TestCounterLoopPollPhase
 fn poll_literal_up(log: List[Int], start: Int) Unit:

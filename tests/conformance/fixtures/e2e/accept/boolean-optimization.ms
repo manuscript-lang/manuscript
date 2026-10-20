@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,modules,records,stdlib-testing,testing,tier-core,try-result
+# conform: tags=closures,control-flow,modules,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/boolean-optimization.ms
 import {expect_false} from "@std/testing.ms"

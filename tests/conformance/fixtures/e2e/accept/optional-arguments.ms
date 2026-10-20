@@ -1,4 +1,4 @@
-# conform: tags=aliasing,alternatives,closures,control-flow,faults,generics,interfaces,lists,match,modules,optional,records,stdlib-errors,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
+# conform: tags=alternatives,closures,control-flow,faults,generics,interfaces,lists,match,modules,optional,records,stdlib-errors,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/optional-arguments.ms
 import {TextError} from "@std/errors.ms"

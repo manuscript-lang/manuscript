@@ -2,66 +2,49 @@
 //!
 //! `CsvOptions` is flattened into its two strings, `delimiter` and `line_ending`.
 //! Results are written through `out` only when the status is `STATUS_OK`.
-#![allow(unsafe_code, clippy::missing_safety_doc)]
 
-use ms_std_core::{
-    StrObj, VecVal, new_string, opt, read_string_matrix, status_of, str_ref, write_string_matrix,
-};
+use alloc::string::String;
+use alloc::vec::Vec;
+use ms_std_core::{Fail, native};
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_csv_parse(
-    text: *const StrObj,
-    delimiter: *const StrObj,
-    line_ending: *const StrObj,
-    has_max_rows: u8,
-    max_rows: i64,
-    has_max_cells: u8,
-    max_cells: i64,
-    out: *mut VecVal,
-) -> u8 {
-    // SAFETY: all string pointers are live; `out` is writable.
-    unsafe {
-        let r = crate::options(str_ref(delimiter), str_ref(line_ending)).and_then(|o| {
+native! {
+    fn msrt_csv_parse(
+        text: &str,
+        delimiter: &str,
+        line_ending: &str,
+        has_max_rows: bool,
+        max_rows: i64,
+        has_max_cells: bool,
+        max_cells: i64,
+    ) -> Result<Vec<Vec<String>>, Fail> {
+        crate::options(delimiter, line_ending).and_then(|o| {
             crate::parse(
-                str_ref(text),
+                text,
                 o,
-                opt(has_max_rows, max_rows),
-                opt(has_max_cells, max_cells),
+                has_max_rows.then_some(max_rows),
+                has_max_cells.then_some(max_cells),
             )
-        });
-        if let Ok(rows) = &r {
-            write_string_matrix(out, rows.iter().map(|r| r.iter().map(|s| s.as_str())));
-        }
-        status_of(&r)
+        })
     }
-}
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_csv_stringify(
-    rows: *const VecVal,
-    delimiter: *const StrObj,
-    line_ending: *const StrObj,
-    has_max_bytes: u8,
-    max_bytes: i64,
-    out: *mut *mut StrObj,
-) -> u8 {
-    // SAFETY: `rows` is a live `List[List[String]]`; the strings are live; `out` is writable.
-    unsafe {
-        let r = crate::options(str_ref(delimiter), str_ref(line_ending)).and_then(|o| {
-            crate::stringify(&read_string_matrix(rows), o, opt(has_max_bytes, max_bytes))
-        });
-        if let Ok(s) = &r {
-            out.write(new_string(s));
-        }
-        status_of(&r)
+    fn msrt_csv_stringify(
+        rows: Vec<Vec<&str>>,
+        delimiter: &str,
+        line_ending: &str,
+        has_max_bytes: bool,
+        max_bytes: i64,
+    ) -> Result<String, Fail> {
+        crate::options(delimiter, line_ending)
+            .and_then(|o| crate::stringify(&rows, o, has_max_bytes.then_some(max_bytes)))
     }
 }
 
 #[cfg(test)]
+#[allow(unsafe_code)]
 mod tests {
     use super::*;
     use core::mem::MaybeUninit;
-    use ms_std_core::read_string_matrix;
+    use ms_std_core::{StrObj, VecVal, new_string, read_string_matrix, str_ref};
 
     #[test]
     fn abi_roundtrip() {

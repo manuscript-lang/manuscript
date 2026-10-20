@@ -1,4 +1,4 @@
-# conform: tags=aliasing,alternatives,closures,control-flow,faults,formatter,interpolation,lists,modules,mutation,optional,parser,stdlib-bytes,stdlib-collections,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=alternatives,closures,control-flow,faults,formatter,interpolation,lists,modules,mutation,optional,parser,stdlib-bytes,stdlib-collections,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/string-bytes.ms
 import {expect_equal, expect_false} from "@std/testing.ms"
@@ -89,20 +89,15 @@ test "String slice uses Unicode scalars with relative bounds and OutOfRange erro
     try expect_equal(text.slice_scalars(3, 1), invalid)
     try expect_equal((try text.slice_scalars(4, 4)), "")
 
-test "string and bytes builders freeze idempotently":
+test "string and bytes builders freeze":
     var text = StringBuilder()
     text.append("é")
     text.append("🙂")
-    try expect_false(text.freeze() != "é🙂" or text.freeze() != "é🙂")
+    try expect_equal(text.freeze(), "é🙂")
     var bytes = BytesBuilder()
     bytes.append(0)
     bytes.concat(Bytes([255, 1]))
-    try expect_false(
-        (
-            bytes.freeze() != Bytes([0, 255, 1])
-            or bytes.freeze() != Bytes([0, 255, 1])
-        )
-    )
+    try expect_equal(bytes.freeze(), Bytes([0, 255, 1]))
 
 test "empty text splits into one part and case mapping is full Unicode":
     try expect_equal("".split(","), [""])

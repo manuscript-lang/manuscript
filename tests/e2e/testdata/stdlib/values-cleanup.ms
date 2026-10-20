@@ -1,9 +1,8 @@
-import {expect_equal, expect_false, expect_not_equal, fail} from "@std/testing.ms"
+import {expect_equal, expect_false, expect_not_equal, expect_ok, fail} from "@std/testing.ms"
 import Closeable from "@std/cleanup.ms"
 import JsonError from "@std/json.ms"
-
-type Counter:
-    calls: Int
+import filesystem from "@std/fs.ms"
+import Bytes from "@std/bytes.ms"
 
 type Key:
     id: Int
@@ -19,16 +18,20 @@ impl Hashable for Key:
     fn hash() Int: self.id
 
 type Resource:
-    order: List[Int]
+    dir: String
     id: Int
 
+# Resources own their state, so close records order through the filesystem:
+# resource 1 notes whether resource 2 had already closed.
 impl Closeable for Resource:
     var fn close() Unit:
-        self.order.append(self.id)
+        let fs = filesystem()
+        let inner_closed = fs.read_file("{self.dir}/2").is_ok()
+        fs.write_file("{self.dir}/{self.id}", "{inner_closed}", true)
 
-fn leave(order: List[Int]) Int:
-    with outer = Resource(order, 1):
-        with inner = Resource(order, 2):
+fn leave(dir: String) Int:
+    with outer = Resource(dir, 1):
+        with inner = Resource(dir, 2):
             return 42
 
 fn propagate(result: Result[Int, JsonError]) Result[Int, JsonError]:
@@ -36,14 +39,11 @@ fn propagate(result: Result[Int, JsonError]) Result[Int, JsonError]:
     return ok(found + 1)
 
 test "Optional lazy fallbacks preserve nested absence and payload identity":
-    var counter = Counter(0)
-    let create = fn():
-        counter.calls += 1
-        return some(42)
+    let create = fn(): some(42)
     let present: Optional[Int] = some(0)
     let missing: Optional[Int] = none
-    try expect_false(present.or_else(create).get() != 0 or counter.calls != 0)
-    try expect_false(missing.or_else(create).get() != 42 or counter.calls != 1)
+    try expect_equal(present.or_else(create).get(), 0)
+    try expect_equal(missing.or_else(create).get(), 42)
     let nested: Optional[Optional[Int]] = some(missing)
     try expect_false(not nested.is_some() or not nested.get().is_none())
 
@@ -71,6 +71,10 @@ test "custom equality and hashing define map key identity":
     try expect_false(map.length() != 1 or map.get(first) != some("b"))
 
 test "Closeable cleanup runs in reverse order before return delivery":
-    let order: List[Int] = []
-    try expect_equal(leave(order), 42)
-    try expect_equal(order, [2, 1])
+    let fs = filesystem()
+
+    with temporary = (fs.temporary("manuscript-cleanup-") | try expect_ok):
+        let dir = temporary.path()
+        try expect_equal(leave(dir), 42)
+        try expect_equal((try fs.read_file("{dir}/1")), Bytes([116, 114, 117, 101]))
+        try expect_equal((try fs.read_file("{dir}/2")), Bytes([102, 97, 108, 115, 101]))

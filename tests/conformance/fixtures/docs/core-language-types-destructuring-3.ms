@@ -1,4 +1,4 @@
-# conform: tags=aliasing,parser,tier-core
+# conform: tags=parser,tier-core
 # conform: phase=parse
 # conform: origin=documentation/core-language/types/destructuring.md:29
 let {customer: {name}, shipping: {city: destination}} = order

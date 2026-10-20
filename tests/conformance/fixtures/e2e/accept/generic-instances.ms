@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,generics,modules,mutation,records,stdlib-testing,testing,tier-core,try-result
+# conform: tags=control-flow,generics,modules,mutation,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/generic-instances.ms
 import {expect_equal, expect_false} from "@std/testing.ms"
@@ -31,11 +31,13 @@ test "parametric generics keep each instantiation's values":
     try expect_equal(pick(first: false, left: "a", right: "b"), "b")
     try expect_equal(keep(count(1)), 2)
 
-test "instances share one identity for non-scalar arguments":
+test "instances copy non-scalar arguments":
     let point = Point(3)
-    var same = ident(point)
+    var same = ident(point).clone()
     same.x = 4
-    try expect_equal(point.x, 4)
-    var alias = pick(first: true, left: point, right: Point(9))
+    try expect_equal(same.x, 4)
+    try expect_equal(point.x, 3)
+    var alias = pick(first: true, left: point, right: Point(9)).clone()
     alias.x = 5
-    try expect_equal(point.x, 5)
+    try expect_equal(alias.x, 5)
+    try expect_equal(point.x, 3)

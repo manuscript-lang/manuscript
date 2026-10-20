@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,faults,generics,interfaces,lists,maps,match,modules,mutation,optional,records,sets,stdlib-testing,strings,testing,tier-core,try-result
+# conform: tags=closures,control-flow,faults,generics,interfaces,lists,maps,match,modules,mutation,optional,records,sets,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/direct-collection-conversions.ms
 import {expect_equal, expect_false} from "@std/testing.ms"
@@ -61,17 +61,17 @@ test "direct keyed calls preserve optional keys and values":
 test "direct calls capture receiver and arguments in written order":
     let first: List[Optional[Int]] = []
     let second: List[Optional[Int]] = []
-    var receiver = first
+    var receiver = first.clone()
     receiver.append(
         (
             match some(7):
                 some(value):
-                    receiver = second
+                    receiver = second.clone()
                     value
                 none: 0
         ) + 0
     )
-    try expect_false(first.get(0).get() != 7 or not second.is_empty())
+    try expect_false(not first.is_empty() or not second.is_empty())
     var entries = Map[Int, Optional[Int]]()
     var key = 1
     entries.add(

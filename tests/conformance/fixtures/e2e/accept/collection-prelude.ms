@@ -1,4 +1,4 @@
-# conform: tags=aliasing,alternatives,control-flow,faults,lists,maps,match,modules,mutation,numbers,optional,records,stdlib-collections,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
+# conform: tags=alternatives,control-flow,faults,lists,maps,match,modules,mutation,numbers,optional,records,stdlib-collections,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/collection-prelude.ms
 import {TextError} from "@std/errors.ms"
@@ -44,9 +44,8 @@ test "map add retains clones and insertion order":
     values.add("a", 3)
     values.add("c", 4)
     values.add(value: 5, key: "b")
-    let bound = values.add
-    bound("d", 6)
-    bound(value: 7, key: "a")
+    values.add("d", 6)
+    values.add(value: 7, key: "a")
     values.add("e", 8)
     try expect_equal(values.keys(), ["a", "b", "c", "d", "e"])
     try expect_equal(values.values(), [7, 5, 4, 6, 8])
@@ -65,8 +64,7 @@ test "map add retains optional wrapping and generic bound calls":
     var values = Map[Optional[Int], Optional[Int]]()
     values.add(1, 2)
     values.add(value: 3, key: 1)
-    let bound = values.add
-    bound(4, 5)
+    values.add(4, 5)
     try expect_equal(values.get(1).get().get(), 3)
     try expect_equal(values.get(4).get().get(), 5)
     var generic = update[Optional[Int], Optional[Int]](var values, some(6), some(7))

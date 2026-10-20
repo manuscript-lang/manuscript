@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,interfaces,lists,modules,mutation,records,stdlib-testing,testing,tier-core,try-result
+# conform: tags=closures,control-flow,interfaces,lists,modules,mutation,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/closed-record-int-bounds.ms
 import {expect_contains, expect_equal, expect_fault} from "@std/testing.ms"

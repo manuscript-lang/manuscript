@@ -1,4 +1,4 @@
-# conform: tags=aliasing,modules,optional,stdlib-errors,tier-stdlib
+# conform: tags=modules,optional,stdlib-errors,tier-stdlib
 # conform: phase=run
 # conform: origin=tests/e2e/conversions_queries_test.go:38 TestLazyConversionFaultLocation
 import {TextError} from "@std/errors.ms"

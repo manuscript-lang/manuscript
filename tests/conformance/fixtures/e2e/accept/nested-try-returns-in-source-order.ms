@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,faults,interpolation,lists,modules,mutation,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
+# conform: tags=control-flow,faults,interpolation,lists,modules,mutation,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/nested-try-returns-in-source-order.ms
 import {TextError} from "@std/errors.ms"

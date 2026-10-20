@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,faults,modules,optional,records,stdlib-faults,testing,tier-stdlib
+# conform: tags=control-flow,faults,modules,optional,records,stdlib-faults,testing,tier-stdlib
 # conform: phase=test
 # conform: origin=documentation/core-language/types/records.md:120
 import panic from "@std/faults.ms"
@@ -9,8 +9,8 @@ type Node:
 
 test "recursive links":
     var node = Node(value: 1, next: none)
-    node.next = some(node)
-    let copy = node.clone()
-    copy.next.get().value = 2
-    if node.value != 2 or copy.value != 1:
-        panic("cloning must retain nested references")
+    node.next = some(Node(value: 5, next: none))
+    var copy = node.clone()
+    copy.next = some(Node(value: 2, next: none))
+    if node.next.get().value != 5 or copy.next.get().value != 2:
+        panic("clones must be independent")

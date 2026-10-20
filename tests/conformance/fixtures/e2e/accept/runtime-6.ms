@@ -1,4 +1,4 @@
-# conform: tags=aliasing,decimal,interpolation,modules,optional,stdlib-decimal,stdlib-testing,testing,tier-stdlib,try-result
+# conform: tags=decimal,interpolation,modules,optional,stdlib-decimal,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/runtime-6.ms
 import {expect_equal, expect_not_equal} from "@std/testing.ms"

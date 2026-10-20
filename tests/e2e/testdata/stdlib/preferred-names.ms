@@ -76,11 +76,9 @@ test "list names mutate in place and retain shallow copies":
     items.set(-1, 4)
     items.remove(0)
     try expect_false((items != [2, 4] or copied != [1, 2, 3]))
-    let set = items.set
-    let remove = items.remove
-    set(value: 8, 0)
-    remove(-1)
-    remove(0)
+    items.set(0, value: 8)
+    items.remove(-1)
+    items.remove(0)
     items.append(9)
     try expect_equal(items, [9])
     var optional: List[Optional[Int]] = [some(1)]
@@ -94,12 +92,10 @@ test "list names mutate in place and retain shallow copies":
 test "set names mutate in place keep order and no-op membership":
     var items = Set[Int]([3, 1, 2])
     let copied = items.clone()
-    let add = items.add
-    add(1)
+    items.add(1)
     items.remove(99)
     try expect_equal(items.values(), [3, 1, 2])
-    let remove = items.remove
-    remove(1)
+    items.remove(1)
     items.add(1)
     items.remove(3)
     try expect_false(items.values() != [2, 1] or copied.values() != [3, 1, 2])
@@ -110,8 +106,7 @@ test "set names mutate in place keep order and no-op membership":
     try expect_equal(items.values(), [4, 5])
     var optional = Set[Optional[Int]]()
     optional.add(7)
-    let optional_add = optional.add
-    optional_add(9)
+    optional.add(9)
     optional.remove(7)
     try expect_equal(optional.values(), [some(9)])
 
@@ -133,21 +128,17 @@ test "explicit views and bound views preserve native mutation":
     var view = ListMutation(adapter)
     view.set(0, 7)
     view.append(4)
-    let view_set = view.set
-    view_set(1, 9)
+    view.set(1, 9)
     view.remove(-1)
-    let view_remove = view.remove
-    view_remove(0)
+    view.remove(0)
     view.append(5)
     try expect_equal(view.reversed(), [5, 3, 9])
     var set = Set[Int]([1, 2])
     var set_view = SetMutation(SetAdapter(set))
     set_view.add(3)
-    let view_add = set_view.add
-    view_add(4)
+    set_view.add(4)
     set_view.remove(1)
-    let set_view_remove = set_view.remove
-    set_view_remove(2)
+    set_view.remove(2)
     set_view.add(5)
     try expect_equal(set_view.values(), [3, 4, 5])
     let text_view = FirstReplacement(TextAdapter("aaaa"))
@@ -231,8 +222,7 @@ impl ByteCopy for ByteAdapter:
 test "list reversal names distinguish receiver mutation and shallow copies":
     var items = [1, 2, 3]
     let copied = items.reversed()
-    let reverse = items.reverse_in_place
-    reverse()
+    items.reverse_in_place()
     items.append(4)
     try expect_false((items != [3, 2, 1, 4] or copied != [3, 2, 1]))
     var changed = copied.clone()
@@ -265,8 +255,7 @@ test "list reversal names distinguish receiver mutation and shallow copies":
     let view_reversed = view.reversed
     var view_copy = view_reversed()
     view_copy.set(0, 7)
-    let view_reverse = view.reverse_in_place
-    view_reverse()
+    view.reverse_in_place()
     try expect_equal(view.reversed(), [5, 4])
 
 test "byte reversal names copy across direct bound and view calls":

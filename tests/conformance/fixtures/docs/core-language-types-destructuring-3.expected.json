@@ -12,13 +12,13 @@
           "file": "core-language-types-destructuring-3.ms",
           "line": 4,
           "column": 5,
-          "offset": 141
+          "offset": 132
         },
         "end": {
           "file": "core-language-types-destructuring-3.ms",
           "line": 4,
           "column": 6,
-          "offset": 142
+          "offset": 133
         }
       }
     ],

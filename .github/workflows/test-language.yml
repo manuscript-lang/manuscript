@@ -75,7 +75,7 @@ jobs:
       - name: Prepare verified SDK and pinned linters
         run: make setup
       - name: Format, vet, lint, repo rules, licenses
-        run: make check lint repo-check licenses-check
+        run: make check lint repo-check repo-check-go licenses-check
       - name: Embedded terminal prompt shutdown
         run: toolchain/go/bin/go test -race ./vendor/github.com/go-delve/liner -run TestManuscript
       - name: Build bundled CLI and run hello

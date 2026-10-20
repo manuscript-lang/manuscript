@@ -170,7 +170,7 @@ test "reports require complete nonempty executions and count explicit skips":
     report.summary.not_run = 1
     validate(report).is_error() | try expect_true
     report.summary.not_run = 0
-    report.tests.get(0).status = "failed"
+    report.tests = [Case("pass", "failed"), Case("skip", "skipped")]
     validate(report).is_error() | try expect_true
     validate(Report(1, true, 0, [], Summary(0, 0, 0, 0, 0, 0))).is_error() | try expect_true
     check_output(1, "\{\}").is_error() | try expect_true

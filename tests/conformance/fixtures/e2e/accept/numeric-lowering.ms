@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,generics,interpolation,modules,mutation,records,stdlib-testing,testing,tier-core,try-result
+# conform: tags=closures,generics,interpolation,modules,mutation,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/numeric-lowering.ms
 import {expect_equal, expect_false} from "@std/testing.ms"

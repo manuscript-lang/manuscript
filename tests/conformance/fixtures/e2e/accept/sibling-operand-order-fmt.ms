@@ -1,4 +1,4 @@
-# conform: tags=aliasing,decimal,faults,formatter,match,modules,mutation,optional,parser,records,stdlib-decimal,stdlib-testing,strings,testing,tier-stdlib,try-result
+# conform: tags=decimal,faults,formatter,match,modules,mutation,optional,parser,records,stdlib-decimal,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/sibling-operand-order.ms
 import {expect_equal} from "@std/testing.ms"
@@ -55,25 +55,14 @@ type Cell:
     n: Int
     s: String
 
-test "field assignment evaluates its receiver before the value":
+test "field assignment keeps sibling field writes made while evaluating the value":
     var cell = Cell(n: 1, s: "a")
-    let original = cell
 
     cell.n = match some(2):
         some(value):
-            cell = Cell(n: 100, s: "replacement")
+            cell.s = "changed"
             value
         none: 0
 
-    try expect_equal(original.n, 2)
-    try expect_equal(cell.n, 100)
-    var texts = Cell(n: 1, s: "a")
-    let before = texts
-
-    texts.s = match some("q"):
-        some(value):
-            texts = Cell(n: 100, s: "replacement")
-            value
-        none: ""
-
-    try expect_equal(before.s, "q")
+    try expect_equal(cell.n, 2)
+    try expect_equal(cell.s, "changed")

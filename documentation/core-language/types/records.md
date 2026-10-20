@@ -114,7 +114,7 @@ test "recursive expression":
         panic("unexpected expression value")
 ```
 
-A linked record ends with an absent successor; mutation can later form a cycle:
+A linked record ends with an absent successor; a link owns its successor, so a clone copies the whole chain:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -125,15 +125,15 @@ type Node:
     next: Optional[Node]
 
 test "recursive links":
-    let node = Node(value: 1, next: none)
-    node.next = some(node)
-    let copy = node.clone()
-    copy.next.get().value = 2
-    if node.value != 2 or copy.value != 1:
-        panic("cloning must retain nested references")
+    var node = Node(value: 1, next: none)
+    node.next = some(Node(value: 5, next: none))
+    var copy = node.clone()
+    copy.next = some(Node(value: 2, next: none))
+    if node.next.get().value != 5 or copy.next.get().value != 2:
+        panic("clones must be independent")
 ```
 
-Constructors still need every required field, and a binding is unavailable in its own initializer, so `let node = Node(value: 1, next: node)` is rejected. `.clone()` keeps recursive references. Recursive shapes derive no `Hashable`; keys need explicit implementations ([equality and hashing](equality-and-hashing.md)).
+Constructors still need every required field, and a binding is unavailable in its own initializer, so `let node = Node(value: 1, next: node)` is rejected. `.clone()` copies the whole chain. Recursive shapes derive no `Hashable`; keys need explicit implementations ([equality and hashing](equality-and-hashing.md)).
 
 Generic recursion must preserve type parameters along every cycle; see [finite recursive applications](generics.md#finite-recursive-applications).
 
