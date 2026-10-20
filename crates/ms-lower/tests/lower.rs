@@ -226,3 +226,12 @@ fn try_in_an_argument_releases_the_receiver_and_earlier_arguments() {
     );
     assert!(mir.contains("drop"));
 }
+
+#[test]
+fn element_slot_keeps_a_record_whose_field_is_named_like_the_parameter() {
+    let mir = lower(
+        "elemslot",
+        "type Child:\n    value: Int\n\nexport fn main() Int:\n    var values = [Child(1), Child(1)]\n    let c = Child(9)\n    values.fill(c, 0, 1)\n    return values.length()\n",
+    );
+    assert!(mir.contains("store %"));
+}

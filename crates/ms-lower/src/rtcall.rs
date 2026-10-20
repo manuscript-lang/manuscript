@@ -522,7 +522,10 @@ impl FnLower<'_> {
                     } else {
                         x
                     };
-                    if let Some(fields) = self.record_fields_named(x, &p.name) {
+                    // A generic element slot takes the record whole, whatever its field is called.
+                    let element = p.ty == "*const u8" || p.ty == "*mut u8";
+                    if let Some(fields) = self.record_fields_named(x, &p.name).filter(|_| !element)
+                    {
                         // A record argument crosses as its fields.
                         let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(x.v)).clone() else {
                             unreachable!("record_fields_named found a record");
