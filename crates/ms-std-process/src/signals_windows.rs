@@ -50,6 +50,8 @@ unsafe extern "system" fn on_event(kind: u32) -> i32 {
     0
 }
 
+ms_std_core::abi_handle!(Watcher);
+
 /// One `SignalStream`.
 pub struct Watcher {
     slot: usize,

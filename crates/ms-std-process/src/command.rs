@@ -16,9 +16,11 @@ pub const BACKGROUND_OUTPUT: &[u8] = b"the command finished but a background pro
 
 #[cfg(unix)]
 #[path = "plat/unix.rs"]
+#[allow(unsafe_code)] // libc pipes and poll
 mod plat;
 #[cfg(windows)]
 #[path = "plat/windows.rs"]
+#[allow(unsafe_code)]
 mod plat;
 
 pub use crate::spawn::{Child, start};

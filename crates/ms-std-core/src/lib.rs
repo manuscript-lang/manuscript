@@ -16,9 +16,9 @@ extern crate alloc;
 mod native;
 pub use native::{
     AbiHandle, AbiRecord, AbiSlot, AbiType, Bytes, BytesList, EntryFilter, FromAbi, Global,
-    IdArray, IntList, IntMap, IntoAbi, Mut, ObjCell, ObjMut, ObjRef, ObjShare, Object, OptInt, Out,
-    Own, PairFilter, RecList, Ref, Status, StatusCode, Str, StrArray, StrMap, StringList, Text,
-    TextList,
+    IdArray, IntList, IntMap, IntoAbi, Mut, ObjBox, ObjCell, ObjMut, ObjRef, ObjShare, Object,
+    OptInt, Out, Own, PairFilter, RecList, Ref, Status, StatusCode, Str, StrArray, StrMap,
+    StringList, Text, TextList, argv, start_nanos,
 };
 
 use alloc::vec::Vec;

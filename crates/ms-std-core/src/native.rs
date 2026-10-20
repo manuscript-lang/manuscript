@@ -31,6 +31,8 @@ unsafe extern "C" {
         v: *mut u8,
     );
     static msrt_desc_int: TypeDesc;
+    fn msrt_argv(out: *mut VecVal);
+    fn msrt_start_nanos() -> i64;
     fn msrt_bytes_drop(b: *mut VecVal);
     fn msrt_bytes_copy(b: *const VecVal, out: *mut VecVal);
     fn msrt_list_new(out: *mut VecVal);
@@ -228,6 +230,29 @@ impl StringList {
     }
 }
 
+impl IntoAbi for StringList {
+    type Raw = VecVal;
+    fn into_raw(self) -> VecVal {
+        self.0
+    }
+}
+
+/// The program's whole native argument vector, including `argv[0]`.
+pub fn argv() -> StringList {
+    let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+    // SAFETY: `msrt_argv` initializes `v` with a fresh `List[String]`.
+    unsafe {
+        msrt_argv(v.as_mut_ptr());
+        StringList(v.assume_init())
+    }
+}
+
+/// Monotonic nanoseconds at which the runtime started; 0 when it did not record a start.
+pub fn start_nanos() -> i64 {
+    // SAFETY: a plain query of the runtime.
+    unsafe { msrt_start_nanos() }
+}
+
 /// A string result held as bytes, for host text that is checked (or trusted) to be UTF-8 by the
 /// native rather than by the type.
 pub struct Text(pub Vec<u8>);
@@ -404,6 +429,34 @@ unsafe impl<'a> FromAbi<'a> for Vec<&'a [u8]> {
                 .map(|i| bytes_ref(v.ptr.cast::<VecVal>().add(i)))
                 .collect()
         }
+    }
+}
+
+/// One reference to a runtime object held by Rust (a child's pipes, say), released on drop. The
+/// object may also be handed to Manuscript with [`ObjBox::share`].
+pub struct ObjBox<T: AbiHandle>(*mut ObjCell<T>);
+
+impl<T: AbiHandle> ObjBox<T> {
+    pub fn new(value: T) -> ObjBox<T> {
+        ObjBox(Object(value).into_raw())
+    }
+
+    pub fn get_mut(&mut self) -> &mut T {
+        // SAFETY: `self` holds a reference, so the object is live; Manuscript code runs on one
+        // thread and no other borrow is active during a native call.
+        unsafe { &mut (*self.0).value }
+    }
+
+    /// Another reference to the object, for returning to Manuscript.
+    pub fn share(&self) -> ObjShare<T> {
+        ObjShare(self.0)
+    }
+}
+
+impl<T: AbiHandle> Drop for ObjBox<T> {
+    fn drop(&mut self) {
+        // SAFETY: releases the one reference this box owns.
+        unsafe { msrt_release(self.0.cast()) }
     }
 }
 

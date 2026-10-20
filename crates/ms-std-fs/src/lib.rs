@@ -33,7 +33,7 @@ use ms_std_core::{
 use stream::Stream;
 
 /// A filesystem result as a status: a failure records its text for `msstd_fs_failure_message`.
-fn st<T>(r: Res<T>) -> Result<T, StatusCode> {
+pub fn fs_status<T>(r: Res<T>) -> Result<T, StatusCode> {
     r.map_err(|Fail { status, message }| {
         ms_std_rt::record_failure(message.unwrap_or_default());
         StatusCode(status)
@@ -152,16 +152,16 @@ native! {
 
     /// Reads a whole file as bytes.
     fn msstd_fs_read_file(path: &str, has_max: bool, max: i64) -> Result<Vec<u8>, StatusCode> {
-        st(lim(has_max, max).and_then(|m| ops::read_file(path.as_bytes(), m)))
+        fs_status(lim(has_max, max).and_then(|m| ops::read_file(path.as_bytes(), m)))
     }
 
     /// Writes bytes to a file (`replace` truncates, otherwise the file must not exist).
     fn msstd_fs_write_file(path: &str, data: &[u8], replace: bool) -> Result<(), StatusCode> {
-        st(ops::write_file(path.as_bytes(), data, replace))
+        fs_status(ops::write_file(path.as_bytes(), data, replace))
     }
 
     fn msstd_fs_append_file(path: &str, data: &[u8]) -> Result<(), StatusCode> {
-        st(ops::append_file(path.as_bytes(), data))
+        fs_status(ops::append_file(path.as_bytes(), data))
     }
 
     fn msstd_fs_copy_file(
@@ -171,13 +171,13 @@ native! {
         has_max: bool,
         max: i64,
     ) -> Result<(), StatusCode> {
-        st(lim(has_max, max)
+        fs_status(lim(has_max, max)
             .and_then(|m| ops::copy_file(source.as_bytes(), destination.as_bytes(), replace, m)))
     }
 
     /// `follow` resolves a final symlink (`stat`), otherwise it reports the link (`lstat`).
     fn msstd_fs_stat(path: &str, follow: bool) -> Result<InfoOut, StatusCode> {
-        st(ops::stat(path.as_bytes(), follow)).map(info_out)
+        fs_status(ops::stat(path.as_bytes(), follow)).map(info_out)
     }
 
     /// Lists a directory sorted by name into a `List[DirectoryEntry]`.
@@ -186,36 +186,36 @@ native! {
         has_limit: bool,
         limit: i64,
     ) -> Result<RecList<EntryOut>, StatusCode> {
-        let entries = st(lim(has_limit, limit).and_then(|m| ops::list(path.as_bytes(), m)))?;
+        let entries = fs_status(lim(has_limit, limit).and_then(|m| ops::list(path.as_bytes(), m)))?;
         Ok(RecList::new(entries.iter().map(|e| entry_out(&e.name, e.directory, e.symlink))))
     }
 
     fn msstd_fs_create_directory(path: &str, recursive: bool) -> Result<(), StatusCode> {
-        st(ops::create_directory(path.as_bytes(), recursive))
+        fs_status(ops::create_directory(path.as_bytes(), recursive))
     }
 
     fn msstd_fs_remove(path: &str, recursive: bool) -> Result<(), StatusCode> {
-        st(ops::remove(path.as_bytes(), recursive))
+        fs_status(ops::remove(path.as_bytes(), recursive))
     }
 
     fn msstd_fs_rename(source: &str, destination: &str) -> Result<(), StatusCode> {
-        st(ops::rename(source.as_bytes(), destination.as_bytes()))
+        fs_status(ops::rename(source.as_bytes(), destination.as_bytes()))
     }
 
     fn msstd_fs_read_link(path: &str) -> Result<Text, StatusCode> {
-        st(ops::read_link(path.as_bytes())).map(Text)
+        fs_status(ops::read_link(path.as_bytes())).map(Text)
     }
 
     fn msstd_fs_create_link(path: &str, target: &str) -> Result<(), StatusCode> {
-        st(ops::create_link(path.as_bytes(), target.as_bytes()))
+        fs_status(ops::create_link(path.as_bytes(), target.as_bytes()))
     }
 
     fn msstd_fs_hard_link(source: &str, destination: &str) -> Result<(), StatusCode> {
-        st(ops::hard_link(source.as_bytes(), destination.as_bytes()))
+        fs_status(ops::hard_link(source.as_bytes(), destination.as_bytes()))
     }
 
     fn msstd_fs_canonicalize(path: &str) -> Result<Text, StatusCode> {
-        st(ops::canonicalize(path.as_bytes())).map(Text)
+        fs_status(ops::canonicalize(path.as_bytes())).map(Text)
     }
 
     safe fn msstd_fs_temporary_root() -> Text {
@@ -223,11 +223,11 @@ native! {
     }
 
     fn msstd_fs_temporary_directory(pattern: &str) -> Result<Text, StatusCode> {
-        st(ops::temporary_directory(pattern.as_bytes())).map(Text)
+        fs_status(ops::temporary_directory(pattern.as_bytes())).map(Text)
     }
 
     fn msstd_fs_stat_filesystem(path: &str) -> Result<FsOut, StatusCode> {
-        st(ops::stat_filesystem(path.as_bytes())).map(|s| FsOut {
+        fs_status(ops::stat_filesystem(path.as_bytes())).map(|s| FsOut {
             kind: s.kind,
             block_size: s.block_size,
             blocks: s.blocks,
@@ -240,19 +240,19 @@ native! {
 
     fn msstd_fs_chmod(path: &str, mode: i64, follow: bool) -> Result<(), StatusCode> {
         let p = path.as_bytes();
-        st(if follow { ops::chmod(p, mode) } else { ops::chmod_link(p, mode) })
+        fs_status(if follow { ops::chmod(p, mode) } else { ops::chmod_link(p, mode) })
     }
 
     fn msstd_fs_access(path: &str, mode: i64) -> Result<(), StatusCode> {
-        st(ops::access(path.as_bytes(), mode))
+        fs_status(ops::access(path.as_bytes(), mode))
     }
 
     fn msstd_fs_chown(path: &str, uid: i64, gid: i64, follow: bool) -> Result<(), StatusCode> {
-        st(ops::chown(path.as_bytes(), uid, gid, follow))
+        fs_status(ops::chown(path.as_bytes(), uid, gid, follow))
     }
 
     fn msstd_fs_truncate(path: &str, size: i64) -> Result<(), StatusCode> {
-        st(ops::truncate(path.as_bytes(), size))
+        fs_status(ops::truncate(path.as_bytes(), size))
     }
 
     fn msstd_fs_set_times(
@@ -263,7 +263,7 @@ native! {
         modified_nanos: i64,
         follow: bool,
     ) -> Result<(), StatusCode> {
-        st(ops::set_times(
+        fs_status(ops::set_times(
             path.as_bytes(),
             (accessed_seconds, accessed_nanos),
             (modified_seconds, modified_nanos),
@@ -279,7 +279,7 @@ native! {
         flags: i64,
         mode: i64,
     ) -> Result<Object<Stream>, StatusCode> {
-        st(file::open(path.as_bytes(), flags, mode)).map(Object)
+        fs_status(file::open(path.as_bytes(), flags, mode)).map(Object)
     }
 
     /// `FileSystem.open`: a mode string such as `"r+"` plus permission bits; an unknown mode is
@@ -288,7 +288,7 @@ native! {
         let opened = file::flags_of_mode(flags.as_bytes())
             .ok_or_else(Fail::invalid)
             .and_then(|f| file::open(path.as_bytes(), i64::from(f), mode));
-        st(opened).map(Object)
+        fs_status(opened).map(Object)
     }
 
     /// The stream view of a file handle: the same handle, retained for the caller.
@@ -303,7 +303,7 @@ native! {
 
     /// `flags_of_mode` for `"r"`, `"r+"`, `"w"`, ... ; `STATUS_INVALID_INPUT` for an unknown mode.
     fn msstd_fs_open_flags(mode: &str) -> Result<i64, StatusCode> {
-        st(file::flags_of_mode(mode.as_bytes()).ok_or_else(Fail::invalid)).map(i64::from)
+        fs_status(file::flags_of_mode(mode.as_bytes()).ok_or_else(Fail::invalid)).map(i64::from)
     }
 
     fn msstd_fs_file_read_at(
@@ -313,7 +313,7 @@ native! {
         max: i64,
     ) -> Result<Vec<u8>, StatusCode> {
         let mut h = h;
-        st(h.read_at(offset, has_max.then_some(max)))
+        fs_status(h.read_at(offset, has_max.then_some(max)))
     }
 
     fn msstd_fs_file_read_file(
@@ -322,7 +322,7 @@ native! {
         max: i64,
     ) -> Result<Vec<u8>, StatusCode> {
         let mut h = h;
-        st(lim(has_max, max).and_then(|m| h.read_file(m)))
+        fs_status(lim(has_max, max).and_then(|m| h.read_file(m)))
     }
 
     fn msstd_fs_file_write_at(
@@ -331,7 +331,7 @@ native! {
         data: &[u8],
     ) -> Result<(), StatusCode> {
         let mut h = h;
-        st(h.write_at(offset, data))
+        fs_status(h.write_at(offset, data))
     }
 
     /// `sizes` is a `List[Int]`; the result is a `List[Bytes]`, one chunk per size.
@@ -341,7 +341,7 @@ native! {
         offset: i64,
     ) -> Result<BytesList, StatusCode> {
         let mut h = h;
-        st(h.read_vectors(sizes, offset)).map(BytesList)
+        fs_status(h.read_vectors(sizes, offset)).map(BytesList)
     }
 
     /// `buffers` is a `List[Bytes]`.
@@ -351,7 +351,7 @@ native! {
         offset: i64,
     ) -> Result<(), StatusCode> {
         let mut h = h;
-        st(h.write_vectors(&buffers, offset))
+        fs_status(h.write_vectors(&buffers, offset))
     }
 
     fn msstd_fs_file_seek(
@@ -360,37 +360,37 @@ native! {
         origin: i64,
     ) -> Result<i64, StatusCode> {
         let mut h = h;
-        st(h.seek(offset, origin))
+        fs_status(h.seek(offset, origin))
     }
 
     fn msstd_fs_file_stat(h: ObjMut<Stream>) -> Result<InfoOut, StatusCode> {
         let mut h = h;
-        st(h.stat()).map(info_out)
+        fs_status(h.stat()).map(info_out)
     }
 
     fn msstd_fs_file_truncate(h: ObjMut<Stream>, size: i64) -> Result<(), StatusCode> {
         let mut h = h;
-        st(h.truncate(size))
+        fs_status(h.truncate(size))
     }
 
     fn msstd_fs_file_sync(h: ObjMut<Stream>) -> Result<(), StatusCode> {
         let mut h = h;
-        st(h.sync())
+        fs_status(h.sync())
     }
 
     fn msstd_fs_file_data_sync(h: ObjMut<Stream>) -> Result<(), StatusCode> {
         let mut h = h;
-        st(h.data_sync())
+        fs_status(h.data_sync())
     }
 
     fn msstd_fs_file_chmod(h: ObjMut<Stream>, mode: i64) -> Result<(), StatusCode> {
         let mut h = h;
-        st(h.chmod(mode))
+        fs_status(h.chmod(mode))
     }
 
     fn msstd_fs_file_chown(h: ObjMut<Stream>, uid: i64, gid: i64) -> Result<(), StatusCode> {
         let mut h = h;
-        st(h.chown(uid, gid))
+        fs_status(h.chown(uid, gid))
     }
 
     fn msstd_fs_file_set_times(
@@ -401,7 +401,7 @@ native! {
         modified_nanos: i64,
     ) -> Result<(), StatusCode> {
         let mut h = h;
-        st(h.set_times(
+        fs_status(h.set_times(
             (accessed_seconds, accessed_nanos),
             (modified_seconds, modified_nanos),
         ))
@@ -414,7 +414,7 @@ native! {
         max_lines: i64,
     ) -> Result<TextList, StatusCode> {
         let mut h = h;
-        st(h.read_lines(max_bytes, max_lines)).map(TextList)
+        fs_status(h.read_lines(max_bytes, max_lines)).map(TextList)
     }
 
     /// The path a file handle was opened with.
@@ -423,13 +423,13 @@ native! {
     }
 
     fn msstd_fs_directory_open(path: &str) -> Result<Object<dir::Directory>, StatusCode> {
-        st(dir::Directory::open(path.as_bytes())).map(Object)
+        fs_status(dir::Directory::open(path.as_bytes())).map(Object)
     }
 
     /// The next entry in native order; `STATUS_NONE` at the end.
     fn msstd_fs_directory_read(h: ObjMut<dir::Directory>) -> Result<EntryOut, StatusCode> {
         let mut h = h;
-        let item = st(h.read())?.ok_or(StatusCode(STATUS_NONE))?;
+        let item = fs_status(h.read())?.ok_or(StatusCode(STATUS_NONE))?;
         Ok(entry_out(&item.name, item.directory, item.symlink))
     }
 
@@ -444,7 +444,7 @@ native! {
 
     /// Creates a temporary directory scoped to the handle (`close` removes the tree).
     fn msstd_fs_temporary_open(prefix: &str) -> Result<Object<dir::Temporary>, StatusCode> {
-        st(dir::Temporary::create(prefix.as_bytes())).map(Object)
+        fs_status(dir::Temporary::create(prefix.as_bytes())).map(Object)
     }
 
     fn msstd_fs_temporary_path(h: ObjRef<dir::Temporary>) -> Text {
@@ -454,7 +454,7 @@ native! {
     /// Removes the tree; a failure carries its text for `msstd_fs_failure_message`.
     fn msstd_fs_temporary_close(h: ObjMut<dir::Temporary>) -> Result<(), StatusCode> {
         let mut h = h;
-        st(h.close())
+        fs_status(h.close())
     }
 
     /// `glob`: sorted relative matches as a `List[String]`.
@@ -464,7 +464,7 @@ native! {
         has_max: bool,
         max: i64,
     ) -> Result<TextList, StatusCode> {
-        st(lim(has_max, max).and_then(|m| walk::glob(path.as_bytes(), pattern.as_bytes(), m)))
+        fs_status(lim(has_max, max).and_then(|m| walk::glob(path.as_bytes(), pattern.as_bytes(), m)))
             .map(TextList)
     }
 
@@ -476,7 +476,7 @@ native! {
         entries: i64,
         bytes: i64,
     ) -> Result<(), StatusCode> {
-        st(walk::copy_tree(
+        fs_status(walk::copy_tree(
             source.as_bytes(),
             destination.as_bytes(),
             replace,
@@ -502,7 +502,7 @@ native! {
             ms_std_rt::record_failure(Vec::new());
             return Err(StatusCode(STATUS_INVALID_INPUT));
         };
-        let (entries, bytes) = st(lim(has_entries, entries).and_then(|e| Ok((e, lim(has_bytes, bytes)?))))?;
+        let (entries, bytes) = fs_status(lim(has_entries, entries).and_then(|e| Ok((e, lim(has_bytes, bytes)?))))?;
         let options = walk::CopyOptions {
             recursive: flags & 1 != 0,
             replace: flags & 2 != 0,
@@ -516,7 +516,7 @@ native! {
         };
         let mut call = |s: &[u8], d: &[u8]| filter.as_ref().is_some_and(|f| f.call(s, d));
         let f: Option<walk::Filter<'_>> = if filter.is_some() { Some(&mut call) } else { None };
-        st(walk::copy(source.as_bytes(), destination.as_bytes(), options, f))
+        fs_status(walk::copy(source.as_bytes(), destination.as_bytes(), options, f))
     }
 
     /// `glob_entries`: `patterns` and `exclude` are `List[String]`; matches come back as a
@@ -533,7 +533,7 @@ native! {
         max_results: i64,
         filter: Option<EntryFilter>,
     ) -> Result<RecList<PathEntryOut>, StatusCode> {
-        let (max_entries, max_results) = st(lim(has_max_entries, max_entries)
+        let (max_entries, max_results) = fs_status(lim(has_max_entries, max_entries)
             .and_then(|e| Ok((e, lim(has_max_results, max_results)?))))?;
         let patterns: Vec<&[u8]> = patterns.iter().map(|p| p.as_bytes()).collect();
         let exclude: Vec<&[u8]> = exclude.iter().map(|p| p.as_bytes()).collect();
@@ -551,7 +551,7 @@ native! {
         };
         let cb: Option<&mut dyn FnMut(&walk::PathEntry) -> bool> =
             if filter.is_some() { Some(&mut call) } else { None };
-        let items = st(walk::glob_entries(path.as_bytes(), &options, cb))?;
+        let items = fs_status(walk::glob_entries(path.as_bytes(), &options, cb))?;
         Ok(RecList::new(items.iter().map(|e| PathEntryOut {
             path: Str::from_bytes(&e.path),
             name: Str::from_bytes(&e.name),
@@ -580,7 +580,7 @@ native! {
     ) -> Result<Object<watch::Watcher>, StatusCode> {
         let poll = lim(has_max, max)
             .and_then(|m| watch::Poll::new(path.as_bytes(), recursive, interval_ns, m));
-        st(poll).map(|p| Object(watch::Watcher::poll(p)))
+        fs_status(poll).map(|p| Object(watch::Watcher::poll(p)))
     }
 
     /// A native (inotify) watcher; `overflow` is `error` or `ignore`.
@@ -603,7 +603,7 @@ native! {
                 overflow.as_bytes(),
             )
         });
-        st(native).map(|n| Object(watch::Watcher::native(n)))
+        fs_status(native).map(|n| Object(watch::Watcher::native(n)))
     }
 
     /// Waits for activity. The results are a `List[String]` of paths and one byte per event
@@ -612,7 +612,7 @@ native! {
         h: ObjMut<watch::Watcher>,
     ) -> Result<(TextList, Vec<u8>), StatusCode> {
         let mut h = h;
-        let events = st(h.wait())?;
+        let events = fs_status(h.wait())?;
         Ok((
             TextList(events.iter().map(|e| e.path.clone()).collect()),
             events.iter().map(|e| u8::from(e.rename)).collect(),
