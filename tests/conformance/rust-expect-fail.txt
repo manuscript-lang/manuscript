@@ -24,4 +24,3 @@ go-tests/tests-e2e-testinherentimplfaultframe-1
 go-tests/tests-e2e-testmutationaliasesretainsplicefaults-1
 go-tests/tests-e2e-testpreferrednamesretainfaults-1
 go-tests/tests-e2e-testreplacenretainsnegativefaultsandframes-1
-repo/pkg-lower-testdata-operand-captures
