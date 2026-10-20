@@ -3,30 +3,15 @@ name: Rust distributions
 # Builds the Rust `ms` (with the ms-native runtime embedded) natively on a runner of each of
 # the six release targets, packages it, and runs the packaged binary on a hello project.
 # release.yml calls this workflow on a version tag and publishes its archives; there every
-# target gates, as it does on pull requests.
+# target gates. Pull requests build, test, package and smoke-test the same six platforms in
+# the `rust` jobs of cicd.yml.
 
 on:
   workflow_call:
-  pull_request:
-    paths:
-      - 'crates/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'rust-toolchain.toml'
-      - '.cargo/**'
-      - 'scripts/package-rust.sh'
-      - 'examples/hello/**'
-      - '.github/workflows/rust-dist.yml'
-  merge_group:
-    types: [checks_requested]
   workflow_dispatch:
 
 permissions:
   contents: read
-
-concurrency:
-  group: rust-dist-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   package:

@@ -9,7 +9,24 @@ use ms_cli::backend::Io;
 use ms_cli::engine::RustBackend;
 use ms_driver::Native;
 
+/// The checker and lowerer recurse over the syntax tree, and the parser admits
+/// expression chains and nesting deeper than the default 8 MiB main stack holds.
+/// Stack pages are committed on use, so a large reservation is cheap.
+const COMPILER_STACK: usize = 512 << 20;
+
 fn main() {
+    let worker = std::thread::Builder::new()
+        .name("ms".into())
+        .stack_size(COMPILER_STACK)
+        .spawn(real_main);
+    let status = match worker {
+        Ok(handle) => handle.join().unwrap_or(70),
+        Err(_) => real_main(),
+    };
+    std::process::exit(status);
+}
+
+fn real_main() -> i32 {
     let args: Vec<String> = std::env::args_os()
         .skip(1)
         .map(|a| a.to_string_lossy().into_owned())
@@ -28,5 +45,5 @@ fn main() {
     };
     let _ = stdout.flush();
     drop(stdout);
-    std::process::exit(status);
+    status
 }
