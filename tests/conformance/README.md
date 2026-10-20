@@ -1,11 +1,10 @@
 # Conformance corpus
 
-Programs paired with expectations recorded from the Go `ms` (the oracle until cutover). The Rust implementation is done when `ms-conform run --ms <rust ms>` passes the corpus, apart from fixtures tagged `aliasing`, which the value-semantics migration changes on purpose.
+Programs paired with expectations first recorded from the Go `ms`. The expectations are now frozen: they are the contract, and the Go `ms` is no longer needed to check or extend the corpus. The Rust `ms` passes it apart from fixtures tagged `aliasing`, which the value-semantics migration changes on purpose, and the entries in `rust-expect-fail.txt`.
 
 ```sh
-make build                                   # the Go oracle, ./ms
+make conform-rust                            # builds the Rust ms and ms-conform, then gates the corpus
 cargo build -p ms-conform
-ms-conform run --ms ./ms                     # oracle against itself: must be 100%
 ms-conform run --ms path/to/rust-ms --exclude-tag aliasing --markdown report.md
 ```
 
@@ -64,4 +63,4 @@ ms-conform record --ms ./ms --prune
 
 Programs importing `http`, `net`, `tls`, `websocket`, `sse`, `process`, `terminal`, `system`, `random` or `time` are checked but not run by the harvester, since they bind sockets, wait on signals or depend on the clock. Add run fixtures for them by hand with deterministic output.
 
-`make conform-oracle CONFORM_SHARD=i/n` replays the corpus against the Go oracle; CI runs it in four shards. Changing a fixture's `# conform:` header shifts byte offsets in its diagnostics, so re-record after editing tags by hand (`ms-conform retag` only touches `tier-*`; run `record` after it).
+`make conform-rust CONFORM_SHARD=i/n` replays the corpus against the Rust `ms`; CI runs it in four shards. `make conform-oracle` still re-checks the frozen expectations against the Go `ms` locally until the Go code is removed. Changing a fixture's `# conform:` header shifts byte offsets in its diagnostics, so re-record after editing tags by hand (`ms-conform retag` only touches `tier-*`; run `record` after it).

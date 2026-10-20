@@ -5,7 +5,7 @@ weight = 4
 
 # Rust toolchain
 
-The Rust and Cranelift implementation of `ms` is replacing the Go one. Release tags publish the Rust `ms` (`release.yml` calls the workflow below and uploads its six archives); the Go `ms` remains the differential-test oracle until removal. The Rust `ms` builds from the same checkout and is packaged by the [Rust distributions workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/rust-dist.yml). The Go code stays until the Rust `ms` passes the conformance corpus.
+The Rust and Cranelift implementation of `ms` is replacing the Go one. Release tags publish the Rust `ms` (`release.yml` calls the workflow below and uploads its six archives); the Go `ms` stays only until it is deleted. The Rust `ms` builds from the same checkout and is packaged by the [Rust distributions workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/rust-dist.yml). The Go code stays until the Rust `ms` passes the conformance corpus.
 
 ## Build and run
 
@@ -31,7 +31,7 @@ cargo test --workspace --doc
 
 CI runs these as **Rust format and clippy**, **Rust tests** (two nextest partitions plus doc tests), and **Rust corpus** (four shards). Pull requests that only change documentation, the website, blog, proposals, skills, extensions, or Markdown skip them.
 
-The conformance corpus in `tests/conformance/` holds programs with expectations recorded from the Go `ms`. `make conform-oracle` replays it against the Go binary itself; `cargo run -q -p ms-conform -- run --ms target/release/ms --exclude-tag aliasing` replays it against the Rust binary. See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
+The conformance corpus in `tests/conformance/` holds programs with expectations first recorded from the Go `ms` and now frozen. `make conform-rust` replays it against the Rust binary (CI shards it four ways); `make conform-oracle` re-checks it against the Go binary locally until the Go code is removed. See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
 
 ## Crates
 

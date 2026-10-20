@@ -35,7 +35,7 @@ It adds coverage, native conformance, race checks, fuzzing, strict book checks, 
 
 ## Rust toolchain
 
-The Rust `ms` builds with cargo, not Make: `cargo build --release --locked -p ms-cli` produces `target/release/ms`, and `sh scripts/package-rust.sh` packages it. Rust changes run `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo nextest run --workspace`; `make conform-oracle` replays the conformance corpus against the Go `ms`. Setup, crates, and differences from the Go `ms` are in [Rust toolchain](rust-toolchain.md). The Go commands in this guide stay authoritative until cutover.
+The Rust `ms` builds with cargo, not Make: `cargo build --release --locked -p ms-cli` produces `target/release/ms`, and `sh scripts/package-rust.sh` packages it. Rust changes run `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo nextest run --workspace`; `make conform-rust` replays the frozen conformance corpus against the Rust `ms`. Setup, crates, and differences from the Go `ms` are in [Rust toolchain](rust-toolchain.md). The Go commands in this guide stay authoritative until cutover.
 
 ## Conformance and coverage
 

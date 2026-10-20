@@ -57,7 +57,7 @@ conformance: build
 	./ms test scripts/conformance.ms
 	./ms run scripts/conformance.ms -- "$(CURDIR)/ms" "$(CONFORMANCE_SUITE)" "$(CONFORMANCE_SHARD)" "$(CONFORMANCE_SHARDS)"
 
-# The Rust corpus runner against the Go oracle itself: every recorded fixture must pass.
+# Re-checks the frozen expectations against the Go oracle that recorded them (local only; CI gates on conform-rust).
 # CONFORM_SHARD=i/n splits the run; see tests/conformance/README.md.
 CONFORM_SHARD ?= 0/1
 conform-oracle: build
@@ -66,9 +66,11 @@ conform-oracle: build
 
 # The run, check and test phases of the corpus against the Rust `ms` (cargo build -p ms-cli), excluding fixtures whose
 # answer depends on aliasing; known differences are listed in tests/conformance/rust-expect-fail.txt.
+# The recorded expectations are frozen: they are the contract, and this is the corpus gate. CONFORM_SHARD=i/n splits the run.
 conform-rust:
 	cargo build -q -p ms-cli -p ms-conform
-	target/debug/ms-conform run --ms target/debug/ms --phase run,check,test --exclude-tag aliasing --expect-fail tests/conformance/rust-expect-fail.txt --quiet --markdown .artifacts/conform-rust.md
+	target/debug/ms-conform lint
+	target/debug/ms-conform run --ms target/debug/ms --phase run,check,test --exclude-tag aliasing --expect-fail tests/conformance/rust-expect-fail.txt --shard "$(CONFORM_SHARD)" --quiet --markdown .artifacts/conform-rust.md
 
 examples-check:
 	"$(GO)" test ./tests/examples
