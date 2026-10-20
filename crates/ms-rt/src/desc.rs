@@ -1,6 +1,5 @@
 //! Type descriptors: drop, copy, equality and hash of values stored in slots.
 use crate::alloc;
-use crate::buf::RawVec;
 use crate::fault;
 use crate::global::Global;
 use crate::map;
@@ -143,11 +142,9 @@ unsafe fn slot_copy_slow(d: &TypeDesc, src: *const u8, dst: *mut u8) {
 }
 
 struct EqState {
-    pairs: RawVec<(usize, usize)>,
+    pairs: Vec<(usize, usize)>,
 }
-static EQ: Global<EqState> = Global::new(EqState {
-    pairs: RawVec::new(),
-});
+static EQ: Global<EqState> = Global::new(EqState { pairs: Vec::new() });
 const MAX_EQ_DEPTH: usize = 200_000;
 
 /// Registers a pair of objects being compared; 0 means the pair is already in progress
@@ -179,7 +176,7 @@ pub unsafe extern "C-unwind" fn msrt_eq_leave(_a: *const u8, _b: *const u8) {
 }
 
 /// Exchanges the pairs registered by `msrt_eq_enter` with `other` (task switches).
-pub(crate) fn swap_eq_pairs(other: &mut RawVec<(usize, usize)>) {
+pub(crate) fn swap_eq_pairs(other: &mut Vec<(usize, usize)>) {
     // SAFETY: single threaded access.
     unsafe { core::mem::swap(&mut (*EQ.ptr()).pairs, other) }
 }

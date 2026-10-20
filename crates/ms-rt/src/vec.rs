@@ -846,12 +846,12 @@ pub unsafe extern "C-unwind" fn msrt_list_join(
     unsafe {
         let v = &*v;
         let sepb = string::bytes(sep);
-        let mut b = crate::buf::ByteBuf::new();
+        let mut b = Vec::new();
         for i in 0..v.len {
             if i > 0 {
-                b.extend(sepb);
+                b.extend_from_slice(sepb);
             }
-            b.extend(string::bytes(*(v.ptr as *const *const StrObj).add(i)));
+            b.extend_from_slice(string::bytes(*(v.ptr as *const *const StrObj).add(i)));
         }
         *out = string::from_buf(b);
     }
@@ -1265,9 +1265,9 @@ pub unsafe extern "C-unwind" fn msrt_bytes_concat(
     // SAFETY: caller contract.
     unsafe {
         let (x, y) = (bslice(a), bslice(b));
-        let mut buf = crate::buf::ByteBuf::with_capacity(x.len() + y.len());
-        buf.extend(x);
-        buf.extend(y);
+        let mut buf = Vec::with_capacity(x.len() + y.len());
+        buf.extend_from_slice(x);
+        buf.extend_from_slice(y);
         bytes_from(buf.as_slice(), out);
     }
 }
@@ -1352,7 +1352,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_from_values(values: *const VecVal, ou
     // SAFETY: caller contract.
     unsafe {
         let v = &*values;
-        let mut buf = crate::buf::ByteBuf::with_capacity(v.len);
+        let mut buf = Vec::with_capacity(v.len);
         for i in 0..v.len {
             let x = *(v.ptr as *const i64).add(i);
             if !(0..=255).contains(&x) {

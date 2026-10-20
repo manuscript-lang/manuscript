@@ -4,7 +4,6 @@
 //! level indices and lengths count Unicode scalars. A string whose scalar count
 //! equals its byte length is ASCII, which every indexing operation exploits.
 use crate::alloc;
-use crate::buf::{ByteBuf, RawVec};
 use crate::fault;
 use crate::global::Global;
 use crate::obj;
@@ -126,7 +125,7 @@ fn retained(s: *mut StrObj) -> *mut StrObj {
 }
 
 /// Converts a finished buffer into a string.
-pub fn from_buf(b: ByteBuf) -> *mut StrObj {
+pub fn from_buf(b: Vec<u8>) -> *mut StrObj {
     from_bytes(b.as_slice())
 }
 
@@ -504,13 +503,13 @@ pub unsafe extern "C-unwind" fn msrt_string_reverse(a: *const StrObj) -> *mut St
     // SAFETY: caller passes a live string.
     unsafe {
         let text = bytes(a);
-        let mut out = ByteBuf::with_capacity(text.len());
+        let mut out = Vec::with_capacity(text.len());
         let mut end = text.len();
         let mut tmp = [0u8; 4];
         while end > 0 {
             let (c, w) = utf8::decode_last(&text[..end]);
             let n = utf8::encode(c, &mut tmp);
-            out.extend(&tmp[..n]);
+            out.extend_from_slice(&tmp[..n]);
             end -= w;
         }
         from_buf(out)
@@ -575,8 +574,8 @@ fn is_cased(c: char) -> bool {
     c.is_lowercase() || c.is_uppercase()
 }
 
-fn map_case(text: &[u8], upper: bool) -> ByteBuf {
-    let mut out = ByteBuf::with_capacity(text.len());
+fn map_case(text: &[u8], upper: bool) -> Vec<u8> {
+    let mut out = Vec::with_capacity(text.len());
     if text.is_ascii() {
         for &b in text {
             out.push(if upper {
@@ -587,7 +586,7 @@ fn map_case(text: &[u8], upper: bool) -> ByteBuf {
         }
         return out;
     }
-    let mut chars: RawVec<char> = RawVec::new();
+    let mut chars: Vec<char> = Vec::new();
     let mut i = 0;
     while i < text.len() {
         let (c, w) = utf8::decode(&text[i..]);
@@ -599,7 +598,7 @@ fn map_case(text: &[u8], upper: bool) -> ByteBuf {
     for (k, &c) in cs.iter().enumerate() {
         if upper {
             for u in c.to_uppercase() {
-                out.extend(u.encode_utf8(&mut tmp).as_bytes());
+                out.extend_from_slice(u.encode_utf8(&mut tmp).as_bytes());
             }
         } else if c == '\u{3A3}' {
             // Final sigma: preceded by a cased letter and not followed by one.
@@ -612,7 +611,7 @@ fn map_case(text: &[u8], upper: bool) -> ByteBuf {
                 .iter()
                 .find(|&&x| !is_case_ignorable(x))
                 .is_some_and(|&x| is_cased(x));
-            out.extend(
+            out.extend_from_slice(
                 if before && !after {
                     "\u{3C2}"
                 } else {
@@ -622,7 +621,7 @@ fn map_case(text: &[u8], upper: bool) -> ByteBuf {
             );
         } else {
             for u in c.to_lowercase() {
-                out.extend(u.encode_utf8(&mut tmp).as_bytes());
+                out.extend_from_slice(u.encode_utf8(&mut tmp).as_bytes());
             }
         }
     }
@@ -703,8 +702,8 @@ fn count_matches(text: &[u8], old: &[u8]) -> usize {
 }
 
 /// Go `strings.Replace(text, old, new, n)` semantics (n < 0 means all).
-fn replace_n_bytes(text: &[u8], old: &[u8], new: &[u8], n: i64) -> ByteBuf {
-    let mut out = ByteBuf::with_capacity(text.len());
+fn replace_n_bytes(text: &[u8], old: &[u8], new: &[u8], n: i64) -> Vec<u8> {
+    let mut out = Vec::with_capacity(text.len());
     if old.is_empty() {
         // Insert `new` before every scalar and at the end, up to n times.
         let mut done = 0i64;
@@ -713,16 +712,16 @@ fn replace_n_bytes(text: &[u8], old: &[u8], new: &[u8], n: i64) -> ByteBuf {
             if n >= 0 && done >= n {
                 break;
             }
-            out.extend(new);
+            out.extend_from_slice(new);
             done += 1;
             if i >= text.len() {
                 return out;
             }
             let w = utf8::decode(&text[i..]).1;
-            out.extend(&text[i..i + w]);
+            out.extend_from_slice(&text[i..i + w]);
             i += w;
         }
-        out.extend(&text[i..]);
+        out.extend_from_slice(&text[i..]);
         return out;
     }
     let mut i = 0;
@@ -731,14 +730,14 @@ fn replace_n_bytes(text: &[u8], old: &[u8], new: &[u8], n: i64) -> ByteBuf {
         match find(&text[i..], old) {
             None => break,
             Some(p) => {
-                out.extend(&text[i..i + p]);
-                out.extend(new);
+                out.extend_from_slice(&text[i..i + p]);
+                out.extend_from_slice(new);
                 i += p + old.len();
                 done += 1;
             }
         }
     }
-    out.extend(&text[i..]);
+    out.extend_from_slice(&text[i..]);
     out
 }
 
@@ -874,16 +873,16 @@ unsafe fn pad(
         if remaining < 0 || cycles as i128 > remaining / padb.len() as i128 {
             return STATUS_LIMIT_EXCEEDED;
         }
-        let mut b = ByteBuf::with_capacity(text.len() + cycles * padb.len() + prefix_end);
+        let mut b = Vec::with_capacity(text.len() + cycles * padb.len() + prefix_end);
         if !atstart {
-            b.extend(text);
+            b.extend_from_slice(text);
         }
         for _ in 0..cycles {
-            b.extend(padb);
+            b.extend_from_slice(padb);
         }
-        b.extend(&padb[..prefix_end]);
+        b.extend_from_slice(&padb[..prefix_end]);
         if atstart {
-            b.extend(text);
+            b.extend_from_slice(text);
         }
         *out = from_buf(b);
         STATUS_OK
@@ -1119,7 +1118,7 @@ pub unsafe extern "C-unwind" fn msrt_string_from_scalars(
     // SAFETY: caller passes a live list of Int and a writable out.
     unsafe {
         let v = &*values;
-        let mut b = ByteBuf::with_capacity(v.len);
+        let mut b = Vec::with_capacity(v.len);
         let mut tmp = [0u8; 4];
         for i in 0..v.len {
             let n = *(v.ptr as *const i64).add(i);
@@ -1127,7 +1126,7 @@ pub unsafe extern "C-unwind" fn msrt_string_from_scalars(
                 return STATUS_INVALID_INPUT;
             }
             let w = utf8::encode(n as u32, &mut tmp);
-            b.extend(&tmp[..w]);
+            b.extend_from_slice(&tmp[..w]);
         }
         *out = from_buf(b);
         STATUS_OK
@@ -1228,21 +1227,21 @@ unsafe fn normalize_kind(
             usize::MAX
         };
         let text = bytes(s);
-        let mut chars: RawVec<char> = RawVec::new();
+        let mut chars: Vec<char> = Vec::new();
         let mut i = 0;
         while i < text.len() {
             let (c, w) = utf8::decode(&text[i..]);
             chars.push(char::from_u32(c).unwrap_or('\u{FFFD}'));
             i += w;
         }
-        let mut b = ByteBuf::new();
+        let mut b = Vec::new();
         let mut tmp = [0u8; 4];
         let mut push = |c: char| -> bool {
             let e = c.encode_utf8(&mut tmp).as_bytes();
             if e.len() > limit.saturating_sub(b.len()) {
                 return false;
             }
-            b.extend(e);
+            b.extend_from_slice(e);
             true
         };
         let it = chars.as_slice().iter().copied();
@@ -1287,7 +1286,7 @@ pub extern "C-unwind" fn msrt_int_to_string_radix(v: i64, radix: i64) -> *mut St
             "to_string_radix: radix must be between 2 and 36, found {radix}"
         ));
     }
-    let mut b = ByteBuf::new();
+    let mut b = Vec::new();
     crate::num::format_radix(v, radix as u32, &mut b);
     from_buf(b)
 }
@@ -1297,20 +1296,20 @@ pub extern "C-unwind" fn msrt_int_to_string_radix(v: i64, radix: i64) -> *mut St
 pub unsafe extern "C-unwind" fn msrt_string_quote(s: *const StrObj) -> *mut StrObj {
     // SAFETY: caller passes a live string.
     let text = unsafe { bytes(s) };
-    let mut out = ByteBuf::with_capacity(text.len() + 2);
+    let mut out = Vec::with_capacity(text.len() + 2);
     out.push(b'"');
     let mut i = 0;
     while i < text.len() {
         let c = text[i];
         match c {
-            b'"' => out.extend(b"\\\""),
-            b'\\' => out.extend(b"\\\\"),
-            b'\n' => out.extend(b"\\n"),
-            b'\t' => out.extend(b"\\t"),
-            b'\r' => out.extend(b"\\r"),
+            b'"' => out.extend_from_slice(b"\\\""),
+            b'\\' => out.extend_from_slice(b"\\\\"),
+            b'\n' => out.extend_from_slice(b"\\n"),
+            b'\t' => out.extend_from_slice(b"\\t"),
+            b'\r' => out.extend_from_slice(b"\\r"),
             0..=0x1f | 0x7f => {
                 const HEX: &[u8; 16] = b"0123456789abcdef";
-                out.extend(b"\\x");
+                out.extend_from_slice(b"\\x");
                 out.push(HEX[(c >> 4) as usize]);
                 out.push(HEX[(c & 15) as usize]);
             }

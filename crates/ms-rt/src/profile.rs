@@ -4,7 +4,6 @@
 //! `ucontext`, walks the frame-pointer chain inside the stack bounds recorded at
 //! start and stores the pcs in a preallocated ring (no allocation, async-signal-safe).
 //! At exit the pcs are resolved through the function table and aggregated.
-use crate::buf::ByteBuf;
 use crate::fault::{STACK_HI, STACK_LO, TABLES, find_func};
 use crate::global::Global;
 use crate::num;
@@ -267,22 +266,21 @@ fn write_perf_map() {
     }
     // SAFETY: valid table.
     let t = unsafe { &*t };
-    let mut out = ByteBuf::new();
+    let mut out = Vec::new();
     if !t.funcs.is_null() {
         // SAFETY: `func_count` read-only entries.
         let funcs = unsafe { core::slice::from_raw_parts(t.funcs, t.func_count) };
         for f in funcs {
-            let _ =
-                core::fmt::Write::write_fmt(&mut out, format_args!("{:x} {:x} ", f.addr, f.size));
-            out.extend(cstr(t, f.name_off));
+            let _ = std::io::Write::write_fmt(&mut out, format_args!("{:x} {:x} ", f.addr, f.size));
+            out.extend_from_slice(cstr(t, f.name_off));
             out.push(b'\n');
         }
     }
-    let mut path = ByteBuf::new();
-    path.extend(b"/tmp/perf-");
+    let mut path = Vec::new();
+    path.extend_from_slice(b"/tmp/perf-");
     // SAFETY: `getpid` has no preconditions.
-    path.push_i64(unsafe { sys::getpid() } as i64);
-    path.extend(b".map\0");
+    crate::num::push_i64(&mut path, unsafe { sys::getpid() } as i64);
+    path.extend_from_slice(b".map\0");
     write_file(path.as_slice(), out.as_slice());
 }
 
@@ -332,8 +330,8 @@ pub fn finish() {
                     }
                 }
                 None => {
-                    let mut b = ByteBuf::new();
-                    let _ = core::fmt::Write::write_fmt(&mut b, format_args!("0x{pc:x}"));
+                    let mut b = Vec::new();
+                    let _ = std::io::Write::write_fmt(&mut b, format_args!("0x{pc:x}"));
                     b.as_slice().to_vec()
                 }
             };
@@ -359,20 +357,20 @@ pub fn finish() {
         }
         *folded.entry(key).or_insert(0) += 1;
     }
-    let mut out = ByteBuf::new();
+    let mut out = Vec::new();
     for (stack, count) in &folded {
-        out.extend(stack);
+        out.extend_from_slice(stack);
         out.push(b' ');
-        out.push_i64(*count as i64);
+        crate::num::push_i64(&mut out, *count as i64);
         out.push(b'\n');
     }
-    out.extend(b"# dropped ");
-    out.push_i64(DROPPED.load(Ordering::Relaxed) as i64);
+    out.extend_from_slice(b"# dropped ");
+    crate::num::push_i64(&mut out, DROPPED.load(Ordering::Relaxed) as i64);
     out.push(b'\n');
     // SAFETY: path recorded at start; make a NUL-terminated copy.
     let path = unsafe { *PATH.ptr() };
-    let mut p = ByteBuf::new();
-    p.extend(path);
+    let mut p = Vec::new();
+    p.extend_from_slice(path);
     p.push(0);
     write_file(p.as_slice(), out.as_slice());
 }

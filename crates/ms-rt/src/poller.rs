@@ -366,7 +366,6 @@ mod imp {
     //! `WSAPoll` only knows sockets, so any other handle (a regular file, a pipe) is reported
     //! ready at once, as a file is on Unix.
     use super::*;
-    use crate::buf::RawVec;
     use crate::global::Global;
     use core::sync::atomic::AtomicUsize;
 
@@ -431,7 +430,7 @@ mod imp {
     }
 
     /// Entry 0 is the wake socket; the rest are one-shot registrations of waiting tasks.
-    static FDS: Global<RawVec<PollFd>> = Global::new(RawVec::new());
+    static FDS: Global<Vec<PollFd>> = Global::new(Vec::new());
     static WAKE_SOCKET: AtomicUsize = AtomicUsize::new(INVALID_SOCKET);
     /// Port of the wake socket on 127.0.0.1, network byte order.
     static WAKE_PORT: AtomicUsize = AtomicUsize::new(0);
@@ -534,7 +533,7 @@ mod imp {
         };
         // A registration left by an earlier wait that ended another way is replaced.
         match fds.as_slice().iter().skip(1).position(|e| e.fd == fd) {
-            Some(i) => fds.set(i + 1, entry),
+            Some(i) => fds[i + 1] = entry,
             None => fds.push(entry),
         }
         Watch::Armed
